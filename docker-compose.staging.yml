@@ -1,0 +1,48 @@
+# Staging — OSOBNY VPS (nigdy produkcyjny serwer).
+# Użycie na serwerze: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+# Wymaga na serwerze pliku .env.staging (patrz .env.staging.example) i DNS-a subdomeny.
+name: niepodzielni-staging
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: np_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - STAGING_DOMAIN=${STAGING_DOMAIN:?ustaw w .env}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER:?ustaw w .env}
+      - BASIC_AUTH_HASH=${BASIC_AUTH_HASH:?ustaw w .env}   # caddy hash-password
+    volumes:
+      - ./staging/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [niepodzielni]
+
+  app:
+    environment:
+      - AUTORUN_ENABLED=true          # migracje przy starcie kontenera
+      - PHP_OPCACHE_ENABLE=1
+    ports: !override []               # ruch tylko przez Caddy, bez portu na hoście
+
+  # frontend budowany i serwowany w kontenerze (na stagingu nie ma "npm run dev")
+  frontend:
+    image: node:22-alpine
+    container_name: np_frontend
+    working_dir: /app
+    command: sh -c "npm ci && npm run build && npm run start -- -p 3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://${STAGING_DOMAIN}
+    volumes:
+      - ./frontend:/app
+    restart: unless-stopped
+    networks: [niepodzielni]
+
+  mailpit:
+    ports: !override []               # podgląd maili przez Caddy: /mailpit
+
+volumes:
+  caddy_data:
+  caddy_config:

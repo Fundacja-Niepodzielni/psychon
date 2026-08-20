@@ -1,0 +1,51 @@
+name: Deploy staging
+
+# Auto-wdrożenie na staging po każdym merge do main.
+# Wymagane sekrety repo (Settings -> Secrets): STAGING_HOST, STAGING_USER,
+# STAGING_SSH_KEY (klucz użytkownika deploy NA STAGINGOWYM VPS — nie produkcyjnym).
+# Workflow nie zrobi nic, dopóki sekrety nie są ustawione.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      reset_seeds:
+        description: "Zresetować bazę do seedów demo?"
+        type: boolean
+        default: false
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sprawdź sekrety
+        id: gate
+        run: |
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Sekrety stagingu nieustawione — pomijam wdrożenie."
+          fi
+      - name: Wdrożenie przez SSH
+        if: steps.gate.outputs.skip != 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd ~/niepodzielni
+            git fetch origin main && git reset --hard origin/main
+            docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+            docker compose exec -T app composer install --no-interaction --no-dev
+            docker compose exec -T app php artisan migrate --force
+            if [ "${{ inputs.reset_seeds }}" = "true" ]; then
+              docker compose exec -T app php artisan migrate:fresh --seed --force
+            fi
+            docker compose exec -T app php artisan config:cache
+            docker compose restart frontend queue

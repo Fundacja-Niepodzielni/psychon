@@ -1,0 +1,27 @@
+# Staging: HTTPS automatycznie (Let's Encrypt), całość za basic auth,
+# noindex na wszelki wypadek.
+{$STAGING_DOMAIN} {
+	header X-Robots-Tag "noindex, nofollow"
+
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	# API -> Laravel
+	handle /api/* {
+		reverse_proxy app:8080
+	}
+	handle /storage/* {
+		reverse_proxy app:8080
+	}
+
+	# podgląd e-maili
+	handle_path /mailpit* {
+		reverse_proxy mailpit:8025
+	}
+
+	# reszta -> Next.js
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

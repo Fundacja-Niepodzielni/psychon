@@ -1,0 +1,84 @@
+name: niepodzielni
+
+services:
+  app:
+    image: serversideup/php:8.4-fpm-nginx
+    container_name: np_app
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      - AUTORUN_ENABLED=false
+      - PHP_OPCACHE_ENABLE=0
+    ports:
+      - "${NP_APP_PORT:-8000}:8080"
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [niepodzielni]
+
+  # worker kolejek (powiadomienia, PDF-y, eksporty RODO)
+  queue:
+    image: serversideup/php:8.4-fpm-nginx
+    container_name: np_queue
+    working_dir: /var/www/html
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90"]
+    # obraz ma healthcheck serwera www, którego worker nie uruchamia
+    healthcheck:
+      disable: true
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [niepodzielni]
+    restart: unless-stopped
+
+  pgsql:
+    image: postgres:17
+    container_name: np_pgsql
+    environment:
+      POSTGRES_DB: niepodzielni
+      POSTGRES_USER: niepodzielni
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgsql_data:/var/lib/postgresql/data
+    # dostęp z hosta (np. TablePlus): domyślnie 5432; przy konflikcie ustaw NP_DB_PORT
+    ports:
+      - "${NP_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U niepodzielni"]
+      interval: 5s
+      retries: 12
+    networks: [niepodzielni]
+
+  redis:
+    image: redis:7-alpine
+    container_name: np_redis
+    # bez portu na hoście — aplikacja łączy się wewnątrz sieci dockera,
+    # a to najczęstsze źródło konfliktu "port is already allocated"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 12
+    networks: [niepodzielni]
+
+  # skrzynka e-mail dev: WSZYSTKIE maile lądują tu, nic nie wychodzi w świat
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: np_mailpit
+    ports:
+      - "${NP_MAILPIT_PORT:-8025}:8025"   # panel www
+      # SMTP tylko wewnątrz sieci dockera (backend -> mailpit:1025)
+    networks: [niepodzielni]
+
+volumes:
+  pgsql_data:
+
+networks:
+  niepodzielni:
+    driver: bridge

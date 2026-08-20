@@ -1,0 +1,11 @@
+# Jednolite końce linii przy 80 maszynach Windows/macOS/Linux —
+# bez tego pierwszy PR z CRLF pokaże "zmieniono cały plik".
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# binaria
+*.png binary
+*.jpg binary
+*.pdf binary
+*.woff2 binary

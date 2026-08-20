@@ -1,0 +1,23 @@
+# środowisko
+.env
+.env.*
+!.env.example
+*.local
+
+# zależności / buildy
+node_modules/
+vendor/
+.next/
+dist/
+build/
+
+# narzędzia / IDE
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+
+# dane lokalne
+storage/*.key
+*.sqlite

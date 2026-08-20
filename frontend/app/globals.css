@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+/*
+ * Tokeny designu wyciągnięte z makiety (psychon-makieta/index.html).
+ * Zmienne --psy-* to 1:1 wartości makiety; odstępstwa (kontrast WCAG ≥ 4,5:1)
+ * są oznaczone komentarzem [A11Y].
+ */
+:root {
+  /* --- Kolory marki --- */
+  --psy-green: #01be4a; /* zieleń marki — TYLKO dekoracyjnie (paski, ikony, tinty) */
+  --psy-green-10: #01be4a1a;
+  --psy-green-20: #01be4a33;
+  --psy-green-dark: #00803a; /* [A11Y] przyciemniona zieleń: 5,1:1 na bieli — tło primary / tekst */
+  --psy-violet: #594ef9; /* 5,4:1 na bieli — może być tekstem/linkiem */
+  --psy-violet-dark: #1500bb;
+  --psy-violet-06: #594ef90f;
+  --psy-violet-15: #594ef926;
+
+  /* --- Tła i obramowania --- */
+  --psy-bg-page: #f9f8f6;
+  --psy-bg-card: #ffffff;
+  --psy-bg-card-warm: #f5f4ef;
+  --psy-bg-grey: #f5f5f5;
+  --psy-bg-grey-mid: #e0e0e0;
+  --psy-border: #eaeaea;
+  --psy-border-warm: #f9f8f6;
+
+  /* --- Tekst --- */
+  --psy-text-strong: #1a1a1a;
+  --psy-text: #323232;
+  --psy-text-muted: #555555;
+  --psy-text-subtle: #6b6b6b; /* [A11Y] makieta: #767676 (4,3:1 na tle strony) — przyciemnione do 5,0:1 */
+  --psy-text-light: #ffffff;
+
+  /* --- Statusy --- */
+  --psy-success: #00803a; /* [A11Y] tekst/tło sukcesu; zieleń marki #01be4a tylko dekoracyjnie */
+  --psy-success-bg: #01be4a1a;
+  --psy-warning: #f59e0b; /* dekoracyjnie (2,2:1) */
+  --psy-warning-dark: #8a5a00; /* [A11Y] tekst ostrzeżenia: 5,9:1 */
+  --psy-warning-bg: #f59e0b1a;
+  --psy-error: #c0392b; /* 5,4:1 na bieli */
+  --psy-error-bg: #fdf3f3;
+  --psy-error-border: #f5c6cb;
+  --psy-info: #4a90e2; /* dekoracyjnie (3,3:1) */
+  --psy-info-dark: #2f6cb3; /* [A11Y] tekst informacyjny: 5,4:1 */
+  --psy-info-bg: #4a90e21a;
+
+  /* --- Kolory wydarzeń (kalendarz) --- */
+  --psy-event-mentoring: #e67e22;
+  --psy-event-superwizja: #4a90e2;
+  --psy-event-warsztat: #27ae60;
+
+  /* --- Typografia --- */
+  --psy-font: "Roboto", system-ui, -apple-system, sans-serif;
+  --psy-h1: 42px;
+  --psy-h2: 32px;
+  --psy-h3: 26px;
+  --psy-h4: 22px;
+  --psy-body: 16px;
+  --psy-small: 15px;
+  --psy-caption: 13px;
+  --psy-lh-tight: 1.15;
+  --psy-lh-body: 1.6;
+  --psy-fw-thin: 200;
+  --psy-fw-regular: 400;
+  --psy-fw-medium: 500;
+  --psy-fw-semibold: 600;
+  --psy-fw-bold: 700;
+  --psy-fw-black: 900;
+
+  /* --- Promienie --- */
+  --psy-radius-xs: 8px;
+  --psy-radius-sm: 12px;
+  --psy-radius-md: 15px;
+  --psy-radius-lg: 20px;
+  --psy-radius-xl: 24px;
+  --psy-radius-2xl: 28px;
+  --psy-radius-3xl: 36px;
+  --psy-radius-pill: 50px;
+
+  /* --- Cienie i fokus --- */
+  --psy-shadow-card: 0 4px 20px #0000000d;
+  --psy-shadow-header: 0 2px 10px #0000000d;
+  --psy-focus-ring: 0 0 0 3px #01be4a73;
+
+  /* --- Layout i ruch --- */
+  --psy-container: 1200px;
+  --psy-header-height: 80px;
+  --psy-sidebar-width: 260px;
+  --psy-space: 20px;
+  --psy-transition: 0.4s ease-in-out;
+  --psy-transition-fast: 0.25s ease-in-out;
+  --psy-ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Mapowanie tokenów na klasy Tailwind (v4, @theme inline).
+ * Przykłady: bg-primary, text-ink, border-line, rounded-md, shadow-card, text-h2.
+ */
+@theme inline {
+  --font-sans: var(--psy-font);
+
+  /* kolory — role */
+  --color-primary: var(--psy-green-dark);
+  --color-brand: var(--psy-green);
+  --color-brand-10: var(--psy-green-10);
+  --color-brand-20: var(--psy-green-20);
+  --color-accent: var(--psy-violet);
+  --color-accent-dark: var(--psy-violet-dark);
+  --color-accent-06: var(--psy-violet-06);
+  --color-accent-15: var(--psy-violet-15);
+
+  --color-page: var(--psy-bg-page);
+  --color-card: var(--psy-bg-card);
+  --color-card-warm: var(--psy-bg-card-warm);
+  --color-grey: var(--psy-bg-grey);
+  --color-grey-mid: var(--psy-bg-grey-mid);
+  --color-line: var(--psy-border);
+  --color-line-warm: var(--psy-border-warm);
+
+  --color-ink: var(--psy-text-strong);
+  --color-body: var(--psy-text);
+  --color-muted: var(--psy-text-muted);
+  --color-subtle: var(--psy-text-subtle);
+  --color-light: var(--psy-text-light);
+
+  --color-success: var(--psy-success);
+  --color-success-bg: var(--psy-success-bg);
+  --color-warning: var(--psy-warning);
+  --color-warning-dark: var(--psy-warning-dark);
+  --color-warning-bg: var(--psy-warning-bg);
+  --color-danger: var(--psy-error);
+  --color-danger-bg: var(--psy-error-bg);
+  --color-danger-border: var(--psy-error-border);
+  --color-info: var(--psy-info);
+  --color-info-dark: var(--psy-info-dark);
+  --color-info-bg: var(--psy-info-bg);
+
+  --color-event-mentoring: var(--psy-event-mentoring);
+  --color-event-superwizja: var(--psy-event-superwizja);
+  --color-event-warsztat: var(--psy-event-warsztat);
+
+  /* typografia — text-h1 … text-caption */
+  --text-h1: var(--psy-h1);
+  --text-h1--line-height: var(--psy-lh-tight);
+  --text-h2: var(--psy-h2);
+  --text-h2--line-height: var(--psy-lh-tight);
+  --text-h3: var(--psy-h3);
+  --text-h3--line-height: var(--psy-lh-tight);
+  --text-h4: var(--psy-h4);
+  --text-h4--line-height: 1.3;
+  --text-body: var(--psy-body);
+  --text-body--line-height: var(--psy-lh-body);
+  --text-small: var(--psy-small);
+  --text-small--line-height: 1.5;
+  --text-caption: var(--psy-caption);
+  --text-caption--line-height: 1.4;
+
+  /* promienie — rounded-xs … rounded-pill */
+  --radius-xs: var(--psy-radius-xs);
+  --radius-sm: var(--psy-radius-sm);
+  --radius-md: var(--psy-radius-md);
+  --radius-lg: var(--psy-radius-lg);
+  --radius-xl: var(--psy-radius-xl);
+  --radius-2xl: var(--psy-radius-2xl);
+  --radius-3xl: var(--psy-radius-3xl);
+  --radius-pill: var(--psy-radius-pill);
+
+  /* cienie */
+  --shadow-card: var(--psy-shadow-card);
+  --shadow-header: var(--psy-shadow-header);
+}
+
+/* Wspólny pierścień fokusa (zielony, z makiety) — użycie: focus-visible:focus-ring */
+@utility focus-ring {
+  outline: none;
+  box-shadow: var(--psy-focus-ring);
+}
+
+body {
+  background: var(--psy-bg-page);
+  color: var(--psy-text);
+  font-family: var(--psy-font);
+  font-size: var(--psy-body);
+  line-height: var(--psy-lh-body);
+}
