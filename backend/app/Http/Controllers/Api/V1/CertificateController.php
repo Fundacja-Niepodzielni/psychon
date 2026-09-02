@@ -64,9 +64,14 @@ class CertificateController extends Controller
             404,
         );
 
+        // Rozszerzenie z faktycznego pliku, nie zaszyte: PdfService zapisuje PDF,
+        // a dokumenty sprzed tej zmiany zostają na dysku jako HTML.
+        $extension = pathinfo($certificate->pdf_path, PATHINFO_EXTENSION) ?: 'pdf';
+
         return $disk->download(
             $certificate->pdf_path,
-            'certyfikat-'.str_replace('/', '-', $certificate->number).'.html',
+            'certyfikat-'.str_replace('/', '-', $certificate->number).'.'.$extension,
+            ['Content-Type' => $disk->mimeType($certificate->pdf_path) ?: 'application/pdf'],
         );
     }
 }

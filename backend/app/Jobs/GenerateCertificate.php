@@ -10,6 +10,10 @@ use App\Support\H13\CertificateConditions;
 use App\Support\Notify;
 use App\Support\PdfService;
 use App\Support\Settings;
+use chillerlan\QRCode\Common\EccLevel;
+use chillerlan\QRCode\Output\QRMarkupSVG;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -92,7 +96,10 @@ class GenerateCertificate implements ShouldQueue
             return [$certificate, true];
         });
 
-        if (! $created) {
+        // Powtórka zadania po nieudanym renderze musi dokończyć plik: rekord już
+        // istnieje ($created === false), więc warunek na samym $created zostawiłby
+        // wydany certyfikat bez pliku na zawsze.
+        if (! $created && $certificate->pdf_path !== null) {
             return;
         }
 
@@ -101,6 +108,8 @@ class GenerateCertificate implements ShouldQueue
                 'certificate' => $certificate,
                 'user' => $user,
                 'edition' => $edition,
+                'verify_url' => $verifyUrl = self::verifyUrl($certificate),
+                'qr_svg' => self::qrSvg($verifyUrl),
             ]),
         ]);
 
@@ -131,6 +140,35 @@ class GenerateCertificate implements ShouldQueue
             ->max() ?? 0;
 
         return sprintf('NP/%d/%03d', $year, $maxSequence + 1);
+    }
+
+    /**
+     * Adres, pod który prowadzi kod QR: publiczna weryfikacja po tokenie
+     * (trasa z karty H13, `routes/api/h13.php`). Token, nie numer — numer
+     * bywa przepisywany ręcznie, token nie wychodzi poza dokument.
+     */
+    private static function verifyUrl(Certificate $certificate): string
+    {
+        return url('/api/v1/verify/qr/'.$certificate->verification_token);
+    }
+
+    /**
+     * Kod QR jako SVG w `data:` URI — bez `gd` i `imagick`, których obraz
+     * kontenera nie ma, i bez sięgania do sieci przy renderze.
+     *
+     * Dlaczego `data:` URI, a nie SVG wklejony wprost w HTML: zmierzone —
+     * dompdf pomija inline `<svg>` (dokument urósł wtedy o 112 bajtów, czyli
+     * o nic), a ten sam kod podany jako `src` obrazka rysuje się poprawnie.
+     */
+    private static function qrSvg(string $url): string
+    {
+        return (new QRCode(new QROptions([
+            'outputInterface' => QRMarkupSVG::class,
+            'outputBase64' => true,
+            'eccLevel' => EccLevel::M,
+            'addQuietzone' => true,
+            'drawCircularModules' => false,
+        ])))->render($url);
     }
 
     private function uniqueToken(): string
