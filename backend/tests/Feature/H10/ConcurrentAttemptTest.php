@@ -8,9 +8,24 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
 /**
- * Pakiet H10 · kryterium 2 — numeracja podejść. Numer podejścia jest liczony
- * w transakcji z `lockForUpdate`, a unikat `(user_id, test_id, attempt_number)`
- * jest twardą barierą: przegrany wyścig dostaje błąd, nie zdublowany numer.
+ * Pakiet H10 · kryterium ★2 — „test współbieżny `--filter=ConcurrentAttempt`,
+ * numery 1..N bez dziur" (karta H10).
+ *
+ * ⚠ TEN PLIK BYŁ SEKWENCYJNY MIMO NAZWY. Do 02.09.2026 pierwszy test robił pętlę
+ * `for` z ośmioma żądaniami po kolei, w JEDNYM procesie — czyli nie było dwóch
+ * transakcji, które mogłyby się ścigać. Docblock obiecywał przy tym „transakcję
+ * z `lockForUpdate`", więc dokumentacja o kodzie też była tu przyrządem, którego
+ * nikt nie sprawdził. Karta wskazuje ten filtr jako dowód współbieżności, więc
+ * filtr musi ją naprawdę mierzyć.
+ *
+ * Teraz plik mierzy przypadek ZBIORU NIEPUSTEGO: pierwsze podejście istnieje,
+ * więc `SELECT … FOR UPDATE` ma co zablokować i serializacja ma prawo zadziałać.
+ * Przypadek zbioru PUSTEGO (pierwsze podejście w wyścigu) ma własnego świadka —
+ * `H10\FirstAttemptRaceTest` — bo tam blokada wierszowa nie ma czego zablokować
+ * i to jest osobna luka (pozycja S1-14).
+ *
+ * Celowo BEZ `RefreshDatabase` w teście równoległym: procesy potomne nie zobaczą
+ * otwartej transakcji rodzica jako zatwierdzonej.
  *
  * `php artisan test --filter=ConcurrentAttempt`
  */
@@ -18,8 +33,13 @@ class ConcurrentAttemptTest extends TestPackageCase
 {
     use RefreshDatabase;
 
-    public function test_attempt_numbers_are_contiguous_from_one(): void
+    public function test_sequential_attempt_numbers_are_contiguous_from_one(): void
     {
+        // Nazwa mówi teraz wprost, że to pomiar SEKWENCYJNY — osiem żądań po kolei
+        // w jednym procesie. Jest wart utrzymania (sprawdza numerację i limit),
+        // ale nie jest dowodem współbieżności i nie może za taki uchodzić.
+        // Dowód współbieżności: `ConcurrentAttemptNumberingTest` obok.
+
         $test = $this->makeTest(testOverrides: ['attempts_limit' => 20], questions: 10);
         $user = $this->volunteer();
         Sanctum::actingAs($user);

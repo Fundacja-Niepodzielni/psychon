@@ -13,39 +13,42 @@ use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\TestCase;
 
 /**
- * G-3 · perturbacja klasy „pusty zbiór pod `FOR UPDATE`" na drugim pakiecie.
+ * H10 · kryterium ★2 — „test współbieżny `--filter=ConcurrentAttempt`, numery 1..N
+ * bez dziur". Ten plik jest tą częścią kryterium, która NAPRAWDĘ jest współbieżna.
  *
- * `H13` pokazał, że `SELECT … FOR UPDATE` na zbiorze PUSTYM nie blokuje niczego,
- * więc przy PIERWSZYM wydaniu w edycji równoległe transakcje liczą ten sam numer.
- * `TestController::store` (w. 88–95) ma dokładnie ten sam kształt:
+ * Mierzy przypadek ZBIORU NIEPUSTEGO: pierwsze podejście istnieje, więc
+ * `SELECT … FOR UPDATE` ma co zablokować.
  *
- *     $attemptNumber = 1 + TestAttempt::where(user)->where(test)->lockForUpdate()->pluck(…)->max();
+ * ⚠ WYNIK OBALIŁ HIPOTEZĘ, dla której ten plik powstał. Zakładałam, że przy
+ * niepustym zbiorze blokada zadziała i różnica wobec `FirstAttemptRaceTest`
+ * wskaże pusty zbiór jako jedyną przyczynę. **Zmierzone: 5 równoczesnych podejść
+ * PO pierwszym → 1 zapisane, 4 razy `500:unikat-numeru`, w bazie numery [1, 2].**
+ * Czyli luka NIE ogranicza się do pustego zbioru.
  *
- * Przy PIERWSZYM podejściu tej pary (użytkownik, test) zbiór jest pusty — blokada
- * nie ma czego zablokować. (Pomiar późniejszy pokazał, że to NIE jest jedyny
- * przypadek: przy zbiorze niepustym wyścig kończy się tak samo, bo `FOR UPDATE`
- * nie broni przed fantomami — patrz `ConcurrentAttemptNumberingTest`. Pusty zbiór
- * jest najłatwiejszy do trafienia, nie jedyny.) Unikat `(user_id, test_id, attempt_number)` zamieni wyścig
- * w wyjątek, czyli w utracone podejście: uczestniczka klika „wyślij" dwa razy
- * (podwójne kliknięcie, wolna sieć, powrót „wstecz") i dostaje błąd zamiast wyniku.
+ * Mechanizm: w PostgreSQL na poziomie `READ COMMITTED` `SELECT … FOR UPDATE`
+ * blokuje wiersze ISTNIEJĄCE w chwili odczytu, ale nie broni przed **fantomami** —
+ * transakcja, która czekała na zwolnienie blokady, po wznowieniu nadal nie widzi
+ * wiersza WSTAWIONEGO przez poprzedniczkę. Obie liczą ten sam `max()+1`.
+ * Blokada na zbiorze liczonym jest więc niewystarczająca ZAWSZE, a nie tylko
+ * wtedy, gdy zbiór jest pusty — pusty zbiór jest po prostu najłatwiejszym
+ * przypadkiem do trafienia.
  *
- * `H10\ConcurrentAttemptTest` tego NIE mierzy — zmierzone lekturą: pętla `for`
- * w JEDNYM procesie, osiem żądań po kolei. Nazwa mówi „Concurrent", kształt mówi
- * „sekwencyjnie". Docblock tamtego pliku obiecuje przy tym, że numer „jest liczony
- * w transakcji z `lockForUpdate`" — czyli dokumentacja o kodzie też jest tu przyrządem,
- * który nikt nie sprawdził.
+ * Wniosek dla naprawy: serializować na wierszu, który ISTNIEJE i jest WSPÓLNY
+ * dla wszystkich piszących (edycja albo test), wzorem `H14/DocumentIssuer` —
+ * i to jest jedyny wariant, który tu wystarczy.
  *
  * Celowo BEZ `RefreshDatabase` — procesy potomne nie zobaczą otwartej transakcji
- * rodzica jako zatwierdzonej. Dane zakładane i sprzątane ręcznie, do stanu ZASTANEGO
- * (reguła P-6, zapłacona własną wpadką).
+ * rodzica jako zatwierdzonej. Dane zakładane i sprzątane ręcznie, do stanu
+ * zastanego (P-6).
  *
- * `php artisan test --filter=FirstAttemptRace`
+ * `php artisan test --filter=ConcurrentAttempt`
  */
-class FirstAttemptRaceTest extends TestCase
+class ConcurrentAttemptNumberingTest extends TestCase
 {
     use RequiresProcessConcurrency;
 
-    private const CONCURRENCY = 6;
+    /** Podejścia równoległe PO tym pierwszym, sekwencyjnym. */
+    private const CONCURRENCY = 5;
 
     private Test $test;
 
@@ -64,7 +67,7 @@ class FirstAttemptRaceTest extends TestCase
 
         if ($edition === null) {
             $edition = Edition::create([
-                'name' => 'Edycja wyścigu podejść',
+                'name' => 'Edycja numeracji podejść',
                 'starts_at' => '2026-10-01',
                 'ends_at' => '2027-09-30',
                 'seats_limit' => 40,
@@ -82,11 +85,11 @@ class FirstAttemptRaceTest extends TestCase
         $this->editionId = $edition->id;
 
         $course = Course::create([
-            'title' => 'Kurs wyścigu podejść',
-            'slug' => 'kurs-wyscig-'.uniqid(),
+            'title' => 'Kurs numeracji podejść',
+            'slug' => 'kurs-numeracja-'.uniqid(),
             'type' => 'course',
             'product_group' => 'psychon',
-            'sequence_order' => null, // poza sekwencją → CourseAccess nie blokuje
+            'sequence_order' => null,
             'edition_id' => $edition->id,
             'is_published' => true,
         ]);
@@ -117,10 +120,12 @@ class FirstAttemptRaceTest extends TestCase
         if (isset($this->test)) {
             TestAttempt::where('test_id', $this->test->id)->delete();
             $courseId = $this->test->course_id;
+
             $this->test->questions()->each(function ($question): void {
                 $question->answers()->delete();
                 $question->delete();
             });
+
             Test::whereKey($this->test->id)->delete();
             Course::whereKey($courseId)->forceDelete();
         }
@@ -136,25 +141,22 @@ class FirstAttemptRaceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_simultaneous_first_attempts_do_not_lose_a_submission(): void
+    public function test_concurrent_attempts_after_the_first_are_numbered_without_gaps(): void
     {
-        $this->assertSame(
-            0,
-            TestAttempt::where('test_id', $this->test->id)->count(),
-            'Punkt wyjścia: żadnego podejścia. Inaczej świadek mierzy inny scenariusz — '
-            .'blokada wierszowa MA co blokować i luka się nie ujawnia.',
-        );
-
         $answers = [];
         foreach ($this->test->questions()->with('answers')->get() as $question) {
             $answers[(string) $question->id] = $question->answers->firstWhere('is_correct', true)->id;
         }
 
-        // Uwierzytelnienie PRZED rozwidleniem — stan siedzi w pamięci procesu,
-        // więc dzieci dziedziczą je razem z resztą aplikacji.
         Sanctum::actingAs($this->user);
 
-        $directory = sys_get_temp_dir().'/h10-wyscig-'.uniqid('', true);
+        // Pierwsze podejście SEKWENCYJNIE — po nim zbiór nie jest już pusty,
+        // więc blokada wierszowa ma co blokować. To jest właśnie ta różnica,
+        // której `FirstAttemptRaceTest` nie daje.
+        $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $answers])
+            ->assertCreated();
+
+        $directory = sys_get_temp_dir().'/h10-numeracja-'.uniqid('', true);
         mkdir($directory);
         $go = $directory.'/go';
         $children = [];
@@ -180,9 +182,6 @@ class FirstAttemptRaceTest extends TestCase
                         ['answers' => $answers],
                     );
 
-                    // Sam kod statusu nie mówi, CO poszło nie tak. Przy 500 zapisujemy
-                    // ślad przyczyny, żeby raport odróżnił wyścig o numer od awarii
-                    // przyrządu — bez tego „500" jest zagadką, a nie pomiarem.
                     $slad = (string) $odpowiedz->status();
 
                     if ($odpowiedz->status() >= 500) {
@@ -240,32 +239,20 @@ class FirstAttemptRaceTest extends TestCase
             ->pluck('attempt_number')
             ->all();
 
-        $udane = count(array_filter($results, static fn (string $r): bool => $r === '201'));
-
-        $this->assertCount(
-            self::CONCURRENCY,
+        $this->assertSame(
+            range(1, self::CONCURRENCY + 1),
             $numbers,
             sprintf(
-                'Z %d równoczesnych pierwszych podejść zapisało się %d (odpowiedzi: %s). '
-                .'Każde zgubione podejście to uczestniczka, która wysłała test i dostała błąd '
-                .'zamiast wyniku. Numery w bazie: %s',
-                self::CONCURRENCY,
-                count($numbers),
+                'Numery podejść mają dziurę albo duplikat: [%s]. Odpowiedzi procesów: %s',
+                implode(', ', $numbers),
                 implode(', ', $results),
-                implode(', ', $numbers) ?: '(brak)',
             ),
         );
 
         $this->assertSame(
-            range(1, self::CONCURRENCY),
-            $numbers,
-            'Numery podejść mają dziurę albo duplikat: '.implode(', ', $numbers),
-        );
-
-        $this->assertSame(
-            self::CONCURRENCY,
-            $udane,
-            'Nie każde żądanie dostało 201: '.implode(', ', $results),
+            [],
+            array_values(array_filter($results, static fn (string $r): bool => $r !== '201')),
+            'Nie każde równoczesne podejście dostało 201: '.implode(', ', $results),
         );
     }
 }
