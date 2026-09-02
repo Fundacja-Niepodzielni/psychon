@@ -68,28 +68,37 @@ class TestController extends Controller
         $limit = TestGrader::attemptsLimit($test);
         $threshold = TestGrader::passThreshold($test);
 
-        $used = TestAttempt::where('user_id', $user->id)->where('test_id', $test->id)->count();
-
-        if ($used >= $limit) {
-            throw new ApiException(
-                403,
-                'attempts_exhausted',
-                'Wykorzystałeś wszystkie dostępne podejścia do tego testu.',
-                reason: ['attempts_limit' => $limit],
-            );
-        }
-
         $snapshot = TestGrader::snapshot($test);
         $graded = TestGrader::grade($snapshot, $request->validated('answers'));
         $passed = $graded['score_percent'] >= $threshold;
 
-        $attempt = DB::transaction(function () use ($user, $test, $request, $snapshot, $graded, $passed): TestAttempt {
-            // Postgres zabrania FOR UPDATE z agregatem — blokujemy wiersze,
-            // maksimum liczymy w PHP (wzór z komendy demo:pass-test).
+        $attempt = DB::transaction(function () use ($user, $test, $request, $snapshot, $graded, $passed, $limit): TestAttempt {
+            // Blokada WIERSZA UŻYTKOWNIKA, nie zbioru podejść: `SELECT … FOR UPDATE`
+            // na zbiorze pustym nie ma czego zablokować, więc przy PIERWSZYM podejściu
+            // do testu równoległe żądania liczyły ten sam numer i unikat
+            // (user_id, test_id, attempt_number) zamieniał je w błąd — uczestniczka
+            // wysyłała test i dostawała 500 zamiast wyniku. Wiersz użytkownika istnieje
+            // zawsze i zamyka dokładnie tyle, ile trzeba: numeracja jest per osoba i test.
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            // Limit też liczymy pod blokadą — inaczej kilka równoczesnych żądań
+            // widziałoby ten sam stan sprzed zapisu i limit dałoby się przekroczyć.
+            $used = TestAttempt::where('user_id', $user->id)->where('test_id', $test->id)->count();
+
+            if ($used >= $limit) {
+                throw new ApiException(
+                    403,
+                    'attempts_exhausted',
+                    'Wykorzystałeś wszystkie dostępne podejścia do tego testu.',
+                    reason: ['attempts_limit' => $limit],
+                );
+            }
+
+            // Postgres zabrania FOR UPDATE z agregatem — maksimum liczymy w PHP
+            // (wzór z komendy demo:pass-test), już pod blokadą wyżej.
             $attemptNumber = 1 + (int) TestAttempt::query()
                 ->where('user_id', $user->id)
                 ->where('test_id', $test->id)
-                ->lockForUpdate()
                 ->pluck('attempt_number')
                 ->max();
 
