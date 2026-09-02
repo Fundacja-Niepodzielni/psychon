@@ -50,11 +50,18 @@ class GenerateCertificate implements ShouldQueue
         $edition = Settings::activeEdition();
 
         [$certificate, $created] = DB::transaction(function () use ($user, $edition): array {
-            // Blokada wszystkich certyfikatów edycji — serializuje równoległe
-            // wydania i domyka lukę numeracji.
+            // Blokada WIERSZA EDYCJI, nie zbioru certyfikatów: `SELECT … FOR UPDATE`
+            // na zbiorze pustym nie ma czego zablokować, więc przy pierwszym
+            // wydaniu w edycji dwie transakcje policzyły ten sam numer (unikalny
+            // indeks zamieniał to w wyjątek i zostawiał dziurę w ciągu). Wiersz
+            // edycji istnieje zawsze, więc serializuje też ten przypadek.
+            Edition::query()
+                ->whereKey($edition->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $editionCertificates = Certificate::query()
                 ->where('edition_id', $edition->id)
-                ->lockForUpdate()
                 ->get();
 
             $existing = $editionCertificates->firstWhere('user_id', $user->id);
@@ -109,7 +116,7 @@ class GenerateCertificate implements ShouldQueue
     /**
      * Kolejny numer w edycji: `NP/<rok edycji>/<3 cyfry>` bez dziur.
      *
-     * @param  Collection<int, Certificate>  $editionCertificates  wiersze edycji zablokowane przez wywołujący `lockForUpdate`
+     * @param  Collection<int, Certificate>  $editionCertificates  wiersze edycji odczytane pod blokadą wiersza edycji
      */
     private function nextNumber(Edition $edition, Collection $editionCertificates): string
     {
