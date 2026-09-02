@@ -4,6 +4,7 @@ namespace Tests\Feature\H01;
 
 use App\Models\DataExport;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -232,8 +233,25 @@ class DataExportLimitsTest extends TestCase
     private function przewinZegarZaTermin(): void
     {
         $this->travel(self::TTL_GODZIN + 1)->hours();
-        $this->travelTo(now()->startOfHour());
-        $this->artisan('schedule:run');
+
+        // Harmonogram jest tu ŹRÓDŁEM, ale nie wykonawcą — i to jest wynik dwóch pomiarów,
+        // nie ostrożność:
+        //   1. `schedule:run` w procesie testu nie odpala zadań mimo przesuniętego zegara;
+        //   2. `$event->run()` odpala je w OSOBNYM procesie, który czyta `.env`, czyli
+        //      celuje w bazę demo zamiast testowej — polecenie padało tam na brakującej
+        //      kolumnie i wyglądało jak luka produktu.
+        // Obie czerwienie były wadami tego przyrządu i tak zostały zgłoszone.
+        //
+        // Dlatego świadek CZYTA z harmonogramu, co jest zaplanowane, i uruchamia to
+        // W PROCESIE TESTU. Nadal nie zna nazwy polecenia z góry — kryterium brzmi
+        // „plik znika po terminie", a nie „istnieje zadanie o nazwie X".
+        $schedule = $this->app->make(Schedule::class);
+
+        foreach ($schedule->events() as $event) {
+            if (preg_match("/'artisan'\s+(\S+)/", (string) $event->command, $dopasowanie) === 1) {
+                $this->artisan($dopasowanie[1]);
+            }
+        }
     }
 
     private function actingAsMarta(): User
