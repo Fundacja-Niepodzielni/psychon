@@ -97,40 +97,12 @@ class ConcurrentQuestionOrderTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (isset($this->test)) {
-            $courseId = $this->test->course_id;
-
-            $this->test->questions()->each(function (TestQuestion $pytanie): void {
-                $pytanie->answers()->delete();
-                $pytanie->delete();
-            });
-
-            Test::whereKey($this->test->id)->delete();
-            Course::whereKey($courseId)->forceDelete();
-        }
-
-        if (isset($this->admin)) {
-            User::whereKey($this->admin->id)->forceDelete();
-        }
-
-        if ($this->ownEdition && $this->editionId !== null) {
-            Edition::whereKey($this->editionId)->delete();
-        }
-
-        // KONTROLA NA WYJŚCIU (P-6). Ten test nie ma `RefreshDatabase`, więc
-        // wszystko, co zapisze, zostaje dla następnych. Bez tej kontroli
-        // „posprzątane" jest deklaracją — a raz już kosztowało 23 cudze testy
-        // na czerwono przy zielonym przebiegu każdego z nich osobno.
-        $zostalo = TestQuestion::where('test_id', $this->test->id ?? 0)->count();
+        // Przywrócenie stanu zastanego zamiast ręcznej listy tabel — patrz
+        // `TestCase::przywrocStanZastanejBazy()`. Strażnik w `TestCase::tearDown()`
+        // sprawdza po nas, czy naprawdę nic nie zostało.
+        $this->przywrocStanZastanejBazy();
 
         parent::tearDown();
-
-        if ($zostalo !== 0) {
-            throw new \RuntimeException(
-                'Świadek zostawił po sobie '.$zostalo.' wierszy. Następne testy zastaną '
-                .'niepusty stan i zaczerwienią się bez własnej winy.',
-            );
-        }
     }
 
     public function test_simultaneous_question_additions_get_distinct_positions(): void

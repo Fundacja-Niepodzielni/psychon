@@ -7,7 +7,6 @@ use App\Models\Certificate;
 use App\Models\Edition;
 use App\Models\InternshipEntry;
 use App\Models\LessonProgress;
-use App\Models\Notification;
 use App\Models\SupervisionSignup;
 use App\Models\SupervisionSlot;
 use App\Models\TestAttempt;
@@ -110,47 +109,12 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
 
     protected function tearDown(): void
     {
-        $ids = $this->userIds;
-        $slotIds = SupervisionSignup::whereIn('user_id', $ids)->pluck('slot_id');
-
-        Certificate::whereIn('user_id', $ids)->delete();
-        Notification::whereIn('user_id', $ids)->delete();
-        SupervisionSignup::whereIn('user_id', $ids)->delete();
-        SupervisionSlot::whereIn('id', $slotIds)->delete();
-        InternshipEntry::whereIn('user_id', $ids)->delete();
-        LessonProgress::whereIn('user_id', $ids)->delete();
-        TestAttempt::whereIn('user_id', $ids)->delete();
-        WorkshopCompletion::whereIn('user_id', $ids)->delete();
-        User::whereIn('id', $ids)->forceDelete();
-
-        if (isset($this->edition)) {
-            Edition::whereKey($this->edition->id)->delete();
-        }
-
-        // Stan wyjściowy sprząta się PRZED pomiarem (§8.4) — ale test, który zapisuje
-        // poza transakcją, musi też sprzątnąć PO sobie, i to do stanu ZASTANEGO.
-        // `RefreshDatabase` zostawia bazę zmigrowaną i pustą; skoro to my ją zaseedowaliśmy,
-        // to my mamy ją opróżnić, a nie następny test ma się z tym zmierzyć.
-        if ($this->seededDemo) {
-            // Kasujemy REKORDY, nie schemat. `migrate:fresh` w środku suity zdejmuje
-            // tabele spod nóg testom, które akurat trzymają połączenie — przyrząd,
-            // który sprząta przez zburzenie budynku, jest gorszy od bałaganu.
-            $this->wipeSeededRows();
-        }
-
-        // Kontrola własnego sprzątania. Bez niej „posprzątane" jest deklaracją:
-        // to dokładnie ten rodzaj cichej pozostałości, który raz już kosztował
-        // obcą sesję 9 czerwonych testów bez związku z jej zmianami.
-        $pozostalo = User::count();
+        // Przywrócenie stanu zastanego zamiast ręcznej listy tabel — patrz
+        // `TestCase::przywrocStanZastanejBazy()`. Strażnik w `TestCase::tearDown()`
+        // sprawdza po nas, czy naprawdę nic nie zostało.
+        $this->przywrocStanZastanejBazy();
 
         parent::tearDown();
-
-        if ($this->seededDemo && $pozostalo !== 0) {
-            throw new \RuntimeException(
-                'Świadek zostawił po sobie '.$pozostalo.' kont w bazie testowej. '
-                .'Następne testy zastaną niepustą bazę i zaczerwienią się bez własnej winy.',
-            );
-        }
     }
 
     public function test_twenty_concurrent_generations_in_an_empty_edition_leave_no_gap(): void

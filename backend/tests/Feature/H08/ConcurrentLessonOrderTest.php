@@ -90,33 +90,12 @@ class ConcurrentLessonOrderTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (isset($this->course)) {
-            Lesson::where('course_id', $this->course->id)->forceDelete();
-            Course::whereKey($this->course->id)->forceDelete();
-        }
-
-        if (isset($this->admin)) {
-            User::whereKey($this->admin->id)->forceDelete();
-        }
-
-        if ($this->ownEdition && $this->editionId !== null) {
-            Edition::whereKey($this->editionId)->delete();
-        }
-
-        // KONTROLA NA WYJŚCIU (P-6). Ten test nie ma `RefreshDatabase`, więc
-        // wszystko, co zapisze, zostaje dla następnych. Bez tej kontroli
-        // „posprzątane" jest deklaracją — a raz już kosztowało 23 cudze testy
-        // na czerwono przy zielonym przebiegu każdego z nich osobno.
-        $zostalo = Lesson::where('course_id', $this->course->id ?? 0)->withTrashed()->count();
+        // Przywrócenie stanu zastanego zamiast ręcznej listy tabel — patrz
+        // `TestCase::przywrocStanZastanejBazy()`. Strażnik w `TestCase::tearDown()`
+        // sprawdza po nas, czy naprawdę nic nie zostało.
+        $this->przywrocStanZastanejBazy();
 
         parent::tearDown();
-
-        if ($zostalo !== 0) {
-            throw new \RuntimeException(
-                'Świadek zostawił po sobie '.$zostalo.' wierszy. Następne testy zastaną '
-                .'niepusty stan i zaczerwienią się bez własnej winy.',
-            );
-        }
     }
 
     public function test_simultaneous_lesson_additions_get_distinct_positions(): void
