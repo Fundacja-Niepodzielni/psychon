@@ -4,6 +4,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Tests\Concerns\DeclaredTestDatabase;
 use Throwable;
 
 /**
@@ -22,8 +23,15 @@ use Throwable;
  */
 abstract class TestCase extends BaseTestCase
 {
-    /** Baza wymagana przez `phpunit.xml`; nic innego nie jest dopuszczone. */
-    public const TESTING_DATABASE = 'niepodzielni_testing';
+    /**
+     * Baza wymagana przez `phpunit.xml` — czytana Z PLIKU przy pierwszym użyciu.
+     *
+     * Nie jest stałą w kodzie, bo stała byłaby DRUGIM źródłem prawdy obok deklaracji
+     * i rozjechałaby się w dniu, w którym ktoś zmieni jedno z dwóch. Nie pochodzi też
+     * z `config()`, bo konfiguracja czyta środowisko — czyli dokładnie to, co pułapka
+     * P-1 podmienia; strażnik porównywałby wtedy nadpisane z nadpisanym.
+     */
+    private static ?string $declaredDatabase = null;
 
     /** Nazwa zmierzona raz na proces — kolejne testy nie płacą za to zapytaniem. */
     private static ?string $measuredDatabase = null;
@@ -40,7 +48,7 @@ abstract class TestCase extends BaseTestCase
             self::announceDatabase(self::$measuredDatabase);
         }
 
-        if (self::$measuredDatabase !== self::TESTING_DATABASE) {
+        if (self::$measuredDatabase !== self::declaredDatabase()) {
             // Dwie różne awarie, dwa różne komunikaty. Zlanie ich w jeden zmusza
             // czytającego do zgadywania, czy patrzy na podmienioną bazę, czy na
             // martwy serwer — a to jest dokładnie ten rodzaj mylącego przyrządu,
@@ -61,12 +69,25 @@ Powód: '.self::$connectionFailure,
                 .'nie deklaruje (zmienna środowiskowa kontenera bije wpis z phpunit.xml). '
                 .'Bez tego przerwania RefreshDatabase skasowałby dane bazy "%s".',
                 self::$measuredDatabase,
-                self::TESTING_DATABASE,
+                self::declaredDatabase(),
                 self::$measuredDatabase,
             ));
         }
 
         return $app;
+    }
+
+    /**
+     * Nazwa bazy zadeklarowana w `phpunit.xml`.
+     *
+     * Brak deklaracji albo deklaracja pusta przerywa suitę wyjątkiem — „nie napisano,
+     * na czym mamy biec" nie jest zgodą na bieganie na czymkolwiek.
+     */
+    public static function declaredDatabase(): string
+    {
+        return self::$declaredDatabase ??= DeclaredTestDatabase::fromFile(
+            dirname(__DIR__).DIRECTORY_SEPARATOR.'phpunit.xml',
+        );
     }
 
     /** Nazwa bazy prosto z silnika — źródłem prawdy jest połączenie, nie plik konfiguracji. */
