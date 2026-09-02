@@ -112,3 +112,75 @@ npm test              # vitest run
 
 Pierwsza pozycja jest ważniejsza, niż wygląda: runner, który nic nie znalazł, wypisuje
 komunikat nieodróżnialny od „wszystko przeszło", jeśli tylko kod wyjścia jest zerowy.
+
+## 7 · Test bez `RefreshDatabase` dziedziczy obowiązek sprzątania (P-6)
+
+Zmierzone na własnej wadzie, zgłoszonej przez inną sesję 02.09.2026.
+
+`EmptyEditionConcurrentCertificateTest` świadomie nie używa `RefreshDatabase` — i słusznie,
+bo ta cecha owija test w otwartą transakcję, której procesy potomne nigdy nie zobaczą jako
+zatwierdzonej, więc **prawdziwej współbieżności nie da się nią zmierzyć**.
+
+Cena tej decyzji jest jednak większa, niż wygląda: **wszystko, co taki test zapisze, zostaje**.
+Pierwsza wersja sprzątała własne 20 kont i własną edycję, ale nie sprzątała **seedu demo,
+który sama wywołała**. Skutek:
+
+| gdzie | wynik |
+|---|---|
+| świadek uruchomiony sam (`--filter=`) | **zielony** — i mierzył dokładnie to, co miał |
+| pełna suita w obcym drzewie | **9 czerwonych** w `H14`, `H18`, `H21`, `Notifications` |
+
+Testy zakładające pustą bazę zastawały sześć kont demo. Kolejność alfabetyczna katalogów
+zrobiła resztę: `H13` biegnie przed `H14`, `H18`, `H21` i `Notifications`.
+
+**To jest najgorszy możliwy kształt wady w przyrządzie**, bo uruchomienie pojedyncze jej nie
+pokazuje — a właśnie tak sprawdza się test, o którym się myśli, że jest podejrzany.
+
+**Reguła:** test rezygnujący z `RefreshDatabase` ma zostawić bazę w stanie **zastanym**
+i **udowodnić to asercją na wyjściu**. „Uruchomiony sam jest zielony" nie jest dowodem —
+o tym, kto zastanie resztki, decyduje kolejność katalogów, a nie autor testu.
+
+Pomiar po naprawie: `users` w `niepodzielni_testing` = **0** po przebiegu świadka,
+baza demo nietknięta (6 kont), koszt sprzątania (`migrate:fresh`) mieści się w czasie
+samego świadka (13,3 s razem).
+
+**`H14\ConcurrentDocumentNumberTest`** stosuje ten sam wzorzec (brak `RefreshDatabase`,
+`Process::pool`), ale **nie wywołuje seedu** — zakłada własną edycję i dziesięć kont fabryką
+i kasuje je w `tearDown` razem z dokumentami, powiadomieniami, e-mailami i wpisami audytu.
+Czyli sprząta po sobie; brakuje mu wyłącznie asercji na wyjściu.
+
+## 8 · Dwie pułapki przyrządu zmierzone przy pisaniu świadków T-3
+
+### 8.1 · „Skutek w bazie" dla pól SZYFROWANYCH nie da się sprawdzić na kolumnie
+
+`User` ma casty `encrypted` na `pesel`, `address_street`, `address_city`, `address_zip`.
+Szyfrowanie Laravela jest **niedeterministyczne** — ten sam tekst daje za każdym razem inny
+kryptogram. Skutek:
+
+```php
+$this->assertDatabaseHas('users', ['pesel' => '90010112349']);   // ⛔ NIE TRAFI NIGDY
+$this->assertSame('90010112349', $user->fresh()->pesel);          // ✅ model odszyfrowuje
+```
+
+Kryterium odbioru brzmi „wywołanie API **plus** skutek w bazie". Dla pól szyfrowanych
+„skutek w bazie" znaczy **odczyt przez model**, nie `psql` ani `assertDatabaseHas`.
+Asercja na kolumnie byłaby czerwienią **wieczną i mylącą**: świeciłaby także po poprawnej
+naprawie i wysyłała wykonawcę na poszukiwanie błędu, którego nie ma.
+
+Złapane na sobie: pierwsza wersja świadka S1-3 miała dokładnie tę asercję.
+
+### 8.2 · Zielone bywa faktem o losowaniu, nie o systemie
+
+`APP_FAKER_LOCALE=pl_PL`. Pomiar: **95 na 5000** wylosowanych nazwisk (1,9%) zawiera człon
+„kowal" — Kowalski, Kowalska, Kowalczyk. `H18\AdminUserQueryTest` szukał frazy `kowal`
+i oczekiwał jednego trafienia, mając drugie konto z **losowym** nazwiskiem. Czyli
+**mniej więcej raz na pięćdziesiąt przebiegów** ten test przegrywał bez niczyjej winy.
+
+Najgorsze w tym jest przypisanie: czerwień trafia do rachunku sesji, która akurat uruchomiła
+suitę, a nie tej, która cokolwiek zmieniła. W izolacji test był zielony pięć razy z rzędu —
+czyli standardowa procedura „sprawdź w izolacji" **potwierdziłaby niewinność testu**.
+
+Reguła: **żadna asercja nie może wisieć na wylosowanej wartości.** Dane, na których test
+liczy, mają być ustawione wprost. Jeśli zależność od pola losowanego jest częścią reguły
+(tu: wyszukiwanie obejmuje nazwisko), dostaje **własny jawny test**, a nie rolę niespodzianki
+w cudzym.
