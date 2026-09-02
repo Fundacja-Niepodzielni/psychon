@@ -8,6 +8,7 @@ use App\Http\Resources\DataExportResource;
 use App\Http\Resources\ProfileResource;
 use App\Jobs\GenerateDataExport;
 use App\Models\DataExport;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -42,10 +43,7 @@ class ProfileController extends Controller
         }
 
         if (array_key_exists('address', $data)) {
-            $address = $data['address'] ?? [];
-            $user->address_street = $address['street'] ?? null;
-            $user->address_city = $address['city'] ?? null;
-            $user->address_zip = $address['zip'] ?? null;
+            $this->mergeAddress($user, $data['address'] ?? []);
         }
 
         $user->save();
@@ -87,6 +85,29 @@ class ProfileController extends Controller
             "moje-dane-{$record->public_id}.json",
             ['Content-Type' => 'application/json'],
         );
+    }
+
+    /**
+     * PATCH scala adres, nie zastępuje go. Podklucz nieobecny w żądaniu
+     * zostaje bez zmian; podklucz przysłany jawnie jako `null` zeruje
+     * wyłącznie swoje pole. Wcześniej każdy PATCH jednego podklucza kasował
+     * dwa pozostałe, bo brak klucza i jawny `null` były nierozróżnialne.
+     *
+     * @param  array<string, mixed>  $address
+     */
+    private function mergeAddress(User $user, array $address): void
+    {
+        $columns = [
+            'street' => 'address_street',
+            'city' => 'address_city',
+            'zip' => 'address_zip',
+        ];
+
+        foreach ($columns as $key => $column) {
+            if (array_key_exists($key, $address)) {
+                $user->{$column} = $address[$key];
+            }
+        }
     }
 
     /**
