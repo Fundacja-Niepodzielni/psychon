@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -53,12 +54,12 @@ abstract class LessonPackageCase extends TestCase
     }
 
     /** Heartbeat w brzmieniu kontraktu (§ Postęp lekcji): trzy pola, nazwy wiążące. */
-    protected function heartbeat(Lesson $lesson, array $body): \Illuminate\Testing\TestResponse
+    protected function heartbeat(Lesson $lesson, array $body): TestResponse
     {
         return $this->postJson("/api/v1/lessons/{$lesson->id}/progress", $body);
     }
 
-    protected function showLesson(Lesson $lesson): \Illuminate\Testing\TestResponse
+    protected function showLesson(Lesson $lesson): TestResponse
     {
         return $this->getJson("/api/v1/lessons/{$lesson->id}");
     }

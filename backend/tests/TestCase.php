@@ -50,8 +50,8 @@ abstract class TestCase extends BaseTestCase
                     'PRZERWANE: nie udało się połączyć z bazą testową, więc nie da się '
                     .'stwierdzić, na czym biegną testy. To NIE jest pułapka P-1 — to awaria '
                     .'połączenia i pada głośno, jak powinna. Sprawdź DB_HOST/DB_PORT swojego '
-                    ."środowiska.
-Powód: ".self::$connectionFailure,
+                    .'środowiska.
+Powód: '.self::$connectionFailure,
                 );
             }
 
