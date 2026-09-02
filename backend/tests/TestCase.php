@@ -28,6 +28,9 @@ abstract class TestCase extends BaseTestCase
     /** Nazwa zmierzona raz na proces — kolejne testy nie płacą za to zapytaniem. */
     private static ?string $measuredDatabase = null;
 
+    /** Treść błędu połączenia, jeśli pomiar w ogóle nie doszedł do skutku. */
+    private static ?string $connectionFailure = null;
+
     public function createApplication(): Application
     {
         $app = parent::createApplication();
@@ -38,10 +41,25 @@ abstract class TestCase extends BaseTestCase
         }
 
         if (self::$measuredDatabase !== self::TESTING_DATABASE) {
+            // Dwie różne awarie, dwa różne komunikaty. Zlanie ich w jeden zmusza
+            // czytającego do zgadywania, czy patrzy na podmienioną bazę, czy na
+            // martwy serwer — a to jest dokładnie ten rodzaj mylącego przyrządu,
+            // przed którym ten strażnik ma bronić.
+            if (self::$connectionFailure !== null) {
+                $this->fail(
+                    'PRZERWANE: nie udało się połączyć z bazą testową, więc nie da się '
+                    .'stwierdzić, na czym biegną testy. To NIE jest pułapka P-1 — to awaria '
+                    .'połączenia i pada głośno, jak powinna. Sprawdź DB_HOST/DB_PORT swojego '
+                    ."środowiska.
+Powód: ".self::$connectionFailure,
+                );
+            }
+
             $this->fail(sprintf(
                 'PRZERWANE: testy biegną na bazie "%s", a wolno im wyłącznie na "%s". '
-                .'To jest pułapka P-1: wpis <env name="DB_DATABASE"> w phpunit.xml bez force="true" '
-                .'przegrywa ze zmienną środowiskową kontenera. Bez tego przerwania %s straciłaby dane.',
+                .'To jest pułapka P-1: konfiguracja pomiaru przyszła z miejsca, którego pomiar '
+                .'nie deklaruje (zmienna środowiskowa kontenera bije wpis z phpunit.xml). '
+                .'Bez tego przerwania RefreshDatabase skasowałby dane bazy "%s".',
                 self::$measuredDatabase,
                 self::TESTING_DATABASE,
                 self::$measuredDatabase,
@@ -57,7 +75,9 @@ abstract class TestCase extends BaseTestCase
         try {
             return (string) $app->make('db')->connection()->selectOne('select current_database() as name')->name;
         } catch (Throwable $exception) {
-            return '(brak połączenia: '.$exception->getMessage().')';
+            self::$connectionFailure = $exception->getMessage();
+
+            return '(brak połączenia)';
         }
     }
 
