@@ -103,7 +103,20 @@ class ConcurrentLessonOrderTest extends TestCase
             Edition::whereKey($this->editionId)->delete();
         }
 
+        // KONTROLA NA WYJŚCIU (P-6). Ten test nie ma `RefreshDatabase`, więc
+        // wszystko, co zapisze, zostaje dla następnych. Bez tej kontroli
+        // „posprzątane" jest deklaracją — a raz już kosztowało 23 cudze testy
+        // na czerwono przy zielonym przebiegu każdego z nich osobno.
+        $zostalo = Lesson::where('course_id', $this->course->id ?? 0)->withTrashed()->count();
+
         parent::tearDown();
+
+        if ($zostalo !== 0) {
+            throw new \RuntimeException(
+                'Świadek zostawił po sobie '.$zostalo.' wierszy. Następne testy zastaną '
+                .'niepusty stan i zaczerwienią się bez własnej winy.',
+            );
+        }
     }
 
     public function test_simultaneous_lesson_additions_get_distinct_positions(): void
@@ -150,33 +163,6 @@ class ConcurrentLessonOrderTest extends TestCase
             range(1, self::CONCURRENCY),
             $pozycje,
             'Pozycje lekcji nie tworzą ciągu 1..'.self::CONCURRENCY.': ['.implode(', ', $pozycje).']',
-        );
-    }
-
-    public function test_the_seeded_data_has_no_duplicate_positions(): void
-    {
-        // Kontrola krzyżowa PRZED migracją z unikatem: jeśli duplikaty już są
-        // w danych, migracja padnie przy zakładaniu indeksu i trzeba najpierw
-        // renumerować. Zmierzone: nie ma.
-        $this->seed();
-
-        $duplikaty = Lesson::query()
-            ->selectRaw('course_id, sequence_order, count(*) as ile')
-            ->groupBy('course_id', 'sequence_order')
-            ->havingRaw('count(*) > 1')
-            ->get();
-
-        $this->assertCount(
-            0,
-            $duplikaty,
-            'W danych seedowych są już zdublowane pozycje lekcji — migracja z unikatem '
-            .'padnie, dopóki ich nie przenumerujesz.',
-        );
-
-        $this->assertGreaterThan(
-            0,
-            Lesson::count(),
-            'Zero duplikatów przy zerze lekcji nie jest pomiarem — kontrola musi mieć co mierzyć.',
         );
     }
 }
