@@ -161,6 +161,36 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
             'Punkt wyjścia świadka: edycja MUSI być pusta, inaczej mierzy inny scenariusz.',
         );
 
+        $this->zmierzWyscig(0);
+    }
+
+    public function test_concurrent_generations_in_a_non_empty_edition_leave_no_gap(): void
+    {
+        // Drugi scenariusz tej samej klasy — dopisany po sprostowaniu z H10.
+        // Tam okazało się, że `SELECT … FOR UPDATE` nie broni przed fantomami,
+        // więc wyścig przegrywa TAKŻE przy zbiorze niepustym. Świadek mierzący
+        // wyłącznie edycję pustą nie dowodziłby domknięcia klasy (§8.2) —
+        // dowodziłby tylko, że najłatwiejszy przypadek został załatany.
+        GenerateCertificate::dispatchSync(array_shift($this->userIds));
+
+        $this->assertSame(
+            1,
+            Certificate::where('edition_id', $this->edition->id)->count(),
+            'Punkt wyjścia: dokładnie jeden certyfikat, żeby blokada miała co blokować.',
+        );
+
+        $this->zmierzWyscig(1);
+    }
+
+    /**
+     * Uruchamia równoczesne generowanie dla wszystkich pozostałych uczestniczek
+     * i sprawdza, że numeracja jest ciągła od 1.
+     *
+     * @param  int  $juzWydane  ile certyfikatów istniało przed wyścigiem
+     */
+    private function zmierzWyscig(int $juzWydane): void
+    {
+
         $directory = sys_get_temp_dir().'/h13-pusta-edycja-'.uniqid('', true);
         mkdir($directory);
         $go = $directory.'/go';
@@ -197,14 +227,14 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
         // Bariera: nikt nie rusza, dopóki wszyscy nie stoją na starcie. Bez niej
         // procesy startują kolejno i świadek znów mierzyłby sekwencję zamiast wyścigu.
         for ($attempt = 0; $attempt < 20000; $attempt++) {
-            if (count(glob($directory.'/ready-*')) === self::CONCURRENCY) {
+            if (count(glob($directory.'/ready-*')) === count($this->userIds)) {
                 break;
             }
             usleep(1000);
         }
 
         $this->assertCount(
-            self::CONCURRENCY,
+            count($this->userIds),
             glob($directory.'/ready-*'),
             'Nie wszystkie procesy doszły do bariery — pomiar nie był współbieżny.',
         );
@@ -224,6 +254,8 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
             @unlink($file);
         }
         @rmdir($directory);
+
+        $oczekiwane = $juzWydane + count($this->userIds);
 
         $numbers = Certificate::where('edition_id', $this->edition->id)
             ->orderBy('id')
@@ -247,7 +279,7 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
                 'Z %d równoczesnych generowań UDAŁO SIĘ %d, poległo %d. Przyczyny: %s. '
                 .'Każdy poległy proces = uczestniczka bez certyfikatu, czyli DZIURA w numeracji. '
                 .'Numery zapisane w bazie: %s',
-                self::CONCURRENCY,
+                count($results),
                 count($results) - count($bledy),
                 count($bledy),
                 implode(', ', array_unique($klasy)),
@@ -256,13 +288,13 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
         );
 
         $this->assertCount(
-            self::CONCURRENCY,
+            $oczekiwane,
             $numbers,
-            'Wydano '.count($numbers).' certyfikatów zamiast '.self::CONCURRENCY.' — to jest dziura w numeracji.',
+            'Wydano '.count($numbers).' certyfikatów zamiast '.$oczekiwane.' — to jest dziura w numeracji.',
         );
 
         $this->assertCount(
-            self::CONCURRENCY,
+            $oczekiwane,
             array_unique($numbers),
             'Numery certyfikatów zduplikowane pod obciążeniem: '.implode(', ', $numbers),
         );
@@ -274,7 +306,7 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
         sort($sequences);
 
         $this->assertSame(
-            range(1, self::CONCURRENCY),
+            range(1, $oczekiwane),
             $sequences,
             'Ciąg numeracji ma dziurę: '.implode(', ', $sequences),
         );
