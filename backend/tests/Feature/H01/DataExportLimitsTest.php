@@ -234,20 +234,23 @@ class DataExportLimitsTest extends TestCase
     {
         $this->travel(self::TTL_GODZIN + 1)->hours();
 
-        // Uruchamiamy WSZYSTKIE zarejestrowane zadania harmonogramu, zamiast
-        // wołać `schedule:run`. Zmierzone: `schedule:run` w procesie testu NIE
-        // odpala zadania mimo przesuniętego zegara (sprawdzone tak, że wywołanie
-        // samego polecenia sprzątającego daje zieleń) — czyli czerwień była wadą
-        // przyrządu, nie luką produktu. To był trzeci taki przypadek tego dnia
-        // i dlatego stoi tu opis, a nie sama poprawka.
+        // Harmonogram jest tu ŹRÓDŁEM, ale nie wykonawcą — i to jest wynik dwóch pomiarów,
+        // nie ostrożność:
+        //   1. `schedule:run` w procesie testu nie odpala zadań mimo przesuniętego zegara;
+        //   2. `$event->run()` odpala je w OSOBNYM procesie, który czyta `.env`, czyli
+        //      celuje w bazę demo zamiast testowej — polecenie padało tam na brakującej
+        //      kolumnie i wyglądało jak luka produktu.
+        // Obie czerwienie były wadami tego przyrządu i tak zostały zgłoszone.
         //
-        // Świadek nadal NIE zna nazwy polecenia — pyta harmonogram, co ma do zrobienia,
-        // i każe mu to zrobić. Kryterium brzmi „plik znika po terminie", a nie
-        // „istnieje zadanie o nazwie X".
+        // Dlatego świadek CZYTA z harmonogramu, co jest zaplanowane, i uruchamia to
+        // W PROCESIE TESTU. Nadal nie zna nazwy polecenia z góry — kryterium brzmi
+        // „plik znika po terminie", a nie „istnieje zadanie o nazwie X".
         $schedule = $this->app->make(Schedule::class);
 
         foreach ($schedule->events() as $event) {
-            $event->run($this->app);
+            if (preg_match("/'artisan'\s+(\S+)/", (string) $event->command, $dopasowanie) === 1) {
+                $this->artisan($dopasowanie[1]);
+            }
         }
     }
 
