@@ -54,20 +54,33 @@ class ProfileController extends Controller
 
     public function storeExport(Request $request): JsonResponse
     {
-        $pending = DataExport::query()
+        $existing = DataExport::query()
             ->where('user_id', $request->user()->id)
-            ->whereIn('status', DataExport::PENDING_STATUSES)
+            ->where(fn ($q) => $q
+                ->whereIn('status', DataExport::PENDING_STATUSES)
+                ->orWhere(fn ($r) => $r->where('status', 'ready')
+                    ->where(fn ($s) => $s->whereNull('expires_at')->orWhere('expires_at', '>', now()))))
             ->latest('id')
             ->first();
 
-        // Wyścig o zasób w tle: dopóki poprzednia paczka się buduje, kolejne
-        // żądanie nie mnoży zadań w kolejce (kontrakt §1.1 — 409).
-        if ($pending !== null) {
+        // Jedna ważna paczka na osobę (kontrakt §1.1 — wyścig o ograniczony zasób).
+        // Blokuje nie tylko eksport w budowie: gotowy plik też liczy się jako zajęty
+        // zasób, bo każda kolejna kopia to osobny plik z PESEL-em i adresem jawnym
+        // leżący na dysku. Przy szybkim workerze (albo kolejce `sync`) sam warunek
+        // „jeszcze się buduje" nie blokował niczego — zadanie kończyło się, zanim
+        // przyszło drugie żądanie.
+        if ($existing !== null) {
             throw new ApiException(
                 409,
-                'export_in_progress',
-                'Poprzedni eksport danych jest jeszcze przygotowywany.',
-                reason: ['export_id' => $pending->public_id, 'status' => $pending->status],
+                $existing->status === 'ready' ? 'export_already_available' : 'export_in_progress',
+                $existing->status === 'ready'
+                    ? 'Masz już przygotowany eksport danych. Pobierz go albo poczekaj, aż wygaśnie.'
+                    : 'Poprzedni eksport danych jest jeszcze przygotowywany.',
+                reason: [
+                    'export_id' => $existing->public_id,
+                    'status' => $existing->status,
+                    'expires_at' => $existing->expires_at?->toIso8601ZuluString(),
+                ],
             );
         }
 

@@ -13,4 +13,4 @@ Schedule::command('access:check-expired')->daily();
 
 // H01 · Eksport RODO — paczka z danymi osobowymi znika po terminie ważności
 // (config/exports.php `ttl_hours`). Godzinowo, bo TTL liczy się w godzinach.
-Schedule::command('exports:purge-expired')->hourly();
+Schedule::command('exports:purge-expired')->hourly()->withoutOverlapping();
