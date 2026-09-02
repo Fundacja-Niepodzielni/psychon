@@ -1,9 +1,18 @@
 name: CI
 
 on:
+  # paths-ignore zamiast [skip ci] w commitach: znacznik na czubku pushu wylacza
+  # przebieg po cichu, takze przy scaleniu, i nie widac tego w historii zadania.
+  # Sciezka jest tu widoczna dla kazdego, kto czyta workflow.
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
 
 jobs:
   backend:

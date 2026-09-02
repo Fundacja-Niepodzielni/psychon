@@ -68,7 +68,7 @@ final class GuardBehaviourTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            'baza testowa zmierzona silnikiem: '.self::TESTING_DATABASE,
+            'baza testowa zmierzona silnikiem: '.self::declaredDatabase(),
             $output,
             'Log przebiegu nie niesie nazwy bazy zmierzonej silnikiem.',
         );

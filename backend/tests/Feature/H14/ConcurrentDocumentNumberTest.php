@@ -68,6 +68,9 @@ class ConcurrentDocumentNumberTest extends TestCase
     {
         $userIds = collect($this->users)->pluck('id');
 
+        // Stan przed sprzątaniem — potrzebny do kontroli NA WYJŚCIU (P-6).
+        $editionId = $this->edition->id ?? null;
+
         Document::whereIn('user_id', $userIds)->delete();
         Notification::whereIn('user_id', $userIds)->delete();
         EmailMessage::whereIn('to_user_id', $userIds)->delete();
@@ -75,7 +78,28 @@ class ConcurrentDocumentNumberTest extends TestCase
         User::whereIn('id', $userIds)->forceDelete();
         Edition::whereKey($this->edition->id)->delete();
 
+        // KONTROLA NA WYJŚCIU. Ten test świadomie rezygnuje z `RefreshDatabase`
+        // (potrzebuje prawdziwych commitów), więc dziedziczy obowiązek sprzątania —
+        // i musi go UDOWODNIĆ, a nie zadeklarować. „Uruchomiony sam jest zielony"
+        // nie jest dowodem: o tym, kto zastanie resztki, decyduje kolejność
+        // katalogów, a nie autor testu. Regułę zapłaciliśmy cudzą czerwienią
+        // dziewięciu testów bez związku ze zmianą (P-6).
+        $zostalo = User::whereIn('id', $userIds)->withTrashed()->count()
+            + Document::whereIn('user_id', $userIds)->count()
+            + ($editionId === null ? 0 : Edition::whereKey($editionId)->count());
+
+        // Pomiar MUSI iść przed `parent::tearDown()` — po nim aplikacja jest już
+        // rozmontowana i Eloquent nie ma kontenera, z którego bierze połączenie.
+        // (Pierwsza wersja liczyła po; padała na „Target class [config] does not exist"
+        // i wyglądała jak wada sprzątania, a była wadą kolejności w samym sprawdzeniu.)
         parent::tearDown();
+
+        if ($zostalo !== 0) {
+            throw new \RuntimeException(
+                'Świadek zostawił po sobie '.$zostalo.' wierszy w bazie testowej. '
+                .'Następne testy zastaną niepusty stan i zaczerwienią się bez własnej winy.',
+            );
+        }
     }
 
     public function test_ten_concurrent_generations_produce_a_gapless_unique_sequence(): void

@@ -31,7 +31,7 @@ final class TestDatabaseIsolationTest extends TestCase
         $measured = (string) DB::selectOne('select current_database() as name')->name;
 
         $this->assertSame(
-            self::TESTING_DATABASE,
+            self::declaredDatabase(),
             $measured,
             'Testy biegną na bazie "'.$measured.'". Zmienna środowiskowa kontenera wygrała '
             .'z wpisem <env> w phpunit.xml — to jest pułapka P-1.',
