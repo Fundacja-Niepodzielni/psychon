@@ -11,17 +11,18 @@ use App\Services\H12\SupervisorAssignmentService;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\TestCase;
 
 class ConcurrentSignupTest extends TestCase
 {
+    use RequiresProcessConcurrency;
+
     use DatabaseMigrations;
 
     public function test_ten_independent_transactions_never_exceed_three_seats(): void
     {
-        if (! function_exists('pcntl_fork')) {
-            $this->markTestSkipped('Test współbieżności wymaga rozszerzenia pcntl.');
-        }
+        $this->requireProcessConcurrency();
 
         $supervisor = User::factory()->role('instructor')->create();
         $slot = SupervisionSlot::create([
@@ -110,9 +111,7 @@ class ConcurrentSignupTest extends TestCase
 
     public function test_signup_and_supervisor_change_share_the_same_lock_order(): void
     {
-        if (! function_exists('pcntl_fork')) {
-            $this->markTestSkipped('Test współbieżności wymaga rozszerzenia pcntl.');
-        }
+        $this->requireProcessConcurrency();
 
         $oldSupervisor = User::factory()->role('instructor')->create();
         $newSupervisor = User::factory()->role('instructor')->create();

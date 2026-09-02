@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WorkshopCompletion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\TestCase;
 
 /**
@@ -45,6 +46,8 @@ use Tests\TestCase;
  */
 class EmptyEditionConcurrentCertificateTest extends TestCase
 {
+    use RequiresProcessConcurrency;
+
     private const CONCURRENCY = 20;
 
     private Edition $edition;
@@ -52,13 +55,23 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
     /** @var list<int> */
     private array $userIds = [];
 
+    /**
+     * Czy TEN test zaseedował bazę demo.
+     *
+     * Świadek bez `RefreshDatabase` zapisuje NAPRAWDĘ — więc wszystko, co zawoła,
+     * zostaje po nim dla następnych testów. Pierwsza wersja sprzątała własne 20 kont
+     * i własną edycję, ale nie seed demo, który sama wywołała. Skutek zmierzyła obca
+     * sesja na swoim czubku: 9 czerwonych w H14, H18, H21 i Notifications, bo testy
+     * zakładające pustą bazę zastawały sześć kont demo. Zielony w izolacji, trucizna
+     * w suicie — najgorszy możliwy kształt wady w przyrządzie.
+     */
+    private bool $seededDemo = false;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (! function_exists('pcntl_fork')) {
-            $this->markTestSkipped('Test współbieżności wymaga rozszerzenia pcntl.');
-        }
+        $this->requireProcessConcurrency();
 
         // Ten świadek nie używa `RefreshDatabase` (patrz nagłówek), więc zastaje bazę
         // w stanie, w jakim zostawił ją poprzedni test — a `RefreshDatabase` zostawia
@@ -70,6 +83,7 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
 
         if (User::where('email', 'ola@demo.pl')->doesntExist()) {
             $this->seed();
+            $this->seededDemo = true;
         }
 
         // Nowa edycja z wyższym `id` wygrywa `Settings::activeEdition()`
@@ -108,9 +122,32 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
         TestAttempt::whereIn('user_id', $ids)->delete();
         WorkshopCompletion::whereIn('user_id', $ids)->delete();
         User::whereIn('id', $ids)->forceDelete();
-        Edition::whereKey($this->edition->id)->delete();
+
+        if (isset($this->edition)) {
+            Edition::whereKey($this->edition->id)->delete();
+        }
+
+        // Stan wyjściowy sprząta się PRZED pomiarem (§8.4) — ale test, który zapisuje
+        // poza transakcją, musi też sprzątnąć PO sobie, i to do stanu ZASTANEGO.
+        // `RefreshDatabase` zostawia bazę zmigrowaną i pustą; skoro to my ją zaseedowaliśmy,
+        // to my mamy ją opróżnić, a nie następny test ma się z tym zmierzyć.
+        if ($this->seededDemo) {
+            $this->artisan('migrate:fresh');
+        }
+
+        // Kontrola własnego sprzątania. Bez niej „posprzątane" jest deklaracją:
+        // to dokładnie ten rodzaj cichej pozostałości, który raz już kosztował
+        // obcą sesję 9 czerwonych testów bez związku z jej zmianami.
+        $pozostalo = User::count();
 
         parent::tearDown();
+
+        if ($this->seededDemo && $pozostalo !== 0) {
+            throw new \RuntimeException(
+                'Świadek zostawił po sobie '.$pozostalo.' kont w bazie testowej. '
+                .'Następne testy zastaną niepustą bazę i zaczerwienią się bez własnej winy.',
+            );
+        }
     }
 
     public function test_twenty_concurrent_generations_in_an_empty_edition_leave_no_gap(): void

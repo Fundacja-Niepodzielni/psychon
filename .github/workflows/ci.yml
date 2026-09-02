@@ -34,7 +34,10 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: pdo_pgsql, redis
+          # pcntl jest wymagane przez testy wspolbieznosci (H03, H12, H13).
+          # Bez niego nie sa pomijane po cichu, tylko czerwone - patrz
+          # backend/tests/Concerns/RequiresProcessConcurrency.php
+          extensions: pdo_pgsql, redis, pcntl
           coverage: none
       - name: Zależności
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -51,7 +54,10 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          DB_DATABASE: niepodzielni_test
+          # DB_DATABASE swiadomie nieustawione: baze testowa wyznacza backend/phpunit.xml
+          # (wpis wymuszony), a backend/tests/bootstrap.php tworzy ja przy pierwszym
+          # uruchomieniu. Wiersz "DB_DATABASE: niepodzielni_test" byl tu martwy - po
+          # domknieciu pulapki P-1 wpis z phpunit.xml wygrywa, wiec zmienna tylko myli.
           DB_USERNAME: niepodzielni
           DB_PASSWORD: secret
           REDIS_HOST: 127.0.0.1
@@ -76,6 +82,8 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Testy
+        run: npm test
       - name: Build
         run: npm run build
         env:

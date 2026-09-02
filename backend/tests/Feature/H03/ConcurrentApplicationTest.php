@@ -9,17 +9,18 @@ use App\Models\User;
 use App\Services\H03\ApplicationAcceptor;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\TestCase;
 
 class ConcurrentApplicationTest extends TestCase
 {
+    use RequiresProcessConcurrency;
+
     use DatabaseMigrations;
 
     public function test_last_edition_seat_is_awarded_to_only_one_concurrent_acceptance(): void
     {
-        if (! function_exists('pcntl_fork')) {
-            $this->markTestSkipped('Test współbieżności wymaga rozszerzenia pcntl.');
-        }
+        $this->requireProcessConcurrency();
 
         $edition = Edition::factory()->create(['status' => 'active', 'seats_limit' => 1]);
         $applications = Application::factory()->count(2)->create(['edition_id' => $edition->id]);
