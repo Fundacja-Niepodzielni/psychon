@@ -137,10 +137,17 @@ class AdminUserController extends Controller
                 }
             }
 
+            // Ta sama reguła co w PATCH /me: adres jest scalany, nie zastępowany.
+            // Podklucz nieobecny w żądaniu zostaje, jawny null zeruje swoje pole.
             if (array_key_exists('address', $data)) {
-                $user->address_street = $data['address']['street'] ?? null;
-                $user->address_city = $data['address']['city'] ?? null;
-                $user->address_zip = $data['address']['zip'] ?? null;
+                $address = $data['address'] ?? [];
+                $columns = ['street' => 'address_street', 'city' => 'address_city', 'zip' => 'address_zip'];
+
+                foreach ($columns as $key => $column) {
+                    if (array_key_exists($key, $address)) {
+                        $user->{$column} = $address[$key];
+                    }
+                }
             }
 
             $changed = array_keys($user->getDirty());
