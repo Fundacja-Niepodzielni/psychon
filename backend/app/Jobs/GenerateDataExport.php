@@ -53,6 +53,7 @@ class GenerateDataExport implements ShouldQueue
                 'status' => 'ready',
                 'file_path' => $path,
                 'completed_at' => now(),
+                'expires_at' => now()->addHours((int) config('exports.ttl_hours')),
                 'error' => null,
             ]);
 

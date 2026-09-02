@@ -25,7 +25,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/me', [ProfileController::class, 'show']);
     Route::patch('/me', [ProfileController::class, 'update']);
 
-    Route::post('/me/exports', [ProfileController::class, 'storeExport']);
+    // Limit żądań eksportu RODO: paczka jest kosztowna i zawiera komplet danych
+    // osobowych, więc ponad limit odpowiadamy 429 (koperta w ApiExceptionRenderer).
+    // Trwający eksport blokuje wcześniej — 409 `export_in_progress` w kontrolerze.
+    Route::post('/me/exports', [ProfileController::class, 'storeExport'])
+        ->middleware('throttle:'.config('exports.rate_limit'));
     Route::get('/me/exports/{export}', [ProfileController::class, 'showExport']);
     Route::get('/me/exports/{export}/download', [ProfileController::class, 'downloadExport']);
 });

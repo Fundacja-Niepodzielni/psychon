@@ -19,13 +19,30 @@ class DataExport extends Model
         'file_path',
         'error',
         'completed_at',
+        'expires_at',
     ];
 
     protected function casts(): array
     {
         return [
             'completed_at' => 'datetime',
+            'expires_at' => 'datetime',
         ];
+    }
+
+    /** Statusy, w których zadanie eksportu jeszcze trwa (blokują kolejne żądanie). */
+    public const array PENDING_STATUSES = ['queued', 'processing'];
+
+    /**
+     * Plik jest do pobrania tylko przed terminem ważności. Wiersz bez terminu
+     * (sprzed wprowadzenia TTL) traktujemy jak ważny — nie odbieramy dostępu
+     * wstecz.
+     */
+    public function isDownloadable(): bool
+    {
+        return $this->status === 'ready'
+            && $this->file_path !== null
+            && ($this->expires_at === null || $this->expires_at->isFuture());
     }
 
     protected static function booted(): void

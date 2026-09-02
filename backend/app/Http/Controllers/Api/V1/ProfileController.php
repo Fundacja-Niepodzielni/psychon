@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H01\UpdateProfileRequest;
 use App\Http\Resources\DataExportResource;
@@ -53,6 +54,23 @@ class ProfileController extends Controller
 
     public function storeExport(Request $request): JsonResponse
     {
+        $pending = DataExport::query()
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', DataExport::PENDING_STATUSES)
+            ->latest('id')
+            ->first();
+
+        // Wyścig o zasób w tle: dopóki poprzednia paczka się buduje, kolejne
+        // żądanie nie mnoży zadań w kolejce (kontrakt §1.1 — 409).
+        if ($pending !== null) {
+            throw new ApiException(
+                409,
+                'export_in_progress',
+                'Poprzedni eksport danych jest jeszcze przygotowywany.',
+                reason: ['export_id' => $pending->public_id, 'status' => $pending->status],
+            );
+        }
+
         $export = DataExport::create(['user_id' => $request->user()->id]);
 
         GenerateDataExport::dispatch($export->id);
@@ -73,10 +91,10 @@ class ProfileController extends Controller
 
         $disk = Storage::disk('local');
 
+        // Paczka po terminie ważności jest nie do odróżnienia od nieistniejącej —
+        // tak samo jak cudza (kontrakt §1.1).
         abort_unless(
-            $record->status === 'ready'
-                && $record->file_path !== null
-                && $disk->exists($record->file_path),
+            $record->isDownloadable() && $disk->exists($record->file_path),
             404,
         );
 

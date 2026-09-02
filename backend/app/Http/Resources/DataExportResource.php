@@ -20,7 +20,8 @@ class DataExportResource extends JsonResource
             'status' => $this->status,
             'requested_at' => $this->created_at?->toIso8601ZuluString(),
             'completed_at' => $this->completed_at?->toIso8601ZuluString(),
-            'download_url' => $this->status === 'ready'
+            'expires_at' => $this->expires_at?->toIso8601ZuluString(),
+            'download_url' => $this->isDownloadable()
                 ? url("/api/v1/me/exports/{$this->public_id}/download")
                 : null,
         ];
