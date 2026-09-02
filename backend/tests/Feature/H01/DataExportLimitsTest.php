@@ -179,10 +179,7 @@ class DataExportLimitsTest extends TestCase
         $this->assertNotNull($sciezka, 'Eksport nie wskazuje pliku — nie ma czego wygaszać.');
         $this->assertTrue(Storage::disk('local')->exists($sciezka), 'Plik eksportu nie powstał.');
 
-        // Zegar przesunięty PONAD termin. `schedule:run` zamiast nazwy polecenia:
-        // świadek pilnuje SKUTKU z kryterium, a nie tego, jak wykonawca nazwie zadanie.
-        $this->travel(self::TTL_GODZIN + 1)->hours();
-        $this->artisan('schedule:run');
+        $this->przewinZegarZaTermin();
 
         $this->assertFalse(
             Storage::disk('local')->exists($sciezka),
@@ -199,8 +196,7 @@ class DataExportLimitsTest extends TestCase
         $this->postJson('/api/v1/me/exports');
         $eksport = DataExport::where('user_id', $marta->id)->firstOrFail();
 
-        $this->travel(self::TTL_GODZIN + 1)->hours();
-        $this->artisan('schedule:run');
+        $this->przewinZegarZaTermin();
 
         $this->assertContains(
             $this->get("/api/v1/me/exports/{$eksport->public_id}/download")->status(),
@@ -221,6 +217,23 @@ class DataExportLimitsTest extends TestCase
         $this->actingAs($ola, 'sanctum');
 
         $this->getJson("/api/v1/me/exports/{$martaExport->public_id}")->assertNotFound();
+    }
+
+    /**
+     * Przesuwa zegar poza termin ważności i uruchamia harmonogram.
+     *
+     * `schedule:run` zamiast nazwy polecenia — świadek pilnuje SKUTKU z kryterium,
+     * a nie tego, jak wykonawca nazwie zadanie. Ale samo przesunięcie o dobę NIE
+     * WYSTARCZA i to była wada tego przyrządu: zadanie sprzątające chodzi co godzinę
+     * (`0 * * * *`), więc jest „due" wyłącznie w minucie zerowej. Po `travel(25h)`
+     * zegar lądował gdzie popadnie, harmonogram nie odpalał nic, a plik zostawał —
+     * i wyglądało to na lukę produktu.
+     */
+    private function przewinZegarZaTermin(): void
+    {
+        $this->travel(self::TTL_GODZIN + 1)->hours();
+        $this->travelTo(now()->startOfHour());
+        $this->artisan('schedule:run');
     }
 
     private function actingAsMarta(): User
