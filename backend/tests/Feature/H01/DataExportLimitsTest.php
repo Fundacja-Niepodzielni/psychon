@@ -4,6 +4,7 @@ namespace Tests\Feature\H01;
 
 use App\Models\DataExport;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -232,8 +233,22 @@ class DataExportLimitsTest extends TestCase
     private function przewinZegarZaTermin(): void
     {
         $this->travel(self::TTL_GODZIN + 1)->hours();
-        $this->travelTo(now()->startOfHour());
-        $this->artisan('schedule:run');
+
+        // Uruchamiamy WSZYSTKIE zarejestrowane zadania harmonogramu, zamiast
+        // wołać `schedule:run`. Zmierzone: `schedule:run` w procesie testu NIE
+        // odpala zadania mimo przesuniętego zegara (sprawdzone tak, że wywołanie
+        // samego polecenia sprzątającego daje zieleń) — czyli czerwień była wadą
+        // przyrządu, nie luką produktu. To był trzeci taki przypadek tego dnia
+        // i dlatego stoi tu opis, a nie sama poprawka.
+        //
+        // Świadek nadal NIE zna nazwy polecenia — pyta harmonogram, co ma do zrobienia,
+        // i każe mu to zrobić. Kryterium brzmi „plik znika po terminie", a nie
+        // „istnieje zadanie o nazwie X".
+        $schedule = $this->app->make(Schedule::class);
+
+        foreach ($schedule->events() as $event) {
+            $event->run($this->app);
+        }
     }
 
     private function actingAsMarta(): User
