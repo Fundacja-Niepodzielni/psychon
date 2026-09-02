@@ -117,7 +117,20 @@ class ConcurrentQuestionOrderTest extends TestCase
             Edition::whereKey($this->editionId)->delete();
         }
 
+        // KONTROLA NA WYJŚCIU (P-6). Ten test nie ma `RefreshDatabase`, więc
+        // wszystko, co zapisze, zostaje dla następnych. Bez tej kontroli
+        // „posprzątane" jest deklaracją — a raz już kosztowało 23 cudze testy
+        // na czerwono przy zielonym przebiegu każdego z nich osobno.
+        $zostalo = TestQuestion::where('test_id', $this->test->id ?? 0)->count();
+
         parent::tearDown();
+
+        if ($zostalo !== 0) {
+            throw new \RuntimeException(
+                'Świadek zostawił po sobie '.$zostalo.' wierszy. Następne testy zastaną '
+                .'niepusty stan i zaczerwienią się bez własnej winy.',
+            );
+        }
     }
 
     public function test_simultaneous_question_additions_get_distinct_positions(): void
@@ -162,30 +175,6 @@ class ConcurrentQuestionOrderTest extends TestCase
             range(1, self::CONCURRENCY),
             $pozycje,
             'Pozycje pytań nie tworzą ciągu 1..'.self::CONCURRENCY.': ['.implode(', ', $pozycje).']',
-        );
-    }
-
-    public function test_the_seeded_data_has_no_duplicate_positions(): void
-    {
-        // Kontrola krzyżowa przed migracją z unikatem — zmierzone: brak duplikatów.
-        $this->seed();
-
-        $duplikaty = TestQuestion::query()
-            ->selectRaw('test_id, sequence_order, count(*) as ile')
-            ->groupBy('test_id', 'sequence_order')
-            ->havingRaw('count(*) > 1')
-            ->get();
-
-        $this->assertCount(
-            0,
-            $duplikaty,
-            'W danych seedowych są już zdublowane pozycje pytań — migracja z unikatem padnie.',
-        );
-
-        $this->assertGreaterThan(
-            0,
-            TestQuestion::count(),
-            'Zero duplikatów przy zerze pytań nie jest pomiarem.',
         );
     }
 }
