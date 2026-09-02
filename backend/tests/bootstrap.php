@@ -12,17 +12,78 @@
 
 require __DIR__.'/../vendor/autoload.php';
 
+/*
+|--------------------------------------------------------------------------
+| Domknięcie pułapki P-1 — `force="true"` samo NIE wystarcza (pomiar 02.09.2026)
+|--------------------------------------------------------------------------
+| PHPUnit dla wpisu `<env force="true">` wykonuje `putenv()` i ustawia `$_ENV`,
+| ale NIE dotyka `$_SERVER`. Laravel czyta zmienne przez repozytorium Dotenv,
+| w którym `ServerConstAdapter` stoi PRZED `EnvConstAdapter` — więc wartość
+| wstrzyknięta do kontenera (`docker compose exec -e DB_DATABASE=…`, zmienne
+| zadania CI, `environment:` w compose) wygrywa z `phpunit.xml` MIMO `force`.
+|
+| Zmierzone w tym miejscu, w tym klonie:
+|   $_ENV='niepodzielni_testing'  $_SERVER='niepodzielni'  → silnik: niepodzielni
+|
+| PhpHandler PHPUnita działa PRZED tym plikiem, więc `$_ENV` jest tu już
+| rozstrzygnięty i można z niego odtworzyć `$_SERVER`. Źródłem prawdy zostaje
+| `phpunit.xml`: bierzemy dokładnie te klucze, które ten plik wymusza.
+*/
 (function (): void {
-    $connection = $_ENV['DB_CONNECTION'] ?? getenv('DB_CONNECTION') ?: 'pgsql';
+    $configuration = __DIR__.'/../phpunit.xml';
+
+    if (! is_file($configuration)) {
+        return;
+    }
+
+    $xml = @simplexml_load_file($configuration);
+
+    if ($xml === false) {
+        return;
+    }
+
+    // WYJĄTEK TOPOLOGICZNY. `DB_HOST` i `DB_PORT` mówią, GDZIE stoi serwer, a nie
+    // NA CZYM biegną testy — i różnią się między środowiskami zgodnie z prawem:
+    // w stosie docker serwer nazywa się `pgsql`, w zadaniu CI usługa jest widoczna
+    // wyłącznie pod `127.0.0.1` (zadanie biegnie na maszynie runnera, nie w kontenerze,
+    // więc etykieta usługi NIE jest nazwą hosta). Wymuszenie topologii z `phpunit.xml`
+    // zaczerwieniłoby CI na nieistniejącym hoście.
+    //
+    // Pułapka P-1 dotyczy TOŻSAMOŚCI bazy, nie adresu serwera: cicha podmiana bazy
+    // wygląda jak zielone, a zła nazwa hosta pada głośno przy pierwszym połączeniu.
+    // Dlatego wymuszamy semantykę, a topologię zostawiamy środowisku.
+    $topologia = ['DB_HOST', 'DB_PORT'];
+
+    foreach ($xml->xpath('//php/env') ?: [] as $entry) {
+        if (((string) ($entry['force'] ?? '')) !== 'true') {
+            continue;
+        }
+
+        $name = (string) $entry['name'];
+
+        if (in_array($name, $topologia, true) && array_key_exists($name, $_SERVER)) {
+            continue;
+        }
+
+        // `$_ENV` jest tu wartością już wymuszoną przez PHPUnit — przepisujemy ją
+        // tam, gdzie Laravel naprawdę patrzy.
+        if (array_key_exists($name, $_ENV)) {
+            $_SERVER[$name] = $_ENV[$name];
+        }
+    }
+})();
+
+(function (): void {
+    $connection = $_SERVER['DB_CONNECTION'] ?? $_ENV['DB_CONNECTION'] ?? getenv('DB_CONNECTION') ?: 'pgsql';
 
     if ($connection !== 'pgsql') {
         return;
     }
 
-    $host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'pgsql';
-    $port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '5432';
-    $username = $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'niepodzielni';
-    $password = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: 'secret';
+    $host = $_SERVER['DB_HOST'] ?? $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'pgsql';
+    $port = $_SERVER['DB_PORT'] ?? $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: '5432';
+    $username = $_SERVER['DB_USERNAME'] ?? $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'niepodzielni';
+    $password = $_SERVER['DB_PASSWORD'] ?? $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: 'secret';
     $database = 'niepodzielni_testing';
 
     try {
