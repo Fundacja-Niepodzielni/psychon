@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WorkshopCompletion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\TestCase;
 
 /**
@@ -45,6 +46,8 @@ use Tests\TestCase;
  */
 class EmptyEditionConcurrentCertificateTest extends TestCase
 {
+    use RequiresProcessConcurrency;
+
     private const CONCURRENCY = 20;
 
     private Edition $edition;
@@ -56,9 +59,7 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
     {
         parent::setUp();
 
-        if (! function_exists('pcntl_fork')) {
-            $this->markTestSkipped('Test współbieżności wymaga rozszerzenia pcntl.');
-        }
+        $this->requireProcessConcurrency();
 
         // Ten świadek nie używa `RefreshDatabase` (patrz nagłówek), więc zastaje bazę
         // w stanie, w jakim zostawił ją poprzedni test — a `RefreshDatabase` zostawia

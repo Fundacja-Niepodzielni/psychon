@@ -74,3 +74,41 @@ grep '\[PRZYRZĄD\] baza testowa' /d/tmp/psy/testy/bramka.log
 
 Nazwa bazy pochodzi z linii `[PRZYRZĄD]`, którą wypisuje strażnik w `tests/TestCase.php` —
 **z silnika, nie z pliku konfiguracji**. To jest liczba, którą wolno cytować w meldunku.
+
+## 5 · Bramka frontu — `tsc --noEmit` NIE jest spełnialne na świeżym klonie
+
+Pomiar 02.09.2026, klon `sprint-1-testy`:
+
+| krok | kod wyjścia | uwaga |
+|---|--:|---|
+| `npx tsc --noEmit` na czystym `b08ca0e` (bez moich zmian) | **2** | `app/layout.tsx(10,50): TS2304: Cannot find name 'LayoutProps'` |
+| `npx tsc --noEmit` z moimi zmianami | **2** | ten sam, jeden błąd → **to nie jest regresja runnera** |
+| `npx next typegen` | 0 | `✓ Types generated successfully`, tworzy `.next/types/{routes,root-params,cache-life}.d.ts` |
+| `npx tsc --noEmit` **po** `next typegen` | **0** | |
+
+`LayoutProps` to typ generowany przez Next do `.next/types`, a `tsconfig.json` te pliki
+`include`-uje. Świeży klon nie ma katalogu `.next`, więc kontrola typów pada na czymś,
+czego nikt nie napisał.
+
+**Wniosek praktyczny:** `next typegen` istnieje w Next 16.3 i wystarcza — **pełny `next build`
+nie jest do tego potrzebny**. Bramka frontu w najtańszej spełnialnej postaci:
+
+```bash
+npm run lint          # eslint
+npx next typegen      # generuje .next/types (sekundy, nie minuty)
+npx tsc --noEmit      # kontrola typów
+npm test              # vitest run
+```
+
+`.next/` jest w `frontend/.gitignore` (w. 17), więc krok `typegen` nie brudzi drzewa.
+
+## 6 · Runner testów frontu — kontrola w dwie strony
+
+| perturbacja | oczekiwane | zmierzone |
+|---|---|---|
+| runner nie znajduje żadnego testu | ma paść | `No test files found`, kod **1** (`passWithNoTests: false`) |
+| podmieniona oczekiwana wartość (30 → 31) | czerwień | `expected [10,20,30] to deeply equal [10,20,31]`, kod **1** |
+| stan przywrócony | zieleń | 10 zielonych, kod **0** |
+
+Pierwsza pozycja jest ważniejsza, niż wygląda: runner, który nic nie znalazł, wypisuje
+komunikat nieodróżnialny od „wszystko przeszło", jeśli tylko kod wyjścia jest zerowy.
