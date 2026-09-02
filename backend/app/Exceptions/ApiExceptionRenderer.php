@@ -58,10 +58,15 @@ final class ApiExceptionRenderer
                 'not_found',
                 'Nie znaleziono zasobu.',
             ),
+            // Odmowa z middleware `throttle` — inna niż 429 rzucane wprost przez
+            // logowanie (`too_many_attempts`), które nazywa próby, nie żądania.
+            // `retry_after_seconds` bierzemy z nagłówka wyjątku, żeby front mógł
+            // powiedzieć, ile czekać, zamiast „coś poszło nie tak".
             $e instanceof ThrottleRequestsException => self::envelope(
                 429,
-                'too_many_attempts',
-                'Zbyt wiele prób. Spróbuj ponownie za chwilę.',
+                'too_many_requests',
+                'Zbyt wiele żądań. Spróbuj ponownie za chwilę.',
+                reason: self::retryAfter($e),
             ),
             $e instanceof MethodNotAllowedHttpException => self::envelope(
                 405,
@@ -79,6 +84,19 @@ final class ApiExceptionRenderer
                 config('app.debug') ? $e->getMessage() : 'Wystąpił błąd serwera. Spróbuj ponownie.',
             ),
         };
+    }
+
+    /**
+     * Ile sekund do końca okna limitu — z nagłówka `Retry-After` wyjątku.
+     * Gdy nagłówka nie ma, nie zmyślamy liczby i zwracamy null (brak `reason`).
+     *
+     * @return array{retry_after_seconds: int}|null
+     */
+    private static function retryAfter(ThrottleRequestsException $e): ?array
+    {
+        $seconds = $e->getHeaders()['Retry-After'] ?? null;
+
+        return $seconds === null ? null : ['retry_after_seconds' => (int) $seconds];
     }
 
     private static function envelope(
