@@ -12,6 +12,8 @@ use App\Http\Resources\H15\PsychologistProfileResource;
 use App\Models\Consent;
 use App\Models\PsychologistProfile;
 use App\Models\User;
+use App\Support\AuditLog;
+use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -163,10 +165,12 @@ class PsychologistProfileController extends Controller
             $consent->forceFill(['withdrawn_at' => now()])->save();
             $profile->forceFill(['status' => 'withdrawn'])->save();
 
-            // profile.withdrawn nie jest jeszcze w rejestrze §3.1/§3.2 (zgłoszenie
-            // do strażnika w toku, design.md → Open Questions) — do czasu
-            // przyznania slugu zespół widzi wycofane wnioski wyłącznie przez
-            // GET /admin/profiles?status=withdrawn, bez AuditLog/Notify.
+            // Slug `profile.withdrawn` jest w rejestrze kontraktu (§3.1 i §3.2)
+            // od rozstrzygnięcia D21/D22 — wpis audytowy i powiadomienie zespołu
+            // idą w tej samej transakcji co zmiana statusu, więc zespół nie może
+            // zobaczyć wycofanego wniosku bez śladu w dzienniku.
+            AuditLog::record($user, 'profile.withdrawn', $profile, ['profile_id' => $profile->id]);
+            $this->notifyTeamAboutWithdrawal($user, $profile);
 
             return $profile->fresh();
         });
@@ -174,6 +178,30 @@ class PsychologistProfileController extends Controller
         return response()->json([
             'data' => PsychologistProfileResource::make($profile, $user)->resolve($request),
         ]);
+    }
+
+    /**
+     * Powiadomienie zespołu o wycofaniu zgody na publikację. Odbiorcy to role
+     * prowadzące bazę psychologów (kontrakt §3.4: `project_manager` = opiekun
+     * projektu, `super_admin`); wolontariusz wycofujący zgodę nie dostaje kopii,
+     * bo to jego własna decyzja.
+     */
+    private function notifyTeamAboutWithdrawal(User $user, PsychologistProfile $profile): void
+    {
+        $team = User::query()
+            ->whereIn('role', ['project_manager', 'super_admin'])
+            ->where('status', 'active')
+            ->get();
+
+        foreach ($team as $member) {
+            Notify::send(
+                $member,
+                'profile.withdrawn',
+                'Wycofano zgodę na publikację profilu',
+                "{$user->first_name} {$user->last_name} wycofał(a) zgodę na publikację profilu psychologa. Wniosek ma status „wycofany” i zniknął z bazy publicznej.",
+                '/admin/profile',
+            );
+        }
     }
 
     private function assertEligible(User $user): void
