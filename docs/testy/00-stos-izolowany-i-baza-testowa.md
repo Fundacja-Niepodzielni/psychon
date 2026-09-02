@@ -184,3 +184,40 @@ Reguła: **żadna asercja nie może wisieć na wylosowanej wartości.** Dane, na
 liczy, mają być ustawione wprost. Jeśli zależność od pola losowanego jest częścią reguły
 (tu: wyszukiwanie obejmuje nazwisko), dostaje **własny jawny test**, a nie rolę niespodzianki
 w cudzym.
+
+## 9 · Przepis bramki ze strażnikiem równoległych przebiegów (P-10)
+
+Dwa przebiegi suity na tym samym stosie biją się o `niepodzielni_testing`: jeden
+`RefreshDatabase` czyści bazę pod nogami drugiemu, a wynik wygląda jak wada kodu.
+Dlatego bramka **najpierw sprawdza, czy nie biegnie już inna**, i dopiero potem mierzy.
+
+```bash
+#!/usr/bin/env bash
+set -o pipefail                      # bez tego kod wyjścia gubi się w potoku
+cd D:/tmp/psy/testy/psychon
+
+# strażnik: nie startuj drugiego przebiegu na tym samym stosie
+if MSYS_NO_PATHCONV=1 docker compose -p psytesty exec -T app pgrep -f 'artisan test' >/dev/null; then
+  echo "PRZERWANE: w stosie psytesty biegnie już 'artisan test'. Drugi przebieg mierzyłby cudzą bazę."
+  exit 3
+fi
+
+MSYS_NO_PATHCONV=1 docker compose -p psytesty exec -T app ./vendor/bin/pint --test || exit 1
+
+LOG=/d/tmp/psy/testy/bramka-$(date +%H%M).log
+MSYS_NO_PATHCONV=1 docker compose -p psytesty exec -T app php artisan test > "$LOG" 2>&1
+KOD=$?                               # kod czytany WPROST, nie przez potok
+
+grep -a '\[PRZYRZĄD\] baza testowa' "$LOG"
+grep -aE 'Tests:|Duration:' "$LOG"
+echo "kod wyjścia: $KOD"
+exit $KOD
+```
+
+Trzy rzeczy, które ten przepis wymusza, a które łatwo pominąć ręcznie:
+1. **kod wyjścia czytany wprost** — `komenda | tail` oddaje kod `tail`, czyli prawie zawsze zero;
+2. **nazwa bazy z logu** przy każdym wyniku, nie z pliku konfiguracji;
+3. **strażnik równoległości** — najtańsza obrona przed czerwienią, której przyczyna
+   leży w drugim oknie, a nie w kodzie.
+
+Ta sama zasada dotyczy `--filter=`: filtr też czyści bazę, jeśli test używa `RefreshDatabase`.
