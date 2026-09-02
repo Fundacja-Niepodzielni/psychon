@@ -12,6 +12,7 @@ class LessonProgress extends Model
     protected $fillable = [
         'user_id',
         'lesson_id',
+        'position_seconds',
         'watched_seconds',
         'active_seconds',
         'open_count',
@@ -23,6 +24,7 @@ class LessonProgress extends Model
     protected function casts(): array
     {
         return [
+            'position_seconds' => 'integer',
             'watched_seconds' => 'integer',
             'active_seconds' => 'integer',
             'open_count' => 'integer',

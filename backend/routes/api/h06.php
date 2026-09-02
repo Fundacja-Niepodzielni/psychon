@@ -21,6 +21,10 @@ if (! class_exists('H06ProgressRequest', false)) {
         public function rules(): array
         {
             return [
+                // Pozycja odtwarzacza — pole opcjonalne, bo klient może przysłać
+                // sam przyrost czasu (np. przy odtwarzaniu w tle). Nie jest
+                // przyrostem: to bezwzględna pozycja w materiale i wolno jej maleć.
+                'position_seconds' => ['sometimes', 'integer', 'min:0'],
                 'watched_delta' => ['required', 'integer', 'min:0'],
                 'active_delta' => ['required', 'integer', 'min:0'],
             ];
@@ -76,6 +80,7 @@ if (config('features.h06')) {
         DB::table('lesson_progress')->insertOrIgnore([
             'user_id' => $userId,
             'lesson_id' => $lessonId,
+            'position_seconds' => 0,
             'watched_seconds' => 0,
             'active_seconds' => 0,
             'open_count' => 0,
@@ -140,6 +145,9 @@ if (config('features.h06')) {
                     'title' => $lesson->title,
                     'description' => $lesson->description,
                     'duration_seconds' => (int) $lesson->duration_seconds,
+                    // Pozycja wznowienia (★ H06.1): bez niej odtwarzacz nie ma
+                    // skąd wiedzieć, gdzie uczestnik skończył oglądać.
+                    'position_seconds' => (int) $progress->position_seconds,
                     'watched_seconds' => (int) $progress->watched_seconds,
                     'active_seconds' => (int) $progress->active_seconds,
                     'is_completed' => (bool) $progress->is_completed,
@@ -179,6 +187,12 @@ if (config('features.h06')) {
                         $now->getTimestamp() - $record->last_activity_at->getTimestamp(),
                     );
                     $activeDelta = min($activeDelta, $availableSeconds);
+                }
+
+                // Pozycja jest nadpisywana, nie sumowana: przewinięcie wstecz ma ją
+                // zmniejszyć. Liczniki czasu obok niej nadal tylko rosną (★ H06.3).
+                if (array_key_exists('position_seconds', $values)) {
+                    $record->position_seconds = (int) $values['position_seconds'];
                 }
 
                 $record->watched_seconds = (int) $record->watched_seconds + (int) $values['watched_delta'];
