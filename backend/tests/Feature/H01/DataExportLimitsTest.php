@@ -20,13 +20,19 @@ use Tests\TestCase;
  * Dziesięć żądań to dziesięć plików z danymi osobowymi leżących bez terminu ważności —
  * to jest wyciek rozłożony w czasie, nie problem wydajności.
  *
- * ⚠ KOD ODMOWY — zgłoszony rozjazd, świadek go NIE przesądza. Kryterium §2.1 mówi
- * „reszta 429/409 wg kontraktu", ale **tabela decyzyjna kontraktu §1.1 nie zna 429**;
- * ma 409 dla „wyścigu o ograniczony zasób (limit miejsc, duplikat unikalny)".
- * Dlatego świadek wymaga odmowy ze zbioru {409, 429} i sprawdza to, co jest
- * NIESPORNE i mierzalne: **liczbę powstałych eksportów**. Test wymuszający jeden
- * konkretny kod kupowałby precyzję za cenę zgadywania, a rozstrzygnięcie należy
- * do aneksu kontraktu, nie do testu.
+ * REGUŁA (`ZLECENIE-012` §1, do aneksu X-4): **na osobę co najwyżej JEDEN niewygasły
+ * eksport.** `queued`/`processing` → 409 `export_in_progress`; `ready` z ważnym
+ * `expires_at` → 409 `export_already_available`; brak żywego → 202. `throttle` 3/60
+ * jest drugą warstwą, ze slugiem `too_many_requests`.
+ *
+ * ⚠ SKĄD TA REGUŁA — bo pierwsza wersja zależała od SZYBKOŚCI KOLEJKI. Dwa pomiary
+ * tej samej rzeczy dały dwa różne światy: z workerem „1 wiersz, 409 + 9×429",
+ * a w suicie „3 wiersze, 202×3 + 429×7". Oba prawdziwe. Przyczyna: `phpunit.xml`
+ * wymusza `QUEUE_CONNECTION=sync`, więc eksport jest gotowy natychmiast i stan
+ * „trwa poprzedni" NIGDY nie zachodzi. Reguła „jeden ŻYWY eksport" nie zależy od
+ * tego, jak szybko zadanie się wykona — i dlatego da się ją zmierzyć w obu światach.
+ * To jest ta sama klasa co P-1: **konfiguracja pomiaru pochodziła z miejsca,
+ * którego pomiar nie deklarował.**
  *
  * ⚠ Czerwony do czasu pozycji S1-12 (zakres KOD-DOPIECIA). Nie naprawiam.
  *
@@ -78,13 +84,50 @@ class DataExportLimitsTest extends TestCase
             'Pierwsze żądanie eksportu zostało odrzucone — to nie jest limit, to awaria.',
         );
 
-        $drugi = $this->postJson('/api/v1/me/exports')->status();
+        $drugi = $this->postJson('/api/v1/me/exports');
+
+        $this->assertSame(
+            409,
+            $drugi->status(),
+            'Drugie żądanie dostało '.$drugi->status().'. Reguła: dopóki żyje poprzedni '
+            .'eksport, kolejny ma być odmówiony kodem 409 — niezależnie od tego, czy zadanie '
+            .'zdążyło się wykonać.',
+        );
 
         $this->assertContains(
-            $drugi,
-            [409, 429],
-            'Drugie żądanie przy trwającym eksporcie dostało '.$drugi.'. '
-            .'Oczekiwana odmowa: 409 (kontrakt §1.1 — duplikat unikalny) albo 429 (throttle).',
+            $drugi->json('error.code'),
+            ['export_in_progress', 'export_already_available'],
+            'Kod odmowy: '.var_export($drugi->json('error.code'), true).'. Oczekiwane '
+            .'`export_in_progress` (trwa) albo `export_already_available` (gotowy i ważny).',
+        );
+
+        $this->assertNotNull(
+            $drugi->json('error.reason.export_id'),
+            'Odmowa nie wskazuje istniejącego eksportu, więc klient nie ma jak go pobrać.',
+        );
+    }
+
+    public function test_a_new_export_is_allowed_once_the_previous_one_expired(): void
+    {
+        // Druga połowa reguły „jeden ŻYWY eksport". Bez tego świadka spełniłby ją
+        // serwer, który po pierwszym eksporcie odmawia NA ZAWSZE — czyli odbiera
+        // uprawnienie z RODO zamiast je ograniczać.
+        $marta = $this->actingAsMarta();
+
+        $this->postJson('/api/v1/me/exports');
+        $this->postJson('/api/v1/me/exports')->assertStatus(409);
+
+        $this->przewinZegarZaTermin();
+
+        $this->assertContains(
+            $this->postJson('/api/v1/me/exports')->status(),
+            [200, 201, 202],
+            'Po wygaśnięciu poprzedniego eksportu nowy nadal jest odmawiany.',
+        );
+
+        $this->assertGreaterThanOrEqual(
+            1,
+            DataExport::where('user_id', $marta->id)->count(),
         );
     }
 
