@@ -106,7 +106,13 @@ class CourseInviteTest extends TestCase
 
         // Rejestr audytu §3.2 nie ma slugu dla zaproszenia — operacja zapisuje
         // się jako `course.updated` na kursie, z rodzajem w `details.op`.
-        $entry = AuditLogEntry::where('action', 'course.updated')->firstOrFail();
+        // Zawężone do WŁASNEGO podmiotu, nie „pierwszy wpis w tabeli". Wyszukiwanie
+        // po samym slugu jest zależne od tego, co zostawili sąsiedzi — a test ma
+        // mierzyć swoją operację, nie stan tabeli po całej suicie. Druga warstwa
+        // obrony obok strażnika stanu zastanego w `TestCase`.
+        $entry = AuditLogEntry::where('action', 'course.updated')
+            ->where('subject_id', $webinar->id)
+            ->firstOrFail();
 
         $this->assertSame($admin->id, $entry->actor_id);
         $this->assertSame($webinar->id, $entry->subject_id);

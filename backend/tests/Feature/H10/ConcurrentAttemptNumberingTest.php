@@ -117,26 +117,10 @@ class ConcurrentAttemptNumberingTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (isset($this->test)) {
-            TestAttempt::where('test_id', $this->test->id)->delete();
-            $courseId = $this->test->course_id;
-
-            $this->test->questions()->each(function ($question): void {
-                $question->answers()->delete();
-                $question->delete();
-            });
-
-            Test::whereKey($this->test->id)->delete();
-            Course::whereKey($courseId)->forceDelete();
-        }
-
-        if (isset($this->user)) {
-            User::whereKey($this->user->id)->forceDelete();
-        }
-
-        if ($this->ownEdition && $this->editionId !== null) {
-            Edition::whereKey($this->editionId)->delete();
-        }
+        // Przywrócenie stanu zastanego zamiast ręcznej listy tabel — patrz
+        // `TestCase::przywrocStanZastanejBazy()`. Strażnik w `TestCase::tearDown()`
+        // sprawdza po nas, czy naprawdę nic nie zostało.
+        $this->przywrocStanZastanejBazy();
 
         parent::tearDown();
     }

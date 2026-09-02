@@ -62,7 +62,10 @@ class ReorderTest extends TestCase
         $this->assertSame(2, $first->fresh()->sequence_order);
         $this->assertSame(3, $second->fresh()->sequence_order);
 
-        $entry = AuditLogEntry::where('action', 'course.updated')->firstOrFail();
+        // Zawężone do własnego kursu — patrz komentarz w `CourseInviteTest`.
+        $entry = AuditLogEntry::where('action', 'course.updated')
+            ->where('subject_id', $course->id)
+            ->firstOrFail();
         $this->assertSame($admin->id, $entry->actor_id);
         $this->assertSame($course->id, $entry->subject_id);
         $this->assertSame('lessons.reordered', $entry->details['op']);
@@ -179,7 +182,11 @@ class ReorderTest extends TestCase
         // Kurs spoza ścieżki (webinar) nie może zostać w nią wciągnięty.
         $this->assertSame(1, Course::query()->whereNull('sequence_order')->count());
 
-        $entry = AuditLogEntry::where('action', 'course.updated')->firstOrFail();
+        // Ta operacja dotyczy całej ścieżki, więc podmiotem nie jest jeden kurs —
+        // zawężamy do własnego rodzaju operacji, a nie do „pierwszego wpisu".
+        $entry = AuditLogEntry::where('action', 'course.updated')
+            ->whereJsonContains('details->op', 'courses.reordered')
+            ->firstOrFail();
         $this->assertSame($admin->id, $entry->actor_id);
         $this->assertSame('courses.reordered', $entry->details['op']);
         $this->assertSame($target, $entry->details['course_ids']);

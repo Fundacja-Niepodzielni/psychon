@@ -19,6 +19,16 @@ class ConcurrentSignupTest extends TestCase
     use DatabaseMigrations;
     use RequiresProcessConcurrency;
 
+    protected function tearDown(): void
+    {
+        // Ten test nie ma `RefreshDatabase` (procesy potomne nie zobaczyłyby
+        // otwartej transakcji rodzica), więc zapisuje na trwałe i musi po sobie
+        // posprzątać. Zmierzone: zostawiał konta, zgłoszenia, audyt i powiadomienia.
+        $this->przywrocStanZastanejBazy();
+
+        parent::tearDown();
+    }
+
     public function test_ten_independent_transactions_never_exceed_three_seats(): void
     {
         $this->requireProcessConcurrency();
