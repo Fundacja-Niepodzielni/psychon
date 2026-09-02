@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -12,6 +13,9 @@ import { fileURLToPath } from "node:url";
  * importują inaczej niż aplikacja i mierzą inny moduł niż ten, który jedzie na produkcję.
  */
 export default defineConfig({
+  // Wtyczka Reacta daje automatyczny runtime JSX zgodny z `jsx: "react-jsx"`
+  // z `tsconfig.json` — bez niej testy komponentów padają na nieznanym `jsx`.
+  plugins: [react()],
   test: {
     environment: "jsdom",
     globals: true,
