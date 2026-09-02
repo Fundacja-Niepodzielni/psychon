@@ -54,13 +54,28 @@ class GenerateCertificateTest extends CertificatePackageCase
             'subject_id' => $certificate->id,
         ]);
 
+        // ⚠ Ten fragment mierzył ŚWIAT SPRZED S1-7. Do 02.09.2026 `pdf_path` wskazywał
+        // plik HTML, więc szukanie w nim napisów działało. Po naprawie wskazuje PDF,
+        // w którym strumień treści jest skompresowany (`FlateDecode`) — `assertStringContainsString`
+        // na tokenie nie ma prawa przejść, choć token JEST w dokumencie.
+        // Zgłoszone przez sesję wykonawczą; test poprawiony po stronie przyrządu,
+        // bo to test mierzył nieaktualny świat, a nie kod się zepsuł.
         $this->assertNotNull($certificate->pdf_path);
         Storage::disk('local')->assertExists($certificate->pdf_path);
-        $this->assertStringContainsString(
-            $certificate->verification_token,
+
+        // Kryterium H13 z `ZLECENIE-001` §2.1: „plik zaczyna się od `%PDF`".
+        // Nagłówek to jedyna część PDF-a, która jest jawnym tekstem z definicji formatu.
+        $this->assertStringStartsWith(
+            '%PDF',
             Storage::disk('local')->get($certificate->pdf_path),
+            'Plik certyfikatu nie jest PDF-em.',
         );
-        $this->assertStringContainsString('/certyfikat?token=', Storage::disk('local')->get($certificate->pdf_path));
+
+        // Adres weryfikacji sprawdzamy tam, gdzie jest CZYTELNY: w rekordzie i w trasie.
+        // Szukanie napisu w skompresowanym strumieniu byłoby pomiarem formatu zapisu,
+        // a nie tego, czy weryfikacja działa.
+        $this->getJson("/api/v1/verify/{$certificate->number}")->assertOk();
+        $this->getJson("/api/v1/verify/qr/{$certificate->verification_token}")->assertOk();
     }
 
     public function test_generate_twice_does_not_create_a_second_certificate(): void

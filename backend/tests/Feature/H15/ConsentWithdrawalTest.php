@@ -6,6 +6,7 @@ use App\Models\AuditLogEntry;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -52,20 +53,20 @@ class ConsentWithdrawalTest extends TestCase
 
     public function test_withdrawing_consent_sets_the_profile_status(): void
     {
-        $ola = $this->olaZeZlozonymProfilem();
+        $absolwentka = $this->absolwentkaZeZgoda();
 
         $this->postJson('/api/v1/psychologist-profile/consent/withdraw')->assertOk();
 
         $this->assertSame(
             'withdrawn',
-            $this->statusProfilu($ola),
+            $this->statusProfilu($absolwentka),
             'Profil nie przeszedł w stan `withdrawn` — zgoda została wycofana tylko na papierze.',
         );
     }
 
     public function test_withdrawing_consent_writes_the_audit_slug_from_the_registry(): void
     {
-        $ola = $this->olaZeZlozonymProfilem();
+        $absolwentka = $this->absolwentkaZeZgoda();
 
         $this->postJson('/api/v1/psychologist-profile/consent/withdraw')->assertOk();
 
@@ -78,7 +79,7 @@ class ConsentWithdrawalTest extends TestCase
 
     public function test_withdrawing_consent_notifies_the_team(): void
     {
-        $ola = $this->olaZeZlozonymProfilem();
+        $absolwentka = $this->absolwentkaZeZgoda();
 
         $this->postJson('/api/v1/psychologist-profile/consent/withdraw')->assertOk();
 
@@ -101,7 +102,7 @@ class ConsentWithdrawalTest extends TestCase
     {
         // KONTROLA NEGATYWNA. Powiadomienie „do zespołu" wysłane WSZYSTKIM też
         // spełniłoby test wyżej — i byłoby wyciekiem informacji o cudzej decyzji.
-        $ola = $this->olaZeZlozonymProfilem();
+        $absolwentka = $this->absolwentkaZeZgoda();
 
         $this->postJson('/api/v1/psychologist-profile/consent/withdraw')->assertOk();
 
@@ -120,7 +121,7 @@ class ConsentWithdrawalTest extends TestCase
 
     public function test_withdrawing_twice_is_refused(): void
     {
-        $this->olaZeZlozonymProfilem();
+        $this->absolwentkaZeZgoda();
 
         $this->postJson('/api/v1/psychologist-profile/consent/withdraw')->assertOk();
 
@@ -132,7 +133,7 @@ class ConsentWithdrawalTest extends TestCase
     {
         // Bez tego „drugie wycofanie → 422" spełniłby serwer, który najpierw robi
         // robotę, a dopiero potem odmawia. Odmowa ma być PRZED skutkiem.
-        $this->olaZeZlozonymProfilem();
+        $this->absolwentkaZeZgoda();
 
         $this->postJson('/api/v1/psychologist-profile/consent/withdraw')->assertOk();
         $poPierwszym = AuditLogEntry::where('action', self::SLUG)->count();
@@ -147,16 +148,41 @@ class ConsentWithdrawalTest extends TestCase
     }
 
     /**
-     * `ola@demo.pl` to absolwentka z profilem gotowym w seedzie
-     * (`04-seed-demo.md` §2). Świadek nie zakłada, w jakim stanie jest profil —
-     * dopilnowuje tylko, żeby zgoda była udzielona, bo bez niej nie ma czego wycofywać.
+     * Absolwentka z profilem ZŁOŻONYM i zgodą UDZIELONĄ.
+     *
+     * Pierwsza wersja tego pomocnika brała `olę` z seedu i zakładała, że zgoda
+     * jest udzielona. Nie była — seed daje jej profil `draft`, a API odpowiadało
+     * „Brak udzielonej zgody na publikację do wycofania". Sześć czerwieni było
+     * wtedy wadą przyrządu, nie luką produktu, i tak zostało zgłoszone.
+     * Świadek buduje więc stan wprost: profil → dyplom → `submit` ze zgodą.
      */
-    private function olaZeZlozonymProfilem(): User
+    private function absolwentkaZeZgoda(): User
     {
-        $ola = User::where('email', 'ola@demo.pl')->firstOrFail();
-        $this->actingAs($ola, 'sanctum');
+        $absolwentka = User::factory()->create([
+            'role' => 'volunteer',
+            'program_completed_at' => now()->subDay(),
+        ]);
 
-        return $ola;
+        $this->actingAs($absolwentka, 'sanctum')
+            ->patchJson('/api/v1/psychologist-profile', [
+                'specializations' => ['wsparcie w kryzysie'],
+                'approach' => 'systemowy',
+                'city' => 'Gdańsk',
+            ])->assertOk();
+
+        $this->actingAs($absolwentka, 'sanctum')
+            ->postJson('/api/v1/psychologist-profile/documents', [
+                'type' => 'dyplom',
+                'file' => UploadedFile::fake()->create('dyplom.pdf', 100, 'application/pdf'),
+            ])->assertCreated();
+
+        $this->actingAs($absolwentka, 'sanctum')
+            ->postJson('/api/v1/psychologist-profile/submit', ['publication_consent' => true])
+            ->assertOk();
+
+        $this->actingAs($absolwentka, 'sanctum');
+
+        return $absolwentka;
     }
 
     private function statusProfilu(User $user): ?string

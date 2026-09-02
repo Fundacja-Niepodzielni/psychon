@@ -132,7 +132,10 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
         // `RefreshDatabase` zostawia bazę zmigrowaną i pustą; skoro to my ją zaseedowaliśmy,
         // to my mamy ją opróżnić, a nie następny test ma się z tym zmierzyć.
         if ($this->seededDemo) {
-            $this->artisan('migrate:fresh');
+            // Kasujemy REKORDY, nie schemat. `migrate:fresh` w środku suity zdejmuje
+            // tabele spod nóg testom, które akurat trzymają połączenie — przyrząd,
+            // który sprząta przez zburzenie budynku, jest gorszy od bałaganu.
+            $this->wipeSeededRows();
         }
 
         // Kontrola własnego sprzątania. Bez niej „posprzątane" jest deklaracją:
@@ -275,6 +278,27 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
             $sequences,
             'Ciąg numeracji ma dziurę: '.implode(', ', $sequences),
         );
+    }
+
+    /**
+     * Usuwa dane, które wprowadził seed — bez ruszania schematu.
+     *
+     * Kolejność jest odwrotna do zależności: najpierw to, co wskazuje na użytkowników
+     * i edycje, na końcu one same. `TRUNCATE … CASCADE` jednym poleceniem jest tu
+     * właściwsze niż kaskada modeli, bo nie zależy od tego, czy ktoś pamiętał
+     * o `onDelete` w migracji.
+     */
+    private function wipeSeededRows(): void
+    {
+        $tabele = DB::select(
+            "select tablename from pg_tables where schemaname = 'public' and tablename <> 'migrations'"
+        );
+
+        $nazwy = array_map(static fn (object $t): string => '"'.$t->tablename.'"', $tabele);
+
+        if ($nazwy !== []) {
+            DB::statement('truncate table '.implode(', ', $nazwy).' restart identity cascade');
+        }
     }
 
     /** Uczestniczka z kompletem czterech warunków, osadzona w PUSTEJ edycji tego świadka. */
