@@ -53,8 +53,11 @@ final class DashboardSummary
                 ],
                 [
                     'key' => 'questions',
+                    // Trasa zmierzona w kodzie frontu: `(prowadzacy)/prowadzacy/pytania`
+                    // istnieje, `panel/prowadzacy` nie istnieje w ogóle (kliknięcie
+                    // licznika kończyło się 404 — kryterium ★ H19.1).
                     'count' => InstructorQuestion::whereNull('answer')->count(),
-                    'link' => '/panel/prowadzacy',
+                    'link' => '/prowadzacy/pytania',
                 ],
             ],
         ];
