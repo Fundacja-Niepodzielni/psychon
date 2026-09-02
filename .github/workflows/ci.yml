@@ -51,15 +51,14 @@ jobs:
       - name: Testy
         run: php artisan test
         env:
-          DB_CONNECTION: pgsql
+          # Tylko topologia runnera. Zadanie biegnie na maszynie runnera, a nie
+          # w kontenerze, wiec uslugi widac wylacznie pod 127.0.0.1 - etykieta
+          # uslugi nie jest tu nazwa hosta. Cala reszta ustawien bazy pochodzi
+          # z backend/phpunit.xml (wpisy wymuszone, przepisane do $_SERVER przez
+          # backend/tests/bootstrap.php); wpisywanie ich takze tutaj bylo martwe
+          # i mylace, bo czytelnik widzial wartosci, ktore niczego nie ustawiaja.
           DB_HOST: 127.0.0.1
           DB_PORT: 5432
-          # DB_DATABASE swiadomie nieustawione: baze testowa wyznacza backend/phpunit.xml
-          # (wpis wymuszony), a backend/tests/bootstrap.php tworzy ja przy pierwszym
-          # uruchomieniu. Wiersz "DB_DATABASE: niepodzielni_test" byl tu martwy - po
-          # domknieciu pulapki P-1 wpis z phpunit.xml wygrywa, wiec zmienna tylko myli.
-          DB_USERNAME: niepodzielni
-          DB_PASSWORD: secret
           REDIS_HOST: 127.0.0.1
           CACHE_STORE: array
           QUEUE_CONNECTION: sync
