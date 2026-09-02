@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Przyrzad;
 
+use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Facades\Process;
 use Tests\TestCase;
 
@@ -20,6 +21,11 @@ use Tests\TestCase;
  *
  * Podstawa: `ZLECENIE-005` §1 (wyjątek topologiczny przyjęty pod warunkiem, że przypadek
  * „zły host → awaria głośna, nie P-1" zostaje w suicie, a nie tylko w meldunku).
+ *
+ * KOSZT. Każdy przypadek to osobny przebieg `artisan test`, czyli ~25 s. Dlatego są
+ * DWA, nie trzy: warunek „każdy przebieg ogłasza zmierzoną bazę" jest sprawdzany przy
+ * okazji drugiego, zamiast trzecim procesem. Świadek przyrządu ma być tani na tyle,
+ * żeby nikt nie miał pokusy wyłączyć go z bramki.
  *
  * `php artisan test --filter=GuardBehaviour`
  */
@@ -68,20 +74,8 @@ final class GuardBehaviourTest extends TestCase
         );
     }
 
-    public function test_every_run_announces_the_database_it_measured(): void
-    {
-        // Wiersz [PRZYRZĄD] jest tym, co meldunki cytują jako dowód izolacji.
-        // Gdyby zniknął, meldunki cytowałyby deklarację zamiast pomiaru.
-        $result = $this->runChildSuiteWith([]);
-
-        $this->assertStringContainsString(
-            '[PRZYRZĄD] baza testowa zmierzona silnikiem:',
-            $result->output().$result->errorOutput(),
-        );
-    }
-
     /** @param array<string, string> $env */
-    private function runChildSuiteWith(array $env): \Illuminate\Contracts\Process\ProcessResult
+    private function runChildSuiteWith(array $env): ProcessResult
     {
         return Process::path(base_path())
             ->env($env)

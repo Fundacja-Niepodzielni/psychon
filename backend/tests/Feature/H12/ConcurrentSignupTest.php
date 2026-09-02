@@ -16,9 +16,8 @@ use Tests\TestCase;
 
 class ConcurrentSignupTest extends TestCase
 {
-    use RequiresProcessConcurrency;
-
     use DatabaseMigrations;
+    use RequiresProcessConcurrency;
 
     public function test_ten_independent_transactions_never_exceed_three_seats(): void
     {

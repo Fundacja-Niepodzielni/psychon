@@ -14,9 +14,8 @@ use Tests\TestCase;
 
 class ConcurrentApplicationTest extends TestCase
 {
-    use RequiresProcessConcurrency;
-
     use DatabaseMigrations;
+    use RequiresProcessConcurrency;
 
     public function test_last_edition_seat_is_awarded_to_only_one_concurrent_acceptance(): void
     {
