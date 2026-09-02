@@ -221,3 +221,50 @@ Trzy rzeczy, które ten przepis wymusza, a które łatwo pominąć ręcznie:
    leży w drugim oknie, a nie w kodzie.
 
 Ta sama zasada dotyczy `--filter=`: filtr też czyści bazę, jeśli test używa `RefreshDatabase`.
+
+## 10 · Strażnik stanu zastanego — dlaczego lista tabel zawsze przegra (P-6, trzecia iteracja)
+
+Trzy razy w ciągu jednego dnia ta sama klasa błędu, za każdym razem inną tabelą:
+
+| # | co zostawił test bez `RefreshDatabase` | kto to zauważył | koszt |
+|--:|---|---|---|
+| 1 | dane z `seed()` (6 kont demo) | obca sesja, we własnej bramce | 9 cudzych testów na czerwono |
+| 2 | znowu `seed()`, w pliku pisanym PO spisaniu reguły | obca sesja | 23 cudze testy |
+| 3 | wpisy `audit_log`, o których nikt nie pomyślał | obca sesja | 8 cudzych testów |
+
+**Wspólny mianownik nie brzmi „trzeba uważać".** Sprzątanie wyliczające tabele jest
+**denylistą** — broni tylko tego, co autor zdążył sobie wyobrazić, więc pomija dokładnie
+to, o czym nie pomyślał. Z definicji.
+
+**Zmiana rodzaju obrony:** `Tests\TestCase` robi migawkę liczności **wszystkich** tabel
+schematu przed testem i po nim — ale tylko dla klas **bez** `RefreshDatabase` (klasy
+z transakcją nic to nie kosztuje). Różnica w dowolnej tabeli jest czerwienią **tego**
+testu, z nazwą tabeli i różnicą:
+
+```
+Test bez `RefreshDatabase` zostawił po sobie ślad w bazie testowej:
+  applications: było 0, jest 2 (+2)
+  audit_log: było 0, jest 1 (+1)
+  users: było 0, jest 3 (+3)
+```
+
+Czerwień trafia **u autora, nie u sąsiada** — i to jest cała różnica, bo wcześniej
+płacił za nią ktoś, kto nic nie zmienił.
+
+Sprzątanie: `przywrocStanZastanejBazy()` **przywraca stan**, zamiast wyliczać, co skasować.
+Działa wyłącznie, gdy stan zastany był pusty (a taki zostawia `RefreshDatabase`
+poprzedniego testu); przy niepustym **rzuca zamiast zgadywać** — przyrząd nie ma prawa
+kasować cudzych danych na wszelki wypadek.
+
+**Efekt uboczny, którego nie planowałam:** strażnik od razu pokazał, że **dwa testy
+współbieżności z hackathonu** (`H03\ConcurrentApplicationTest`, `H12\ConcurrentSignupTest`)
+zostawiały dane **od początku** — nikt tego nie zauważył, bo nikt nie mierzył.
+
+**Druga warstwa** (bo jedna warstwa to nie obrona): testy H08 brały `AuditLogEntry::where('action', …)
+->firstOrFail()`, czyli **pierwszy wpis w tabeli** — ich wynik zależał od sąsiadów.
+Zawężone do własnego podmiotu i własnego rodzaju operacji.
+
+**Reguła w postaci wykonalnej:** *test wołający `seed()` MUSI mieć `RefreshDatabase`;
+jeśli mieć go nie może (procesy potomne nie zobaczą otwartej transakcji rodzica),
+nie wolno mu wołać `seed()`.* To jest sprawdzalne mechanicznie — i dopiero dlatego
+jest kontrolą, a nie zdaniem w piśmie.
