@@ -47,6 +47,13 @@ final class SequenceReorderer
         );
 
         return DB::transaction(function () use ($course, $lessonIds, $actor): Collection {
+            // Ten sam zamek co przy dodawaniu lekcji (`LessonWriter`). Bez niego
+            // dodanie w trakcie renumeracji policzyłoby `max()` z numerów fazy
+            // parkingowej i wstawiło lekcję z numerem o rząd wielkości za wysokim,
+            // po cichu. Zamek na kursie jest tu jedynym miejscem, w którym obie
+            // operacje na kolejności lekcji się spotykają.
+            Course::query()->whereKey($course->getKey())->lockForUpdate()->firstOrFail();
+
             self::renumberLessons($lessonIds);
 
             // Rejestr audytu §3.2 nie ma slugów dla lekcji — operacje podrzędne
