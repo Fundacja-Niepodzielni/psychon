@@ -24,6 +24,13 @@ final class LessonWriter
     public static function create(Course $course, array $validated, User $actor): Lesson
     {
         return DB::transaction(function () use ($course, $validated, $actor): Lesson {
+            // Blokada wiersza kursu przed policzeniem numeru: `max()+1` bez niej
+            // (a tu nie było nawet `lockForUpdate`) daje dwóm równoczesnym zapisom
+            // ten sam `sequence_order`. Bez unikatu kończyło się to nie błędem,
+            // lecz dwiema lekcjami o tym samym numerze — czyli kolejnością
+            // materiału zależną od przypadku, po cichu.
+            Course::query()->whereKey($course->getKey())->lockForUpdate()->firstOrFail();
+
             $attributes = self::attributes($validated);
             $attributes['sequence_order'] ??= self::nextSequenceOrder($course);
 

@@ -28,6 +28,12 @@ use Illuminate\Support\Facades\DB;
 final class SequenceReorderer
 {
     /**
+     * Numery parkingowe fazy pierwszej renumeracji lekcji. Wysoko ponad realną
+     * liczbą lekcji w kursie i bezpiecznie poniżej granicy `smallint` (32767).
+     */
+    private const int PARKING_OFFSET = 20000;
+
+    /**
      * @param  list<int>  $lessonIds
      * @return Collection<int, Lesson>
      */
@@ -118,10 +124,20 @@ final class SequenceReorderer
     }
 
     /**
+     * Renumeracja lekcji idzie DWUFAZOWO, inaczej niż przy kursach: na
+     * `(course_id, sequence_order)` lekcji stoi unikalny indeks (S1-15), więc
+     * przejściowy duplikat w środku pętli — nieunikniony przy zwykłej zamianie
+     * dwóch lekcji miejscami — przerwałby całą operację. Faza pierwsza odsuwa
+     * numery poza używany zakres, faza druga nadaje docelowe 1..N.
+     *
      * @param  list<int>  $lessonIds
      */
     public static function renumberLessons(array $lessonIds): void
     {
+        foreach ($lessonIds as $index => $id) {
+            Lesson::query()->whereKey($id)->update(['sequence_order' => self::PARKING_OFFSET + $index + 1]);
+        }
+
         foreach ($lessonIds as $index => $id) {
             Lesson::query()->whereKey($id)->update(['sequence_order' => $index + 1]);
         }

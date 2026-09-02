@@ -36,6 +36,13 @@ class AdminTestQuestionController extends Controller
     public function store(StoreTestQuestionRequest $request, Test $test): JsonResponse
     {
         $question = DB::transaction(function () use ($request, $test): TestQuestion {
+            // Blokada wiersza testu przed policzeniem numeru. Bez niej dwa
+            // równoczesne dodania pytania liczyły ten sam `sequence_order`,
+            // a że kolumna nie miała unikatu, kończyło się to nie błędem, lecz
+            // dwoma pytaniami o tej samej pozycji — kolejność w teście stawała
+            // się nieokreślona, bez żadnego objawu.
+            Test::query()->whereKey($test->getKey())->lockForUpdate()->firstOrFail();
+
             $nextOrder = 1 + (int) $test->questions()->max('sequence_order');
 
             $question = $test->questions()->create([

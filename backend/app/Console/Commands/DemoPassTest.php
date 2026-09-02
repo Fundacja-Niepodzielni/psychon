@@ -46,12 +46,16 @@ class DemoPassTest extends Command
         }
 
         $attempt = DB::transaction(function () use ($user, $test): TestAttempt {
-            // Postgres forbids FOR UPDATE with aggregates — lock the rows,
-            // then compute the max in PHP.
+            // Ten sam wzór co w TestController: blokada wiersza osoby, bo
+            // FOR UPDATE na liczonym zbiorze nie broni przed fantomami.
+            // Polecenie demo uruchamia człowiek ręcznie, więc ryzyko jest
+            // znikome — ale dwa różne wzory na tę samą rzecz w jednym repo
+            // są zaproszeniem do skopiowania gorszego.
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
             $attemptNumber = 1 + (int) TestAttempt::query()
                 ->where('user_id', $user->id)
                 ->where('test_id', $test->id)
-                ->lockForUpdate()
                 ->pluck('attempt_number')
                 ->max();
 
