@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\H18;
 
+use App\Rules\Pesel;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,7 +29,7 @@ class UpdateUserRequest extends FormRequest
             'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'role' => ['sometimes', Rule::in(['super_admin', 'project_manager', 'instructor', 'volunteer', 'student'])],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
-            'pesel' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'pesel' => ['sometimes', 'nullable', 'string', new Pesel],
             'address' => ['sometimes', 'array'],
             'address.street' => ['sometimes', 'nullable', 'string', 'max:255'],
             'address.city' => ['sometimes', 'nullable', 'string', 'max:255'],
