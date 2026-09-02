@@ -143,13 +143,17 @@ class GenerateCertificate implements ShouldQueue
     }
 
     /**
-     * Adres, pod który prowadzi kod QR: publiczna weryfikacja po tokenie
-     * (trasa z karty H13, `routes/api/h13.php`). Token, nie numer — numer
-     * bywa przepisywany ręcznie, token nie wychodzi poza dokument.
+     * Adres, pod który prowadzi kod QR i link pod nim: publiczna STRONA
+     * weryfikacji z tokenem. Osoba skanująca kod ma zobaczyć stronę, nie JSON —
+     * `GET /api/v1/verify/qr/{token}` zostaje punktem maszynowym, który ta
+     * strona woła. Token, nie numer: numer bywa przepisywany ręcznie, token
+     * nie wychodzi poza dokument.
      */
     private static function verifyUrl(Certificate $certificate): string
     {
-        return url('/api/v1/verify/qr/'.$certificate->verification_token);
+        $base = rtrim((string) (config('app.frontend_url') ?: config('app.url')), '/');
+
+        return $base.'/certyfikat?token='.$certificate->verification_token;
     }
 
     /**
