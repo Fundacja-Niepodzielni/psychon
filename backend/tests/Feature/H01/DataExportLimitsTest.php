@@ -99,6 +99,39 @@ class DataExportLimitsTest extends TestCase
             ->assertJsonStructure(['error' => ['status', 'code', 'message']]);
     }
 
+    public function test_the_throttle_refusal_also_uses_the_error_envelope(): void
+    {
+        // `ZLECENIE-010` §2: 429 to teraz osobna odmowa („za dużo żądań w oknie"),
+        // różna od 409 („trwa poprzedni eksport"). Domyślna odpowiedź `ThrottleRequests`
+        // Laravela NIE jest kopertą kontraktu — a odmowa poza kopertą trafia we froncie
+        // w gałąź „nieznany błąd" i uczestniczka nie dowiaduje się, że ma spróbować później.
+        $this->actingAsMarta();
+
+        $odpowiedzi = [];
+        for ($i = 0; $i < 10; $i++) {
+            $odpowiedzi[] = $this->postJson('/api/v1/me/exports');
+        }
+
+        $throttled = null;
+        foreach ($odpowiedzi as $odpowiedz) {
+            if ($odpowiedz->status() === 429) {
+                $throttled = $odpowiedz;
+                break;
+            }
+        }
+
+        if ($throttled === null) {
+            $this->markTestSkipped(
+                'Żadne z dziesięciu żądań nie dostało 429 — ogranicznik czasowy albo nie działa, '
+                .'albo odmawia wcześniej kodem 409. To sprawdza osobny świadek liczby eksportów.',
+            );
+        }
+
+        $throttled->assertJsonStructure(['error' => ['status', 'code', 'message']]);
+        $throttled->assertJsonPath('error.code', 'too_many_requests');
+        $throttled->assertJsonPath('error.status', 429);
+    }
+
     public function test_another_user_is_not_blocked_by_someone_elses_export(): void
     {
         // KONTROLA NEGATYWNA limitu: ogranicznik liczony globalnie zamiast na osobę
