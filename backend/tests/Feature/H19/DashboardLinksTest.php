@@ -4,7 +4,6 @@ namespace Tests\Feature\H19;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\File;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -39,51 +38,44 @@ class DashboardLinksTest extends TestCase
         $this->seed();
     }
 
-    public function test_every_queue_link_points_to_an_existing_front_route(): void
+    public function test_the_dashboard_returns_exactly_the_agreed_links(): void
     {
-        $trasy = $this->trasyFrontu();
-
-        $this->assertNotEmpty(
-            $trasy,
-            'Nie znalazłam ŻADNEJ trasy frontu — kontrola nie ma czego mierzyć i byłaby pustym pomiarem.',
-        );
-
-        $kolejki = $this->kolejkiPulpitu();
-
-        $this->assertNotEmpty($kolejki, 'Pulpit nie zwrócił żadnej kolejki.');
-
-        $bezTrasy = [];
-
-        foreach ($kolejki as $kolejka) {
-            if (! $this->trasaIstnieje($kolejka['link'], $trasy)) {
-                $bezTrasy[] = $kolejka['key'].' → '.$kolejka['link'];
-            }
-        }
+        // POŁOWA BACKENDOWA kryterium ★ H19.1. Druga połowa — „czy ten adres ma
+        // trasę" — mieszka we froncie (`frontend/app/__tests__/linki-pulpitu.test.ts`),
+        // bo tam są pliki tras. Pierwsza wersja robiła obie połowy tutaj i czytała
+        // `frontend/app` z kontenera backendu; działało wyłącznie u mnie, bo dołożyłam
+        // montowanie do własnego stosu, i **pomijało się po cichu u wszystkich innych**
+        // (2 pominięcia w bramce sesji wykonawczej). Kontrola działająca na jednej
+        // maszynie jest kontrolą tej maszyny, nie systemu.
+        //
+        // Obie połowy zazębia TA LISTA: zmiana adresu po stronie serwera zapala ten
+        // test, brak trasy zapala tamten. Gdyby front pytał API zamiast trzymać stałą,
+        // oba testy sprawdzałyby to samo i rozjazd byłby niewidoczny.
+        $adresy = collect($this->kolejkiPulpitu())->pluck('link', 'key')->all();
 
         $this->assertSame(
-            [],
-            $bezTrasy,
-            "Linki kolejek prowadzące donikąd:\n  ".implode("\n  ", $bezTrasy)
-            ."\nZnane trasy frontu:\n  ".implode("\n  ", $trasy),
+            [
+                'applications' => '/admin/uczestniczki',
+                'internship_entries' => '/admin/staz',
+                'profiles' => '/admin/profile',
+                'questions' => '/prowadzacy/pytania',
+            ],
+            $adresy,
+            'Zmienił się adres albo klucz kolejki. Jeśli to zamierzone — popraw też stałą '
+            .'`LINKI_KOLEJEK` w `frontend/app/__tests__/linki-pulpitu.test.ts`, inaczej front '
+            .'przestanie pilnować istnienia tej trasy.',
         );
     }
 
-    public function test_the_route_inventory_rejects_an_address_that_does_not_exist(): void
+    public function test_every_queue_entry_has_the_contract_shape(): void
     {
-        // KONTROLA NEGATYWNA SAMEGO PRZYRZĄDU. Gdyby dopasowanie było zbyt luźne
-        // (np. traktowało segment dynamiczny jako „cokolwiek, także nic"), test wyżej
-        // byłby zielony ZAWSZE i nie zauważyłby żadnego zepsutego linku.
-        $trasy = $this->trasyFrontu();
-
-        $this->assertFalse(
-            $this->trasaIstnieje('/admin/nie-ma-takiej-strony', $trasy),
-            'Przyrząd uznał nieistniejący adres za istniejący — dopasowanie jest za luźne.',
-        );
-
-        $this->assertTrue(
-            $this->trasaIstnieje('/admin/staz', $trasy),
-            'Przyrząd nie rozpoznał adresu, który na pewno istnieje — dopasowanie jest za ciasne.',
-        );
+        // Kształt, nie tylko wartości: front rysuje z tych trzech pól i bez któregokolwiek
+        // licznik przestaje być klikalny albo pokazuje puste miejsce.
+        foreach ($this->kolejkiPulpitu() as $kolejka) {
+            $this->assertSame(['key', 'count', 'link'], array_keys($kolejka));
+            $this->assertIsInt($kolejka['count']);
+            $this->assertStringStartsWith('/', $kolejka['link'], 'Adres kolejki musi być ścieżką bezwzględną.');
+        }
     }
 
     public function test_queue_counts_match_the_seed(): void
@@ -104,60 +96,5 @@ class DashboardLinksTest extends TestCase
         Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
 
         return $this->getJson('/api/v1/admin/dashboard')->assertOk()->json('data.queues');
-    }
-
-    /**
-     * Spis tras frontu z plików `page.tsx` (Next.js App Router).
-     *
-     * @return list<string>
-     */
-    private function trasyFrontu(): array
-    {
-        $katalog = base_path('../frontend/app');
-
-        if (! is_dir($katalog)) {
-            $this->markTestSkipped('Brak katalogu `frontend/app` — nie ma z czego zbudować spisu tras.');
-        }
-
-        $trasy = [];
-
-        foreach (File::allFiles($katalog) as $plik) {
-            if ($plik->getFilename() !== 'page.tsx') {
-                continue;
-            }
-
-            $sciezka = str_replace('\\', '/', $plik->getRelativePath());
-
-            // Grupy tras `(uczestnik)` porządkują pliki, ale NIE wchodzą do adresu.
-            $segmenty = array_values(array_filter(
-                explode('/', $sciezka),
-                static fn (string $segment): bool => $segment !== '' && ! str_starts_with($segment, '('),
-            ));
-
-            $trasy[] = '/'.implode('/', $segmenty);
-        }
-
-        sort($trasy);
-
-        return array_values(array_unique($trasy));
-    }
-
-    /** @param  list<string>  $trasy */
-    private function trasaIstnieje(string $link, array $trasy): bool
-    {
-        $sciezka = rtrim(parse_url($link, PHP_URL_PATH) ?: $link, '/');
-        $sciezka = $sciezka === '' ? '/' : $sciezka;
-
-        foreach ($trasy as $trasa) {
-            // Segment dynamiczny `[id]` pasuje do dokładnie JEDNEGO członu adresu —
-            // nie do dowolnej reszty. Inaczej `/admin/[x]` łapałoby wszystko.
-            $wzorzec = '#^'.preg_replace('/\\\\\[[^\\]]+\\\\\]/', '[^/]+', preg_quote($trasa, '#')).'$#';
-
-            if (preg_match($wzorzec, $sciezka) === 1) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

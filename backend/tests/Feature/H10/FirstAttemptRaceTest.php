@@ -7,9 +7,9 @@ use App\Models\Edition;
 use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\RequiresProcessConcurrency;
+use Tests\Concerns\RunsConcurrentRequests;
 use Tests\TestCase;
 
 /**
@@ -44,6 +44,7 @@ use Tests\TestCase;
 class FirstAttemptRaceTest extends TestCase
 {
     use RequiresProcessConcurrency;
+    use RunsConcurrentRequests;
 
     private const CONCURRENCY = 6;
 
@@ -140,86 +141,11 @@ class FirstAttemptRaceTest extends TestCase
         // więc dzieci dziedziczą je razem z resztą aplikacji.
         Sanctum::actingAs($this->user);
 
-        $directory = sys_get_temp_dir().'/h10-wyscig-'.uniqid('', true);
-        mkdir($directory);
-        $go = $directory.'/go';
-        $children = [];
-
-        for ($i = 0; $i < self::CONCURRENCY; $i++) {
-            $pid = pcntl_fork();
-
-            if ($pid === -1) {
-                $this->fail('Nie udało się uruchomić procesu testu współbieżności.');
-            }
-
-            if ($pid === 0) {
-                DB::purge();
-                file_put_contents($directory.'/ready-'.$i, 'ready');
-
-                while (! file_exists($go)) {
-                    usleep(1000);
-                }
-
-                try {
-                    $odpowiedz = $this->postJson(
-                        "/api/v1/tests/{$this->test->id}/attempts",
-                        ['answers' => $answers],
-                    );
-
-                    // Sam kod statusu nie mówi, CO poszło nie tak. Przy 500 zapisujemy
-                    // ślad przyczyny, żeby raport odróżnił wyścig o numer od awarii
-                    // przyrządu — bez tego „500" jest zagadką, a nie pomiarem.
-                    $slad = (string) $odpowiedz->status();
-
-                    if ($odpowiedz->status() >= 500) {
-                        $tresc = (string) $odpowiedz->getContent();
-                        $slad .= str_contains($tresc, '23505') || str_contains($tresc, 'attempt_number')
-                            ? ':unikat-numeru'
-                            : ':inna-przyczyna';
-                    }
-
-                    file_put_contents($directory.'/result-'.$i, $slad);
-                } catch (\Throwable $exception) {
-                    file_put_contents(
-                        $directory.'/result-'.$i,
-                        str_contains($exception->getMessage(), '23505') ? 'wyjatek:unikat-numeru' : 'wyjatek:inna',
-                    );
-                }
-
-                exit(0);
-            }
-
-            $children[] = $pid;
-        }
-
-        for ($attempt = 0; $attempt < 20000; $attempt++) {
-            if (count(glob($directory.'/ready-*')) === self::CONCURRENCY) {
-                break;
-            }
-            usleep(1000);
-        }
-
-        $this->assertCount(
-            self::CONCURRENCY,
-            glob($directory.'/ready-*'),
-            'Nie wszystkie procesy doszły do bariery — pomiar nie był współbieżny.',
-        );
-
-        file_put_contents($go, 'go');
-
-        foreach ($children as $pid) {
-            pcntl_waitpid($pid, $status);
-        }
-
-        $results = array_map(
-            static fn (string $path): string => trim((string) file_get_contents($path)),
-            glob($directory.'/result-*'),
-        );
-
-        foreach (glob($directory.'/*') as $file) {
-            @unlink($file);
-        }
-        @rmdir($directory);
+        $results = $this->rownolegle(self::CONCURRENCY, function (int $i) use ($answers): string {
+            return $this->sladOdpowiedzi(
+                $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $answers]),
+            );
+        });
 
         $numbers = TestAttempt::where('test_id', $this->test->id)
             ->orderBy('attempt_number')

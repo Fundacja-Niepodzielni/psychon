@@ -268,3 +268,29 @@ Zawężone do własnego podmiotu i własnego rodzaju operacji.
 jeśli mieć go nie może (procesy potomne nie zobaczą otwartej transakcji rodzica),
 nie wolno mu wołać `seed()`.* To jest sprawdzalne mechanicznie — i dopiero dlatego
 jest kontrolą, a nie zdaniem w piśmie.
+
+
+## 11 · Kontrola przez granicę repozytorium mieszka po obu stronach, nie po jednej
+
+Kryterium ★ H19.1 („każdy link z pulpitu → 200 we froncie") przechodzi przez granicę
+repozytorium, więc kontrola też musi. Pierwsza wersja robiła obie połowy po stronie PHP
+i czytała `frontend/app` z kontenera backendu — działało **wyłącznie u mnie**, bo dołożyłam
+montowanie do własnego stosu, i **pomijało się po cichu u wszystkich innych** (2 pominięcia
+w bramce sesji wykonawczej, kontener backendu montuje tylko `./backend`).
+
+**Kontrola działająca na jednej maszynie jest kontrolą tej maszyny, nie systemu.**
+
+Podział, który trzyma:
+
+| połowa | gdzie | czego dowodzi |
+|---|---|---|
+| adresy | `backend/tests/Feature/H19/DashboardLinksTest` | API zwraca **dokładnie** te cztery adresy, w kształcie z kontraktu |
+| trasy | `frontend/app/__tests__/linki-pulpitu.test.ts` | każdy z nich ma plik `page.tsx` |
+
+Obie zazębia **jedna lista adresów**, powtórzona po obu stronach celowo: zmiana adresu
+w serwerze zapala test backendowy, brak trasy — frontowy. Gdyby front pytał API zamiast
+trzymać stałą, oba testy sprawdzałyby to samo i rozjazd byłby niewidoczny.
+
+Montowanie `./frontend` w `docker-compose.override.yml` **zostało usunięte** — ograniczenie
+miejsca pracy zniknęło razem z przyczyną.
+
