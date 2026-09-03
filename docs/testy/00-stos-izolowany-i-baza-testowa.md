@@ -293,3 +293,4 @@ trzymać stałą, oba testy sprawdzałyby to samo i rozjazd byłby niewidoczny.
 
 Montowanie `./frontend` w `docker-compose.override.yml` **zostało usunięte** — ograniczenie
 miejsca pracy zniknęło razem z przyczyną.
+
