@@ -97,6 +97,4 @@ class DashboardLinksTest extends TestCase
 
         return $this->getJson('/api/v1/admin/dashboard')->assertOk()->json('data.queues');
     }
-
-
 }

@@ -15,6 +15,7 @@ use App\Models\WorkshopCompletion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\Concerns\RequiresProcessConcurrency;
+use Tests\Concerns\RunsConcurrentRequests;
 use Tests\TestCase;
 
 /**
@@ -46,6 +47,7 @@ use Tests\TestCase;
 class EmptyEditionConcurrentCertificateTest extends TestCase
 {
     use RequiresProcessConcurrency;
+    use RunsConcurrentRequests;
 
     private const CONCURRENCY = 20;
 
@@ -155,69 +157,11 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
     private function zmierzWyscig(int $juzWydane): void
     {
 
-        $directory = sys_get_temp_dir().'/h13-pusta-edycja-'.uniqid('', true);
-        mkdir($directory);
-        $go = $directory.'/go';
-        $children = [];
+        $results = $this->rownolegle(count($this->userIds), function (int $i): string {
+            GenerateCertificate::dispatchSync($this->userIds[$i]);
 
-        foreach ($this->userIds as $userId) {
-            $pid = pcntl_fork();
-
-            if ($pid === -1) {
-                $this->fail('Nie udało się uruchomić procesu testu współbieżności.');
-            }
-
-            if ($pid === 0) {
-                DB::purge(); // własne połączenie w procesie potomnym
-                file_put_contents($directory.'/ready-'.$userId, 'ready');
-
-                while (! file_exists($go)) {
-                    usleep(1000);
-                }
-
-                try {
-                    GenerateCertificate::dispatchSync($userId);
-                    file_put_contents($directory.'/result-'.$userId, 'ok');
-                } catch (\Throwable $exception) {
-                    file_put_contents($directory.'/result-'.$userId, 'blad: '.$exception->getMessage());
-                }
-
-                exit(0);
-            }
-
-            $children[] = $pid;
-        }
-
-        // Bariera: nikt nie rusza, dopóki wszyscy nie stoją na starcie. Bez niej
-        // procesy startują kolejno i świadek znów mierzyłby sekwencję zamiast wyścigu.
-        for ($attempt = 0; $attempt < 20000; $attempt++) {
-            if (count(glob($directory.'/ready-*')) === count($this->userIds)) {
-                break;
-            }
-            usleep(1000);
-        }
-
-        $this->assertCount(
-            count($this->userIds),
-            glob($directory.'/ready-*'),
-            'Nie wszystkie procesy doszły do bariery — pomiar nie był współbieżny.',
-        );
-
-        file_put_contents($go, 'go');
-
-        foreach ($children as $pid) {
-            pcntl_waitpid($pid, $status);
-        }
-
-        $results = array_map(
-            static fn (string $path): string => trim((string) file_get_contents($path)),
-            glob($directory.'/result-*'),
-        );
-
-        foreach (glob($directory.'/*') as $file) {
-            @unlink($file);
-        }
-        @rmdir($directory);
+            return 'ok';
+        });
 
         $oczekiwane = $juzWydane + count($this->userIds);
 
