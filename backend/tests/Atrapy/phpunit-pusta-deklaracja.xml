@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+     NIE JEST konfiguracją żadnego przebiegu. Wzorzec wejściowy świadka
+     `tests/Feature/Przyrzad/GuardUnderParallelTest.php`: deklaracja bazy jest tu
+     PUSTA, a strażnik ma na to przerwać — także pod runnerem równoległym.
+-->
+<phpunit>
+    <php>
+        <env name="DB_DATABASE" value="" force="true"/>
+    </php>
+</phpunit>

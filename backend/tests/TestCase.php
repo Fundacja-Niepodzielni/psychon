@@ -7,7 +7,9 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\ParallelTesting;
 use RuntimeException;
+use Tests\Concerns\AllowedTestDatabases;
 use Tests\Concerns\DeclaredTestDatabase;
 use Throwable;
 
@@ -24,6 +26,21 @@ use Throwable;
  * Kontrola siedzi w `createApplication()`, bo to jedyny punkt PRZED `setUpTraits()`,
  * czyli przed migracją i czyszczeniem bazy przez `RefreshDatabase`. Sprawdzenie
  * po `setUp()` byłoby autopsją, nie zabezpieczeniem.
+ *
+ * DRUGI PUNKT KONTROLNY (`setUpTraits()`) — powód zmierzony, nie teoretyczny.
+ * Pod `--parallel` bazę podmienia sam framework, i robi to POMIĘDZY jednym punktem
+ * a drugim. Kolejność z
+ * `vendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithTestCaseLifecycle.php:101-106`:
+ *   101  `$this->refreshApplication();`                  ← tu mierzy punkt pierwszy
+ *   103  `ParallelTesting::callSetUpTestCaseCallbacks($this);` ← tu framework PRZEŁĄCZA bazę
+ *   106  `$this->setUpTraits();`                          ← tu czyści ją `RefreshDatabase`
+ * Skutek dla samego strażnika był gorszy niż fałszywy alarm: punkt pierwszy mierzył
+ * bazę bazową (`niepodzielni_testing`) i był zielony, a `RefreshDatabase` czyścił
+ * bazę `…_test_N`, której NIKT nie sprawdzał. Strażnik nie blokował — przestawał
+ * pilnować tej bazy, która naprawdę była kasowana.
+ *
+ * Dopuszczenie w obu punktach jest WYPROWADZONE z deklaracji
+ * (`Tests\Concerns\AllowedTestDatabases`), nigdy dopisane jako druga lista nazw.
  */
 abstract class TestCase extends BaseTestCase
 {
@@ -35,7 +52,7 @@ abstract class TestCase extends BaseTestCase
      * z `config()`, bo konfiguracja czyta środowisko — czyli dokładnie to, co pułapka
      * P-1 podmienia; strażnik porównywałby wtedy nadpisane z nadpisanym.
      */
-    private static ?string $declaredDatabase = null;
+    private static array $declaredDatabases = [];
 
     /** Nazwa zmierzona raz na proces — kolejne testy nie płacą za to zapytaniem. */
     private static ?string $measuredDatabase = null;
@@ -194,7 +211,7 @@ Następne testy zastaną niepusty stan i zaczerwienią się bez własnej winy. '
             self::announceDatabase(self::$measuredDatabase);
         }
 
-        if (self::$measuredDatabase !== self::declaredDatabase()) {
+        if (! in_array(self::$measuredDatabase, static::allowedDatabases(), true)) {
             // Dwie różne awarie, dwa różne komunikaty. Zlanie ich w jeden zmusza
             // czytającego do zgadywania, czy patrzy na podmienioną bazę, czy na
             // martwy serwer — a to jest dokładnie ten rodzaj mylącego przyrządu,
@@ -215,12 +232,49 @@ Powód: '.self::$connectionFailure,
                 .'nie deklaruje (zmienna środowiskowa kontenera bije wpis z phpunit.xml). '
                 .'Bez tego przerwania RefreshDatabase skasowałby dane bazy "%s".',
                 self::$measuredDatabase,
-                self::declaredDatabase(),
+                implode('" albo "', static::allowedDatabases()),
                 self::$measuredDatabase,
             ));
         }
 
         return $app;
+    }
+
+    /**
+     * DRUGI punkt kontrolny — jedyny haczyk między przełączeniem bazy przez runner
+     * równoległy a czyszczeniem jej przez `RefreshDatabase`.
+     *
+     * Pomiar jest tu ŚWIEŻY (bez pamięci procesu), bo pamięć procesu to dokładnie ta
+     * rzecz, którą framework unieważnił w wierszu 103 cyklu życia: baza z chwili
+     * `refreshApplication()` już nie jest bazą, którą zaraz wyczyści cecha.
+     */
+    protected function setUpTraits()
+    {
+        $zmierzona = self::measureDatabase($this->app);
+        $dopuszczone = static::allowedDatabases();
+
+        if (! in_array($zmierzona, $dopuszczone, true)) {
+            if (self::$connectionFailure !== null) {
+                $this->fail(
+                    'PRZERWANE tuż przed `RefreshDatabase`: nie udało się połączyć z bazą, '
+                    .'na którą przełączył runner, więc nie wiadomo, co zaraz zostanie wyczyszczone. '
+                    .'To NIE jest pułapka P-1 — to awaria połączenia.
+Powód: '.self::$connectionFailure,
+                );
+            }
+
+            $this->fail(sprintf(
+                'PRZERWANE tuż przed `RefreshDatabase`: między utworzeniem aplikacji a czyszczeniem '
+                .'bazy połączenie stanęło na "%s", a dopuszczone jest wyłącznie "%s". '
+                .'Dopuszczenie jest wyprowadzone z deklaracji `phpunit.xml` (nazwa własna oraz jej '
+                .'postać per proces `…_test_TOKEN`, którą generuje runner) — nazwa spoza tej rodziny '
+                .'znaczy, że `RefreshDatabase` skasowałby za chwilę CUDZĄ bazę.',
+                $zmierzona,
+                implode('" albo "', $dopuszczone),
+            ));
+        }
+
+        return parent::setUpTraits();
     }
 
     /**
@@ -231,16 +285,48 @@ Powód: '.self::$connectionFailure,
      */
     public static function declaredDatabase(): string
     {
-        return self::$declaredDatabase ??= DeclaredTestDatabase::fromFile(
-            dirname(__DIR__).DIRECTORY_SEPARATOR.'phpunit.xml',
-        );
+        $sciezka = static::sciezkaDeklaracji();
+
+        return self::$declaredDatabases[$sciezka] ??= DeclaredTestDatabase::fromFile($sciezka);
+    }
+
+    /**
+     * Plik z deklaracją. Osobna metoda WYŁĄCZNIE po to, żeby świadek przyrządu mógł
+     * podstawić deklarację pustą i sprawdzić, że strażnik przerywa (kryterium 3).
+     *
+     * Celowo NIE jest to zmienna środowiskowa: środowisko jest dokładnie tym, co
+     * pułapka P-1 podmienia, więc wskazanie deklaracji zmienną otwierałoby tę pułapkę
+     * z drugiej strony. Podmienić może tylko klasa napisana w `tests/` — czyli zmiana,
+     * którą widać w przeglądzie kodu.
+     */
+    protected static function sciezkaDeklaracji(): string
+    {
+        return dirname(__DIR__).DIRECTORY_SEPARATOR.'phpunit.xml';
+    }
+
+    /**
+     * Nazwy baz, na których temu przebiegowi wolno biec — deklaracja plus postać
+     * per proces, którą runner sam generuje. Wyprowadzenie mieszka w osobnej klasie,
+     * żeby dało się je sprawdzić bez uruchamiania suity.
+     *
+     * @return list<string>
+     */
+    public static function allowedDatabases(): array
+    {
+        return AllowedTestDatabases::derive(static::declaredDatabase(), ParallelTesting::token());
     }
 
     /** Nazwa bazy prosto z silnika — źródłem prawdy jest połączenie, nie plik konfiguracji. */
     private static function measureDatabase(Application $app): string
     {
         try {
-            return (string) $app->make('db')->connection()->selectOne('select current_database() as name')->name;
+            $nazwa = (string) $app->make('db')->connection()->selectOne('select current_database() as name')->name;
+
+            // Udany pomiar kasuje pamięć o poprzedniej awarii — inaczej drugi punkt
+            // kontrolny opisywałby dzisiejszy rozjazd wczorajszym zerwanym połączeniem.
+            self::$connectionFailure = null;
+
+            return $nazwa;
         } catch (Throwable $exception) {
             self::$connectionFailure = $exception->getMessage();
 

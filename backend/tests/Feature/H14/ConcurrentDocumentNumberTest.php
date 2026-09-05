@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -16,7 +17,18 @@ use Tests\TestCase;
  * commits, so setUp/tearDown manage — and clean up — plain committed rows.
  *
  * Run in isolation with: php artisan test --filter=ConcurrentDocumentNumber
+ *
+ * GRUPA `wspolna-baza` — ta klasa NIE JEST zrównoleglana i to jest jej cecha, nie brak.
+ * Nie ma `RefreshDatabase` (patrz wyżej), więc runner równoległy nie przełącza jej na
+ * własną bazę procesu (`TestDatabases.php:56` — przełączenie dotyczy wyłącznie klas
+ * z cechą bazodanową). Zostaje na bazie wspólnej razem z drugą taką klasą i obie ścigają
+ * się o te same wiersze: zmierzone pod `--parallel` jako zakleszczenie i kolizja
+ * na numeracji dokumentów. Puszczona pod runnerem ta klasa mierzy
+ * WTEDY runnera, a nie niezmiennik, o który została napisana.
+ * Dlatego bramka ma dwa kroki: `--parallel --exclude-group=wspolna-baza`, a potem
+ * `--group=wspolna-baza` sekwencyjnie.
  */
+#[Group('wspolna-baza')]
 class ConcurrentDocumentNumberTest extends TestCase
 {
     private Edition $edition;

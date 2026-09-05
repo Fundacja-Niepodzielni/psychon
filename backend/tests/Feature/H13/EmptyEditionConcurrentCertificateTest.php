@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WorkshopCompletion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\Concerns\RunsConcurrentRequests;
 use Tests\TestCase;
@@ -43,7 +44,18 @@ use Tests\TestCase;
  * zakładane i sprzątane ręcznie (ten sam wzorzec co `H14\ConcurrentDocumentNumberTest`).
  *
  * `php artisan test --filter=EmptyEditionConcurrentCertificate`
+ *
+ * GRUPA `wspolna-baza` — ta klasa NIE JEST zrównoleglana i to jest jej cecha, nie brak.
+ * Nie ma `RefreshDatabase` (patrz wyżej), więc runner równoległy nie przełącza jej na
+ * własną bazę procesu (`TestDatabases.php:56` — przełączenie dotyczy wyłącznie klas
+ * z cechą bazodanową). Zostaje na bazie wspólnej razem z drugą taką klasą i obie ścigają
+ * się o te same wiersze: zmierzone pod `--parallel` jako zakleszczenie i złamany
+ * `certificates_number_unique` na `NP/2027/001`. Puszczona pod runnerem ta klasa mierzy
+ * WTEDY runnera, a nie niezmiennik, o który została napisana.
+ * Dlatego bramka ma dwa kroki: `--parallel --exclude-group=wspolna-baza`, a potem
+ * `--group=wspolna-baza` sekwencyjnie.
  */
+#[Group('wspolna-baza')]
 class EmptyEditionConcurrentCertificateTest extends TestCase
 {
     use RequiresProcessConcurrency;

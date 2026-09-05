@@ -4,8 +4,14 @@ namespace Tests\Feature\H03;
 
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
+// Bez cechy bazodanowej runner rownolegly nie przelacza tej klasy na wlasna baze
+// procesu (`TestDatabases.php:56`), wiec zostaje na bazie WSPOLNEJ i sciga sie z
+// sasiadami. Grupa `wspolna-baza` wypada z kroku A bramki i biegnie sekwencyjnie w B.
+// Regula pilnowana mechanicznie: `tests/Feature/Przyrzad/GrupaWspolnejBazyTest.php`.
+#[Group('wspolna-baza')]
 class PublicRegistrationTest extends TestCase
 {
     public function test_api_has_no_self_registration_route(): void

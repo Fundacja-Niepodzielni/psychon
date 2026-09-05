@@ -294,3 +294,53 @@ trzymać stałą, oba testy sprawdzałyby to samo i rozjazd byłby niewidoczny.
 Montowanie `./frontend` w `docker-compose.override.yml` **zostało usunięte** — ograniczenie
 miejsca pracy zniknęło razem z przyczyną.
 
+## 12 · Bramka DWUKROKOWA pod `--parallel` — dlaczego dwa kroki, a nie jeden
+
+Pomiar 05.09.2026, klon `sprint-1-testy`, stos `psytesty`, `brianium/paratest 7.20.0`.
+
+| krok | komenda | testy | asercje | kod | czas ścienny |
+|---|---|--:|--:|--:|--:|
+| A | `php artisan test --parallel --processes=6 --exclude-group=wspolna-baza` | 588 | 2 545 | 0 | 93 s |
+| B | `php artisan test --group=wspolna-baza` | 23 | 64 | 0 | 160 s |
+| razem | — | **611** | **2 609** | — | **253 s** |
+
+Odniesienie: ta sama suita sekwencyjnie to **401 s** (baza z bramki 05.09) — czyli dwa kroki
+razem są krótsze o ok. 37%. Kroki **nie są sklejane** (P-23): każdy ma własny kod wyjścia
+i własną linię w logu. Sklejenie `A && B` gubi informację, który krok upadł.
+
+**Skąd bierze się podział.** Runner równoległy przełącza na własną bazę procesu WYŁĄCZNIE
+klasy z cechą bazodanową — `TestDatabases.php:56`
+(`Arr::hasAny($uses, $databaseTraits)`). Klasa bez takiej cechy zostaje na bazie WSPÓLNEJ
+razem z każdą inną taką klasą, w sześciu procesach naraz. Zmierzone skutki: zakleszczenie,
+złamany `certificates_number_unique` na `NP/2027/001` oraz „stan zastany bazy nie był pusty".
+To nie jest wada tych testów — one z definicji mierzą prawdziwe równoległe commity i dlatego
+nie mogą mieć `RefreshDatabase`.
+
+**Lista klas nie jest pisana ręcznie.** Pierwsza wersja wyliczała dwie klasy, które akurat
+się zderzyły (`H13`, `H14`) — krok A zaczerwienił się natychmiast na trzeciej
+(`H10\FirstAttemptRaceTest`). Wyliczanka jest denylistą. Regułę pilnuje test
+`tests/Feature/Przyrzad/GrupaWspolnejBazyTest.php`: **każda** klasa dziedzicząca po
+`Tests\TestCase` bez cechy bazodanowej musi mieć `#[Group('wspolna-baza')]`. Klasa napisana
+jutro zapali ten test, zanim zepsuje cudzy przebieg.
+
+## 13 · Przyrząd pod `--parallel`: dwie rzeczy, które przestają działać po cichu
+
+1. **Strażnik P-1 przestawał pilnować właściwej bazy.** `createApplication()` mierzy bazę
+   PRZED przełączeniem przez runner (`InteractsWithTestCaseLifecycle.php:101-106`:
+   `refreshApplication()` → `callSetUpTestCaseCallbacks()` → `setUpTraits()`), więc pod
+   `--parallel` był zielony na bazie bazowej, podczas gdy `RefreshDatabase` czyścił
+   `…_test_N`, której nikt nie sprawdzał. Stąd **drugi punkt kontrolny w `setUpTraits()`**,
+   z dopuszczeniem WYPROWADZONYM z deklaracji (`Tests\Concerns\AllowedTestDatabases`:
+   nazwa własna oraz `nazwa."_test_".ParallelTesting::token()`), nigdy drugą listą nazw.
+2. **Linia `[PRZYRZĄD] baza testowa zmierzona silnikiem: …` znikała z logu.** ParaTest
+   połyka `fwrite(STDERR)` z workerów (`grep -c "PRZYRZĄD"` w logu równoległym = **0**).
+   Ogłoszenie idzie więc z procesu nadrzędnego, przez `ParallelTesting::setUpProcess()`
+   zarejestrowane w cesze `Tests\CreatesApplication` (runner szuka jej sam —
+   `RunsInParallel.php:168-174`). Pomiar 05.09: **6 linii, 6 różnych nazw baz**
+   (`…_test_1` … `…_test_6`).
+
+Kontrola negatywna kryterium 3 (pusta deklaracja pod `--parallel` nadal przerywa) przestała
+być pomiarem ręcznym: `tests/Feature/Przyrzad/GuardUnderParallelTest.php`. Podstawia
+deklarację nadpisaniem metody w atrapie (`tests/Atrapy`), a **nie** zmienną środowiskową —
+furtka sterowana środowiskiem byłaby pułapką P-1 od kuchni — i nie edycją `phpunit.xml`,
+bo pomiar przerwany w połowie zostawiałby repo z zepsutą deklaracją.
