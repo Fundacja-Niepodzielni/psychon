@@ -23,6 +23,12 @@ export interface AdminCourse {
   sequence_order: number | null;
   edition_id: number | null;
   is_published: boolean;
+  /**
+   * Identyfikator testu kończącego kurs — potrzebny, żeby z karty kursu wejść
+   * do banku pytań (H10). Pole opcjonalne, bo `AdminCourseResource` jeszcze go
+   * nie wystawia; gdy go brak, wejście do banku po prostu się nie pokazuje.
+   */
+  test_id?: number | null;
   lessons_count: number;
   materials_count: number;
   created_at: string | null;

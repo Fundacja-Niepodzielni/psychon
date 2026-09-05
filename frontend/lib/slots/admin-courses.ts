@@ -13,6 +13,7 @@ import type { ComponentType } from "react";
 import type { AdminCourse, AdminLesson } from "@/lib/h08/types";
 import h08bCourseMaterials from "@/components/h08b/CourseMaterialsPanel";
 import h08bCourseInvitePanel from "@/components/h08b/CourseInvitePanel";
+import h10QuestionBank from "@/components/h10/CourseQuestionBankLink";
 // import hXXNazwa from "@/components/hXX/hXXNazwa"; // ← dodaj swój slot jedną linią
 
 export type AdminCoursesRegion =
@@ -41,6 +42,7 @@ export interface AdminCoursesSlot {
 export const adminCoursesSlots: AdminCoursesSlot[] = [
   h08bCourseMaterials,
   h08bCourseInvitePanel,
+  h10QuestionBank,
   // hXXNazwa, // ← i drugą tutaj
 ];
 
