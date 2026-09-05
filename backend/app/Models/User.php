@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -139,5 +140,29 @@ class User extends Authenticatable
     public function instructorQuestions(): HasMany
     {
         return $this->hasMany(InstructorQuestion::class);
+    }
+
+    public function dataExports(): HasMany
+    {
+        return $this->hasMany(DataExport::class);
+    }
+
+    /**
+     * Z-3 (runda weryfikatora, ODPOWIEDZ-019-WER §5): `data_exports.user_id`
+     * ma `cascadeOnDelete()` (migration 2026_01_02_000000), więc `forceDelete()`
+     * usuwa wiersze eksportu razem z kontem — ale kaskada bazy nie wie nic o
+     * pliku na dysku (`local`/exports/…json). Bez tego haka fizyczna paczka
+     * z kompletem danych osobowych zostaje na zawsze, mimo że ślad w bazie
+     * znika. `forceDeleting` odpala się, zanim DB wykona kaskadę, więc
+     * `dataExports()` jest tu jeszcze czytelne.
+     */
+    protected static function booted(): void
+    {
+        static::forceDeleting(function (self $user): void {
+            $user->dataExports()->whereNotNull('file_path')->get()
+                ->each(function (DataExport $export): void {
+                    Storage::disk('local')->delete($export->file_path);
+                });
+        });
     }
 }
