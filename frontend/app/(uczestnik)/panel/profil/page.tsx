@@ -33,7 +33,9 @@ interface Profile {
 
 interface DataExport {
   id: string;
-  status: "queued" | "processing" | "ready" | "failed";
+  // X-4 aneksu kontraktu: po TTL 24 h zadanie sprzątające ustawia `expired`
+  // i kasuje plik, więc pobranie tej samej paczki daje wtedy 404.
+  status: "queued" | "processing" | "ready" | "expired" | "failed";
   requested_at: string | null;
   completed_at: string | null;
   download_url: string | null;
@@ -66,6 +68,24 @@ const CONSENT_LABELS: Record<string, string> = {
   marketing: "Zgoda marketingowa",
 };
 
+/**
+ * Etykieta i wariant znacznika stanu eksportu (X-4 aneksu).
+ *
+ * `expired` musi mieć własny wiersz: wcześniej wpadał do gałęzi „inne", czyli
+ * pokazywał „Przygotowywanie…" dla paczki, której plik już nie istnieje —
+ * ekran mówił, że coś trwa, a nie działo się nic.
+ */
+const EXPORT_STATUS: Record<
+  DataExport["status"],
+  { label: string; variant: "success" | "info" | "neutral" | "danger" }
+> = {
+  queued: { label: "Przygotowywanie…", variant: "info" },
+  processing: { label: "Przygotowywanie…", variant: "info" },
+  ready: { label: "Gotowy", variant: "success" },
+  expired: { label: "Wygasł", variant: "neutral" },
+  failed: { label: "Niepowodzenie", variant: "danger" },
+};
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("pl-PL", {
@@ -85,6 +105,56 @@ function toForm(profile: Profile): FormState {
     city: profile.address.city ?? "",
     zip: profile.address.zip ?? "",
   };
+}
+
+/**
+ * Ile sekund czekać po odmowie 429 — z `reason.retry_after_seconds` koperty
+ * błędu (§1.1 kontraktu, wiersz dopisany aneksem X-4). Serwer podaje tę liczbę
+ * tylko wtedy, gdy zna nagłówek `Retry-After`; gdy jej nie ma, nie zmyślamy.
+ */
+function retryAfterSeconds(error: ApiError): number | null {
+  const raw = error.reason?.retry_after_seconds;
+  const seconds = typeof raw === "number" ? raw : Number(raw);
+
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
+}
+
+/** Odmiana słowa „sekunda" po liczbie — inaczej komunikat brzmi jak automat. */
+function sekundy(n: number): string {
+  const reszta100 = n % 100;
+  const reszta10 = n % 10;
+
+  if (n === 1) return "1 sekundę";
+  if (reszta10 >= 2 && reszta10 <= 4 && (reszta100 < 12 || reszta100 > 14)) {
+    return `${n} sekundy`;
+  }
+
+  return `${n} sekund`;
+}
+
+/**
+ * Komunikat po nieudanym zleceniu eksportu (S1-12f).
+ *
+ * Trzy odmowy znaczą trzy różne rzeczy i tak samo mają brzmieć: 429 to limit
+ * okna czasu (można spróbować później), 409 to reguła „jedna żywa paczka na
+ * osobę" (trzeba pobrać albo poczekać, aż wygaśnie), reszta to awaria.
+ */
+function exportErrorMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return "Nie udało się zlecić eksportu danych.";
+  }
+
+  if (error.code === "too_many_requests") {
+    const seconds = retryAfterSeconds(error);
+
+    return seconds === null
+      ? "Za dużo żądań eksportu. Spróbuj ponownie za chwilę."
+      : `Za dużo żądań eksportu. Spróbuj ponownie za ${sekundy(seconds)}.`;
+  }
+
+  // 409 (`export_in_progress`, `export_already_available`) i reszta: serwer
+  // podaje gotowe zdanie po polsku — powtarzanie go tutaj rozjeżdżałoby treści.
+  return error.message;
 }
 
 export default function ProfilePage() {
@@ -196,11 +266,7 @@ export default function ProfilePage() {
       const created = await api<DataExport>("/me/exports", { method: "POST" });
       setDataExport(created); // the polling effect picks it up from here
     } catch (err) {
-      setExportError(
-        err instanceof ApiError
-          ? err.message
-          : "Nie udało się zlecić eksportu danych.",
-      );
+      setExportError(exportErrorMessage(err));
     } finally {
       setRequestingExport(false);
     }
@@ -218,6 +284,16 @@ export default function ProfilePage() {
         `${base}/api/v1/me/exports/${dataExport.id}/download`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
+      // 404 na pobraniu znaczy „paczki już nie ma" — po TTL 24 h plik jest
+      // kasowany, a trasa odpowiada tak samo jak na cudzy identyfikator (X-4).
+      if (res.status === 404) {
+        setDataExport({ ...dataExport, status: "expired", download_url: null });
+        setExportError(
+          "Ten eksport wygasł i plik został usunięty. Przygotuj nowy.",
+        );
+
+        return;
+      }
       if (!res.ok) throw new Error("download failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -373,14 +449,16 @@ export default function ProfilePage() {
         )}
 
         {dataExport && dataExport.status !== "failed" && (
-          <div className="mt-4 flex items-center gap-3 text-small">
-            <Badge
-              variant={dataExport.status === "ready" ? "success" : "info"}
-            >
-              {dataExport.status === "ready"
-                ? "Gotowy"
-                : "Przygotowywanie…"}
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-small">
+            <Badge variant={EXPORT_STATUS[dataExport.status].variant}>
+              {EXPORT_STATUS[dataExport.status].label}
             </Badge>
+
+            {dataExport.status === "expired" && (
+              <span className="text-muted">
+                Plik został usunięty po 24 godzinach. Przygotuj nowy eksport.
+              </span>
+            )}
             {dataExport.status === "ready" && (
               <button
                 type="button"
