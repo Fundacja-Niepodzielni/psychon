@@ -16,6 +16,8 @@ export interface LessonData {
   title: string;
   description: string | null;
   duration_seconds: number;
+  /** Pozycja, na której skończyło się poprzednie oglądanie (★ H06.1). */
+  position_seconds: number;
   watched_seconds: number;
   active_seconds: number;
   is_completed: boolean;
@@ -49,8 +51,6 @@ type ViewState =
   | "completing"
   | "completed";
 
-type HeartbeatDelta = Pick<HeartbeatPayload, "watched_delta" | "active_delta">;
-
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     return error.message;
@@ -77,7 +77,7 @@ export default function LessonPlayer({ lessonId }: LessonPlayerProps) {
   const [loadedLessonId, setLoadedLessonId] = useState<number | null>(null);
   const [state, setState] = useState<ViewState>("loading");
   const [message, setMessage] = useState<string | null>(null);
-  const queueRef = useRef<HeartbeatDelta[]>([]);
+  const queueRef = useRef<HeartbeatPayload[]>([]);
   const sendingRef = useRef(false);
   const mountedRef = useRef(true);
 
@@ -130,6 +130,9 @@ export default function LessonPlayer({ lessonId }: LessonPlayerProps) {
             {
               method: "POST",
               body: {
+                // Pozycja jedzie razem z przyrostami — serwer ją nadpisuje
+                // (nie sumuje), więc powtórzony heartbeat z kolejki nie kłamie.
+                position_seconds: next.position_seconds,
                 watched_delta: next.watched_delta,
                 active_delta: next.active_delta,
               },
@@ -155,10 +158,7 @@ export default function LessonPlayer({ lessonId }: LessonPlayerProps) {
 
   const handleHeartbeat = useCallback(
     (payload: HeartbeatPayload) => {
-      queueRef.current.push({
-        watched_delta: payload.watched_delta,
-        active_delta: payload.active_delta,
-      });
+      queueRef.current.push(payload);
       void sendNextHeartbeat();
     },
     [sendNextHeartbeat],
@@ -252,8 +252,12 @@ export default function LessonPlayer({ lessonId }: LessonPlayerProps) {
         </Alert>
       )}
 
+      {/* Wznowienie od zapisanej pozycji (★ H06.1). `VideoPlayer` czyta pozycję
+          tylko przy montażu, a montuje się dopiero po wczytaniu lekcji (wyżej
+          stoi ekran ładowania) — więc wartość jest już z serwera, nie z zera. */}
       <VideoPlayer
         durationSeconds={lesson.duration_seconds}
+        initialPositionSeconds={lesson.position_seconds}
         title={lesson.title}
         onHeartbeat={handleHeartbeat}
       />
