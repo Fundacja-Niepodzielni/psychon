@@ -21,6 +21,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -98,8 +99,11 @@ class GenerateCertificate implements ShouldQueue
 
         // Powtórka zadania po nieudanym renderze musi dokończyć plik: rekord już
         // istnieje ($created === false), więc warunek na samym $created zostawiłby
-        // wydany certyfikat bez pliku na zawsze.
-        if (! $created && $certificate->pdf_path !== null) {
+        // wydany certyfikat bez pliku na zawsze. Strażnik sprawdza ARTEFAKT, nie
+        // kolumnę: `pdf_path` obecne w wierszu niczego nie dowodzi (ziarno demo
+        // niesie zaślepkowe ścieżki `.html` sprzed wejścia dompdf, katalog na
+        // dysku może nie istnieć wcale) — Z-1.
+        if (! $created && self::hasRenderedPdf($certificate)) {
             return;
         }
 
@@ -182,5 +186,31 @@ class GenerateCertificate implements ShouldQueue
         } while (Certificate::where('verification_token', $token)->exists());
 
         return $token;
+    }
+
+    /**
+     * Prawda tylko gdy artefakt naprawdę istnieje: ścieżka wypełniona, plik
+     * obecny na dysku, niepusty i zaczynający się od nagłówka `%PDF-` — nie
+     * wystarczy, że kolumna coś mówi, ani że plik ma rozszerzenie `.pdf`.
+     * Zaślepka sprzed dompdf zapisywała surowy HTML pod nazwą `.html`; taką
+     * ścieżkę ta metoda traktuje jak brak artefaktu.
+     */
+    private static function hasRenderedPdf(Certificate $certificate): bool
+    {
+        if ($certificate->pdf_path === null) {
+            return false;
+        }
+
+        $disk = Storage::disk('local');
+
+        if (! $disk->exists($certificate->pdf_path)) {
+            return false;
+        }
+
+        if ($disk->size($certificate->pdf_path) === 0) {
+            return false;
+        }
+
+        return str_starts_with($disk->get($certificate->pdf_path), '%PDF-');
     }
 }
