@@ -82,6 +82,21 @@ class TestController extends Controller
             // zawsze i zamyka dokładnie tyle, ile trzeba: numeracja jest per osoba i test.
             User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
+            // Dwuklik w „wyślij test”: to samo zgłoszenie przychodzi dwa razy w ułamku
+            // sekundy. Drugie nie może założyć drugiego podejścia — inaczej jedno kliknięcie
+            // za dużo kosztuje uczestniczkę całe podejście. Powtórzenie rozpoznajemy PRZED
+            // kontrolą limitu: przy dwukliku na OSTATNIM podejściu druga odpowiedź
+            // inaczej niosłaby błąd „wykorzystałeś wszystkie podejścia” w chwili, w której
+            // uczestniczka potrzebuje wyniku. Limitu to nie osłabia — powtórzenie nie
+            // zakłada wiersza i nie podnosi licznika, a 403 zatrzymuje każde NOWE
+            // zgłoszenie. Sprawdzamy pod tą samą blokadą co limit, więc dwa równoległe
+            // żądania nie mijają się nawzajem.
+            $duplicate = $this->recentIdenticalAttempt($user, $test, $answers);
+
+            if ($duplicate !== null) {
+                return $duplicate;
+            }
+
             // Limit też liczymy pod blokadą — inaczej kilka równoczesnych żądań
             // widziałoby ten sam stan sprzed zapisu i limit dałoby się przekroczyć.
             $used = TestAttempt::where('user_id', $user->id)->where('test_id', $test->id)->count();
@@ -93,17 +108,6 @@ class TestController extends Controller
                     'Wykorzystałeś wszystkie dostępne podejścia do tego testu.',
                     reason: ['attempts_limit' => $limit],
                 );
-            }
-
-            // Dwuklik w „wyślij test”: to samo zgłoszenie przychodzi dwa razy w ułamku
-            // sekundy. Drugie nie może założyć drugiego podejścia — inaczej jedno kliknięcie
-            // za dużo kosztuje uczestniczkę całe podejście. Sprawdzamy pod tą samą blokadą
-            // co limit, więc dwa równoległe żądania nie mijają się nawzajem, i PO kontroli
-            // limitu, żeby powtórzenie nie omijało 403 `attempts_exhausted`.
-            $duplicate = $this->recentIdenticalAttempt($user, $test, $answers);
-
-            if ($duplicate !== null) {
-                return $duplicate;
             }
 
             // Postgres zabrania FOR UPDATE z agregatem — maksimum liczymy w PHP
