@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * registered — `bootstrap/app.php` is outside this role's scope; see that
  * route file's header comment).
  *
- * Slice 1 of `OD-018` (`ZLECENIE-044`): validates the bearer token and makes
+ * First slice of the SSO work: validates the bearer token and makes
  * the resulting `KeycloakPrincipal` available via `$request->attributes`.
  * Does not touch `auth:sanctum`, the session guard, or the `users` table —
  * the existing login path is untouched by design.

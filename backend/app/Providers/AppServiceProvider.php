@@ -23,15 +23,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // ZLECENIE-044: registers a route-middleware alias for the ephemeral
-        // Keycloak-token guard WITHOUT touching bootstrap/app.php, which is
-        // outside KOD-DOPIECIA's declared scope (WOLNO covers backend/app/*,
-        // and AppServiceProvider is already wired into bootstrap/providers.php
-        // unmodified). This keeps routes/api/sso.php's middleware() call a
-        // recognizable "auth.*" alias string, which is what
-        // Tests\Feature\PublicRoutesSmokeTest inspects via gatherMiddleware()
-        // to decide a route requires authentication — an FQCN string does not
-        // satisfy that heuristic (str_starts_with($middleware, 'auth')).
+        // Route-middleware alias for the Keycloak-token guard. It is registered
+        // here rather than referenced by class name in the route, because
+        // PublicRoutesSmokeTest recognises a route as protected only by an
+        // "auth.*" alias string in gatherMiddleware() — a fully qualified class
+        // name does not satisfy that check (str_starts_with($middleware, 'auth')).
         $this->app['router']->aliasMiddleware('auth.keycloak', AuthenticateKeycloakToken::class);
 
         // Password-reset e-mail: PL content + a link into the frontend.

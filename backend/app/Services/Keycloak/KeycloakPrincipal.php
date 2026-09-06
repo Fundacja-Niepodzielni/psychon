@@ -6,7 +6,7 @@ namespace App\Services\Keycloak;
  * The identity carried by a validated Keycloak access token — nothing more.
  *
  * `sub` is the ONLY identifier this slice trusts to bind a token to a person
- * (`ZALACZNIK-OD-022` criterion §5: binding by `sub`, never by e-mail). Roles
+ * (identity contract: binding by `sub`, never by e-mail). Roles
  * come exclusively from `realm_access.roles` of the access token (criterion
  * §3) — this class has no path back to the local `users` table and must not
  * grow one without a deliberate decision, or the disagreement guarantee this

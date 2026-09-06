@@ -14,7 +14,7 @@ use UnexpectedValueException;
 
 /**
  * Validates a Keycloak access token against the realm's own JWKS — signature,
- * issuer, audience, expiry (`ZALACZNIK-OD-022` criterion §3). JWKS is taken
+ * issuer, audience, expiry (the identity contract). JWKS is taken
  * from OIDC discovery every time it is (re-)fetched, never hardcoded
  * (criterion §5).
  *

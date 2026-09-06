@@ -5,17 +5,14 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| SSO (Konta Niepodzielni / Keycloak) — slice 1, `ZLECENIE-044`
+| SSO (Konta Niepodzielni / Keycloak) — slice 1
 |--------------------------------------------------------------------------
 | Bearer-token acceptance only: no browser login flow, no logout, no role
-| mapping in the UI yet (`ZALACZNIK-OD-022`). The existing `/auth/*` session
-| login in `routes/api/auth.php` is untouched.
+| mapping in the UI yet. The existing `/auth/*` session login in
+| `routes/api/auth.php` is untouched.
 |
 | The `auth.keycloak` middleware alias is registered in
-| `App\Providers\AppServiceProvider::boot()` (`backend/app/Providers/*`, in
-| scope) rather than in `bootstrap/app.php`, which is outside this role's
-| scope (`_nadzor/straznik/zakresy/KOD-DOPIECIA.zakres` has no `WOLNO:` line
-| for `backend/bootstrap/*` and no `ODBLOKOWANE:` entry was granted for it).
+| `App\Providers\AppServiceProvider::boot()` rather than in `bootstrap/app.php`.
 | Registering it as a proper alias — instead of referencing the middleware
 | class directly — is what lets `Tests\Feature\PublicRoutesSmokeTest`
 | recognise this route as requiring authentication: it inspects each route's

@@ -4,15 +4,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Keycloak / Konta Niepodzielni — bearer token acceptance (ZLECENIE-044)
+    | Keycloak / Konta Niepodzielni — bearer token acceptance
     |--------------------------------------------------------------------------
     |
-    | Slice 1 of `OD-018` SSO: the API validates access tokens minted by the
+    | First slice of the SSO work: the API validates access tokens minted by the
     | Konta Niepodzielni realm. It does not (yet) issue sessions, handle the
     | browser login flow, map roles onto the local `users` table, or accept
     | back-channel logout calls — those are later slices.
     |
-    | The two-address lesson (`ZALACZNIK-OD-022` §5): a browser and this
+    | The two-address lesson (the identity contract): a browser and this
     | server never see the IdP at the same address inside Docker. `issuer`
     | is the address a BROWSER would use and the only value ever compared
     | against a token's `iss` claim. `discovery_base` is the address THIS
@@ -26,7 +26,7 @@ return [
 
     'discovery_base' => env('KEYCLOAK_DISCOVERY_BASE', env('KEYCLOAK_ISSUER')),
 
-    // Frozen contract value (`ZALACZNIK-OD-022` §4): the only audience this
+    // Frozen contract value (the identity contract): the only audience this
     // API ever accepts. Never read from the environment — a wrong value here
     // would silently widen who gets in.
     'audience' => 'psychon-api',
@@ -42,7 +42,7 @@ return [
     |--------------------------------------------------------------------------
     | TLS
     |--------------------------------------------------------------------------
-    | `ZALACZNIK-OD-022` §8 gap 5: the ephemeral IdP has no production-like TLS
+    | Known limitation of the ephemeral identity provider: the ephemeral IdP has no production-like TLS
     | name, only a local Caddy CA. `ca_file`, when set, is trusted explicitly.
     | `insecure_tls` skips verification entirely and MUST be true only for a
     | local/test run against that throwaway CA — never in production, and
