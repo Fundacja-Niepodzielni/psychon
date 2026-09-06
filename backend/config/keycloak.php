@@ -52,4 +52,21 @@ return [
 
     'insecure_tls' => (bool) env('KEYCLOAK_INSECURE_TLS', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Back-channel logout (contract §4.5 / §4.5a)
+    |--------------------------------------------------------------------------
+    */
+
+    // A logout token's `iat` older than this (seconds) is rejected — part of
+    // the contract's full validation list ("iat świeże"), independent of
+    // the eight consumer-note points this slice is measured against.
+    'logout_token_max_age_seconds' => (int) env('KEYCLOAK_LOGOUT_TOKEN_MAX_AGE', 300),
+
+    // Throttling window (seconds) for the consumer-side alarm the read and
+    // write paths raise when the invalidation-marker store cannot be used —
+    // the one remedy that does not depend on the identity provider's own
+    // behaviour (measured: Keycloak neither retries nor logs after a 503).
+    'alarm_throttle_seconds' => (int) env('KEYCLOAK_ALARM_THROTTLE_SECONDS', 60),
+
 ];

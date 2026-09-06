@@ -3,12 +3,8 @@
 namespace App\Services\Keycloak;
 
 use Firebase\JWT\ExpiredException;
-use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Firebase\JWT\SignatureInvalidException;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use UnexpectedValueException;
 
@@ -16,7 +12,7 @@ use UnexpectedValueException;
  * Validates a Keycloak access token against the realm's own JWKS — signature,
  * issuer, audience, expiry (the identity contract). JWKS is taken
  * from OIDC discovery every time it is (re-)fetched, never hardcoded
- * (criterion §5).
+ * (criterion §5), via `KeycloakDiscovery` (shared with `LogoutTokenValidator`).
  *
  * The two-address lesson (recipe §5): discovery is fetched from
  * `keycloak.discovery_base` (reachable from THIS server — internal address
@@ -29,6 +25,8 @@ use UnexpectedValueException;
  */
 class TokenValidator
 {
+    public function __construct(private readonly KeycloakDiscovery $discovery) {}
+
     /**
      * @throws InvalidKeycloakTokenException the token itself is not acceptable
      * @throws RuntimeException the IdP/config is not in a state we can validate against
@@ -39,7 +37,7 @@ class TokenValidator
             throw new InvalidKeycloakTokenException('missing_token', 'No bearer token was presented.');
         }
 
-        $keys = $this->jwks();
+        $keys = $this->discovery->jwks();
 
         $previousLeeway = JWT::$leeway;
         JWT::$leeway = (int) config('keycloak.leeway', 0);
@@ -91,117 +89,16 @@ class TokenValidator
             $roles = array_values(array_map('strval', (array) $payload->realm_access->roles));
         }
 
-        return new KeycloakPrincipal($sub, $roles);
-    }
+        // `sid` is present on every token minted through `psychon-api`'s own
+        // authorization-code flow (realm attribute
+        // `backchannel.logout.session.required=true`); absent on tokens that
+        // never went through a browser session (e.g. `client_credentials`).
+        // Consumed by the back-channel logout read path — see
+        // `AuthenticateKeycloakToken` — to decide whether this bearer token
+        // is bound to a session that a logout event can invalidate at all.
+        $sid = isset($payload->sid) ? (string) $payload->sid : null;
 
-    /**
-     * @return array<string,Key>
-     */
-    private function jwks(): array
-    {
-        $cacheKey = 'keycloak:jwks:'.md5((string) config('keycloak.discovery_base'));
-        $ttl = (int) config('keycloak.jwks_cache_ttl', 300);
-
-        $jwks = Cache::remember($cacheKey, $ttl, function (): array {
-            $discovery = $this->discovery();
-
-            $jwksUri = $discovery['jwks_uri'] ?? null;
-            if (! is_string($jwksUri) || $jwksUri === '') {
-                throw new RuntimeException('Discovery document has no "jwks_uri".');
-            }
-
-            // Two-address lesson again: `jwks_uri` in the discovery document
-            // is rendered with the PUBLIC address (`KC_HOSTNAME` is fixed),
-            // but this server can only reach the IdP at `discovery_base`
-            // (internal address). Rewrite the origin, keep the path Keycloak
-            // gave us — never hardcode the path.
-            $jwksUri = $this->rewriteToDiscoveryBaseOrigin($jwksUri);
-
-            $response = $this->httpClient()->get($jwksUri);
-            if (! $response->successful()) {
-                throw new RuntimeException("Could not fetch JWKS from {$jwksUri}: HTTP {$response->status()}.");
-            }
-
-            return $response->json();
-        });
-
-        return JWK::parseKeySet($jwks);
-    }
-
-    /**
-     * Fetches OIDC discovery from the INTERNAL address and asserts its
-     * `issuer` equals the configured PUBLIC address (two-address lesson).
-     * A mismatch is a configuration defect, not a token problem — it does
-     * not produce a 401, it surfaces as a 500 so it is never mistaken for
-     * "this particular token is bad".
-     *
-     * @return array<string,mixed>
-     */
-    private function discovery(): array
-    {
-        $base = rtrim((string) config('keycloak.discovery_base'), '/');
-        if ($base === '') {
-            throw new RuntimeException('keycloak.discovery_base (KEYCLOAK_DISCOVERY_BASE / KEYCLOAK_ISSUER) is not configured.');
-        }
-
-        $response = $this->httpClient()->get($base.'/.well-known/openid-configuration');
-        if (! $response->successful()) {
-            throw new RuntimeException("Could not fetch OIDC discovery from {$base}: HTTP {$response->status()}.");
-        }
-
-        $discovery = $response->json();
-
-        $expectedIssuer = (string) config('keycloak.issuer');
-        $discoveredIssuer = $discovery['issuer'] ?? null;
-        if ($expectedIssuer === '' || $discoveredIssuer !== $expectedIssuer) {
-            throw new RuntimeException(sprintf(
-                'Discovery issuer "%s" (fetched from %s) does not match the configured public issuer "%s" — refusing to trust this realm.',
-                $discoveredIssuer ?? '(none)',
-                $base,
-                $expectedIssuer,
-            ));
-        }
-
-        return $discovery;
-    }
-
-    private function httpClient()
-    {
-        $client = Http::timeout(10);
-
-        $caFile = config('keycloak.ca_file');
-        if (is_string($caFile) && $caFile !== '') {
-            $client = $client->withOptions(['verify' => $caFile]);
-        } elseif (config('keycloak.insecure_tls') === true) {
-            // Recipe §8 gap 5 / criterion §5: only ever true for a local run
-            // against the throwaway Caddy CA — never in production, and this
-            // flag is never set true by this file, only by environment.
-            $client = $client->withoutVerifying();
-        }
-
-        return $client;
-    }
-
-    /**
-     * Replaces the scheme+host+port of `$publicUrl` with the origin of
-     * `keycloak.discovery_base`, keeping path/query untouched. Used only for
-     * endpoints this server must call itself (`jwks_uri`) — browser-facing
-     * endpoints are never rewritten.
-     */
-    private function rewriteToDiscoveryBaseOrigin(string $publicUrl): string
-    {
-        $base = (string) config('keycloak.discovery_base');
-        $baseParts = parse_url($base);
-        $urlParts = parse_url($publicUrl);
-
-        if (! is_array($baseParts) || ! is_array($urlParts) || ! isset($baseParts['scheme'], $baseParts['host'])) {
-            return $publicUrl;
-        }
-
-        $origin = $baseParts['scheme'].'://'.$baseParts['host'].(isset($baseParts['port']) ? ':'.$baseParts['port'] : '');
-        $rest = ($urlParts['path'] ?? '').(isset($urlParts['query']) ? '?'.$urlParts['query'] : '');
-
-        return $origin.$rest;
+        return new KeycloakPrincipal($sub, $roles, $sid);
     }
 
     /**
