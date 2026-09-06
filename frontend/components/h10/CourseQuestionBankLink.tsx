@@ -12,7 +12,7 @@ import type {
  *
  * Renderuje się WYŁĄCZNIE wtedy, gdy zasób kursu poda `test_id`. Powód: cztery
  * punkty API H10 adresują test jego własnym identyfikatorem, a `AdminCourseResource`
- * dziś go nie wystawia (zgłoszone nadzorcy — to jedna linia po stronie zasobu).
+ * dziś go nie wystawia (zgłoszone jako brak do uzupełnienia — to jedna linia po stronie zasobu).
  * Zgadywanie „id kursu = id testu" dałoby link prowadzący do cudzego banku pytań,
  * więc dopóki pola nie ma, karta kursu milczy zamiast kłamać.
  */

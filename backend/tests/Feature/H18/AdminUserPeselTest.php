@@ -10,10 +10,10 @@ use Tests\TestCase;
 /**
  * S1-3 · świadek pisany Z KRYTERIUM, nie z kodu wykonawcy.
  *
- * Kryterium (`ZLECENIE-001` §2.1): `POST /admin/users` **i** `PATCH /admin/users/{id}`
+ * Kryterium: `POST /admin/users` **i** `PATCH /admin/users/{id}`
  * z `pesel:"00000000000"` → 422; poprawny syntetyczny PESEL → 2xx; regresja H01 bez zmian.
  *
- * Klasa znaleziska (`WYTYCZNE-PRACY-PSYCHON` §8.1): reguła `Rules\Pesel` **istnieje**
+ * Klasa znaleziska: reguła `Rules\Pesel` **istnieje**
  * i działa w H01, ale administracja pilnuje **wyliczonych** pól (`max:32`), a nie
  * wszystkich. Kryterium ★ H01 zostaje wywrócone tylnymi drzwiami — nie dlatego, że
  * kontroli nie ma, tylko dlatego, że jest denylistą tam, gdzie powinna być allowlistą.
@@ -21,7 +21,7 @@ use Tests\TestCase;
  * ⚠ Czerwony do czasu pozycji S1-3 (zakres KOD-DOPIECIA). Nie naprawiam.
  *
  * DANE: wszystkie numery poniżej są SYNTETYCZNE — poprawna suma kontrolna,
- * nieistniejąca osoba. Żadnych prawdziwych danych osobowych (`ZLECENIE-001` §1.7).
+ * nieistniejąca osoba. Żadnych prawdziwych danych osobowych.
  *
  * UWAGA DLA PISZĄCYCH TU DALEJ: `pesel` oraz `address_*` mają cast `encrypted`.
  * `assertDatabaseHas(['pesel' => …])` nie zadziała nigdy — szyfrowanie jest

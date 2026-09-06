@@ -7,7 +7,8 @@ use RuntimeException;
 use Tests\Concerns\DeclaredTestDatabase;
 
 /**
- * Świadek odczytu DEKLARACJI bazy testowej (rdzeń §8.5 pkt 1, `ZLECENIE-014` §3).
+ * Świadek odczytu DEKLARACJI bazy testowej (kryterium: pusta deklaracja przerywa,
+ * nie tylko obiecuje).
  *
  * Trzy przypadki, których nie da się zobaczyć w normalnym przebiegu, bo tam
  * `phpunit.xml` jest zawsze poprawny: brak wpisu, wpis pusty i XML nie do odczytu.

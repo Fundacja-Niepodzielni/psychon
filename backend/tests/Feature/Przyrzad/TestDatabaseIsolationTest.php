@@ -7,7 +7,7 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Świadek PRZYRZĄDU, nie funkcji produktu (pułapka P-1, `WYTYCZNE-PRACY-PSYCHON` §7.1).
+ * Świadek PRZYRZĄDU, nie funkcji produktu (pułapka P-1: izolacja bazy testowej).
  *
  * Mierzy jedno: czy suita biegnie na bazie, na której DEKLARUJE, że biegnie.
  * Kontrola negatywna wykonuje się z zewnątrz, wstrzyknięciem zmiennej kontenera:

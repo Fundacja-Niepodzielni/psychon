@@ -63,7 +63,7 @@ class GenerateCertificateTest extends CertificatePackageCase
         $this->assertNotNull($certificate->pdf_path);
         Storage::disk('local')->assertExists($certificate->pdf_path);
 
-        // Kryterium H13 z `ZLECENIE-001` §2.1: „plik zaczyna się od `%PDF`".
+        // Kryterium H13: „plik zaczyna się od `%PDF`".
         // Nagłówek to jedyna część PDF-a, która jest jawnym tekstem z definicji formatu.
         $this->assertStringStartsWith(
             '%PDF',

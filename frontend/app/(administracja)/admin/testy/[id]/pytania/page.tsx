@@ -19,7 +19,7 @@ interface QuestionBankPageProps {
  * Trasa stoi na identyfikatorze testu, bo tak adresują go wszystkie cztery
  * punkty API (`/admin/tests/{test}/questions`, `/admin/questions/{question}`).
  * Wejście z karty kursu wymaga, żeby zasób kursu wystawiał ten identyfikator —
- * dziś go nie wystawia (zgłoszone nadzorcy), więc ekran jest osiągalny
+ * dziś go nie wystawia (zgłoszone jako brak do uzupełnienia), więc ekran jest osiągalny
  * z adresu, a link z karty kursu włączy się bez zmian tutaj.
  */
 export default async function QuestionBankPage({

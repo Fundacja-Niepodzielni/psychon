@@ -20,8 +20,8 @@ use Tests\TestCase;
  * procesie zmierzył ją już poprawnie. Wstrzyknięcie zmiennej po starcie niczego by nie
  * zmieniło — mierzyłoby pamięć, nie zachowanie.
  *
- * Podstawa: `ZLECENIE-005` §1 (wyjątek topologiczny przyjęty pod warunkiem, że przypadek
- * „zły host → awaria głośna, nie P-1" zostaje w suicie, a nie tylko w meldunku).
+ * Podstawa: wyjątek topologiczny przyjęty pod warunkiem, że przypadek
+ * „zły host → awaria głośna, nie P-1" zostaje w suicie, a nie tylko udokumentowany.
  *
  * KOSZT. Każdy przypadek to osobny przebieg `artisan test`, czyli ~25 s. Dlatego są
  * DWA, nie trzy: warunek „każdy przebieg ogłasza zmierzoną bazę" jest sprawdzany przy

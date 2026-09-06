@@ -9,7 +9,7 @@ use Tests\TestCase;
 /**
  * S1-4 · świadek pisany Z KRYTERIUM, nie z kodu wykonawcy.
  *
- * Kryterium (`ZLECENIE-001` §2.1): po `PATCH {address:{city}}` pola `address_street`
+ * Kryterium: po `PATCH {address:{city}}` pola `address_street`
  * i `address_zip` w bazie **niezmienione**; po `{address:{street:null}}` NULL dostaje
  * **wyłącznie** `street`.
  *

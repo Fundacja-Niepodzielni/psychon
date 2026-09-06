@@ -53,8 +53,8 @@ require __DIR__.'/../vendor/autoload.php';
     // wygląda jak zielone, a zła nazwa hosta pada głośno przy pierwszym połączeniu.
     // Dlatego wymuszamy semantykę, a topologię zostawiamy środowisku.
     //
-    // Lista jest WYLICZONA celowo i jest zamknięta: `ZLECENIE-005` §1 przyjmuje wyjątek
-    // pod warunkiem, że stoi w kodzie, a nie w czyjejś pamięci. Dopisanie do niej
+    // Lista jest WYLICZONA celowo i jest zamknięta: wyjątek przyjęty pod warunkiem,
+    // że stoi w kodzie, a nie w czyjejś pamięci. Dopisanie do niej
     // czegokolwiek poza topologią połączenia otwiera pułapkę P-1 z powrotem.
     $topologia = ['DB_HOST', 'DB_PORT'];
 

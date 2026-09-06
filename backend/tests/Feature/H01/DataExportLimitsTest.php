@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * S1-12 · świadek pisany Z KRYTERIUM (`ZLECENIE-001` §2.1 + założenie §5.2).
+ * S1-12 · świadek pisany Z KRYTERIUM: co najwyżej jeden niewygasły eksport na osobę.
  *
  * Kryterium: 10× `POST /me/exports` w minucie → **1 job w kolejce** (reszta odrzucona);
  * plik znika po TTL (test z przesuniętym zegarem).
@@ -20,7 +20,7 @@ use Tests\TestCase;
  * Dziesięć żądań to dziesięć plików z danymi osobowymi leżących bez terminu ważności —
  * to jest wyciek rozłożony w czasie, nie problem wydajności.
  *
- * REGUŁA (`ZLECENIE-012` §1, do aneksu X-4): **na osobę co najwyżej JEDEN niewygasły
+ * REGUŁA: **na osobę co najwyżej JEDEN niewygasły
  * eksport.** `queued`/`processing` → 409 `export_in_progress`; `ready` z ważnym
  * `expires_at` → 409 `export_already_available`; brak żywego → 202. `throttle` 3/60
  * jest drugą warstwą, ze slugiem `too_many_requests`.
@@ -42,7 +42,7 @@ class DataExportLimitsTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** TTL pliku eksportu wg założenia `ZLECENIE-001` §5.2. */
+    /** TTL pliku eksportu wg przyjętego założenia biznesowego. */
     private const TTL_GODZIN = 24;
 
     protected function setUp(): void
@@ -145,7 +145,7 @@ class DataExportLimitsTest extends TestCase
 
     public function test_the_throttle_refusal_also_uses_the_error_envelope(): void
     {
-        // `ZLECENIE-010` §2: 429 to teraz osobna odmowa („za dużo żądań w oknie"),
+        // Kryterium: 429 to osobna odmowa („za dużo żądań w oknie"),
         // różna od 409 („trwa poprzedni eksport"). Domyślna odpowiedź `ThrottleRequests`
         // Laravela NIE jest kopertą kontraktu — a odmowa poza kopertą trafia we froncie
         // w gałąź „nieznany błąd" i uczestniczka nie dowiaduje się, że ma spróbować później.

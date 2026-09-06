@@ -7,8 +7,8 @@ use RuntimeException;
 use Tests\Concerns\AllowedTestDatabases;
 
 /**
- * Świadek WYPROWADZENIA dopuszczonych nazw baz (kryterium 2 z `ZLECENIE-035`:
- * „allowlist wyprowadzona z deklaracji, nigdy druga lista nazw").
+ * Świadek WYPROWADZENIA dopuszczonych nazw baz (kryterium: „allowlist wyprowadzona
+ * z deklaracji, nigdy druga lista nazw").
  *
  * Sedno jest w teście `dopuszczenie_wedruje_za_deklaracja`: gdyby dopuszczenie było
  * dopisaną listą nazw, zmiana deklaracji zostawiłaby w nim starą nazwę — i strażnik

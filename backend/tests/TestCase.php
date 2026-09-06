@@ -335,7 +335,7 @@ Powód: '.self::$connectionFailure,
     }
 
     /**
-     * Nazwa bazy ma stać w logu KAŻDEGO przebiegu — meldunek cytuje bazę zmierzoną,
+     * Nazwa bazy ma stać w logu KAŻDEGO przebiegu — raport cytuje bazę zmierzoną,
      * nie tę zadeklarowaną w pliku konfiguracji.
      */
     private static function announceDatabase(string $database): void

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * S1-6 · świadek pisany Z KRYTERIUM (karta H15, kryterium 4 + `ZLECENIE-001` §2.1).
+ * S1-6 · świadek pisany Z KRYTERIUM (karta H15, kryterium 4).
  *
  * Kryterium: po wycofaniu zgody → wiersz w audycie ze slugiem `profile.withdrawn`
  * **i** wiersz powiadomienia dla roli zespołu; status profilu `withdrawn`;
@@ -22,7 +22,7 @@ use Tests\TestCase;
  * i §3.2 (audyt, „jedyne źródło prawdy o slugach"). Luka jest tylko po stronie emisji.
  *
  * ⚠ ODBIORCA POWIADOMIENIA — założenie, nie cytat. Żaden z rejestrów kontraktu nie
- * mówi, KTO dostaje `profile.withdrawn`. `ZLECENIE-001` §5.3 wskazuje role „koordynator"
+ * mówi, KTO dostaje `profile.withdrawn`. Wymaganie biznesowe wskazuje role „koordynator"
  * i „administrator", ale takich identyfikatorów w kontrakcie nie ma: §3.4 wymienia
  * `super_admin · project_manager · instructor · volunteer · student`. Przyjmuję
  * odwzorowanie po etykietach polskich: koordynator → `project_manager`

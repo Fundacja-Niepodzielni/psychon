@@ -17,7 +17,7 @@ use RuntimeException;
  *   `vendor/laravel/framework/src/Illuminate/Testing/Concerns/RunsInParallel.php:149-151`
  *     → przydział tokenów 1..N w procesie nadrzędnym
  *
- * DLACZEGO WYPROWADZENIE, A NIE DRUGA LISTA NAZW (`WYTYCZNE-PRACY-PSYCHON` §8.1).
+ * DLACZEGO WYPROWADZENIE, A NIE DRUGA LISTA NAZW — kryterium: jedno źródło prawdy.
  * Lista dopisana obok deklaracji byłaby DRUGIM źródłem prawdy: w dniu, w którym
  * ktoś zmieni `DB_DATABASE` w `phpunit.xml`, lista zostałaby stara i strażnik
  * przepuściłby bazę, której nikt już nie deklaruje. Tu każda dopuszczona nazwa

@@ -14,7 +14,7 @@ namespace Tests\Concerns;
  *
  * Od teraz brak `pcntl` jest NIEPOWODZENIEM. Pominięcie zostaje możliwe, ale musi
  * być DECYZJĄ: `CONCURRENCY_TESTS_SKIP=1` w środowisku. Allowlista wyjątku zamiast
- * milczącej rezygnacji (`WYTYCZNE-PRACY-PSYCHON` §8.1, §8.4; `ZLECENIE-005` §3).
+ * milczącej rezygnacji.
  *
  * Sama DECYZJA mieszka w `ConcurrencyRequirement`, bo w traicie byłaby niemierzalna:
  * w środowisku z `pcntl` dwie z trzech gałęzi nigdy się nie wykonują, a do stałych
