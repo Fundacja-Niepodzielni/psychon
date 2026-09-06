@@ -31,7 +31,8 @@ use Tests\TestCase;
  * przy 30 lekcjach w 11 kursach. Migracja zakładająca unikat nie potrzebuje więc
  * kroku renumerującego.
  *
- * ⚠ Czerwony do czasu pozycji S1-15 (zakres KOD-DOPIECIA). Nie naprawiam.
+ * ⚠ Czerwony do czasu dołożenia blokady/unikatu przy numerowaniu kolejności
+ * lekcji. Nie naprawiam tutaj — ten plik tylko mierzy.
  *
  * `php artisan test --filter=ConcurrentLessonOrder`
  */

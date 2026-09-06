@@ -18,7 +18,8 @@ use Tests\TestCase;
  * wszystkich. Kryterium ★ H01 zostaje wywrócone tylnymi drzwiami — nie dlatego, że
  * kontroli nie ma, tylko dlatego, że jest denylistą tam, gdzie powinna być allowlistą.
  *
- * ⚠ Czerwony do czasu pozycji S1-3 (zakres KOD-DOPIECIA). Nie naprawiam.
+ * ⚠ Czerwony do czasu objęcia walidacją PESEL wszystkich pól administracji
+ * (allowlista zamiast denylisty). Nie naprawiam tutaj — ten plik tylko mierzy.
  *
  * DANE: wszystkie numery poniżej są SYNTETYCZNE — poprawna suma kontrolna,
  * nieistniejąca osoba. Żadnych prawdziwych danych osobowych.

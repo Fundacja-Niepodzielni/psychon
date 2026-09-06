@@ -23,7 +23,8 @@ use Tests\TestCase;
  * a **pole równe `null`** to „wyczyść". Naprawa, która scala tak, że `null` też jest
  * ignorowany, zamienia jedną wadę na drugą — użytkowniczka nie ma jak wyczyścić pola.
  *
- * ⚠ Czerwony do czasu pozycji S1-4 (zakres KOD-DOPIECIA). Nie naprawiam.
+ * ⚠ Czerwony do czasu naprawy scalania częściowego przy `PATCH` adresu profilu.
+ * Nie naprawiam tutaj — ten plik tylko mierzy.
  *
  * `php artisan test --filter=ProfileAddressMerge`
  */

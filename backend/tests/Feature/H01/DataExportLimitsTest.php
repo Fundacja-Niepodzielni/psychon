@@ -34,7 +34,8 @@ use Tests\TestCase;
  * To jest ta sama klasa co P-1: **konfiguracja pomiaru pochodziła z miejsca,
  * którego pomiar nie deklarował.**
  *
- * ⚠ Czerwony do czasu pozycji S1-12 (zakres KOD-DOPIECIA). Nie naprawiam.
+ * ⚠ Czerwony do czasu wdrożenia limitu „jeden żywy eksport na osobę" w samym
+ * endpointzie eksportu. Nie naprawiam tutaj — ten plik tylko mierzy.
  *
  * `php artisan test --filter=DataExportLimits`
  */

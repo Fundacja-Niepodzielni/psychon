@@ -32,7 +32,8 @@ use Tests\TestCase;
  * → **0 wierszy z `count(*) > 1`** przy 30 pytaniach w 3 testach. Migracja
  * z unikatem nie potrzebuje kroku renumerującego.
  *
- * ⚠ Czerwony do czasu pozycji S1-16 (zakres KOD-DOPIECIA). Nie naprawiam.
+ * ⚠ Czerwony do czasu dołożenia blokady/unikatu przy numerowaniu kolejności
+ * pytań. Nie naprawiam tutaj — ten plik tylko mierzy.
  *
  * `php artisan test --filter=ConcurrentQuestionOrder`
  */

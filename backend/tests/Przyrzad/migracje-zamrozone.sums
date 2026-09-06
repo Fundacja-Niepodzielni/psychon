@@ -1,11 +1,12 @@
 # MIGRACJE ZAMROŻONE — sumy kontrolne zmierzone w SHA BAZY, nie przepisane z pamięci.
 #
 # Skąd ten plik i dlaczego nie jest listą pisaną ręcznie:
-#   BAZA i zbiór plików pochodzą z jednego pomiaru; SHA bazy czytany jest z deklaracji
-#   nadzoru (`_nadzor/straznik/wspolne.baza`), a nie wpisywany drugi raz.
+#   BAZA i zbiór plików pochodzą z jednego pomiaru; SHA bazy czytany jest z jednej
+#   wspólnej deklaracji bazy (plik `wspolne.baza` w katalogu strażnika), a nie
+#   wpisywany drugi raz.
 #
 # Odtworzenie (na hoście, w klonie z pełną historią):
-#   BAZA=$(grep -v '^[[:space:]]*#' <katalog-straznika>/wspolne.baza | grep -v '^[[:space:]]*$' | head -1)
+#   BAZA=$(grep -v '^[[:space:]]*#' <katalog-kontrolny>/wspolne.baza | grep -v '^[[:space:]]*$' | head -1)
 #   git ls-tree -r "$BAZA" -- backend/database/migrations/ | awk '{print $3"  "$4}'
 #
 # Dlaczego suma jedzie w pliku, a nie jest liczona z gita w chwili testu:
