@@ -21,6 +21,9 @@ final class KeycloakTokenFactory
 
     public const KID = 'test-kid';
 
+    /** The one event key OIDC Back-Channel Logout 1.0 requires in a logout token. */
+    public const BACKCHANNEL_LOGOUT_EVENT = 'http://schemas.openid.net/event/backchannel-logout';
+
     private string $privateKeyPem;
 
     /** @var array<string,string> */
@@ -95,6 +98,22 @@ final class KeycloakTokenFactory
         ], $claims);
 
         return JWT::encode($payload, $this->privateKeyPem, 'RS256', self::KID);
+    }
+
+    /**
+     * A logout token: the same signing key and issuer as {@see mint()}'s
+     * access tokens (so the same {@see installAsRealm()} realm validates
+     * both), but shaped for OIDC Back-Channel Logout 1.0 — it carries the
+     * `events` claim the spec requires and, unlike an access token, has no
+     * `exp` the logout-token validator would even look at.
+     *
+     * @param  array<string,mixed>  $claims  overrides merged over a minimal valid logout-token payload
+     */
+    public function mintLogoutToken(array $claims = []): string
+    {
+        return $this->mint(array_replace([
+            'events' => [self::BACKCHANNEL_LOGOUT_EVENT => (object) []],
+        ], $claims));
     }
 
     /**
