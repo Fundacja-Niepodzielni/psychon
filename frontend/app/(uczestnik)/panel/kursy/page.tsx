@@ -11,7 +11,7 @@ import { fetchCourses, type CourseListItem } from "@/lib/courses";
 /**
  * Katalog kursów uczestnika (H05).
  *
- * Komponent kliencki, bo token Bearer żyje w `localStorage`.
+ * Komponent kliencki, bo token Bearer żyje w pamięci klienta (lib/api.ts), nie na serwerze.
  * Bez kontrolki grupy produktowej — serwer zawęża katalog niejawnie do grupy
  * użytkownika, więc filtr na tym ekranie byłby martwym kodem.
  */

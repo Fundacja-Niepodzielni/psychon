@@ -279,7 +279,7 @@ export default function ProfilePage() {
     try {
       const base = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000")
         .replace(/\/+$/, "");
-      const token = getToken();
+      const token = await getToken();
       const res = await fetch(
         `${base}/api/v1/me/exports/${dataExport.id}/download`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} },

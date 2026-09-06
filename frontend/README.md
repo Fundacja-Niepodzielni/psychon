@@ -79,9 +79,12 @@ try { … } catch (err) {
 }
 ```
 
-Token trzymany w `localStorage` pod `np_token`; 401 czyści token i przekierowuje
-na `/logowanie` automatycznie. `body` będące `FormData` wysyła się jako multipart
-(uploady).
+Token Bearer żyje wyłącznie w pamięci karty — logowanie lokalne (`/auth/login`)
+trzyma go w zmiennej modułu, logowanie przez konto Fundacji (`/logowanie/konta`)
+czyta go z sesji Auth.js (`/api/auth/session`, ciasteczko HttpOnly). Nigdzie w
+`localStorage` — czytelnym dla każdego skryptu wstrzykniętego w stronę. 401 czyści
+token i przekierowuje na `/logowanie` automatycznie. `body` będące `FormData`
+wysyła się jako multipart (uploady).
 
 ## Tokeny designu (z makiety)
 

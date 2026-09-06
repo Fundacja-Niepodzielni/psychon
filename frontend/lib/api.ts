@@ -2,7 +2,12 @@
  * Klient API zgodny z kontraktem (docs/hackathon/02-kontrakt-api.md).
  *
  * - baza: NEXT_PUBLIC_API_URL + "/api/v1"
- * - token Bearer w localStorage pod kluczem "np_token"
+ * - token Bearer, z dwóch możliwych źródeł (nigdy z localStorage — czytelnego
+ *   dla każdego skryptu, który trafi na stronę):
+ *     1. logowanie lokalne (`/auth/login`) — token trzymany w pamięci na czas
+ *        karty, patrz `setToken`;
+ *     2. logowanie przez konto Fundacji — token czytany z sesji Auth.js
+ *        (`/api/auth/session`, ciasteczko HttpOnly), patrz `getToken`.
  * - koperta odpowiedzi: { data, meta? } — api() zwraca samo `data`,
  *   apiPaged() zwraca { data, meta } (listy z paginacją)
  * - koperta błędu: { error: { status, code, message, errors?, reason? } }
@@ -10,8 +15,6 @@
  * - 401 (poza /auth/login) → czyszczenie tokenu + przekierowanie na /logowanie
  * - 403 `access_expired` (H04) → przekierowanie na /dostep-wygasl (ekran startera)
  */
-
-export const TOKEN_KEY = "np_token";
 
 export interface PaginationMeta {
   current_page: number;
@@ -45,19 +48,72 @@ export class ApiError extends Error {
   }
 }
 
-export function getToken(): string | null {
+const SESSION_ENDPOINT = "/api/auth/session";
+
+interface SessionState {
+  token: string | null;
+  expiresAt: number; // 0 = brak sesji / nieznane
+}
+
+/** Token logowania lokalnego (`/auth/login`) — tylko w pamięci karty, nigdy
+ * w localStorage; ginie przy pełnym przeładowaniu, co jest zamierzonym
+ * skutkiem zdjęcia localStorage, nie usterką. */
+let manualToken: string | null = null;
+
+let sessionCache: SessionState | null = null;
+let sessionInFlight: Promise<SessionState> | null = null;
+
+async function fetchSession(): Promise<SessionState> {
+  if (typeof window === "undefined") return { token: null, expiresAt: 0 };
+  try {
+    const res = await fetch(SESSION_ENDPOINT, { credentials: "same-origin" });
+    if (!res.ok) return { token: null, expiresAt: 0 };
+    const json = (await res.json()) as {
+      accessToken: string | null;
+      expiresAt: number | null;
+    };
+    return { token: json.accessToken, expiresAt: json.expiresAt ?? 0 };
+  } catch {
+    return { token: null, expiresAt: 0 };
+  }
+}
+
+/**
+ * Zwraca token do nagłówka `Authorization`. Kolejność źródeł:
+ *   1. `manualToken` — ustawiony przez ekran logowania lokalnego;
+ *   2. sesja konta Fundacji, odczytana (i podręcznie cache'owana do jej
+ *      wygaśnięcia) z `/api/auth/session`.
+ * Żadne z nich nie mieszka w `localStorage`.
+ */
+export async function getToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  if (manualToken) return manualToken;
+
+  const now = Date.now();
+  if (sessionCache && sessionCache.expiresAt - 5000 > now) {
+    return sessionCache.token;
+  }
+  if (!sessionInFlight) {
+    sessionInFlight = fetchSession().finally(() => {
+      sessionInFlight = null;
+    });
+  }
+  sessionCache = await sessionInFlight;
+  return sessionCache.token;
 }
 
+/** Używane wyłącznie przez ekran logowania lokalnego (`/auth/login`) — token
+ * trzymany w pamięci, nie w `localStorage`. */
 export function setToken(token: string): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(TOKEN_KEY, token);
+  manualToken = token;
 }
 
+/** Czyści aktywne źródło tokenu po stronie przeglądarki. Nie kończy samo z
+ * siebie sesji konta Fundacji po stronie serwera — od tego jest
+ * `POST /api/auth/signout`. */
 export function clearToken(): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(TOKEN_KEY);
+  manualToken = null;
+  sessionCache = { token: null, expiresAt: 0 };
 }
 
 export interface ApiOptions extends Omit<RequestInit, "body"> {
@@ -76,7 +132,7 @@ async function request(path: string, options: ApiOptions = {}): Promise<unknown>
   const headers = new Headers(extraHeaders);
   headers.set("Accept", "application/json");
 
-  const token = getToken();
+  const token = await getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   let payload: BodyInit | undefined;
@@ -144,6 +200,52 @@ export async function apiPaged<T>(
   return (await request(path, options)) as { data: T[]; meta?: PaginationMeta };
 }
 
+export interface WhoAmI {
+  sub: string;
+  roles: string[];
+}
+
+/**
+ * `GET /sso/whoami` — jedyny punkt, który potwierdza, że wywołanie API
+ * niesie token z sesji konta Fundacji, i pokazuje dokładnie to, co ten token
+ * niesie (`sub`, `roles`). Odpowiedź NIE jest owinięta w kopertę `{ data }`
+ * jak reszta API, więc woła `request()`-owy fetch niżej wprost, a nie przez
+ * `api<T>()`.
+ */
+export async function fetchWhoAmI(): Promise<WhoAmI> {
+  const token = await getToken();
+  const headers = new Headers({ Accept: "application/json" });
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(`${baseUrl()}/sso/whoami`, { headers });
+  let json: unknown = null;
+  try {
+    json = await res.json();
+  } catch {
+    // brak JSON-a — obsłużone niżej przez rzucenie błędu z samym kodem HTTP
+  }
+
+  if (!res.ok) {
+    const err = (json as { error?: Partial<ApiErrorBody> } | null)?.error;
+    throw new ApiError({
+      status: err?.status ?? res.status,
+      code: err?.code ?? "unknown_error",
+      message: err?.message ?? "Nie udało się potwierdzić tożsamości.",
+      reason: err?.reason,
+    });
+  }
+
+  const body = json as Partial<WhoAmI> | null;
+  if (!body || typeof body.sub !== "string") {
+    throw new ApiError({
+      status: res.status,
+      code: "unexpected_response",
+      message: "Nieoczekiwana odpowiedź serwera.",
+    });
+  }
+  return { sub: body.sub, roles: Array.isArray(body.roles) ? body.roles : [] };
+}
+
 /**
  * Pobiera plik przez `fetch` z nagłówkiem Bearer i zapisuje go jako blob —
  * zwykły `<a href>` nie przeniósłby tokenu do trasy chronionej autoryzacją
@@ -151,7 +253,7 @@ export async function apiPaged<T>(
  */
 export async function downloadFile(url: string, filename: string): Promise<void> {
   const headers = new Headers();
-  const token = getToken();
+  const token = await getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const res = await fetch(url, { headers });

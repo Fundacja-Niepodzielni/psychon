@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 /**
  * Pulpit uczestnika (`/panel/pulpit`) — pozycja menu tuż po „Start".
- * Cała logika po stronie klienta (token Bearer w `localStorage`).
+ * Cała logika po stronie klienta (token Bearer z lib/api.ts).
  */
 export default function PulpitPage() {
   return <PulpitDashboard />;

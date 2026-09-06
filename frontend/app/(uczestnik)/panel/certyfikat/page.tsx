@@ -80,7 +80,7 @@ export default function CertificatePage() {
       const base =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
       const res = await fetch(`${base.replace(/\/+$/, "")}/api/v1/certificate/download`, {
-        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+        headers: { Authorization: `Bearer ${(await getToken()) ?? ""}` },
       });
       if (res.status === 404) {
         setActionError(

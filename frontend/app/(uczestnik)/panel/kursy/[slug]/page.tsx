@@ -65,7 +65,7 @@ function screenFor(result: PromiseSettledResult<CourseDetailData>): Screen {
 /**
  * Strona jednego kursu (H05).
  *
- * Komponent kliencki (token w `localStorage`), więc `params` przychodzi jako
+ * Komponent kliencki (token Bearer z lib/api.ts), więc `params` przychodzi jako
  * `Promise` i rozpakowujemy je Reactowym `use()` — konwencja Next 16
  * (node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md).
  *
