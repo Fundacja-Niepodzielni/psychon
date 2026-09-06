@@ -28,4 +28,5 @@ Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(f
     Route::get('/admin/users/{id}', [AdminUserController::class, 'show'])->whereNumber('id');
     Route::patch('/admin/users/{id}', [AdminUserController::class, 'update'])->whereNumber('id');
     Route::post('/admin/users/{id}/block', [AdminUserController::class, 'block'])->whereNumber('id');
+    Route::post('/admin/users/{id}/anonymize', [AdminUserController::class, 'anonymize'])->whereNumber('id');
 });

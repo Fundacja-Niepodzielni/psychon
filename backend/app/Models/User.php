@@ -57,12 +57,18 @@ class User extends Authenticatable
             'access_expires_at' => 'datetime',
             'program_completed_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'anonymized_at' => 'datetime',
         ];
     }
 
     public function fullName(): string
     {
         return trim("{$this->first_name} {$this->last_name}");
+    }
+
+    public function isAnonymized(): bool
+    {
+        return $this->anonymized_at !== null;
     }
 
     public function edition(): BelongsTo

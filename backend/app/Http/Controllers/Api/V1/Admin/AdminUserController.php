@@ -12,6 +12,7 @@ use App\Http\Resources\AdminUserListResource;
 use App\Models\EmailMessage;
 use App\Models\User;
 use App\Queries\AdminUserQuery;
+use App\Services\H18\UserAnonymizer;
 use App\Support\AuditLog;
 use App\Support\Csv;
 use Illuminate\Http\JsonResponse;
@@ -190,6 +191,31 @@ class AdminUserController extends Controller
 
             return $user;
         });
+
+        return response()->json([
+            'data' => AdminUserCardResource::make($user->load('consents'))->resolve($request),
+        ]);
+    }
+
+    /**
+     * Right-to-erasure procedure (art. 17, non-functional spec §2 pt. 4):
+     * personal data on the row is replaced, the row itself stays so every
+     * result, attempt and certificate that references it keeps working.
+     * Same role guard and super-admin protection as `block()`; the target
+     * loses its account entirely (no more login, no more of its own tokens),
+     * so this is one-way — there is no matching "un-anonymize".
+     */
+    public function anonymize(Request $request, int $id): JsonResponse
+    {
+        $target = User::query()->find($id);
+
+        if ($target === null) {
+            throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
+        }
+
+        $this->assertMayAssignRole($request->user(), null, $target);
+
+        $user = UserAnonymizer::run($target, $request->user());
 
         return response()->json([
             'data' => AdminUserCardResource::make($user->load('consents'))->resolve($request),
