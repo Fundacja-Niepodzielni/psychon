@@ -6,6 +6,7 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\ParallelTesting;
 use Tests\Concerns\ProcessDatabaseAnnouncement;
+use Tests\Concerns\ProcessDatabaseNameGuard;
 
 /**
  * Aplikacja procesu NADRZĘDNEGO przebiegu równoległego — i jedyne miejsce, w którym
@@ -34,6 +35,19 @@ trait CreatesApplication
         $app->make(Kernel::class)->bootstrap();
 
         ParallelTesting::setUpProcess(static function (): void {
+            $bledy = ProcessDatabaseNameGuard::ocena();
+
+            if ($bledy !== []) {
+                // Odzywa się i kończy TU, w procesie nadrzędnym — jego `fwrite(STDERR)`
+                // trafia do logu bramki; to samo wywołanie w workerze potomnym by nie trafiło
+                // (patrz `ProcessDatabaseAnnouncement`). Nie wołamy dalej `announce()`: ta
+                // funkcja przy okazji zakłada bazę procesu, a proces, który i tak zaraz
+                // przerwiemy, nie ma czego zakładać.
+                fwrite(STDERR, PHP_EOL.ProcessDatabaseNameGuard::komunikat($bledy).PHP_EOL);
+
+                return;
+            }
+
             ProcessDatabaseAnnouncement::announce();
         });
 
