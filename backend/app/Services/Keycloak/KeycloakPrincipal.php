@@ -18,10 +18,16 @@ final class KeycloakPrincipal
      * @param  list<string>  $roles  exactly `realm_access.roles` from the
      *                               access token; an empty list is a valid
      *                               state (e.g. `test-kandydat`), not an error.
+     * @param  string|null  $sid  the token's `sid` claim, when present — the
+     *                            identity the back-channel logout read path
+     *                            checks against the invalidation marker
+     *                            store. `null` for tokens never bound to a
+     *                            browser session (e.g. `client_credentials`).
      */
     public function __construct(
         public readonly string $sub,
         public readonly array $roles,
+        public readonly ?string $sid = null,
     ) {}
 
     public function hasRole(string $role): bool
