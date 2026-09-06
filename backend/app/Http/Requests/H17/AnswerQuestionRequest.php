@@ -29,6 +29,7 @@ class AnswerQuestionRequest extends FormRequest
     {
         return [
             'answer.required' => 'Wpisz treść odpowiedzi.',
+            'answer.min' => 'Wpisz treść odpowiedzi.',
             'answer.max' => 'Odpowiedź może mieć maksymalnie 5000 znaków.',
         ];
     }

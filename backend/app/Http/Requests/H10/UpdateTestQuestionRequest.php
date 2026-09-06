@@ -50,7 +50,18 @@ class UpdateTestQuestionRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'body.required' => 'Podaj treść pytania.',
+            'body.max' => 'Treść pytania może mieć najwyżej 2000 znaków.',
+            'sequence_order.integer' => 'Pozycja pytania musi być liczbą całkowitą.',
+            'sequence_order.min' => 'Pozycja pytania musi być liczbą co najmniej 1.',
+            'answers.required' => 'Podaj odpowiedzi do wyboru.',
+            'answers.array' => 'Odpowiedzi mają nieprawidłowy format.',
             'answers.min' => 'Pytanie musi mieć co najmniej :min odpowiedzi.',
+            'answers.*.id.integer' => 'Identyfikator odpowiedzi musi być liczbą całkowitą.',
+            'answers.*.body.required' => 'Podaj treść każdej odpowiedzi.',
+            'answers.*.body.max' => 'Treść odpowiedzi może mieć najwyżej 1000 znaków.',
+            'answers.*.is_correct.required' => 'Zaznacz, czy odpowiedź jest poprawna.',
+            'answers.*.is_correct.boolean' => 'Poprawność odpowiedzi przyjmuje tylko wartość prawda/fałsz.',
         ];
     }
 }

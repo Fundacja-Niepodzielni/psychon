@@ -29,6 +29,20 @@ if (! class_exists('H06ProgressRequest', false)) {
                 'active_delta' => ['required', 'integer', 'min:0'],
             ];
         }
+
+        public function messages(): array
+        {
+            return [
+                'position_seconds.integer' => 'Pozycja w materiale musi być liczbą całkowitą sekund.',
+                'position_seconds.min' => 'Pozycja w materiale nie może być ujemna.',
+                'watched_delta.required' => 'Podaj, ile sekund materiału obejrzano od ostatniego zapisu.',
+                'watched_delta.integer' => 'Czas obejrzanego materiału musi być liczbą całkowitą sekund.',
+                'watched_delta.min' => 'Czas obejrzanego materiału nie może być ujemny.',
+                'active_delta.required' => 'Podaj, ile sekund aktywności upłynęło od ostatniego zapisu.',
+                'active_delta.integer' => 'Czas aktywności musi być liczbą całkowitą sekund.',
+                'active_delta.min' => 'Czas aktywności nie może być ujemny.',
+            ];
+        }
     }
 }
 

@@ -34,10 +34,21 @@ class UpdateEditionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'test_pass_threshold.max' => 'Próg zaliczenia testu musi mieścić się w zakresie 0-100%.',
-            'reliability_threshold.max' => 'Próg rzetelności musi mieścić się w zakresie 0-100%.',
-            'lesson_completion_percent.max' => 'Próg ukończenia lekcji musi mieścić się w zakresie 0-100%.',
+            'integer' => 'To pole musi być liczbą całkowitą.',
+            'name.max' => 'Nazwa edycji jest za długa (maksymalnie 255 znaków).',
+            'starts_at.date' => 'Podaj poprawną datę rozpoczęcia.',
+            'ends_at.date' => 'Podaj poprawną datę zakończenia.',
             'ends_at.after' => 'Data zakończenia musi być późniejsza niż data rozpoczęcia.',
+            'seats_limit.min' => 'Limit miejsc musi być liczbą co najmniej 1.',
+            'test_pass_threshold.min' => 'Próg zaliczenia testu musi mieścić się w zakresie 0-100%.',
+            'test_pass_threshold.max' => 'Próg zaliczenia testu musi mieścić się w zakresie 0-100%.',
+            'test_attempts_limit.min' => 'Limit podejść do testu musi być liczbą co najmniej 1.',
+            'internship_hours_required.min' => 'Wymagana liczba godzin stażu musi wynosić co najmniej 1.',
+            'supervision_required_count.min' => 'Wymagana liczba superwizji musi wynosić co najmniej 1.',
+            'reliability_threshold.min' => 'Próg rzetelności musi mieścić się w zakresie 0-100%.',
+            'reliability_threshold.max' => 'Próg rzetelności musi mieścić się w zakresie 0-100%.',
+            'lesson_completion_percent.min' => 'Próg ukończenia lekcji musi mieścić się w zakresie 0-100%.',
+            'lesson_completion_percent.max' => 'Próg ukończenia lekcji musi mieścić się w zakresie 0-100%.',
         ];
     }
 }

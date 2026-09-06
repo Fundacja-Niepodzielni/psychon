@@ -27,6 +27,17 @@ class SubmitAttemptRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'answers.required' => 'Zaznacz odpowiedzi przed wysłaniem testu.',
+            'answers.array' => 'Odpowiedzi mają nieprawidłowy format.',
+            'answers.min' => 'Zaznacz co najmniej jedną odpowiedź.',
+            'answers.*.required' => 'Każde pytanie musi mieć zaznaczoną odpowiedź.',
+            'answers.*.integer' => 'Odpowiedź musi być identyfikatorem liczbowym.',
+        ];
+    }
+
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {

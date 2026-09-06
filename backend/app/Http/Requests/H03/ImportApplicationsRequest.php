@@ -17,4 +17,14 @@ class ImportApplicationsRequest extends FormRequest
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:5120'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'file.required' => 'Wskaż plik CSV do zaimportowania.',
+            'file.file' => 'Wgraj poprawny plik.',
+            'file.mimes' => 'Plik musi być w formacie CSV.',
+            'file.max' => 'Plik może mieć najwyżej 5 MB.',
+        ];
+    }
 }

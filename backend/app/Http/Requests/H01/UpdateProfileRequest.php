@@ -42,6 +42,9 @@ class UpdateProfileRequest extends FormRequest
             'first_name.max' => 'Imię jest za długie (maksymalnie :max znaków).',
             'last_name.max' => 'Nazwisko jest za długie (maksymalnie :max znaków).',
             'phone.max' => 'Numer telefonu jest za długi.',
+            'address.array' => 'Adres ma nieprawidłowy format.',
+            'address.street.max' => 'Ulica jest za długa (maksymalnie :max znaków).',
+            'address.city.max' => 'Miasto jest za długie (maksymalnie :max znaków).',
             'address.zip.max' => 'Kod pocztowy jest za długi.',
         ];
     }

@@ -34,10 +34,13 @@ class UpdateMyInstructorProfileRequest extends FormRequest
         return [
             'specializations.array' => 'Specjalizacje podaj jako listę.',
             'specializations.*.string' => 'Każda specjalizacja musi być tekstem.',
+            'specializations.*.max' => 'Nazwa specjalizacji może mieć najwyżej 120 znaków.',
             'responsibilities.array' => 'Zakres odpowiedzialności podaj jako listę.',
             'responsibilities.*.string' => 'Każda pozycja odpowiedzialności musi być tekstem.',
+            'responsibilities.*.max' => 'Pozycja zakresu odpowiedzialności może mieć najwyżej 200 znaków.',
             'bio.max' => 'Opis może mieć maksymalnie 2000 znaków.',
             'experience.max' => 'Doświadczenie może mieć maksymalnie 2000 znaków.',
+            'city.max' => 'Nazwa miasta może mieć najwyżej 120 znaków.',
         ];
     }
 }

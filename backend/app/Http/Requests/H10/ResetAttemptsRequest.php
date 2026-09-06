@@ -26,6 +26,9 @@ class ResetAttemptsRequest extends FormRequest
     {
         return [
             'reason.required' => 'Podaj powód resetu limitu podejść.',
+            'reason.string' => 'Powód musi być tekstem.',
+            'reason.min' => 'Powód jest za krótki (minimum :min znaki).',
+            'reason.max' => 'Powód jest za długi (maksymalnie :max znaków).',
         ];
     }
 }

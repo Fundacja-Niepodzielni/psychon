@@ -26,4 +26,28 @@ class StoreApplicationRequest extends FormRequest
             'graduation_year' => ['sometimes', 'nullable', 'integer', 'min:1900', 'max:'.(now()->year + 1)],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'string' => 'To pole musi być tekstem.',
+            'edition_id.integer' => 'Identyfikator edycji musi być liczbą całkowitą.',
+            'edition_id.exists' => 'Nie znaleziono wskazanej edycji.',
+            'first_name.required' => 'Podaj imię.',
+            'first_name.max' => 'Imię jest za długie (maksymalnie 255 znaków).',
+            'last_name.required' => 'Podaj nazwisko.',
+            'last_name.max' => 'Nazwisko jest za długie (maksymalnie 255 znaków).',
+            'email.required' => 'Podaj adres e-mail.',
+            'email.email' => 'Podaj poprawny adres e-mail.',
+            'email.max' => 'Adres e-mail jest za długi (maksymalnie 255 znaków).',
+            'phone.max' => 'Numer telefonu jest za długi.',
+            'source.max' => 'Źródło zgłoszenia jest za długie.',
+            'role.in' => 'Nieznana rola.',
+            'payload.array' => 'Dodatkowe dane zgłoszenia mają nieprawidłowy format.',
+            'university.max' => 'Nazwa uczelni jest za długa (maksymalnie 255 znaków).',
+            'graduation_year.integer' => 'Rok ukończenia studiów musi być liczbą całkowitą.',
+            'graduation_year.min' => 'Rok ukończenia studiów jest nieprawdopodobnie wczesny.',
+            'graduation_year.max' => 'Rok ukończenia studiów nie może być w przyszłości.',
+        ];
+    }
 }
