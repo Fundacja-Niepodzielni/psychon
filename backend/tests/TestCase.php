@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\ParallelTesting;
 use RuntimeException;
 use Tests\Concerns\AllowedTestDatabases;
 use Tests\Concerns\DeclaredTestDatabase;
+use Tests\Concerns\ProcessDatabaseNameGuard;
 use Throwable;
 
 /**
@@ -41,6 +42,15 @@ use Throwable;
  *
  * Dopuszczenie w obu punktach jest WYPROWADZONE z deklaracji
  * (`Tests\Concerns\AllowedTestDatabases`), nigdy dopisane jako druga lista nazw.
+ *
+ * ZEROWY PUNKT KONTROLNY — dopisany osobno, bo pilnuje INNEJ rzeczy: nie tego, na czym
+ * biegnie POŁĄCZENIE, tylko tego, jaką nazwę runner ZAMIERZA nadać nowej bazie tego
+ * procesu (`Tests\Concerns\ProcessDatabaseNameGuard`). Runner nazywa bazę z konfiguracji
+ * połączenia, nie z deklaracji — rozjazd między tymi dwiema rzeczami nie objawia się
+ * jako zła nazwa POŁĄCZENIA, więc punkty pierwszy i drugi mogą go nie zobaczyć.
+ * Ten punkt kończy proces `exit()`-em, nie nieudaną asercją: asercja kończy tylko
+ * bieżący test, a `CREATE DATABASE` pod złą nazwą zdąży się wykonać, zanim PHPUnit
+ * przejdzie do następnego testu.
  */
 abstract class TestCase extends BaseTestCase
 {
@@ -205,6 +215,23 @@ Następne testy zastaną niepusty stan i zaczerwienią się bez własnej winy. '
     public function createApplication(): Application
     {
         $app = parent::createApplication();
+
+        // ZEROWY punkt kontrolny — WYŁĄCZNIE pod runnerem równoległym, wcześniej niż
+        // wszystko poniżej. Dwa punkty niżej porównują żywe połączenie z deklaracją;
+        // ten dodatkowo porównuje nazwę, którą runner ZAMIERZA utworzyć dla tego procesu
+        // (`Tests\Concerns\ProcessDatabaseNameGuard`). Rozjazd między konfiguracją a
+        // deklaracją kończy proces TWARDO (`exit`, nie `fail`): nieudana asercja kończy
+        // tylko bieżący test i PHPUnit jedzie do następnego, a `CREATE DATABASE` pod
+        // złą nazwą zdąży się wykonać w międzyczasie. Twardy koniec nie zostawia procesu,
+        // który mógłby cokolwiek jeszcze utworzyć.
+        if (ParallelTesting::token() !== false) {
+            $rozjazdNazwy = ProcessDatabaseNameGuard::ocena();
+
+            if ($rozjazdNazwy !== []) {
+                fwrite(STDERR, PHP_EOL.ProcessDatabaseNameGuard::komunikat($rozjazdNazwy).PHP_EOL);
+                exit(1);
+            }
+        }
 
         if (self::$measuredDatabase === null) {
             self::$measuredDatabase = self::measureDatabase($app);
