@@ -90,7 +90,7 @@ class AttemptLimitTest extends TestPackageCase
         Sanctum::actingAs($user);
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 2)])->assertCreated();
-        $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 2)])->assertCreated();
+        $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersForAttempt($test, 2, 2)])->assertCreated();
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 10)])->assertCreated();
 
         $this->assertSame(0, Notification::where('type', 'attempt.failed_final')->count());
