@@ -2,19 +2,19 @@
  * Klient API zgodny z kontraktem (docs/hackathon/02-kontrakt-api.md).
  *
  * - baza: NEXT_PUBLIC_API_URL + "/api/v1"
- * - token Bearer, z dwóch możliwych źródeł (nigdy z localStorage — czytelnego
- *   dla każdego skryptu, który trafi na stronę):
- *     1. logowanie lokalne (`/auth/login`) — token trzymany w pamięci na czas
- *        karty, patrz `setToken`;
- *     2. logowanie przez konto Fundacji — token czytany z sesji Auth.js
- *        (`/api/auth/session`, ciasteczko HttpOnly), patrz `getToken`.
+ * - token Bearer — jedno źródło dla obu drzwi logowania (logowanie lokalne i
+ *   logowanie przez konto Fundacji): sesja Auth.js, odczytana z
+ *   `/api/auth/session` (ciasteczko HttpOnly, nigdy `localStorage` — czytelnego
+ *   dla każdego skryptu, który trafi na stronę), patrz `getToken`.
  * - koperta odpowiedzi: { data, meta? } — api() zwraca samo `data`,
  *   apiPaged() zwraca { data, meta } (listy z paginacją)
  * - koperta błędu: { error: { status, code, message, errors?, reason? } }
  *   → rzucamy typowany ApiError
- * - 401 (poza /auth/login) → czyszczenie tokenu + przekierowanie na /logowanie
+ * - 401 → wylogowanie sesji Auth.js + przekierowanie na /logowanie
  * - 403 `access_expired` (H04) → przekierowanie na /dostep-wygasl (ekran startera)
  */
+
+import { signOut } from "next-auth/react";
 
 export interface PaginationMeta {
   current_page: number;
@@ -55,11 +55,6 @@ interface SessionState {
   expiresAt: number; // 0 = brak sesji / nieznane
 }
 
-/** Token logowania lokalnego (`/auth/login`) — tylko w pamięci karty, nigdy
- * w localStorage; ginie przy pełnym przeładowaniu, co jest zamierzonym
- * skutkiem zdjęcia localStorage, nie usterką. */
-let manualToken: string | null = null;
-
 let sessionCache: SessionState | null = null;
 let sessionInFlight: Promise<SessionState> | null = null;
 
@@ -79,15 +74,13 @@ async function fetchSession(): Promise<SessionState> {
 }
 
 /**
- * Zwraca token do nagłówka `Authorization`. Kolejność źródeł:
- *   1. `manualToken` — ustawiony przez ekran logowania lokalnego;
- *   2. sesja konta Fundacji, odczytana (i podręcznie cache'owana do jej
- *      wygaśnięcia) z `/api/auth/session`.
- * Żadne z nich nie mieszka w `localStorage`.
+ * Zwraca token do nagłówka `Authorization`, jednakowo dla obu drzwi
+ * logowania — oba trzymają swój token w tej samej sesji Auth.js, więc obie
+ * odczytują ją stąd, podręcznie cache'owanej do jej wygaśnięcia
+ * (`/api/auth/session`). Żaden token nie mieszka w `localStorage`.
  */
 export async function getToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  if (manualToken) return manualToken;
 
   const now = Date.now();
   if (sessionCache && sessionCache.expiresAt - 5000 > now) {
@@ -102,18 +95,22 @@ export async function getToken(): Promise<string | null> {
   return sessionCache.token;
 }
 
-/** Używane wyłącznie przez ekran logowania lokalnego (`/auth/login`) — token
- * trzymany w pamięci, nie w `localStorage`. */
-export function setToken(token: string): void {
-  manualToken = token;
+/** Czyści tylko podręczny cache po stronie przeglądarki — dla zakończenia
+ * samej sesji Auth.js patrz `endSession`. */
+function invalidateSessionCache(): void {
+  sessionCache = { token: null, expiresAt: 0 };
+  sessionInFlight = null;
 }
 
-/** Czyści aktywne źródło tokenu po stronie przeglądarki. Nie kończy samo z
- * siebie sesji konta Fundacji po stronie serwera — od tego jest
- * `POST /api/auth/signout`. */
-export function clearToken(): void {
-  manualToken = null;
-  sessionCache = { token: null, expiresAt: 0 };
+/**
+ * Kończy sesję Auth.js po obu drzwiach naraz (jeden mechanizm sesji, jedno
+ * wylogowanie) i czyści podręczny cache. Wołane przez ekran „Twoje konto" i
+ * automatycznie po nieoczekiwanym 401 z API — dawniej to drugie czyściło
+ * tylko pamięć karty i zostawiało ciasteczko sesji nietknięte.
+ */
+export async function endSession(): Promise<void> {
+  invalidateSessionCache();
+  await signOut({ redirect: false });
 }
 
 export interface ApiOptions extends Omit<RequestInit, "body"> {
@@ -149,11 +146,12 @@ async function request(path: string, options: ApiOptions = {}): Promise<unknown>
     body: payload,
   });
 
-  // 401 = brak/nieważny token → wylogowanie (poza samym logowaniem)
-  if (res.status === 401 && !path.startsWith("/auth/login")) {
-    clearToken();
+  // 401 = brak/nieważny token → koniec sesji + przekierowanie na /logowanie
+  if (res.status === 401) {
     if (typeof window !== "undefined") {
-      window.location.assign(new URL("/logowanie", window.location.origin));
+      void endSession().finally(() => {
+        window.location.assign(new URL("/logowanie", window.location.origin));
+      });
     }
   }
 

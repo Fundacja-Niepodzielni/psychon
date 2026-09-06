@@ -1,19 +1,20 @@
 "use client";
 
+import { signIn } from "next-auth/react";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Alert from "@/components/ui/Alert";
 import Card from "@/components/ui/Card";
 
-/** Human-readable text for the failure reasons the callback route can send
- * back via `?error=`. Anything not listed here still shows, just untranslated —
- * this is a thin verification screen, not a full error-copy catalogue. */
+/** Human-readable text for the Auth.js error codes the callback can redirect
+ * back here with (`?error=`). Anything not listed here still shows, just
+ * untranslated — this is a thin verification screen, not a full error-copy
+ * catalogue. */
 const ERROR_MESSAGES: Record<string, string> = {
-  missing_state: "Sesja logowania wygasła. Spróbuj ponownie.",
-  state_mismatch: "Nie udało się potwierdzić żądania logowania. Spróbuj ponownie.",
-  token_exchange_failed: "Konto Niepodzielni nie potwierdziło logowania. Spróbuj ponownie.",
-  no_subject: "Otrzymany token nie niesie tożsamości użytkownika.",
-  access_denied: "Logowanie zostało anulowane.",
+  OAuthCallbackError: "Konto Niepodzielni nie potwierdziło logowania. Spróbuj ponownie.",
+  OAuthSignInError: "Nie udało się rozpocząć logowania przez Konta Niepodzielni.",
+  AccessDenied: "Logowanie zostało anulowane.",
+  Configuration: "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.",
 };
 
 /** `useSearchParams()` opts the page into client-side rendering, so Next
@@ -60,12 +61,13 @@ export default function AccountSystemLoginPage() {
             <p className="text-small text-subtle">
               Zostaniesz przekierowany na stronę logowania konta Fundacji Niepodzielni.
             </p>
-            <a
-              href="/api/auth/signin"
+            <button
+              type="button"
+              onClick={() => void signIn("keycloak", { callbackUrl: "/konto" })}
               className="inline-flex items-center justify-center gap-2 rounded-pill bg-primary px-6 py-2.5 text-body font-medium text-light transition-colors duration-200 hover:bg-ink focus-visible:focus-ring"
             >
               Zaloguj się przez Konta Niepodzielni
-            </a>
+            </button>
           </div>
         </Card>
 

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { menuIcons } from "@/components/layout/menu-icons";
-import { api, clearToken } from "@/lib/api";
+import { api, endSession } from "@/lib/api";
 import type { MenuEntry } from "@/lib/menu/types";
 
 export interface PanelShellProps {
@@ -38,9 +38,9 @@ export default function PanelShell({
     try {
       await api("/auth/logout", { method: "POST" });
     } catch {
-      // token i tak czyścimy lokalnie
+      // sesję i tak kończymy lokalnie
     }
-    clearToken();
+    await endSession();
     router.push("/logowanie");
   }
 

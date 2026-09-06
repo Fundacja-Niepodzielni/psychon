@@ -1,31 +1,17 @@
 "use client";
 
+import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
-import { api, ApiError, setToken } from "@/lib/api";
 
-interface LoginResponse {
-  token: string;
-  user: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    role:
-      | "super_admin"
-      | "project_manager"
-      | "instructor"
-      | "volunteer"
-      | "student";
-  };
-}
+type Role = "super_admin" | "project_manager" | "instructor" | "volunteer" | "student";
 
 /** Przekierowanie po zalogowaniu wg roli (słownik ról — kontrakt §3.4). */
-const HOME_BY_ROLE: Record<LoginResponse["user"]["role"], string> = {
+const HOME_BY_ROLE: Record<Role, string> = {
   volunteer: "/panel/start",
   student: "/panel/start",
   instructor: "/prowadzacy",
@@ -33,48 +19,32 @@ const HOME_BY_ROLE: Record<LoginResponse["user"]["role"], string> = {
   super_admin: "/admin",
 };
 
+function isRole(value: string | undefined): value is Role {
+  return !!value && value in HOME_BY_ROLE;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
-    setFieldErrors({});
     setLoading(true);
 
-    try {
-      const { token, user } = await api<LoginResponse>("/auth/login", {
-        method: "POST",
-        body: { email, password },
-      });
-      setToken(token);
-      router.push(HOME_BY_ROLE[user.role] ?? "/panel/start");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 429) {
-          setFormError(
-            "Zbyt wiele prób logowania. Odczekaj chwilę i spróbuj ponownie.",
-          );
-        } else if (err.status === 422 && err.errors) {
-          setFieldErrors(err.errors);
-          setFormError(err.message);
-        } else if (err.status === 401 || err.status === 422) {
-          setFormError("Nieprawidłowy e-mail lub hasło.");
-        } else {
-          setFormError(err.message);
-        }
-      } else {
-        setFormError(
-          "Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.",
-        );
-      }
+    const result = await signIn("credentials", { email, password, redirect: false });
+    if (result?.error) {
+      setFormError("Nieprawidłowy e-mail lub hasło.");
       setLoading(false);
+      return;
     }
+
+    const session = await getSession();
+    const role = session?.user?.roles?.[0];
+    router.push(isRole(role) ? HOME_BY_ROLE[role] : "/panel/start");
   }
 
   return (
@@ -105,7 +75,6 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              error={fieldErrors.email?.[0]}
             />
             <Input
               label="Hasło"
@@ -115,7 +84,6 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              error={fieldErrors.password?.[0]}
             />
 
             <Button type="submit" loading={loading} className="mt-2 w-full">
@@ -125,6 +93,13 @@ export default function LoginPage() {
         </Card>
 
         <p className="mt-4 text-center text-caption text-subtle">
+          Masz konto Fundacji Niepodzielni?{" "}
+          <a href="/logowanie/konta" className="underline">
+            Zaloguj się przez Konta Niepodzielni
+          </a>
+          .
+        </p>
+        <p className="mt-2 text-center text-caption text-subtle">
           Problem z logowaniem? Skontaktuj się z opiekunem projektu.
         </p>
       </div>

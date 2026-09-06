@@ -16,7 +16,10 @@ Adres backendu w `.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:8010`
 
 ```
 app/
-  logowanie/            logowanie end-to-end (POST /auth/login, redirect wg roli)
+  logowanie/            logowanie hasłem, redirect wg roli · logowanie/konta/ logowanie
+                        przez konto Fundacji (link do Konta Niepodzielni)
+  konto/                ekran po zalogowaniu przez konto Fundacji (whoami, wylogowanie)
+  api/auth/[...nextauth]/  jedyna trasa Auth.js — obsługuje obie drogi logowania
   dostep-wygasl/        ekran „dostęp wygasł"
   not-found.tsx         404 · error.tsx  błąd globalny (500)
   (uczestnik)/panel/    layout + strony panelu uczestnika
@@ -28,8 +31,10 @@ components/
   VideoPlayer.tsx       atrapa odtwarzacza (heartbeat co 10 s)
   Forbidden.tsx         ekran 403 (message + reason.missing)
 lib/
-  api.ts                klient API (koperty, ApiError, token)
+  api.ts                klient API (koperty, ApiError, token z sesji Auth.js)
   menu/                 rejestry menu — plik per pakiet
+auth.ts                 konfiguracja Auth.js — dostawcy Keycloak i Credentials,
+                        jedna sesja (JWT, ciasteczko HttpOnly) dla obu drzwi logowania
 ```
 
 ## Zasady (twarde)
@@ -79,12 +84,13 @@ try { … } catch (err) {
 }
 ```
 
-Token Bearer żyje wyłącznie w pamięci karty — logowanie lokalne (`/auth/login`)
-trzyma go w zmiennej modułu, logowanie przez konto Fundacji (`/logowanie/konta`)
-czyta go z sesji Auth.js (`/api/auth/session`, ciasteczko HttpOnly). Nigdzie w
-`localStorage` — czytelnym dla każdego skryptu wstrzykniętego w stronę. 401 czyści
-token i przekierowuje na `/logowanie` automatycznie. `body` będące `FormData`
-wysyła się jako multipart (uploady).
+Token Bearer żyje w jednej sesji Auth.js (`next-auth`), wspólnej dla obu drzwi
+logowania — hasła lokalnego (`/logowanie`, dostawca Credentials) i konta Fundacji
+(`/logowanie/konta`, dostawca Keycloak). Sesja to zaszyfrowane, HttpOnly
+ciasteczko; klient czyta z niej token przez `/api/auth/session`
+(`lib/api.ts#getToken`). Nigdzie w `localStorage` — czytelnym dla każdego skryptu
+wstrzykniętego w stronę. 401 kończy sesję i przekierowuje na `/logowanie`
+automatycznie. `body` będące `FormData` wysyła się jako multipart (uploady).
 
 ## Tokeny designu (z makiety)
 

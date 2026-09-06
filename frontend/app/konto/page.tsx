@@ -6,7 +6,7 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { ApiError, clearToken, fetchWhoAmI, type WhoAmI } from "@/lib/api";
+import { ApiError, endSession, fetchWhoAmI, type WhoAmI } from "@/lib/api";
 
 /**
  * Landing screen for the account-system sign-in door. Calls
@@ -46,9 +46,8 @@ export default function AccountPage() {
   async function signOut() {
     setSigningOut(true);
     try {
-      await fetch("/api/auth/signout", { method: "POST" });
+      await endSession();
     } finally {
-      clearToken();
       setSigningOut(false);
       router.push("/logowanie/konta");
     }
