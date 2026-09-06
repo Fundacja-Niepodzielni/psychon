@@ -18,7 +18,7 @@
 #   na siebie i nie udaje, że jest.
 #
 # Format: <suma blob git>  <ścieżka względem KORZENIA repo>
-BAZA: b08ca0e
+BAZA: 8174584357c4e571506cfd3e796532d2220a5c11
 c2831b861743dc147cf7ec287019f4ca57d30001  backend/database/migrations/0001_01_01_000000_create_users_table.php
 06dc7a5ee782ac3a0f3f1c471b03120d87f2e655  backend/database/migrations/0001_01_01_000001_create_cache_table.php
 edac6fee599f55c34fd7ade713079c7f007b2fe4  backend/database/migrations/0001_01_01_000002_create_jobs_table.php
