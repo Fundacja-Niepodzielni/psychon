@@ -53,7 +53,7 @@ const kurs = {
   slug: "praca-z-emocjami",
   description: null,
   type: "course" as const,
-  product_group: "podstawowy" as const,
+  product_group: "psychon" as const,
   sequence_order: 1,
   edition_id: null,
   is_published: true,
