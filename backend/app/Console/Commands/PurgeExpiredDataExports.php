@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
  * — ale plik z kompletem danych osobowych znika z dysku, a status przechodzi na
  * `expired`, więc pobranie po terminie kończy się 404.
  *
- * Z-3 (runda weryfikatora, ODPOWIEDZ-019-WER §5): powyższe działa tylko, gdy
+ * Uwaga: powyższe działa tylko, gdy
  * wiersz jeszcze istnieje. Plik może zostać osierocony — bez wiersza w ogóle
  * (współdzielony dysk obok `RefreshDatabase` w suicie testów) albo z wierszem,
  * który zniknął przez `cascadeOnDelete()` na `data_exports.user_id` (usunięcie

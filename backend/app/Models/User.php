@@ -148,7 +148,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Z-3 (runda weryfikatora, ODPOWIEDZ-019-WER §5): `data_exports.user_id`
+     * `data_exports.user_id`
      * ma `cascadeOnDelete()` (migration 2026_01_02_000000), więc `forceDelete()`
      * usuwa wiersze eksportu razem z kontem — ale kaskada bazy nie wie nic o
      * pliku na dysku (`local`/exports/…json). Bez tego haka fizyczna paczka
