@@ -24,4 +24,14 @@ class ListAdminReliabilityRequest extends FormRequest
 
         return $rules;
     }
+
+    public function messages(): array
+    {
+        return [
+            'integer' => 'To pole musi być liczbą całkowitą.',
+            'page.min' => 'Numer strony musi być liczbą co najmniej 1.',
+            'per_page.between' => 'Liczba wyników na stronę musi mieścić się między 1 a 100.',
+            'prohibited' => 'Tego parametru nie obsługuje to zapytanie.',
+        ];
+    }
 }

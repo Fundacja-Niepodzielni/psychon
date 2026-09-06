@@ -24,4 +24,13 @@ class AcceptApplicationRequest extends FormRequest
             'force' => ['sometimes', 'boolean'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'role.required' => 'Wybierz rolę dla przyjmowanej osoby.',
+            'role.in' => 'Nieznana rola.',
+            'force.boolean' => 'Pole wymuszenia limitu przyjmuje tylko wartość prawda/fałsz.',
+        ];
+    }
 }

@@ -22,7 +22,10 @@ class StoreProfileDocumentRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'type.required' => 'Wybierz typ załącznika.',
             'type.in' => 'Wybierz dozwolony typ załącznika.',
+            'file.required' => 'Wskaż plik do wgrania.',
+            'file.file' => 'Wgraj poprawny plik.',
             'file.mimes' => 'Dozwolone formaty pliku: PDF, JPG, PNG.',
             'file.max' => 'Plik może mieć maksymalnie 10 MB.',
         ];

@@ -33,6 +33,7 @@ class StoreLessonQuestionRequest extends FormRequest
     {
         return [
             'question.required' => 'Wpisz treść pytania.',
+            'question.min' => 'Wpisz treść pytania.',
             'question.max' => 'Pytanie może mieć maksymalnie 2000 znaków.',
         ];
     }

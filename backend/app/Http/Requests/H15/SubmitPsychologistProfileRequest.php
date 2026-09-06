@@ -17,4 +17,11 @@ class SubmitPsychologistProfileRequest extends FormRequest
             'publication_consent' => ['sometimes', 'boolean'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'publication_consent.boolean' => 'Zgoda na publikację przyjmuje tylko wartość prawda/fałsz.',
+        ];
+    }
 }

@@ -25,13 +25,17 @@ class StoreInternshipEntryRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'date.required' => 'Podaj datę wpisu.',
             'date.date_format' => 'Podaj datę w formacie RRRR-MM-DD.',
             'date.before_or_equal' => 'Data wpisu nie może być późniejsza niż dzisiaj.',
+            'hours.required' => 'Podaj liczbę godzin.',
             'hours.numeric' => 'Liczba godzin musi być liczbą.',
             'hours.min' => 'Wpis musi obejmować co najmniej 0,5 godziny.',
             'hours.max' => 'Wpis może obejmować maksymalnie 24 godziny.',
             'hours.multiple_of' => 'Godziny podaj w krokach co 0,5.',
+            'form.required' => 'Wybierz formę dyżuru.',
             'form.in' => 'Wybierz dozwoloną formę dyżuru.',
+            'consultations_count.required' => 'Podaj liczbę konsultacji.',
             'consultations_count.integer' => 'Liczba konsultacji musi być całkowita.',
             'consultations_count.min' => 'Liczba konsultacji nie może być ujemna.',
         ];

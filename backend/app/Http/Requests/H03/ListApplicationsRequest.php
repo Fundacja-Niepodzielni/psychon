@@ -21,4 +21,18 @@ class ListApplicationsRequest extends FormRequest
             'sort' => ['sometimes', 'string', 'in:created_at,-created_at,first_name,-first_name,status,-status'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'integer' => 'To pole musi być liczbą całkowitą.',
+            'string' => 'To pole musi być tekstem.',
+            'page.min' => 'Numer strony musi być liczbą co najmniej 1.',
+            'per_page.min' => 'Liczba wyników na stronę musi być liczbą co najmniej 1.',
+            'per_page.max' => 'Liczba wyników na stronę może wynosić najwyżej 100.',
+            'status.in' => 'Nieznany status zgłoszenia.',
+            'search.max' => 'Fraza wyszukiwania jest za długa (maksymalnie 255 znaków).',
+            'sort.in' => 'Nieznane kryterium sortowania.',
+        ];
+    }
 }

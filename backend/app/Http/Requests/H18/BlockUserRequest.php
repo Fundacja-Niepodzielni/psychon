@@ -26,6 +26,8 @@ class BlockUserRequest extends FormRequest
     {
         return [
             'reason.required' => 'Podaj powód blokady konta.',
+            'reason.string' => 'Powód musi być tekstem.',
+            'reason.max' => 'Powód jest za długi (maksymalnie :max znaków).',
         ];
     }
 }

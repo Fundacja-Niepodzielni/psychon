@@ -17,4 +17,11 @@ class ListInstructorReliabilityRequest extends FormRequest
             ->mapWithKeys(fn (string $key): array => [$key => ['prohibited']])
             ->all();
     }
+
+    public function messages(): array
+    {
+        return [
+            'prohibited' => 'Tego parametru nie obsługuje to zapytanie.',
+        ];
+    }
 }

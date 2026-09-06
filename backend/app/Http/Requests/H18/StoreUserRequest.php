@@ -36,4 +36,26 @@ class StoreUserRequest extends FormRequest
             'product_group' => ['sometimes', Rule::in(['psychon', 'dobrostan', 'both'])],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'string' => 'To pole musi być tekstem.',
+            'first_name.required' => 'Podaj imię.',
+            'first_name.max' => 'Imię jest za długie (maksymalnie 255 znaków).',
+            'last_name.required' => 'Podaj nazwisko.',
+            'last_name.max' => 'Nazwisko jest za długie (maksymalnie 255 znaków).',
+            'email.required' => 'Podaj adres e-mail.',
+            'email.email' => 'Podaj poprawny adres e-mail.',
+            'email.max' => 'Adres e-mail jest za długi (maksymalnie 255 znaków).',
+            'role.required' => 'Wybierz rolę konta.',
+            'role.in' => 'Nieznana rola.',
+            'phone.max' => 'Numer telefonu jest za długi.',
+            'address.array' => 'Adres ma nieprawidłowy format.',
+            'address.street.max' => 'Ulica jest za długa (maksymalnie 255 znaków).',
+            'address.city.max' => 'Miasto jest za długie (maksymalnie 255 znaków).',
+            'address.zip.max' => 'Kod pocztowy jest za długi.',
+            'product_group.in' => 'Nieznana grupa produktowa.',
+        ];
+    }
 }

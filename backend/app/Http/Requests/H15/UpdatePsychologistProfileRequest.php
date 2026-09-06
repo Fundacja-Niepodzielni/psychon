@@ -21,4 +21,15 @@ class UpdatePsychologistProfileRequest extends FormRequest
             'bio' => ['sometimes', 'nullable', 'string'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'string' => 'To pole musi być tekstem.',
+            'specializations.array' => 'Lista specjalizacji ma nieprawidłowy format.',
+            'specializations.*.string' => 'Każda specjalizacja musi być tekstem.',
+            'approach.max' => 'Opis podejścia może mieć najwyżej 255 znaków.',
+            'city.max' => 'Nazwa miasta może mieć najwyżej 255 znaków.',
+        ];
+    }
 }

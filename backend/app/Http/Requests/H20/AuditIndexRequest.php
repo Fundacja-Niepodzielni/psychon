@@ -50,6 +50,9 @@ class AuditIndexRequest extends FormRequest
     {
         return [
             'action.in' => 'Nieznany typ zdarzenia.',
+            'user_id.integer' => 'Identyfikator osoby musi być liczbą całkowitą.',
+            'from.date' => 'Podaj poprawną datę początkową.',
+            'to.date' => 'Podaj poprawną datę końcową.',
         ];
     }
 }

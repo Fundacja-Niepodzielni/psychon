@@ -21,4 +21,11 @@ class ViewAdminReliabilityRequest extends FormRequest
 
         return $rules;
     }
+
+    public function messages(): array
+    {
+        return [
+            'prohibited' => 'Tego parametru nie obsługuje to zapytanie.',
+        ];
+    }
 }
