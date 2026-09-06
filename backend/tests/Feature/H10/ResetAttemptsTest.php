@@ -37,13 +37,16 @@ class ResetAttemptsTest extends TestPackageCase
         $user = $this->volunteer();
 
         Sanctum::actingAs($user);
+        // Limit ma być wyczerpany naprawdę: trzy osobne podejścia, każde z własnym
+        // zestawem odpowiedzi. Trzy identyczne zgłoszenia serwer policzyłby jako jedno
+        // i reset nie miałby czego czyścić.
         for ($i = 1; $i <= 3; $i++) {
             $this->postJson("/api/v1/tests/{$test->id}/attempts", [
-                'answers' => $this->answersFor($test, 2),
+                'answers' => $this->answersForAttempt($test, 2, $i),
             ])->assertCreated();
         }
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
-            'answers' => $this->answersFor($test, 2),
+            'answers' => $this->answersForAttempt($test, 2, 4),
         ])->assertStatus(403)->assertJsonPath('error.code', 'attempts_exhausted');
 
         $admin = $this->admin();

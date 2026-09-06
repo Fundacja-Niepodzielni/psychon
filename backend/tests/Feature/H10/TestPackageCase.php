@@ -92,6 +92,59 @@ abstract class TestPackageCase extends TestCase
         return $answers;
     }
 
+    /**
+     * Zestaw odpowiedzi dla KOLEJNEGO podejścia: ten sam wynik punktowy co
+     * `answersFor($test, $correctCount)`, ale inna treść zgłoszenia.
+     *
+     * Dwie wysyłki z identycznym zestawem odpowiedzi to dla serwera JEDNO
+     * zgłoszenie (powtórzenie, np. podwójne kliknięcie „wyślij test"), więc
+     * fixture, który chce N osobnych podejść, musi wysłać N różnych zestawów.
+     * Różnicujemy WYŁĄCZNIE to, KTÓRA błędna odpowiedź pada w pytaniach na minus:
+     * każda z nich daje zero punktów, więc `score_percent` i `passed` są dokładnie
+     * takie jak przy `answersFor` — zmienia się treść, nie wynik.
+     *
+     * `$attempt` numerujemy od 1. Wariant jest zapisem pozycyjnym numeru podejścia
+     * na pytaniach odpowiedzianych błędnie — przy `w` takich pytaniach i `k`
+     * błędnych odpowiedziach w każdym mamy `k^w` różnych zestawów o tym samym
+     * wyniku. Gdy zestawów nie starcza, metoda mówi to wprost zamiast po cichu
+     * oddać powtórzenie: cichy duplikat jest właśnie tym, co ten fixture ma mierzyć.
+     *
+     * @return array<string, int>
+     */
+    protected function answersForAttempt(Test $test, int $correctCount, int $attempt): array
+    {
+        $questions = $test->questions()->with('answers')->get()->values();
+        $wariant = $attempt - 1;
+        $answers = [];
+        $wariantow = 1;
+        $reszta = $wariant;
+
+        foreach ($questions as $index => $question) {
+            if ($index < $correctCount) {
+                $answers[(string) $question->id] = $question->answers->firstWhere('is_correct', true)->id;
+
+                continue;
+            }
+
+            $wrong = $question->answers->where('is_correct', false)->sortBy('id')->values();
+            $answers[(string) $question->id] = $wrong[$reszta % $wrong->count()]->id;
+            $reszta = intdiv($reszta, $wrong->count());
+            $wariantow *= $wrong->count();
+        }
+
+        if ($wariant >= $wariantow) {
+            throw new \LogicException(sprintf(
+                'Zestawów o tym samym wyniku jest tu %d, a fixture prosi o %d. Bez tylu RÓŻNYCH '
+                .'zestawów kolejne wysyłki byłyby dla serwera jednym zgłoszeniem. Daj więcej pytań '
+                .'odpowiadanych błędnie albo różnicuj podejścia wynikiem.',
+                $wariantow,
+                $attempt,
+            ));
+        }
+
+        return $answers;
+    }
+
     protected function volunteer(): User
     {
         return User::factory()->create(['role' => 'volunteer']);

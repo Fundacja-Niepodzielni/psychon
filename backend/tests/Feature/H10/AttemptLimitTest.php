@@ -22,14 +22,18 @@ class AttemptLimitTest extends TestPackageCase
         $user = $this->volunteer();
         Sanctum::actingAs($user);
 
+        // Każde podejście z WŁASNYM zestawem odpowiedzi (ten sam wynik, inna treść):
+        // trzy razy to samo zgłoszenie byłoby dla serwera jednym podejściem, więc limit
+        // nie zdążyłby się wyczerpać i świadek mierzyłby powtórzenie zamiast limitu.
         for ($i = 1; $i <= 3; $i++) {
             $this->postJson("/api/v1/tests/{$test->id}/attempts", [
-                'answers' => $this->answersFor($test, 3), // 30% — nie zalicza
+                'answers' => $this->answersForAttempt($test, 3, $i), // 30% — nie zalicza
             ])->assertCreated()->assertJsonPath('data.attempt_number', $i);
         }
 
+        // Czwarte zgłoszenie jest NOWE (żadnego z trzech nie powtarza), więc odpowiada za nie limit.
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
-            'answers' => $this->answersFor($test, 3),
+            'answers' => $this->answersForAttempt($test, 3, 4),
         ])->assertStatus(403)->assertJsonPath('error.code', 'attempts_exhausted');
 
         $this->assertDatabaseCount('test_attempts', 3);
@@ -59,9 +63,12 @@ class AttemptLimitTest extends TestPackageCase
         $user = $this->volunteer();
         Sanctum::actingAs($user);
 
+        // Trzy osobne podejścia = trzy różne zestawy o tym samym wyniku 20%.
+        // Powiadomienie ma polecieć po TRZECIM nieudanym podejściu, a nie po
+        // pierwszym powtórzonym dwa razy.
         for ($i = 1; $i <= 3; $i++) {
             $this->postJson("/api/v1/tests/{$test->id}/attempts", [
-                'answers' => $this->answersFor($test, 2),
+                'answers' => $this->answersForAttempt($test, 2, $i),
             ])->assertCreated();
         }
 

@@ -138,18 +138,23 @@ class FirstAttemptRaceTest extends TestCase
             .'blokada wierszowa MA co blokować i luka się nie ujawnia.',
         );
 
-        $answers = [];
-        foreach ($this->test->questions()->with('answers')->get() as $question) {
-            $answers[(string) $question->id] = $question->answers->firstWhere('is_correct', true)->id;
+        // Każdy proces wysyła WŁASNY zestaw odpowiedzi. Ten świadek mierzy sześć
+        // ODRĘBNYCH podejść wysłanych w tej samej chwili, a dwa zgłoszenia o identycznej
+        // treści są dla serwera jednym zgłoszeniem (powtórzenie „wyślij test"). Różnicujemy
+        // więc treść — moment wysyłki zostaje wspólny i wyścig zostaje wyścigiem.
+        // Zestawy liczone PRZED rozwidleniem: dziecko ma dostać gotowe dane, nie zapytanie.
+        $zestawy = [];
+        foreach (range(0, self::CONCURRENCY - 1) as $i) {
+            $zestawy[$i] = $this->zestawOdpowiedzi($i + 1);
         }
 
         // Uwierzytelnienie PRZED rozwidleniem — stan siedzi w pamięci procesu,
         // więc dzieci dziedziczą je razem z resztą aplikacji.
         Sanctum::actingAs($this->user);
 
-        $results = $this->rownolegle(self::CONCURRENCY, function (int $i) use ($answers): string {
+        $results = $this->rownolegle(self::CONCURRENCY, function (int $i) use ($zestawy): string {
             return $this->sladOdpowiedzi(
-                $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $answers]),
+                $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $zestawy[$i]]),
             );
         });
 
@@ -185,5 +190,28 @@ class FirstAttemptRaceTest extends TestCase
             $udane,
             'Nie każde żądanie dostało 201: '.implode(', ', $results),
         );
+    }
+
+    /**
+     * Zestaw odpowiedzi podejścia nr $nr — RÓŻNY dla każdego numeru.
+     *
+     * Numer zapisujemy pozycyjnie na pytaniach (każde ma cztery odpowiedzi), więc
+     * przy trzech pytaniach mamy 64 różne zestawy. Wynik punktowy nie ma tu znaczenia:
+     * ten świadek pyta o numerację i o to, czy żadne zgłoszenie nie ginie.
+     *
+     * @return array<string, int>
+     */
+    private function zestawOdpowiedzi(int $nr): array
+    {
+        $reszta = $nr - 1;
+        $answers = [];
+
+        foreach ($this->test->questions()->with('answers')->get() as $question) {
+            $opcje = $question->answers->sortBy('id')->values();
+            $answers[(string) $question->id] = $opcje[$reszta % $opcje->count()]->id;
+            $reszta = intdiv($reszta, $opcje->count());
+        }
+
+        return $answers;
     }
 }

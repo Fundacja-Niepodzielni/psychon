@@ -115,7 +115,14 @@ class DuplicateSubmissionTest extends TestPackageCase
         $this->assertDatabaseCount('test_attempts', 2);
     }
 
-    public function test_an_exhausted_limit_still_answers_403_after_the_window(): void
+    /**
+     * Tematem jest NOWE zgłoszenie przy wyczerpanym limicie — nie „każde".
+     *
+     * Powtórzenie ostatniego podejścia dostaje wynik, a nie 403; mierzy to leg poniżej.
+     * Tu chodzi o zgłoszenie, którego wcześniej nie było: ono ma zostać zatrzymane,
+     * i to niezależnie od okna powtórzenia.
+     */
+    public function test_a_new_submission_at_the_exhausted_limit_answers_403(): void
     {
         $test = $this->makeTest(questions: 10);
         Sanctum::actingAs($this->volunteer());
@@ -128,8 +135,9 @@ class DuplicateSubmissionTest extends TestPackageCase
                 ->assertJsonPath('data.attempt_number', $numer + 1);
         }
 
-        // Poza oknem i z inną treścią: żadne rozpoznanie powtórki nie ma tu zastosowania,
-        // więc limit musi odpowiedzieć sam za siebie.
+        // Czwarte zgłoszenie ma INNĄ treść niż każde z trzech, więc jest nowe, a nie
+        // powtórzone — i jest nowe także wtedy, gdy okno powtórzenia dawno minęło.
+        // Przesunięcie zegara odbiera odpowiedzi 403 ostatnią wymówkę.
         $this->travel($this->oknoPowtorzeniaSekund() + 60)->seconds();
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 7)])
@@ -137,6 +145,76 @@ class DuplicateSubmissionTest extends TestPackageCase
             ->assertJsonPath('error.code', 'attempts_exhausted');
 
         $this->assertDatabaseCount('test_attempts', 3);
+    }
+
+    /**
+     * Dwuklik na OSTATNIM podejściu: uczestniczka dostaje swój wynik dwa razy,
+     * a nie „wykorzystałeś wszystkie podejścia".
+     *
+     * To jest chwila, w której wynik znaczy najwięcej — ostatnia szansa, przycisk
+     * kliknięty dwa razy z nerwów albo z powodu wolnej sieci. Drugie kliknięcie ma
+     * oddać ten sam numer podejścia i ten sam wynik, a licznik zużytych podejść ma
+     * DOJŚĆ do limitu i się na nim zatrzymać.
+     */
+    public function test_a_double_click_on_the_last_attempt_answers_with_the_result(): void
+    {
+        $test = $this->makeTest(questions: 10);
+        Sanctum::actingAs($this->volunteer());
+
+        $limit = $this->getJson("/api/v1/courses/{$test->course->slug}/test")
+            ->assertOk()
+            ->json('data.attempts_limit');
+
+        $this->assertGreaterThanOrEqual(
+            2,
+            $limit,
+            'Świadek potrzebuje limitu co najmniej 2, żeby w ogóle istniało podejście PRZED ostatnim.',
+        );
+
+        // Wszystkie podejścia PRZED ostatnim, każde z własnym zestawem odpowiedzi.
+        for ($nr = 1; $nr < $limit; $nr++) {
+            $this->postJson("/api/v1/tests/{$test->id}/attempts", [
+                'answers' => $this->answersForAttempt($test, 2, $nr),
+            ])->assertCreated()->assertJsonPath('data.attempt_number', $nr);
+        }
+
+        // OSTATNIE podejście — i podwójne kliknięcie w „wyślij test".
+        $odpowiedzi = $this->answersFor($test, 9); // 90% — wynik rozpoznawalny w odpowiedzi
+
+        $pierwsza = $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $odpowiedzi]);
+        $pierwsza->assertCreated()->assertJsonPath('data.attempt_number', $limit);
+
+        $druga = $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $odpowiedzi]);
+
+        $this->assertNotSame(
+            403,
+            $druga->getStatusCode(),
+            'Drugie kliknięcie na ostatnim podejściu dostało „wykorzystałeś wszystkie podejścia" '
+            .'zamiast wyniku, który przed chwilą policzono.',
+        );
+        $druga->assertSuccessful();
+
+        $this->assertSame(
+            $limit,
+            $druga->json('data.attempt_number'),
+            sprintf(
+                'Drugie kliknięcie ma oddać wynik TEGO SAMEGO, ostatniego podejścia (nr %s), a oddało nr %s.',
+                var_export($limit, true),
+                var_export($druga->json('data.attempt_number'), true),
+            ),
+        );
+        $this->assertSame(
+            $pierwsza->json('data.score_percent'),
+            $druga->json('data.score_percent'),
+            'Drugie kliknięcie ma oddać wynik pierwszego wysłania, nie policzyć własnego.',
+        );
+        $this->assertSame($pierwsza->json('data.passed'), $druga->json('data.passed'));
+
+        // Licznik DOCHODZI do limitu i go nie przekracza — dwuklik nie zjada nic ponad.
+        $this->assertDatabaseCount('test_attempts', $limit);
+        $this->getJson("/api/v1/courses/{$test->course->slug}/test")
+            ->assertOk()
+            ->assertJsonPath('data.attempts_used', $limit);
     }
 
     /**
