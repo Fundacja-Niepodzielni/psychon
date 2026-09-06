@@ -13,6 +13,7 @@ import type { ComponentType } from "react";
 import type { AdminCourse, AdminLesson } from "@/lib/h08/types";
 import h08bCourseMaterials from "@/components/h08b/CourseMaterialsPanel";
 import h08bCourseInvitePanel from "@/components/h08b/CourseInvitePanel";
+import h09AssignmentPanel from "@/components/h09/CourseAssignmentPanel";
 import h10QuestionBank from "@/components/h10/CourseQuestionBankLink";
 // import hXXNazwa from "@/components/hXX/hXXNazwa"; // ← dodaj swój slot jedną linią
 
@@ -28,6 +29,12 @@ export interface AdminCoursesSlotProps {
    * Przy braku lekcji region dotyczy materiałów wpiętych wprost w kurs.
    */
   lesson?: AdminLesson;
+  /**
+   * Lekcje kursu, w kolejności strony — potrzebne regionom, którym zależy na
+   * całej liście naraz (np. H09 pokazujący pokrycie każdej lekcji), a nie
+   * tylko na jednej przekazanej przez `lesson`.
+   */
+  lessons?: AdminLesson[];
 }
 
 export interface AdminCoursesSlot {
@@ -42,6 +49,7 @@ export interface AdminCoursesSlot {
 export const adminCoursesSlots: AdminCoursesSlot[] = [
   h08bCourseMaterials,
   h08bCourseInvitePanel,
+  h09AssignmentPanel,
   h10QuestionBank,
   // hXXNazwa, // ← i drugą tutaj
 ];
