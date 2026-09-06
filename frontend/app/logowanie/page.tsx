@@ -23,21 +23,62 @@ function isRole(value: string | undefined): value is Role {
   return !!value && value in HOME_BY_ROLE;
 }
 
+/** Mirrors `auth.ts`'s `LoginErrorPayload` — the backend's own error
+ * envelope, carried here through `CredentialsSignin.code` because
+ * `signIn()` with `redirect: false` otherwise only ever returns a type,
+ * never the response body. */
+interface LoginErrorPayload {
+  status: number;
+  code: string;
+  message: string;
+  errors?: Record<string, string[]>;
+}
+
+function parseLoginError(code: string | undefined): LoginErrorPayload | null {
+  if (!code) return null;
+  try {
+    const parsed = JSON.parse(code) as Partial<LoginErrorPayload>;
+    if (typeof parsed.status !== "number" || typeof parsed.message !== "string") return null;
+    return {
+      status: parsed.status,
+      code: parsed.code ?? "unknown_error",
+      message: parsed.message,
+      errors: parsed.errors,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
+    setFieldErrors({});
     setLoading(true);
 
     const result = await signIn("credentials", { email, password, redirect: false });
     if (result?.error) {
-      setFormError("Nieprawidłowy e-mail lub hasło.");
+      const payload = parseLoginError(result.code);
+      if (payload?.status === 429) {
+        setFormError(payload.message);
+      } else if (payload?.status === 422 && payload.errors) {
+        setFieldErrors(payload.errors);
+        setFormError(payload.message);
+      } else if (payload?.status === 401 || payload?.status === 422) {
+        setFormError("Nieprawidłowy e-mail lub hasło.");
+      } else if (payload) {
+        setFormError(payload.message);
+      } else {
+        setFormError("Nieprawidłowy e-mail lub hasło.");
+      }
       setLoading(false);
       return;
     }
@@ -75,6 +116,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              error={fieldErrors.email?.[0]}
             />
             <Input
               label="Hasło"
@@ -84,6 +126,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              error={fieldErrors.password?.[0]}
             />
 
             <Button type="submit" loading={loading} className="mt-2 w-full">

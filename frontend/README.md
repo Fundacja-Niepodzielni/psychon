@@ -92,6 +92,27 @@ ciasteczko; klient czyta z niej token przez `/api/auth/session`
 wstrzykniętego w stronę. 401 kończy sesję i przekierowuje na `/logowanie`
 automatycznie. `body` będące `FormData` wysyła się jako multipart (uploady).
 
+Konto Fundacji odświeża token dostępu w tle (`auth.ts`, callback `jwt`) — gdy
+wygasa, aplikacja wymienia go na nowy przez `refresh_token`, zanim ekran to
+zauważy. Jeśli odświeżenie się nie uda (token odświeżający wygasł albo realm
+jest nieosiągalny), sesja kończy się od razu — `lib/api.ts` woła wtedy
+`signOut()`, zamiast pokazywać dalej zalogowany ekran z martwym tokenem.
+
+**Dwie granice zmierzone przy odbiorze tego mechanizmu, spisane tu, bo nie są
+oczywiste z samego kodu:**
+
+- **Token dostępu żyje dalej po wylogowaniu — do końca swoich 600 s.**
+  Wylogowanie kończy sesję przeglądarki natychmiast (ciasteczko znika, ekran
+  wymaga ponownego logowania), ale sam token dostępu, jeśli ktoś zdążył go
+  gdzieś zapisać przed wylogowaniem, nadal odpowiada w API aż do naturalnego
+  wygaśnięcia. To świadomy kompromis identity providera (krótki czas życia
+  tokenu zamiast natychmiastowej unieważnialności), nie błąd tej aplikacji.
+- **Zalogowanie się przez jedne drzwi zastępuje sesję drugich.** Jest jedno
+  miejsce na sesję (jedno ciasteczko Auth.js) — zalogowanie się lokalnym
+  hasłem po zalogowaniu przez konto Fundacji (i odwrotnie) kończy tamtą
+  sesję, nie otwiera drugiej obok niej. Zamierzone dla tego etapu; gdyby ktoś
+  to odkrył jako „błąd", to jest to udokumentowane zachowanie, nie regresja.
+
 ## Tokeny designu (z makiety)
 
 Źródło: `app/globals.css` (`--psy-*` + mapowanie na klasy Tailwind).

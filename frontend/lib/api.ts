@@ -66,7 +66,17 @@ async function fetchSession(): Promise<SessionState> {
     const json = (await res.json()) as {
       accessToken: string | null;
       expiresAt: number | null;
+      error?: "RefreshAccessTokenError";
     };
+    if (json.error === "RefreshAccessTokenError") {
+      // The `jwt` callback tried to rotate the account-system token and
+      // failed — the cookie may still exist, but the session behind it is
+      // dead. Ending it here, rather than waiting for the next API call to
+      // answer 401, is the "drop the session" half of token refresh: the
+      // app must not keep saying "signed in" while the token is gone.
+      void signOut({ redirect: false });
+      return { token: null, expiresAt: 0 };
+    }
     return { token: json.accessToken, expiresAt: json.expiresAt ?? 0 };
   } catch {
     return { token: null, expiresAt: 0 };

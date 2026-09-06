@@ -46,8 +46,19 @@ export default function AccountPage() {
   async function signOut() {
     setSigningOut(true);
     try {
+      // Read the IdP's own logout URL *before* ending the app's session —
+      // it carries the `id_token_hint` read from this session's cookie,
+      // which is gone the moment `endSession()` below returns.
+      const res = await fetch("/api/auth/end-session-url");
+      const { url } = (await res.json()) as { url: string };
       await endSession();
-    } finally {
+      // A full-page navigation, not a fetch: the realm's own SSO cookie is
+      // HttpOnly on its own origin and only a real navigation clears it.
+      // Ending here at `/konto` (client-side router.push) left it standing —
+      // clicking the door again reused it silently, without asking for a password.
+      window.location.assign(url);
+    } catch {
+      await endSession();
       setSigningOut(false);
       router.push("/logowanie/konta");
     }
