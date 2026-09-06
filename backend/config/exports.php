@@ -11,7 +11,7 @@ return [
     | dłużej niż `ttl_hours` od przygotowania. Limit żądań chroni kolejkę przed
     | zwielokrotnieniem tego samego zadania: pierwszy nieukończony eksport
     | blokuje kolejne (409 `export_in_progress`), a `rate_limit` domyka resztę
-    | (429 `too_many_attempts`).
+    | (429 `too_many_requests`).
     |
     */
 

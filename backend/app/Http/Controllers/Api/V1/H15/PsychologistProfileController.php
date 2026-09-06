@@ -182,7 +182,7 @@ class PsychologistProfileController extends Controller
 
     /**
      * Powiadomienie zespołu o wycofaniu zgody na publikację. Odbiorcy to role
-     * prowadzące bazę psychologów (kontrakt §3.4: `project_manager` = opiekun
+     * prowadzące bazę psychologów (kontrakt §3.1: `project_manager` = opiekun
      * projektu, `super_admin`); wolontariusz wycofujący zgodę nie dostaje kopii,
      * bo to jego własna decyzja.
      */
