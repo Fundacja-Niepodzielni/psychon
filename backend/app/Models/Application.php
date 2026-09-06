@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use Database\Factories\ApplicationFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Application extends Model
 {
+    /** @use HasFactory<ApplicationFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'edition_id',
         'first_name',
@@ -48,5 +54,38 @@ class Application extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Restrict the queue to applications in a known workflow state.
+     * Keeping the state scopes on the model avoids duplicating string
+     * literals in services and tests.
+     */
+    public function scopeStatus(Builder $query, string $status): Builder
+    {
+        return $query->where($this->qualifyColumn('status'), $status);
+    }
+
+    public function scopeForEdition(Builder $query, int|Edition $edition): Builder
+    {
+        return $query->where(
+            $this->qualifyColumn('edition_id'),
+            $edition instanceof Edition ? $edition->getKey() : $edition,
+        );
+    }
+
+    public function scopeNew(Builder $query): Builder
+    {
+        return $this->scopeStatus($query, 'new');
+    }
+
+    public function scopeAccepted(Builder $query): Builder
+    {
+        return $this->scopeStatus($query, 'accepted');
+    }
+
+    public function scopeRejected(Builder $query): Builder
+    {
+        return $this->scopeStatus($query, 'rejected');
     }
 }

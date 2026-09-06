@@ -13,3 +13,20 @@
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h03')
 */
+
+use App\Http\Controllers\Api\V1\Admin\ApplicationController;
+use Illuminate\Support\Facades\Route;
+
+if (! config('features.h03')) {
+    return;
+}
+
+Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+    Route::get('/admin/applications', [ApplicationController::class, 'index']);
+    Route::post('/admin/applications', [ApplicationController::class, 'store']);
+    Route::get('/admin/applications/{id}', [ApplicationController::class, 'show'])->whereNumber('id');
+    Route::post('/admin/applications/{id}/accept', [ApplicationController::class, 'accept'])->whereNumber('id');
+    Route::post('/admin/applications/{id}/reject', [ApplicationController::class, 'reject'])->whereNumber('id');
+    Route::post('/admin/applications/import', [ApplicationController::class, 'import']);
+    Route::get('/admin/applications/{id}/diploma-scan', [ApplicationController::class, 'diplomaScan'])->whereNumber('id');
+});

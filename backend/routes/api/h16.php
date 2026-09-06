@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\EmailController;
+use App\Http\Controllers\Api\V1\NotificationController;
+use Illuminate\Support\Facades\Route;
+
 /*
 |--------------------------------------------------------------------------
 | Pakiet H16 · Powiadomienia — dzwonek + e-maile symulowane
@@ -13,3 +17,13 @@
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h16')
 */
+
+Route::middleware('auth:sanctum')->group(function (): void {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'read'])
+        ->whereNumber('id');
+
+    Route::middleware('role:project_manager,super_admin')
+        ->get('/admin/emails', [EmailController::class, 'index']);
+});

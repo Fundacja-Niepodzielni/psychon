@@ -26,6 +26,7 @@ use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
 use App\Models\WorkshopCompletion;
+use App\Support\OnboardingContent;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -109,7 +110,7 @@ class DemoSeeder extends Seeder
             'email' => 'marta@demo.pl',
             'password' => $demoPassword,
             'phone' => '+48 600 100 200',
-            'pesel' => '90010112345', // fictional
+            'pesel' => '90010112301', // fictional, checksum-valid (b. 1990-01-01)
             'address_street' => 'ul. Przykładowa 1/2',
             'address_city' => 'Warszawa',
             'address_zip' => '00-001',
@@ -124,7 +125,7 @@ class DemoSeeder extends Seeder
             'email' => 'ola@demo.pl',
             'password' => $demoPassword,
             'phone' => '+48 600 100 300',
-            'pesel' => '85050554321', // fictional
+            'pesel' => '85050529842', // fictional, checksum-valid (b. 1985-05-05)
             'address_street' => 'ul. Wzorcowa 3',
             'address_city' => 'Kraków',
             'address_zip' => '30-001',
@@ -140,7 +141,7 @@ class DemoSeeder extends Seeder
             'email' => 'filip@demo.pl',
             'password' => $demoPassword,
             'phone' => '+48 600 100 400',
-            'pesel' => '99120887654', // fictional
+            'pesel' => '99120812376', // fictional, checksum-valid (b. 1999-12-08)
             'role' => 'student',
             'access_expires_at' => now()->addMonths(6),
         ]);
@@ -778,5 +779,14 @@ class DemoSeeder extends Seeder
     {
         Setting::create(['key' => 'sales_module_enabled', 'value' => 'false']);
         Setting::create(['key' => 'foundation_site_url', 'value' => 'https://niepodzielni.example']);
+
+        // H21 · treść ekranu onboardingu „Zacznij tutaj" (edytowalna przez administrację).
+        Setting::create([
+            'key' => OnboardingContent::KEY,
+            'value' => json_encode(
+                OnboardingContent::DEFAULTS,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+            ),
+        ]);
     }
 }

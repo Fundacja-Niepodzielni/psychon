@@ -6,11 +6,13 @@
  * 2. Dodaj swój wpis jedną linią do importów i jedną do listy poniżej.
  */
 import h00Start from "./h00-start";
+import h17Pytania from "./h17-pytania";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
 import { sortMenu, type MenuEntry } from "../types";
 
 export const instructorMenu: MenuEntry[] = sortMenu([
   h00Start,
+  h17Pytania,
   // hXXNazwa, // ← i drugą tutaj
 ]);

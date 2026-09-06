@@ -59,13 +59,16 @@ final class ProgressAggregator
     }
 
     /**
-     * Average share of active time vs lesson duration across all lessons
-     * the user has opened. Null when there is no measurable progress.
+     * Total active time divided by total duration across the measurable lessons
+     * the user has completed (H07 rule) — long lessons weigh more than short ones.
+     * Lessons still in progress and lessons with duration_seconds = 0 are excluded.
+     * Null when the user has no measurable completed lesson.
      */
     public static function reliabilityPercent(User $user): ?int
     {
         $rows = $user->lessonProgress()
             ->join('lessons', 'lessons.id', '=', 'lesson_progress.lesson_id')
+            ->where('lesson_progress.is_completed', true)
             ->where('lessons.duration_seconds', '>', 0)
             ->get([
                 'lesson_progress.active_seconds',
@@ -76,11 +79,10 @@ final class ProgressAggregator
             return null;
         }
 
-        $average = $rows->avg(
-            fn ($row): float => min(100, $row->active_seconds / $row->duration_seconds * 100)
-        );
+        $activeSeconds = (int) $rows->sum('active_seconds');
+        $durationSeconds = (int) $rows->sum('duration_seconds');
 
-        return (int) round($average);
+        return (int) round(min(100, $activeSeconds / $durationSeconds * 100));
     }
 
     /**

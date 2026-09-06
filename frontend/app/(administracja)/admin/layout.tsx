@@ -1,4 +1,5 @@
 import PanelShell from "@/components/layout/PanelShell";
+import RequireRole from "@/components/permissions/RequireRole";
 import { adminMenu } from "@/lib/menu/admin";
 
 export default function AdminLayout({
@@ -7,8 +8,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PanelShell panelName="Administracja" menu={adminMenu}>
-      {children}
-    </PanelShell>
+    <RequireRole allowedRoles={["project_manager", "super_admin"]}>
+      <PanelShell panelName="Administracja" menu={adminMenu}>
+        {children}
+      </PanelShell>
+    </RequireRole>
   );
 }

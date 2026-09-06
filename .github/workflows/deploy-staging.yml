@@ -1,8 +1,8 @@
 name: Deploy staging
 
-# Auto-wdrożenie na staging po każdym merge do main.
+# Auto-wdrożenie na Oracle VPS po każdym merge/pushu do main.
 # Wymagane sekrety repo (Settings -> Secrets): STAGING_HOST, STAGING_USER,
-# STAGING_SSH_KEY (klucz użytkownika deploy NA STAGINGOWYM VPS — nie produkcyjnym).
+# STAGING_SSH_KEY (dedykowany klucz wdrożeniowy — nigdy główny klucz administratora).
 # Workflow nie zrobi nic, dopóki sekrety nie są ustawione.
 
 on:
@@ -19,14 +19,22 @@ concurrency:
   group: staging-deploy
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Sprawdź sekrety
         id: gate
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
         run: |
-          if [ -z "${{ secrets.STAGING_HOST }}" ]; then
+          if [ -z "$STAGING_HOST" ] || [ -z "$STAGING_USER" ] || [ -z "$STAGING_SSH_KEY" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Sekrety stagingu nieustawione — pomijam wdrożenie."
           fi
@@ -37,15 +45,42 @@ jobs:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
-          script_stop: true
+          command_timeout: 20m
           script: |
-            cd ~/niepodzielni
-            git fetch origin main && git reset --hard origin/main
-            docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
-            docker compose exec -T app composer install --no-interaction --no-dev
-            docker compose exec -T app php artisan migrate --force
-            if [ "${{ inputs.reset_seeds }}" = "true" ]; then
-              docker compose exec -T app php artisan migrate:fresh --seed --force
+            set -eu
+            cd ~/psychon
+            git fetch origin main:refs/remotes/origin/main
+            if git show-ref --verify --quiet refs/heads/main; then
+              git switch main
+            else
+              git switch --create main origin/main
             fi
-            docker compose exec -T app php artisan config:cache
-            docker compose restart frontend queue
+            git reset --hard origin/main
+
+            bash deploy/oracle/deploy.sh
+
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.reset_seeds }}" = "true" ]; then
+              docker compose \
+                --env-file deploy/oracle/.env \
+                -f docker-compose.yml \
+                -f docker-compose.oracle.yml \
+                exec -T app php artisan migrate:fresh --seed --force
+            fi
+
+            ready=false
+            attempt=1
+            while [ "$attempt" -le 20 ]; do
+              if curl --fail --silent --show-error \
+                https://psychon.mgmurski.pl/logowanie >/dev/null; then
+                ready=true
+                break
+              fi
+              echo "Frontend jeszcze niegotowy (próba $attempt/20)."
+              attempt=$((attempt + 1))
+              sleep 3
+            done
+
+            if [ "$ready" != "true" ]; then
+              echo "Frontend nie osiągnął gotowości HTTP."
+              exit 1
+            fi

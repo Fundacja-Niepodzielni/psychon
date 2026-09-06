@@ -5,6 +5,7 @@ const entry: MenuEntry = {
   label: "Profil",
   href: "/panel/profil",
   order: 90,
+  icon: "user",
 };
 
 export default entry;

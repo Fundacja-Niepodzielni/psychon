@@ -124,18 +124,150 @@ Zablokowany → 403 `course_locked` (wzór w §1.1). Odblokowanie liczy wyłącz
 
 ### Postęp lekcji (H06)
 
+`GET /lessons/{id}` → 200 (każdy udany odczyt zwiększa `open_count` o 1):
+
+```json
+{ "data": {
+  "id": 21,
+  "title": "Wprowadzenie do wywiadu",
+  "description": "Opis lekcji",
+  "duration_seconds": 1800,
+  "watched_seconds": 812,
+  "active_seconds": 700,
+  "is_completed": false,
+  "completable": false,
+  "completable_at_percent": 60
+} }
+```
+
+`description` może być `null`. Liczniki pochodzą z postępu zalogowanego użytkownika;
+przy jego braku mają wartość `0`, a `is_completed` ma wartość `false`.
+Lekcja z kursu zablokowanego → 403 `course_locked` zgodnie z regułą `CourseAccess`.
+
 `POST /lessons/{id}/progress` (heartbeat ≤ co 30 s) — **przyrosty**, nazwy wiążące:
 
 ```json
-{ "position_seconds": 314, "watched_delta": 28, "active_delta": 25 }
+{ "watched_delta": 28, "active_delta": 25 }
 ```
 
 → 200 `{ "data": { "watched_seconds": 812, "active_seconds": 700,
 "completable": false, "completable_at_percent": 60 } }`
-Serwer: wartości tylko rosną; **`active_delta` przycinane do 35 s na żądanie**
-(idempotencja przy dwóch kartach/urządzeniach). Próg ukończenia =
-`editions.lesson_completion_percent` (klucz w §3.3).
-`POST /lessons/{id}/complete` → 200 albo 422 `not_enough_active_time`.
+Oba pola są wymaganymi, nieujemnymi liczbami całkowitymi. Naruszenie tych reguł
+→ 422 `validation_failed`. Serwer: wartości tylko rosną; wyłącznie
+**`active_delta` jest przycinane do 35 s na żądanie** (idempotencja przy dwóch
+kartach/urządzeniach). Próg ukończenia = `editions.lesson_completion_percent`
+(klucz w §3.3).
+
+`POST /lessons/{id}/complete` → 200:
+
+```json
+{ "data": { "is_completed": true,
+  "completed_at": "2026-10-03T12:30:00Z" } }
+```
+
+Poniżej progu → 422 `not_enough_active_time`. Lekcja z `duration_seconds = 0` nigdy
+nie jest `completable`; próba ukończenia również zwraca 422
+`not_enough_active_time`.
+
+### Rzetelność nauki (H07)
+
+H07 udostępnia dokładnie trzy operacje. Wszystkie wymagają Bearer tokenu i przyjmują
+wyłącznie parametry opisane poniżej. Wynik rzetelności pochodzi z
+`ProgressAggregator`: jest zaokrąglonym do liczby całkowitej, ograniczonym do 100%
+ilorazem sumy `active_seconds` i sumy `duration_seconds` ukończonych lekcji z
+`duration_seconds > 0`. W API procent jest dziesiętnym stringiem albo `null`, gdy
+osoba nie ma mierzalnej ukończonej lekcji. `below_threshold` jest prawdziwe wyłącznie,
+gdy wynik istnieje i jest mniejszy od bieżącego
+`Settings::edition('reliability_threshold')`; wynik równy progowi nie jest poniżej
+progu.
+
+`GET /admin/reliability?page=1&per_page=50` → `200` — dostęp wyłącznie dla
+`project_manager` i `super_admin`. `page` jest dodatnią liczbą całkowitą, a
+`per_page` liczbą całkowitą od 1 do 100; wartości domyślne to odpowiednio 1 i 50.
+Inne parametry, w tym filtry i własne sortowanie, zwracają `422 validation_failed`.
+Lista obejmuje aktywnych użytkowników o roli `volunteer` lub `student` z aktywnej
+edycji. Serwer sortuje ją rosnąco po rzetelności, osoby z wynikiem `null` umieszcza
+na końcu, a remisy rozstrzyga rosnąco po nazwisku, imieniu i `id`. Sortowanie odbywa
+się przed paginacją.
+
+```json
+{
+  "data": [
+    {
+      "id": 17,
+      "first_name": "Filip",
+      "last_name": "Demo",
+      "email": "filip@demo.pl",
+      "reliability_percent": "15",
+      "below_threshold": true
+    }
+  ],
+  "meta": { "current_page": 1, "per_page": 50, "total": 1, "last_page": 1 }
+}
+```
+
+`GET /admin/reliability/{userId}` → `200` — te same role i pola osoby co na liście,
+rozszerzone o `lessons`. Szczegóły obejmują wyłącznie ukończone lekcje z dodatnim
+czasem trwania. `below_threshold` lekcji porównuje jej procent aktywnego czasu,
+ograniczony do 100%, z tym samym bieżącym progiem edycji. Wartość zbiorcza nadal
+pochodzi wyłącznie z `ProgressAggregator` i nie jest liczona z tablicy `lessons`.
+
+```json
+{
+  "data": {
+    "id": 17,
+    "first_name": "Filip",
+    "last_name": "Demo",
+    "email": "filip@demo.pl",
+    "reliability_percent": "15",
+    "below_threshold": true,
+    "lessons": [
+      {
+        "id": 21,
+        "title": "Wprowadzenie do wywiadu",
+        "active_seconds": 270,
+        "duration_seconds": 1800,
+        "open_count": 2,
+        "last_activity_at": "2026-10-03T12:30:00Z",
+        "below_threshold": true
+      }
+    ]
+  }
+}
+```
+
+`last_activity_at` może być `null`. Nieistniejący `userId` oraz użytkownik spoza
+aktywnej edycji, dozwolonych ról lub aktywnego statusu zwracają identyczne
+`404 not_found` z komunikatem „Nie znaleziono osoby.”. Operacja nie przyjmuje
+parametrów query. Trasa szczegółów prowadzącego nie istnieje.
+
+`GET /instructor/reliability` → `200` — dostęp wyłącznie dla roli `instructor`.
+Zakres jest wyznaczany wyłącznie z tokenu: odpowiedź obejmuje aktywnych wolontariuszy
+i studentów aktywnej edycji z `supervisor_assignments`, dla których
+`supervisor_id` odpowiada zalogowanemu prowadzącemu, a `unassigned_at` jest `null`.
+Operacja nie przyjmuje identyfikatora osoby, grupy, prowadzącego ani innych parametrów.
+Kolejność jest taka sama jak na liście administracyjnej. Odpowiedź nie zawiera e-maili
+ani szczegółów lekcji:
+
+```json
+{
+  "data": [
+    {
+      "id": 18,
+      "first_name": "Marta",
+      "last_name": "Demo",
+      "reliability_percent": "85",
+      "below_threshold": false
+    }
+  ],
+  "meta": { "current_page": 1, "per_page": 50, "total": 1, "last_page": 1 }
+}
+```
+
+Puste listy zwracają `data: []` z `total: 0`; brak wyniku osoby jest reprezentowany
+przez `reliability_percent: null` i `below_threshold: false`. Brak lub nieważny token
+daje `401 unauthenticated`, a każda rola niedopuszczona dla danej operacji —
+`403 forbidden`. Odczyty H07 nie emitują audytu ani powiadomień.
 
 ### Test (H10)
 
@@ -165,18 +297,81 @@ Warsztat: `POST /admin/workshop/{userId}/complete` → 200 [audyt].
 
 ### Staż (H11)
 
-`POST /internship/entries`
+H11 rejestruje dokładnie sześć operacji. Nie ma `GET /internship/entries/{id}`.
+
+#### Zasób uczestnika
+
+W odpowiedzi uczestnika `data` zawiera dokładnie pola:
 
 ```json
-{ "date": "2026-10-03", "hours": "3.5", "form": "phone_duty",
-  "consultations_count": 4, "description": "Dyżur telefoniczny — bez danych osób." }
+{
+  "id": 91,
+  "date": "2026-08-27",
+  "hours": "3.5",
+  "form": "phone_duty",
+  "consultations_count": 4,
+  "description": "Dyżur telefoniczny — bez danych osób.",
+  "status": "submitted",
+  "review_comment": null,
+  "decided_at": null,
+  "created_at": "2026-08-27T18:00:00Z",
+  "updated_at": "2026-08-27T18:00:00Z"
+}
 ```
 
-→ 201 `{ "data": { "id": 91, "status": "submitted", … } }`
-`GET /internship/entries` → lista + `meta.extra.accepted_hours / required_hours`.
-Wpis `returned` można edytować `PATCH` → status wraca na `submitted`; wpis `accepted`
-→ `PATCH` = 403 `entry_locked`. `POST /admin/internship/{id}/return {comment}` →
-200; brak `comment` → 422. Cudzy wpis (`GET/PATCH` po id) → 404.
+`date` jest datą kalendarzową `YYYY-MM-DD`; nie może być późniejsza niż dzień
+bieżący. `hours` jest dziesiętnym stringiem od `"0.5"` do `"24"`, w krokach co
+`0.5`. `form` przyjmuje wyłącznie `phone_duty`, `chat_duty` albo `other`.
+`consultations_count` jest nieujemną liczbą całkowitą. `review_comment` i
+`decided_at` mogą być `null`, a pola czasu są ISO 8601 UTC. Zasób nie zawiera
+`user_id`, `decided_by` ani danych administratora.
+
+#### Operacje uczestnika
+
+- `GET /internship/entries` → `200`, standardowa paginowana lista wyłącznie
+  własnych wpisów. `meta.extra` zawiera dokładnie `accepted_hours` i
+  `required_hours` jako dziesiętne stringi. `accepted_hours` obejmuje wyłącznie
+  wpisy `accepted`; `required_hours` pochodzi z
+  `Settings::edition('internship_hours_required')`.
+- `POST /internship/entries` z polami `date`, `hours`, `form`,
+  `consultations_count`, `description` → `201`, pełny zasób uczestnika ze
+  statusem `submitted`. `user_id` z żądania jest ignorowane/nie jest polem
+  wejściowym.
+- `PATCH /internship/entries/{id}` z tymi samymi polami → `200`, pełny zasób
+  uczestnika. Wpis `returned` po edycji wraca do `submitted` i zachowuje
+  `review_comment`. Wpis `accepted` zwraca `403 entry_locked` i nie jest
+  zmieniany. Cudzy albo nieistniejący identyfikator zwraca `404 not_found`.
+
+#### Zasób administracyjny i kolejka
+
+`GET /admin/internship/pending` → `200`, standardowa paginacja (domyślnie
+`per_page=25`, maksymalnie `100`), wyłącznie wpisy `submitted`, sortowane po
+`created_at` rosnąco, a przy remisie po `id` rosnąco. Każdy element zawiera
+pełny zasób uczestnika oraz dokładnie:
+
+```json
+"user": { "id": 17, "first_name": "Marta", "last_name": "Demo" }
+```
+
+Nie są zwracane inne pola użytkownika ani administratora.
+
+#### Decyzje administracyjne
+
+- `POST /admin/internship/{id}/accept` bez ciała → `200` z pełnym zasobem
+  administracyjnym po zmianie na `accepted`.
+- `POST /admin/internship/{id}/return` z wymaganym niepustym stringiem
+  `{ "comment": "Uzupełnij opis dyżuru." }` → `200` z pełnym zasobem
+  administracyjnym po zmianie na `returned`. Brak albo pusty komentarz →
+  `422 validation_failed`.
+
+Obie decyzje są dostępne wyłącznie dla administracji i tylko dla statusu
+`submitted`. Powtórzona albo sprzeczna decyzja zwraca `403 entry_locked` bez
+zmiany wpisu, dodatkowego audytu i powiadomienia. Odesłanie wymaga komentarza;
+ponowne złożenie zachowuje komentarz opiekuna, również po późniejszej akceptacji.
+
+Akceptacja emituje wyłącznie powiadomienie i audyt `internship.accepted`, a
+odesłanie wyłącznie `internship.returned`; oba przechodzą odpowiednio przez
+`Notify::send` i `AuditLog::record`.
 
 ### Superwizja (H12)
 
@@ -269,7 +464,7 @@ MVP hackathonowy — wszystkie typy obsługuje szyna H16; emitują pakiety-wła�
 happy path do demo dzwonka) · `question.asked` `question.answered` (H17) ·
 `internship.accepted` `internship.returned` (H11) · `attempt.failed_final` (H10) ·
 `certificate.ready` (H13) · `document.ready` (H14) · `profile.accepted`
-`profile.returned` (H15) · `export.ready` (H01).
+`profile.returned` `profile.withdrawn` (H15) · `export.ready` (H01).
 Po hackathonie: `access.expiring_30d/7d`, `supervision.reminder`.
 
 ### 3.2 Rejestr zdarzeń audytowych (`AuditLog::record`) — jedyne źródło prawdy
@@ -279,7 +474,8 @@ Po hackathonie: `access.expiring_30d/7d`, `supervision.reminder`.
 `assignment.removed` (H09) · `attempt.finished` `attempts.reset`
 `workshop.completed` (H10) · `internship.accepted` `internship.returned` (H11) ·
 `supervisor.assigned` (H12/H18) · `certificate.issued` (H13) · `document.generated`
-(H14) · `profile.accepted` `profile.returned` (H15) · `user.created` `user.updated`
+(H14) · `profile.accepted` `profile.returned` `profile.withdrawn` (H15) ·
+`user.created` `user.updated`
 `user.blocked` (H18) · `edition.updated` (H19) · `sensitive.viewed`
 (H03/H15 — automatycznie przy wglądzie).
 

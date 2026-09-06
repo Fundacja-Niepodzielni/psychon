@@ -1,4 +1,5 @@
 import PanelShell from "@/components/layout/PanelShell";
+import RequireRole from "@/components/permissions/RequireRole";
 import { instructorMenu } from "@/lib/menu/instructor";
 
 export default function InstructorLayout({
@@ -7,8 +8,10 @@ export default function InstructorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PanelShell panelName="Panel prowadzącego" menu={instructorMenu}>
-      {children}
-    </PanelShell>
+    <RequireRole allowedRoles={["instructor"]}>
+      <PanelShell panelName="Panel prowadzącego" menu={instructorMenu}>
+        {children}
+      </PanelShell>
+    </RequireRole>
   );
 }

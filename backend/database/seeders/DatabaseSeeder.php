@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             DemoSeeder::class,
-            // H05: CoursesPackageSeeder::class,
+            CoursesPackageSeeder::class, // H05
             // H11: InternshipPackageSeeder::class,
             // …
         ]);

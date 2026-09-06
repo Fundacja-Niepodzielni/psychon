@@ -13,3 +13,17 @@
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h19')
 */
+
+use App\Http\Controllers\Api\V1\Admin\DashboardController;
+use App\Http\Controllers\Api\V1\Admin\EditionSettingsController;
+use Illuminate\Support\Facades\Route;
+
+if (! config('features.h19')) {
+    return;
+}
+
+Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+    Route::get('/admin/dashboard', [DashboardController::class, 'show']);
+    Route::get('/admin/edition', [EditionSettingsController::class, 'show']);
+    Route::patch('/admin/edition', [EditionSettingsController::class, 'update']);
+});

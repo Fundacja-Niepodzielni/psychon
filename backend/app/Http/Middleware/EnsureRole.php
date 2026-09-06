@@ -17,7 +17,15 @@ class EnsureRole
         $user = $request->user();
 
         if ($user === null || ! in_array($user->role, $roles, true)) {
-            throw new ApiException(403, 'forbidden', 'Nie masz dostępu do tej sekcji.');
+            throw new ApiException(
+                403,
+                'forbidden',
+                'Nie masz dostępu do tej sekcji.',
+                reason: [
+                    'required_roles' => $roles,
+                    'your_role' => $user?->role,
+                ],
+            );
         }
 
         return $next($request);

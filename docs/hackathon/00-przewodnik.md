@@ -19,7 +19,7 @@ demo. Start środowiska: `03-pierwsze-30-minut.md`.
 | konflikty w schemacie bazy | komplet migracji przed startem — **zamrożone**; zmiany tylko addytywne, w oknach (§4) |
 | niekompatybilne API | kontrakt z góry + brakujące trasy przez strażnika (SLA 30 min) |
 | konflikty w plikach współdzielonych | własność plików i sloty (§5.1) — trasy per pakiet, rejestr menu, CODEOWNERS |
-| zalew PR-ów, których nikt nie zdąży przejrzeć | **limit 1 otwartego PR na zespół** + review partnerskie + bramki CI (§5) |
+| zalew PR-ów, których nikt nie zdąży przejrzeć | małe, jednozakresowe PR-y + review partnerskie + bramki CI (§5) |
 | „skończone" na laptopie autora | wspólny **staging = maszyna pokazowa na sali** (laptop sztabu; `scripts/pokaz.sh` pobiera `main`, przebudowuje i resetuje seedy) — odbiór tylko tam (§6) |
 | brak zabezpieczeń („bo hackathon") | autoryzacja i walidacja to kryterium akceptacji, nie opcja |
 | wszyscy padają o 3 w nocy | zmiany nocne narzucone z góry (§7) |
@@ -81,7 +81,7 @@ z tokenów — spodziewana nierówność wizualna jest świadomym kosztem warian
    odrzucony PR.
 2. **Kontrakt API źródłem prawdy kształtu HTTP.** Brakującą trasę zgłaszasz strażnikowi
    **przed implementacją** (SLA 30 min). Niezgodność = odrzucony PR.
-3. **Limit 1 otwartego PR-a na zespół.** PR ≤ ~400 linii.
+3. **PR-y jednozakresowe.** PR ≤ ~400 linii, gdy pozwala na to kompletny pionowy wycinek; wiele pakietowych PR-ów może pozostawać otwartych równolegle.
 4. **Zakaz nowych zależności** composer/npm i bibliotek UI spoza startera bez zgody sztabu.
 5. **Każde żądanie autoryzowane serwerowo** (middleware/policy) — pilnuje bramka CI.
 6. **Walidacja wejścia (FormRequest) zawsze**; treści od użytkowników (opisy, pytania,
@@ -99,6 +99,8 @@ z tokenów — spodziewana nierówność wizualna jest świadomym kosztem warian
 Gałąź `pakiet/HXX-nazwa` → PR (szablon z checklistą DoD) → review partnerskie →
 review liaisona → merge (sztab). CI zielone obowiązkowo. Funkcja nieskończona przy
 code freeze → wyłączana flagą `features.hXX`.
+Pełna checklista bezpiecznej pracy z remote'ami, branchem, OpenSpec, commitem i PR-em:
+[`06-workflow-pakietu-i-pr.md`](06-workflow-pakietu-i-pr.md).
 Mock ponad blokadę: czekasz na cudzy endpoint → pracuj na seedach zgodnych z kontraktem
 i oznacz `// TODO(HXX)`.
 Wyniki opisujesz w **`DEMO/HXX.md`** (plik per pakiet — nie wspólny).

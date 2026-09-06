@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import { menuIcons } from "@/components/layout/menu-icons";
 import { api, clearToken } from "@/lib/api";
 import type { MenuEntry } from "@/lib/menu/types";
 
@@ -69,18 +71,20 @@ export default function PanelShell({
           <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
             {menu.map((entry) => {
               const active = isActive(pathname, entry.href);
+              const Icon = entry.icon ? menuIcons[entry.icon] : null;
               return (
                 <li key={entry.href}>
                   <Link
                     href={entry.href}
                     aria-current={active ? "page" : undefined}
-                    className={`block whitespace-nowrap rounded-sm px-4 py-2.5 text-small font-medium transition-colors duration-200 focus-visible:focus-ring ${
+                    className={`flex items-center gap-3 rounded-sm px-4 py-2.5 text-small font-medium transition-colors duration-200 focus-visible:focus-ring ${
                       active
                         ? "bg-brand-10 text-primary"
                         : "text-muted hover:bg-grey hover:text-ink"
                     }`}
                   >
-                    {entry.label}
+                    {Icon ? <Icon className="size-5 shrink-0" /> : null}
+                    <span className="whitespace-nowrap">{entry.label}</span>
                   </Link>
                 </li>
               );
@@ -92,28 +96,7 @@ export default function PanelShell({
       {/* Prawa kolumna: nagłówek + treść */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 items-center justify-end gap-3 border-b border-line bg-card px-6 shadow-header lg:h-20">
-          {/* Miejsce na dzwonek powiadomień — dostarczy pakiet H16 */}
-          <button
-            type="button"
-            disabled
-            title="Powiadomienia (wkrótce — pakiet H16)"
-            aria-label="Powiadomienia (wkrótce — pakiet H16)"
-            className="flex size-10 items-center justify-center rounded-pill text-subtle opacity-50 focus-visible:focus-ring"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="size-5"
-              aria-hidden="true"
-            >
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-            </svg>
-          </button>
+          <NotificationBell />
           <button
             type="button"
             onClick={handleLogout}

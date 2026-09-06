@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+!deploy/oracle/env.example
+deploy/oracle/.access
 *.local
 
 # zależności / buildy
@@ -21,3 +23,6 @@ Thumbs.db
 # dane lokalne
 storage/*.key
 *.sqlite
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Database\Factories\EditionFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Edition extends Model
 {
+    /** @use HasFactory<EditionFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'starts_at',
@@ -44,6 +49,11 @@ class Edition extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
+    }
+
+    public function acceptedApplications(): HasMany
+    {
+        return $this->applications()->where('status', 'accepted');
     }
 
     public function certificates(): HasMany

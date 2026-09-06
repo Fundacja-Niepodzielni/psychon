@@ -17,4 +17,5 @@ return [
     'api/v1/auth/reset-password',
     'api/v1/auth/activate',
     'api/v1/verify/*', // public certificate verification (H13)
+    'api/v1/materials/*/download', // temporary signed material link (H05) — authorization by signature, re-checked in the controller
 ];

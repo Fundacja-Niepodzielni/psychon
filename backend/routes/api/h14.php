@@ -13,3 +13,16 @@
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h14')
 */
+
+use App\Http\Controllers\Api\V1\DocumentController;
+use Illuminate\Support\Facades\Route;
+
+if (config('features.h14')) {
+    Route::middleware(['auth:sanctum', 'access.active'])->group(function (): void {
+        Route::get('/documents', [DocumentController::class, 'index']);
+        Route::post('/documents/generate', [DocumentController::class, 'generate']);
+        Route::get('/documents/{document}/download', [DocumentController::class, 'download'])
+            ->middleware('signed')
+            ->name('documents.download');
+    });
+}

@@ -13,3 +13,19 @@
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h18')
 */
+
+use App\Http\Controllers\Api\V1\Admin\AdminUserController;
+use Illuminate\Support\Facades\Route;
+
+if (! config('features.h18')) {
+    return;
+}
+
+Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+    Route::get('/admin/users/export.csv', [AdminUserController::class, 'export']);
+    Route::get('/admin/users', [AdminUserController::class, 'index']);
+    Route::post('/admin/users', [AdminUserController::class, 'store']);
+    Route::get('/admin/users/{id}', [AdminUserController::class, 'show'])->whereNumber('id');
+    Route::patch('/admin/users/{id}', [AdminUserController::class, 'update'])->whereNumber('id');
+    Route::post('/admin/users/{id}/block', [AdminUserController::class, 'block'])->whereNumber('id');
+});
