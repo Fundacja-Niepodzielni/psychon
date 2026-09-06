@@ -32,7 +32,8 @@ use Tests\TestCase;
  * sprawdza, że trafiają do zespołu i **nie trafiają do uczestniczek**. Test, który
  * wymusza dokładnie dwa wiersze, kupowałby precyzję za cenę zgadywania.
  *
- * ⚠ Czerwony do czasu pozycji S1-6 (zakres KOD-DOPIECIA). Nie naprawiam.
+ * ⚠ Czerwony do czasu emisji powiadomienia zespołu przy wycofaniu zgody.
+ * Nie naprawiam tutaj — ten plik tylko mierzy.
  *
  * `php artisan test --filter=ConsentWithdrawal`
  */
