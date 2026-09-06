@@ -68,11 +68,12 @@ class TestController extends Controller
         $limit = TestGrader::attemptsLimit($test);
         $threshold = TestGrader::passThreshold($test);
 
+        $answers = $request->validated('answers');
         $snapshot = TestGrader::snapshot($test);
-        $graded = TestGrader::grade($snapshot, $request->validated('answers'));
+        $graded = TestGrader::grade($snapshot, $answers);
         $passed = $graded['score_percent'] >= $threshold;
 
-        $attempt = DB::transaction(function () use ($user, $test, $request, $snapshot, $graded, $passed, $limit): TestAttempt {
+        $attempt = DB::transaction(function () use ($user, $test, $answers, $snapshot, $graded, $passed, $limit): TestAttempt {
             // Blokada WIERSZA UŻYTKOWNIKA, nie zbioru podejść: `SELECT … FOR UPDATE`
             // na zbiorze pustym nie ma czego zablokować, więc przy PIERWSZYM podejściu
             // do testu równoległe żądania liczyły ten sam numer i unikat
@@ -94,6 +95,17 @@ class TestController extends Controller
                 );
             }
 
+            // Dwuklik w „wyślij test”: to samo zgłoszenie przychodzi dwa razy w ułamku
+            // sekundy. Drugie nie może założyć drugiego podejścia — inaczej jedno kliknięcie
+            // za dużo kosztuje uczestniczkę całe podejście. Sprawdzamy pod tą samą blokadą
+            // co limit, więc dwa równoległe żądania nie mijają się nawzajem, i PO kontroli
+            // limitu, żeby powtórzenie nie omijało 403 `attempts_exhausted`.
+            $duplicate = $this->recentIdenticalAttempt($user, $test, $answers);
+
+            if ($duplicate !== null) {
+                return $duplicate;
+            }
+
             // Postgres zabrania FOR UPDATE z agregatem — maksimum liczymy w PHP
             // (wzór z komendy demo:pass-test), już pod blokadą wyżej.
             $attemptNumber = 1 + (int) TestAttempt::query()
@@ -106,29 +118,39 @@ class TestController extends Controller
                 'user_id' => $user->id,
                 'test_id' => $test->id,
                 'attempt_number' => $attemptNumber,
-                'answers' => $request->validated('answers'),
+                'answers' => $answers,
                 'questions_snapshot' => $snapshot,
                 'score_percent' => $graded['score_percent'],
                 'passed' => $passed,
             ]);
         });
 
-        AuditLog::record($user, 'attempt.finished', $attempt, [
-            'test_id' => $test->id,
-            'attempt_number' => $attempt->attempt_number,
-            'score_percent' => $attempt->score_percent,
-            'passed' => $attempt->passed,
-        ]);
+        // Powtórzone zgłoszenie nie jest nowym zdarzeniem: nie trafia drugi raz do
+        // dziennika i nie wysyła powiadomienia jeszcze raz. Odpowiedź i tak niesie
+        // wynik tamtego podejścia, więc ekran zachowuje się jak przy pierwszym wysłaniu.
+        if ($attempt->wasRecentlyCreated) {
+            AuditLog::record($user, 'attempt.finished', $attempt, [
+                'test_id' => $test->id,
+                'attempt_number' => $attempt->attempt_number,
+                'score_percent' => $attempt->score_percent,
+                'passed' => $attempt->passed,
+            ]);
 
-        if (! $passed && $attempt->attempt_number >= $limit) {
-            $this->notifyFinalFailure($user, $test);
+            if (! $passed && $attempt->attempt_number >= $limit) {
+                $this->notifyFinalFailure($user, $test);
+            }
         }
 
         return response()->json(['data' => [
             'attempt_number' => $attempt->attempt_number,
             'score_percent' => $attempt->score_percent,
             'passed' => $attempt->passed,
-            'wrong_question_ids' => $graded['wrong_question_ids'],
+            'wrong_question_ids' => $attempt->wasRecentlyCreated
+                ? $graded['wrong_question_ids']
+                : TestGrader::grade(
+                    (array) $attempt->questions_snapshot,
+                    (array) $attempt->answers,
+                )['wrong_question_ids'],
         ]], 201);
     }
 
@@ -158,6 +180,55 @@ class TestController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Podejście tej samej osoby do tego samego testu, z identycznym zestawem
+     * odpowiedzi, założone w oknie `attempts.duplicate_window_seconds`. Zwraca
+     * `null`, gdy okno jest wyłączone (0) albo nic się w nim nie mieści.
+     *
+     * Wywoływać wyłącznie pod blokadą wiersza użytkownika — poza nią dwa równoległe
+     * żądania widziałyby stan sprzed zapisu tego drugiego.
+     *
+     * @param  array<int|string, int|string>  $answers
+     */
+    private function recentIdenticalAttempt(User $user, Test $test, array $answers): ?TestAttempt
+    {
+        $window = (int) config('attempts.duplicate_window_seconds');
+
+        if ($window <= 0) {
+            return null;
+        }
+
+        $fingerprint = $this->answersFingerprint($answers);
+
+        return TestAttempt::where('user_id', $user->id)
+            ->where('test_id', $test->id)
+            ->where('created_at', '>=', now()->subSeconds($window))
+            ->orderByDesc('attempt_number')
+            ->get()
+            ->first(fn (TestAttempt $attempt): bool => $this->answersFingerprint(
+                (array) $attempt->answers,
+            ) === $fingerprint);
+    }
+
+    /**
+     * Porównywalna postać zestawu odpowiedzi: klucze i wartości jako liczby,
+     * kolejność pytań bez znaczenia (JSON z bazy i JSON z żądania mogą mieć inną).
+     *
+     * @param  array<int|string, int|string>  $answers
+     */
+    private function answersFingerprint(array $answers): string
+    {
+        $normalized = [];
+
+        foreach ($answers as $questionId => $answerId) {
+            $normalized[(int) $questionId] = (int) $answerId;
+        }
+
+        ksort($normalized);
+
+        return (string) json_encode($normalized);
     }
 
     /**
