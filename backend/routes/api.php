@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     require __DIR__.'/api/auth.php';
+    require __DIR__.'/api/sso.php';
 
     foreach (range(1, 21) as $package) {
         require __DIR__.sprintf('/api/h%02d.php', $package);
