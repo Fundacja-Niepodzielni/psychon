@@ -1,0 +1,35 @@
+# MIGRACJE ZAMROŻONE — sumy kontrolne zmierzone w SHA BAZY, nie przepisane z pamięci.
+#
+# Skąd ten plik i dlaczego nie jest listą pisaną ręcznie:
+#   BAZA i zbiór plików pochodzą z jednego pomiaru; SHA bazy czytany jest z deklaracji
+#   nadzoru (`_nadzor/straznik/wspolne.baza`), a nie wpisywany drugi raz.
+#
+# Odtworzenie (na hoście, w klonie z pełną historią):
+#   BAZA=$(grep -v '^[[:space:]]*#' <katalog-straznika>/wspolne.baza | grep -v '^[[:space:]]*$' | head -1)
+#   git ls-tree -r "$BAZA" -- backend/database/migrations/ | awk '{print $3"  "$4}'
+#
+# Dlaczego suma jedzie w pliku, a nie jest liczona z gita w chwili testu:
+#   bramka biegnie W KONTENERZE (`docker compose exec app php artisan test`), gdzie
+#   zamontowany jest wyłącznie `./backend` — nie ma tam ani `.git`, ani programu `git`
+#   (zmierzone: `git: not found`, `ls /var/www/html/.git` → brak). Test, który wołałby
+#   gita, byłby czerwony wszędzie tam, gdzie naprawdę biegnie.
+#   Drugą warstwę — czy TEN plik nadal zgadza się z gitem w SHA bazy — mierzy strona
+#   hosta (skrypt strażnika), bo tylko tam jest historia. Sam plik nie jest dowodem
+#   na siebie i nie udaje, że jest.
+#
+# Format: <suma blob git>  <ścieżka względem KORZENIA repo>
+BAZA: b08ca0e
+c2831b861743dc147cf7ec287019f4ca57d30001  backend/database/migrations/0001_01_01_000000_create_users_table.php
+06dc7a5ee782ac3a0f3f1c471b03120d87f2e655  backend/database/migrations/0001_01_01_000001_create_cache_table.php
+edac6fee599f55c34fd7ade713079c7f007b2fe4  backend/database/migrations/0001_01_01_000002_create_jobs_table.php
+d07fc02b5b7eb7296346be7ef6157b24e91ca4db  backend/database/migrations/2026_01_01_000010_create_editions_and_settings_tables.php
+3a76c1af934d5811d271944f70cd80616115116e  backend/database/migrations/2026_01_01_000020_create_consents_and_audit_tables.php
+8763b918e2fc022d5d26817544687eebe122d5c5  backend/database/migrations/2026_01_01_000030_create_applications_table.php
+1bb4f0ed070b4f84e6c8d27ea94f87f406a4a136  backend/database/migrations/2026_01_01_000040_create_courses_tables.php
+affcc495c155f0512ae87d0585e88be931f4d230  backend/database/migrations/2026_01_01_000050_create_tests_tables.php
+fd9bbb47420b255ab97e131def9d8a10535d5dd1  backend/database/migrations/2026_01_01_000060_create_internship_and_supervision_tables.php
+06aec52453074efdab9cac5532cc4d07b10c121f  backend/database/migrations/2026_01_01_000070_create_certificates_and_documents_tables.php
+f463f21a64a84c2a910b20897dc8a538bb3dbd7c  backend/database/migrations/2026_01_01_000080_create_psychologist_profiles_tables.php
+afe1f5a4805498e37ad10d447febc421e85a691e  backend/database/migrations/2026_01_01_000090_create_communication_tables.php
+76b3b137a9806215320acbb33727c0ff9ce034be  backend/database/migrations/2026_01_02_000000_create_data_exports_table.php
+40ff706ee7c2c2beec943b5f3790ef8ad29f3418  backend/database/migrations/2026_08_07_103920_create_personal_access_tokens_table.php
