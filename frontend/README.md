@@ -101,12 +101,26 @@ jest nieosiągalny), sesja kończy się od razu — `lib/api.ts` woła wtedy
 **Dwie granice zmierzone przy odbiorze tego mechanizmu, spisane tu, bo nie są
 oczywiste z samego kodu:**
 
-- **Token dostępu żyje dalej po wylogowaniu — do końca swoich 600 s.**
-  Wylogowanie kończy sesję przeglądarki natychmiast (ciasteczko znika, ekran
-  wymaga ponownego logowania), ale sam token dostępu, jeśli ktoś zdążył go
-  gdzieś zapisać przed wylogowaniem, nadal odpowiada w API aż do naturalnego
-  wygaśnięcia. To świadomy kompromis identity providera (krótki czas życia
-  tokenu zamiast natychmiastowej unieważnialności), nie błąd tej aplikacji.
+- **Wylogowanie kończy sesję w koncie Fundacji, a API przestaje przyjmować
+  token tej sesji — bo sprawdza znacznik wylogowania konta Fundacji
+  (`sid`), a nie dlatego, że token właśnie wygasł.** Nawet jeśli ktoś zdążył
+  gdzieś zapisać sobie token przed wylogowaniem, API przestaje go honorować,
+  gdy tylko dotrze do niego informacja o wylogowaniu. Zmierzone na lokalnym
+  uruchomieniu (efemeryczne konto Fundacji, dwa pomiary): około **6–7 sekund**
+  między wywołaniem wylogowania a pierwszą odmową dla tego tokenu. To liczba
+  z jednego, lokalnego przebiegu testowego — nie z produkcji; na produkcyjnej
+  infrastrukturze może wyjść inaczej, prawdopodobnie krócej (sama operacja
+  zapisania znacznika to pojedynczy zapis do bazy z odczytem kontrolnym, a
+  zmierzony czas w większości pochłonęło samo środowisko testowe, wyraźnie
+  wolniejsze niż docelowe). Gdy w chwili sprawdzania API nie potrafi odczytać
+  tego znacznika (np. awaria jego magazynu), traktuje to jako powód do
+  odmowy i każe zalogować się ponownie — nigdy nie wpuszcza tokenu tylko
+  dlatego, że nie znalazło dla niego znacznika. Jest jeden wyjątek, w którym
+  token żyje pełne 600 sekund mimo wylogowania: gdy wylogowanie w ogóle nie
+  dotarło do konta Fundacji — bo karta przeglądarki została zamknięta albo
+  padło połączenie sieciowe, zanim żądanie wylogowania wyszło. Wtedy żaden
+  znacznik nigdy nie powstaje i token jest honorowany aż do naturalnego
+  wygaśnięcia. To wyjątkowy przypadek, nie reguła.
 - **Zalogowanie się przez jedne drzwi zastępuje sesję drugich.** Jest jedno
   miejsce na sesję (jedno ciasteczko Auth.js) — zalogowanie się lokalnym
   hasłem po zalogowaniu przez konto Fundacji (i odwrotnie) kończy tamtą
