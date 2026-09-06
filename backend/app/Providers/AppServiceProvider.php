@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\AuthenticateKeycloakToken;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -22,6 +23,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // ZLECENIE-044: registers a route-middleware alias for the ephemeral
+        // Keycloak-token guard WITHOUT touching bootstrap/app.php, which is
+        // outside KOD-DOPIECIA's declared scope (WOLNO covers backend/app/*,
+        // and AppServiceProvider is already wired into bootstrap/providers.php
+        // unmodified). This keeps routes/api/sso.php's middleware() call a
+        // recognizable "auth.*" alias string, which is what
+        // Tests\Feature\PublicRoutesSmokeTest inspects via gatherMiddleware()
+        // to decide a route requires authentication — an FQCN string does not
+        // satisfy that heuristic (str_starts_with($middleware, 'auth')).
+        $this->app['router']->aliasMiddleware('auth.keycloak', AuthenticateKeycloakToken::class);
+
         // Password-reset e-mail: PL content + a link into the frontend.
         ResetPassword::createUrlUsing(function (User $user, string $token): string {
             return self::resetUrl($user, $token);
