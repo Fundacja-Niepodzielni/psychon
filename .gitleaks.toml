@@ -1,0 +1,19 @@
+title = "Wyjatki skanera sekretow dla atrap w testach"
+
+# Bazowy zestaw regul pozostaje bez zmian.
+[extend]
+useDefault = true
+
+# Wyjatek dziala tylko wtedy, gdy oba warunki sa spelnione naraz (AND):
+# dopasowana tresc jest jednym z wymyslonych ciagow uzywanych w atrapach testowych
+# ORAZ plik lezy w katalogu testow frontendu. Sam katalog nie jest zwolniony —
+# kazdy inny sekret w tych plikach nadal zostanie zlapany.
+[[allowlists]]
+description = "Atrapy testowe (odswiezajacy token, stary dostep, sanctum) tylko w testach frontendu"
+condition = "AND"
+paths = ['''frontend/__tests__/.*''']
+regexes = [
+  '''odswiezajacy-[0-9]''',
+  '''stary-dostep''',
+  '''sanctum-abc''',
+]
