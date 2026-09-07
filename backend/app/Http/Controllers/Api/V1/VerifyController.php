@@ -41,10 +41,15 @@ class VerifyController extends Controller
             throw new ApiException(404, 'not_found', self::NOT_FOUND_MESSAGE);
         }
 
+        $edition = $certificate->edition;
+        $editionName = $edition?->name;
+
         return response()->json(['data' => [
             'number' => $certificate->number,
             'status' => $certificate->revoked_at !== null ? 'revoked' : 'valid',
-            'edition' => (string) ($certificate->edition?->starts_at?->year ?? ''),
+            'edition' => $editionName !== null && $editionName !== ''
+                ? $editionName
+                : (string) ($edition?->starts_at?->year ?? ''),
             'issued_at' => $certificate->issued_at?->toIso8601ZuluString(),
         ]]);
     }
