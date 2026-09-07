@@ -228,8 +228,9 @@ Wymagania — rozpiska 10.1–10.2 oraz:
 
 1. Lista warunków z bieżącym stanem (etapy, testy, 72 h stażu, superwizje, warsztat) —
    zawsze widoczna dla uczestnika; generowanie zablokowane do kompletu.
-2. Wydanie: numer ciągły w edycji (transakcyjnie, bez dziur), zapis snapshotu warunków,
-   PDF A4 z kodem QR generowany w tle, powiadomienie o gotowości; wpis w dzienniku działań.
+2. Wydanie: numer ciągły w roku, wspólny dla wszystkich edycji tego roku (transakcyjnie,
+   bez dziur), zapis snapshotu warunków, PDF A4 z kodem QR generowany w tle,
+   powiadomienie o gotowości; wpis w dzienniku działań.
 3. Weryfikacja publiczna (bez logowania): strona wyszukiwania po numerze + wejście z QR
    (token); pokazywane dane wg decyzji ⚠️ (rekomendacja: numer, status, edycja, data —
    imię i nazwisko tylko za zgodą absolwenta); nieistniejący numer → czytelna odmowa

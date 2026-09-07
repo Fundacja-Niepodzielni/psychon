@@ -159,8 +159,9 @@ Reguły: zapis tylko na termin własnego superwizora; licznik obecności do waru
 ### 2.6 Certyfikaty i dokumenty
 
 **certificates** — moduł 10.
-`user_id, edition_id, number (ciągły w edycji, format np. NP/2026/001 — sekwencja per
-edycja w transakcji), issued_at, pdf_path, verification_token (do QR),
+`user_id, edition_id, number (ciągły w roku, format np. NP/2026/001 — jedna sekwencja
+na rok, wspólna dla wszystkich edycji, nadawana w transakcji; number jest unikalny
+globalnie, nie tylko w edycji), issued_at, pdf_path, verification_token (do QR),
 conditions_snapshot (json — stan warunków w chwili wydania),
 revoked_at, revoked_reason (unieważnienie — moduł 10.4)`.
 Weryfikacja publiczna: po `number` (wyszukiwarka) i po tokenie z QR; zakres pokazywanych
