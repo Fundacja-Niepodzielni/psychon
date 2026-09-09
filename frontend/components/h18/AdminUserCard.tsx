@@ -16,6 +16,7 @@ import {
   type AdminUserCard as AdminUserCardData,
   type UserRole,
 } from "@/lib/api";
+import AssignSupervisor from "@/components/h12/AssignSupervisor";
 import { DOCUMENT_TYPE_LABELS, ROLE_LABELS } from "@/lib/h18/labels";
 
 function formatDateTime(iso: string | null): string {
@@ -249,6 +250,8 @@ export default function AdminUserCard({ id }: { id: number }) {
           </div>
         </dl>
       </Card>
+
+      <AssignSupervisor userId={id} />
 
       <Card title="Dokumenty">
         {documents.length === 0 ? (

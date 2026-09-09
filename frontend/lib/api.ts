@@ -320,6 +320,28 @@ export function fetchAdminUsers(
   return apiPaged<AdminUserListItem>(`/admin/users${adminUsersQuery(filters)}`);
 }
 
+export interface SupervisorAssignment {
+  volunteer_id: number;
+  supervisor_id: number;
+  assigned_at: string | null;
+  unassigned_at: string | null;
+}
+
+/**
+ * Nadanie prowadzącego (H12). O tym, czy przypisanie jest dopuszczalne
+ * (osoba musi być wolontariuszką, wskazany użytkownik prowadzącym),
+ * rozstrzyga serwer — 422 wraca jako `ApiError` do pokazania na ekranie.
+ */
+export function assignSupervisor(
+  userId: number,
+  supervisorId: number,
+): Promise<SupervisorAssignment> {
+  return api<SupervisorAssignment>(`/admin/users/${userId}/supervisor`, {
+    method: "PUT",
+    body: { supervisor_id: supervisorId },
+  });
+}
+
 export function fetchAdminUser(id: number): Promise<AdminUserCard> {
   return api<AdminUserCard>(`/admin/users/${id}`);
 }
