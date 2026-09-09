@@ -382,6 +382,18 @@ Przypisanie superwizora do wolontariusza (administracja):
 `PUT /admin/users/{id}/supervisor {supervisor_id}` → 200 [audyt `supervisor.assigned`].
 `GET /admin/supervision/slots` → 200, wszystkie terminy wszystkich prowadzących wraz z obecnościami (administracja).
 
+`GET /supervision/slots` → 200 — terminy prowadzone przez superwizora osoby pytającej,
+stronicowane (`meta`); brak przypisanego superwizora → 200 z pustą listą.
+`DELETE /supervision/slots/{id}/signup` → 200 — wypisanie; po rozpoczęciu terminu
+→ 422 `validation_failed`; brak aktywnego zapisu → 404 `not_found`.
+`GET /instructor/group` → 200 — grupa prowadzącego wraz z etapem każdej osoby.
+`POST /instructor/slots` → 201 — utworzenie terminu (`starts_at`, `seats_limit`).
+`PATCH /instructor/slots/{id}/attendance` — dostęp: prowadzący **oraz administracja**
+(`project_manager`, `super_admin`).
+Wspólne dla zapisu i wypisania: nieznany termin → 404 `not_found`; termin, który już się
+rozpoczął → 422 `validation_failed`; ponowny zapis na termin już zapisany → 201 bez zmiany
+stanu (idempotentnie).
+
 ### Certyfikat (H13)
 
 `GET /certificate/conditions` → 200
