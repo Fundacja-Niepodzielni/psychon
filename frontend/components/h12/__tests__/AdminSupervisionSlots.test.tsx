@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { dwaTerminyPrawdziwyKsztalt } from "./fixture";
 
 /**
  * Świadek ekranu `#/admin/superwizje` (`AdminSupervisionSlots`), pisany z
@@ -34,37 +35,13 @@ vi.mock("@/lib/api", () => ({
 
 const { default: AdminSupervisionSlots } = await import("@/components/h12/AdminSupervisionSlots");
 
-function dwaTerminy(attendance: "present" | "absent" | null) {
-  return {
-    data: [
-      {
-        id: 1,
-        starts_at: "2026-09-10T09:00:00Z",
-        capacity: 6,
-        taken: 1,
-        supervisor: { id: 10, name: "Agata Pierwsza" },
-        signups: [{ user: { id: 100, name: "Osoba Jedna" }, attendance: null }],
-      },
-      {
-        id: 2,
-        starts_at: "2026-09-12T09:00:00Z",
-        capacity: 6,
-        taken: 1,
-        supervisor: { id: 20, name: "Bartek Drugi" },
-        signups: [{ user: { id: 200, name: "Osoba Dwa" }, attendance }],
-      },
-    ],
-    meta: { current_page: 1, per_page: 25, total: 2, last_page: 1 },
-  };
-}
-
 beforeEach(() => {
   fetchAdminSupervisionSlots.mockReset();
 });
 
 describe("AdminSupervisionSlots — zawartość", () => {
   it("pokazuje prowadzącego z DRUGIEGO terminu i obecność zapisaną przy nim", async () => {
-    fetchAdminSupervisionSlots.mockResolvedValue(dwaTerminy("present"));
+    fetchAdminSupervisionSlots.mockResolvedValue(dwaTerminyPrawdziwyKsztalt("present"));
     render(<AdminSupervisionSlots />);
 
     expect(await screen.findByText("Bartek Drugi")).toBeInTheDocument();
@@ -74,7 +51,7 @@ describe("AdminSupervisionSlots — zawartość", () => {
   it("PERTURBACJA: przy braku obecności ekran NIE pokazuje potwierdzenia — dowód, że test (1) mierzy coś", async () => {
     // Bez tej nogi test wyżej byłby zielony nawet wtedy, gdyby ekran wypisywał
     // „Obecność potwierdzona" na stałe, niezależnie od danych (L-06).
-    fetchAdminSupervisionSlots.mockResolvedValue(dwaTerminy(null));
+    fetchAdminSupervisionSlots.mockResolvedValue(dwaTerminyPrawdziwyKsztalt(null));
     render(<AdminSupervisionSlots />);
 
     await screen.findByText("Bartek Drugi");
@@ -84,7 +61,8 @@ describe("AdminSupervisionSlots — zawartość", () => {
 
 describe("AdminSupervisionSlots — pusto", () => {
   it("pokazuje komunikat po polsku, nie pustą stronę ani tabelę bez wierszy", async () => {
-    fetchAdminSupervisionSlots.mockResolvedValue({ data: [], meta: { current_page: 1, per_page: 25, total: 0, last_page: 1 } });
+    // Prawdziwa koperta: kontroler zwraca wyłącznie `data` (bez `meta`).
+    fetchAdminSupervisionSlots.mockResolvedValue({ data: [] });
     render(<AdminSupervisionSlots />);
 
     expect(await screen.findByText("Brak terminów superwizji do wyświetlenia.")).toBeInTheDocument();
