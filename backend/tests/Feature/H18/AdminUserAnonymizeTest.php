@@ -140,16 +140,26 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
     }
 
     /**
-     * ZNALEZISKO: PDF certyfikatu wygenerowany PRZED procedurą zostaje na
-     * dysku bajt w bajt taki sam, więc nazwisko wypalone w renderze
-     * (dompdf, strumień treści FlateDecode) przeżywa anonimizację. Procedura
-     * (`UserAnonymizer::expireReadyExports`) czyści eksport RODO, ale nie
-     * rusza tabeli `certificates` ani plików pod `certificates.pdf_path`.
-     * Świadek pisany z kryterium 052 §3 pkt 2 ("po procedurze żaden punkt
-     * API nie oddaje danych osobowych — w tym eksport i PDF certyfikatu")
-     * świeci na czerwono na `8ad6133`. Nie naprawiam — to nie mój zakres.
+     * ZNALEZISKO F-15: PDF certyfikatu wygenerowany PRZED procedurą zostaje na
+     * dysku bajt w bajt taki sam, więc nazwisko wypalone w renderze (dompdf)
+     * przeżywa anonimizację. Procedura (`UserAnonymizer::expireReadyExports`)
+     * czyści eksport RODO, ale nie rusza tabeli `certificates` ani plików pod
+     * `certificates.pdf_path`.
+     *
+     * Wymaganie (art. 17): po procedurze żaden plik osiągalny przez
+     * `certificates.pdf_path` nie niesie nazwiska tej osoby. TO, jak to jest
+     * osiągnięte — skasowanie pliku, czy przerenderowanie go bez nazwiska —
+     * jest decyzją naprawy, nie tego świadka: obie odpowiedzi mają tu wyjść
+     * zielone, świeci się na czerwono tylko trzeci wariant, dzisiejszy —
+     * plik zostaje i dalej niesie nazwisko.
+     *
+     * Nazwisko szuka się nie jako dosłowny ciąg UTF-8: dompdf zapisuje tekst
+     * strumieniami skompresowanymi (FlateDecode) w prostym foncie, gdzie
+     * każdy znak to 2 bajty UTF-16BE — `pdfBytesContainSurname()` dekompresuje
+     * strumienie i szuka tej postaci, zmierzone bezpośrednio na renderze
+     * `pdf.certificate` (kontener `psytesty_app`, 09.09).
      */
-    public function test_certificate_pdf_generated_before_the_procedure_still_carries_the_name(): void
+    public function test_no_certificate_pdf_reachable_after_the_procedure_carries_the_name(): void
     {
         Storage::fake('local');
         $grad = $this->makeEligibleVolunteer();
@@ -163,23 +173,105 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
         $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
         Storage::disk('local')->assertExists($certificate->pdf_path);
-        $pdfBytesBefore = Storage::disk('local')->get($certificate->pdf_path);
+        $this->assertTrue(
+            self::pdfBytesContainSurname(Storage::disk('local')->get($certificate->pdf_path), 'Górniak-Wysocka'),
+            'fixture assumption: świeżo wygenerowany PDF certyfikatu rzeczywiście niesie nazwisko'
+        );
 
         Sanctum::actingAs($this->admin());
         $anonymize = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertLessThan(300, $anonymize->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$anonymize->getStatusCode().' '.$anonymize->getContent());
 
-        $this->assertTrue(
-            Storage::disk('local')->exists($certificate->pdf_path),
-            'fixture assumption: plik PDF certyfikatu istnieje na dysku po procedurze'
-        );
-        $pdfBytesAfter = Storage::disk('local')->get($certificate->pdf_path);
+        $pathAfter = $certificate->fresh()->pdf_path;
+        $fileGone = $pathAfter === null || ! Storage::disk('local')->exists($pathAfter);
 
-        $this->assertNotSame(
-            $pdfBytesBefore,
-            $pdfBytesAfter,
-            'plik PDF certyfikatu na dysku jest identyczny bajt-w-bajt z tym sprzed procedury — nazwisko w PDF nie zostało tknięte przez anonimizację'
+        $this->assertTrue(
+            $fileGone || ! self::pdfBytesContainSurname(Storage::disk('local')->get($pathAfter), 'Górniak-Wysocka'),
+            'plik PDF certyfikatu wydanego przed procedurą nadal jest na dysku i nadal niesie nazwisko po anonimizacji — art. 17 wymaga, żeby żaden plik osiągalny przez certificates.pdf_path nie zdradzał tożsamości, obojętnie czy przez skasowanie pliku, czy przez przerenderowanie go bez nazwiska'
         );
+    }
+
+    /**
+     * Druga noga tego samego wymagania: konto, które **już** przeszło
+     * procedurę wcześniej (`anonymized_at` niepuste), a plik certyfikatu
+     * mimo to nadal leży na dysku i niesie nazwisko — dokładnie to, co
+     * zostawia dzisiejszy kod, gdy ktoś uruchomi procedurę przed naprawą.
+     * Stan buduje się tu przez rzeczywiste, jednokrotne wywołanie procedury
+     * na dzisiejszym (niepoprawionym) kodzie — nie przez ręczne wstawienie
+     * `anonymized_at` — bo to właśnie jest realny sposób, w jaki taki wiersz
+     * mógł powstać.
+     *
+     * Naprawa "od teraz" (procedura czyści plik przy WŁASNYM uruchomieniu)
+     * nie wystarcza na taki zastany wiersz: wymaganie ma się domknąć także
+     * wtedy, gdy administrator uruchomi procedurę na koncie, które jest już
+     * zanonimizowane — punkt API dziś na to odpowiada 409 i nic więcej nie
+     * robi, więc plik zostaje. Świadek nie przesądza, czy naprawa domyka to
+     * przy drugim wywołaniu tego samego punktu, czy osobnym mechanizmem
+     * uruchamianym poza testem (jednorazowe sprzątanie danych) — mierzy
+     * wyłącznie stan pliku na końcu tego scenariusza.
+     */
+    public function test_certificate_pdf_left_over_from_an_earlier_run_still_carries_the_name(): void
+    {
+        Storage::fake('local');
+        $grad = $this->makeEligibleVolunteer();
+        $grad->update([
+            'first_name' => 'Barbara',
+            'last_name' => 'Kowalska-Nowak',
+        ]);
+        $grad = $grad->fresh();
+
+        Sanctum::actingAs($grad);
+        $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
+        $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
+        Storage::disk('local')->assertExists($certificate->pdf_path);
+        $this->assertTrue(
+            self::pdfBytesContainSurname(Storage::disk('local')->get($certificate->pdf_path), 'Kowalska-Nowak'),
+            'fixture assumption: świeżo wygenerowany PDF certyfikatu rzeczywiście niesie nazwisko'
+        );
+
+        // Pierwsze uruchomienie — buduje stan "konto już zanonimizowane,
+        // plik certyfikatu nietknięty", zastany dziś (F-15).
+        Sanctum::actingAs($this->admin());
+        $first = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
+        $this->assertLessThan(300, $first->getStatusCode(), 'pierwsza procedura anonimizacji nie powiodła się: '.$first->getStatusCode().' '.$first->getContent());
+        $this->assertNotNull($grad->fresh()->anonymized_at, 'fixture assumption: konto jest już zanonimizowane przed drugim wywołaniem');
+
+        // Drugie uruchomienie — na koncie zastanym w tym stanie procedura ma
+        // domknąć to, co zostawiło pierwsze (albo coś innego ma to zrobić,
+        // ale efekt musi być widoczny w tym miejscu).
+        $second = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
+
+        $pathAfter = $certificate->fresh()->pdf_path;
+        $fileGone = $pathAfter === null || ! Storage::disk('local')->exists($pathAfter);
+
+        $this->assertTrue(
+            $fileGone || ! self::pdfBytesContainSurname(Storage::disk('local')->get($pathAfter), 'Kowalska-Nowak'),
+            'plik certyfikatu z konta zanonimizowanego WCZEŚNIEJ nadal niesie nazwisko — naprawa działająca tylko "od teraz" zostawia dane osobowe leżące na dysku (drugie wywołanie procedury zwróciło: '.$second->getStatusCode().' '.$second->getContent().')'
+        );
+    }
+
+    /**
+     * Czy skompresowane (FlateDecode) strumienie treści PDF-a niosą nazwisko.
+     * Dompdf koduje tekst w prostych fontach jako UTF-16BE (2 bajty/znak) —
+     * dosłowne szukanie ciągu UTF-8 w bajtach (także po dekompresji) nic nie
+     * znajduje nawet wtedy, gdy nazwisko naprawdę jest w dokumencie. Metoda
+     * nie zakłada NIC o mechanizmie naprawy — działa identycznie na pliku
+     * niezmienionym, przerenderowanym bez nazwiska, i na dowolnym innym PDF.
+     */
+    private static function pdfBytesContainSurname(string $pdfBytes, string $surname): bool
+    {
+        $needle = mb_convert_encoding($surname, 'UTF-16BE', 'UTF-8');
+
+        if (preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdfBytes, $matches)) {
+            foreach ($matches[1] as $stream) {
+                $decompressed = @gzuncompress($stream);
+                if ($decompressed !== false && str_contains($decompressed, $needle)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function test_operation_is_recorded_in_the_audit_log_with_actor_and_timestamp(): void
