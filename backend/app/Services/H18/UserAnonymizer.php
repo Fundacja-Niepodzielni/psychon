@@ -3,6 +3,7 @@
 namespace App\Services\H18;
 
 use App\Exceptions\ApiException;
+use App\Models\Certificate;
 use App\Models\DataExport;
 use App\Models\User;
 use App\Support\AuditLog;
@@ -22,6 +23,24 @@ final class UserAnonymizer
 {
     public static function run(User $target, User $actor): User
     {
+        $existing = User::query()->whereKey($target->getKey())->first();
+
+        if ($existing === null) {
+            throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
+        }
+
+        if ($existing->anonymized_at !== null) {
+            // Konto już przeszło procedurę wcześniej — ale plik certyfikatu mógł
+            // przetrwać, jeśli to pierwsze przejście zdarzyło się zanim ta metoda
+            // zaczęła go sprzątać. Kolejne wywołanie na takim koncie ma domknąć
+            // ten stan zastany, nawet gdy samo kończy się odmową: sprzątanie
+            // dzieje się tu, PRZED wyjątkiem i poza transakcją poniżej, żeby
+            // rollback po 409 go nie cofnął.
+            self::expireIssuedCertificates($existing);
+
+            throw new ApiException(409, 'already_anonymized', 'Konto zostało już zanonimizowane.');
+        }
+
         return DB::transaction(function () use ($target, $actor): User {
             $user = User::query()->whereKey($target->getKey())->lockForUpdate()->first();
 
@@ -70,6 +89,7 @@ final class UserAnonymizer
             $user->tokens()->delete();
 
             self::expireReadyExports($user);
+            self::expireIssuedCertificates($user);
 
             AuditLog::record($actor, 'user.anonymized', $user);
 
@@ -95,6 +115,29 @@ final class UserAnonymizer
             }
 
             $export->update(['status' => 'expired', 'file_path' => null]);
+        });
+    }
+
+    /**
+     * A certificate PDF rendered *before* anonymisation has the name baked
+     * into the page by dompdf — a right no `DELETE` on `users` would
+     * satisfy, because the row in `certificates` (number, issue date) is the
+     * fact we keep on purpose (see class docblock). The file underneath it
+     * is not: it exists only to be downloaded by the person it names, and
+     * that person no longer has an account to download it with. Public
+     * verification (by number, by QR) reads `certificates` columns other
+     * than `pdf_path`, so clearing the path does not touch it.
+     */
+    private static function expireIssuedCertificates(User $user): void
+    {
+        $disk = Storage::disk('local');
+
+        $user->certificates()->whereNotNull('pdf_path')->each(function (Certificate $certificate) use ($disk): void {
+            if ($disk->exists($certificate->pdf_path)) {
+                $disk->delete($certificate->pdf_path);
+            }
+
+            $certificate->update(['pdf_path' => null]);
         });
     }
 }
