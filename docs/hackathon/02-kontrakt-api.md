@@ -380,6 +380,7 @@ termin cudzej grupy → 403 `not_your_supervisor`.
 `PATCH /instructor/slots/{id}/attendance` `{ "attendance": { "17": "present", "18": "absent" } }` → 200.
 Przypisanie superwizora do wolontariusza (administracja):
 `PUT /admin/users/{id}/supervisor {supervisor_id}` → 200 [audyt `supervisor.assigned`].
+`GET /admin/supervision/slots` → 200, wszystkie terminy wszystkich prowadzących wraz z obecnościami (administracja).
 
 ### Certyfikat (H13)
 

@@ -42,6 +42,7 @@ Route::middleware(['auth:sanctum', 'role:instructor,project_manager,super_admin'
 });
 
 Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+    Route::get('/admin/supervision/slots', [AdminSupervisionController::class, 'index']);
     Route::put('/admin/users/{id}/supervisor', [AdminSupervisionController::class, 'assignSupervisor'])
         ->whereNumber('id');
 });

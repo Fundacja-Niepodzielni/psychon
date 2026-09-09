@@ -24,6 +24,11 @@ class InstructorSlotResource extends JsonResource
             'duration_minutes' => (int) $this->duration_minutes,
             'seats_limit' => (int) $this->seats_limit,
             'location_or_link' => $this->location_or_link,
+            'supervisor' => $this->whenLoaded('supervisor', fn (): array => [
+                'id' => $this->supervisor->id,
+                'first_name' => $this->supervisor->first_name,
+                'last_name' => $this->supervisor->last_name,
+            ]),
             'active_signups_count' => $activeCount,
             'available_seats' => max(0, (int) $this->seats_limit - $activeCount),
             'signups' => $signups->map(fn ($signup): array => [
