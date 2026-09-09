@@ -501,3 +501,33 @@ export function downloadAuditLogCsv(filters: AuditFilters = {}): Promise<void> {
   )}`;
   return downloadFile(url, "dziennik.csv");
 }
+
+/* -------------------------------------------------------------------- */
+/* H12 — administracja terminami superwizji                              */
+/* -------------------------------------------------------------------- */
+
+export interface AdminSupervisionSignup {
+  user: { id: number; name: string };
+  attendance: "present" | "absent" | null;
+}
+
+export interface AdminSupervisionSlot {
+  id: number;
+  starts_at: string;
+  capacity: number;
+  taken: number;
+  supervisor: { id: number; name: string };
+  signups: AdminSupervisionSignup[];
+}
+
+/**
+ * Wszystkie terminy wszystkich prowadzących (widok administracji) — kryterium
+ * pozycji 6: „potwierdzenie odbycia widoczne (...) w administracji". Obecność
+ * (`attendance`) odnotowuje prowadzący na swoim ekranie; tu jest tylko do odczytu.
+ */
+export function fetchAdminSupervisionSlots(): Promise<{
+  data: AdminSupervisionSlot[];
+  meta?: PaginationMeta;
+}> {
+  return apiPaged<AdminSupervisionSlot>("/admin/supervision/slots");
+}
