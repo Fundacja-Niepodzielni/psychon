@@ -26,7 +26,7 @@ Wymagania opisane w `01-architektura-i-integracje.md` (§1–3). Dodatkowo:
 
 ## M2. Konta, role i uprawnienia
 
-**Ekrany makiety:** `#/logowanie`, `#/panel/profil`, panel → uczestniczki.
+**Ekrany makiety:** `#/logowanie`, `#/panel/profil`, panel → osoby uczestniczące.
 
 Wymagania:
 
@@ -320,7 +320,7 @@ linkiem; e-mail w środowisku testowym nigdy nie wychodzi do prawdziwego adresat
 
 ## M14. Panel administracyjny
 
-**Ekrany makiety:** `#/admin/*` (uczestniczki, kursy, staż, profile, czas nauki, dziennik,
+**Ekrany makiety:** `#/admin/*` (osoby uczestniczące, kursy, staż, profile, czas nauki, dziennik,
 raport, ustawienia, postępy).
 
 Wymagania — rozpiska 14.1–14.3 oraz:

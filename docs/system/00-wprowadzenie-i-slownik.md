@@ -52,7 +52,7 @@ Kluczowe cechy odróżniające od typowej platformy e-learningowej:
 | **Opiekun Projektu** | zespół operacyjny Fundacji | treści, zgłoszenia, akceptacje, statystyki — bez finansów |
 | **Psycholog prowadzący** | prowadzi etap/kurs i grupę superwizyjną | swoja grupa, swoje kursy, pytania od uczestników |
 | **Wolontariusz** | uczestnik pełnego programu | pełna ścieżka: kursy, testy, staż, superwizja, certyfikat, profil |
-| **Student** | uczestnik węższej ścieżki | kursy i wydarzenia, bez stażu/superwizji/certyfikatu zawodowego |
+| **Student** | rola odziedziczona po hackathonie, **poza zakresem MVP** | nic — ścieżka „same kursy" nie należy do zakresu MVP, więc rola nie daje dostępu do żadnej funkcji programu |
 | Gość (niezalogowany) | internet | strona logowania, publiczna weryfikacja certyfikatu, (faza 2: strony publiczne) |
 
 Szczegółowa matryca uprawnień: `03-role-i-uprawnienia.md`.
@@ -66,13 +66,15 @@ kosztuje ryzyko i nic nie daje Zamawiającemu). Zamiast tego trzymamy mapowanie:
 | administrator | `super_admin` | Super Admin |
 | opiekun projektu | `project_manager` | Opiekun Projektu |
 | psycholog prowadzący | `instructor` | Psycholog prowadzący |
-| wolontariuszka / uczestniczka programu | `volunteer` | Wolontariusz |
+| osoba uczestnicząca w programie | `volunteer` | Wolontariusz |
 | *(brak odpowiednika w umowie)* | `student` | Student |
 
-Ostatni wiersz jest otwarty świadomie: umowa daje „uczestniczce programu" porozumienie
-wolontariackie, superwizje i certyfikat — czyli opisuje ścieżkę `volunteer`. Węższa ścieżka
-`student` (same kursy) nie ma dziś pozycji w umowie. Pytanie, czy należy do zakresu, czeka na
-rozstrzygnięcie Zamawiającego; do tego czasu **nie zmieniamy z tego powodu ani kodu, ani zakresu**.
+Ostatni wiersz jest **domknięty**: umowa opisuje **jedną** ścieżkę osoby uczestniczącej — porozumienie
+wolontariackie, superwizje i certyfikat, czyli to, co w kodzie robi `volunteer`. Węższa ścieżka
+„same kursy" (bez stażu, superwizji i certyfikatu) **nie należy do zakresu MVP** i byłaby osobnym
+zamówieniem. Nazwy `student` w kodzie **nie zmieniamy** — zostaje jako spadek po hackathonie — ale
+rola bez odpowiednika w zakresie **nie może dawać dostępu do niczego**, i to jest wymaganie
+sprawdzane testem negatywnym w module uprawnień, a nie założenie.
 
 ## 3. Główny przepływ uczestnika (happy path)
 
