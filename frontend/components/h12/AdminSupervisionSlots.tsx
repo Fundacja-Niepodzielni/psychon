@@ -31,6 +31,10 @@ function attendanceLabel(value: "present" | "absent" | null): string {
   return "Jeszcze nieoznaczona";
 }
 
+function fullName(person: { first_name: string; last_name: string }): string {
+  return `${person.first_name} ${person.last_name}`;
+}
+
 export default function AdminSupervisionSlots() {
   const [slots, setSlots] = useState<AdminSupervisionSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,10 +110,16 @@ export default function AdminSupervisionSlots() {
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-small text-muted">Prowadzący/a:</span>
                   <span className="font-medium text-ink">
-                    {slot.supervisor.name}
+                    {fullName(slot.supervisor)}
                   </span>
-                  <Badge variant={slot.taken >= slot.capacity ? "danger" : "info"}>
-                    {slot.taken} / {slot.capacity}
+                  <Badge
+                    variant={
+                      slot.active_signups_count >= slot.seats_limit
+                        ? "danger"
+                        : "info"
+                    }
+                  >
+                    {slot.active_signups_count} / {slot.seats_limit}
                   </Badge>
                 </div>
 
@@ -125,7 +135,7 @@ export default function AdminSupervisionSlots() {
                         className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-page px-3 py-2 text-small"
                       >
                         <span className="font-medium text-ink">
-                          {signup.user.name}
+                          {fullName(signup.user)}
                         </span>
                         <span className="text-muted">
                           {attendanceLabel(signup.attendance)}

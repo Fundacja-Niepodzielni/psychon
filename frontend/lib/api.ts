@@ -507,16 +507,20 @@ export function downloadAuditLogCsv(filters: AuditFilters = {}): Promise<void> {
 /* -------------------------------------------------------------------- */
 
 export interface AdminSupervisionSignup {
-  user: { id: number; name: string };
+  user: { id: number; first_name: string; last_name: string };
+  signed_up_at: string;
   attendance: "present" | "absent" | null;
 }
 
 export interface AdminSupervisionSlot {
   id: number;
   starts_at: string;
-  capacity: number;
-  taken: number;
-  supervisor: { id: number; name: string };
+  duration_minutes: number;
+  seats_limit: number;
+  location_or_link: string;
+  supervisor: { id: number; first_name: string; last_name: string };
+  active_signups_count: number;
+  available_seats: number;
   signups: AdminSupervisionSignup[];
 }
 
@@ -524,10 +528,13 @@ export interface AdminSupervisionSlot {
  * Wszystkie terminy wszystkich prowadzących (widok administracji) — kryterium
  * pozycji 6: „potwierdzenie odbycia widoczne (...) w administracji". Obecność
  * (`attendance`) odnotowuje prowadzący na swoim ekranie; tu jest tylko do odczytu.
+ *
+ * Kontroler nie paginuje — koperta ma wyłącznie `data`, `meta` nigdy nie przychodzi.
  */
 export function fetchAdminSupervisionSlots(): Promise<{
   data: AdminSupervisionSlot[];
-  meta?: PaginationMeta;
 }> {
-  return apiPaged<AdminSupervisionSlot>("/admin/supervision/slots");
+  return apiPaged<AdminSupervisionSlot>("/admin/supervision/slots").then(
+    ({ data }) => ({ data }),
+  );
 }
