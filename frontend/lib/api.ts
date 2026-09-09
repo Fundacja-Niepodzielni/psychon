@@ -320,6 +320,28 @@ export function fetchAdminUsers(
   return apiPaged<AdminUserListItem>(`/admin/users${adminUsersQuery(filters)}`);
 }
 
+export interface SupervisorAssignment {
+  volunteer_id: number;
+  supervisor_id: number;
+  assigned_at: string | null;
+  unassigned_at: string | null;
+}
+
+/**
+ * Nadanie prowadzącego (H12). O tym, czy przypisanie jest dopuszczalne
+ * (osoba musi być wolontariuszką, wskazany użytkownik prowadzącym),
+ * rozstrzyga serwer — 422 wraca jako `ApiError` do pokazania na ekranie.
+ */
+export function assignSupervisor(
+  userId: number,
+  supervisorId: number,
+): Promise<SupervisorAssignment> {
+  return api<SupervisorAssignment>(`/admin/users/${userId}/supervisor`, {
+    method: "PUT",
+    body: { supervisor_id: supervisorId },
+  });
+}
+
 export function fetchAdminUser(id: number): Promise<AdminUserCard> {
   return api<AdminUserCard>(`/admin/users/${id}`);
 }
@@ -478,4 +500,34 @@ export function downloadAuditLogCsv(filters: AuditFilters = {}): Promise<void> {
     { ...filters, page: undefined, per_page: undefined },
   )}`;
   return downloadFile(url, "dziennik.csv");
+}
+
+/* -------------------------------------------------------------------- */
+/* H12 — administracja terminami superwizji                              */
+/* -------------------------------------------------------------------- */
+
+export interface AdminSupervisionSignup {
+  user: { id: number; name: string };
+  attendance: "present" | "absent" | null;
+}
+
+export interface AdminSupervisionSlot {
+  id: number;
+  starts_at: string;
+  capacity: number;
+  taken: number;
+  supervisor: { id: number; name: string };
+  signups: AdminSupervisionSignup[];
+}
+
+/**
+ * Wszystkie terminy wszystkich prowadzących (widok administracji) — kryterium
+ * pozycji 6: „potwierdzenie odbycia widoczne (...) w administracji". Obecność
+ * (`attendance`) odnotowuje prowadzący na swoim ekranie; tu jest tylko do odczytu.
+ */
+export function fetchAdminSupervisionSlots(): Promise<{
+  data: AdminSupervisionSlot[];
+  meta?: PaginationMeta;
+}> {
+  return apiPaged<AdminSupervisionSlot>("/admin/supervision/slots");
 }

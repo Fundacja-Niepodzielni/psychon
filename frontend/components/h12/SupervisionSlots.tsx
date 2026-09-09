@@ -6,7 +6,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api";
-import type { ParticipantSlot } from "@/lib/h12/types";
+import type { Attendance, ParticipantSlot } from "@/lib/h12/types";
 
 const dateFormatter = new Intl.DateTimeFormat("pl-PL", {
   dateStyle: "full",
@@ -15,6 +15,18 @@ const dateFormatter = new Intl.DateTimeFormat("pl-PL", {
 
 function formatDate(value: string): string {
   return dateFormatter.format(new Date(value));
+}
+
+/**
+ * Obecność odnotowuje prowadzący (PATCH /instructor/slots/{id}/attendance);
+ * uczestniczka ma ją tylko odczytać, dlatego wartość jest tekstem, nie polem.
+ * `null` to stan przed oznaczeniem — nazywamy go wprost, żeby brak wpisu nie
+ * wyglądał jak nieobecność.
+ */
+function attendanceLabel(value: Attendance | null): string {
+  if (value === "present") return "Obecność potwierdzona";
+  if (value === "absent") return "Nieobecność";
+  return "Jeszcze nieoznaczona";
 }
 
 function actionMessage(error: unknown): string {
@@ -132,7 +144,11 @@ export default function SupervisionSlots() {
             const ownSignup = slot.signup !== null;
             const seatText = slot.available_seats === 1 ? "miejsce" : "miejsca";
             return (
-              <Card key={slot.id} title={formatDate(slot.starts_at)}>
+              <Card
+                key={slot.id}
+                title={formatDate(slot.starts_at)}
+                data-testid={"slot-" + slot.id}
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={slot.is_full && !ownSignup ? "danger" : "info"}>
                     {slot.is_full && !ownSignup
@@ -146,10 +162,24 @@ export default function SupervisionSlots() {
                 <dl className="mt-4 grid gap-2 text-small">
                   <div className="flex justify-between gap-4">
                     <dt className="text-muted">Zapisane osoby</dt>
-                    <dd className="font-medium text-ink">
+                    <dd
+                      className="font-medium text-ink"
+                      data-testid={"seats-" + slot.id}
+                    >
                       {slot.active_signups_count} / {slot.seats_limit}
                     </dd>
                   </div>
+                  {slot.signup && (
+                    <div
+                      className="flex justify-between gap-4"
+                      data-testid={"attendance-" + slot.id}
+                    >
+                      <dt className="text-muted">Obecność</dt>
+                      <dd className="text-right font-medium text-ink">
+                        {attendanceLabel(slot.signup.attendance)}
+                      </dd>
+                    </div>
+                  )}
                   <div className="flex justify-between gap-4">
                     <dt className="text-muted">Miejsce lub link</dt>
                     <dd className="text-right text-ink">
