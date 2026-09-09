@@ -134,6 +134,33 @@ obecność, nagranie podpinane po spotkaniu. Porównanie, przepływ i uzasadnien
 szczegóły (moderacja, archiwizacja pytań) przy zamówieniu fazy 2. Przed startem F2.A —
 potwierdzenie aktualnego cennika dostawcy.
 
+### 4.7 System kont Fundacji — logowanie i tożsamość
+
+Platforma **nie ma własnego logowania**. Tożsamości, hasła i drugi składnik logowania prowadzi
+system kont Fundacji (serwer tożsamości zgodny z OpenID Connect), wspólny dla usług Fundacji —
+ta sama osoba wchodzi jednym kontem tu i w pozostałych usługach.
+
+Jak to działa u nas:
+
+1. **Front** przekierowuje do systemu kont i odbiera token dostępu; adres systemu jest
+   **wartością konfiguracji** (`AUTH_KEYCLOAK_ISSUER`), nie stałą w kodzie — przejście na adres
+   produkcyjny nie zmienia niczego poza konfiguracją (`frontend/auth.ts`).
+2. **API** przyjmuje wyłącznie token wystawiony przez ten system i **wyłącznie dla odbiorcy
+   `psychon-api`** — wartość zamrożona w `backend/config/keycloak.php` jako kontrakt tożsamości,
+   celowo nie ustawiana ze środowiska. Klucze publiczne pobierane z systemu kont i buforowane.
+   Sprawdza to `AuthenticateKeycloakToken`.
+3. **Wylogowanie działa w obie strony.** Gdy sesja kończy się w systemie kont, przychodzi
+   zawiadomienie kanałem zwrotnym (`BackchannelLogoutController`); od tej chwili token tej sesji
+   nie jest honorowany (`Services/Keycloak/InvalidationStore`). Granica pokrycia jest nazwana:
+   **dostarczenia** zawiadomienia dowodzi system kont, nie Platforma — nasza zieleń świadczy
+   o odbiorze, nie o tym, że wylogowanie działa od końca do końca.
+4. **Uprawnienia** wynikają z danych z systemu kont, nie z osobnego hasła w Platformie.
+   Matryca ról: `03-role-i-uprawnienia.md`.
+
+Czego tu **nie ma i nie ma być**: własnego ekranu logowania, magazynu haseł, resetu hasła
+i ograniczania liczby prób logowania. To wszystko robi system kont; dublowanie tego byłoby
+drugim miejscem, w którym można się pomylić o czyjąś tożsamość.
+
 ## 5. Rejestr decyzji otwartych (⚠️) z terminami
 
 | Decyzja | Blokuje | Potrzebna przed |

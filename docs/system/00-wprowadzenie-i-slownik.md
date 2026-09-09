@@ -57,6 +57,23 @@ Kluczowe cechy odróżniające od typowej platformy e-learningowej:
 
 Szczegółowa matryca uprawnień: `03-role-i-uprawnienia.md`.
 
+**Nazwa w umowie a nazwa w kodzie.** Umowa nazywa role inaczej niż kod; nazw w kodzie **nie
+zmieniamy** (rola jest tam zapisana jako zwykły tekst w kilkunastu plikach, przemianowanie
+kosztuje ryzyko i nic nie daje Zamawiającemu). Zamiast tego trzymamy mapowanie:
+
+| Nazwa w umowie | Rola w kodzie | Rola w tym słowniku |
+|---|---|---|
+| administrator | `super_admin` | Super Admin |
+| opiekun projektu | `project_manager` | Opiekun Projektu |
+| psycholog prowadzący | `instructor` | Psycholog prowadzący |
+| wolontariuszka / uczestniczka programu | `volunteer` | Wolontariusz |
+| *(brak odpowiednika w umowie)* | `student` | Student |
+
+Ostatni wiersz jest otwarty świadomie: umowa daje „uczestniczce programu" porozumienie
+wolontariackie, superwizje i certyfikat — czyli opisuje ścieżkę `volunteer`. Węższa ścieżka
+`student` (same kursy) nie ma dziś pozycji w umowie. Pytanie, czy należy do zakresu, czeka na
+rozstrzygnięcie Zamawiającego; do tego czasu **nie zmieniamy z tego powodu ani kodu, ani zakresu**.
+
 ## 3. Główny przepływ uczestnika (happy path)
 
 ```mermaid

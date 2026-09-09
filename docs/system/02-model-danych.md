@@ -53,13 +53,20 @@ erDiagram
 ### 2.1 Konta i dostęp
 
 **users** — wszystkie osoby w systemie, niezależnie od roli.
-`first_name, last_name, email (unikalny), password_hash, phone, address_* (szyfrowane),
+`first_name, last_name, email (unikalny), phone, address_* (szyfrowane),
 pesel (szyfrowane), role (super_admin | project_manager | instructor | volunteer | student),
 status (active | blocked), edition_id, access_expires_at (null = bezterminowo),
 program_completed_at (null = w trakcie), product_group (psychon | dobrostan | both),
 last_login_at, deleted_at`.
 Reguły: `access_expires_at` ustawiane przy założeniu konta (+6 mies.); zadanie cykliczne
 blokuje materiały po terminie; ukończenie programu zeruje ograniczenie.
+
+**Hasła w tej tabeli nie ma** — tożsamości pilnuje system kont Fundacji
+(`01-architektura-i-integracje.md` §4.7). W schemacie zastanym została po starterze kolumna
+`password` (dopuszczająca `null`) i tabela `password_reset_tokens`; **nic ich nie zapisuje
+i nic z nich nie czyta**. Zostają opisane, a nie przemilczane, bo puste miejsce w dokumencie
+jest zaproszeniem do ich użycia. Usunięcie wymaga nowej migracji (ta, która je tworzy, jest
+w zbiorze zamrożonym) i jest osobną decyzją o zakresie.
 
 **consents** — zgody i akceptacje dokumentów.
 `user_id, type (regulamin | polityka | publikacja_profilu | marketing…), document_version,

@@ -30,10 +30,13 @@ Wymagania opisane w `01-architektura-i-integracje.md` (§1–3). Dodatkowo:
 
 Wymagania:
 
-1. Logowanie e-mail + hasło; hasła hashowane (bcrypt/argon2); po 5 nieudanych próbach
-   w 15 min — czasowa blokada prób (rate limiting), komunikat bez ujawniania, czy konto istnieje.
-2. Reset hasła: link jednorazowy, ważny 60 min, wysyłany e-mailem; formularz nie ujawnia,
-   czy adres jest w bazie.
+1. Logowanie **przez system kont Fundacji**, nie własnym hasłem. Platforma **nie przechowuje
+   haseł** i nie prowadzi własnego ekranu logowania: przekierowuje do systemu kont, a wraca
+   z tokenem dostępu. Szczegóły integracji: `01-architektura-i-integracje.md` §4.7.
+2. Hasło, jego siła, ograniczanie liczby prób, drugi składnik logowania i reset hasła należą
+   **w całości do systemu kont** — Platforma nie ma tam czego dokładać i nie dubluje tych
+   ekranów. Wylogowanie działa w obie strony: użytkownik kończy sesję w systemie kont,
+   a Platforma odbiera zawiadomienie kanałem zwrotnym i przestaje honorować token tej sesji.
 3. Profil: imię, nazwisko, telefon, adres, PESEL (do umów); walidacja numeru PESEL;
    pola wrażliwe widoczne tylko dla właściciela i administracji.
 4. Eksport danych osobowych (RODO art. 15/20): przycisk w profilu → plik JSON/CSV ze
