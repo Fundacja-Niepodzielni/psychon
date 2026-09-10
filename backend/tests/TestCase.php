@@ -256,9 +256,9 @@ Następne testy zastaną odmienny stan i zaczerwienią się bez własnej winy. '
             if (self::$connectionFailure !== null) {
                 $this->fail(
                     'PRZERWANE: nie udało się połączyć z bazą testową, więc nie da się '
-                    .'stwierdzić, na czym biegną testy. To NIE jest pułapka P-1 — to awaria '
-                    .'połączenia i pada głośno, jak powinna. Sprawdź DB_HOST/DB_PORT swojego '
-                    .'środowiska.
+                    .'stwierdzić, na czym biegną testy. To nie jest cicha podmiana bazy testowej, '
+                    .'tylko awaria połączenia i pada głośno, jak powinna. Sprawdź DB_HOST/DB_PORT '
+                    .'swojego środowiska.
 Powód: '.self::$connectionFailure,
                 );
             }

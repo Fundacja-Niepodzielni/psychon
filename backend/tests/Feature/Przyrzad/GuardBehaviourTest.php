@@ -55,7 +55,7 @@ final class GuardBehaviourTest extends TestCase
         $output = $result->output().$result->errorOutput();
 
         $this->assertStringContainsString(
-            'To NIE jest pułapka P-1',
+            'To nie jest cicha podmiana bazy testowej',
             $output,
             'Strażnik przedstawił awarię połączenia jako cichą podmianę bazy — to wysyła szukającego w złe miejsce.',
         );
