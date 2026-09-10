@@ -20,7 +20,7 @@ import { join } from "node:path";
  * ⚠ Czego NIE dowodzi: że zakładki działają, przełączają się i mają dostęp roli.
  * Dowodzi, że droga do ekranu istnieje. Dziś nie istnieje.
  *
- * ⚠ CZERWONY do czasu pozycji S1-10 (zakres FRONT). Nie naprawiam cudzego kodu.
+ * ⚠ CZERWONY do czasu naprawy w zakresie FRONT. Nie naprawiam cudzego kodu.
  */
 
 // Ścieżka liczona od katalogu, w którym biegnie Vitest (`frontend`), a nie od

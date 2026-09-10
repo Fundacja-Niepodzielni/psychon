@@ -8,7 +8,7 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * S1-11 · kryterium ★ H19.1, część, której nie da się sprawdzić po stronie serwera:
+ * Kryterium ★ H19.1, część, której nie da się sprawdzić po stronie serwera:
  * **„każdy link z odpowiedzi → 200 we froncie"**.
  *
  * Rozpoznanie mówiło, że dwa z czterech linków prowadzą donikąd. Serwer nie ma jak

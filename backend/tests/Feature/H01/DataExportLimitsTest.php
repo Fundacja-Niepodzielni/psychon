@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * S1-12 · świadek pisany Z KRYTERIUM: co najwyżej jeden niewygasły eksport na osobę.
+ * Świadek pisany Z KRYTERIUM: co najwyżej jeden niewygasły eksport na osobę.
  *
  * Kryterium: 10× `POST /me/exports` w minucie → **1 job w kolejce** (reszta odrzucona);
  * plik znika po TTL (test z przesuniętym zegarem).

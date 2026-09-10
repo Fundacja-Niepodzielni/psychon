@@ -50,7 +50,7 @@ trait RequiresProcessConcurrency
             .'To jest niepowodzenie, nie pominięcie: bez niego suita byłaby zielona, a najtrudniejsze '
             .'kontrole w projekcie (numeracja bez dziur, limit miejsc pod obciążeniem) nie zostałyby '
             .'wykonane wcale. Dołóż `pcntl` do rozszerzeń środowiska (w CI: lista `setup-php`) albo '
-            .'pomiń JAWNIE przez CONCURRENCY_TESTS_SKIP=1 i napisz w meldunku, że to zrobiłaś.',
+            .'pomiń JAWNIE przez CONCURRENCY_TESTS_SKIP=1 i napisz w opisie biegu, że to zrobiłaś.',
         );
     }
 }

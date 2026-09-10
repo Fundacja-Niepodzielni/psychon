@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * Kontrola krzyżowa PRZED migracjami zakładającymi unikat na `sequence_order`
- * (pozycje S1-15 i S1-16): czy w danych, które te migracje zastaną, są już
+ * (dla lekcji i pytań): czy w danych, które te migracje zastaną, są już
  * duplikaty. Jeśli są — migracja padnie przy zakładaniu indeksu i musi najpierw
  * przenumerować; jeśli nie ma — wystarczy sam indeks.
  *
