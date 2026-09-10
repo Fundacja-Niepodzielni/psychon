@@ -37,7 +37,7 @@ Route::middleware(['auth:sanctum', 'role:instructor'])->group(function (): void 
     Route::post('/instructor/cases', [InstructorSupervisionController::class, 'storeCase']);
 });
 
-Route::middleware(['auth:sanctum', 'role:instructor,project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'role:instructor'])->group(function (): void {
     Route::patch('/instructor/slots/{id}/attendance', [InstructorSupervisionController::class, 'attendance'])
         ->whereNumber('id');
 });
