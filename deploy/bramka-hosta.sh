@@ -195,6 +195,32 @@ CZAS_SEMGREP="$(czas_od "$T")"
 TRAFIENIA_SEMGREP="$(grep -aoE "Ran [0-9]+ rules on [0-9]+ files: [0-9]+ findings" /tmp/bramka-semgrep.log | tail -1)"
 echo "skaner statyczny: EXIT=$KOD_SEMGREP, $CZAS_SEMGREP s, ${TRAFIENIA_SEMGREP:-brak odczytu}"
 
+# --- 3d - skladnia plikow workflow (krok blokujacy) -------------------------
+# Blokuje, bo nie ma tu zastanych trafien do rozstrzygniecia, a klasa bledow, ktora
+# lapie, kosztuje inaczej minuty na zdalnym biegu i cudzy commit: bledny warunek
+# `if:` na sekrecie przechodzil u nas przez przeglad, a czerwien przychodzila
+# dopiero z serwera. Obraz przypiety wersja, nie `latest`, bo inaczej bramka mierzy
+# to, co ktos wczoraj wypchnal. Bez sieci - narzedzie niesie shellcheck w obrazie.
+# Warunek nizej jest na "rozne od zera", nie na jedynke: poza repozytorium git
+# narzedzie konczy sie kodem 3 ("no project was found"), czyli ODMAWIA POMIARU
+# z powodu niezwiazanego z tym, co mierzy - i taka odmowa ma byc czerwona.
+naglowek "3d - skladnia plikow workflow"
+
+KOD_ACTIONLINT=0
+if [ -d .github/workflows ]; then
+    T="$(date +%s)"
+    docker run --rm --network none -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -no-color > /tmp/bramka-actionlint.log 2>&1
+    KOD_ACTIONLINT=$?
+    CZAS_ACTIONLINT="$(czas_od "$T")"
+    # ILE obejrzal, nie tylko ile znalazl: pusty katalog workflow tez dalby zero.
+    PLIKOW_AL="$(ls -1 .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null | wc -l)"
+    BLEDOW_AL="$(grep -acE "^[^ ]+:[0-9]+:[0-9]+:" /tmp/bramka-actionlint.log)"
+    echo "skladnia workflow: EXIT=$KOD_ACTIONLINT, $CZAS_ACTIONLINT s, plikow $PLIKOW_AL, bledow $BLEDOW_AL"
+    [ "$KOD_ACTIONLINT" -ne 0 ] && head -10 /tmp/bramka-actionlint.log | sed 's/^/  ! /'
+else
+    echo "skladnia workflow: POMINIETA - brak .github/workflows" >&2
+fi
+
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
 CZAS_FRONT=0
@@ -234,12 +260,14 @@ BRUD="$(git status --porcelain | grep -c .)"
 echo "drzewo po biegu: $BRUD pozycji"
 echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
 
-# Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) i KOD_SEMGREP NIE sa tu wymienione i to
+# KOD_ACTIONLINT jest tu wymieniony (blokuje). Audyty (KOD_AUDYT_PHP,
+# KOD_AUDYT_NPM) i KOD_SEMGREP NIE sa tu wymienione i to
 # jest decyzja, nie przeoczenie - ich liczby stoja w logu wyzej i ida do rejestru
 # z numerem. Semgrep wchodzi tu w dniu, w ktorym oba zastane trafienia znikna.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
+elif [ "${KOD_ACTIONLINT:-0}" -ne 0 ]; then KOD=$KOD_ACTIONLINT
 else KOD=$KOD_FRONT; fi
 
 echo "EXIT=$KOD"
