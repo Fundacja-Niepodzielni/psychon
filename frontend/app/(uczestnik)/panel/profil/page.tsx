@@ -33,8 +33,8 @@ interface Profile {
 
 interface DataExport {
   id: string;
-  // X-4 aneksu kontraktu: po TTL 24 h zadanie sprzątające ustawia `expired`
-  // i kasuje plik, więc pobranie tej samej paczki daje wtedy 404.
+  // Po TTL 24 h zadanie sprzątające ustawia `expired` i kasuje plik,
+  // więc pobranie tej samej paczki daje wtedy 404.
   status: "queued" | "processing" | "ready" | "expired" | "failed";
   requested_at: string | null;
   completed_at: string | null;
@@ -69,7 +69,7 @@ const CONSENT_LABELS: Record<string, string> = {
 };
 
 /**
- * Etykieta i wariant znacznika stanu eksportu (X-4 aneksu).
+ * Etykieta i wariant znacznika stanu eksportu (paczka żyje 24 h, potem `expired`).
  *
  * `expired` musi mieć własny wiersz: wcześniej wpadał do gałęzi „inne", czyli
  * pokazywał „Przygotowywanie…" dla paczki, której plik już nie istnieje —
@@ -109,7 +109,7 @@ function toForm(profile: Profile): FormState {
 
 /**
  * Ile sekund czekać po odmowie 429 — z `reason.retry_after_seconds` koperty
- * błędu (§1.1 kontraktu, wiersz dopisany aneksem X-4). Serwer podaje tę liczbę
+ * błędu (§1.1 kontraktu: limit żądań eksportu, 3 na 60 minut). Serwer podaje tę liczbę
  * tylko wtedy, gdy zna nagłówek `Retry-After`; gdy jej nie ma, nie zmyślamy.
  */
 function retryAfterSeconds(error: ApiError): number | null {
@@ -285,7 +285,7 @@ export default function ProfilePage() {
         { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
       // 404 na pobraniu znaczy „paczki już nie ma" — po TTL 24 h plik jest
-      // kasowany, a trasa odpowiada tak samo jak na cudzy identyfikator (X-4).
+      // kasowany, a trasa odpowiada tak samo jak na cudzy identyfikator.
       if (res.status === 404) {
         setDataExport({ ...dataExport, status: "expired", download_url: null });
         setExportError(
