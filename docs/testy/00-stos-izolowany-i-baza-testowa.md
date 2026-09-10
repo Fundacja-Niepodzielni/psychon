@@ -1,4 +1,4 @@
-# Stos izolowany sesji TESTY i skąd bierze się baza `niepodzielni_testing`
+# Stos izolowany testów i skąd bierze się baza `niepodzielni_testing`
 
 Notatka pomiarowa. Wszystko poniżej zmierzone w klonie `sprint-1-testy` od `b08ca0e`,
 02.09.2026, projekt compose `psytesty`.
@@ -149,7 +149,7 @@ samego świadka (13,3 s razem).
 i kasuje je w `tearDown` razem z dokumentami, powiadomieniami, e-mailami i wpisami audytu.
 Czyli sprząta po sobie; brakuje mu wyłącznie asercji na wyjściu.
 
-## 8 · Dwie pułapki przyrządu zmierzone przy pisaniu świadków T-3
+## 8 · Dwie pułapki przyrządu zmierzone przy pisaniu świadków izolacji bazy
 
 ### 8.1 · „Skutek w bazie" dla pól SZYFROWANYCH nie da się sprawdzić na kolumnie
 

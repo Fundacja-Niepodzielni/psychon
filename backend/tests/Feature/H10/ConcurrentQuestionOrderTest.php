@@ -24,7 +24,7 @@ use Tests\TestCase;
  *
  * Historia podejść jest bezpieczna (`questions_snapshot` zamraża treść), więc to
  * nie jest utrata danych, tylko utrata porządku. Ryzyko dziś jest NIŻSZE niż przy
- * lekcjach, bo panel edycji pytań to pozycja S1-8 sesji FRONT i jeszcze nie
+ * lekcjach, bo panel edycji pytań we froncie jeszcze nie
  * istnieje — trasę wywołuje się tylko z API. Rośnie dokładnie w dniu, w którym
  * ekran powstanie.
  *

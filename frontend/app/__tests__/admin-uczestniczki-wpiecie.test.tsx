@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * T-4 · świadek WPIĘCIA ekranu H03 (pozycja S1-10 dla sesji FRONT).
+ * Świadek WPIĘCIA ekranu H03 do interfejsu (ekran jeszcze nie ma zakładki we froncie).
  *
  * `ApplicationsTab` istnieje i działa — ma własnego świadka zachowania obok
  * (`components/h03/__tests__`, 8 zielonych). Luka jest gdzie indziej: ekran jest

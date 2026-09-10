@@ -71,7 +71,7 @@ final class TestDatabaseIsolationTest extends TestCase
 
     public function test_every_env_entry_in_phpunit_xml_is_forced(): void
     {
-        // Świadek samej naprawy T-0: gdyby ktoś dopisał kolejny <env> bez force="true",
+        // Świadek samego domknięcia cichej podmiany bazy: gdyby ktoś dopisał kolejny <env> bez force="true",
         // cicha podmiana bazy wróciłaby innym wejściem. Kontrola jest allowlistą (§8.1):
         // pyta „czy WSZYSTKIE wpisy są wymuszone", nie „czy ten jeden jest".
         $path = base_path('phpunit.xml');

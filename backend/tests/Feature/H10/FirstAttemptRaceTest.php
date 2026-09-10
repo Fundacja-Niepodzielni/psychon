@@ -14,7 +14,7 @@ use Tests\Concerns\RunsConcurrentRequests;
 use Tests\TestCase;
 
 /**
- * G-3 · perturbacja klasy „pusty zbiór pod `FOR UPDATE`" na drugim pakiecie.
+ * Perturbacja pustego zbioru pod `FOR UPDATE` na drugim pakiecie.
  *
  * `H13` pokazał, że `SELECT … FOR UPDATE` na zbiorze PUSTYM nie blokuje niczego,
  * więc przy PIERWSZYM wydaniu w edycji równoległe transakcje liczą ten sam numer.

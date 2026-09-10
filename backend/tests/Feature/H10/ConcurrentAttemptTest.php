@@ -22,7 +22,7 @@ use Laravel\Sanctum\Sanctum;
  * więc `SELECT … FOR UPDATE` ma co zablokować i serializacja ma prawo zadziałać.
  * Przypadek zbioru PUSTEGO (pierwsze podejście w wyścigu) ma własnego świadka —
  * `H10\FirstAttemptRaceTest` — bo tam blokada wierszowa nie ma czego zablokować
- * i to jest osobna luka (pozycja S1-14).
+ * i to jest osobna luka.
  *
  * Celowo BEZ `RefreshDatabase` w teście równoległym: procesy potomne nie zobaczą
  * otwartej transakcji rodzica jako zatwierdzonej.
