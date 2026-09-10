@@ -381,4 +381,3 @@ Powód: '.self::$connectionFailure,
         fwrite(STDERR, PHP_EOL.'[PRZYRZĄD] baza testowa zmierzona silnikiem: '.$database.PHP_EOL);
     }
 }
-zmiana
