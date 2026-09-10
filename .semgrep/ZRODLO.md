@@ -35,11 +35,10 @@ Zestawem zastępczym dla Laravela jest **`r/php.laravel`** i to on leży w tej m
 | plik | źródło | pobrano | bajtów | reguł | sha256 |
 |---|---|---|---|---|---|
 | `reguly/p-php.yaml` | https://semgrep.dev/c/p/php | 2026-09-10 | 64945 | 24 | `ccfc3341c7ac7a66b85f249713a277f4d4a0e9de93c75c609e2f82e52f0aabac` |
-| `reguly/p-secrets.yaml` | https://semgrep.dev/c/p/secrets | 2026-09-10 | 89772 | 52 | `139b35ad3442bc83d1f0864db82fa4fdc7e1f1ee4b5ac872bfbeb604c82c6518` |
 | `reguly/r-php-laravel.yaml` | https://semgrep.dev/c/r/php.laravel | 2026-09-10 | 26067 | 11 | `842a64b0c614663fb93ad186a9cea9f302efd4a9ac172f897be4eb5673e9a912` |
 
-Razem 5070 linii i 87 reguł w plikach; skaner uruchamia z nich **74** — resztę odrzuca, bo dotyczą
-języków nieobecnych w tym repozytorium. Liczba „74 reguł na 859 plikach" jest tą, którą należy
+Razem **35 reguł** w dwóch plikach; skaner uruchamia z nich **31** — resztę odrzuca, bo dotyczą
+języków nieobecnych w tym repozytorium. Liczba **„31 reguł na 439 plikach"** jest tą, którą należy
 porównywać między biegami; sam kod wyjścia nie mówi, czy skaner cokolwiek obejrzał.
 
 ## Wołanie
@@ -48,5 +47,25 @@ porównywać między biegami; sam kod wyjścia nie mówi, czy skaner cokolwiek o
       -w /src semgrep/semgrep:1.169.0 semgrep scan --config /reguly --error --metrics=off .
 
 `.semgrepignore` wyklucza `.semgrep/reguly/` ze skanowania: pliki reguł są **wejściem** skanera,
-a nie kodem projektu, i trafiają we własne wzorce (`detected-ssh-password`,
-`detected-pgp-private-key-block`). Bez tego wykluczenia skan zwraca 4 trafienia zamiast 2.
+a nie kodem projektu. Liczba „4 trafienia zamiast 2" pochodziła z migawki, która miała zestaw
+generyczny; po jego wyjęciu skaner ogląda **439 plików PHP** i do plików `.yaml` nie wchodzi wcale.
+Wykluczenie **zostaje** — jako zabezpieczenie na wypadek powrotu zestawu generycznego — ale ile daje
+dzisiaj, **nie zmierzyłem**, i nie należy tego zgadywać w żadną stronę.
+
+## Czego w migawce NIE MA i dlaczego (2026-09-10)
+
+Zestaw **`p/secrets` został z migawki wyjęty**, cały plik, nie pojedynczy wiersz. Powód jest
+zmierzony, nie teoretyczny: reguły rodziny `generic.secrets.*` noszą **przykłady prawdziwych
+sekretów w wierszach `pattern-not:`** — czyli w miejscach, gdzie reguła mówi „to właśnie
+ignoruj". GitHub **push protection** skanuje **każdy commit w pchnięciu**, nie sam czubek, i taki
+literał odrzuca (`GH013`, `Slack Incoming Webhook URL`). Pchnięcie gałęzi zostało z tego powodu
+zatrzymane, a `git rm` w nowym commicie by go **nie odblokował** — literał musiał zniknąć z historii.
+
+Pokrycia to nie zabiera: **sekrety skanuje gitleaks w bramce oraz push protection po stronie
+GitHuba**, czyli dwa niezależne przyrządy zamiast jednego. Zmienia się natomiast, ile plików
+ogląda semgrep: **866 → 439**, bo reguły generyczne były jedynym powodem, dla którego wchodził
+na pliki inne niż PHP. Liczba trafień jest **ta sama: 2** (te same dwa `laravel-cookie-*`), co
+potwierdza, że żadne z nich nie pochodziło z wyjętego zestawu.
+
+**Reguła na przyszłość:** semgrep służy do wzorców kodu. Zestawy z rodziny `generic.secrets.*`
+do migawki nie wracają.

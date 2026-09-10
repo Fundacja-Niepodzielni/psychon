@@ -45,10 +45,11 @@ composer.lock
 *.woff2
 *.ttf
 
-# Migawka regul lezy w drzewie, wiec sama staje sie materialem do skanowania:
-# zestaw `p/secrets` trafia we WLASNE `pattern-regex` i `pattern-not` (linie 787
-# i 2213 w p-secrets.yaml). Zmierzone: bez tej linii skan daje 4 trafienia
-# zamiast 2, a dwa nadmiarowe sa trescia samych regul, nie kodem.
-# To nie jest wyciszanie znaleziska - to niewpuszczanie przyrzadu do wlasnego
-# odbicia w lustrze. Kazda inna sciezka zostaje skanowana.
+# Migawka regul lezy w drzewie, wiec sama moze stac sie materialem do skanowania.
+# Liczba "4 trafienia zamiast 2" pochodzila z migawki z zestawem generycznym
+# (p/secrets), ktory trafial we wlasne `pattern-not`. Zestaw zostal z migawki
+# wyjety 10.09 - skanowanie sekretow robi gitleaks i push protection GitHuba -
+# wiec skaner oglada dzis 439 plikow PHP i do plikow `.yaml` nie wchodzi wcale.
+# Wykluczenie ZOSTAJE jako zabezpieczenie na wypadek powrotu zestawu generycznego;
+# ile daje dzisiaj - NIEZMIERZONE. Kazda inna sciezka zostaje skanowana.
 .semgrep/reguly/
