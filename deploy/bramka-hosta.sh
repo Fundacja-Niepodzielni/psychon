@@ -221,6 +221,33 @@ else
     echo "skladnia workflow: POMINIETA - brak .github/workflows" >&2
 fi
 
+# --- 3e - sekrety w tresci commitu (krok blokujacy) -------------------------
+# Powod istnienia: zestaw regul `generic.secrets.*` zostal 10.09 wyjety z migawki
+# semgrepa (nosi przyklady sekretow w `pattern-not:`, przez co GitHub odrzucal
+# pchniecie z GH013). Bez tego kroku bramka nie skanowalaby sekretow WCALE, a
+# jedynym przyrzadem zostalaby push protection GitHuba - czyli dowiadywalibysmy
+# sie o sekrecie dopiero przy pchnieciu, po fakcie.
+# Skanujemy WYLACZNIE tresc sledzona przez git (`git archive` czubka), nie katalog
+# roboczy: `gitleaks dir` na drzewie znajduje 11 trafien, wszystkie w `frontend/.next`
+# i `backend/vendor`, czyli w plikach, ktorych repozytorium NIE zawiera (zmierzone:
+# `git ls-files` = 0 dla kazdego z nich). Skaner, ktory czerwieni sie od cudzych
+# artefaktow budowania, zostanie wyciszony przez pierwsza osobe, ktora go zobaczy.
+naglowek "3e - sekrety w tresci commitu"
+
+T="$(date +%s)"
+EKSPORT="$(mktemp -d)"
+git archive --format=tar HEAD | tar -x -C "$EKSPORT"
+PLIKOW_GL="$(find "$EKSPORT" -type f | wc -l)"
+docker run --rm --network none -v "${EKSPORT}:/tresc:ro" -v "$PWD/.gitleaks.toml:/konfiguracja.toml:ro"     ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact     > /tmp/bramka-gitleaks.log 2>&1
+KOD_GITLEAKS=$?
+CZAS_GITLEAKS="$(czas_od "$T")"
+rm -rf "$EKSPORT"
+# ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
+BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" /tmp/bramka-gitleaks.log | tail -1)"
+TRAFIEN_GL="$(grep -acE "^RuleID:" /tmp/bramka-gitleaks.log)"
+echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
+[ "$KOD_GITLEAKS" -ne 0 ] && grep -aE "^(RuleID|File|Line):" /tmp/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
+
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
 CZAS_FRONT=0
@@ -260,7 +287,7 @@ BRUD="$(git status --porcelain | grep -c .)"
 echo "drzewo po biegu: $BRUD pozycji"
 echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
 
-# KOD_ACTIONLINT jest tu wymieniony (blokuje). Audyty (KOD_AUDYT_PHP,
+# KOD_ACTIONLINT i KOD_GITLEAKS sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP,
 # KOD_AUDYT_NPM) i KOD_SEMGREP NIE sa tu wymienione i to
 # jest decyzja, nie przeoczenie - ich liczby stoja w logu wyzej i ida do rejestru
 # z numerem. Semgrep wchodzi tu w dniu, w ktorym oba zastane trafienia znikna.
@@ -268,6 +295,7 @@ if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
 elif [ "${KOD_ACTIONLINT:-0}" -ne 0 ]; then KOD=$KOD_ACTIONLINT
+elif [ "${KOD_GITLEAKS:-0}" -ne 0 ]; then KOD=$KOD_GITLEAKS
 else KOD=$KOD_FRONT; fi
 
 echo "EXIT=$KOD"

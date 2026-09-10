@@ -61,8 +61,12 @@ ignoruj". GitHub **push protection** skanuje **każdy commit w pchnięciu**, nie
 literał odrzuca (`GH013`, `Slack Incoming Webhook URL`). Pchnięcie gałęzi zostało z tego powodu
 zatrzymane, a `git rm` w nowym commicie by go **nie odblokował** — literał musiał zniknąć z historii.
 
-Pokrycia to nie zabiera: **sekrety skanuje gitleaks w bramce oraz push protection po stronie
-GitHuba**, czyli dwa niezależne przyrządy zamiast jednego. Zmienia się natomiast, ile plików
+Pokrycia to nie zabiera — ale **nie zabierało go dopiero po dołożeniu kroku**, i to trzeba tu
+zapisać uczciwie: w chwili wyjęcia zestawu bramka **nie miała żadnego skanera sekretów**
+(`grep gitleaks` po `deploy/` i `.github/workflows/` dawał **0**), więc jedynym przyrządem
+zostawała push protection GitHuba — czyli wiedza po fakcie, przy pchnięciu. Dziś skanuje
+**krok `3e` bramki** (gitleaks `v8.30.1`, bez sieci, na treści `git archive` czubka — nie na
+katalogu roboczym) **oraz** push protection: dwa niezależne przyrządy zamiast jednego. Zmienia się natomiast, ile plików
 ogląda semgrep: **866 → 439**, bo reguły generyczne były jedynym powodem, dla którego wchodził
 na pliki inne niż PHP. Liczba trafień jest **ta sama: 2** (te same dwa `laravel-cookie-*`), co
 potwierdza, że żadne z nich nie pochodziło z wyjętego zestawu.
