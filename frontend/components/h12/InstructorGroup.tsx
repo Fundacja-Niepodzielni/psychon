@@ -9,7 +9,7 @@ import Input from "@/components/ui/Input";
 import ProgressBar from "@/components/ui/ProgressBar";
 import Select from "@/components/ui/Select";
 import Table from "@/components/ui/Table";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, createInstructorCase } from "@/lib/api";
 import type { Column } from "@/components/ui/Table";
 import type {
   Attendance,
@@ -38,6 +38,16 @@ function emptySlotForm(): SlotForm {
     seats_limit: "3",
     location_or_link: "",
   };
+}
+
+type CaseForm = {
+  volunteer_id: string;
+  subject: string;
+  body: string;
+};
+
+function emptyCaseForm(): CaseForm {
+  return { volunteer_id: "", subject: "", body: "" };
 }
 
 function formatDate(value: string): string {
@@ -71,6 +81,11 @@ export default function InstructorGroup() {
   const [savingAttendanceId, setSavingAttendanceId] = useState<number | null>(null);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [caseForm, setCaseForm] = useState<CaseForm>(emptyCaseForm);
+  const [caseErrors, setCaseErrors] = useState<Record<string, string[]>>();
+  const [caseError, setCaseError] = useState<string | null>(null);
+  const [savingCase, setSavingCase] = useState(false);
+  const [caseSuccess, setCaseSuccess] = useState<string | null>(null);
 
   function loadGroup() {
     setLoadError(null);
@@ -192,6 +207,37 @@ export default function InstructorGroup() {
       );
     } finally {
       setSavingAttendanceId(null);
+    }
+  }
+
+  async function submitCase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingCase(true);
+    setCaseError(null);
+    setCaseErrors(undefined);
+    setCaseSuccess(null);
+
+    try {
+      await createInstructorCase({
+        subject: caseForm.subject,
+        body: caseForm.body,
+        volunteer_id: caseForm.volunteer_id ? Number(caseForm.volunteer_id) : null,
+      });
+      setCaseForm(emptyCaseForm());
+      setCaseSuccess("Sprawa została zgłoszona do administracji.");
+    } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 422) {
+        setCaseErrors(error.errors);
+        setCaseError("Popraw zaznaczone pola.");
+      } else {
+        setCaseError(
+          error instanceof ApiError
+            ? error.message
+            : "Nie udało się zgłosić sprawy.",
+        );
+      }
+    } finally {
+      setSavingCase(false);
     }
   }
 
@@ -405,6 +451,69 @@ export default function InstructorGroup() {
             ))}
           </div>
         )}
+      </Card>
+
+      <Card title="Zgłoś sprawę do administracji">
+        <form className="grid gap-4 sm:grid-cols-2" onSubmit={submitCase}>
+          {caseSuccess && (
+            <Alert variant="success" className="sm:col-span-2">{caseSuccess}</Alert>
+          )}
+          {caseError && (
+            <Alert variant="error" className="sm:col-span-2">{caseError}</Alert>
+          )}
+          <Select
+            label="Dotyczy osoby (opcjonalnie)"
+            value={caseForm.volunteer_id}
+            onChange={(event) =>
+              setCaseForm({ ...caseForm, volunteer_id: event.target.value })
+            }
+            error={errorFor(caseErrors, "volunteer_id")}
+          >
+            <option value="">Sprawa ogólna — bez wskazania osoby</option>
+            {group.members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.first_name} {member.last_name}
+              </option>
+            ))}
+          </Select>
+          <Input
+            label="Temat"
+            required
+            maxLength={255}
+            value={caseForm.subject}
+            onChange={(event) =>
+              setCaseForm({ ...caseForm, subject: event.target.value })
+            }
+            error={errorFor(caseErrors, "subject")}
+          />
+          <div className="sm:col-span-2">
+            <label
+              htmlFor="case-body"
+              className="mb-1 block text-small font-medium text-ink"
+            >
+              Opis sprawy
+            </label>
+            <textarea
+              id="case-body"
+              required
+              rows={4}
+              maxLength={5000}
+              value={caseForm.body}
+              onChange={(event) =>
+                setCaseForm({ ...caseForm, body: event.target.value })
+              }
+              className="w-full rounded-sm border border-line bg-card px-4 py-2.5 text-body text-ink transition-colors duration-200 focus-visible:focus-ring disabled:opacity-50"
+            />
+            {errorFor(caseErrors, "body") && (
+              <p className="mt-1 text-caption text-danger">
+                {errorFor(caseErrors, "body")}
+              </p>
+            )}
+          </div>
+          <div className="sm:col-span-2">
+            <Button type="submit" loading={savingCase}>Zgłoś sprawę</Button>
+          </div>
+        </form>
       </Card>
 
       <H07ReliabilitySlot />
