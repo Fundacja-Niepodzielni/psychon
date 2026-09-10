@@ -42,9 +42,13 @@ final class GuardBehaviourTest extends TestCase
 
     public function test_an_unreachable_host_is_reported_as_a_connection_failure_not_as_the_p1_trap(): void
     {
-        // DB_HOST jest własnością środowiska (wyjątek topologiczny), więc wstrzyknięcie
-        // przechodzi do potomka i połączenie ma prawo paść. Chodzi o to, JAK pada.
-        $result = $this->runChildSuiteWith(['DB_HOST' => '127.0.0.1']);
+        // Adres z domeny `.invalid` (RFC 2606) jest nieosiągalny Z DEFINICJI, nie z
+        // topologii dzisiejszego układu maszyn. `127.0.0.1` bywa nieosiągalny w
+        // kontenerze (baza stoi pod `pgsql`), ale bywa OSIĄGALNY, gdy bramka biegnie
+        // natywnie i baza stoi na localhoście — wtedy ten test fałszywie czerwienieje,
+        // mimo że strażnik jest bez winy. Domena `.invalid` nie rozwiąże się NIGDZIE,
+        // więc wynik jest ten sam pod `pgsql` i pod `127.0.0.1`.
+        $result = $this->runChildSuiteWith(['DB_HOST' => 'host-ktory-nie-istnieje.invalid']);
 
         $this->assertNotSame(0, $result->exitCode(), 'Niedostępny serwer musi zaczerwienić suitę.');
 
