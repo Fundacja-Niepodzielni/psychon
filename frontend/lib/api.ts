@@ -508,7 +508,9 @@ export function downloadAuditLogCsv(filters: AuditFilters = {}): Promise<void> {
 
 export interface AdminSupervisionSignup {
   user: { id: number; first_name: string; last_name: string };
-  signed_up_at: string;
+  // Kolumna jest nullable w bazie — dziś zawsze wypełniona, ale typ nie ma
+  // obiecywać więcej, niż baza gwarantuje.
+  signed_up_at: string | null;
   attendance: "present" | "absent" | null;
 }
 
@@ -517,8 +519,11 @@ export interface AdminSupervisionSlot {
   starts_at: string;
   duration_minutes: number;
   seats_limit: number;
-  location_or_link: string;
-  supervisor: { id: number; first_name: string; last_name: string };
+  // Zmierzone na żywej odpowiedzi: 1 termin na 10 miał `null`.
+  location_or_link: string | null;
+  // Znika z koperty, gdy relacja `supervisor` nie jest wczytana po stronie
+  // API — pole opcjonalne, nie zawsze obecne.
+  supervisor?: { id: number; first_name: string; last_name: string };
   active_signups_count: number;
   available_seats: number;
   signups: AdminSupervisionSignup[];
