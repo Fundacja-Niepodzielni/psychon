@@ -136,14 +136,17 @@ jobs:
       # (`rules: []`) - zestaw pusty wchodzi na zielono i wyglada na dzialajacy
       # skaner, wiec 404 bylby tu mniejszym zlem. Nie dopisywac ich z powrotem.
       #
-      # Krok NIE JEST jeszcze blokujacy. Na dzis skan daje 2 trafienia, oba
-      # w jednej linii backend/config/session.php, oba na poziomie ERROR: jedno
-      # falszywe (null = ciasteczko host-only, czyli wezsze), drugie do
-      # rozstrzygniecia (domyslna wartosc flagi secure). Krok blokujacy, ktory
-      # jest czerwony od pierwszego dnia, uczy zespol omijac bramke - a wyciszenie
-      # ich tutaj schowaloby pytanie, ktore ma zostac zadane. Warunek przelaczenia
-      # na blokujacy jest jeden i konkretny: gdy oba trafienia z session.php beda
-      # rozstrzygniete, `continue-on-error` znika. Liczba trafien jest w logu.
+      # Krok JEST blokujacy od 10.09. Warunek przelaczenia byl zapisany tutaj
+      # wczesniej i zostal spelniony: oba zastane trafienia z backend/config/
+      # session.php sa rozstrzygniete - jedno bylo falszywe (null = ciasteczko
+      # host-only, czyli wezsze, nie szersze) i nosi wyciszenie z uzasadnieniem
+      # przy linii, drugie bylo prawdziwe i flaga secure ma teraz bezpieczna
+      # wartosc domyslna. Zmierzone na czubku przed przelaczeniem:
+      # 31 regul na 439 plikach, 0 trafien.
+      #
+      # Migawka nie zawiera juz zestawu generic.secrets.*: jego reguly nosza
+      # przyklady sekretow w `pattern-not:` i push protection GitHuba odrzucala
+      # przez nie pchniecie (GH013). Sekrety skanuje gitleaks w bramce lokalnej
+      # (krok 3e) oraz push protection - nie dopisywac ich tu z powrotem.
       - name: Skan na przypietych regulach
         run: semgrep scan --config .semgrep/reguly --error --metrics=off
-        continue-on-error: true

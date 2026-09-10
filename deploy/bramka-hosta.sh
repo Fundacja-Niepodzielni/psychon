@@ -179,10 +179,10 @@ echo "audyt PHP (pomiar, poza kodem wyjscia): EXIT=$KOD_AUDYT_PHP, ${PODATNOSCI_
 # uklad, w ktorym dwa biegi na tym samym commicie musza dac te sama liczbe.
 # Zmierzone: z siecia 135 s, bez sieci na migawce 131 s - niezaleznosc od cudzego
 # serwera nie kosztuje tu praktycznie nic.
-# NIE JEST blokujacy z tego samego powodu co w CI: 2 zastane trafienia w jednej
-# linii backend/config/session.php, jedno falszywe, jedno do rozstrzygniecia.
-# Warunek zdjecia wyjatku: oba rozstrzygniete - wtedy KOD_SEMGREP wchodzi nizej
-# do kodu wyjscia, dokladnie tak jak KOD_STATYCZNA.
+# JEST blokujacy od 10.09 - warunek zapisany tu wczesniej zostal spelniony: oba
+# zastane trafienia z backend/config/session.php sa rozstrzygniete (jedno falszywe,
+# z wyciszeniem i uzasadnieniem przy linii, drugie prawdziwe i poprawione).
+# Zmierzone na czubku przed przelaczeniem: 31 regul na 439 plikach, 0 trafien.
 naglowek "3c - backend i front: skaner statyczny (reguly przypiete w repo)"
 
 T="$(date +%s)"
@@ -300,16 +300,17 @@ else
 fi
 echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
 
-# KOD_ACTIONLINT i KOD_GITLEAKS sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP,
-# KOD_AUDYT_NPM) i KOD_SEMGREP NIE sa tu wymienione i to
-# jest decyzja, nie przeoczenie - ich liczby stoja w logu wyzej i ida do rejestru
-# z numerem. Semgrep wchodzi tu w dniu, w ktorym oba zastane trafienia znikna.
+# KOD_ACTIONLINT, KOD_GITLEAKS i - od 10.09 - KOD_SEMGREP sa tu wymienione (blokuja).
+# Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) NIE sa i to jest decyzja, nie przeoczenie:
+# ich liczby stoja w logu wyzej i ida do rejestru z numerem, a podatnosc w cudzej
+# zaleznosci nie jest rzecza, ktora ten commit zepsul.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
 elif [ "${KOD_ACTIONLINT:-0}" -ne 0 ]; then KOD=$KOD_ACTIONLINT
 elif [ "${KOD_GITLEAKS:-0}" -ne 0 ]; then KOD=$KOD_GITLEAKS
 elif [ "${KOD_DRZEWO:-0}" -ne 0 ]; then KOD=$KOD_DRZEWO
+elif [ "${KOD_SEMGREP:-0}" -ne 0 ]; then KOD=$KOD_SEMGREP
 else KOD=$KOD_FRONT; fi
 
 echo "EXIT=$KOD"
