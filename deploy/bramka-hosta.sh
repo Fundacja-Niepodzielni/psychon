@@ -282,9 +282,22 @@ naglowek "5 - wynik"
 
 docker exec -u root bramka_app chown -R "$UID_BRAMKI:$GID_BRAMKI" /var/www/html >/dev/null 2>&1
 rm -f docker-compose.override.yml
-BRUD="$(git status --porcelain | grep -c .)"
-
-echo "drzewo po biegu: $BRUD pozycji"
+# Trzeci stan przyrzadu: "nie zmierzylem" (L-113). `git status | grep -c .` daje ZERO
+# takze wtedy, gdy git w ogole nie wystartowal - a taki przypadek tu zachodzi naprawde:
+# bieg w WSL dziedziczy katalog roboczy z katalogu bind-mountow Docker Desktop
+# (/mnt/wsl/docker-desktop-bind-mounts/...), ktory znika razem z kontenerami, i git konczy
+# sie wtedy "fatal: Unable to read current working directory". Zielone "drzewo po biegu:
+# 0 pozycji" bylo w takim biegu NIEPRAWDA, tylko wygladalo jak prawda.
+STATUS_TXT="$(git status --porcelain 2>/tmp/bramka-status.err)"
+KOD_STATUS=$?
+KOD_DRZEWO=0
+if [ "$KOD_STATUS" -ne 0 ]; then
+    KOD_DRZEWO=$KOD_STATUS
+    echo "drzewo po biegu: NIEZMIERZONE - git EXIT=$KOD_STATUS: $(head -1 /tmp/bramka-status.err)" >&2
+else
+    BRUD="$(printf '%s' "$STATUS_TXT" | grep -c .)"
+    echo "drzewo po biegu: $BRUD pozycji"
+fi
 echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
 
 # KOD_ACTIONLINT i KOD_GITLEAKS sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP,
@@ -296,6 +309,7 @@ elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
 elif [ "${KOD_ACTIONLINT:-0}" -ne 0 ]; then KOD=$KOD_ACTIONLINT
 elif [ "${KOD_GITLEAKS:-0}" -ne 0 ]; then KOD=$KOD_GITLEAKS
+elif [ "${KOD_DRZEWO:-0}" -ne 0 ]; then KOD=$KOD_DRZEWO
 else KOD=$KOD_FRONT; fi
 
 echo "EXIT=$KOD"
