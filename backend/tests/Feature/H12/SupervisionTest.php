@@ -190,10 +190,12 @@ class SupervisionTest extends TestCase
         ]);
     }
 
-    public function test_instructor_and_admin_can_mark_attendance_only_after_slot_ends(): void
+    public function test_instructor_can_mark_attendance_only_after_slot_ends(): void
     {
+        // Obecność na terminie superwizji oznacza wyłącznie prowadzący — decyzja
+        // Administracja tą trasą obecności już nie oznacza; jej odmowa
+        // ma osobnego świadka niżej (test_administration_cannot_mark_attendance).
         $instructor = User::factory()->role('instructor')->create();
-        $admin = User::factory()->role('project_manager')->create();
         $member = User::factory()->create(['role' => 'volunteer']);
         SupervisorAssignment::create([
             'volunteer_id' => $member->id,
@@ -225,19 +227,6 @@ class SupervisionTest extends TestCase
             'attendance_marked_by' => $instructor->id,
         ]);
 
-        $this->actingAs($admin, 'sanctum')
-            ->patchJson("/api/v1/instructor/slots/{$pastSlot->id}/attendance", [
-                'attendance' => [(string) $member->id => 'absent'],
-            ])
-            ->assertOk();
-
-        $this->assertDatabaseHas('supervision_signups', [
-            'slot_id' => $pastSlot->id,
-            'user_id' => $member->id,
-            'attendance' => 'absent',
-            'attendance_marked_by' => $admin->id,
-        ]);
-
         $futureSlot = SupervisionSlot::create($this->slotData($instructor));
         SupervisionSignup::create([
             'slot_id' => $futureSlot->id,
@@ -250,6 +239,53 @@ class SupervisionTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'validation_failed');
+    }
+
+    public function test_administration_cannot_mark_attendance(): void
+    {
+        // Reguła: obecność oznacza prowadzący, i nikt więcej. Administracja
+        // (obie role — project_manager i super_admin, kryterium mówi o administracji, nie
+        // o jednej roli) nie oznacza obecności na cudzym terminie. Kształt odmowy (403)
+        // zastany z trasy siostrzanej GET /api/v1/admin/supervision/slots, nie wymyślony tu.
+        $instructor = User::factory()->role('instructor')->create();
+        $projectManager = User::factory()->role('project_manager')->create();
+        $superAdmin = User::factory()->role('super_admin')->create();
+        $member = User::factory()->create(['role' => 'volunteer']);
+        SupervisorAssignment::create([
+            'volunteer_id' => $member->id,
+            'supervisor_id' => $instructor->id,
+            'assigned_at' => now(),
+        ]);
+        $pastSlot = SupervisionSlot::create($this->slotData(
+            $instructor,
+            startsAt: Carbon::now()->subHours(2),
+            duration: 60,
+        ));
+        SupervisionSignup::create([
+            'slot_id' => $pastSlot->id,
+            'user_id' => $member->id,
+            'signed_up_at' => Carbon::now()->subHours(3),
+        ]);
+
+        $this->actingAs($projectManager, 'sanctum')
+            ->patchJson("/api/v1/instructor/slots/{$pastSlot->id}/attendance", [
+                'attendance' => [(string) $member->id => 'present'],
+            ])
+            ->assertStatus(403);
+
+        $this->actingAs($superAdmin, 'sanctum')
+            ->patchJson("/api/v1/instructor/slots/{$pastSlot->id}/attendance", [
+                'attendance' => [(string) $member->id => 'present'],
+            ])
+            ->assertStatus(403);
+
+        // Sama odmowa HTTP nie dowodzi, że nic nie zapisano — obecność ma zostać niezmieniona.
+        $this->assertDatabaseHas('supervision_signups', [
+            'slot_id' => $pastSlot->id,
+            'user_id' => $member->id,
+            'attendance' => null,
+            'attendance_marked_by' => null,
+        ]);
     }
 
     public function test_assignment_keeps_history_and_records_one_audit(): void
