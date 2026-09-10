@@ -127,6 +127,9 @@ return [
     |
     */
 
+    // Below, a null 'domain' scopes the cookie to the exact host only, which is
+    // narrower than a named domain with subdomains — the safer default, not a gap.
+    // nosemgrep: php.laravel.security.laravel-cookie-null-domain.laravel-cookie-null-domain
     'cookie' => env(
         'SESSION_COOKIE',
         Str::slug((string) env('APP_NAME', 'laravel')).'-session'
@@ -169,7 +172,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', true),
 
     /*
     |--------------------------------------------------------------------------
