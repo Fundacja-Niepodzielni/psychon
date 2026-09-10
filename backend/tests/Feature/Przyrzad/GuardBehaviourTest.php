@@ -69,7 +69,7 @@ final class GuardBehaviourTest extends TestCase
 
         $output = $result->output().$result->errorOutput();
 
-        // Po naprawie T-0 wpis z phpunit.xml wygrywa, więc podmiana NIE przechodzi
+        // Po domknięciu cichej podmiany bazy wpis z phpunit.xml wygrywa, więc podmiana NIE przechodzi
         // i suita jest zielona. To jest właściwy wynik — pułapka jest zamknięta.
         $this->assertSame(
             0,

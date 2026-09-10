@@ -13,7 +13,7 @@ use Laravel\Sanctum\Sanctum;
  * została ODRZUCONA (`18-rozstrzygniecia-dewiacji.md`; `ANEKS-KONTRAKTU-MAPA` H2 —
  * „NIE NANOSIĆ"). Kryterium obowiązuje w brzmieniu Fundacji.
  *
- * ⚠ Ten plik ma być CZERWONY, dopóki pozycja S1-1 nie wejdzie. Czerwień jest tu
+ * ⚠ Ten plik ma być CZERWONY, dopóki wznawianie lekcji nie zostanie zbudowane. Czerwień jest tu
  * pomiarem luki, nie awarią świadka.
  *
  * `php artisan test --filter=LessonResume`

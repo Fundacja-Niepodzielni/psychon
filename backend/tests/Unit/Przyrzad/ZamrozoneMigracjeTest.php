@@ -5,7 +5,7 @@ namespace Tests\Unit\Przyrzad;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Świadek TREŚCI migracji zamrożonych (G-4).
+ * Świadek TREŚCI migracji zamrożonych.
  *
  * KRYTERIUM. Zbiór migracji zastanych jest zamrożony dla wszystkich ról: strażnik
  * zakresów wylicza go z pomiaru wobec SHA bazy i odmawia commita, który dotyka

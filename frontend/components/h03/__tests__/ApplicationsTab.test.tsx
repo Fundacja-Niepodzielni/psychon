@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * T-4 · świadek ekranu H03 (zgłoszenia rekrutacyjne).
+ * Świadek ekranu H03 (zgłoszenia rekrutacyjne).
  *
  * Kryteria ★ H03.1–2 „z ekranu": akceptacja prowadzi do utworzenia konta,
  * odrzucenie BEZ POWODU → 422 **pokazane użytkowniczce**.

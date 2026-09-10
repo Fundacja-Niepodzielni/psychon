@@ -125,7 +125,7 @@ class GenerateCertificate implements ShouldQueue
         // wydany certyfikat bez pliku na zawsze. Strażnik sprawdza ARTEFAKT, nie
         // kolumnę: `pdf_path` obecne w wierszu niczego nie dowodzi (ziarno demo
         // niesie zaślepkowe ścieżki `.html` sprzed wejścia dompdf, katalog na
-        // dysku może nie istnieć wcale) — Z-1.
+        // dysku może nie istnieć wcale) — luka domykana pomiarem artefaktu.
         if (! $created && self::hasRenderedPdf($certificate)) {
             return;
         }

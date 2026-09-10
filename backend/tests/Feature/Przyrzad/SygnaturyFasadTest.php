@@ -13,7 +13,7 @@ use SplFileInfo;
 use Tests\TestCase;
 
 /**
- * Świadek SYGNATUR FASAD (G-4).
+ * Świadek sygnatur fasad.
  *
  * KRYTERIUM. Każde wołanie fasady, które wykonuje aplikacja, musi istnieć — z tą
  * sygnaturą — w ZAINSTALOWANEJ wersji pakietu. Fasada nie ma metod: `Facade::__callStatic`
