@@ -12,6 +12,7 @@ use RuntimeException;
 use Tests\Concerns\AllowedTestDatabases;
 use Tests\Concerns\DeclaredTestDatabase;
 use Tests\Concerns\ProcessDatabaseNameGuard;
+use Tests\Concerns\StanZastanejBazyOpis;
 use Throwable;
 
 /**
@@ -88,18 +89,20 @@ abstract class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
-        $rozjazd = $this->stanZastanyBazy === null ? [] : $this->rozjazdStanu($this->stanZastanyBazy);
+        $po = $this->stanZastanyBazy === null ? null : $this->zmierzStanPoTescie();
+        $rozjazd = $po === null ? [] : $this->rozjazdStanu($this->stanZastanyBazy, $po);
 
         parent::tearDown();
 
         if ($rozjazd !== []) {
             throw new RuntimeException(
-                'Test bez `RefreshDatabase` zostawił po sobie ślad w bazie testowej:
+                StanZastanejBazyOpis::naglowek($this->stanZastanyBazy, $po)
+                .'
   '
                 .implode('
   ', $rozjazd)
                 .'
-Następne testy zastaną niepusty stan i zaczerwienią się bez własnej winy. '
+Następne testy zastaną odmienny stan i zaczerwienią się bez własnej winy. '
                 .'Sprzątnij w `tearDown` albo dołóż `RefreshDatabase`. '
                 .'(Reguła P-6: test wołający `seed()` MUSI mieć `RefreshDatabase`; '
                 .'jeśli mieć go nie może — nie wolno mu wołać `seed()`.)',
@@ -160,18 +163,23 @@ Następne testy zastaną niepusty stan i zaczerwienią się bez własnej winy. '
         return false;
     }
 
-    /**
-     * @param  array<string, int>  $przed
-     * @return list<string>
-     */
-    private function rozjazdStanu(array $przed): array
+    /** @return array<string, int>|null null znaczy „baza nieosiągalna — to inna awaria i ma własny komunikat" */
+    private function zmierzStanPoTescie(): ?array
     {
         try {
-            $po = $this->policzWiersze();
+            return $this->policzWiersze();
         } catch (Throwable) {
-            return []; // baza nieosiągalna — to inna awaria i ma własny komunikat
+            return null;
         }
+    }
 
+    /**
+     * @param  array<string, int>  $przed
+     * @param  array<string, int>  $po
+     * @return list<string>
+     */
+    private function rozjazdStanu(array $przed, array $po): array
+    {
         $rozjazd = [];
 
         foreach ($po as $tabela => $ile) {
