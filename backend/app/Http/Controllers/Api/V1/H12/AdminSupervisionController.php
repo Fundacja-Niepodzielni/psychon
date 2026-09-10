@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1\H12;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H12\AssignSupervisorRequest;
 use App\Http\Resources\H12\InstructorSlotResource;
+use App\Http\Resources\H12\SupervisionCaseResource;
 use App\Http\Resources\H12\SupervisorAssignmentResource;
+use App\Models\SupervisionCase;
 use App\Models\SupervisionSlot;
 use App\Services\H12\SupervisorAssignmentService;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +36,21 @@ class AdminSupervisionController extends Controller
 
         return response()->json([
             'data' => $slots,
+        ]);
+    }
+
+    public function cases(Request $request): JsonResponse
+    {
+        $cases = SupervisionCase::query()
+            ->with(['reporter', 'volunteer'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (SupervisionCase $case): array => SupervisionCaseResource::make($case)->resolve($request))
+            ->all();
+
+        return response()->json([
+            'data' => $cases,
         ]);
     }
 
