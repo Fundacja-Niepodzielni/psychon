@@ -14,6 +14,8 @@ export interface ParticipantSlot {
   active_signups_count: number;
   available_seats: number;
   is_full: boolean;
+  /** Liczone po stronie serwera, dokładnie tym samym warunkiem co zapis/wypis. */
+  can_sign_up: boolean;
   signup: ParticipantSignup | null;
 }
 
@@ -31,6 +33,8 @@ export interface InstructorSlot {
   location_or_link: string | null;
   active_signups_count: number;
   available_seats: number;
+  /** Liczone po stronie serwera, dokładnie tym samym warunkiem co zapis obecności. */
+  can_mark_attendance: boolean;
   signups: InstructorSignup[];
 }
 

@@ -6,7 +6,6 @@ use App\Exceptions\ApiException;
 use App\Models\SupervisionSignup;
 use App\Models\SupervisionSlot;
 use App\Models\User;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class SupervisionAttendanceService
@@ -20,7 +19,7 @@ final class SupervisionAttendanceService
                 throw new ApiException(404, 'not_found', 'Nie znaleziono terminu.');
             }
 
-            if (Carbon::now()->lt($slot->starts_at->copy()->addMinutes((int) $slot->duration_minutes))) {
+            if (! SupervisionTiming::canMarkAttendance($slot)) {
                 throw new ApiException(
                     422,
                     'validation_failed',

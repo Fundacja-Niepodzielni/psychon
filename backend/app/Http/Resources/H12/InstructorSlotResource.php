@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\H12;
 
+use App\Services\H12\SupervisionTiming;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,7 @@ class InstructorSlotResource extends JsonResource
             'duration_minutes' => (int) $this->duration_minutes,
             'seats_limit' => (int) $this->seats_limit,
             'location_or_link' => $this->location_or_link,
+            'can_mark_attendance' => SupervisionTiming::canMarkAttendance($this->resource),
             'supervisor' => $this->whenLoaded('supervisor', fn (): array => [
                 'id' => $this->supervisor->id,
                 'first_name' => $this->supervisor->first_name,

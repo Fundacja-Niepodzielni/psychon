@@ -49,6 +49,7 @@ export default function SupervisionSlots() {
   const [reload, setReload] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<number | null>(null);
+  const [actionErrorSlotId, setActionErrorSlotId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -78,6 +79,7 @@ export default function SupervisionSlots() {
 
   async function toggleSignup(slot: ParticipantSlot) {
     setActionId(slot.id);
+    setActionErrorSlotId(null);
     setActionError(null);
     setSuccess(null);
     const path = "/supervision/slots/" + slot.id + "/signup";
@@ -92,6 +94,7 @@ export default function SupervisionSlots() {
         slot.signup ? "Wypisano Cię z terminu." : "Zapisano Cię na termin.",
       );
     } catch (error: unknown) {
+      setActionErrorSlotId(slot.id);
       setActionError(actionMessage(error));
       setReload((value) => value + 1);
     } finally {
@@ -110,7 +113,6 @@ export default function SupervisionSlots() {
         </p>
       </div>
       {success && <Alert variant="success">{success}</Alert>}
-      {actionError && <Alert variant="error">{actionError}</Alert>}
       {loadError && (
         <Alert variant="error">
           {loadError}{" "}
@@ -143,6 +145,9 @@ export default function SupervisionSlots() {
             const busy = actionId === slot.id;
             const ownSignup = slot.signup !== null;
             const seatText = slot.available_seats === 1 ? "miejsce" : "miejsca";
+            // Serwer liczy can_sign_up z tego samego warunku, co odmowa zapisu/wypisu —
+            // termin przeszły nie ma "wolnych miejsc", ma zamknięty zapis.
+            const disabled = !slot.can_sign_up || (!ownSignup && slot.is_full);
             return (
               <Card
                 key={slot.id}
@@ -150,10 +155,20 @@ export default function SupervisionSlots() {
                 data-testid={"slot-" + slot.id}
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={slot.is_full && !ownSignup ? "danger" : "info"}>
-                    {slot.is_full && !ownSignup
-                      ? "Brak miejsc"
-                      : slot.available_seats + " " + seatText + " wolne"}
+                  <Badge
+                    variant={
+                      !slot.can_sign_up
+                        ? "neutral"
+                        : slot.is_full && !ownSignup
+                          ? "danger"
+                          : "info"
+                    }
+                  >
+                    {!slot.can_sign_up
+                      ? "Termin już się odbył"
+                      : slot.is_full && !ownSignup
+                        ? "Brak miejsc"
+                        : slot.available_seats + " " + seatText + " wolne"}
                   </Badge>
                   <span className="text-small text-muted">
                     {slot.duration_minutes} min
@@ -187,16 +202,26 @@ export default function SupervisionSlots() {
                     </dd>
                   </div>
                 </dl>
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  {ownSignup && <Badge variant="success">Jesteś zapisany/a</Badge>}
-                  <Button
-                    variant={ownSignup ? "secondary" : "primary"}
-                    loading={busy}
-                    disabled={!ownSignup && slot.is_full}
-                    onClick={() => toggleSignup(slot)}
-                  >
-                    {ownSignup ? "Wypisz się" : "Zapisz się"}
-                  </Button>
+                <div className="mt-5 flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {ownSignup && <Badge variant="success">Jesteś zapisany/a</Badge>}
+                    <Button
+                      variant={ownSignup ? "secondary" : "primary"}
+                      loading={busy}
+                      disabled={disabled}
+                      onClick={() => toggleSignup(slot)}
+                    >
+                      {ownSignup ? "Wypisz się" : "Zapisz się"}
+                    </Button>
+                  </div>
+                  {!slot.can_sign_up && (
+                    <p className="text-caption text-muted">
+                      Termin już się rozpoczął — zapis i wypis nie są już możliwe.
+                    </p>
+                  )}
+                  {actionErrorSlotId === slot.id && actionError && (
+                    <Alert variant="error">{actionError}</Alert>
+                  )}
                 </div>
               </Card>
             );

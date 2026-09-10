@@ -7,7 +7,6 @@ use App\Models\SupervisionSignup;
 use App\Models\SupervisionSlot;
 use App\Models\SupervisorAssignment;
 use App\Models\User;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class SupervisionSignupService
@@ -36,7 +35,7 @@ final class SupervisionSignupService
                 );
             }
 
-            if (! Carbon::now()->lt($slot->starts_at)) {
+            if (! SupervisionTiming::canSignUp($slot)) {
                 throw new ApiException(
                     422,
                     'validation_failed',
@@ -100,7 +99,7 @@ final class SupervisionSignupService
                 throw new ApiException(404, 'not_found', 'Nie znaleziono zapisu.');
             }
 
-            if (! Carbon::now()->lt($slot->starts_at)) {
+            if (! SupervisionTiming::canSignUp($slot)) {
                 throw new ApiException(
                     422,
                     'validation_failed',

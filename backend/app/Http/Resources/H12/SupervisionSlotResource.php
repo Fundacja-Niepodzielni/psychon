@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\H12;
 
+use App\Services\H12\SupervisionTiming;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,6 +27,7 @@ class SupervisionSlotResource extends JsonResource
             'active_signups_count' => $activeCount,
             'available_seats' => max(0, (int) $this->seats_limit - $activeCount),
             'is_full' => $activeCount >= (int) $this->seats_limit,
+            'can_sign_up' => SupervisionTiming::canSignUp($this->resource),
             'signup' => $signup === null ? null : [
                 'signed_up_at' => $signup->signed_up_at?->toIso8601ZuluString(),
                 'attendance' => $signup->attendance,
