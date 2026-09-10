@@ -8,7 +8,7 @@ class UpdateAttendanceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()?->role, ['instructor', 'project_manager', 'super_admin'], true);
+        return $this->user()?->role === 'instructor';
     }
 
     public function rules(): array
