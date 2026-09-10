@@ -1,0 +1,27 @@
+# Analiza statyczna backendu (PHPStan + Larastan).
+#
+# Poziom 5 to punkt wejscia, nie cel. Cel to 8, podnoszony po jednym stopniu w
+# osobnych zmianach — podniesienie od razu do 8 na kodzie, ktory nigdy nie byl
+# analizowany, zamienia narzedzie w sciane i konczy sie jego wylaczeniem.
+#
+# phpstan-baseline.neon zamraza dlug, ktory juz istnieje w chwili wlaczenia
+# analizy. Dzieki temu KAZDE nowe naruszenie jest czerwone od dzis, a stary dlug
+# zdejmujemy planowo. Baseline sie NIE odswieza po to, zeby "bylo zielono" —
+# nowy wpis w baseline bez powodu to ukryty regres.
+#
+# Wolanie:  vendor/bin/phpstan analyse --memory-limit=512M
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+
+    paths:
+        - app
+        - database
+        - routes
+
+    # katalog roboczy w storage/ — jest w .gitignore, wiec cache analizy nigdy
+    # nie trafi do repozytorium
+    tmpDir: storage/framework/cache/phpstan
