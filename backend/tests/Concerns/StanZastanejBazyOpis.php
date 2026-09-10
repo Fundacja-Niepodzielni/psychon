@@ -44,7 +44,7 @@ final class StanZastanejBazyOpis
             $maPrzyrost && $maUbytek => 'Test bez `RefreshDatabase` zostawił MIESZANY rozjazd w bazie testowej '
                 .'(część tabel przybyła, część ubyła):',
             $maPrzyrost => 'Test bez `RefreshDatabase` DOPISAŁ dane do bazy testowej — zostawił po sobie ślad:',
-            $maUbytek => 'Test bez `RefreshDatabase` zastał bazę testową OKROJONĄ — ktoś ją wyczyścił spod niego, '
+            $maUbytek => 'Test bez `RefreshDatabase` zastał bazę testową OKROJONĄ — ktoś ją WYCZYŚCIŁ spod niego, '
                 .'to NIE jest „zostawił ślad", tylko ubytek:',
             default => 'Test bez `RefreshDatabase` zostawił rozjazd w bazie testowej bez zmiany żadnej liczności '
                 .'(zestaw tabel się zmienił):',
