@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Pozycja w materiale (S1-1 · kryterium ★ H06.1 — wznowienie po wylogowaniu).
+     * Pozycja w materiale (kryterium ★ H06.1 — wznowienie po wylogowaniu).
      * Odrębna od `watched_seconds` i `active_seconds`: tamte tylko rosną, a pozycja
      * ma prawo maleć, bo uczestnik przewija materiał wstecz.
      * Kolumna addytywna, z wartością domyślną 0 — istniejące wiersze postępu

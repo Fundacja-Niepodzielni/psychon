@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Termin ważności pliku eksportu RODO (S1-12). Paczka z pełnym profilem
+     * Termin ważności pliku eksportu RODO (limit żądań + TTL pliku). Paczka z pełnym profilem
      * uczestnika nie może leżeć na dysku bez końca — job ustawia `expires_at`
      * przy zakończeniu, polecenie `exports:purge-expired` kasuje plik po tym
      * terminie, a pobranie po terminie kończy się 404 jak dla cudzego eksportu.
