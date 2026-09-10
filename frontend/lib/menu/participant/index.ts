@@ -9,6 +9,7 @@ import h21Start from "./h21-start";
 import pulpit from "./pulpit";
 import h05Kursy from "./h05-kursy";
 import h11Staz from "./h11-staz";
+import h12Superwizja from "./h12-superwizja";
 import h01Profil from "./h01-profil";
 import h14Dokumenty from "./h14-dokumenty";
 import h13Certyfikat from "./h13-certyfikat";
@@ -22,6 +23,7 @@ export const participantMenu: MenuEntry[] = sortMenu([
   pulpit,
   h05Kursy,
   h11Staz,
+  h12Superwizja,
   h01Profil,
   h14Dokumenty,
   h13Certyfikat,
