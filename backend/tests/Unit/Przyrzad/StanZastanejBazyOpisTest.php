@@ -8,7 +8,7 @@ use Tests\Concerns\StanZastanejBazyOpis;
 /**
  * Świadek NAZWY kierunku rozjazdu (kryterium karty: przyrost i ubytek liczności
  * tabel muszą brzmieć w nagłówku różnie, bo znaczą różne przyczyny — dopisane
- * dane kontra wyczyszczona baza, `F-49`).
+ * dane kontra wyczyszczona baza).
  *
  * Trzy przypadki, jeden ujemna kontrola:
  *   1. same przyrosty → nagłówek nazywa to „dopisaniem" / „śladem",
