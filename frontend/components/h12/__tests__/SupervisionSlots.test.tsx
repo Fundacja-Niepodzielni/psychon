@@ -43,7 +43,6 @@ const { default: SupervisionSlots } = await import("@/components/h12/Supervision
 
 function termin(overrides: Partial<Record<string, unknown>> & { id: number }) {
   return {
-    id: overrides.id,
     starts_at: "2026-09-12T09:00:00Z",
     duration_minutes: 60,
     seats_limit: 6,
