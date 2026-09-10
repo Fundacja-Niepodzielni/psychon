@@ -18,6 +18,10 @@ name: SonarCloud
 # `if: ${{ secrets.SONAR_TOKEN }}` sklada sie do niepustego napisu, a kazdy niepusty napis
 # jest w `if` prawda — taki warunek jest ZAWSZE spelniony i "wylaczenie" nie wylacza niczego.
 
+# Dlaczego nie ma tu `sprint-*`, skoro ma je `ci.yml` i `codeql.yml`: bez sekretu
+# `SONAR_TOKEN` krok skanu jest pomijany, wiec przebieg na galezi sprintu bylby zielony
+# bez zmierzenia czegokolwiek. `sprint-*` dopisujemy w tym samym commicie, w ktorym token
+# zostanie zmierzony (`gh secret list`).
 on:
   push:
     branches: [main, dev]

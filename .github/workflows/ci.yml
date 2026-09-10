@@ -9,7 +9,11 @@ on:
       - 'docs/**'
       - '*.md'
   push:
-    branches: [main]
+    # Kazda galaz, nie tylko main. Galaz w tym repo pojawia sie wylacznie przez push
+    # lidera, wiec kazdy taki push ma prawo do wlasnego przebiegu; bez tego galezie
+    # sprintu nie mialy zadnego biegu zdalnego (zmierzone 10.09: 0 przebiegow).
+    # Repo jest publiczne, wiec minuty Actions sa poza pula organizacji.
+    branches: ['**']
     paths-ignore:
       - 'docs/**'
       - '*.md'

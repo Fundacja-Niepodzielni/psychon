@@ -10,7 +10,9 @@ name: CodeQL
 
 on:
   push:
-    branches: [main, dev]
+    # sprint-* dopisane wzorcem, zeby galaz sprintu miala analize od pierwszego pushu,
+    # a nie dopiero po scaleniu do dev.
+    branches: [main, dev, 'sprint-*']
   pull_request:
   schedule:
     # Poniedzialek 03:17 UTC. Nierowna minuta celowo — o pelnej godzinie kolejka
