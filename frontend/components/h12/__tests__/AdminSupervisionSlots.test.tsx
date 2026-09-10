@@ -50,7 +50,7 @@ describe("AdminSupervisionSlots — zawartość", () => {
 
   it("PERTURBACJA: przy braku obecności ekran NIE pokazuje potwierdzenia — dowód, że test (1) mierzy coś", async () => {
     // Bez tej nogi test wyżej byłby zielony nawet wtedy, gdyby ekran wypisywał
-    // „Obecność potwierdzona" na stałe, niezależnie od danych (L-06).
+    // „Obecność potwierdzona" na stałe, niezależnie od danych.
     fetchAdminSupervisionSlots.mockResolvedValue(dwaTerminyPrawdziwyKsztalt(null));
     render(<AdminSupervisionSlots />);
 
