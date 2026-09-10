@@ -1,0 +1,46 @@
+# Lista wykluczen dla skanera statycznego (Semgrep).
+#
+# Powod istnienia pliku: bez niego Semgrep uzywa listy wbudowanej, ktora wycina KAZDA sciezke
+# zawierajaca segment `test` / `tests`. Zmierzone na tym repo: 867 plikow sledzonych przez git,
+# 734 przeskanowane, 133 pominiete — w tym wszystkie 131 plikow `backend/tests` oraz
+# `frontend/app/(uczestnik)/panel/kursy/[slug]/test/page.tsx`, czyli STRONA PRODUKCYJNA, ktora
+# wpadla pod wykluczenie tylko dlatego, ze jej segment sciezki nazywa sie `test`.
+# Skaner, ktory po cichu omija czesc drzewa, zwraca zero rownie chetnie jak skaner czysty.
+# Dlatego wykluczenia sa tutaj wypisane jawnie i nie ma wsrod nich `tests/`.
+
+# Zaleznosci i artefakty budowania — nie nasz kod, nie nasza odpowiedzialnosc.
+vendor/
+node_modules/
+.next/
+out/
+build/
+dist/
+coverage/
+storage/framework/
+bootstrap/cache/
+
+# Systemowe
+.git/
+.venv/
+__pycache__/
+
+# Pliki wygenerowane i zminifikowane — skan daje na nich same falszywe trafienia.
+*.min.js
+*.min.css
+*.map
+*-lock.json
+package-lock.json
+composer.lock
+
+# Binaria i multimedia
+*.ico
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.pdf
+*.woff
+*.woff2
+*.ttf
