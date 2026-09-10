@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Ekran osób w administracji — dwie zakładki na jednej trasie (S1-10).
+ * Ekran osób w administracji — dwie zakładki na jednej trasie (wpięcie ekranu zgłoszeń, H03).
  *
  * `ApplicationsTab` (H03) był kompletny od hackathonu i **nieosiągalny z interfejsu**:
  * nikt go nie importował, więc kryteria ★ H03.1–2, które są kryteriami Z EKRANU,

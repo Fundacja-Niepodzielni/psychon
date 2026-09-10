@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Unikalna kolejność w obrębie rodzica (S1-15 lekcje, S1-16 pytania).
+     * Unikalna kolejność w obrębie rodzica (indeks częściowy dla lekcji — miękkie usuwanie, zwykły dla pytań).
      *
      * Bez tego indeksu wyścig dwóch równoczesnych dodań kończył się nie błędem,
      * lecz dwoma wierszami o tym samym `sequence_order` — czyli kolejnością

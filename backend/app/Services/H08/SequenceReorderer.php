@@ -132,7 +132,7 @@ final class SequenceReorderer
 
     /**
      * Renumeracja lekcji idzie DWUFAZOWO, inaczej niż przy kursach: na
-     * `(course_id, sequence_order)` lekcji stoi unikalny indeks (S1-15), więc
+     * `(course_id, sequence_order)` lekcji stoi unikalny indeks (chroni ciągłość numeracji lekcji), więc
      * przejściowy duplikat w środku pętli — nieunikniony przy zwykłej zamianie
      * dwóch lekcji miejscami — przerwałby całą operację. Faza pierwsza odsuwa
      * numery poza używany zakres, faza druga nadaje docelowe 1..N.

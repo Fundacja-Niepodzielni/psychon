@@ -133,7 +133,7 @@ function sekundy(n: number): string {
 }
 
 /**
- * Komunikat po nieudanym zleceniu eksportu (S1-12f).
+ * Komunikat po nieudanym zleceniu eksportu (front do limitu żądań eksportu RODO).
  *
  * Trzy odmowy znaczą trzy różne rzeczy i tak samo mają brzmieć: 429 to limit
  * okna czasu (można spróbować później), 409 to reguła „jedna żywa paczka na

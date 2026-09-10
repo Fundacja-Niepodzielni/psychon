@@ -8,7 +8,7 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Kasuje pliki eksportów RODO po terminie ważności (S1-12 · H01 · M2 pkt 4).
+ * Kasuje pliki eksportów RODO po terminie ważności (limit żądań + TTL pliku · H01 · M2 pkt 4).
  *
  * Wiersz zostaje — jest śladem, że uczestnik skorzystał z prawa do kopii danych
  * — ale plik z kompletem danych osobowych znika z dysku, a status przechodzi na
