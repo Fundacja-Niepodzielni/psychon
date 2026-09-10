@@ -406,6 +406,11 @@ export default function InstructorGroup() {
                   <p className="mt-4 text-small text-muted">Nikt nie zapisał się na ten termin.</p>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3">
+                    {!slot.can_mark_attendance && (
+                      <p className="text-caption text-muted">
+                        Obecność oznaczysz po zakończeniu terminu.
+                      </p>
+                    )}
                     {slot.signups.map((signup) => {
                       const value = attendance[slot.id]?.[signup.user.id] ?? signup.attendance;
                       return (
@@ -424,6 +429,7 @@ export default function InstructorGroup() {
                           <Select
                             label="Obecność"
                             value={value ?? ""}
+                            disabled={!slot.can_mark_attendance}
                             onChange={(event) => {
                               const next = event.target.value as Attendance;
                               if (next === "present" || next === "absent") {
@@ -441,6 +447,7 @@ export default function InstructorGroup() {
                     <Button
                       className="self-start"
                       loading={savingAttendanceId === slot.id}
+                      disabled={!slot.can_mark_attendance}
                       onClick={() => saveAttendance(slot)}
                     >
                       Zapisz obecności
