@@ -31,8 +31,8 @@ use Tests\TestCase;
  * wymusza `QUEUE_CONNECTION=sync`, więc eksport jest gotowy natychmiast i stan
  * „trwa poprzedni" NIGDY nie zachodzi. Reguła „jeden ŻYWY eksport" nie zależy od
  * tego, jak szybko zadanie się wykona — i dlatego da się ją zmierzyć w obu światach.
- * To jest ta sama klasa co P-1: **konfiguracja pomiaru pochodziła z miejsca,
- * którego pomiar nie deklarował.**
+ * To jest ta sama klasa wady co cicha podmiana bazy testowej: **konfiguracja pomiaru
+ * pochodziła z miejsca, którego pomiar nie deklarował.**
  *
  * ⚠ Czerwony do czasu wdrożenia limitu „jeden żywy eksport na osobę" w samym
  * endpointzie eksportu. Nie naprawiam tutaj — ten plik tylko mierzy.

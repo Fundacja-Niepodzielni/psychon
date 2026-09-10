@@ -40,7 +40,8 @@ use Tests\TestCase;
  *
  * Celowo BEZ `RefreshDatabase` — procesy potomne nie zobaczą otwartej transakcji
  * rodzica jako zatwierdzonej. Dane zakładane i sprzątane ręcznie, do stanu
- * zastanego (P-6).
+ * zastanego, jak każdy test bez `RefreshDatabase` — inaczej zostawia ślad, na który
+ * wpadną sąsiednie testy w kolejnym przebiegu.
  *
  * `php artisan test --filter=ConcurrentAttempt`
  */

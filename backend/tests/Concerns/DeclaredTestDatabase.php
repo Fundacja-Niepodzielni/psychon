@@ -8,8 +8,8 @@ use RuntimeException;
  * Nazwa bazy, na której suita DEKLARUJE, że biegnie — czytana z `phpunit.xml`.
  *
  * Dlaczego z PLIKU, a nie z `config('database.…')`: konfiguracja Laravela czyta
- * ŚRODOWISKO, czyli dokładnie to, co pułapka `P-1` podmienia. Strażnik porównujący
- * `config()` z `current_database()` porównywałby wartość nadpisaną z wartością
+ * ŚRODOWISKO, czyli dokładnie to, co podmienia wstrzyknięta zmienna środowiskowa bazy.
+ * Strażnik porównujący `config()` z `current_database()` porównywałby wartość nadpisaną z wartością
  * nadpisaną i był zielony właśnie wtedy, gdy powinien krzyczeć.
  *
  * Dlaczego nie stała w kodzie strażnika: byłaby DRUGIM źródłem prawdy obok

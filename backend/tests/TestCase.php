@@ -16,7 +16,8 @@ use Tests\Concerns\StanZastanejBazyOpis;
 use Throwable;
 
 /**
- * Strażnik izolacji bazy testowej (pułapka P-1).
+ * Strażnik izolacji bazy testowej — pilnuje cichej podmiany bazy, na której faktycznie
+ * stoi połączenie.
  *
  * Wpisy `<env>` w `phpunit.xml` BEZ `force="true"` przegrywają ze zmiennymi
  * środowiskowymi kontenera. Skutek jest cichy: `tests/bootstrap.php` tworzy
@@ -60,8 +61,9 @@ abstract class TestCase extends BaseTestCase
      *
      * Nie jest stałą w kodzie, bo stała byłaby DRUGIM źródłem prawdy obok deklaracji
      * i rozjechałaby się w dniu, w którym ktoś zmieni jedno z dwóch. Nie pochodzi też
-     * z `config()`, bo konfiguracja czyta środowisko — czyli dokładnie to, co pułapka
-     * P-1 podmienia; strażnik porównywałby wtedy nadpisane z nadpisanym.
+     * z `config()`, bo konfiguracja czyta środowisko — czyli dokładnie to, co podmienia
+     * wstrzyknięta zmienna środowiskowa bazy; strażnik porównywałby wtedy nadpisane
+     * z nadpisanym.
      */
     private static array $declaredDatabases = [];
 
@@ -104,7 +106,7 @@ abstract class TestCase extends BaseTestCase
                 .'
 Następne testy zastaną odmienny stan i zaczerwienią się bez własnej winy. '
                 .'Sprzątnij w `tearDown` albo dołóż `RefreshDatabase`. '
-                .'(Reguła P-6: test wołający `seed()` MUSI mieć `RefreshDatabase`; '
+                .'(Reguła: test wołający `seed()` MUSI mieć `RefreshDatabase`; '
                 .'jeśli mieć go nie może — nie wolno mu wołać `seed()`.)',
             );
         }
@@ -263,7 +265,7 @@ Powód: '.self::$connectionFailure,
 
             $this->fail(sprintf(
                 'PRZERWANE: testy biegną na bazie "%s", a wolno im wyłącznie na "%s". '
-                .'To jest pułapka P-1: konfiguracja pomiaru przyszła z miejsca, którego pomiar '
+                .'Konfiguracja pomiaru przyszła z miejsca, którego pomiar '
                 .'nie deklaruje (zmienna środowiskowa kontenera bije wpis z phpunit.xml). '
                 .'Bez tego przerwania RefreshDatabase skasowałby dane bazy "%s".',
                 self::$measuredDatabase,
@@ -293,7 +295,7 @@ Powód: '.self::$connectionFailure,
                 $this->fail(
                     'PRZERWANE tuż przed `RefreshDatabase`: nie udało się połączyć z bazą, '
                     .'na którą przełączył runner, więc nie wiadomo, co zaraz zostanie wyczyszczone. '
-                    .'To NIE jest pułapka P-1 — to awaria połączenia.
+                    .'To NIE jest cicha podmiana bazy — to awaria połączenia.
 Powód: '.self::$connectionFailure,
                 );
             }
@@ -330,8 +332,9 @@ Powód: '.self::$connectionFailure,
      * podstawić deklarację pustą i sprawdzić, że strażnik przerywa (kryterium 3).
      *
      * Celowo NIE jest to zmienna środowiskowa: środowisko jest dokładnie tym, co
-     * pułapka P-1 podmienia, więc wskazanie deklaracji zmienną otwierałoby tę pułapkę
-     * z drugiej strony. Podmienić może tylko klasa napisana w `tests/` — czyli zmiana,
+     * podmienia wstrzyknięta zmienna środowiskowa bazy, więc wskazanie deklaracji zmienną
+     * otwierałoby tę samą lukę z drugiej strony. Podmienić może tylko klasa napisana
+     * w `tests/` — czyli zmiana,
      * którą widać w przeglądzie kodu.
      */
     protected static function sciezkaDeklaracji(): string

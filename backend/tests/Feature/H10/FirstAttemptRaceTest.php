@@ -37,8 +37,8 @@ use Tests\TestCase;
  * który nikt nie sprawdził.
  *
  * Celowo BEZ `RefreshDatabase` — procesy potomne nie zobaczą otwartej transakcji
- * rodzica jako zatwierdzonej. Dane zakładane i sprzątane ręcznie, do stanu ZASTANEGO
- * (reguła P-6, zapłacona własną wpadką).
+ * rodzica jako zatwierdzonej. Dane zakładane i sprzątane ręcznie, do stanu ZASTANEGO —
+ * inaczej zostawia ślad, na który wpadną sąsiednie testy (reguła zapłacona własną wpadką).
  *
  * `php artisan test --filter=FirstAttemptRace`
  */
