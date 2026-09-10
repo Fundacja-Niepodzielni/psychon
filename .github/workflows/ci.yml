@@ -54,9 +54,23 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
-        env: {}
       - name: Lint (Pint)
         run: ./vendor/bin/pint --test
+      # Analiza statyczna. Poziom i wyjatki stoja w phpstan.neon,
+      # a baseline zamraza 331 trafien zastanych - liczba zmierzona
+      # i zgodna co do sztuki z suma pol `count:` w phpstan-baseline.neon.
+      # Krok JEST blokujacy: baseline istnieje po to, zeby nowe trafienie bylo
+      # czerwone od razu, a nie dopisywalo sie do stosu do przejrzenia kiedys.
+      - name: Analiza statyczna (Larastan)
+        run: ./vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+      # `composer audit` jest POMIAREM, nie krokiem blokujacym.
+      # Baza podatnosci zmienia sie po stronie serwera, wiec ten krok potrafi
+      # zaczerwienic sie sam z siebie, bez zadnej zmiany w naszym kodzie - a bramka,
+      # ktora pada od cudzego wpisu, uczy zespol omijac bramke. Wynik ma byc WIDOCZNY
+      # (krok na pomaranczowo), nie schowany pod `|| true`.
+      - name: Podatności zależności PHP (pomiar, nie blokada)
+        run: composer audit --locked --format=plain
+        continue-on-error: true
       - name: Testy
         run: php artisan test
         env:
@@ -96,3 +110,12 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
+      # `--omit=dev` swiadomie: zmierzone
+      # 6 podatnosci lacznie, z tego 2 produkcyjne - cztery zdjete flaga siedza
+      # w narzedziach (vitest, js-yaml), ktore nie ida do przegladarki uzytkownika.
+      # `--audit-level=high` tak samo: nizsze progi zapelnilyby log szumem,
+      # w ktorym krytyczna pozycja przestaje byc widoczna.
+      # Pomiar, nie blokada - z tego samego powodu co przy composer audit.
+      - name: Podatności zależności npm (pomiar, nie blokada)
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true

@@ -146,6 +146,34 @@ CZAS_B="$(czas_od "$T")"
 grep -aE "Tests:|Assertions:|FAILURES|ERRORS|OK \(" /tmp/bramka-B.log | tail -3
 echo "krok B: EXIT=$KOD_B, $CZAS_B s"
 
+# --- 3b - skanery backendu -------------------------------------------------
+# Analiza statyczna JEST blokujaca; audyt zaleznosci NIE JEST. Powod rozdzialu:
+# trafienie PHPStana bierze sie z naszej zmiany i mamy je czym naprawic, a wpis
+# w bazie podatnosci pojawia sie po stronie serwera, bez zadnego naszego ruchu.
+# Bramka, ktora pada od cudzego wpisu, uczy zespol omijac bramke - wiec audyt
+# jest tu POMIAREM, ktory zostawia liczbe w logu, i nie wchodzi do kodu wyjscia.
+naglowek "3b - backend: analiza statyczna i audyt zaleznosci"
+
+# Cache PHPStana ginie razem z kontenerem, wiec kazdy bieg bramki jest "na zimno".
+# Zmierzone 10.09: 123 s na zimno wobec 28 s na cieple. Placimy te ~2 minuty
+# swiadomie - cache przenoszony miedzy commitami to nastepna rzecz, ktorej trzeba
+# by pilnowac, a analiza, ktora czyta cudzy cache, jest analiza czegos innego.
+T="$(date +%s)"
+docker exec -u root bramka_app ./vendor/bin/phpstan analyse --memory-limit=512M --no-progress > /tmp/bramka-phpstan.log 2>&1
+KOD_STATYCZNA=$?
+CZAS_STATYCZNA="$(czas_od "$T")"
+grep -aE "\[OK\]|Found [0-9]+ error|^ Line|errors" /tmp/bramka-phpstan.log | tail -2
+echo "analiza statyczna: EXIT=$KOD_STATYCZNA, $CZAS_STATYCZNA s"
+
+T="$(date +%s)"
+docker exec -u root bramka_app composer audit --locked --format=plain > /tmp/bramka-audyt-php.log 2>&1
+KOD_AUDYT_PHP=$?
+# Liczbe bierzemy z PIERWSZEJ linii wyniku, nie z kodu wyjscia: kod mowi tylko
+# "cos jest", a do STATE i tak trzeba wpisac ILE. Bez trafien composer nie pisze
+# linii "Found ...", wiec pusty wynik pokazujemy jako 0, a nie jako brak pomiaru.
+PODATNOSCI_PHP="$(grep -aoE "Found [0-9]+ security vulnerability advisor" /tmp/bramka-audyt-php.log | head -1)"
+echo "audyt PHP (pomiar, poza kodem wyjscia): EXIT=$KOD_AUDYT_PHP, ${PODATNOSCI_PHP:-Found 0 security vulnerability advisor}ies"
+
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
 CZAS_FRONT=0
@@ -162,6 +190,17 @@ else
     docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine chown -R "$UID_BRAMKI:$GID_BRAMKI" /praca >/dev/null 2>&1
     grep -aE "Test Files|Tests |Compiled|Failed|error|Error" /tmp/bramka-front.log | tail -5
     echo "front: EXIT=$KOD_FRONT, $CZAS_FRONT s"
+
+    # Audyt npm biegnie OSOBNO, a nie w lancuchu wyzej, z dwoch powodow: ma nie
+    # zaczerwienic kroku frontu (pomiar, nie blokada) i ma sie odbyc takze wtedy,
+    # gdy build padnie. Zmierzone: `npm audit` czyta package-lock.json i nie
+    # potrzebuje node_modules, wiec `npm ci` nie jest tu warunkiem.
+    # `--omit=dev` swiadomie: podatnosci w vitest czy js-yaml nie ida do przegladarki.
+    docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine \
+        npm audit --omit=dev --audit-level=high > /tmp/bramka-audyt-npm.log 2>&1
+    KOD_AUDYT_NPM=$?
+    PODATNOSCI_NPM="$(grep -aoE "[0-9]+ vulnerabilities \(.*\)|found 0 vulnerabilities" /tmp/bramka-audyt-npm.log | tail -1)"
+    echo "audyt npm (pomiar, poza kodem wyjscia): EXIT=$KOD_AUDYT_NPM, ${PODATNOSCI_NPM:-brak odczytu}"
 fi
 
 # --- 5 - sprzatanie i wynik ------------------------------------------------
@@ -172,10 +211,13 @@ rm -f docker-compose.override.yml
 BRUD="$(git status --porcelain | grep -c .)"
 
 echo "drzewo po biegu: $BRUD pozycji"
-echo "czasy: A=${CZAS_A}s B=${CZAS_B}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
+echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
 
+# Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) NIE sa tu wymienione i to jest decyzja,
+# nie przeoczenie - ich liczby stoja w logu wyzej i ida do rejestru z numerem.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
+elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
 else KOD=$KOD_FRONT; fi
 
 echo "EXIT=$KOD"
