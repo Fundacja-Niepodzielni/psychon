@@ -140,7 +140,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
     }
 
     /**
-     * ZNALEZISKO F-15: PDF certyfikatu wygenerowany PRZED procedurą zostaje na
+     * Znany rozjazd procedury anonimizacji: PDF certyfikatu wygenerowany PRZED procedurą zostaje na
      * dysku bajt w bajt taki sam, więc nazwisko wypalone w renderze (dompdf)
      * przeżywa anonimizację. Procedura (`UserAnonymizer::expireReadyExports`)
      * czyści eksport RODO, ale nie rusza tabeli `certificates` ani plików pod
@@ -230,7 +230,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         );
 
         // Pierwsze uruchomienie — buduje stan "konto już zanonimizowane,
-        // plik certyfikatu nietknięty", zastany dziś (F-15).
+        // plik certyfikatu nietknięty", zastany dziś.
         Sanctum::actingAs($this->admin());
         $first = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertLessThan(300, $first->getStatusCode(), 'pierwsza procedura anonimizacji nie powiodła się: '.$first->getStatusCode().' '.$first->getContent());

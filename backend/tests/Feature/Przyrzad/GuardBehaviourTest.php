@@ -47,7 +47,7 @@ final class GuardBehaviourTest extends TestCase
         // kontenerze (baza stoi pod `pgsql`), ale bywa OSIĄGALNY, gdy bramka biegnie
         // natywnie i baza stoi na localhoście — wtedy ten test fałszywie czerwienieje,
         // mimo że strażnik jest bez winy. Domena `.invalid` nie rozwiąże się NIGDZIE,
-        // więc wynik jest ten sam pod `pgsql` i pod `127.0.0.1` (patrz meldunek zlecenia).
+        // więc wynik jest ten sam pod `pgsql` i pod `127.0.0.1`.
         $result = $this->runChildSuiteWith(['DB_HOST' => 'host-ktory-nie-istnieje.invalid']);
 
         $this->assertNotSame(0, $result->exitCode(), 'Niedostępny serwer musi zaczerwienić suitę.');
