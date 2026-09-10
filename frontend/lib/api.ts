@@ -543,3 +543,61 @@ export function fetchAdminSupervisionSlots(): Promise<{
     ({ data }) => ({ data }),
   );
 }
+
+/* -------------------------------------------------------------------- */
+/* H12 — sprawy zgłaszane administracji przez prowadzącego               */
+/* -------------------------------------------------------------------- */
+
+export interface SupervisionCasePerson {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
+
+export interface SupervisionCase {
+  id: number;
+  subject: string;
+  body: string;
+  created_at: string;
+  // Zmierzone na żywej odpowiedzi: klucz obecny w obu wywołaniach kontrolera,
+  // bo relacja jest zawsze dociągana razem z rekordem — ale zawężony jako
+  // opcjonalny, bo zasobem rządzi `whenLoaded` (ten sam mechanizm, który
+  // potrafi zgubić `supervisor` w AdminSupervisionSlot wyżej).
+  reporter?: SupervisionCasePerson;
+  // Zmierzone: gdy sprawa nie dotyczy konkretnej osoby, klucz zostaje —
+  // wartością jest `null`, nie znika (inaczej niż `reporter` powyżej).
+  volunteer: SupervisionCasePerson | null;
+}
+
+export interface CreateInstructorCasePayload {
+  subject: string;
+  body: string;
+  volunteer_id: number | null;
+}
+
+/**
+ * Zgłoszenie sprawy przez prowadzącego (pozycja 14). Serwer sam sprawdza, że
+ * wskazana osoba należy do grupy zgłaszającego (422 `volunteer_id`, zmierzone
+ * na żywo) — front nie powtarza tej reguły.
+ */
+export function createInstructorCase(
+  payload: CreateInstructorCasePayload,
+): Promise<SupervisionCase> {
+  return api<SupervisionCase>("/instructor/cases", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+/**
+ * Lista spraw zgłoszonych przez prowadzących (widok administracji).
+ * Kontroler nie paginuje — koperta ma wyłącznie `data`, tak samo jak
+ * `fetchAdminSupervisionSlots` wyżej.
+ */
+export function fetchAdminSupervisionCases(): Promise<{
+  data: SupervisionCase[];
+}> {
+  return apiPaged<SupervisionCase>("/admin/supervision/cases").then(
+    ({ data }) => ({ data }),
+  );
+}
