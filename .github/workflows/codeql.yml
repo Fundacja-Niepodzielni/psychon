@@ -1,0 +1,60 @@
+name: CodeQL
+
+# Analiza statyczna bezpieczenstwa dla frontu (JavaScript/TypeScript).
+#
+# Osobny plik, nie krok w `ci.yml`: CodeQL ma wlasny harmonogram (raz w tygodniu, zeby nowe
+# reguly trafily na niezmieniony kod) i wlasne uprawnienie `security-events: write`, ktorego
+# bramka testowa nie potrzebuje. Wynik trafia do zakladki Security, nie do logu przebiegu.
+#
+# Backendu (PHP) tu nie ma: CodeQL nie obsluguje PHP.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  schedule:
+    # Poniedzialek 03:17 UTC. Nierowna minuta celowo — o pelnej godzinie kolejka
+    # GitHuba jest najdluzsza i przebieg potrafi wystartowac z duzym poslizgiem.
+    - cron: "17 3 * * 1"
+
+# Domyslnie tylko odczyt; job podnosi sobie to, czego naprawde potrzebuje.
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL (front, javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Inicjalizacja CodeQL
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          languages: javascript-typescript
+          # Sciezki sa liczone od korzenia repo. `frontend/` istnieje — sprawdzone `ls`,
+          # nie z pamieci. Bledna sciezka nie jest bledem przebiegu: analiza po prostu
+          # nic nie znajduje i swieci na zielono.
+          config: |
+            paths:
+              - frontend
+            paths-ignore:
+              - frontend/node_modules
+              - frontend/.next
+              - frontend/public
+
+      # Bez kroku budowania: dla javascript-typescript CodeQL czyta zrodla wprost,
+      # `next build` nic by tu nie dolozyl poza kilkoma minutami.
+      - name: Analiza
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          category: "/language:javascript-typescript"

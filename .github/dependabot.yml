@@ -1,0 +1,71 @@
+# Dependabot — cotygodniowy przeglad zaleznosci.
+#
+# Trzy ekosystemy, bo w repo sa trzy niezalezne zbiory zaleznosci:
+#   composer        -> /backend  (backend/composer.json + composer.lock)
+#   npm             -> /frontend (frontend/package.json + package-lock.json)
+#   github-actions  -> /         (.github/workflows/*.yml, akcje przypiete po SHA)
+#
+# Katalogi sa podane tak, jak naprawde nazywaja sie w drzewie. Literowka w `directory:`
+# daje plik, ktory GitHub przyjmie bez bledu i ktory nigdy nic nie zglosi — czyli martwy
+# skaner wygladajacy na dzialajacy.
+#
+# Aktualizacje minor i patch sa ZGRUPOWANE w jeden PR na ekosystem. Przy tej liczbie
+# zaleznosci pojedynczy PR na pakiet zalewa repo i nikt tego nie czyta, wiec skaner
+# przestaje byc zrodlem informacji. Major zostaje osobno — zmiana lamiaca ma byc widoczna.
+version: 2
+updates:
+  - package-ecosystem: "composer"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      backend-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:15"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      frontend-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:30"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
