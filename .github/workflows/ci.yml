@@ -119,3 +119,31 @@ jobs:
       - name: Podatności zależności npm (pomiar, nie blokada)
         run: npm audit --omit=dev --audit-level=high
         continue-on-error: true
+
+  skaner-statyczny:
+    name: Skaner statyczny (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.169.0
+    steps:
+      - uses: actions/checkout@v4
+      # Reguly czytamy z KATALOGU W REPO, a nie z `--config p/...`. Powod jest
+      # jeden: bramka, ktorej wynik zalezy od cudzego serwera i od tego, co ktos
+      # wczoraj zmienil w regule, nie jest przyrzadem, tylko prognoza. Migawka
+      # ma zapisane zrodlo, date i sumy sha256 w .semgrep/ZRODLO.md; jej
+      # odswiezenie jest osobna zmiana z przegladem roznicy, nie automatem.
+      # Przy okazji: `p/laravel` NIE ISTNIEJE (HTTP 404), a `p/nextjs` jest pusty
+      # (`rules: []`) - zestaw pusty wchodzi na zielono i wyglada na dzialajacy
+      # skaner, wiec 404 bylby tu mniejszym zlem. Nie dopisywac ich z powrotem.
+      #
+      # Krok NIE JEST jeszcze blokujacy. Na dzis skan daje 2 trafienia, oba
+      # w jednej linii backend/config/session.php, oba na poziomie ERROR: jedno
+      # falszywe (null = ciasteczko host-only, czyli wezsze), drugie do
+      # rozstrzygniecia (domyslna wartosc flagi secure). Krok blokujacy, ktory
+      # jest czerwony od pierwszego dnia, uczy zespol omijac bramke - a wyciszenie
+      # ich tutaj schowaloby pytanie, ktore ma zostac zadane. Warunek przelaczenia
+      # na blokujacy jest jeden i konkretny: gdy oba trafienia z session.php beda
+      # rozstrzygniete, `continue-on-error` znika. Liczba trafien jest w logu.
+      - name: Skan na przypietych regulach
+        run: semgrep scan --config .semgrep/reguly --error --metrics=off
+        continue-on-error: true

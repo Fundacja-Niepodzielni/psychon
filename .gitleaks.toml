@@ -17,3 +17,21 @@ regexes = [
   '''stary-dostep''',
   '''sanctum-abc''',
 ]
+
+# Migawka regul Semgrepa (`.semgrep/reguly/`) to 180 KB CUDZEJ tresci, w ktorej
+# reguly wykrywania sekretow zawieraja WZORCE sekretow - naglowek bloku klucza
+# i przykladowy adres webhooka zlozony z samych zer. gitleaks trafia w nie
+# i ma racje co do ksztaltu, a nie co do rzeczy: to nie sa sekrety, tylko opis,
+# jak sekret wyglada. Zmierzone: bez tego wyjatku `leaks found: 2`.
+#
+# Wyjatek jest ZAWEZONY do dwoch regul, ktore realnie trafiaja. Kazda inna regula
+# dziala w tych plikach normalnie - wiec klucz wklejony tam przez pomylke nadal
+# zostanie zlapany, o ile nie ma akurat ksztaltu tych dwoch.
+#
+# Reszte pilnuje `.semgrep/ZRODLO.md`: sumy sha256 kazdego pliku. Podmiana tresci
+# zmienia sume, a odswiezenie migawki jest OSOBNA runda z przegladem roznicy -
+# nie automatem i nie przy okazji.
+[[allowlists]]
+description = "Wzorce sekretow wewnatrz przypietych regul skanera statycznego"
+targetRules = ["private-key", "slack-webhook-url"]
+paths = ['''\.semgrep/reguly/.*''']

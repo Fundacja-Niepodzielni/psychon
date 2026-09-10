@@ -174,6 +174,27 @@ KOD_AUDYT_PHP=$?
 PODATNOSCI_PHP="$(grep -aoE "Found [0-9]+ security vulnerability advisor" /tmp/bramka-audyt-php.log | head -1)"
 echo "audyt PHP (pomiar, poza kodem wyjscia): EXIT=$KOD_AUDYT_PHP, ${PODATNOSCI_PHP:-Found 0 security vulnerability advisor}ies"
 
+# --- 3c - skaner statyczny na przypietych regulach --------------------------
+# Bez sieci (`--network none`) i z regulami z repo, nie z rejestru: to jedyny
+# uklad, w ktorym dwa biegi na tym samym commicie musza dac te sama liczbe.
+# Zmierzone: z siecia 135 s, bez sieci na migawce 131 s - niezaleznosc od cudzego
+# serwera nie kosztuje tu praktycznie nic.
+# NIE JEST blokujacy z tego samego powodu co w CI: 2 zastane trafienia w jednej
+# linii backend/config/session.php, jedno falszywe, jedno do rozstrzygniecia.
+# Warunek zdjecia wyjatku: oba rozstrzygniete - wtedy KOD_SEMGREP wchodzi nizej
+# do kodu wyjscia, dokladnie tak jak KOD_STATYCZNA.
+naglowek "3c - backend i front: skaner statyczny (reguly przypiete w repo)"
+
+T="$(date +%s)"
+docker run --rm --network none -v "$PWD:/src" -w /src semgrep/semgrep:1.169.0 \
+    semgrep scan --config .semgrep/reguly --error --metrics=off > /tmp/bramka-semgrep.log 2>&1
+KOD_SEMGREP=$?
+CZAS_SEMGREP="$(czas_od "$T")"
+# Liczba z PODSUMOWANIA, nie z kodu wyjscia: `--error` daje 1 przy KAZDYM
+# trafieniu, wiec kod nie odroznia dwoch zastanych od trzeciego, nowego.
+TRAFIENIA_SEMGREP="$(grep -aoE "Ran [0-9]+ rules on [0-9]+ files: [0-9]+ findings" /tmp/bramka-semgrep.log | tail -1)"
+echo "skaner statyczny: EXIT=$KOD_SEMGREP, $CZAS_SEMGREP s, ${TRAFIENIA_SEMGREP:-brak odczytu}"
+
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
 CZAS_FRONT=0
@@ -211,10 +232,11 @@ rm -f docker-compose.override.yml
 BRUD="$(git status --porcelain | grep -c .)"
 
 echo "drzewo po biegu: $BRUD pozycji"
-echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
+echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
 
-# Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) NIE sa tu wymienione i to jest decyzja,
-# nie przeoczenie - ich liczby stoja w logu wyzej i ida do rejestru z numerem.
+# Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) i KOD_SEMGREP NIE sa tu wymienione i to
+# jest decyzja, nie przeoczenie - ich liczby stoja w logu wyzej i ida do rejestru
+# z numerem. Semgrep wchodzi tu w dniu, w ktorym oba zastane trafienia znikna.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA

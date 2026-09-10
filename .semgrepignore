@@ -44,3 +44,11 @@ composer.lock
 *.woff
 *.woff2
 *.ttf
+
+# Migawka regul lezy w drzewie, wiec sama staje sie materialem do skanowania:
+# zestaw `p/secrets` trafia we WLASNE `pattern-regex` i `pattern-not` (linie 787
+# i 2213 w p-secrets.yaml). Zmierzone: bez tej linii skan daje 4 trafienia
+# zamiast 2, a dwa nadmiarowe sa trescia samych regul, nie kodem.
+# To nie jest wyciszanie znaleziska - to niewpuszczanie przyrzadu do wlasnego
+# odbicia w lustrze. Kazda inna sciezka zostaje skanowana.
+.semgrep/reguly/
