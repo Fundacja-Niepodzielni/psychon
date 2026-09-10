@@ -73,7 +73,7 @@ grep '\[PRZYRZĄD\] baza testowa' /d/tmp/psy/testy/bramka.log
 ```
 
 Nazwa bazy pochodzi z linii `[PRZYRZĄD]`, którą wypisuje strażnik w `tests/TestCase.php` —
-**z silnika, nie z pliku konfiguracji**. To jest liczba, którą wolno cytować w meldunku.
+**z silnika, nie z pliku konfiguracji**. To jest liczba, którą wolno cytować w opisie biegu.
 
 ## 5 · Bramka frontu — `tsc --noEmit` NIE jest spełnialne na świeżym klonie
 
@@ -167,7 +167,7 @@ Kryterium odbioru brzmi „wywołanie API **plus** skutek w bazie". Dla pól szy
 Asercja na kolumnie byłaby czerwienią **wieczną i mylącą**: świeciłaby także po poprawnej
 naprawie i wysyłała wykonawcę na poszukiwanie błędu, którego nie ma.
 
-Złapane na sobie: pierwsza wersja świadka S1-3 miała dokładnie tę asercję.
+Złapane na sobie: pierwsza wersja świadka pola PESEL miała dokładnie tę asercję.
 
 ### 8.2 · Zielone bywa faktem o losowaniu, nie o systemie
 

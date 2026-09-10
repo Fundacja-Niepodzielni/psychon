@@ -54,7 +54,7 @@ class GenerateCertificateTest extends CertificatePackageCase
             'subject_id' => $certificate->id,
         ]);
 
-        // ⚠ Ten fragment mierzył ŚWIAT SPRZED S1-7. Do 02.09.2026 `pdf_path` wskazywał
+        // ⚠ Ten fragment mierzył ŚWIAT SPRZED NAPRAWY PDF. Do 02.09.2026 `pdf_path` wskazywał
         // plik HTML, więc szukanie w nim napisów działało. Po naprawie wskazuje PDF,
         // w którym strumień treści jest skompresowany (`FlateDecode`) — `assertStringContainsString`
         // na tokenie nie ma prawa przejść, choć token JEST w dokumencie.

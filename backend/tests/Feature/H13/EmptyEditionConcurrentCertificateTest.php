@@ -20,7 +20,7 @@ use Tests\Concerns\RunsConcurrentRequests;
 use Tests\TestCase;
 
 /**
- * S1-5 · świadek numeracji certyfikatów pisany Z KRYTERIUM:
+ * Świadek numeracji certyfikatów pisany Z KRYTERIUM:
  * „≥20 równoczesnych → ciąg bez dziur i bez duplikatów".
  *
  * DLACZEGO ISTNIEJE OBOK `ConcurrentCertificateTest`. Tamten plik nazywa się

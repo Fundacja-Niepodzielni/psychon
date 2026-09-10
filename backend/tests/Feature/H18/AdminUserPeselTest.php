@@ -8,7 +8,7 @@ use Tests\Concerns\ActsAsRole;
 use Tests\TestCase;
 
 /**
- * S1-3 · świadek pisany Z KRYTERIUM, nie z kodu wykonawcy.
+ * Świadek pisany Z KRYTERIUM, nie z kodu wykonawcy.
  *
  * Kryterium: `POST /admin/users` **i** `PATCH /admin/users/{id}`
  * z `pesel:"00000000000"` → 422; poprawny syntetyczny PESEL → 2xx; regresja H01 bez zmian.

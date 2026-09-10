@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * S1-6 · świadek pisany Z KRYTERIUM (karta H15, kryterium 4).
+ * Świadek pisany Z KRYTERIUM (karta H15, kryterium 4).
  *
  * Kryterium: po wycofaniu zgody → wiersz w audycie ze slugiem `profile.withdrawn`
  * **i** wiersz powiadomienia dla roli zespołu; status profilu `withdrawn`;

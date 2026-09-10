@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 /**
- * Runner testów frontu (S1-13).
+ * Runner testów frontu.
  *
  * Vitest + jsdom, bez przeglądarki: środowisko Node, zero binariów do pobrania
  * na przebieg. Zgodne z Next 16 / React 19 — transformacja przez esbuild, więc

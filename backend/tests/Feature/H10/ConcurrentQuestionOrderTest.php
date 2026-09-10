@@ -14,7 +14,7 @@ use Tests\Concerns\RunsConcurrentRequests;
 use Tests\TestCase;
 
 /**
- * S1-16 · świadek kolejności pytań w banku testu.
+ * Świadek kolejności pytań w banku testu.
  *
  * `AdminTestQuestionController::store` (w. 39) liczy `max('sequence_order') + 1`
  * w transakcji **bez `lockForUpdate` w ogóle**, a `test_questions.sequence_order`

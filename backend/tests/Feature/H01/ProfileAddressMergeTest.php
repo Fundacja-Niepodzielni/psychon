@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * S1-4 · świadek pisany Z KRYTERIUM, nie z kodu wykonawcy.
+ * Świadek pisany Z KRYTERIUM, nie z kodu wykonawcy.
  *
  * Kryterium: po `PATCH {address:{city}}` pola `address_street`
  * i `address_zip` w bazie **niezmienione**; po `{address:{street:null}}` NULL dostaje

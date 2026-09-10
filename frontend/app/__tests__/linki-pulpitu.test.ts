@@ -3,7 +3,7 @@ import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * S1-11 · frontowa połowa kryterium ★ H19.1 — „każdy link z pulpitu → 200 we froncie".
+ * Frontowa połowa kryterium ★ H19.1 — „każdy link z pulpitu → 200 we froncie".
  *
  * Kryterium przechodzi przez granicę repozytorium: serwer zwraca ścieżkę i jest
  * z siebie zadowolony, a 404 widzi dopiero osoba, która kliknie licznik. Kontrola

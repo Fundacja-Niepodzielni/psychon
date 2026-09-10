@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sortMenu, type MenuEntry } from "@/lib/menu/types";
 
 /**
- * Pierwszy test runnera frontu (S1-13) — CELOWO liczy WARTOŚCI, nie obecność
+ * Pierwszy test runnera frontu — CELOWO liczy WARTOŚCI, nie obecność
  * elementu na ekranie. Test, który sprawdza „czy coś się wyrenderowało”, jest
  * zielony także wtedy, gdy wyrenderowało się złe coś.
  *

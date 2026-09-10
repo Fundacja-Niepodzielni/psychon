@@ -13,12 +13,12 @@ use Tests\Concerns\RunsConcurrentRequests;
 use Tests\TestCase;
 
 /**
- * S1-15 · świadek kolejności lekcji w kursie.
+ * Świadek kolejności lekcji w kursie.
  *
  * `LessonWriter::nextSequenceOrder` (w. 94) liczy `max('sequence_order') + 1`
  * **bez żadnej blokady**, a `lessons.sequence_order` **nie ma unikatu**
- * (migracja `…000040…` w. 34). To ta sama klasa co S1-14, ale z gorszym objawem:
- * przy podejściach i certyfikatach unikalny indeks zamienia wyścig w wyjątek —
+ * (migracja `…000040…` w. 34). To ta sama klasa problemu co przy podejściach
+ * i certyfikatach, ale z gorszym objawem: tam unikalny indeks zamienia wyścig w wyjątek —
  * głośny i policzalny. Tutaj wyścig kończy się **dwiema lekcjami na tej samej
  * pozycji i niczyim błędem**. Cicha niespójność zamiast czerwieni.
  *
