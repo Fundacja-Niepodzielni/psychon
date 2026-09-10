@@ -3,6 +3,7 @@
 namespace Tests\Feature\H12;
 
 use App\Models\AuditLogEntry;
+use App\Models\InternshipEntry;
 use App\Models\SupervisionSignup;
 use App\Models\SupervisionSlot;
 use App\Models\SupervisorAssignment;
@@ -188,6 +189,98 @@ class SupervisionTest extends TestCase
             'duration_minutes' => 90,
             'seats_limit' => 3,
         ]);
+    }
+
+    public function test_instructor_group_progress_is_distinct_per_member_by_id(): void
+    {
+        // Świadek etapu uczestniczki: dwie osoby w TEJ SAMEJ grupie z RÓŻNYMI,
+        // niezerowymi wartościami na co najmniej dwóch polach etapu — jeśli implementacja
+        // policzy etap dowolnej osoby zamiast etapu WŁAŚCIWEJ osoby (np. osoby zalogowanej
+        // zamiast członka grupy), wartości się zlepią i asercje poniżej padną.
+        $instructor = User::factory()->role('instructor')->create();
+        $otherInstructor = User::factory()->role('instructor')->create();
+        $memberA = User::factory()->create(['role' => 'volunteer']);
+        $memberB = User::factory()->create(['role' => 'volunteer']);
+        $foreignMember = User::factory()->create(['role' => 'volunteer']);
+        SupervisorAssignment::create([
+            'volunteer_id' => $memberA->id,
+            'supervisor_id' => $instructor->id,
+            'assigned_at' => now(),
+        ]);
+        SupervisorAssignment::create([
+            'volunteer_id' => $memberB->id,
+            'supervisor_id' => $instructor->id,
+            'assigned_at' => now(),
+        ]);
+        SupervisorAssignment::create([
+            'volunteer_id' => $foreignMember->id,
+            'supervisor_id' => $otherInstructor->id,
+            'assigned_at' => now(),
+        ]);
+
+        // A: dwie obecności zaliczone, 3,5 h zaakceptowane.
+        $slotOne = SupervisionSlot::create($this->slotData($instructor, startsAt: Carbon::now()->subDays(2)));
+        $slotTwo = SupervisionSlot::create($this->slotData($instructor, startsAt: Carbon::now()->subDays(1)));
+        SupervisionSignup::create([
+            'slot_id' => $slotOne->id,
+            'user_id' => $memberA->id,
+            'signed_up_at' => Carbon::now()->subDays(3),
+            'attendance' => 'present',
+            'attendance_marked_by' => $instructor->id,
+        ]);
+        SupervisionSignup::create([
+            'slot_id' => $slotTwo->id,
+            'user_id' => $memberA->id,
+            'signed_up_at' => Carbon::now()->subDays(2),
+            'attendance' => 'present',
+            'attendance_marked_by' => $instructor->id,
+        ]);
+        InternshipEntry::create([
+            'user_id' => $memberA->id,
+            'date' => Carbon::now()->subDays(1)->toDateString(),
+            'hours' => '3.5',
+            'form' => 'individual',
+            'consultations_count' => 1,
+            'description' => 'A',
+            'status' => 'accepted',
+        ]);
+
+        // B: jedna obecność zaliczona, 1,5 h zaakceptowane — inne wartości niż A na obu polach.
+        $slotThree = SupervisionSlot::create($this->slotData($instructor, startsAt: Carbon::now()->subHours(6)));
+        SupervisionSignup::create([
+            'slot_id' => $slotThree->id,
+            'user_id' => $memberB->id,
+            'signed_up_at' => Carbon::now()->subDays(1),
+            'attendance' => 'present',
+            'attendance_marked_by' => $instructor->id,
+        ]);
+        InternshipEntry::create([
+            'user_id' => $memberB->id,
+            'date' => Carbon::now()->subDays(1)->toDateString(),
+            'hours' => '1.5',
+            'form' => 'individual',
+            'consultations_count' => 1,
+            'description' => 'B',
+            'status' => 'accepted',
+        ]);
+
+        $response = $this->actingAs($instructor, 'sanctum')
+            ->getJson('/api/v1/instructor/group')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.members');
+
+        $members = collect($response->json('data.members'));
+        $this->assertFalse($members->contains('id', $foreignMember->id));
+
+        $found = $members->firstWhere('id', $memberA->id);
+        $this->assertNotNull($found, 'osoba A ma być w grupie prowadzącego, niezależnie od pozycji w tablicy');
+        $this->assertSame(2, $found['progress']['supervision_present']);
+        $this->assertSame('3.5', $found['progress']['hours_accepted']);
+
+        $found = $members->firstWhere('id', $memberB->id);
+        $this->assertNotNull($found, 'osoba B ma być w grupie prowadzącego, niezależnie od pozycji w tablicy');
+        $this->assertSame(1, $found['progress']['supervision_present']);
+        $this->assertSame('1.5', $found['progress']['hours_accepted']);
     }
 
     public function test_instructor_can_mark_attendance_only_after_slot_ends(): void
