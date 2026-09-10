@@ -35,6 +35,17 @@ function fullName(person: { first_name: string; last_name: string }): string {
   return `${person.first_name} ${person.last_name}`;
 }
 
+/**
+ * `supervisor` znika z koperty, gdy backend nie wczytał relacji — trzeci stan
+ * obok „jest" analogicznie do `attendanceLabel` wyżej.
+ */
+function supervisorLabel(
+  person: { first_name: string; last_name: string } | undefined,
+): string {
+  if (!person) return "Prowadzący/a nieznany/a";
+  return fullName(person);
+}
+
 export default function AdminSupervisionSlots() {
   const [slots, setSlots] = useState<AdminSupervisionSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +121,7 @@ export default function AdminSupervisionSlots() {
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-small text-muted">Prowadzący/a:</span>
                   <span className="font-medium text-ink">
-                    {fullName(slot.supervisor)}
+                    {supervisorLabel(slot.supervisor)}
                   </span>
                   <Badge
                     variant={
