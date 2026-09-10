@@ -14,7 +14,7 @@ require __DIR__.'/../vendor/autoload.php';
 
 /*
 |--------------------------------------------------------------------------
-| Domknięcie pułapki P-1 — `force="true"` samo NIE wystarcza (pomiar 02.09.2026)
+| Domknięcie cichej podmiany bazy testowej — `force="true"` samo NIE wystarcza (pomiar 02.09.2026)
 |--------------------------------------------------------------------------
 | PHPUnit dla wpisu `<env force="true">` wykonuje `putenv()` i ustawia `$_ENV`,
 | ale NIE dotyka `$_SERVER`. Laravel czyta zmienne przez repozytorium Dotenv,
@@ -49,13 +49,13 @@ require __DIR__.'/../vendor/autoload.php';
     // więc etykieta usługi NIE jest nazwą hosta). Wymuszenie topologii z `phpunit.xml`
     // zaczerwieniłoby CI na nieistniejącym hoście.
     //
-    // Pułapka P-1 dotyczy TOŻSAMOŚCI bazy, nie adresu serwera: cicha podmiana bazy
-    // wygląda jak zielone, a zła nazwa hosta pada głośno przy pierwszym połączeniu.
+    // Cicha podmiana bazy dotyczy TOŻSAMOŚCI bazy, nie adresu serwera: podmieniona
+    // baza wygląda jak zielone, a zła nazwa hosta pada głośno przy pierwszym połączeniu.
     // Dlatego wymuszamy semantykę, a topologię zostawiamy środowisku.
     //
     // Lista jest WYLICZONA celowo i jest zamknięta: wyjątek przyjęty pod warunkiem,
     // że stoi w kodzie, a nie w czyjejś pamięci. Dopisanie do niej
-    // czegokolwiek poza topologią połączenia otwiera pułapkę P-1 z powrotem.
+    // czegokolwiek poza topologią połączenia otwiera tę samą lukę z powrotem.
     $topologia = ['DB_HOST', 'DB_PORT'];
 
     foreach ($xml->xpath('//php/env') ?: [] as $entry) {

@@ -12,8 +12,8 @@ use Tests\TestCase;
  *
  * `TestDatabaseIsolationTest` odpowiada na pytanie „czy biegniemy na właściwej bazie".
  * Ten plik odpowiada na trudniejsze: „czy strażnik ODRÓŻNIA dwie awarie, które wyglądają
- * podobnie" — podmienioną bazę (pułapka P-1, cicha) od niedostępnego serwera (głośna).
- * Strażnik, który obie nazywa pułapką P-1, wysyła czytającego na poszukiwanie błędu,
+ * podobnie" — podmienioną bazę (cicha) od niedostępnego serwera (głośna).
+ * Strażnik, który obie nazywa cichą podmianą bazy, wysyła czytającego na poszukiwanie błędu,
  * którego nie ma.
  *
  * Pomiar musi iść przez OSOBNY PROCES, bo strażnik mierzy bazę raz na proces i w tym
@@ -21,7 +21,7 @@ use Tests\TestCase;
  * zmieniło — mierzyłoby pamięć, nie zachowanie.
  *
  * Podstawa: wyjątek topologiczny przyjęty pod warunkiem, że przypadek
- * „zły host → awaria głośna, nie P-1" zostaje w suicie, a nie tylko udokumentowany.
+ * „zły host → awaria głośna, nie cicha podmiana bazy" zostaje w suicie, a nie tylko udokumentowany.
  *
  * KOSZT. Każdy przypadek to osobny przebieg `artisan test`, czyli ~25 s. Dlatego są
  * DWA, nie trzy: warunek „każdy przebieg ogłasza zmierzoną bazę" jest sprawdzany przy
@@ -57,14 +57,14 @@ final class GuardBehaviourTest extends TestCase
         $this->assertStringContainsString(
             'To NIE jest pułapka P-1',
             $output,
-            'Strażnik przedstawił awarię połączenia jako pułapkę P-1 — to wysyła szukającego w złe miejsce.',
+            'Strażnik przedstawił awarię połączenia jako cichą podmianę bazy — to wysyła szukającego w złe miejsce.',
         );
     }
 
     public function test_a_swapped_database_is_reported_as_the_p1_trap(): void
     {
-        // Kontrola pozytywna do powyższej. Bez niej „nie mówi P-1" spełniłby też
-        // strażnik, który nie mówi P-1 NIGDY.
+        // Kontrola pozytywna do powyższej. Bez niej test negatywny spełniłby też
+        // strażnik, który nigdy nie zgłasza cichej podmiany bazy.
         $result = $this->runChildSuiteWith(['DB_DATABASE' => 'niepodzielni']);
 
         $output = $result->output().$result->errorOutput();
@@ -74,7 +74,7 @@ final class GuardBehaviourTest extends TestCase
         $this->assertSame(
             0,
             $result->exitCode(),
-            'Wstrzyknięty DB_DATABASE przebił phpunit.xml — pułapka P-1 jest znów otwarta. Wyjście: '.$output,
+            'Wstrzyknięty DB_DATABASE przebił phpunit.xml — cicha podmiana bazy jest znów otwarta. Wyjście: '.$output,
         );
 
         $this->assertStringContainsString(

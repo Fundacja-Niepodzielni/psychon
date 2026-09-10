@@ -26,8 +26,8 @@ use Throwable;
  *
  * Nazwa jest MIERZONA, nie wypisana z konfiguracji: łączymy się do bazy procesu
  * i pytamy ją samą (`select current_database()`). Wypisanie nazwy z konfiguracji
- * byłoby powtórzeniem cudzego zamiaru — a pułapka P-1 polega właśnie na tym, że
- * zamiar i fakt się rozjeżdżają.
+ * byłoby powtórzeniem cudzego zamiaru — a to jest dokładnie sytuacja, w której
+ * zamiar (deklaracja) i fakt (baza, na której faktycznie stoi połączenie) się rozjeżdżają.
  *
  * Świadek: `tests/Feature/Przyrzad/GuardUnderParallelTest.php`.
  */
@@ -49,7 +49,8 @@ final class ProcessDatabaseAnnouncement
             // teście w workerze (`TestDatabases.php:94-113`), a ogłoszenie ma stać w logu
             // wcześniej. Tworzymy więc dokładnie to samo, co i tak powstanie za chwilę —
             // pusta baza, którą `RefreshDatabase` zaraz zmigruje. Bez tego pierwszy przebieg
-            // na świeżym stosie miałby przyrząd czerwony bez winy kodu (P-11).
+            // na świeżym stosie miałby przyrząd czerwony, mimo że kod nic nie zawinił —
+            // baza po prostu jeszcze nie istniała w chwili ogłoszenia.
             self::przywroc($klucz, $bylo);
             Schema::createDatabase($bazaProcesu);
             $zmierzona = self::zmierz($klucz, $bazaProcesu);

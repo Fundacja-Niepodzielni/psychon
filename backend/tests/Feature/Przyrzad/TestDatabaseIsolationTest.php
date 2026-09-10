@@ -7,7 +7,8 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Świadek PRZYRZĄDU, nie funkcji produktu (pułapka P-1: izolacja bazy testowej).
+ * Świadek PRZYRZĄDU, nie funkcji produktu (izolacja bazy testowej: czy suita
+ * biegnie na bazie, którą deklaruje, a nie na tej, którą cicho podmienia środowisko).
  *
  * Mierzy jedno: czy suita biegnie na bazie, na której DEKLARUJE, że biegnie.
  * Kontrola negatywna wykonuje się z zewnątrz, wstrzyknięciem zmiennej kontenera:
@@ -40,7 +41,7 @@ final class TestDatabaseIsolationTest extends TestCase
             self::declaredDatabase(),
             $measured,
             'Testy biegną na bazie "'.$measured.'". Zmienna środowiskowa kontenera wygrała '
-            .'z wpisem <env> w phpunit.xml — to jest pułapka P-1.',
+            .'z wpisem <env> w phpunit.xml — baza testowa jest cicho podmieniona.',
         );
     }
 
@@ -71,7 +72,7 @@ final class TestDatabaseIsolationTest extends TestCase
     public function test_every_env_entry_in_phpunit_xml_is_forced(): void
     {
         // Świadek samej naprawy T-0: gdyby ktoś dopisał kolejny <env> bez force="true",
-        // pułapka P-1 wróciłaby innym wejściem. Kontrola jest allowlistą (§8.1):
+        // cicha podmiana bazy wróciłaby innym wejściem. Kontrola jest allowlistą (§8.1):
         // pyta „czy WSZYSTKIE wpisy są wymuszone", nie „czy ten jeden jest".
         $path = base_path('phpunit.xml');
         $this->assertFileExists($path);

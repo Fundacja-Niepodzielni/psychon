@@ -136,7 +136,7 @@ class AdminSupervisionSlotsCriterionWitnessTest extends TestCase
         $instructorResponse = $this->actingAs($instructor, 'sanctum')
             ->getJson('/api/v1/admin/supervision/slots');
 
-        // Zapisuję, co widzę (P-34): jeżeli trasa oddałaby 200 z pustą listą zamiast 403,
+        // Zapisuję, co widzę, nie co powinno być: jeżeli trasa oddałaby 200 z pustą listą zamiast 403,
         // to jest wynik, nie błąd — poniższe asercje mierzą aktualny kod odpowiedzi, nie
         // rozstrzygają, jak ma być.
         $volunteerResponse->assertStatus(403);

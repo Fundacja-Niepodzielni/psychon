@@ -13,7 +13,7 @@ Wcześniejsze założenie („bazę trzeba utworzyć ręcznie, bo `scripts/setup
 `CREATE DATABASE niepodzielni_testing`. Nazwa jest tam **wpisana na sztywno** (w. 26), niezależnie
 od `DB_DATABASE`.
 
-**I to jest dokładnie mechanizm, który czyni pułapkę `P-1` cichą.** Baza `niepodzielni_testing`
+**I to jest dokładnie mechanizm, który czyni podmianę bazy testowej cichą.** Baza `niepodzielni_testing`
 powstaje ZAWSZE — także wtedy, gdy suita jedzie po bazie demo. Ktoś, kto sprawdza izolację
 pytaniem „czy baza testowa istnieje?", dostaje odpowiedź „tak" i **nie dowiaduje się niczego**:
 istnienie pustej bazy obok jest zgodne z obydwoma wynikami. Pytanie, które rozróżnia, brzmi
@@ -113,7 +113,7 @@ npm test              # vitest run
 Pierwsza pozycja jest ważniejsza, niż wygląda: runner, który nic nie znalazł, wypisuje
 komunikat nieodróżnialny od „wszystko przeszło", jeśli tylko kod wyjścia jest zerowy.
 
-## 7 · Test bez `RefreshDatabase` dziedziczy obowiązek sprzątania (P-6)
+## 7 · Test bez `RefreshDatabase` dziedziczy obowiązek sprzątania
 
 Zmierzone na własnej wadzie, zgłoszonej przez inną sesję 02.09.2026.
 
@@ -185,7 +185,7 @@ liczy, mają być ustawione wprost. Jeśli zależność od pola losowanego jest 
 (tu: wyszukiwanie obejmuje nazwisko), dostaje **własny jawny test**, a nie rolę niespodzianki
 w cudzym.
 
-## 9 · Przepis bramki ze strażnikiem równoległych przebiegów (P-10)
+## 9 · Przepis bramki ze strażnikiem równoległych przebiegów
 
 Dwa przebiegi suity na tym samym stosie biją się o `niepodzielni_testing`: jeden
 `RefreshDatabase` czyści bazę pod nogami drugiemu, a wynik wygląda jak wada kodu.
@@ -222,7 +222,7 @@ Trzy rzeczy, które ten przepis wymusza, a które łatwo pominąć ręcznie:
 
 Ta sama zasada dotyczy `--filter=`: filtr też czyści bazę, jeśli test używa `RefreshDatabase`.
 
-## 10 · Strażnik stanu zastanego — dlaczego lista tabel zawsze przegra (P-6, trzecia iteracja)
+## 10 · Strażnik stanu zastanego — dlaczego lista tabel zawsze przegra (trzecia iteracja)
 
 Trzy razy w ciągu jednego dnia ta sama klasa błędu, za każdym razem inną tabelą:
 
@@ -305,7 +305,7 @@ Pomiar 05.09.2026, klon `sprint-1-testy`, stos `psytesty`, `brianium/paratest 7.
 | razem | — | **611** | **2 609** | — | **253 s** |
 
 Odniesienie: ta sama suita sekwencyjnie to **401 s** (baza z bramki 05.09) — czyli dwa kroki
-razem są krótsze o ok. 37%. Kroki **nie są sklejane** (P-23): każdy ma własny kod wyjścia
+razem są krótsze o ok. 37%. Kroki **nie są sklejane**: każdy ma własny kod wyjścia
 i własną linię w logu. Sklejenie `A && B` gubi informację, który krok upadł.
 
 **Skąd bierze się podział.** Runner równoległy przełącza na własną bazę procesu WYŁĄCZNIE
@@ -325,7 +325,7 @@ jutro zapali ten test, zanim zepsuje cudzy przebieg.
 
 ## 13 · Przyrząd pod `--parallel`: dwie rzeczy, które przestają działać po cichu
 
-1. **Strażnik P-1 przestawał pilnować właściwej bazy.** `createApplication()` mierzy bazę
+1. **Strażnik izolacji bazy testowej przestawał pilnować właściwej bazy.** `createApplication()` mierzy bazę
    PRZED przełączeniem przez runner (`InteractsWithTestCaseLifecycle.php:101-106`:
    `refreshApplication()` → `callSetUpTestCaseCallbacks()` → `setUpTraits()`), więc pod
    `--parallel` był zielony na bazie bazowej, podczas gdy `RefreshDatabase` czyścił
@@ -342,5 +342,5 @@ jutro zapali ten test, zanim zepsuje cudzy przebieg.
 Kontrola negatywna kryterium 3 (pusta deklaracja pod `--parallel` nadal przerywa) przestała
 być pomiarem ręcznym: `tests/Feature/Przyrzad/GuardUnderParallelTest.php`. Podstawia
 deklarację nadpisaniem metody w atrapie (`tests/Atrapy`), a **nie** zmienną środowiskową —
-furtka sterowana środowiskiem byłaby pułapką P-1 od kuchni — i nie edycją `phpunit.xml`,
+furtka sterowana środowiskiem otwierałaby tę samą lukę od kuchni — i nie edycją `phpunit.xml`,
 bo pomiar przerwany w połowie zostawiałby repo z zepsutą deklaracją.

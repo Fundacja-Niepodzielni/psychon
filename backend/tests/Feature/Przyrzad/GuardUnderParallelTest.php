@@ -21,8 +21,8 @@ use Tests\TestCase;
  * który wymaga podmiany pliku konfiguracji w drzewie roboczym, nie może stać w bramce:
  * przerwany w połowie zostawia repo z zepsutą deklaracją, a wtedy CZERWONE jest wszystko.
  * Dlatego świadek podstawia deklarację NADPISANIEM METODY w atrapie (`tests/Atrapy`),
- * a nie zmienną środowiskową i nie edycją pliku — furtka sterowana środowiskiem byłaby
- * pułapką P-1 od kuchni.
+ * a nie zmienną środowiskową i nie edycją pliku — furtka sterowana środowiskiem otwierałaby
+ * tę samą lukę od kuchni.
  *
  * Token równoległy ustawiamy tak, jak robi to sam runner
  * (`Illuminate/Testing/Concerns/RunsInParallel.php:151` → `resolveTokenUsing`).

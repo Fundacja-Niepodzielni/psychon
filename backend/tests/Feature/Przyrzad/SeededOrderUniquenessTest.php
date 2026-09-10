@@ -21,7 +21,7 @@ use Tests\TestCase;
  * **23 cudze testy na czerwono** (H08, H10, H15) w pełnym przebiegu, przy zielonym
  * przebiegu każdego z nich osobno.
  *
- * To jest DOKŁADNIE reguła `P-6`, którą sama zgłosiłam kilka godzin wcześniej po
+ * To jest DOKŁADNIE ta sama reguła, którą sama zgłosiłam kilka godzin wcześniej po
  * identycznej wpadce — i którą tu złamałam po raz drugi, w pliku pisanym po jej
  * spisaniu. Wniosek nie brzmi „trzeba uważać", tylko: **test, który woła `seed()`,
  * musi mieć `RefreshDatabase`; jeśli go mieć nie może, nie wolno mu wołać `seed()`.**
