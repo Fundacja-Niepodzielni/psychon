@@ -1,37 +1,54 @@
 "use client";
 
+import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
-import { api, ApiError, setToken } from "@/lib/api";
 
-interface LoginResponse {
-  token: string;
-  user: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    role:
-      | "super_admin"
-      | "project_manager"
-      | "instructor"
-      | "volunteer"
-      | "student";
-  };
-}
+type Role = "super_admin" | "project_manager" | "instructor" | "volunteer" | "student";
 
 /** Przekierowanie po zalogowaniu wg roli (słownik ról — kontrakt §3.4). */
-const HOME_BY_ROLE: Record<LoginResponse["user"]["role"], string> = {
+const HOME_BY_ROLE: Record<Role, string> = {
   volunteer: "/panel/start",
   student: "/panel/start",
   instructor: "/prowadzacy",
   project_manager: "/admin",
   super_admin: "/admin",
 };
+
+function isRole(value: string | undefined): value is Role {
+  return !!value && value in HOME_BY_ROLE;
+}
+
+/** Mirrors `auth.ts`'s `LoginErrorPayload` — the backend's own error
+ * envelope, carried here through `CredentialsSignin.code` because
+ * `signIn()` with `redirect: false` otherwise only ever returns a type,
+ * never the response body. */
+interface LoginErrorPayload {
+  status: number;
+  code: string;
+  message: string;
+  errors?: Record<string, string[]>;
+}
+
+function parseLoginError(code: string | undefined): LoginErrorPayload | null {
+  if (!code) return null;
+  try {
+    const parsed = JSON.parse(code) as Partial<LoginErrorPayload>;
+    if (typeof parsed.status !== "number" || typeof parsed.message !== "string") return null;
+    return {
+      status: parsed.status,
+      code: parsed.code ?? "unknown_error",
+      message: parsed.message,
+      errors: parsed.errors,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,34 +64,28 @@ export default function LoginPage() {
     setFieldErrors({});
     setLoading(true);
 
-    try {
-      const { token, user } = await api<LoginResponse>("/auth/login", {
-        method: "POST",
-        body: { email, password },
-      });
-      setToken(token);
-      router.push(HOME_BY_ROLE[user.role] ?? "/panel/start");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 429) {
-          setFormError(
-            "Zbyt wiele prób logowania. Odczekaj chwilę i spróbuj ponownie.",
-          );
-        } else if (err.status === 422 && err.errors) {
-          setFieldErrors(err.errors);
-          setFormError(err.message);
-        } else if (err.status === 401 || err.status === 422) {
-          setFormError("Nieprawidłowy e-mail lub hasło.");
-        } else {
-          setFormError(err.message);
-        }
+    const result = await signIn("credentials", { email, password, redirect: false });
+    if (result?.error) {
+      const payload = parseLoginError(result.code);
+      if (payload?.status === 429) {
+        setFormError(payload.message);
+      } else if (payload?.status === 422 && payload.errors) {
+        setFieldErrors(payload.errors);
+        setFormError(payload.message);
+      } else if (payload?.status === 401 || payload?.status === 422) {
+        setFormError("Nieprawidłowy e-mail lub hasło.");
+      } else if (payload) {
+        setFormError(payload.message);
       } else {
-        setFormError(
-          "Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.",
-        );
+        setFormError("Nieprawidłowy e-mail lub hasło.");
       }
       setLoading(false);
+      return;
     }
+
+    const session = await getSession();
+    const role = session?.user?.roles?.[0];
+    router.push(isRole(role) ? HOME_BY_ROLE[role] : "/panel/start");
   }
 
   return (
@@ -125,6 +136,13 @@ export default function LoginPage() {
         </Card>
 
         <p className="mt-4 text-center text-caption text-subtle">
+          Masz konto Fundacji Niepodzielni?{" "}
+          <a href="/logowanie/konta" className="underline">
+            Zaloguj się przez Konta Niepodzielni
+          </a>
+          .
+        </p>
+        <p className="mt-2 text-center text-caption text-subtle">
           Problem z logowaniem? Skontaktuj się z opiekunem projektu.
         </p>
       </div>

@@ -4,7 +4,7 @@ import { use } from "react";
 import AdminProfileDetail from "@/components/h15/AdminProfileDetail";
 
 /**
- * Komponent kliencki (token w `localStorage`), więc `params` przychodzi jako
+ * Komponent kliencki (token Bearer z lib/api.ts), więc `params` przychodzi jako
  * Promise (Next.js 16) — odpakowujemy przez `use()`.
  */
 export default function AdminProfileDetailPage({

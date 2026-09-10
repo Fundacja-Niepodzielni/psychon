@@ -52,10 +52,38 @@ Kluczowe cechy odróżniające od typowej platformy e-learningowej:
 | **Opiekun Projektu** | zespół operacyjny Fundacji | treści, zgłoszenia, akceptacje, statystyki — bez finansów |
 | **Psycholog prowadzący** | prowadzi etap/kurs i grupę superwizyjną | swoja grupa, swoje kursy, pytania od uczestników |
 | **Wolontariusz** | uczestnik pełnego programu | pełna ścieżka: kursy, testy, staż, superwizja, certyfikat, profil |
-| **Student** | uczestnik węższej ścieżki | kursy i wydarzenia, bez stażu/superwizji/certyfikatu zawodowego |
+| **Student** | rola odziedziczona po hackathonie, **poza zakresem MVP** | **wymaganie: nic.** **Stan na 09.09.2026: rola nadal ma dostęp w kodzie** — własna gałąź katalogu kursów, pytania do lekcji, liczenie do statystyk uczestników. Spadek po hackathonie, do usunięcia; opis pod tabelą odwzorowania ról |
 | Gość (niezalogowany) | internet | strona logowania, publiczna weryfikacja certyfikatu, (faza 2: strony publiczne) |
 
 Szczegółowa matryca uprawnień: `03-role-i-uprawnienia.md`.
+
+**Nazwa w umowie a nazwa w kodzie.** Umowa nazywa role inaczej niż kod; nazw w kodzie **nie
+zmieniamy** (rola jest tam zapisana jako zwykły tekst w kilkunastu plikach, przemianowanie
+kosztuje ryzyko i nic nie daje Zamawiającemu). Zamiast tego trzymamy mapowanie:
+
+| Nazwa w umowie | Rola w kodzie | Rola w tym słowniku |
+|---|---|---|
+| administrator | `super_admin` | Super Admin |
+| opiekun projektu | `project_manager` | Opiekun Projektu |
+| psycholog prowadzący | `instructor` | Psycholog prowadzący |
+| osoba uczestnicząca w programie | `volunteer` | Wolontariusz |
+| *(brak odpowiednika w umowie)* | `student` | Student |
+
+Ostatni wiersz jest **domknięty**: umowa opisuje **jedną** ścieżkę osoby uczestniczącej — porozumienie
+wolontariackie, superwizje i certyfikat, czyli to, co w kodzie robi `volunteer`. Węższa ścieżka
+„same kursy" (bez stażu, superwizji i certyfikatu) **nie należy do zakresu MVP** i byłaby osobnym
+zamówieniem. Nazwy `student` w kodzie **nie zmieniamy** — zostaje jako spadek po hackathonie — ale rola bez
+odpowiednika w zakresie **nie ma prawa dawać dostępu do niczego**.
+
+**Na 09.09.2026 tak nie jest i zapisujemy to tutaj wprost.** Rola jest osiągalna: można nią założyć
+konto z panelu i można ją nadać przy imporcie zgłoszeń. Po założeniu takie konto widzi **własną gałąź
+katalogu kursów** (kursy zapraszane i webinary), **może zadać pytanie do lekcji** i **liczy się jako
+uczestnik** w statystykach rzetelności, w panelu zarządu i w raporcie. To jest rozjazd między tym
+dokumentem a kodem — świadomie odnotowany, nie przemilczany.
+
+Domyka go jedna zmiana: usunięcie roli ze ścieżek dostępu razem z **testem negatywnym, który pada,
+gdy konto z tą rolą cokolwiek dostaje**. Do czasu, gdy ten test istnieje i przechodzi, zdanie o braku
+dostępu jest w tym dokumencie **wymaganiem, a nie opisem stanu**.
 
 ## 3. Główny przepływ uczestnika (happy path)
 

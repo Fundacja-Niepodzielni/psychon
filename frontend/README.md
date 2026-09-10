@@ -16,7 +16,10 @@ Adres backendu w `.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:8010`
 
 ```
 app/
-  logowanie/            logowanie end-to-end (POST /auth/login, redirect wg roli)
+  logowanie/            logowanie hasłem, redirect wg roli · logowanie/konta/ logowanie
+                        przez konto Fundacji (link do Konta Niepodzielni)
+  konto/                ekran po zalogowaniu przez konto Fundacji (whoami, wylogowanie)
+  api/auth/[...nextauth]/  jedyna trasa Auth.js — obsługuje obie drogi logowania
   dostep-wygasl/        ekran „dostęp wygasł"
   not-found.tsx         404 · error.tsx  błąd globalny (500)
   (uczestnik)/panel/    layout + strony panelu uczestnika
@@ -28,8 +31,10 @@ components/
   VideoPlayer.tsx       atrapa odtwarzacza (heartbeat co 10 s)
   Forbidden.tsx         ekran 403 (message + reason.missing)
 lib/
-  api.ts                klient API (koperty, ApiError, token)
+  api.ts                klient API (koperty, ApiError, token z sesji Auth.js)
   menu/                 rejestry menu — plik per pakiet
+auth.ts                 konfiguracja Auth.js — dostawcy Keycloak i Credentials,
+                        jedna sesja (JWT, ciasteczko HttpOnly) dla obu drzwi logowania
 ```
 
 ## Zasady (twarde)
@@ -79,9 +84,48 @@ try { … } catch (err) {
 }
 ```
 
-Token trzymany w `localStorage` pod `np_token`; 401 czyści token i przekierowuje
-na `/logowanie` automatycznie. `body` będące `FormData` wysyła się jako multipart
-(uploady).
+Token Bearer żyje w jednej sesji Auth.js (`next-auth`), wspólnej dla obu drzwi
+logowania — hasła lokalnego (`/logowanie`, dostawca Credentials) i konta Fundacji
+(`/logowanie/konta`, dostawca Keycloak). Sesja to zaszyfrowane, HttpOnly
+ciasteczko; klient czyta z niej token przez `/api/auth/session`
+(`lib/api.ts#getToken`). Nigdzie w `localStorage` — czytelnym dla każdego skryptu
+wstrzykniętego w stronę. 401 kończy sesję i przekierowuje na `/logowanie`
+automatycznie. `body` będące `FormData` wysyła się jako multipart (uploady).
+
+Konto Fundacji odświeża token dostępu w tle (`auth.ts`, callback `jwt`) — gdy
+wygasa, aplikacja wymienia go na nowy przez `refresh_token`, zanim ekran to
+zauważy. Jeśli odświeżenie się nie uda (token odświeżający wygasł albo realm
+jest nieosiągalny), sesja kończy się od razu — `lib/api.ts` woła wtedy
+`signOut()`, zamiast pokazywać dalej zalogowany ekran z martwym tokenem.
+
+**Dwie granice zmierzone przy odbiorze tego mechanizmu, spisane tu, bo nie są
+oczywiste z samego kodu:**
+
+- **Wylogowanie kończy sesję w koncie Fundacji, a API przestaje przyjmować
+  token tej sesji — bo sprawdza znacznik wylogowania konta Fundacji
+  (`sid`), a nie dlatego, że token właśnie wygasł.** Nawet jeśli ktoś zdążył
+  gdzieś zapisać sobie token przed wylogowaniem, API przestaje go honorować,
+  gdy tylko dotrze do niego informacja o wylogowaniu. Zmierzone na lokalnym
+  uruchomieniu (efemeryczne konto Fundacji, dwa pomiary): około **6–7 sekund**
+  między wywołaniem wylogowania a pierwszą odmową dla tego tokenu. To liczba
+  z jednego, lokalnego przebiegu testowego — nie z produkcji; na produkcyjnej
+  infrastrukturze może wyjść inaczej, prawdopodobnie krócej (sama operacja
+  zapisania znacznika to pojedynczy zapis do bazy z odczytem kontrolnym, a
+  zmierzony czas w większości pochłonęło samo środowisko testowe, wyraźnie
+  wolniejsze niż docelowe). Gdy w chwili sprawdzania API nie potrafi odczytać
+  tego znacznika (np. awaria jego magazynu), traktuje to jako powód do
+  odmowy i każe zalogować się ponownie — nigdy nie wpuszcza tokenu tylko
+  dlatego, że nie znalazło dla niego znacznika. Jest jeden wyjątek, w którym
+  token żyje pełne 600 sekund mimo wylogowania: gdy wylogowanie w ogóle nie
+  dotarło do konta Fundacji — bo karta przeglądarki została zamknięta albo
+  padło połączenie sieciowe, zanim żądanie wylogowania wyszło. Wtedy żaden
+  znacznik nigdy nie powstaje i token jest honorowany aż do naturalnego
+  wygaśnięcia. To wyjątkowy przypadek, nie reguła.
+- **Zalogowanie się przez jedne drzwi zastępuje sesję drugich.** Jest jedno
+  miejsce na sesję (jedno ciasteczko Auth.js) — zalogowanie się lokalnym
+  hasłem po zalogowaniu przez konto Fundacji (i odwrotnie) kończy tamtą
+  sesję, nie otwiera drugiej obok niej. Zamierzone dla tego etapu; gdyby ktoś
+  to odkrył jako „błąd", to jest to udokumentowane zachowanie, nie regresja.
 
 ## Tokeny designu (z makiety)
 

@@ -717,7 +717,7 @@ export default function AdminCoursePage({
         <Component key={slotId} course={course} />
       ))}
       {assignmentSlots.map(({ id: slotId, Component }) => (
-        <Component key={slotId} course={course} />
+        <Component key={slotId} course={course} lessons={lessons} />
       ))}
       {actionSlots.map(({ id: slotId, Component }) => (
         <Component key={slotId} course={course} />

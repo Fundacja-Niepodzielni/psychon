@@ -17,11 +17,22 @@ class PublicVerificationTest extends CertificatePackageCase
 
     public function test_verify_by_number_returns_status_for_a_real_certificate(): void
     {
+        // `data.edition` musi nieść nazwę edycji certyfikatu (Edition::name), nie rok wydania —
+        // wartość pobrana z bazy, nie wpisana na sztywno: fikstura seedera mogłaby kiedyś
+        // zmienić nazwę, a test ma nadal mierzyć wymaganie, nie dzisiejszy tekst.
+        $editionName = Certificate::where('number', 'NP/2026/001')->firstOrFail()->edition->name;
+        $this->assertNotSame(
+            '',
+            $editionName,
+            'Fikstura seedera musi nadać edycji niepustą nazwę — inaczej ten test nie odróżni '
+            .'wymagania (nazwa edycji) od odwrotu na rok.',
+        );
+
         $this->getJson('/api/v1/verify/NP/2026/001')
             ->assertOk()
             ->assertJsonPath('data.number', 'NP/2026/001')
             ->assertJsonPath('data.status', 'valid')
-            ->assertJsonPath('data.edition', '2026')
+            ->assertJsonPath('data.edition', $editionName)
             ->assertJsonStructure(['data' => ['number', 'status', 'edition', 'issued_at']]);
     }
 

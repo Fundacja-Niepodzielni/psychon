@@ -135,9 +135,14 @@ class ConcurrentAttemptNumberingTest extends TestCase
 
     public function test_concurrent_attempts_after_the_first_are_numbered_without_gaps(): void
     {
-        $answers = [];
-        foreach ($this->test->questions()->with('answers')->get() as $question) {
-            $answers[(string) $question->id] = $question->answers->firstWhere('is_correct', true)->id;
+        // Sześć ODRĘBNYCH podejść (jedno sekwencyjne + pięć równoczesnych), więc sześć
+        // różnych zestawów odpowiedzi. Dwa zgłoszenia o identycznej treści są dla serwera
+        // jednym zgłoszeniem (powtórzenie „wyślij test"), a tu nie o powtórzenie chodzi.
+        // Różnicujemy treść — wspólna zostaje CHWILA wysyłki, czyli sam wyścig.
+        // Zestawy liczone PRZED rozwidleniem: dziecko ma dostać gotowe dane, nie zapytanie.
+        $zestawy = [];
+        foreach (range(0, self::CONCURRENCY) as $i) {
+            $zestawy[$i] = $this->zestawOdpowiedzi($i + 1);
         }
 
         Sanctum::actingAs($this->user);
@@ -145,12 +150,12 @@ class ConcurrentAttemptNumberingTest extends TestCase
         // Pierwsze podejście SEKWENCYJNIE — po nim zbiór nie jest już pusty,
         // więc blokada wierszowa ma co blokować. To jest właśnie ta różnica,
         // której `FirstAttemptRaceTest` nie daje.
-        $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $answers])
+        $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $zestawy[0]])
             ->assertCreated();
 
-        $results = $this->rownolegle(self::CONCURRENCY, function (int $i) use ($answers): string {
+        $results = $this->rownolegle(self::CONCURRENCY, function (int $i) use ($zestawy): string {
             return $this->sladOdpowiedzi(
-                $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $answers]),
+                $this->postJson("/api/v1/tests/{$this->test->id}/attempts", ['answers' => $zestawy[$i + 1]]),
             );
         });
 
@@ -174,5 +179,28 @@ class ConcurrentAttemptNumberingTest extends TestCase
             array_values(array_filter($results, static fn (string $r): bool => $r !== '201')),
             'Nie każde równoczesne podejście dostało 201: '.implode(', ', $results),
         );
+    }
+
+    /**
+     * Zestaw odpowiedzi podejścia nr $nr — RÓŻNY dla każdego numeru.
+     *
+     * Numer zapisujemy pozycyjnie na pytaniach (każde ma cztery odpowiedzi), więc
+     * przy trzech pytaniach mamy 64 różne zestawy. Wynik punktowy nie ma tu znaczenia:
+     * ten świadek pyta wyłącznie o numerację 1..N bez dziur i duplikatów.
+     *
+     * @return array<string, int>
+     */
+    private function zestawOdpowiedzi(int $nr): array
+    {
+        $reszta = $nr - 1;
+        $answers = [];
+
+        foreach ($this->test->questions()->with('answers')->get() as $question) {
+            $opcje = $question->answers->sortBy('id')->values();
+            $answers[(string) $question->id] = $opcje[$reszta % $opcje->count()]->id;
+            $reszta = intdiv($reszta, $opcje->count());
+        }
+
+        return $answers;
     }
 }

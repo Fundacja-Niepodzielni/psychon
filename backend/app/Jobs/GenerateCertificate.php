@@ -19,7 +19,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -27,17 +26,33 @@ use Illuminate\Support\Str;
 /**
  * Pakiet H13 · wydanie certyfikatu absolwenta w tle.
  *
- * W jednej transakcji: nadanie numeru ciągłego per edycja (`NP/<rok>/<nnn>`),
- * utworzenie rekordu ze snapshotem warunków i tokenem QR, ustawienie
- * `users.program_completed_at` oraz wpis audytowy `certificate.issued`.
- * Render pliku (`PdfService` — stub) następuje po zatwierdzeniu transakcji,
- * żeby ewentualny rollback nie zostawiał pliku-sieroty.
+ * W jednej transakcji: nadanie numeru ciągłego w roku, wspólnego dla wszystkich
+ * edycji (`NP/<rok>/<nnn>`, numer unikalny w całej Fundacji), utworzenie rekordu
+ * ze snapshotem warunków i tokenem QR, ustawienie `users.program_completed_at`
+ * oraz wpis audytowy `certificate.issued`. Render pliku (`PdfService` — stub)
+ * następuje po zatwierdzeniu transakcji, żeby ewentualny rollback nie zostawiał
+ * pliku-sieroty.
  */
 class GenerateCertificate implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $userId) {}
+    /**
+     * Blokada doradcza PostgreSQL na numerację certyfikatów jest zawsze
+     * przestrzeni „numeracja certyfikatów w roku" — `hashtext()` na tym stałym
+     * napisie odróżnia jej klucz od innych ewentualnych blokad doradczych,
+     * gdyby kiedyś się pojawiły.
+     */
+    private const NUMBER_LOCK_NAMESPACE = 'certificates.number:year';
+
+    /**
+     * `$editionId` pozwala wskazać edycję inną niż aktualnie aktywna. Program
+     * trzyma jedną aktywną edycję naraz, więc zwykłe wydanie (kontroler) go nie
+     * podaje — wtedy liczy się aktywna edycja jak dotąd. Parametr istnieje, żeby
+     * dało się wydać certyfikat wprost w konkretnej, już zamkniętej edycji przy
+     * pomiarze numeracji między edycjami tego samego roku.
+     */
+    public function __construct(public int $userId, private ?int $editionId = null) {}
 
     public function handle(): void
     {
@@ -52,24 +67,32 @@ class GenerateCertificate implements ShouldQueue
             return;
         }
 
-        $edition = Settings::activeEdition();
+        $edition = $this->editionId !== null
+            ? Edition::findOrFail($this->editionId)
+            : Settings::activeEdition();
 
         [$certificate, $created] = DB::transaction(function () use ($user, $edition): array {
-            // Blokada WIERSZA EDYCJI, nie zbioru certyfikatów: `SELECT … FOR UPDATE`
-            // na zbiorze pustym nie ma czego zablokować, więc przy pierwszym
-            // wydaniu w edycji dwie transakcje policzyły ten sam numer (unikalny
-            // indeks zamieniał to w wyjątek i zostawiał dziurę w ciągu). Wiersz
-            // edycji istnieje zawsze, więc serializuje też ten przypadek.
-            Edition::query()
-                ->whereKey($edition->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $year = $edition->starts_at?->year ?? now()->year;
 
-            $editionCertificates = Certificate::query()
+            // Blokada doradcza na klucz ROKU, nie wiersz edycji: numer certyfikatu
+            // jest unikalny w całej Fundacji (`certificates.number UNIQUE`), więc
+            // trzeba serializować WSZYSTKIE edycje danego roku względem siebie
+            // nawzajem, nie tylko wiersze jednej edycji. Blokada wiersza edycji
+            // (poprzedni kod) nie widziała drugiej edycji — dwie transakcje w
+            // różnych edycjach potrafiły policzyć ten sam numer równolegle, a
+            // druga padała na unikalnym indeksie. Klucz roku to liczba, nie wiersz
+            // w tabeli — istnieje zawsze, więc serializuje też pierwsze wydanie w
+            // roku, kiedy zbiór certyfikatów jest pusty. Blokada transakcyjna
+            // (`_xact_`) zwalnia się sama na COMMIT/ROLLBACK.
+            DB::select(
+                'select pg_advisory_xact_lock(hashtext(?), ?)',
+                [self::NUMBER_LOCK_NAMESPACE, $year],
+            );
+
+            $existing = Certificate::query()
                 ->where('edition_id', $edition->id)
-                ->get();
-
-            $existing = $editionCertificates->firstWhere('user_id', $user->id);
+                ->where('user_id', $user->id)
+                ->first();
 
             if ($existing !== null) {
                 return [$existing, false]; // idempotencja pary (uczestnik, edycja)
@@ -78,7 +101,7 @@ class GenerateCertificate implements ShouldQueue
             $certificate = Certificate::create([
                 'user_id' => $user->id,
                 'edition_id' => $edition->id,
-                'number' => $this->nextNumber($edition, $editionCertificates),
+                'number' => $this->nextNumber($year),
                 'issued_at' => now(),
                 'verification_token' => $this->uniqueToken(),
                 'conditions_snapshot' => CertificateConditions::for($user)->toArray(),
@@ -127,23 +150,25 @@ class GenerateCertificate implements ShouldQueue
     }
 
     /**
-     * Kolejny numer w edycji: `NP/<rok edycji>/<3 cyfry>` bez dziur.
-     *
-     * @param  Collection<int, Certificate>  $editionCertificates  wiersze edycji odczytane pod blokadą wiersza edycji
+     * Kolejny numer w ROKU: `NP/<rok>/<3 cyfry>` bez dziur, wspólny dla
+     * wszystkich edycji tego roku — maksimum liczone po WSZYSTKICH
+     * certyfikatach z prefiksem `NP/<rok>/`, nie tylko tej jednej edycji.
      */
-    private function nextNumber(Edition $edition, Collection $editionCertificates): string
+    private function nextNumber(int $year): string
     {
-        $year = $edition->starts_at?->year ?? now()->year;
+        $prefix = sprintf('NP/%d/', $year);
 
-        $maxSequence = $editionCertificates
-            ->map(static function (Certificate $certificate): int {
-                $parts = explode('/', $certificate->number);
+        $maxSequence = Certificate::query()
+            ->where('number', 'like', $prefix.'%')
+            ->pluck('number')
+            ->map(static function (string $number): int {
+                $parts = explode('/', $number);
 
                 return (int) end($parts);
             })
             ->max() ?? 0;
 
-        return sprintf('NP/%d/%03d', $year, $maxSequence + 1);
+        return $prefix.sprintf('%03d', $maxSequence + 1);
     }
 
     /**

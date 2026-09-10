@@ -46,9 +46,12 @@ class ConcurrentAttemptTest extends TestPackageCase
 
         $numbers = [];
 
+        // Osiem OSOBNYCH podejść, więc osiem różnych zestawów odpowiedzi o tym samym
+        // wyniku 50%. Osiem razy ta sama treść byłaby dla serwera jednym zgłoszeniem
+        // i numeracja nie miałaby czego numerować.
         for ($i = 0; $i < 8; $i++) {
             $numbers[] = $this->postJson("/api/v1/tests/{$test->id}/attempts", [
-                'answers' => $this->answersFor($test, 5),
+                'answers' => $this->answersForAttempt($test, 5, $i + 1),
             ])->assertCreated()->json('data.attempt_number');
         }
 

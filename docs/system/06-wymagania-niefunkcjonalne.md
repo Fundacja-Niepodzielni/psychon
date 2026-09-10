@@ -6,8 +6,10 @@ Obowiązują każdy moduł od pierwszej iteracji. Odbiór iteracji obejmuje spra
 
 ## 1. Bezpieczeństwo
 
-1. Hasła: bcrypt/argon2; polityka min. 8 znaków; rate limiting logowania i resetu;
-   komunikaty nieujawniające istnienia konta.
+1. Hasła: **Platforma ich nie przechowuje i nie sprawdza**. Uwierzytelnianie w całości po
+   stronie systemu kont Fundacji (polityka hasła, ograniczanie liczby prób, drugi składnik
+   logowania, reset — tam). Wymaganie dla nas jest inne i węższe: przyjmować wyłącznie token
+   wystawiony przez ten system, o właściwym odbiorcy, i przestać go honorować po wylogowaniu.
 2. Sesje/tokeny: wygasanie, unieważnienie po zmianie hasła i wylogowaniu; tokeny
    nieprzechowywane w miejscach dostępnych dla skryptów, jeśli architektura na to pozwala
    (preferencja: ciasteczka HttpOnly).

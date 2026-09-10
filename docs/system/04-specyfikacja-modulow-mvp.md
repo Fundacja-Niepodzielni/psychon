@@ -26,14 +26,17 @@ Wymagania opisane w `01-architektura-i-integracje.md` (§1–3). Dodatkowo:
 
 ## M2. Konta, role i uprawnienia
 
-**Ekrany makiety:** `#/logowanie`, `#/panel/profil`, panel → uczestniczki.
+**Ekrany makiety:** `#/logowanie`, `#/panel/profil`, panel → osoby uczestniczące.
 
 Wymagania:
 
-1. Logowanie e-mail + hasło; hasła hashowane (bcrypt/argon2); po 5 nieudanych próbach
-   w 15 min — czasowa blokada prób (rate limiting), komunikat bez ujawniania, czy konto istnieje.
-2. Reset hasła: link jednorazowy, ważny 60 min, wysyłany e-mailem; formularz nie ujawnia,
-   czy adres jest w bazie.
+1. Logowanie **przez system kont Fundacji**, nie własnym hasłem. Platforma **nie przechowuje
+   haseł** i nie prowadzi własnego ekranu logowania: przekierowuje do systemu kont, a wraca
+   z tokenem dostępu. Szczegóły integracji: `01-architektura-i-integracje.md` §4.7.
+2. Hasło, jego siła, ograniczanie liczby prób, drugi składnik logowania i reset hasła należą
+   **w całości do systemu kont** — Platforma nie ma tam czego dokładać i nie dubluje tych
+   ekranów. Wylogowanie działa w obie strony: użytkownik kończy sesję w systemie kont,
+   a Platforma odbiera zawiadomienie kanałem zwrotnym i przestaje honorować token tej sesji.
 3. Profil: imię, nazwisko, telefon, adres, PESEL (do umów); walidacja numeru PESEL;
    pola wrażliwe widoczne tylko dla właściciela i administracji.
 4. Eksport danych osobowych (RODO art. 15/20): przycisk w profilu → plik JSON/CSV ze
@@ -228,8 +231,9 @@ Wymagania — rozpiska 10.1–10.2 oraz:
 
 1. Lista warunków z bieżącym stanem (etapy, testy, 72 h stażu, superwizje, warsztat) —
    zawsze widoczna dla uczestnika; generowanie zablokowane do kompletu.
-2. Wydanie: numer ciągły w edycji (transakcyjnie, bez dziur), zapis snapshotu warunków,
-   PDF A4 z kodem QR generowany w tle, powiadomienie o gotowości; wpis w dzienniku działań.
+2. Wydanie: numer ciągły w roku, wspólny dla wszystkich edycji tego roku (transakcyjnie,
+   bez dziur), zapis snapshotu warunków, PDF A4 z kodem QR generowany w tle,
+   powiadomienie o gotowości; wpis w dzienniku działań.
 3. Weryfikacja publiczna (bez logowania): strona wyszukiwania po numerze + wejście z QR
    (token); pokazywane dane wg decyzji ⚠️ (rekomendacja: numer, status, edycja, data —
    imię i nazwisko tylko za zgodą absolwenta); nieistniejący numer → czytelna odmowa
@@ -316,7 +320,7 @@ linkiem; e-mail w środowisku testowym nigdy nie wychodzi do prawdziwego adresat
 
 ## M14. Panel administracyjny
 
-**Ekrany makiety:** `#/admin/*` (uczestniczki, kursy, staż, profile, czas nauki, dziennik,
+**Ekrany makiety:** `#/admin/*` (osoby uczestniczące, kursy, staż, profile, czas nauki, dziennik,
 raport, ustawienia, postępy).
 
 Wymagania — rozpiska 14.1–14.3 oraz:
