@@ -1,0 +1,61 @@
+name: SonarCloud
+
+# Skan jakosci kodu — WYLACZONY do czasu decyzji wlasciciela.
+#
+# Organizacji w SonarCloud jeszcze nie ma i nikt jej dzis nie zaklada. Dlatego konfiguracja
+# jest kompletna i lezy w repo, ale sam skan URUCHAMIA SIE DOPIERO, gdy w ustawieniach repo
+# pojawi sie sekret `SONAR_TOKEN`. Do tego czasu przebieg konczy sie na zielono z pominietym
+# krokiem skanu — nie blokuje zadnego PR-a i nie udaje, ze cos zmierzyl.
+#
+# Dlaczego warunek stoi przy KROKU, a nie przy jobie:
+# kontekst `secrets` nie jest dostepny w `jobs.<id>.if` (tam wolno tylko `github`, `needs`,
+# `vars`, `inputs`), wiec warunek na poziomie joba albo bylby bledem wyrazenia, albo cicho
+# wypadalby na false i job nie ruszylby nigdy. Sekret podstawiamy wiec do `env` joba (tam
+# `secrets` jest dozwolone) i porownujemy `env` w `if` kroku — `env` w `if` kroku jest
+# dozwolone. `if: env.SONAR_TOKEN != ''` pomija JEDEN krok, reszta joba idzie normalnie.
+#
+# Pulapka, ktorej tu swiadomie nie ma: warunek napisany jako `if: ${{ ... }} == 'x'` albo
+# `if: ${{ secrets.SONAR_TOKEN }}` sklada sie do niepustego napisu, a kazdy niepusty napis
+# jest w `if` prawda — taki warunek jest ZAWSZE spelniony i "wylaczenie" nie wylacza niczego.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sonarcloud-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sonarcloud:
+    name: SonarCloud (skan tylko przy ustawionym sekrecie)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # `secrets` wolno uzyc w `env` joba. Nieustawiony sekret daje pusty napis,
+      # a nie blad — i to jest caly przelacznik tego workflow.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sonar liczy "nowy kod" z historii; plytki klon zawyza go do calego repo.
+          fetch-depth: 0
+
+      - name: Skan SonarCloud
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: Skan pominiety — brak sekretu
+        if: env.SONAR_TOKEN == ''
+        run: |
+          echo "SONAR_TOKEN nie jest ustawiony w repozytorium."
+          echo "Skan pominiety celowo. Aby go wlaczyc: zalozyc organizacje w SonarCloud,"
+          echo "potwierdzic sonar.organization i sonar.projectKey w sonar-project.properties,"
+          echo "dodac sekret SONAR_TOKEN w ustawieniach repozytorium."
