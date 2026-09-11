@@ -91,10 +91,25 @@ class ConcurrentDocumentNumberTest extends TestCase
             }
         })->wait();
 
+        // Nieuchwycony wyjątek Symfony Console ląduje na stdout, nie na stderr
+        // (zmierzone F-88, pomiar 11.09.2026: 857 bajtów na stdout, 0 na stderr) —
+        // czytanie samego `errorOutput()` daje więc 10 pustych komunikatów zamiast
+        // treści błędu. Zestawiamy oba strumienie, przycięte, żeby przyszła awaria
+        // CI była czytelna, a nie 10 pustych napisów.
         $this->assertTrue(
             $results->successful(),
             'Co najmniej jeden proces zakończył się błędem: '
-                .$results->collect()->map(fn ($r) => trim($r->errorOutput()))->implode(' | '),
+                .$results->collect()->map(function ($r) {
+                    $out = trim($r->output());
+                    $err = trim($r->errorOutput());
+
+                    return sprintf(
+                        '[exit=%d stdout=%s stderr=%s]',
+                        $r->exitCode() ?? -1,
+                        substr($out, 0, 300) ?: '(puste)',
+                        substr($err, 0, 300) ?: '(puste)',
+                    );
+                })->implode(' | '),
         );
 
         $numbers = $results->collect()

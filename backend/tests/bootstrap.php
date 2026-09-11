@@ -66,6 +66,21 @@ require __DIR__.'/../vendor/autoload.php';
         $name = (string) $entry['name'];
 
         if (in_array($name, $topologia, true) && array_key_exists($name, $_SERVER)) {
+            // Zostawiamy `$_SERVER` przy prawdziwej wartości środowiska — ale PHPUnit
+            // zdążył już wywołać `putenv()` z wartością z `phpunit.xml` (pgsql), więc
+            // PRAWDZIWE środowisko OS (`getenv`/`$_ENV`) i tak niesie podmienioną wartość.
+            // Proces potomny (`Process::run([PHP_BINARY, ...])`) dziedziczy WYŁĄCZNIE
+            // środowisko OS, nie pamięć PHP rodzica — więc bez tej korekty dziecko
+            // widziałoby `pgsql` tam, gdzie rodzic (i realna topologia CI) widzi
+            // `127.0.0.1`, i padało z błędem DNS mimo że rodzic działa poprawnie.
+            // Domykamy więc rozjazd rodzic-dziecko w JEDNYM miejscu, dla obu kluczy
+            // z zamkniętej listy `$topologia`, zamiast łatać poszczególne testy.
+            // Zmierzone (F-88, pomiar 11.09.2026): rodzic $_SERVER=127.0.0.1,
+            // rodzic getenv=pgsql, dziecko getenv/$_SERVER=pgsql — bez tej poprawki.
+            $realValue = $_SERVER[$name];
+            putenv("{$name}={$realValue}");
+            $_ENV[$name] = $realValue;
+
             continue;
         }
 
