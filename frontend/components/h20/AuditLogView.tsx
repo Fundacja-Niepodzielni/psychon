@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Table, { type Column } from "@/components/ui/Table";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
+import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import {
   ApiError,
   AUDIT_ACTIONS,
@@ -13,15 +15,8 @@ import {
   fetchAuditLog,
   type AuditFilters,
   type AuditLogEntryDto,
-  type PaginationMeta,
 } from "@/lib/api";
 import { ACTION_LABELS } from "@/lib/h20/labels";
-
-interface Loaded {
-  key: string;
-  rows: AuditLogEntryDto[];
-  meta?: PaginationMeta;
-}
 
 const EMPTY_FILTERS = { action: "", userId: "", from: "", to: "" };
 
@@ -32,43 +27,50 @@ function formatDate(iso: string): string {
   });
 }
 
+/**
+ * Dziennik działań (H20), na `ListTemplate` (C2 wariant C). Jak w H18: 403
+ * odróżniony od pozostałych błędów bezpośrednio przy wołaniu `fetchAuditLog`,
+ * bo `useZasobStronicowany` niesie dalej tylko komunikat, nie status.
+ */
 export default function AuditLogView() {
   const [form, setForm] = useState(EMPTY_FILTERS);
   const [applied, setApplied] = useState<AuditFilters>({});
-  const [page, setPage] = useState(1);
-
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
+  const [forbidden, setForbidden] = useState(false);
 
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const key = JSON.stringify({ ...applied, page });
+  const pobierz = useCallback(
+    (strona: number) =>
+      fetchAuditLog({ ...applied, page: strona, per_page: 25 })
+        .then((wynik) => {
+          setForbidden(false);
+          return wynik;
+        })
+        .catch((err: unknown) => {
+          if (err instanceof ApiError && err.status === 403) setForbidden(true);
+          throw err;
+        }),
+    [applied],
+  );
 
-  useEffect(() => {
-    let active = true;
-    fetchAuditLog({ ...applied, page, per_page: 25 })
-      .then(({ data, meta }) => {
-        if (active) setLoaded({ key, rows: data, meta });
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setFailed({
-          key,
-          message:
-            err instanceof ApiError
-              ? err.message
-              : "Nie udało się wczytać dziennika działań.",
-        });
-      });
-    return () => {
-      active = false;
-    };
-  }, [applied, page, key]);
+  const { stan, meta, strona, ustawStrone, ponow } = useZasobStronicowany<AuditLogEntryDto>(
+    pobierz,
+    [applied],
+    "Nie udało się wczytać dziennika działań.",
+  );
+
+  const dane = stan.status === "success" ? stan.data : [];
+  const listaPusta = stan.status === "success" && dane.length === 0;
+  const stanEfektywny: StanListy = forbidden
+    ? "forbidden"
+    : listaPusta
+      ? "empty"
+      : stan.status;
 
   function applyFilters(e: FormEvent) {
     e.preventDefault();
-    setPage(1);
+    ustawStrone(1);
     setApplied({
       action: form.action || undefined,
       user_id: form.userId ? Number(form.userId) : undefined,
@@ -112,102 +114,75 @@ export default function AuditLogView() {
     },
   ];
 
-  const showError = failed?.key === key;
-  const showData = loaded?.key === key;
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h2 font-black text-ink">Dziennik działań</h1>
-          <p className="mt-2 text-body text-muted">
-            Odczyt wyłącznie — żadne zdarzenie w tym dzienniku nie da się
-            zmienić ani usunąć.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={exportCsv} loading={downloading}>
-          Eksport CSV
-        </Button>
-      </div>
-
-      {downloadError && <Alert variant="error">{downloadError}</Alert>}
-
-      <form
-        onSubmit={applyFilters}
-        className="grid gap-4 sm:grid-cols-[1fr_140px_160px_160px_auto] sm:items-end"
-      >
-        <Select
-          label="Zdarzenie"
-          value={form.action}
-          onChange={(e) => setForm((f) => ({ ...f, action: e.target.value }))}
-        >
-          <option value="">Wszystkie zdarzenia</option>
-          {AUDIT_ACTIONS.map((action) => (
-            <option key={action} value={action}>
-              {ACTION_LABELS[action]}
-            </option>
-          ))}
-        </Select>
-        <Input
-          label="ID osoby"
-          inputMode="numeric"
-          value={form.userId}
-          onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
-          placeholder="np. 6"
-        />
-        <Input
-          label="Od"
-          type="date"
-          value={form.from}
-          onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
-        />
-        <Input
-          label="Do"
-          type="date"
-          value={form.to}
-          onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
-        />
-        <Button type="submit">Filtruj</Button>
-      </form>
-
-      {showError ? (
-        <Alert variant="error">{failed.message}</Alert>
-      ) : !showData ? (
-        <p role="status" className="text-body text-muted">
-          Wczytywanie dziennika…
-        </p>
-      ) : (
+    <ListTemplate
+      naglowek={{
+        title: "Dziennik działań",
+        description:
+          "Odczyt wyłącznie — żadne zdarzenie w tym dzienniku nie da się zmienić ani usunąć.",
+        action: (
+          <Button variant="secondary" onClick={exportCsv} loading={downloading}>
+            Eksport CSV
+          </Button>
+        ),
+      }}
+      stan={stanEfektywny}
+      komunikatBledu={stan.status === "error" ? stan.message : undefined}
+      onPonow={ponow}
+      pustyTytul="Brak zdarzeń spełniających kryteria."
+      paginacja={
+        meta ? { strona, ostatniaStrona: meta.last_page, onZmien: ustawStrone } : undefined
+      }
+      dodatkowyPanel={
         <>
-          <Table
-            columns={columns}
-            rows={loaded.rows}
-            rowKey={(row) => row.id}
-            caption="Dziennik działań"
-            emptyMessage="Brak zdarzeń spełniających kryteria."
-          />
-          {loaded.meta && loaded.meta.last_page > 1 && (
-            <div className="flex items-center justify-center gap-3">
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => setPage((v) => Math.max(1, v - 1))}
-              >
-                Poprzednia
-              </Button>
-              <span className="text-small text-subtle">
-                Strona {loaded.meta.current_page} z {loaded.meta.last_page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={page >= loaded.meta.last_page}
-                onClick={() => setPage((v) => v + 1)}
-              >
-                Następna
-              </Button>
-            </div>
-          )}
+          {downloadError && <Alert variant="error">{downloadError}</Alert>}
+          <form
+            onSubmit={applyFilters}
+            className="grid gap-4 sm:grid-cols-[1fr_140px_160px_160px_auto] sm:items-end"
+          >
+            <Select
+              label="Zdarzenie"
+              value={form.action}
+              onChange={(e) => setForm((f) => ({ ...f, action: e.target.value }))}
+            >
+              <option value="">Wszystkie zdarzenia</option>
+              {AUDIT_ACTIONS.map((action) => (
+                <option key={action} value={action}>
+                  {ACTION_LABELS[action]}
+                </option>
+              ))}
+            </Select>
+            <Input
+              label="ID osoby"
+              inputMode="numeric"
+              value={form.userId}
+              onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
+              placeholder="np. 6"
+            />
+            <Input
+              label="Od"
+              type="date"
+              value={form.from}
+              onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
+            />
+            <Input
+              label="Do"
+              type="date"
+              value={form.to}
+              onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
+            />
+            <Button type="submit">Filtruj</Button>
+          </form>
         </>
-      )}
-    </div>
+      }
+    >
+      <Table
+        columns={columns}
+        rows={dane}
+        rowKey={(row) => row.id}
+        caption="Dziennik działań"
+        emptyMessage="Brak zdarzeń spełniających kryteria."
+      />
+    </ListTemplate>
   );
 }
