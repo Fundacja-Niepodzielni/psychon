@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -17,7 +18,14 @@ use Tests\TestCase;
  *      middleware stack — the strongest form of "sanctum is really gone",
  *      because it inspects every route at once instead of a hand-picked
  *      list of the ones this task happened to touch.
+ *
+ * No database trait: neither guarantee touches the `users` table (the
+ * first is a routing 404, the second inspects the route list itself) —
+ * per `Tests\Feature\Przyrzad\GrupaWspolnejBazyTest`, a class without a
+ * database trait must declare `wspolna-baza` explicitly or the parallel
+ * runner leaves it racing its neighbours on the shared database.
  */
+#[Group('wspolna-baza')]
 class PasswordAuthGoneTest extends TestCase
 {
     public function test_post_auth_login_is_gone(): void
