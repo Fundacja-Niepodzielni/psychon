@@ -56,7 +56,12 @@ echo "Uruchamiam uslugi..."
 # kompletny poprzedni build az do chwili pomyslnego utworzenia nowego obrazu.
 # Procesy Laravel sa odtwarzane, zeby workery i OPcache nie trzymaly starego kodu.
 "${compose[@]}" up -d --force-recreate app queue scheduler frontend
-"${compose[@]}" up -d caddy
+# Caddyfile jest montowany jako pojedynczy plik: `git checkout` kladzie nowy
+# plik (nowy i-wezel), a dzialajacy kontener dalej widzi stary. Przy
+# `admin off` nie ma tez przeladowania z zewnatrz. Samo `up -d` zostawia
+# kontener, bo jego definicja sie nie zmienila - tak zmiana tras logowania
+# nie weszla przy pierwszym wdrozeniu. Kilka sekund przerwy na 443 to cena.
+"${compose[@]}" up -d --force-recreate caddy
 
 echo "Migracje i cache konfiguracji..."
 "${compose[@]}" exec -T app php artisan migrate --force
@@ -65,22 +70,26 @@ echo "Migracje i cache konfiguracji..."
 echo "Status uslug:"
 "${compose[@]}" ps
 
-# Swiadek: rozdzial ruchu sprawdzamy PRZEZ Caddy, od srodka sieci kontenerow,
-# zanim ktokolwiek sprobuje wejsc z zewnatrz. Inaczej pierwszym przyrzadem
-# bylaby przegladarka za Cloudflare Access, czyli trzy warstwy naraz.
-echo "Swiadek rozdzialu ruchu (przez Caddy, wewnatrz sieci):"
+# Swiadek: rozdzial ruchu sprawdzamy PRZEZ Caddy na tym hoscie, zanim
+# ktokolwiek sprobuje wejsc z zewnatrz. Inaczej pierwszym przyrzadem bylaby
+# przegladarka za Cloudflare Access, czyli trzy warstwy naraz.
+# `curl --resolve` laczy sie z 127.0.0.1:443 pod nazwa domeny, czyli z tym
+# samym TLS i ta sama nazwa co prawdziwy klient. Pierwsza wersja (`wget` z
+# wnetrza kontenera Caddy po adresie IP) laczyla sie bez nazwy w TLS i Caddy
+# zrywal polaczenie (alert TLS 80) - na kazdej sciezce "BRAK ODPOWIEDZI", takze
+# przy stojacych uslugach. `--retry` przeczekuje 502/503, dopoki uslugi wstaja.
+echo "Swiadek rozdzialu ruchu (przez Caddy na 127.0.0.1:443):"
 domena="$(grep -E '^STAGING_DOMAIN=' "$env_file" | cut -d= -f2-)"
 # `/api/v1/me` bez tokenu ma zwrocic 401 Z LARAVELA - to dowodzi, ze odpowiedzial
 # backend, a nie Next.js (ktory na tej sciezce dalby 404). `/` ma dac 200 z Next.
 # `/api/auth/providers` ma dac 200 Z NEXT (next-auth) - 404 znaczy, ze `/api/*`
 # znow oddal trasy logowania Laravelowi i przycisk "Zaloguj przez Konta" nie dziala.
-# `wget` konczy sie kodem != 0 przy kazdej odpowiedzi 4xx, a oczekiwany wynik
-# `/api/v1/me` to wlasnie 401 - bez `|| true` `set -e` przerywal skrypt na
-# pierwszej sciezce, zanim wypisal jakikolwiek wynik. Kod HTTP czytamy z
-# naglowkow, a nie z kodu wyjscia `wget`.
+# Kod HTTP czytamy z `-w`, a nie z kodu wyjscia: oczekiwany wynik `/api/v1/me`
+# to 401, a swiadek nie moze przerwac skryptu pod `set -e` - `|| true`.
+# `000` znaczy: brak odpowiedzi po wszystkich probach.
 for sciezka in /api/v1/me /api/auth/providers /; do
-  kod="$( { "${compose[@]}" exec -T caddy wget -qO /dev/null -S --no-check-certificate \
-    --header="Host: $domena" "https://127.0.0.1$sciezka" 2>&1 || true; } | awk '/HTTP\//{print $2; exit}')"
+  kod="$(curl -sk --resolve "$domena:443:127.0.0.1" --retry 15 --retry-connrefused --retry-delay 2 \
+    --max-time 20 -o /dev/null -w '%{http_code}' "https://$domena$sciezka" || true)"
   echo "  $sciezka -> ${kod:-BRAK ODPOWIEDZI}"
 done
 
