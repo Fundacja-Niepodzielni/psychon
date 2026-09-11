@@ -1,0 +1,38 @@
+Roboto v51 (self-hosted, woff2)
+
+Krój Roboto (ten plik, wersja 3.015) jest udostępniony na licencji SIL Open
+Font License, wersja 1.1. Pełny tekst tej licencji: `OFL.txt` w tym samym
+katalogu.
+
+Ustalenie licencji z metadanych dostarczonego pliku i ze źródła (nie z
+pamięci) — `fc-query`/`fontTools` (`wsl -d Ubuntu-24.04`) na obu plikach
+`.woff2`, oraz zapytania do oficjalnego repozytorium Google Fonts:
+- tabela `name`, `nameID=0` (Copyright): „Copyright 2011 The Roboto Project
+  Authors (https://github.com/googlefonts/roboto-classic)” — identyczna w
+  obu podzbiorach.
+- tabela `name`, `nameID=5` (Version): „Version 3.015; 2026”.
+- brak `nameID=13`/`14` (License Description/URL) w pliku — plik nie niesie
+  licencji wprost, trzeba ją ustalić z repozytorium źródłowego w
+  copyrightcie.
+- Repozytorium źródłowe `googlefonts/roboto-classic` jest wpisem katalogu
+  `ofl/roboto/` w oficjalnym repozytorium Google Fonts (`google/fonts`):
+  `ofl/roboto/METADATA.pb` deklaruje `license: "OFL"` i
+  `repository_url: .../googlefonts/roboto-classic`. Nie ma żadnego innego
+  katalogu tej rodziny fontu w repozytorium `google/fonts`, w którym leżałoby
+  METADATA.pb z inną licencją. `ofl/roboto/OFL.txt` zaczyna się tym samym
+  wierszem copyrightu co `nameID=0` pliku. Stąd rozstrzygnięcie: **SIL Open
+  Font License 1.1**.
+
+Pliki `roboto-v51-latin.woff2` i `roboto-v51-latin-ext.woff2` pochodzą z
+podzbioru czcionki Roboto — ten sam podzbiór, którego używa strona Fundacji
+Niepodzielni (`Niepodzielni-dev/web/app/themes/niepodzielni-theme/resources/fonts/`).
+Podzbiór `latin-ext` pokrywa polskie znaki diakrytyczne (ą ć ę ł ń ó ś ź ż).
+
+Zakres wag: oś zmiennej grubości pliku obejmuje 100-900 (odczytane z tabeli
+`fvar`, oś `wght`: min=100, domyślna=400, max=900). `@font-face` w
+`app/globals.css` deklaruje `font-weight: 100 900` — zakres zadeklarowany
+odpowiada zakresowi pliku (decyzja właściciela, Z-12). Klasa `font-black`
+(token `--psy-fw-black` 900) renderuje się teraz prawdziwą wagą 900, nie
+jest już ścinana przez przeglądarkę do 700.
+
+Źródło: Google Fonts, https://fonts.google.com/specimen/Roboto

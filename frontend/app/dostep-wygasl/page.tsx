@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Card from "@/components/ui/Card";
+import Logo from "@/components/ui/Logo";
 
 export const metadata: Metadata = {
   title: "Dostęp wygasł — Niepodzielni",
@@ -7,7 +8,8 @@ export const metadata: Metadata = {
 
 export default function AccessExpiredPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-page p-6">
+      <Logo className="h-10 w-auto" />
       <Card className="w-full max-w-xl text-center">
         <p className="text-caption font-bold uppercase tracking-wide text-subtle">
           Konto nieaktywne

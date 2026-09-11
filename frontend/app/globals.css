@@ -1,6 +1,40 @@
 @import "tailwindcss";
 
 /*
+ * Roboto v51 — samodzielnie hostowany (F-89: krój był zadeklarowany w
+ * --psy-font, ale nigdy nie ładowany — 0 next/font, 0 <link rel>). Pliki w
+ * `public/fonts/`, ten sam podzbiór co strona Fundacji (P2, źródło wartości:
+ * DESIGN.md). Zero żądań do zewnętrznego CDN Google Fonts w
+ * runtime — wyłącznie `url("/fonts/...")` niżej. `latin-ext` pokrywa polskie
+ * znaki (ą ć ę ł ń ó ś ź ż).
+ * Zakres wag pliku: 100–900 (oś zmienna `wght`, fvar min=100 max=900) —
+ * zakres zadeklarowany w `@font-face` niżej odpowiada zakresowi pliku
+ * (decyzja właściciela, Z-12). Token --psy-fw-black (900) renderuje się
+ * teraz prawdziwą wagą pliku, nie jest ścinany przez przeglądarkę do 700.
+ */
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/roboto-v51-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-024F, U+1E00-1EFF, U+2020, U+20A0-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/roboto-v51-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
  * Tokeny designu wyciągnięte z makiety (psychon-makieta/index.html).
  * Zmienne --psy-* to 1:1 wartości makiety; odstępstwa (kontrast WCAG ≥ 4,5:1)
  * są oznaczone komentarzem [A11Y].
@@ -81,7 +115,14 @@
   /* --- Cienie i fokus --- */
   --psy-shadow-card: 0 4px 20px #0000000d;
   --psy-shadow-header: 0 2px 10px #0000000d;
-  --psy-focus-ring: 0 0 0 3px #01be4a73;
+  /* F-90/P2: pierścień fokusu 3 px w --psy-violet-dark (#1500BB), wartość ze
+   * strony Fundacji (DESIGN.md / inwentarz identyfikacji). Zastępuje zielony
+   * pierścień 1,41–1,55:1 (poniżej progu Z-9 3:1). Kontrast liczony wobec tła,
+   * na którym pierścień faktycznie leży (box-shadow bez inset — tło strony/
+   * karty za obrysem elementu, nie wypełnienie samego elementu): biały 12,0:1,
+   * tło strony 11,31:1, karta ciepła 10,90:1, obramowanie 9,98:1 — wszystkie
+   * ≥ 3:1 z dużym zapasem. */
+  --psy-focus-ring: 0 0 0 3px var(--psy-violet-dark);
 
   /* --- Layout i ruch --- */
   --psy-container: 1200px;
@@ -171,10 +212,40 @@
   --shadow-header: var(--psy-shadow-header);
 }
 
-/* Wspólny pierścień fokusa (zielony, z makiety) — użycie: focus-visible:focus-ring */
+/* Wspólny pierścień fokusa (--psy-violet-dark #1500BB) — użycie:
+ * focus-visible:focus-ring. Widoczny tylko na :focus-visible (klawiatura),
+ * nigdy na zwykły :focus myszą — zgodnie z decyzją P2 pkt 2.
+ * F-90 (uwaga weryfikatora): tryb wymuszonych kolorów systemu maskuje
+ * `box-shadow` (Windows High Contrast/`forced-colors`), więc samo
+ * `outline: none` zostawiłoby fokus bez żadnego widocznego znacznika —
+ * zabronione przez C1 Z-9 („outline: none dozwolone wyłącznie z
+ * zamiennikiem widocznym w trybie wysokiego kontrastu systemu"). Zamiennik:
+ * `outline` w kolorze systemowym `Highlight`, tylko pod
+ * `@media (forced-colors: active)` — poza tym trybem obowiązuje wyłącznie
+ * `box-shadow` wyżej, bez podwójnego pierścienia. */
 @utility focus-ring {
   outline: none;
   box-shadow: var(--psy-focus-ring);
+
+  @media (forced-colors: active) {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+/* F-91/P2: reguła ograniczonego ruchu — 0 klas ruchu bez wariantu
+ * `prefers-reduced-motion: reduce` (Z-4, impeccable C-1). Globalna reguła
+ * okrywa wszystkie klasy `animate-*` i `transition-*` naraz (m.in.
+ * ProgressBar, Button spinner, Skeleton/LoadingState, przejścia menu). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {

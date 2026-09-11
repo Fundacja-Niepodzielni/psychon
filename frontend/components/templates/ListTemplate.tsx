@@ -66,8 +66,6 @@ export default function ListTemplate({
 }: ListTemplateProps) {
   // Jedyne miejsce mapowania 403 → `forbidden` (Z-6/C2 §5: jeden mechanizm,
   // nie kopia w każdym ekranie).
-  // Jedyne miejsce mapowania 403 → `forbidden` (Z-6/C2 §5: jeden mechanizm,
-  // nie kopia w każdym ekranie).
   const stanEfektywny: StanListy =
     stan === "error" && httpStatus === 403 ? "forbidden" : stan;
 

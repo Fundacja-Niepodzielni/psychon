@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode, type SelectHTMLAttributes } from "react";
+import Field from "@/components/ui/Field";
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
@@ -23,10 +24,7 @@ export default function Select({
   const errorId = `${selectId}-error`;
 
   return (
-    <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label htmlFor={selectId} className="text-small font-medium text-ink">
-        {label}
-      </label>
+    <Field id={selectId} label={label} error={error} className={className}>
       <select
         id={selectId}
         aria-invalid={error ? true : undefined}
@@ -38,11 +36,6 @@ export default function Select({
       >
         {children}
       </select>
-      {error && (
-        <p id={errorId} className="text-caption font-medium text-danger">
-          {error}
-        </p>
-      )}
-    </div>
+    </Field>
   );
 }

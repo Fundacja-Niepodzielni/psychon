@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 /**
  * Świadek dziennika działań (H20) po przepięciu na `ListTemplate` +
@@ -97,5 +98,23 @@ describe("AuditLogView", () => {
 
     await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("filtr: wysłanie formularza pobiera dziennik z wybranym zdarzeniem i wraca na stronę 1", async () => {
+    fetchAuditLog.mockResolvedValue({
+      data: [wpis],
+      meta: { current_page: 1, per_page: 25, total: 1, last_page: 1 },
+    });
+    render(<AuditLogView />);
+
+    await waitFor(() => expect(fetchAuditLog).toHaveBeenCalledTimes(1));
+
+    await userEvent.selectOptions(screen.getByLabelText("Zdarzenie"), "internship.accepted");
+    await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
+
+    await waitFor(() => expect(fetchAuditLog).toHaveBeenCalledTimes(2));
+    expect(fetchAuditLog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ action: "internship.accepted", page: 1, per_page: 25 }),
+    );
   });
 });
