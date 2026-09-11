@@ -11,7 +11,7 @@
 - [x] 1.3 Utworzyć gałąź `pakiet/H17-pytania-do-prowadzacego` z aktualnego
   `origin/main`; weryfikacja: `git branch --show-current` i `git log -1 origin/main`
   wskazują ten sam commit bazowy, `git remote -v` pokazuje `origin` na
-  `tomekwilczak/psychon-hackaton`.
+  `<repozytorium-hackathonu>`.
 - [x] 1.4 Zapisać w `DEMO/H17.md` zakres pakietu, kryteria ★ oraz jawne założenie, że
   H08 i H09 dostarczają inne osoby; weryfikacja: plik istnieje i wymienia wszystkie
   trzy kryteria odbioru z karty H17.

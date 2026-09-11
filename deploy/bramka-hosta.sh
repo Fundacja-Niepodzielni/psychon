@@ -26,6 +26,18 @@ if [ ! -f docker-compose.yml ] || [ ! -d backend ]; then
 fi
 
 START_CALOSC="$(date +%s)"
+# Pierwsza linia logu niesie commit, ktory bramka mierzy: bramka mierzy commit,
+# nie drzewo robocze, wiec SHA w logu ma sie dac porownac z tym, ktory podal autor.
+echo "SHA=$(git rev-parse HEAD) drzewo przed biegiem: $(git status --porcelain | grep -c .) pozycji"
+
+# Logi pomocnicze ida do KATALOGU BIEGU, nie do wspolnego /tmp. Zmierzone
+# 10.09 20:20 na hoscie: plik bramka-up.log w /tmp, zalozony wczesniej przez INNE konto,
+# odmowil zapisu ("Permission denied") i bieg padl w kroku 1 z EXIT=2, zanim
+# cokolwiek zmierzyl. Wolajacy moze wskazac katalog (bramka zdalna kladzie go
+# obok logu glownego); bez tego kazdy bieg dostaje swiezy, prywatny katalog.
+KATALOG_BIEGU="${KATALOG_BIEGU:-$(mktemp -d -t bramka-bieg.XXXXXX)}"
+mkdir -p "$KATALOG_BIEGU" || exit 2
+echo "logi pomocnicze: $KATALOG_BIEGU"
 
 # Kroki w kontenerze ida jako root, bo katalog repo na hoscie nalezy do konta
 # bramki, a obraz PHP chodzi wewnatrz jako wlasny uzytkownik - przy montowaniu
@@ -88,10 +100,10 @@ if [ ! -f backend/.env ]; then
     cp backend/.env.example backend/.env || exit 2
 fi
 
-docker compose -p "$PROJEKT" up -d pgsql redis app > /tmp/bramka-up.log 2>&1
+docker compose -p "$PROJEKT" up -d pgsql redis app > "$KATALOG_BIEGU"/bramka-up.log 2>&1
 KOD_UP=$?
 if [ "$KOD_UP" -ne 0 ]; then
-    echo "stos nie wstal (EXIT=$KOD_UP):"; tail -15 /tmp/bramka-up.log
+    echo "stos nie wstal (EXIT=$KOD_UP):"; tail -15 "$KATALOG_BIEGU"/bramka-up.log
     exit 2
 fi
 
@@ -108,20 +120,20 @@ echo "baza gotowa: $GOTOWA"
 naglowek "2 - composer, klucz, migracja"
 
 T="$(date +%s)"
-docker exec -u root bramka_app composer install --no-interaction --prefer-dist --quiet > /tmp/bramka-composer.log 2>&1
+docker exec -u root bramka_app composer install --no-interaction --prefer-dist --quiet > "$KATALOG_BIEGU"/bramka-composer.log 2>&1
 KOD_COMPOSER=$?
 echo "composer: EXIT=$KOD_COMPOSER, $(czas_od "$T") s"
-[ "$KOD_COMPOSER" -eq 0 ] || { tail -10 /tmp/bramka-composer.log; exit 2; }
+[ "$KOD_COMPOSER" -eq 0 ] || { tail -10 "$KATALOG_BIEGU"/bramka-composer.log; exit 2; }
 
 docker exec -u root bramka_app php artisan key:generate --force --no-interaction >/dev/null 2>&1
 T="$(date +%s)"
 # artisan NIE czyta phpunit.xml, a `--env` wybiera PLIK z ustawieniami, nie baze;
 # adres bazy podaje srodowisko.
-docker exec -u root -e DB_CONNECTION=pgsql -e DB_HOST=pgsql -e DB_PORT=5432     -e DB_DATABASE="$BAZA" -e DB_USERNAME="$UZYTKOWNIK" -e DB_PASSWORD="$HASLO"     bramka_app php artisan migrate:fresh --force --no-interaction > /tmp/bramka-migracja.log 2>&1
+docker exec -u root -e DB_CONNECTION=pgsql -e DB_HOST=pgsql -e DB_PORT=5432     -e DB_DATABASE="$BAZA" -e DB_USERNAME="$UZYTKOWNIK" -e DB_PASSWORD="$HASLO"     bramka_app php artisan migrate:fresh --force --no-interaction > "$KATALOG_BIEGU"/bramka-migracja.log 2>&1
 KOD_MIGRACJI=$?
 TABELE="$(docker exec bramka_pgsql psql -U "$UZYTKOWNIK" -d "$BAZA" -tAc "select count(*) from information_schema.tables where table_schema='public'" 2>/dev/null | tr -d "[:space:]")"
 echo "migracja: EXIT=$KOD_MIGRACJI, $(czas_od "$T") s, tabel w $BAZA: $TABELE"
-[ "$KOD_MIGRACJI" -eq 0 ] || { tail -10 /tmp/bramka-migracja.log; exit 2; }
+[ "$KOD_MIGRACJI" -eq 0 ] || { tail -10 "$KATALOG_BIEGU"/bramka-migracja.log; exit 2; }
 # Zielona migracja, ktora nic nie zalozyla, znaczy zwykle, ze artisan poszedl
 # na INNA baze niz ta, ktora zaraz mierzymy. Kod wyjscia tego nie powie.
 if [ -z "$TABELE" ] || [ "$TABELE" -eq 0 ] 2>/dev/null; then
@@ -133,17 +145,17 @@ fi
 naglowek "3 - backend: krok A (rownolegle) i krok B (wspolna baza)"
 
 T="$(date +%s)"
-docker exec -u root bramka_app php artisan test --parallel --processes="$PROCESY" --exclude-group=wspolna-baza > /tmp/bramka-A.log 2>&1
+docker exec -u root bramka_app php artisan test --parallel --processes="$PROCESY" --exclude-group=wspolna-baza > "$KATALOG_BIEGU"/bramka-A.log 2>&1
 KOD_A=$?
 CZAS_A="$(czas_od "$T")"
-grep -aE "Tests:|Assertions:|FAILURES|ERRORS|OK \(" /tmp/bramka-A.log | tail -3
+grep -aE "Tests:|Assertions:|FAILURES|ERRORS|OK \(" "$KATALOG_BIEGU"/bramka-A.log | tail -3
 echo "krok A: EXIT=$KOD_A, $CZAS_A s"
 
 T="$(date +%s)"
-docker exec -u root bramka_app ./vendor/bin/phpunit --group=wspolna-baza > /tmp/bramka-B.log 2>&1
+docker exec -u root bramka_app ./vendor/bin/phpunit --group=wspolna-baza > "$KATALOG_BIEGU"/bramka-B.log 2>&1
 KOD_B=$?
 CZAS_B="$(czas_od "$T")"
-grep -aE "Tests:|Assertions:|FAILURES|ERRORS|OK \(" /tmp/bramka-B.log | tail -3
+grep -aE "Tests:|Assertions:|FAILURES|ERRORS|OK \(" "$KATALOG_BIEGU"/bramka-B.log | tail -3
 echo "krok B: EXIT=$KOD_B, $CZAS_B s"
 
 # --- 3b - skanery backendu -------------------------------------------------
@@ -159,19 +171,19 @@ naglowek "3b - backend: analiza statyczna i audyt zaleznosci"
 # swiadomie - cache przenoszony miedzy commitami to nastepna rzecz, ktorej trzeba
 # by pilnowac, a analiza, ktora czyta cudzy cache, jest analiza czegos innego.
 T="$(date +%s)"
-docker exec -u root bramka_app ./vendor/bin/phpstan analyse --memory-limit=512M --no-progress > /tmp/bramka-phpstan.log 2>&1
+docker exec -u root bramka_app ./vendor/bin/phpstan analyse --memory-limit=512M --no-progress > "$KATALOG_BIEGU"/bramka-phpstan.log 2>&1
 KOD_STATYCZNA=$?
 CZAS_STATYCZNA="$(czas_od "$T")"
-grep -aE "\[OK\]|Found [0-9]+ error|^ Line|errors" /tmp/bramka-phpstan.log | tail -2
+grep -aE "\[OK\]|Found [0-9]+ error|^ Line|errors" "$KATALOG_BIEGU"/bramka-phpstan.log | tail -2
 echo "analiza statyczna: EXIT=$KOD_STATYCZNA, $CZAS_STATYCZNA s"
 
 T="$(date +%s)"
-docker exec -u root bramka_app composer audit --locked --format=plain > /tmp/bramka-audyt-php.log 2>&1
+docker exec -u root bramka_app composer audit --locked --format=plain > "$KATALOG_BIEGU"/bramka-audyt-php.log 2>&1
 KOD_AUDYT_PHP=$?
 # Liczbe bierzemy z PIERWSZEJ linii wyniku, nie z kodu wyjscia: kod mowi tylko
 # "cos jest", a do STATE i tak trzeba wpisac ILE. Bez trafien composer nie pisze
 # linii "Found ...", wiec pusty wynik pokazujemy jako 0, a nie jako brak pomiaru.
-PODATNOSCI_PHP="$(grep -aoE "Found [0-9]+ security vulnerability advisor" /tmp/bramka-audyt-php.log | head -1)"
+PODATNOSCI_PHP="$(grep -aoE "Found [0-9]+ security vulnerability advisor" "$KATALOG_BIEGU"/bramka-audyt-php.log | head -1)"
 echo "audyt PHP (pomiar, poza kodem wyjscia): EXIT=$KOD_AUDYT_PHP, ${PODATNOSCI_PHP:-Found 0 security vulnerability advisor}ies"
 
 # --- 3c - skaner statyczny na przypietych regulach --------------------------
@@ -187,12 +199,12 @@ naglowek "3c - backend i front: skaner statyczny (reguly przypiete w repo)"
 
 T="$(date +%s)"
 docker run --rm --network none -v "$PWD:/src" -w /src semgrep/semgrep:1.169.0 \
-    semgrep scan --config .semgrep/reguly --error --metrics=off > /tmp/bramka-semgrep.log 2>&1
+    semgrep scan --config .semgrep/reguly --error --metrics=off > "$KATALOG_BIEGU"/bramka-semgrep.log 2>&1
 KOD_SEMGREP=$?
 CZAS_SEMGREP="$(czas_od "$T")"
 # Liczba z PODSUMOWANIA, nie z kodu wyjscia: `--error` daje 1 przy KAZDYM
 # trafieniu, wiec kod nie odroznia dwoch zastanych od trzeciego, nowego.
-TRAFIENIA_SEMGREP="$(grep -aoE "Ran [0-9]+ rules on [0-9]+ files: [0-9]+ findings" /tmp/bramka-semgrep.log | tail -1)"
+TRAFIENIA_SEMGREP="$(grep -aoE "Ran [0-9]+ rules on [0-9]+ files: [0-9]+ findings" "$KATALOG_BIEGU"/bramka-semgrep.log | tail -1)"
 echo "skaner statyczny: EXIT=$KOD_SEMGREP, $CZAS_SEMGREP s, ${TRAFIENIA_SEMGREP:-brak odczytu}"
 
 # --- 3d - skladnia plikow workflow (krok blokujacy) -------------------------
@@ -209,14 +221,14 @@ naglowek "3d - skladnia plikow workflow"
 KOD_ACTIONLINT=0
 if [ -d .github/workflows ]; then
     T="$(date +%s)"
-    docker run --rm --network none -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -no-color > /tmp/bramka-actionlint.log 2>&1
+    docker run --rm --network none -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -no-color > "$KATALOG_BIEGU"/bramka-actionlint.log 2>&1
     KOD_ACTIONLINT=$?
     CZAS_ACTIONLINT="$(czas_od "$T")"
     # ILE obejrzal, nie tylko ile znalazl: pusty katalog workflow tez dalby zero.
     PLIKOW_AL="$(ls -1 .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null | wc -l)"
-    BLEDOW_AL="$(grep -acE "^[^ ]+:[0-9]+:[0-9]+:" /tmp/bramka-actionlint.log)"
+    BLEDOW_AL="$(grep -acE "^[^ ]+:[0-9]+:[0-9]+:" "$KATALOG_BIEGU"/bramka-actionlint.log)"
     echo "skladnia workflow: EXIT=$KOD_ACTIONLINT, $CZAS_ACTIONLINT s, plikow $PLIKOW_AL, bledow $BLEDOW_AL"
-    [ "$KOD_ACTIONLINT" -ne 0 ] && head -10 /tmp/bramka-actionlint.log | sed 's/^/  ! /'
+    [ "$KOD_ACTIONLINT" -ne 0 ] && head -10 "$KATALOG_BIEGU"/bramka-actionlint.log | sed 's/^/  ! /'
 else
     echo "skladnia workflow: POMINIETA - brak .github/workflows" >&2
 fi
@@ -238,15 +250,15 @@ T="$(date +%s)"
 EKSPORT="$(mktemp -d)"
 git archive --format=tar HEAD | tar -x -C "$EKSPORT"
 PLIKOW_GL="$(find "$EKSPORT" -type f | wc -l)"
-docker run --rm --network none -v "${EKSPORT}:/tresc:ro" -v "$PWD/.gitleaks.toml:/konfiguracja.toml:ro"     ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact     > /tmp/bramka-gitleaks.log 2>&1
+docker run --rm --network none -v "${EKSPORT}:/tresc:ro" -v "$PWD/.gitleaks.toml:/konfiguracja.toml:ro"     ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact     > "$KATALOG_BIEGU"/bramka-gitleaks.log 2>&1
 KOD_GITLEAKS=$?
 CZAS_GITLEAKS="$(czas_od "$T")"
 rm -rf "$EKSPORT"
 # ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
-BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" /tmp/bramka-gitleaks.log | tail -1)"
-TRAFIEN_GL="$(grep -acE "^RuleID:" /tmp/bramka-gitleaks.log)"
+BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
+TRAFIEN_GL="$(grep -acE "^RuleID:" "$KATALOG_BIEGU"/bramka-gitleaks.log)"
 echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
-[ "$KOD_GITLEAKS" -ne 0 ] && grep -aE "^(RuleID|File|Line):" /tmp/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
+[ "$KOD_GITLEAKS" -ne 0 ] && grep -aE "^(RuleID|File|Line):" "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
 
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
@@ -258,11 +270,11 @@ else
     T="$(date +%s)"
     docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine \
         sh -c "npm ci --no-audit --no-fund && npm run lint && npm test -- --run && npm run build" \
-        > /tmp/bramka-front.log 2>&1
+        > "$KATALOG_BIEGU"/bramka-front.log 2>&1
     KOD_FRONT=$?
     CZAS_FRONT="$(czas_od "$T")"
     docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine chown -R "$UID_BRAMKI:$GID_BRAMKI" /praca >/dev/null 2>&1
-    grep -aE "Test Files|Tests |Compiled|Failed|error|Error" /tmp/bramka-front.log | tail -5
+    grep -aE "Test Files|Tests |Compiled|Failed|error|Error" "$KATALOG_BIEGU"/bramka-front.log | tail -5
     echo "front: EXIT=$KOD_FRONT, $CZAS_FRONT s"
 
     # Audyt npm biegnie OSOBNO, a nie w lancuchu wyzej, z dwoch powodow: ma nie
@@ -271,9 +283,9 @@ else
     # potrzebuje node_modules, wiec `npm ci` nie jest tu warunkiem.
     # `--omit=dev` swiadomie: podatnosci w vitest czy js-yaml nie ida do przegladarki.
     docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine \
-        npm audit --omit=dev --audit-level=high > /tmp/bramka-audyt-npm.log 2>&1
+        npm audit --omit=dev --audit-level=high > "$KATALOG_BIEGU"/bramka-audyt-npm.log 2>&1
     KOD_AUDYT_NPM=$?
-    PODATNOSCI_NPM="$(grep -aoE "[0-9]+ vulnerabilities \(.*\)|found 0 vulnerabilities" /tmp/bramka-audyt-npm.log | tail -1)"
+    PODATNOSCI_NPM="$(grep -aoE "[0-9]+ vulnerabilities \(.*\)|found 0 vulnerabilities" "$KATALOG_BIEGU"/bramka-audyt-npm.log | tail -1)"
     echo "audyt npm (pomiar, poza kodem wyjscia): EXIT=$KOD_AUDYT_NPM, ${PODATNOSCI_NPM:-brak odczytu}"
 fi
 
@@ -288,12 +300,12 @@ rm -f docker-compose.override.yml
 # (/mnt/wsl/docker-desktop-bind-mounts/...), ktory znika razem z kontenerami, i git konczy
 # sie wtedy "fatal: Unable to read current working directory". Zielone "drzewo po biegu:
 # 0 pozycji" bylo w takim biegu NIEPRAWDA, tylko wygladalo jak prawda.
-STATUS_TXT="$(git status --porcelain 2>/tmp/bramka-status.err)"
+STATUS_TXT="$(git status --porcelain 2>"$KATALOG_BIEGU"/bramka-status.err)"
 KOD_STATUS=$?
 KOD_DRZEWO=0
 if [ "$KOD_STATUS" -ne 0 ]; then
     KOD_DRZEWO=$KOD_STATUS
-    echo "drzewo po biegu: NIEZMIERZONE - git EXIT=$KOD_STATUS: $(head -1 /tmp/bramka-status.err)" >&2
+    echo "drzewo po biegu: NIEZMIERZONE - git EXIT=$KOD_STATUS: $(head -1 "$KATALOG_BIEGU"/bramka-status.err)" >&2
 else
     BRUD="$(printf '%s' "$STATUS_TXT" | grep -c .)"
     echo "drzewo po biegu: $BRUD pozycji"

@@ -359,7 +359,7 @@ to część **H08b**, sekcja 9 domyka oba w jednym PR-ze.
       `git push -u origin pakiet/H08-cms-tresci`; weryfikacja: **zabronione** — push na
       `main`, push na `upstream`.
 - [x] 9.8 Otworzyć **jeden** PR:
-      `gh pr create --repo tomekwilczak/psychon-hackaton --base main --head pakiet/H08-cms-tresci`;
+      `gh pr create --repo <repozytorium-hackathonu> --base main --head pakiet/H08-cms-tresci`;
       opis zawiera jawny podział zakresu na H08a i H08b, wyniki testów, sposób
       demonstracji, znane ograniczenia, listę odstępstw oraz adnotację, że PR świadomie
       przekracza orientacyjny limit ~400 linii (decyzja zespołu — obie połowy dotykają

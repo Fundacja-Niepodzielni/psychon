@@ -1,0 +1,63 @@
+# Wejscie srodowiska odbiorczego psychon-dev.
+#
+# Ten plik zastepuje 24 linie etykiet Traefika z docker-compose.oracle.yml.
+# Rozdzial ruchu jest ten sam, co tam: /api i /storage do backendu, cala
+# reszta do Next.js. Traefik robil to priorytetami (200 i 100), Caddy robi to
+# kolejnoscia i najdluzszym pasujacym wzorcem - dlatego priorytety znikaja,
+# a nie sa przepisywane.
+#
+# Czego tu NIE MA i byc nie powinno:
+#   - logowania (basic auth): dostepem steruje Cloudflare Access PRZED tym
+#     serwerem; drugi mechanizm w tym miejscu to drugie miejsce do pomylki,
+#   - automatycznego Let's Encrypt: certyfikat jest z Cloudflare Origin CA,
+#     bo tylko Cloudflare ma sie tu laczyc i tylko Cloudflare ten certyfikat
+#     uznaje. Dlatego `auto_https off` w bloku globalnym.
+{
+	auto_https off
+	admin off
+	# Adres, ktory Cloudflare pokazuje jako prawdziwy adres uzytkownika.
+	servers {
+		trusted_proxies static private_ranges
+		client_ip_headers CF-Connecting-IP X-Forwarded-For
+	}
+}
+
+# Zapytanie po adresie IP albo po zlej nazwie nie ma dostac aplikacji.
+# Odpowiedz 421 mowi wprost: to nie jest serwer dla tej nazwy.
+:80 {
+	redir https://{env.STAGING_DOMAIN}{uri} permanent
+}
+
+:443 {
+	tls internal
+	respond "Nieznana nazwa serwera." 421
+}
+
+{$STAGING_DOMAIN} {
+	tls /etc/caddy/tls/origin.crt /etc/caddy/tls/origin.key
+
+	log {
+		output stdout
+		format console
+	}
+
+	header {
+		# Srodowisko odbiorcze nie ma trafiac do wyszukiwarek. Ten sam
+		# naglowek co `psychon-noindex` w wersji Traefika.
+		X-Robots-Tag "noindex,nofollow"
+		-Server
+	}
+
+	# Backend: API i pliki wystawiane przez Laravel.
+	handle /api/* {
+		reverse_proxy app:8080
+	}
+	handle /storage/* {
+		reverse_proxy app:8080
+	}
+
+	# Cala reszta: Next.js.
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

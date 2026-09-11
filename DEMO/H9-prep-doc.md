@@ -418,7 +418,7 @@ po merge H08a    → H09b: <AssignmentPanel> w slocie admin-courses.ts
 6. **Przed każdym commitem:** `docker compose exec app php artisan test` (pełna suita),
    `./vendor/bin/pint`, `npm run lint -- --fix`, `npm run build`,
    `openspec validate h09-prowadzacy --strict`.
-7. **PR:** `gh pr create --repo tomekwilczak/psychon-hackaton --base main
+7. **PR:** `gh pr create --repo <repozytorium-hackathonu> --base main
    --head pakiet/H09-prowadzacy`. **Zabronione:** push na `main`, push na `upstream`,
    `gh pr create` bez `--repo`, **merge własnego PR-a**.
 

@@ -87,35 +87,46 @@ echo "[ZDALNIE] HEAD=$HEAD_TERAZ, drzewo: $BRUD pozycji"
 # wziecia slotu. Inaczej bieg, ktory sie nie odbyl (odmowa slotu), sprowadzilby
 # na dol cudzy - albo wlasny wczorajszy - log i wygladalby na pomiar.
 rm -f "$LOG"
+# Logi pomocnicze biegu: wlasny katalog na commit, obok logu glownego, a nie
+# wspolny /tmp, w ktorym plik innego konta zatrzymal pierwszy bieg (10.09 20:20).
+KATALOG_BIEGU="$KATALOG_BRAMEK/log/$REPO-$SHA"
+rm -rf "$KATALOG_BIEGU"
+mkdir -p "$KATALOG_BIEGU" || { echo "[ZDALNIE] nie zalozylem $KATALOG_BIEGU"; exit 2; }
+export KATALOG_BIEGU
 
-# Swiadek 2: slot bierze NARZEDZIE. `noclobber` gwarantuje, ze dwoch nie wezmie
-# tego samego pliku. Oba zajete = bieg sie NIE ODBYWA (kod 3), a nie "poczekam".
-SLOT1="$KATALOG_BRAMEK/HOST-SUITA-1.lock"
-SLOT2="$KATALOG_BRAMEK/HOST-SUITA-2.lock"
-ZETON="$REPO;$SHA;$(date "+%Y-%m-%d %H:%M:%S");pid=$$"
-MOJ_SLOT=""
-for S in "$SLOT1" "$SLOT2"; do
-    if ( set -o noclobber; echo "$ZETON" > "$S" ) 2>/dev/null; then MOJ_SLOT="$S"; break; fi
-done
-if [ -z "$MOJ_SLOT" ]; then
-    echo "[ZDALNIE] ODMOWA - oba sloty zajete, nic nie uruchamiam:"
-    for S in "$SLOT1" "$SLOT2"; do echo "[ZDALNIE]   za: $(cat "$S" 2>/dev/null)"; done
+# Swiadek 2: slot bierze NARZEDZIE - kanoniczny host-slot.sh, jedyny sposob
+# brania slotu na tym hoscie; wlasnej implementacji tu nie ma. Brak narzedzia =
+# bieg sie NIE odbywa (fail-closed). Zajete = kod 3, a nie "poczekam".
+NARZEDZIE_SLOTU="$KATALOG_BRAMEK/host-slot.sh"
+export HOST_SLOT_DIR="${HOST_SLOT_DIR:-$KATALOG_BRAMEK/slot}"
+if [ ! -f "$NARZEDZIE_SLOTU" ]; then
+    echo "[ZDALNIE] brak $NARZEDZIE_SLOTU - nic nie uruchamiam"
+    exit 2
+fi
+LINIA_SLOTU="$(bash "$NARZEDZIE_SLOTU" take "$REPO" "bramka-$SHA" "$$")"
+KOD_SLOTU=$?
+if [ "$KOD_SLOTU" -eq 3 ]; then
+    echo "[ZDALNIE] ODMOWA - sloty zajete, nic nie uruchamiam"
     exit 3
 fi
-echo "[ZDALNIE] slot: $MOJ_SLOT"
-
-bash -lc "$POLECENIE" > "$LOG" 2>&1
-KOD=$?
-
-# Swiadek 3: zdejmuje WYLACZNIE swoj zeton. Cudzej tresci nie kasuje - melduje.
-TERAZ="$(cat "$MOJ_SLOT" 2>/dev/null)"
-if [ "$TERAZ" = "$ZETON" ]; then
-    rm -f "$MOJ_SLOT"
-else
-    echo "[ZDALNIE] UWAGA: w slocie nie ma mojego zetonu - NIE zdejmuje."
-    echo "[ZDALNIE]   zapisalem: $ZETON"
-    echo "[ZDALNIE]   zastalem : $TERAZ"
+if [ "$KOD_SLOTU" -ne 0 ] || [ -z "$LINIA_SLOTU" ]; then
+    echo "[ZDALNIE] slot nie wziety (EXIT=$KOD_SLOTU) - nic nie uruchamiam"
+    exit 2
 fi
+ZETON="${LINIA_SLOTU#* }"
+# Swiadek 3: oddaje narzedzie, po zetonie - takze po bledzie i przerwaniu.
+# Cudzej tresci narzedzie nie zdejmuje (kod 4); tu tylko to meldujemy.
+zwolnij() {
+    bash "$NARZEDZIE_SLOTU" release "$ZETON" >/dev/null \
+        || echo "[ZDALNIE] UWAGA: release odmowil - slotu NIE zdejmuje recznie"
+}
+trap zwolnij EXIT INT TERM HUP
+echo "[ZDALNIE] slot: ${LINIA_SLOTU%% *}, logi pomocnicze: $KATALOG_BIEGU"
+
+# stdin odciety: ta czesc skryptu sama przyszla przez stdin (`bash -s`), wiec
+# proces bramki, ktory siegnie po stdin, zjadlby reszte tego skryptu.
+bash -lc "$POLECENIE" < /dev/null > "$LOG" 2>&1
+KOD=$?
 
 echo "[ZDALNIE] EXIT=$KOD"
 exit "$KOD"

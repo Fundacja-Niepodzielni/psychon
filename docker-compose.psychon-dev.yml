@@ -1,0 +1,187 @@
+# Srodowisko odbiorcze psychon-dev.niepodzielni.com (host CX33 Fundacji).
+#
+# Rozni sie od docker-compose.oracle.yml trzema rzeczami i tylko nimi:
+#   1. wejscie: wlasny Caddy zamiast cudzego Traefika (0 etykiet traefik),
+#   2. certyfikat: Cloudflare Origin CA zamiast Let's Encrypt (leresolver),
+#   3. siec: wylacznie siec projektu, zadnej sieci `external`.
+# Do tego dochodzi wpiecie tozsamosci (Konta Niepodzielni), ktorego wersja
+# oracle nie miala wcale.
+#
+# Dostepu z zewnatrz pilnuje Cloudflare Access PRZED tym stosem. Caddy nie ma
+# wlasnego logowania i miec go nie powinien: dwa niezalezne mechanizmy dostepu
+# to dwa miejsca do pomylki. Ruch spoza Cloudflare nie ma jak tu dojsc, bo
+# certyfikat Origin CA jest wazny wylacznie dla Cloudflare.
+#
+# Uruchomienie opisuje deploy/psychon-dev/README.md.
+name: psychon-dev
+
+x-laravel-env: &laravel-env
+  APP_NAME: "Platforma Niepodzielni"
+  APP_ENV: staging
+  APP_KEY: ${APP_KEY:?ustaw APP_KEY w /opt/psychon/.env}
+  APP_DEBUG: "false"
+  APP_URL: https://${STAGING_DOMAIN:?ustaw STAGING_DOMAIN w /opt/psychon/.env}
+  FRONTEND_URL: https://${STAGING_DOMAIN}
+  APP_LOCALE: pl
+  APP_FALLBACK_LOCALE: pl
+  LOG_CHANNEL: stack
+  LOG_STACK: single
+  LOG_LEVEL: warning
+  DB_CONNECTION: pgsql
+  DB_HOST: pgsql
+  DB_PORT: "5432"
+  DB_DATABASE: ${DB_DATABASE:-niepodzielni}
+  DB_USERNAME: ${DB_USERNAME:-niepodzielni}
+  DB_PASSWORD: ${DB_PASSWORD:?ustaw DB_PASSWORD w /opt/psychon/.env}
+  SESSION_DRIVER: database
+  SESSION_SECURE_COOKIE: "true"
+  QUEUE_CONNECTION: redis
+  CACHE_STORE: redis
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  FILESYSTEM_DISK: local
+  MAIL_MAILER: smtp
+  MAIL_HOST: mailpit
+  MAIL_PORT: "1025"
+  MAIL_FROM_ADDRESS: platforma@niepodzielni.local
+  MAIL_FROM_NAME: "Platforma Niepodzielni"
+  # Tozsamosc: backend sprawdza token dostepowy wystawiony przez Konta.
+  # `KEYCLOAK_ISSUER` to adres realmu widziany przez PRZEGLADARKE (trafia do
+  # tokenu jako `iss`), `KEYCLOAK_DISCOVERY_BASE` to adres, pod ktorym ten sam
+  # realm widzi SERWER wewnatrz sieci kontenerow. Rozjazd tych dwoch jest
+  # normalny i zamierzony; sklejenie ich w jeden klucz konczy sie albo
+  # odrzucaniem poprawnych tokenow, albo pobieraniem kluczy znikad.
+  KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:?ustaw KEYCLOAK_ISSUER w /opt/psychon/.env}
+  KEYCLOAK_DISCOVERY_BASE: ${KEYCLOAK_DISCOVERY_BASE:-${KEYCLOAK_ISSUER}}
+  KEYCLOAK_CA_FILE: ${KEYCLOAK_CA_FILE:-}
+  # Nigdy `true` na srodowisku odbiorczym. Zaufanie ustawia sie plikiem CA
+  # powyzej, nie wylaczeniem sprawdzania.
+  KEYCLOAK_INSECURE_TLS: "false"
+
+services:
+  app:
+    environment:
+      <<: *laravel-env
+      AUTORUN_ENABLED: "false"
+      PHP_OPCACHE_ENABLE: "1"
+    ports: !override []
+    volumes:
+      - ./backend:/var/www/html:z
+      - backend_vendor:/var/www/html/vendor
+      - backend_storage:/var/www/html/storage
+      - backend_cache:/var/www/html/bootstrap/cache
+      - idp_ca:/etc/psychon/idp-ca:ro
+    restart: unless-stopped
+
+  queue:
+    environment:
+      <<: *laravel-env
+    volumes:
+      - ./backend:/var/www/html:z
+      - backend_vendor:/var/www/html/vendor
+      - backend_storage:/var/www/html/storage
+      - backend_cache:/var/www/html/bootstrap/cache
+      - idp_ca:/etc/psychon/idp-ca:ro
+    restart: unless-stopped
+
+  scheduler:
+    image: serversideup/php:8.4-fpm-nginx
+    container_name: psychon_scheduler
+    working_dir: /var/www/html
+    command: ["php", "artisan", "schedule:work"]
+    healthcheck:
+      disable: true
+    volumes:
+      - ./backend:/var/www/html:z
+      - backend_vendor:/var/www/html/vendor
+      - backend_storage:/var/www/html/storage
+      - backend_cache:/var/www/html/bootstrap/cache
+      - idp_ca:/etc/psychon/idp-ca:ro
+    environment:
+      <<: *laravel-env
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [niepodzielni]
+    restart: unless-stopped
+
+  pgsql:
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-niepodzielni}
+      POSTGRES_USER: ${DB_USERNAME:-niepodzielni}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?ustaw DB_PASSWORD w /opt/psychon/.env}
+    ports: !override []
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  frontend:
+    image: psychon-frontend:psychon-dev
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.oracle
+      args:
+        # Adres publiczny, nie adres wewnetrzny: ten ciag ląduje w kodzie
+        # wyslanym do przegladarki, a przegladarka nie widzi sieci dockera.
+        NEXT_PUBLIC_API_URL: https://${STAGING_DOMAIN}
+    container_name: psychon_frontend
+    working_dir: /app
+    environment:
+      NEXT_PUBLIC_API_URL: https://${STAGING_DOMAIN}
+      NODE_ENV: production
+      # Auth.js dziala po stronie serwera Next, wiec jego zmienne siedza TU,
+      # a nie w kotwicy Laravela.
+      AUTH_KEYCLOAK_ISSUER: ${AUTH_KEYCLOAK_ISSUER:?ustaw AUTH_KEYCLOAK_ISSUER w /opt/psychon/.env}
+      AUTH_SECRET: ${AUTH_SECRET:?ustaw AUTH_SECRET w /opt/psychon/.env}
+    depends_on:
+      app:
+        condition: service_started
+    networks: [niepodzielni]
+    restart: unless-stopped
+
+  mailpit:
+    # Panel poczty slucha wylacznie na petli zwrotnej serwera: z zewnatrz jest
+    # niedostepny, wchodzi sie tunelem SSH. Za Access go NIE wystawiamy.
+    ports: !override
+      - "127.0.0.1:${NP_MAILPIT_PORT:-8025}:8025"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: psychon_caddy
+    # Porty na hoscie zajmuje wylacznie ta usluga. Zadna inna nie wystawia
+    # niczego poza petla zwrotna.
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/psychon-dev/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certyfikat Origin CA. Klucz prywatny kladziony na hoscie w TYM SAMYM
+      # biegu, w ktorym certyfikat jest wystawiany - nie wczesniej.
+      - /opt/psychon/tls:/etc/caddy/tls:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN:?ustaw STAGING_DOMAIN w /opt/psychon/.env}
+    depends_on:
+      app:
+        condition: service_started
+      frontend:
+        condition: service_started
+    networks: [niepodzielni]
+    restart: unless-stopped
+
+volumes:
+  backend_vendor:
+  backend_storage:
+  backend_cache:
+  caddy_data:
+  caddy_config:
+  # Certyfikat CA tymczasowego dostawcy tozsamosci (zalacznik 022). Pusty
+  # wolumin jest poprawnym stanem: dopoki `KEYCLOAK_CA_FILE` jest puste,
+  # backend uzywa magazynu zaufania systemu.
+  idp_ca:

@@ -8,7 +8,7 @@ wartościami właściwymi dla swojego pakietu.
 
 Właściwe repozytorium pracy:
 
-- `origin`: `https://github.com/tomekwilczak/psychon-hackaton.git`
+- `origin`: `https://github.com/<repozytorium-hackathonu>.git`
 - `upstream`: `https://github.com/Fundacja-Niepodzielni/psychon.git`
 
 Repozytorium Fundacji jest wyłącznie źródłem odniesienia. **Nigdy nie pushuj do
@@ -26,7 +26,7 @@ git branch --show-current
 Oczekiwane remote'y:
 
 ```text
-origin   https://github.com/tomekwilczak/psychon-hackaton.git
+origin   https://github.com/<repozytorium-hackathonu>.git
 upstream https://github.com/Fundacja-Niepodzielni/psychon.git
 ```
 
@@ -141,7 +141,7 @@ skierować PR-a do repozytorium Fundacji:
 
 ```bash
 gh pr create \
-  --repo tomekwilczak/psychon-hackaton \
+  --repo <repozytorium-hackathonu> \
   --base main \
   --head pakiet/HXX-nazwa \
   --title "HXX: opis zmiany" \
@@ -152,12 +152,12 @@ Po utworzeniu sprawdź PR:
 
 ```bash
 gh pr view <numer> \
-  --repo tomekwilczak/psychon-hackaton
+  --repo <repozytorium-hackathonu>
 ```
 
 PR musi wskazywać:
 
-- repozytorium: `tomekwilczak/psychon-hackaton`,
+- repozytorium: `<repozytorium-hackathonu>`,
 - base: `main`,
 - head: `pakiet/HXX-nazwa`.
 
@@ -171,7 +171,7 @@ Nie wykonuj:
 
 - `git push upstream`,
 - `git push origin main`,
-- `gh pr create` bez jawnego `--repo tomekwilczak/psychon-hackaton`,
+- `gh pr create` bez jawnego `--repo <repozytorium-hackathonu>`,
 - pracy bezpośrednio na `main`,
 - samodzielnego merge do `main`,
 - force push bez wyraźnej zgody,
