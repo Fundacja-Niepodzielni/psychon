@@ -5,8 +5,10 @@ namespace Tests\Feature\AccessExpiry;
 use App\Models\Edition;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\ActsAsRole;
+use Tests\Support\Sso\KeycloakTokenFactory;
 use Tests\TestCase;
 
 /**
@@ -94,17 +96,24 @@ class AccessExpiryEnforcementTest extends TestCase
         $this->json($method, $uri, $body)->assertStatus($expectStatus);
     }
 
-    public function test_login_works_regardless_of_expired_access(): void
+    /**
+     * SSO only: there is no password login left — the equivalent guarantee
+     * is that `/sso/powiaz` (binding a local account to a Konta Niepodzielni
+     * identity) works regardless of expired access. It is guarded only by
+     * `auth.keycloak` (the principal middleware), never `access.active`.
+     */
+    public function test_binding_works_regardless_of_expired_access(): void
     {
-        $user = User::factory()->create([
-            'password' => 'demo1234',
+        $user = User::factory()->invited()->create([
             'access_expires_at' => now()->subYear(),
         ]);
 
-        $this->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
-            'password' => 'demo1234',
-        ])->assertOk();
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $token = $realm->mint(['sub' => (string) Str::uuid()]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/sso/powiaz', ['token' => $user->activation_token])
+            ->assertOk();
     }
 
     public function test_completed_programme_lifts_the_access_limit(): void

@@ -55,7 +55,7 @@ merge your own package PR.
 
 ## API Conventions
 
-Base path `/api/v1`, Sanctum Bearer auth, responses always wrapped in `{"data": ...}` (lists add `meta`), errors in the `error` envelope, ISO 8601 UTC timestamps, decimals as strings. Details and status-code table: @docs/hackathon/02-kontrakt-api.md.
+Base path `/api/v1`, SSO only (Konta Niepodzielni / Keycloak) Bearer auth — no password login, bind a seeded account with `php artisan psychon:sso-powiaz {userId} {sub}` — responses always wrapped in `{"data": ...}` (lists add `meta`), errors in the `error` envelope, ISO 8601 UTC timestamps, decimals as strings. Details and status-code table: @docs/hackathon/02-kontrakt-api.md.
 
 ## Commit & Pull Request Guidelines
 

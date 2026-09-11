@@ -8,7 +8,7 @@
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h15')
@@ -22,7 +22,7 @@ if (! config('features.h15')) {
     return;
 }
 
-Route::middleware(['auth:sanctum', 'access.active', 'role:volunteer'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer'])->group(function (): void {
     Route::get('/psychologist-profile', [PsychologistProfileController::class, 'index']);
     Route::patch('/psychologist-profile', [PsychologistProfileController::class, 'update']);
     Route::post('/psychologist-profile/submit', [PsychologistProfileController::class, 'submit']);
@@ -30,7 +30,7 @@ Route::middleware(['auth:sanctum', 'access.active', 'role:volunteer'])->group(fu
     Route::post('/psychologist-profile/consent/withdraw', [PsychologistProfileController::class, 'withdrawConsent']);
 });
 
-Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/profiles', [AdminProfileController::class, 'index']);
     Route::get('/admin/profiles/{id}', [AdminProfileController::class, 'show'])->whereNumber('id');
     Route::post('/admin/profiles/{id}/accept', [AdminProfileController::class, 'accept'])->whereNumber('id');

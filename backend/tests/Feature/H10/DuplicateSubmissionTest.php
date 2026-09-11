@@ -5,7 +5,6 @@ namespace Tests\Feature\H10;
 use App\Models\TestAttempt;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H10 · podwójna wysyłka testu — kryterium właściciela.
@@ -35,7 +34,7 @@ class DuplicateSubmissionTest extends TestPackageCase
     public function test_the_same_submission_sent_twice_costs_one_attempt(): void
     {
         $test = $this->makeTest(questions: 10);
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $odpowiedzi = $this->answersFor($test, 9); // 90% — wynik rozpoznawalny w odpowiedzi
 
@@ -81,7 +80,7 @@ class DuplicateSubmissionTest extends TestPackageCase
     public function test_a_genuine_second_attempt_with_different_answers_is_still_recorded(): void
     {
         $test = $this->makeTest(questions: 10);
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 3)])
             ->assertCreated()
@@ -98,7 +97,7 @@ class DuplicateSubmissionTest extends TestPackageCase
     public function test_the_same_answers_sent_after_the_window_are_a_new_attempt(): void
     {
         $test = $this->makeTest(questions: 10);
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $odpowiedzi = $this->answersFor($test, 4);
 
@@ -125,7 +124,7 @@ class DuplicateSubmissionTest extends TestPackageCase
     public function test_a_new_submission_at_the_exhausted_limit_answers_403(): void
     {
         $test = $this->makeTest(questions: 10);
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         // Trzy RÓŻNE zestawy odpowiedzi — żeby wyczerpanie limitu było prawdziwe,
         // a nie skutkiem uznania powtórki za nowe podejście.
@@ -159,7 +158,7 @@ class DuplicateSubmissionTest extends TestPackageCase
     public function test_a_double_click_on_the_last_attempt_answers_with_the_result(): void
     {
         $test = $this->makeTest(questions: 10);
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $limit = $this->getJson("/api/v1/courses/{$test->course->slug}/test")
             ->assertOk()

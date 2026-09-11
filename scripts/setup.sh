@@ -33,12 +33,14 @@ Frontend:      cd frontend && npm run dev  ->  http://localhost:3000
 Mailpit:       http://localhost:${MAILPIT_PORT}   (tu lądują wszystkie e-maile)
 Testy:         docker compose exec app php artisan test
 
-Konta demo (hasła jak w makiecie):
-  marta@demo.pl / demo1234    wolontariuszka w trakcie programu
-  ola@demo.pl / demo1234      absolwentka (certyfikat, profil)
-  filip@demo.pl / demo1234    student
-  joanna@demo.pl / demo1234   psycholożka prowadząca
-  opiekun@demo.pl / admin1234 opiekunka projektu
-  admin@demo.pl / admin1234   super admin
+Konta demo (SSO Konta Niepodzielni — bez haseł, powiąż komendą operatora):
+  marta@demo.pl    wolontariuszka w trakcie programu
+  ola@demo.pl      absolwentka (certyfikat, profil)
+  filip@demo.pl    student
+  joanna@demo.pl   psycholożka prowadząca
+  opiekun@demo.pl  opiekunka projektu
+  admin@demo.pl    super admin
+
+  docker compose exec app php artisan psychon:sso-powiaz {id} {sub}
 ==========================================
 EOT

@@ -22,7 +22,7 @@ class AdminEmailsTest extends TestCase
 
         Notify::send($marta, 'course.unlocked', 'Kurs odblokowany', 'Możesz zacząć etap 2.', '/panel/kursy/2');
 
-        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/admin/emails');
+        $response = $this->actingAs($admin, 'keycloak')->getJson('/api/v1/admin/emails');
 
         $response->assertOk()->assertJsonFragment([
             'to_email' => 'marta@demo.pl',
@@ -39,14 +39,14 @@ class AdminEmailsTest extends TestCase
     {
         $pm = User::factory()->create(['role' => 'project_manager']);
 
-        $this->actingAs($pm, 'sanctum')->getJson('/api/v1/admin/emails')->assertOk();
+        $this->actingAs($pm, 'keycloak')->getJson('/api/v1/admin/emails')->assertOk();
     }
 
     public function test_non_admin_role_is_forbidden_from_the_email_inbox(): void
     {
         $volunteer = User::factory()->create(['role' => 'volunteer']);
 
-        $this->actingAs($volunteer, 'sanctum')->getJson('/api/v1/admin/emails')
+        $this->actingAs($volunteer, 'keycloak')->getJson('/api/v1/admin/emails')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
     }

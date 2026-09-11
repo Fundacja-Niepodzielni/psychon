@@ -5,7 +5,6 @@ namespace Tests\Feature\H09;
 use App\Models\InstructorProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -24,7 +23,7 @@ class InstructorDirectoryTest extends TestCase
 
     public function test_logged_in_participant_sees_the_directory_with_courses(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $joanna = $this->user('joanna@demo.pl');
 
         $response = $this->getJson('/api/v1/instructors')->assertOk();
@@ -50,7 +49,7 @@ class InstructorDirectoryTest extends TestCase
 
     public function test_directory_dto_hides_sensitive_fields(): void
     {
-        Sanctum::actingAs($this->user('filip@demo.pl'));
+        $this->actingAs($this->user('filip@demo.pl'), 'keycloak');
 
         $card = $this->getJson('/api/v1/instructors')->assertOk()->json('data.0');
 
@@ -70,7 +69,7 @@ class InstructorDirectoryTest extends TestCase
         $mentor = User::factory()->role('instructor')->create(['first_name' => 'Zofia', 'last_name' => 'Mentor']);
         $joanna->instructorProfile->update(['supervisor_id' => $mentor->id]);
 
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->getJson("/api/v1/instructors/{$joanna->id}")
             ->assertOk()
@@ -81,7 +80,7 @@ class InstructorDirectoryTest extends TestCase
 
     public function test_single_card_supervisor_is_null_when_unset(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $joanna = $this->user('joanna@demo.pl');
 
         $this->getJson("/api/v1/instructors/{$joanna->id}")
@@ -91,7 +90,7 @@ class InstructorDirectoryTest extends TestCase
 
     public function test_unknown_card_returns_404(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/instructors/999999')
             ->assertStatus(404)
@@ -101,7 +100,7 @@ class InstructorDirectoryTest extends TestCase
     public function test_account_without_a_profile_is_not_a_card(): void
     {
         $bareInstructor = User::factory()->role('instructor')->create();
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->getJson("/api/v1/instructors/{$bareInstructor->id}")
             ->assertStatus(404)
@@ -118,7 +117,7 @@ class InstructorDirectoryTest extends TestCase
         $volunteer = User::factory()->role('volunteer')->create();
         InstructorProfile::create(['user_id' => $volunteer->id, 'city' => 'Kraków']);
 
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $ids = array_column($this->getJson('/api/v1/instructors')->assertOk()->json('data'), 'user_id');
         $this->assertNotContains($volunteer->id, $ids);

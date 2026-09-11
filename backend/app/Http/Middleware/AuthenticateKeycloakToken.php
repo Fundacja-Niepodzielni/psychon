@@ -3,16 +3,12 @@
 namespace App\Http\Middleware;
 
 use App\Exceptions\ApiException;
-use App\Services\Keycloak\BackchannelLogoutAlarm;
-use App\Services\Keycloak\InvalidationStore;
 use App\Services\Keycloak\InvalidKeycloakTokenException;
-use App\Services\Keycloak\KeycloakSessionRegistry;
+use App\Services\Keycloak\KeycloakBackchannelInvalidation;
 use App\Services\Keycloak\TokenValidator;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 /**
  * Registered as the `auth.keycloak` alias in
@@ -33,8 +29,7 @@ class AuthenticateKeycloakToken
 {
     public function __construct(
         private readonly TokenValidator $validator,
-        private readonly InvalidationStore $markers,
-        private readonly KeycloakSessionRegistry $sessions,
+        private readonly KeycloakBackchannelInvalidation $backchannel,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -58,61 +53,16 @@ class AuthenticateKeycloakToken
 
         // Tokens with no `sid` never went through a browser session Konta
         // Niepodzielni can back-channel-log-out (e.g. `client_credentials`)
-        // — there is nothing to check, and this is the identical branch
-        // every existing hermetic token test exercises (none of those
-        // tokens carry a `sid`), so this slice adds zero store calls to
-        // that path.
-        if ($principal->sid !== null) {
-            $verdict = $this->markers->verdict($principal->sid);
+        // — `check()` returns `null` for those straight away.
+        $cause = $this->backchannel->check($principal->sid, $principal->sub);
 
-            if ($verdict['state'] === InvalidationStore::READ_FAILURE) {
-                // Point 6: "I cannot read the store" means "not invalidated
-                // → refuse, force re-login" — never "no marker → let in".
-                BackchannelLogoutAlarm::raise('read', $verdict['reason'], ['sid' => $principal->sid]);
-
-                // Point 7: a refusal caused by OUR OWN storage outage must
-                // NOT delete the session-registry row. Once the store
-                // heals, the marker decides — not cleanup performed during
-                // the outage. So: deny, and touch nothing.
-                throw new ApiException(
-                    401,
-                    'invalid_token',
-                    'Token dostępu jest nieprawidłowy lub wygasł.',
-                    reason: ['cause' => 'session_check_unavailable'],
-                );
-            }
-
-            if ($verdict['state'] === InvalidationStore::READ_MARKED) {
-                // Confirmed invalidation — now it is safe to clean up the
-                // bookkeeping row, because the decision did not come from a
-                // storage failure. Wrapped defensively: an unrelated fault in
-                // this bookkeeping table must never turn a correct 401 into
-                // an uncaught 500 — the deny decision already stands on its
-                // own regardless of whether this cleanup succeeds.
-                try {
-                    $this->sessions->destroy($principal->sid, null);
-                } catch (Throwable $e) {
-                    Log::warning('keycloak.backchannel_logout.session_cleanup_failed', ['message' => $e->getMessage()]);
-                }
-
-                throw new ApiException(
-                    401,
-                    'invalid_token',
-                    'Token dostępu jest nieprawidłowy lub wygasł.',
-                    reason: ['cause' => 'session_invalidated'],
-                );
-            }
-
-            // READ_ABSENT with a HEALTHY store: the positive control half of
-            // point 6 — a healthy, empty marker store must still admit
-            // everybody, or this fail-safe has shipped a mass logout.
-            // Bookkeeping only, wrapped for the same reason as above: it
-            // must never turn an otherwise-valid request into a 500.
-            try {
-                $this->sessions->touch($principal->sid, $principal->sub);
-            } catch (Throwable $e) {
-                Log::warning('keycloak.backchannel_logout.session_touch_failed', ['message' => $e->getMessage()]);
-            }
+        if ($cause !== null) {
+            throw new ApiException(
+                401,
+                'invalid_token',
+                'Token dostępu jest nieprawidłowy lub wygasł.',
+                reason: ['cause' => $cause],
+            );
         }
 
         $request->attributes->set('keycloak_principal', $principal);

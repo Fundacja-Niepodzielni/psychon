@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Sso\KeycloakTokenFactory;
 use Tests\TestCase;
 
 /**
@@ -13,9 +14,20 @@ class ErrorEnvelopeTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * SSO only: there is no unauthenticated validating endpoint left to
+     * exercise this with — the password login route is gone. `/sso/powiaz` validates
+     * its own body ({token}) once past the `auth.keycloak` middleware, so a
+     * VALID bearer token with an empty body still exercises the same
+     * `ValidationException` → envelope path.
+     */
     public function test_validation_error_uses_the_contract_envelope(): void
     {
-        $response = $this->postJson('/api/v1/auth/login', []);
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $token = $realm->mint();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/sso/powiaz', []);
 
         $response->assertStatus(422)
             ->assertJsonStructure(['error' => ['status', 'code', 'message', 'errors']])
@@ -23,7 +35,7 @@ class ErrorEnvelopeTest extends TestCase
             ->assertJsonPath('error.code', 'validation_failed')
             ->assertJsonPath('error.message', 'Popraw zaznaczone pola.');
 
-        $this->assertIsArray($response->json('error.errors.email'));
+        $this->assertIsArray($response->json('error.errors.token'));
     }
 
     public function test_missing_token_returns_401_unauthenticated_envelope(): void

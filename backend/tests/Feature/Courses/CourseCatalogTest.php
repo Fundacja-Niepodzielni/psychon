@@ -5,7 +5,6 @@ namespace Tests\Feature\Courses;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -37,7 +36,7 @@ class CourseCatalogTest extends TestCase
 
     public function test_catalogue_statuses_match_the_canonical_seed(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $items = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'))
             ->keyBy('slug');
@@ -56,7 +55,7 @@ class CourseCatalogTest extends TestCase
 
     public function test_catalogue_item_carries_exactly_the_contract_fields(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $response = $this->getJson('/api/v1/courses')->assertOk();
 
@@ -71,7 +70,7 @@ class CourseCatalogTest extends TestCase
 
     public function test_catalogue_is_ordered_by_sequence_with_courses_outside_it_last(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $orders = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'))
             ->pluck('sequence_order')
@@ -92,7 +91,7 @@ class CourseCatalogTest extends TestCase
         ]);
 
         // A user assigned to both product groups is not narrowed implicitly.
-        Sanctum::actingAs(User::factory()->role('super_admin')->create(['product_group' => 'both']));
+        $this->actingAs(User::factory()->role('super_admin')->create(['product_group' => 'both']), 'keycloak');
 
         $all = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'))->pluck('slug');
         $this->assertContains('dobrostan-wstep', $all);
@@ -107,7 +106,7 @@ class CourseCatalogTest extends TestCase
 
     public function test_unknown_product_group_is_rejected(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/courses?product_group=nieistniejaca')
             ->assertStatus(422)

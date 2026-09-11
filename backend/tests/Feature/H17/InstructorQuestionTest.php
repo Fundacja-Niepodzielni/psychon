@@ -10,7 +10,6 @@ use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -28,7 +27,7 @@ class InstructorQuestionTest extends TestCase
 
     public function test_inbox_returns_the_agreed_shape(): void
     {
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $response = $this->getJson('/api/v1/instructor/questions')->assertOk();
 
@@ -51,7 +50,7 @@ class InstructorQuestionTest extends TestCase
     {
         $foreign = $this->foreignQuestion();
 
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
         $response = $this->getJson('/api/v1/instructor/questions')->assertOk();
 
         $this->assertNotContains($foreign->id, array_column($response->json('data'), 'id'));
@@ -75,7 +74,7 @@ class InstructorQuestionTest extends TestCase
             ]);
         }
 
-        Sanctum::actingAs($joanna);
+        $this->actingAs($joanna, 'keycloak');
 
         $unanswered = $this->getJson('/api/v1/instructor/questions?answered=false')->assertOk();
         $this->assertSame(1, $unanswered->json('meta.total'));
@@ -89,7 +88,7 @@ class InstructorQuestionTest extends TestCase
 
     public function test_participant_cannot_open_the_inbox(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/instructor/questions')
             ->assertStatus(403)
@@ -102,7 +101,7 @@ class InstructorQuestionTest extends TestCase
         $marta = $this->user('marta@demo.pl');
         $question = InstructorQuestion::where('user_id', $marta->id)->firstOrFail();
 
-        Sanctum::actingAs($joanna);
+        $this->actingAs($joanna, 'keycloak');
         $response = $this->postJson("/api/v1/instructor/questions/{$question->id}/answer", [
             'answer' => 'Zostaw ciszę i poczekaj.',
         ])->assertOk();
@@ -124,7 +123,7 @@ class InstructorQuestionTest extends TestCase
     {
         $foreign = $this->foreignQuestion();
 
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $this->postJson("/api/v1/instructor/questions/{$foreign->id}/answer", ['answer' => 'Odpowiedź.'])
             ->assertStatus(404)
@@ -142,7 +141,7 @@ class InstructorQuestionTest extends TestCase
         $joanna = $this->user('joanna@demo.pl');
         $question = InstructorQuestion::where('user_id', $this->user('marta@demo.pl')->id)->firstOrFail();
 
-        Sanctum::actingAs($joanna);
+        $this->actingAs($joanna, 'keycloak');
         $this->postJson("/api/v1/instructor/questions/{$question->id}/answer", [
             'answer' => 'Pierwsza odpowiedź.',
         ])->assertOk();
@@ -167,7 +166,7 @@ class InstructorQuestionTest extends TestCase
         $question = InstructorQuestion::where('user_id', $this->user('marta@demo.pl')->id)->firstOrFail();
         $before = Notification::count();
 
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $this->postJson("/api/v1/instructor/questions/{$question->id}/answer", ['answer' => '  '])
             ->assertStatus(422)
@@ -183,7 +182,7 @@ class InstructorQuestionTest extends TestCase
         $question = InstructorQuestion::where('user_id', $this->user('marta@demo.pl')->id)->firstOrFail();
         $before = AuditLogEntry::count();
 
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
         $this->postJson("/api/v1/instructor/questions/{$question->id}/answer", [
             'answer' => 'Odpowiedź bez audytu.',
         ])->assertOk();
@@ -196,12 +195,12 @@ class InstructorQuestionTest extends TestCase
         $lesson = $this->joannasLesson();
         $payload = '<script>alert(1)</script>';
 
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $this->postJson("/api/v1/lessons/{$lesson->id}/questions", ['question' => $payload])
             ->assertCreated()
             ->assertJsonPath('data.question', $payload);
 
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
         $inbox = $this->getJson('/api/v1/instructor/questions?answered=false')->assertOk();
 
         $this->assertContains($payload, array_column($inbox->json('data'), 'question'));

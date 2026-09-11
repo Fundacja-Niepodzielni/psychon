@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DocumentApiTest extends TestCase
@@ -23,7 +22,7 @@ class DocumentApiTest extends TestCase
     public function test_owner_sees_exactly_their_own_document(): void
     {
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $response = $this->getJson('/api/v1/documents');
 
@@ -36,7 +35,7 @@ class DocumentApiTest extends TestCase
     public function test_a_user_without_documents_sees_an_empty_list(): void
     {
         $filip = User::where('email', 'filip@demo.pl')->firstOrFail();
-        Sanctum::actingAs($filip);
+        $this->actingAs($filip, 'keycloak');
 
         $response = $this->getJson('/api/v1/documents');
 
@@ -47,7 +46,7 @@ class DocumentApiTest extends TestCase
     public function test_generate_fails_with_profile_incomplete_and_lists_missing_fields(): void
     {
         $filip = User::where('email', 'filip@demo.pl')->firstOrFail();
-        Sanctum::actingAs($filip);
+        $this->actingAs($filip, 'keycloak');
 
         $response = $this->postJson('/api/v1/documents/generate', ['type' => 'volunteer_agreement']);
 
@@ -70,7 +69,7 @@ class DocumentApiTest extends TestCase
             'address_city' => 'Gdańsk',
             'address_zip' => '80-001',
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $response = $this->postJson('/api/v1/documents/generate', ['type' => 'volunteer_agreement']);
 
@@ -86,7 +85,7 @@ class DocumentApiTest extends TestCase
     public function test_generate_rejects_an_unknown_type(): void
     {
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $response = $this->postJson('/api/v1/documents/generate', ['type' => 'certificate']);
 
@@ -96,7 +95,7 @@ class DocumentApiTest extends TestCase
     public function test_repeat_generate_is_rejected_without_changing_the_document_count(): void
     {
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $response = $this->postJson('/api/v1/documents/generate', ['type' => 'volunteer_agreement']);
 
@@ -108,7 +107,7 @@ class DocumentApiTest extends TestCase
     public function test_owner_can_download_their_document(): void
     {
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
         $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
@@ -124,7 +123,7 @@ class DocumentApiTest extends TestCase
         $filip = User::where('email', 'filip@demo.pl')->firstOrFail();
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
-        Sanctum::actingAs($filip);
+        $this->actingAs($filip, 'keycloak');
         $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
 
         $response = $this->get($url);
@@ -135,7 +134,7 @@ class DocumentApiTest extends TestCase
     public function test_an_expired_signature_is_rejected(): void
     {
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
         $url = URL::temporarySignedRoute('documents.download', now()->subMinutes(1), ['document' => $document->id]);
@@ -148,7 +147,7 @@ class DocumentApiTest extends TestCase
     public function test_a_tampered_signature_is_rejected(): void
     {
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
         $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
@@ -167,7 +166,7 @@ class DocumentApiTest extends TestCase
         // Seed intentionally points at a file absent from disk (design D7).
         $this->assertFalse(Storage::disk('local')->exists($document->pdf_path));
 
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
         $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
 
         $response = $this->get($url);

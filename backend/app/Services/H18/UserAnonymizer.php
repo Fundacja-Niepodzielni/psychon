@@ -9,6 +9,8 @@ use App\Models\DataExport;
 use App\Models\ProfileDocument;
 use App\Models\PsychologistProfile;
 use App\Models\User;
+use App\Services\Keycloak\InvalidationStore;
+use App\Services\Keycloak\KeycloakSessionRegistry;
 use App\Support\AuditLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -81,7 +83,6 @@ final class UserAnonymizer
                 'first_name' => 'Konto',
                 'last_name' => 'usunięte',
                 'email' => $placeholderEmail,
-                'password' => null,
                 'phone' => null,
                 'address_street' => null,
                 'address_city' => null,
@@ -92,11 +93,17 @@ final class UserAnonymizer
                 'anonymized_at' => now(),
             ])->save();
 
-            // Every existing bearer token dies with the identity behind it —
-            // otherwise a session opened before the procedure would keep
-            // reaching owner-only endpoints (profile, exports, certificate
-            // download) after the account is supposed to be unreachable.
-            $user->tokens()->delete();
+            // Every Keycloak session this resource server has ever SEEN for
+            // this identity (`keycloak_sessions`, bookkeeping only) is marked
+            // invalidated the same way a real back-channel logout would —
+            // so an already-issued, not-yet-expired bearer token dies
+            // immediately rather than merely at its natural expiry. This is
+            // best-effort: a session this table never touched is not in
+            // there to mark. The AUTHORITATIVE backstop, which catches every
+            // case including that one, is `anonymized_at` itself — checked
+            // by `KeycloakGuardResolver` on every single request regardless
+            // of any session bookkeeping.
+            self::endKeycloakSessions($user);
 
             // F-19: skasowanie pliku z dysku nie podlega wycofaniu transakcji
             // — nie ma "DELETE FROM disk" do wycofania. Gdyby cokolwiek PO tym
@@ -118,6 +125,30 @@ final class UserAnonymizer
 
             return $user;
         });
+    }
+
+    /**
+     * Marks every `sid` this server has recorded for the user's
+     * `keycloak_sub` as invalidated (`InvalidationStore::mark()`, the same
+     * write the real back-channel logout endpoint performs), then clears the
+     * bookkeeping rows. A no-op for a never-bound account.
+     */
+    private static function endKeycloakSessions(User $user): void
+    {
+        $sub = $user->keycloak_sub;
+
+        if ($sub === null || $sub === '') {
+            return;
+        }
+
+        $registry = new KeycloakSessionRegistry;
+        $markers = new InvalidationStore;
+
+        foreach ($registry->sidsForSub($sub) as $sid) {
+            $markers->mark($sid);
+        }
+
+        $registry->destroy(null, $sub);
     }
 
     /**

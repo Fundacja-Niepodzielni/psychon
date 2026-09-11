@@ -47,7 +47,7 @@ class InstructorPermissionsCriterionWitnessTest extends TestCase
         ]);
         $admin = User::factory()->create(['role' => 'project_manager']);
 
-        $response = $this->actingAs($instructor, 'sanctum')
+        $response = $this->actingAs($instructor, 'keycloak')
             ->postJson('/api/v1/instructor/cases', [
                 'volunteer_id' => $volunteer->id,
                 'subject' => 'Sprawa-Swiadek-Pozytywna-100',
@@ -56,7 +56,7 @@ class InstructorPermissionsCriterionWitnessTest extends TestCase
 
         $response->assertSuccessful();
 
-        $listResponse = $this->actingAs($admin, 'sanctum')
+        $listResponse = $this->actingAs($admin, 'keycloak')
             ->getJson('/api/v1/admin/supervision/cases');
 
         $listResponse->assertOk();
@@ -70,7 +70,7 @@ class InstructorPermissionsCriterionWitnessTest extends TestCase
         $volunteer = User::factory()->create(['role' => 'volunteer']);
         $otherVolunteer = User::factory()->create(['role' => 'volunteer']);
 
-        $response = $this->actingAs($volunteer, 'sanctum')
+        $response = $this->actingAs($volunteer, 'keycloak')
             ->postJson('/api/v1/instructor/cases', [
                 'volunteer_id' => $otherVolunteer->id,
                 'subject' => 'Sprawa-Swiadek-Negatywna-100',
@@ -120,7 +120,7 @@ class InstructorPermissionsCriterionWitnessTest extends TestCase
             'assigned_at' => now(),
         ]);
 
-        $responseA = $this->actingAs($instructorA, 'sanctum')
+        $responseA = $this->actingAs($instructorA, 'keycloak')
             ->getJson('/api/v1/instructor/group');
 
         $responseA->assertOk();
@@ -139,13 +139,13 @@ class InstructorPermissionsCriterionWitnessTest extends TestCase
         $instructor = User::factory()->create(['role' => 'instructor']);
         $volunteer = User::factory()->create(['role' => 'volunteer']);
 
-        $projectManagerResponse = $this->actingAs($projectManager, 'sanctum')
+        $projectManagerResponse = $this->actingAs($projectManager, 'keycloak')
             ->getJson('/api/v1/admin/supervision/cases');
-        $superAdminResponse = $this->actingAs($superAdmin, 'sanctum')
+        $superAdminResponse = $this->actingAs($superAdmin, 'keycloak')
             ->getJson('/api/v1/admin/supervision/cases');
-        $instructorResponse = $this->actingAs($instructor, 'sanctum')
+        $instructorResponse = $this->actingAs($instructor, 'keycloak')
             ->getJson('/api/v1/admin/supervision/cases');
-        $volunteerResponse = $this->actingAs($volunteer, 'sanctum')
+        $volunteerResponse = $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/admin/supervision/cases');
 
         // Noga 4 (pozytywna) — obie role administracyjne z kryterium wchodzą.

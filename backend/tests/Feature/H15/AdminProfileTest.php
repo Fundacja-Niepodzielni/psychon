@@ -30,7 +30,7 @@ class AdminProfileTest extends TestCase
         $submitted = $this->submittedProfile();
         $this->withdrawnProfile();
 
-        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/admin/profiles');
+        $response = $this->actingAs($admin, 'keycloak')->getJson('/api/v1/admin/profiles');
 
         $response->assertOk()->assertJsonCount(1, 'data');
         $this->assertSame($submitted->id, $response->json('data.0.id'));
@@ -41,7 +41,7 @@ class AdminProfileTest extends TestCase
         $admin = User::factory()->create(['role' => 'project_manager']);
         $withdrawn = $this->withdrawnProfile();
 
-        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/admin/profiles?status=withdrawn');
+        $response = $this->actingAs($admin, 'keycloak')->getJson('/api/v1/admin/profiles?status=withdrawn');
 
         $response->assertOk()->assertJsonCount(1, 'data');
         $this->assertSame($withdrawn->id, $response->json('data.0.id'));
@@ -52,7 +52,7 @@ class AdminProfileTest extends TestCase
         $admin = User::factory()->create(['role' => 'project_manager']);
         $profile = $this->submittedProfile();
 
-        $response = $this->actingAs($admin, 'sanctum')->getJson("/api/v1/admin/profiles/{$profile->id}");
+        $response = $this->actingAs($admin, 'keycloak')->getJson("/api/v1/admin/profiles/{$profile->id}");
 
         $response->assertOk();
         $this->assertNotEmpty($response->json('data.documents.0.download_url'));
@@ -70,7 +70,7 @@ class AdminProfileTest extends TestCase
             ['profileId' => $profile->id, 'docId' => $document->id],
         );
 
-        $this->actingAs($admin, 'sanctum')->get($url)->assertOk();
+        $this->actingAs($admin, 'keycloak')->get($url)->assertOk();
 
         $this->assertDatabaseHas('sensitive_access_log', [
             'viewer_id' => $admin->id,
@@ -83,7 +83,7 @@ class AdminProfileTest extends TestCase
         ]);
         $this->assertSame(1, SensitiveAccessLogEntry::count());
 
-        $this->actingAs($admin, 'sanctum')->get($url)->assertOk();
+        $this->actingAs($admin, 'keycloak')->get($url)->assertOk();
         $this->assertSame(2, SensitiveAccessLogEntry::count());
     }
 
@@ -93,7 +93,7 @@ class AdminProfileTest extends TestCase
         $profile = $this->submittedProfile();
         $document = $profile->documents()->first();
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->getJson("/api/v1/admin/profiles/{$profile->id}/documents/{$document->id}")
             ->assertStatus(403);
     }
@@ -103,7 +103,7 @@ class AdminProfileTest extends TestCase
         $admin = User::factory()->create(['role' => 'super_admin']);
         $profile = $this->submittedProfile();
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/profiles/{$profile->id}/accept")
             ->assertOk()
             ->assertJsonPath('data.status', 'accepted');
@@ -117,7 +117,7 @@ class AdminProfileTest extends TestCase
             'type' => 'profile.accepted',
         ]);
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/profiles/{$profile->id}/accept")
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'entry_locked');
@@ -131,12 +131,12 @@ class AdminProfileTest extends TestCase
         $admin = User::factory()->create(['role' => 'project_manager']);
         $profile = $this->submittedProfile();
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/profiles/{$profile->id}/return", [])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'validation_failed');
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/profiles/{$profile->id}/return", ['reason' => 'Uzupełnij opis doświadczenia.'])
             ->assertOk()
             ->assertJsonPath('data.status', 'returned')
@@ -148,7 +148,7 @@ class AdminProfileTest extends TestCase
         ]);
 
         $owner = $profile->user;
-        $this->actingAs($owner, 'sanctum')
+        $this->actingAs($owner, 'keycloak')
             ->patchJson('/api/v1/psychologist-profile', ['city' => 'Wrocław'])
             ->assertOk()
             ->assertJsonPath('data.status', 'returned');
@@ -158,7 +158,7 @@ class AdminProfileTest extends TestCase
     {
         $volunteer = User::factory()->create(['role' => 'volunteer']);
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/admin/profiles')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');

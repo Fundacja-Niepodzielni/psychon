@@ -9,7 +9,6 @@ use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -28,7 +27,7 @@ class LessonQuestionTest extends TestCase
 
     public function test_participant_can_ask_a_question_about_an_unlocked_lesson(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $response = $this->postJson(
             "/api/v1/lessons/{$this->unlockedLesson()->id}/questions",
@@ -50,7 +49,7 @@ class LessonQuestionTest extends TestCase
     {
         $marta = $this->user('marta@demo.pl');
         $joanna = $this->user('joanna@demo.pl');
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $this->postJson(
             "/api/v1/lessons/{$this->unlockedLesson()->id}/questions",
@@ -69,7 +68,7 @@ class LessonQuestionTest extends TestCase
         $lesson->course->assignments()->update(['unassigned_at' => now()]);
         $before = Notification::count();
 
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $this->postJson("/api/v1/lessons/{$lesson->id}/questions", [
             'question' => 'Pytanie bez adresata.',
         ])->assertCreated();
@@ -85,7 +84,7 @@ class LessonQuestionTest extends TestCase
         $lesson = $locked->lessons()->orderBy('sequence_order')->firstOrFail();
         $before = InstructorQuestion::count();
 
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->postJson("/api/v1/lessons/{$lesson->id}/questions", [
             'question' => 'Pytanie do zablokowanego kursu.',
@@ -98,7 +97,7 @@ class LessonQuestionTest extends TestCase
 
     public function test_blank_question_is_rejected(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->postJson("/api/v1/lessons/{$this->unlockedLesson()->id}/questions", [
             'question' => '   ',
@@ -110,7 +109,7 @@ class LessonQuestionTest extends TestCase
 
     public function test_missing_lesson_is_not_found(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->postJson('/api/v1/lessons/999999/questions', ['question' => 'Pytanie.'])
             ->assertStatus(404)
@@ -119,7 +118,7 @@ class LessonQuestionTest extends TestCase
 
     public function test_instructor_cannot_use_the_participant_route(): void
     {
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $this->postJson("/api/v1/lessons/{$this->unlockedLesson()->id}/questions", [
             'question' => 'Pytanie od prowadzącej.',
@@ -151,7 +150,7 @@ class LessonQuestionTest extends TestCase
             'question' => 'Cudze pytanie.',
         ]);
 
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
         $response = $this->getJson("/api/v1/lessons/{$lesson->id}/questions")->assertOk();
 
         // The demo seed already gives marta one question on this very lesson,
@@ -181,7 +180,7 @@ class LessonQuestionTest extends TestCase
         $locked = Course::where('slug', 'interwencja-kryzysowa')->firstOrFail();
         $lesson = $locked->lessons()->orderBy('sequence_order')->firstOrFail();
 
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->getJson("/api/v1/lessons/{$lesson->id}/questions")
             ->assertStatus(403)
@@ -192,7 +191,7 @@ class LessonQuestionTest extends TestCase
     {
         $before = AuditLogEntry::count();
 
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $this->postJson("/api/v1/lessons/{$this->unlockedLesson()->id}/questions", [
             'question' => 'Pytanie bez audytu.',
         ])->assertCreated();

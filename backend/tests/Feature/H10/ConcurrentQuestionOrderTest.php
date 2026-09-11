@@ -7,7 +7,6 @@ use App\Models\Edition;
 use App\Models\Test;
 use App\Models\TestQuestion;
 use App\Models\User;
-use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\Concerns\RunsConcurrentRequests;
@@ -116,7 +115,7 @@ class ConcurrentQuestionOrderTest extends TestCase
     {
         $this->assertSame(0, $this->test->questions()->count(), 'Punkt wyjścia: bank bez pytań.');
 
-        Sanctum::actingAs($this->admin);
+        $this->actingAs($this->admin, 'keycloak');
 
         $wyniki = $this->rownolegle(self::CONCURRENCY, function (int $i): string {
             return $this->sladOdpowiedzi(

@@ -12,6 +12,7 @@ use App\Http\Resources\AdminUserListResource;
 use App\Models\EmailMessage;
 use App\Models\User;
 use App\Queries\AdminUserQuery;
+use App\Services\Auth\TokenRoles;
 use App\Services\H18\UserAnonymizer;
 use App\Support\AuditLog;
 use App\Support\Csv;
@@ -29,6 +30,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class AdminUserController extends Controller
 {
+    public function __construct(private readonly TokenRoles $tokenRoles) {}
+
     public function index(Request $request): JsonResponse
     {
         $paginator = AdminUserQuery::fromRequest($request)
@@ -65,7 +68,7 @@ class AdminUserController extends Controller
     {
         $data = $request->validated();
 
-        $this->assertMayAssignRole($request->user(), $data['role'], null);
+        $this->assertMayAssignRole($data['role'], null);
 
         $existing = User::where('email', $data['email'])->first();
 
@@ -91,7 +94,6 @@ class AdminUserController extends Controller
                 'address_zip' => $data['address']['zip'] ?? null,
                 'product_group' => $data['product_group'] ?? 'psychon',
                 'status' => 'active',
-                'password' => null,
                 'activation_token' => Str::random(64),
             ]);
 
@@ -120,7 +122,7 @@ class AdminUserController extends Controller
                 throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
             }
 
-            $this->assertMayAssignRole($request->user(), $data['role'] ?? null, $user);
+            $this->assertMayAssignRole($data['role'] ?? null, $user);
 
             $map = [
                 'first_name' => 'first_name',
@@ -180,7 +182,7 @@ class AdminUserController extends Controller
                 throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
             }
 
-            $this->assertMayAssignRole($request->user(), null, $user);
+            $this->assertMayAssignRole(null, $user);
 
             $user->status = 'blocked';
             $user->save();
@@ -213,7 +215,7 @@ class AdminUserController extends Controller
             throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
         }
 
-        $this->assertMayAssignRole($request->user(), null, $target);
+        $this->assertMayAssignRole(null, $target);
 
         $user = UserAnonymizer::run($target, $request->user());
 
@@ -239,10 +241,21 @@ class AdminUserController extends Controller
      * Matryca ról (design.md D4): `project_manager` nie utworzy ani nie nada
      * roli `super_admin` i nie zmienia kont, które już ją mają. Rzut przed
      * zapisem i audytem, więc audyt nie rośnie.
+     *
+     * R2: the ACTOR's role comes from the token (`TokenRoles`, membership —
+     * a super_admin who also happens to hold `project_manager` is never
+     * caught by this restriction). `$target->role` stays a legitimate local
+     * read here: it is the local business-role copy of a THIRD-PARTY row,
+     * not the acting user's own authorisation — there is no access token to
+     * read it from.
      */
-    private function assertMayAssignRole(User $actor, ?string $requestedRole, ?User $target): void
+    private function assertMayAssignRole(?string $requestedRole, ?User $target): void
     {
-        if ($actor->role !== 'project_manager') {
+        if ($this->tokenRoles->has('super_admin')) {
+            return;
+        }
+
+        if (! $this->tokenRoles->has('project_manager')) {
             return;
         }
 
@@ -257,12 +270,14 @@ class AdminUserController extends Controller
 
     private function sendInvitationEmail(User $user): void
     {
+        $activationUrl = rtrim(config('app.frontend_url'), '/').'/aktywacja?token='.$user->activation_token;
+
         EmailMessage::create([
             'to_email' => $user->email,
             'to_user_id' => $user->id,
             'subject' => 'Zaproszenie do platformy Fundacji Niepodzielni',
-            'body_html' => 'Twoje konto zostało utworzone. Ustaw hasło, korzystając z linku aktywacyjnego: '
-                .'<a href="/aktywacja?token='.$user->activation_token.'">Aktywuj konto</a>.',
+            'body_html' => 'Twoje konto zostało utworzone. Połącz je z kontem Niepodzielni, korzystając z linku: '
+                .'<a href="'.$activationUrl.'">Połącz z kontem Niepodzielni</a>.',
             'status' => 'simulated',
             'sent_at' => now(),
         ]);

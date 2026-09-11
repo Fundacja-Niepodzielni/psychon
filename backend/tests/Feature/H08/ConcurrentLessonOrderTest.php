@@ -6,7 +6,6 @@ use App\Models\Course;
 use App\Models\Edition;
 use App\Models\Lesson;
 use App\Models\User;
-use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\Concerns\RunsConcurrentRequests;
@@ -113,7 +112,7 @@ class ConcurrentLessonOrderTest extends TestCase
             'Punkt wyjścia: kurs bez lekcji.',
         );
 
-        Sanctum::actingAs($this->admin);
+        $this->actingAs($this->admin, 'keycloak');
 
         $wyniki = $this->rownolegle(self::CONCURRENCY, function (int $i): string {
             return $this->sladOdpowiedzi(

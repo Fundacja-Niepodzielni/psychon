@@ -8,7 +8,6 @@ use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -40,7 +39,7 @@ class AdminLessonTest extends TestCase
     {
         $course = $this->course('etap-1');
 
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->getJson("/api/v1/admin/courses/{$course->id}/lessons")
             ->assertStatus(403)
@@ -297,7 +296,7 @@ class AdminLessonTest extends TestCase
         $this->assertSame($removed->id, $entry->details['lesson_id']);
 
         // Uczestnik nie widzi już usuniętej lekcji na stronie kursu.
-        Sanctum::actingAs($volunteer);
+        $this->actingAs($volunteer, 'keycloak');
 
         $lessons = $this->getJson('/api/v1/courses/etap-1')->assertOk()->json('data.lessons');
 
@@ -331,7 +330,7 @@ class AdminLessonTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        Sanctum::actingAs($volunteer);
+        $this->actingAs($volunteer, 'keycloak');
 
         $before = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'))->keyBy('slug');
         $this->assertSame('in_progress', $before['etap-1']['status']);
@@ -341,7 +340,7 @@ class AdminLessonTest extends TestCase
         $this->actingAsAdmin();
         $this->deleteJson("/api/v1/admin/lessons/{$pending->id}")->assertOk();
 
-        Sanctum::actingAs($volunteer);
+        $this->actingAs($volunteer, 'keycloak');
 
         $after = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'))->keyBy('slug');
         $this->assertSame('completed', $after['etap-1']['status']);
@@ -377,7 +376,7 @@ class AdminLessonTest extends TestCase
     private function actingAsAdmin(): User
     {
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         return $admin;
     }

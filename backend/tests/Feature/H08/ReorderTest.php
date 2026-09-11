@@ -9,7 +9,6 @@ use App\Models\LessonProgress;
 use App\Models\TestAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -25,7 +24,7 @@ class ReorderTest extends TestCase
 
     public function test_volunteer_is_forbidden_on_the_course_reorder(): void
     {
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/courses/reorder', ['course_ids' => [1]])
             ->assertStatus(403)
@@ -334,7 +333,7 @@ class ReorderTest extends TestCase
 
         $this->patchJson('/api/v1/admin/courses/reorder', ['course_ids' => $target])->assertOk();
 
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $catalogue = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'))->keyBy('id');
 
@@ -415,7 +414,7 @@ class ReorderTest extends TestCase
     private function actingAsAdmin(): User
     {
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         return $admin;
     }

@@ -8,7 +8,6 @@ use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -30,7 +29,7 @@ class DataExportTest extends TestCase
             'document_version' => 'v1',
             'granted_at' => now()->subMonth(),
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $create = $this->postJson('/api/v1/me/exports')
             ->assertStatus(202)
@@ -65,7 +64,7 @@ class DataExportTest extends TestCase
         Storage::fake('local');
 
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $id = $this->postJson('/api/v1/me/exports')->json('data.id');
 
@@ -80,7 +79,7 @@ class DataExportTest extends TestCase
         Storage::fake('local');
 
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $id = $this->postJson('/api/v1/me/exports')->json('data.id');
 
@@ -102,7 +101,7 @@ class DataExportTest extends TestCase
 
         $export = DataExport::create(['user_id' => $owner->id, 'status' => 'ready', 'file_path' => 'exports/x.json']);
 
-        Sanctum::actingAs($stranger);
+        $this->actingAs($stranger, 'keycloak');
 
         $this->getJson("/api/v1/me/exports/{$export->public_id}")
             ->assertStatus(404)

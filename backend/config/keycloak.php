@@ -38,6 +38,44 @@ return [
     // widen only with a measured reason, never as a blanket workaround.
     'leeway' => (int) env('KEYCLOAK_LEEWAY', 0),
 
+    // Throttle (seconds) between two forced JWKS refreshes caused by an
+    // unknown `kid` (criterion §B8e): the first unknown `kid` refetches the
+    // JWKS once; a second unknown `kid` inside this window is refused
+    // without another HTTP call to the IdP — the identity contract's "1
+    // refresh / 60 s" guard against a token-storm forcing repeated fetches.
+    'jwks_kid_miss_throttle_seconds' => (int) env('KEYCLOAK_JWKS_KID_MISS_THROTTLE', 60),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authorising roles — R2 (sprint-2 §1): roles are read from the access
+    | token's `realm_access.roles` ONLY, filtered through this whitelist.
+    | `users.role` is never consulted for authorisation (display/report copy
+    | only). An empty intersection is a valid state — authentication still
+    | succeeds, role-protected resources answer 403, never 401.
+    |
+    | Local PsychON role name => realm role name (`niepodzielni-konta`
+    | realm export, `roles.realm[].name`). Mapped by the collaboration each
+    | local role actually performs on PsychON, since the realm role names
+    | are the shared ecosystem vocabulary, not PsychON-specific strings:
+    |   - super_admin      => admin-fundacja  (foundation ecosystem admin)
+    |   - project_manager  => koordynator     (area coordinator)
+    |   - instructor       => prowadzacy      (runs classes/groups)
+    |   - volunteer        => wolontariusz    (volunteer past the prep path;
+    |                                          granted by svc-psychon)
+    |   - student           => pacjent         (person using courses/materials)
+    | `wymaga-2fa` (a composite marker realm role) and any other realm role
+    | (`psycholog`, `redaktor`, …) are deliberately absent — they grant
+    | nothing here, whether or not they show up in `realm_access.roles`.
+    |--------------------------------------------------------------------------
+    */
+    'roles' => [
+        'super_admin' => env('KEYCLOAK_ROLE_SUPER_ADMIN', 'admin-fundacja'),
+        'project_manager' => env('KEYCLOAK_ROLE_PROJECT_MANAGER', 'koordynator'),
+        'instructor' => env('KEYCLOAK_ROLE_INSTRUCTOR', 'prowadzacy'),
+        'volunteer' => env('KEYCLOAK_ROLE_VOLUNTEER', 'wolontariusz'),
+        'student' => env('KEYCLOAK_ROLE_STUDENT', 'pacjent'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | TLS

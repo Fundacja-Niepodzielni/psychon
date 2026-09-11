@@ -7,7 +7,6 @@ use App\Models\Edition;
 use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
-use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\Concerns\RunsConcurrentRequests;
@@ -150,7 +149,7 @@ class FirstAttemptRaceTest extends TestCase
 
         // Uwierzytelnienie PRZED rozwidleniem — stan siedzi w pamięci procesu,
         // więc dzieci dziedziczą je razem z resztą aplikacji.
-        Sanctum::actingAs($this->user);
+        $this->actingAs($this->user, 'keycloak');
 
         $results = $this->rownolegle(self::CONCURRENCY, function (int $i) use ($zestawy): string {
             return $this->sladOdpowiedzi(

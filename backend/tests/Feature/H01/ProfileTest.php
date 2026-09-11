@@ -5,7 +5,6 @@ namespace Tests\Feature\H01;
 use App\Models\Consent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -36,7 +35,7 @@ class ProfileTest extends TestCase
             'granted_at' => now()->subMonths(4),
         ]);
 
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->getJson('/api/v1/me')
             ->assertOk()
@@ -56,7 +55,7 @@ class ProfileTest extends TestCase
     public function test_invalid_pesel_is_rejected_with_a_field_error(): void
     {
         $user = User::factory()->create(['pesel' => null]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->patchJson('/api/v1/me', ['pesel' => self::INVALID_PESEL])
             ->assertStatus(422)
@@ -69,7 +68,7 @@ class ProfileTest extends TestCase
     public function test_valid_pesel_is_saved_and_visible_in_get_me(): void
     {
         $user = User::factory()->create(['pesel' => null]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->patchJson('/api/v1/me', ['pesel' => self::VALID_PESEL])
             ->assertOk()
@@ -81,7 +80,7 @@ class ProfileTest extends TestCase
     public function test_patch_me_never_changes_the_email(): void
     {
         $user = User::factory()->create(['email' => 'owner@demo.pl']);
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->patchJson('/api/v1/me', [
             'email' => 'attacker@evil.pl',
@@ -96,7 +95,7 @@ class ProfileTest extends TestCase
     public function test_patch_me_updates_the_nested_address(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->patchJson('/api/v1/me', [
             'address' => ['street' => 'ul. Nowa 5', 'city' => 'Gdańsk', 'zip' => '80-001'],

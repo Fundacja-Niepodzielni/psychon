@@ -7,7 +7,6 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -39,7 +38,7 @@ class AdminCourseTest extends TestCase
 
     public function test_volunteer_is_forbidden_on_the_admin_course_list(): void
     {
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->getJson('/api/v1/admin/courses')
             ->assertStatus(403)
@@ -307,7 +306,7 @@ class AdminCourseTest extends TestCase
     private function actingAsAdmin(): User
     {
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         return $admin;
     }

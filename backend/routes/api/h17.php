@@ -8,7 +8,7 @@
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h17')
@@ -22,7 +22,7 @@ if (! config('features.h17')) {
     return;
 }
 
-Route::middleware(['auth:sanctum', 'access.active', 'role:volunteer,student'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer,student'])->group(function (): void {
     Route::post('/lessons/{id}/questions', [LessonQuestionController::class, 'store'])
         ->whereNumber('id');
 
@@ -33,7 +33,7 @@ Route::middleware(['auth:sanctum', 'access.active', 'role:volunteer,student'])->
         ->whereNumber('id');
 });
 
-Route::middleware(['auth:sanctum', 'role:instructor'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void {
     Route::get('/instructor/questions', [InstructorQuestionController::class, 'index']);
     Route::post('/instructor/questions/{id}/answer', [InstructorQuestionController::class, 'answer'])
         ->whereNumber('id');

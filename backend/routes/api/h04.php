@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | The `access.active` middleware itself (skeleton in the starter) is attached
@@ -26,6 +26,6 @@ if (! config('features.h04')) {
     return;
 }
 
-Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])
     ->post('/admin/users/{id}/extend-access', [AccessController::class, 'extend'])
     ->whereNumber('id');

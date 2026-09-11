@@ -84,7 +84,7 @@ class AdminSupervisionSlotsCriterionWitnessTest extends TestCase
             'attendance_marked_by' => null,
         ]);
 
-        $response = $this->actingAs($admin, 'sanctum')
+        $response = $this->actingAs($admin, 'keycloak')
             ->getJson('/api/v1/admin/supervision/slots');
 
         $response->assertOk();
@@ -131,9 +131,9 @@ class AdminSupervisionSlotsCriterionWitnessTest extends TestCase
         $volunteer = User::factory()->create(['role' => 'volunteer']);
         $instructor = User::factory()->create(['role' => 'instructor']);
 
-        $volunteerResponse = $this->actingAs($volunteer, 'sanctum')
+        $volunteerResponse = $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/admin/supervision/slots');
-        $instructorResponse = $this->actingAs($instructor, 'sanctum')
+        $instructorResponse = $this->actingAs($instructor, 'keycloak')
             ->getJson('/api/v1/admin/supervision/slots');
 
         // Zapisuję, co widzę, nie co powinno być: jeżeli trasa oddałaby 200 z pustą listą zamiast 403,

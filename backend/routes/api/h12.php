@@ -8,7 +8,7 @@
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h12')
@@ -23,7 +23,7 @@ if (! config('features.h12')) {
     return;
 }
 
-Route::middleware(['auth:sanctum', 'access.active', 'role:volunteer'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer'])->group(function (): void {
     Route::get('/supervision/slots', [ParticipantSupervisionController::class, 'index']);
     Route::post('/supervision/slots/{id}/signup', [ParticipantSupervisionController::class, 'signup'])
         ->whereNumber('id');
@@ -31,18 +31,18 @@ Route::middleware(['auth:sanctum', 'access.active', 'role:volunteer'])->group(fu
         ->whereNumber('id');
 });
 
-Route::middleware(['auth:sanctum', 'role:instructor'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void {
     Route::get('/instructor/group', [InstructorSupervisionController::class, 'group']);
     Route::post('/instructor/slots', [InstructorSupervisionController::class, 'storeSlot']);
     Route::post('/instructor/cases', [InstructorSupervisionController::class, 'storeCase']);
 });
 
-Route::middleware(['auth:sanctum', 'role:instructor'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void {
     Route::patch('/instructor/slots/{id}/attendance', [InstructorSupervisionController::class, 'attendance'])
         ->whereNumber('id');
 });
 
-Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/supervision/slots', [AdminSupervisionController::class, 'index']);
     Route::get('/admin/supervision/cases', [AdminSupervisionController::class, 'cases']);
     Route::put('/admin/users/{id}/supervisor', [AdminSupervisionController::class, 'assignSupervisor'])

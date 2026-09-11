@@ -117,6 +117,33 @@ final class KeycloakTokenFactory
     }
 
     /**
+     * A token whose header carries a `kid` the realm's JWKS has never
+     * served — as if a key had rotated at the IdP. Used to prove the
+     * unknown-`kid` refresh-once-per-60s behaviour (criterion §B8e): the
+     * signature is real (same key as {@see mint()}), only the `kid` header
+     * is wrong, so `firebase/php-jwt` fails at the "look up this kid" step
+     * rather than at signature verification.
+     *
+     * @param  array<string,mixed>  $claims  overrides merged over a valid default payload
+     */
+    public function mintWithUnknownKid(string $kid, array $claims = []): string
+    {
+        $now = time();
+
+        $payload = array_replace([
+            'iss' => self::ISSUER,
+            'aud' => ['psychon-api', 'account'],
+            'azp' => 'psychon-api',
+            'sub' => (string) Str::uuid(),
+            'iat' => $now,
+            'exp' => $now + 300,
+            'realm_access' => ['roles' => []],
+        ], $claims);
+
+        return JWT::encode($payload, $this->privateKeyPem, 'RS256', $kid);
+    }
+
+    /**
      * Same claims as {@see mint()} but with the signature segment tampered
      * (one character flipped, length and base64url alphabet preserved) —
      * the "wrong signature" negative leg, built from a token this same key

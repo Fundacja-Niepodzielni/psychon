@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Support\H13\CertificateConditions;
 use App\Support\ProgressAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H13 · warunki ukończenia programu — minimum ★ (kryterium 1) oraz
@@ -37,7 +36,7 @@ class CertificateConditionsTest extends CertificatePackageCase
 
     public function test_conditions_endpoint_matches_the_seed_for_marta(): void
     {
-        Sanctum::actingAs($this->marta());
+        $this->actingAs($this->marta(), 'keycloak');
 
         $this->getJson('/api/v1/certificate/conditions')
             ->assertOk()
@@ -58,7 +57,7 @@ class CertificateConditionsTest extends CertificatePackageCase
 
     public function test_conditions_endpoint_reports_a_graduate_as_eligible(): void
     {
-        Sanctum::actingAs($this->makeEligibleVolunteer());
+        $this->actingAs($this->makeEligibleVolunteer(), 'keycloak');
 
         $this->getJson('/api/v1/certificate/conditions')
             ->assertOk()
@@ -82,10 +81,10 @@ class CertificateConditionsTest extends CertificatePackageCase
 
     public function test_conditions_are_closed_to_non_volunteers(): void
     {
-        Sanctum::actingAs(User::where('email', 'filip@demo.pl')->firstOrFail()); // student
+        $this->actingAs(User::where('email', 'filip@demo.pl')->firstOrFail(), 'keycloak'); // student
         $this->getJson('/api/v1/certificate/conditions')->assertStatus(403);
 
-        Sanctum::actingAs(User::where('email', 'joanna@demo.pl')->firstOrFail()); // instructor
+        $this->actingAs(User::where('email', 'joanna@demo.pl')->firstOrFail(), 'keycloak'); // instructor
         $this->getJson('/api/v1/certificate/conditions')->assertStatus(403);
     }
 
