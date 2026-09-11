@@ -17,7 +17,12 @@ import { ACCOUNT_SYSTEM_CLIENT_ID } from "@/auth";
  * gone, so the id token needed for `id_token_hint` would already be lost.
  */
 export async function GET(request: NextRequest) {
-  const origin = new URL(request.url).origin;
+  // Zwykla trasa Next, nie owinieta przez Auth.js — AUTH_URL samo z siebie jej
+  // nie naprawia. Za odwrotnym proxy `request.url` to adres, jaki widzi
+  // kontener (`https://localhost:3000`), wiec kiedy AUTH_URL jest ustawione,
+  // bierzemy origin z niego; bez niego (testy, `next dev` bez proxy) zostaje
+  // origin zadania jak dotad.
+  const origin = process.env.AUTH_URL ? new URL(process.env.AUTH_URL).origin : new URL(request.url).origin;
   const fallback = new URL("/logowanie/konta", origin).toString();
 
   const issuer = process.env.AUTH_KEYCLOAK_ISSUER;
