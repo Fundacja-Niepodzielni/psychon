@@ -14,7 +14,9 @@ const variants: Record<Variant, string> = {
   warning: "bg-warning-bg text-warning-dark",
   danger: "bg-danger-bg text-danger",
   info: "bg-info-bg text-info-dark",
-  accent: "bg-accent-15 text-accent",
+  // F-93: text-accent na bg-accent-15 dawało 4,37:1 (< 4,5:1, Z-9) —
+  // accent-dark to ten sam odcień, ciemniejszy wariant tokenu.
+  accent: "bg-accent-15 text-accent-dark",
 };
 
 export default function Badge({
