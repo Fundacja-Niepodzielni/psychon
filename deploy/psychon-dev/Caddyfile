@@ -48,6 +48,15 @@
 		-Server
 	}
 
+	# Logowanie przez Konta Niepodzielni to trasy next-auth w Next.js
+	# (/api/auth/signin, /api/auth/callback, /api/auth/end-session-url).
+	# Bez tego bloku lapal je `/api/*` nizej i Laravel odpowiadal 404 JSON
+	# na przycisk logowania. Caddy wybiera dluzsza sciezke niezaleznie od
+	# kolejnosci, ale blok stoi pierwszy, zeby bylo to widac przy czytaniu.
+	handle /api/auth/* {
+		reverse_proxy frontend:3000
+	}
+
 	# Backend: API i pliki wystawiane przez Laravel.
 	handle /api/* {
 		reverse_proxy app:8080
