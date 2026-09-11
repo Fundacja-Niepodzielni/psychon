@@ -4,11 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
-use App\Models\Course;
 use App\Models\Material;
 use App\Models\User;
-use App\Queries\CourseCatalogQuery;
-use App\Support\CourseAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -18,22 +15,33 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * The link is what a plain <a href download> can follow: the SPA keeps its
  * token in localStorage, so a browser-initiated download carries no
- * Authorization header. The signature covers every parameter — including the
- * `u` the link was issued for — so it cannot be re-pointed at another account.
- * Signature validity alone is not access: visibility and the sequential unlock
- * are re-checked here, against the state at download time.
+ * Authorization header — this route runs no `auth:keycloak` and never will.
+ *
+ * R2 (sprint-2 §1) fixed WHERE the access token's grants decide who gets a
+ * link: at ISSUANCE (`MaterialResource`, built inside the authenticated
+ * GET /courses/{slug} request, from THAT request's `TokenRoles`), never
+ * here. This controller consults none of that — Konta granting or taking
+ * away something after the link was handed out has no effect until the
+ * link's own TTL runs out (consciously, the TTL ceiling below keeps that
+ * window short). What IS re-checked at download: the signature and its
+ * expiry (`signed` middleware on the route), that the link's remaining
+ * life does not exceed the configured ceiling, that `u` still names an
+ * existing account, and that the account is not blocked/deleted/anonymized
+ * since issuance.
  */
 class MaterialDownloadController extends Controller
 {
     public function __invoke(Request $request, Material $material): StreamedResponse
     {
+        $this->assertLinkWithinCeiling($request);
+
         $user = User::query()->find($request->integer('u'));
 
         if ($user === null) {
             throw $this->notFound();
         }
 
-        $this->assertReadable($user, $material);
+        $this->assertAccountUsable($user);
 
         $disk = Storage::disk('local');
 
@@ -46,13 +54,40 @@ class MaterialDownloadController extends Controller
         ]);
     }
 
-    private function assertReadable(User $user, Material $material): void
+    /**
+     * The `signed` middleware already refuses a link once its own `expires`
+     * timestamp is in the past. This adds the other half: a link may never
+     * carry MORE remaining life than `courses.material_link_ttl_seconds`,
+     * whoever produced it — `MaterialResource` never asks for more, so this
+     * only ever fires on a link that should not exist.
+     */
+    private function assertLinkWithinCeiling(Request $request): void
     {
+        $expiresAt = $request->query('expires');
+        $ttl = (int) config('courses.material_link_ttl_seconds');
+
+        if (! is_numeric($expiresAt) || (int) $expiresAt - now()->getTimestamp() > $ttl) {
+            throw new ApiException(403, 'link_expired', 'Ten link do pobrania już wygasł.');
+        }
+    }
+
+    /**
+     * Account state — a fact about the account itself, unlike the access
+     * token's grants, so R2 permits reading it here. Same check
+     * `KeycloakGuardResolver`/`SsoBindController` apply on every other route.
+     */
+    private function assertAccountUsable(User $user): void
+    {
+        if (in_array($user->status, ['blocked', 'deleted'], true) || $user->anonymized_at !== null) {
+            throw new ApiException(403, 'forbidden', 'To konto nie jest aktywne. Skontaktuj się z opiekunem projektu.');
+        }
+
         // The signed route carries no `access.active` middleware — there is no
         // session for it to run against — so the time-boxed gate is re-applied
         // here by hand, with the same code and message as EnsureAccessActive.
         // Without it a link issued while access was still active would outlive
-        // the access itself for up to the signature's 15-minute window.
+        // the access itself for up to the signature's TTL window. Same
+        // category as the block/anonymize check above: an account-level date.
         if ($user->program_completed_at === null
             && $user->access_expires_at !== null
             && $user->access_expires_at->isPast()) {
@@ -61,25 +96,6 @@ class MaterialDownloadController extends Controller
                 'access_expired',
                 'Twój dostęp do materiałów wygasł. Skontaktuj się z opiekunem projektu.',
             );
-        }
-
-        $courseId = $material->course_id ?? $material->lesson?->course_id;
-
-        if ($courseId === null) {
-            throw $this->notFound();
-        }
-
-        $course = CourseCatalogQuery::visibleTo($user)->whereKey($courseId)->first();
-
-        // Outside the caller's scope answers exactly like "does not exist"
-        // — existence is not revealed (contract §1.1).
-        if (! $course instanceof Course) {
-            throw $this->notFound();
-        }
-
-        if (CourseCatalogQuery::isParticipant($user)
-            && CourseAccess::state($user, $course)['status'] === 'locked') {
-            throw new ApiException(403, 'course_locked', 'Ten etap jest jeszcze zablokowany.');
         }
     }
 

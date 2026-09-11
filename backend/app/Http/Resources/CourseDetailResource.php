@@ -9,6 +9,7 @@ use App\Models\LessonProgress;
 use App\Models\Material;
 use App\Models\User;
 use App\Queries\CourseCatalogQuery;
+use App\Services\Auth\TokenRoles;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -87,7 +88,8 @@ class CourseDetailResource extends CourseListResource
      */
     private function completedLessonIds(User $user, Collection $lessons): array
     {
-        if (! CourseCatalogQuery::isParticipant($user)) {
+        // R2 (sprint-2 §1): the CALLER's token roles, never `$user->role`.
+        if (! CourseCatalogQuery::isParticipant(app(TokenRoles::class)->current())) {
             return [];
         }
 

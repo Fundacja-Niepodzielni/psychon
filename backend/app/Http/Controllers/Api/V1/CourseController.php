@@ -9,6 +9,7 @@ use App\Http\Resources\CourseDetailResource;
 use App\Http\Resources\CourseListResource;
 use App\Models\Course;
 use App\Queries\CourseCatalogQuery;
+use App\Services\Auth\TokenRoles;
 use App\Services\CourseUnlockNotifier;
 use App\Support\CourseAccess;
 use Illuminate\Http\Request;
@@ -21,11 +22,15 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class CourseController extends Controller
 {
-    public function index(CourseIndexRequest $request, CourseUnlockNotifier $notifier): AnonymousResourceCollection
-    {
+    public function index(
+        CourseIndexRequest $request,
+        CourseUnlockNotifier $notifier,
+        TokenRoles $tokenRoles,
+    ): AnonymousResourceCollection {
         $user = $request->user();
+        $roles = $tokenRoles->current();
 
-        $query = CourseCatalogQuery::visibleTo($user)->with(['lessons', 'test']);
+        $query = CourseCatalogQuery::visibleTo($user, $roles)->with(['lessons', 'test']);
 
         if ($request->filled('product_group')) {
             $query->where('product_group', $request->string('product_group')->value());
@@ -41,7 +46,7 @@ class CourseController extends Controller
         // everyone else the resource falls back and the gate does not apply.
         $states = [];
 
-        if (CourseCatalogQuery::isParticipant($user)) {
+        if (CourseCatalogQuery::isParticipant($roles)) {
             $states = $courses
                 ->mapWithKeys(fn (Course $course): array => [
                     $course->id => CourseAccess::state($user, $course),
@@ -62,11 +67,12 @@ class CourseController extends Controller
         );
     }
 
-    public function show(Request $request, string $slug): CourseDetailResource
+    public function show(Request $request, string $slug, TokenRoles $tokenRoles): CourseDetailResource
     {
         $user = $request->user();
+        $roles = $tokenRoles->current();
 
-        $course = CourseCatalogQuery::visibleTo($user)
+        $course = CourseCatalogQuery::visibleTo($user, $roles)
             ->where('slug', $slug)
             ->with(['lessons', 'test'])
             ->first();
@@ -79,7 +85,7 @@ class CourseController extends Controller
 
         $state = null;
 
-        if (CourseCatalogQuery::isParticipant($user)) {
+        if (CourseCatalogQuery::isParticipant($roles)) {
             $state = CourseAccess::state($user, $course);
 
             if ($state['status'] === 'locked') {
