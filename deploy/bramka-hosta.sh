@@ -263,6 +263,8 @@ echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
 CZAS_FRONT=0
+KOD_LIBC=0
+CZAS_LIBC=0
 if [ "$POMIN_FRONT" = "tak" ]; then
     naglowek "4 - front pominiety (POMIN_FRONT=tak)"
 else
@@ -276,6 +278,20 @@ else
     docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine chown -R "$UID_BRAMKI:$GID_BRAMKI" /praca >/dev/null 2>&1
     grep -aE "Test Files|Tests |Compiled|Failed|error|Error" "$KATALOG_BIEGU"/bramka-front.log | tail -5
     echo "front: EXIT=$KOD_FRONT, $CZAS_FRONT s"
+
+    # Pole "libc" w package-lock.json (przypis F-100): npm 10.9.8 potrafi je
+    # zgubic na pakietach *-linux-*, a wtedy node:22-alpine instaluje razem
+    # glibc i musla zamiast jednej odmiany. Krok jest BLOKUJACY - skrypt nie
+    # potrzebuje node_modules, wiec biegnie od razu, bez npm ci.
+    naglowek "4b - front: pole libc w package-lock.json"
+    T="$(date +%s)"
+    docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine \
+        node scripts/check-lock-libc.mjs > "$KATALOG_BIEGU"/bramka-libc.log 2>&1
+    KOD_LIBC=$?
+    CZAS_LIBC="$(czas_od "$T")"
+    grep -aE "^libc:" "$KATALOG_BIEGU"/bramka-libc.log | tail -1
+    echo "libc w lockfile: EXIT=$KOD_LIBC, $CZAS_LIBC s"
+    [ "$KOD_LIBC" -ne 0 ] && grep -aE "^  ! " "$KATALOG_BIEGU"/bramka-libc.log | head -10
 
     # Audyt npm biegnie OSOBNO, a nie w lancuchu wyzej, z dwoch powodow: ma nie
     # zaczerwienic kroku frontu (pomiar, nie blokada) i ma sie odbyc takze wtedy,
@@ -310,17 +326,19 @@ else
     BRUD="$(printf '%s' "$STATUS_TXT" | grep -c .)"
     echo "drzewo po biegu: $BRUD pozycji"
 fi
-echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s calosc=$(czas_od "$START_CALOSC")s"
+echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s libc=${CZAS_LIBC}s calosc=$(czas_od "$START_CALOSC")s"
 
-# KOD_ACTIONLINT, KOD_GITLEAKS i - od 10.09 - KOD_SEMGREP sa tu wymienione (blokuja).
-# Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) NIE sa i to jest decyzja, nie przeoczenie:
-# ich liczby stoja w logu wyzej i ida do rejestru z numerem, a podatnosc w cudzej
-# zaleznosci nie jest rzecza, ktora ten commit zepsul.
+# KOD_ACTIONLINT, KOD_GITLEAKS, KOD_LIBC i - od 10.09 - KOD_SEMGREP sa tu
+# wymienione (blokuja). Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) NIE sa i to jest
+# decyzja, nie przeoczenie: ich liczby stoja w logu wyzej i ida do rejestru z
+# numerem, a podatnosc w cudzej zaleznosci nie jest rzecza, ktora ten commit
+# zepsul.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
 elif [ "${KOD_ACTIONLINT:-0}" -ne 0 ]; then KOD=$KOD_ACTIONLINT
 elif [ "${KOD_GITLEAKS:-0}" -ne 0 ]; then KOD=$KOD_GITLEAKS
+elif [ "${KOD_LIBC:-0}" -ne 0 ]; then KOD=$KOD_LIBC
 elif [ "${KOD_DRZEWO:-0}" -ne 0 ]; then KOD=$KOD_DRZEWO
 elif [ "${KOD_SEMGREP:-0}" -ne 0 ]; then KOD=$KOD_SEMGREP
 else KOD=$KOD_FRONT; fi
