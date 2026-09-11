@@ -214,10 +214,23 @@
 
 /* Wspólny pierścień fokusa (--psy-violet-dark #1500BB) — użycie:
  * focus-visible:focus-ring. Widoczny tylko na :focus-visible (klawiatura),
- * nigdy na zwykły :focus myszą — zgodnie z decyzją P2 pkt 2. */
+ * nigdy na zwykły :focus myszą — zgodnie z decyzją P2 pkt 2.
+ * F-90 (uwaga weryfikatora): tryb wymuszonych kolorów systemu maskuje
+ * `box-shadow` (Windows High Contrast/`forced-colors`), więc samo
+ * `outline: none` zostawiłoby fokus bez żadnego widocznego znacznika —
+ * zabronione przez C1 Z-9 („outline: none dozwolone wyłącznie z
+ * zamiennikiem widocznym w trybie wysokiego kontrastu systemu"). Zamiennik:
+ * `outline` w kolorze systemowym `Highlight`, tylko pod
+ * `@media (forced-colors: active)` — poza tym trybem obowiązuje wyłącznie
+ * `box-shadow` wyżej, bez podwójnego pierścienia. */
 @utility focus-ring {
   outline: none;
   box-shadow: var(--psy-focus-ring);
+
+  @media (forced-colors: active) {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
 }
 
 /* F-91/P2: reguła ograniczonego ruchu — 0 klas ruchu bez wariantu

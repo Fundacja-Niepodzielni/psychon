@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import ProgressBar from "@/components/ui/ProgressBar";
 import Select from "@/components/ui/Select";
+import Skeleton from "@/components/ui/Skeleton";
 import Table from "@/components/ui/Table";
 import { api, ApiError, createInstructorCase } from "@/lib/api";
 import type { Column } from "@/components/ui/Table";
@@ -287,7 +288,12 @@ export default function InstructorGroup() {
   ];
 
   if (loading) {
-    return <p className="text-body text-subtle" role="status">Wczytywanie grupy…</p>;
+    return (
+      <div role="status" aria-label="Wczytywanie grupy…">
+        <span className="sr-only">Wczytywanie grupy…</span>
+        <Skeleton lines={3} />
+      </div>
+    );
   }
 
   if (loadError || group === null) {

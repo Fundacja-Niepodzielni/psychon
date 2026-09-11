@@ -28,6 +28,13 @@ describe("Logo", () => {
     });
   });
 
+  it("liczba ścieżek znaku = 20, tyle samo co widocznych glifów (#1500BB) w pliku wzorcowym (uwaga werdyktu: 'paths > 0' nie łapie okaleczonego znaku)", () => {
+    const { container } = render(<Logo />);
+    const paths = container.querySelectorAll("path");
+
+    expect(paths.length).toBe(20);
+  });
+
   it("noga negatywna: title pusty ukrywa znak przed czytnikiem ekranu (kontekst ma już etykietę)", () => {
     render(<Logo title="" />);
 

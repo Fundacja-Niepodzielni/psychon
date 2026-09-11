@@ -1,12 +1,38 @@
 Roboto v51 (self-hosted, woff2)
 
-Krój Roboto jest udostępniony na licencji Apache License, wersja 2.0:
-https://www.apache.org/licenses/LICENSE-2.0
+Krój Roboto jest udostępniony na licencji Apache License, wersja 2.0. Pełny
+tekst tej licencji: `LICENSE-Apache-2.0.txt` w tym samym katalogu (odpowiedź
+na uwagę weryfikatora: sam adres URL bez tekstu nie wystarczał).
+
+Ustalenie licencji z metadanych dostarczonego pliku (nie z pamięci) —
+`fc-query`/`fontTools` (`wsl -d Ubuntu-24.04`) na obu plikach `.woff2`:
+- tabela `name`, `nameID=0` (Copyright): „Copyright 2011 The Roboto Project
+  Authors (https://github.com/googlefonts/roboto-classic)” — identyczna w
+  obu podzbiorach.
+- tabela `name`, `nameID=5` (Version): „Version 3.015; 2026”.
+- brak `nameID=13`/`14` (License Description/URL) w pliku — plik nie niesie
+  licencji wprost, trzeba ją ustalić z repozytorium źródłowego w
+  copyrightcie.
+- Repozytorium źródłowe `googlefonts/roboto-classic` jest wpisem katalogu
+  `apache/roboto/` w oficjalnym repozytorium Google Fonts (`google/fonts`),
+  które deklaruje licencję `APACHE2` (nie `OFL 1.1` — folder `ofl/` zawiera
+  inne rodziny; `roboto`, `robotocondensed`, `robotomono`, `robotoslab` są w
+  `apache/`). Stąd rozstrzygnięcie: **Apache License 2.0**, nie OFL 1.1.
 
 Pliki `roboto-v51-latin.woff2` i `roboto-v51-latin-ext.woff2` pochodzą z
-podzbioru czcionki Roboto (wagi 300-700, oś zmiennej grubości) — ten sam
-podzbiór, którego używa strona Fundacji Niepodzielni
-(`Niepodzielni-dev/web/app/themes/niepodzielni-theme/resources/fonts/`).
+podzbioru czcionki Roboto — ten sam podzbiór, którego używa strona Fundacji
+Niepodzielni (`Niepodzielni-dev/web/app/themes/niepodzielni-theme/resources/fonts/`).
 Podzbiór `latin-ext` pokrywa polskie znaki diakrytyczne (ą ć ę ł ń ó ś ź ż).
+
+Zakres wag: oś zmiennej grubości pliku obejmuje 100-900 (odczytane z tabeli
+`fvar`, oś `wght`: min=100, domyślna=400, max=900) — ale `@font-face` w
+`app/globals.css` deklaruje `font-weight: 300 700`, bo to
+jedyny zakres wag faktycznie używany przez tokeny PsychON
+(`--psy-fw-regular` 400 … `--psy-fw-bold` 700; `--psy-fw-thin` 200 i
+`--psy-fw-black` 900 to tokeny zdefiniowane, ale niewykorzystane w żadnym
+komponencie — sprawdzone, `grep -rn "fw-thin\|fw-black"` poza `globals.css`
+= 0 wyników). Przeglądarka domyka żądaną wagę do najbliższej dostępnej w
+zakresie `300 700`. Poszerzenie deklaracji do pełnego zakresu pliku (100-900)
+jest osobną, nazwaną decyzją Fundacji (Z-12) — poza zakresem tej poprawki.
 
 Źródło: Google Fonts, https://fonts.google.com/specimen/Roboto

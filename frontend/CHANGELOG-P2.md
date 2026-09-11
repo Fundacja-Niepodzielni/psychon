@@ -56,12 +56,48 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
 | Nr | Domknięte w P2? | Jak |
 |---|---|---|
 | F-89 | **tak** | Roboto ładowany lokalnie (`@font-face` w `globals.css`, pliki w `public/fonts/`), 0 żądań do `fonts.googleapis.com`/`fonts.gstatic.com` |
-| F-90 | **tak** | `--psy-focus-ring` z `#01be4a73` (1,41–1,55:1) na `var(--psy-violet-dark)` #1500BB (≥ 9,98:1 wobec wszystkich zmierzonych teł, patrz komentarz w `globals.css`) |
+| F-90 | **tak, w całości** | `--psy-focus-ring` z `#01be4a73` (1,41–1,55:1) na `var(--psy-violet-dark)` #1500BB (≥ 9,98:1 wobec wszystkich zmierzonych teł, patrz komentarz w `globals.css`) **+ uwaga werdyktu domknięta**: `@utility focus-ring` ma teraz zamiennik `@media (forced-colors: active) { outline: 3px solid Highlight; }`, więc `outline: none` nie zostaje bez zastępstwa w trybie wysokiego kontrastu (C1 Z-9) |
 | F-91 | **tak** | globalna reguła `@media (prefers-reduced-motion: reduce)` w `globals.css` + `motion-reduce:animate-none` na `Skeleton` |
 | F-92 | **nie** — poza zakresem P2 (atomy identyfikacji, nie przebudowa układu tabel/wierszy `admin/page.tsx`, `Tabs.tsx`, `PanelShell.tsx`); wymaga zmiany wysokości istniejących wierszy poza atomami tej partii |
 | F-93 | **tak** | `Badge` accent już naprawiony w P1; P2 domyka jedyne pominięte miejsce (`PulpitDashboard.tsx` `NODE_TONE.in_progress`) |
 | F-94 | **nie** — wyciek uprawnień (`lib/pulpit/data.ts`) to logika ról, nie atom identyfikacji; poza zakresem P2 |
 | F-95 | **nie** — angielski klucz serwera na ekranie to słownik/i18n (`admin/page.tsx`), nie atom; poza zakresem P2 |
+
+## Uwagi z werdyktu P2 (`74048a5`) domknięte
+
+- **F-90 w całości** — `@utility focus-ring` w `app/globals.css` miało samo
+  `outline: none` bez zamiennika widocznego w trybie wymuszonych kolorów
+  systemu (`box-shadow` jest tam maskowany). Dodano
+  `@media (forced-colors: active) { outline: 3px solid Highlight; ... }`
+  wewnątrz tej samej reguły — poza tym trybem nic się nie zmienia (nadal
+  wyłącznie `box-shadow` w `--psy-focus-ring`).
+- **Licencja Roboto** — `public/fonts/LICENSE-roboto.txt` miał sam URL Apache
+  2.0. Dodano pełny tekst w `public/fonts/LICENSE-Apache-2.0.txt` i zapisano
+  w `LICENSE-roboto.txt`, z czego wynika rozstrzygnięcie Apache (nie OFL):
+  metadane pliku (`fc-query`/`fontTools`, tabela `name`) nie mają wprost pola
+  licencji, ale copyright wskazuje repozytorium `googlefonts/roboto-classic`,
+  które w oficjalnym repozytorium Google Fonts leży w katalogu `apache/`, nie
+  `ofl/`.
+- **Zakres wag** — plik ma oś `wght` 100-900, `@font-face` zostaje przy
+  `300 700` (jedyny zakres wykorzystywany przez tokeny PsychON; `--psy-fw-thin`
+  200 i `--psy-fw-black` 900 nie mają żadnego użycia w komponentach —
+  `grep -rn "fw-thin\|fw-black"` poza `globals.css` = 0). Uzasadnienie
+  zapisane w `LICENSE-roboto.txt`; poszerzenie deklaracji to osobna decyzja.
+- **`Skeleton` — drugie i trzecie bezpośrednie użycie** poza `LoadingState` i
+  testami: `components/h07/AdminReliability.tsx` (ładowanie listy
+  rzetelności) i `components/h12/InstructorGroup.tsx` (ładowanie karty
+  grupy) — oba miały własny placeholder `<p role="status">tekst…</p>`;
+  tekst zostaje identyczny (teraz w `sr-only` + `aria-label`), znika tylko
+  wizualny akapit na rzecz szkieletu treści.
+- **Testy na mutacje nieuchwycone przez werdykt** —
+  `components/ui/__tests__/Button.test.tsx` (nowy: klasa
+  `focus-visible:focus-ring` na renderowanym `Button`/`Input`/`Select`, nie
+  tylko tekst tokenu), `app/__tests__/design-tokens-p2.test.ts` (rozszerzony:
+  token nagłówków zostaje `#1a1a1a`, `app/layout.tsx` bez Google Fonts,
+  `@utility focus-ring` naprawdę stosuje `box-shadow: var(--psy-focus-ring)`
+  i ma zamiennik `forced-colors`, 0 `outline: none` bez zamiennika poza tym
+  blokiem), `components/ui/__tests__/Logo.test.tsx` (liczba ścieżek = 20, nie
+  tylko „> 0”).
 
 ## Uwagi z werdyktu P1 domknięte przy okazji
 

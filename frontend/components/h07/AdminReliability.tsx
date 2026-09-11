@@ -5,6 +5,7 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { ApiError, type PaginationMeta } from "@/lib/api";
 import {
   fetchAdminReliability,
@@ -165,9 +166,10 @@ export default function AdminReliability() {
           </Button>
         </Alert>
       ) : rows === null ? (
-        <p role="status" className="text-body text-muted">
-          Wczytywanie danych o rzetelności…
-        </p>
+        <div role="status" aria-label="Wczytywanie danych o rzetelności…">
+          <span className="sr-only">Wczytywanie danych o rzetelności…</span>
+          <Skeleton lines={3} />
+        </div>
       ) : rows.length === 0 ? (
         <Card>
           <p className="text-body text-muted">
