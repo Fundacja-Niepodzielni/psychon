@@ -29,21 +29,24 @@ vi.mock("next-auth/jwt", () => ({ getToken: getTokenMock }));
 const ISSUER = "https://konta.example.test/realms/niepodzielni";
 const ADRES = "https://szkolenia.example.test/api/auth/end-session-url";
 
-async function adresWylogowania(): Promise<string> {
+async function adresWylogowania(adres: string = ADRES): Promise<string> {
   const { GET } = await import("@/app/api/auth/end-session-url/route");
-  const odpowiedz = await GET(new NextRequest(ADRES));
+  const odpowiedz = await GET(new NextRequest(adres));
   const { url } = (await odpowiedz.json()) as { url: string };
   return url;
 }
 
 let poprzedniIssuer: string | undefined;
 let poprzedniSekret: string | undefined;
+let poprzedniAuthUrl: string | undefined;
 
 beforeEach(() => {
   poprzedniIssuer = process.env.AUTH_KEYCLOAK_ISSUER;
   poprzedniSekret = process.env.AUTH_SECRET;
+  poprzedniAuthUrl = process.env.AUTH_URL;
   process.env.AUTH_KEYCLOAK_ISSUER = ISSUER;
   process.env.AUTH_SECRET = "sekret-tylko-testowy";
+  delete process.env.AUTH_URL;
   getTokenMock.mockReset();
 });
 
@@ -52,6 +55,8 @@ afterEach(() => {
   else process.env.AUTH_KEYCLOAK_ISSUER = poprzedniIssuer;
   if (poprzedniSekret === undefined) delete process.env.AUTH_SECRET;
   else process.env.AUTH_SECRET = poprzedniSekret;
+  if (poprzedniAuthUrl === undefined) delete process.env.AUTH_URL;
+  else process.env.AUTH_URL = poprzedniAuthUrl;
 });
 
 describe("adres wylogowania z systemu kont", () => {
@@ -101,6 +106,21 @@ describe("adres wylogowania z systemu kont", () => {
     );
   });
 
+  it("za odwrotnym proxy bierze origin z AUTH_URL, nie z adresu zadania widzianego przez kontener", async () => {
+    // `request.url` to tu adres wewnetrzny kontenera (`localhost:3000`) —
+    // dokladnie ten, ktory za Caddy widzi Next `next start`. AUTH_URL niesie
+    // publiczny adres i to on ma trafic do realmu, inaczej realm odrzuca
+    // redirect_uri/post_logout_redirect_uri jako obcy.
+    process.env.AUTH_URL = "https://psychon-dev.example.test";
+    getTokenMock.mockResolvedValue({ idToken: "id-token-tej-sesji" });
+
+    const url = new URL(await adresWylogowania("https://localhost:3000/api/auth/end-session-url"));
+
+    expect(url.searchParams.get("post_logout_redirect_uri")).toBe(
+      "https://psychon-dev.example.test/api/auth/callback/keycloak",
+    );
+  });
+
   it("KONTROLA NEGATYWNA: bez skonfigurowanego realmu wraca ekran logowania, nie adres realmu", async () => {
     delete process.env.AUTH_KEYCLOAK_ISSUER;
     getTokenMock.mockResolvedValue({ idToken: "id-token-tej-sesji" });
@@ -109,5 +129,15 @@ describe("adres wylogowania z systemu kont", () => {
 
     expect(url).toBe("https://szkolenia.example.test/logowanie/konta");
     expect(url).not.toContain("openid-connect/logout");
+  });
+
+  it("KONTROLA NEGATYWNA za proxy: bez realmu ekran logowania tez wraca pod publicznym adresem z AUTH_URL", async () => {
+    process.env.AUTH_URL = "https://psychon-dev.example.test";
+    delete process.env.AUTH_KEYCLOAK_ISSUER;
+    getTokenMock.mockResolvedValue({ idToken: "id-token-tej-sesji" });
+
+    const url = await adresWylogowania("https://localhost:3000/api/auth/end-session-url");
+
+    expect(url).toBe("https://psychon-dev.example.test/logowanie/konta");
   });
 });

@@ -138,6 +138,10 @@ services:
       # a nie w kotwicy Laravela.
       AUTH_KEYCLOAK_ISSUER: ${AUTH_KEYCLOAK_ISSUER:?ustaw AUTH_KEYCLOAK_ISSUER w /opt/psychon/.env}
       AUTH_SECRET: ${AUTH_SECRET:?ustaw AUTH_SECRET w /opt/psychon/.env}
+      # Bez tego Auth.js buduje redirect_uri/callback z origin zadania, a za
+      # Caddy tym origin jest wewnetrzny https://localhost:3000 kontenera, nie
+      # publiczny adres — realm odpowiada wtedy 400 na redirect_uri.
+      AUTH_URL: https://${STAGING_DOMAIN}
     depends_on:
       app:
         condition: service_started
