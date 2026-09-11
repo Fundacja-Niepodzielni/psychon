@@ -2,14 +2,20 @@
 
 namespace Tests\Feature\H18;
 
+use App\Models\Application;
 use App\Models\AuditLogEntry;
 use App\Models\Certificate;
 use App\Models\DataExport;
+use App\Models\ProfileDocument;
+use App\Models\PsychologistProfile;
 use App\Models\TestAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
+use RuntimeException;
 use Tests\Feature\H13\CertificatePackageCase;
 
 /**
@@ -296,5 +302,266 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
             $entry->created_at->diffInSeconds(now()) < 10,
             'znacznik czasu wpisu nie odpowiada chwili operacji'
         );
+    }
+
+    /**
+     * F-19: skasowanie pliku z dysku nie podlega wycofaniu transakcji SQL —
+     * nie ma czego wycofać, `ROLLBACK` nie przywraca bajtów, które fizycznie
+     * zniknęły. Świadek wymusza awarię PO kroku plikowym (zbieranie ścieżek +
+     * zerowanie kolumn) przez podpięcie się pod zdarzenie Eloquenta
+     * `AuditLogEntry::creating` — `AuditLog::record()` woła je jako ostatni
+     * krok WEWNĄTRZ transakcji procedury, więc awaria tam gwarantuje, że
+     * krok plikowy już się wykonał. To najmniej inwazyjny z trzech sposobów
+     * wymienionych w zleceniu: `AuditLog` to klasa `final` z metodą statyczną
+     * (nie da się jej podmienić partial mockiem bez zmiany produkcyjnego
+     * kodu), a osobne zdarzenie domenowe dla tej operacji nie istnieje.
+     *
+     * Na `ac4fda1` cały ciąg — zbieranie ścieżek, zerowanie kolumn, kasowanie
+     * plików z dysku — siedzi w jednej transakcji: ta awaria zdąży skasować
+     * pliki, zanim dojdzie do `AuditLog::record`, więc rollback cofnie
+     * kolumny, ale plików na dysku już nie odzyska — świadek świeci się na
+     * czerwono. Po naprawie pliki znikają dopiero w `DB::afterCommit()`,
+     * którego ta awaria nigdy nie dopuszcza do zarejestrowania (rzuca, zanim
+     * `run()` do niego dojdzie) — nic nie znika z dysku, świadek zielony.
+     */
+    public function test_file_deletion_does_not_survive_a_rolled_back_transaction(): void
+    {
+        Storage::fake('local');
+        $grad = $this->makeEligibleVolunteer();
+        $grad->update([
+            'first_name' => 'Renata',
+            'last_name' => 'Sokołowska',
+            'email' => 'renata.sokolowska@example.test',
+            'program_completed_at' => now()->subDay(),
+        ]);
+        $grad = $grad->fresh();
+
+        Sanctum::actingAs($grad);
+        $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
+        $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
+        $certificatePath = $certificate->pdf_path;
+        $this->assertTrue(Storage::disk('local')->exists($certificatePath), 'fixture assumption: certyfikat rzeczywiście ma plik na dysku');
+
+        Sanctum::actingAs($grad);
+        $diploma = $this->postJson('/api/v1/psychologist-profile/documents', [
+            'type' => 'dyplom',
+            'file' => UploadedFile::fake()->create('dyplom.pdf', 40, 'application/pdf'),
+        ])->assertStatus(201)->json('data');
+        $document = ProfileDocument::findOrFail($diploma['id']);
+        $documentPath = $document->file_path;
+        $this->assertTrue(Storage::disk('local')->exists($documentPath), 'fixture assumption: dokument profilu rzeczywiście ma plik na dysku');
+
+        // Wymuszona awaria PO kroku plikowym procedury.
+        AuditLogEntry::creating(function (): void {
+            throw new RuntimeException('wymuszona awaria dziennika audytu (świadek F-19)');
+        });
+
+        try {
+            Sanctum::actingAs($this->admin());
+            $response = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
+
+            $this->assertSame(
+                500,
+                $response->getStatusCode(),
+                'procedura miała eksplodować na wymuszonej awarii dziennika audytu, a zwróciła: '
+                    .$response->getStatusCode().' '.$response->getContent()
+            );
+
+            $afterFailure = $grad->fresh();
+            $this->assertNull($afterFailure->anonymized_at, 'konto wygląda na zanonimizowane mimo wycofanej transakcji');
+            $this->assertSame(
+                'renata.sokolowska@example.test',
+                $afterFailure->email,
+                'e-mail zmienił się mimo wycofanej transakcji — kolumny nie zostały cofnięte'
+            );
+
+            $this->assertSame(
+                $certificatePath,
+                $certificate->fresh()->pdf_path,
+                'ścieżka certyfikatu zmieniła się mimo wycofanej transakcji'
+            );
+            $this->assertTrue(
+                Storage::disk('local')->exists($certificatePath),
+                'plik certyfikatu zniknął z dysku, choć transakcja się wycofała — kasowanie pliku nie podlega rollbackowi (F-19)'
+            );
+
+            $this->assertSame(
+                $documentPath,
+                $document->fresh()->file_path,
+                'ścieżka dokumentu profilu zmieniła się mimo wycofanej transakcji'
+            );
+            $this->assertTrue(
+                Storage::disk('local')->exists($documentPath),
+                'plik dokumentu profilu zniknął z dysku, choć transakcja się wycofała — kasowanie pliku nie podlega rollbackowi (F-19)'
+            );
+        } finally {
+            AuditLogEntry::flushEventListeners();
+        }
+    }
+
+    /**
+     * K2 (noga C, decyzja D-20260909-21): dyplom i zaświadczenie o
+     * niekaralności wgrane PRAWDZIWĄ trasą uploadu
+     * (`POST /psychologist-profile/documents`) to cudze załączniki, nie
+     * dokumenty wystawione przez Fundację — inaczej niż certyfikat, po
+     * anonimizacji ma nie zostać ani wiersz `profile_documents`, ani plik
+     * pod jego ścieżką, ani trasa (admina — jedyna, która je wydaje; sam
+     * właściciel traci token razem z tożsamością w tej samej procedurze,
+     * co mierzy inny świadek H18).
+     */
+    public function test_profile_documents_uploaded_via_the_real_route_are_deleted_with_their_files(): void
+    {
+        Storage::fake('local');
+        $grad = $this->makeEligibleVolunteer();
+        $grad->update(['program_completed_at' => now()->subDay()]);
+        $grad = $grad->fresh();
+
+        Sanctum::actingAs($grad);
+        $diploma = $this->postJson('/api/v1/psychologist-profile/documents', [
+            'type' => 'dyplom',
+            'file' => UploadedFile::fake()->create('dyplom.pdf', 40, 'application/pdf'),
+        ])->assertStatus(201)->json('data');
+        $clearance = $this->postJson('/api/v1/psychologist-profile/documents', [
+            'type' => 'niekaralnosc',
+            'file' => UploadedFile::fake()->create('niekaralnosc.pdf', 30, 'application/pdf'),
+        ])->assertStatus(201)->json('data');
+
+        $profile = PsychologistProfile::where('user_id', $grad->id)->firstOrFail();
+        $diplomaDoc = ProfileDocument::findOrFail($diploma['id']);
+        $clearanceDoc = ProfileDocument::findOrFail($clearance['id']);
+        $this->assertTrue(Storage::disk('local')->exists($diplomaDoc->file_path), 'fixture assumption: dyplom rzeczywiście ma plik na dysku');
+        $this->assertTrue(Storage::disk('local')->exists($clearanceDoc->file_path), 'fixture assumption: zaświadczenie rzeczywiście ma plik na dysku');
+
+        $downloadUrl = URL::temporarySignedRoute(
+            'admin.profiles.documents.download',
+            now()->addMinutes(5),
+            ['profileId' => $profile->id, 'docId' => $diplomaDoc->id],
+        );
+        Sanctum::actingAs($this->admin());
+        $this->assertLessThan(300, $this->get($downloadUrl)->getStatusCode(), 'fixture assumption: trasa admina rzeczywiście wydaje dokument przed procedurą');
+
+        Sanctum::actingAs($this->admin());
+        $anonymize = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
+        $this->assertLessThan(300, $anonymize->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$anonymize->getStatusCode().' '.$anonymize->getContent());
+
+        $this->assertSame(
+            0,
+            ProfileDocument::where('profile_id', $profile->id)->count(),
+            'wiersze profile_documents przeżyły anonimizację właściciela'
+        );
+        $this->assertFalse(Storage::disk('local')->exists($diplomaDoc->file_path), 'plik dyplomu nadal jest na dysku po anonimizacji');
+        $this->assertFalse(Storage::disk('local')->exists($clearanceDoc->file_path), 'plik zaświadczenia o niekaralności nadal jest na dysku po anonimizacji');
+
+        $downloadAfter = $this->get($downloadUrl);
+        $this->assertSame(404, $downloadAfter->getStatusCode(), 'trasa admina nadal wydaje cudzy załącznik po anonimizacji zamiast 404: '.$downloadAfter->getContent());
+    }
+
+    /**
+     * K3 — ZAŁOŻENIE, odwołalne jednym zdaniem: skan dyplomu ze zgłoszenia
+     * (`applications.diploma_scan_path`, H03) traktujemy jak dokumenty
+     * profilu wyżej (K2) — cudzy załącznik, który administracja tylko
+     * odczytuje (`DiplomaScanAccess`), nigdy nie wystawia. Gdyby produkt
+     * zdecydował inaczej (np. skan ma zostać jako dowód decyzji
+     * rekrutacyjnej niezależnie od losu konta), ten świadek i odpowiadający
+     * mu fragment `UserAnonymizer` trzeba odwrócić — nic więcej w procedurze
+     * na tym założeniu nie stoi.
+     *
+     * Aplikacja nie ma trasy do wgrania skanu plikiem (repozytorium tworzy
+     * `diploma_scan_path` przez import CSV/wpis administracyjny, nie przez
+     * `UploadedFile`) — fixture stawia plik na dysku fake tak samo, jak robi
+     * to jedyny inny świadek tej ścieżki (`ApplicationApiTest::test_diploma_scan_is_admin_only_and_logged`),
+     * bo to jest tu najbliższy odpowiednik „prawdziwej trasy".
+     */
+    public function test_diploma_scan_of_an_accepted_application_is_deleted_by_the_procedure(): void
+    {
+        Storage::fake('local');
+        $grad = $this->makeEligibleVolunteer();
+
+        $application = Application::factory()->create([
+            'edition_id' => $grad->edition_id,
+            'user_id' => $grad->id,
+            'status' => 'accepted',
+            'diploma_scan_path' => "diplomas/{$grad->id}-scan.pdf",
+        ]);
+        Storage::disk('local')->put($application->diploma_scan_path, '%PDF-demo-diploma');
+        $scanPath = $application->diploma_scan_path;
+
+        Sanctum::actingAs($this->admin());
+        $before = $this->get("/api/v1/admin/applications/{$application->id}/diploma-scan");
+        $this->assertLessThan(300, $before->getStatusCode(), 'fixture assumption: trasa admina rzeczywiście wydaje skan przed procedurą');
+
+        Sanctum::actingAs($this->admin());
+        $anonymize = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
+        $this->assertLessThan(300, $anonymize->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$anonymize->getStatusCode().' '.$anonymize->getContent());
+
+        $this->assertNull($application->fresh()->diploma_scan_path, 'kolumna diploma_scan_path przeżyła anonimizację');
+        $this->assertFalse(Storage::disk('local')->exists($scanPath), 'plik skanu dyplomu nadal jest na dysku po anonimizacji');
+
+        Sanctum::actingAs($this->admin());
+        $after = $this->get("/api/v1/admin/applications/{$application->id}/diploma-scan");
+        $this->assertSame(404, $after->getStatusCode(), 'trasa admina nadal wydaje skan dyplomu po anonimizacji zamiast 404: '.$after->getContent());
+    }
+
+    /**
+     * K5: ścieżka „już zanonimizowane" (409) ma domykać K2 i K3 tak samo, jak
+     * dziś domyka certyfikaty (poza transakcją, przed wyjątkiem) — konto
+     * zanonimizowane PRZED naprawą nie może zostać z cudzymi załącznikami na
+     * dysku.
+     *
+     * W przeciwieństwie do analogicznego świadka certyfikatu
+     * (`test_certificate_pdf_left_over_from_an_earlier_run_still_carries_the_name`)
+     * stanu zastanego NIE da się tu zbudować realnym, podwójnym wywołaniem
+     * procedury: mechanizm sprzątania dokumentów profilu i skanu dyplomu
+     * powstaje w TYM SAMYM commicie co ta naprawa ścieżki 409, więc na
+     * kodzie „przed" pierwsze wywołanie i tak nic by nie posprzątało — nie
+     * ma więc różnicy między „pierwszym" a „drugim" wywołaniem do zmierzenia.
+     * Stan zastany — konto z `anonymized_at` ustawionym, ale cudzymi
+     * załącznikami wciąż na dysku — jest więc budowany wprost: dokładnie tak
+     * wyglądałby wiersz sprzed dnia, w którym którakolwiek wersja procedury
+     * zaczęła to sprzątać. Świadek mierzy wyłącznie to, czy JEDYNE w tym
+     * teście wywołanie procedury (kończące się 409) domyka ten stan.
+     */
+    public function test_already_anonymized_account_leaves_no_profile_document_or_diploma_scan_behind(): void
+    {
+        Storage::fake('local');
+        $grad = $this->makeEligibleVolunteer();
+        $grad->update(['program_completed_at' => now()->subDay()]);
+        $grad = $grad->fresh();
+
+        $profile = PsychologistProfile::create(['user_id' => $grad->id, 'status' => 'draft']);
+        $documentPath = "profile-documents/{$profile->id}/dyplom.pdf";
+        Storage::disk('local')->put($documentPath, '%PDF-demo-dyplom');
+        $profile->documents()->create([
+            'type' => 'dyplom',
+            'file_path' => $documentPath,
+            'uploaded_at' => now(),
+        ]);
+
+        $application = Application::factory()->create([
+            'edition_id' => $grad->edition_id,
+            'user_id' => $grad->id,
+            'status' => 'accepted',
+            'diploma_scan_path' => "diplomas/{$grad->id}-legacy-scan.pdf",
+        ]);
+        $scanPath = $application->diploma_scan_path;
+        Storage::disk('local')->put($scanPath, '%PDF-demo-legacy-scan');
+
+        // Konto zanonimizowane z pominięciem procedury — stan zastany, patrz
+        // uzasadnienie wyżej.
+        $grad->forceFill(['anonymized_at' => now()->subDay(), 'status' => 'deleted'])->save();
+
+        Sanctum::actingAs($this->admin());
+        $response = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
+        $this->assertSame(409, $response->getStatusCode(), 'konto zastane jako zanonimizowane nie zwróciło 409: '.$response->getContent());
+
+        $this->assertSame(
+            0,
+            ProfileDocument::where('profile_id', $profile->id)->count(),
+            'dokument profilu psychologa przeżył domknięcie stanu zastanego pod 409'
+        );
+        $this->assertFalse(Storage::disk('local')->exists($documentPath), 'plik dokumentu profilu nadal jest na dysku po domknięciu stanu zastanego');
+
+        $this->assertNull($application->fresh()->diploma_scan_path, 'kolumna diploma_scan_path przeżyła domknięcie stanu zastanego pod 409');
+        $this->assertFalse(Storage::disk('local')->exists($scanPath), 'plik skanu dyplomu nadal jest na dysku po domknięciu stanu zastanego');
     }
 }
