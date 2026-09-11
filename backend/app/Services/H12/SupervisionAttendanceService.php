@@ -6,16 +6,23 @@ use App\Exceptions\ApiException;
 use App\Models\SupervisionSignup;
 use App\Models\SupervisionSlot;
 use App\Models\User;
+use App\Services\Auth\TokenRoles;
 use Illuminate\Support\Facades\DB;
 
 final class SupervisionAttendanceService
 {
+    public function __construct(private readonly TokenRoles $tokenRoles) {}
+
     public function update(User $actor, int $slotId, array $attendance): SupervisionSlot
     {
         return DB::transaction(function () use ($actor, $slotId, $attendance): SupervisionSlot {
             $slot = SupervisionSlot::query()->whereKey($slotId)->lockForUpdate()->first();
 
-            if ($slot === null || ($actor->role === 'instructor' && (int) $slot->supervisor_id !== (int) $actor->id)) {
+            // R2 (sprint-2 §1): this is a scoping rule on top of the route's
+            // `role:instructor` gate — an instructor may only mark attendance
+            // for their OWN slot — so it has to ask the same access-token
+            // question the gate already answered, never the local row.
+            if ($slot === null || ($this->tokenRoles->has('instructor') && (int) $slot->supervisor_id !== (int) $actor->id)) {
                 throw new ApiException(404, 'not_found', 'Nie znaleziono terminu.');
             }
 
