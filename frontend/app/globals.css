@@ -1,6 +1,40 @@
 @import "tailwindcss";
 
 /*
+ * Roboto v51 — samodzielnie hostowany (F-89: krój był zadeklarowany w
+ * --psy-font, ale nigdy nie ładowany — 0 next/font, 0 <link rel>). Pliki w
+ * `public/fonts/`, ten sam podzbiór co strona Fundacji (P2, źródło wartości:
+ * DESIGN.md). Zero żądań do zewnętrznego CDN Google Fonts w
+ * runtime — wyłącznie `url("/fonts/...")` niżej. `latin-ext` pokrywa polskie
+ * znaki (ą ć ę ł ń ó ś ź ż).
+ * Zakres wag pliku: 300–700 (oś zmienna) — tokeny --psy-fw-thin (200) i
+ * --psy-fw-black (900) wykraczają poza plik; przeglądarka domyka wagę do
+ * najbliższej dostępnej (300/700). Poszerzenie podzbioru wag jest osobną,
+ * nazwaną decyzją Fundacji (Z-12) — poza zakresem tej partii.
+ */
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 300 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/roboto-v51-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-024F, U+1E00-1EFF, U+2020, U+20A0-20C0, U+2113,
+    U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 300 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/roboto-v51-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
  * Tokeny designu wyciągnięte z makiety (psychon-makieta/index.html).
  * Zmienne --psy-* to 1:1 wartości makiety; odstępstwa (kontrast WCAG ≥ 4,5:1)
  * są oznaczone komentarzem [A11Y].
@@ -81,7 +115,14 @@
   /* --- Cienie i fokus --- */
   --psy-shadow-card: 0 4px 20px #0000000d;
   --psy-shadow-header: 0 2px 10px #0000000d;
-  --psy-focus-ring: 0 0 0 3px #01be4a73;
+  /* F-90/P2: pierścień fokusu 3 px w --psy-violet-dark (#1500BB), wartość ze
+   * strony Fundacji (DESIGN.md / inwentarz identyfikacji). Zastępuje zielony
+   * pierścień 1,41–1,55:1 (poniżej progu Z-9 3:1). Kontrast liczony wobec tła,
+   * na którym pierścień faktycznie leży (box-shadow bez inset — tło strony/
+   * karty za obrysem elementu, nie wypełnienie samego elementu): biały 12,0:1,
+   * tło strony 11,31:1, karta ciepła 10,90:1, obramowanie 9,98:1 — wszystkie
+   * ≥ 3:1 z dużym zapasem. */
+  --psy-focus-ring: 0 0 0 3px var(--psy-violet-dark);
 
   /* --- Layout i ruch --- */
   --psy-container: 1200px;
@@ -171,10 +212,27 @@
   --shadow-header: var(--psy-shadow-header);
 }
 
-/* Wspólny pierścień fokusa (zielony, z makiety) — użycie: focus-visible:focus-ring */
+/* Wspólny pierścień fokusa (--psy-violet-dark #1500BB) — użycie:
+ * focus-visible:focus-ring. Widoczny tylko na :focus-visible (klawiatura),
+ * nigdy na zwykły :focus myszą — zgodnie z decyzją P2 pkt 2. */
 @utility focus-ring {
   outline: none;
   box-shadow: var(--psy-focus-ring);
+}
+
+/* F-91/P2: reguła ograniczonego ruchu — 0 klas ruchu bez wariantu
+ * `prefers-reduced-motion: reduce` (Z-4, impeccable C-1). Globalna reguła
+ * okrywa wszystkie klasy `animate-*` i `transition-*` naraz (m.in.
+ * ProgressBar, Button spinner, Skeleton/LoadingState, przejścia menu). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {

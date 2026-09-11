@@ -1,0 +1,12 @@
+Roboto v51 (self-hosted, woff2)
+
+Krój Roboto jest udostępniony na licencji Apache License, wersja 2.0:
+https://www.apache.org/licenses/LICENSE-2.0
+
+Pliki `roboto-v51-latin.woff2` i `roboto-v51-latin-ext.woff2` pochodzą z
+podzbioru czcionki Roboto (wagi 300-700, oś zmiennej grubości) — ten sam
+podzbiór, którego używa strona Fundacji Niepodzielni
+(`Niepodzielni-dev/web/app/themes/niepodzielni-theme/resources/fonts/`).
+Podzbiór `latin-ext` pokrywa polskie znaki diakrytyczne (ą ć ę ł ń ó ś ź ż).
+
+Źródło: Google Fonts, https://fonts.google.com/specimen/Roboto

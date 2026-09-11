@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type InputHTMLAttributes } from "react";
+import Field from "@/components/ui/Field";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -28,10 +29,7 @@ export default function Input({
       .join(" ") || undefined;
 
   return (
-    <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label htmlFor={inputId} className="text-small font-medium text-ink">
-        {label}
-      </label>
+    <Field id={inputId} label={label} error={error} hint={hint} className={className}>
       <input
         id={inputId}
         aria-invalid={error ? true : undefined}
@@ -41,16 +39,6 @@ export default function Input({
         }`}
         {...rest}
       />
-      {hint && (
-        <p id={hintId} className="text-caption text-subtle">
-          {hint}
-        </p>
-      )}
-      {error && (
-        <p id={errorId} className="text-caption font-medium text-danger">
-          {error}
-        </p>
-      )}
-    </div>
+    </Field>
   );
 }

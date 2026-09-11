@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import Logo from "@/components/ui/Logo";
 import { menuIcons } from "@/components/layout/menu-icons";
 import { api, endSession } from "@/lib/api";
 import type { MenuEntry } from "@/lib/menu/types";
@@ -56,12 +57,7 @@ export default function PanelShell({
       {/* Sidebar */}
       <aside className="border-b border-line bg-card lg:w-[260px] lg:shrink-0 lg:border-b-0 lg:border-r">
         <div className="flex items-center gap-2 px-6 py-5">
-          <span
-            aria-hidden="true"
-            className="flex size-9 items-center justify-center rounded-sm bg-brand text-h4 font-black text-light"
-          >
-            N
-          </span>
+          <Logo title="" className="h-8 w-auto shrink-0" />
           <div className="leading-tight">
             <p className="text-body font-black text-ink">Niepodzielni</p>
             <p className="text-caption text-subtle">{panelName}</p>
