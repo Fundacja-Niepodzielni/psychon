@@ -4,7 +4,7 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Dokumenty",
   href: "/panel/dokumenty",
-  order: 80,
+  order: 78,
   icon: "file-text",
 };
 

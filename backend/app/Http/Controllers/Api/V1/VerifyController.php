@@ -47,7 +47,7 @@ class VerifyController extends Controller
         return response()->json(['data' => [
             'number' => $certificate->number,
             'status' => $certificate->revoked_at !== null ? 'revoked' : 'valid',
-            'edition' => $editionName !== null && $editionName !== ''
+            'edition' => $editionName !== null && trim($editionName) !== ''
                 ? $editionName
                 : (string) ($edition?->starts_at?->year ?? ''),
             'issued_at' => $certificate->issued_at?->toIso8601ZuluString(),

@@ -4,7 +4,7 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Uczestniczki",
   href: "/admin/uczestniczki",
-  order: 20,
+  order: 19,
 };
 
 export default entry;
