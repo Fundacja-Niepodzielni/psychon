@@ -7,15 +7,15 @@
  * DESIGN.md). Zero żądań do zewnętrznego CDN Google Fonts w
  * runtime — wyłącznie `url("/fonts/...")` niżej. `latin-ext` pokrywa polskie
  * znaki (ą ć ę ł ń ó ś ź ż).
- * Zakres wag pliku: 300–700 (oś zmienna) — tokeny --psy-fw-thin (200) i
- * --psy-fw-black (900) wykraczają poza plik; przeglądarka domyka wagę do
- * najbliższej dostępnej (300/700). Poszerzenie podzbioru wag jest osobną,
- * nazwaną decyzją Fundacji (Z-12) — poza zakresem tej partii.
+ * Zakres wag pliku: 100–900 (oś zmienna `wght`, fvar min=100 max=900) —
+ * zakres zadeklarowany w `@font-face` niżej odpowiada zakresowi pliku
+ * (decyzja właściciela, Z-12). Token --psy-fw-black (900) renderuje się
+ * teraz prawdziwą wagą pliku, nie jest ścinany przez przeglądarkę do 700.
  */
 @font-face {
   font-family: "Roboto";
   font-style: normal;
-  font-weight: 300 700;
+  font-weight: 100 900;
   font-stretch: 100%;
   font-display: swap;
   src: url("/fonts/roboto-v51-latin-ext.woff2") format("woff2");
@@ -25,7 +25,7 @@
 @font-face {
   font-family: "Roboto";
   font-style: normal;
-  font-weight: 300 700;
+  font-weight: 100 900;
   font-stretch: 100%;
   font-display: swap;
   src: url("/fonts/roboto-v51-latin.woff2") format("woff2");

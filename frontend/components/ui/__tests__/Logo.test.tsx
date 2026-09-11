@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Logo from "@/components/ui/Logo";
+import { LOGO_SOURCE_D_SHA256 } from "./__fixtures__/logo-source-hash";
 
 describe("Logo", () => {
   it("wariant domyślny ma kolor akcentu (--psy-violet-dark, #1500BB przez token text-accent-dark)", () => {
@@ -33,6 +35,15 @@ describe("Logo", () => {
     const paths = container.querySelectorAll("path");
 
     expect(paths.length).toBe(20);
+  });
+
+  it("treść atrybutów d odpowiada dokładnie plikowi wzorcowemu ze strony, nie tylko ich liczbie (uwaga werdyktu: d=\"M0 0Z\" na jednej ścieżce przechodziło przy samym liczeniu)", () => {
+    const { container } = render(<Logo />);
+    const paths = Array.from(container.querySelectorAll("path"));
+    const joined = paths.map((path) => path.getAttribute("d") ?? "").join("|");
+    const hash = createHash("sha256").update(joined).digest("hex");
+
+    expect(hash).toBe(LOGO_SOURCE_D_SHA256);
   });
 
   it("noga negatywna: title pusty ukrywa znak przed czytnikiem ekranu (kontekst ma już etykietę)", () => {

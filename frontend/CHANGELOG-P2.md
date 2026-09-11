@@ -71,18 +71,22 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
   `@media (forced-colors: active) { outline: 3px solid Highlight; ... }`
   wewnątrz tej samej reguły — poza tym trybem nic się nie zmienia (nadal
   wyłącznie `box-shadow` w `--psy-focus-ring`).
-- **Licencja Roboto** — `public/fonts/LICENSE-roboto.txt` miał sam URL Apache
-  2.0. Dodano pełny tekst w `public/fonts/LICENSE-Apache-2.0.txt` i zapisano
-  w `LICENSE-roboto.txt`, z czego wynika rozstrzygnięcie Apache (nie OFL):
-  metadane pliku (`fc-query`/`fontTools`, tabela `name`) nie mają wprost pola
-  licencji, ale copyright wskazuje repozytorium `googlefonts/roboto-classic`,
-  które w oficjalnym repozytorium Google Fonts leży w katalogu `apache/`, nie
-  `ofl/`.
-- **Zakres wag** — plik ma oś `wght` 100-900, `@font-face` zostaje przy
-  `300 700` (jedyny zakres wykorzystywany przez tokeny PsychON; `--psy-fw-thin`
-  200 i `--psy-fw-black` 900 nie mają żadnego użycia w komponentach —
-  `grep -rn "fw-thin\|fw-black"` poza `globals.css` = 0). Uzasadnienie
-  zapisane w `LICENSE-roboto.txt`; poszerzenie deklaracji to osobna decyzja.
+- **Licencja Roboto** — poprzednia poprawka rozstrzygnęła błędną licencję i
+  dodała jej pełny tekst w osobnym pliku, niezwiązaną z tym krojem. Usunięto
+  ten plik i dodano pełny tekst `public/fonts/OFL.txt`
+  (źródło: `google/fonts/main/ofl/roboto/OFL.txt`). Rozstrzygnięcie:
+  repozytorium źródłowe `googlefonts/roboto-classic` jest wpisem katalogu
+  `ofl/roboto/` w oficjalnym repozytorium Google Fonts — `METADATA.pb`
+  deklaruje `license: "OFL"`. Plik to Roboto v3 na **SIL Open Font License
+  1.1**. Copyright w `OFL.txt` („Copyright 2011 The Roboto Project Authors
+  (https://github.com/googlefonts/roboto-classic)”) jest identyczny z
+  `nameID=0` w tabeli `name` pliku.
+- **Zakres wag** — plik ma oś `wght` 100-900. `@font-face` deklaruje teraz
+  `font-weight: 100 900`: zakres zadeklarowany = zakres pliku 100-900;
+  `font-black` (token `--psy-fw-black` 900) renderuje 900, nie jest już
+  ścinany przez przeglądarkę do 700. Decyzja właściciela (Z-12). Klasy
+  `font-black` w komponentach (61 użyć) nie były zmieniane — teraz renderują
+  się prawdziwą wagą pliku.
 - **`Skeleton` — drugie i trzecie bezpośrednie użycie** poza `LoadingState` i
   testami: `components/h07/AdminReliability.tsx` (ładowanie listy
   rzetelności) i `components/h12/InstructorGroup.tsx` (ładowanie karty
