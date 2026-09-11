@@ -33,7 +33,7 @@ interface NextAuthConfigLike {
 // Bez `importOriginal()`: prawdziwy `next-auth` ciągnie w środowisku testowym
 // `next/server` po ścieżce, której Node nie rozwiązuje, i moduł nie wstaje w
 // ogóle. Podstawiamy więc tylko to, czego `auth.ts` z tego pakietu używa —
-// fabrykę `NextAuth` i klasę bazową błędu logowania hasłem.
+// samą fabrykę `NextAuth`.
 vi.mock("next-auth", () => ({
   default: (config: unknown) => {
     przechwycona.config = config;
@@ -43,9 +43,6 @@ vi.mock("next-auth", () => ({
       signIn: () => undefined,
       signOut: () => undefined,
     };
-  },
-  CredentialsSignin: class CredentialsSignin extends Error {
-    code = "credentials";
   },
 }));
 
@@ -189,25 +186,6 @@ describe("callback jwt: rotacja tokenu konta Fundacji", () => {
     expect(wynik.accessTokenExpiresAt).toBe(termin);
   });
 
-  it("KONTROLA NEGATYWNA: drzwi lokalne (credentials) nie mają czego rotować", async () => {
-    const { jwt } = await callbacki();
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-
-    const wynik = await jwt({
-      token: {
-        provider: "credentials",
-        accessToken: "sanctum-abc",
-        refreshToken: null,
-        accessTokenExpiresAt: null,
-        roles: ["uczestniczka"],
-      },
-    });
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(wynik.accessToken).toBe("sanctum-abc");
-    expect(wynik.error).toBeUndefined();
-  });
 });
 
 describe("callback jwt: nieudana rotacja UPUSZCZA sesję", () => {

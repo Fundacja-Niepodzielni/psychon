@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { menuIcons } from "@/components/layout/menu-icons";
-import { api, endSession } from "@/lib/api";
+import { endSession } from "@/lib/api";
 import type { MenuEntry } from "@/lib/menu/types";
 
 export interface PanelShellProps {
@@ -33,15 +33,25 @@ export default function PanelShell({
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
+  /**
+   * Ten sam wzorzec co ekran „Twoje konto" (`app/konto/page.tsx`): adres
+   * wylogowania Kont Niepodzielni (z `id_token_hint`) czytamy PRZED
+   * zakończeniem sesji aplikacji — po `endSession()` ciasteczko z tym
+   * tokenem już nie istnieje. Bez tej kolejności sesja SSO w Kontach
+   * przeżywa, a kolejne logowanie wpuszcza bez pytania o nic.
+   */
   async function handleLogout() {
     setLoggingOut(true);
     try {
-      await api("/auth/logout", { method: "POST" });
+      const res = await fetch("/api/auth/end-session-url");
+      const { url } = (await res.json()) as { url: string };
+      await endSession();
+      window.location.assign(url);
     } catch {
-      // sesję i tak kończymy lokalnie
+      await endSession();
+      setLoggingOut(false);
+      router.push("/logowanie");
     }
-    await endSession();
-    router.push("/logowanie");
   }
 
   return (
