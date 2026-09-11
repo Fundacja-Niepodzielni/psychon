@@ -244,31 +244,66 @@ fi
 # i `backend/vendor`, czyli w plikach, ktorych repozytorium NIE zawiera (zmierzone:
 # `git ls-files` = 0 dla kazdego z nich). Skaner, ktory czerwieni sie od cudzych
 # artefaktow budowania, zostanie wyciszony przez pierwsza osobe, ktora go zobaczy.
+#
+# Logika licznika/kontroli zgodnosci/filtra pol NIE zyje tutaj - zyje w
+# deploy/lib/sekrety-licznik.sh, zrodlowanym ponizej. Ten sam plik zrodlowuje
+# deploy/tests/test-bramka-sekrety.sh, wiec test i bramka NIE MOGA sie
+# rozjechac (zadna kopia logiki w tescie). Test biegnie NAJPIERW: liczba z
+# prawdziwego skanu nizej nie jest warta zaufania, jesli logika, ktora ja
+# liczy, jest sama w sobie zepsuta - a to jest jedyny sposob, zeby cofnieta
+# poprawka F-106 (albo pusty plik biblioteki) dala tu CZERWIEN, zamiast po
+# cichu pokazac zero trafien.
 naglowek "3e - sekrety w tresci commitu"
+
+# shellcheck source=deploy/lib/sekrety-licznik.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sekrety-licznik.sh"
+
+T="$(date +%s)"
+bash deploy/tests/test-bramka-sekrety.sh > "$KATALOG_BIEGU"/bramka-test-sekrety.log 2>&1
+KOD_TEST_SEKRETY=$?
+CZAS_TEST_SEKRETY="$(czas_od "$T")"
+echo "test licznika sekretow: EXIT=$KOD_TEST_SEKRETY, $CZAS_TEST_SEKRETY s"
+if [ "$KOD_TEST_SEKRETY" -ne 0 ]; then
+    echo "sekrety: test wlasnej logiki (deploy/tests/test-bramka-sekrety.sh) jest CZERWONY - nie ufam licznikowi ponizej, krok 3e pada NIEZALEZNIE od wyniku skanu" >&2
+    tail -20 "$KATALOG_BIEGU"/bramka-test-sekrety.log | sed 's/^/  ! /'
+fi
 
 T="$(date +%s)"
 EKSPORT="$(mktemp -d)"
 git archive --format=tar HEAD | tar -x -C "$EKSPORT"
 PLIKOW_GL="$(find "$EKSPORT" -type f | wc -l)"
-docker run --rm --network none -v "${EKSPORT}:/tresc:ro" -v "$PWD/.gitleaks.toml:/konfiguracja.toml:ro"     ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact     > "$KATALOG_BIEGU"/bramka-gitleaks.log 2>&1
+sekrety_uruchom_gitleaks "$EKSPORT" "$PWD/.gitleaks.toml" "$KATALOG_BIEGU"/bramka-gitleaks.log
 KOD_GITLEAKS=$?
 CZAS_GITLEAKS="$(czas_od "$T")"
 rm -rf "$EKSPORT"
 # ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
 BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
-TRAFIEN_GL="$(grep -acE "^RuleID:" "$KATALOG_BIEGU"/bramka-gitleaks.log)"
+TRAFIEN_GL="$(sekrety_policz_trafienia "$KATALOG_BIEGU"/bramka-gitleaks.log)"
+KOD_LICZNIKA=$?
 echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
-[ "$KOD_GITLEAKS" -ne 0 ] && grep -aE "^(RuleID|File|Line):" "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
+if [ "$KOD_LICZNIKA" -ne 0 ]; then
+    KOD_GITLEAKS=2
+fi
+# Filtr NIGDY nie przepuszcza Secret/Match/Finding (tresc trafienia) - tylko
+# RuleID/File/Line, nawet gdy `-v` je drukuje.
+[ "$KOD_GITLEAKS" -ne 0 ] && sekrety_pola_do_logu "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
+# Test wlasnej logiki jest osobnym warunkiem, niezaleznym od wyniku skanu:
+# skan mogl wyjsc czysto (KOD_GITLEAKS=0) na logice, ktora akurat na TYM
+# logu przypadkiem daje ta sama liczbe co poprawna - dlatego jego czerwien
+# NIE jest tylko podnoszona jako informacja, tylko WYMUSZA czerwony krok 3e.
+if [ "$KOD_TEST_SEKRETY" -ne 0 ]; then
+    KOD_GITLEAKS=2
+fi
 
 # --- 3f - swiadek logowania psychon-dev: testy (krok blokujacy) ------------
 # Suita `deploy/psychon-dev/tests/test-swiadek-logowania.sh` zrodlowuje
 # deploy.sh i mierzy same funkcje `_swiadek_logowania_*` (bez zywego hosta,
-# bez Dockera, bez sieci) - lekka, wiec biegnie w tym samym kontenerze co
-# reszta kroku 3, bez wlasnego stosu. JEST blokujaca: to F-104/F-105 - swiadek
-# ISS/STAGING_DOMAIN musi patrzec na to samo zrodlo w tej samej kolejnosci co
-# `docker compose --env-file`, a asercje Location musza porownywac parametry
-# NA ROWNO, nie podciagiem - regresja tutaj oznacza, ze swiadek na hoscie
-# znow moze byc zielony na zlamanej sciezce logowania.
+# bez Dockera, bez sieci) - lekka, wiec biegnie w POWLOCE HOSTA (`bash ...`
+# nizej), bez wlasnego stosu i bez wchodzenia do kontenera `bramka_app`.
+# JEST blokujaca: to F-104/OD-098 - ISS/STAGING_DOMAIN maja JEDNO zrodlo
+# (plik $env_file), a asercje Location musza porownywac parametry NA ROWNO,
+# nie podciagiem - regresja tutaj oznacza, ze swiadek na hoscie znow moze
+# byc zielony na zlamanej sciezce logowania.
 naglowek "3f - swiadek logowania psychon-dev (testy)"
 
 T="$(date +%s)"
