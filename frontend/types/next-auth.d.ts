@@ -1,13 +1,12 @@
 import type { DefaultSession } from "next-auth";
 
 /**
- * Extra fields this app's two sign-in providers attach to the session — the
- * identity and roles read from whichever door authenticated the user, and
- * the bearer token `lib/api.ts` attaches to every backend call.
+ * Extra fields the account-system (Keycloak) sign-in door attaches to the
+ * session — the identity and roles read from the token, and the bearer
+ * token `lib/api.ts` attaches to every backend call.
  */
 declare module "next-auth" {
   interface User {
-    role?: string;
     roles?: string[];
     accessToken?: string;
   }
@@ -24,13 +23,11 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    /** Which door authenticated this session — `keycloak` is the only one
-     * with an expiry and a refresh token to rotate. */
-    provider?: "keycloak" | "credentials";
+    /** Which door authenticated this session — `keycloak` is the only door. */
+    provider?: "keycloak";
     accessToken?: string | null;
     accessTokenExpiresAt?: number | null;
-    /** Account-system refresh token; never set for the local Credentials
-     * door (its Sanctum token carries no exposed expiry to rotate against). */
+    /** Account-system refresh token. */
     refreshToken?: string | null;
     /** Account-system ID token — read server-side only, to build the IdP's
      * own end-session URL (`id_token_hint`); never sent to the browser. */

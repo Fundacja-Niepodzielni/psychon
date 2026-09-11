@@ -1,6 +1,4 @@
 import NextAuth from "next-auth";
-import { CredentialsSignin } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
 import Keycloak from "next-auth/providers/keycloak";
 
 /**
@@ -13,11 +11,6 @@ import Keycloak from "next-auth/providers/keycloak";
  * end-session route needs the same value to build the IdP's logout URL.
  */
 export const ACCOUNT_SYSTEM_CLIENT_ID = "psychon-web";
-
-function apiBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-  return `${raw.replace(/\/+$/, "")}/api/v1`;
-}
 
 /**
  * Reads `sub` and `realm_access.roles` out of an access token payload
@@ -41,29 +34,6 @@ function decodeAccessTokenClaims(token: string): { sub: string | null; roles: st
   } catch {
     return { sub: null, roles: [] };
   }
-}
-
-/**
- * Thrown from the Credentials `authorize` callback so the local `/logowanie`
- * screen can show exactly what the backend answered — the same 429
- * rate-limit wait and 422 per-field errors the pre-Auth.js screen showed.
- * `signIn()` with `redirect: false` only ever returns a `type`, never a
- * response body; `CredentialsSignin.code` is the one field Auth.js carries
- * back to the client unredacted (via the `code` query param), so the whole
- * backend error envelope travels there as JSON.
- */
-class CredentialsLoginError extends CredentialsSignin {
-  constructor(payload: LoginErrorPayload) {
-    super();
-    this.code = JSON.stringify(payload);
-  }
-}
-
-export interface LoginErrorPayload {
-  status: number;
-  code: string;
-  message: string;
-  errors?: Record<string, string[]>;
 }
 
 /**
@@ -115,7 +85,7 @@ async function refreshKeycloakAccessToken(
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
-  pages: { signIn: "/logowanie/konta", error: "/logowanie/konta" },
+  pages: { signIn: "/logowanie", error: "/logowanie" },
   providers: [
     Keycloak({
       clientId: ACCOUNT_SYSTEM_CLIENT_ID,
@@ -136,67 +106,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
-    Credentials({
-      id: "credentials",
-      name: "Hasło",
-      credentials: { email: {}, password: {} },
-      async authorize(credentials) {
-        const email = typeof credentials?.email === "string" ? credentials.email : null;
-        const password = typeof credentials?.password === "string" ? credentials.password : null;
-        if (!email || !password) {
-          throw new CredentialsLoginError({
-            status: 422,
-            code: "validation_error",
-            message: "Podaj adres e-mail i hasło.",
-          });
-        }
-
-        let res: Response;
-        try {
-          res = await fetch(`${apiBaseUrl()}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ email, password }),
-          });
-        } catch {
-          throw new CredentialsLoginError({
-            status: 0,
-            code: "network_error",
-            message: "Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.",
-          });
-        }
-
-        let json: unknown = null;
-        try {
-          json = await res.json();
-        } catch {
-          // brak JSON-a w odpowiedzi — obsłużone niżej przez samą treść statusu
-        }
-
-        if (!res.ok) {
-          const err = (json as { error?: Partial<LoginErrorPayload> } | null)?.error;
-          throw new CredentialsLoginError({
-            status: err?.status ?? res.status,
-            code: err?.code ?? "unknown_error",
-            message: err?.message ?? "Coś poszło nie tak. Spróbuj ponownie za chwilę.",
-            errors: err?.errors,
-          });
-        }
-
-        const body = json as { data?: { token?: string; user?: { id: number; role: string } } } | null;
-        const token = body?.data?.token;
-        const user = body?.data?.user;
-        if (!token || !user) {
-          throw new CredentialsLoginError({
-            status: 401,
-            code: "invalid_credentials",
-            message: "Nieprawidłowy e-mail lub hasło.",
-          });
-        }
-
-        return { id: String(user.id), role: user.role, accessToken: token };
-      },
-    }),
   ],
   callbacks: {
     async jwt({ token, user, account }) {
@@ -213,26 +122,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         delete token.error;
         return token;
       }
-      if (account?.provider === "credentials" && user) {
-        const local = user as { id: string; role?: string; accessToken?: string };
-        token.provider = "credentials";
-        token.sub = local.id;
-        token.accessToken = local.accessToken ?? null;
-        token.refreshToken = null;
-        token.idToken = null;
-        // A Sanctum token carries no exposed expiry claim — the session's
-        // upper bound is the JWT cookie's own lifetime, not this field.
-        token.accessTokenExpiresAt = null;
-        token.roles = local.role ? [local.role] : [];
-        delete token.error;
-        return token;
-      }
 
       // No `account`/`user` on this call: an existing session being read
-      // again, not a fresh sign-in. Only the account-system door carries an
-      // expiry and a refresh token — the local door's Sanctum token has
-      // neither, so there is nothing to rotate there — the backend never
-      // exposes an expiry for it.
+      // again, not a fresh sign-in.
       if (
         token.provider === "keycloak" &&
         typeof token.accessTokenExpiresAt === "number" &&
