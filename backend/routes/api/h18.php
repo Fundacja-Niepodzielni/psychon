@@ -8,7 +8,7 @@
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:sanctum,keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h18')
@@ -21,7 +21,7 @@ if (! config('features.h18')) {
     return;
 }
 
-Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:sanctum,keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/users/export.csv', [AdminUserController::class, 'export']);
     Route::get('/admin/users', [AdminUserController::class, 'index']);
     Route::post('/admin/users', [AdminUserController::class, 'store']);

@@ -105,7 +105,7 @@ final class ApplicationAcceptor
                 $user,
                 'application.accepted',
                 'Zgłoszenie zaakceptowane',
-                'Twoje zgłoszenie zostało zaakceptowane. Ustaw hasło, aby aktywować konto. Link: '
+                'Twoje zgłoszenie zostało zaakceptowane. Połącz konto z kontem Niepodzielni, aby je aktywować. Link: '
                     .$activationUrl,
                 $activationPath,
             );

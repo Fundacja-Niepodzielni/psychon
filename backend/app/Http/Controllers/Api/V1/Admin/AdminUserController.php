@@ -257,12 +257,14 @@ class AdminUserController extends Controller
 
     private function sendInvitationEmail(User $user): void
     {
+        $activationUrl = rtrim(config('app.frontend_url'), '/').'/aktywacja?token='.$user->activation_token;
+
         EmailMessage::create([
             'to_email' => $user->email,
             'to_user_id' => $user->id,
             'subject' => 'Zaproszenie do platformy Fundacji Niepodzielni',
-            'body_html' => 'Twoje konto zostało utworzone. Ustaw hasło, korzystając z linku aktywacyjnego: '
-                .'<a href="/aktywacja?token='.$user->activation_token.'">Aktywuj konto</a>.',
+            'body_html' => 'Twoje konto zostało utworzone. Połącz je z kontem Niepodzielni, korzystając z linku: '
+                .'<a href="'.$activationUrl.'">Połącz z kontem Niepodzielni</a>.',
             'status' => 'simulated',
             'sent_at' => now(),
         ]);

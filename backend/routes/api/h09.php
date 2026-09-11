@@ -8,7 +8,7 @@
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:sanctum,keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h09')
@@ -24,21 +24,21 @@ if (! config('features.h09')) {
 }
 
 // Wizytówki prowadzących — treść programowa, każda zalogowana rola, za aktywnym dostępem.
-Route::middleware(['auth:sanctum', 'access.active'])->group(function (): void {
+Route::middleware(['auth:sanctum,keycloak', 'access.active'])->group(function (): void {
     Route::get('/instructors', [InstructorDirectoryController::class, 'index']);
     Route::get('/instructors/{id}', [InstructorDirectoryController::class, 'show'])
         ->whereNumber('id');
 });
 
 // Własna wizytówka prowadzącego i jego kursy.
-Route::middleware(['auth:sanctum', 'role:instructor'])->group(function (): void {
+Route::middleware(['auth:sanctum,keycloak', 'role:instructor'])->group(function (): void {
     Route::get('/me/instructor-profile', [MyInstructorProfileController::class, 'show']);
     Route::patch('/me/instructor-profile', [MyInstructorProfileController::class, 'update']);
     Route::get('/instructor/courses', [MyInstructorProfileController::class, 'courses']);
 });
 
 // Przypisania prowadzących do kursów i lekcji — wyłącznie administracja.
-Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:sanctum,keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/courses/{course}/assignments', [CourseAssignmentController::class, 'index'])
         ->whereNumber('course');
     Route::post('/admin/courses/{course}/assignments', [CourseAssignmentController::class, 'store'])

@@ -21,7 +21,7 @@ if (! config('features.h21')) {
     return;
 }
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware('auth:sanctum,keycloak')->group(function (): void {
     Route::get('/onboarding', [OnboardingController::class, 'show']);
 
     Route::middleware('role:super_admin,project_manager')

@@ -42,6 +42,16 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Stage E1 (most SSO): registered via `Auth::viaRequest('keycloak', …)`
+        // in `AppServiceProvider::boot()`, backed by `KeycloakGuardResolver`.
+        // Used as the second guard in `auth:sanctum,keycloak` on business
+        // routes so a Konta Niepodzielni bearer token works alongside the
+        // existing Sanctum token.
+        'keycloak' => [
+            'driver' => 'keycloak',
+            'provider' => 'users',
+        ],
     ],
 
     /*

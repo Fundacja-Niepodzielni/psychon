@@ -54,7 +54,7 @@ if (! class_exists('H06ProgressRequest', false)) {
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:sanctum,keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h06')
@@ -121,7 +121,7 @@ if (config('features.h06')) {
         ];
     };
 
-    Route::middleware(['auth:sanctum', 'access.active'])->group(function () use (
+    Route::middleware(['auth:sanctum,keycloak', 'access.active'])->group(function () use (
         $authorizeLesson,
         $ensureProgress,
         $completion,

@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Http\Middleware\AuthenticateKeycloakToken;
 use App\Models\User;
+use App\Services\Keycloak\KeycloakGuardResolver;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,6 +32,15 @@ class AppServiceProvider extends ServiceProvider
         // "auth.*" alias string in gatherMiddleware() — a fully qualified class
         // name does not satisfy that check (str_starts_with($middleware, 'auth')).
         $this->app['router']->aliasMiddleware('auth.keycloak', AuthenticateKeycloakToken::class);
+
+        // Named guard `keycloak` (stage E1 — the bridge): resolves a LOCAL
+        // `User` from a Keycloak bearer token via `keycloak_sub`, so
+        // `auth:sanctum,keycloak` on a business route accepts either token
+        // type. See `KeycloakGuardResolver` for the actual rules (blocked /
+        // deleted / anonymised / unbound all resolve to null → 401).
+        Auth::viaRequest('keycloak', function (Request $request) {
+            return $this->app->make(KeycloakGuardResolver::class)->resolve($request);
+        });
 
         // Password-reset e-mail: PL content + a link into the frontend.
         ResetPassword::createUrlUsing(function (User $user, string $token): string {

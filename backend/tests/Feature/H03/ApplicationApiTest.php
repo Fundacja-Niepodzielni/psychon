@@ -96,7 +96,7 @@ class ApplicationApiTest extends TestCase
         $this->assertCount(7, $routes);
         $routes->each(function ($route): void {
             $middleware = $route->gatherMiddleware();
-            $this->assertContains('auth:sanctum', $middleware);
+            $this->assertContains('auth:sanctum,keycloak', $middleware);
             $this->assertContains('role:project_manager,super_admin', $middleware);
         });
     }

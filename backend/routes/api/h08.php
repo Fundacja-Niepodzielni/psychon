@@ -8,7 +8,7 @@
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum', 'access.active'])
+|     Route::middleware(['auth:sanctum,keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h08')
@@ -26,7 +26,7 @@ if (! config('features.h08')) {
 }
 
 // Bez `access.active` — administracja nie podlega wygaśnięciu dostępu do programu.
-Route::middleware(['auth:sanctum', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:sanctum,keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/courses', [CourseCatalogAdminController::class, 'index']);
     Route::post('/admin/courses', [CourseCatalogAdminController::class, 'store']);
     Route::get('/admin/courses/{course}', [CourseCatalogAdminController::class, 'show'])->whereNumber('course');

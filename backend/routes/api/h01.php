@@ -21,7 +21,7 @@ if (! config('features.h01')) {
     return;
 }
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware('auth:sanctum,keycloak')->group(function (): void {
     Route::get('/me', [ProfileController::class, 'show']);
     Route::patch('/me', [ProfileController::class, 'update']);
 
