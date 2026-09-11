@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\H17;
 
+use App\Services\Auth\TokenRoles;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLessonQuestionRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function authorize(TokenRoles $roles): bool
     {
-        return in_array($this->user()?->role, ['volunteer', 'student'], true);
+        return $roles->has('volunteer', 'student');
     }
 
     /**

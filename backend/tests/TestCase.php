@@ -2,6 +2,9 @@
 
 namespace Tests;
 
+use App\Models\User;
+use App\Services\Auth\TokenRoles;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,6 +90,29 @@ abstract class TestCase extends BaseTestCase
         if (! $this->uzywaOdswiezaniaBazy()) {
             $this->stanZastanyBazy = $this->policzWiersze();
         }
+    }
+
+    /**
+     * R2 (sprint-2 §1): authorisation reads `TokenRoles`, which reads the
+     * `keycloak_principal` a REAL bearer token leaves on the request. Acting
+     * as a user through the `keycloak` guard sets the guard's resolved user
+     * directly (`InteractsWithAuthentication::be()`) and never runs
+     * `KeycloakGuardResolver::resolve()`, so no such attribute exists.
+     * Binds the acting user's local `role` as the test-only fallback
+     * `TokenRoles` reads in that case (see that class's own comment) —
+     * single point, so the pre-existing suite's `actingAs($user,
+     * 'keycloak')` idiom keeps working without mustering a JWT per test. A
+     * test that sends a real token instead (`withHeader('Authorization', …)`,
+     * never calling `actingAs`) is unaffected — that path is governed by
+     * the token alone.
+     */
+    public function actingAs(Authenticatable $user, $guard = null)
+    {
+        if ($guard === 'keycloak' && $user instanceof User) {
+            $this->app->instance(TokenRoles::TESTING_FALLBACK_ROLES, [$user->role]);
+        }
+
+        return parent::actingAs($user, $guard);
     }
 
     protected function tearDown(): void

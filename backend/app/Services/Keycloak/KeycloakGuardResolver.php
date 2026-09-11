@@ -17,11 +17,12 @@ use Illuminate\Support\Carbon;
  * (`KeycloakBackchannelInvalidation` — contract §4.5a) so a session Konta
  * Niepodzielni already ended dies on every business route, not only on
  * `/sso/whoami`, then resolves the LOCAL user by `keycloak_sub` — never by
- * e-mail. `users.role` stays the only source of business roles; this class
- * never reads `realm_access.roles` for anything but existing (discarding it
- * immediately) — the disagreement guarantee (§3) lives here: a token can
- * carry any realm role, only the local row's `role` column reaches
- * `EnsureRole`.
+ * e-mail. Roles are the OPPOSITE of `users.role`: R2 (sprint-2 §1) reads
+ * authorisation exclusively from the validated token's `realm_access.roles`
+ * (see `KeycloakPrincipal::authorizingRoles()` / `App\Services\Auth\TokenRoles`),
+ * so this resolver attaches the validated `KeycloakPrincipal` to the request
+ * — the disagreement guarantee lives here: a stale/conflicting `users.role`
+ * never reaches `EnsureRole`, the token always does.
  */
 class KeycloakGuardResolver
 {
@@ -50,6 +51,14 @@ class KeycloakGuardResolver
         if ($this->backchannel->check($principal->sid, $principal->sub) !== null) {
             return null;
         }
+
+        // Stashed for `TokenRoles` (app/Services/Auth/TokenRoles.php) — the
+        // single place every authorisation call site (EnsureRole, the
+        // FormRequest::authorize() methods, …) reads roles from. Every
+        // business route resolves its user through THIS guard, not the
+        // `auth.keycloak` middleware, so the principal has to be attached
+        // here too, not only in `AuthenticateKeycloakToken`.
+        $request->attributes->set('keycloak_principal', $principal);
 
         $user = User::query()->where('keycloak_sub', $principal->sub)->first();
 

@@ -2,19 +2,18 @@
 
 namespace App\Http\Requests\H03;
 
+use App\Services\Auth\TokenRoles;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AcceptApplicationRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function authorize(TokenRoles $roles): bool
     {
-        $actor = $this->user();
-
-        if (! in_array($actor?->role, ['project_manager', 'super_admin'], true)) {
+        if (! $roles->has('project_manager', 'super_admin')) {
             return false;
         }
 
-        return $actor->role === 'super_admin' || $this->input('role') !== 'super_admin';
+        return $roles->has('super_admin') || $this->input('role') !== 'super_admin';
     }
 
     public function rules(): array

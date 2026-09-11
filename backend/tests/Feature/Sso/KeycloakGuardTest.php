@@ -10,9 +10,11 @@ use Tests\TestCase;
 
 /**
  * SSO only: the named `keycloak` guard behind `auth:keycloak` on every
- * business route. Resolves a LOCAL user by `keycloak_sub`, never touches
- * `realm_access.roles` for authorisation — `users.role` stays the only
- * source (the disagreement guarantee).
+ * business route. Resolves a LOCAL user by `keycloak_sub`, by identity
+ * only (never by e-mail). Authorisation is the OPPOSITE of what this class
+ * used to assert: R2 (sprint-2 §1) reads roles from the validated access
+ * token exclusively — `users.role` never wins, whichever way the two
+ * disagree (the disagreement guarantee, proved below).
  */
 class KeycloakGuardTest extends TestCase
 {
@@ -22,7 +24,18 @@ class KeycloakGuardTest extends TestCase
 
     private const BUSINESS_ROUTE = '/api/v1/admin/report';
 
-    public function test_a_bound_active_user_gets_200_on_me_and_a_business_route(): void
+    /**
+     * Split into two single-resolution tests on purpose (see the note on
+     * {@see test_a_backchannel_logged_out_session_gets_401_on_a_business_route()}):
+     * `Auth::viaRequest`'s `RequestGuard` caches its resolved user — and,
+     * with it, whether `keycloak_principal` ever got attached — for the
+     * guard instance's lifetime, which persists across several simulated
+     * requests inside ONE test. A single test calling `/me` then the
+     * business route would silently reuse the first call's cached
+     * resolution for the second, never re-running the resolver and never
+     * re-attaching the principal the second request needs.
+     */
+    public function test_a_bound_active_user_gets_200_on_me(): void
     {
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $sub = (string) Str::uuid();
@@ -33,6 +46,17 @@ class KeycloakGuardTest extends TestCase
             ->getJson(self::ME_ROUTE)
             ->assertStatus(200)
             ->assertJsonPath('data.id', $user->id);
+    }
+
+    public function test_a_bound_active_user_with_the_whitelisted_token_role_gets_200_on_a_business_route(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->role('super_admin')->create(['keycloak_sub' => $sub]);
+        // R2: the business route is authorised by the TOKEN's role, not
+        // `users.role` — this bound user's token must actually carry the
+        // whitelisted realm role for the 200 to mean anything.
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => ['admin-fundacja']]]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson(self::BUSINESS_ROUTE)
@@ -97,16 +121,116 @@ class KeycloakGuardTest extends TestCase
     }
 
     /**
-     * Local `users.role` stays the only source of business roles: a
-     * keycloak-bound participant gets 403 on an admin route even though the
-     * token itself carries an admin realm role.
+     * The disagreement guarantee (R2, sprint-2 §1, starred criterion): the
+     * ACCESS TOKEN wins over a conflicting `users.role`, in both
+     * directions.
+     *
+     * `users.role` = volunteer (a participant), token carries the realm
+     * role mapped to `super_admin` (`admin-fundacja`, see
+     * `config('keycloak.roles')`) → the admin route answers 200, because
+     * the token — not the stale/conflicting local row — is what
+     * `EnsureRole` reads.
+     *
+     * Mutation check: make `EnsureRole` read `$user->role` again (its old
+     * shape, before R2) instead of `TokenRoles`. This test fails —
+     * `assertStatus(200)` receives 403 — because the local row still says
+     * `volunteer`. Restore `EnsureRole` afterwards. Measured 2026-09-11.
      */
-    public function test_local_role_wins_over_the_tokens_realm_role(): void
+    public function test_the_token_wins_when_the_local_role_is_lower_privilege(): void
     {
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $sub = (string) Str::uuid();
         User::factory()->role('volunteer')->create(['keycloak_sub' => $sub]);
-        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => ['super_admin']]]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => ['admin-fundacja']]]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(self::BUSINESS_ROUTE)
+            ->assertStatus(200);
+    }
+
+    /**
+     * The mirror leg of the same disagreement guarantee: `users.role` =
+     * super_admin (the local row itself would pass the old, pre-R2 gate),
+     * but the token carries none of the whitelisted realm roles (only the
+     * realm role mapped to `volunteer`, i.e. a participant) → the admin
+     * route answers 403. A high-privilege local row buys nothing once
+     * authorisation reads the token.
+     */
+    public function test_the_token_wins_when_the_local_role_is_higher_privilege(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->role('super_admin')->create(['keycloak_sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => ['wolontariusz']]]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(self::BUSINESS_ROUTE)
+            ->assertStatus(403);
+    }
+
+    /**
+     * The composite marker `wymaga-2fa` and an unknown realm role
+     * (`nieznana-rola-ekosystemu`, never listed in `config('keycloak.roles')`)
+     * grant nothing — "all roles from the token" is exactly the mistake R2
+     * warns against.
+     *
+     * Split into two single-resolution tests (see the note on
+     * {@see test_a_bound_active_user_with_the_whitelisted_token_role_gets_200_on_a_business_route()}):
+     * one bearer call per test, never two, so the guard's per-instance user
+     * cache never masks a second request's real (non-)resolution.
+     */
+    public function test_the_2fa_marker_and_an_unknown_realm_role_grant_no_roles_on_me(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->create(['keycloak_sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => ['wymaga-2fa', 'nieznana-rola-ekosystemu']]]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(self::ME_ROUTE)
+            ->assertStatus(200)
+            ->assertJsonPath('data.roles', []);
+    }
+
+    public function test_the_2fa_marker_and_an_unknown_realm_role_grant_no_access_to_a_business_route(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->create(['keycloak_sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => ['wymaga-2fa', 'nieznana-rola-ekosystemu']]]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(self::BUSINESS_ROUTE)
+            ->assertStatus(403);
+    }
+
+    /**
+     * An empty whitelisted role set is a valid state (R2 point 2): the
+     * bearer authenticates fine (`/me` 200) and simply carries no roles —
+     * never a 401, never an error — while a role-protected resource still
+     * answers 403.
+     *
+     * Split into two single-resolution tests for the same reason as above.
+     */
+    public function test_an_empty_whitelisted_role_set_gets_200_on_me_with_no_roles(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->create(['keycloak_sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => []]]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(self::ME_ROUTE)
+            ->assertStatus(200)
+            ->assertJsonPath('data.roles', []);
+    }
+
+    public function test_an_empty_whitelisted_role_set_gets_403_not_401_on_a_business_route(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->create(['keycloak_sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => []]]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson(self::BUSINESS_ROUTE)

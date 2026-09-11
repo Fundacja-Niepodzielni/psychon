@@ -120,4 +120,35 @@ class SsoPowiazTest extends TestCase
             ->postJson(self::ROUTE, ['token' => $user->activation_token])
             ->assertStatus(403);
     }
+
+    /**
+     * Binding negative (OD-093): a different Keycloak account can carry the
+     * SAME e-mail claim as an invited local user — binding must never fall
+     * back to matching on that e-mail. Proven by NOT supplying the real
+     * invitation token: even though the bearer's `email` claim matches the
+     * invited user exactly, an unknown `token` input is rejected the same
+     * way it would be for anyone else, and the row stays unbound.
+     */
+    public function test_never_binds_by_matching_email_alone(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $email = 'kandydat-wspolny-adres@niepodzielni.test';
+        $user = User::factory()->invited()->create([
+            'email' => $email,
+            'activation_token' => 'tok-'.Str::random(20),
+        ]);
+
+        // A different Keycloak account (its own `sub`) claiming the exact
+        // same e-mail as the invited local row.
+        $attackerSub = (string) Str::uuid();
+        $token = $realm->mint(['sub' => $attackerSub, 'email' => $email]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson(self::ROUTE, ['token' => 'zgadywany-token-nie-ten-co-trzeba'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'invalid_token');
+
+        $user->refresh();
+        $this->assertNull($user->keycloak_sub, 'A matching e-mail claim must never bind a token on its own.');
+    }
 }

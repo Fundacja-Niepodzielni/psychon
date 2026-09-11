@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\H15;
 
+use App\Services\Auth\TokenRoles;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePsychologistProfileRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function authorize(TokenRoles $roles): bool
     {
-        return $this->user()?->role === 'volunteer';
+        return $roles->has('volunteer');
     }
 
     public function rules(): array
