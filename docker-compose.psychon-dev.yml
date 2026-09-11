@@ -12,7 +12,8 @@
 # to dwa miejsca do pomylki. Ruch spoza Cloudflare nie ma jak tu dojsc, bo
 # certyfikat Origin CA jest wazny wylacznie dla Cloudflare.
 #
-# Uruchomienie opisuje deploy/psychon-dev/README.md.
+# Uruchomienie: deploy/psychon-dev/deploy.sh (wzor pliku srodowiskowego:
+# deploy/.env.example; kroki i warunki wstepne opisuje naglowek skryptu).
 name: psychon-dev
 
 x-laravel-env: &laravel-env
