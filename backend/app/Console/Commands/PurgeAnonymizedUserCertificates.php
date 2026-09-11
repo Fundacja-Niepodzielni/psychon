@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
  *
  * Plik znika z dysku, `certificates.pdf_path` przechodzi na `null`, wiersz
  * (numer, data wydania) zostaje — dokładnie ten sam wzorzec, co
- * `expireIssuedCertificates()` w `UserAnonymizer`.
+ * `collectAndClearResidualFiles()` w `UserAnonymizer`.
  */
 class PurgeAnonymizedUserCertificates extends Command
 {

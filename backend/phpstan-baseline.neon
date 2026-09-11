@@ -1585,12 +1585,6 @@ parameters:
 			path: app/Services/H18/UserAnonymizer.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:each\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\ProfileDocument\)\: void given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/H18/UserAnonymizer.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1

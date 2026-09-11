@@ -10,8 +10,10 @@ use App\Models\ProfileDocument;
 use App\Models\PsychologistProfile;
 use App\Models\TestAttempt;
 use App\Models\User;
+use App\Services\H18\UserAnonymizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
@@ -397,6 +399,85 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         } finally {
             AuditLogEntry::flushEventListeners();
         }
+    }
+
+    /**
+     * F-96: `test_file_deletion_does_not_survive_a_rolled_back_transaction`
+     * wymusza awarię WEWNĄTRZ transakcji procedury, w miejscu, gdzie
+     * `AuditLog::record()` sam rzuca wyjątek — a to znaczy, że wszystko PO
+     * tym wywołaniu (w tym samo `deleteFiles()`, obojętnie czy wołane przez
+     * `DB::afterCommit()`, czy wprost) i tak nigdy się nie wykona. Ten
+     * świadek zostałby zielony nawet po wycięciu `DB::afterCommit()` i
+     * zastąpieniu go bezpośrednim wywołaniem w tym samym miejscu — mutacja
+     * nic by w nim nie zmieniła, bo obie wersje kodu nie docierają do tej
+     * linii przy tej konkretnej awarii.
+     *
+     * Ten świadek zamyka tę lukę inaczej: procedura kończy się SUKCESEM (bez
+     * żadnej wymuszonej awarii), ale wywołanie siedzi w DODATKOWEJ, ZEWNĘTRZNEJ
+     * transakcji, którą wołający wycofuje PO powrocie z procedury. Laravel
+     * odkłada callbacki zarejestrowane przez `DB::afterCommit()` do momentu
+     * zatwierdzenia NAJBARDZIEJ zewnętrznej transakcji — skoro ta zewnętrzna
+     * transakcja nigdy się nie zatwierdza, zarejestrowany callback nigdy nie
+     * odpala i plik ma PRZEŻYĆ. Gdyby ktoś zastąpił `DB::afterCommit(...)`
+     * bezpośrednim wywołaniem `self::deleteFiles($paths)` w tym samym
+     * miejscu (WEWNĄTRZ transakcji procedury, czyli wewnątrz zagnieżdżonego
+     * savepointu), plik zniknąłby z dysku natychmiast — zanim zewnętrzna
+     * transakcja w ogóle zdąży się wycofać — bo skasowanie pliku z dysku nie
+     * jest częścią żadnej transakcji SQL i nie cofa go żaden `ROLLBACK`
+     * (F-19). Druga część świadka mierzy nogę pozytywną: zwykłe, zatwierdzone
+     * wywołanie procedury (bez żadnej zewnętrznej transakcji dookoła) ma
+     * faktycznie skasować plik.
+     */
+    public function test_files_are_deleted_only_after_the_outermost_transaction_commits(): void
+    {
+        Storage::fake('local');
+        $grad = $this->makeEligibleVolunteer();
+        $grad->update(['program_completed_at' => now()->subDay()]);
+        $grad = $grad->fresh();
+
+        Sanctum::actingAs($grad);
+        $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
+        $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
+        $certificatePath = $certificate->pdf_path;
+        $this->assertTrue(Storage::disk('local')->exists($certificatePath), 'fixture assumption: certyfikat rzeczywiście ma plik na dysku');
+
+        $admin = $this->admin();
+
+        // Wywołanie procedury kończy się sukcesem, ale siedzi w DODATKOWEJ,
+        // zewnętrznej transakcji, którą wołający tu jawnie wycofuje.
+        $caught = null;
+        try {
+            DB::transaction(function () use ($grad, $admin): void {
+                UserAnonymizer::run($grad->fresh(), $admin);
+
+                throw new RuntimeException('wymuszony rollback zewnętrznej transakcji (świadek F-96)');
+            });
+        } catch (RuntimeException $e) {
+            $caught = $e;
+        }
+        $this->assertNotNull($caught, 'oczekiwano wyjątku wymuszającego rollback zewnętrznej transakcji');
+        $this->assertSame('wymuszony rollback zewnętrznej transakcji (świadek F-96)', $caught->getMessage());
+
+        $afterRollback = $grad->fresh();
+        $this->assertNull($afterRollback->anonymized_at, 'konto wygląda na zanonimizowane mimo wycofanej zewnętrznej transakcji');
+        $this->assertSame(
+            $certificatePath,
+            $certificate->fresh()->pdf_path,
+            'ścieżka certyfikatu zmieniła się mimo wycofanej zewnętrznej transakcji'
+        );
+        $this->assertTrue(
+            Storage::disk('local')->exists($certificatePath),
+            'plik certyfikatu zniknął z dysku mimo wycofanej zewnętrznej transakcji — DB::afterCommit() ma czekać na NAJBARDZIEJ zewnętrzny commit, nie na commit wewnętrznej transakcji samej procedury'
+        );
+
+        // Noga pozytywna: zwykłe, zatwierdzone (bez zewnętrznej transakcji)
+        // wywołanie procedury faktycznie kasuje plik.
+        UserAnonymizer::run($grad->fresh(), $admin);
+        $this->assertNotNull($grad->fresh()->anonymized_at, 'konto nie zostało zanonimizowane po zatwierdzonym wywołaniu procedury');
+        $this->assertFalse(
+            Storage::disk('local')->exists($certificatePath),
+            'plik certyfikatu przeżył zatwierdzone wywołanie procedury'
+        );
     }
 
     /**

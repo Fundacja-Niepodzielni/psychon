@@ -179,10 +179,11 @@ final class UserAnonymizer
         // w `PsychologistProfileController`.
         $profile = PsychologistProfile::query()->where('user_id', $user->id)->first();
         if ($profile !== null) {
-            $profile->documents()->get()->each(function (ProfileDocument $document) use (&$paths): void {
-                $paths[] = $document->file_path;
-                $document->delete();
-            });
+            ProfileDocument::query()->where('profile_id', $profile->id)->get()
+                ->each(function (ProfileDocument $document) use (&$paths): void {
+                    $paths[] = $document->file_path;
+                    $document->delete();
+                });
         }
 
         // K3 (założenie, odwołalne jednym zdaniem — patrz komentarz świadka):
