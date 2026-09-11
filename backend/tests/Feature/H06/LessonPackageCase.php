@@ -7,7 +7,6 @@ use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -48,7 +47,7 @@ abstract class LessonPackageCase extends TestCase
     protected function actingAsMarta(): User
     {
         $marta = $this->marta();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         return $marta;
     }

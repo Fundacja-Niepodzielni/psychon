@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum,keycloak', 'access.active'])
+|     Route::middleware(['auth:keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Zero mutation routes for /admin/audit on purpose (contract §2: „trasy
@@ -26,7 +26,7 @@ if (! config('features.h20')) {
     return;
 }
 
-Route::middleware(['auth:sanctum,keycloak', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/report/export.csv', [ReportController::class, 'export']);
     Route::get('/admin/report', [ReportController::class, 'show']);
 

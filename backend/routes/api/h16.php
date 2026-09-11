@@ -12,13 +12,13 @@ use Illuminate\Support\Facades\Route;
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum,keycloak', 'access.active'])
+|     Route::middleware(['auth:keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h16')
 */
 
-Route::middleware('auth:sanctum,keycloak')->group(function (): void {
+Route::middleware('auth:keycloak')->group(function (): void {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'read'])

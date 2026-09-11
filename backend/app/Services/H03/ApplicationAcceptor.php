@@ -77,7 +77,6 @@ final class ApplicationAcceptor
                 'first_name' => $locked->first_name,
                 'last_name' => $locked->last_name,
                 'email' => $email,
-                'password' => null,
                 'phone' => $locked->phone,
                 'role' => $input['role'],
                 'status' => 'active',

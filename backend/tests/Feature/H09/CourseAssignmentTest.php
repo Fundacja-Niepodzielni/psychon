@@ -8,7 +8,6 @@ use App\Models\CourseAssignment;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -28,7 +27,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_admin_reads_active_assignments_of_a_course(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('podstawy-pomocy');
 
         $response = $this->getJson("/api/v1/admin/courses/{$course->id}/assignments")->assertOk();
@@ -45,7 +44,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_unknown_course_returns_404(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/admin/courses/999999/assignments')
             ->assertStatus(404)
@@ -54,7 +53,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_store_rejects_instructor_id_without_the_instructor_role(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('praca-z-emocjami');
 
         $this->postJson("/api/v1/admin/courses/{$course->id}/assignments", [
@@ -69,7 +68,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_store_rejects_lesson_from_another_course(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('praca-z-emocjami');
         $foreignLesson = $this->course('podstawy-pomocy')->lessons()->first();
 
@@ -83,7 +82,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_store_assigns_instructor_to_a_whole_course_with_audit_and_notification(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('praca-z-emocjami');
         $joanna = $this->user('joanna@demo.pl');
 
@@ -114,7 +113,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_store_assigns_instructor_to_a_single_lesson(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('praca-z-emocjami');
         $lesson = $course->lessons()->first();
 
@@ -128,7 +127,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_store_rejects_a_second_active_assignment_for_the_same_pair(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('podstawy-pomocy'); // Joanna already runs it (course-level)
         $other = User::factory()->role('instructor')->create();
         $before = CourseAssignment::count();
@@ -145,7 +144,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_destroy_unassigns_without_deleting_the_row_and_notifies(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('wywiad-psychologiczny');
         $assignment = $course->assignments()->whereNull('unassigned_at')->firstOrFail();
         $joanna = $this->user('joanna@demo.pl');
@@ -170,7 +169,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_destroy_is_idempotent_guarded_and_makes_no_extra_audit(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('interwencja-kryzysowa');
         $assignment = $course->assignments()->whereNull('unassigned_at')->firstOrFail();
 
@@ -192,7 +191,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_destroy_requires_assignment_id(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $course = $this->course('podstawy-pomocy');
 
         $this->deleteJson("/api/v1/admin/courses/{$course->id}/assignments", [])
@@ -202,7 +201,7 @@ class CourseAssignmentTest extends TestCase
 
     public function test_destroy_rejects_an_assignment_from_another_course(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $courseOne = $this->course('podstawy-pomocy');
         $courseTwo = $this->course('wywiad-psychologiczny');
         $assignmentOfOne = $courseOne->assignments()->whereNull('unassigned_at')->firstOrFail();
@@ -219,7 +218,7 @@ class CourseAssignmentTest extends TestCase
         $course = $this->course('podstawy-pomocy');
 
         foreach (['marta@demo.pl', 'filip@demo.pl', 'joanna@demo.pl'] as $email) {
-            Sanctum::actingAs($this->user($email));
+            $this->actingAs($this->user($email), 'keycloak');
 
             $this->getJson("/api/v1/admin/courses/{$course->id}/assignments")
                 ->assertStatus(403)

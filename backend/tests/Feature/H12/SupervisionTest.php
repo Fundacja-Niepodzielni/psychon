@@ -30,7 +30,7 @@ class SupervisionTest extends TestCase
         $ownSlot = SupervisionSlot::create($this->slotData($supervisor, seats: 2));
         SupervisionSlot::create($this->slotData($otherSupervisor));
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/supervision/slots')
             ->assertOk()
             ->assertJsonCount(1, 'data')
@@ -39,7 +39,7 @@ class SupervisionTest extends TestCase
             ->assertJsonPath('data.0.available_seats', 2)
             ->assertJsonPath('data.0.signup', null);
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$ownSlot->id}/signup")
             ->assertCreated()
             ->assertJsonPath('data.signup.attendance', null)
@@ -52,7 +52,7 @@ class SupervisionTest extends TestCase
             'cancelled_at' => null,
         ]);
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->deleteJson("/api/v1/supervision/slots/{$ownSlot->id}/signup")
             ->assertOk()
             ->assertJsonPath('data.signup', null)
@@ -85,12 +85,12 @@ class SupervisionTest extends TestCase
         $ownSlot = SupervisionSlot::create($this->slotData($supervisor, seats: 1));
         $foreignSlot = SupervisionSlot::create($this->slotData($otherSupervisor, seats: 1));
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$foreignSlot->id}/signup")
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'not_your_supervisor');
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$ownSlot->id}/signup")
             ->assertCreated();
 
@@ -99,14 +99,14 @@ class SupervisionTest extends TestCase
             ->firstOrFail();
         $signedUpAt = $original->signed_up_at;
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$ownSlot->id}/signup")
             ->assertCreated();
 
         $this->assertSame($original->id, $original->fresh()->id);
         $this->assertTrue($signedUpAt->equalTo($original->fresh()->signed_up_at));
 
-        $this->actingAs($otherVolunteer, 'sanctum')
+        $this->actingAs($otherVolunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$ownSlot->id}/signup")
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'slot_full');
@@ -122,13 +122,13 @@ class SupervisionTest extends TestCase
             'signed_up_at' => now(),
         ]);
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$ownSlot->id}/signup")
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'slot_full');
 
         $otherSignup->forceFill(['cancelled_at' => now()])->save();
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$ownSlot->id}/signup")
             ->assertCreated();
 
@@ -164,7 +164,7 @@ class SupervisionTest extends TestCase
         ]);
         SupervisionSlot::create($this->slotData($otherInstructor));
 
-        $this->actingAs($instructor, 'sanctum')
+        $this->actingAs($instructor, 'keycloak')
             ->getJson('/api/v1/instructor/group')
             ->assertOk()
             ->assertJsonCount(1, 'data.members')
@@ -174,7 +174,7 @@ class SupervisionTest extends TestCase
             ->assertJsonPath('data.slots.0.id', $slot->id)
             ->assertJsonPath('data.slots.0.signups.0.user.id', $member->id);
 
-        $created = $this->actingAs($instructor, 'sanctum')
+        $created = $this->actingAs($instructor, 'keycloak')
             ->postJson('/api/v1/instructor/slots', [
                 'starts_at' => Carbon::now()->addDay()->toIso8601String(),
             ]);
@@ -264,7 +264,7 @@ class SupervisionTest extends TestCase
             'status' => 'accepted',
         ]);
 
-        $response = $this->actingAs($instructor, 'sanctum')
+        $response = $this->actingAs($instructor, 'keycloak')
             ->getJson('/api/v1/instructor/group')
             ->assertOk()
             ->assertJsonCount(2, 'data.members');
@@ -306,7 +306,7 @@ class SupervisionTest extends TestCase
             'signed_up_at' => Carbon::now()->subHours(3),
         ]);
 
-        $this->actingAs($instructor, 'sanctum')
+        $this->actingAs($instructor, 'keycloak')
             ->patchJson("/api/v1/instructor/slots/{$pastSlot->id}/attendance", [
                 'attendance' => [(string) $member->id => 'present'],
             ])
@@ -326,7 +326,7 @@ class SupervisionTest extends TestCase
             'user_id' => $member->id,
             'signed_up_at' => now(),
         ]);
-        $this->actingAs($instructor, 'sanctum')
+        $this->actingAs($instructor, 'keycloak')
             ->patchJson("/api/v1/instructor/slots/{$futureSlot->id}/attendance", [
                 'attendance' => [(string) $member->id => 'present'],
             ])
@@ -360,13 +360,13 @@ class SupervisionTest extends TestCase
             'signed_up_at' => Carbon::now()->subHours(3),
         ]);
 
-        $this->actingAs($projectManager, 'sanctum')
+        $this->actingAs($projectManager, 'keycloak')
             ->patchJson("/api/v1/instructor/slots/{$pastSlot->id}/attendance", [
                 'attendance' => [(string) $member->id => 'present'],
             ])
             ->assertStatus(403);
 
-        $this->actingAs($superAdmin, 'sanctum')
+        $this->actingAs($superAdmin, 'keycloak')
             ->patchJson("/api/v1/instructor/slots/{$pastSlot->id}/attendance", [
                 'attendance' => [(string) $member->id => 'present'],
             ])
@@ -388,13 +388,13 @@ class SupervisionTest extends TestCase
         $second = User::factory()->role('instructor')->create();
         $volunteer = User::factory()->create(['role' => 'volunteer']);
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->putJson("/api/v1/admin/users/{$volunteer->id}/supervisor", [
                 'supervisor_id' => $first->id,
             ])
             ->assertOk();
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->putJson("/api/v1/admin/users/{$volunteer->id}/supervisor", [
                 'supervisor_id' => $second->id,
             ])
@@ -407,7 +407,7 @@ class SupervisionTest extends TestCase
             ->whereNull('unassigned_at')->count());
         $this->assertSame(2, AuditLogEntry::where('action', 'supervisor.assigned')->count());
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->putJson("/api/v1/admin/users/{$volunteer->id}/supervisor", [
                 'supervisor_id' => $second->id,
             ])
@@ -424,7 +424,7 @@ class SupervisionTest extends TestCase
             ->assertJsonPath('error.code', 'unauthenticated');
 
         $student = User::factory()->role('student')->create();
-        $this->actingAs($student, 'sanctum')
+        $this->actingAs($student, 'keycloak')
             ->getJson('/api/v1/supervision/slots')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
@@ -433,7 +433,7 @@ class SupervisionTest extends TestCase
             'role' => 'volunteer',
             'access_expires_at' => Carbon::now()->subMinute(),
         ]);
-        $this->actingAs($expired, 'sanctum')
+        $this->actingAs($expired, 'keycloak')
             ->getJson('/api/v1/supervision/slots')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'access_expired');

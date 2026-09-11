@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -133,7 +132,7 @@ class MaterialDownloadTest extends TestCase
      */
     private function downloadUrlFor(string $email, string $slug): string
     {
-        Sanctum::actingAs($this->user($email));
+        $this->actingAs($this->user($email), 'keycloak');
 
         $url = $this->getJson("/api/v1/courses/{$slug}")
             ->assertOk()

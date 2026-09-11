@@ -6,7 +6,6 @@ use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -41,7 +40,7 @@ class CourseUnlockNotificationTest extends TestCase
             'courseSlug' => 'wywiad-psychologiczny',
         ])->assertSuccessful();
 
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $items = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'))->keyBy('slug');
 
@@ -68,7 +67,7 @@ class CourseUnlockNotificationTest extends TestCase
         // to `>= 1` has to turn this test red.
         $fresh = User::factory()->create();
 
-        Sanctum::actingAs($fresh);
+        $this->actingAs($fresh, 'keycloak');
         $this->getJson('/api/v1/courses')->assertOk();
 
         $this->assertSame(0, $this->unlockNotifications($fresh)->count());
@@ -80,7 +79,7 @@ class CourseUnlockNotificationTest extends TestCase
 
         $before = Notification::where('user_id', $ola->id)->count();
 
-        Sanctum::actingAs($ola);
+        $this->actingAs($ola, 'keycloak');
         $this->getJson('/api/v1/courses')->assertOk();
 
         $this->assertSame(0, $this->unlockNotifications($ola)->count());

@@ -3,7 +3,6 @@
 namespace Tests\Feature\H06;
 
 use App\Models\LessonProgress;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * H06 · kryterium ★1 — „Wylogowanie i powrót → wznowienie od pozycji (±30 s)".
@@ -58,7 +57,7 @@ class LessonResumeTest extends LessonPackageCase
 
         // „Wylogowanie i powrót": nowe uwierzytelnienie, ta sama osoba.
         $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $position = (int) $this->showLesson($lesson)->assertOk()->json('data.position_seconds');
 

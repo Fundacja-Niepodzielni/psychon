@@ -4,7 +4,6 @@ namespace Tests\Feature\H18;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -18,7 +17,7 @@ class AdminUserExportTest extends TestCase
     public function test_csv_has_bom_semicolons_header_and_honours_role_filter(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $response = $this->get('/api/v1/admin/users/export.csv?role=volunteer');
 
@@ -35,7 +34,7 @@ class AdminUserExportTest extends TestCase
 
     public function test_export_requires_administration_role(): void
     {
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->get('/api/v1/admin/users/export.csv')
             ->assertStatus(403)

@@ -164,24 +164,24 @@ class ConsentWithdrawalTest extends TestCase
             'program_completed_at' => now()->subDay(),
         ]);
 
-        $this->actingAs($absolwentka, 'sanctum')
+        $this->actingAs($absolwentka, 'keycloak')
             ->patchJson('/api/v1/psychologist-profile', [
                 'specializations' => ['wsparcie w kryzysie'],
                 'approach' => 'systemowy',
                 'city' => 'Gdańsk',
             ])->assertOk();
 
-        $this->actingAs($absolwentka, 'sanctum')
+        $this->actingAs($absolwentka, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/documents', [
                 'type' => 'dyplom',
                 'file' => UploadedFile::fake()->create('dyplom.pdf', 100, 'application/pdf'),
             ])->assertCreated();
 
-        $this->actingAs($absolwentka, 'sanctum')
+        $this->actingAs($absolwentka, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/submit', ['publication_consent' => true])
             ->assertOk();
 
-        $this->actingAs($absolwentka, 'sanctum');
+        $this->actingAs($absolwentka, 'keycloak');
 
         return $absolwentka;
     }

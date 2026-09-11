@@ -57,7 +57,7 @@ class InternshipTest extends TestCase
             'status' => 'submitted',
         ]);
 
-        $response = $this->actingAs($volunteer, 'sanctum')
+        $response = $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/internship/entries');
 
         $response->assertOk()
@@ -71,7 +71,7 @@ class InternshipTest extends TestCase
             'status', 'review_comment', 'decided_at', 'created_at', 'updated_at',
         ], $keys);
 
-        $created = $this->actingAs($volunteer, 'sanctum')->postJson('/api/v1/internship/entries', [
+        $created = $this->actingAs($volunteer, 'keycloak')->postJson('/api/v1/internship/entries', [
             'date' => Carbon::today()->toDateString(),
             'hours' => '0.5',
             'form' => 'other',
@@ -88,7 +88,7 @@ class InternshipTest extends TestCase
         ]);
 
         Edition::query()->where('status', 'active')->update(['internship_hours_required' => 80]);
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/internship/entries')
             ->assertOk()
             ->assertJsonPath('meta.extra.required_hours', '80');
@@ -104,14 +104,14 @@ class InternshipTest extends TestCase
             'consultations_count' => -1,
         ];
 
-        $response = $this->actingAs($volunteer, 'sanctum')
+        $response = $this->actingAs($volunteer, 'keycloak')
             ->postJson('/api/v1/internship/entries', $payload);
 
         $response->assertStatus(422)
             ->assertJsonPath('error.code', 'validation_failed')
             ->assertJsonStructure(['error' => ['errors' => ['date', 'hours', 'form', 'consultations_count']]]);
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson('/api/v1/internship/entries', [
                 ...$payload,
                 'date' => Carbon::today()->toDateString(),
@@ -122,7 +122,7 @@ class InternshipTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('error.errors.hours.0', 'Wpis może obejmować maksymalnie 24 godziny.');
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson('/api/v1/internship/entries', [
                 ...$payload,
                 'date' => Carbon::today()->toDateString(),
@@ -141,12 +141,12 @@ class InternshipTest extends TestCase
         $submitted = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
         $accepted = InternshipEntry::create($this->entryData($volunteer, 'accepted'));
 
-        $this->actingAs($other, 'sanctum')
+        $this->actingAs($other, 'keycloak')
             ->patchJson("/api/v1/internship/entries/{$submitted->id}", ['hours' => '2.0'])
             ->assertStatus(404)
             ->assertJsonPath('error.code', 'not_found');
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->patchJson("/api/v1/internship/entries/{$accepted->id}", ['hours' => '2.0'])
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'entry_locked');
@@ -160,17 +160,17 @@ class InternshipTest extends TestCase
         $admin = User::factory()->create(['role' => 'project_manager']);
         $entry = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/internship/{$entry->id}/return", ['comment' => 'Doprecyzuj opis.'])
             ->assertOk();
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->patchJson("/api/v1/internship/entries/{$entry->id}", ['hours' => '2.0'])
             ->assertOk()
             ->assertJsonPath('data.status', 'submitted')
             ->assertJsonPath('data.review_comment', 'Doprecyzuj opis.');
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/internship/{$entry->id}/accept")
             ->assertOk()
             ->assertJsonPath('data.status', 'accepted')
@@ -186,14 +186,14 @@ class InternshipTest extends TestCase
         $old->forceFill(['created_at' => now()->subDay(), 'updated_at' => now()->subDay()])->save();
         $new = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
 
-        $queue = $this->actingAs($admin, 'sanctum')
+        $queue = $this->actingAs($admin, 'keycloak')
             ->getJson('/api/v1/admin/internship/pending');
 
         $queue->assertOk()->assertJsonPath('meta.per_page', 25);
         $this->assertSame([$old->id, $new->id], array_column($queue->json('data'), 'id'));
         $this->assertSame(['id', 'date', 'hours', 'form', 'consultations_count', 'description', 'status', 'review_comment', 'decided_at', 'created_at', 'updated_at', 'user'], array_keys($queue->json('data.0')));
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/internship/{$old->id}/accept")
             ->assertOk();
 
@@ -206,7 +206,7 @@ class InternshipTest extends TestCase
             'type' => 'internship.accepted',
         ]);
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/internship/{$old->id}/accept")
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'entry_locked');
@@ -220,13 +220,13 @@ class InternshipTest extends TestCase
         $volunteer = User::factory()->create(['role' => 'volunteer']);
         $entry = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/admin/internship/pending')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
 
         $admin = User::factory()->create(['role' => 'project_manager']);
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->postJson("/api/v1/admin/internship/{$entry->id}/return", ['comment' => '   '])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'validation_failed');
@@ -240,7 +240,7 @@ class InternshipTest extends TestCase
 
         $admin = User::factory()->create(['role' => 'project_manager']);
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->getJson('/api/v1/internship/entries')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
@@ -251,7 +251,7 @@ class InternshipTest extends TestCase
             'program_completed_at' => null,
         ]);
 
-        $this->actingAs($expired, 'sanctum')
+        $this->actingAs($expired, 'keycloak')
             ->getJson('/api/v1/internship/entries')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'access_expired');

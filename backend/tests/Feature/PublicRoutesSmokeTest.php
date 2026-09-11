@@ -54,18 +54,26 @@ class PublicRoutesSmokeTest extends TestCase
         );
     }
 
-    public function test_the_whitelisted_auth_routes_exist(): void
+    /**
+     * SSO only: there is no password auth left to whitelist —
+     * `config/public_routes.php` keeps only the two non-auth exceptions
+     * (public certificate verification, signed material links). Every
+     * `auth/*` password route from the pre-SSO starter is gone; the 404
+     * for the deleted password-login route itself is asserted in `PasswordAuthGoneTest`.
+     */
+    public function test_the_whitelisted_public_routes_exist(): void
     {
         $uris = collect(Route::getRoutes()->getRoutes())
             ->map(fn (RoutingRoute $route): string => $route->uri());
 
-        foreach ([
-            'api/v1/auth/login',
-            'api/v1/auth/forgot-password',
-            'api/v1/auth/reset-password',
-            'api/v1/auth/activate',
-        ] as $expected) {
-            $this->assertTrue($uris->contains($expected), "Brak trasy {$expected}.");
-        }
+        $this->assertTrue(
+            $uris->contains(fn (string $uri): bool => Str::is('api/v1/verify/*', $uri)),
+            'Brak trasy api/v1/verify/* (weryfikacja certyfikatów).',
+        );
+
+        $this->assertTrue(
+            $uris->contains(fn (string $uri): bool => Str::is('api/v1/materials/*/download', $uri)),
+            'Brak trasy api/v1/materials/{id}/download.',
+        );
     }
 }

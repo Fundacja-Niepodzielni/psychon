@@ -6,7 +6,6 @@ use App\Models\AuditLogEntry;
 use App\Models\User;
 use App\Support\ProgressAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H10 · warsztat stacjonarny — kryterium 5 (odznaczenie zasila warunek
@@ -24,7 +23,7 @@ class WorkshopTest extends TestPackageCase
 
         $this->assertFalse(ProgressAggregator::for($user)['workshop_done']);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
         $this->postJson("/api/v1/admin/workshop/{$user->id}/complete")
             ->assertOk()
             ->assertJsonPath('data.workshop_done', true);
@@ -43,7 +42,7 @@ class WorkshopTest extends TestPackageCase
         $this->activeEdition();
         $admin = User::factory()->create(['role' => 'project_manager']);
         $user = $this->volunteer();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         $this->postJson("/api/v1/admin/workshop/{$user->id}/complete")->assertOk();
         $this->postJson("/api/v1/admin/workshop/{$user->id}/complete")->assertOk();
@@ -56,7 +55,7 @@ class WorkshopTest extends TestPackageCase
     {
         $this->activeEdition();
         $user = $this->volunteer();
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $this->postJson("/api/v1/admin/workshop/{$user->id}/complete")->assertStatus(403);
     }

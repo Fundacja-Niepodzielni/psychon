@@ -6,7 +6,6 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\OnboardingContent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -21,7 +20,7 @@ class OnboardingTest extends TestCase
 
     public function test_get_onboarding_returns_default_content_when_nothing_is_stored(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create(), 'keycloak');
 
         $this->getJson('/api/v1/onboarding')
             ->assertOk()
@@ -35,7 +34,7 @@ class OnboardingTest extends TestCase
     public function test_get_onboarding_returns_stored_content(): void
     {
         OnboardingContent::put(['program' => ['title' => 'Plan', 'body' => 'Treść planu.']]);
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create(), 'keycloak');
 
         $this->getJson('/api/v1/onboarding')
             ->assertOk()
@@ -47,7 +46,7 @@ class OnboardingTest extends TestCase
 
     public function test_admin_updates_content_and_it_is_visible_immediately(): void
     {
-        Sanctum::actingAs(User::factory()->role('project_manager')->create());
+        $this->actingAs(User::factory()->role('project_manager')->create(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/onboarding', [
             'program' => ['title' => 'Jak to działa', 'body' => 'Nowy opis przebiegu programu.'],
@@ -66,7 +65,7 @@ class OnboardingTest extends TestCase
 
     public function test_super_admin_may_also_update_content(): void
     {
-        Sanctum::actingAs(User::factory()->role('super_admin')->create());
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/onboarding', [
             'expectations' => ['title' => 'Zasady', 'body' => 'Bądź rzetelny.'],
@@ -77,7 +76,7 @@ class OnboardingTest extends TestCase
 
     public function test_volunteer_cannot_update_content(): void
     {
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/onboarding', [
             'program' => ['title' => 'x', 'body' => 'y'],
@@ -97,7 +96,7 @@ class OnboardingTest extends TestCase
 
     public function test_update_rejects_a_section_with_blank_fields(): void
     {
-        Sanctum::actingAs(User::factory()->role('project_manager')->create());
+        $this->actingAs(User::factory()->role('project_manager')->create(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/onboarding', [
             'program' => ['title' => ''],
@@ -109,7 +108,7 @@ class OnboardingTest extends TestCase
 
     public function test_update_rejects_an_invalid_video_url(): void
     {
-        Sanctum::actingAs(User::factory()->role('project_manager')->create());
+        $this->actingAs(User::factory()->role('project_manager')->create(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/onboarding', [
             'video' => ['title' => 'Film', 'url' => 'not-a-url'],
@@ -124,7 +123,7 @@ class OnboardingTest extends TestCase
             'access_expires_at' => now()->subDay(),
             'program_completed_at' => null,
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->getJson('/api/v1/onboarding')->assertOk();
     }
@@ -135,14 +134,14 @@ class OnboardingTest extends TestCase
             'access_expires_at' => now()->subMonth(),
             'program_completed_at' => now()->subWeek(),
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->getJson('/api/v1/onboarding')->assertOk();
     }
 
     public function test_updated_at_is_exposed_once_content_is_edited(): void
     {
-        Sanctum::actingAs(User::factory()->role('super_admin')->create());
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/onboarding', [
             'program' => ['title' => 'T', 'body' => 'B'],

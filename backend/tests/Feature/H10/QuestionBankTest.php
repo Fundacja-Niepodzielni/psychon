@@ -6,7 +6,6 @@ use App\Models\TestAttempt;
 use App\Models\TestQuestion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H10 · bank pytań w panelu — kryteria 3 i 6 (edycja/usuwanie pytania
@@ -24,7 +23,7 @@ class QuestionBankTest extends TestPackageCase
     public function test_admin_can_list_questions_with_correctness_flags(): void
     {
         $test = $this->makeTest(questions: 3);
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
 
         $this->getJson("/api/v1/admin/tests/{$test->id}/questions")
             ->assertOk()
@@ -36,7 +35,7 @@ class QuestionBankTest extends TestPackageCase
     public function test_admin_can_create_a_question(): void
     {
         $test = $this->makeTest(questions: 2);
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
 
         $this->postJson("/api/v1/admin/tests/{$test->id}/questions", [
             'body' => 'Nowe pytanie?',
@@ -56,7 +55,7 @@ class QuestionBankTest extends TestPackageCase
     public function test_create_requires_exactly_one_correct_answer(): void
     {
         $test = $this->makeTest(questions: 1);
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
 
         $this->postJson("/api/v1/admin/tests/{$test->id}/questions", [
             'body' => 'Złe pytanie?',
@@ -71,7 +70,7 @@ class QuestionBankTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 5);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
             'answers' => $this->answersFor($test, 5),
@@ -81,7 +80,7 @@ class QuestionBankTest extends TestPackageCase
         $snapshotBefore = $attempt->questions_snapshot;
         $firstQuestion = TestQuestion::orderBy('id')->firstOrFail();
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $this->patchJson("/api/v1/admin/questions/{$firstQuestion->id}", [
             'body' => 'Zupełnie inna treść pytania?',
             'answers' => [
@@ -101,7 +100,7 @@ class QuestionBankTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 4);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
             'answers' => $this->answersFor($test, 4),
@@ -111,7 +110,7 @@ class QuestionBankTest extends TestPackageCase
         $snapshotBefore = $attempt->questions_snapshot;
         $question = TestQuestion::orderBy('id')->firstOrFail();
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $this->deleteJson("/api/v1/admin/questions/{$question->id}")
             ->assertOk()
             ->assertJsonPath('data.deleted', true);
@@ -124,7 +123,7 @@ class QuestionBankTest extends TestPackageCase
     public function test_question_bank_is_closed_to_non_admins(): void
     {
         $test = $this->makeTest(questions: 1);
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $this->getJson("/api/v1/admin/tests/{$test->id}/questions")->assertStatus(403);
         $this->postJson("/api/v1/admin/tests/{$test->id}/questions", [])->assertStatus(403);

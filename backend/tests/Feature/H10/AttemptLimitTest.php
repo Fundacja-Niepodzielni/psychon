@@ -6,7 +6,6 @@ use App\Models\AuditLogEntry;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H10 · limit podejść — kryterium 2 (czwarte podejście → 403) oraz
@@ -20,7 +19,7 @@ class AttemptLimitTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 10);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         // Każde podejście z WŁASNYM zestawem odpowiedzi (ten sam wynik, inna treść):
         // trzy razy to samo zgłoszenie byłoby dla serwera jednym podejściem, więc limit
@@ -43,7 +42,7 @@ class AttemptLimitTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 10);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
             'answers' => $this->answersFor($test, 9),
@@ -61,7 +60,7 @@ class AttemptLimitTest extends TestPackageCase
         User::factory()->create(['role' => 'project_manager']); // drugi opiekun
         $test = $this->makeTest(questions: 10);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         // Trzy osobne podejścia = trzy różne zestawy o tym samym wyniku 20%.
         // Powiadomienie ma polecieć po TRZECIM nieudanym podejściu, a nie po
@@ -87,7 +86,7 @@ class AttemptLimitTest extends TestPackageCase
         User::factory()->create(['role' => 'project_manager']);
         $test = $this->makeTest(questions: 10);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 2)])->assertCreated();
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersForAttempt($test, 2, 2)])->assertCreated();
@@ -100,7 +99,7 @@ class AttemptLimitTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 10);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 4)])->assertCreated();
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 8)])->assertCreated();
@@ -118,10 +117,10 @@ class AttemptLimitTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 10);
         $other = $this->volunteer();
-        Sanctum::actingAs($other);
+        $this->actingAs($other, 'keycloak');
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => $this->answersFor($test, 4)])->assertCreated();
 
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
         $this->getJson("/api/v1/tests/{$test->id}/attempts")
             ->assertOk()
             ->assertJsonCount(0, 'data');

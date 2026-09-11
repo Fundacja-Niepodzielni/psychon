@@ -6,7 +6,6 @@ use App\Models\AuditLogEntry;
 use App\Models\EmailMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -30,7 +29,7 @@ class AdminUserManagementTest extends TestCase
     public function test_creates_account_with_activation_token_email_and_audit(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $this->postJson('/api/v1/admin/users', $this->payload())
             ->assertCreated()
@@ -38,7 +37,7 @@ class AdminUserManagementTest extends TestCase
 
         $user = User::where('email', 'nowa.osoba@demo.pl')->firstOrFail();
         $this->assertNotNull($user->activation_token);
-        $this->assertNull($user->password);
+        $this->assertNull($user->keycloak_sub);
         $this->assertSame('active', $user->status);
 
         $this->assertTrue(
@@ -54,7 +53,7 @@ class AdminUserManagementTest extends TestCase
     public function test_duplicate_email_returns_409(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $this->postJson('/api/v1/admin/users', $this->payload(['email' => 'marta@demo.pl']))
             ->assertStatus(409)
@@ -65,7 +64,7 @@ class AdminUserManagementTest extends TestCase
     public function test_missing_email_returns_422(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $this->postJson('/api/v1/admin/users', $this->payload(['email' => null]))
             ->assertStatus(422)
@@ -76,7 +75,7 @@ class AdminUserManagementTest extends TestCase
     public function test_email_change_is_audited_as_user_updated(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
 
@@ -95,7 +94,7 @@ class AdminUserManagementTest extends TestCase
     public function test_email_conflict_on_update_returns_422_without_change(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
 
@@ -109,7 +108,7 @@ class AdminUserManagementTest extends TestCase
     public function test_unknown_id_on_update_returns_404(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $this->patchJson('/api/v1/admin/users/999999', ['first_name' => 'X'])
             ->assertStatus(404)
@@ -119,7 +118,7 @@ class AdminUserManagementTest extends TestCase
     public function test_project_manager_cannot_assign_super_admin_role(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'opiekun@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'opiekun@demo.pl')->firstOrFail(), 'keycloak');
 
         $auditBefore = AuditLogEntry::count();
 
@@ -134,7 +133,7 @@ class AdminUserManagementTest extends TestCase
     public function test_project_manager_cannot_edit_a_super_admin_account(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'opiekun@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'opiekun@demo.pl')->firstOrFail(), 'keycloak');
 
         $admin = User::where('email', 'admin@demo.pl')->firstOrFail();
 
@@ -148,7 +147,7 @@ class AdminUserManagementTest extends TestCase
     public function test_super_admin_can_assign_super_admin_role(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
 

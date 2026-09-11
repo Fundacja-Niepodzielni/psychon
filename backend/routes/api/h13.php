@@ -22,7 +22,7 @@ if (! config('features.h13')) {
 }
 
 // Uczestnik: warunki, wydanie, pobranie własnego certyfikatu.
-Route::middleware(['auth:sanctum,keycloak', 'access.active', 'role:volunteer'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer'])->group(function (): void {
     Route::get('/certificate/conditions', [CertificateController::class, 'conditions']);
     Route::post('/certificate/generate', [CertificateController::class, 'generate']);
     Route::get('/certificate/download', [CertificateController::class, 'download']);

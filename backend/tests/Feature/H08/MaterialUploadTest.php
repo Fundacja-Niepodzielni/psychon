@@ -10,7 +10,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -52,7 +51,7 @@ class MaterialUploadTest extends TestCase
     {
         $lesson = $this->lesson($this->course('etap-1'));
 
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->postJson("/api/v1/admin/lessons/{$lesson->id}/materials", [
             'file' => UploadedFile::fake()->createWithContent('karta-pracy.pdf', '%PDF-1.4 demo'),
@@ -171,7 +170,7 @@ class MaterialUploadTest extends TestCase
         // Uczestnik: materiał lekcji zbiera `CourseDetailResource` do tablicy
         // `materials` kursu (kontrakt nie ma pola `materials` na lekcji).
         $volunteer = User::factory()->role('volunteer')->create();
-        Sanctum::actingAs($volunteer);
+        $this->actingAs($volunteer, 'keycloak');
 
         $item = $this->getJson('/api/v1/courses/etap-1')->assertOk()->json('data.materials.0');
 
@@ -207,7 +206,7 @@ class MaterialUploadTest extends TestCase
         $this->assertSame('material.uploaded', $entry->details['op']);
         $this->assertNull($entry->details['lesson_id']);
 
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $names = collect($this->getJson('/api/v1/courses/etap-1')->assertOk()->json('data.materials'))
             ->pluck('name')
@@ -261,7 +260,7 @@ class MaterialUploadTest extends TestCase
         $this->assertSame($materialId, $entry->details['material_id']);
 
         // Zniknął też z listy materiałów uczestnika.
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->assertSame([], $this->getJson('/api/v1/courses/etap-1')->assertOk()->json('data.materials'));
     }
@@ -313,7 +312,7 @@ class MaterialUploadTest extends TestCase
     private function actingAsAdmin(): User
     {
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         return $admin;
     }

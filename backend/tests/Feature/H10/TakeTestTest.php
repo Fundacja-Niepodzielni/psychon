@@ -9,7 +9,6 @@ use App\Models\Test;
 use App\Models\User;
 use App\Support\CourseAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H10 · rozwiązywanie testu — kryterium 1 (próg 80%, odblokowanie etapu)
@@ -22,7 +21,7 @@ class TakeTestTest extends TestPackageCase
     public function test_get_test_returns_questions_without_correctness_flags(): void
     {
         $test = $this->makeTest();
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $response = $this->getJson("/api/v1/courses/{$test->course->slug}/test")
             ->assertOk()
@@ -44,7 +43,7 @@ class TakeTestTest extends TestPackageCase
         // 100 pytań → wynik w procentach = liczba poprawnych.
         $test = $this->makeTest(questions: 100);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
             'answers' => $this->answersFor($test, 79),
@@ -96,7 +95,7 @@ class TakeTestTest extends TestPackageCase
         // Etap B zablokowany, dopóki test etapu A nie jest zdany.
         $this->assertSame('locked', CourseAccess::state($user, $courseB)['status']);
 
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
             'answers' => $this->answersFor($test, 10),
         ])->assertCreated()->assertJsonPath('data.passed', true);
@@ -109,7 +108,7 @@ class TakeTestTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 10);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $wrongIds = $test->questions()->orderBy('sequence_order')->pluck('id')->slice(8)->values();
 
@@ -125,7 +124,7 @@ class TakeTestTest extends TestPackageCase
         $test = $this->makeTest(questions: 3);
         $otherTest = $this->makeTest(questions: 3);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $answers = $this->answersFor($test, 3);
         // Podmień jedną odpowiedź na należącą do innego testu.
@@ -145,7 +144,7 @@ class TakeTestTest extends TestPackageCase
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
         $lockedTest = Course::where('slug', 'interwencja-kryzysowa')->firstOrFail()->test;
 
-        Sanctum::actingAs($marta);
+        $this->actingAs($marta, 'keycloak');
 
         $this->getJson('/api/v1/courses/interwencja-kryzysowa/test')
             ->assertStatus(403)
@@ -159,7 +158,7 @@ class TakeTestTest extends TestPackageCase
     public function test_test_taking_routes_require_a_participant_role(): void
     {
         $test = $this->makeTest();
-        Sanctum::actingAs(User::factory()->create(['role' => 'instructor']));
+        $this->actingAs(User::factory()->create(['role' => 'instructor']), 'keycloak');
 
         $this->getJson("/api/v1/courses/{$test->course->slug}/test")->assertStatus(403);
         $this->postJson("/api/v1/tests/{$test->id}/attempts", ['answers' => []])->assertStatus(403);

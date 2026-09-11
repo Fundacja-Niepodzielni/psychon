@@ -8,9 +8,11 @@ use App\Models\User;
 use App\Support\Notify;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Concerns\ActsAsRole;
+use Tests\Support\Sso\KeycloakTokenFactory;
 use Tests\TestCase;
 
 /**
@@ -170,15 +172,19 @@ class PermissionMatrixTest extends TestCase
         $this->getJson('/api/v1/me')->assertOk();
         $this->postJson('/api/v1/me/exports')->assertStatus(202);
 
-        $expired = User::factory()->create([
-            'password' => 'demo1234',
+        // SSO only: no password login — the equivalent guarantee is that
+        // `/sso/powiaz` (binding, guarded only by `auth.keycloak`, never
+        // `access.active`) works for an account with expired access too.
+        $expired = User::factory()->invited()->create([
             'access_expires_at' => now()->subYear(),
         ]);
 
-        $this->postJson('/api/v1/auth/login', [
-            'email' => $expired->email,
-            'password' => 'demo1234',
-        ])->assertOk();
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $token = $realm->mint(['sub' => (string) Str::uuid()]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/sso/powiaz', ['token' => $expired->activation_token])
+            ->assertOk();
     }
 
     /**

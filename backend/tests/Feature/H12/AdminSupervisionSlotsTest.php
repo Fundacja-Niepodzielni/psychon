@@ -45,7 +45,7 @@ class AdminSupervisionSlotsTest extends TestCase
             'attendance_marked_by' => $supervisorOne->id,
         ])->save();
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->getJson('/api/v1/admin/supervision/slots')
             ->assertOk()
             ->assertJsonPath('data.0.id', $slotOne->id)
@@ -61,12 +61,12 @@ class AdminSupervisionSlotsTest extends TestCase
         $volunteer = User::factory()->create(['role' => 'volunteer']);
         $instructor = User::factory()->role('instructor')->create();
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/admin/supervision/slots')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
 
-        $this->actingAs($instructor, 'sanctum')
+        $this->actingAs($instructor, 'keycloak')
             ->getJson('/api/v1/admin/supervision/slots')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');

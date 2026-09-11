@@ -7,7 +7,6 @@ use App\Models\Edition;
 use App\Models\User;
 use App\Support\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -22,7 +21,7 @@ class EditionSettingsTest extends TestCase
         $this->seed();
 
         $admin = User::where('email', 'admin@demo.pl')->firstOrFail();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         $this->getJson('/api/v1/admin/edition')
             ->assertOk()
@@ -41,7 +40,7 @@ class EditionSettingsTest extends TestCase
     {
         Edition::factory()->create(['status' => 'active']);
         $volunteer = User::factory()->role('volunteer')->create();
-        Sanctum::actingAs($volunteer);
+        $this->actingAs($volunteer, 'keycloak');
 
         $this->getJson('/api/v1/admin/edition')
             ->assertStatus(403)
@@ -59,7 +58,7 @@ class EditionSettingsTest extends TestCase
     {
         $edition = Edition::factory()->create(['status' => 'active', 'test_pass_threshold' => 80]);
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         $this->patchJson('/api/v1/admin/edition', ['test_pass_threshold' => 150])
             ->assertStatus(422)
@@ -74,7 +73,7 @@ class EditionSettingsTest extends TestCase
     {
         $edition = Edition::factory()->create(['status' => 'active', 'seats_limit' => 40]);
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         $this->patchJson('/api/v1/admin/edition', ['seats_limit' => 55])
             ->assertOk()
@@ -92,7 +91,7 @@ class EditionSettingsTest extends TestCase
     {
         Edition::factory()->create(['status' => 'active', 'test_pass_threshold' => 80]);
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         $this->patchJson('/api/v1/admin/edition', ['test_pass_threshold' => 90])->assertOk();
 

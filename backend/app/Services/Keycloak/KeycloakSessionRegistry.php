@@ -59,4 +59,21 @@ final class KeycloakSessionRegistry
     {
         return DB::table(self::TABLE)->where('sid', $sid)->exists();
     }
+
+    /**
+     * Every `sid` this bookkeeping table has ever seen for `$sub` — used by
+     * `UserAnonymizer` to mark each of them invalidated so sessions already
+     * touched by this resource server die immediately, rather than only at
+     * their natural expiry. Best-effort only: a `sid` this table never saw
+     * (bookkeeping only runs on a HEALTHY store, per this class's own
+     * docblock) is not returned here — `users.anonymized_at`, checked by
+     * `KeycloakGuardResolver` on every request, is the authoritative
+     * backstop that catches those regardless.
+     *
+     * @return list<string>
+     */
+    public function sidsForSub(string $sub): array
+    {
+        return DB::table(self::TABLE)->where('sub', $sub)->pluck('sid')->all();
+    }
 }

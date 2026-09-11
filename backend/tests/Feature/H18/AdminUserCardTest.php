@@ -5,7 +5,6 @@ namespace Tests\Feature\H18;
 use App\Models\User;
 use App\Support\ProgressAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -20,7 +19,7 @@ class AdminUserCardTest extends TestCase
     public function test_marta_card_matches_the_seed_demo_numbers(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
 
@@ -36,7 +35,7 @@ class AdminUserCardTest extends TestCase
     public function test_card_progress_is_the_same_source_as_the_aggregator(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
         $aggregate = ProgressAggregator::for($marta);
@@ -55,7 +54,7 @@ class AdminUserCardTest extends TestCase
     public function test_card_has_all_five_blocks_and_full_pesel_for_administration(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
 
@@ -78,7 +77,7 @@ class AdminUserCardTest extends TestCase
     public function test_card_lists_documents_and_recent_notifications(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
         $data = $this->getJson("/api/v1/admin/users/{$marta->id}")->assertOk()->json('data');
@@ -90,7 +89,7 @@ class AdminUserCardTest extends TestCase
     public function test_unknown_id_returns_404(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $this->getJson('/api/v1/admin/users/999999')
             ->assertStatus(404)
@@ -100,7 +99,7 @@ class AdminUserCardTest extends TestCase
     public function test_volunteer_cannot_open_a_card(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
 

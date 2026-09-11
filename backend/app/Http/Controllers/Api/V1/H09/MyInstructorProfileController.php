@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 /**
  * H09 · wizytówka prowadzącego widziana i edytowana przez samego prowadzącego,
  * plus lista jego kursów dla ekranu `#/panel/prowadzacy`. Za
- * `auth:sanctum` + `role:instructor`.
+ * `auth:keycloak` + `role:instructor`.
  */
 class MyInstructorProfileController extends Controller
 {

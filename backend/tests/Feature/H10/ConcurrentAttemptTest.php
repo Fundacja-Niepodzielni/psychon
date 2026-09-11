@@ -5,7 +5,6 @@ namespace Tests\Feature\H10;
 use App\Models\TestAttempt;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H10 · kryterium ★2 — „test współbieżny `--filter=ConcurrentAttempt`,
@@ -42,7 +41,7 @@ class ConcurrentAttemptTest extends TestPackageCase
 
         $test = $this->makeTest(testOverrides: ['attempts_limit' => 20], questions: 10);
         $user = $this->volunteer();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
 
         $numbers = [];
 

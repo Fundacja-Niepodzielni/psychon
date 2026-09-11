@@ -7,14 +7,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
- * Backing resolver for the `keycloak` auth guard (stage E1 — the bridge).
- * Wired via `Auth::viaRequest('keycloak', …)` in `AppServiceProvider::boot()`
- * so `auth:sanctum,keycloak` on a business route accepts either token type
- * without either middleware knowing about the other.
+ * Backing resolver for the `keycloak` auth guard — SSO-only, the ONLY guard
+ * on every business route (`auth:keycloak`). Wired via
+ * `Auth::viaRequest('keycloak', …)` in `AppServiceProvider::boot()`.
  *
- * Deliberately narrow: validates the bearer JWT with the existing
- * `TokenValidator` (signature/issuer/audience/expiry — the identity
- * contract), then resolves the LOCAL user by `keycloak_sub` — never by
+ * Validates the bearer JWT with the existing `TokenValidator`
+ * (signature/issuer/audience/expiry — the identity contract), applies the
+ * SAME back-channel logout READ PATH as `AuthenticateKeycloakToken`
+ * (`KeycloakBackchannelInvalidation` — contract §4.5a) so a session Konta
+ * Niepodzielni already ended dies on every business route, not only on
+ * `/sso/whoami`, then resolves the LOCAL user by `keycloak_sub` — never by
  * e-mail. `users.role` stays the only source of business roles; this class
  * never reads `realm_access.roles` for anything but existing (discarding it
  * immediately) — the disagreement guarantee (§3) lives here: a token can
@@ -26,7 +28,10 @@ class KeycloakGuardResolver
     /** Any user we did touch `last_login_at` for keeps that value for this long. */
     private const LAST_LOGIN_THROTTLE_HOURS = 24;
 
-    public function __construct(private readonly TokenValidator $validator) {}
+    public function __construct(
+        private readonly TokenValidator $validator,
+        private readonly KeycloakBackchannelInvalidation $backchannel,
+    ) {}
 
     public function resolve(Request $request): ?User
     {
@@ -39,6 +44,10 @@ class KeycloakGuardResolver
         try {
             $principal = $this->validator->validate($token);
         } catch (InvalidKeycloakTokenException) {
+            return null;
+        }
+
+        if ($this->backchannel->check($principal->sid, $principal->sub) !== null) {
             return null;
         }
 

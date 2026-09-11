@@ -5,7 +5,6 @@ namespace Tests\Feature\H09;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -33,30 +32,30 @@ class CourseInstructorRegressionTest extends TestCase
         $course = Course::where('slug', 'wywiad-psychologiczny')->firstOrFail();
 
         // Baseline: seed puts Joanna on the course.
-        Sanctum::actingAs(User::where('email', 'marta@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'marta@demo.pl')->firstOrFail(), 'keycloak');
         $baseline = $this->getJson('/api/v1/courses/wywiad-psychologiczny')->assertOk();
         $baseline->assertJsonPath('data.instructor.id', $joanna->id);
         $shape = array_keys($baseline->json('data'));
 
         // Unassign → data.instructor becomes null, shape unchanged.
         $assignment = $course->assignments()->whereNull('unassigned_at')->firstOrFail();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
         $this->deleteJson("/api/v1/admin/courses/{$course->id}/assignments", [
             'assignment_id' => $assignment->id,
         ])->assertOk();
 
-        Sanctum::actingAs(User::where('email', 'marta@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'marta@demo.pl')->firstOrFail(), 'keycloak');
         $afterRemove = $this->getJson('/api/v1/courses/wywiad-psychologiczny')->assertOk();
         $afterRemove->assertJsonPath('data.instructor', null);
         $this->assertSame($shape, array_keys($afterRemove->json('data')));
 
         // Reassign to a different instructor → data.instructor points at them.
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
         $this->postJson("/api/v1/admin/courses/{$course->id}/assignments", [
             'instructor_id' => $newInstructor->id,
         ])->assertCreated();
 
-        Sanctum::actingAs(User::where('email', 'marta@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'marta@demo.pl')->firstOrFail(), 'keycloak');
         $this->getJson('/api/v1/courses/wywiad-psychologiczny')
             ->assertOk()
             ->assertJsonPath('data.instructor.id', $newInstructor->id)

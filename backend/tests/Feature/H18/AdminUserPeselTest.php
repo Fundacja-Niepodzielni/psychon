@@ -142,7 +142,7 @@ class AdminUserPeselTest extends TestCase
         // REGRESJA H01 z kryterium: naprawa administracji nie ma prawa poluzować
         // kontroli, która już działa. Ten test jest zielony DZIŚ i ma taki zostać.
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        $this->actingAs($marta, 'sanctum');
+        $this->actingAs($marta, 'keycloak');
 
         $this->patchJson('/api/v1/me', ['pesel' => self::PESEL_ZLY])
             ->assertStatus(422)
@@ -153,7 +153,7 @@ class AdminUserPeselTest extends TestCase
     {
         // Druga połowa regresji: H01 ma nadal PRZYJMOWAĆ poprawny numer.
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        $this->actingAs($marta, 'sanctum');
+        $this->actingAs($marta, 'keycloak');
 
         $this->patchJson('/api/v1/me', ['pesel' => self::PESEL_POPRAWNY])->assertOk();
 

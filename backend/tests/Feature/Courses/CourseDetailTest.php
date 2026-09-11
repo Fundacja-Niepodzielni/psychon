@@ -6,7 +6,6 @@ use App\Models\Course;
 use App\Models\Material;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -25,7 +24,7 @@ class CourseDetailTest extends TestCase
 
     public function test_unlocked_course_returns_the_contract_shape(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $response = $this->getJson('/api/v1/courses/wywiad-psychologiczny')->assertOk();
         $data = $response->json('data');
@@ -84,7 +83,7 @@ class CourseDetailTest extends TestCase
             'size' => 1024,
         ]);
 
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $names = collect($this->getJson('/api/v1/courses/wywiad-psychologiczny')->assertOk()->json('data.materials'))
             ->pluck('name')
@@ -98,7 +97,7 @@ class CourseDetailTest extends TestCase
 
     public function test_locked_course_is_refused_with_the_contract_reason(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $course2 = Course::where('slug', 'wywiad-psychologiczny')->firstOrFail();
 
@@ -114,7 +113,7 @@ class CourseDetailTest extends TestCase
 
     public function test_unknown_slug_returns_404(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/courses/nie-ma-takiego-kursu')
             ->assertStatus(404)
@@ -123,7 +122,7 @@ class CourseDetailTest extends TestCase
 
     public function test_non_participant_is_not_blocked_by_the_sequence(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $data = $this->getJson('/api/v1/courses/interwencja-kryzysowa')->assertOk()->json('data');
 
@@ -133,7 +132,7 @@ class CourseDetailTest extends TestCase
 
     public function test_course_without_an_active_assignment_has_no_instructor(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/courses/praca-z-emocjami')
             ->assertOk()

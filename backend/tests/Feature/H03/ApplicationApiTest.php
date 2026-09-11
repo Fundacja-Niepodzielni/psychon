@@ -11,7 +11,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Str;
+use Tests\Support\Sso\KeycloakTokenFactory;
 use Tests\TestCase;
 
 class ApplicationApiTest extends TestCase
@@ -23,7 +24,7 @@ class ApplicationApiTest extends TestCase
         $edition = Edition::factory()->create(['status' => 'active']);
         $actor = User::factory()->role('project_manager')->create();
         $application = Application::factory()->create(['edition_id' => $edition->id]);
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'keycloak');
 
         $this->getJson('/api/v1/admin/applications')
             ->assertOk()
@@ -46,7 +47,7 @@ class ApplicationApiTest extends TestCase
     {
         Edition::factory()->create(['status' => 'active']);
         $application = Application::factory()->create();
-        Sanctum::actingAs(User::factory()->role('super_admin')->create());
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->postJson('/api/v1/admin/applications', ['email' => 'not-an-email'])
             ->assertStatus(422)
@@ -66,7 +67,7 @@ class ApplicationApiTest extends TestCase
 
         $this->getJson('/api/v1/admin/applications')->assertUnauthorized();
 
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
         $this->getJson('/api/v1/admin/applications')->assertForbidden();
         $this->postJson('/api/v1/admin/applications/'.$application->id.'/reject', ['reason' => 'x'])->assertForbidden();
     }
@@ -76,7 +77,7 @@ class ApplicationApiTest extends TestCase
         Edition::factory()->create(['status' => 'active']);
 
         foreach (['student', 'volunteer', 'instructor'] as $role) {
-            Sanctum::actingAs(User::factory()->role($role)->create());
+            $this->actingAs(User::factory()->role($role)->create(), 'keycloak');
             $this->getJson('/api/v1/admin/applications')->assertForbidden();
         }
     }
@@ -86,7 +87,7 @@ class ApplicationApiTest extends TestCase
         Edition::factory()->create(['status' => 'active']);
 
         foreach (['project_manager', 'super_admin'] as $role) {
-            Sanctum::actingAs(User::factory()->role($role)->create());
+            $this->actingAs(User::factory()->role($role)->create(), 'keycloak');
             $this->getJson('/api/v1/admin/applications')->assertOk();
         }
 
@@ -96,7 +97,7 @@ class ApplicationApiTest extends TestCase
         $this->assertCount(7, $routes);
         $routes->each(function ($route): void {
             $middleware = $route->gatherMiddleware();
-            $this->assertContains('auth:sanctum,keycloak', $middleware);
+            $this->assertContains('auth:keycloak', $middleware);
             $this->assertContains('role:project_manager,super_admin', $middleware);
         });
     }
@@ -105,7 +106,7 @@ class ApplicationApiTest extends TestCase
     {
         Edition::factory()->create(['status' => 'active']);
         $application = Application::factory()->create();
-        Sanctum::actingAs(User::factory()->role('project_manager')->create());
+        $this->actingAs(User::factory()->role('project_manager')->create(), 'keycloak');
 
         $this->postJson('/api/v1/admin/applications/'.$application->id.'/accept', ['role' => 'super_admin'])
             ->assertForbidden();
@@ -117,7 +118,7 @@ class ApplicationApiTest extends TestCase
         $closed = Edition::factory()->create(['status' => 'closed']);
         $visible = Application::factory()->create(['edition_id' => $active->id]);
         $hidden = Application::factory()->create(['edition_id' => $closed->id]);
-        Sanctum::actingAs(User::factory()->role('super_admin')->create());
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->getJson('/api/v1/admin/applications')->assertOk()
             ->assertJsonPath('data.0.id', $visible->id)
@@ -133,7 +134,7 @@ class ApplicationApiTest extends TestCase
             'email' => 'candidate@example.test',
         ]);
         $actor = User::factory()->role('project_manager')->create();
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'keycloak');
 
         $response = $this->postJson('/api/v1/admin/applications/'.$application->id.'/accept', [
             'role' => 'volunteer',
@@ -142,7 +143,7 @@ class ApplicationApiTest extends TestCase
 
         $user = User::findOrFail($response->json('data.user_id'));
         $this->assertSame('candidate@example.test', $user->email);
-        $this->assertNull($user->password);
+        $this->assertNull($user->keycloak_sub);
         $this->assertNotNull($user->activation_token);
         $this->assertTrue($user->access_expires_at->greaterThan(now()->addMonths(5)));
         $this->assertSame('accepted', $application->fresh()->status);
@@ -158,14 +159,20 @@ class ApplicationApiTest extends TestCase
             (string) EmailMessage::where('to_user_id', $user->id)->latest('id')->value('body_html'),
         );
 
-        $this->postJson('/api/v1/auth/activate', [
-            'token' => $user->activation_token,
-            'password' => 'NoweHaslo123',
-        ])->assertOk();
-        $this->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
-            'password' => 'NoweHaslo123',
-        ])->assertOk();
+        // SSO only: the invitation link leads to BINDING, not activation by
+        // password — the same `activation_token` is what `/sso/powiaz`
+        // consumes to attach a Konta Niepodzielni identity.
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        $bindToken = $realm->mint(['sub' => $sub]);
+
+        $this->withHeader('Authorization', 'Bearer '.$bindToken)
+            ->postJson('/api/v1/sso/powiaz', ['token' => $user->activation_token])
+            ->assertOk()
+            ->assertJsonPath('data.email', 'candidate@example.test');
+
+        $this->assertSame($sub, $user->fresh()->keycloak_sub);
+        $this->assertNull($user->fresh()->activation_token);
     }
 
     public function test_duplicate_user_email_is_rejected_without_side_effects(): void
@@ -174,7 +181,7 @@ class ApplicationApiTest extends TestCase
         $application = Application::factory()->create(['edition_id' => $edition->id, 'email' => 'existing@example.test']);
         $existing = User::factory()->create(['email' => 'existing@example.test']);
         $actor = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'keycloak');
 
         $this->postJson('/api/v1/admin/applications/'.$application->id.'/accept', ['role' => 'volunteer'])
             ->assertStatus(409)
@@ -190,7 +197,7 @@ class ApplicationApiTest extends TestCase
         $edition = Edition::factory()->create(['status' => 'active', 'seats_limit' => 1]);
         User::factory()->create(['edition_id' => $edition->id, 'status' => 'active']);
         $application = Application::factory()->create(['edition_id' => $edition->id]);
-        Sanctum::actingAs(User::factory()->role('super_admin')->create());
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->postJson('/api/v1/admin/applications/'.$application->id.'/accept', ['role' => 'volunteer'])
             ->assertStatus(409)
@@ -210,7 +217,7 @@ class ApplicationApiTest extends TestCase
         Edition::factory()->create(['status' => 'active']);
         $application = Application::factory()->create();
         $actor = User::factory()->role('project_manager')->create();
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'keycloak');
 
         $this->postJson('/api/v1/admin/applications/'.$application->id.'/reject', ['reason' => '  '])
             ->assertStatus(422)
@@ -233,7 +240,7 @@ class ApplicationApiTest extends TestCase
         Edition::factory()->create(['status' => 'active']);
         $accepted = Application::factory()->create();
         $rejected = Application::factory()->create();
-        Sanctum::actingAs(User::factory()->role('super_admin')->create());
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->postJson('/api/v1/admin/applications/'.$accepted->id.'/accept', ['role' => 'volunteer'])->assertCreated();
         $this->postJson('/api/v1/admin/applications/'.$accepted->id.'/accept', ['role' => 'volunteer'])
@@ -253,7 +260,7 @@ class ApplicationApiTest extends TestCase
         $edition = Edition::factory()->create(['status' => 'active']);
         Application::factory()->create(['edition_id' => $edition->id, 'email' => 'taken@example.test']);
         User::factory()->create(['email' => 'registered@example.test']);
-        Sanctum::actingAs(User::factory()->role('project_manager')->create());
+        $this->actingAs(User::factory()->role('project_manager')->create(), 'keycloak');
 
         $csv = UploadedFile::fake()->createWithContent('applications.csv', implode("\n", [
             'first_name,last_name,email,phone',
@@ -276,7 +283,7 @@ class ApplicationApiTest extends TestCase
     public function test_import_requires_a_csv_file(): void
     {
         Edition::factory()->create(['status' => 'active']);
-        Sanctum::actingAs(User::factory()->role('project_manager')->create());
+        $this->actingAs(User::factory()->role('project_manager')->create(), 'keycloak');
 
         $this->postJson('/api/v1/admin/applications/import')
             ->assertStatus(422)
@@ -287,7 +294,7 @@ class ApplicationApiTest extends TestCase
     public function test_csv_import_accepts_bom_and_semicolon_delimiter_and_skips_invalid_role(): void
     {
         Edition::factory()->create(['status' => 'active']);
-        Sanctum::actingAs(User::factory()->role('project_manager')->create());
+        $this->actingAs(User::factory()->role('project_manager')->create(), 'keycloak');
         $csv = UploadedFile::fake()->createWithContent('applications.csv', "\xEF\xBB\xBFfirst_name;last_name;email;role\nMaria;Demo;maria@example.test;volunteer\nTest;Invalid;invalid@example.test;owner\n");
 
         $this->post('/api/v1/admin/applications/import', ['file' => $csv])
@@ -306,7 +313,7 @@ class ApplicationApiTest extends TestCase
         ]);
         Storage::disk('local')->put($application->diploma_scan_path, '%PDF-demo');
         $actor = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'keycloak');
 
         $this->get('/api/v1/admin/applications/'.$application->id.'/diploma-scan')
             ->assertOk()
@@ -326,14 +333,14 @@ class ApplicationApiTest extends TestCase
     {
         Edition::factory()->create(['status' => 'active']);
         $application = Application::factory()->create(['diploma_scan_path' => null]);
-        Sanctum::actingAs(User::factory()->role('super_admin')->create());
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->get('/api/v1/admin/applications/'.$application->id.'/diploma-scan')
             ->assertNotFound()
             ->assertJsonPath('error.code', 'diploma_scan_not_found');
         $this->assertSame(0, SensitiveAccessLogEntry::count());
 
-        Sanctum::actingAs(User::factory()->role('student')->create());
+        $this->actingAs(User::factory()->role('student')->create(), 'keycloak');
         $this->get('/api/v1/admin/applications/'.$application->id.'/diploma-scan')->assertForbidden();
     }
 }

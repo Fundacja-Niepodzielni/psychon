@@ -91,7 +91,6 @@ class AdminUserController extends Controller
                 'address_zip' => $data['address']['zip'] ?? null,
                 'product_group' => $data['product_group'] ?? 'psychon',
                 'status' => 'active',
-                'password' => null,
                 'activation_token' => Str::random(64),
             ]);
 

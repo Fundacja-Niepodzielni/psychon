@@ -22,14 +22,14 @@ if (! config('features.h10')) {
 
 // Uczestnik: rozwiązywanie testu i historia własnych podejść.
 // `access.active` — test to funkcja programu (blokowana po wygaśnięciu dostępu).
-Route::middleware(['auth:sanctum,keycloak', 'access.active', 'role:volunteer,student'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer,student'])->group(function (): void {
     Route::get('/courses/{slug}/test', [TestController::class, 'show']);
     Route::post('/tests/{test}/attempts', [TestController::class, 'storeAttempt']);
     Route::get('/tests/{test}/attempts', [TestController::class, 'attempts']);
 });
 
 // Administracja: bank pytań, warsztat, reset limitu podejść.
-Route::middleware(['auth:sanctum,keycloak', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/tests/{test}/questions', [AdminTestQuestionController::class, 'index']);
     Route::post('/admin/tests/{test}/questions', [AdminTestQuestionController::class, 'store']);
     Route::patch('/admin/questions/{question}', [AdminTestQuestionController::class, 'update']);

@@ -8,7 +8,7 @@
 | Register routes here; they are loaded inside the /api/v1 group.
 | Every route requires auth unless listed in config/public_routes.php:
 |
-|     Route::middleware(['auth:sanctum,keycloak', 'access.active'])
+|     Route::middleware(['auth:keycloak', 'access.active'])
 |         ->get('/example', ExampleController::class);
 |
 | Contract: docs/hackathon/02-kontrakt-api.md · flag: config('features.h19')
@@ -22,7 +22,7 @@ if (! config('features.h19')) {
     return;
 }
 
-Route::middleware(['auth:sanctum,keycloak', 'role:project_manager,super_admin'])->group(function (): void {
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/dashboard', [DashboardController::class, 'show']);
     Route::get('/admin/edition', [EditionSettingsController::class, 'show']);
     Route::patch('/admin/edition', [EditionSettingsController::class, 'update']);

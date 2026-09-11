@@ -19,7 +19,7 @@ class ReliabilitySeedTest extends TestCase
         $filip = User::where('email', 'filip@demo.pl')->firstOrFail();
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
 
-        $response = $this->actingAs($admin, 'sanctum')
+        $response = $this->actingAs($admin, 'keycloak')
             ->getJson('/api/v1/admin/reliability?per_page=50');
 
         $response->assertOk()

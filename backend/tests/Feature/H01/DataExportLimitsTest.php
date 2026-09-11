@@ -186,7 +186,7 @@ class DataExportLimitsTest extends TestCase
         $this->postJson('/api/v1/me/exports');
 
         $ola = User::where('email', 'ola@demo.pl')->firstOrFail();
-        $this->actingAs($ola, 'sanctum');
+        $this->actingAs($ola, 'keycloak');
 
         $this->assertContains(
             $this->postJson('/api/v1/me/exports')->status(),
@@ -259,7 +259,7 @@ class DataExportLimitsTest extends TestCase
         $martaExport = DataExport::orderByDesc('id')->firstOrFail();
 
         $ola = User::where('email', 'ola@demo.pl')->firstOrFail();
-        $this->actingAs($ola, 'sanctum');
+        $this->actingAs($ola, 'keycloak');
 
         $this->getJson("/api/v1/me/exports/{$martaExport->public_id}")->assertNotFound();
     }
@@ -301,7 +301,7 @@ class DataExportLimitsTest extends TestCase
     private function actingAsMarta(): User
     {
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        $this->actingAs($marta, 'sanctum');
+        $this->actingAs($marta, 'keycloak');
 
         return $marta;
     }

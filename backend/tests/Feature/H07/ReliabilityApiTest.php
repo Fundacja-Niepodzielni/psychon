@@ -76,7 +76,7 @@ class ReliabilityApiTest extends TestCase
         $this->progress($low, $lesson, 15, true);
         $this->progress($high, $lesson, 85, true);
 
-        $response = $this->actingAs($this->admin, 'sanctum')
+        $response = $this->actingAs($this->admin, 'keycloak')
             ->getJson('/api/v1/admin/reliability?per_page=50');
 
         $response->assertOk()
@@ -107,7 +107,7 @@ class ReliabilityApiTest extends TestCase
         $this->progress($user, $above, 80, true, openCount: 2);
         $this->progress($user, $unfinished, 10, false);
 
-        $response = $this->actingAs($this->admin, 'sanctum')
+        $response = $this->actingAs($this->admin, 'keycloak')
             ->getJson("/api/v1/admin/reliability/{$user->id}");
 
         $response->assertOk()
@@ -139,19 +139,19 @@ class ReliabilityApiTest extends TestCase
         $this->getJson('/api/v1/instructor/reliability')
             ->assertStatus(401);
 
-        $this->actingAs($this->instructor, 'sanctum')
+        $this->actingAs($this->instructor, 'keycloak')
             ->getJson('/api/v1/admin/reliability')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
-        $this->actingAs($this->instructor, 'sanctum')
+        $this->actingAs($this->instructor, 'keycloak')
             ->getJson("/api/v1/admin/reliability/{$user->id}")
             ->assertStatus(403)
             ->assertJsonMissing(['email' => $user->email]);
 
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->admin, 'keycloak')
             ->getJson('/api/v1/instructor/reliability')
             ->assertStatus(403);
-        $this->actingAs($user, 'sanctum')
+        $this->actingAs($user, 'keycloak')
             ->getJson('/api/v1/instructor/reliability')
             ->assertStatus(403);
     }
@@ -186,7 +186,7 @@ class ReliabilityApiTest extends TestCase
             'unassigned_at' => now()->subDay(),
         ]);
 
-        $response = $this->actingAs($this->instructor, 'sanctum')
+        $response = $this->actingAs($this->instructor, 'keycloak')
             ->getJson('/api/v1/instructor/reliability');
 
         $response->assertOk()
@@ -204,17 +204,17 @@ class ReliabilityApiTest extends TestCase
         $lesson = $this->lesson('Pomiar', 100, 1);
         $this->progress($user, $lesson, 50, true);
 
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->admin, 'keycloak')
             ->getJson('/api/v1/admin/reliability')
             ->assertJsonPath('data.0.reliability_percent', '50')
             ->assertJsonPath('data.0.below_threshold', true);
 
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->admin, 'keycloak')
             ->patchJson('/api/v1/admin/edition', ['reliability_threshold' => 50])
             ->assertOk()
             ->assertJsonPath('data.reliability_threshold', 50);
 
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->admin, 'keycloak')
             ->getJson('/api/v1/admin/reliability')
             ->assertJsonPath('data.0.reliability_percent', '50')
             ->assertJsonPath('data.0.below_threshold', false);
@@ -249,24 +249,24 @@ class ReliabilityApiTest extends TestCase
             EmailMessage::count(),
         ];
 
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->admin, 'keycloak')
             ->getJson('/api/v1/admin/reliability')
             ->assertOk()
             ->assertJsonCount(0, 'data')
             ->assertJsonPath('meta.total', 0);
-        $this->actingAs($this->instructor, 'sanctum')
+        $this->actingAs($this->instructor, 'keycloak')
             ->getJson('/api/v1/instructor/reliability')
             ->assertOk()
             ->assertJsonCount(0, 'data');
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->admin, 'keycloak')
             ->getJson('/api/v1/admin/reliability/999999')
             ->assertStatus(404)
             ->assertJsonPath('error.code', 'not_found');
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->admin, 'keycloak')
             ->getJson('/api/v1/admin/reliability?filter=forbidden')
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'validation_failed');
-        $this->actingAs($this->instructor, 'sanctum')
+        $this->actingAs($this->instructor, 'keycloak')
             ->getJson('/api/v1/instructor/reliability?supervisor_id=1')
             ->assertStatus(422);
 

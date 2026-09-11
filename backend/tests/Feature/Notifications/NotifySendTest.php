@@ -75,7 +75,7 @@ class NotifySendTest extends TestCase
         $this->assertNotNull($email->sent_at);
 
         // The bell endpoint surfaces the same notification with a working link.
-        $response = $this->actingAs($user, 'sanctum')->getJson('/api/v1/notifications');
+        $response = $this->actingAs($user, 'keycloak')->getJson('/api/v1/notifications');
 
         $response->assertOk()->assertJsonFragment([
             'id' => $notification->id,
