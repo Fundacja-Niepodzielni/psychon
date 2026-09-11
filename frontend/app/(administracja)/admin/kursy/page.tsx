@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import ReorderConfirmModal from "@/components/h08/ReorderConfirmModal";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
@@ -11,6 +11,8 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Table, { type Column } from "@/components/ui/Table";
+import ListTemplate from "@/components/templates/ListTemplate";
+import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api";
 import {
   COURSE_TYPE_LABELS,
@@ -42,17 +44,24 @@ const EMPTY_FORM: NewCourseForm = {
   description: "",
 };
 
+function pobierzKursy(
+  strona: number,
+): Promise<{ data: AdminCourse[]; meta?: PaginationMeta }> {
+  return apiPaged<AdminCourse>(
+    `/admin/courses?page=${strona}&per_page=${PER_PAGE}&sort=sequence_order`,
+  );
+}
+
 export default function AdminCoursesPage() {
   const router = useRouter();
 
-  const [page, setPage] = useState(1);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [courses, setCourses] = useState<AdminCourse[] | null>(null);
-  const [meta, setMeta] = useState<PaginationMeta | undefined>(undefined);
-  /** Błąd niesie klucz żądania — udany przeładunek pod nowym kluczem go ukrywa. */
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(
-    null,
+  const { stan, meta, strona, ustawStrone, ponow } = useZasobStronicowany<AdminCourse>(
+    pobierzKursy,
+    [],
+    "Nie udało się wczytać listy kursów. Odśwież stronę.",
   );
+  const kursy = stan.status === "success" ? stan.data : [];
+  const listaPusta = stan.status === "success" && kursy.length === 0;
 
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<NewCourseForm>(EMPTY_FORM);
@@ -67,35 +76,6 @@ export default function AdminCoursesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-
-  const loadKey = `${page}:${reloadKey}`;
-
-  useEffect(() => {
-    let active = true;
-
-    apiPaged<AdminCourse>(
-      `/admin/courses?page=${page}&per_page=${PER_PAGE}&sort=sequence_order`,
-    )
-      .then(({ data, meta: pagination }) => {
-        if (!active) return;
-        setCourses(data);
-        setMeta(pagination);
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        setFailed({
-          key: loadKey,
-          message:
-            err instanceof ApiError
-              ? err.message
-              : "Nie udało się wczytać listy kursów. Odśwież stronę.",
-        });
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [page, reloadKey, loadKey]);
 
   function update<K extends keyof NewCourseForm>(
     key: K,
@@ -140,7 +120,7 @@ export default function AdminCoursesPage() {
 
   function startReorder() {
     setReorderError(null);
-    setOrder((courses ?? []).filter((course) => course.sequence_order !== null));
+    setOrder(kursy.filter((course) => course.sequence_order !== null));
   }
 
   function move(index: number, delta: number) {
@@ -194,7 +174,7 @@ export default function AdminCoursesPage() {
       setModalOpen(false);
       setImpact([]);
       setOrder(null);
-      setReloadKey((value) => value + 1);
+      ponow();
     } catch (err) {
       setModalError(
         err instanceof ApiError
@@ -265,220 +245,201 @@ export default function AdminCoursesPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h2 font-black text-ink">Kursy</h1>
-          <p className="mt-2 text-body text-muted">
-            Twórz kursy i webinary, dodawaj lekcje i ustalaj kolejność ścieżki.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="secondary"
-            onClick={startReorder}
-            disabled={!courses || order !== null}
-          >
-            Zmień kolejność ścieżki
-          </Button>
-          <Button
-            onClick={() => {
-              setCreating((value) => !value);
-              setFormError(null);
-              setFieldErrors({});
-            }}
-            aria-expanded={creating}
-          >
-            {creating ? "Zamknij formularz" : "Nowy kurs"}
-          </Button>
-        </div>
-      </div>
-
-      {creating && (
-        <Card title="Nowy kurs">
-          <form onSubmit={submitNewCourse} noValidate className="flex flex-col gap-4">
-            {formError && <Alert variant="error">{formError}</Alert>}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Tytuł"
-                value={form.title}
-                onChange={(e) => update("title", e.target.value)}
-                error={fieldError("title")}
-              />
-              <Input
-                label="Identyfikator (slug)"
-                value={form.slug}
-                onChange={(e) => update("slug", e.target.value)}
-                error={fieldError("slug")}
-                hint="Małe litery i myślniki, np. wywiad-psychologiczny."
-              />
-              <Select
-                label="Typ"
-                value={form.type}
-                onChange={(e) => update("type", e.target.value as CourseType)}
-                error={fieldError("type")}
+    <>
+      <ListTemplate
+        naglowek={{
+          title: "Kursy",
+          description:
+            "Twórz kursy i webinary, dodawaj lekcje i ustalaj kolejność ścieżki.",
+          action: (
+            <>
+              <Button
+                variant="secondary"
+                onClick={startReorder}
+                disabled={stan.status !== "success" || order !== null}
               >
-                {Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                label="Grupa produktowa"
-                value={form.product_group}
-                onChange={(e) =>
-                  update("product_group", e.target.value as ProductGroup)
-                }
-                error={fieldError("product_group")}
-              >
-                {Object.entries(PRODUCT_GROUP_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Pozycja w ścieżce"
-                type="number"
-                min={1}
-                value={form.sequence_order}
-                onChange={(e) => update("sequence_order", e.target.value)}
-                error={fieldError("sequence_order")}
-                hint="Puste pole = kurs poza główną ścieżką (np. webinar)."
-              />
-            </div>
-
-            <Input
-              label="Opis"
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-              error={fieldError("description")}
-            />
-
-            <p className="text-small text-muted">
-              Kurs powstaje jako szkic — publikacja jest osobną akcją na karcie
-              kursu i wymaga co najmniej jednej lekcji.
-            </p>
-
-            <div className="flex justify-end">
-              <Button type="submit" loading={saving}>
-                Utwórz szkic
+                Zmień kolejność ścieżki
               </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+              <Button
+                onClick={() => {
+                  setCreating((value) => !value);
+                  setFormError(null);
+                  setFieldErrors({});
+                }}
+                aria-expanded={creating}
+              >
+                {creating ? "Zamknij formularz" : "Nowy kurs"}
+              </Button>
+            </>
+          ),
+        }}
+        stan={listaPusta ? "empty" : stan.status}
+        komunikatBledu={stan.status === "error" ? stan.message : undefined}
+        onPonow={ponow}
+        pustyTytul="Nie ma jeszcze żadnego kursu"
+        pustyOpis="Utwórz pierwszy szkic przyciskiem „Nowy kurs”."
+        paginacja={
+          meta ? { strona, ostatniaStrona: meta.last_page, onZmien: ustawStrone } : undefined
+        }
+        dodatkowyPanel={
+          <>
+            {creating && (
+              <Card title="Nowy kurs">
+                <form onSubmit={submitNewCourse} noValidate className="flex flex-col gap-4">
+                  {formError && <Alert variant="error">{formError}</Alert>}
 
-      {order !== null && (
-        <Card title="Kolejność ścieżki">
-          <div className="flex flex-col gap-4">
-            <p className="text-small text-muted">
-              Ustaw kolejność, a przed zapisem zobaczysz listę osób, którym
-              zmienią się statusy kursów.
-            </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      label="Tytuł"
+                      value={form.title}
+                      onChange={(e) => update("title", e.target.value)}
+                      error={fieldError("title")}
+                    />
+                    <Input
+                      label="Identyfikator (slug)"
+                      value={form.slug}
+                      onChange={(e) => update("slug", e.target.value)}
+                      error={fieldError("slug")}
+                      hint="Małe litery i myślniki, np. wywiad-psychologiczny."
+                    />
+                    <Select
+                      label="Typ"
+                      value={form.type}
+                      onChange={(e) => update("type", e.target.value as CourseType)}
+                      error={fieldError("type")}
+                    >
+                      {Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      label="Grupa produktowa"
+                      value={form.product_group}
+                      onChange={(e) =>
+                        update("product_group", e.target.value as ProductGroup)
+                      }
+                      error={fieldError("product_group")}
+                    >
+                      {Object.entries(PRODUCT_GROUP_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      label="Pozycja w ścieżce"
+                      type="number"
+                      min={1}
+                      value={form.sequence_order}
+                      onChange={(e) => update("sequence_order", e.target.value)}
+                      error={fieldError("sequence_order")}
+                      hint="Puste pole = kurs poza główną ścieżką (np. webinar)."
+                    />
+                  </div>
 
-            {reorderError && <Alert variant="error">{reorderError}</Alert>}
+                  <Input
+                    label="Opis"
+                    value={form.description}
+                    onChange={(e) => update("description", e.target.value)}
+                    error={fieldError("description")}
+                  />
 
-            {order.length === 0 ? (
-              <p className="text-body text-subtle">
-                Żaden kurs nie ma jeszcze pozycji w ścieżce.
-              </p>
-            ) : (
-              <ol className="flex flex-col gap-2">
-                {order.map((course, index) => (
-                  <li
-                    key={course.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-page px-4 py-3"
-                  >
-                    <span className="text-body text-ink">
-                      <span className="mr-2 font-bold">{index + 1}.</span>
-                      {course.title}
-                    </span>
-                    <span className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        onClick={() => move(index, -1)}
-                        disabled={index === 0}
-                        aria-label={`Przesuń w górę: ${course.title}`}
-                      >
-                        W górę
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => move(index, 1)}
-                        disabled={index === order.length - 1}
-                        aria-label={`Przesuń w dół: ${course.title}`}
-                      >
-                        W dół
-                      </Button>
-                    </span>
-                  </li>
-                ))}
-              </ol>
+                  <p className="text-small text-muted">
+                    Kurs powstaje jako szkic — publikacja jest osobną akcją na karcie
+                    kursu i wymaga co najmniej jednej lekcji.
+                  </p>
+
+                  <div className="flex justify-end">
+                    <Button type="submit" loading={saving}>
+                      Utwórz szkic
+                    </Button>
+                  </div>
+                </form>
+              </Card>
             )}
 
-            <div className="flex flex-wrap justify-end gap-3">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setOrder(null);
-                  setReorderError(null);
-                }}
-              >
-                Anuluj
-              </Button>
-              <Button
-                onClick={requestPreview}
-                loading={previewing}
-                disabled={order.length < 2}
-              >
-                Sprawdź wpływ zmiany
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
+            {order !== null && (
+              <Card title="Kolejność ścieżki">
+                <div className="flex flex-col gap-4">
+                  <p className="text-small text-muted">
+                    Ustaw kolejność, a przed zapisem zobaczysz listę osób, którym
+                    zmienią się statusy kursów.
+                  </p>
 
-      {failed?.key === loadKey ? (
-        <Alert variant="error">{failed.message}</Alert>
-      ) : courses === null ? (
-        <p role="status" className="text-body text-muted">
-          Wczytywanie listy kursów…
-        </p>
-      ) : (
-        <>
-          <Table
-            columns={columns}
-            rows={courses}
-            rowKey={(row) => row.id}
-            caption="Kursy i webinary w panelu administracji"
-            emptyMessage="Nie ma jeszcze żadnego kursu. Utwórz pierwszy szkic."
-          />
-          {meta && meta.last_page > 1 && (
-            <div className="flex items-center justify-center gap-3">
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => setPage((value) => Math.max(1, value - 1))}
-              >
-                Poprzednia
-              </Button>
-              <span className="text-small text-subtle">
-                Strona {meta.current_page} z {meta.last_page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={page >= meta.last_page}
-                onClick={() => setPage((value) => value + 1)}
-              >
-                Następna
-              </Button>
-            </div>
-          )}
-        </>
-      )}
+                  {reorderError && <Alert variant="error">{reorderError}</Alert>}
+
+                  {order.length === 0 ? (
+                    <p className="text-body text-subtle">
+                      Żaden kurs nie ma jeszcze pozycji w ścieżce.
+                    </p>
+                  ) : (
+                    <ol className="flex flex-col gap-2">
+                      {order.map((course, index) => (
+                        <li
+                          key={course.id}
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-page px-4 py-3"
+                        >
+                          <span className="text-body text-ink">
+                            <span className="mr-2 font-bold">{index + 1}.</span>
+                            {course.title}
+                          </span>
+                          <span className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              onClick={() => move(index, -1)}
+                              disabled={index === 0}
+                              aria-label={`Przesuń w górę: ${course.title}`}
+                            >
+                              W górę
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => move(index, 1)}
+                              disabled={index === order.length - 1}
+                              aria-label={`Przesuń w dół: ${course.title}`}
+                            >
+                              W dół
+                            </Button>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+
+                  <div className="flex flex-wrap justify-end gap-3">
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setOrder(null);
+                        setReorderError(null);
+                      }}
+                    >
+                      Anuluj
+                    </Button>
+                    <Button
+                      onClick={requestPreview}
+                      loading={previewing}
+                      disabled={order.length < 2}
+                    >
+                      Sprawdź wpływ zmiany
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </>
+        }
+      >
+        <Table
+          columns={columns}
+          rows={kursy}
+          rowKey={(row) => row.id}
+          caption="Kursy i webinary w panelu administracji"
+          emptyMessage="Nie ma jeszcze żadnego kursu. Utwórz pierwszy szkic."
+        />
+      </ListTemplate>
 
       <ReorderConfirmModal
         open={modalOpen}
@@ -492,6 +453,6 @@ export default function AdminCoursesPage() {
         }}
         onConfirm={confirmReorder}
       />
-    </div>
+    </>
   );
 }
