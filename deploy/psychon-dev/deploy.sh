@@ -54,21 +54,31 @@ _swiadek_logowania_ocena() {
   local iss="$1" domena="$2" loc="$3" kod_strony="$4" plik_strony="$5"
   local wynik=0
 
+  # (a) F-104: dopasowanie PODCIAGIEM ("*" na koncu) przepuszczalo tez
+  # ".../authx-cos-innego". Prefiks musi konczyc sie na "?" (zaczyna sie
+  # zapytanie) albo na koncu calego napisu (bez zadnego zapytania) - stad
+  # dwa wzorce, nie jeden z gwiazdka na koncu. "?" w wzorcu case jest
+  # ESCAPOWANY (`\?`), bo bez tego jest globem dopasowujacym KAZDY jeden znak.
   case "$loc" in
-    "$iss"/protocol/openid-connect/auth*)
+    "$iss"/protocol/openid-connect/auth | "$iss"/protocol/openid-connect/auth\?*)
       echo "  (a) Location zaczyna sie od $iss/protocol/openid-connect/auth: OK" ;;
     *)
       echo "  (a) Location zaczyna sie od $iss/protocol/openid-connect/auth: BLAD"
       wynik=1 ;;
   esac
 
-  case "$loc" in
-    *'client_id=psychon-web'*)
-      echo "  (b) client_id=psychon-web: OK" ;;
-    *)
-      echo "  (b) client_id=psychon-web: BLAD - brak lub inny client_id"
-      wynik=1 ;;
-  esac
+  # (b) F-104: dawne dopasowanie PODCIAGIEM (`*client_id=psychon-web*`)
+  # przepuszczalo tez `client_id=psychon-web-evil`, bo szukany napis jest
+  # podciagiem dluzszego. Wycinamy caly parametr zapytania (do najblizszego
+  # `&` albo konca) i porownujemy go NA ROWNO z oczekiwanym.
+  local param_client_id oczekiwany_client_id="client_id=psychon-web"
+  param_client_id="$(printf '%s' "$loc" | grep -o 'client_id=[^&]*' || true)"
+  if [[ "$param_client_id" == "$oczekiwany_client_id" ]]; then
+    echo "  (b) client_id=psychon-web: OK"
+  else
+    echo "  (b) client_id=psychon-web: BLAD - brak lub inny client_id"
+    wynik=1
+  fi
 
   local redirect_zakodowany redirect_odkodowany oczekiwany_redirect
   redirect_zakodowany="$(printf '%s' "$loc" | grep -o 'redirect_uri=[^&]*' | cut -d'=' -f2- || true)"
@@ -91,16 +101,23 @@ _swiadek_logowania_ocena() {
     wynik=1
   fi
 
-  case "$loc" in
-    *'code_challenge_method=S256'*)
-      echo "  (e) code_challenge_method=S256: OK" ;;
-    *)
-      echo "  (e) code_challenge_method=S256: BLAD"
-      wynik=1 ;;
-  esac
+  # (e) F-104: ta sama wada co (b) - `*code_challenge_method=S256*` jest
+  # podciagiem `code_challenge_method=S256x`. Ten sam lek: caly parametr,
+  # porownanie na rowno.
+  local param_ccm oczekiwany_ccm="code_challenge_method=S256"
+  param_ccm="$(printf '%s' "$loc" | grep -o 'code_challenge_method=[^&]*' || true)"
+  if [[ "$param_ccm" == "$oczekiwany_ccm" ]]; then
+    echo "  (e) code_challenge_method=S256: OK"
+  else
+    echo "  (e) code_challenge_method=S256: BLAD"
+    wynik=1
+  fi
 
+  # (f) F-104: `grep -c` liczy LINIE pasujace, nie WYSTAPIENIA - dwa
+  # formularze w jednej linii dawaly `1`, czyli falszywe OK. `grep -o | wc -l`
+  # liczy kazde dopasowanie osobno.
   local ile_formularzy
-  ile_formularzy="$(grep -c 'kc-form-login' "$plik_strony" 2>/dev/null || true)"
+  ile_formularzy="$(grep -o 'kc-form-login' "$plik_strony" 2>/dev/null | wc -l | tr -d ' ' || true)"
   ile_formularzy="${ile_formularzy:-0}"
   if [[ "$kod_strony" == "200" && "$ile_formularzy" -eq 1 ]]; then
     echo "  (f) GET Location -> 200, kc-form-login x1: OK"
@@ -110,6 +127,53 @@ _swiadek_logowania_ocena() {
   fi
 
   return "$wynik"
+}
+
+# F-105: `docker compose --env-file "$env_file"` bierze zmienna SRODOWISKA
+# PROCESU przed wartoscia z pliku - tak dziala podstawianie zmiennych compose
+# i tak stos dostawal poprawny issuer, mimo pustej linii
+# `AUTH_KEYCLOAK_ISSUER=` w /opt/psychon/.env: skrypt wdrozenia eksportuje te
+# zmienna w powloce PRZED wywolaniem `deploy.sh`. Swiadek czytal WYLACZNIE
+# plik (`_swiadek_logowania_czytaj_klucz`), wiec dostawal pusty ISS i biegl
+# dalej z nim - stad ta funkcja: TA SAMA kolejnosc co compose, dla obu kluczy,
+# ktore compose interpoluje (AUTH_KEYCLOAK_ISSUER i STAGING_DOMAIN).
+#
+# Argumenty: 1=nazwa zmiennej (np. AUTH_KEYCLOAK_ISSUER albo STAGING_DOMAIN),
+# 2=plik .env. Wypisuje wartosc na stdout (NIGDY jej nie drukuje na
+# ekran/log - to, jesli chce, robi wolajacy). Kod wyjscia:
+#   0 - niepusta wartosc znaleziona: najpierw zmienna SRODOWISKA procesu
+#       (jesli niepusta), inaczej niepusta wartosc z pliku .env.
+#   1 - klucza NIE MA NIGDZIE: zmienna srodowiska nie jest ustawiona
+#       (w ogole) I plik nie ma linii "NAZWA=" (`_czytaj_klucz` zwrocil 1).
+#   2 - klucz GDZIES ISTNIAL (zmienna srodowiska byla ustawiona - choc pusta,
+#       i/lub w pliku byla linia "NAZWA=") ale wartosc jest pusta WSZEDZIE,
+#       gdzie wystapila. Kod 2 (rozny od 1) jest tu CELOWO: wolajacy ma
+#       odroznic "pusta wartosc" od "brak klucza" (F-105 p.2), a nie zlac
+#       obu w jedno "cos jest nie tak".
+_swiadek_logowania_wartosc() {
+  local nazwa="$1" plik="$2"
+  local z_env="${!nazwa:-}"
+
+  if [[ -n "$z_env" ]]; then
+    printf '%s' "$z_env"
+    return 0
+  fi
+
+  local z_pliku rc_pliku=0
+  z_pliku="$(_swiadek_logowania_czytaj_klucz "$nazwa" "$plik")" || rc_pliku=$?
+
+  if [[ "$rc_pliku" -eq 0 && -n "$z_pliku" ]]; then
+    printf '%s' "$z_pliku"
+    return 0
+  fi
+
+  # Nic niepustego nigdzie. `${!nazwa+x}` (indirect, z `+`) mowi, czy
+  # zmienna o nazwie $nazwa jest USTAWIONA w ogole (choc pusta) - bez
+  # bledu pod `set -u`, bo `+` nie odwoluje sie do wartosci domyslnej.
+  if [[ -n "${!nazwa+ustawiona}" || "$rc_pliku" -eq 0 ]]; then
+    return 2
+  fi
+  return 1
 }
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
@@ -187,9 +251,16 @@ echo "Status uslug:"
 # zrywal polaczenie (alert TLS 80) - na kazdej sciezce "BRAK ODPOWIEDZI", takze
 # przy stojacych uslugach. `--retry` przeczekuje 502/503, dopoki uslugi wstaja.
 echo "Swiadek rozdzialu ruchu (przez Caddy na 127.0.0.1:443):"
+# F-105: TA SAMA kolejnosc co `docker compose --env-file` (najpierw
+# srodowisko procesu, potem plik) - inaczej ten swiadek moglby probowac
+# polaczyc sie pod inna domena, niz ta, ktora naprawde interpoluje compose.
 domena=""
-if ! domena="$(_swiadek_logowania_czytaj_klucz "STAGING_DOMAIN" "$env_file")"; then
-  echo "  OSTRZEZENIE: brak klucza STAGING_DOMAIN w $env_file - ponizsze proby polacza sie bez nazwy domeny."
+rc_domena=0
+domena="$(_swiadek_logowania_wartosc "STAGING_DOMAIN" "$env_file")" || rc_domena=$?
+if [[ "$rc_domena" -eq 2 ]]; then
+  echo "  OSTRZEZENIE: STAGING_DOMAIN jest puste (w srodowisku i/lub w $env_file) - ponizsze proby polacza sie bez nazwy domeny."
+elif [[ "$rc_domena" -ne 0 ]]; then
+  echo "  OSTRZEZENIE: brak STAGING_DOMAIN (ani w srodowisku, ani w $env_file) - ponizsze proby polacza sie bez nazwy domeny."
 fi
 # `/api/v1/me` bez tokenu ma zwrocic 401 Z LARAVELA - to dowodzi, ze odpowiedzial
 # backend, a nie Next.js (ktory na tej sciezce dalby 404). `/` ma dac 200 z Next.
@@ -221,12 +292,27 @@ done
 # przejsciowa usterke sieci u zewnetrznego IdP w falszywie czerwone
 # wdrozenie. Wynik i tak jest widoczny na ostatniej linii ponizej.
 echo "Swiadek sciezki logowania (Caddy 127.0.0.1:443, IdP po prawdziwej sieci):"
+# F-105: przyczyna zrodlowa tego swiadka. Skrypt wdrozenia eksportuje
+# AUTH_KEYCLOAK_ISSUER w powloce PRZED wywolaniem `deploy.sh`, a
+# `docker compose --env-file` bierze te zmienna PRZED wartoscia z pliku -
+# stos dostaje dobry issuer, nawet gdy w /opt/psychon/.env stoi pusta linia
+# `AUTH_KEYCLOAK_ISSUER=`. Swiadek MUSI patrzec na to samo zrodlo w tej samej
+# kolejnosci, inaczej ocenia sciezke logowania z ISS, ktorego stos wcale nie
+# uzywa (tu: pusty ISS -> `(a)` zawsze BLAD, a GET na pusty Location -> 000).
 iss=""
-if ! iss="$(_swiadek_logowania_czytaj_klucz "AUTH_KEYCLOAK_ISSUER" "$env_file")"; then
+rc_iss=0
+iss="$(_swiadek_logowania_wartosc "AUTH_KEYCLOAK_ISSUER" "$env_file")" || rc_iss=$?
+if [[ "$rc_iss" -eq 2 ]]; then
+  # Pusta wartosc (F-105 p.2): ODROZNIONA od braku klucza w komunikacie
+  # nizej. Zaden curl do IdP (ani do naszego /api/auth/csrf czy
+  # /api/auth/signin/keycloak) sie tu NIE odbywa - z pustym ISS i tak nie da
+  # sie ocenic (a), wiec nie ma czego mierzyc siecia.
+  echo "SWIADEK LOGOWANIA: NIEZALICZONY (AUTH_KEYCLOAK_ISSUER jest puste - w srodowisku i/lub w $env_file)"
+elif [[ "$rc_iss" -ne 0 ]]; then
   # Brak klucza nie przerywa wdrozenia (ta sama konwencja co reszta tego
   # swiadka): uslugi juz staly, wiec twardy `exit` tutaj tylko ukrylby, ze
-  # wdrozenie sie udalo, a jedynie brakuje jednej zmiennej w .env.
-  echo "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER w $env_file)"
+  # wdrozenie sie udalo, a jedynie brakuje jednej zmiennej.
+  echo "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER - ani w srodowisku, ani w $env_file)"
 else
   ciasteczka_logowania="$(mktemp)"
   naglowki_logowania="$(mktemp)"

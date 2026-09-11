@@ -102,6 +102,11 @@ LOC_ZLY_CLIENT="$ISS/protocol/openid-connect/auth?client_id=inny-klient&redirect
 LOC_ZLY_ISS="https://obcy-idp.przyklad.test/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256&response_type=code"
 LOC_BEZ_S256="$ISS/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=plain&response_type=code"
 LOC_LOCALHOST_POZA="$ISS/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256&response_type=code&debug_info=localhost-fallback"
+# F-104 - dopasowania PODCIAGIEM w starym kodzie: kazda z tych trzech
+# Location ma dokladnie JEDNA wade, ktorej podciag nie lapal.
+LOC_CLIENT_ID_EVIL="$ISS/protocol/openid-connect/auth?client_id=psychon-web-evil&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256&response_type=code"
+LOC_CCM_X="$ISS/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256x&response_type=code"
+LOC_AUTHX="$ISS/protocol/openid-connect/authx?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256&response_type=code"
 
 # ============================ CZESC 1: _swiadek_logowania_ocena ============
 uruchom_przypadek "1 poprawna Location" "$LOC_OK" "200" "$FORMULARZ_KC" 0
@@ -112,6 +117,20 @@ uruchom_przypadek "5 obcy issuer, reszta OK (tylko a)" "$LOC_ZLY_ISS" "200" "$FO
 uruchom_przypadek "6 brak S256, reszta OK (tylko e)" "$LOC_BEZ_S256" "200" "$FORMULARZ_KC" 1 '\(e\)'
 uruchom_przypadek "7 'localhost' poza redirect_uri, reszta OK (tylko d)" "$LOC_LOCALHOST_POZA" "200" "$FORMULARZ_KC" 1 '\(d\)'
 uruchom_przypadek "8 dwa formularze kc-form-login (tylko f)" "$LOC_OK" "200" "$FORMULARZ_KC_2X" 1 '\(f\)'
+
+# F-104 - podciag zamiast dokladnego dopasowania parametru/prefiksu: kazdy z
+# tych czterech przypadkow byl (w starym kodzie na 7bc7dd2) BLEDNIE zielony,
+# bo szukany napis jest podciagiem tego, co naprawde wystapilo w Location
+# albo w stronie IdP.
+FORMULARZ_KC_2X_JEDNA_LINIA='<html><body><form id="kc-form-login">a</form><form id="kc-form-login">b</form></body></html>'
+uruchom_przypadek "22 client_id=psychon-web-evil, podciag 'client_id=psychon-web' nie wystarcza (b)" \
+  "$LOC_CLIENT_ID_EVIL" "200" "$FORMULARZ_KC" 1 '\(b\)'
+uruchom_przypadek "23 code_challenge_method=S256x, podciag 'S256' nie wystarcza (e)" \
+  "$LOC_CCM_X" "200" "$FORMULARZ_KC" 1 '\(e\)'
+uruchom_przypadek "24 dwa kc-form-login w JEDNEJ linii, grep -c liczy linie nie wystapienia (f)" \
+  "$LOC_OK" "200" "$FORMULARZ_KC_2X_JEDNA_LINIA" 1 '\(f\)'
+uruchom_przypadek "25 .../authx zamiast .../auth?..., podciag 'auth' nie wystarcza (a)" \
+  "$LOC_AUTHX" "200" "$FORMULARZ_KC" 1 '\(a\)'
 
 # ============================ CZESC 2a: _swiadek_logowania_czytaj_klucz ====
 # Fikcyjne pliki .env - same wartosci canary, zaden prawdziwy sekret.
@@ -157,6 +176,57 @@ sprawdz_klucz "9 czytaj_klucz - wartosc bez cudzyslowow" "$ENV_DOBRY" "AUTH_KEYC
 sprawdz_klucz "10 czytaj_klucz - wartosc w cudzyslowach" "$ENV_CUDZYSLOW" "AUTH_KEYCLOAK_ISSUER" "$KLUCZ_DOBRY_ISS" 0
 sprawdz_klucz "11 czytaj_klucz - plik CRLF" "$ENV_CRLF" "AUTH_KEYCLOAK_ISSUER" "$KLUCZ_DOBRY_ISS" 0
 sprawdz_klucz "12 czytaj_klucz - brak klucza" "$ENV_BRAK" "AUTH_KEYCLOAK_ISSUER" "" 1
+
+# ============================ CZESC 2c: _swiadek_logowania_wartosc (F-105) =
+# F-105: skrypt wdrozenia eksportuje AUTH_KEYCLOAK_ISSUER w powloce PRZED
+# wywolaniem deploy.sh, a `docker compose --env-file` bierze te zmienna
+# PRZED wartoscia z pliku. Ta funkcja MUSI rozstrzygac w tej samej
+# kolejnosci - inaczej swiadek ocenia ISS, ktorego stos wcale nie uzywa.
+KLUCZ_ISS_ZE_SRODOWISKA="https://idp-ze-srodowiska.przyklad.test/realms/z-env"
+
+ENV_ISS_PUSTY="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_ISS_PUSTY")
+printf 'AUTH_KEYCLOAK_ISSUER=\n' > "$ENV_ISS_PUSTY"
+
+# $1=nazwa, $2=wartosc zmiennej SRODOWISKA AUTH_KEYCLOAK_ISSUER na czas
+# wywolania (pusty string = zmienna NIEUSTAWIONA w tym wywolaniu, nie
+# "ustawiona na pusto" - `env -u` usuwa ja z procesu), $3=plik .env,
+# $4=oczekiwana wartosc na stdout (tylko do porownania, nigdy nie
+# drukowana), $5=oczekiwany kod wyjscia (0=OK, 1=brak klucza, 2=pusta
+# wartosc - patrz komentarz przy funkcji w deploy.sh)
+sprawdz_wartosc() {
+  local nazwa="$1" env_iss="$2" plik="$3" oczekiwana="$4" oczekiwany_rc="$5"
+  local wartosc rc niezal=0
+
+  echo "=== $nazwa ==="
+  if [[ -n "$env_iss" ]]; then
+    wartosc="$(AUTH_KEYCLOAK_ISSUER="$env_iss" _swiadek_logowania_wartosc "AUTH_KEYCLOAK_ISSUER" "$plik")"
+  else
+    wartosc="$(unset AUTH_KEYCLOAK_ISSUER; _swiadek_logowania_wartosc "AUTH_KEYCLOAK_ISSUER" "$plik")"
+  fi
+  rc=$?
+  echo "  rc=$rc (oczekiwano $oczekiwany_rc)"
+  if [[ "$rc" -ne "$oczekiwany_rc" ]]; then
+    echo "  WYNIK: NIEZALICZONY - zly kod wyjscia"
+    niezal=1
+  elif [[ "$oczekiwany_rc" -eq 0 && "$wartosc" != "$oczekiwana" ]]; then
+    echo "  WYNIK: NIEZALICZONY - odczytana wartosc nie zgadza sie z oczekiwana"
+    niezal=1
+  fi
+  if [[ "$niezal" -eq 1 ]]; then
+    NIEZALICZONE=$((NIEZALICZONE + 1))
+  else
+    echo "  WYNIK: ZALICZONY"
+  fi
+}
+
+sprawdz_wartosc "17 wartosc - zmienna srodowiska ustawiona, plik pusty -> ISS ze srodowiska" \
+  "$KLUCZ_ISS_ZE_SRODOWISKA" "$ENV_ISS_PUSTY" "$KLUCZ_ISS_ZE_SRODOWISKA" 0
+sprawdz_wartosc "18 wartosc - srodowisko nieustawione, plik z wartoscia -> ISS z pliku" \
+  "" "$ENV_DOBRY" "$KLUCZ_DOBRY_ISS" 0
+sprawdz_wartosc "19 wartosc - oba puste -> rc=2 (pusta wartosc, NIE brak klucza)" \
+  "" "$ENV_ISS_PUSTY" "" 2
+sprawdz_wartosc "20 wartosc - srodowisko nieustawione, plik bez klucza -> rc=1 (brak klucza)" \
+  "" "$ENV_BRAK" "" 1
 
 # ============================ CZESC 2b: pelne deploy.sh z zaslepkami =======
 # Uruchamia deploy.sh jako ODDZIELNY PROCES (nie zrodlowany), z docker/curl/
@@ -282,6 +352,87 @@ sprawdz_wdrozenie "13 pelne wdrozenie - dobra wartosc AUTH_KEYCLOAK_ISSUER" "$EN
 sprawdz_wdrozenie "14 pelne wdrozenie - AUTH_KEYCLOAK_ISSUER w cudzyslowach" "$ENV_WDR_CUDZYSLOW" "SWIADEK LOGOWANIA: ZALICZONY"
 sprawdz_wdrozenie "15 pelne wdrozenie - .env z CRLF" "$ENV_WDR_CRLF" "SWIADEK LOGOWANIA: ZALICZONY"
 sprawdz_wdrozenie "16 pelne wdrozenie - brak AUTH_KEYCLOAK_ISSUER, deploy nie pada" "$ENV_WDR_BRAK" "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER"
+
+# ============================ CZESC 2d: F-105 p.2 - pusty ISS => 0 curl ====
+# Zaslepka curl POWYZEJ zawsze odpowiada (nie liczy wywolan) - tu potrzebny
+# jest LICZNIK: dowod, ze przy pustym ISS swiadek NIE WYKONUJE zadnego curl
+# do IdP/next-auth (csrf, signin/keycloak, /protocol/openid-connect/auth).
+# Trzy proby swiadka ROZDZIALU RUCHU (/api/v1/me, /api/auth/providers, /)
+# nie sa objete tym zakazem - to inny swiadek, uruchamiany wczesniej - i
+# zaslepka ponizej ich celowo NIE liczy.
+STUB_BIN_LICZNIK="$(mktemp -d)"; KATALOGI_TESTOWE+=("$STUB_BIN_LICZNIK")
+LICZNIK_CURL="$(mktemp)"; PLIKI_TESTOWE+=("$LICZNIK_CURL")
+printf '0' > "$LICZNIK_CURL"
+
+cat > "$STUB_BIN_LICZNIK/docker" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+chmod +x "$STUB_BIN_LICZNIK/docker"
+
+cat > "$STUB_BIN_LICZNIK/stat" <<'EOF'
+#!/bin/bash
+echo 600
+EOF
+chmod +x "$STUB_BIN_LICZNIK/stat"
+
+cat > "$STUB_BIN_LICZNIK/curl" <<EOF
+#!/bin/bash
+# Zaslepka-licznik: liczy WYLACZNIE wywolania skierowane do IdP/next-auth na
+# sciezce logowania. Reszta (swiadek rozdzialu ruchu) dostaje zawsze 200,
+# bez liczenia - to nie jest przedmiotem tego testu.
+url="\${@: -1}"
+out_file=""
+prev=""
+for a in "\$@"; do
+  if [[ "\$prev" == "-o" ]]; then out_file="\$a"; fi
+  prev="\$a"
+done
+case "\$url" in
+  */api/auth/csrf|*/api/auth/signin/keycloak|*"/protocol/openid-connect/auth"*)
+    echo "\$((\$(cat "$LICZNIK_CURL") + 1))" > "$LICZNIK_CURL"
+    ;;
+esac
+if [[ -n "\$out_file" ]]; then : > "\$out_file"; fi
+printf '200'
+exit 0
+EOF
+chmod +x "$STUB_BIN_LICZNIK/curl"
+
+ENV_ISS_PUSTY_WDR="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_ISS_PUSTY_WDR")
+printf 'STAGING_DOMAIN=%s\nAUTH_KEYCLOAK_ISSUER=\n' "$DOMENA_WDR" > "$ENV_ISS_PUSTY_WDR"
+
+TLS_DIR_LICZNIK="$(mktemp -d)"; KATALOGI_TESTOWE+=("$TLS_DIR_LICZNIK")
+printf 'dummy' > "$TLS_DIR_LICZNIK/origin.crt"
+printf 'dummy' > "$TLS_DIR_LICZNIK/origin.key"
+
+echo "=== 21 pelne wdrozenie - AUTH_KEYCLOAK_ISSUER puste (plik i srodowisko) -> 0 curl do IdP/next-auth ==="
+WYJSCIE_LICZNIK="$(env -u AUTH_KEYCLOAK_ISSUER PATH="$STUB_BIN_LICZNIK:$PATH" \
+  PSYCHON_ENV_FILE="$ENV_ISS_PUSTY_WDR" \
+  PSYCHON_TLS_DIR="$TLS_DIR_LICZNIK" \
+  bash "$TU/../deploy.sh" 2>&1)"
+printf '%s\n' "$WYJSCIE_LICZNIK" | grep -E 'SWIADEK LOGOWANIA|Wdrozenie zakonczone' || true
+LICZBA_CURL="$(cat "$LICZNIK_CURL")"
+echo "  wywolan curl do IdP/next-auth: $LICZBA_CURL"
+
+NIEZAL_21=0
+if ! printf '%s\n' "$WYJSCIE_LICZNIK" | grep -qF "SWIADEK LOGOWANIA: NIEZALICZONY (AUTH_KEYCLOAK_ISSUER jest puste"; then
+  echo "  WYNIK: NIEZALICZONY - brak oczekiwanego powodu 'puste' w wyjsciu"
+  NIEZAL_21=1
+fi
+if [[ "$LICZBA_CURL" -ne 0 ]]; then
+  echo "  WYNIK: NIEZALICZONY - swiadek zawolal curl do IdP/next-auth mimo pustego ISS ($LICZBA_CURL wywolan)"
+  NIEZAL_21=1
+fi
+if ! printf '%s\n' "$WYJSCIE_LICZNIK" | grep -qF 'Wdrozenie zakonczone'; then
+  echo "  WYNIK: NIEZALICZONY - deploy nie doszedl do konca"
+  NIEZAL_21=1
+fi
+if [[ "$NIEZAL_21" -eq 1 ]]; then
+  NIEZALICZONE=$((NIEZALICZONE + 1))
+else
+  echo "  WYNIK: ZALICZONY"
+fi
 
 echo
 if [[ "$NIEZALICZONE" -eq 0 ]]; then

@@ -260,6 +260,28 @@ TRAFIEN_GL="$(grep -acE "^RuleID:" "$KATALOG_BIEGU"/bramka-gitleaks.log)"
 echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
 [ "$KOD_GITLEAKS" -ne 0 ] && grep -aE "^(RuleID|File|Line):" "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
 
+# --- 3f - swiadek logowania psychon-dev: testy (krok blokujacy) ------------
+# Suita `deploy/psychon-dev/tests/test-swiadek-logowania.sh` zrodlowuje
+# deploy.sh i mierzy same funkcje `_swiadek_logowania_*` (bez zywego hosta,
+# bez Dockera, bez sieci) - lekka, wiec biegnie w tym samym kontenerze co
+# reszta kroku 3, bez wlasnego stosu. JEST blokujaca: to F-104/F-105 - swiadek
+# ISS/STAGING_DOMAIN musi patrzec na to samo zrodlo w tej samej kolejnosci co
+# `docker compose --env-file`, a asercje Location musza porownywac parametry
+# NA ROWNO, nie podciagiem - regresja tutaj oznacza, ze swiadek na hoscie
+# znow moze byc zielony na zlamanej sciezce logowania.
+naglowek "3f - swiadek logowania psychon-dev (testy)"
+
+T="$(date +%s)"
+bash deploy/psychon-dev/tests/test-swiadek-logowania.sh > "$KATALOG_BIEGU"/bramka-swiadek-logowania.log 2>&1
+KOD_SWIADEK_LOGOWANIA=$?
+CZAS_SWIADEK_LOGOWANIA="$(czas_od "$T")"
+# ILE przypadkow obejrzal, nie tylko czy skonczyl zielono - pusta suita
+# tez dalaby EXIT=0 i wygladala na dzialajacy przyrzad.
+PRZYPADKOW_SL="$(grep -acE '^=== ' "$KATALOG_BIEGU"/bramka-swiadek-logowania.log)"
+BLEDOW_SL="$(grep -acE '^  WYNIK: NIEZALICZONY' "$KATALOG_BIEGU"/bramka-swiadek-logowania.log)"
+echo "swiadek logowania (testy): EXIT=$KOD_SWIADEK_LOGOWANIA, $CZAS_SWIADEK_LOGOWANIA s, przypadkow $PRZYPADKOW_SL, bledow $BLEDOW_SL"
+[ "$KOD_SWIADEK_LOGOWANIA" -ne 0 ] && tail -20 "$KATALOG_BIEGU"/bramka-swiadek-logowania.log | sed 's/^/  ! /'
+
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
 CZAS_FRONT=0
@@ -328,16 +350,17 @@ else
 fi
 echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s libc=${CZAS_LIBC}s calosc=$(czas_od "$START_CALOSC")s"
 
-# KOD_ACTIONLINT, KOD_GITLEAKS, KOD_LIBC i - od 10.09 - KOD_SEMGREP sa tu
-# wymienione (blokuja). Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM) NIE sa i to jest
-# decyzja, nie przeoczenie: ich liczby stoja w logu wyzej i ida do rejestru z
-# numerem, a podatnosc w cudzej zaleznosci nie jest rzecza, ktora ten commit
-# zepsul.
+# KOD_ACTIONLINT, KOD_GITLEAKS, KOD_LIBC, KOD_SWIADEK_LOGOWANIA i - od 10.09 -
+# KOD_SEMGREP sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM)
+# NIE sa i to jest decyzja, nie przeoczenie: ich liczby stoja w logu wyzej i
+# ida do rejestru z numerem, a podatnosc w cudzej zaleznosci nie jest rzecza,
+# ktora ten commit zepsul.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
 elif [ "${KOD_ACTIONLINT:-0}" -ne 0 ]; then KOD=$KOD_ACTIONLINT
 elif [ "${KOD_GITLEAKS:-0}" -ne 0 ]; then KOD=$KOD_GITLEAKS
+elif [ "${KOD_SWIADEK_LOGOWANIA:-0}" -ne 0 ]; then KOD=$KOD_SWIADEK_LOGOWANIA
 elif [ "${KOD_LIBC:-0}" -ne 0 ]; then KOD=$KOD_LIBC
 elif [ "${KOD_DRZEWO:-0}" -ne 0 ]; then KOD=$KOD_DRZEWO
 elif [ "${KOD_SEMGREP:-0}" -ne 0 ]; then KOD=$KOD_SEMGREP
