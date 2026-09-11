@@ -47,6 +47,36 @@ describe("useZasobStronicowany", () => {
       expect(result.current.stan).toEqual({
         status: "error",
         message: "Lista niedostępna.",
+        httpStatus: 500,
+      }),
+    );
+  });
+
+  it("noga negatywna: 403 niesie httpStatus dalej, żeby ekran mógł pokazać odmowę", async () => {
+    const pobierz = vi
+      .fn()
+      .mockRejectedValue(new ApiError(403, "forbidden", "Brak uprawnień."));
+
+    const { result } = renderHook(() => useZasobStronicowany(pobierz));
+
+    await waitFor(() =>
+      expect(result.current.stan).toEqual({
+        status: "error",
+        message: "Brak uprawnień.",
+        httpStatus: 403,
+      }),
+    );
+  });
+
+  it("noga negatywna: błąd spoza ApiError nie niesie httpStatus", async () => {
+    const pobierz = vi.fn().mockRejectedValue(new TypeError("network down"));
+
+    const { result } = renderHook(() => useZasobStronicowany(pobierz));
+
+    await waitFor(() =>
+      expect(result.current.stan).toEqual({
+        status: "error",
+        message: "Nie udało się połączyć z serwerem. Spróbuj ponownie.",
       }),
     );
   });

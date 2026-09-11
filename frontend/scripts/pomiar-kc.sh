@@ -41,6 +41,16 @@ kc2_razem_bez=$(find app -name page.tsx -not -path '*/__tests__/*' | wc -l)
 echo "oryginał:             ${kc2_uzywa_oryg} z ${kc2_razem_oryg}"
 echo "bez testów i wzorców: ${kc2_uzywa_bez} z ${kc2_razem_bez}"
 echo
+echo "--- KC-2 organizmy (dodatkowy wiersz, nie zastępuje powyższych) ---"
+echo '  Werdykt front-p1-59da632: literał liczy tylko import w samym page.tsx —'
+echo '  trasy, które renderują szablon przez organizm (page.tsx -> komponent ->'
+echo '  ListTemplate), nie mają importu we własnym page.tsx i wychodzą jako 0,'
+echo '  mimo że szablon i tak jest użyty. Poniżej ta sama trasa liczona, gdy'
+echo '  page.tsx LUB komponent importowany wprost przez page.tsx importuje szablon.'
+echo '$ grep -rl "components/templates/" app components --include=*.tsx | grep -v __tests__ | wc -l'
+kc2_organizmy=$(grep -rl "components/templates/" app components --include=*.tsx | grep -v __tests__ | wc -l)
+echo "KC-2 organizmy:       ${kc2_organizmy} plików importujących szablon wprost (page.tsx + komponenty-organizmy)"
+echo
 
 echo "=== KC-3 — powielenie w całym drzewie frontend/ ==="
 cat <<'POLECENIE'

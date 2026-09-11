@@ -6,7 +6,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Table, { type Column } from "@/components/ui/Table";
-import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
+import ListTemplate from "@/components/templates/ListTemplate";
 import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import {
   ApiError,
@@ -28,29 +28,19 @@ function formatDate(iso: string): string {
 }
 
 /**
- * Dziennik działań (H20), na `ListTemplate` (C2 wariant C). Jak w H18: 403
- * odróżniony od pozostałych błędów bezpośrednio przy wołaniu `fetchAuditLog`,
- * bo `useZasobStronicowany` niesie dalej tylko komunikat, nie status.
+ * Dziennik działań (H20), na `ListTemplate` (C2 wariant C). Jak w H18: 403 →
+ * `forbidden` idzie przez `httpStatus` z haka i `ListTemplate`, jeden
+ * mechanizm dla wszystkich ekranów.
  */
 export default function AuditLogView() {
   const [form, setForm] = useState(EMPTY_FILTERS);
   const [applied, setApplied] = useState<AuditFilters>({});
-  const [forbidden, setForbidden] = useState(false);
 
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const pobierz = useCallback(
-    (strona: number) =>
-      fetchAuditLog({ ...applied, page: strona, per_page: 25 })
-        .then((wynik) => {
-          setForbidden(false);
-          return wynik;
-        })
-        .catch((err: unknown) => {
-          if (err instanceof ApiError && err.status === 403) setForbidden(true);
-          throw err;
-        }),
+    (strona: number) => fetchAuditLog({ ...applied, page: strona, per_page: 25 }),
     [applied],
   );
 
@@ -62,11 +52,6 @@ export default function AuditLogView() {
 
   const dane = stan.status === "success" ? stan.data : [];
   const listaPusta = stan.status === "success" && dane.length === 0;
-  const stanEfektywny: StanListy = forbidden
-    ? "forbidden"
-    : listaPusta
-      ? "empty"
-      : stan.status;
 
   function applyFilters(e: FormEvent) {
     e.preventDefault();
@@ -126,8 +111,11 @@ export default function AuditLogView() {
           </Button>
         ),
       }}
-      stan={stanEfektywny}
+      stan={listaPusta ? "empty" : stan.status}
+      httpStatus={stan.status === "error" ? stan.httpStatus : undefined}
+      komunikatLadowania="Wczytywanie dziennika…"
       komunikatBledu={stan.status === "error" ? stan.message : undefined}
+      komunikatBleduTytul=""
       onPonow={ponow}
       pustyTytul="Brak zdarzeń spełniających kryteria."
       paginacja={

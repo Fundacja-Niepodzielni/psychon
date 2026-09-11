@@ -21,10 +21,12 @@ const FORM_LABELS = {
  * Przyjęcie/odesłanie wpisu usuwa go z widoku bez ponownego pobrania strony
  * (`wykluczeni`) — dokładnie tak jak przed przepięciem. Błąd akcji dzieli
  * jeden komunikat z błędem listy (jak w oryginale): „Spróbuj ponownie" zawsze
- * odpytuje serwer od nowa, więc oba idą przez `ponow()` z haka.
+ * odpytuje serwer od nowa, więc oba idą przez `ponow()` z haka. 403 na samej
+ * liście → `forbidden` idzie przez `httpStatus` i `ListTemplate` (jeden
+ * mechanizm); błąd akcji nigdy nie niesie `httpStatus`, więc nie da się z nim
+ * pomylić.
  */
 export default function AdminInternshipQueue() {
-  const [forbidden, setForbidden] = useState(false);
   const [wykluczeni, setWykluczeni] = useState<Set<number>>(new Set());
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, string>>({});
@@ -34,15 +36,7 @@ export default function AdminInternshipQueue() {
 
   const pobierz = useCallback(
     (strona: number) =>
-      apiPaged<AdminInternshipEntry>(`/admin/internship/pending?page=${strona}&per_page=25`)
-        .then((wynik) => {
-          setForbidden(false);
-          return wynik;
-        })
-        .catch((err: unknown) => {
-          if (err instanceof ApiError && err.status === 403) setForbidden(true);
-          throw err;
-        }),
+      apiPaged<AdminInternshipEntry>(`/admin/internship/pending?page=${strona}&per_page=25`),
     [],
   );
 
@@ -56,9 +50,8 @@ export default function AdminInternshipQueue() {
     stan.status === "success" ? stan.data.filter((entry) => !wykluczeni.has(entry.id)) : [];
   const listaPusta = stan.status === "success" && entries.length === 0;
 
-  const stanEfektywny: StanListy = forbidden
-    ? "forbidden"
-    : stan.status === "loading"
+  const stanEfektywny: StanListy =
+    stan.status === "loading"
       ? "loading"
       : stan.status === "error" || actionError
         ? "error"
@@ -66,6 +59,7 @@ export default function AdminInternshipQueue() {
           ? "empty"
           : "success";
 
+  const httpStatus = stan.status === "error" ? stan.httpStatus : undefined;
   const komunikatBledu = stan.status === "error" ? stan.message : actionError ?? undefined;
 
   function ponowWszystko() {
@@ -134,7 +128,10 @@ export default function AdminInternshipQueue() {
         description: "Sprawdź wpisy oczekujące na decyzję.",
       }}
       stan={stanEfektywny}
+      httpStatus={httpStatus}
+      komunikatLadowania="Wczytywanie kolejki…"
       komunikatBledu={komunikatBledu}
+      komunikatBleduTytul=""
       onPonow={ponowWszystko}
       pustyTytul="Brak wpisów oczekujących na decyzję."
       paginacja={

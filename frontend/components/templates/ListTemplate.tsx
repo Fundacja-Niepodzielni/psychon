@@ -19,7 +19,15 @@ export interface ListTemplatePaginacja {
 export interface ListTemplateProps {
   naglowek: PageHeaderProps;
   stan: StanListy;
+  /** `ApiError.status` z haka danych. Jedyne miejsce, które zamienia 403 na
+   * `forbidden` — ekrany nie robią już tego same (dawniej 3 osobne kopie). */
+  httpStatus?: number;
+  /** Podpis pod `role="status"`. Bez wartości: własny domyślny tekst molekuły. */
+  komunikatLadowania?: string;
   komunikatBledu?: string;
+  /** Tytuł nad komunikatem błędu. Puste `""` = brak tytułu (jak w ekranach
+   * sprzed przepięcia); bez wartości: własny domyślny tytuł molekuły. */
+  komunikatBleduTytul?: string;
   onPonow?: () => void;
   komunikatBrakUprawnien?: string;
   pustyTytul?: string;
@@ -43,7 +51,10 @@ export interface ListTemplateProps {
 export default function ListTemplate({
   naglowek,
   stan,
+  httpStatus,
+  komunikatLadowania,
   komunikatBledu = "Nie udało się połączyć z serwerem. Spróbuj ponownie.",
+  komunikatBleduTytul,
   onPonow,
   komunikatBrakUprawnien,
   pustyTytul = "Brak danych do wyświetlenia.",
@@ -53,26 +64,37 @@ export default function ListTemplate({
   paginacja,
   children,
 }: ListTemplateProps) {
+  // Jedyne miejsce mapowania 403 → `forbidden` (Z-6/C2 §5: jeden mechanizm,
+  // nie kopia w każdym ekranie).
+  // Jedyne miejsce mapowania 403 → `forbidden` (Z-6/C2 §5: jeden mechanizm,
+  // nie kopia w każdym ekranie).
+  const stanEfektywny: StanListy =
+    stan === "error" && httpStatus === 403 ? "forbidden" : stan;
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader {...naglowek} />
       {dodatkowyPanel}
 
-      {stan === "loading" && <LoadingState label="Wczytywanie listy…" />}
-      {stan === "error" && (
-        <ErrorState message={komunikatBledu} onRetry={onPonow} />
+      {stanEfektywny === "loading" && <LoadingState label={komunikatLadowania} />}
+      {stanEfektywny === "error" && (
+        <ErrorState
+          message={komunikatBledu}
+          title={komunikatBleduTytul}
+          onRetry={onPonow}
+        />
       )}
-      {stan === "forbidden" && (
+      {stanEfektywny === "forbidden" && (
         <ForbiddenState message={komunikatBrakUprawnien} />
       )}
-      {stan === "empty" && (
+      {stanEfektywny === "empty" && (
         <EmptyState
           title={pustyTytul}
           description={pustyOpis}
           action={pustaAkcja}
         />
       )}
-      {stan === "success" && (
+      {stanEfektywny === "success" && (
         <>
           {children}
           {paginacja && paginacja.ostatniaStrona > 1 && (

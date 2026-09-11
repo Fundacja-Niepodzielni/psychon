@@ -2,8 +2,14 @@
 
 import CourseCard from "@/components/courses/CourseCard";
 import ListTemplate from "@/components/templates/ListTemplate";
-import { useZasob } from "@/lib/hooks/useZasob";
+import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import { fetchCourses, type CourseListItem } from "@/lib/courses";
+
+/** Katalog nie ma stron — hak stronicowany dostaje `pobierz`, który ignoruje
+ * `strona` i zwraca `{ data }` bez `meta` (patrz komentarz w haku). */
+function pobierzKursy(): Promise<{ data: CourseListItem[] }> {
+  return fetchCourses().then((data) => ({ data }));
+}
 
 /**
  * Katalog kursów uczestnika (H05), na szablonie `ListTemplate` (C2 wariant C).
@@ -13,7 +19,7 @@ import { fetchCourses, type CourseListItem } from "@/lib/courses";
  * użytkownika, więc filtr na tym ekranie byłby martwym kodem.
  */
 export default function CoursesCataloguePage() {
-  const { stan, ponow } = useZasob<CourseListItem[]>(fetchCourses);
+  const { stan, ponow } = useZasobStronicowany<CourseListItem>(pobierzKursy);
 
   const dane = stan.status === "success" ? stan.data : [];
   const listaPusta = stan.status === "success" && dane.length === 0;
@@ -26,7 +32,12 @@ export default function CoursesCataloguePage() {
           "Twoja ścieżka szkoleniowa. Kolejny etap otwiera się po ukończeniu poprzedniego.",
       }}
       stan={listaPusta ? "empty" : stan.status}
+      httpStatus={stan.status === "error" ? stan.httpStatus : undefined}
+      komunikatLadowania="Ładowanie kursów…"
       komunikatBledu={stan.status === "error" ? stan.message : undefined}
+      komunikatBleduTytul={
+        stan.status === "error" ? "Nie udało się wczytać kursów" : undefined
+      }
       onPonow={ponow}
       pustyTytul="Nie masz jeszcze kursów"
       pustyOpis="Gdy opiekun projektu udostępni Ci pierwszy etap, pojawi się on w tym miejscu."

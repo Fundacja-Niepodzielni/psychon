@@ -66,6 +66,23 @@ describe("CoursesCataloguePage", () => {
     render(<CoursesCataloguePage />);
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Serwer nie odpowiada."));
+    expect(screen.getByRole("alert")).toHaveTextContent("Nie udało się wczytać kursów");
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
+  });
+
+  it("403: pokazuje odmowę dostępu, nie ErrorState", async () => {
+    fetchCourses.mockRejectedValue(new ApiError(403, "Brak uprawnień."));
+    render(<CoursesCataloguePage />);
+
+    await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("500: pokazuje ErrorState, nie odmowę dostępu", async () => {
+    fetchCourses.mockRejectedValue(new ApiError(500, "Serwer nie odpowiada."));
+    render(<CoursesCataloguePage />);
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
   });
 });

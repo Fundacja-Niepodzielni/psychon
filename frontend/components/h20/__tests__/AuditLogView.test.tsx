@@ -88,6 +88,7 @@ describe("AuditLogView", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("Dziennik niedostępny."),
     );
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
+    expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
   });
 
   it("noga negatywna: 403 pokazuje odmowę zamiast błędu serwera", async () => {

@@ -72,7 +72,9 @@ describe("AdminCoursesPage", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole("heading", { name: "Nie ma jeszcze żadnego kursu" }),
+        screen.getByRole("heading", {
+          name: "Nie ma jeszcze żadnego kursu. Utwórz pierwszy szkic.",
+        }),
       ).toBeInTheDocument(),
     );
   });
@@ -85,6 +87,22 @@ describe("AdminCoursesPage", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("Lista kursów niedostępna."),
     );
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
+  });
+
+  it("403: pokazuje odmowę dostępu, nie ErrorState", async () => {
+    apiPaged.mockRejectedValue(new ApiError(403, "Brak uprawnień."));
+    render(<AdminCoursesPage />);
+
+    await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("500: pokazuje ErrorState, nie odmowę dostępu", async () => {
+    apiPaged.mockRejectedValue(new ApiError(500, "Lista kursów niedostępna."));
+    render(<AdminCoursesPage />);
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
   });
 
   it("stronicowanie: klik Następna pobiera drugą stronę", async () => {

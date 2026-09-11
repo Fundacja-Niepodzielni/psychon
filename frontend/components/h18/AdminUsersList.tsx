@@ -8,7 +8,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Table, { type Column } from "@/components/ui/Table";
-import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
+import ListTemplate from "@/components/templates/ListTemplate";
 import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import {
   ApiError,
@@ -27,30 +27,19 @@ const PUSTE_FILTRY: Filtry = { role: "", search: "" };
 
 /**
  * Lista osób w administracji (H18), na `ListTemplate` (C2 wariant C).
- * `fetchAdminUsers` odróżnia 403 od pozostałych błędów jawnie (`ApiError.status`),
- * bo `useZasobStronicowany` nie niesie statusu dalej niż komunikat — to jedyne
- * miejsce, które wie, że akurat ten błąd nie jest awarią serwera.
+ * 403 na 403 → `forbidden` idzie przez `httpStatus` z haka i `ListTemplate`
+ * (jeden mechanizm dla wszystkich ekranów, nie kopia na tym jednym).
  */
 export default function AdminUsersList() {
   const [role, setRole] = useState("");
   const [search, setSearch] = useState("");
   const [applied, setApplied] = useState<Filtry>(PUSTE_FILTRY);
-  const [forbidden, setForbidden] = useState(false);
 
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const pobierz = useCallback(
-    (strona: number) =>
-      fetchAdminUsers({ ...applied, page: strona, per_page: 25 })
-        .then((wynik) => {
-          setForbidden(false);
-          return wynik;
-        })
-        .catch((err: unknown) => {
-          if (err instanceof ApiError && err.status === 403) setForbidden(true);
-          throw err;
-        }),
+    (strona: number) => fetchAdminUsers({ ...applied, page: strona, per_page: 25 }),
     [applied],
   );
 
@@ -62,11 +51,6 @@ export default function AdminUsersList() {
 
   const dane = stan.status === "success" ? stan.data : [];
   const listaPusta = stan.status === "success" && dane.length === 0;
-  const stanEfektywny: StanListy = forbidden
-    ? "forbidden"
-    : listaPusta
-      ? "empty"
-      : stan.status;
 
   function applyFilters(e: FormEvent) {
     e.preventDefault();
@@ -129,8 +113,11 @@ export default function AdminUsersList() {
           </Button>
         ),
       }}
-      stan={stanEfektywny}
+      stan={listaPusta ? "empty" : stan.status}
+      httpStatus={stan.status === "error" ? stan.httpStatus : undefined}
+      komunikatLadowania="Wczytywanie listy…"
       komunikatBledu={stan.status === "error" ? stan.message : undefined}
+      komunikatBleduTytul=""
       onPonow={ponow}
       pustyTytul="Brak osób spełniających kryteria."
       paginacja={

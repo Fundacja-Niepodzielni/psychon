@@ -2,7 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, type PaginationMeta } from "@/lib/api";
-import type { StanZasobu } from "@/lib/hooks/useZasob";
+
+/**
+ * Stan pojedynczego pobrania — jeden z trzech, nigdy kombinacja
+ * `loading` + `error` osobnymi zmiennymi (to właśnie 37 kopii z KC-4).
+ *
+ * `httpStatus` niesie `ApiError.status` (gdy błąd nim jest) dalej niż sam
+ * komunikat — bez tego ekran nie umie odróżnić 403 („brak uprawnień") od
+ * awarii serwera i pokazuje `ErrorState` w obu przypadkach.
+ */
+export type StanZasobu<T> =
+  | { status: "loading" }
+  | { status: "error"; message: string; httpStatus?: number }
+  | { status: "success"; data: T };
 
 export interface UseZasobStronicowanegoResult<T> {
   stan: StanZasobu<T[]>;
@@ -20,7 +32,7 @@ interface Wynik<T> {
   dlaKlucza: string;
   rezultat:
     | { status: "success"; data: T[]; meta?: PaginationMeta }
-    | { status: "error"; message: string };
+    | { status: "error"; message: string; httpStatus?: number };
 }
 
 /**
@@ -29,8 +41,20 @@ interface Wynik<T> {
  * `apiPaged` z ręcznym `page`, `meta`, `loading`, `error` osobno. Tu jest to
  * jedno miejsce: `pobierz(strona)` woła `apiPaged`-owy eksport `lib/api.ts`.
  *
+ * Służy też pobraniom niestronicowanym z jednym wywołującym (np. katalog
+ * kursów uczestnika, `panel/kursy`) — `pobierz` po prostu ignoruje `strona`
+ * i zwraca `{ data }` bez `meta`; osobny hak tylko dla tego jednego ekranu
+ * (dawny `useZasob`, 1 wywołujący — łamał regułę C2 „żaden komponent bez co
+ * najmniej 2 użyć") dublowałby ten sam cykl życia (ładowanie → sukces/błąd,
+ * z ponowieniem) bez żadnej innej różnicy niż brak `strona`/`meta`.
+ *
  * Stan „ładowanie" jest wyprowadzony (porównanie klucza żądania z ostatnio
- * rozstrzygniętym), tak samo jak w `useZasob`.
+ * rozstrzygniętym), nie ustawiany wprost na starcie efektu — bezpośrednie
+ * `setState` w ciele efektu kaskaduje renderowania
+ * (react-hooks/set-state-in-effect).
+ *
+ * `zaleznosci` działa jak druga tablica zależności `useEffect` (np. filtr) —
+ * zmiana elementu odpytuje serwer ponownie.
  */
 export function useZasobStronicowany<T>(
   pobierz: (
@@ -63,6 +87,7 @@ export function useZasobStronicowany<T>(
           rezultat: {
             status: "error",
             message: err instanceof ApiError ? err.message : komunikatBledu,
+            httpStatus: err instanceof ApiError ? err.status : undefined,
           },
         });
       });
@@ -80,7 +105,11 @@ export function useZasobStronicowany<T>(
     ? { status: "loading" }
     : rozstrzygniety.status === "success"
       ? { status: "success", data: rozstrzygniety.data }
-      : { status: "error", message: rozstrzygniety.message };
+      : {
+          status: "error",
+          message: rozstrzygniety.message,
+          httpStatus: rozstrzygniety.httpStatus,
+        };
   const meta =
     rozstrzygniety && rozstrzygniety.status === "success" ? rozstrzygniety.meta : undefined;
 

@@ -46,6 +46,50 @@ describe("ListTemplate", () => {
     expect(onPonow).toHaveBeenCalledTimes(1);
   });
 
+  it("httpStatus=403 na stanie error: mapuje na odmowę zamiast ErrorState", () => {
+    render(
+      <ListTemplate naglowek={{ title: "Kursy" }} stan="error" httpStatus={403}>
+        <p>Tabela kursów</p>
+      </ListTemplate>,
+    );
+
+    expect(screen.getByText("Brak dostępu")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("httpStatus=500 na stanie error: zostaje ErrorState, nie odmowa", () => {
+    render(
+      <ListTemplate naglowek={{ title: "Kursy" }} stan="error" httpStatus={500}>
+        <p>Tabela kursów</p>
+      </ListTemplate>,
+    );
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
+  });
+
+  it("komunikatLadowania/komunikatBleduTytul: przechodzą do molekuł, puste komunikatBleduTytul chowa tytuł", () => {
+    const { rerender } = render(
+      <ListTemplate naglowek={{ title: "Kursy" }} stan="loading" komunikatLadowania="Ładowanie kursów…">
+        <p>Tabela kursów</p>
+      </ListTemplate>,
+    );
+    expect(screen.getByRole("status")).toHaveAccessibleName("Ładowanie kursów…");
+
+    rerender(
+      <ListTemplate
+        naglowek={{ title: "Kursy" }}
+        stan="error"
+        komunikatBledu="Awaria."
+        komunikatBleduTytul=""
+      >
+        <p>Tabela kursów</p>
+      </ListTemplate>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Awaria.");
+    expect(screen.queryByText("Nie udało się wczytać danych")).not.toBeInTheDocument();
+  });
+
   it("stan forbidden: pokazuje odmowę bez treści listy", () => {
     render(
       <ListTemplate naglowek={{ title: "Kursy" }} stan="forbidden">

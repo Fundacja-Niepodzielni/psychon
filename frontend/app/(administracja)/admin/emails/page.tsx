@@ -97,9 +97,12 @@ export default function AdminEmailsPage() {
           action: meta && <Badge variant="accent">{meta.total} łącznie</Badge>,
         }}
         stan={listaPusta ? "empty" : stan.status}
+        httpStatus={stan.status === "error" ? stan.httpStatus : undefined}
+        komunikatLadowania="Wczytywanie…"
         komunikatBledu={stan.status === "error" ? stan.message : undefined}
+        komunikatBleduTytul=""
         onPonow={ponow}
-        pustyTytul="Brak wysłanych e-maili"
+        pustyTytul="Brak wysłanych e-maili."
         paginacja={
           meta
             ? { strona, ostatniaStrona: meta.last_page, onZmien: ustawStrone }

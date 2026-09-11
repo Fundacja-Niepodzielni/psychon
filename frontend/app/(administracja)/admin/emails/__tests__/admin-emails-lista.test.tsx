@@ -60,7 +60,7 @@ describe("AdminEmailsPage", () => {
     render(<AdminEmailsPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Brak wysłanych e-maili" })).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "Brak wysłanych e-maili." })).toBeInTheDocument(),
     );
   });
 
@@ -70,6 +70,22 @@ describe("AdminEmailsPage", () => {
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Skrzynka niedostępna."));
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
+  });
+
+  it("403: pokazuje odmowę dostępu, nie ErrorState", async () => {
+    apiPaged.mockRejectedValue(new ApiError(403, "Brak uprawnień."));
+    render(<AdminEmailsPage />);
+
+    await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("500: pokazuje ErrorState, nie odmowę dostępu", async () => {
+    apiPaged.mockRejectedValue(new ApiError(500, "Skrzynka niedostępna."));
+    render(<AdminEmailsPage />);
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
   });
 
   it("stronicowanie: klik Następna pobiera drugą stronę", async () => {

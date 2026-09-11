@@ -274,10 +274,12 @@ export default function AdminCoursesPage() {
           ),
         }}
         stan={listaPusta ? "empty" : stan.status}
+        httpStatus={stan.status === "error" ? stan.httpStatus : undefined}
+        komunikatLadowania="Wczytywanie listy kursów…"
         komunikatBledu={stan.status === "error" ? stan.message : undefined}
+        komunikatBleduTytul=""
         onPonow={ponow}
-        pustyTytul="Nie ma jeszcze żadnego kursu"
-        pustyOpis="Utwórz pierwszy szkic przyciskiem „Nowy kurs”."
+        pustyTytul="Nie ma jeszcze żadnego kursu. Utwórz pierwszy szkic."
         paginacja={
           meta ? { strona, ostatniaStrona: meta.last_page, onZmien: ustawStrone } : undefined
         }
