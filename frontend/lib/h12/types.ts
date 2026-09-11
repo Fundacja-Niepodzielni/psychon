@@ -1,7 +1,7 @@
 export type Attendance = "present" | "absent";
 
 export interface ParticipantSignup {
-  signed_up_at: string;
+  signed_up_at: string | null;
   attendance: Attendance | null;
 }
 
@@ -21,7 +21,7 @@ export interface ParticipantSlot {
 
 export interface InstructorSignup {
   user: { id: number; first_name: string; last_name: string };
-  signed_up_at: string;
+  signed_up_at: string | null;
   attendance: Attendance | null;
 }
 
