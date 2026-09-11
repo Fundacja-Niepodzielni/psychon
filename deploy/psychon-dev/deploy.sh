@@ -8,6 +8,114 @@
 #      wstaje i natychmiast pada, a przyczyna widoczna jest dopiero w logu.
 #
 # Skrypt nie tworzy zadnych sekretow. Plik /opt/psychon/.env zaklada czlowiek.
+#
+# Funkcje `_swiadek_logowania_*` nizej ocenia sciezke logowania (OD-092 p.4):
+# nie tylko trase, ale przekierowanie do dostawcy tozsamosci az do formularza.
+# Sa zdefiniowane PRZED `set -euo pipefail` i przed reszta skryptu, a zaraz
+# pod nimi stoi warunek, ktory konczy plik, gdy jest ZRODLOWANY (a nie
+# wykonany) - dzieki temu testy licza `source deploy.sh` i wolaja funkcje na
+# spreparowanych danych, bez uruchamiania prawdziwego wdrozenia.
+_swiadek_logowania_url_decode() {
+  local zakodowany="${1//+/ }"
+  printf '%b' "${zakodowany//%/\\x}"
+}
+
+# Argumenty: 1=nazwa klucza (np. AUTH_KEYCLOAK_ISSUER), 2=plik .env. Wypisuje
+# odczytana wartosc na stdout (wolajacy sam decyduje, co z nia zrobi - ta
+# funkcja NIGDY jej nie drukuje na ekran/log). Bierze OSTATNIA pasujaca
+# linie, zdejmuje otaczajace cudzyslowy/apostrofy i koncowe \r (plik .env
+# bywa kopiowany z Windows, a compose dopuszcza wartosci w cudzyslowach).
+# Brak klucza NIE jest bledem skladni: zwraca 1, a wolajacy - zawsze w
+# `if` - decyduje, co dalej. Dzieki temu brakujacy klucz nie przerywa
+# wdrozenia pod `set -euo pipefail` (samo przypisanie `x="$(...)"` bez
+# `if`/`||` przerwaloby skrypt, gdy funkcja zwroci niezerowy kod).
+_swiadek_logowania_czytaj_klucz() {
+  local klucz="$1" plik="$2" linia wartosc
+  linia="$(grep -E "^${klucz}=" "$plik" 2>/dev/null | tail -n1 || true)"
+  if [[ -z "$linia" ]]; then
+    return 1
+  fi
+  wartosc="${linia#*=}"
+  wartosc="${wartosc%$'\r'}"
+  case "$wartosc" in
+    \"*\") wartosc="${wartosc%\"}"; wartosc="${wartosc#\"}" ;;
+    \'*\') wartosc="${wartosc%\'}"; wartosc="${wartosc#\'}" ;;
+  esac
+  printf '%s' "$wartosc"
+}
+
+# Argumenty: 1=ISS (issuer realmu, z AUTH_KEYCLOAK_ISSUER), 2=domena
+# psychon-dev, 3=Location z odpowiedzi 302 na POST /api/auth/signin/keycloak,
+# 4=kod HTTP odpowiedzi GET tej lokalizacji, 5=plik z cialem tamtej
+# odpowiedzi. Nie drukuje tokenow, ciasteczek ani wartosci csrf/state/PKCE -
+# wylacznie wynik kazdej assercji. Zwraca 0, gdy wszystkie przeszly, 1 w
+# przeciwnym razie.
+_swiadek_logowania_ocena() {
+  local iss="$1" domena="$2" loc="$3" kod_strony="$4" plik_strony="$5"
+  local wynik=0
+
+  case "$loc" in
+    "$iss"/protocol/openid-connect/auth*)
+      echo "  (a) Location zaczyna sie od $iss/protocol/openid-connect/auth: OK" ;;
+    *)
+      echo "  (a) Location zaczyna sie od $iss/protocol/openid-connect/auth: BLAD"
+      wynik=1 ;;
+  esac
+
+  case "$loc" in
+    *'client_id=psychon-web'*)
+      echo "  (b) client_id=psychon-web: OK" ;;
+    *)
+      echo "  (b) client_id=psychon-web: BLAD - brak lub inny client_id"
+      wynik=1 ;;
+  esac
+
+  local redirect_zakodowany redirect_odkodowany oczekiwany_redirect
+  redirect_zakodowany="$(printf '%s' "$loc" | grep -o 'redirect_uri=[^&]*' | cut -d'=' -f2- || true)"
+  redirect_odkodowany="$(_swiadek_logowania_url_decode "$redirect_zakodowany")"
+  oczekiwany_redirect="https://$domena/api/auth/callback/keycloak"
+  if [[ "$redirect_odkodowany" == "$oczekiwany_redirect" ]]; then
+    echo "  (c) redirect_uri == $oczekiwany_redirect: OK"
+  else
+    echo "  (c) redirect_uri: BLAD - jest '$redirect_odkodowany', oczekiwano '$oczekiwany_redirect'"
+    wynik=1
+  fi
+
+  local ile_localhost
+  ile_localhost="$(printf '%s' "$loc" | grep -oi 'localhost' | wc -l | tr -d ' ' || true)"
+  ile_localhost="${ile_localhost:-0}"
+  if [[ "$ile_localhost" -eq 0 ]]; then
+    echo "  (d) wystapien 'localhost' w Location: 0: OK"
+  else
+    echo "  (d) wystapien 'localhost' w Location: BLAD - $ile_localhost"
+    wynik=1
+  fi
+
+  case "$loc" in
+    *'code_challenge_method=S256'*)
+      echo "  (e) code_challenge_method=S256: OK" ;;
+    *)
+      echo "  (e) code_challenge_method=S256: BLAD"
+      wynik=1 ;;
+  esac
+
+  local ile_formularzy
+  ile_formularzy="$(grep -c 'kc-form-login' "$plik_strony" 2>/dev/null || true)"
+  ile_formularzy="${ile_formularzy:-0}"
+  if [[ "$kod_strony" == "200" && "$ile_formularzy" -eq 1 ]]; then
+    echo "  (f) GET Location -> 200, kc-form-login x1: OK"
+  else
+    echo "  (f) GET Location -> ${kod_strony:-BRAK ODPOWIEDZI}, kc-form-login x${ile_formularzy}: BLAD"
+    wynik=1
+  fi
+
+  return "$wynik"
+}
+
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  return 0
+fi
+
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -79,7 +187,10 @@ echo "Status uslug:"
 # zrywal polaczenie (alert TLS 80) - na kazdej sciezce "BRAK ODPOWIEDZI", takze
 # przy stojacych uslugach. `--retry` przeczekuje 502/503, dopoki uslugi wstaja.
 echo "Swiadek rozdzialu ruchu (przez Caddy na 127.0.0.1:443):"
-domena="$(grep -E '^STAGING_DOMAIN=' "$env_file" | cut -d= -f2-)"
+domena=""
+if ! domena="$(_swiadek_logowania_czytaj_klucz "STAGING_DOMAIN" "$env_file")"; then
+  echo "  OSTRZEZENIE: brak klucza STAGING_DOMAIN w $env_file - ponizsze proby polacza sie bez nazwy domeny."
+fi
 # `/api/v1/me` bez tokenu ma zwrocic 401 Z LARAVELA - to dowodzi, ze odpowiedzial
 # backend, a nie Next.js (ktory na tej sciezce dalby 404). `/` ma dac 200 z Next.
 # `/api/auth/providers` ma dac 200 Z NEXT (next-auth) - 404 znaczy, ze `/api/*`
@@ -92,5 +203,63 @@ for sciezka in /api/v1/me /api/auth/providers /; do
     --max-time 20 -o /dev/null -w '%{http_code}' "https://$domena$sciezka" || true)"
   echo "  $sciezka -> ${kod:-BRAK ODPOWIEDZI}"
 done
+
+# Swiadek sciezki logowania (OD-092 p.4): trasa wyzej dowodzi tylko, ze
+# /api/* trafia do Next.js - nie dowodzi, ze przycisk "Zaloguj" naprawde
+# prowadzi do Kont i wraca. Ten swiadek idzie caly ten szlak: CSRF, POST
+# signin/keycloak, przekierowanie do realmu (przez nasz Caddy, tak jak trasa
+# wyzej), a na koniec sam formularz logowania - JUZ PO PRAWDZIWEJ SIECI, bez
+# `--resolve`, bo to jedyny punkt, w ktorym realm naprawde weryfikuje
+# redirect_uri. Lapie z automatu trzy znane wady: proxy nie routujace
+# /api/auth/* na frontend, realm bez tego przekierowania na liscie klienta i
+# aplikacje wysylajaca origin `localhost:3000` zamiast publicznej domeny.
+# Ciasteczka i naglowki w mktemp, sprzatane trapem; token csrf, ciasteczka i
+# stan PKCE nigdzie nie trafiaja do wyjscia - tylko dlugosci i kody HTTP.
+# NIEZALICZONY nie przerywa wdrozenia (ten sam wybor co swiadek rozdzialu
+# ruchu wyzej): to pomiar biegnacy PO tym, jak uslugi juz staja, w tym jeden
+# krok po prawdziwej sieci bez wlasnych ponowien - twardy `exit` zmienialby
+# przejsciowa usterke sieci u zewnetrznego IdP w falszywie czerwone
+# wdrozenie. Wynik i tak jest widoczny na ostatniej linii ponizej.
+echo "Swiadek sciezki logowania (Caddy 127.0.0.1:443, IdP po prawdziwej sieci):"
+iss=""
+if ! iss="$(_swiadek_logowania_czytaj_klucz "AUTH_KEYCLOAK_ISSUER" "$env_file")"; then
+  # Brak klucza nie przerywa wdrozenia (ta sama konwencja co reszta tego
+  # swiadka): uslugi juz staly, wiec twardy `exit` tutaj tylko ukrylby, ze
+  # wdrozenie sie udalo, a jedynie brakuje jednej zmiennej w .env.
+  echo "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER w $env_file)"
+else
+  ciasteczka_logowania="$(mktemp)"
+  naglowki_logowania="$(mktemp)"
+  strona_idp="$(mktemp)"
+  trap 'rm -f "$ciasteczka_logowania" "$naglowki_logowania" "$strona_idp"' EXIT
+
+  csrf="$(curl -sk --resolve "$domena:443:127.0.0.1" -c "$ciasteczka_logowania" --max-time 20 \
+    "https://$domena/api/auth/csrf" 2>/dev/null | grep -o '"csrfToken":"[^"]*"' | cut -d'"' -f4 || true)"
+  echo "  csrf: ${#csrf} znakow (wartosc niewypisywana)"
+
+  curl -sk --resolve "$domena:443:127.0.0.1" -b "$ciasteczka_logowania" -c "$ciasteczka_logowania" \
+    -o /dev/null -D "$naglowki_logowania" --max-time 20 -X POST \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "csrfToken=$csrf" --data-urlencode "callbackUrl=https://$domena/konto" \
+    "https://$domena/api/auth/signin/keycloak" || true
+  kod_logowania="$(awk 'NR==1{print $2}' "$naglowki_logowania" 2>/dev/null || true)"
+  lokalizacja="$(grep -i '^location:' "$naglowki_logowania" 2>/dev/null | head -1 | cut -d' ' -f2- | tr -d '\r' || true)"
+  echo "  POST /api/auth/signin/keycloak -> ${kod_logowania:-BRAK ODPOWIEDZI}"
+
+  kod_strony_idp="000"
+  : > "$strona_idp"
+  case "$lokalizacja" in
+    "$iss"/*)
+      kod_strony_idp="$(curl -sk -o "$strona_idp" -w '%{http_code}' --max-time 20 "$lokalizacja" || true)"
+      ;;
+    *) ;;
+  esac
+
+  if _swiadek_logowania_ocena "$iss" "$domena" "$lokalizacja" "$kod_strony_idp" "$strona_idp"; then
+    echo "SWIADEK LOGOWANIA: ZALICZONY"
+  else
+    echo "SWIADEK LOGOWANIA: NIEZALICZONY"
+  fi
+fi
 
 echo "Wdrozenie zakonczone. Nie resetowano bazy ani seedow."
