@@ -94,4 +94,27 @@ describe("AdminUsersList", () => {
     await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("zmiana filtru na stronie 1 chowa stare wiersze i pokazuje ładowanie zamiast ich zostawiać", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+
+    fetchAdminUsers.mockResolvedValueOnce({
+      data: [osoba],
+      meta: { current_page: 1, per_page: 25, total: 1, last_page: 1 },
+    });
+    render(<AdminUsersList />);
+
+    await waitFor(() => expect(screen.getByText("Marta Kowalska")).toBeInTheDocument());
+
+    // Druga odpowiedź (po zmianie filtru) celowo nigdy się nie rozstrzyga —
+    // w tym momencie ekran nie może dalej pokazywać Marty Kowalskiej.
+    fetchAdminUsers.mockReturnValueOnce(new Promise(() => {}));
+
+    await user.type(screen.getByLabelText("Szukaj"), "abc");
+    await user.click(screen.getByRole("button", { name: "Filtruj" }));
+
+    await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument());
+    expect(screen.queryByText("Marta Kowalska")).not.toBeInTheDocument();
+  });
 });

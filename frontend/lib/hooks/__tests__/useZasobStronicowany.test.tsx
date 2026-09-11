@@ -91,4 +91,32 @@ describe("useZasobStronicowany", () => {
 
     await waitFor(() => expect(pobierz).toHaveBeenCalledWith(2));
   });
+
+  it("zmiana filtru (zaleznosci) na stronie 1 resetuje stan do loading i nie pokazuje starych wierszy", async () => {
+    const pobierz = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: [{ id: 1, nazwa: "stary" }],
+        meta: { current_page: 1, per_page: 10, total: 1, last_page: 1 },
+      })
+      // Odpowiedź na nowy filtr jeszcze nie wróciła — hak musi w tym momencie
+      // pokazywać loading, a nie stare wiersze z poprzedniego filtru.
+      .mockImplementationOnce(() => new Promise(() => {}));
+
+    const { result, rerender } = renderHook(
+      ({ zaleznosci }) => useZasobStronicowany(pobierz, zaleznosci),
+      { initialProps: { zaleznosci: [{ szukaj: "a" }] as readonly unknown[] } },
+    );
+
+    await waitFor(() =>
+      expect(result.current.stan).toEqual({
+        status: "success",
+        data: [{ id: 1, nazwa: "stary" }],
+      }),
+    );
+
+    rerender({ zaleznosci: [{ szukaj: "b" }] });
+
+    expect(result.current.stan).toEqual({ status: "loading" });
+  });
 });

@@ -21,6 +21,18 @@
 set -eu
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# Jeśli ten plik zostanie skopiowany poza `frontend/scripts/` (albo
+# uruchomiony z drzewa, w którym `frontend/` nie jest rodzicem `scripts/`),
+# powyższe `cd` wyląduje w katalogu bez `app/`, `components/`, `lib/`. Bez tej
+# straży `grep`/`find` po prostu nie znajdują nic, a bez `pipefail` (patrz
+# komentarz wyżej) `grep | wc -l` i tak zwraca „0" z kodem 0 — skrypt milczący
+# fałszywy pozytyw. Zamiast tego jawny błąd i rc≠0.
+if [ ! -d app ] || [ ! -d components ] || [ ! -d lib ]; then
+  echo "Błąd: $(pwd) nie wygląda na katalog frontend/ (brak app/, components/ lub lib/)." >&2
+  echo "Uruchom skrypt z jego oryginalnego miejsca w drzewie (frontend/scripts/pomiar-kc.sh), nie z kopii." >&2
+  exit 1
+fi
+
 EXCL_TESTY=(--exclude-dir=__tests__ --exclude='*.test.*')
 EXCL_WZORCE=(--exclude-dir=templates --exclude-dir=molecules)
 
@@ -45,11 +57,13 @@ echo "--- KC-2 organizmy (dodatkowy wiersz, nie zastępuje powyższych) ---"
 echo '  Werdykt front-p1-59da632: literał liczy tylko import w samym page.tsx —'
 echo '  trasy, które renderują szablon przez organizm (page.tsx -> komponent ->'
 echo '  ListTemplate), nie mają importu we własnym page.tsx i wychodzą jako 0,'
-echo '  mimo że szablon i tak jest użyty. Poniżej ta sama trasa liczona, gdy'
-echo '  page.tsx LUB komponent importowany wprost przez page.tsx importuje szablon.'
+echo '  mimo że szablon i tak jest użyty. Poniżej NIE są liczone trasy, tylko'
+echo '  PLIKI *.tsx (poza __tests__) importujące szablon wprost — page.tsx LUB'
+echo '  organizm importowany przez page.tsx. Jedna trasa może dać 0, 1 lub 2'
+echo '  takie pliki (page.tsx + jego organizm), więc liczba nie jest liczbą tras.'
 echo '$ grep -rl "components/templates/" app components --include=*.tsx | grep -v __tests__ | wc -l'
 kc2_organizmy=$(grep -rl "components/templates/" app components --include=*.tsx | grep -v __tests__ | wc -l)
-echo "KC-2 organizmy:       ${kc2_organizmy} plików importujących szablon wprost (page.tsx + komponenty-organizmy)"
+echo "KC-2 organizmy:       ${kc2_organizmy} plików *.tsx importujących szablon wprost (nie liczba tras)"
 echo
 
 echo "=== KC-3 — powielenie w całym drzewie frontend/ ==="

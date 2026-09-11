@@ -67,7 +67,7 @@ export function useZasobStronicowany<T>(
   const [proba, setProba] = useState(0);
   const [wynik, setWynik] = useState<Wynik<T> | null>(null);
 
-  const klucz = `${strona}:${proba}`;
+  const klucz = `${strona}:${proba}:${JSON.stringify(zaleznosci)}`;
 
   useEffect(() => {
     let aktywny = true;
