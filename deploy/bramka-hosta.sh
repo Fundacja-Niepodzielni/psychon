@@ -244,47 +244,56 @@ fi
 # i `backend/vendor`, czyli w plikach, ktorych repozytorium NIE zawiera (zmierzone:
 # `git ls-files` = 0 dla kazdego z nich). Skaner, ktory czerwieni sie od cudzych
 # artefaktow budowania, zostanie wyciszony przez pierwsza osobe, ktora go zobaczy.
+#
+# Logika licznika/kontroli zgodnosci/filtra pol NIE zyje tutaj - zyje w
+# deploy/lib/sekrety-licznik.sh, zrodlowanym ponizej. Ten sam plik zrodlowuje
+# deploy/tests/test-bramka-sekrety.sh, wiec test i bramka NIE MOGA sie
+# rozjechac (zadna kopia logiki w tescie). Test biegnie NAJPIERW: liczba z
+# prawdziwego skanu nizej nie jest warta zaufania, jesli logika, ktora ja
+# liczy, jest sama w sobie zepsuta - a to jest jedyny sposob, zeby cofnieta
+# poprawka F-106 (albo pusty plik biblioteki) dala tu CZERWIEN, zamiast po
+# cichu pokazac zero trafien.
 naglowek "3e - sekrety w tresci commitu"
+
+# shellcheck source=deploy/lib/sekrety-licznik.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sekrety-licznik.sh"
+
+T="$(date +%s)"
+bash deploy/tests/test-bramka-sekrety.sh > "$KATALOG_BIEGU"/bramka-test-sekrety.log 2>&1
+KOD_TEST_SEKRETY=$?
+CZAS_TEST_SEKRETY="$(czas_od "$T")"
+echo "test licznika sekretow: EXIT=$KOD_TEST_SEKRETY, $CZAS_TEST_SEKRETY s"
+if [ "$KOD_TEST_SEKRETY" -ne 0 ]; then
+    echo "sekrety: test wlasnej logiki (deploy/tests/test-bramka-sekrety.sh) jest CZERWONY - nie ufam licznikowi ponizej, krok 3e pada NIEZALEZNIE od wyniku skanu" >&2
+    tail -20 "$KATALOG_BIEGU"/bramka-test-sekrety.log | sed 's/^/  ! /'
+fi
 
 T="$(date +%s)"
 EKSPORT="$(mktemp -d)"
 git archive --format=tar HEAD | tar -x -C "$EKSPORT"
 PLIKOW_GL="$(find "$EKSPORT" -type f | wc -l)"
-# F-106: BEZ `-v` gitleaks `dir` nie drukuje ani jednego naglowka trafienia
-# (RuleID/File/Line) - drukuje wylacznie linie podsumowania. Licznik oparty
-# WYLACZNIE o "^RuleID:" byl wiec ZAWSZE zero, niezaleznie od tego, ile
-# gitleaks naprawde znalazl. `-v` dodaje te naglowki (obok pol z tresci
-# trafienia, ktorych do logu bramki NIE przepuszczamy - patrz filtr nizej).
-docker run --rm --network none -v "${EKSPORT}:/tresc:ro" -v "$PWD/.gitleaks.toml:/konfiguracja.toml:ro"     ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact -v     > "$KATALOG_BIEGU"/bramka-gitleaks.log 2>&1
+sekrety_uruchom_gitleaks "$EKSPORT" "$PWD/.gitleaks.toml" "$KATALOG_BIEGU"/bramka-gitleaks.log
 KOD_GITLEAKS=$?
 CZAS_GITLEAKS="$(czas_od "$T")"
 rm -rf "$EKSPORT"
 # ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
 BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
-# Licznik NAPRAWDE uzywany do wyniku: z linii podsumowania "leaks found: N"
-# ("no leaks found" == 0 - gitleaks nigdy nie pisze "leaks found: 0"). Druga
-# liczba - naglowki "^RuleID:" - jest KONTROLA, nie zrodlem: przy zgodnosci
-# obu liczb ufamy podsumowaniu, przy niezgodnosci (np. gitleaks zmienil
-# format wyjscia i ten skrypt czyta go zle) krok jest CZERWONY z WLASNYM
-# komunikatem zamiast po cichu pokazac liczbe, ktorej nie da sie obronic.
-TRAFIEN_PODSUMOWANIE="$(grep -aoE "leaks found: [0-9]+" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1 | grep -oE "[0-9]+" || true)"
-if [ -z "$TRAFIEN_PODSUMOWANIE" ] && grep -aq "no leaks found" "$KATALOG_BIEGU"/bramka-gitleaks.log; then
-    TRAFIEN_PODSUMOWANIE=0
-fi
-TRAFIEN_RULEID="$(grep -acE "^RuleID:" "$KATALOG_BIEGU"/bramka-gitleaks.log)"
-if [ -z "$TRAFIEN_PODSUMOWANIE" ]; then
-    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien NIEZMIERZONE - brak linii 'leaks found'/'no leaks found' w logu gitleaks"
+TRAFIEN_GL="$(sekrety_policz_trafienia "$KATALOG_BIEGU"/bramka-gitleaks.log)"
+KOD_LICZNIKA=$?
+echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
+if [ "$KOD_LICZNIKA" -ne 0 ]; then
     KOD_GITLEAKS=2
-elif [ "$TRAFIEN_PODSUMOWANIE" -ne "$TRAFIEN_RULEID" ]; then
-    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien NIEZGODNE - podsumowanie=$TRAFIEN_PODSUMOWANIE, naglowkow RuleID=$TRAFIEN_RULEID"
-    KOD_GITLEAKS=2
-else
-    TRAFIEN_GL="$TRAFIEN_PODSUMOWANIE"
-    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
 fi
 # Filtr NIGDY nie przepuszcza Secret/Match/Finding (tresc trafienia) - tylko
 # RuleID/File/Line, nawet gdy `-v` je drukuje.
-[ "$KOD_GITLEAKS" -ne 0 ] && grep -aE "^(RuleID|File|Line):" "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
+[ "$KOD_GITLEAKS" -ne 0 ] && sekrety_pola_do_logu "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
+# Test wlasnej logiki jest osobnym warunkiem, niezaleznym od wyniku skanu:
+# skan mogl wyjsc czysto (KOD_GITLEAKS=0) na logice, ktora akurat na TYM
+# logu przypadkiem daje ta sama liczbe co poprawna - dlatego jego czerwien
+# NIE jest tylko podnoszona jako informacja, tylko WYMUSZA czerwony krok 3e.
+if [ "$KOD_TEST_SEKRETY" -ne 0 ]; then
+    KOD_GITLEAKS=2
+fi
 
 # --- 3f - swiadek logowania psychon-dev: testy (krok blokujacy) ------------
 # Suita `deploy/psychon-dev/tests/test-swiadek-logowania.sh` zrodlowuje

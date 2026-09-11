@@ -476,20 +476,20 @@ if [[ "$NIEZAL_21" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo 
 ENV_STAGING_BRAK_WDR="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_STAGING_BRAK_WDR")
 printf 'AUTH_KEYCLOAK_ISSUER=%s\n' "$ISS_WDR" > "$ENV_STAGING_BRAK_WDR"
 
-echo "=== 22 brak STAGING_DOMAIN w pliku, srodowisko ustawione -> OSTRZEZENIE brak (srodowisko nie ratuje) ==="
-WYJSCIE_22="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
+echo "=== 26 brak STAGING_DOMAIN w pliku, srodowisko ustawione -> OSTRZEZENIE brak (srodowisko nie ratuje) ==="
+WYJSCIE_26="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
   PSYCHON_ENV_FILE="$ENV_STAGING_BRAK_WDR" \
   PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
   STUB_ISS_LOC="$ISS_WDR" \
   STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
   bash "$TU/../deploy.sh" 2>&1)"
-printf '%s\n' "$WYJSCIE_22" | grep -E 'OSTRZEZENIE|Wdrozenie zakonczone' || true
-NIEZAL_22=0
-if ! printf '%s\n' "$WYJSCIE_22" | grep -qF 'OSTRZEZENIE: brak STAGING_DOMAIN'; then
+printf '%s\n' "$WYJSCIE_26" | grep -E 'OSTRZEZENIE|Wdrozenie zakonczone' || true
+NIEZAL_26=0
+if ! printf '%s\n' "$WYJSCIE_26" | grep -qF 'OSTRZEZENIE: brak STAGING_DOMAIN'; then
   echo "  WYNIK: NIEZALICZONY - oczekiwano OSTRZEZENIA 'brak STAGING_DOMAIN' (srodowisko nie moze zastapic brakujacego klucza w pliku)"
-  NIEZAL_22=1
+  NIEZAL_26=1
 fi
-if [[ "$NIEZAL_22" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+if [[ "$NIEZAL_26" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
 echo
 if [[ "$NIEZALICZONE" -eq 0 ]]; then
