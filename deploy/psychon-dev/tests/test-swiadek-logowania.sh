@@ -177,57 +177,6 @@ sprawdz_klucz "10 czytaj_klucz - wartosc w cudzyslowach" "$ENV_CUDZYSLOW" "AUTH_
 sprawdz_klucz "11 czytaj_klucz - plik CRLF" "$ENV_CRLF" "AUTH_KEYCLOAK_ISSUER" "$KLUCZ_DOBRY_ISS" 0
 sprawdz_klucz "12 czytaj_klucz - brak klucza" "$ENV_BRAK" "AUTH_KEYCLOAK_ISSUER" "" 1
 
-# ============================ CZESC 2c: _swiadek_logowania_wartosc (F-105) =
-# F-105: skrypt wdrozenia eksportuje AUTH_KEYCLOAK_ISSUER w powloce PRZED
-# wywolaniem deploy.sh, a `docker compose --env-file` bierze te zmienna
-# PRZED wartoscia z pliku. Ta funkcja MUSI rozstrzygac w tej samej
-# kolejnosci - inaczej swiadek ocenia ISS, ktorego stos wcale nie uzywa.
-KLUCZ_ISS_ZE_SRODOWISKA="https://idp-ze-srodowiska.przyklad.test/realms/z-env"
-
-ENV_ISS_PUSTY="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_ISS_PUSTY")
-printf 'AUTH_KEYCLOAK_ISSUER=\n' > "$ENV_ISS_PUSTY"
-
-# $1=nazwa, $2=wartosc zmiennej SRODOWISKA AUTH_KEYCLOAK_ISSUER na czas
-# wywolania (pusty string = zmienna NIEUSTAWIONA w tym wywolaniu, nie
-# "ustawiona na pusto" - `env -u` usuwa ja z procesu), $3=plik .env,
-# $4=oczekiwana wartosc na stdout (tylko do porownania, nigdy nie
-# drukowana), $5=oczekiwany kod wyjscia (0=OK, 1=brak klucza, 2=pusta
-# wartosc - patrz komentarz przy funkcji w deploy.sh)
-sprawdz_wartosc() {
-  local nazwa="$1" env_iss="$2" plik="$3" oczekiwana="$4" oczekiwany_rc="$5"
-  local wartosc rc niezal=0
-
-  echo "=== $nazwa ==="
-  if [[ -n "$env_iss" ]]; then
-    wartosc="$(AUTH_KEYCLOAK_ISSUER="$env_iss" _swiadek_logowania_wartosc "AUTH_KEYCLOAK_ISSUER" "$plik")"
-  else
-    wartosc="$(unset AUTH_KEYCLOAK_ISSUER; _swiadek_logowania_wartosc "AUTH_KEYCLOAK_ISSUER" "$plik")"
-  fi
-  rc=$?
-  echo "  rc=$rc (oczekiwano $oczekiwany_rc)"
-  if [[ "$rc" -ne "$oczekiwany_rc" ]]; then
-    echo "  WYNIK: NIEZALICZONY - zly kod wyjscia"
-    niezal=1
-  elif [[ "$oczekiwany_rc" -eq 0 && "$wartosc" != "$oczekiwana" ]]; then
-    echo "  WYNIK: NIEZALICZONY - odczytana wartosc nie zgadza sie z oczekiwana"
-    niezal=1
-  fi
-  if [[ "$niezal" -eq 1 ]]; then
-    NIEZALICZONE=$((NIEZALICZONE + 1))
-  else
-    echo "  WYNIK: ZALICZONY"
-  fi
-}
-
-sprawdz_wartosc "17 wartosc - zmienna srodowiska ustawiona, plik pusty -> ISS ze srodowiska" \
-  "$KLUCZ_ISS_ZE_SRODOWISKA" "$ENV_ISS_PUSTY" "$KLUCZ_ISS_ZE_SRODOWISKA" 0
-sprawdz_wartosc "18 wartosc - srodowisko nieustawione, plik z wartoscia -> ISS z pliku" \
-  "" "$ENV_DOBRY" "$KLUCZ_DOBRY_ISS" 0
-sprawdz_wartosc "19 wartosc - oba puste -> rc=2 (pusta wartosc, NIE brak klucza)" \
-  "" "$ENV_ISS_PUSTY" "" 2
-sprawdz_wartosc "20 wartosc - srodowisko nieustawione, plik bez klucza -> rc=1 (brak klucza)" \
-  "" "$ENV_BRAK" "" 1
-
 # ============================ CZESC 2b: pelne deploy.sh z zaslepkami =======
 # Uruchamia deploy.sh jako ODDZIELNY PROCES (nie zrodlowany), z docker/curl/
 # stat podmienionymi na PATH - jedyny sposob, zeby zmierzyc kod wyjscia
@@ -353,13 +302,57 @@ sprawdz_wdrozenie "14 pelne wdrozenie - AUTH_KEYCLOAK_ISSUER w cudzyslowach" "$E
 sprawdz_wdrozenie "15 pelne wdrozenie - .env z CRLF" "$ENV_WDR_CRLF" "SWIADEK LOGOWANIA: ZALICZONY"
 sprawdz_wdrozenie "16 pelne wdrozenie - brak AUTH_KEYCLOAK_ISSUER, deploy nie pada" "$ENV_WDR_BRAK" "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER"
 
-# ============================ CZESC 2d: F-105 p.2 - pusty ISS => 0 curl ====
-# Zaslepka curl POWYZEJ zawsze odpowiada (nie liczy wywolan) - tu potrzebny
-# jest LICZNIK: dowod, ze przy pustym ISS swiadek NIE WYKONUJE zadnego curl
-# do IdP/next-auth (csrf, signin/keycloak, /protocol/openid-connect/auth).
-# Trzy proby swiadka ROZDZIALU RUCHU (/api/v1/me, /api/auth/providers, /)
-# nie sa objete tym zakazem - to inny swiadek, uruchamiany wczesniej - i
-# zaslepka ponizej ich celowo NIE liczy.
+# ============================ CZESC 2c: OD-098 p.3 - JEDNO zrodlo (plik) ===
+# Galaz "srodowisko przed plikiem" (F-105, funkcja _swiadek_logowania_wartosc)
+# zniknela: skrypt wdrozenia juz nie eksportuje AUTH_KEYCLOAK_ISSUER ani
+# STAGING_DOMAIN w powloce, wiec swiadek ma czytac WYLACZNIE plik $env_file,
+# przez _swiadek_logowania_czytaj_klucz - tak samo, jak reszta wdrozenia.
+# Kazdy test nizej USTAWIA zmienna srodowiska na INNA (rozpoznawalna) wartosc
+# niz ta w pliku, zeby udowodnic, ze zwyciezca jest zawsze plik, nigdy
+# srodowisko wywolujacego.
+
+TLS_DIR_2C="$(mktemp -d)"; KATALOGI_TESTOWE+=("$TLS_DIR_2C")
+printf 'dummy' > "$TLS_DIR_2C/origin.crt"
+printf 'dummy' > "$TLS_DIR_2C/origin.key"
+
+# --- (ii) srodowisko z INNA wartoscia + plik z wartoscia -> wygrywa plik ---
+ISS_BOGUS_ZE_SRODOWISKA="https://srodowisko-nie-powinno-wygrac.przyklad.test/realms/z-env"
+DOMENA_BOGUS_ZE_SRODOWISKA="srodowisko-nie-powinno-wygrac.przyklad.test"
+
+echo "=== 17 jedno zrodlo (AUTH_KEYCLOAK_ISSUER): srodowisko z inna wartoscia ignorowane, wygrywa plik ==="
+WYJSCIE_17="$(AUTH_KEYCLOAK_ISSUER="$ISS_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
+  PSYCHON_ENV_FILE="$ENV_WDR_DOBRY" \
+  PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  STUB_ISS_LOC="$ISS_WDR" \
+  STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
+  bash "$TU/../deploy.sh" 2>&1)"
+printf '%s\n' "$WYJSCIE_17" | grep -E 'SWIADEK LOGOWANIA|Wdrozenie zakonczone' || true
+NIEZAL_17=0
+if ! printf '%s\n' "$WYJSCIE_17" | grep -qF 'SWIADEK LOGOWANIA: ZALICZONY'; then
+  echo "  WYNIK: NIEZALICZONY - oczekiwano ZALICZONY (plik ma wygrac ze srodowiskiem); mutacja 'srodowisko najpierw' dla ISS zlapana"
+  NIEZAL_17=1
+fi
+if [[ "$NIEZAL_17" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 18 jedno zrodlo (STAGING_DOMAIN): srodowisko z inna wartoscia ignorowane, wygrywa plik ==="
+WYJSCIE_18="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
+  PSYCHON_ENV_FILE="$ENV_WDR_DOBRY" \
+  PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  STUB_ISS_LOC="$ISS_WDR" \
+  STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
+  bash "$TU/../deploy.sh" 2>&1)"
+printf '%s\n' "$WYJSCIE_18" | grep -E 'SWIADEK LOGOWANIA|Wdrozenie zakonczone' || true
+NIEZAL_18=0
+if ! printf '%s\n' "$WYJSCIE_18" | grep -qF 'SWIADEK LOGOWANIA: ZALICZONY'; then
+  echo "  WYNIK: NIEZALICZONY - oczekiwano ZALICZONY (plik ma wygrac ze srodowiskiem); mutacja 'srodowisko najpierw' dla domeny zlapana"
+  NIEZAL_18=1
+fi
+if [[ "$NIEZAL_18" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# --- (i) srodowisko ustawione + klucz w pliku PUSTY -> NIEZALICZONY 'puste',
+# 0 curl do IdP (srodowisko zignorowane, pusta wartosc NIE jest traktowana
+# jak brak klucza - inny komunikat). Zaslepka curl POWYZEJ ($STUB_BIN) zawsze
+# odpowiada, wiec tu potrzebny jest LICZNIK osobnej zaslepki.
 STUB_BIN_LICZNIK="$(mktemp -d)"; KATALOGI_TESTOWE+=("$STUB_BIN_LICZNIK")
 LICZNIK_CURL="$(mktemp)"; PLIKI_TESTOWE+=("$LICZNIK_CURL")
 printf '0' > "$LICZNIK_CURL"
@@ -402,37 +395,101 @@ chmod +x "$STUB_BIN_LICZNIK/curl"
 ENV_ISS_PUSTY_WDR="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_ISS_PUSTY_WDR")
 printf 'STAGING_DOMAIN=%s\nAUTH_KEYCLOAK_ISSUER=\n' "$DOMENA_WDR" > "$ENV_ISS_PUSTY_WDR"
 
-TLS_DIR_LICZNIK="$(mktemp -d)"; KATALOGI_TESTOWE+=("$TLS_DIR_LICZNIK")
-printf 'dummy' > "$TLS_DIR_LICZNIK/origin.crt"
-printf 'dummy' > "$TLS_DIR_LICZNIK/origin.key"
-
-echo "=== 21 pelne wdrozenie - AUTH_KEYCLOAK_ISSUER puste (plik i srodowisko) -> 0 curl do IdP/next-auth ==="
-WYJSCIE_LICZNIK="$(env -u AUTH_KEYCLOAK_ISSUER PATH="$STUB_BIN_LICZNIK:$PATH" \
+# Przypisanie PRZED naglowkiem, nie po nim: gitleaks (regula generic-api-key)
+# falszywie lapal ciag zlozony z KONCA poprzedniej linii echo (slowo "auth" i
+# cudzyslow zamykajacy) razem z POCZATKIEM przypisania zmiennej na linii
+# kolejnej, traktujac to sasiedztwo jak rzekomy klucz API (zmierzone lokalnie
+# narzedziem skanujacym w trybie szczegolowym na tym pliku - jedno trafienie
+# na granicy tych dwoch linii). Kolejnosc nizej daje ten sam wynik testu -
+# zadna asercja nie patrzy na kolejnosc linii w logu - i usuwa to sasiedztwo.
+WYJSCIE_19="$(AUTH_KEYCLOAK_ISSUER="$ISS_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN_LICZNIK:$PATH" \
   PSYCHON_ENV_FILE="$ENV_ISS_PUSTY_WDR" \
-  PSYCHON_TLS_DIR="$TLS_DIR_LICZNIK" \
+  PSYCHON_TLS_DIR="$TLS_DIR_2C" \
   bash "$TU/../deploy.sh" 2>&1)"
-printf '%s\n' "$WYJSCIE_LICZNIK" | grep -E 'SWIADEK LOGOWANIA|Wdrozenie zakonczone' || true
-LICZBA_CURL="$(cat "$LICZNIK_CURL")"
-echo "  wywolan curl do IdP/next-auth: $LICZBA_CURL"
-
-NIEZAL_21=0
-if ! printf '%s\n' "$WYJSCIE_LICZNIK" | grep -qF "SWIADEK LOGOWANIA: NIEZALICZONY (AUTH_KEYCLOAK_ISSUER jest puste"; then
-  echo "  WYNIK: NIEZALICZONY - brak oczekiwanego powodu 'puste' w wyjsciu"
-  NIEZAL_21=1
+echo "=== 19 AUTH_KEYCLOAK_ISSUER puste w pliku, srodowisko ustawione (inna wartosc) -> puste, 0 curl do IdP ==="
+printf '%s\n' "$WYJSCIE_19" | grep -E 'SWIADEK LOGOWANIA|Wdrozenie zakonczone' || true
+LICZBA_CURL_19="$(cat "$LICZNIK_CURL")"
+echo "  wywolan curl do IdP/next-auth: $LICZBA_CURL_19"
+NIEZAL_19=0
+if ! printf '%s\n' "$WYJSCIE_19" | grep -qF 'SWIADEK LOGOWANIA: NIEZALICZONY (AUTH_KEYCLOAK_ISSUER'; then
+  echo "  WYNIK: NIEZALICZONY - brak komunikatu NIEZALICZONY dla AUTH_KEYCLOAK_ISSUER"
+  NIEZAL_19=1
 fi
-if [[ "$LICZBA_CURL" -ne 0 ]]; then
-  echo "  WYNIK: NIEZALICZONY - swiadek zawolal curl do IdP/next-auth mimo pustego ISS ($LICZBA_CURL wywolan)"
-  NIEZAL_21=1
+if ! printf '%s\n' "$WYJSCIE_19" | grep -qF 'jest puste'; then
+  echo "  WYNIK: NIEZALICZONY - brak powodu 'puste' w wyjsciu (mutacja 'pusta traktowana jak brak' zlapana)"
+  NIEZAL_19=1
 fi
-if ! printf '%s\n' "$WYJSCIE_LICZNIK" | grep -qF 'Wdrozenie zakonczone'; then
+if printf '%s\n' "$WYJSCIE_19" | grep -qF 'brak klucza'; then
+  echo "  WYNIK: NIEZALICZONY - komunikat mowi 'brak klucza' zamiast 'puste' (mutacja 'pusta traktowana jak brak' zlapana)"
+  NIEZAL_19=1
+fi
+if [[ "$LICZBA_CURL_19" -ne 0 ]]; then
+  echo "  WYNIK: NIEZALICZONY - swiadek zawolal curl do IdP/next-auth mimo pustego ISS ($LICZBA_CURL_19 wywolan)"
+  NIEZAL_19=1
+fi
+if ! printf '%s\n' "$WYJSCIE_19" | grep -qF 'Wdrozenie zakonczone'; then
   echo "  WYNIK: NIEZALICZONY - deploy nie doszedl do konca"
+  NIEZAL_19=1
+fi
+if [[ "$NIEZAL_19" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# --- (iii) brak klucza w pliku, srodowisko ustawione -> 'brak klucza',
+# srodowisko NIE ratuje brakujacego klucza (dowod, ze env jest ignorowane
+# takze w tej galezi, nie tylko przy pustej wartosci powyzej).
+echo "=== 20 brak AUTH_KEYCLOAK_ISSUER w pliku, srodowisko ustawione -> brak klucza (srodowisko nie ratuje) ==="
+WYJSCIE_20="$(AUTH_KEYCLOAK_ISSUER="$ISS_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
+  PSYCHON_ENV_FILE="$ENV_WDR_BRAK" \
+  PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  STUB_ISS_LOC="$ISS_WDR" \
+  STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
+  bash "$TU/../deploy.sh" 2>&1)"
+printf '%s\n' "$WYJSCIE_20" | grep -E 'SWIADEK LOGOWANIA|Wdrozenie zakonczone' || true
+NIEZAL_20=0
+if ! printf '%s\n' "$WYJSCIE_20" | grep -qF 'SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER'; then
+  echo "  WYNIK: NIEZALICZONY - oczekiwano komunikatu 'brak klucza' (srodowisko nie moze zastapic brakujacego klucza w pliku)"
+  NIEZAL_20=1
+fi
+if [[ "$NIEZAL_20" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+ENV_DOMENA_PUSTA_WDR="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_DOMENA_PUSTA_WDR")
+printf 'STAGING_DOMAIN=\nAUTH_KEYCLOAK_ISSUER=%s\n' "$ISS_WDR" > "$ENV_DOMENA_PUSTA_WDR"
+
+echo "=== 21 STAGING_DOMAIN puste w pliku, srodowisko ustawione (inna wartosc) -> OSTRZEZENIE puste ==="
+WYJSCIE_21="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
+  PSYCHON_ENV_FILE="$ENV_DOMENA_PUSTA_WDR" \
+  PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  STUB_ISS_LOC="$ISS_WDR" \
+  STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
+  bash "$TU/../deploy.sh" 2>&1)"
+printf '%s\n' "$WYJSCIE_21" | grep -E 'OSTRZEZENIE|Wdrozenie zakonczone' || true
+NIEZAL_21=0
+if ! printf '%s\n' "$WYJSCIE_21" | grep -qF 'OSTRZEZENIE: STAGING_DOMAIN'; then
+  echo "  WYNIK: NIEZALICZONY - brak OSTRZEZENIA dla STAGING_DOMAIN"
   NIEZAL_21=1
 fi
-if [[ "$NIEZAL_21" -eq 1 ]]; then
-  NIEZALICZONE=$((NIEZALICZONE + 1))
-else
-  echo "  WYNIK: ZALICZONY"
+if ! printf '%s\n' "$WYJSCIE_21" | grep -qF 'jest puste'; then
+  echo "  WYNIK: NIEZALICZONY - brak powodu 'puste' w OSTRZEZENIU (mutacja 'pusta traktowana jak brak' zlapana)"
+  NIEZAL_21=1
 fi
+if [[ "$NIEZAL_21" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+ENV_STAGING_BRAK_WDR="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_STAGING_BRAK_WDR")
+printf 'AUTH_KEYCLOAK_ISSUER=%s\n' "$ISS_WDR" > "$ENV_STAGING_BRAK_WDR"
+
+echo "=== 22 brak STAGING_DOMAIN w pliku, srodowisko ustawione -> OSTRZEZENIE brak (srodowisko nie ratuje) ==="
+WYJSCIE_22="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
+  PSYCHON_ENV_FILE="$ENV_STAGING_BRAK_WDR" \
+  PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  STUB_ISS_LOC="$ISS_WDR" \
+  STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
+  bash "$TU/../deploy.sh" 2>&1)"
+printf '%s\n' "$WYJSCIE_22" | grep -E 'OSTRZEZENIE|Wdrozenie zakonczone' || true
+NIEZAL_22=0
+if ! printf '%s\n' "$WYJSCIE_22" | grep -qF 'OSTRZEZENIE: brak STAGING_DOMAIN'; then
+  echo "  WYNIK: NIEZALICZONY - oczekiwano OSTRZEZENIA 'brak STAGING_DOMAIN' (srodowisko nie moze zastapic brakujacego klucza w pliku)"
+  NIEZAL_22=1
+fi
+if [[ "$NIEZAL_22" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
 echo
 if [[ "$NIEZALICZONE" -eq 0 ]]; then

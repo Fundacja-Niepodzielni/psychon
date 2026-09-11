@@ -129,52 +129,24 @@ _swiadek_logowania_ocena() {
   return "$wynik"
 }
 
-# F-105: `docker compose --env-file "$env_file"` bierze zmienna SRODOWISKA
-# PROCESU przed wartoscia z pliku - tak dziala podstawianie zmiennych compose
-# i tak stos dostawal poprawny issuer, mimo pustej linii
-# `AUTH_KEYCLOAK_ISSUER=` w /opt/psychon/.env: skrypt wdrozenia eksportuje te
-# zmienna w powloce PRZED wywolaniem `deploy.sh`. Swiadek czytal WYLACZNIE
-# plik (`_swiadek_logowania_czytaj_klucz`), wiec dostawal pusty ISS i biegl
-# dalej z nim - stad ta funkcja: TA SAMA kolejnosc co compose, dla obu kluczy,
-# ktore compose interpoluje (AUTH_KEYCLOAK_ISSUER i STAGING_DOMAIN).
-#
-# Argumenty: 1=nazwa zmiennej (np. AUTH_KEYCLOAK_ISSUER albo STAGING_DOMAIN),
-# 2=plik .env. Wypisuje wartosc na stdout (NIGDY jej nie drukuje na
-# ekran/log - to, jesli chce, robi wolajacy). Kod wyjscia:
-#   0 - niepusta wartosc znaleziona: najpierw zmienna SRODOWISKA procesu
-#       (jesli niepusta), inaczej niepusta wartosc z pliku .env.
-#   1 - klucza NIE MA NIGDZIE: zmienna srodowiska nie jest ustawiona
-#       (w ogole) I plik nie ma linii "NAZWA=" (`_czytaj_klucz` zwrocil 1).
-#   2 - klucz GDZIES ISTNIAL (zmienna srodowiska byla ustawiona - choc pusta,
-#       i/lub w pliku byla linia "NAZWA=") ale wartosc jest pusta WSZEDZIE,
-#       gdzie wystapila. Kod 2 (rozny od 1) jest tu CELOWO: wolajacy ma
-#       odroznic "pusta wartosc" od "brak klucza" (F-105 p.2), a nie zlac
-#       obu w jedno "cos jest nie tak".
-_swiadek_logowania_wartosc() {
-  local nazwa="$1" plik="$2"
-  local z_env="${!nazwa:-}"
-
-  if [[ -n "$z_env" ]]; then
-    printf '%s' "$z_env"
-    return 0
-  fi
-
-  local z_pliku rc_pliku=0
-  z_pliku="$(_swiadek_logowania_czytaj_klucz "$nazwa" "$plik")" || rc_pliku=$?
-
-  if [[ "$rc_pliku" -eq 0 && -n "$z_pliku" ]]; then
-    printf '%s' "$z_pliku"
-    return 0
-  fi
-
-  # Nic niepustego nigdzie. `${!nazwa+x}` (indirect, z `+`) mowi, czy
-  # zmienna o nazwie $nazwa jest USTAWIONA w ogole (choc pusta) - bez
-  # bledu pod `set -u`, bo `+` nie odwoluje sie do wartosci domyslnej.
-  if [[ -n "${!nazwa+ustawiona}" || "$rc_pliku" -eq 0 ]]; then
-    return 2
-  fi
-  return 1
-}
+# OD-098 p.3: ISS i domena maja JEDNO zrodlo prawdy - plik `$env_file`
+# (na hoscie: /opt/psychon/.env). Skrypt wdrozenia NIE eksportuje tych
+# zmiennych w powloce przed wywolaniem `deploy.sh` i nie zaglada do
+# srodowiska procesu - swiadek czyta WYLACZNIE plik, ta sama funkcja
+# (`_swiadek_logowania_czytaj_klucz`), z ktorej korzysta reszta wdrozenia.
+# Pusty klucz w pliku jest PRAWDZIWYM sygnalem niekompletnego `.env`, a nie
+# czyms, co ma zaslonic srodowisko powloki - dlatego wolajacy (nizej) sam
+# rozroznia dwa rozne zera:
+#   rc=1 (z `_swiadek_logowania_czytaj_klucz`) - w pliku nie ma linii
+#        "NAZWA=" w ogole ("brak klucza"),
+#   rc=0, wartosc pusta - linia "NAZWA=" w pliku jest, ale bez wartosci
+#        ("pusta wartosc").
+# Historyczna wersja tej funkcji (`_swiadek_logowania_wartosc`, F-105)
+# sprawdzala NAJPIERW zmienna SRODOWISKA procesu - to bylo poprawne, dopoki
+# skrypt wdrozenia rzeczywiscie eksportowal ISS z powloki. OD-098 usunal
+# to wstrzykiwanie, wiec ta galaz nie ma juz czego odzwierciedlac: kolejne
+# jej istnienie tylko ukrywaloby pusty/zly klucz w pliku za przypadkowa
+# zmienna w srodowisku wywolujacego (np. w testach albo w powloce operatora).
 
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
   return 0
@@ -251,16 +223,15 @@ echo "Status uslug:"
 # zrywal polaczenie (alert TLS 80) - na kazdej sciezce "BRAK ODPOWIEDZI", takze
 # przy stojacych uslugach. `--retry` przeczekuje 502/503, dopoki uslugi wstaja.
 echo "Swiadek rozdzialu ruchu (przez Caddy na 127.0.0.1:443):"
-# F-105: TA SAMA kolejnosc co `docker compose --env-file` (najpierw
-# srodowisko procesu, potem plik) - inaczej ten swiadek moglby probowac
-# polaczyc sie pod inna domena, niz ta, ktora naprawde interpoluje compose.
+# OD-098 p.3: JEDNO zrodlo - plik $env_file, ta sama funkcja, ktora czyta
+# wszystkie inne ustawienia wdrozenia. Zaden odczyt srodowiska procesu.
 domena=""
 rc_domena=0
-domena="$(_swiadek_logowania_wartosc "STAGING_DOMAIN" "$env_file")" || rc_domena=$?
-if [[ "$rc_domena" -eq 2 ]]; then
-  echo "  OSTRZEZENIE: STAGING_DOMAIN jest puste (w srodowisku i/lub w $env_file) - ponizsze proby polacza sie bez nazwy domeny."
-elif [[ "$rc_domena" -ne 0 ]]; then
-  echo "  OSTRZEZENIE: brak STAGING_DOMAIN (ani w srodowisku, ani w $env_file) - ponizsze proby polacza sie bez nazwy domeny."
+domena="$(_swiadek_logowania_czytaj_klucz "STAGING_DOMAIN" "$env_file")" || rc_domena=$?
+if [[ "$rc_domena" -ne 0 ]]; then
+  echo "  OSTRZEZENIE: brak STAGING_DOMAIN w $env_file - ponizsze proby polacza sie bez nazwy domeny."
+elif [[ -z "$domena" ]]; then
+  echo "  OSTRZEZENIE: STAGING_DOMAIN w $env_file jest puste - ponizsze proby polacza sie bez nazwy domeny."
 fi
 # `/api/v1/me` bez tokenu ma zwrocic 401 Z LARAVELA - to dowodzi, ze odpowiedzial
 # backend, a nie Next.js (ktory na tej sciezce dalby 404). `/` ma dac 200 z Next.
@@ -292,27 +263,25 @@ done
 # przejsciowa usterke sieci u zewnetrznego IdP w falszywie czerwone
 # wdrozenie. Wynik i tak jest widoczny na ostatniej linii ponizej.
 echo "Swiadek sciezki logowania (Caddy 127.0.0.1:443, IdP po prawdziwej sieci):"
-# F-105: przyczyna zrodlowa tego swiadka. Skrypt wdrozenia eksportuje
-# AUTH_KEYCLOAK_ISSUER w powloce PRZED wywolaniem `deploy.sh`, a
-# `docker compose --env-file` bierze te zmienna PRZED wartoscia z pliku -
-# stos dostaje dobry issuer, nawet gdy w /opt/psychon/.env stoi pusta linia
-# `AUTH_KEYCLOAK_ISSUER=`. Swiadek MUSI patrzec na to samo zrodlo w tej samej
-# kolejnosci, inaczej ocenia sciezke logowania z ISS, ktorego stos wcale nie
-# uzywa (tu: pusty ISS -> `(a)` zawsze BLAD, a GET na pusty Location -> 000).
+# OD-098 p.3: JEDNO zrodlo prawdy dla ISS - plik $env_file, wylacznie przez
+# `_swiadek_logowania_czytaj_klucz`. Skrypt wdrozenia NIE wstrzykuje juz
+# AUTH_KEYCLOAK_ISSUER z powloki, wiec nie ma tu drugiego zrodla do
+# uzgadniania - pusty klucz w pliku jest prawdziwym sygnalem niekompletnego
+# `.env`, nie czyms do zaslonienia przez srodowisko wywolujacego.
 iss=""
 rc_iss=0
-iss="$(_swiadek_logowania_wartosc "AUTH_KEYCLOAK_ISSUER" "$env_file")" || rc_iss=$?
-if [[ "$rc_iss" -eq 2 ]]; then
-  # Pusta wartosc (F-105 p.2): ODROZNIONA od braku klucza w komunikacie
-  # nizej. Zaden curl do IdP (ani do naszego /api/auth/csrf czy
-  # /api/auth/signin/keycloak) sie tu NIE odbywa - z pustym ISS i tak nie da
-  # sie ocenic (a), wiec nie ma czego mierzyc siecia.
-  echo "SWIADEK LOGOWANIA: NIEZALICZONY (AUTH_KEYCLOAK_ISSUER jest puste - w srodowisku i/lub w $env_file)"
-elif [[ "$rc_iss" -ne 0 ]]; then
+iss="$(_swiadek_logowania_czytaj_klucz "AUTH_KEYCLOAK_ISSUER" "$env_file")" || rc_iss=$?
+if [[ "$rc_iss" -ne 0 ]]; then
   # Brak klucza nie przerywa wdrozenia (ta sama konwencja co reszta tego
   # swiadka): uslugi juz staly, wiec twardy `exit` tutaj tylko ukrylby, ze
   # wdrozenie sie udalo, a jedynie brakuje jednej zmiennej.
-  echo "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER - ani w srodowisku, ani w $env_file)"
+  echo "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER w $env_file)"
+elif [[ -z "$iss" ]]; then
+  # Pusta wartosc: ODROZNIONA od braku klucza w komunikacie wyzej. Zaden
+  # curl do IdP (ani do naszego /api/auth/csrf czy /api/auth/signin/keycloak)
+  # sie tu NIE odbywa - z pustym ISS i tak nie da sie ocenic (a), wiec nie ma
+  # czego mierzyc siecia.
+  echo "SWIADEK LOGOWANIA: NIEZALICZONY (AUTH_KEYCLOAK_ISSUER w $env_file jest puste)"
 else
   ciasteczka_logowania="$(mktemp)"
   naglowki_logowania="$(mktemp)"

@@ -250,25 +250,51 @@ T="$(date +%s)"
 EKSPORT="$(mktemp -d)"
 git archive --format=tar HEAD | tar -x -C "$EKSPORT"
 PLIKOW_GL="$(find "$EKSPORT" -type f | wc -l)"
-docker run --rm --network none -v "${EKSPORT}:/tresc:ro" -v "$PWD/.gitleaks.toml:/konfiguracja.toml:ro"     ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact     > "$KATALOG_BIEGU"/bramka-gitleaks.log 2>&1
+# F-106: BEZ `-v` gitleaks `dir` nie drukuje ani jednego naglowka trafienia
+# (RuleID/File/Line) - drukuje wylacznie linie podsumowania. Licznik oparty
+# WYLACZNIE o "^RuleID:" byl wiec ZAWSZE zero, niezaleznie od tego, ile
+# gitleaks naprawde znalazl. `-v` dodaje te naglowki (obok pol z tresci
+# trafienia, ktorych do logu bramki NIE przepuszczamy - patrz filtr nizej).
+docker run --rm --network none -v "${EKSPORT}:/tresc:ro" -v "$PWD/.gitleaks.toml:/konfiguracja.toml:ro"     ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact -v     > "$KATALOG_BIEGU"/bramka-gitleaks.log 2>&1
 KOD_GITLEAKS=$?
 CZAS_GITLEAKS="$(czas_od "$T")"
 rm -rf "$EKSPORT"
 # ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
 BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
-TRAFIEN_GL="$(grep -acE "^RuleID:" "$KATALOG_BIEGU"/bramka-gitleaks.log)"
-echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
+# Licznik NAPRAWDE uzywany do wyniku: z linii podsumowania "leaks found: N"
+# ("no leaks found" == 0 - gitleaks nigdy nie pisze "leaks found: 0"). Druga
+# liczba - naglowki "^RuleID:" - jest KONTROLA, nie zrodlem: przy zgodnosci
+# obu liczb ufamy podsumowaniu, przy niezgodnosci (np. gitleaks zmienil
+# format wyjscia i ten skrypt czyta go zle) krok jest CZERWONY z WLASNYM
+# komunikatem zamiast po cichu pokazac liczbe, ktorej nie da sie obronic.
+TRAFIEN_PODSUMOWANIE="$(grep -aoE "leaks found: [0-9]+" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1 | grep -oE "[0-9]+" || true)"
+if [ -z "$TRAFIEN_PODSUMOWANIE" ] && grep -aq "no leaks found" "$KATALOG_BIEGU"/bramka-gitleaks.log; then
+    TRAFIEN_PODSUMOWANIE=0
+fi
+TRAFIEN_RULEID="$(grep -acE "^RuleID:" "$KATALOG_BIEGU"/bramka-gitleaks.log)"
+if [ -z "$TRAFIEN_PODSUMOWANIE" ]; then
+    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien NIEZMIERZONE - brak linii 'leaks found'/'no leaks found' w logu gitleaks"
+    KOD_GITLEAKS=2
+elif [ "$TRAFIEN_PODSUMOWANIE" -ne "$TRAFIEN_RULEID" ]; then
+    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien NIEZGODNE - podsumowanie=$TRAFIEN_PODSUMOWANIE, naglowkow RuleID=$TRAFIEN_RULEID"
+    KOD_GITLEAKS=2
+else
+    TRAFIEN_GL="$TRAFIEN_PODSUMOWANIE"
+    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
+fi
+# Filtr NIGDY nie przepuszcza Secret/Match/Finding (tresc trafienia) - tylko
+# RuleID/File/Line, nawet gdy `-v` je drukuje.
 [ "$KOD_GITLEAKS" -ne 0 ] && grep -aE "^(RuleID|File|Line):" "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
 
 # --- 3f - swiadek logowania psychon-dev: testy (krok blokujacy) ------------
 # Suita `deploy/psychon-dev/tests/test-swiadek-logowania.sh` zrodlowuje
 # deploy.sh i mierzy same funkcje `_swiadek_logowania_*` (bez zywego hosta,
-# bez Dockera, bez sieci) - lekka, wiec biegnie w tym samym kontenerze co
-# reszta kroku 3, bez wlasnego stosu. JEST blokujaca: to F-104/F-105 - swiadek
-# ISS/STAGING_DOMAIN musi patrzec na to samo zrodlo w tej samej kolejnosci co
-# `docker compose --env-file`, a asercje Location musza porownywac parametry
-# NA ROWNO, nie podciagiem - regresja tutaj oznacza, ze swiadek na hoscie
-# znow moze byc zielony na zlamanej sciezce logowania.
+# bez Dockera, bez sieci) - lekka, wiec biegnie w POWLOCE HOSTA (`bash ...`
+# nizej), bez wlasnego stosu i bez wchodzenia do kontenera `bramka_app`.
+# JEST blokujaca: to F-104/OD-098 - ISS/STAGING_DOMAIN maja JEDNO zrodlo
+# (plik $env_file), a asercje Location musza porownywac parametry NA ROWNO,
+# nie podciagiem - regresja tutaj oznacza, ze swiadek na hoscie znow moze
+# byc zielony na zlamanej sciezce logowania.
 naglowek "3f - swiadek logowania psychon-dev (testy)"
 
 T="$(date +%s)"
