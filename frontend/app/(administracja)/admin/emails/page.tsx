@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Alert from "@/components/ui/Alert";
+import { useState } from "react";
 import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
 import Table, { type Column } from "@/components/ui/Table";
-import { apiPaged, ApiError, type PaginationMeta } from "@/lib/api";
+import ListTemplate from "@/components/templates/ListTemplate";
+import { apiPaged, type PaginationMeta } from "@/lib/api";
+import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import type { EmailItem } from "@/lib/notifications/types";
 
 const STATUS_LABEL: Record<EmailItem["status"], string> = {
@@ -33,47 +33,27 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
+function pobierzEmaile(
+  strona: number,
+): Promise<{ data: EmailItem[]; meta?: PaginationMeta }> {
+  return apiPaged<EmailItem>(`/admin/emails?page=${strona}&per_page=25`);
+}
+
 /**
- * H16 · Skrzynka e-maili symulowanych (#/admin/emails). Nic nigdy nie
- * wychodzi w świat — status jest zawsze `simulated` na hackathonie.
+ * H16 · Skrzynka e-maili symulowanych (#/admin/emails), na `ListTemplate`
+ * (C2 wariant C). Nic nigdy nie wychodzi w świat — status jest zawsze
+ * `simulated` na hackathonie.
  */
 export default function AdminEmailsPage() {
-  const [emails, setEmails] = useState<EmailItem[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | undefined>();
-  const [page, setPage] = useState(1);
-  // Zamiast osobnego stanu `loading` ustawianego bezpośrednio w efekcie
-  // (reguła react-hooks/set-state-in-effect), wyprowadzamy go z porównania
-  // strony, na którą czekamy, ze stroną ostatnio wczytaną.
-  const [loadedPage, setLoadedPage] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<EmailItem | null>(null);
-  const loading = loadedPage !== page && error === null;
+  const { stan, meta, strona, ustawStrone, ponow } = useZasobStronicowany<EmailItem>(
+    pobierzEmaile,
+    [],
+    "Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.",
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    apiPaged<EmailItem>(`/admin/emails?page=${page}&per_page=25`)
-      .then(({ data, meta }) => {
-        if (cancelled) return;
-        setEmails(data);
-        setMeta(meta);
-        setError(null);
-        setLoadedPage(page);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : "Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.",
-        );
-        setLoadedPage(page);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [page]);
+  const dane = stan.status === "success" ? stan.data : [];
+  const listaPusta = stan.status === "success" && dane.length === 0;
 
   const columns: Column<EmailItem>[] = [
     {
@@ -86,9 +66,7 @@ export default function AdminEmailsPage() {
       key: "status",
       header: "Status",
       render: (row) => (
-        <Badge variant={STATUS_VARIANT[row.status]}>
-          {STATUS_LABEL[row.status]}
-        </Badge>
+        <Badge variant={STATUS_VARIANT[row.status]}>{STATUS_LABEL[row.status]}</Badge>
       ),
     },
     {
@@ -112,49 +90,30 @@ export default function AdminEmailsPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-h2 font-black text-ink">Skrzynka e-maili</h1>
-        {meta && <Badge variant="accent">{meta.total} łącznie</Badge>}
-      </div>
-
-      {error && <Alert variant="error">{error}</Alert>}
-
-      {loading ? (
-        <p className="text-body text-subtle">Wczytywanie…</p>
-      ) : (
-        <>
-          <Table
-            columns={columns}
-            rows={emails}
-            rowKey={(row) => row.id}
-            caption="Wysłane (symulowane) e-maile"
-            emptyMessage="Brak wysłanych e-maili."
-          />
-
-          {meta && meta.last_page > 1 && (
-            <div className="flex items-center justify-center gap-3">
-              <Button
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Poprzednia
-              </Button>
-              <span className="text-small text-subtle">
-                Strona {meta.current_page} z {meta.last_page}
-              </span>
-              <Button
-                variant="secondary"
-                disabled={page >= meta.last_page}
-                onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
-              >
-                Następna
-              </Button>
-            </div>
-          )}
-        </>
-      )}
+    <>
+      <ListTemplate
+        naglowek={{
+          title: "Skrzynka e-maili",
+          action: meta && <Badge variant="accent">{meta.total} łącznie</Badge>,
+        }}
+        stan={listaPusta ? "empty" : stan.status}
+        komunikatBledu={stan.status === "error" ? stan.message : undefined}
+        onPonow={ponow}
+        pustyTytul="Brak wysłanych e-maili"
+        paginacja={
+          meta
+            ? { strona, ostatniaStrona: meta.last_page, onZmien: ustawStrone }
+            : undefined
+        }
+      >
+        <Table
+          columns={columns}
+          rows={dane}
+          rowKey={(row) => row.id}
+          caption="Wysłane (symulowane) e-maile"
+          emptyMessage="Brak wysłanych e-maili."
+        />
+      </ListTemplate>
 
       {preview && (
         <div
@@ -209,6 +168,6 @@ export default function AdminEmailsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
