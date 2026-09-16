@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
 import PageHeader from "@/components/molecules/PageHeader";
 import OnboardingEditor from "@/components/onboarding/OnboardingEditor";
@@ -20,6 +21,7 @@ export default function AdminOnboardingPage() {
   const [data, setData] = useState<Onboarding | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorStatus, setLoadErrorStatus] = useState<number | undefined>();
 
   // Fetch-on-mount jako łańcuch obietnic (bez synchronicznego setState przed
   // pierwszym `await`) — wzorzec z `panel/dokumenty/page.tsx`, wymagany przez
@@ -35,6 +37,7 @@ export default function AdminOnboardingPage() {
           setLoadError(
             caught instanceof ApiError ? caught.message : LOAD_ERROR_MESSAGE,
           );
+          setLoadErrorStatus(caught instanceof ApiError ? caught.status : undefined);
         }
       })
       .finally(() => {
@@ -50,12 +53,14 @@ export default function AdminOnboardingPage() {
   function retry() {
     setLoading(true);
     setLoadError(null);
+    setLoadErrorStatus(undefined);
     api<Onboarding>("/onboarding")
       .then((result) => setData(result))
       .catch((caught: unknown) => {
         setLoadError(
           caught instanceof ApiError ? caught.message : LOAD_ERROR_MESSAGE,
         );
+        setLoadErrorStatus(caught instanceof ApiError ? caught.status : undefined);
       })
       .finally(() => setLoading(false));
   }
@@ -68,7 +73,12 @@ export default function AdminOnboardingPage() {
       />
 
       {loading && <LoadingState label="Wczytywanie ekranu startowego…" />}
-      {!loading && loadError && <ErrorState message={loadError} onRetry={retry} />}
+      {!loading && loadError && loadErrorStatus === 403 && (
+        <ForbiddenState message={loadError} />
+      )}
+      {!loading && loadError && loadErrorStatus !== 403 && (
+        <ErrorState message={loadError} onRetry={retry} />
+      )}
 
       {!loading && !loadError && data && (
         <>

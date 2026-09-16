@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Table, { type Column } from "@/components/ui/Table";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import { api, apiPaged, ApiError, downloadFile, type PaginationMeta } from "@/lib/api";
 import type { ApplicationItem, ApplicationRole, ApplicationStatus, CapacityReason } from "@/lib/h03/types";
 
@@ -53,6 +54,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | undefined>();
   const [success, setSuccess] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [selected, setSelected] = useState<ApplicationItem | null>(null);
@@ -84,11 +86,13 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
         setItems(response.data);
         setMeta(response.meta);
         setError(null);
+        setErrorStatus(undefined);
         setLoadedKey(queryKey);
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
         setError(reason instanceof ApiError ? reason.message : "Nie udało się wczytać zgłoszeń.");
+        setErrorStatus(reason instanceof ApiError ? reason.status : undefined);
         setLoadedKey(queryKey);
       });
     return () => { cancelled = true; };
@@ -157,6 +161,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
         setCreateErrors(Object.fromEntries(Object.entries(reason.errors).map(([key, values]) => [key, values[0] ?? "Nieprawidłowa wartość."])));
       } else {
         setError(reason instanceof ApiError ? reason.message : "Nie udało się dodać zgłoszenia.");
+        setErrorStatus(reason instanceof ApiError ? reason.status : undefined);
       }
     } finally {
       setPendingId(null);
@@ -180,6 +185,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
         setAccepting(null);
       } else {
         setError(reason instanceof ApiError ? reason.message : "Nie udało się zaakceptować zgłoszenia.");
+        setErrorStatus(reason instanceof ApiError ? reason.status : undefined);
       }
     } finally {
       setPendingId(null);
@@ -203,7 +209,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       refresh();
     } catch (reasonError: unknown) {
       if (reasonError instanceof ApiError && reasonError.errors?.reason?.[0]) setRejectError(reasonError.errors.reason[0]);
-      else setError(reasonError instanceof ApiError ? reasonError.message : "Nie udało się odrzucić zgłoszenia.");
+      else { setError(reasonError instanceof ApiError ? reasonError.message : "Nie udało się odrzucić zgłoszenia."); setErrorStatus(reasonError instanceof ApiError ? reasonError.status : undefined); }
     } finally {
       setPendingId(null);
     }
@@ -221,6 +227,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       refresh();
     } catch (reason: unknown) {
       setError(reason instanceof ApiError ? reason.message : "Nie udało się zaimportować pliku.");
+      setErrorStatus(reason instanceof ApiError ? reason.status : undefined);
     } finally {
       setPendingId(null);
     }
@@ -231,19 +238,59 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
     if (file) void importApplications(file);
   }
 
+  const stanEfektywny: StanListy = loading
+    ? "loading"
+    : error
+      ? "error"
+      : items.length === 0
+        ? "empty"
+        : "success";
+
   return (
-    <div className={`flex flex-col gap-5 ${className}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-h2 font-black text-ink">Zgłoszenia</h2><p className="mt-1 text-body text-muted">Kolejka rekrutacyjna aktywnej edycji.</p></div><Button onClick={() => setCreateOpen((value) => !value)}>{createOpen ? "Zamknij formularz" : "Dodaj zgłoszenie"}</Button></div>
-      {success && <Alert variant="success">{success}</Alert>}
-      {error && <Alert variant="error"><div className="flex flex-wrap items-center justify-between gap-3"><span>{error}</span><Button variant="secondary" onClick={() => { setError(null); refresh(); }}>Spróbuj ponownie</Button></div></Alert>}
-
-      {createOpen && <Card title="Nowe zgłoszenie"><form className="grid gap-4 md:grid-cols-2" onSubmit={createApplication}><Input label="Imię" value={createValues.first_name} onChange={(event) => setCreateValues((current) => ({ ...current, first_name: event.target.value }))} error={createErrors.first_name} required /><Input label="Nazwisko" value={createValues.last_name} onChange={(event) => setCreateValues((current) => ({ ...current, last_name: event.target.value }))} error={createErrors.last_name} required /><Input label="E-mail" type="email" value={createValues.email} onChange={(event) => setCreateValues((current) => ({ ...current, email: event.target.value }))} error={createErrors.email} required /><Input label="Telefon" value={createValues.phone} onChange={(event) => setCreateValues((current) => ({ ...current, phone: event.target.value }))} error={createErrors.phone} /><div className="md:col-span-2"><Button type="submit" loading={pendingId === -1}>Zapisz zgłoszenie</Button></div></form></Card>}
-
-      <Card title="Filtry"><div className="grid gap-4 md:grid-cols-[1fr_220px_auto]"><Input label="Szukaj" value={search} onChange={(event) => { setPage(1); setLoadedKey(null); setSearch(event.target.value); }} placeholder="Imię, nazwisko lub e-mail" /><Select label="Status" value={status} onChange={(event) => { setPage(1); setLoadedKey(null); setStatus(event.target.value as ApplicationStatus | ""); }}><option value="">Wszystkie</option><option value="new">Nowe</option><option value="accepted">Zaakceptowane</option><option value="rejected">Odrzucone</option></Select><label className="flex min-h-11 cursor-pointer items-center justify-center self-end rounded-pill border border-primary px-4 text-small font-medium text-primary hover:bg-brand-10"><span>{pendingId === -2 ? "Importowanie…" : "Import CSV"}</span><input className="sr-only" type="file" accept=".csv,text/csv" onChange={handleImport} disabled={pendingId !== null} /></label></div></Card>
-
-      {importReport && <Alert variant="info" title="Raport importu"><p>Zaimportowano: {importReport.imported}.</p>{importReport.skipped.length > 0 && <ul className="mt-2 list-disc pl-5">{importReport.skipped.map((row) => <li key={`${row.line}-${row.reason}`}>Wiersz {row.line}: {row.reason}</li>)}</ul>}</Alert>}
-      {loading ? <p className="rounded-md border border-line bg-card px-4 py-8 text-center text-body text-subtle" role="status">Wczytywanie zgłoszeń…</p> : !error && <Table columns={columns} rows={items} rowKey={(row) => row.id} caption="Kolejka zgłoszeń rekrutacyjnych" emptyMessage="Brak zgłoszeń spełniających filtry." />}
-      {meta && meta.last_page > 1 && <div className="flex items-center justify-center gap-3"><Button variant="secondary" disabled={page <= 1} onClick={() => { setPage((value) => Math.max(1, value - 1)); setLoadedKey(null); }}>Poprzednia</Button><span className="text-small text-subtle">Strona {meta.current_page} z {meta.last_page}</span><Button variant="secondary" disabled={page >= meta.last_page} onClick={() => { setPage((value) => Math.min(meta.last_page, value + 1)); setLoadedKey(null); }}>Następna</Button></div>}
+    <div className={className}>
+      <ListTemplate
+        naglowek={{
+          title: "Zgłoszenia",
+          description: "Kolejka rekrutacyjna aktywnej edycji.",
+          action: (
+            <Button onClick={() => setCreateOpen((value) => !value)}>
+              {createOpen ? "Zamknij formularz" : "Dodaj zgłoszenie"}
+            </Button>
+          ),
+        }}
+        stan={stanEfektywny}
+        httpStatus={errorStatus}
+        komunikatLadowania="Wczytywanie zgłoszeń…"
+        komunikatBledu={error ?? undefined}
+        onPonow={() => {
+          setError(null);
+          setErrorStatus(undefined);
+          refresh();
+        }}
+        pustyTytul="Brak zgłoszeń spełniających filtry."
+        paginacja={
+          meta
+            ? {
+                strona: page,
+                ostatniaStrona: meta.last_page,
+                onZmien: (nowaStrona) => {
+                  setPage(nowaStrona);
+                  setLoadedKey(null);
+                },
+              }
+            : undefined
+        }
+        dodatkowyPanel={
+          <>
+            {success && <Alert variant="success">{success}</Alert>}
+            {createOpen && <Card title="Nowe zgłoszenie"><form className="grid gap-4 md:grid-cols-2" onSubmit={createApplication}><Input label="Imię" value={createValues.first_name} onChange={(event) => setCreateValues((current) => ({ ...current, first_name: event.target.value }))} error={createErrors.first_name} required /><Input label="Nazwisko" value={createValues.last_name} onChange={(event) => setCreateValues((current) => ({ ...current, last_name: event.target.value }))} error={createErrors.last_name} required /><Input label="E-mail" type="email" value={createValues.email} onChange={(event) => setCreateValues((current) => ({ ...current, email: event.target.value }))} error={createErrors.email} required /><Input label="Telefon" value={createValues.phone} onChange={(event) => setCreateValues((current) => ({ ...current, phone: event.target.value }))} error={createErrors.phone} /><div className="md:col-span-2"><Button type="submit" loading={pendingId === -1}>Zapisz zgłoszenie</Button></div></form></Card>}
+            <Card title="Filtry"><div className="grid gap-4 md:grid-cols-[1fr_220px_auto]"><Input label="Szukaj" value={search} onChange={(event) => { setPage(1); setLoadedKey(null); setSearch(event.target.value); }} placeholder="Imię, nazwisko lub e-mail" /><Select label="Status" value={status} onChange={(event) => { setPage(1); setLoadedKey(null); setStatus(event.target.value as ApplicationStatus | ""); }}><option value="">Wszystkie</option><option value="new">Nowe</option><option value="accepted">Zaakceptowane</option><option value="rejected">Odrzucone</option></Select><label className="flex min-h-11 cursor-pointer items-center justify-center self-end rounded-pill border border-primary px-4 text-small font-medium text-primary hover:bg-brand-10"><span>{pendingId === -2 ? "Importowanie…" : "Import CSV"}</span><input className="sr-only" type="file" accept=".csv,text/csv" onChange={handleImport} disabled={pendingId !== null} /></label></div></Card>
+            {importReport && <Alert variant="info" title="Raport importu"><p>Zaimportowano: {importReport.imported}.</p>{importReport.skipped.length > 0 && <ul className="mt-2 list-disc pl-5">{importReport.skipped.map((row) => <li key={`${row.line}-${row.reason}`}>Wiersz {row.line}: {row.reason}</li>)}</ul>}</Alert>}
+          </>
+        }
+      >
+        <Table columns={columns} rows={items} rowKey={(row) => row.id} caption="Kolejka zgłoszeń rekrutacyjnych" emptyMessage="Brak zgłoszeń spełniających filtry." />
+      </ListTemplate>
 
       {selected && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="application-details-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => setSelected(null)}><div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-md border border-line bg-card p-6 shadow-card" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-3"><h2 id="application-details-title" className="text-h3 font-black text-ink">Szczegóły zgłoszenia</h2><Button variant="ghost" aria-label="Zamknij szczegóły" onClick={() => setSelected(null)}>✕</Button></div><dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-small"><dt className="font-bold text-muted">Osoba</dt><dd>{selected.first_name} {selected.last_name}</dd><dt className="font-bold text-muted">E-mail</dt><dd>{selected.email}</dd><dt className="font-bold text-muted">Telefon</dt><dd>{selected.phone ?? "—"}</dd><dt className="font-bold text-muted">Uczelnia</dt><dd>{selected.university ?? "—"}</dd><dt className="font-bold text-muted">Status</dt><dd><Badge variant={STATUS_VARIANTS[selected.status]}>{STATUS_LABELS[selected.status]}</Badge></dd><dt className="font-bold text-muted">Dodano</dt><dd>{dateLabel(selected.created_at)}</dd></dl>{selected.has_diploma_scan && <Button className="mt-5 min-h-11" variant="secondary" onClick={() => void downloadFile(`${apiBase()}/admin/applications/${selected.id}/diploma-scan`, `skan-dyplomu-${selected.id}.pdf`)}>Otwórz skan dyplomu</Button>}</div></div>}
       {accepting && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="accept-application-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => setAccepting(null)}><form className="w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card" onSubmit={(event) => { event.preventDefault(); void acceptApplication(accepting); }} onClick={(event) => event.stopPropagation()}><h2 id="accept-application-title" className="text-h3 font-black text-ink">Akceptuj zgłoszenie</h2><p className="mt-2 text-body text-muted">{accepting.first_name} {accepting.last_name}</p><Select className="mt-4" label="Rola konta" value={acceptRole} onChange={(event) => setAcceptRole(event.target.value as ApplicationRole)}><option value="volunteer">Wolontariusz</option><option value="student">Student</option><option value="instructor">Prowadzący</option><option value="project_manager">Opiekun Projektu</option></Select><div className="mt-5 flex gap-3"><Button type="submit" loading={pendingId === accepting.id}>Akceptuj i wyślij zaproszenie</Button><Button type="button" variant="secondary" onClick={() => setAccepting(null)}>Anuluj</Button></div></form></div>}

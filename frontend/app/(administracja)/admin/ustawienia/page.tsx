@@ -5,6 +5,9 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
+import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
 import { api, ApiError } from "@/lib/api";
 
 interface Edition {
@@ -68,6 +71,8 @@ export default function EditionSettingsPage() {
   const [edition, setEdition] = useState<Edition | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorStatus, setLoadErrorStatus] = useState<number | undefined>();
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -89,11 +94,12 @@ export default function EditionSettingsPage() {
             ? err.message
             : "Nie udało się wczytać ustawień edycji. Odśwież stronę.",
         );
+        setLoadErrorStatus(err instanceof ApiError ? err.status : undefined);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   function update<K extends keyof FormState>(key: K, value: string) {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -131,12 +137,25 @@ export default function EditionSettingsPage() {
     }
   }
 
+  if (loadError && loadErrorStatus === 403) {
+    return <ForbiddenState message={loadError} />;
+  }
+
   if (loadError) {
-    return <Alert variant="error">{loadError}</Alert>;
+    return (
+      <ErrorState
+        message={loadError}
+        onRetry={() => {
+          setLoadError(null);
+          setLoadErrorStatus(undefined);
+          setReloadKey((value) => value + 1);
+        }}
+      />
+    );
   }
 
   if (!edition || !form) {
-    return <p className="text-body text-muted">Wczytywanie ustawień…</p>;
+    return <LoadingState label="Wczytywanie ustawień…" />;
   }
 
   const err = (key: string) => fieldErrors[key]?.[0];
