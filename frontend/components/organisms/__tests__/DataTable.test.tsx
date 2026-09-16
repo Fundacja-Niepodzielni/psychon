@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DataTable, { type DataTableColumn } from "@/components/organisms/DataTable";
-import { axeViolations } from "./axe-helper";
+import { axeViolations } from "../../molecules/__tests__/axe-helper";
 
 interface Wiersz {
   id: number;
@@ -69,6 +69,56 @@ describe("DataTable", () => {
     expect(screen.getByText("Brak uprawnień do tej listy.")).toBeInTheDocument();
   });
 
+  it("stan odmowy renderuje ForbiddenState, nie wygląda jak awaria (Z-6)", () => {
+    render(
+      <DataTable
+        columns={kolumny}
+        rows={[]}
+        rowKey={(r) => r.id}
+        stan="forbidden"
+        komunikatBrakUprawnien="Brak uprawnień do tej listy."
+      />,
+    );
+
+    expect(screen.getByText("Brak dostępu")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Spróbuj ponownie/ })).not.toBeInTheDocument();
+  });
+
+  it("stan błędu z onRetry pokazuje przycisk ponowienia i woła go po kliknięciu", async () => {
+    const onPonow = vi.fn();
+    const uzytkownik = userEvent.setup();
+    render(
+      <DataTable
+        columns={kolumny}
+        rows={[]}
+        rowKey={(r) => r.id}
+        stan="error"
+        komunikatBledu="Nie udało się wczytać listy."
+        onPonow={onPonow}
+      />,
+    );
+
+    const przycisk = screen.getByRole("button", { name: /Spróbuj ponownie/ });
+    await uzytkownik.click(przycisk);
+
+    expect(onPonow).toHaveBeenCalledOnce();
+  });
+
+  it("stan błędu bez onRetry nie pokazuje przycisku ponowienia", () => {
+    render(
+      <DataTable
+        columns={kolumny}
+        rows={[]}
+        rowKey={(r) => r.id}
+        stan="error"
+        komunikatBledu="Nie udało się wczytać listy."
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /Spróbuj ponownie/ })).not.toBeInTheDocument();
+  });
+
   it("stan dane renderuje tabelę z wierszami", () => {
     render(<DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="success" />);
 
@@ -115,6 +165,13 @@ describe("DataTable", () => {
       "aria-sort",
       "ascending",
     );
+  });
+
+  it("przycisk sortowania ma klasę pola dotyku min-h-11 (Z-10; jsdom nie liczy px, mierzy tylko przeglądarka)", () => {
+    render(<DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="success" />);
+
+    const przycisk = screen.getByRole("button", { name: /Imię/ });
+    expect(przycisk.className).toMatch(/\bmin-h-11\b/);
   });
 
   it("axe: 0 naruszeń w stanie dane", async () => {

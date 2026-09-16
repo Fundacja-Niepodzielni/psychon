@@ -39,6 +39,13 @@ describe("Breadcrumbs", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
+  it("odnośniki mają klasę pola dotyku min-h-11 (Z-10; jsdom nie liczy px, mierzy tylko przeglądarka)", () => {
+    render(<Breadcrumbs items={items} />);
+
+    const panel = screen.getByRole("link", { name: "Panel" });
+    expect(panel.className).toMatch(/\bmin-h-11\b/);
+  });
+
   it("axe: 0 naruszeń", async () => {
     const { container } = render(<Breadcrumbs items={items} />);
 

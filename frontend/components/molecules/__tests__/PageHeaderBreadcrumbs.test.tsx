@@ -4,7 +4,7 @@ import PageHeader from "@/components/molecules/PageHeader";
 import Breadcrumbs from "@/components/molecules/Breadcrumbs";
 import { axeViolations } from "./axe-helper";
 
-describe("PageHeader ze slotem okruszków (partia P3a)", () => {
+describe("PageHeader ze slotem okruszków", () => {
   it("renderuje okruszki nad h1, gdy podane w slocie breadcrumbs", () => {
     render(
       <PageHeader
@@ -23,7 +23,7 @@ describe("PageHeader ze slotem okruszków (partia P3a)", () => {
     ).toBeInTheDocument();
   });
 
-  it("bez slotu breadcrumbs nie renderuje nav (zgodność wsteczna, K2)", () => {
+  it("bez slotu breadcrumbs nie renderuje nav (zgodność wsteczna)", () => {
     render(<PageHeader title="Kursy" />);
 
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
