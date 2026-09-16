@@ -1,0 +1,23 @@
+# Wyciszenia POJEDYNCZYCH trafien gitleaksa - po ODCISKU znaleziska
+# (sciezka:regula:linia), NIGDY po samej sciezce. Powod: wyjatek po sciezce w
+# .gitleaks.toml gitleaks stosuje PRZED czytaniem tresci pliku, wiec wycisza w
+# takim pliku WSZYSTKO - zmierzone 16.09.2026: podrzucony klucz i caly blok
+# BEGIN RSA PRIVATE KEY w frontend/__tests__/ nie byly wtedy znajdowane wcale.
+#
+# Sciezki zaczynaja sie od /tresc/, bo krok 3e skanuje rozpakowany eksport
+# commitu montowany w kontenerze pod /tresc (deploy/lib/sekrety-licznik.sh).
+#
+# KAZDY wpis ma powod i date. Odcisk niesie NUMER LINII: przesuniecie tresci w
+# pliku uniewaznia wyciszenie i trafienie wraca - to jest zamierzone, wyciszenie
+# ma wygasac razem z tym, co wyciszalo.
+#
+# 16.09.2026 - atrapa tokenu odswiezajacego ("odswiezajacy-1"/"odswiezajacy-2")
+# w tescie rotacji tokenu frontu: ciag wymyslony na potrzeby testu, nigdy nie byl
+# zadnym sekretem; gitleaks widzi ksztalt (wartosc przy nazwie pola), nie rzecz.
+/tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:97
+/tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:109
+/tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:122
+/tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:155
+/tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:175
+/tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:218
+/tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:269
