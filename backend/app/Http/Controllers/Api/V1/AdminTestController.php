@@ -9,6 +9,7 @@ use App\Http\Requests\H10\UpdateTestRequest;
 use App\Models\Course;
 use App\Models\Test;
 use App\Support\H10\TestGrader;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -38,8 +39,14 @@ class AdminTestController extends Controller
             throw new ApiException(409, 'test_exists', 'Ten kurs ma już test.');
         }
 
-        /** @var Test $test */
-        $test = $course->test()->create($request->validated());
+        try {
+            /** @var Test $test */
+            $test = $course->test()->create($request->validated());
+        } catch (UniqueConstraintViolationException $e) {
+            throw new ApiException(409, 'test_exists', 'Ten kurs ma już test.');
+        }
+
+        $test->refresh();
 
         return response()->json(['data' => $this->present($test)], 201);
     }
@@ -48,6 +55,7 @@ class AdminTestController extends Controller
     {
         $test->fill($request->validated());
         $test->save();
+        $test->refresh();
 
         return response()->json(['data' => $this->present($test)]);
     }

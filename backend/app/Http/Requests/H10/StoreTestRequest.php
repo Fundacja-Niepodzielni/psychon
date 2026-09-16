@@ -7,9 +7,10 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * POST /admin/courses/{course}/tests — zakłada wiersz testu dla kursu.
  *
- * Wszystkie pola opcjonalne: pominięte `pass_threshold` / `attempts_limit`
- * zostają `null` (wartość edycji, `TestGrader`), pominięte `question_count`
- * dostaje wartość domyślną kolumny (10).
+ * `pass_threshold` / `attempts_limit` opcjonalne: pominięte lub `null`
+ * zostają `null` (wartość edycji, `TestGrader`). `question_count` opcjonalne,
+ * ale gdy podane, nie może być `null` (kolumna nie przyjmuje `NULL`);
+ * pominięte dostaje wartość domyślną kolumny (10).
  */
 class StoreTestRequest extends FormRequest
 {
@@ -21,9 +22,9 @@ class StoreTestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pass_threshold' => ['sometimes', 'nullable', 'integer', 'between:1,100'],
-            'attempts_limit' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'question_count' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'pass_threshold' => ['sometimes', 'nullable', 'integer', 'between:1,100', $this->notBoolean('Próg zaliczenia musi być liczbą całkowitą.')],
+            'attempts_limit' => ['sometimes', 'nullable', 'integer', 'between:1,255'],
+            'question_count' => ['sometimes', 'integer', 'between:1,255'],
         ];
     }
 
@@ -33,9 +34,18 @@ class StoreTestRequest extends FormRequest
             'pass_threshold.integer' => 'Próg zaliczenia musi być liczbą całkowitą.',
             'pass_threshold.between' => 'Próg zaliczenia musi mieścić się między :min a :max procent.',
             'attempts_limit.integer' => 'Limit podejść musi być liczbą całkowitą.',
-            'attempts_limit.min' => 'Limit podejść musi wynosić co najmniej :min.',
+            'attempts_limit.between' => 'Limit podejść musi mieścić się między :min a :max.',
             'question_count.integer' => 'Liczba pytań musi być liczbą całkowitą.',
-            'question_count.min' => 'Liczba pytań musi wynosić co najmniej :min.',
+            'question_count.between' => 'Liczba pytań musi mieścić się między :min a :max.',
         ];
+    }
+
+    private function notBoolean(string $message): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($message): void {
+            if (is_bool($value)) {
+                $fail($message);
+            }
+        };
     }
 }
