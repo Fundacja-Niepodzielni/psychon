@@ -15,6 +15,9 @@
  *   ekran `/logowanie/niepowiazane`; sesja naprawdę nieważna → wylogowanie
  *   i przekierowanie na `/logowanie`.
  * - 403 `access_expired` (H04) → przekierowanie na /dostep-wygasl (ekran startera)
+ * - 401 `konto_niepowiazane` (koperta kontraktu §1: `error.code` + `error.reason.sub`)
+ *   → identyfikator do pokazania na ekranie `/logowanie/niepowiazane`, patrz
+ *   `checkAccountBinding` niżej.
  */
 
 import { signOut } from "next-auth/react";
@@ -290,6 +293,91 @@ export async function fetchWhoAmI(): Promise<WhoAmI> {
     });
   }
   return { sub: body.sub, roles: Array.isArray(body.roles) ? body.roles : [] };
+}
+
+export interface AccountBindingCheck {
+  code: string;
+  /** Obecne wyłącznie, gdy `code === "konto_niepowiazane"` (koperta §1: `error.reason.sub`). */
+  sub?: string;
+}
+
+/**
+ * Kod zwracany przez {@link checkAccountBinding}, gdy `GET /me` PADNIE
+ * inaczej niż odpowiedzią 401 (błąd sieci, 5xx, odpowiedź bez czytelnej
+ * koperty JSON). To NIE jest kod z serwera — serwer o awarii nic nie mówi,
+ * to rozstrzygnięcie klienta na podstawie tego, że w ogóle nie dostał
+ * koperty 401. Ekran musi odróżnić to od „wiem, że nie masz roli"
+ * (401 z czytelną kopertą) — inaczej kłamie o przyczynie.
+ */
+export const KONTO_BINDING_AWARIA = "awaria" as const;
+
+/**
+ * Limit czasu (ms) na sprawdzenie powiązania konta. Zapytanie, które nie
+ * rozstrzyga się do tego czasu, jest PRZERYWANE i liczone jak awaria — bo
+ * ekran bez limitu zostaje na komunikacie o braku powiązania, który przy
+ * wiszącym zapytaniu jest nieprawdą (`fetch` sam z siebie nie ma limitu).
+ *
+ * 8 s: z zapasem powyżej realnej odpowiedzi `GET /me` na sieci komórkowej
+ * (setki ms, przy słabym zasięgu pojedyncze sekundy), a wyraźnie poniżej
+ * progu, po którym użytkownik uzna nieruchomy ekran za prawdziwą odpowiedź
+ * i zadzwoni do administratora z fałszywą diagnozą.
+ */
+export const KONTO_BINDING_LIMIT_MS = 8_000;
+
+/**
+ * Sprawdza WPROST (surowy `fetch`, nie `request()`/`api()`), czy sesja jest
+ * ważna, ale `sub` z tokena nie jest jeszcze powiązany z żadnym kontem
+ * PsychON — używane wyłącznie przez ekran `/logowanie/niepowiazane`, żeby
+ * pokazać identyfikator z kopert błędu (`error.code`, `error.reason.sub`).
+ *
+ * Ominięcie `request()` jest celowe: ten sam 401 uruchomiłby tam
+ * `handleUnauthorized()`, a ten przekierowałby z powrotem na TĘ SAMĄ stronę —
+ * pętlę przeładowań, którą `lib/__tests__/api-401-bez-petli.test.ts` już
+ * pilnuje dla innej ścieżki.
+ *
+ * Identyfikator z odpowiedzi ląduje wyłącznie w stanie komponentu (pamięć
+ * przeglądarki, znika przy odświeżeniu) — nigdy w adresie URL, w parametrach
+ * zapytania ani w `localStorage`/`sessionStorage`, i nigdy nie trafia do
+ * `console.log`/`console.error`.
+ *
+ * Zwraca `null`, gdy: brak tokena, `GET /me` odpowiedziało 2xx (konto jednak
+ * powiązane) — obie sytuacje ekran traktuje jak „nic do pokazania". Zwraca
+ * `{ code: KONTO_BINDING_AWARIA }`, gdy zapytanie w ogóle nie dostało
+ * czytelnej odpowiedzi 401 (sieć padła, serwer oddał 5xx albo coś, co nie
+ * parsuje się jak koperta błędu) — WYŁĄCZNIE ta gałąź ma dać ekranowi znać
+ * o chwilowej awarii; ścieżki 401 z czytelną kopertą zostają bez zmian.
+ *
+ * `signal` pozwala wołającemu PRZERWAĆ zapytanie (limit czasu ekranu,
+ * odmontowanie komponentu). Przerwane zapytanie odrzuca obietnicę `fetch`,
+ * więc wraca tą samą gałęzią co błąd sieci: `{ code: KONTO_BINDING_AWARIA }`.
+ */
+export async function checkAccountBinding(
+  signal?: AbortSignal,
+): Promise<AccountBindingCheck | null> {
+  const token = await getToken();
+  if (!token) return null;
+
+  const headers = new Headers({ Accept: "application/json", Authorization: `Bearer ${token}` });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl()}/me`, { headers, signal });
+  } catch {
+    return { code: KONTO_BINDING_AWARIA };
+  }
+  if (res.ok) return null;
+  if (res.status !== 401) return { code: KONTO_BINDING_AWARIA };
+
+  let json: unknown = null;
+  try {
+    json = await res.json();
+  } catch {
+    return { code: KONTO_BINDING_AWARIA };
+  }
+
+  const err = (json as { error?: Partial<ApiErrorBody> } | null)?.error;
+  if (!err?.code) return { code: KONTO_BINDING_AWARIA };
+  const sub = typeof err.reason?.sub === "string" ? err.reason.sub : undefined;
+  return { code: err.code, sub };
 }
 
 /**
