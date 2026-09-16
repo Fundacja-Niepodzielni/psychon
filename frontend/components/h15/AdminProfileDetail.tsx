@@ -97,15 +97,17 @@ export default function AdminProfileDetail({ id }: { id: number }) {
 
   if (loadError && loadErrorStatus === 403) {
     return (
-      <div className="mx-auto max-w-2xl py-10">
-        <ForbiddenState message={loadError} />
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
+        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
+        <ForbiddenState />
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-2xl py-10">
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
+        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
         <ErrorState
         message={loadError}
         onRetry={() => {
@@ -120,7 +122,8 @@ export default function AdminProfileDetail({ id }: { id: number }) {
 
   if (!profile) {
     return (
-      <div className="mx-auto max-w-2xl py-10">
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
+        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
         <LoadingState label="Wczytywanie wniosku…" />
       </div>
     );

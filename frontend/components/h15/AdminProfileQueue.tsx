@@ -43,6 +43,7 @@ export default function AdminProfileQueue() {
       komunikatBleduTytul=""
       onPonow={ponow}
       pustyTytul="Brak wniosków oczekujących na decyzję."
+      pustyOpis="Nowe wnioski pojawią się tutaj, gdy psycholożki i psychologowie je złożą."
       paginacja={
         meta ? { strona, ostatniaStrona: meta.last_page, onZmien: ustawStrone } : undefined
       }

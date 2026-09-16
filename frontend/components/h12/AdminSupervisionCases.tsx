@@ -92,6 +92,7 @@ export default function AdminSupervisionCases() {
         setReload((value) => value + 1);
       }}
       pustyTytul="Brak zgłoszonych spraw do wyświetlenia."
+      pustyOpis="Sprawy zgłoszone przez prowadzących pojawią się tutaj automatycznie."
     >
         <ol className="flex flex-col gap-4" aria-label="Zgłoszone sprawy">
           {(cases ?? []).map((item) => (

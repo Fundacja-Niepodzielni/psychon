@@ -99,6 +99,7 @@ export default function AdminSupervisionSlots() {
         setReload((value) => value + 1);
       }}
       pustyTytul="Brak terminów superwizji do wyświetlenia."
+      pustyOpis="Terminy pojawią się tutaj, gdy zostaną dodane w systemie."
     >
         <ol className="flex flex-col gap-4" aria-label="Terminy superwizji">
           {(slots ?? []).map((slot) => (

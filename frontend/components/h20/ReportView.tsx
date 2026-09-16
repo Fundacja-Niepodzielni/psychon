@@ -90,13 +90,10 @@ export default function ReportView() {
     },
   ];
 
-  const stanEfektywny: StanListy = error
-    ? "error"
-    : !report
-      ? "loading"
-      : report.people.length === 0
-        ? "empty"
-        : "success";
+  // Liczby podsumowania nie zależą od listy imiennej (widoczne zawsze, gdy
+  // odpowiedź je zawiera) — stan pusty dotyczy wyłącznie tabeli osób, którą
+  // pokazuje `Table` przez własny `emptyMessage`, nie cały ekran.
+  const stanEfektywny: StanListy = error ? "error" : !report ? "loading" : "success";
 
   return (
     <ListTemplate
@@ -124,7 +121,6 @@ export default function ReportView() {
         setErrorStatus(undefined);
         setReload((value) => value + 1);
       }}
-      pustyTytul="Brak osób do zestawienia."
       dodatkowyPanel={
         downloadError && (
           <Alert variant="error" className="print:hidden">

@@ -138,24 +138,37 @@ export default function EditionSettingsPage() {
   }
 
   if (loadError && loadErrorStatus === 403) {
-    return <ForbiddenState message={loadError} />;
+    return (
+      <div className="flex max-w-2xl flex-col gap-6">
+        <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
+        <ForbiddenState />
+      </div>
+    );
   }
 
   if (loadError) {
     return (
-      <ErrorState
-        message={loadError}
-        onRetry={() => {
-          setLoadError(null);
-          setLoadErrorStatus(undefined);
-          setReloadKey((value) => value + 1);
-        }}
-      />
+      <div className="flex max-w-2xl flex-col gap-6">
+        <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
+        <ErrorState
+          message={loadError}
+          onRetry={() => {
+            setLoadError(null);
+            setLoadErrorStatus(undefined);
+            setReloadKey((value) => value + 1);
+          }}
+        />
+      </div>
     );
   }
 
   if (!edition || !form) {
-    return <LoadingState label="Wczytywanie ustawień…" />;
+    return (
+      <div className="flex max-w-2xl flex-col gap-6">
+        <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
+        <LoadingState label="Wczytywanie ustawień…" />
+      </div>
+    );
   }
 
   const err = (key: string) => fieldErrors[key]?.[0];

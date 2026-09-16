@@ -169,6 +169,7 @@ export default function AdminReliability() {
         setRetryKey((value) => value + 1);
       }}
       pustyTytul="Brak osób z danymi do wyświetlenia."
+      pustyOpis="Dane pojawią się, gdy osoby zaczną kończyć lekcje w bieżącej edycji."
       paginacja={
         meta
           ? {

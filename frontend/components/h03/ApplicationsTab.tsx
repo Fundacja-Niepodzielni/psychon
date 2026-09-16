@@ -55,6 +55,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
   const [reload, setReload] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | undefined>();
+  const [actionError, setActionError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [selected, setSelected] = useState<ApplicationItem | null>(null);
@@ -160,8 +161,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       if (reason instanceof ApiError && reason.status === 422 && reason.errors) {
         setCreateErrors(Object.fromEntries(Object.entries(reason.errors).map(([key, values]) => [key, values[0] ?? "Nieprawidłowa wartość."])));
       } else {
-        setError(reason instanceof ApiError ? reason.message : "Nie udało się dodać zgłoszenia.");
-        setErrorStatus(reason instanceof ApiError ? reason.status : undefined);
+        setActionError(reason instanceof ApiError ? reason.message : "Nie udało się dodać zgłoszenia.");
       }
     } finally {
       setPendingId(null);
@@ -170,7 +170,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
 
   async function acceptApplication(application: ApplicationItem, force = false) {
     setPendingId(application.id);
-    setError(null);
+    setActionError(null);
     try {
       await api<{ user_id: number; access_expires_at: string }>(`/admin/applications/${application.id}/accept`, { method: "POST", body: { role: acceptRole, ...(force ? { force: true } : {}) } });
       setAccepting(null);
@@ -184,8 +184,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
         setCapacityApplication(application);
         setAccepting(null);
       } else {
-        setError(reason instanceof ApiError ? reason.message : "Nie udało się zaakceptować zgłoszenia.");
-        setErrorStatus(reason instanceof ApiError ? reason.status : undefined);
+        setActionError(reason instanceof ApiError ? reason.message : "Nie udało się zaakceptować zgłoszenia.");
       }
     } finally {
       setPendingId(null);
@@ -209,7 +208,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       refresh();
     } catch (reasonError: unknown) {
       if (reasonError instanceof ApiError && reasonError.errors?.reason?.[0]) setRejectError(reasonError.errors.reason[0]);
-      else { setError(reasonError instanceof ApiError ? reasonError.message : "Nie udało się odrzucić zgłoszenia."); setErrorStatus(reasonError instanceof ApiError ? reasonError.status : undefined); }
+      else { setActionError(reasonError instanceof ApiError ? reasonError.message : "Nie udało się odrzucić zgłoszenia."); }
     } finally {
       setPendingId(null);
     }
@@ -226,8 +225,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       setSuccess("Import został zakończony.");
       refresh();
     } catch (reason: unknown) {
-      setError(reason instanceof ApiError ? reason.message : "Nie udało się zaimportować pliku.");
-      setErrorStatus(reason instanceof ApiError ? reason.status : undefined);
+      setActionError(reason instanceof ApiError ? reason.message : "Nie udało się zaimportować pliku.");
     } finally {
       setPendingId(null);
     }
@@ -268,6 +266,12 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
           refresh();
         }}
         pustyTytul="Brak zgłoszeń spełniających filtry."
+        pustyOpis="Zmień szukaną frazę albo filtr statusu, albo dodaj nowe zgłoszenie ręcznie."
+        pustaAkcja={
+          <Button variant="secondary" onClick={() => setCreateOpen(true)}>
+            Dodaj zgłoszenie
+          </Button>
+        }
         paginacja={
           meta
             ? {
@@ -283,6 +287,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
         dodatkowyPanel={
           <>
             {success && <Alert variant="success">{success}</Alert>}
+            {actionError && <Alert variant="error">{actionError}</Alert>}
             {createOpen && <Card title="Nowe zgłoszenie"><form className="grid gap-4 md:grid-cols-2" onSubmit={createApplication}><Input label="Imię" value={createValues.first_name} onChange={(event) => setCreateValues((current) => ({ ...current, first_name: event.target.value }))} error={createErrors.first_name} required /><Input label="Nazwisko" value={createValues.last_name} onChange={(event) => setCreateValues((current) => ({ ...current, last_name: event.target.value }))} error={createErrors.last_name} required /><Input label="E-mail" type="email" value={createValues.email} onChange={(event) => setCreateValues((current) => ({ ...current, email: event.target.value }))} error={createErrors.email} required /><Input label="Telefon" value={createValues.phone} onChange={(event) => setCreateValues((current) => ({ ...current, phone: event.target.value }))} error={createErrors.phone} /><div className="md:col-span-2"><Button type="submit" loading={pendingId === -1}>Zapisz zgłoszenie</Button></div></form></Card>}
             <Card title="Filtry"><div className="grid gap-4 md:grid-cols-[1fr_220px_auto]"><Input label="Szukaj" value={search} onChange={(event) => { setPage(1); setLoadedKey(null); setSearch(event.target.value); }} placeholder="Imię, nazwisko lub e-mail" /><Select label="Status" value={status} onChange={(event) => { setPage(1); setLoadedKey(null); setStatus(event.target.value as ApplicationStatus | ""); }}><option value="">Wszystkie</option><option value="new">Nowe</option><option value="accepted">Zaakceptowane</option><option value="rejected">Odrzucone</option></Select><label className="flex min-h-11 cursor-pointer items-center justify-center self-end rounded-pill border border-primary px-4 text-small font-medium text-primary hover:bg-brand-10"><span>{pendingId === -2 ? "Importowanie…" : "Import CSV"}</span><input className="sr-only" type="file" accept=".csv,text/csv" onChange={handleImport} disabled={pendingId !== null} /></label></div></Card>
             {importReport && <Alert variant="info" title="Raport importu"><p>Zaimportowano: {importReport.imported}.</p>{importReport.skipped.length > 0 && <ul className="mt-2 list-disc pl-5">{importReport.skipped.map((row) => <li key={`${row.line}-${row.reason}`}>Wiersz {row.line}: {row.reason}</li>)}</ul>}</Alert>}
