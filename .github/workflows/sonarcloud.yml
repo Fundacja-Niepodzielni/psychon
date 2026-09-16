@@ -1,11 +1,8 @@
 name: SonarCloud
 
-# Skan jakosci kodu — WYLACZONY do czasu decyzji wlasciciela.
-#
-# Organizacji w SonarCloud jeszcze nie ma i nikt jej dzis nie zaklada. Dlatego konfiguracja
-# jest kompletna i lezy w repo, ale sam skan URUCHAMIA SIE DOPIERO, gdy w ustawieniach repo
-# pojawi sie sekret `SONAR_TOKEN`. Do tego czasu przebieg konczy sie na zielono z pominietym
-# krokiem skanu — nie blokuje zadnego PR-a i nie udaje, ze cos zmierzyl.
+# Skan jakosci kodu. Organizacja i projekt w SonarCloud istnieja, sekret `SONAR_TOKEN` jest
+# ustawiony w repozytorium (zmierzone `gh secret list`, 16.09.2026). Przelacznik ponizej zostaje:
+# bez sekretu przebieg konczy sie na zielono z pominietym krokiem skanu i nie udaje, ze cos zmierzyl.
 #
 # Dlaczego warunek stoi przy KROKU, a nie przy jobie:
 # kontekst `secrets` nie jest dostepny w `jobs.<id>.if` (tam wolno tylko `github`, `needs`,
@@ -18,13 +15,11 @@ name: SonarCloud
 # `if: ${{ secrets.SONAR_TOKEN }}` sklada sie do niepustego napisu, a kazdy niepusty napis
 # jest w `if` prawda — taki warunek jest ZAWSZE spelniony i "wylaczenie" nie wylacza niczego.
 
-# Dlaczego nie ma tu `sprint-*`, skoro ma je `ci.yml` i `codeql.yml`: bez sekretu
-# `SONAR_TOKEN` krok skanu jest pomijany, wiec przebieg na galezi sprintu bylby zielony
-# bez zmierzenia czegokolwiek. `sprint-*` dopisujemy w tym samym commicie, w ktorym token
-# zostanie zmierzony (`gh secret list`).
+# `sprint-*` jest tu od chwili, gdy sekret zostal zmierzony - wczesniej przebieg na galezi
+# sprintu bylby zielony bez zmierzenia czegokolwiek.
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, "sprint-*"]
   pull_request:
 
 permissions:
