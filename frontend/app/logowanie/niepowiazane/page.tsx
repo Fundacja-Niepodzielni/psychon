@@ -203,7 +203,6 @@ export default function NiepowiazanePage() {
             </div>
             <Button
               type="button"
-              variant="secondary"
               className="w-full"
               loading={signingOut}
               onClick={() => void logout()}

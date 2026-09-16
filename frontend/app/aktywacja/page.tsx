@@ -6,6 +6,8 @@ import { Suspense, useEffect, useState } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import ErrorState from "@/components/molecules/ErrorState";
+import LoadingState from "@/components/molecules/LoadingState";
 import { api, ApiError } from "@/lib/api";
 import { homeForRole } from "@/lib/home-by-role";
 
@@ -18,7 +20,7 @@ type Stan =
   | { krok: "brak-sesji" }
   | { krok: "wiazanie" }
   | { krok: "sukces" }
-  | { krok: "blad"; komunikat: string };
+  | { krok: "blad"; komunikat: string; mozliwePonowienie: boolean };
 
 /**
  * `/aktywacja?token=…` wiąże `sub` konta Niepodzielni z użytkownikiem
@@ -32,6 +34,7 @@ function AktywacjaTresc() {
   const params = useSearchParams();
   const token = params.get("token") ?? "";
   const [stan, setStan] = useState<Stan>({ krok: "sprawdzanie" });
+  const [ponowienie, setPonowienie] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +50,11 @@ function AktywacjaTresc() {
       }
 
       if (!token) {
-        setStan({ krok: "blad", komunikat: "Link aktywacyjny nie zawiera tokenu." });
+        setStan({
+          krok: "blad",
+          komunikat: "Link aktywacyjny nie zawiera tokenu.",
+          mozliwePonowienie: false,
+        });
         return;
       }
 
@@ -65,11 +72,15 @@ function AktywacjaTresc() {
         // 401 = sesja się skończyła w międzyczasie — `lib/api.ts` już
         // przekierowuje samo, nie ma czego tu jeszcze rysować.
         if (err instanceof ApiError && err.status === 401) return;
+        // Odpowiedź serwera (np. token nieprawidłowy/wykorzystany, 4xx) jest
+        // rozstrzygnięciem ostatecznym — ponowienie nie zmieni wyniku.
+        // Brak czytelnej odpowiedzi (sieć, 5xx) to prawdziwa awaria — ponowienie ma sens.
+        const mozliwePonowienie = !(err instanceof ApiError) || err.status >= 500;
         const komunikat =
           err instanceof ApiError
             ? err.message
             : "Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.";
-        setStan({ krok: "blad", komunikat });
+        setStan({ krok: "blad", komunikat, mozliwePonowienie });
       }
     }
 
@@ -78,7 +89,7 @@ function AktywacjaTresc() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, ponowienie]);
 
   if (stan.krok === "brak-sesji") {
     return (
@@ -103,16 +114,23 @@ function AktywacjaTresc() {
   if (stan.krok === "blad") {
     return (
       <Card title="Aktywacja konta" className="w-full max-w-lg">
-        <Alert variant="error">{stan.komunikat}</Alert>
+        {stan.mozliwePonowienie ? (
+          <ErrorState
+            message={stan.komunikat}
+            onRetry={() => setPonowienie((n) => n + 1)}
+          />
+        ) : (
+          <Alert variant="error">{stan.komunikat}</Alert>
+        )}
       </Card>
     );
   }
 
   return (
     <Card title="Aktywacja konta" className="w-full max-w-lg">
-      <p className="text-body text-muted">
-        {stan.krok === "sukces" ? "Konto powiązane. Przekierowuję…" : "Trwa łączenie konta…"}
-      </p>
+      <LoadingState
+        label={stan.krok === "sukces" ? "Konto powiązane. Przekierowuję…" : "Trwa łączenie konta…"}
+      />
     </Card>
   );
 }

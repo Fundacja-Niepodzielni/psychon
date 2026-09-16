@@ -6,6 +6,7 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import LoadingState from "@/components/molecules/LoadingState";
 import { ApiError, endSession, fetchWhoAmI, type WhoAmI } from "@/lib/api";
 
 /**
@@ -72,7 +73,7 @@ export default function AccountPage() {
         </div>
 
         <Card>
-          {loading && <p className="text-small text-subtle">Wczytywanie…</p>}
+          {loading && <LoadingState label="Wczytywanie…" />}
 
           {!loading && error && <Alert variant="error">{error}</Alert>}
 

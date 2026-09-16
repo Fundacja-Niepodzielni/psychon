@@ -7,12 +7,15 @@ import VerificationCard, {
   type VerifyResult,
 } from "@/components/certyfikat/VerificationCard";
 import Alert from "@/components/ui/Alert";
-import { api } from "@/lib/api";
+import ErrorState from "@/components/molecules/ErrorState";
+import LoadingState from "@/components/molecules/LoadingState";
+import { api, ApiError } from "@/lib/api";
 
 type State =
   | { phase: "loading" }
   | { phase: "ok"; result: VerifyResult }
-  | { phase: "not_found" };
+  | { phase: "not_found" }
+  | { phase: "error" };
 
 function CertificateLanding() {
   const params = useSearchParams();
@@ -25,6 +28,7 @@ function CertificateLanding() {
       : null;
 
   const [state, setState] = useState<State>({ phase: "loading" });
+  const [ponowienie, setPonowienie] = useState(0);
 
   useEffect(() => {
     if (!path) return;
@@ -34,13 +38,20 @@ function CertificateLanding() {
       .then((result) => {
         if (active) setState({ phase: "ok", result });
       })
-      .catch(() => {
-        if (active) setState({ phase: "not_found" });
+      .catch((err) => {
+        if (!active) return;
+        // 404 (numer/token nieznany) — komunikat „nie znaleziono"; każda inna
+        // odpowiedź (5xx, sieć) — osobny komunikat awarii z ponowieniem.
+        if (err instanceof ApiError && err.status === 404) {
+          setState({ phase: "not_found" });
+        } else {
+          setState({ phase: "error" });
+        }
       });
     return () => {
       active = false;
     };
-  }, [path]);
+  }, [path, ponowienie]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page p-6">
@@ -65,9 +76,7 @@ function CertificateLanding() {
           </Alert>
         ) : (
           <>
-            {state.phase === "loading" && (
-              <p className="text-center text-body text-muted">Sprawdzanie…</p>
-            )}
+            {state.phase === "loading" && <LoadingState label="Sprawdzanie…" />}
             {state.phase === "ok" && (
               <VerificationCard result={state.result} />
             )}
@@ -75,6 +84,15 @@ function CertificateLanding() {
               <Alert variant="error">
                 Nie znaleziono certyfikatu o podanym numerze.
               </Alert>
+            )}
+            {state.phase === "error" && (
+              <ErrorState
+                message="Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę."
+                onRetry={() => {
+                  setState({ phase: "loading" });
+                  setPonowienie((n) => n + 1);
+                }}
+              />
             )}
           </>
         )}
