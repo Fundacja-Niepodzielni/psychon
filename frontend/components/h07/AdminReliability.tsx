@@ -5,7 +5,7 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import Skeleton from "@/components/ui/Skeleton";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import { ApiError, type PaginationMeta } from "@/lib/api";
 import {
   fetchAdminReliability,
@@ -82,6 +82,7 @@ export default function AdminReliability() {
   const [rows, setRows] = useState<AdminReliabilityPerson[] | null>(null);
   const [meta, setMeta] = useState<PaginationMeta | undefined>();
   const [listError, setListError] = useState<string | null>(null);
+  const [listErrorStatus, setListErrorStatus] = useState<number | undefined>();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [details, setDetails] = useState<Record<number, DetailsState>>({});
 
@@ -99,6 +100,7 @@ export default function AdminReliability() {
         setListError(
           errorMessage(error, "Nie udało się wczytać danych o rzetelności."),
         );
+        setListErrorStatus(error instanceof ApiError ? error.status : undefined);
       });
 
     return () => {
@@ -140,45 +142,50 @@ export default function AdminReliability() {
     if (opening) loadDetails(row.id);
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-h2 font-black text-ink">Czas nauki</h1>
-        <p className="mt-2 max-w-3xl text-body text-muted">
-          Lista jest uporządkowana od najniższej rzetelności. Rozwiń osobę,
-          aby zobaczyć dane ukończonych lekcji.
-        </p>
-      </header>
+  const stanEfektywny: StanListy = listError
+    ? "error"
+    : rows === null
+      ? "loading"
+      : rows.length === 0
+        ? "empty"
+        : "success";
 
-      {listError ? (
-        <Alert variant="error" title="Nie udało się wczytać listy">
-          <p>{listError}</p>
-          <Button
-            variant="secondary"
-            className="mt-3"
-            onClick={() => {
-              setRows(null);
-              setListError(null);
-              setRetryKey((value) => value + 1);
-            }}
-          >
-            Spróbuj ponownie
-          </Button>
-        </Alert>
-      ) : rows === null ? (
-        <div role="status" aria-label="Wczytywanie danych o rzetelności…">
-          <span className="sr-only">Wczytywanie danych o rzetelności…</span>
-          <Skeleton lines={3} />
-        </div>
-      ) : rows.length === 0 ? (
-        <Card>
-          <p className="text-body text-muted">
-            Brak osób z danymi do wyświetlenia.
-          </p>
-        </Card>
-      ) : (
+  return (
+    <ListTemplate
+      naglowek={{
+        title: "Czas nauki",
+        description:
+          "Lista jest uporządkowana od najniższej rzetelności. Rozwiń osobę, aby zobaczyć dane ukończonych lekcji.",
+      }}
+      stan={stanEfektywny}
+      httpStatus={listErrorStatus}
+      komunikatLadowania="Wczytywanie danych o rzetelności…"
+      komunikatBledu={listError ?? undefined}
+      komunikatBleduTytul="Nie udało się wczytać listy"
+      onPonow={() => {
+        setRows(null);
+        setListError(null);
+        setListErrorStatus(undefined);
+        setRetryKey((value) => value + 1);
+      }}
+      pustyTytul="Brak osób z danymi do wyświetlenia."
+      pustyOpis="Dane pojawią się, gdy osoby zaczną kończyć lekcje w bieżącej edycji."
+      paginacja={
+        meta
+          ? {
+              strona: page,
+              ostatniaStrona: meta.last_page,
+              onZmien: (nowaStrona) => {
+                setRows(null);
+                setListError(null);
+                setPage(nowaStrona);
+              },
+            }
+          : undefined
+      }
+    >
         <ol className="flex flex-col gap-4" aria-label="Rzetelność osób">
-          {rows.map((row) => {
+          {(rows ?? []).map((row) => {
             const isExpanded = expandedId === row.id;
             const detail = details[row.id];
             const panelId = `reliability-details-${row.id}`;
@@ -246,40 +253,6 @@ export default function AdminReliability() {
             );
           })}
         </ol>
-      )}
-
-      {meta && meta.last_page > 1 && (
-        <nav
-          aria-label="Strony listy rzetelności"
-          className="flex flex-wrap items-center justify-center gap-3"
-        >
-          <Button
-            variant="secondary"
-            disabled={page <= 1}
-            onClick={() => {
-              setRows(null);
-              setListError(null);
-              setPage((value) => Math.max(1, value - 1));
-            }}
-          >
-            Poprzednia
-          </Button>
-          <span className="text-small text-muted">
-            Strona {meta.current_page} z {meta.last_page}
-          </span>
-          <Button
-            variant="secondary"
-            disabled={page >= meta.last_page}
-            onClick={() => {
-              setRows(null);
-              setListError(null);
-              setPage((value) => value + 1);
-            }}
-          >
-            Następna
-          </Button>
-        </nav>
-      )}
-    </div>
+    </ListTemplate>
   );
 }

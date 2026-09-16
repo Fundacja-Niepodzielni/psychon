@@ -6,6 +6,9 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
 import { api, downloadFile, ApiError } from "@/lib/api";
 import type { AdminPsychologistProfile, ProfileDocumentType } from "@/lib/h15/types";
 
@@ -18,6 +21,8 @@ const DOCUMENT_TYPE_LABELS: Record<ProfileDocumentType, string> = {
 export default function AdminProfileDetail({ id }: { id: number }) {
   const [profile, setProfile] = useState<AdminPsychologistProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorStatus, setLoadErrorStatus] = useState<number | undefined>();
+  const [reloadKey, setReloadKey] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
@@ -36,9 +41,10 @@ export default function AdminProfileDetail({ id }: { id: number }) {
         setLoadError(
           error instanceof ApiError ? error.message : "Nie udało się wczytać wniosku.",
         );
+        setLoadErrorStatus(error instanceof ApiError ? error.status : undefined);
       });
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, reloadKey]);
 
   async function accept() {
     setProcessing(true);
@@ -89,19 +95,37 @@ export default function AdminProfileDetail({ id }: { id: number }) {
     }
   }
 
+  if (loadError && loadErrorStatus === 403) {
+    return (
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
+        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
+        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tego wniosku." />
+      </div>
+    );
+  }
+
   if (loadError) {
     return (
-      <div className="mx-auto max-w-2xl py-10">
-        <Alert variant="error">{loadError}</Alert>
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
+        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
+        <ErrorState
+        message={loadError}
+        onRetry={() => {
+          setLoadError(null);
+          setLoadErrorStatus(undefined);
+          setReloadKey((value) => value + 1);
+        }}
+      />
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <p className="text-body text-muted" role="status">
-        Wczytywanie…
-      </p>
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
+        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
+        <LoadingState label="Wczytywanie wniosku…" />
+      </div>
     );
   }
 

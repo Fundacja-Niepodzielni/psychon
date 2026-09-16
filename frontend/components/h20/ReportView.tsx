@@ -6,6 +6,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Table, { type Column } from "@/components/ui/Table";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import {
   ApiError,
   downloadReportCsv,
@@ -18,6 +19,8 @@ import { ROLE_LABELS } from "@/lib/h18/labels";
 export default function ReportView() {
   const [report, setReport] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | undefined>();
+  const [reload, setReload] = useState(0);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -34,11 +37,12 @@ export default function ReportView() {
             ? err.message
             : "Nie udało się wczytać raportu.",
         );
+        setErrorStatus(err instanceof ApiError ? err.status : undefined);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [reload]);
 
   async function exportCsv() {
     setDownloading(true);
@@ -86,101 +90,109 @@ export default function ReportView() {
     },
   ];
 
+  // Liczby podsumowania nie zależą od listy imiennej (widoczne zawsze, gdy
+  // odpowiedź je zawiera) — stan pusty dotyczy wyłącznie tabeli osób, którą
+  // pokazuje `Table` przez własny `emptyMessage`, nie cały ekran.
+  const stanEfektywny: StanListy = error ? "error" : !report ? "loading" : "success";
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="text-h2 font-black text-ink">Raport edycji</h1>
-          <p className="mt-2 text-body text-muted">
-            Liczby do grantu — te same źródła co karta osoby i pulpit.
+    <ListTemplate
+      naglowek={{
+        title: "Raport edycji",
+        description: "Liczby do grantu — te same źródła co karta osoby i pulpit.",
+        action: (
+          <>
+            <Button variant="secondary" onClick={exportCsv} loading={downloading}>
+              Eksport CSV
+            </Button>
+            <Button variant="secondary" onClick={() => window.print()}>
+              Drukuj
+            </Button>
+          </>
+        ),
+        className: "print:hidden",
+      }}
+      stan={stanEfektywny}
+      httpStatus={errorStatus}
+      komunikatLadowania="Wczytywanie raportu…"
+      komunikatBledu={error ?? undefined}
+      komunikatBrakUprawnien="Nie masz uprawnień do wyświetlenia tego raportu."
+      onPonow={() => {
+        setError(null);
+        setErrorStatus(undefined);
+        setReload((value) => value + 1);
+      }}
+      dodatkowyPanel={
+        downloadError && (
+          <Alert variant="error" className="print:hidden">
+            {downloadError}
+          </Alert>
+        )
+      }
+    >
+      <h1 className="hidden text-h3 font-black text-ink print:block">
+        Raport edycji — Fundacja Niepodzielni
+      </h1>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
+            Osoby przyjęte
           </p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={exportCsv} loading={downloading}>
-            Eksport CSV
-          </Button>
-          <Button variant="secondary" onClick={() => window.print()}>
-            Drukuj
-          </Button>
-        </div>
+          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.admitted}</p>
+        </Card>
+        <Card>
+          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
+            Osoby aktywne
+          </p>
+          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.active}</p>
+        </Card>
+        <Card>
+          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
+            Programy ukończone
+          </p>
+          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.completed}</p>
+        </Card>
+        <Card>
+          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
+            Certyfikaty wydane
+          </p>
+          <p className="mt-1 text-h3 font-black text-ink">
+            {report?.summary.certificates_issued}
+          </p>
+        </Card>
       </div>
 
-      {downloadError && <Alert variant="error" className="print:hidden">{downloadError}</Alert>}
-
-      {error ? (
-        <Alert variant="error">{error}</Alert>
-      ) : !report ? (
-        <p role="status" className="text-body text-muted">
-          Wczytywanie raportu…
-        </p>
-      ) : (
-        <>
-          <h1 className="hidden text-h3 font-black text-ink print:block">
-            Raport edycji — Fundacja Niepodzielni
-          </h1>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-                Osoby przyjęte
-              </p>
-              <p className="mt-1 text-h3 font-black text-ink">{report.summary.admitted}</p>
-            </Card>
-            <Card>
-              <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-                Osoby aktywne
-              </p>
-              <p className="mt-1 text-h3 font-black text-ink">{report.summary.active}</p>
-            </Card>
-            <Card>
-              <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-                Programy ukończone
-              </p>
-              <p className="mt-1 text-h3 font-black text-ink">{report.summary.completed}</p>
-            </Card>
-            <Card>
-              <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-                Certyfikaty wydane
-              </p>
-              <p className="mt-1 text-h3 font-black text-ink">
-                {report.summary.certificates_issued}
-              </p>
-            </Card>
-            <Card>
-              <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-                Suma godzin stażu
-              </p>
-              <p className="mt-1 text-h3 font-black text-ink">
-                {report.summary.hours_accepted_total}
-              </p>
-            </Card>
-            <Card>
-              <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-                Średnia godzin / osobę
-              </p>
-              <p className="mt-1 text-h3 font-black text-ink">
-                {report.summary.hours_accepted_average}
-              </p>
-            </Card>
-            <Card>
-              <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-                Konsultacje łącznie
-              </p>
-              <p className="mt-1 text-h3 font-black text-ink">
-                {report.summary.consultations_total}
-              </p>
-            </Card>
+      <Card title="Pozostałe liczby">
+        <dl className="grid gap-4 text-small sm:grid-cols-3">
+          <div>
+            <dt className="text-muted">Suma godzin stażu</dt>
+            <dd className="mt-1 font-bold text-ink">{report?.summary.hours_accepted_total}</dd>
           </div>
+          <div>
+            <dt className="text-muted">Średnia godzin / osobę</dt>
+            <dd className="mt-1 font-bold text-ink">{report?.summary.hours_accepted_average}</dd>
+          </div>
+          <div>
+            <dt className="text-muted">Konsultacje łącznie</dt>
+            <dd className="mt-1 font-bold text-ink">{report?.summary.consultations_total}</dd>
+          </div>
+        </dl>
+      </Card>
 
-          <Table
-            columns={columns}
-            rows={report.people}
-            rowKey={(row) => row.id}
-            caption="Zestawienie imienne"
-            emptyMessage="Brak osób do zestawienia."
-          />
-        </>
+      {report && report.people.length === 0 && (
+        <h2 className="text-h4 font-bold text-ink">Brak osób do zestawienia.</h2>
       )}
-    </div>
+      {/* Zdanie zgodne z warunkiem zapytania w ReportSummary.php:71-72 —
+          lista obejmuje wszystkie konta wolontariuszy i studentów, bez
+          warunku ukończenia programu i bez filtra edycji. */}
+      <Table
+        columns={columns}
+        rows={report?.people ?? []}
+        rowKey={(row) => row.id}
+        caption="Zestawienie imienne"
+        emptyMessage="Wiersze pojawią się tutaj, gdy w systemie będą konta wolontariuszy lub studentów."
+      />
+    </ListTemplate>
   );
 }

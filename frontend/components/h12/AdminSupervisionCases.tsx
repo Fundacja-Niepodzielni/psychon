@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Alert from "@/components/ui/Alert";
-import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import {
   ApiError,
   fetchAdminSupervisionCases,
@@ -42,6 +41,7 @@ function volunteerLabel(person: SupervisionCasePerson | null): string {
 export default function AdminSupervisionCases() {
   const [cases, setCases] = useState<SupervisionCase[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | undefined>();
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -58,54 +58,44 @@ export default function AdminSupervisionCases() {
             ? err.message
             : "Nie udało się wczytać zgłoszonych spraw. Spróbuj ponownie.",
         );
+        setErrorStatus(err instanceof ApiError ? err.status : undefined);
       });
     return () => {
       cancelled = true;
     };
   }, [reload]);
 
-  const loading = cases === null && error === null;
+  const stanEfektywny: StanListy = error
+    ? "error"
+    : cases === null
+      ? "loading"
+      : cases.length === 0
+        ? "empty"
+        : "success";
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-h2 font-black text-ink">Sprawy</h1>
-        <p className="mt-2 max-w-3xl text-body text-muted">
-          Sprawy zgłoszone przez prowadzących, dotyczące osób z ich grup lub
-          zgłoszone bez wskazania konkretnej osoby.
-        </p>
-      </header>
-
-      {error && (
-        <Alert variant="error" title="Nie udało się wczytać spraw">
-          <p>{error}</p>
-          <Button
-            variant="secondary"
-            className="mt-3"
-            onClick={() => {
-              setCases(null);
-              setError(null);
-              setReload((value) => value + 1);
-            }}
-          >
-            Spróbuj ponownie
-          </Button>
-        </Alert>
-      )}
-
-      {loading ? (
-        <p className="text-body text-muted" role="status">
-          Wczytywanie spraw…
-        </p>
-      ) : cases === null ? null : cases.length === 0 ? (
-        <Card>
-          <p className="text-body text-muted">
-            Brak zgłoszonych spraw do wyświetlenia.
-          </p>
-        </Card>
-      ) : (
+    <ListTemplate
+      naglowek={{
+        title: "Sprawy",
+        description:
+          "Sprawy zgłoszone przez prowadzących, dotyczące osób z ich grup lub zgłoszone bez wskazania konkretnej osoby.",
+      }}
+      stan={stanEfektywny}
+      httpStatus={errorStatus}
+      komunikatLadowania="Wczytywanie spraw…"
+      komunikatBledu={error ?? undefined}
+      komunikatBleduTytul="Nie udało się wczytać spraw"
+      onPonow={() => {
+        setCases(null);
+        setError(null);
+        setErrorStatus(undefined);
+        setReload((value) => value + 1);
+      }}
+      pustyTytul="Brak zgłoszonych spraw do wyświetlenia."
+      pustyOpis="Sprawy zgłoszone przez prowadzących pojawią się tutaj automatycznie."
+    >
         <ol className="flex flex-col gap-4" aria-label="Zgłoszone sprawy">
-          {cases.map((item) => (
+          {(cases ?? []).map((item) => (
             <li key={item.id}>
               <Card
                 title={item.subject}
@@ -125,7 +115,6 @@ export default function AdminSupervisionCases() {
             </li>
           ))}
         </ol>
-      )}
-    </div>
+    </ListTemplate>
   );
 }

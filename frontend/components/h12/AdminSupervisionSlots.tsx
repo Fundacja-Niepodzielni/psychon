@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import {
   ApiError,
   fetchAdminSupervisionSlots,
@@ -49,6 +48,7 @@ function supervisorLabel(
 export default function AdminSupervisionSlots() {
   const [slots, setSlots] = useState<AdminSupervisionSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | undefined>();
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -65,54 +65,44 @@ export default function AdminSupervisionSlots() {
             ? err.message
             : "Nie udało się wczytać terminów superwizji. Spróbuj ponownie.",
         );
+        setErrorStatus(err instanceof ApiError ? err.status : undefined);
       });
     return () => {
       cancelled = true;
     };
   }, [reload]);
 
-  const loading = slots === null && error === null;
+  const stanEfektywny: StanListy = error
+    ? "error"
+    : slots === null
+      ? "loading"
+      : slots.length === 0
+        ? "empty"
+        : "success";
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-h2 font-black text-ink">Superwizje</h1>
-        <p className="mt-2 max-w-3xl text-body text-muted">
-          Wszystkie terminy wszystkich prowadzących, z obecnością odnotowaną
-          przez prowadzącego przy każdej zapisanej osobie.
-        </p>
-      </header>
-
-      {error && (
-        <Alert variant="error" title="Nie udało się wczytać terminów">
-          <p>{error}</p>
-          <Button
-            variant="secondary"
-            className="mt-3"
-            onClick={() => {
-              setSlots(null);
-              setError(null);
-              setReload((value) => value + 1);
-            }}
-          >
-            Spróbuj ponownie
-          </Button>
-        </Alert>
-      )}
-
-      {loading ? (
-        <p className="text-body text-muted" role="status">
-          Wczytywanie terminów superwizji…
-        </p>
-      ) : slots === null ? null : slots.length === 0 ? (
-        <Card>
-          <p className="text-body text-muted">
-            Brak terminów superwizji do wyświetlenia.
-          </p>
-        </Card>
-      ) : (
+    <ListTemplate
+      naglowek={{
+        title: "Superwizje",
+        description:
+          "Wszystkie terminy wszystkich prowadzących, z obecnością odnotowaną przez prowadzącego przy każdej zapisanej osobie.",
+      }}
+      stan={stanEfektywny}
+      httpStatus={errorStatus}
+      komunikatLadowania="Wczytywanie terminów superwizji…"
+      komunikatBledu={error ?? undefined}
+      komunikatBleduTytul="Nie udało się wczytać terminów"
+      onPonow={() => {
+        setSlots(null);
+        setError(null);
+        setErrorStatus(undefined);
+        setReload((value) => value + 1);
+      }}
+      pustyTytul="Brak terminów superwizji do wyświetlenia."
+      pustyOpis="Terminy pojawią się tutaj, gdy zostaną dodane w systemie."
+    >
         <ol className="flex flex-col gap-4" aria-label="Terminy superwizji">
-          {slots.map((slot) => (
+          {(slots ?? []).map((slot) => (
             <li key={slot.id}>
               <Card
                 title={formatDate(slot.starts_at)}
@@ -159,7 +149,6 @@ export default function AdminSupervisionSlots() {
             </li>
           ))}
         </ol>
-      )}
-    </div>
+    </ListTemplate>
   );
 }
