@@ -138,10 +138,15 @@ chmod +x "$KATALOG_SHIM_128/git"
 KATALOG_SHIM_PUSTY="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_SHIM_PUSTY")
 cat > "$KATALOG_SHIM_PUSTY/git" <<'EOF'
 #!/usr/bin/env bash
-# archive "udaje sie" (EXIT=0), ale nie wypisuje ani bajtu - `tar -x` na
-# pustym strumieniu konczy sie EXIT=0 i eksportuje 0 plikow (F-107, przypadek
-# "gitleaks skanuje 0 B i pisze no leaks found" bez tej poprawki).
+# archive "udaje sie" (EXIT=0) i wypisuje POPRAWNE, ale PUSTE archiwum tar
+# (1024 bajty zer - dwa bloki koncowe, ktore `tar` rozpoznaje jako prawidlowy
+# koniec archiwum, EXIT=0) - `tar -x` na takim wejsciu konczy sie EXIT=0 i
+# eksportuje 0 plikow (F-107, przypadek "gitleaks skanuje 0 B i pisze no
+# leaks found" bez tej poprawki). Rozny przypadek niz PIPESTATUS[1]!=0 nizej
+# (przypadek 11): tu OBA czlony potoku "udaja sie", a mimo to trescia nie ma
+# nic do zmierzenia.
 if [[ "$1" == "archive" ]]; then
+  head -c 1024 /dev/zero
   exit 0
 fi
 exit 1
@@ -343,6 +348,93 @@ printf '%s\n' "$WYNIK_FILTR" | grep -q "^RuleID:" || { echo "  WYNIK: NIEZALICZO
 printf '%s\n' "$WYNIK_FILTR" | grep -q "^File:" || { echo "  WYNIK: NIEZALICZONY - filtr zgubil File"; NIEZAL_K4=1; }
 printf '%s\n' "$WYNIK_FILTR" | grep -q "^Line:" || { echo "  WYNIK: NIEZALICZONY - filtr zgubil Line"; NIEZAL_K4=1; }
 if [[ "$NIEZAL_K4" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# ================ CZESC 5: PIPESTATUS[1] i pokrycie niezalezne (F-122/F-123) =
+# Ticket K1/K3: `git archive` "udaje sie" (EXIT=0), ale `tar` konczy sie
+# bledem na obcietym/niepoprawnym strumieniu - to jest DOKLADNIE przypadek,
+# ktorego PIPESTATUS[0] (F-123) nie widzi, bo patrzy tylko na `git archive`.
+KATALOG_SHIM_TAR_PADA="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_SHIM_TAR_PADA")
+cat > "$KATALOG_SHIM_TAR_PADA/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "archive" ]]; then
+  # Losowe bajty na stdout, NIE poprawny format tar - `git archive` konczy sie
+  # EXIT=0 (proces po prostu skonczyl pisac), ale `tar -x` na tym wejsciu ma
+  # sie wywalic (nie rozpozna formatu archiwum).
+  head -c 200 /dev/urandom
+  exit 0
+fi
+exit 1
+EOF
+chmod +x "$KATALOG_SHIM_TAR_PADA/git"
+
+echo "=== 11 eksport: git archive EXIT=0, tar pada na niepoprawnym strumieniu - ticket K1/K3 (PIPESTATUS[1]) ==="
+KATALOG_EKSPORT_TARFAIL="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_EKSPORT_TARFAIL")
+KOMUNIKAT_TARFAIL="$(PATH="$KATALOG_SHIM_TAR_PADA:$PATH" sekrety_eksportuj_tresc HEAD "$KATALOG_EKSPORT_TARFAIL" 2>&1 1>/dev/null)"
+KOD_TARFAIL=$?
+echo "  sekrety_eksportuj_tresc: rc=$KOD_TARFAIL, komunikat: $KOMUNIKAT_TARFAIL"
+NIEZAL_TARFAIL=0
+[[ "$KOD_TARFAIL" -eq 2 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=2, dostalem rc=$KOD_TARFAIL"; NIEZAL_TARFAIL=1; }
+[[ "$KOMUNIKAT_TARFAIL" == *"tar zakonczyl sie bledem"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie nazywa tar jako przyczyny"; NIEZAL_TARFAIL=1; }
+if [[ "$NIEZAL_TARFAIL" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 12 pokrycie: plikow i bajtow zgodne (kontrola pozytywna) ==="
+WYNIK_POKR_OK="$(sekrety_sprawdz_pokrycie 930 4374451 930 4374451)"; RC_POKR_OK=$?
+echo "  $WYNIK_POKR_OK (rc=$RC_POKR_OK)"
+NIEZAL_POKR_OK=0
+[[ "$RC_POKR_OK" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0"; NIEZAL_POKR_OK=1; }
+if [[ "$NIEZAL_POKR_OK" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 13 pokrycie: plikow NIEZGODNE (4 zamiast 930, dokladnie liczby z F-123) - ticket K5 ==="
+WYNIK_POKR_PLIKOW="$(sekrety_sprawdz_pokrycie 4 34520 930 4374451)"; RC_POKR_PLIKOW=$?
+echo "  $WYNIK_POKR_PLIKOW (rc=$RC_POKR_PLIKOW)"
+NIEZAL_POKR_PLIKOW=0
+[[ "$RC_POKR_PLIKOW" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=1"; NIEZAL_POKR_PLIKOW=1; }
+[[ "$WYNIK_POKR_PLIKOW" == *"plikow zmierzone=4"* && "$WYNIK_POKR_PLIKOW" == *"oczekiwane"*"930"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie podaje obu liczb plikow"; NIEZAL_POKR_PLIKOW=1; }
+if [[ "$NIEZAL_POKR_PLIKOW" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 14 pokrycie: plikow zgodne, bajtow ponizej progu 0,9x (dokladnie liczby z F-123) - ticket K6 ==="
+WYNIK_POKR_BAJT="$(sekrety_sprawdz_pokrycie 930 34520 930 4374451)"; RC_POKR_BAJT=$?
+echo "  $WYNIK_POKR_BAJT (rc=$RC_POKR_BAJT)"
+NIEZAL_POKR_BAJT=0
+[[ "$RC_POKR_BAJT" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=1"; NIEZAL_POKR_BAJT=1; }
+[[ "$WYNIK_POKR_BAJT" == *"bajtow zmierzone=34520"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie podaje zmierzonych bajtow"; NIEZAL_POKR_BAJT=1; }
+if [[ "$NIEZAL_POKR_BAJT" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 15 pokrycie: brak liczby zmierzonej (NIEZMIERZONE) - ticket K7 ==="
+WYNIK_POKR_BRAK="$(sekrety_sprawdz_pokrycie NIEZMIERZONE 34520 930 4374451)"; RC_POKR_BRAK=$?
+echo "  $WYNIK_POKR_BRAK (rc=$RC_POKR_BRAK)"
+NIEZAL_POKR_BRAK=0
+[[ "$RC_POKR_BRAK" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=1"; NIEZAL_POKR_BRAK=1; }
+[[ "$WYNIK_POKR_BRAK" == *"NIEZMIERZONE"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie mowi NIEZMIERZONE"; NIEZAL_POKR_BRAK=1; }
+if [[ "$NIEZAL_POKR_BRAK" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 16 wyciagniecie bajtow skanu: log bez linii 'scanned' - NIEZMIERZONE - ticket K7 ==="
+LOG_BEZ_SCANNED="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_BEZ_SCANNED")
+printf '3:22PM FTL could not open config file\n' > "$LOG_BEZ_SCANNED"
+WYNIK_BAJTY_BRAK="$(sekrety_wyciagnij_bajty_skanu "$LOG_BEZ_SCANNED")"; RC_BAJTY_BRAK=$?
+echo "  sekrety_wyciagnij_bajty_skanu: '$WYNIK_BAJTY_BRAK' (rc=$RC_BAJTY_BRAK)"
+NIEZAL_BAJTY_BRAK=0
+[[ "$RC_BAJTY_BRAK" -eq 1 && "$WYNIK_BAJTY_BRAK" == "NIEZMIERZONE" ]] || { echo "  WYNIK: NIEZALICZONY"; NIEZAL_BAJTY_BRAK=1; }
+if [[ "$NIEZAL_BAJTY_BRAK" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 17 pokrycie: scanned ~0 bytes na logu z 'no leaks found' (udawany wyciek nie doskanowany) - ticket K4 ==="
+# Odroznienie od przyczyny "test wlasnej logiki jest CZERWONY": tu test
+# wlasnej logiki (CZESC 1-4 wyzej) jest ZIELONY, a mimo to krok 3e ma
+# oblac - z powodu ZEROWEGO SKANU, nie z powodu wbudowanego testu. Ten log
+# wyglada dokladnie jak F-122 (scan 0 bajtow na commicie z udawanym wyciekiem).
+LOG_ZERO_BAJTOW="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_ZERO_BAJTOW")
+cat > "$LOG_ZERO_BAJTOW" <<'EOF'
+3:07PM INF scanned ~0 bytes (0 B) in 0.12s
+3:07PM INF no leaks found
+EOF
+BAJTY_ZERO="$(sekrety_wyciagnij_bajty_skanu "$LOG_ZERO_BAJTOW")"; RC_BAJTY_ZERO=$?
+WYNIK_POKR_ZERO="$(sekrety_sprawdz_pokrycie 1 "$BAJTY_ZERO" 1 1000)"; RC_POKR_ZERO=$?
+echo "  bajty ze skanu: $BAJTY_ZERO (rc=$RC_BAJTY_ZERO); pokrycie: $WYNIK_POKR_ZERO (rc=$RC_POKR_ZERO)"
+NIEZAL_POKR_ZERO=0
+[[ "$RC_BAJTY_ZERO" -eq 0 && "$BAJTY_ZERO" == "0" ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano odczytania 0 bajtow"; NIEZAL_POKR_ZERO=1; }
+[[ "$RC_POKR_ZERO" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano czerwonego pokrycia"; NIEZAL_POKR_ZERO=1; }
+[[ "$WYNIK_POKR_ZERO" == *"bajtow zmierzone=0"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie nazywa zerowego skanu jako przyczyny"; NIEZAL_POKR_ZERO=1; }
+if [[ "$NIEZAL_POKR_ZERO" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
 echo
 if [[ "$NIEZALICZONE" -gt 0 ]]; then

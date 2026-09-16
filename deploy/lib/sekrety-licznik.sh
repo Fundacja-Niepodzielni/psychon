@@ -51,11 +51,26 @@ sekrety_uruchom_gitleaks() {
 # (krok 3e) skanowalby 0 bajtow i pisal "no leaks found" - eksport, ktoremu
 # nie mozna ufac, wygladalby jak czysty commit.
 sekrety_eksportuj_tresc() {
-  local rev="$1" katalog="$2" kod_archive plikow
+  local rev="$1" katalog="$2" kod_archive kod_tar plikow
+  local -a status_potoku
   git archive --format=tar "$rev" | tar -x -C "$katalog"
-  kod_archive="${PIPESTATUS[0]}"
+  # Oba czlony potoku sprawdzone WPROST z PIPESTATUS - nie tylko [0] (F-123):
+  # `git archive` moze "udac sie" (EXIT=0), a `tar` mimo to obrobic okrojony
+  # strumien z bledem (np. strumien przyciety w polowie) - taki eksport ma
+  # skonczyc sie tu, zanim gitleaks dostanie do rak niepelna tresc. Cala
+  # tablica skopiowana JEDNYM przypisaniem - odczyt pojedynczego elementu
+  # (np. "${PIPESTATUS[0]}") jest sam w sobie prostym poleceniem, ktore
+  # NADPISUJE PIPESTATUS swoim wlasnym (jednoelementowym) statusem, wiec
+  # drugi odczyt po pierwszym widzialby juz pusta tablice.
+  status_potoku=("${PIPESTATUS[@]}")
+  kod_archive="${status_potoku[0]}"
+  kod_tar="${status_potoku[1]}"
   if [[ "$kod_archive" -ne 0 ]]; then
     echo "sekrety: eksport tresci commitu nieprawidlowy - git archive zakonczyl sie bledem (EXIT=$kod_archive) - krok 3e nie moze zmierzyc sekretow" >&2
+    return 2
+  fi
+  if [[ "$kod_tar" -ne 0 ]]; then
+    echo "sekrety: eksport tresci commitu nieprawidlowy - tar zakonczyl sie bledem (EXIT=$kod_tar) mimo git archive EXIT=0 - krok 3e nie moze zmierzyc sekretow" >&2
     return 2
   fi
   plikow="$(find "$katalog" -type f | wc -l)"
@@ -110,4 +125,93 @@ sekrety_policz_trafienia() {
 sekrety_pola_do_logu() {
   local log="$1"
   grep -aE "^(RuleID|File|Line):" "$log"
+}
+
+# sekrety_git_ls_plikow REV
+#
+# Liczba plikow sledzonych przez git na REV, policzona NIEZALEZNIE od
+# eksportu/skanu (`git ls-tree`, nie `git archive` + `tar` + `find`) - to jest
+# wzorzec, z ktorym `sekrety_sprawdz_pokrycie` nizej porownuje to, co gitleaks
+# NAPRAWDE obejrzal (F-122/F-123).
+sekrety_git_ls_plikow() {
+  local rev="$1"
+  git ls-tree -r --name-only "$rev" | wc -l
+}
+
+# sekrety_git_ls_bajtow REV
+#
+# Suma rozmiarow blobow na REV wg `git ls-tree -r -l` (kolumna rozmiaru) -
+# drugi wzorzec dla `sekrety_sprawdz_pokrycie`, niezalezny od tego, ile
+# bajtow zglosil sam gitleaks w swoim logu.
+sekrety_git_ls_bajtow() {
+  local rev="$1"
+  git ls-tree -r -l "$rev" | awk '{s+=$4} END{print s+0}'
+}
+
+# sekrety_wyciagnij_bajty_skanu PLIK_LOG
+#
+# Wyciaga liczbe z linii "scanned ~N bytes" loga gitleaksa (ta sama linia,
+# ktora bramka i tak juz drukuje jako informacje) - tu jako CZYSTA liczbe do
+# porownania. Brak takiej linii (log zepsuty/obciety) = "NIEZMIERZONE" na
+# stdout i kod wyjscia 1 - wolajacy NIE ma czytac wypisanej wartosci jako
+# liczby, gdy kod wyjscia != 0.
+sekrety_wyciagnij_bajty_skanu() {
+  local log="$1" bajty
+  bajty="$(grep -aoE "scanned ~[0-9]+ bytes" "$log" | tail -1 | grep -oE "[0-9]+")"
+  if [[ -z "$bajty" ]]; then
+    echo "NIEZMIERZONE"
+    return 1
+  fi
+  echo "$bajty"
+  return 0
+}
+
+# sekrety_sprawdz_pokrycie PLIKOW_ZMIERZONE BAJTOW_ZMIERZONE PLIKOW_OCZEKIWANE BAJTOW_OCZEKIWANE
+#
+# Porownuje to, co gitleaks NAPRAWDE obejrzal (PLIKOW_ZMIERZONE z eksportu,
+# BAJTOW_ZMIERZONE z jego loga "scanned ~N bytes"), z liczba policzona
+# NIEZALEZNIE OD TEGO SAMEGO STRUMIENIA - PLIKOW_OCZEKIWANE i BAJTOW_OCZEKIWANE
+# maja pochodzic z `sekrety_git_ls_plikow`/`sekrety_git_ls_bajtow` (git
+# ls-tree), nie z eksportu ani z loga gitleaksa. Kontrola "N > 0" NIE
+# wystarcza (F-123: strumien przyciety do 0,8% tresci tez daje N > 0) -
+# dlatego plikow ma sie zgadzac DOKLADNIE, a bajtow ma wyjsc co najmniej
+# 0,9 * oczekiwanych (gitleaks podaje "~", zapas jest swiadomy, nie na oko).
+#
+# Brak KTOREJKOLWIEK liczby na wejsciu (pusty string albo nie-cyfry - tak
+# wyglada np. "NIEZMIERZONE" z sekrety_wyciagnij_bajty_skanu) = przyrzad nie
+# dziala = czerwone, NIGDY "pewnie dobrze".
+#
+# Wypisuje na stdout jedna linie z obiema parami liczb (i, przy progu bajtow,
+# zmierzonym zapasem w procentach), kod wyjscia: 0 = pokrycie zgodne, 1 = w
+# kazdym innym przypadku.
+sekrety_sprawdz_pokrycie() {
+  local plikow_zm="$1" bajtow_zm="$2" plikow_ocz="$3" bajtow_ocz="$4" prog zapas
+
+  if [[ ! "$plikow_zm" =~ ^[0-9]+$ || ! "$bajtow_zm" =~ ^[0-9]+$ ]]; then
+    echo "sekrety: pokrycie eksportu NIEZMIERZONE - brak odczytu liczby plikow lub bajtow ze skanu (plikow='$plikow_zm' bajtow='$bajtow_zm')"
+    return 1
+  fi
+  if [[ ! "$plikow_ocz" =~ ^[0-9]+$ || ! "$bajtow_ocz" =~ ^[0-9]+$ ]]; then
+    echo "sekrety: pokrycie eksportu NIEZMIERZONE - brak odczytu niezaleznie policzonej liczby plikow lub bajtow (git ls-tree)"
+    return 1
+  fi
+
+  if [[ "$plikow_zm" -ne "$plikow_ocz" ]]; then
+    echo "sekrety: pokrycie eksportu NIEZGODNE - plikow zmierzone=$plikow_zm, oczekiwane (git ls-tree)=$plikow_ocz"
+    return 1
+  fi
+
+  prog=$(( bajtow_ocz * 9 / 10 ))
+  if [[ "$bajtow_ocz" -gt 0 ]]; then
+    zapas=$(( bajtow_zm * 100 / bajtow_ocz ))
+  else
+    zapas=100
+  fi
+  if [[ "$bajtow_zm" -lt "$prog" ]]; then
+    echo "sekrety: pokrycie eksportu NIEZGODNE - bajtow zmierzone=$bajtow_zm ponizej progu 0,9x oczekiwanych ($prog z $bajtow_ocz), zapas=${zapas}%"
+    return 1
+  fi
+
+  echo "sekrety: pokrycie eksportu ZGODNE - plikow $plikow_zm/$plikow_ocz, bajtow $bajtow_zm/$bajtow_ocz (zapas ${zapas}%)"
+  return 0
 }

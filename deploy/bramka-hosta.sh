@@ -290,10 +290,23 @@ else
     rm -rf "$EKSPORT"
     # ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
     BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
+    BAJTOW_ZM="$(sekrety_wyciagnij_bajty_skanu "$KATALOG_BIEGU"/bramka-gitleaks.log)"
     TRAFIEN_GL="$(sekrety_policz_trafienia "$KATALOG_BIEGU"/bramka-gitleaks.log)"
     KOD_LICZNIKA=$?
     echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
     if [ "$KOD_LICZNIKA" -ne 0 ]; then
+        KOD_GITLEAKS=2
+    fi
+    # Pokrycie eksportu (F-122/F-123): liczba plikow i bajtow, ktore gitleaks
+    # NAPRAWDE obejrzal, porownana z liczba policzona NIEZALEZNIE od
+    # skanowanego strumienia (`git ls-tree` na HEAD) - nie sama kontrola
+    # "N > 0", ktora przepuszczala skan przyciety do 0,8% tresci.
+    PLIKOW_OCZ="$(sekrety_git_ls_plikow HEAD)"
+    BAJTOW_OCZ="$(sekrety_git_ls_bajtow HEAD)"
+    POKRYCIE_MSG="$(sekrety_sprawdz_pokrycie "$PLIKOW_GL" "$BAJTOW_ZM" "$PLIKOW_OCZ" "$BAJTOW_OCZ")"
+    KOD_POKRYCIA=$?
+    echo "$POKRYCIE_MSG"
+    if [ "$KOD_POKRYCIA" -ne 0 ]; then
         KOD_GITLEAKS=2
     fi
     # Filtr NIGDY nie przepuszcza Secret/Match/Finding (tresc trafienia) - tylko
