@@ -21,9 +21,9 @@ class Document extends Model
     protected function casts(): array
     {
         return [
-            // Migawka niesie PESEL, telefon i adres, a z decyzji właściciela
-            // przeżywa usunięcie konta — więc leży w bazie szyfrowana, tak
-            // samo jak te same dane na koncie (`User::casts()`).
+            // Migawka niesie PESEL, telefon i adres, i w odróżnieniu od konta
+            // nie jest usuwana razem z nim — więc leży w bazie szyfrowana,
+            // tak samo jak te same dane na koncie (`User::casts()`).
             'data_snapshot' => 'encrypted:array',
             'generated_at' => 'datetime',
         ];

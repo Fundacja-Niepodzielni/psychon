@@ -157,6 +157,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 env_file="${PSYCHON_ENV_FILE:-/opt/psychon/.env}"
 tls_dir="${PSYCHON_TLS_DIR:-/opt/psychon/tls}"
+# Katalog na hoscie (poza kontenerami) na zrzuty tabeli documents wykonywane
+# tuz przed kazda migracja - patrz komentarz przy kroku migracji nizej.
+backup_dir="${PSYCHON_DB_BACKUP_DIR:-/opt/psychon/kopie-bazy}"
 compose=(docker compose --env-file "$env_file" -f docker-compose.yml -f docker-compose.psychon-dev.yml)
 
 cd "$repo_root"
@@ -207,8 +210,32 @@ echo "Uruchamiam uslugi..."
 # nie weszla przy pierwszym wdrozeniu. Kilka sekund przerwy na 443 to cena.
 "${compose[@]}" up -d --force-recreate caddy
 
+echo "Zrzucam kopie tabeli documents przed migracja..."
+# Kolejnosc zrzut -> migrate -> documents:encrypt-snapshots jest wymuszona,
+# nie stylistyczna. Zrzut idzie PRZED migracja, bo to ostatni moment, kiedy
+# stan tabeli na hoscie odpowiada jeszcze kodowi sprzed wdrozenia - gdyby cos
+# poszlo nie tak w migracji albo w poleceniu szyfrujacym, ta kopia (a nie
+# pamiec kontenera, ktory zaraz dostanie nowy kod) jest jedynym punktem
+# powrotu. Migracja musi wejsc PRZED poleceniem, bo dopiero ona zmienia typ
+# kolumny `data_snapshot` z `json` na `text` - kolumna typu json odrzucilaby
+# zapis szyfrogramu. A polecenie musi wejsc w TYM SAMYM biegu, zaraz po
+# migracji, bo od chwili wdrozenia tego kodu model czyta `data_snapshot`
+# jako `encrypted:array`: kazda migawka zapisana jeszcze jawnie staje sie dla
+# aplikacji nieczytelna (wyjatek zamiast tresci), dopoki polecenie jej nie
+# zaszyfruje. Odkladanie tego kroku na pozniej zostawia okno, w ktorym
+# istniejace dokumenty nie daja sie pobrac.
+mkdir -p "$backup_dir"
+backup_file="$backup_dir/documents-$(date +%Y%m%d-%H%M%S).sql"
+if ! "${compose[@]}" exec -T pgsql pg_dump -U niepodzielni -d niepodzielni -t documents > "$backup_file"; then
+  echo "BLAD: zrzut tabeli documents (pg_dump) nie powiodl sie. Przerywam bez migracji."
+  rm -f "$backup_file"
+  exit 1
+fi
+
 echo "Migracje i cache konfiguracji..."
 "${compose[@]}" exec -T app php artisan migrate --force
+echo "Szyfruje pozostale jawne migawki dokumentow..."
+"${compose[@]}" exec -T app php artisan documents:encrypt-snapshots
 "${compose[@]}" exec -T app php artisan optimize
 
 echo "Status uslug:"

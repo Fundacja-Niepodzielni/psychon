@@ -15,9 +15,17 @@ use Illuminate\Support\Facades\DB;
  *
  * Działa na surowej kolumnie (`DB::table`), nie przez model Eloquenta —
  * dzięki temu ponowne uruchomienie nigdy nie zaszyfruje wartości drugi raz.
- * Rozpoznanie „już zaszyfrowany" jest próbą odszyfrowania: `Crypt::decryptString()`
- * rzuca wyjątek na zwykłym tekście JSON, więc każdy wiersz trafia do
- * dokładnie jednej z dwóch grup — nie ma trzeciego stanu do pomylenia.
+ *
+ * Rozpoznanie stanu wiersza jest dwustopniowe, żeby zmiana `APP_KEY` bez
+ * dopisania starego klucza do `APP_PREVIOUS_KEYS` nie skończyła się cichym
+ * drugim szyfrowaniem: `Crypt::decryptString()` sam próbuje bieżącego klucza
+ * i wszystkich kluczy z `APP_PREVIOUS_KEYS` (obsługa wbudowana w szyfrator
+ * Laravela), więc udane odszyfrowanie znaczy „już zaszyfrowany" niezależnie
+ * od tego, którym z kluczy. Nieudane odszyfrowanie NIE oznacza od razu
+ * „jawny JSON" — dopiero druga próba (poprawność formatu JSON) rozstrzyga.
+ * Wiersz, którego nie da się ani odszyfrować, ani rozpoznać jako jawny JSON,
+ * jest stanem, którego to polecenie nie umie bezpiecznie rozstrzygnąć —
+ * przerywa całość, zanim cokolwiek zapisze, i wypisuje listę id.
  */
 class EncryptDocumentSnapshots extends Command
 {
@@ -28,8 +36,12 @@ class EncryptDocumentSnapshots extends Command
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $toEncrypt = 0;
+
+        /** @var array<int, string> $toEncrypt id => surowa wartość do zaszyfrowania */
+        $toEncrypt = [];
         $alreadyEncrypted = 0;
+        /** @var list<int> $unreadable */
+        $unreadable = [];
 
         $rows = DB::table('documents')
             ->whereNotNull('data_snapshot')
@@ -44,24 +56,55 @@ class EncryptDocumentSnapshots extends Command
 
                 continue;
             } catch (DecryptException) {
-                // Nie odszyfrowało się — to jawny JSON sprzed zmiany, dalej.
+                // Nie odszyfrowało się żadnym znanym kluczem — może być jawny
+                // JSON sprzed zmiany, ale może też być szyfrogram z klucza,
+                // którego już nie znamy. Rozstrzyga kontrola formatu niżej.
             }
 
-            $toEncrypt++;
+            json_decode($row->data_snapshot);
 
-            if ($dryRun) {
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $unreadable[] = $row->id;
+
                 continue;
             }
 
-            DB::table('documents')
-                ->where('id', $row->id)
-                ->update(['data_snapshot' => Crypt::encryptString($row->data_snapshot)]);
+            $toEncrypt[$row->id] = $row->data_snapshot;
         }
 
+        if ($unreadable !== []) {
+            $this->error(sprintf(
+                'Przerwano: %d wiersz(y) tabeli documents nie da się ani odszyfrować znanym kluczem, '.
+                'ani rozpoznać jako jawny JSON (id: %s). Nic nie zapisano — sprawdź, czy poprzedni '.
+                'APP_KEY jest wpisany do APP_PREVIOUS_KEYS.',
+                count($unreadable),
+                implode(', ', $unreadable)
+            ));
+
+            return self::FAILURE;
+        }
+
+        if ($dryRun) {
+            $this->info(sprintf(
+                'Tryb próbny: %d do zaszyfrowania, %d już zaszyfrowanych.',
+                count($toEncrypt),
+                $alreadyEncrypted
+            ));
+
+            return self::SUCCESS;
+        }
+
+        DB::transaction(function () use ($toEncrypt): void {
+            foreach ($toEncrypt as $id => $rawValue) {
+                DB::table('documents')
+                    ->where('id', $id)
+                    ->update(['data_snapshot' => Crypt::encryptString($rawValue)]);
+            }
+        });
+
         $this->info(sprintf(
-            '%s: %d do zaszyfrowania, %d już zaszyfrowanych.',
-            $dryRun ? 'Tryb próbny' : 'Wykonano',
-            $toEncrypt,
+            'Wykonano: %d do zaszyfrowania, %d już zaszyfrowanych.',
+            count($toEncrypt),
             $alreadyEncrypted
         ));
 
