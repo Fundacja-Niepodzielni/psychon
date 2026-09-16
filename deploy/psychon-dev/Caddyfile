@@ -58,11 +58,24 @@
 	}
 
 	# Backend: API i pliki wystawiane przez Laravel.
+	#
+	# Ciasteczka NIE ida do backendu. Backend uwierzytelnia wylacznie
+	# naglowkiem Authorization i zadnego ciasteczka nie czyta, a przegladarka
+	# dokleja do kazdego zapytania ciasteczka sesji logowania (kilka porcji po
+	# ~4 kB) i ciasteczko Cloudflare Access. Razem przekraczaja 8 kB w jednej
+	# linii naglowka - tyle przyjmuje nginx w kontenerze backendu - i kazde
+	# zapytanie zalogowanej osoby konczylo sie odpowiedzia 400. Zmierzone
+	# na hoscie: 7 900 B przechodzi, 8 300 B daje 400.
+	# Trasy logowania (/api/auth/*) ida do Next.js wyzej i ciasteczka dostaja.
 	handle /api/* {
-		reverse_proxy app:8080
+		reverse_proxy app:8080 {
+			header_up -Cookie
+		}
 	}
 	handle /storage/* {
-		reverse_proxy app:8080
+		reverse_proxy app:8080 {
+			header_up -Cookie
+		}
 	}
 
 	# Cala reszta: Next.js.
