@@ -1,0 +1,13 @@
+# Wyciszenia POJEDYNCZYCH trafien, po odcisku. Nigdy calej reguly i nigdy sciezki -
+# wylaczenie reguly albo katalogu to ksztalt "trafien 0 przy prawdziwym wycieku" (F-134).
+# Kazdy wpis musi miec nad soba powod, date i to, czym zostal sprawdzony.
+#
+# 16.09.2026, runda odbiorcza historii galezi sprint-2 (189 commitow, 5,07 MB).
+# Falszywy alarm: regula generic-api-key, entropia 3,578. Linia 409 w tym commicie to
+# naglowek `echo` z nazwa zmiennej srodowiskowej AUTH_KEYCLOAK_ISSUER, nie sekret -
+# tresc sprawdzona w TYM commicie, nie w biezacym drzewie.
+# Wpis WYGASA SAM: odcisk niesie SHA commita, wiec po scaleniu z ujednoliceniem
+# historii (jeden zapis zamiast wielu) ten SHA przestaje istniec i wiersz przestaje
+# cokolwiek wyciszac. Wtedy jeden nowy bieg po historii galezi glownej domyka sprawe -
+# albo trafienie wraca pod nowym odciskiem, albo go nie ma.
+39e99e94b9774bcbb98ebe56ed95b1619f9b4baf:deploy/psychon-dev/tests/test-swiadek-logowania.sh:generic-api-key:409
