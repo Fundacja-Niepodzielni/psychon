@@ -67,10 +67,23 @@ class DocumentController extends Controller
         // Bez pliku w magazynie (U-D): PDF powstaje tu i teraz, z
         // zaszyfrowanej migawki, i nigdy nie trafia na dysk — trafia od
         // razu do odpowiedzi HTTP.
+        $snapshot = $document->data_snapshot;
+
         $bytes = PdfService::renderBytes(
             DocumentIssuer::viewFor($document->type),
-            $document->data_snapshot ?? [],
+            $snapshot ?? [],
         );
+
+        // Rotacja klucza aplikacji: udany odczyt migawki — obojętnie, czy
+        // padł na bieżący klucz czy na jeden z poprzednich — jest jedyną
+        // okazją, żeby zapisać ją z powrotem pod kluczem bieżącym (cast
+        // `encrypted:array` szyfruje na nowo przy każdym zapisie). Bez
+        // osobnej migracji danych rotacja klucza domyka się sama, dokument
+        // po dokumencie, w miarę pobierania.
+        if ($snapshot !== null) {
+            $document->data_snapshot = $snapshot;
+            $document->save();
+        }
 
         $filename = Str::slug($document->number).'.pdf';
 
