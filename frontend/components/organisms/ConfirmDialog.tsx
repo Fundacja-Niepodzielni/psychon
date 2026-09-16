@@ -60,6 +60,27 @@ export default function ConfirmDialog({
     }
   }, [open]);
 
+  // Przejście w stan zapisu blokuje przycisk potwierdzenia (`disabled`).
+  // Gdy przeglądarka blokuje aktywny przycisk, zdejmuje z niego fokus "w
+  // donikąd" — leci zdarzenie `focusout` z `relatedTarget === null` (nowego
+  // celu nie ma; `focusin` w tym przypadku w ogóle nie leci, bo `<body>` nie
+  // przejmuje fokusu jak zwykły element). Nasłuch łapie tę chwilę i odsyła
+  // fokus do kontenera okna — obojętnie, czy zatwierdzenie przyszło z
+  // klawiatury, czy myszą.
+  useEffect(() => {
+    if (!open) return;
+    function handleFocusOut(event: FocusEvent) {
+      const container = dialogRef.current;
+      if (!container) return;
+      const next = event.relatedTarget;
+      if (next === null || (next instanceof Node && !container.contains(next))) {
+        container.focus();
+      }
+    }
+    document.addEventListener("focusout", handleFocusOut);
+    return () => document.removeEventListener("focusout", handleFocusOut);
+  }, [open]);
+
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     // Blok Escape — osobno od pułapki fokusu niżej, żeby dało się go
     // wyłączyć samego przy kontroli negatywnej, bez ruszania Tab. Zablokowane
@@ -106,8 +127,13 @@ export default function ConfirmDialog({
       // Klik w tło nie zamyka okna (samo "Anuluj" i Escape zamykają) i nie
       // może przenieść fokusu pod spód: domyślne zachowanie przeglądarki po
       // mousedown na elemencie bez fokusu to zdjęcie fokusu na `document.body`,
-      // więc blokujemy je tu, zanim do tego dojdzie.
-      onMouseDown={(event) => event.preventDefault()}
+      // więc blokujemy je tu, zanim do tego dojdzie. Warunek celu zdarzenia
+      // ogranicza blokadę do samego tła — mousedown, który zaczyna się w
+      // treści okna (np. przeciągnięcie zaznaczające tekst), przechodzi bez
+      // przeszkód.
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) event.preventDefault();
+      }}
     >
       <div
         ref={dialogRef}
