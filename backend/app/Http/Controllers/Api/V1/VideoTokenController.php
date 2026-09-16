@@ -42,7 +42,7 @@ class VideoTokenController extends Controller
         $course = $lesson->course;
 
         if (! $course instanceof Course) {
-            throw new ApiException(404, 'not_found', 'Nie znaleziono lekcji.');
+            throw new ApiException(404, 'not_found', 'Nie znaleziono zasobu.');
         }
 
         $user = $request->user();
@@ -50,7 +50,7 @@ class VideoTokenController extends Controller
         $visible = CourseCatalogQuery::visibleTo($user, $roles)->whereKey($course->id)->exists();
 
         if (! $visible) {
-            throw new ApiException(404, 'not_found', 'Nie znaleziono lekcji.');
+            throw new ApiException(404, 'not_found', 'Nie znaleziono zasobu.');
         }
 
         $state = CourseAccess::state($user, $course);

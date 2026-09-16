@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Route;
 | Nagrania lekcji — Bunny Stream
 |--------------------------------------------------------------------------
 | Poza numeracją pakietów hXX — to osobna, przekrojowa grupa tras, nie
-| jeden z pakietów hackathonu. Webhook Bunny NIE ISTNIEJE tu celowo: host
-| deweloperski stoi za bramką dostępu, która odpowiada zewnętrznym
-| żądaniom własnym przekierowaniem zamiast dopuścić je do aplikacji —
-| webhook przenosi się dopiero razem z docelowym hostem.
+| jeden z pakietów hackathonu. Ten plik definiuje wyłącznie trzy trasy:
+| wydanie linku do nagrania oraz dwie trasy administracyjne (zlecenie
+| przesyłki, odczyt stanu). Trasy odbierającej webhook Bunny tu nie ma —
+| żadnego kontrolera ani wpisu w tym pliku dla niej nie przygotowano.
 */
 
 Route::middleware(['auth:keycloak', 'access.active'])
