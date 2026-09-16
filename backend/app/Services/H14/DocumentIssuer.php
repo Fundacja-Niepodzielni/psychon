@@ -8,7 +8,6 @@ use App\Models\Edition;
 use App\Models\User;
 use App\Support\AuditLog;
 use App\Support\Notify;
-use App\Support\PdfService;
 use App\Support\ProgressAggregator;
 use App\Support\Settings;
 use Illuminate\Support\Facades\DB;
@@ -66,15 +65,16 @@ final class DocumentIssuer
 
             $number = self::nextNumber($edition, $type);
             $snapshot = self::buildSnapshot($user, $edition, $type, $number);
-            $path = PdfService::render(self::VIEWS[$type], $snapshot);
 
+            // Bez pliku PDF w magazynie (U-D): PDF powstaje dopiero na
+            // żądanie pobrania, prosto z zaszyfrowanej migawki poniżej —
+            // przy wydaniu nie ma go więc czego renderować ani zapisywać.
             $document = Document::create([
                 'user_id' => $user->id,
                 'edition_id' => $edition->id,
                 'type' => $type,
                 'number' => $number,
                 'data_snapshot' => $snapshot,
-                'pdf_path' => $path,
                 'generated_at' => now(),
                 'signature_status' => 'none',
             ]);
@@ -184,9 +184,15 @@ final class DocumentIssuer
     }
 
     /**
+     * Publiczna (nie tylko do użytku przy wydaniu) — polecenie jednorazowej
+     * migracji plików PDF odtwarza tą samą metodą migawkę dla wiersza, który
+     * ją utracił, żeby dwa miejsca budowania tej samej treści nie rozjechały
+     * się z czasem. `$generatedAt` pozwala odtworzeniu podać PRAWDZIWĄ datę
+     * wydania z kolumny `documents.generated_at`, zamiast dzisiejszej.
+     *
      * @return array<string, mixed>
      */
-    private static function buildSnapshot(User $user, Edition $edition, string $type, string $number): array
+    public static function buildSnapshot(User $user, Edition $edition, string $type, string $number, ?string $generatedAt = null): array
     {
         $snapshot = [
             'first_name' => $user->first_name,
@@ -201,7 +207,7 @@ final class DocumentIssuer
             'edition_starts_at' => $edition->starts_at->toDateString(),
             'edition_ends_at' => $edition->ends_at->toDateString(),
             'number' => $number,
-            'generated_at' => now()->toDateString(),
+            'generated_at' => $generatedAt ?? now()->toDateString(),
         ];
 
         if ($type === 'internship_certificate') {

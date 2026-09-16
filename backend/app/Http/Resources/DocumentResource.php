@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\URL;
 
 /**
  * @property int $id
+ * @property string $public_id
  * @property string $type
  * @property string $number
  * @property Carbon|null $generated_at
@@ -28,7 +29,7 @@ class DocumentResource extends JsonResource
             'download_url' => URL::temporarySignedRoute(
                 'documents.download',
                 now()->addMinutes(15),
-                ['document' => $this->id],
+                ['document' => $this->public_id],
             ),
         ];
     }

@@ -12,12 +12,11 @@ use App\Services\H14\DocumentTypeGate;
 use App\Support\PdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Response;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * `GET /documents`, `POST /documents/generate`, `GET /documents/{document}/download`
+ * `GET /documents`, `POST /documents/generate`, `GET /documents/{document:public_id}/download`
  * (contract H14). All logic lives in App\Services\H14 — this controller only
  * authorizes, validates, and shapes the HTTP response.
  */
@@ -55,29 +54,29 @@ class DocumentController extends Controller
         ], 201);
     }
 
-    public function download(Request $request, Document $document): BinaryFileResponse
+    public function download(Request $request, Document $document): Response
     {
+        // Właścicielka dokumentu albo administracja (DocumentPolicy) — nie
+        // ma już powodu udawać "nie znaleziono" (404): adres niesie losowy
+        // `public_id`, nie kolejny numer wiersza, więc nie da się go
+        // zgadnąć, a 403 niczego ponad to nie ujawnia.
         if ($request->user()->cannot('view', $document)) {
-            throw new ApiException(404, 'not_found', 'Nie znaleziono zasobu.');
+            throw new ApiException(403, 'forbidden', 'Brak dostępu do tego dokumentu.');
         }
 
-        // Demo/dev storage can be wiped between runs (design D7) — the
-        // snapshot is the source of truth, so the file is just re-rendered.
-        if ($document->pdf_path === null || ! Storage::disk('local')->exists($document->pdf_path)) {
-            $path = PdfService::render(
-                DocumentIssuer::viewFor($document->type),
-                $document->data_snapshot ?? [],
-            );
-            $document->forceFill(['pdf_path' => $path])->save();
-        }
-
-        $extension = pathinfo($document->pdf_path, PATHINFO_EXTENSION) ?: 'html';
-        $filename = Str::slug($document->number).'.'.$extension;
-
-        return response()->download(
-            Storage::disk('local')->path($document->pdf_path),
-            $filename,
-            ['Content-Type' => Storage::disk('local')->mimeType($document->pdf_path) ?: 'text/html'],
+        // Bez pliku w magazynie (U-D): PDF powstaje tu i teraz, z
+        // zaszyfrowanej migawki, i nigdy nie trafia na dysk — trafia od
+        // razu do odpowiedzi HTTP.
+        $bytes = PdfService::renderBytes(
+            DocumentIssuer::viewFor($document->type),
+            $document->data_snapshot ?? [],
         );
+
+        $filename = Str::slug($document->number).'.pdf';
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 }

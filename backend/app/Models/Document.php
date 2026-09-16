@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Document extends Model
 {
@@ -17,6 +18,15 @@ class Document extends Model
         'generated_at',
         'signature_status',
     ];
+
+    protected static function booted(): void
+    {
+        // Identyfikator do adresu pobrania (patrz migracja `public_id`) —
+        // losowy niezależnie od tego, czy ktoś go poda przy tworzeniu.
+        static::creating(function (self $document): void {
+            $document->public_id ??= (string) Str::uuid();
+        });
+    }
 
     protected function casts(): array
     {
