@@ -115,7 +115,7 @@ export default function ParticipantStartPage() {
           Program ukończony {formatDateTime(programCompletedAt)}.{" "}
           <Link
             href="/panel/po-programie"
-            className="font-medium text-info-dark underline focus-visible:focus-ring"
+            className="inline-flex min-h-11 items-center font-medium text-info-dark underline focus-visible:focus-ring"
           >
             Przejdź do ekranu po programie
           </Link>

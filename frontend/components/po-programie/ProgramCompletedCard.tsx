@@ -10,7 +10,8 @@ function formatDate(iso: string): string {
   });
 }
 
-const linkClass = "text-primary underline focus-visible:focus-ring";
+const linkClass =
+  "inline-flex min-h-11 items-center text-primary underline focus-visible:focus-ring";
 
 export interface ProgramCompletedCardProps {
   completedAt: string;
@@ -18,7 +19,7 @@ export interface ProgramCompletedCardProps {
 }
 
 /**
- * Stan „program ukończony" ekranu `/panel/po-programie` (poz. 8). Certyfikat
+ * Stan „program ukończony" ekranu `/panel/po-programie`. Certyfikat
  * jest odnośnikiem tylko dla `volunteer` — `role:volunteer` na
  * `GET /certificate/conditions` (`backend/routes/api/h13.php:26`) odrzuca
  * `student`, więc front nie obiecuje linku, którego serwer i tak nie spełni.

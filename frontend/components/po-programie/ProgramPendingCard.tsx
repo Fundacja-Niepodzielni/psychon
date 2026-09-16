@@ -1,7 +1,7 @@
 import Card from "@/components/ui/Card";
 
 /**
- * Stan „program jeszcze nieukończony" ekranu `/panel/po-programie` (poz. 8).
+ * Stan „program jeszcze nieukończony" ekranu `/panel/po-programie`.
  * Bez odnośników — nic tu nie prowadzi do trasy, której serwer jeszcze nie
  * pozwoli otworzyć (`program_completed_at` warunkuje H13/H14 po stronie API).
  */

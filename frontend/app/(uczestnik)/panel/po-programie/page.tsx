@@ -17,11 +17,11 @@ interface Me {
 const LOAD_ERROR_MESSAGE = "Nie udało się wczytać ekranu. Spróbuj ponownie.";
 
 /**
- * Ekran po ukończeniu programu (poz. 8) — `GET /me`. `program_completed_at`
+ * Ekran po ukończeniu programu — `GET /me`. `program_completed_at`
  * ustawione → status ukończenia + odnośniki do dokumentów, kursów i (dla
  * `volunteer`) certyfikatu. Puste → stan informacyjny bez odnośników;
- * zgłoszenie dalszej współpracy nie jest tu budowane — backend go jeszcze
- * nie ma (brak dla lidera w zleceniu).
+ * trasy zgłoszenia dalszej współpracy jeszcze nie istnieją, więc formularz
+ * nie jest tu budowany.
  */
 export default function PoProgramiePage() {
   const [me, setMe] = useState<Me | null>(null);
