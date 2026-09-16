@@ -2,6 +2,7 @@
 
 namespace App\Services\Keycloak;
 
+use App\Exceptions\AccountNotLinkedException;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -63,7 +64,19 @@ class KeycloakGuardResolver
         $user = User::query()->where('keycloak_sub', $principal->sub)->first();
 
         if ($user === null) {
-            return null;
+            // JEDYNE wyjście z tej metody, które nazywa powód odmowy i oddaje
+            // pytającemu `sub` z jego własnego tokena — po to, żeby osoba,
+            // która właśnie się zalogowała, mogła przepisać ten identyfikator
+            // administratorowi. Stoi TUTAJ, a nie wyżej, celowo: w tym miejscu
+            // token przeszedł już pełną walidację (podpis, wystawca, odbiorca,
+            // ważność) ORAZ sprawdzenie unieważnionej sesji, więc `sub` wraca
+            // wyłącznie do posiadacza tokena, któremu ta aplikacja ufa.
+            // Pozostałe `return null` w tej metodzie znaczą co innego (brak
+            // nagłówka, token nieważny, sesja wylogowana back-channel, konto
+            // zablokowane/anonimizowane) i zostają nierozróżnialne.
+            // `sub` nie idzie przy tym do żadnego dziennika — patrz
+            // `AccountNotLinkedException` (nie jest raportowany).
+            throw new AccountNotLinkedException($principal->sub);
         }
 
         if (in_array($user->status, ['blocked', 'deleted'], true)) {
