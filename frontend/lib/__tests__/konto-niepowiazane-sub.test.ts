@@ -6,8 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
  * i wyciąga z niej `error.code`/`error.reason.sub`.
  *
  * K1 — koperta kontraktu §1 `{"error":{"code":"konto_niepowiazane",
- * "reason":{"sub":"…"}}}` (kształt z rozstrzygnięcia lidera 16.09 13:5x,
- * `KRYTERIA-OD-108-ddb52ad.md`) → funkcja zwraca DOKŁADNIE tę wartość `sub`.
+ * "reason":{"sub":"…"}}}` → funkcja zwraca DOKŁADNIE tę wartość `sub`.
  * K3 — kontrola negatywna: token nieważny, `error.code === "unauthenticated"`,
  * BRAK `error.reason.sub` → funkcja nie zwraca identyfikatora. Zmienia się
  * jedna ścieżka (K1), nie obie.
@@ -120,7 +119,7 @@ describe("checkAccountBinding — K3: kontrola negatywna, token nieważny", () =
   });
 });
 
-describe("checkAccountBinding — ZLECENIE-127 K1: awaria zamiast 401", () => {
+describe("checkAccountBinding — awaria zamiast 401", () => {
   it("fetch odrzuca obietnicę (błąd sieci) → code KONTO_BINDING_AWARIA, nie null", async () => {
     const { checkAccountBinding, KONTO_BINDING_AWARIA } = await swiezyModul();
     vi.stubGlobal(
@@ -148,6 +147,61 @@ describe("checkAccountBinding — ZLECENIE-127 K1: awaria zamiast 401", () => {
     );
 
     const wynik = await checkAccountBinding();
+    expect(wynik).toEqual({ code: KONTO_BINDING_AWARIA });
+  });
+});
+
+/**
+ * Przerwanie zapytania: ekran ma własny limit czasu i po jego upływie
+ * ODWOŁUJE zapytanie, zamiast tylko przestać na nie patrzeć. Funkcja musi
+ * więc przekazać `signal` dalej do `fetch` i potraktować przerwanie jak
+ * awarię, a nie jak „nic do pokazania" (`null`).
+ */
+describe("checkAccountBinding — przerwanie zapytania sygnałem", () => {
+  it("przekazuje otrzymany signal do fetch /me", async () => {
+    const { checkAccountBinding } = await swiezyModul();
+    const wywolania: Array<{ url: string; init?: { signal?: AbortSignal } }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: { signal?: AbortSignal }) => {
+        wywolania.push({ url, init });
+        if (url.includes("/api/auth/session")) {
+          return {
+            ok: true,
+            json: async () => ({ accessToken: "token-abc", expiresAt: Date.now() + 600_000 }),
+          };
+        }
+        return { ok: false, status: 401, json: async () => ({ error: { code: "unauthenticated" } }) };
+      }),
+    );
+
+    const przerwanie = new AbortController();
+    await checkAccountBinding(przerwanie.signal);
+
+    const doMe = wywolania.find((w) => w.url.endsWith("/me"));
+    expect(doMe?.init?.signal).toBe(przerwanie.signal);
+  });
+
+  it("fetch odrzucony przez przerwanie → KONTO_BINDING_AWARIA, nie null", async () => {
+    const { checkAccountBinding, KONTO_BINDING_AWARIA } = await swiezyModul();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: { signal?: AbortSignal }) => {
+        if (url.includes("/api/auth/session")) {
+          return {
+            ok: true,
+            json: async () => ({ accessToken: "token-abc", expiresAt: Date.now() + 600_000 }),
+          };
+        }
+        if (init?.signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
+        return { ok: true, status: 200, json: async () => ({ data: {} }) };
+      }),
+    );
+
+    const przerwanie = new AbortController();
+    przerwanie.abort();
+    const wynik = await checkAccountBinding(przerwanie.signal);
+
     expect(wynik).toEqual({ code: KONTO_BINDING_AWARIA });
   });
 });

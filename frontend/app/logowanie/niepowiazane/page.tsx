@@ -9,6 +9,7 @@ import {
   checkAccountBinding,
   endSession,
   KONTO_BINDING_AWARIA,
+  KONTO_BINDING_LIMIT_MS,
   type AccountBindingCheck,
 } from "@/lib/api";
 
@@ -20,21 +21,52 @@ import {
  * niżej ją zamyka, tym samym wzorcem co `/konto` (adres wylogowania Kont
  * czytany przed zakończeniem sesji aplikacji).
  *
- * Identyfikator do przekazania administratorowi (`ZLECENIE-125`): sprawdzony
+ * Identyfikator do przekazania administratorowi: sprawdzony
  * przez `checkAccountBinding()` po zamontowaniu ekranu — dopiero WTEDY, gdy
  * odpowiedź niesie `error.code === "konto_niepowiazane"` razem z
  * `error.reason.sub`, pokazujemy go z przyciskiem Kopiuj. Odpowiedź BEZ
  * `sub` (token nieważny, `error.code === "unauthenticated"`) zostawia ekran
  * dotychczasowy — bez miejsca na identyfikator i bez przycisku.
  *
- * Awaria zapytania (`ZLECENIE-127`): gdy `checkAccountBinding()` w ogóle nie
- * dostanie czytelnej odpowiedzi 401 (sieć, 5xx, timeout), zwraca
- * `{ code: KONTO_BINDING_AWARIA }` — ekran pokazuje wtedy osobny, krótki
- * komunikat o chwilowej awarii z przyciskiem ponowienia, a NIE dotychczasowy
- * tekst o braku powiązania (ten kłamałby o przyczynie — patrz nagłówek
- * pliku zlecenia). Ponowienie jest wyłącznie na kliknięcie: żadnego
+ * Awaria zapytania: gdy `checkAccountBinding()` w ogóle nie dostanie
+ * czytelnej odpowiedzi 401 (sieć, 5xx, przekroczony limit czasu), ekran
+ * pokazuje osobny, krótki komunikat o chwilowej awarii z przyciskiem
+ * ponowienia, a NIE dotychczasowy tekst o braku powiązania (ten kłamałby
+ * o przyczynie). Ponowienie jest wyłącznie na kliknięcie: żadnego
  * automatycznego ponawiania w pętli przy trwałej awarii.
+ *
+ * Limit czasu (`KONTO_BINDING_LIMIT_MS`) jest tutaj, a nie tylko przy samym
+ * `fetch`, bo wisieć może każdy człon łańcucha (odczyt tokena sesji, sieć,
+ * serwer bez odpowiedzi). Po jego upływie ekran przerywa zapytanie i
+ * pokazuje awarię, a spóźniona odpowiedź NIE nadpisuje już tego stanu.
  */
+/**
+ * Sprawdzenie z własnym limitem czasu: pierwsze rozstrzygnięcie wygrywa.
+ * Po upływie limitu zapytanie jest przerywane (`AbortController`), a wynik
+ * to awaria — obietnica jest już rozstrzygnięta, więc spóźniona odpowiedź
+ * nie ma jak wrócić na ekran.
+ */
+function sprawdzZLimitem(): Promise<AccountBindingCheck | null> {
+  const przerwanie = new AbortController();
+  return new Promise((resolve) => {
+    const zegar = setTimeout(() => {
+      przerwanie.abort();
+      resolve({ code: KONTO_BINDING_AWARIA });
+    }, KONTO_BINDING_LIMIT_MS);
+
+    void checkAccountBinding(przerwanie.signal).then(
+      (result) => {
+        clearTimeout(zegar);
+        resolve(result);
+      },
+      () => {
+        clearTimeout(zegar);
+        resolve({ code: KONTO_BINDING_AWARIA });
+      },
+    );
+  });
+}
+
 export default function NiepowiazanePage() {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
@@ -53,7 +85,7 @@ export default function NiepowiazanePage() {
 
   useEffect(() => {
     let cancelled = false;
-    void checkAccountBinding().then((result) => {
+    void sprawdzZLimitem().then((result) => {
       if (!cancelled) zastosujWynik(result);
     });
     return () => {
@@ -63,7 +95,7 @@ export default function NiepowiazanePage() {
 
   async function ponowSprawdzenie() {
     setSprawdzanie(true);
-    const result = await checkAccountBinding();
+    const result = await sprawdzZLimitem();
     zastosujWynik(result);
     setSprawdzanie(false);
   }

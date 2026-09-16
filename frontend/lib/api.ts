@@ -312,6 +312,19 @@ export interface AccountBindingCheck {
 export const KONTO_BINDING_AWARIA = "awaria" as const;
 
 /**
+ * Limit czasu (ms) na sprawdzenie powiązania konta. Zapytanie, które nie
+ * rozstrzyga się do tego czasu, jest PRZERYWANE i liczone jak awaria — bo
+ * ekran bez limitu zostaje na komunikacie o braku powiązania, który przy
+ * wiszącym zapytaniu jest nieprawdą (`fetch` sam z siebie nie ma limitu).
+ *
+ * 8 s: z zapasem powyżej realnej odpowiedzi `GET /me` na sieci komórkowej
+ * (setki ms, przy słabym zasięgu pojedyncze sekundy), a wyraźnie poniżej
+ * progu, po którym użytkownik uzna nieruchomy ekran za prawdziwą odpowiedź
+ * i zadzwoni do administratora z fałszywą diagnozą.
+ */
+export const KONTO_BINDING_LIMIT_MS = 8_000;
+
+/**
  * Sprawdza WPROST (surowy `fetch`, nie `request()`/`api()`), czy sesja jest
  * ważna, ale `sub` z tokena nie jest jeszcze powiązany z żadnym kontem
  * PsychON — używane wyłącznie przez ekran `/logowanie/niepowiazane`, żeby
@@ -332,17 +345,22 @@ export const KONTO_BINDING_AWARIA = "awaria" as const;
  * `{ code: KONTO_BINDING_AWARIA }`, gdy zapytanie w ogóle nie dostało
  * czytelnej odpowiedzi 401 (sieć padła, serwer oddał 5xx albo coś, co nie
  * parsuje się jak koperta błędu) — WYŁĄCZNIE ta gałąź ma dać ekranowi znać
- * o chwilowej awarii; ścieżki 401 z czytelną kopertą (K2, K3 `ZLECENIE-125`)
- * zostają bez zmian.
+ * o chwilowej awarii; ścieżki 401 z czytelną kopertą zostają bez zmian.
+ *
+ * `signal` pozwala wołającemu PRZERWAĆ zapytanie (limit czasu ekranu,
+ * odmontowanie komponentu). Przerwane zapytanie odrzuca obietnicę `fetch`,
+ * więc wraca tą samą gałęzią co błąd sieci: `{ code: KONTO_BINDING_AWARIA }`.
  */
-export async function checkAccountBinding(): Promise<AccountBindingCheck | null> {
+export async function checkAccountBinding(
+  signal?: AbortSignal,
+): Promise<AccountBindingCheck | null> {
   const token = await getToken();
   if (!token) return null;
 
   const headers = new Headers({ Accept: "application/json", Authorization: `Bearer ${token}` });
   let res: Response;
   try {
-    res = await fetch(`${baseUrl()}/me`, { headers });
+    res = await fetch(`${baseUrl()}/me`, { headers, signal });
   } catch {
     return { code: KONTO_BINDING_AWARIA };
   }
