@@ -49,20 +49,20 @@ function extractUtilityBlock(source: string, name: string): string {
 const focusRingBlock = extractUtilityBlock(cssCode, "focus-ring");
 
 describe("tokeny P2 w app/globals.css", () => {
-  it("F-90: pierścień fokusu ma 3px w --psy-violet-dark (#1500BB), nie zielony z alfą < 3:1", () => {
+  it("pierścień fokusu ma 3px w --psy-violet-dark (#1500BB), nie zielony z alfą < 3:1", () => {
     expect(css).toMatch(
       /--psy-focus-ring:\s*0 0 0 3px var\(--psy-violet-dark\)/,
     );
   });
 
-  it("F-89: Roboto ładowany z plików lokalnych /fonts/, nie z CDN Google", () => {
+  it("Roboto ładowany z plików lokalnych /fonts/, nie z CDN Google", () => {
     expect(css).toMatch(/src:\s*url\("\/fonts\/roboto-v51-latin-ext\.woff2"\)/);
     expect(css).toMatch(/src:\s*url\("\/fonts\/roboto-v51-latin\.woff2"\)/);
     expect(css).not.toMatch(/fonts\.googleapis\.com/);
     expect(css).not.toMatch(/fonts\.gstatic\.com/);
   });
 
-  it("F-91: reguła prefers-reduced-motion: reduce jest zdefiniowana", () => {
+  it("reguła prefers-reduced-motion: reduce jest zdefiniowana", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)/);
   });
 
@@ -71,18 +71,18 @@ describe("tokeny P2 w app/globals.css", () => {
     expect(css).not.toMatch(/--psy-text-strong:\s*#1500bb/i);
   });
 
-  it("F-89: app/layout.tsx nie ładuje Google Fonts przez <link>/CDN — Roboto jest wyłącznie lokalny", () => {
+  it("app/layout.tsx nie ładuje Google Fonts przez <link>/CDN — Roboto jest wyłącznie lokalny", () => {
     expect(layoutSource).not.toMatch(/fonts\.googleapis\.com/);
     expect(layoutSource).not.toMatch(/fonts\.gstatic\.com/);
     expect(layoutSource).not.toMatch(/<link[^>]*fonts/i);
   });
 
-  it("F-90: @utility focus-ring naprawdę stosuje --psy-focus-ring (box-shadow), nie samą pustą regułę", () => {
+  it("@utility focus-ring naprawdę stosuje --psy-focus-ring (box-shadow), nie samą pustą regułę", () => {
     expect(focusRingBlock).toMatch(/box-shadow:\s*var\(--psy-focus-ring\)/);
     expect(focusRingBlock).not.toMatch(/box-shadow:\s*none/);
   });
 
-  it("F-90: outline: none w @utility focus-ring ma zamiennik widoczny w trybie forced-colors (Z-9)", () => {
+  it("outline: none w @utility focus-ring ma zamiennik widoczny w trybie forced-colors (Z-9)", () => {
     expect(focusRingBlock).toMatch(/outline:\s*none/);
     expect(focusRingBlock).toMatch(/@media \(forced-colors:\s*active\)/);
     // Zamiennik musi być realnym outline w kolorze systemowym, nie pustym blokiem.
@@ -95,7 +95,7 @@ describe("tokeny P2 w app/globals.css", () => {
     );
   });
 
-  it("liczba reguł forced-colors w globals.css (w kodzie, bez komentarzy) jest co najmniej 1 (F-90 domknięte w całości)", () => {
+  it("liczba reguł forced-colors w globals.css (w kodzie, bez komentarzy) jest co najmniej 1 (pierścień fokusu domknięty w całości)", () => {
     const matches = cssCode.match(/@media \(forced-colors:\s*active\)/g) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(1);
   });

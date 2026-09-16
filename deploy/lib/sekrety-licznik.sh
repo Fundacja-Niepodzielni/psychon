@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wspolna logika kroku "3e - sekrety w tresci commitu" (F-106), zrodlowana
+# Wspolna logika kroku "3e - sekrety w tresci commitu", zrodlowana
 # ZAROWNO przez deploy/bramka-hosta.sh, JAK I przez
 # deploy/tests/test-bramka-sekrety.sh - jedno miejsce, jedna prawda o tym,
 # jak liczymy trafienia gitleaksa i jak wolamy sam skaner. Ten plik NIE ma
@@ -19,10 +19,10 @@
 #                    end-to-end w test-bramka-sekrety.sh, ktory to sprawdza na
 #                    SUROWYM logu, przed jakimkolwiek filtrem pol);
 #   -v             - bez tego gitleaks `dir` NIE drukuje naglowkow
-#                    RuleID/File/Line WCALE (F-106) - sekrety_policz_trafienia
+#                    RuleID/File/Line WCALE - sekrety_policz_trafienia
 #                    nizej bez tych naglowkow nie ma czym potwierdzic
 #                    podsumowania.
-#   -l debug       - F-133: bez tego gitleaks NIE mowi, KTORE pliki pominal
+#   -l debug       - bez tego gitleaks NIE mowi, KTORE pliki pominal
 #                    (linie "DBG skipping file: global allowlist path=...",
 #                    "DBG skipping empty file path=..." i "DBG skipping binary
 #                    file mime_type=... path=..." - TRZY klasy, zmierzone
@@ -236,7 +236,7 @@ sekrety_oczekiwane_bajty() {
 # wyeksportowanych plikow i konczy sie kodem 0 - TYLKO gdy `git archive`
 # powiodl sie I eksport ma co najmniej 1 plik.
 #
-# W obu pozostalych przypadkach (F-107):
+# W obu pozostalych przypadkach:
 #   - `git archive` pada (np. poza drzewem git, uszkodzony obiekt) - u nas
 #     zmierzone shimem jako EXIT=128;
 #   - `git archive` konczy sie EXIT=0, ale eksport ma 0 plikow (np. `tar`
@@ -250,7 +250,7 @@ sekrety_eksportuj_tresc() {
   local rev="$1" katalog="$2" kod_archive kod_tar plikow
   local -a status_potoku
   git archive --format=tar "$rev" | tar -x -C "$katalog"
-  # Oba czlony potoku sprawdzone WPROST z PIPESTATUS - nie tylko [0] (F-123):
+  # Oba czlony potoku sprawdzone WPROST z PIPESTATUS - nie tylko [0]:
   # `git archive` moze "udac sie" (EXIT=0), a `tar` mimo to obrobic okrojony
   # strumien z bledem (np. strumien przyciety w polowie) - taki eksport ma
   # skonczyc sie tu, zanim gitleaks dostanie do rak niepelna tresc. Cala
@@ -328,7 +328,7 @@ sekrety_pola_do_logu() {
 # Liczba plikow sledzonych przez git na REV, policzona NIEZALEZNIE od
 # eksportu/skanu (`git ls-tree`, nie `git archive` + `tar` + `find`) - to jest
 # wzorzec, z ktorym `sekrety_sprawdz_pokrycie` nizej porownuje to, co gitleaks
-# NAPRAWDE obejrzal (F-122/F-123).
+# NAPRAWDE obejrzal.
 sekrety_git_ls_plikow() {
   local rev="$1"
   git ls-tree -r --name-only "$rev" | wc -l

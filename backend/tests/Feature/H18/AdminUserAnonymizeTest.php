@@ -306,7 +306,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
     }
 
     /**
-     * F-19: skasowanie pliku z dysku nie podlega wycofaniu transakcji SQL —
+     * Skasowanie pliku z dysku nie podlega wycofaniu transakcji SQL —
      * nie ma czego wycofać, `ROLLBACK` nie przywraca bajtów, które fizycznie
      * zniknęły. Świadek wymusza awarię PO kroku plikowym (zbieranie ścieżek +
      * zerowanie kolumn) przez podpięcie się pod zdarzenie Eloquenta
@@ -354,7 +354,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
 
         // Wymuszona awaria PO kroku plikowym procedury.
         AuditLogEntry::creating(function (): void {
-            throw new RuntimeException('wymuszona awaria dziennika audytu (świadek F-19)');
+            throw new RuntimeException('wymuszona awaria dziennika audytu');
         });
 
         try {
@@ -383,7 +383,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
             );
             $this->assertTrue(
                 Storage::disk('local')->exists($certificatePath),
-                'plik certyfikatu zniknął z dysku, choć transakcja się wycofała — kasowanie pliku nie podlega rollbackowi (F-19)'
+                'plik certyfikatu zniknął z dysku, choć transakcja się wycofała — kasowanie pliku nie podlega rollbackowi'
             );
 
             $this->assertSame(
@@ -393,7 +393,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
             );
             $this->assertTrue(
                 Storage::disk('local')->exists($documentPath),
-                'plik dokumentu profilu zniknął z dysku, choć transakcja się wycofała — kasowanie pliku nie podlega rollbackowi (F-19)'
+                'plik dokumentu profilu zniknął z dysku, choć transakcja się wycofała — kasowanie pliku nie podlega rollbackowi'
             );
         } finally {
             AuditLogEntry::flushEventListeners();
@@ -401,7 +401,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
     }
 
     /**
-     * F-96: `test_file_deletion_does_not_survive_a_rolled_back_transaction`
+     * `test_file_deletion_does_not_survive_a_rolled_back_transaction`
      * wymusza awarię WEWNĄTRZ transakcji procedury, w miejscu, gdzie
      * `AuditLog::record()` sam rzuca wyjątek — a to znaczy, że wszystko PO
      * tym wywołaniu (w tym samo `deleteFiles()`, obojętnie czy wołane przez
@@ -422,8 +422,8 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
      * miejscu (WEWNĄTRZ transakcji procedury, czyli wewnątrz zagnieżdżonego
      * savepointu), plik zniknąłby z dysku natychmiast — zanim zewnętrzna
      * transakcja w ogóle zdąży się wycofać — bo skasowanie pliku z dysku nie
-     * jest częścią żadnej transakcji SQL i nie cofa go żaden `ROLLBACK`
-     * (F-19). Druga część świadka mierzy nogę pozytywną: zwykłe, zatwierdzone
+     * jest częścią żadnej transakcji SQL i nie cofa go żaden `ROLLBACK`.
+     * Druga część świadka mierzy nogę pozytywną: zwykłe, zatwierdzone
      * wywołanie procedury (bez żadnej zewnętrznej transakcji dookoła) ma
      * faktycznie skasować plik.
      */
@@ -449,13 +449,13 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
             DB::transaction(function () use ($grad, $admin): void {
                 UserAnonymizer::run($grad->fresh(), $admin);
 
-                throw new RuntimeException('wymuszony rollback zewnętrznej transakcji (świadek F-96)');
+                throw new RuntimeException('wymuszony rollback zewnętrznej transakcji');
             });
         } catch (RuntimeException $e) {
             $caught = $e;
         }
         $this->assertNotNull($caught, 'oczekiwano wyjątku wymuszającego rollback zewnętrznej transakcji');
-        $this->assertSame('wymuszony rollback zewnętrznej transakcji (świadek F-96)', $caught->getMessage());
+        $this->assertSame('wymuszony rollback zewnętrznej transakcji', $caught->getMessage());
 
         $afterRollback = $grad->fresh();
         $this->assertNull($afterRollback->anonymized_at, 'konto wygląda na zanonimizowane mimo wycofanej zewnętrznej transakcji');
@@ -480,7 +480,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
     }
 
     /**
-     * K2 (noga C, decyzja D-20260909-21): dyplom i zaświadczenie o
+     * K2 (noga C): dyplom i zaświadczenie o
      * niekaralności wgrane PRAWDZIWĄ trasą uploadu
      * (`POST /psychologist-profile/documents`) to cudze załączniki, nie
      * dokumenty wystawione przez Fundację — inaczej niż certyfikat, po

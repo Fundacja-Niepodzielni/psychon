@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Test LOGIKI kroku "3e - sekrety w tresci commitu" z deploy/bramka-hosta.sh
-# (F-106). Zrodlowuje DOKLADNIE ten sam plik co bramka -
+# Test LOGIKI kroku "3e - sekrety w tresci commitu" z deploy/bramka-hosta.sh.
+# Zrodlowuje DOKLADNIE ten sam plik co bramka -
 # deploy/lib/sekrety-licznik.sh - i wywoluje jego funkcje na fixture'ach oraz
 # (CZESC 2) na PRAWDZIWYM wyjsciu gitleaksa. Ten skrypt NIE MA wlasnej kopii
 # logiki licznika/kontroli zgodnosci/filtra pol - kazda zmiana w bibliotece
@@ -8,7 +8,7 @@
 #
 # CZESC 1 nizej dziala na SPREPAROWANYCH logach (fixture'ach) - imituja one
 # rozne wyjscia gitleaksa (zgodne, niezgodne, brak podsumowania), bez
-# dotykania Dockera. CZESC 2 (przypadki 5-7, F-107) mierzy
+# dotykania Dockera. CZESC 2 (przypadki 5-7) mierzy
 # sekrety_eksportuj_tresc: `git archive` zepsuty albo pusty (shim na PATH,
 # bez Dockera) MA konczyc sie kodem 2 z czytelnym komunikatem, normalny
 # eksport HEAD MA sie udac. CZESC 3 (przypadki 8-9) jest END-TO-END: prawdziwy
@@ -17,8 +17,8 @@
 # prawdziwy sekret nigdzie nie wystapil), potem jako kontrola negatywna na
 # prawdziwym eksporcie HEAD (0 trafien oczekiwane) - obie przez
 # sekrety_uruchom_gitleaks, TA SAMA funkcja/plik co w bramce. Bez Dockera oba
-# przypadki sa NIEZMIERZONE (F-108), nie ZALICZONE - kod wyjscia calego
-# skryptu to wtedy 3, nie 0. CZESC 4 (przypadek 10, F-108) mierzy WPROST
+# przypadki sa NIEZMIERZONE, nie ZALICZONE - kod wyjscia calego
+# skryptu to wtedy 3, nie 0. CZESC 4 (przypadek 10) mierzy WPROST
 # sekrety_pola_do_logu na fiksturze z polami Secret:/Match:, niezaleznie od
 # --redact.
 set -uo pipefail
@@ -63,7 +63,7 @@ EOF
 # --- Fixture NIEZGODNOSC (podsumowanie mowi 2, naglowek jest tylko 1) -------
 # Tak wyglada log, ktoremu NIE MOZNA ufac bez kontroli: albo `-v` czesciowo
 # obcieto (log w locie, przerwane polaczenie), albo gitleaks kiedys zmieni
-# format. Licznik OPARTY WYLACZNIE o naglowki (sprzed F-106) tego nie widzi -
+# format. Licznik OPARTY WYLACZNIE o naglowki tego nie widzi -
 # liczy tylko to, co jest, i milczy o niezgodnosci z podsumowaniem.
 LOG_NIEZGODNY="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_NIEZGODNY")
 cat > "$LOG_NIEZGODNY" <<'EOF'
@@ -120,7 +120,7 @@ sprawdz_fixture "2 fixture 1 trafienie z polami, zgodne (1)" "$LOG_1" "1" 0
 sprawdz_fixture "3 fixture niezgodnosc (podsumowanie 2, naglowkow kontrolnych 1) - wykryte" "$LOG_NIEZGODNY" "NIEZGODNE" 1
 sprawdz_fixture "4 fixture brak linii podsumowania - NIEZMIERZONE" "$LOG_NIEZMIERZONY" "NIEZMIERZONE" 1
 
-# ============================ CZESC 2: sekrety_eksportuj_tresc (F-107) =====
+# ============================ CZESC 2: sekrety_eksportuj_tresc ============
 # `git archive` jest tu ZASTAPIONY SHIMEM na PATH (nie tykamy prawdziwego
 # repo) - shim odpowiada TYLKO na podkomende `archive`, bo funkcja
 # sekrety_eksportuj_tresc nie wola gita inaczej.
@@ -141,7 +141,7 @@ cat > "$KATALOG_SHIM_PUSTY/git" <<'EOF'
 # archive "udaje sie" (EXIT=0) i wypisuje POPRAWNE, ale PUSTE archiwum tar
 # (1024 bajty zer - dwa bloki koncowe, ktore `tar` rozpoznaje jako prawidlowy
 # koniec archiwum, EXIT=0) - `tar -x` na takim wejsciu konczy sie EXIT=0 i
-# eksportuje 0 plikow (F-107, przypadek "gitleaks skanuje 0 B i pisze no
+# eksportuje 0 plikow (przypadek "gitleaks skanuje 0 B i pisze no
 # leaks found" bez tej poprawki). Rozny przypadek niz PIPESTATUS[1]!=0 nizej
 # (przypadek 11): tu OBA czlony potoku "udaja sie", a mimo to trescia nie ma
 # nic do zmierzenia.
@@ -192,7 +192,7 @@ if [[ "$NIEZAL_K3" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo 
 # Wywolanie gitleaksa idzie przez sekrety_uruchom_gitleaks - TA SAMA funkcja
 # co w kroku 3e bramki.
 if ! command -v docker >/dev/null 2>&1; then
-  # Brak Dockera NIE MA konczyc sie cicha zieleniia (F-108, druga uwaga):
+  # Brak Dockera NIE MA konczyc sie cicha zieleniia (druga uwaga):
   # przypadki end-to-end ponizej (8: sztuczne trafienie, 9: kontrola
   # negatywna na czystym HEAD) sa wtedy NIEZMIERZONE, nie ZALICZONE - licza
   # sie do osobnego licznika, ktory na koncu pliku zabiera EXIT=0.
@@ -323,16 +323,16 @@ else
     echo "  WYNIK: ZALICZONY"
   fi
 
-  # ========== CZESC 5b: F-133 - regula pomijania wyliczona w biegu =========
+  # ========== CZESC 5b: regula pomijania wyliczona w biegu =================
   # $LOG_K3B/$KATALOG_EKSPORT_K3B/$PLIKOW_K3B sa juz gotowe z przypadku 9
   # (ten sam prawdziwy bieg gitleaksa na czystym HEAD) - NIE mierzymy drugi
   # raz tego samego skanu, tylko czytamy z niego dodatkowe informacje.
-  echo "=== 18 F-133 K1: regula pomijania nazwana i zmierzona (2 z listy, 2 spoza) ==="
+  echo "=== 18 K1: regula pomijania nazwana i zmierzona (2 z listy, 2 spoza) ==="
   LISTA_POMINIETE_K1="$(sekrety_pliki_pominiete "$LOG_K3B")"
   echo "  plikow pominietych przez gitleaks: $(printf '%s\n' "$LISTA_POMINIETE_K1" | grep -c .)"
   NIEZAL_K1F133=0
   for P in "frontend/package-lock.json" "backend/public/favicon.ico"; do
-    printf '%s\n' "$LISTA_POMINIETE_K1" | grep -qxF "$P" || { echo "  WYNIK: NIEZALICZONY - '$P' (z listy F-133) oczekiwany wsrod pominietych, nie ma go"; NIEZAL_K1F133=1; }
+    printf '%s\n' "$LISTA_POMINIETE_K1" | grep -qxF "$P" || { echo "  WYNIK: NIEZALICZONY - '$P' (z listy oczekiwanej) oczekiwany wsrod pominietych, nie ma go"; NIEZAL_K1F133=1; }
   done
   for P in "deploy/lib/sekrety-licznik.sh" "frontend/package.json"; do
     printf '%s\n' "$LISTA_POMINIETE_K1" | grep -qxF "$P" && { echo "  WYNIK: NIEZALICZONY - '$P' (spoza listy) NIE powinien byc pominiety, a jest"; NIEZAL_K1F133=1; }
@@ -417,8 +417,8 @@ else
     NIEZALICZONE=$((NIEZALICZONE + 1))
   fi
 
-  # --- 21 F-133 K4: perturbacja prawdziwa - strumien przyciety (jak F-123) --
-  echo "=== 21 F-133 K4: strumien gitleaksa przyciety (jak F-123) -> czerwone ==="
+  # --- 21 K4: perturbacja prawdziwa - strumien przyciety --------------------
+  echo "=== 21 K4: strumien gitleaksa przyciety -> czerwone ==="
   EKSP_K4="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K4")
   (cd "$REPO_ROOT" && git archive --format=tar HEAD) | head -c 40000 | tar -x -C "$EKSP_K4" 2>/dev/null
   PLIKOW_ZM_K4="$(find "$EKSP_K4" -type f | wc -l)"
@@ -434,8 +434,8 @@ else
   [[ "$RC_POKR_K4" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano czerwonego pokrycia na przycietym strumieniu"; NIEZAL_K4F133=1; }
   if [[ "$NIEZAL_K4F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
-  # --- 22 F-133 K5: perturbacja nowa - usuniety jeden plik tekstowy z eksportu
-  echo "=== 22 F-133 K5: jeden plik tekstowy usuniety z eksportu (spoza listy pomijanych) -> czerwone ==="
+  # --- 22 K5: perturbacja nowa - usuniety jeden plik tekstowy z eksportu ----
+  echo "=== 22 K5: jeden plik tekstowy usuniety z eksportu (spoza listy pomijanych) -> czerwone ==="
   EKSP_K5="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K5")
   PLIKOW_PRZED_K5="$(cd "$REPO_ROOT" && sekrety_eksportuj_tresc HEAD "$EKSP_K5")"
   PLIK_USUN_K5="$(find "$EKSP_K5/backend/tests" -name "*.php" -size +2k -size -20k 2>/dev/null | head -1)"
@@ -511,7 +511,7 @@ else
   if [[ "$NIEZAL_K7F143" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 fi
 
-# ============================ CZESC 4: filtr pol (F-108) ===================
+# ============================ CZESC 4: filtr pol ===========================
 # `sekrety_pola_do_logu` NIE MA byc zielony tylko dlatego, ze --redact
 # ukryl tresc sekretu wczesniej (K4/K5) - ta asercja dziala na fiksturze,
 # ktora ma pola Secret:/Match: NIEZALEZNIE od --redact, i sprawdza WPROST,
@@ -542,10 +542,10 @@ printf '%s\n' "$WYNIK_FILTR" | grep -q "^File:" || { echo "  WYNIK: NIEZALICZONY
 printf '%s\n' "$WYNIK_FILTR" | grep -q "^Line:" || { echo "  WYNIK: NIEZALICZONY - filtr zgubil Line"; NIEZAL_K4=1; }
 if [[ "$NIEZAL_K4" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
-# ================ CZESC 5: PIPESTATUS[1] i pokrycie niezalezne (F-122/F-123) =
+# ================ CZESC 5: PIPESTATUS[1] i pokrycie niezalezne =============
 # Ticket K1/K3: `git archive` "udaje sie" (EXIT=0), ale `tar` konczy sie
 # bledem na obcietym/niepoprawnym strumieniu - to jest DOKLADNIE przypadek,
-# ktorego PIPESTATUS[0] (F-123) nie widzi, bo patrzy tylko na `git archive`.
+# ktorego PIPESTATUS[0] nie widzi, bo patrzy tylko na `git archive`.
 KATALOG_SHIM_TAR_PADA="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_SHIM_TAR_PADA")
 cat > "$KATALOG_SHIM_TAR_PADA/git" <<'EOF'
 #!/usr/bin/env bash
@@ -577,7 +577,7 @@ NIEZAL_POKR_OK=0
 [[ "$RC_POKR_OK" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0"; NIEZAL_POKR_OK=1; }
 if [[ "$NIEZAL_POKR_OK" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
-echo "=== 13 pokrycie: plikow NIEZGODNE (4 zamiast 930, dokladnie liczby z F-123) - ticket K5 ==="
+echo "=== 13 pokrycie: plikow NIEZGODNE (4 zamiast 930) - ticket K5 ==="
 WYNIK_POKR_PLIKOW="$(sekrety_sprawdz_pokrycie 4 34520 930 4374451)"; RC_POKR_PLIKOW=$?
 echo "  $WYNIK_POKR_PLIKOW (rc=$RC_POKR_PLIKOW)"
 NIEZAL_POKR_PLIKOW=0
@@ -585,7 +585,7 @@ NIEZAL_POKR_PLIKOW=0
 [[ "$WYNIK_POKR_PLIKOW" == *"plikow zmierzone=4"* && "$WYNIK_POKR_PLIKOW" == *"oczekiwane"*"930"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie podaje obu liczb plikow"; NIEZAL_POKR_PLIKOW=1; }
 if [[ "$NIEZAL_POKR_PLIKOW" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
-echo "=== 14 pokrycie: plikow zgodne, bajtow ponizej progu 0,9x (dokladnie liczby z F-123) - ticket K6 ==="
+echo "=== 14 pokrycie: plikow zgodne, bajtow ponizej progu 0,9x - ticket K6 ==="
 WYNIK_POKR_BAJT="$(sekrety_sprawdz_pokrycie 930 34520 930 4374451)"; RC_POKR_BAJT=$?
 echo "  $WYNIK_POKR_BAJT (rc=$RC_POKR_BAJT)"
 NIEZAL_POKR_BAJT=0
@@ -614,7 +614,7 @@ echo "=== 17 pokrycie: scanned ~0 bytes na logu z 'no leaks found' (udawany wyci
 # Odroznienie od przyczyny "test wlasnej logiki jest CZERWONY": tu test
 # wlasnej logiki (CZESC 1-4 wyzej) jest ZIELONY, a mimo to krok 3e ma
 # oblac - z powodu ZEROWEGO SKANU, nie z powodu wbudowanego testu. Ten log
-# wyglada dokladnie jak F-122 (scan 0 bajtow na commicie z udawanym wyciekiem).
+# wyglada dokladnie jak przypadek zerowego skanu (scan 0 bajtow na commicie z udawanym wyciekiem).
 LOG_ZERO_BAJTOW="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_ZERO_BAJTOW")
 cat > "$LOG_ZERO_BAJTOW" <<'EOF'
 3:07PM INF scanned ~0 bytes (0 B) in 0.12s
@@ -747,7 +747,7 @@ if [[ "$NIEZALICZONE" -gt 0 ]]; then
   echo "TESTY LOGIKI LICZNIKA SEKRETOW: NIEZALICZONE PRZYPADKI: $NIEZALICZONE"
   exit 1
 elif [[ "$NIEZMIERZONE_LICZNIK" -gt 0 ]]; then
-  # F-108 (druga uwaga): brak Dockera NIE MA wygladac jak zielony bieg - kod
+  # Druga uwaga: brak Dockera NIE MA wygladac jak zielony bieg - kod
   # wyjscia jest tu CELOWO inny niz 0 i inny niz 1 (NIEZALICZONY), zeby
   # wolajacy odroznil "sprawdzilem i jest OK" od "nie sprawdzilem wcale".
   echo "TESTY LOGIKI LICZNIKA SEKRETOW: NIE ZMIERZONO $NIEZMIERZONE_LICZNIK przypadek(ow) (brak Docker) - bieg NIE jest zielony"

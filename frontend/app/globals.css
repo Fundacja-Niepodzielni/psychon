@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Roboto v51 — samodzielnie hostowany (F-89: krój był zadeklarowany w
+ * Roboto v51 — samodzielnie hostowany (krój był zadeklarowany w
  * --psy-font, ale nigdy nie ładowany — 0 next/font, 0 <link rel>). Pliki w
  * `public/fonts/`, ten sam podzbiór co strona Fundacji (P2, źródło wartości:
  * DESIGN.md). Zero żądań do zewnętrznego CDN Google Fonts w
@@ -115,7 +115,7 @@
   /* --- Cienie i fokus --- */
   --psy-shadow-card: 0 4px 20px #0000000d;
   --psy-shadow-header: 0 2px 10px #0000000d;
-  /* F-90/P2: pierścień fokusu 3 px w --psy-violet-dark (#1500BB), wartość ze
+  /* P2: pierścień fokusu 3 px w --psy-violet-dark (#1500BB), wartość ze
    * strony Fundacji (DESIGN.md / inwentarz identyfikacji). Zastępuje zielony
    * pierścień 1,41–1,55:1 (poniżej progu Z-9 3:1). Kontrast liczony wobec tła,
    * na którym pierścień faktycznie leży (box-shadow bez inset — tło strony/
@@ -215,7 +215,7 @@
 /* Wspólny pierścień fokusa (--psy-violet-dark #1500BB) — użycie:
  * focus-visible:focus-ring. Widoczny tylko na :focus-visible (klawiatura),
  * nigdy na zwykły :focus myszą — zgodnie z decyzją P2 pkt 2.
- * F-90 (uwaga z przeglądu): tryb wymuszonych kolorów systemu maskuje
+ * Uwaga z przeglądu: tryb wymuszonych kolorów systemu maskuje
  * `box-shadow` (Windows High Contrast/`forced-colors`), więc samo
  * `outline: none` zostawiłoby fokus bez żadnego widocznego znacznika —
  * zabronione przez C1 Z-9 („outline: none dozwolone wyłącznie z
@@ -233,7 +233,7 @@
   }
 }
 
-/* F-91/P2: reguła ograniczonego ruchu — 0 klas ruchu bez wariantu
+/* P2: reguła ograniczonego ruchu — 0 klas ruchu bez wariantu
  * `prefers-reduced-motion: reduce` (Z-4, impeccable C-1). Globalna reguła
  * okrywa wszystkie klasy `animate-*` i `transition-*` naraz (m.in.
  * ProgressBar, Button spinner, Skeleton/LoadingState, przejścia menu). */

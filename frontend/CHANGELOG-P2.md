@@ -12,7 +12,7 @@ jako tożsamość klienta) **nie** wchodzi do PsychON.
 |---|---|---|
 | Pierścień fokusu `3px outline #1500BB` (offset 2, `utilities.css:191`) | `--psy-focus-ring: 0 0 0 3px var(--psy-violet-dark)` | `@utility focus-ring`, wszystkie atomy interaktywne (`Button`, `Input`, `Select`, linki, pozycje menu) |
 | Granat `#1500BB` (logo, nagłówki strony) | `--psy-violet-dark` (już istniał w `globals.css` — P2 tylko go **wykorzystuje**, nie dodaje nowej zmiennej) | pierścień fokusu; `Logo` wariant `default` przez klasę `text-accent-dark` |
-| Krój Roboto v51, self-hosted, `latin`+`latin-ext` (`typography.css:2-36`) | `--psy-font: "Roboto", …` (istniał, nigdy nie ładowany — F-89) | `@font-face` w `app/globals.css`, pliki w `public/fonts/roboto-v51-latin(-ext).woff2` |
+| Krój Roboto v51, self-hosted, `latin`+`latin-ext` (`typography.css:2-36`) | `--psy-font: "Roboto", …` (istniał, nigdy nie ładowany) | `@font-face` w `app/globals.css`, pliki w `public/fonts/roboto-v51-latin(-ext).woff2` |
 | Znak marki (SVG, jeden kolor `#1500BB`, `logo-niepodzielni-ze-strony-2026-09-11.svg`) | brak nowego tokenu — kolor przez `text-accent-dark` / `text-light` | atom `components/ui/Logo.tsx`, `currentColor` zamiast drugiego pliku dla wariantu na ciemne tło |
 
 Uwaga: kolory tła/tekstu/promienie/cienie ze strony (zieleń, szarości, `#c0392b`, promienie
@@ -35,7 +35,7 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
   (usunięcie części z 19 ręcznych kopii wzorca liczonych w C2 §1.5) — przez to `Field` ma
   **29 użyć pośrednich** (18 miejsc z `Input`, 11 z `Select`, poza testami).
 - **`Skeleton`** (`components/ui/Skeleton.tsx`) — szkielet treści, `aria-hidden`,
-  `motion-reduce:animate-none` na każdym pasku (F-91). `LoadingState` (P1) teraz renderuje
+  `motion-reduce:animate-none` na każdym pasku. `LoadingState` (P1) teraz renderuje
   `Skeleton` zamiast własnych trzech `<div>` — użycie w `ListTemplate`, czyli na wszystkich
   ekranach listy podłączonych w P1.
 - **`Logo`** (`components/ui/Logo.tsx`) — inline SVG źródła
@@ -45,7 +45,7 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
   (sidebar wszystkich paneli — `panel/kursy`, `admin/emails`, `admin/kursy`, h11, h18, h20 idą
   przez ten szkielet) i `app/dostep-wygasl/page.tsx`.
 - **`Card`, `Badge`** — istniały przed P2 (nie duplikowane). Rozszerzenie: dodane testy
-  (`components/ui/__tests__/Card.test.tsx`, `Badge.test.tsx`); domknięcie F-93 w miejscu, gdzie
+  (`components/ui/__tests__/Card.test.tsx`, `Badge.test.tsx`); domknięcie kontrastu Badge w miejscu, gdzie
   Badge nie był użyty wprost — `components/pulpit/PulpitDashboard.tsx` (`NODE_TONE.in_progress`)
   powtarzał `bg-accent-15 text-accent` (4,37:1) zamiast korzystać z tego samego poprawionego
   odcienia co `Badge` — zmienione na `text-accent-dark` (ta sama klasa co `Badge` wariant
@@ -53,19 +53,19 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
 
 ## Znaleziska ZNALEZISKA-OTWARTE.md
 
-| Nr | Domknięte w P2? | Jak |
+| Temat | Domknięte w P2? | Jak |
 |---|---|---|
-| F-89 | **tak** | Roboto ładowany lokalnie (`@font-face` w `globals.css`, pliki w `public/fonts/`), 0 żądań do `fonts.googleapis.com`/`fonts.gstatic.com` |
-| F-90 | **tak, w całości** | `--psy-focus-ring` z `#01be4a73` (1,41–1,55:1) na `var(--psy-violet-dark)` #1500BB (≥ 9,98:1 wobec wszystkich zmierzonych teł, patrz komentarz w `globals.css`) **+ uwaga werdyktu domknięta**: `@utility focus-ring` ma teraz zamiennik `@media (forced-colors: active) { outline: 3px solid Highlight; }`, więc `outline: none` nie zostaje bez zastępstwa w trybie wysokiego kontrastu (C1 Z-9) |
-| F-91 | **tak** | globalna reguła `@media (prefers-reduced-motion: reduce)` w `globals.css` + `motion-reduce:animate-none` na `Skeleton` |
-| F-92 | **nie** — poza zakresem P2 (atomy identyfikacji, nie przebudowa układu tabel/wierszy `admin/page.tsx`, `Tabs.tsx`, `PanelShell.tsx`); wymaga zmiany wysokości istniejących wierszy poza atomami tej partii |
-| F-93 | **tak** | `Badge` accent już naprawiony w P1; P2 domyka jedyne pominięte miejsce (`PulpitDashboard.tsx` `NODE_TONE.in_progress`) |
-| F-94 | **nie** — wyciek uprawnień (`lib/pulpit/data.ts`) to logika ról, nie atom identyfikacji; poza zakresem P2 |
-| F-95 | **nie** — angielski klucz serwera na ekranie to słownik/i18n (`admin/page.tsx`), nie atom; poza zakresem P2 |
+| Roboto lokalnie | **tak** | Roboto ładowany lokalnie (`@font-face` w `globals.css`, pliki w `public/fonts/`), 0 żądań do `fonts.googleapis.com`/`fonts.gstatic.com` |
+| Kontrast pierścienia fokusu | **tak, w całości** | `--psy-focus-ring` z `#01be4a73` (1,41–1,55:1) na `var(--psy-violet-dark)` #1500BB (≥ 9,98:1 wobec wszystkich zmierzonych teł, patrz komentarz w `globals.css`) **+ uwaga werdyktu domknięta**: `@utility focus-ring` ma teraz zamiennik `@media (forced-colors: active) { outline: 3px solid Highlight; }`, więc `outline: none` nie zostaje bez zastępstwa w trybie wysokiego kontrastu (C1 Z-9) |
+| Ograniczony ruch | **tak** | globalna reguła `@media (prefers-reduced-motion: reduce)` w `globals.css` + `motion-reduce:animate-none` na `Skeleton` |
+| Wysokość wierszy tabel | **nie** — poza zakresem P2 (atomy identyfikacji, nie przebudowa układu tabel/wierszy `admin/page.tsx`, `Tabs.tsx`, `PanelShell.tsx`); wymaga zmiany wysokości istniejących wierszy poza atomami tej partii |
+| Kontrast Badge accent | **tak** | `Badge` accent już naprawiony w P1; P2 domyka jedyne pominięte miejsce (`PulpitDashboard.tsx` `NODE_TONE.in_progress`) |
+| Wyciek uprawnień | **nie** — wyciek uprawnień (`lib/pulpit/data.ts`) to logika ról, nie atom identyfikacji; poza zakresem P2 |
+| Angielski klucz i18n | **nie** — angielski klucz serwera na ekranie to słownik/i18n (`admin/page.tsx`), nie atom; poza zakresem P2 |
 
 ## Uwagi z werdyktu P2 (`74048a5`) domknięte
 
-- **F-90 w całości** — `@utility focus-ring` w `app/globals.css` miało samo
+- **Pierścień fokusu w całości** — `@utility focus-ring` w `app/globals.css` miało samo
   `outline: none` bez zamiennika widocznego w trybie wymuszonych kolorów
   systemu (`box-shadow` jest tam maskowany). Dodano
   `@media (forced-colors: active) { outline: 3px solid Highlight; ... }`

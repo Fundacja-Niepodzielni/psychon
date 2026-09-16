@@ -12,7 +12,7 @@ export interface LoadingStateProps {
  * w 35 plikach; `role="status"` ma **każda** kopia (Z-6 próg: „0 stanów
  * ładowania bez `role='status'`"). Kształt treści renderuje atom `Skeleton`
  * (P2), który sam wyłącza puls pod `prefers-reduced-motion: reduce`
- * (`motion-reduce:animate-none`, F-91).
+ * (`motion-reduce:animate-none`).
  */
 export default function LoadingState({
   label = "Wczytywanie…",

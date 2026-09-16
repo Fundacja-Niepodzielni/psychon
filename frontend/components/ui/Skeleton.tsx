@@ -9,7 +9,7 @@ export interface SkeletonProps {
  * „Wczytywanie…” na środku ekranu (Z-6). Same paski są `aria-hidden` — status
  * dla czytnika ekranu ogłasza kontener nadrzędny (`role="status"` w
  * `LoadingState`), nie ten atom. `motion-reduce:animate-none` wyłącza puls,
- * gdy osoba ma włączone „ograniczone animacje” w systemie (Z-4, F-91).
+ * gdy osoba ma włączone „ograniczone animacje” w systemie (Z-4).
  */
 export default function Skeleton({ lines = 3, className = "" }: SkeletonProps) {
   return (

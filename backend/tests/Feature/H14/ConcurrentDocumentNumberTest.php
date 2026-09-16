@@ -92,7 +92,7 @@ class ConcurrentDocumentNumberTest extends TestCase
         })->wait();
 
         // Nieuchwycony wyjątek Symfony Console ląduje na stdout, nie na stderr
-        // (zmierzone F-88, pomiar 11.09.2026: 857 bajtów na stdout, 0 na stderr) —
+        // (zmierzone 11.09.2026: 857 bajtów na stdout, 0 na stderr) —
         // czytanie samego `errorOutput()` daje więc 10 pustych komunikatów zamiast
         // treści błędu. Zestawiamy oba strumienie, przycięte, żeby przyszła awaria
         // CI była czytelna, a nie 10 pustych napisów.

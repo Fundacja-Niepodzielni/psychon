@@ -17,7 +17,7 @@ describe("Skeleton", () => {
     expect(bars).toHaveLength(5);
   });
 
-  it("F-91: każdy pasek wyłącza puls pod prefers-reduced-motion (motion-reduce:animate-none)", () => {
+  it("każdy pasek wyłącza puls pod prefers-reduced-motion (motion-reduce:animate-none)", () => {
     const { container } = render(<Skeleton />);
     const bars = container.querySelectorAll("[aria-hidden] > div");
 

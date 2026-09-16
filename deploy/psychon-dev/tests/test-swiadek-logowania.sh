@@ -102,7 +102,7 @@ LOC_ZLY_CLIENT="$ISS/protocol/openid-connect/auth?client_id=inny-klient&redirect
 LOC_ZLY_ISS="https://obcy-idp.przyklad.test/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256&response_type=code"
 LOC_BEZ_S256="$ISS/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=plain&response_type=code"
 LOC_LOCALHOST_POZA="$ISS/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256&response_type=code&debug_info=localhost-fallback"
-# F-104 - dopasowania PODCIAGIEM w starym kodzie: kazda z tych trzech
+# Dopasowania PODCIAGIEM w starym kodzie: kazda z tych trzech
 # Location ma dokladnie JEDNA wade, ktorej podciag nie lapal.
 LOC_CLIENT_ID_EVIL="$ISS/protocol/openid-connect/auth?client_id=psychon-web-evil&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256&response_type=code"
 LOC_CCM_X="$ISS/protocol/openid-connect/auth?client_id=psychon-web&redirect_uri=https%3A%2F%2F$DOMENA%2Fapi%2Fauth%2Fcallback%2Fkeycloak&code_challenge_method=S256x&response_type=code"
@@ -118,7 +118,7 @@ uruchom_przypadek "6 brak S256, reszta OK (tylko e)" "$LOC_BEZ_S256" "200" "$FOR
 uruchom_przypadek "7 'localhost' poza redirect_uri, reszta OK (tylko d)" "$LOC_LOCALHOST_POZA" "200" "$FORMULARZ_KC" 1 '\(d\)'
 uruchom_przypadek "8 dwa formularze kc-form-login (tylko f)" "$LOC_OK" "200" "$FORMULARZ_KC_2X" 1 '\(f\)'
 
-# F-104 - podciag zamiast dokladnego dopasowania parametru/prefiksu: kazdy z
+# Podciag zamiast dokladnego dopasowania parametru/prefiksu: kazdy z
 # tych czterech przypadkow byl (w starym kodzie na 7bc7dd2) BLEDNIE zielony,
 # bo szukany napis jest podciagiem tego, co naprawde wystapilo w Location
 # albo w stronie IdP.
@@ -302,8 +302,8 @@ sprawdz_wdrozenie "14 pelne wdrozenie - AUTH_KEYCLOAK_ISSUER w cudzyslowach" "$E
 sprawdz_wdrozenie "15 pelne wdrozenie - .env z CRLF" "$ENV_WDR_CRLF" "SWIADEK LOGOWANIA: ZALICZONY"
 sprawdz_wdrozenie "16 pelne wdrozenie - brak AUTH_KEYCLOAK_ISSUER, deploy nie pada" "$ENV_WDR_BRAK" "SWIADEK LOGOWANIA: NIEZALICZONY (brak klucza AUTH_KEYCLOAK_ISSUER"
 
-# ============================ CZESC 2c: OD-098 p.3 - JEDNO zrodlo (plik) ===
-# Galaz "srodowisko przed plikiem" (F-105, funkcja _swiadek_logowania_wartosc)
+# ============================ CZESC 2c: JEDNO zrodlo (plik) ================
+# Galaz "srodowisko przed plikiem" (funkcja _swiadek_logowania_wartosc)
 # zniknela: skrypt wdrozenia juz nie eksportuje AUTH_KEYCLOAK_ISSUER ani
 # STAGING_DOMAIN w powloce, wiec swiadek ma czytac WYLACZNIE plik $env_file,
 # przez _swiadek_logowania_czytaj_klucz - tak samo, jak reszta wdrozenia.

@@ -15,7 +15,7 @@ describe("Badge", () => {
     expect(screen.getByText("Domyślny")).toHaveClass("bg-grey", "text-muted");
   });
 
-  it("F-93: wariant accent używa text-accent-dark, nie text-accent (4,37:1 < 4,5:1)", () => {
+  it("wariant accent używa text-accent-dark, nie text-accent (4,37:1 < 4,5:1)", () => {
     render(<Badge variant="accent">Info</Badge>);
 
     expect(screen.getByText("Info")).toHaveClass("text-accent-dark");
