@@ -9,11 +9,9 @@ use App\Services\Auth\TokenRoles;
 /**
  * Właścicielka dokumentu albo administracja — te same role co reszta
  * panelu administracyjnego (`project_manager`, `super_admin`; patrz np.
- * trasy H03/H04). Dawniej odmowa dla obcej osoby wracała jako 404, żeby nie
- * zdradzić, że cudzy dokument istnieje (§1.1) — adres pobrania niósł wtedy
- * kolejny numer wiersza. Teraz adres niesie losowy `public_id`, więc
- * zgadnięcie cudzego dokumentu i tak jest nierealne, a kontroler odpowiada
- * jawnym 403.
+ * trasy H03/H04). Odmowa dla obcej osoby wraca z kontrolera jako 404, tak
+ * samo jak dla nieistniejącego dokumentu (§1.1) — żeby sama odpowiedź nie
+ * zdradzała, że pod danym `public_id` w ogóle coś jest.
  */
 class DocumentPolicy
 {

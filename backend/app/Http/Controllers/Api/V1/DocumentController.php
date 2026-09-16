@@ -56,12 +56,12 @@ class DocumentController extends Controller
 
     public function download(Request $request, Document $document): Response
     {
-        // Właścicielka dokumentu albo administracja (DocumentPolicy) — nie
-        // ma już powodu udawać "nie znaleziono" (404): adres niesie losowy
-        // `public_id`, nie kolejny numer wiersza, więc nie da się go
-        // zgadnąć, a 403 niczego ponad to nie ujawnia.
+        // Kontrakt §1.1: cudzy dokument odpowiada dokładnie tak samo jak
+        // dokument, który nie istnieje — 404 „nie znaleziono", nie 403.
+        // Inaczej sama odpowiedź zdradzałaby, że pod danym `public_id`
+        // *coś* jest, tylko nie dla tej osoby.
         if ($request->user()->cannot('view', $document)) {
-            throw new ApiException(403, 'forbidden', 'Brak dostępu do tego dokumentu.');
+            throw new ApiException(404, 'not_found', 'Nie znaleziono zasobu.');
         }
 
         // Bez pliku w magazynie (U-D): PDF powstaje tu i teraz, z
