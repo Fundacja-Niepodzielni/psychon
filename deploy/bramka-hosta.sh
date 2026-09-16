@@ -301,8 +301,15 @@ else
     # NAPRAWDE obejrzal, porownana z liczba policzona NIEZALEZNIE od
     # skanowanego strumienia (`git ls-tree` na HEAD) - nie sama kontrola
     # "N > 0", ktora przepuszczala skan przyciety do 0,8% tresci.
+    # F-133: BAJTOW_OCZ pomniejszone o pliki, ktore gitleaks SAM zglosil jako
+    # pominiete (wbudowany globalny allowlist w .gitleaks.toml, "-l debug" w
+    # sekrety_uruchom_gitleaks) - inaczej pelna suma `git ls-tree` liczy
+    # pliki, ktorych skaner nigdy nie ogladal, i daje staly niedomiar ~8%
+    # (fałszywy alarm przy zwyklym dolozeniu binariow).
     PLIKOW_OCZ="$(sekrety_git_ls_plikow HEAD)"
-    BAJTOW_OCZ="$(sekrety_git_ls_bajtow HEAD)"
+    BAJTOW_OCZ_PELNE="$(sekrety_git_ls_bajtow HEAD)"
+    BAJTOW_POMINIETE="$(sekrety_pliki_pominiete "$KATALOG_BIEGU"/bramka-gitleaks.log | sekrety_bajtow_zbioru HEAD)"
+    BAJTOW_OCZ=$(( BAJTOW_OCZ_PELNE - BAJTOW_POMINIETE ))
     POKRYCIE_MSG="$(sekrety_sprawdz_pokrycie "$PLIKOW_GL" "$BAJTOW_ZM" "$PLIKOW_OCZ" "$BAJTOW_OCZ")"
     KOD_POKRYCIA=$?
     echo "$POKRYCIE_MSG"

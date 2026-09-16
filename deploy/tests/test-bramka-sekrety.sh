@@ -316,6 +316,133 @@ else
   else
     echo "  WYNIK: ZALICZONY"
   fi
+
+  # ========== CZESC 5b: F-133 - regula pomijania wyliczona w biegu =========
+  # $LOG_K3B/$KATALOG_EKSPORT_K3B/$PLIKOW_K3B sa juz gotowe z przypadku 9
+  # (ten sam prawdziwy bieg gitleaksa na czystym HEAD) - NIE mierzymy drugi
+  # raz tego samego skanu, tylko czytamy z niego dodatkowe informacje.
+  echo "=== 18 F-133 K1: regula pomijania nazwana i zmierzona (2 z listy, 2 spoza) ==="
+  LISTA_POMINIETE_K1="$(sekrety_pliki_pominiete "$LOG_K3B")"
+  echo "  plikow pominietych przez gitleaks: $(printf '%s\n' "$LISTA_POMINIETE_K1" | grep -c .)"
+  NIEZAL_K1F133=0
+  for P in "frontend/package-lock.json" "backend/public/favicon.ico"; do
+    printf '%s\n' "$LISTA_POMINIETE_K1" | grep -qxF "$P" || { echo "  WYNIK: NIEZALICZONY - '$P' (z listy F-133) oczekiwany wsrod pominietych, nie ma go"; NIEZAL_K1F133=1; }
+  done
+  for P in "deploy/lib/sekrety-licznik.sh" "frontend/package.json"; do
+    printf '%s\n' "$LISTA_POMINIETE_K1" | grep -qxF "$P" && { echo "  WYNIK: NIEZALICZONY - '$P' (spoza listy) NIE powinien byc pominiety, a jest"; NIEZAL_K1F133=1; }
+  done
+  if [[ "$NIEZAL_K1F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+  echo "=== 19 F-133 K2: oczekiwane bajty = git ls-tree MINUS zbior z K1, zapas >= 99% ==="
+  BAJTOW_OCZ_PELNE_K2="$(cd "$REPO_ROOT" && sekrety_git_ls_bajtow HEAD)"
+  BAJTOW_POMINIETE_K2="$(printf '%s\n' "$LISTA_POMINIETE_K1" | (cd "$REPO_ROOT" && sekrety_bajtow_zbioru HEAD))"
+  BAJTOW_OCZ_K2=$(( BAJTOW_OCZ_PELNE_K2 - BAJTOW_POMINIETE_K2 ))
+  BAJTOW_ZM_K2="$(sekrety_wyciagnij_bajty_skanu "$LOG_K3B")"
+  PLIKOW_OCZ_K2="$(cd "$REPO_ROOT" && sekrety_git_ls_plikow HEAD)"
+  WYNIK_K2="$(sekrety_sprawdz_pokrycie "$PLIKOW_K3B" "$BAJTOW_ZM_K2" "$PLIKOW_OCZ_K2" "$BAJTOW_OCZ_K2")"; RC_K2=$?
+  echo "  pelne=$BAJTOW_OCZ_PELNE_K2 pominiete=$BAJTOW_POMINIETE_K2 oczekiwane=$BAJTOW_OCZ_K2 zmierzone=$BAJTOW_ZM_K2"
+  echo "  $WYNIK_K2 (rc=$RC_K2)"
+  NIEZAL_K2F133=0
+  [[ "$RC_K2" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0"; NIEZAL_K2F133=1; }
+  if [[ "$BAJTOW_OCZ_K2" -gt 0 ]]; then
+    ZAPAS_K2=$(( BAJTOW_ZM_K2 * 100 / BAJTOW_OCZ_K2 ))
+    [[ "$ZAPAS_K2" -ge 99 ]] || { echo "  WYNIK: NIEZALICZONY - zapas ${ZAPAS_K2}% ponizej 99%"; NIEZAL_K2F133=1; }
+  fi
+  if [[ "$NIEZAL_K2F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+  # --- 20 F-133 K3: perturbacja falszywego alarmu POWTORZONA -----------------
+  # Prawdziwy commit (worktree jednorazowy, tozsamosc Fundacji, NIGDY nie
+  # scalany ani wypychany) z 600 kB losowych bajtow bez zadnego sekretu.
+  # Musi byc COMMIT, nie tylko plik w eksporcie: inaczej `git ls-tree` (miara
+  # "oczekiwane") i `find` na eksporcie ("zmierzone") licza rozne zbiory
+  # plikow z powodu innego niz bajty ("K3" ma mierzyc bajty, nie plikow).
+  echo "=== 20 F-133 K3: falszywy alarm powtorzony - 600 kB binariow bez wycieku -> zielone ==="
+  WT_K3="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$WT_K3")
+  (cd "$REPO_ROOT" && git worktree add -q --detach "$WT_K3" HEAD) >/dev/null 2>&1
+  WYNIK_WT_K3=1
+  if [[ -d "$WT_K3/.git" || -f "$WT_K3/.git" ]]; then
+    mkdir -p "$WT_K3/deploy/tests"
+    head -c 600000 /dev/urandom > "$WT_K3/deploy/tests/przyrost-testowy-f133.dat"
+    (cd "$WT_K3" && git add deploy/tests/przyrost-testowy-f133.dat \
+      && git -c user.email="Fundacja-Niepodzielni@users.noreply.github.com" -c user.name="Fundacja Niepodzielni" \
+             commit -q -m "test: perturbacja F-133 K3 (bez sekretu, nigdy niescalana)") >/dev/null 2>&1
+    EKSP_K3="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K3")
+    PLIKOW_ZM_K3="$(cd "$WT_K3" && sekrety_eksportuj_tresc HEAD "$EKSP_K3")"
+    LOG_K3="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K3")
+    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$EKSP_K3" "$WT_K3/.gitleaks.toml" "$LOG_K3"
+    if grep -aq "scanned ~0 bytes" "$LOG_K3" && command -v wslpath >/dev/null 2>&1; then
+      MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$(wslpath -w "$EKSP_K3")" "$(wslpath -w "$WT_K3/.gitleaks.toml")" "$LOG_K3"
+    fi
+    BAJTOW_ZM_K3="$(sekrety_wyciagnij_bajty_skanu "$LOG_K3")"
+    PLIKOW_OCZ_K3="$(cd "$WT_K3" && sekrety_git_ls_plikow HEAD)"
+    BAJTOW_OCZ_PELNE_K3="$(cd "$WT_K3" && sekrety_git_ls_bajtow HEAD)"
+    BAJTOW_POMINIETE_K3="$(sekrety_pliki_pominiete "$LOG_K3" | (cd "$WT_K3" && sekrety_bajtow_zbioru HEAD))"
+    BAJTOW_OCZ_K3=$(( BAJTOW_OCZ_PELNE_K3 - BAJTOW_POMINIETE_K3 ))
+    WYNIK_POKR_K3="$(sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K3" "$BAJTOW_ZM_K3" "$PLIKOW_OCZ_K3" "$BAJTOW_OCZ_K3")"; RC_POKR_K3=$?
+    echo "  plikow $PLIKOW_ZM_K3/$PLIKOW_OCZ_K3, pelne=$BAJTOW_OCZ_PELNE_K3 pominiete=$BAJTOW_POMINIETE_K3 oczekiwane=$BAJTOW_OCZ_K3 zmierzone=$BAJTOW_ZM_K3"
+    echo "  $WYNIK_POKR_K3 (rc=$RC_POKR_K3)"
+    [[ "$RC_POKR_K3" -eq 0 ]] && WYNIK_WT_K3=0
+    (cd "$REPO_ROOT" && git worktree remove --force "$WT_K3") >/dev/null 2>&1
+  else
+    echo "  WYNIK: NIE ZMIERZONO - nie udalo sie zalozyc jednorazowego worktree"
+    NIEZMIERZONE_LICZNIK=$((NIEZMIERZONE_LICZNIK + 1))
+    WYNIK_WT_K3=2
+  fi
+  if [[ "$WYNIK_WT_K3" -eq 0 ]]; then
+    echo "  WYNIK: ZALICZONY"
+  elif [[ "$WYNIK_WT_K3" -eq 1 ]]; then
+    echo "  WYNIK: NIEZALICZONY - oczekiwano pokrycia ZGODNEGO (zielonego) na 600 kB binariow bez wycieku"
+    NIEZALICZONE=$((NIEZALICZONE + 1))
+  fi
+
+  # --- 21 F-133 K4: perturbacja prawdziwa - strumien przyciety (jak F-123) --
+  echo "=== 21 F-133 K4: strumien gitleaksa przyciety (jak F-123) -> czerwone ==="
+  EKSP_K4="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K4")
+  (cd "$REPO_ROOT" && git archive --format=tar HEAD) | head -c 40000 | tar -x -C "$EKSP_K4" 2>/dev/null
+  PLIKOW_ZM_K4="$(find "$EKSP_K4" -type f | wc -l)"
+  LOG_K4="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K4")
+  MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$EKSP_K4" "$REPO_ROOT/.gitleaks.toml" "$LOG_K4"
+  if grep -aq "scanned ~0 bytes" "$LOG_K4" && command -v wslpath >/dev/null 2>&1; then
+    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$(wslpath -w "$EKSP_K4")" "$(wslpath -w "$REPO_ROOT/.gitleaks.toml")" "$LOG_K4"
+  fi
+  BAJTOW_ZM_K4="$(sekrety_wyciagnij_bajty_skanu "$LOG_K4")"
+  PLIKOW_OCZ_K4="$(cd "$REPO_ROOT" && sekrety_git_ls_plikow HEAD)"
+  BAJTOW_OCZ_PELNE_K4="$(cd "$REPO_ROOT" && sekrety_git_ls_bajtow HEAD)"
+  BAJTOW_POMINIETE_K4="$(sekrety_pliki_pominiete "$LOG_K4" | (cd "$REPO_ROOT" && sekrety_bajtow_zbioru HEAD))"
+  BAJTOW_OCZ_K4=$(( BAJTOW_OCZ_PELNE_K4 - BAJTOW_POMINIETE_K4 ))
+  WYNIK_POKR_K4="$(sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K4" "$BAJTOW_ZM_K4" "$PLIKOW_OCZ_K4" "$BAJTOW_OCZ_K4")"; RC_POKR_K4=$?
+  echo "  plikow $PLIKOW_ZM_K4/$PLIKOW_OCZ_K4, bajtow $BAJTOW_ZM_K4/$BAJTOW_OCZ_K4"
+  echo "  $WYNIK_POKR_K4 (rc=$RC_POKR_K4)"
+  NIEZAL_K4F133=0
+  [[ "$RC_POKR_K4" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano czerwonego pokrycia na przycietym strumieniu"; NIEZAL_K4F133=1; }
+  if [[ "$NIEZAL_K4F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+  # --- 22 F-133 K5: perturbacja nowa - usuniety jeden plik tekstowy z eksportu
+  echo "=== 22 F-133 K5: jeden plik tekstowy usuniety z eksportu (spoza listy pomijanych) -> czerwone ==="
+  EKSP_K5="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K5")
+  PLIKOW_PRZED_K5="$(cd "$REPO_ROOT" && sekrety_eksportuj_tresc HEAD "$EKSP_K5")"
+  PLIK_USUN_K5="$(find "$EKSP_K5/backend/tests" -name "*.php" -size +2k -size -20k 2>/dev/null | head -1)"
+  if [[ -n "$PLIK_USUN_K5" ]]; then
+    rm -f "$PLIK_USUN_K5"
+  fi
+  PLIKOW_ZM_K5="$(find "$EKSP_K5" -type f | wc -l)"
+  LOG_K5="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K5")
+  MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$EKSP_K5" "$REPO_ROOT/.gitleaks.toml" "$LOG_K5"
+  if grep -aq "scanned ~0 bytes" "$LOG_K5" && command -v wslpath >/dev/null 2>&1; then
+    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$(wslpath -w "$EKSP_K5")" "$(wslpath -w "$REPO_ROOT/.gitleaks.toml")" "$LOG_K5"
+  fi
+  BAJTOW_ZM_K5="$(sekrety_wyciagnij_bajty_skanu "$LOG_K5")"
+  PLIKOW_OCZ_K5="$(cd "$REPO_ROOT" && sekrety_git_ls_plikow HEAD)"
+  BAJTOW_OCZ_PELNE_K5="$(cd "$REPO_ROOT" && sekrety_git_ls_bajtow HEAD)"
+  BAJTOW_POMINIETE_K5="$(sekrety_pliki_pominiete "$LOG_K5" | (cd "$REPO_ROOT" && sekrety_bajtow_zbioru HEAD))"
+  BAJTOW_OCZ_K5=$(( BAJTOW_OCZ_PELNE_K5 - BAJTOW_POMINIETE_K5 ))
+  WYNIK_POKR_K5="$(sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K5" "$BAJTOW_ZM_K5" "$PLIKOW_OCZ_K5" "$BAJTOW_OCZ_K5")"; RC_POKR_K5=$?
+  echo "  usuniety: ${PLIK_USUN_K5:-BRAK - nie znaleziono kandydata}, plikow $PLIKOW_ZM_K5/$PLIKOW_OCZ_K5 (przed usunieciem eksport mial $PLIKOW_PRZED_K5)"
+  echo "  $WYNIK_POKR_K5 (rc=$RC_POKR_K5)"
+  NIEZAL_K5F133=0
+  [[ -n "$PLIK_USUN_K5" ]] || { echo "  WYNIK: NIEZALICZONY - nie znaleziono pliku-kandydata do usuniecia"; NIEZAL_K5F133=1; }
+  [[ "$RC_POKR_K5" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano czerwonego pokrycia po usunieciu pliku z eksportu"; NIEZAL_K5F133=1; }
+  if [[ "$NIEZAL_K5F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 fi
 
 # ============================ CZESC 4: filtr pol (F-108) ===================

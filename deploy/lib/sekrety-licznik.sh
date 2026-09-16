@@ -15,12 +15,23 @@
 # Uruchamia gitleaksa w Dockerze na KATALOGU_TRESCI (montowanym :ro), z
 # regulami z PLIK_TOML (montowanym :ro pod /konfiguracja.toml), i zapisuje
 # CALE wyjscie (stdout+stderr) do PLIK_LOG. Flagi ponizej NIE sa dowolne:
-#   --redact  - surowy log NIE moze niesc tresci sekretu (patrz test
-#               end-to-end w test-bramka-sekrety.sh, ktory to sprawdza na
-#               SUROWYM logu, przed jakimkolwiek filtrem pol);
-#   -v        - bez tego gitleaks `dir` NIE drukuje naglowkow
-#               RuleID/File/Line WCALE (F-106) - sekrety_policz_trafienia
-#               nizej bez tych naglowkow nie ma czym potwierdzic podsumowania.
+#   --redact       - surowy log NIE moze niesc tresci sekretu (patrz test
+#                    end-to-end w test-bramka-sekrety.sh, ktory to sprawdza na
+#                    SUROWYM logu, przed jakimkolwiek filtrem pol);
+#   -v             - bez tego gitleaks `dir` NIE drukuje naglowkow
+#                    RuleID/File/Line WCALE (F-106) - sekrety_policz_trafienia
+#                    nizej bez tych naglowkow nie ma czym potwierdzic
+#                    podsumowania.
+#   -l debug       - F-133: bez tego gitleaks NIE mowi, KTORE pliki pominal
+#                    (linie "DBG skipping file: global allowlist path=..." i
+#                    "DBG skipping empty file path=..."). Bez tych linii
+#                    sekrety_pliki_pominiete nizej nie ma z czego wyliczyc
+#                    zbioru pomijanego - a bez niego pokrycie eksportu albo
+#                    zgaduje prog "na oko", albo trzyma liste plikow na
+#                    sztywno (co za tydzien sklamie). Zmierzone: dodanie tej
+#                    flagi NIE zmienia linii "leaks found"/"no leaks
+#                    found"/"scanned ~N bytes"/"RuleID:" (test end-to-end
+#                    powyzej to pilnuje), wiec licznik trafien nie traci nic.
 # Siec wylaczona (--network none) i obraz przypiety wersja, nie `latest`.
 # Zwraca kod wyjscia dockera/gitleaksa (0 = bez trafien, >0 zwykle = trafienia
 # albo blad uruchomienia).
@@ -29,8 +40,53 @@ sekrety_uruchom_gitleaks() {
   docker run --rm --network none \
     -v "${katalog_tresci}:/tresc:ro" \
     -v "${plik_toml}:/konfiguracja.toml:ro" \
-    ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact -v \
+    ghcr.io/gitleaks/gitleaks:v8.30.1 dir /tresc -c /konfiguracja.toml --no-banner --redact -v -l debug \
     >"$plik_log" 2>&1
+}
+
+# sekrety_pliki_pominiete PLIK_LOG
+#
+# F-133: zbior plikow, ktore gitleaks SAM zglosil jako pominiete - NIE lista
+# wpisana na sztywno. Zrodlo to dwie linie debug (patrz -l debug wyzej):
+#   "DBG skipping file: global allowlist path=/tresc/<sciezka>"
+#   "DBG skipping empty file path=/tresc/<sciezka>"
+# Kody ANSI (kolory) sa zdejmowane PRZED wyciaganiem sciezki, bo inaczej
+# `path=` i wartosc rozdziela sekwencja ucieczki i zwykly grep jej nie zlapie.
+# Prefiks montazu "/tresc/" (ten sam, ktory sekrety_uruchom_gitleaks montuje
+# wyzej) jest sciety, zeby zwrocic sciezki wzgledne do korzenia repo - takie
+# same, jakich uzywa `git ls-tree`.
+#
+# Wypisuje na stdout jedna sciezke na linie (moze byc pusto - 0 pominietych
+# plikow jest wynikiem poprawnym). Kod wyjscia zawsze 0: brak dopasowan nie
+# jest bledem tej funkcji, jest faktem o logu.
+sekrety_pliki_pominiete() {
+  local log="$1"
+  sed -E $'s/\x1b\\[[0-9;]*m//g' "$log" \
+    | grep -aE 'DBG skipping (file: global allowlist|empty file) ' \
+    | grep -aoE 'path=/tresc/.*' \
+    | sed 's#^path=/tresc/##'
+  return 0
+}
+
+# sekrety_bajtow_zbioru REV
+#
+# Czyta ze STDIN sciezki (jak z sekrety_pliki_pominiete), jedna na linie, i
+# sumuje ich rozmiary wg `git ls-tree -r -l REV` (ta sama kolumna rozmiaru,
+# co sekrety_git_ls_bajtow) - zeby "ile bajtow pominal skaner" bylo policzone
+# TYM SAMYM przyrzadem, co "ile bajtow ma cale drzewo", nie ze zgloszonego
+# przez skaner "scanned ~N bytes" (to by bylo mierzenie skanera jego wlasna
+# miarka). Puste/nieistniejace sciezki (np. usuniete miedzy eksportem a tym
+# pomiarem) sa pomijane bez bledu - licza sie tylko rozpoznane rozmiary.
+# Wypisuje sume (0, gdy STDIN byl pusty), kod wyjscia zawsze 0.
+sekrety_bajtow_zbioru() {
+  local rev="$1" suma=0 plik rozmiar
+  while IFS= read -r plik; do
+    [[ -z "$plik" ]] && continue
+    rozmiar="$(git ls-tree -r -l "$rev" -- "$plik" 2>/dev/null | awk '{print $4}')"
+    [[ "$rozmiar" =~ ^[0-9]+$ ]] && suma=$((suma + rozmiar))
+  done
+  echo "$suma"
+  return 0
 }
 
 # sekrety_eksportuj_tresc REV KATALOG_DOCELOWY
@@ -170,12 +226,24 @@ sekrety_wyciagnij_bajty_skanu() {
 #
 # Porownuje to, co gitleaks NAPRAWDE obejrzal (PLIKOW_ZMIERZONE z eksportu,
 # BAJTOW_ZMIERZONE z jego loga "scanned ~N bytes"), z liczba policzona
-# NIEZALEZNIE OD TEGO SAMEGO STRUMIENIA - PLIKOW_OCZEKIWANE i BAJTOW_OCZEKIWANE
-# maja pochodzic z `sekrety_git_ls_plikow`/`sekrety_git_ls_bajtow` (git
-# ls-tree), nie z eksportu ani z loga gitleaksa. Kontrola "N > 0" NIE
+# NIEZALEZNIE OD TEGO SAMEGO STRUMIENIA. PLIKOW_OCZEKIWANE ma pochodzic z
+# `sekrety_git_ls_plikow` (git ls-tree, bez zmian). Kontrola "N > 0" NIE
 # wystarcza (F-123: strumien przyciety do 0,8% tresci tez daje N > 0) -
-# dlatego plikow ma sie zgadzac DOKLADNIE, a bajtow ma wyjsc co najmniej
-# 0,9 * oczekiwanych (gitleaks podaje "~", zapas jest swiadomy, nie na oko).
+# dlatego plikow ma sie zgadzac DOKLADNIE.
+#
+# BAJTOW_OCZEKIWANE (F-133, poprawka po falszywym alarmie): wolajacy MA
+# przekazac tu JUZ POMNIEJSZONA wartosc - `sekrety_git_ls_bajtow` MINUS suma
+# z `sekrety_pliki_pominiete` przepuszczona przez `sekrety_bajtow_zbioru`.
+# Powod: gitleaks (jego wlasny, wbudowany globalny allowlist - `[extend]
+# useDefault = true` w .gitleaks.toml) NIE skanuje pewnych plikow wcale
+# (lockfile-e, fonty, svg, puste pliki) - to nie jest usterka, tylko
+# udokumentowane, zmierzone zachowanie (patrz komentarz przy `-l debug`
+# wyzej). Porownywanie "scanned ~N" (bez tych plikow) z pelna suma `git
+# ls-tree` (z nimi) dawalo staly niedomiar ~8% i FALSZYWY ALARM: dolozenie
+# 600 kB binariow bez zadnego wycieku zbijalo zapas do 81% i zatrzymywalo
+# bramke. Po odjeciu DOKLADNIE tego, co gitleaks sam zglasza jako pominiete,
+# obie strony licza TE SAME pliki - zapas wychodzi ~100%, wiec prog moze
+# stac wysoko (99%) i naprawde cos znaczyc, zamiast byc zapasem "na oko".
 #
 # Brak KTOREJKOLWIEK liczby na wejsciu (pusty string albo nie-cyfry - tak
 # wyglada np. "NIEZMIERZONE" z sekrety_wyciagnij_bajty_skanu) = przyrzad nie
@@ -192,7 +260,7 @@ sekrety_sprawdz_pokrycie() {
     return 1
   fi
   if [[ ! "$plikow_ocz" =~ ^[0-9]+$ || ! "$bajtow_ocz" =~ ^[0-9]+$ ]]; then
-    echo "sekrety: pokrycie eksportu NIEZMIERZONE - brak odczytu niezaleznie policzonej liczby plikow lub bajtow (git ls-tree)"
+    echo "sekrety: pokrycie eksportu NIEZMIERZONE - brak odczytu niezaleznie policzonej liczby plikow lub bajtow (git ls-tree, po odjeciu plikow pominietych)"
     return 1
   fi
 
@@ -201,17 +269,17 @@ sekrety_sprawdz_pokrycie() {
     return 1
   fi
 
-  prog=$(( bajtow_ocz * 9 / 10 ))
+  prog=$(( bajtow_ocz * 99 / 100 ))
   if [[ "$bajtow_ocz" -gt 0 ]]; then
     zapas=$(( bajtow_zm * 100 / bajtow_ocz ))
   else
     zapas=100
   fi
   if [[ "$bajtow_zm" -lt "$prog" ]]; then
-    echo "sekrety: pokrycie eksportu NIEZGODNE - bajtow zmierzone=$bajtow_zm ponizej progu 0,9x oczekiwanych ($prog z $bajtow_ocz), zapas=${zapas}%"
+    echo "sekrety: pokrycie eksportu NIEZGODNE - bajtow zmierzone=$bajtow_zm ponizej progu 0,99x oczekiwanych po odjeciu pominietych ($prog z $bajtow_ocz), zapas=${zapas}%"
     return 1
   fi
 
-  echo "sekrety: pokrycie eksportu ZGODNE - plikow $plikow_zm/$plikow_ocz, bajtow $bajtow_zm/$bajtow_ocz (zapas ${zapas}%)"
+  echo "sekrety: pokrycie eksportu ZGODNE - plikow $plikow_zm/$plikow_ocz, bajtow $bajtow_zm/$bajtow_ocz po odjeciu pominietych (zapas ${zapas}%)"
   return 0
 }
