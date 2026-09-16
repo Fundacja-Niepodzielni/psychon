@@ -33,6 +33,40 @@ sekrety_uruchom_gitleaks() {
     >"$plik_log" 2>&1
 }
 
+# sekrety_eksportuj_tresc REV KATALOG_DOCELOWY
+#
+# Eksportuje tresc sledzona przez git (`git archive`) na commicie REV do
+# KATALOG_DOCELOWY (ktory ma juz istniec, pusty). Wypisuje na stdout LICZBE
+# wyeksportowanych plikow i konczy sie kodem 0 - TYLKO gdy `git archive`
+# powiodl sie I eksport ma co najmniej 1 plik.
+#
+# W obu pozostalych przypadkach (F-107):
+#   - `git archive` pada (np. poza drzewem git, uszkodzony obiekt) - u nas
+#     zmierzone shimem jako EXIT=128;
+#   - `git archive` konczy sie EXIT=0, ale eksport ma 0 plikow (np. `tar`
+#     dostal pusty strumien) -
+# funkcja NIE zwraca liczby (kaznik nie ma czym ufac), wypisuje NA STDERR
+# JEDEN WSPOLNY komunikat z przyczyna ("sekrety: eksport tresci commitu
+# nieprawidlowy - ...") i zwraca kod 2. Bez tego rozroznienia wolajacy
+# (krok 3e) skanowalby 0 bajtow i pisal "no leaks found" - eksport, ktoremu
+# nie mozna ufac, wygladalby jak czysty commit.
+sekrety_eksportuj_tresc() {
+  local rev="$1" katalog="$2" kod_archive plikow
+  git archive --format=tar "$rev" | tar -x -C "$katalog"
+  kod_archive="${PIPESTATUS[0]}"
+  if [[ "$kod_archive" -ne 0 ]]; then
+    echo "sekrety: eksport tresci commitu nieprawidlowy - git archive zakonczyl sie bledem (EXIT=$kod_archive) - krok 3e nie moze zmierzyc sekretow" >&2
+    return 2
+  fi
+  plikow="$(find "$katalog" -type f | wc -l)"
+  if [[ "$plikow" -eq 0 ]]; then
+    echo "sekrety: eksport tresci commitu nieprawidlowy - eksport ma 0 plikow mimo git archive EXIT=0 - krok 3e nie moze zmierzyc sekretow" >&2
+    return 2
+  fi
+  echo "$plikow"
+  return 0
+}
+
 # sekrety_policz_trafienia PLIK_LOG
 #
 # Licznik NAPRAWDE uzywany do wyniku: z linii podsumowania "leaks found: N"

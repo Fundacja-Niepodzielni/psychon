@@ -8,12 +8,19 @@
 #
 # CZESC 1 nizej dziala na SPREPAROWANYCH logach (fixture'ach) - imituja one
 # rozne wyjscia gitleaksa (zgodne, niezgodne, brak podsumowania), bez
-# dotykania Dockera. CZESC 2 (przypadek 5) jest END-TO-END: prawdziwy
-# gitleaks w Dockerze na katalogu z JEDNYM SZTUCZNYM trafieniem (losowy ciag
-# wygenerowany W TEJ CHWILI, nie wpisany na sztywno - zaden prawdziwy sekret
-# nigdzie nie wystapil), wywolany przez sekrety_uruchom_gitleaks - TA SAMA
-# funkcja/plik co w bramce, wiec mutacja flag (np. usuniete --redact) w
-# bibliotece daje tu czerwien.
+# dotykania Dockera. CZESC 2 (przypadki 5-7, F-107) mierzy
+# sekrety_eksportuj_tresc: `git archive` zepsuty albo pusty (shim na PATH,
+# bez Dockera) MA konczyc sie kodem 2 z czytelnym komunikatem, normalny
+# eksport HEAD MA sie udac. CZESC 3 (przypadki 8-9) jest END-TO-END: prawdziwy
+# gitleaks w Dockerze - najpierw na katalogu z JEDNYM SZTUCZNYM trafieniem
+# (losowy ciag wygenerowany W TEJ CHWILI, nie wpisany na sztywno - zaden
+# prawdziwy sekret nigdzie nie wystapil), potem jako kontrola negatywna na
+# prawdziwym eksporcie HEAD (0 trafien oczekiwane) - obie przez
+# sekrety_uruchom_gitleaks, TA SAMA funkcja/plik co w bramce. Bez Dockera oba
+# przypadki sa NIEZMIERZONE (F-108), nie ZALICZONE - kod wyjscia calego
+# skryptu to wtedy 3, nie 0. CZESC 4 (przypadek 10, F-108) mierzy WPROST
+# sekrety_pola_do_logu na fiksturze z polami Secret:/Match:, niezaleznie od
+# --redact.
 set -uo pipefail
 
 TU="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,6 +34,7 @@ KATALOGI_TESTOWE=()
 trap 'rm -f "${PLIKI_TESTOWE[@]}" 2>/dev/null; rm -rf "${KATALOGI_TESTOWE[@]}" 2>/dev/null' EXIT
 
 NIEZALICZONE=0
+NIEZMIERZONE_LICZNIK=0
 
 # ============================ CZESC 1: sekrety_policz_trafienia (fixture'y) =
 
@@ -112,15 +120,82 @@ sprawdz_fixture "2 fixture 1 trafienie z polami, zgodne (1)" "$LOG_1" "1" 0
 sprawdz_fixture "3 fixture niezgodnosc (podsumowanie 2, naglowkow kontrolnych 1) - wykryte" "$LOG_NIEZGODNY" "NIEZGODNE" 1
 sprawdz_fixture "4 fixture brak linii podsumowania - NIEZMIERZONE" "$LOG_NIEZMIERZONY" "NIEZMIERZONE" 1
 
-# ============================ CZESC 2: end-to-end (docker + gitleaks) ======
+# ============================ CZESC 2: sekrety_eksportuj_tresc (F-107) =====
+# `git archive` jest tu ZASTAPIONY SHIMEM na PATH (nie tykamy prawdziwego
+# repo) - shim odpowiada TYLKO na podkomende `archive`, bo funkcja
+# sekrety_eksportuj_tresc nie wola gita inaczej.
+
+KATALOG_SHIM_128="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_SHIM_128")
+cat > "$KATALOG_SHIM_128/git" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "archive" ]]; then
+  exit 128
+fi
+exit 1
+EOF
+chmod +x "$KATALOG_SHIM_128/git"
+
+KATALOG_SHIM_PUSTY="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_SHIM_PUSTY")
+cat > "$KATALOG_SHIM_PUSTY/git" <<'EOF'
+#!/usr/bin/env bash
+# archive "udaje sie" (EXIT=0), ale nie wypisuje ani bajtu - `tar -x` na
+# pustym strumieniu konczy sie EXIT=0 i eksportuje 0 plikow (F-107, przypadek
+# "gitleaks skanuje 0 B i pisze no leaks found" bez tej poprawki).
+if [[ "$1" == "archive" ]]; then
+  exit 0
+fi
+exit 1
+EOF
+chmod +x "$KATALOG_SHIM_PUSTY/git"
+
+echo "=== 5 eksport: git archive pada (shim, EXIT=128) - K1 ==="
+KATALOG_EKSPORT_1="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_EKSPORT_1")
+KOMUNIKAT_K1="$(PATH="$KATALOG_SHIM_128:$PATH" sekrety_eksportuj_tresc HEAD "$KATALOG_EKSPORT_1" 2>&1 1>/dev/null)"
+KOD_K1=$?
+echo "  sekrety_eksportuj_tresc: rc=$KOD_K1, komunikat: $KOMUNIKAT_K1"
+NIEZAL_K1=0
+[[ "$KOD_K1" -eq 2 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=2, dostalem rc=$KOD_K1"; NIEZAL_K1=1; }
+[[ "$KOMUNIKAT_K1" == *"eksport tresci commitu nieprawidlowy"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie nazywa przyczyny"; NIEZAL_K1=1; }
+[[ "$KOMUNIKAT_K1" == *"128"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie wspomina kodu wyjscia git archive"; NIEZAL_K1=1; }
+if [[ "$NIEZAL_K1" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 6 eksport: git archive EXIT=0, ale 0 plikow (shim) - K2 ==="
+KATALOG_EKSPORT_2="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_EKSPORT_2")
+KOMUNIKAT_K2="$(PATH="$KATALOG_SHIM_PUSTY:$PATH" sekrety_eksportuj_tresc HEAD "$KATALOG_EKSPORT_2" 2>&1 1>/dev/null)"
+KOD_K2=$?
+echo "  sekrety_eksportuj_tresc: rc=$KOD_K2, komunikat: $KOMUNIKAT_K2"
+NIEZAL_K2=0
+[[ "$KOD_K2" -eq 2 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=2, dostalem rc=$KOD_K2"; NIEZAL_K2=1; }
+[[ "$KOMUNIKAT_K2" == *"eksport tresci commitu nieprawidlowy"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie nazywa przyczyny"; NIEZAL_K2=1; }
+[[ "$KOMUNIKAT_K2" == *"0 plikow"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie wspomina pustego eksportu"; NIEZAL_K2=1; }
+if [[ "$NIEZAL_K2" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 7 eksport: kontrola negatywna - normalny git archive na czystym HEAD - K3 ==="
+KATALOG_EKSPORT_3="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_EKSPORT_3")
+PLIKOW_K3="$(cd "$REPO_ROOT" && sekrety_eksportuj_tresc HEAD "$KATALOG_EKSPORT_3")"
+KOD_K3=$?
+echo "  sekrety_eksportuj_tresc: rc=$KOD_K3, plikow=$PLIKOW_K3"
+NIEZAL_K3=0
+[[ "$KOD_K3" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0, dostalem rc=$KOD_K3"; NIEZAL_K3=1; }
+[[ "$PLIKOW_K3" =~ ^[0-9]+$ ]] && [[ "$PLIKOW_K3" -gt 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano liczby plikow > 0, dostalem '$PLIKOW_K3'"; NIEZAL_K3=1; }
+if [[ "$NIEZAL_K3" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# ============================ CZESC 3: end-to-end (docker + gitleaks) ======
 # Katalog z JEDNYM sztucznym trafieniem: ciag generowany W TEJ CHWILI
 # (losowy hex), nie sekret wpisany na sztywno w repo. `.gitleaks.toml` z
 # repo jest uzyty NIEZMIENIONY (ta sama migawka regul co reszta bramki).
 # Wywolanie gitleaksa idzie przez sekrety_uruchom_gitleaks - TA SAMA funkcja
 # co w kroku 3e bramki.
 if ! command -v docker >/dev/null 2>&1; then
-  echo "=== 5 end-to-end (docker gitleaks) ==="
-  echo "  POMINIETY - brak docker w PATH"
+  # Brak Dockera NIE MA konczyc sie cicha zieleniia (F-108, druga uwaga):
+  # przypadki end-to-end ponizej (8: sztuczne trafienie, 9: kontrola
+  # negatywna na czystym HEAD) sa wtedy NIEZMIERZONE, nie ZALICZONE - licza
+  # sie do osobnego licznika, ktory na koncu pliku zabiera EXIT=0.
+  echo "=== 8 end-to-end (docker gitleaks) ==="
+  echo "  WYNIK: NIE ZMIERZONO - brak docker w PATH"
+  echo "=== 9 end-to-end kontrola negatywna (docker gitleaks na czystym HEAD) ==="
+  echo "  WYNIK: NIE ZMIERZONO - brak docker w PATH"
+  NIEZMIERZONE_LICZNIK=$((NIEZMIERZONE_LICZNIK + 2))
 else
   # Katalog POD repo (nie w globalnym /tmp): na Windows+Git Bash /tmp z
   # `mktemp -d` bywa poza dyskami udostepnionymi Docker Desktopowi, wiec
@@ -151,7 +226,7 @@ else
     KOD_E2E=$?
   fi
 
-  echo "=== 5 end-to-end (docker gitleaks) - katalog z 1 sztucznym trafieniem ==="
+  echo "=== 8 end-to-end (docker gitleaks) - katalog z 1 sztucznym trafieniem ==="
   WYNIK_E2E="$(sekrety_policz_trafienia "$LOG_E2E")"; RC_E2E=$?
   echo "  gitleaks EXIT=$KOD_E2E, licznik: $WYNIK_E2E (rc=$RC_E2E)"
 
@@ -202,13 +277,84 @@ else
   else
     echo "  WYNIK: ZALICZONY"
   fi
+
+  # --- 9 kontrola negatywna K3 (dokonczenie): prawdziwy eksport HEAD, ------
+  # prawdziwy gitleaks - normalny bieg konczy sie EXIT=0, plikow > 0, trafien
+  # policzalne (repo na tym commicie jest czyste - .gitleaks.toml wylacza
+  # fixture'y ponizej z regul, wiec oczekujemy 0 trafien).
+  echo "=== 9 end-to-end kontrola negatywna (docker gitleaks na czystym HEAD) - K3 ==="
+  KATALOG_EKSPORT_K3B="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_EKSPORT_K3B")
+  PLIKOW_K3B="$(cd "$REPO_ROOT" && sekrety_eksportuj_tresc HEAD "$KATALOG_EKSPORT_K3B")"
+  KOD_EKSPORT_K3B=$?
+  NIEZAL_K3B=0
+  if [[ "$KOD_EKSPORT_K3B" -ne 0 ]]; then
+    echo "  WYNIK: NIEZALICZONY - eksport HEAD nie powiodl sie (rc=$KOD_EKSPORT_K3B)"
+    NIEZAL_K3B=1
+  else
+    LOG_K3B="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K3B")
+    # MSYS_NO_PATHCONV=1 z tego samego powodu co w przypadku 8 (Git Bash na
+    # Windows psuje sciezke montowania bez tego).
+    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$KATALOG_EKSPORT_K3B" "$REPO_ROOT/.gitleaks.toml" "$LOG_K3B"
+    KOD_GITLEAKS_K3B=$?
+    if grep -aq "scanned ~0 bytes" "$LOG_K3B" && command -v wslpath >/dev/null 2>&1; then
+      MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks \
+        "$(wslpath -w "$KATALOG_EKSPORT_K3B")" "$(wslpath -w "$REPO_ROOT/.gitleaks.toml")" "$LOG_K3B"
+      KOD_GITLEAKS_K3B=$?
+    fi
+    WYNIK_K3B="$(sekrety_policz_trafienia "$LOG_K3B")"; RC_K3B=$?
+    echo "  plikow=$PLIKOW_K3B, gitleaks EXIT=$KOD_GITLEAKS_K3B, trafien=$WYNIK_K3B (rc licznika=$RC_K3B)"
+    [[ "$KOD_GITLEAKS_K3B" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano gitleaks EXIT=0 na czystym HEAD"; NIEZAL_K3B=1; }
+    [[ "$RC_K3B" -eq 0 && "$WYNIK_K3B" == "0" ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano 0 trafien zgodnych, dostalem '$WYNIK_K3B' (rc=$RC_K3B)"; NIEZAL_K3B=1; }
+  fi
+  if [[ "$NIEZAL_K3B" -eq 1 ]]; then
+    NIEZALICZONE=$((NIEZALICZONE + 1))
+  else
+    echo "  WYNIK: ZALICZONY"
+  fi
 fi
 
+# ============================ CZESC 4: filtr pol (F-108) ===================
+# `sekrety_pola_do_logu` NIE MA byc zielony tylko dlatego, ze --redact
+# ukryl tresc sekretu wczesniej (K4/K5) - ta asercja dziala na fiksturze,
+# ktora ma pola Secret:/Match: NIEZALEZNIE od --redact, i sprawdza WPROST,
+# ze funkcja filtra sama z siebie nie przepuszcza tych pol.
+echo "=== 10 filtr pol: fikstura z polami Secret:/Match:, RuleID/File/Line zachowane - K4 ==="
+LOG_FILTR="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_FILTR")
+cat > "$LOG_FILTR" <<'EOF'
+Finding:     GENERIC_API_KEY = "udawany-sekret-xyz"
+Secret:      udawany-sekret-xyz
+Match:       GENERIC_API_KEY = "udawany-sekret-xyz"
+RuleID:      generic-api-key
+Entropy:     3.677567
+File:        /tresc/fake.env
+Line:        1
+Fingerprint: /tresc/fake.env:generic-api-key:1
+
+3:22PM INF scanned ~61 bytes (61 bytes) in 8.25ms
+3:22PM WRN leaks found: 1
+EOF
+LINIE_PRZED="$(grep -acE "^(Secret|Match):" "$LOG_FILTR")"
+WYNIK_FILTR="$(sekrety_pola_do_logu "$LOG_FILTR")"
+LINIE_PO_SM="$(printf '%s\n' "$WYNIK_FILTR" | grep -acE "^(Secret|Match):")"
+echo "  linii Secret:/Match: PRZED filtrem: $LINIE_PRZED, PO filtrze: $LINIE_PO_SM"
+NIEZAL_K4=0
+[[ "$LINIE_PO_SM" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - filtr przepuscil pole Secret:/Match:"; NIEZAL_K4=1; }
+printf '%s\n' "$WYNIK_FILTR" | grep -q "^RuleID:" || { echo "  WYNIK: NIEZALICZONY - filtr zgubil RuleID"; NIEZAL_K4=1; }
+printf '%s\n' "$WYNIK_FILTR" | grep -q "^File:" || { echo "  WYNIK: NIEZALICZONY - filtr zgubil File"; NIEZAL_K4=1; }
+printf '%s\n' "$WYNIK_FILTR" | grep -q "^Line:" || { echo "  WYNIK: NIEZALICZONY - filtr zgubil Line"; NIEZAL_K4=1; }
+if [[ "$NIEZAL_K4" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
 echo
-if [[ "$NIEZALICZONE" -eq 0 ]]; then
-  echo "TESTY LOGIKI LICZNIKA SEKRETOW: WSZYSTKIE ZALICZONE"
-  exit 0
-else
+if [[ "$NIEZALICZONE" -gt 0 ]]; then
   echo "TESTY LOGIKI LICZNIKA SEKRETOW: NIEZALICZONE PRZYPADKI: $NIEZALICZONE"
   exit 1
+elif [[ "$NIEZMIERZONE_LICZNIK" -gt 0 ]]; then
+  # F-108 (druga uwaga): brak Dockera NIE MA wygladac jak zielony bieg - kod
+  # wyjscia jest tu CELOWO inny niz 0 i inny niz 1 (NIEZALICZONY), zeby
+  # wolajacy odroznil "sprawdzilem i jest OK" od "nie sprawdzilem wcale".
+  echo "TESTY LOGIKI LICZNIKA SEKRETOW: NIE ZMIERZONO $NIEZMIERZONE_LICZNIK przypadek(ow) (brak Docker) - bieg NIE jest zielony"
+  exit 3
+else
+  echo "TESTY LOGIKI LICZNIKA SEKRETOW: WSZYSTKIE ZALICZONE"
+  exit 0
 fi

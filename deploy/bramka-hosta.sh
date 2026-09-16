@@ -270,23 +270,36 @@ fi
 
 T="$(date +%s)"
 EKSPORT="$(mktemp -d)"
-git archive --format=tar HEAD | tar -x -C "$EKSPORT"
-PLIKOW_GL="$(find "$EKSPORT" -type f | wc -l)"
-sekrety_uruchom_gitleaks "$EKSPORT" "$PWD/.gitleaks.toml" "$KATALOG_BIEGU"/bramka-gitleaks.log
-KOD_GITLEAKS=$?
-CZAS_GITLEAKS="$(czas_od "$T")"
-rm -rf "$EKSPORT"
-# ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
-BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
-TRAFIEN_GL="$(sekrety_policz_trafienia "$KATALOG_BIEGU"/bramka-gitleaks.log)"
-KOD_LICZNIKA=$?
-echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
-if [ "$KOD_LICZNIKA" -ne 0 ]; then
+# Eksport idzie przez sekrety_eksportuj_tresc (F-107): `git archive`, ktory
+# pada (np. shim w tescie, EXIT=128) albo daje 0 plikow mimo EXIT=0, NIE MA
+# tu cicho zamienic sie w "skan 0 bajtow, no leaks found" - taki eksport
+# konczy krok kodem 2, zanim gitleaks w ogole ruszy.
+PLIKOW_GL="$(sekrety_eksportuj_tresc HEAD "$EKSPORT" 2>"$KATALOG_BIEGU"/bramka-gitleaks.log)"
+KOD_EKSPORT=$?
+if [ "$KOD_EKSPORT" -ne 0 ]; then
     KOD_GITLEAKS=2
+    TRAFIEN_GL="NIEZMIERZONE"
+    CZAS_GITLEAKS="$(czas_od "$T")"
+    rm -rf "$EKSPORT"
+    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, eksport nieprawidlowy"
+    sed 's/^/  ! /' "$KATALOG_BIEGU"/bramka-gitleaks.log
+else
+    sekrety_uruchom_gitleaks "$EKSPORT" "$PWD/.gitleaks.toml" "$KATALOG_BIEGU"/bramka-gitleaks.log
+    KOD_GITLEAKS=$?
+    CZAS_GITLEAKS="$(czas_od "$T")"
+    rm -rf "$EKSPORT"
+    # ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
+    BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
+    TRAFIEN_GL="$(sekrety_policz_trafienia "$KATALOG_BIEGU"/bramka-gitleaks.log)"
+    KOD_LICZNIKA=$?
+    echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, plikow $PLIKOW_GL, ${BAJTOW_GL:-brak odczytu}, trafien $TRAFIEN_GL"
+    if [ "$KOD_LICZNIKA" -ne 0 ]; then
+        KOD_GITLEAKS=2
+    fi
+    # Filtr NIGDY nie przepuszcza Secret/Match/Finding (tresc trafienia) - tylko
+    # RuleID/File/Line, nawet gdy `-v` je drukuje.
+    [ "$KOD_GITLEAKS" -ne 0 ] && sekrety_pola_do_logu "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
 fi
-# Filtr NIGDY nie przepuszcza Secret/Match/Finding (tresc trafienia) - tylko
-# RuleID/File/Line, nawet gdy `-v` je drukuje.
-[ "$KOD_GITLEAKS" -ne 0 ] && sekrety_pola_do_logu "$KATALOG_BIEGU"/bramka-gitleaks.log | head -12 | sed 's/^/  ! /'
 # Test wlasnej logiki jest osobnym warunkiem, niezaleznym od wyniku skanu:
 # skan mogl wyjsc czysto (KOD_GITLEAKS=0) na logice, ktora akurat na TYM
 # logu przypadkiem daje ta sama liczbe co poprawna - dlatego jego czerwien
