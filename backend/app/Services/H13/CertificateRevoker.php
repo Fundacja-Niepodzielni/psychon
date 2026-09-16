@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\Certificate;
 use App\Models\User;
 use App\Support\AuditLog;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -28,11 +29,16 @@ final class CertificateRevoker
             $locked = Certificate::query()->whereKey($certificate->getKey())->lockForUpdate()->firstOrFail();
 
             if ($locked->revoked_at !== null) {
+                // Certificate::casts() rzutuje `revoked_at` na datetime, ale analiza
+                // statyczna tego rzutowania nie wyprowadza — stąd lokalne domknięcie typu.
+                /** @var Carbon $revokedAt */
+                $revokedAt = $locked->revoked_at;
+
                 throw new ApiException(
                     409,
                     self::ALREADY_REVOKED_CODE,
                     'Ten certyfikat został już unieważniony.',
-                    reason: ['revoked_at' => $locked->revoked_at->toIso8601ZuluString()],
+                    reason: ['revoked_at' => $revokedAt->toIso8601ZuluString()],
                 );
             }
 

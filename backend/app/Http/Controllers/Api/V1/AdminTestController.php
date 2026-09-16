@@ -22,8 +22,13 @@ class AdminTestController extends Controller
 {
     public function index(Course $course): JsonResponse
     {
+        // Course::test() jest nietypowana generycznie (HasOne bez parametrów), więc
+        // analiza statyczna widzi tu bazowy Eloquent\Model — pod spodem zawsze Test.
+        /** @var Test|null $test */
+        $test = $course->test;
+
         return response()->json([
-            'data' => $this->present($course->test),
+            'data' => $this->present($test),
         ]);
     }
 
@@ -33,6 +38,7 @@ class AdminTestController extends Controller
             throw new ApiException(409, 'test_exists', 'Ten kurs ma już test.');
         }
 
+        /** @var Test $test */
         $test = $course->test()->create($request->validated());
 
         return response()->json(['data' => $this->present($test)], 201);
