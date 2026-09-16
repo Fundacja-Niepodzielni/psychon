@@ -132,6 +132,37 @@ describe("RecordForm", () => {
     expect(screen.getByLabelText("Imię")).not.toHaveFocus();
   });
 
+  it("kolejność pól formularza wygrywa z kolejnością błędów z serwera", () => {
+    const trzyPola: RecordFormField[] = [
+      { name: "imie", label: "Imię", required: true },
+      { name: "email", label: "E-mail", type: "email", required: true },
+      { name: "telefon", label: "Telefon", required: true },
+    ];
+
+    const { rerender } = render(
+      <RecordForm fields={trzyPola} values={{}} onChange={vi.fn()} onSubmit={vi.fn()} />,
+    );
+
+    // Kolejność kluczy w odpowiedzi serwera odwrotna do kolejności pól na
+    // ekranie: "telefon" i "email" pierwsze, "imie" ostatnie. Pierwsze
+    // błędne pole w kolejności formularza to mimo to "imie".
+    rerender(
+      <RecordForm
+        fields={trzyPola}
+        values={{}}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        fieldErrors={{
+          telefon: "Podaj numer telefonu.",
+          email: "Podaj poprawny adres e-mail.",
+          imie: "Podaj imię.",
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText("Imię")).toHaveFocus();
+  });
+
   it("axe: 0 naruszeń na formularzu z odmową dwóch pól", async () => {
     const { container } = render(
       <RecordForm

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import ConfirmDialog from "@/components/organisms/ConfirmDialog";
@@ -193,6 +193,58 @@ describe("ConfirmDialog", () => {
     await user.click(container.firstElementChild as HTMLElement);
 
     expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it("przejście w stan zapisu zdejmuje fokus z przycisku „donikąd” — okno odsyła go do siebie", async () => {
+    // Realna przeglądarka: gdy przycisk z fokusem zablokuje się (`disabled`),
+    // zdejmuje z niego fokus bez nowego celu — leci `focusout` z
+    // `relatedTarget === null`. jsdom tego sam nie odtwarza (blokowanie
+    // atrybutem `disabled` w re-renderze nie przenosi fokusu), więc świadek
+    // wywołuje to zdarzenie wprost, tak jak zrobiłaby to przeglądarka po
+    // wciśnięciu Enter/Spacji na przycisku, który się właśnie zablokował.
+    const user = userEvent.setup();
+    render(
+      <ConfirmDialog
+        open
+        title="Usuń wpis"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    await user.tab();
+    const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+    expect(confirmButton).toHaveFocus();
+
+    fireEvent.focusOut(confirmButton, { relatedTarget: null });
+
+    expect(dialog).toHaveFocus();
+  });
+
+  it("mousedown na tle ma zablokowane domyślne zachowanie; wewnątrz okna — nie", () => {
+    const { container } = render(
+      <ConfirmDialog
+        open
+        title="Usuń wpis"
+        description="Tej operacji nie można cofnąć."
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const backdrop = container.firstElementChild as HTMLElement;
+    const dialog = screen.getByRole("dialog");
+    const description = screen.getByText("Tej operacji nie można cofnąć.");
+
+    const backdropEvent = createEvent.mouseDown(backdrop);
+    fireEvent(backdrop, backdropEvent);
+    expect(backdropEvent.defaultPrevented).toBe(true);
+
+    const insideEvent = createEvent.mouseDown(description);
+    fireEvent(description, insideEvent);
+    expect(insideEvent.defaultPrevented).toBe(false);
+    expect(dialog).toBeInTheDocument();
   });
 
   it("axe: 0 naruszeń na wyrenderowanym oknie", async () => {
