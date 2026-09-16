@@ -11,9 +11,10 @@ interface State {
 }
 
 /**
- * Pomocnik wyłącznie dla katalogu przykładów (nie jeden z 8 komponentów
- * partii P3a): łapie wyjątek rzucony przez `StatRow` przy piątym kaflu, żeby
- * zademonstrować zabezpieczenie Z-16 bez ubijania całej strony katalogu.
+ * Pomocnik wyłącznie dla katalogu przykładów (nie jeden z prezentowanych
+ * komponentów): łapie wyjątek rzucony przez `StatRow` w trybie
+ * deweloperskim, żeby zademonstrować jego wymuszenia (Z-3, Z-16) bez
+ * ubijania całej strony katalogu.
  */
 export default class DemoErrorBoundary extends Component<Props, State> {
   state: State = { message: null };

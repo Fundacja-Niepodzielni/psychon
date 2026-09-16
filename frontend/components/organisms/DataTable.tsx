@@ -49,24 +49,25 @@ export interface DataTableProps<T> {
 }
 
 /**
- * `DataTable` — organizm C2 wariant C (partia P3a): tabela + sortowanie po
- * kolumnie (klawiatura, `aria-sort`) + 5 stanów Z-6 (ładowanie / błąd / pusty
- * / odmowa / dane) + `Pagination` + `FilterBar` (przez slot `filterBar`,
- * żeby organizm nie narzucał konkretnego zestawu filtrów).
+ * `DataTable` — organizm C2 wariant C: tabela + sortowanie po kolumnie
+ * (klawiatura, `aria-sort`) + 5 stanów Z-6 (ładowanie / błąd / pusty /
+ * odmowa / dane) + `Pagination` + `FilterBar` (przez slot `filterBar`, żeby
+ * organizm nie narzucał konkretnego zestawu filtrów). Przełączanie na widok
+ * kart (`RecordList`) na wąskim ekranie zostaje po stronie strony, która
+ * łączy oba organizmy — `DataTable` sam się nie chowa wg szerokości.
  *
  * Wiersze mają jednolite tło (`bg-card`), bez naprzemiennego cieniowania
  * `Table.tsx` (`odd:bg-card even:bg-page`): zmierzone axe-core naruszenie —
  * plakietka `Badge variant="success"` (`bg-success-bg` na `text-success`)
  * spada na wierszu z tłem `bg-page` do 4,33:1, poniżej progu Z-9 (4,5:1).
- * Token pozostaje poza zakresem tej partii (zakaz ruszania tokenów), więc
- * usunięte zostało cieniowanie wierszy w tym organizmie zamiast tokenu.
+ * Token pozostaje poza zakresem tego organizmu (zakaz ruszania tokenów),
+ * więc usunięte zostało cieniowanie wierszy tutaj zamiast tokenu.
  *
  * Nagłówek tabeli renderuje własną strukturę zamiast `components/ui/Table`
  * — `Table.Column.header` jest typu `string` (bez miejsca na przycisk
- * sortowania), a rozszerzanie `Table` wykraczałoby poza listę „dokładnie
- * tych komponentów" tej partii. Wygląd wiersza/komórki zostaje identyczny z
- * `Table` (te same klasy tokenów), więc wizualnie to ten sam komponent z
- * dodaną interakcją nagłówka.
+ * sortowania). Wygląd wiersza/komórki zostaje identyczny z `Table` (te same
+ * klasy tokenów), więc wizualnie to ten sam komponent z dodaną interakcją
+ * nagłówka.
  */
 export default function DataTable<T>({
   columns,
@@ -107,16 +108,17 @@ export default function DataTable<T>({
       )}
       {stan === "success" && (
         <>
-          {/* Z-10: przewijanie poziome tylko dla tabel z ≥ 4 kolumnami, z
-           * widocznym oznaczeniem — poniżej 4 kolumn kontener nie przewija. */}
+          {/* Z-10: oznaczenie widoczne tylko dla tabel z ≥ 4 kolumnami —
+           * to jest wypadek projektowy „tabela ma przewijać się w bok".
+           * Kontener przewija się zawsze (bez wyjątku od 1 do 3 kolumn),
+           * żeby wąska tabela nie rozpychała całej strony — przewija się
+           * ona sama, strona nie (zmierzone przy 360 px). */}
           {columns.length >= 4 && (
             <p aria-hidden="true" className="px-1 text-caption text-subtle">
               Przewiń w bok, żeby zobaczyć pozostałe kolumny →
             </p>
           )}
-          <div
-            className={`rounded-md border border-line bg-card ${columns.length >= 4 ? "overflow-x-auto" : ""}`}
-          >
+          <div className="overflow-x-auto rounded-md border border-line bg-card">
             <table className="w-full border-collapse text-left text-small">
               {caption && <caption className="sr-only">{caption}</caption>}
               <thead>
@@ -132,7 +134,7 @@ export default function DataTable<T>({
                         <button
                           type="button"
                           onClick={() => onSortChange?.(col.key)}
-                          className="inline-flex items-center gap-1 focus-visible:focus-ring"
+                          className="inline-flex min-h-11 items-center gap-1 rounded-xs focus-visible:focus-ring"
                         >
                           {col.header}
                           <span aria-hidden="true">

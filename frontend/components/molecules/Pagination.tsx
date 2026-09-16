@@ -10,11 +10,11 @@ export interface PaginationProps {
 }
 
 /**
- * `Pagination` — molekuła C2 wariant C (partia P3a): „Poprzednia / Strona X
- * z Y / Następna". Pola dotyku ≥ 44 px (`min-h-11`, Z-10). Ta sama treść, co
- * blok już wpięty w `components/templates/ListTemplate.tsx` — ten plik jest
- * poza zakresem P3a (lista zabronionych plików), więc `ListTemplate`
- * przechodzi na tę molekułę dopiero przy kolejnej partii, nie tutaj.
+ * `Pagination` — molekuła C2 wariant C: „Poprzednia / Strona X z Y /
+ * Następna". Pola dotyku ≥ 44 px (`min-h-11`, Z-10). Ta sama treść, co blok
+ * już wpięty w `components/templates/ListTemplate.tsx` — tamten plik dziś
+ * ma własną, równoległą implementację; przejście na tę molekułę to osobna
+ * zmiana.
  */
 export default function Pagination({
   strona,

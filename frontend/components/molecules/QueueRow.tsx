@@ -24,10 +24,10 @@ const wiersz =
   "flex min-h-11 w-full items-center justify-between gap-4 rounded-md border border-line bg-card px-4 py-3 text-left transition-colors duration-200 focus-visible:focus-ring";
 
 /**
- * `QueueRow` — molekuła C2 wariant C (partia P3a): wiersz kolejki, cały
- * klikalny, dokładnie jedna akcja (Z-10, Z-13). Zastępuje 9 niezależnych
- * implementacji stronicowania obok wierszy kolejek pisanych ręcznie w
- * ekranach `h07`, `h11`, `h18`, `h20` (nie ruszanych w P3a).
+ * `QueueRow` — molekuła C2 wariant C: wiersz kolejki, cały klikalny,
+ * dokładnie jedna akcja (Z-10, Z-13). Zastępuje ręcznie pisane wiersze
+ * kolejek (tytuł + opis + plakietka + jedna akcja) powtórzone na kilku
+ * ekranach kolejek Opiekuna.
  */
 export default function QueueRow({
   title,

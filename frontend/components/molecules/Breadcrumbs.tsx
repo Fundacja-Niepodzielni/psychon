@@ -13,9 +13,9 @@ export interface BreadcrumbsProps {
 }
 
 /**
- * `Breadcrumbs` — molekuła C2 wariant C (partia P3a): okruszki nawigacji.
- * `nav` z `aria-label`, ostatni element `aria-current="page"` i bez odnośnika
- * (nie prowadzi nigdzie — to bieżący ekran). Wpina się jako opcjonalny slot
+ * `Breadcrumbs` — molekuła C2 wariant C: okruszki nawigacji. `nav` z
+ * `aria-label`, ostatni element `aria-current="page"` i bez odnośnika (nie
+ * prowadzi nigdzie — to bieżący ekran). Wpina się jako opcjonalny slot
  * `PageHeader.breadcrumbs`, bez zmiany dotychczasowego API tej molekuły.
  */
 export default function Breadcrumbs({ items, className = "" }: BreadcrumbsProps) {
@@ -34,7 +34,7 @@ export default function Breadcrumbs({ items, className = "" }: BreadcrumbsProps)
               {!isLast && item.href ? (
                 <Link
                   href={item.href}
-                  className="rounded-xs text-muted hover:text-ink focus-visible:focus-ring"
+                  className="inline-flex min-h-11 items-center rounded-xs text-muted hover:text-ink focus-visible:focus-ring"
                 >
                   {item.label}
                 </Link>

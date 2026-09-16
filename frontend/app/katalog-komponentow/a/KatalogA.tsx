@@ -38,8 +38,8 @@ const BADGE_WARIANT: Record<Zgloszenie["status"], "info" | "warning" | "success"
   zamknięte: "success",
 };
 
-/** Ramka z etykietą stanu — tylko do porządku wizualnego w katalogu, nie
- * jeden z 8 komponentów partii P3a. */
+/** Ramka z etykietą stanu — pomocnik wyłącznie do porządku wizualnego w
+ * katalogu, nie jeden z prezentowanych komponentów. */
 function Przyklad({
   etykieta,
   opis,
@@ -48,8 +48,8 @@ function Przyklad({
 }: {
   etykieta: string;
   opis?: string;
-  /** Wyłącznie do pomiaru z uruchomionej aplikacji (K4/K11) — nie wpływa na
-   * wygląd ani na żaden z 8 komponentów partii P3a. */
+  /** Wyłącznie do pomiaru w uruchomionej aplikacji — nie wpływa na wygląd
+   * ani na żaden z prezentowanych komponentów. */
   testId?: string;
   children: ReactNode;
 }) {
@@ -73,6 +73,8 @@ export default function KatalogA() {
   const [sort, setSort] = useState<DataTableSort | null>({ key: "imie", direction: "asc" });
   const [strona, setStrona] = useState(2);
   const [pokazBladStatRow, setPokazBladStatRow] = useState(false);
+  const [pokazBladLiczbyDominujacej, setPokazBladLiczbyDominujacej] = useState(false);
+  const [pokazBladKontekstu, setPokazBladKontekstu] = useState(false);
 
   const kolumny: DataTableColumn<Zgloszenie>[] = [
     { key: "imie", header: "Zgłaszający", sortable: true, render: (r) => r.imie },
@@ -115,7 +117,7 @@ export default function KatalogA() {
           />
         }
         title="Katalog komponentów — zestaw A"
-        description="5 molekuł i 3 organizmy z partii P3a, każdy w stanach spoczynek / fokus / błąd / wyłączony. Trasa dostępna tylko poza produkcją (K8)."
+        description="Molekuły i organizmy list i nawigacji, każdy w stanach spoczynek / fokus / błąd / wyłączony. Trasa dostępna tylko poza produkcją."
       />
 
       {/* 1. Breadcrumbs */}
@@ -368,25 +370,66 @@ export default function KatalogA() {
         <NieDotyczy powod="fokus — kafle StatTile nie są kontrolkami." />
         <Przyklad
           etykieta="Błąd"
-          opis="Piąty kafel — przycisk niżej wyzwala błąd dopiero po stronie klienta (żeby nie ubijać renderu serwera tej strony); złapany przez DemoErrorBoundary tylko na potrzeby zrzutu."
+          opis="Trzy przyciski niżej wyzwalają błąd dopiero po stronie klienta (żeby nie ubijać renderu serwera tej strony); każdy złapany przez osobną granicę błędu tylko na potrzeby zrzutu."
         >
-          {pokazBladStatRow ? (
-            <DemoErrorBoundary>
-              <StatRow
-                items={[
-                  { value: 24, label: "Aktywni uczestnicy", dominant: true },
-                  { value: 12, label: "Otwarte zgłoszenia" },
-                  { value: 4, label: "Oczekujące certyfikaty" },
-                  { value: 87, label: "Ukończone lekcje" },
-                  { value: 1, label: "Piąty kafel — błąd" },
-                ]}
-              />
-            </DemoErrorBoundary>
-          ) : (
-            <Button variant="secondary" onClick={() => setPokazBladStatRow(true)}>
-              Pokaż piąty kafel (wywołaj błąd)
-            </Button>
-          )}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-small text-muted">Piąty kafel (Z-16)</p>
+              {pokazBladStatRow ? (
+                <DemoErrorBoundary>
+                  <StatRow
+                    items={[
+                      { value: 24, label: "Aktywni uczestnicy", dominant: true, context: "+3 w tym tygodniu" },
+                      { value: 12, label: "Otwarte zgłoszenia" },
+                      { value: 4, label: "Oczekujące certyfikaty" },
+                      { value: 87, label: "Ukończone lekcje" },
+                      { value: 1, label: "Piąty kafel — błąd" },
+                    ]}
+                  />
+                </DemoErrorBoundary>
+              ) : (
+                <Button variant="secondary" onClick={() => setPokazBladStatRow(true)}>
+                  Pokaż piąty kafel (wywołaj błąd)
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-small text-muted">Dwie liczby dominujące zamiast jednej (Z-3)</p>
+              {pokazBladLiczbyDominujacej ? (
+                <DemoErrorBoundary>
+                  <StatRow
+                    items={[
+                      { value: 24, label: "Aktywni uczestnicy", dominant: true, context: "+3 w tym tygodniu" },
+                      { value: 12, label: "Otwarte zgłoszenia", dominant: true },
+                      { value: 4, label: "Oczekujące certyfikaty" },
+                    ]}
+                  />
+                </DemoErrorBoundary>
+              ) : (
+                <Button variant="secondary" onClick={() => setPokazBladLiczbyDominujacej(true)}>
+                  Pokaż dwie dominujące (wywołaj błąd)
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-small text-muted">Liczba dominująca bez kontekstu (Z-3)</p>
+              {pokazBladKontekstu ? (
+                <DemoErrorBoundary>
+                  <StatRow
+                    items={[
+                      { value: 24, label: "Aktywni uczestnicy", dominant: true },
+                      { value: 12, label: "Otwarte zgłoszenia" },
+                      { value: 4, label: "Oczekujące certyfikaty" },
+                    ]}
+                  />
+                </DemoErrorBoundary>
+              ) : (
+                <Button variant="secondary" onClick={() => setPokazBladKontekstu(true)}>
+                  Pokaż dominującą bez kontekstu (wywołaj błąd)
+                </Button>
+              )}
+            </div>
+          </div>
         </Przyklad>
         <NieDotyczy powod="wyłączony — komponent nie ma stanu wyłączenia." />
       </section>

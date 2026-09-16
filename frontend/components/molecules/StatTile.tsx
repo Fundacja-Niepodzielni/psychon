@@ -14,8 +14,8 @@ export interface StatTileProps {
 }
 
 /**
- * `StatTile` — molekuła C2 wariant C (partia P3a): jedna liczba + etykieta.
- * Zastępuje dwie niezależne implementacje kafla liczby (`admin/page.tsx`,
+ * `StatTile` — molekuła C2 wariant C: jedna liczba + etykieta. Zastępuje
+ * dwie niezależne implementacje kafla liczby (`admin/page.tsx`,
  * `PulpitDashboard.tsx`). Stopień pisma niesie ważność — `text-h1` dla
  * wariantu dominującego (42 px), `text-h3` dla zwykłego (26 px): różnica
  * 16 px, powyżej progu Z-3 (≥ 6 px).

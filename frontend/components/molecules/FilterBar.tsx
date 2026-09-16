@@ -10,9 +10,9 @@ export interface FilterBarProps {
 }
 
 /**
- * `FilterBar` — molekuła C2 wariant C (partia P3a): filtry w jednym rzędzie,
- * zawijane na wąskim ekranie (`flex-wrap`, Z-14 — nic na ścieżce krytycznej
- * nie jest domyślnie schowane, więc filtry nie chowają się za „Pokaż więcej").
+ * `FilterBar` — molekuła C2 wariant C: filtry w jednym rzędzie, zawijane na
+ * wąskim ekranie (`flex-wrap`, Z-14 — nic na ścieżce krytycznej nie jest
+ * domyślnie schowane, więc filtry nie chowają się za „Pokaż więcej").
  */
 export default function FilterBar({ children, label, className = "" }: FilterBarProps) {
   return (
