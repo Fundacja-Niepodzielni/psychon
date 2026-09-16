@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DocumentApiTest extends TestCase
@@ -110,7 +111,7 @@ class DocumentApiTest extends TestCase
         $this->actingAs($marta, 'keycloak');
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
-        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
+        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->public_id]);
 
         $response = $this->get($url);
 
@@ -124,11 +125,35 @@ class DocumentApiTest extends TestCase
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
         $this->actingAs($filip, 'keycloak');
-        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
+        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->public_id]);
 
         $response = $this->get($url);
 
         $response->assertStatus(404)->assertJsonPath('error.code', 'not_found');
+    }
+
+    /**
+     * Odpowiedź dla cudzego dokumentu nie może różnić się ani jednym bajtem
+     * od odpowiedzi dla identyfikatora, którego w bazie w ogóle nie ma —
+     * inaczej sama treść odpowiedzi zdradzałaby, że coś pod tym adresem
+     * istnieje, tylko nie dla tej osoby.
+     */
+    public function test_someone_elses_document_answers_identically_to_a_nonexistent_one(): void
+    {
+        $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
+        $filip = User::where('email', 'filip@demo.pl')->firstOrFail();
+        $document = Document::where('user_id', $marta->id)->firstOrFail();
+        $this->actingAs($filip, 'keycloak');
+
+        $foreignUrl = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->public_id]);
+        $foreignResponse = $this->get($foreignUrl);
+
+        $missingUrl = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => (string) Str::uuid()]);
+        $missingResponse = $this->get($missingUrl);
+
+        $foreignResponse->assertStatus(404);
+        $missingResponse->assertStatus(404);
+        $this->assertSame($missingResponse->getContent(), $foreignResponse->getContent());
     }
 
     public function test_an_expired_signature_is_rejected(): void
@@ -137,7 +162,7 @@ class DocumentApiTest extends TestCase
         $this->actingAs($marta, 'keycloak');
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
-        $url = URL::temporarySignedRoute('documents.download', now()->subMinutes(1), ['document' => $document->id]);
+        $url = URL::temporarySignedRoute('documents.download', now()->subMinutes(1), ['document' => $document->public_id]);
 
         $response = $this->get($url);
 
@@ -150,7 +175,7 @@ class DocumentApiTest extends TestCase
         $this->actingAs($marta, 'keycloak');
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
-        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
+        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->public_id]);
         $tampered = $url.'&tampered=1';
 
         $response = $this->get($tampered);
@@ -158,20 +183,44 @@ class DocumentApiTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_download_reconstructs_a_missing_file_from_the_snapshot(): void
+    /**
+     * Dokument nie ma już pliku na dysku — powstaje w locie z zaszyfrowanej
+     * migawki i trafia od razu do odpowiedzi. Pobranie nie ma więc zostawić
+     * po sobie żadnego pliku, a treść ma nadal odpowiadać temu konkretnemu
+     * dokumentowi (numer widoczny po rozpakowaniu strumienia PDF-a).
+     */
+    public function test_download_never_writes_a_file_and_content_matches_the_document_number(): void
     {
+        Storage::fake('local');
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
         $document = Document::where('user_id', $marta->id)->firstOrFail();
 
-        // Seed intentionally points at a file absent from disk (design D7).
-        $this->assertFalse(Storage::disk('local')->exists($document->pdf_path));
-
         $this->actingAs($marta, 'keycloak');
-        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->id]);
+        $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->public_id]);
 
         $response = $this->get($url);
 
         $response->assertOk();
-        $this->assertTrue(Storage::disk('local')->exists($document->fresh()->pdf_path));
+        $this->assertCount(0, Storage::disk('local')->allFiles());
+        $this->assertStringContainsString($document->number, $this->extractPdfText($response->getContent()));
+    }
+
+    /**
+     * Strumienie treści w PDF-ie z dompdf są skompresowane (FlateDecode),
+     * więc szukanie napisu wprost w surowych bajtach nie ma sensu — trzeba
+     * rozpakować każdy strumień i dopiero w nim szukać.
+     */
+    private function extractPdfText(string $pdf): string
+    {
+        preg_match_all('/stream\r?\n(.*?)endstream/s', $pdf, $matches);
+        $text = '';
+        foreach ($matches[1] as $stream) {
+            $decoded = @gzuncompress($stream);
+            if ($decoded !== false) {
+                $text .= $decoded;
+            }
+        }
+
+        return $text;
     }
 }
