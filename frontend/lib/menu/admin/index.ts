@@ -17,6 +17,7 @@ import h19Ustawienia from "./h19-ustawienia";
 import h15Profil from "./h15-profil";
 import h20Raport from "./h20-raport";
 import h20Dziennik from "./h20-dziennik";
+import h21EkranStartowy from "./h21-ekran-startowy";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
 import { sortMenu, type MenuEntry } from "../types";
@@ -34,5 +35,6 @@ export const adminMenu: MenuEntry[] = sortMenu([
   h16Emails,
   h20Raport,
   h20Dziennik,
+  h21EkranStartowy,
   // hXXNazwa, // ← i drugą tutaj
 ]);
