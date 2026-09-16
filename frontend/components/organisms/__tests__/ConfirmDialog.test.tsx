@@ -250,11 +250,31 @@ describe("ConfirmDialog", () => {
     focusSpy.mockRestore();
   });
 
-  it("po zamknięciu okna liczba nasłuchów focusout na dokumencie wraca do zera", () => {
-    const addSpy = vi.spyOn(document, "addEventListener");
-    const removeSpy = vi.spyOn(document, "removeEventListener");
+  it("po powrocie do spoczynku przy otwartym oknie utrata fokusu «donikąd» nie przenosi go na kontener", () => {
+    // Zachowanie, nie mechanizm: liczenie wywołań add/removeEventListener nie
+    // wykrywa nasłuchu, który zostaje zarejestrowany, mimo że stan już nie
+    // jest stanem zapisu (np. zdjęty inny nasłuch albo zdjęty w innej fazie
+    // niż dodany) — dopiero kolejna utrata fokusu ujawnia taki wyciek.
+    const { rerender } = render(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
 
-    const { rerender, unmount } = render(
+    rerender(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+    const focusSpy = vi.spyOn(dialog, "focus");
+
+    fireEvent.focusOut(confirmButton, { relatedTarget: null });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("po zamknięciu i ponownym otwarciu utrata fokusu «donikąd» nie przenosi go na kontener", () => {
+    const { rerender } = render(
       <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
 
@@ -262,15 +282,38 @@ describe("ConfirmDialog", () => {
       <ConfirmDialog open={false} title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
 
-    const dodane = addSpy.mock.calls.filter(([nazwa]) => nazwa === "focusout").length;
-    const usuniete = removeSpy.mock.calls.filter(([nazwa]) => nazwa === "focusout").length;
+    rerender(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
 
-    expect(dodane).toBeGreaterThan(0);
-    expect(usuniete).toBe(dodane);
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+    const focusSpy = vi.spyOn(dialog, "focus");
 
-    addSpy.mockRestore();
-    removeSpy.mockRestore();
-    unmount();
+    fireEvent.focusOut(confirmButton, { relatedTarget: null });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("aktywacja «Potwierdź» przenosi fokus na kontener przed wywołaniem potwierdzenia", async () => {
+    const user = userEvent.setup();
+    const dialogAtCallTime: (Element | null)[] = [];
+    const onConfirm = vi.fn(() => {
+      dialogAtCallTime.push(document.activeElement);
+    });
+
+    render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={onConfirm} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+
+    await user.click(confirmButton);
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(dialogAtCallTime[0]).toBe(dialog);
   });
 
   it("region ogłoszeń: tekst obecny w stanie zapisu, pusty przed i po", () => {
