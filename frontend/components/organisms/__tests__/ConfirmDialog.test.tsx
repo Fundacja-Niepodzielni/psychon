@@ -195,31 +195,101 @@ describe("ConfirmDialog", () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
   });
 
-  it("przejście w stan zapisu zdejmuje fokus z przycisku „donikąd” — okno odsyła go do siebie", async () => {
+  it("w stanie zapisu utrata fokusu «donikąd» wraca do okna", () => {
     // Realna przeglądarka: gdy przycisk z fokusem zablokuje się (`disabled`),
     // zdejmuje z niego fokus bez nowego celu — leci `focusout` z
     // `relatedTarget === null`. jsdom tego sam nie odtwarza (blokowanie
-    // atrybutem `disabled` w re-renderze nie przenosi fokusu), więc świadek
+    // atrybutem `disabled` w re-renderze nie przenosi fokusu), więc test
     // wywołuje to zdarzenie wprost, tak jak zrobiłaby to przeglądarka po
     // wciśnięciu Enter/Spacji na przycisku, który się właśnie zablokował.
-    const user = userEvent.setup();
-    render(
-      <ConfirmDialog
-        open
-        title="Usuń wpis"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
+    // Nasłuch działa tylko w stanie zapisu — dlatego przycisk fokusujemy
+    // przed przejściem w ten stan (w spoczynku jest jeszcze dostępny).
+    const { rerender } = render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.tab();
     const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+    confirmButton.focus();
     expect(confirmButton).toHaveFocus();
+
+    rerender(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
 
     fireEvent.focusOut(confirmButton, { relatedTarget: null });
 
     expect(dialog).toHaveFocus();
+  });
+
+  it("focusout z celem wewnątrz okna nie przenosi fokusu na kontener — w stanie zapisu", () => {
+    render(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const focusSpy = vi.spyOn(dialog, "focus");
+
+    fireEvent.focusOut(dialog, { relatedTarget: dialog.querySelector("h2") });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("focusout „donikąd” w spoczynku nie przenosi fokusu na kontener", () => {
+    render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const focusSpy = vi.spyOn(dialog, "focus");
+
+    fireEvent.focusOut(dialog, { relatedTarget: null });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("po zamknięciu okna liczba nasłuchów focusout na dokumencie wraca do zera", () => {
+    const addSpy = vi.spyOn(document, "addEventListener");
+    const removeSpy = vi.spyOn(document, "removeEventListener");
+
+    const { rerender, unmount } = render(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    rerender(
+      <ConfirmDialog open={false} title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dodane = addSpy.mock.calls.filter(([nazwa]) => nazwa === "focusout").length;
+    const usuniete = removeSpy.mock.calls.filter(([nazwa]) => nazwa === "focusout").length;
+
+    expect(dodane).toBeGreaterThan(0);
+    expect(usuniete).toBe(dodane);
+
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+    unmount();
+  });
+
+  it("region ogłoszeń: tekst obecny w stanie zapisu, pusty przed i po", () => {
+    const { rerender } = render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const region = screen.getByRole("status");
+    expect(region).toHaveTextContent("");
+
+    rerender(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(region).toHaveTextContent("Trwa zapisywanie.");
+
+    rerender(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(region).toHaveTextContent("");
   });
 
   it("mousedown na tle ma zablokowane domyślne zachowanie; wewnątrz okna — nie", () => {
