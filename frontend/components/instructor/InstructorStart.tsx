@@ -20,9 +20,9 @@ import type { InstructorGroup, InstructorSlot } from "@/lib/h12/types";
  *
  * Każdy kafelek ma cztery stany i nigdy ich nie miesza: wczytywanie, awaria
  * z ponowieniem, pustka i liczba. Stan wczytywania NIE twierdzi niczego —
- * w szczególności nie pokazuje zera ani słowa „”, bo przed odpowiedzią
+ * w szczególności nie pokazuje zera ani słowa „brak”, bo przed odpowiedzią
  * serwera nie wiadomo, czy liczba jest zerem, czy trzydziestką. Widać wtedy
- * pasek szkieletu, a czytnik ekranu dostaje krótkie „”.
+ * pasek szkieletu, a czytnik ekranu dostaje krótkie „Wczytuję…”.
  */
 type Zasob<T> =
   | { stan: "wczytywanie" }
@@ -42,7 +42,7 @@ const LINK_CLASS =
   "text-accent transition-colors duration-200 hover:text-accent-dark focus-visible:focus-ring";
 
 /**
- * Najbliższy termin jeszcze przed nami. Terminy minione nie są „” —
+ * Najbliższy termin jeszcze przed nami. Terminy minione nie są „najbliższe” —
  * po nich kafelek ma pokazać pustkę, a nie datę sprzed miesiąca.
  */
 export function najblizszyTermin(
