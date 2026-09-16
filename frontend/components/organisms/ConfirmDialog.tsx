@@ -66,9 +66,15 @@ export default function ConfirmDialog({
   // celu nie ma; `focusin` w tym przypadku w ogóle nie leci, bo `<body>` nie
   // przejmuje fokusu jak zwykły element). Nasłuch łapie tę chwilę i odsyła
   // fokus do kontenera okna — obojętnie, czy zatwierdzenie przyszło z
-  // klawiatury, czy myszą.
+  // klawiatury, czy myszą. Aktywny wyłącznie w stanie zapisu: poza nim
+  // `relatedTarget === null` zdarza się też przy zwykłym wyjściu z karty
+  // (np. Alt+Tab), a bez tego zawężenia nasłuch łapał taką chwilę tak samo,
+  // jakby zapis trwał, i przenosił fokus na kontener bez powodu. Kliknięcie
+  // samego "Usuń" ma osobne, natychmiastowe zabezpieczenie niżej (przy
+  // przycisku) — ten nasłuch łapie pozostałe sposoby, którymi zapis mógłby
+  // się zacząć (np. zatwierdzenie formularza z zewnątrz).
   useEffect(() => {
-    if (!open) return;
+    if (!open || !loading) return;
     function handleFocusOut(event: FocusEvent) {
       const container = dialogRef.current;
       if (!container) return;
@@ -79,7 +85,7 @@ export default function ConfirmDialog({
     }
     document.addEventListener("focusout", handleFocusOut);
     return () => document.removeEventListener("focusout", handleFocusOut);
-  }, [open]);
+  }, [open, loading]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     // Blok Escape — osobno od pułapki fokusu niżej, żeby dało się go
@@ -144,7 +150,7 @@ export default function ConfirmDialog({
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         onClick={(event) => event.stopPropagation()}
-        className={`w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card ${className}`}
+        className={`w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card focus-visible:focus-ring ${className}`}
       >
         <h2 id={titleId} className="text-h3 font-black text-ink">
           {title}
@@ -154,8 +160,29 @@ export default function ConfirmDialog({
             {description}
           </p>
         )}
+        {/* Region ogłoszeń dla czytnika ekranu: węzeł zostaje w drzewie przez
+         * cały czas, gdy okno jest otwarte, a tekst pojawia się i znika wraz
+         * ze stanem zapisu — inaczej nowo domontowany region nie zawsze
+         * zdąży trafić do drzewa dostępności, zanim ogłoszenie ma polecieć. */}
+        <span role="status" className="sr-only">
+          {loading ? "Trwa zapisywanie." : ""}
+        </span>
         <div className="mt-5 flex gap-3">
-          <Button variant={confirmVariant} loading={loading} onClick={onConfirm}>
+          <Button
+            variant={confirmVariant}
+            loading={loading}
+            onClick={() => {
+              // Ten klik może natychmiast zablokować ten sam przycisk
+              // (przejście w stan zapisu) — przeglądarka wtedy zabiera z
+              // niego fokus "donikąd" zanim React (i nasłuch wyżej) zdąży
+              // cokolwiek zareagować, bo blokada i odsyłanie fokusu dzieją
+              // się synchronicznie w tym samym przebiegu, w którym dopiero
+              // ustawia się stan zapisu. Przeniesienie fokusu na kontener
+              // tu, przed wywołaniem akcji, usuwa ten wyścig u źródła.
+              dialogRef.current?.focus();
+              onConfirm();
+            }}
+          >
             {confirmLabel}
           </Button>
           <Button variant="secondary" onClick={onCancel} disabled={loading}>
