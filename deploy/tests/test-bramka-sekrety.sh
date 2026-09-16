@@ -211,11 +211,27 @@ else
   # psuje docelowa sciezke montowania W KONTENERZE, wiec bez tego przypadek
   # jest NIEZMIERZONY na Windows, mimo poprawnego montowania po stronie hosta.
   KATALOG_SEKRETU="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_SEKRETU")
-  CIAG_SYNTETYCZNY="$(head -c 20 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  # wejscie ma byc LOSOWE, ale o STALEJ entropii. Poprzednio bylo to 40
+  # znakow hex z /dev/urandom - rozklad znakow wychodzil raz taki, raz inny, a
+  # gitleaks tnie regule generic-api-key progiem entropii Shannona 3,5: zmierzone
+  # entropie kolejnych losowan 3,644 / 3,554 / 3,806, wiec ten sam kod raz
+  # przechodzil, raz nie, BEZ zadnej zmiany w bibliotece. Teraz ciag to 48 znakow:
+  # kazda z 16 cyfr szesnastkowych DOKLADNIE trzy razy, w losowej kolejnosci -
+  # entropia Shannona takiego zbioru wynosi log2(16) = 4,000 niezaleznie od
+  # wylosowanej kolejnosci. Losowosc zostaje (zaden sekret nie jest wpisany w
+  # repo), zmienna przestaje byc ta, ktora decydowala o wyniku.
+  CIAG_SYNTETYCZNY="$(printf '0123456789abcdef%.0s' 1 2 3 | fold -w1 | shuf | tr -d '\n')"
+  ENTROPIA_CIAGU="$(printf '%s' "$CIAG_SYNTETYCZNY" | fold -w1 | sort | uniq -c \
+    | awk '{n[NR]=$1; s+=$1} END{e=0; for(i=1;i<=NR;i++){pr=n[i]/s; e-=pr*log(pr)/log(2)} printf "%.3f", e}')"
+  echo "  entropia wejscia (Shannon, znaki): $ENTROPIA_CIAGU (prog gitleaksa dla generic-api-key: 3,5)"
+  if ! awk -v e="$ENTROPIA_CIAGU" 'BEGIN{exit !(e >= 3.9)}'; then
+    echo "  WYNIK: NIEZALICZONY - wejscie przypadku 8 ma entropie $ENTROPIA_CIAGU, czyli nie jest stale powyzej progu"
+    NIEZALICZONE=$((NIEZALICZONE + 1))
+  fi
   printf 'GENERIC_API_KEY = "%s"\n' "$CIAG_SYNTETYCZNY" > "$KATALOG_SEKRETU/fake.env"
 
   LOG_E2E="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_E2E")
-  MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$KATALOG_SEKRETU" "$REPO_ROOT/.gitleaks.toml" "$LOG_E2E"
+  sekrety_uruchom_gitleaks_odporne "$KATALOG_SEKRETU" "$REPO_ROOT/.gitleaks.toml" "$LOG_E2E"
   KOD_E2E=$?
 
   # W WSL, gdzie `docker` na PATH bywa TYLKO cienkim wrapperem do docker.exe
@@ -225,11 +241,6 @@ else
   # WYNIKU (nie po nazwie dystrybucji) i, jesli `wslpath` jest dostepny,
   # PONAWIAMY z przetlumaczonymi sciezkami Windows (D:\...), na ktorych ten
   # sam `docker.exe` montuje poprawnie.
-  if grep -aq "scanned ~0 bytes" "$LOG_E2E" && command -v wslpath >/dev/null 2>&1; then
-    sekrety_uruchom_gitleaks \
-      "$(wslpath -w "$KATALOG_SEKRETU")" "$(wslpath -w "$REPO_ROOT/.gitleaks.toml")" "$LOG_E2E"
-    KOD_E2E=$?
-  fi
 
   echo "=== 8 end-to-end (docker gitleaks) - katalog z 1 sztucznym trafieniem ==="
   WYNIK_E2E="$(sekrety_policz_trafienia "$LOG_E2E")"; RC_E2E=$?
@@ -299,13 +310,8 @@ else
     LOG_K3B="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K3B")
     # MSYS_NO_PATHCONV=1 z tego samego powodu co w przypadku 8 (Git Bash na
     # Windows psuje sciezke montowania bez tego).
-    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$KATALOG_EKSPORT_K3B" "$REPO_ROOT/.gitleaks.toml" "$LOG_K3B"
+    sekrety_uruchom_gitleaks_odporne "$KATALOG_EKSPORT_K3B" "$REPO_ROOT/.gitleaks.toml" "$LOG_K3B"
     KOD_GITLEAKS_K3B=$?
-    if grep -aq "scanned ~0 bytes" "$LOG_K3B" && command -v wslpath >/dev/null 2>&1; then
-      MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks \
-        "$(wslpath -w "$KATALOG_EKSPORT_K3B")" "$(wslpath -w "$REPO_ROOT/.gitleaks.toml")" "$LOG_K3B"
-      KOD_GITLEAKS_K3B=$?
-    fi
     WYNIK_K3B="$(sekrety_policz_trafienia "$LOG_K3B")"; RC_K3B=$?
     echo "  plikow=$PLIKOW_K3B, gitleaks EXIT=$KOD_GITLEAKS_K3B, trafien=$WYNIK_K3B (rc licznika=$RC_K3B)"
     [[ "$KOD_GITLEAKS_K3B" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano gitleaks EXIT=0 na czystym HEAD"; NIEZAL_K3B=1; }
@@ -333,56 +339,72 @@ else
   done
   if [[ "$NIEZAL_K1F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
-  echo "=== 19 F-133 K2: oczekiwane bajty = git ls-tree MINUS zbior z K1, zapas >= 99% ==="
-  BAJTOW_OCZ_PELNE_K2="$(cd "$REPO_ROOT" && sekrety_git_ls_bajtow HEAD)"
-  BAJTOW_POMINIETE_K2="$(printf '%s\n' "$LISTA_POMINIETE_K1" | (cd "$REPO_ROOT" && sekrety_bajtow_zbioru HEAD))"
-  BAJTOW_OCZ_K2=$(( BAJTOW_OCZ_PELNE_K2 - BAJTOW_POMINIETE_K2 ))
+  echo "=== 19 oczekiwane bajty ZE STRUMIENIA TAR, porownanie DOKLADNE (tolerancja 0) ==="
+  # (16.09.2026): oczekiwane liczymy z rozpakowanego eksportu, nie z
+  # `git ls-tree` - inaczej obie strony licza INNE BAJTY tych samych plikow
+  # (`git archive` doklada CR w plikach .ps1: +70 B na tym drzewie) i roznice
+  # trzeba bylo zaklejac progiem procentowym. Tu progu nie ma: ma sie zgadzac
+  # co do bajta.
+  BAJTOW_OCZ_K2="$(sekrety_oczekiwane_bajty "$KATALOG_EKSPORT_K3B" "$LOG_K3B")"; RC_OCZ_K2=$?
   BAJTOW_ZM_K2="$(sekrety_wyciagnij_bajty_skanu "$LOG_K3B")"
   PLIKOW_OCZ_K2="$(cd "$REPO_ROOT" && sekrety_git_ls_plikow HEAD)"
-  WYNIK_K2="$(sekrety_sprawdz_pokrycie "$PLIKOW_K3B" "$BAJTOW_ZM_K2" "$PLIKOW_OCZ_K2" "$BAJTOW_OCZ_K2")"; RC_K2=$?
-  echo "  pelne=$BAJTOW_OCZ_PELNE_K2 pominiete=$BAJTOW_POMINIETE_K2 oczekiwane=$BAJTOW_OCZ_K2 zmierzone=$BAJTOW_ZM_K2"
+  PELNE_K2="$(sekrety_bajtow_eksportu "$KATALOG_EKSPORT_K3B")"
+  POMINIETYCH_K2="$(sekrety_pliki_pominiete "$LOG_K3B" | sort -u | grep -c .)"
+  WYNIK_K2="$(cd "$REPO_ROOT" && sekrety_sprawdz_pokrycie "$PLIKOW_K3B" "$BAJTOW_ZM_K2" "$PLIKOW_OCZ_K2" "$BAJTOW_OCZ_K2" "$KATALOG_EKSPORT_K3B" HEAD)"; RC_K2=$?
+  echo "  eksport pelny=$PELNE_K2 B, pominietych plikow=$POMINIETYCH_K2, oczekiwane=$BAJTOW_OCZ_K2 (rc=$RC_OCZ_K2), zmierzone=$BAJTOW_ZM_K2"
   echo "  $WYNIK_K2 (rc=$RC_K2)"
   NIEZAL_K2F133=0
+  [[ "$RC_OCZ_K2" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - sekrety_oczekiwane_bajty odmowilo na czystym drzewie"; NIEZAL_K2F133=1; }
   [[ "$RC_K2" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0"; NIEZAL_K2F133=1; }
-  if [[ "$BAJTOW_OCZ_K2" -gt 0 ]]; then
-    ZAPAS_K2=$(( BAJTOW_ZM_K2 * 100 / BAJTOW_OCZ_K2 ))
-    [[ "$ZAPAS_K2" -ge 99 ]] || { echo "  WYNIK: NIEZALICZONY - zapas ${ZAPAS_K2}% ponizej 99%"; NIEZAL_K2F133=1; }
+  if [[ "$BAJTOW_ZM_K2" =~ ^[0-9]+$ && "$BAJTOW_OCZ_K2" =~ ^[0-9]+$ ]]; then
+    ROZNICA_K2=$(( BAJTOW_ZM_K2 - BAJTOW_OCZ_K2 ))
+    echo "  roznica zmierzone-oczekiwane: $ROZNICA_K2 B (wymagane 0)"
+    [[ "$ROZNICA_K2" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - roznica $ROZNICA_K2 B przy tolerancji 0"; NIEZAL_K2F133=1; }
+  else
+    echo "  WYNIK: NIEZALICZONY - ktoras z liczb nie jest liczba"; NIEZAL_K2F133=1
   fi
   if [[ "$NIEZAL_K2F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
-  # --- 20 F-133 K3: perturbacja falszywego alarmu POWTORZONA -----------------
-  # Prawdziwy commit (worktree jednorazowy, tozsamosc Fundacji, NIGDY nie
-  # scalany ani wypychany) z 600 kB losowych bajtow bez zadnego sekretu.
-  # Musi byc COMMIT, nie tylko plik w eksporcie: inaczej `git ls-tree` (miara
-  # "oczekiwane") i `find` na eksporcie ("zmierzone") licza rozne zbiory
-  # plikow z powodu innego niz bajty ("K3" ma mierzyc bajty, nie plikow).
-  echo "=== 20 F-133 K3: falszywy alarm powtorzony - 600 kB binariow bez wycieku -> zielone ==="
+  # --- 20 K3: falszywy alarm na PRAWDZIWYCH binariach --------------------
+  # Poprzednia wersja dokladala 600 kB z /dev/urandom - tresci, ktorej skaner NIE
+  # rozpoznaje po MIME, wiec ja skanowal i przypadek nie dotykal wady. Tu ida
+  # PRAWDZIWE binaria: 20 kopii czcionki woff2 pod rozszerzeniem .fnt (609 760 B),
+  # ktore gitleaks pomija po ROZPOZNANYM MIME ("DBG skipping binary file
+  # mime_type=application/font-woff"). Zmierzone na poprzedniej bibliotece:
+  # oczekiwane 5 011 020, zmierzone 4 401 330, KROK 3E czerwony BEZ WYCIEKU.
+  # Przypadek 23 nizej jest kontrola drugiej strony (tresc, ktora JEST skanowana).
+  echo "=== 20 K3: 609 760 B prawdziwych binariow (woff2 jako .fnt) bez wycieku -> zielone ==="
   WT_K3="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$WT_K3")
-  (cd "$REPO_ROOT" && git worktree add -q --detach "$WT_K3" HEAD) >/dev/null 2>&1
+  # w Git Bash `git worktree add` dostawal sciezke MSYS ("/d/tmp/..."),
+  # a windowsowy git zakladal ja pod "D:\d\tmp\..." - worktree nie powstawal
+  # tam, gdzie test go szukal, przypadek byl NIEZMIERZONY, a na dysku zostawalo
+  # 8,7 MB smieci poza repozytorium. Sciezka idzie teraz przez cygpath (gdy jest)
+  # i z MSYS_NO_PATHCONV=1.
+  SCIEZKA_WT_K3="$WT_K3"
+  command -v cygpath >/dev/null 2>&1 && SCIEZKA_WT_K3="$(cygpath -w "$WT_K3")"
+  (cd "$REPO_ROOT" && MSYS_NO_PATHCONV=1 git worktree add -q --detach "$SCIEZKA_WT_K3" HEAD) >/dev/null 2>&1
   WYNIK_WT_K3=1
   if [[ -d "$WT_K3/.git" || -f "$WT_K3/.git" ]]; then
-    mkdir -p "$WT_K3/deploy/tests"
-    head -c 600000 /dev/urandom > "$WT_K3/deploy/tests/przyrost-testowy-f133.dat"
-    (cd "$WT_K3" && git add deploy/tests/przyrost-testowy-f133.dat \
+    mkdir -p "$WT_K3/deploy/tests/przyrost-binariow"
+    seq 1 20 | xargs -I@ cp "$WT_K3/frontend/public/fonts/roboto-v51-latin.woff2" "$WT_K3/deploy/tests/przyrost-binariow/czcionka-@.fnt"
+    BAJTOW_PRZYROSTU_K3="$(sekrety_bajtow_eksportu "$WT_K3/deploy/tests/przyrost-binariow")"
+    (cd "$WT_K3" && git add deploy/tests/przyrost-binariow \
       && git -c user.email="Fundacja-Niepodzielni@users.noreply.github.com" -c user.name="Fundacja Niepodzielni" \
-             commit -q -m "test: perturbacja F-133 K3 (bez sekretu, nigdy niescalana)") >/dev/null 2>&1
+             commit -q -m "test: perturbacja binariow bez sekretu (nigdy niescalana)") >/dev/null 2>&1
     EKSP_K3="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K3")
     PLIKOW_ZM_K3="$(cd "$WT_K3" && sekrety_eksportuj_tresc HEAD "$EKSP_K3")"
     LOG_K3="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K3")
-    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$EKSP_K3" "$WT_K3/.gitleaks.toml" "$LOG_K3"
-    if grep -aq "scanned ~0 bytes" "$LOG_K3" && command -v wslpath >/dev/null 2>&1; then
-      MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$(wslpath -w "$EKSP_K3")" "$(wslpath -w "$WT_K3/.gitleaks.toml")" "$LOG_K3"
-    fi
+    sekrety_uruchom_gitleaks_odporne "$EKSP_K3" "$WT_K3/.gitleaks.toml" "$LOG_K3" "$WT_K3/.gitleaksignore"
     BAJTOW_ZM_K3="$(sekrety_wyciagnij_bajty_skanu "$LOG_K3")"
     PLIKOW_OCZ_K3="$(cd "$WT_K3" && sekrety_git_ls_plikow HEAD)"
-    BAJTOW_OCZ_PELNE_K3="$(cd "$WT_K3" && sekrety_git_ls_bajtow HEAD)"
-    BAJTOW_POMINIETE_K3="$(sekrety_pliki_pominiete "$LOG_K3" | (cd "$WT_K3" && sekrety_bajtow_zbioru HEAD))"
-    BAJTOW_OCZ_K3=$(( BAJTOW_OCZ_PELNE_K3 - BAJTOW_POMINIETE_K3 ))
-    WYNIK_POKR_K3="$(sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K3" "$BAJTOW_ZM_K3" "$PLIKOW_OCZ_K3" "$BAJTOW_OCZ_K3")"; RC_POKR_K3=$?
-    echo "  plikow $PLIKOW_ZM_K3/$PLIKOW_OCZ_K3, pelne=$BAJTOW_OCZ_PELNE_K3 pominiete=$BAJTOW_POMINIETE_K3 oczekiwane=$BAJTOW_OCZ_K3 zmierzone=$BAJTOW_ZM_K3"
+    BAJTOW_OCZ_K3="$(sekrety_oczekiwane_bajty "$EKSP_K3" "$LOG_K3")"; RC_OCZ_K3=$?
+    POMINIETYCH_K3="$(sekrety_pliki_pominiete "$LOG_K3" | sort -u | grep -c .)"
+    WYNIK_POKR_K3="$(cd "$WT_K3" && sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K3" "$BAJTOW_ZM_K3" "$PLIKOW_OCZ_K3" "$BAJTOW_OCZ_K3" "$EKSP_K3" HEAD)"; RC_POKR_K3=$?
+    echo "  dolozone binaria: $BAJTOW_PRZYROSTU_K3 B w 20 plikach; plikow $PLIKOW_ZM_K3/$PLIKOW_OCZ_K3; pominietych $POMINIETYCH_K3"
+    echo "  oczekiwane=$BAJTOW_OCZ_K3 (rc=$RC_OCZ_K3) zmierzone=$BAJTOW_ZM_K3"
     echo "  $WYNIK_POKR_K3 (rc=$RC_POKR_K3)"
-    [[ "$RC_POKR_K3" -eq 0 ]] && WYNIK_WT_K3=0
-    (cd "$REPO_ROOT" && git worktree remove --force "$WT_K3") >/dev/null 2>&1
+    [[ "$RC_POKR_K3" -eq 0 && "$RC_OCZ_K3" -eq 0 ]] && WYNIK_WT_K3=0
+    (cd "$REPO_ROOT" && git worktree remove --force "$SCIEZKA_WT_K3") >/dev/null 2>&1
   else
     echo "  WYNIK: NIE ZMIERZONO - nie udalo sie zalozyc jednorazowego worktree"
     NIEZMIERZONE_LICZNIK=$((NIEZMIERZONE_LICZNIK + 1))
@@ -391,7 +413,7 @@ else
   if [[ "$WYNIK_WT_K3" -eq 0 ]]; then
     echo "  WYNIK: ZALICZONY"
   elif [[ "$WYNIK_WT_K3" -eq 1 ]]; then
-    echo "  WYNIK: NIEZALICZONY - oczekiwano pokrycia ZGODNEGO (zielonego) na 600 kB binariow bez wycieku"
+    echo "  WYNIK: NIEZALICZONY - oczekiwano pokrycia ZGODNEGO (zielonego) na 609 760 B binariow bez wycieku"
     NIEZALICZONE=$((NIEZALICZONE + 1))
   fi
 
@@ -401,16 +423,11 @@ else
   (cd "$REPO_ROOT" && git archive --format=tar HEAD) | head -c 40000 | tar -x -C "$EKSP_K4" 2>/dev/null
   PLIKOW_ZM_K4="$(find "$EKSP_K4" -type f | wc -l)"
   LOG_K4="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K4")
-  MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$EKSP_K4" "$REPO_ROOT/.gitleaks.toml" "$LOG_K4"
-  if grep -aq "scanned ~0 bytes" "$LOG_K4" && command -v wslpath >/dev/null 2>&1; then
-    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$(wslpath -w "$EKSP_K4")" "$(wslpath -w "$REPO_ROOT/.gitleaks.toml")" "$LOG_K4"
-  fi
+  sekrety_uruchom_gitleaks_odporne "$EKSP_K4" "$REPO_ROOT/.gitleaks.toml" "$LOG_K4"
   BAJTOW_ZM_K4="$(sekrety_wyciagnij_bajty_skanu "$LOG_K4")"
   PLIKOW_OCZ_K4="$(cd "$REPO_ROOT" && sekrety_git_ls_plikow HEAD)"
-  BAJTOW_OCZ_PELNE_K4="$(cd "$REPO_ROOT" && sekrety_git_ls_bajtow HEAD)"
-  BAJTOW_POMINIETE_K4="$(sekrety_pliki_pominiete "$LOG_K4" | (cd "$REPO_ROOT" && sekrety_bajtow_zbioru HEAD))"
-  BAJTOW_OCZ_K4=$(( BAJTOW_OCZ_PELNE_K4 - BAJTOW_POMINIETE_K4 ))
-  WYNIK_POKR_K4="$(sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K4" "$BAJTOW_ZM_K4" "$PLIKOW_OCZ_K4" "$BAJTOW_OCZ_K4")"; RC_POKR_K4=$?
+  BAJTOW_OCZ_K4="$(sekrety_oczekiwane_bajty "$EKSP_K4" "$LOG_K4")"
+  WYNIK_POKR_K4="$(cd "$REPO_ROOT" && sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K4" "$BAJTOW_ZM_K4" "$PLIKOW_OCZ_K4" "$BAJTOW_OCZ_K4" "$EKSP_K4" HEAD)"; RC_POKR_K4=$?
   echo "  plikow $PLIKOW_ZM_K4/$PLIKOW_OCZ_K4, bajtow $BAJTOW_ZM_K4/$BAJTOW_OCZ_K4"
   echo "  $WYNIK_POKR_K4 (rc=$RC_POKR_K4)"
   NIEZAL_K4F133=0
@@ -427,22 +444,71 @@ else
   fi
   PLIKOW_ZM_K5="$(find "$EKSP_K5" -type f | wc -l)"
   LOG_K5="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K5")
-  MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$EKSP_K5" "$REPO_ROOT/.gitleaks.toml" "$LOG_K5"
-  if grep -aq "scanned ~0 bytes" "$LOG_K5" && command -v wslpath >/dev/null 2>&1; then
-    MSYS_NO_PATHCONV=1 sekrety_uruchom_gitleaks "$(wslpath -w "$EKSP_K5")" "$(wslpath -w "$REPO_ROOT/.gitleaks.toml")" "$LOG_K5"
-  fi
+  sekrety_uruchom_gitleaks_odporne "$EKSP_K5" "$REPO_ROOT/.gitleaks.toml" "$LOG_K5"
   BAJTOW_ZM_K5="$(sekrety_wyciagnij_bajty_skanu "$LOG_K5")"
   PLIKOW_OCZ_K5="$(cd "$REPO_ROOT" && sekrety_git_ls_plikow HEAD)"
-  BAJTOW_OCZ_PELNE_K5="$(cd "$REPO_ROOT" && sekrety_git_ls_bajtow HEAD)"
-  BAJTOW_POMINIETE_K5="$(sekrety_pliki_pominiete "$LOG_K5" | (cd "$REPO_ROOT" && sekrety_bajtow_zbioru HEAD))"
-  BAJTOW_OCZ_K5=$(( BAJTOW_OCZ_PELNE_K5 - BAJTOW_POMINIETE_K5 ))
-  WYNIK_POKR_K5="$(sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K5" "$BAJTOW_ZM_K5" "$PLIKOW_OCZ_K5" "$BAJTOW_OCZ_K5")"; RC_POKR_K5=$?
+  BAJTOW_OCZ_K5="$(sekrety_oczekiwane_bajty "$EKSP_K5" "$LOG_K5")"
+  WYNIK_POKR_K5="$(cd "$REPO_ROOT" && sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K5" "$BAJTOW_ZM_K5" "$PLIKOW_OCZ_K5" "$BAJTOW_OCZ_K5" "$EKSP_K5" HEAD)"; RC_POKR_K5=$?
   echo "  usuniety: ${PLIK_USUN_K5:-BRAK - nie znaleziono kandydata}, plikow $PLIKOW_ZM_K5/$PLIKOW_OCZ_K5 (przed usunieciem eksport mial $PLIKOW_PRZED_K5)"
   echo "  $WYNIK_POKR_K5 (rc=$RC_POKR_K5)"
   NIEZAL_K5F133=0
   [[ -n "$PLIK_USUN_K5" ]] || { echo "  WYNIK: NIEZALICZONY - nie znaleziono pliku-kandydata do usuniecia"; NIEZAL_K5F133=1; }
   [[ "$RC_POKR_K5" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano czerwonego pokrycia po usunieciu pliku z eksportu"; NIEZAL_K5F133=1; }
   if [[ "$NIEZAL_K5F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+  # --- 23 kontrola drugiej strony: tresc, ktorej skaner NIE pomija ----------
+  # 600 000 B z /dev/urandom gitleaks SKANUJE (nie rozpoznaje MIME), wiec te
+  # bajty MAJA sie znalezc po obu stronach porownania. Bez tego przypadku
+  # "zielone na binariach" dalo by sie uzyskac odejmowaniem wszystkiego.
+  echo "=== 23 kontrola: +600 000 B tresci SKANOWANEJ (urandom) tez zielone ==="
+  EKSP_K6="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K6")
+  PLIKOW_ZM_K6="$(cd "$REPO_ROOT" && sekrety_eksportuj_tresc HEAD "$EKSP_K6")"
+  head -c 600000 /dev/urandom > "$EKSP_K6/przyrost-losowy.dat"
+  PLIKOW_ZM_K6=$(( PLIKOW_ZM_K6 + 1 ))
+  PLIKOW_OCZ_K6=$(( $(cd "$REPO_ROOT" && sekrety_git_ls_plikow HEAD) + 1 ))
+  LOG_K6="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K6")
+  sekrety_uruchom_gitleaks_odporne "$EKSP_K6" "$REPO_ROOT/.gitleaks.toml" "$LOG_K6" "$REPO_ROOT/.gitleaksignore"
+  BAJTOW_ZM_K6="$(sekrety_wyciagnij_bajty_skanu "$LOG_K6")"
+  BAJTOW_OCZ_K6="$(sekrety_oczekiwane_bajty "$EKSP_K6" "$LOG_K6")"; RC_OCZ_K6=$?
+  WYNIK_POKR_K6="$(sekrety_sprawdz_pokrycie "$PLIKOW_ZM_K6" "$BAJTOW_ZM_K6" "$PLIKOW_OCZ_K6" "$BAJTOW_OCZ_K6")"; RC_POKR_K6=$?
+  echo "  plikow $PLIKOW_ZM_K6/$PLIKOW_OCZ_K6, oczekiwane=$BAJTOW_OCZ_K6 (rc=$RC_OCZ_K6) zmierzone=$BAJTOW_ZM_K6"
+  echo "  $WYNIK_POKR_K6 (rc=$RC_POKR_K6)"
+  NIEZAL_K6F133=0
+  [[ "$RC_POKR_K6" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano zielonego pokrycia na tresci skanowanej"; NIEZAL_K6F133=1; }
+  if [[ "$NIEZAL_K6F133" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+  # --- 24 wyciszenie po ODCISKU, nie po sciezce ----------------------
+  # Podrzucony sekret w frontend/__tests__/ MA byc znaleziony. Wczesniej wyjatek
+  # w .gitleaks.toml pomijal te sciezke PRZED czytaniem tresci, wiec dalo sie tam
+  # schowac dowolny klucz (zmierzone: takze caly blok BEGIN RSA PRIVATE KEY).
+  # Atrapa powstaje TYLKO w katalogu tymczasowym i nigdy nie trafia do repo.
+  echo "=== 24 podrzucony sekret w frontend/__tests__ JEST znajdowany ==="
+  EKSP_K7="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$EKSP_K7")
+  (cd "$REPO_ROOT" && sekrety_eksportuj_tresc HEAD "$EKSP_K7") >/dev/null
+  CIAG_PODRZUCONY="$(printf '0123456789abcdef%.0s' 1 2 3 | fold -w1 | shuf | tr -d '\n')"
+  mkdir -p "$EKSP_K7/frontend/__tests__"
+  printf 'const GENERIC_API_KEY = "%s";\n' "$CIAG_PODRZUCONY" > "$EKSP_K7/frontend/__tests__/podrzucony-atrapa.test.ts"
+  # Druga atrapa - INNA REGULA (private-key). Wyciszenie po odcisku dotyczy
+  # jednego trafienia jednej reguly; gdyby wrocilo wyciszenie po sciezce, w tym
+  # samym katalogu dalo by sie schowac takze blok klucza prywatnego (zmierzone
+  # na poprzedniej wersji: nie byl znajdowany wcale). Naglowek bloku skladany
+  # jest z kawalkow W BIEGU, zeby ten plik testu sam nie niosl jego ksztaltu.
+  printf -- '-----%s RSA PRIVATE KEY-----\n%s\n-----%s RSA PRIVATE KEY-----\n' \
+    BEGIN "$CIAG_PODRZUCONY" END > "$EKSP_K7/frontend/__tests__/podrzucony-klucz-atrapa.test.ts"
+  LOG_K7="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_K7")
+  sekrety_uruchom_gitleaks_odporne "$EKSP_K7" "$REPO_ROOT/.gitleaks.toml" "$LOG_K7" "$REPO_ROOT/.gitleaksignore"
+  TRAFIEN_K7="$(sekrety_policz_trafienia "$LOG_K7")"; RC_TRAF_K7=$?
+  POMINIETY_K7="$(sekrety_pliki_pominiete "$LOG_K7" | grep -c 'frontend/__tests__/podrzucony-')"
+  KLUCZ_ZNALEZIONY_K7="$(sekrety_pola_do_logu "$LOG_K7" | grep -c 'podrzucony-klucz-atrapa')"
+  API_ZNALEZIONY_K7="$(sekrety_pola_do_logu "$LOG_K7" | grep -c 'podrzucony-atrapa')"
+  echo "  trafien=$TRAFIEN_K7 (rc=$RC_TRAF_K7); plik z kluczem API: $API_ZNALEZIONY_K7, plik z kluczem prywatnym: $KLUCZ_ZNALEZIONY_K7"
+  echo "  podrzucone pliki wsrod pominietych: $POMINIETY_K7 (wymagane 0)"
+  NIEZAL_K7F143=0
+  [[ "$RC_TRAF_K7" -eq 0 && "$TRAFIEN_K7" == "2" ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano DOKLADNIE 2 trafien (dwie rozne reguly), dostalem '$TRAFIEN_K7'"; NIEZAL_K7F143=1; }
+  [[ "$API_ZNALEZIONY_K7" -ge 1 ]] || { echo "  WYNIK: NIEZALICZONY - podrzucony klucz API nie zostal znaleziony"; NIEZAL_K7F143=1; }
+  [[ "$KLUCZ_ZNALEZIONY_K7" -ge 1 ]] || { echo "  WYNIK: NIEZALICZONY - podrzucony klucz prywatny (inna regula) nie zostal znaleziony"; NIEZAL_K7F143=1; }
+  [[ "$POMINIETY_K7" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - podrzucony plik zostal pominiety przed czytaniem tresci"; NIEZAL_K7F143=1; }
+  if [[ "$NIEZAL_K7F143" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 fi
 
 # ============================ CZESC 4: filtr pol (F-108) ===================
@@ -562,6 +628,119 @@ NIEZAL_POKR_ZERO=0
 [[ "$RC_POKR_ZERO" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano czerwonego pokrycia"; NIEZAL_POKR_ZERO=1; }
 [[ "$WYNIK_POKR_ZERO" == *"bajtow zmierzone=0"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie nazywa zerowego skanu jako przyczyny"; NIEZAL_POKR_ZERO=1; }
 if [[ "$NIEZAL_POKR_ZERO" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# ====== CZESC 6: trzecia klasa, zupelnosc klas, asercja nie do wylaczenia ====
+# Wszystko na fixture'ach - bez Dockera, wiec mierzy sie ZAWSZE, takze tam,
+# gdzie przypadkow end-to-end nie da sie uruchomic.
+KAT_FIX="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KAT_FIX")
+head -c 100 /dev/zero | tr '\0' 'a' > "$KAT_FIX/a.txt"
+head -c 50 /dev/zero > "$KAT_FIX/b.fnt"
+: > "$KAT_FIX/c.pusty"
+
+LOG_FIX_TRZY="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_FIX_TRZY")
+cat > "$LOG_FIX_TRZY" <<'EOF'
+1:23PM DBG skipping file: global allowlist path=/tresc/a.txt
+1:23PM DBG skipping empty file path=/tresc/c.pusty
+1:23PM DBG skipping binary file mime_type=application/font-woff path=/tresc/b.fnt
+1:23PM INF scanned ~0 bytes (0 B) in 1s
+EOF
+
+echo "=== 25 trzecia klasa pominiecia (binary file mime_type=) jest w zbiorze ==="
+LISTA_FIX="$(sekrety_pliki_pominiete "$LOG_FIX_TRZY")"
+LICZBA_FIX="$(printf '%s\n' "$LISTA_FIX" | grep -c .)"
+echo "  zbior pominietych: $LICZBA_FIX plikow ($(printf '%s' "$LISTA_FIX" | tr '\n' ' '))"
+NIEZAL_FIX_TRZY=0
+[[ "$LICZBA_FIX" -eq 3 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano 3 plikow (trzy klasy pominiecia), jest $LICZBA_FIX"; NIEZAL_FIX_TRZY=1; }
+printf '%s\n' "$LISTA_FIX" | grep -qxF "b.fnt" || { echo "  WYNIK: NIEZALICZONY - plik pominiety jako binarny po MIME nie jest w zbiorze"; NIEZAL_FIX_TRZY=1; }
+if [[ "$NIEZAL_FIX_TRZY" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 26 nierozpoznana (czwarta) klasa pominiecia -> ODMOWA, nie zgadywanie ==="
+LOG_FIX_OBCA="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_FIX_OBCA")
+cat > "$LOG_FIX_OBCA" <<'EOF'
+1:23PM DBG skipping file: global allowlist path=/tresc/a.txt
+1:23PM DBG skipping wymyslona przyszla klasa path=/tresc/b.fnt
+1:23PM INF scanned ~0 bytes (0 B) in 1s
+EOF
+NIEROZPOZNANE_FIX="$(sekrety_pominiete_nierozpoznane "$LOG_FIX_OBCA" | grep -c .)"
+WYNIK_FIX_OBCA="$(sekrety_oczekiwane_bajty "$KAT_FIX" "$LOG_FIX_OBCA")"; RC_FIX_OBCA=$?
+echo "  nierozpoznanych linii: $NIEROZPOZNANE_FIX; wynik: $WYNIK_FIX_OBCA (rc=$RC_FIX_OBCA)"
+NIEZAL_FIX_OBCA=0
+[[ "$NIEROZPOZNANE_FIX" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - kontrola zupelnosci klas nie widzi obcej linii"; NIEZAL_FIX_OBCA=1; }
+[[ "$RC_FIX_OBCA" -eq 1 && "$WYNIK_FIX_OBCA" == *"ODMOWA"* ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano odmowy wyliczenia"; NIEZAL_FIX_OBCA=1; }
+if [[ "$NIEZAL_FIX_OBCA" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 27 ta sama sciezka DWA RAZY w logu -> ODMOWA (zbior nie do nadmuchania) ==="
+LOG_FIX_DWA="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_FIX_DWA")
+cat > "$LOG_FIX_DWA" <<'EOF'
+1:23PM DBG skipping file: global allowlist path=/tresc/a.txt
+1:23PM DBG skipping file: global allowlist path=/tresc/a.txt
+1:23PM INF scanned ~0 bytes (0 B) in 1s
+EOF
+SUMA_SUROWO_FIX="$(sekrety_pliki_pominiete "$LOG_FIX_DWA" | sekrety_bajtow_zbioru "$KAT_FIX")"
+SUMA_UNIK_FIX="$(sekrety_pliki_pominiete "$LOG_FIX_DWA" | sort -u | sekrety_bajtow_zbioru "$KAT_FIX")"
+WYNIK_FIX_DWA="$(sekrety_oczekiwane_bajty "$KAT_FIX" "$LOG_FIX_DWA")"; RC_FIX_DWA=$?
+echo "  suma bez odduplikowania=$SUMA_SUROWO_FIX B, po odduplikowaniu=$SUMA_UNIK_FIX B (plik ma 100 B)"
+echo "  wynik: $WYNIK_FIX_DWA (rc=$RC_FIX_DWA)"
+NIEZAL_FIX_DWA=0
+[[ "$SUMA_UNIK_FIX" -eq 100 ]] || { echo "  WYNIK: NIEZALICZONY - odduplikowany zbior ma liczyc 100 B, liczy $SUMA_UNIK_FIX"; NIEZAL_FIX_DWA=1; }
+[[ "$RC_FIX_DWA" -eq 1 && "$WYNIK_FIX_DWA" == *"powtorzone sciezki"* ]] || { echo "  WYNIK: NIEZALICZONY - powtorzona sciezka ma byc odmowa, nie cichym odjeciem"; NIEZAL_FIX_DWA=1; }
+if [[ "$NIEZAL_FIX_DWA" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 28 zbior pominietych obejmuje CALY eksport -> ODMOWA, nie 'zapas 100%' ==="
+LOG_FIX_WSZYSTKO="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_FIX_WSZYSTKO")
+cat > "$LOG_FIX_WSZYSTKO" <<'EOF'
+1:23PM DBG skipping file: global allowlist path=/tresc/a.txt
+1:23PM DBG skipping file: global allowlist path=/tresc/b.fnt
+1:23PM DBG skipping empty file path=/tresc/c.pusty
+1:23PM INF scanned ~0 bytes (0 B) in 1s
+EOF
+WYNIK_FIX_WSZ="$(sekrety_oczekiwane_bajty "$KAT_FIX" "$LOG_FIX_WSZYSTKO")"; RC_FIX_WSZ=$?
+echo "  wynik: $WYNIK_FIX_WSZ (rc=$RC_FIX_WSZ)"
+NIEZAL_FIX_WSZ=0
+[[ "$RC_FIX_WSZ" -eq 1 && "$WYNIK_FIX_WSZ" == *"ODMOWA"* ]] || { echo "  WYNIK: NIEZALICZONY - zbior rowny calemu eksportowi ma byc odmowa"; NIEZAL_FIX_WSZ=1; }
+if [[ "$NIEZAL_FIX_WSZ" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 29 oczekiwane 0 bajtow to ODMOWA, nie zgodnosc ==="
+WYNIK_FIX_ZERO="$(sekrety_sprawdz_pokrycie 930 4401330 930 0)"; RC_FIX_ZERO=$?
+echo "  $WYNIK_FIX_ZERO (rc=$RC_FIX_ZERO)"
+NIEZAL_FIX_ZERO=0
+[[ "$RC_FIX_ZERO" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=1 (odmowa)"; NIEZAL_FIX_ZERO=1; }
+[[ "$WYNIK_FIX_ZERO" == *"ODMOWA"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie nazywa tego odmowa"; NIEZAL_FIX_ZERO=1; }
+if [[ "$NIEZAL_FIX_ZERO" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 30 tolerancja 0 - JEDEN bajt roznicy to czerwien ==="
+WYNIK_FIX_TOL_R="$(sekrety_sprawdz_pokrycie 930 4401331 930 4401330)"; RC_FIX_TOL_R=$?
+WYNIK_FIX_TOL_Z="$(sekrety_sprawdz_pokrycie 930 4401330 930 4401330)"; RC_FIX_TOL_Z=$?
+echo "  +1 B: $WYNIK_FIX_TOL_R (rc=$RC_FIX_TOL_R)"
+echo "  0 B: $WYNIK_FIX_TOL_Z (rc=$RC_FIX_TOL_Z)"
+NIEZAL_FIX_TOL=0
+[[ "$RC_FIX_TOL_R" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - roznica 1 B ma byc czerwona (tolerancja 0)"; NIEZAL_FIX_TOL=1; }
+[[ "$WYNIK_FIX_TOL_R" == *"roznica 1 B"* ]] || { echo "  WYNIK: NIEZALICZONY - komunikat nie podaje roznicy w bajtach"; NIEZAL_FIX_TOL=1; }
+[[ "$RC_FIX_TOL_Z" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - rowne liczby maja byc zielone"; NIEZAL_FIX_TOL=1; }
+if [[ "$NIEZAL_FIX_TOL" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 31 linia o wyciszonym TRAFIENIU nie jest pominietym PLIKIEM ==="
+# Czwarty rodzaj linii "DBG skipping" (wyciszenie po odcisku z .gitleaksignore)
+# dotyczy jednego trafienia, a nie pliku: plik jest czytany i liczony do
+# "scanned ~N bytes". Gdyby wszedl do zbioru pominietych, oczekiwane bajty
+# zanizylby o CALY plik; gdyby byl "nierozpoznany", kazdy bieg z wyciszeniem
+# konczylby sie odmowa. Ma byc ani jedno, ani drugie.
+LOG_FIX_ODCISK="$(mktemp)"; PLIKI_TESTOWE+=("$LOG_FIX_ODCISK")
+cat > "$LOG_FIX_ODCISK" <<'EOF'
+1:23PM DBG skipping file: global allowlist path=/tresc/a.txt
+1:23PM DBG skipping finding: global fingerprint finding=REDACTED fingerprint=/tresc/b.fnt:generic-api-key:97
+1:23PM INF scanned ~50 bytes (50 B) in 1s
+EOF
+LISTA_ODCISK="$(sekrety_pliki_pominiete "$LOG_FIX_ODCISK" | grep -c .)"
+NIEROZP_ODCISK="$(sekrety_pominiete_nierozpoznane "$LOG_FIX_ODCISK" | grep -c .)"
+OCZ_ODCISK="$(sekrety_oczekiwane_bajty "$KAT_FIX" "$LOG_FIX_ODCISK")"; RC_ODCISK=$?
+echo "  pominietych PLIKOW: $LISTA_ODCISK (wymagane 1), nierozpoznanych linii: $NIEROZP_ODCISK (wymagane 0)"
+echo "  oczekiwane=$OCZ_ODCISK (rc=$RC_ODCISK); eksport ma 150 B, plik pominiety 100 B"
+NIEZAL_ODCISK=0
+[[ "$LISTA_ODCISK" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - wyciszone trafienie policzone jako pominiety plik"; NIEZAL_ODCISK=1; }
+[[ "$NIEROZP_ODCISK" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - znana linia o wyciszonym trafieniu uznana za nierozpoznana"; NIEZAL_ODCISK=1; }
+[[ "$RC_ODCISK" -eq 0 && "$OCZ_ODCISK" == "50" ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano 50 B (150 minus 100 B pliku pominietego), dostalem '$OCZ_ODCISK' (rc=$RC_ODCISK)"; NIEZAL_ODCISK=1; }
+if [[ "$NIEZAL_ODCISK" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
 echo
 if [[ "$NIEZALICZONE" -gt 0 ]]; then

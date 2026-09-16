@@ -284,10 +284,9 @@ if [ "$KOD_EKSPORT" -ne 0 ]; then
     echo "sekrety: EXIT=$KOD_GITLEAKS, $CZAS_GITLEAKS s, eksport nieprawidlowy"
     sed 's/^/  ! /' "$KATALOG_BIEGU"/bramka-gitleaks.log
 else
-    sekrety_uruchom_gitleaks "$EKSPORT" "$PWD/.gitleaks.toml" "$KATALOG_BIEGU"/bramka-gitleaks.log
+    sekrety_uruchom_gitleaks_odporne "$EKSPORT" "$PWD/.gitleaks.toml" "$KATALOG_BIEGU"/bramka-gitleaks.log
     KOD_GITLEAKS=$?
     CZAS_GITLEAKS="$(czas_od "$T")"
-    rm -rf "$EKSPORT"
     # ILE obejrzal, nie tylko ile znalazl - pusty eksport tez dalby zero trafien.
     BAJTOW_GL="$(grep -aoE "scanned ~[0-9]+ bytes" "$KATALOG_BIEGU"/bramka-gitleaks.log | tail -1)"
     BAJTOW_ZM="$(sekrety_wyciagnij_bajty_skanu "$KATALOG_BIEGU"/bramka-gitleaks.log)"
@@ -301,17 +300,24 @@ else
     # NAPRAWDE obejrzal, porownana z liczba policzona NIEZALEZNIE od
     # skanowanego strumienia (`git ls-tree` na HEAD) - nie sama kontrola
     # "N > 0", ktora przepuszczala skan przyciety do 0,8% tresci.
-    # F-133: BAJTOW_OCZ pomniejszone o pliki, ktore gitleaks SAM zglosil jako
-    # pominiete (wbudowany globalny allowlist w .gitleaks.toml, "-l debug" w
-    # sekrety_uruchom_gitleaks) - inaczej pelna suma `git ls-tree` liczy
-    # pliki, ktorych skaner nigdy nie ogladal, i daje staly niedomiar ~8%
-    # (fałszywy alarm przy zwyklym dolozeniu binariow).
+    # BAJTOW_OCZ liczy `sekrety_oczekiwane_bajty` - Z TEGO SAMEGO
+    # strumienia, ktory dostal skaner (rozpakowany eksport, nie `git ls-tree`),
+    # minus pliki, ktore skaner SAM zglosil jako pominiete (trzy klasy: global
+    # allowlist, pusty plik, plik binarny po MIME). Dzieki temu porownanie jest
+    # DOKLADNE - tolerancja 0 bajtow, bez progu procentowego - a stale +70 B
+    # z CR-ow dokladanych przez `git archive` (`*.ps1 text eol=crlf`) znikaja
+    # same. Odmowa wyliczenia (nieznana klasa pominiecia, powtorzona sciezka,
+    # oczekiwane <= 0) jest CZERWONA, nie "pewnie dobrze".
     PLIKOW_OCZ="$(sekrety_git_ls_plikow HEAD)"
-    BAJTOW_OCZ_PELNE="$(sekrety_git_ls_bajtow HEAD)"
-    BAJTOW_POMINIETE="$(sekrety_pliki_pominiete "$KATALOG_BIEGU"/bramka-gitleaks.log | sekrety_bajtow_zbioru HEAD)"
-    BAJTOW_OCZ=$(( BAJTOW_OCZ_PELNE - BAJTOW_POMINIETE ))
-    POKRYCIE_MSG="$(sekrety_sprawdz_pokrycie "$PLIKOW_GL" "$BAJTOW_ZM" "$PLIKOW_OCZ" "$BAJTOW_OCZ")"
+    BAJTOW_OCZ="$(sekrety_oczekiwane_bajty "$EKSPORT" "$KATALOG_BIEGU"/bramka-gitleaks.log)"
+    KOD_OCZEKIWANYCH=$?
+    POKRYCIE_MSG="$(sekrety_sprawdz_pokrycie "$PLIKOW_GL" "$BAJTOW_ZM" "$PLIKOW_OCZ" "$BAJTOW_OCZ" "$EKSPORT" HEAD)"
     KOD_POKRYCIA=$?
+    rm -rf "$EKSPORT"
+    if [ "$KOD_OCZEKIWANYCH" -ne 0 ]; then
+        echo "$BAJTOW_OCZ"
+        KOD_POKRYCIA=1
+    fi
     echo "$POKRYCIE_MSG"
     if [ "$KOD_POKRYCIA" -ne 0 ]; then
         KOD_GITLEAKS=2
