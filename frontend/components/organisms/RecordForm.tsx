@@ -48,15 +48,23 @@ export default function RecordForm({
   const formId = useId();
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
   const errorEntries = Object.entries(fieldErrors).filter(([, message]) => Boolean(message));
-  const errorKey = errorEntries.map(([name]) => name).join(",");
+  // Pole z pierwszym błędem wybieramy wg kolejności pól w formularzu, nie wg
+  // kolejności kluczy w odpowiedzi serwera — serwer nie gwarantuje kolejności.
+  const firstErrorField = fields.find((field) => Boolean(fieldErrors[field.name]));
+  // Klucz posortowany, żeby nie zależał od kolejności wstawiania w obiekcie
+  // odpowiedzi serwera — liczy się tylko zbiór pól z błędem.
+  const errorKey = errorEntries
+    .map(([name]) => name)
+    .sort()
+    .join(",");
 
   useEffect(() => {
-    if (errorEntries.length === 0) return;
-    const [firstName] = errorEntries[0];
-    fieldRefs.current[firstName]?.focus();
-    // errorKey zastępuje errorEntries w zależnościach: errorEntries to nowa
-    // tablica przy każdym renderze, więc wpisanie jej wprost odpalałoby ten
-    // efekt (i kradło fokus) przy każdym renderze, nie tylko po zmianie błędów.
+    if (!firstErrorField) return;
+    fieldRefs.current[firstErrorField.name]?.focus();
+    // errorKey zastępuje firstErrorField w zależnościach: firstErrorField to
+    // nowa referencja przy każdym renderze, więc wpisanie jej wprost
+    // odpalałoby ten efekt (i kradło fokus) przy każdym renderze, nie tylko
+    // po zmianie zbioru błędnych pól.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [errorKey]);
 
