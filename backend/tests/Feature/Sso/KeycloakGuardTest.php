@@ -149,6 +149,31 @@ class KeycloakGuardTest extends TestCase
     }
 
     /**
+     * F-111/K6 · `users.role` = super_admin, but the token carries NO
+     * roles at all (`realm_access.roles = []` — never bound through
+     * `actingAs`, a REAL bearer token minted by `KeycloakTokenFactory`) →
+     * the admin route refuses. This is the witness the register asks for:
+     * a route that depends on role denies when the token carries none,
+     * even though `users.role` says admin. Paired with the leg above
+     * (real token WITH the role → 200), it is what "green suite" alone
+     * cannot stand in for — most of this suite authenticates through the
+     * `actingAs` fallback (`Tests\Unit\Auth\TokenRolesFallbackTest`),
+     * never through a token this route actually validates.
+     */
+    public function test_the_token_wins_when_it_carries_no_roles_at_all(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->role('super_admin')->create(['keycloak_sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => []]]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(self::BUSINESS_ROUTE)
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'forbidden');
+    }
+
+    /**
      * The mirror leg of the same disagreement guarantee: `users.role` =
      * super_admin (the local row itself would pass the old, pre-R2 gate),
      * but the token carries none of the whitelisted realm roles (only the

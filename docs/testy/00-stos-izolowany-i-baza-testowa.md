@@ -344,3 +344,15 @@ być pomiarem ręcznym: `tests/Feature/Przyrzad/GuardUnderParallelTest.php`. Pod
 deklarację nadpisaniem metody w atrapie (`tests/Atrapy`), a **nie** zmienną środowiskową —
 furtka sterowana środowiskiem otwierałaby tę samą lukę od kuchni — i nie edycją `phpunit.xml`,
 bo pomiar przerwany w połowie zostawiałby repo z zepsutą deklaracją.
+
+## 14 · Zieleń suity NIE jest dowodem „role wyłącznie z tokena" (R2)
+
+`Tests\TestCase::actingAs($user, 'keycloak')` wiąże `[$user->role]` — kolumnę **lokalną** —
+jako podstawę pod `TokenRoles::TESTING_FALLBACK_ROLES`; **373** z tych wywołań w **63** plikach
+przechodzą tą furtką, nie prawdziwym tokenem. Zieleń tych testów dowodzi, że kod odpowiada
+zgodnie z rolą, którą podała furtka — **nie** dowodzi, że w produkcji ta rola pochodzi
+z tokena, a nie z `users.role`. Dowodem R2 są wyłącznie testy z prawdziwym bearerem
+(**54** miejsca — `KeycloakTokenFactory`, np. `KeycloakGuardTest::test_the_token_wins_when_it_carries_no_roles_at_all`)
+oraz świadek samej furtki (`Tests\Unit\Auth\TokenRolesFallbackTest`), który dowodzi, że
+poza `APP_ENV=testing` furtka milczy, a rola w niej jest zamrożona w chwili `actingAs()`,
+nie czytana na żywo z kolumny.
