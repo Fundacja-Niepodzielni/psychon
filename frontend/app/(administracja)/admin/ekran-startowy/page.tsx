@@ -74,7 +74,7 @@ export default function AdminOnboardingPage() {
 
       {loading && <LoadingState label="Wczytywanie ekranu startowego…" />}
       {!loading && loadError && loadErrorStatus === 403 && (
-        <ForbiddenState />
+        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tego ekranu." />
       )}
       {!loading && loadError && loadErrorStatus !== 403 && (
         <ErrorState message={loadError} onRetry={retry} />

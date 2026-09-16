@@ -184,7 +184,7 @@ export default function ReportView() {
         rows={report?.people ?? []}
         rowKey={(row) => row.id}
         caption="Zestawienie imienne"
-        emptyMessage="Brak osób do zestawienia."
+        emptyMessage="Brak osób do zestawienia. Wiersze pojawią się tutaj, gdy ktoś ukończy program w tej edycji."
       />
     </ListTemplate>
   );

@@ -111,6 +111,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       setRejecting(null);
       setCapacityPrompt(null);
       setCapacityApplication(null);
+      setActionError(null);
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
@@ -140,8 +141,8 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       header: "Akcje",
       render: (row) => (
         <div className="flex flex-wrap gap-2">
-          {row.status === "new" && <Button className="min-h-11" onClick={() => { setAccepting(row); setAcceptRole(row.role === "super_admin" ? "volunteer" : row.role); }} disabled={pendingId !== null}>Akceptuj</Button>}
-          {row.status === "new" && <Button variant="secondary" className="min-h-11" onClick={() => { setRejecting(row); setRejectReason(""); setRejectError(null); }} disabled={pendingId !== null}>Odrzuć</Button>}
+          {row.status === "new" && <Button className="min-h-11" onClick={() => { setAccepting(row); setAcceptRole(row.role === "super_admin" ? "volunteer" : row.role); setActionError(null); }} disabled={pendingId !== null}>Akceptuj</Button>}
+          {row.status === "new" && <Button variant="secondary" className="min-h-11" onClick={() => { setRejecting(row); setRejectReason(""); setRejectError(null); setActionError(null); }} disabled={pendingId !== null}>Odrzuć</Button>}
         </div>
       ),
     },
@@ -150,6 +151,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
   async function createApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateErrors({});
+    setActionError(null);
     setPendingId(-1);
     try {
       await api<ApplicationItem>("/admin/applications", { method: "POST", body: createValues });
@@ -201,6 +203,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
     if (!rejecting) return;
     setPendingId(rejecting.id);
     setRejectError(null);
+    setActionError(null);
     try {
       await api<ApplicationItem>(`/admin/applications/${rejecting.id}/reject`, { method: "POST", body: { reason } });
       setRejecting(null);
@@ -219,6 +222,7 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
     body.append("file", file);
     setPendingId(-2);
     setImportReport(null);
+    setActionError(null);
     try {
       const report = await api<{ imported: number; skipped: Array<{ line: number; reason: string }> }>("/admin/applications/import", { method: "POST", body });
       setImportReport(report);
@@ -298,8 +302,8 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
       </ListTemplate>
 
       {selected && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="application-details-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => setSelected(null)}><div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-md border border-line bg-card p-6 shadow-card" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-3"><h2 id="application-details-title" className="text-h3 font-black text-ink">Szczegóły zgłoszenia</h2><Button variant="ghost" aria-label="Zamknij szczegóły" onClick={() => setSelected(null)}>✕</Button></div><dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-small"><dt className="font-bold text-muted">Osoba</dt><dd>{selected.first_name} {selected.last_name}</dd><dt className="font-bold text-muted">E-mail</dt><dd>{selected.email}</dd><dt className="font-bold text-muted">Telefon</dt><dd>{selected.phone ?? "—"}</dd><dt className="font-bold text-muted">Uczelnia</dt><dd>{selected.university ?? "—"}</dd><dt className="font-bold text-muted">Status</dt><dd><Badge variant={STATUS_VARIANTS[selected.status]}>{STATUS_LABELS[selected.status]}</Badge></dd><dt className="font-bold text-muted">Dodano</dt><dd>{dateLabel(selected.created_at)}</dd></dl>{selected.has_diploma_scan && <Button className="mt-5 min-h-11" variant="secondary" onClick={() => void downloadFile(`${apiBase()}/admin/applications/${selected.id}/diploma-scan`, `skan-dyplomu-${selected.id}.pdf`)}>Otwórz skan dyplomu</Button>}</div></div>}
-      {accepting && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="accept-application-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => setAccepting(null)}><form className="w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card" onSubmit={(event) => { event.preventDefault(); void acceptApplication(accepting); }} onClick={(event) => event.stopPropagation()}><h2 id="accept-application-title" className="text-h3 font-black text-ink">Akceptuj zgłoszenie</h2><p className="mt-2 text-body text-muted">{accepting.first_name} {accepting.last_name}</p><Select className="mt-4" label="Rola konta" value={acceptRole} onChange={(event) => setAcceptRole(event.target.value as ApplicationRole)}><option value="volunteer">Wolontariusz</option><option value="student">Student</option><option value="instructor">Prowadzący</option><option value="project_manager">Opiekun Projektu</option></Select><div className="mt-5 flex gap-3"><Button type="submit" loading={pendingId === accepting.id}>Akceptuj i wyślij zaproszenie</Button><Button type="button" variant="secondary" onClick={() => setAccepting(null)}>Anuluj</Button></div></form></div>}
-      {rejecting && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reject-application-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => setRejecting(null)}><form className="w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card" onSubmit={rejectApplication} onClick={(event) => event.stopPropagation()}><h2 id="reject-application-title" className="text-h3 font-black text-ink">Odrzuć zgłoszenie</h2><p className="mt-2 text-body text-muted">Powód jest wymagany.</p><label className="mt-4 flex flex-col gap-1.5 text-small font-medium text-ink" htmlFor="reject-reason">Powód<textarea id="reject-reason" rows={4} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} aria-invalid={rejectError ? true : undefined} className={`rounded-sm border bg-card px-4 py-2.5 text-body text-ink focus-visible:focus-ring ${rejectError ? "border-danger" : "border-line"}`} />{rejectError && <span className="text-caption text-danger" role="alert">{rejectError}</span>}</label><div className="mt-5 flex gap-3"><Button type="submit" loading={pendingId === rejecting.id}>Odrzuć</Button><Button type="button" variant="secondary" onClick={() => setRejecting(null)}>Anuluj</Button></div></form></div>}
+      {accepting && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="accept-application-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => { setAccepting(null); setActionError(null); }}><form className="w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card" onSubmit={(event) => { event.preventDefault(); void acceptApplication(accepting); }} onClick={(event) => event.stopPropagation()}><h2 id="accept-application-title" className="text-h3 font-black text-ink">Akceptuj zgłoszenie</h2><p className="mt-2 text-body text-muted">{accepting.first_name} {accepting.last_name}</p>{actionError && <Alert variant="error" className="mt-3">{actionError}</Alert>}<Select className="mt-4" label="Rola konta" value={acceptRole} onChange={(event) => setAcceptRole(event.target.value as ApplicationRole)}><option value="volunteer">Wolontariusz</option><option value="student">Student</option><option value="instructor">Prowadzący</option><option value="project_manager">Opiekun Projektu</option></Select><div className="mt-5 flex gap-3"><Button type="submit" loading={pendingId === accepting.id}>Akceptuj i wyślij zaproszenie</Button><Button type="button" variant="secondary" onClick={() => { setAccepting(null); setActionError(null); }}>Anuluj</Button></div></form></div>}
+      {rejecting && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reject-application-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => { setRejecting(null); setActionError(null); }}><form className="w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card" onSubmit={rejectApplication} onClick={(event) => event.stopPropagation()}><h2 id="reject-application-title" className="text-h3 font-black text-ink">Odrzuć zgłoszenie</h2><p className="mt-2 text-body text-muted">Powód jest wymagany.</p>{actionError && <Alert variant="error" className="mb-3">{actionError}</Alert>}<label className="mt-4 flex flex-col gap-1.5 text-small font-medium text-ink" htmlFor="reject-reason">Powód<textarea id="reject-reason" rows={4} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} aria-invalid={rejectError ? true : undefined} className={`rounded-sm border bg-card px-4 py-2.5 text-body text-ink focus-visible:focus-ring ${rejectError ? "border-danger" : "border-line"}`} />{rejectError && <span className="text-caption text-danger" role="alert">{rejectError}</span>}</label><div className="mt-5 flex gap-3"><Button type="submit" loading={pendingId === rejecting.id}>Odrzuć</Button><Button type="button" variant="secondary" onClick={() => { setRejecting(null); setActionError(null); }}>Anuluj</Button></div></form></div>}
       {capacityPrompt && capacityApplication && <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="capacity-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"><div className="w-full max-w-md rounded-md border border-line bg-card p-6 shadow-card"><h2 id="capacity-title" className="text-h3 font-black text-ink">Brak wolnych miejsc</h2><p className="mt-3 text-body text-muted">Limit: {capacityPrompt.capacity}. Aktywnych: {capacityPrompt.active}. Wnioskowanych: {capacityPrompt.requested}.</p><p className="mt-2 text-small text-muted">Czy świadomie zaakceptować ponad limit?</p><div className="mt-5 flex gap-3"><Button loading={pendingId === capacityApplication.id} onClick={() => void acceptApplication(capacityApplication, true)}>Potwierdź force</Button><Button variant="secondary" onClick={() => { setCapacityPrompt(null); setCapacityApplication(null); }}>Anuluj</Button></div></div></div>}
     </div>
   );

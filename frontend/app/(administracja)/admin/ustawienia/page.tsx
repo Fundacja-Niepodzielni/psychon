@@ -141,7 +141,7 @@ export default function EditionSettingsPage() {
     return (
       <div className="flex max-w-2xl flex-col gap-6">
         <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
-        <ForbiddenState />
+        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tych ustawień." />
       </div>
     );
   }

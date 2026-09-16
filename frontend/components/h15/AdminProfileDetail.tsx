@@ -99,7 +99,7 @@ export default function AdminProfileDetail({ id }: { id: number }) {
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
         <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
-        <ForbiddenState />
+        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tego wniosku." />
       </div>
     );
   }
