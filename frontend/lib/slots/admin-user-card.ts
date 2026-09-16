@@ -11,6 +11,7 @@
  */
 import type { ComponentType } from "react";
 import h12AssignSupervisor from "@/components/h12/AssignSupervisor";
+import h10ResetAttempts from "@/components/h10/ResetAttemptsPanel";
 // import hXXNazwa from "@/components/hXX/hXXNazwa"; // ← dodaj swój slot jedną linią
 
 export type AdminUserCardRegion = "user-actions";
@@ -30,6 +31,7 @@ export interface AdminUserCardSlot {
 
 export const adminUserCardSlots: AdminUserCardSlot[] = [
   h12AssignSupervisor,
+  h10ResetAttempts,
   // hXXNazwa, // ← i drugą tutaj
 ];
 
