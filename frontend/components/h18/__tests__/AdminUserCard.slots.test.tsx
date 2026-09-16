@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 
 /**
  * Świadek rejestru gniazd karty osoby (H18 · `lib/slots/admin-user-card.ts`).
@@ -82,6 +82,20 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Kolejność ma znaczenie: `AssignSupervisor` woła `fetchAdminUsers` w
+  // efekcie montowania, a React czasem odkłada jego uruchomienie na potem —
+  // odmontowanie (`cleanup`) wymusza wtedy jego dogranie, zanim naprawdę
+  // zniknie. Ten plik rejestruje własny `afterEach` PO globalnym z
+  // `__tests__/setup.ts`, a odwołania w tej samej fazie (`afterEach`) Vitest
+  // woła w kolejności odwrotnej do rejestracji — więc bez jawnego `cleanup()`
+  // tutaj ten `afterEach` odpalał się PRZED globalnym: `vi.restoreAllMocks()`
+  // zdejmował gotowe odpowiedzi z zaślepki, a dopiero potem odmontowanie
+  // wymuszało spóźniony efekt na już opróżnionej zaślepce — stąd
+  // `fetchAdminUsers(...)` bez zaimplementowanej odpowiedzi i wywrócone
+  // „.then” na `undefined` (raz na kilkanaście-kilkadziesiąt biegów, zależnie
+  // od tego, czy efekt zdążył odpalić się sam w trakcie testu). Wymuszenie
+  // odmontowania tutaj, przed zdjęciem zaślepek, usuwa ten wyścig u źródła.
+  cleanup();
   vi.restoreAllMocks();
 });
 
