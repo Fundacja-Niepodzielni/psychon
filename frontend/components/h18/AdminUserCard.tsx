@@ -16,8 +16,8 @@ import {
   type AdminUserCard as AdminUserCardData,
   type UserRole,
 } from "@/lib/api";
-import AssignSupervisor from "@/components/h12/AssignSupervisor";
 import { DOCUMENT_TYPE_LABELS, ROLE_LABELS } from "@/lib/h18/labels";
+import { slotsForRegion } from "@/lib/slots/admin-user-card";
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -167,6 +167,7 @@ export default function AdminUserCard({ id }: { id: number }) {
   const { profile, progress, documents, recent_notifications, audit_entries } =
     loaded.card;
   const err = (field: string) => fieldErrors[field]?.[0];
+  const userActionSlots = slotsForRegion("user-actions");
 
   return (
     <div className="flex flex-col gap-6">
@@ -251,7 +252,9 @@ export default function AdminUserCard({ id }: { id: number }) {
         </dl>
       </Card>
 
-      <AssignSupervisor userId={id} />
+      {userActionSlots.map(({ id: slotId, Component }) => (
+        <Component key={slotId} userId={id} />
+      ))}
 
       <Card title="Dokumenty">
         {documents.length === 0 ? (

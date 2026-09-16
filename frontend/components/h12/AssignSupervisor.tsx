@@ -11,16 +11,21 @@ import {
   fetchAdminUsers,
   type AdminUserListItem,
 } from "@/lib/api";
+import type {
+  AdminUserCardSlot,
+  AdminUserCardSlotProps,
+} from "@/lib/slots/admin-user-card";
 
 /**
- * Nadanie prowadzącego z panelu (H12 · PUT /admin/users/{id}/supervisor).
+ * Nadanie prowadzącego z panelu (H12 · PUT /admin/users/{id}/supervisor) —
+ * region „user-actions" karty osoby, której właścicielem jest H18.
  *
  * Ekran niczego nie rozstrzyga: listę kandydatów bierze z `/admin/users?role=instructor`,
  * a o dopuszczalności przypisania decyduje serwer — odmowę (422) pokazujemy tak,
  * jak wróciła. Dlatego przycisk nie znika przy „podejrzanym" wyborze; blokuje go
  * tylko brak wskazanej osoby i trwające żądanie.
  */
-export default function AssignSupervisor({ userId }: { userId: number }) {
+export function AssignSupervisor({ userId }: AdminUserCardSlotProps) {
   const [instructors, setInstructors] = useState<AdminUserListItem[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [selected, setSelected] = useState("");
@@ -121,3 +126,12 @@ export default function AssignSupervisor({ userId }: { userId: number }) {
     </Card>
   );
 }
+
+const slot: AdminUserCardSlot = {
+  id: "h12-assign-supervisor",
+  region: "user-actions",
+  order: 100,
+  Component: AssignSupervisor,
+};
+
+export default slot;
