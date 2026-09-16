@@ -7,6 +7,7 @@ use App\Models\SupervisionSignup;
 use App\Models\SupervisionSlot;
 use App\Models\User;
 use App\Services\Auth\TokenRoles;
+use App\Support\AuditLog;
 use Illuminate\Support\Facades\DB;
 
 final class SupervisionAttendanceService
@@ -66,10 +67,24 @@ final class SupervisionAttendanceService
             }
 
             foreach ($attendance as $userId => $value) {
-                $signups->get((int) $userId)->forceFill([
+                $signup = $signups->get((int) $userId);
+                $before = $signup->attendance;
+
+                if ($before === $value) {
+                    continue;
+                }
+
+                $signup->forceFill([
                     'attendance' => $value,
                     'attendance_marked_by' => $actor->id,
                 ])->save();
+
+                AuditLog::record($actor, 'supervision.attendance_marked', $signup, [
+                    'slot_id' => $slot->id,
+                    'user_id' => (int) $userId,
+                    'attendance_before' => $before,
+                    'attendance_after' => $value,
+                ]);
             }
 
             return $slot;
