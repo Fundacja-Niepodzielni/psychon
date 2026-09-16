@@ -113,19 +113,21 @@ export default function QuestionForm({
         {draft.answers.map((answer, index) => (
           <div
             key={answer.id ?? `nowa-${index}`}
-            className="flex items-start gap-3"
+            className="flex flex-wrap items-start gap-3"
           >
-            <input
-              type="radio"
-              name={`${idPrefix}-poprawna`}
-              checked={answer.is_correct}
-              onChange={() => markCorrect(index)}
-              disabled={disabled}
-              aria-label={`Odpowiedź ${index + 1} jest poprawna`}
-              className="mt-3 size-4 shrink-0 accent-primary focus-visible:focus-ring"
-            />
+            <label className="mt-1 flex min-h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-sm focus-within:focus-ring">
+              <input
+                type="radio"
+                name={`${idPrefix}-poprawna`}
+                checked={answer.is_correct}
+                onChange={() => markCorrect(index)}
+                disabled={disabled}
+                aria-label={`Odpowiedź ${index + 1} jest poprawna`}
+                className="size-4 accent-primary"
+              />
+            </label>
 
-            <div className="flex-1">
+            <div className="min-w-0 flex-1 basis-40">
               <Input
                 label={`Odpowiedź ${index + 1}`}
                 value={answer.body}
@@ -145,7 +147,7 @@ export default function QuestionForm({
               // jedyną informacją zwrotną byłoby 422 po wysłaniu.
               disabled={disabled || draft.answers.length <= MIN_ANSWERS}
               aria-label={`Usuń odpowiedź ${index + 1}`}
-              className="mt-6 px-3"
+              className="mt-6 min-h-11 px-3"
             >
               Usuń
             </Button>

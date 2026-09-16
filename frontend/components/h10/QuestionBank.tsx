@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import QuestionForm from "@/components/h10/QuestionForm";
+import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -231,9 +233,7 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
   if (phase === "loading") {
     return (
       <Card title="Bank pytań">
-        <p className="text-body text-muted" role="status" aria-live="polite">
-          Wczytywanie pytań…
-        </p>
+        <LoadingState label="Wczytywanie pytań…" />
       </Card>
     );
   }
@@ -245,12 +245,11 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
   if (phase === "load_error") {
     return (
       <Card title="Bank pytań">
-        <Alert variant="error" title="Nie udało się otworzyć banku pytań">
-          {loadError ?? "Spróbuj ponownie za chwilę."}
-        </Alert>
-        <Button variant="secondary" className="mt-4" onClick={retryLoad}>
-          Spróbuj ponownie
-        </Button>
+        <ErrorState
+          title="Nie udało się otworzyć banku pytań"
+          message={loadError ?? "Spróbuj ponownie za chwilę."}
+          onRetry={retryLoad}
+        />
       </Card>
     );
   }
