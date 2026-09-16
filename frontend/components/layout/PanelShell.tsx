@@ -116,6 +116,15 @@ export default function PanelShell({
         <main id="tresc" className="mx-auto w-full max-w-[1200px] flex-1 p-6">
           {children}
         </main>
+
+        <footer className="border-t border-line bg-card px-6 py-4">
+          <Link
+            href="/deklaracja-dostepnosci"
+            className="text-small font-medium text-muted underline underline-offset-2 hover:text-ink focus-visible:focus-ring"
+          >
+            Deklaracja dostępności
+          </Link>
+        </footer>
       </div>
     </div>
   );
