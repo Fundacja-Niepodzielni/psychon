@@ -9,6 +9,10 @@ export interface PageHeaderProps {
    * rodzeństwo, ale odpowiedzialność za „tylko jedna główna" zostaje po
    * stronie wywołującego ekranu. */
   action?: ReactNode;
+  /** Slot okruszków nad `h1` — zwykle `<Breadcrumbs items={…} />`.
+   * Opcjonalny: pominięty renderuje dokładnie to, co przed dodaniem tego
+   * slotu (dotychczasowe wywołania bez zmian). */
+  breadcrumbs?: ReactNode;
   className?: string;
 }
 
@@ -21,19 +25,21 @@ export default function PageHeader({
   title,
   description,
   action,
+  breadcrumbs,
   className = "",
 }: PageHeaderProps) {
   return (
-    <div
-      className={`flex flex-wrap items-end justify-between gap-4 ${className}`}
-    >
-      <div>
-        <h1 className="text-h2 font-black text-ink">{title}</h1>
-        {description && (
-          <p className="mt-1 text-body text-muted">{description}</p>
-        )}
+    <div className={`flex flex-col gap-2 ${className}`}>
+      {breadcrumbs}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-h2 font-black text-ink">{title}</h1>
+          {description && (
+            <p className="mt-1 text-body text-muted">{description}</p>
+          )}
+        </div>
+        {action && <div className="flex flex-wrap gap-3">{action}</div>}
       </div>
-      {action && <div className="flex flex-wrap gap-3">{action}</div>}
     </div>
   );
 }
