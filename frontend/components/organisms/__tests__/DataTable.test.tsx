@@ -1,8 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DataTable, { type DataTableColumn } from "@/components/organisms/DataTable";
 import { axeViolations } from "../../molecules/__tests__/axe-helper";
+
+// jsdom nie zna ResizeObserver — kontener tabeli mierzy nim własne
+// przepełnienie (Z-10). Zaślepka tylko rejestruje wywołanie; przepełnienie
+// niżej wymuszamy ręcznie przez zdarzenie `resize`, bo `sprawdzPrzepelnienie`
+// nasłuchuje też na nim.
+beforeAll(() => {
+  class ResizeObserverZaslepka {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal("ResizeObserver", ResizeObserverZaslepka);
+});
 
 interface Wiersz {
   id: number;
@@ -172,6 +185,28 @@ describe("DataTable", () => {
 
     const przycisk = screen.getByRole("button", { name: /Imię/ });
     expect(przycisk.className).toMatch(/\bmin-h-11\b/);
+  });
+
+  it("pokazuje oznaczenie przewijania, gdy kontener tabeli się przepełnia (Z-10)", () => {
+    render(<DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="success" />);
+
+    const kontener = screen.getByRole("table").parentElement as HTMLElement;
+    Object.defineProperty(kontener, "scrollWidth", { value: 400, configurable: true });
+    Object.defineProperty(kontener, "clientWidth", { value: 300, configurable: true });
+    fireEvent(window, new Event("resize"));
+
+    expect(screen.getByText(/Przewiń w bok/)).toBeInTheDocument();
+  });
+
+  it("nie pokazuje oznaczenia przewijania, gdy kontener tabeli się mieści (Z-10)", () => {
+    render(<DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="success" />);
+
+    const kontener = screen.getByRole("table").parentElement as HTMLElement;
+    Object.defineProperty(kontener, "scrollWidth", { value: 300, configurable: true });
+    Object.defineProperty(kontener, "clientWidth", { value: 300, configurable: true });
+    fireEvent(window, new Event("resize"));
+
+    expect(screen.queryByText(/Przewiń w bok/)).not.toBeInTheDocument();
   });
 
   it("axe: 0 naruszeń w stanie dane", async () => {

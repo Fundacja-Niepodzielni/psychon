@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import StatRow from "@/components/organisms/StatRow";
 import { axeViolations } from "../../molecules/__tests__/axe-helper";
@@ -6,6 +6,15 @@ import { axeViolations } from "../../molecules/__tests__/axe-helper";
 const cztery = [
   { value: 12, label: "Kursy", dominant: true, context: "+3 w tym miesiącu" },
   { value: 4, label: "W toku" },
+  { value: 8, label: "Ukończone" },
+  { value: 1, label: "Zaległe" },
+];
+
+// Dominująca celowo NIE na pozycji 0 — świadek ma łapać wyróżnienie
+// przypięte do indeksu zamiast do flagi `dominant`.
+const dominujacaNiePierwsza = [
+  { value: 4, label: "W toku" },
+  { value: 12, label: "Kursy", dominant: true, context: "+3 w tym miesiącu" },
   { value: 8, label: "Ukończone" },
   { value: 1, label: "Zaległe" },
 ];
@@ -29,6 +38,17 @@ describe("StatRow", () => {
     expect(dominujaca.className).toMatch(/\btext-h1\b/);
     expect(zwykla.className).not.toMatch(/\btext-h1\b/);
     expect(zwykla.className).toMatch(/\btext-h3\b/);
+  });
+
+  it("wyróżnienie i kontekst podążają za flagą dominant, nie za pozycją kafla (Z-3)", () => {
+    render(<StatRow items={dominujacaNiePierwsza} />);
+
+    const dominujaca = screen.getByText("12");
+    const pierwszyKafel = screen.getByText("4");
+
+    expect(dominujaca.className).toMatch(/\btext-h1\b/);
+    expect(pierwszyKafel.className).not.toMatch(/\btext-h1\b/);
+    expect(screen.getByText("+3 w tym miesiącu")).toBeInTheDocument();
   });
 
   it("piąty kafel w trybie deweloperskim rzuca błąd (nie cichy render)", () => {
@@ -63,6 +83,17 @@ describe("StatRow", () => {
     expect(() => render(<StatRow items={bezKontekstu} />)).toThrow(
       /liczba dominująca musi mieć kontekst/,
     );
+  });
+
+  it("w trybie produkcyjnym nie rzuca błędu przy naruszeniach — loguje zamiast ubijać ekran", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    try {
+      const piec = [...cztery, { value: 2, label: "Nadmiarowy" }];
+      expect(() => render(<StatRow items={piec} />)).not.toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("axe: 0 naruszeń dla 4 kafli", async () => {

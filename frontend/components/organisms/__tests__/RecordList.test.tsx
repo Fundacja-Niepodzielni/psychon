@@ -34,6 +34,20 @@ describe("RecordList", () => {
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
+  it("stan pusty renderuje akcję, gdy wywołujący ją poda (Z-6)", () => {
+    render(
+      <RecordList
+        rows={[]}
+        rowKey={(r: Wiersz) => r.id}
+        renderItem={(r: Wiersz) => r.imie}
+        emptyMessage="Brak wpisów"
+        emptyAction={<button type="button">Dodaj pierwszy wpis</button>}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Dodaj pierwszy wpis" })).toBeInTheDocument();
+  });
+
   it("renderuje najwyżej jedną akcję na kartę, gdy podana", async () => {
     const onAction = vi.fn();
     const uzytkownik = userEvent.setup();
