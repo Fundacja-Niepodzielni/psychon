@@ -1,4 +1,9 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useRef, type KeyboardEvent, type ReactNode } from "react";
+
+/** Skok przewijania na jedno naciśnięcie strzałki (px). */
+const KROK_PRZEWIJANIA = 80;
 
 export interface Column<T> {
   /** Unikalny klucz kolumny. */
@@ -28,8 +33,34 @@ export default function Table<T>({
   caption,
   emptyMessage = "Brak danych do wyświetlenia.",
 }: TableProps<T>) {
+  const kontenerRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Obszar przewijania w poziomie jest teraz osiągalny z klawiatury (Tab) i
+   * ma własną rolę/nazwę — w Safari focus + strzałki to jedyny sposób, żeby
+   * dosięgnąć ucięte kolumny bez myszy ani gestu dotykowego (axe
+   * `scrollable-region-focusable`). Strzałki działają niezależnie od
+   * przepełnienia — bez efektu, gdy nie ma czego przewijać.
+   */
+  function przewinKlawiszem(event: KeyboardEvent<HTMLDivElement>) {
+    const el = kontenerRef.current;
+    if (!el) return;
+    if (event.key === "ArrowRight") {
+      el.scrollLeft += KROK_PRZEWIJANIA;
+    } else if (event.key === "ArrowLeft") {
+      el.scrollLeft -= KROK_PRZEWIJANIA;
+    }
+  }
+
   return (
-    <div className="overflow-x-auto rounded-md border border-line bg-card">
+    <div
+      ref={kontenerRef}
+      role="region"
+      aria-label={caption ?? "Zawartość tabeli przewijana w poziomie"}
+      tabIndex={0}
+      onKeyDown={przewinKlawiszem}
+      className="overflow-x-auto rounded-md border border-line bg-card focus-visible:focus-ring"
+    >
       <table className="w-full border-collapse text-left text-small">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
