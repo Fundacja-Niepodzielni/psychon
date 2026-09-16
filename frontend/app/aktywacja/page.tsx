@@ -120,9 +120,12 @@ function AktywacjaTresc() {
 export default function ActivationPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-page p-6">
-      <Suspense fallback={<p className="text-body text-subtle">Wczytywanie…</p>}>
-        <AktywacjaTresc />
-      </Suspense>
+      <div className="flex w-full max-w-lg flex-col gap-4">
+        <h1 className="text-h2 font-black text-ink">Aktywacja konta</h1>
+        <Suspense fallback={<p className="text-body text-subtle">Wczytywanie…</p>}>
+          <AktywacjaTresc />
+        </Suspense>
+      </div>
     </main>
   );
 }

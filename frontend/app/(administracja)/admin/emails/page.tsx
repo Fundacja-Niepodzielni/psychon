@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Badge from "@/components/ui/Badge";
 import Table, { type Column } from "@/components/ui/Table";
 import ListTemplate from "@/components/templates/ListTemplate";
@@ -46,11 +46,28 @@ function pobierzEmaile(
  */
 export default function AdminEmailsPage() {
   const [preview, setPreview] = useState<EmailItem | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const { stan, meta, strona, ustawStrone, ponow } = useZasobStronicowany<EmailItem>(
     pobierzEmaile,
     [],
     "Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.",
   );
+
+  useEffect(() => {
+    if (!preview) return;
+    const wywolanyPrzez = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+
+    function zamknijNaEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setPreview(null);
+    }
+    window.addEventListener("keydown", zamknijNaEscape);
+
+    return () => {
+      window.removeEventListener("keydown", zamknijNaEscape);
+      wywolanyPrzez?.focus();
+    };
+  }, [preview]);
 
   const dane = stan.status === "success" ? stan.data : [];
   const listaPusta = stan.status === "success" && dane.length === 0;
@@ -120,9 +137,11 @@ export default function AdminEmailsPage() {
 
       {preview && (
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label={`Podgląd e-maila — ${preview.subject}`}
+          tabIndex={-1}
           className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
           onClick={() => setPreview(null)}
         >
