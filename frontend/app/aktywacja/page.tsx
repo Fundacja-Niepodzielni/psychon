@@ -7,7 +7,7 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ErrorState from "@/components/molecules/ErrorState";
-import LoadingState from "@/components/molecules/LoadingState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
 import { api, ApiError } from "@/lib/api";
 import { homeForRole } from "@/lib/home-by-role";
 
@@ -20,6 +20,7 @@ type Stan =
   | { krok: "brak-sesji" }
   | { krok: "wiazanie" }
   | { krok: "sukces" }
+  | { krok: "odmowa"; komunikat: string }
   | { krok: "blad"; komunikat: string; mozliwePonowienie: boolean };
 
 /**
@@ -72,6 +73,12 @@ function AktywacjaTresc() {
         // 401 = sesja się skończyła w międzyczasie — `lib/api.ts` już
         // przekierowuje samo, nie ma czego tu jeszcze rysować.
         if (err instanceof ApiError && err.status === 401) return;
+        // 403 = konto zablokowane/usunięte/zanonimizowane (SsoBindController) —
+        // odmowa, nigdy nie wygląda jak awaria, więc bez przycisku ponowienia.
+        if (err instanceof ApiError && err.status === 403) {
+          setStan({ krok: "odmowa", komunikat: err.message });
+          return;
+        }
         // Odpowiedź serwera (np. token nieprawidłowy/wykorzystany, 4xx) jest
         // rozstrzygnięciem ostatecznym — ponowienie nie zmieni wyniku.
         // Brak czytelnej odpowiedzi (sieć, 5xx) to prawdziwa awaria — ponowienie ma sens.
@@ -111,6 +118,14 @@ function AktywacjaTresc() {
     );
   }
 
+  if (stan.krok === "odmowa") {
+    return (
+      <Card title="Aktywacja konta" className="w-full max-w-lg">
+        <ForbiddenState message={stan.komunikat} embedded />
+      </Card>
+    );
+  }
+
   if (stan.krok === "blad") {
     return (
       <Card title="Aktywacja konta" className="w-full max-w-lg">
@@ -128,9 +143,11 @@ function AktywacjaTresc() {
 
   return (
     <Card title="Aktywacja konta" className="w-full max-w-lg">
-      <LoadingState
-        label={stan.krok === "sukces" ? "Konto powiązane. Przekierowuję…" : "Trwa łączenie konta…"}
-      />
+      <Alert variant="info">
+        <p>
+          {stan.krok === "sukces" ? "Konto powiązane. Przekierowuję…" : "Trwa łączenie konta…"}
+        </p>
+      </Alert>
     </Card>
   );
 }

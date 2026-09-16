@@ -44,12 +44,13 @@ export default function AccountPage() {
             // Odmowa roli — nigdy nie wygląda jak awaria, więc bez przycisku ponowienia.
             setUsterka({ rodzaj: "odmowa", komunikat: err.message });
           } else {
-            // 500 i awaria sieci: to samo zdanie co dziś, ale z możliwością ponowienia.
+            // 500 i awaria sieci: zdanie bez surowego kodu wyjątku — z
+            // możliwością ponowienia.
             setUsterka({
               rodzaj: "awaria",
               komunikat:
                 err instanceof ApiError
-                  ? `${err.message} (kod: ${err.code})`
+                  ? err.message
                   : "Nie udało się połączyć z serwerem.",
             });
           }
@@ -103,7 +104,7 @@ export default function AccountPage() {
           )}
 
           {!loading && usterka?.rodzaj === "odmowa" && (
-            <ForbiddenState message={usterka.komunikat} />
+            <ForbiddenState message={usterka.komunikat} embedded />
           )}
 
           {!loading && usterka?.rodzaj === "awaria" && (
