@@ -1,21 +1,14 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DataTable, { type DataTableColumn } from "@/components/organisms/DataTable";
 import { axeViolations } from "../../molecules/__tests__/axe-helper";
+import { wywolajResizeObserver } from "../../../__tests__/setup";
 
-// jsdom nie zna ResizeObserver — kontener tabeli mierzy nim własne
-// przepełnienie (Z-10). Zaślepka tylko rejestruje wywołanie; przepełnienie
-// niżej wymuszamy ręcznie przez zdarzenie `resize`, bo `sprawdzPrzepelnienie`
-// nasłuchuje też na nim.
-beforeAll(() => {
-  class ResizeObserverZaslepka {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  vi.stubGlobal("ResizeObserver", ResizeObserverZaslepka);
-});
+// Zaślepka `ResizeObserver` (działająca, nie pusta) mieszka we wspólnym
+// `__tests__/setup.ts` — kontener tabeli mierzy nim własne przepełnienie
+// (Z-10). Przepełnienie niżej wymuszamy albo zdarzeniem `resize` okna, albo
+// bezpośrednim wywołaniem obserwatora przez `wywolajResizeObserver`.
 
 interface Wiersz {
   id: number;
@@ -207,6 +200,51 @@ describe("DataTable", () => {
     fireEvent(window, new Event("resize"));
 
     expect(screen.queryByText(/Przewiń w bok/)).not.toBeInTheDocument();
+  });
+
+  it("oznaczenie przewijania pojawia się po przejściu ładowanie → dane, przy tych samych tablicach kolumn i wierszy (Z-10)", () => {
+    const { rerender } = render(
+      <DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="loading" />,
+    );
+    rerender(<DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="success" />);
+
+    const kontener = screen.getByRole("table").parentElement as HTMLElement;
+    Object.defineProperty(kontener, "scrollWidth", { value: 400, configurable: true });
+    Object.defineProperty(kontener, "clientWidth", { value: 300, configurable: true });
+    fireEvent(window, new Event("resize"));
+
+    expect(screen.getByText(/Przewiń w bok/)).toBeInTheDocument();
+  });
+
+  it("oznaczenie przewijania pojawia się po przejściu błąd → dane, przy tych samych tablicach kolumn i wierszy (Z-10)", () => {
+    const { rerender } = render(
+      <DataTable
+        columns={kolumny}
+        rows={wiersze}
+        rowKey={(r) => r.id}
+        stan="error"
+        komunikatBledu="Nie udało się wczytać listy."
+      />,
+    );
+    rerender(<DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="success" />);
+
+    const kontener = screen.getByRole("table").parentElement as HTMLElement;
+    Object.defineProperty(kontener, "scrollWidth", { value: 400, configurable: true });
+    Object.defineProperty(kontener, "clientWidth", { value: 300, configurable: true });
+    fireEvent(window, new Event("resize"));
+
+    expect(screen.getByText(/Przewiń w bok/)).toBeInTheDocument();
+  });
+
+  it("oznaczenie przewijania pojawia się po zgłoszeniu przez ResizeObserver, bez zdarzenia resize okna", () => {
+    render(<DataTable columns={kolumny} rows={wiersze} rowKey={(r) => r.id} stan="success" />);
+
+    const kontener = screen.getByRole("table").parentElement as HTMLElement;
+    Object.defineProperty(kontener, "scrollWidth", { value: 400, configurable: true });
+    Object.defineProperty(kontener, "clientWidth", { value: 300, configurable: true });
+    wywolajResizeObserver(kontener);
+
+    expect(screen.getByText(/Przewiń w bok/)).toBeInTheDocument();
   });
 
   it("axe: 0 naruszeń w stanie dane", async () => {
