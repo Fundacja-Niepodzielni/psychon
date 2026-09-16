@@ -2,16 +2,30 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Certificate;
+use App\Models\Edition;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 /**
  * Wiersz listy certyfikatów w panelu administracji (H13,
  * `GET /admin/certificates`) i odpowiedź unieważnienia
  * (`POST /admin/certificates/{certificate}/revoke`).
  *
- * @mixin Certificate
+ * Właściwości wypisane wprost (zamiast `@mixin Certificate`) — `issued_at` i
+ * `revoked_at` to rzutowania `datetime` (`Certificate::casts()`), a `edition`
+ * i `user` to relacje `belongsTo`; żadne z nich analiza statyczna nie
+ * wyprowadzi z samego modelu bez tej deklaracji.
+ *
+ * @property int $id
+ * @property string $number
+ * @property Carbon|null $issued_at
+ * @property Carbon|null $revoked_at
+ * @property string|null $revoked_reason
+ * @property int|null $revoked_by
+ * @property-read Edition|null $edition
+ * @property-read User|null $user
  */
 class AdminCertificateResource extends JsonResource
 {

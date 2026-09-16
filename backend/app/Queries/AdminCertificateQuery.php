@@ -14,6 +14,9 @@ use Illuminate\Http\Request;
  */
 final class AdminCertificateQuery
 {
+    /**
+     * @return Builder<Certificate>
+     */
     public static function fromRequest(Request $request): Builder
     {
         $query = Certificate::query()->with(['user', 'edition']);
