@@ -103,7 +103,11 @@ export default function ConfirmDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-      onClick={loading ? undefined : onCancel}
+      // Klik w tło nie zamyka okna (samo "Anuluj" i Escape zamykają) i nie
+      // może przenieść fokusu pod spód: domyślne zachowanie przeglądarki po
+      // mousedown na elemencie bez fokusu to zdjęcie fokusu na `document.body`,
+      // więc blokujemy je tu, zanim do tego dojdzie.
+      onMouseDown={(event) => event.preventDefault()}
     >
       <div
         ref={dialogRef}
