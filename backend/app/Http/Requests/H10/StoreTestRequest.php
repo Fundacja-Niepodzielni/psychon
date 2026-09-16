@@ -23,8 +23,8 @@ class StoreTestRequest extends FormRequest
     {
         return [
             'pass_threshold' => ['sometimes', 'nullable', 'integer', 'between:1,100', $this->notBoolean('Próg zaliczenia musi być liczbą całkowitą.')],
-            'attempts_limit' => ['sometimes', 'nullable', 'integer', 'between:1,255'],
-            'question_count' => ['sometimes', 'integer', 'between:1,255'],
+            'attempts_limit' => ['sometimes', 'nullable', 'integer', 'between:1,255', $this->notBoolean('Limit podejść musi być liczbą całkowitą.')],
+            'question_count' => ['sometimes', 'integer', 'between:1,255', $this->notBoolean('Liczba pytań musi być liczbą całkowitą.')],
         ];
     }
 
