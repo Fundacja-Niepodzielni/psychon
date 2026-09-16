@@ -1,92 +1,88 @@
 "use client";
 
 import { getSession, signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import Input from "@/components/ui/Input";
+import { api, ApiError } from "@/lib/api";
+import { homeForRole } from "@/lib/home-by-role";
 
-type Role = "super_admin" | "project_manager" | "instructor" | "volunteer" | "student";
-
-/** Przekierowanie po zalogowaniu wg roli (słownik ról — kontrakt §3.4). */
-const HOME_BY_ROLE: Record<Role, string> = {
-  volunteer: "/panel/start",
-  student: "/panel/start",
-  instructor: "/prowadzacy",
-  project_manager: "/admin",
-  super_admin: "/admin",
+/** Human-readable text for the Auth.js error codes the callback can redirect
+ * back here with (`?error=`). Anything not listed here still shows, just
+ * untranslated — this is a thin verification screen, not a full error-copy
+ * catalogue. */
+const ERROR_MESSAGES: Record<string, string> = {
+  OAuthCallbackError: "Konto Niepodzielni nie potwierdziło logowania. Spróbuj ponownie.",
+  OAuthSignInError: "Nie udało się rozpocząć logowania przez Konta Niepodzielni.",
+  AccessDenied: "Logowanie zostało anulowane.",
+  Configuration: "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.",
 };
 
-function isRole(value: string | undefined): value is Role {
-  return !!value && value in HOME_BY_ROLE;
+interface Me {
+  role: string;
 }
 
-/** Mirrors `auth.ts`'s `LoginErrorPayload` — the backend's own error
- * envelope, carried here through `CredentialsSignin.code` because
- * `signIn()` with `redirect: false` otherwise only ever returns a type,
- * never the response body. */
-interface LoginErrorPayload {
-  status: number;
-  code: string;
-  message: string;
-  errors?: Record<string, string[]>;
-}
-
-function parseLoginError(code: string | undefined): LoginErrorPayload | null {
-  if (!code) return null;
-  try {
-    const parsed = JSON.parse(code) as Partial<LoginErrorPayload>;
-    if (typeof parsed.status !== "number" || typeof parsed.message !== "string") return null;
-    return {
-      status: parsed.status,
-      code: parsed.code ?? "unknown_error",
-      message: parsed.message,
-      errors: parsed.errors,
-    };
-  } catch {
-    return null;
-  }
-}
-
-export default function LoginPage() {
+/**
+ * PsychON jest wyłącznie SSO: to jedyne drzwi logowania, przez konto
+ * Niepodzielni (Keycloak). Trzy stany, bez formularza:
+ *
+ * 1. Brak sesji i brak `?error=` → od razu `signIn("keycloak", …)`, zero
+ *    kliknięć — użytkowniczka widzi tylko krótki komunikat o przekierowaniu.
+ * 2. `?error=` z callbacku Auth.js → komunikat po polsku i przycisk. ŻADNEGO
+ *    automatycznego przekierowania tutaj — inaczej błąd logowania natychmiast
+ *    uruchamiałby kolejną próbę i nigdy nie dałby się przeczytać (pętla).
+ * 3. Sesja już żywa (np. powrót na `/logowanie` jako cel `callbackUrl` po
+ *    udanym logowaniu) → `GET /me` i lądowanie wg roli. 401 z `/me` jest
+ *    obsłużony globalnie przez `lib/api.ts` (`handleUnauthorized`) — tu tylko
+ *    milczymy, żeby nie zdążyć narysować błędu tuż przed przekierowaniem,
+ *    które i tak zaraz nadejdzie.
+ */
+function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const params = useSearchParams();
+  const errorCode = params.get("error");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setFormError(null);
-    setFieldErrors({});
-    setLoading(true);
+  useEffect(() => {
+    let cancelled = false;
 
-    const result = await signIn("credentials", { email, password, redirect: false });
-    if (result?.error) {
-      const payload = parseLoginError(result.code);
-      if (payload?.status === 429) {
-        setFormError(payload.message);
-      } else if (payload?.status === 422 && payload.errors) {
-        setFieldErrors(payload.errors);
-        setFormError(payload.message);
-      } else if (payload?.status === 401 || payload?.status === 422) {
-        setFormError("Nieprawidłowy e-mail lub hasło.");
-      } else if (payload) {
-        setFormError(payload.message);
-      } else {
-        setFormError("Nieprawidłowy e-mail lub hasło.");
+    async function run() {
+      const session = await getSession();
+      if (cancelled) return;
+
+      const loggedIn = Boolean(session?.user?.id) && !session?.error;
+
+      if (loggedIn) {
+        try {
+          const me = await api<Me>("/me");
+          if (!cancelled) router.replace(homeForRole(me.role));
+        } catch (err) {
+          if (cancelled) return;
+          // 401 = albo „niepowiązane", albo „sesja wygasła" — obie ścieżki
+          // `lib/api.ts` już zaczęło same, przekierowaniem przeglądarki.
+          if (!(err instanceof ApiError && err.status === 401)) {
+            setErrorMessage("Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.");
+          }
+        }
+        return;
       }
-      setLoading(false);
-      return;
+
+      if (errorCode) {
+        setErrorMessage(ERROR_MESSAGES[errorCode] ?? "Logowanie się nie powiodło. Spróbuj ponownie.");
+        return;
+      }
+
+      void signIn("keycloak", { callbackUrl: "/logowanie" });
     }
 
-    const session = await getSession();
-    const role = session?.user?.roles?.[0];
-    router.push(isRole(role) ? HOME_BY_ROLE[role] : "/panel/start");
-  }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-page p-6">
@@ -100,52 +96,41 @@ export default function LoginPage() {
           </span>
           <h1 className="mt-3 text-h2 font-black text-ink">Niepodzielni</h1>
           <p className="mt-1 text-small text-subtle">
-            Platforma szkoleniowa — zaloguj się, aby kontynuować
+            Platforma szkoleniowa programu Niepodzielni
           </p>
         </div>
 
         <Card>
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-            {formError && <Alert variant="error">{formError}</Alert>}
-
-            <Input
-              label="Adres e-mail"
-              type="email"
-              name="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={fieldErrors.email?.[0]}
-            />
-            <Input
-              label="Hasło"
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              error={fieldErrors.password?.[0]}
-            />
-
-            <Button type="submit" loading={loading} className="mt-2 w-full">
-              Zaloguj się
-            </Button>
-          </form>
+          {errorMessage ? (
+            <div className="flex flex-col gap-4">
+              <Alert variant="error">{errorMessage}</Alert>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => void signIn("keycloak", { callbackUrl: "/logowanie" })}
+              >
+                Zaloguj przez konto Niepodzielni
+              </Button>
+            </div>
+          ) : (
+            <p className="text-small text-subtle">Przekierowuję do logowania…</p>
+          )}
         </Card>
-
-        <p className="mt-4 text-center text-caption text-subtle">
-          Masz konto Fundacji Niepodzielni?{" "}
-          <a href="/logowanie/konta" className="underline">
-            Zaloguj się przez Konta Niepodzielni
-          </a>
-          .
-        </p>
-        <p className="mt-2 text-center text-caption text-subtle">
-          Problem z logowaniem? Skontaktuj się z opiekunem projektu.
-        </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-page p-6">
+          <p className="text-small text-subtle">Przekierowuję do logowania…</p>
+        </div>
+      }
+    >
+      <LoginScreen />
+    </Suspense>
   );
 }

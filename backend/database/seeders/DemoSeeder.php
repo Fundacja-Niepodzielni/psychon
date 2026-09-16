@@ -28,7 +28,6 @@ use App\Models\User;
 use App\Models\WorkshopCompletion;
 use App\Support\OnboardingContent;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
@@ -69,6 +68,8 @@ class DemoSeeder extends Seeder
         $this->seedApplication($edition);
         $this->seedConsents($users);
         $this->seedSettings();
+
+        $this->printBindingInstructions($users);
     }
 
     private function seedEdition(): Edition
@@ -93,9 +94,6 @@ class DemoSeeder extends Seeder
      */
     private function seedUsers(Edition $edition): array
     {
-        $demoPassword = Hash::make('demo1234');
-        $adminPassword = Hash::make('admin1234');
-
         $shared = [
             'edition_id' => $edition->id,
             'status' => 'active',
@@ -108,7 +106,6 @@ class DemoSeeder extends Seeder
             'first_name' => 'Marta',
             'last_name' => 'Demo',
             'email' => 'marta@demo.pl',
-            'password' => $demoPassword,
             'phone' => '+48 600 100 200',
             'pesel' => '90010112301', // fictional, checksum-valid (b. 1990-01-01)
             'address_street' => 'ul. Przykładowa 1/2',
@@ -123,7 +120,6 @@ class DemoSeeder extends Seeder
             'first_name' => 'Ola',
             'last_name' => 'Demo',
             'email' => 'ola@demo.pl',
-            'password' => $demoPassword,
             'phone' => '+48 600 100 300',
             'pesel' => '85050529842', // fictional, checksum-valid (b. 1985-05-05)
             'address_street' => 'ul. Wzorcowa 3',
@@ -139,7 +135,6 @@ class DemoSeeder extends Seeder
             'first_name' => 'Filip',
             'last_name' => 'Demo',
             'email' => 'filip@demo.pl',
-            'password' => $demoPassword,
             'phone' => '+48 600 100 400',
             'pesel' => '99120812376', // fictional, checksum-valid (b. 1999-12-08)
             'role' => 'student',
@@ -151,7 +146,6 @@ class DemoSeeder extends Seeder
             'first_name' => 'Joanna',
             'last_name' => 'Demo',
             'email' => 'joanna@demo.pl',
-            'password' => $demoPassword,
             'phone' => '+48 600 100 500',
             'role' => 'instructor',
         ]);
@@ -161,7 +155,6 @@ class DemoSeeder extends Seeder
             'first_name' => 'Ola',
             'last_name' => 'Opiekunka',
             'email' => 'opiekun@demo.pl',
-            'password' => $adminPassword,
             'role' => 'project_manager',
         ]);
 
@@ -170,7 +163,6 @@ class DemoSeeder extends Seeder
             'first_name' => 'Adam',
             'last_name' => 'Admin',
             'email' => 'admin@demo.pl',
-            'password' => $adminPassword,
             'role' => 'super_admin',
         ]);
 
@@ -772,6 +764,22 @@ class DemoSeeder extends Seeder
                     'granted_at' => now()->subMonths(4),
                 ]);
             }
+        }
+    }
+
+    /**
+     * SSO only: a seeded account has no password to log in with. Print the
+     * ids the operator needs to bind each demo account to a Konta
+     * Niepodzielni identity via `php artisan psychon:sso-powiaz`.
+     *
+     * @param  array<string, User>  $users
+     */
+    private function printBindingInstructions(array $users): void
+    {
+        $this->command->info('Konta demo zasiane bez hasła (SSO Konta Niepodzielni) — powiąż je komendą:');
+
+        foreach ($users as $user) {
+            $this->command->line("  php artisan psychon:sso-powiaz {$user->id} <sub-z-Konta-Niepodzielni>  # {$user->email}");
         }
     }
 

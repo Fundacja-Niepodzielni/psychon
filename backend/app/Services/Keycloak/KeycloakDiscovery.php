@@ -19,12 +19,32 @@ use RuntimeException;
 class KeycloakDiscovery
 {
     /**
+     * @param  bool  $forceRefresh  bypass the normal TTL cache and re-fetch
+     *                              from the IdP right now — used exactly
+     *                              once per unknown `kid` (criterion §B8e),
+     *                              itself throttled to at most once per
+     *                              `keycloak.jwks_kid_miss_throttle_seconds`
+     *                              regardless of how many unknown-`kid`
+     *                              tokens arrive in that window.
      * @return array<string,Key>
      */
-    public function jwks(): array
+    public function jwks(bool $forceRefresh = false): array
     {
         $cacheKey = 'keycloak:jwks:'.md5((string) config('keycloak.discovery_base'));
         $ttl = (int) config('keycloak.jwks_cache_ttl', 300);
+
+        if ($forceRefresh) {
+            $throttleKey = $cacheKey.':kid-miss-refresh';
+            $throttleSeconds = (int) config('keycloak.jwks_kid_miss_throttle_seconds', 60);
+
+            // `add()` succeeds only the FIRST time inside the throttle
+            // window — atomically the same "may I refresh" decision a
+            // plain has()-then-put() pair would race under concurrent
+            // requests carrying the same unknown `kid`.
+            if (Cache::add($throttleKey, true, $throttleSeconds)) {
+                Cache::forget($cacheKey);
+            }
+        }
 
         $jwks = Cache::remember($cacheKey, $ttl, function (): array {
             $discovery = $this->discovery();

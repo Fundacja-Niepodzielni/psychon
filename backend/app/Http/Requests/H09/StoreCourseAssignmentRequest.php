@@ -2,14 +2,15 @@
 
 namespace App\Http\Requests\H09;
 
+use App\Services\Auth\TokenRoles;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreCourseAssignmentRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function authorize(TokenRoles $roles): bool
     {
-        return in_array($this->user()?->role, ['project_manager', 'super_admin'], true);
+        return $roles->has('project_manager', 'super_admin');
     }
 
     public function rules(): array

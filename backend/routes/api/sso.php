@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\SsoBindController;
 use App\Http\Controllers\Api\V1\SsoWhoAmIController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,3 +25,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('auth.keycloak')->get('/sso/whoami', SsoWhoAmIController::class);
+
+// Stage E1 (the bridge): binds the calling principal's `sub` to the local
+// user identified by a one-time invitation token. Guarded by the PRINCIPAL
+// middleware (there is no local user yet to authenticate as), throttled
+// like the existing auth routes.
+Route::middleware(['auth.keycloak', 'throttle:6,1'])->post('/sso/powiaz', SsoBindController::class);

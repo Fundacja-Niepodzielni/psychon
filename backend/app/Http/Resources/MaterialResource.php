@@ -14,9 +14,6 @@ use Illuminate\Support\Facades\URL;
  */
 class MaterialResource extends JsonResource
 {
-    /** Contract §2 describes download_url as „podpisany, wygasa". */
-    private const LINK_TTL_MINUTES = 15;
-
     public function toArray(Request $request): array
     {
         return [
@@ -30,7 +27,12 @@ class MaterialResource extends JsonResource
             'size' => $this->size,
             'download_url' => URL::temporarySignedRoute(
                 'materials.download',
-                now()->addMinutes(self::LINK_TTL_MINUTES),
+                // R2 (sprint-2 §1): visibility of the COURSE this material
+                // belongs to was already decided just above, from THIS
+                // request's token roles (CourseController::show). The link
+                // only carries that decision forward — the download route
+                // never re-reads a role (config('courses.material_link_ttl_seconds')).
+                now()->addSeconds((int) config('courses.material_link_ttl_seconds')),
                 // The signature covers every parameter, so `u` binds the link
                 // to one account and cannot be swapped for another.
                 ['material' => $this->id, 'u' => $request->user()->id],

@@ -77,7 +77,6 @@ final class ApplicationAcceptor
                 'first_name' => $locked->first_name,
                 'last_name' => $locked->last_name,
                 'email' => $email,
-                'password' => null,
                 'phone' => $locked->phone,
                 'role' => $input['role'],
                 'status' => 'active',
@@ -105,7 +104,7 @@ final class ApplicationAcceptor
                 $user,
                 'application.accepted',
                 'Zgłoszenie zaakceptowane',
-                'Twoje zgłoszenie zostało zaakceptowane. Ustaw hasło, aby aktywować konto. Link: '
+                'Twoje zgłoszenie zostało zaakceptowane. Połącz konto z kontem Niepodzielni, aby je aktywować. Link: '
                     .$activationUrl,
                 $activationPath,
             );

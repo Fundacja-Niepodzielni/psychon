@@ -6,7 +6,8 @@ use App\Models\Course;
 use App\Models\CourseAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Str;
+use Tests\Support\Sso\KeycloakTokenFactory;
 use Tests\TestCase;
 
 /**
@@ -43,21 +44,46 @@ class CourseVisibilityTest extends TestCase
 
     public function test_student_sees_only_courses_outside_the_sequence(): void
     {
-        Sanctum::actingAs($this->user('filip@demo.pl'));
+        $this->actingAs($this->user('filip@demo.pl'), 'keycloak');
 
         $this->assertSame([self::WEBINAR_SLUG], $this->catalogueSlugs());
     }
 
     public function test_volunteer_sees_the_path_and_no_invited_course(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->assertSame(self::PATH_SLUGS, $this->catalogueSlugs());
     }
 
+    /**
+     * R2 (sprint-2 §1) disagreement guarantee, for THIS query specifically:
+     * a local `users.role` of `student` would only ever see the webinar
+     * (see the test above). A real bearer token carrying the realm role
+     * mapped to `volunteer` must still see the whole path — proof that
+     * `CourseCatalogQuery` decides from the token's roles, never the
+     * `users` row, even when the two disagree.
+     */
+    public function test_the_token_role_wins_over_a_conflicting_local_role(): void
+    {
+        $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
+        User::factory()->role('student')->create(['keycloak_sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'realm_access' => ['roles' => ['wolontariusz']]]);
+
+        $slugs = collect(
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/v1/courses')
+                ->assertOk()
+                ->json('data'),
+        )->pluck('slug')->all();
+
+        $this->assertSame(self::PATH_SLUGS, $slugs);
+    }
+
     public function test_instructor_sees_only_assigned_courses(): void
     {
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $this->assertSame(array_slice(self::PATH_SLUGS, 0, 3), $this->catalogueSlugs());
     }
@@ -71,14 +97,14 @@ class CourseVisibilityTest extends TestCase
             ->where('instructor_id', $joanna->id)
             ->update(['unassigned_at' => now()]);
 
-        Sanctum::actingAs($joanna);
+        $this->actingAs($joanna, 'keycloak');
 
         $this->assertSame(array_slice(self::PATH_SLUGS, 0, 2), $this->catalogueSlugs());
     }
 
     public function test_administration_sees_every_published_course_without_locks(): void
     {
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $items = collect($this->getJson('/api/v1/courses')->assertOk()->json('data'));
 
@@ -90,14 +116,14 @@ class CourseVisibilityTest extends TestCase
     {
         Course::where('slug', 'praca-z-emocjami')->update(['is_published' => false]);
 
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
 
         $this->assertNotContains('praca-z-emocjami', $this->catalogueSlugs());
     }
 
     public function test_course_outside_the_callers_scope_answers_404_not_403(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/courses/'.self::WEBINAR_SLUG)
             ->assertStatus(404)

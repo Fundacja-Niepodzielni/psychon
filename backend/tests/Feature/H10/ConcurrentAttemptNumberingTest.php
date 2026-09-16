@@ -7,7 +7,6 @@ use App\Models\Edition;
 use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
-use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Concerns\RequiresProcessConcurrency;
 use Tests\Concerns\RunsConcurrentRequests;
@@ -145,7 +144,7 @@ class ConcurrentAttemptNumberingTest extends TestCase
             $zestawy[$i] = $this->zestawOdpowiedzi($i + 1);
         }
 
-        Sanctum::actingAs($this->user);
+        $this->actingAs($this->user, 'keycloak');
 
         // Pierwsze podejście SEKWENCYJNIE — po nim zbiór nie jest już pusty,
         // więc blokada wierszowa ma co blokować. To jest właśnie ta różnica,

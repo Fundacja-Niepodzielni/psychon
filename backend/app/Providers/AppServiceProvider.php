@@ -3,9 +3,9 @@
 namespace App\Providers;
 
 use App\Http\Middleware\AuthenticateKeycloakToken;
-use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Notifications\Messages\MailMessage;
+use App\Services\Keycloak\KeycloakGuardResolver;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,26 +30,14 @@ class AppServiceProvider extends ServiceProvider
         // name does not satisfy that check (str_starts_with($middleware, 'auth')).
         $this->app['router']->aliasMiddleware('auth.keycloak', AuthenticateKeycloakToken::class);
 
-        // Password-reset e-mail: PL content + a link into the frontend.
-        ResetPassword::createUrlUsing(function (User $user, string $token): string {
-            return self::resetUrl($user, $token);
+        // Named guard `keycloak` (SSO-only): resolves a LOCAL `User` from a
+        // Keycloak bearer token via `keycloak_sub`, so `auth:keycloak` on a
+        // business route accepts a Konta Niepodzielni token. See
+        // `KeycloakGuardResolver` for the actual rules (blocked / deleted /
+        // anonymised / unbound / back-channel-invalidated all resolve to
+        // null → 401).
+        Auth::viaRequest('keycloak', function (Request $request) {
+            return $this->app->make(KeycloakGuardResolver::class)->resolve($request);
         });
-
-        ResetPassword::toMailUsing(function (User $notifiable, string $token): MailMessage {
-            return (new MailMessage)
-                ->subject('Ustaw nowe hasło — Platforma Niepodzielni')
-                ->greeting('Cześć '.$notifiable->first_name.'!')
-                ->line('Otrzymaliśmy prośbę o zmianę hasła do Twojego konta.')
-                ->action('Ustaw nowe hasło', self::resetUrl($notifiable, $token))
-                ->line('Link wygasa po 60 minutach. Jeśli to nie Ty — zignoruj tę wiadomość.')
-                ->salutation('Zespół Niepodzielni');
-        });
-    }
-
-    private static function resetUrl(User $user, string $token): string
-    {
-        return rtrim(config('app.frontend_url'), '/')
-            .'/resetowanie-hasla?token='.$token
-            .'&email='.urlencode($user->email);
     }
 }

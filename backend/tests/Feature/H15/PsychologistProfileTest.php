@@ -25,7 +25,7 @@ class PsychologistProfileTest extends TestCase
     {
         $volunteer = User::factory()->create(['role' => 'volunteer', 'program_completed_at' => null]);
 
-        $response = $this->actingAs($volunteer, 'sanctum')->getJson('/api/v1/psychologist-profile');
+        $response = $this->actingAs($volunteer, 'keycloak')->getJson('/api/v1/psychologist-profile');
 
         $response->assertOk()
             ->assertJsonPath('data.eligible', false)
@@ -44,7 +44,7 @@ class PsychologistProfileTest extends TestCase
             'status' => 'draft',
         ]);
 
-        $response = $this->actingAs($graduate, 'sanctum')->getJson('/api/v1/psychologist-profile');
+        $response = $this->actingAs($graduate, 'keycloak')->getJson('/api/v1/psychologist-profile');
 
         $response->assertOk()
             ->assertJsonPath('data.eligible', true)
@@ -62,7 +62,7 @@ class PsychologistProfileTest extends TestCase
     {
         $volunteer = User::factory()->create(['role' => 'volunteer', 'program_completed_at' => null]);
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->patchJson('/api/v1/psychologist-profile', ['city' => 'Warszawa'])
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'profile_not_eligible');
@@ -74,7 +74,7 @@ class PsychologistProfileTest extends TestCase
     {
         $graduate = User::factory()->create(['role' => 'volunteer', 'program_completed_at' => now()->subDay()]);
 
-        $this->actingAs($graduate, 'sanctum')
+        $this->actingAs($graduate, 'keycloak')
             ->patchJson('/api/v1/psychologist-profile', [
                 'specializations' => ['wsparcie w kryzysie'],
                 'approach' => 'systemowy',
@@ -86,12 +86,12 @@ class PsychologistProfileTest extends TestCase
 
         $this->uploadDiploma($graduate);
 
-        $this->actingAs($graduate, 'sanctum')
+        $this->actingAs($graduate, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/submit', ['publication_consent' => true])
             ->assertOk()
             ->assertJsonPath('data.status', 'submitted');
 
-        $this->actingAs($graduate, 'sanctum')
+        $this->actingAs($graduate, 'keycloak')
             ->patchJson('/api/v1/psychologist-profile', ['city' => 'Poznań'])
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'entry_locked');
@@ -101,7 +101,7 @@ class PsychologistProfileTest extends TestCase
     {
         $volunteer = User::factory()->create(['role' => 'volunteer', 'program_completed_at' => null]);
 
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/submit', ['publication_consent' => true])
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'profile_not_eligible');
@@ -118,7 +118,7 @@ class PsychologistProfileTest extends TestCase
             'status' => 'draft',
         ]);
 
-        $response = $this->actingAs($graduate, 'sanctum')
+        $response = $this->actingAs($graduate, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/submit', ['publication_consent' => true]);
 
         $response->assertStatus(422)
@@ -138,7 +138,7 @@ class PsychologistProfileTest extends TestCase
         ]);
         $this->uploadDiploma($graduate);
 
-        $this->actingAs($graduate, 'sanctum')
+        $this->actingAs($graduate, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/submit', ['publication_consent' => true])
             ->assertOk()
             ->assertJsonPath('data.status', 'submitted')
@@ -161,7 +161,7 @@ class PsychologistProfileTest extends TestCase
             'status' => 'submitted',
         ]);
 
-        $this->actingAs($graduate, 'sanctum')
+        $this->actingAs($graduate, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/documents', [
                 'type' => 'dyplom',
                 'file' => UploadedFile::fake()->create('dyplom.pdf', 100, 'application/pdf'),
@@ -174,7 +174,7 @@ class PsychologistProfileTest extends TestCase
     {
         $graduate = User::factory()->create(['role' => 'volunteer', 'program_completed_at' => now()->subDay()]);
 
-        $response = $this->actingAs($graduate, 'sanctum')
+        $response = $this->actingAs($graduate, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/documents', [
                 'type' => 'dyplom',
                 'file' => UploadedFile::fake()->create('dyplom.pdf', 100, 'application/pdf'),
@@ -201,7 +201,7 @@ class PsychologistProfileTest extends TestCase
             'granted_at' => now()->subDay(),
         ]);
 
-        $this->actingAs($graduate, 'sanctum')
+        $this->actingAs($graduate, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/consent/withdraw')
             ->assertOk()
             ->assertJsonPath('data.status', 'withdrawn');
@@ -215,7 +215,7 @@ class PsychologistProfileTest extends TestCase
         $graduate = User::factory()->create(['role' => 'volunteer', 'program_completed_at' => now()->subDay()]);
         PsychologistProfile::create(['user_id' => $graduate->id, 'status' => 'draft']);
 
-        $this->actingAs($graduate, 'sanctum')
+        $this->actingAs($graduate, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/consent/withdraw')
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'validation_failed');
@@ -225,7 +225,7 @@ class PsychologistProfileTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'project_manager']);
 
-        $this->actingAs($admin, 'sanctum')
+        $this->actingAs($admin, 'keycloak')
             ->getJson('/api/v1/psychologist-profile')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
@@ -233,7 +233,7 @@ class PsychologistProfileTest extends TestCase
 
     private function uploadDiploma(User $user): void
     {
-        $this->actingAs($user, 'sanctum')
+        $this->actingAs($user, 'keycloak')
             ->postJson('/api/v1/psychologist-profile/documents', [
                 'type' => 'dyplom',
                 'file' => UploadedFile::fake()->create('dyplom.pdf', 100, 'application/pdf'),

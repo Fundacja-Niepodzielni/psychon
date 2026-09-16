@@ -4,7 +4,6 @@ namespace Tests\Feature\H19;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -19,7 +18,7 @@ class DashboardTest extends TestCase
         $this->seed();
 
         $admin = User::where('email', 'admin@demo.pl')->firstOrFail();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         $response = $this->getJson('/api/v1/admin/dashboard')
             ->assertOk()
@@ -50,7 +49,7 @@ class DashboardTest extends TestCase
         $this->seed();
 
         $opiekun = User::where('email', 'opiekun@demo.pl')->firstOrFail();
-        Sanctum::actingAs($opiekun);
+        $this->actingAs($opiekun, 'keycloak');
 
         $this->getJson('/api/v1/admin/dashboard')->assertOk();
     }
@@ -58,7 +57,7 @@ class DashboardTest extends TestCase
     public function test_volunteer_is_forbidden(): void
     {
         $volunteer = User::factory()->role('volunteer')->create();
-        Sanctum::actingAs($volunteer);
+        $this->actingAs($volunteer, 'keycloak');
 
         $this->getJson('/api/v1/admin/dashboard')
             ->assertStatus(403)

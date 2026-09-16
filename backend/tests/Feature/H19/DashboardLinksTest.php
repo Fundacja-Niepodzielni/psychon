@@ -4,7 +4,6 @@ namespace Tests\Feature\H19;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -93,7 +92,7 @@ class DashboardLinksTest extends TestCase
     /** @return list<array{key: string, count: int, link: string}> */
     private function kolejkiPulpitu(): array
     {
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         return $this->getJson('/api/v1/admin/dashboard')->assertOk()->json('data.queues');
     }

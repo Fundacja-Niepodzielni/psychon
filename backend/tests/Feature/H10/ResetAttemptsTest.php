@@ -4,7 +4,6 @@ namespace Tests\Feature\H10;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H10 · reset limitu podejść — kryterium 4 (opiekun z powodem
@@ -23,7 +22,7 @@ class ResetAttemptsTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 3);
         $user = $this->volunteer();
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
 
         $this->postJson("/api/v1/admin/tests/{$test->id}/users/{$user->id}/reset-attempts", [])
             ->assertStatus(422)
@@ -36,7 +35,7 @@ class ResetAttemptsTest extends TestPackageCase
         $test = $this->makeTest(questions: 10);
         $user = $this->volunteer();
 
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
         // Limit ma być wyczerpany naprawdę: trzy osobne podejścia, każde z własnym
         // zestawem odpowiedzi. Trzy identyczne zgłoszenia serwer policzyłby jako jedno
         // i reset nie miałby czego czyścić.
@@ -50,7 +49,7 @@ class ResetAttemptsTest extends TestPackageCase
         ])->assertStatus(403)->assertJsonPath('error.code', 'attempts_exhausted');
 
         $admin = $this->admin();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
         $this->postJson("/api/v1/admin/tests/{$test->id}/users/{$user->id}/reset-attempts", [
             'reason' => 'Problem techniczny w trakcie 3. podejścia.',
         ])->assertOk()
@@ -65,7 +64,7 @@ class ResetAttemptsTest extends TestPackageCase
         ]);
 
         // Nowe podejście znów możliwe, numeracja od 1.
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'keycloak');
         $this->postJson("/api/v1/tests/{$test->id}/attempts", [
             'answers' => $this->answersFor($test, 10),
         ])->assertCreated()
@@ -77,7 +76,7 @@ class ResetAttemptsTest extends TestPackageCase
     {
         $test = $this->makeTest(questions: 3);
         $user = $this->volunteer();
-        Sanctum::actingAs($this->volunteer());
+        $this->actingAs($this->volunteer(), 'keycloak');
 
         $this->postJson("/api/v1/admin/tests/{$test->id}/users/{$user->id}/reset-attempts", [
             'reason' => 'próba obejścia',

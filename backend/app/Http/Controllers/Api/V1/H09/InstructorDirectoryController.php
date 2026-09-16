@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
- * H09 · wizytówki prowadzących. Za `auth:sanctum` + `access.active`, dostępne
+ * H09 · wizytówki prowadzących. Za `auth:keycloak` + `access.active`, dostępne
  * dla każdej zalogowanej roli. DTO bez danych wrażliwych.
  */
 class InstructorDirectoryController extends Controller

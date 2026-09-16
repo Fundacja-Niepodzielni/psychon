@@ -7,7 +7,6 @@ use App\Models\Certificate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\Sanctum;
 
 /**
  * Pakiet H13 · wydanie certyfikatu — kryteria 2 (blokada braków), 5
@@ -20,7 +19,7 @@ class GenerateCertificateTest extends CertificatePackageCase
     public function test_generate_is_blocked_until_conditions_are_met(): void
     {
         $before = Certificate::count();
-        Sanctum::actingAs($this->marta());
+        $this->actingAs($this->marta(), 'keycloak');
 
         $this->postJson('/api/v1/certificate/generate')
             ->assertStatus(422)
@@ -34,7 +33,7 @@ class GenerateCertificateTest extends CertificatePackageCase
     {
         Storage::fake('local');
         $grad = $this->makeEligibleVolunteer();
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
 
         $this->postJson('/api/v1/certificate/generate')
             ->assertStatus(202)
@@ -82,7 +81,7 @@ class GenerateCertificateTest extends CertificatePackageCase
     {
         Storage::fake('local');
         $grad = $this->makeEligibleVolunteer();
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
 
         $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
         $first = Certificate::where('user_id', $grad->id)->firstOrFail();
@@ -99,7 +98,7 @@ class GenerateCertificateTest extends CertificatePackageCase
         $grad = $this->makeEligibleVolunteer();
         $grad->update(['access_expires_at' => now()->subDay()]); // dostęp już wygasł
 
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         // Trasa z access.active — przed wydaniem blokada.
         $this->getJson('/api/v1/certificate/conditions')->assertStatus(403)
             ->assertJsonPath('error.code', 'access_expired');
@@ -108,7 +107,7 @@ class GenerateCertificateTest extends CertificatePackageCase
         GenerateCertificate::dispatchSync($grad->id);
 
         $this->assertNotNull($grad->fresh()->program_completed_at);
-        Sanctum::actingAs($grad->fresh());
+        $this->actingAs($grad->fresh(), 'keycloak');
         $this->getJson('/api/v1/certificate/conditions')->assertOk();
     }
 
@@ -116,7 +115,7 @@ class GenerateCertificateTest extends CertificatePackageCase
     {
         Storage::fake('local');
         $grad = $this->makeEligibleVolunteer();
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
 
         $this->getJson('/api/v1/certificate/download')->assertStatus(404);
 
@@ -129,7 +128,7 @@ class GenerateCertificateTest extends CertificatePackageCase
 
     public function test_generate_requires_a_volunteer(): void
     {
-        Sanctum::actingAs(User::where('email', 'filip@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'filip@demo.pl')->firstOrFail(), 'keycloak');
         $this->postJson('/api/v1/certificate/generate')->assertStatus(403);
     }
 }

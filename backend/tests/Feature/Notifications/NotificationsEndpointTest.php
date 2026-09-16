@@ -24,7 +24,7 @@ class NotificationsEndpointTest extends TestCase
         $unread = Notify::send($marta, 'internship.returned', 'Wpis zwrócony', 'Treść.', '/panel/staz');
         Notify::send($ola, 'certificate.ready', 'Certyfikat gotowy', 'Treść.', '/panel/certyfikat');
 
-        $response = $this->actingAs($marta, 'sanctum')->getJson('/api/v1/notifications');
+        $response = $this->actingAs($marta, 'keycloak')->getJson('/api/v1/notifications');
 
         $response->assertOk();
         $this->assertCount(2, $response->json('data'));
@@ -41,7 +41,7 @@ class NotificationsEndpointTest extends TestCase
 
         $notification = Notify::send($ola, 'certificate.ready', 'Certyfikat gotowy', 'Treść.', '/panel/certyfikat');
 
-        $response = $this->actingAs($marta, 'sanctum')
+        $response = $this->actingAs($marta, 'keycloak')
             ->postJson("/api/v1/notifications/{$notification->id}/read");
 
         $response->assertStatus(404)->assertJsonPath('error.code', 'not_found');
@@ -52,7 +52,7 @@ class NotificationsEndpointTest extends TestCase
         $marta = User::factory()->create();
         $notification = Notify::send($marta, 'course.unlocked', 'Kurs odblokowany', 'Treść.', '/panel/kursy/2');
 
-        $response = $this->actingAs($marta, 'sanctum')
+        $response = $this->actingAs($marta, 'keycloak')
             ->postJson("/api/v1/notifications/{$notification->id}/read");
 
         $response->assertOk();
@@ -69,14 +69,14 @@ class NotificationsEndpointTest extends TestCase
         Notify::send($marta, 'internship.returned', 'B', 'B.', '/b');
         $olaNotification = Notify::send($ola, 'certificate.ready', 'C', 'C.', '/c');
 
-        $response = $this->actingAs($marta, 'sanctum')->postJson('/api/v1/notifications/read-all');
+        $response = $this->actingAs($marta, 'keycloak')->postJson('/api/v1/notifications/read-all');
 
         $response->assertOk();
         $this->assertSame(2, $response->json('data.updated'));
 
         $this->assertSame(
             0,
-            $this->actingAs($marta, 'sanctum')->getJson('/api/v1/notifications')->json('meta.extra.unread')
+            $this->actingAs($marta, 'keycloak')->getJson('/api/v1/notifications')->json('meta.extra.unread')
         );
         $this->assertNull($olaNotification->fresh()->read_at);
     }

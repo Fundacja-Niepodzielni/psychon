@@ -16,10 +16,15 @@ Adres backendu w `.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:8010`
 
 ```
 app/
-  logowanie/            logowanie hasłem, redirect wg roli · logowanie/konta/ logowanie
-                        przez konto Fundacji (link do Konta Niepodzielni)
-  konto/                ekran po zalogowaniu przez konto Fundacji (whoami, wylogowanie)
-  api/auth/[...nextauth]/  jedyna trasa Auth.js — obsługuje obie drogi logowania
+  logowanie/            jedyny ekran logowania — SSO przez konto Niepodzielni,
+                        bez formularza (patrz „Logowanie" niżej).
+                        logowanie/konta/  stary adres, tylko przekierowanie
+                        logowanie/niepowiazane/  konto Kont bez powiązania z PsychON
+  aktywacja/            wiązanie `sub` konta Niepodzielni z zaproszeniem PsychON
+                        (`POST /sso/powiaz`) — bez hasła
+  konto/                ekran „Twoje konto" (whoami, wylogowanie)
+  api/auth/[...nextauth]/  jedyna trasa Auth.js
+  api/auth/end-session-url/  adres end_session_endpoint realmu (wylogowanie)
   dostep-wygasl/        ekran „dostęp wygasł"
   not-found.tsx         404 · error.tsx  błąd globalny (500)
   (uczestnik)/panel/    layout + strony panelu uczestnika
@@ -32,9 +37,10 @@ components/
   Forbidden.tsx         ekran 403 (message + reason.missing)
 lib/
   api.ts                klient API (koperty, ApiError, token z sesji Auth.js)
+  home-by-role.ts       słownik lądowania po roli — wspólny dla /logowanie i /aktywacja
   menu/                 rejestry menu — plik per pakiet
-auth.ts                 konfiguracja Auth.js — dostawcy Keycloak i Credentials,
-                        jedna sesja (JWT, ciasteczko HttpOnly) dla obu drzwi logowania
+auth.ts                 konfiguracja Auth.js — wyłącznie dostawca Keycloak (konto
+                        Niepodzielni), sesja JWT w ciasteczku HttpOnly
 ```
 
 ## Zasady (twarde)
@@ -84,21 +90,54 @@ try { … } catch (err) {
 }
 ```
 
-Token Bearer żyje w jednej sesji Auth.js (`next-auth`), wspólnej dla obu drzwi
-logowania — hasła lokalnego (`/logowanie`, dostawca Credentials) i konta Fundacji
-(`/logowanie/konta`, dostawca Keycloak). Sesja to zaszyfrowane, HttpOnly
-ciasteczko; klient czyta z niej token przez `/api/auth/session`
-(`lib/api.ts#getToken`). Nigdzie w `localStorage` — czytelnym dla każdego skryptu
-wstrzykniętego w stronę. 401 kończy sesję i przekierowuje na `/logowanie`
-automatycznie. `body` będące `FormData` wysyła się jako multipart (uploady).
+## Logowanie (wyłącznie SSO)
 
-Konto Fundacji odświeża token dostępu w tle (`auth.ts`, callback `jwt`) — gdy
-wygasa, aplikacja wymienia go na nowy przez `refresh_token`, zanim ekran to
-zauważy. Jeśli odświeżenie się nie uda (token odświeżający wygasł albo realm
-jest nieosiągalny), sesja kończy się od razu — `lib/api.ts` woła wtedy
+PsychON nie ma własnego hasła — jedyne drzwi to konto Niepodzielni (Keycloak,
+realm `niepodzielni`, publiczny klient `psychon-web`, dostawca Keycloak
+Auth.js w `auth.ts`). `/logowanie` nie ma formularza:
+
+1. brak sesji i brak `?error=` → sama zaczyna `signIn("keycloak", …)`, zero
+   kliknięć;
+2. `?error=` z callbacku Auth.js → komunikat po polsku i przycisk „Zaloguj
+   przez konto Niepodzielni" — bez żadnego automatycznego przekierowania
+   (inaczej błąd nigdy nie dałby się przeczytać, bo od razu zaczynałby się
+   kolejny SSO);
+3. sesja już żywa → `GET /me` i lądowanie wg roli (`lib/home-by-role.ts`,
+   `HOME_BY_ROLE`).
+
+Nowe konto (zaproszenie) wiąże się na `/aktywacja?token=…`: bez sesji —
+przycisk logowania z tym samym tokenem w `callbackUrl`; z sesją — `POST
+/sso/powiaz` z tokenem zaproszenia (backend wiąże `sub` z zaproszonym
+użytkownikiem), potem lądowanie wg roli. Żadnego pola hasła — konto go nie ma.
+
+Token Bearer żyje w sesji Auth.js (`next-auth`). Sesja to zaszyfrowane,
+HttpOnly ciasteczko; klient czyta z niej token przez `/api/auth/session`
+(`lib/api.ts#getToken`). Nigdzie w `localStorage` — czytelnym dla każdego
+skryptu wstrzykniętego w stronę. `body` będące `FormData` wysyła się jako
+multipart (uploady).
+
+**401 z dowolnej trasy biznesowej ma dwie różne przyczyny, rozróżnione w
+`lib/api.ts` (`handleUnauthorized`) przez dodatkowe wywołanie `GET
+/sso/whoami` na tym samym tokenie:**
+
+- sesja Kont ważna, ale `sub` NIE jest powiązany z żadnym kontem PsychON
+  (`whoami` odpowiada 200, `/me` 401) → ekran `/logowanie/niepowiazane`,
+  sesja NIE kończy się (dopiero przycisk na tym ekranie ją kończy);
+- sesja naprawdę nieważna (`whoami` też 401) → `endSession()` i powrót na
+  `/logowanie`, które samo zacznie nowe logowanie.
+
+Bez tego rozróżnienia każde 401 kończyłoby sesję i wracało na `/logowanie`,
+które dla wciąż żywej sesji Kont natychmiast logowałoby z powrotem bez
+pytania o cokolwiek — i znów dostawałoby 401: pętla bez żadnego czytelnego
+ekranu.
+
+Konto Niepodzielni odświeża token dostępu w tle (`auth.ts`, callback `jwt`) —
+gdy wygasa, aplikacja wymienia go na nowy przez `refresh_token`, zanim ekran
+to zauważy. Jeśli odświeżenie się nie uda (token odświeżający wygasł albo
+realm jest nieosiągalny), sesja kończy się od razu — `lib/api.ts` woła wtedy
 `signOut()`, zamiast pokazywać dalej zalogowany ekran z martwym tokenem.
 
-**Dwie granice zmierzone przy odbiorze tego mechanizmu, spisane tu, bo nie są
+**Granice zmierzone przy odbiorze tego mechanizmu, spisane tu, bo nie są
 oczywiste z samego kodu:**
 
 - **Wylogowanie kończy sesję w koncie Fundacji, a API przestaje przyjmować
@@ -121,11 +160,6 @@ oczywiste z samego kodu:**
   padło połączenie sieciowe, zanim żądanie wylogowania wyszło. Wtedy żaden
   znacznik nigdy nie powstaje i token jest honorowany aż do naturalnego
   wygaśnięcia. To wyjątkowy przypadek, nie reguła.
-- **Zalogowanie się przez jedne drzwi zastępuje sesję drugich.** Jest jedno
-  miejsce na sesję (jedno ciasteczko Auth.js) — zalogowanie się lokalnym
-  hasłem po zalogowaniu przez konto Fundacji (i odwrotnie) kończy tamtą
-  sesję, nie otwiera drugiej obok niej. Zamierzone dla tego etapu; gdyby ktoś
-  to odkrył jako „błąd", to jest to udokumentowane zachowanie, nie regresja.
 
 ## Tokeny designu (z makiety)
 

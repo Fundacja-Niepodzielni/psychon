@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\H17;
 
+use App\Services\Auth\TokenRoles;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AnswerQuestionRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function authorize(TokenRoles $roles): bool
     {
-        return $this->user()?->role === 'instructor';
+        return $roles->has('instructor');
     }
 
     public function rules(): array

@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
@@ -12,11 +11,6 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
-
     /**
      * Define the model's default state.
      *
@@ -29,11 +23,9 @@ class UserFactory extends Factory
             'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
             'role' => 'volunteer',
             'status' => 'active',
             'product_group' => 'psychon',
-            'remember_token' => Str::random(10),
         ];
     }
 
@@ -55,12 +47,12 @@ class UserFactory extends Factory
     }
 
     /**
-     * An invited account awaiting activation (no password yet).
+     * An invited account awaiting binding via `psychon:sso-powiaz` (no
+     * `keycloak_sub` yet — SSO only, there is no password to await).
      */
     public function invited(): static
     {
         return $this->state(fn (array $attributes) => [
-            'password' => null,
             'email_verified_at' => null,
             'activation_token' => Str::random(48),
         ]);

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   // bierzemy origin z niego; bez niego (testy, `next dev` bez proxy) zostaje
   // origin zadania jak dotad.
   const origin = process.env.AUTH_URL ? new URL(process.env.AUTH_URL).origin : new URL(request.url).origin;
-  const fallback = new URL("/logowanie/konta", origin).toString();
+  const fallback = new URL("/logowanie", origin).toString();
 
   const issuer = process.env.AUTH_KEYCLOAK_ISSUER;
   if (!issuer) {

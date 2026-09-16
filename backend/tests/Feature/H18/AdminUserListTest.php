@@ -4,7 +4,6 @@ namespace Tests\Feature\H18;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -18,7 +17,7 @@ class AdminUserListTest extends TestCase
     public function test_role_filter_and_search_narrow_the_list(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $response = $this->getJson('/api/v1/admin/users?role=volunteer&search=demo')
             ->assertOk()
@@ -39,7 +38,7 @@ class AdminUserListTest extends TestCase
     public function test_search_matches_first_name_last_name_and_email_case_insensitively(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $emails = collect(
             $this->getJson('/api/v1/admin/users?search=MARTA')->assertOk()->json('data')
@@ -52,7 +51,7 @@ class AdminUserListTest extends TestCase
     {
         $this->seed();
         User::factory()->role('volunteer')->create(['created_at' => now()->addDay()]);
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $timestamps = collect(
             $this->getJson('/api/v1/admin/users')->assertOk()->json('data')
@@ -66,7 +65,7 @@ class AdminUserListTest extends TestCase
     public function test_per_page_is_capped_at_100(): void
     {
         $this->seed();
-        Sanctum::actingAs(User::where('email', 'admin@demo.pl')->firstOrFail());
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $this->getJson('/api/v1/admin/users?per_page=500')
             ->assertOk()
@@ -75,7 +74,7 @@ class AdminUserListTest extends TestCase
 
     public function test_volunteer_is_forbidden(): void
     {
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->getJson('/api/v1/admin/users')
             ->assertStatus(403)

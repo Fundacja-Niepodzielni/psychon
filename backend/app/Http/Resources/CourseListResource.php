@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Course;
 use App\Models\User;
 use App\Queries\CourseCatalogQuery;
+use App\Services\Auth\TokenRoles;
 use App\Support\CourseAccess;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -56,7 +57,8 @@ class CourseListResource extends JsonResource
     {
         $status = ($this->state ?? CourseAccess::state($user, $this->resource))['status'];
 
-        if ($status === 'locked' && ! CourseCatalogQuery::isParticipant($user)) {
+        // R2 (sprint-2 §1): the CALLER's token roles, never `$user->role`.
+        if ($status === 'locked' && ! CourseCatalogQuery::isParticipant(app(TokenRoles::class)->current())) {
             return 'in_progress';
         }
 

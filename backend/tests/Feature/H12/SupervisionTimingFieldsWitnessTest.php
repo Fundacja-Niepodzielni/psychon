@@ -46,7 +46,7 @@ class SupervisionTimingFieldsWitnessTest extends TestCase
             'location_or_link' => 'Sala demo',
         ]);
 
-        $response = $this->actingAs($volunteer, 'sanctum')
+        $response = $this->actingAs($volunteer, 'keycloak')
             ->getJson('/api/v1/supervision/slots?per_page=25')
             ->assertOk();
 
@@ -55,7 +55,7 @@ class SupervisionTimingFieldsWitnessTest extends TestCase
         $this->assertTrue($byId[$futureSlot->id]['can_sign_up'], 'termin przyszły ma dawać can_sign_up=true');
 
         // Ten sam warunek, ten sam skutek: serwer odmawia dokładnie tam, gdzie zasób ostrzegał.
-        $this->actingAs($volunteer, 'sanctum')
+        $this->actingAs($volunteer, 'keycloak')
             ->postJson("/api/v1/supervision/slots/{$pastSlot->id}/signup")
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'validation_failed');
@@ -95,7 +95,7 @@ class SupervisionTimingFieldsWitnessTest extends TestCase
             'signed_up_at' => now(),
         ]);
 
-        $response = $this->actingAs($instructor, 'sanctum')
+        $response = $this->actingAs($instructor, 'keycloak')
             ->getJson('/api/v1/instructor/group')
             ->assertOk();
 
@@ -111,7 +111,7 @@ class SupervisionTimingFieldsWitnessTest extends TestCase
 
         // Ten sam warunek, ten sam skutek po drugiej stronie: serwer odmawia oznaczenia
         // obecności na terminie, który jeszcze się nie zakończył.
-        $this->actingAs($instructor, 'sanctum')
+        $this->actingAs($instructor, 'keycloak')
             ->patchJson("/api/v1/instructor/slots/{$notEndedSlot->id}/attendance", [
                 'attendance' => [(string) $member->id => 'present'],
             ])

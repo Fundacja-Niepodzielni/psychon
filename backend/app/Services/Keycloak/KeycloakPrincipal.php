@@ -34,4 +34,40 @@ final class KeycloakPrincipal
     {
         return in_array($role, $this->roles, true);
     }
+
+    /**
+     * Local PsychON role names granted by this token, i.e. `$this->roles`
+     * (raw `realm_access.roles`) filtered through the whitelist in
+     * `config('keycloak.roles')` (local name => realm name). This is the
+     * ONLY conversion from a realm role to a local one anywhere in this
+     * slice (criterion §R2) — a composite marker like `wymaga-2fa`, or any
+     * realm role not present in the whitelist, never reaches this list. An
+     * empty result is a valid, non-error state.
+     *
+     * @return list<string>
+     */
+    public function authorizingRoles(): array
+    {
+        $whitelist = (array) config('keycloak.roles', []);
+
+        $granted = [];
+        foreach ($whitelist as $local => $realm) {
+            if (is_string($realm) && $realm !== '' && in_array($realm, $this->roles, true)) {
+                $granted[] = (string) $local;
+            }
+        }
+
+        return $granted;
+    }
+
+    /**
+     * True when this token grants at least one of the given LOCAL role
+     * names (see {@see authorizingRoles()}) — the single membership check
+     * every authorisation call site in this application should use instead
+     * of comparing against `users.role`.
+     */
+    public function hasAuthorizingRole(string ...$localRoles): bool
+    {
+        return array_intersect($localRoles, $this->authorizingRoles()) !== [];
+    }
 }

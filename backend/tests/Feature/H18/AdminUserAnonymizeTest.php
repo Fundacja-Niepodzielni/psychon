@@ -16,7 +16,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use Laravel\Sanctum\Sanctum;
 use RuntimeException;
 use Tests\Feature\H13\CertificatePackageCase;
 
@@ -54,7 +53,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         $attemptIds = TestAttempt::where('user_id', $ola->id)->pluck('id')->all();
         $certIds = Certificate::where('user_id', $ola->id)->pluck('id')->all();
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $response = $this->postJson("/api/v1/admin/users/{$ola->id}/anonymize");
         $this->assertLessThan(300, $response->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$response->getStatusCode().' '.$response->getContent());
 
@@ -90,7 +89,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         $grad = $grad->fresh();
 
         // Eksport gotowy PRZED procedurą (plik na dysku, status ready).
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $exportId = $this->postJson('/api/v1/me/exports')->json('data.id');
         $this->getJson("/api/v1/me/exports/{$exportId}")->assertJsonPath('data.status', 'ready');
         $exportPath = DataExport::where('public_id', $exportId)->firstOrFail()->file_path;
@@ -102,12 +101,12 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         );
 
         // Certyfikat wydany PRZED procedurą — potrzebny do weryfikacji publicznej.
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
         $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
 
         // Procedura.
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $anonymize = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertLessThan(300, $anonymize->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$anonymize->getStatusCode().' '.$anonymize->getContent());
 
@@ -116,7 +115,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         // HTTP nie buforuje w tym środowisku (`getContent()` wraca pusty ciąg mimo
         // 200) — patrzymy więc na sam plik zarejestrowany w rekordzie eksportu,
         // dokładnie ten, który trasa faktycznie by wysłała.
-        Sanctum::actingAs($grad->fresh());
+        $this->actingAs($grad->fresh(), 'keycloak');
         $download = $this->get("/api/v1/me/exports/{$exportId}/download");
         $this->assertLessThan(500, $download->getStatusCode(), 'trasa pobrania eksportu padła po anonimizacji zamiast odmówić albo obsłużyć');
 
@@ -177,7 +176,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         ]);
         $grad = $grad->fresh();
 
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
         $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
         Storage::disk('local')->assertExists($certificate->pdf_path);
@@ -186,7 +185,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
             'fixture assumption: świeżo wygenerowany PDF certyfikatu rzeczywiście niesie nazwisko'
         );
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $anonymize = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertLessThan(300, $anonymize->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$anonymize->getStatusCode().' '.$anonymize->getContent());
 
@@ -228,7 +227,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         ]);
         $grad = $grad->fresh();
 
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
         $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
         Storage::disk('local')->assertExists($certificate->pdf_path);
@@ -239,7 +238,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
 
         // Pierwsze uruchomienie — buduje stan "konto już zanonimizowane,
         // plik certyfikatu nietknięty", zastany dziś.
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $first = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertLessThan(300, $first->getStatusCode(), 'pierwsza procedura anonimizacji nie powiodła się: '.$first->getStatusCode().' '.$first->getContent());
         $this->assertNotNull($grad->fresh()->anonymized_at, 'fixture assumption: konto jest już zanonimizowane przed drugim wywołaniem');
@@ -289,7 +288,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
 
         $before = AuditLogEntry::count();
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
         $response = $this->postJson("/api/v1/admin/users/{$ola->id}/anonymize");
         $this->assertLessThan(300, $response->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$response->getStatusCode().' '.$response->getContent());
 
@@ -338,13 +337,13 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         ]);
         $grad = $grad->fresh();
 
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
         $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
         $certificatePath = $certificate->pdf_path;
         $this->assertTrue(Storage::disk('local')->exists($certificatePath), 'fixture assumption: certyfikat rzeczywiście ma plik na dysku');
 
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $diploma = $this->postJson('/api/v1/psychologist-profile/documents', [
             'type' => 'dyplom',
             'file' => UploadedFile::fake()->create('dyplom.pdf', 40, 'application/pdf'),
@@ -359,7 +358,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         });
 
         try {
-            Sanctum::actingAs($this->admin());
+            $this->actingAs($this->admin(), 'keycloak');
             $response = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
 
             $this->assertSame(
@@ -435,7 +434,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         $grad->update(['program_completed_at' => now()->subDay()]);
         $grad = $grad->fresh();
 
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
         $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
         $certificatePath = $certificate->pdf_path;
@@ -497,7 +496,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         $grad->update(['program_completed_at' => now()->subDay()]);
         $grad = $grad->fresh();
 
-        Sanctum::actingAs($grad);
+        $this->actingAs($grad, 'keycloak');
         $diploma = $this->postJson('/api/v1/psychologist-profile/documents', [
             'type' => 'dyplom',
             'file' => UploadedFile::fake()->create('dyplom.pdf', 40, 'application/pdf'),
@@ -518,10 +517,10 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
             now()->addMinutes(5),
             ['profileId' => $profile->id, 'docId' => $diplomaDoc->id],
         );
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $this->assertLessThan(300, $this->get($downloadUrl)->getStatusCode(), 'fixture assumption: trasa admina rzeczywiście wydaje dokument przed procedurą');
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $anonymize = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertLessThan(300, $anonymize->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$anonymize->getStatusCode().' '.$anonymize->getContent());
 
@@ -567,18 +566,18 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         Storage::disk('local')->put($application->diploma_scan_path, '%PDF-demo-diploma');
         $scanPath = $application->diploma_scan_path;
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $before = $this->get("/api/v1/admin/applications/{$application->id}/diploma-scan");
         $this->assertLessThan(300, $before->getStatusCode(), 'fixture assumption: trasa admina rzeczywiście wydaje skan przed procedurą');
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $anonymize = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertLessThan(300, $anonymize->getStatusCode(), 'procedura anonimizacji nie powiodła się: '.$anonymize->getStatusCode().' '.$anonymize->getContent());
 
         $this->assertNull($application->fresh()->diploma_scan_path, 'kolumna diploma_scan_path przeżyła anonimizację');
         $this->assertFalse(Storage::disk('local')->exists($scanPath), 'plik skanu dyplomu nadal jest na dysku po anonimizacji');
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $after = $this->get("/api/v1/admin/applications/{$application->id}/diploma-scan");
         $this->assertSame(404, $after->getStatusCode(), 'trasa admina nadal wydaje skan dyplomu po anonimizacji zamiast 404: '.$after->getContent());
     }
@@ -631,7 +630,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         // uzasadnienie wyżej.
         $grad->forceFill(['anonymized_at' => now()->subDay(), 'status' => 'deleted'])->save();
 
-        Sanctum::actingAs($this->admin());
+        $this->actingAs($this->admin(), 'keycloak');
         $response = $this->postJson("/api/v1/admin/users/{$grad->id}/anonymize");
         $this->assertSame(409, $response->getStatusCode(), 'konto zastane jako zanonimizowane nie zwróciło 409: '.$response->getContent());
 

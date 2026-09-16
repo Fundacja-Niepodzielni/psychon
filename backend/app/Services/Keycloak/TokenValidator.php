@@ -43,7 +43,25 @@ class TokenValidator
         JWT::$leeway = (int) config('keycloak.leeway', 0);
 
         try {
-            $payload = JWT::decode($token, $keys);
+            try {
+                $payload = JWT::decode($token, $keys);
+            } catch (UnexpectedValueException $e) {
+                // Criterion §B8e: an unknown `kid` gets exactly one JWKS
+                // refresh attempt (itself throttled to 1/60s inside
+                // `KeycloakDiscovery::jwks()`) before being rejected — a key
+                // rotated at the IdP must not lock every holder of a
+                // freshly-issued token out until the normal TTL cache
+                // happens to expire. A malformed/absent `kid` (`"kid" empty,
+                // …`) is not a rotation — never worth a network round trip —
+                // so only the "invalid" (present but unknown) message
+                // triggers the retry.
+                if (! str_contains($e->getMessage(), '"kid" invalid')) {
+                    throw $e;
+                }
+
+                $keys = $this->discovery->jwks(forceRefresh: true);
+                $payload = JWT::decode($token, $keys);
+            }
         } catch (ExpiredException $e) {
             throw new InvalidKeycloakTokenException('expired', 'The token has expired.', $e);
         } catch (SignatureInvalidException $e) {

@@ -3,14 +3,15 @@
 namespace App\Http\Requests\H12;
 
 use App\Models\SupervisorAssignment;
+use App\Services\Auth\TokenRoles;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSupervisionCaseRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function authorize(TokenRoles $roles): bool
     {
-        return $this->user()?->role === 'instructor';
+        return $roles->has('instructor');
     }
 
     public function rules(): array

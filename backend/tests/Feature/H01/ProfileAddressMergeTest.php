@@ -143,7 +143,7 @@ class ProfileAddressMergeTest extends TestCase
             'address_zip' => self::KOD,
         ])->save();
 
-        $this->actingAs($marta, 'sanctum');
+        $this->actingAs($marta, 'keycloak');
 
         return $marta;
     }

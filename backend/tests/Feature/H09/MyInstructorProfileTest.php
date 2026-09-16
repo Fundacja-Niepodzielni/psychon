@@ -6,7 +6,6 @@ use App\Models\Course;
 use App\Models\InstructorProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -25,7 +24,7 @@ class MyInstructorProfileTest extends TestCase
 
     public function test_instructor_reads_own_card(): void
     {
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $this->getJson('/api/v1/me/instructor-profile')
             ->assertOk()
@@ -37,16 +36,16 @@ class MyInstructorProfileTest extends TestCase
 
     public function test_non_instructor_role_is_forbidden(): void
     {
-        Sanctum::actingAs($this->user('marta@demo.pl'));
+        $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $this->getJson('/api/v1/me/instructor-profile')->assertStatus(403);
 
-        Sanctum::actingAs($this->user('admin@demo.pl'));
+        $this->actingAs($this->user('admin@demo.pl'), 'keycloak');
         $this->patchJson('/api/v1/me/instructor-profile', ['city' => 'Gdańsk'])->assertStatus(403);
     }
 
     public function test_instructor_updates_own_card(): void
     {
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $this->patchJson('/api/v1/me/instructor-profile', [
             'specializations' => ['praca z traumą'],
@@ -66,7 +65,7 @@ class MyInstructorProfileTest extends TestCase
         $instructor = User::factory()->role('instructor')->create();
         $this->assertNull($instructor->instructorProfile);
 
-        Sanctum::actingAs($instructor);
+        $this->actingAs($instructor, 'keycloak');
 
         $this->patchJson('/api/v1/me/instructor-profile', ['bio' => 'Nowa wizytówka.'])
             ->assertOk()
@@ -81,7 +80,7 @@ class MyInstructorProfileTest extends TestCase
     public function test_card_without_a_profile_row_reads_as_an_empty_card(): void
     {
         $instructor = User::factory()->role('instructor')->create();
-        Sanctum::actingAs($instructor);
+        $this->actingAs($instructor, 'keycloak');
 
         $this->getJson('/api/v1/me/instructor-profile')
             ->assertOk()
@@ -96,7 +95,7 @@ class MyInstructorProfileTest extends TestCase
     {
         $joanna = $this->user('joanna@demo.pl');
         $mentor = User::factory()->role('instructor')->create();
-        Sanctum::actingAs($joanna);
+        $this->actingAs($joanna, 'keycloak');
 
         $this->patchJson('/api/v1/me/instructor-profile', [
             'city' => 'Poznań',
@@ -112,7 +111,7 @@ class MyInstructorProfileTest extends TestCase
 
     public function test_instructor_courses_lists_led_courses_sorted(): void
     {
-        Sanctum::actingAs($this->user('joanna@demo.pl'));
+        $this->actingAs($this->user('joanna@demo.pl'), 'keycloak');
 
         $response = $this->getJson('/api/v1/instructor/courses')->assertOk();
 
@@ -129,7 +128,7 @@ class MyInstructorProfileTest extends TestCase
     public function test_instructor_without_assignments_gets_an_empty_course_list(): void
     {
         $instructor = User::factory()->role('instructor')->create();
-        Sanctum::actingAs($instructor);
+        $this->actingAs($instructor, 'keycloak');
 
         $this->getJson('/api/v1/instructor/courses')->assertOk()->assertExactJson(['data' => []]);
     }
@@ -140,7 +139,7 @@ class MyInstructorProfileTest extends TestCase
         Course::where('slug', 'podstawy-pomocy')->firstOrFail()
             ->assignments()->whereNull('unassigned_at')->update(['unassigned_at' => now()]);
 
-        Sanctum::actingAs($joanna);
+        $this->actingAs($joanna, 'keycloak');
 
         $slugs = array_column($this->getJson('/api/v1/instructor/courses')->assertOk()->json('data'), 'slug');
         $this->assertSame(['wywiad-psychologiczny', 'interwencja-kryzysowa'], $slugs);
@@ -148,7 +147,7 @@ class MyInstructorProfileTest extends TestCase
 
     public function test_instructor_courses_forbidden_for_other_roles(): void
     {
-        Sanctum::actingAs($this->user('opiekun@demo.pl'));
+        $this->actingAs($this->user('opiekun@demo.pl'), 'keycloak');
         $this->getJson('/api/v1/instructor/courses')->assertStatus(403);
     }
 

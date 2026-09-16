@@ -2,15 +2,18 @@
  * Klient API zgodny z kontraktem (docs/hackathon/02-kontrakt-api.md).
  *
  * - baza: NEXT_PUBLIC_API_URL + "/api/v1"
- * - token Bearer — jedno źródło dla obu drzwi logowania (logowanie lokalne i
- *   logowanie przez konto Fundacji): sesja Auth.js, odczytana z
- *   `/api/auth/session` (ciasteczko HttpOnly, nigdy `localStorage` — czytelnego
- *   dla każdego skryptu, który trafi na stronę), patrz `getToken`.
+ * - token Bearer — logowanie wyłącznie przez konto Niepodzielni (Keycloak):
+ *   sesja Auth.js, odczytana z `/api/auth/session` (ciasteczko HttpOnly,
+ *   nigdy `localStorage` — czytelnego dla każdego skryptu, który trafi na
+ *   stronę), patrz `getToken`.
  * - koperta odpowiedzi: { data, meta? } — api() zwraca samo `data`,
  *   apiPaged() zwraca { data, meta } (listy z paginacją)
  * - koperta błędu: { error: { status, code, message, errors?, reason? } }
  *   → rzucamy typowany ApiError
- * - 401 → wylogowanie sesji Auth.js + przekierowanie na /logowanie
+ * - 401 → rozróżnienie dwóch przyczyn (patrz `handleUnauthorized` niżej):
+ *   sesja konta Niepodzielni ważna, ale `sub` niepowiązany z PsychON →
+ *   ekran `/logowanie/niepowiazane`; sesja naprawdę nieważna → wylogowanie
+ *   i przekierowanie na `/logowanie`.
  * - 403 `access_expired` (H04) → przekierowanie na /dostep-wygasl (ekran startera)
  */
 
@@ -50,6 +53,11 @@ export class ApiError extends Error {
 
 const SESSION_ENDPOINT = "/api/auth/session";
 
+/** Ekran dla konta Niepodzielni z ważną sesją, które nie jest jeszcze
+ * powiązane z żadnym kontem PsychON — patrz `handleUnauthorized`. */
+const UNBOUND_PATH = "/logowanie/niepowiazane";
+const LOGIN_PATH = "/logowanie";
+
 interface SessionState {
   token: string | null;
   expiresAt: number; // 0 = brak sesji / nieznane
@@ -84,10 +92,9 @@ async function fetchSession(): Promise<SessionState> {
 }
 
 /**
- * Zwraca token do nagłówka `Authorization`, jednakowo dla obu drzwi
- * logowania — oba trzymają swój token w tej samej sesji Auth.js, więc obie
- * odczytują ją stąd, podręcznie cache'owanej do jej wygaśnięcia
- * (`/api/auth/session`). Żaden token nie mieszka w `localStorage`.
+ * Zwraca token do nagłówka `Authorization` — z sesji Auth.js, podręcznie
+ * cache'owanej do jej wygaśnięcia (`/api/auth/session`). Żaden token nie
+ * mieszka w `localStorage`.
  */
 export async function getToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
@@ -113,14 +120,49 @@ function invalidateSessionCache(): void {
 }
 
 /**
- * Kończy sesję Auth.js po obu drzwiach naraz (jeden mechanizm sesji, jedno
- * wylogowanie) i czyści podręczny cache. Wołane przez ekran „Twoje konto" i
- * automatycznie po nieoczekiwanym 401 z API — dawniej to drugie czyściło
- * tylko pamięć karty i zostawiało ciasteczko sesji nietknięte.
+ * Kończy sesję Auth.js i czyści podręczny cache. Wołane przez ekran „Twoje
+ * konto" oraz przez `handleUnauthorized` niżej, gdy 401 oznacza naprawdę
+ * nieważną sesję (nie: konto niepowiązane z PsychON — tam sesja zostaje żywa).
  */
 export async function endSession(): Promise<void> {
   invalidateSessionCache();
   await signOut({ redirect: false });
+}
+
+/**
+ * Rozstrzyga, co znaczy 401 z DOWOLNEJ trasy biznesowej (patrz `request()`
+ * niżej). Dwie przyczyny wyglądają dla przeglądarki identycznie (kod 401),
+ * ale wymagają różnych ekranów:
+ *
+ * 1. Sesja konta Niepodzielni jest ważna, ale ten `sub` nie jest jeszcze
+ *    powiązany z żadnym kontem PsychON — `GET /sso/whoami` (ten sam token)
+ *    odpowiada 200. Kończenie sesji tutaj byłoby błędem: usunęłoby dokładnie
+ *    to, co ekran `/logowanie/niepowiazane` ma pokazać razem z przyciskiem
+ *    wylogowania. Bez tego rozróżnienia `/logowanie` (auto-start logowania
+ *    przez konto Niepodzielni) i wciąż żywa sesja w Kontach dawały pętlę:
+ *    401 → /logowanie → SSO wraca bez pytania o cokolwiek → /me znów 401.
+ * 2. Sesja jest naprawdę nieważna — `whoami` na tym samym tokenie też
+ *    odpowiada 401 (albo tokenu w ogóle nie ma). Wtedy sesja kończy się i
+ *    przeglądarka wraca na `/logowanie`, które samo zacznie nowe logowanie.
+ */
+async function handleUnauthorized(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  let sessionStillValidAtKeycloak = false;
+  try {
+    await fetchWhoAmI();
+    sessionStillValidAtKeycloak = true;
+  } catch {
+    sessionStillValidAtKeycloak = false;
+  }
+
+  if (sessionStillValidAtKeycloak) {
+    window.location.assign(new URL(UNBOUND_PATH, window.location.origin));
+    return;
+  }
+
+  await endSession();
+  window.location.assign(new URL(LOGIN_PATH, window.location.origin));
 }
 
 export interface ApiOptions extends Omit<RequestInit, "body"> {
@@ -156,13 +198,9 @@ async function request(path: string, options: ApiOptions = {}): Promise<unknown>
     body: payload,
   });
 
-  // 401 = brak/nieważny token → koniec sesji + przekierowanie na /logowanie
+  // 401 → patrz `handleUnauthorized` (rozróżnienie „niepowiązany" / „sesja wygasła").
   if (res.status === 401) {
-    if (typeof window !== "undefined") {
-      void endSession().finally(() => {
-        window.location.assign(new URL("/logowanie", window.location.origin));
-      });
-    }
+    void handleUnauthorized();
   }
 
   let json: unknown = null;

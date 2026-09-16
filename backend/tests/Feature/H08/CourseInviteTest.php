@@ -8,7 +8,6 @@ use App\Models\EmailMessage;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -28,7 +27,7 @@ class CourseInviteTest extends TestCase
         $webinar = $this->webinar();
         $invitee = $this->participant();
 
-        Sanctum::actingAs(User::factory()->role('volunteer')->create());
+        $this->actingAs(User::factory()->role('volunteer')->create(), 'keycloak');
 
         $this->postJson("/api/v1/admin/courses/{$webinar->id}/invite", [
             'user_ids' => [$invitee->id],
@@ -223,7 +222,7 @@ class CourseInviteTest extends TestCase
     private function actingAsAdmin(): User
     {
         $admin = User::factory()->role('super_admin')->create();
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'keycloak');
 
         return $admin;
     }

@@ -18,9 +18,6 @@ vi.mock("next-auth", () => ({
   // poziomie modułu; w teście podstawiamy fabrykę, żeby wziąć z niego samą
   // stałą, bez stawiania całego Auth.js.
   default: () => ({ handlers: {}, auth: () => null, signIn: () => undefined, signOut: () => undefined }),
-  CredentialsSignin: class CredentialsSignin extends Error {
-    code = "credentials";
-  },
 }));
 
 const getTokenMock = vi.hoisted(() => vi.fn());
@@ -127,7 +124,7 @@ describe("adres wylogowania z systemu kont", () => {
 
     const url = await adresWylogowania();
 
-    expect(url).toBe("https://szkolenia.example.test/logowanie/konta");
+    expect(url).toBe("https://szkolenia.example.test/logowanie");
     expect(url).not.toContain("openid-connect/logout");
   });
 
@@ -138,6 +135,6 @@ describe("adres wylogowania z systemu kont", () => {
 
     const url = await adresWylogowania("https://localhost:3000/api/auth/end-session-url");
 
-    expect(url).toBe("https://psychon-dev.example.test/logowanie/konta");
+    expect(url).toBe("https://psychon-dev.example.test/logowanie");
   });
 });
