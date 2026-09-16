@@ -29,7 +29,12 @@ export default function Table<T>({
   emptyMessage = "Brak danych do wyświetlenia.",
 }: TableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-md border border-line bg-card">
+    <div
+      role="region"
+      aria-label={caption ?? "Zawartość tabeli przewijana w poziomie"}
+      tabIndex={0}
+      className="overflow-x-auto rounded-md border border-line bg-card focus-visible:focus-ring"
+    >
       <table className="w-full border-collapse text-left text-small">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
