@@ -29,8 +29,8 @@ Route::get('/legal-documents/{type}/current', [LegalDocumentController::class, '
 Route::get('/legal-documents/{type}/versions/{version}', [LegalDocumentController::class, 'show']);
 
 // Zalogowana osoba: akceptacja bieżącej wersji. Bez `access.active` — dostęp
-// wygasły do materiałów nie blokuje zgody na regulamin/politykę (zlecenie
-// pkt 7: o blokadzie innych tras decyduje ekran, nie ta trasa).
+// wygasły do materiałów nie blokuje zgody na regulamin/politykę; o blokadzie
+// innych tras decyduje ekran, nie ta trasa.
 Route::middleware('auth:keycloak')->post('/legal-documents/{type}/accept', [LegalDocumentController::class, 'accept']);
 
 // Administracja: lista wersji, szkic, publikacja, edycja/usunięcie szkicu.
