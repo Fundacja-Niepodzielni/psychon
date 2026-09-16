@@ -4,19 +4,15 @@ title = "Wyjatki skanera sekretow dla atrap w testach"
 [extend]
 useDefault = true
 
-# Wyjatek dziala tylko wtedy, gdy oba warunki sa spelnione naraz (AND):
-# dopasowana tresc jest jednym z wymyslonych ciagow uzywanych w atrapach testowych
-# ORAZ plik lezy w katalogu testow frontendu. Sam katalog nie jest zwolniony —
-# kazdy inny sekret w tych plikach nadal zostanie zlapany.
-[[allowlists]]
-description = "Atrapy testowe (odswiezajacy token, stary dostep, sanctum) tylko w testach frontendu"
-condition = "AND"
-paths = ['''frontend/__tests__/.*''']
-regexes = [
-  '''odswiezajacy-[0-9]''',
-  '''stary-dostep''',
-  '''sanctum-abc''',
-]
+# Wyciszen POJEDYNCZYCH trafien tu NIE MA i miec nie moze. Zmierzone 16.09.2026:
+# wyjatek z `paths = ['''frontend/__tests__/.*''']` gitleaks stosuje PRZED czytaniem
+# tresci pliku ("DBG skipping file: global allowlist path=..."), wiec podrzucony do
+# takiego pliku klucz - takze caly blok BEGIN RSA PRIVATE KEY - NIE byl znajdowany
+# wcale, mimo `condition = "AND"` i mimo komentarza, ktory twierdzil co innego.
+# Komentarz byl nieprawdziwy i zniknal razem z wyjatkiem.
+# Falszywe trafienia wycisza teraz `.gitleaksignore` - po ODCISKU konkretnego
+# znaleziska (plik + regula + linia), z powodem i data przy kazdym wpisie. Kazdy
+# inny sekret w tych samych plikach jest znajdowany; sprawdzone w obie strony.
 
 # Migawka regul Semgrepa (`.semgrep/reguly/`) to 180 KB CUDZEJ tresci, w ktorej
 # reguly wykrywania sekretow zawieraja WZORCE sekretow - naglowek bloku klucza
