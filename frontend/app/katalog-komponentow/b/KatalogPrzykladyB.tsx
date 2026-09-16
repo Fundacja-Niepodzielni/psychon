@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import Button from "@/components/ui/Button";
 import PageHeader from "@/components/molecules/PageHeader";
 import ConfirmDialog from "@/components/organisms/ConfirmDialog";
@@ -40,6 +40,27 @@ function StateBlock({
       <p className="text-caption font-bold uppercase tracking-wide text-subtle">{label}</p>
       {note && <p className="text-small text-muted">{note}</p>}
       {children}
+    </div>
+  );
+}
+
+/** Stan „Fokus" jako render, nie opis: przycisk przenosi fokus na pierwszy
+ * odnośnik/przycisk wewnątrz, żeby pierścień fokusu było widać naprawdę. */
+function FocusDemo({ children }: { children: ReactNode }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  function setFocus() {
+    containerRef.current
+      ?.querySelector<HTMLElement>('a[href], button:not([disabled])')
+      ?.focus();
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Button variant="secondary" onClick={setFocus}>
+        Ustaw fokus
+      </Button>
+      <div ref={containerRef}>{children}</div>
     </div>
   );
 }
@@ -91,10 +112,10 @@ const RECORD_FIELDS: RecordFormField[] = [
 ];
 
 /**
- * Treść kliencka katalogu przykładów P3b. Każdy organizm dostaje do 4 bloków
- * stanu (spoczynek / fokus / błąd / wyłączony); tam, gdzie stan nie ma
- * sensu dla danego organizmu, blok tłumaczy dlaczego jednym zdaniem zamiast
- * renderować atrapę.
+ * Treść kliencka katalogu przykładów interfejsu panelu. Każdy organizm
+ * dostaje do 4 bloków stanu (spoczynek / fokus / błąd / wyłączony); tam,
+ * gdzie stan nie ma sensu dla danego organizmu, blok tłumaczy dlaczego
+ * jednym zdaniem zamiast renderować atrapę.
  */
 export default function KatalogPrzykladyB() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -123,7 +144,7 @@ export default function KatalogPrzykladyB() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8">
       <PageHeader
-        title="Katalog komponentów — partia B"
+        title="Katalog komponentów — organizmy panelu"
         description="Organizmy okna, nawigacji, powiadomień i formularza (ConfirmDialog, PanelNav, NotificationList, MainBlock, SupportBlock, RecordForm). Narzędzie pracy zespołu — w produkcji ta trasa zwraca 404."
       />
 
@@ -140,19 +161,23 @@ export default function KatalogPrzykladyB() {
         <div className="grid gap-4 md:grid-cols-2">
           <StateBlock
             label="Spoczynek"
-            note="Przycisk wyżej otwiera okno: fokus trafia do okna, Tab krąży między „Potwierdź” i „Anuluj”, Escape zamyka i oddaje fokus przyciskowi, który okno otworzył (zmierzone w K2 tego zlecenia, trzy pomiary)."
+            note="Przycisk wyżej otwiera okno: fokus trafia do okna, Tab krąży między „Potwierdź” i „Anuluj”, Escape zamyka i oddaje fokus przyciskowi, który okno otworzył."
           />
-          <StateBlock
-            label="Fokus"
-            note="Stan sterowany klawiaturą, nie osobnym renderem: po otwarciu fokus jest w oknie (kontener „role=dialog”), Tab nie wychodzi poza dwa przyciski, Shift+Tab z pierwszego wraca na ostatni. Zmierzone na żywo w K2 — bez osobnego bloku tutaj, żeby nie duplikować tego samego stanu dwoma renderami."
-          />
+          <StateBlock label="Fokus">
+            <Button variant="secondary" onClick={() => setDialogOpen(true)}>
+              Ustaw fokus (otwiera okno)
+            </Button>
+            <p className="text-caption text-subtle">
+              Fokus trafia do okna zaraz po otwarciu; Tab i Shift+Tab krążą między „Potwierdź” i „Anuluj”, nigdy nie wychodzą pod tło.
+            </p>
+          </StateBlock>
           <StateBlock
             label="Błąd"
             note="Nie dotyczy: okno niczego nie waliduje samo — to formularz wewnątrz (patrz RecordForm niżej) mapuje odmowę serwera na pole. ConfirmDialog tylko potwierdza albo anuluje decyzję."
           />
           <StateBlock label="Wyłączony" note="Przycisk wyżej otwiera okno z zablokowanymi akcjami — patrz drugie okno.">
             <p className="text-caption text-subtle">
-              Po otwarciu: „Potwierdź” pokazuje spinner i jest zablokowany (<code>aria-busy</code>), „Anuluj” zablokowany na czas zapisu.
+              Po otwarciu: „Potwierdź” pokazuje spinner i jest zablokowany (<code>aria-busy</code>), „Anuluj” zablokowany na czas zapisu; Escape i klik w tło też nie zamykają okna, dopóki zapis trwa.
             </p>
           </StateBlock>
         </div>
@@ -182,10 +207,15 @@ export default function KatalogPrzykladyB() {
           <StateBlock label="Spoczynek">
             <PanelNav groups={NAV_GROUPS} currentPath="/panel/kursy" className="rounded-md border border-line bg-card p-3" />
           </StateBlock>
-          <StateBlock
-            label="Fokus"
-            note="Zmierzone na żywo: Tab po kolei zaznacza każdą pozycję pierścieniem z tokenu (`focus-visible:focus-ring`); pole dotykowe każdej pozycji ma min. 44 px (`min-h-11`)."
-          />
+          <StateBlock label="Fokus" note="Pierścień fokusu z tokenu (`focus-visible:focus-ring`); pole dotykowe każdej pozycji min. 44 px (`min-h-11`).">
+            <FocusDemo>
+              <PanelNav
+                groups={NAV_GROUPS}
+                currentPath="/panel/kursy"
+                className="rounded-md border border-line bg-card p-3"
+              />
+            </FocusDemo>
+          </StateBlock>
           <StateBlock
             label="Błąd"
             note="Nie dotyczy: PanelNav nie pobiera danych sam — błąd wczytania listy pozycji obsługuje wołający ekran (np. przez ErrorState), zanim przekaże `groups` do tego komponentu."
@@ -202,10 +232,11 @@ export default function KatalogPrzykladyB() {
           <StateBlock label="Spoczynek">
             <NotificationList items={NOTIFICATIONS} className="max-w-sm" />
           </StateBlock>
-          <StateBlock
-            label="Fokus"
-            note="Zmierzone na żywo: Tab wchodzi kolejno w przyciski pozycji (każdy min. 44 px wysokości), pierścień fokusu z tokenu."
-          />
+          <StateBlock label="Fokus" note="Tab wchodzi kolejno w przyciski pozycji (każdy min. 44 px wysokości), pierścień fokusu z tokenu.">
+            <FocusDemo>
+              <NotificationList items={NOTIFICATIONS} className="max-w-sm" />
+            </FocusDemo>
+          </StateBlock>
           <StateBlock label="Błąd">
             <NotificationList items={[]} error="Nie udało się wczytać powiadomień." onRetry={() => {}} className="max-w-sm" />
           </StateBlock>
@@ -231,21 +262,46 @@ export default function KatalogPrzykladyB() {
               action={<Button variant="secondary">Otwórz przewodnik</Button>}
             />
           </StateBlock>
-          <StateBlock
-            label="Fokus"
-            note="Zmierzone na żywo: Tab wchodzi w przycisk akcji obu bloków, pierścień fokusu z tokenu identyczny jak w Button."
-          />
+          <StateBlock label="Fokus — MainBlock" note="Pierścień fokusu z tokenu, identyczny jak w Button.">
+            <FocusDemo>
+              <MainBlock
+                title="Dokończ profil, żeby zacząć superwizję"
+                description="Brakuje jednego pola: numeru licencji."
+                action={<Button variant="primary">Uzupełnij profil</Button>}
+              />
+            </FocusDemo>
+          </StateBlock>
+          <StateBlock label="Fokus — SupportBlock" note="Pierścień fokusu z tokenu, identyczny jak w Button.">
+            <FocusDemo>
+              <SupportBlock
+                title="Materiały pomocnicze"
+                description="Skrócony przewodnik po pierwszym miesiącu."
+                action={<Button variant="secondary">Otwórz przewodnik</Button>}
+              />
+            </FocusDemo>
+          </StateBlock>
           <StateBlock
             label="Błąd"
             note="Nie dotyczy: oba bloki nie pobierają danych same — gdy dane się nie wczytają, wołający ekran renderuje ErrorState zamiast bloku, nie blok z błędem w środku."
           />
-          <StateBlock label="Wyłączony — akcja zablokowana">
+          <StateBlock label="Wyłączony — MainBlock">
             <MainBlock
               title="Trwa zapisywanie oceny"
               description="Akcja jest chwilowo niedostępna."
               action={
                 <Button variant="primary" disabled>
                   Uzupełnij profil
+                </Button>
+              }
+            />
+          </StateBlock>
+          <StateBlock label="Wyłączony — SupportBlock">
+            <SupportBlock
+              title="Materiały pomocnicze"
+              description="Akcja jest chwilowo niedostępna."
+              action={
+                <Button variant="secondary" disabled>
+                  Otwórz przewodnik
                 </Button>
               }
             />
@@ -274,7 +330,7 @@ export default function KatalogPrzykladyB() {
           </StateBlock>
           <StateBlock
             label="Błąd — odmowa dwóch pól"
-            note="„aria-invalid=true” na e-mailu i telefonie, plus dwa odnośniki w podsumowaniu u góry (K7)."
+            note="„aria-invalid=true” na e-mailu i telefonie, plus dwa odnośniki w podsumowaniu u góry."
           >
             <RecordForm
               fields={RECORD_FIELDS}

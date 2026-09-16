@@ -54,6 +54,9 @@ export default function RecordForm({
     if (errorEntries.length === 0) return;
     const [firstName] = errorEntries[0];
     fieldRefs.current[firstName]?.focus();
+    // errorKey zastępuje errorEntries w zależnościach: errorEntries to nowa
+    // tablica przy każdym renderze, więc wpisanie jej wprost odpalałoby ten
+    // efekt (i kradło fokus) przy każdym renderze, nie tylko po zmianie błędów.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [errorKey]);
 

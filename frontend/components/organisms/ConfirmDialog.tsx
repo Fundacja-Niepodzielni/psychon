@@ -28,8 +28,8 @@ const FOCUSABLE_SELECTOR =
  * `components/h03/ApplicationsTab.tsx` (fokus wchodzi do okna, `Escape`
  * zamyka, fokus wraca do elementu, który okno otworzył) jako jeden
  * komponent wielokrotnego użytku (Z-9, Z-12). Warstwa `z-50` — ta sama
- * nazwana wartość co pozostałe okna i dzwonek powiadomień w tym drzewie,
- * bez nowej, arbitralnej liczby.
+ * warstwa co istniejące okna; nazwana skala — do wprowadzenia dla
+ * wszystkich naraz.
  */
 export default function ConfirmDialog({
   open,
@@ -49,7 +49,7 @@ export default function ConfirmDialog({
   const descriptionId = useId();
 
   // Fokus wchodzi do okna przy otwarciu; po zamknięciu wraca do elementu,
-  // który okno otworzyło (Z-9, Z-12; K2/K3 tego zlecenia).
+  // który okno otworzyło (Z-9, Z-12).
   useEffect(() => {
     if (open) {
       openerRef.current = document.activeElement;
@@ -62,10 +62,11 @@ export default function ConfirmDialog({
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     // Blok Escape — osobno od pułapki fokusu niżej, żeby dało się go
-    // wyłączyć samego przy kontroli negatywnej (K3), bez ruszania Tab.
+    // wyłączyć samego przy kontroli negatywnej, bez ruszania Tab. Zablokowane
+    // razem z "Anuluj", żeby nie dało się przerwać trwającego zapisu.
     if (event.key === "Escape") {
       event.stopPropagation();
-      onCancel();
+      if (!loading) onCancel();
       return;
     }
 
@@ -82,11 +83,16 @@ export default function ConfirmDialog({
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     const active = document.activeElement;
+    // Zaraz po otwarciu aktywny jest kontener (fokus programowy w efekcie
+    // wyżej), nie `first` — pułapka musi więc reagować na kontener tak samo
+    // jak na skrajne elementy, inaczej pierwszy Shift+Tab ucieka pod tło.
+    const beforeFirst = active === container || active === first;
+    const afterLast = active === container || active === last;
 
-    if (event.shiftKey && active === first) {
+    if (event.shiftKey && beforeFirst) {
       event.preventDefault();
       last.focus();
-    } else if (!event.shiftKey && active === last) {
+    } else if (!event.shiftKey && afterLast) {
       event.preventDefault();
       first.focus();
     }
@@ -97,7 +103,7 @@ export default function ConfirmDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-      onClick={onCancel}
+      onClick={loading ? undefined : onCancel}
     >
       <div
         ref={dialogRef}
