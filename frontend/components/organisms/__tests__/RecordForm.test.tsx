@@ -70,6 +70,49 @@ describe("RecordForm", () => {
     expect(screen.getByLabelText("E-mail")).toHaveAttribute("aria-invalid", "true");
   });
 
+  it("odmowa dwóch pól: aria-describedby wskazuje komunikat błędu tego pola", () => {
+    render(
+      <RecordForm
+        fields={pola}
+        values={{ imie: "", email: "zle" }}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        fieldErrors={{ imie: "Podaj imię.", email: "Podaj poprawny adres e-mail." }}
+      />,
+    );
+
+    const imieInput = screen.getByLabelText("Imię");
+    const emailInput = screen.getByLabelText("E-mail");
+
+    const imieOpis = imieInput.getAttribute("aria-describedby");
+    const emailOpis = emailInput.getAttribute("aria-describedby");
+
+    expect(imieOpis).toBeTruthy();
+    expect(emailOpis).toBeTruthy();
+    expect(document.getElementById(imieOpis!)).toHaveTextContent("Podaj imię.");
+    expect(document.getElementById(emailOpis!)).toHaveTextContent(
+      "Podaj poprawny adres e-mail.",
+    );
+  });
+
+  it("po pojawieniu się błędów fokus trafia na pierwsze błędne pole", () => {
+    const { rerender } = render(
+      <RecordForm fields={pola} values={{}} onChange={vi.fn()} onSubmit={vi.fn()} />,
+    );
+
+    rerender(
+      <RecordForm
+        fields={pola}
+        values={{ imie: "", email: "zle" }}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        fieldErrors={{ imie: "Podaj imię.", email: "Podaj poprawny adres e-mail." }}
+      />,
+    );
+
+    expect(screen.getByLabelText("Imię")).toHaveFocus();
+  });
+
   it("axe: 0 naruszeń na formularzu z odmową dwóch pól", async () => {
     const { container } = render(
       <RecordForm
