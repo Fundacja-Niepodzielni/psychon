@@ -59,10 +59,10 @@ afterEach(() => {
 });
 
 describe("/logowanie/niepowiazane", () => {
-  it("wyjaśnia po polsku, że konto nie jest powiązane z PsychON", () => {
+  it("po rozstrzygnięciu wyjaśnia po polsku, że konto nie jest powiązane z PsychON", async () => {
     render(<NiepowiazanePage />);
+    expect(await screen.findByText(/powiązane z żadnym kontem w PsychON/i)).toBeInTheDocument();
     expect(screen.getByRole("heading")).toHaveTextContent("Konto nie jest jeszcze połączone");
-    expect(screen.getByText(/powiązane z żadnym kontem w PsychON/i)).toBeInTheDocument();
   });
 
   it("wylogowanie czyta adres Kont, potem kończy sesję, potem wychodzi", async () => {
@@ -92,6 +92,90 @@ describe("/logowanie/niepowiazane", () => {
     await waitFor(() => expect(endSession).toHaveBeenCalledTimes(1));
     expect(push).toHaveBeenCalledWith("/logowanie");
     expect(assign).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Ekran ma mówić to, co WIE. Zaraz po zamontowaniu nie wie o powiązaniu konta
+ * nic — odpowiedź jeszcze nie wróciła — więc zdanie „”
+ * byłoby wtedy twierdzeniem bez pokrycia, a ekranem tym właściciel odczytuje
+ * identyfikator z telefonu. Mierzone liczbami trafień: na wejściu stary tekst
+ * 0, „” 1; potem każde z trzech wyjść ze stanu sprawdzania gasi
+ * „” i zapala dokładnie jeden właściwy komunikat.
+ */
+describe("stan sprawdzania przed rozstrzygnięciem", () => {
+  const TEKST_SPRAWDZAM = /sprawdzam stan twojego konta/i;
+  const TEKST_STARY = /powiązane z żadnym kontem w PsychON/i;
+  const TEKST_AWARII = /nie udało się sprawdzić stanu twojego konta/i;
+
+  it("S1: zaraz po zamontowaniu — stary tekst o braku powiązania 0, Sprawdzam 1", () => {
+    checkAccountBinding.mockReturnValue(new Promise(() => {}));
+
+    render(<NiepowiazanePage />);
+
+    expect(screen.queryAllByText(TEKST_STARY)).toHaveLength(0);
+    expect(screen.queryAllByText(TEKST_SPRAWDZAM)).toHaveLength(1);
+    expect(screen.queryAllByText(TEKST_AWARII)).toHaveLength(0);
+    expect(screen.queryAllByText(TEKST_Z_IDENTYFIKATOREM)).toHaveLength(0);
+  });
+
+  it("S2: wyjście (a) — 401 z error.reason.sub → identyfikator 1, Sprawdzam 0", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.queryAllByText(SUB_Z_TOKENA)).toHaveLength(1));
+    expect(screen.queryAllByText(TEKST_Z_IDENTYFIKATOREM)).toHaveLength(1);
+    expect(screen.queryAllByText(TEKST_SPRAWDZAM)).toHaveLength(0);
+  });
+
+  it("S3: wyjście (b) — 401 bez sub → stary ekran 1, Sprawdzam 0", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "unauthenticated" });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.queryAllByText(TEKST_STARY)).toHaveLength(1));
+    expect(screen.queryAllByText(TEKST_SPRAWDZAM)).toHaveLength(0);
+    expect(screen.queryAllByText(TEKST_AWARII)).toHaveLength(0);
+  });
+
+  it("S4: wyjście (c) — awaria → komunikat 1, przycisk 1, Sprawdzam 0", async () => {
+    checkAccountBinding.mockResolvedValue({ code: KONTO_BINDING_AWARIA });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.queryAllByText(TEKST_AWARII)).toHaveLength(1));
+    expect(screen.queryAllByRole("button", { name: /spróbuj ponownie/i })).toHaveLength(1);
+    expect(screen.queryAllByText(TEKST_SPRAWDZAM)).toHaveLength(0);
+    expect(screen.queryAllByText(TEKST_STARY)).toHaveLength(0);
+  });
+
+  it("S5: zmienny obszar jest ogłaszany — aria-live=\"polite\", komunikat w roli status", () => {
+    checkAccountBinding.mockReturnValue(new Promise(() => {}));
+
+    const { container } = render(<NiepowiazanePage />);
+
+    const obszar = container.querySelector<HTMLElement>("[aria-live]");
+    expect(obszar).not.toBeNull();
+    expect(obszar).toHaveAttribute("aria-live", "polite");
+
+    const komunikat = screen.getByRole("status");
+    expect(komunikat).toHaveTextContent("Sprawdzam stan Twojego konta…");
+    expect(obszar).toContainElement(komunikat);
+  });
+
+  it("S6: przycisk ponowienia w trakcie pracy ma aria-busy=\"true\"", async () => {
+    checkAccountBinding
+      .mockReturnValueOnce(Promise.resolve({ code: KONTO_BINDING_AWARIA }))
+      .mockReturnValueOnce(new Promise(() => {}));
+
+    render(<NiepowiazanePage />);
+    const przycisk = await screen.findByRole("button", { name: /spróbuj ponownie/i });
+    expect(przycisk).not.toHaveAttribute("aria-busy");
+
+    fireEvent.click(przycisk);
+
+    await waitFor(() => expect(przycisk).toHaveAttribute("aria-busy", "true"));
   });
 });
 
@@ -126,12 +210,14 @@ describe("identyfikator konta z koperty 401", () => {
 
     render(<NiepowiazanePage />);
 
-    // Nagłówek: rola `heading` (h1), zawsze w drzewie dostępności.
-    expect(screen.getByRole("heading")).toHaveTextContent("Konto nie jest jeszcze połączone");
-
     // Komunikat z identyfikatorem: rola `alert` (Alert variant="error", patrz
     // components/ui/Alert.tsx) — czytnik ekranu ogłasza go bez interakcji.
     const komunikat = await screen.findByRole("alert");
+
+    // Nagłówek: rola `heading` (h1), zawsze w drzewie dostępności. Czytany
+    // PO rozstrzygnięciu, bo przed nim ekran nie twierdzi nic o powiązaniu.
+    expect(screen.getByRole("heading")).toHaveTextContent("Konto nie jest jeszcze połączone");
+
     expect(komunikat).toHaveTextContent(TEKST_Z_IDENTYFIKATOREM);
     expect(komunikat).toHaveTextContent(SUB_Z_TOKENA);
 
@@ -354,6 +440,26 @@ describe("limit czasu sprawdzenia konta", () => {
 
     expect(checkAccountBinding).toHaveBeenCalledTimes(2);
     expect(screen.getByText(SUB_Z_TOKENA)).toBeInTheDocument();
+  });
+
+  it("L6: ponowienie dostaje NOWY limit — drugi sygnał przerwany dopiero 8 s po kliknięciu", async () => {
+    checkAccountBinding.mockReturnValue(new Promise(() => {}));
+
+    render(<NiepowiazanePage />);
+    await przesun(KONTO_BINDING_LIMIT_MS);
+    expect(checkAccountBinding).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /spróbuj ponownie/i }));
+    await przesun(0);
+    expect(checkAccountBinding).toHaveBeenCalledTimes(2);
+
+    // Limit liczy się od kliknięcia, a nie od zamontowania ekranu.
+    const drugiSygnal = checkAccountBinding.mock.calls[1]?.[0] as AbortSignal;
+    await przesun(KONTO_BINDING_LIMIT_MS - 1);
+    expect(drugiSygnal.aborted).toBe(false);
+
+    await przesun(1);
+    expect(drugiSygnal.aborted).toBe(true);
   });
 
   it("L5: trwała awaria — przesunięcie zegara o 60 s nie dokłada ANI JEDNEGO zapytania", async () => {
