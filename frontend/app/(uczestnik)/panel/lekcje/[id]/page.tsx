@@ -24,6 +24,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
       >
         <span aria-hidden="true">←</span> Wróć do listy kursów
       </Link>
+      <h1 className="text-h2 font-black text-ink">Lekcja</h1>
       <LessonPlayer lessonId={lessonId} />
     </div>
   );

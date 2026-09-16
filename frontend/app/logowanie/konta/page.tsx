@@ -19,7 +19,7 @@ function Redirector() {
     router.replace(error ? `/logowanie?error=${encodeURIComponent(error)}` : "/logowanie");
   }, [error, router]);
 
-  return <p className="text-small text-subtle">Przekierowuję…</p>;
+  return <h1 className="text-small text-subtle">Przekierowuję…</h1>;
 }
 
 export default function AccountSystemLoginRedirect() {

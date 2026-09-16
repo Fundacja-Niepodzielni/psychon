@@ -41,6 +41,8 @@ export default async function QuestionBankPage({
         <span aria-hidden="true">←</span> Wróć do listy kursów
       </Link>
 
+      <h1 className="text-h2 font-black text-ink">Bank pytań</h1>
+
       {/* `key` gwarantuje świeży stan przy przejściu między testami — panel
           czyta pytania raz, przy montażu. */}
       <QuestionBank key={testId} testId={testId} />
