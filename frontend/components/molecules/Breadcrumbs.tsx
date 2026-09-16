@@ -34,7 +34,7 @@ export default function Breadcrumbs({ items, className = "" }: BreadcrumbsProps)
               {!isLast && item.href ? (
                 <Link
                   href={item.href}
-                  className="inline-flex min-h-11 items-center rounded-xs text-muted hover:text-ink focus-visible:focus-ring"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xs text-muted hover:text-ink focus-visible:focus-ring"
                 >
                   {item.label}
                 </Link>

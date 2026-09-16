@@ -9,9 +9,9 @@ export interface PageHeaderProps {
    * rodzeństwo, ale odpowiedzialność za „tylko jedna główna" zostaje po
    * stronie wywołującego ekranu. */
   action?: ReactNode;
-  /** Slot okruszków nad `h1` (partia P3a) — zwykle `<Breadcrumbs items={…} />`.
-   * Opcjonalny: pominięty renderuje dokładnie to, co przed dodaniem slotu
-   * (K2 — dotychczasowe wywołania bez zmian). */
+  /** Slot okruszków nad `h1` — zwykle `<Breadcrumbs items={…} />`.
+   * Opcjonalny: pominięty renderuje dokładnie to, co przed dodaniem tego
+   * slotu (dotychczasowe wywołania bez zmian). */
   breadcrumbs?: ReactNode;
   className?: string;
 }

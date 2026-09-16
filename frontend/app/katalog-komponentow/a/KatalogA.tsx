@@ -132,7 +132,7 @@ export default function KatalogA() {
             ]}
           />
         </Przyklad>
-        <Przyklad testId="fokus-breadcrumbs" etykieta="Fokus" opis="Zmierzone Tab-em w next dev — zrzut w raporcie.">
+        <Przyklad testId="fokus-breadcrumbs" etykieta="Fokus" opis="Pierścień fokusu widoczny po Tab na odnośniku.">
           <Breadcrumbs
             items={[
               { label: "Start", href: "#" },
@@ -170,7 +170,7 @@ export default function KatalogA() {
         <Przyklad etykieta="Spoczynek">
           <Pagination strona={strona} ostatniaStrona={5} onZmien={setStrona} />
         </Przyklad>
-        <Przyklad testId="fokus-pagination" etykieta="Fokus" opis="Zmierzone Tab-em na przycisku „Następna” w next dev — zrzut w raporcie.">
+        <Przyklad testId="fokus-pagination" etykieta="Fokus" opis="Pierścień fokusu widoczny po Tab na przycisku „Następna”.">
           <Pagination strona={strona} ostatniaStrona={5} onZmien={setStrona} />
         </Przyklad>
         <NieDotyczy powod="błąd — Pagination nie pobiera danych, nie ma własnego stanu błędu." />
@@ -192,7 +192,7 @@ export default function KatalogA() {
             <Input label="Szukaj po nazwisku" placeholder="np. Kowalska" />
           </FilterBar>
         </Przyklad>
-        <Przyklad testId="fokus-filterbar" etykieta="Fokus" opis="Zmierzone Tab-em na polu „Status” w next dev — zrzut w raporcie.">
+        <Przyklad testId="fokus-filterbar" etykieta="Fokus" opis="Pierścień fokusu widoczny po Tab na polu „Status”.">
           <FilterBar label="Filtry zgłoszeń">
             <Select label="Status" defaultValue="wszystkie">
               <option value="wszystkie">Wszystkie</option>
@@ -227,7 +227,7 @@ export default function KatalogA() {
             href="#"
           />
         </Przyklad>
-        <Przyklad testId="fokus-queuerow" etykieta="Fokus" opis="Zmierzone Tab-em w next dev — zrzut w raporcie.">
+        <Przyklad testId="fokus-queuerow" etykieta="Fokus" opis="Pierścień fokusu widoczny po Tab na całym wierszu.">
           <QueueRow
             title="Anna Kowalska — profil do zatwierdzenia"
             description="Zgłoszone 12.09.2026"
@@ -250,10 +250,10 @@ export default function KatalogA() {
       <section className="flex flex-col gap-3">
         <h2 className="text-h3 font-bold text-ink">DataTable</h2>
         <p className="text-small text-muted">
-          5 stanów Z-6 zamiast czterech kanonicznych: „spoczynek” = dane, „fokus” = przycisk
+          5 stanów zamiast czterech kanonicznych: „spoczynek” = dane, „fokus” = przycisk
           sortowania nagłówka, „błąd” = stan błędu wprost, „wyłączony” = odmowa (tabela
           nieinteraktywna dla tej roli). Dodatkowo pokazane „pusty” i „ładowanie”, bo to
-          integralna część tego organizmu (Z-6).
+          integralna część tego organizmu.
         </p>
         <Przyklad etykieta="Ładowanie">
           <DataTable columns={kolumny} rows={[]} rowKey={(r) => r.id} stan="loading" />
@@ -290,7 +290,7 @@ export default function KatalogA() {
         <Przyklad
           testId="fokus-datatable"
           etykieta="Dane (spoczynek + fokus na sortowaniu)"
-          opis="Klawisz Tab + Enter na nagłówku „Zgłaszający” zmienia kierunek sortowania — zmierzone w next dev, zrzut w raporcie."
+          opis="Klawisz Tab + Enter na nagłówku „Zgłaszający” zmienia kierunek sortowania."
         >
           <DataTable
             columns={kolumny}
@@ -327,7 +327,7 @@ export default function KatalogA() {
             )}
           />
         </Przyklad>
-        <Przyklad testId="fokus-recordlist" etykieta="Fokus" opis="Zmierzone Tab-em na przycisku „Otwórz” pierwszej karty — zrzut w raporcie.">
+        <Przyklad testId="fokus-recordlist" etykieta="Fokus" opis="Pierścień fokusu widoczny po Tab na przycisku „Otwórz” pierwszej karty.">
           <RecordList
             rows={ZGLOSZENIA.slice(0, 1)}
             rowKey={(r) => r.id}
@@ -370,11 +370,11 @@ export default function KatalogA() {
         <NieDotyczy powod="fokus — kafle StatTile nie są kontrolkami." />
         <Przyklad
           etykieta="Błąd"
-          opis="Trzy przyciski niżej wyzwalają błąd dopiero po stronie klienta (żeby nie ubijać renderu serwera tej strony); każdy złapany przez osobną granicę błędu tylko na potrzeby zrzutu."
+          opis="Trzy przyciski niżej wyzwalają błąd dopiero po stronie klienta (żeby nie ubijać renderu serwera tej strony); każdy złapany przez osobną granicę błędu."
         >
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <p className="text-small text-muted">Piąty kafel (Z-16)</p>
+              <p className="text-small text-muted">Piąty kafel</p>
               {pokazBladStatRow ? (
                 <DemoErrorBoundary>
                   <StatRow
@@ -394,7 +394,7 @@ export default function KatalogA() {
               )}
             </div>
             <div className="flex flex-col gap-2">
-              <p className="text-small text-muted">Dwie liczby dominujące zamiast jednej (Z-3)</p>
+              <p className="text-small text-muted">Dwie liczby dominujące zamiast jednej</p>
               {pokazBladLiczbyDominujacej ? (
                 <DemoErrorBoundary>
                   <StatRow
@@ -412,7 +412,7 @@ export default function KatalogA() {
               )}
             </div>
             <div className="flex flex-col gap-2">
-              <p className="text-small text-muted">Liczba dominująca bez kontekstu (Z-3)</p>
+              <p className="text-small text-muted">Liczba dominująca bez kontekstu</p>
               {pokazBladKontekstu ? (
                 <DemoErrorBoundary>
                   <StatRow

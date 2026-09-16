@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import EmptyState from "@/components/molecules/EmptyState";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
@@ -94,6 +94,23 @@ export default function DataTable<T>({
     return sort.direction === "asc" ? "ascending" : "descending";
   };
 
+  const kontenerRef = useRef<HTMLDivElement>(null);
+  const [przewijaSie, setPrzewijaSie] = useState(false);
+
+  useEffect(() => {
+    const el = kontenerRef.current;
+    if (!el) return;
+    const sprawdzPrzepelnienie = () => setPrzewijaSie(el.scrollWidth > el.clientWidth);
+    sprawdzPrzepelnienie();
+    const observer = new ResizeObserver(sprawdzPrzepelnienie);
+    observer.observe(el);
+    window.addEventListener("resize", sprawdzPrzepelnienie);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", sprawdzPrzepelnienie);
+    };
+  }, [columns, rows]);
+
   return (
     <div className="flex flex-col gap-4">
       {filterBar}
@@ -108,17 +125,17 @@ export default function DataTable<T>({
       )}
       {stan === "success" && (
         <>
-          {/* Z-10: oznaczenie widoczne tylko dla tabel z ≥ 4 kolumnami —
-           * to jest wypadek projektowy „tabela ma przewijać się w bok".
-           * Kontener przewija się zawsze (bez wyjątku od 1 do 3 kolumn),
-           * żeby wąska tabela nie rozpychała całej strony — przewija się
-           * ona sama, strona nie (zmierzone przy 360 px). */}
-          {columns.length >= 4 && (
+          {/* Z-10: oznaczenie widoczne dokładnie wtedy, gdy kontener realnie
+           * przepełnia się (scrollWidth > clientWidth), niezależnie od
+           * liczby kolumn — mierzone w przeglądarce, nie zakładane ze
+           * statycznego progu. Kontener przewija się we własnym zakresie,
+           * strona nie (zmierzone przy 360 px). */}
+          {przewijaSie && (
             <p aria-hidden="true" className="px-1 text-caption text-subtle">
               Przewiń w bok, żeby zobaczyć pozostałe kolumny →
             </p>
           )}
-          <div className="overflow-x-auto rounded-md border border-line bg-card">
+          <div ref={kontenerRef} className="overflow-x-auto rounded-md border border-line bg-card">
             <table className="w-full border-collapse text-left text-small">
               {caption && <caption className="sr-only">{caption}</caption>}
               <thead>
