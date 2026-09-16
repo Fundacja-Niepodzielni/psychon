@@ -13,12 +13,12 @@ use Illuminate\Support\Str;
 
 /**
  * Zapisuje wiadomość i powiadamia każdego odbiorcę INNEGO niż autor —
- * dokładnie tylu wierszy w `notifications`, ilu jest takich odbiorców
- * (kryterium K5). Jeden mechanizm powiadomień: `Notify::send` (§1 kontraktu),
- * żaden drugi nie powstaje obok.
+ * dokładnie tylu wierszy w `notifications`, ilu jest takich odbiorców.
+ * Jeden mechanizm powiadomień: `Notify::send` (§1 kontraktu), żaden drugi
+ * nie powstaje obok.
  *
  * Typ `message.received` NIE figuruje jeszcze w rejestrze §3.1 kontraktu —
- * czat jest tu nowym modułem; patrz raport, pytanie do strażnika kontraktu.
+ * czat jest tu nowym modułem, rejestr typów powiadomień wymaga uzupełnienia.
  */
 final class ChatMessageService
 {

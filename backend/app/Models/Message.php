@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Pojedyncza wiadomość w wątku czatu (sprint 3, poz. 10). Wariant
- * asynchroniczny — bez edycji, bez kasowania (zlecenie §„Czego NIE robisz").
+ * Pojedyncza wiadomość w wątku czatu. Wariant asynchroniczny — bez
+ * edycji, bez kasowania wiadomości.
  */
 class Message extends Model
 {

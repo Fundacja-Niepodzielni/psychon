@@ -19,8 +19,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Collection;
 
 /**
- * Wątki czatu asynchronicznego (sprint 3, poz. 10) — lista wątków
- * zalogowanego i odczyt jednego wątku ze stronicowaniem wiadomości.
+ * Wątki czatu asynchronicznego — lista wątków zalogowanego i odczyt
+ * jednego wątku ze stronicowaniem wiadomości.
  */
 class ThreadController extends Controller
 {
@@ -87,7 +87,7 @@ class ThreadController extends Controller
         $threadModel = ChatThreadQuery::visibleTo($user)->whereKey($thread)->first();
 
         // Cudzy wątek i nieistniejący wątek wyglądają identycznie na zewnątrz
-        // (kontrakt §1.1) — 404, nigdy 403. To jest serce tej pozycji (K3).
+        // (kontrakt §1.1) — 404, nigdy 403, żeby nie ujawniać istnienia cudzego wątku.
         if ($threadModel === null) {
             throw new ApiException(404, 'not_found', 'Nie znaleziono wątku.');
         }

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Sprint 3 — czat asynchroniczny osoba-prowadzący / grupowy (pozycja 10).
+     * Czat asynchroniczny osoba-prowadzący / grupowy: tabele wątków i wiadomości.
      *
      * `message_threads.supervisor_id` zawsze wskazuje prowadzącego, którego
      * to jest wątek; `volunteer_id` jest wypełnione WYŁĄCZNIE dla wątku
@@ -18,7 +18,8 @@ return new class extends Migration
      * Konta nigdy nie są twardo kasowane w tym repozytorium (stan przez
      * `status`/`anonymized_at`) — mimo to klucze obce na wiadomościach są
      * `nullOnDelete`, nie `cascadeOnDelete`: usunięcie konta nie ma kasować
-     * cudzej historii rozmowy (pytanie do właściciela w raporcie tej rundy).
+     * cudzej historii rozmowy (otwarte pytanie o los wiadomości po usunięciu
+     * konta — decyzja właściciela produktu).
      */
     public function up(): void
     {

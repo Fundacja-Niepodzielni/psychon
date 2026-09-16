@@ -11,8 +11,8 @@ use App\Services\Chat\ChatThreadQuery;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Wysłanie wiadomości do wątku (sprint 3, poz. 10). Powiadomienie
- * odbiorców — `ChatMessageService`, jedynym mechanizmem `Notify::send`.
+ * Wysłanie wiadomości do wątku czatu. Powiadomienie odbiorców idzie
+ * przez `ChatMessageService`, jedynym mechanizmem `Notify::send`.
  */
 class MessageController extends Controller
 {

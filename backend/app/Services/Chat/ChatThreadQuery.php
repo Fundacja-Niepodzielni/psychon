@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
  * (kontrakt §1.1 — 404, nigdy 403, dla pojedynczego zasobu wskazanego id).
  *
  * Członkostwo grupowe jest tu czytane NA ŻYWO z `supervisor_assignments`
- * (`unassigned_at IS NULL`) — zlecenie wprost zabrania duplikowania
- * definicji grupy gdzie indziej.
+ * (`unassigned_at IS NULL`) — jedyne źródło definicji grupy, żeby nie
+ * powstały dwa miejsca odpowiadające różnie na pytanie „kto jest w grupie".
  */
 final class ChatThreadQuery
 {
