@@ -29,6 +29,18 @@ describe("MainBlock", () => {
     expect(screen.getByRole("button", { name: "Dokończ zgłoszenie" })).toBeInTheDocument();
   });
 
+  it("nie renderuje drugiej akcji głównej, nawet jako odnośnik stylizowany na przycisk (Z-13)", () => {
+    const { container } = render(
+      <MainBlock
+        title="Twój najbliższy krok"
+        action={<button type="button">Dokończ zgłoszenie</button>}
+      />,
+    );
+
+    const akcje = container.querySelectorAll("button, a[href]");
+    expect(akcje).toHaveLength(1);
+  });
+
   it("axe: 0 naruszeń na wyrenderowanym bloku", async () => {
     const { container } = render(
       <MainBlock

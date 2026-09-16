@@ -157,6 +157,44 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("klik w tło w spoczynku: fokus zostaje wewnątrz okna", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <ConfirmDialog
+        open
+        title="Usuń wpis"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveFocus();
+
+    await user.click(container.firstElementChild as HTMLElement);
+
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it("klik w tło w trakcie zapisu: fokus zostaje wewnątrz okna", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <ConfirmDialog
+        open
+        loading
+        title="Usuń wpis"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+
+    await user.click(container.firstElementChild as HTMLElement);
+
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
   it("axe: 0 naruszeń na wyrenderowanym oknie", async () => {
     const { container } = render(
       <ConfirmDialog

@@ -113,6 +113,25 @@ describe("RecordForm", () => {
     expect(screen.getByLabelText("Imię")).toHaveFocus();
   });
 
+  it("gdy pierwsze pole jest poprawne, a drugie błędne, fokus trafia na drugie (błędne) pole", () => {
+    const { rerender } = render(
+      <RecordForm fields={pola} values={{ imie: "Jan" }} onChange={vi.fn()} onSubmit={vi.fn()} />,
+    );
+
+    rerender(
+      <RecordForm
+        fields={pola}
+        values={{ imie: "Jan", email: "zle" }}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        fieldErrors={{ email: "Podaj poprawny adres e-mail." }}
+      />,
+    );
+
+    expect(screen.getByLabelText("E-mail")).toHaveFocus();
+    expect(screen.getByLabelText("Imię")).not.toHaveFocus();
+  });
+
   it("axe: 0 naruszeń na formularzu z odmową dwóch pól", async () => {
     const { container } = render(
       <RecordForm
