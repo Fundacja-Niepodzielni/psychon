@@ -29,6 +29,7 @@ class AuditIndexRequest extends FormRequest
         'user.created', 'user.updated', 'user.blocked',
         'edition.updated',
         'sensitive.viewed',
+        'legal_document.published', 'legal_document.accepted',
     ];
 
     public function authorize(): bool

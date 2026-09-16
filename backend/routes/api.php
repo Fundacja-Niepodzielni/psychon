@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 | API v1 — route loader
 |--------------------------------------------------------------------------
 | The starter loads the SSO routes plus one file per package
-| (routes/api/h01.php … h21.php). Each package owns ONLY its own file —
+| (routes/api/h01.php … h22.php). Each package owns ONLY its own file —
 | do not touch other packages' files (guide §5.1).
 */
 
@@ -21,7 +21,7 @@ Route::prefix('v1')->group(function (): void {
     // routes/api/auth.php) so it survives with the SSO-only guard.
     Route::middleware('auth:keycloak')->get('/me', MeController::class);
 
-    foreach (range(1, 21) as $package) {
+    foreach (range(1, 22) as $package) {
         require __DIR__.sprintf('/api/h%02d.php', $package);
     }
     require __DIR__.'/api/chat.php';

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Consent;
+use App\Models\LegalDocumentVersion;
 use App\Models\User;
 use App\Services\Auth\TokenRoles;
 use Illuminate\Http\Request;
@@ -54,6 +55,37 @@ class ProfileResource extends JsonResource
                 ])
                 ->values()
                 ->all(),
+            // Rodzaje dokumentów prawnych (H22) bez zgody na aktualnie bieżącą
+            // wersję — brak zgody w ogóle albo zgoda na wersję już nieaktualną.
+            // Ta lista tylko informuje; o zablokowaniu innych tras decyduje ekran.
+            'legal_documents_pending_acceptance' => $this->pendingLegalDocumentAcceptances(),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function pendingLegalDocumentAcceptances(): array
+    {
+        $currentByType = LegalDocumentVersion::currentVersionsByType();
+
+        // `sortBy('id')` przed `pluck` jest tu obowiązkowe: przy kilku
+        // wpisach zgody tego samego rodzaju (kolejne akceptowane wersje)
+        // `pluck` zachowuje ostatnią napotkaną wartość dla klucza — ma to
+        // być najnowsza, więc kolejność nie może zależeć od (niezadeklarowanej)
+        // kolejności relacji `User::consents()`.
+        $grantedVersionByType = $this->consents
+            ->whereNull('withdrawn_at')
+            ->sortBy('id')
+            ->pluck('document_version', 'type');
+
+        $pending = [];
+        foreach ($currentByType as $type => $version) {
+            if (($grantedVersionByType[$type] ?? null) !== $version) {
+                $pending[] = $type;
+            }
+        }
+
+        return $pending;
     }
 }
