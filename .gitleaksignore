@@ -1,5 +1,6 @@
 # Wyciszenia POJEDYNCZYCH trafien, po odcisku. Nigdy calej reguly i nigdy sciezki -
-# wylaczenie reguly albo katalogu to ksztalt "trafien 0 przy prawdziwym wycieku" (F-134).
+# wylaczenie reguly albo katalogu daje skaner, ktory pisze "trafien 0" takze wtedy,
+# gdy wyciek jest prawdziwy.
 # Kazdy wpis musi miec nad soba powod, date i to, czym zostal sprawdzony.
 #
 # 16.09.2026, runda odbiorcza historii galezi sprint-2 (189 commitow, 5,07 MB).
