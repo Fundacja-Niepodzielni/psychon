@@ -15,6 +15,9 @@
  *   ekran `/logowanie/niepowiazane`; sesja naprawdę nieważna → wylogowanie
  *   i przekierowanie na `/logowanie`.
  * - 403 `access_expired` (H04) → przekierowanie na /dostep-wygasl (ekran startera)
+ * - 401 `konto_niepowiazane` (koperta kontraktu §1: `error.code` + `error.reason.sub`)
+ *   → identyfikator do pokazania na ekranie `/logowanie/niepowiazane`, patrz
+ *   `checkAccountBinding` niżej.
  */
 
 import { signOut } from "next-auth/react";
@@ -290,6 +293,54 @@ export async function fetchWhoAmI(): Promise<WhoAmI> {
     });
   }
   return { sub: body.sub, roles: Array.isArray(body.roles) ? body.roles : [] };
+}
+
+export interface AccountBindingCheck {
+  code: string;
+  /** Obecne wyłącznie, gdy `code === "konto_niepowiazane"` (koperta §1: `error.reason.sub`). */
+  sub?: string;
+}
+
+/**
+ * Sprawdza WPROST (surowy `fetch`, nie `request()`/`api()`), czy sesja jest
+ * ważna, ale `sub` z tokena nie jest jeszcze powiązany z żadnym kontem
+ * PsychON — używane wyłącznie przez ekran `/logowanie/niepowiazane`, żeby
+ * pokazać identyfikator z kopert błędu (`error.code`, `error.reason.sub`).
+ *
+ * Ominięcie `request()` jest celowe: ten sam 401 uruchomiłby tam
+ * `handleUnauthorized()`, a ten przekierowałby z powrotem na TĘ SAMĄ stronę —
+ * pętlę przeładowań, którą `lib/__tests__/api-401-bez-petli.test.ts` już
+ * pilnuje dla innej ścieżki.
+ *
+ * Identyfikator z odpowiedzi ląduje wyłącznie w stanie komponentu (pamięć
+ * przeglądarki, znika przy odświeżeniu) — nigdy w adresie URL, w parametrach
+ * zapytania ani w `localStorage`/`sessionStorage`, i nigdy nie trafia do
+ * `console.log`/`console.error`.
+ */
+export async function checkAccountBinding(): Promise<AccountBindingCheck | null> {
+  const token = await getToken();
+  if (!token) return null;
+
+  const headers = new Headers({ Accept: "application/json", Authorization: `Bearer ${token}` });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl()}/me`, { headers });
+  } catch {
+    return null;
+  }
+  if (res.ok) return null;
+
+  let json: unknown = null;
+  try {
+    json = await res.json();
+  } catch {
+    return null;
+  }
+
+  const err = (json as { error?: Partial<ApiErrorBody> } | null)?.error;
+  if (!err?.code) return null;
+  const sub = typeof err.reason?.sub === "string" ? err.reason.sub : undefined;
+  return { code: err.code, sub };
 }
 
 /**

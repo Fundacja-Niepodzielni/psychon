@@ -6,17 +6,24 @@ import userEvent from "@testing-library/user-event";
  * Świadek ekranu `/logowanie/niepowiazane` — cel, dokąd `lib/api.ts`
  * przekierowuje ważną sesję Kont Niepodzielni, której `sub` nie jest jeszcze
  * powiązany z żadnym kontem PsychON (patrz `lib/__tests__/api-401-bez-petli.test.ts`).
- * Mierzy dwie rzeczy: wyjaśnienie po polsku jest na ekranie, a wylogowanie
+ * Mierzy trzy rzeczy: wyjaśnienie po polsku jest na ekranie, wylogowanie
  * czyta adres Kont PRZED zakończeniem sesji aplikacji — ten sam wzorzec co
- * `/konto` i `PanelShell`.
+ * `/konto` i `PanelShell` — oraz (ZLECENIE-125, K1–K3) że identyfikator konta
+ * z koperty 401 `konto_niepowiazane` trafia na ekran TYLKO wtedy, gdy jest
+ * w odpowiedzi, i nigdzie indziej przy jego braku.
  */
 
 const endSession = vi.fn();
+const checkAccountBinding = vi.fn();
 const push = vi.fn();
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
-  return { ...actual, endSession: (...args: unknown[]) => endSession(...args) };
+  return {
+    ...actual,
+    endSession: (...args: unknown[]) => endSession(...args),
+    checkAccountBinding: (...args: unknown[]) => checkAccountBinding(...args),
+  };
 });
 
 vi.mock("next/navigation", () => ({
@@ -26,12 +33,16 @@ vi.mock("next/navigation", () => ({
 const NiepowiazanePage = (await import("@/app/logowanie/niepowiazane/page")).default;
 
 const ADRES_WYLOGOWANIA = "https://konta.example.org/realms/niepodzielni/protocol/openid-connect/logout";
+const SUB_Z_TOKENA = "88522d2e-aaaa-bbbb-cccc-111122223333";
+const TEKST_Z_IDENTYFIKATOREM =
+  "Twoje konto Niepodzielni nie jest jeszcze powiązane z PsychON. Przekaż administratorowi ten identyfikator:";
 
 let assign: ReturnType<typeof vi.fn>;
 let prawdziwaLokalizacja: PropertyDescriptor | undefined;
 
 beforeEach(() => {
   endSession.mockReset().mockResolvedValue(undefined);
+  checkAccountBinding.mockReset().mockResolvedValue(null);
   push.mockReset();
   assign = vi.fn();
   prawdziwaLokalizacja = Object.getOwnPropertyDescriptor(window, "location");
@@ -80,5 +91,91 @@ describe("/logowanie/niepowiazane", () => {
     await waitFor(() => expect(endSession).toHaveBeenCalledTimes(1));
     expect(push).toHaveBeenCalledWith("/logowanie");
     expect(assign).not.toHaveBeenCalled();
+  });
+});
+
+describe("identyfikator konta z koperty 401 (ZLECENIE-125)", () => {
+  let writeText: ReturnType<typeof vi.fn>;
+  let prawdziwySchowek: PropertyDescriptor | undefined;
+
+  beforeEach(() => {
+    writeText = vi.fn().mockResolvedValue(undefined);
+    prawdziwySchowek = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+  });
+
+  afterEach(() => {
+    if (prawdziwySchowek) Object.defineProperty(navigator, "clipboard", prawdziwySchowek);
+  });
+
+  it("K1: koperta z error.reason.sub → tekst i wypisany identyfikator", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.getByText(TEKST_Z_IDENTYFIKATOREM)).toBeInTheDocument());
+    expect(screen.getByText(SUB_Z_TOKENA)).toBeInTheDocument();
+  });
+
+  it("K7: nagłówek i komunikat mają rolę czytnika ekranu, przycisk ma dostępną nazwę", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+
+    // Nagłówek: rola `heading` (h1), zawsze w drzewie dostępności.
+    expect(screen.getByRole("heading")).toHaveTextContent("Konto nie jest jeszcze połączone");
+
+    // Komunikat z identyfikatorem: rola `alert` (Alert variant="error", patrz
+    // components/ui/Alert.tsx) — czytnik ekranu ogłasza go bez interakcji.
+    const komunikat = await screen.findByRole("alert");
+    expect(komunikat).toHaveTextContent(TEKST_Z_IDENTYFIKATOREM);
+    expect(komunikat).toHaveTextContent(SUB_Z_TOKENA);
+
+    // Przycisk: nazwa dostępna wyliczona z treści węzła (algorytm accname),
+    // dokładnie to, co czyta `getByRole("button", { name })` z testing-library.
+    expect(screen.getByRole("button", { name: "Kopiuj" })).toBeInTheDocument();
+  });
+
+  it("K2: przycisk Kopiuj wkłada do schowka DOKŁADNIE tę samą wartość co wypisana", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+    const przycisk = await screen.findByRole("button", { name: "Kopiuj" });
+    const wypisanaWartosc = screen.getByText(SUB_Z_TOKENA).textContent;
+
+    await userEvent.click(przycisk);
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith(wypisanaWartosc);
+    expect(writeText).toHaveBeenCalledWith(SUB_Z_TOKENA);
+  });
+
+  it("K3 (kontrola negatywna): 401 bez error.reason.sub (unauthenticated) → ekran dotychczasowy, bez ID i bez przycisku", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "unauthenticated" });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(checkAccountBinding).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(TEKST_Z_IDENTYFIKATOREM)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kopiuj" })).not.toBeInTheDocument();
+    expect(screen.getByText(/powiązane z żadnym kontem w PsychON/i)).toBeInTheDocument();
+  });
+
+  it("K4: identyfikator nie trafia do console.log/console.error", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    checkAccountBinding.mockResolvedValue({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+    const przycisk = await screen.findByRole("button", { name: "Kopiuj" });
+    await userEvent.click(przycisk);
+
+    expect(errSpy).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
+    errSpy.mockRestore();
+    logSpy.mockRestore();
   });
 });
