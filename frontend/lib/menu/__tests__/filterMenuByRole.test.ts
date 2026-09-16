@@ -46,7 +46,11 @@ describe("filterMenuByRole — F-55: filtr roli w rejestrze menu uczestnika", ()
   it("K2: wpisy bez deklarowanej roli przechodzą niezależnie od roli granicznej", () => {
     const wpisyBezRoli = participantMenu.filter((wpis) => !wpis.roles).length;
     expect(wpisyBezRoli).toBeGreaterThan(0);
-    for (const granica of ["", "ksiegowa" as Role, undefined]) {
+    // Literały wprost jako (Role | undefined)[] — bez tego TS zwęża tablicę do
+    // `string | undefined` (pierwsze dwa elementy nie są literałami typu Role
+    // bez adnotacji) i `filterMenuByRole` przestaje się kompilować (`npm run build`).
+    const graniczneRole: (Role | undefined)[] = ["" as Role, "ksiegowa" as Role, undefined];
+    for (const granica of graniczneRole) {
       const wynik = filterMenuByRole(participantMenu, granica);
       expect(wynik.filter((wpis) => !wpis.roles).length).toBe(wpisyBezRoli);
     }
