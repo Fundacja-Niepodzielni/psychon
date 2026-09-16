@@ -195,31 +195,144 @@ describe("ConfirmDialog", () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
   });
 
-  it("przejście w stan zapisu zdejmuje fokus z przycisku „donikąd” — okno odsyła go do siebie", async () => {
+  it("w stanie zapisu utrata fokusu «donikąd» wraca do okna", () => {
     // Realna przeglądarka: gdy przycisk z fokusem zablokuje się (`disabled`),
     // zdejmuje z niego fokus bez nowego celu — leci `focusout` z
     // `relatedTarget === null`. jsdom tego sam nie odtwarza (blokowanie
-    // atrybutem `disabled` w re-renderze nie przenosi fokusu), więc świadek
+    // atrybutem `disabled` w re-renderze nie przenosi fokusu), więc test
     // wywołuje to zdarzenie wprost, tak jak zrobiłaby to przeglądarka po
     // wciśnięciu Enter/Spacji na przycisku, który się właśnie zablokował.
-    const user = userEvent.setup();
-    render(
-      <ConfirmDialog
-        open
-        title="Usuń wpis"
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
+    // Nasłuch działa tylko w stanie zapisu — dlatego przycisk fokusujemy
+    // przed przejściem w ten stan (w spoczynku jest jeszcze dostępny).
+    const { rerender } = render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.tab();
     const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+    confirmButton.focus();
     expect(confirmButton).toHaveFocus();
+
+    rerender(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
 
     fireEvent.focusOut(confirmButton, { relatedTarget: null });
 
     expect(dialog).toHaveFocus();
+  });
+
+  it("focusout z celem wewnątrz okna nie przenosi fokusu na kontener — w stanie zapisu", () => {
+    render(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const focusSpy = vi.spyOn(dialog, "focus");
+
+    fireEvent.focusOut(dialog, { relatedTarget: dialog.querySelector("h2") });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("focusout „donikąd” w spoczynku nie przenosi fokusu na kontener", () => {
+    render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const focusSpy = vi.spyOn(dialog, "focus");
+
+    fireEvent.focusOut(dialog, { relatedTarget: null });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("po powrocie do spoczynku przy otwartym oknie utrata fokusu «donikąd» nie przenosi go na kontener", () => {
+    // Zachowanie, nie mechanizm: liczenie wywołań add/removeEventListener nie
+    // wykrywa nasłuchu, który zostaje zarejestrowany, mimo że stan już nie
+    // jest stanem zapisu (np. zdjęty inny nasłuch albo zdjęty w innej fazie
+    // niż dodany) — dopiero kolejna utrata fokusu ujawnia taki wyciek.
+    const { rerender } = render(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    rerender(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+    const focusSpy = vi.spyOn(dialog, "focus");
+
+    fireEvent.focusOut(confirmButton, { relatedTarget: null });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("po zamknięciu i ponownym otwarciu utrata fokusu «donikąd» nie przenosi go na kontener", () => {
+    const { rerender } = render(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    rerender(
+      <ConfirmDialog open={false} title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    rerender(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+    const focusSpy = vi.spyOn(dialog, "focus");
+
+    fireEvent.focusOut(confirmButton, { relatedTarget: null });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("aktywacja «Potwierdź» przenosi fokus na kontener przed wywołaniem potwierdzenia", async () => {
+    const user = userEvent.setup();
+    const dialogAtCallTime: (Element | null)[] = [];
+    const onConfirm = vi.fn(() => {
+      dialogAtCallTime.push(document.activeElement);
+    });
+
+    render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={onConfirm} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = screen.getByRole("button", { name: "Potwierdź" });
+
+    await user.click(confirmButton);
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(dialogAtCallTime[0]).toBe(dialog);
+  });
+
+  it("region ogłoszeń: tekst obecny w stanie zapisu, pusty przed i po", () => {
+    const { rerender } = render(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const region = screen.getByRole("status");
+    expect(region).toHaveTextContent("");
+
+    rerender(
+      <ConfirmDialog open loading title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(region).toHaveTextContent("Trwa zapisywanie.");
+
+    rerender(
+      <ConfirmDialog open title="Usuń wpis" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(region).toHaveTextContent("");
   });
 
   it("mousedown na tle ma zablokowane domyślne zachowanie; wewnątrz okna — nie", () => {

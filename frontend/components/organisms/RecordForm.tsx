@@ -47,7 +47,14 @@ export default function RecordForm({
 }: RecordFormProps) {
   const formId = useId();
   const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({});
-  const errorEntries = Object.entries(fieldErrors).filter(([, message]) => Boolean(message));
+  // Podsumowanie u góry wypisujemy w kolejności pól formularza, nie w
+  // kolejności kluczy w odpowiedzi serwera — z tego samego powodu, co niżej
+  // przy wyborze pierwszego błędnego pola: serwer nie gwarantuje kolejności,
+  // a użytkownik czytnika ma słyszeć listę w tym samym porządku, w jakim
+  // czyta formularz.
+  const errorEntries = fields
+    .filter((field) => Boolean(fieldErrors[field.name]))
+    .map((field) => [field.name, fieldErrors[field.name]] as const);
   // Pole z pierwszym błędem wybieramy wg kolejności pól w formularzu, nie wg
   // kolejności kluczy w odpowiedzi serwera — serwer nie gwarantuje kolejności.
   const firstErrorField = fields.find((field) => Boolean(fieldErrors[field.name]));
