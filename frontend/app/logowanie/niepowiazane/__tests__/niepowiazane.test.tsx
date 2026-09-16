@@ -31,6 +31,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const NiepowiazanePage = (await import("@/app/logowanie/niepowiazane/page")).default;
+const { KONTO_BINDING_AWARIA } = await import("@/lib/api");
 
 const ADRES_WYLOGOWANIA = "https://konta.example.org/realms/niepodzielni/protocol/openid-connect/logout";
 const SUB_Z_TOKENA = "88522d2e-aaaa-bbbb-cccc-111122223333";
@@ -177,5 +178,80 @@ describe("identyfikator konta z koperty 401 (ZLECENIE-125)", () => {
     expect(logSpy).not.toHaveBeenCalled();
     errSpy.mockRestore();
     logSpy.mockRestore();
+  });
+});
+
+/**
+ * ZLECENIE-127 — gdy `GET /me` PADNIE inaczej niż 401 (sieć, 500, timeout —
+ * już rozstrzygnięte na `checkAccountBinding()` w `lib/api.ts` na
+ * `KONTO_BINDING_AWARIA`, patrz `lib/__tests__/konto-niepowiazane-sub.test.ts`
+ * K1), ekran NIE ma pokazywać dotychczasowego tekstu o braku powiązania —
+ * ten kłamałby o przyczynie. K2 i K3 są kontrolami negatywnymi: te same dwie
+ * ścieżki 401 co w `ZLECENIE-125`, zachowanie bez zmian.
+ */
+describe("awaria zapytania /me (ZLECENIE-127)", () => {
+  const TEKST_AWARII = /nie udało się sprawdzić stanu twojego konta/i;
+
+  it("K1: checkAccountBinding sygnalizuje awarię → komunikat o chwilowej awarii, NIE stary tekst o braku powiązania", async () => {
+    checkAccountBinding.mockResolvedValue({ code: KONTO_BINDING_AWARIA });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument());
+    expect(screen.queryByText(/powiązane z żadnym kontem w PsychON/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEKST_Z_IDENTYFIKATOREM)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /spróbuj ponownie/i })).toBeInTheDocument();
+  });
+
+  it("K2 (kontrola negatywna): 401 z error.reason.sub → zachowanie bez zmian, bez komunikatu o awarii", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.getByText(SUB_Z_TOKENA)).toBeInTheDocument());
+    expect(screen.queryByText(TEKST_AWARII)).not.toBeInTheDocument();
+  });
+
+  it("K3 (kontrola negatywna): 401 bez sub (unauthenticated) → zachowanie bez zmian, bez komunikatu o awarii", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "unauthenticated" });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(checkAccountBinding).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(TEKST_AWARII)).not.toBeInTheDocument();
+    expect(screen.getByText(/powiązane z żadnym kontem w PsychON/i)).toBeInTheDocument();
+  });
+
+  it("K4: ponowienie bez przeładowania strony — 1 zapytanie na wejście, 2 po jednym kliknięciu, sukces po ponowieniu pokazuje identyfikator", async () => {
+    checkAccountBinding
+      .mockResolvedValueOnce({ code: KONTO_BINDING_AWARIA })
+      .mockResolvedValueOnce({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+    await waitFor(() => expect(checkAccountBinding).toHaveBeenCalledTimes(1));
+
+    const przycisk = await screen.findByRole("button", { name: /spróbuj ponownie/i });
+    await userEvent.click(przycisk);
+
+    await waitFor(() => expect(checkAccountBinding).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText(SUB_Z_TOKENA)).toBeInTheDocument());
+  });
+
+  it("K5: trwała awaria — liczba zapytań rośnie tylko z kliknięciami użytkownika, nie sama z siebie", async () => {
+    checkAccountBinding.mockResolvedValue({ code: KONTO_BINDING_AWARIA });
+
+    render(<NiepowiazanePage />);
+    await waitFor(() => expect(checkAccountBinding).toHaveBeenCalledTimes(1));
+
+    // Brak automatycznego ponawiania: sam upływ czasu nie dokłada zapytań.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(checkAccountBinding).toHaveBeenCalledTimes(1);
+
+    const przycisk = await screen.findByRole("button", { name: /spróbuj ponownie/i });
+    await userEvent.click(przycisk);
+    await waitFor(() => expect(checkAccountBinding).toHaveBeenCalledTimes(2));
+
+    await userEvent.click(przycisk);
+    await waitFor(() => expect(checkAccountBinding).toHaveBeenCalledTimes(3));
   });
 });

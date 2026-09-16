@@ -1,11 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { checkAccountBinding, endSession } from "@/lib/api";
+import {
+  checkAccountBinding,
+  endSession,
+  KONTO_BINDING_AWARIA,
+  type AccountBindingCheck,
+} from "@/lib/api";
 
 /**
  * Cel przekierowania z `lib/api.ts` (`handleUnauthorized`) dla ważnej sesji
@@ -21,23 +26,47 @@ import { checkAccountBinding, endSession } from "@/lib/api";
  * `error.reason.sub`, pokazujemy go z przyciskiem Kopiuj. Odpowiedź BEZ
  * `sub` (token nieważny, `error.code === "unauthenticated"`) zostawia ekran
  * dotychczasowy — bez miejsca na identyfikator i bez przycisku.
+ *
+ * Awaria zapytania (`ZLECENIE-127`): gdy `checkAccountBinding()` w ogóle nie
+ * dostanie czytelnej odpowiedzi 401 (sieć, 5xx, timeout), zwraca
+ * `{ code: KONTO_BINDING_AWARIA }` — ekran pokazuje wtedy osobny, krótki
+ * komunikat o chwilowej awarii z przyciskiem ponowienia, a NIE dotychczasowy
+ * tekst o braku powiązania (ten kłamałby o przyczynie — patrz nagłówek
+ * pliku zlecenia). Ponowienie jest wyłącznie na kliknięcie: żadnego
+ * automatycznego ponawiania w pętli przy trwałej awarii.
  */
 export default function NiepowiazanePage() {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   const [sub, setSub] = useState<string | null>(null);
+  const [awaria, setAwaria] = useState(false);
+  const [sprawdzanie, setSprawdzanie] = useState(false);
+
+  const zastosujWynik = useCallback((result: AccountBindingCheck | null) => {
+    if (result?.code === "konto_niepowiazane" && result.sub) {
+      setSub(result.sub);
+      setAwaria(false);
+      return;
+    }
+    setAwaria(result?.code === KONTO_BINDING_AWARIA);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     void checkAccountBinding().then((result) => {
-      if (!cancelled && result?.code === "konto_niepowiazane" && result.sub) {
-        setSub(result.sub);
-      }
+      if (!cancelled) zastosujWynik(result);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [zastosujWynik]);
+
+  async function ponowSprawdzenie() {
+    setSprawdzanie(true);
+    const result = await checkAccountBinding();
+    zastosujWynik(result);
+    setSprawdzanie(false);
+  }
 
   async function copyIdentifier() {
     if (!sub) return;
@@ -77,6 +106,20 @@ export default function NiepowiazanePage() {
                   <code className="break-all rounded-sm bg-card px-2 py-1 text-small">{sub}</code>
                   <Button type="button" variant="secondary" onClick={() => void copyIdentifier()}>
                     Kopiuj
+                  </Button>
+                </div>
+              </Alert>
+            ) : awaria ? (
+              <Alert variant="info">
+                <p>Nie udało się sprawdzić stanu Twojego konta — spróbuj ponownie za chwilę.</p>
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={sprawdzanie}
+                    onClick={() => void ponowSprawdzenie()}
+                  >
+                    Spróbuj ponownie
                   </Button>
                 </div>
               </Alert>

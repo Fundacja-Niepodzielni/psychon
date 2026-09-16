@@ -119,3 +119,35 @@ describe("checkAccountBinding — K3: kontrola negatywna, token nieważny", () =
     expect(wynik).toBeNull();
   });
 });
+
+describe("checkAccountBinding — ZLECENIE-127 K1: awaria zamiast 401", () => {
+  it("fetch odrzuca obietnicę (błąd sieci) → code KONTO_BINDING_AWARIA, nie null", async () => {
+    const { checkAccountBinding, KONTO_BINDING_AWARIA } = await swiezyModul();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("/api/auth/session")) {
+          return {
+            ok: true,
+            json: async () => ({ accessToken: "token-abc", expiresAt: Date.now() + 600_000 }),
+          };
+        }
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+
+    const wynik = await checkAccountBinding();
+    expect(wynik).toEqual({ code: KONTO_BINDING_AWARIA });
+  });
+
+  it("/me odpowiada 500 → code KONTO_BINDING_AWARIA, nie ekran dotychczasowy (null)", async () => {
+    const { checkAccountBinding, KONTO_BINDING_AWARIA } = await swiezyModul();
+    vi.stubGlobal(
+      "fetch",
+      zbudujFetch({ status: 500, body: { error: { status: 500, code: "server_error" } } }),
+    );
+
+    const wynik = await checkAccountBinding();
+    expect(wynik).toEqual({ code: KONTO_BINDING_AWARIA });
+  });
+});

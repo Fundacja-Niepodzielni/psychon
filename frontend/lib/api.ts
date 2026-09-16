@@ -302,6 +302,16 @@ export interface AccountBindingCheck {
 }
 
 /**
+ * Kod zwracany przez {@link checkAccountBinding}, gdy `GET /me` PADNIE
+ * inaczej niż odpowiedzią 401 (błąd sieci, 5xx, odpowiedź bez czytelnej
+ * koperty JSON). To NIE jest kod z serwera — serwer o awarii nic nie mówi,
+ * to rozstrzygnięcie klienta na podstawie tego, że w ogóle nie dostał
+ * koperty 401. Ekran musi odróżnić to od „wiem, że nie masz roli"
+ * (401 z czytelną kopertą) — inaczej kłamie o przyczynie.
+ */
+export const KONTO_BINDING_AWARIA = "awaria" as const;
+
+/**
  * Sprawdza WPROST (surowy `fetch`, nie `request()`/`api()`), czy sesja jest
  * ważna, ale `sub` z tokena nie jest jeszcze powiązany z żadnym kontem
  * PsychON — używane wyłącznie przez ekran `/logowanie/niepowiazane`, żeby
@@ -316,6 +326,14 @@ export interface AccountBindingCheck {
  * przeglądarki, znika przy odświeżeniu) — nigdy w adresie URL, w parametrach
  * zapytania ani w `localStorage`/`sessionStorage`, i nigdy nie trafia do
  * `console.log`/`console.error`.
+ *
+ * Zwraca `null`, gdy: brak tokena, `GET /me` odpowiedziało 2xx (konto jednak
+ * powiązane) — obie sytuacje ekran traktuje jak „nic do pokazania". Zwraca
+ * `{ code: KONTO_BINDING_AWARIA }`, gdy zapytanie w ogóle nie dostało
+ * czytelnej odpowiedzi 401 (sieć padła, serwer oddał 5xx albo coś, co nie
+ * parsuje się jak koperta błędu) — WYŁĄCZNIE ta gałąź ma dać ekranowi znać
+ * o chwilowej awarii; ścieżki 401 z czytelną kopertą (K2, K3 `ZLECENIE-125`)
+ * zostają bez zmian.
  */
 export async function checkAccountBinding(): Promise<AccountBindingCheck | null> {
   const token = await getToken();
@@ -326,19 +344,20 @@ export async function checkAccountBinding(): Promise<AccountBindingCheck | null>
   try {
     res = await fetch(`${baseUrl()}/me`, { headers });
   } catch {
-    return null;
+    return { code: KONTO_BINDING_AWARIA };
   }
   if (res.ok) return null;
+  if (res.status !== 401) return { code: KONTO_BINDING_AWARIA };
 
   let json: unknown = null;
   try {
     json = await res.json();
   } catch {
-    return null;
+    return { code: KONTO_BINDING_AWARIA };
   }
 
   const err = (json as { error?: Partial<ApiErrorBody> } | null)?.error;
-  if (!err?.code) return null;
+  if (!err?.code) return { code: KONTO_BINDING_AWARIA };
   const sub = typeof err.reason?.sub === "string" ? err.reason.sub : undefined;
   return { code: err.code, sub };
 }
