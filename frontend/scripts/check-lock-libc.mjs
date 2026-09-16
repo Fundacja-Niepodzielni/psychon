@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Straznik pola "libc" w package-lock.json (przypis do trafienia F-100).
+// Straznik pola "libc" w package-lock.json.
 //
 // npm 10.9.8 potrafi przy regeneracji zgubic pole "libc" na pakietach
 // platformowych pod node_modules/*-linux-*. Na node:22-alpine to pole

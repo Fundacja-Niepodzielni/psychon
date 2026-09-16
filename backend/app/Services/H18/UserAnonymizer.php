@@ -40,7 +40,7 @@ final class UserAnonymizer
             // psychologa — K2, skan dyplomu ze zgłoszenia — K3) mogły
             // przetrwać, jeśli to pierwsze przejście zdarzyło się zanim ta
             // metoda zaczęła je sprzątać, albo jeśli samo sprzątanie tamtym
-            // razem padło w środku (F-19). Kolejne wywołanie na takim koncie
+            // razem padło w środku. Kolejne wywołanie na takim koncie
             // ma domknąć ten stan zastany, nawet gdy samo kończy się odmową:
             // ścieżki są zbierane, a wskazujące na nie kolumny/wiersze
             // czyszczone WEWNĄTRZ własnej, krótkiej transakcji poniżej; same
@@ -105,7 +105,7 @@ final class UserAnonymizer
             // of any session bookkeeping.
             self::endKeycloakSessions($user);
 
-            // F-19: skasowanie pliku z dysku nie podlega wycofaniu transakcji
+            // Skasowanie pliku z dysku nie podlega wycofaniu transakcji
             // — nie ma "DELETE FROM disk" do wycofania. Gdyby cokolwiek PO tym
             // miejscu w tej transakcji padło (np. `AuditLog::record` niżej), a
             // pliki już zniknęłyby z dysku, rollback przywróciłby kolumny
@@ -154,12 +154,12 @@ final class UserAnonymizer
     /**
      * Zbiera ścieżki cudzych załączników do skasowania z dysku i w BIEŻĄCEJ
      * transakcji zeruje/kasuje wiersze, które na nie wskazują. Same pliki nie
-     * są tu ruszane (F-19) — to robi wywołujący, PO zatwierdzeniu transakcji,
+     * są tu ruszane — to robi wywołujący, PO zatwierdzeniu transakcji,
      * przez `deleteFiles()`. Wołana z dwóch miejsc (świeża anonimizacja i
      * domykanie stanu zastanego pod 409 — K5), bo oba mają zamknąć dokładnie
      * ten sam zestaw załączników.
      *
-     * Rozmyślnie NIE rusza (K4, D-20260909-21 „umowy nie znikają"): `documents`
+     * Rozmyślnie NIE rusza (K4, „umowy nie znikają"): `documents`
      * (H14 — `data_snapshot`, `pdf_path`), `certificates` jako wiersz i
      * `test_attempts`. To dokumenty WYSTAWIONE przez Fundację, nie cudze
      * załączniki — inna kategoria z innym traktowaniem.
@@ -198,7 +198,7 @@ final class UserAnonymizer
             $certificate->update(['pdf_path' => null]);
         });
 
-        // K2 (noga C, decyzja D-20260909-21): dyplom i zaświadczenie o
+        // K2 (noga C): dyplom i zaświadczenie o
         // niekaralności wgrane do wniosku o wpis do bazy psychologów
         // (`profile_documents`, H15/`PsychologistProfileController::storeDocument`)
         // to cudzy załącznik, nie dokument wystawiony przez Fundację — inaczej
@@ -242,7 +242,7 @@ final class UserAnonymizer
     /**
      * Faktyczne kasowanie z dysku — wołane WYŁĄCZNIE po zatwierdzeniu
      * transakcji, która wyzerowała kolumny/wiersze wskazujące na te ścieżki
-     * (F-19). Brak pliku pod ścieżką nie jest tu błędem: ten sam zestaw
+     * Brak pliku pod ścieżką nie jest tu błędem: ten sam zestaw
      * ścieżek może przejść tędy więcej niż raz (np. `already_anonymized`
      * domyka to, co świeże uruchomienie już posprzątało).
      *

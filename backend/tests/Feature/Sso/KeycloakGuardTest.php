@@ -149,7 +149,7 @@ class KeycloakGuardTest extends TestCase
     }
 
     /**
-     * F-111/K6 · `users.role` = super_admin, but the token carries NO
+     * K6 · `users.role` = super_admin, but the token carries NO
      * roles at all (`realm_access.roles = []` — never bound through
      * `actingAs`, a REAL bearer token minted by `KeycloakTokenFactory`) →
      * the admin route refuses. This is the witness the register asks for:

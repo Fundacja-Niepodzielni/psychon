@@ -291,7 +291,7 @@ fi
 # rozjechac (zadna kopia logiki w tescie). Test biegnie NAJPIERW: liczba z
 # prawdziwego skanu nizej nie jest warta zaufania, jesli logika, ktora ja
 # liczy, jest sama w sobie zepsuta - a to jest jedyny sposob, zeby cofnieta
-# poprawka F-106 (albo pusty plik biblioteki) dala tu CZERWIEN, zamiast po
+# poprawka (albo pusty plik biblioteki) dala tu CZERWIEN, zamiast po
 # cichu pokazac zero trafien.
 naglowek "3e - sekrety w tresci commitu"
 
@@ -310,7 +310,7 @@ fi
 
 T="$(date +%s)"
 EKSPORT="$(mktemp -d)"
-# Eksport idzie przez sekrety_eksportuj_tresc (F-107): `git archive`, ktory
+# Eksport idzie przez sekrety_eksportuj_tresc: `git archive`, ktory
 # pada (np. shim w tescie, EXIT=128) albo daje 0 plikow mimo EXIT=0, NIE MA
 # tu cicho zamienic sie w "skan 0 bajtow, no leaks found" - taki eksport
 # konczy krok kodem 2, zanim gitleaks w ogole ruszy.
@@ -336,7 +336,7 @@ else
     if [ "$KOD_LICZNIKA" -ne 0 ]; then
         KOD_GITLEAKS=2
     fi
-    # Pokrycie eksportu (F-122/F-123): liczba plikow i bajtow, ktore gitleaks
+    # Pokrycie eksportu: liczba plikow i bajtow, ktore gitleaks
     # NAPRAWDE obejrzal, porownana z liczba policzona NIEZALEZNIE od
     # skanowanego strumienia (`git ls-tree` na HEAD) - nie sama kontrola
     # "N > 0", ktora przepuszczala skan przyciety do 0,8% tresci.
@@ -379,7 +379,7 @@ fi
 # deploy.sh i mierzy same funkcje `_swiadek_logowania_*` (bez zywego hosta,
 # bez Dockera, bez sieci) - lekka, wiec biegnie w POWLOCE HOSTA (`bash ...`
 # nizej), bez wlasnego stosu i bez wchodzenia do kontenera `bramka_app`.
-# JEST blokujaca: to F-104/OD-098 - ISS/STAGING_DOMAIN maja JEDNO zrodlo
+# JEST blokujaca: ISS/STAGING_DOMAIN maja JEDNO zrodlo
 # (plik $env_file), a asercje Location musza porownywac parametry NA ROWNO,
 # nie podciagiem - regresja tutaj oznacza, ze swiadek na hoscie znow moze
 # byc zielony na zlamanej sciezce logowania.
@@ -415,7 +415,7 @@ else
     grep -aE "Test Files|Tests |Compiled|Failed|error|Error" "$KATALOG_BIEGU"/bramka-front.log | tail -5
     echo "front: EXIT=$KOD_FRONT, $CZAS_FRONT s"
 
-    # Pole "libc" w package-lock.json (przypis F-100): npm 10.9.8 potrafi je
+    # Pole "libc" w package-lock.json: npm 10.9.8 potrafi je
     # zgubic na pakietach *-linux-*, a wtedy node:22-alpine instaluje razem
     # glibc i musla zamiast jednej odmiany. Krok jest BLOKUJACY - skrypt nie
     # potrzebuje node_modules, wiec biegnie od razu, bez npm ci.

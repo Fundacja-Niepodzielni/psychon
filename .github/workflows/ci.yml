@@ -106,7 +106,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Zależności
         run: npm ci
-      # Pole "libc" w package-lock.json (przypis F-100): npm 10.9.8 potrafi
+      # Pole "libc" w package-lock.json: npm 10.9.8 potrafi
       # je zgubić na pakietach *-linux-*, a wtedy node:22-alpine instaluje
       # razem glibc i musla zamiast jednej odmiany. Krok jest blokujący
       # i nie potrzebuje `npm ci` - biegnie po samym pliku package-lock.json.

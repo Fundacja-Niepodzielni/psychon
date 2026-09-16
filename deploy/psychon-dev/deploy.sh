@@ -9,7 +9,7 @@
 #
 # Skrypt nie tworzy zadnych sekretow. Plik /opt/psychon/.env zaklada czlowiek.
 #
-# Funkcje `_swiadek_logowania_*` nizej ocenia sciezke logowania (OD-092 p.4):
+# Funkcje `_swiadek_logowania_*` nizej ocenia sciezke logowania:
 # nie tylko trase, ale przekierowanie do dostawcy tozsamosci az do formularza.
 # Sa zdefiniowane PRZED `set -euo pipefail` i przed reszta skryptu, a zaraz
 # pod nimi stoi warunek, ktory konczy plik, gdy jest ZRODLOWANY (a nie
@@ -54,7 +54,7 @@ _swiadek_logowania_ocena() {
   local iss="$1" domena="$2" loc="$3" kod_strony="$4" plik_strony="$5"
   local wynik=0
 
-  # (a) F-104: dopasowanie PODCIAGIEM ("*" na koncu) przepuszczalo tez
+  # (a) dopasowanie PODCIAGIEM ("*" na koncu) przepuszczalo tez
   # ".../authx-cos-innego". Prefiks musi konczyc sie na "?" (zaczyna sie
   # zapytanie) albo na koncu calego napisu (bez zadnego zapytania) - stad
   # dwa wzorce, nie jeden z gwiazdka na koncu. "?" w wzorcu case jest
@@ -67,7 +67,7 @@ _swiadek_logowania_ocena() {
       wynik=1 ;;
   esac
 
-  # (b) F-104: dawne dopasowanie PODCIAGIEM (`*client_id=psychon-web*`)
+  # (b) dawne dopasowanie PODCIAGIEM (`*client_id=psychon-web*`)
   # przepuszczalo tez `client_id=psychon-web-evil`, bo szukany napis jest
   # podciagiem dluzszego. Wycinamy caly parametr zapytania (do najblizszego
   # `&` albo konca) i porownujemy go NA ROWNO z oczekiwanym.
@@ -101,7 +101,7 @@ _swiadek_logowania_ocena() {
     wynik=1
   fi
 
-  # (e) F-104: ta sama wada co (b) - `*code_challenge_method=S256*` jest
+  # (e) ta sama wada co (b) - `*code_challenge_method=S256*` jest
   # podciagiem `code_challenge_method=S256x`. Ten sam lek: caly parametr,
   # porownanie na rowno.
   local param_ccm oczekiwany_ccm="code_challenge_method=S256"
@@ -113,7 +113,7 @@ _swiadek_logowania_ocena() {
     wynik=1
   fi
 
-  # (f) F-104: `grep -c` liczy LINIE pasujace, nie WYSTAPIENIA - dwa
+  # (f) `grep -c` liczy LINIE pasujace, nie WYSTAPIENIA - dwa
   # formularze w jednej linii dawaly `1`, czyli falszywe OK. `grep -o | wc -l`
   # liczy kazde dopasowanie osobno.
   local ile_formularzy
@@ -129,7 +129,7 @@ _swiadek_logowania_ocena() {
   return "$wynik"
 }
 
-# OD-098 p.3: ISS i domena maja JEDNO zrodlo prawdy - plik `$env_file`
+# ISS i domena maja JEDNO zrodlo prawdy - plik `$env_file`
 # (na hoscie: /opt/psychon/.env). Skrypt wdrozenia NIE eksportuje tych
 # zmiennych w powloce przed wywolaniem `deploy.sh` i nie zaglada do
 # srodowiska procesu - swiadek czyta WYLACZNIE plik, ta sama funkcja
@@ -141,9 +141,9 @@ _swiadek_logowania_ocena() {
 #        "NAZWA=" w ogole ("brak klucza"),
 #   rc=0, wartosc pusta - linia "NAZWA=" w pliku jest, ale bez wartosci
 #        ("pusta wartosc").
-# Historyczna wersja tej funkcji (`_swiadek_logowania_wartosc`, F-105)
+# Historyczna wersja tej funkcji (`_swiadek_logowania_wartosc`)
 # sprawdzala NAJPIERW zmienna SRODOWISKA procesu - to bylo poprawne, dopoki
-# skrypt wdrozenia rzeczywiscie eksportowal ISS z powloki. OD-098 usunal
+# skrypt wdrozenia rzeczywiscie eksportowal ISS z powloki. Ta zmiana usunela
 # to wstrzykiwanie, wiec ta galaz nie ma juz czego odzwierciedlac: kolejne
 # jej istnienie tylko ukrywaloby pusty/zly klucz w pliku za przypadkowa
 # zmienna w srodowisku wywolujacego (np. w testach albo w powloce operatora).
@@ -223,7 +223,7 @@ echo "Status uslug:"
 # zrywal polaczenie (alert TLS 80) - na kazdej sciezce "BRAK ODPOWIEDZI", takze
 # przy stojacych uslugach. `--retry` przeczekuje 502/503, dopoki uslugi wstaja.
 echo "Swiadek rozdzialu ruchu (przez Caddy na 127.0.0.1:443):"
-# OD-098 p.3: JEDNO zrodlo - plik $env_file, ta sama funkcja, ktora czyta
+# JEDNO zrodlo - plik $env_file, ta sama funkcja, ktora czyta
 # wszystkie inne ustawienia wdrozenia. Zaden odczyt srodowiska procesu.
 domena=""
 rc_domena=0
@@ -246,7 +246,7 @@ for sciezka in /api/v1/me /api/auth/providers /; do
   echo "  $sciezka -> ${kod:-BRAK ODPOWIEDZI}"
 done
 
-# Swiadek sciezki logowania (OD-092 p.4): trasa wyzej dowodzi tylko, ze
+# Swiadek sciezki logowania: trasa wyzej dowodzi tylko, ze
 # /api/* trafia do Next.js - nie dowodzi, ze przycisk "Zaloguj" naprawde
 # prowadzi do Kont i wraca. Ten swiadek idzie caly ten szlak: CSRF, POST
 # signin/keycloak, przekierowanie do realmu (przez nasz Caddy, tak jak trasa
@@ -263,7 +263,7 @@ done
 # przejsciowa usterke sieci u zewnetrznego IdP w falszywie czerwone
 # wdrozenie. Wynik i tak jest widoczny na ostatniej linii ponizej.
 echo "Swiadek sciezki logowania (Caddy 127.0.0.1:443, IdP po prawdziwej sieci):"
-# OD-098 p.3: JEDNO zrodlo prawdy dla ISS - plik $env_file, wylacznie przez
+# JEDNO zrodlo prawdy dla ISS - plik $env_file, wylacznie przez
 # `_swiadek_logowania_czytaj_klucz`. Skrypt wdrozenia NIE wstrzykuje juz
 # AUTH_KEYCLOAK_ISSUER z powloki, wiec nie ma tu drugiego zrodla do
 # uzgadniania - pusty klucz w pliku jest prawdziwym sygnalem niekompletnego

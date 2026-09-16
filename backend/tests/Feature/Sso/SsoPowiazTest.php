@@ -122,7 +122,7 @@ class SsoPowiazTest extends TestCase
     }
 
     /**
-     * Binding negative (OD-093): a different Keycloak account can carry the
+     * Binding negative: a different Keycloak account can carry the
      * SAME e-mail claim as an invited local user — binding must never fall
      * back to matching on that e-mail. Proven by NOT supplying the real
      * invitation token: even though the bearer's `email` claim matches the

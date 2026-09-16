@@ -8,7 +8,7 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * F-111 · zieleń suity nie jest sama w sobie dowodem R2 („role wyłącznie
+ * Zieleń suity nie jest sama w sobie dowodem R2 („role wyłącznie
  * z tokena"): 373 wywołań `actingAs($user, 'keycloak')` w 63 plikach
  * przechodzą przez furtkę testową (`TokenRoles::TESTING_FALLBACK_ROLES`),
  * a nie przez prawdziwy token. Świadek tutaj NIE mierzy tamte 373 miejsca —

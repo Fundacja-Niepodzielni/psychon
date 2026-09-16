@@ -9,7 +9,7 @@ function liczHref(menu: MenuEntry[], href: string): number {
   return menu.filter((wpis) => wpis.href === href).length;
 }
 
-describe("filterMenuByRole — F-55: filtr roli w rejestrze menu uczestnika", () => {
+describe("filterMenuByRole — filtr roli w rejestrze menu uczestnika", () => {
   it('K1: rola "student" nie widzi pozycji /panel/superwizja', () => {
     const wynik = filterMenuByRole(participantMenu, "student");
     expect(liczHref(wynik, SUPERWIZJA_HREF)).toBe(0);
