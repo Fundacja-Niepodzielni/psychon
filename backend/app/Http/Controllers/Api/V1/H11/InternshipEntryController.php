@@ -76,6 +76,10 @@ class InternshipEntryController extends Controller
                 throw new ApiException(403, 'entry_locked', 'Zaakceptowany wpis jest zablokowany.');
             }
 
+            if ($entry->status === 'rejected') {
+                throw new ApiException(403, 'entry_locked', 'Odrzucony wpis jest zablokowany.');
+            }
+
             $entry->fill($request->validated());
 
             if ($entry->getOriginal('status') === 'returned') {

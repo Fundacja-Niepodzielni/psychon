@@ -35,4 +35,6 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
         ->whereNumber('id');
     Route::post('/admin/internship/{id}/return', [AdminInternshipController::class, 'return'])
         ->whereNumber('id');
+    Route::post('/admin/internship/{id}/reject', [AdminInternshipController::class, 'reject'])
+        ->whereNumber('id');
 });
