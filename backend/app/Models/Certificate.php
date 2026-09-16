@@ -17,6 +17,7 @@ class Certificate extends Model
         'conditions_snapshot',
         'revoked_at',
         'revoked_reason',
+        'revoked_by',
     ];
 
     protected $hidden = [
@@ -40,5 +41,10 @@ class Certificate extends Model
     public function edition(): BelongsTo
     {
         return $this->belongsTo(Edition::class);
+    }
+
+    public function revokedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'revoked_by');
     }
 }

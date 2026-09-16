@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AdminCertificateController;
 use App\Http\Controllers\Api\V1\CertificateController;
 use App\Http\Controllers\Api\V1\VerifyController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,14 @@ Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer'])->group(f
     Route::get('/certificate/conditions', [CertificateController::class, 'conditions']);
     Route::post('/certificate/generate', [CertificateController::class, 'generate']);
     Route::get('/certificate/download', [CertificateController::class, 'download']);
+});
+
+// Panel administracji: lista wydanych certyfikatów i unieważnianie —
+// ta sama bramka roli co najbardziej dotkliwa istniejąca akcja
+// administracyjna (anonimizacja konta, h18.php).
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
+    Route::get('/admin/certificates', [AdminCertificateController::class, 'index']);
+    Route::post('/admin/certificates/{certificate}/revoke', [AdminCertificateController::class, 'revoke']);
 });
 
 // Publiczne: weryfikacja autentyczności (bez uwierzytelnienia, bez access.active).
