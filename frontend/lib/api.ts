@@ -341,7 +341,9 @@ export const KONTO_BINDING_LIMIT_MS = 8_000;
  * `console.log`/`console.error`.
  *
  * Zwraca `null`, gdy: brak tokena, `GET /me` odpowiedziało 2xx (konto jednak
- * powiązane) — obie sytuacje ekran traktuje jak „nic do pokazania". Zwraca
+ * powiązane) — obie sytuacje ekran traktuje jak „nie potrafię tego rozstrzygnąć"
+ * (ta sama gałąź co awaria, z przyciskiem „spróbuj ponownie"), nigdy jak
+ * „konto nie jest powiązane". Zwraca
  * `{ code: KONTO_BINDING_AWARIA }`, gdy zapytanie w ogóle nie dostało
  * czytelnej odpowiedzi 401 (sieć padła, serwer oddał 5xx albo coś, co nie
  * parsuje się jak koperta błędu) — WYŁĄCZNIE ta gałąź ma dać ekranowi znać

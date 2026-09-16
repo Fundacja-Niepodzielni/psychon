@@ -23,7 +23,7 @@ import {
  *
  * Ekran mówi wyłącznie to, co w danej chwili wie, i dlatego ma cztery stany,
  * a nie trzy. Zaraz po zamontowaniu o powiązaniu konta nie wiadomo NIC —
- * odpowiedź jeszcze nie wróciła — więc widać „”, a nie zdanie
+ * odpowiedź jeszcze nie wróciła — więc widać „Sprawdzam stan Twojego konta…”, a nie zdanie
  * o braku powiązania. Tamto zdanie jest twierdzeniem i pojawia się dopiero
  * wtedy, kiedy jest prawdziwe: po odpowiedzi 401 BEZ `error.reason.sub`
  * (token nieważny, `error.code === "unauthenticated"`). Odpowiedź 401
@@ -43,7 +43,7 @@ import {
  * pokazuje awarię, a spóźniona odpowiedź NIE nadpisuje już tego stanu.
  *
  * Cała zmienna część ekranu leży w jednym obszarze `aria-live="polite"`,
- * żeby przejście „” → wynik było dla czytnika ekranu ogłoszone,
+ * żeby przejście z „Sprawdzam stan Twojego konta…” do wyniku było dla czytnika ekranu ogłoszone,
  * a nie tylko narysowane.
  */
 type StanEkranu =
@@ -79,12 +79,21 @@ function sprawdzZLimitem(): Promise<AccountBindingCheck | null> {
   });
 }
 
-/** Odpowiedź sprawdzenia → stan ekranu. Jedyne miejsce, gdzie to przejście żyje. */
+/**
+ * Odpowiedź sprawdzenia → stan ekranu. Jedyne miejsce, gdzie to przejście żyje.
+ *
+ * `result === null` oznacza, że `checkAccountBinding` nie ma nic do powiedzenia
+ * o powiązaniu (brak tokenu, albo `GET /me` odpowiedziało 2xx — czyli konto
+ * JEST powiązane). Żadna z tych sytuacji nie uzasadnia zdania „konto nie jest
+ * powiązane", więc ekran idzie w tę samą gałąź, co awaria sieci: mówi, że nie
+ * potrafi tego rozstrzygnąć, i daje przycisk „spróbuj ponownie".
+ */
 function stanZWyniku(result: AccountBindingCheck | null): StanEkranu {
-  if (result?.code === "konto_niepowiazane" && result.sub) {
+  if (result === null) return { rodzaj: "awaria" };
+  if (result.code === "konto_niepowiazane" && result.sub) {
     return { rodzaj: "identyfikator", sub: result.sub };
   }
-  if (result?.code === KONTO_BINDING_AWARIA) return { rodzaj: "awaria" };
+  if (result.code === KONTO_BINDING_AWARIA) return { rodzaj: "awaria" };
   return { rodzaj: "brak-powiazania" };
 }
 

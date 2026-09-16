@@ -60,9 +60,25 @@ afterEach(() => {
 
 describe("/logowanie/niepowiazane", () => {
   it("po rozstrzygnięciu wyjaśnia po polsku, że konto nie jest powiązane z PsychON", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "unauthenticated" });
+
     render(<NiepowiazanePage />);
     expect(await screen.findByText(/powiązane z żadnym kontem w PsychON/i)).toBeInTheDocument();
     expect(screen.getByRole("heading")).toHaveTextContent("Konto nie jest jeszcze połączone");
+  });
+
+  it("Z-2: checkAccountBinding zwraca null (brak tokenu albo GET /me 2xx) → ekran mówi, że nie potrafi rozstrzygnąć, NIE że konto jest niepowiązane", async () => {
+    checkAccountBinding.mockResolvedValue(null);
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/nie udało się sprawdzić stanu twojego konta/i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/powiązane z żadnym kontem w PsychON/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /spróbuj ponownie/i })).toBeInTheDocument();
   });
 
   it("wylogowanie czyta adres Kont, potem kończy sesję, potem wychodzi", async () => {
@@ -97,11 +113,11 @@ describe("/logowanie/niepowiazane", () => {
 
 /**
  * Ekran ma mówić to, co WIE. Zaraz po zamontowaniu nie wie o powiązaniu konta
- * nic — odpowiedź jeszcze nie wróciła — więc zdanie „”
+ * nic — odpowiedź jeszcze nie wróciła — więc zdanie „powiązane z żadnym kontem w PsychON”
  * byłoby wtedy twierdzeniem bez pokrycia, a ekranem tym właściciel odczytuje
  * identyfikator z telefonu. Mierzone liczbami trafień: na wejściu stary tekst
- * 0, „” 1; potem każde z trzech wyjść ze stanu sprawdzania gasi
- * „” i zapala dokładnie jeden właściwy komunikat.
+ * 0, „Sprawdzam” 1; potem każde z trzech wyjść ze stanu sprawdzania gasi
+ * „Sprawdzam” i zapala dokładnie jeden właściwy komunikat.
  */
 describe("stan sprawdzania przed rozstrzygnięciem", () => {
   const TEKST_SPRAWDZAM = /sprawdzam stan twojego konta/i;
