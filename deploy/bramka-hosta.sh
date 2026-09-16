@@ -151,9 +151,49 @@ CZAS_A="$(czas_od "$T")"
 grep -aE "Tests:|Assertions:|FAILURES|ERRORS|OK \(" "$KATALOG_BIEGU"/bramka-A.log | tail -3
 echo "krok A: EXIT=$KOD_A, $CZAS_A s"
 
+# Krok B NIE dziedziczy zielenienia z kroku 2: resetuje WLASNA baze testowa tuz
+# przed soba, wiec jego wynik nie zalezy od tego, co bylo w bazie wczesniej w
+# tym samym biegu ani w poprzednim biegu (zmierzone: na swiezej niezmigrowanej
+# bazie krok B pada "relation ... does not exist"; na smieciach zostawionych
+# przez przerwany poprzedni bieg pada "Stan zastany bazy nie byl pusty"). Bez
+# tego resetu krok B jest samodzielny wylacznie w towarzystwie kroku 2, ktory
+# akurat stoi wyzej w TYM pliku - a to jest zaleznosc od kolejnosci, nie
+# wlasnosc kroku.
+#
+# Bezpiecznik nazwy: reset i migracja dotyczy WYLACZNIE $BAZA odczytanej z
+# backend/phpunit.xml (krok 1 juz sprawdzil, ze to nie jest pusty string) -
+# a odmawiamy, gdy jej nazwa nie niesie sufiksu bazy testowej, zeby wlasny
+# blad w odczycie phpunit.xml nie zresetowal czegokolwiek innego.
+KOD_B_RESET=0
+case "$BAZA" in
+    *_testing) ;;
+    *)
+        echo "krok B: nazwa bazy '$BAZA' nie ma sufiksu _testing - ODMOWA resetu, krok B nie rusza" >&2
+        KOD_B_RESET=2
+        ;;
+esac
+
+if [ "$KOD_B_RESET" -eq 0 ]; then
+    T="$(date +%s)"
+    docker exec -u root -e DB_CONNECTION=pgsql -e DB_HOST=pgsql -e DB_PORT=5432 \
+        -e DB_DATABASE="$BAZA" -e DB_USERNAME="$UZYTKOWNIK" -e DB_PASSWORD="$HASLO" \
+        bramka_app php artisan migrate:fresh --force --no-interaction > "$KATALOG_BIEGU"/bramka-B-reset.log 2>&1
+    KOD_B_RESET=$?
+    echo "krok B: reset+migracja wlasnej bazy ($BAZA): EXIT=$KOD_B_RESET, $(czas_od "$T") s"
+    if [ "$KOD_B_RESET" -ne 0 ]; then
+        echo "krok B: reset bazy padl - przyczyna ponizej; krok B NIE probuje phpunit na niepewnym stanie" >&2
+        tail -15 "$KATALOG_BIEGU"/bramka-B-reset.log | sed 's/^/  ! /'
+    fi
+fi
+
 T="$(date +%s)"
-docker exec -u root bramka_app ./vendor/bin/phpunit --group=wspolna-baza > "$KATALOG_BIEGU"/bramka-B.log 2>&1
-KOD_B=$?
+if [ "$KOD_B_RESET" -eq 0 ]; then
+    docker exec -u root bramka_app ./vendor/bin/phpunit --group=wspolna-baza > "$KATALOG_BIEGU"/bramka-B.log 2>&1
+    KOD_B=$?
+else
+    echo "krok B pominiety - reset bazy testowej nie doszedl do skutku" > "$KATALOG_BIEGU"/bramka-B.log
+    KOD_B=$KOD_B_RESET
+fi
 CZAS_B="$(czas_od "$T")"
 grep -aE "Tests:|Assertions:|FAILURES|ERRORS|OK \(" "$KATALOG_BIEGU"/bramka-B.log | tail -3
 echo "krok B: EXIT=$KOD_B, $CZAS_B s"
