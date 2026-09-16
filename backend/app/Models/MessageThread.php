@@ -23,16 +23,25 @@ class MessageThread extends Model
         'volunteer_id',
     ];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function volunteer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'volunteer_id');
     }
 
+    /**
+     * @return HasMany<Message, $this>
+     */
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class, 'thread_id');

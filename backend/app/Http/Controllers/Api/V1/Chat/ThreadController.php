@@ -9,6 +9,7 @@ use App\Http\Resources\Chat\MessageThreadResource;
 use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\SupervisorAssignment;
+use App\Models\User;
 use App\Services\Auth\TokenRoles;
 use App\Services\Chat\ChatThreadProvisioner;
 use App\Services\Chat\ChatThreadQuery;
@@ -45,8 +46,10 @@ class ThreadController extends Controller
                 ->first();
 
             if ($active !== null && $active->supervisor !== null) {
-                $threads->push($provisioner->ensureIndividual($user, $active->supervisor));
-                $threads->push($provisioner->ensureGroup($active->supervisor));
+                /** @var User $supervisor */
+                $supervisor = $active->supervisor;
+                $threads->push($provisioner->ensureIndividual($user, $supervisor));
+                $threads->push($provisioner->ensureGroup($supervisor));
             }
         }
 
@@ -60,7 +63,9 @@ class ThreadController extends Controller
                 ->get()
                 ->each(function (SupervisorAssignment $assignment) use ($threads, $provisioner, $user): void {
                     if ($assignment->volunteer !== null) {
-                        $threads->push($provisioner->ensureIndividual($assignment->volunteer, $user));
+                        /** @var User $volunteer */
+                        $volunteer = $assignment->volunteer;
+                        $threads->push($provisioner->ensureIndividual($volunteer, $user));
                     }
                 });
         }

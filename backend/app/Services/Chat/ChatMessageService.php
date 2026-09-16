@@ -65,6 +65,7 @@ final class ChatMessageService
             return collect($other !== null ? [$other] : []);
         }
 
+        /** @var Collection<int, User|null> $recipients */
         $recipients = collect();
 
         if ($thread->supervisor_id !== null && (int) $thread->supervisor_id !== $sender->id) {
@@ -78,7 +79,9 @@ final class ChatMessageService
             ->with('volunteer')
             ->get()
             ->each(function (SupervisorAssignment $assignment) use ($recipients): void {
-                $recipients->push($assignment->volunteer);
+                /** @var User|null $volunteer */
+                $volunteer = $assignment->volunteer;
+                $recipients->push($volunteer);
             });
 
         return $recipients->filter()->unique('id')->values();

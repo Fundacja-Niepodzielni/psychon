@@ -24,4 +24,5 @@ Route::prefix('v1')->group(function (): void {
     foreach (range(1, 21) as $package) {
         require __DIR__.sprintf('/api/h%02d.php', $package);
     }
+    require __DIR__.'/api/chat.php';
 });

@@ -17,11 +17,17 @@ class Message extends Model
         'body',
     ];
 
+    /**
+     * @return BelongsTo<MessageThread, $this>
+     */
     public function thread(): BelongsTo
     {
         return $this->belongsTo(MessageThread::class, 'thread_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function sender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sender_id');

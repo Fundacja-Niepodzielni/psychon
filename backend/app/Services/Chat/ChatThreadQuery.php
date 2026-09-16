@@ -19,6 +19,9 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class ChatThreadQuery
 {
+    /**
+     * @return Builder<MessageThread>
+     */
     public static function visibleTo(User $user): Builder
     {
         return MessageThread::query()->where(function (Builder $query) use ($user): void {
