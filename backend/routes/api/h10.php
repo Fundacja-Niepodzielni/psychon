@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminTestController;
 use App\Http\Controllers\Api\V1\AdminTestQuestionController;
 use App\Http\Controllers\Api\V1\AdminTestResetController;
 use App\Http\Controllers\Api\V1\AdminWorkshopController;
@@ -30,6 +31,10 @@ Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer,student'])-
 
 // Administracja: bank pytań, warsztat, reset limitu podejść.
 Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
+    Route::get('/admin/courses/{course}/tests', [AdminTestController::class, 'index']);
+    Route::post('/admin/courses/{course}/tests', [AdminTestController::class, 'store']);
+    Route::patch('/admin/tests/{test}', [AdminTestController::class, 'update']);
+
     Route::get('/admin/tests/{test}/questions', [AdminTestQuestionController::class, 'index']);
     Route::post('/admin/tests/{test}/questions', [AdminTestQuestionController::class, 'store']);
     Route::patch('/admin/questions/{question}', [AdminTestQuestionController::class, 'update']);
