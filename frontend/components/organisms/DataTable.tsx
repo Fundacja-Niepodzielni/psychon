@@ -109,7 +109,7 @@ export default function DataTable<T>({
       observer.disconnect();
       window.removeEventListener("resize", sprawdzPrzepelnienie);
     };
-  }, [columns, rows]);
+  }, [columns, rows, stan]);
 
   return (
     <div className="flex flex-col gap-4">

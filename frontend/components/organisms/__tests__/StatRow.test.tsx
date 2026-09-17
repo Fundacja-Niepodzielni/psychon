@@ -85,12 +85,42 @@ describe("StatRow", () => {
     );
   });
 
-  it("w trybie produkcyjnym nie rzuca błędu przy naruszeniach — loguje zamiast ubijać ekran", () => {
+  it("w trybie produkcyjnym nie rzuca błędu przy nadmiarze kafli i obcina renderowanie do 4", () => {
     vi.stubEnv("NODE_ENV", "production");
 
     try {
       const piec = [...cztery, { value: 2, label: "Nadmiarowy" }];
       expect(() => render(<StatRow items={piec} />)).not.toThrow();
+
+      expect(screen.getByText("Kursy")).toBeInTheDocument();
+      expect(screen.getByText("W toku")).toBeInTheDocument();
+      expect(screen.getByText("Ukończone")).toBeInTheDocument();
+      expect(screen.getByText("Zaległe")).toBeInTheDocument();
+      expect(screen.queryByText("Nadmiarowy")).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("w trybie produkcyjnym nie rzuca błędu, gdy brak liczby dominującej", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    try {
+      const bezDominujacej = cztery.map((kafel) => ({ ...kafel, dominant: false }));
+      expect(() => render(<StatRow items={bezDominujacej} />)).not.toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("w trybie produkcyjnym nie rzuca błędu, gdy liczba dominująca jest bez kontekstu", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    try {
+      const bezKontekstu = cztery.map((kafel) =>
+        kafel.dominant ? { ...kafel, context: undefined } : kafel,
+      );
+      expect(() => render(<StatRow items={bezKontekstu} />)).not.toThrow();
     } finally {
       vi.unstubAllEnvs();
     }

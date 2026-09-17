@@ -35,7 +35,7 @@ export default function StatRow({ items, className = "" }: StatRowProps) {
   }
 
   if (items.length > 4) {
-    zglosBlad(`StatRow: najwyżej 4 kafle (Z-16), otrzymano ${items.length}.`);
+    zglosBlad(`StatRow: najwyżej 4 kafle, otrzymano ${items.length}.`);
   }
 
   const widoczne = items.slice(0, 4);
@@ -43,10 +43,10 @@ export default function StatRow({ items, className = "" }: StatRowProps) {
 
   if (dominujace.length !== 1) {
     zglosBlad(
-      `StatRow: dokładnie jedna liczba dominująca (Z-3), otrzymano ${dominujace.length}.`,
+      `StatRow: dokładnie jedna liczba dominująca, otrzymano ${dominujace.length}.`,
     );
   } else if (!dominujace[0].context) {
-    zglosBlad("StatRow: liczba dominująca musi mieć kontekst (Z-3).");
+    zglosBlad("StatRow: liczba dominująca musi mieć kontekst.");
   }
 
   return (
