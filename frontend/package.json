@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "pomiar:kontrast-statusow": "node scripts/pomiar-marginesu-kontrastu.mjs"
   },
   "dependencies": {
     "lucide-react": "1.47.0",
