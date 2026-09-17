@@ -525,3 +525,87 @@ po hackathonie na `ProgressAggregator`) · czat pomocy · tokeny w ciasteczkach 
 (Bearer to świadome uproszczenie hackathonowe — do przeglądu po wydarzeniu).
 Interfejsy są tak zaprojektowane, żeby po hackathonie podmienić mocki na realne
 integracje bez zmiany kontraktu.
+
+---
+
+## Aneks z 2026-09-17 — siódma operacja stażu i sześć slugów audytu poza rejestrem
+
+Data: 2026-09-17. Podstawa: pismo decyzyjne z 17.09.2026 (blok wieczorny)
+oraz pomiar rejestru zdarzeń audytu z tego samego dnia; oba w wewnętrznym
+rejestrze projektu, który nie jest częścią tego repozytorium.
+
+Kod ma rację, ten aneks dogania kontrakt. Miejsc niżej nie usuwam — zapis
+historyczny zostaje, ten blok jest wobec nich nadrzędny.
+
+| Miejsce | Co mówi dokument | Jak jest naprawdę |
+|---|---|---|
+| wiersz 300 (§2 „Staż (H11)") | „H11 rejestruje dokładnie sześć operacji." | Operacji jest siedem. Siódma to trwałe odrzucenie wpisu — `POST /admin/internship/{id}/reject`. |
+| wiersz 367 (§2 „Decyzje administracyjne") | „Obie decyzje są dostępne wyłącznie dla administracji..." (mowa tylko o `accept` i `return`) | Decyzje są trzy: akceptacja, odesłanie i odrzucenie. Każda działa tylko na wpisie w stanie `submitted`; po dowolnej z nich kolejna decyzja na tym samym wpisie zwraca `403 entry_locked`. |
+| wiersz 509 (§3.4 „Pozostałe słowniki", `internship.status`) | `internship.status`: `submitted · accepted · returned` | Brakuje wartości `rejected`. Pełny słownik: `submitted · accepted · returned · rejected`. |
+| wiersze 483-493 (§3.2 „Rejestr zdarzeń audytowych") | 24 slugi | Slugów jest 30. Brakuje sześciu: `internship.rejected`, `user.anonymized`, `supervision.attendance_marked`, `certificate.revoked`, `legal_document.published`, `legal_document.accepted`. |
+
+### 1. Siódma operacja pakietu stażowego (H11): odrzucenie wpisu
+
+Dopisać do §2 „Staż (H11)", w podsekcji „Decyzje administracyjne", jako
+trzecią decyzję obok akceptacji i odesłania, tym samym stylem co pozostałe
+dwie:
+
+- `POST /admin/internship/{id}/reject` z wymaganym niepustym stringiem
+  `{ "comment": "..." }` → `200` z pełnym zasobem administracyjnym po zmianie
+  na `rejected`. Brak albo pusty komentarz → `422 validation_failed`.
+
+Trasa zostaje w kontrakcie: to jedyny sposób administracji na ostateczne,
+jednoznaczne „nie" wobec wadliwego wpisu — bez niej jedyną drogą zamknięcia
+sprawy jest odesłanie do poprawy, które nie jest stanem końcowym i pozwala na
+nieograniczoną liczbę ponownych prób.
+
+Odrzucenie jest stanem końcowym: wpis `rejected` nie może być edytowany przez
+osobę (`403 entry_locked`) ani ponownie rozstrzygnięty przez administrację —
+tak samo jak `accepted`, i tak samo jak przy pozostałych dwóch decyzjach
+dotyczy to wyłącznie wpisu w stanie `submitted`. Odrzucenie emituje wyłącznie
+powiadomienie i audyt `internship.rejected`, oba przechodzą odpowiednio przez
+`Notify::send` i `AuditLog::record`.
+
+### 2. Wartość statusu wpisu stażu: `rejected`
+
+Dopisać do §3.4 „Pozostałe słowniki": `internship.status`:
+`submitted · accepted · returned · rejected`.
+
+### 3. Sześć brakujących rodzajów zdarzeń audytu
+
+Dopisać do §3.2 „Rejestr zdarzeń audytowych" — rejestr rośnie z 24 do 30
+slugów. Sześć nowych, po ludzku i z nazwami pól ładunku (`details`), nigdy z
+przykładowymi wartościami:
+
+- `internship.rejected` (H11) — opiekun projektu albo super-admin odrzuca
+  zgłoszony wpis w dzienniku stażu; trzecia możliwa decyzja obok akceptacji i
+  odesłania. Pola ładunku: `entry_id`.
+- `user.anonymized` (H18) — administracja bezpowrotnie anonimizuje konto na
+  żądanie prawa do bycia zapomnianym. Bez ładunku — patrz reguła niżej.
+- `supervision.attendance_marked` (H12) — zmiana obecności osoby na terminie
+  superwizji. Pola ładunku: `slot_id`, `user_id`, `attendance_before`,
+  `attendance_after`.
+- `certificate.revoked` (H13) — administracja unieważnia już wydany
+  certyfikat, z podanym powodem. Pola ładunku: `number`, `reason`.
+  **Do zmiany.** `reason` jest dziś wolnym tekstem wpisywanym ręcznie, więc
+  jest to jedyne miejsce w całym rejestrze, w którym mogą wylądować dane
+  osobowe — a rejestru zdarzeń nie da się poprawić ani wyczyścić. Docelowo
+  ładunek niesie `number` i ewentualnie kod powodu ze słownika, a treść
+  powodu żyje wyłącznie w rekordzie certyfikatu, skąd anonimizacja konta
+  może ją usunąć. Ten opis mówi, jak jest dziś, nie jak ma być.
+- `legal_document.published` (H22) — administracja publikuje nową wersję
+  dokumentu prawnego (regulamin/polityka). Pola ładunku: `type`, `version`.
+- `legal_document.accepted` (H22) — osoba akceptuje bieżącą wersję dokumentu
+  prawnego. Pola ładunku: `type`, `version`.
+
+Pakiet H22 (dokumenty prawne) nie ma w kontrakcie osobnej sekcji poza tym
+wpisem do rejestru — poza zakresem tego aneksu, do uzupełnienia osobno.
+
+### 4. Reguła: anonimizacja konta zapisuje zdarzenie bez ładunku
+
+Zdarzenie `user.anonymized` zapisuje się w rejestrze audytu **bez ładunku**
+(`details = null`) i tak ma zostać. Uzasadnienie: ładunek zdarzenia o
+anonimizacji sam niósłby dane, które anonimizacja ma usunąć — zapisanie ich
+w `audit_log` unieważniłoby cel operacji. Jedynym śladem pozostają standardowe
+kolumny każdego wpisu audytu (`actor_id`, `subject_type`, `subject_id`,
+`created_at`), które wskazują na wiersz `User`, ale nie niosą jego treści.
