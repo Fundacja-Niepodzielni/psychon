@@ -17,6 +17,7 @@ import {
   type AuditLogEntryDto,
 } from "@/lib/api";
 import { ACTION_LABELS } from "@/lib/h20/labels";
+import AuditDetailsCell from "@/components/h20/AuditDetailsCell";
 
 const EMPTY_FILTERS = { action: "", userId: "", from: "", to: "" };
 
@@ -96,6 +97,11 @@ export default function AuditLogView() {
       header: "Dotyczy",
       render: (row) =>
         row.subject_type ? `${row.subject_type} #${row.subject_id}` : "—",
+    },
+    {
+      key: "details",
+      header: "Szczegóły",
+      render: (row) => <AuditDetailsCell details={row.details} />,
     },
   ];
 
