@@ -25,6 +25,8 @@ class StoreApplicationRequest extends FormRequest
             'payload' => ['sometimes', 'nullable', 'array'],
             'university' => ['sometimes', 'nullable', 'string', 'max:255'],
             'graduation_year' => ['sometimes', 'nullable', 'integer', 'min:1900', 'max:'.(now()->year + 1)],
+            'consent_regulamin_at' => ['sometimes', 'nullable', 'date', 'before_or_equal:now'],
+            'consent_polityka_at' => ['sometimes', 'nullable', 'date', 'before_or_equal:now'],
         ];
     }
 
@@ -49,6 +51,10 @@ class StoreApplicationRequest extends FormRequest
             'graduation_year.integer' => 'Rok ukończenia studiów musi być liczbą całkowitą.',
             'graduation_year.min' => 'Rok ukończenia studiów jest nieprawdopodobnie wczesny.',
             'graduation_year.max' => 'Rok ukończenia studiów nie może być w przyszłości.',
+            'consent_regulamin_at.date' => 'Data zgody na regulamin ma nieprawidłowy format.',
+            'consent_regulamin_at.before_or_equal' => 'Data zgody na regulamin nie może być w przyszłości.',
+            'consent_polityka_at.date' => 'Data zgody na politykę prywatności ma nieprawidłowy format.',
+            'consent_polityka_at.before_or_equal' => 'Data zgody na politykę prywatności nie może być w przyszłości.',
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services\H03;
 use App\Models\Application;
 use App\Models\Edition;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
@@ -114,8 +115,19 @@ final class ApplicationCsvImporter
                     continue;
                 }
 
+                $consents = [];
+                foreach (Application::CONSENT_COLUMNS as $column) {
+                    $consents[$column] = self::consentDate($row[$column] ?? '');
+                }
+                if (in_array(false, $consents, true)) {
+                    $skipped[] = ['line' => $line, 'reason' => 'invalid_consent_date'];
+
+                    continue;
+                }
+
                 $seen[$normalized] = true;
                 $rows[] = [
+                    ...$consents,
                     'edition_id' => $edition->id,
                     'first_name' => $row['first_name'],
                     'last_name' => $row['last_name'],
@@ -142,5 +154,24 @@ final class ApplicationCsvImporter
         } finally {
             fclose($handle);
         }
+    }
+
+    /**
+     * Pusta komórka = brak zgody w pliku (null). Data nieczytelna albo
+     * z przyszłości = false, wiersz jest pomijany z powodem.
+     */
+    private static function consentDate(string $value): CarbonImmutable|false|null
+    {
+        if (trim($value) === '') {
+            return null;
+        }
+
+        try {
+            $date = CarbonImmutable::parse(trim($value));
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $date->isFuture() ? false : $date;
     }
 }
