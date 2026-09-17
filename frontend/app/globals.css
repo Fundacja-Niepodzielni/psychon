@@ -35,9 +35,20 @@
 }
 
 /*
- * Tokeny designu wyciągnięte z makiety (psychon-makieta/index.html).
- * Zmienne --psy-* to 1:1 wartości makiety; odstępstwa (kontrast WCAG ≥ 4,5:1)
- * są oznaczone komentarzem [A11Y].
+ * TOKENY v2 — jedyne miejsce wartości wyglądu (kolor, pismo, odstępy,
+ * promienie, cienie, ruch, warstwy, stany). Komponenty i strony używają
+ * wyłącznie klas zbudowanych z tych zmiennych (sekcja @theme niżej).
+ *
+ * Źródła:
+ * 1. Arkusze strony Fundacji (niepodzielni.com, app.css + home-sections.css,
+ *    pobrane 17.09.2026): zieleń #01be4a (53 użycia), fiolet #1500bb
+ *    (19 użyć, kolor WSZYSTKICH nagłówków h1–h6 strony), tekst #1a1a1a (25)
+ *    i #323232, tło strony #f9f8f6 (11), obramowanie #eaeaea (10), krój
+ *    Roboto, promienie 8/12/15/20/24/36/50 px, cienie karty i nagłówka,
+ *    przejścia 0,25 s / 0,4 s, krzywa cubic-bezier(.22, 1, .36, 1).
+ * 2. Makieta Psychon (wartości v1 poniżej, 1:1).
+ * Odstępstwa dla kontrastu WCAG są oznaczone [A11Y] i policzone ze wzoru
+ * WCAG 2.x na parze, na której element faktycznie leży.
  */
 :root {
   /* --- Kolory marki --- */
@@ -49,6 +60,9 @@
   --psy-violet-dark: #1500bb;
   --psy-violet-06: #594ef90f;
   --psy-violet-15: #594ef926;
+  --psy-green-deep: #006b30; /* [A11Y] v2: tekst aktywnej pozycji menu 6,03:1 na tincie zieleni, najechanie na przycisk główny 6,68:1 pod białym tekstem */
+  --psy-violet-dark-06: #1500bb0f; /* v2: tint najechania w menu (strona Fundacji: --mix-color-brand-secondary-06) */
+  --psy-grey-control: #858585; /* [A11Y] v2: obramowanie pól 3,48:1 na tle strony, 3,73:1 na bieli (dawne #eaeaea: 1,20:1) */
 
   /* --- Tła i obramowania --- */
   --psy-bg-page: #f9f8f6;
@@ -132,6 +146,56 @@
   --psy-transition: 0.4s ease-in-out;
   --psy-transition-fast: 0.25s ease-in-out;
   --psy-ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ================= v2: ROLE (komponenty sięgają po role, nie po paletę) ================= */
+
+  /* --- Kolor: role --- */
+  --psy-heading: var(--psy-violet-dark); /* tytuły ekranów i kart: 11,31:1 na tle strony, 12,00:1 na bieli */
+  --psy-border-control: var(--psy-grey-control); /* obramowanie pól i przełączników (≥ 3:1) */
+  --psy-border-control-hover: var(--psy-text-muted); /* 7,46:1 na bieli */
+  --psy-action-hover: var(--psy-green-deep); /* tło przycisku głównego pod kursorem */
+  --psy-nav-hover-bg: var(--psy-violet-dark-06);
+  --psy-nav-hover-text: var(--psy-violet-dark); /* 10,63:1 na tincie */
+  --psy-nav-active-bg: var(--psy-green-10);
+  --psy-nav-active-text: var(--psy-green-deep); /* 6,03:1 na tincie (#e5f8ed) */
+  --psy-icon: var(--psy-text-muted); /* ikona liniowa: 7,46:1 na bieli, 6,84:1 na szarym */
+  --psy-row-hover: var(--psy-violet-dark-06);
+  --psy-disabled-opacity: 0.5; /* stan wyłączony (WCAG nie wymaga kontrastu), zawsze z kursorem not-allowed */
+
+  /* --- Pismo: skala produktowa (stała, stosunek ok. 1,2) --- */
+  --psy-title: 30px; /* tytuł ekranu w panelu */
+  --psy-subtitle: 18px; /* tytuł karty i sekcji listy */
+  --psy-tracking-tight: -0.01em; /* tytuły — strona Fundacji ma nagłówki pogrubione, bez ścieśniania */
+  --psy-tracking-label: 0.04em; /* nagłówki kolumn tabeli (strona Fundacji: 0.04em, 9 użyć) */
+
+  /* --- Odstępy (siatka 4 px) --- */
+  --psy-space-2xs: 4px;
+  --psy-space-xs: 8px;
+  --psy-space-sm: 12px;
+  --psy-space-md: 16px;
+  --psy-space-lg: 24px; /* wnętrze karty, odstęp między blokami ekranu */
+  --psy-space-xl: 32px; /* margines treści na szerokim ekranie */
+  --psy-space-2xl: 48px; /* odstęp między dużymi sekcjami */
+  --psy-control-height: 44px; /* Z-10: najmniejszy obszar dotykowy */
+
+  /* --- Promienie: role --- */
+  --psy-radius-control: var(--psy-radius-sm); /* pola, pozycje menu, alerty */
+  --psy-radius-card: var(--psy-radius-lg); /* karty i tabele */
+
+  /* --- Cienie: role --- */
+  --psy-shadow-raised: 0 8px 30px #0000001a; /* panel wysuwany i okno (strona Fundacji, 1 użycie) */
+
+  /* --- Ruch --- */
+  --psy-duration-fast: 150ms;
+  --psy-duration: 200ms;
+
+  /* --- Warstwy (Z-12: nazwana skala, w tej kolejności) --- */
+  --psy-z-dropdown: 10;
+  --psy-z-sticky: 20;
+  --psy-z-backdrop: 30;
+  --psy-z-modal: 40;
+  --psy-z-toast: 50;
+  --psy-z-tooltip: 60;
 }
 
 /*
@@ -181,6 +245,18 @@
   --color-event-superwizja: var(--psy-event-superwizja);
   --color-event-warsztat: var(--psy-event-warsztat);
 
+  /* v2 — role koloru: text-heading, border-control, bg-nav-active, … */
+  --color-heading: var(--psy-heading);
+  --color-control: var(--psy-border-control);
+  --color-control-hover: var(--psy-border-control-hover);
+  --color-primary-hover: var(--psy-action-hover);
+  --color-nav-hover: var(--psy-nav-hover-bg);
+  --color-nav-hover-ink: var(--psy-nav-hover-text);
+  --color-nav-active: var(--psy-nav-active-bg);
+  --color-nav-active-ink: var(--psy-nav-active-text);
+  --color-icon: var(--psy-icon);
+  --color-row-hover: var(--psy-row-hover);
+
   /* typografia — text-h1 … text-caption */
   --text-h1: var(--psy-h1);
   --text-h1--line-height: var(--psy-lh-tight);
@@ -196,6 +272,23 @@
   --text-small--line-height: 1.5;
   --text-caption: var(--psy-caption);
   --text-caption--line-height: 1.4;
+  /* v2 — text-title (tytuł ekranu), text-subtitle (tytuł karty) */
+  --text-title: var(--psy-title);
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: var(--psy-tracking-tight);
+  --text-subtitle: var(--psy-subtitle);
+  --text-subtitle--line-height: 1.35;
+  --tracking-label: var(--psy-tracking-label);
+
+  /* v2 — odstępy nazwane: p-card, gap-stack, gap-section, min-h-control */
+  --spacing-card: var(--psy-space-lg);
+  --spacing-stack: var(--psy-space-lg);
+  --spacing-section: var(--psy-space-2xl);
+  --spacing-control: var(--psy-control-height);
+
+  /* v2 — szerokości układu: w-sidebar, max-w-panel */
+  --container-sidebar: var(--psy-sidebar-width);
+  --container-panel: var(--psy-container);
 
   /* promienie — rounded-xs … rounded-pill */
   --radius-xs: var(--psy-radius-xs);
@@ -206,10 +299,42 @@
   --radius-2xl: var(--psy-radius-2xl);
   --radius-3xl: var(--psy-radius-3xl);
   --radius-pill: var(--psy-radius-pill);
+  --radius-control: var(--psy-radius-control);
+  --radius-card: var(--psy-radius-card);
 
   /* cienie */
   --shadow-card: var(--psy-shadow-card);
   --shadow-header: var(--psy-shadow-header);
+  --shadow-raised: var(--psy-shadow-raised);
+
+  /* ruch — ease-out-quint */
+  --ease-out-quint: var(--psy-ease-out-quint);
+}
+
+/* v2 — warstwy po nazwie (Z-12), nigdy liczbą w komponencie. */
+@utility z-dropdown {
+  z-index: var(--psy-z-dropdown);
+}
+@utility z-sticky {
+  z-index: var(--psy-z-sticky);
+}
+@utility z-backdrop {
+  z-index: var(--psy-z-backdrop);
+}
+@utility z-modal {
+  z-index: var(--psy-z-modal);
+}
+@utility z-toast {
+  z-index: var(--psy-z-toast);
+}
+@utility z-tooltip {
+  z-index: var(--psy-z-tooltip);
+}
+
+/* v2 — stan wyłączony: jedna wartość dla wszystkich kontrolek. */
+@utility disabled-state {
+  cursor: not-allowed;
+  opacity: var(--psy-disabled-opacity);
 }
 
 /* Wspólny pierścień fokusa (--psy-violet-dark #1500BB) — użycie:
@@ -245,6 +370,15 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* v2 — nagłówki łamane równo (bez sierot w tytułach ekranów). */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 }
 
