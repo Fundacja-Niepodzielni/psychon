@@ -391,7 +391,7 @@ export default function AdminCoursePage({
     {
       key: "sequence_order",
       header: "Pozycja",
-      render: (row) => row.sequence_order ?? "—",
+      render: (row) => row.sequence_order ?? "–",
     },
     { key: "title", header: "Tytuł", render: (row) => row.title },
     {
@@ -405,7 +405,7 @@ export default function AdminCoursePage({
     {
       key: "video_provider_id",
       header: "Identyfikator nagrania",
-      render: (row) => row.video_provider_id ?? "—",
+      render: (row) => row.video_provider_id ?? "–",
     },
     {
       key: "order",
@@ -488,7 +488,7 @@ export default function AdminCoursePage({
                 </Badge>
               </Text>
               <Text size="small" tone="muted">
-                Kurs publikujesz dopiero z lekcjami — opublikowany pusty etap
+                Kurs publikujesz dopiero z lekcjami, bo opublikowany pusty etap
                 zablokowałby ścieżkę wszystkim uczestniczkom i uczestnikom za
                 nim.
               </Text>
