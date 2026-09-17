@@ -192,35 +192,51 @@ class DocumentApiTest extends TestCase
     public function test_download_never_writes_a_file_and_content_matches_the_document_number(): void
     {
         Storage::fake('local');
-        $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
-        $document = Document::where('user_id', $marta->id)->firstOrFail();
+        // Migawka Marty w danych startowych ma celowo okrojony, starszy
+        // kształt (design D7 — bez numeru, żeby sprawdzić zgodność wsteczną
+        // szablonu), więc do tego świadka trzeba świeżo wygenerowanego
+        // dokumentu, którego migawka ma pełny komplet pól.
+        $user = User::factory()->create([
+            'edition_id' => User::where('email', 'marta@demo.pl')->firstOrFail()->edition_id,
+            'phone' => '+48 600 900 900',
+            'pesel' => '90010112345',
+            'address_street' => 'ul. Nowa 1',
+            'address_city' => 'Gdańsk',
+            'address_zip' => '80-001',
+        ]);
+        $this->actingAs($user, 'keycloak');
+        $this->postJson('/api/v1/documents/generate', ['type' => 'volunteer_agreement'])->assertCreated();
+        $document = Document::where('user_id', $user->id)->firstOrFail();
 
-        $this->actingAs($marta, 'keycloak');
         $url = URL::temporarySignedRoute('documents.download', now()->addMinutes(15), ['document' => $document->public_id]);
 
         $response = $this->get($url);
 
         $response->assertOk();
         $this->assertCount(0, Storage::disk('local')->allFiles());
-        $this->assertStringContainsString($document->number, $this->extractPdfText($response->getContent()));
+        $this->assertTrue(
+            self::pdfBytesContainText($response->getContent(), $document->number),
+            'PDF pobranego dokumentu nie niesie numeru dokumentu',
+        );
     }
 
     /**
      * Strumienie treści w PDF-ie z dompdf są skompresowane (FlateDecode),
      * więc szukanie napisu wprost w surowych bajtach nie ma sensu — trzeba
-     * rozpakować każdy strumień i dopiero w nim szukać.
+     * rozpakować każdy strumień i dopiero w nim szukać (napis w tym foncie
+     * leży jako zwykłe bajty ASCII, jeden bajt na znak).
      */
-    private function extractPdfText(string $pdf): string
+    private static function pdfBytesContainText(string $pdfBytes, string $needle): bool
     {
-        preg_match_all('/stream\r?\n(.*?)endstream/s', $pdf, $matches);
-        $text = '';
-        foreach ($matches[1] as $stream) {
-            $decoded = @gzuncompress($stream);
-            if ($decoded !== false) {
-                $text .= $decoded;
+        if (preg_match_all('/stream\r?\n(.*?)endstream/s', $pdfBytes, $matches)) {
+            foreach ($matches[1] as $stream) {
+                $decompressed = @gzuncompress($stream);
+                if ($decompressed !== false && str_contains($decompressed, $needle)) {
+                    return true;
+                }
             }
         }
 
-        return $text;
+        return false;
     }
 }
