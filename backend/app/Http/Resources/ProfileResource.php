@@ -29,11 +29,10 @@ class ProfileResource extends JsonResource
     /**
      * Karta osoby w panelu (`AdminUserCardResource`, H18) pokazuje ten sam
      * kształt profilu innej osobie (administracji), której `legal_documents_pending_acceptance`
-     * nic nie mówi — to pole ma sens wyłącznie na WŁASNYM `/me` (higiena S3,
-     * K3, po WERDYKT-S3-poz28 U-4: dwa dodatkowe zapytania o wersje
-     * dokumentów na każde otwarcie karty, bez żadnego odbiorcy tej
-     * informacji). `false` tu wyłącza samo wywołanie `pendingLegalDocumentAcceptances()`
-     * — nie tylko ukrywa klucz w odpowiedzi.
+     * nic nie mówi — to pole ma sens wyłącznie na WŁASNYM `/me` (dwa
+     * dodatkowe zapytania o wersje dokumentów na każde otwarcie karty, bez
+     * żadnego odbiorcy tej informacji). `false` tu wyłącza samo wywołanie
+     * `pendingLegalDocumentAcceptances()` — nie tylko ukrywa klucz w odpowiedzi.
      */
     private bool $includePendingLegalDocuments = true;
 

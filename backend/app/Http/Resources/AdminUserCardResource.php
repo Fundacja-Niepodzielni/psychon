@@ -33,8 +33,7 @@ class AdminUserCardResource extends JsonResource
             // Bez `legal_documents_pending_acceptance` — pole informuje
             // WŁASNĄ osobę na `/me`, co ma jeszcze zaakceptować; na karcie
             // innej osoby (panel) nie ma odbiorcy, a `pendingLegalDocumentAcceptances()`
-            // to zapytania o wersje dokumentów, których karta nie potrzebuje
-            // (higiena S3, K3, po WERDYKT-S3-poz28 U-4).
+            // to zapytania o wersje dokumentów, których karta nie potrzebuje.
             'profile' => ProfileResource::withoutPendingLegalDocuments($user)->resolve($request),
             'progress' => [
                 'courses_done' => $progress['courses_done'],

@@ -759,9 +759,9 @@ class DemoSeeder extends Seeder
      * po nim), więc żadna etykieta, którą tu wpiszemy, nie może wiarygodnie
      * potwierdzać zgody na wersję opublikowaną. `v1` kolidowało z realnym
      * `v1` regulaminu i sprawiało, że świeżo zasiane konto demo wyglądało na
-     * zaakceptowane, mimo że nigdy nie przeszło przez `POST …/accept`
-     * (higiena S3, U-2). Skutek tej etykiety: `legal_documents_pending_acceptance`
-     * na `/me` pokazuje oba rodzaje jako oczekujące dla kont demo od razu po
+     * zaakceptowane, mimo że nigdy nie przeszło przez `POST …/accept`. Skutek
+     * tej etykiety: `legal_documents_pending_acceptance` na `/me` pokazuje
+     * oba rodzaje jako oczekujące dla kont demo od razu po
      * `migrate:fresh --seed` — zgodnie z prawdą.
      *
      * @param  array<string, User>  $users
