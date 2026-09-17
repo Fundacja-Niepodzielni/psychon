@@ -4,6 +4,7 @@ namespace Tests\Feature\Sso;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\Sso\KeycloakTokenFactory;
 use Tests\TestCase;
@@ -91,6 +92,17 @@ class IdentityBindingNoElevationNoAutoCreateTest extends TestCase
      * an invitation-token value nobody issued binds to no row and creates
      * none — the endpoint fails closed on `invalid_token`, not by minting a
      * fresh account for whoever presents a bearer token.
+     *
+     * `bindByInvitationToken()` wraps its whole body in `DB::transaction()`,
+     * so a bug that creates a row and only afterwards decides to throw would
+     * be invisible to a plain "row count after the request" check: the
+     * transaction's own rollback erases the row before this test ever reads
+     * the table. The query listener below catches the attempted `insert`
+     * itself, at the moment it is sent to the database, before any rollback
+     * gets a chance to hide it. The final row-count assertion still earns
+     * its place for the other half of this guarantee — a row created before
+     * the transaction opens or after it commits, which no rollback would
+     * ever undo — but on its own it cannot prove the method never *tried*.
      */
     public function test_the_binding_endpoint_creates_no_account_for_an_unknown_invitation_token(): void
     {
@@ -98,11 +110,20 @@ class IdentityBindingNoElevationNoAutoCreateTest extends TestCase
         $before = User::query()->count();
         $token = $realm->mint(['email_verified' => true]);
 
+        $attemptedUserInserts = 0;
+        DB::listen(function ($query) use (&$attemptedUserInserts): void {
+            $sql = strtolower($query->sql);
+            if (str_starts_with(trim($sql), 'insert') && str_contains($sql, 'users')) {
+                $attemptedUserInserts++;
+            }
+        });
+
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson(self::BIND_ROUTE, ['token' => 'zaden-taki-token-nie-istnieje'])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'invalid_token');
 
+        $this->assertSame(0, $attemptedUserInserts, 'a rejected invitation token must not even attempt to insert an accounts row, whether or not it is later rolled back');
         $this->assertSame($before, User::query()->count(), 'a rejected invitation token must not add a row to the accounts table');
     }
 }
