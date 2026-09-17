@@ -7,8 +7,12 @@ import Badge from "@/components/ui/Badge";
 // Test wiąże warianty odznaki z realnymi tokenami stylu.
 //
 // Warianty wyliczamy z samego pliku Badge.tsx (blok `const variants: Record<Variant, string> = {...}`),
-// nie z ręcznie przepisanej listy w tym teście. Dopisanie siódmego wariantu w Badge.tsx
-// wystarczy, żeby ten test objął go automatycznie — bez zmiany tego pliku.
+// nie z ręcznie przepisanej listy w tym teście. Wariant o nazwie jednoczłonowej lub
+// łączonej myślnikiem (np. `highlight`, `info-strong`), dopisany do typu `Variant` i do
+// mapy `variants`, zostaje objęty przez ten test bez zmiany tego pliku — zmierzone przez
+// dopisanie takich wariantów i sprawdzenie, że test je podchwytuje z właściwym powodem
+// (brakujący wpis w mapie kończy się czytelnym niepowodzeniem, nie awarią typu
+// „oczekiwaneKlasy is not iterable").
 //
 // Dla każdej klasy z mapy sprawdzamy, że odpowiadający jej token `--color-<nazwa>`
 // jest zadeklarowany w bloku deklaracji tokenów (`@theme inline { ... }`) w app/globals.css.
@@ -64,13 +68,15 @@ function wyodrebnijBlokDeklaracjiTokenow(css: string): string {
   return trescBloku.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-// Parsowanie linii postaci: nazwa: "klasa1 klasa2", ignorując linie komentarzy (`//`).
+// Parsowanie linii postaci: nazwa: "klasa1 klasa2" albo "nazwa-z-myślnikiem": "klasa1 klasa2",
+// ignorując linie komentarzy (`//`). Klucz może być cytowany (wymagane w TS dla nazw
+// z myślnikiem) albo nie.
 function wyodrebnijMapeWariantow(blok: string): Record<string, string[]> {
   const mapa: Record<string, string[]> = {};
   const linie = blok.split("\n");
   for (const linia of linie) {
     const bezKomentarza = linia.split("//")[0];
-    const dopasowanie = bezKomentarza.match(/^\s*(\w+):\s*"([^"]+)"/);
+    const dopasowanie = bezKomentarza.match(/^\s*"?([\w-]+)"?:\s*"([^"]+)"/);
     if (dopasowanie) {
       const [, nazwa, klasy] = dopasowanie;
       mapa[nazwa] = klasy.trim().split(/\s+/);
@@ -99,6 +105,10 @@ describe("Badge — wiązanie wariantów z tokenami stylu", () => {
     describe(`wariant "${nazwa}"`, () => {
       it("odznaka niesie dokładnie klasy przypisane temu wariantowi w Badge.tsx", () => {
         const oczekiwaneKlasy = mapaWariantow[nazwa];
+        expect(
+          oczekiwaneKlasy,
+          `wariant "${nazwa}" jest w typie Variant, ale parser mapy klas w Badge.tsx go nie znalazł — literówka albo nierozpoznany kształt klucza, nie brak tokenu`,
+        ).toBeDefined();
         render(<Badge variant={nazwa as never}>Treść {nazwa}</Badge>);
         const el = screen.getByText(`Treść ${nazwa}`);
 
@@ -115,6 +125,10 @@ describe("Badge — wiązanie wariantów z tokenami stylu", () => {
 
       it("każda klasa tego wariantu ma odpowiadający token --color-<nazwa> w globals.css", () => {
         const klasy = mapaWariantow[nazwa];
+        expect(
+          klasy,
+          `wariant "${nazwa}" jest w typie Variant, ale parser mapy klas w Badge.tsx go nie znalazł — literówka albo nierozpoznany kształt klucza, nie brak tokenu`,
+        ).toBeDefined();
         expect(klasy.length).toBeGreaterThan(0);
 
         for (const klasa of klasy) {
