@@ -33,15 +33,17 @@ const STATUS_LABELS: Record<InternshipStatus, string> = {
   submitted: "Oczekuje na akceptację",
   accepted: "Zaakceptowany",
   returned: "Do poprawy",
+  rejected: "Odrzucony",
 };
 
 const STATUS_VARIANTS: Record<
   InternshipStatus,
-  "neutral" | "success" | "warning" | "info"
+  "neutral" | "success" | "warning" | "info" | "danger"
 > = {
   submitted: "info",
   accepted: "success",
   returned: "warning",
+  rejected: "danger",
 };
 
 function today(): string {
@@ -129,7 +131,7 @@ export default function InternshipJournal() {
   }
 
   function startEdit(entry: InternshipEntry) {
-    if (entry.status === "accepted") return;
+    if (entry.status === "accepted" || entry.status === "rejected") return;
     setEditingId(entry.id);
     setForm(toForm(entry));
     setFormError(null);
@@ -342,6 +344,11 @@ export default function InternshipJournal() {
                 <div className="mt-4">
                   {entry.status === "accepted" ? (
                     <p className="text-small font-medium text-success" role="status">Wpis zablokowany po akceptacji.</p>
+                  ) : entry.status === "rejected" ? (
+                    <p className="text-small font-medium text-danger" role="status">
+                      Wpis odrzucony jest zamknięty i nie można go już poprawić ani wysłać ponownie.
+                      Jeśli dyżur nadal wymaga udokumentowania, dodaj nowy wpis w formularzu powyżej.
+                    </p>
                   ) : (
                     <Button variant="secondary" onClick={() => startEdit(entry)}>
                       {entry.status === "returned" ? "Popraw i wyślij ponownie" : "Edytuj wpis"}

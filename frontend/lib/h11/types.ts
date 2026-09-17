@@ -1,4 +1,4 @@
-export type InternshipStatus = "submitted" | "accepted" | "returned";
+export type InternshipStatus = "submitted" | "accepted" | "returned" | "rejected";
 export type InternshipForm = "phone_duty" | "chat_duty" | "other";
 
 export interface InternshipEntry {
