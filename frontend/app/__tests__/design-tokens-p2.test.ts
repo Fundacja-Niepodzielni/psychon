@@ -133,6 +133,17 @@ describe("tokeny P2 w app/globals.css", () => {
     expect(rozwiazZmienna(cssCode, "--color-ink")).toBe("#1a1a1a");
   });
 
+  it("klasa Tailwind 'text-ink' (użyta w PageHeader na h1) jest podpięta pod --psy-text-strong", () => {
+    // Domyka łańcuch od klasy widocznej na elemencie do wartości tokenu:
+    // sam test wartości tokenu (wyżej) nie łapie mutacji, która odłącza
+    // `--color-ink` od `--psy-text-strong` (np. podmienia na literał koloru
+    // albo na inną zmienną) — kaskada Tailwinda nie jest liczona w jsdom,
+    // więc computed style na elemencie nie jest tu dostępny (brak
+    // Playwright/e2e w repo — zob. meldunek). To najsilniejsza kontrola
+    // dostępna bez dodawania nowej zależności.
+    expect(css).toMatch(/--color-ink:\s*var\(--psy-text-strong\)/);
+  });
+
   it("app/layout.tsx nie ładuje Google Fonts przez <link>/CDN — Roboto jest wyłącznie lokalny", () => {
     expect(layoutSource).not.toMatch(/fonts\.googleapis\.com/);
     expect(layoutSource).not.toMatch(/fonts\.gstatic\.com/);

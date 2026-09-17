@@ -157,6 +157,11 @@ describe("panel przypisań — przypisanie i odłączenie widać od razu", () =>
     const user = userEvent.setup();
     await pokazPanel([]);
 
+    // Znak myślnika „—" jest tu celowy, nie przez zaniedbanie: kierunek
+    // wizualny planuje zamianę na półpauzę „–", ale wg stanu na 2026-09-17
+    // (próbne scalenie s3-kierunek-wizualny@bbd3c68) komponent nadal renderuje
+    // myślnik w frontend/components/h09/CourseAssignmentPanel.tsx:178. Test
+    // ma zostać zaktualizowany razem ze zmianą w kodzie komponentu.
     expect(within(wiersz("Cały kurs")).getByText("—")).toBeInTheDocument();
 
     api.mockImplementation((path: string, options?: { method?: string }) => {
@@ -219,6 +224,7 @@ describe("panel przypisań — przypisanie i odłączenie widać od razu", () =>
         within(screen.getByRole("table")).queryAllByText("Joanna Wilk"),
       ).toHaveLength(0);
     });
+    // Ta sama uwaga co wyżej: myślnik „—" zostaje do czasu zmiany w komponencie.
     for (const zakres of ["Cały kurs", "Rozpoznawanie emocji", "Praca z gniewem"]) {
       expect(within(wiersz(zakres)).getByText("—")).toBeInTheDocument();
     }
