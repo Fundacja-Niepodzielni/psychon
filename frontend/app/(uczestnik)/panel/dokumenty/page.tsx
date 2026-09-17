@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ActionRow from "@/components/molecules/ActionRow";
 import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
 import PageTemplate from "@/components/templates/PageTemplate";
 import Alert from "@/components/ui/Alert";
@@ -62,10 +63,21 @@ export default function DocumentsPage() {
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [loadForbidden, setLoadForbidden] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [generatingType, setGeneratingType] = useState<DocumentType | null>(null);
   const [typeErrors, setTypeErrors] = useState<Partial<Record<DocumentType, string>>>({});
+
+  function readLoadFailure(err: unknown): { message: string | null; forbidden: boolean } {
+    if (err instanceof ApiError && err.status === 403) {
+      return { message: null, forbidden: true };
+    }
+    return {
+      message: err instanceof ApiError ? err.message : LOAD_ERROR_MESSAGE,
+      forbidden: false,
+    };
+  }
 
   // Fetch-on-mount as a plain promise chain (not a named async function
   // called from the effect body) — calling a state-setting function
@@ -82,7 +94,9 @@ export default function DocumentsPage() {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setLoadError(err instanceof ApiError ? err.message : LOAD_ERROR_MESSAGE);
+        const failure = readLoadFailure(err);
+        setLoadError(failure.message);
+        setLoadForbidden(failure.forbidden);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -96,13 +110,16 @@ export default function DocumentsPage() {
   async function reload() {
     setLoading(true);
     setLoadError(null);
+    setLoadForbidden(false);
     try {
       const result = await fetchDocuments();
       setDocuments(result.documents);
       setAvailableTypes(result.availableTypes);
       setLoaded(true);
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : LOAD_ERROR_MESSAGE);
+      const failure = readLoadFailure(err);
+      setLoadError(failure.message);
+      setLoadForbidden(failure.forbidden);
     } finally {
       setLoading(false);
     }
@@ -138,7 +155,10 @@ export default function DocumentsPage() {
   return (
     <PageTemplate naglowek={{ title: "Dokumenty" }}>
       {loading && !loaded && <LoadingState label="Wczytywanie dokumentów…" />}
-      {loadError && !loading && (
+      {!loading && loadForbidden && (
+        <ForbiddenState message="Nie masz uprawnień do wyświetlenia dokumentów." />
+      )}
+      {loadError && !loading && !loadForbidden && (
         <ErrorState
           title="Nie udało się wczytać dokumentów"
           message={loadError}

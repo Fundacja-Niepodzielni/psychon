@@ -99,6 +99,8 @@ export default function OnboardingEditor({
       if (caught instanceof ApiError && caught.status === 422 && caught.errors) {
         setFieldErrors(caught.errors);
         setFormError("Popraw zaznaczone pola.");
+      } else if (caught instanceof ApiError && caught.status === 403) {
+        setFormError("Nie masz uprawnień do zapisania tej treści.");
       } else if (caught instanceof ApiError) {
         setFormError(caught.message);
       } else {
