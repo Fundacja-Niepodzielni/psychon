@@ -21,7 +21,12 @@ if (config('features.h14')) {
     Route::middleware(['auth:keycloak', 'access.active'])->group(function (): void {
         Route::get('/documents', [DocumentController::class, 'index']);
         Route::post('/documents/generate', [DocumentController::class, 'generate']);
+        // Stary numeryczny identyfikator (sprzed publicznego) nie pasuje do
+        // wzorca uuid, więc trasa w ogóle się nie dopasowuje i router kończy
+        // sprawę zwykłym 404 — bez sięgania do zapytania po kolumnę uuid,
+        // które przy liczbie kończyło się błędem składni po stronie bazy.
         Route::get('/documents/{document:public_id}/download', [DocumentController::class, 'download'])
+            ->whereUuid('document')
             ->middleware('signed')
             ->name('documents.download');
     });
