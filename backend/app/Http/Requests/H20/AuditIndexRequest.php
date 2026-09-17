@@ -31,6 +31,7 @@ class AuditIndexRequest extends FormRequest
         'sensitive.viewed',
         'supervision.attendance_marked',
         'certificate.revoked',
+        'legal_document.published', 'legal_document.accepted',
     ];
 
     public function authorize(): bool

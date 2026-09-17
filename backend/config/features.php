@@ -30,4 +30,5 @@ return [
     'h19' => true, // Panel — pulpit i ustawienia edycji
     'h20' => true, // Raporty i widoki dziennika działań
     'h21' => true, // Onboarding „Zacznij tutaj"
+    'h22' => true, // Dokumenty prawne z wersjami
 ];
