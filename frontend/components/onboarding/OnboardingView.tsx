@@ -36,7 +36,7 @@ function VideoBlock({ video }: { video: VideoSection }) {
   }
 
   return (
-    <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-control border border-dashed border-control bg-grey text-center">
+    <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-control px-4 py-10 border border-dashed border-control bg-grey text-center">
       <span
         aria-hidden="true"
         className="flex size-14 items-center justify-center rounded-pill border border-control bg-card text-icon"
