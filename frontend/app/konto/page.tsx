@@ -6,7 +6,15 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
 import { ApiError, endSession, fetchWhoAmI, type WhoAmI } from "@/lib/api";
+
+type Usterka =
+  | { rodzaj: "sesja"; komunikat: string }
+  | { rodzaj: "odmowa"; komunikat: string }
+  | { rodzaj: "awaria"; komunikat: string };
 
 /**
  * Landing screen for the account-system sign-in door. Calls
@@ -16,7 +24,7 @@ import { ApiError, endSession, fetchWhoAmI, type WhoAmI } from "@/lib/api";
 export default function AccountPage() {
   const router = useRouter();
   const [identity, setIdentity] = useState<WhoAmI | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [usterka, setUsterka] = useState<Usterka | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -25,15 +33,27 @@ export default function AccountPage() {
       fetchWhoAmI()
         .then((data) => {
           setIdentity(data);
-          setError(null);
+          setUsterka(null);
         })
         .catch((err) => {
           setIdentity(null);
-          setError(
-            err instanceof ApiError
-              ? `${err.message} (kod: ${err.code})`
-              : "Nie udało się połączyć z serwerem.",
-          );
+          if (err instanceof ApiError && err.status === 401) {
+            // 401 zostaje jak dziś: komunikat sesji, bez ponowienia.
+            setUsterka({ rodzaj: "sesja", komunikat: `${err.message} (kod: ${err.code})` });
+          } else if (err instanceof ApiError && err.status === 403) {
+            // Odmowa roli — nigdy nie wygląda jak awaria, więc bez przycisku ponowienia.
+            setUsterka({ rodzaj: "odmowa", komunikat: err.message });
+          } else {
+            // 500 i awaria sieci: zdanie bez surowego kodu wyjątku — z
+            // możliwością ponowienia.
+            setUsterka({
+              rodzaj: "awaria",
+              komunikat:
+                err instanceof ApiError
+                  ? err.message
+                  : "Nie udało się połączyć z serwerem.",
+            });
+          }
         })
         .finally(() => setLoading(false)),
     [],
@@ -42,6 +62,11 @@ export default function AccountPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  function ponowUsterke() {
+    setLoading(true);
+    void load();
+  }
 
   async function signOut() {
     setSigningOut(true);
@@ -72,9 +97,19 @@ export default function AccountPage() {
         </div>
 
         <Card>
-          {loading && <p className="text-small text-subtle">Wczytywanie…</p>}
+          {loading && <LoadingState label="Wczytywanie…" />}
 
-          {!loading && error && <Alert variant="error">{error}</Alert>}
+          {!loading && usterka?.rodzaj === "sesja" && (
+            <Alert variant="error">{usterka.komunikat}</Alert>
+          )}
+
+          {!loading && usterka?.rodzaj === "odmowa" && (
+            <ForbiddenState message={usterka.komunikat} embedded />
+          )}
+
+          {!loading && usterka?.rodzaj === "awaria" && (
+            <ErrorState message={usterka.komunikat} onRetry={ponowUsterke} />
+          )}
 
           {!loading && identity && (
             <div className="flex flex-col gap-4">

@@ -5,6 +5,9 @@ export interface ForbiddenStateProps {
    * wygląda jak awaria (Z-6, Z-7). */
   message?: string;
   className?: string;
+  /** Gdy `true`, treść renderuje się bez własnej karty — dla użycia wewnątrz
+   * karty, która już istnieje na ekranie (bez podwójnej ramki). */
+  embedded?: boolean;
 }
 
 /**
@@ -15,13 +18,20 @@ export interface ForbiddenStateProps {
 export default function ForbiddenState({
   message = "Nie masz uprawnień do wyświetlenia tej listy.",
   className = "",
+  embedded = false,
 }: ForbiddenStateProps) {
-  return (
-    <Card className={`text-center ${className}`}>
+  const tresc = (
+    <>
       <p className="text-caption font-bold uppercase tracking-wide text-subtle">
         Brak dostępu
       </p>
       <p className="mt-2 text-body text-muted">{message}</p>
-    </Card>
+    </>
   );
+
+  if (embedded) {
+    return <div className={`text-center ${className}`}>{tresc}</div>;
+  }
+
+  return <Card className={`text-center ${className}`}>{tresc}</Card>;
 }

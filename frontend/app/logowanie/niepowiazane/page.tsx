@@ -185,7 +185,7 @@ export default function NiepowiazanePage() {
                   <div className="mt-2">
                     <Button
                       type="button"
-                      variant="secondary"
+                      className="min-h-11"
                       loading={sprawdzanie}
                       onClick={() => void ponowSprawdzenie()}
                     >
@@ -203,7 +203,7 @@ export default function NiepowiazanePage() {
             </div>
             <Button
               type="button"
-              variant="secondary"
+              variant={stan.rodzaj === "awaria" ? "secondary" : "primary"}
               className="w-full"
               loading={signingOut}
               onClick={() => void logout()}
