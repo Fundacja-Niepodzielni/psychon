@@ -1,15 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState, type FormEvent } from "react";
+import ActionRow from "@/components/molecules/ActionRow";
+import Breadcrumbs from "@/components/molecules/Breadcrumbs";
+import MoveButtons from "@/components/molecules/MoveButtons";
+import DetailTemplate from "@/components/templates/DetailTemplate";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Columns from "@/components/ui/Columns";
 import Input from "@/components/ui/Input";
+import Inset from "@/components/ui/Inset";
 import Select from "@/components/ui/Select";
+import Stack from "@/components/ui/Stack";
 import Table, { type Column } from "@/components/ui/Table";
+import Text from "@/components/ui/Text";
 import { api, ApiError } from "@/lib/api";
 import {
   COURSE_TYPE_LABELS,
@@ -368,28 +375,6 @@ export default function AdminCoursePage({
     }
   }
 
-  if (failed?.key === loadKey) {
-    return (
-      <div className="flex flex-col gap-4">
-        <Alert variant="error">{failed.message}</Alert>
-        <Link
-          href="/admin/kursy"
-          className="text-small font-medium text-primary underline underline-offset-4 focus-visible:focus-ring"
-        >
-          Wróć do listy kursów
-        </Link>
-      </div>
-    );
-  }
-
-  if (!course || !courseForm) {
-    return (
-      <p role="status" className="text-body text-muted">
-        Wczytywanie kursu…
-      </p>
-    );
-  }
-
   const courseErr = (key: string) => courseFieldErrors[key]?.[0];
   const lessonErr = (key: string) => lessonFieldErrors[key]?.[0];
 
@@ -425,36 +410,25 @@ export default function AdminCoursePage({
     {
       key: "order",
       header: "Kolejność",
-      render: (row) => {
-        const index = lessons.findIndex((lesson) => lesson.id === row.id);
-        return (
-          <span className="flex gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => moveLesson(index, -1)}
-              disabled={index === 0}
-              aria-label={`Przesuń w górę: ${row.title}`}
-            >
-              W górę
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => moveLesson(index, 1)}
-              disabled={index === lessons.length - 1}
-              aria-label={`Przesuń w dół: ${row.title}`}
-            >
-              W dół
-            </Button>
-          </span>
-        );
-      },
+      render: (row) => (
+        <MoveButtons
+          label={row.title}
+          index={lessons.findIndex((lesson) => lesson.id === row.id)}
+          count={lessons.length}
+          onMove={moveLesson}
+        />
+      ),
     },
     {
       key: "actions",
       header: "Akcje",
       render: (row) => (
-        <span className="flex gap-2">
-          <Button variant="ghost" onClick={() => openLessonForm(row.id)}>
+        <ActionRow align="start">
+          <Button
+            variant="ghost"
+            onClick={() => openLessonForm(row.id)}
+            aria-label={`Edytuj lekcję: ${row.title}`}
+          >
             Edytuj
           </Button>
           <Button
@@ -464,264 +438,312 @@ export default function AdminCoursePage({
           >
             Usuń
           </Button>
-        </span>
+        </ActionRow>
       ),
     },
   ];
 
+  const stan =
+    failed?.key === loadKey
+      ? "error"
+      : course && courseForm
+        ? "success"
+        : "loading";
+  const tytul = course?.title ?? "Kurs";
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Link
-          href="/admin/kursy"
-          className="text-small font-medium text-primary underline underline-offset-4 focus-visible:focus-ring"
-        >
-          ← Wszystkie kursy
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-h2 font-black text-ink">{course.title}</h1>
-          <Badge variant={course.is_published ? "success" : "neutral"}>
-            {course.is_published ? "Opublikowany" : "Szkic"}
-          </Badge>
-        </div>
-        <p className="text-body text-muted">
-          {COURSE_TYPE_LABELS[course.type]} ·{" "}
-          {PRODUCT_GROUP_LABELS[course.product_group]} ·{" "}
-          {course.sequence_order === null
-            ? "poza główną ścieżką"
-            : `pozycja ${course.sequence_order} w ścieżce`}
-        </p>
-      </div>
-
-      <Card title="Publikacja">
-        <div className="flex flex-col gap-4">
-          {publishError && <Alert variant="error">{publishError}</Alert>}
-          <p className="text-small text-muted">
-            Kurs publikujesz dopiero z lekcjami — opublikowany pusty etap
-            zablokowałby ścieżkę wszystkim uczestniczkom i uczestnikom za nim.
-          </p>
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button
-              variant="ghost"
-              onClick={deleteCourse}
-              loading={deletingCourse}
-            >
-              Usuń kurs
-            </Button>
-            {course.is_published ? (
-              <Button
-                variant="secondary"
-                onClick={() => setPublished(false)}
-                loading={publishing}
-              >
-                Cofnij publikację
-              </Button>
-            ) : (
-              <Button onClick={() => setPublished(true)} loading={publishing}>
-                Opublikuj kurs
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      <Card title="Dane kursu">
-        <form onSubmit={submitCourse} noValidate className="flex flex-col gap-4">
-          {courseFormError && <Alert variant="error">{courseFormError}</Alert>}
-          {courseSaved && <Alert variant="success">Zapisano zmiany.</Alert>}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Tytuł"
-              value={courseForm.title}
-              onChange={(e) => updateCourse("title", e.target.value)}
-              error={courseErr("title")}
-            />
-            <Input
-              label="Identyfikator (slug)"
-              value={courseForm.slug}
-              onChange={(e) => updateCourse("slug", e.target.value)}
-              error={courseErr("slug")}
-            />
-            <Select
-              label="Typ"
-              value={courseForm.type}
-              onChange={(e) =>
-                updateCourse("type", e.target.value as CourseType)
-              }
-              error={courseErr("type")}
-            >
-              {Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-            <Select
-              label="Grupa produktowa"
-              value={courseForm.product_group}
-              onChange={(e) =>
-                updateCourse("product_group", e.target.value as ProductGroup)
-              }
-              error={courseErr("product_group")}
-            >
-              {Object.entries(PRODUCT_GROUP_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-            <Input
-              label="Pozycja w ścieżce"
-              type="number"
-              min={1}
-              value={courseForm.sequence_order}
-              onChange={(e) => updateCourse("sequence_order", e.target.value)}
-              error={courseErr("sequence_order")}
-              hint="Puste pole = kurs poza główną ścieżką."
-            />
-          </div>
-
-          <Input
-            label="Opis"
-            value={courseForm.description}
-            onChange={(e) => updateCourse("description", e.target.value)}
-            error={courseErr("description")}
+    <DetailTemplate
+      naglowek={{
+        title: tytul,
+        description: course
+          ? `${COURSE_TYPE_LABELS[course.type]} · ${
+              PRODUCT_GROUP_LABELS[course.product_group]
+            } · ${
+              course.sequence_order === null
+                ? "poza główną ścieżką"
+                : `pozycja ${course.sequence_order} w ścieżce`
+            }`
+          : undefined,
+        breadcrumbs: (
+          <Breadcrumbs
+            items={[{ label: "Kursy", href: "/admin/kursy" }, { label: tytul }]}
           />
+        ),
+      }}
+      stan={stan}
+      komunikatLadowania="Wczytywanie kursu…"
+      komunikatBledu={failed?.message}
+      komunikatBleduTytul="Nie udało się wczytać kursu"
+      onPonow={() => setReloadKey((value) => value + 1)}
+    >
+      {course && courseForm && (
+        <>
+          <Card title="Publikacja">
+            <Stack>
+              {publishError && <Alert variant="error">{publishError}</Alert>}
+              <Text>
+                Stan kursu:{" "}
+                <Badge variant={course.is_published ? "success" : "neutral"}>
+                  {course.is_published ? "Opublikowany" : "Szkic"}
+                </Badge>
+              </Text>
+              <Text size="small" tone="muted">
+                Kurs publikujesz dopiero z lekcjami — opublikowany pusty etap
+                zablokowałby ścieżkę wszystkim uczestniczkom i uczestnikom za
+                nim.
+              </Text>
+              <ActionRow>
+                <Button
+                  variant="ghost"
+                  onClick={deleteCourse}
+                  loading={deletingCourse}
+                >
+                  Usuń kurs
+                </Button>
+                {course.is_published ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setPublished(false)}
+                    loading={publishing}
+                  >
+                    Cofnij publikację
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setPublished(true)}
+                    loading={publishing}
+                  >
+                    Opublikuj kurs
+                  </Button>
+                )}
+              </ActionRow>
+            </Stack>
+          </Card>
 
-          <div className="flex justify-end">
-            <Button type="submit" loading={savingCourse}>
-              Zapisz zmiany
-            </Button>
-          </div>
-        </form>
-      </Card>
+          <Card title="Dane kursu">
+            <form onSubmit={submitCourse} noValidate>
+              <Stack>
+                {courseFormError && (
+                  <Alert variant="error">{courseFormError}</Alert>
+                )}
+                {courseSaved && (
+                  <Alert variant="success">Zapisano zmiany.</Alert>
+                )}
 
-      <Card title="Lekcje">
-        <div className="flex flex-col gap-4">
-          {lessonActionError && (
-            <Alert variant="error">{lessonActionError}</Alert>
-          )}
+                <Columns>
+                  <Input
+                    label="Tytuł"
+                    value={courseForm.title}
+                    onChange={(e) => updateCourse("title", e.target.value)}
+                    error={courseErr("title")}
+                  />
+                  <Input
+                    label="Identyfikator (slug)"
+                    value={courseForm.slug}
+                    onChange={(e) => updateCourse("slug", e.target.value)}
+                    error={courseErr("slug")}
+                  />
+                  <Select
+                    label="Typ"
+                    value={courseForm.type}
+                    onChange={(e) =>
+                      updateCourse("type", e.target.value as CourseType)
+                    }
+                    error={courseErr("type")}
+                  >
+                    {Object.entries(COURSE_TYPE_LABELS).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </Select>
+                  <Select
+                    label="Grupa produktowa"
+                    value={courseForm.product_group}
+                    onChange={(e) =>
+                      updateCourse(
+                        "product_group",
+                        e.target.value as ProductGroup,
+                      )
+                    }
+                    error={courseErr("product_group")}
+                  >
+                    {Object.entries(PRODUCT_GROUP_LABELS).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </Select>
+                  <Input
+                    label="Pozycja w ścieżce"
+                    type="number"
+                    min={1}
+                    value={courseForm.sequence_order}
+                    onChange={(e) =>
+                      updateCourse("sequence_order", e.target.value)
+                    }
+                    error={courseErr("sequence_order")}
+                    hint="Puste pole = kurs poza główną ścieżką."
+                  />
+                </Columns>
 
-          <div className="flex flex-wrap justify-end gap-3">
-            {orderDirty && (
-              <Button
-                variant="secondary"
-                onClick={saveLessonOrder}
-                loading={savingOrder}
-              >
-                Zapisz kolejność lekcji
-              </Button>
-            )}
-            <Button
-              onClick={() =>
-                lessonFormOpen === "new"
-                  ? setLessonFormOpen(null)
-                  : openLessonForm("new")
-              }
-              aria-expanded={lessonFormOpen === "new"}
-            >
-              {lessonFormOpen === "new" ? "Zamknij formularz" : "Nowa lekcja"}
-            </Button>
-          </div>
-
-          <Table
-            columns={lessonColumns}
-            rows={lessons}
-            rowKey={(row) => row.id}
-            caption={`Lekcje kursu ${course.title}`}
-            emptyMessage="Ten kurs nie ma jeszcze lekcji. Dodaj pierwszą, żeby móc go opublikować."
-          />
-
-          {lessonFormOpen !== null && (
-            <form
-              onSubmit={submitLesson}
-              noValidate
-              className="flex flex-col gap-4 rounded-sm border border-line bg-page p-4"
-            >
-              <h3 className="text-h4 font-bold text-ink">
-                {lessonFormOpen === "new" ? "Nowa lekcja" : "Edycja lekcji"}
-              </h3>
-
-              {lessonFormError && <Alert variant="error">{lessonFormError}</Alert>}
-
-              <div className="grid gap-4 sm:grid-cols-2">
                 <Input
-                  label="Tytuł lekcji"
-                  value={lessonForm.title}
-                  onChange={(e) => updateLesson("title", e.target.value)}
-                  error={lessonErr("title")}
+                  label="Opis"
+                  value={courseForm.description}
+                  onChange={(e) => updateCourse("description", e.target.value)}
+                  error={courseErr("description")}
                 />
-                <Input
-                  label="Pozycja w kursie"
-                  type="number"
-                  min={1}
-                  value={lessonForm.sequence_order}
-                  onChange={(e) =>
-                    updateLesson("sequence_order", e.target.value)
+
+                <ActionRow>
+                  <Button type="submit" loading={savingCourse}>
+                    Zapisz zmiany
+                  </Button>
+                </ActionRow>
+              </Stack>
+            </form>
+          </Card>
+
+          <Card title="Lekcje">
+            <Stack>
+              {lessonActionError && (
+                <Alert variant="error">{lessonActionError}</Alert>
+              )}
+
+              <ActionRow>
+                {orderDirty && (
+                  <Button
+                    variant="secondary"
+                    onClick={saveLessonOrder}
+                    loading={savingOrder}
+                  >
+                    Zapisz kolejność lekcji
+                  </Button>
+                )}
+                <Button
+                  variant={lessonFormOpen === "new" ? "secondary" : "primary"}
+                  onClick={() =>
+                    lessonFormOpen === "new"
+                      ? setLessonFormOpen(null)
+                      : openLessonForm("new")
                   }
-                  error={lessonErr("sequence_order")}
-                  hint="Puste pole = kolejny wolny numer."
-                />
-                <Input
-                  label="Identyfikator nagrania (mock)"
-                  value={lessonForm.video_provider_id}
-                  onChange={(e) =>
-                    updateLesson("video_provider_id", e.target.value)
-                  }
-                  error={lessonErr("video_provider_id")}
-                />
-                <Input
-                  label="Czas trwania (sekundy)"
-                  type="number"
-                  min={0}
-                  value={lessonForm.duration_seconds}
-                  onChange={(e) =>
-                    updateLesson("duration_seconds", e.target.value)
-                  }
-                  error={lessonErr("duration_seconds")}
-                  hint="Zero oznacza, że lekcji nie da się ukończyć."
-                />
-              </div>
+                  aria-expanded={lessonFormOpen === "new"}
+                >
+                  {lessonFormOpen === "new"
+                    ? "Zamknij formularz"
+                    : "Nowa lekcja"}
+                </Button>
+              </ActionRow>
 
-              <Input
-                label="Opis"
-                value={lessonForm.description}
-                onChange={(e) => updateLesson("description", e.target.value)}
-                error={lessonErr("description")}
+              <Table
+                columns={lessonColumns}
+                rows={lessons}
+                rowKey={(row) => row.id}
+                caption={`Lekcje kursu ${course.title}`}
+                emptyMessage="Ten kurs nie ma jeszcze lekcji. Dodaj pierwszą, żeby móc go opublikować."
               />
 
-              <div className="flex flex-wrap justify-end gap-3">
-                <Button variant="ghost" onClick={() => setLessonFormOpen(null)}>
-                  Anuluj
-                </Button>
-                <Button type="submit" loading={savingLesson}>
-                  {lessonFormOpen === "new" ? "Dodaj lekcję" : "Zapisz lekcję"}
-                </Button>
-              </div>
+              {lessonFormOpen !== null && (
+                <form onSubmit={submitLesson} noValidate>
+                  <Inset
+                    title={
+                      lessonFormOpen === "new" ? "Nowa lekcja" : "Edycja lekcji"
+                    }
+                  >
+                    {lessonFormError && (
+                      <Alert variant="error">{lessonFormError}</Alert>
+                    )}
 
-              {editedLesson &&
-                materialSlots.map(({ id: slotId, Component }) => (
-                  <Component
-                    key={slotId}
-                    course={course}
-                    lesson={editedLesson}
-                  />
-                ))}
-            </form>
-          )}
-        </div>
-      </Card>
+                    <Columns>
+                      <Input
+                        label="Tytuł lekcji"
+                        value={lessonForm.title}
+                        onChange={(e) => updateLesson("title", e.target.value)}
+                        error={lessonErr("title")}
+                      />
+                      <Input
+                        label="Pozycja w kursie"
+                        type="number"
+                        min={1}
+                        value={lessonForm.sequence_order}
+                        onChange={(e) =>
+                          updateLesson("sequence_order", e.target.value)
+                        }
+                        error={lessonErr("sequence_order")}
+                        hint="Puste pole = kolejny wolny numer."
+                      />
+                      <Input
+                        label="Identyfikator nagrania (mock)"
+                        value={lessonForm.video_provider_id}
+                        onChange={(e) =>
+                          updateLesson("video_provider_id", e.target.value)
+                        }
+                        error={lessonErr("video_provider_id")}
+                      />
+                      <Input
+                        label="Czas trwania (sekundy)"
+                        type="number"
+                        min={0}
+                        value={lessonForm.duration_seconds}
+                        onChange={(e) =>
+                          updateLesson("duration_seconds", e.target.value)
+                        }
+                        error={lessonErr("duration_seconds")}
+                        hint="Zero oznacza, że lekcji nie da się ukończyć."
+                      />
+                    </Columns>
 
-      {materialSlots.map(({ id: slotId, Component }) => (
-        <Component key={slotId} course={course} />
-      ))}
-      {assignmentSlots.map(({ id: slotId, Component }) => (
-        <Component key={slotId} course={course} lessons={lessons} />
-      ))}
-      {actionSlots.map(({ id: slotId, Component }) => (
-        <Component key={slotId} course={course} />
-      ))}
-    </div>
+                    <Input
+                      label="Opis"
+                      value={lessonForm.description}
+                      onChange={(e) =>
+                        updateLesson("description", e.target.value)
+                      }
+                      error={lessonErr("description")}
+                    />
+
+                    <ActionRow>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setLessonFormOpen(null)}
+                      >
+                        Anuluj
+                      </Button>
+                      <Button type="submit" loading={savingLesson}>
+                        {lessonFormOpen === "new"
+                          ? "Dodaj lekcję"
+                          : "Zapisz lekcję"}
+                      </Button>
+                    </ActionRow>
+
+                    {editedLesson &&
+                      materialSlots.map(({ id: slotId, Component }) => (
+                        <Component
+                          key={slotId}
+                          course={course}
+                          lesson={editedLesson}
+                        />
+                      ))}
+                  </Inset>
+                </form>
+              )}
+            </Stack>
+          </Card>
+
+          {materialSlots.map(({ id: slotId, Component }) => (
+            <Component key={slotId} course={course} />
+          ))}
+          {assignmentSlots.map(({ id: slotId, Component }) => (
+            <Component key={slotId} course={course} lessons={lessons} />
+          ))}
+          {actionSlots.map(({ id: slotId, Component }) => (
+            <Component key={slotId} course={course} />
+          ))}
+        </>
+      )}
+    </DetailTemplate>
   );
 }
