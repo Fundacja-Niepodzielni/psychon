@@ -1,0 +1,27 @@
+# Harmonogram kopii zapasowych i monitoringu srodowiska produkcyjnego.
+#
+# Wybor: CRON, nie systemd timer.
+#   - host juz uzywa cron.d do innego zadania startowego (deploy/bootstrap-host.sh),
+#     wiec drugi mechanizm harmonogramu obok istniejacego byloby niepotrzebnym
+#     rozdwojeniem - jedno miejsce do przegladu wystarcza dwom lekkim zadaniom
+#     bez zaleznosci miedzy soba i bez potrzeby nadzoru nad dzialajacym procesem
+#     (to, co daje systemd ponad cron, tu nie jest potrzebne - oba zadania to
+#     pojedyncze wywolania, ktore konczy sie same).
+#   - plik tekstowy latwiej przejrzec w przegladzie zmian niz pare plikow
+#     jednostki + timera, a instalacja to jedna komenda, bez `daemon-reload`
+#     ani `enable --now`.
+#
+# Instalacja (jako uzytkownik `deploy`, ten sam, ktory ma stos na hoscie):
+#     crontab -u deploy deploy/prod/harmonogram/psychon-crontab
+# Podglad:
+#     crontab -u deploy -l
+#
+# Kopia bazy i storage: raz na dobe o 3:00 (umowa wymaga bazy co najmniej raz
+# na dobe, storage co najmniej raz w tygodniu - ten sam skrypt robi obie
+# rzeczy co noc, wiec wymog tygodniowy jest spelniony z naddatkiem, nie "akurat").
+# Sciezka do repozytorium i pliku konfiguracyjnego sa przykladowe - dostosuj
+# do miejsca wdrozenia na docelowym hoscie.
+0 3 * * * /opt/psychon/repo/deploy/prod/kopia-nocna.sh /opt/psychon/kopie.env >> /var/log/psychon-kopia.log 2>&1
+
+# Monitoring: co 5 minut.
+*/5 * * * * /opt/psychon/repo/deploy/prod/monitoring.sh /opt/psychon/kopie.env >> /var/log/psychon-monitoring.log 2>&1
