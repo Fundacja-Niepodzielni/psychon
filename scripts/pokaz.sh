@@ -30,7 +30,34 @@ echo "== Zależności frontu =="
 # package-lock.json, a ich postinstall tylko dobiera wlasciwy natywny plik
 # binarny z wlasnych optionalDependencies - bez niego `npm run build` i lint
 # padaja. Rebuild wylacznie tych dwoch (plus `fsevents`, macOS-only).
-(cd frontend && npm ci --ignore-scripts && npm rebuild esbuild unrs-resolver fsevents)
+# REBUILD_LISTA jest tu JEDYNYM miejscem wpisania tej listy w tym pliku -
+# uzywaja jej i `npm rebuild`, i kontrola ponizej. Ta sama wartosc musi
+# siedziec w `.github/workflows/ci.yml` (zmienna REBUILD_LISTA) i w
+# scripts/setup.sh - trzy pliki, zaden nie umie odczytac listy od drugiego
+# bez dodatkowej zaleznosci (parser YAML w bashu), wiec kazdy pilnuje
+# siebie osobno wobec tego samego zrodla prawdy: package-lock.json.
+REBUILD_LISTA="esbuild unrs-resolver fsevents"
+(
+  cd frontend
+  npm ci --ignore-scripts
+  npm rebuild $REBUILD_LISTA
+  REBUILD_LISTA="$REBUILD_LISTA" node -e '
+    const fs = require("fs");
+    const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+    const found = new Set();
+    for (const [p, info] of Object.entries(lock.packages || {})) {
+      if (info && info.hasInstallScript) found.add(p.split("node_modules/").pop());
+    }
+    const expected = new Set((process.env.REBUILD_LISTA || "").trim().split(/\s+/).filter(Boolean));
+    const a = [...found].sort().join(",");
+    const b = [...expected].sort().join(",");
+    if (a !== b) {
+      console.error("Rozjazd: hasInstallScript w package-lock.json = [" + a + "], REBUILD_LISTA = [" + b + "]. Uaktualnij zmienna REBUILD_LISTA na gorze tego skryptu.");
+      process.exit(1);
+    }
+    console.log("Zgodnosc potwierdzona: " + a);
+  '
+)
 
 echo
 echo "Gotowe. Backend: http://localhost:8000 · Mailpit: http://localhost:8025"

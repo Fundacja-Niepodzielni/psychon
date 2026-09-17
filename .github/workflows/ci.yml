@@ -97,6 +97,11 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      # JEDYNE miejsce, w ktorym ta lista jest wpisana z reki. Krok "Zaleznosci"
+      # i krok "Zgodnosc..." ponizej czytaja ja stad, nie maja wlasnej kopii -
+      # zmiana pakietow do przebudowania wymaga zmiany TYLKO tej jednej linii.
+      REBUILD_LISTA: "esbuild unrs-resolver fsevents"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -115,13 +120,13 @@ jobs:
       - name: Zależności
         run: |
           npm ci --ignore-scripts
-          npm rebuild esbuild unrs-resolver fsevents
-      # Lista pakietow w `npm rebuild` powyzej jest przepisana z reki z pola
-      # "hasInstallScript" w package-lock.json (stan na dzis: esbuild, unrs-resolver,
-      # fsevents). Nic samo z siebie nie pilnuje tej zgodnosci - jesli zaleznosc z
-      # wlasnym postinstallem dojdzie albo odpadnie, lista rebuildu po cichu przestanie
-      # pasowac do pliku blokady i luka wroci bez ostrzezenia. Krok PRZERYWA bieg
-      # przy rozjezdzie, zamiast go tylko notowac.
+          npm rebuild $REBUILD_LISTA
+      # $REBUILD_LISTA jest zdefiniowana raz, w `env:` tego zadania (zobacz wyzej).
+      # Ten krok nie ma wlasnej kopii listy - czyta dokladnie ta sama zmienna,
+      # ktora krok "Zaleznosci" przekazuje do `npm rebuild`. Nic samo z siebie
+      # nie pilnowaloby zgodnosci z polem "hasInstallScript" w package-lock.json,
+      # gdyby zaleznosc z wlasnym postinstallem dolaczyla albo odpadla - ten krok
+      # PRZERYWA bieg przy takim rozjezdzie, zamiast go tylko notowac.
       - name: Zgodność listy rebuildu z package-lock.json
         run: |
           node -e '
@@ -131,11 +136,13 @@ jobs:
             for (const [p, info] of Object.entries(lock.packages || {})) {
               if (info && info.hasInstallScript) found.add(p.split("node_modules/").pop());
             }
-            const expected = new Set(["esbuild", "unrs-resolver", "fsevents"]);
+            const expected = new Set(
+              (process.env.REBUILD_LISTA || "").trim().split(/\s+/).filter(Boolean)
+            );
             const a = [...found].sort().join(",");
             const b = [...expected].sort().join(",");
             if (a !== b) {
-              console.error("Rozjazd: hasInstallScript w package-lock.json = [" + a + "], lista w kroku Zaleznosci = [" + b + "]. Uaktualnij obie strony (krok wyzej i ten test).");
+              console.error("Rozjazd: hasInstallScript w package-lock.json = [" + a + "], REBUILD_LISTA = [" + b + "]. Uaktualnij zmienna REBUILD_LISTA w env: tego zadania.");
               process.exit(1);
             }
             console.log("Zgodnosc potwierdzona: " + a);
