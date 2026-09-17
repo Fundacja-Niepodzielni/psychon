@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -63,6 +66,9 @@ export default function CourseTestPage() {
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [message, setMessage] = useState<string | null>(null);
+  // Rozstrzyga wygląd fazy "error": brak uprawnień (403) to odmowa bez
+  // ponowienia, sieć/5xx to awaria z ponowieniem, które wczytuje test od nowa.
+  const [canRetry, setCanRetry] = useState(true);
   const [test, setTest] = useState<TestPayload | null>(null);
   const [history, setHistory] = useState<AttemptHistoryRow[]>([]);
 
@@ -97,11 +103,17 @@ export default function CourseTestPage() {
           if (err instanceof ApiError && err.code === "course_locked") {
             setMessage(err.message);
             setPhase("locked");
+          } else if (err instanceof ApiError && err.status === 403) {
+            setMessage(err.message);
+            setCanRetry(false);
+            setPhase("error");
           } else if (err instanceof ApiError) {
             setMessage(err.message);
+            setCanRetry(true);
             setPhase("error");
           } else {
             setMessage("Nie udało się wczytać testu. Odśwież stronę.");
+            setCanRetry(true);
             setPhase("error");
           }
         }),
@@ -155,14 +167,14 @@ export default function CourseTestPage() {
   const backToCourse = (
     <Link
       href={`/panel/kursy/${slug}`}
-      className="text-body font-medium text-primary underline underline-offset-4"
+      className="inline-flex min-h-11 items-center text-body font-medium text-primary underline underline-offset-4"
     >
       Wróć do kursu
     </Link>
   );
 
   if (phase === "loading") {
-    return <p className="text-body text-muted">Wczytywanie testu…</p>;
+    return <LoadingState label="Wczytywanie testu…" />;
   }
 
   if (phase === "locked") {
@@ -177,10 +189,22 @@ export default function CourseTestPage() {
     );
   }
 
-  if (phase === "error" || !test) {
+  if (phase === "error") {
+    if (!canRetry) {
+      return <ForbiddenState message={message ?? undefined} />;
+    }
+
     return (
       <div className="mx-auto max-w-xl py-10">
-        <Alert variant="error">{message ?? "Wystąpił błąd."}</Alert>
+        <ErrorState message={message ?? "Wystąpił błąd."} onRetry={restart} />
+      </div>
+    );
+  }
+
+  if (!test) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <ErrorState message="Wystąpił błąd." onRetry={restart} />
       </div>
     );
   }

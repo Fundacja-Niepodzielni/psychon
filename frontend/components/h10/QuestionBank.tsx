@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import QuestionForm from "@/components/h10/QuestionForm";
+import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -19,7 +22,12 @@ export interface QuestionBankProps {
   testId: number;
 }
 
-type Phase = "loading" | "ready" | "load_error";
+/**
+ * `forbidden` odróżnia brak uprawnień (403) od awarii wczytania (sieć/5xx):
+ * pierwsze to odmowa, bez ponowienia — drugie to błąd, z przyciskiem, który
+ * wywołuje ten sam efekt jeszcze raz.
+ */
+type Phase = "loading" | "ready" | "forbidden" | "load_error";
 
 function fieldErrorsOf(error: unknown): Record<string, string[]> {
   return error instanceof ApiError ? (error.errors ?? {}) : {};
@@ -44,6 +52,7 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [phase, setPhase] = useState<Phase>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   const [creating, setCreating] = useState(false);
   const [newDraft, setNewDraft] = useState<QuestionDraft>(emptyDraft);
@@ -76,14 +85,24 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
       })
       .catch((error: unknown) => {
         if (!active) return;
-        setLoadError(messageOf(error, "Nie udało się wczytać banku pytań."));
-        setPhase("load_error");
+        if (error instanceof ApiError && error.status === 403) {
+          setLoadError(messageOf(error, "Nie masz uprawnień do wyświetlenia banku pytań."));
+          setPhase("forbidden");
+        } else {
+          setLoadError(messageOf(error, "Nie udało się wczytać banku pytań."));
+          setPhase("load_error");
+        }
       });
 
     return () => {
       active = false;
     };
-  }, [testId]);
+  }, [testId, attempt]);
+
+  function retryLoad() {
+    setPhase("loading");
+    setAttempt((n) => n + 1);
+  }
 
   async function createQuestion() {
     const local = draftError(newDraft);
@@ -214,19 +233,23 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
   if (phase === "loading") {
     return (
       <Card title="Bank pytań">
-        <p className="text-body text-muted" role="status" aria-live="polite">
-          Wczytywanie pytań…
-        </p>
+        <LoadingState label="Wczytywanie pytań…" />
       </Card>
     );
+  }
+
+  if (phase === "forbidden") {
+    return <ForbiddenState message={loadError ?? undefined} />;
   }
 
   if (phase === "load_error") {
     return (
       <Card title="Bank pytań">
-        <Alert variant="error" title="Nie udało się otworzyć banku pytań">
-          {loadError ?? "Spróbuj ponownie za chwilę."}
-        </Alert>
+        <ErrorState
+          title="Nie udało się otworzyć banku pytań"
+          message={loadError ?? "Spróbuj ponownie za chwilę."}
+          onRetry={retryLoad}
+        />
       </Card>
     );
   }
