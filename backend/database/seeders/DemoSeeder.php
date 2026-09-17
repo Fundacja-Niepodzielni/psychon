@@ -749,7 +749,20 @@ class DemoSeeder extends Seeder
     }
 
     /**
-     * Terms & privacy consents for the demo accounts.
+     * Terms & privacy consents for the demo accounts — historic records,
+     * not a stand-in for the H22 legal-document acceptance flow.
+     *
+     * Etykieta wersji `demo-sprzed-h22` jest CELOWO różna od realnych
+     * oznaczeń wersji publikowanych przez `LegalDocumentSeeder` (`v1`, `v2`…):
+     * ten seeder działa niezależnie od H22 (nie wywołuje trasy akceptacji ani
+     * nie zna aktualnie opublikowanej wersji — `LegalDocumentSeeder` biegnie
+     * po nim), więc żadna etykieta, którą tu wpiszemy, nie może wiarygodnie
+     * potwierdzać zgody na wersję opublikowaną. `v1` kolidowało z realnym
+     * `v1` regulaminu i sprawiało, że świeżo zasiane konto demo wyglądało na
+     * zaakceptowane, mimo że nigdy nie przeszło przez `POST …/accept`
+     * (higiena S3, U-2). Skutek tej etykiety: `legal_documents_pending_acceptance`
+     * na `/me` pokazuje oba rodzaje jako oczekujące dla kont demo od razu po
+     * `migrate:fresh --seed` — zgodnie z prawdą.
      *
      * @param  array<string, User>  $users
      */
@@ -760,7 +773,7 @@ class DemoSeeder extends Seeder
                 Consent::create([
                     'user_id' => $users[$key]->id,
                     'type' => $type,
-                    'document_version' => 'v1',
+                    'document_version' => 'demo-sprzed-h22',
                     'granted_at' => now()->subMonths(4),
                 ]);
             }
