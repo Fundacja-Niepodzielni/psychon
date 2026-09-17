@@ -9,6 +9,7 @@ use App\Http\Resources\H22\PublicLegalDocumentResource;
 use App\Models\Consent;
 use App\Models\LegalDocumentVersion;
 use App\Support\AuditLog;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,14 @@ class LegalDocumentController extends Controller
      * zgadzać się z wersją aktualnie opublikowaną. Ponowna akceptacja tej
      * samej (nadal bieżącej) wersji nie tworzy duplikatu — zwraca istniejący
      * wpis.
+     *
+     * Dwa równoległe żądania: obie transakcje mogą przejść sprawdzenie
+     * `existing` (brak wiersza), zanim którakolwiek zdąży wstawić swój —
+     * indeks `consents_user_type_version_unique` rozstrzyga, która wygrywa.
+     * Przegrana dostaje `QueryException` (naruszenie unikalności); łapiemy
+     * je tu i zwracamy wiersz zwycięzcy zamiast błędu — bez drugiego wpisu
+     * `audit_log` (transakcja przegranej cofa się w całości, więc jej
+     * `AuditLog::record`, wywoływany po `Consent::create()`, nigdy nie biegnie).
      */
     public function accept(AcceptLegalDocumentRequest $request, string $type): JsonResponse
     {
@@ -80,32 +89,46 @@ class LegalDocumentController extends Controller
             );
         }
 
-        $consent = DB::transaction(function () use ($user, $type, $current): Consent {
-            $existing = Consent::query()
-                ->where('user_id', $user->id)
-                ->where('type', $type)
-                ->where('document_version', $current->version)
-                ->whereNull('withdrawn_at')
-                ->first();
+        $findExisting = fn (): ?Consent => Consent::query()
+            ->where('user_id', $user->id)
+            ->where('type', $type)
+            ->where('document_version', $current->version)
+            ->whereNull('withdrawn_at')
+            ->first();
 
-            if ($existing !== null) {
-                return $existing;
+        try {
+            $consent = DB::transaction(function () use ($user, $type, $current, $findExisting): Consent {
+                $existing = $findExisting();
+
+                if ($existing !== null) {
+                    return $existing;
+                }
+
+                $consent = Consent::create([
+                    'user_id' => $user->id,
+                    'type' => $type,
+                    'document_version' => $current->version,
+                    'granted_at' => now(),
+                ]);
+
+                AuditLog::record($user, 'legal_document.accepted', $current, [
+                    'type' => $type,
+                    'version' => $current->version,
+                ]);
+
+                return $consent;
+            });
+        } catch (QueryException $e) {
+            if (! self::isUniqueConstraintViolation($e)) {
+                throw $e;
             }
 
-            $consent = Consent::create([
-                'user_id' => $user->id,
-                'type' => $type,
-                'document_version' => $current->version,
-                'granted_at' => now(),
-            ]);
+            $consent = $findExisting();
 
-            AuditLog::record($user, 'legal_document.accepted', $current, [
-                'type' => $type,
-                'version' => $current->version,
-            ]);
-
-            return $consent;
-        });
+            if ($consent === null) {
+                throw $e;
+            }
+        }
 
         return response()->json([
             'data' => [
@@ -113,6 +136,20 @@ class LegalDocumentController extends Controller
                 'document_version' => $consent->document_version,
             ],
         ], $consent->wasRecentlyCreated ? 201 : 200);
+    }
+
+    /**
+     * Naruszenie unikalności niezależnie od silnika: `23505` (PostgreSQL —
+     * produkcja i testy), `1062` (MySQL/MariaDB), komunikat SQLite (lokalne
+     * narzędzia). Każdy inny `QueryException` leci dalej niezmieniony.
+     */
+    private static function isUniqueConstraintViolation(QueryException $e): bool
+    {
+        $sqlState = $e->errorInfo[0] ?? $e->getCode();
+
+        return $sqlState === '23505'
+            || (int) $sqlState === 1062
+            || str_contains($e->getMessage(), 'UNIQUE constraint failed');
     }
 
     private function assertKnownType(string $type): void

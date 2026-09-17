@@ -30,7 +30,11 @@ class AdminUserCardResource extends JsonResource
         $progress = ProgressAggregator::for($user);
 
         return [
-            'profile' => ProfileResource::make($user)->resolve($request),
+            // Bez `legal_documents_pending_acceptance` — pole informuje
+            // WŁASNĄ osobę na `/me`, co ma jeszcze zaakceptować; na karcie
+            // innej osoby (panel) nie ma odbiorcy, a `pendingLegalDocumentAcceptances()`
+            // to zapytania o wersje dokumentów, których karta nie potrzebuje.
+            'profile' => ProfileResource::withoutPendingLegalDocuments($user)->resolve($request),
             'progress' => [
                 'courses_done' => $progress['courses_done'],
                 'courses_total' => $progress['courses_total'],
