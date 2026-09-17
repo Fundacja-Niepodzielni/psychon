@@ -264,6 +264,145 @@ class InternshipTest extends TestCase
             ->contains(fn ($route): bool => $route->uri() === 'api/v1/internship/entries/{id}' && in_array('GET', $route->methods(), true)));
     }
 
+    public function test_reject_requires_comment_and_leaves_entry_submitted(): void
+    {
+        $admin = User::factory()->create(['role' => 'project_manager']);
+        $volunteer = User::factory()->create(['role' => 'volunteer']);
+        $entry = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$entry->id}/reject", [])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'validation_failed');
+
+        $this->assertSame('submitted', $entry->fresh()->status);
+    }
+
+    public function test_reject_with_comment_sets_status_and_reason_and_excludes_hours_from_certificate(): void
+    {
+        $admin = User::factory()->create(['role' => 'project_manager']);
+        $volunteer = User::factory()->create(['role' => 'volunteer']);
+        InternshipEntry::create($this->entryData($volunteer, 'accepted'));
+        $entry = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+
+        $before = $this->actingAs($volunteer, 'keycloak')->getJson('/api/v1/internship/entries');
+        $before->assertOk()->assertJsonPath('meta.extra.accepted_hours', '5');
+
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$entry->id}/reject", ['comment' => 'Brak wymaganych konsultacji.'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'rejected')
+            ->assertJsonPath('data.review_comment', 'Brak wymaganych konsultacji.');
+
+        $owner = $this->actingAs($volunteer, 'keycloak')->getJson('/api/v1/internship/entries');
+        $owner->assertOk()->assertJsonPath('meta.extra.accepted_hours', '5');
+        $rejected = collect($owner->json('data'))->firstWhere('id', $entry->id);
+        $this->assertSame('rejected', $rejected['status']);
+        $this->assertSame('Brak wymaganych konsultacji.', $rejected['review_comment']);
+    }
+
+    public function test_editing_rejected_entry_is_locked(): void
+    {
+        $admin = User::factory()->create(['role' => 'project_manager']);
+        $volunteer = User::factory()->create(['role' => 'volunteer']);
+        $entry = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$entry->id}/reject", ['comment' => 'Powód odrzucenia.'])
+            ->assertOk();
+
+        $this->actingAs($volunteer, 'keycloak')
+            ->patchJson("/api/v1/internship/entries/{$entry->id}", ['hours' => '1.0'])
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'entry_locked');
+    }
+
+    public function test_reject_permissions_owner_and_unrelated_role_are_denied_pm_and_super_admin_allowed(): void
+    {
+        $volunteer = User::factory()->create(['role' => 'volunteer']);
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $admin = User::factory()->create(['role' => 'project_manager']);
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+
+        $forOwner = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+        $this->actingAs($volunteer, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$forOwner->id}/reject", ['comment' => 'x'])
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'forbidden');
+
+        $forInstructor = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+        $this->actingAs($instructor, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$forInstructor->id}/reject", ['comment' => 'x'])
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'forbidden');
+
+        $forPm = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$forPm->id}/reject", ['comment' => 'x'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'rejected');
+
+        $forSuperAdmin = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+        $this->actingAs($superAdmin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$forSuperAdmin->id}/reject", ['comment' => 'x'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'rejected');
+    }
+
+    public function test_reject_writes_exactly_one_audit_row_and_denied_attempt_writes_none(): void
+    {
+        $admin = User::factory()->create(['role' => 'project_manager']);
+        $volunteer = User::factory()->create(['role' => 'volunteer']);
+
+        $deniedAttempt = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+        $this->actingAs($volunteer, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$deniedAttempt->id}/reject", ['comment' => 'x'])
+            ->assertStatus(403);
+        $this->assertSame(0, AuditLogEntry::where('action', 'internship.rejected')->count());
+
+        $entry = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$entry->id}/reject", ['comment' => 'Powód.'])
+            ->assertOk();
+
+        $this->assertSame(1, AuditLogEntry::where('action', 'internship.rejected')->count());
+        $this->assertDatabaseHas('audit_log', [
+            'action' => 'internship.rejected',
+            'actor_id' => $admin->id,
+            'subject_id' => $entry->id,
+        ]);
+    }
+
+    public function test_second_decision_on_resolved_entry_is_denied_and_writes_no_new_audit_rows(): void
+    {
+        $admin = User::factory()->create(['role' => 'project_manager']);
+        $volunteer = User::factory()->create(['role' => 'volunteer']);
+
+        $rejected = InternshipEntry::create($this->entryData($volunteer, 'submitted'));
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$rejected->id}/reject", ['comment' => 'Powód.'])
+            ->assertOk();
+        $rowsAfterFirstDecision = AuditLogEntry::count();
+
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$rejected->id}/accept")
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'entry_locked');
+
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$rejected->id}/reject", ['comment' => 'Powód drugi.'])
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'entry_locked');
+
+        $accepted = InternshipEntry::create($this->entryData($volunteer, 'accepted'));
+        $this->actingAs($admin, 'keycloak')
+            ->postJson("/api/v1/admin/internship/{$accepted->id}/reject", ['comment' => 'Powód.'])
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'entry_locked');
+
+        $this->assertSame($rowsAfterFirstDecision, AuditLogEntry::count());
+    }
+
     private function entryData(User $user, string $status): array
     {
         return [
