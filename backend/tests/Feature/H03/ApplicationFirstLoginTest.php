@@ -115,14 +115,17 @@ class ApplicationFirstLoginTest extends TestCase
         $token = $realm->mint(['sub' => $sub, 'email' => $user->email, 'email_verified' => true]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)->postJson(self::ROUTE)->assertOk();
-        $stateAfterFirstCall = $user->fresh()->only(['keycloak_sub', 'status', 'activation_token', 'updated_at']);
+        $stateAfterFirstCall = $user->fresh()->only(['keycloak_sub', 'status', 'activation_token'])
+            + ['updated_at' => $user->fresh()->updated_at->toISOString()];
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson(self::ROUTE)
             ->assertOk()
             ->assertJsonPath('data.id', $user->id);
 
-        $this->assertSame($stateAfterFirstCall, $user->fresh()->only(['keycloak_sub', 'status', 'activation_token', 'updated_at']));
+        $stateAfterSecondCall = $user->fresh()->only(['keycloak_sub', 'status', 'activation_token'])
+            + ['updated_at' => $user->fresh()->updated_at->toISOString()];
+        $this->assertSame($stateAfterFirstCall, $stateAfterSecondCall);
     }
 
     public function test_a_sub_already_bound_to_another_account_is_refused(): void

@@ -11,6 +11,7 @@ use App\Services\H03\ApplicationInvitationMailer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Mail\Message;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\Mime\Email;
 use Tests\TestCase;
@@ -123,9 +124,10 @@ class ApplicationInvitationFlowTest extends TestCase
             'user_id' => $userId,
             'type' => 'polityka',
         ]);
+        $storedGrantedAt = Consent::where('user_id', $userId)->where('type', 'regulamin')->value('granted_at');
         $this->assertSame(
             $regulamin->toDateTimeString(),
-            Consent::where('user_id', $userId)->where('type', 'regulamin')->value('granted_at')
+            Carbon::parse($storedGrantedAt)->toDateTimeString()
         );
     }
 

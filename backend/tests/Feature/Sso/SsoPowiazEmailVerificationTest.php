@@ -119,13 +119,16 @@ class SsoPowiazEmailVerificationTest extends TestCase
             ->postJson(self::ROUTE, ['token' => $user->activation_token])
             ->assertOk();
 
-        $stateAfterBinding = $user->fresh()->only(['keycloak_sub', 'status', 'activation_token', 'updated_at']);
+        $stateAfterBinding = $user->fresh()->only(['keycloak_sub', 'status', 'activation_token'])
+            + ['updated_at' => $user->fresh()->updated_at->toISOString()];
 
         $this->withHeader('Authorization', 'Bearer '.$bindToken)
             ->postJson('/api/v1/applications/first-login')
             ->assertOk()
             ->assertJsonPath('data.id', $user->id);
 
-        $this->assertSame($stateAfterBinding, $user->fresh()->only(['keycloak_sub', 'status', 'activation_token', 'updated_at']));
+        $stateAfterSecondCall = $user->fresh()->only(['keycloak_sub', 'status', 'activation_token'])
+            + ['updated_at' => $user->fresh()->updated_at->toISOString()];
+        $this->assertSame($stateAfterBinding, $stateAfterSecondCall);
     }
 }
