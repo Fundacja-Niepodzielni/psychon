@@ -29,8 +29,8 @@ export default function Select({
         id={selectId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className={`rounded-sm border bg-card px-3.5 py-2.5 text-body text-ink focus-visible:focus-ring ${
-          error ? "border-danger" : "border-line"
+        className={`min-h-control w-full rounded-control border bg-card px-3.5 py-2 text-body text-ink transition-colors duration-150 focus-visible:focus-ring disabled:cursor-not-allowed disabled:disabled-state ${
+          error ? "border-danger" : "border-control hover:border-control-hover"
         }`}
         {...rest}
       >

@@ -147,7 +147,7 @@ export default function NotificationBell() {
         <div
           role="menu"
           aria-label="Lista powiadomień"
-          className="absolute right-0 top-12 z-dropdown w-[22rem] max-w-[90vw] rounded-card border border-line bg-card shadow-raised"
+          className="absolute right-0 top-12 z-dropdown w-[22rem] max-w-[90vw] rounded-card border border-line bg-card shadow-card"
         >
           <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
             <p className="text-small font-bold text-ink">Powiadomienia</p>

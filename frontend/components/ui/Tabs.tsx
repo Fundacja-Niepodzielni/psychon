@@ -25,8 +25,8 @@ export interface TabsProps {
 }
 
 const tabBase =
-  "rounded-pill px-5 py-2 text-body font-medium transition-colors duration-200 " +
-  "focus-visible:focus-ring";
+  "inline-flex min-h-control items-center rounded-pill px-5 text-body " +
+  "transition-colors duration-150 ease-out-quint focus-visible:focus-ring";
 
 /**
  * Zakładki jednego ekranu, z wyborem zapisanym w adresie.
@@ -84,7 +84,7 @@ export default function Tabs({
       <div
         role="tablist"
         aria-label={ariaLabel}
-        className="mb-6 flex flex-wrap gap-2 border-b border-line pb-4"
+        className="mb-stack flex flex-wrap gap-1 border-b border-line pb-3"
       >
         {tabs.map((tab, index) => {
           const wybrana = index === aktywnyIndeks;
@@ -105,8 +105,8 @@ export default function Tabs({
               onKeyDown={(event) => naKlawisz(event, index)}
               className={`${tabBase} ${
                 wybrana
-                  ? "bg-primary text-light"
-                  : "bg-transparent text-muted hover:bg-grey"
+                  ? "bg-nav-active font-semibold text-nav-active-ink"
+                  : "bg-transparent font-medium text-body hover:bg-nav-hover hover:text-nav-hover-ink"
               }`}
             >
               {tab.label}

@@ -17,12 +17,16 @@ export default function Card({
 }: CardProps) {
   return (
     <section
-      className={`rounded-lg border border-line p-6 shadow-card ${
+      className={`rounded-card border border-line p-card shadow-card ${
         warm ? "bg-card-warm" : "bg-card"
       } ${className}`}
       {...rest}
     >
-      {title && <h2 className="mb-4 text-h4 font-bold text-ink">{title}</h2>}
+      {title && (
+        <h2 className="mb-4 text-subtitle font-bold text-heading">
+          {title}
+        </h2>
+      )}
       {children}
     </section>
   );

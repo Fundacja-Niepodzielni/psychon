@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { LoaderCircle } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "ghost";
 
@@ -10,15 +11,15 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-pill px-6 py-2.5 " +
-  "text-body font-medium transition-colors duration-200 " +
-  "focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-control items-center justify-center gap-2 rounded-pill px-6 py-2 " +
+  "text-body font-semibold transition-colors duration-150 ease-out-quint " +
+  "focus-visible:focus-ring disabled:cursor-not-allowed disabled:disabled-state";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-primary text-light hover:bg-ink",
+  primary: "bg-primary text-light hover:bg-primary-hover",
   secondary:
-    "border border-primary bg-card text-primary hover:bg-brand-10",
-  ghost: "bg-transparent text-body hover:bg-grey",
+    "border border-primary bg-card text-primary hover:bg-nav-active hover:text-primary-hover",
+  ghost: "bg-transparent text-body hover:bg-nav-hover hover:text-nav-hover-ink",
 };
 
 export default function Button({
@@ -39,27 +40,7 @@ export default function Button({
       {...rest}
     >
       {loading && (
-        <svg
-          className="size-4 animate-spin"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-        >
-          <circle
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeOpacity="0.3"
-            strokeWidth="4"
-          />
-          <path
-            d="M22 12a10 10 0 0 0-10-10"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-        </svg>
+        <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
       )}
       {children}
     </button>

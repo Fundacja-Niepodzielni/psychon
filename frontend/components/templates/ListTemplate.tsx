@@ -70,7 +70,7 @@ export default function ListTemplate({
     stan === "error" && httpStatus === 403 ? "forbidden" : stan;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-stack">
       <PageHeader {...naglowek} />
       {dodatkowyPanel}
 
@@ -106,7 +106,7 @@ export default function ListTemplate({
               >
                 Poprzednia
               </Button>
-              <span className="text-small text-subtle">
+              <span className="text-small text-muted">
                 Strona {paginacja.strona} z {paginacja.ostatniaStrona}
               </span>
               <Button
