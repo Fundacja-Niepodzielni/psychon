@@ -12,7 +12,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const base =
   "inline-flex min-h-control items-center justify-center gap-2 rounded-pill px-6 py-2 " +
-  "text-body font-semibold transition-colors duration-150 ease-out-quint " +
+  "text-center text-body font-semibold transition-colors duration-150 ease-out-quint " +
   "focus-visible:focus-ring disabled:cursor-not-allowed disabled:disabled-state " +
   // Ikona w przycisku ma zawsze ten sam rozmiar; strona nie ustawia go sama.
   "[&_svg]:size-5 [&_svg]:shrink-0";
