@@ -26,9 +26,11 @@ class AuditIndexRequest extends FormRequest
         'certificate.issued',
         'document.generated',
         'profile.accepted', 'profile.returned', 'profile.withdrawn',
-        'user.created', 'user.updated', 'user.blocked',
+        'user.created', 'user.updated', 'user.blocked', 'user.anonymized',
         'edition.updated',
         'sensitive.viewed',
+        'supervision.attendance_marked',
+        'certificate.revoked',
     ];
 
     public function authorize(): bool
