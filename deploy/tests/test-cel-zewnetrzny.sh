@@ -5,7 +5,7 @@
 # logu, EXIT=0 (funkcja nie ma zwracac bledu za brak konfiguracji, ktora jest
 # opcjonalna).
 # Przypadek 2: CEL_ZEWNETRZNY ustawiony na katalog lokalny (atrapa celu, nie
-# prawdziwe miejsce poza hostem - tego nie ma w tej rundzie) -> plik jest
+# prawdziwe miejsce poza hostem, ktorego tu nie skonfigurowano) -> plik jest
 # skopiowany, a jego suma kontrolna (sha256) jest ROWNA sumie zrodla.
 set -uo pipefail
 

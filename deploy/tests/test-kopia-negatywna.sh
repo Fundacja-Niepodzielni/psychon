@@ -99,6 +99,72 @@ else
   if [ "$NIEZAL_NEG" -eq 1 ]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 fi
 
+echo "=== 4 plik liczb PUSTY - EXIT!=0, brak 'OK' ==="
+: > "$KATALOG/pusty.liczby"
+WYJSCIE_PUSTY="$(bash "$SKRYPT_ODTWORZENIA" "$KATALOG/pelny.dump" "$KATALOG/pusty.liczby" test test 2>&1)"
+KOD_PUSTY=$?
+# shellcheck disable=SC2001 # zamiana kazdego WIERSZA (nie calego lancucha) - podstawienie parametru bash tego nie robi
+echo "$WYJSCIE_PUSTY" | sed 's/^/  ! /'
+echo "  EXIT=$KOD_PUSTY (oczekiwano != 0)"
+NIEZAL_PUSTY=0
+[ "$KOD_PUSTY" -ne 0 ] || { echo "  WYNIK: NIEZALICZONY - oczekiwano EXIT != 0 dla pustego pliku liczb"; NIEZAL_PUSTY=1; }
+if printf '%s' "$WYJSCIE_PUSTY" | grep -q "odtworzenie probne: OK"; then
+  echo "  WYNIK: NIEZALICZONY - skrypt zglosil OK mimo pustego pliku liczb"
+  NIEZAL_PUSTY=1
+fi
+if [ "$NIEZAL_PUSTY" -eq 1 ]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 5 plik liczb BRAKUJACY - EXIT!=0, brak 'OK' ==="
+WYJSCIE_BRAK="$(bash "$SKRYPT_ODTWORZENIA" "$KATALOG/pelny.dump" "$KATALOG/nie-istnieje.liczby" test test 2>&1)"
+KOD_BRAK=$?
+# shellcheck disable=SC2001 # zamiana kazdego WIERSZA (nie calego lancucha) - podstawienie parametru bash tego nie robi
+echo "$WYJSCIE_BRAK" | sed 's/^/  ! /'
+echo "  EXIT=$KOD_BRAK (oczekiwano != 0)"
+NIEZAL_BRAK=0
+[ "$KOD_BRAK" -ne 0 ] || { echo "  WYNIK: NIEZALICZONY - oczekiwano EXIT != 0 dla brakujacego pliku liczb"; NIEZAL_BRAK=1; }
+if printf '%s' "$WYJSCIE_BRAK" | grep -q "odtworzenie probne: OK"; then
+  echo "  WYNIK: NIEZALICZONY - skrypt zglosil OK mimo brakujacego pliku liczb"
+  NIEZAL_BRAK=1
+fi
+if [ "$NIEZAL_BRAK" -eq 1 ]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 6 domyslny UZYTKOWNIK/BAZA odtworzenia dzialaja na kopii z INNA rola (nazwa jak w domyslnej konfiguracji kopii - 'niepodzielni') ==="
+NAZWA_ZRODLA_R6="psychon-test-zrodlo-r6-$$"
+docker run -d --name "$NAZWA_ZRODLA_R6" --network none \
+  -e POSTGRES_PASSWORD=test-tymczasowe -e POSTGRES_USER=niepodzielni -e POSTGRES_DB=niepodzielni \
+  postgres:17 >/dev/null
+GOTOWY_R6=0
+for _ in $(seq 1 30); do
+  if docker exec "$NAZWA_ZRODLA_R6" pg_isready -U niepodzielni >/dev/null 2>&1; then
+    GOTOWY_R6=1
+    break
+  fi
+  sleep 1
+done
+NIEZAL_R6=0
+if [ "$GOTOWY_R6" -ne 1 ]; then
+  echo "  WYNIK: NIE ZMIERZONO - kontener zrodlowy R6 nie osiagnal gotowosci"
+else
+  docker exec "$NAZWA_ZRODLA_R6" psql -U niepodzielni -d niepodzielni -c \
+    "create table t (id int); insert into t values (1),(2),(3),(4);" >/dev/null
+  docker exec "$NAZWA_ZRODLA_R6" pg_dump -U niepodzielni -Fc niepodzielni > "$KATALOG/r6.dump"
+  printf 't 4\n' > "$KATALOG/r6.liczby"
+  # BEZ trzeciego/czwartego argumentu - DOMYSLNY uzytkownik/baza ("odtworzenie"),
+  # rozne od roli w zrzucie ("niepodzielni") - to jest dokladnie scenariusz R6.
+  WYJSCIE_R6="$(bash "$SKRYPT_ODTWORZENIA" "$KATALOG/r6.dump" "$KATALOG/r6.liczby" 2>&1)"
+  KOD_R6=$?
+  # shellcheck disable=SC2001 # zamiana kazdego WIERSZA (nie calego lancucha) - podstawienie parametru bash tego nie robi
+  echo "$WYJSCIE_R6" | sed 's/^/  ! /'
+  echo "  EXIT=$KOD_R6 (oczekiwano 0, mimo ze zrzut niesie inna role niz domyslny uzytkownik odtworzenia)"
+  [ "$KOD_R6" -eq 0 ] || { echo "  WYNIK: NIEZALICZONY - oczekiwano EXIT=0 z domyslnymi nazwami"; NIEZAL_R6=1; }
+  if ! printf '%s' "$WYJSCIE_R6" | grep -q "odtworzenie probne: OK"; then
+    echo "  WYNIK: NIEZALICZONY - brak komunikatu OK"
+    NIEZAL_R6=1
+  fi
+fi
+docker rm -f "$NAZWA_ZRODLA_R6" >/dev/null 2>&1 || true
+if [ "$NIEZAL_R6" -eq 1 ]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
 echo
 echo "=== PODSUMOWANIE ==="
 echo "NIEZALICZONE=$NIEZALICZONE"

@@ -11,8 +11,9 @@
 #
 # Kod wyjscia: 0 tylko wtedy, gdy odtworzenie sie powiodlo I wszystkie liczby
 # z PLIK_LICZB zgadzaja sie z policzonymi po odtworzeniu. Kazdy inny przypadek
-# (zrzut uszkodzony, brakujaca tabela, rozjazd liczby) konczy sie kodem != 0.
-set -uo pipefail
+# (zrzut uszkodzony, plik liczb pusty/brakujacy, rozjazd liczby) konczy sie
+# kodem != 0.
+set -euo pipefail
 
 # Na Git Bash (Windows) argumenty wygladajace na absolutna sciezke uniksowa
 # (np. "/tmp/kopia.dump" przekazywane do `docker cp`/`docker exec`) potrafia
@@ -34,6 +35,10 @@ if [ ! -f "$PLIK_BAZY" ]; then
 fi
 if [ ! -f "$PLIK_LICZB" ]; then
   echo "odtworzenie: plik liczb '$PLIK_LICZB' nie istnieje" >&2
+  exit 2
+fi
+if [ ! -s "$PLIK_LICZB" ]; then
+  echo "odtworzenie: plik liczb '$PLIK_LICZB' jest pusty - nie mam z czym porownac" >&2
   exit 2
 fi
 
@@ -72,22 +77,35 @@ fi
 # MSYS_NO_PATHCONV wylacza dla drugiej strony wywolania. Strumieniem problem
 # znika calkowicie: PLIK_BAZY otwiera bash (nie docker), a do kontenera idzie
 # tylko jego zawartosc.
-docker exec -i "$NAZWA_KONTENERA" sh -c 'cat > /tmp/kopia.dump' < "$PLIK_BAZY"
+if ! docker exec -i "$NAZWA_KONTENERA" sh -c 'cat > /tmp/kopia.dump' < "$PLIK_BAZY"; then
+  echo "odtworzenie: nie udalo sie przeslac pliku kopii do kontenera probnego" >&2
+  exit 1
+fi
 
-if ! docker exec "$NAZWA_KONTENERA" pg_restore -U "$UZYTKOWNIK" -d "$BAZA" /tmp/kopia.dump; then
+# --no-owner --no-privileges: kontener probny jest calkowicie oddzielny od
+# bazy produkcyjnej i jego uzytkownik/baza NIE musza sie nazywac tak samo jak
+# w zrodle kopii (UZYTKOWNIK/BAZA maja tu wartosci domyslne "odtworzenie",
+# zrzut z P1 niesie role "niepodzielni") - bez tych flag `pg_restore` probuje
+# ustawic wlasciciela na role, ktorej w kontenerze probnym nie ma, i konczy
+# sie bledem mimo poprawnego zrzutu.
+if ! docker exec "$NAZWA_KONTENERA" pg_restore -U "$UZYTKOWNIK" -d "$BAZA" --no-owner --no-privileges /tmp/kopia.dump; then
   echo "odtworzenie: pg_restore zakonczyl sie bledem - kopia '$PLIK_BAZY' jest nieczytelna albo uszkodzona" >&2
   exit 1
 fi
 
 NIEZGODNOSCI=0
+WCZYTANO_WIERSZY=0
 while read -r TABELA OCZEKIWANA; do
   [ -n "$TABELA" ] || continue
-  # `</dev/null` jest konieczne: `docker exec` bez `-i` mimo to dziedziczy fd 0
-  # procesu wywolujacego, a wewnatrz `while read ... done < PLIK` fd 0 to
-  # WLASNIE ten plik - bez tej blokady `docker exec` zjada reszte linii i
-  # petla po pierwszym obrocie konczy sie cicho (zmierzone: 3 z 4 tabel
-  # kontrolnych ginely bez zadnego bledu).
-  ZMIERZONA="$(docker exec "$NAZWA_KONTENERA" psql -U "$UZYTKOWNIK" -d "$BAZA" -tAc "select count(*) from ${TABELA}" 2>/dev/null </dev/null | tr -d '[:space:]')"
+  WCZYTANO_WIERSZY=$((WCZYTANO_WIERSZY + 1))
+  # `</dev/null` na wszelki wypadek: `docker exec` bez `-i` w niektorych
+  # srodowiskach dziedziczy fd 0 procesu wywolujacego, a wewnatrz
+  # `while read ... done < PLIK` fd 0 to WLASNIE ten plik - blokada nie
+  # kosztuje nic i usuwa ryzyko, ze petla zjadlaby reszte linii.
+  # `|| true`: pod `set -e` niezerowy kod zapytania (np. tabela nie istnieje
+  # po uszkodzonym odtworzeniu) MA zostac obsluzony NIZEJ jako NIEZGODNOSC
+  # (pusta ZMIERZONA != OCZEKIWANA), a nie ubic caly skrypt w tym miejscu.
+  ZMIERZONA="$(docker exec "$NAZWA_KONTENERA" psql -U "$UZYTKOWNIK" -d "$BAZA" -tAc "select count(*) from ${TABELA}" 2>/dev/null </dev/null | tr -d '[:space:]')" || true
   if [ "$ZMIERZONA" != "$OCZEKIWANA" ]; then
     echo "odtworzenie: NIEZGODNOSC tabela $TABELA - oczekiwano $OCZEKIWANA, po odtworzeniu $ZMIERZONA" >&2
     NIEZGODNOSCI=$((NIEZGODNOSCI + 1))
@@ -95,6 +113,11 @@ while read -r TABELA OCZEKIWANA; do
     echo "odtworzenie: tabela $TABELA = $ZMIERZONA wierszy (zgodne)"
   fi
 done < "$PLIK_LICZB"
+
+if [ "$WCZYTANO_WIERSZY" -eq 0 ]; then
+  echo "odtworzenie: plik liczb '$PLIK_LICZB' nie niesie zadnego wiersza do porownania" >&2
+  exit 2
+fi
 
 if [ "$NIEZGODNOSCI" -ne 0 ]; then
   echo "odtworzenie: $NIEZGODNOSCI niezgodnosci liczby wierszy" >&2

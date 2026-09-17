@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test P5: "zmienne zamiast stalych" - kopie_pg_dump i kopie_pg_policz_wiersze
+# Test zmiennych zamiast stalych: kopie_pg_dump i kopie_pg_policz_wiersze
 # (deploy/prod/lib/wspolne.sh) MAJA przekazywac PROJEKT/UZYTKOWNIK/BAZA z
 # argumentow (czyli z konfiguracji wolajacego) do `docker compose exec`, a nie
 # miec ktorejkolwiek z tych wartosci wpisanej na sztywno.

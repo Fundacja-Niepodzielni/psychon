@@ -58,44 +58,52 @@ kopie_wymagaj_zmienne() {
   return 0
 }
 
-# kopie_rotuj KATALOG WZORZEC ZACHOWAJ PLIK_LOG DZISIAJ
+# kopie_rotuj KATALOG WZORZEC DNI_RETENCJI PLIK_LOG DZISIAJ
 #
 # W KATALOGU, wsrod plikow pasujacych do WZORCA (glob, np. "psychon-baza-*.dump"),
-# zostawia ZACHOWAJ najnowszych (sortowanie po NAZWIE PLIKU malejaco - nazwy
-# niosa znacznik czasu YYYYMMDD-HHMMSS, wiec sortowanie leksykograficzne =
-# sortowanie chronologiczne), reszte usuwa.
+# usuwa te, ktorych DATA W NAZWIE (pierwsze 8 cyfr z rzedu, format YYYYMMDD) jest
+# STARSZA niz DNI_RETENCJI dni liczac od DZISIAJ (YYYYMMDD) - rotacja liczy WIEK
+# PLIKU, nie ich liczbe: kilka kopii tego samego dnia (np. reczne uruchomienie
+# obok zadania nocnego) NIE skraca okresu przechowywania pozostalych.
 #
-# Plik, ktorego nazwa zawiera DZISIAJ (YYYYMMDD), NIGDY nie jest usuwany -
-# nawet gdyby limit ZACHOWAJ go wykluczyl. To jest osobna gwarancja, nie
-# efekt uboczny sortowania: przy ZACHOWAJ=0 (błąd konfiguracji) kopia z
-# dzisiaj i tak przezyje, z wpisem w logu, ze ochrona zadzialala.
+# Plik, ktorego nazwa zawiera DZISIAJ, NIGDY nie jest usuwany - nawet gdyby
+# (przez blad zegara systemowego) wyszedl poza granice. Plik, ktorego nazwa nie
+# niesie rozpoznawalnej daty, NIE jest ruszany (bezpieczny domysl: nie kasujemy
+# czego nie potrafimy datowac).
 #
-# Kazde usuniecie i kazda ochrona trafia do PLIK_LOG jako osobny wiersz.
-# Wypisuje na stdout dwie liczby: "ZOSTAJE USUNIETO".
+# Kazde usuniecie trafia do PLIK_LOG jako osobny wiersz. Wypisuje na stdout
+# dwie liczby: "ZOSTAJE USUNIETO".
 kopie_rotuj() {
-  local katalog="$1" wzorzec="$2" zachowaj="$3" plik_log="$4" dzisiaj="$5"
+  local katalog="$1" wzorzec="$2" dni_retencji="$3" plik_log="$4" dzisiaj="$5"
   local -a wszystkie=() zostaje=() usuniete=()
-  local plik i=0
+  local plik data_pliku granica
+
+  granica="$(date -d "${dzisiaj} -${dni_retencji} day" '+%Y%m%d' 2>/dev/null \
+    || date -j -f '%Y%m%d' -v-"${dni_retencji}"d "$dzisiaj" '+%Y%m%d' 2>/dev/null)"
+  [ -n "$granica" ] || granica="$dzisiaj"
 
   while IFS= read -r plik; do
     [ -n "$plik" ] && wszystkie+=("$plik")
   done < <(find "$katalog" -maxdepth 1 -type f -name "$wzorzec" -printf '%f\n' 2>/dev/null | sort -r)
 
   for plik in "${wszystkie[@]}"; do
-    if [ "$i" -lt "$zachowaj" ]; then
+    if [[ "$plik" == *"$dzisiaj"* ]]; then
       zostaje+=("$plik")
-    elif [[ "$plik" == *"$dzisiaj"* ]]; then
+      continue
+    fi
+    data_pliku="$(printf '%s' "$plik" | grep -oE '[0-9]{8}' | head -n1)"
+    if [ -z "$data_pliku" ]; then
       zostaje+=("$plik")
-      kopie_log "$plik_log" "rotacja: $plik ma dzisiejsza date ($dzisiaj) - CHRONIONY, nie usuwam mimo przekroczenia limitu $zachowaj"
+    elif [ "$data_pliku" -ge "$granica" ]; then
+      zostaje+=("$plik")
     else
       usuniete+=("$plik")
     fi
-    i=$((i + 1))
   done
 
   for plik in "${usuniete[@]}"; do
     rm -f -- "$katalog/$plik"
-    kopie_log "$plik_log" "rotacja: usunieto $plik (limit $zachowaj, zostaje ${#zostaje[@]} pasujacych do $wzorzec)"
+    kopie_log "$plik_log" "rotacja: usunieto $plik (starszy niz $dni_retencji dni, granica $granica)"
   done
 
   echo "${#zostaje[@]} ${#usuniete[@]}"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Test harmonogramu (deploy/prod/harmonogram/psychon-crontab), P8.
 #
-# Metoda: CRONTAB w kontenerze testowym (nie systemd-analyze - harmonogram
-# tej rundy jest cron, patrz komentarz w samym pliku harmonogramu). Kontener
+# Metoda: CRONTAB w kontenerze testowym (nie systemd-analyze - wybrany
+# harmonogram to cron, patrz komentarz w samym pliku harmonogramu). Kontener
 # `alpine` dostaje pakiet `dcron` (busybox crond) i wolane jest na naszym
 # pliku `crontab PLIK && crontab -l` - to jest PRAWDZIWY parser wyrazen cron,
 # nie wlasny regex. Container jednorazowy, bez sieci po instalacji pakietu -
