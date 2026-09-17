@@ -2,8 +2,10 @@
 
 namespace App\Services\Auth;
 
+use App\Models\User;
 use App\Services\Keycloak\KeycloakPrincipal;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The single place every authorisation call site in this application asks
@@ -73,5 +75,46 @@ final class TokenRoles
     public function has(string ...$localRoles): bool
     {
         return array_intersect($localRoles, $this->current()) !== [];
+    }
+
+    /**
+     * The role name an account's own `/me` should report — measured
+     * disagreement: `users.role=volunteer` + token `pacjent` let the gate
+     * through while `EnsureRole` refused the data behind it. Derived from
+     * the SAME source `EnsureRole`/`has()` decide access with — never
+     * `users.role` — so a client gating on this field agrees with what a
+     * protected route actually does for this token.
+     *
+     * Only substitutes the token-derived value for a SELF view: `$user` is
+     * the current request's own resolved local user (`$this->request
+     * ->user()->is($user)`) AND a real bearer token backs it. A resource
+     * describing someone ELSE's account (the H18 person card, an admin
+     * extending someone else's access) has no other person's token on this
+     * request to derive from and keeps reporting `users.role`, unchanged.
+     *
+     * When the token authorises more than one local role, the
+     * highest-privilege one wins (whitelist order, `config('keycloak
+     * .roles')`); `null` when it authorises none — never a role the token
+     * itself would be refused for.
+     *
+     * Logs `auth.role_column_mismatch` (account id only — no token value,
+     * no personal data) the moment `users.role` disagrees with this value
+     * on a real token principal, so the disagreement stops being silent.
+     */
+    public function effectiveRoleFor(User $user): ?string
+    {
+        $principal = $this->request->attributes->get('keycloak_principal');
+
+        if (! $principal instanceof KeycloakPrincipal || ! $this->request->user()?->is($user)) {
+            return $user->role;
+        }
+
+        $derived = $this->current()[0] ?? null;
+
+        if ($derived !== $user->role) {
+            Log::warning('auth.role_column_mismatch', ['user_id' => $user->id]);
+        }
+
+        return $derived;
     }
 }
