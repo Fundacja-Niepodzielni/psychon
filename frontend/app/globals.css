@@ -60,9 +60,9 @@
   --psy-violet-dark: #1500bb;
   --psy-violet-06: #594ef90f;
   --psy-violet-15: #594ef926;
-  --psy-green-deep: #006b30; /* [A11Y] v2: tekst aktywnej pozycji menu 6,03:1 na tincie zieleni, najechanie na przycisk główny 6,68:1 pod białym tekstem */
-  --psy-violet-dark-06: #1500bb0f; /* v2: tint najechania w menu (strona Fundacji: --mix-color-brand-secondary-06) */
-  --psy-grey-control: #858585; /* [A11Y] v2: obramowanie pól 3,48:1 na tle strony, 3,73:1 na bieli (dawne #eaeaea: 1,20:1) */
+  --psy-green-deep: #006b30; /* Z-9; [A11Y] v2: tekst aktywnej pozycji menu 6,03:1 na tincie zieleni, najechanie na przycisk główny 6,68:1 pod białym tekstem */
+  --psy-violet-dark-06: #1500bb0f; /* Z-4; v2: tint najechania w menu (strona Fundacji: --mix-color-brand-secondary-06) */
+  --psy-grey-control: #858585; /* Z-9; [A11Y] v2: obramowanie pól 3,48:1 na tle strony, 3,73:1 na bieli (dawne #eaeaea: 1,20:1) */
 
   /* --- Tła i obramowania --- */
   --psy-bg-page: #f9f8f6;
@@ -150,52 +150,42 @@
   /* ================= v2: ROLE (komponenty sięgają po role, nie po paletę) ================= */
 
   /* --- Kolor: role --- */
-  --psy-heading: var(--psy-violet-dark); /* tytuły ekranów i kart: 11,31:1 na tle strony, 12,00:1 na bieli */
-  --psy-border-control: var(--psy-grey-control); /* obramowanie pól i przełączników (≥ 3:1) */
-  --psy-border-control-hover: var(--psy-text-muted); /* 7,46:1 na bieli */
-  --psy-action-hover: var(--psy-green-deep); /* tło przycisku głównego pod kursorem */
-  --psy-nav-hover-bg: var(--psy-violet-dark-06);
-  --psy-nav-hover-text: var(--psy-violet-dark); /* 10,63:1 na tincie */
-  --psy-nav-active-bg: var(--psy-green-10);
-  --psy-nav-active-text: var(--psy-green-deep); /* 6,03:1 na tincie (#e5f8ed) */
-  --psy-icon: var(--psy-text-muted); /* ikona liniowa: 7,46:1 na bieli, 6,84:1 na szarym */
-  --psy-row-hover: var(--psy-violet-dark-06);
-  --psy-disabled-opacity: 0.5; /* stan wyłączony (WCAG nie wymaga kontrastu), zawsze z kursorem not-allowed */
+  --psy-heading: var(--psy-violet-dark); /* Z-8; tytuły ekranów i kart: 11,31:1 na tle strony, 12,00:1 na bieli */
+  --psy-border-control: var(--psy-grey-control); /* Z-9; obramowanie pól i przełączników (≥ 3:1) */
+  --psy-border-control-hover: var(--psy-text-muted); /* Z-4; 7,46:1 na bieli */
+  --psy-action-hover: var(--psy-green-deep); /* Z-4; tło przycisku głównego pod kursorem */
+  --psy-nav-hover-bg: var(--psy-violet-dark-06); /* Z-4 */
+  --psy-nav-hover-text: var(--psy-violet-dark); /* Z-4; 10,63:1 na tincie */
+  --psy-nav-active-bg: var(--psy-green-10); /* Z-1 */
+  --psy-nav-active-text: var(--psy-green-deep); /* Z-1; 6,03:1 na tincie (#e5f8ed) */
+  --psy-icon: var(--psy-text-muted); /* Z-9; ikona liniowa: 7,46:1 na bieli, 6,84:1 na szarym */
+  --psy-row-hover: var(--psy-violet-dark-06); /* Z-4 */
+  --psy-disabled-opacity: 0.5; /* Z-15; stan wyłączony (WCAG nie wymaga kontrastu), zawsze z kursorem not-allowed */
 
   /* --- Pismo: skala produktowa (stała, stosunek ok. 1,2) --- */
-  --psy-title: 30px; /* tytuł ekranu w panelu */
-  --psy-subtitle: 18px; /* tytuł karty i sekcji listy */
-  --psy-tracking-tight: -0.01em; /* tytuły — strona Fundacji ma nagłówki pogrubione, bez ścieśniania */
-  --psy-tracking-label: 0.04em; /* nagłówki kolumn tabeli (strona Fundacji: 0.04em, 9 użyć) */
+  --psy-title: 30px; /* Z-8; tytuł ekranu w panelu */
+  --psy-subtitle: 18px; /* Z-8; tytuł karty i sekcji listy */
+  --psy-tracking-tight: -0.01em; /* Z-8; tytuły — strona Fundacji ma nagłówki pogrubione, bez ścieśniania */
+  --psy-tracking-label: 0.04em; /* Z-8; nagłówki kolumn tabeli (strona Fundacji: 0.04em, 9 użyć) */
 
   /* --- Odstępy (siatka 4 px) --- */
-  --psy-space-2xs: 4px;
-  --psy-space-xs: 8px;
-  --psy-space-sm: 12px;
-  --psy-space-md: 16px;
-  --psy-space-lg: 24px; /* wnętrze karty, odstęp między blokami ekranu */
-  --psy-space-xl: 32px; /* margines treści na szerokim ekranie */
-  --psy-space-2xl: 48px; /* odstęp między dużymi sekcjami */
+  --psy-space-lg: 24px; /* Z-8; wnętrze karty, odstęp między blokami ekranu */
   --psy-control-height: 44px; /* Z-10: najmniejszy obszar dotykowy */
 
   /* --- Promienie: role --- */
-  --psy-radius-control: var(--psy-radius-sm); /* pola, pozycje menu, alerty */
-  --psy-radius-card: var(--psy-radius-lg); /* karty i tabele */
+  --psy-radius-control: var(--psy-radius-sm); /* Z-8; pola, pozycje menu, alerty */
+  --psy-radius-card: var(--psy-radius-lg); /* Z-8; karty i tabele */
 
   /* --- Cienie: role --- */
-  --psy-shadow-raised: 0 8px 30px #0000001a; /* panel wysuwany i okno (strona Fundacji, 1 użycie) */
-
-  /* --- Ruch --- */
-  --psy-duration-fast: 150ms;
-  --psy-duration: 200ms;
+  --psy-shadow-raised: 0 8px 30px #0000001a; /* Z-4; panel wysuwany i okno (strona Fundacji, 1 użycie) */
 
   /* --- Warstwy (Z-12: nazwana skala, w tej kolejności) --- */
-  --psy-z-dropdown: 10;
-  --psy-z-sticky: 20;
-  --psy-z-backdrop: 30;
-  --psy-z-modal: 40;
-  --psy-z-toast: 50;
-  --psy-z-tooltip: 60;
+  --psy-z-dropdown: 10; /* Z-12 */
+  --psy-z-sticky: 20; /* Z-12 */
+  --psy-z-backdrop: 30; /* Z-12 */
+  --psy-z-modal: 40; /* Z-12 */
+  --psy-z-toast: 50; /* Z-12 */
+  --psy-z-tooltip: 60; /* Z-12 */
 }
 
 /*
@@ -246,16 +236,16 @@
   --color-event-warsztat: var(--psy-event-warsztat);
 
   /* v2 — role koloru: text-heading, border-control, bg-nav-active, … */
-  --color-heading: var(--psy-heading);
-  --color-control: var(--psy-border-control);
-  --color-control-hover: var(--psy-border-control-hover);
-  --color-primary-hover: var(--psy-action-hover);
-  --color-nav-hover: var(--psy-nav-hover-bg);
-  --color-nav-hover-ink: var(--psy-nav-hover-text);
-  --color-nav-active: var(--psy-nav-active-bg);
-  --color-nav-active-ink: var(--psy-nav-active-text);
-  --color-icon: var(--psy-icon);
-  --color-row-hover: var(--psy-row-hover);
+  --color-heading: var(--psy-heading); /* Z-8 */
+  --color-control: var(--psy-border-control); /* Z-9 */
+  --color-control-hover: var(--psy-border-control-hover); /* Z-4 */
+  --color-primary-hover: var(--psy-action-hover); /* Z-4 */
+  --color-nav-hover: var(--psy-nav-hover-bg); /* Z-4 */
+  --color-nav-hover-ink: var(--psy-nav-hover-text); /* Z-4 */
+  --color-nav-active: var(--psy-nav-active-bg); /* Z-1 */
+  --color-nav-active-ink: var(--psy-nav-active-text); /* Z-1 */
+  --color-icon: var(--psy-icon); /* Z-9 */
+  --color-row-hover: var(--psy-row-hover); /* Z-4 */
 
   /* typografia — text-h1 … text-caption */
   --text-h1: var(--psy-h1);
@@ -273,22 +263,21 @@
   --text-caption: var(--psy-caption);
   --text-caption--line-height: 1.4;
   /* v2 — text-title (tytuł ekranu), text-subtitle (tytuł karty) */
-  --text-title: var(--psy-title);
-  --text-title--line-height: 1.2;
-  --text-title--letter-spacing: var(--psy-tracking-tight);
-  --text-subtitle: var(--psy-subtitle);
-  --text-subtitle--line-height: 1.35;
-  --tracking-label: var(--psy-tracking-label);
+  --text-title: var(--psy-title); /* Z-8 */
+  --text-title--line-height: 1.2; /* Z-8 */
+  --text-title--letter-spacing: var(--psy-tracking-tight); /* Z-8 */
+  --text-subtitle: var(--psy-subtitle); /* Z-8 */
+  --text-subtitle--line-height: 1.35; /* Z-8 */
+  --tracking-label: var(--psy-tracking-label); /* Z-8 */
 
-  /* v2 — odstępy nazwane: p-card, gap-stack, gap-section, min-h-control */
-  --spacing-card: var(--psy-space-lg);
-  --spacing-stack: var(--psy-space-lg);
-  --spacing-section: var(--psy-space-2xl);
-  --spacing-control: var(--psy-control-height);
+  /* v2 — odstępy nazwane: p-card, gap-stack, min-h-control */
+  --spacing-card: var(--psy-space-lg); /* Z-8 */
+  --spacing-stack: var(--psy-space-lg); /* Z-8 */
+  --spacing-control: var(--psy-control-height); /* Z-10 */
 
   /* v2 — szerokości układu: w-sidebar, max-w-panel */
-  --container-sidebar: var(--psy-sidebar-width);
-  --container-panel: var(--psy-container);
+  --container-sidebar: var(--psy-sidebar-width); /* Z-12 */
+  --container-panel: var(--psy-container); /* Z-12 */
 
   /* promienie — rounded-xs … rounded-pill */
   --radius-xs: var(--psy-radius-xs);
@@ -299,19 +288,19 @@
   --radius-2xl: var(--psy-radius-2xl);
   --radius-3xl: var(--psy-radius-3xl);
   --radius-pill: var(--psy-radius-pill);
-  --radius-control: var(--psy-radius-control);
-  --radius-card: var(--psy-radius-card);
+  --radius-control: var(--psy-radius-control); /* Z-8 */
+  --radius-card: var(--psy-radius-card); /* Z-8 */
 
   /* cienie */
   --shadow-card: var(--psy-shadow-card);
   --shadow-header: var(--psy-shadow-header);
-  --shadow-raised: var(--psy-shadow-raised);
+  --shadow-raised: var(--psy-shadow-raised); /* Z-4 */
 
   /* ruch — ease-out-quint */
-  --ease-out-quint: var(--psy-ease-out-quint);
+  --ease-out-quint: var(--psy-ease-out-quint); /* Z-4 */
 }
 
-/* v2 — warstwy po nazwie (Z-12), nigdy liczbą w komponencie. */
+/* Z-12: warstwy po nazwie, nigdy liczbą w komponencie. */
 @utility z-dropdown {
   z-index: var(--psy-z-dropdown);
 }
@@ -331,7 +320,7 @@
   z-index: var(--psy-z-tooltip);
 }
 
-/* v2 — stan wyłączony: jedna wartość dla wszystkich kontrolek. */
+/* Z-15: stan wyłączony, jedna wartość dla wszystkich kontrolek. */
 @utility disabled-state {
   cursor: not-allowed;
   opacity: var(--psy-disabled-opacity);
@@ -373,7 +362,7 @@
   }
 }
 
-/* v2 — nagłówki łamane równo (bez sierot w tytułach ekranów). */
+/* Z-8: nagłówki łamane równo (bez sierot w tytułach ekranów). */
 @layer base {
   h1,
   h2,
