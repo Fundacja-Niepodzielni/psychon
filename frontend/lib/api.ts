@@ -714,6 +714,11 @@ export const AUDIT_ACTIONS = [
   "user.blocked",
   "edition.updated",
   "sensitive.viewed",
+  "certificate.revoked",
+  "legal_document.published",
+  "legal_document.accepted",
+  "supervision.attendance_marked",
+  "user.anonymized",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
