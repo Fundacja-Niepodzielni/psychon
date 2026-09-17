@@ -22,7 +22,12 @@ docker compose exec -T app php artisan migrate --seed --force
 docker compose exec -T app php artisan storage:link || true
 
 echo "==> Zależności frontendu"
-(cd frontend && npm install)
+# `--ignore-scripts` blokuje dowolny kod z postinstall cudzych paczek.
+# Nie na slepo: `esbuild` i `unrs-resolver` maja "hasInstallScript" w
+# package-lock.json, a ich postinstall tylko dobiera wlasciwy natywny plik
+# binarny z wlasnych optionalDependencies - bez niego `npm run build` i lint
+# padaja. Rebuild wylacznie tych dwoch (plus `fsevents`, macOS-only).
+(cd frontend && npm install --ignore-scripts && npm rebuild esbuild unrs-resolver fsevents)
 
 APP_PORT="${NP_APP_PORT:-8000}"; MAILPIT_PORT="${NP_MAILPIT_PORT:-8025}"
 cat <<EOT

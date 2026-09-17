@@ -43,8 +43,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 / 2.37.2
         with:
           php-version: "8.4"
           # pcntl jest wymagane przez testy wspolbieznosci (H03, H12, H13).
@@ -98,14 +98,24 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      # `--ignore-scripts` blokuje dowolny kod z postinstall cudzych paczek (lancuch
+      # dostaw). Nie jest slepe: `esbuild` i `unrs-resolver` maja "hasInstallScript"
+      # w package-lock.json i ich postinstall tylko wybiera/pobiera wlasciwy natywny
+      # plik binarny z wlasnych `optionalDependencies` - bez niego `npm run build`
+      # (Vite/esbuild) i `npm run lint` (unrs-resolver) padaja. Dlatego po instalacji
+      # jawnie odpalamy install-scripts wylacznie dla tych dwoch, zamiast ufac
+      # kazdemu postinstallowi z osobna. `fsevents` (macOS-only, opcjonalny) jest
+      # tu nieobecny na Linuksie, wiec rebuild jest dla niego pusty i nieszkodliwy.
       - name: Zależności
-        run: npm ci
+        run: |
+          npm ci --ignore-scripts
+          npm rebuild esbuild unrs-resolver fsevents
       # Pole "libc" w package-lock.json: npm 10.9.8 potrafi
       # je zgubić na pakietach *-linux-*, a wtedy node:22-alpine instaluje
       # razem glibc i musla zamiast jednej odmiany. Krok jest blokujący
@@ -136,7 +146,7 @@ jobs:
     container:
       image: semgrep/semgrep:1.169.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # Reguly czytamy z KATALOGU W REPO, a nie z `--config p/...`. Powod jest
       # jeden: bramka, ktorej wynik zalezy od cudzego serwera i od tego, co ktos
       # wczoraj zmienil w regule, nie jest przyrzadem, tylko prognoza. Migawka
