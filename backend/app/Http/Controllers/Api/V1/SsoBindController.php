@@ -2,25 +2,25 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
-use App\Models\User;
+use App\Services\H03\ApplicationFirstLoginBinder;
 use App\Services\Keycloak\KeycloakPrincipal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * POST /api/v1/sso/powiaz — the ONLY way a Keycloak `sub` gets attached to a
- * local `users` row (besides the operator command). Protected by
- * `auth.keycloak` (the principal middleware), never the new `keycloak`
- * guard — there is no local user to resolve yet, that is the whole point of
- * this endpoint.
+ * POST /api/v1/sso/powiaz — wiązanie `sub` z kontem lokalnym z odnośnika
+ * zaproszenia (obok polecenia operatora). Protected by `auth.keycloak`
+ * (the principal middleware), never the `keycloak` guard — there is no
+ * local user to resolve yet, that is the whole point of this endpoint.
  *
- * Identity contract: binding happens by the one-time invitation token
- * (`users.activation_token`) only — never by e-mail. The token is consumed
- * (cleared) on success, so a second call with the same token always lands
- * in the "unknown or used token" branch below.
+ * Konto wskazuje jednorazowy token zaproszenia (`users.activation_token`),
+ * zużywany przy powodzeniu, więc drugie wywołanie tym samym tokenem kończy
+ * się 422. Warunki wiązania są te same co przy pierwszym logowaniu
+ * (potwierdzony adres, adres równy adresowi zaproszenia, właściwy wystawca;
+ * po powiązaniu konto aktywne) i żyją w jednym miejscu:
+ * {@see ApplicationFirstLoginBinder}.
  */
 class SsoBindController extends Controller
 {
@@ -33,49 +33,11 @@ class SsoBindController extends Controller
             'token' => ['required', 'string'],
         ]);
 
-        $user = User::query()->where('activation_token', $data['token'])->first();
-
-        if ($user === null) {
-            throw new ApiException(
-                422,
-                'invalid_token',
-                'Nieprawidłowy lub wykorzystany token zaproszenia.',
-            );
-        }
-
-        if (in_array($user->status, ['blocked', 'deleted'], true) || $user->anonymized_at !== null) {
-            throw new ApiException(
-                403,
-                'forbidden',
-                'To konto nie jest aktywne. Skontaktuj się z opiekunem projektu.',
-            );
-        }
-
-        if ($user->keycloak_sub !== null && $user->keycloak_sub !== $principal->sub) {
-            throw new ApiException(
-                409,
-                'already_bound',
-                'To konto jest już połączone z innym kontem Niepodzielni.',
-            );
-        }
-
-        $subTakenByAnotherUser = User::query()
-            ->where('keycloak_sub', $principal->sub)
-            ->where('id', '!=', $user->id)
-            ->exists();
-
-        if ($subTakenByAnotherUser) {
-            throw new ApiException(
-                409,
-                'sub_already_bound',
-                'To konto Niepodzielni jest już połączone z innym użytkownikiem.',
-            );
-        }
-
-        $user->forceFill([
-            'keycloak_sub' => $principal->sub,
-            'activation_token' => null,
-        ])->save();
+        $user = ApplicationFirstLoginBinder::bindByInvitationToken(
+            $principal,
+            (string) $request->bearerToken(),
+            $data['token'],
+        );
 
         return response()->json([
             'data' => UserResource::make($user)->resolve($request),
