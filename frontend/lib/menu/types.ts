@@ -32,6 +32,13 @@ export interface MenuEntry {
   /** Nazwa ikony przy etykiecie (opcjonalna). Lista: MenuIconName. */
   icon?: MenuIconName;
   /**
+   * Wpis jest korzeniem sekcji roli (`href` całej sekcji, np. `/admin`).
+   * Bez tego pola taki `href` byłby przedrostkiem KAŻDEJ podstrony sekcji
+   * i zaznaczałby się razem z właściwym wpisem podstrony. Z `exact:
+   * true` wpis jest aktywny wyłącznie wtedy, gdy adres pasuje dokładnie.
+   */
+  exact?: boolean;
+  /**
    * Role dopuszczone do tego wpisu (opcjonalne). Brak pola = wpis widoczny
    * dla każdej roli panelu, tak jak dotąd. API i tak odmawia po swojej
    * stronie — to pole tylko chowa link tam, gdzie odpowiedź byłaby 403.

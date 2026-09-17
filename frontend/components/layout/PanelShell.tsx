@@ -16,9 +16,10 @@ export interface PanelShellProps {
   children: React.ReactNode;
 }
 
-function isActive(pathname: string, href: string): boolean {
-  if (pathname === href) return true;
-  return pathname.startsWith(`${href}/`);
+function isActive(pathname: string, entry: MenuEntry): boolean {
+  if (pathname === entry.href) return true;
+  if (entry.exact) return false;
+  return pathname.startsWith(`${entry.href}/`);
 }
 
 /**
@@ -76,7 +77,7 @@ export default function PanelShell({
         <nav aria-label={`Menu — ${panelName}`} className="px-3 pb-4">
           <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
             {menu.map((entry) => {
-              const active = isActive(pathname, entry.href);
+              const active = isActive(pathname, entry);
               const Icon = entry.icon ? menuIcons[entry.icon] : null;
               return (
                 <li key={entry.href}>
