@@ -26,6 +26,27 @@
 //     tabela faktycznie zależy od CSS, a nie od stałych w tym pliku: podmienia
 //     W PAMIĘCI (plik na dysku nigdy nie jest dotykany) jeden token na wartość
 //     o znanym kontraście, pokazuje różnicę, po czym kończy.
+//   node scripts/pomiar-marginesu-kontrastu.mjs --para="Odznaka: sukces" --tlo=#f9f8f6
+//     — ta sama para co w tabeli głównej, ale na PODANYM realnym tle zamiast
+//     domyślnego założenia (karta biała / podkład najechania w tabeli).
+//     Dopisane po odkryciu (patrz notatka „TŁA POZA TABELĄ TOKENÓW" niżej),
+//     że część par żyje naprawdę na więcej niż jednym tle — to wejście liczy
+//     dokładnie to jedno, konkretne tło, bez przebudowy reszty narzędzia.
+//
+// TŁA POZA TABELĄ TOKENÓW (ustalone czytaniem kodu, nie zgadywaniem):
+//   `body { background: var(--psy-bg-page) }` (globals.css) i PanelShell.tsx
+//   (`<div class="min-h-screen bg-page ...">`, `<main id="tresc">` BEZ
+//   własnego tła) — więc KAŻDY tekst/odznaka, który nie siedzi wprost w
+//   `<Card>` (bg-card, biel) albo w `<Table>` (bg-card na kontenerze), renderuje
+//   się naprawdę na `--psy-bg-page` (#f9f8f6), nie na bieli. Potwierdzone
+//   zajrzeniem do źródła w co najmniej dwóch miejscach:
+//     - components/h07/AdminReliability.tsx: `<li class="... bg-page ...">`
+//       zawiera bezpośrednio odznakę sukces/błąd (nie w karcie).
+//     - components/organisms/NotificationList.tsx: przycisk z odznaką
+//       informacyjną ma WŁASNY stan najechania `hover:bg-grey` (płaskie
+//       #f5f5f5), inny niż podkład najechania wiersza tabeli (`bg-row-hover`,
+//       półprzezroczysty fiolet) — to nie jest to samo najechanie.
+//   Pełny opis w raporcie do zlecenia (pytania M1–M4).
 //
 // Umiejscowienie: obok istniejących narzędzi pomiarowych frontu
 // (scripts/pomiar-kc.sh, scripts/check-lock-libc.mjs) — ten sam katalog,
@@ -226,10 +247,46 @@ function wypiszTabele(pary, tytul) {
 // Główne wykonanie.
 // ---------------------------------------------------------------------------
 
+/** Wyciąga wartość z argv w postaci `--klucz=wartość`. */
+function argWartosc(klucz) {
+  const przedrostek = `--${klucz}=`;
+  const arg = process.argv.find((a) => a.startsWith(przedrostek));
+  return arg ? arg.slice(przedrostek.length) : null;
+}
+
 function main() {
   const tekstCss = readFileSync(SCIEZKA_CSS, "utf8");
   const { tokeny, rozmiary } = wczytajTokeny(tekstCss);
   const pary = zbudujPary(tokeny, rozmiary);
+
+  const paraNazwa = argWartosc("para");
+  const tloParam = argWartosc("tlo");
+  if (paraNazwa && tloParam) {
+    // Tryb jednej pary na podanym, realnym tle (M5) — nie zastępuje tabeli
+    // głównej, tylko liczy dokładnie to, o co proszono.
+    const p = pary.find((x) => x.etykieta === paraNazwa);
+    if (!p) {
+      console.error(`Nie znam pary "${paraNazwa}". Dostępne etykiety:`);
+      for (const x of pary) console.error(`  - ${x.etykieta}`);
+      process.exit(2);
+    }
+    const tloRgb = hexNaRgba(tloParam);
+    const tloOpaczne = [tloRgb.r, tloRgb.g, tloRgb.b];
+    const tloZlozone =
+      p.bgHexLubNull === null ? tloOpaczne : zloz(p.bgHexLubNull, tloOpaczne);
+    const textRgb = (() => {
+      const c = hexNaRgba(p.textHex);
+      return [c.r, c.g, c.b];
+    })();
+    const k = kontrast(textRgb, tloZlozone);
+    console.log(`Para: ${p.etykieta}`);
+    console.log(`Podane tło: ${tloParam}`);
+    console.log(`Tło złożone (jeśli token miał alfę): rgb(${tloZlozone.map(Math.round).join(", ")})`);
+    console.log(`Kontrast na tym tle: ${formatuj(k)}`);
+    console.log(`Próg: ${p.prog.toFixed(1)}, margines: ${formatuj(k - p.prog)}`);
+    console.log(`Dla porównania w tabeli głównej: spoczynek=${formatuj(p.kSpoczynek)}, najechanie=${formatuj(p.kNajechanie)}`);
+    return;
+  }
 
   console.log(`Źródło tokenów: ${SCIEZKA_CSS}`);
   console.log(`Odczytano ${Object.keys(tokeny).length} tokenów --psy-* z globals.css.`);
