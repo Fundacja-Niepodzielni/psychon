@@ -1,17 +1,24 @@
 #!/usr/bin/env node
 // Przyrząd pomiarowy: margines kontrastu kolorów stanu (sukces/ostrzeżenie/
 // błąd/informacja) i koloru głównego, na wszystkich realnych tłach, na
-// jakich te pary naprawdę żyją w interfejsie (F-198, ślad śledztwa F-194,
-// kontrola S3).
+// jakich te pary naprawdę żyją w interfejsie (F-198, ślad śledztwa F-194).
 //
-// TO JEST TERAZ NAPRAWDĘ KONTROLA, NIE TYLKO POMIAR (S3):
+// TO JEST TERAZ NAPRAWDĘ KONTROLA, NIE TYLKO POMIAR:
 //   - Kończy się kodem NIEZEROWYM, gdy którakolwiek para/tło poniżej progu
-//     nie jest jawnie zarejestrowana w ZASTANE_ODSTĘPSTWA niżej.
-//   - Kończy się kodem NIEZEROWYM też wtedy, gdy wpis w ZASTANE_ODSTĘPSTWA
-//     jest już NIEPRAWDZIWY (para się poprawiła powyżej progu) — rejestr,
-//     którego nikt nie musi utrzymywać w prawdzie, gnije w tydzień.
+//     nie jest jawnie zarejestrowana w ZASTANE_ODSTĘPSTWA ani w
+//     ODKRYTE_POMIAREM_TYMCZASOWE niżej.
+//   - Kończy się kodem NIEZEROWYM też wtedy, gdy wpis w którymkolwiek z tych
+//     dwóch rejestrów jest już NIEPRAWDZIWY (para się poprawiła powyżej
+//     progu) — rejestr, którego nikt nie musi utrzymywać w prawdzie, gnije
+//     w tydzień.
 //   - Kończy się kodem 0 tylko wtedy, gdy każda zmierzona para/tło jest
-//     powyżej progu ALBO jest świeżym, prawdziwym wpisem w rejestrze.
+//     powyżej progu ALBO jest świeżym, prawdziwym wpisem w jednym z
+//     rejestrów.
+//   - Dwa rejestry, nie jeden, i to naumyślnie: ZASTANE_ODSTĘPSTWA to
+//     świadomie zaakceptowane odstępstwa; ODKRYTE_POMIAREM_TYMCZASOWE to
+//     świeże odkrycia samego rozszerzenia pomiaru (para × tło, o której
+//     wcześniej nikt nie wiedział, bo nikt jej nie mierzył) — stan
+//     tymczasowy, nie zaakceptowany, czekający na decyzję o odcieniu.
 //
 // Skąd biorą się liczby:
 //   - Kolory NIE są tu wpisane na sztywno — skrypt czyta je z app/globals.css
@@ -27,7 +34,7 @@
 //     NIEZALEŻNIE (osobnym narzędziem, poza tym kodem), wpisanymi na sztywno
 //     jako `KONTROLA_NIEZALEZNA` niżej, z komentarzem skąd każda pochodzi.
 //
-// Pełny iloczyn par × teł (S3, W3):
+// Pełny iloczyn par × teł:
 //   Jest 11 par i 5 teł, na jakich te pary naprawdę żyją w interfejsie
 //   (patrz `zbudujTla` — każde tło ma cytat z konkretnego pliku/linii) —
 //   czyli 55 możliwych pomiarów. Ten skrypt liczy WSZYSTKIE 55: albo
@@ -39,7 +46,7 @@
 //   się do pełnego iloczynu — nowa para albo nowe tło bez decyzji
 //   (zmierz/wyklucz) wywali skrypt, nie przemilczy się cicho.
 //
-// Siódme tło (odbiór S2 -> S3): `--psy-bg-grey` (#f5f5f5), podkład
+// Dodatkowe tło, wcześniej pominięte: `--psy-bg-grey` (#f5f5f5), podkład
 // najechania, płaski (bez przezroczystości) — inny niż podkład najechania
 // wiersza tabeli (`--psy-row-hover`, półprzezroczysty fiolet na bieli).
 // Potwierdzone w kodzie: components/organisms/NotificationList.tsx
@@ -242,7 +249,7 @@ function zbudujPary(tokeny, rozmiary, rowHoverNaBieli) {
 }
 
 // ---------------------------------------------------------------------------
-// Tła (S3, W3) — pięć realnych teł, na jakich powyższe pary naprawdę żyją
+// Tła — pięć realnych teł, na jakich powyższe pary naprawdę żyją
 // w interfejsie. Każde ma cytat z konkretnego pliku, nie zgadywanie.
 // ---------------------------------------------------------------------------
 
@@ -278,13 +285,13 @@ function zbudujTla(tokeny, rowHoverNaBieli) {
     {
       nazwa: "Podkład najechania (szary, płaski)",
       rgb: zlozoneNaBieli("psy-bg-grey"),
-      opis: "hover:bg-grey — siódme tło z odbioru S2, dodane w S3: components/organisms/NotificationList.tsx (`hover:bg-grey` na przycisku z odznaką informacyjną), components/molecules/QueueRow.tsx (`hover:bg-grey`, prop `meta` przyjmuje `Badge`).",
+      opis: "hover:bg-grey — dodane po przeglądzie interfejsu (wcześniej pominięte): components/organisms/NotificationList.tsx (`hover:bg-grey` na przycisku z odznaką informacyjną), components/molecules/QueueRow.tsx (`hover:bg-grey`, prop `meta` przyjmuje `Badge`).",
     },
   ];
 }
 
 // ---------------------------------------------------------------------------
-// Wykluczenia jawne (W3) — kombinacje para × tło, które nie występują
+// Wykluczenia jawne — kombinacje para × tło, które nie występują
 // w interfejsie i których mierzenie nie ma sensu. Każde z konkretnym
 // powodem, sprawdzalnym grepem.
 // ---------------------------------------------------------------------------
@@ -357,10 +364,11 @@ function zbudujPelnaMacierz(pary, tla) {
 }
 
 // ---------------------------------------------------------------------------
-// Rejestr zastanych odstępstw (W1) — pary/tła, które SĄ dziś poniżej progu
-// i o których wiemy. Para spoza tego rejestru poniżej progu = kod
-// niezerowy. Wpis, którego para poprawiła się powyżej progu, też daje
-// sygnał (kod niezerowy) — jest już nieprawdziwy i trzeba go usunąć.
+// Rejestr zastanych odstępstw — pary/tła, które SĄ dziś poniżej progu,
+// o których wiemy i które ŚWIADOMIE przepuszczamy. Para spoza tego rejestru
+// (i spoza rejestru tymczasowego niżej) poniżej progu = kod niezerowy.
+// Wpis, którego para poprawiła się powyżej progu, też daje sygnał (kod
+// niezerowy) — jest już nieprawdziwy i trzeba go usunąć.
 // ---------------------------------------------------------------------------
 
 const ZASTANE_ODSTEPSTWA = [
@@ -368,19 +376,50 @@ const ZASTANE_ODSTEPSTWA = [
     etykieta: "Odznaka: informacja",
     tlo: "Podkład najechania wiersza tabeli",
     powod:
-      "info-dark na info-bg, złożone na podkładzie najechania wiersza tabeli: margines dziś ok. -0,19 (zastane przed S3, potwierdzone na czubku gałęzi przed tym zleceniem). Wymaga zmiany odcienia --psy-info-dark albo --psy-info-bg w osobnym zleceniu — nie w S3 (S3 nie zmienia kolorów).",
+      "info-dark na info-bg, złożone na podkładzie najechania wiersza tabeli (odznaka statusu w komórce dowolnej tabeli, wiersz najechany): margines dziś ok. -0,19. Wymaga zmiany odcienia --psy-info-dark albo --psy-info-bg — osobna zmiana, nie zmiana kodu pomiaru.",
   },
   {
     etykieta: "Łącze: główny (tone=primary)",
     tlo: "Podkład najechania wiersza tabeli",
     powod:
-      "green-dark na podkładzie najechania wiersza tabeli (link bez własnego tła, więc liczy się wprost na tym podkładzie): margines dziś ok. -0,015 (zastane przed S3). Wymaga zmiany odcienia --psy-green-dark albo --psy-row-hover w osobnym zleceniu — nie w S3.",
+      "green-dark na podkładzie najechania wiersza tabeli (link bez własnego tła, w komórce tabeli, wiersz najechany): margines dziś ok. -0,015. Wymaga zmiany odcienia --psy-green-dark albo --psy-row-hover — osobna zmiana, nie zmiana kodu pomiaru.",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Odkryte pomiarem z 17.09.2026, czekają na decyzję o odcieniu — TYMCZASOWY
+// rejestr, celowo osobny od `ZASTANE_ODSTEPSTWA` powyżej. Te dwie pary/tła
+// były poniżej progu już wcześniej, tylko nikt ich nie mierzył (przyrząd nie
+// znał pełnego iloczynu par × teł) — to nie jest zaakceptowany stan, tylko
+// świeże odkrycie samego rozszerzenia pomiaru. Trzymanie ich osobno od
+// `ZASTANE_ODSTEPSTWA` ma dać przyrządowi kod 0 na dziś znanym stanie, a
+// jednocześnie zostawić w kodzie widoczny ślad, że to NIE jest stan
+// zaakceptowany na stałe. Każdy wpis znika stąd razem z poprawką odcienia
+// tokenu informacyjnego (--psy-info-dark / --psy-info-bg), która ma dostać
+// własny, osobny pomiar i odbiór — nie zostaje tu na zawsze.
+// ---------------------------------------------------------------------------
+
+const ODKRYTE_POMIAREM_TYMCZASOWE = [
+  {
+    etykieta: "Odznaka: informacja",
+    tlo: "Karta ciepła",
+    data: "2026-09-17",
+    powod:
+      "Odznaka statusu (info-dark na info-bg) w nagłówku podglądu wiadomości e-mail, na tle bg-card-warm — widoczna, gdy status wiadomości to \"symulacja\" (app/(administracja)/admin/emails/page.tsx). Margines dziś ok. -0,093. Wpis tymczasowy: znika razem z poprawką odcienia tokenu informacyjnego, nie zostaje na stałe.",
+  },
+  {
+    etykieta: "Odznaka: informacja",
+    tlo: "Podkład najechania (szary, płaski)",
+    data: "2026-09-17",
+    powod:
+      "Odznaka statusu (info-dark na info-bg) na liście powiadomień, w przycisku z podkładem najechania na szarym #f5f5f5 — widoczna przy nieprzeczytanym powiadomieniu (components/organisms/NotificationList.tsx). Margines dziś ok. -0,050. Wpis tymczasowy: znika razem z poprawką odcienia tokenu informacyjnego, nie zostaje na stałe.",
   },
 ];
 
 /**
- * Ocenia macierz wobec progu i rejestru. Zwraca dwie listy — obie muszą być
- * puste, żeby przyrząd zakończył się kodem 0.
+ * Ocenia macierz wobec progu i rejestru (zastane odstępstwa + odkryte
+ * tymczasowe razem — obie listy pokrywają dziś znany stan). Zwraca dwie
+ * listy — obie muszą być puste, żeby przyrząd zakończył się kodem 0.
  */
 function ocenProgi(macierz, rejestr) {
   const naruszeniaNiepokryte = [];
@@ -411,7 +450,7 @@ function ocenProgi(macierz, rejestr) {
 }
 
 // ---------------------------------------------------------------------------
-// Kontrola niezależna (W2) — ZASTĘPUJE dawny "self-test", który porównywał
+// Kontrola niezależna — ZASTĘPUJE dawny "self-test", który porównywał
 // dwa wyniki tej samej funkcji z tego samego pliku (sprawdzanie, czy 2×2 =
 // 2×2). Wartości niżej są wyliczone NIEZALEŻNIE od kodu tego pliku — patrz
 // komentarz `zrodlo` przy każdej — i wpisane na sztywno jako stałe. Jeśli
@@ -594,11 +633,19 @@ function main() {
   const { wynik: macierz, wykluczone, oczekiwane } = zbudujPelnaMacierz(pary, tla);
   wypiszMacierz(macierz, wykluczone, oczekiwane);
 
-  const { naruszeniaNiepokryte, nieaktualneWpisyRejestru } = ocenProgi(macierz, ZASTANE_ODSTEPSTWA);
+  const pelnyRejestr = [...ZASTANE_ODSTEPSTWA, ...ODKRYTE_POMIAREM_TYMCZASOWE];
+  const { naruszeniaNiepokryte, nieaktualneWpisyRejestru } = ocenProgi(macierz, pelnyRejestr);
 
   console.log(`\n=== Rejestr zastanych odstępstw (${ZASTANE_ODSTEPSTWA.length} wpisów) ===`);
   for (const wpis of ZASTANE_ODSTEPSTWA) {
     console.log(`  - ${wpis.etykieta} × ${wpis.tlo}\n    powód: ${wpis.powod}`);
+  }
+
+  console.log(
+    `\n=== Odkryte pomiarem z 17.09.2026, czekają na decyzję o odcieniu — TYMCZASOWE, nie stan zaakceptowany (${ODKRYTE_POMIAREM_TYMCZASOWE.length} wpisów) ===`,
+  );
+  for (const wpis of ODKRYTE_POMIAREM_TYMCZASOWE) {
+    console.log(`  - [${wpis.data}] ${wpis.etykieta} × ${wpis.tlo}\n    powód: ${wpis.powod}`);
   }
 
   let selfTestOk = true;
@@ -607,13 +654,13 @@ function main() {
   }
 
   if (naruszeniaNiepokryte.length > 0) {
-    console.error(`\nNIEPOKRYTE NARUSZENIA PROGU (${naruszeniaNiepokryte.length}) — poniżej progu i SPOZA rejestru:`);
+    console.error(`\nNIEPOKRYTE NARUSZENIA PROGU (${naruszeniaNiepokryte.length}) — poniżej progu i spoza obu rejestrów:`);
     for (const w of naruszeniaNiepokryte) {
       console.error(`  - ${w.etykieta} × ${w.tlo}: margines=${formatuj(w.margines)}`);
     }
   }
   if (nieaktualneWpisyRejestru.length > 0) {
-    console.error(`\nWPISY REJESTRU JUŻ NIEPRAWDZIWE (${nieaktualneWpisyRejestru.length}) — usuń je z ZASTANE_ODSTEPSTWA:`);
+    console.error(`\nWPISY REJESTRU JUŻ NIEPRAWDZIWE (${nieaktualneWpisyRejestru.length}) — usuń je z ZASTANE_ODSTEPSTWA albo z ODKRYTE_POMIAREM_TYMCZASOWE:`);
     for (const w of nieaktualneWpisyRejestru) {
       console.error(`  - ${w.etykieta} × ${w.tlo}: ${w.stan}`);
     }
