@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use App\Services\Auth\TokenRoles;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -24,6 +25,23 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class UserResource extends JsonResource
 {
+    /**
+     * F-190 (odsłona 2): `show_activation_confirmation` mówi WŁASNEJ osobie
+     * o JEJ własnym pierwszym wejściu. `UserResource` obsługuje też widoki
+     * cudzego konta przez administrację (`AccessController::extend`) — tam
+     * ten klucz nie ma odbiorcy (i pokazywałby administracji stan cudzej
+     * sesji), więc `withoutActivationConfirmation()` go wyłącza.
+     */
+    private bool $includeActivationConfirmation = true;
+
+    public static function withoutActivationConfirmation(User $user): self
+    {
+        $resource = static::make($user);
+        $resource->includeActivationConfirmation = false;
+
+        return $resource;
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -35,6 +53,9 @@ class UserResource extends JsonResource
             'roles' => app(TokenRoles::class)->current(),
             'access_expires_at' => $this->access_expires_at?->toIso8601ZuluString(),
             'program_completed_at' => $this->program_completed_at?->toIso8601ZuluString(),
+            ...($this->includeActivationConfirmation
+                ? ['show_activation_confirmation' => $this->resource->shouldShowActivationConfirmation()]
+                : []),
         ];
     }
 }
