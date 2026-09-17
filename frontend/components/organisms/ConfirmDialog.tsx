@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import Button from "@/components/ui/Button";
 
 export interface ConfirmDialogProps {
@@ -17,6 +17,11 @@ export interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   className?: string;
+  /** Dodatkowa treść między opisem a przyciskami — np. pole formularza,
+   * którego okno samo nie modeluje (rola, powód). Klocek jej nie waliduje
+   * ani nie opisuje przez `aria-describedby` — to zadanie treści, którą tu
+   * wstawia wołający ekran (własne etykiety, własne komunikaty błędów). */
+  children?: ReactNode;
 }
 
 const FOCUSABLE_SELECTOR =
@@ -42,6 +47,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   className = "",
+  children,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<Element | null>(null);
@@ -160,6 +166,7 @@ export default function ConfirmDialog({
             {description}
           </p>
         )}
+        {children}
         {/* Region ogłoszeń dla czytnika ekranu: węzeł zostaje w drzewie przez
          * cały czas, gdy okno jest otwarte, a tekst pojawia się i znika wraz
          * ze stanem zapisu — inaczej nowo domontowany region nie zawsze
