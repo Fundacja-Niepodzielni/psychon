@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
-import PageHeader from "@/components/molecules/PageHeader";
+import PageTemplate from "@/components/templates/PageTemplate";
 import ProgramCompletedCard from "@/components/po-programie/ProgramCompletedCard";
 import ProgramPendingCard from "@/components/po-programie/ProgramPendingCard";
 import { api, ApiError } from "@/lib/api";
@@ -27,6 +28,8 @@ export default function PoProgramiePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** 403 to odmowa roli, nie awaria — ekran pokazuje ją bez ponowienia. */
+  const [forbidden, setForbidden] = useState(false);
 
   // Fetch-on-mount jako łańcuch obietnic (bez synchronicznego setState przed
   // pierwszym `await`) — wzorzec z `panel/dokumenty/page.tsx`, wymagany przez
@@ -39,6 +42,7 @@ export default function PoProgramiePage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
+          setForbidden(caught instanceof ApiError && caught.status === 403);
           setLoadError(
             caught instanceof ApiError ? caught.message : LOAD_ERROR_MESSAGE,
           );
@@ -60,6 +64,7 @@ export default function PoProgramiePage() {
     api<Me>("/me")
       .then((result) => setMe(result))
       .catch((caught: unknown) => {
+        setForbidden(caught instanceof ApiError && caught.status === 403);
         setLoadError(
           caught instanceof ApiError ? caught.message : LOAD_ERROR_MESSAGE,
         );
@@ -68,11 +73,14 @@ export default function PoProgramiePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Po programie" />
-
+    <PageTemplate naglowek={{ title: "Po programie" }}>
       {loading && <LoadingState label="Wczytywanie stanu programu…" />}
-      {!loading && loadError && <ErrorState message={loadError} onRetry={retry} />}
+      {!loading && loadError && forbidden && (
+        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tego ekranu." />
+      )}
+      {!loading && loadError && !forbidden && (
+        <ErrorState message={loadError} onRetry={retry} />
+      )}
 
       {!loading && !loadError && me && (
         me.program_completed_at ? (
@@ -84,6 +92,6 @@ export default function PoProgramiePage() {
           <ProgramPendingCard />
         )
       )}
-    </div>
+    </PageTemplate>
   );
 }

@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Akceptacja stażu",
   href: "/admin/staz",
-  order: 25,
+  order: 60,
+  icon: "clipboard-check",
+  section: "praktyka",
 };
 
 export default entry;

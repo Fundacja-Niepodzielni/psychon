@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Pencil } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
+import ErrorState from "@/components/molecules/ErrorState";
+import LoadingState from "@/components/molecules/LoadingState";
+import PageTemplate from "@/components/templates/PageTemplate";
 import OnboardingEditor from "@/components/onboarding/OnboardingEditor";
 import OnboardingView from "@/components/onboarding/OnboardingView";
 import type { Onboarding } from "@/components/onboarding/types";
@@ -15,6 +19,8 @@ interface Me {
 }
 
 const ADMIN_ROLES = ["super_admin", "project_manager"];
+
+const TITLE = "Zacznij tutaj";
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -32,6 +38,7 @@ export default function ParticipantStartPage() {
   const [role, setRole] = useState<string | null>(null);
   const [programCompletedAt, setProgramCompletedAt] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -50,18 +57,23 @@ export default function ParticipantStartPage() {
       })
       .catch(() => {
         if (active) {
-          setLoadError("Nie udało się wczytać ekranu. Odśwież stronę.");
+          setLoadError("Nie udało się wczytać ekranu. Sprawdź połączenie i spróbuj ponownie.");
         }
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
   const isAdmin = useMemo(
     () => (role !== null ? ADMIN_ROLES.includes(role) : false),
     [role],
   );
+
+  function retry() {
+    setLoadError(null);
+    setAttempt((n) => n + 1);
+  }
 
   function startEditing() {
     setSaved(false);
@@ -70,20 +82,23 @@ export default function ParticipantStartPage() {
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-xl py-12">
-        <Alert variant="error">{loadError}</Alert>
-      </div>
+      <PageTemplate naglowek={{ title: TITLE }}>
+        <ErrorState message={loadError} onRetry={retry} />
+      </PageTemplate>
     );
   }
 
   if (!data) {
-    return <p className="text-body text-muted">Wczytywanie…</p>;
+    return (
+      <PageTemplate naglowek={{ title: TITLE }}>
+        <LoadingState label="Wczytywanie ekranu startowego…" />
+      </PageTemplate>
+    );
   }
 
   if (editing) {
     return (
-      <div className="flex flex-col gap-6">
-        <h1 className="text-h2 font-black text-ink">Edytuj ekran „Zacznij tutaj”</h1>
+      <PageTemplate naglowek={{ title: "Edytuj ekran „Zacznij tutaj”" }}>
         <OnboardingEditor
           data={data}
           onCancel={() => setEditing(false)}
@@ -93,21 +108,22 @@ export default function ParticipantStartPage() {
             setEditing(false);
           }}
         />
-      </div>
+      </PageTemplate>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <h1 className="text-h2 font-black text-ink">Zacznij tutaj</h1>
-        {isAdmin && (
+    <PageTemplate
+      naglowek={{
+        title: TITLE,
+        action: isAdmin ? (
           <Button variant="secondary" onClick={startEditing}>
+            <Pencil aria-hidden="true" />
             Edytuj treść
           </Button>
-        )}
-      </div>
-
+        ) : undefined,
+      }}
+    >
       {saved && <Alert variant="success">Zapisano treść ekranu.</Alert>}
 
       {programCompletedAt && (
@@ -115,7 +131,7 @@ export default function ParticipantStartPage() {
           Program ukończony {formatDateTime(programCompletedAt)}.{" "}
           <Link
             href="/panel/po-programie"
-            className="inline-flex min-h-11 items-center font-medium text-info-dark underline focus-visible:focus-ring"
+            className="inline-flex min-h-control items-center font-semibold text-info-dark underline underline-offset-4 focus-visible:focus-ring"
           >
             Przejdź do ekranu po programie
           </Link>
@@ -124,12 +140,12 @@ export default function ParticipantStartPage() {
       )}
 
       {isAdmin && (
-        <p className="text-caption text-subtle">
+        <p className="text-caption text-muted">
           Ostatnia zmiana treści: {formatDateTime(data.updated_at)}
         </p>
       )}
 
       <OnboardingView data={data} />
-    </div>
+    </PageTemplate>
   );
 }

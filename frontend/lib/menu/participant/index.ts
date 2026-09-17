@@ -17,7 +17,7 @@ import h15ProfilPsychologa from "./h15-profil-psychologa";
 import hPoProgramie from "./h-po-programie";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
-import { sortMenu, type MenuEntry } from "../types";
+import { sortMenu, type MenuEntry, type MenuSection } from "../types";
 
 export const participantMenu: MenuEntry[] = sortMenu([
   h21Start,
@@ -32,3 +32,12 @@ export const participantMenu: MenuEntry[] = sortMenu([
   hPoProgramie,
   // hXXNazwa, // ← i drugą tutaj
 ]);
+
+/**
+ * Sekcje menu uczestnika. Start i Pulpit stoją nad sekcjami, bez nagłówka.
+ * Sekcje pojawiają się dopiero, gdy widocznych wpisów jest więcej niż 7.
+ */
+export const participantMenuSections: MenuSection[] = [
+  { id: "program", label: "Program", order: 10 },
+  { id: "konto", label: "Twoje konto", order: 20 },
+];

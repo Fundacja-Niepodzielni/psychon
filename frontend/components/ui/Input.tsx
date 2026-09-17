@@ -34,8 +34,8 @@ export default function Input({
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`rounded-sm border bg-card px-4 py-2.5 text-body text-ink placeholder:text-subtle focus-visible:focus-ring ${
-          error ? "border-danger" : "border-line"
+        className={`min-h-control w-full rounded-control border bg-card px-4 py-2 text-body text-ink transition-colors duration-150 placeholder:text-subtle focus-visible:focus-ring disabled:cursor-not-allowed disabled:disabled-state ${
+          error ? "border-danger" : "border-control hover:border-control-hover"
         }`}
         {...rest}
       />

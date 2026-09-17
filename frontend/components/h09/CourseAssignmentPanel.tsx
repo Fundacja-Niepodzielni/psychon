@@ -216,7 +216,7 @@ export function CourseAssignmentPanel({ course, lessons }: AdminCoursesSlotProps
       <div className="flex flex-col gap-4">
         <p className="text-small text-muted">
           Prowadzący przypisany do całego kursu prowadzi też każdą lekcję,
-          która nie ma własnego przypisania — kolumna „Status” pokazuje, skąd
+          która nie ma własnego przypisania, a kolumna „Status” pokazuje, skąd
           pochodzi prowadzący każdego wiersza.
         </p>
 

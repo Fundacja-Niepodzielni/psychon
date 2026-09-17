@@ -33,8 +33,12 @@ export default function Table<T>({
       role="region"
       aria-label={caption ?? "Zawartość tabeli przewijana w poziomie"}
       tabIndex={0}
-      className="overflow-x-auto rounded-md border border-line bg-card focus-visible:focus-ring"
+      className="overflow-x-auto rounded-card border border-line bg-card focus-visible:focus-ring"
     >
+      {/* Z-10: przewijanie w bok dozwolone tylko z widocznym oznaczeniem. */}
+      <p className="sticky left-0 border-b border-line px-4 py-2 text-caption text-muted sm:hidden">
+        Tabela przewija się w bok.
+      </p>
       <table className="w-full border-collapse text-left text-small">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
@@ -43,7 +47,7 @@ export default function Table<T>({
               <th
                 key={col.key}
                 scope="col"
-                className={`px-4 py-3 text-caption font-bold uppercase tracking-wide text-muted ${col.className ?? ""}`}
+                className={`px-4 py-3 text-caption font-semibold uppercase tracking-label text-muted ${col.className ?? ""}`}
               >
                 {col.header}
               </th>
@@ -55,7 +59,7 @@ export default function Table<T>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-4 py-10 text-center text-body text-subtle"
+                className="px-4 py-10 text-center text-body text-muted"
               >
                 {emptyMessage}
               </td>
@@ -64,7 +68,7 @@ export default function Table<T>({
             rows.map((row) => (
               <tr
                 key={rowKey(row)}
-                className="border-b border-line last:border-b-0 odd:bg-card even:bg-page"
+                className="border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-row-hover"
               >
                 {columns.map((col) => (
                   <td

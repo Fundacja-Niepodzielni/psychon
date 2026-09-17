@@ -5,6 +5,7 @@ const entry: MenuEntry = {
   label: "Pytania",
   href: "/prowadzacy/pytania",
   order: 20,
+  icon: "question",
 };
 
 export default entry;

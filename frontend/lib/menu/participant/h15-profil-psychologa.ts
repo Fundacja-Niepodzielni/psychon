@@ -6,6 +6,7 @@ const entry: MenuEntry = {
   href: "/panel/profil-psychologa",
   order: 85,
   icon: "badge-check",
+  section: "konto",
 };
 
 export default entry;

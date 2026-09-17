@@ -9,6 +9,7 @@ const entry: MenuEntry = {
   label: "Pulpit",
   href: "/admin",
   order: 10,
+  icon: "dashboard",
   exact: true,
 };
 

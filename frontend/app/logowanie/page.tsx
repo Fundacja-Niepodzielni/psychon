@@ -3,9 +3,10 @@
 import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { LogIn } from "lucide-react";
+import AuthTemplate from "@/components/templates/AuthTemplate";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
 import { api, ApiError } from "@/lib/api";
 import { homeForRole } from "@/lib/home-by-role";
 
@@ -19,6 +20,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   AccessDenied: "Logowanie zostało anulowane.",
   Configuration: "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.",
 };
+
+const NAGLOWEK = {
+  title: "Zaloguj się",
+  description: "Platforma szkoleniowa programu Niepodzielni. Logujesz się kontem Niepodzielni.",
+};
+
+const REDIRECTING = "Przekierowuję do logowania…";
 
 interface Me {
   role: string;
@@ -84,52 +92,27 @@ function LoginScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-page p-6">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <span
-            aria-hidden="true"
-            className="mx-auto flex size-12 items-center justify-center rounded-md bg-brand text-h3 font-black text-light"
-          >
-            N
-          </span>
-          <h1 className="mt-3 text-h2 font-black text-ink">Niepodzielni</h1>
-          <p className="mt-1 text-small text-subtle">
-            Platforma szkoleniowa programu Niepodzielni
-          </p>
-        </div>
+  if (!errorMessage) {
+    return <AuthTemplate {...NAGLOWEK} waitingLabel={REDIRECTING} />;
+  }
 
-        <Card>
-          {errorMessage ? (
-            <div className="flex flex-col gap-4">
-              <Alert variant="error">{errorMessage}</Alert>
-              <Button
-                type="button"
-                className="w-full"
-                onClick={() => void signIn("keycloak", { callbackUrl: "/logowanie" })}
-              >
-                Zaloguj przez konto Niepodzielni
-              </Button>
-            </div>
-          ) : (
-            <p className="text-small text-subtle">Przekierowuję do logowania…</p>
-          )}
-        </Card>
-      </div>
-    </div>
+  return (
+    <AuthTemplate {...NAGLOWEK}>
+      <Alert variant="error">{errorMessage}</Alert>
+      <Button
+        type="button"
+        onClick={() => void signIn("keycloak", { callbackUrl: "/logowanie" })}
+      >
+        <LogIn aria-hidden="true" />
+        Zaloguj przez konto Niepodzielni
+      </Button>
+    </AuthTemplate>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-page p-6">
-          <p className="text-small text-subtle">Przekierowuję do logowania…</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<AuthTemplate {...NAGLOWEK} waitingLabel={REDIRECTING} />}>
       <LoginScreen />
     </Suspense>
   );

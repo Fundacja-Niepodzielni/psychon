@@ -13,6 +13,7 @@ const entry: MenuEntry = {
   label: "Moja grupa",
   href: "/prowadzacy/grupa",
   order: 15,
+  icon: "users",
 };
 
 export default entry;

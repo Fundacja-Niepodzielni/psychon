@@ -31,11 +31,11 @@ export default function PageHeader({
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {breadcrumbs}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div>
-          <h1 className="text-h2 font-black text-ink">{title}</h1>
+          <h1 className="text-title font-bold text-heading">{title}</h1>
           {description && (
-            <p className="mt-1 text-body text-muted">{description}</p>
+            <p className="mt-2 max-w-2xl text-body text-muted">{description}</p>
           )}
         </div>
         {action && <div className="flex flex-wrap gap-3">{action}</div>}

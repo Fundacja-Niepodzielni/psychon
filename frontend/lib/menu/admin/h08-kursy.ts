@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Kursy",
   href: "/admin/kursy",
-  order: 12,
+  order: 20,
+  icon: "book",
+  section: "nauka",
 };
 
 export default entry;

@@ -6,6 +6,7 @@ const entry: MenuEntry = {
   href: "/panel/dokumenty",
   order: 78,
   icon: "file-text",
+  section: "konto",
 };
 
 export default entry;

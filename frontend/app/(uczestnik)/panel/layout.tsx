@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PanelShell from "@/components/layout/PanelShell";
-import { participantMenu } from "@/lib/menu/participant";
+import { participantMenu, participantMenuSections } from "@/lib/menu/participant";
 import { filterMenuByRole } from "@/lib/menu/types";
 import { api, ApiError } from "@/lib/api";
 import type { Role } from "@/lib/home-by-role";
@@ -40,7 +40,12 @@ export default function ParticipantLayout({
   }, []);
 
   return (
-    <PanelShell panelName="Panel uczestnika" menu={filterMenuByRole(participantMenu, role)}>
+    <PanelShell
+      panelName="Panel uczestnika"
+      menu={filterMenuByRole(participantMenu, role)}
+      sections={participantMenuSections}
+      menuKey="uczestnik"
+    >
       {children}
     </PanelShell>
   );

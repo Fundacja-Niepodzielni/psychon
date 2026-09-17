@@ -12,6 +12,54 @@ const layoutSource = readFileSync(
   "utf8",
 );
 
+/** Rozwiązuje wartość zmiennej CSS przez łańcuch `var(--x)` aż do wartości
+ * szesnastkowej — na kodzie bez komentarzy, żeby cytat w prozie nie podszedł
+ * pod definicję. */
+function rozwiazZmienna(css: string, nazwa: string, glebokosc = 0): string {
+  if (glebokosc > 10) {
+    throw new Error("pętla zmiennych CSS");
+  }
+  const dopasowanie = css.match(new RegExp(`${nazwa}:\\s*([^;]+);`));
+  if (!dopasowanie) {
+    throw new Error(`brak zmiennej ${nazwa} w globals.css`);
+  }
+  const wartosc = dopasowanie[1].trim();
+  const zagniezdzona = wartosc.match(/^var\((--[\w-]+)\)$/);
+
+  return zagniezdzona
+    ? rozwiazZmienna(css, zagniezdzona[1], glebokosc + 1)
+    : wartosc.toLowerCase();
+}
+
+const KLOCKI_Z_NAGLOWKAMI = [
+  "components/molecules/PageHeader.tsx",
+  "components/ui/Card.tsx",
+  "components/templates/AuthTemplate.tsx",
+  "components/molecules/EmptyState.tsx",
+  "components/ui/Inset.tsx",
+];
+
+const DOZWOLONE_KLASY_KOLORU = ["text-heading", "text-ink"];
+
+/** Klasy koloru znalezione na każdym h1–h3 wspólnych klocków — tylko klasy
+ * z rodziny `text-*` używane do koloru nagłówka (nie np. `text-title` czy
+ * `font-bold`, które opisują rozmiar/wagę, nie kolor). */
+function klasyKoloruNaglowkow(frontendDir: string): { plik: string; klasy: string[] }[] {
+  return KLOCKI_Z_NAGLOWKAMI.flatMap((plik) => {
+    const zrodlo = readFileSync(path.join(frontendDir, plik), "utf8");
+    const naglowki = [...zrodlo.matchAll(/<h[1-3][^>]*className="([^"]*)"/g)];
+
+    return naglowki.map((dopasowanie) => ({
+      plik,
+      klasy: dopasowanie[1]
+        .split(/\s+/)
+        .filter((klasa) =>
+          /^text-(heading|ink|accent|accent-dark|primary|muted|body)$/.test(klasa),
+        ),
+    }));
+  });
+}
+
 /** Usuwa komentarze blokowe `/* … *\/`, żeby liczenia i sprawdzenia „0
  * wystąpień X poza dozwolonym miejscem" nie łapały cytatów w komentarzach
  * wyjaśniających (np. ten plik cytuje `outline: none` w prozie obok reguły).
@@ -66,9 +114,23 @@ describe("tokeny P2 w app/globals.css", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)/);
   });
 
-  it("nagłówki zostają czarne (--psy-text-strong #1a1a1a), granat strony tylko jako akcent/fokus", () => {
-    expect(css).toMatch(/--psy-text-strong:\s*#1a1a1a/i);
-    expect(css).not.toMatch(/--psy-text-strong:\s*#1500bb/i);
+  it("h1–h3 wspólnych klocków (PageHeader, Card, AuthTemplate, EmptyState, Inset) mają kolor wyłącznie text-heading albo text-ink", () => {
+    const znalezione = klasyKoloruNaglowkow(process.cwd());
+
+    expect(znalezione.length).toBeGreaterThanOrEqual(KLOCKI_Z_NAGLOWKAMI.length);
+
+    for (const { plik, klasy } of znalezione) {
+      expect(klasy, `${plik}: dokładnie jedna klasa koloru na nagłówku`).toHaveLength(1);
+      expect(
+        DOZWOLONE_KLASY_KOLORU,
+        `${plik}: kolor nagłówka to ${klasy[0]}, nie text-heading/text-ink`,
+      ).toContain(klasy[0]);
+    }
+  });
+
+  it("nagłówki zostają czarne: --color-heading i --color-ink, rozwiązane łańcuchem zmiennych w globals.css, dają #1a1a1a", () => {
+    expect(rozwiazZmienna(cssCode, "--color-heading")).toBe("#1a1a1a");
+    expect(rozwiazZmienna(cssCode, "--color-ink")).toBe("#1a1a1a");
   });
 
   it("app/layout.tsx nie ładuje Google Fonts przez <link>/CDN — Roboto jest wyłącznie lokalny", () => {

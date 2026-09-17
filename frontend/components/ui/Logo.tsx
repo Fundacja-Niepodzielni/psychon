@@ -1,7 +1,7 @@
 type Variant = "default" | "inverted";
 
 export interface LogoProps {
-  /** `default` = kolor akcentu (--psy-violet-dark #1500BB) na jasnym tle;
+  /** `default` = kolor akcentu (--psy-violet-dark) na jasnym tle;
    * `inverted` = ten sam plik, `currentColor` przejmuje kolor tekstu
    * (--psy-text-light) na ciemnym tle. Jeden znak, dwa sposoby pokolorowania
    * — P2 pkt 3 wprost zabrania wymyślania drugiego znaku. */
@@ -20,7 +20,7 @@ const variantClass: Record<Variant, string> = {
 /**
  * `Logo` — atom C2 wariant C. Źródło:
  * `_architektura/FRONT-PSYCHON/logo-niepodzielni-ze-strony-2026-09-11.svg`
- * (SVG 7 741 B, viewBox 5657×1803), wklejony inline zamiast `<img>`, żeby
+ * (SVG 7 741 B, viewBox 5657×1803), wklejony inline zamiast osobnego pliku obrazu, żeby
  * wariant `inverted` mógł korzystać z `currentColor` — bez tego ciemne tło
  * wymagałoby drugiego pliku.
  */

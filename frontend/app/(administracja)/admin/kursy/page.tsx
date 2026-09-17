@@ -1,16 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import ReorderConfirmModal from "@/components/h08/ReorderConfirmModal";
+import ActionRow from "@/components/molecules/ActionRow";
+import MoveButtons from "@/components/molecules/MoveButtons";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Columns from "@/components/ui/Columns";
 import Input from "@/components/ui/Input";
+import Inset from "@/components/ui/Inset";
 import Select from "@/components/ui/Select";
+import Stack from "@/components/ui/Stack";
 import Table, { type Column } from "@/components/ui/Table";
+import Text from "@/components/ui/Text";
+import TextLink from "@/components/ui/TextLink";
 import ListTemplate from "@/components/templates/ListTemplate";
 import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api";
@@ -198,12 +204,7 @@ export default function AdminCoursesPage() {
       key: "title",
       header: "Tytuł",
       render: (row) => (
-        <Link
-          href={`/admin/kursy/${row.id}`}
-          className="font-medium text-primary underline underline-offset-4 focus-visible:focus-ring"
-        >
-          {row.title}
-        </Link>
+        <TextLink href={`/admin/kursy/${row.id}`}>{row.title}</TextLink>
       ),
     },
     {
@@ -234,12 +235,12 @@ export default function AdminCoursesPage() {
       key: "actions",
       header: "Akcje",
       render: (row) => (
-        <Link
+        <TextLink
           href={`/admin/kursy/${row.id}`}
-          className="text-small font-medium text-accent-dark underline underline-offset-4 focus-visible:focus-ring"
+          aria-label={`Edytuj kurs: ${row.title}`}
         >
           Edytuj
-        </Link>
+        </TextLink>
       ),
     },
   ];
@@ -261,6 +262,7 @@ export default function AdminCoursesPage() {
                 Zmień kolejność ścieżki
               </Button>
               <Button
+                variant={creating ? "secondary" : "primary"}
                 onClick={() => {
                   setCreating((value) => !value);
                   setFormError(null);
@@ -287,130 +289,116 @@ export default function AdminCoursesPage() {
           <>
             {creating && (
               <Card title="Nowy kurs">
-                <form onSubmit={submitNewCourse} noValidate className="flex flex-col gap-4">
-                  {formError && <Alert variant="error">{formError}</Alert>}
+                <form onSubmit={submitNewCourse} noValidate>
+                  <Stack>
+                    {formError && <Alert variant="error">{formError}</Alert>}
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Columns>
+                      <Input
+                        label="Tytuł"
+                        value={form.title}
+                        onChange={(e) => update("title", e.target.value)}
+                        error={fieldError("title")}
+                      />
+                      <Input
+                        label="Identyfikator (slug)"
+                        value={form.slug}
+                        onChange={(e) => update("slug", e.target.value)}
+                        error={fieldError("slug")}
+                        hint="Małe litery i myślniki, np. wywiad-psychologiczny."
+                      />
+                      <Select
+                        label="Typ"
+                        value={form.type}
+                        onChange={(e) => update("type", e.target.value as CourseType)}
+                        error={fieldError("type")}
+                      >
+                        {Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                      <Select
+                        label="Grupa produktowa"
+                        value={form.product_group}
+                        onChange={(e) =>
+                          update("product_group", e.target.value as ProductGroup)
+                        }
+                        error={fieldError("product_group")}
+                      >
+                        {Object.entries(PRODUCT_GROUP_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </Select>
+                      <Input
+                        label="Pozycja w ścieżce"
+                        type="number"
+                        min={1}
+                        value={form.sequence_order}
+                        onChange={(e) => update("sequence_order", e.target.value)}
+                        error={fieldError("sequence_order")}
+                        hint="Puste pole = kurs poza główną ścieżką (np. webinar)."
+                      />
+                    </Columns>
+
                     <Input
-                      label="Tytuł"
-                      value={form.title}
-                      onChange={(e) => update("title", e.target.value)}
-                      error={fieldError("title")}
+                      label="Opis"
+                      value={form.description}
+                      onChange={(e) => update("description", e.target.value)}
+                      error={fieldError("description")}
                     />
-                    <Input
-                      label="Identyfikator (slug)"
-                      value={form.slug}
-                      onChange={(e) => update("slug", e.target.value)}
-                      error={fieldError("slug")}
-                      hint="Małe litery i myślniki, np. wywiad-psychologiczny."
-                    />
-                    <Select
-                      label="Typ"
-                      value={form.type}
-                      onChange={(e) => update("type", e.target.value as CourseType)}
-                      error={fieldError("type")}
-                    >
-                      {Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </Select>
-                    <Select
-                      label="Grupa produktowa"
-                      value={form.product_group}
-                      onChange={(e) =>
-                        update("product_group", e.target.value as ProductGroup)
-                      }
-                      error={fieldError("product_group")}
-                    >
-                      {Object.entries(PRODUCT_GROUP_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </Select>
-                    <Input
-                      label="Pozycja w ścieżce"
-                      type="number"
-                      min={1}
-                      value={form.sequence_order}
-                      onChange={(e) => update("sequence_order", e.target.value)}
-                      error={fieldError("sequence_order")}
-                      hint="Puste pole = kurs poza główną ścieżką (np. webinar)."
-                    />
-                  </div>
 
-                  <Input
-                    label="Opis"
-                    value={form.description}
-                    onChange={(e) => update("description", e.target.value)}
-                    error={fieldError("description")}
-                  />
+                    <Text size="small" tone="muted">
+                      Kurs powstaje jako szkic — publikacja jest osobną akcją na karcie
+                      kursu i wymaga co najmniej jednej lekcji.
+                    </Text>
 
-                  <p className="text-small text-muted">
-                    Kurs powstaje jako szkic — publikacja jest osobną akcją na karcie
-                    kursu i wymaga co najmniej jednej lekcji.
-                  </p>
-
-                  <div className="flex justify-end">
-                    <Button type="submit" loading={saving}>
-                      Utwórz szkic
-                    </Button>
-                  </div>
+                    <ActionRow>
+                      <Button type="submit" loading={saving}>
+                        Utwórz szkic
+                      </Button>
+                    </ActionRow>
+                  </Stack>
                 </form>
               </Card>
             )}
 
             {order !== null && (
               <Card title="Kolejność ścieżki">
-                <div className="flex flex-col gap-4">
-                  <p className="text-small text-muted">
+                <Stack>
+                  <Text size="small" tone="muted">
                     Ustaw kolejność, a przed zapisem zobaczysz listę osób, którym
                     zmienią się statusy kursów.
-                  </p>
+                  </Text>
 
                   {reorderError && <Alert variant="error">{reorderError}</Alert>}
 
                   {order.length === 0 ? (
-                    <p className="text-body text-subtle">
+                    <Text tone="muted">
                       Żaden kurs nie ma jeszcze pozycji w ścieżce.
-                    </p>
+                    </Text>
                   ) : (
-                    <ol className="flex flex-col gap-2">
+                    <Stack as="ol" gap="tight">
                       {order.map((course, index) => (
-                        <li
-                          key={course.id}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-line bg-page px-4 py-3"
-                        >
-                          <span className="text-body text-ink">
-                            <span className="mr-2 font-bold">{index + 1}.</span>
-                            {course.title}
-                          </span>
-                          <span className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              onClick={() => move(index, -1)}
-                              disabled={index === 0}
-                              aria-label={`Przesuń w górę: ${course.title}`}
-                            >
-                              W górę
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => move(index, 1)}
-                              disabled={index === order.length - 1}
-                              aria-label={`Przesuń w dół: ${course.title}`}
-                            >
-                              W dół
-                            </Button>
-                          </span>
-                        </li>
+                        <Inset as="li" layout="row" key={course.id}>
+                          <Text>
+                            <strong>{index + 1}.</strong> {course.title}
+                          </Text>
+                          <MoveButtons
+                            label={course.title}
+                            index={index}
+                            count={order.length}
+                            onMove={move}
+                          />
+                        </Inset>
                       ))}
-                    </ol>
+                    </Stack>
                   )}
 
-                  <div className="flex flex-wrap justify-end gap-3">
+                  <ActionRow>
                     <Button
                       variant="ghost"
                       onClick={() => {
@@ -427,8 +415,8 @@ export default function AdminCoursesPage() {
                     >
                       Sprawdź wpływ zmiany
                     </Button>
-                  </div>
-                </div>
+                  </ActionRow>
+                </Stack>
               </Card>
             )}
           </>

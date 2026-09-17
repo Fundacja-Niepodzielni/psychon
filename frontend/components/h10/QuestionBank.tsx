@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import QuestionForm from "@/components/h10/QuestionForm";
+import ActionRow from "@/components/molecules/ActionRow";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Inset from "@/components/ui/Inset";
+import Stack from "@/components/ui/Stack";
+import Text from "@/components/ui/Text";
 import { api, ApiError } from "@/lib/api";
 import {
   draftError,
@@ -255,74 +259,85 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <Card title={`Bank pytań — pytań w teście: ${questions.length}`}>
-        <p className="text-small text-muted">
-          Zmiany w pytaniach nie dotykają zakończonych podejść: każde z nich ma
-          własną kopię treści z chwili rozwiązywania.
-        </p>
+    <Stack gap="stack">
+      <Card title={`Pytania w teście: ${questions.length}`}>
+        <Stack>
+          <Text size="small" tone="muted">
+            Zmiany w pytaniach nie dotykają zakończonych podejść: każde z nich
+            ma własną kopię treści z chwili rozwiązywania.
+          </Text>
 
-        {actionError && (
-          <Alert variant="error" className="mt-4">
-            {actionError}
-          </Alert>
-        )}
+          {actionError && <Alert variant="error">{actionError}</Alert>}
 
-        {questions.length === 0 && (
-          <p className="mt-4 text-body text-muted">
-            Ten test nie ma jeszcze żadnego pytania.
-          </p>
-        )}
+          {questions.length === 0 && (
+            <Text tone="muted">Ten test nie ma jeszcze żadnego pytania.</Text>
+          )}
 
-        <ul className="mt-4 space-y-4">
-          {questions.map((question) => (
-            <li
-              key={question.id}
-              className="rounded-md border border-line bg-card-warm p-4"
-            >
-              {editingId === question.id && editDraft !== null ? (
-                <>
-                  {editError && (
-                    <Alert variant="error" className="mb-4">
-                      {editError}
-                    </Alert>
-                  )}
+          <Stack as="ul">
+            {questions.map((question) => (
+              <Inset as="li" warm key={question.id}>
+                {editingId === question.id && editDraft !== null ? (
+                  <>
+                    {editError && <Alert variant="error">{editError}</Alert>}
 
-                  <QuestionForm
-                    draft={editDraft}
-                    onChange={setEditDraft}
-                    fieldErrors={editFieldErrors}
-                    idPrefix={`pytanie-${question.id}`}
-                    disabled={saving}
-                  />
-
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    <Button
-                      loading={saving}
-                      onClick={() => void saveEdit(question.id)}
-                    >
-                      Zapisz pytanie
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={cancelEdit}
+                    <QuestionForm
+                      draft={editDraft}
+                      onChange={setEditDraft}
+                      fieldErrors={editFieldErrors}
+                      idPrefix={`pytanie-${question.id}`}
                       disabled={saving}
-                    >
-                      Anuluj
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <p className="text-body font-medium text-ink">
-                      {question.sequence_order}. {question.body}
-                    </p>
+                    />
 
-                    <div className="flex shrink-0 gap-2">
+                    <ActionRow align="start">
+                      <Button
+                        loading={saving}
+                        onClick={() => void saveEdit(question.id)}
+                      >
+                        Zapisz pytanie
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={cancelEdit}
+                        disabled={saving}
+                      >
+                        Anuluj
+                      </Button>
+                    </ActionRow>
+                  </>
+                ) : (
+                  <>
+                    <Text>
+                      <strong>
+                        {question.sequence_order}. {question.body}
+                      </strong>
+                    </Text>
+
+                    <ul className="flex flex-col gap-1">
+                      {question.answers.map((answer) => (
+                        <li
+                          key={answer.id}
+                          className={`text-small ${
+                            answer.is_correct
+                              ? "font-medium text-success"
+                              : "text-muted"
+                          }`}
+                        >
+                          <span aria-hidden="true">
+                            {answer.is_correct ? "✓ " : "• "}
+                          </span>
+                          {answer.is_correct && (
+                            <span className="sr-only">Poprawna odpowiedź: </span>
+                          )}
+                          {answer.body}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <ActionRow align="start">
                       <Button
                         variant="secondary"
                         onClick={() => startEdit(question)}
+                        aria-label={`Edytuj pytanie ${question.sequence_order}`}
                       >
                         Edytuj
                       </Button>
@@ -330,60 +345,38 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
                         variant="ghost"
                         loading={removingId === question.id}
                         onClick={() => void removeQuestion(question)}
+                        aria-label={`Usuń pytanie ${question.sequence_order}`}
                       >
                         Usuń
                       </Button>
-                    </div>
-                  </div>
-
-                  <ul className="mt-3 space-y-1">
-                    {question.answers.map((answer) => (
-                      <li
-                        key={answer.id}
-                        className={`text-small ${
-                          answer.is_correct
-                            ? "font-medium text-success"
-                            : "text-muted"
-                        }`}
-                      >
-                        <span aria-hidden="true">
-                          {answer.is_correct ? "✓ " : "• "}
-                        </span>
-                        {answer.is_correct && (
-                          <span className="sr-only">Poprawna odpowiedź: </span>
-                        )}
-                        {answer.body}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+                    </ActionRow>
+                  </>
+                )}
+              </Inset>
+            ))}
+          </Stack>
+        </Stack>
       </Card>
 
       <Card title="Nowe pytanie">
-        {newError && (
-          <Alert variant="error" className="mb-4">
-            {newError}
-          </Alert>
-        )}
+        <Stack>
+          {newError && <Alert variant="error">{newError}</Alert>}
 
-        <QuestionForm
-          draft={newDraft}
-          onChange={setNewDraft}
-          fieldErrors={newFieldErrors}
-          idPrefix="nowe-pytanie"
-          disabled={creating}
-        />
+          <QuestionForm
+            draft={newDraft}
+            onChange={setNewDraft}
+            fieldErrors={newFieldErrors}
+            idPrefix="nowe-pytanie"
+            disabled={creating}
+          />
 
-        <div className="mt-4">
-          <Button loading={creating} onClick={() => void createQuestion()}>
-            Dodaj pytanie
-          </Button>
-        </div>
+          <ActionRow align="start">
+            <Button loading={creating} onClick={() => void createQuestion()}>
+              Dodaj pytanie
+            </Button>
+          </ActionRow>
+        </Stack>
       </Card>
-    </div>
+    </Stack>
   );
 }

@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Po programie",
   href: "/panel/po-programie",
-  order: 79,
+  order: 82,
+  icon: "flag",
+  section: "program",
 };
 
 export default entry;

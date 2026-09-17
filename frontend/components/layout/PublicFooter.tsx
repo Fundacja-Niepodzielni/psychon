@@ -20,10 +20,10 @@ export default function PublicFooter() {
   if (maWlasnaStopke || pathname === "/deklaracja-dostepnosci") return null;
 
   return (
-    <footer className="border-t border-line bg-card px-6 py-4">
+    <footer className="border-t border-line bg-card px-4 py-2 sm:px-6">
       <Link
         href="/deklaracja-dostepnosci"
-        className="text-small font-medium text-muted underline underline-offset-2 hover:text-ink focus-visible:focus-ring"
+        className="inline-flex min-h-control items-center text-small font-medium text-muted underline underline-offset-2 hover:text-ink focus-visible:focus-ring"
       >
         Deklaracja dostępności
       </Link>

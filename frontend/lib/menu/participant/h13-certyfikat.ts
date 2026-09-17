@@ -6,6 +6,7 @@ const entry: MenuEntry = {
   href: "/panel/certyfikat",
   order: 80,
   icon: "award",
+  section: "program",
   roles: ["volunteer"],
 };
 

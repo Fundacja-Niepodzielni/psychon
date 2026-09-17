@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Sprawy",
   href: "/admin/sprawy",
-  order: 27,
+  order: 80,
+  icon: "folder",
+  section: "obsluga",
 };
 
 export default entry;

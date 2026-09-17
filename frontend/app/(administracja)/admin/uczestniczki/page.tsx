@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import ApplicationsTab from "@/components/h03/ApplicationsTab";
 import AdminUsersList from "@/components/h18/AdminUsersList";
+import LoadingState from "@/components/molecules/LoadingState";
 import Tabs from "@/components/ui/Tabs";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function AdminUsersPage() {
   return (
     // `Tabs` czyta parametr zapytania; bez `Suspense` Next każe renderować
     // całą trasę dynamicznie (wymóg `useSearchParams` w App Routerze).
-    <Suspense fallback={<p className="text-body text-muted">Wczytywanie…</p>}>
+    <Suspense fallback={<LoadingState />}>
       <Tabs
         ariaLabel="Sekcje ekranu uczestniczek"
         tabs={[

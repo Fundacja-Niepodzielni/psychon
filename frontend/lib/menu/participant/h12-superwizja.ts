@@ -10,6 +10,8 @@ const entry: MenuEntry = {
   label: "Superwizje",
   href: "/panel/superwizja",
   order: 35,
+  icon: "messages",
+  section: "program",
   roles: ["volunteer"],
 };
 

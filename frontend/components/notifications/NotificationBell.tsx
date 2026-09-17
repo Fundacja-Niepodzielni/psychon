@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, apiPaged } from "@/lib/api";
 import type { NotificationItem } from "@/lib/notifications/types";
@@ -129,21 +130,9 @@ export default function NotificationBell() {
             ? `Powiadomienia, ${unread} nieprzeczytanych`
             : "Powiadomienia"
         }
-        className="relative flex size-10 items-center justify-center rounded-pill text-subtle transition-colors duration-200 hover:bg-grey hover:text-ink focus-visible:focus-ring"
+        className="relative flex size-11 items-center justify-center rounded-pill text-icon transition-colors duration-150 hover:bg-nav-hover hover:text-nav-hover-ink focus-visible:focus-ring"
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="size-5"
-          aria-hidden="true"
-        >
-          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-        </svg>
+        <Bell aria-hidden="true" className="size-5" />
         {unread > 0 && (
           <span
             aria-hidden="true"
@@ -158,7 +147,7 @@ export default function NotificationBell() {
         <div
           role="menu"
           aria-label="Lista powiadomień"
-          className="absolute right-0 top-12 z-50 w-[22rem] max-w-[90vw] rounded-md border border-line bg-card shadow-card"
+          className="absolute right-0 top-12 z-dropdown w-[22rem] max-w-[90vw] rounded-card border border-line bg-card shadow-card"
         >
           <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
             <p className="text-small font-bold text-ink">Powiadomienia</p>

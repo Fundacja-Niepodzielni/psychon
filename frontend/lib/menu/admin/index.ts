@@ -20,7 +20,7 @@ import h20Dziennik from "./h20-dziennik";
 import h21EkranStartowy from "./h21-ekran-startowy";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
-import { sortMenu, type MenuEntry } from "../types";
+import { sortMenu, type MenuEntry, type MenuSection } from "../types";
 
 export const adminMenu: MenuEntry[] = sortMenu([
   h19Pulpit,
@@ -38,3 +38,16 @@ export const adminMenu: MenuEntry[] = sortMenu([
   h21EkranStartowy,
   // hXXNazwa, // ← i drugą tutaj
 ]);
+
+/**
+ * Sekcje menu administracji. Wpis wskazuje sekcję polem section; Pulpit stoi
+ * nad sekcjami, bez nagłówka.
+ */
+export const adminMenuSections: MenuSection[] = [
+  { id: "nauka", label: "Nauka", order: 10 },
+  { id: "osoby", label: "Osoby", order: 20 },
+  { id: "praktyka", label: "Praktyka", order: 30 },
+  { id: "obsluga", label: "Obsługa", order: 40 },
+  { id: "raporty", label: "Raporty", order: 50 },
+  { id: "konfiguracja", label: "Konfiguracja", order: 60 },
+];

@@ -1,3 +1,4 @@
+import { Play } from "lucide-react";
 import Card from "@/components/ui/Card";
 import type { Onboarding, VideoSection } from "./types";
 
@@ -20,7 +21,7 @@ function toEmbedUrl(raw: string): string {
 function VideoBlock({ video }: { video: VideoSection }) {
   if (video.url) {
     return (
-      <div className="overflow-hidden rounded-sm border border-line bg-ink">
+      <div className="overflow-hidden rounded-control border border-line bg-ink">
         <div className="relative aspect-video">
           <iframe
             src={toEmbedUrl(video.url)}
@@ -35,16 +36,14 @@ function VideoBlock({ video }: { video: VideoSection }) {
   }
 
   return (
-    <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-sm border border-dashed border-line bg-grey text-center">
+    <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-control px-4 py-10 border border-dashed border-control bg-grey text-center">
       <span
         aria-hidden="true"
-        className="flex size-14 items-center justify-center rounded-pill bg-card text-primary shadow-card"
+        className="flex size-14 items-center justify-center rounded-pill border border-control bg-card text-icon"
       >
-        <svg viewBox="0 0 24 24" fill="currentColor" className="size-6">
-          <path d="M8 5v14l11-7z" />
-        </svg>
+        <Play className="size-6" />
       </span>
-      <p className="max-w-sm px-4 text-small text-muted">
+      <p className="max-w-sm px-4 text-body text-muted">
         {video.caption ?? "Film pojawi się tutaj wkrótce."}
       </p>
     </div>
@@ -60,25 +59,28 @@ export interface OnboardingViewProps {
  * programu, oczekiwania), bez żadnych kontrolek edycji. Używany na
  * `/panel/start` (widok uczestnika) i jako „Podgląd" na `/admin/ekran-startowy`
  * (ten sam render, który zobaczy uczestnik po zapisaniu zmian).
+ *
+ * Wyróżnione tłem jest tylko powitanie filmowe: to pierwszy krok na tym
+ * ekranie. Teksty mają szerokość wygodną do czytania.
  */
 export default function OnboardingView({ data }: OnboardingViewProps) {
   return (
-    <div className="flex flex-col gap-6">
-      <Card title={data.video.title}>
+    <div className="flex flex-col gap-stack">
+      <Card title={data.video.title} warm>
         <VideoBlock video={data.video} />
         {data.video.url && data.video.caption && (
-          <p className="mt-3 text-small text-muted">{data.video.caption}</p>
+          <p className="mt-3 max-w-2xl text-body text-muted">{data.video.caption}</p>
         )}
       </Card>
 
       <Card title={data.program.title}>
-        <p className="whitespace-pre-line text-body text-muted">
+        <p className="max-w-2xl whitespace-pre-line text-body text-pretty">
           {data.program.body}
         </p>
       </Card>
 
-      <Card title={data.expectations.title} warm>
-        <p className="whitespace-pre-line text-body text-muted">
+      <Card title={data.expectations.title}>
+        <p className="max-w-2xl whitespace-pre-line text-body text-pretty">
           {data.expectations.body}
         </p>
       </Card>

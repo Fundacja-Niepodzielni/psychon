@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import QuestionBank from "@/components/h10/QuestionBank";
+import Breadcrumbs from "@/components/molecules/Breadcrumbs";
+import PageTemplate from "@/components/templates/PageTemplate";
 
 export const metadata: Metadata = {
   title: "Bank pytań — Niepodzielni",
@@ -33,19 +34,22 @@ export default async function QuestionBankPage({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link
-        href="/admin/kursy"
-        className="inline-flex min-h-11 items-center gap-2 self-start text-small font-medium text-muted transition-colors duration-200 hover:text-ink focus-visible:focus-ring"
-      >
-        <span aria-hidden="true">←</span> Wróć do listy kursów
-      </Link>
-
-      <h1 className="text-h2 font-black text-ink">Bank pytań</h1>
-
+    <PageTemplate
+      naglowek={{
+        title: "Bank pytań",
+        breadcrumbs: (
+          <Breadcrumbs
+            items={[
+              { label: "Kursy", href: "/admin/kursy" },
+              { label: "Bank pytań" },
+            ]}
+          />
+        ),
+      }}
+    >
       {/* `key` gwarantuje świeży stan przy przejściu między testami — panel
           czyta pytania raz, przy montażu. */}
       <QuestionBank key={testId} testId={testId} />
-    </div>
+    </PageTemplate>
   );
 }

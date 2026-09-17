@@ -6,6 +6,7 @@ const entry: MenuEntry = {
   href: "/panel/kursy",
   order: 20,
   icon: "book",
+  section: "program",
 };
 
 export default entry;

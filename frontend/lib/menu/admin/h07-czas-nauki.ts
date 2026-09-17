@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Czas nauki",
   href: "/admin/czas-nauki",
-  order: 22,
+  order: 30,
+  icon: "clock",
+  section: "nauka",
 };
 
 export default entry;

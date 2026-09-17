@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { participantMenu } from "@/lib/menu/participant";
-import { adminMenu } from "@/lib/menu/admin";
-import { instructorMenu } from "@/lib/menu/instructor";
-import type { MenuEntry } from "@/lib/menu/types";
+import { participantMenu, participantMenuSections } from "@/lib/menu/participant";
+import { adminMenu, adminMenuSections } from "@/lib/menu/admin";
+import { instructorMenu, instructorMenuSections } from "@/lib/menu/instructor";
+import {
+  filterMenuByRole,
+  groupMenu,
+  type MenuEntry,
+  type MenuSection,
+} from "@/lib/menu/types";
 
 /**
  * Dwa wpisy z tą samą wartością `order` w jednym rejestrze menu dają wynik
@@ -29,4 +34,65 @@ describe("rejestry menu — unikalne wartości order", () => {
       expect(duplikaty).toEqual([]);
     },
   );
+});
+
+const sekcjePaneli: Record<string, [MenuEntry[], MenuSection[]]> = {
+  uczestnik: [participantMenu, participantMenuSections],
+  administracja: [adminMenu, adminMenuSections],
+  prowadzacy: [instructorMenu, instructorMenuSections],
+};
+
+describe("rejestry menu — sekcje", () => {
+  it.each(Object.entries(sekcjePaneli))(
+    "%s: każdy wpis z sekcją wskazuje sekcję opisaną w rejestrze, sekcje mają unikalne id i order",
+    (_nazwa, [menu, sekcje]) => {
+      const znane = sekcje.map((s) => s.id);
+      const nieznane = menu.filter((w) => w.section && !znane.includes(w.section));
+      const kolejnosc = sekcje.map((s) => s.order);
+
+      expect(nieznane.map((w) => w.label)).toEqual([]);
+      expect(new Set(znane).size).toBe(znane.length);
+      expect(new Set(kolejnosc).size).toBe(kolejnosc.length);
+    },
+  );
+
+  it.each(Object.entries(sekcjePaneli))(
+    "%s: każdy wpis ma ikonę",
+    (_nazwa, [menu]) => {
+      expect(menu.filter((w) => !w.icon).map((w) => w.label)).toEqual([]);
+    },
+  );
+
+  it("administracja: przyjęty podział na sekcje i kolejność w sekcjach", () => {
+    const grupy = groupMenu(adminMenu, adminMenuSections);
+
+    expect(grupy.map((g) => [g.label ?? "", g.entries.map((e) => e.label)])).toEqual([
+      ["", ["Pulpit"]],
+      ["Nauka", ["Kursy", "Czas nauki"]],
+      ["Osoby", ["Uczestniczki", "Profile psychologa"]],
+      ["Praktyka", ["Akceptacja stażu", "Superwizje"]],
+      ["Obsługa", ["Sprawy", "Skrzynka e-maili"]],
+      ["Raporty", ["Raport", "Dziennik działań"]],
+      ["Konfiguracja", ["Ekran startowy", "Ustawienia"]],
+    ]);
+  });
+
+  it("uczestnik: sekcje dla wolontariusza i studenta, bez pustych nagłówków", () => {
+    const wolontariusz = groupMenu(filterMenuByRole(participantMenu, "volunteer"), participantMenuSections);
+    const student = groupMenu(filterMenuByRole(participantMenu, "student"), participantMenuSections);
+
+    expect(wolontariusz.map((g) => g.label)).toEqual([undefined, "Program", "Twoje konto"]);
+    expect(wolontariusz.flatMap((g) => g.entries)).toHaveLength(10);
+    expect(student.map((g) => g.label)).toEqual([undefined, "Program", "Twoje konto"]);
+    expect(student.flatMap((g) => g.entries).map((e) => e.label)).not.toContain("Certyfikat");
+    expect(student.flatMap((g) => g.entries)).toHaveLength(8);
+  });
+
+  it("prowadzący: trzy wpisy, jedna lista bez nagłówków", () => {
+    const grupy = groupMenu(instructorMenu, instructorMenuSections);
+
+    expect(grupy).toHaveLength(1);
+    expect(grupy[0].label).toBeUndefined();
+    expect(grupy[0].entries.map((e) => e.label)).toEqual(["Start", "Moja grupa", "Pytania"]);
+  });
 });

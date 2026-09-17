@@ -91,7 +91,7 @@ export function CourseInvitePanel({ course }: AdminCoursesSlotProps) {
       <Card title="Zaproszenia">
         <p className="text-body text-muted">
           Ten kurs stoi na pozycji {course.sequence_order} głównej ścieżki, więc
-          odblokowuje się kolejnymi etapami — zaproszenia dotyczą wyłącznie
+          odblokowuje się kolejnymi etapami, a zaproszenia dotyczą wyłącznie
           kursów poza ścieżką, na przykład webinarów. Usuń pozycję w ścieżce,
           jeśli kurs ma być webinarem.
         </p>

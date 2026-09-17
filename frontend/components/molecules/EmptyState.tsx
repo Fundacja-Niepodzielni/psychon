@@ -21,9 +21,9 @@ export default function EmptyState({
 }: EmptyStateProps) {
   return (
     <Card className={`text-center ${className}`}>
-      <h2 className="text-h4 font-bold text-ink">{title}</h2>
+      <h2 className="text-subtitle font-bold text-heading">{title}</h2>
       {description && (
-        <p className="mt-2 text-body text-muted">{description}</p>
+        <p className="mx-auto mt-2 max-w-prose text-body text-muted">{description}</p>
       )}
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </Card>
