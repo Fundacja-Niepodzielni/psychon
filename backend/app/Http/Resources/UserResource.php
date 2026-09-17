@@ -26,7 +26,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class UserResource extends JsonResource
 {
     /**
-     * F-190 (odsłona 2): `show_activation_confirmation` mówi WŁASNEJ osobie
+     * `show_activation_confirmation` mówi WŁASNEJ osobie
      * o JEJ własnym pierwszym wejściu. `UserResource` obsługuje też widoki
      * cudzego konta przez administrację (`AccessController::extend`) — tam
      * ten klucz nie ma odbiorcy (i pokazywałby administracji stan cudzej

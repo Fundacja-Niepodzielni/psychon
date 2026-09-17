@@ -69,7 +69,7 @@ class User extends Authenticatable
     }
 
     /**
-     * F-190 (odsłona 2): konto jest powiązane z dostawcą tożsamości
+     * Konto jest powiązane z dostawcą tożsamości
      * (`sso/powiaz` albo polecenie operatora ustawia `keycloak_sub`) i
      * jednorazowy komunikat "Twoje konto zostało aktywowane" nie został
      * jeszcze odnotowany jako pokazany. Wywołujący MUSI przeczytać ten stan

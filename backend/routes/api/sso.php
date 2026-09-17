@@ -33,7 +33,7 @@ Route::middleware('auth.keycloak')->get('/sso/whoami', SsoWhoAmIController::clas
 // like the existing auth routes.
 Route::middleware(['auth.keycloak', 'throttle:6,1'])->post('/sso/powiaz', SsoBindController::class);
 
-// F-190 (odsłona 2): odnotowuje pokazanie jednorazowego komunikatu
+// Odnotowuje pokazanie jednorazowego komunikatu
 // aktywacyjnego na WŁASNYM koncie wywołującego. W odróżnieniu od dwóch tras
 // wyżej potrzebuje rozwiązanego lokalnego konta (nie tylko sprawdzonego
 // principala), więc idzie za tym samym `auth:keycloak`, co pozostałe trasy

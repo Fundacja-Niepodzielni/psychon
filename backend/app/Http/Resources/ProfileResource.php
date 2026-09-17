@@ -40,7 +40,7 @@ class ProfileResource extends JsonResource
     private bool $includePendingLegalDocuments = true;
 
     /**
-     * F-190 (odsłona 2): jednorazowy komunikat aktywacyjny (`show_activation_confirmation`)
+     * Jednorazowy komunikat aktywacyjny (`show_activation_confirmation`)
      * mówi WŁASNEJ osobie o JEJ własnym pierwszym wejściu — na karcie cudzego
      * konta w panelu administracji nie ma odbiorcy tej informacji (i pokazanie
      * administracji stanu cudzej sesji byłoby co najmniej mylące). `false` tu
@@ -76,7 +76,7 @@ class ProfileResource extends JsonResource
             'access_expires_at' => $this->access_expires_at?->toIso8601ZuluString(),
             'program_completed_at' => $this->program_completed_at?->toIso8601ZuluString(),
             'product_group' => $this->product_group,
-            // F-190 (odsłona 2): pochodne od powiązania z dostawcą tożsamości
+            // Pochodne od powiązania z dostawcą tożsamości
             // i braku odnotowanego pokazania — patrz `User::shouldShowActivationConfirmation()`.
             // Wyłącznie na WŁASNYM profilu, patrz `$includeActivationConfirmation` wyżej.
             ...($this->includeActivationConfirmation

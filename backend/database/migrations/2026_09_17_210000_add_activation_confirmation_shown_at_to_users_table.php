@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * F-190 (odsłona 2): chwila (nie flaga — chwilę można później zbadać,
+     * Chwila (nie flaga — chwilę można później zbadać,
      * flagi nie) pokazania jednorazowego komunikatu "Twoje konto zostało
      * aktywowane" na pulpicie, przy pierwszym wejściu po powiązaniu konta
      * z dostawcą tożsamości (`users.keycloak_sub`). Nullable i addytywne —
