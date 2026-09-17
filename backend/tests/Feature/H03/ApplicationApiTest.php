@@ -164,7 +164,7 @@ class ApplicationApiTest extends TestCase
         // consumes to attach a Konta Niepodzielni identity.
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $sub = (string) Str::uuid();
-        $bindToken = $realm->mint(['sub' => $sub]);
+        $bindToken = $realm->mint(['sub' => $sub, 'email' => $user->email, 'email_verified' => true]);
 
         $this->withHeader('Authorization', 'Bearer '.$bindToken)
             ->postJson('/api/v1/sso/powiaz', ['token' => $user->activation_token])

@@ -5,6 +5,7 @@ namespace App\Http\Resources\H03;
 use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 /** @mixin Application */
 class ApplicationResource extends JsonResource
@@ -23,6 +24,8 @@ class ApplicationResource extends JsonResource
             'payload' => $this->payload,
             'university' => $this->university,
             'graduation_year' => $this->graduation_year,
+            'consent_regulamin_at' => self::isoDate($this->resource->getAttribute('consent_regulamin_at')),
+            'consent_polityka_at' => self::isoDate($this->resource->getAttribute('consent_polityka_at')),
             'status' => $this->status,
             'rejection_reason' => $this->rejection_reason,
             'decided_by' => $this->decided_by,
@@ -35,5 +38,10 @@ class ApplicationResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601ZuluString(),
             'updated_at' => $this->updated_at?->toIso8601ZuluString(),
         ];
+    }
+
+    private static function isoDate(mixed $value): ?string
+    {
+        return $value === null ? null : Carbon::parse($value)->toIso8601ZuluString();
     }
 }

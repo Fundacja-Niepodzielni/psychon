@@ -33,9 +33,12 @@ final class ApplicationRejector
                 'decided_at' => $decidedAt,
             ])->save();
 
+            // Powód jest wolnym tekstem i może zawierać dane osobowe, dlatego
+            // zostaje w `applications.rejection_reason`, a wpis w rejestrze
+            // niesie wyłącznie identyfikatory i decyzję.
             AuditLog::record($actor, 'application.rejected', $locked, [
                 'application_id' => $locked->id,
-                'reason' => $reason,
+                'decision' => 'rejected',
             ]);
 
             // A new application has no User yet. Until the contract provides

@@ -13,6 +13,14 @@ class Application extends Model
     /** @use HasFactory<ApplicationFactory> */
     use HasFactory;
 
+    /**
+     * Zgody zapisane w zgłoszeniu: typ z tabeli `consents` => kolumna daty.
+     */
+    public const CONSENT_COLUMNS = [
+        'regulamin' => 'consent_regulamin_at',
+        'polityka' => 'consent_polityka_at',
+    ];
+
     protected $fillable = [
         'edition_id',
         'first_name',
@@ -25,6 +33,8 @@ class Application extends Model
         'university',
         'graduation_year',
         'diploma_scan_path',
+        'consent_regulamin_at',
+        'consent_polityka_at',
         'status',
         'rejection_reason',
         'decided_by',
@@ -38,6 +48,8 @@ class Application extends Model
             'payload' => 'array',
             'graduation_year' => 'integer',
             'decided_at' => 'datetime',
+            'consent_regulamin_at' => 'datetime',
+            'consent_polityka_at' => 'datetime',
         ];
     }
 

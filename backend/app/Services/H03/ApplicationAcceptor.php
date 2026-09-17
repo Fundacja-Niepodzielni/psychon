@@ -4,6 +4,7 @@ namespace App\Services\H03;
 
 use App\Exceptions\ApiException;
 use App\Models\Application;
+use App\Models\Consent;
 use App\Models\User;
 use App\Support\AuditLog;
 use App\Support\Notify;
@@ -17,11 +18,17 @@ final class ApplicationAcceptor
      * The application is locked before its edition to keep lock ordering
      * stable under concurrent accept requests.
      *
-     * @return array{user_id:int, access_expires_at:string}
+     * Konto lokalne powstaje w stanie `invited` (zaproszone): nie ma jeszcze
+     * `keycloak_sub`, staje się `active` dopiero przy pierwszym logowaniu
+     * (`ApplicationFirstLoginBinder`). Wiadomość e-mail wychodzi po
+     * zatwierdzeniu transakcji, najwyżej raz na przyjęte zgłoszenie: drugie
+     * przyjęcie tego samego zgłoszenia kończy się 409 przed wysyłką.
+     *
+     * @return array{user_id:int, access_expires_at:string, invitation_mail:string}
      */
     public static function accept(Application|int $application, User $actor, array $input): array
     {
-        return DB::transaction(function () use ($application, $actor, $input): array {
+        [$locked, $user, $expiresAt, $activationUrl] = DB::transaction(function () use ($application, $actor, $input): array {
             $applicationId = $application instanceof Application ? $application->getKey() : $application;
             $locked = Application::query()->whereKey($applicationId)->lockForUpdate()->first();
 
@@ -50,8 +57,9 @@ final class ApplicationAcceptor
                 );
             }
 
+            // Zaproszone konta zajmują miejsce tak samo jak aktywne.
             $capacity = $edition->seats_limit;
-            $active = $edition->users()->where('status', 'active')->count();
+            $active = $edition->users()->whereIn('status', ['active', 'invited'])->count();
             $requested = 1;
 
             if ($capacity !== null && $active + $requested > $capacity && ! (bool) ($input['force'] ?? false)) {
@@ -79,12 +87,22 @@ final class ApplicationAcceptor
                 'email' => $email,
                 'phone' => $locked->phone,
                 'role' => $input['role'],
-                'status' => 'active',
+                'status' => 'invited',
                 'edition_id' => $edition->id,
                 'access_expires_at' => $expiresAt,
                 'activation_token' => $token,
                 'product_group' => 'psychon',
             ]);
+
+            foreach (Application::CONSENT_COLUMNS as $type => $column) {
+                if ($locked->{$column} !== null) {
+                    Consent::query()->create([
+                        'user_id' => $user->id,
+                        'type' => $type,
+                        'granted_at' => $locked->{$column},
+                    ]);
+                }
+            }
 
             $locked->forceFill([
                 'status' => 'accepted',
@@ -95,6 +113,7 @@ final class ApplicationAcceptor
 
             AuditLog::record($actor, 'application.accepted', $locked, [
                 'application_id' => $locked->id,
+                'decision' => 'accepted',
                 'user_id' => $user->id,
                 'role' => $user->role,
                 'force' => (bool) ($input['force'] ?? false),
@@ -109,10 +128,15 @@ final class ApplicationAcceptor
                 $activationPath,
             );
 
-            return [
-                'user_id' => $user->id,
-                'access_expires_at' => $expiresAt->toIso8601ZuluString(),
-            ];
+            return [$locked, $user, $expiresAt, $activationUrl];
         });
+
+        $sent = ApplicationInvitationMailer::send($locked, $user, $activationUrl);
+
+        return [
+            'user_id' => $user->id,
+            'access_expires_at' => $expiresAt->toIso8601ZuluString(),
+            'invitation_mail' => $sent ? 'sent' : 'failed',
+        ];
     }
 }
