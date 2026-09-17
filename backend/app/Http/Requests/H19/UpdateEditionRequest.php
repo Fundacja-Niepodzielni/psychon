@@ -21,11 +21,11 @@ class UpdateEditionRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'starts_at' => ['sometimes', 'nullable', 'date'],
             'ends_at' => ['sometimes', 'nullable', 'date', 'after:starts_at'],
-            'seats_limit' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'seats_limit' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:32767'],
             'test_pass_threshold' => ['sometimes', 'integer', 'min:0', 'max:100'],
-            'test_attempts_limit' => ['sometimes', 'integer', 'min:1'],
-            'internship_hours_required' => ['sometimes', 'integer', 'min:1'],
-            'supervision_required_count' => ['sometimes', 'integer', 'min:1'],
+            'test_attempts_limit' => ['sometimes', 'integer', 'min:1', 'max:255', $this->notBoolean('Limit podejść do testu musi być liczbą całkowitą.')],
+            'internship_hours_required' => ['sometimes', 'integer', 'min:1', 'max:32767'],
+            'supervision_required_count' => ['sometimes', 'integer', 'min:1', 'max:255'],
             'reliability_threshold' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'lesson_completion_percent' => ['sometimes', 'integer', 'min:0', 'max:100'],
         ];
@@ -40,15 +40,28 @@ class UpdateEditionRequest extends FormRequest
             'ends_at.date' => 'Podaj poprawną datę zakończenia.',
             'ends_at.after' => 'Data zakończenia musi być późniejsza niż data rozpoczęcia.',
             'seats_limit.min' => 'Limit miejsc musi być liczbą co najmniej 1.',
+            'seats_limit.max' => 'Limit miejsc jest za duży.',
             'test_pass_threshold.min' => 'Próg zaliczenia testu musi mieścić się w zakresie 0-100%.',
             'test_pass_threshold.max' => 'Próg zaliczenia testu musi mieścić się w zakresie 0-100%.',
             'test_attempts_limit.min' => 'Limit podejść do testu musi być liczbą co najmniej 1.',
+            'test_attempts_limit.max' => 'Limit podejść do testu jest za duży.',
             'internship_hours_required.min' => 'Wymagana liczba godzin stażu musi wynosić co najmniej 1.',
+            'internship_hours_required.max' => 'Wymagana liczba godzin stażu jest za duża.',
             'supervision_required_count.min' => 'Wymagana liczba superwizji musi wynosić co najmniej 1.',
+            'supervision_required_count.max' => 'Wymagana liczba superwizji jest za duża.',
             'reliability_threshold.min' => 'Próg rzetelności musi mieścić się w zakresie 0-100%.',
             'reliability_threshold.max' => 'Próg rzetelności musi mieścić się w zakresie 0-100%.',
             'lesson_completion_percent.min' => 'Próg ukończenia lekcji musi mieścić się w zakresie 0-100%.',
             'lesson_completion_percent.max' => 'Próg ukończenia lekcji musi mieścić się w zakresie 0-100%.',
         ];
+    }
+
+    private function notBoolean(string $message): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($message): void {
+            if (is_bool($value)) {
+                $fail($message);
+            }
+        };
     }
 }
