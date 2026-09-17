@@ -25,8 +25,27 @@ final class PdfService
     /**
      * Renderuje widok Blade do PDF i zapisuje go. Zwraca ścieżkę na dysku
      * `local` do zapisania w kolumnach `pdf_path`.
+     *
+     * Używane dziś tylko przez certyfikaty (`Certificate::$pdf_path`) —
+     * dokumenty H14 mają trwały plik zastąpiony renderem na żądanie
+     * (`renderBytes()`), więc dla nich ten wariant już nie wchodzi w grę.
      */
     public static function render(string $view, array $data = []): string
+    {
+        $path = 'pdf/'.now()->format('Y/m').'/'.Str::uuid().'.pdf';
+
+        Storage::disk('local')->put($path, self::renderBytes($view, $data));
+
+        return $path;
+    }
+
+    /**
+     * To samo renderowanie, ale bez zapisu na dysk — zwraca gotowe bajty
+     * PDF-a. Dla migawek dokumentów (dane osobowe: PESEL, adres) to jedyna
+     * droga: plik nigdy nie powstaje w magazynie, więc nie ma czego rotować
+     * ani szyfrować obok bazy.
+     */
+    public static function renderBytes(string $view, array $data = []): string
     {
         $html = view($view, $data)->render();
 
@@ -41,10 +60,6 @@ final class PdfService
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
 
-        $path = 'pdf/'.now()->format('Y/m').'/'.Str::uuid().'.pdf';
-
-        Storage::disk('local')->put($path, (string) $dompdf->output());
-
-        return $path;
+        return (string) $dompdf->output();
     }
 }

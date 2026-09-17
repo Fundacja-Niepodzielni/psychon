@@ -21,7 +21,7 @@ if (config('features.h14')) {
     Route::middleware(['auth:keycloak', 'access.active'])->group(function (): void {
         Route::get('/documents', [DocumentController::class, 'index']);
         Route::post('/documents/generate', [DocumentController::class, 'generate']);
-        Route::get('/documents/{document}/download', [DocumentController::class, 'download'])
+        Route::get('/documents/{document:public_id}/download', [DocumentController::class, 'download'])
             ->middleware('signed')
             ->name('documents.download');
     });

@@ -157,6 +157,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 env_file="${PSYCHON_ENV_FILE:-/opt/psychon/.env}"
 tls_dir="${PSYCHON_TLS_DIR:-/opt/psychon/tls}"
+# Katalog na hoscie (poza kontenerami) na zrzuty tabeli documents wykonywane
+# tuz przed kazda migracja - patrz komentarz przy kroku migracji nizej.
+backup_dir="${PSYCHON_DB_BACKUP_DIR:-/opt/psychon/kopie-bazy}"
 compose=(docker compose --env-file "$env_file" -f docker-compose.yml -f docker-compose.psychon-dev.yml)
 
 cd "$repo_root"
@@ -207,8 +210,56 @@ echo "Uruchamiam uslugi..."
 # nie weszla przy pierwszym wdrozeniu. Kilka sekund przerwy na 443 to cena.
 "${compose[@]}" up -d --force-recreate caddy
 
+echo "Zrzucam kopie tabeli documents przed migracja..."
+# Kolejnosc zrzut -> migrate -> documents:encrypt-snapshots jest wymuszona,
+# nie stylistyczna - ale opisuje ja tu FAKTYCZNA kolejnosc kroku wyzej, nie
+# zyczeniowa. Kontenery aplikacji sa juz PRZEBUDOWANE na nowy kod
+# (`up -d --force-recreate app queue scheduler frontend` powyzej), zanim ten
+# zrzut w ogole ruszy - to nie jest wiec "ostatni moment sprzed wdrozenia",
+# tylko krotkie okno PO restarcie: przez te kilka sekund aplikacja juz czyta
+# `data_snapshot` jako `encrypted:array`, a w tabeli wciaz leza jawne migawki
+# sprzed migracji, wiec ich odczyt konczy sie wyjatkiem (nie trescia), dopoki
+# nie zadzialaja migrate + documents:encrypt-snapshots nizej. Zrzut i tak
+# idzie PRZED migracja, bo to ostatni moment, kiedy stan TABELI (w
+# odroznieniu od stanu kontenerow) odpowiada jeszcze kodowi sprzed
+# wdrozenia - gdyby cos poszlo nie tak w migracji albo w poleceniu
+# szyfrujacym, ta kopia jest jedynym punktem powrotu. Migracja musi wejsc
+# PRZED poleceniem, bo dopiero ona zmienia typ kolumny `data_snapshot` z
+# `json` na `text` - kolumna typu json odrzucilaby zapis szyfrogramu. A
+# polecenie musi wejsc w TYM SAMYM biegu, zaraz po migracji, zeby okno
+# nieczytelnych migawek bylo jak najkrotsze.
+#
+# Nazwa bazy i uzytkownika do pg_dump pochodzi z tych samych zmiennych co
+# docker-compose.psychon-dev.yml (`DB_DATABASE`, `DB_USERNAME`), z tym samym
+# domyslnym "niepodzielni" - inna wartosc w env_file nie moze rozjechac
+# zrzutu z tym, na czym faktycznie stoi baza kontenera.
+db_name="$(_swiadek_logowania_czytaj_klucz "DB_DATABASE" "$env_file" || true)"
+db_name="${db_name:-niepodzielni}"
+db_user="$(_swiadek_logowania_czytaj_klucz "DB_USERNAME" "$env_file" || true)"
+db_user="${db_user:-niepodzielni}"
+
+mkdir -p "$backup_dir"
+backup_file="$backup_dir/documents-$(date +%Y%m%d-%H%M%S).sql"
+# `umask 077` w podpowloce, zanim pg_dump zacznie pisac - plik dostaje prawa
+# 600 OD PIERWSZEGO bajtu tresci (PESEL-e sa w nim jawne az do pierwszego
+# udanego przebiegu documents:encrypt-snapshots), nie dopiero po fakcie.
+if ! (umask 077 && "${compose[@]}" exec -T pgsql pg_dump -U "$db_user" -d "$db_name" -t documents > "$backup_file"); then
+  echo "BLAD: zrzut tabeli documents (pg_dump) nie powiodl sie. Przerywam bez migracji."
+  rm -f "$backup_file"
+  exit 1
+fi
+# Rotacja w tym samym kroku: nazwy sortuja sie chronologicznie (znacznik
+# czasu w nazwie pliku), wiec zostaje 7 najnowszych zrzutow, starsze znikaja
+# od razu - katalog kopii nie rosnie bez konca przy kazdym wdrozeniu.
+mapfile -t stare_zrzuty < <(find "$backup_dir" -maxdepth 1 -name 'documents-*.sql' | sort | head -n -7)
+if [[ "${#stare_zrzuty[@]}" -gt 0 ]]; then
+  rm -f "${stare_zrzuty[@]}"
+fi
+
 echo "Migracje i cache konfiguracji..."
 "${compose[@]}" exec -T app php artisan migrate --force
+echo "Szyfruje pozostale jawne migawki dokumentow..."
+"${compose[@]}" exec -T app php artisan documents:encrypt-snapshots
 "${compose[@]}" exec -T app php artisan optimize
 
 echo "Status uslug:"

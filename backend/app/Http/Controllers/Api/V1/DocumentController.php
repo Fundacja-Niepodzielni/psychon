@@ -12,12 +12,11 @@ use App\Services\H14\DocumentTypeGate;
 use App\Support\PdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Response;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * `GET /documents`, `POST /documents/generate`, `GET /documents/{document}/download`
+ * `GET /documents`, `POST /documents/generate`, `GET /documents/{document:public_id}/download`
  * (contract H14). All logic lives in App\Services\H14 — this controller only
  * authorizes, validates, and shapes the HTTP response.
  */
@@ -55,29 +54,42 @@ class DocumentController extends Controller
         ], 201);
     }
 
-    public function download(Request $request, Document $document): BinaryFileResponse
+    public function download(Request $request, Document $document): Response
     {
+        // Kontrakt §1.1: cudzy dokument odpowiada dokładnie tak samo jak
+        // dokument, który nie istnieje — 404 „nie znaleziono", nie 403.
+        // Inaczej sama odpowiedź zdradzałaby, że pod danym `public_id`
+        // *coś* jest, tylko nie dla tej osoby.
         if ($request->user()->cannot('view', $document)) {
             throw new ApiException(404, 'not_found', 'Nie znaleziono zasobu.');
         }
 
-        // Demo/dev storage can be wiped between runs (design D7) — the
-        // snapshot is the source of truth, so the file is just re-rendered.
-        if ($document->pdf_path === null || ! Storage::disk('local')->exists($document->pdf_path)) {
-            $path = PdfService::render(
-                DocumentIssuer::viewFor($document->type),
-                $document->data_snapshot ?? [],
-            );
-            $document->forceFill(['pdf_path' => $path])->save();
+        // Bez pliku w magazynie: PDF powstaje tu i teraz, z zaszyfrowanej
+        // migawki, i nigdy nie trafia na dysk — trafia od razu do
+        // odpowiedzi HTTP.
+        $snapshot = $document->data_snapshot;
+
+        $bytes = PdfService::renderBytes(
+            DocumentIssuer::viewFor($document->type),
+            $snapshot ?? [],
+        );
+
+        // Rotacja klucza aplikacji: udany odczyt migawki — obojętnie, czy
+        // padł na bieżący klucz czy na jeden z poprzednich — jest jedyną
+        // okazją, żeby zapisać ją z powrotem pod kluczem bieżącym (cast
+        // `encrypted:array` szyfruje na nowo przy każdym zapisie). Bez
+        // osobnej migracji danych rotacja klucza domyka się sama, dokument
+        // po dokumencie, w miarę pobierania.
+        if ($snapshot !== null) {
+            $document->data_snapshot = $snapshot;
+            $document->save();
         }
 
-        $extension = pathinfo($document->pdf_path, PATHINFO_EXTENSION) ?: 'html';
-        $filename = Str::slug($document->number).'.'.$extension;
+        $filename = Str::slug($document->number).'.pdf';
 
-        return response()->download(
-            Storage::disk('local')->path($document->pdf_path),
-            $filename,
-            ['Content-Type' => Storage::disk('local')->mimeType($document->pdf_path) ?: 'text/html'],
-        );
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 }
