@@ -4,7 +4,7 @@
 |--------------------------------------------------------------------------
 | Pakiet H22 · Dokumenty prawne z wersjami
 |--------------------------------------------------------------------------
-| Routes owned by team H22 — other teams must not edit this file (§5.1).
+| Trasy pakietu dokumentów prawnych; zmiany tylko w obrębie tego pakietu.
 | Registered inside the /api/v1 group.
 |
 | Trasy `legal-documents/{type}/current` i `.../versions/{version}` są
