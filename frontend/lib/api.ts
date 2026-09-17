@@ -702,6 +702,7 @@ export const AUDIT_ACTIONS = [
   "workshop.completed",
   "internship.accepted",
   "internship.returned",
+  "internship.rejected",
   "supervisor.assigned",
   "certificate.issued",
   "document.generated",
