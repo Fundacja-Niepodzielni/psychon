@@ -15,6 +15,7 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   "workshop.completed": "Warsztat zaliczony",
   "internship.accepted": "Wpis stażu zaakceptowany",
   "internship.returned": "Wpis stażu zwrócony",
+  "internship.rejected": "Wpis stażu odrzucony",
   "supervisor.assigned": "Przypisano superwizora",
   "certificate.issued": "Certyfikat wydany",
   "document.generated": "Dokument wygenerowany",
