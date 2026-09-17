@@ -44,8 +44,8 @@ class UpdateCourseRequest extends FormRequest
     {
         return [
             'title.max' => 'Tytuł kursu może mieć najwyżej 255 znaków.',
-            'slug.alpha_dash' => 'Slug może zawierać wyłącznie litery, cyfry, myślniki i podkreślenia.',
-            'slug.unique' => 'Kurs o takim slugu już istnieje.',
+            'slug.alpha_dash' => 'Identyfikator może zawierać wyłącznie litery, cyfry, myślniki i podkreślenia.',
+            'slug.unique' => 'Kurs o takim identyfikatorze już istnieje.',
             'type.in' => 'Nieznany typ kursu.',
             'product_group.in' => 'Nieznana grupa produktowa.',
             'sequence_order.min' => 'Pozycja w ścieżce musi być liczbą co najmniej 1.',
