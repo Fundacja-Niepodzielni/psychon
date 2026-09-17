@@ -194,6 +194,14 @@ function zbudujPary(tokeny, rozmiary) {
     const progT = prog(rozmiarPx, pogrubiony);
     const gorszy = Math.min(kSpoczynek, kNajechanie);
 
+    // Surowy kolor tekstu na czystej bieli, BEZ własnego (półprzezroczystego)
+    // tła odznaki/alertu — inna liczba niż `kSpoczynek` dla par z własnym
+    // tłem (tam tło odznaki jest już wmieszane w białą kartę). Dla par bez
+    // własnego tła (łącza) to ta sama wartość co `kSpoczynek`. Dopisane po
+    // odkryciu, że cel „≥5,5 na bieli" i „≥4,5 na własnym tle odznaki" to
+    // dwie różne, obie realne liczby, nie jedna.
+    const kSurowyNaBieli = kontrast(textRgb, biel);
+
     return {
       etykieta,
       textHex,
@@ -202,6 +210,7 @@ function zbudujPary(tokeny, rozmiary) {
       czyWTabeli,
       kSpoczynek,
       kNajechanie,
+      kSurowyNaBieli,
       prog: progT,
       margines: gorszy - progT,
     };
@@ -219,6 +228,7 @@ function wypiszTabele(pary, tytul) {
     "margines".padEnd(9) +
       "spoczynek".padEnd(11) +
       "najechanie".padEnd(12) +
+      "na bieli*".padEnd(11) +
       "próg".padEnd(7) +
       "tło".padEnd(24) +
       "etykieta",
@@ -228,12 +238,16 @@ function wypiszTabele(pary, tytul) {
       formatuj(p.margines).padEnd(9) +
         formatuj(p.kSpoczynek).padEnd(11) +
         formatuj(p.kNajechanie).padEnd(12) +
+        formatuj(p.kSurowyNaBieli).padEnd(11) +
         p.prog.toFixed(1).padEnd(7) +
         p.tloOpis.slice(0, 22).padEnd(24) +
         p.etykieta +
         (p.czyWTabeli ? "" : "  (poza tabelą, bez stanu najechania)"),
     );
   }
+  console.log(
+    "* surowy kolor tekstu na czystej bieli, bez własnego tła odznaki/alertu (dla łączy — ta sama liczba co „spoczynek”).",
+  );
 
   const ponizejProgu = pary.filter((p) => p.margines < 0).length;
   const cienkiMargines = pary.filter((p) => p.margines < 0.2).length;
@@ -254,8 +268,41 @@ function argWartosc(klucz) {
   return arg ? arg.slice(przedrostek.length) : null;
 }
 
+/** Wszystkie wystąpienia `--nadpisz=--psy-token=#hex` (może być kilka naraz). */
+function nadpisaniaZArgv() {
+  const przedrostek = "--nadpisz=";
+  return process.argv
+    .filter((a) => a.startsWith(przedrostek))
+    .map((a) => a.slice(przedrostek.length))
+    .map((para) => {
+      const i = para.indexOf("=");
+      return [para.slice(0, i).replace(/^--/, ""), para.slice(i + 1)];
+    });
+}
+
 function main() {
-  const tekstCss = readFileSync(SCIEZKA_CSS, "utf8");
+  const tekstCssZDysku = readFileSync(SCIEZKA_CSS, "utf8");
+
+  // `--nadpisz=--psy-token=#hex` (powtarzalne) — podmiana W PAMIĘCI, ta sama
+  // mechanika co `--self-test`, uogólniona: liczenie „co by było, gdyby"
+  // (np. inny podkład najechania wiersza) PRZEZ TEN SAM przyrząd, zamiast
+  // drugą, osobną ścieżką liczenia. Plik na dysku nigdy nie jest dotykany.
+  const nadpisania = nadpisaniaZArgv();
+  let tekstCss = tekstCssZDysku;
+  for (const [nazwa, wartosc] of nadpisania) {
+    const wzorzec = new RegExp(`--${nazwa}:\\s*#[0-9a-fA-F]{3,8}\\s*;`);
+    if (!wzorzec.test(tekstCss)) {
+      console.error(`--nadpisz: nie znalazłem --${nazwa} do podmiany.`);
+      process.exit(2);
+    }
+    tekstCss = tekstCss.replace(wzorzec, `--${nazwa}: ${wartosc};`);
+  }
+  if (nadpisania.length > 0) {
+    console.log(
+      `Uwaga: ${nadpisania.length} token(ów) podmienione W PAMIĘCI na potrzeby tego uruchomienia (${nadpisania.map(([n, w]) => `--${n}=${w}`).join(", ")}). Plik na dysku nietknięty.`,
+    );
+  }
+
   const { tokeny, rozmiary } = wczytajTokeny(tekstCss);
   const pary = zbudujPary(tokeny, rozmiary);
 
@@ -284,7 +331,7 @@ function main() {
     console.log(`Tło złożone (jeśli token miał alfę): rgb(${tloZlozone.map(Math.round).join(", ")})`);
     console.log(`Kontrast na tym tle: ${formatuj(k)}`);
     console.log(`Próg: ${p.prog.toFixed(1)}, margines: ${formatuj(k - p.prog)}`);
-    console.log(`Dla porównania w tabeli głównej: spoczynek=${formatuj(p.kSpoczynek)}, najechanie=${formatuj(p.kNajechanie)}`);
+    console.log(`Dla porównania w tabeli głównej: spoczynek=${formatuj(p.kSpoczynek)}, najechanie=${formatuj(p.kNajechanie)}, surowy na bieli=${formatuj(p.kSurowyNaBieli)}`);
     return;
   }
 
