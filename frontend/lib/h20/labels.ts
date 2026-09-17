@@ -27,4 +27,9 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   "user.blocked": "Konto zablokowane",
   "edition.updated": "Ustawienia edycji zmienione",
   "sensitive.viewed": "Wgląd w dokument wrażliwy",
+  "certificate.revoked": "Certyfikat unieważniony",
+  "legal_document.published": "Dokument prawny opublikowany",
+  "legal_document.accepted": "Dokument prawny zaakceptowany",
+  "supervision.attendance_marked": "Obecność na superwizji odnotowana",
+  "user.anonymized": "Konto zanonimizowane",
 };
