@@ -9,8 +9,8 @@ use App\Models\Course;
 use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
+use App\Services\Lessons\LessonAccess;
 use App\Support\AuditLog;
-use App\Support\CourseAccess;
 use App\Support\H10\TestGrader;
 use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +27,8 @@ use Illuminate\Support\Facades\DB;
  */
 class TestController extends Controller
 {
+    public function __construct(private readonly LessonAccess $lessonAccess) {}
+
     public function show(Request $request, string $slug): JsonResponse
     {
         $course = Course::where('slug', $slug)->firstOrFail();
@@ -160,6 +162,17 @@ class TestController extends Controller
 
     public function attempts(Request $request, Test $test): JsonResponse
     {
+        // Historia prób zdradza próg i limit testu — kurs niewidoczny dla osoby
+        // odpowiada 404 jak przy pozostałych trasach testu. Blokada kolejnością
+        // nie obowiązuje: własne wcześniejsze próby zostają do wglądu.
+        $test->loadMissing('course');
+        $course = $test->course;
+        $this->lessonAccess->assertVisible(
+            $request->user(),
+            $course instanceof Course ? $course : null,
+            'Nie znaleziono zasobu.',
+        );
+
         $page = TestAttempt::where('user_id', $request->user()->id)
             ->where('test_id', $test->id)
             ->orderBy('attempt_number')
@@ -236,23 +249,13 @@ class TestController extends Controller
     }
 
     /**
-     * Blokada sekwencyjna liczona wyłącznie przez CourseAccess ze startera.
+     * Dostęp do testu = ta sama reguła co do lekcji (`LessonAccess`): kurs
+     * niewidoczny dla osoby odpowiada 404 jak nieistniejący, kurs widoczny,
+     * ale zablokowany kolejnością w ścieżce, odpowiada 403 `course_locked`.
      */
     private function assertUnlocked(User $user, Course $course): void
     {
-        $state = CourseAccess::state($user, $course);
-
-        if ($state['status'] === 'locked') {
-            throw new ApiException(
-                403,
-                'course_locked',
-                'Najpierw ukończ poprzedni etap ścieżki.',
-                reason: [
-                    'required_course_id' => $state['required_course_id'] ?? null,
-                    'missing' => $state['missing'],
-                ],
-            );
-        }
+        $this->lessonAccess->authorizeCourse($user, $course, 'Najpierw ukończ poprzedni etap ścieżki.');
     }
 
     /**

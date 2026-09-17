@@ -3,7 +3,7 @@
 use App\Exceptions\ApiException;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
-use App\Support\CourseAccess;
+use App\Services\Lessons\LessonAccess;
 use App\Support\Settings;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
@@ -62,26 +62,11 @@ if (! class_exists('H06ProgressRequest', false)) {
 
 if (config('features.h06')) {
     /**
-     * H06 owns access checks for lesson content, while CourseAccess remains
-     * the single source of truth for the sequential course rule.
+     * Dostęp do lekcji rozstrzyga `LessonAccess`: najpierw widoczność kursu
+     * (404), potem kolejność kursów w ścieżce (403 `course_locked`).
      */
     $authorizeLesson = static function (Request $request, Lesson $lesson): void {
-        $lesson->loadMissing('course');
-        $state = CourseAccess::state($request->user(), $lesson->course);
-
-        if ($state['status'] !== 'locked') {
-            return;
-        }
-
-        throw new ApiException(
-            403,
-            'course_locked',
-            'Ten kurs jest jeszcze zablokowany.',
-            reason: [
-                'required_course_id' => $state['required_course_id'] ?? null,
-                'missing' => $state['missing'] ?? [],
-            ],
-        );
+        app(LessonAccess::class)->authorize($request->user(), $lesson);
     };
 
     /**

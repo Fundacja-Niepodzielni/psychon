@@ -10,7 +10,7 @@ use App\Models\InstructorQuestion;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Services\H17\QuestionRouting;
-use App\Support\CourseAccess;
+use App\Services\Lessons\LessonAccess;
 use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +24,8 @@ use Illuminate\Http\Request;
  */
 class LessonQuestionController extends Controller
 {
+    public function __construct(private readonly LessonAccess $lessonAccess) {}
+
     public function index(Request $request, int $id): JsonResponse
     {
         $lesson = $this->authorizedLesson($request, $id);
@@ -69,31 +71,19 @@ class LessonQuestionController extends Controller
     }
 
     /**
-     * Same gate H06 applies to lesson content: CourseAccess stays the single
-     * source of truth for the sequential rule, this only translates its verdict
-     * into the contract's error envelope.
+     * Ta sama reguła co treść lekcji (`LessonAccess`): kurs niewidoczny dla
+     * osoby = 404 jak lekcja nieistniejąca, kurs zablokowany kolejnością = 403.
+     * Sprawdzenie stoi przed zapisem pytania, więc odmowa nie zostawia wiersza.
      */
     private function authorizedLesson(Request $request, int $id): Lesson
     {
         $lesson = Lesson::query()->with('course')->find($id);
 
-        if ($lesson === null || $lesson->course === null) {
+        if ($lesson === null) {
             throw new ApiException(404, 'not_found', 'Nie znaleziono lekcji.');
         }
 
-        $state = CourseAccess::state($request->user(), $lesson->course);
-
-        if ($state['status'] === 'locked') {
-            throw new ApiException(
-                403,
-                'course_locked',
-                'Ten kurs jest jeszcze zablokowany.',
-                reason: [
-                    'required_course_id' => $state['required_course_id'] ?? null,
-                    'missing' => $state['missing'] ?? [],
-                ],
-            );
-        }
+        $this->lessonAccess->authorize($request->user(), $lesson);
 
         return $lesson;
     }
