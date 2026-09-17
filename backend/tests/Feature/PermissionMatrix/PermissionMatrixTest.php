@@ -180,7 +180,7 @@ class PermissionMatrixTest extends TestCase
         ]);
 
         $realm = (new KeycloakTokenFactory)->installAsRealm();
-        $token = $realm->mint(['sub' => (string) Str::uuid()]);
+        $token = $realm->mint(['sub' => (string) Str::uuid(), 'email' => $expired->email, 'email_verified' => true]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/v1/sso/powiaz', ['token' => $expired->activation_token])

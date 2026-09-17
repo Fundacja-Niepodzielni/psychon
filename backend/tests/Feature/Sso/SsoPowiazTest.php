@@ -24,7 +24,7 @@ class SsoPowiazTest extends TestCase
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $sub = (string) Str::uuid();
         $user = User::factory()->invited()->create(['activation_token' => 'tok-'.Str::random(20)]);
-        $token = $realm->mint(['sub' => $sub]);
+        $token = $realm->mint(['sub' => $sub, 'email' => $user->email, 'email_verified' => true]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson(self::ROUTE, ['token' => $user->activation_token])
@@ -39,7 +39,7 @@ class SsoPowiazTest extends TestCase
     public function test_rejects_unknown_token(): void
     {
         $realm = (new KeycloakTokenFactory)->installAsRealm();
-        $token = $realm->mint();
+        $token = $realm->mint(['email_verified' => true]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson(self::ROUTE, ['token' => 'nie-ma-takiego'])
@@ -53,11 +53,11 @@ class SsoPowiazTest extends TestCase
         $user = User::factory()->invited()->create(['activation_token' => 'tok-'.Str::random(20)]);
         $originalToken = $user->activation_token;
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint())
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['email' => $user->email, 'email_verified' => true]))
             ->postJson(self::ROUTE, ['token' => $originalToken])
             ->assertStatus(200);
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint())
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['email' => $user->email, 'email_verified' => true]))
             ->postJson(self::ROUTE, ['token' => $originalToken])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'invalid_token');
@@ -72,7 +72,7 @@ class SsoPowiazTest extends TestCase
         ]);
         $newSub = (string) Str::uuid();
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['sub' => $newSub]))
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['sub' => $newSub, 'email' => $user->email, 'email_verified' => true]))
             ->postJson(self::ROUTE, ['token' => $user->activation_token])
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'already_bound');
@@ -85,7 +85,7 @@ class SsoPowiazTest extends TestCase
         User::factory()->create(['keycloak_sub' => $sub]);
         $applicant = User::factory()->invited()->create(['activation_token' => 'tok-'.Str::random(20)]);
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['sub' => $sub]))
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['sub' => $sub, 'email' => $applicant->email, 'email_verified' => true]))
             ->postJson(self::ROUTE, ['token' => $applicant->activation_token])
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'sub_already_bound');
@@ -96,7 +96,7 @@ class SsoPowiazTest extends TestCase
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $user = User::factory()->create(['activation_token' => 'tok-'.Str::random(20), 'status' => 'blocked']);
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint())
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['email' => $user->email, 'email_verified' => true]))
             ->postJson(self::ROUTE, ['token' => $user->activation_token])
             ->assertStatus(403);
     }
@@ -106,7 +106,7 @@ class SsoPowiazTest extends TestCase
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $user = User::factory()->create(['activation_token' => 'tok-'.Str::random(20), 'status' => 'deleted']);
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint())
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['email' => $user->email, 'email_verified' => true]))
             ->postJson(self::ROUTE, ['token' => $user->activation_token])
             ->assertStatus(403);
     }
@@ -116,7 +116,7 @@ class SsoPowiazTest extends TestCase
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $user = User::factory()->create(['activation_token' => 'tok-'.Str::random(20), 'anonymized_at' => now()]);
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint())
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['email' => $user->email, 'email_verified' => true]))
             ->postJson(self::ROUTE, ['token' => $user->activation_token])
             ->assertStatus(403);
     }
@@ -141,7 +141,7 @@ class SsoPowiazTest extends TestCase
         // A different Keycloak account (its own `sub`) claiming the exact
         // same e-mail as the invited local row.
         $attackerSub = (string) Str::uuid();
-        $token = $realm->mint(['sub' => $attackerSub, 'email' => $email]);
+        $token = $realm->mint(['sub' => $attackerSub, 'email' => $email, 'email_verified' => true]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson(self::ROUTE, ['token' => 'zgadywany-token-nie-ten-co-trzeba'])
