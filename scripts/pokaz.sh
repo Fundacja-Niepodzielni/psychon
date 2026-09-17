@@ -17,7 +17,7 @@ echo "== Przebudowuję kontenery =="
 docker compose up -d --build
 
 echo "== Czekam na bazę i resetuję seedy demo =="
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   docker compose exec -T pgsql pg_isready -U niepodzielni >/dev/null 2>&1 && break
   sleep 2
 done
