@@ -37,7 +37,8 @@ REBUILD_LISTA="esbuild unrs-resolver fsevents"
 (
   cd frontend
   npm install --ignore-scripts
-  npm rebuild $REBUILD_LISTA
+  read -ra REBUILD_ARR <<< "$REBUILD_LISTA"
+  npm rebuild "${REBUILD_ARR[@]}"
   REBUILD_LISTA="$REBUILD_LISTA" node -e '
     const fs = require("fs");
     const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
