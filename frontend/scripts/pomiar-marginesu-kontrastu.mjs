@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Przyrząd pomiarowy: margines kontrastu kolorów stanu (sukces/ostrzeżenie/
 // błąd/informacja) i koloru głównego, na wszystkich realnych tłach, na
-// jakich te pary naprawdę żyją w interfejsie (F-198, ślad śledztwa F-194).
+// jakich te pary naprawdę żyją w interfejsie — kontynuacja wcześniejszego
+// śledztwa w sprawie kontrastu kolorów stanu.
 //
 // TO JEST TERAZ NAPRAWDĘ KONTROLA, NIE TYLKO POMIAR:
 //   - Kończy się kodem NIEZEROWYM, gdy którakolwiek para/tło poniżej progu
@@ -26,7 +27,7 @@
 //     zmienia wynik następnego uruchomienia.
 //   - Wzór kontrastu WCAG (jasność względna sRGB -> liniowe, (L1+.05)/(L2+.05))
 //     i składanie kolorów półprzezroczystych (`#rrggbbaa`) nad tłem to ten
-//     sam kod, który był ręcznie zweryfikowany względem axe-core przy F-194
+//     sam kod, który był ręcznie zweryfikowany względem axe-core
 //     (zgodność do 3 miejsc po przecinku).
 //   - `--self-test` (patrz niżej) NIE porównuje już dwóch wywołań tej samej
 //     funkcji z tego samego pliku (to było sprawdzanie, czy 2×2=2×2) —
@@ -78,8 +79,8 @@ import { fileURLToPath } from "node:url";
 const SCIEZKA_CSS = fileURLToPath(new URL("../app/globals.css", import.meta.url));
 
 // ---------------------------------------------------------------------------
-// Matematyka WCAG — identyczna z ręcznie zweryfikowanym przelicznikiem z F-194
-// (zgodność z axe-core do 3 miejsc po przecinku, patrz N5 w raporcie).
+// Matematyka WCAG — identyczna z ręcznie zweryfikowanym przelicznikiem
+// (zgodność z axe-core do 3 miejsc po przecinku).
 // ---------------------------------------------------------------------------
 
 function srgbToLin(c) {
@@ -126,7 +127,7 @@ function prog(rozmiarPx, pogrubiony) {
 }
 
 // ---------------------------------------------------------------------------
-// Czytanie tokenów z globals.css (N4 — bez wartości na sztywno w tym pliku).
+// Czytanie tokenów z globals.css (bez wartości na sztywno w tym pliku).
 // ---------------------------------------------------------------------------
 
 function wczytajTokeny(tekstCss) {
@@ -599,7 +600,7 @@ function main() {
   const paraNazwa = argWartosc("para");
   const tloParam = argWartosc("tlo");
   if (paraNazwa && tloParam) {
-    // Tryb jednej pary na podanym, realnym tle (M5) — nie zastępuje macierzy
+    // Tryb jednej pary na podanym, realnym tle — nie zastępuje macierzy
     // głównej ani kodu wyjścia, tylko liczy dokładnie to, o co proszono.
     const p = pary.find((x) => x.etykieta === paraNazwa);
     if (!p) {

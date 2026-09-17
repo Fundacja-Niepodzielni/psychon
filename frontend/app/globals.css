@@ -81,7 +81,7 @@
   --psy-text-light: #ffffff;
 
   /* --- Statusy --- */
-  --psy-success: #006b30; /* [A11Y] rozdzielone od --psy-green-dark (F-198): margines sukcesu był ~0 na tle strony i przy najechaniu; ta sama rodzina zieleni, głębszy odcień — spełnia próg 4,5:1 na wszystkich zmierzonych parach/tłach; aktualne kontrasty i marginesy: `node scripts/pomiar-marginesu-kontrastu.mjs` (nie przepisuj tu liczby — ten komentarz nie starzeje się, ale wpisana liczba by się zdezaktualizowała przy następnej zmianie odcienia) */
+  --psy-success: #006b30; /* [A11Y] rozdzielone od --psy-green-dark: margines sukcesu był bliski zera na tle strony i przy najechaniu; ta sama rodzina zieleni, głębszy odcień — spełnia wymagany próg kontrastu na wszystkich zmierzonych parach/tłach; aktualny próg, kontrasty i marginesy: `node scripts/pomiar-marginesu-kontrastu.mjs` (nie przepisuj tu liczb — ten komentarz nie starzeje się, ale liczby przepisane tutaj zdezaktualizowałyby się przy następnej zmianie odcienia) */
   --psy-success-bg: #01be4a1a;
   --psy-warning: #f59e0b; /* dekoracyjnie (2,2:1) */
   --psy-warning-dark: #8a5a00; /* [A11Y] tekst ostrzeżenia: 5,9:1 */
