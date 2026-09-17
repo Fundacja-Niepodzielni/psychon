@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useState, type FormEvent } from "react";
+import { Download } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Table, { type Column } from "@/components/ui/Table";
+import FilterBar from "@/components/molecules/FilterBar";
 import ListTemplate from "@/components/templates/ListTemplate";
 import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import {
@@ -79,7 +81,7 @@ export default function AdminUsersList() {
       render: (row) => (
         <Link
           href={`/admin/uczestniczki/${row.id}`}
-          className="font-medium text-primary underline underline-offset-4"
+          className="-my-2 flex min-h-control w-fit items-center font-semibold text-heading underline decoration-control underline-offset-4 transition-colors duration-150 hover:decoration-heading focus-visible:focus-ring"
         >
           {row.first_name} {row.last_name}
         </Link>
@@ -109,6 +111,7 @@ export default function AdminUsersList() {
         description: "Filtruj po roli, szukaj po imieniu, nazwisku lub adresie e-mail.",
         action: (
           <Button variant="secondary" onClick={exportCsv} loading={downloading}>
+            <Download aria-hidden="true" className="size-5" />
             Eksport CSV
           </Button>
         ),
@@ -126,29 +129,30 @@ export default function AdminUsersList() {
       dodatkowyPanel={
         <>
           {downloadError && <Alert variant="error">{downloadError}</Alert>}
-          <form
-            onSubmit={applyFilters}
-            className="grid gap-4 sm:grid-cols-[200px_1fr_auto] sm:items-end"
-          >
-            <Select
-              label="Rola"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <option value="">Wszystkie role</option>
-              {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-            <Input
-              label="Szukaj"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="np. Kowalska albo demo@"
-            />
-            <Button type="submit">Filtruj</Button>
+          <form onSubmit={applyFilters}>
+            <FilterBar label="Filtry listy osób">
+              <Select
+                label="Rola"
+                className="w-full sm:w-56"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
+                <option value="">Wszystkie role</option>
+                {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                label="Szukaj"
+                className="min-w-0 flex-1 basis-64"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="np. Kowalska albo demo@"
+              />
+              <Button type="submit">Filtruj</Button>
+            </FilterBar>
           </form>
         </>
       }
