@@ -20,7 +20,7 @@ const variantClass: Record<Variant, string> = {
 /**
  * `Logo` — atom C2 wariant C. Źródło:
  * `_architektura/FRONT-PSYCHON/logo-niepodzielni-ze-strony-2026-09-11.svg`
- * (SVG 7 741 B, viewBox 5657×1803), wklejony inline zamiast `<img>`, żeby
+ * (SVG 7 741 B, viewBox 5657×1803), wklejony inline zamiast osobnego pliku obrazu, żeby
  * wariant `inverted` mógł korzystać z `currentColor` — bez tego ciemne tło
  * wymagałoby drugiego pliku.
  */
