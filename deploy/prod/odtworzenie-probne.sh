@@ -82,7 +82,12 @@ fi
 NIEZGODNOSCI=0
 while read -r TABELA OCZEKIWANA; do
   [ -n "$TABELA" ] || continue
-  ZMIERZONA="$(docker exec "$NAZWA_KONTENERA" psql -U "$UZYTKOWNIK" -d "$BAZA" -tAc "select count(*) from ${TABELA}" 2>/dev/null | tr -d '[:space:]')"
+  # `</dev/null` jest konieczne: `docker exec` bez `-i` mimo to dziedziczy fd 0
+  # procesu wywolujacego, a wewnatrz `while read ... done < PLIK` fd 0 to
+  # WLASNIE ten plik - bez tej blokady `docker exec` zjada reszte linii i
+  # petla po pierwszym obrocie konczy sie cicho (zmierzone: 3 z 4 tabel
+  # kontrolnych ginely bez zadnego bledu).
+  ZMIERZONA="$(docker exec "$NAZWA_KONTENERA" psql -U "$UZYTKOWNIK" -d "$BAZA" -tAc "select count(*) from ${TABELA}" 2>/dev/null </dev/null | tr -d '[:space:]')"
   if [ "$ZMIERZONA" != "$OCZEKIWANA" ]; then
     echo "odtworzenie: NIEZGODNOSC tabela $TABELA - oczekiwano $OCZEKIWANA, po odtworzeniu $ZMIERZONA" >&2
     NIEZGODNOSCI=$((NIEZGODNOSCI + 1))
