@@ -18,6 +18,9 @@ interface MeResponse {
 export interface RequireRoleProps {
   /** Role dopuszczone do tej trasy (docs/system/03-role-i-uprawnienia.md §2). */
   allowedRoles: Role[];
+  /** Nadpisanie domyślnego tekstu `Forbidden403` szablonem ze słownika interfejsu
+   * (B7 w. 3: „Ta funkcja jest dostępna tylko dla {rola}.”), gdy karta ekranu go wymaga. */
+  deniedMessage?: string;
   children: React.ReactNode;
 }
 
@@ -34,7 +37,7 @@ type GuardState =
  * panelu przy ręcznym wejściu pod adres, zamiast pokazywać pusty/zepsuty
  * ekran, który i tak zacząłby dostawać same 403 z API.
  */
-export default function RequireRole({ allowedRoles, children }: RequireRoleProps) {
+export default function RequireRole({ allowedRoles, deniedMessage, children }: RequireRoleProps) {
   const [state, setState] = useState<GuardState>({ status: "loading" });
 
   useEffect(() => {
@@ -76,6 +79,7 @@ export default function RequireRole({ allowedRoles, children }: RequireRoleProps
     return (
       <Forbidden403
         reason={{ required_roles: allowedRoles, your_role: state.role }}
+        message={deniedMessage}
       />
     );
   }
