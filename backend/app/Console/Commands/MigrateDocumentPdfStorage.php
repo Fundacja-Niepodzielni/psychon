@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Jednorazowe polecenie po zmianie projektu (U-D): dokumenty H14 przestały
+ * Jednorazowe polecenie po zmianie sposobu przechowywania: dokumenty H14 przestały
  * trzymać plik PDF w magazynie — każde pobranie renderuje PDF na żądanie z
  * zaszyfrowanej migawki. To polecenie sprząta to, co narosło, zanim ta
  * zmiana weszła:

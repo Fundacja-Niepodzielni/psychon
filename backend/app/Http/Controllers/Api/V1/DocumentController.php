@@ -64,9 +64,9 @@ class DocumentController extends Controller
             throw new ApiException(404, 'not_found', 'Nie znaleziono zasobu.');
         }
 
-        // Bez pliku w magazynie (U-D): PDF powstaje tu i teraz, z
-        // zaszyfrowanej migawki, i nigdy nie trafia na dysk — trafia od
-        // razu do odpowiedzi HTTP.
+        // Bez pliku w magazynie: PDF powstaje tu i teraz, z zaszyfrowanej
+        // migawki, i nigdy nie trafia na dysk — trafia od razu do
+        // odpowiedzi HTTP.
         $snapshot = $document->data_snapshot;
 
         $bytes = PdfService::renderBytes(
