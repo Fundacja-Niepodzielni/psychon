@@ -25,4 +25,5 @@ Route::prefix('v1')->group(function (): void {
         require __DIR__.sprintf('/api/h%02d.php', $package);
     }
     require __DIR__.'/api/chat.php';
+    require __DIR__.'/api/video.php';
 });

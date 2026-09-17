@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    // Bunny Stream — nagrania lekcji. `api_key` i
+    // `token_security_key` są sekretami wpisywanymi na hoście; lokalnie
+    // (i w publicznym CI) ich nie ma — `VideoTokenService::isConfigured()`
+    // rozróżnia ten stan zamiast wybuchać wyjątkiem.
+    'bunny' => [
+        'api_key' => env('BUNNY_API_KEY'),
+        'library_id' => env('BUNNY_LIBRARY_ID'),
+        'cdn_hostname' => env('BUNNY_CDN_HOSTNAME'),
+        'token_security_key' => env('BUNNY_TOKEN_SECURITY_KEY'),
+    ],
+
 ];
