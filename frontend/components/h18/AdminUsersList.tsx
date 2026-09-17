@@ -111,7 +111,7 @@ export default function AdminUsersList() {
         description: "Filtruj po roli, szukaj po imieniu, nazwisku lub adresie e-mail.",
         action: (
           <Button variant="secondary" onClick={exportCsv} loading={downloading}>
-            <Download aria-hidden="true" className="size-5" />
+            <Download aria-hidden="true" />
             Eksport CSV
           </Button>
         ),

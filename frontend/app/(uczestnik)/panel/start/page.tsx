@@ -118,7 +118,7 @@ export default function ParticipantStartPage() {
         title: TITLE,
         action: isAdmin ? (
           <Button variant="secondary" onClick={startEditing}>
-            <Pencil aria-hidden="true" className="size-5" />
+            <Pencil aria-hidden="true" />
             Edytuj treść
           </Button>
         ) : undefined,
