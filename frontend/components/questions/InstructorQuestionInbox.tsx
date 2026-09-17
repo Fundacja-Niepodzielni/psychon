@@ -5,6 +5,9 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import ErrorState from "@/components/molecules/ErrorState";
+import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
 import { ApiError } from "@/lib/api";
 import {
   answerQuestion,
@@ -22,6 +25,7 @@ export default function InstructorQuestionInbox() {
   const [loadedFilter, setLoadedFilter] = useState<boolean | null>(null);
   const [reload, setReload] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadForbidden, setLoadForbidden] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,15 +36,22 @@ export default function InstructorQuestionInbox() {
         setQuestions(page.data);
         setUnanswered(unansweredCount(page.meta));
         setLoadError(null);
+        setLoadForbidden(false);
         setLoadedFilter(onlyUnanswered);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setLoadError(
-          error instanceof ApiError
-            ? error.message
-            : "Nie udało się połączyć z serwerem. Spróbuj ponownie.",
-        );
+        if (error instanceof ApiError && error.status === 403) {
+          setLoadForbidden(true);
+          setLoadError(null);
+        } else {
+          setLoadForbidden(false);
+          setLoadError(
+            error instanceof ApiError
+              ? error.message
+              : "Nie udało się połączyć z serwerem. Spróbuj ponownie.",
+          );
+        }
         setLoadedFilter(onlyUnanswered);
       });
 
@@ -72,19 +83,21 @@ export default function InstructorQuestionInbox() {
         </Button>
       </div>
 
-      {loading && (
-        <Card>
-          <p className="text-body text-muted">Wczytuję pytania…</p>
-        </Card>
+      {loading && <LoadingState label="Wczytuję pytania…" />}
+
+      {!loading && loadForbidden && (
+        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tej skrzynki." />
       )}
 
-      {!loading && loadError && (
-        <Alert variant="error" title="Nie udało się wczytać pytań">
-          {loadError}
-        </Alert>
+      {!loading && !loadForbidden && loadError && (
+        <ErrorState
+          message={loadError}
+          title="Nie udało się wczytać pytań"
+          onRetry={() => setReload((value) => value + 1)}
+        />
       )}
 
-      {!loading && !loadError && questions.length === 0 && (
+      {!loading && !loadForbidden && !loadError && questions.length === 0 && (
         <Card>
           <p className="text-body text-muted">
             {onlyUnanswered
@@ -95,6 +108,7 @@ export default function InstructorQuestionInbox() {
       )}
 
       {!loading &&
+        !loadForbidden &&
         !loadError &&
         questions.map((question) => (
           <QuestionCard
