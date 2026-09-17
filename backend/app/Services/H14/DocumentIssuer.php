@@ -66,9 +66,9 @@ final class DocumentIssuer
             $number = self::nextNumber($edition, $type);
             $snapshot = self::buildSnapshot($user, $edition, $type, $number);
 
-            // Bez pliku PDF w magazynie (U-D): PDF powstaje dopiero na
-            // żądanie pobrania, prosto z zaszyfrowanej migawki poniżej —
-            // przy wydaniu nie ma go więc czego renderować ani zapisywać.
+            // Bez pliku PDF w magazynie: PDF powstaje dopiero na żądanie
+            // pobrania, prosto z zaszyfrowanej migawki poniżej — przy
+            // wydaniu nie ma go więc czego renderować ani zapisywać.
             $document = Document::create([
                 'user_id' => $user->id,
                 'edition_id' => $edition->id,
