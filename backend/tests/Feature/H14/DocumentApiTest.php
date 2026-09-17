@@ -193,8 +193,8 @@ class DocumentApiTest extends TestCase
     {
         Storage::fake('local');
         // Migawka Marty w danych startowych ma celowo okrojony, starszy
-        // kształt (design D7 — bez numeru, żeby sprawdzić zgodność wsteczną
-        // szablonu), więc do tego świadka trzeba świeżo wygenerowanego
+        // kształt (bez numeru, żeby sprawdzić zgodność wsteczną
+        // szablonu), więc do tego testu trzeba świeżo wygenerowanego
         // dokumentu, którego migawka ma pełny komplet pól.
         $user = User::factory()->create([
             'edition_id' => User::where('email', 'marta@demo.pl')->firstOrFail()->edition_id,
