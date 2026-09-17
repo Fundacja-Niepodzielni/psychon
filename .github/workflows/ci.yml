@@ -116,6 +116,30 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm rebuild esbuild unrs-resolver fsevents
+      # Lista pakietow w `npm rebuild` powyzej jest przepisana z reki z pola
+      # "hasInstallScript" w package-lock.json (stan na dzis: esbuild, unrs-resolver,
+      # fsevents). Nic samo z siebie nie pilnuje tej zgodnosci - jesli zaleznosc z
+      # wlasnym postinstallem dojdzie albo odpadnie, lista rebuildu po cichu przestanie
+      # pasowac do pliku blokady i luka wroci bez ostrzezenia. Krok PRZERYWA bieg
+      # przy rozjezdzie, zamiast go tylko notowac.
+      - name: Zgodność listy rebuildu z package-lock.json
+        run: |
+          node -e '
+            const fs = require("fs");
+            const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"));
+            const found = new Set();
+            for (const [p, info] of Object.entries(lock.packages || {})) {
+              if (info && info.hasInstallScript) found.add(p.split("node_modules/").pop());
+            }
+            const expected = new Set(["esbuild", "unrs-resolver", "fsevents"]);
+            const a = [...found].sort().join(",");
+            const b = [...expected].sort().join(",");
+            if (a !== b) {
+              console.error("Rozjazd: hasInstallScript w package-lock.json = [" + a + "], lista w kroku Zaleznosci = [" + b + "]. Uaktualnij obie strony (krok wyzej i ten test).");
+              process.exit(1);
+            }
+            console.log("Zgodnosc potwierdzona: " + a);
+          '
       # Pole "libc" w package-lock.json: npm 10.9.8 potrafi
       # je zgubić na pakietach *-linux-*, a wtedy node:22-alpine instaluje
       # razem glibc i musla zamiast jednej odmiany. Krok jest blokujący
