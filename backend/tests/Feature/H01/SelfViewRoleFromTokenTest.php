@@ -199,7 +199,7 @@ class SelfViewRoleFromTokenTest extends TestCase
         $this->assertSame(
             0,
             AuditLogEntry::where('action', 'auth.role_column_mismatch')->count(),
-            'Rozjazd roli nie trafia dziś do rejestru zdarzeń administracji (D1, niedomknięte).',
+            'Rozjazd roli nie trafia dziś do rejestru zdarzeń administracji, stan niedomknięty.',
         );
         $this->assertSame(0, AuditLogEntry::count(), 'Żaden wpis w ogóle nie powinien powstać z tego powodu.');
 
