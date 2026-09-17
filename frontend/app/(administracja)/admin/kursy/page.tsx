@@ -270,7 +270,7 @@ export default function AdminCoursesPage() {
                 }}
                 aria-expanded={creating}
               >
-                {creating ? "Zamknij formularz" : "Nowy kurs"}
+                {creating ? "Zamknij formularz" : "Dodaj kurs"}
               </Button>
             </>
           ),
@@ -409,6 +409,7 @@ export default function AdminCoursesPage() {
                       Anuluj
                     </Button>
                     <Button
+                      variant="secondary"
                       onClick={requestPreview}
                       loading={previewing}
                       disabled={order.length < 2}
