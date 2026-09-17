@@ -13,7 +13,7 @@ const variants: Record<Variant, string> = {
   success: "bg-success-bg text-success",
   warning: "bg-warning-bg text-warning-dark",
   danger: "bg-danger-bg text-danger",
-  info: "bg-info-bg text-info-dark",
+  info: "bg-info-bg text-info-badge",
   // text-accent na bg-accent-15 dawało 4,37:1 (< 4,5:1, Z-9) —
   // accent-dark to ten sam odcień, ciemniejszy wariant tokenu.
   accent: "bg-accent-15 text-accent-dark",
