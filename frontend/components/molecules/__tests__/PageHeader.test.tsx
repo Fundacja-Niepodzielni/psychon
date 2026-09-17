@@ -22,4 +22,27 @@ describe("PageHeader", () => {
 
     expect(screen.getByRole("button", { name: "Nowy kurs" })).toBeInTheDocument();
   });
+
+  it("h1 nosi dokładnie klasę koloru tokenu 'text-ink' (czarny #1a1a1a), nie inny kolor", () => {
+    // jsdom nie liczy kaskady Tailwinda, więc nie da się tu odczytać
+    // computed style (getComputedStyle zwróci puste wartości dla klas
+    // wygenerowanych przez Tailwind). Zamiast tego mierzymy DOKŁADNĄ listę
+    // klas na renderowanym elemencie — to łapie mutację, która podmienia
+    // klasę koloru w PageHeader (np. na 'text-primary' albo dowolny inny
+    // kolor), niezależnie od testu łańcucha tokenów w app/globals.css
+    // (design-tokens-p2.test.ts), który łapie tylko zmianę WARTOŚCI tokenu.
+    // Test jest czerwony przy KAŻDEJ z dwóch osobnych mutacji:
+    //  1) --psy-text-strong w app/globals.css zmieniony na fioletowy,
+    //  2) klasa koloru na h1 w PageHeader.tsx zmieniona na inną niż text-ink.
+    // Pierwszą łapie design-tokens-p2.test.ts, drugą łapie test poniżej.
+    render(<PageHeader title="Kursy" />);
+
+    const naglowek = screen.getByRole("heading", { level: 1, name: "Kursy" });
+    const klasy = naglowek.className.split(/\s+/).filter(Boolean);
+
+    expect(klasy).toContain("text-ink");
+    expect(klasy.filter((k) => k.startsWith("text-") && k !== "text-h2")).toEqual([
+      "text-ink",
+    ]);
+  });
 });
