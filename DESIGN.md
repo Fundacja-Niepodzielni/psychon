@@ -13,7 +13,7 @@ colors:
   accent-dark: "#1500BB"
   accent-subtle: "#594EF90F"
   accent-container: "#594EF926"
-  heading: "#1500BB"
+  heading: "#1A1A1A"
   nav-hover: "#1500BB0F"
   nav-hover-ink: "#1500BB"
   nav-active: "#01BE4A1A"
@@ -307,7 +307,7 @@ components:
 
 Psychon ma być spokojnym, wspierającym i wiarygodnym środowiskiem nauki dla psychologów-wolontariuszy. Interfejs łączy ciepłe, prawie papierowe tło z białymi powierzchniami, łagodną geometrią oraz niewielką liczbą mocnych akcentów. Ma przypominać uporządkowany program rozwojowy, a nie korporacyjny panel administracyjny ani kolorową platformę rozrywkową.
 
-Wrażenie wizualne budują: dużo oddechu, czytelna hierarchia, miękkie karty, krótkie komunikaty oraz przyjazne statusy. Zieleń sygnalizuje postęp i działania, natomiast fiolet Fundacji niesie tytuły ekranów i kart, najechanie w menu oraz pierścień fokusu, tak jak na stronie niepodzielni.com, gdzie wszystkie nagłówki są fioletowe.
+Wrażenie wizualne budują: dużo oddechu, czytelna hierarchia, miękkie karty, krótkie komunikaty oraz przyjazne statusy. Zieleń sygnalizuje postęp i działania, natomiast fiolet Fundacji niesie najechanie w menu, pierścień fokusu i znak Fundacji. Tytuły ekranów i kart zostają czarne, zgodnie z decyzją właściciela.
 
 Tokeny w tym pliku odpowiadają semantycznym zmiennym `--psy-*` i klasom Tailwind z `frontend/app/globals.css`. Przy implementacji należy używać istniejących klas semantycznych zamiast wpisywania kolorów i promieni bezpośrednio w komponentach. Tokeny drugiej wersji są rolami (`text-heading`, `border-control`, `bg-nav-active`, `min-h-control`, `p-card`, `gap-stack`, `rounded-control`, `rounded-card`) i każdy ma w `globals.css` numer zasady interfejsu, którą realizuje.
 
@@ -319,7 +319,7 @@ Tokeny w tym pliku odpowiadają semantycznym zmiennym `--psy-*` i klasom Tailwin
 - **Page — ciepła kość słoniowa (#F9F8F6):** główne tło aplikacji; ogranicza kliniczną surowość czystej bieli.
 - **Surface — czysta biel (#FFFFFF):** karty, formularze, nagłówki i sidebar. Białe powierzchnie powinny być wyraźnie odseparowane przez subtelny cień lub obramowanie.
 - **Surface warm — ciepły beż (#F5F4EF):** pomocnicze sekcje, informacje kontekstowe i spokojne panele drugiego planu.
-- **Heading — fiolet Fundacji (#1500BB):** tytuły ekranów i kart; 11,31:1 na tle strony i 12,00:1 na bieli.
+- **Heading — czerń tekstu (#1A1A1A):** tytuły ekranów i kart; 16,40:1 na tle strony i 17,40:1 na bieli. Fiolet Fundacji nie jest kolorem nagłówków.
 - **Control (#858585):** obramowanie pól, przełączników i przycisku wylogowania; 3,48:1 na tle strony i 3,73:1 na bieli (dawne #EAEAEA dawało 1,20:1). Pod kursorem obramowanie ciemnieje do `muted`.
 - **Primary hover — głęboka zieleń (#006B30):** tło przycisku głównego pod kursorem (biały tekst 6,68:1) i tekst aktywnej pozycji menu na jasnym zielonym tincie (6,03:1).
 - **Nav hover i row hover (#1500BB0F):** delikatny fioletowy tint najechania w menu i w wierszu tabeli; tekst pozycji menu pod kursorem przechodzi w fiolet (10,63:1).
@@ -332,7 +332,7 @@ Tokeny w tym pliku odpowiadają semantycznym zmiennym `--psy-*` i klasom Tailwin
 
 Jedyną rodziną kroju jest **Roboto** z bezpiecznym fallbackiem systemowym. Dzięki neutralnym kształtom znaków tekst pozostaje czytelny w formularzach, materiałach szkoleniowych i tabelach. Nagłówki używają wysokiej wagi i zwartej interlinii; tekst ciągły ma swobodną interlinię 1.6 i szerokość najwyżej `max-w-2xl`. Nagłówki `h1`–`h3` łamią się równo (`text-wrap: balance`).
 
-- `title` (30px, pogrubiony, fiolet) jest tytułem ekranu w panelu i na ekranie logowania; `subtitle` (18px) jest tytułem karty.
+- `title` (30px, pogrubiony, czarny) jest tytułem ekranu w panelu i na ekranie logowania; `subtitle` (18px) jest tytułem karty.
 - Przyciski mają wagę 600, bez wersalików.
 
 - `h1` służy wyłącznie jako główny tytuł ekranu. Na wąskich ekranach zmniejsza się do 32px.
@@ -370,7 +370,7 @@ Promienie należy dobierać według hierarchii, nie losowo. Element zagnieżdżo
 ## Components
 
 - **Przyciski:** podstawowy przycisk ma ciemnozielone tło, biały tekst, kształt pigułki i wysokość co najmniej 44px; pod kursorem tło przechodzi w głęboką zieleń. Wariant drugorzędny jest biały z zielonym obrysem i zielonym tintem pod kursorem, a ghost pozostaje neutralny z fioletowym tintem. W jednej sekcji jest najwyżej jeden przycisk główny. Ikona w przycisku ma 20px, a jej rozmiar ustala sam przycisk. Stan wyłączony to 50% krycia i kursor „niedozwolone”.
-- **Karty:** biała karta jest podstawową jednostką treści; używa promienia 20px, dyskretnego obramowania i miękkiego cienia, a jej tytuł jest fioletowy (`subtitle`). Karta ciepła wyróżnia jeden, najważniejszy blok ekranu.
+- **Karty:** biała karta jest podstawową jednostką treści; używa promienia 20px, dyskretnego obramowania i miękkiego cienia, a jej tytuł jest czarny (`subtitle`). Karta ciepła wyróżnia jeden, najważniejszy blok ekranu.
 - **Pola formularzy:** białe, wysokości 44px, z obramowaniem 1px w kolorze `control` i promieniem 12px. Etykieta (waga 600) znajduje się zawsze nad polem. Fokus jest wyraźny i korzysta z fioletowego pierścienia 3px; błąd musi mieć tekst, nie tylko czerwony kolor. Filtry listy stoją we wspólnym pasku `FilterBar`.
 - **Nawigacja:** każda pozycja ma ikonę liniową; aktywna pozycja otrzymuje jasny zielony tint, głęboko zielony tekst i pogrubienie. Nagłówki sekcji są małe, szare, z lekko zwiększonym światłem międzyliterowym. Stan aktywny nie może opierać się wyłącznie na cienkiej kresce lub zmianie koloru ikony.
 - **Badge i statusy:** zwarte pigułki z krótką etykietą. Barwne tło jest lekkie, a tekst korzysta z ciemniejszego wariantu koloru statusu.
@@ -403,4 +403,4 @@ Wszystkie interakcje używają krótkiego przejścia (150ms, krzywa `ease-out-qu
 
 ## Sources
 
-System został zsyntetyzowany z klikalnej makiety Psychon, zrzutów ekranów organizatora, istniejących tokenów w `frontend/app/globals.css` oraz współdzielonych komponentów z `frontend/components/ui`. Druga wersja bierze wartości (fiolet nagłówków, tint najechania, cień warstwy, światło międzyliterowe etykiet) z arkuszy stylów strony niepodzielni.com, a reguły z zasad interfejsu projektu. Makieta jest referencją wizualną, natomiast poprawki dostępności zapisane w kodzie startera są normatywne dla kontrastu tekstu i działań.
+System został zsyntetyzowany z klikalnej makiety Psychon, zrzutów ekranów organizatora, istniejących tokenów w `frontend/app/globals.css` oraz współdzielonych komponentów z `frontend/components/ui`. Druga wersja bierze wartości (tint najechania, cień warstwy, światło międzyliterowe etykiet) z arkuszy stylów strony niepodzielni.com, a reguły z zasad interfejsu projektu. Makieta jest referencją wizualną, natomiast poprawki dostępności zapisane w kodzie startera są normatywne dla kontrastu tekstu i działań.

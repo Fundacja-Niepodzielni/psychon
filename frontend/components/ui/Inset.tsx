@@ -36,7 +36,7 @@ export default function Inset({
         warm ? "bg-card-warm" : "bg-page"
       } ${layouts[layout]} ${className}`}
     >
-      {title && <h3 className="text-body font-bold text-heading">{title}</h3>}
+      {title && <h3 className="font-bold text-heading">{title}</h3>}
       {children}
     </Tag>
   );
