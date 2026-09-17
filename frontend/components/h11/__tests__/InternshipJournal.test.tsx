@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import type { InternshipEntry } from "@/lib/h11/types";
 
 /**
- * Świadek dziennika stażu: zachowanie interfejsu dla każdej wartości statusu
- * wpisu, ze szczególnym uwzględnieniem wartości, której backend nie ma w
- * słowniku etykiet frontu ani w typie statusu. Każda kontrola mierzy treść
- * i zachowanie (dostępność przycisku edycji, wypełnienie formularza), nigdy
- * kolor ani nazwę klasy — zamiana klas wyglądu nie ma prawa tego poczerwienić.
+ * Kontrola dziennika stażu: zachowanie interfejsu dla każdej wartości statusu
+ * wpisu, ze szczególnym uwzględnieniem wartości odrzuconej. Etykieta i wybór
+ * wariantu odznaki sprawdzane jako dana przekazana do odznaki (mock), nigdy
+ * jako nazwa klasy wyglądu — kolor samej odznaki ma już własną kontrolę w
+ * miejscu, gdzie żyje (test odznaki). Zamiana klas wyglądu w innym miejscu
+ * nie ma prawa tego poczerwienić.
  */
 
 const api = vi.fn();
@@ -32,11 +33,19 @@ vi.mock("@/lib/api", () => ({
   ApiError,
 }));
 
+// Odznaka statusu jest atomem z własną kontrolą koloru (osobny plik testów).
+// Tu interesuje nas wyłącznie, JAKI wariant i JAKĄ treść komponent dziennika
+// jej przekazuje — stąd zaślepka ujawniająca wariant jako atrybut danych,
+// bez sięgania po klasy wyglądu.
+vi.mock("@/components/ui/Badge", () => ({
+  default: ({ variant, children }: { variant?: string; children?: import("react").ReactNode }) => (
+    <span data-wariant={variant}>{children}</span>
+  ),
+}));
+
 const { default: InternshipJournal } = await import("@/components/h11/InternshipJournal");
 
-function wpis(
-  overrides: Omit<Partial<InternshipEntry>, "status"> & { status: string },
-): InternshipEntry {
+function wpis(overrides: Partial<InternshipEntry> & { status: InternshipEntry["status"] }): InternshipEntry {
   return {
     id: 1,
     date: "2026-02-10",
@@ -49,7 +58,7 @@ function wpis(
     created_at: "2026-02-10T09:00:00Z",
     updated_at: "2026-02-10T09:00:00Z",
     ...overrides,
-  } as unknown as InternshipEntry;
+  };
 }
 
 function page(entries: InternshipEntry[]) {
@@ -66,7 +75,8 @@ function page(entries: InternshipEntry[]) {
 }
 
 /** Odznaka statusu jest kolejnym rodzeństwem akapitu z datą wpisu — wybór po
- * pozycji w drzewie, nie po klasie wyglądu, więc zamiana klas koloru go nie rusza. */
+ * pozycji w drzewie, nie po klasie wyglądu ani po powtarzalnym testid, bo
+ * odznaka "Łącznie" w karcie postępu używa tego samego komponentu. */
 function odznakaStatusu(entryDate: string): HTMLElement {
   const dataAkapit = screen.getByText(entryDate);
   const wiersz = dataAkapit.parentElement?.parentElement as HTMLElement;
@@ -80,13 +90,15 @@ beforeEach(() => {
 });
 
 describe("InternshipJournal — status wpisu", () => {
-  it("submitted: etykieta, przycisk edycji obecny i wypełnia formularz danymi wpisu", async () => {
+  it("submitted: etykieta, wariant odznaki, przycisk edycji obecny i wypełnia formularz danymi wpisu", async () => {
     const entry = wpis({ id: 11, date: "2026-02-01", status: "submitted", hours: "1.5" });
     apiPaged.mockResolvedValue(page([entry]));
     render(<InternshipJournal />);
 
     await waitFor(() => expect(screen.getByText("2026-02-01")).toBeInTheDocument());
-    expect(odznakaStatusu("2026-02-01")).toHaveTextContent("Oczekuje na akceptację");
+    const odznaka = odznakaStatusu("2026-02-01");
+    expect(odznaka).toHaveTextContent("Oczekuje na akceptację");
+    expect(odznaka).toHaveAttribute("data-wariant", "info");
 
     const przycisk = screen.getByRole("button", { name: "Edytuj wpis" });
     await userEvent.click(przycisk);
@@ -96,20 +108,22 @@ describe("InternshipJournal — status wpisu", () => {
     expect(screen.getByLabelText("Liczba godzin")).toHaveValue(1.5);
   });
 
-  it("accepted: etykieta, brak przycisku edycji, komunikat blokady zamiast niego", async () => {
+  it("accepted: etykieta, wariant odznaki, brak przycisku edycji, komunikat blokady zamiast niego", async () => {
     const entry = wpis({ id: 12, date: "2026-02-02", status: "accepted" });
     apiPaged.mockResolvedValue(page([entry]));
     render(<InternshipJournal />);
 
     await waitFor(() => expect(screen.getByText("2026-02-02")).toBeInTheDocument());
-    expect(odznakaStatusu("2026-02-02")).toHaveTextContent("Zaakceptowany");
+    const odznaka = odznakaStatusu("2026-02-02");
+    expect(odznaka).toHaveTextContent("Zaakceptowany");
+    expect(odznaka).toHaveAttribute("data-wariant", "success");
 
     expect(screen.queryByRole("button", { name: "Edytuj wpis" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Popraw i wyślij ponownie" })).not.toBeInTheDocument();
     expect(screen.getByText("Wpis zablokowany po akceptacji.")).toBeInTheDocument();
   });
 
-  it("returned: etykieta, przycisk niesie inny napis i wypełnia formularz wraz z komentarzem opiekuna", async () => {
+  it("returned: etykieta, wariant odznaki, przycisk niesie inny napis i wypełnia formularz wraz z komentarzem opiekuna", async () => {
     const entry = wpis({
       id: 13,
       date: "2026-02-03",
@@ -120,7 +134,9 @@ describe("InternshipJournal — status wpisu", () => {
     render(<InternshipJournal />);
 
     await waitFor(() => expect(screen.getByText("2026-02-03")).toBeInTheDocument());
-    expect(odznakaStatusu("2026-02-03")).toHaveTextContent("Do poprawy");
+    const odznaka = odznakaStatusu("2026-02-03");
+    expect(odznaka).toHaveTextContent("Do poprawy");
+    expect(odznaka).toHaveAttribute("data-wariant", "warning");
     expect(screen.getByText("Uzupełnij opis konsultacji.")).toBeInTheDocument();
 
     const przycisk = screen.getByRole("button", { name: "Popraw i wyślij ponownie" });
@@ -131,7 +147,7 @@ describe("InternshipJournal — status wpisu", () => {
     expect(screen.getByLabelText("Data dyżuru")).toHaveValue("2026-02-03");
   });
 
-  it("rejected: odznaka bez tekstu — status spoza słownika etykiet frontu — a przycisk edycji mimo to nadal wypełnia formularz", async () => {
+  it("rejected: własna etykieta, własny wariant odznaki, komunikat zamknięcia zamiast przycisku edycji", async () => {
     const entry = wpis({
       id: 14,
       date: "2026-02-04",
@@ -143,25 +159,28 @@ describe("InternshipJournal — status wpisu", () => {
 
     await waitFor(() => expect(screen.getByText("2026-02-04")).toBeInTheDocument());
 
-    // Pozytywna noga treści: komentarz opiekuna nadal się wyświetla (ta ścieżka
-    // nie zależy od słownika etykiet statusu).
+    // Pozytywna noga: wartość odrzucona ma teraz własną etykietę i własny
+    // wariant odznaki — obie wartości mierzone wprost, nie przez domysł
+    // "cokolwiek innego niż znane trzy".
+    const odznaka = odznakaStatusu("2026-02-04");
+    expect(odznaka).toHaveTextContent("Odrzucony");
+    expect(odznaka).toHaveAttribute("data-wariant", "danger");
+
+    // Pozytywna noga: komentarz opiekuna nadal się wyświetla.
     expect(screen.getByText("Godziny nie mieszczą się w harmonogramie.")).toBeInTheDocument();
 
-    // Negatywna noga: żadna ze znanych etykiet statusu nie pasuje do "rejected" —
-    // odznaka jest obecna w drzewie, ale bez treści.
-    const odznaka = odznakaStatusu("2026-02-04");
-    expect(odznaka).toBeEmptyDOMElement();
-    expect(screen.queryByText("Oczekuje na akceptację")).not.toBeInTheDocument();
-    expect(screen.queryByText("Zaakceptowany")).not.toBeInTheDocument();
-    expect(screen.queryByText("Do poprawy")).not.toBeInTheDocument();
+    // Pozytywna noga: zamiast przycisku pojawia się czytelny komunikat
+    // zamknięcia wpisu z podpowiedzią założenia nowego wpisu.
+    expect(
+      screen.getByText(
+        "Wpis odrzucony jest zamknięty i nie można go już poprawić ani wysłać ponownie. Jeśli dyżur nadal wymaga udokumentowania, dodaj nowy wpis w formularzu powyżej.",
+      ),
+    ).toBeInTheDocument();
 
-    // Zachowanie przycisku: kod blokuje tylko "accepted", więc dla "rejected"
-    // nadal renderuje się przycisk z napisem właściwym dla wartości domyślnej
-    // i klik nadal otwiera formularz edycji z danymi wpisu.
-    const przycisk = screen.getByRole("button", { name: "Edytuj wpis" });
-    await userEvent.click(przycisk);
-    expect(screen.getByRole("heading", { name: "Popraw wpis" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Data dyżuru")).toHaveValue("2026-02-04");
+    // Negatywna noga: przycisk edycji, w żadnym z dwóch możliwych napisów,
+    // nie występuje przy wpisie odrzuconym.
+    expect(screen.queryByRole("button", { name: "Edytuj wpis" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Popraw i wyślij ponownie" })).not.toBeInTheDocument();
   });
 
   it("brak komentarza opiekuna: alert z komentarzem się nie renderuje (kontrast do wpisu z komentarzem)", async () => {
