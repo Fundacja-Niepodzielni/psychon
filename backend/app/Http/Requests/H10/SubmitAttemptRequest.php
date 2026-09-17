@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\H10;
 
+use App\Models\Course;
 use App\Models\Test;
+use App\Services\Lessons\LessonAccess;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -14,9 +16,27 @@ use Illuminate\Validation\Validator;
  */
 class SubmitAttemptRequest extends FormRequest
 {
-    public function authorize(): bool
+    /**
+     * Kurs testu niewidoczny dla osoby = 404 jeszcze przed walidacją, żeby
+     * komunikat o błędnych odpowiedziach nie zdradzał, że test istnieje.
+     */
+    public function authorize(LessonAccess $lessonAccess): bool
     {
-        return $this->user() !== null;
+        $user = $this->user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        $test = $this->route('test');
+
+        if ($test instanceof Test) {
+            $test->loadMissing('course');
+            $course = $test->course;
+            $lessonAccess->assertVisible($user, $course instanceof Course ? $course : null, 'Nie znaleziono zasobu.');
+        }
+
+        return true;
     }
 
     public function rules(): array
