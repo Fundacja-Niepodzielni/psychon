@@ -1,0 +1,214 @@
+name: Nocne pokrycie testami (SonarCloud)
+
+# NIE JEST bramka i nie zastepuje `sonarcloud.yml`: rozstrzygniecie architekta mowi wprost,
+# ze pokrycie liczymy w OSOBNYM PRZEBIEGU NOCNYM, zeby generowanie raportow (instrumentacja
+# testow backendu, `vitest --coverage` frontu) nie wydluzalo bramki PR/push ani o sekunde.
+# Ten plik NIE dotyka `sonarcloud.yml` ani `ci.yml` - to jest CALKIEM OSOBNY skan, ktory
+# sam sobie generuje raporty i sam je zuzywa w tym samym biegu.
+#
+# --- ktory stan repozytorium analizujemy i jak pokrycie trafia do TEGO SAMEGO stanu -------
+# Problem TOCTOU: `checkout` bez przypietego SHA bierze CZUBEK galezi W CHWILI checkoutu.
+# Gdyby kazdy z trzech jobow (backend, front, skan) robil wlasny `checkout` na plywajacej
+# galezi, a ktos wpchnalby commit MIEDZY nimi, joby analizowalyby RÓŻNE stany - pokrycie
+# policzone na starym drzewie trafialoby do skanu nowego drzewa i byloby po prostu
+# nieprawdziwe, mimo ze kazdy krok z osobna wygladalby na poprawny.
+# Rozwiazanie: job `ustal-commit` checkuje sie RAZ, natychmiast zamraza `git rev-parse HEAD`
+# w swoim outpucie, i KAZDY nastepny job (`pokrycie-backend`, `pokrycie-frontend`, `skan`)
+# checkuje sie z `ref: <ten sam zamrozony SHA>`, nigdy z nazwy galezi. Trzy niezalezne
+# checkouty tego samego przypietego SHA sa gwarantowanie identyczne (git jest tresciowo
+# adresowany), wiec pokrycie i skan CZYTAJA DOKLADNIE TO SAMO DRZEWO z definicji, nie z
+# przypadku czasowania. Krok skanu dodatkowo przekazuje `-Dsonar.scm.revision=<SHA>`, zeby
+# SonarCloud zapisal w analizie DOKLADNIE ten sam skrot, ktory wygenerowal raporty - bez tego
+# Sonar sam wyliczalby rewizje z `git`, co przy plytkim/nietypowym checkoutcie bywa inne niz
+# SHA, ktory faktycznie stoi na dysku.
+#
+# --- ktore galezie DOSTAJA WYSYLKE (warunek w tym pliku, nie cudza wlasciwosc) -------------
+# To jest INNA sprawa niz notka o widocznosci nizej: tu chodzi o to, dokad TEN PLIK w ogole
+# WYSYLA dane, niezaleznie od tego, co potem zrobi z nimi SonarCloud. `workflow_dispatch`
+# pozwala uruchomic ten przebieg z dowolnej galezi w repo - bez warunku w kroku skanu
+# wyslalby dane TAKZE z galezi roboczych, ktore nigdy nie mialy tego dostac. Warunek stoi
+# przy KROKU `Skan SonarCloud`, nie przy zadaniu: `secrets` (uzywany w `env.SONAR_TOKEN`
+# powyzej) nie jest dostepny w `jobs.<id>.if`, ale `github.ref` i `env` sa dostepne w `if`
+# KROKU - dokladnie ten sam uklad, co przelacznik sekretu w `sonarcloud.yml`.
+# Galezie uprawnione do wysylki: `main` oraz `sprint-*`. Kazda inna galaz (w tym ta, na
+# ktorej powstal ten plik) dostaje krok "pominiety - galaz poza lista", nie milczenie.
+#
+# --- widocznosc na galezi glownej niz sprintowa (ustalenie do architekta) -----------------
+# Osobno od warunku wysylki: nasz plan SonarCloud NIE WYPUSZCZA do odczytu danych z galezi
+# innych niz `main` (ustalone poza tym plikiem, wlasciwosc cudzej uslugi). Skutek: gdy ten
+# przebieg pojdzie na `sprint-*` (warunek wyzej na to pozwala), pokrycie ZOSTANIE POLICZONE
+# i WYSLANE poprawnie - ale nikt go NIE ZOBACZY w SonarCloud, dopoki galaz nie trafi do
+# `main`. To NIE JEST powod, zeby przebiegu nie robic: to jest wlasciwosc planu, nie tego
+# pliku, i warto ja znac PRZED, a nie PO nocnym biegu na galezi sprintu, ktory "zadziala"
+# a nikt nie zobaczy wyniku.
+#
+# --- harmonogram --------------------------------------------------------------------------
+# Uruchomienia zaplanowane biora kod DOMYSLNEJ GALEZI repo (tak dziala `schedule` w Actions),
+# wiec ten plik zaczyna faktycznie chodzic w nocy dopiero po scaleniu do `main`. Do tego czasu
+# jedyne uruchomienie to reczne `workflow_dispatch` (dowolna galaz z UI Actions) - patrz notka
+# o widocznosci wyzej.
+on:
+  schedule:
+    # 02:20 UTC. Poza godzinami pracy zespolu (PL) i poza szczytem pushy/PR na bramce CI/Sonar.
+    - cron: "20 2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  # Grupa WLASNA, celowo INNA niz `sonarcloud-${{ github.ref }}` w sonarcloud.yml - dwa
+  # niezalezne skany (bramkowy bez pokrycia, nocny z pokryciem) nie maja sie nawzajem anulowac.
+  group: nocne-pokrycie-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ustal-commit:
+    name: Zamroz SHA (jeden stan dla wszystkich jobow)
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.ustal.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: ustal
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  pokrycie-backend:
+    name: Pokrycie backendu (PHPUnit + pcov -> clover.xml)
+    needs: ustal-commit
+    runs-on: ubuntu-latest
+    services:
+      pgsql:
+        image: postgres:17
+        env:
+          POSTGRES_DB: niepodzielni_test
+          POSTGRES_USER: niepodzielni
+          POSTGRES_PASSWORD: secret
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U niepodzielni"
+          --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ustal-commit.outputs.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, redis, pcntl
+          # JEDYNA roznica wobec ci.yml: sterownik pokrycia wlaczony. `ci.yml` ma
+          # `coverage: none` swiadomie (bramka ma nie placic czasu instrumentacji) - tu
+          # placimy go celowo, bo to jest DOKLADNIE ten koszt, ktory mial pojsc poza bramke.
+          # Brak nowej zaleznosci w repo: pcov to rozszerzenie PHP instalowane przez
+          # `setup-php`, ktore juz i tak jest w uzyciu (ci.yml) - tylko z innym parametrem.
+          coverage: pcov
+      - name: Zależności
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Konfiguracja testowa
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Testy z pokryciem
+        run: php artisan test --coverage-clover=coverage/clover.xml
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          REDIS_HOST: 127.0.0.1
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          MAIL_MAILER: array
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pokrycie-backend
+          path: backend/coverage/clover.xml
+          retention-days: 1
+
+  pokrycie-frontend:
+    name: Pokrycie frontu (vitest --coverage -> lcov.info)
+    needs: ustal-commit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ustal-commit.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Zależności
+        run: npm ci
+      - name: Testy z pokryciem
+        # `@vitest/coverage-v8` jest juz zaleznoscia (package.json) - reporter `lcov` nie
+        # jest domyslny (domyslnie text/html/clover/json), wiec dopisujemy go flaga CLI,
+        # bez zadnej nowej zaleznosci ani zmiany w vitest.config.ts.
+        run: npx vitest run --coverage --coverage.reporter=lcov --coverage.reportsDirectory=coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pokrycie-frontend
+          path: frontend/coverage/lcov.info
+          retention-days: 1
+
+  skan-z-pokryciem:
+    name: Skan SonarCloud z pokryciem
+    needs: [ustal-commit, pokrycie-backend, pokrycie-frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ustal-commit.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: pokrycie-backend
+          path: backend/coverage
+      - uses: actions/download-artifact@v4
+        with:
+          name: pokrycie-frontend
+          path: frontend/coverage
+      - name: Skan SonarCloud (z pokryciem, przypiety SHA)
+        # Dwa warunki, jeden krok: sekret ustawiony ORAZ galaz na liscie wysylki
+        # (`main` lub `sprint-*` - patrz komentarz na gorze pliku). `github.ref` jest
+        # dozwolony w `if` kroku (w przeciwienstwie do `secrets` w `if` zadania).
+        if: >-
+          env.SONAR_TOKEN != '' &&
+          (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/sprint-'))
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          # `sonar.scm.revision` przypina rewizje analizy do TEGO SAMEGO SHA, ktory
+          # wygenerowal oba raporty (patrz komentarz na gorze pliku) - bez tego Sonar
+          # wyliczalby rewizje sam z lokalnego `git`, co jest dodatkowym, niepotrzebnym
+          # stopniem posrednim miedzy "commit, ktory zmierzylismy" a "commit, ktory Sonar
+          # zapisal".
+          args: >
+            -Dsonar.scm.revision=${{ needs.ustal-commit.outputs.sha }}
+      - name: Skan pominiety — brak sekretu
+        if: env.SONAR_TOKEN == ''
+        run: |
+          echo "SONAR_TOKEN nie jest ustawiony w repozytorium."
+          echo "Skan nocny pominiety celowo - patrz sonarcloud.yml po ten sam mechanizm."
+      - name: Skan pominiety — galaz poza lista wysylki
+        if: >-
+          env.SONAR_TOKEN != '' &&
+          !(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/sprint-'))
+        run: |
+          echo "Galaz ${{ github.ref }} nie jest na liscie wysylki (main, sprint-*)."
+          echo "Dane pokrycia i skanu NIE zostaly wyslane z tego biegu."
