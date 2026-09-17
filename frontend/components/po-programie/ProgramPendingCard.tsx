@@ -1,4 +1,5 @@
 import Card from "@/components/ui/Card";
+import Text from "@/components/ui/Text";
 
 /**
  * Stan „program jeszcze nieukończony" ekranu `/panel/po-programie`.
@@ -8,9 +9,7 @@ import Card from "@/components/ui/Card";
 export default function ProgramPendingCard() {
   return (
     <Card title="Program w toku">
-      <p className="text-body text-muted">
-        Ekran będzie dostępny po ukończeniu programu.
-      </p>
+      <Text tone="muted">Ekran będzie dostępny po ukończeniu programu.</Text>
     </Card>
   );
 }
