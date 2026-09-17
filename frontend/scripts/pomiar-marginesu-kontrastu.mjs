@@ -199,7 +199,7 @@ function zbudujPary(tokeny, rozmiary, rowHoverNaBieli) {
     ["Odznaka: sukces", t("psy-success"), t("psy-success-bg"), CAPTION, true, true],
     ["Odznaka: ostrzeżenie", t("psy-warning-dark"), t("psy-warning-bg"), CAPTION, true, true],
     ["Odznaka: błąd", t("psy-error"), t("psy-error-bg"), CAPTION, true, true],
-    ["Odznaka: informacja", t("psy-info-dark"), t("psy-info-bg"), CAPTION, true, true],
+    ["Odznaka: informacja", t("psy-info-badge"), t("psy-info-bg"), CAPTION, true, true],
     ["Odznaka: akcent", t("psy-violet-dark"), t("psy-violet-15"), CAPTION, true, true],
     ["Alert: sukces", t("psy-success"), t("psy-success-bg"), SMALL, false, false],
     ["Alert: informacja", t("psy-info-dark"), t("psy-info-bg"), SMALL, false, false],
@@ -374,12 +374,6 @@ function zbudujPelnaMacierz(pary, tla) {
 
 const ZASTANE_ODSTEPSTWA = [
   {
-    etykieta: "Odznaka: informacja",
-    tlo: "Podkład najechania wiersza tabeli",
-    powod:
-      "info-dark na info-bg, złożone na podkładzie najechania wiersza tabeli (odznaka statusu w komórce dowolnej tabeli, wiersz najechany): margines dziś ok. -0,19. Wymaga zmiany odcienia --psy-info-dark albo --psy-info-bg — osobna zmiana, nie zmiana kodu pomiaru.",
-  },
-  {
     etykieta: "Łącze: główny (tone=primary)",
     tlo: "Podkład najechania wiersza tabeli",
     powod:
@@ -388,34 +382,16 @@ const ZASTANE_ODSTEPSTWA = [
 ];
 
 // ---------------------------------------------------------------------------
-// Odkryte pomiarem z 17.09.2026, czekają na decyzję o odcieniu — TYMCZASOWY
-// rejestr, celowo osobny od `ZASTANE_ODSTEPSTWA` powyżej. Te dwie pary/tła
-// były poniżej progu już wcześniej, tylko nikt ich nie mierzył (przyrząd nie
-// znał pełnego iloczynu par × teł) — to nie jest zaakceptowany stan, tylko
-// świeże odkrycie samego rozszerzenia pomiaru. Trzymanie ich osobno od
-// `ZASTANE_ODSTEPSTWA` ma dać przyrządowi kod 0 na dziś znanym stanie, a
-// jednocześnie zostawić w kodzie widoczny ślad, że to NIE jest stan
-// zaakceptowany na stałe. Każdy wpis znika stąd razem z poprawką odcienia
-// tokenu informacyjnego (--psy-info-dark / --psy-info-bg), która ma dostać
-// własny, osobny pomiar i odbiór — nie zostaje tu na zawsze.
+// Odkryte pomiarem z 17.09.2026, czekały na decyzję o odcieniu — TYMCZASOWY
+// rejestr, celowo osobny od `ZASTANE_ODSTEPSTWA` powyżej. Obie pozycje
+// dotyczyły wyłącznie pary "Odznaka: informacja" i zniknęły stąd razem
+// z wydzieleniem osobnego tokenu odznaki (--psy-info-badge) i jego
+// przyciemnieniem — dokładnie tak, jak zapowiadał komentarz przy każdym
+// wpisie. Rejestr zostaje pusty, nie usunięty, żeby ślad decyzji (skąd się
+// wzięła pusta lista) był widoczny w historii tego pliku.
 // ---------------------------------------------------------------------------
 
-const ODKRYTE_POMIAREM_TYMCZASOWE = [
-  {
-    etykieta: "Odznaka: informacja",
-    tlo: "Karta ciepła",
-    data: "2026-09-17",
-    powod:
-      "Odznaka statusu (info-dark na info-bg) w nagłówku podglądu wiadomości e-mail, na tle bg-card-warm — widoczna, gdy status wiadomości to \"symulacja\" (app/(administracja)/admin/emails/page.tsx). Margines dziś ok. -0,093. Wpis tymczasowy: znika razem z poprawką odcienia tokenu informacyjnego, nie zostaje na stałe.",
-  },
-  {
-    etykieta: "Odznaka: informacja",
-    tlo: "Podkład najechania (szary, płaski)",
-    data: "2026-09-17",
-    powod:
-      "Odznaka statusu (info-dark na info-bg) na liście powiadomień, w przycisku z podkładem najechania na szarym #f5f5f5 — widoczna przy nieprzeczytanym powiadomieniu (components/organisms/NotificationList.tsx). Margines dziś ok. -0,050. Wpis tymczasowy: znika razem z poprawką odcienia tokenu informacyjnego, nie zostaje na stałe.",
-  },
-];
+const ODKRYTE_POMIAREM_TYMCZASOWE = [];
 
 /**
  * Ocenia macierz wobec progu i rejestru (zastane odstępstwa + odkryte

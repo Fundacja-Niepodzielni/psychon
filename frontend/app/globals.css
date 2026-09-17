@@ -90,8 +90,9 @@
   --psy-error-bg: #fdf3f3;
   --psy-error-border: #f5c6cb;
   --psy-info: #4a90e2; /* dekoracyjnie (3,3:1) */
-  --psy-info-dark: #2f6cb3; /* [A11Y] tekst informacyjny: 5,4:1 */
+  --psy-info-dark: #2f6cb3; /* [A11Y] tekst informacyjny: komunikat (Alert), jego ikona, odnośnik w komunikacie i węzeł mapy rozwoju — czynność/stan poza odznaką, NIE odznaka; nie mylić z --psy-info-badge */
   --psy-info-bg: #4a90e21a;
+  --psy-info-badge: #265d99; /* [A11Y] rozdzielone od --psy-info-dark: odznaka to stan, nie czynność, a dotychczasowy token miał ujemny margines na kilku tłach; aktualny próg, kontrasty i marginesy: `node scripts/pomiar-marginesu-kontrastu.mjs` (nie przepisuj tu liczb — ten komentarz nie starzeje się, ale liczby przepisane tutaj zdezaktualizowałyby się przy następnej zmianie odcienia) */
 
   /* --- Kolory wydarzeń (kalendarz) --- */
   --psy-event-mentoring: #e67e22;
@@ -230,6 +231,7 @@
   --color-info: var(--psy-info);
   --color-info-dark: var(--psy-info-dark);
   --color-info-bg: var(--psy-info-bg);
+  --color-info-badge: var(--psy-info-badge);
 
   --color-event-mentoring: var(--psy-event-mentoring);
   --color-event-superwizja: var(--psy-event-superwizja);
