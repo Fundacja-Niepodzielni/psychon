@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Ekran startowy",
   href: "/admin/ekran-startowy",
-  order: 28,
+  order: 120,
+  icon: "layout",
+  section: "konfiguracja",
 };
 
 export default entry;

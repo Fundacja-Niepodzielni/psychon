@@ -6,6 +6,7 @@ const entry: MenuEntry = {
   href: "/panel/staz",
   order: 30,
   icon: "clipboard-list",
+  section: "program",
 };
 
 export default entry;

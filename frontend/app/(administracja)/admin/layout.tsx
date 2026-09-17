@@ -1,6 +1,6 @@
 import PanelShell from "@/components/layout/PanelShell";
 import RequireRole from "@/components/permissions/RequireRole";
-import { adminMenu } from "@/lib/menu/admin";
+import { adminMenu, adminMenuSections } from "@/lib/menu/admin";
 
 export default function AdminLayout({
   children,
@@ -9,7 +9,12 @@ export default function AdminLayout({
 }) {
   return (
     <RequireRole allowedRoles={["project_manager", "super_admin"]}>
-      <PanelShell panelName="Administracja" menu={adminMenu}>
+      <PanelShell
+        panelName="Administracja"
+        menu={adminMenu}
+        sections={adminMenuSections}
+        menuKey="admin"
+      >
         {children}
       </PanelShell>
     </RequireRole>

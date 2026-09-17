@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Skrzynka e-maili",
   href: "/admin/emails",
-  order: 20,
+  order: 90,
+  icon: "mail",
+  section: "obsluga",
 };
 
 export default entry;

@@ -6,6 +6,7 @@ const entry: MenuEntry = {
   href: "/panel/profil",
   order: 90,
   icon: "user",
+  section: "konto",
 };
 
 export default entry;

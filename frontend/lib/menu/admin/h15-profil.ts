@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Profile psychologa",
   href: "/admin/profile",
-  order: 30,
+  order: 50,
+  icon: "badge-check",
+  section: "osoby",
 };
 
 export default entry;

@@ -10,7 +10,7 @@ import h12Grupa from "./h12-grupa";
 import h17Pytania from "./h17-pytania";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
-import { sortMenu, type MenuEntry } from "../types";
+import { sortMenu, type MenuEntry, type MenuSection } from "../types";
 
 export const instructorMenu: MenuEntry[] = sortMenu([
   h00Start,
@@ -18,3 +18,8 @@ export const instructorMenu: MenuEntry[] = sortMenu([
   h17Pytania,
   // hXXNazwa, // ← i drugą tutaj
 ]);
+
+/**
+ * Menu prowadzącego ma trzy wpisy, więc zostaje jedną listą bez sekcji.
+ */
+export const instructorMenuSections: MenuSection[] = [];

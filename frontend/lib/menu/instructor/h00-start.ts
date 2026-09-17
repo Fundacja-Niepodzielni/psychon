@@ -9,6 +9,7 @@ const entry: MenuEntry = {
   label: "Start",
   href: "/prowadzacy",
   order: 10,
+  icon: "home",
   exact: true,
 };
 

@@ -4,7 +4,9 @@ import type { MenuEntry } from "../types";
 const entry: MenuEntry = {
   label: "Dziennik działań",
   href: "/admin/dziennik",
-  order: 45,
+  order: 110,
+  icon: "history",
+  section: "raporty",
 };
 
 export default entry;
