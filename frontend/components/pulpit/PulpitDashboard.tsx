@@ -49,7 +49,9 @@ export default function PulpitDashboard() {
   const [basicsError, setBasicsError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
-  const [slots, setSlots] = useState<Aux<ParticipantSlot[]>>({ status: "loading" });
+  const [slots, setSlots] = useState<
+    Aux<ParticipantSlot[]> | { status: "skipped" }
+  >({ status: "loading" });
   const [detail, setDetail] = useState<Aux<CourseDetail> | null>(null);
   const [conditions, setConditions] = useState<
     Aux<CertificateConditions> | { status: "skipped" }
@@ -64,9 +66,16 @@ export default function PulpitDashboard() {
         setMe(loadedMe);
         setCourses(loadedCourses);
 
-        fetchSupervisionSlots()
-          .then((data) => active && setSlots({ status: "ok", data }))
-          .catch(() => active && setSlots({ status: "error" }));
+        // Superwizja przysługuje wyłącznie wolontariuszkom, więc studentce
+        // nie pokazujemy węzła i nie pytamy o niego serwera: żądanie i tak
+        // wróciłoby odmową, a sekcja wyglądałaby jak zepsuta (Z-7).
+        if (loadedMe.role === "volunteer") {
+          fetchSupervisionSlots()
+            .then((data) => active && setSlots({ status: "ok", data }))
+            .catch(() => active && setSlots({ status: "error" }));
+        } else {
+          setSlots({ status: "skipped" });
+        }
 
         const inProgress = pathStages(loadedCourses).find(
           (course) => course.status === "in_progress",
@@ -163,7 +172,7 @@ export default function PulpitDashboard() {
               {stages.map((stage) => (
                 <StageNode key={stage.id} course={stage} />
               ))}
-              <SupervisionNode slots={slots} />
+              {slots.status !== "skipped" && <SupervisionNode slots={slots} />}
             </ol>
           )}
         </Card>
