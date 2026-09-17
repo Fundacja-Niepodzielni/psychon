@@ -185,8 +185,46 @@ return [
     |--------------------------------------------------------------------------
     | Własne nazwy pól
     |--------------------------------------------------------------------------
+    |
+    | Polskie nazwy pól dla zdań w rodzaju "Pole ... musi ...": każda nazwa
+    | jest w mianowniku, tak żeby pasowała do tego wzorca zdania niezależnie
+    | od konkretnej reguły. Lista obejmuje pola z reguł FormRequest, które nie
+    | mają własnego komunikatu (znalezione skanem reflekcją).
+    |
     */
 
-    'attributes' => [],
+    'attributes' => [
+        'address.city' => 'miasto',
+        'address.street' => 'ulica',
+        'address.zip' => 'kod pocztowy',
+        'answer' => 'odpowiedź',
+        'answers.*.body' => 'treść odpowiedzi',
+        'attendance.*' => 'status obecności',
+        'bio' => 'biogram',
+        'body' => 'treść',
+        'city' => 'miasto',
+        'description' => 'opis',
+        'expectations' => 'oczekiwania',
+        'experience' => 'doświadczenie',
+        'first_name' => 'imię',
+        'form' => 'forma dyżuru',
+        'last_name' => 'nazwisko',
+        'months' => 'liczba miesięcy',
+        'name' => 'nazwa',
+        'pesel' => 'numer PESEL',
+        'phone' => 'numer telefonu',
+        'product_group' => 'grupa produktowa',
+        'program' => 'program',
+        'question' => 'pytanie',
+        'reason' => 'powód',
+        'role' => 'rola',
+        'sequence_order' => 'kolejność',
+        'slug' => 'uproszczony adres',
+        'title' => 'tytuł',
+        'type' => 'typ',
+        'until' => 'data wygaśnięcia dostępu',
+        'video' => 'wideo',
+        'video_provider_id' => 'identyfikator nagrania',
+    ],
 
 ];
