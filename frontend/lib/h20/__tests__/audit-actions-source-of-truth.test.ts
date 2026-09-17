@@ -44,6 +44,22 @@ import { ACTION_LABELS } from "@/lib/h20/labels";
  * bez przecinków między elementami) może zepsuć wyrażenie regularne poniżej
  * i dać fałszywy czerwony albo fałszywy zielony — to nie jest wiązanie na
  * poziomie typów, tylko najbliższe dostępne bez zmiany kodu produkcyjnego.
+ *
+ * Poprawka po odbiorze: pierwsza wersja dopasowywała `ACTIONS\s*=\s*\[` bez
+ * granicy słowa, więc stała siostrzana o nazwie kończącej się na `ACTIONS`
+ * (np. `EXPORT_ACTIONS`) przejmowała dopasowanie — regex trafiał w jej
+ * blok, nie w blok właściwej stałej, i test świecił zielono, patrząc na
+ * cudzy przedmiot. `\bACTIONS\b` nie łapie tego przypadku, bo `_` liczy się
+ * jako znak słowa — między `_` a `A` w `EXPORT_ACTIONS` nie ma granicy.
+ * Druga, tańsza kontrola niżej liczy dosłowne wystąpienia deklaracji samej
+ * nazwy `ACTIONS` (z granicą słowa, tuż przed znakiem `=`) w całym pliku i
+ * wymaga dokładnie jednego. Celowo NIE liczy samego słowa `ACTIONS` wszędzie
+ * w pliku — plik legalnie odwołuje się do stałej też jako `self::ACTIONS)`
+ * w `rules()`, więc "dokładnie jedno wystąpienie słowa" byłoby fałszywym
+ * alarmem na czystym kodzie. Wymóg "ACTIONS" bezpośrednio przed `=` łapie
+ * każdą przyszłą stałą siostrzaną o tej samej końcówce nazwy (np.
+ * `EXPORT_ACTIONS = [...]` nie pasuje, bo `_` przed `A` psuje granicę
+ * słowa), niezależnie od tego, czy zepsułaby też pierwszy regex.
  */
 
 const backendActionsFile = path.resolve(
@@ -51,9 +67,14 @@ const backendActionsFile = path.resolve(
   "../../../../backend/app/Http/Requests/H20/AuditIndexRequest.php",
 );
 
-function czytajZrodloPrawdy(): string[] {
-  const tresc = readFileSync(backendActionsFile, "utf-8");
-  const blok = tresc.match(/ACTIONS\s*=\s*\[([\s\S]*?)\];/);
+const DEKLARACJA_STALEJ = /\bACTIONS\s*=/g;
+
+function policzDeklaracje(tresc: string): number {
+  return (tresc.match(DEKLARACJA_STALEJ) ?? []).length;
+}
+
+function czytajZrodloPrawdy(tresc: string): string[] {
+  const blok = tresc.match(/\bACTIONS\b\s*=\s*\[([\s\S]*?)\];/);
   if (!blok) {
     throw new Error(
       "Nie znaleziono stałej ACTIONS w AuditIndexRequest.php — zmieniono format pliku, dopasuj wyrażenie regularne w teście.",
@@ -64,10 +85,15 @@ function czytajZrodloPrawdy(): string[] {
 }
 
 describe("słowniki frontu audytu vs. źródło prawdy zaplecza (AuditIndexRequest::ACTIONS)", () => {
-  const zrodloPrawdy = czytajZrodloPrawdy();
+  const tresc = readFileSync(backendActionsFile, "utf-8");
+  const zrodloPrawdy = czytajZrodloPrawdy(tresc);
 
   it("źródło prawdy nie jest puste (kontrola, że parser czyta właściwy plik)", () => {
     expect(zrodloPrawdy.length).toBeGreaterThan(0);
+  });
+
+  it("deklaracja `ACTIONS =` występuje w pliku dokładnie raz (brak stałej siostrzanej, która przejęłaby dopasowanie)", () => {
+    expect(policzDeklaracje(tresc)).toBe(1);
   });
 
   it("AUDIT_ACTIONS zawiera dokładnie te same sluganowy co AuditIndexRequest::ACTIONS", () => {
