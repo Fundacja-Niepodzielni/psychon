@@ -4,15 +4,17 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import Badge from "@/components/ui/Badge";
 
-// Świadek wiązania odznaki z tokenami stylu.
+// Test wiąże warianty odznaki z realnymi tokenami stylu.
 //
-// K1: warianty wyliczamy z samego pliku Badge.tsx (blok `const variants: Record<Variant, string> = {...}`),
+// Warianty wyliczamy z samego pliku Badge.tsx (blok `const variants: Record<Variant, string> = {...}`),
 // nie z ręcznie przepisanej listy w tym teście. Dopisanie siódmego wariantu w Badge.tsx
 // wystarczy, żeby ten test objął go automatycznie — bez zmiany tego pliku.
 //
-// K3: dla każdej klasy z mapy sprawdzamy, że odpowiadający jej token `--color-<nazwa>`
-// jest zadeklarowany w app/globals.css. Plik stylów czytamy z dysku, nie przepisujemy
-// listy tokenów do testu.
+// Dla każdej klasy z mapy sprawdzamy, że odpowiadający jej token `--color-<nazwa>`
+// jest zadeklarowany w bloku deklaracji tokenów (`@theme inline { ... }`) w app/globals.css.
+// Plik stylów czytamy z dysku, nie przepisujemy listy tokenów do testu. Token zakomentowany
+// w tym bloku liczy się jako niezadeklarowany, a brak samego bloku jest błędem testu
+// (czerwono), nie cichym pominięciem.
 
 const BADGE_SRC_PATH = path.join(__dirname, "..", "Badge.tsx");
 const GLOBALS_CSS_PATH = path.join(__dirname, "..", "..", "..", "app", "globals.css");
@@ -42,6 +44,26 @@ function wyodrebnijNazwyWariantowZTypu(zrodlo: string): string[] {
   return Array.from(match[1].matchAll(/"([^"]+)"/g)).map((m) => m[1]);
 }
 
+// Zawęża plik stylów do wnętrza bloku deklaracji tokenów (`@theme inline { ... }`)
+// i usuwa komentarze blokowe /* ... */ z tego wnętrza, żeby zakomentowany token
+// nie liczył się jako zadeklarowany. Brak bloku albo brak jego zamknięcia jest
+// błędem — test ma się wywrócić, a nie po cichu nic nie sprawdzić.
+function wyodrebnijBlokDeklaracjiTokenow(css: string): string {
+  const poczatek = css.match(/@theme\s+inline\s*\{/);
+  if (!poczatek || poczatek.index === undefined) {
+    throw new Error(
+      "Nie znaleziono w globals.css bloku `@theme inline { ... }` z deklaracjami tokenów.",
+    );
+  }
+  const odPoczatkuTresci = css.slice(poczatek.index + poczatek[0].length);
+  const koniec = odPoczatkuTresci.match(/^\}/m);
+  if (!koniec || koniec.index === undefined) {
+    throw new Error("Nie znaleziono zamknięcia bloku `@theme inline { ... }` w globals.css.");
+  }
+  const trescBloku = odPoczatkuTresci.slice(0, koniec.index);
+  return trescBloku.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 // Parsowanie linii postaci: nazwa: "klasa1 klasa2", ignorując linie komentarzy (`//`).
 function wyodrebnijMapeWariantow(blok: string): Record<string, string[]> {
   const mapa: Record<string, string[]> = {};
@@ -60,8 +82,9 @@ function wyodrebnijMapeWariantow(blok: string): Record<string, string[]> {
 const nazwyZTypu = wyodrebnijNazwyWariantowZTypu(badgeSource);
 const blokWariantow = wyodrebnijBlokWariantow(badgeSource);
 const mapaWariantow = wyodrebnijMapeWariantow(blokWariantow);
+const blokTokenow = wyodrebnijBlokDeklaracjiTokenow(globalsCss);
 
-describe("Badge — wiązanie wariantów z tokenami stylu (świadek)", () => {
+describe("Badge — wiązanie wariantów z tokenami stylu", () => {
   it("każdy wariant z typu Variant ma wpis w mapie klas w Badge.tsx", () => {
     expect(nazwyZTypu.length).toBeGreaterThan(0);
     for (const nazwa of nazwyZTypu) {
@@ -71,7 +94,7 @@ describe("Badge — wiązanie wariantów z tokenami stylu (świadek)", () => {
     expect(Object.keys(mapaWariantow).sort()).toEqual([...nazwyZTypu].sort());
   });
 
-  // K2 + K3, wyliczone dynamicznie z Badge.tsx — brak ręcznie przepisanej listy wariantów/klas.
+  // Warianty i ich klasy wyliczone dynamicznie z Badge.tsx — brak ręcznie przepisanej listy.
   for (const nazwa of nazwyZTypu) {
     describe(`wariant "${nazwa}"`, () => {
       it("odznaka niesie dokładnie klasy przypisane temu wariantowi w Badge.tsx", () => {
@@ -104,8 +127,8 @@ describe("Badge — wiązanie wariantów z tokenami stylu (świadek)", () => {
           const nazwaTokenu = dopasowaniePrefiksu![2];
           const wzorzecTokenu = new RegExp(`--color-${nazwaTokenu}\\s*:`);
           expect(
-            wzorzecTokenu.test(globalsCss),
-            `token --color-${nazwaTokenu} (dla klasy "${klasa}" wariantu "${nazwa}") nie jest zadeklarowany w app/globals.css`,
+            wzorzecTokenu.test(blokTokenow),
+            `token --color-${nazwaTokenu} (dla klasy "${klasa}" wariantu "${nazwa}") nie jest zadeklarowany w bloku @theme w app/globals.css`,
           ).toBe(true);
         }
       });
