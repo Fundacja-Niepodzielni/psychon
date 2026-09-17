@@ -13,6 +13,7 @@ import Inset from "@/components/ui/Inset";
 import Stack from "@/components/ui/Stack";
 import Text from "@/components/ui/Text";
 import { api, ApiError } from "@/lib/api";
+import useFokusPoOdmowie from "@/lib/hooks/useFokusPoOdmowie";
 import {
   draftError,
   draftFrom,
@@ -74,6 +75,11 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
   const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Formularz pytania nie jest elementem `form` (stoi w wierszu listy obok
+  // innych), więc obszar fokusu po odmowie wyznacza otaczający blok.
+  const obszarEdycji = useFokusPoOdmowie<HTMLDivElement>(editFieldErrors);
+  const obszarNowego = useFokusPoOdmowie<HTMLDivElement>(newFieldErrors);
 
   useEffect(() => {
     // Bez `setPhase("loading")` w ciele efektu (kaskada renderów, którą łapie
@@ -280,13 +286,15 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
                   <>
                     {editError && <Alert variant="error">{editError}</Alert>}
 
-                    <QuestionForm
-                      draft={editDraft}
-                      onChange={setEditDraft}
-                      fieldErrors={editFieldErrors}
-                      idPrefix={`pytanie-${question.id}`}
-                      disabled={saving}
-                    />
+                    <div ref={obszarEdycji}>
+                      <QuestionForm
+                        draft={editDraft}
+                        onChange={setEditDraft}
+                        fieldErrors={editFieldErrors}
+                        idPrefix={`pytanie-${question.id}`}
+                        disabled={saving}
+                      />
+                    </div>
 
                     <ActionRow align="start">
                       <Button
@@ -362,13 +370,15 @@ export default function QuestionBank({ testId }: QuestionBankProps) {
         <Stack>
           {newError && <Alert variant="error">{newError}</Alert>}
 
-          <QuestionForm
-            draft={newDraft}
-            onChange={setNewDraft}
-            fieldErrors={newFieldErrors}
-            idPrefix="nowe-pytanie"
-            disabled={creating}
-          />
+          <div ref={obszarNowego}>
+            <QuestionForm
+              draft={newDraft}
+              onChange={setNewDraft}
+              fieldErrors={newFieldErrors}
+              idPrefix="nowe-pytanie"
+              disabled={creating}
+            />
+          </div>
 
           <ActionRow align="start">
             <Button loading={creating} onClick={() => void createQuestion()}>

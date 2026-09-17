@@ -10,6 +10,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Columns from "@/components/ui/Columns";
+import Form from "@/components/ui/Form";
 import Input from "@/components/ui/Input";
 import Inset from "@/components/ui/Inset";
 import Select from "@/components/ui/Select";
@@ -289,7 +290,7 @@ export default function AdminCoursesPage() {
           <>
             {creating && (
               <Card title="Nowy kurs">
-                <form onSubmit={submitNewCourse} noValidate>
+                <Form onSubmit={submitNewCourse} bledyPol={fieldErrors}>
                   <Stack>
                     {formError && <Alert variant="error">{formError}</Alert>}
 
@@ -362,7 +363,7 @@ export default function AdminCoursesPage() {
                       </Button>
                     </ActionRow>
                   </Stack>
-                </form>
+                </Form>
               </Card>
             )}
 
