@@ -120,7 +120,8 @@ jobs:
       - name: Zależności
         run: |
           npm ci --ignore-scripts
-          npm rebuild $REBUILD_LISTA
+          read -ra REBUILD_ARR <<< "$REBUILD_LISTA"
+          npm rebuild "${REBUILD_ARR[@]}"
       # $REBUILD_LISTA jest zdefiniowana raz, w `env:` tego zadania (zobacz wyzej).
       # Ten krok nie ma wlasnej kopii listy - czyta dokladnie ta sama zmienna,
       # ktora krok "Zaleznosci" przekazuje do `npm rebuild`. Nic samo z siebie
