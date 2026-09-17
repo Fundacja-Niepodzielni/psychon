@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1\H11;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\H11\RejectInternshipEntryRequest;
 use App\Http\Requests\H11\ReturnInternshipEntryRequest;
 use App\Http\Resources\H11\AdminInternshipEntryResource;
 use App\Models\InternshipEntry;
+use App\Models\User;
 use App\Support\AuditLog;
 use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
@@ -102,6 +104,49 @@ class AdminInternshipController extends Controller
                 'internship.returned',
                 'Wpis stażu wymaga poprawy',
                 'Twój wpis stażu został odesłany do poprawy.',
+                '/panel/staz',
+            );
+
+            return $entry->fresh('user');
+        });
+
+        return response()->json([
+            'data' => AdminInternshipEntryResource::make($entry)->resolve($request),
+        ]);
+    }
+
+    public function reject(RejectInternshipEntryRequest $request, int $id): JsonResponse
+    {
+        $entry = DB::transaction(function () use ($request, $id): InternshipEntry {
+            $entry = InternshipEntry::query()
+                ->with('user')
+                ->whereKey($id)
+                ->lockForUpdate()
+                ->first();
+
+            $this->assertSubmitted($entry);
+
+            $entry->forceFill([
+                'status' => 'rejected',
+                'review_comment' => $request->validated('comment'),
+                'decided_by' => $request->user()->id,
+                'decided_at' => now(),
+            ])->save();
+
+            AuditLog::record($request->user(), 'internship.rejected', $entry, [
+                'entry_id' => $entry->id,
+            ]);
+
+            $owner = $entry->user;
+            if (! $owner instanceof User) {
+                throw new ApiException(404, 'not_found', 'Nie znaleziono wpisu.');
+            }
+
+            Notify::send(
+                $owner,
+                'internship.rejected',
+                'Wpis stażu odrzucony',
+                'Twój wpis stażu został odrzucony.',
                 '/panel/staz',
             );
 
