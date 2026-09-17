@@ -16,9 +16,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * `roles` (R2, sprint-2 §1): the LOCAL role names the current access token
  * authorises (`TokenRoles::current()`) — a list, since a user may hold
- * several roles at once. `role` stays for backward compatibility (a
- * frontend on another branch routes by it): display/report copy of
- * `users.role`, never consulted for authorisation. This is the route H01
+ * several roles at once. `role` keeps the
+ * backward-compatible singular shape, but on a self view (this resource's
+ * account IS the token's own account) it is now `TokenRoles::
+ * effectiveRoleFor()` — the SAME source that decides access — never a raw,
+ * possibly stale, copy of `users.role`; see that method for the self-view
+ * rule and the disagreement log. This is the route H01
  * overrides `/me` with (`config('features.h01')`) — the starter's
  * `UserResource` carries the same `roles` field for the flag-off shape.
  *
@@ -51,7 +54,7 @@ class ProfileResource extends JsonResource
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
             'email' => $this->email,
-            'role' => $this->role,
+            'role' => app(TokenRoles::class)->effectiveRoleFor($this->resource),
             'roles' => app(TokenRoles::class)->current(),
             'phone' => $this->phone,
             'pesel' => $this->pesel,
