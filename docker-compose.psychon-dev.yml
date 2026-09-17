@@ -59,6 +59,13 @@ x-laravel-env: &laravel-env
   # Nigdy `true` na srodowisku odbiorczym. Zaufanie ustawia sie plikiem CA
   # powyzej, nie wylaczeniem sprawdzania.
   KEYCLOAK_INSECURE_TLS: "false"
+  # Bunny Stream - nagrania lekcji sa funkcja opcjonalna (VideoTokenService
+  # rozroznia stan "niewypelnione" zamiast wybuchac), wiec puste domyslne, nie
+  # twarde zadanie ustawienia: brak tych czterech nie ma prawa wywrocic stosu.
+  BUNNY_API_KEY: ${BUNNY_API_KEY:-}
+  BUNNY_LIBRARY_ID: ${BUNNY_LIBRARY_ID:-}
+  BUNNY_CDN_HOSTNAME: ${BUNNY_CDN_HOSTNAME:-}
+  BUNNY_TOKEN_SECURITY_KEY: ${BUNNY_TOKEN_SECURITY_KEY:-}
 
 services:
   app:
