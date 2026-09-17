@@ -84,7 +84,7 @@ class SelfViewRoleFromTokenTest extends TestCase
     }
 
     /**
-     * D3: a token that carries none of the whitelisted realm roles now
+     * A token that carries none of the whitelisted realm roles now
      * reports an EMPTY `role` on the self view — not the old default
      * string, and not the (higher-privilege) local column either. This
      * pins the current, deliberately changed, response shape.
@@ -173,11 +173,11 @@ class SelfViewRoleFromTokenTest extends TestCase
     }
 
     /**
-     * D1 measured, not fixed here (out of the TESTY role's scope — the
-     * guard denies edits to `backend/app/Services/Auth/TokenRoles.php`,
-     * `czy-wolno.sh TESTY backend/app/Services/Auth/TokenRoles.php` →
-     * ODMOWA, measured 2026-09-17). The mismatch warning still lands only
-     * in the application log, never in the administration audit register:
+     * Measured, not fixed here: this test does not touch
+     * `backend/app/Services/Auth/TokenRoles.php`, only pins the current
+     * behaviour of the code as it stands (measured 2026-09-17). The
+     * mismatch warning still lands only in the application log, never in
+     * the administration audit register:
      * forcing the exact disagreement this class's other tests use produces
      * ZERO rows in `audit_log`, while `Log::warning('auth.role_column_mismatch', …)`
      * fires — account id only, no token value, no personal data.
