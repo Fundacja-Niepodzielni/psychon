@@ -99,10 +99,27 @@ class IdentityBindingNoElevationNoAutoCreateTest extends TestCase
      * transaction's own rollback erases the row before this test ever reads
      * the table. The query listener below catches the attempted `insert`
      * itself, at the moment it is sent to the database, before any rollback
-     * gets a chance to hide it. The final row-count assertion still earns
-     * its place for the other half of this guarantee — a row created before
-     * the transaction opens or after it commits, which no rollback would
-     * ever undo — but on its own it cannot prove the method never *tried*.
+     * gets a chance to hide it.
+     *
+     * The listener assertion (line 126) runs before the row-count assertion
+     * (line 127) and PHPUnit stops at the first failing assertion — so once
+     * an attempted insert is observed, the row-count check never executes
+     * and covers nothing for that run. Given this ordering, the row-count
+     * assertion only earns its place for the one case the listener cannot
+     * see at all: a row that ends up in the table without any `insert ...
+     * users` query ever passing through this listener on this connection.
+     * It does NOT cover "a row created before the transaction opens or
+     * after it commits" as a distinct case from what the listener already
+     * catches — any such insert would still be an `insert` query sent to
+     * the database and would already have tripped the listener assertion
+     * first.
+     *
+     * The listener itself is also not scoped to this request: it counts
+     * every `insert ... users` query sent on this connection for the rest
+     * of the listener's lifetime (i.e. for the remainder of this test), not
+     * only ones caused by the call under test. Nothing here enforces that
+     * scoping — it is harmless today only because this test method sends a
+     * single request.
      */
     public function test_the_binding_endpoint_creates_no_account_for_an_unknown_invitation_token(): void
     {
