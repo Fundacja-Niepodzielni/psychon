@@ -531,8 +531,8 @@ integracje bez zmiany kontraktu.
 ## Aneks z 2026-09-17 — siódma operacja stażu i sześć slugów audytu poza rejestrem
 
 Data: 2026-09-17. Podstawa: pismo decyzyjne z 17.09.2026 (blok wieczorny)
-oraz pomiar rejestru zdarzen audytu z tego samego dnia; oba w wewnetrznym
-rejestrze projektu, ktory nie jest czescia tego repozytorium.
+oraz pomiar rejestru zdarzeń audytu z tego samego dnia; oba w wewnętrznym
+rejestrze projektu, który nie jest częścią tego repozytorium.
 
 Kod ma rację, ten aneks dogania kontrakt. Miejsc niżej nie usuwam — zapis
 historyczny zostaje, ten blok jest wobec nich nadrzędny.
@@ -587,6 +587,12 @@ przykładowymi wartościami:
   `attendance_after`.
 - `certificate.revoked` (H13) — administracja unieważnia już wydany
   certyfikat, z podanym powodem. Pola ładunku: `number`, `reason`.
+  **Do zmiany.** `reason` jest dziś wolnym tekstem wpisywanym ręcznie, więc
+  jest to jedyne miejsce w całym rejestrze, w którym mogą wylądować dane
+  osobowe — a rejestru zdarzeń nie da się poprawić ani wyczyścić. Docelowo
+  ładunek niesie `number` i ewentualnie kod powodu ze słownika, a treść
+  powodu żyje wyłącznie w rekordzie certyfikatu, skąd anonimizacja konta
+  może ją usunąć. Ten opis mówi, jak jest dziś, nie jak ma być.
 - `legal_document.published` (H22) — administracja publikuje nową wersję
   dokumentu prawnego (regulamin/polityka). Pola ładunku: `type`, `version`.
 - `legal_document.accepted` (H22) — osoba akceptuje bieżącą wersję dokumentu
