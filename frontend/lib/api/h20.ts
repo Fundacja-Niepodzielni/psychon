@@ -31,13 +31,27 @@ export interface ReportData {
   people: ReportPersonRow[];
 }
 
-export function fetchReport(): Promise<ReportData> {
-  return api<ReportData>("/admin/report");
+/** Poz. 27 — zakres dat (ISO), oba pola opcjonalne; nazwy jak w `AuditFilters`. */
+export interface ReportFilters {
+  from?: string;
+  to?: string;
 }
 
-export function downloadReportCsv(): Promise<void> {
+function reportQuery(filters: ReportFilters): string {
+  const params = new URLSearchParams();
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function fetchReport(filters: ReportFilters = {}): Promise<ReportData> {
+  return api<ReportData>(`/admin/report${reportQuery(filters)}`);
+}
+
+export function downloadReportCsv(filters: ReportFilters = {}): Promise<void> {
   const raw = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-  const url = `${raw.replace(/\/+$/, "")}/api/v1/admin/report/export.csv`;
+  const url = `${raw.replace(/\/+$/, "")}/api/v1/admin/report/export.csv${reportQuery(filters)}`;
   return downloadFile(url, "raport.csv");
 }
 
