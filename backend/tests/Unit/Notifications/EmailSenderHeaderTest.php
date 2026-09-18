@@ -202,21 +202,25 @@ class EmailSenderHeaderTest extends TestCase
     }
 
     /**
-     * Kontrola negatywna do drugiej nogi: bez niej dowód nogi drugiej
-     * byłby podejrzany o to, że metoda zawsze zwraca brak. Adres jest na
-     * `.internal` — domenie zastrzeżonej przez IANA na użytek
-     * wewnętrzny/testowy (RFC 9476), a więc dalej z „domeny przeznaczonej
-     * na przykłady i testy", ale SPOZA listy w `config/mail.php`. Flaga ma
-     * być prawdziwa, a ekran ma pokazać dokładnie ten adres.
+     * Kontrola negatywna do drugiej nogi, PO dopisaniu `.internal` do listy
+     * zastrzeżonych końcówek (`config/mail.php`, końcówki nietrasowalne
+     * IANA/RFC 9476: `.local`, `.internal`, `.lan`, `.home.arpa`): adres na
+     * `.internal` dziś JEST na liście, więc to już nie jest „domena spoza
+     * listy" — jest dokładnie tym, co lista miała zacząć łapać. Trzymanie
+     * tej nazwy testu przy starym twierdzeniu (prawdziwy adres) byłoby
+     * fałszem po zmianie, więc noga przechodzi na stronę zastrzeżonych:
+     * flaga ma być fałszywa, ekran ma pokazać brak, dokładnie jak w drugiej
+     * nodze. Dowód „domena spoza listy przechodzi jako prawdziwa" przenosi
+     * się do `test_screen_reports_the_address_when_the_domain_only_resembles_a_reserved_one`
+     * (końcówka podobna, ale nienależąca do listy) — bez niego ta rodzina
+     * nóg w ogóle nie miałaby przypadku odróżniającego „złapane" od
+     * „puszczone".
      */
-    public function test_screen_reports_the_address_when_the_domain_is_not_reserved(): void
+    public function test_screen_reports_absence_when_the_domain_is_reserved_as_non_routable(): void
     {
         $this->zeSwiezoWczytanymNadawca('kontrola@adres-testowy.internal', function (): void {
-            $this->assertTrue(config('mail.from_configured'), 'domena spoza listy zastrzeżonych ma liczyć się jako prawdziwie skonfigurowana');
-
-            $ekranNadawca = $this->ekranNadawca();
-            $this->assertNotNull($ekranNadawca);
-            $this->assertSame('kontrola@adres-testowy.internal', $ekranNadawca['address']);
+            $this->assertFalse(config('mail.from_configured'), 'domena .internal jest dziś na liście zastrzeżonych (nietrasowalna, IANA/RFC 9476) — ma liczyć się jak brak konfiguracji');
+            $this->assertNull($this->ekranNadawca());
         });
     }
 
@@ -258,18 +262,28 @@ class EmailSenderHeaderTest extends TestCase
     }
 
     /**
-     * Piąta noga (tabelaryczna): dwanaście przypadków rozpoznawania domeny
-     * zapowiedzianych w komunikacie scalenia. Policzone wprost, nie
-     * zmyślone — to jest KOMPLET dziesięciu końcówek zastrzeżonych, jakie
-     * dziś istnieją w `config/mail.php::from_configured` (`example.com`,
-     * `example.net`, `example.org`, `example.edu`, `localhost`,
-     * `localdomain`, `.example`, `.test`, `.invalid`, `.localhost`), plus
-     * jedna subdomena (dowód, że dopasowanie łapie subdomeny, nie tylko
-     * dokładny ciąg) i jedna kontrola negatywna — nazwa bliska, ale różna
-     * (`notexample.com`), która MA przejść jako prawdziwa. 10 + 1 + 1 = 12
-     * wierszy. Gdyby lista w `config/mail.php` kiedyś urosła lub
-     * skurczyła się, ten test i tak sprawdzi dokładnie te dwanaście
-     * przypadków — nie „całą listę, jaka akurat jest".
+     * Piąta noga (tabelaryczna): przypadki rozpoznawania domeny, policzone
+     * wprost, nie zmyślone. Dziś lista zastrzeżonych końcówek w
+     * `config/mail.php::from_configured` ma CZTERNAŚCIE wpisów:
+     * `example.com`, `example.net`, `example.org`, `example.edu`,
+     * `localhost`, `localdomain`, `.example`, `.test`, `.invalid`,
+     * `.localhost` (dziesięć „starych", RFC 2606 + nazwa maszyny lokalnej),
+     * plus `.local`, `.internal`, `.lan`, `.home.arpa` (cztery „nowe",
+     * końcówki nietrasowalne IANA — RFC 9476 dla `.internal`/`.home.arpa`,
+     * zwyczajowe dla `.local`/`.lan`).
+     *
+     * Do dziesięciu starych wierszy dochodzą cztery nowe (jeden na
+     * końcówkę — każdy pada NIEZALEŻNIE, jeśli tylko JEGO końcówka zniknie
+     * z listy; sprawdzone ręczną kontrolą negatywną opisaną w meldunku),
+     * jedna subdomena (dowód, że dopasowanie łapie subdomeny), jedna
+     * kontrola negatywna ogólna (`notexample.com`) i CZTERY kontrole
+     * rozróżniające dokładnie dla nowych końcówek — adres, który TYLKO
+     * przypomina jedną z nich, ale kończy się czymś innym, ma przejść jako
+     * prawdziwy: `.locale` (nie `.local`), `.internally` (nie `.internal`),
+     * `.lancaster`-owy ogon (nie `.lan`) i samo `.arpa` bez `home.` przed
+     * nim (nie `.home.arpa`). Bez tych czterech nie było wiadomo, czy nowe
+     * reguły łapią dokładnie swój sufiks, czy każdy ciąg zaczynający się
+     * podobnie. 10 + 4 + 1 + 1 + 4 = 20 wierszy.
      *
      * @return array<string, array{0: string, 1: bool}>
      */
@@ -288,11 +302,19 @@ class EmailSenderHeaderTest extends TestCase
             '.localhost — zastrzeżona końcówka TLD (RFC 2606)' => ['ktos@sub.localhost', false],
             'subdomena example.com — nadal zastrzeżona' => ['ktos@mail.example.com', false],
             'notexample.com — nazwa bliska, ale różna, NIE zastrzeżona' => ['ktos@notexample.com', true],
+            '.local — zastrzeżona końcówka nietrasowalna (IANA)' => ['ktos@urzadzenie.local', false],
+            '.internal — zastrzeżona końcówka nietrasowalna (RFC 9476)' => ['ktos@uslugi.internal', false],
+            '.lan — zastrzeżona końcówka nietrasowalna (sieć domowa/biurowa)' => ['ktos@router.lan', false],
+            '.home.arpa — zastrzeżona końcówka nietrasowalna (RFC 8375)' => ['ktos@urzadzenie.home.arpa', false],
+            '.locale nie jest .local — nazwa bliska, NIE zastrzeżona' => ['ktos@urzadzenie.locale', true],
+            '.internally nie jest .internal — nazwa bliska, NIE zastrzeżona' => ['ktos@uslugi.internally', true],
+            '.lancaster nie jest .lan — nazwa bliska, NIE zastrzeżona' => ['ktos@router.lancaster', true],
+            '.arpa bez „home." nie jest .home.arpa — NIE zastrzeżona' => ['ktos@urzadzenie.arpa', true],
         ];
     }
 
     #[DataProvider('przypadkiRozpoznawaniaDomeny')]
-    public function test_dwanascie_przypadkow_rozpoznawania_domeny(string $adres, bool $oczekiwanaKonfiguracja): void
+    public function test_dwadziescia_przypadkow_rozpoznawania_domeny(string $adres, bool $oczekiwanaKonfiguracja): void
     {
         $this->zeSwiezoWczytanymNadawca($adres, function () use ($adres, $oczekiwanaKonfiguracja): void {
             $this->assertSame(
@@ -308,6 +330,54 @@ class EmailSenderHeaderTest extends TestCase
             } else {
                 $this->assertNull($this->ekranNadawca(), sprintf('adres "%s" ma być traktowany jak brak konfiguracji', $adres));
             }
+        });
+    }
+
+    /**
+     * Szósta noga, rozróżniająca: `.local` i `.localhost` to DWIE RÓŻNE
+     * końcówki na liście (`config/mail.php`), dopisane w różnym czasie i
+     * z różnego powodu (`.local` — mDNS/IANA nietrasowalna; `.localhost` —
+     * RFC 2606, nazwa maszyny lokalnej). Ryzyko, które ta noga sprawdza W
+     * SUICIE (nie skryptem pomocniczym obok niej — pomiar poza suitą nie
+     * pilnuje niczego jutro): że dopasowanie jednej końcówki złapie też
+     * adresy drugiej tylko dlatego, że `.localhost` zaczyna się od tych
+     * samych liter co `.local`. Dowodzi tego przez cztery adresy na raz,
+     * każdy sprawdzony do końca (adres, flaga, treść ekranu, nie tylko
+     * `assertTrue`/`assertFalse`):
+     *
+     *  (a) `urzadzenie.local`      — kończy się `.local`, NIE `.localhost` — zastrzeżony;
+     *  (b) `urzadzenie.localhost`  — kończy się `.localhost`, NIE `.local` — zastrzeżony;
+     *  (c) `localhost` (sama nazwa, bez kropki przed nią) — dopasowanie po
+     *      RÓWNOŚCI całej domeny (reguła `localhost` bez kropki), a nie po
+     *      sufiksie `.localhost` — inny mechanizm dopasowania niż (b);
+     *  (d) `urzadzenie.locahost`   — literówka, kończy się ANI `.local` ANI
+     *      `.localhost` — MA przejść jako prawdziwy; bez tej nogi (a) i (b)
+     *      byłyby podejrzane o to, że łapią każdy ciąg zaczynający się od
+     *      „loca".
+     */
+    public function test_local_i_localhost_sa_rozroznialne_a_localhost_jako_nazwa_calkowita_to_nie_to_samo_co_koncowka(): void
+    {
+        $this->zeSwiezoWczytanymNadawca('urzadzenie@urzadzenie.local', function (): void {
+            $this->assertFalse(config('mail.from_configured'), '.local ma być zastrzeżona');
+            $this->assertNull($this->ekranNadawca());
+        });
+
+        $this->zeSwiezoWczytanymNadawca('urzadzenie@urzadzenie.localhost', function (): void {
+            $this->assertFalse(config('mail.from_configured'), '.localhost ma być zastrzeżona, niezależnie od .local');
+            $this->assertNull($this->ekranNadawca());
+        });
+
+        $this->zeSwiezoWczytanymNadawca('ktos@localhost', function (): void {
+            $this->assertFalse(config('mail.from_configured'), 'sama nazwa "localhost" (bez kropki) ma być zastrzeżona przez dopasowanie równości, nie przez sufiks .localhost');
+            $this->assertNull($this->ekranNadawca());
+        });
+
+        $this->zeSwiezoWczytanymNadawca('urzadzenie@urzadzenie.locahost', function (): void {
+            $this->assertTrue(config('mail.from_configured'), 'literówka "locahost" nie jest ani .local, ani .localhost — ma przejść jako prawdziwy adres');
+
+            $ekranNadawca = $this->ekranNadawca();
+            $this->assertNotNull($ekranNadawca);
+            $this->assertSame('urzadzenie@urzadzenie.locahost', $ekranNadawca['address']);
         });
     }
 }
