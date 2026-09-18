@@ -4,6 +4,7 @@ namespace Tests\Unit\H22;
 
 use App\Models\Application;
 use App\Models\LegalDocumentVersion;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -17,8 +18,11 @@ use Tests\TestCase;
  * surową nazwę techniczną zamiast tytułu (`CONSENT_LABELS[consent.type] ?? consent.type`).
  *
  * Test nie dotyka bazy danych (same stałe PHP) — nie potrzebuje własnego
- * świata do ustawienia ani sprzątania.
+ * świata do ustawienia ani sprzątania. Bez cechy bazodanowej runner równoległy
+ * zostawiłby go na bazie WSPÓLNEJ (`TestDatabases.php:56`), więc trafia do grupy
+ * `wspolna-baza` — tak samo jak inne klasy bez tej cechy (`GrupaWspolnejBazyTest`).
  */
+#[Group('wspolna-baza')]
 class LegalDocumentVersionTypesTest extends TestCase
 {
     public function test_every_legal_document_type_is_a_known_consent_type(): void
