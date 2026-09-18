@@ -2,13 +2,12 @@
  * Pakiet H22 · dokumenty prawne — odczyt publiczny (bez tokenu).
  *
  * Rodzaje zamknięte po stronie backendu w `LegalDocumentVersion::TYPES`
- * (`backend/app/Models/LegalDocumentVersion.php:23`) — DWA rodzaje
- * (`regulamin`, `polityka`), nie trzy. Kryterium pozycji 28 („trzy dokumenty
- * osadzone w Platformie") mówi o trzecim dokumencie prawnym, ale backend
- * trzeciego rodzaju dziś nie definiuje (TABELA-POKRYCIA-ZALACZNIK-1, wiersz
- * 28: „dwa rodzaje"). Front renderuje dokładnie to, co wystawia backend —
- * dojście trzeciego rodzaju to zmiana `LegalDocumentVersion::TYPES`, nie
- * tego pliku (ta lista ma się wtedy zmienić razem z backendem).
+ * (`backend/app/Models/LegalDocumentVersion.php:23`) — TRZY rodzaje
+ * (`regulamin`, `polityka`, `klauzula-rodo`, ten ostatni dodany decyzją
+ * właściciela D-26 z 18.09.2026: „Klauzula RODO (informacja o
+ * przetwarzaniu)"). Front renderuje dokładnie to, co wystawia backend —
+ * kolejny rodzaj to zmiana `LegalDocumentVersion::TYPES`, nie tego pliku
+ * (ta lista ma się wtedy zmienić razem z backendem).
  *
  * Wywołanie: `GET /legal-documents/{type}/current` — trasa publiczna
  * (`backend/routes/api/h22.php:28`), przepuszczona przez bramkę CI
@@ -19,7 +18,7 @@
 
 import { api } from "@/lib/api";
 
-export const LEGAL_DOCUMENT_TYPES = ["regulamin", "polityka"] as const;
+export const LEGAL_DOCUMENT_TYPES = ["regulamin", "polityka", "klauzula-rodo"] as const;
 
 export type LegalDocumentType = (typeof LEGAL_DOCUMENT_TYPES)[number];
 
@@ -27,6 +26,7 @@ export type LegalDocumentType = (typeof LEGAL_DOCUMENT_TYPES)[number];
 export const LEGAL_DOCUMENT_LABELS: Record<LegalDocumentType, string> = {
   regulamin: "Regulamin",
   polityka: "Polityka prywatności",
+  "klauzula-rodo": "Klauzula RODO (informacja o przetwarzaniu)",
 };
 
 /** Kształt zgodny z `PublicLegalDocumentResource`

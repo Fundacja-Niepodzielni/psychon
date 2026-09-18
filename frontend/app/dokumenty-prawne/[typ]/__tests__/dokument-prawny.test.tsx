@@ -52,6 +52,27 @@ describe("/dokumenty-prawne/[typ] — dokument opublikowany", () => {
   });
 });
 
+describe("/dokumenty-prawne/[typ] — trzeci rodzaj (klauzula-rodo, D-26)", () => {
+  it("pokazuje tytuł i treść klauzuli RODO", async () => {
+    apiMock.mockResolvedValue({
+      type: "klauzula-rodo",
+      version: "1.0",
+      content: "Treść klauzuli RODO.",
+      published_at: "2026-09-18T00:00:00Z",
+    });
+
+    render(<DokumentPrawnyEkran typ="klauzula-rodo" />);
+
+    expect(await screen.findByText("Treść klauzuli RODO.")).toBeInTheDocument();
+
+    const naglowki = screen.getAllByRole("heading", { level: 1 });
+    expect(naglowki).toHaveLength(1);
+    expect(naglowki[0]).toHaveTextContent("Klauzula RODO (informacja o przetwarzaniu)");
+
+    expect(apiMock).toHaveBeenCalledWith("/legal-documents/klauzula-rodo/current");
+  });
+});
+
 describe("/dokumenty-prawne/[typ] — dokument nieopublikowany (API 404)", () => {
   it("pokazuje komunikat o braku publikacji, bez wysypania się", async () => {
     apiMock.mockRejectedValue(
