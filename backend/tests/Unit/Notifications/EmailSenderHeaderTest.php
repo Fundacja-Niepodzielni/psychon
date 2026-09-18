@@ -9,6 +9,7 @@ use App\Services\H03\ApplicationInvitationMailer;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -43,7 +44,19 @@ use Tests\TestCase;
  * (c) transportu JSON z punktu dostępowego do przeglądarki (to pokrywa
  * osobny test Feature na `/admin/emails`, DB-zależny — w tej turze
  * niewykonany z tego samego powodu kolejki slotów, patrz meldunek).
+ *
+ * Grupa `wspolna-baza` (złapane przez `GrupaWspolnejBazyTest`, 2026-09-18):
+ * ta klasa nie ma cechy bazodanowej (`RefreshDatabase` i podobne) i po
+ * przeróbce na hermetyczny `require config/mail.php` NIE POTRZEBUJE bazy
+ * w ogóle — sama ustawia zmienną środowiskową, wczytuje plik konfiguracji
+ * i wstrzykuje wynik przez `config([...])`, więc dopisanie cechy
+ * bazodanowej dodałoby zależność, której kod testu nie używa, tylko po
+ * to, żeby uciszyć kontrolę. Właściwa odpowiedź to przynależność do
+ * grupy `wspolna-baza`: krok równoległy ją wyklucza, krok sekwencyjny
+ * (`--group=wspolna-baza`) uruchamia — tam bez bazy nie ma z kim się
+ * tłuc o wspólne dane, więc bycie na wspólnej bazie kosztuje zero.
  */
+#[Group('wspolna-baza')]
 class EmailSenderHeaderTest extends TestCase
 {
     private function ekranNadawca(): ?array
