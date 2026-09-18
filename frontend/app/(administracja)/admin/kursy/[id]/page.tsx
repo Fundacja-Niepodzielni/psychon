@@ -11,6 +11,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Columns from "@/components/ui/Columns";
+import Form from "@/components/ui/Form";
 import Input from "@/components/ui/Input";
 import Inset from "@/components/ui/Inset";
 import Select from "@/components/ui/Select";
@@ -521,7 +522,7 @@ export default function AdminCoursePage({
           </Card>
 
           <Card title="Dane kursu">
-            <form onSubmit={submitCourse} noValidate>
+            <Form onSubmit={submitCourse} bledyPol={courseFieldErrors}>
               <Stack>
                 {courseFormError && (
                   <Alert variant="error">{courseFormError}</Alert>
@@ -604,7 +605,7 @@ export default function AdminCoursePage({
                   </Button>
                 </ActionRow>
               </Stack>
-            </form>
+            </Form>
           </Card>
 
           <Card title="Lekcje">
@@ -647,7 +648,7 @@ export default function AdminCoursePage({
               />
 
               {lessonFormOpen !== null && (
-                <form onSubmit={submitLesson} noValidate>
+                <Form onSubmit={submitLesson} bledyPol={lessonFieldErrors}>
                   <Inset
                     title={
                       lessonFormOpen === "new" ? "Nowa lekcja" : "Edycja lekcji"
@@ -728,7 +729,7 @@ export default function AdminCoursePage({
                         />
                       ))}
                   </Inset>
-                </form>
+                </Form>
               )}
             </Stack>
           </Card>

@@ -7,7 +7,9 @@ import type { MenuEntry } from "../types";
  * więc wpis pokazujemy tylko im.
  */
 const entry: MenuEntry = {
-  label: "Superwizje",
+  // Nazwa ze słownika interfejsu (B7 wiersz 6) i zarazem nagłówek ekranu
+  // `/panel/superwizja`, żeby pozycja menu potwierdzała, gdzie się trafiło.
+  label: "Superwizja",
   href: "/panel/superwizja",
   order: 35,
   icon: "messages",
