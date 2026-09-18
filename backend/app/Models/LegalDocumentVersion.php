@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class LegalDocumentVersion extends Model
 {
-    public const array TYPES = ['regulamin', 'polityka_prywatnosci'];
+    public const array TYPES = ['regulamin', 'polityka'];
 
     public const string STATUS_DRAFT = 'draft';
 
