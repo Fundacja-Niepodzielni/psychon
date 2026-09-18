@@ -294,7 +294,7 @@ class AdminLegalDocumentTest extends TestCase
             'published_at' => now()->subDay(),
         ]);
 
-        $this->postJson('/api/v1/admin/legal-documents/polityka_prywatnosci/versions', [
+        $this->postJson('/api/v1/admin/legal-documents/polityka/versions', [
             'version' => 'v1',
             'content' => 'Treść do dostarczenia przez Fundację.',
         ])->assertStatus(201);

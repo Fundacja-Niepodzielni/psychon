@@ -151,7 +151,7 @@ class LegalDocumentAcceptanceTest extends TestCase
             'published_at' => now()->subMonths(2),
         ]);
         $polityka = LegalDocumentVersion::create([
-            'type' => 'polityka_prywatnosci',
+            'type' => 'polityka',
             'version' => 'v1',
             'content' => 'Treść do dostarczenia przez Fundację.',
             'status' => LegalDocumentVersion::STATUS_PUBLISHED,
@@ -162,10 +162,10 @@ class LegalDocumentAcceptanceTest extends TestCase
         // Przed akceptacją obu rodzajów — oba oczekujące.
         $before = $this->getJson('/api/v1/me')->json('data.legal_documents_pending_acceptance');
         $this->assertContains('regulamin', $before);
-        $this->assertContains('polityka_prywatnosci', $before);
+        $this->assertContains('polityka', $before);
 
         $this->postJson('/api/v1/legal-documents/regulamin/accept', ['version' => 'v1'])->assertStatus(201);
-        $this->postJson('/api/v1/legal-documents/polityka_prywatnosci/accept', ['version' => 'v1'])->assertStatus(201);
+        $this->postJson('/api/v1/legal-documents/polityka/accept', ['version' => 'v1'])->assertStatus(201);
 
         // Po akceptacji obu — żaden nie jest już oczekujący.
         $afterAcceptance = $this->getJson('/api/v1/me')->json('data.legal_documents_pending_acceptance');
@@ -183,6 +183,6 @@ class LegalDocumentAcceptanceTest extends TestCase
 
         $afterPublication = $this->getJson('/api/v1/me')->json('data.legal_documents_pending_acceptance');
         $this->assertContains('regulamin', $afterPublication);
-        $this->assertNotContains('polityka_prywatnosci', $afterPublication);
+        $this->assertNotContains('polityka', $afterPublication);
     }
 }
