@@ -10,10 +10,18 @@ export const metadata: Metadata = {
 };
 
 /**
- * Deklaracja dostępności (WCAG 2.1 AA). Liczby w tym tekście pochodzą z
- * pierwszego audytu dostępności platformy (pomiar statyczny: kod źródłowy,
- * tokeny designu, istniejące testy — bez przeglądarki i bez czytnika ekranu).
- * Metoda i pełne wyniki: raport audytu w repozytorium dokumentacji projektu.
+ * Deklaracja dostępności (WCAG 2.1 AA). Liczby w tym tekście dla nagłówków,
+ * klawiatury i etykiet pól pochodzą z ponownego pomiaru na dzisiejszym
+ * drzewie (2026-09-18, pomiar statyczny: kod źródłowy — bez przeglądarki i
+ * bez czytnika ekranu). Kontrast kolorów NIE został dziś ponownie zmierzony
+ * w pełnym zakresie pierwotnego audytu (token źródłowy zmienił się od tamtego
+ * pomiaru) — opisany niżej jako nieobjęty dzisiejszym pomiarem automatycznym.
+ * Metoda i pełne wyniki (w tym cztery ekrany, które audyt nigdy nie objął):
+ * raport audytu dostępności w repozytorium (`frontend/AUDYT-DOSTEPNOSCI.md`,
+ * sekcja „Dodatek — ponowny pomiar 2026-09-18”). Ten raport opisuje metodę
+ * słownie; same polecenia użyte do pomiaru NIE są dziś częścią tego
+ * repozytorium — `git ls-files` na nie nie wskazuje. Nie twierdzimy tu, że
+ * ktokolwiek inny je dziś odtworzy.
  *
  * Pole „Data ostatniego przeglądu deklaracji” poniżej NIE jest wypełnione
  * świadomie — data i osoba dokonująca przeglądu to decyzja właściciela,
@@ -33,37 +41,63 @@ export default function DeklaracjaDostepnosciPage() {
         <Stack>
           <Text>
             Platforma jest <strong>częściowo zgodna</strong> ze standardem WCAG
-            2.1 AA. Poniższe liczby pochodzą z pierwszego audytu (pomiar
-            statyczny kodu, {"09.2026"}):
+            2.1 AA. Poniższe liczby, poza kontrastem koloru, pochodzą z
+            ponownego pomiaru na dzisiejszym drzewie ({"18.09.2026"}); pierwszy
+            audyt był w {"09.2026"}:
           </Text>
           <BulletList>
             <li>
-              Struktura nagłówków: na 4 z 39 ocenianych ekranów (2 ekrany to
-              wyłącznie przekierowania bez treści) brakuje nagłówka głównego (
-              <code>h1</code>). Automatyczne wykrywanie przeskoków poziomu (np.
-              h1→h3) nie znalazło żadnego potwierdzonego przypadku.
+              Struktura nagłówków: dziś <strong>0</strong> z 44 ekranów z
+              renderowaną treścią (na 46 ekranów ogółem w drzewie; pozostałe 2
+              to wyłącznie przekierowania bez treści) nie ma nagłówka głównego
+              (<code>h1</code>). Pierwszy audyt (09.2026) opisywał tu 4 braki —
+              zostały uzupełnione.
             </li>
             <li>
-              Kontrast koloru: ze 75 sprawdzonych par tekst/tło z tokenów
-              designu, 27 ma kontrast poniżej 4,5∶1, a 17 poniżej 3∶1. Część
-              tych par to kolory oznaczone w kodzie jako wyłącznie dekoracyjne
-              (nieużywane jako tekst).
+              Kontrast koloru: <strong>nieobjęty dzisiejszym pomiarem
+              automatycznym</strong>. Liczby z pierwszego audytu (75 par, 27
+              poniżej 4,5∶1, 17 poniżej 3∶1) dotyczyły tokenów kolorów, które
+              od tamtego pomiaru się zmieniły — dziś ich nie powtarzamy, żeby
+              nie pokazywać nieaktualnej liczby jako aktualnej. W repozytorium
+              działa węższe narzędzie (kolory stanu: odznaki, alerty, linki —
+              55 kombinacji kolor/tło, nie cała przestrzeń tokenów); pełny
+              ponowny audyt kontrastu jest zaplanowany osobno.
             </li>
             <li>
-              Etykiety pól formularzy: ze 96 pól w całej platformie, 0 nie ma
-              dostępnej etykiety (<code>label</code>, <code>aria-label</code>{" "}
-              lub <code>aria-labelledby</code>).
+              Etykiety pól formularzy: dziś <strong>0</strong> z 22 natywnych
+              pól (<code>input</code>/<code>textarea</code>/<code>select</code>{" "}
+              w kodzie źródłowym) nie ma dostępnej etykiety (<code>label</code>,{" "}
+              <code>aria-label</code> lub <code>aria-labelledby</code>). Ta
+              liczba pól liczy inaczej niż 96 z pierwszego audytu (tam:
+              natywne pola razem z polami przez komponenty formularza) — nie
+              jest z nią wprost porównywalna.
             </li>
             <li>
-              Nawigacja klawiaturą: 1 element (okno podglądu e-maila w panelu
-              administracji) reaguje na kliknięcie, ale nie ma wsparcia dla
-              klawiatury.
+              Nawigacja klawiaturą: dziś <strong>0</strong> elementów
+              reagujących na kliknięcie bez wsparcia klawiatury. Pierwszy
+              audyt (09.2026) opisywał tu 1 brak (okno podglądu e-maila w
+              panelu administracji) — okno dostało kolejność tabulacji, fokus
+              przy otwarciu, zamykanie klawiszem Escape i powrót fokusu po
+              zamknięciu.
             </li>
           </BulletList>
           <Text size="small" tone="muted">
+            Ten pomiar nie obejmuje: pełnego ponownego przeliczenia kontrastu
+            kolorów (wyżej), ról orientacyjnych treści (landmarks: main, nav,
+            banner, contentinfo — nie były przedmiotem żadnego audytu) ani
+            czterech ekranów, które nigdy nie przeszły audytu dostępności:{" "}
+            <code>/admin/ekran-startowy</code>,{" "}
+            <code>/panel/po-programie</code>,{" "}
+            <code>/katalog-komponentow/a</code> i{" "}
+            <code>/katalog-komponentow/b</code>.
+          </Text>
+          <Text size="small" tone="muted">
             Pełna tabela audytu (ekran po ekranie) i lista poprawek na kolejny
-            etap: w raporcie audytu dostępności w repozytorium dokumentacji
-            projektu.
+            etap: w raporcie audytu dostępności w repozytorium (
+            <code>frontend/AUDYT-DOSTEPNOSCI.md</code>). Ten raport opisuje
+            metodę pomiaru słownie; polecenia użyte do dzisiejszego pomiaru
+            nie są dziś częścią tego repozytorium i nie twierdzimy tu, że
+            ktokolwiek inny je dziś odtworzy.
           </Text>
         </Stack>
       </Card>

@@ -121,3 +121,90 @@ potem kontrast, potem reszta.
 
 Suma szacunków rundy 2: **6,25 h** (mieści się w pozostałej części widełek 14–20 h przy
 0 h zmierzonych wcześniej i tej rundzie pomiarowej).
+
+## Dodatek — ponowny pomiar 2026-09-18 (drzewo dziś ma więcej ekranów niż audyt)
+
+Powyższy audyt z 09.2026 objął 42 ekrany (40 z renderowaną treścią, 2 przekierowania —
+tabela wyżej), nie 41 jak mówi jego własne podsumowanie: liczba w nagłówku sekcji
+"Wyniki zbiorcze" nie zgadzała się z liczbą wierszy własnej tabeli już w chwili
+napisania. Dziś (2026-09-18) drzewo `app/**/page.tsx` ma **46 plików**. Cztery z nich
+**nigdy nie były częścią żadnego audytu dostępności** — nie istniały albo nie zostały
+uwzględnione 09.2026:
+
+- `/admin/ekran-startowy`
+- `/panel/po-programie`
+- `/katalog-komponentow/a`
+- `/katalog-komponentow/b`
+
+Poniżej: co dało się dziś ponownie zmierzyć jednym poleceniem na obecnym drzewie
+(w tym na tych czterech ekranach — tam, gdzie polecenie skanuje całe drzewo, a nie
+tylko listę z tabeli wyżej), a co dziś pozostaje niezmierzone.
+
+### Nagłówki (h1) — zmierzone dziś ponownie
+
+Polecenie: skrypt `naglowki.py` (BFS po importach `@/components/...` z każdego
+`app/**/page.tsx`, do 6 poziomów zagnieżdżenia, szuka `<h1`). Wynik na dzisiejszym
+drzewie: **46 plików `page.tsx`, 0 ekranów z renderowaną treścią bez `<h1>`** (2 ekrany —
+`/` i `/panel` — to przekierowania serwerowe bez treści, poza zakresem tego miernika,
+tak jak w audycie pierwotnym). Cztery poprzednio brakujące nagłówki (`/admin/testy/[id]
+/pytania`, `/panel/lekcje/[id]`, `/aktywacja`, `/logowanie/konta`) sprawdzone też ręcznie
+w kodzie — każdy ma dziś `<h1>` (bezpośrednio albo przez `PageTemplate`/`PageHeader`).
+Log: `naglowki-wynik.txt` w klonie pomiaru (ścieżka podana w meldunku dostawy).
+
+### Nawigacja klawiaturą — zmierzona dziś ponownie
+
+Polecenie: skrypt `klawiatura.py` (szuka tagów `div`/`span`/`li`/`tr`/`td` z atrybutem
+`onClick` w całym `app/` i `components/`, poza `__tests__`) jako lista kandydatów do
+ręcznej weryfikacji — sam nie widzi obsługi klawiatury dopiętej przez `useEffect`
+(nasłuch `keydown` na `window`), więc każdego kandydata sprawdzono ręcznie w kodzie.
+Wynik: 5 kandydatów, wszystkie to warstwy okien modalnych (`/admin/emails` — podgląd
+e-maila; `components/h03/ApplicationsTab.tsx` — podgląd zgłoszenia, backdrop i panel
+treści). Każde z dwóch okien ma dziś: `tabIndex={-1}` na kontenerze, `ref` ustawiany na
+fokus przy otwarciu, nasłuch klawisza Escape (`window.addEventListener("keydown", …)`)
+zamykający okno, i zwrot fokusu do elementu, który okno otworzył, po zamknięciu.
+**Braków obsługi klawiatury dziś: 0.** Wcześniejszy jedyny opisany brak (okno podglądu
+e-maila w `/admin/emails`) — potwierdzony jako naprawiony (linie z `tabIndex`, `Escape`,
+`dialogRef.current?.focus()` i `wywolanyPrzez?.focus()` w tym pliku). Log:
+`klawiatura-wynik.txt`.
+
+### Etykiety pól formularzy — zmierzone dziś, innym zakresem niż audyt pierwotny
+
+Polecenie: skrypt `etykiety.py` — szuka natywnych `<input>/<textarea>/<select>` w
+`app/` i `components/` (poza `__tests__`) i sprawdza dla każdego: `aria-label`/
+`aria-labelledby` na tagu, dopasowanie `id`↔`htmlFor` w tym samym pliku, albo
+zagnieżdżenie wewnątrz `<label>`. Wynik: **22 natywne wystąpienia, 0 bez wykrytej
+etykiety** (6 początkowych "BRAK?" sprawdzonych ręcznie — 4 to pola opakowane w
+`Field`/komponent `Field` renderujący `<label htmlFor={id}>` poza zasięgiem prostego
+dopasowania w pliku, 2 to definicje samego komponentu `Input`/`Select`, które
+renderują `<Field label={label}>` wewnątrz siebie). Liczba **96** z audytu pierwotnego
+liczyła inaczej (16 natywnych + 80 przez komponenty `Input`/`Select`, na całym froncie,
+łącznie z plikami dziś nieistniejącymi w tej postaci) — **nie jest odtwarzana** tym
+poleceniem i nie jest tu powtórzona jako dzisiejszy wynik. Log: `etykiety-wynik.txt`.
+
+### Kontrast kolorów — NIE zmierzony dziś w pełnym zakresie audytu pierwotnego
+
+Liczby "75 par / 27 poniżej 4,5∶1 / 17 poniżej 3∶1" z audytu 09.2026 pochodzą z
+ręcznego odczytu wszystkich par tekst/tło z tokenów w `app/globals.css` w chwili
+audytu. Token źródłowy **zmienił się od tamtego pomiaru** (np. commit `d84f440`,
+który wydzielił osobny token koloru odznaki informacyjnej i przyciemnił
+wyłącznie jego) — stare liczby dziś nie opisują drzewa. W repozytorium
+nie ma dziś narzędzia, które liczyłoby *ten sam* pełny zestaw par z tokenów jednym
+poleceniem; jedyne uruchamialne narzędzie kontrastu to
+`npm run pomiar:kontrast-statusow` (`scripts/pomiar-marginesu-kontrastu.mjs`) — inny,
+węższy zakres: 11 konkretnych par kolor/tło (odznaki, alerty, linki) na 5 realnych
+tłach = 55 kombinacji, nie cała przestrzeń tokenów. Dzisiejszy wynik tego węższego
+narzędzia: 37 kombinacji zmierzonych, 18 jawnie wykluczonych z podanym powodem, 1
+zarejestrowane odstępstwo poniżej progu (`Łącze: główny` × podkład najechania wiersza
+tabeli, margines ok. −0,015), 0 nieporytych naruszeń, kod wyjścia 0. **To nie jest
+ponowny pomiar tych samych 75 par** i nie należy go tak przedstawiać — kategoria
+kontrastu w pełnym, pierwotnym zakresie jest dziś **niezmierzalna jednym poleceniem
+bez ręcznego odtworzenia całego audytu od nowa**, więc deklaracja dostępności opisuje
+ją jako nieobjętą dzisiejszym pomiarem automatycznym, zamiast przepisywać nieaktualną
+liczbę.
+
+### Punkty orientacyjne treści (landmarks) — nigdy nie mierzone
+
+Ani audyt pierwotny, ani dzisiejszy pomiar nie sprawdzały obecności/poprawności ról
+orientacyjnych (`main`, `nav`, `banner`, `contentinfo`, `<header>`/`<footer>` jako
+landmarki). Brak tego sprawdzenia nie trafił dotąd do żadnej liczby pokazywanej w
+deklaracji dostępności — to przeoczenie zakresu, nie zmierzone "zero problemów".

@@ -102,17 +102,21 @@ export function ApplicationsTab({ className = "" }: ApplicationsTabProps) {
 
   // Trzy pozostałe okna mają własną pułapkę fokusu i Escape wewnątrz ConfirmDialog; tu zostało tylko okno szczegółów.
   useEffect(() => {
-    if (selected) dialogRef.current?.focus();
-  }, [selected]);
+    if (!selected) return;
+    const wywolanyPrzez = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
 
-  useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       setSelected(null);
     }
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, []);
+
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      wywolanyPrzez?.focus();
+    };
+  }, [selected]);
 
   const refresh = () => {
     setLoadedKey(null);
