@@ -58,29 +58,48 @@ function wyodrebnijNazwyWariantowZTypu(zrodlo: string): string[] {
 // wynik, dopóki czytany był tylko pierwszy blok).
 //
 // Zamknięcie każdego bloku szukane jest licząc głębokość nawiasów klamrowych od otwarcia
-// (nie pierwszą linię `}` z brzegu), żeby przetrwać zagnieżdżone reguły w bloku. Komentarze
-// blokowe /* ... */ są usuwane z wnętrza każdego bloku, żeby zakomentowany token nie liczył
-// się jako zadeklarowany. Brak choćby jednego bloku albo brak jego zamknięcia jest błędem —
-// test ma się wywrócić, a nie po cichu nic nie sprawdzić.
+// (nie pierwszą linię `}` z brzegu), żeby przetrwać zagnieżdżone reguły w bloku. Liczenie
+// głębokości działa na arkuszu z WYCZYSZCZONYMI komentarzami /* ... */ (treść komentarza
+// zamieniona na spacje, żeby pozycje i numery wierszy się nie przesunęły) — nawias klamrowy
+// wewnątrz komentarza (np. w opisie odcienia koloru) nie jest więc liczony jako nawias
+// struktury. Zmierzone: liczenie głębokości na surowym arkuszu dawało fałszywą czerwień
+// (komentarz z „}” w środku zamykał blok za wcześnie) i fałszywą awarię całej suity
+// (komentarz z „{” otwierał głębokość, która nigdy się nie domykała).
+//
+// Zwrócone bloki nadal mają komentarze zamienione na spacje (nie usunięte całkiem), żeby
+// zakomentowany token nadal liczył się jako niezadeklarowany, ale bez psucia pozycji.
+// Brak choćby jednego bloku albo brak jego zamknięcia jest błędem — test ma się wywrócić,
+// a komunikat wskazuje WIERSZ w app/globals.css, nie samą pozycję w bajtach.
+function wyczyscKomentarzeZachowujacPozycje(tekst: string): string {
+  return tekst.replace(/\/\*[\s\S]*?\*\//g, (dopasowanie) => dopasowanie.replace(/[^\n]/g, " "));
+}
+
+function numerWiersza(tekst: string, pozycja: number): number {
+  return tekst.slice(0, pozycja).split("\n").length;
+}
+
 function wyodrebnijBlokiDeklaracjiTokenow(css: string): string[] {
+  const cssBezKomentarzy = wyczyscKomentarzeZachowujacPozycje(css);
   const wzorzecPoczatku = /@theme(?:\s+inline)?\s*\{/g;
   const bloki: string[] = [];
   let dopasowanie: RegExpExecArray | null;
 
-  while ((dopasowanie = wzorzecPoczatku.exec(css)) !== null) {
+  while ((dopasowanie = wzorzecPoczatku.exec(cssBezKomentarzy)) !== null) {
     const startTresci = dopasowanie.index + dopasowanie[0].length;
     let glebokosc = 1;
     let i = startTresci;
-    for (; i < css.length && glebokosc > 0; i++) {
-      if (css[i] === "{") glebokosc++;
-      else if (css[i] === "}") glebokosc--;
+    for (; i < cssBezKomentarzy.length && glebokosc > 0; i++) {
+      if (cssBezKomentarzy[i] === "{") glebokosc++;
+      else if (cssBezKomentarzy[i] === "}") glebokosc--;
     }
     if (glebokosc !== 0) {
       throw new Error(
-        `Nie znaleziono zamknięcia bloku \`@theme { ... }\` zaczynającego się w app/globals.css na pozycji ${dopasowanie.index}.`,
+        `Nie znaleziono zamknięcia bloku \`@theme { ... }\` otwartego w app/globals.css w wierszu ${numerWiersza(css, dopasowanie.index)} (\`${dopasowanie[0]}\`).`,
       );
     }
     const koniecTresci = i - 1; // wskazuje na dopasowany "}"
+    // Wycinamy z ORYGINALNEGO arkusza (pozycje są takie same, bo czyszczenie komentarzy
+    // zachowuje długość), więc zwrócony blok ma prawdziwą treść, nie same spacje.
     bloki.push(css.slice(startTresci, koniecTresci));
     wzorzecPoczatku.lastIndex = i;
   }
