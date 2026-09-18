@@ -44,15 +44,14 @@ class EmailController extends Controller
      * `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME`) — nie WARTOŚĆ na sztywno w
      * ekranie, tylko odczyt tego, co system ma dziś ustawione.
      *
-     * `null`, gdy wdrożenie NIE ustawiło zmiennej środowiskowej —
-     * rozpoznane przez `config('mail.from_configured')` (liczone przy
-     * wczytaniu konfiguracji, patrz `config/mail.php`; celowo OBOK
-     * `mail.from`, nie w jego środku — ten zbiór jako całość czyta sam
-     * mechanizm wysyłki), a nie przez pusty łańcuch:
-     * `config('mail.from.address')` ZAWSZE zwraca jakiś tekst, bo ma
-     * wbudowaną wartość zastępczą z domeny przykładowej, gdy zmiennej
-     * brak — ta wartość zastępcza wygląda jak prawdziwy adres i nie wolno
-     * jej pokazywać jako stanu faktycznego.
+     * `null`, gdy wdrożenie NIE skonfigurowało nadawcy — rozpoznane przez
+     * `config('mail.from_configured')` (liczone przy wczytaniu konfiguracji,
+     * patrz `config/mail.php`; celowo OBOK `mail.from`, nie w jego środku —
+     * ten zbiór jako całość czyta sam mechanizm wysyłki). To pole traktuje
+     * jak brak konfiguracji zarówno pusty łańcuch, jak i adres na domenie
+     * zastrzeżonej dla przykładów/testów (RFC 2606) czy na maszynie
+     * lokalnej — taki adres to wypełniacz, a nie prawdziwe ustawienie, i
+     * nie wolno pokazywać go jako stanu faktycznego.
      *
      * @return array{address: string, name: string|null}|null
      */
