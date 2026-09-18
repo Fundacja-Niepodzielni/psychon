@@ -149,6 +149,7 @@ return [
             'example.com', 'example.net', 'example.org', 'example.edu',
             'localhost', 'localdomain',
             '.example', '.test', '.invalid', '.localhost',
+            '.local', '.internal', '.lan', '.home.arpa',
         ];
         foreach ($zastrzezoneKoncowki as $koncowka) {
             if ($domain === $koncowka || str_ends_with($domain, '.'.ltrim($koncowka, '.'))) {
