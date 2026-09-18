@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -101,5 +101,63 @@ describe("ReportView — poz. 27 zakres dat", () => {
 
     await waitFor(() => expect(downloadReportCsv).toHaveBeenCalledTimes(1));
     expect(downloadReportCsv).toHaveBeenLastCalledWith({ from: "2026-02-01", to: undefined });
+  });
+});
+
+/**
+ * Poz. 18 „Postępy" — kryterium: raport pokazuje etap każdej osoby.
+ * Etykiety pochodzą wyłącznie z backendu (`stage_label`), front ich nie tłumaczy.
+ */
+describe("ReportView — poz. 18 etap każdej osoby", () => {
+  it("tabela pokazuje etap każdej osoby z etykietą przekazaną przez backend", async () => {
+    fetchReport.mockResolvedValue({
+      ...raport,
+      people: [
+        {
+          id: 1,
+          first_name: "Marta",
+          last_name: "Demo",
+          role: "volunteer",
+          hours_accepted: "41.5",
+          consultations: 37,
+          certificate_issued: false,
+          stage: "kurs",
+          stage_label: "Kursy i testy",
+        },
+        {
+          id: 2,
+          first_name: "Ola",
+          last_name: "Demo",
+          role: "volunteer",
+          hours_accepted: "72",
+          consultations: 64,
+          certificate_issued: true,
+          stage: "certyfikat",
+          stage_label: "Certyfikat",
+        },
+      ],
+    });
+    render(<ReportView />);
+
+    const wierszMarty = (await screen.findByText("Marta Demo")).closest("tr");
+    const wierszOli = (await screen.findByText("Ola Demo")).closest("tr");
+    expect(wierszMarty).not.toBeNull();
+    expect(wierszOli).not.toBeNull();
+
+    // `Certyfikat` w wierszu Oli to etap (Badge), nie mylić z nagłówkiem
+    // kolumny „Certyfikat" (stan wydania) — stąd zapytanie zawężone do wiersza.
+    expect(within(wierszMarty as HTMLElement).getByText("Kursy i testy")).toBeInTheDocument();
+    expect(within(wierszOli as HTMLElement).getByText("Certyfikat")).toBeInTheDocument();
+  });
+
+  it("pusta lista osób pokazuje istniejący stan pusty tabeli (bez etapu do wyświetlenia)", async () => {
+    fetchReport.mockResolvedValue(raport); // people: []
+    render(<ReportView />);
+
+    expect(
+      await screen.findByText(
+        "Wiersze pojawią się tutaj, gdy w systemie będą konta wolontariuszy lub studentów.",
+      ),
+    ).toBeInTheDocument();
   });
 });

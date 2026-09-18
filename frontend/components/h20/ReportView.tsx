@@ -87,6 +87,15 @@ export default function ReportView() {
       render: (row) => ROLE_LABELS[row.role] ?? row.role,
     },
     {
+      key: "stage",
+      header: "Etap",
+      render: (row) => (
+        <Badge variant={row.stage === "certyfikat" ? "success" : "neutral"}>
+          {row.stage_label}
+        </Badge>
+      ),
+    },
+    {
       key: "hours",
       header: "Godziny stażu",
       render: (row) => row.hours_accepted,

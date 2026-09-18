@@ -24,6 +24,10 @@ export interface ReportPersonRow {
   hours_accepted: string;
   consultations: number;
   certificate_issued: boolean;
+  /** Poz. 18 — klucz etapu (kontrakt backendu: `kurs|staz|superwizja|warsztat|certyfikat`). */
+  stage: string;
+  /** Etykieta po polsku gotowa do wyświetlenia — backend jest jedynym źródłem tekstu. */
+  stage_label: string;
 }
 
 export interface ReportData {
