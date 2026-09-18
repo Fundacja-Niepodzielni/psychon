@@ -24,12 +24,12 @@ const ERROR_MESSAGES: Record<string, string> = {
 /** Logowanie nie zdążyło się rozstrzygnąć do `LOGIN_TIMEOUT_MS` — to NIE jest
  * błąd konfiguracji: serwer mógł odpowiedzieć wolno albo wcale. Osobny tekst
  * od `ERROR_MESSAGES.Configuration`, bo to inna sytuacja dla człowieka po
- * drugiej stronie (F-225). */
+ * drugiej stronie. */
 const TIMEOUT_MESSAGE = "Logowanie nie odpowiedziało w wyznaczonym czasie. Spróbuj ponownie.";
 
 /** Połączenie z serwerem zostało zerwane (np. brak sieci) — też NIE jest
  * błędem konfiguracji, tylko chwilową awarią sieci. Osobny tekst od
- * `ERROR_MESSAGES.Configuration` i od `TIMEOUT_MESSAGE` (F-225). */
+ * `ERROR_MESSAGES.Configuration` i od `TIMEOUT_MESSAGE`. */
 const CONNECTION_LOST_MESSAGE = "Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.";
 
 const NAGLOWEK = {
@@ -93,7 +93,7 @@ interface Me {
  *    ODRZUCI obietnicę zanim zegar strzeli → `CONNECTION_LOST_MESSAGE` dla
  *    typowego objawu zerwanej sieci (`TypeError`, np. „Failed to fetch”),
  *    a `ERROR_MESSAGES.Configuration` dla wszystkiego innego, czyli
- *    faktycznego błędu konfiguracji (F-225: dawniej wszystkie trzy sytuacje
+ *    faktycznego błędu konfiguracji (dawniej wszystkie trzy sytuacje
  *    dzieliły jeden tekst, mimo że to trzy różne rzeczy dla człowieka po
  *    drugiej stronie). Dlatego cała praca tego efektu, ŁĄCZNIE z wywołaniem
  *    `signIn()`, stoi w jednym `try`/`catch`: bez tego odrzucona obietnica
@@ -172,7 +172,7 @@ function LoginScreen() {
         clearTimeout(zegar);
         // `TypeError` jest objawem zerwanej sieci w przeglądarce (np. „Failed
         // to fetch”) — to nie jest błąd konfiguracji, tylko chwilowy brak
-        // połączenia. Wszystko inne zostaje tym, czym było (F-225).
+        // połączenia. Wszystko inne zostaje tym, czym było.
         if (err instanceof TypeError) {
           setErrorMessage(CONNECTION_LOST_MESSAGE);
         } else {
