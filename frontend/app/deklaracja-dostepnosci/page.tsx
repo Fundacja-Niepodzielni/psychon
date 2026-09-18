@@ -15,9 +15,10 @@ export const metadata: Metadata = {
  * tokeny designu, istniejące testy — bez przeglądarki i bez czytnika ekranu).
  * Metoda i pełne wyniki: raport audytu w repozytorium dokumentacji projektu.
  *
- * Dwa pola poniżej NIE są wypełnione świadomie — dane kontaktowe Fundacji i
- * data przeglądu deklaracji to decyzje właściciela, nie coś, co można
- * wywnioskować z kodu.
+ * Pole „Data ostatniego przeglądu deklaracji” poniżej NIE jest wypełnione
+ * świadomie — data i osoba dokonująca przeglądu to decyzja właściciela,
+ * która jeszcze nie zapadła, nie coś, co można wywnioskować z kodu. Kontakt
+ * do zgłaszania barier dostępności podał właściciel 2026-09-16.
  */
 export default function DeklaracjaDostepnosciPage() {
   return (
@@ -84,8 +85,12 @@ export default function DeklaracjaDostepnosciPage() {
           </Text>
           <Text>
             <strong>
-              [do uzupełnienia przez Fundację — adres e-mail lub telefon do
-              zgłaszania problemów z dostępnością]
+              <a
+                href="mailto:kontakt@niepodzielni.com"
+                className="text-accent underline underline-offset-2 hover:text-accent-dark focus-visible:focus-ring"
+              >
+                kontakt@niepodzielni.com
+              </a>
             </strong>
           </Text>
           <Text size="small" tone="muted">
