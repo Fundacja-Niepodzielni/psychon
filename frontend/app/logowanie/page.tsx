@@ -21,6 +21,17 @@ const ERROR_MESSAGES: Record<string, string> = {
   Configuration: "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.",
 };
 
+/** Logowanie nie zdążyło się rozstrzygnąć do `LOGIN_TIMEOUT_MS` — to NIE jest
+ * błąd konfiguracji: serwer mógł odpowiedzieć wolno albo wcale. Osobny tekst
+ * od `ERROR_MESSAGES.Configuration`, bo to inna sytuacja dla człowieka po
+ * drugiej stronie (F-225). */
+const TIMEOUT_MESSAGE = "Logowanie nie odpowiedziało w wyznaczonym czasie. Spróbuj ponownie.";
+
+/** Połączenie z serwerem zostało zerwane (np. brak sieci) — też NIE jest
+ * błędem konfiguracji, tylko chwilową awarią sieci. Osobny tekst od
+ * `ERROR_MESSAGES.Configuration` i od `TIMEOUT_MESSAGE` (F-225). */
+const CONNECTION_LOST_MESSAGE = "Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.";
+
 const NAGLOWEK = {
   title: "Zaloguj się",
   description: "Platforma szkoleniowa programu Niepodzielni. Logujesz się kontem Niepodzielni.",
@@ -75,16 +86,22 @@ interface Me {
  *    nadejdzie (zegar zostaje jako siatka bezpieczeństwa, gdyby ten redirect
  *    nie nadszedł); inny błąd niż 401 → komunikat awaryjny od razu, zegar
  *    zatrzymany.
- * 5. Nic z powyższego nie rozstrzygnęło się do `LOGIN_TIMEOUT_MS` — czy to
- *    dlatego, że `getSession()`/`GET /me` wisi, czy dlatego, że samo
- *    rozpoczęcie logowania (`signIn()`) odrzuciło obietnicę → ekran przestaje
- *    czekać i pokazuje TEN SAM komunikat i przycisk co stan 2. Dlatego cała
- *    praca tego efektu, ŁĄCZNIE z wywołaniem `signIn()`, stoi w jednym
- *    `try`/`catch`: bez tego odrzucona obietnica `signIn()` nie miała nic,
- *    co złapałoby błąd, i ekran zostawał na „Przekierowuję…” bez granicy
- *    czasu. To DALEJ nie jest automatyczne ponowienie logowania — po
- *    zegarze/błędzie ekran CZEKA na kliknięcie, z tego samego powodu co
- *    w stanie 2: automatyczna kolejna próba nigdy nie dałaby się przeczytać.
+ * 5. Nic z powyższego nie rozstrzygnęło się do `LOGIN_TIMEOUT_MS` (zegar) →
+ *    `TIMEOUT_MESSAGE`, bo `getSession()`/`GET /me` po prostu wisi — to nie
+ *    jest błąd konfiguracji, tylko brak odpowiedzi w wyznaczonym czasie.
+ *    Osobno: gdy sama praca tego efektu (`getSession()` albo `signIn()`)
+ *    ODRZUCI obietnicę zanim zegar strzeli → `CONNECTION_LOST_MESSAGE` dla
+ *    typowego objawu zerwanej sieci (`TypeError`, np. „Failed to fetch”),
+ *    a `ERROR_MESSAGES.Configuration` dla wszystkiego innego, czyli
+ *    faktycznego błędu konfiguracji (F-225: dawniej wszystkie trzy sytuacje
+ *    dzieliły jeden tekst, mimo że to trzy różne rzeczy dla człowieka po
+ *    drugiej stronie). Dlatego cała praca tego efektu, ŁĄCZNIE z wywołaniem
+ *    `signIn()`, stoi w jednym `try`/`catch`: bez tego odrzucona obietnica
+ *    `signIn()` nie miała nic, co złapałoby błąd, i ekran zostawał na
+ *    „Przekierowuję…” bez granicy czasu. To DALEJ nie jest automatyczne
+ *    ponowienie logowania — po zegarze/błędzie ekran CZEKA na kliknięcie,
+ *    z tego samego powodu co w stanie 2: automatyczna kolejna próba nigdy
+ *    nie dałaby się przeczytać.
  */
 function LoginScreen() {
   const router = useRouter();
@@ -100,7 +117,7 @@ function LoginScreen() {
     // która realnie coś rozstrzyga, sama go anuluje — jeśli żadna tego nie
     // zrobi do `LOGIN_TIMEOUT_MS`, to on decyduje.
     const zegar = setTimeout(() => {
-      setErrorMessage(ERROR_MESSAGES.Configuration);
+      setErrorMessage(TIMEOUT_MESSAGE);
     }, LOGIN_TIMEOUT_MS);
 
     async function run() {
@@ -124,7 +141,7 @@ function LoginScreen() {
             // redirect nie nadszedł, ekran i tak nie zostanie bez końca.
             if (!(err instanceof ApiError && err.status === 401)) {
               clearTimeout(zegar);
-              setErrorMessage("Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.");
+              setErrorMessage(CONNECTION_LOST_MESSAGE);
             }
           }
           return;
@@ -150,10 +167,17 @@ function LoginScreen() {
         // `clearTimeout` zegar strzelał mimo powodzenia i po `LOGIN_TIMEOUT_MS`
         // wieszał fałszywy komunikat awaryjny na ścieżce, która się udała).
         clearTimeout(zegar);
-      } catch {
+      } catch (err) {
         if (cancelled) return;
         clearTimeout(zegar);
-        setErrorMessage(ERROR_MESSAGES.Configuration);
+        // `TypeError` jest objawem zerwanej sieci w przeglądarce (np. „Failed
+        // to fetch”) — to nie jest błąd konfiguracji, tylko chwilowy brak
+        // połączenia. Wszystko inne zostaje tym, czym było (F-225).
+        if (err instanceof TypeError) {
+          setErrorMessage(CONNECTION_LOST_MESSAGE);
+        } else {
+          setErrorMessage(ERROR_MESSAGES.Configuration);
+        }
       }
     }
 
