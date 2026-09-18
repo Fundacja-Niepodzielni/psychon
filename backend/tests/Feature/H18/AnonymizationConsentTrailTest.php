@@ -82,7 +82,11 @@ class AnonymizationConsentTrailTest extends CertificatePackageCase
     {
         $grad = $this->makeEligibleVolunteer();
 
-        $earlierWithdrawal = now()->subWeek();
+        // Kolumna `withdrawn_at` jest `timestamp` bez ułamków sekundy — data
+        // wejściowa jest tu od razu obcięta do pełnej sekundy, żeby
+        // porównanie z wartością odczytaną z bazy nie fałszowało wyniku
+        // różnicą mikrosekund, której baza nigdy nie przechowuje.
+        $earlierWithdrawal = \Illuminate\Support\Carbon::parse(now()->subWeek()->format('Y-m-d H:i:s'));
         $withdrawn = Consent::create([
             'user_id' => $grad->id,
             'type' => 'publikacja_profilu',
