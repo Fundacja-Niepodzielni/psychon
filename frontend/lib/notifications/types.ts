@@ -19,3 +19,13 @@ export interface EmailItem {
   sent_at: string | null;
   created_at: string;
 }
+
+/**
+ * Rzeczywisty skonfigurowany nadawca (`meta.extra.from`, GET /admin/emails)
+ * — odczyt zaplecza (`MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME`), nie literał
+ * ekranu. `null`, gdy adres nie jest ustawiony.
+ */
+export interface EmailSender {
+  address: string;
+  name: string | null;
+}

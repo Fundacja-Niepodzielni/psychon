@@ -115,4 +115,16 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    // Prawda o TYM, czy wdrożenie w ogóle ustawiło zmienną środowiskową —
+    // liczona tu, w chwili wczytania/zbudowania cache konfiguracji, a nie
+    // wywołaniem env() w kodzie aplikacji (które po `config:cache` zawsze
+    // zwraca null, niezależnie od realnego ustawienia). `from.address`
+    // powyżej ma wartość zastępczą z domeny przykładowej, gdy zmiennej
+    // brak — ten klucz odróżnia „naprawdę ustawiono" od „to tylko wartość
+    // zastępcza". Celowo OBOK `from`, nie w jego środku: `from` jako całość
+    // czyta `Illuminate\Mail\MailManager::setGlobalAddress()` i przekazuje
+    // dalej do transportu — dodatkowy klucz w tamtym zbiorze jest zbędnym
+    // ryzykiem, którego nie trzeba brać.
+    'from_configured' => trim((string) env('MAIL_FROM_ADDRESS', '')) !== '',
+
 ];
