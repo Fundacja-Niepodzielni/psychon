@@ -645,6 +645,22 @@ przykładowymi wartościami:
   | `lessons.reordered` | zmieniona kolejność lekcji w kursie |
   | `courses.reordered` | zmieniona kolejność kursów |
 
+  **Identyfikator towarzyszący — reguła i jedyny wyjątek.** Każdy kod niesie
+  **dokładnie jeden** identyfikator przedmiotu zmiany. Nigdy listy: lista
+  identyfikatorów jest tym samym wolnym ładunkiem, który ten kontrakt wyklucza,
+  tylko w innym przebraniu.
+
+  Wyjątkiem jest **`courses.reordered`, który nie ma towarzysza — i to jest
+  decyzja zmierzona, nie przeoczenie.** Pomiar: trasa przestawiająca kolejność
+  kursów nie przyjmuje żadnego parametru, jej reguła sprawdzająca żąda wyłącznie
+  listy kursów bez pola przedmiotu nadrzędnego, a sam kurs nie ma w zapleczu
+  kolumny wiążącej go ze ścieżką ani z programem. Przedmiotem tej operacji jest
+  **jedna globalna lista w całości**, a nie obiekt, który dałoby się nazwać.
+
+  **Nie wolno wypełniać tego miejsca listą identyfikatorów kursów** ani dokładać
+  czwartego pola po to, żeby tabela wyglądała równo. Puste miejsce bez powodu
+  zostaje zapełnione — dlatego powód stoi tutaj, a nie w czyjejś pamięci.
+
   **Dlaczego to nie jest osiem osobnych rodzajów:** liczba rodzajów w rejestrze
   zostaje taka, jaka była, a rozróżnienie niesie pole. Słowniki po stronie
   interfejsu nie muszą znać ośmiu nowych nazw.
