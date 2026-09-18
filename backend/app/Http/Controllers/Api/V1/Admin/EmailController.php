@@ -32,7 +32,45 @@ class EmailController extends Controller
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'last_page' => $paginator->lastPage(),
+                'extra' => [
+                    'from' => $this->configuredSender(),
+                ],
             ],
         ]);
+    }
+
+    /**
+     * Rzeczywisty skonfigurowany nadawca (`config('mail.from')`, czyli
+     * `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME`) — nie WARTOŚĆ na sztywno w
+     * ekranie, tylko odczyt tego, co system ma dziś ustawione.
+     *
+     * `null`, gdy wdrożenie NIE skonfigurowało nadawcy — rozpoznane przez
+     * `config('mail.from_configured')` (liczone przy wczytaniu konfiguracji,
+     * patrz `config/mail.php`; celowo OBOK `mail.from`, nie w jego środku —
+     * ten zbiór jako całość czyta sam mechanizm wysyłki). To pole traktuje
+     * jak brak konfiguracji zarówno pusty łańcuch, jak i adres na domenie
+     * zastrzeżonej dla przykładów/testów (RFC 2606) czy na maszynie
+     * lokalnej — taki adres to wypełniacz, a nie prawdziwe ustawienie, i
+     * nie wolno pokazywać go jako stanu faktycznego.
+     *
+     * @return array{address: string, name: string|null}|null
+     */
+    private function configuredSender(): ?array
+    {
+        if (config('mail.from_configured') !== true) {
+            return null;
+        }
+
+        $address = trim((string) config('mail.from.address'));
+        if ($address === '') {
+            return null;
+        }
+
+        $name = trim((string) config('mail.from.name'));
+
+        return [
+            'address' => $address,
+            'name' => $name !== '' ? $name : null,
+        ];
     }
 }

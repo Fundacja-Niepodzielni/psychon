@@ -6,7 +6,30 @@ import Table, { type Column } from "@/components/ui/Table";
 import ListTemplate from "@/components/templates/ListTemplate";
 import { apiPaged, type PaginationMeta } from "@/lib/api";
 import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
-import type { EmailItem } from "@/lib/notifications/types";
+import type { EmailItem, EmailSender } from "@/lib/notifications/types";
+
+/**
+ * Zdanie zamiast literału/placeholdera, gdy zaplecze nie ma ustawionego
+ * `MAIL_FROM_ADDRESS` — decyzja architekta (2026-09-18): ekran nie zmyśla
+ * adresu, mówi wprost, że go nie ustawiono.
+ */
+const NADAWCA_NIEUSTAWIONY = "Adres nadawcy zależy od wdrożenia — nieustawiony.";
+
+/** Sprawdza kształt `meta.extra.from` z ładunku, zamiast ufać rzutowaniu. */
+function jestNadawca(wartosc: unknown): wartosc is EmailSender {
+  return (
+    typeof wartosc === "object" &&
+    wartosc !== null &&
+    typeof (wartosc as { address?: unknown }).address === "string" &&
+    ((wartosc as { name?: unknown }).name === null ||
+      typeof (wartosc as { name?: unknown }).name === "string")
+  );
+}
+
+function opiszNadawce(from: unknown): string {
+  if (!jestNadawca(from)) return NADAWCA_NIEUSTAWIONY;
+  return from.name ? `${from.name} <${from.address}>` : from.address;
+}
 
 const STATUS_LABEL: Record<EmailItem["status"], string> = {
   queued: "W kolejce",
@@ -168,7 +191,9 @@ export default function AdminEmailsPage() {
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-6 py-4 text-small">
               <dt className="font-bold text-muted">Od:</dt>
-              <dd className="text-ink">Fundacja Niepodzielni &lt;no-reply@niepodzielni.pl&gt;</dd>
+              <dd className="text-ink">
+                {opiszNadawce(meta?.extra?.from)}
+              </dd>
               <dt className="font-bold text-muted">Do:</dt>
               <dd className="text-ink">{preview.to_email}</dd>
               <dt className="font-bold text-muted">Wysłano:</dt>
