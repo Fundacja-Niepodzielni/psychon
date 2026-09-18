@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 /**
  * Przyrząd na punkt orientacyjny treści (`id="tresc"`) — cel skip-linku
@@ -60,20 +60,36 @@ import { render, screen } from "@testing-library/react";
  * nie ma roli „main", zostaje odrzucony; `<main>` bez właściwego `id`
  * (którego skip-link i tak nie trafi) — też.
  *
- * BRAK PUNKTU ORIENTACYJNEGO NA ŁAŃCUCHU Z GATE'EM DZIECKA (4 trasy
- * uczestnika: `/panel/staz`, `/panel/certyfikat`, `/panel/superwizja`,
- * `/panel/profil-psychologa`) zwraca `<main id="tresc">` poprawnie (test
- * powyżej przechodzi), ale `h1` może wyjść czerwony z INNEGO powodu:
- * `RequireRole` renderuje synchronicznie stan „loading” (komunikat
- * „Wczytywanie…” zamiast dzieci) dopóki obietnica `GET /me` się nie
- * rozstrzygnie, a ten test — tak jak wszystkie pozostałe w tym pliku —
- * czyta DOM z pierwszego, synchronicznego renderu, bez `await` na
- * rozstrzygnięcie efektów. To jest ARTEFAKT KONWENCJI PRZYRZĄDU (ten sam,
- * który dotyczy każdej trasy z asynchronicznym stanem początkowym), a NIE
- * wada tych czterech ekranów — stąd w kodzie test na `h1` dla tras
- * przechodzących przez `RequireRole` w łańcuchu jest jawnie oznaczony i
- * NIE jest liczony razem z prawdziwymi czerwieniami `h1` w meldunku
- * uruchomienia (patrz `console.log` niżej).
+ * ATRAPA `api()` I NAGŁÓWEK GŁÓWNY — ZMIERZONE, NIE ZAŁOŻONE. Sześć tras
+ * mierzonych (`/panel/pulpit`, `/panel/profil`, `/panel/certyfikat`,
+ * `/panel/staz`, `/panel/superwizja`, `/panel/profil-psychologa`) renderuje
+ * `h1` dopiero PO udanym pobraniu danych własnych — a atrapa generyczna
+ * (`beforeEach` niżej) domyślnie ODRZUCA każde wywołanie `api()`, więc te
+ * komponenty utykają w gałęzi błędu/ładowania bez `h1` NIEZALEŻNIE od tego,
+ * czy w łańcuchu jest `RequireRole`, czy nie (`/panel/pulpit` i
+ * `/panel/profil` nie mają żadnej bramki roli, a i tak łapią ten sam brak
+ * `h1`). Samo doczekanie się rozstrzygnięcia (`await`/`waitFor`) NIE
+ * naprawia tego — zmierzone wprost: przy atrapie odrzucającej `GET /me`,
+ * `RequireRole` po rozstrzygnięciu obietnicy wchodzi w stan „error” (karta
+ * „Nie udało się połączyć z serwerem”), a nie w stan „allowed”, więc `h1`
+ * nie pojawia się NIGDY, nie tylko w pierwszym, synchronicznym renderze.
+ *
+ * Jedyna naprawa, która faktycznie działa (zmierzona `REALISTYCZNE_LADUNKI`
+ * niżej): podmiana atrapy na sukces o kształcie, jakiego dana trasa
+ * naprawdę oczekuje (`GET /me` z dopuszczoną rolą, `GET /courses`, `GET
+ * /certificate/conditions`, `GET /psychologist-profile` — kształty z
+ * `lib/pulpit/data.ts`, `lib/courses.ts`, kontraktu H13/H15). Po tej
+ * podmianie i doczekaniu się DOM-u (`waitFor` w teście `h1` niżej)
+ * WSZYSTKICH SZEŚĆ tras pokazuje dokładnie jeden `h1` — zmierzone
+ * `npx vitest run __tests__/punkty-orientacyjne-tresc.test.tsx`, 2026-09-18:
+ * zero czerwieni `h1` na tych sześciu trasach. Nie ma tu więc podziału na
+ * „wadę ekranu” kontra „artefakt narzędzia" do utrzymania czerwono — cała
+ * szóstka była artefaktem DOBORU ŁADUNKU atrapy w tym pliku, nie wadą
+ * żadnego z sześciu ekranów. (Osobna, NIEMIERZONA tu obserwacja: w stanie
+ * ładowania/błędu te same cztery komponenty poza `PulpitDashboard` i
+ * `/panel/profil` też nie mają `h1` — to własność stanu przejściowego
+ * całej rodziny ekranów panelu, a nie coś, co ten test — sprawdzający stan
+ * PO udanym pobraniu — mierzy albo rozstrzyga.)
  */
 
 const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "app");
@@ -90,11 +106,6 @@ interface OdkrytaTrasa {
    * jednocześnie `RequireRole` i `PanelShell` (gate stoi przed punktem
    * orientacyjnym w tym samym pliku). */
   bramkaRoli: boolean;
-  /** `true`, gdy trasa przechodzi przez którykolwiek `RequireRole` w
-   * łańcuchu, NIEZALEŻNIE od tego, czy chroni on punkt orientacyjny, czy
-   * tylko zawartość `<main>`. Używane wyłącznie do rozdzielenia czerwieni
-   * `h1` na artefakt konwencji testu (patrz komentarz u góry pliku). */
-  gatePonizejMain: boolean;
   dynamiczna: boolean;
   przekierowanieSerwera: boolean;
 }
@@ -160,7 +171,6 @@ function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {
     const bramkaRoli = layoutyZrodla.some(
       (src) => src.includes("RequireRole") && src.includes("PanelShell"),
     );
-    const gatePonizejMain = layoutyZrodla.some((src) => src.includes("RequireRole"));
 
     wynik.push({
       url,
@@ -168,7 +178,6 @@ function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {
       importLayouty: layoutyPliki.map(doSpecyfikatoraImportu),
       dynamiczna,
       bramkaRoli,
-      gatePonizejMain,
       przekierowanieSerwera,
     });
   }
@@ -209,7 +218,6 @@ console.log(
     `[punkty-orientacyjne] pominięte (bramka RequireRole PRZED punktem orientacyjnym, ten sam plik): ${POMINIETE_BRAMKA.length} — ${POMINIETE_BRAMKA.map((t) => t.url).join(", ") || "brak"}`,
     `[punkty-orientacyjne] pominięte (przekierowanie serwera, brak DOM): ${POMINIETE_PRZEKIEROWANIE.length} — ${POMINIETE_PRZEKIEROWANIE.map((t) => t.url).join(", ") || "brak"}`,
     `[punkty-orientacyjne] objęte pomiarem: ${DO_ZMIERZENIA.length} — ${DO_ZMIERZENIA.map((t) => t.url).join(", ")}`,
-    `[punkty-orientacyjne] objęte pomiarem, w tym z gate'em RequireRole POD punktem orientacyjnym (możliwy artefakt h1, nie main): ${DO_ZMIERZENIA.filter((t) => t.gatePonizejMain).length} — ${DO_ZMIERZENIA.filter((t) => t.gatePonizejMain).map((t) => t.url).join(", ") || "brak"}`,
   ].join("\n"),
 );
 
@@ -272,6 +280,101 @@ beforeEach(() => {
     );
 });
 
+/**
+ * Realistyczne odpowiedzi `api()` dla tras, których `h1` renderuje się
+ * dopiero PO udanym pobraniu — zmierzone pojedynczo (patrz komentarz u
+ * góry pliku). Klucz: `url` z `wykryjTrasy()`. Każda funkcja podmienia
+ * `apiMock` na implementację świadomą ścieżki, z tym samym odrzuceniem
+ * generycznym dla ścieżek spoza kontraktu danej trasy (żeby efekty
+ * uboczne inne niż te opisane w kontrakcie — np. `GET /supervision/slots`
+ * na pulpicie — nadal kończyły się zwykłym, spokojnym błędem, tak jak
+ * przed podmianą).
+ */
+const REALISTYCZNE_LADUNKI: Record<string, () => void> = {
+  "/panel/pulpit": () => {
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/me") return Promise.resolve({ first_name: "Zmierzona", role: "student" });
+      if (path.startsWith("/courses")) return Promise.resolve([]);
+      return Promise.reject(
+        new ApiError({ status: 500, code: "instrument", message: "Zamockowana odpowiedź ogólna." }),
+      );
+    });
+  },
+  "/panel/profil": () => {
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/me") {
+        return Promise.resolve({
+          id: 1,
+          first_name: "Zmierzona",
+          last_name: "Testowa",
+          email: "zmierzona@example.test",
+          role: "student",
+          phone: null,
+          pesel: null,
+          address: { street: null, city: null, zip: null },
+          access_expires_at: null,
+          program_completed_at: null,
+          product_group: "podstawowy",
+          consents: [],
+        });
+      }
+      return Promise.reject(
+        new ApiError({ status: 500, code: "instrument", message: "Zamockowana odpowiedź ogólna." }),
+      );
+    });
+  },
+  "/panel/certyfikat": () => {
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/me") return Promise.resolve({ role: "volunteer" });
+      if (path === "/certificate/conditions") {
+        return Promise.resolve({ eligible: true, conditions: [] });
+      }
+      return Promise.reject(
+        new ApiError({ status: 500, code: "instrument", message: "Zamockowana odpowiedź ogólna." }),
+      );
+    });
+  },
+  "/panel/staz": () => {
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/me") return Promise.resolve({ role: "volunteer" });
+      return Promise.reject(
+        new ApiError({ status: 500, code: "instrument", message: "Zamockowana odpowiedź ogólna." }),
+      );
+    });
+  },
+  "/panel/superwizja": () => {
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/me") return Promise.resolve({ role: "volunteer" });
+      return Promise.reject(
+        new ApiError({ status: 500, code: "instrument", message: "Zamockowana odpowiedź ogólna." }),
+      );
+    });
+  },
+  "/panel/profil-psychologa": () => {
+    apiMock.mockImplementation((path: string) => {
+      if (path === "/me") return Promise.resolve({ role: "volunteer" });
+      if (path === "/psychologist-profile") {
+        return Promise.resolve({
+          eligible: true,
+          specializations: [],
+          approach: null,
+          city: null,
+          bio: null,
+          publication_consent_granted: false,
+          status: "draft",
+          return_reason: null,
+          documents: [],
+          created_at: null,
+          updated_at: null,
+        });
+      }
+      return Promise.reject(
+        new ApiError({ status: 500, code: "instrument", message: "Zamockowana odpowiedź ogólna." }),
+      );
+    });
+  },
+};
+
 /** Renderuje stronę zagnieżdżoną we WSZYSTKICH layoutach łańcucha, korzeń
  * na zewnątrz — dokładnie tak, jak składa je Next.js. */
 async function renderujTrase(importPage: string, importLayouty: string[]) {
@@ -305,9 +408,27 @@ describe.each(DO_ZMIERZENIA)("$url", ({ url, importPage, importLayouty }) => {
   });
 
   it("ma dokładnie jeden nagłówek główny (h1) — dla porównania z punktem orientacyjnym powyżej", async () => {
+    // Trasy, których `h1` renderuje się dopiero po udanym pobraniu, dostają
+    // tu realistyczną atrapę zamiast generycznego odrzucenia z `beforeEach`
+    // — zmierzone osobno, patrz `REALISTYCZNE_LADUNKI` i komentarz u góry
+    // pliku. Reszta tras zostaje na atrapie generycznej bez zmian.
+    REALISTYCZNE_LADUNKI[url]?.();
+
     await renderujTrase(importPage, importLayouty);
 
-    const naglowki = screen.getAllByRole("heading", { level: 1 });
+    // `queryAllByRole` (nie `getAllByRole`) NIE rzuca, gdy nic nie znajdzie
+    // — inaczej komunikat `expect` niżej nigdy by nie padał: wyjątek
+    // przerywałby test wcześniej, zanim asercja go użyje. `waitFor` daje
+    // czas na rozstrzygnięcie efektów (patrz komentarz u góry pliku o tym,
+    // że samo czekanie bez realistycznej atrapy i tak nie wystarcza).
+    const naglowki = await waitFor(
+      () => {
+        const znalezione = screen.queryAllByRole("heading", { level: 1 });
+        if (znalezione.length === 0) throw new Error("jeszcze brak h1");
+        return znalezione;
+      },
+      { timeout: 1000 },
+    ).catch(() => screen.queryAllByRole("heading", { level: 1 }));
 
     expect(
       naglowki,
