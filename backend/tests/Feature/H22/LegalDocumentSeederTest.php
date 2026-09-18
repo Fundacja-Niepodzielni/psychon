@@ -23,11 +23,11 @@ class LegalDocumentSeederTest extends TestCase
             ->assertJsonPath('data.content', 'Treść do dostarczenia przez Fundację.');
     }
 
-    public function test_seeded_polityka_prywatnosci_is_a_placeholder(): void
+    public function test_seeded_polityka_is_a_placeholder(): void
     {
         $this->seed(LegalDocumentSeeder::class);
 
-        $this->getJson('/api/v1/legal-documents/polityka_prywatnosci/current')
+        $this->getJson('/api/v1/legal-documents/polityka/current')
             ->assertOk()
             ->assertJsonPath('data.content', 'Treść do dostarczenia przez Fundację.');
     }

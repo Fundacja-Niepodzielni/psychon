@@ -33,19 +33,19 @@ class LegalDocumentTest extends TestCase
             ->assertJsonStructure(['data' => ['type', 'version', 'content', 'published_at']]);
     }
 
-    public function test_current_version_of_polityka_prywatnosci_is_public(): void
+    public function test_current_version_of_polityka_is_public(): void
     {
         LegalDocumentVersion::create([
-            'type' => 'polityka_prywatnosci',
+            'type' => 'polityka',
             'version' => 'v1',
             'content' => 'Treść do dostarczenia przez Fundację.',
             'status' => LegalDocumentVersion::STATUS_PUBLISHED,
             'published_at' => now()->subDay(),
         ]);
 
-        $this->getJson('/api/v1/legal-documents/polityka_prywatnosci/current')
+        $this->getJson('/api/v1/legal-documents/polityka/current')
             ->assertOk()
-            ->assertJsonPath('data.type', 'polityka_prywatnosci')
+            ->assertJsonPath('data.type', 'polityka')
             ->assertJsonPath('data.version', 'v1')
             ->assertJsonStructure(['data' => ['type', 'version', 'content', 'published_at']]);
     }
@@ -118,13 +118,13 @@ class LegalDocumentTest extends TestCase
     public function test_type_without_any_published_version_returns_not_found_on_current(): void
     {
         LegalDocumentVersion::create([
-            'type' => 'polityka_prywatnosci',
+            'type' => 'polityka',
             'version' => 'szkic-1',
             'content' => 'Treść do dostarczenia przez Fundację.',
             'status' => LegalDocumentVersion::STATUS_DRAFT,
         ]);
 
-        $this->getJson('/api/v1/legal-documents/polityka_prywatnosci/current')
+        $this->getJson('/api/v1/legal-documents/polityka/current')
             ->assertStatus(404)
             ->assertJsonPath('error.code', 'not_found');
     }
