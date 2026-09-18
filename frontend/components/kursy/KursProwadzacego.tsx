@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Breadcrumbs from "@/components/molecules/Breadcrumbs";
 import DetailTemplate from "@/components/templates/DetailTemplate";
 import EdytorTresciKursu from "@/components/kursy/EdytorTresciKursu";
+import TestWiedzyKursu from "@/components/testy/TestWiedzyKursu";
 import { api, ApiError } from "@/lib/api";
 import {
   COURSE_TYPE_LABELS,
@@ -27,6 +28,11 @@ export interface KursProwadzacegoProps {
  * te same punkty API (`/admin/courses/{id}...` — kontrakt H08/H10 adresuje
  * je tak niezależnie od roli wołającej), ale BEZ paneli admin-only: „Publikacja”
  * (publikacja/usunięcie kursu), przypisań (H09) i zaproszeń (H08b).
+ *
+ * `TestWiedzyKursu` dokłada wejście do banku pytań testu (H10) — tej samej
+ * karty, którą montuje `admin/testy/[id]/pytania/page.tsx` pod adresem
+ * `/prowadzacy/testy/{id}/pytania` — o ile zasób kursu poda `test_id`
+ * (dziś nie podaje, patrz komentarz w `TestWiedzyKursu`).
  *
  * Bramka roli stoi w `app/(prowadzacy)/prowadzacy/layout.tsx`
  * (`RequireRole allowedRoles={["instructor"]}`) — ten komponent się w ogóle
@@ -104,12 +110,15 @@ export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
       onPonow={() => setReloadKey((value) => value + 1)}
     >
       {course && (
-        <EdytorTresciKursu
-          course={course}
-          lessons={lessons}
-          onCourseUpdated={setCourse}
-          onLessonsReload={() => setReloadKey((value) => value + 1)}
-        />
+        <>
+          <EdytorTresciKursu
+            course={course}
+            lessons={lessons}
+            onCourseUpdated={setCourse}
+            onLessonsReload={() => setReloadKey((value) => value + 1)}
+          />
+          <TestWiedzyKursu course={course} />
+        </>
       )}
     </DetailTemplate>
   );
