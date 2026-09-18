@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import postcss from "postcss";
+import ts from "typescript";
 import Badge from "@/components/ui/Badge";
 
 // Test wiąże warianty odznaki z realnymi tokenami stylu.
@@ -28,18 +30,66 @@ const GLOBALS_CSS_PATH = path.join(__dirname, "..", "..", "..", "app", "globals.
 const badgeSource = readFileSync(BADGE_SRC_PATH, "utf-8");
 const globalsCss = readFileSync(GLOBALS_CSS_PATH, "utf-8");
 
-function wyodrebnijBlokWariantow(zrodlo: string): string {
-  const start = zrodlo.indexOf("const variants: Record<Variant, string> = {");
-  if (start === -1) {
+// Mapę wariantów czytamy z DRZEWA SKŁADNIOWEGO pliku Badge.tsx, nie z tekstu.
+// Wcześniej ten fragment szukał końca bloku `const variants = {...}` tekstowo —
+// `indexOf("};", start)` — czyli pierwszym wystąpieniem znaków `};` PO POZYCJI
+// startu, bez rozróżniania, czy te znaki są składnią, czy treścią komentarza
+// albo łańcucha. Zwykły komentarz w bloku wariantów zawierający `};` (np. przykład
+// literału obiektu w opisie) ucinał blok w środku — zmierzone: komentarz z takim
+// tekstem między wpisami `neutral` i `success` dawał 5 z 6 wariantów fałszywie
+// nieznalezionych (test poniżej "błąd odbioru: komentarz..."). To druga odsłona tej
+// samej rodziny błędów co w `wyodrebnijZadeklarowaneTokenyZTheme` wyżej — nawias i
+// średnik bywają treścią, nie składnią, więc parser jest jedynym sposobem odróżnienia.
+//
+// Zamiast osobnego "wytnij blok tekstem" + "sparsuj linie tekstem" (obie manualne),
+// jedna funkcja czyta CAŁY plik przez kompilator TypeScript (`ts.createSourceFile`,
+// już bezpośrednia zależność narzędziowa frontu — `typescript` w `devDependencies`)
+// i idzie prosto do węzłów AST: `PropertyAssignment` wewnątrz `ObjectLiteralExpression`
+// przypisanego do zmiennej `variants`. Węzły komentarzy w ogóle nie istnieją w tym
+// drzewie (kompilator odkłada je jako trivia dołączone do sąsiednich tokenów, nie jako
+// składniki wyrażenia) — komentarz z `};` w środku nie ma żadnego wpływu na to, gdzie
+// kończy się obiekt, bo AST i tak wie, gdzie jest prawdziwy `}` zamykający wyrażenie.
+// Wartości czytamy tylko z węzłów `StringLiteral` (`.text` kompilatora, czyli już
+// zdekodowany łańcuch — znaki ucieczki jak `\"` rozwiązane przez parser, nie ręcznie).
+// Właściwość, której wartość nie jest literałem tekstowym (np. spread, wywołanie
+// funkcji) jest pomijana świadomie — test dalej ją zgłosi jako brakujący wpis w mapie,
+// z tym samym czytelnym powodem co brakujący klucz w ogóle.
+function wyodrebnijMapeWariantowZAST(zrodlo: string, sciezkaPliku: string): Record<string, string[]> {
+  const plikZrodlowy = ts.createSourceFile(sciezkaPliku, zrodlo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+
+  let obiektWariantow: ts.ObjectLiteralExpression | undefined;
+  const odwiedz = (wezel: ts.Node): void => {
+    if (
+      obiektWariantow === undefined &&
+      ts.isVariableDeclaration(wezel) &&
+      ts.isIdentifier(wezel.name) &&
+      wezel.name.text === "variants" &&
+      wezel.initializer !== undefined &&
+      ts.isObjectLiteralExpression(wezel.initializer)
+    ) {
+      obiektWariantow = wezel.initializer;
+      return;
+    }
+    ts.forEachChild(wezel, odwiedz);
+  };
+  odwiedz(plikZrodlowy);
+
+  if (obiektWariantow === undefined) {
     throw new Error(
-      "Nie znaleziono w Badge.tsx bloku `const variants: Record<Variant, string> = {...}` — zmieniono kształt komponentu, test wymaga aktualizacji.",
+      "Nie znaleziono w Badge.tsx deklaracji `const variants = {...}` — zmieniono kształt komponentu, test wymaga aktualizacji.",
     );
   }
-  const end = zrodlo.indexOf("};", start);
-  if (end === -1) {
-    throw new Error("Nie znaleziono zamknięcia bloku wariantów w Badge.tsx.");
+
+  const mapa: Record<string, string[]> = {};
+  for (const wlasciwosc of obiektWariantow.properties) {
+    if (!ts.isPropertyAssignment(wlasciwosc)) continue;
+    const klucz = wlasciwosc.name;
+    const nazwa = ts.isIdentifier(klucz) || ts.isStringLiteral(klucz) ? klucz.text : undefined;
+    if (nazwa === undefined) continue;
+    if (!ts.isStringLiteral(wlasciwosc.initializer)) continue;
+    mapa[nazwa] = wlasciwosc.initializer.text.trim().split(/\s+/);
   }
-  return zrodlo.slice(start, end);
+  return mapa;
 }
 
 function wyodrebnijNazwyWariantowZTypu(zrodlo: string): string[] {
@@ -57,83 +107,59 @@ function wyodrebnijNazwyWariantowZTypu(zrodlo: string): string[] {
 // powodu — zmierzone: przeniesienie tokenu do drugiego bloku `@theme` dawało fałszywy czerwony
 // wynik, dopóki czytany był tylko pierwszy blok).
 //
-// Zamknięcie każdego bloku szukane jest licząc głębokość nawiasów klamrowych od otwarcia
-// (nie pierwszą linię `}` z brzegu), żeby przetrwać zagnieżdżone reguły w bloku. Liczenie
-// głębokości działa na arkuszu z WYCZYSZCZONYMI komentarzami /* ... */ (treść komentarza
-// zamieniona na spacje, żeby pozycje i numery wierszy się nie przesunęły) — nawias klamrowy
-// wewnątrz komentarza (np. w opisie odcienia koloru) nie jest więc liczony jako nawias
-// struktury. Zmierzone: liczenie głębokości na surowym arkuszu dawało fałszywą czerwień
-// (komentarz z „}” w środku zamykał blok za wcześnie) i fałszywą awarię całej suity
-// (komentarz z „{” otwierał głębokość, która nigdy się nie domykała).
+// Token pochodzi z DRZEWA DEKLARACJI, nie z tekstu. Wcześniej ten test liczył głębokość
+// nawiasów klamrowych ręcznie na surowym arkuszu (z osobnym czyszczeniem komentarzy, potem
+// osobnym czyszczeniem łańcuchów) — trzecia z rzędu odsłona tej samej rodziny fałszywych
+// czerwieni w tym przyrządzie (komentarze, potem łańcuchy, po nich w kolejce `url()` i
+// zagnieżdżone reguły z `@`). Łatanie kolejnego wyzwalacza ręcznego skanera tylko przesuwało
+// termin kolejnej dziury, więc naprawa właściwa to PARSER CSS, którym front i tak buduje
+// style: `postcss` (już w `package-lock.json` frontendu, żadna nowa zależność). Parser
+// tokenizuje komentarze, łańcuchy i `url(...)` poprawnie z definicji — nie trzeba już samemu
+// odróżniać nawiasu strukturalnego od znaku wewnątrz łańcucha czy adresu.
 //
-// Zwrócone bloki nadal mają komentarze zamienione na spacje (nie usunięte całkiem), żeby
-// zakomentowany token nadal liczył się jako niezadeklarowany, ale bez psucia pozycji.
-// Brak choćby jednego bloku albo brak jego zamknięcia jest błędem — test ma się wywrócić,
-// a komunikat wskazuje WIERSZ w app/globals.css, nie samą pozycję w bajtach.
-function wyczyscKomentarzeZachowujacPozycje(tekst: string): string {
-  return tekst.replace(/\/\*[\s\S]*?\*\//g, (dopasowanie) => dopasowanie.replace(/[^\n]/g, " "));
-}
-
-function numerWiersza(tekst: string, pozycja: number): number {
-  return tekst.slice(0, pozycja).split("\n").length;
-}
-
-function wyodrebnijBlokiDeklaracjiTokenow(css: string): string[] {
-  const cssBezKomentarzy = wyczyscKomentarzeZachowujacPozycje(css);
-  const wzorzecPoczatku = /@theme(?:\s+inline)?\s*\{/g;
-  const bloki: string[] = [];
-  let dopasowanie: RegExpExecArray | null;
-
-  while ((dopasowanie = wzorzecPoczatku.exec(cssBezKomentarzy)) !== null) {
-    const startTresci = dopasowanie.index + dopasowanie[0].length;
-    let glebokosc = 1;
-    let i = startTresci;
-    for (; i < cssBezKomentarzy.length && glebokosc > 0; i++) {
-      if (cssBezKomentarzy[i] === "{") glebokosc++;
-      else if (cssBezKomentarzy[i] === "}") glebokosc--;
-    }
-    if (glebokosc !== 0) {
+// `root.walkAtRules("theme", ...)` odwiedza KAŻDY blok `@theme` / `@theme inline` (dopasowanie
+// po nazwie at-rule, parametr `inline` jest osobnym polem — nieistotnym dla wyszukiwania).
+// `atRule.walkDecls(...)` zwraca wyłącznie prawdziwe deklaracje (węzły typu Declaration) —
+// węzły typu Comment są przez parser odseparowane, więc zakomentowany token nigdy nie trafia
+// do zbioru i nadal liczy się jako niezadeklarowany, bez żadnego dodatkowego czyszczenia.
+// Brak choćby jednego bloku `@theme` jest błędem testu (czerwono), nie cichym pominięciem.
+// Brak zamknięcia bloku (nawias się nie domyka) jest błędem PARSOWANIA CAŁEGO ARKUSZA —
+// `postcss.parse` rzuca `CssSyntaxError` z polem `.line` wskazującym prawdziwy wiersz otwarcia
+// niedomkniętego bloku w app/globals.css; ten wiersz przepisujemy do komunikatu testu.
+function wyodrebnijZadeklarowaneTokenyZTheme(css: string, sciezkaPliku: string): Set<string> {
+  let korzen: postcss.Root;
+  try {
+    korzen = postcss.parse(css, { from: sciezkaPliku });
+  } catch (e) {
+    if (e instanceof postcss.CssSyntaxError) {
       throw new Error(
-        `Nie znaleziono zamknięcia bloku \`@theme { ... }\` otwartego w app/globals.css w wierszu ${numerWiersza(css, dopasowanie.index)} (\`${dopasowanie[0]}\`).`,
+        `Nie udało się sparsować ${sciezkaPliku}: ${e.reason} w wierszu ${e.line}, kolumna ${e.column}.`,
       );
     }
-    const koniecTresci = i - 1; // wskazuje na dopasowany "}"
-    // Wycinamy z ORYGINALNEGO arkusza (pozycje są takie same, bo czyszczenie komentarzy
-    // zachowuje długość), więc zwrócony blok ma prawdziwą treść, nie same spacje.
-    bloki.push(css.slice(startTresci, koniecTresci));
-    wzorzecPoczatku.lastIndex = i;
+    throw e;
   }
 
-  if (bloki.length === 0) {
+  const tokeny = new Set<string>();
+  let liczbaBlokow = 0;
+  korzen.walkAtRules("theme", (atRule) => {
+    liczbaBlokow++;
+    atRule.walkDecls((decl) => {
+      tokeny.add(decl.prop);
+    });
+  });
+
+  if (liczbaBlokow === 0) {
     throw new Error(
-      "Nie znaleziono w globals.css żadnego bloku `@theme { ... }` z deklaracjami tokenów.",
+      `Nie znaleziono w ${sciezkaPliku} żadnego bloku \`@theme { ... }\` z deklaracjami tokenów.`,
     );
   }
 
-  return bloki.map((blok) => blok.replace(/\/\*[\s\S]*?\*\//g, ""));
-}
-
-// Parsowanie linii postaci: nazwa: "klasa1 klasa2" albo "nazwa-z-myślnikiem": "klasa1 klasa2",
-// ignorując linie komentarzy (`//`). Klucz może być cytowany (wymagane w TS dla nazw
-// z myślnikiem) albo nie.
-function wyodrebnijMapeWariantow(blok: string): Record<string, string[]> {
-  const mapa: Record<string, string[]> = {};
-  const linie = blok.split("\n");
-  for (const linia of linie) {
-    const bezKomentarza = linia.split("//")[0];
-    const dopasowanie = bezKomentarza.match(/^\s*"?([\w-]+)"?:\s*"([^"]+)"/);
-    if (dopasowanie) {
-      const [, nazwa, klasy] = dopasowanie;
-      mapa[nazwa] = klasy.trim().split(/\s+/);
-    }
-  }
-  return mapa;
+  return tokeny;
 }
 
 const nazwyZTypu = wyodrebnijNazwyWariantowZTypu(badgeSource);
-const blokWariantow = wyodrebnijBlokWariantow(badgeSource);
-const mapaWariantow = wyodrebnijMapeWariantow(blokWariantow);
-const blokiTokenow = wyodrebnijBlokiDeklaracjiTokenow(globalsCss);
+const mapaWariantow = wyodrebnijMapeWariantowZAST(badgeSource, BADGE_SRC_PATH);
+const tokenyZTheme = wyodrebnijZadeklarowaneTokenyZTheme(globalsCss, GLOBALS_CSS_PATH);
 
 describe("Badge — wiązanie wariantów z tokenami stylu", () => {
   it("każdy wariant z typu Variant ma wpis w mapie klas w Badge.tsx", () => {
@@ -184,8 +210,7 @@ describe("Badge — wiązanie wariantów z tokenami stylu", () => {
           ).not.toBeNull();
 
           const nazwaTokenu = dopasowaniePrefiksu![2];
-          const wzorzecTokenu = new RegExp(`--color-${nazwaTokenu}\\s*:`);
-          const zadeklarowanyWKtoryms = blokiTokenow.some((blok) => wzorzecTokenu.test(blok));
+          const zadeklarowanyWKtoryms = tokenyZTheme.has(`--color-${nazwaTokenu}`);
           expect(
             zadeklarowanyWKtoryms,
             `token --color-${nazwaTokenu} (dla klasy "${klasa}" wariantu "${nazwa}") nie jest zadeklarowany w żadnym bloku @theme w app/globals.css`,
@@ -194,4 +219,101 @@ describe("Badge — wiązanie wariantów z tokenami stylu", () => {
       });
     });
   }
+});
+
+// Wyzwalacze własne dla `wyodrebnijMapeWariantowZAST` — każdy sprawdza, że nawias
+// klamrowy albo średnik będące TREŚCIĄ (łańcuch, komentarz jedno- i wielowierszowy,
+// znak ucieczki) nie wpływają na to, gdzie kompilator widzi prawdziwy koniec obiektu
+// `variants`, i że wartości wychodzą dokładnie takie, jak w źródle — pole po polu,
+// nie tylko "test przeszedł". Każdy fragment budujemy jako osobny, kompletny plik
+// TSX (typ `Variant` + `const variants = {...}`), bo funkcja parsuje CAŁY plik.
+function zbudujZrodloZWariantami(blokWariantow: string, nazwyWariantow: string[]): string {
+  const typVariant = nazwyWariantow.map((n) => `"${n}"`).join(" | ");
+  return [
+    `type Variant = ${typVariant};`,
+    `const variants: Record<Variant, string> = {`,
+    blokWariantow,
+    `};`,
+    `export default variants;`,
+  ].join("\n");
+}
+
+describe("wyodrebnijMapeWariantowZAST — wyzwalacze własne (nawias/średnik jako treść, nie składnia)", () => {
+  it("nawias klamrowy wewnątrz łańcucha znakowego nie ucina obiektu", () => {
+    const zrodlo = zbudujZrodloZWariantami(
+      [`  a: "bg-{nawias} text-a",`, `  b: "bg-b text-b",`].join("\n"),
+      ["a", "b"],
+    );
+    const mapa = wyodrebnijMapeWariantowZAST(zrodlo, "syntetyczny-lancuch.tsx");
+    expect(mapa).toEqual({ a: ["bg-{nawias}", "text-a"], b: ["bg-b", "text-b"] });
+  });
+
+  it("nawias klamrowy wewnątrz komentarza jednowierszowego nie ucina obiektu", () => {
+    const zrodlo = zbudujZrodloZWariantami(
+      [`  a: "bg-a text-a", // uwaga: } to nie jest zamknięcie`, `  b: "bg-b text-b",`].join("\n"),
+      ["a", "b"],
+    );
+    const mapa = wyodrebnijMapeWariantowZAST(zrodlo, "syntetyczny-komentarz-1l.tsx");
+    expect(mapa).toEqual({ a: ["bg-a", "text-a"], b: ["bg-b", "text-b"] });
+  });
+
+  it("nawias klamrowy wewnątrz komentarza wielowierszowego nie ucina obiektu", () => {
+    const zrodlo = zbudujZrodloZWariantami(
+      [`  a: "bg-a text-a",`, `  /* przykład kształtu: { x: 1 }; */`, `  b: "bg-b text-b",`].join("\n"),
+      ["a", "b"],
+    );
+    const mapa = wyodrebnijMapeWariantowZAST(zrodlo, "syntetyczny-komentarz-wl.tsx");
+    expect(mapa).toEqual({ a: ["bg-a", "text-a"], b: ["bg-b", "text-b"] });
+  });
+
+  it("średnik wewnątrz treści łańcucha nie kończy deklaracji przedwcześnie", () => {
+    const zrodlo = zbudujZrodloZWariantami([`  a: "bg-a;dziwne text-a",`].join("\n"), ["a"]);
+    const mapa = wyodrebnijMapeWariantowZAST(zrodlo, "syntetyczny-srednik.tsx");
+    expect(mapa).toEqual({ a: ["bg-a;dziwne", "text-a"] });
+  });
+
+  it("zagnieżdżony nawias klamrowy (dwa poziomy) w komentarzu nie ucina obiektu", () => {
+    const zrodlo = zbudujZrodloZWariantami(
+      [
+        `  a: "bg-a text-a", // przykład: { zewn: { wewn: 1 } };`,
+        `  b: "bg-b text-b",`,
+      ].join("\n"),
+      ["a", "b"],
+    );
+    const mapa = wyodrebnijMapeWariantowZAST(zrodlo, "syntetyczny-zagniezdzenie.tsx");
+    expect(mapa).toEqual({ a: ["bg-a", "text-a"], b: ["bg-b", "text-b"] });
+  });
+
+  it("znak ucieczki (cudzysłów w środku łańcucha) jest odczytany, nie traktowany jak koniec wartości", () => {
+    const zrodlo = zbudujZrodloZWariantami(
+      [String.raw`  a: "bg-a text-a-\"cytat\"",`].join("\n"),
+      ["a"],
+    );
+    const mapa = wyodrebnijMapeWariantowZAST(zrodlo, "syntetyczny-ucieczka.tsx");
+    expect(mapa).toEqual({ a: ["bg-a", 'text-a-"cytat"'] });
+  });
+
+  it("błąd odbioru: komentarz z `};` między wpisami `neutral` i `success` — musi ZNIKNĄĆ po naprawie", () => {
+    // Odtworzenie dokładnie tej mutacji, którą odbiór złapał na starym skanerze:
+    // 5 z 6 wariantów fałszywie nieznalezionych, bo `indexOf("};", start)` trafiał
+    // w tekst komentarza zamiast w prawdziwe zamknięcie obiektu.
+    const zrodlo = zbudujZrodloZWariantami(
+      [
+        `  neutral: "bg-grey text-muted",`,
+        `  // przykład kształtu wpisu: { klucz: "wartość" };`,
+        `  success: "bg-success-bg text-success",`,
+        `  warning: "bg-warning-bg text-warning-dark",`,
+        `  danger: "bg-danger-bg text-danger",`,
+        `  info: "bg-info-bg text-info-badge",`,
+        `  accent: "bg-accent-15 text-accent-dark",`,
+      ].join("\n"),
+      ["neutral", "success", "warning", "danger", "info", "accent"],
+    );
+    const mapa = wyodrebnijMapeWariantowZAST(zrodlo, "syntetyczny-blad-odbioru.tsx");
+    expect(Object.keys(mapa).sort()).toEqual(
+      ["accent", "danger", "info", "neutral", "success", "warning"],
+    );
+    expect(mapa.success).toEqual(["bg-success-bg", "text-success"]);
+    expect(mapa.accent).toEqual(["bg-accent-15", "text-accent-dark"]);
+  });
 });
