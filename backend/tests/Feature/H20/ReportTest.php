@@ -62,6 +62,39 @@ class ReportTest extends TestCase
         $this->assertFalse($martaRow['certificate_issued']);
     }
 
+    /**
+     * Poz. 27 — zakres dat zawęża wpisy stażu Marty (9 zaakceptowanych,
+     * 12–60 dni wstecz — `DemoSeeder::seedInternship`). Zakres bez
+     * żadnego z tych wpisów (dziś) musi zejść z 113.5 h / 101 konsultacji
+     * (baza z pierwszego testu) do zera.
+     */
+    public function test_report_narrows_by_date_range(): void
+    {
+        $this->actingAsRole('super_admin');
+        $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
+        $today = now()->toDateString();
+
+        $response = $this->getJson("/api/v1/admin/report?from={$today}&to={$today}");
+        $response->assertOk();
+
+        $response->assertJsonPath('data.summary.hours_accepted_total', '0');
+        $response->assertJsonPath('data.summary.consultations_total', 0);
+
+        $martaRow = collect($response->json('data.people'))->firstWhere('id', $marta->id);
+        $this->assertNotNull($martaRow, 'Brak Marty w zestawieniu imiennym.');
+        $this->assertSame('0', $martaRow['hours_accepted']);
+        $this->assertSame(0, $martaRow['consultations']);
+    }
+
+    public function test_report_rejects_an_inverted_date_range(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $response = $this->getJson('/api/v1/admin/report?from=2026-06-10&to=2026-06-01');
+
+        $response->assertStatus(422)->assertJsonPath('error.code', 'validation_failed');
+    }
+
     public function test_non_admin_roles_are_forbidden(): void
     {
         foreach (['volunteer', 'student', 'instructor'] as $role) {

@@ -7,6 +7,7 @@ use App\Models\InternshipEntry;
 use App\Models\User;
 use App\Services\H19\DashboardSummary;
 use App\Support\ProgressAggregator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -16,6 +17,14 @@ use Illuminate\Support\Collection;
  * `active`/`completed`/`certificates_issued` wołają wprost
  * `DashboardSummary::build()` zamiast liczyć te same COUNT-y drugi raz —
  * gwarancja równości przez wspólny kod, nie przez „policzone tak samo".
+ *
+ * Poz. 27 „Rozszerzone raporty" — zakres dat `$from`/`to` zawęża godziny
+ * i konsultacje po `internship_entries.date` (kolumna, po której raport już
+ * agreguje — patrz sumy niżej). Liczniki pulpitu (`admitted`/`active`/
+ * `completed`/`certificates_issued`) NIE są filtrowane — pochodzą ze stanu
+ * bieżącego (`DashboardSummary`/`Application::accepted()`), nie z dziennika
+ * zdarzeń z własną datą; to alternatywna interpretacja „okresu", tu
+ * świadomie pominięta jako wymagająca osobnej zmiany w H19.
  */
 final class ReportSummary
 {
@@ -32,12 +41,12 @@ final class ReportSummary
      *     }>,
      * }
      */
-    public static function build(): array
+    public static function build(?string $from = null, ?string $to = null): array
     {
         $dashboard = DashboardSummary::build();
 
-        $hoursTotal = (float) InternshipEntry::where('status', 'accepted')->sum('hours');
-        $consultationsTotal = (int) InternshipEntry::where('status', 'accepted')->sum('consultations_count');
+        $hoursTotal = (float) self::acceptedEntries($from, $to)->sum('hours');
+        $consultationsTotal = (int) self::acceptedEntries($from, $to)->sum('consultations_count');
         $active = $dashboard['counters']['participants'];
 
         return [
@@ -52,7 +61,7 @@ final class ReportSummary
                 'consultations_total' => $consultationsTotal,
                 'certificates_issued' => $dashboard['counters']['certificates'],
             ],
-            'people' => self::people()->all(),
+            'people' => self::people($from, $to)->all(),
         ];
     }
 
@@ -61,7 +70,7 @@ final class ReportSummary
      *
      * @return Collection<int, array{id:int, first_name:string, last_name:string, role:string, hours_accepted:string, consultations:int, certificate_issued:bool}>
      */
-    public static function people(): Collection
+    public static function people(?string $from = null, ?string $to = null): Collection
     {
         $certifiedUserIds = User::query()
             ->whereHas('certificates')
@@ -79,13 +88,35 @@ final class ReportSummary
                 'last_name' => $user->last_name,
                 'role' => $user->role,
                 'hours_accepted' => ProgressAggregator::formatDecimal(
-                    (float) $user->internshipEntries()->where('status', 'accepted')->sum('hours'),
+                    (float) self::acceptedEntries($from, $to, $user->id)->sum('hours'),
                 ),
-                'consultations' => (int) $user->internshipEntries()
-                    ->where('status', 'accepted')
-                    ->sum('consultations_count'),
+                'consultations' => (int) self::acceptedEntries($from, $to, $user->id)->sum('consultations_count'),
                 'certificate_issued' => $certifiedUserIds->has($user->id),
             ])
             ->values();
+    }
+
+    /**
+     * Wpisy stażu ze statusem `accepted`, opcjonalnie zawężone datą wpisu
+     * (`internship_entries.date`, `$from`/`to` w formacie ISO, oba brzegi
+     * włącznie) i osobą.
+     */
+    private static function acceptedEntries(?string $from, ?string $to, ?int $userId = null): Builder
+    {
+        $query = InternshipEntry::where('status', 'accepted');
+
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        if ($from !== null) {
+            $query->whereDate('date', '>=', $from);
+        }
+
+        if ($to !== null) {
+            $query->whereDate('date', '<=', $to);
+        }
+
+        return $query;
     }
 }
