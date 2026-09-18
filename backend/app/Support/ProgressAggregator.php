@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Course;
 use App\Models\SupervisionSignup;
+use App\Models\TestAttempt;
 use App\Models\User;
 use App\Models\WorkshopCompletion;
 
@@ -56,6 +57,20 @@ final class ProgressAggregator
             'workshop_done' => $workshopDone,
             'reliability_percent' => self::reliabilityPercent($user),
         ];
+    }
+
+    /**
+     * Liczba różnych testów zaliczonych przynajmniej jedną próbą (H13 poz. 19 —
+     * „zaliczone testy jako osobna liczba"). NOWA metoda, `for()` bez zmian —
+     * `courses_done` w `for()` nadal scala etapy i testy w jedno pole.
+     */
+    public static function passedTestsCount(User $user): int
+    {
+        return TestAttempt::query()
+            ->where('user_id', $user->id)
+            ->where('passed', true)
+            ->distinct('test_id')
+            ->count('test_id');
     }
 
     /**

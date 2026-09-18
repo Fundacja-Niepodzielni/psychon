@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\H13;
 
+use App\Models\TestAttempt;
 use App\Models\User;
 use App\Support\H13\CertificateConditions;
 use App\Support\ProgressAggregator;
@@ -52,7 +53,9 @@ class CertificateConditionsTest extends CertificatePackageCase
             ->assertJsonPath('data.conditions.2.required', 6)
             ->assertJsonPath('data.conditions.3.key', 'workshop')
             ->assertJsonPath('data.conditions.3.met', false)
-            ->assertJsonMissingPath('data.conditions.3.done');
+            ->assertJsonMissingPath('data.conditions.3.done')
+            // seed: test 1 zaliczony (90%), test 2 niezaliczony (70%) — patrz DemoSeeder::seedMartaProgress.
+            ->assertJsonPath('data.passed_tests_count', 1);
     }
 
     public function test_conditions_endpoint_reports_a_graduate_as_eligible(): void
@@ -91,5 +94,48 @@ class CertificateConditionsTest extends CertificatePackageCase
     public function test_conditions_require_authentication(): void
     {
         $this->getJson('/api/v1/certificate/conditions')->assertStatus(401);
+    }
+
+    /**
+     * Poz. 19 Załącznika 1: liczba zaliczonych testów osobno od `courses`.
+     * Marta ma z seeda jeden zaliczony test (90%) i jeden niezaliczony (70%,
+     * patrz DemoSeeder::seedMartaProgress) — dokładamy drugi zaliczony test
+     * (inny niż oba powyższe, wzięty z próby Oli) i sprawdzamy 2 zaliczone
+     * + 1 niezaliczony → licznik 2.
+     */
+    public function test_passed_tests_count_counts_distinct_tests_with_a_passing_attempt(): void
+    {
+        $marta = $this->marta();
+        $ola = $this->ola();
+
+        $martaTestIds = TestAttempt::where('user_id', $marta->id)->pluck('test_id');
+
+        $extraAttempt = TestAttempt::where('user_id', $ola->id)
+            ->whereNotIn('test_id', $martaTestIds)
+            ->firstOrFail();
+
+        TestAttempt::create([
+            'user_id' => $marta->id,
+            'test_id' => $extraAttempt->test_id,
+            'attempt_number' => 1,
+            'answers' => $extraAttempt->answers,
+            'questions_snapshot' => $extraAttempt->questions_snapshot,
+            'score_percent' => $extraAttempt->score_percent,
+            'passed' => true,
+        ]);
+
+        $conditions = CertificateConditions::for($marta->fresh());
+
+        $this->assertSame(2, $conditions->toArray()['passed_tests_count']);
+    }
+
+    /** Poz. 19: bez żadnej próby testu licznik wynosi 0, nie null. */
+    public function test_passed_tests_count_is_zero_for_a_user_without_attempts(): void
+    {
+        $user = User::factory()->create(['role' => 'volunteer']);
+
+        $conditions = CertificateConditions::for($user);
+
+        $this->assertSame(0, $conditions->toArray()['passed_tests_count']);
     }
 }
