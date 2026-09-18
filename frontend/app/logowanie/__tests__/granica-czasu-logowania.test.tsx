@@ -16,8 +16,17 @@ async function przesunZegar(ms: number) {
  * moment (w ms symulowanego zegara), w którym stan się zmienia.
  */
 
-const KOMUNIKAT_TIMEOUT = "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.";
+const KOMUNIKAT_TIMEOUT = "Logowanie nie odpowiedziało w wyznaczonym czasie. Spróbuj ponownie.";
 const ETYKIETA_OCZEKIWANIA = "Przekierowuję do logowania…";
+
+/**
+ * Komunikat błędu konfiguracji ma zostać BEZ ZMIAN po naprawie — jedyny
+ * z trzech, który się NIE zmienia. Literał jest dziś identyczny z
+ * `KOMUNIKAT_TIMEOUT` (bo dziś wszystko idzie jedną ścieżką), ale to DWIE
+ * OSOBNE stałe: po naprawie mają się rozjechać, bo `KOMUNIKAT_TIMEOUT`
+ * przestaje być używany do tego scenariusza.
+ */
+const KOMUNIKAT_KONFIGURACJI_DOTYCHCZASOWY = "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.";
 
 const getSession = vi.fn();
 const signIn = vi.fn();
@@ -152,9 +161,21 @@ describe("/logowanie — granica czasu 8000 ms", () => {
     expect(api).not.toHaveBeenCalled();
   });
 
-  it("WADA DZISIEJSZA (do naprawy przez sesję frontową, nie tu): przerwane połączenie i przekroczony czas pokazują IDENTYCZNY tekst co błąd konfiguracji", async () => {
-    // Scenariusz A: połączenie zerwane całkowicie (getSession() odrzuca się,
-    // np. przeglądarka offline) — trafia w zewnętrzny catch, linia ok. 156.
+  it("stan docelowy: granica czasu, zerwane połączenie i błąd konfiguracji dają TRZY RÓŻNE komunikaty", async () => {
+    // Scenariusz 1: granica czasu — nic się nie rozstrzyga do LOGIN_TIMEOUT_MS.
+    getSession.mockReturnValue(nigdyRozstrzygniete());
+    signIn.mockReturnValue(nigdyRozstrzygniete());
+    vi.useFakeTimers();
+    render(<LoginPage />);
+    await przesunZegar(8_001);
+    const tekstGranicyCzasu = screen.getByRole("alert").textContent;
+    cleanup();
+    vi.useRealTimers();
+
+    // Scenariusz 2: połączenie zerwane całkowicie (getSession() odrzuca się
+    // błędem sieciowym, np. przeglądarka offline) — trafia w zewnętrzny catch.
+    getSession.mockReset();
+    signIn.mockReset();
     getSession.mockRejectedValue(new TypeError("Failed to fetch"));
     signIn.mockReturnValue(nigdyRozstrzygniete());
     vi.useFakeTimers();
@@ -164,22 +185,38 @@ describe("/logowanie — granica czasu 8000 ms", () => {
     cleanup();
     vi.useRealTimers();
 
-    // Scenariusz B: granica czasu (linia ok. 103) — nic się nie rozstrzyga.
+    // Scenariusz 3: błąd konfiguracji — sesja startuje normalnie, ale
+    // rozpoczęcie logowania odrzuca się błędem NIESIECIOWYM (nie
+    // `TypeError("Failed to fetch")`) — to jedyny scenariusz, który MA
+    // zostać przy dotychczasowym tekście.
     getSession.mockReset();
     signIn.mockReset();
-    getSession.mockReturnValue(nigdyRozstrzygniete());
-    signIn.mockReturnValue(nigdyRozstrzygniete());
+    getSession.mockResolvedValue(null);
+    signIn.mockRejectedValue(new Error("konfiguracja SSO jest niepoprawna"));
     vi.useFakeTimers();
     render(<LoginPage />);
-    await przesunZegar(8_001);
-    const tekstGranicyCzasu = screen.getByRole("alert").textContent;
+    await przesunZegar(1);
+    const tekstBleduKonfiguracji = screen.getByRole("alert").textContent;
 
-    // Stan dzisiejszy — nie pożądany: człowiek czekający na zawieszone
-    // logowanie (zerwane połączenie) dostaje ten sam tekst co przy błędzie
-    // konfiguracji, choć konfiguracja jest w porządku. To wada do naprawy.
-    expect(tekstZerwanegoPolaczenia).toBe(KOMUNIKAT_TIMEOUT);
-    expect(tekstGranicyCzasu).toBe(KOMUNIKAT_TIMEOUT);
-    expect(tekstZerwanegoPolaczenia).toBe(tekstGranicyCzasu);
+    // Każdy z trzech komunikatów jest niepusty ...
+    expect(tekstGranicyCzasu).toBeTruthy();
+    expect(tekstZerwanegoPolaczenia).toBeTruthy();
+    expect(tekstBleduKonfiguracji).toBeTruthy();
+
+    // ... i wszystkie trzy są różne od siebie (nie sprawdzamy dosłownego
+    // brzmienia granicy czasu i zerwanego połączenia — tylko że się różnią).
+    expect(tekstGranicyCzasu).not.toBe(tekstZerwanegoPolaczenia);
+    expect(tekstGranicyCzasu).not.toBe(tekstBleduKonfiguracji);
+    expect(tekstZerwanegoPolaczenia).not.toBe(tekstBleduKonfiguracji);
+
+    // Jedyne dosłowne brzmienie, które przypinamy: błąd konfiguracji ZOSTAJE
+    // dotychczasowym komunikatem — bez tej kotwicy noga nie odróżniłaby
+    // "naprawiono jak trzeba" od "przesunięto problem", np. gdyby ktoś dał
+    // trzy różne, ale nowe teksty wszystkim trzem scenariuszom, w tym
+    // konfiguracji, która miała zostać nietknięta.
+    expect(tekstBleduKonfiguracji).toBe(KOMUNIKAT_KONFIGURACJI_DOTYCHCZASOWY);
+    expect(tekstGranicyCzasu).not.toBe(KOMUNIKAT_KONFIGURACJI_DOTYCHCZASOWY);
+    expect(tekstZerwanegoPolaczenia).not.toBe(KOMUNIKAT_KONFIGURACJI_DOTYCHCZASOWY);
   });
 });
 
