@@ -6,6 +6,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property int $id
+ * @property string $public_id
+ * @property int $user_id
+ * @property int $edition_id
+ * @property string $type
+ * @property string $number
+ * @property array<string, mixed>|null $data_snapshot
+ * @property string|null $pdf_path
+ * @property \Illuminate\Support\Carbon|null $generated_at
+ * @property string $signature_status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read User $user
+ * @property-read Edition $edition
+ */
 class Document extends Model
 {
     protected $fillable = [
@@ -39,11 +55,17 @@ class Document extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<Edition, $this>
+     */
     public function edition(): BelongsTo
     {
         return $this->belongsTo(Edition::class);

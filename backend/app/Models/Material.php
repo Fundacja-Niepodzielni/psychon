@@ -23,11 +23,17 @@ class Material extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Lesson, $this>
+     */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
+    /**
+     * @return BelongsTo<Course, $this>
+     */
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);

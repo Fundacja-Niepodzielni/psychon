@@ -5,6 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $lesson_id
+ * @property int $position_seconds
+ * @property int $watched_seconds
+ * @property int $active_seconds
+ * @property int $open_count
+ * @property \Illuminate\Support\Carbon|null $last_activity_at
+ * @property bool $is_completed
+ * @property \Illuminate\Support\Carbon|null $completed_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read User $user
+ * @property-read Lesson $lesson
+ */
 class LessonProgress extends Model
 {
     protected $table = 'lesson_progress';
@@ -34,11 +50,17 @@ class LessonProgress extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<Lesson, $this>
+     */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);

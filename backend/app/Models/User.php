@@ -104,83 +104,131 @@ class User extends Authenticatable
         $this->refresh();
     }
 
+    /**
+     * @return BelongsTo<Edition, $this>
+     */
     public function edition(): BelongsTo
     {
         return $this->belongsTo(Edition::class);
     }
 
+    /**
+     * @return HasMany<Consent, $this>
+     */
     public function consents(): HasMany
     {
         return $this->hasMany(Consent::class);
     }
 
+    /**
+     * @return HasMany<LessonProgress, $this>
+     */
     public function lessonProgress(): HasMany
     {
         return $this->hasMany(LessonProgress::class);
     }
 
+    /**
+     * @return HasMany<TestAttempt, $this>
+     */
     public function testAttempts(): HasMany
     {
         return $this->hasMany(TestAttempt::class);
     }
 
+    /**
+     * @return HasMany<InternshipEntry, $this>
+     */
     public function internshipEntries(): HasMany
     {
         return $this->hasMany(InternshipEntry::class);
     }
 
+    /**
+     * @return HasMany<SupervisionSignup, $this>
+     */
     public function supervisionSignups(): HasMany
     {
         return $this->hasMany(SupervisionSignup::class);
     }
 
     /** Slots this user runs as a supervisor. */
+    /**
+     * @return HasMany<SupervisionSlot, $this>
+     */
     public function supervisionSlots(): HasMany
     {
         return $this->hasMany(SupervisionSlot::class, 'supervisor_id');
     }
 
     /** Supervisor assignment history of this user as a volunteer. */
+    /**
+     * @return HasMany<SupervisorAssignment, $this>
+     */
     public function supervisorAssignments(): HasMany
     {
         return $this->hasMany(SupervisorAssignment::class, 'volunteer_id');
     }
 
+    /**
+     * @return HasMany<WorkshopCompletion, $this>
+     */
     public function workshopCompletions(): HasMany
     {
         return $this->hasMany(WorkshopCompletion::class);
     }
 
+    /**
+     * @return HasMany<Certificate, $this>
+     */
     public function certificates(): HasMany
     {
         return $this->hasMany(Certificate::class);
     }
 
+    /**
+     * @return HasMany<Document, $this>
+     */
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
     }
 
+    /**
+     * @return HasOne<PsychologistProfile, $this>
+     */
     public function psychologistProfile(): HasOne
     {
         return $this->hasOne(PsychologistProfile::class);
     }
 
+    /**
+     * @return HasOne<InstructorProfile, $this>
+     */
     public function instructorProfile(): HasOne
     {
         return $this->hasOne(InstructorProfile::class);
     }
 
+    /**
+     * @return HasMany<Notification, $this>
+     */
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);
     }
 
+    /**
+     * @return HasMany<InstructorQuestion, $this>
+     */
     public function instructorQuestions(): HasMany
     {
         return $this->hasMany(InstructorQuestion::class);
     }
 
+    /**
+     * @return HasMany<DataExport, $this>
+     */
     public function dataExports(): HasMany
     {
         return $this->hasMany(DataExport::class);

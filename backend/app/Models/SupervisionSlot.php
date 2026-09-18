@@ -25,11 +25,17 @@ class SupervisionSlot extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
     }
 
+    /**
+     * @return HasMany<SupervisionSignup, $this>
+     */
     public function signups(): HasMany
     {
         return $this->hasMany(SupervisionSignup::class, 'slot_id');

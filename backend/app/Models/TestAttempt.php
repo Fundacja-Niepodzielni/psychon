@@ -28,11 +28,17 @@ class TestAttempt extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<Test, $this>
+     */
     public function test(): BelongsTo
     {
         return $this->belongsTo(Test::class);

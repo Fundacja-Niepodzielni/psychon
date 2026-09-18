@@ -1,42 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Parameter \#2 \$lesson of method App\\Console\\Commands\\DemoCompleteLessons\:\:completeLesson\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Console/Commands/DemoCompleteLessons.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$body\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/DemoPassTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Console/Commands/DemoPassTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_correct\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/DemoPassTest.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:questions\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Console/Commands/DemoPassTest.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Console/Commands/DemoPassTest.php
-
-		-
 			message: '#^Strict comparison using \!\=\= between int and false will always evaluate to true\.$#'
 			identifier: notIdentical.alwaysTrue
 			count: 1
@@ -65,60 +29,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Api/V1/Admin/CourseCatalogAdminController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\Lesson\)\: array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/Admin/LessonAdminController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$body\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_correct\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$question_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
-
-		-
-			message: '#^Anonymous function should return App\\Models\\TestQuestion but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:answers\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<string, mixed\>, Closure\(App\\Models\\TestQuestion\)\: array\<string, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/AdminTestQuestionController.php
 
 		-
 			message: '#^Cannot call method toIso8601ZuluString\(\) on string\.$#'
@@ -163,76 +73,10 @@ parameters:
 			path: app/Http/Controllers/Api/V1/CourseController.php
 
 		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\Notify\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Api/V1/H09/CourseAssignmentController.php
-
-		-
-			message: '#^Parameter \#1 \$resource of class App\\Http\\Resources\\H09\\InstructorProfileResource constructor expects App\\Models\\InstructorProfile, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
+			message: '#^Instanceof between App\\Models\\User and App\\Models\\User will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
 			count: 1
-			path: app/Http/Controllers/Api/V1/H09/MyInstructorProfileController.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\Notify\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
 			path: app/Http/Controllers/Api/V1/H11/AdminInternshipController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\InternshipEntry\)\: array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/H11/InternshipEntryController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/V1/H12/InstructorSupervisionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/H12/InstructorSupervisionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/V1/H12/InstructorSupervisionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\SupervisorAssignment\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/Api/V1/H12/InstructorSupervisionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\SupervisionSlot\)\: array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/H12/InstructorSupervisionController.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\ProgressAggregator\:\:for\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/H12/InstructorSupervisionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supervisor_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/H12/ParticipantSupervisionController.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\Notify\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Api/V1/H15/AdminProfileController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$answer\.$#'
@@ -253,18 +97,6 @@ parameters:
 			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$course\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
-
-		-
 			message: '#^Anonymous function should return App\\Models\\InstructorQuestion but returns Illuminate\\Database\\Eloquent\\Model\.$#'
 			identifier: return.type
 			count: 1
@@ -272,12 +104,6 @@ parameters:
 
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\InstructorQuestion\)\: array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\Notify\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
@@ -295,43 +121,7 @@ parameters:
 			path: app/Http/Controllers/Api/V1/ProfileController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/V1/TestController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$questions\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/TestController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/TestController.php
-
-		-
 			message: '#^Parameter \#1 \$snapshot of static method App\\Support\\H10\\TestGrader\:\:grade\(\) expects list\<array\{id\: int, answers\: list\<array\{id\: int, is_correct\: bool\}\>\}\>, array\{string\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/TestController.php
-
-		-
-			message: '#^Parameter \#1 \$test of static method App\\Support\\H10\\TestGrader\:\:attemptsLimit\(\) expects App\\Models\\Test, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/TestController.php
-
-		-
-			message: '#^Parameter \#1 \$test of static method App\\Support\\H10\\TestGrader\:\:passThreshold\(\) expects App\\Models\\Test, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/TestController.php
-
-		-
-			message: '#^Parameter \#2 \$course of method App\\Http\\Controllers\\Api\\V1\\TestController\:\:assertUnlocked\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Api/V1/TestController.php
@@ -341,18 +131,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/Api/V1/TestController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/VerifyController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$starts_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/VerifyController.php
 
 		-
 			message: '#^Cannot call method toIso8601ZuluString\(\) on string\.$#'
@@ -385,24 +163,6 @@ parameters:
 			path: app/Http/Middleware/EnsureAccessActive.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$answers\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/H10/SubmitAttemptRequest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/H10/SubmitAttemptRequest.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, type\: string, number\: string\}, Closure\(App\\Models\\Document\)\: array\{id\: int, type\: string, number\: string\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/AdminUserCardResource.php
-
-		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -413,24 +173,6 @@ parameters:
 			identifier: method.nonObject
 			count: 2
 			path: app/Http/Resources/AdminUserListResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/AuditLogEntryResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/AuditLogEntryResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Resources/AuditLogEntryResource.php
 
 		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
@@ -445,46 +187,10 @@ parameters:
 			path: app/Http/Resources/AuditLogEntryResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/CourseDetailResource.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:fullName\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Resources/CourseDetailResource.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: App\\Http\\Resources\\LessonSummaryResource, Closure\(App\\Models\\Lesson\)\: App\\Http\\Resources\\LessonSummaryResource given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/CourseDetailResource.php
-
-		-
-			message: '#^Parameter \#1 \$lessons of method App\\Http\\Resources\\CourseDetailResource\:\:materials\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Lesson\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/CourseDetailResource.php
-
-		-
-			message: '#^Parameter \#2 \$lessons of method App\\Http\\Resources\\CourseDetailResource\:\:completedLessonIds\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Lesson\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Resources/CourseDetailResource.php
-
-		-
 			message: '#^Cannot call method toIso8601ZuluString\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 2
 			path: app/Http/Resources/DataExportResource.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Resources/EditionResource.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\EmailResource\:\:\$body_html\.$#'
@@ -535,52 +241,10 @@ parameters:
 			path: app/Http/Resources/H03/ApplicationResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/H09/CourseAssignmentResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/H09/CourseAssignmentResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/H09/CourseAssignmentResource.php
-
-		-
 			message: '#^Cannot call method toIso8601ZuluString\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 2
 			path: app/Http/Resources/H09/CourseAssignmentResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/H09/InstructorProfileResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Resources/H09/InstructorProfileResource.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/H09/InstructorProfileResource.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:fullName\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Resources/H09/InstructorProfileResource.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\H11\\AdminInternshipEntryResource\:\:\$consultations_count\.$#'
@@ -1173,19 +837,7 @@ parameters:
 		-
 			message: '#^Cannot call method toIso8601ZuluString\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 4
-			path: app/Http/Resources/ProfileResource.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Resources/ProfileResource.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{type\: string, document_version\: string\|null, granted_at\: mixed, withdrawn_at\: mixed, status\: ''granted''\|''withdrawn''\}, Closure\(App\\Models\\Consent\)\: array\{type\: string, document_version\: string\|null, granted_at\: mixed, withdrawn_at\: mixed, status\: ''granted''\|''withdrawn''\} given\.$#'
-			identifier: argument.type
-			count: 1
+			count: 2
 			path: app/Http/Resources/ProfileResource.php
 
 		-
@@ -1225,153 +877,15 @@ parameters:
 			path: app/Http/Resources/UserResource.php
 
 		-
-			message: '#^Cannot access property \$year on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Jobs/GenerateCertificate.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>year" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Jobs/GenerateCertificate.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_expires_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$address_city\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$address_street\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$address_zip\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$consents\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$first_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$last_name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pesel\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$phone\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_group\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$program_completed_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:documents\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:internshipEntries\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:lessonProgress\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
 			message: '#^Cannot call method toIso8601ZuluString\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 6
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\Notify\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\ProgressAggregator\:\:for\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/GenerateDataExport.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
+			count: 2
 			path: app/Jobs/GenerateDataExport.php
 
 		-
@@ -1379,12 +893,6 @@ parameters:
 			identifier: method.nonObject
 			count: 1
 			path: app/Models/DataExport.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:each\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\DataExport\)\: void given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/User.php
 
 		-
 			message: '#^Strict comparison using \!\=\= between ''created_at''\|''email''\|''last_name''\|''role'' and ''id'' will always evaluate to true\.$#'
@@ -1397,96 +905,6 @@ parameters:
 			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: app/Queries/CourseCatalogQuery.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/H03/ApplicationAcceptor.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$seats_limit\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/H03/ApplicationAcceptor.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:users\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/H03/ApplicationAcceptor.php
-
-		-
-			message: '#^Parameter \#1 \$user of static method App\\Support\\Notify\:\:send\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/H03/ApplicationRejector.php
-
-		-
-			message: '#^Parameter \#1 \$user of method App\\Services\\H07\\ReliabilityPresenter\:\:instructorSummary\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/H07/InstructorReliabilityQuery.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$duration_seconds\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/H07/ReliabilityDetailQuery.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/H07/ReliabilityDetailQuery.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/H07/ReliabilityDetailQuery.php
-
-		-
-			message: '#^Cannot call method toIso8601ZuluString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/H07/ReliabilityDetailQuery.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/H07/ReliabilityDetailQuery.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{id\: int, title\: mixed, active_seconds\: int\<0, max\>, duration_seconds\: int, open_count\: int\<0, max\>, last_activity_at\: mixed, below_threshold\: bool\}, Closure\(App\\Models\\LessonProgress\)\: array\{id\: int, title\: mixed, active_seconds\: int\<0, max\>, duration_seconds\: int, open_count\: int\<0, max\>, last_activity_at\: mixed, below_threshold\: bool\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/H07/ReliabilityDetailQuery.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:sortBy\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Services/H07/ReliabilityDetailQuery.php
-
-		-
-			message: '#^Anonymous function should return App\\Models\\Lesson but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/H08/LessonWriter.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\:\:withTrashed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/H08/LessonWriter.php
-
-		-
-			message: '#^Parameter \#4 \$lesson of static method App\\Services\\H08\\LessonWriter\:\:audit\(\) expects App\\Models\\Lesson, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/H08/LessonWriter.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>slug" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -1513,18 +931,6 @@ parameters:
 			path: app/Services/H08/SequenceReorderer.php
 
 		-
-			message: '#^Method App\\Services\\H09\\AssignmentResolver\:\:courseInstructor\(\) should return App\\Models\\User\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/H09/AssignmentResolver.php
-
-		-
-			message: '#^Method App\\Services\\H09\\AssignmentResolver\:\:forLesson\(\) should return App\\Models\\User\|null but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/H09/AssignmentResolver.php
-
-		-
 			message: '#^Method App\\Services\\H09\\InstructorCourses\:\:forMany\(\) should return Illuminate\\Support\\Collection\<int, Illuminate\\Support\\Collection\<int, App\\Models\\Course\>\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\>\.$#'
 			identifier: return.type
 			count: 1
@@ -1537,98 +943,8 @@ parameters:
 			path: app/Services/H12/SupervisionTiming.php
 
 		-
-			message: '#^Cannot access property \$year on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/H14/DocumentIssuer.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Services/H14/DocumentIssuer.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:each\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\Certificate\)\: void given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/H18/UserAnonymizer.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:each\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: mixed, Closure\(App\\Models\\DataExport\)\: void given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/H18/UserAnonymizer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/CourseAccess.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$answers\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/H10/TestGrader.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$body\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/H10/TestGrader.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Support/H10/TestGrader.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Support/H10/TestGrader.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$duration_seconds\.$#'
-			identifier: property.notFound
-			count: 2
-			path: database/seeders/DemoSeeder.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: database/seeders/DemoSeeder.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:answers\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: database/seeders/DemoSeeder.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:questions\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: database/seeders/DemoSeeder.php
-
-		-
 			message: '#^Cannot call method subDays\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 2
 			path: database/seeders/DemoSeeder.php
-
-		-
-			message: '#^Cannot call method getTimestamp\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: routes/api/h06.php
-
-		-
-			message: '#^Cannot call method utc\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: routes/api/h06.php
 

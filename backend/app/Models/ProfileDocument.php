@@ -21,6 +21,9 @@ class ProfileDocument extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<PsychologistProfile, $this>
+     */
     public function profile(): BelongsTo
     {
         return $this->belongsTo(PsychologistProfile::class, 'profile_id');

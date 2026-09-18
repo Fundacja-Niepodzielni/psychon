@@ -53,16 +53,25 @@ class Application extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Edition, $this>
+     */
     public function edition(): BelongsTo
     {
         return $this->belongsTo(Edition::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function decidedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

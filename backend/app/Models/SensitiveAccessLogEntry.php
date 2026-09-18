@@ -23,6 +23,9 @@ class SensitiveAccessLogEntry extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function viewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'viewer_id');

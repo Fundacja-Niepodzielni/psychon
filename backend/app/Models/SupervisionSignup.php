@@ -24,16 +24,25 @@ class SupervisionSignup extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<SupervisionSlot, $this>
+     */
     public function slot(): BelongsTo
     {
         return $this->belongsTo(SupervisionSlot::class, 'slot_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function attendanceMarkedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'attendance_marked_by');
