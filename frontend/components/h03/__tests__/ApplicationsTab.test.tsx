@@ -201,6 +201,78 @@ describe("ApplicationsTab — rola wnioskowana", () => {
   });
 });
 
+describe("ApplicationsTab — zamykanie klawiszem Escape", () => {
+  it("Escape zamyka okno akceptacji, bez wysłania żądania", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationsTab />);
+
+    await user.click(await screen.findByRole("button", { name: "Akceptuj" }));
+    await screen.findByRole("dialog");
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it("Escape zamyka okno odrzucenia, bez wysłania żądania", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationsTab />);
+
+    await user.click(await screen.findByRole("button", { name: "Odrzuć" }));
+    await screen.findByRole("dialog");
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(api).not.toHaveBeenCalled();
+  });
+});
+
+describe("ApplicationsTab — klik w tło: niespójność między oknem ręcznym a wspólnym klockiem", () => {
+  it("okno szczegółów (ręczne, świadomy wyjątek): klik w tło zamyka — 1/1", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationsTab />);
+
+    await user.click(await screen.findByRole("button", { name: /Marta Testowa/ }));
+    const dialog = await screen.findByRole("dialog");
+
+    // `role="dialog"` jest tu na samym tle (kontener z `onClick={() => setSelected(null)}`),
+    // więc klik na węzeł zwrócony przez `getByRole("dialog")` trafia w tło.
+    await user.click(dialog);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("okno akceptacji (wspólny klocek ConfirmDialog): klik w tło NIE zamyka — 0/1, przeciwne zachowanie niż okno szczegółów", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationsTab />);
+
+    await user.click(await screen.findByRole("button", { name: "Akceptuj" }));
+    const dialog = await screen.findByRole("dialog");
+    const backdrop = dialog.parentElement as HTMLElement;
+
+    await user.click(backdrop);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it("okno odrzucenia (wspólny klocek ConfirmDialog): klik w tło NIE zamyka — 0/1, przeciwne zachowanie niż okno szczegółów", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationsTab />);
+
+    await user.click(await screen.findByRole("button", { name: "Odrzuć" }));
+    const dialog = await screen.findByRole("dialog");
+    const backdrop = dialog.parentElement as HTMLElement;
+
+    await user.click(backdrop);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(api).not.toHaveBeenCalled();
+  });
+});
+
 describe("ApplicationsTab — lista", () => {
   it("pokazuje wartości ze zgłoszenia, nie same nagłówki tabeli", async () => {
     render(<ApplicationsTab />);

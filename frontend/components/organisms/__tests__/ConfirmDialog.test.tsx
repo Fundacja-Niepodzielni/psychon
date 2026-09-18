@@ -34,6 +34,25 @@ describe("ConfirmDialog", () => {
     expect(dialog).toHaveFocus();
   });
 
+  it("zapowiedź dla czytnika ekranu: aria-labelledby wskazuje na istniejący węzeł z tytułem okna", () => {
+    render(
+      <ConfirmDialog
+        open
+        title="Usuń wpis"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const labelledBy = dialog.getAttribute("aria-labelledby");
+
+    expect(labelledBy).toEqual(expect.any(String));
+    const tytul = document.getElementById(labelledBy as string);
+    expect(tytul).not.toBeNull();
+    expect(tytul).toHaveTextContent("Usuń wpis");
+  });
+
   it("Escape zamyka okno (wywołuje onCancel)", async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();
@@ -174,6 +193,24 @@ describe("ConfirmDialog", () => {
     await user.click(container.firstElementChild as HTMLElement);
 
     expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it("klik w tło w spoczynku NIE wywołuje zamknięcia — zachowanie zamierzone: chroni wpisany powód odrzucenia przed utratą przy przypadkowym kliknięciu obok", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const { container } = render(
+      <ConfirmDialog
+        open
+        title="Usuń wpis"
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    await user.click(container.firstElementChild as HTMLElement);
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("klik w tło w trakcie zapisu: fokus zostaje wewnątrz okna", async () => {
@@ -358,6 +395,46 @@ describe("ConfirmDialog", () => {
     fireEvent(description, insideEvent);
     expect(insideEvent.defaultPrevented).toBe(false);
     expect(dialog).toBeInTheDocument();
+  });
+
+  it("opis podany: aria-describedby wskazuje na istniejący węzeł z treścią opisu", () => {
+    render(
+      <ConfirmDialog
+        open
+        title="Usuń wpis"
+        description="Tej operacji nie można cofnąć."
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const describedBy = dialog.getAttribute("aria-describedby");
+
+    expect(describedBy).toEqual(expect.any(String));
+    const opis = document.getElementById(describedBy as string);
+    expect(opis).not.toBeNull();
+    expect(opis).toHaveTextContent("Tej operacji nie można cofnąć.");
+  });
+
+  it("opis nie podany: brak wiszącego aria-describedby (nie wskazuje na nieistniejący element)", () => {
+    render(
+      <ConfirmDialog title="Usuń wpis" open onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+
+    expect(dialog).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("opis pusty (\"\"): brak wiszącego aria-describedby (nie wskazuje na nieistniejący element)", () => {
+    render(
+      <ConfirmDialog title="Usuń wpis" description="" open onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+
+    expect(dialog).not.toHaveAttribute("aria-describedby");
   });
 
   it("axe: 0 naruszeń na wyrenderowanym oknie", async () => {
