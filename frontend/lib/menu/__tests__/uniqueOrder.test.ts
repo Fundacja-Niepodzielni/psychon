@@ -69,7 +69,7 @@ describe("rejestry menu — sekcje", () => {
     expect(grupy.map((g) => [g.label ?? "", g.entries.map((e) => e.label)])).toEqual([
       ["", ["Pulpit"]],
       ["Nauka", ["Kursy", "Czas nauki"]],
-      ["Osoby", ["Uczestniczki", "Profile psychologa"]],
+      ["Osoby", ["Uczestniczki", "Certyfikaty", "Profile psychologa"]],
       ["Praktyka", ["Akceptacja stażu", "Superwizje"]],
       ["Obsługa", ["Sprawy", "Skrzynka e-maili"]],
       ["Raporty", ["Raport", "Dziennik działań"]],
@@ -88,11 +88,11 @@ describe("rejestry menu — sekcje", () => {
     expect(student.flatMap((g) => g.entries)).toHaveLength(8);
   });
 
-  it("prowadzący: trzy wpisy, jedna lista bez nagłówków", () => {
+  it("prowadzący: cztery wpisy, jedna lista bez nagłówków", () => {
     const grupy = groupMenu(instructorMenu, instructorMenuSections);
 
     expect(grupy).toHaveLength(1);
     expect(grupy[0].label).toBeUndefined();
-    expect(grupy[0].entries.map((e) => e.label)).toEqual(["Start", "Moja grupa", "Pytania"]);
+    expect(grupy[0].entries.map((e) => e.label)).toEqual(["Start", "Moja grupa", "Wątek grupowy", "Pytania"]);
   });
 });
