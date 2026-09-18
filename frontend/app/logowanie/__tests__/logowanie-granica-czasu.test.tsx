@@ -69,7 +69,14 @@ vi.mock("@/lib/api", async (importOriginal) => {
 const LoginPage = (await import("@/app/logowanie/page")).default;
 
 const TEKST_PRZEKIEROWUJE = "Przekierowuję do logowania…";
-const TEKST_AWARII = /logowanie jest chwilowo niedostępne|nie udało się/i;
+
+// Trzy sytuacje, trzy osobne teksty (naprawa dzisiejsza) — jeden wspólny
+// wzorzec pasujący do kilku z nich naraz przepuściłby podmianę jednego
+// komunikatu na inny bez żadnego ostrzeżenia, czyli dokładnie tę wadę, którą
+// ta naprawa usuwa. Dlatego każda noga niżej sprawdza DOSŁOWNY tekst
+// właściwy dla SWOJEJ sytuacji, nie żaden z nich "którykolwiek".
+const TEKST_GRANICA_CZASU = "Logowanie nie odpowiedziało w wyznaczonym czasie. Spróbuj ponownie.";
+const TEKST_BLEDU_KONFIGURACJI = "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.";
 
 beforeEach(() => {
   getSession.mockReset();
@@ -109,13 +116,16 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
     // widać, że wynik zapadł dużo wcześniej i wcale nie od granicy zależy.
     await przesun(0);
     expect(screen.queryByText(TEKST_PRZEKIEROWUJE)).not.toBeInTheDocument();
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    // Odrzucenie generyczne (nie `TypeError`) trafia w `catch` efektu i ląduje
+    // w gałęzi `ERROR_MESSAGES.Configuration` — to NIE jest granica czasu, więc
+    // sprawdzamy dosłownie ten tekst, nie "cokolwiek awaryjnego".
+    expect(screen.getByText(TEKST_BLEDU_KONFIGURACJI)).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeInTheDocument();
 
     // Kontrola stabilności: dalsze upłynięcie granicy nie cofa ani nie
     // dubluje komunikatu (zegar-siatka trafia na już rozstrzygnięty stan).
     await przesun(GRANICA_MS);
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    expect(screen.getByText(TEKST_BLEDU_KONFIGURACJI)).toBeInTheDocument();
   });
 
   it("B: signIn(\"keycloak\", …) odrzucone (start logowania zawodzi) — komunikat pojawia się NATYCHMIAST, tak samo jak w A — nie zależy od granicy 8 s", async () => {
@@ -127,11 +137,13 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
 
     await przesun(0);
     expect(screen.queryByText(TEKST_PRZEKIEROWUJE)).not.toBeInTheDocument();
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    // Jak w A: odrzucenie generyczne (nie sieciowe) ląduje w komunikacie
+    // konfiguracji, nie w granicy czasu.
+    expect(screen.getByText(TEKST_BLEDU_KONFIGURACJI)).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeInTheDocument();
 
     await przesun(GRANICA_MS);
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    expect(screen.getByText(TEKST_BLEDU_KONFIGURACJI)).toBeInTheDocument();
   });
 
   it("G (kontrola liczbowa — druga przyczyna, ta sama granica): signIn() WISI (nigdy się nie rozstrzyga) — tuż PRZED granicą nadal 'przekierowuję', PO granicy komunikat (to jest prawdziwe wzmocnienie A/B: ten sam mechanizm co D, ale dla ścieżki signIn(), nie getSession())", async () => {
@@ -148,11 +160,13 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
 
     await przesun(GRANICA_MS - 1_000);
     expect(screen.getByText(TEKST_PRZEKIEROWUJE)).toBeInTheDocument();
-    expect(screen.queryByText(TEKST_AWARII)).not.toBeInTheDocument();
+    // Tuż przed granicą zegar jeszcze nie strzelił — komunikat granicy czasu
+    // (jedyny, jaki zegar w ogóle potrafi wystawić) nie ma prawa się pojawić.
+    expect(screen.queryByText(TEKST_GRANICA_CZASU)).not.toBeInTheDocument();
 
     await przesun(1_000);
     expect(screen.queryByText(TEKST_PRZEKIEROWUJE)).not.toBeInTheDocument();
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    expect(screen.getByText(TEKST_GRANICA_CZASU)).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeInTheDocument();
   });
 
@@ -167,14 +181,16 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
     await przesun(0);
 
     // Zero przesunięcia zegara PO rozstrzygnięciu: to jest różnica wobec
-    // A/B/D — tu komunikat nie czeka na żadną granicę czasu, bo nic tu nie "wisi".
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    // A/B/D — tu komunikat nie czeka na żadną granicę czasu, bo nic tu nie
+    // "wisi". `?error=Configuration` trafia wprost w `ERROR_MESSAGES.Configuration`,
+    // czyli dosłownie ten sam tekst co dziś, sprawdzany dosłownie.
+    expect(screen.getByText(TEKST_BLEDU_KONFIGURACJI)).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeInTheDocument();
     expect(screen.queryByText(TEKST_PRZEKIEROWUJE)).not.toBeInTheDocument();
     expect(signIn).not.toHaveBeenCalled();
 
     await przesun(GRANICA_MS);
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    expect(screen.getByText(TEKST_BLEDU_KONFIGURACJI)).toBeInTheDocument();
     expect(signIn).not.toHaveBeenCalled();
   });
 
@@ -185,11 +201,11 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
 
     await przesun(GRANICA_MS - 1_000);
     expect(screen.getByText(TEKST_PRZEKIEROWUJE)).toBeInTheDocument();
-    expect(screen.queryByText(TEKST_AWARII)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEKST_GRANICA_CZASU)).not.toBeInTheDocument();
 
     await przesun(1_000);
     expect(screen.queryByText(TEKST_PRZEKIEROWUJE)).not.toBeInTheDocument();
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    expect(screen.getByText(TEKST_GRANICA_CZASU)).toBeInTheDocument();
   });
 
   it("E (ścieżka zdrowa — dziura z odbioru: zegar strzela też po sukcesie): signIn() KOŃCZY SIĘ POWODZENIEM — po przekroczeniu granicy czasu ekran NIE MA PRAWA pokazać fałszywego komunikatu awaryjnego", async () => {
@@ -212,18 +228,17 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
 
     // Tuż przed granicą: ścieżka zdrowa, nic nie ma prawa się zmienić.
     await przesun(GRANICA_MS - 1_000);
-    expect(screen.queryByText(TEKST_AWARII)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEKST_GRANICA_CZASU)).not.toBeInTheDocument();
 
     // Tuż ZA granicą i kawałek dalej (zapas, nie o 1 ms): na ścieżce zdrowej
-    // zegar bezpieczeństwa NIE MA PRAWA pokazać komunikatu awaryjnego, bo nic
-    // tu nie zawiodło — start logowania się powiódł. Ta noga jest czerwona na
-    // dzisiejszym kodzie z naprawą 63d76d7: tamta naprawa czyści zegar tylko
-    // na ścieżkach błędu (401 z `/me`, błąd inny niż 401, `catch` całego
-    // efektu) — NIE czyści go po udanym `await signIn(...)`, więc po 8 s
-    // pokazuje TEN SAM fałszywy komunikat "Logowanie jest chwilowo
-    // niedostępne" na ścieżce, która akurat zadziałała.
+    // zegar bezpieczeństwa NIE MA PRAWA pokazać komunikatu granicy czasu, bo
+    // nic tu nie zawiodło — start logowania się powiódł, a `clearTimeout` po
+    // udanym `signIn()` miał zdjąć dokładnie ten zegar. Sprawdzamy dosłownie
+    // TEKST_GRANICA_CZASU (nie "cokolwiek awaryjnego"), bo to jest jedyny
+    // tekst, jaki ten konkretny zegar potrafi wystawić — regresja tej naprawy
+    // objawiałaby się właśnie nim, nie komunikatem konfiguracji.
     await przesun(2_000);
-    expect(screen.queryByText(TEKST_AWARII)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEKST_GRANICA_CZASU)).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -259,14 +274,15 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
     // pojawi się już tutaj. Prawdziwa, niezależna granica logowania (8000)
     // NIE MA PRAWA zareagować na podstawienie stałej innego ekranu.
     await przesun(PODSTAWIONA_MS + 500);
-    expect(screen.queryByText(TEKST_AWARII)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEKST_GRANICA_CZASU)).not.toBeInTheDocument();
 
     // Krok 2 — kontrola, że to nie jest "żadnego zegara tu w ogóle nie ma":
     // po dotarciu do prawdziwej granicy (8000 ms) komunikat MUSI się pojawić.
     // Bez tego kroku krok 1 przechodziłby też wtedy, gdy ekran nie ma żadnego
-    // zegara — czyli niczego by nie pilnował.
+    // zegara — czyli niczego by nie pilnował. To jedyny tekst, jaki ten zegar
+    // wystawia — sprawdzamy go dosłownie, nie "cokolwiek awaryjnego".
     await przesun(GRANICA_MS - (PODSTAWIONA_MS + 500) + 500);
-    expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
+    expect(screen.getByText(TEKST_GRANICA_CZASU)).toBeInTheDocument();
 
     vi.doUnmock("@/lib/api");
     vi.resetModules();
