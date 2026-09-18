@@ -31,7 +31,7 @@ import { render, screen, waitFor } from "@testing-library/react";
  * wersja tego przyrządu) renderowało samo dziecko z pominięciem rodzica i
  * gubiło punkt orientacyjny, który naprawdę jest w DOM.
  *
- * Dwie grupy tras są świadomie WYPISANE Z NAZWY jako nieobjęte (a nie po
+ * Trzy grupy tras są świadomie WYPISANE Z NAZWY jako nieobjęte (a nie po
  * cichu pominięte) — dla każdej podana jest przyczyna strukturalna, wykryta
  * z kodu, a nie z uznania:
  *  - trasy z segmentem dynamicznym (`[id]`, `[slug]`) — przyrząd nie ma skąd
@@ -60,36 +60,49 @@ import { render, screen, waitFor } from "@testing-library/react";
  * nie ma roli „main", zostaje odrzucony; `<main>` bez właściwego `id`
  * (którego skip-link i tak nie trafi) — też.
  *
- * ATRAPA `api()` I NAGŁÓWEK GŁÓWNY — ZMIERZONE, NIE ZAŁOŻONE. Sześć tras
- * mierzonych (`/panel/pulpit`, `/panel/profil`, `/panel/certyfikat`,
- * `/panel/staz`, `/panel/superwizja`, `/panel/profil-psychologa`) renderuje
- * `h1` dopiero PO udanym pobraniu danych własnych — a atrapa generyczna
- * (`beforeEach` niżej) domyślnie ODRZUCA każde wywołanie `api()`, więc te
- * komponenty utykają w gałęzi błędu/ładowania bez `h1` NIEZALEŻNIE od tego,
- * czy w łańcuchu jest `RequireRole`, czy nie (`/panel/pulpit` i
- * `/panel/profil` nie mają żadnej bramki roli, a i tak łapią ten sam brak
- * `h1`). Samo doczekanie się rozstrzygnięcia (`await`/`waitFor`) NIE
- * naprawia tego — zmierzone wprost: przy atrapie odrzucającej `GET /me`,
- * `RequireRole` po rozstrzygnięciu obietnicy wchodzi w stan „error” (karta
- * „Nie udało się połączyć z serwerem”), a nie w stan „allowed”, więc `h1`
- * nie pojawia się NIGDY, nie tylko w pierwszym, synchronicznym renderze.
+ * ATRAPA `api()` I NAGŁÓWEK GŁÓWNY — ZMIERZONE OSOBNO DLA KAŻDEJ Z SZEŚCIU
+ * TRAS, NIE ZAŁOŻONE ZBIORCZO. Sześć tras mierzonych ma inny kod źródłowy
+ * pod spodem, więc mają DWA różne zachowania `h1` w stanie ładowania i
+ * błędu — zmierzone wprost (osobny render każdej trasy z obietnicą `api()`
+ * zawieszoną na stałe = stan ładowania, i osobno z obietnicą odrzuconą =
+ * stan błędu, DOM czytany zaraz po, bez żadnej podmiany atrapy):
+ *  - `/panel/staz` (`InternshipJournal`) i `/panel/superwizja`
+ *    (`SupervisionSlots`) renderują `h1` BEZWARUNKOWO, nad rozgałęzieniem
+ *    ładowania/błędu w kodzie komponentu — `h1` jest w DOM w OBU stanach,
+ *    zanim jakiekolwiek dane własne trasy się rozstrzygną;
+ *  - `/panel/pulpit` (`PulpitDashboard`), `/panel/profil`,
+ *    `/panel/certyfikat` i `/panel/profil-psychologa` renderują `h1`
+ *    DOPIERO w gałęzi sukcesu — w stanie ładowania i błędu `h1` nie ma w
+ *    DOM wcale, w żadnym z tych dwóch stanów, na żadnej z tych czterech tras.
  *
- * Jedyna naprawa, która faktycznie działa (zmierzona `REALISTYCZNE_LADUNKI`
- * niżej): podmiana atrapy na sukces o kształcie, jakiego dana trasa
- * naprawdę oczekuje (`GET /me` z dopuszczoną rolą, `GET /courses`, `GET
- * /certificate/conditions`, `GET /psychologist-profile` — kształty z
- * `lib/pulpit/data.ts`, `lib/courses.ts`, kontraktu H13/H15). Po tej
- * podmianie i doczekaniu się DOM-u (`waitFor` w teście `h1` niżej)
- * WSZYSTKICH SZEŚĆ tras pokazuje dokładnie jeden `h1` — zmierzone
- * `npx vitest run __tests__/punkty-orientacyjne-tresc.test.tsx`, 2026-09-18:
- * zero czerwieni `h1` na tych sześciu trasach. Nie ma tu więc podziału na
- * „wadę ekranu” kontra „artefakt narzędzia" do utrzymania czerwono — cała
- * szóstka była artefaktem DOBORU ŁADUNKU atrapy w tym pliku, nie wadą
- * żadnego z sześciu ekranów. (Osobna, NIEMIERZONA tu obserwacja: w stanie
- * ładowania/błędu te same cztery komponenty poza `PulpitDashboard` i
- * `/panel/profil` też nie mają `h1` — to własność stanu przejściowego
- * całej rodziny ekranów panelu, a nie coś, co ten test — sprawdzający stan
- * PO udanym pobraniu — mierzy albo rozstrzyga.)
+ * Przy atrapie generycznej z `beforeEach` (odrzuca KAŻDE wywołanie `api()`)
+ * wszystkie sześć tras utykają w stanie błędu — dla dwóch pierwszych `h1`
+ * i tak jest w DOM (bezwarunkowy), a dla pozostałych czterech nie ma go
+ * wcale, NIEZALEŻNIE od tego, czy w łańcuchu jest `RequireRole` (`/panel/
+ * pulpit` i `/panel/profil` nie mają żadnej bramki roli, a łapią ten sam
+ * brak `h1` co `/panel/certyfikat` i `/panel/profil-psychologa`, które ją
+ * mają). Samo doczekanie się rozstrzygnięcia (`await`/`waitFor`) NIE
+ * naprawia braku `h1` na tych czterech — zmierzone wprost: przy atrapie
+ * odrzucającej `GET /me`, `RequireRole` po rozstrzygnięciu obietnicy
+ * wchodzi w stan „error” (karta „Nie udało się połączyć z serwerem”), a nie
+ * w stan „allowed”, więc `h1` się tam nie pojawia NIGDY, nie tylko w
+ * pierwszym, synchronicznym renderze; `/panel/pulpit` i `/panel/profil` mają
+ * ten sam skutek bez żadnego `RequireRole` — same trzymają `h1` pod
+ * warunkiem sukcesu własnego pobrania.
+ *
+ * Jedyna naprawa, która faktycznie usuwa czerwień `h1` (zmierzona
+ * `REALISTYCZNE_LADUNKI` niżej — patrz też zastrzeżenie o zakresie dwóch z
+ * sześciu wpisów w komentarzu przy tej stałej): podmiana atrapy na sukces
+ * o kształcie, jakiego dana trasa naprawdę oczekuje. Po tej podmianie i
+ * doczekaniu się DOM-u (`waitFor` w teście `h1` niżej) WSZYSTKICH SZEŚĆ
+ * tras pokazuje dokładnie jeden `h1` — zmierzone `npx vitest run
+ * __tests__/punkty-orientacyjne-tresc.test.tsx`, 2026-09-18: zero czerwieni
+ * `h1` na tych sześciu trasach PO udanym pobraniu. Ten test sprawdza
+ * WYŁĄCZNIE stan po sukcesie — stan ładowania i błędu (opisany wyżej, ze
+ * zmierzonym podziałem 2/4) jest osobną, realną właściwością tych
+ * komponentów, którą ten test świadomie NIE mierzy i o którą nie rozstrzyga
+ * (nie jest ukryty — jest tu opisany, ale nie ma dla niego osobnej asercji
+ * w tym pliku).
  */
 
 const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "app");
@@ -257,15 +270,30 @@ vi.mock("@/lib/api", async (importOriginal) => {
 const { ApiError } = await import("@/lib/api");
 
 beforeEach(() => {
-  // Atrapy generyczne: trzymają KAŻDĄ objętą trasę w spokojnym,
-  // rozstrzygniętym stanie błędu ogólnego (bez zawieszonych obietnic i bez
-  // prawdziwej nawigacji `window.location`), bo przyrząd nie zna kształtu
-  // odpowiedzi, jakiego oczekuje każda z tras z osobna — to jest dokładnie
-  // granica tego zlecenia (kodu komponentów i logiki tras nie ruszamy).
-  // Obecność punktu orientacyjnego na tych trasach NIE zależy od tego, czy
-  // dane jeszcze się wczytują, czy już przyszły — opakowanie szablonu jest
-  // takie samo w obu stanach — więc test nie czeka na żadne rozstrzygnięcie
-  // i czyta DOM z pierwszego, synchronicznego renderu.
+  // Atrapa generyczna domyślna: rozstrzygnięty stan błędu ogólnego (bez
+  // zawieszonych obietnic i bez prawdziwej nawigacji `window.location`).
+  // Rządzi testem punktu orientacyjnego (`main#tresc`) na WSZYSTKICH 21
+  // trasach bez wyjątku — zmierzone: obecność `main#tresc` nie zależy od
+  // wyniku `api()` na żadnej z nich (siedzi w layoucie, nie w komponencie
+  // strony, patrz komentarz na górze pliku o łańcuchu warstw). Rządzi też
+  // testem `h1` na 15 z 21 tras — zmierzone: te 15 przechodzi test `h1` przy
+  // tej właśnie atrapie odrzucającej, więc ich `h1` też nie zależy od
+  // sukcesu `api()`. Dla pozostałych sześciu tras (`REALISTYCZNE_LADUNKI`
+  // niżej, w teście `h1` podmieniane PRZED renderem) ta atrapa domyślna NIE
+  // wystarcza — zmierzone osobno w komentarzu na górze pliku, z podziałem
+  // na dwie trasy z `h1` bezwarunkowym i cztery z `h1` zależnym od sukcesu.
+  // Test czyta DOM przez `waitFor` (nie z pierwszego, synchronicznego
+  // renderu) w teście `h1` — patrz uzasadnienie przy `queryAllByRole` niżej
+  // w pliku. Test `main#tresc` zostaje synchroniczny: na 10 tras z layoutem
+  // w łańcuchu (`/panel/...`) `main#tresc` pochodzi z JSX layoutu, poza
+  // jakimkolwiek `if` warunkowanym stanem — sprawdzone czytaniem źródła
+  // każdego layoutu w łańcuchu (to samo źródło, na którym stoi `bramkaRoli`
+  // wyżej). Na pozostałych 11 tras (bez layoutu, `importLayouty` puste)
+  // `main#tresc` pochodzi wprost ze strony i albo jest w DOM od razu, albo
+  // wcale — 9 z tych 11 to dziś znane czerwienie main-landmarku (brak
+  // `id="tresc"` w źródle strony, poza zakresem tej naprawy), którym
+  // czekanie nie pomoże. Ten test NIE był osobno mierzony przez porównanie
+  // „zaraz po renderze” z „po `waitFor`” dla wszystkich 21 tras.
   getSession.mockReset().mockResolvedValue(null);
   signIn.mockReset();
   push.mockReset();
@@ -281,14 +309,27 @@ beforeEach(() => {
 });
 
 /**
- * Realistyczne odpowiedzi `api()` dla tras, których `h1` renderuje się
- * dopiero PO udanym pobraniu — zmierzone pojedynczo (patrz komentarz u
- * góry pliku). Klucz: `url` z `wykryjTrasy()`. Każda funkcja podmienia
- * `apiMock` na implementację świadomą ścieżki, z tym samym odrzuceniem
- * generycznym dla ścieżek spoza kontraktu danej trasy (żeby efekty
- * uboczne inne niż te opisane w kontrakcie — np. `GET /supervision/slots`
- * na pulpicie — nadal kończyły się zwykłym, spokojnym błędem, tak jak
- * przed podmianą).
+ * Realistyczne odpowiedzi `api()` — zmierzone pojedynczo dla każdej z
+ * sześciu tras (patrz komentarz u góry pliku), NIE ten sam powód dla
+ * wszystkich sześciu. Klucz: `url` z `wykryjTrasy()`. Każda funkcja
+ * podmienia `apiMock` na implementację świadomą ścieżki, z tym samym
+ * odrzuceniem generycznym dla ścieżek spoza kontraktu danej trasy (żeby
+ * efekty uboczne inne niż te opisane w kontrakcie — np. `GET
+ * /supervision/slots` na pulpicie — nadal kończyły się zwykłym, spokojnym
+ * błędem, tak jak przed podmianą).
+ *
+ * ZASTRZEŻENIE O ZAKRESIE (`/panel/staz`, `/panel/superwizja`): `h1` w tych
+ * dwóch komponentach jest bezwarunkowy (patrz komentarz u góry pliku) —
+ * nie zależy od żadnego wywołania `api()` poza `/me`, którego potrzebuje
+ * WYŁĄCZNIE `RequireRole` w layoucie, żeby przejść w stan „allowed”. Te
+ * dwie funkcje podstawiają WIĘC TYLKO `/me`, a każdy INNY punkt końcowy
+ * (np. `/internship/entries`, `/supervision/slots`) zostaje odrzucony jak
+ * w atrapie domyślnej. Te dwie nogi `h1` mierzą więc PRZEJŚCIE PRZEZ
+ * BRAMKĘ ROLI, nie zachowanie ekranu z prawdziwymi danymi treści — dla
+ * pozostałych czterech wpisów (`/panel/pulpit`, `/panel/profil`,
+ * `/panel/certyfikat`, `/panel/profil-psychologa`) mapa faktycznie
+ * podstawia i punkt tożsamości, i własny punkt końcowy treści danej trasy,
+ * bo tam `h1` zależy od obu.
  */
 const REALISTYCZNE_LADUNKI: Record<string, () => void> = {
   "/panel/pulpit": () => {
