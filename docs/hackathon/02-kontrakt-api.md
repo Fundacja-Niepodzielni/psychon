@@ -588,11 +588,84 @@ przykładowymi wartościami:
 - `certificate.revoked` (H13) — administracja unieważnia już wydany
   certyfikat, z podanym powodem. Pola ładunku: `number`, `reason`.
   **Do zmiany.** `reason` jest dziś wolnym tekstem wpisywanym ręcznie, więc
-  jest to jedyne miejsce w całym rejestrze, w którym mogą wylądować dane
+  jest to jedno z miejsc w rejestrze, w których mogą wylądować dane
   osobowe — a rejestru zdarzeń nie da się poprawić ani wyczyścić. Docelowo
   ładunek niesie `number` i ewentualnie kod powodu ze słownika, a treść
   powodu żyje wyłącznie w rekordzie certyfikatu, skąd anonimizacja konta
   może ją usunąć. Ten opis mówi, jak jest dziś, nie jak ma być.
+
+  **Errata 2026-09-18.** Poprzednie brzmienie tego akapitu mówiło, że jest to
+  **jedyne** miejsce w całym rejestrze z wolnym tekstem. To było nieprawdą.
+  Pomiar kodu daje **trzy** takie miejsca:
+
+  | miejsce | pole | co wpisuje administracja |
+  |---|---|---|
+  | `Services/H13/CertificateRevoker.php` | `reason` | powód unieważnienia certyfikatu |
+  | `Http/Controllers/Api/V1/Admin/AdminUserController.php` | `reason` | uzasadnienie zablokowania konta |
+  | `Http/Controllers/Api/V1/AdminTestResetController.php` | `reason` | powód wyzerowania prób |
+
+  Polecenie, którym to zmierzono, żeby dało się powtórzyć bez wiary na słowo:
+  wypisz pliki wywołujące `AuditLog::record` i znajdź w nich pola `reason`
+  trafiające do ładunku.
+
+  Erratę zapisuję osobno, zamiast po cichu poprawić zdanie, bo **fałszywy opis
+  jest groźniejszy od braku opisu**: zdanie „jedyne miejsce" zostałoby
+  zacytowane jako stan faktyczny przy najbliższym przeglądzie ochrony danych,
+  a dwa pozostałe miejsca nie trafiłyby do żadnej listy.
+
+  **Wzorzec docelowy jest już w kodzie i warto go wskazać palcem, zamiast
+  opisywać słowami.** Zwrot profilu psychologa (`profile.returned`,
+  `Http/Controllers/Api/V1/H15/AdminProfileController.php`) przyjmuje od
+  administracji dokładnie taki sam wolny tekst — i zapisuje go **do rekordu
+  dziedzinowego**, a do ładunku rejestru wkłada wyłącznie identyfikator
+  profilu. Tak mają wyglądać wszystkie trzy miejsca z tabeli.
+
+  Zasada ogólna, wyprowadzona z tego pomiaru: **żadne pole, którego treść
+  administracja wpisuje ręcznie w formularzu, nie należy do rejestru zdarzeń.**
+  Rejestr przyjmuje identyfikatory, kody ze słowników zamkniętych i flagi.
+  Treść wpisana ręcznie żyje w rekordzie dziedzinowym, skąd anonimizacja konta
+  potrafi ją usunąć — z rejestru nie potrafi jej usunąć nic.
+- `course.updated` (H08) — zmiana w kursie. **Jeden rodzaj, osiem różnych
+  zdarzeń**, rozróżnianych wyłącznie polem `operation`. Pola ładunku:
+  `operation` (obowiązkowe, słownik zamknięty) oraz identyfikator przedmiotu
+  zmiany: `lesson_id`, `material_id` albo `course_id`, zależnie od operacji.
+
+  **Słownik `operation` jest zamknięty. Wartość spoza słownika jest odrzucana
+  przy zapisie, tak jak każde pole spoza listy dozwolonych.** Wolny tekst w tym
+  polu nie występuje i nie wolno go wprowadzić.
+
+  | kod | co się wydarzyło |
+  |---|---|
+  | `course.invited` | osoba zaproszona na kurs |
+  | `lesson.created` | lekcja dodana |
+  | `lesson.updated` | lekcja zmieniona |
+  | `lesson.deleted` | lekcja usunięta |
+  | `material.uploaded` | materiał wgrany |
+  | `material.deleted` | materiał usunięty |
+  | `lessons.reordered` | zmieniona kolejność lekcji w kursie |
+  | `courses.reordered` | zmieniona kolejność kursów |
+
+  **Dlaczego to nie jest osiem osobnych rodzajów:** liczba rodzajów w rejestrze
+  zostaje taka, jaka była, a rozróżnienie niesie pole. Słowniki po stronie
+  interfejsu nie muszą znać ośmiu nowych nazw.
+
+  **Dlaczego pole jest obowiązkowe, a nie mile widziane:** bez niego wszystkie
+  osiem zapisów staje się w dzienniku nieodróżnialne — zostaje ta sama nazwa
+  rodzaju i ten sam identyfikator kursu. Lista dozwolonych pól, która usuwa
+  `operation`, nie chroni wtedy niczego, tylko **kasuje sens zdarzenia**.
+
+  **Zbiór kodów w kodzie ma być równy zbiorowi kodów w tej tabeli** i ma tego
+  pilnować przyrząd czerwieniejący **w obie strony**: gdy kod doda dziewiąty
+  kod, i gdy tabela wymieni kod, którego w kodzie nie ma. Przyrząd pilnujący
+  jednej strony przepuści rozjazd w drugą.
+
+  **Skąd te osiem, a nie inna liczba** (pomiar 2026-09-18, powtarzalny): kody
+  pochodzą z odczytania wszystkich miejsc zapisujących ten rodzaj, wraz
+  z rozwinięciem dwóch, które podstawiają kod przez zmienną, a nie literałem —
+  `Services/H08/LessonWriter.php` i `Services/H08/MaterialStore.php`. Sam odczyt
+  literałów dałby **pięć** kodów i trzy operacje zniknęłyby z dziennika po cichu:
+  usunięcie lekcji, usunięcie materiału i jedna z dwóch zmian kolejności.
+
 - `legal_document.published` (H22) — administracja publikuje nową wersję
   dokumentu prawnego (regulamin/polityka). Pola ładunku: `type`, `version`.
 - `legal_document.accepted` (H22) — osoba akceptuje bieżącą wersję dokumentu
