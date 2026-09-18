@@ -16,7 +16,7 @@ async function przesunZegar(ms: number) {
  * moment (w ms symulowanego zegara), w którym stan się zmienia.
  */
 
-const KOMUNIKAT_TIMEOUT = "Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.";
+const KOMUNIKAT_TIMEOUT = "Logowanie nie odpowiedziało w wyznaczonym czasie. Spróbuj ponownie.";
 const ETYKIETA_OCZEKIWANIA = "Przekierowuję do logowania…";
 
 /**
