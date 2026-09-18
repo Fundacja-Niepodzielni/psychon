@@ -63,6 +63,48 @@ class ReportTest extends TestCase
     }
 
     /**
+     * Poz. 18 „Postępy" — Ola spełnia wszystkie cztery warunki certyfikatu
+     * w seedzie (`DemoSeeder::seedOlaProgress/seedOlaCompletion`): 10/10
+     * kursów, 72 h stażu (próg 72), 6 obecności na superwizji (próg 6),
+     * warsztat odbyty, certyfikat wydany — etap = `certyfikat`.
+     */
+    public function test_report_marks_a_graduate_with_the_certificate_stage(): void
+    {
+        $this->actingAsRole('super_admin');
+        $ola = User::where('email', 'ola@demo.pl')->firstOrFail();
+
+        $response = $this->getJson('/api/v1/admin/report');
+        $response->assertOk();
+
+        $olaRow = collect($response->json('data.people'))->firstWhere('id', $ola->id);
+
+        $this->assertNotNull($olaRow, 'Brak Oli w zestawieniu imiennym.');
+        $this->assertSame('certyfikat', $olaRow['stage']);
+        $this->assertSame('Certyfikat', $olaRow['stage_label']);
+    }
+
+    /**
+     * Poz. 18 „Postępy" — Filip nie ma zaliczonego żadnego kursu (test 1
+     * bez próby, `seedFilipProgress`), zero wpisów zaakceptowanego stażu,
+     * zero obecności na superwizji i brak warsztatu — pierwszy etap
+     * słownika (`kurs`), zgodnie z porządkiem `CertificateConditions`.
+     */
+    public function test_report_marks_a_person_without_progress_with_the_first_stage(): void
+    {
+        $this->actingAsRole('super_admin');
+        $filip = User::where('email', 'filip@demo.pl')->firstOrFail();
+
+        $response = $this->getJson('/api/v1/admin/report');
+        $response->assertOk();
+
+        $filipRow = collect($response->json('data.people'))->firstWhere('id', $filip->id);
+
+        $this->assertNotNull($filipRow, 'Brak Filipa w zestawieniu imiennym.');
+        $this->assertSame('kurs', $filipRow['stage']);
+        $this->assertSame('Kursy i testy', $filipRow['stage_label']);
+    }
+
+    /**
      * Poz. 27 — zakres dat zawęża wpisy stażu Marty (9 zaakceptowanych,
      * 12–60 dni wstecz — `DemoSeeder::seedInternship`). Zakres bez
      * żadnego z tych wpisów (dziś) musi zejść z 113.5 h / 101 konsultacji
