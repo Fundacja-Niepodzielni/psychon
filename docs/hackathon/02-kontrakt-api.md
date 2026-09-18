@@ -467,6 +467,95 @@ Wgląd w skan dyplomu → wpis w `sensitive_access_log`.
 `GET /admin/audit?action=…&user_id=…&from=…&to=…` (+ `GET /admin/audit/export.csv`).
 Trasy modyfikacji audytu **nie istnieją** (próba → 404).
 
+### Dokumenty prawne (H22)
+
+Rodzaj dokumentu jest zamknięty słownikiem `regulamin · polityka`; nowy rodzaj to zmiana
+kodu, nie danych. Wersja ma stan `draft` albo `published`; wersja opublikowana jest
+niezmienna — zmiana treści zakłada zawsze nową wersję (nowy wiersz), nigdy edycję starej.
+Na rodzaj przypada **dokładnie jedna wersja bieżąca**: najnowsza opublikowana (po
+`published_at`, przy remisie po `id`).
+
+#### Odczyt publiczny (bez logowania)
+
+- `GET /legal-documents/{type}/current` → 200, bieżąca wersja rodzaju. Nieznany rodzaj →
+  404 `not_found`; rodzaj bez żadnej opublikowanej wersji → 404 `not_found`.
+- `GET /legal-documents/{type}/versions/{version}` → 200, dowolna **opublikowana** wersja
+  rodzaju, niezależnie od tego, czy jest bieżąca. Nieznany rodzaj, nieznana etykieta wersji
+  oraz szkic (wersja `draft`) → 404 `not_found` we wszystkich trzech przypadkach —
+  bezpośredni odnośnik do szkicu nie ujawnia jego istnienia.
+
+Obie trasy są publiczne z tego samego powodu co weryfikacja certyfikatu (H13) i pobranie
+materiału (H05): wpis na liście dozwolonych tras bez tokenu (`config/public_routes.php`),
+pilnowany testem dymnym, który psuje bramkę, gdy jakakolwiek inna trasa `/api` stanie się
+osiągalna bez tokenu.
+
+#### Akceptacja (osoba zalogowana, dowolna rola)
+
+`POST /legal-documents/{type}/accept { "version": "..." }` — osoba potwierdza, że
+zaakceptowała wersję widzianą na ekranie.
+
+- Gość (brak tokenu) → 401 `unauthenticated`.
+- Nieznany rodzaj dokumentu → **422** `unknown_document_type` — inny kod niż na trasach
+  odczytu (tam ten sam warunek daje 404 `not_found`); rozjazd opisany niżej w wadach.
+- Wersja z żądania inna niż aktualnie bieżąca (dokument zmienił się między wczytaniem
+  ekranu a wysłaniem, albo etykieta nie istnieje) → 422 `document_version_not_current`,
+  z `reason.current_version` wskazującym bieżącą etykietę (albo `null`, gdy rodzaj nie ma
+  żadnej opublikowanej wersji).
+- Pierwsza akceptacja bieżącej wersji → **201**, zapisuje wiersz `consents`
+  (`user_id`, `type`, `document_version`, `granted_at`) i audyt `legal_document.accepted`.
+- Powtórzona akceptacja **tej samej, nadal bieżącej** wersji → **200**, bez nowego wiersza
+  i bez drugiego wpisu audytu — zwraca istniejącą zgodę. Dwa równoległe żądania tej samej
+  akceptacji rozstrzyga indeks unikalny na trójce (osoba, rodzaj, wersja dokumentu):
+  przegrana strona łapie naruszenie unikalności i zwraca wiersz zwycięzcy, zamiast błędu i
+  zamiast drugiego wpisu audytu.
+- Odpowiedź: `{ "data": { "type": "...", "document_version": "..." } }`.
+
+#### Administracja (`project_manager`, `super_admin`)
+
+Wszystkie trasy niżej wymagają tokenu i jednej z tych dwóch ról (ta sama bramka co inne
+panele CMS — brak tokenu → 401 `unauthenticated`, inna rola → 403 `forbidden`).
+
+- `GET /admin/legal-documents/{type}/versions` → 200, wszystkie wersje rodzaju (szkice i
+  opublikowane), najnowsza pierwsza. Nieznany rodzaj → 404 `not_found`.
+- `POST /admin/legal-documents/{type}/versions { "version": "...", "content": "..." }`
+  → **201**, nowy szkic (`status: draft`). Walidacja: oba pola wymagane, `version` do 32
+  znaków, `content` do 20000 znaków — naruszenie dowolnego warunku → 422
+  `validation_failed`, nic nie jest zapisywane.
+- `PATCH /admin/legal-documents/{type}/versions/{version} { "version"?, "content"? }` →
+  200, edycja **wyłącznie szkicu**. Wersja opublikowana → 403 `version_locked`, treść bez
+  zmian.
+- `DELETE /admin/legal-documents/{type}/versions/{version}` → 200, usunięcie **wyłącznie
+  szkicu**. Wersja opublikowana → 403 `version_locked`, wiersz zostaje.
+- `POST /admin/legal-documents/{type}/versions/{version}/publish` bez ciała → 200, ustawia
+  `status: published` i `published_at`, audyt `legal_document.published`. Wersja już
+  opublikowana → 403 `version_locked` (ponowna publikacja tej samej wersji jest odrzucana,
+  nie jest no-opem).
+
+Reguła wydania drugiej wersji o tej samej etykiecie: etykieta `version` jest unikalna **w
+obrębie rodzaju** (na poziomie walidacji żądania i na poziomie tabeli) — druga wersja `v1`
+rodzaju `regulamin` → 422 `validation_failed`; ta sama etykieta `v1` dla rodzaju `polityka`
+jest osobnym wierszem i przechodzi bez przeszkód.
+
+#### Widoczność na `/me`
+
+Własny profil (`GET /me`, nie karta administracji) niesie
+`legal_documents_pending_acceptance` — listę rodzajów, na które osoba **nie ma** zgody na
+aktualnie bieżącą wersję (brak zgody w ogóle albo zgoda na wersję już nieaktualną).
+Publikacja nowej wersji rodzaju, na który osoba już się zgodziła, przywraca ten rodzaj na
+listę; akceptacja go z niej zdejmuje. Pole nie pojawia się na karcie osoby w panelu
+administracji (`GET /admin/users/{id}`) — tam nie ma odbiorcy tej informacji, więc karta w
+ogóle nie wykonuje zapytań, które by ją policzyły.
+
+#### Zdarzenia audytu pakietu
+
+- `legal_document.published` — administracja publikuje nową wersję dokumentu. Pola
+  ładunku: `type`, `version`.
+- `legal_document.accepted` — osoba akceptuje bieżącą wersję dokumentu. Pola ładunku:
+  `type`, `version`.
+
+Oba slugi są już w rejestrze §3.2 (aneks z 2026-09-17) — nie powtarzam tu drugiej
+definicji, tylko domykam brakującą sekcję pakietu, do której ten wpis odsyłał.
+
 ## 3. Rejestry i słowniki (enums)
 
 ### 3.1 Typy powiadomień (`Notify::send`)
@@ -515,6 +604,8 @@ Po hackathonie: `access.expiring_30d/7d`, `supervision.reminder`.
 - `certificate.status`: `valid · revoked` · klucze warunków certyfikatu:
   `courses · internship · supervision · workshop`
 - `emails.status`: `queued · sent · failed · simulated`
+- `legal_document.type` (H22): `regulamin · polityka` · `legal_document_version.status`:
+  `draft · published`
 
 ## 4. Czego nie robimy na hackathonie
 
@@ -687,8 +778,9 @@ przykładowymi wartościami:
 - `legal_document.accepted` (H22) — osoba akceptuje bieżącą wersję dokumentu
   prawnego. Pola ładunku: `type`, `version`.
 
-Pakiet H22 (dokumenty prawne) nie ma w kontrakcie osobnej sekcji poza tym
-wpisem do rejestru — poza zakresem tego aneksu, do uzupełnienia osobno.
+Pakiet H22 (dokumenty prawne) ma teraz własną sekcję w §2 („Dokumenty prawne
+(H22)") — uzupełniona osobno, zgodnie z zapowiedzią w tym akapicie; ten wpis w
+rejestrze zostaje, sekcja go nie zastępuje.
 
 ### 4. Reguła: anonimizacja konta zapisuje zdarzenie bez ładunku
 
