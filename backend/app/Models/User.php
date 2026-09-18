@@ -54,6 +54,7 @@ class User extends Authenticatable
             'program_completed_at' => 'datetime',
             'last_login_at' => 'datetime',
             'anonymized_at' => 'datetime',
+            'activation_confirmation_shown_at' => 'datetime',
         ];
     }
 
@@ -65,6 +66,42 @@ class User extends Authenticatable
     public function isAnonymized(): bool
     {
         return $this->anonymized_at !== null;
+    }
+
+    /**
+     * Konto jest powiązane z dostawcą tożsamości
+     * (`sso/powiaz` albo polecenie operatora ustawia `keycloak_sub`) i
+     * jednorazowy komunikat "Twoje konto zostało aktywowane" nie został
+     * jeszcze odnotowany jako pokazany. Wywołujący MUSI przeczytać ten stan
+     * PRZED wywołaniem `recordActivationConfirmationShown()` na tym samym
+     * obiekcie — ta metoda odczytuje `activation_confirmation_shown_at`
+     * z bieżącego stanu modelu, więc wywołana po zapisie zawsze zwróci
+     * `false` (patrz kontroler, gdzie kolejność ma znaczenie).
+     */
+    public function shouldShowActivationConfirmation(): bool
+    {
+        return $this->keycloak_sub !== null && $this->activation_confirmation_shown_at === null;
+    }
+
+    /**
+     * Odnotowuje pokazanie komunikatu. Idempotentne z konstrukcji: warunek
+     * `whereNull` sprawia, że drugie (i setne) wywołanie nigdy nie nadpisuje
+     * już zapisanej chwili — dotyczy zera wierszy. Zapis przez query builder,
+     * nie `save()` na `$this`, żeby równoległe powtórzone żądanie też nie
+     * mogło nadpisać znacznika.
+     */
+    public function recordActivationConfirmationShown(): void
+    {
+        if ($this->activation_confirmation_shown_at !== null) {
+            return;
+        }
+
+        static::query()
+            ->whereKey($this->id)
+            ->whereNull('activation_confirmation_shown_at')
+            ->update(['activation_confirmation_shown_at' => now()]);
+
+        $this->refresh();
     }
 
     public function edition(): BelongsTo

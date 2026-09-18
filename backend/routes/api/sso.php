@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\SsoActivationConfirmationController;
 use App\Http\Controllers\Api\V1\SsoBindController;
 use App\Http\Controllers\Api\V1\SsoWhoAmIController;
 use Illuminate\Support\Facades\Route;
@@ -31,3 +32,11 @@ Route::middleware('auth.keycloak')->get('/sso/whoami', SsoWhoAmIController::clas
 // middleware (there is no local user yet to authenticate as), throttled
 // like the existing auth routes.
 Route::middleware(['auth.keycloak', 'throttle:6,1'])->post('/sso/powiaz', SsoBindController::class);
+
+// Odnotowuje pokazanie jednorazowego komunikatu
+// aktywacyjnego na WŁASNYM koncie wywołującego. W odróżnieniu od dwóch tras
+// wyżej potrzebuje rozwiązanego lokalnego konta (nie tylko sprawdzonego
+// principala), więc idzie za tym samym `auth:keycloak`, co pozostałe trasy
+// biznesowe — nigdy `auth.keycloak` — co też wyklucza wskazanie innego celu:
+// nie ma żadnego identyfikatora do przekazania.
+Route::middleware('auth:keycloak')->post('/sso/potwierdzenie-aktywacji', SsoActivationConfirmationController::class);

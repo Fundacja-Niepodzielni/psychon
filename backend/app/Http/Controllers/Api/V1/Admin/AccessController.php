@@ -51,6 +51,6 @@ class AccessController extends Controller
             ],
         );
 
-        return response()->json(['data' => UserResource::make($user->fresh())->resolve()]);
+        return response()->json(['data' => UserResource::withoutActivationConfirmation($user->fresh())->resolve()]);
     }
 }
