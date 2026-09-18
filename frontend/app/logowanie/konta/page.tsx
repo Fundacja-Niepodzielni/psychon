@@ -24,10 +24,10 @@ function Redirector() {
 
 export default function AccountSystemLoginRedirect() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page p-6">
+    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
       <Suspense fallback={null}>
         <Redirector />
       </Suspense>
-    </div>
+    </main>
   );
 }

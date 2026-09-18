@@ -142,7 +142,7 @@ export default function KatalogPrzykladyB() {
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8">
+    <main id="tresc" className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8">
       <PageHeader
         title="Katalog komponentów — organizmy panelu"
         description="Organizmy okna, nawigacji, powiadomień i formularza (ConfirmDialog, PanelNav, NotificationList, MainBlock, SupportBlock, RecordForm). Narzędzie pracy zespołu — w produkcji ta trasa zwraca 404."

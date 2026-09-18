@@ -151,7 +151,7 @@ export default function NiepowiazanePage() {
       : "Twoje konto w PsychON";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page p-6">
+    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-h2 font-black text-ink">{naglowek}</h1>
@@ -213,6 +213,6 @@ export default function NiepowiazanePage() {
           </div>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
