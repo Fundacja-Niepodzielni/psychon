@@ -16,7 +16,7 @@ return new class extends Migration
     {
         Schema::create('legal_document_versions', function (Blueprint $table) {
             $table->id();
-            $table->string('type', 32); // regulamin | polityka_prywatnosci
+            $table->string('type', 32); // regulamin | polityka
             $table->string('version', 32);
             $table->text('content');
             $table->string('status', 16)->default('draft'); // draft | published
