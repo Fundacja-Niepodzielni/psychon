@@ -16,9 +16,12 @@ export const metadata: Metadata = {
  * bez czytnika ekranu). Kontrast kolorów NIE został dziś ponownie zmierzony
  * w pełnym zakresie pierwotnego audytu (token źródłowy zmienił się od tamtego
  * pomiaru) — opisany niżej jako nieobjęty dzisiejszym pomiarem automatycznym.
- * Metoda, polecenia i pełne wyniki (w tym cztery ekrany, które audyt nigdy nie
- * objął): raport audytu dostępności w repozytorium (`frontend/AUDYT-
- * DOSTEPNOSCI.md`, sekcja „Dodatek — ponowny pomiar 2026-09-18”).
+ * Metoda i pełne wyniki (w tym cztery ekrany, które audyt nigdy nie objął):
+ * raport audytu dostępności w repozytorium (`frontend/AUDYT-DOSTEPNOSCI.md`,
+ * sekcja „Dodatek — ponowny pomiar 2026-09-18”). Ten raport opisuje metodę
+ * słownie; same polecenia użyte do pomiaru NIE są dziś częścią tego
+ * repozytorium — `git ls-files` na nie nie wskazuje. Nie twierdzimy tu, że
+ * ktokolwiek inny je dziś odtworzy.
  *
  * Pole „Data ostatniego przeglądu deklaracji” poniżej NIE jest wypełnione
  * świadomie — data i osoba dokonująca przeglądu to decyzja właściciela,
@@ -89,10 +92,12 @@ export default function DeklaracjaDostepnosciPage() {
             <code>/katalog-komponentow/b</code>.
           </Text>
           <Text size="small" tone="muted">
-            Pełna tabela audytu (ekran po ekranie), polecenia użyte do
-            dzisiejszego pomiaru i lista poprawek na kolejny etap: w raporcie
-            audytu dostępności w repozytorium (
-            <code>frontend/AUDYT-DOSTEPNOSCI.md</code>).
+            Pełna tabela audytu (ekran po ekranie) i lista poprawek na kolejny
+            etap: w raporcie audytu dostępności w repozytorium (
+            <code>frontend/AUDYT-DOSTEPNOSCI.md</code>). Ten raport opisuje
+            metodę pomiaru słownie; polecenia użyte do dzisiejszego pomiaru
+            nie są dziś częścią tego repozytorium i nie twierdzimy tu, że
+            ktokolwiek inny je dziś odtworzy.
           </Text>
         </Stack>
       </Card>
