@@ -168,6 +168,12 @@ final class UserAnonymizer
      */
     private static function collectAndClearResidualFiles(User $user): array
     {
+        // Wołane z obu miejsc (świeża anonimizacja i domykanie stanu
+        // zastanego pod 409 — K5) z tego samego powodu co reszta tej
+        // metody: żeby drugie wywołanie domknęło to, czego pierwsze —
+        // sprzed tej zmiany — jeszcze nie robiło.
+        self::withdrawGrantedConsents($user);
+
         $paths = [];
 
         // A RODO export generated *before* anonymisation is a JSON file with
@@ -237,6 +243,31 @@ final class UserAnonymizer
             $paths,
             static fn (?string $path): bool => $path !== null && $path !== '',
         ));
+    }
+
+    /**
+     * Zostawia w tabeli `consents` ślad, że to anonimizacja odcięła zgodę,
+     * nie że osoba nigdy jej nie udzieliła — dziś to nie do odróżnienia:
+     * `ProfileResource::toArray()` liczy `status` wyłącznie z `granted_at`/
+     * `withdrawn_at`, więc bez tego wiersza po zabiegu dalej pokazywały
+     * zgodę jako żywą. Ustawia `withdrawn_at` na każdym wierszu tej osoby,
+     * który miał `granted_at` i nie był jeszcze wycofany — datę i sam fakt,
+     * nic więcej: `type` i `document_version` zostają (to etykieta „na co"
+     * była zgoda, nie treść, którą zabieg ma usuwać), a wiersz wycofany
+     * wcześniej przez samą osobę (np. `publikacja_profilu` przez
+     * `withdrawConsent()`) zachowuje własną, wcześniejszą datę wycofania —
+     * `whereNull('withdrawn_at')` nie nadpisuje jej.
+     *
+     * Idempotentne z tego samego powodu co `collectAndClearResidualFiles()`,
+     * która to wywołuje: drugie przejście (domykanie stanu zastanego pod
+     * 409 — K5) nie znajduje już wierszy do zmiany.
+     */
+    private static function withdrawGrantedConsents(User $user): void
+    {
+        $user->consents()
+            ->whereNotNull('granted_at')
+            ->whereNull('withdrawn_at')
+            ->update(['withdrawn_at' => now()]);
     }
 
     /**
