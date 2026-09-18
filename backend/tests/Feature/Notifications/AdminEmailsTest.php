@@ -84,18 +84,56 @@ class AdminEmailsTest extends TestCase
     }
 
     /**
-     * Bieg BEZ żadnej symulacji: w tym repo `MAIL_FROM_ADDRESS` nie jest
-     * ustawiona ani w `phpunit.xml`, ani w `.env.testing`, więc świeża
-     * aplikacja startuje z `mail.from_configured === false` naprawdę, a nie
-     * przez ręczne `config([...])`. Po decyzji architekta wartość domyślna
-     * w `config/mail.php` jest teraz pusta (nie domeną przykładową), więc
-     * punkt dostępowy ma oddać `null` zarówno z powodu pustego adresu, jak
-     * i z powodu flagi.
+     * Poprawka po czerwieni w bramce (2026-09-18): ten test zakładał, że
+     * `MAIL_FROM_ADDRESS` jest puste w środowisku uruchamiającym suitę —
+     * prawda w moim klonie, fałsz w bramce (tam stoi realny adres
+     * `platforma@niepodzielni.local`). To znaczy, że test mierzył maszynę,
+     * nie zmianę. Poprawka: zdejmuje `MAIL_FROM_ADDRESS` JAWNIE tuż przed
+     * pomiarem i wczytuje PRAWDZIWY `config/mail.php` na nowo w tym stanie
+     * (ten sam plik, którego używa wdrożenie — nie reimplementacja), więc
+     * wynik nie zależy od tego, co bramka miała w otoczeniu. Zmienna
+     * wraca do poprzedniej wartości w `finally`, zanim padnie choćby
+     * jedna asercja — test sam sprząta po sobie.
      */
     public function test_email_list_reports_null_sender_on_a_genuinely_unconfigured_run(): void
     {
-        $this->assertFalse(config('mail.from_configured'), 'w tym środowisku testowym zmienna nie jest ustawiona');
-        $this->assertSame('', trim((string) config('mail.from.address')), 'wartość domyślna ma być teraz pusta, nie zmyślona');
+        $poprzedniGetenv = getenv('MAIL_FROM_ADDRESS');
+        $bylUstawiony = $poprzedniGetenv !== false;
+        $poprzedniEnv = $_ENV['MAIL_FROM_ADDRESS'] ?? null;
+        $poprzedniServer = $_SERVER['MAIL_FROM_ADDRESS'] ?? null;
+
+        putenv('MAIL_FROM_ADDRESS');
+        unset($_ENV['MAIL_FROM_ADDRESS'], $_SERVER['MAIL_FROM_ADDRESS']);
+
+        try {
+            $konfiguracja = require base_path('config/mail.php');
+        } finally {
+            if ($bylUstawiony) {
+                putenv('MAIL_FROM_ADDRESS='.$poprzedniGetenv);
+            } else {
+                putenv('MAIL_FROM_ADDRESS');
+            }
+
+            if ($poprzedniEnv !== null) {
+                $_ENV['MAIL_FROM_ADDRESS'] = $poprzedniEnv;
+            } else {
+                unset($_ENV['MAIL_FROM_ADDRESS']);
+            }
+
+            if ($poprzedniServer !== null) {
+                $_SERVER['MAIL_FROM_ADDRESS'] = $poprzedniServer;
+            } else {
+                unset($_SERVER['MAIL_FROM_ADDRESS']);
+            }
+        }
+
+        config([
+            'mail.from' => $konfiguracja['from'],
+            'mail.from_configured' => $konfiguracja['from_configured'],
+        ]);
+
+        $this->assertFalse(config('mail.from_configured'), 'brak zmiennej ma znaczyć brak konfiguracji, niezależnie od otoczenia bramki');
+        $this->assertSame('', trim((string) config('mail.from.address')), 'wartość domyślna ma być pusta, nie zmyślona');
 
         $admin = User::factory()->create(['role' => 'super_admin']);
 

@@ -55,24 +55,32 @@ class EmailSenderHeaderTest extends TestCase
     }
 
     /**
-     * Uruchamia `$sprawdzenie` na ŚWIEŻO ZBUDOWANEJ aplikacji, która
-     * wczytała konfigurację mając `MAIL_FROM_ADDRESS` ustawioną (albo
-     * celowo nieustawioną, dla `$adres === null`) jako PRAWDZIWĄ zmienną
-     * procesu — tym samym mechanizmem, którym czyta ją prawdziwe
-     * wdrożenie (`config/mail.php`, `env('MAIL_FROM_ADDRESS', ...)`), a
-     * nie przez `config([...])`, które tylko podmienia już obliczoną
-     * wartość i nie uruchamia ponownie logiki rozpoznającej domenę
-     * zastrzeżoną. Dzięki `$this->refreshApplication()` ten sam proces
-     * PHPUnit startuje aplikację od nowa w środku metody testowej, więc
-     * ten dowód nie wymaga ŻADNEGO ręcznego ustawiania zmiennych na
-     * zewnątrz — biegnie sam, za każdym razem, kiedy ktoś uruchomi suitę.
-     * Zmienna jest przywracana na końcu, żeby nie zanieczyścić kolejnych
-     * testów w tym samym procesie.
+     * Poprawka po czerwieni w bramce (2026-09-18): `$this->refreshApplication()`
+     * mierzył wyłącznie MOJĄ maszynę, gdzie `MAIL_FROM_ADDRESS` było puste w
+     * otoczeniu. Bramka ma w otoczeniu PRAWDZIWY skonfigurowany adres
+     * (`platforma@niepodzielni.local`) — odświeżenie aplikacji tam wciąż
+     * odczytuje ambientną zmienną, bo `refreshApplication()` startuje
+     * kontener od nowa, ale nie gwarantuje, że proces PHP zapomni, co
+     * dodało doń środowisko URUCHOMIENIA (ani czy konfiguracja jest
+     * cache'owana) — czyli dokładnie „test mierzy maszynę, nie zmianę".
+     *
+     * Poprawiony przyrząd `require`-uje PRAWDZIWY plik `config/mail.php`
+     * (ten sam, którego używa wdrożenie — więc to nadal pomiar realnego
+     * kodu, nie reimplementacja) w chwili, gdy `MAIL_FROM_ADDRESS` ma
+     * DOKŁADNIE tę wartość, o jaką prosi test — ustawioną tuż przed
+     * wywołaniem i zdjętą zaraz po (`finally`), więc wynik nie zależy od
+     * tego, co bramka miała w otoczeniu PRZED czy PO. Obliczoną tablicę
+     * wstrzykuje przez `config([...])` do kontenera aplikacji, z którego
+     * czyta kontroler — bez potrzeby przeładowania całej aplikacji ani
+     * poufania w to, że `refreshApplication()`/cache konfiguracji na danym
+     * hoście zachowają się tak samo jak na moim.
      */
-    private function zeSwiezoWczytanymNadawca(?string $adres, callable $sprawdzenie): void
+    private function konfiguracjaZAdresu(?string $adres): array
     {
-        $poprzedni = getenv('MAIL_FROM_ADDRESS');
-        $bylUstawiony = $poprzedni !== false;
+        $poprzedniGetenv = getenv('MAIL_FROM_ADDRESS');
+        $bylUstawiony = $poprzedniGetenv !== false;
+        $poprzedniEnv = $_ENV['MAIL_FROM_ADDRESS'] ?? null;
+        $poprzedniServer = $_SERVER['MAIL_FROM_ADDRESS'] ?? null;
 
         if ($adres === null) {
             putenv('MAIL_FROM_ADDRESS');
@@ -83,22 +91,46 @@ class EmailSenderHeaderTest extends TestCase
             $_SERVER['MAIL_FROM_ADDRESS'] = $adres;
         }
 
-        $this->refreshApplication();
-
         try {
-            $sprawdzenie();
+            return require base_path('config/mail.php');
         } finally {
             if ($bylUstawiony) {
-                putenv('MAIL_FROM_ADDRESS='.$poprzedni);
-                $_ENV['MAIL_FROM_ADDRESS'] = $poprzedni;
-                $_SERVER['MAIL_FROM_ADDRESS'] = $poprzedni;
+                putenv('MAIL_FROM_ADDRESS='.$poprzedniGetenv);
             } else {
                 putenv('MAIL_FROM_ADDRESS');
-                unset($_ENV['MAIL_FROM_ADDRESS'], $_SERVER['MAIL_FROM_ADDRESS']);
             }
 
-            $this->refreshApplication();
+            if ($poprzedniEnv !== null) {
+                $_ENV['MAIL_FROM_ADDRESS'] = $poprzedniEnv;
+            } else {
+                unset($_ENV['MAIL_FROM_ADDRESS']);
+            }
+
+            if ($poprzedniServer !== null) {
+                $_SERVER['MAIL_FROM_ADDRESS'] = $poprzedniServer;
+            } else {
+                unset($_SERVER['MAIL_FROM_ADDRESS']);
+            }
         }
+    }
+
+    /**
+     * Wstrzykuje wynik {@see konfiguracjaZAdresu()} do kontenera i dopiero
+     * wtedy odpala `$sprawdzenie` — więc każda noga sama ustawia swój
+     * świat i sama po sobie sprząta (env wraca w `finally` powyżej,
+     * zanim ta metoda w ogóle dostanie sterowanie), niezależnie od tego,
+     * co akurat stoi w otoczeniu uruchamiającym suitę.
+     */
+    private function zeSwiezoWczytanymNadawca(?string $adres, callable $sprawdzenie): void
+    {
+        $konfiguracja = $this->konfiguracjaZAdresu($adres);
+
+        config([
+            'mail.from' => $konfiguracja['from'],
+            'mail.from_configured' => $konfiguracja['from_configured'],
+        ]);
+
+        $sprawdzenie();
     }
 
     public function test_screen_sender_text_matches_the_from_header_mail_actually_puts_on_the_message(): void
