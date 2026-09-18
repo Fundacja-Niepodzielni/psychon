@@ -6,11 +6,12 @@ import { render, screen, waitFor } from "@testing-library/react";
  * „Warunki certyfikatu"):
  * (1) każda liczba, którą API już zwraca osobno (internship, supervision),
  *     renderuje się jako osobny licznik, a brakujące pole pokazuje „brak
- *     danych", nigdy fałszywe 0 — `courses` scala etapy z testami po
+ *     danych", nigdy fałszywe 0 — `courses` nadal scala etapy z testami po
  *     stronie API (backend/app/Support/H13/CertificateConditions.php:29-43,
- *     ProgressAggregator.php:52 — jedno pole `courses_done`); rozbicie na
- *     osobną liczbę zaliczonych testów wymaga zmiany backendu (poza
- *     zakresem tego zadania — patrz raport);
+ *     ProgressAggregator.php — jedno pole `courses_done`, bez zmian);
+ * (1a) `passed_tests_count` (poz. 19) — osobna liczba zaliczonych testów,
+ *     dodatkowe pole odpowiedzi API; brak/null pokazuje „brak danych" (ten
+ *     sam kontrakt wstecznej kompatybilności co reszta liczników);
  * (2) każda liczba prowadzi do ekranu źródłowego: courses→/panel/kursy,
  *     internship→/panel/staz, supervision→/panel/superwizja; `workshop`
  *     nie ma ekranu źródłowego dla uczestniczki (warsztat odhacza wyłącznie
@@ -37,6 +38,7 @@ const pelneWarunki = {
     { key: "supervision" as const, label: "Obecności na superwizjach", done: 5, required: 6, met: false },
     { key: "workshop" as const, label: "Warsztat stacjonarny", met: false },
   ],
+  passed_tests_count: 2,
 };
 
 beforeEach(() => {
@@ -67,6 +69,10 @@ describe("CertificatePage — liczniki i przejście do źródła (poz. 19)", () 
 
     // workshop ma tylko etykietę i status, bez osobnej liczby.
     expect(screen.getByText("Warsztat stacjonarny")).toBeInTheDocument();
+
+    // poz. 19: zaliczone testy jako osobna liczba, poza warunkiem `courses`.
+    expect(screen.getByText("Zaliczone testy")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
   });
 
   it("noga negatywna: brakujące pole liczbowe pokazuje „brak danych”, nie 0", async () => {
@@ -95,5 +101,24 @@ describe("CertificatePage — liczniki i przejście do źródła (poz. 19)", () 
 
     await waitFor(() => expect(screen.getByText("Warsztat stacjonarny")).toBeInTheDocument());
     expect(screen.queryByRole("link", { name: /Warsztat stacjonarny/ })).not.toBeInTheDocument();
+  });
+
+  it("poz. 19 noga negatywna: brak pola passed_tests_count w odpowiedzi (stary kontrakt) pokazuje „brak danych”, nie 0", async () => {
+    fetchCertificateConditions.mockResolvedValue({
+      eligible: pelneWarunki.eligible,
+      conditions: pelneWarunki.conditions,
+    });
+    render(<CertificatePage />);
+
+    await waitFor(() => expect(screen.getByText("Zaliczone testy")).toBeInTheDocument());
+    expect(screen.getByText("brak danych", { selector: "span.font-bold" })).toBeInTheDocument();
+  });
+
+  it("poz. 19 noga negatywna: passed_tests_count = null pokazuje „brak danych”", async () => {
+    fetchCertificateConditions.mockResolvedValue({ ...pelneWarunki, passed_tests_count: null });
+    render(<CertificatePage />);
+
+    await waitFor(() => expect(screen.getByText("Zaliczone testy")).toBeInTheDocument());
+    expect(screen.getByText("brak danych", { selector: "span.font-bold" })).toBeInTheDocument();
   });
 });

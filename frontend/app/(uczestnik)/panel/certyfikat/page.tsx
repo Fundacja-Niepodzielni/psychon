@@ -49,6 +49,19 @@ function formatCount(done?: number | string, required?: number | string): string
   return `${done} / ${required}`;
 }
 
+/**
+ * Poz. 19 Załącznika 1: liczba zaliczonych testów osobno od `courses`
+ * (który scala etapy i testy w jedno pole po stronie API). Ten sam
+ * konwencja "brak danych" co przy licznikach warunków, gdy pole nie
+ * przyjdzie ze starej odpowiedzi API (wstecznie kompatybilne).
+ */
+function formatPassedTestsCount(value?: number | null): string {
+  if (value === undefined || value === null) {
+    return "brak danych";
+  }
+  return String(value);
+}
+
 function percent(done?: number | string, required?: number | string): number {
   const d = Number(done ?? 0);
   const r = Number(required ?? 0);
@@ -187,6 +200,12 @@ export default function CertificatePage() {
             );
           })}
         </ul>
+        <p className="mt-3 flex items-center justify-between gap-4 border-t border-line pt-3 text-body text-ink">
+          <span>Zaliczone testy</span>
+          <span className="text-small font-bold text-ink">
+            {formatPassedTestsCount(data.passed_tests_count)}
+          </span>
+        </p>
       </Card>
 
       {actionError && <Alert variant="error">{actionError}</Alert>}
