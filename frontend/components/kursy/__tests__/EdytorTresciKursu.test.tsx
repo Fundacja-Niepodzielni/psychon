@@ -145,6 +145,41 @@ describe("EdytorTresciKursu", () => {
     await waitFor(() => expect(onLessonsReload).toHaveBeenCalled());
   });
 
+  it("pozytyw: przeładowanie (nowa referencja lessons od rodzica) resetuje formularz do świeżych danych serwera — zachowanie sprzed podziału (9e20d8f:138)", async () => {
+    const { rerender } = render(
+      <EdytorTresciKursu
+        course={kurs}
+        lessons={[lekcja]}
+        onCourseUpdated={vi.fn()}
+        onLessonsReload={vi.fn()}
+      />,
+    );
+
+    // Niezapisany szkic — użytkownik edytuje tytuł, ale NIE zapisuje.
+    await userEvent.clear(screen.getByLabelText("Tytuł"));
+    await userEvent.type(screen.getByLabelText("Tytuł"), "Szkic bez zapisu");
+    expect(screen.getByLabelText("Tytuł")).toHaveValue("Szkic bez zapisu");
+
+    // Rodzic przeładowuje kurs I lekcje razem (np. po dodaniu innej lekcji) —
+    // `lessons` dostaje nową referencję z serwera, tak jak w monolicie przed
+    // podziałem efekt `[id, reloadKey]` odświeżał `courseForm`.
+    const kursZeServera = { ...kurs, title: "Praca z emocjami — z serwera" };
+    rerender(
+      <EdytorTresciKursu
+        course={kursZeServera}
+        lessons={[lekcja]}
+        onCourseUpdated={vi.fn()}
+        onLessonsReload={vi.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Tytuł")).toHaveValue(
+        "Praca z emocjami — z serwera",
+      ),
+    );
+  });
+
   it("negatyw: błąd API przy zapisie kursu pokazuje komunikat i NIE woła onCourseUpdated", async () => {
     const onCourseUpdated = vi.fn();
     api.mockRejectedValue(new ApiError(500, "Nie udało się zapisać zmian. Spróbuj ponownie."));

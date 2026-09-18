@@ -37,9 +37,9 @@ export default function AdminCoursePage({
   const [course, setCourse] = useState<AdminCourse | null>(null);
   const [lessons, setLessons] = useState<AdminLesson[]>([]);
   /** Błąd niesie klucz żądania — udany przeładunek pod nowym kluczem go ukrywa. */
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(
-    null,
-  );
+  const [failed, setFailed] = useState<
+    { key: string; message: string; status?: number } | null
+  >(null);
 
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -67,6 +67,7 @@ export default function AdminCoursePage({
             err,
             "Nie udało się wczytać kursu. Odśwież stronę.",
           ),
+          status: err instanceof ApiError ? err.status : undefined,
         });
       });
 
@@ -152,6 +153,7 @@ export default function AdminCoursePage({
         ),
       }}
       stan={stan}
+      httpStatus={failed?.status}
       komunikatLadowania="Wczytywanie kursu…"
       komunikatBledu={failed?.message}
       komunikatBleduTytul="Nie udało się wczytać kursu"
