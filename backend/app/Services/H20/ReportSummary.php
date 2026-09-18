@@ -94,7 +94,15 @@ final class ReportSummary
     /**
      * Zestawienie imienne — jedno źródło dla ekranu raportu i CSV.
      *
-     * @return Collection<int, array{id:int, first_name:string, last_name:string, role:string, hours_accepted:string, consultations:int, certificate_issued:bool, stage:string, stage_label:string}>
+     * Kształt elementu jak w `build()` @return (`people: list<array{...}>` wyżej) —
+     * tu celowo luźny `array<string, mixed>` zamiast dokładnego `array{...}`,
+     * konwencja z `H07/AdminReliabilityQuery::participants()`+`sort()` dla
+     * `Collection` budowanej przez `->map()` z `Eloquent\Collection<User>`
+     * na tablice (dokładny kształt generyczny tu nie jest kowariantny
+     * względem wyniku `map()`/`values()` na kolekcji Eloquent — PHPStan
+     * `return.type`).
+     *
+     * @return Collection<int, array<string, mixed>>
      */
     public static function people(?string $from = null, ?string $to = null): Collection
     {
