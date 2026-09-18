@@ -7,7 +7,7 @@ import { LogIn } from "lucide-react";
 import AuthTemplate from "@/components/templates/AuthTemplate";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
-import { api, ApiError, KONTO_BINDING_LIMIT_MS } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { homeForRole } from "@/lib/home-by-role";
 
 /** Human-readable text for the Auth.js error codes the callback can redirect
@@ -29,18 +29,22 @@ const NAGLOWEK = {
 const REDIRECTING = "Przekierowuję do logowania…";
 
 /**
- * Limit czasu tego ekranu: jeżeli w tym czasie żaden z możliwych wyników
- * (przekierowanie do logowania, komunikat błędu, lądowanie wg roli) się nie
- * rozstrzygnie, przestajemy czekać i pokazujemy awaryjny komunikat zamiast
- * trzymać „Przekierowuję…” bez końca (zmierzone bez tego limitu: 30 015 ms,
- * zero komunikatów, przy trzech nieudanych pobraniach sesji, każde 500).
+ * Limit czasu WŁASNY tego ekranu (`/logowanie`, nie `/logowanie/niepowiazane`):
+ * jeżeli w tym czasie żaden z możliwych wyników (przekierowanie do logowania,
+ * komunikat błędu, lądowanie wg roli) się nie rozstrzygnie, przestajemy czekać
+ * i pokazujemy awaryjny komunikat zamiast trzymać „Przekierowuję…” bez końca
+ * (zmierzone bez tego limitu: 30 015 ms, zero komunikatów, przy trzech
+ * nieudanych pobraniach sesji, każde 500).
  *
- * Ta sama wartość co `KONTO_BINDING_LIMIT_MS` z `lib/api.ts` — inny ekran tej
- * samej rodziny SSO, to samo uzasadnienie progu: zapas nad realną odpowiedzią
- * sieci, wyraźnie poniżej progu, po którym ekran zaczyna kłamać, że coś się
- * jeszcze dzieje.
+ * Wartość dziś TAKA SAMA jak `KONTO_BINDING_LIMIT_MS` z `lib/api.ts` (ten sam
+ * rząd wielkości uzasadnienia: zapas nad realną odpowiedzią sieci, wyraźnie
+ * poniżej progu, po którym ekran zaczyna kłamać, że coś się jeszcze dzieje) —
+ * ale to DWIE OSOBNE stałe dla DWÓCH OSOBNYCH ekranów. Nie importować i nie
+ * aliasować `KONTO_BINDING_LIMIT_MS` tutaj: zmiana progu na ekranie
+ * `/logowanie/niepowiazane` nie ma prawa przesunąć granicy czasu TEGO ekranu,
+ * i odwrotnie.
  */
-const LOGIN_TIMEOUT_MS = KONTO_BINDING_LIMIT_MS;
+const LOGIN_TIMEOUT_MS = 8_000;
 
 interface Me {
   role: string;
@@ -48,19 +52,30 @@ interface Me {
 
 /**
  * PsychON jest wyłącznie SSO: to jedyne drzwi logowania, przez konto
- * Niepodzielni (Keycloak). CZTERY stany, nie trzy, bez formularza:
+ * Niepodzielni (Keycloak). PIĘĆ stanów, nie cztery, bez formularza:
  *
  * 1. Brak sesji i brak `?error=` → od razu `signIn("keycloak", …)`, zero
  *    kliknięć — użytkowniczka widzi tylko krótki komunikat o przekierowaniu.
- * 2. `?error=` z callbacku Auth.js → komunikat po polsku i przycisk. ŻADNEGO
- *    automatycznego przekierowania tutaj — inaczej błąd logowania natychmiast
- *    uruchamiałby kolejną próbę i nigdy nie dałby się przeczytać (pętla).
+ *    Gdy `signIn()` się ROZSTRZYGNIE (przeglądarka dostała polecenie
+ *    nawigacji do Keycloak), zegar z punktu 5 jest zatrzymywany — inaczej,
+ *    mimo powodzenia, po `LOGIN_TIMEOUT_MS` i tak wyskakiwał fałszywy
+ *    komunikat awaryjny na ścieżce, która się udała (zmierzone testem, gdzie
+ *    `signIn()` jest zamockowane i nie przerywa wykonania JS nawigacją, tak
+ *    jak zrobiłaby to prawdziwa przeglądarka).
+ * 2. `?error=` z callbacku Auth.js → komunikat po polsku i przycisk, od razu,
+ *    zegar zatrzymany. ŻADNEGO automatycznego przekierowania tutaj — inaczej
+ *    błąd logowania natychmiast uruchamiałby kolejną próbę i nigdy nie dałby
+ *    się przeczytać (pętla).
  * 3. Sesja już żywa (np. powrót na `/logowanie` jako cel `callbackUrl` po
- *    udanym logowaniu) → `GET /me` i lądowanie wg roli. 401 z `/me` jest
- *    obsłużony globalnie przez `lib/api.ts` (`handleUnauthorized`) — tu tylko
- *    milczymy, żeby nie zdążyć narysować błędu tuż przed przekierowaniem,
- *    które i tak zaraz nadejdzie.
- * 4. Nic z powyższego nie rozstrzygnęło się do `LOGIN_TIMEOUT_MS` — czy to
+ *    udanym logowaniu) i `GET /me` się powodzi → lądowanie wg roli, zegar
+ *    zatrzymany.
+ * 4. Sesja już żywa, ale `GET /me` zawodzi: 401 jest obsłużony globalnie
+ *    przez `lib/api.ts` (`handleUnauthorized`) — tu tylko milczymy, żeby nie
+ *    zdążyć narysować błędu tuż przed przekierowaniem, które i tak zaraz
+ *    nadejdzie (zegar zostaje jako siatka bezpieczeństwa, gdyby ten redirect
+ *    nie nadszedł); inny błąd niż 401 → komunikat awaryjny od razu, zegar
+ *    zatrzymany.
+ * 5. Nic z powyższego nie rozstrzygnęło się do `LOGIN_TIMEOUT_MS` — czy to
  *    dlatego, że `getSession()`/`GET /me` wisi, czy dlatego, że samo
  *    rozpoczęcie logowania (`signIn()`) odrzuciło obietnicę → ekran przestaje
  *    czekać i pokazuje TEN SAM komunikat i przycisk co stan 2. Dlatego cała
@@ -126,6 +141,15 @@ function LoginScreen() {
         // niżej, zamiast zostawiać ekran na komunikacie o przekierowaniu bez
         // granicy czasu.
         await signIn("keycloak", { callbackUrl: "/logowanie" });
+        if (cancelled) return;
+        // Sygnał powodzenia W TYM przepływie: `signIn()` się ROZSTRZYGNĘŁO
+        // (nie odrzuciło) — to znaczy, że przeglądarka już dostała polecenie
+        // przekierowania do Keycloak (w prawdziwej przeglądarce ten kod i tak
+        // by nie doszedł, bo nawigacja przerywa wykonanie JS; zmierzone pod
+        // testem, gdzie `signIn()` jest zamockowane i NIE nawiguje: bez tego
+        // `clearTimeout` zegar strzelał mimo powodzenia i po `LOGIN_TIMEOUT_MS`
+        // wieszał fałszywy komunikat awaryjny na ścieżce, która się udała).
+        clearTimeout(zegar);
       } catch {
         if (cancelled) return;
         clearTimeout(zegar);
