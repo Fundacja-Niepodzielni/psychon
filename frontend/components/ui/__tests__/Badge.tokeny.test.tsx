@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import postcss from "postcss";
 import Badge from "@/components/ui/Badge";
 
 // Test wiąże warianty odznaki z realnymi tokenami stylu.
@@ -57,60 +58,54 @@ function wyodrebnijNazwyWariantowZTypu(zrodlo: string): string[] {
 // powodu — zmierzone: przeniesienie tokenu do drugiego bloku `@theme` dawało fałszywy czerwony
 // wynik, dopóki czytany był tylko pierwszy blok).
 //
-// Zamknięcie każdego bloku szukane jest licząc głębokość nawiasów klamrowych od otwarcia
-// (nie pierwszą linię `}` z brzegu), żeby przetrwać zagnieżdżone reguły w bloku. Liczenie
-// głębokości działa na arkuszu z WYCZYSZCZONYMI komentarzami /* ... */ (treść komentarza
-// zamieniona na spacje, żeby pozycje i numery wierszy się nie przesunęły) — nawias klamrowy
-// wewnątrz komentarza (np. w opisie odcienia koloru) nie jest więc liczony jako nawias
-// struktury. Zmierzone: liczenie głębokości na surowym arkuszu dawało fałszywą czerwień
-// (komentarz z „}” w środku zamykał blok za wcześnie) i fałszywą awarię całej suity
-// (komentarz z „{” otwierał głębokość, która nigdy się nie domykała).
+// Token pochodzi z DRZEWA DEKLARACJI, nie z tekstu. Wcześniej ten test liczył głębokość
+// nawiasów klamrowych ręcznie na surowym arkuszu (z osobnym czyszczeniem komentarzy, potem
+// osobnym czyszczeniem łańcuchów) — trzecia z rzędu odsłona tej samej rodziny fałszywych
+// czerwieni w tym przyrządzie (komentarze, potem łańcuchy, po nich w kolejce `url()` i
+// zagnieżdżone reguły z `@`). Łatanie kolejnego wyzwalacza ręcznego skanera tylko przesuwało
+// termin kolejnej dziury, więc naprawa właściwa to PARSER CSS, którym front i tak buduje
+// style: `postcss` (już w `package-lock.json` frontendu, żadna nowa zależność). Parser
+// tokenizuje komentarze, łańcuchy i `url(...)` poprawnie z definicji — nie trzeba już samemu
+// odróżniać nawiasu strukturalnego od znaku wewnątrz łańcucha czy adresu.
 //
-// Zwrócone bloki nadal mają komentarze zamienione na spacje (nie usunięte całkiem), żeby
-// zakomentowany token nadal liczył się jako niezadeklarowany, ale bez psucia pozycji.
-// Brak choćby jednego bloku albo brak jego zamknięcia jest błędem — test ma się wywrócić,
-// a komunikat wskazuje WIERSZ w app/globals.css, nie samą pozycję w bajtach.
-function wyczyscKomentarzeZachowujacPozycje(tekst: string): string {
-  return tekst.replace(/\/\*[\s\S]*?\*\//g, (dopasowanie) => dopasowanie.replace(/[^\n]/g, " "));
-}
-
-function numerWiersza(tekst: string, pozycja: number): number {
-  return tekst.slice(0, pozycja).split("\n").length;
-}
-
-function wyodrebnijBlokiDeklaracjiTokenow(css: string): string[] {
-  const cssBezKomentarzy = wyczyscKomentarzeZachowujacPozycje(css);
-  const wzorzecPoczatku = /@theme(?:\s+inline)?\s*\{/g;
-  const bloki: string[] = [];
-  let dopasowanie: RegExpExecArray | null;
-
-  while ((dopasowanie = wzorzecPoczatku.exec(cssBezKomentarzy)) !== null) {
-    const startTresci = dopasowanie.index + dopasowanie[0].length;
-    let glebokosc = 1;
-    let i = startTresci;
-    for (; i < cssBezKomentarzy.length && glebokosc > 0; i++) {
-      if (cssBezKomentarzy[i] === "{") glebokosc++;
-      else if (cssBezKomentarzy[i] === "}") glebokosc--;
-    }
-    if (glebokosc !== 0) {
+// `root.walkAtRules("theme", ...)` odwiedza KAŻDY blok `@theme` / `@theme inline` (dopasowanie
+// po nazwie at-rule, parametr `inline` jest osobnym polem — nieistotnym dla wyszukiwania).
+// `atRule.walkDecls(...)` zwraca wyłącznie prawdziwe deklaracje (węzły typu Declaration) —
+// węzły typu Comment są przez parser odseparowane, więc zakomentowany token nigdy nie trafia
+// do zbioru i nadal liczy się jako niezadeklarowany, bez żadnego dodatkowego czyszczenia.
+// Brak choćby jednego bloku `@theme` jest błędem testu (czerwono), nie cichym pominięciem.
+// Brak zamknięcia bloku (nawias się nie domyka) jest błędem PARSOWANIA CAŁEGO ARKUSZA —
+// `postcss.parse` rzuca `CssSyntaxError` z polem `.line` wskazującym prawdziwy wiersz otwarcia
+// niedomkniętego bloku w app/globals.css; ten wiersz przepisujemy do komunikatu testu.
+function wyodrebnijZadeklarowaneTokenyZTheme(css: string, sciezkaPliku: string): Set<string> {
+  let korzen: postcss.Root;
+  try {
+    korzen = postcss.parse(css, { from: sciezkaPliku });
+  } catch (e) {
+    if (e instanceof postcss.CssSyntaxError) {
       throw new Error(
-        `Nie znaleziono zamknięcia bloku \`@theme { ... }\` otwartego w app/globals.css w wierszu ${numerWiersza(css, dopasowanie.index)} (\`${dopasowanie[0]}\`).`,
+        `Nie udało się sparsować ${sciezkaPliku}: ${e.reason} w wierszu ${e.line}, kolumna ${e.column}.`,
       );
     }
-    const koniecTresci = i - 1; // wskazuje na dopasowany "}"
-    // Wycinamy z ORYGINALNEGO arkusza (pozycje są takie same, bo czyszczenie komentarzy
-    // zachowuje długość), więc zwrócony blok ma prawdziwą treść, nie same spacje.
-    bloki.push(css.slice(startTresci, koniecTresci));
-    wzorzecPoczatku.lastIndex = i;
+    throw e;
   }
 
-  if (bloki.length === 0) {
+  const tokeny = new Set<string>();
+  let liczbaBlokow = 0;
+  korzen.walkAtRules("theme", (atRule) => {
+    liczbaBlokow++;
+    atRule.walkDecls((decl) => {
+      tokeny.add(decl.prop);
+    });
+  });
+
+  if (liczbaBlokow === 0) {
     throw new Error(
-      "Nie znaleziono w globals.css żadnego bloku `@theme { ... }` z deklaracjami tokenów.",
+      `Nie znaleziono w ${sciezkaPliku} żadnego bloku \`@theme { ... }\` z deklaracjami tokenów.`,
     );
   }
 
-  return bloki.map((blok) => blok.replace(/\/\*[\s\S]*?\*\//g, ""));
+  return tokeny;
 }
 
 // Parsowanie linii postaci: nazwa: "klasa1 klasa2" albo "nazwa-z-myślnikiem": "klasa1 klasa2",
@@ -133,7 +128,7 @@ function wyodrebnijMapeWariantow(blok: string): Record<string, string[]> {
 const nazwyZTypu = wyodrebnijNazwyWariantowZTypu(badgeSource);
 const blokWariantow = wyodrebnijBlokWariantow(badgeSource);
 const mapaWariantow = wyodrebnijMapeWariantow(blokWariantow);
-const blokiTokenow = wyodrebnijBlokiDeklaracjiTokenow(globalsCss);
+const tokenyZTheme = wyodrebnijZadeklarowaneTokenyZTheme(globalsCss, GLOBALS_CSS_PATH);
 
 describe("Badge — wiązanie wariantów z tokenami stylu", () => {
   it("każdy wariant z typu Variant ma wpis w mapie klas w Badge.tsx", () => {
@@ -184,8 +179,7 @@ describe("Badge — wiązanie wariantów z tokenami stylu", () => {
           ).not.toBeNull();
 
           const nazwaTokenu = dopasowaniePrefiksu![2];
-          const wzorzecTokenu = new RegExp(`--color-${nazwaTokenu}\\s*:`);
-          const zadeklarowanyWKtoryms = blokiTokenow.some((blok) => wzorzecTokenu.test(blok));
+          const zadeklarowanyWKtoryms = tokenyZTheme.has(`--color-${nazwaTokenu}`);
           expect(
             zadeklarowanyWKtoryms,
             `token --color-${nazwaTokenu} (dla klasy "${klasa}" wariantu "${nazwa}") nie jest zadeklarowany w żadnym bloku @theme w app/globals.css`,
