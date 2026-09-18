@@ -82,6 +82,25 @@ class AdminLegalDocumentTest extends TestCase
         ]);
     }
 
+    public function test_super_admin_adds_a_draft_version_for_klauzula_rodo(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $response = $this->postJson('/api/v1/admin/legal-documents/klauzula-rodo/versions', [
+            'version' => 'v1',
+            'content' => 'Treść do dostarczenia przez Fundację.',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.version', 'v1');
+        $this->assertDatabaseHas('legal_document_versions', [
+            'type' => 'klauzula-rodo',
+            'version' => 'v1',
+            'status' => 'draft',
+        ]);
+    }
+
     public function test_draft_is_not_visible_on_the_public_route(): void
     {
         $this->actingAsRole('project_manager');

@@ -31,4 +31,13 @@ class LegalDocumentSeederTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.content', 'Treść do dostarczenia przez Fundację.');
     }
+
+    public function test_seeded_klauzula_rodo_is_a_placeholder(): void
+    {
+        $this->seed(LegalDocumentSeeder::class);
+
+        $this->getJson('/api/v1/legal-documents/klauzula-rodo/current')
+            ->assertOk()
+            ->assertJsonPath('data.content', 'Treść do dostarczenia przez Fundację.');
+    }
 }
