@@ -25,10 +25,10 @@ export default function AccessExpiredPage() {
         <p className="mt-4 text-body font-medium text-ink">
           Kontakt:{" "}
           <a
-            href="mailto:kontakt@niepodzielni.pl"
+            href="mailto:kontakt@niepodzielni.com"
             className="text-accent underline underline-offset-2 hover:text-accent-dark focus-visible:focus-ring"
           >
-            kontakt@niepodzielni.pl
+            kontakt@niepodzielni.com
           </a>
         </p>
       </Card>
