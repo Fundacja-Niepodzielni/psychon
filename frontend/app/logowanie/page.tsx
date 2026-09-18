@@ -7,7 +7,7 @@ import { LogIn } from "lucide-react";
 import AuthTemplate from "@/components/templates/AuthTemplate";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, KONTO_BINDING_LIMIT_MS } from "@/lib/api";
 import { homeForRole } from "@/lib/home-by-role";
 
 /** Human-readable text for the Auth.js error codes the callback can redirect
@@ -28,13 +28,27 @@ const NAGLOWEK = {
 
 const REDIRECTING = "Przekierowuję do logowania…";
 
+/**
+ * Limit czasu tego ekranu: jeżeli w tym czasie żaden z możliwych wyników
+ * (przekierowanie do logowania, komunikat błędu, lądowanie wg roli) się nie
+ * rozstrzygnie, przestajemy czekać i pokazujemy awaryjny komunikat zamiast
+ * trzymać „Przekierowuję…” bez końca (zmierzone bez tego limitu: 30 015 ms,
+ * zero komunikatów, przy trzech nieudanych pobraniach sesji, każde 500).
+ *
+ * Ta sama wartość co `KONTO_BINDING_LIMIT_MS` z `lib/api.ts` — inny ekran tej
+ * samej rodziny SSO, to samo uzasadnienie progu: zapas nad realną odpowiedzią
+ * sieci, wyraźnie poniżej progu, po którym ekran zaczyna kłamać, że coś się
+ * jeszcze dzieje.
+ */
+const LOGIN_TIMEOUT_MS = KONTO_BINDING_LIMIT_MS;
+
 interface Me {
   role: string;
 }
 
 /**
  * PsychON jest wyłącznie SSO: to jedyne drzwi logowania, przez konto
- * Niepodzielni (Keycloak). Trzy stany, bez formularza:
+ * Niepodzielni (Keycloak). CZTERY stany, nie trzy, bez formularza:
  *
  * 1. Brak sesji i brak `?error=` → od razu `signIn("keycloak", …)`, zero
  *    kliknięć — użytkowniczka widzi tylko krótki komunikat o przekierowaniu.
@@ -46,6 +60,16 @@ interface Me {
  *    obsłużony globalnie przez `lib/api.ts` (`handleUnauthorized`) — tu tylko
  *    milczymy, żeby nie zdążyć narysować błędu tuż przed przekierowaniem,
  *    które i tak zaraz nadejdzie.
+ * 4. Nic z powyższego nie rozstrzygnęło się do `LOGIN_TIMEOUT_MS` — czy to
+ *    dlatego, że `getSession()`/`GET /me` wisi, czy dlatego, że samo
+ *    rozpoczęcie logowania (`signIn()`) odrzuciło obietnicę → ekran przestaje
+ *    czekać i pokazuje TEN SAM komunikat i przycisk co stan 2. Dlatego cała
+ *    praca tego efektu, ŁĄCZNIE z wywołaniem `signIn()`, stoi w jednym
+ *    `try`/`catch`: bez tego odrzucona obietnica `signIn()` nie miała nic,
+ *    co złapałoby błąd, i ekran zostawał na „Przekierowuję…” bez granicy
+ *    czasu. To DALEJ nie jest automatyczne ponowienie logowania — po
+ *    zegarze/błędzie ekran CZEKA na kliknięcie, z tego samego powodu co
+ *    w stanie 2: automatyczna kolejna próba nigdy nie dałaby się przeczytać.
  */
 function LoginScreen() {
   const router = useRouter();
@@ -56,38 +80,63 @@ function LoginScreen() {
   useEffect(() => {
     let cancelled = false;
 
+    // Zegar tego ekranu: pierwsze rozstrzygnięcie wygrywa (ten sam wzorzec co
+    // `sprawdzZLimitem` w `/logowanie/niepowiazane`). Każda gałąź `run()`,
+    // która realnie coś rozstrzyga, sama go anuluje — jeśli żadna tego nie
+    // zrobi do `LOGIN_TIMEOUT_MS`, to on decyduje.
+    const zegar = setTimeout(() => {
+      setErrorMessage(ERROR_MESSAGES.Configuration);
+    }, LOGIN_TIMEOUT_MS);
+
     async function run() {
-      const session = await getSession();
-      if (cancelled) return;
+      try {
+        const session = await getSession();
+        if (cancelled) return;
 
-      const loggedIn = Boolean(session?.user?.id) && !session?.error;
+        const loggedIn = Boolean(session?.user?.id) && !session?.error;
 
-      if (loggedIn) {
-        try {
-          const me = await api<Me>("/me");
-          if (!cancelled) router.replace(homeForRole(me.role));
-        } catch (err) {
-          if (cancelled) return;
-          // 401 = albo „niepowiązane", albo „sesja wygasła" — obie ścieżki
-          // `lib/api.ts` już zaczęło same, przekierowaniem przeglądarki.
-          if (!(err instanceof ApiError && err.status === 401)) {
-            setErrorMessage("Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.");
+        if (loggedIn) {
+          try {
+            const me = await api<Me>("/me");
+            if (cancelled) return;
+            clearTimeout(zegar);
+            router.replace(homeForRole(me.role));
+          } catch (err) {
+            if (cancelled) return;
+            // 401 = albo „niepowiązane", albo „sesja wygasła" — obie ścieżki
+            // `lib/api.ts` już zaczęło same, przekierowaniem przeglądarki.
+            // Zegar zostaje włączony jako siatka bezpieczeństwa: gdyby ten
+            // redirect nie nadszedł, ekran i tak nie zostanie bez końca.
+            if (!(err instanceof ApiError && err.status === 401)) {
+              clearTimeout(zegar);
+              setErrorMessage("Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.");
+            }
           }
+          return;
         }
-        return;
-      }
 
-      if (errorCode) {
-        setErrorMessage(ERROR_MESSAGES[errorCode] ?? "Logowanie się nie powiodło. Spróbuj ponownie.");
-        return;
-      }
+        if (errorCode) {
+          clearTimeout(zegar);
+          setErrorMessage(ERROR_MESSAGES[errorCode] ?? "Logowanie się nie powiodło. Spróbuj ponownie.");
+          return;
+        }
 
-      void signIn("keycloak", { callbackUrl: "/logowanie" });
+        // Ten `await` (zamiast odrzuconego wyniku) jest tu celowo: dopiero
+        // dzięki niemu odrzucenie obietnicy `signIn()` trafia do `catch`
+        // niżej, zamiast zostawiać ekran na komunikacie o przekierowaniu bez
+        // granicy czasu.
+        await signIn("keycloak", { callbackUrl: "/logowanie" });
+      } catch {
+        if (cancelled) return;
+        clearTimeout(zegar);
+        setErrorMessage(ERROR_MESSAGES.Configuration);
+      }
     }
 
     void run();
     return () => {
       cancelled = true;
+      clearTimeout(zegar);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
