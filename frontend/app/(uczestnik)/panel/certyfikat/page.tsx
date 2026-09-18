@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
@@ -7,21 +8,46 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { api, ApiError, getToken } from "@/lib/api";
+import {
+  fetchCertificateConditions,
+  type CertificateCondition,
+  type CertificateConditions,
+} from "@/lib/pulpit/data";
 
-interface Condition {
-  key: "courses" | "internship" | "supervision" | "workshop";
-  label: string;
-  done?: number | string;
-  required?: number | string;
-  met: boolean;
-}
-
-interface Conditions {
-  eligible: boolean;
-  conditions: Condition[];
-}
+type Condition = CertificateCondition;
+type Conditions = CertificateConditions;
 
 type IssueState = "idle" | "queued" | "downloading";
+
+/**
+ * Ekran, z którego pochodzi każda liczba warunku (H13). `workshop` nie ma
+ * wpisu celowo — warsztat stacjonarny odhacza wyłącznie administracja
+ * (`AdminWorkshopController`), uczestniczka nie ma własnego ekranu źródłowego.
+ */
+const SOURCE_HREF: Partial<Record<Condition["key"], string>> = {
+  courses: "/panel/kursy",
+  internship: "/panel/staz",
+  supervision: "/panel/superwizja",
+};
+
+/** Nazwa ekranu źródłowego do treści `aria-label` linku (dopełniacz). */
+const SOURCE_NAME: Partial<Record<Condition["key"], string>> = {
+  courses: "listy kursów i testów",
+  internship: "dziennika stażu",
+  supervision: "terminów superwizji",
+};
+
+function hasCount(c: Condition): boolean {
+  return c.done !== undefined && c.done !== null && c.required !== undefined && c.required !== null;
+}
+
+/** Brakujące pole liczbowe pokazujemy jako "brak danych", nigdy jako 0. */
+function formatCount(done?: number | string, required?: number | string): string {
+  if (done === undefined || done === null || required === undefined || required === null) {
+    return "brak danych";
+  }
+  return `${done} / ${required}`;
+}
 
 function percent(done?: number | string, required?: number | string): number {
   const d = Number(done ?? 0);
@@ -38,7 +64,7 @@ export default function CertificatePage() {
 
   const load = useCallback(
     () =>
-      api<Conditions>("/certificate/conditions")
+      fetchCertificateConditions()
         .then(setData)
         .catch((err) => {
           setLoadError(
@@ -125,29 +151,41 @@ export default function CertificatePage() {
 
       <Card title="Warunki ukończenia">
         <ul className="flex flex-col divide-y divide-line">
-          {data.conditions.map((c) => (
-            <li key={c.key} className="flex flex-col gap-2 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-body text-ink">{c.label}</span>
-                <span className="flex items-center gap-3">
-                  {c.key !== "workshop" && (
-                    <span className="text-small font-bold text-ink">
-                      {c.done} / {c.required}
-                    </span>
-                  )}
-                  <Badge variant={c.met ? "success" : "warning"}>
-                    {c.met ? "spełniony" : "w toku"}
-                  </Badge>
-                </span>
-              </div>
-              {c.key !== "workshop" && (
-                <ProgressBar
-                  value={percent(c.done, c.required)}
-                  label={`Postęp: ${c.label}`}
-                />
-              )}
-            </li>
-          ))}
+          {data.conditions.map((c) => {
+            const href = SOURCE_HREF[c.key];
+            const count = formatCount(c.done, c.required);
+
+            return (
+              <li key={c.key} className="flex flex-col gap-2 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-body text-ink">{c.label}</span>
+                  <span className="flex items-center gap-3">
+                    {c.key !== "workshop" &&
+                      (href ? (
+                        <Link
+                          href={href}
+                          aria-label={`${c.label}: ${count} — przejdź do ${SOURCE_NAME[c.key]}`}
+                          className="text-small font-bold text-ink underline underline-offset-4 hover:text-accent focus-visible:focus-ring"
+                        >
+                          {count}
+                        </Link>
+                      ) : (
+                        <span className="text-small font-bold text-ink">{count}</span>
+                      ))}
+                    <Badge variant={c.met ? "success" : "warning"}>
+                      {c.met ? "spełniony" : "w toku"}
+                    </Badge>
+                  </span>
+                </div>
+                {c.key !== "workshop" && hasCount(c) && (
+                  <ProgressBar
+                    value={percent(c.done, c.required)}
+                    label={`Postęp: ${c.label}`}
+                  />
+                )}
+              </li>
+            );
+          })}
         </ul>
       </Card>
 

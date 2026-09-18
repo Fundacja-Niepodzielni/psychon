@@ -401,8 +401,14 @@ KOD_FRONT=0
 CZAS_FRONT=0
 KOD_LIBC=0
 CZAS_LIBC=0
+# POMIN_FRONT idzie do logu ZAWSZE, niezaleznie od wartosci - inaczej bieg z
+# cicho pominietym frontem wyglada w logu identycznie jak bieg pelny, a
+# werdykt po kodzie wyjscia (0) tego nie odroznia (F-239). Wiersz ma byc
+# grepowalny osobno od naglowka kroku.
+echo "POMIN_FRONT=$POMIN_FRONT"
 if [ "$POMIN_FRONT" = "tak" ]; then
-    naglowek "4 - front pominiety (POMIN_FRONT=tak)"
+    naglowek "4 - front pominiety (POMIN_FRONT=$POMIN_FRONT)"
+    echo "front: POMINIETY (POMIN_FRONT=$POMIN_FRONT)"
 else
     naglowek "4 - front: instalacja, lint, test, build"
     T="$(date +%s)"
