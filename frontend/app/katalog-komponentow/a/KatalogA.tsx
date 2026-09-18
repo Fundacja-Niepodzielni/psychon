@@ -105,7 +105,7 @@ export default function KatalogA() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 p-6">
+    <main id="tresc" className="mx-auto flex w-full max-w-3xl flex-col gap-10 p-6">
       <PageHeader
         breadcrumbs={
           <Breadcrumbs
@@ -433,6 +433,6 @@ export default function KatalogA() {
         </Przyklad>
         <NieDotyczy powod="wyłączony — komponent nie ma stanu wyłączenia." />
       </section>
-    </div>
+    </main>
   );
 }

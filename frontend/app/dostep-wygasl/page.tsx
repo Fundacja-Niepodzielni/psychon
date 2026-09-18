@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function AccessExpiredPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-page p-6">
+    <main id="tresc" className="flex min-h-screen flex-col items-center justify-center gap-6 bg-page p-6">
       <Logo className="h-10 w-auto" />
       <Card className="w-full max-w-xl text-center">
         <p className="text-caption font-bold uppercase tracking-wide text-subtle">
@@ -32,6 +32,6 @@ export default function AccessExpiredPage() {
           </a>
         </p>
       </Card>
-    </div>
+    </main>
   );
 }

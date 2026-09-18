@@ -49,7 +49,7 @@ export default function VerificationSearchPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page p-6">
+    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
       <div className="w-full max-w-lg">
         <div className="mb-6 text-center">
           <h1 className="text-h2 font-black text-ink">Weryfikacja certyfikatu</h1>
@@ -88,6 +88,6 @@ export default function VerificationSearchPage() {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

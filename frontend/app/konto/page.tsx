@@ -90,7 +90,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page p-6">
+    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-h2 font-black text-ink">Twoje konto</h1>
@@ -142,6 +142,6 @@ export default function AccountPage() {
           </Button>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
