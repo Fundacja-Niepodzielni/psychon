@@ -15,10 +15,12 @@ import Badge from "@/components/ui/Badge";
 // „oczekiwaneKlasy is not iterable").
 //
 // Dla każdej klasy z mapy sprawdzamy, że odpowiadający jej token `--color-<nazwa>`
-// jest zadeklarowany w bloku deklaracji tokenów (`@theme inline { ... }`) w app/globals.css.
-// Plik stylów czytamy z dysku, nie przepisujemy listy tokenów do testu. Token zakomentowany
-// w tym bloku liczy się jako niezadeklarowany, a brak samego bloku jest błędem testu
-// (czerwono), nie cichym pominięciem.
+// jest zadeklarowany w którymkolwiek bloku `@theme { ... }` / `@theme inline { ... }`
+// w app/globals.css — plik może mieć więcej niż jeden taki blok (narzędzie stylów je
+// scala), więc czytamy wszystkie, nie tylko pierwszy. Plik stylów czytamy z dysku, nie
+// przepisujemy listy tokenów do testu. Token zakomentowany w bloku liczy się jako
+// niezadeklarowany, a brak choćby jednego bloku jest błędem testu (czerwono), nie
+// cichym pominięciem.
 
 const BADGE_SRC_PATH = path.join(__dirname, "..", "Badge.tsx");
 const GLOBALS_CSS_PATH = path.join(__dirname, "..", "..", "..", "app", "globals.css");
@@ -48,24 +50,48 @@ function wyodrebnijNazwyWariantowZTypu(zrodlo: string): string[] {
   return Array.from(match[1].matchAll(/"([^"]+)"/g)).map((m) => m[1]);
 }
 
-// Zawęża plik stylów do wnętrza bloku deklaracji tokenów (`@theme inline { ... }`)
-// i usuwa komentarze blokowe /* ... */ z tego wnętrza, żeby zakomentowany token
-// nie liczył się jako zadeklarowany. Brak bloku albo brak jego zamknięcia jest
-// błędem — test ma się wywrócić, a nie po cichu nic nie sprawdzić.
-function wyodrebnijBlokDeklaracjiTokenow(css: string): string {
-  const poczatek = css.match(/@theme\s+inline\s*\{/);
-  if (!poczatek || poczatek.index === undefined) {
+// Narzędzie stylów (Tailwind v4) scala WSZYSTKIE bloki `@theme { ... }` / `@theme inline { ... }`
+// napotkane w pliku — token zadeklarowany w drugim, trzecim... takim bloku istnieje i działa
+// tak samo jak w pierwszym. Test musi więc czytać każdy taki blok, nie tylko pierwszy, inaczej
+// zapala się na czerwono dla tokenu, który realnie jest zadeklarowany (czerwień z niewłaściwego
+// powodu — zmierzone: przeniesienie tokenu do drugiego bloku `@theme` dawało fałszywy czerwony
+// wynik, dopóki czytany był tylko pierwszy blok).
+//
+// Zamknięcie każdego bloku szukane jest licząc głębokość nawiasów klamrowych od otwarcia
+// (nie pierwszą linię `}` z brzegu), żeby przetrwać zagnieżdżone reguły w bloku. Komentarze
+// blokowe /* ... */ są usuwane z wnętrza każdego bloku, żeby zakomentowany token nie liczył
+// się jako zadeklarowany. Brak choćby jednego bloku albo brak jego zamknięcia jest błędem —
+// test ma się wywrócić, a nie po cichu nic nie sprawdzić.
+function wyodrebnijBlokiDeklaracjiTokenow(css: string): string[] {
+  const wzorzecPoczatku = /@theme(?:\s+inline)?\s*\{/g;
+  const bloki: string[] = [];
+  let dopasowanie: RegExpExecArray | null;
+
+  while ((dopasowanie = wzorzecPoczatku.exec(css)) !== null) {
+    const startTresci = dopasowanie.index + dopasowanie[0].length;
+    let glebokosc = 1;
+    let i = startTresci;
+    for (; i < css.length && glebokosc > 0; i++) {
+      if (css[i] === "{") glebokosc++;
+      else if (css[i] === "}") glebokosc--;
+    }
+    if (glebokosc !== 0) {
+      throw new Error(
+        `Nie znaleziono zamknięcia bloku \`@theme { ... }\` zaczynającego się w app/globals.css na pozycji ${dopasowanie.index}.`,
+      );
+    }
+    const koniecTresci = i - 1; // wskazuje na dopasowany "}"
+    bloki.push(css.slice(startTresci, koniecTresci));
+    wzorzecPoczatku.lastIndex = i;
+  }
+
+  if (bloki.length === 0) {
     throw new Error(
-      "Nie znaleziono w globals.css bloku `@theme inline { ... }` z deklaracjami tokenów.",
+      "Nie znaleziono w globals.css żadnego bloku `@theme { ... }` z deklaracjami tokenów.",
     );
   }
-  const odPoczatkuTresci = css.slice(poczatek.index + poczatek[0].length);
-  const koniec = odPoczatkuTresci.match(/^\}/m);
-  if (!koniec || koniec.index === undefined) {
-    throw new Error("Nie znaleziono zamknięcia bloku `@theme inline { ... }` w globals.css.");
-  }
-  const trescBloku = odPoczatkuTresci.slice(0, koniec.index);
-  return trescBloku.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  return bloki.map((blok) => blok.replace(/\/\*[\s\S]*?\*\//g, ""));
 }
 
 // Parsowanie linii postaci: nazwa: "klasa1 klasa2" albo "nazwa-z-myślnikiem": "klasa1 klasa2",
@@ -88,7 +114,7 @@ function wyodrebnijMapeWariantow(blok: string): Record<string, string[]> {
 const nazwyZTypu = wyodrebnijNazwyWariantowZTypu(badgeSource);
 const blokWariantow = wyodrebnijBlokWariantow(badgeSource);
 const mapaWariantow = wyodrebnijMapeWariantow(blokWariantow);
-const blokTokenow = wyodrebnijBlokDeklaracjiTokenow(globalsCss);
+const blokiTokenow = wyodrebnijBlokiDeklaracjiTokenow(globalsCss);
 
 describe("Badge — wiązanie wariantów z tokenami stylu", () => {
   it("każdy wariant z typu Variant ma wpis w mapie klas w Badge.tsx", () => {
@@ -140,9 +166,10 @@ describe("Badge — wiązanie wariantów z tokenami stylu", () => {
 
           const nazwaTokenu = dopasowaniePrefiksu![2];
           const wzorzecTokenu = new RegExp(`--color-${nazwaTokenu}\\s*:`);
+          const zadeklarowanyWKtoryms = blokiTokenow.some((blok) => wzorzecTokenu.test(blok));
           expect(
-            wzorzecTokenu.test(blokTokenow),
-            `token --color-${nazwaTokenu} (dla klasy "${klasa}" wariantu "${nazwa}") nie jest zadeklarowany w bloku @theme w app/globals.css`,
+            zadeklarowanyWKtoryms,
+            `token --color-${nazwaTokenu} (dla klasy "${klasa}" wariantu "${nazwa}") nie jest zadeklarowany w żadnym bloku @theme w app/globals.css`,
           ).toBe(true);
         }
       });
