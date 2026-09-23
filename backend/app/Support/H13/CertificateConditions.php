@@ -19,9 +19,16 @@ final class CertificateConditions
     /** @var array<int, array<string, mixed>> */
     private array $conditions;
 
+    /**
+     * Liczba zaliczonych testów osobno od `courses` (poz. 19 Załącznika 1) —
+     * pole dodatkowe, nie wchodzi w logikę warunku `courses`/`eligible()`.
+     */
+    private int $passedTestsCount;
+
     private function __construct(User $user)
     {
         $progress = ProgressAggregator::for($user);
+        $this->passedTestsCount = ProgressAggregator::passedTestsCount($user);
 
         $hoursRequired = (int) Settings::edition('internship_hours_required');
         $supervisionRequired = (int) Settings::edition('supervision_required_count');
@@ -93,16 +100,19 @@ final class CertificateConditions
     }
 
     /**
-     * Kształt kontraktu: `{ eligible, conditions: [ { key, label, done?, required?, met } ] }`.
-     * Warunek `workshop` nie ma liczników.
+     * Kształt kontraktu: `{ eligible, conditions: [ { key, label, done?, required?, met } ], passed_tests_count }`.
+     * Warunek `workshop` nie ma liczników. `passed_tests_count` jest polem
+     * dodatkowym (wstecznie kompatybilnym) — poz. 19 Załącznika 1, liczba
+     * różnych testów z co najmniej jedną zaliczoną próbą.
      *
-     * @return array{eligible: bool, conditions: array<int, array<string, mixed>>}
+     * @return array{eligible: bool, conditions: array<int, array<string, mixed>>, passed_tests_count: int}
      */
     public function toArray(): array
     {
         return [
             'eligible' => $this->eligible(),
             'conditions' => $this->conditions,
+            'passed_tests_count' => $this->passedTestsCount,
         ];
     }
 }
