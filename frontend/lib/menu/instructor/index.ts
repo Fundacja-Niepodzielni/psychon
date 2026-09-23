@@ -6,6 +6,7 @@
  * 2. Dodaj swój wpis jedną linią do importów i jedną do listy poniżej.
  */
 import h00Start from "./h00-start";
+import h08Kursy from "./h08-kursy";
 import h12Grupa from "./h12-grupa";
 import h15WatekGrupowy from "./h15-watek-grupowy";
 import h17Pytania from "./h17-pytania";
@@ -15,6 +16,7 @@ import { sortMenu, type MenuEntry, type MenuSection } from "../types";
 
 export const instructorMenu: MenuEntry[] = sortMenu([
   h00Start,
+  h08Kursy,
   h12Grupa,
   h15WatekGrupowy,
   h17Pytania,
@@ -22,6 +24,6 @@ export const instructorMenu: MenuEntry[] = sortMenu([
 ]);
 
 /**
- * Menu prowadzącego ma cztery wpisy, więc zostaje jedną listą bez sekcji.
+ * Menu prowadzącego ma pięć wpisów, więc zostaje jedną listą bez sekcji.
  */
 export const instructorMenuSections: MenuSection[] = [];

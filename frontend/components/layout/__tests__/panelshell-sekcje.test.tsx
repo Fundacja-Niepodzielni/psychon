@@ -186,7 +186,7 @@ describe("PanelShell — ten sam mechanizm w pozostałych panelach", () => {
     expect(nav.querySelectorAll("a svg")).toHaveLength(8);
   });
 
-  it("prowadzący (4 wpisy): jedna lista bez nagłówków, z ikonami", () => {
+  it("prowadzący (5 wpisów): jedna lista bez nagłówków, z ikonami", () => {
     sciezka = "/prowadzacy";
     render(
       <PanelShell
@@ -201,7 +201,7 @@ describe("PanelShell — ten sam mechanizm w pozostałych panelach", () => {
     const nav = screen.getAllByRole("navigation", { name: "Menu — Panel prowadzącego" })[0];
 
     expect(within(nav).queryAllByRole("button")).toHaveLength(0);
-    expect(within(nav).getAllByRole("link")).toHaveLength(4);
-    expect(nav.querySelectorAll("a svg")).toHaveLength(4);
+    expect(within(nav).getAllByRole("link")).toHaveLength(5);
+    expect(nav.querySelectorAll("a svg")).toHaveLength(5);
   });
 });
