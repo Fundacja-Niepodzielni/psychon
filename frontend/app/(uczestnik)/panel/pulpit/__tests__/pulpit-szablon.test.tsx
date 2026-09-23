@@ -25,11 +25,26 @@ vi.mock("@/lib/api", () => ({
   ApiError,
 }));
 
+// Nazwa tego przypadku obiecuje, że nagłówek POCHODZI z `PageHeader`, nie
+// tylko że jakiś `<h1>` z tą treścią istnieje — asercja samej roli/nazwy nie
+// odróżnia tego od `<h1>` napisanego ręcznie zamiast przez szablon (zielono
+// 2/2 nawet po podmianie `PageTemplate` na zwykły `<div>` z ręcznym `<h1>`).
+// Szpieg na module `PageHeader` mierzy WYWOŁANIE komponentu, nie strukturę ani
+// klasy DOM (zakaz sprzęgania z układem) — ręcznie napisany `<h1>` nigdy go
+// nie wywoła.
+vi.mock("@/components/molecules/PageHeader", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/components/molecules/PageHeader")>();
+  return { ...actual, default: vi.fn(actual.default) };
+});
+
+const { default: PageHeader } = await import("@/components/molecules/PageHeader");
 const { default: PulpitPage } = await import("@/app/(uczestnik)/panel/pulpit/page");
 
 beforeEach(() => {
   api.mockReset();
   apiPaged.mockReset();
+  vi.mocked(PageHeader).mockClear();
 });
 
 describe("PulpitPage", () => {
@@ -47,6 +62,13 @@ describe("PulpitPage", () => {
         screen.getByRole("heading", { level: 1, name: "Dzień dobry, Zosia" }),
       ).toBeInTheDocument(),
     );
+    // Pozytywna noga: nie samo "nagłówek jest w drzewie" — "TEN
+    // KOMPONENT go wyrenderował z tym tytułem". Ręcznie wpisany `<h1>` (bez
+    // przejścia przez `PageHeader`) zostawia ten spy niewywołanym i ta linia
+    // czerwienieje, mimo że `getByRole` wyżej nadal by przeszło.
+    expect(vi.mocked(PageHeader).mock.calls.at(-1)?.[0]).toMatchObject({
+      title: "Dzień dobry, Zosia",
+    });
     expect(apiPaged).not.toHaveBeenCalled();
   });
 

@@ -15,11 +15,22 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(query),
 }));
 
+// Ta sama kontrola co w świadku `panel/pulpit`: nagłówek ma POCHODZIĆ z
+// `PageHeader`, nie tylko istnieć w drzewie — spy na komponencie, nie na
+// klasach ani strukturze DOM.
+vi.mock("@/components/molecules/PageHeader", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/components/molecules/PageHeader")>();
+  return { ...actual, default: vi.fn(actual.default) };
+});
+
+const { default: PageHeader } = await import("@/components/molecules/PageHeader");
 const AccountSystemLoginRedirect = (await import("@/app/logowanie/konta/page")).default;
 
 beforeEach(() => {
   replace.mockReset();
   query = "";
+  vi.mocked(PageHeader).mockClear();
 });
 
 describe("/logowanie/konta — przekierowanie na /logowanie", () => {
@@ -39,5 +50,17 @@ describe("/logowanie/konta — przekierowanie na /logowanie", () => {
   it("nie ma już linku logowania hasłem", () => {
     render(<AccountSystemLoginRedirect />);
     expect(screen.queryByText(/hasłem/i)).not.toBeInTheDocument();
+  });
+
+  it("nagłówek H1 pochodzi z PageHeader ('Przekierowuję…')", () => {
+    render(<AccountSystemLoginRedirect />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Przekierowuję…" }),
+    ).toBeInTheDocument();
+    // Pozytywna noga: nie samo "nagłówek jest", tylko "TEN komponent go
+    // wyrenderował" — ręcznie wpisany `<h1>` zostawiłby ten spy niewywołanym.
+    expect(vi.mocked(PageHeader).mock.calls.at(-1)?.[0]).toMatchObject({
+      title: "Przekierowuję…",
+    });
   });
 });

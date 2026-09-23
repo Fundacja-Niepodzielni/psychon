@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
+import PageTemplate from "@/components/templates/PageTemplate";
 
 /**
  * `/logowanie/konta` istniało jako drugie drzwi logowania (obok hasła
@@ -19,7 +20,7 @@ function Redirector() {
     router.replace(error ? `/logowanie?error=${encodeURIComponent(error)}` : "/logowanie");
   }, [error, router]);
 
-  return <h1 className="text-small text-subtle">Przekierowuję…</h1>;
+  return <PageTemplate naglowek={{ title: "Przekierowuję…" }} />;
 }
 
 export default function AccountSystemLoginRedirect() {
