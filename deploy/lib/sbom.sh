@@ -34,6 +34,22 @@ SBOM_OBRAZ_SKANERA_DOMYSLNY="anchore/grype:v0.119.0"
 # package.json obok siebie: jeden bieg, plik z "pkg:composer/..." I
 # "pkg:npm/..." naraz).
 #
+# --skip-dirs '**/vendor/**' --skip-dirs '**/node_modules/**': BEZ tego
+# `trivy fs` schodzi TAKZE do zaleznosci zainstalowanych PRZEZ narzedzia
+# testowe i zlicza ICH wewnetrzne pliki blokady jako skladniki produktu -
+# zmierzone na drzewie po `composer install`+`npm ci`: 230 skladnikow
+# zamiast 152, z czego 51 npm z pakietu bundlowanego wewnatrz
+# backend/vendor/laravel/framework/.../exceptions/renderer (wlasny
+# package-lock.json tej podpaczki) i 25 pkg:pypi z
+# backend/vendor/mockery/mockery/docs/requirements.txt (wymagania do
+# budowania DOKUMENTACJI mockery, Python w projekcie PHP+JS, zero zwiazku z
+# tym, co wdrazamy). Ani backend/composer.lock, ani frontend/package-
+# lock.json NIE LEZA wewnatrz vendor/node_modules, wiec pomijanie tych
+# katalogow nie gubi ANI JEDNEGO wpisu z prawdziwego inwentarza produktu -
+# zmierzone na tym samym drzewie z flaga: 152 skladniki (85 composer + 65
+# npm + 2 pliki-zrodla, bajt w bajt to samo wyjscie, co na czystym klonie
+# bez zainstalowanych narzedzi).
+#
 # PLIK WYNIKOWY NIE POWSTAJE przez zamontowany katalog wyjsciowy - `docker cp`
 # wyciaga go z kontenera PO biegu. Powod (zmierzony na tym samym Windows+Git
 # Bash, na ktorym stoi reszta bramki, patrz sekrety-licznik.sh: "Katalog POD
@@ -53,16 +69,28 @@ SBOM_OBRAZ_SKANERA_DOMYSLNY="anchore/grype:v0.119.0"
 # nie jest katalogiem tymczasowym spod /tmp.
 #
 # Zwraca 0 TYLKO gdy docker wystartowal (kod 0) I `docker cp` wyciagnal plik
-# (kod 0) I wyciagniety plik jest niepusty - trzy niezalezne warunki, bo
-# kazdy z nich z osobna bywal falszywie zielony (docker EXIT=0 na pustym
-# montazu wejsciowym, `docker cp` "udany" na 0-bajtowym pliku wyjsciowym).
+# (kod 0) I wyciagniety plik jest niepusty I policzony inwentarz ma co
+# najmniej 1 skladnik - CZTERY niezalezne warunki, bo kazdy z nich z osobna
+# bywal falszywie zielony (docker EXIT=0 na pustym montazu wejsciowym,
+# `docker cp` "udany" na 0-bajtowym pliku wyjsciowym, i - zmierzone przy
+# odbiorze 23.09, kopie spod AppData/Local/Temp - plik POPRAWNY i NIEPUSTY,
+# ale z "components": [] po tym samym pustym-montazu-bez-bledu opisanym
+# wyzej: trivy dostaje puste /repo, nie znajduje ZADNEGO pliku blokady i
+# oddaje poprawny szkielet CycloneDX bez zawartosci). Projekt jest PHP+JS z
+# dwoma plikami blokady zawsze obecnymi w drzewie - zero skladnikow nie jest
+# WYNIKIEM, jaki ten projekt moze kiedykolwiek prawdziwie miec, wiec taki
+# wynik NIE WOLNO zmeldowac jako "zmierzone zero" (patrz test przypadku 2
+# nizej w test-bramka-sbom.sh dla ODWROTNEGO przypadku: zero jest poprawnym
+# WYNIKIEM tylko wtedy, gdy liczy pojedynczy JUZ GOTOWY plik podany z
+# zewnatrz - tu liczymy WLASNY produkt WLASNEGO biegu, gdzie zero jest
+# zawsze objawem awarii, nie tresci).
 # Brak polecenia `docker` w PATH konczy sie kodem 127 BEZ probowania
 # czegokolwiek - to jest przypadek "generator nie moze wystartowac", ktory
 # wolajacy ma zmeldowac jako NIEZMIERZONE, a nie jako zero skladnikow.
 sbom_uruchom_generator() {
   local katalog_zrodla="$1" plik_wyjscia="$2" plik_log="$3"
   local obraz="${4:-$SBOM_OBRAZ_GENERATORA_DOMYSLNY}"
-  local nazwa kod_run kod_cp
+  local nazwa kod_run kod_cp ilosc
 
   if ! command -v docker >/dev/null 2>&1; then
     echo "sbom: NIEZMIERZONE - brak polecenia docker w PATH, generator nie moze wystartowac" > "$plik_log"
@@ -72,7 +100,9 @@ sbom_uruchom_generator() {
   nazwa="sbom-gen-$$-${RANDOM}"
   MSYS_NO_PATHCONV=1 docker run --network none --name "$nazwa" \
     -v "${katalog_zrodla}:/repo:ro" \
-    "$obraz" fs -f cyclonedx -o /tmp/sbom.cdx.json /repo \
+    "$obraz" fs -f cyclonedx \
+    --skip-dirs '**/vendor/**' --skip-dirs '**/node_modules/**' \
+    -o /tmp/sbom.cdx.json /repo \
     > "$plik_log" 2>&1
   kod_run=$?
 
@@ -91,6 +121,11 @@ sbom_uruchom_generator() {
   if [[ ! -s "$plik_wyjscia" ]]; then
     echo "sbom: plik wynikowy jest pusty albo nie istnieje po docker cp" >> "$plik_log"
     return 3
+  fi
+  ilosc="$(sbom_policz_skladniki "$plik_wyjscia")"
+  if [[ "$ilosc" == "0" ]]; then
+    echo "sbom: plik wynikowy jest poprawny, ale niesie ZERO skladnikow - dla tego projektu (PHP+JS, dwa pliki blokady zawsze w drzewie) to nie jest wiarygodny pomiar tylko typowy objaw pustego montazu (patrz komentarz funkcji), wiec NIEZMIERZONE, nie zero" >> "$plik_log"
+    return 4
   fi
   return 0
 }
@@ -116,18 +151,31 @@ sbom_uruchom_generator() {
 # samych trafien, tak samo jak nie interesuje nas tu semantyka kodu
 # `composer audit`). Brak pliku wejsciowego albo brak docker w PATH konczy
 # sie odpowiednio 2 i 127, BEZ probowania uruchomienia.
+#
+# KOLEJNOSC dwoch straznikow ponizej jest SWIADOMA, nie przypadkowa: plik
+# wejsciowy jest sprawdzany PRZED narzedziem. Powod, zmierzony przy odbiorze
+# 23.09 na maszynie NAPRAWDE bez dockera: gdy caly proces (nie tylko TA
+# funkcja) nie ma dockera w PATH, przypadek "brak pliku wejsciowego" (test
+# 12 nizej) NIE nadpisuje swojego PATH wlasnym stubem - dziedziczy PATH
+# calego biegu. Gdyby strażnik dockera byl pierwszy, doslalby TAKI SAM kod
+# 127 co przypadek "brak narzedzia" (test 11), mimo ze to DWA RÓŻNE powody
+# NIEZMIERZONE - a caly zestaw testu konczylby sie EXIT=1 (falszywa
+# porazka), zamiast obiecanego w naglowku EXIT=3 (NIE ZMIERZONO), bo test
+# oczekuje TU kodu 2, niezaleznie od tego, czy TA maszyna ma docker. Lokalny
+# check pliku nic nie kosztuje (nie dotyka sieci ani procesow) i jest
+# przyczyna NIEZALEZNA od obecnosci narzedzia, wiec ma pierwszenstwo.
 sbom_uruchom_skaner() {
   local plik_sbom="$1" plik_log="$2"
   local obraz="${3:-$SBOM_OBRAZ_SKANERA_DOMYSLNY}"
   local nazwa kod_create kod_cp kod_start
 
-  if ! command -v docker >/dev/null 2>&1; then
-    echo "sbom: NIEZMIERZONE - brak polecenia docker w PATH, skaner nie moze wystartowac" > "$plik_log"
-    return 127
-  fi
   if [[ ! -s "$plik_sbom" ]]; then
     echo "sbom: NIEZMIERZONE - plik SBOM do przeskanowania nie istnieje albo jest pusty ($plik_sbom)" > "$plik_log"
     return 2
+  fi
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "sbom: NIEZMIERZONE - brak polecenia docker w PATH, skaner nie moze wystartowac" > "$plik_log"
+    return 127
   fi
 
   nazwa="sbom-skan-$$-${RANDOM}"

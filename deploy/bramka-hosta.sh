@@ -432,6 +432,8 @@ echo "test logiki SBOM: EXIT=$KOD_TEST_SBOM, $CZAS_TEST_SBOM s"
 if [ "$KOD_TEST_SBOM" -eq 1 ]; then
     echo "SBOM: test wlasnej logiki (deploy/tests/test-bramka-sbom.sh) jest CZERWONY - nie ufam licznikom ponizej, ale krok POZOSTAJE POMIAREM (nie wchodzi do kodu wyjscia)" >&2
     tail -20 "$KATALOG_BIEGU"/bramka-test-sbom.log | sed 's/^/  ! /'
+elif [ "$KOD_TEST_SBOM" -eq 3 ]; then
+    echo "SBOM: test wlasnej logiki NIE ZMIERZYL czesci koncowej (EXIT=3, brak docker na TEJ maszynie testujacej) - to NIE jest czerwien, ale licznikom ponizej ufam tylko o tyle, o ile sam bieg generatora/skanera nizej naprawde ma docker" >&2
 fi
 
 T="$(date +%s)"
