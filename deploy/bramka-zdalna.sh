@@ -72,6 +72,17 @@ cd "$LUSTRO" || exit 2
 git fetch --quiet --prune origin || { echo "[ZDALNIE] fetch nieudany"; exit 2; }
 git checkout --quiet --detach "$SHA" 2>/dev/null || { echo "[ZDALNIE] nie ma commitu $SHA"; exit 2; }
 
+# Lustro jest WSPOLNE dla wszystkich biegow, a `checkout` nie usuwa plikow nieznanych
+# gitowi. Bieg, ktory cos po sobie zostawil, zatruwal wiec KAZDY nastepny: drzewo przed
+# biegiem bylo brudne, a od 23.09 brud konczy bieg kodem 6 - czyli czerwien dostawalby
+# commit, ktory nie ma z tym nic wspolnego. Sprzatamy TU, po stronie przygotowania,
+# i mowimy glosno ile. `-fd` bez `-x`: pliki ignorowane (vendor, node_modules) zostaja,
+# bo ich odtworzenie kosztuje kilka minut, a nie sa niczyim smieciem.
+SPRZATNIETE="$(git clean -fd 2>/dev/null | grep -c .)"
+if [ "${SPRZATNIETE:-0}" -gt 0 ]; then
+    echo "[ZDALNIE] lustro: usunietych pozycji po poprzednim biegu: $SPRZATNIETE"
+fi
+
 # Swiadek 1: lustro == zrodlo. Nie ufamy komunikatowi `checkout`, tylko pytamy
 # o HEAD po fakcie - to dwie rozne rzeczy, gdy w drzewie zostal ktos inny.
 HEAD_TERAZ="$(git rev-parse HEAD)"
