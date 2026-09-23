@@ -34,9 +34,14 @@ export interface CertificateCondition {
   met: boolean;
 }
 
+/**
+ * `passed_tests_count` (poz. 19 Załącznika 1) — pole dodatkowe, wstecznie
+ * kompatybilne: stare odpowiedzi API go nie mają, wtedy `undefined`.
+ */
 export interface CertificateConditions {
   eligible: boolean;
   conditions: CertificateCondition[];
+  passed_tests_count?: number | null;
 }
 
 /* -------------------------------------------------------------------- */
