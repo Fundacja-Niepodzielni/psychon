@@ -50,7 +50,7 @@ function formatCount(done?: number | string, required?: number | string): string
 }
 
 /**
- * Poz. 19 Załącznika 1: liczba zaliczonych testów osobno od `courses`
+ * Liczba zaliczonych testów osobno od `courses`
  * (który scala etapy i testy w jedno pole po stronie API). Ten sam
  * konwencja "brak danych" co przy licznikach warunków, gdy pole nie
  * przyjdzie ze starej odpowiedzi API (wstecznie kompatybilne).
