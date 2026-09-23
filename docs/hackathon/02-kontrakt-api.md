@@ -497,6 +497,20 @@ zaakceptowała wersję widzianą na ekranie.
 - Gość (brak tokenu) → 401 `unauthenticated`.
 - Nieznany rodzaj dokumentu → **422** `unknown_document_type` — inny kod niż na trasach
   odczytu (tam ten sam warunek daje 404 `not_found`); rozjazd opisany niżej w wadach.
+- **Rodzaj informacyjny** (klauzula z art. 13 RODO — dziś `klauzula-rodo`) **nie jest na tej
+  trasie znanym rodzajem** → **422** `unknown_document_type`, tak samo jak rodzaj nieistniejący,
+  bez zapisu `consents` i bez wpisu audytu. Klauzuli informacyjnej nikt nie udziela i nikt jej
+  nie wycofuje — administrator ma obowiązek ją udostępnić, a nie zebrać na nią zgodę. Na tej
+  trasie „znany rodzaj" znaczy **rodzaj zgody**, czyli rodzaj mający odpowiednik w słowniku zgód
+  (`Application::CONSENT_COLUMNS`), a nie każdy rodzaj z listy dokumentów
+  (`LegalDocumentVersion::TYPES`). Podział obu zbiorów jest jawny w
+  `LegalDocumentVersion::INFORMATIONAL_TYPES` i pilnowany próbą.
+  **Trasy odczytu i trasy administracyjne ta zasada nie dotyczy** — klauzula jest publicznie
+  czytelna przez `GET /legal-documents/klauzula-rodo/current` i dalej można wydać jej nową wersję.
+  Aneks z **D-20260923-18** po wadzie **F-250**: do 18.09 lista dokumentów i lista zgód były tym
+  samym zbiorem, więc bramkowanie po liście dokumentów było poprawne; trzeci dokument
+  (**D-26**, klauzula RODO) rozdzielił te zbiory i tym samym — niezauważenie — poszerzył to, co
+  dało się przyjąć jako zgodę.
 - Wersja z żądania inna niż aktualnie bieżąca (dokument zmienił się między wczytaniem
   ekranu a wysłaniem, albo etykieta nie istnieje) → 422 `document_version_not_current`,
   z `reason.current_version` wskazującym bieżącą etykietę (albo `null`, gdy rodzaj nie ma
