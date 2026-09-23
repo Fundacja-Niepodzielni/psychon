@@ -77,15 +77,22 @@ describe("rejestry menu — sekcje", () => {
     ]);
   });
 
-  it("uczestnik: sekcje dla wolontariusza i studenta, bez pustych nagłówków", () => {
+  it("uczestnik: wolontariuszka ma sekcje, studentka jedną listę (6 wpisów, próg to 7)", () => {
     const wolontariusz = groupMenu(filterMenuByRole(participantMenu, "volunteer"), participantMenuSections);
     const student = groupMenu(filterMenuByRole(participantMenu, "student"), participantMenuSections);
 
     expect(wolontariusz.map((g) => g.label)).toEqual([undefined, "Program", "Twoje konto"]);
     expect(wolontariusz.flatMap((g) => g.entries)).toHaveLength(10);
-    expect(student.map((g) => g.label)).toEqual([undefined, "Program", "Twoje konto"]);
-    expect(student.flatMap((g) => g.entries).map((e) => e.label)).not.toContain("Certyfikat");
-    expect(student.flatMap((g) => g.entries)).toHaveLength(8);
+
+    // Studentka nie widzi czterech wpisów wolontariatu, zostaje jej 6 — poniżej
+    // progu sekcji, więc menu jest jedną listą bez nagłówków.
+    expect(student.map((g) => g.label)).toEqual([undefined]);
+    const etykietyStudenta = student.flatMap((g) => g.entries).map((e) => e.label);
+    expect(etykietyStudenta).not.toContain("Certyfikat");
+    expect(etykietyStudenta).not.toContain("Dziennik stażu");
+    expect(etykietyStudenta).not.toContain("Profil psychologa");
+    expect(etykietyStudenta).not.toContain("Superwizja");
+    expect(etykietyStudenta).toHaveLength(6);
   });
 
   it("prowadzący: pięć wpisów, jedna lista bez nagłówków", () => {

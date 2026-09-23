@@ -167,7 +167,26 @@ describe("PanelShell — ten sam mechanizm w pozostałych panelach", () => {
     zainstalujPamiec();
   });
 
-  it("uczestnik (student, 8 wpisów): sekcje Program i Twoje konto, ikony przy każdym wpisie", () => {
+  it("uczestnik (wolontariuszka, 10 wpisów): sekcje Program i Twoje konto, ikony przy każdym wpisie", () => {
+    sciezka = "/panel/start";
+    render(
+      <PanelShell
+        panelName="Panel uczestnika"
+        menu={filterMenuByRole(participantMenu, "volunteer")}
+        sections={participantMenuSections}
+        menuKey="uczestnik"
+      >
+        <p>treść</p>
+      </PanelShell>,
+    );
+    const nav = screen.getAllByRole("navigation", { name: "Menu — Panel uczestnika" })[0];
+
+    expect(within(nav).getAllByRole("button").map((b) => b.textContent)).toEqual(["Program", "Twoje konto"]);
+    expect(within(nav).getAllByRole("link")).toHaveLength(10);
+    expect(nav.querySelectorAll("a svg")).toHaveLength(10);
+  });
+
+  it("uczestnik (student, 6 wpisów): jedna lista bez nagłówków, ikony przy każdym wpisie", () => {
     sciezka = "/panel/start";
     render(
       <PanelShell
@@ -181,9 +200,9 @@ describe("PanelShell — ten sam mechanizm w pozostałych panelach", () => {
     );
     const nav = screen.getAllByRole("navigation", { name: "Menu — Panel uczestnika" })[0];
 
-    expect(within(nav).getAllByRole("button").map((b) => b.textContent)).toEqual(["Program", "Twoje konto"]);
-    expect(within(nav).getAllByRole("link")).toHaveLength(8);
-    expect(nav.querySelectorAll("a svg")).toHaveLength(8);
+    expect(within(nav).queryAllByRole("button")).toHaveLength(0);
+    expect(within(nav).getAllByRole("link")).toHaveLength(6);
+    expect(nav.querySelectorAll("a svg")).toHaveLength(6);
   });
 
   it("prowadzący (5 wpisów): jedna lista bez nagłówków, z ikonami", () => {
