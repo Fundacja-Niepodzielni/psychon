@@ -464,15 +464,28 @@ rm -f docker-compose.override.yml
 # (/mnt/wsl/docker-desktop-bind-mounts/...), ktory znika razem z kontenerami, i git konczy
 # sie wtedy "fatal: Unable to read current working directory". Zielone "drzewo po biegu:
 # 0 pozycji" bylo w takim biegu NIEPRAWDA, tylko wygladalo jak prawda.
+# Logika oceny zyje w deploy/lib/drzewo-po-biegu.sh, bo ten sam plik zrodluje
+# deploy/tests/test-bramka-drzewo.sh - test i bramka nie moga sie rozjechac.
+# Test biegnie NAJPIERW, dokladnie jak przy liczniku sekretow: ocena, ktorej
+# wlasna logika jest zepsuta, nie jest warta zaufania, a bez tego kroku cofnieta
+# poprawka po cichu wrocilaby do meldowania zieleni na brudnym drzewie.
+# shellcheck source=deploy/lib/drzewo-po-biegu.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/drzewo-po-biegu.sh"
+
+bash deploy/tests/test-bramka-drzewo.sh > "$KATALOG_BIEGU"/bramka-test-drzewo.log 2>&1
+KOD_TEST_DRZEWO=$?
+echo "test oceny drzewa: EXIT=$KOD_TEST_DRZEWO"
+if [ "$KOD_TEST_DRZEWO" -ne 0 ]; then
+    echo "drzewo po biegu: test wlasnej logiki (deploy/tests/test-bramka-drzewo.sh) jest CZERWONY - ocena ponizej nie jest wiarygodna, krok pada NIEZALEZNIE od jej wyniku" >&2
+    tail -20 "$KATALOG_BIEGU"/bramka-test-drzewo.log | sed 's/^/  ! /'
+fi
+
 STATUS_TXT="$(git status --porcelain 2>"$KATALOG_BIEGU"/bramka-status.err)"
 KOD_STATUS=$?
-KOD_DRZEWO=0
-if [ "$KOD_STATUS" -ne 0 ]; then
-    KOD_DRZEWO=$KOD_STATUS
-    echo "drzewo po biegu: NIEZMIERZONE - git EXIT=$KOD_STATUS: $(head -1 "$KATALOG_BIEGU"/bramka-status.err)" >&2
-else
-    BRUD="$(printf '%s' "$STATUS_TXT" | grep -c .)"
-    echo "drzewo po biegu: $BRUD pozycji"
+ocen_drzewo_po_biegu "$STATUS_TXT" "$KOD_STATUS" "$(head -1 "$KATALOG_BIEGU"/bramka-status.err)"
+KOD_DRZEWO=$?
+if [ "$KOD_TEST_DRZEWO" -ne 0 ] && [ "$KOD_DRZEWO" -eq 0 ]; then
+    KOD_DRZEWO=$KOD_TEST_DRZEWO
 fi
 echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s libc=${CZAS_LIBC}s calosc=$(czas_od "$START_CALOSC")s"
 
