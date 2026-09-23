@@ -35,7 +35,7 @@ function formatujDate(iso: string): string {
 }
 
 /**
- * Ekran dokumentu prawnego (H22, pozycja 28 Załącznika 1) — wydzielony z
+ * Ekran dokumentu prawnego (H22) — wydzielony z
  * `DokumentPrawnyPage` niżej, żeby dało się go renderować w teście wprost
  * z gotowym `typ: string`, bez owijania w `Suspense`. Powód: `use(params)`
  * (wymagany przez konwencję Next 16 poniżej) suspenduje pierwszy render

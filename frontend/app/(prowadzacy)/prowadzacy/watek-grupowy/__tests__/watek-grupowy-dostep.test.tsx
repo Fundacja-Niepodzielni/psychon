@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
 /**
- * Pozycja 15 — noga negatywna „osoba bez roli prowadzącego": ekran wątku
+ * Noga negatywna „osoba bez roli prowadzącego": ekran wątku
  * grupowego stoi pod layoutem panelu prowadzącego (`RequireRole
  * allowedRoles={["instructor"]}`), więc rola spoza tej listy dostaje wspólny
  * ekran „Brak dostępu" zamiast treści wątku, a treść w ogóle się nie renderuje

@@ -9,8 +9,8 @@ export interface TestWiedzyKursuProps {
 }
 
 /**
- * Wejście do banku pytań testu z karty kursu w panelu prowadzącego (poz. 11,
- * D-27) — odpowiednik `CourseQuestionBankLink` (H10, panel administracji),
+ * Wejście do banku pytań testu z karty kursu w panelu prowadzącego —
+ * odpowiednik `CourseQuestionBankLink` (H10, panel administracji),
  * ale pod trasą prowadzącego (`/prowadzacy/testy/{id}/pytania`).
  *
  * Renderuje się WYŁĄCZNIE, gdy zasób kursu poda `test_id`. Dziś go nie

@@ -49,7 +49,7 @@ for (const trasa of TRASY_PUBLICZNE) {
     });
 
     // Osobny test: TYLKO rejestruje liczbę naruszeń `color-contrast` na
-    // trasę — to pierwszy realny pomiar kontrastu w przeglądarce (F-240),
+    // trasę — to pierwszy realny pomiar kontrastu w przeglądarce,
     // decyzję co dalej podejmuje lider/właściciel, nie ten test. Dlatego
     // nigdy nie failuje na samym kontraście.
     test(`${trasa} — pomiar naruszeń color-contrast (nie failuje)`, async ({
@@ -77,7 +77,7 @@ for (const trasa of TRASY_PUBLICZNE) {
 }
 
 /**
- * Kontrola negatywna (D-22): dowód, że test faktycznie wykrywa naruszenie,
+ * Kontrola negatywna: dowód, że test faktycznie wykrywa naruszenie,
  * gdy jest wstrzyknięte celowo — bez tego zielony wynik powyżej mógłby
  * znaczyć "axe się nie uruchomił" zamiast "strona jest OK".
  *

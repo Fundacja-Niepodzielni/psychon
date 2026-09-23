@@ -3,8 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Świadek wątku grupowego prowadzącego (pozycja 15 załącznika 1: „prowadzący
- * prowadzi wątek grupowy"). Backend jest gotowy od dawna, ten test jest
+ * Świadek wątku grupowego prowadzącego („prowadzący prowadzi wątek
+ * grupowy"). Backend jest gotowy od dawna, ten test jest
  * pierwszym dowodem, że ekran w ogóle istnieje i woła właściwe trasy
  * (`GET /threads`, `GET /threads/{id}`, `POST /threads/{id}/messages`).
  */

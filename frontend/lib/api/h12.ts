@@ -29,8 +29,8 @@ export interface AdminSupervisionSlot {
 }
 
 /**
- * Wszystkie terminy wszystkich prowadzących (widok administracji) — kryterium
- * pozycji 6: „potwierdzenie odbycia widoczne (...) w administracji". Obecność
+ * Wszystkie terminy wszystkich prowadzących (widok administracji) — kryterium:
+ * „potwierdzenie odbycia widoczne (...) w administracji". Obecność
  * (`attendance`) odnotowuje prowadzący na swoim ekranie; tu jest tylko do odczytu.
  *
  * Kontroler nie paginuje — koperta ma wyłącznie `data`, `meta` nigdy nie przychodzi.
@@ -71,7 +71,7 @@ export interface CreateInstructorCasePayload {
 }
 
 /**
- * Zgłoszenie sprawy przez prowadzącego (pozycja 14). Serwer sam sprawdza, że
+ * Zgłoszenie sprawy przez prowadzącego. Serwer sam sprawdza, że
  * wskazana osoba należy do grupy zgłaszającego (422 `volunteer_id`, zmierzone
  * na żywo) — front nie powtarza tej reguły.
  */

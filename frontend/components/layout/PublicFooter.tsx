@@ -11,8 +11,8 @@ const stylOdnosnika =
   "inline-flex min-h-control items-center text-small font-medium text-muted underline underline-offset-2 hover:text-ink focus-visible:focus-ring";
 
 /**
- * Stopka z odnośnikiem do deklaracji dostępności i dokumentów prawnych
- * (pozycja 28 Załącznika 1) — dla ekranów publicznych poza powłoką paneli.
+ * Stopka z odnośnikiem do deklaracji dostępności i dokumentów prawnych —
+ * dla ekranów publicznych poza powłoką paneli.
  * Ekrany pod `/admin`, `/panel` i `/prowadzacy` mają już identyczną stopkę
  * w `PanelShell`, więc tu ich nie dublujemy. Sama `/deklaracja-dostepnosci`
  * też nie potrzebuje odnośnika do siebie.

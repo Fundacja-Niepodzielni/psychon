@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Świadek edytora treści kursu (poz. 11, D-27) — wydzielonego z
+ * Świadek edytora treści kursu — wydzielonego z
  * `admin/kursy/[id]/page.tsx`, żeby ten sam ekran mogła zamontować karta
  * administracji I karta prowadzącego. Mierzone są dokładnie te obietnice,
  * które musiały przeżyć wydzielenie: dane kursu i lekcje z propsów renderują

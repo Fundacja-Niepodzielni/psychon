@@ -19,7 +19,7 @@ import {
 } from "@/lib/chat";
 
 /**
- * Wątek grupowy prowadzącego (pozycja 15, „prowadzący prowadzi wątek
+ * Wątek grupowy prowadzącego („prowadzący prowadzi wątek
  * grupowy"). Lista wątków grupowych widocznych prowadzącemu (w praktyce
  * jeden — własna grupa) i po otwarciu: lista wiadomości oraz pole wysyłki.
  */

@@ -1,5 +1,5 @@
 /**
- * Dane wątku grupowego prowadzącego (pozycja 15 załącznika 1: „prowadzący
+ * Dane wątku grupowego prowadzącego („prowadzący
  * prowadzi wątek grupowy"). Backend jest gotowy od dawna
  * (`backend/routes/api/chat.php`) — ten moduł jest pierwszym klientem
  * wywołującym `GET /threads`, `GET /threads/{thread}` i

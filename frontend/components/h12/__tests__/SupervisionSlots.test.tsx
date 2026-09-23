@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 /**
  * Świadek ekranu `#/panel/superwizja` (`SupervisionSlots`) — połowa
- * kryterium pozycji 6 widziana od strony osoby uczestniczącej: zapis ma być
+ * kryterium widzianego od strony osoby uczestniczącej: zapis ma być
  * zablokowany, gdy serwer uzna termin za zamknięty (`can_sign_up: false`), a
  * powód ma być czytelny PRZY TEJ KARCIE, nie w jednym komunikacie nad całą
  * listą terminów.

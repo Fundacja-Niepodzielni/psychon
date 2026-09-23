@@ -23,7 +23,7 @@ export interface KursProwadzacegoProps {
 }
 
 /**
- * Karta kursu w panelu prowadzącego (poz. 11, D-27) — montuje ten sam
+ * Karta kursu w panelu prowadzącego — montuje ten sam
  * `EdytorTresciKursu`, co karta administracji (`admin/kursy/[id]/page.tsx`),
  * te same punkty API (`/admin/courses/{id}...` — kontrakt H08/H10 adresuje
  * je tak niezależnie od roli wołającej), ale BEZ paneli admin-only: „Publikacja”
@@ -37,7 +37,7 @@ export interface KursProwadzacegoProps {
  * Bramka roli stoi w `app/(prowadzacy)/prowadzacy/layout.tsx`
  * (`RequireRole allowedRoles={["instructor"]}`) — ten komponent się w ogóle
  * nie montuje dla innej roli. Kto może edytować KTÓRY kurs, rozstrzyga
- * backend (`CoursePolicy`, poz. 11 §1) — ekran nie duplikuje tej reguły,
+ * backend (`CoursePolicy`) — ekran nie duplikuje tej reguły,
  * tylko pokazuje 403/404 z API jak każdy inny błąd wczytania.
  */
 export default function KursProwadzacego({ id }: KursProwadzacegoProps) {

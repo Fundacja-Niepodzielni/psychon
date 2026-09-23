@@ -46,7 +46,7 @@ export async function dolaczNaruszeniaDoRaportu(
 }
 
 /**
- * Pierwszy realny pomiar (F-240/D-22): test PADA na critical/serious, bo to
+ * Pierwszy realny pomiar: test PADA na critical/serious, bo to
  * są naruszenia, które axe zgłasza z wysoką pewnością. moderate/minor tylko
  * logujemy — próg do ustalenia przez lidera po zobaczeniu liczb, nie tutaj.
  */

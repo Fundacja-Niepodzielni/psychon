@@ -5,8 +5,8 @@ import TestWiedzyKursu from "@/components/testy/TestWiedzyKursu";
 import type { AdminCourse } from "@/lib/h08/types";
 
 /**
- * Wejście do banku pytań z karty kursu w panelu prowadzącego (poz. 11,
- * D-27) — odpowiednik `CourseQuestionBankLink` (H10, panel administracji).
+ * Wejście do banku pytań z karty kursu w panelu prowadzącego — odpowiednik
+ * `CourseQuestionBankLink` (H10, panel administracji).
  * Mierzone jest wyłącznie zachowanie zależne od `course.test_id`: dziś
  * `AdminCourseResource` go nie wystawia, więc na produkcji karta nie
  * renderuje się wcale (brak zgadywania linku).

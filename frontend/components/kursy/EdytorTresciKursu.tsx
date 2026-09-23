@@ -85,7 +85,7 @@ export interface EdytorTresciKursuProps {
 
 /**
  * Edytor treści kursu (dane kursu, lekcje, materiały) — wydzielony z
- * `admin/kursy/[id]/page.tsx` (poz. 11, D-27), żeby ten sam ekran mogła
+ * `admin/kursy/[id]/page.tsx`, żeby ten sam ekran mogła
  * zamontować karta administracji I panel prowadzącego, bez paneli
  * administracyjnych (przypisania H09, zaproszenia H08b), które zostają w
  * karcie admina.
