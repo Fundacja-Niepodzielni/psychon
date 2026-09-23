@@ -16,7 +16,7 @@ interface InstructorQuestionBankPageProps {
 }
 
 /**
- * Bank pytań testu w panelu prowadzącego (poz. 11, D-27) — montuje ten sam
+ * Bank pytań testu w panelu prowadzącego — montuje ten sam
  * `QuestionBank` (H10, kryterium 6), co karta administracji, te same cztery
  * punkty API (`/admin/tests/{test}/questions`, `/admin/questions/{question}`
  * — kontrakt H10 adresuje je niezależnie od roli wołającej).
@@ -24,7 +24,7 @@ interface InstructorQuestionBankPageProps {
  * Trasa jest osiągalna pod adresem, ale odpowie 403, dopóki backend nie doda
  * roli `instructor` do bramki `routes/api/h10.php` (dziś dopuszcza tylko
  * `project_manager,super_admin`) — ten sam brak backendu, co przy edytorze
- * treści kursu (`KursProwadzacego.tsx`, D-27); ekran go nie ukrywa,
+ * treści kursu (`KursProwadzacego.tsx`); ekran go nie ukrywa,
  * `QuestionBank` pokazuje wtedy stan „forbidden" jak każdej innej osobie bez
  * uprawnień.
  */

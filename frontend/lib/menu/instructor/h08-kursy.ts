@@ -1,7 +1,7 @@
 import type { MenuEntry } from "../types";
 
 /**
- * Kursy przypisane prowadzącemu (poz. 11, D-27) — edycja treści (dane kursu,
+ * Kursy przypisane prowadzącemu — edycja treści (dane kursu,
  * lekcje, materiały) tych samych punktów API co administracja, ograniczona
  * do kursów z własnym `CourseAssignment` (`GET /instructor/courses`, H09).
  *

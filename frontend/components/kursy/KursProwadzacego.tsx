@@ -23,7 +23,7 @@ export interface KursProwadzacegoProps {
 }
 
 /**
- * Karta kursu w panelu prowadzącego (poz. 11, D-27) — montuje ten sam
+ * Karta kursu w panelu prowadzącego — montuje ten sam
  * `EdytorTresciKursu`, co karta administracji (`admin/kursy/[id]/page.tsx`),
  * te same punkty API (`/admin/courses/{id}...` — kontrakt H08/H10 adresuje
  * je tak niezależnie od roli wołającej), ale BEZ paneli admin-only: „Publikacja”

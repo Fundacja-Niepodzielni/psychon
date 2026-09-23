@@ -12,7 +12,7 @@ function messageFrom(err: unknown, fallback: string): string {
 }
 
 /**
- * Lista kursów przypisanych prowadzącemu (poz. 11, D-27) — `GET
+ * Lista kursów przypisanych prowadzącemu — `GET
  * /instructor/courses` (`MyInstructorProfileController::courses`, H09) zwraca
  * wyłącznie kursy, do których prowadzący ma przypisanie (`CourseAssignment`),
  * więc ekran nie filtruje nic po swojej stronie.

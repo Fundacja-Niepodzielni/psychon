@@ -4,7 +4,7 @@
  * Rodzaje zamknięte po stronie backendu w `LegalDocumentVersion::TYPES`
  * (`backend/app/Models/LegalDocumentVersion.php:23`) — TRZY rodzaje
  * (`regulamin`, `polityka`, `klauzula-rodo`, ten ostatni dodany decyzją
- * właściciela D-26 z 18.09.2026: „Klauzula RODO (informacja o
+ * właściciela z 18.09.2026: „Klauzula RODO (informacja o
  * przetwarzaniu)"). Front renderuje dokładnie to, co wystawia backend —
  * kolejny rodzaj to zmiana `LegalDocumentVersion::TYPES`, nie tego pliku
  * (ta lista ma się wtedy zmienić razem z backendem).

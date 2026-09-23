@@ -7,7 +7,7 @@ import type { MenuEntry } from "../types";
  * w `app/(prowadzacy)/prowadzacy/layout.tsx`, więc `PanelShell` (a z nim
  * menu) w ogóle się nie montuje dla innej roli — `filterMenuByRole` nie
  * jest tu wołane (inaczej niż w panelu uczestnika, dzielonym przez kilka
- * ról). Odpowiednik D-13/D-14 („wpis tylko dla ról, którym backend odda
+ * ról). Ta sama zasada („wpis tylko dla ról, którym backend odda
  * dane") jest więc egzekwowany na poziomie layoutu, nie pojedynczego wpisu:
  * `ThreadController.php:56-57` — tylko rola `instructor` dostaje własny
  * wątek grupowy z `GET /threads`.

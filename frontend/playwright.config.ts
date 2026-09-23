@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Szkielet testów przeglądarkowych (F-240 / D-22): axe-core wymaga
+ * Szkielet testów przeglądarkowych: axe-core wymaga
  * prawdziwej przeglądarki, żeby zmierzyć kontrast — w jsdom (vitest) nie da
  * się tego zmierzyć w ogóle. Domyślny cel to dev, ale `PW_BASE_URL` pozwala
  * odpalić to samo przeciwko innemu środowisku bez zmiany kodu.
