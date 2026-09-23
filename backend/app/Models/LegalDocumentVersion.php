@@ -37,8 +37,9 @@ class LegalDocumentVersion extends Model
      * samo dopisanie do `TYPES` bez tej klasyfikacji czerwieni próbę.
      *
      * Ta stała nie kontroluje, co API pozwala zrobić z danym rodzajem —
-     * o stanie `LegalDocumentController::accept()` (dziś bramkuje po
-     * `TYPES`, nie po tym podziale) patrz komentarz klasy
+     * o stanie `LegalDocumentController::accept()` (po decyzji właściciela
+     * D-20260923-18 bramkuje po `Application::CONSENT_COLUMNS`, nie po
+     * `TYPES` ani po tym podziale) patrz komentarz klasy
      * `LegalDocumentVersionTypesTest`.
      *
      * @var list<string>

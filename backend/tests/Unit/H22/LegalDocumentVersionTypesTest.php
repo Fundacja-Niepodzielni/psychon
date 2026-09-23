@@ -16,20 +16,18 @@ use Tests\TestCase;
  * WYŁĄCZNIE tego podziału słownika — nie pilnuje tego, co API pozwala
  * zrobić z rodzajem informacyjnym.
  *
- * Stan dzisiejszy, zmierzony (nie życzeniowy): `LegalDocumentController::accept()`
- * (`backend/app/Http/Controllers/Api/V1/H22/LegalDocumentController.php:72`)
- * bramkuje rodzaj przeciwko `LegalDocumentVersion::TYPES`, a nie przeciwko
- * zbiorowi zgód. Rodzaj informacyjny (np. `klauzula-rodo`) DA SIĘ dziś
- * zaakceptować przez `POST /legal-documents/{type}/accept` — kontroler
- * tworzy wtedy prawdziwy wiersz `consents` (ten sam plik, linie 107-112),
- * a ekran profilu pokazuje dla niego surową nazwę techniczną
- * (`CONSENT_LABELS[consent.type] ?? consent.type`,
- * `frontend/app/(uczestnik)/panel/profil/page.tsx:422`). To nie jest usterka
- * tej próby ani tej stałej: czy `accept()` ma odmawiać rodzajom
- * informacyjnym, czy właściciel chce dla nich osobnej zgody, jest decyzją
- * właściciela (zmiana kontraktu API), nie tego pliku. Ta próba nie sprawdza
- * zachowania trasy — tylko to, że słownik `TYPES` jest jawnie i w całości
- * sklasyfikowany.
+ * Stan dzisiejszy, zmierzony (nie życzeniowy), po decyzji właściciela
+ * D-20260923-18 (wariant A, F-250): `LegalDocumentController::accept()`
+ * bramkuje rodzaj przeciwko `Application::CONSENT_COLUMNS`, NIE przeciwko
+ * `LegalDocumentVersion::TYPES`. Rodzaj informacyjny (np. `klauzula-rodo`)
+ * NIE DA SIĘ zaakceptować przez `POST /legal-documents/{type}/accept` —
+ * dostaje `422 unknown_document_type`, ten sam kod co rodzaj całkiem
+ * nieznany, i nie zostawia wiersza w `consents` ani wpisu `audit_log`
+ * (dowód: `LegalDocumentTest`). Rozstrzygnięcie już zapadło — to nie jest
+ * usterka tej próby ani tej stałej, tylko wcześniejsza decyzja właściciela,
+ * którą `accept()` teraz egzekwuje. Ta próba nie sprawdza zachowania trasy
+ * (to robi `LegalDocumentTest`) — tylko to, że słownik `TYPES` jest jawnie
+ * i w całości sklasyfikowany na zgody i rodzaje informacyjne.
  *
  * Test nie dotyka bazy danych (same stałe PHP) — nie potrzebuje własnego
  * świata do ustawienia ani sprzątania. Bez cechy bazodanowej runner równoległy
