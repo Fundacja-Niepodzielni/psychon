@@ -396,6 +396,75 @@ BLEDOW_SL="$(grep -acE '^  WYNIK: NIEZALICZONY' "$KATALOG_BIEGU"/bramka-swiadek-
 echo "swiadek logowania (testy): EXIT=$KOD_SWIADEK_LOGOWANIA, $CZAS_SWIADEK_LOGOWANIA s, przypadkow $PRZYPADKOW_SL, bledow $BLEDOW_SL"
 [ "$KOD_SWIADEK_LOGOWANIA" -ne 0 ] && tail -20 "$KATALOG_BIEGU"/bramka-swiadek-logowania.log | sed 's/^/  ! /'
 
+# --- 3g - inwentarz skladnikow (SBOM) i skan podatnosci (pomiar) -----------
+# Analogicznie do audytu PHP/npm (3b, 4b): to jest POMIAR, nie bramka -
+# podatnosc w cudzej zaleznosci nie jest czyms, co TEN commit zepsul, wiec
+# krok NIE wchodzi do kodu wyjscia ponizej, W ZADNYM ze swoich trzech elementow (test
+# wlasnej logiki, generator, skaner). Generator (trivy) czyta WYLACZNIE
+# zlockowane pliki zaleznosci (backend/composer.lock, frontend/package-
+# lock.json) z montowanego drzewa - bez sieci, bo do samego SPISU siec jest
+# niepotrzebna (odwrotnie niz do skanu podatnosci nizej, ktory siega po baze
+# CVE, siecia wlaczona - tak jak composer audit/npm audit).
+#
+# Plik wynikowy idzie do KATALOGU BIEGU (deploy/lib/sbom.sh, funkcja
+# sbom_uruchom_generator, przez `docker cp`), NIE do drzewa repo: od 23.09
+# brudne drzewo po biegu konczy caly bieg kodem 6 (deploy/lib/drzewo-po-
+# biegu.sh) - generator, ktory pisalby do repo, czerwienilby pierwszy bieg
+# po wpieciu WLASNYM artefaktem, zanim ktokolwiek zdazylby go przeczytac.
+#
+# Logika liczenia/uruchamiania NIE zyje tutaj - zyje w deploy/lib/sbom.sh,
+# zrodlowanym ponizej. Ten sam plik zrodlowuje deploy/tests/test-bramka-
+# sbom.sh, wiec test i bramka NIE MOGA sie rozjechac. Test biegnie NAJPIERW,
+# tak jak przy liczniku sekretow i ocenie drzewa - ale, w odroznieniu od
+# tamtych dwoch krokow, jego czerwien tu NIE eskaluje do blokady: caly krok
+# 3g jest pomiarem, wiec zostaje pomiarem takze wtedy, gdy wlasny test jest
+# czerwony (ostrzezenie w dzienniku ma to jednak zawsze nazwac po imieniu).
+naglowek "3g - inwentarz skladnikow (SBOM) i skan podatnosci"
+
+# shellcheck source=deploy/lib/sbom.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/sbom.sh"
+
+T="$(date +%s)"
+bash deploy/tests/test-bramka-sbom.sh > "$KATALOG_BIEGU"/bramka-test-sbom.log 2>&1
+KOD_TEST_SBOM=$?
+CZAS_TEST_SBOM="$(czas_od "$T")"
+echo "test logiki SBOM: EXIT=$KOD_TEST_SBOM, $CZAS_TEST_SBOM s"
+if [ "$KOD_TEST_SBOM" -eq 1 ]; then
+    echo "SBOM: test wlasnej logiki (deploy/tests/test-bramka-sbom.sh) jest CZERWONY - nie ufam licznikom ponizej, ale krok POZOSTAJE POMIAREM (nie wchodzi do kodu wyjscia)" >&2
+    tail -20 "$KATALOG_BIEGU"/bramka-test-sbom.log | sed 's/^/  ! /'
+fi
+
+T="$(date +%s)"
+sbom_uruchom_generator "$PWD" "$KATALOG_BIEGU/sbom.cdx.json" "$KATALOG_BIEGU"/bramka-sbom-generator.log
+KOD_SBOM_GEN=$?
+CZAS_SBOM_GEN="$(czas_od "$T")"
+
+if [ "$KOD_SBOM_GEN" -ne 0 ]; then
+    echo "SBOM (pomiar, poza kodem wyjscia): NIEZMIERZONE - generator EXIT=$KOD_SBOM_GEN, $CZAS_SBOM_GEN s, powod ponizej"
+    tail -10 "$KATALOG_BIEGU"/bramka-sbom-generator.log | sed 's/^/  ! /'
+else
+    SKLADNIKOW="$(sbom_policz_skladniki "$KATALOG_BIEGU/sbom.cdx.json")"
+    SKLADNIKOW_COMPOSER="$(sbom_policz_wg_wzorca "$KATALOG_BIEGU/sbom.cdx.json" "pkg:composer")"
+    SKLADNIKOW_NPM="$(sbom_policz_wg_wzorca "$KATALOG_BIEGU/sbom.cdx.json" "pkg:npm")"
+    echo "SBOM (pomiar, poza kodem wyjscia): EXIT=$KOD_SBOM_GEN, $CZAS_SBOM_GEN s, plik $KATALOG_BIEGU/sbom.cdx.json, skladnikow $SKLADNIKOW (composer $SKLADNIKOW_COMPOSER, npm $SKLADNIKOW_NPM)"
+fi
+
+T="$(date +%s)"
+if [ "$KOD_SBOM_GEN" -ne 0 ]; then
+    echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): NIEZMIERZONY - generator nie zostawil pliku do przeskanowania"
+else
+    sbom_uruchom_skaner "$KATALOG_BIEGU/sbom.cdx.json" "$KATALOG_BIEGU"/bramka-sbom-skan.log
+    KOD_SBOM_SKAN=$?
+    CZAS_SBOM_SKAN="$(czas_od "$T")"
+    if [ "$KOD_SBOM_SKAN" -ne 0 ]; then
+        echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): NIEZMIERZONY - EXIT=$KOD_SBOM_SKAN, $CZAS_SBOM_SKAN s, powod ponizej"
+        tail -10 "$KATALOG_BIEGU"/bramka-sbom-skan.log | sed 's/^/  ! /'
+    else
+        PODATNOSCI_SBOM="$(sbom_policz_podatnosci "$KATALOG_BIEGU"/bramka-sbom-skan.log)"
+        echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): EXIT=$KOD_SBOM_SKAN, $CZAS_SBOM_SKAN s, podatnosci $PODATNOSCI_SBOM"
+    fi
+fi
+
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
 CZAS_FRONT=0
@@ -487,7 +556,7 @@ KOD_DRZEWO=$?
 if [ "$KOD_TEST_DRZEWO" -ne 0 ] && [ "$KOD_DRZEWO" -eq 0 ]; then
     KOD_DRZEWO=$KOD_TEST_DRZEWO
 fi
-echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s front=${CZAS_FRONT}s libc=${CZAS_LIBC}s calosc=$(czas_od "$START_CALOSC")s"
+echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s sbom=${CZAS_SBOM_GEN:-0}s front=${CZAS_FRONT}s libc=${CZAS_LIBC}s calosc=$(czas_od "$START_CALOSC")s"
 
 # KOD_ACTIONLINT, KOD_GITLEAKS, KOD_LIBC, KOD_SWIADEK_LOGOWANIA i - od 10.09 -
 # KOD_SEMGREP sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM)
