@@ -50,6 +50,23 @@ class LegalDocumentTest extends TestCase
             ->assertJsonStructure(['data' => ['type', 'version', 'content', 'published_at']]);
     }
 
+    public function test_current_version_of_klauzula_rodo_is_public(): void
+    {
+        LegalDocumentVersion::create([
+            'type' => 'klauzula-rodo',
+            'version' => 'v1',
+            'content' => 'Treść do dostarczenia przez Fundację.',
+            'status' => LegalDocumentVersion::STATUS_PUBLISHED,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $this->getJson('/api/v1/legal-documents/klauzula-rodo/current')
+            ->assertOk()
+            ->assertJsonPath('data.type', 'klauzula-rodo')
+            ->assertJsonPath('data.version', 'v1')
+            ->assertJsonStructure(['data' => ['type', 'version', 'content', 'published_at']]);
+    }
+
     public function test_specific_published_version_is_public(): void
     {
         LegalDocumentVersion::create([
