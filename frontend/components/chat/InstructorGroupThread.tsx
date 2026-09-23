@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { ApiError } from "@/lib/api";
 import {
   fetchInstructorGroupThreads,
@@ -121,9 +122,7 @@ export default function InstructorGroupThread() {
   const loadingThreads = threads === null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-h2 font-black text-ink">Wątek grupowy</h1>
-
+    <PageTemplate naglowek={{ title: "Wątek grupowy" }}>
       {loadingThreads && <LoadingState label="Wczytuję wątek grupowy…" />}
 
       {!loadingThreads && loadForbidden && (
@@ -246,6 +245,6 @@ export default function InstructorGroupThread() {
           )}
         </Card>
       )}
-    </div>
+    </PageTemplate>
   );
 }

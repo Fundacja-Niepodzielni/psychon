@@ -5,9 +5,7 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import ErrorState from "@/components/molecules/ErrorState";
-import ForbiddenState from "@/components/molecules/ForbiddenState";
-import LoadingState from "@/components/molecules/LoadingState";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import { ApiError } from "@/lib/api";
 import {
   answerQuestion,
@@ -62,62 +60,59 @@ export default function InstructorQuestionInbox() {
 
   const loading = loadedFilter !== onlyUnanswered;
 
+  const stan: StanListy = loading
+    ? "loading"
+    : loadForbidden
+      ? "forbidden"
+      : loadError
+        ? "error"
+        : questions.length === 0
+          ? "empty"
+          : "success";
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-h2 font-black text-ink">Pytania</h1>
-          <Badge variant={unanswered > 0 ? "warning" : "neutral"}>
-            {unanswered === 0
-              ? "Brak nieodpowiedzianych"
-              : `Nieodpowiedziane: ${unanswered}`}
-          </Badge>
-        </div>
-
-        <Button
-          variant="secondary"
-          onClick={() => setOnlyUnanswered((value) => !value)}
-          aria-pressed={onlyUnanswered}
-        >
-          {onlyUnanswered ? "Pokaż wszystkie" : "Tylko nieodpowiedziane"}
-        </Button>
-      </div>
-
-      {loading && <LoadingState label="Wczytuję pytania…" />}
-
-      {!loading && loadForbidden && (
-        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tej skrzynki." />
-      )}
-
-      {!loading && !loadForbidden && loadError && (
-        <ErrorState
-          message={loadError}
-          title="Nie udało się wczytać pytań"
-          onRetry={() => setReload((value) => value + 1)}
-        />
-      )}
-
-      {!loading && !loadForbidden && !loadError && questions.length === 0 && (
-        <Card>
-          <p className="text-body text-muted">
-            {onlyUnanswered
-              ? "Nie masz pytań oczekujących na odpowiedź."
-              : "Nie masz jeszcze żadnych pytań."}
-          </p>
-        </Card>
-      )}
-
-      {!loading &&
-        !loadForbidden &&
-        !loadError &&
-        questions.map((question) => (
+    <ListTemplate
+      naglowek={{
+        title: "Pytania",
+        action: (
+          <>
+            <Badge variant={unanswered > 0 ? "warning" : "neutral"}>
+              {unanswered === 0
+                ? "Brak nieodpowiedzianych"
+                : `Nieodpowiedziane: ${unanswered}`}
+            </Badge>
+            <Button
+              variant="secondary"
+              onClick={() => setOnlyUnanswered((value) => !value)}
+              aria-pressed={onlyUnanswered}
+            >
+              {onlyUnanswered ? "Pokaż wszystkie" : "Tylko nieodpowiedziane"}
+            </Button>
+          </>
+        ),
+      }}
+      stan={stan}
+      komunikatLadowania="Wczytuję pytania…"
+      komunikatBrakUprawnien="Nie masz uprawnień do wyświetlenia tej skrzynki."
+      komunikatBledu={loadError ?? undefined}
+      komunikatBleduTytul="Nie udało się wczytać pytań"
+      onPonow={() => setReload((value) => value + 1)}
+      pustyTytul={
+        onlyUnanswered
+          ? "Nie masz pytań oczekujących na odpowiedź."
+          : "Nie masz jeszcze żadnych pytań."
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {questions.map((question) => (
           <QuestionCard
             key={question.id}
             question={question}
             onAnswered={() => setReload((value) => value + 1)}
           />
         ))}
-    </div>
+      </div>
+    </ListTemplate>
   );
 }
 
