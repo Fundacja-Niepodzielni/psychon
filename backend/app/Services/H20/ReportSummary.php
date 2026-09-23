@@ -19,37 +19,35 @@ use Illuminate\Support\Collection;
  * `DashboardSummary::build()` zamiast liczyć te same COUNT-y drugi raz —
  * gwarancja równości przez wspólny kod, nie przez „policzone tak samo".
  *
- * Poz. 27 „Rozszerzone raporty" — zakres dat `$from`/`to` zawęża godziny
- * i konsultacje po `internship_entries.date` (kolumna, po której raport już
- * agreguje — patrz sumy niżej). Liczniki pulpitu (`admitted`/`active`/
- * `completed`/`certificates_issued`) NIE są filtrowane — pochodzą ze stanu
- * bieżącego (`DashboardSummary`/`Application::accepted()`), nie z dziennika
- * zdarzeń z własną datą; to alternatywna interpretacja „okresu", tu
- * świadomie pominięta jako wymagająca osobnej zmiany w H19.
+ * Zakres dat `$from`/`to` zawęża godziny i konsultacje po
+ * `internship_entries.date` (kolumna, po której raport już agreguje — patrz
+ * sumy niżej). Liczniki pulpitu (`admitted`/`active`/`completed`/
+ * `certificates_issued`) NIE są filtrowane — pochodzą ze stanu bieżącego
+ * (`DashboardSummary`/`Application::accepted()`), nie z dziennika zdarzeń
+ * z własną datą; to alternatywna interpretacja „okresu", tu świadomie
+ * pominięta jako wymagająca osobnej zmiany w H19.
  */
 final class ReportSummary
 {
     /**
-     * Poz. 18 „Postępy" — etap ścieżki tej samej osoby, jeden na wiersz
-     * (nie mylić z listą etapów-kursów `pathStages` we froncie). Słownik
-     * NIE jest nowym wymysłem: to kolejność czterech warunków certyfikatu
-     * z `CertificateConditions` (`courses` → `internship` → `supervision`
+     * Etap ścieżki tej samej osoby, jeden na wiersz (nie mylić z listą
+     * etapów-kursów `pathStages` we froncie). Słownik NIE jest nowym
+     * wymysłem: to kolejność czterech warunków certyfikatu z
+     * `CertificateConditions` (`courses` → `internship` → `supervision`
      * → `workshop`, plik `Support/H13/CertificateConditions.php:36-63`) plus
-     * stan „wszystkie warunki spełnione", który front już dziś traktuje jako
-     * odrębny krok `kind: 'certificate'`
-     * (`frontend/lib/pulpit/data.ts:101-127`, zwłaszcza linie 122-124 —
-     * cała ścieżka `completed` → certyfikat, niezależnie od tego, czy sam
-     * dokument już wygenerowano). Etap to wartość punktowa (aktualny stan
-     * `ProgressAggregator::for()`), NIE zależy od `$from`/`$to` raportu —
-     * te dwa parametry zawężają wyłącznie sumy z dziennika stażu
-     * (`acceptedEntries()` niżej), a `ProgressAggregator` liczy godziny/
-     * obecności bez filtra dat.
+     * dwa dalsze stany po spełnieniu wszystkich czterech — „gotowa" i
+     * „certyfikat" (decyzja właściciela z 23.09.2026, patrz `stage()`).
+     * Etap to wartość punktowa (aktualny stan `ProgressAggregator::for()`),
+     * NIE zależy od `$from`/`$to` raportu — te dwa parametry zawężają
+     * wyłącznie sumy z dziennika stażu (`acceptedEntries()` niżej), a
+     * `ProgressAggregator` liczy godziny/obecności bez filtra dat.
      */
     private const STAGE_LABELS = [
         'kurs' => 'Kursy i testy',
         'staz' => 'Staż',
         'superwizja' => 'Superwizje',
         'warsztat' => 'Warsztat stacjonarny',
+        'gotowa' => 'Gotowa do certyfikatu',
         'certyfikat' => 'Certyfikat',
     ];
 
@@ -124,7 +122,8 @@ final class ReportSummary
             ->orderBy('first_name')
             ->get()
             ->map(function (User $user) use ($from, $to, $certifiedUserIds, $hoursRequired, $supervisionRequired): array {
-                $stage = self::stage(ProgressAggregator::for($user), $hoursRequired, $supervisionRequired);
+                $certificateIssued = $certifiedUserIds->has($user->id);
+                $stage = self::stage(ProgressAggregator::for($user), $hoursRequired, $supervisionRequired, $certificateIssued);
 
                 return [
                     'id' => $user->id,
@@ -135,7 +134,7 @@ final class ReportSummary
                         (float) self::acceptedEntries($from, $to, $user->id)->sum('hours'),
                     ),
                     'consultations' => (int) self::acceptedEntries($from, $to, $user->id)->sum('consultations_count'),
-                    'certificate_issued' => $certifiedUserIds->has($user->id),
+                    'certificate_issued' => $certificateIssued,
                     'stage' => $stage,
                     'stage_label' => self::STAGE_LABELS[$stage],
                 ];
@@ -145,14 +144,21 @@ final class ReportSummary
 
     /**
      * Pierwszy niespełniony warunek z `CertificateConditions` (ten sam
-     * porządek: kursy → staż → superwizje → warsztat); gdy wszystkie
-     * spełnione — etap „certyfikat" (patrz nota przy `STAGE_LABELS`).
+     * porządek: kursy → staż → superwizje → warsztat) rozstrzyga etap —
+     * ta część reguły się nie zmienia. Dopiero gdy wszystkie cztery warunki
+     * są spełnione, o etapie decyduje to, czy dokument certyfikatu już
+     * istnieje: jest wiersz w `certificates` (`$certificateIssued`) — etap
+     * „certyfikat", nie ma — „gotowa" (decyzja właściciela z 23.09.2026).
+     * Posiadanie dokumentu NIE przeskakuje niespełnionego warunku: osoba
+     * z certyfikatem, która np. nie ma zaliczonego warsztatu, dostaje etap
+     * „warsztat" — dlatego warunek na `$certificateIssued` jest ostatni,
+     * po wszystkich czterech sprawdzeniach, nigdy przed nimi.
      * Liczby z `ProgressAggregator::for()`, tak jak karta osoby i pulpit
      * — żadna nowa reguła biznesowa.
      *
      * @param  array{courses_done:int, courses_total:int, hours_accepted:string, supervision_present:int, workshop_done:bool, reliability_percent:int|null}  $progress
      */
-    private static function stage(array $progress, float $hoursRequired, int $supervisionRequired): string
+    private static function stage(array $progress, float $hoursRequired, int $supervisionRequired, bool $certificateIssued): string
     {
         if ($progress['courses_total'] === 0 || $progress['courses_done'] < $progress['courses_total']) {
             return 'kurs';
@@ -170,7 +176,7 @@ final class ReportSummary
             return 'warsztat';
         }
 
-        return 'certyfikat';
+        return $certificateIssued ? 'certyfikat' : 'gotowa';
     }
 
     /**

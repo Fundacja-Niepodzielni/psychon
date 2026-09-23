@@ -28,7 +28,7 @@ export default function ReportView() {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  // Poz. 27: pola formularza (co użytkownik wpisuje) vs zastosowane filtry
+  // Pola formularza (co użytkownik wpisuje) vs zastosowane filtry
   // (co poszło do API) — domyślnie oba puste, czyli zachowanie bez zmian.
   const [form, setForm] = useState(EMPTY_FILTERS);
   const [applied, setApplied] = useState<ReportFilters>({});

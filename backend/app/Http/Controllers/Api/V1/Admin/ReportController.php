@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Pakiet H20 · GET /admin/report (+ /export.csv) — raport edycji.
- * Poz. 27: opcjonalny zakres dat `from`/`to` (walidacja w `ReportIndexRequest`).
+ * Opcjonalny zakres dat `from`/`to` (walidacja w `ReportIndexRequest`).
  */
 class ReportController extends Controller
 {

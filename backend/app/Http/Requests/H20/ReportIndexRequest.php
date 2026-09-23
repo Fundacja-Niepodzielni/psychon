@@ -5,8 +5,8 @@ namespace App\Http\Requests\H20;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * GET /admin/report (+ export.csv) — opcjonalny zakres dat. Poz. 27:
- * „zestawienie za wskazany okres". Filtr działa na `internship_entries.date`
+ * GET /admin/report (+ export.csv) — opcjonalny zakres dat, „zestawienie za
+ * wskazany okres". Filtr działa na `internship_entries.date`
  * (kolumna, po której raport już agreguje godziny i konsultacje — patrz
  * `ReportSummary`); liczniki pulpitu (`admitted`/`active`/`completed`/
  * `certificates_issued`) pozostają bez zmian, bo pochodzą z osobnego

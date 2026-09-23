@@ -3,8 +3,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Poz. 27 — pola „Od"/„Do" na ekranie raportu (H20). Kryterium: zestawienie
- * za wskazany okres, bez zmiany domyślnego zachowania (brak zakresu).
+ * Pola „Od"/„Do" na ekranie raportu (H20): zestawienie za wskazany okres,
+ * bez zmiany domyślnego zachowania (brak zakresu).
  */
 
 const fetchReport = vi.fn();
@@ -46,7 +46,7 @@ beforeEach(() => {
   downloadReportCsv.mockReset();
 });
 
-describe("ReportView — poz. 27 zakres dat", () => {
+describe("ReportView — zakres dat", () => {
   it("domyślnie (bez wpisanego zakresu) fetchReport wywoływany bez from/to", async () => {
     fetchReport.mockResolvedValue(raport);
     render(<ReportView />);
@@ -105,10 +105,10 @@ describe("ReportView — poz. 27 zakres dat", () => {
 });
 
 /**
- * Poz. 18 „Postępy" — kryterium: raport pokazuje etap każdej osoby.
- * Etykiety pochodzą wyłącznie z backendu (`stage_label`), front ich nie tłumaczy.
+ * Raport pokazuje etap każdej osoby. Etykiety pochodzą wyłącznie z backendu
+ * (`stage_label`), front ich nie tłumaczy.
  */
-describe("ReportView — poz. 18 etap każdej osoby", () => {
+describe("ReportView — etap każdej osoby", () => {
   it("tabela pokazuje etap każdej osoby z etykietą przekazaną przez backend", async () => {
     fetchReport.mockResolvedValue({
       ...raport,
@@ -148,6 +148,33 @@ describe("ReportView — poz. 18 etap każdej osoby", () => {
     // kolumny „Certyfikat" (stan wydania) — stąd zapytanie zawężone do wiersza.
     expect(within(wierszMarty as HTMLElement).getByText("Kursy i testy")).toBeInTheDocument();
     expect(within(wierszOli as HTMLElement).getByText("Certyfikat")).toBeInTheDocument();
+  });
+
+  it("osoba gotowa do certyfikatu (bez wydanego dokumentu) pokazuje odrębną etykietę etapu obok kolumny Certyfikat = Brak", async () => {
+    fetchReport.mockResolvedValue({
+      ...raport,
+      people: [
+        {
+          id: 3,
+          first_name: "Kasia",
+          last_name: "Demo",
+          role: "volunteer",
+          hours_accepted: "72",
+          consultations: 60,
+          certificate_issued: false,
+          stage: "gotowa",
+          stage_label: "Gotowa do certyfikatu",
+        },
+      ],
+    });
+    render(<ReportView />);
+
+    const wierszKasi = (await screen.findByText("Kasia Demo")).closest("tr");
+    expect(wierszKasi).not.toBeNull();
+
+    const wKasi = within(wierszKasi as HTMLElement);
+    expect(wKasi.getByText("Gotowa do certyfikatu")).toBeInTheDocument();
+    expect(wKasi.getByText("Brak")).toBeInTheDocument();
   });
 
   it("pusta lista osób pokazuje istniejący stan pusty tabeli (bez etapu do wyświetlenia)", async () => {

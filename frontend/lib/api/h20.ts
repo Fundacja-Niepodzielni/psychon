@@ -24,7 +24,7 @@ export interface ReportPersonRow {
   hours_accepted: string;
   consultations: number;
   certificate_issued: boolean;
-  /** Poz. 18 — klucz etapu (kontrakt backendu: `kurs|staz|superwizja|warsztat|certyfikat`). */
+  /** Klucz etapu (kontrakt backendu: `kurs|staz|superwizja|warsztat|gotowa|certyfikat`). */
   stage: string;
   /** Etykieta po polsku gotowa do wyświetlenia — backend jest jedynym źródłem tekstu. */
   stage_label: string;
@@ -35,7 +35,7 @@ export interface ReportData {
   people: ReportPersonRow[];
 }
 
-/** Poz. 27 — zakres dat (ISO), oba pola opcjonalne; nazwy jak w `AuditFilters`. */
+/** Zakres dat (ISO), oba pola opcjonalne; nazwy jak w `AuditFilters`. */
 export interface ReportFilters {
   from?: string;
   to?: string;
