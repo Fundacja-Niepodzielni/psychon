@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import PageTemplate from "@/components/templates/PageTemplate";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Skeleton from "@/components/ui/Skeleton";
@@ -175,14 +176,12 @@ export default function InstructorStart() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-h2 font-black text-ink">Panel prowadzącego</h1>
-        <p className="mt-2 text-body text-muted">
-          Skrót do tego, co dziś wymaga Twojej uwagi.
-        </p>
-      </div>
-
+    <PageTemplate
+      naglowek={{
+        title: "Panel prowadzącego",
+        description: "Skrót do tego, co dziś wymaga Twojej uwagi.",
+      }}
+    >
       <div className="grid gap-4 md:grid-cols-3">
         <Kafelek
           tytul="Moja grupa"
@@ -240,6 +239,6 @@ export default function InstructorStart() {
           onPonow={ponowGrupe}
         />
       </div>
-    </div>
+    </PageTemplate>
   );
 }

@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import Alert from "@/components/ui/Alert";
 import Card from "@/components/ui/Card";
+import ErrorState from "@/components/molecules/ErrorState";
+import LoadingState from "@/components/molecules/LoadingState";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, ApiError } from "@/lib/api";
 
 interface DashboardCounters {
@@ -39,6 +41,9 @@ const QUEUE_LABELS: Record<string, string> = {
 export default function AdminHomePage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Ponowienie liczy proby, nie tylko flage: ten sam wzorzec co /panel/start,
+  // zeby klikniecie "Sprobuj ponownie" zawsze wywolalo nowy efekt.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -57,20 +62,31 @@ export default function AdminHomePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
+
+  function retry() {
+    setLoadError(null);
+    setAttempt((n) => n + 1);
+  }
 
   if (loadError) {
-    return <Alert variant="error">{loadError}</Alert>;
+    return (
+      <PageTemplate naglowek={{ title: "Pulpit" }}>
+        <ErrorState message={loadError} onRetry={retry} />
+      </PageTemplate>
+    );
   }
 
   if (!dashboard) {
-    return <p className="text-body text-muted">Wczytywanie pulpitu…</p>;
+    return (
+      <PageTemplate naglowek={{ title: "Pulpit" }}>
+        <LoadingState label="Wczytywanie pulpitu…" />
+      </PageTemplate>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-h2 font-black text-ink">Pulpit</h1>
-
+    <PageTemplate naglowek={{ title: "Pulpit" }}>
       <div className="grid gap-4 sm:grid-cols-3">
         {(Object.keys(COUNTER_LABELS) as (keyof DashboardCounters)[]).map(
           (key) => (
@@ -109,6 +125,6 @@ export default function AdminHomePage() {
           </ul>
         )}
       </Card>
-    </div>
+    </PageTemplate>
   );
 }
