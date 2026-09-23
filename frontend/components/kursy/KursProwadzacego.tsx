@@ -37,7 +37,7 @@ export interface KursProwadzacegoProps {
  * Bramka roli stoi w `app/(prowadzacy)/prowadzacy/layout.tsx`
  * (`RequireRole allowedRoles={["instructor"]}`) — ten komponent się w ogóle
  * nie montuje dla innej roli. Kto może edytować KTÓRY kurs, rozstrzyga
- * backend (`CoursePolicy`, poz. 11 §1) — ekran nie duplikuje tej reguły,
+ * backend (`CoursePolicy`) — ekran nie duplikuje tej reguły,
  * tylko pokazuje 403/404 z API jak każdy inny błąd wczytania.
  */
 export default function KursProwadzacego({ id }: KursProwadzacegoProps) {

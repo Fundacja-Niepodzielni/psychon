@@ -35,7 +35,7 @@ export interface CertificateCondition {
 }
 
 /**
- * `passed_tests_count` (poz. 19 Załącznika 1) — pole dodatkowe, wstecznie
+ * `passed_tests_count` — pole dodatkowe, wstecznie
  * kompatybilne: stare odpowiedzi API go nie mają, wtedy `undefined`.
  */
 export interface CertificateConditions {

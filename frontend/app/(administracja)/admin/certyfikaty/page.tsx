@@ -30,8 +30,8 @@ function formatDateTime(iso: string | null): string {
 }
 
 /**
- * H13 · Lista wydanych certyfikatów i ich unieważnianie (Załącznik 1,
- * pozycja 7: „administracja unieważnia certyfikat z powodem"). Trasa
+ * H13 · Lista wydanych certyfikatów i ich unieważnianie („administracja
+ * unieważnia certyfikat z powodem"). Trasa
  * zaplecza istniała bez odbiorcy w interfejsie — ten ekran jest pierwszym.
  *
  * Wzorzec ekranu (ListTemplate + `useZasobStronicowany`) po `admin/emails`;

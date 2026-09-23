@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 
 export const NODE_TONE: Record<CourseStatus | "supervision", string> = {
   completed: "bg-success-bg text-success",
-  // P2: text-accent na bg-accent-15 dawało 4,37:1 (< 4,5:1, Z-9) —
+  // text-accent na bg-accent-15 dawało 4,37:1 (< 4,5:1) —
   // accent-dark to ten sam odcień, ciemniejszy (jak components/ui/Badge.tsx).
   in_progress: "bg-accent-15 text-accent-dark",
   locked: "bg-grey text-subtle",

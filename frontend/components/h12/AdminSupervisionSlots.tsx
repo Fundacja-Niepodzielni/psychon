@@ -22,7 +22,7 @@ function formatDate(value: string): string {
 /**
  * Obecność odnotowuje prowadzący na swoim ekranie (PATCH
  * /instructor/slots/{id}/attendance); tu jest tylko do odczytu — dokładnie
- * to kryterium pozycji 6 nazywa „potwierdzeniem odbycia widocznym w administracji".
+ * to kryterium nazywa „potwierdzeniem odbycia widocznym w administracji".
  */
 function attendanceLabel(value: "present" | "absent" | null): string {
   if (value === "present") return "Obecność potwierdzona";

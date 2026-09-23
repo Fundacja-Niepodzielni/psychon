@@ -1,7 +1,7 @@
 import type { MenuEntry } from "../types";
 
 /**
- * Wątek grupowy (pozycja 15 załącznika 1: „prowadzący prowadzi wątek
+ * Wątek grupowy („prowadzący prowadzi wątek
  * grupowy"). Bez `roles` — jak pozostałe wpisy tego rejestru: cały panel
  * `/prowadzacy` stoi już za `RequireRole allowedRoles={["instructor"]}`
  * w `app/(prowadzacy)/prowadzacy/layout.tsx`, więc `PanelShell` (a z nim
