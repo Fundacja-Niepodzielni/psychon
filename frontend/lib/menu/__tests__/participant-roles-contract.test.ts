@@ -13,13 +13,13 @@ import h15ProfilPsychologa from "@/lib/menu/participant/h15-profil-psychologa";
 import h21Start from "@/lib/menu/participant/h21-start";
 
 /**
- * F-241 (D-20260918-13/14): każdy wpis menu uczestnika ma `roles` zgodne
- * z middleware `role:` trasy backendu, którą wywołuje jego ekran — nikt nie
- * może zobaczyć pozycji menu, której nie może otworzyć.
+ * Każdy wpis menu uczestnika ma `roles` zgodne z middleware `role:` trasy
+ * backendu, którą wywołuje jego ekran — nikt nie może zobaczyć pozycji menu,
+ * której nie może otworzyć.
  *
  * Zakres: dziewięć wpisów pakietów HXX (własny plik trasy backendu).
  * `pulpit.ts` (agregator bez własnej trasy HXX) i `index.ts` (rejestr) są
- * poza zakresem F-241 — lider zmierzył „7 z 7” plików wpisów bez `roles`,
+ * poza tym zakresem — lider zmierzył „7 z 7” plików wpisów bez `roles`,
  * co odpowiada dokładnie tym dziewięciu wpisom minus H12/H13 (już poprawne).
  */
 
@@ -66,7 +66,7 @@ function maPoprawneRole(entry: MenuEntry): boolean {
   return Array.isArray(entry.roles) && entry.roles.length > 0;
 }
 
-describe("F-241: wpisy menu uczestnika a role middleware backendu", () => {
+describe("wpisy menu uczestnika a role middleware backendu", () => {
   it("gałąź pozytywna: każdy wpis pakietu HXX ma niepustą tablicę roles", () => {
     for (const [nazwa, entry] of Object.entries(PAKIETY)) {
       expect(maPoprawneRole(entry), `${nazwa} (${entry.href}) ma pustą/brakującą roles`).toBe(true);

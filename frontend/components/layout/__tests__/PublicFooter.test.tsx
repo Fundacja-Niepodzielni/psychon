@@ -2,9 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 /**
- * Stopka publiczna — odnośnik do deklaracji dostępności i, od pozycji 28
- * Załącznika 1, odnośniki do dokumentów prawnych (trzy rodzaje, patrz
- * `lib/h22/legal-documents.ts`).
+ * Stopka publiczna — odnośnik do deklaracji dostępności i odnośniki do
+ * dokumentów prawnych (trzy rodzaje, patrz `lib/h22/legal-documents.ts`).
  */
 
 vi.mock("next/navigation", () => ({

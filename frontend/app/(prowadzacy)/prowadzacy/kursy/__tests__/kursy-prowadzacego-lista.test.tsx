@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
 /**
- * Świadek listy kursów w panelu prowadzącego (poz. 11, D-27): ekran woła
+ * Świadek listy kursów w panelu prowadzącego: ekran woła
  * `GET /instructor/courses` — punkt, który zwraca WYŁĄCZNIE kursy z
  * przypisaniem (`CourseAssignment`), więc ekran nie filtruje nic sam.
  */

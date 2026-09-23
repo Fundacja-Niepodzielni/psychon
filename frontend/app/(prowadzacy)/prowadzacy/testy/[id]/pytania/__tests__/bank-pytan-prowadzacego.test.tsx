@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Bank pytań testu w panelu prowadzącego (poz. 11, D-27) pod strażnikiem
+ * Bank pytań testu w panelu prowadzącego pod strażnikiem
  * roli (`RequireRole allowedRoles={["instructor"]}` w `prowadzacy/layout.tsx`,
  * wzorzec z `kurs-prowadzacego-dostep.test.tsx`), montujący ten sam
  * `QuestionBank` (H10), co karta administracji.

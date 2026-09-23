@@ -4,7 +4,7 @@ import { dwaTerminyPrawdziwyKsztalt } from "./fixture";
 
 /**
  * Świadek ekranu `#/admin/superwizje` (`AdminSupervisionSlots`), pisany z
- * kryterium pozycji 6: „Zapis na termin, odmowa przy braku miejsc,
+ * kryterium: „Zapis na termin, odmowa przy braku miejsc,
  * potwierdzenie odbycia widoczne u osoby uczestniczącej i w administracji".
  * Ten plik świadczy wyłącznie o połowie „i w administracji" — zapis i odmowa
  * mają własnych świadków gdzie indziej (ekran uczestnika/prowadzącego).

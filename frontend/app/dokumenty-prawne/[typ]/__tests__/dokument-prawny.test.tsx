@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 /**
- * Świadek `/dokumenty-prawne/[typ]` (H22, pozycja 28 Załącznika 1).
+ * Świadek `/dokumenty-prawne/[typ]` (H22).
  * Kontrakt: `GET /legal-documents/{type}/current`, publiczny, bez tokenu
  * (`backend/routes/api/h22.php:28`).
  *
@@ -52,7 +52,7 @@ describe("/dokumenty-prawne/[typ] — dokument opublikowany", () => {
   });
 });
 
-describe("/dokumenty-prawne/[typ] — trzeci rodzaj (klauzula-rodo, D-26)", () => {
+describe("/dokumenty-prawne/[typ] — trzeci rodzaj (klauzula-rodo)", () => {
   it("pokazuje tytuł i treść klauzuli RODO", async () => {
     apiMock.mockResolvedValue({
       type: "klauzula-rodo",

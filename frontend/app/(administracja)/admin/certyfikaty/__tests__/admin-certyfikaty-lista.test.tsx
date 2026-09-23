@@ -3,8 +3,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Świadek ekranu H13 · Certyfikaty (`/admin/certyfikaty`) — Załącznik 1,
- * pozycja 7: „administracja unieważnia certyfikat z powodem". Trasa
+ * Świadek ekranu H13 · Certyfikaty (`/admin/certyfikaty`): „administracja
+ * unieważnia certyfikat z powodem". Trasa
  * zaplecza (`POST /admin/certificates/{certificate}/revoke`,
  * `backend/routes/api/h13.php:37`) istniała bez odbiorcy w interfejsie;
  * ten plik mierzy EKRAN (żądanie wysłane, ciało, odświeżenie listy),

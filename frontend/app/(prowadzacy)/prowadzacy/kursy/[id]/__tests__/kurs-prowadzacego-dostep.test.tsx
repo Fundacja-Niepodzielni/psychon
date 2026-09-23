@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
 /**
- * Karta kursu w panelu prowadzącego (poz. 11, D-27) pod strażnikiem roli
+ * Karta kursu w panelu prowadzącego pod strażnikiem roli
  * (`RequireRole allowedRoles={["instructor"]}` w `prowadzacy/layout.tsx`,
  * wzorzec z `watek-grupowy-dostep.test.tsx`) i bez paneli admin-only:
  * mierzone jest to, że po wydzieleniu `EdytorTresciKursu` karta prowadzącego
@@ -12,7 +12,7 @@ import { render, screen, waitFor } from "@testing-library/react";
  *
  * UWAGA (WERDYKT-POZ11-front-e9cf1c9.md §2, kontrola pozorna): test „rola
  * instructor montuje edytor" niżej mockuje `/admin/courses/4` jako sukces —
- * to KONTRAKT OCZEKIWANY po decyzji D-27 (backend ma dodać rolę `instructor`
+ * to KONTRAKT OCZEKIWANY (backend ma dodać rolę `instructor`
  * do bramek `h08.php`/`h10.php`), NIE dzisiejszy stan. DZIŚ backend zwraca
  * 403 na każdą z 11 tras (`h08.php:32` wymaga `project_manager,super_admin`)
  * — patrz test „DZIŚ: backend odmawia (403)" niżej, który mierzy realny stan.
@@ -86,7 +86,7 @@ describe("karta /prowadzacy/kursy/[id] pod strażnikiem roli", () => {
     expect(api).not.toHaveBeenCalledWith(`/admin/courses/4/lessons`);
   });
 
-  it('KONTRAKT OCZEKIWANY (D-27, po dodaniu roli instructor do bramek h08/h10): rola "instructor" montuje edytor BEZ paneli przypisań i zaproszeń', async () => {
+  it('KONTRAKT OCZEKIWANY (po dodaniu roli instructor do bramek h08/h10): rola "instructor" montuje edytor BEZ paneli przypisań i zaproszeń', async () => {
     api.mockImplementation((url: string) => {
       if (url === "/me") return Promise.resolve({ role: "instructor" });
       if (url === "/admin/courses/4") return Promise.resolve(kurs);

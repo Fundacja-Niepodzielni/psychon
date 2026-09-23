@@ -2,14 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
 /**
- * Świadek ekranu warunków certyfikatu (H13, pozycja 19 Załącznika 1
- * „Warunki certyfikatu"):
+ * Świadek ekranu warunków certyfikatu (H13, „Warunki certyfikatu"):
  * (1) każda liczba, którą API już zwraca osobno (internship, supervision),
  *     renderuje się jako osobny licznik, a brakujące pole pokazuje „brak
  *     danych", nigdy fałszywe 0 — `courses` nadal scala etapy z testami po
  *     stronie API (backend/app/Support/H13/CertificateConditions.php:29-43,
  *     ProgressAggregator.php — jedno pole `courses_done`, bez zmian);
- * (1a) `passed_tests_count` (poz. 19) — osobna liczba zaliczonych testów,
+ * (1a) `passed_tests_count` — osobna liczba zaliczonych testów,
  *     dodatkowe pole odpowiedzi API; brak/null pokazuje „brak danych" (ten
  *     sam kontrakt wstecznej kompatybilności co reszta liczników);
  * (2) każda liczba prowadzi do ekranu źródłowego: courses→/panel/kursy,
@@ -45,7 +44,7 @@ beforeEach(() => {
   fetchCertificateConditions.mockReset();
 });
 
-describe("CertificatePage — liczniki i przejście do źródła (poz. 19)", () => {
+describe("CertificatePage — liczniki i przejście do źródła", () => {
   it("liczniki renderują się osobno z poprawnymi wartościami i linkiem do ekranu źródłowego", async () => {
     fetchCertificateConditions.mockResolvedValue(pelneWarunki);
     render(<CertificatePage />);
@@ -70,7 +69,7 @@ describe("CertificatePage — liczniki i przejście do źródła (poz. 19)", () 
     // workshop ma tylko etykietę i status, bez osobnej liczby.
     expect(screen.getByText("Warsztat stacjonarny")).toBeInTheDocument();
 
-    // poz. 19: zaliczone testy jako osobna liczba, poza warunkiem `courses`.
+    // zaliczone testy jako osobna liczba, poza warunkiem `courses`.
     expect(screen.getByText("Zaliczone testy")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
   });
@@ -103,7 +102,7 @@ describe("CertificatePage — liczniki i przejście do źródła (poz. 19)", () 
     expect(screen.queryByRole("link", { name: /Warsztat stacjonarny/ })).not.toBeInTheDocument();
   });
 
-  it("poz. 19 noga negatywna: brak pola passed_tests_count w odpowiedzi (stary kontrakt) pokazuje „brak danych”, nie 0", async () => {
+  it("noga negatywna: brak pola passed_tests_count w odpowiedzi (stary kontrakt) pokazuje „brak danych”, nie 0", async () => {
     fetchCertificateConditions.mockResolvedValue({
       eligible: pelneWarunki.eligible,
       conditions: pelneWarunki.conditions,
@@ -114,7 +113,7 @@ describe("CertificatePage — liczniki i przejście do źródła (poz. 19)", () 
     expect(screen.getByText("brak danych", { selector: "span.font-bold" })).toBeInTheDocument();
   });
 
-  it("poz. 19 noga negatywna: passed_tests_count = null pokazuje „brak danych”", async () => {
+  it("noga negatywna: passed_tests_count = null pokazuje „brak danych”", async () => {
     fetchCertificateConditions.mockResolvedValue({ ...pelneWarunki, passed_tests_count: null });
     render(<CertificatePage />);
 
