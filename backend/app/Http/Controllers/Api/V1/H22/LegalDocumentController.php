@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H22\AcceptLegalDocumentRequest;
 use App\Http\Resources\H22\PublicLegalDocumentResource;
+use App\Models\Application;
 use App\Models\Consent;
 use App\Models\LegalDocumentVersion;
 use App\Support\AuditLog;
@@ -66,10 +67,20 @@ class LegalDocumentController extends Controller
      * je tu i zwracamy wiersz zwycięzcy zamiast błędu — bez drugiego wpisu
      * `audit_log` (transakcja przegranej cofa się w całości, więc jej
      * `AuditLog::record`, wywoływany po `Consent::create()`, nigdy nie biegnie).
+     *
+     * Bramka rodzaju: przeciwko `Application::CONSENT_COLUMNS`, NIE przeciwko
+     * `LegalDocumentVersion::TYPES` — decyzja właściciela D-20260923-18
+     * (wariant A, F-250). Na tej trasie „znany rodzaj" znaczy rodzaj zgody;
+     * rodzaj informacyjny (`LegalDocumentVersion::INFORMATIONAL_TYPES`, np.
+     * `klauzula-rodo`) dostaje ten sam błąd `422 unknown_document_type` co
+     * rodzaj całkiem nieznany — nikt jej nie udziela, więc nie ma czego tu
+     * przyjmować. Trasy odczytu (`current`, `show`) i administracyjne dalej
+     * bramkują po `TYPES` — klauzula ma zostać publicznie czytelna i dalej
+     * dać się wydać w nowej wersji.
      */
     public function accept(AcceptLegalDocumentRequest $request, string $type): JsonResponse
     {
-        if (! in_array($type, LegalDocumentVersion::TYPES, true)) {
+        if (! array_key_exists($type, Application::CONSENT_COLUMNS)) {
             throw new ApiException(422, 'unknown_document_type', 'Nieznany rodzaj dokumentu.', errors: [
                 'type' => ['Nieznany rodzaj dokumentu.'],
             ]);
