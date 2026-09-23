@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import Input from "@/components/ui/Input";
 import Table, { type Column } from "@/components/ui/Table";
 import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import {
@@ -12,9 +13,12 @@ import {
   downloadReportCsv,
   fetchReport,
   type ReportData,
+  type ReportFilters,
   type ReportPersonRow,
 } from "@/lib/api";
 import { ROLE_LABELS } from "@/lib/h18/labels";
+
+const EMPTY_FILTERS = { from: "", to: "" };
 
 export default function ReportView() {
   const [report, setReport] = useState<ReportData | null>(null);
@@ -24,9 +28,14 @@ export default function ReportView() {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
+  // Pola formularza (co użytkownik wpisuje) vs zastosowane filtry
+  // (co poszło do API) — domyślnie oba puste, czyli zachowanie bez zmian.
+  const [form, setForm] = useState(EMPTY_FILTERS);
+  const [applied, setApplied] = useState<ReportFilters>({});
+
   useEffect(() => {
     let active = true;
-    fetchReport()
+    fetchReport(applied)
       .then((data) => {
         if (active) setReport(data);
       })
@@ -42,13 +51,21 @@ export default function ReportView() {
     return () => {
       active = false;
     };
-  }, [reload]);
+  }, [reload, applied]);
+
+  function applyFilters(e: FormEvent) {
+    e.preventDefault();
+    setApplied({
+      from: form.from || undefined,
+      to: form.to || undefined,
+    });
+  }
 
   async function exportCsv() {
     setDownloading(true);
     setDownloadError(null);
     try {
-      await downloadReportCsv();
+      await downloadReportCsv(applied);
     } catch (err) {
       setDownloadError(
         err instanceof ApiError ? err.message : "Nie udało się pobrać pliku CSV.",
@@ -68,6 +85,15 @@ export default function ReportView() {
       key: "role",
       header: "Rola",
       render: (row) => ROLE_LABELS[row.role] ?? row.role,
+    },
+    {
+      key: "stage",
+      header: "Etap",
+      render: (row) => (
+        <Badge variant={row.stage === "certyfikat" ? "success" : "neutral"}>
+          {row.stage_label}
+        </Badge>
+      ),
     },
     {
       key: "hours",
@@ -123,11 +149,31 @@ export default function ReportView() {
         setReload((value) => value + 1);
       }}
       dodatkowyPanel={
-        downloadError && (
-          <Alert variant="error" className="print:hidden">
-            {downloadError}
-          </Alert>
-        )
+        <>
+          {downloadError && (
+            <Alert variant="error" className="print:hidden">
+              {downloadError}
+            </Alert>
+          )}
+          <form
+            onSubmit={applyFilters}
+            className="grid gap-4 print:hidden sm:grid-cols-[160px_160px_auto] sm:items-end"
+          >
+            <Input
+              label="Od"
+              type="date"
+              value={form.from}
+              onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
+            />
+            <Input
+              label="Do"
+              type="date"
+              value={form.to}
+              onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
+            />
+            <Button type="submit">Filtruj</Button>
+          </form>
+        </>
       }
     >
       <h1 className="hidden text-h3 font-black text-ink print:block">

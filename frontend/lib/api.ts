@@ -55,6 +55,7 @@ export {
   type ReportSummaryData,
   type ReportPersonRow,
   type ReportData,
+  type ReportFilters,
   fetchReport,
   downloadReportCsv,
   AUDIT_ACTIONS,

@@ -7,6 +7,8 @@ use App\Models\InternshipEntry;
 use App\Models\User;
 use App\Services\H19\DashboardSummary;
 use App\Support\ProgressAggregator;
+use App\Support\Settings;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -16,9 +18,39 @@ use Illuminate\Support\Collection;
  * `active`/`completed`/`certificates_issued` wołają wprost
  * `DashboardSummary::build()` zamiast liczyć te same COUNT-y drugi raz —
  * gwarancja równości przez wspólny kod, nie przez „policzone tak samo".
+ *
+ * Zakres dat `$from`/`to` zawęża godziny i konsultacje po
+ * `internship_entries.date` (kolumna, po której raport już agreguje — patrz
+ * sumy niżej). Liczniki pulpitu (`admitted`/`active`/`completed`/
+ * `certificates_issued`) NIE są filtrowane — pochodzą ze stanu bieżącego
+ * (`DashboardSummary`/`Application::accepted()`), nie z dziennika zdarzeń
+ * z własną datą; to alternatywna interpretacja „okresu", tu świadomie
+ * pominięta jako wymagająca osobnej zmiany w H19.
  */
 final class ReportSummary
 {
+    /**
+     * Etap ścieżki tej samej osoby, jeden na wiersz (nie mylić z listą
+     * etapów-kursów `pathStages` we froncie). Słownik NIE jest nowym
+     * wymysłem: to kolejność czterech warunków certyfikatu z
+     * `CertificateConditions` (`courses` → `internship` → `supervision`
+     * → `workshop`, plik `Support/H13/CertificateConditions.php:36-63`) plus
+     * dwa dalsze stany po spełnieniu wszystkich czterech — „gotowa" i
+     * „certyfikat" (decyzja właściciela z 23.09.2026, patrz `stage()`).
+     * Etap to wartość punktowa (aktualny stan `ProgressAggregator::for()`),
+     * NIE zależy od `$from`/`$to` raportu — te dwa parametry zawężają
+     * wyłącznie sumy z dziennika stażu (`acceptedEntries()` niżej), a
+     * `ProgressAggregator` liczy godziny/obecności bez filtra dat.
+     */
+    private const STAGE_LABELS = [
+        'kurs' => 'Kursy i testy',
+        'staz' => 'Staż',
+        'superwizja' => 'Superwizje',
+        'warsztat' => 'Warsztat stacjonarny',
+        'gotowa' => 'Gotowa do certyfikatu',
+        'certyfikat' => 'Certyfikat',
+    ];
+
     /**
      * @return array{
      *     summary: array{
@@ -29,15 +61,16 @@ final class ReportSummary
      *     people: list<array{
      *         id: int, first_name: string, last_name: string, role: string,
      *         hours_accepted: string, consultations: int, certificate_issued: bool,
+     *         stage: string, stage_label: string,
      *     }>,
      * }
      */
-    public static function build(): array
+    public static function build(?string $from = null, ?string $to = null): array
     {
         $dashboard = DashboardSummary::build();
 
-        $hoursTotal = (float) InternshipEntry::where('status', 'accepted')->sum('hours');
-        $consultationsTotal = (int) InternshipEntry::where('status', 'accepted')->sum('consultations_count');
+        $hoursTotal = (float) self::acceptedEntries($from, $to)->sum('hours');
+        $consultationsTotal = (int) self::acceptedEntries($from, $to)->sum('consultations_count');
         $active = $dashboard['counters']['participants'];
 
         return [
@@ -52,40 +85,121 @@ final class ReportSummary
                 'consultations_total' => $consultationsTotal,
                 'certificates_issued' => $dashboard['counters']['certificates'],
             ],
-            'people' => self::people()->all(),
+            'people' => self::people($from, $to)->all(),
         ];
     }
 
     /**
      * Zestawienie imienne — jedno źródło dla ekranu raportu i CSV.
      *
-     * @return Collection<int, array{id:int, first_name:string, last_name:string, role:string, hours_accepted:string, consultations:int, certificate_issued:bool}>
+     * Kształt elementu jak w `build()` @return (`people: list<array{...}>` wyżej) —
+     * tu celowo luźny `array<string, mixed>` zamiast dokładnego `array{...}`,
+     * konwencja z `H07/AdminReliabilityQuery::participants()`+`sort()` dla
+     * `Collection` budowanej przez `->map()` z `Eloquent\Collection<User>`
+     * na tablice (dokładny kształt generyczny tu nie jest kowariantny
+     * względem wyniku `map()`/`values()` na kolekcji Eloquent — PHPStan
+     * `return.type`).
+     *
+     * @return Collection<int, array<string, mixed>>
      */
-    public static function people(): Collection
+    public static function people(?string $from = null, ?string $to = null): Collection
     {
         $certifiedUserIds = User::query()
             ->whereHas('certificates')
             ->pluck('id')
             ->flip();
 
+        // Progi z aktywnej edycji pobrane RAZ przed pętlą (nie przez
+        // `CertificateConditions::for()` per osoba — ten wołałby
+        // `Settings::activeEdition()`, czyli dodatkowe zapytanie do
+        // `editions`, dla każdego wiersza listy).
+        $hoursRequired = (float) Settings::edition('internship_hours_required');
+        $supervisionRequired = (int) Settings::edition('supervision_required_count');
+
         return User::query()
             ->whereIn('role', ['volunteer', 'student'])
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
-            ->map(fn (User $user): array => [
-                'id' => $user->id,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'role' => $user->role,
-                'hours_accepted' => ProgressAggregator::formatDecimal(
-                    (float) $user->internshipEntries()->where('status', 'accepted')->sum('hours'),
-                ),
-                'consultations' => (int) $user->internshipEntries()
-                    ->where('status', 'accepted')
-                    ->sum('consultations_count'),
-                'certificate_issued' => $certifiedUserIds->has($user->id),
-            ])
+            ->map(function (User $user) use ($from, $to, $certifiedUserIds, $hoursRequired, $supervisionRequired): array {
+                $certificateIssued = $certifiedUserIds->has($user->id);
+                $stage = self::stage(ProgressAggregator::for($user), $hoursRequired, $supervisionRequired, $certificateIssued);
+
+                return [
+                    'id' => $user->id,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
+                    'role' => $user->role,
+                    'hours_accepted' => ProgressAggregator::formatDecimal(
+                        (float) self::acceptedEntries($from, $to, $user->id)->sum('hours'),
+                    ),
+                    'consultations' => (int) self::acceptedEntries($from, $to, $user->id)->sum('consultations_count'),
+                    'certificate_issued' => $certificateIssued,
+                    'stage' => $stage,
+                    'stage_label' => self::STAGE_LABELS[$stage],
+                ];
+            })
             ->values();
+    }
+
+    /**
+     * Pierwszy niespełniony warunek z `CertificateConditions` (ten sam
+     * porządek: kursy → staż → superwizje → warsztat) rozstrzyga etap —
+     * ta część reguły się nie zmienia. Dopiero gdy wszystkie cztery warunki
+     * są spełnione, o etapie decyduje to, czy dokument certyfikatu już
+     * istnieje: jest wiersz w `certificates` (`$certificateIssued`) — etap
+     * „certyfikat", nie ma — „gotowa" (decyzja właściciela z 23.09.2026).
+     * Posiadanie dokumentu NIE przeskakuje niespełnionego warunku: osoba
+     * z certyfikatem, która np. nie ma zaliczonego warsztatu, dostaje etap
+     * „warsztat" — dlatego warunek na `$certificateIssued` jest ostatni,
+     * po wszystkich czterech sprawdzeniach, nigdy przed nimi.
+     * Liczby z `ProgressAggregator::for()`, tak jak karta osoby i pulpit
+     * — żadna nowa reguła biznesowa.
+     *
+     * @param  array{courses_done:int, courses_total:int, hours_accepted:string, supervision_present:int, workshop_done:bool, reliability_percent:int|null}  $progress
+     */
+    private static function stage(array $progress, float $hoursRequired, int $supervisionRequired, bool $certificateIssued): string
+    {
+        if ($progress['courses_total'] === 0 || $progress['courses_done'] < $progress['courses_total']) {
+            return 'kurs';
+        }
+
+        if ((float) $progress['hours_accepted'] < $hoursRequired) {
+            return 'staz';
+        }
+
+        if ($progress['supervision_present'] < $supervisionRequired) {
+            return 'superwizja';
+        }
+
+        if (! $progress['workshop_done']) {
+            return 'warsztat';
+        }
+
+        return $certificateIssued ? 'certyfikat' : 'gotowa';
+    }
+
+    /**
+     * Wpisy stażu ze statusem `accepted`, opcjonalnie zawężone datą wpisu
+     * (`internship_entries.date`, `$from`/`to` w formacie ISO, oba brzegi
+     * włącznie) i osobą.
+     */
+    private static function acceptedEntries(?string $from, ?string $to, ?int $userId = null): Builder
+    {
+        $query = InternshipEntry::where('status', 'accepted');
+
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        if ($from !== null) {
+            $query->whereDate('date', '>=', $from);
+        }
+
+        if ($to !== null) {
+            $query->whereDate('date', '<=', $to);
+        }
+
+        return $query;
     }
 }

@@ -1,0 +1,190 @@
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+/**
+ * Pola „Od"/„Do" na ekranie raportu (H20): zestawienie za wskazany okres,
+ * bez zmiany domyślnego zachowania (brak zakresu).
+ */
+
+const fetchReport = vi.fn();
+const downloadReportCsv = vi.fn();
+
+class ApiError extends Error {
+  status: number;
+  code: string;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+vi.mock("@/lib/api", () => ({
+  fetchReport: (...args: unknown[]) => fetchReport(...args),
+  downloadReportCsv: (...args: unknown[]) => downloadReportCsv(...args),
+  ApiError,
+}));
+
+const { default: ReportView } = await import("@/components/h20/ReportView");
+
+const raport = {
+  summary: {
+    admitted: 5,
+    active: 3,
+    completed: 1,
+    hours_accepted_total: "113.5",
+    hours_accepted_average: "37.8",
+    consultations_total: 101,
+    certificates_issued: 1,
+  },
+  people: [],
+};
+
+beforeEach(() => {
+  fetchReport.mockReset();
+  downloadReportCsv.mockReset();
+});
+
+describe("ReportView — zakres dat", () => {
+  it("domyślnie (bez wpisanego zakresu) fetchReport wywoływany bez from/to", async () => {
+    fetchReport.mockResolvedValue(raport);
+    render(<ReportView />);
+
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
+    expect(fetchReport).toHaveBeenLastCalledWith({});
+  });
+
+  it("filtr: wysłanie formularza z wypełnionymi polami przekazuje from/to do fetchReport", async () => {
+    fetchReport.mockResolvedValue(raport);
+    render(<ReportView />);
+
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
+
+    await userEvent.type(screen.getByLabelText("Od"), "2026-01-01");
+    await userEvent.type(screen.getByLabelText("Do"), "2026-01-31");
+    await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
+
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(2));
+    expect(fetchReport).toHaveBeenLastCalledWith({ from: "2026-01-01", to: "2026-01-31" });
+  });
+
+  it("filtr: wysłanie pustego formularza po wcześniejszym zakresie znów nie przekazuje from/to", async () => {
+    fetchReport.mockResolvedValue(raport);
+    render(<ReportView />);
+
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
+
+    await userEvent.type(screen.getByLabelText("Od"), "2026-01-01");
+    await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(2));
+
+    await userEvent.clear(screen.getByLabelText("Od"));
+    await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
+
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(3));
+    expect(fetchReport).toHaveBeenLastCalledWith({ from: undefined, to: undefined });
+  });
+
+  it("eksport CSV przekazuje zastosowany zakres do downloadReportCsv", async () => {
+    fetchReport.mockResolvedValue(raport);
+    downloadReportCsv.mockResolvedValue(undefined);
+    render(<ReportView />);
+
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
+
+    await userEvent.type(screen.getByLabelText("Od"), "2026-02-01");
+    await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
+    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(2));
+
+    await userEvent.click(screen.getByRole("button", { name: "Eksport CSV" }));
+
+    await waitFor(() => expect(downloadReportCsv).toHaveBeenCalledTimes(1));
+    expect(downloadReportCsv).toHaveBeenLastCalledWith({ from: "2026-02-01", to: undefined });
+  });
+});
+
+/**
+ * Raport pokazuje etap każdej osoby. Etykiety pochodzą wyłącznie z backendu
+ * (`stage_label`), front ich nie tłumaczy.
+ */
+describe("ReportView — etap każdej osoby", () => {
+  it("tabela pokazuje etap każdej osoby z etykietą przekazaną przez backend", async () => {
+    fetchReport.mockResolvedValue({
+      ...raport,
+      people: [
+        {
+          id: 1,
+          first_name: "Marta",
+          last_name: "Demo",
+          role: "volunteer",
+          hours_accepted: "41.5",
+          consultations: 37,
+          certificate_issued: false,
+          stage: "kurs",
+          stage_label: "Kursy i testy",
+        },
+        {
+          id: 2,
+          first_name: "Ola",
+          last_name: "Demo",
+          role: "volunteer",
+          hours_accepted: "72",
+          consultations: 64,
+          certificate_issued: true,
+          stage: "certyfikat",
+          stage_label: "Certyfikat",
+        },
+      ],
+    });
+    render(<ReportView />);
+
+    const wierszMarty = (await screen.findByText("Marta Demo")).closest("tr");
+    const wierszOli = (await screen.findByText("Ola Demo")).closest("tr");
+    expect(wierszMarty).not.toBeNull();
+    expect(wierszOli).not.toBeNull();
+
+    // `Certyfikat` w wierszu Oli to etap (Badge), nie mylić z nagłówkiem
+    // kolumny „Certyfikat" (stan wydania) — stąd zapytanie zawężone do wiersza.
+    expect(within(wierszMarty as HTMLElement).getByText("Kursy i testy")).toBeInTheDocument();
+    expect(within(wierszOli as HTMLElement).getByText("Certyfikat")).toBeInTheDocument();
+  });
+
+  it("osoba gotowa do certyfikatu (bez wydanego dokumentu) pokazuje odrębną etykietę etapu obok kolumny Certyfikat = Brak", async () => {
+    fetchReport.mockResolvedValue({
+      ...raport,
+      people: [
+        {
+          id: 3,
+          first_name: "Kasia",
+          last_name: "Demo",
+          role: "volunteer",
+          hours_accepted: "72",
+          consultations: 60,
+          certificate_issued: false,
+          stage: "gotowa",
+          stage_label: "Gotowa do certyfikatu",
+        },
+      ],
+    });
+    render(<ReportView />);
+
+    const wierszKasi = (await screen.findByText("Kasia Demo")).closest("tr");
+    expect(wierszKasi).not.toBeNull();
+
+    const wKasi = within(wierszKasi as HTMLElement);
+    expect(wKasi.getByText("Gotowa do certyfikatu")).toBeInTheDocument();
+    expect(wKasi.getByText("Brak")).toBeInTheDocument();
+  });
+
+  it("pusta lista osób pokazuje istniejący stan pusty tabeli (bez etapu do wyświetlenia)", async () => {
+    fetchReport.mockResolvedValue(raport); // people: []
+    render(<ReportView />);
+
+    expect(
+      await screen.findByText(
+        "Wiersze pojawią się tutaj, gdy w systemie będą konta wolontariuszy lub studentów.",
+      ),
+    ).toBeInTheDocument();
+  });
+});
