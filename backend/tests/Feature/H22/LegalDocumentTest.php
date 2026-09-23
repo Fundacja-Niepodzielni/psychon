@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Pakiet H22 · odczyty publiczne (bez tokenu) — kryterium L2:
+ * Pakiet H22 · odczyty publiczne (bez tokenu):
  * bieżąca wersja obu rodzajów, konkretna wersja, oraz pięć wyników 404
  * (rodzaj nieznany, wersja nieznana, szkic — na obu trasach, plus rodzaj bez
  * publikacji).
@@ -157,7 +157,7 @@ class LegalDocumentTest extends TestCase
     }
 
     /**
-     * K8 — próba negatywna, zasada architekta: rodzaj informacyjny
+     * Próba negatywna: rodzaj informacyjny
      * na trasie akceptacji dostaje ten sam błąd co rodzaj całkiem nieznany
      * i nie zostawia śladu. Brak wiersza udowodniony liczbą (przed i po
      * żądaniu), nie brakiem wyjątku — stąd liczenie `consents` i
@@ -192,10 +192,10 @@ class LegalDocumentTest extends TestCase
     }
 
     /**
-     * K9 — kontrola pozytywna w tej samej klasie: zmiana bramki
+     * Kontrola pozytywna w tej samej klasie: zmiana bramki
      * w `accept()` (na zbiór zgód zamiast `TYPES`) nie zepsuła przyjmowania
-     * prawdziwej zgody. Bez tej nogi K8 byłoby spełnione też przez trasę
-     * zepsutą na amen (odrzucającą wszystko).
+     * prawdziwej zgody. Bez tej nogi próba negatywna powyżej byłaby spełniona
+     * też przez trasę zepsutą na amen (odrzucającą wszystko).
      */
     public function test_accepting_regulamin_still_creates_a_consent_row_after_the_gate_change(): void
     {
