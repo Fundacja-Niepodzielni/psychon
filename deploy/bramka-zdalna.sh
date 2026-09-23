@@ -78,9 +78,16 @@ git checkout --quiet --detach "$SHA" 2>/dev/null || { echo "[ZDALNIE] nie ma com
 # commit, ktory nie ma z tym nic wspolnego. Sprzatamy TU, po stronie przygotowania,
 # i mowimy glosno ile. `-fd` bez `-x`: pliki ignorowane (vendor, node_modules) zostaja,
 # bo ich odtworzenie kosztuje kilka minut, a nie sa niczyim smieciem.
-SPRZATNIETE="$(git clean -fd 2>/dev/null | grep -c .)"
+# Nazwy, nie tylko liczba: ciche czyszczenie jest nie do odroznienia od braku smieci,
+# a to wlasnie nazwa mowi, ktory bieg nie posprzatal po sobie.
+SPRZATANIE="$(git clean -fd 2>/dev/null)"
+SPRZATNIETE="$(printf '%s' "$SPRZATANIE" | grep -c .)"
 if [ "${SPRZATNIETE:-0}" -gt 0 ]; then
     echo "[ZDALNIE] lustro: usunietych pozycji po poprzednim biegu: $SPRZATNIETE"
+    printf '%s\n' "$SPRZATANIE" | head -10 | sed 's/^/[ZDALNIE]   - /'
+    if [ "$SPRZATNIETE" -gt 10 ]; then
+        echo "[ZDALNIE]   - (i $((SPRZATNIETE - 10)) dalszych)"
+    fi
 fi
 
 # Swiadek 1: lustro == zrodlo. Nie ufamy komunikatowi `checkout`, tylko pytamy
