@@ -44,9 +44,9 @@ export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
   const [reloadKey, setReloadKey] = useState(0);
   const [course, setCourse] = useState<AdminCourse | null>(null);
   const [lessons, setLessons] = useState<AdminLesson[]>([]);
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(
-    null,
-  );
+  const [failed, setFailed] = useState<
+    { key: string; message: string; status?: number } | null
+  >(null);
 
   const loadKey = `${id}:${reloadKey}`;
 
@@ -70,6 +70,7 @@ export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
             err,
             "Nie udało się wczytać kursu. Odśwież stronę.",
           ),
+          status: err instanceof ApiError ? err.status : undefined,
         });
       });
 
@@ -104,6 +105,7 @@ export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
         ),
       }}
       stan={stan}
+      httpStatus={failed?.status}
       komunikatLadowania="Wczytywanie kursu…"
       komunikatBledu={failed?.message}
       komunikatBleduTytul="Nie udało się wczytać kursu"

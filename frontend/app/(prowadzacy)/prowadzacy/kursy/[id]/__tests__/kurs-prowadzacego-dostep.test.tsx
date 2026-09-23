@@ -9,6 +9,13 @@ import { render, screen, waitFor } from "@testing-library/react";
  * NIE montuje przypisań (H09, nagłówek „Prowadzący") ani zaproszeń (H08b,
  * nagłówek „Zaproszenia") — obie są renderowane wprost w
  * `admin/kursy/[id]/page.tsx`, nie w edytorze, który tu się montuje.
+ *
+ * UWAGA (WERDYKT-POZ11-front-e9cf1c9.md §2, kontrola pozorna): test „rola
+ * instructor montuje edytor" niżej mockuje `/admin/courses/4` jako sukces —
+ * to KONTRAKT OCZEKIWANY po decyzji D-27 (backend ma dodać rolę `instructor`
+ * do bramek `h08.php`/`h10.php`), NIE dzisiejszy stan. DZIŚ backend zwraca
+ * 403 na każdą z 11 tras (`h08.php:32` wymaga `project_manager,super_admin`)
+ * — patrz test „DZIŚ: backend odmawia (403)" niżej, który mierzy realny stan.
  */
 
 const api = vi.fn();
@@ -79,7 +86,7 @@ describe("karta /prowadzacy/kursy/[id] pod strażnikiem roli", () => {
     expect(api).not.toHaveBeenCalledWith(`/admin/courses/4/lessons`);
   });
 
-  it('rola "instructor" montuje edytor BEZ paneli przypisań i zaproszeń', async () => {
+  it('KONTRAKT OCZEKIWANY (D-27, po dodaniu roli instructor do bramek h08/h10): rola "instructor" montuje edytor BEZ paneli przypisań i zaproszeń', async () => {
     api.mockImplementation((url: string) => {
       if (url === "/me") return Promise.resolve({ role: "instructor" });
       if (url === "/admin/courses/4") return Promise.resolve(kurs);
@@ -100,5 +107,28 @@ describe("karta /prowadzacy/kursy/[id] pod strażnikiem roli", () => {
     expect(screen.queryByRole("heading", { name: "Prowadzący" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Zaproszenia" })).not.toBeInTheDocument();
     expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
+  });
+
+  it('DZIŚ: backend odmawia (403) rolę "instructor" na /admin/courses/{id} — ekran pokazuje stan odmowy, BEZ przycisku „Ponów" (WERDYKT-POZ11-front-e9cf1c9.md §2)', async () => {
+    api.mockImplementation((url: string) => {
+      if (url === "/me") return Promise.resolve({ role: "instructor" });
+      if (url === "/admin/courses/4") {
+        return Promise.reject(
+          new ApiError(403, "Nie masz dostępu do tej sekcji."),
+        );
+      }
+      return Promise.reject(new Error(`nieoczekiwane wywołanie: ${url}`));
+    });
+
+    render(
+      <InstructorLayout>
+        <InstructorCoursePage params={paramsFor("4")} />
+      </InstructorLayout>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
+    expect(
+      screen.queryByRole("button", { name: "Ponów" }),
+    ).not.toBeInTheDocument();
   });
 });

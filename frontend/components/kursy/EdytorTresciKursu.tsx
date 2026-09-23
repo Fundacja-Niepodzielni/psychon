@@ -100,6 +100,24 @@ export default function EdytorTresciKursu({
   onLessonsReload,
 }: EdytorTresciKursuProps) {
   const [courseForm, setCourseForm] = useState<CourseForm>(() => toCourseForm(course));
+  // Zachowanie sprzed podziału (`admin/kursy/[id]/page.tsx` przed 9e20d8f):
+  // formularz kursu resetował się do danych serwera przy KAŻDYM pełnym
+  // przeładunku (tam: efekt zależny od `[id, reloadKey]`). Tu rodzic
+  // przeładowuje kurs I lekcje razem (`onLessonsReload` → nowa referencja
+  // `lessons`), więc to WŁAŚNIE zmiana referencji `lessons` niesie ten sam
+  // sygnał — w odróżnieniu od zmiany `course` samej w sobie (publikacja,
+  // zapis tego formularza), która przeładunku nie oznacza i formularza nie
+  // resetowała także przed podziałem.
+  //
+  // Dopasowanie stanu PODCZAS renderowania (wzorzec z dokumentacji Reacta
+  // „Adjusting state when a prop changes"), nie w efekcie — bezpośrednie
+  // `setState` w ciele efektu kaskaduje renderowania
+  // (react-hooks/set-state-in-effect, patrz `useZasobStronicowany.ts`).
+  const [prevLessons, setPrevLessons] = useState(lessons);
+  if (lessons !== prevLessons) {
+    setPrevLessons(lessons);
+    setCourseForm(toCourseForm(course));
+  }
   const [savingCourse, setSavingCourse] = useState(false);
   const [courseSaved, setCourseSaved] = useState(false);
   const [courseFormError, setCourseFormError] = useState<string | null>(null);
