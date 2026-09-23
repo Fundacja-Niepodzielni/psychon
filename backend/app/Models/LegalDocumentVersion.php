@@ -22,6 +22,29 @@ class LegalDocumentVersion extends Model
 {
     public const array TYPES = ['regulamin', 'polityka', 'klauzula-rodo'];
 
+    /**
+     * Rodzaje z `TYPES`, które NIE są zgodą — klauzule informacyjne
+     * (art. 13 RODO): administrator ma obowiązek je udostępnić, ale nikt
+     * ich nie udziela ani nie wycofuje. To odróżnia je od `regulamin` /
+     * `polityka`, które osoba aktywnie akceptuje i które mają odpowiednik
+     * w `Application::CONSENT_COLUMNS`.
+     *
+     * Każdy rodzaj z `TYPES` musi być ALBO tutaj, ALBO w
+     * `Application::CONSENT_COLUMNS` — nigdy w obu naraz, nigdy w żadnym
+     * (pilnuje `LegalDocumentVersionTypesTest`). Czwarty rodzaj: zanim
+     * trafi do `TYPES`, dopisz go najpierw tutaj albo do
+     * `CONSENT_COLUMNS`, zależnie od tego, czy to informacja czy zgoda —
+     * samo dopisanie do `TYPES` bez tej klasyfikacji czerwieni próbę.
+     *
+     * Ta stała nie kontroluje, co API pozwala zrobić z danym rodzajem —
+     * o stanie `LegalDocumentController::accept()` (dziś bramkuje po
+     * `TYPES`, nie po tym podziale) patrz komentarz klasy
+     * `LegalDocumentVersionTypesTest`.
+     *
+     * @var list<string>
+     */
+    public const array INFORMATIONAL_TYPES = ['klauzula-rodo'];
+
     public const string STATUS_DRAFT = 'draft';
 
     public const string STATUS_PUBLISHED = 'published';
