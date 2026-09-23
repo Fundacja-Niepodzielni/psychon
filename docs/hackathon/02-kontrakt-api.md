@@ -507,10 +507,10 @@ zaakceptowała wersję widzianą na ekranie.
   `LegalDocumentVersion::INFORMATIONAL_TYPES` i pilnowany próbą.
   **Trasy odczytu i trasy administracyjne ta zasada nie dotyczy** — klauzula jest publicznie
   czytelna przez `GET /legal-documents/klauzula-rodo/current` i dalej można wydać jej nową wersję.
-  Aneks z **D-20260923-18** po wadzie **F-250**: do 18.09 lista dokumentów i lista zgód były tym
+  Aneks po decyzji właściciela z 23.09.2026: do 18.09 lista dokumentów i lista zgód były tym
   samym zbiorem, więc bramkowanie po liście dokumentów było poprawne; trzeci dokument
-  (**D-26**, klauzula RODO) rozdzielił te zbiory i tym samym — niezauważenie — poszerzył to, co
-  dało się przyjąć jako zgodę.
+  (klauzula RODO, dodany 18.09) rozdzielił te zbiory i tym samym — niezauważenie — poszerzył
+  to, co dało się przyjąć jako zgodę.
 - Wersja z żądania inna niż aktualnie bieżąca (dokument zmienił się między wczytaniem
   ekranu a wysłaniem, albo etykieta nie istnieje) → 422 `document_version_not_current`,
   z `reason.current_version` wskazującym bieżącą etykietę (albo `null`, gdy rodzaj nie ma

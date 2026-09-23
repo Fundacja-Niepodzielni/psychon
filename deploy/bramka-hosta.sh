@@ -403,7 +403,7 @@ KOD_LIBC=0
 CZAS_LIBC=0
 # POMIN_FRONT idzie do logu ZAWSZE, niezaleznie od wartosci - inaczej bieg z
 # cicho pominietym frontem wyglada w logu identycznie jak bieg pelny, a
-# werdykt po kodzie wyjscia (0) tego nie odroznia (F-239). Wiersz ma byc
+# werdykt po kodzie wyjscia (0) tego nie odroznia. Wiersz ma byc
 # grepowalny osobno od naglowka kroku.
 echo "POMIN_FRONT=$POMIN_FRONT"
 if [ "$POMIN_FRONT" = "tak" ]; then
