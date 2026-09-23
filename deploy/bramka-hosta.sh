@@ -406,7 +406,13 @@ if [ "$POMIN_FRONT" = "tak" ]; then
 else
     naglowek "4 - front: instalacja, lint, test, build"
     T="$(date +%s)"
-    docker run --rm -v "$PWD/frontend:/praca" -w /praca node:22-alpine \
+    # Montowane jest CALE drzewo, a nie sam `frontend/`. Suita frontu ma zestaw, ktory wiaze
+    # slownik akcji audytu ze zrodlem prawdy w zapleczu: `lib/h20/__tests__/audit-actions-
+    # source-of-truth.test.ts` siega `../../../../backend/app/Http/Requests/H20/AuditIndexRequest.php`.
+    # Przy montowaniu samego katalogu frontu cztery poziomy w gore to korzen systemu plikow
+    # kontenera, wiec ten zestaw nie wstawal (ENOENT) NA ZADNYM commicie - byla to czerwien
+    # przyrzadu, nie kodu. Katalogiem roboczym pozostaje `frontend`, wiec npm dziala jak dotad.
+    docker run --rm -v "$PWD:/praca" -w /praca/frontend node:22-alpine \
         sh -c "npm ci --no-audit --no-fund && npm run lint && npm test -- --run && npm run build" \
         > "$KATALOG_BIEGU"/bramka-front.log 2>&1
     KOD_FRONT=$?

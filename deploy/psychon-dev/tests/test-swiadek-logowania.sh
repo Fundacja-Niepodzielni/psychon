@@ -190,6 +190,13 @@ STUB_BIN="$(mktemp -d)"; KATALOGI_TESTOWE+=("$STUB_BIN")
 TLS_DIR_WDR="$(mktemp -d)"; KATALOGI_TESTOWE+=("$TLS_DIR_WDR")
 printf 'dummy' > "$TLS_DIR_WDR/origin.crt"
 printf 'dummy' > "$TLS_DIR_WDR/origin.key"
+# deploy.sh domyslnie zrzuca kopie tabeli documents do /opt/psychon/kopie-bazy
+# (prawdziwa sciezka na hoscie) - bez wlasnego katalogu tymczasowego kazde
+# pelne wdrozenie w testach padaloby na "mkdir: Permission denied" (proces
+# testowy nie jest rootem i nie ma prawa tworzyc /opt/psychon), jeszcze przed
+# swiadkiem rozdzialu ruchu/logowania. PSYCHON_DB_BACKUP_DIR jest dokladnie
+# takim samym haczykiem jak PSYCHON_ENV_FILE/PSYCHON_TLS_DIR wyzej.
+BACKUP_DIR_WDR="$(mktemp -d)"; KATALOGI_TESTOWE+=("$BACKUP_DIR_WDR")
 
 cat > "$STUB_BIN/docker" <<'EOF'
 #!/bin/bash
@@ -253,6 +260,7 @@ sprawdz_wdrozenie() {
   wyjscie="$(PATH="$STUB_BIN:$PATH" \
     PSYCHON_ENV_FILE="$env_plik" \
     PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+    PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR_WDR" \
     STUB_ISS_LOC="$ISS_WDR" \
     STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
     bash "$TU/../deploy.sh" 2>&1)"
@@ -323,6 +331,7 @@ echo "=== 17 jedno zrodlo (AUTH_KEYCLOAK_ISSUER): srodowisko z inna wartoscia ig
 WYJSCIE_17="$(AUTH_KEYCLOAK_ISSUER="$ISS_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
   PSYCHON_ENV_FILE="$ENV_WDR_DOBRY" \
   PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR_WDR" \
   STUB_ISS_LOC="$ISS_WDR" \
   STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
   bash "$TU/../deploy.sh" 2>&1)"
@@ -338,6 +347,7 @@ echo "=== 18 jedno zrodlo (STAGING_DOMAIN): srodowisko z inna wartoscia ignorowa
 WYJSCIE_18="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
   PSYCHON_ENV_FILE="$ENV_WDR_DOBRY" \
   PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR_WDR" \
   STUB_ISS_LOC="$ISS_WDR" \
   STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
   bash "$TU/../deploy.sh" 2>&1)"
@@ -405,6 +415,7 @@ printf 'STAGING_DOMAIN=%s\nAUTH_KEYCLOAK_ISSUER=\n' "$DOMENA_WDR" > "$ENV_ISS_PU
 WYJSCIE_19="$(AUTH_KEYCLOAK_ISSUER="$ISS_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN_LICZNIK:$PATH" \
   PSYCHON_ENV_FILE="$ENV_ISS_PUSTY_WDR" \
   PSYCHON_TLS_DIR="$TLS_DIR_2C" \
+  PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR_WDR" \
   bash "$TU/../deploy.sh" 2>&1)"
 echo "=== 19 AUTH_KEYCLOAK_ISSUER puste w pliku, srodowisko ustawione (inna wartosc) -> puste, 0 curl do IdP ==="
 printf '%s\n' "$WYJSCIE_19" | grep -E 'SWIADEK LOGOWANIA|Wdrozenie zakonczone' || true
@@ -440,6 +451,7 @@ echo "=== 20 brak AUTH_KEYCLOAK_ISSUER w pliku, srodowisko ustawione -> brak klu
 WYJSCIE_20="$(AUTH_KEYCLOAK_ISSUER="$ISS_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
   PSYCHON_ENV_FILE="$ENV_WDR_BRAK" \
   PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR_WDR" \
   STUB_ISS_LOC="$ISS_WDR" \
   STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
   bash "$TU/../deploy.sh" 2>&1)"
@@ -458,6 +470,7 @@ echo "=== 21 STAGING_DOMAIN puste w pliku, srodowisko ustawione (inna wartosc) -
 WYJSCIE_21="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
   PSYCHON_ENV_FILE="$ENV_DOMENA_PUSTA_WDR" \
   PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR_WDR" \
   STUB_ISS_LOC="$ISS_WDR" \
   STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
   bash "$TU/../deploy.sh" 2>&1)"
@@ -480,6 +493,7 @@ echo "=== 26 brak STAGING_DOMAIN w pliku, srodowisko ustawione -> OSTRZEZENIE br
 WYJSCIE_26="$(STAGING_DOMAIN="$DOMENA_BOGUS_ZE_SRODOWISKA" PATH="$STUB_BIN:$PATH" \
   PSYCHON_ENV_FILE="$ENV_STAGING_BRAK_WDR" \
   PSYCHON_TLS_DIR="$TLS_DIR_WDR" \
+  PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR_WDR" \
   STUB_ISS_LOC="$ISS_WDR" \
   STUB_REDIRECT_ENC="$STUB_REDIRECT_ENC" \
   bash "$TU/../deploy.sh" 2>&1)"
