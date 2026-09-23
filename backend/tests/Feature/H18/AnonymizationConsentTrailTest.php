@@ -6,6 +6,7 @@ use App\Models\AuditLogEntry;
 use App\Models\Consent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\Feature\H13\CertificatePackageCase;
 
 /**
@@ -86,7 +87,7 @@ class AnonymizationConsentTrailTest extends CertificatePackageCase
         // wejściowa jest tu od razu obcięta do pełnej sekundy, żeby
         // porównanie z wartością odczytaną z bazy nie fałszowało wyniku
         // różnicą mikrosekund, której baza nigdy nie przechowuje.
-        $earlierWithdrawal = \Illuminate\Support\Carbon::parse(now()->subWeek()->format('Y-m-d H:i:s'));
+        $earlierWithdrawal = Carbon::parse(now()->subWeek()->format('Y-m-d H:i:s'));
         $withdrawn = Consent::create([
             'user_id' => $grad->id,
             'type' => 'publikacja_profilu',

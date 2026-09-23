@@ -3,15 +3,17 @@
 namespace App\Models;
 
 use Database\Factories\EditionFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property string $name
- * @property \Illuminate\Support\Carbon|null $starts_at
- * @property \Illuminate\Support\Carbon|null $ends_at
+ * @property Carbon|null $starts_at
+ * @property Carbon|null $ends_at
  * @property int|null $seats_limit
  * @property int $reliability_threshold
  * @property int $test_pass_threshold
@@ -20,12 +22,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $supervision_required_count
  * @property int $lesson_completion_percent
  * @property string $status
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $users
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $acceptedApplications
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Certificate> $certificates
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Collection<int, User> $users
+ * @property-read Collection<int, Application> $applications
+ * @property-read Collection<int, Application> $acceptedApplications
+ * @property-read Collection<int, Certificate> $certificates
  */
 class Edition extends Model
 {
