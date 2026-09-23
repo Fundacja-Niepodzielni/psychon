@@ -20,6 +20,9 @@ class TestAnswer extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<TestQuestion, $this>
+     */
     public function question(): BelongsTo
     {
         return $this->belongsTo(TestQuestion::class, 'question_id');

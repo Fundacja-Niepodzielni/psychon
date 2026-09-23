@@ -23,16 +23,25 @@ class InstructorQuestion extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<Lesson, $this>
+     */
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function answeredBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'answered_by');

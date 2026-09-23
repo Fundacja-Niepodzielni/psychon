@@ -21,11 +21,17 @@ class TestQuestion extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Test, $this>
+     */
     public function test(): BelongsTo
     {
         return $this->belongsTo(Test::class);
     }
 
+    /**
+     * @return HasMany<TestAnswer, $this>
+     */
     public function answers(): HasMany
     {
         return $this->hasMany(TestAnswer::class, 'question_id');

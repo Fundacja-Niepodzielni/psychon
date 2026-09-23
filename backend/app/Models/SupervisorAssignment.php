@@ -22,11 +22,17 @@ class SupervisorAssignment extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function volunteer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'volunteer_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');

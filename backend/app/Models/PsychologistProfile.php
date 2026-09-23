@@ -33,16 +33,25 @@ class PsychologistProfile extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function decidedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');
     }
 
+    /**
+     * @return HasMany<ProfileDocument, $this>
+     */
     public function documents(): HasMany
     {
         return $this->hasMany(ProfileDocument::class, 'profile_id');

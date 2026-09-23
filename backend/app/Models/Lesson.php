@@ -28,26 +28,41 @@ class Lesson extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Course, $this>
+     */
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
+    /**
+     * @return HasMany<Material, $this>
+     */
     public function materials(): HasMany
     {
         return $this->hasMany(Material::class);
     }
 
+    /**
+     * @return HasMany<LessonProgress, $this>
+     */
     public function progress(): HasMany
     {
         return $this->hasMany(LessonProgress::class);
     }
 
+    /**
+     * @return HasMany<InstructorQuestion, $this>
+     */
     public function questions(): HasMany
     {
         return $this->hasMany(InstructorQuestion::class);
     }
 
+    /**
+     * @return HasMany<CourseAssignment, $this>
+     */
     public function assignments(): HasMany
     {
         return $this->hasMany(CourseAssignment::class);

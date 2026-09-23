@@ -14,11 +14,17 @@ class SupervisionCase extends Model
         'body',
     ];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reporter_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function volunteer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'volunteer_id');

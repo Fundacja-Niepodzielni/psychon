@@ -24,16 +24,25 @@ class Test extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Course, $this>
+     */
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
+    /**
+     * @return HasMany<TestQuestion, $this>
+     */
     public function questions(): HasMany
     {
         return $this->hasMany(TestQuestion::class)->orderBy('sequence_order');
     }
 
+    /**
+     * @return HasMany<TestAttempt, $this>
+     */
     public function attempts(): HasMany
     {
         return $this->hasMany(TestAttempt::class);
