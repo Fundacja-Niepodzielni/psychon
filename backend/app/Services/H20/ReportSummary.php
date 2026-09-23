@@ -124,7 +124,20 @@ final class ReportSummary
             ->get()
             ->map(function (User $user) use ($from, $to, $certifiedUserIds, $hoursRequired, $supervisionRequired): array {
                 $certificateIssued = $certifiedUserIds->has($user->id);
+
+                // PHPStan infers the six `stage()` return statements as a
+                // literal-string union (narrower than the declared `string`)
+                // and, through it, a matching literal union for the
+                // `STAGE_LABELS` lookup below — both stricter than the
+                // `Collection<int, array{..., stage: string, stage_label:
+                // string}>` this method promises, and `Collection`'s TValue
+                // is not covariant, so a narrower actual type still fails
+                // the check. Widened here, once, to what the return type
+                // already documents.
+                /** @var string $stage */
                 $stage = self::stage(ProgressAggregator::for($user), $hoursRequired, $supervisionRequired, $certificateIssued);
+                /** @var string $stageLabel */
+                $stageLabel = self::STAGE_LABELS[$stage];
 
                 return [
                     'id' => $user->id,
@@ -137,7 +150,7 @@ final class ReportSummary
                     'consultations' => (int) self::acceptedEntries($from, $to, $user->id)->sum('consultations_count'),
                     'certificate_issued' => $certificateIssued,
                     'stage' => $stage,
-                    'stage_label' => self::STAGE_LABELS[$stage],
+                    'stage_label' => $stageLabel,
                 ];
             })
             ->values();
