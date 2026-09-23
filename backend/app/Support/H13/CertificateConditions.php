@@ -20,7 +20,7 @@ final class CertificateConditions
     private array $conditions;
 
     /**
-     * Liczba zaliczonych testów osobno od `courses` (poz. 19 Załącznika 1) —
+     * Liczba zaliczonych testów osobno od `courses` —
      * pole dodatkowe, nie wchodzi w logikę warunku `courses`/`eligible()`.
      */
     private int $passedTestsCount;
@@ -102,7 +102,7 @@ final class CertificateConditions
     /**
      * Kształt kontraktu: `{ eligible, conditions: [ { key, label, done?, required?, met } ], passed_tests_count }`.
      * Warunek `workshop` nie ma liczników. `passed_tests_count` jest polem
-     * dodatkowym (wstecznie kompatybilnym) — poz. 19 Załącznika 1, liczba
+     * dodatkowym (wstecznie kompatybilnym) — liczba
      * różnych testów z co najmniej jedną zaliczoną próbą.
      *
      * @return array{eligible: bool, conditions: array<int, array<string, mixed>>, passed_tests_count: int}

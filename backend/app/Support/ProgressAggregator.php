@@ -60,7 +60,7 @@ final class ProgressAggregator
     }
 
     /**
-     * Liczba różnych testów zaliczonych przynajmniej jedną próbą (H13 poz. 19 —
+     * Liczba różnych testów zaliczonych przynajmniej jedną próbą (H13 —
      * „zaliczone testy jako osobna liczba"). NOWA metoda, `for()` bez zmian —
      * `courses_done` w `for()` nadal scala etapy i testy w jedno pole.
      */
