@@ -291,8 +291,9 @@ zaliczone_gdy "$([[ "$KOD_ATRAPA_PUSTY" -eq 3 ]] && grep -q "NIEZMIERZONE\|pusty
 echo "=== 14 generator: docker 'sie udaje', plik POPRAWNY ale z ZERO skladnikow - NIEZMIERZONE (kod 4), nie zmierzone zero ==="
 # Ta atrapa zwraca plik CycloneDX POPRAWNY (niepusty, sparsowalny), ale z
 # pusta tablica "components" na szczycie - dokladnie ksztalt, jaki
-# zostawia prawdziwy trivy po pustym montazu wejsciowym (werdykt 23.09,
-# wada 5: rc=0, "skladnikow: 0; composer=0 npm=0" zmeldowane jako pomiar).
+# zostawia prawdziwy trivy po pustym montazu wejsciowym: rc=0, plik
+# niepusty, a mimo to "skladnikow: 0; composer=0 npm=0" zmeldowane jako
+# pomiar, zamiast jako brak pomiaru.
 ATRAPA_ZERO="$ATRAPA_DIR/docker"
 cat > "$ATRAPA_ZERO" <<'EOF'
 #!/usr/bin/env bash
