@@ -25,6 +25,24 @@ class KeycloakGuardTest extends TestCase
     private const BUSINESS_ROUTE = '/api/v1/admin/report';
 
     /**
+     * This route was picked as the "business route" fixture precisely
+     * because it needed nothing beyond an authenticated, authorised
+     * request — no seeded records, no world beyond the user under test.
+     * That stopped being true once the report started reading the active
+     * edition's thresholds before it can answer: any legitimately
+     * authorised request now needs an active edition to exist, or it
+     * fails for a reason that has nothing to do with what this class
+     * proves (identity and role resolution through the guard). Seeding
+     * here restores the world this fixture always assumed, without
+     * touching what the assertions below actually check.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed();
+    }
+
+    /**
      * Split into two single-resolution tests on purpose (see the note on
      * {@see test_a_backchannel_logged_out_session_gets_401_on_a_business_route()}):
      * `Auth::viaRequest`'s `RequestGuard` caches its resolved user — and,

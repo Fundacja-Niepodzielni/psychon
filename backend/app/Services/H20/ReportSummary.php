@@ -90,17 +90,18 @@ final class ReportSummary
     }
 
     /**
-     * Zestawienie imienne — jedno źródło dla ekranu raportu i CSV.
+     * Zestawienie imienne — jedno źródło dla ekranu raportu i CSV. Kształt
+     * elementu jak w `build()` @return (`people: list<array{...}>` wyżej) —
+     * tu wypisany wprost zamiast owinięty w luźny `array<string, mixed>`,
+     * bo `Collection`'s TValue nie jest kowariantny: adnotacja szersza niż
+     * to, co `->map()` faktycznie zwraca, i tak nie przechodzi PHPStan,
+     * więc ma sens tylko dokładny opis rzeczywistego kształtu wiersza.
      *
-     * Kształt elementu jak w `build()` @return (`people: list<array{...}>` wyżej) —
-     * tu celowo luźny `array<string, mixed>` zamiast dokładnego `array{...}`,
-     * konwencja z `H07/AdminReliabilityQuery::participants()`+`sort()` dla
-     * `Collection` budowanej przez `->map()` z `Eloquent\Collection<User>`
-     * na tablice (dokładny kształt generyczny tu nie jest kowariantny
-     * względem wyniku `map()`/`values()` na kolekcji Eloquent — PHPStan
-     * `return.type`).
-     *
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, array{
+     *     id: int, first_name: string, last_name: string, role: string,
+     *     hours_accepted: string, consultations: int, certificate_issued: bool,
+     *     stage: string, stage_label: string,
+     * }>
      */
     public static function people(?string $from = null, ?string $to = null): Collection
     {
