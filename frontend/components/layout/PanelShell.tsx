@@ -9,6 +9,7 @@ import PanelNav, { type PanelNavGroup } from "@/components/organisms/PanelNav";
 import Logo from "@/components/ui/Logo";
 import { menuIcons } from "@/components/layout/menu-icons";
 import { endSession } from "@/lib/api";
+import { LEGAL_DOCUMENT_LABELS, LEGAL_DOCUMENT_TYPES } from "@/lib/h22/legal-documents";
 import { groupMenu, type MenuEntry, type MenuSection } from "@/lib/menu/types";
 
 export interface PanelShellProps {
@@ -193,13 +194,22 @@ export default function PanelShell({
           {children}
         </main>
 
-        <footer className="border-t border-line bg-card px-4 py-2 sm:px-6">
+        <footer className="flex flex-wrap gap-x-6 gap-y-2 border-t border-line bg-card px-4 py-2 sm:px-6">
           <Link
             href="/deklaracja-dostepnosci"
             className="inline-flex min-h-control items-center text-small font-medium text-muted underline underline-offset-2 hover:text-ink focus-visible:focus-ring"
           >
             Deklaracja dostępności
           </Link>
+          {LEGAL_DOCUMENT_TYPES.map((typ) => (
+            <Link
+              key={typ}
+              href={`/dokumenty-prawne/${typ}`}
+              className="inline-flex min-h-control items-center text-small font-medium text-muted underline underline-offset-2 hover:text-ink focus-visible:focus-ring"
+            >
+              {LEGAL_DOCUMENT_LABELS[typ]}
+            </Link>
+          ))}
         </footer>
       </div>
     </div>

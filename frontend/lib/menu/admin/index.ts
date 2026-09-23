@@ -8,6 +8,7 @@
 import h08Kursy from "./h08-kursy";
 import h07CzasNauki from "./h07-czas-nauki";
 import h11Staz from "./h11-staz";
+import h13Certyfikaty from "./h13-certyfikaty";
 import h12Superwizje from "./h12-superwizje";
 import h12Sprawy from "./h12-sprawy";
 import h16Emails from "./h16-emails";
@@ -28,6 +29,7 @@ export const adminMenu: MenuEntry[] = sortMenu([
   h08Kursy,
   h19Ustawienia,
   h18Uczestniczki,
+  h13Certyfikaty,
   h11Staz,
   h12Superwizje,
   h12Sprawy,

@@ -87,7 +87,7 @@ describe("PanelShell — sekcje menu administracji", () => {
       const lista = document.getElementById(b.getAttribute("aria-controls") ?? "");
       expect(lista?.tagName).toBe("UL");
     }
-    expect(within(nav).getAllByRole("link")).toHaveLength(13);
+    expect(within(nav).getAllByRole("link")).toHaveLength(14);
   });
 
   it("klik zwija sekcję, chowa jej listę i zapisuje stan w pamięci przeglądarki", () => {
@@ -133,7 +133,7 @@ describe("PanelShell — sekcje menu administracji", () => {
     const nav = menuBoczne();
     const ikony = nav.querySelectorAll("svg");
 
-    expect(ikony.length).toBe(13 + 6);
+    expect(ikony.length).toBe(14 + 6);
     expect([...ikony].filter((s) => s.getAttribute("aria-hidden") !== "true")).toHaveLength(0);
     expect(within(nav).getByRole("link", { name: "Skrzynka e-maili" })).toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe("PanelShell — ten sam mechanizm w pozostałych panelach", () => {
     expect(nav.querySelectorAll("a svg")).toHaveLength(8);
   });
 
-  it("prowadzący (3 wpisy): jedna lista bez nagłówków, z ikonami", () => {
+  it("prowadzący (4 wpisy): jedna lista bez nagłówków, z ikonami", () => {
     sciezka = "/prowadzacy";
     render(
       <PanelShell
@@ -201,7 +201,7 @@ describe("PanelShell — ten sam mechanizm w pozostałych panelach", () => {
     const nav = screen.getAllByRole("navigation", { name: "Menu — Panel prowadzącego" })[0];
 
     expect(within(nav).queryAllByRole("button")).toHaveLength(0);
-    expect(within(nav).getAllByRole("link")).toHaveLength(3);
-    expect(nav.querySelectorAll("a svg")).toHaveLength(3);
+    expect(within(nav).getAllByRole("link")).toHaveLength(4);
+    expect(nav.querySelectorAll("a svg")).toHaveLength(4);
   });
 });

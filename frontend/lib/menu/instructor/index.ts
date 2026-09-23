@@ -7,6 +7,7 @@
  */
 import h00Start from "./h00-start";
 import h12Grupa from "./h12-grupa";
+import h15WatekGrupowy from "./h15-watek-grupowy";
 import h17Pytania from "./h17-pytania";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
@@ -15,11 +16,12 @@ import { sortMenu, type MenuEntry, type MenuSection } from "../types";
 export const instructorMenu: MenuEntry[] = sortMenu([
   h00Start,
   h12Grupa,
+  h15WatekGrupowy,
   h17Pytania,
   // hXXNazwa, // ← i drugą tutaj
 ]);
 
 /**
- * Menu prowadzącego ma trzy wpisy, więc zostaje jedną listą bez sekcji.
+ * Menu prowadzącego ma cztery wpisy, więc zostaje jedną listą bez sekcji.
  */
 export const instructorMenuSections: MenuSection[] = [];
