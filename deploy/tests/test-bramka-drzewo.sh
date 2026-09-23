@@ -36,26 +36,26 @@ sprawdz_tekst() {  # $1 = opis, $2 = wzorzec, $3 = tekst
 }
 
 echo "== 1. drzewo czyste"
-WY="$(ocen_drzewo_po_biegu "" 0 "")"; KOD=$?
-sprawdz "czyste drzewo konczy sie zerem" 0 "$KOD"
+WY="$(ocen_drzewo_po_biegu "" 0 "")"; WYJ=$?
+sprawdz "czyste drzewo konczy sie zerem" 0 "$WYJ"
 sprawdz_tekst "czyste drzewo melduje 0 pozycji" "drzewo po biegu: 0 pozycji" "$WY"
 
 echo "== 2. drzewo brudne (kontrola negatywna poprawki)"
 WY="$(ocen_drzewo_po_biegu '?? zostawione.txt
- M backend/composer.json' 0 "")"; KOD=$?
-sprawdz "brud czerwieni bieg kodem 6" 6 "$KOD"
+ M backend/composer.json' 0 "")"; WYJ=$?
+sprawdz "brud czerwieni bieg kodem 6" 6 "$WYJ"
 sprawdz_tekst "brud melduje liczbe pozycji" "2 pozycji" "$WY"
 sprawdz_tekst "brud WYMIENIA zostawiony plik" "zostawione.txt" "$WY"
 
 echo "== 3. git nie wystartowal - stan NIE ZMIERZYLEM"
-WY="$(ocen_drzewo_po_biegu "" 128 "fatal: Unable to read current working directory")"; KOD=$?
-sprawdz "kod gita przechodzi na wylot" 128 "$KOD"
+WY="$(ocen_drzewo_po_biegu "" 128 "fatal: Unable to read current working directory")"; WYJ=$?
+sprawdz "kod gita przechodzi na wylot" 128 "$WYJ"
 sprawdz_tekst "melduje NIEZMIERZONE, nie zero pozycji" "NIEZMIERZONE" "$WY"
 
 echo "== 4. dlugi brud - dziennik nie jest zalewany"
 DUZO="$(for i in $(seq 1 25); do echo "?? plik-$i.tmp"; done)"
-WY="$(ocen_drzewo_po_biegu "$DUZO" 0 "")"; KOD=$?
-sprawdz "dlugi brud tez czerwieni kodem 6" 6 "$KOD"
+WY="$(ocen_drzewo_po_biegu "$DUZO" 0 "")"; WYJ=$?
+sprawdz "dlugi brud tez czerwieni kodem 6" 6 "$WYJ"
 sprawdz_tekst "melduje pelna liczbe" "25 pozycji" "$WY"
 sprawdz_tekst "wypisuje najwyzej 10 pozycji i mowi o reszcie" "15 dalszych" "$WY"
 
