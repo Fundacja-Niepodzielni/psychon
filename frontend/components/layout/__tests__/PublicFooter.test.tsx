@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 /**
  * Stopka publiczna — odnośnik do deklaracji dostępności i, od pozycji 28
- * Załącznika 1, odnośniki do dokumentów prawnych (dziś dwa rodzaje, patrz
+ * Załącznika 1, odnośniki do dokumentów prawnych (trzy rodzaje, patrz
  * `lib/h22/legal-documents.ts`).
  */
 
@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
 const PublicFooter = (await import("@/components/layout/PublicFooter")).default;
 
 describe("PublicFooter", () => {
-  it("zawiera odnośniki do deklaracji dostępności oraz do obu dokumentów prawnych", () => {
+  it("zawiera odnośniki do deklaracji dostępności oraz do wszystkich trzech dokumentów prawnych", () => {
     render(<PublicFooter />);
 
     expect(
@@ -29,5 +29,11 @@ describe("PublicFooter", () => {
     expect(
       screen.getByRole("link", { name: "Polityka prywatności" }),
     ).toHaveAttribute("href", "/dokumenty-prawne/polityka");
+
+    expect(
+      screen.getByRole("link", {
+        name: "Klauzula RODO (informacja o przetwarzaniu)",
+      }),
+    ).toHaveAttribute("href", "/dokumenty-prawne/klauzula-rodo");
   });
 });
