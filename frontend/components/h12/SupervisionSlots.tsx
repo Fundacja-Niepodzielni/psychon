@@ -103,10 +103,22 @@ export default function SupervisionSlots() {
     }
   }
 
+  function retry() {
+    setLoaded(false);
+    setLoadError(null);
+    setReload((value) => value + 1);
+  }
+
+  // Sprzed partii szaty (70f3bce): błąd bez wczytanej listy pokazywał pełny
+  // stan błędu, ale błąd PRZY wczytanej liście (np. nieudane przeładowanie po
+  // `toggleSignup`) zostawiał listę na ekranie, z komunikatem doklejonym nad
+  // nią — `ListTemplate` renderuje `children` wyłącznie przy `stan==="success"`,
+  // więc żeby lista nie znikała, taki przypadek musi zostać w `"success"`, nie
+  // przejść w `"error"` (który zamienia całą treść na `ErrorState`).
   const loading = !loaded && loadError === null;
   const stan: StanListy = loading
     ? "loading"
-    : loadError
+    : loadError && slots.length === 0
       ? "error"
       : slots.length === 0
         ? "empty"
@@ -122,14 +134,22 @@ export default function SupervisionSlots() {
       komunikatLadowania="Wczytywanie terminów…"
       komunikatBledu={loadError ?? undefined}
       komunikatBleduTytul=""
-      onPonow={() => {
-        setLoaded(false);
-        setLoadError(null);
-        setReload((value) => value + 1);
-      }}
+      onPonow={retry}
       pustyTytul="Nie masz jeszcze dostępnych terminów u swojego superwizora."
     >
       {success && <Alert variant="success">{success}</Alert>}
+      {loadError && (
+        <Alert variant="error">
+          {loadError}{" "}
+          <button
+            className="ml-2 underline focus-visible:focus-ring"
+            type="button"
+            onClick={retry}
+          >
+            Spróbuj ponownie
+          </button>
+        </Alert>
+      )}
       <div className="grid gap-4 lg:grid-cols-2">
         {slots.map((slot) => {
             const busy = actionId === slot.id;

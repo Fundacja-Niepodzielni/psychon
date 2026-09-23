@@ -129,3 +129,31 @@ describe("SupervisionSlots — błąd zapisu jest przy WŁAŚCIWEJ karcie", () =
     ).not.toBeInTheDocument();
   });
 });
+
+describe("SupervisionSlots — nieudane przeładowanie nie usuwa wczytanej listy", () => {
+  it("po błędzie zapisu, gdy dociągnięcie listy też się nie udaje, wczytane terminy zostają na ekranie", async () => {
+    // `ListTemplate` renderuje `children` wyłącznie przy `stan === "success"`;
+    // `toggleSignup` łapie błąd i dolicza `reload`, a kolejne `apiPaged` tym
+    // razem pada — lista wczytana wcześniej musi zostać widoczna pod
+    // komunikatem błędu, nie zniknąć.
+    const user = userEvent.setup();
+    apiPaged.mockResolvedValueOnce({
+      data: [termin({ id: 1, can_sign_up: true, is_full: false })],
+    });
+    render(<SupervisionSlots />);
+
+    const karta = (await screen.findByTestId("slot-1")) as HTMLElement;
+
+    api.mockRejectedValue(
+      new ApiError(409, "not_your_supervisor", "Możesz zapisywać się tylko na terminy swojego superwizora."),
+    );
+    apiPaged.mockRejectedValueOnce(new Error("sieć padła"));
+
+    await user.click(within(karta).getByRole("button", { name: "Zapisz się" }));
+
+    await within(karta).findByText("Możesz zapisywać się tylko na terminy swojego superwizora.");
+
+    // Świadek: karta terminu ma zostać na ekranie mimo nieudanego przeładowania listy.
+    expect(await screen.findByTestId("slot-1")).toBeInTheDocument();
+  });
+});
