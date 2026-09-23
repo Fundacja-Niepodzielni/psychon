@@ -97,7 +97,7 @@ class CertificateConditionsTest extends CertificatePackageCase
     }
 
     /**
-     * Poz. 19 Załącznika 1: liczba zaliczonych testów osobno od `courses`.
+     * Liczba zaliczonych testów osobno od `courses`.
      * Marta ma z seeda jeden zaliczony test (90%) i jeden niezaliczony (70%,
      * patrz DemoSeeder::seedMartaProgress) — dokładamy drugi zaliczony test
      * (inny niż oba powyższe, wzięty z próby Oli) i sprawdzamy 2 zaliczone
@@ -129,7 +129,7 @@ class CertificateConditionsTest extends CertificatePackageCase
         $this->assertSame(2, $conditions->toArray()['passed_tests_count']);
     }
 
-    /** Poz. 19: bez żadnej próby testu licznik wynosi 0, nie null. */
+    /** Bez żadnej próby testu licznik wynosi 0, nie null. */
     public function test_passed_tests_count_is_zero_for_a_user_without_attempts(): void
     {
         $user = User::factory()->create(['role' => 'volunteer']);

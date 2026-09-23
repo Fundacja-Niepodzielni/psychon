@@ -69,8 +69,8 @@ class LegalDocumentController extends Controller
      * `AuditLog::record`, wywoływany po `Consent::create()`, nigdy nie biegnie).
      *
      * Bramka rodzaju: przeciwko `Application::CONSENT_COLUMNS`, NIE przeciwko
-     * `LegalDocumentVersion::TYPES` — decyzja właściciela D-20260923-18
-     * (wariant A, F-250). Na tej trasie „znany rodzaj" znaczy rodzaj zgody;
+     * `LegalDocumentVersion::TYPES` — decyzja właściciela z 23.09.2026
+     * (wariant A). Na tej trasie „znany rodzaj" znaczy rodzaj zgody;
      * rodzaj informacyjny (`LegalDocumentVersion::INFORMATIONAL_TYPES`, np.
      * `klauzula-rodo`) dostaje ten sam błąd `422 unknown_document_type` co
      * rodzaj całkiem nieznany — nikt jej nie udziela, więc nie ma czego tu

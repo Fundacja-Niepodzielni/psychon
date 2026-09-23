@@ -10,12 +10,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Pakiet H22 · odczyty publiczne (bez tokenu) — kryterium L2 zlecenia:
+ * Pakiet H22 · odczyty publiczne (bez tokenu) — kryterium L2:
  * bieżąca wersja obu rodzajów, konkretna wersja, oraz pięć wyników 404
  * (rodzaj nieznany, wersja nieznana, szkic — na obu trasach, plus rodzaj bez
  * publikacji).
  *
- * Dopisane w rundzie 2 (decyzja właściciela D-20260923-18, wariant A, F-250):
+ * Dopisane po decyzji właściciela z 23.09.2026 (wariant A):
  * próba negatywna „co NIE jest przyjmowane" na trasie `accept()` — rodzaj
  * informacyjny (`klauzula-rodo`) dostaje `422 unknown_document_type` i nie
  * zostawia śladu w `consents`/`audit_log`, a kontrola pozytywna obok dowodzi,
@@ -157,7 +157,7 @@ class LegalDocumentTest extends TestCase
     }
 
     /**
-     * K8 (runda 2) — próba negatywna, zasada architekta: rodzaj informacyjny
+     * K8 — próba negatywna, zasada architekta: rodzaj informacyjny
      * na trasie akceptacji dostaje ten sam błąd co rodzaj całkiem nieznany
      * i nie zostawia śladu. Brak wiersza udowodniony liczbą (przed i po
      * żądaniu), nie brakiem wyjątku — stąd liczenie `consents` i
@@ -192,7 +192,7 @@ class LegalDocumentTest extends TestCase
     }
 
     /**
-     * K9 (runda 2) — kontrola pozytywna w tej samej klasie: zmiana bramki
+     * K9 — kontrola pozytywna w tej samej klasie: zmiana bramki
      * w `accept()` (na zbiór zgód zamiast `TYPES`) nie zepsuła przyjmowania
      * prawdziwej zgody. Bez tej nogi K8 byłoby spełnione też przez trasę
      * zepsutą na amen (odrzucającą wszystko).

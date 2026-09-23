@@ -17,7 +17,7 @@ use Tests\TestCase;
  * zrobić z rodzajem informacyjnym.
  *
  * Stan dzisiejszy, zmierzony (nie życzeniowy), po decyzji właściciela
- * D-20260923-18 (wariant A, F-250): `LegalDocumentController::accept()`
+ * z 23.09.2026 (wariant A): `LegalDocumentController::accept()`
  * bramkuje rodzaj przeciwko `Application::CONSENT_COLUMNS`, NIE przeciwko
  * `LegalDocumentVersion::TYPES`. Rodzaj informacyjny (np. `klauzula-rodo`)
  * NIE DA SIĘ zaakceptować przez `POST /legal-documents/{type}/accept` —
