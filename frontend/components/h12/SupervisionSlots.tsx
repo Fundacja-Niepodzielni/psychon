@@ -5,6 +5,7 @@ import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
 import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api";
 import type { Attendance, ParticipantSlot } from "@/lib/h12/types";
 
@@ -103,45 +104,34 @@ export default function SupervisionSlots() {
   }
 
   const loading = !loaded && loadError === null;
+  const stan: StanListy = loading
+    ? "loading"
+    : loadError
+      ? "error"
+      : slots.length === 0
+        ? "empty"
+        : "success";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-h2 font-black text-ink">Superwizja</h1>
-        <p className="mt-2 text-body text-muted">
-          Wybierz termin prowadzony przez Twojego aktualnego superwizora.
-        </p>
-      </div>
+    <ListTemplate
+      naglowek={{
+        title: "Superwizja",
+        description: "Wybierz termin prowadzony przez Twojego aktualnego superwizora.",
+      }}
+      stan={stan}
+      komunikatLadowania="Wczytywanie terminów…"
+      komunikatBledu={loadError ?? undefined}
+      komunikatBleduTytul=""
+      onPonow={() => {
+        setLoaded(false);
+        setLoadError(null);
+        setReload((value) => value + 1);
+      }}
+      pustyTytul="Nie masz jeszcze dostępnych terminów u swojego superwizora."
+    >
       {success && <Alert variant="success">{success}</Alert>}
-      {loadError && (
-        <Alert variant="error">
-          {loadError}{" "}
-          <button
-            className="ml-2 underline focus-visible:focus-ring"
-            type="button"
-            onClick={() => {
-              setLoaded(false);
-              setLoadError(null);
-              setReload((value) => value + 1);
-            }}
-          >
-            Spróbuj ponownie
-          </button>
-        </Alert>
-      )}
-      {loading ? (
-        <p className="text-body text-subtle" role="status">
-          Wczytywanie terminów…
-        </p>
-      ) : slots.length === 0 && loadError === null ? (
-        <Card>
-          <p className="text-body text-muted">
-            Nie masz jeszcze dostępnych terminów u swojego superwizora.
-          </p>
-        </Card>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {slots.map((slot) => {
+      <div className="grid gap-4 lg:grid-cols-2">
+        {slots.map((slot) => {
             const busy = actionId === slot.id;
             const ownSignup = slot.signup !== null;
             const seatText = slot.available_seats === 1 ? "miejsce" : "miejsca";
@@ -227,12 +217,11 @@ export default function SupervisionSlots() {
             );
           })}
         </div>
-      )}
       {meta && meta.last_page > 1 && (
         <p className="text-caption text-muted">
           Strona {meta.current_page} z {meta.last_page}
         </p>
       )}
-    </div>
+    </ListTemplate>
   );
 }

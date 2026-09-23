@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import ProgressBar from "@/components/ui/ProgressBar";
 import Select from "@/components/ui/Select";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api";
 import type {
   InternshipEntry,
@@ -194,14 +195,12 @@ export default function InternshipJournal() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-h2 font-black text-ink">Dziennik stażu</h1>
-        <p className="mt-2 text-body text-muted">
-          Zapisuj swoje dyżury i śledź zaakceptowane godziny.
-        </p>
-      </div>
-
+    <PageTemplate
+      naglowek={{
+        title: "Dziennik stażu",
+        description: "Zapisuj swoje dyżury i śledź zaakceptowane godziny.",
+      }}
+    >
       {savedMessage && <Alert variant="success">{savedMessage}</Alert>}
 
       <Card title="Twój postęp">
@@ -367,6 +366,6 @@ export default function InternshipJournal() {
           </div>
         ) : null}
       </section>
-    </div>
+    </PageTemplate>
   );
 }
