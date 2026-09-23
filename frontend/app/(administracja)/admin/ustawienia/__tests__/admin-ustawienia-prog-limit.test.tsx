@@ -53,7 +53,8 @@ beforeEach(() => {
 });
 
 describe("EditionSettingsPage — próg zaliczenia testu i limit podejść", () => {
-  it("pozytywna: pole progu wczytuje wartość z API i jest edytowalne (type=number, 0–100)", async () => {
+  it("pozytywna: pole progu wczytuje wartość z API i przyjmuje wpisaną zmianę (type=number, 0–100)", async () => {
+    const user = userEvent.setup();
     api.mockResolvedValueOnce(edycja);
     render(<EditionSettingsPage />);
 
@@ -66,9 +67,17 @@ describe("EditionSettingsPage — próg zaliczenia testu i limit podejść", () 
     expect(prog.min).toBe("0");
     expect(prog.max).toBe("100");
     expect(prog.value).toBe("70");
+
+    // Edytowalność mierzona wpisaniem: stan pola musi się zmienić, nie tylko
+    // pozwolić na fokus. Pole bez onChange przejdzie test.value === "70" i
+    // toBeEnabled(), ale nie przejdzie tej asercji.
+    await user.clear(prog);
+    await user.type(prog, "42");
+    expect(prog.value).toBe("42");
   });
 
-  it("pozytywna: pole limitu podejść wczytuje wartość z API i jest edytowalne (type=number, min=1)", async () => {
+  it("pozytywna: pole limitu podejść wczytuje wartość z API i przyjmuje wpisaną zmianę (type=number, min=1)", async () => {
+    const user = userEvent.setup();
     api.mockResolvedValueOnce(edycja);
     render(<EditionSettingsPage />);
 
@@ -80,6 +89,13 @@ describe("EditionSettingsPage — próg zaliczenia testu i limit podejść", () 
     expect(limit.type).toBe("number");
     expect(limit.min).toBe("1");
     expect(limit.value).toBe("3");
+
+    // Edytowalność mierzona wpisaniem: stan pola musi się zmienić, nie tylko
+    // pozwolić na fokus. Pole bez onChange przejdzie test.value === "3" i
+    // toBeEnabled(), ale nie przejdzie tej asercji.
+    await user.clear(limit);
+    await user.type(limit, "7");
+    expect(limit.value).toBe("7");
   });
 
   it("pozytywna: zmiana progu i limitu w panelu wysyła PATCH /admin/edition z nowymi wartościami, odpowiedź odświeża pola", async () => {
@@ -95,10 +111,15 @@ describe("EditionSettingsPage — próg zaliczenia testu i limit podejść", () 
     await user.clear(limit);
     await user.type(limit, "5");
 
+    // Odpowiedź serwera celowo RÓŻNA od tego, co wpisał użytkownik (85/5 →
+    // serwer oddaje 90/4). Świadek i świadczone nie mogą być tą samą
+    // wartością: gdyby atrapa oddawała wpisane liczby, asercja niżej
+    // przeszłaby nawet bez odczytania odpowiedzi (np. gdyby page.tsx po
+    // sukcesie w ogóle nie wołał setForm(toForm(updated))).
     api.mockResolvedValueOnce({
       ...edycja,
-      test_pass_threshold: 85,
-      test_attempts_limit: 5,
+      test_pass_threshold: 90,
+      test_attempts_limit: 4,
     }); // PATCH response
 
     await user.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
@@ -113,8 +134,10 @@ describe("EditionSettingsPage — próg zaliczenia testu i limit podejść", () 
     });
 
     expect(await screen.findByText("Zapisano zmiany.")).toBeInTheDocument();
-    expect((prog as HTMLInputElement).value).toBe("85");
-    expect((limit as HTMLInputElement).value).toBe("5");
+    // Pola mają pokazywać to, co PRZYSŁAŁ serwer (90/4), nie to, co wpisał
+    // użytkownik (85/5) — to jest właściwy dowód, że ekran czyta odpowiedź.
+    await waitFor(() => expect((prog as HTMLInputElement).value).toBe("90"));
+    expect((limit as HTMLInputElement).value).toBe("4");
   });
 
   it("negatywna: próg poza zakresem (422 z backendu) pokazuje błąd przy polu progu, nie zapisuje wartości, limit zostaje nietknięty", async () => {
