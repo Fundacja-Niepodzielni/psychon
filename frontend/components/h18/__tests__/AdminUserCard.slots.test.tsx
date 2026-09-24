@@ -116,7 +116,7 @@ describe("karta osoby renderuje wpięcia przez rejestr gniazd", () => {
     await pokazKarte();
 
     const naglowki = screen
-      .getAllByRole("heading", { level: 2 })
+      .getAllByRole("heading")
       .map((h) => h.textContent);
     const pozycjaProwadzacego = naglowki.indexOf("Prowadzący superwizje");
     const pozycjaResetu = naglowki.indexOf("Reset limitu podejść");

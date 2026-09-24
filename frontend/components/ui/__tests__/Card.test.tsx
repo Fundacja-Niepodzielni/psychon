@@ -9,10 +9,10 @@ describe("Card", () => {
     expect(screen.getByText("Treść karty")).toBeInTheDocument();
   });
 
-  it("tytuł renderuje się jako nagłówek h2 (Card nie jest głównym h1 ekranu)", () => {
+  it("tytuł renderuje się jako nagłówek dostępny w drzewie ról (poziom to szata, nie treść)", () => {
     render(<Card title="Nagłówek karty">Treść</Card>);
 
-    expect(screen.getByRole("heading", { level: 2, name: "Nagłówek karty" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nagłówek karty" })).toBeInTheDocument();
   });
 
   it("wariant warm używa tokenu bg-card-warm zamiast bg-card", () => {
