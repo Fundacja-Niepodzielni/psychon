@@ -66,6 +66,13 @@ case "$*" in
     *) echo "atrapa ssh: nie rozpoznaje fazy" >&2; exit 97 ;;
 esac
 
+if [ "$FAZA" = "warunki" ] && [ "${ATRAPA_POMIAR_PO_URWANY:-0}" = "1" ] && [ -e "$ATRAPA_PO_ZALOZENIU" ]; then
+    # Pomiar PO zmianie urywa sie w polowie, choc zmiany na hoscie juz zaszly.
+    echo "POMIAR-KTO=${ATRAPA_KTO:-deploy}"
+    echo "POMIAR-KOPIE-ISTNIEJE=tak"
+    exit 0
+fi
+
 if [ "$FAZA" = "warunki" ] && [ "${ATRAPA_TRYB:-}" = "urwany" ]; then
     # Polaczenie konczy sie zerem, ale pomiar urywa sie przed linia konca.
     echo "POMIAR-KTO=deploy"
@@ -100,6 +107,11 @@ if [ "$FAZA" = "zaloz" ]; then
         fi
         : > "$ATRAPA_PO_ZALOZENIU"
         echo "POMIAR-PRZENIESIONY=$Z_ZASTANY"
+        if [ "${ATRAPA_ZALOZ_BLAD:-}" = "mkdir" ]; then
+            # mv sie udal, mkdir padl: katalog zastany STOI JUZ OBOK.
+            echo "POMIAR-ZALOZONY=nie-udalo-sie"
+            exit 4
+        fi
     else
         : > "$ATRAPA_PO_ZALOZENIU"
         echo "POMIAR-ZASTANE-POZYCJI=brak"
@@ -715,6 +727,62 @@ RC=$?
 rowne "rc" "$RC" "2"
 rowne "wywolan atrapy ssh" "$(licznik)" "0"
 rowne "linii o hoscie w wyjsciu" "$(grep -c 'ZDALNIE\|kanal' "$WYJ")" "0"
+koniec_przypadku
+
+przypadek "mv sie udal, mkdir padl: kod 35 i meldunek mowi, ze katalog stoi juz obok"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZALOZ_BLAD=mkdir ATRAPA_POZYCJI=5 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "35"
+rowne "rc rozny od kodu stanu nienaruszonego" "$([ "$RC" -ne 33 ] && echo tak || echo nie)" "tak"
+rowne "wywolan atrapy ssh (pomiar + krok zakladania)" "$(licznik)" "2"
+rowne "linii mowiacych, ze katalog stoi juz obok" "$(grep -c 'STOI JUZ OBOK pod nazwa .*zastane-' "$WYJ")" "1"
+rowne "linii mowiacych, ze nic sie nie zmienilo" "$(grep -c 'nic nie zostalo ruszone\|zostal taki, jaki byl' "$WYJ")" "0"
+rowne "linii z pomiarem przeniesienia nad meldunkiem" "$(grep -c '^POMIAR-PRZENIESIONY=.*zastane-' "$WYJ")" "1"
+rowne "linii ZALICZONY w wyjsciu" "$(grep -c 'KATALOG-KOPII. ZALICZONY' "$WYJ")" "0"
+grep -E 'POMIAR-PRZENIESIONY|POMIAR-ZALOZONY|stan hosta|NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "mv padl: kod 33 i meldunek mowi, ze nic nie zostalo ruszone"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZALOZ_BLAD=mv \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "33"
+rowne "rc rozny od kodu stanu przeniesionego" "$([ "$RC" -ne 35 ] && echo tak || echo nie)" "tak"
+rowne "linii mowiacych, ze nic nie zostalo ruszone" "$(grep -c 'nic nie zostalo ruszone' "$WYJ")" "1"
+rowne "linii mowiacych, ze katalog stoi obok" "$(grep -c 'STOI JUZ OBOK' "$WYJ")" "0"
+grep -E 'stan hosta|NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "pomiar po zmianie urwany: kod 36, bo przeniesione i zalozone"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_POMIAR_PO_URWANY=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "36"
+rowne "rc rozny od kodu stanu nienaruszonego" "$([ "$RC" -ne 33 ] && echo tak || echo nie)" "tak"
+rowne "rc rozny od kodu stanu polowicznego" "$([ "$RC" -ne 35 ] && echo tak || echo nie)" "tak"
+rowne "wywolan atrapy ssh (pomiar + zalozenie + pomiar)" "$(licznik)" "3"
+rowne "linii mowiacych o stanie docelowym" "$(grep -c 'stan docelowy osiagniety' "$WYJ")" "1"
+rowne "linii mowiacych, ze zmiany juz zaszly" "$(grep -c 'zmiany na hoscie JUZ zaszly' "$WYJ")" "1"
+rowne "linii ZALICZONY w wyjsciu" "$(grep -c 'KATALOG-KOPII. ZALICZONY' "$WYJ")" "0"
+grep -E 'stan hosta|NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "ladunek kroku wdrozenia nie niesie ani jednego kasowania"
+zeruj
+HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "0"
+rowne "wywolan atrapy ssh (warunki + wdrozenie)" "$(licznik)" "2"
+rowne "wystapien 'rm ' w tresci wyslanej na hosta" "$(grep -c 'rm ' "$ATRAPA_TRESC")" "0"
+rowne "wystapien 'rmdir' w tresci wyslanej na hosta" "$(grep -c 'rmdir' "$ATRAPA_TRESC")" "0"
+rowne "wystapien 'unlink' w tresci wyslanej na hosta" "$(grep -c 'unlink' "$ATRAPA_TRESC")" "0"
+rowne "wystapien 'find .* -delete' w tresci wyslanej na hosta" "$(grep -c 'delete' "$ATRAPA_TRESC")" "0"
+rowne "wywolan fazy wdrozenia w argumentach" "$(grep -c 'bash -s -- wdrozenie' "$ATRAPA_ARGI")" "1"
+echo "  bajtow ladunku biegu pelnego: $(wc -c < "$ATRAPA_TRESC")"
 koniec_przypadku
 
 przypadek "zakaz podnoszenia praw obejmuje caly przyrzad po dolozeniu trybu"

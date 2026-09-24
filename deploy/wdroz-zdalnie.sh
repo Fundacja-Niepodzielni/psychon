@@ -49,9 +49,13 @@
 #   31   - --zaloz-katalog-kopii: katalog nadrzedny nie nalezy do uzytkownika
 #          wdrazajacego albo nie jest zapisywalny - NIC nie zostalo zrobione
 #   32   - --zaloz-katalog-kopii: po operacji katalog kopii nadal niezapisywalny
-#   33   - --zaloz-katalog-kopii: czesc zdalna kroku zakladania odmowila albo
-#          pomiar po niej nie doszedl w calosci (kod hosta, NIE kod kanalu)
+#   33   - --zaloz-katalog-kopii: bieg przerwany, na hoscie NIC nie ruszone
 #   34   - --zaloz-katalog-kopii: nazwa docelowa zajeta - nic nie przeniesione
+#   35   - --zaloz-katalog-kopii: zastany katalog przeniesiony obok, nowego NIE
+#          zalozono - na hoscie zostaje do uprzatniecia (nic nie skasowane)
+#   36   - --zaloz-katalog-kopii: przeniesione i zalozone (stan docelowy), ale
+#          bieg nie potwierdzil tego pomiarem po zmianie
+#          (33, 35 i 36 mowia o STANIE hosta, nie o tym, gdzie bieg sie urwal)
 #   inne - kod kanalu zdalnego przepuszczony bez zmiany (np. 9, 255 z `ssh`)
 set -uo pipefail
 
@@ -369,6 +373,48 @@ warunki_wstepne() {
     echo "[WARUNEK c] ZALICZONY: czubek na hoscie rowny zadanemu $SHA"
 }
 
+# --- stan hosta po kroku zakladania ----------------------------------------
+# Kod wyjscia ma odpowiadac na pytanie, z ktorym przychodzi czlowiek po urwanym
+# biegu: czy cudzy katalog lezy jeszcze na swoim miejscu, czy stoi juz obok.
+# Dlatego kod bierze sie ze ZMIERZONEGO stanu, a nie z tego, na ktorej linii
+# bieg sie zatrzymal:
+#   33 - nic nie ruszone
+#   35 - zastany katalog przeniesiony obok, nowego NIE ma
+#   36 - przeniesiony i zalozony (stan docelowy), tylko bieg tego nie potwierdzil
+kod_stanu_hosta() {
+    local prz zal
+    prz="$(pomiar PRZENIESIONY "$1")"
+    zal="$(pomiar ZALOZONY "$1")"
+    if [ -n "$zal" ] && [ "$zal" != "nie-udalo-sie" ]; then
+        echo 36
+        return
+    fi
+    case "$prz" in
+        ''|nie-trzeba|nie-udalo-sie) echo 33 ;;
+        *) echo 35 ;;
+    esac
+}
+
+# Zdanie o stanie hosta pisane z TYCH SAMYCH pomiarow co kod wyjscia - zeby
+# meldunek nie mogl przeczyc wierszowi POMIAR- stojacemu nad nim.
+opisz_stan_hosta() {
+    local prz zal
+    prz="$(pomiar PRZENIESIONY "$1")"
+    zal="$(pomiar ZALOZONY "$1")"
+    case "$(kod_stanu_hosta "$1")" in
+        33)
+            echo "[KATALOG-KOPII] stan hosta: nic nie zostalo ruszone - zastany katalog lezy tam, gdzie lezal"
+            ;;
+        35)
+            echo "[KATALOG-KOPII] stan hosta: zastany katalog STOI JUZ OBOK pod nazwa $prz, nowego katalogu NIE zalozylem"
+            echo "[KATALOG-KOPII] nic nie skasowano; uprzatniecie zostaje dla czlowieka - dane z zastanego katalogu sa w calosci pod ta nazwa"
+            ;;
+        36)
+            echo "[KATALOG-KOPII] stan hosta: zastany katalog obok ($prz), nowy katalog zalozony ($zal) - stan docelowy osiagniety"
+            ;;
+    esac
+}
+
 # --- tryb --zaloz-katalog-kopii --------------------------------------------
 # Tryb JAWNY i osobny: nie wlacza sie z zadnej innej sciezki, a pomiar warunkow
 # wstepnych dalej wylacznie mierzy. Dziala tylko tym prawem, ktore konto
@@ -467,15 +513,17 @@ ZDALNE
         # nasze wiersze POMIAR-, czesc zdalna RUSZYLA i to ona odmowila -
         # wolajacy nie ma prawa czytac tego jako zerwanego polaczenia.
         if printf '%s\n' "$wyjscie" | grep -q '^POMIAR-'; then
-            echo "[KATALOG-KOPII] NIEZALICZONY: krok zakladania na hoscie nie powiodl sie (kod z hosta: $rc) - katalog kopii zostal taki, jaki byl"
-            exit 33
+            echo "[KATALOG-KOPII] NIEZALICZONY: krok zakladania na hoscie nie powiodl sie (kod z hosta: $rc)"
+            opisz_stan_hosta "$wyjscie"
+            exit "$(kod_stanu_hosta "$wyjscie")"
         fi
         echo "[KATALOG-KOPII] kanal zdalny nie doszedl (kod $rc) - krok zakladania nie ruszyl"
         exit "$rc"
     fi
     if [ -z "$(pomiar KONIEC-ZAKLADANIA "$wyjscie")" ]; then
         echo "[KATALOG-KOPII] NIEZALICZONY: krok zakladania urwal sie - brak linii konca"
-        exit 33
+        opisz_stan_hosta "$wyjscie"
+        exit "$(kod_stanu_hosta "$wyjscie")"
     fi
     echo "[KATALOG-KOPII] zastany katalog: $(pomiar PRZENIESIONY "$wyjscie"), pozycji w srodku: $(pomiar ZASTANE-POZYCJI "$wyjscie") (nic nie skasowano)"
     echo "[KATALOG-KOPII] zalozony: $(pomiar ZALOZONY "$wyjscie") (umask 077, czyli prawa 700)"
@@ -487,12 +535,16 @@ ZDALNE
     rc=$?
     wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
     if [ "$rc" -ne 0 ]; then
+        # Kod kanalu idzie na wierzch, ale stan hosta ma byc widoczny w wyjsciu:
+        # katalog jest juz przestawiony i to jest wiadomosc dla sprzatajacego.
         echo "[KATALOG-KOPII] pomiar po zmianie nie doszedl (kod $rc)"
+        opisz_stan_hosta "$wyjscie"
         exit "$rc"
     fi
     if [ -z "$(pomiar KONIEC "$POMIAR_WYJSCIE")" ]; then
-        echo "[KATALOG-KOPII] NIEZALICZONY: pomiar po zmianie urwal sie w polowie"
-        exit 33
+        echo "[KATALOG-KOPII] NIEZALICZONY: pomiar po zmianie urwal sie w polowie - zmiany na hoscie JUZ zaszly"
+        opisz_stan_hosta "$wyjscie"
+        exit "$(kod_stanu_hosta "$wyjscie")"
     fi
     wczytaj_pomiar "$POMIAR_WYJSCIE"
     wypisz_pomiar "[KATALOG-KOPII po]"
