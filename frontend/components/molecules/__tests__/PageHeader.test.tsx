@@ -39,15 +39,20 @@ describe("PageHeader", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("opis nagłówka jest związany z drzewem dostępności — nie jest ukryty przez aria-hidden", () => {
-    // `getByText` sam w sobie NIE mierzy drzewa dostępności: znajduje węzeł
+  it("opis nagłówka nie jest ukryty przez aria-hidden", () => {
+    // `getByText` sam w sobie NIE mierzy tego atrybutu: znajduje węzeł
     // również wtedy, gdy ten węzeł (albo jego przodek) nosi
     // `aria-hidden="true"` — taki węzeł jest programowo wycięty z drzewa i
     // czytnik ekranu go pomija, mimo że tekst wizualnie tam jest. Ta próba
     // czyta cały łańcuch przodków znalezionego węzła (włącznie z nim samym)
     // aż do korzenia i wymaga, żeby ŻADEN z nich nie niósł
-    // `aria-hidden="true"` — to jest właściwość drzewa dostępności, nie
-    // obecności tekstu w DOM.
+    // `aria-hidden="true"`.
+    //
+    // Czego ta próba NIE łapie: to pomiar jednego konkretnego atrybutu, nie
+    // całego wycięcia z drzewa dostępności. `role="presentation"` na opisie
+    // albo atrybut `hidden` też wycinają węzeł z drzewa dostępności, a ta
+    // próba na żadne z nich nie zareaguje (dalej znajdzie tekst przez
+    // `getByText` i nie zobaczy `aria-hidden="true"` w łańcuchu przodków).
     render(<PageHeader title="Kursy" description="Twoja ścieżka szkoleniowa." />);
 
     const opis = screen.getByText("Twoja ścieżka szkoleniowa.");
