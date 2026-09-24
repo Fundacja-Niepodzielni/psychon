@@ -22,6 +22,19 @@
 	}
 }
 
+# Nasluch sondy zdrowia kontenera. Slucha WYLACZNIE na petli zwrotnej samego
+# kontenera - z sieci dockera i z hosta jest nieosiagalny, bo adres jest
+# przypisany do 127.0.0.1, a port nie stoi w `ports:`. Odpowiada jedna
+# odpowiedzia na jednej sciezce i nie dotyka niczego z aplikacji.
+#
+# Dlaczego nie panel zarzadzania: `admin off` wyzej jest tam z powodu i
+# zostaje. Sonda ma pytac ten sam serwer HTTP, ktory obsluguje ruch, a nie
+# osobny mechanizm, ktory potrafi odpowiadac, gdy ruch juz nie idzie.
+http://127.0.0.1:2021 {
+	respond /zdrowie "ok" 200
+	respond 404
+}
+
 # Zapytanie po adresie IP albo po zlej nazwie nie ma dostac aplikacji.
 # Odpowiedz 421 mowi wprost: to nie jest serwer dla tej nazwy.
 :80 {

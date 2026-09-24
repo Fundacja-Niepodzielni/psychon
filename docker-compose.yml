@@ -25,9 +25,27 @@ services:
     container_name: np_queue
     working_dir: /var/www/html
     command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90"]
-    # obraz ma healthcheck serwera www, którego worker nie uruchamia
+    # Sonda obrazu pytala serwer www, ktorego worker nie uruchamia - dlatego
+    # byla wylaczona, i przez to kontener nie mial zadnej. Ta pyta o to, co ten
+    # kontener naprawde robi: przeglada procesy w kontenerze, znajduje ten,
+    # ktorego wiersz polecenia niesie `queue:work`, i czyta jego stan.
+    # Czerwien, gdy procesu NIE MA albo gdy stoi zatrzymany (T) lub zombi (Z).
+    #
+    # Pierwszy warunek petli odrzuca procesy, ktorych wiersz polecenia niesie
+    # `/proc/` - czyli sama sonde i jej `grep`y. Bez tego sonda spelnialaby sie
+    # SAMA: jej wlasny wiersz polecenia zawiera szukane slowo i stoi w stanie
+    # biegnacym, wiec zapalalaby zielen takze w kontenerze bez workera.
+    #
+    # Czego ta sonda NIE mierzy, i nie udaje, ze mierzy: zawieszenia logicznego
+    # - workera, ktory zyje i nie jest zatrzymany, ale krazy w petli albo czeka
+    # w nieskonczonosc. Na to trzeba bicia serca z samego workera; to osobna
+    # rzecz i osobna decyzja.
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "for p in /proc/[0-9]*; do grep -aq /proc/ $$p/cmdline 2>/dev/null && continue; grep -aq queue:work $$p/cmdline 2>/dev/null || continue; grep -qE '^State:[[:space:]]+[TZt]' $$p/status && exit 1; exit 0; done; exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
     volumes:
       - ./backend:/var/www/html
     depends_on:

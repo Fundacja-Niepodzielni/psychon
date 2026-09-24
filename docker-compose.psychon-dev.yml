@@ -98,8 +98,17 @@ services:
     container_name: psychon_scheduler
     working_dir: /var/www/html
     command: ["php", "artisan", "schedule:work"]
+    # Ta sama sonda co przy workerze kolejki, z wlasnym slowem szukanym.
+    # Powod wylaczenia byl ten sam (sonda obrazu pyta serwer www) i skutek byl
+    # ten sam: kontener bez zadnej sondy. Ograniczenia takze te same - stan
+    # procesu zamiast bicia serca, i odrzucenie wierszy z `/proc/`, zeby sonda
+    # nie spelniala sie wlasnym procesem.
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "for p in /proc/[0-9]*; do grep -aq /proc/ $$p/cmdline 2>/dev/null && continue; grep -aq schedule:work $$p/cmdline 2>/dev/null || continue; grep -qE '^State:[[:space:]]+[TZt]' $$p/status && exit 1; exit 0; done; exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
     volumes:
       - ./backend:/var/www/html:z
       - backend_vendor:/var/www/html/vendor
@@ -149,6 +158,16 @@ services:
       # Caddy tym origin jest wewnetrzny https://localhost:3000 kontenera, nie
       # publiczny adres — realm odpowiada wtedy 400 na redirect_uri.
       AUTH_URL: https://${STAGING_DOMAIN}
+    # Sonda pyta serwer Next o wlasna trase `/zdrowie`, ktora nic nie liczy i
+    # nic nie czyta - odpowiada 200 i tyle. Dzieki temu czerwien znaczy jedno:
+    # serwer nie odpowiada. Statyczny plik by tu nie wystarczyl, bo odpowiadalby
+    # takze wtedy, gdy Next nie potrafi juz uruchomic zadnej obslugi zadania.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/zdrowie"]
+      interval: 15s
+      timeout: 5s
+      retries: 2
+      start_period: 40s
     depends_on:
       app:
         condition: service_started
@@ -179,6 +198,17 @@ services:
       - caddy_config:/config
     environment:
       STAGING_DOMAIN: ${STAGING_DOMAIN:?ustaw STAGING_DOMAIN w /opt/psychon/.env}
+    # Sonda pyta nasluch, ktory Caddy trzyma wylacznie na petli zwrotnej
+    # kontenera (port nie jest wystawiony ani na host, ani do sieci dockera).
+    # Pytanie idzie wiec przez ten sam serwer HTTP, ktory obsluguje ruch - a nie
+    # obok niego. Panel zarzadzania jest wylaczony (`admin off`) i zostaje
+    # wylaczony: sonda nie jest powodem, zeby go wlaczac.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2021/zdrowie"]
+      interval: 15s
+      timeout: 5s
+      retries: 2
+      start_period: 20s
     depends_on:
       app:
         condition: service_started
