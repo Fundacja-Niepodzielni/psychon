@@ -55,7 +55,11 @@
 #          zalozono - na hoscie zostaje do uprzatniecia (nic nie skasowane)
 #   36   - --zaloz-katalog-kopii: przeniesione i zalozone (stan docelowy), ale
 #          bieg nie potwierdzil tego pomiarem po zmianie
-#          (33, 35 i 36 mowia o STANIE hosta, nie o tym, gdzie bieg sie urwal)
+#   37   - --zaloz-katalog-kopii: stan hosta NIEZNANY - wyjscie urwalo sie w
+#          miejscu, ktore nie potwierdza ani nie zaprzecza przeniesieniu lub
+#          zalozeniu, choc jedno z nich moglo realnie zajsc; obok katalogu
+#          kopii moze wtedy lezec .zastane-<stempel> do recznego sprawdzenia
+#          (33, 35, 36 i 37 mowia o STANIE hosta, nie o tym, gdzie bieg sie urwal)
 #   inne - kod kanalu zdalnego przepuszczony bez zmiany (np. 9, 255 z `ssh`)
 set -uo pipefail
 
@@ -377,31 +381,66 @@ warunki_wstepne() {
 # Kod wyjscia ma odpowiadac na pytanie, z ktorym przychodzi czlowiek po urwanym
 # biegu: czy cudzy katalog lezy jeszcze na swoim miejscu, czy stoi juz obok.
 # Dlatego kod bierze sie ze ZMIERZONEGO stanu, a nie z tego, na ktorej linii
-# bieg sie zatrzymal:
-#   33 - nic nie ruszone
-#   35 - zastany katalog przeniesiony obok, nowego NIE ma
+# bieg sie zatrzymal. Pusty wiersz pomiaru i wiersz mowiacy "nie" to DWIE
+# ROZNE rzeczy: stacja sama wyliczyla, czy przeniesienia zadala (argument
+# przenies_zadany), wiec umie odroznic uczciwe "nie" od zwyklego braku
+# wiersza - nie zgaduje w zadna strone:
+#   33 - nic nie ruszone (pomiar to potwierdza ALBO przeniesienia nie zadano)
+#   35 - zastany katalog przeniesiony obok, mkdir zmierzony jako nieudany
 #   36 - przeniesiony i zalozony (stan docelowy), tylko bieg tego nie potwierdzil
+#   37 - NIEZNANY: przeniesienie zadano albo realnie zaszlo, ale brakuje
+#        wiersza, ktory by to POTWIERDZIL lub ZAPRZECZYL
 kod_stanu_hosta() {
-    local prz zal
-    prz="$(pomiar PRZENIESIONY "$1")"
-    zal="$(pomiar ZALOZONY "$1")"
+    local wyjscie przenies_zadany prz zal
+    wyjscie="$1"
+    przenies_zadany="${2:-nie}"
+    prz="$(pomiar PRZENIESIONY "$wyjscie")"
+    zal="$(pomiar ZALOZONY "$wyjscie")"
+
     if [ -n "$zal" ] && [ "$zal" != "nie-udalo-sie" ]; then
         echo 36
         return
     fi
+
+    if [ -z "$prz" ]; then
+        # Pusty POMIAR-PRZENIESIONY to brak pomiaru, nie pomiar. Uczciwe 33
+        # tylko gdy przeniesienia nie zadano - stacja sama to wyliczyla i
+        # wyslala w argumentach. Gdy zadano, mv mogl sie udac, a wyjscie
+        # urwalo sie tuz po nim: to NIEZNANY, nie "nic nie ruszone".
+        if [ "$przenies_zadany" = "tak" ]; then
+            echo 37
+        else
+            echo 33
+        fi
+        return
+    fi
     case "$prz" in
-        ''|nie-trzeba|nie-udalo-sie) echo 33 ;;
-        *) echo 35 ;;
+        nie-trzeba|nie-udalo-sie)
+            echo 33
+            return
+            ;;
     esac
+
+    # prz to realna nazwa docelowa: przeniesienie ZASZLO i jest zmierzone.
+    # Brak POMIAR-ZALOZONY w ogole (pusty, nie "nie-udalo-sie") to ten sam
+    # brak pomiaru w kierunku mniej groznym: mkdir mogl sie udac, ale
+    # wyjscie urwalo sie tuz po przeniesieniu.
+    if [ -z "$zal" ]; then
+        echo 37
+        return
+    fi
+    echo 35
 }
 
 # Zdanie o stanie hosta pisane z TYCH SAMYCH pomiarow co kod wyjscia - zeby
 # meldunek nie mogl przeczyc wierszowi POMIAR- stojacemu nad nim.
 opisz_stan_hosta() {
-    local prz zal
-    prz="$(pomiar PRZENIESIONY "$1")"
-    zal="$(pomiar ZALOZONY "$1")"
-    case "$(kod_stanu_hosta "$1")" in
+    local wyjscie przenies_zadany prz zal
+    wyjscie="$1"
+    przenies_zadany="${2:-nie}"
+    prz="$(pomiar PRZENIESIONY "$wyjscie")"
+    zal="$(pomiar ZALOZONY "$wyjscie")"
+    case "$(kod_stanu_hosta "$wyjscie" "$przenies_zadany")" in
         33)
             echo "[KATALOG-KOPII] stan hosta: nic nie zostalo ruszone - zastany katalog lezy tam, gdzie lezal"
             ;;
@@ -411,6 +450,10 @@ opisz_stan_hosta() {
             ;;
         36)
             echo "[KATALOG-KOPII] stan hosta: zastany katalog obok ($prz), nowy katalog zalozony ($zal) - stan docelowy osiagniety"
+            ;;
+        37)
+            echo "[KATALOG-KOPII] stan hosta: NIEZNANY - pomiar urwal sie w miejscu, ktore nie potwierdza ani nie zaprzecza przeniesieniu/zalozeniu"
+            echo "[KATALOG-KOPII] obok katalogu kopii moze juz lezec $KATALOG_KOPII.zastane-$STEMPEL - sprawdz recznie na hoscie, zanim cokolwiek ruszysz"
             ;;
     esac
 }
@@ -514,16 +557,16 @@ ZDALNE
         # wolajacy nie ma prawa czytac tego jako zerwanego polaczenia.
         if printf '%s\n' "$wyjscie" | grep -q '^POMIAR-'; then
             echo "[KATALOG-KOPII] NIEZALICZONY: krok zakladania na hoscie nie powiodl sie (kod z hosta: $rc)"
-            opisz_stan_hosta "$wyjscie"
-            exit "$(kod_stanu_hosta "$wyjscie")"
+            opisz_stan_hosta "$wyjscie" "$przenies"
+            exit "$(kod_stanu_hosta "$wyjscie" "$przenies")"
         fi
         echo "[KATALOG-KOPII] kanal zdalny nie doszedl (kod $rc) - krok zakladania nie ruszyl"
         exit "$rc"
     fi
     if [ -z "$(pomiar KONIEC-ZAKLADANIA "$wyjscie")" ]; then
         echo "[KATALOG-KOPII] NIEZALICZONY: krok zakladania urwal sie - brak linii konca"
-        opisz_stan_hosta "$wyjscie"
-        exit "$(kod_stanu_hosta "$wyjscie")"
+        opisz_stan_hosta "$wyjscie" "$przenies"
+        exit "$(kod_stanu_hosta "$wyjscie" "$przenies")"
     fi
     echo "[KATALOG-KOPII] zastany katalog: $(pomiar PRZENIESIONY "$wyjscie"), pozycji w srodku: $(pomiar ZASTANE-POZYCJI "$wyjscie") (nic nie skasowano)"
     echo "[KATALOG-KOPII] zalozony: $(pomiar ZALOZONY "$wyjscie") (umask 077, czyli prawa 700)"
@@ -535,16 +578,22 @@ ZDALNE
     rc=$?
     wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
     if [ "$rc" -ne 0 ]; then
-        # Kod kanalu idzie na wierzch, ale stan hosta ma byc widoczny w wyjsciu:
-        # katalog jest juz przestawiony i to jest wiadomosc dla sprzatajacego.
-        echo "[KATALOG-KOPII] pomiar po zmianie nie doszedl (kod $rc)"
-        opisz_stan_hosta "$wyjscie"
-        exit "$rc"
+        # Do tego miejsca dochodzimy tylko z krokiem zakladania W PELNI
+        # potwierdzonym (linia KONIEC-ZAKLADANIA byla obecna) - stan hosta
+        # jest juz znany z $wyjscie, tu pada wylacznie kanal WERYFIKACJI po
+        # zmianie. Kod wyjscia NIE MOZE byc surowym kodem kanalu: ten sam
+        # surowy kod (np. 255) pada tez wyzej, gdy kanal kroku zakladania
+        # umiera PRZED dotknieciem hosta (linia "krok zakladania nie
+        # ruszyl") - a to dwa rozne stany hosta. Wychodzimy wiec zmierzonym
+        # stanem, nie kodem kanalu.
+        echo "[KATALOG-KOPII] pomiar po zmianie nie doszedl (kod $rc) - stan zakladania mam juz potwierdzony z poprzedniego kroku"
+        opisz_stan_hosta "$wyjscie" "$przenies"
+        exit "$(kod_stanu_hosta "$wyjscie" "$przenies")"
     fi
     if [ -z "$(pomiar KONIEC "$POMIAR_WYJSCIE")" ]; then
         echo "[KATALOG-KOPII] NIEZALICZONY: pomiar po zmianie urwal sie w polowie - zmiany na hoscie JUZ zaszly"
-        opisz_stan_hosta "$wyjscie"
-        exit "$(kod_stanu_hosta "$wyjscie")"
+        opisz_stan_hosta "$wyjscie" "$przenies"
+        exit "$(kod_stanu_hosta "$wyjscie" "$przenies")"
     fi
     wczytaj_pomiar "$POMIAR_WYJSCIE"
     wypisz_pomiar "[KATALOG-KOPII po]"

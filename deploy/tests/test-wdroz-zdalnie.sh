@@ -66,6 +66,13 @@ case "$*" in
     *) echo "atrapa ssh: nie rozpoznaje fazy" >&2; exit 97 ;;
 esac
 
+if [ "$FAZA" = "warunki" ] && [ -n "${ATRAPA_POMIAR_PO_KANAL:-}" ] && [ -e "$ATRAPA_PO_ZALOZENIU" ]; then
+    # Kanal pada w POMIARZE PO ZMIANIE, ale krok zakladania juz sie udal (stan
+    # hosta jest juz 36) - ani jednego POMIAR- z tego wywolania.
+    echo "ssh: connect to host $ATRAPA_ADRES port 22: Connection reset" >&2
+    exit "$ATRAPA_POMIAR_PO_KANAL"
+fi
+
 if [ "$FAZA" = "warunki" ] && [ "${ATRAPA_POMIAR_PO_URWANY:-0}" = "1" ] && [ -e "$ATRAPA_PO_ZALOZENIU" ]; then
     # Pomiar PO zmianie urywa sie w polowie, choc zmiany na hoscie juz zaszly.
     echo "POMIAR-KTO=${ATRAPA_KTO:-deploy}"
@@ -94,6 +101,32 @@ if [ "$FAZA" = "zaloz" ]; then
     # shellcheck disable=SC2086
     set -- $POLECENIE
     Z_KATALOG="$5"; Z_ZASTANY="$6"; Z_PRZENIES="$7"
+    if [ "${ATRAPA_ZALOZ_URWANY:-0}" = "1" ]; then
+        # Kanal konczy sie ZEREM, ale wyjscie urywa sie ZARAZ PO przeniesieniu:
+        # ani POMIAR-PRZENIESIONY, ani POMIAR-ZALOZONY, ani linii konca. Znacznik
+        # $ATRAPA_PO_ZALOZENIU stoi, bo przeniesienie NAPRAWDE zaszlo.
+        if [ "$Z_PRZENIES" = "tak" ]; then
+            echo "POMIAR-ZASTANE-POZYCJI=${ATRAPA_POZYCJI:-4}"
+        else
+            echo "POMIAR-ZASTANE-POZYCJI=brak"
+        fi
+        : > "$ATRAPA_PO_ZALOZENIU"
+        exit 0
+    fi
+    if [ "${ATRAPA_ZALOZ_URWANY_MKDIR:-0}" = "1" ]; then
+        # Bliznacza dziura, kierunek mniej grozny: POMIAR-PRZENIESIONY PADA
+        # (przeniesienie zmierzone), ale POMIAR-ZALOZONY i linia konca - nie.
+        # mkdir mogl sie udac, wyjscie urwalo sie tuz po przeniesieniu.
+        if [ "$Z_PRZENIES" = "tak" ]; then
+            echo "POMIAR-ZASTANE-POZYCJI=${ATRAPA_POZYCJI:-4}"
+            echo "POMIAR-PRZENIESIONY=$Z_ZASTANY"
+        else
+            echo "POMIAR-ZASTANE-POZYCJI=brak"
+            echo "POMIAR-PRZENIESIONY=nie-trzeba"
+        fi
+        : > "$ATRAPA_PO_ZALOZENIU"
+        exit 0
+    fi
     if [ "${ATRAPA_ZASTANY_ZAJETY:-0}" = "1" ]; then
         # Cel zastany - czesc zdalna odmawia PRZED przeniesieniem.
         echo "POMIAR-ZASTANY-ZAJETY=$Z_ZASTANY"
@@ -624,6 +657,49 @@ rowne "wystapien adresu w wyjsciu" "$(grep -c "$ADRES" "$WYJ")" "0"
 grep -E 'kanal zdalny' "$WYJ" | sed 's/^/    | /'
 koniec_przypadku
 
+przypadek "krok zakladania urywa sie kodem 0 PO PRZENIESIENIU, bez zadnej linii POMIAR- dalej: stan NIEZNANY (37), nie 33"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZALOZ_URWANY=1 ATRAPA_POZYCJI=3 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "37"
+rowne "rc rozny od stanu nienaruszonego" "$([ "$RC" -ne 33 ] && echo tak || echo nie)" "tak"
+rowne "rc rozny od zajetej nazwy docelowej" "$([ "$RC" -ne 34 ] && echo tak || echo nie)" "tak"
+rowne "rc rozny od stanu polowicznego potwierdzonego" "$([ "$RC" -ne 35 ] && echo tak || echo nie)" "tak"
+rowne "rc rozny od stanu docelowego potwierdzonego" "$([ "$RC" -ne 36 ] && echo tak || echo nie)" "tak"
+rowne "wywolan atrapy ssh (pomiar + krok zakladania, bez pomiaru po)" "$(licznik)" "2"
+rowne "linii mowiacych, ze stan jest nieznany" "$(grep -c 'stan hosta: NIEZNANY' "$WYJ")" "1"
+rowne "linii mylnie mowiacych, ze nic sie nie ruszylo" "$(grep -c 'nic nie zostalo ruszone' "$WYJ")" "0"
+rowne "linii wskazujacych na mozliwa nazwe zastana do recznego sprawdzenia" "$(grep -c 'zastane-.*sprawdz recznie' "$WYJ")" "1"
+grep -E 'stan hosta|NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "krok zakladania urywa sie kodem 0 PO PRZENIESIENIU, PRZED linia mkdir: stan NIEZNANY (37), nie 35 - bliznacza dziura, kierunek mniej grozny"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZALOZ_URWANY_MKDIR=1 ATRAPA_POZYCJI=2 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "37"
+rowne "rc rozny od stanu polowicznego potwierdzonego (mkdir zmierzony jako nieudany)" "$([ "$RC" -ne 35 ] && echo tak || echo nie)" "tak"
+rowne "wywolan atrapy ssh (pomiar + krok zakladania, bez pomiaru po)" "$(licznik)" "2"
+rowne "linii mowiacych, ze stan jest nieznany" "$(grep -c 'stan hosta: NIEZNANY' "$WYJ")" "1"
+rowne "linii mylnie mowiacych 'nowego katalogu NIE zalozylem'" "$(grep -c 'nowego katalogu NIE zalozylem' "$WYJ")" "0"
+grep -E 'stan hosta|NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "kanal pada w POMIARZE PO ZMIANIE: krok zakladania juz potwierdzony - stan 36, nie surowy kod kanalu (255)"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_POMIAR_PO_KANAL=255 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc (zmierzony stan hosta, nie surowy kod kanalu)" "$RC" "36"
+rowne "rc rozny od surowego kodu kanalu uzytego przy kroku zakladania" "$([ "$RC" -ne 255 ] && echo tak || echo nie)" "tak"
+rowne "wywolan atrapy ssh (pomiar + zalozenie + pomiar-po ktory pada)" "$(licznik)" "3"
+rowne "linii mowiacych o stanie docelowym" "$(grep -c 'stan docelowy osiagniety' "$WYJ")" "1"
+rowne "linii mowiacych o kodzie pomiaru po zmianie" "$(grep -c 'pomiar po zmianie nie doszedl (kod 255)' "$WYJ")" "1"
+grep -E 'pomiar po zmianie|stan hosta' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
 przypadek "katalog logow stacji niezapisywalny: kod 10 przed pierwszym siegnieciem hosta"
 zeruj
 PRZESZKODA="$KATALOG/nie-jest-katalogiem"
@@ -785,13 +861,14 @@ rowne "wywolan fazy wdrozenia w argumentach" "$(grep -c 'bash -s -- wdrozenie' "
 echo "  bajtow ladunku biegu pelnego: $(wc -c < "$ATRAPA_TRESC")"
 koniec_przypadku
 
-przypadek "zakaz podnoszenia praw obejmuje caly przyrzad po dolozeniu trybu"
-ILE="$(grep -cE 'sudo|chown|chmod' "$PRZYRZAD")"
-rowne "trafien sudo/chown/chmod w pliku przyrzadu" "$ILE" "0"
-ILE_UMASK="$(grep -c 'umask 077' "$PRZYRZAD")"
-wiekszy_od_zera "wystapien 'umask 077' w pliku przyrzadu" "$ILE_UMASK"
-echo "  wiersz: $(grep -n 'umask 077' "$PRZYRZAD" | head -1)"
-koniec_przypadku
+# Kontrola "zadnego sudo/chown/chmod w calym pliku, tez po dolozeniu trybu
+# --zaloz-katalog-kopii" jest juz w W9 (skanuje caly $PRZYRZAD, wiec i nowy
+# tryb) - drugi identyczny przebieg tego samego grep-a byl zbedny, usuniety.
+# Odrebna asercja liczby "umask 077" w PLIKU przyrzadu byla usunieta razem z
+# nim: nie umiala upasc (napis stoi w linii echo, wiec licznik=1 nawet po
+# skasowaniu prawdziwego `umask 077`). Swiadek zdolny do czerwieni na to juz
+# istnieje wyzej: "umask 077 stoi PRZED mkdir" w przypadku "katalog cudzy:
+# przeniesiony obok...".
 
 echo
 echo "PODSUMOWANIE: $ZALICZONE/$WSZYSTKIE przypadkow zaliczonych"
