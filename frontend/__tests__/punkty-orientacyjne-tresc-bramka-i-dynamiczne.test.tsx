@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { Suspense } from "react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -14,31 +15,83 @@ import userEvent from "@testing-library/user-event";
  * `admin-ustawienia-prog-limit.test.tsx` i `test-kursu.test.tsx`), dla
  * KAŻDEGO wysterowanego stanu z osobna: `getAllByRole("heading", { level: 1
  * })` ma długość DOKŁADNIE 1 — nie „co najmniej 1".
+ *
+ * DOPISANE: sześć ekranów, których wcześniej nie mierzył ani ten plik, ani
+ * `punkty-orientacyjne-tresc.test.tsx` (jedne mają segment dynamiczny, inne
+ * bramkę roli w łańcuchu layoutów): `/admin/ekran-startowy`,
+ * `/admin/profile/[id]`, `/admin/uczestniczki/[id]`, `/prowadzacy/grupa`,
+ * `/panel/kursy/[slug]` i `/panel/lekcje/[id]`. Metoda bez zmian: `h1` na
+ * komponencie STRONY, osobno dla każdego wysterowanego stanu.
+ *
+ * ŚWIADEK ZAPISUJE STAN ZASTANY, NIE POSTULAT. Liczba `h1` w każdym
+ * przypadku niżej jest ZMIERZONA (przebieg z 2026-09-24, licznik
+ * `document.querySelectorAll("h1").length` w tych samych stanach), a nie
+ * założona. Pięć stanów ma dziś ZERO `h1` i mają o tym wprost w nazwie
+ * („brak h1 … — stan zastany"), z asercją na zmierzone 0:
+ * `/admin/uczestniczki/[id]` w ładowaniu i w błędzie ogólnym,
+ * `/prowadzacy/grupa` w ładowaniu, `/panel/kursy/[slug]` w ładowaniu i w
+ * błędzie ogólnym. To lista długów tych ekranów, nie ich akceptacja.
+ *
+ * SEGMENT DYNAMICZNY BEZ `useParams`: cztery z tych stron biorą `params`
+ * jako `Promise` i rozpakowują je Reactowym `use()` (konwencja Next 16), a
+ * `/panel/lekcje/[id]` jest asynchroniczną funkcją serwerową. Pierwsze
+ * renderujemy w `<Suspense>`, z `render()` wewnątrz `await act()` — inaczej
+ * obietnica `params` nigdy nie rozstrzyga się w obrębie renderu i drzewo
+ * zostaje na zawsze w `fallback`. Ostatnią wołamy jak zwykłą funkcję
+ * asynchroniczną i renderujemy zwrócony element.
  */
 
 const api = vi.fn();
 const apiPaged = vi.fn();
+const downloadFile = vi.fn();
 
 class ApiError extends Error {
   status: number;
   code: string;
   errors?: Record<string, string[]>;
-  constructor(status: number, code: string, message: string, errors?: Record<string, string[]>) {
+  /** Kopertę `reason` czyta ekran kursu (`screenFor`), żeby odróżnić blokadę
+   * etapu od zwykłego 403 — bez niej stanu „zablokowany" nie da się
+   * wysterować. */
+  reason?: Record<string, unknown> & { missing?: string[] };
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    errors?: Record<string, string[]>,
+    reason?: Record<string, unknown> & { missing?: string[] },
+  ) {
     super(message);
     this.status = status;
     this.code = code;
     this.errors = errors;
+    this.reason = reason;
   }
 }
 
+// Atrapa wylicza też funkcje domenowe barrelu `@/lib/api` (konwencja z
+// `components/h18/__tests__/AdminUserCard.slots.test.tsx`): karta osoby i
+// ekran grupy importują je po nazwie, więc bez nich moduł strony dostałby
+// `undefined`. Każda deleguje do tej samej atrapy `api()`, żeby stan
+// sterować jednym `mockResolvedValue`/`mockRejectedValue`.
 vi.mock("@/lib/api", () => ({
   api: (...args: unknown[]) => api(...args),
   apiPaged: (...args: unknown[]) => apiPaged(...args),
+  downloadFile: (...args: unknown[]) => downloadFile(...args),
+  fetchAdminUser: (id: number) => api("/admin/users/" + id),
+  updateAdminUser: (...args: unknown[]) => api(...args),
+  blockAdminUser: (...args: unknown[]) => api(...args),
+  fetchAdminUsers: (...args: unknown[]) => apiPaged(...args),
+  assignSupervisor: (...args: unknown[]) => api(...args),
+  resetTestAttempts: (...args: unknown[]) => api(...args),
+  createInstructorCase: (...args: unknown[]) => api(...args),
   ApiError,
 }));
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ slug: "test-kurs" }),
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND");
+  },
 }));
 
 function jedenH1(kontekst: string) {
@@ -49,9 +102,27 @@ function jedenH1(kontekst: string) {
   ).toHaveLength(1);
 }
 
+/** Stan zastany bez nagłówka głównego: asercja na ZMIERZONE zero, nie na
+ * „co najmniej zero". Przypadek, który tego używa, ma to w nazwie. */
+function brakH1(kontekst: string) {
+  const naglowki = screen.queryAllByRole("heading", { level: 1 });
+  expect(
+    naglowki,
+    `${kontekst}: zmierzony stan zastany to ZERO <h1>, znaleziono ${naglowki.length}.`,
+  ).toHaveLength(0);
+}
+
+/** Strona z segmentem dynamicznym rozpakowującym `params` przez `use()`. */
+async function renderujZParametrem(element: React.ReactElement) {
+  await act(async () => {
+    render(<Suspense fallback={<span>czekam na params</span>}>{element}</Suspense>);
+  });
+}
+
 beforeEach(() => {
   api.mockReset();
   apiPaged.mockReset().mockResolvedValue({ data: [], meta: undefined });
+  downloadFile.mockReset();
 });
 
 describe("/admin/ustawienia — h1 dla każdego wysterowanego stanu", () => {
@@ -208,5 +279,371 @@ describe("/panel/kursy/[slug]/test — h1 dla każdego wysterowanego stanu", () 
       expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Wynik testu"),
     );
     jedenH1("/panel/kursy/[slug]/test (result)");
+  });
+});
+
+// ————— sześć ekranów dopisanych 2026-09-24 —————
+
+const ONBOARDING = {
+  video: { title: "Wideo powitalne", url: null, caption: null },
+  program: { title: "Program", body: "Treść programu." },
+  expectations: { title: "Czego oczekujemy", body: "Treść oczekiwań." },
+  updated_at: null,
+};
+
+const WNIOSEK_PROFILU = {
+  id: 3,
+  user: { id: 9, first_name: "Anna", last_name: "Kowalska" },
+  specializations: ["dzieci"],
+  approach: "poznawczo-behawioralny",
+  city: "Warszawa",
+  bio: "Bio wniosku.",
+  publication_consent_granted: true,
+  status: "submitted",
+  return_reason: null,
+  decided_at: null,
+  documents: [],
+  created_at: "2026-01-01T10:00:00Z",
+  updated_at: "2026-01-01T10:00:00Z",
+};
+
+const KARTA_OSOBY = {
+  profile: {
+    id: 7,
+    first_name: "Maria",
+    last_name: "Nowak",
+    email: "maria@example.com",
+    role: "volunteer",
+    phone: null,
+    pesel: null,
+    address: { street: null, city: null, zip: null },
+    access_expires_at: null,
+    program_completed_at: null,
+    product_group: "psychon",
+  },
+  progress: {
+    courses_done: 1,
+    courses_total: 3,
+    hours_accepted: "10",
+    supervision_present: 2,
+    workshop_done: false,
+  },
+  documents: [],
+  recent_notifications: [],
+  audit_entries: [],
+};
+
+const GRUPA_PROWADZACEGO = { members: [], slots: [] };
+
+const KURS = {
+  id: 4,
+  slug: "test-kurs",
+  title: "Kurs testowy",
+  sequence_order: 1,
+  product_group: "psychon",
+  status: "in_progress",
+  progress_percent: 20,
+  instructor: null,
+  lessons: [],
+  materials: [],
+};
+
+const LEKCJA = {
+  id: 5,
+  title: "Lekcja o oddechu",
+  description: "Opis lekcji.",
+  duration_seconds: 600,
+  position_seconds: 0,
+  watched_seconds: 0,
+  active_seconds: 0,
+  is_completed: false,
+  completable: false,
+  completable_at_percent: 60,
+};
+
+describe("/admin/ekran-startowy — h1 dla każdego wysterowanego stanu", () => {
+  const importPage = () =>
+    import("@/app/(administracja)/admin/ekran-startowy/page");
+
+  it("stan ładowania (przed rozstrzygnięciem GET /onboarding)", async () => {
+    api.mockImplementation(() => new Promise(() => {}));
+    const { default: AdminOnboardingPage } = await importPage();
+    render(<AdminOnboardingPage />);
+
+    await screen.findByText("Wczytywanie ekranu startowego…");
+    jedenH1("/admin/ekran-startowy (ładowanie)");
+  });
+
+  it("stan błędu 403 (brak uprawnień)", async () => {
+    api.mockRejectedValue(new ApiError(403, "forbidden", "Brak dostępu."));
+    const { default: AdminOnboardingPage } = await importPage();
+    render(<AdminOnboardingPage />);
+
+    await screen.findByText("Nie masz uprawnień do wyświetlenia tego ekranu.");
+    jedenH1("/admin/ekran-startowy (błąd 403)");
+  });
+
+  it("stan błędu ogólnego (500, z przyciskiem ponowienia)", async () => {
+    api.mockRejectedValue(new ApiError(500, "server_error", "Błąd serwera."));
+    const { default: AdminOnboardingPage } = await importPage();
+    render(<AdminOnboardingPage />);
+
+    await screen.findByText("Błąd serwera.");
+    jedenH1("/admin/ekran-startowy (błąd 500)");
+  });
+
+  it("stan sukcesu (edytor i podgląd wczytane)", async () => {
+    api.mockResolvedValue(ONBOARDING);
+    const { default: AdminOnboardingPage } = await importPage();
+    render(<AdminOnboardingPage />);
+
+    await screen.findByText("Podgląd");
+    jedenH1("/admin/ekran-startowy (sukces)");
+  });
+});
+
+describe("/admin/profile/[id] — h1 dla każdego wysterowanego stanu", () => {
+  const importPage = () =>
+    import("@/app/(administracja)/admin/profile/[id]/page");
+
+  it("stan ładowania (przed rozstrzygnięciem GET /admin/profiles/:id)", async () => {
+    api.mockImplementation(() => new Promise(() => {}));
+    const { default: AdminProfileDetailPage } = await importPage();
+    await renderujZParametrem(
+      <AdminProfileDetailPage params={Promise.resolve({ id: "3" })} />,
+    );
+
+    await screen.findByText("Wczytywanie wniosku…");
+    jedenH1("/admin/profile/[id] (ładowanie)");
+  });
+
+  it("stan błędu 403 (brak uprawnień)", async () => {
+    api.mockRejectedValue(new ApiError(403, "forbidden", "Brak dostępu."));
+    const { default: AdminProfileDetailPage } = await importPage();
+    await renderujZParametrem(
+      <AdminProfileDetailPage params={Promise.resolve({ id: "3" })} />,
+    );
+
+    await screen.findByText("Nie masz uprawnień do wyświetlenia tego wniosku.");
+    jedenH1("/admin/profile/[id] (błąd 403)");
+  });
+
+  it("stan błędu ogólnego (500, z przyciskiem ponowienia)", async () => {
+    api.mockRejectedValue(new ApiError(500, "server_error", "Błąd serwera."));
+    const { default: AdminProfileDetailPage } = await importPage();
+    await renderujZParametrem(
+      <AdminProfileDetailPage params={Promise.resolve({ id: "3" })} />,
+    );
+
+    await screen.findByText("Błąd serwera.");
+    jedenH1("/admin/profile/[id] (błąd 500)");
+  });
+
+  it("stan sukcesu (wniosek wczytany)", async () => {
+    api.mockResolvedValue(WNIOSEK_PROFILU);
+    const { default: AdminProfileDetailPage } = await importPage();
+    await renderujZParametrem(
+      <AdminProfileDetailPage params={Promise.resolve({ id: "3" })} />,
+    );
+
+    await screen.findByText("Dane wniosku");
+    jedenH1("/admin/profile/[id] (sukces)");
+  });
+});
+
+describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () => {
+  const importPage = () =>
+    import("@/app/(administracja)/admin/uczestniczki/[id]/page");
+
+  it("brak h1 w stanie ładowania — stan zastany", async () => {
+    api.mockImplementation(() => new Promise(() => {}));
+    const { default: AdminUserPage } = await importPage();
+    await renderujZParametrem(
+      <AdminUserPage params={Promise.resolve({ id: "7" })} />,
+    );
+
+    await screen.findByText("Wczytywanie karty…");
+    brakH1("/admin/uczestniczki/[id] (ładowanie)");
+  });
+
+  it("stan „nie znaleziono osoby” (404)", async () => {
+    api.mockRejectedValue(new ApiError(404, "not_found", "Nie ma takiej osoby."));
+    const { default: AdminUserPage } = await importPage();
+    await renderujZParametrem(
+      <AdminUserPage params={Promise.resolve({ id: "7" })} />,
+    );
+
+    await screen.findByText("Wróć do listy");
+    jedenH1("/admin/uczestniczki/[id] (404)");
+  });
+
+  it("brak h1 w stanie błędu ogólnego (500) — stan zastany", async () => {
+    api.mockRejectedValue(new ApiError(500, "server_error", "Błąd serwera."));
+    const { default: AdminUserPage } = await importPage();
+    await renderujZParametrem(
+      <AdminUserPage params={Promise.resolve({ id: "7" })} />,
+    );
+
+    await screen.findByText("Błąd serwera.");
+    brakH1("/admin/uczestniczki/[id] (błąd 500)");
+  });
+
+  it("stan sukcesu (karta osoby wczytana)", async () => {
+    api.mockResolvedValue(KARTA_OSOBY);
+    const { default: AdminUserPage } = await importPage();
+    await renderujZParametrem(
+      <AdminUserPage params={Promise.resolve({ id: "7" })} />,
+    );
+
+    await screen.findByText("← Lista osób");
+    jedenH1("/admin/uczestniczki/[id] (sukces)");
+  });
+});
+
+describe("/prowadzacy/grupa — h1 dla każdego wysterowanego stanu", () => {
+  const importPage = () => import("@/app/(prowadzacy)/prowadzacy/grupa/page");
+
+  it("brak h1 w stanie ładowania — stan zastany", async () => {
+    api.mockImplementation(() => new Promise(() => {}));
+    const { default: InstructorGroupPage } = await importPage();
+    render(<InstructorGroupPage />);
+
+    await screen.findByRole("status", { name: "Wczytywanie grupy…" });
+    brakH1("/prowadzacy/grupa (ładowanie)");
+  });
+
+  it("stan błędu wczytania (z przyciskiem ponowienia)", async () => {
+    api.mockRejectedValue(new ApiError(500, "server_error", "Błąd serwera."));
+    const { default: InstructorGroupPage } = await importPage();
+    render(<InstructorGroupPage />);
+
+    await screen.findByText("Błąd serwera.");
+    jedenH1("/prowadzacy/grupa (błąd wczytania)");
+  });
+
+  it("stan sukcesu (grupa wczytana, bez uczestników)", async () => {
+    api.mockResolvedValue(GRUPA_PROWADZACEGO);
+    const { default: InstructorGroupPage } = await importPage();
+    render(<InstructorGroupPage />);
+
+    await screen.findByText(
+      "Sprawdzaj postępy uczestników i zarządzaj terminami superwizji.",
+    );
+    jedenH1("/prowadzacy/grupa (sukces)");
+  });
+});
+
+describe("/panel/kursy/[slug] — h1 dla każdego wysterowanego stanu", () => {
+  const importPage = () => import("@/app/(uczestnik)/panel/kursy/[slug]/page");
+
+  /** Katalog (`GET /courses`) leci równolegle ze szczegółami kursu; ekran
+   * blokady potrzebuje go, żeby zamienić `required_course_id` na slug. */
+  const zKatalogiem = (szczegoly: () => Promise<unknown>) => (path: string) =>
+    path === "/courses" ? Promise.resolve([]) : szczegoly();
+
+  it("brak h1 w stanie ładowania — stan zastany", async () => {
+    api.mockImplementation(() => new Promise(() => {}));
+    const { default: CoursePage } = await importPage();
+    await renderujZParametrem(
+      <CoursePage params={Promise.resolve({ slug: "test-kurs" })} />,
+    );
+
+    await screen.findByText("Ładowanie kursu…");
+    brakH1("/panel/kursy/[slug] (ładowanie)");
+  });
+
+  it("stan sukcesu (kurs wczytany)", async () => {
+    api.mockImplementation(zKatalogiem(() => Promise.resolve(KURS)));
+    const { default: CoursePage } = await importPage();
+    await renderujZParametrem(
+      <CoursePage params={Promise.resolve({ slug: "test-kurs" })} />,
+    );
+
+    await screen.findByText("Kurs testowy");
+    jedenH1("/panel/kursy/[slug] (sukces)");
+  });
+
+  it("stan zablokowany (403 course_locked)", async () => {
+    api.mockImplementation(
+      zKatalogiem(() =>
+        Promise.reject(
+          new ApiError(
+            403,
+            "course_locked",
+            "Ukończ najpierw poprzedni etap.",
+            undefined,
+            { missing: ["etap 1"], required_course_id: 1 },
+          ),
+        ),
+      ),
+    );
+    const { default: CoursePage } = await importPage();
+    await renderujZParametrem(
+      <CoursePage params={Promise.resolve({ slug: "test-kurs" })} />,
+    );
+
+    await screen.findByText("Ukończ najpierw poprzedni etap.");
+    jedenH1("/panel/kursy/[slug] (zablokowany)");
+  });
+
+  it("stan „nie znaleziono kursu” (404)", async () => {
+    api.mockImplementation(
+      zKatalogiem(() =>
+        Promise.reject(new ApiError(404, "not_found", "Nie ma kursu.")),
+      ),
+    );
+    const { default: CoursePage } = await importPage();
+    await renderujZParametrem(
+      <CoursePage params={Promise.resolve({ slug: "test-kurs" })} />,
+    );
+
+    await screen.findByText("Nie znaleziono kursu");
+    jedenH1("/panel/kursy/[slug] (404)");
+  });
+
+  it("brak h1 w stanie błędu ogólnego (500) — stan zastany", async () => {
+    api.mockImplementation(
+      zKatalogiem(() =>
+        Promise.reject(new ApiError(500, "server_error", "Błąd serwera.")),
+      ),
+    );
+    const { default: CoursePage } = await importPage();
+    await renderujZParametrem(
+      <CoursePage params={Promise.resolve({ slug: "test-kurs" })} />,
+    );
+
+    await screen.findByText("Nie udało się wczytać kursu");
+    brakH1("/panel/kursy/[slug] (błąd 500)");
+  });
+});
+
+describe("/panel/lekcje/[id] — h1 dla każdego wysterowanego stanu", () => {
+  const importPage = () => import("@/app/(uczestnik)/panel/lekcje/[id]/page");
+
+  it("stan ładowania odtwarzacza (przed rozstrzygnięciem GET /lessons/:id)", async () => {
+    api.mockImplementation(() => new Promise(() => {}));
+    const { default: LessonPage } = await importPage();
+    render(await LessonPage({ params: Promise.resolve({ id: "5" }) }));
+
+    await screen.findByText("Ładowanie lekcji…");
+    jedenH1("/panel/lekcje/[id] (ładowanie)");
+  });
+
+  it("stan błędu odtwarzacza (500)", async () => {
+    api.mockRejectedValue(new ApiError(500, "server_error", "Błąd serwera."));
+    const { default: LessonPage } = await importPage();
+    render(await LessonPage({ params: Promise.resolve({ id: "5" }) }));
+
+    await screen.findByText("Nie udało się otworzyć lekcji");
+    jedenH1("/panel/lekcje/[id] (błąd 500)");
+  });
+
+  it("stan sukcesu (lekcja wczytana)", async () => {
+    api.mockResolvedValue(LEKCJA);
+    const { default: LessonPage } = await importPage();
+    render(await LessonPage({ params: Promise.resolve({ id: "5" }) }));
+
+    await screen.findByText("Lekcja o oddechu");
+    jedenH1("/panel/lekcje/[id] (sukces)");
   });
 });
