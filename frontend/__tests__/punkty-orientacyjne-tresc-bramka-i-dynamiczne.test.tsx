@@ -24,18 +24,15 @@ import userEvent from "@testing-library/user-event";
  * komponencie STRONY, osobno dla każdego wysterowanego stanu.
  *
  * ŚWIADEK ZAPISUJE STAN ZASTANY, NIE POSTULAT. Liczba `h1` w każdym
- * przypadku niżej jest ZMIERZONA (przebieg z 2026-09-24, licznik
+ * przypadku niżej jest ZMIERZONA (licznik
  * `document.querySelectorAll("h1").length` w tych samych stanach), a nie
- * założona. TRZY stany mają dziś ZERO `h1` i mają o tym wprost w nazwie
- * („brak h1 … — stan zastany"), z asercją na zmierzone 0:
+ * założona. Wszystkie długi z poprzedniej wersji tego pliku zostały spłacone:
  * `/prowadzacy/grupa` w ładowaniu, `/panel/kursy/[slug]` w ładowaniu i w
- * błędzie ogólnym. To lista długów tych ekranów, nie ich akceptacja.
- *
- * Dwa długi z tej listy zostały spłacone: `/admin/uczestniczki/[id]` w
- * ładowaniu i w błędzie ogólnym stoi od teraz na wspólnym szablonie i niesie
- * jeden `h1` „Karta osoby”. Asercje na zero zaczerwieniły się w bramce — tak,
- * jak miały. Przypadek na zmierzone zero nie jest po to, żeby zero trwało;
- * jest po to, żeby jego zniknięcie było widać.
+ * błędzie ogólnym oraz `/admin/uczestniczki/[id]` w ładowaniu i w błędzie
+ * ogólnym stoją od teraz na wspólnym szablonie i niosą dokładnie jeden `h1`.
+ * Przypadki niżej mierzą nie tylko LICZBĘ `h1` (dokładnie 1), ale i jego
+ * TREŚĆ — nazwa przypadku mówi, co jest zmierzone teraz, nie co było
+ * zmierzone wcześniej.
  *
  * SEGMENT DYNAMICZNY BEZ `useParams`: cztery z tych stron biorą `params`
  * jako `Promise` i rozpakowują je Reactowym `use()` (konwencja Next 16), a
@@ -105,16 +102,6 @@ function jedenH1(kontekst: string) {
     naglowki,
     `${kontekst}: oczekiwano dokładnie jednego <h1>, znaleziono ${naglowki.length}.`,
   ).toHaveLength(1);
-}
-
-/** Stan zastany bez nagłówka głównego: asercja na ZMIERZONE zero, nie na
- * „co najmniej zero". Przypadek, który tego używa, ma to w nazwie. */
-function brakH1(kontekst: string) {
-  const naglowki = screen.queryAllByRole("heading", { level: 1 });
-  expect(
-    naglowki,
-    `${kontekst}: zmierzony stan zastany to ZERO <h1>, znaleziono ${naglowki.length}.`,
-  ).toHaveLength(0);
 }
 
 /** Strona z segmentem dynamicznym rozpakowującym `params` przez `use()`. */
@@ -472,7 +459,7 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
     expect(
       screen.getByRole("heading", { level: 1 }),
       "/admin/uczestniczki/[id] (ładowanie): h1 ma nieść tytuł ekranu",
-    ).toHaveTextContent("Karta osoby");
+    ).toHaveTextContent(/^Karta osoby$/);
   });
 
   it("stan „nie znaleziono osoby” (404)", async () => {
@@ -498,7 +485,7 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
     expect(
       screen.getByRole("heading", { level: 1 }),
       "/admin/uczestniczki/[id] (błąd 500): h1 ma nieść tytuł ekranu",
-    ).toHaveTextContent("Karta osoby");
+    ).toHaveTextContent(/^Karta osoby$/);
   });
 
   it("stan sukcesu (karta osoby wczytana)", async () => {
@@ -516,13 +503,16 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
 describe("/prowadzacy/grupa — h1 dla każdego wysterowanego stanu", () => {
   const importPage = () => import("@/app/(prowadzacy)/prowadzacy/grupa/page");
 
-  it("brak h1 w stanie ładowania — stan zastany", async () => {
+  it("h1 „Moja grupa” w stanie ładowania — stan zastany", async () => {
     api.mockImplementation(() => new Promise(() => {}));
     const { default: InstructorGroupPage } = await importPage();
     render(<InstructorGroupPage />);
 
     await screen.findByRole("status", { name: "Wczytywanie grupy…" });
-    brakH1("/prowadzacy/grupa (ładowanie)");
+    jedenH1("/prowadzacy/grupa (ładowanie)");
+    expect(
+      screen.getByRole("heading", { level: 1 }),
+    ).toHaveTextContent(/^Moja grupa$/);
   });
 
   it("stan błędu wczytania (z przyciskiem ponowienia)", async () => {
@@ -554,7 +544,7 @@ describe("/panel/kursy/[slug] — h1 dla każdego wysterowanego stanu", () => {
   const zKatalogiem = (szczegoly: () => Promise<unknown>) => (path: string) =>
     path === "/courses" ? Promise.resolve([]) : szczegoly();
 
-  it("brak h1 w stanie ładowania — stan zastany", async () => {
+  it("h1 „Kurs” w stanie ładowania — stan zastany", async () => {
     api.mockImplementation(() => new Promise(() => {}));
     const { default: CoursePage } = await importPage();
     await renderujZParametrem(
@@ -562,7 +552,8 @@ describe("/panel/kursy/[slug] — h1 dla każdego wysterowanego stanu", () => {
     );
 
     await screen.findByText("Ładowanie kursu…");
-    brakH1("/panel/kursy/[slug] (ładowanie)");
+    jedenH1("/panel/kursy/[slug] (ładowanie)");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Kurs$/);
   });
 
   it("stan sukcesu (kurs wczytany)", async () => {
@@ -614,7 +605,7 @@ describe("/panel/kursy/[slug] — h1 dla każdego wysterowanego stanu", () => {
     jedenH1("/panel/kursy/[slug] (404)");
   });
 
-  it("brak h1 w stanie błędu ogólnego (500) — stan zastany", async () => {
+  it("h1 „Kurs” w stanie błędu ogólnego (500) — stan zastany", async () => {
     api.mockImplementation(
       zKatalogiem(() =>
         Promise.reject(new ApiError(500, "server_error", "Błąd serwera.")),
@@ -626,7 +617,34 @@ describe("/panel/kursy/[slug] — h1 dla każdego wysterowanego stanu", () => {
     );
 
     await screen.findByText("Nie udało się wczytać kursu");
-    brakH1("/panel/kursy/[slug] (błąd 500)");
+    jedenH1("/panel/kursy/[slug] (błąd 500)");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Kurs$/);
+  });
+
+  it("h1 „Kurs zablokowany” w stanie zablokowanym (403 course_locked) niesie tresc blokady", async () => {
+    api.mockImplementation(
+      zKatalogiem(() =>
+        Promise.reject(
+          new ApiError(
+            403,
+            "course_locked",
+            "Ukończ najpierw poprzedni etap.",
+            undefined,
+            { missing: ["etap 1"], required_course_id: 1 },
+          ),
+        ),
+      ),
+    );
+    const { default: CoursePage } = await importPage();
+    await renderujZParametrem(
+      <CoursePage params={Promise.resolve({ slug: "test-kurs" })} />,
+    );
+
+    await screen.findByText("Ukończ najpierw poprzedni etap.");
+    jedenH1("/panel/kursy/[slug] (zablokowany, tresc h1)");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      /^Kurs zablokowany$/,
+    );
   });
 });
 

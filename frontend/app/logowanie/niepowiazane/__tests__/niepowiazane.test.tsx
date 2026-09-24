@@ -64,7 +64,7 @@ describe("/logowanie/niepowiazane", () => {
 
     render(<NiepowiazanePage />);
     expect(await screen.findByText(/powiązane z żadnym kontem w PsychON/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading")).toHaveTextContent("Konto nie jest jeszcze połączone");
+    expect(screen.getByRole("heading")).toHaveTextContent(/^Konto nie jest jeszcze połączone$/);
   });
 
   it("Z-2: checkAccountBinding zwraca null (brak tokenu albo GET /me 2xx) → ekran mówi, że nie potrafi rozstrzygnąć, NIE że konto jest niepowiązane", async () => {
@@ -232,7 +232,7 @@ describe("identyfikator konta z koperty 401", () => {
 
     // Nagłówek: rola `heading` (h1), zawsze w drzewie dostępności. Czytany
     // PO rozstrzygnięciu, bo przed nim ekran nie twierdzi nic o powiązaniu.
-    expect(screen.getByRole("heading")).toHaveTextContent("Konto nie jest jeszcze połączone");
+    expect(screen.getByRole("heading")).toHaveTextContent(/^Konto nie jest jeszcze połączone$/);
 
     expect(komunikat).toHaveTextContent(TEKST_Z_IDENTYFIKATOREM);
     expect(komunikat).toHaveTextContent(SUB_Z_TOKENA);

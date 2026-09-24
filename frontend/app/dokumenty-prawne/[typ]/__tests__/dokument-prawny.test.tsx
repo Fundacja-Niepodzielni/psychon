@@ -46,7 +46,7 @@ describe("/dokumenty-prawne/[typ] — dokument opublikowany", () => {
 
     const naglowki = screen.getAllByRole("heading", { level: 1 });
     expect(naglowki).toHaveLength(1);
-    expect(naglowki[0]).toHaveTextContent("Regulamin");
+    expect(naglowki[0]).toHaveTextContent(/^Regulamin$/);
 
     expect(apiMock).toHaveBeenCalledWith("/legal-documents/regulamin/current");
   });
@@ -67,7 +67,7 @@ describe("/dokumenty-prawne/[typ] — trzeci rodzaj (klauzula-rodo)", () => {
 
     const naglowki = screen.getAllByRole("heading", { level: 1 });
     expect(naglowki).toHaveLength(1);
-    expect(naglowki[0]).toHaveTextContent("Klauzula RODO (informacja o przetwarzaniu)");
+    expect(naglowki[0]).toHaveTextContent(/^Klauzula RODO \(informacja o przetwarzaniu\)$/);
 
     expect(apiMock).toHaveBeenCalledWith("/legal-documents/klauzula-rodo/current");
   });

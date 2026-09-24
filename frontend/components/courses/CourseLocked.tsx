@@ -38,7 +38,7 @@ export default function CourseLocked({
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
         <div>
-          <h1 className="text-h3 font-black text-ink">{message}</h1>
+          <p className="text-h3 font-black text-ink">{message}</p>
           <p className="mt-1 text-body text-muted">
             Ten etap jest zablokowany — otworzy się, gdy domkniesz poprzedni.
           </p>

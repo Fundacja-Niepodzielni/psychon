@@ -1,4 +1,3 @@
-import Link from "next/link";
 import LessonRow from "@/components/courses/LessonRow";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
@@ -25,21 +24,12 @@ export default function CourseDetail({ course }: CourseDetailProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <Link
-          href="/panel/kursy"
-          className="inline-flex min-h-11 items-center gap-2 self-start text-small font-medium text-muted transition-colors duration-200 hover:text-ink focus-visible:focus-ring"
-        >
-          <span aria-hidden="true">←</span> Wróć do listy kursów
-        </Link>
-
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-caption font-bold tracking-wide text-subtle">
             {stageLabel(course.sequence_order)}
           </p>
           <Badge variant={badge.variant}>{badge.label}</Badge>
         </div>
-
-        <h1 className="text-h2 font-black text-ink">{course.title}</h1>
 
         <ProgressBar
           value={course.progress_percent}

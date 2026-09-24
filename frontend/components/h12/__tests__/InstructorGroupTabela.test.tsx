@@ -259,14 +259,16 @@ describe("InstructorGroup — para osoba↔etap wiązana wierszem, nie kolejnoś
 });
 
 describe("InstructorGroup — trzy stany ekranu mają własnego świadka (G5)", () => {
-  it("stan ładowania pokazuje wskaźnik status i nie pokazuje jeszcze nagłówka grupy", async () => {
+  it("stan ładowania pokazuje wskaźnik status i nagłówek grupy „Moja grupa”", async () => {
     api.mockImplementation(() => new Promise(() => {})); // nigdy się nie rozstrzyga
     render(<InstructorGroup />);
 
     expect(
       await screen.findByRole("status", { name: "Wczytywanie grupy…" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Moja grupa")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1 }),
+    ).toHaveTextContent(/^Moja grupa$/);
   });
 
   it("stan błędu wczytania pokazuje komunikat z API i nie pokazuje tabeli", async () => {
