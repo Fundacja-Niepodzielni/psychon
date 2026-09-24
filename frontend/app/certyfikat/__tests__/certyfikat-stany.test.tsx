@@ -9,9 +9,16 @@ import userEvent from "@testing-library/user-event";
  */
 
 let query = "";
+// `null` = brak zawieszenia; obietnica = `useSearchParams` rzuca ją tak, jak
+// Next robi to przy renderze dynamicznym pod granicą `Suspense` — bez `use()`
+// z Reacta 19, bez zmian w kodzie ekranu.
+let zawieszenieParametrow: Promise<unknown> | null = null;
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(query),
+  useSearchParams: () => {
+    if (zawieszenieParametrow) throw zawieszenieParametrow;
+    return new URLSearchParams(query);
+  },
 }));
 
 const apiMock = vi.fn();
@@ -26,6 +33,7 @@ const CertificateLandingPage = (await import("@/app/certyfikat/page")).default;
 beforeEach(() => {
   apiMock.mockReset();
   query = "";
+  zawieszenieParametrow = null;
 });
 
 const wazny = {
@@ -34,6 +42,25 @@ const wazny = {
   edition: "2026",
   issued_at: "2026-01-01",
 };
+
+describe("/certyfikat — granica zawieszenia", () => {
+  it("w czasie zawieszenia użytkownik widzi komunikat ładowania ogłoszony jako status", () => {
+    // Obietnica celowo nierozstrzygnięta — mierzymy WYŁĄCZNIE to, co jest na
+    // ekranie w trakcie zawieszenia, nie stan po jego ustąpieniu.
+    zawieszenieParametrow = new Promise(() => {});
+
+    render(<CertificateLandingPage />);
+
+    // `role="status"` ogłasza treść regionu na żywo — to jego tekst, nie
+    // (wyliczana wg innego algorytmu) nazwa dostępna, dociera do czytnika
+    // ekranu przy aktualizacji. `role="status"` jest jawnie wyłączona z
+    // „nazwy z treści" w specyfikacji accname, więc `toHaveAccessibleName`
+    // dałoby fałszywy czerwony na węźle równoważnym dla użytkownika.
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Wczytywanie…");
+    expect(apiMock).not.toHaveBeenCalled();
+  });
+});
 
 describe("/certyfikat — stany", () => {
   it("stan pusty: brak numeru/tokenu w adresie pokazuje komunikat z linkiem do wyszukiwarki, bez wołania API", async () => {
