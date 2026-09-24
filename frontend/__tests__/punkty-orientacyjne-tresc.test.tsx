@@ -231,7 +231,6 @@ const DO_ZMIERZENIA = WSZYSTKIE.filter(
   (t) => !t.dynamiczna && !t.bramkaRoli && !t.przekierowanieSerwera,
 );
 
-// eslint-disable-next-line no-console
 console.log(
   [
     `[punkty-orientacyjne] trasy znalezione: ${WSZYSTKIE.length}`,
