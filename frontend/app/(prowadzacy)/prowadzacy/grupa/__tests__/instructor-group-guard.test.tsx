@@ -80,8 +80,8 @@ beforeEach(() => {
   });
 });
 
-describe("ekran /prowadzacy/grupa pod strażnikiem roli", () => {
-  it('rola "volunteer" dostaje "Brak dostępu" i ekran nie woła /instructor/group', async () => {
+describe("/prowadzacy/grupa under the instructor role guard", () => {
+  it('role "volunteer" gets "Brak dostępu" and the screen does not fetch /instructor/group', async () => {
     api.mockResolvedValue({ role: "volunteer" });
 
     renderScreen();
@@ -92,7 +92,7 @@ describe("ekran /prowadzacy/grupa pod strażnikiem roli", () => {
     expect(apiPaged).not.toHaveBeenCalled();
   });
 
-  it('rola "instructor" widzi uczestników grupy z /instructor/group', async () => {
+  it('role "instructor" sees group members from /instructor/group', async () => {
     routeApi(() => Promise.resolve(group));
 
     renderScreen();
@@ -104,7 +104,7 @@ describe("ekran /prowadzacy/grupa pod strażnikiem roli", () => {
     expect(apiPaged).toHaveBeenCalledWith("/instructor/reliability");
   });
 
-  it("błąd wczytania grupy pokazuje komunikat serwera i przycisk ponowienia", async () => {
+  it("a group load error shows the server message and a retry button", async () => {
     routeApi(() => Promise.reject(new ApiError(500, "Serwer niedostępny.")));
 
     renderScreen();
