@@ -6,7 +6,8 @@
 #
 # Adres hosta bierze WYLACZNIE ze zmiennej HOST_BRAMKOWY. Nie ma go w
 # argumencie, w pliku ani w dokumencie - i nie pada w wyjsciu: cale wyjscie
-# przechodzi przez maske (patrz `maskuj` nizej), bo adres wychodzil na
+# przechodzi przez maske (patrz `maskuj` nizej) - adres, konto wdrozeniowe i
+# sciezka stosu - bo adres wychodzil na
 # zewnatrz takze wtedy, gdy nikt go nie przepisal - wypisywal go pierwszy
 # wiersz logu narzedzia.
 #
@@ -29,6 +30,8 @@
 #
 # Kody wyjscia:
 #   0    - zrobione (albo: same warunki wstepne spelnione, albo katalog kopii zalozony)
+#   10   - katalog logow stacji niezapisywalny - biegu nie ma jak odczytac,
+#          wiec go nie zaczynam (sprawdzane przed pierwszym siegnieciem hosta)
 #   2    - uzycie: brak SHA, SHA nie ma 40 znakow, nadmiarowy argument, dwa tryby naraz, brak HOST_BRAMKOWY
 #   11   - warunek (a): katalog kopii nie jest zapisywalny dla uzytkownika wdrazajacego
 #   12   - warunek (b): wolne miejsce ponizej progu
@@ -42,11 +45,18 @@
 #   31   - --zaloz-katalog-kopii: katalog nadrzedny nie nalezy do uzytkownika
 #          wdrazajacego albo nie jest zapisywalny - NIC nie zostalo zrobione
 #   32   - --zaloz-katalog-kopii: po operacji katalog kopii nadal niezapisywalny
-#   33   - --zaloz-katalog-kopii: krok zakladania albo pomiar po nim nie doszedl w calosci
+#   33   - --zaloz-katalog-kopii: czesc zdalna kroku zakladania odmowila albo
+#          pomiar po niej nie doszedl w calosci (kod hosta, NIE kod kanalu)
+#   34   - --zaloz-katalog-kopii: nazwa docelowa zajeta - nic nie przeniesione
 #   inne - kod kanalu zdalnego przepuszczony bez zmiany (np. 9, 255 z `ssh`)
 set -uo pipefail
 
 MASKA="HOST-UKRYTY"
+# Zakaz obejmuje adres ORAZ konto wdrozeniowe; sciezke katalogu kopii chowamy
+# tak, zeby nazwa katalogu zostala czytelna, a miejsce na dysku nie - z logu ma
+# byc wiadomo, CO sie stalo, a nie GDZIE stoi stos.
+MASKA_KONTA="KONTO-UKRYTE"
+MASKA_SCIEZKI="SCIEZKA-UKRYTA"
 UZYCIE='uzycie: wdroz-zdalnie.sh <pelny-40-znakowy-sha> [--warunki-wstepne | --zaloz-katalog-kopii]   (adres hosta wylacznie ze zmiennej HOST_BRAMKOWY)'
 
 # --- argumenty -------------------------------------------------------------
@@ -99,6 +109,7 @@ UZYTKOWNIK="${UZYTKOWNIK_WDROZENIA:-deploy}"
 KATALOG_STOSU="${PSYCHON_KATALOG_STOSU:-/opt/psychon}"
 # Domyslnie ten sam katalog kopii, ktorego uzywa deploy/psychon-dev/deploy.sh.
 KATALOG_KOPII="${PSYCHON_DB_BACKUP_DIR:-$KATALOG_STOSU/kopie-bazy}"
+KATALOG_NADRZEDNY="$(dirname "$KATALOG_KOPII")"
 REPO_HOSTA="${PSYCHON_REPO_HOSTA:-$KATALOG_STOSU/psychon-platforma}"
 PLIK_SRODOWISKA="${PSYCHON_ENV_FILE:-$KATALOG_STOSU/.env}"
 PROG_WOLNE_KB="${PSYCHON_PROG_WOLNE_KB:-1048576}"
@@ -108,8 +119,19 @@ KATALOG_LOGOW_LOKALNY="${PSYCHON_KATALOG_LOGOW:-${TMPDIR:-/tmp}/psychon-wdrozeni
 
 STEMPEL="$(date +%Y%m%d-%H%M%S)"
 LOG_HOSTA="$KATALOG_LOGOW_HOSTA/wdrozenie-$SHA-$STEMPEL.log"
-mkdir -p "$KATALOG_LOGOW_LOKALNY"
 LOG_LOKALNY="$KATALOG_LOGOW_LOKALNY/wdrozenie-$SHA-$STEMPEL.log"
+
+# Warunek wstepny STACJI, sprawdzany przed czymkolwiek, co siega hosta. Na
+# koncu potoku stoi `tee`: gdy nie ma gdzie pisac, `tee` i tak konczy zerem, a
+# kod bierzemy z pierwszego ogniwa - wiec bieg BEZ SLADU melduje sie jako
+# udany i podaje sciezke kopii, ktorej nie ma. Najciezej wazy to w trybie,
+# ktory na hoscie cos ZMIENIA: log jest wtedy jedynym opisem tego, co zaszlo.
+mkdir -p "$KATALOG_LOGOW_LOKALNY" 2>/dev/null
+if ! ( : > "$LOG_LOKALNY" ) 2>/dev/null; then
+    echo "Katalog logow $KATALOG_LOGOW_LOKALNY nie jest zapisywalny - nie zaloze $LOG_LOKALNY." >&2
+    echo "Biegu NIE uruchamiam: bez kopii lokalnej nie byloby z czego odczytac, co sie stalo." >&2
+    exit 10
+fi
 
 WDROZENIE_RUSZYLO=0
 
@@ -117,11 +139,25 @@ WDROZENIE_RUSZYLO=0
 # Filtr na CALYM wyjsciu przyrzadu, nie tylko na wlasnych `echo`: adres
 # potrafi wrocic w komunikacie `ssh` ("connect to host ..."), ktorego autorem
 # nie jest ten plik. Podstawienie jest doslowne (cudzyslow wokol wzorca), wiec
-# kropki w adresie nie sa znakiem wieloznacznym.
+# kropki w adresie nie sa znakiem wieloznacznym - i z tego samego powodu nie
+# ma tu `sed`: zle zescapowany wzorzec nie zaslania nic i robi to po cichu,
+# czyli daje dokladnie ten blad, ktoremu filtr ma zapobiegac.
+#
+# Kolejnosc ma znaczenie: najpierw sciezka nadrzedna (dluzszy napis, moze
+# zawierac nazwe konta), potem adres, na koncu konto.
 maskuj() {
     local linia
     while IFS= read -r linia || [ -n "$linia" ]; do
-        printf '%s\n' "${linia//"$HOST"/$MASKA}"
+        if [ -n "$KATALOG_NADRZEDNY" ]; then
+            linia="${linia//"$KATALOG_NADRZEDNY"/$MASKA_SCIEZKI}"
+        fi
+        if [ -n "$HOST" ]; then
+            linia="${linia//"$HOST"/$MASKA}"
+        fi
+        if [ -n "$UZYTKOWNIK" ]; then
+            linia="${linia//"$UZYTKOWNIK"/$MASKA_KONTA}"
+        fi
+        printf '%s\n' "$linia"
     done
 }
 
@@ -211,6 +247,11 @@ ZDALNE
 # przed zmiana i po niej.
 P_KTO=""; P_ISTNIEJE=""; P_WLASCICIEL=""; P_PRAWA=""; P_ZAPIS=""; P_WOLNE=""
 P_R_WLASCICIEL=""; P_R_PRAWA=""; P_R_ZAPIS=""; P_R_WOLNE=""
+# Pola wlasciciela niosa nazwe konta, wiec maja osobna postac DO WYPISANIA.
+# Wartosci surowe zostaja do porownan - gdyby maska wchodzila do nich, warunek
+# "rodzic nalezy do konta wdrazajacego" porownywalby maske z maska i zawsze
+# wychodzil na tak.
+P_WLASCICIEL_POKAZ=""; P_R_WLASCICIEL_POKAZ=""
 wczytaj_pomiar() {
     local wyjscie="$1"
     P_KTO="$(pomiar KTO "$wyjscie")"
@@ -223,6 +264,38 @@ wczytaj_pomiar() {
     P_R_PRAWA="$(pomiar RODZIC-PRAWA "$wyjscie")"
     P_R_ZAPIS="$(pomiar RODZIC-ZAPIS "$wyjscie")"
     P_R_WOLNE="$(liczba_lub_minus "$(pomiar RODZIC-WOLNE-KB "$wyjscie")")"
+    P_WLASCICIEL_POKAZ="$P_WLASCICIEL"
+    P_R_WLASCICIEL_POKAZ="$P_R_WLASCICIEL"
+    if [ -n "$P_KTO" ]; then
+        P_WLASCICIEL_POKAZ="${P_WLASCICIEL//"$P_KTO"/$MASKA_KONTA}"
+        P_R_WLASCICIEL_POKAZ="${P_R_WLASCICIEL//"$P_KTO"/$MASKA_KONTA}"
+    fi
+}
+
+# Konto wdrozeniowe jest w wyjsciu zakazane tak samo jak adres, a filtr maski
+# stoi w OSOBNYM procesie potoku i zna wylacznie konto ZADANE. Konto zmierzone
+# na hoscie wypisujemy wiec tylko wtedy, gdy jest tym samym napisem - inaczej
+# przeszloby przez filtr nietkniete. Rozjazd nazywamy, nazwy nie podajemy.
+konto_do_wypisu() {
+    if [ "$P_KTO" = "$UZYTKOWNIK" ]; then
+        printf '%s' "$P_KTO"
+    else
+        printf '%s' "KONTO-INNE-NIZ-ZADANE"
+    fi
+}
+
+# Surowy pomiar tez idzie na wyjscie, a niesie wiersz POMIAR-KTO i pola
+# wlasciciela. Podstawiamy w nim konto zmierzone, bo to jedyne miejsce w
+# przyrzadzie, ktore te nazwe w ogole widzi przed filtrem.
+wypisz_surowy_pomiar() {
+    local linia kto
+    kto="$(pomiar KTO "$1")"
+    printf '%s\n' "$1" | while IFS= read -r linia || [ -n "$linia" ]; do
+        if [ -n "$kto" ]; then
+            linia="${linia//"$kto"/$MASKA_KONTA}"
+        fi
+        printf '%s\n' "$linia"
+    done
 }
 
 # Po jednej linii na katalog kopii i na jego katalog nadrzedny - to jest to,
@@ -231,9 +304,9 @@ wczytaj_pomiar() {
 # zestawic pomiar sprzed zmiany z pomiarem po niej.
 wypisz_pomiar() {
     local tag="$1"
-    echo "$tag katalog kopii $KATALOG_KOPII: istnieje=$P_ISTNIEJE, wlasciciel=$P_WLASCICIEL, prawa=$P_PRAWA, zapis=$P_ZAPIS, wolne=$P_WOLNE KB"
-    echo "$tag katalog nadrzedny $(dirname "$KATALOG_KOPII"): wlasciciel=$P_R_WLASCICIEL, prawa=$P_R_PRAWA, zapis=$P_R_ZAPIS, wolne=$P_R_WOLNE KB"
-    echo "$tag uzytkownik wdrazajacy na hoscie: $P_KTO"
+    echo "$tag katalog kopii $KATALOG_KOPII: istnieje=$P_ISTNIEJE, wlasciciel=$P_WLASCICIEL_POKAZ, prawa=$P_PRAWA, zapis=$P_ZAPIS, wolne=$P_WOLNE KB"
+    echo "$tag katalog nadrzedny $KATALOG_NADRZEDNY: wlasciciel=$P_R_WLASCICIEL_POKAZ, prawa=$P_R_PRAWA, zapis=$P_R_ZAPIS, wolne=$P_R_WOLNE KB"
+    echo "$tag uzytkownik wdrazajacy na hoscie: $(konto_do_wypisu)"
 }
 
 # --- krok 1: warunki wstepne ----------------------------------------------
@@ -243,7 +316,7 @@ warunki_wstepne() {
     echo "[WARUNKI] mierze warunki wstepne PRZED zrzutem bazy i PRZED zmiana schematu"
     zmierz_stan_katalogow
     rc=$?
-    printf '%s\n' "$POMIAR_WYJSCIE"
+    wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
     if [ "$rc" -ne 0 ]; then
         echo "[WARUNKI] kanal zdalny nie doszedl (kod $rc) - warunkow NIE zmierzylem, niczego nie uruchamiam"
         exit "$rc"
@@ -301,12 +374,12 @@ warunki_wstepne() {
 # a ich zniknecia nikt by nie odwrocil. Dlatego przed przeniesieniem pada
 # liczba pozycji w srodku - zeby nic nie znikalo po cichu.
 zaloz_katalog_kopii() {
-    local rc argi wyjscie zastany przenies
+    local rc argi wyjscie zastany przenies zajety
 
     echo "[KATALOG-KOPII] tryb jawny: mierze stan przed zmiana"
     zmierz_stan_katalogow
     rc=$?
-    printf '%s\n' "$POMIAR_WYJSCIE"
+    wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
     if [ "$rc" -ne 0 ]; then
         echo "[KATALOG-KOPII] kanal zdalny nie doszedl (kod $rc) - niczego nie zakladam"
         exit "$rc"
@@ -321,11 +394,11 @@ zaloz_katalog_kopii() {
     # (1) Rodzic musi byc nasz. Cudzy rodzic to cudze uprawnienie: konczymy
     # PRZED wyslaniem czegokolwiek, co zmienia stan hosta.
     if [ "${P_R_WLASCICIEL%%:*}" != "$P_KTO" ] || [ "$P_R_ZAPIS" != "tak" ]; then
-        echo "[KATALOG-KOPII] NIEZALICZONY: katalog nadrzedny $(dirname "$KATALOG_KOPII") ma wlasciciela $P_R_WLASCICIEL i zapis=$P_R_ZAPIS, a uzytkownik wdrazajacy to $P_KTO"
+        echo "[KATALOG-KOPII] NIEZALICZONY: katalog nadrzedny $KATALOG_NADRZEDNY ma wlasciciela $P_R_WLASCICIEL_POKAZ i zapis=$P_R_ZAPIS, a uzytkownik wdrazajacy to $(konto_do_wypisu)"
         echo "[KATALOG-KOPII] to juz cudze uprawnienie - nie zakladam, nie przenosze, praw nie podnosze"
         exit 31
     fi
-    echo "[KATALOG-KOPII] katalog nadrzedny nalezy do $P_KTO i jest zapisywalny - dzialam w granicach wlasnego prawa"
+    echo "[KATALOG-KOPII] katalog nadrzedny nalezy do $(konto_do_wypisu) i jest zapisywalny - dzialam w granicach wlasnego prawa"
 
     # (2) Decyzja o przeniesieniu zapada TU, z pomiaru, a nie na hoscie.
     przenies=nie
@@ -334,9 +407,9 @@ zaloz_katalog_kopii() {
     fi
     zastany="$KATALOG_KOPII.zastane-$STEMPEL"
     if [ "$przenies" = "tak" ]; then
-        echo "[KATALOG-KOPII] zastany katalog nalezy do $P_WLASCICIEL (zapis=$P_ZAPIS): PRZENIOSE go na $zastany, nie skasuje"
+        echo "[KATALOG-KOPII] zastany katalog nalezy do $P_WLASCICIEL_POKAZ (zapis=$P_ZAPIS): PRZENIOSE go na $zastany, nie skasuje"
     else
-        echo "[KATALOG-KOPII] nie ma czego przenosic: istnieje=$P_ISTNIEJE, wlasciciel=$P_WLASCICIEL, zapis=$P_ZAPIS"
+        echo "[KATALOG-KOPII] nie ma czego przenosic: istnieje=$P_ISTNIEJE, wlasciciel=$P_WLASCICIEL_POKAZ, zapis=$P_ZAPIS"
     fi
 
     argi="$(printf '%q %q %q' "$KATALOG_KOPII" "$zastany" "$przenies")"
@@ -348,6 +421,15 @@ KATALOG_KOPII="$2"; ZASTANY="$3"; PRZENIES="$4"
 # Ta czesc zdalna rusza WYLACZNIE dwie sciezki: katalog kopii i jego zastana
 # postac obok. Nic poza wlasna sciezka nie leci - i ani jednego kasowania.
 if [ "$PRZENIES" = "tak" ]; then
+    # Cel MUSI byc wolny. `mv` na istniejacy katalog nie konczy sie bledem -
+    # wklada katalog DO SRODKA celu, a przyrzad zameldowalby "obok". Stempel
+    # ma ziarnistosc sekundy, wiec drugi bieg w tej samej sekundzie trafia
+    # dokladnie w ten uklad. Nie zgadujemy nowej nazwy: zastany katalog moze
+    # trzymac zrzuty bazy jawnym tekstem i ma zostac tam, gdzie go zastalismy.
+    if [ -e "$ZASTANY" ]; then
+        echo "POMIAR-ZASTANY-ZAJETY=$ZASTANY"
+        exit 5
+    fi
     if LISTA="$(ls -A "$KATALOG_KOPII" 2>/dev/null)"; then
         echo "POMIAR-ZASTANE-POZYCJI=$(printf '%s' "$LISTA" | grep -c .)"
     else
@@ -370,8 +452,21 @@ ZDALNE
 )"
     rc=$?
     printf '%s\n' "$wyjscie"
+    zajety="$(pomiar ZASTANY-ZAJETY "$wyjscie")"
+    if [ -n "$zajety" ]; then
+        echo "[KATALOG-KOPII] NIEZALICZONY: nazwa docelowa $zajety jest juz zajeta - NIE przenosze, bo katalog wladowalby sie do jej srodka"
+        echo "[KATALOG-KOPII] zastany katalog zostaje nietkniety; powtorz bieg za sekunde albo uprzatnij nazwe docelowa"
+        exit 34
+    fi
     if [ "$rc" -ne 0 ]; then
-        echo "[KATALOG-KOPII] krok zakladania nie doszedl (kod $rc)"
+        # Kod hosta a kod kanalu to dwie rozne wiadomosci. Skoro w wyjsciu sa
+        # nasze wiersze POMIAR-, czesc zdalna RUSZYLA i to ona odmowila -
+        # wolajacy nie ma prawa czytac tego jako zerwanego polaczenia.
+        if printf '%s\n' "$wyjscie" | grep -q '^POMIAR-'; then
+            echo "[KATALOG-KOPII] NIEZALICZONY: krok zakladania na hoscie nie powiodl sie (kod z hosta: $rc) - katalog kopii zostal taki, jaki byl"
+            exit 33
+        fi
+        echo "[KATALOG-KOPII] kanal zdalny nie doszedl (kod $rc) - krok zakladania nie ruszyl"
         exit "$rc"
     fi
     if [ -z "$(pomiar KONIEC-ZAKLADANIA "$wyjscie")" ]; then
@@ -386,7 +481,7 @@ ZDALNE
     # poszly bez bledu.
     zmierz_stan_katalogow
     rc=$?
-    printf '%s\n' "$POMIAR_WYJSCIE"
+    wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
     if [ "$rc" -ne 0 ]; then
         echo "[KATALOG-KOPII] pomiar po zmianie nie doszedl (kod $rc)"
         exit "$rc"
@@ -400,10 +495,10 @@ ZDALNE
 
     # (5) Niezapisywalny katalog po calej operacji to czerwien, nie uwaga.
     if [ "$P_ZAPIS" != "tak" ]; then
-        echo "[KATALOG-KOPII] NIEZALICZONY: po operacji katalog kopii nadal nie jest zapisywalny dla $P_KTO (wlasciciel=$P_WLASCICIEL, prawa=$P_PRAWA)"
+        echo "[KATALOG-KOPII] NIEZALICZONY: po operacji katalog kopii nadal nie jest zapisywalny dla $(konto_do_wypisu) (wlasciciel=$P_WLASCICIEL_POKAZ, prawa=$P_PRAWA)"
         exit 32
     fi
-    echo "[KATALOG-KOPII] ZALICZONY: katalog kopii zapisywalny dla $P_KTO, wlasciciel=$P_WLASCICIEL, prawa=$P_PRAWA"
+    echo "[KATALOG-KOPII] ZALICZONY: katalog kopii zapisywalny dla $(konto_do_wypisu), wlasciciel=$P_WLASCICIEL_POKAZ, prawa=$P_PRAWA"
 }
 
 # --- krok 2: wdrozenie i kroki kontrolne -----------------------------------

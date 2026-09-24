@@ -11,10 +11,12 @@
 #   wyjsciu (z kontrola perturbacyjna), W4 trzy warunki wstepne = trzy kody,
 #   W5 tryb --warunki-wstepne, W6 cztery kroki kontrolne = cztery kody,
 #   W7 sciezki logow na sciezce nieudanej, W8 kod wyjscia nie ginie w filtrze,
-#   W9 przyrzad nie podnosi niczyich praw,
-#   K1-K7 tryb --zaloz-katalog-kopii: jawnosc, odmowa przy cudzym rodzicu,
-#   przeniesienie zamiast kasowania, umask przed zalozeniem, pomiar po zmianie,
-#   nieudana naprawa jako czerwien i kod kanalu na wierzchu.
+#   W9 przyrzad nie podnosi niczyich praw.
+# Dalej przypadki trybu --zaloz-katalog-kopii: jawnosc trybu, odmowa przy
+# cudzym katalogu nadrzednym, przeniesienie zamiast kasowania, umask przed
+# zalozeniem, pomiar po zmianie, nieudana naprawa jako czerwien, kod hosta
+# odrozniony od kodu kanalu, zapisywalny katalog logow stacji i maska konta
+# wdrozeniowego wraz ze sciezka stosu.
 #
 # Atrapa zapisuje TRESC czesci zdalnej (ATRAPA_TRESC), bo czesc warunkow mowi
 # o tym, co w ogole zostalo na hosta wyslane, a nie tylko o kodzie wyjscia.
@@ -73,6 +75,11 @@ if [ "$FAZA" = "warunki" ] && [ "${ATRAPA_TRYB:-}" = "urwany" ]; then
 fi
 
 if [ "$FAZA" = "zaloz" ]; then
+    if [ -n "${ATRAPA_ZALOZ_KANAL:-}" ]; then
+        # Kanal pada, zanim czesc zdalna cokolwiek wypisze: ani jednego POMIAR-.
+        echo "ssh: connect to host $ATRAPA_ADRES port 22: Connection reset" >&2
+        exit "$ATRAPA_ZALOZ_KANAL"
+    fi
     # Nazwa docelowa i decyzja o przeniesieniu MAJA pochodzic od przyrzadu, a
     # nie od atrapy - dlatego atrapa odczytuje je z wyslanego polecenia i
     # oddaje z powrotem. Inaczej proba sprawdzalaby sama siebie.
@@ -80,11 +87,21 @@ if [ "$FAZA" = "zaloz" ]; then
     # shellcheck disable=SC2086
     set -- $POLECENIE
     Z_KATALOG="$5"; Z_ZASTANY="$6"; Z_PRZENIES="$7"
-    : > "$ATRAPA_PO_ZALOZENIU"
+    if [ "${ATRAPA_ZASTANY_ZAJETY:-0}" = "1" ]; then
+        # Cel zastany - czesc zdalna odmawia PRZED przeniesieniem.
+        echo "POMIAR-ZASTANY-ZAJETY=$Z_ZASTANY"
+        exit 5
+    fi
     if [ "$Z_PRZENIES" = "tak" ]; then
         echo "POMIAR-ZASTANE-POZYCJI=${ATRAPA_POZYCJI:-4}"
+        if [ "${ATRAPA_ZALOZ_BLAD:-}" = "mv" ]; then
+            echo "POMIAR-PRZENIESIONY=nie-udalo-sie"
+            exit 3
+        fi
+        : > "$ATRAPA_PO_ZALOZENIU"
         echo "POMIAR-PRZENIESIONY=$Z_ZASTANY"
     else
+        : > "$ATRAPA_PO_ZALOZENIU"
         echo "POMIAR-ZASTANE-POZYCJI=brak"
         echo "POMIAR-PRZENIESIONY=nie-trzeba"
     fi
@@ -100,13 +117,15 @@ if [ "$FAZA" = "warunki" ]; then
         W_WLASCICIEL="${ATRAPA_WLASCICIEL_PO:-deploy:deploy}"
         W_PRAWA="${ATRAPA_PRAWA_PO:-700}"
         W_ZAPIS="${ATRAPA_ZAPIS_PO:-tak}"
+        W_ISTNIEJE="${ATRAPA_ISTNIEJE_PO:-tak}"
     else
         W_WLASCICIEL="${ATRAPA_WLASCICIEL:-root:root}"
         W_PRAWA="${ATRAPA_PRAWA:-755}"
         W_ZAPIS="${ATRAPA_ZAPIS:-tak}"
+        W_ISTNIEJE="${ATRAPA_ISTNIEJE:-tak}"
     fi
     echo "POMIAR-KTO=${ATRAPA_KTO:-deploy}"
-    echo "POMIAR-KOPIE-ISTNIEJE=${ATRAPA_ISTNIEJE:-tak}"
+    echo "POMIAR-KOPIE-ISTNIEJE=$W_ISTNIEJE"
     echo "POMIAR-KOPIE-WLASCICIEL=$W_WLASCICIEL"
     echo "POMIAR-KOPIE-PRAWA=$W_PRAWA"
     echo "POMIAR-KOPIE-ZAPIS=$W_ZAPIS"
@@ -424,12 +443,12 @@ rowne "trafien sudo/chown/chmod w pliku przyrzadu" "$ILE" "0"
 koniec_przypadku
 
 # --- przypadki trybu --zaloz-katalog-kopii ---------------------------------
-# Wspolny uklad atrapy dla sciezki, na ktorej wolno cokolwiek zalozyc: rodzic
-# nalezy do konta wdrazajacego i jest zapisywalny (tak jak zmierzono na
-# hoscie), a sam katalog kopii jest cudzy.
+# Wspolny uklad atrapy dla sciezki, na ktorej wolno cokolwiek zalozyc: katalog
+# nadrzedny nalezy do konta wdrazajacego i jest zapisywalny (tak jak zmierzono
+# na hoscie), a sam katalog kopii jest cudzy.
 RODZIC_NASZ=(ATRAPA_RODZIC_WLASCICIEL=deploy:deploy ATRAPA_RODZIC_ZAPIS=tak)
 
-przypadek "K1 tryb jawny: bez --zaloz-katalog-kopii przyrzad niczego nie zaklada (warunki wstepne)"
+przypadek "tryb jawny: sam pomiar warunkow niczego nie zaklada"
 zeruj
 HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --warunki-wstepne > "$WYJ" 2>&1
 RC=$?
@@ -439,11 +458,11 @@ rowne "wystapien 'mv ' w tresci wyslanej na hosta" "$(grep -c 'mv ' "$ATRAPA_TRE
 rowne "wystapien 'mkdir' w tresci wyslanej na hosta" "$(grep -c 'mkdir' "$ATRAPA_TRESC")" "0"
 rowne "wystapien 'umask' w tresci wyslanej na hosta" "$(grep -c 'umask' "$ATRAPA_TRESC")" "0"
 rowne "wystapien 'zastane-' w tresci wyslanej na hosta" "$(grep -c 'zastane-' "$ATRAPA_TRESC")" "0"
-rowne "wywolan fazy 'zaloz' w argumentach" "$(grep -c 'bash -s -- zaloz' "$ATRAPA_ARGI")" "0"
+rowne "wywolan fazy zakladania w argumentach" "$(grep -c 'bash -s -- zaloz' "$ATRAPA_ARGI")" "0"
 echo "  bajtow tresci wyslanej na hosta: $(wc -c < "$ATRAPA_TRESC")"
 koniec_przypadku
 
-przypadek "K1 tryb jawny: bieg pelny tez niczego nie zaklada (jedyny mkdir to katalog logu)"
+przypadek "tryb jawny: bieg pelny tez niczego nie zaklada (jedyny mkdir to katalog logu)"
 zeruj
 HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
 RC=$?
@@ -456,7 +475,7 @@ echo "  jedyny wiersz z mkdir: $(grep -n 'mkdir' "$ATRAPA_TRESC")"
 rowne "wystapien 'kopie-bazy' obok mkdir" "$(grep -c 'mkdir.*kopie-bazy' "$ATRAPA_TRESC")" "0"
 koniec_przypadku
 
-przypadek "K2 rodzic cudzy: kod 31, ani jednego mv i mkdir na hoscie"
+przypadek "katalog nadrzedny cudzy: kod 31, ani jednego mv i mkdir na hoscie"
 zeruj
 HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
 RC=$?
@@ -469,7 +488,7 @@ rowne "wystapien adresu w wyjsciu" "$(grep -c "$ADRES" "$WYJ")" "0"
 grep 'KATALOG-KOPII' "$WYJ" | sed 's/^/    | /'
 koniec_przypadku
 
-przypadek "K3 katalog cudzy: przeniesiony obok, nie skasowany; umask przed mkdir; pomiar po zmianie"
+przypadek "katalog cudzy: przeniesiony obok, nie skasowany; umask przed mkdir; pomiar po zmianie"
 zeruj
 env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_WLASCICIEL=root:root ATRAPA_POZYCJI=7 \
     HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
@@ -482,6 +501,8 @@ rowne "wystapien 'rmdir' w tresci wyslanej na hosta" "$(grep -c 'rmdir' "$ATRAPA
 rowne "zadan przeniesienia w argumentach (konczy sie na 'tak')" "$(grep -c 'bash -s -- zaloz .* tak$' "$ATRAPA_ARGI")" "1"
 rowne "linii z nazwa docelowa i liczba pozycji" "$(grep -c 'zastane-.*pozycji w srodku: 7' "$WYJ")" "1"
 rowne "wystapien 'pg_dump' w wyjsciu" "$(grep -c 'pg_dump' "$WYJ")" "0"
+rowne "wystapien '[ZDALNIE]' w wyjsciu (krok wdrozenia nie rusza)" "$(grep -c 'ZDALNIE' "$WYJ")" "0"
+rowne "wystapien 'KONTROLA' w wyjsciu (krok wdrozenia nie rusza)" "$(grep -c 'KONTROLA' "$WYJ")" "0"
 UM="$(grep -n 'umask 077' "$ATRAPA_TRESC" | head -1 | cut -d: -f1)"
 MK="$(grep -n 'mkdir' "$ATRAPA_TRESC" | head -1 | cut -d: -f1)"
 echo "  wiersz umask: $UM ($(grep -n 'umask 077' "$ATRAPA_TRESC" | head -1))"
@@ -498,7 +519,7 @@ grep -E 'KATALOG-KOPII (przed|po)' "$WYJ" | sed 's/^/    | /'
 grep -E 'zastany katalog|zalozony|ZALICZONY' "$WYJ" | sed 's/^/    | /'
 koniec_przypadku
 
-przypadek "K4 katalog juz wlasny: nie ma czego przenosic, zadnego mv na hoscie"
+przypadek "katalog juz wlasny: nie ma czego przenosic, zadnego mv na hoscie"
 zeruj
 env "${RODZIC_NASZ[@]}" ATRAPA_WLASCICIEL=deploy:deploy ATRAPA_ZAPIS=tak \
     HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
@@ -511,49 +532,135 @@ rowne "wystapien 'rm ' w tresci wyslanej na hosta" "$(grep -c 'rm ' "$ATRAPA_TRE
 grep -E 'nie ma czego przenosic|zastany katalog' "$WYJ" | sed 's/^/    | /'
 koniec_przypadku
 
-przypadek "K5 naprawa nieudana: po operacji nadal niezapisywalny - kod 32"
+przypadek "katalog kopii nie istnieje: zakladany od zera, bez przenoszenia czegokolwiek"
 zeruj
-env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZAPIS_PO=nie ATRAPA_WLASCICIEL_PO=root:root ATRAPA_PRAWA_PO=755 \
+env "${RODZIC_NASZ[@]}" ATRAPA_ISTNIEJE=nie ATRAPA_WLASCICIEL=brak ATRAPA_PRAWA=brak ATRAPA_ZAPIS=nie \
     HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
 RC=$?
-rowne "rc" "$RC" "32"
+rowne "rc" "$RC" "0"
 rowne "wywolan atrapy ssh (pomiar + zalozenie + pomiar)" "$(licznik)" "3"
-rowne "linii nazywajacej nieudana naprawe" "$(grep -c 'nadal nie jest zapisywalny' "$WYJ")" "1"
-rowne "linii ZALICZONY w wyjsciu" "$(grep -c 'KATALOG-KOPII. ZALICZONY' "$WYJ")" "0"
-grep -E 'KATALOG-KOPII po|NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+rowne "zadan przeniesienia w argumentach (konczy sie na 'nie')" "$(grep -c 'bash -s -- zaloz .* nie$' "$ATRAPA_ARGI")" "1"
+rowne "linii pomiaru PRZED zmiana z istnieje=nie" "$(grep -c 'KATALOG-KOPII przed. katalog kopii .*istnieje=nie' "$WYJ")" "1"
+rowne "linii pomiaru PO zmianie z istnieje=tak" "$(grep -c 'KATALOG-KOPII po. katalog kopii .*istnieje=tak' "$WYJ")" "1"
+rowne "linii 'nie ma czego przenosic'" "$(grep -c 'nie ma czego przenosic: istnieje=nie' "$WYJ")" "1"
+rowne "wystapien 'rm ' w tresci wyslanej na hosta" "$(grep -c 'rm ' "$ATRAPA_TRESC")" "0"
+rowne "wierszy 'mkdir' w tresci wyslanej na hosta" "$(grep -c 'mkdir' "$ATRAPA_TRESC")" "1"
+rowne "linii ZALICZONY w wyjsciu" "$(grep -c 'KATALOG-KOPII. ZALICZONY' "$WYJ")" "1"
+grep -E 'nie ma czego przenosic|zalozony|ZALICZONY' "$WYJ" | sed 's/^/    | /'
 koniec_przypadku
 
-przypadek "K6 dwa tryby naraz: kod 2, atrapa niewolana"
+przypadek "nazwa docelowa zajeta: kod 34, zastane nie rusza sie z miejsca"
 zeruj
-HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --warunki-wstepne --zaloz-katalog-kopii > "$WYJ" 2>&1
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZASTANY_ZAJETY=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
 RC=$?
-rowne "rc" "$RC" "2"
-rowne "linii w wyjsciu" "$(grep -c . "$WYJ")" "1"
-rowne "linii zaczynajacych sie od 'uzycie:'" "$(grep -c '^uzycie:' "$WYJ")" "1"
+rowne "rc" "$RC" "34"
+rowne "wywolan atrapy ssh (pomiar + odmowa, bez pomiaru po)" "$(licznik)" "2"
+rowne "linii nazywajacej zajeta nazwe docelowa" "$(grep -c 'jest juz zajeta' "$WYJ")" "1"
+rowne "linii ZALICZONY w wyjsciu" "$(grep -c 'KATALOG-KOPII. ZALICZONY' "$WYJ")" "0"
+rowne "linii mowiacych, ze zastane zostaje" "$(grep -c 'zostaje nietkniety' "$WYJ")" "1"
+SPR="$(grep -n 'if \[ -e "\$ZASTANY" \]' "$ATRAPA_TRESC" | head -1 | cut -d: -f1)"
+MV="$(grep -n 'mv ' "$ATRAPA_TRESC" | head -1 | cut -d: -f1)"
+echo "  wiersz sprawdzenia celu: $SPR, wiersz mv: $MV"
+if [ -n "$SPR" ] && [ -n "$MV" ] && [ "$SPR" -lt "$MV" ]; then
+    echo "  sprawdzenie celu stoi PRZED mv: tak"
+else
+    zle "sprawdzenie istnienia celu nie stoi przed mv (sprawdzenie=$SPR, mv=$MV)"
+fi
+grep -E 'zajeta|zostaje nietkniety' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "czesc zdalna kroku zakladania odmawia: kod 33 i slowo NIEZALICZONY"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZALOZ_BLAD=mv \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "33"
+rowne "wywolan atrapy ssh (pomiar + krok zakladania, bez pomiaru po)" "$(licznik)" "2"
+rowne "linii NIEZALICZONY z kodem hosta" "$(grep -c 'KATALOG-KOPII. NIEZALICZONY: krok zakladania na hoscie' "$WYJ")" "1"
+rowne "linii mylacych to z kanalem" "$(grep -c 'kanal zdalny nie doszedl' "$WYJ")" "0"
+rowne "linii ZALICZONY w wyjsciu" "$(grep -c 'KATALOG-KOPII. ZALICZONY' "$WYJ")" "0"
+grep -E 'NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "kanal pada w kroku zakladania: kod kanalu na wierzchu, nie 33"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_ZALOZ_KANAL=255 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc (kod kanalu, nie kod hosta)" "$RC" "255"
+rowne "linii mowiacych o kanale" "$(grep -c 'kanal zdalny nie doszedl' "$WYJ")" "1"
+rowne "linii o odmowie czesci zdalnej" "$(grep -c 'krok zakladania na hoscie' "$WYJ")" "0"
+rowne "wystapien adresu w wyjsciu" "$(grep -c "$ADRES" "$WYJ")" "0"
+grep -E 'kanal zdalny' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "katalog logow stacji niezapisywalny: kod 10 przed pierwszym siegnieciem hosta"
+zeruj
+PRZESZKODA="$KATALOG/nie-jest-katalogiem"
+: > "$PRZESZKODA"
+PSYCHON_KATALOG_LOGOW="$PRZESZKODA/logi" HOST_BRAMKOWY="$ADRES" \
+    "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "10"
 rowne "wywolan atrapy ssh" "$(licznik)" "0"
+rowne "linii ZALICZONY w wyjsciu" "$(grep -c 'ZALICZONY' "$WYJ")" "0"
+rowne "linii podajacych kopie lokalna" "$(grep -c 'kopia lokalna:' "$WYJ")" "0"
+rowne "linii nazywajacych katalog logow" "$(grep -c 'Katalog logow' "$WYJ")" "1"
 sed 's/^/    | /' "$WYJ"
 koniec_przypadku
 
-przypadek "K7 kod kanalu zdalnego i maska adresu dzialaja tez w tym trybie"
+przypadek "ten sam warunek w biegu pelnym: kod 10, zadnego wdrozenia"
 zeruj
-env "${RODZIC_NASZ[@]}" ATRAPA_TRYB=adres \
-    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+PSYCHON_KATALOG_LOGOW="$KATALOG/nie-jest-katalogiem/logi" HOST_BRAMKOWY="$ADRES" \
+    "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
 RC=$?
-rowne "rc (kod atrapy nie zgubiony w filtrze)" "$RC" "9"
-rowne "wystapien adresu w calym wyjsciu" "$(grep -c "$ADRES" "$WYJ")" "0"
-wiekszy_od_zera "wystapien maski HOST-UKRYTY" "$(grep -c 'HOST-UKRYTY' "$WYJ")"
-rowne "wystapien 'mv ' w tresci wyslanej na hosta" "$(grep -c 'mv ' "$ATRAPA_TRESC")" "0"
-grep 'HOST-UKRYTY' "$WYJ" | sed 's/^/    | /'
+rowne "rc" "$RC" "10"
+rowne "wywolan atrapy ssh" "$(licznik)" "0"
+rowne "wystapien 'pg_dump' w wyjsciu" "$(grep -c 'pg_dump' "$WYJ")" "0"
 koniec_przypadku
 
-przypadek "K7 kryterium praw obejmuje caly przyrzad takze po dolozeniu trybu"
+przypadek "maska zaslania konto wdrozeniowe i sciezke stosu, nazwe katalogu zostawia czytelna"
+zeruj
+env "${RODZIC_NASZ[@]}" ATRAPA_ZAPIS=nie ATRAPA_POZYCJI=3 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "0"
+rowne "wystapien konta wdrozeniowego w wyjsciu" "$(grep -o 'deploy' "$WYJ" | grep -c .)" "0"
+rowne "wystapien sciezki stosu w wyjsciu" "$(grep -o '/opt/psychon' "$WYJ" | grep -c .)" "0"
+rowne "wystapien adresu w wyjsciu" "$(grep -c "$ADRES" "$WYJ")" "0"
+wiekszy_od_zera "wystapien nazwy katalogu kopii" "$(grep -o 'kopie-bazy' "$WYJ" | grep -c .)"
+wiekszy_od_zera "wystapien maski konta" "$(grep -c 'KONTO-UKRYTE' "$WYJ")"
+wiekszy_od_zera "wystapien maski sciezki" "$(grep -c 'SCIEZKA-UKRYTA' "$WYJ")"
+KOPIA="$(grep -o 'kopia lokalna: .*' "$WYJ" | tail -1 | sed 's/kopia lokalna: //')"
+if [ -f "$KOPIA" ]; then
+    rowne "wystapien konta w kopii lokalnej" "$(grep -o 'deploy' "$KOPIA" | grep -c .)" "0"
+    rowne "wystapien sciezki stosu w kopii lokalnej" "$(grep -o '/opt/psychon' "$KOPIA" | grep -c .)" "0"
+else
+    zle "nie ma pliku kopii lokalnej: $KOPIA"
+fi
+grep -E 'KATALOG-KOPII (przed|po)|zastany katalog' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "konto zmierzone na hoscie o innej nazwie tez nie pada w wyjsciu"
+zeruj
+env ATRAPA_KTO=wdrozeniowiec ATRAPA_RODZIC_WLASCICIEL=wdrozeniowiec:wdrozeniowiec \
+    ATRAPA_RODZIC_ZAPIS=tak ATRAPA_ZAPIS=nie ATRAPA_WLASCICIEL_PO=wdrozeniowiec:wdrozeniowiec \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --zaloz-katalog-kopii > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "0"
+rowne "wystapien nazwy konta zmierzonego na hoscie" "$(grep -o 'wdrozeniowiec' "$WYJ" | grep -c .)" "0"
+wiekszy_od_zera "linii nazywajacych rozjazd kont" "$(grep -c 'KONTO-INNE-NIZ-ZADANE' "$WYJ")"
+grep -E 'uzytkownik wdrazajacy|KONTO-INNE' "$WYJ" | head -4 | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "zakaz podnoszenia praw obejmuje caly przyrzad po dolozeniu trybu"
 ILE="$(grep -cE 'sudo|chown|chmod' "$PRZYRZAD")"
 rowne "trafien sudo/chown/chmod w pliku przyrzadu" "$ILE" "0"
 ILE_UMASK="$(grep -c 'umask 077' "$PRZYRZAD")"
 wiekszy_od_zera "wystapien 'umask 077' w pliku przyrzadu" "$ILE_UMASK"
-echo "  wiersz: $(grep -n 'umask 077' "$PRZYRZAD")"
+echo "  wiersz: $(grep -n 'umask 077' "$PRZYRZAD" | head -1)"
 koniec_przypadku
-
 
 echo
 echo "PODSUMOWANIE: $ZALICZONE/$WSZYSTKIE przypadkow zaliczonych"
