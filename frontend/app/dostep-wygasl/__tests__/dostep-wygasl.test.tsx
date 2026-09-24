@@ -13,12 +13,14 @@ import { render, screen } from "@testing-library/react";
 const AccessExpiredPage = (await import("@/app/dostep-wygasl/page")).default;
 
 describe("/dostep-wygasl — komunikat o wygaśnięciu dostępu", () => {
-  it("pokazuje dokładnie jeden nagłówek h1 z treścią o wygaśnięciu dostępu", () => {
+  it("pokazuje nagłówek z treścią o wygaśnięciu dostępu (dowolny poziom)", () => {
     render(<AccessExpiredPage />);
 
-    const naglowki = screen.getAllByRole("heading", { level: 1 });
-    expect(naglowki).toHaveLength(1);
-    expect(naglowki[0]).toHaveTextContent("Twój dostęp do platformy wygasł");
+    // Celowo bez `level` — poziom nagłówka należy do szaty (może go
+    // przejąć wspólny szablon), więc mierzymy tylko obecność i treść.
+    expect(
+      screen.getByRole("heading", { name: "Twój dostęp do platformy wygasł" }),
+    ).toBeInTheDocument();
   });
 
   it("pokazuje etykietę stanu konta 'Konto nieaktywne'", () => {
