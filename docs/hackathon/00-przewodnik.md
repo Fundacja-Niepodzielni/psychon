@@ -143,7 +143,7 @@ go do minimum ★ albo dołącza do zespołu osobę ze sztabu.
 | H0 | otwarcie: 30 min plenarnie (zasady twarde, mapa dokumentów) + 20 min breakouty torowe + 15 min zespół↔liaison nad kartą pakietu |
 | H0–H2 | potwierdzenie środowisk (pre-flight był wcześniej — tu tylko wyjątki); start pracy |
 | **H5** | **sanity kontraktu:** każdy zespół ma na main 1 endpoint w kopercie albo 1 ekran na design systemie |
-| **H8** | **punkt kontrolny 1:** pakiety P0 — happy path API na stagingu |
+| **H8** | **punkt kontrolny 1:** pakiety priorytetowe — happy path API na stagingu |
 | H12 | półmetek: mapa stanu na tablicy; decyzje kapitana o cięciu do ★ / wzmocnieniu |
 | **H13–14** | **próba integracyjna:** obowiązkowy merge wszystkiego, co P0 ma; przebieg E2E; lista blokerów ogłoszona o H15 |
 | **H16** | **punkt kontrolny 2:** ścieżka demo P0 przechodzi na stagingu (H01→H05→H06→H10→H16→H13★→H18/H19/H21) |

@@ -7,8 +7,8 @@ M1–M21; odwołania typu „M2 pkt 4" = numerowany punkt w sekcji modułu). Sta
 seedów, do którego odwołują się kryteria: `04-seed-demo.md`. Zachowanie ekranów: makieta.
 
 **Priorytety:** **P0** — składają się na pełną ścieżkę demo uczestnika (rozdawane
-najpierw, kluczowe z podwójną obsadą — patrz przewodnik §3); P1 — pełny program;
-P2 — dopełnienie. **Rozmiary w osobogodzinach zespołu:** S ≈ 25 h · M ≈ 60 h ·
+najpierw, kluczowe z podwójną obsadą — patrz przewodnik §3); drugi poziom priorytetu — pełny program;
+trzeci poziom priorytetu — dopełnienie. **Rozmiary w osobogodzinach zespołu:** S ≈ 25 h · M ≈ 60 h ·
 L ≈ 100 h (zespół 4–5 osób ma ~80–100 osobogodzin na dobę, z czego 1/4 zjada nauka
 projektu — realnie zespół domyka jeden pakiet M/L albo dwa S).
 
@@ -39,7 +39,7 @@ realokacji o H12 tniemy do ★. Pozostałe kryteria to pełny zakres.
 | H20 | Raporty i widoki dziennika działań | P2 | M | M15 |
 | H21 | Onboarding „Zacznij tutaj" | **P0** | S | M16 |
 
-„P0.5" = rozdawane natychmiast po obsadzeniu P0 — bez nich karta osoby i warunki
+Pakiety H11 i H12 trzeba obsadzić od razu — bez nich karta osoby i warunki
 certyfikatu pokazują puste sekcje.
 
 ## Poza pakietami — świadomie (żeby nikt tego nie szukał)

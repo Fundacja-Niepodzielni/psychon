@@ -40,8 +40,8 @@ Alternatywa odrzucona: przypisanie wszystkich pakietów osobom z góry. Utrudnia
 Kolejka jest podzielona na trzy fale:
 
 1. P0 i minimum ★: H01, H02, H05, H06, H10, H13★, H16, H18, H19, H21.
-2. P0.5 i P1: H03, H04, H07, H08, H09, H11, H12 oraz pełny zakres H13.
-3. P2: H14, H15, H17, H20.
+2. Druga fala: H03, H04, H07, H08, H09, H11, H12 oraz pełny zakres H13.
+3. Trzecia fala: H14, H15, H17, H20.
 
 W obrębie fali pobierany jest pakiet gotowy do pracy, z uwzględnieniem własności plików i dostępnych slotów opisanych w przewodniku hackathonu.
 

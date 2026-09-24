@@ -257,12 +257,12 @@ H08a. Potrzebuje natomiast pozycji w pozostałych rejestrach (patrz §5).
 | **Migracje zamrożone** | Zero migracji, schemat wystarcza | `course_assignments` i `instructor_profiles` używamy **jak są**; brak kolumny = brak funkcji, nie nowa kolumna |
 | **Zero nowych zależności** | Bez composer/npm i bibliotek UI | Panel przypisań i wizytówka z istniejących 8 komponentów `components/ui/` + tokenów; modal wzorem `ReorderConfirmModal` (natywny `<dialog>` + `showModal()`) |
 | **Jeden plik tras na pakiet** | Edytujemy **wyłącznie** `backend/routes/api/h09.php` | Wszystkie trasy H09 tam, za `config('features.h09')`, wzór `routes/api/h19.php:21-29` |
-| **D10 / K12 — audyt operacji podrzędnych** | Nie wymyślamy slugów; mapowanie na sluga właściciela + `details` | H09 **ma własne slugi** w rejestrze §3.2: `assignment.created`, `assignment.removed`. Operacje **na wizytówce** slugów nie mają → mapować na istniejący slug z `details.op` albo pytanie do strażnika (K7, §6) |
+| **Audyt operacji podrzędnych (D10)** | Nie wymyślamy slugów; mapowanie na sluga właściciela + `details` | H09 **ma własne slugi** w rejestrze §3.2: `assignment.created`, `assignment.removed`. Operacje **na wizytówce** slugów nie mają → mapować na istniejący slug z `details.op` albo pytanie zgłoszone jako K7 (§6) |
 | **Kody błędów (plan H08, „Implementation Approach")** | Wyprowadzone z tabeli §1.1 kontraktu, nie z nowej decyzji | reguła domenowa blokująca operację → **422 `conditions_not_met`** z `reason`; błędy pól → **422 `validation_failed`**; cudzy/nieistniejący zasób po id → **404 `not_found`**; brak roli → **403 `forbidden`** (middleware) |
-| **R8 — bramka `PublicRoutesSmokeTest`** | Nic nie dopisujemy do `config/public_routes.php` | `GET /instructors` **nie jest publiczne** — ekran `#/prowadzacy` jest za logowaniem. Lista publicznych tras (login, reset, activate, `verify/*`, `materials/*/download`) pozostaje nietknięta |
-| **R2 — pełna suita, nie `--filter`** | H19 pominął ten krok i to wypłynęło w review | Po każdej fazie `docker compose exec app php artisan test` w całości |
-| **R7 — tablica na `main`** | Zakaz `git push origin main` | Rezerwacja H09 idzie osobną gałęzią `docs/board-h09-claim` → PR → merge przez kogoś innego (precedens: `docs/board-h15-claim`, `docs/status-sync-h02-h12`) |
-| **R1 — los H12** | Brak sekcji kontraktu → `BLOCKED` przy review | **Kontrakt nie ma sekcji §2 dla H09** (sprawdzone: `grep instructors\|assignments` po `02-kontrakt-api.md` = zero trafień). Zgłoszenie do strażnika **przed** kodem, odpowiedzi dosłownie w `DEMO/H09.md` |
+| **Bramka `PublicRoutesSmokeTest`** | Nic nie dopisujemy do `config/public_routes.php` | `GET /instructors` **nie jest publiczne** — ekran `#/prowadzacy` jest za logowaniem. Lista publicznych tras (login, reset, activate, `verify/*`, `materials/*/download`) pozostaje nietknięta |
+| **Pełna suita, nie `--filter`** | H19 pominął ten krok i to wypłynęło w review | Po każdej fazie `docker compose exec app php artisan test` w całości |
+| **Tablica na `main`** | Zakaz `git push origin main` | Rezerwacja H09 idzie osobną gałęzią `docs/board-h09-claim` → PR → merge przez kogoś innego (precedens: `docs/board-h15-claim`, `docs/status-sync-h02-h12`) |
+| **Los H12** | Brak sekcji kontraktu → `BLOCKED` przy review | **Kontrakt nie ma sekcji §2 dla H09** (sprawdzone: `grep instructors\|assignments` po `02-kontrakt-api.md` = zero trafień). Zgłoszenie pytania **przed** kodem, odpowiedzi dosłownie w `DEMO/H09.md` |
 | **Dyscyplina slotów** | Gość nie edytuje plików hosta | H09 dopisuje **jeden plik + dwie linie** w każdym rejestrze; nigdy nie edytuje stron H05 ani H08a |
 
 **Pliki cudze — bezwzględnie nie dotykamy** (lista z sprintu H08, rozszerzona o pliki
@@ -377,7 +377,7 @@ Odpowiedzi trafiają **dosłownie** do `DEMO/H09.md` (wzór: `DEMO/H05.md`).
 | **RC** | Kolizja o ekran `#/admin/kursy` z H08b | Regiony są rozłączne: H08b bierze `course-materials` i `course-actions`, H09 bierze `course-assignments`. Zero wspólnych plików poza dwiema liniami rejestru |
 | **RD** | Kryterium 3 wymaga **testu wspólnego z H17**, a H17 nie jest jeszcze zrobiony | Test kryterium 3 pisze H09 **po swojej stronie** (resolver: lekcja z przypisaniem → jej prowadzący, bez → kursu; pytanie odpowiedziane zachowuje `answered_by`). Handshake z H17 zgłosić jako K8 i odnotować w `DEMO/H09.md` |
 | **RE** | Brak kontraktu §2 → `BLOCKED` przy review (los H12) | Zgłoszenie K1–K12 przed kodem; odpowiedzi dosłownie w `DEMO/H09.md` |
-| **RF** | Regresja P0 — zmiana przypisań psuje `GET /courses/{slug}` u uczestnika | Test integracyjny: po odpięciu prowadzącego `data.instructor` = `null`, po przypisaniu = nowa osoba; pełna suita, nie `--filter=H09` |
+| **RF** | Regresja priorytetowa — zmiana przypisań psuje `GET /courses/{slug}` u uczestnika | Test integracyjny: po odpięciu prowadzącego `data.instructor` = `null`, po przypisaniu = nowa osoba; pełna suita, nie `--filter=H09` |
 | **RG** | Limit ~400 linii i jeden otwarty PR na zespół | Podział RA (H09a/H09b) daje naturalną granicę dwóch PR-ów; jeżeli zespół zdecyduje o jednym PR-ze — zapisać to jawnie w `DEMO/H09.md`, jak zrobił H08 |
 
 **Sekwencja rekomendowana:**

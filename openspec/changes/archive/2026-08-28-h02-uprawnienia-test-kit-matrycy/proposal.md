@@ -7,7 +7,7 @@ priorytet **P0**, rozmiar M) dostarcza dokładnie ten wspólny fundament: trait
 `actingAsRole()` do użytku przez wszystkie kolejne pakiety oraz matrycę uprawnień jako
 **jedną tabelę w kodzie**, do której każdy pakiet dopisuje własne trasy jednym wierszem.
 
-Priorytet P0 wynika z tego, że to test-kit, z którego korzystają inne pakiety P0 — im
+Najwyższy priorytet wynika z tego, że to test-kit, z którego korzystają inne priorytetowe pakiety — im
 później wyląduje, tym więcej zespołów pisze tymczasowe własne warianty do wyrzucenia.
 Rozmiar M, mimo pozornie wąskiego zakresu, wynika z konieczności pokrycia całej matrycy
 ról × tras już istniejących w kodzie (H01, H16) oraz z frontowej części kryterium ★2,

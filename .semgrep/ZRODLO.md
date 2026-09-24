@@ -13,7 +13,7 @@ Reguły leżą więc w `.semgrep/reguly/` i skan idzie `--config .semgrep/reguly
 Zestaw poniżej został pobrany **2026-09-10** i od tego dnia nie dowiaduje się o nowych regułach
 ani o poprawkach w istniejących. Im dalej od tej daty, tym więcej skaner przeoczy.
 
-## Odświeżenie jest osobną rundą, nie „kiedyś"
+## Odświeżenie jest osobnym zadaniem, nie „kiedyś"
 
 Podmiana migawki zmienia liczbę trafień, więc jest zmianą przyrządu i wymaga własnego biegu
 zielony → czerwony → zielony oraz przeglądu różnicy trafień. Nie robi się tego przy okazji

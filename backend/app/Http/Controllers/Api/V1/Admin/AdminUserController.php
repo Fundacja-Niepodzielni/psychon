@@ -242,7 +242,7 @@ class AdminUserController extends Controller
      * roli `super_admin` i nie zmienia kont, które już ją mają. Rzut przed
      * zapisem i audytem, więc audyt nie rośnie.
      *
-     * R2: the ACTOR's role comes from the token (`TokenRoles`, membership —
+     * Per R2 (`docs/testy/00-stos-izolowany-i-baza-testowa.md` §14): the ACTOR's role comes from the token (`TokenRoles`, membership —
      * a super_admin who also happens to hold `project_manager` is never
      * caught by this restriction). `$target->role` stays a legitimate local
      * read here: it is the local business-role copy of a THIRD-PARTY row,

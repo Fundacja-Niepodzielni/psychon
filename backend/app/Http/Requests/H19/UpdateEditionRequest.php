@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * PATCH /admin/edition — częściowa aktualizacja aktywnej edycji. Zakresy
- * zgodnie z design.md D4: pola procentowe 0-100, pola licznikowe ≥1.
+ * zgodnie z `openspec/changes/archive/2026-08-28-h19-pulpit-i-ustawienia/design.md` (D4): pola procentowe 0-100, pola licznikowe ≥1.
  */
 class UpdateEditionRequest extends FormRequest
 {
