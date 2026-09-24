@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import axe from "axe-core";
+import { axeViolations } from "../../__tests__/axe-helper";
 import PanelNav, { type PanelNavGroup } from "@/components/organisms/PanelNav";
 
 const grupyPlaskie: PanelNavGroup[] = [
@@ -64,7 +64,7 @@ describe("PanelNav", () => {
       <PanelNav groups={grupyNazwane} currentPath="/panel/kursy" />,
     );
 
-    const results = await axe.run(container);
-    expect(results.violations).toEqual([]);
+    const naruszenia = await axeViolations(container);
+    expect(naruszenia).toEqual([]);
   });
 });

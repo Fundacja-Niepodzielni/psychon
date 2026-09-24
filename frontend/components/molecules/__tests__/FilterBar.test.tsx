@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import FilterBar from "@/components/molecules/FilterBar";
-import { axeViolations } from "./axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 describe("FilterBar", () => {
   it("grupuje kontrolki filtrów jako role=group z etykietą domyślną", () => {

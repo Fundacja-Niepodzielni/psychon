@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import QueueRow from "@/components/molecules/QueueRow";
-import { axeViolations } from "./axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 describe("QueueRow", () => {
   it("wyłączony: aria-disabled=true", () => {

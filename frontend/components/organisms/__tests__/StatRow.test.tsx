@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import StatRow from "@/components/organisms/StatRow";
-import { axeViolations } from "../../molecules/__tests__/axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 const cztery = [
   { value: 12, label: "Kursy", dominant: true, context: "+3 w tym miesiącu" },

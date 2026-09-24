@@ -2,7 +2,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import axe from "axe-core";
+import { axeViolations } from "../../__tests__/axe-helper";
 import ConfirmDialog from "@/components/organisms/ConfirmDialog";
 
 describe("ConfirmDialog", () => {
@@ -448,7 +448,7 @@ describe("ConfirmDialog", () => {
       />,
     );
 
-    const results = await axe.run(container);
-    expect(results.violations).toEqual([]);
+    const naruszenia = await axeViolations(container);
+    expect(naruszenia).toEqual([]);
   });
 });

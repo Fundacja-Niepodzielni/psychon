@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import axe from "axe-core";
+import { axeViolations } from "../../__tests__/axe-helper";
 import SupportBlock from "@/components/organisms/SupportBlock";
 
 describe("SupportBlock", () => {
@@ -37,7 +37,7 @@ describe("SupportBlock", () => {
       />,
     );
 
-    const results = await axe.run(container);
-    expect(results.violations).toEqual([]);
+    const naruszenia = await axeViolations(container);
+    expect(naruszenia).toEqual([]);
   });
 });

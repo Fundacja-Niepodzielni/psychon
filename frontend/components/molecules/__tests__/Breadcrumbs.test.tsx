@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Breadcrumbs from "@/components/molecules/Breadcrumbs";
-import { axeViolations } from "./axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 const items = [
   { label: "Panel", href: "/panel" },

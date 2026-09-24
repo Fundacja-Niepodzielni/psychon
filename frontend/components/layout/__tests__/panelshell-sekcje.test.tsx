@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import axe from "axe-core";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 /**
  * Menu paneli w sekcjach: nagłówek sekcji jest przyciskiem, zwinięcie
@@ -157,8 +157,8 @@ describe("PanelShell — sekcje menu administracji", () => {
 
   it("axe: 0 naruszeń w szkielecie z sekcjami", async () => {
     const { container } = renderAdmin();
-    const wynik = await axe.run(container);
-    expect(wynik.violations).toEqual([]);
+    const naruszenia = await axeViolations(container);
+    expect(naruszenia).toEqual([]);
   });
 });
 

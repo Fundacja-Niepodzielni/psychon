@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DataTable, { type DataTableColumn } from "@/components/organisms/DataTable";
-import { axeViolations } from "../../molecules/__tests__/axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 import { wywolajResizeObserver } from "../../../__tests__/setup";
 
 // Zaślepka `ResizeObserver` (działająca, nie pusta) mieszka we wspólnym

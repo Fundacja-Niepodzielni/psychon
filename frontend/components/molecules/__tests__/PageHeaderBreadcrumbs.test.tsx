@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import PageHeader from "@/components/molecules/PageHeader";
 import Breadcrumbs from "@/components/molecules/Breadcrumbs";
-import { axeViolations } from "./axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 describe("PageHeader ze slotem okruszków", () => {
   it("renderuje okruszki nad h1, gdy podane w slocie breadcrumbs", () => {

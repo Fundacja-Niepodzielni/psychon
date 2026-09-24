@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RecordList from "@/components/organisms/RecordList";
-import { axeViolations } from "../../molecules/__tests__/axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 interface Wiersz {
   id: number;

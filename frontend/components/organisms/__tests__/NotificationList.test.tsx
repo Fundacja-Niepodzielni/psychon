@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import axe from "axe-core";
+import { axeViolations } from "../../__tests__/axe-helper";
 import NotificationList from "@/components/organisms/NotificationList";
 import type { NotificationItem } from "@/lib/notifications/types";
 
@@ -73,7 +73,7 @@ describe("NotificationList", () => {
   it("axe: 0 naruszeń na wyrenderowanej liście", async () => {
     const { container } = render(<NotificationList items={pozycje} />);
 
-    const results = await axe.run(container);
-    expect(results.violations).toEqual([]);
+    const naruszenia = await axeViolations(container);
+    expect(naruszenia).toEqual([]);
   });
 });

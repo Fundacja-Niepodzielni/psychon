@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import axe from "axe-core";
+import { axeViolations } from "../../__tests__/axe-helper";
 import RecordForm, { type RecordFormField } from "@/components/organisms/RecordForm";
 
 const pola: RecordFormField[] = [
@@ -206,7 +206,7 @@ describe("RecordForm", () => {
       />,
     );
 
-    const results = await axe.run(container);
-    expect(results.violations).toEqual([]);
+    const naruszenia = await axeViolations(container);
+    expect(naruszenia).toEqual([]);
   });
 });

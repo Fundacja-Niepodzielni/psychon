@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import StatTile from "@/components/molecules/StatTile";
-import { axeViolations } from "./axe-helper";
+import { axeViolations } from "../../__tests__/axe-helper";
 
 describe("StatTile", () => {
   it("pokazuje jedną liczbę i etykietę (wariant zwykła domyślnie)", () => {

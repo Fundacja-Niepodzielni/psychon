@@ -1,7 +1,8 @@
 /**
- * Wspólny pomocnik axe-core dla świadków molekuł i organizmów listy.
- * Jedno miejsce dla obu katalogów `__tests__` — druga kopia tej samej
- * konfiguracji rozjeżdża się przy pierwszej zmianie reguł.
+ * Wspólny pomocnik axe-core dla świadków molekuł, organizmów i layoutu.
+ * Jedno miejsce dla wszystkich katalogów `__tests__` pod `components/` —
+ * druga kopia tej samej konfiguracji rozjeżdża się przy pierwszej zmianie
+ * reguł.
  *
  * jsdom nie renderuje pikseli, więc `getComputedStyle` nie liczy realnego
  * kontrastu tła i tekstu. Regułę `color-contrast` wyłączamy tutaj świadomie:
