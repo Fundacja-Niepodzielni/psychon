@@ -7,6 +7,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, ApiError, getToken } from "@/lib/api";
 import {
   fetchCertificateConditions,
@@ -38,12 +39,25 @@ const SOURCE_NAME: Partial<Record<Condition["key"], string>> = {
 };
 
 function hasCount(c: Condition): boolean {
-  return c.done !== undefined && c.done !== null && c.required !== undefined && c.required !== null;
+  return (
+    c.done !== undefined &&
+    c.done !== null &&
+    c.required !== undefined &&
+    c.required !== null
+  );
 }
 
 /** Brakujące pole liczbowe pokazujemy jako "brak danych", nigdy jako 0. */
-function formatCount(done?: number | string, required?: number | string): string {
-  if (done === undefined || done === null || required === undefined || required === null) {
+function formatCount(
+  done?: number | string,
+  required?: number | string,
+): string {
+  if (
+    done === undefined ||
+    done === null ||
+    required === undefined ||
+    required === null
+  ) {
     return "brak danych";
   }
   return `${done} / ${required}`;
@@ -107,7 +121,9 @@ export default function CertificatePage() {
       } else if (err instanceof ApiError) {
         setActionError(err.message);
       } else {
-        setActionError("Nie udało się rozpocząć generowania. Spróbuj ponownie.");
+        setActionError(
+          "Nie udało się rozpocząć generowania. Spróbuj ponownie.",
+        );
       }
     }
   }
@@ -116,11 +132,13 @@ export default function CertificatePage() {
     setActionError(null);
     setIssue("downloading");
     try {
-      const base =
-        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const res = await fetch(`${base.replace(/\/+$/, "")}/api/v1/certificate/download`, {
-        headers: { Authorization: `Bearer ${(await getToken()) ?? ""}` },
-      });
+      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const res = await fetch(
+        `${base.replace(/\/+$/, "")}/api/v1/certificate/download`,
+        {
+          headers: { Authorization: `Bearer ${(await getToken()) ?? ""}` },
+        },
+      );
       if (res.status === 404) {
         setActionError(
           "Certyfikat jeszcze się generuje. Spróbuj ponownie za chwilę.",
@@ -148,92 +166,101 @@ export default function CertificatePage() {
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-xl py-10">
-        <Alert variant="error">{loadError}</Alert>
-      </div>
+      <PageTemplate naglowek={{ title: "Certyfikat ukończenia programu" }}>
+        <div className="mx-auto max-w-xl py-10">
+          <Alert variant="error">{loadError}</Alert>
+        </div>
+      </PageTemplate>
     );
   }
 
   if (!data) {
-    return <p className="text-body text-muted">Wczytywanie…</p>;
+    return (
+      <PageTemplate naglowek={{ title: "Certyfikat ukończenia programu" }}>
+        <p className="text-body text-muted">Wczytywanie…</p>
+      </PageTemplate>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-h2 font-black text-ink">Certyfikat ukończenia programu</h1>
+    <PageTemplate naglowek={{ title: "Certyfikat ukończenia programu" }}>
+      <div className="flex flex-col gap-6">
+        <Card title="Warunki ukończenia">
+          <ul className="flex flex-col divide-y divide-line">
+            {data.conditions.map((c) => {
+              const href = SOURCE_HREF[c.key];
+              const count = formatCount(c.done, c.required);
 
-      <Card title="Warunki ukończenia">
-        <ul className="flex flex-col divide-y divide-line">
-          {data.conditions.map((c) => {
-            const href = SOURCE_HREF[c.key];
-            const count = formatCount(c.done, c.required);
+              return (
+                <li key={c.key} className="flex flex-col gap-2 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-body text-ink">{c.label}</span>
+                    <span className="flex items-center gap-3">
+                      {c.key !== "workshop" &&
+                        (href ? (
+                          <Link
+                            href={href}
+                            aria-label={`${c.label}: ${count} — przejdź do ${SOURCE_NAME[c.key]}`}
+                            className="text-small font-bold text-ink underline underline-offset-4 hover:text-accent focus-visible:focus-ring"
+                          >
+                            {count}
+                          </Link>
+                        ) : (
+                          <span className="text-small font-bold text-ink">
+                            {count}
+                          </span>
+                        ))}
+                      <Badge variant={c.met ? "success" : "warning"}>
+                        {c.met ? "spełniony" : "w toku"}
+                      </Badge>
+                    </span>
+                  </div>
+                  {c.key !== "workshop" && hasCount(c) && (
+                    <ProgressBar
+                      value={percent(c.done, c.required)}
+                      label={`Postęp: ${c.label}`}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 flex items-center justify-between gap-4 border-t border-line pt-3 text-body text-ink">
+            <span>Zaliczone testy</span>
+            <span className="text-small font-bold text-ink">
+              {formatPassedTestsCount(data.passed_tests_count)}
+            </span>
+          </p>
+        </Card>
 
-            return (
-              <li key={c.key} className="flex flex-col gap-2 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-body text-ink">{c.label}</span>
-                  <span className="flex items-center gap-3">
-                    {c.key !== "workshop" &&
-                      (href ? (
-                        <Link
-                          href={href}
-                          aria-label={`${c.label}: ${count} — przejdź do ${SOURCE_NAME[c.key]}`}
-                          className="text-small font-bold text-ink underline underline-offset-4 hover:text-accent focus-visible:focus-ring"
-                        >
-                          {count}
-                        </Link>
-                      ) : (
-                        <span className="text-small font-bold text-ink">{count}</span>
-                      ))}
-                    <Badge variant={c.met ? "success" : "warning"}>
-                      {c.met ? "spełniony" : "w toku"}
-                    </Badge>
-                  </span>
-                </div>
-                {c.key !== "workshop" && hasCount(c) && (
-                  <ProgressBar
-                    value={percent(c.done, c.required)}
-                    label={`Postęp: ${c.label}`}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-        <p className="mt-3 flex items-center justify-between gap-4 border-t border-line pt-3 text-body text-ink">
-          <span>Zaliczone testy</span>
-          <span className="text-small font-bold text-ink">
-            {formatPassedTestsCount(data.passed_tests_count)}
-          </span>
-        </p>
-      </Card>
+        {actionError && <Alert variant="error">{actionError}</Alert>}
 
-      {actionError && <Alert variant="error">{actionError}</Alert>}
-
-      {data.eligible ? (
-        issue === "idle" ? (
-          <div>
-            <Alert variant="success" className="mb-4">
-              Wszystkie warunki są spełnione. Możesz wygenerować certyfikat.
-            </Alert>
-            <Button onClick={generate}>Wygeneruj certyfikat</Button>
-          </div>
+        {data.eligible ? (
+          issue === "idle" ? (
+            <div>
+              <Alert variant="success" className="mb-4">
+                Wszystkie warunki są spełnione. Możesz wygenerować certyfikat.
+              </Alert>
+              <Button onClick={generate}>Wygeneruj certyfikat</Button>
+            </div>
+          ) : (
+            <Card>
+              <p className="mb-3 text-body text-muted">
+                Certyfikat został zlecony do wygenerowania. Plik będzie gotowy
+                za chwilę.
+              </p>
+              <Button onClick={download} loading={issue === "downloading"}>
+                Pobierz certyfikat
+              </Button>
+            </Card>
+          )
         ) : (
-          <Card>
-            <p className="mb-3 text-body text-muted">
-              Certyfikat został zlecony do wygenerowania. Plik będzie gotowy za
-              chwilę.
-            </p>
-            <Button onClick={download} loading={issue === "downloading"}>
-              Pobierz certyfikat
-            </Button>
-          </Card>
-        )
-      ) : (
-        <Alert variant="info">
-          Certyfikat będzie dostępny po spełnieniu wszystkich czterech warunków.
-        </Alert>
-      )}
-    </div>
+          <Alert variant="info">
+            Certyfikat będzie dostępny po spełnieniu wszystkich czterech
+            warunków.
+          </Alert>
+        )}
+      </div>
+    </PageTemplate>
   );
 }

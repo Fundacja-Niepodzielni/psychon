@@ -11,6 +11,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, ApiError, apiPaged } from "@/lib/api";
 
 interface Answer {
@@ -174,38 +175,51 @@ export default function CourseTestPage() {
   );
 
   if (phase === "loading") {
-    return <LoadingState label="Wczytywanie testu…" />;
+    return (
+      <PageTemplate naglowek={{ title: "Test wiedzy" }}>
+        <LoadingState label="Wczytywanie testu…" />
+      </PageTemplate>
+    );
   }
 
   if (phase === "locked") {
     return (
-      <div className="mx-auto flex max-w-xl flex-col gap-4 py-10">
-        <h1 className="text-h2 font-black text-ink">Test niedostępny</h1>
-        <Alert variant="info" title="Ten etap jest jeszcze zamknięty">
-          {message ?? "Ukończ najpierw poprzedni etap ścieżki."}
-        </Alert>
-        {backToCourse}
-      </div>
+      <PageTemplate naglowek={{ title: "Test niedostępny" }}>
+        <div className="mx-auto flex max-w-xl flex-col gap-4 py-10">
+          <Alert variant="info" title="Ten etap jest jeszcze zamknięty">
+            {message ?? "Ukończ najpierw poprzedni etap ścieżki."}
+          </Alert>
+          {backToCourse}
+        </div>
+      </PageTemplate>
     );
   }
 
   if (phase === "error") {
     if (!canRetry) {
-      return <ForbiddenState message={message ?? undefined} />;
+      return (
+        <PageTemplate naglowek={{ title: "Test wiedzy" }}>
+          <ForbiddenState message={message ?? undefined} />
+        </PageTemplate>
+      );
     }
 
     return (
-      <div className="mx-auto max-w-xl py-10">
-        <ErrorState message={message ?? "Wystąpił błąd."} onRetry={restart} />
-      </div>
+      <PageTemplate naglowek={{ title: "Test wiedzy" }}>
+        <div className="mx-auto max-w-xl py-10">
+          <ErrorState message={message ?? "Wystąpił błąd."} onRetry={restart} />
+        </div>
+      </PageTemplate>
     );
   }
 
   if (!test) {
     return (
-      <div className="mx-auto max-w-xl py-10">
-        <ErrorState message="Wystąpił błąd." onRetry={restart} />
-      </div>
+      <PageTemplate naglowek={{ title: "Test wiedzy" }}>
+        <div className="mx-auto max-w-xl py-10">
+          <ErrorState message="Wystąpił błąd." onRetry={restart} />
+        </div>
+      </PageTemplate>
     );
   }
 
@@ -234,62 +248,62 @@ export default function CourseTestPage() {
 
   if (phase === "intro") {
     return (
-      <div className="flex max-w-2xl flex-col gap-6">
-        <h1 className="text-h2 font-black text-ink">Test wiedzy</h1>
+      <PageTemplate naglowek={{ title: "Test wiedzy" }}>
+        <div className="flex max-w-2xl flex-col gap-6">
+          <Card>
+            <dl className="grid grid-cols-2 gap-4 text-small">
+              <div>
+                <dt className="text-subtle">Pytania</dt>
+                <dd className="text-body font-bold text-ink">
+                  {test.questions.length}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-subtle">Próg zaliczenia</dt>
+                <dd className="text-body font-bold text-ink">
+                  {test.pass_threshold}%
+                </dd>
+              </div>
+              <div>
+                <dt className="text-subtle">Wykorzystane podejścia</dt>
+                <dd className="text-body font-bold text-ink">
+                  {test.attempts_used} / {test.attempts_limit}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-subtle">Pozostało podejść</dt>
+                <dd className="text-body font-bold text-ink">{attemptsLeft}</dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-small text-muted">
+              Pytania pokazują się pojedynczo, bez możliwości cofania. Po
+              udzieleniu wszystkich odpowiedzi test zostanie sprawdzony
+              automatycznie.
+            </p>
+          </Card>
 
-        <Card>
-          <dl className="grid grid-cols-2 gap-4 text-small">
-            <div>
-              <dt className="text-subtle">Pytania</dt>
-              <dd className="text-body font-bold text-ink">
-                {test.questions.length}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-subtle">Próg zaliczenia</dt>
-              <dd className="text-body font-bold text-ink">
-                {test.pass_threshold}%
-              </dd>
-            </div>
-            <div>
-              <dt className="text-subtle">Wykorzystane podejścia</dt>
-              <dd className="text-body font-bold text-ink">
-                {test.attempts_used} / {test.attempts_limit}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-subtle">Pozostało podejść</dt>
-              <dd className="text-body font-bold text-ink">{attemptsLeft}</dd>
-            </div>
-          </dl>
-          <p className="mt-4 text-small text-muted">
-            Pytania pokazują się pojedynczo, bez możliwości cofania. Po
-            udzieleniu wszystkich odpowiedzi test zostanie sprawdzony
-            automatycznie.
-          </p>
-        </Card>
+          {message && <Alert variant="error">{message}</Alert>}
 
-        {message && <Alert variant="error">{message}</Alert>}
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={() => setPhase("running")}
+              disabled={attemptsLeft === 0}
+            >
+              Rozpocznij test
+            </Button>
+            {backToCourse}
+          </div>
 
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={() => setPhase("running")}
-            disabled={attemptsLeft === 0}
-          >
-            Rozpocznij test
-          </Button>
-          {backToCourse}
+          {attemptsLeft === 0 && (
+            <Alert variant="info">
+              Nie masz już dostępnych podejść. Skontaktuj się z opiekunem
+              projektu, aby zresetować limit.
+            </Alert>
+          )}
+
+          {historyCard}
         </div>
-
-        {attemptsLeft === 0 && (
-          <Alert variant="info">
-            Nie masz już dostępnych podejść. Skontaktuj się z opiekunem
-            projektu, aby zresetować limit.
-          </Alert>
-        )}
-
-        {historyCard}
-      </div>
+      </PageTemplate>
     );
   }
 
@@ -298,73 +312,75 @@ export default function CourseTestPage() {
     const answeredCount = Object.keys(picked).length;
 
     return (
-      <div className="flex max-w-2xl flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <span className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Pytanie {current + 1} z {test.questions.length}
-          </span>
-          <ProgressBar
-            value={(answeredCount / test.questions.length) * 100}
-            label="Postęp testu"
-          />
+      <PageTemplate naglowek={{ title: "Test wiedzy" }}>
+        <div className="flex max-w-2xl flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-caption font-bold uppercase tracking-wide text-subtle">
+              Pytanie {current + 1} z {test.questions.length}
+            </span>
+            <ProgressBar
+              value={(answeredCount / test.questions.length) * 100}
+              label="Postęp testu"
+            />
+          </div>
+
+          <Card>
+            <fieldset className="flex flex-col gap-4">
+              <legend className="mb-2 text-h4 font-bold text-ink">
+                {question.body}
+              </legend>
+              {question.answers.map((answer) => {
+                const selected = picked[question.id] === answer.id;
+                return (
+                  <label
+                    key={answer.id}
+                    className={`flex cursor-pointer items-start gap-3 rounded-sm border px-4 py-3 text-body transition-colors ${
+                      selected
+                        ? "border-primary bg-brand-10 text-ink"
+                        : "border-line bg-card text-muted hover:bg-grey"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name={`question-${question.id}`}
+                      className="mt-1 accent-primary"
+                      checked={selected}
+                      onChange={() =>
+                        setPicked((prev) => ({
+                          ...prev,
+                          [question.id]: answer.id,
+                        }))
+                      }
+                    />
+                    <span>{answer.body}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
+          </Card>
+
+          {message && <Alert variant="error">{message}</Alert>}
+
+          <div className="flex justify-end">
+            {isLast ? (
+              <Button
+                onClick={submit}
+                disabled={!answeredCurrent}
+                loading={submitting}
+              >
+                Zakończ i sprawdź
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setCurrent((i) => i + 1)}
+                disabled={!answeredCurrent}
+              >
+                Następne pytanie
+              </Button>
+            )}
+          </div>
         </div>
-
-        <Card>
-          <fieldset className="flex flex-col gap-4">
-            <legend className="mb-2 text-h4 font-bold text-ink">
-              {question.body}
-            </legend>
-            {question.answers.map((answer) => {
-              const selected = picked[question.id] === answer.id;
-              return (
-                <label
-                  key={answer.id}
-                  className={`flex cursor-pointer items-start gap-3 rounded-sm border px-4 py-3 text-body transition-colors ${
-                    selected
-                      ? "border-primary bg-brand-10 text-ink"
-                      : "border-line bg-card text-muted hover:bg-grey"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`question-${question.id}`}
-                    className="mt-1 accent-primary"
-                    checked={selected}
-                    onChange={() =>
-                      setPicked((prev) => ({
-                        ...prev,
-                        [question.id]: answer.id,
-                      }))
-                    }
-                  />
-                  <span>{answer.body}</span>
-                </label>
-              );
-            })}
-          </fieldset>
-        </Card>
-
-        {message && <Alert variant="error">{message}</Alert>}
-
-        <div className="flex justify-end">
-          {isLast ? (
-            <Button
-              onClick={submit}
-              disabled={!answeredCurrent}
-              loading={submitting}
-            >
-              Zakończ i sprawdź
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setCurrent((i) => i + 1)}
-              disabled={!answeredCurrent}
-            >
-              Następne pytanie
-            </Button>
-          )}
-        </div>
-      </div>
+      </PageTemplate>
     );
   }
 
@@ -375,63 +391,63 @@ export default function CourseTestPage() {
       .filter((q): q is Question => q !== undefined) ?? [];
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-h2 font-black text-ink">Wynik testu</h1>
+    <PageTemplate naglowek={{ title: "Wynik testu" }}>
+      <div className="flex max-w-2xl flex-col gap-6">
+        {message && !result && <Alert variant="error">{message}</Alert>}
 
-      {message && !result && <Alert variant="error">{message}</Alert>}
-
-      {result && (
-        <>
-          <Card warm={!result.passed}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-caption text-subtle">
-                  Podejście {result.attempt_number}
-                </p>
-                <p className="text-h1 font-black text-ink">
-                  {result.score_percent}%
-                </p>
-                <p className="text-small text-muted">
-                  Próg zaliczenia: {test.pass_threshold}%
-                </p>
+        {result && (
+          <>
+            <Card warm={!result.passed}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-caption text-subtle">
+                    Podejście {result.attempt_number}
+                  </p>
+                  <p className="text-h1 font-black text-ink">
+                    {result.score_percent}%
+                  </p>
+                  <p className="text-small text-muted">
+                    Próg zaliczenia: {test.pass_threshold}%
+                  </p>
+                </div>
+                <Badge variant={result.passed ? "success" : "danger"}>
+                  {result.passed ? "Zaliczony" : "Niezaliczony"}
+                </Badge>
               </div>
-              <Badge variant={result.passed ? "success" : "danger"}>
-                {result.passed ? "Zaliczony" : "Niezaliczony"}
-              </Badge>
-            </div>
-          </Card>
-
-          <Alert variant={result.passed ? "success" : "error"}>
-            {result.passed
-              ? "Gratulacje — kolejny etap ścieżki został odblokowany."
-              : `Test niezaliczony. Pozostało podejść: ${Math.max(
-                  0,
-                  test.attempts_limit - result.attempt_number,
-                )}.`}
-          </Alert>
-
-          {wrongQuestions.length > 0 && (
-            <Card title="Pytania z błędną odpowiedzią">
-              <ol className="flex list-decimal flex-col gap-2 pl-5 text-body text-muted">
-                {wrongQuestions.map((q) => (
-                  <li key={q.id}>{q.body}</li>
-                ))}
-              </ol>
             </Card>
-          )}
-        </>
-      )}
 
-      <div className="flex items-center gap-4">
-        {result &&
-          !result.passed &&
-          result.attempt_number < test.attempts_limit && (
-            <Button onClick={restart}>Podejdź ponownie</Button>
-          )}
-        {backToCourse}
+            <Alert variant={result.passed ? "success" : "error"}>
+              {result.passed
+                ? "Gratulacje — kolejny etap ścieżki został odblokowany."
+                : `Test niezaliczony. Pozostało podejść: ${Math.max(
+                    0,
+                    test.attempts_limit - result.attempt_number,
+                  )}.`}
+            </Alert>
+
+            {wrongQuestions.length > 0 && (
+              <Card title="Pytania z błędną odpowiedzią">
+                <ol className="flex list-decimal flex-col gap-2 pl-5 text-body text-muted">
+                  {wrongQuestions.map((q) => (
+                    <li key={q.id}>{q.body}</li>
+                  ))}
+                </ol>
+              </Card>
+            )}
+          </>
+        )}
+
+        <div className="flex items-center gap-4">
+          {result &&
+            !result.passed &&
+            result.attempt_number < test.attempts_limit && (
+              <Button onClick={restart}>Podejdź ponownie</Button>
+            )}
+          {backToCourse}
+        </div>
+
+        {historyCard}
       </div>
-
-      {historyCard}
-    </div>
+    </PageTemplate>
   );
 }
