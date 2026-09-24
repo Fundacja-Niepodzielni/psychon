@@ -166,7 +166,7 @@ class PsychologistProfileController extends Controller
             $profile->forceFill(['status' => 'withdrawn'])->save();
 
             // Slug `profile.withdrawn` jest w rejestrze kontraktu (§3.1 i §3.2)
-            // od rozstrzygnięcia D21/D22 — wpis audytowy i powiadomienie zespołu
+            // Wpis audytowy i powiadomienie zespołu
             // idą w tej samej transakcji co zmiana statusu, więc zespół nie może
             // zobaczyć wycofanego wniosku bez śladu w dzienniku.
             AuditLog::record($user, 'profile.withdrawn', $profile, ['profile_id' => $profile->id]);

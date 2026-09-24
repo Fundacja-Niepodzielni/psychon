@@ -102,6 +102,6 @@ mają zupełnie inne wejścia (plik vs e-mail) mimo wspólnego slotu w `#/admin/
 
 `time-limited-access` (H04), `permission-matrix-testkit` (H02),
 `reports-and-audit-log` (H20) i `documents` (H14) mają specs, które prawdo­
-podobnie dostaną drugą rundę `ADDED`/`MODIFIED Requirements` już po pierwszym mergu —
+podobnie dostaną kolejne uzupełnienie `ADDED`/`MODIFIED Requirements` już po pierwszym mergu —
 ich kompletność zależy od tego, ile innych pakietów wyemitowało zdarzenia/trasy do
 pokrycia. To nie błąd planowania, tylko naturalna kolejność w falach z §6.2.

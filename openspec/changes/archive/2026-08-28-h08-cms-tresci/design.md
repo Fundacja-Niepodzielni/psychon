@@ -249,7 +249,7 @@ H17 wejście w stronę kursu H05.
   fazy 7, przed pisaniem testu.
 - **Jeden PR na oba sub-pakiety przekracza orientacyjny limit ~400 linii** z przewodnika
   §4 pkt 3. *Świadoma decyzja zespołu:* obie połowy dotykają tego samego ekranu, więc
-  dwie rundy review kosztowałyby więcej niż dają. Granica a/b zostaje granicą faz,
+  dwa niezależne review kosztowałyby więcej niż dają. Granica a/b zostaje granicą faz,
   commitów i jawnego podziału zakresu w `DEMO/H08.md` — czego wprost żąda wiersz 4.4
   tablicy koordynacyjnej.
 

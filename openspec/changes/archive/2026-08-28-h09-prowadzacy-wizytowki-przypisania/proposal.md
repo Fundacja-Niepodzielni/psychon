@@ -41,7 +41,7 @@ trafia do właściwej osoby (M5).
 - Trasy rejestrowane **wyłącznie** w `backend/routes/api/h09.php` za
   `config('features.h09')`. Nic nie trafia do `config/public_routes.php`.
 
-Poza zakresem tej zmiany (świadomie, do osobnej rundy): ekrany Next.js
+Poza zakresem tej zmiany (świadomie, do zrobienia później): ekrany Next.js
 (`#/prowadzacy`, `#/prowadzacy/kursy/:slug`, `#/panel/prowadzacy`), slot wizytówki
 w widoku kursu (`lib/slots/course-page.ts`) oraz `<AssignmentPanel>` w
 `#/admin/kursy` (`lib/slots/admin-courses.ts`, zależny od merge H08a). Ta zmiana
@@ -99,6 +99,6 @@ konsumował, więc `instructor-questions` nie jest tu modyfikowane.
   proponowanych odpowiedzi jest w `DEMO/H9-prep-doc.md` §6, a zatwierdzone
   odpowiedzi trafiają dosłownie do `DEMO/H09.md`. Do czasu odpowiedzi strażnika
   implementacja może ruszyć równolegle, rozjazdy naprawiamy przed PR.
-- Ryzyko regresji P0: zmiana przypisań wpływa na `GET /courses/{slug}` → `data.instructor`.
+- Ryzyko regresji priorytetowej: zmiana przypisań wpływa na `GET /courses/{slug}` → `data.instructor`.
   Pokrywamy testem integracyjnym (po odpięciu `instructor` = `null`, po przypisaniu =
   nowa osoba) i uruchamiamy pełną suitę, nie `--filter`.

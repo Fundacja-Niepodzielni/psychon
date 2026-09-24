@@ -141,7 +141,7 @@ regułę — nie ma dwóch niezależnych źródeł prawdy.
 - **`matrix_5d`/`matrix_5e` pozostają `skipped` do czasu H04/H12** → przez ten czas
   matryca nie weryfikuje realnie scenariuszy dostępu czasowego i superwizji.
   *Mitygacja:* `skipped` (nie usunięte) — widoczne w wyniku testów jako przypomnienie;
-  odznaczenie jest pracą właścicieli H04/H12, nie kolejną rundą H02.
+  odznaczenie jest pracą właścicieli H04/H12, nie kolejnym zadaniem H02.
 - **Odstępstwo od „nie modyfikuj cudzych plików"** (D5) → precedens mógłby skłonić
   kolejny pakiet do podobnej ingerencji bez tak mocnego uzasadnienia.
   *Mitygacja:* uzasadnienie (brak dostępu middleware do `localStorage`, brak

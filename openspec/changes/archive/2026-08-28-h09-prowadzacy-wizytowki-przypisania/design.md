@@ -51,7 +51,7 @@ proponowane odpowiedzi; rozbieżności naprawiamy przed PR i zapisujemy dosłown
 
 - Ekrany Next.js (`#/prowadzacy`, `#/prowadzacy/kursy/:slug`, `#/panel/prowadzacy`),
   slot wizytówki w `lib/slots/course-page.ts`, `<AssignmentPanel>` w
-  `lib/slots/admin-courses.ts`. Osobna runda; `<AssignmentPanel>` dodatkowo czeka
+  `lib/slots/admin-courses.ts`. Osobne zadanie; `<AssignmentPanel>` dodatkowo czeka
   na merge H08a.
 - Routing pytań do prowadzącego — własność H17. H09 dostarcza wyłącznie
   `AssignmentResolver`; H17 go woła.
@@ -60,7 +60,7 @@ proponowane odpowiedzi; rozbieżności naprawiamy przed PR i zapisujemy dosłown
 - Emisja `supervisor.assigned` ani dotykanie `supervisor_assignments` — to
   własność H12/H18. Jedyny „superwizor" H09 to kolumna
   `instructor_profiles.supervisor_id` w wizytówce, ustawiana przez administrację
-  (poza zakresem tej rundy — brak trasy w kontrakcie), prezentowana do odczytu.
+  (poza obecnym zakresem — brak trasy w kontrakcie), prezentowana do odczytu.
 - Nowe kolumny (`course_assignments` nie ma `role`, `is_primary`, `note` —
   nie dorabiamy).
 - Wpis do `config/public_routes.php` — nic nie jest publiczne.

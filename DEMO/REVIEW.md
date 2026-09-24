@@ -500,6 +500,6 @@ Pięć osób, trzy i pół godziny, ~22 tysiące linii, 18 scalonych PR-ów i **
 1. ~~**Status H05 na tablicy** — jest scalony, a wisi jako `W TOKU`.~~ → poprawione na `DONE` (PR #15 scalony).
 2. **Odblokowanie H12** — wymaga decyzji strażnika kontraktu w sprawie DTO superwizji i właściciela endpointu `PUT /admin/users/{id}/supervisor`.
 
-**Najbliższy krok do domknięcia fali P0:** pakiet **H18** (panel osób, wciąż bez właściciela) oraz wspólne przejście ścieżki demo (punkt 3.11 tablicy).
+**Najbliższy krok do domknięcia fali priorytetowej:** pakiet **H18** (panel osób, wciąż bez właściciela) oraz wspólne przejście ścieżki demo (punkt 3.11 tablicy).
 
 </details>
