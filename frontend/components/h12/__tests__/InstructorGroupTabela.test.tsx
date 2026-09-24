@@ -90,57 +90,61 @@ beforeEach(() => {
 
 describe("InstructorGroup — pięć wartości w wierszu uczestnika (G1)", () => {
   it("pokazuje imię i nazwisko uczestnika we własnym wierszu", async () => {
-    api.mockResolvedValueOnce(
-      grupa([czlonek({ first_name: "Marta", last_name: "Zielona" })]),
-    );
+    const decoy = czlonek({ id: 1, first_name: "Ola", last_name: "Wiśniewska" });
+    const target = czlonek({ id: 2, first_name: "Marta", last_name: "Zielona" });
+    api.mockResolvedValueOnce(grupa([decoy, target]));
     render(<InstructorGroup />);
 
     await screen.findByRole("table");
-    const wiersz = screen.getAllByRole("row")[1];
-    expect(within(wiersz).getByText("Marta Zielona")).toBeInTheDocument();
+    const wierszTarget = screen.getAllByRole("row")[2];
+    expect(within(wierszTarget).getByText("Marta Zielona")).toBeInTheDocument();
+    expect(within(wierszTarget).queryByText("Ola Wiśniewska")).not.toBeInTheDocument();
   });
 
   it("pokazuje postęp kursów jako done/total we własnym wierszu", async () => {
-    api.mockResolvedValueOnce(
-      grupa([czlonek({ progress: { courses_done: 3, courses_total: 9 } })]),
-    );
+    const decoy = czlonek({ id: 1, progress: { courses_done: 1, courses_total: 4 } });
+    const target = czlonek({ id: 2, progress: { courses_done: 3, courses_total: 9 } });
+    api.mockResolvedValueOnce(grupa([decoy, target]));
     render(<InstructorGroup />);
 
     await screen.findByRole("table");
-    const wiersz = screen.getAllByRole("row")[1];
-    expect(within(wiersz).getByText("3 / 9")).toBeInTheDocument();
+    const wierszTarget = screen.getAllByRole("row")[2];
+    expect(within(wierszTarget).getByText("3 / 9")).toBeInTheDocument();
+    expect(within(wierszTarget).queryByText("1 / 4")).not.toBeInTheDocument();
   });
 
   it("pokazuje staż w godzinach we własnym wierszu", async () => {
-    api.mockResolvedValueOnce(
-      grupa([czlonek({ progress: { hours_accepted: "57" } })]),
-    );
+    const decoy = czlonek({ id: 1, progress: { hours_accepted: "10" } });
+    const target = czlonek({ id: 2, progress: { hours_accepted: "57" } });
+    api.mockResolvedValueOnce(grupa([decoy, target]));
     render(<InstructorGroup />);
 
     await screen.findByRole("table");
-    const wiersz = screen.getAllByRole("row")[1];
-    expect(within(wiersz).getByText("57 h")).toBeInTheDocument();
+    const wierszTarget = screen.getAllByRole("row")[2];
+    expect(within(wierszTarget).getByText("57 h")).toBeInTheDocument();
+    expect(within(wierszTarget).queryByText("10 h")).not.toBeInTheDocument();
   });
 
   it("pokazuje liczbę superwizji we własnym wierszu", async () => {
-    api.mockResolvedValueOnce(
-      grupa([czlonek({ progress: { supervision_present: 6 } })]),
-    );
+    const decoy = czlonek({ id: 1, progress: { supervision_present: 2 } });
+    const target = czlonek({ id: 2, progress: { supervision_present: 6 } });
+    api.mockResolvedValueOnce(grupa([decoy, target]));
     render(<InstructorGroup />);
 
     await screen.findByRole("table");
-    const wiersz = screen.getAllByRole("row")[1];
-    expect(within(wiersz).getByText("6", { exact: true })).toBeInTheDocument();
+    const wierszTarget = screen.getAllByRole("row")[2];
+    expect(within(wierszTarget).getByText("6", { exact: true })).toBeInTheDocument();
+    expect(within(wierszTarget).queryByText("2", { exact: true })).not.toBeInTheDocument();
   });
 
   it("pokazuje odznakę warsztatu zależną od workshop_done we własnym wierszu", async () => {
-    api.mockResolvedValueOnce(
-      grupa([czlonek({ progress: { workshop_done: true } })]),
-    );
+    const decoy = czlonek({ id: 1, progress: { workshop_done: false } });
+    const target = czlonek({ id: 2, progress: { workshop_done: true } });
+    api.mockResolvedValueOnce(grupa([decoy, target]));
     render(<InstructorGroup />);
 
     await screen.findByRole("table");
-    const wierszUkonczony = screen.getAllByRole("row")[1];
+    const wierszUkonczony = screen.getAllByRole("row")[2];
     expect(within(wierszUkonczony).getByText("Ukończony")).toBeInTheDocument();
     expect(within(wierszUkonczony).queryByText("Nieukończony")).not.toBeInTheDocument();
   });
@@ -157,6 +161,54 @@ describe("InstructorGroup — pięć wartości w wierszu uczestnika (G1)", () =>
     const wierszNieukonczony = screen.getAllByRole("row")[1];
     expect(within(wierszNieukonczony).getByText("Nieukończony")).toBeInTheDocument();
     expect(within(wierszNieukonczony).queryByText("Ukończony")).not.toBeInTheDocument();
+  });
+});
+
+describe("InstructorGroup — pasek postępu wiąże wiersz z paskiem osoby (G2)", () => {
+  it("pasek postępu w kolumnie Kursy ma rolę i nazwę dostępną zgodną z liczbami tej osoby, we własnym wierszu", async () => {
+    const decoy = czlonek({ id: 1, progress: { courses_done: 1, courses_total: 4 } });
+    const target = czlonek({ id: 2, progress: { courses_done: 3, courses_total: 9 } });
+    api.mockResolvedValueOnce(grupa([decoy, target]));
+    render(<InstructorGroup />);
+
+    await screen.findByRole("table");
+    const wiersze = screen.getAllByRole("row");
+    const wierszDecoy = wiersze[1];
+    const wierszTarget = wiersze[2];
+
+    expect(
+      within(wierszTarget).getByRole("progressbar", { name: "Postęp kursów: 3 z 9" }),
+    ).toBeInTheDocument();
+    expect(
+      within(wierszTarget).queryByRole("progressbar", { name: "Postęp kursów: 1 z 4" }),
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(wierszDecoy).getByRole("progressbar", { name: "Postęp kursów: 1 z 4" }),
+    ).toBeInTheDocument();
+    expect(
+      within(wierszDecoy).queryByRole("progressbar", { name: "Postęp kursów: 3 z 9" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("pasek postępu w kolumnie Kursy ma aria-valuenow policzone z done/total tej osoby, we własnym wierszu", async () => {
+    const decoy = czlonek({ id: 1, progress: { courses_done: 1, courses_total: 4 } });
+    const target = czlonek({ id: 2, progress: { courses_done: 3, courses_total: 9 } });
+    api.mockResolvedValueOnce(grupa([decoy, target]));
+    render(<InstructorGroup />);
+
+    await screen.findByRole("table");
+    const wiersze = screen.getAllByRole("row");
+    const wierszDecoy = wiersze[1];
+    const wierszTarget = wiersze[2];
+
+    const pasekTarget = within(wierszTarget).getByRole("progressbar");
+    expect(pasekTarget).toHaveAttribute("aria-valuenow", "33");
+    expect(pasekTarget).not.toHaveAttribute("aria-valuenow", "25");
+
+    const pasekDecoy = within(wierszDecoy).getByRole("progressbar");
+    expect(pasekDecoy).toHaveAttribute("aria-valuenow", "25");
+    expect(pasekDecoy).not.toHaveAttribute("aria-valuenow", "33");
   });
 });
 
