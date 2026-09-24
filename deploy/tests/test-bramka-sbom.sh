@@ -202,7 +202,7 @@ zaliczone_gdy "$([[ "$RC_G4" -eq 1 && "$WYNIK_G4" == "NIEZMIERZONE" ]] && echo 0
 # ==================== CZESC 3: brak narzedzia (BEZ Dockera) ===============
 # Symulacja PRZEZ PATH, nie przez Docker: PATH ustawiony na JEDEN, NAPRAWDE
 # PUSTY katalog (mktemp -d, nic w srodku) - NIE filtr po napisie "/docker" w
-# istniejacym PATH. Powod zmierzony przy odbiorze 23.09: na hoscie bramkowym
+# istniejacym PATH. Powod zmierzony 23.09: na hoscie bramkowym
 # docker stoi w katalogu, ktorego NAZWA nie zawiera "/docker" (shim w
 # katalogu-narzedziu z inna nazwa) - filtr po napisie zostawial ten katalog
 # w PATH, wiec `command -v docker` PO "filtrze" nadal zwracal sciezke, i
@@ -713,7 +713,15 @@ VARS
   # Wyjecie do zmiennej (nie prosto do potoku wyjsciowego) - zeby PONIZEJ, PO
   # zlozeniu fragmentu, dalo sie zmierzyc KSZTALT tego, co sed naprawde
   # wyciol (samokontrola kotwicy KONCOWEJ, patrz przypadek 35 nizej).
-  CZESC_B_35="$(sed -n '/^# Znacznik doby idzie do katalogu NADRZEDNEGO/,/^KOD_SBOM="\$(sbom_kod_kroku/p' "$REPO_ROOT/deploy/bramka-hosta.sh")"
+  #
+  # Kotwica konczy sie na PELNEJ nazwie sbom_kod_kroku_ostateczny, NIE na
+  # samym sbom_kod_kroku: "sbom_kod_kroku" jest
+  # PRZEDROSTKIEM "sbom_kod_kroku_ostateczny", wiec kotwica bez pelnej nazwy
+  # trafialaby TAKZE w stara linie (KOD_SBOM="$(sbom_kod_kroku ...)") - a to
+  # znaczy, ze cofniecie WPIECIA (powrot do starej funkcji, bez swiadomosci
+  # awarii generatora) NIE zmienialoby ksztaltu wyciecia i przypadek 35 nie
+  # zauwazylby niczego. Przypadek 42 nizej mierzy ten rozdzial wprost.
+  CZESC_B_35="$(sed -n '/^# Znacznik doby idzie do katalogu NADRZEDNEGO/,/^KOD_SBOM="\$(sbom_kod_kroku_ostateczny/p' "$REPO_ROOT/deploy/bramka-hosta.sh")"
   printf '%s\n' "$CZESC_B_35"
   echo
   # --- scalenie do KOD_FRONT (cytat doslowny) ---
@@ -737,31 +745,158 @@ echo "$WYJSCIE_35" | grep -qE 'SBOM \(pomiar, poza kodem wyjscia\): EXIT=0.*skla
   NIEZAL_35=1
 }
 
-# Samokontrola KOTWICY KONCOWEJ sed (/^KOD_SBOM="\$(sbom_kod_kroku/) - kotwica
-# POCZATKOWA (CZESC A powyzej) juz ma swoja samokontrole (kontrola tuz nad
-# tym komentarzem: "atrapa decyzji nie wymusila 'NIE BIEGNIE'" czerwieni sie,
-# gdy CZESC A wciagnie za duzo/za malo i realna, zrodlowana funkcja decyzyjna
-# wygra z atrapa). Kotwica koncowa takiej samokontroli NIE MIALA: kosmetyczne
-# zdjecie cudzyslowow z `KOD_SBOM="$(sbom_kod_kroku...)"` w bramce (na
-# `KOD_SBOM=$(sbom_kod_kroku...)"`) sprawia, ze wzorzec koncowy (ktory wymaga
-# LITERALNEGO cudzyslowu zaraz po `=`) przestaje trafiac - sed BEZ BLEDU
-# dociaga WSZYSTKO do konca pliku (brak dopasowania konca = do EOF), a
-# przypadek mimo to bywal ZALICZONY, bo szukany wzorzec 'skladnikow N' wciaz
-# gdzies w rozdetym fragmencie sie znajdowal. Mierzymy wiec KSZTALT tego, co
-# naprawde zostalo wyciete - NIE tresc, ktora moze przypadkiem pasowac.
+# RC_35 przestaje byc ozdoba drukowana i nie sprawdzana:
+# w TYM przypadku generator jest PRAWDZIWY (docker/trivy, bezwarunkowy,
+# niezmockowany) - proba NIE BIEGNIE, wiec jedynym zrodlem czerwieni jest
+# generator. Na maszynie Z dockerem prawdziwy generator ma sie udac (rc=0
+# tego kroku), wiec caly bieg ma dac RC=0. Bez dockera generator sam jest
+# NIEZMIERZONY (patrz sbom_uruchom_generator, kod 127) - a to jest TERAZ (po
+# poprawce) AWARIA PRZYRZADU, ktora legalnie czerwieni krok 3g
+# (RC=2) NIEZALEZNIE od tego, czy cokolwiek tu jest zepsute - taki wynik nie
+# jest porazka testu, jest NIEZMIERZONY (jak reszta CZESCI 4 end-to-end).
+if command -v docker >/dev/null 2>&1; then
+  [[ "$RC_35" -eq 0 ]] || {
+    echo "  WYNIK: NIEZALICZONY - docker jest dostepny, generator prawdziwy powinien byl sie udac (proba logiki NIE BIEGNIE, jedyne zrodlo czerwieni), oczekiwano RC=0, jest RC=$RC_35"
+    NIEZAL_35=1
+  }
+else
+  echo "  RC_35: NIE ZMIERZONO wprost (brak docker w PATH na tej maszynie - generator prawdziwy sam jest NIEZMIERZONY, RC=$RC_35 legalnie != 0 po poprawce)"
+  NIEZMIERZONE_LICZNIK=$((NIEZMIERZONE_LICZNIK + 1))
+fi
+
+# Samokontrola KOTWICY KONCOWEJ sed (/^KOD_SBOM="\$(sbom_kod_kroku_ostateczny/) -
+# kotwica POCZATKOWA (CZESC A powyzej) juz ma swoja samokontrole (kontrola
+# tuz nad tym komentarzem: "atrapa decyzji nie wymusila 'NIE BIEGNIE'"
+# czerwieni sie, gdy CZESC A wciagnie za duzo/za malo i realna, zrodlowana
+# funkcja decyzyjna wygra z atrapa). Kotwica koncowa takiej samokontroli NIE
+# MIALA: kosmetyczne zdjecie cudzyslowow z
+# `KOD_SBOM="$(sbom_kod_kroku_ostateczny...)"` w bramce sprawia, ze wzorzec
+# koncowy (ktory wymaga LITERALNEGO cudzyslowu zaraz po `=`) przestaje
+# trafiac - sed BEZ BLEDU dociaga WSZYSTKO do konca pliku (brak dopasowania
+# konca = do EOF), a przypadek mimo to bywal ZALICZONY, bo szukany wzorzec
+# 'skladnikow N' wciaz gdzies w rozdetym fragmencie sie znajdowal. Mierzymy
+# wiec KSZTALT tego, co naprawde zostalo wyciete - NIE tresc, ktora moze
+# przypadkiem pasowac.
 LINII_CZESC_B_35="$(printf '%s\n' "$CZESC_B_35" | grep -c .)"
 OSTATNI_CZESC_B_35="$(printf '%s\n' "$CZESC_B_35" | tail -1)"
 PROG_LINII_CZESC_B_35=110
-echo "  ksztalt CZESC B (samokontrola kotwicy koncowej): $LINII_CZESC_B_35 wierszy (prog $PROG_LINII_CZESC_B_35), ostatni wiersz: '$OSTATNI_CZESC_B_35'"
-if [[ "$LINII_CZESC_B_35" -ge "$PROG_LINII_CZESC_B_35" || "$OSTATNI_CZESC_B_35" != KOD_SBOM=* ]]; then
-  echo "  WYNIK: NIEZALICZONY - UPRZAZ SAMA ZEPSUTA: kotwica koncowa sed nie trafila w deploy/bramka-hosta.sh (zmiana ksztaltu wiersza 'KOD_SBOM=\"\$(sbom_kod_kroku...)\"'?) - CZESC B ma $LINII_CZESC_B_35 wierszy (prog $PROG_LINII_CZESC_B_35) i konczy sie na '$OSTATNI_CZESC_B_35' zamiast na wierszu zaczynajacym sie od 'KOD_SBOM=' - to wina UPRZEZY testu (cytuje zly fragment bramki), nie samej bramki"
+# Fixed-string (grep -F), NIE dopasowanie [[ == glob ]]: ostatni wiersz niesie
+# `$(` i `"` - znaki specjalne dla substytucji polecen/cudzyslowia, gdyby
+# trafily NIEocytowane w prawa strone `[[ ]]`. grep -F omija ten klopot.
+if [[ "$LINII_CZESC_B_35" -ge "$PROG_LINII_CZESC_B_35" ]] || ! printf '%s' "$OSTATNI_CZESC_B_35" | grep -qF 'KOD_SBOM="$(sbom_kod_kroku_ostateczny'; then
+  echo "  WYNIK: NIEZALICZONY - UPRZAZ SAMA ZEPSUTA: kotwica koncowa sed nie trafila w deploy/bramka-hosta.sh (zmiana ksztaltu wiersza 'KOD_SBOM=\"\$(sbom_kod_kroku_ostateczny...)\"'?) - CZESC B ma $LINII_CZESC_B_35 wierszy (prog $PROG_LINII_CZESC_B_35) i konczy sie na '$OSTATNI_CZESC_B_35' zamiast na wierszu zaczynajacym sie od 'KOD_SBOM=\"\$(sbom_kod_kroku_ostateczny' - to wina UPRZEZY testu (cytuje zly fragment bramki), nie samej bramki"
   NIEZAL_35=1
 fi
 
 if [[ "$NIEZAL_35" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
-# ==================== CZESC 11: straz obejmuje samego siebie (S1), awaria
-# przyrzadu czerwieni NIEZALEZNIE od proby logiki (S2) ==========================
+# ==================== CZESC 12: WPIECIE ===================================
+# Przypadki 38-40 zamknely "przyrzad ktory nie zadzialal zostaje zielony" na
+# poziomie FUNKCJI (sbom_kod_kroku_ostateczny). Brakowalo pomiaru, ze
+# zestaw NIGDY nie sprawdza, czy deploy/bramka-hosta.sh NAPRAWDE woła TA
+# funkcje - wiersz 518 dalo sie cofnac do starej postaci
+# (KOD_SBOM="$(sbom_kod_kroku ...)", BEZ generatora jako wejscia) i zestaw
+# nadal dawal 41/0. Dwa niezalezne dowody ponizej lataja NIE na tresci sed-a
+# (jak przypadek 35), tylko na PRAWDZIWYM zachowaniu cytowanego kodu.
+
+echo "=== 41 WPIECIE: krok 3g z generatorem USZKODZONYM (atrapa, EXIT=9) i decyzja NIE BIEGNIE -> caly cytowany bieg MA dac RC!=0 ==="
+# Para kontrolna z KRYTERIOW (odpowiednik 8701593): generator PADA, ZADEN
+# prog nie jest dotkniety (tu: symulowane wprost atrapa decyzji NIE BIEGNIE,
+# bez potrzeby prawdziwego gita/znacznika). To jest DOKLADNIE ta kombinacja,
+# w ktorej stara wersja (sbom_kod_kroku bez generatora jako wejscia) milczala
+# zielono - i test, ktory tylko DRUKOWAL RC_35, tego nie widzial.
+KATALOG_HARNESS_41="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_HARNESS_41")
+FRAGMENT_41="$(mktemp -p "$REPO_ROOT/deploy" bramka-swiadek-3g-wpiecie.XXXXXX.sh)"
+PLIKI_TESTOWE+=("$FRAGMENT_41")
+
+{
+  echo "#!/usr/bin/env bash"
+  sed -n '/^czas_od() {/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  sed -n '/^naglowek() {/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  cat <<VARS
+KOD_A=0
+KOD_B=0
+KOD_STATYCZNA=0
+KOD_ACTIONLINT=0
+KOD_GITLEAKS=0
+KOD_SWIADEK_LOGOWANIA=0
+KOD_LIBC=0
+KOD_DRZEWO=0
+KOD_SEMGREP=0
+KOD_FRONT=0
+KATALOG_BIEGU="$KATALOG_HARNESS_41/bieg"
+mkdir -p "\$KATALOG_BIEGU"
+VARS
+  echo
+  # --- krok 3g, CZESC A: naglowek + zrodlowanie lib/sbom.sh (cytat doslowny) ---
+  sed -n '/^naglowek "3g - inwentarz skladnikow/,/lib\/sbom\.sh"$/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  # --- DWIE ATRAPY: jedyne nie-cytowane linie - generator PADA (docker w
+  # ogole nie jest potrzebny, podmieniamy funkcje wprost, tak jak nizej dla
+  # decyzji) I proba logiki NIE BIEGNIE zarazem.
+  echo 'sbom_uruchom_generator() { echo "sbom: ATRAPA przypadku 41 wymusza awarie generatora" > "$3" 2>/dev/null; return 9; }'
+  echo 'sbom_probka_ma_biec() { echo "SBOM: proba logiki NIE BIEGNIE - powod: ATRAPA przypadku 41 wymusza pominiecie"; return 1; }'
+  echo
+  # --- krok 3g, CZESC B: reszta kroku (cytat doslowny, uzywa atrap powyzej) ---
+  # Kotwica LUZNA (bez _ostateczny) - CELOWO ta sama, jaka byla przed poprawka:
+  # przypadek 41 ma zmierzyc WPIECIE (zachowanie), nie KSZTALT cytatu (to
+  # robia 35 i 42) - ma zostac BEZPIECZNIE OGRANICZONY (nie uciec az do "4 -
+  # front", ktory probowalby dockera/npm) NIEZALEZNIE OD TEGO, ktora funkcja
+  # naprawde stoi w KOD_SBOM=... w tej chwili. Luzna kotwica trafia w obie
+  # nazwy (sbom_kod_kroku i sbom_kod_kroku_ostateczny), wiec ograniczenie
+  # dziala w OBU wariantach wpiecia - dokladnie to tu jest potrzebne.
+  sed -n '/^# Znacznik doby idzie do katalogu NADRZEDNEGO/,/^KOD_SBOM="\$(sbom_kod_kroku/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  # --- scalenie do KOD_FRONT (cytat doslowny) ---
+  sed -n '/^# Scalenie proby logiki SBOM/,/^fi$/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  # --- koncowy lancuch kodu wyjscia + exit (cytat doslowny) ---
+  sed -n '/^if \[ "\$KOD_A"/,$p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+} > "$FRAGMENT_41"
+chmod +x "$FRAGMENT_41"
+
+WYJSCIE_41="$(cd "$REPO_ROOT" && bash "$FRAGMENT_41" 2>&1)"
+RC_41=$?
+echo "  fragment: $FRAGMENT_41"
+echo "  rc calego fragmentu (kod wyjscia symulowanej bramki): $RC_41"
+echo "$WYJSCIE_41" | sed 's/^/  | /'
+
+NIEZAL_41=0
+echo "$WYJSCIE_41" | grep -q "NIE BIEGNIE" || { echo "  WYNIK: NIEZALICZONY - atrapa decyzji nie wymusila 'NIE BIEGNIE' (uprzaz sama zepsuta)"; NIEZAL_41=1; }
+echo "$WYJSCIE_41" | grep -q "generator EXIT=9" || { echo "  WYNIK: NIEZALICZONY - atrapa generatora nie wymusila EXIT=9 (uprzaz sama zepsuta)"; NIEZAL_41=1; }
+[[ "$RC_41" -ne 0 ]] || {
+  echo "  WYNIK: NIEZALICZONY - WPIECIE: generator PADL (EXIT=9) i proba logiki NIE BIEGLA, a caly cytowany bieg mimo to zakonczyl sie RC=0 - awaria przyrzadu zostala CICHO ODPIETA od kodu wyjscia bramki (dokladnie dziura, ktora ta poprawka miala zamknac)"
+  NIEZAL_41=1
+}
+if [[ "$NIEZAL_41" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 42 kotwica koncowa ROZROZNIA sbom_kod_kroku od sbom_kod_kroku_ostateczny (nie sama tresc, ktora moze przypadkiem pasowac) ==="
+# Pomiar wprost, bez gita/dockera: kotwica uzywana przez przypadki 35/41 MA
+# trafiac w linie z sbom_kod_kroku_ostateczny i MA NIE trafiac w linie ze
+# STARA funkcja sbom_kod_kroku (mimo ze ta druga nazwa jest PRZEDROSTKIEM
+# pierwszej - to byla luka w pomiarze).
+WZORZEC_KONCOWY_42='^KOD_SBOM="\$(sbom_kod_kroku_ostateczny'
+LINIA_STARA_42='KOD_SBOM="$(sbom_kod_kroku "$KOD_TEST_SBOM" "$PROBA_SBOM_BIEGLA")"'
+LINIA_NOWA_42='KOD_SBOM="$(sbom_kod_kroku_ostateczny "$KOD_SBOM_GEN" "$KOD_TEST_SBOM" "$PROBA_SBOM_BIEGLA")"'
+
+# grep BEZ -E (BRE), NIE ERE: dokladnie tak samo jak sed BRE uzywane
+# naprawde w przypadkach 35/41 - "(" jest tam znakiem LITERALNYM, nie
+# grupujacym. Z -E ten sam wzorzec pada "Unmatched (" (zmierzone przy
+# pisaniu tego przypadku).
+echo "$LINIA_NOWA_42" | grep -q "$WZORZEC_KONCOWY_42"; DOPASOWANIE_NOWA_42=$?
+echo "$LINIA_STARA_42" | grep -q "$WZORZEC_KONCOWY_42"; DOPASOWANIE_STARA_42=$?
+echo "  wzorzec: $WZORZEC_KONCOWY_42"
+echo "  dopasowanie do NOWEJ linii (sbom_kod_kroku_ostateczny): rc=$DOPASOWANIE_NOWA_42 (0=trafil)"
+echo "  dopasowanie do STAREJ linii (sbom_kod_kroku, bez _ostateczny): rc=$DOPASOWANIE_STARA_42 (0=trafil, TU MA BYC 1)"
+
+NIEZAL_42=0
+[[ "$DOPASOWANIE_NOWA_42" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - kotwica NIE trafia we WLASCIWA linie (sbom_kod_kroku_ostateczny)"; NIEZAL_42=1; }
+[[ "$DOPASOWANIE_STARA_42" -ne 0 ]] || { echo "  WYNIK: NIEZALICZONY - kotwica trafia TAKZE w stara linie (sbom_kod_kroku bez _ostateczny) - przedrostek nie jest odrozniany, wpiecie dalo by sie cofnac bez sladu"; NIEZAL_42=1; }
+if [[ "$NIEZAL_42" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# ==================== CZESC 11: straz obejmuje samego siebie, awaria
+# przyrzadu czerwieni NIEZALEZNIE od proby logiki ===========================
 # Wylacznie LOKALNIE - funkcjami z deploy/lib/sbom.sh na wlasnych przypadkach,
 # BEZ uruchamiania prawdziwej bramki hosta, BEZ npm ci / build.
 

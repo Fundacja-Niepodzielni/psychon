@@ -72,8 +72,8 @@ SBOM_OBRAZ_SKANERA_DOMYSLNY="anchore/grype:v0.119.0"
 # (kod 0) I wyciagniety plik jest niepusty I policzony inwentarz ma co
 # najmniej 1 skladnik - CZTERY niezalezne warunki, bo kazdy z nich z osobna
 # bywal falszywie zielony (docker EXIT=0 na pustym montazu wejsciowym,
-# `docker cp` "udany" na 0-bajtowym pliku wyjsciowym, i - zmierzone przy
-# odbiorze 23.09, kopie spod AppData/Local/Temp - plik POPRAWNY i NIEPUSTY,
+# `docker cp` "udany" na 0-bajtowym pliku wyjsciowym, i - zmierzone 23.09
+# na kopiach spod AppData/Local/Temp - plik POPRAWNY i NIEPUSTY,
 # ale z "components": [] po tym samym pustym-montazu-bez-bledu opisanym
 # wyzej: trivy dostaje puste /repo, nie znajduje ZADNEGO pliku blokady i
 # oddaje poprawny szkielet CycloneDX bez zawartosci). Projekt jest PHP+JS z
@@ -153,8 +153,8 @@ sbom_uruchom_generator() {
 # sie odpowiednio 2 i 127, BEZ probowania uruchomienia.
 #
 # KOLEJNOSC dwoch straznikow ponizej jest SWIADOMA, nie przypadkowa: plik
-# wejsciowy jest sprawdzany PRZED narzedziem. Powod, zmierzony przy odbiorze
-# 23.09 na maszynie NAPRAWDE bez dockera: gdy caly proces (nie tylko TA
+# wejsciowy jest sprawdzany PRZED narzedziem. Powod, zmierzony 23.09
+# na maszynie NAPRAWDE bez dockera: gdy caly proces (nie tylko TA
 # funkcja) nie ma dockera w PATH, przypadek "brak pliku wejsciowego" (test
 # 12 nizej) NIE nadpisuje swojego PATH wlasnym stubem - dziedziczy PATH
 # calego biegu. Gdyby strażnik dockera byl pierwszy, doslalby TAKI SAM kod
