@@ -422,10 +422,17 @@ echo "swiadek logowania (testy): EXIT=$KOD_SWIADEK_LOGOWANIA, $CZAS_SWIADEK_LOGO
 # jest kryterium. Gdy proba NIE biegnie, nie ma jak wplynac na kod wyjscia -
 # pominiecie jest jawne w dzienniku, nie ciche.
 #
+# Generator (bezwarunkowy, powyzej) to INNA sprawa: kod jego wyjscia !=0 to
+# AWARIA PRZYRZADU, nie wartosc pomiaru, i WCHODZI do kodu wyjscia kroku 3g
+# ZAWSZE - NIEZALEZNIE od listy progowej i od znacznika doby, TAKZE gdy
+# proba logiki NIE BIEGNIE (patrz sbom_kod_kroku_ostateczny w deploy/lib/
+# sbom.sh). "Wynik pomiaru moze byc dowolny, brak wyniku musi byc czerwony".
+#
 # Skan podatnosci biegnie TA SAMA decyzja co proba logiki, ale jego LICZBA
 # (jak i liczba skladnikow generatora) zostaje pomiarem i NIE WCHODZI do
 # kodu wyjscia w zadnym przypadku (w Zalaczniku 1 nie ma kryterium
-# podatnosciowego) - sbom_kod_kroku w ogole nie przyjmuje jej jako wejscia.
+# podatnosciowego) - ani sbom_kod_kroku, ani sbom_kod_kroku_ostateczny w
+# ogole nie przyjmuja jej jako wejscia.
 #
 # Logika liczenia/decyzji/uruchamiania NIE zyje tutaj - zyje w deploy/lib/
 # sbom.sh, zrodlowanym ponizej. Ten sam plik zrodlowuje deploy/tests/
@@ -508,7 +515,7 @@ else
     echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): POMINIETY - ta sama decyzja co proba logiki (patrz wiersz SBOM: powyzej)"
 fi
 
-KOD_SBOM="$(sbom_kod_kroku "$KOD_TEST_SBOM" "$PROBA_SBOM_BIEGLA")"
+KOD_SBOM="$(sbom_kod_kroku_ostateczny "$KOD_SBOM_GEN" "$KOD_TEST_SBOM" "$PROBA_SBOM_BIEGLA")"
 
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0

@@ -710,7 +710,11 @@ VARS
   echo 'sbom_probka_ma_biec() { echo "SBOM: proba logiki NIE BIEGNIE - powod: ATRAPA przypadku 35 wymusza pominiecie"; return 1; }'
   echo
   # --- krok 3g, CZESC B: reszta kroku (cytat doslowny, uzywa atrapy powyzej) ---
-  sed -n '/^# Znacznik doby idzie do katalogu NADRZEDNEGO/,/^KOD_SBOM="\$(sbom_kod_kroku/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  # Wyjecie do zmiennej (nie prosto do potoku wyjsciowego) - zeby PONIZEJ, PO
+  # zlozeniu fragmentu, dalo sie zmierzyc KSZTALT tego, co sed naprawde
+  # wyciol (samokontrola kotwicy KONCOWEJ, patrz przypadek 35 nizej).
+  CZESC_B_35="$(sed -n '/^# Znacznik doby idzie do katalogu NADRZEDNEGO/,/^KOD_SBOM="\$(sbom_kod_kroku/p' "$REPO_ROOT/deploy/bramka-hosta.sh")"
+  printf '%s\n' "$CZESC_B_35"
   echo
   # --- scalenie do KOD_FRONT (cytat doslowny) ---
   sed -n '/^# Scalenie proby logiki SBOM/,/^fi$/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
@@ -732,7 +736,82 @@ echo "$WYJSCIE_35" | grep -qE 'SBOM \(pomiar, poza kodem wyjscia\): EXIT=0.*skla
   echo "  WYNIK: NIEZALICZONY - mimo decyzji NIE BIEGNIE, dziennik NIE niesie wiersza 'SBOM (...): EXIT=0 ... skladnikow N' - generator zostal (kiedys) uwarunkowany decyzja, zamiast biec bezwarunkowo"
   NIEZAL_35=1
 }
+
+# Samokontrola KOTWICY KONCOWEJ sed (/^KOD_SBOM="\$(sbom_kod_kroku/) - kotwica
+# POCZATKOWA (CZESC A powyzej) juz ma swoja samokontrole (kontrola tuz nad
+# tym komentarzem: "atrapa decyzji nie wymusila 'NIE BIEGNIE'" czerwieni sie,
+# gdy CZESC A wciagnie za duzo/za malo i realna, zrodlowana funkcja decyzyjna
+# wygra z atrapa). Kotwica koncowa takiej samokontroli NIE MIALA: kosmetyczne
+# zdjecie cudzyslowow z `KOD_SBOM="$(sbom_kod_kroku...)"` w bramce (na
+# `KOD_SBOM=$(sbom_kod_kroku...)"`) sprawia, ze wzorzec koncowy (ktory wymaga
+# LITERALNEGO cudzyslowu zaraz po `=`) przestaje trafiac - sed BEZ BLEDU
+# dociaga WSZYSTKO do konca pliku (brak dopasowania konca = do EOF), a
+# przypadek mimo to bywal ZALICZONY, bo szukany wzorzec 'skladnikow N' wciaz
+# gdzies w rozdetym fragmencie sie znajdowal. Mierzymy wiec KSZTALT tego, co
+# naprawde zostalo wyciete - NIE tresc, ktora moze przypadkiem pasowac.
+LINII_CZESC_B_35="$(printf '%s\n' "$CZESC_B_35" | grep -c .)"
+OSTATNI_CZESC_B_35="$(printf '%s\n' "$CZESC_B_35" | tail -1)"
+PROG_LINII_CZESC_B_35=110
+echo "  ksztalt CZESC B (samokontrola kotwicy koncowej): $LINII_CZESC_B_35 wierszy (prog $PROG_LINII_CZESC_B_35), ostatni wiersz: '$OSTATNI_CZESC_B_35'"
+if [[ "$LINII_CZESC_B_35" -ge "$PROG_LINII_CZESC_B_35" || "$OSTATNI_CZESC_B_35" != KOD_SBOM=* ]]; then
+  echo "  WYNIK: NIEZALICZONY - UPRZAZ SAMA ZEPSUTA: kotwica koncowa sed nie trafila w deploy/bramka-hosta.sh (zmiana ksztaltu wiersza 'KOD_SBOM=\"\$(sbom_kod_kroku...)\"'?) - CZESC B ma $LINII_CZESC_B_35 wierszy (prog $PROG_LINII_CZESC_B_35) i konczy sie na '$OSTATNI_CZESC_B_35' zamiast na wierszu zaczynajacym sie od 'KOD_SBOM=' - to wina UPRZEZY testu (cytuje zly fragment bramki), nie samej bramki"
+  NIEZAL_35=1
+fi
+
 if [[ "$NIEZAL_35" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# ==================== CZESC 11: straz obejmuje samego siebie (S1), awaria
+# przyrzadu czerwieni NIEZALEZNIE od proby logiki (S2) ==========================
+# Wylacznie LOKALNIE - funkcjami z deploy/lib/sbom.sh na wlasnych przypadkach,
+# BEZ uruchamiania prawdziwej bramki hosta, BEZ npm ci / build.
+
+echo "=== 36 (S1a) deploy/bramka-hosta.sh jest progiem: dotkniecie WYLACZNIE tego pliku -> BIEGNIE, powod nazywa ten plik ==="
+LINIA_36="$(sbom_zdecyduj_o_probie 0 "deploy/bramka-hosta.sh" "tak")"
+RC_36=$?
+echo "  wiersz: $LINIA_36"
+echo "  rc: $RC_36"
+NIEZAL_36=0
+[[ "$RC_36" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0 (BIEGNIE), jest $RC_36"; NIEZAL_36=1; }
+[[ "$LINIA_36" == *"BIEGNIE"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie mowi BIEGNIE"; NIEZAL_36=1; }
+[[ "$LINIA_36" == *"deploy/bramka-hosta.sh"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie nazywa sprawcy (deploy/bramka-hosta.sh) - straz nie obejmuje pliku, ktory ja uruchamia"; NIEZAL_36=1; }
+if [[ "$NIEZAL_36" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 37 (S1b) prog NIE rozlal sie na wszystko: dotkniecie WYLACZNIE pliku frontu -> NIE BIEGNIE (znacznik dzisiejszy juz jest) ==="
+LINIA_37="$(sbom_zdecyduj_o_probie 0 "frontend/src/App.vue" "tak")"
+RC_37=$?
+echo "  wiersz: $LINIA_37"
+echo "  rc: $RC_37"
+NIEZAL_37=0
+[[ "$RC_37" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=1 (NIE BIEGNIE), jest $RC_37 - prog rozlal sie na plik spoza SBOM_PLIKI_PROGOWE"; NIEZAL_37=1; }
+[[ "$LINIA_37" == *"NIE BIEGNIE"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie mowi NIE BIEGNIE"; NIEZAL_37=1; }
+if [[ "$NIEZAL_37" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 38 (S2a) generator zmuszony do EXIT!=0 -> kod kroku 3g != 0, TAKZE gdy proba logiki NIE BIEGNIE ==="
+KOD_38A="$(sbom_kod_kroku_ostateczny 9 0 "nie")"
+RC_38A_FN=$?
+echo "  sbom_kod_kroku_ostateczny 9 0 nie -> $KOD_38A (rc fn=$RC_38A_FN)"
+KOD_38B="$(sbom_kod_kroku_ostateczny 9 1 "tak")"
+echo "  sbom_kod_kroku_ostateczny 9 1 tak -> $KOD_38B"
+NIEZAL_38=0
+[[ "$KOD_38A" -ne 0 ]] || { echo "  WYNIK: NIEZALICZONY - generator EXIT=9, proba NIE BIEGNIE: oczekiwano kod kroku 3g != 0, jest $KOD_38A (awaria przyrzadu zostala pochlonieta przez pominiecie proby)"; NIEZAL_38=1; }
+[[ "$KOD_38B" -ne 0 ]] || { echo "  WYNIK: NIEZALICZONY - generator EXIT=9, proba BIEGLA: oczekiwano kod kroku 3g != 0, jest $KOD_38B"; NIEZAL_38=1; }
+if [[ "$NIEZAL_38" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 39 (S2b) wartosc pomiaru (liczba podatnosci) nadal NIE czerwieni: generator EXIT=0 -> kod kroku 3g = 0, funkcja nie przyjmuje liczby podatnosci jako wejscia w ogole ==="
+KOD_39="$(sbom_kod_kroku_ostateczny 0 0 "tak")"
+echo "  sbom_kod_kroku_ostateczny 0 0 tak -> $KOD_39"
+PODPIS_39="$(declare -f sbom_kod_kroku_ostateczny | grep -cE '\$4|podatnosc')"
+echo "  wystapien \$4/'podatnosc' w ciele sbom_kod_kroku_ostateczny: $PODPIS_39"
+NIEZAL_39=0
+[[ "$KOD_39" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - generator zielony ma dac kod kroku 3g = 0 (to nadal pomiar, nie kryterium), jest $KOD_39"; NIEZAL_39=1; }
+[[ "$PODPIS_39" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - sbom_kod_kroku_ostateczny odwoluje sie do liczby podatnosci - nie ma prawa"; NIEZAL_39=1; }
+if [[ "$NIEZAL_39" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 40 (S2c) zielony generator nie czerwieni: bieg bez uszkodzen (generator EXIT=0, test logiki EXIT=0, proba biegla) -> kod kroku 3g = 0 ==="
+KOD_40="$(sbom_kod_kroku_ostateczny 0 0 "tak")"
+echo "  sbom_kod_kroku_ostateczny 0 0 tak -> $KOD_40"
+zaliczone_gdy "$([[ "$KOD_40" -eq 0 ]] && echo 0 || echo 1)" \
+  "bieg bez uszkodzen ma dac kod kroku 3g = 0, jest $KOD_40"
 
 echo
 if [[ "$NIEZALICZONE" -gt 0 ]]; then

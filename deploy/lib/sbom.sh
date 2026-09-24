@@ -359,9 +359,14 @@ sbom_policz_podatnosci() {
 
 # Pliki, ktorych dotkniecie w diffie gatowanego commita samo w sobie
 # uzasadnia bieg (niezaleznie od znacznika doby): logika progu, jej wlasny
-# test, i oba pliki blokady, ktore SBOM naprawde spisuje. Sciezki sa
+# test, oba pliki blokady, ktore SBOM naprawde spisuje, i sama BRAMKA, ktora
+# krok 3g uruchamia. Ten ostatni wpis (od 24.09) domyka luke zmierzona parą
+# kontrolną: commit uszkadzajacy krok 3g w deploy/bramka-hosta.sh, ale
+# niedotykajacy zadnego z pozostalych trzech plikow, przechodzil probke NA
+# ZIELONO - straz nie obejmowala pliku, ktorego sama pilnuje. Sciezki sa
 # WZGLEDEM SZCZYTU repo, dokladnie jak wiersze z git diff --name-only.
 SBOM_PLIKI_PROGOWE=(
+  "deploy/bramka-hosta.sh"
   "deploy/lib/sbom.sh"
   "deploy/tests/test-bramka-sbom.sh"
   "backend/composer.lock"
@@ -551,4 +556,39 @@ sbom_kod_kroku() {
   fi
   echo 0
   return 0
+}
+
+# sbom_kod_kroku_ostateczny KOD_SBOM_GEN KOD_TEST_SBOM PROBA_LOGIKI_BIEGLA
+#
+# Laczy DWA niezalezne zrodla czerwieni kroku 3g w JEDNA kontrybucje do kodu
+# wyjscia calej bramki - to jest funkcja, ktora bramka-hosta.sh (i ten test)
+# naprawde ma wywolywac, NIE sbom_kod_kroku powyzej wprost.
+#
+#   KOD_SBOM_GEN         = kod wyjscia sbom_uruchom_generator (0 = generator
+#                           zadzialal, != 0 = generator NIE zadzialal).
+#   KOD_TEST_SBOM         = jak w sbom_kod_kroku.
+#   PROBA_LOGIKI_BIEGLA   = jak w sbom_kod_kroku.
+#
+# KOD_SBOM_GEN != 0 to AWARIA PRZYRZADU (generator nie wystartowal / docker
+# cp sie nie udal / plik wyjsciowy pusty / zero skladnikow - patrz
+# sbom_uruchom_generator), NIE wartosc pomiaru - takiego przyrzadu nie da
+# sie zmierzyc, wiec NIE WOLNO mu zostawic bramki zielonej. Dlatego ten
+# warunek wygrywa NAJPIERW, NIEZALEZNIE od PROBA_LOGIKI_BIEGLA i od listy
+# progowej: "wynik pomiaru moze byc dowolny, brak wyniku musi byc czerwony".
+# Zwraca 2 w tym przypadku (odrozniony od 1 = czerwien testu wlasnej logiki
+# nizej, zeby dwa niezalezne powody czerwieni dalo sie rozroznic w kodzie
+# wyjscia, nie tylko w dzienniku).
+#
+# Gdy generator zadzialal (KOD_SBOM_GEN=0), reszta idzie DOKLADNIE tak jak
+# do tej pory - patrz sbom_kod_kroku. Liczba skladnikow i liczba podatnosci
+# (skan) NIE wchodza tutaj w zadnym przypadku - ani ta funkcja, ani
+# sbom_kod_kroku, ktora wola, nie przyjmuja ich jako wejscia (Zalacznik 1
+# nie ma kryterium podatnosciowego) - to tego nie zmieniamy.
+sbom_kod_kroku_ostateczny() {
+  local kod_gen="$1" kod_test="$2" proba_biegla="$3"
+  if [[ "$kod_gen" -ne 0 ]]; then
+    echo 2
+    return 0
+  fi
+  sbom_kod_kroku "$kod_test" "$proba_biegla"
 }
