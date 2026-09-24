@@ -229,7 +229,14 @@ LOG_HOSTA_ZRZUT="$KATALOG_LOGOW_HOSTA/zrzut-$SHA-$STEMPEL.log"
 # repozytorium w chwili wprowadzenia trybu (commit, ktory dolozyl ta liste).
 ZNANE_DOBRE_SKROTY_DEPLOY=(
     "7824bdef4fddaab4fdeb8f238abbb7d615d8df8e2d131bb171158bf5dfa15537"
+    # krok zrzutu obejmuje cala baze i liczy tabele w zrzucie oraz w bazie
+    "6100df6efafea799f53764bad43c3ec11731b52b1e9c63215810aa59eaeffedd"
 )
+# Powyzsza zasada stala dotad wylacznie w komentarzu - i dlatego zostala
+# pominieta przy pierwszej zmianie pliku: odmowa przyszla dopiero na maszynie,
+# po bramce i po scaleniu. Zgodnosc tej listy z plikiem mierzy teraz proba
+# `deploy/psychon-dev/tests/test-lista-skrotow-wdrozenia.sh`, wolana przez
+# bramke. Zasada bez pomiaru w miejscu zdarzenia nie jest zasada.
 
 # Warunek wstepny STACJI, sprawdzany przed czymkolwiek, co siega hosta. Na
 # koncu potoku stoi `tee`: gdy nie ma gdzie pisac, `tee` i tak konczy zerem, a

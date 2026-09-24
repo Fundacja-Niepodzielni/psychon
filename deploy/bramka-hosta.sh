@@ -422,6 +422,27 @@ if [ "$KOD_SPRZATANIE_ZRZUTOW" -ne 0 ] && [ "$KOD_SWIADEK_LOGOWANIA" -eq 0 ]; th
     KOD_SWIADEK_LOGOWANIA=$KOD_SPRZATANIE_ZRZUTOW
 fi
 
+# Lista skrotow, po ktorych przyrzad wdrozeniowy rozpoznaje skrypt maszyny,
+# byla dotad pilnowana wylacznie komentarzem w pliku. Zmiana skryptu przeszla
+# bramke i scalenie, a odmowa wyszla dopiero przy wdrozeniu - czyli najdrozej,
+# jak sie dalo. Pomiar stoi teraz tam, gdzie zdarza sie zdarzenie: nie na
+# maszynie i nie w glowie piszacego, tylko w bramce. Proba jest czysto
+# tekstowa (dwa pliki z drzewa, sha256) - bez sieci, bez Dockera.
+naglowek "3f-3 - lista skrotow przyrzadu wdrozeniowego (proba)"
+
+T="$(date +%s)"
+bash deploy/psychon-dev/tests/test-lista-skrotow-wdrozenia.sh > "$KATALOG_BIEGU"/bramka-lista-skrotow.log 2>&1
+KOD_LISTA_SKROTOW=$?
+CZAS_LISTA_SKROTOW="$(czas_od "$T")"
+PRZYPADKOW_LS="$(grep -acE '^=== ' "$KATALOG_BIEGU"/bramka-lista-skrotow.log)"
+BLEDOW_LS="$(grep -acE '^  WYNIK: NIEZALICZONY' "$KATALOG_BIEGU"/bramka-lista-skrotow.log)"
+echo "lista skrotow (proba): EXIT=$KOD_LISTA_SKROTOW, $CZAS_LISTA_SKROTOW s, przypadkow $PRZYPADKOW_LS, bledow $BLEDOW_LS"
+[ "$KOD_LISTA_SKROTOW" -ne 0 ] && tail -20 "$KATALOG_BIEGU"/bramka-lista-skrotow.log | sed 's/^/  ! /'
+
+if [ "$KOD_LISTA_SKROTOW" -ne 0 ] && [ "$KOD_SWIADEK_LOGOWANIA" -eq 0 ]; then
+    KOD_SWIADEK_LOGOWANIA=$KOD_LISTA_SKROTOW
+fi
+
 # --- 3g - inwentarz skladnikow (SBOM) i skan podatnosci ---------------------
 # Generator (trivy, ~1s) biegnie BEZWARUNKOWO - jego koszt jest pomijalny i
 # liczba skladnikow w dzienniku jest tania do utrzymania na kazdym biegu.
