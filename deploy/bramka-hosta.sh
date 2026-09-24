@@ -409,13 +409,18 @@ echo "swiadek logowania (testy): EXIT=$KOD_SWIADEK_LOGOWANIA, $CZAS_SWIADEK_LOGO
 # (+183..201s/commit) za pomiar, ktorego czerwien nawet wtedy nic nie
 # zatrzymywala. Decyzja (i jej POWOD, jeden wiersz w dzienniku - ZAWSZE,
 # takze gdy proba NIE biegnie) zyje w deploy/lib/sbom.sh, funkcja
-# sbom_probka_ma_biec: BIEGNIE, gdy diff gatowanego commita (wzgledem
-# pierwszego rodzica) dotyka deploy/lib/sbom.sh, deploy/tests/test-bramka-
-# sbom.sh, backend/composer.lock albo frontend/package-lock.json, ALBO gdy
-# to pierwszy bieg dzisiejszej doby (znacznik poza drzewem repo - brudne
-# drzewo po biegu konczy caly bieg kodem 6, deploy/lib/drzewo-po-biegu.sh).
-# Gdy roznicy nie da sie policzyc (brak rodzica, plytki klon) - BIEGNIE,
-# nigdy cicho pomija.
+# sbom_probka_ma_biec: BIEGNIE, gdy skrot TRESCI biezacych plikow progowych
+# (deploy/bramka-hosta.sh, deploy/lib/sbom.sh, deploy/tests/test-bramka-
+# sbom.sh, backend/composer.lock, frontend/package-lock.json) rozni sie od
+# skrotu zapisanego przy OSTATNIM zielonym biegu proby (skrot poza drzewem
+# repo, obok znacznika - patrz sbom_zapisz_skrot), ALBO gdy takiego skrotu
+# jeszcze nie ma, ALBO gdy to pierwszy bieg dzisiejszej doby (znacznik poza
+# drzewem repo - brudne drzewo po biegu konczy caly bieg kodem 6, deploy/
+# lib/drzewo-po-biegu.sh). Gdy skrotu nie da sie policzyc (plik progowy
+# zniknal/nieczytelny) - BIEGNIE, nigdy cicho nie pomija. Decyzja pyta o
+# TRESC przyrzadu, nie o ksztalt historii - nie gubi jej scalenie, rebase
+# ani to, ze pchniecie na bramke bywa zbiorcze (kilka commitow naraz, z
+# ktorych zmiane przyrzadu niesie tylko jeden ze srodka partii).
 #
 # Gdy proba BIEGNIE, jej czerwien WCHODZI do kodu wyjscia bramki (KOD_SBOM
 # ponizej, przez sbom_kod_kroku) - pomiar, ktory nie umie sie zatrzymac, nie
@@ -487,10 +492,17 @@ if [ "$PROBA_SBOM_BIEGLA" = "tak" ]; then
     elif [ "$KOD_TEST_SBOM" -eq 3 ]; then
         echo "SBOM: test wlasnej logiki NIE ZMIERZYL czesci koncowej (EXIT=3, brak docker na TEJ maszynie testujacej) - to NIE jest czerwien, ale licznikom ponizej ufam tylko o tyle, o ile sam bieg generatora/skanera nizej naprawde ma docker" >&2
     else
-        # Znacznik idzie WYLACZNIE po udanym (zielonym) biegu - czerwony albo
-        # niezmierzony bieg ma dostac szanse zmierzyc sie ponownie na
-        # NASTEPNYM commicie tej samej doby (patrz sbom_zapisz_znacznik).
+        # Znacznik i skrot ida WYLACZNIE po udanym (zielonym) biegu - czerwony
+        # albo niezmierzony bieg ma dostac szanse zmierzyc sie ponownie na
+        # NASTEPNYM commicie tej samej doby (patrz sbom_zapisz_znacznik). Skrot
+        # (patrz sbom_zapisz_skrot) jest tresc plikow progowych PRZY TYM
+        # zielonym biegu - kolejny bieg porownuje sie z NIM, nie z diffem
+        # jednego commita, wiec zmiana przyrzadu w SRODKOWYM commicie
+        # zbiorczego pchniecia przestaje byc niewidzialna.
         sbom_zapisz_znacznik "$KATALOG_ZNACZNIKOW_SBOM" "$DZIEN_SBOM"
+        if SKROT_SBOM_BIEZACY="$(sbom_skrot_plikow_progowych "$PWD")"; then
+            sbom_zapisz_skrot "$KATALOG_ZNACZNIKOW_SBOM" "$SKROT_SBOM_BIEZACY"
+        fi
     fi
 
     T="$(date +%s)"
