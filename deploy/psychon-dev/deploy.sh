@@ -239,7 +239,16 @@ db_user="$(_swiadek_logowania_czytaj_klucz "DB_USERNAME" "$env_file" || true)"
 db_user="${db_user:-niepodzielni}"
 
 mkdir -p "$backup_dir"
-backup_file="$backup_dir/documents-$(date +%Y%m%d-%H%M%S).sql"
+# Autorstwo jest ZAPISEM, nie ksztaltem nazwy: nazwa z tym samym czlonem
+# ("psychondev") jest tylko konwencja czytelna dla czlowieka - obcy plik
+# moze nazywac sie identycznie, przez przypadek albo naumyslnie, i wtedy
+# konwencja klamie. Prawdziwym dowodem autorstwa jest ten rejestr: wiersz
+# dopisany PRZEZ TEN SKRYPT zaraz po udanym zrzucie, z suma kontrolna
+# policzona z tresci, ktora pg_dump wlasnie napisal. Rotacja nizej czyta
+# WYLACZNIE ten rejestr i przed kasowaniem porownuje sume NA NOWO, wiec
+# zgodnosc samej nazwy nigdy nie wystarcza do usuniecia pliku.
+rejestr_zrzutow="$backup_dir/.rejestr-psychondev-zrzutow.tsv"
+backup_file="$backup_dir/documents-psychondev-$(date +%Y%m%d-%H%M%S).sql"
 # `umask 077` w podpowloce, zanim pg_dump zacznie pisac - plik dostaje prawa
 # 600 OD PIERWSZEGO bajtu tresci (PESEL-e sa w nim jawne az do pierwszego
 # udanego przebiegu documents:encrypt-snapshots), nie dopiero po fakcie.
@@ -248,12 +257,87 @@ if ! (umask 077 && "${compose[@]}" exec -T pgsql pg_dump -U "$db_user" -d "$db_n
   rm -f "$backup_file"
   exit 1
 fi
-# Rotacja w tym samym kroku: nazwy sortuja sie chronologicznie (znacznik
-# czasu w nazwie pliku), wiec zostaje 7 najnowszych zrzutow, starsze znikaja
-# od razu - katalog kopii nie rosnie bez konca przy kazdym wdrozeniu.
-mapfile -t stare_zrzuty < <(find "$backup_dir" -maxdepth 1 -name 'documents-*.sql' | sort | head -n -7)
-if [[ "${#stare_zrzuty[@]}" -gt 0 ]]; then
-  rm -f "${stare_zrzuty[@]}"
+# Suma liczona ZARAZ PO udanym zrzucie - jedyny moment pewnosci, ze plik na
+# dysku to dokladnie to, co pg_dump napisal. Bez sumy nie ma wpisu w
+# rejestrze: nowy plik zostaje na dysku, ale rotacja nigdy go nie skasuje
+# (nie bedzie go w rejestrze) - bezpieczny kierunek zamiast zgadywania.
+suma_nowego="$(sha256sum -- "$backup_file" 2>/dev/null | awk '{print $1}' || true)"
+if [[ -e "$rejestr_zrzutow" && ! -f "$rejestr_zrzutow" ]]; then
+  # NIE WIEM juz tutaj, nie dopiero przy rotacji: cos lezy pod ta nazwa, ale
+  # nie jest zwyklym plikiem, wiec dopisanie do niego byloby zgadywaniem.
+  # Nowy zrzut zostaje na dysku (pg_dump juz sie udal), ale bez wpisu w
+  # rejestrze rotacja nigdy go nie ruszy - bezpieczny kierunek.
+  echo "OSTRZEZENIE: NIE WIEM - pod nazwa rejestru $rejestr_zrzutow lezy cos, co nie jest zwyklym plikiem. NIE dopisuje nowej pozycji."
+elif [[ -z "$suma_nowego" ]]; then
+  echo "OSTRZEZENIE: nie udalo sie policzyc sumy kontrolnej $backup_file - NIE dopisuje go do rejestru wlasnych zrzutow (zostaje na dysku, rotacja go nigdy nie ruszy)."
+else
+  printf '%s\t%s\n' "$(basename "$backup_file")" "$suma_nowego" >> "$rejestr_zrzutow"
+fi
+
+# Rotacja czyta WYLACZNIE rejestr, nigdy katalog - lista kandydatow do
+# skasowania to pozycje w rejestrze ponad siedem najnowszych, NIE wynik
+# przeszukania nazw plikow. Kazda pozycja ma TRZY mozliwe wyniki, nie dwa:
+# SKASOWANO (plik istnieje, suma zgadza sie z zapisana), NIC-DO-ZROBIENIA
+# (pozycja jest, pliku juz nie ma - ktos go usunal recznie, nie nasza
+# sprawa), NIE WIEM (plik jest, ale tresc/suma sie nie zgadza, albo nie da
+# sie jej policzyc). NIE WIEM nigdy nie kasuje, zawsze zostawia wlasny
+# wiersz w logu i nigdy nie jest cicho skladane z ktorymkolwiek z dwoch
+# pozostalych wynikow - w tym takze wtedy, gdy sam rejestr nie daje sie
+# odczytac (np. urwany zapis, brak uprawnien, albo cos innego niz zwykly
+# plik lezy pod ta nazwa): brak odpowiedzi to NIE WIEM, nigdy "nic do
+# skasowania".
+if [[ ! -e "$rejestr_zrzutow" ]]; then
+  echo "ROTACJA ZRZUTOW: rejestr jeszcze nie istnieje - to pierwszy zrzut tego instrumentu w tym katalogu, nic do rotacji."
+elif [[ ! -f "$rejestr_zrzutow" || ! -r "$rejestr_zrzutow" ]]; then
+  echo "ROTACJA ZRZUTOW: NIE WIEM - rejestr istnieje pod ta nazwa, ale nie da sie go odczytac jako zwykly plik (uprawnienia albo inny typ pliku). Nic nie kasuje, katalog kopii zostaje jak jest."
+else
+  mapfile -t wiersze_rejestru < "$rejestr_zrzutow"
+  liczba_wpisow="${#wiersze_rejestru[@]}"
+  echo "ROTACJA ZRZUTOW: rejestr ma $liczba_wpisow pozycji."
+  if [[ "$liczba_wpisow" -le 7 ]]; then
+    echo "ROTACJA ZRZUTOW: $liczba_wpisow <= 7, nic do skasowania."
+  else
+    ile_do_usuniecia=$((liczba_wpisow - 7))
+    nowy_rejestr="$(mktemp)"
+    skasowano=0
+    nie_wiem=0
+    nic_do_zrobienia=0
+    i=0
+    for wiersz in "${wiersze_rejestru[@]}"; do
+      i=$((i + 1))
+      nazwa="${wiersz%%$'\t'*}"
+      suma_rejestru="${wiersz#*$'\t'}"
+      sciezka="$backup_dir/$nazwa"
+      if [[ "$i" -gt "$ile_do_usuniecia" ]]; then
+        # Wsrod siedmiu najnowszych pozycji rejestru - zostaje, nietkniety.
+        printf '%s\n' "$wiersz" >> "$nowy_rejestr"
+        continue
+      fi
+      if [[ ! -e "$sciezka" ]]; then
+        echo "  ROTACJA: NIC-DO-ZROBIENIA - '$nazwa' jest w rejestrze, ale juz go nie ma na dysku. Zdejmuje pozycje z rejestru."
+        nic_do_zrobienia=$((nic_do_zrobienia + 1))
+        continue
+      fi
+      suma_teraz="$(sha256sum -- "$sciezka" 2>/dev/null | awk '{print $1}' || true)"
+      if [[ -z "$suma_teraz" ]]; then
+        echo "  ROTACJA: NIE WIEM - nie udalo sie policzyc sumy '$nazwa'. Zostawiam plik I pozycje w rejestrze - nie kasuje, gdy nie wiem na pewno."
+        nie_wiem=$((nie_wiem + 1))
+        printf '%s\n' "$wiersz" >> "$nowy_rejestr"
+        continue
+      fi
+      if [[ "$suma_teraz" != "$suma_rejestru" ]]; then
+        echo "  ROTACJA: NIE WIEM - '$nazwa' jest w rejestrze, ale tresc na dysku juz NIE zgadza sie z zapisana suma (nazwa nie jest juz dowodem). Zostawiam plik, zdejmuje pozycje z rejestru."
+        nie_wiem=$((nie_wiem + 1))
+        continue
+      fi
+      rm -f -- "$sciezka"
+      skasowano=$((skasowano + 1))
+      echo "  ROTACJA: SKASOWANO '$nazwa' (pozycja $i z $liczba_wpisow, suma zgodna)."
+    done
+    mv -f "$nowy_rejestr" "$rejestr_zrzutow"
+    pozostalo_w_rejestrze="$(grep -c . "$rejestr_zrzutow" || true)"
+    echo "ROTACJA ZRZUTOW: skasowano=$skasowano nie-wiem=$nie_wiem nic-do-zrobienia=$nic_do_zrobienia pozostaje-w-rejestrze=$pozostalo_w_rejestrze"
+  fi
 fi
 
 echo "Migracje i cache konfiguracji..."

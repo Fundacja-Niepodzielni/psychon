@@ -396,6 +396,32 @@ BLEDOW_SL="$(grep -acE '^  WYNIK: NIEZALICZONY' "$KATALOG_BIEGU"/bramka-swiadek-
 echo "swiadek logowania (testy): EXIT=$KOD_SWIADEK_LOGOWANIA, $CZAS_SWIADEK_LOGOWANIA s, przypadkow $PRZYPADKOW_SL, bledow $BLEDOW_SL"
 [ "$KOD_SWIADEK_LOGOWANIA" -ne 0 ] && tail -20 "$KATALOG_BIEGU"/bramka-swiadek-logowania.log | sed 's/^/  ! /'
 
+# --- 3f-2 - sprzatanie wlasnych zrzutow bazy psychon-dev (proba blokujaca) --
+# Katalog kopii na hoscie nie jest pusty i nie jest nasz w calosci: proba
+# stawia obce pliki obok wlasnych (z rejestrem sum kontrolnych) i mierzy, ze
+# rotacja rusza WYLACZNIE pozycje z wlasnego rejestru, nigdy plik pasujacy
+# tylko do ksztaltu nazwy. Lekka (bez Dockera, bez sieci, bez prawdziwego
+# pg_dump) - biegnie w POWLOCE HOSTA, tak jak proba swiadka logowania wyzej.
+naglowek "3f-2 - sprzatanie wlasnych zrzutow bazy psychon-dev (proba)"
+
+T="$(date +%s)"
+bash deploy/psychon-dev/tests/test-sprzatanie-wlasnych-zrzutow.sh > "$KATALOG_BIEGU"/bramka-sprzatanie-zrzutow.log 2>&1
+KOD_SPRZATANIE_ZRZUTOW=$?
+CZAS_SPRZATANIE_ZRZUTOW="$(czas_od "$T")"
+PRZYPADKOW_SZ="$(grep -acE '^=== ' "$KATALOG_BIEGU"/bramka-sprzatanie-zrzutow.log)"
+BLEDOW_SZ="$(grep -acE '^  WYNIK: NIEZALICZONY' "$KATALOG_BIEGU"/bramka-sprzatanie-zrzutow.log)"
+echo "sprzatanie zrzutow (proba): EXIT=$KOD_SPRZATANIE_ZRZUTOW, $CZAS_SPRZATANIE_ZRZUTOW s, przypadkow $PRZYPADKOW_SZ, bledow $BLEDOW_SZ"
+[ "$KOD_SPRZATANIE_ZRZUTOW" -ne 0 ] && tail -30 "$KATALOG_BIEGU"/bramka-sprzatanie-zrzutow.log | sed 's/^/  ! /'
+
+# Ta proba nie dostaje wlasnej galezi w lancuchu priorytetu nizej w pliku -
+# wynik wchodzi do zmiennej sasiada z kroku "3f" tuz wyzej, tym samym
+# idiomem scalania, jaki widac przy ocenie drzewa po biegu i przy kroku
+# frontu. Priorytet sie nie zmienia: oba kroki sa lekkie (bez Dockera, bez
+# sieci), wiec pierwszy czerwony miedzy nimi i tak zabiera glos.
+if [ "$KOD_SPRZATANIE_ZRZUTOW" -ne 0 ] && [ "$KOD_SWIADEK_LOGOWANIA" -eq 0 ]; then
+    KOD_SWIADEK_LOGOWANIA=$KOD_SPRZATANIE_ZRZUTOW
+fi
+
 # --- 3g - inwentarz skladnikow (SBOM) i skan podatnosci ---------------------
 # Generator (trivy, ~1s) biegnie BEZWARUNKOWO - jego koszt jest pomijalny i
 # liczba skladnikow w dzienniku jest tania do utrzymania na kazdym biegu.
@@ -650,14 +676,18 @@ if [ "$KOD_TEST_DRZEWO" -ne 0 ] && [ "$KOD_DRZEWO" -eq 0 ]; then
 fi
 echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=${CZAS_SEMGREP:-0}s sbom=${CZAS_SBOM_GEN:-0}s front=${CZAS_FRONT}s libc=${CZAS_LIBC}s calosc=$(czas_od "$START_CALOSC")s"
 
-# KOD_ACTIONLINT, KOD_GITLEAKS, KOD_LIBC, KOD_SWIADEK_LOGOWANIA i - od 10.09 -
-# KOD_SEMGREP sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM)
-# NIE sa i to jest decyzja, nie przeoczenie: ich liczby stoja w logu wyzej i
-# ida do rejestru z numerem, a podatnosc w cudzej zaleznosci nie jest rzecza,
-# ktora ten commit zepsul. KOD_SBOM (od 24.09) NIE ma tu wlasnej galezi -
-# scalony jest w KOD_FRONT wyzej (patrz komentarz przy tym scaleniu, krok
-# "4 - front"), z tym samym priorytetem, jaki mialaby tu wlasna galaz: sam
-# koniec lancucha, tuz przed domyslnym `else`.
+# KOD_ACTIONLINT, KOD_GITLEAKS, KOD_LIBC, KOD_SWIADEK_LOGOWANIA i - od
+# 10.09 - KOD_SEMGREP sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP,
+# KOD_AUDYT_NPM) NIE sa i to jest decyzja, nie przeoczenie: ich liczby stoja
+# w logu wyzej i ida do rejestru z numerem, a podatnosc w cudzej zaleznosci
+# nie jest rzecza, ktora ten commit zepsul. KOD_SBOM (od 24.09) NIE ma tu
+# wlasnej galezi - scalony jest w KOD_FRONT wyzej (patrz komentarz przy tym
+# scaleniu, krok "4 - front"), z tym samym priorytetem, jaki mialaby tu
+# wlasna galaz: sam koniec lancucha, tuz przed domyslnym `else`. Zrzuty
+# bazy psychon-dev (krok "3f-2", od 24.09) tez NIE maja tu wlasnej galezi -
+# scalone sa w KOD_SWIADEK_LOGOWANIA (patrz komentarz przy tym scaleniu,
+# tuz nad krokiem "3f-2"), na miejscu, ktore mialaby tu wlasna galaz: zaraz
+# po zmiennej sasiada, przed KOD_LIBC.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
