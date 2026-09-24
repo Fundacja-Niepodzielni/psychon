@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, ApiError } from "@/lib/api";
 import type {
   ProfileDocumentType,
@@ -105,29 +106,32 @@ export default function PsychologistProfileForm() {
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-xl py-10">
-        <Alert variant="error">{loadError}</Alert>
-      </div>
+      <PageTemplate naglowek={{ title: "Profil psychologa" }}>
+        <div className="mx-auto max-w-xl py-10">
+          <Alert variant="error">{loadError}</Alert>
+        </div>
+      </PageTemplate>
     );
   }
 
   if (!profile) {
     return (
-      <p className="text-body text-muted" role="status">
-        Wczytywanie…
-      </p>
+      <PageTemplate naglowek={{ title: "Profil psychologa" }}>
+        <p className="text-body text-muted" role="status">
+          Wczytywanie…
+        </p>
+      </PageTemplate>
     );
   }
 
   if (!profile.eligible) {
     return (
-      <div className="flex max-w-2xl flex-col gap-6">
-        <h1 className="text-h2 font-black text-ink">Profil psychologa</h1>
+      <PageTemplate naglowek={{ title: "Profil psychologa" }}>
         <Alert variant="info">
           Wniosek o wpis do bazy psychologów Fundacji będzie dostępny po
           ukończeniu całego programu.
         </Alert>
-      </div>
+      </PageTemplate>
     );
   }
 
@@ -260,14 +264,16 @@ export default function PsychologistProfileForm() {
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-h2 font-black text-ink">Profil psychologa</h1>
-        <Badge variant={STATUS_VARIANTS[profile.status]}>
-          {STATUS_LABELS[profile.status]}
-        </Badge>
-      </div>
-
+    <PageTemplate
+      naglowek={{
+        title: "Profil psychologa",
+        action: (
+          <Badge variant={STATUS_VARIANTS[profile.status]}>
+            {STATUS_LABELS[profile.status]}
+          </Badge>
+        ),
+      }}
+    >
       {profile.status === "returned" && profile.return_reason && (
         <Alert variant="info" title="Wniosek odesłany do poprawy">
           {profile.return_reason}
@@ -413,6 +419,6 @@ export default function PsychologistProfileForm() {
           </Button>
         </Card>
       )}
-    </div>
+    </PageTemplate>
   );
 }

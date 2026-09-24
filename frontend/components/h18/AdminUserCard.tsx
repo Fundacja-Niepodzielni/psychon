@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import PageTemplate from "@/components/templates/PageTemplate";
 import {
   ApiError,
   blockAdminUser,
@@ -133,34 +134,39 @@ export default function AdminUserCard({ id }: { id: number }) {
 
   if (failed?.key === key && failed.kind === "not_found") {
     return (
-      <Card className="flex max-w-2xl flex-col gap-4">
-        <h1 className="text-h3 font-black text-ink">Nie znaleziono osoby</h1>
-        <Link
-          href="/admin/uczestniczki"
-          className="text-body font-medium text-primary underline underline-offset-4"
-        >
-          Wróć do listy
-        </Link>
-      </Card>
+      <PageTemplate naglowek={{ title: "Nie znaleziono osoby" }}>
+        <Card className="flex max-w-2xl flex-col gap-4">
+          <Link
+            href="/admin/uczestniczki"
+            className="text-body font-medium text-primary underline underline-offset-4"
+          >
+            Wróć do listy
+          </Link>
+        </Card>
+      </PageTemplate>
     );
   }
 
   if (failed?.key === key) {
     return (
-      <div className="flex flex-col items-start gap-3">
-        <Alert variant="error">{failed.message}</Alert>
-        <Button variant="secondary" onClick={() => setReload((v) => v + 1)}>
-          Spróbuj ponownie
-        </Button>
-      </div>
+      <PageTemplate naglowek={{ title: "Karta osoby" }}>
+        <div className="flex flex-col items-start gap-3">
+          <Alert variant="error">{failed.message}</Alert>
+          <Button variant="secondary" onClick={() => setReload((v) => v + 1)}>
+            Spróbuj ponownie
+          </Button>
+        </div>
+      </PageTemplate>
     );
   }
 
   if (loaded?.key !== key || !form) {
     return (
-      <p role="status" className="text-body text-muted">
-        Wczytywanie karty…
-      </p>
+      <PageTemplate naglowek={{ title: "Karta osoby" }}>
+        <p role="status" className="text-body text-muted">
+          Wczytywanie karty…
+        </p>
+      </PageTemplate>
     );
   }
 
@@ -170,24 +176,24 @@ export default function AdminUserCard({ id }: { id: number }) {
   const userActionSlots = slotsForRegion("user-actions");
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <PageTemplate
+      naglowek={{
+        title: `${profile.first_name} ${profile.last_name}`,
+        breadcrumbs: (
           <Link
             href="/admin/uczestniczki"
             className="text-small font-medium text-primary underline underline-offset-4"
           >
             ← Lista osób
           </Link>
-          <h1 className="mt-1 text-h2 font-black text-ink">
-            {profile.first_name} {profile.last_name}
-          </h1>
-        </div>
-        <Badge variant="neutral">
-          {ROLE_LABELS[profile.role] ?? profile.role}
-        </Badge>
-      </div>
-
+        ),
+        action: (
+          <Badge variant="neutral">
+            {ROLE_LABELS[profile.role] ?? profile.role}
+          </Badge>
+        ),
+      }}
+    >
       <Card title="Profil">
         <dl className="grid gap-3 text-small sm:grid-cols-2">
           <div>
@@ -400,6 +406,6 @@ export default function AdminUserCard({ id }: { id: number }) {
           </div>
         </form>
       </Card>
-    </div>
+    </PageTemplate>
   );
 }

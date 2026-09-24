@@ -6,6 +6,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, ApiError, getToken } from "@/lib/api";
 
 interface Consent {
@@ -311,22 +312,26 @@ export default function ProfilePage() {
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-xl py-12">
-        <Alert variant="error">{loadError}</Alert>
-      </div>
+      <PageTemplate naglowek={{ title: "Profil" }}>
+        <div className="mx-auto max-w-xl py-12">
+          <Alert variant="error">{loadError}</Alert>
+        </div>
+      </PageTemplate>
     );
   }
 
   if (!profile) {
-    return <p className="text-body text-muted">Wczytywanie profilu…</p>;
+    return (
+      <PageTemplate naglowek={{ title: "Profil" }}>
+        <p className="text-body text-muted">Wczytywanie profilu…</p>
+      </PageTemplate>
+    );
   }
 
   const err = (key: string) => fieldErrors[key]?.[0];
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-h2 font-black text-ink">Profil</h1>
-
+    <PageTemplate naglowek={{ title: "Profil" }}>
       <Card title="Dane osobowe">
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           {formError && <Alert variant="error">{formError}</Alert>}
@@ -482,6 +487,6 @@ export default function ProfilePage() {
           </Button>
         </div>
       </Card>
-    </div>
+    </PageTemplate>
   );
 }
