@@ -9,13 +9,8 @@ import VerificationCard, {
 import Alert from "@/components/ui/Alert";
 import ErrorState from "@/components/molecules/ErrorState";
 import LoadingState from "@/components/molecules/LoadingState";
+import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 import { api, ApiError } from "@/lib/api";
-
-type State =
-  | { phase: "loading" }
-  | { phase: "ok"; result: VerifyResult }
-  | { phase: "not_found" }
-  | { phase: "error" };
 
 function CertificateLanding() {
   const params = useSearchParams();
@@ -27,26 +22,42 @@ function CertificateLanding() {
       ? `/verify/${number}`
       : null;
 
-  const [state, setState] = useState<State>({ phase: "loading" });
+  const [result, setResult] = useState<VerifyResult | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [awaria, setAwaria] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [ponowienie, setPonowienie] = useState(0);
 
   useEffect(() => {
+    // Gałąź bez ścieżki renderuje wyłącznie komunikat obok (niezależnie od
+    // `loading`, patrz JSX niżej) — nie ma tu niczego do wczytania, więc
+    // stan ładowania nigdy się w tej gałęzi nie ujawnia na ekranie.
     if (!path) return;
 
     let active = true;
+    setLoading(true);
     api<VerifyResult>(path)
-      .then((result) => {
-        if (active) setState({ phase: "ok", result });
+      .then((wynik) => {
+        if (!active) return;
+        setResult(wynik);
+        setNotFound(false);
+        setAwaria(false);
       })
       .catch((err) => {
         if (!active) return;
-        // 404 (numer/token nieznany) — komunikat „nie znaleziono"; każda inna
-        // odpowiedź (5xx, sieć) — osobny komunikat awarii z ponowieniem.
+        // 404 (numer/token nieznany) — to rozstrzygnięcie samo w sobie, stary
+        // wynik przestaje być aktualną odpowiedzią. Każda inna odpowiedź
+        // (5xx, sieć) to awaria połączenia — poprzednio wczytany wynik
+        // zostaje na ekranie, komunikat awarii idzie obok niego.
         if (err instanceof ApiError && err.status === 404) {
-          setState({ phase: "not_found" });
+          setNotFound(true);
+          setResult(null);
         } else {
-          setState({ phase: "error" });
+          setAwaria(true);
         }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
     return () => {
       active = false;
@@ -54,58 +65,47 @@ function CertificateLanding() {
   }, [path, ponowienie]);
 
   return (
-    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
-      <div className="w-full max-w-lg">
-        <div className="mb-6 text-center">
-          <h1 className="text-h2 font-black text-ink">Certyfikat programu</h1>
-          <p className="mt-1 text-small text-subtle">
-            Fundacja Niepodzielni — program PsychON
-          </p>
-        </div>
-
-        {path === null ? (
-          <Alert variant="info">
-            Brak numeru certyfikatu w adresie. Przejdź do{" "}
-            <Link
-              href="/weryfikacja"
-              className="font-medium underline underline-offset-4"
-            >
-              wyszukiwarki weryfikacji
-            </Link>
-            .
-          </Alert>
-        ) : (
-          <>
-            {state.phase === "loading" && <LoadingState label="Sprawdzanie…" />}
-            {state.phase === "ok" && (
-              <VerificationCard result={state.result} />
-            )}
-            {state.phase === "not_found" && (
-              <Alert variant="error">
-                Nie znaleziono certyfikatu o podanym numerze.
-              </Alert>
-            )}
-            {state.phase === "error" && (
-              <ErrorState
-                message="Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę."
-                onRetry={() => {
-                  setState({ phase: "loading" });
-                  setPonowienie((n) => n + 1);
-                }}
-              />
-            )}
-          </>
-        )}
-      </div>
-    </main>
+    <PublicPageTemplate
+      naglowek={{
+        title: "Certyfikat programu",
+        description: "Fundacja Niepodzielni — program PsychON",
+      }}
+    >
+      {path === null ? (
+        <Alert variant="info">
+          Brak numeru certyfikatu w adresie. Przejdź do{" "}
+          <Link
+            href="/weryfikacja"
+            className="font-medium underline underline-offset-4"
+          >
+            wyszukiwarki weryfikacji
+          </Link>
+          .
+        </Alert>
+      ) : (
+        <>
+          {loading && result === null && <LoadingState label="Sprawdzanie…" />}
+          {result && <VerificationCard result={result} />}
+          {notFound && (
+            <Alert variant="error">
+              Nie znaleziono certyfikatu o podanym numerze.
+            </Alert>
+          )}
+          {awaria && (
+            <ErrorState
+              message="Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę."
+              onRetry={() => setPonowienie((n) => n + 1)}
+            />
+          )}
+        </>
+      )}
+    </PublicPageTemplate>
   );
 }
 
 export default function CertificateLandingPage() {
   return (
-    <Suspense
-      fallback={<p className="p-6 text-body text-muted">Wczytywanie…</p>}
-    >
+    <Suspense fallback={<LoadingState label="Wczytywanie…" />}>
       <CertificateLanding />
     </Suspense>
   );

@@ -8,6 +8,8 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
+import LoadingState from "@/components/molecules/LoadingState";
+import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 import { api, ApiError } from "@/lib/api";
 import { homeForRole } from "@/lib/home-by-role";
 
@@ -100,7 +102,7 @@ function AktywacjaTresc() {
 
   if (stan.krok === "brak-sesji") {
     return (
-      <Card title="Aktywacja konta" className="w-full max-w-lg">
+      <Card className="w-full max-w-lg">
         <p className="mb-5 text-body text-muted">
           Zaloguj się przez konto Niepodzielni, aby powiązać je z tym zaproszeniem.
         </p>
@@ -120,7 +122,7 @@ function AktywacjaTresc() {
 
   if (stan.krok === "odmowa") {
     return (
-      <Card title="Aktywacja konta" className="w-full max-w-lg">
+      <Card className="w-full max-w-lg">
         <ForbiddenState message={stan.komunikat} embedded />
       </Card>
     );
@@ -128,7 +130,7 @@ function AktywacjaTresc() {
 
   if (stan.krok === "blad") {
     return (
-      <Card title="Aktywacja konta" className="w-full max-w-lg">
+      <Card className="w-full max-w-lg">
         {stan.mozliwePonowienie ? (
           <ErrorState
             message={stan.komunikat}
@@ -142,7 +144,7 @@ function AktywacjaTresc() {
   }
 
   return (
-    <Card title="Aktywacja konta" className="w-full max-w-lg">
+    <Card className="w-full max-w-lg">
       <Alert variant="info">
         <p>
           {stan.krok === "sukces" ? "Konto powiązane. Przekierowuję…" : "Trwa łączenie konta…"}
@@ -154,13 +156,10 @@ function AktywacjaTresc() {
 
 export default function ActivationPage() {
   return (
-    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
-      <div className="flex w-full max-w-lg flex-col gap-4">
-        <h1 className="text-h2 font-black text-ink">Aktywacja konta</h1>
-        <Suspense fallback={<p className="text-body text-subtle">Wczytywanie…</p>}>
-          <AktywacjaTresc />
-        </Suspense>
-      </div>
-    </main>
+    <PublicPageTemplate naglowek={{ title: "Aktywacja konta" }}>
+      <Suspense fallback={<LoadingState label="Wczytywanie…" />}>
+        <AktywacjaTresc />
+      </Suspense>
+    </PublicPageTemplate>
   );
 }
