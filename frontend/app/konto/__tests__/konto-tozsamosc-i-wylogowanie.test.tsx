@@ -71,6 +71,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("/konto — nagłówek ekranu", () => {
+  it("pokazuje nagłówek z treścią „Twoje konto” (dowolny poziom)", async () => {
+    // Celowo bez `level` — poziom nagłówka należy do szaty (może go przejąć
+    // wspólny szablon), więc mierzymy tylko obecność, treść i rolę
+    // (nagłówek, nie akapit z tym samym tekstem).
+    fetchWhoAmI.mockResolvedValue({ sub: "sub-naglowek", roles: [] });
+
+    render(<AccountPage />);
+
+    expect(
+      screen.getByRole("heading", { name: "Twoje konto" }),
+    ).toBeInTheDocument();
+
+    await screen.findByText("sub-naglowek");
+  });
+});
+
 describe("/konto — tożsamość z sesji", () => {
   it("pokazuje `sub` i role dokładnie takie, jakie przyszły z whoami", async () => {
     fetchWhoAmI.mockResolvedValue({
