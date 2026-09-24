@@ -52,7 +52,7 @@ ekranu. To jest **pierwszy pomiar**, nie poprawki; poprawki idą w kolejnym etap
 | /admin (pulpit administracji) | tokeny | OK | 0 braków | OK (h1) | — |
 | /admin/profile (kolejka) | tokeny | OK | 0 braków | OK (h1) | — |
 | /admin/profile/[id] | tokeny | OK | 0 braków | OK (h1) | — |
-| /admin/raport | tokeny | OK | 0 braków | OK | dwa `h1` na jednym ekranie — do przejrzenia w rundzie 2 |
+| /admin/raport | tokeny | OK | 0 braków | OK | dwa `h1` na jednym ekranie — do przejrzenia |
 | /admin/sprawy | tokeny | OK | 0 braków | OK (h1) | — |
 | /admin/staz | tokeny | OK | 0 braków | OK (h1) | — |
 | /admin/superwizje | tokeny | OK | 0 braków | OK (h1) | — |
@@ -82,10 +82,10 @@ ekranu. To jest **pierwszy pomiar**, nie poprawki; poprawki idą w kolejnym etap
 | /konto | tokeny | OK | 0 braków | OK (h1) | — |
 | /logowanie/konta | tokeny | OK | 0 braków | **brak nagłówka** | przekierowanie z krótkim komunikatem tekstowym, bez formularza |
 | /logowanie/niepowiazane | tokeny | OK | 0 braków | OK (h1) | — |
-| /logowanie | tokeny | OK | 0 braków | OK (h1) | ekran logowania: bez formularza (SSO), nie modyfikowany w tej rundzie |
+| /logowanie | tokeny | OK | 0 braków | OK (h1) | ekran logowania: bez formularza (SSO), nie modyfikowany do 24.09.2026 |
 | / (strona główna) | nie dotyczy | nie dotyczy | nie dotyczy | nie dotyczy | przekierowanie serwerowe do `/logowanie`, bez renderowanej treści |
 | /weryfikacja | tokeny | OK | 0 braków | OK (h1) | — |
-| /deklaracja-dostepnosci (nowy ekran tej rundy) | tokeny | OK | 0 braków | OK (h1) | — |
+| /deklaracja-dostepnosci (nowy ekran) | tokeny | OK | 0 braków | OK (h1) | — |
 
 39 ekranów z treścią zmierzonych w pełni, 2 przekierowania bez treści zmierzone jako „nie
 dotyczy" (nie renderują niczego, więc nie ma czego oceniać), 0 ekranów niezmierzonych.
@@ -119,8 +119,8 @@ potem kontrast, potem reszta.
 | 6 | Dodać stopkę z linkiem do deklaracji na ekranach publicznych poza powłoką paneli | 8 | 1 h | tak — test obecności linku w renderze |
 | 7 | Test automatyczny osadzony w bramce CI, liczący kontrast par tekst/tło z tokenów (na wzór tego audytu), żeby przyszłe zmiany tokenów nie obniżały kontrastu bez wiedzy | — (test zapobiegawczy) | 1 h | tak |
 
-Suma szacunków rundy 2: **6,25 h** (mieści się w pozostałej części widełek 14–20 h przy
-0 h zmierzonych wcześniej i tej rundzie pomiarowej).
+Suma szacunków: **6,25 h** (mieści się w pozostałej części widełek 14–20 h przy
+0 h zmierzonych dotychczas).
 
 ## Dodatek — ponowny pomiar 2026-09-18 (drzewo dziś ma więcej ekranów niż audyt)
 

@@ -130,7 +130,7 @@
   /* --- Cienie i fokus --- */
   --psy-shadow-card: 0 4px 20px #0000000d;
   --psy-shadow-header: 0 2px 10px #0000000d;
-  /* P2: pierścień fokusu 3 px w --psy-violet-dark (#1500BB), wartość ze
+  /* Pierścień fokusu 3 px w --psy-violet-dark (#1500BB), wartość ze
    * strony Fundacji (DESIGN.md / inwentarz identyfikacji). Zastępuje zielony
    * pierścień 1,41–1,55:1 (poniżej progu Z-9 3:1). Kontrast liczony wobec tła,
    * na którym pierścień faktycznie leży (box-shadow bez inset — tło strony/
@@ -349,7 +349,7 @@
   }
 }
 
-/* P2: reguła ograniczonego ruchu — 0 klas ruchu bez wariantu
+/* Reguła ograniczonego ruchu — 0 klas ruchu bez wariantu
  * `prefers-reduced-motion: reduce` (Z-4, impeccable C-1). Globalna reguła
  * okrywa wszystkie klasy `animate-*` i `transition-*` naraz (m.in.
  * ProgressBar, Button spinner, Skeleton/LoadingState, przejścia menu). */
