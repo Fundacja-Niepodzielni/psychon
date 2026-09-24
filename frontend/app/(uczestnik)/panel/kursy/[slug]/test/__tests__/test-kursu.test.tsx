@@ -333,3 +333,189 @@ describe("ekran testu kursu — wyczerpane podejścia pokazują komunikat serwer
     ).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Płatnik pytania z ID, które NIE są kolejnymi liczbami — żeby przypadek
+ * niżej nie mógł przejść przez zwykłe powtórzenie własnych danych
+ * wejściowych (np. przez indeks 0/1/2 zamiast prawdziwego identyfikatora
+ * z atrapy).
+ */
+const testPayloadNiekolejne = {
+  test_id: 77,
+  pass_threshold: 60,
+  attempts_used: 0,
+  attempts_limit: 5,
+  questions: [
+    {
+      id: 4021,
+      body: "Pytanie o kolor",
+      sequence_order: 1,
+      answers: [
+        { id: 91001, body: "Czerwony" },
+        { id: 91002, body: "Niebieski" },
+      ],
+    },
+    {
+      id: 4022,
+      body: "Pytanie o dźwięk",
+      sequence_order: 2,
+      answers: [
+        { id: 91101, body: "Cichy" },
+        { id: 91102, body: "Głośny" },
+      ],
+    },
+    {
+      id: 4023,
+      body: "Pytanie o smak",
+      sequence_order: 3,
+      answers: [
+        { id: 91201, body: "Słodki" },
+        { id: 91202, body: "Kwaśny" },
+      ],
+    },
+  ],
+};
+
+describe("ekran testu kursu — pasek postępu pokazuje wartość zgodną z liczbą odpowiedzi", () => {
+  it("wartość paska rośnie proporcjonalnie do liczby udzielonych odpowiedzi (1/3, potem 2/3), nie skacze od razu do pełnej", async () => {
+    api.mockResolvedValue(testPayload);
+    const user = userEvent.setup();
+    await startTest(user);
+
+    expect(
+      screen.getByRole("progressbar", { name: "Postęp testu" }),
+    ).toHaveAttribute("aria-valuenow", "0");
+
+    await pickFirstAnswer(user, "Odpowiedź A");
+    expect(
+      screen.getByRole("progressbar", { name: "Postęp testu" }),
+    ).toHaveAttribute("aria-valuenow", "33");
+
+    await user.click(screen.getByRole("button", { name: "Następne pytanie" }));
+    await waitFor(() =>
+      expect(screen.getByRole("group").textContent).toContain(
+        "Pytanie drugie",
+      ),
+    );
+    // Wejście na pytanie 2 samo w sobie nie zwiększa licznika udzielonych
+    // odpowiedzi — nadal odpowiedziano tylko na jedno z trzech pytań.
+    expect(
+      screen.getByRole("progressbar", { name: "Postęp testu" }),
+    ).toHaveAttribute("aria-valuenow", "33");
+
+    await pickFirstAnswer(user, "Odpowiedź C");
+    expect(
+      screen.getByRole("progressbar", { name: "Postęp testu" }),
+    ).toHaveAttribute("aria-valuenow", "67");
+  });
+});
+
+describe("ekran testu kursu — treść wysyłana do API zawiera wybrane odpowiedzi", () => {
+  it("ciało żądania POST zawiera dokładnie odpowiedzi wybrane przez użytkownika, sparowane z identyfikatorami pytań i opcji z atrapy", async () => {
+    api.mockImplementation((url: string, options?: { method?: string }) => {
+      if (url === "/courses/test-kurs/test") {
+        return Promise.resolve(testPayloadNiekolejne);
+      }
+      if (url === "/tests/77/attempts" && options?.method === "POST") {
+        return Promise.resolve({
+          attempt_number: 1,
+          score_percent: 100,
+          passed: true,
+          wrong_question_ids: [],
+        });
+      }
+      return Promise.reject(new Error(`nieoczekiwane wywołanie: ${url}`));
+    });
+
+    const user = userEvent.setup();
+    await startTest(user);
+
+    // Celowo NIE pierwsza opcja z listy każdego pytania — żeby wynik nie
+    // dał się odgadnąć samą kolejnością deklaracji w atrapie.
+    await pickFirstAnswer(user, "Niebieski");
+    await user.click(screen.getByRole("button", { name: "Następne pytanie" }));
+    await waitFor(() =>
+      expect(screen.getByRole("group").textContent).toContain(
+        "Pytanie o dźwięk",
+      ),
+    );
+
+    await pickFirstAnswer(user, "Głośny");
+    await user.click(screen.getByRole("button", { name: "Następne pytanie" }));
+    await waitFor(() =>
+      expect(screen.getByRole("group").textContent).toContain(
+        "Pytanie o smak",
+      ),
+    );
+
+    await pickFirstAnswer(user, "Słodki");
+    await user.click(screen.getByRole("button", { name: "Zakończ i sprawdź" }));
+
+    await waitFor(() => {
+      const wywolaniePost = api.mock.calls.find(
+        ([url, options]) =>
+          url === "/tests/77/attempts" &&
+          (options as { method?: string } | undefined)?.method === "POST",
+      );
+      expect(wywolaniePost).toBeDefined();
+    });
+
+    const wywolaniePost = api.mock.calls.find(
+      ([url, options]) =>
+        url === "/tests/77/attempts" &&
+        (options as { method?: string } | undefined)?.method === "POST",
+    )!;
+    const [, opcjePost] = wywolaniePost as [
+      string,
+      { body: { answers: Record<number, number> } },
+    ];
+
+    expect(opcjePost.body).toEqual({
+      answers: {
+        4021: 91002,
+        4022: 91102,
+        4023: 91201,
+      },
+    });
+  });
+});
+
+describe("ekran testu kursu — komunikat awarii wysyłki pokazuje się na ekranie", () => {
+  it("po nieudanej wysyłce testu (błąd sieci, nie odpowiedź serwera) na ekranie pojawia się dokładnie komunikat o niepowodzeniu wysyłki", async () => {
+    api.mockImplementation((url: string, options?: { method?: string }) => {
+      if (url === "/courses/test-kurs/test") {
+        return Promise.resolve(testPayload);
+      }
+      if (url === "/tests/10/attempts" && options?.method === "POST") {
+        return Promise.reject(new Error("network down"));
+      }
+      return Promise.reject(new Error(`nieoczekiwane wywołanie: ${url}`));
+    });
+
+    const user = userEvent.setup();
+    await startTest(user);
+
+    await pickFirstAnswer(user, "Odpowiedź A");
+    await user.click(screen.getByRole("button", { name: "Następne pytanie" }));
+    await waitFor(() =>
+      expect(screen.getByRole("group").textContent).toContain(
+        "Pytanie drugie",
+      ),
+    );
+    await pickFirstAnswer(user, "Odpowiedź C");
+    await user.click(screen.getByRole("button", { name: "Następne pytanie" }));
+    await waitFor(() =>
+      expect(screen.getByRole("group").textContent).toContain(
+        "Pytanie trzecie",
+      ),
+    );
+    await pickFirstAnswer(user, "Odpowiedź E");
+    await user.click(screen.getByRole("button", { name: "Zakończ i sprawdź" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toBe(
+        "Nie udało się wysłać testu. Spróbuj ponownie.",
+      ),
+    );
+  });
+});
