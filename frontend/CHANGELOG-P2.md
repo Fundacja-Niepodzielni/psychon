@@ -1,4 +1,4 @@
-# Partia P2 — warstwa identyfikacji + atomy
+# Warstwa identyfikacji + atomy
 
 Zakres: decyzje właściciela P2 (identyfikacja wizualna ze strony Fundacji, atomy
 `Field`/`Card`/`Badge`/`Skeleton`/`Logo`, pierścień fokusu, Roboto lokalnie).
@@ -39,7 +39,7 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
   `Skeleton` zamiast własnych trzech `<div>` — użycie w `ListTemplate`, czyli na wszystkich
   ekranach listy podłączonych w P1.
 - **`Logo`** (`components/ui/Logo.tsx`) — inline SVG źródła
-  `_architektura/FRONT-PSYCHON/logo-niepodzielni-ze-strony-2026-09-11.svg`, warianty
+  logo Fundacji Niepodzielni ze strony (eksport 2026-09-11), warianty
   `default` (`text-accent-dark`, #1500BB) / `inverted` (`text-light`, `currentColor` na ciemne
   tło) — **ten sam plik**, bez drugiego znaku. Użycia: `components/layout/PanelShell.tsx`
   (sidebar wszystkich paneli — `panel/kursy`, `admin/emails`, `admin/kursy`, h11, h18, h20 idą
@@ -56,14 +56,14 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
 | Temat | Domknięte w P2? | Jak |
 |---|---|---|
 | Roboto lokalnie | **tak** | Roboto ładowany lokalnie (`@font-face` w `globals.css`, pliki w `public/fonts/`), 0 żądań do `fonts.googleapis.com`/`fonts.gstatic.com` |
-| Kontrast pierścienia fokusu | **tak, w całości** | `--psy-focus-ring` z `#01be4a73` (1,41–1,55:1) na `var(--psy-violet-dark)` #1500BB (≥ 9,98:1 wobec wszystkich zmierzonych teł, patrz komentarz w `globals.css`) **+ uwaga werdyktu domknięta**: `@utility focus-ring` ma teraz zamiennik `@media (forced-colors: active) { outline: 3px solid Highlight; }`, więc `outline: none` nie zostaje bez zastępstwa w trybie wysokiego kontrastu (C1 Z-9) |
+| Kontrast pierścienia fokusu | **tak, w całości** | `--psy-focus-ring` z `#01be4a73` (1,41–1,55:1) na `var(--psy-violet-dark)` #1500BB (≥ 9,98:1 wobec wszystkich zmierzonych teł, patrz komentarz w `globals.css`); dodatkowo `@utility focus-ring` ma teraz zamiennik `@media (forced-colors: active) { outline: 3px solid Highlight; }`, więc `outline: none` nie zostaje bez zastępstwa w trybie wysokiego kontrastu (Z-9) |
 | Ograniczony ruch | **tak** | globalna reguła `@media (prefers-reduced-motion: reduce)` w `globals.css` + `motion-reduce:animate-none` na `Skeleton` |
 | Wysokość wierszy tabel | **nie** — poza zakresem P2 (atomy identyfikacji, nie przebudowa układu tabel/wierszy `admin/page.tsx`, `Tabs.tsx`, `PanelShell.tsx`); wymaga zmiany wysokości istniejących wierszy poza atomami tej partii |
 | Kontrast Badge accent | **tak** | `Badge` accent już naprawiony w P1; P2 domyka jedyne pominięte miejsce (`PulpitDashboard.tsx` `NODE_TONE.in_progress`) |
 | Wyciek uprawnień | **nie** — wyciek uprawnień (`lib/pulpit/data.ts`) to logika ról, nie atom identyfikacji; poza zakresem P2 |
 | Angielski klucz i18n | **nie** — angielski klucz serwera na ekranie to słownik/i18n (`admin/page.tsx`), nie atom; poza zakresem P2 |
 
-## Uwagi z werdyktu P2 (`74048a5`) domknięte
+## Uwagi z poprzedniego przeglądu (`74048a5`) domknięte
 
 - **Pierścień fokusu w całości** — `@utility focus-ring` w `app/globals.css` miało samo
   `outline: none` bez zamiennika widocznego w trybie wymuszonych kolorów
@@ -93,7 +93,7 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
   grupy) — oba miały własny placeholder `<p role="status">tekst…</p>`;
   tekst zostaje identyczny (teraz w `sr-only` + `aria-label`), znika tylko
   wizualny akapit na rzecz szkieletu treści.
-- **Testy na mutacje nieuchwycone przez werdykt** —
+- **Testy na mutacje nieuchwycone wcześniej** —
   `components/ui/__tests__/Button.test.tsx` (nowy: klasa
   `focus-visible:focus-ring` na renderowanym `Button`/`Input`/`Select`, nie
   tylko tekst tokenu), `app/__tests__/design-tokens-p2.test.ts` (rozszerzony:
@@ -103,7 +103,7 @@ na nagłówkach `h1` (`psy-listing.css:80`), nie na przyciskach `.btn`.
   blokiem), `components/ui/__tests__/Logo.test.tsx` (liczba ścieżek = 20, nie
   tylko „> 0”).
 
-## Uwagi z werdyktu P1 domknięte przy okazji
+## Wcześniejsze uwagi domknięte przy okazji
 
 - `LoadingState` bez `motion-reduce` → naprawione przez przejście na atom `Skeleton`
   (`motion-reduce:animate-none` na każdym pasku).

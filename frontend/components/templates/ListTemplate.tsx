@@ -45,7 +45,7 @@ export interface ListTemplateProps {
 /**
  * `ListTemplate` — szablon C2 wariant C (16 tras): nagłówek + filtry +
  * `DataTable` (tu: treść `children`) + 5 stanów. `DataTable`/`FilterBar`
- * (organizmy) są poza zakresem partii P1 — szablon dziś składa istniejące
+ * (organizmy) są poza zakresem — szablon dziś składa istniejące
  * `components/ui/Table` i nowe molekuły stanów wprost.
  */
 export default function ListTemplate({
