@@ -35,7 +35,6 @@ function CertificateLanding() {
     if (!path) return;
 
     let active = true;
-    setLoading(true);
     api<VerifyResult>(path)
       .then((wynik) => {
         if (!active) return;
@@ -94,7 +93,14 @@ function CertificateLanding() {
           {awaria && (
             <ErrorState
               message="Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę."
-              onRetry={() => setPonowienie((n) => n + 1)}
+              // Flaga wczytywania idzie w górę tutaj, nie w ciele efektu:
+              // wywołanie setState synchronicznie wewnątrz efektu wywołuje
+              // kaskadę renderów (reguła react-hooks/set-state-in-effect),
+              // a bramka zatrzymuje się na kroku lintu frontu.
+              onRetry={() => {
+                setLoading(true);
+                setPonowienie((n) => n + 1);
+              }}
             />
           )}
         </>
