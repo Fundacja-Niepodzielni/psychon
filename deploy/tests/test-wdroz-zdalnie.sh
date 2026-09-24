@@ -140,6 +140,18 @@ if [ "$FAZA" = "warunki" ]; then
     exit 0
 fi
 
+if [ -n "${ATRAPA_WDROZENIE_KANAL:-}" ]; then
+    # Kanal pada, zanim czesc zdalna cokolwiek wypisze: zadnego wiersza POWOD=.
+    echo "ssh: connect to host $ATRAPA_ADRES port 22: Connection reset" >&2
+    exit "$ATRAPA_WDROZENIE_KANAL"
+fi
+if [ -n "${ATRAPA_WDROZENIE_POWOD:-}" ]; then
+    # Kanal DOSZEDL, odmowil host - dokladnie tak, jak robi to czesc zdalna.
+    echo "[ZDALNIE] POWOD=$ATRAPA_WDROZENIE_POWOD"
+    echo "[ZDALNIE] odmowa czesci zdalnej: $ATRAPA_WDROZENIE_POWOD"
+    exit "${ATRAPA_WDROZENIE_KOD:-6}"
+fi
+
 echo "[ZDALNIE] KONIEC-STATUS=${ATRAPA_KONIEC_KOD:-0}"
 if [ "${ATRAPA_POWTORZ_KONIEC:-0}" = "1" ]; then
     echo "[ZDALNIE] KONIEC-STATUS=${ATRAPA_KONIEC_KOD:-0}"
@@ -457,8 +469,9 @@ rowne "wywolan atrapy ssh" "$(licznik)" "1"
 rowne "wystapien 'mv ' w tresci wyslanej na hosta" "$(grep -c 'mv ' "$ATRAPA_TRESC")" "0"
 rowne "wystapien 'mkdir' w tresci wyslanej na hosta" "$(grep -c 'mkdir' "$ATRAPA_TRESC")" "0"
 rowne "wystapien 'umask' w tresci wyslanej na hosta" "$(grep -c 'umask' "$ATRAPA_TRESC")" "0"
-rowne "wystapien 'zastane-' w tresci wyslanej na hosta" "$(grep -c 'zastane-' "$ATRAPA_TRESC")" "0"
+rowne "wystapien nazwy docelowej w przechwyconych argumentach" "$(grep -o 'zastane-' "$ATRAPA_ARGI" | grep -c .)" "0"
 rowne "wywolan fazy zakladania w argumentach" "$(grep -c 'bash -s -- zaloz' "$ATRAPA_ARGI")" "0"
+wiekszy_od_zera "wystapien sciezki katalogu kopii w argumentach kroku pomiaru" "$(grep 'bash -s -- warunki' "$ATRAPA_ARGI" | grep -o 'kopie-bazy' | grep -c .)"
 echo "  bajtow tresci wyslanej na hosta: $(wc -c < "$ATRAPA_TRESC")"
 koniec_przypadku
 
@@ -469,10 +482,12 @@ RC=$?
 rowne "rc" "$RC" "0"
 rowne "wystapien 'mv ' w tresci" "$(grep -c 'mv ' "$ATRAPA_TRESC")" "0"
 rowne "wystapien 'umask' w tresci" "$(grep -c 'umask' "$ATRAPA_TRESC")" "0"
-rowne "wystapien 'zastane-' w tresci" "$(grep -c 'zastane-' "$ATRAPA_TRESC")" "0"
+rowne "wystapien nazwy docelowej w przechwyconych argumentach" "$(grep -o 'zastane-' "$ATRAPA_ARGI" | grep -c .)" "0"
 rowne "wierszy z 'mkdir' w tresci" "$(grep -c 'mkdir' "$ATRAPA_TRESC")" "1"
 echo "  jedyny wiersz z mkdir: $(grep -n 'mkdir' "$ATRAPA_TRESC")"
-rowne "wystapien 'kopie-bazy' obok mkdir" "$(grep -c 'mkdir.*kopie-bazy' "$ATRAPA_TRESC")" "0"
+rowne "wystapien katalogu kopii w argumentach kroku wdrozenia" "$(grep 'bash -s -- wdrozenie' "$ATRAPA_ARGI" | grep -o 'kopie-bazy' | grep -c .)" "0"
+wiekszy_od_zera "wystapien katalogu kopii w argumentach kroku pomiaru" "$(grep 'bash -s -- warunki' "$ATRAPA_ARGI" | grep -o 'kopie-bazy' | grep -c .)"
+echo "  argumenty kroku wdrozenia: $(grep -o 'bash -s -- wdrozenie.*' "$ATRAPA_ARGI")"
 koniec_przypadku
 
 przypadek "katalog nadrzedny cudzy: kod 31, ani jednego mv i mkdir na hoscie"
@@ -499,6 +514,8 @@ rowne "wystapien 'mv ' w tresci wyslanej na hosta" "$(grep -c 'mv ' "$ATRAPA_TRE
 rowne "wystapien 'rm ' w tresci wyslanej na hosta" "$(grep -c 'rm ' "$ATRAPA_TRESC")" "0"
 rowne "wystapien 'rmdir' w tresci wyslanej na hosta" "$(grep -c 'rmdir' "$ATRAPA_TRESC")" "0"
 rowne "zadan przeniesienia w argumentach (konczy sie na 'tak')" "$(grep -c 'bash -s -- zaloz .* tak$' "$ATRAPA_ARGI")" "1"
+wiekszy_od_zera "wystapien nazwy docelowej w przechwyconych argumentach" "$(grep -o 'zastane-' "$ATRAPA_ARGI" | grep -c .)"
+echo "  argumenty kroku zakladania: $(grep -o 'bash -s -- zaloz.*' "$ATRAPA_ARGI")"
 rowne "linii z nazwa docelowa i liczba pozycji" "$(grep -c 'zastane-.*pozycji w srodku: 7' "$WYJ")" "1"
 rowne "wystapien 'pg_dump' w wyjsciu" "$(grep -c 'pg_dump' "$WYJ")" "0"
 rowne "wystapien '[ZDALNIE]' w wyjsciu (krok wdrozenia nie rusza)" "$(grep -c 'ZDALNIE' "$WYJ")" "0"
@@ -652,6 +669,52 @@ rowne "rc" "$RC" "0"
 rowne "wystapien nazwy konta zmierzonego na hoscie" "$(grep -o 'wdrozeniowiec' "$WYJ" | grep -c .)" "0"
 wiekszy_od_zera "linii nazywajacych rozjazd kont" "$(grep -c 'KONTO-INNE-NIZ-ZADANE' "$WYJ")"
 grep -E 'uzytkownik wdrazajacy|KONTO-INNE' "$WYJ" | head -4 | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "czesc zdalna kroku wdrozenia odmawia brakiem repozytorium: kod 26, nie 2"
+zeruj
+ATRAPA_WDROZENIE_POWOD=brak-repozytorium ATRAPA_WDROZENIE_KOD=6 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "26"
+rowne "rc rozny od kodu uzycia" "$([ "$RC" -ne 2 ] && echo tak || echo nie)" "tak"
+rowne "wywolan atrapy ssh (warunki + wdrozenie)" "$(licznik)" "2"
+rowne "linii NIEZALICZONY nazywajacej brak repozytorium" "$(grep -c 'WDROZENIE. NIEZALICZONY: na hoscie nie ma repozytorium' "$WYJ")" "1"
+rowne "linii mylacych to z kanalem" "$(grep -c 'kanal zdalny nie doszedl' "$WYJ")" "0"
+grep -E 'ZDALNIE|NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "czesc zdalna kroku wdrozenia odmawia brakiem katalogu logu: kod 27, nie 2"
+zeruj
+ATRAPA_WDROZENIE_POWOD=brak-katalogu-logu ATRAPA_WDROZENIE_KOD=7 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "27"
+rowne "rc rozny od kodu uzycia" "$([ "$RC" -ne 2 ] && echo tak || echo nie)" "tak"
+rowne "rc rozny od kodu poprzedniego powodu" "$([ "$RC" -ne 26 ] && echo tak || echo nie)" "tak"
+rowne "linii NIEZALICZONY nazywajacej katalog logu" "$(grep -c 'WDROZENIE. NIEZALICZONY: na hoscie nie dalo sie zalozyc katalogu logu' "$WYJ")" "1"
+rowne "linii mylacych to z kanalem" "$(grep -c 'kanal zdalny nie doszedl' "$WYJ")" "0"
+grep -E 'NIEZALICZONY' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "kanal pada w kroku wdrozenia: kod kanalu na wierzchu, nie kod hosta"
+zeruj
+ATRAPA_WDROZENIE_KANAL=255 HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc (kod kanalu)" "$RC" "255"
+rowne "linii mowiacych o kanale" "$(grep -c 'kanal zdalny nie doszedl' "$WYJ")" "1"
+rowne "linii o odmowie hosta" "$(grep -c 'kanal doszedl, odmowil host' "$WYJ")" "0"
+rowne "wystapien adresu w wyjsciu" "$(grep -c "$ADRES" "$WYJ")" "0"
+grep -E 'kanal zdalny' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "blad uzycia zostaje wylacznie kodem 2"
+zeruj
+HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" abc > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "2"
+rowne "wywolan atrapy ssh" "$(licznik)" "0"
+rowne "linii o hoscie w wyjsciu" "$(grep -c 'ZDALNIE\|kanal' "$WYJ")" "0"
 koniec_przypadku
 
 przypadek "zakaz podnoszenia praw obejmuje caly przyrzad po dolozeniu trybu"

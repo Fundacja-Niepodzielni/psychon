@@ -42,6 +42,10 @@
 #   23   - kontrola 3: drzewo robocze na hoscie nie jest czyste
 #   24   - kontrola 4: wiersz z koncowym kodem skryptu hosta nie wystapil dokladnie raz
 #   25   - skrypt wdrozeniowy hosta zwrocil kod niezerowy
+#   26   - czesc zdalna kroku wdrozenia: na hoscie nie ma repozytorium
+#   27   - czesc zdalna kroku wdrozenia: nie dalo sie zalozyc katalogu logu
+#          (26 i 27 znacza: kanal DOSZEDL, odmowil host - to co innego niz
+#          kod kanalu, ktory idzie na wierzch bez zmiany)
 #   31   - --zaloz-katalog-kopii: katalog nadrzedny nie nalezy do uzytkownika
 #          wdrazajacego albo nie jest zapisywalny - NIC nie zostalo zrobione
 #   32   - --zaloz-katalog-kopii: po operacji katalog kopii nadal niezapisywalny
@@ -503,7 +507,7 @@ ZDALNE
 
 # --- krok 2: wdrozenie i kroki kontrolne -----------------------------------
 wdrozenie() {
-    local argi wyjscie rc
+    local argi wyjscie rc powod
     argi="$(printf '%q %q %q %q' "$SHA" "$REPO_HOSTA" "$LOG_HOSTA" "$PLIK_SRODOWISKA")"
     WDROZENIE_RUSZYLO=1
     echo "[WDROZENIE] uruchamiam skrypt wdrozeniowy hosta; jego log zostaje na hoscie"
@@ -513,8 +517,11 @@ wdrozenie() {
 set -uo pipefail
 SHA="$2"; REPO_HOSTA="$3"; LOG_HOSTA="$4"; PLIK_SRODOWISKA="$5"
 
-cd "$REPO_HOSTA" 2>/dev/null || { echo "[ZDALNIE] brak repozytorium $REPO_HOSTA"; exit 2; }
-mkdir -p "$(dirname "$LOG_HOSTA")" || { echo "[ZDALNIE] nie zalozylem katalogu logu"; exit 2; }
+# Kazda odmowa ma WLASNY kod i wlasny wiersz z powodem. Wspolny kod kaze
+# wolajacemu zgadywac, a akurat kod 2 znaczy na stacji "zle uzycie" - czego
+# host o sobie nigdy nie twierdzi.
+cd "$REPO_HOSTA" 2>/dev/null || { echo "[ZDALNIE] POWOD=brak-repozytorium"; echo "[ZDALNIE] brak repozytorium $REPO_HOSTA"; exit 6; }
+mkdir -p "$(dirname "$LOG_HOSTA")" || { echo "[ZDALNIE] POWOD=brak-katalogu-logu"; echo "[ZDALNIE] nie zalozylem katalogu logu $(dirname "$LOG_HOSTA")"; exit 7; }
 
 # stdin odciety: ta czesc skryptu sama przyszla przez stdin (`bash -s`), wiec
 # proces wdrozenia, ktory po niego siegnie, zjadlby jej reszte.
@@ -534,8 +541,22 @@ ZDALNE
 )"
     rc=$?
     printf '%s\n' "$wyjscie"
+    # Odmowa HOSTA i zerwany KANAL to dwie rozne wiadomosci, wiec maja rozne
+    # kody. Skoro w wyjsciu stoi nasz wiersz POWOD=, czesc zdalna ruszyla i to
+    # ona odmowila - wiersz o niedoszlym kanale bylby wtedy nieprawda.
+    powod="$(printf '%s\n' "$wyjscie" | grep -m1 '^.ZDALNIE. POWOD=' | sed 's/.*POWOD=//')"
+    case "$powod" in
+        brak-repozytorium)
+            echo "[WDROZENIE] NIEZALICZONY: na hoscie nie ma repozytorium $REPO_HOSTA - kanal doszedl, odmowil host"
+            exit 26
+            ;;
+        brak-katalogu-logu)
+            echo "[WDROZENIE] NIEZALICZONY: na hoscie nie dalo sie zalozyc katalogu logu $(dirname "$LOG_HOSTA") - kanal doszedl, odmowil host"
+            exit 27
+            ;;
+    esac
     if [ "$rc" -ne 0 ]; then
-        echo "[WDROZENIE] kanal zdalny nie doszedl (kod $rc)"
+        echo "[WDROZENIE] kanal zdalny nie doszedl (kod $rc) - skrypt hosta nie ruszyl"
         exit "$rc"
     fi
 
