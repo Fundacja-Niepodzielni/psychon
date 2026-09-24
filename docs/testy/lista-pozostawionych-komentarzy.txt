@@ -1,0 +1,59 @@
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:102 — kod źródłowy (assercja) porównujący identyfikator pocztowy adresu ze stałą testu, nie komentarz i nie odwołanie do organizacji pracy
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:118 — kod (assercja), jak wyżej
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:133 — kod (assercja), jak wyżej
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:143 — kod (element tablicy), jak wyżej
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:39 — kod (deklaracja stałej), jak wyżej
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:57 — kod (treść komunikatu assercji), nie komentarz
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:72 — kod (assercja), jak wyżej
+backend/tests/Feature/H01/ProfileAddressMergeTest.php:87 — kod (treść komunikatu assercji), nie komentarz
+backend/tests/Feature/H06/LessonCompletionTest.php:69 — komentarz bez odwołania: słowo w tekście oznacza dwa wyniki testu (zaliczony/niezaliczony), nie wskazuje żadnego dokumentu
+backend/tests/Feature/H15/ConsentWithdrawalTest.php:76 — kod (treść komunikatu assertTrue), nie komentarz
+backend/tests/Feature/H18/AdminUserAnonymizeTest.php:540 — etykieta K3 odsyła do K2 w tym samym pliku, nie do zewnętrznego dokumentu
+backend/tests/Feature/H18/AdminUserAnonymizeTest.php:586 — etykieta K5 odsyła do K2/K3 w tym samym pliku, nie do zewnętrznego dokumentu
+backend/tests/Feature/Sso/KeycloakGuardTest.php:74 — „R2" to lokalna etykieta reguły w obrębie tego pliku, bez odwołania zewnętrznego
+deploy/tests/test-bramka-sekrety.sh:330 — kod (echo), trafia do wyniku biegu testu
+deploy/tests/test-bramka-sekrety.sh:368 — etykieta K3 lokalna, zgodna z nazwami zmiennych w tym samym pliku (np. LOG_K3B)
+deploy/tests/test-bramka-sekrety.sh:376 — kod (echo), trafia do wyniku biegu testu
+deploy/tests/test-bramka-sekrety.sh:420 — etykieta K4 lokalna, zgodna z nazwami zmiennych w tym samym pliku
+deploy/tests/test-bramka-sekrety.sh:421 — kod (echo), trafia do wyniku biegu testu
+deploy/tests/test-bramka-sekrety.sh:437 — etykieta K5 lokalna, zgodna z nazwami zmiennych w tym samym pliku
+deploy/tests/test-bramka-sekrety.sh:438 — kod (echo), trafia do wyniku biegu testu
+deploy/tests/test-bramka-sekrety.sh:546 — etykieta K1/K3 lokalna, ta sama rodzina co :368/:420/:437 w tym pliku i AdminUserAnonymizeTest.php:540,586 — potraktowana tak samo jak bliźniaki
+docs/testy/00-stos-izolowany-i-baza-testowa.md:209 — przykładowa zmienna powłoki w dokumentacji odczytuje status zakończenia polecenia, nie odwołanie do organizacji pracy
+docs/testy/00-stos-izolowany-i-baza-testowa.md:213 — jak wyżej
+docs/testy/00-stos-izolowany-i-baza-testowa.md:214 — jak wyżej
+frontend/app/(prowadzacy)/prowadzacy/kursy/[id]/__tests__/kurs-prowadzacego-dostep.test.tsx:112 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:127 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:138 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:148 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:158 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:169 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:183 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:215 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:224 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:245 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:270 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:297 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:327 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:342 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:386 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:421 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:445 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:461 — kod (treść it()), trafia do wyniku suity
+frontend/app/logowanie/niepowiazane/__tests__/niepowiazane.test.tsx:481 — kod (treść it()), trafia do wyniku suity
+frontend/components/organisms/__tests__/StatRow.test.tsx:13 — liczba w komentarzu to indeks elementu tablicy zdefiniowanej w tym samym pliku, nie numer kryterium
+frontend/components/ui/__tests__/Logo.test.tsx:33 — kod (treść it()), trafia do wyniku suity
+frontend/components/ui/__tests__/Logo.test.tsx:40 — kod (treść it()), trafia do wyniku suity
+frontend/components/ui/__tests__/__fixtures__/logo-source-hash.ts:4 — nazwa pliku to jedyny uchwyt do odświeżenia sha256 tego fixture; trafienie wynikało z fragmentu nazwy katalogu w ścieżce, ten sam rodzaj szumu co przykładowa zmienna powłoki w dokumentacji testów
+frontend/lib/__tests__/konto-niepowiazane-sub.test.ts:10 — etykieta K3 lokalna w obrębie tego samego pliku (patrz describe() niżej)
+frontend/lib/__tests__/konto-niepowiazane-sub.test.ts:13 — etykieta K4 lokalna w obrębie tego samego pliku
+frontend/lib/__tests__/konto-niepowiazane-sub.test.ts:47 — kod (treść describe()), trafia do wyniku suity
+frontend/lib/__tests__/konto-niepowiazane-sub.test.ts:8 — etykieta K1 lokalna w obrębie tego samego pliku
+frontend/lib/__tests__/konto-niepowiazane-sub.test.ts:97 — kod (treść describe()), trafia do wyniku suity
+frontend/lib/menu/__tests__/filterMenuByRole.test.ts:13 — kod (treść it()), trafia do wyniku suity
+frontend/lib/menu/__tests__/filterMenuByRole.test.ts:18 — kod (treść it()), trafia do wyniku suity
+frontend/lib/menu/__tests__/filterMenuByRole.test.ts:23 — kod (treść it()), trafia do wyniku suity
+frontend/lib/menu/__tests__/filterMenuByRole.test.ts:28 — kod (treść it()), trafia do wyniku suity
+frontend/lib/menu/__tests__/filterMenuByRole.test.ts:34 — kod (treść it()), trafia do wyniku suity
+frontend/lib/menu/__tests__/filterMenuByRole.test.ts:39 — kod (treść it()), trafia do wyniku suity
+frontend/lib/menu/__tests__/filterMenuByRole.test.ts:46 — kod (treść it()), trafia do wyniku suity

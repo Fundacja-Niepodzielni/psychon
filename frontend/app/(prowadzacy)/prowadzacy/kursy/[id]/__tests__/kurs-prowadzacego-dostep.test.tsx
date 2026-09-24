@@ -10,7 +10,7 @@ import { render, screen, waitFor } from "@testing-library/react";
  * nagłówek „Zaproszenia") — obie są renderowane wprost w
  * `admin/kursy/[id]/page.tsx`, nie w edytorze, który tu się montuje.
  *
- * UWAGA (WERDYKT-POZ11-front-e9cf1c9.md §2, kontrola pozorna): test „rola
+ * UWAGA (kontrola pozorna): test „rola
  * instructor montuje edytor" niżej mockuje `/admin/courses/4` jako sukces —
  * to KONTRAKT OCZEKIWANY (backend ma dodać rolę `instructor`
  * do bramek `h08.php`/`h10.php`), NIE dzisiejszy stan. DZIŚ backend zwraca

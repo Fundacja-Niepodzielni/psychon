@@ -73,7 +73,7 @@ const cssCode = stripCssComments(css);
 /** Wycina treść bloku `@utility focus-ring { … }` (nawiasy proste, jeden
  * poziom zagnieżdżenia dla `@media` w środku) — żeby sprawdzić, że pierścień
  * fokusu naprawdę korzysta z tokenu, a nie tylko że token istnieje gdzieś w
- * pliku (uwaga werdyktu: test dopasowujący regex do tekstu tokenu nie łapie
+ * pliku (uwaga: test dopasowujący regex do tekstu tokenu nie łapie
  * mutacji, która wyłącza samą regułę `@utility`, np. `box-shadow: none`).
  * Działa na kodzie bez komentarzy (`cssCode`). */
 function extractUtilityBlock(source: string, name: string): string {

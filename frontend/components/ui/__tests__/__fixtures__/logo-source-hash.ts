@@ -6,7 +6,7 @@
  *
  * Hash = sha256 konkatenacji atrybutów `d` wszystkich 20 elementów `<path
  * fill="#1500BB">` tego pliku, w kolejności występowania w dokumencie,
- * połączonych znakiem `|`. Chroni przed uwagą werdyktu: liczenie samych
+ * połączonych znakiem `|`. Chroni przed pułapką: liczenie samych
  * ścieżek (`paths.length`) przepuszcza znak okaleczony do `d="M0 0Z"` —
  * porównanie treści `d` łapie taką mutację.
  *
