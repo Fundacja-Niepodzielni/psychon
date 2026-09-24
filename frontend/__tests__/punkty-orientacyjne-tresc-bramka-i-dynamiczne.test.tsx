@@ -26,11 +26,16 @@ import userEvent from "@testing-library/user-event";
  * ŚWIADEK ZAPISUJE STAN ZASTANY, NIE POSTULAT. Liczba `h1` w każdym
  * przypadku niżej jest ZMIERZONA (przebieg z 2026-09-24, licznik
  * `document.querySelectorAll("h1").length` w tych samych stanach), a nie
- * założona. Pięć stanów ma dziś ZERO `h1` i mają o tym wprost w nazwie
+ * założona. TRZY stany mają dziś ZERO `h1` i mają o tym wprost w nazwie
  * („brak h1 … — stan zastany"), z asercją na zmierzone 0:
- * `/admin/uczestniczki/[id]` w ładowaniu i w błędzie ogólnym,
  * `/prowadzacy/grupa` w ładowaniu, `/panel/kursy/[slug]` w ładowaniu i w
  * błędzie ogólnym. To lista długów tych ekranów, nie ich akceptacja.
+ *
+ * Dwa długi z tej listy zostały spłacone: `/admin/uczestniczki/[id]` w
+ * ładowaniu i w błędzie ogólnym stoi od teraz na wspólnym szablonie i niesie
+ * jeden `h1` „Karta osoby”. Asercje na zero zaczerwieniły się w bramce — tak,
+ * jak miały. Przypadek na zmierzone zero nie jest po to, żeby zero trwało;
+ * jest po to, żeby jego zniknięcie było widać.
  *
  * SEGMENT DYNAMICZNY BEZ `useParams`: cztery z tych stron biorą `params`
  * jako `Promise` i rozpakowują je Reactowym `use()` (konwencja Next 16), a
@@ -455,7 +460,7 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
   const importPage = () =>
     import("@/app/(administracja)/admin/uczestniczki/[id]/page");
 
-  it("brak h1 w stanie ładowania — stan zastany", async () => {
+  it("stan ładowania ma jeden h1 „Karta osoby”", async () => {
     api.mockImplementation(() => new Promise(() => {}));
     const { default: AdminUserPage } = await importPage();
     await renderujZParametrem(
@@ -463,7 +468,11 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
     );
 
     await screen.findByText("Wczytywanie karty…");
-    brakH1("/admin/uczestniczki/[id] (ładowanie)");
+    jedenH1("/admin/uczestniczki/[id] (ładowanie)");
+    expect(
+      screen.getByRole("heading", { level: 1 }),
+      "/admin/uczestniczki/[id] (ładowanie): h1 ma nieść tytuł ekranu",
+    ).toHaveTextContent("Karta osoby");
   });
 
   it("stan „nie znaleziono osoby” (404)", async () => {
@@ -477,7 +486,7 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
     jedenH1("/admin/uczestniczki/[id] (404)");
   });
 
-  it("brak h1 w stanie błędu ogólnego (500) — stan zastany", async () => {
+  it("stan błędu ogólnego (500) ma jeden h1 „Karta osoby”", async () => {
     api.mockRejectedValue(new ApiError(500, "server_error", "Błąd serwera."));
     const { default: AdminUserPage } = await importPage();
     await renderujZParametrem(
@@ -485,7 +494,11 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
     );
 
     await screen.findByText("Błąd serwera.");
-    brakH1("/admin/uczestniczki/[id] (błąd 500)");
+    jedenH1("/admin/uczestniczki/[id] (błąd 500)");
+    expect(
+      screen.getByRole("heading", { level: 1 }),
+      "/admin/uczestniczki/[id] (błąd 500): h1 ma nieść tytuł ekranu",
+    ).toHaveTextContent("Karta osoby");
   });
 
   it("stan sukcesu (karta osoby wczytana)", async () => {
