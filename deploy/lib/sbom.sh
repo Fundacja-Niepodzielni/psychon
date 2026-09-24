@@ -328,3 +328,227 @@ sbom_policz_podatnosci() {
   echo "NIEZMIERZONE"
   return 1
 }
+
+# ============================================================================
+# Warunkowy bieg proby logiki + skanu podatnosci (od 24.09).
+#
+# Do 23.09 test logiki SBOM (94-100s) i skan podatnosci (91-101s) biegly
+# BEZWARUNKOWO na kazdym commicie - +183..201s na commit za pomiar, ktorego
+# czerwien i tak nie zatrzymywala niczego (patrz ostrzezenie w bramka-
+# hosta.sh sprzed 24.09: "nie ufam licznikom ponizej, ale krok POZOSTAJE
+# POMIAREM"). Generator SAM (1s) zostaje bezwarunkowy - jego koszt jest
+# pomijalny i liczba skladnikow w dzienniku jest tania do utrzymania na
+# kazdym biegu.
+#
+# Funkcje ponizej dziela sie na DWIE warstwy - CELOWO, zeby decyzja (czysta
+# logika, latwa do przetestowania bez gita/dockera/zegara) nie byla zlepiona
+# z jej prawdziwymi zrodlami (git diff, plik znacznika na dysku):
+#   - sbom_zdecyduj_o_probie: CZYSTA funkcja decyzyjna. Bierze JUZ POLICZONE
+#     wejscia (czy diff sie policzyl, jego tresc, czy znacznik dzisiejszej
+#     doby istnieje) i zwraca decyzje + POWOD jednym wierszem na stdout -
+#     TEN SAM wiersz idzie do dziennika bramki NIEZALEZNIE od tego, czy
+#     decyzja jest "biegnij" czy "pomin" (dziennik ma niesc powod ZAWSZE,
+#     nie tylko gdy krok biegnie - cichy brak wiersza przy pominieciu byloby
+#     dokladnie ta sama wada, co bezwarunkowe ostrzezenie sprzed 24.09,
+#     tylko odwrocona).
+#   - sbom_probka_ma_biec: WRAPPER, ktory dowozi PRAWDZIWE wejscia (git diff
+#     przez sbom_lista_plikow_zmiany, plik znacznika przez
+#     sbom_znacznik_dzis_istnieje) i wola powyzsza czysta funkcje. TO jest
+#     funkcja, ktora bramka-hosta.sh naprawde wywoluje.
+# ============================================================================
+
+# Pliki, ktorych dotkniecie w diffie gatowanego commita samo w sobie
+# uzasadnia bieg (niezaleznie od znacznika doby): logika progu, jej wlasny
+# test, i oba pliki blokady, ktore SBOM naprawde spisuje. Sciezki sa
+# WZGLEDEM SZCZYTU repo, dokladnie jak wiersze z git diff --name-only.
+SBOM_PLIKI_PROGOWE=(
+  "deploy/lib/sbom.sh"
+  "deploy/tests/test-bramka-sbom.sh"
+  "backend/composer.lock"
+  "frontend/package-lock.json"
+)
+
+# sbom_lista_dotyka_progu LISTA_PLIKOW
+#
+# LISTA_PLIKOW = tekst wieloliniowy (jak z git diff --name-only, jeden plik
+# na wiersz). Zwraca 0 i WYPISUJE NA STDOUT nazwe PIERWSZEGO pliku z
+# SBOM_PLIKI_PROGOWE, jaki wystapil w liscie (jeden, nie wszystkie - powod w
+# dzienniku ma nazywac SPRAWCE, nie powtarzac caly diff). Zwraca 1 i nic nie
+# wypisuje, gdy zaden wiersz nie pasuje do zadnego progu.
+sbom_lista_dotyka_progu() {
+  local lista="$1" plik wzorzec
+  while IFS= read -r plik; do
+    [[ -z "$plik" ]] && continue
+    for wzorzec in "${SBOM_PLIKI_PROGOWE[@]}"; do
+      if [[ "$plik" == "$wzorzec" ]]; then
+        echo "$plik"
+        return 0
+      fi
+    done
+  done <<< "$lista"
+  return 1
+}
+
+# sbom_lista_plikow_zmiany KATALOG_REPO COMMIT [PLIK_LOG_BLEDU]
+#
+# Wypisuje na stdout liste plikow zmienionych przez COMMIT wzgledem jego
+# PIERWSZEGO RODZICA: git diff --name-only COMMIT^..COMMIT - COMMIT^ (bez
+# numeru) jest w gicie sam w sobie pierwszy rodzic, wlasciwe dla scalen bez
+# zadnego dodatkowego rozgalezienia kodu.
+#
+# Zwraca 0, gdy diff sie policzyl (takze gdy lista jest PUSTA - commit bez
+# zmienionych plikow to POPRAWNY, choc rzadki, wynik). Zwraca 2 i NIE
+# WYPISUJE NIC na stdout, gdy git diff sam sie nie powiodl - dwa znane
+# powody, ktorych ten sam blad gita nie rozroznia miedzy soba: COMMIT jest
+# pierwszym commitem historii (nie ma rodzica) ALBO klon jest plytki i
+# brakuje mu rodzica na dysku. Tekst bledu gita (do wyjasnienia POWODU w
+# dzienniku, zeby wolajacy nigdy nie musial cicho pomijac tego przypadku)
+# laduje w PLIK_LOG_BLEDU (domyslnie odrzucony), NIE na stdout - stdout tej
+# funkcji niesie WYLACZNIE liste plikow.
+sbom_lista_plikow_zmiany() {
+  local katalog="$1" commit="$2" plik_log_bledu="${3:-/dev/null}"
+  local wyjscie
+  if ! wyjscie="$(cd "$katalog" && git diff --name-only "${commit}^..${commit}" 2>"$plik_log_bledu")"; then
+    return 2
+  fi
+  printf '%s\n' "$wyjscie"
+  return 0
+}
+
+# sbom_znacznik_sciezka KATALOG_ZNACZNIKOW DATA -> stdout: sciezka pliku
+# znacznika DANEJ doby (DATA w formacie date +%F, np. 2026-09-24).
+sbom_znacznik_sciezka() {
+  echo "$1/sbom-probka-biegla-$2.znacznik"
+}
+
+# sbom_znacznik_dzis_istnieje KATALOG_ZNACZNIKOW DATA
+# Zwraca 0, gdy znacznik DANEJ doby juz istnieje (proba juz biegla dzisiaj),
+# 1 w przeciwnym razie.
+sbom_znacznik_dzis_istnieje() {
+  [[ -f "$(sbom_znacznik_sciezka "$1" "$2")" ]]
+}
+
+# sbom_zapisz_znacznik KATALOG_ZNACZNIKOW DATA
+#
+# Zapisuje znacznik DANEJ doby - WOLAC WYLACZNIE PO UDANYM (EXIT=0, zielonym)
+# biegu proby logiki, NIGDY po czerwonym ani po NIEZMIERZONYM (EXIT=3, brak
+# dockera na maszynie testujacej): czerwony/niezmierzony bieg ma dostac
+# SZANSE zmierzyc sie ponownie na NASTEPNYM commicie tej samej doby, zamiast
+# zniknac za znacznikiem az do jutra.
+#
+# KATALOG_ZNACZNIKOW jest zawsze SPOZA drzewa repo (wolajacy w bramka-
+# hosta.sh przekazuje katalog nadrzedny wobec KATALOG_BIEGU, NIGDY PWD) -
+# brud w drzewie repo po biegu konczy caly bieg kodem 6 (deploy/lib/drzewo-
+# po-biegu.sh), wiec znacznik pisany do repo czerwienilby WLASNYM istnieniem
+# pierwszy bieg po kazdym wpieciu tej zmiany.
+sbom_zapisz_znacznik() {
+  local katalog="$1" data="$2"
+  mkdir -p "$katalog" 2>/dev/null || return 1
+  : > "$(sbom_znacznik_sciezka "$katalog" "$data")"
+}
+
+# sbom_zdecyduj_o_probie KOD_DIFF LISTA_PLIKOW ZNACZNIK_DZIS_ISTNIEJE [POWOD_BLEDU_DIFF]
+#
+#   KOD_DIFF               = 0, gdy git diff (sbom_lista_plikow_zmiany) sie
+#                             policzyl; != 0, gdy sie NIE policzyl.
+#   LISTA_PLIKOW            = tekst z git diff --name-only (czytany TYLKO
+#                             gdy KOD_DIFF=0).
+#   ZNACZNIK_DZIS_ISTNIEJE  = "tak" / "nie".
+#   POWOD_BLEDU_DIFF        = wyjasnienie, gdy KOD_DIFF != 0 (np. tekst bledu
+#                             gita) - trafia do wiersza dziennika, zeby
+#                             przypadek "nie da sie policzyc" mial co
+#                             zacytowac, zamiast cichego pominiecia.
+#
+# TO JEST funkcja decyzyjna: wypisuje na stdout DOKLADNIE JEDEN wiersz
+# dziennika - ZAWSZE, niezaleznie od tego, czy decyzja jest "biegnij" czy
+# "pomin" - i zwraca 0 = PROBA MA BIEC, 1 = PROBA NIE BIEGNIE.
+#
+# Kolejnosc trzech sprawdzen jest CELOWA (bezpieczne domyslne ZAWSZE
+# wygrywa):
+#   1. diff sie NIE policzyl -> BIEGNIE (nigdy cichego pominiecia, gdy nie
+#      wiadomo, co sie zmienilo).
+#   2. diff dotyka jednego z SBOM_PLIKI_PROGOWE -> BIEGNIE, powod nazywa
+#      plik.
+#   3. w przeciwnym razie decyduje ZNACZNIK doby: jest -> NIE BIEGNIE, nie ma
+#      -> BIEGNIE (pierwszy bieg dzisiejszej doby).
+sbom_zdecyduj_o_probie() {
+  local kod_diff="$1" lista_plikow="$2" znacznik_dzis="$3" powod_bledu="${4:-}"
+  local plik_progu
+
+  if [[ "$kod_diff" -ne 0 ]]; then
+    echo "SBOM: proba logiki BIEGNIE - powod: roznicy nie dalo sie policzyc (${powod_bledu:-brak szczegolow gita}), bezpieczne domyslne zachowanie to BIEG, nigdy ciche pominiecie"
+    return 0
+  fi
+
+  if plik_progu="$(sbom_lista_dotyka_progu "$lista_plikow")"; then
+    echo "SBOM: proba logiki BIEGNIE - powod: roznica gatowanego commita dotyka $plik_progu"
+    return 0
+  fi
+
+  if [[ "$znacznik_dzis" == "tak" ]]; then
+    echo "SBOM: proba logiki NIE BIEGNIE - powod: roznica nie dotyka zadnego z plikow progowych SBOM, a dzisiejszy znacznik juz istnieje"
+    return 1
+  fi
+
+  echo "SBOM: proba logiki BIEGNIE - powod: pierwszy bieg dzisiejszej doby, znacznika jeszcze nie ma"
+  return 0
+}
+
+# sbom_probka_ma_biec KATALOG_REPO COMMIT KATALOG_ZNACZNIKOW [DATA] [PLIK_LOG_BLEDU_DIFF]
+#
+# Wrapper wiazacy PRAWDZIWE wejscia (git diff, plik znacznika na dysku) z
+# czysta funkcja decyzyjna powyzej. Wypisuje na stdout DOKLADNIE JEDEN
+# wiersz dziennika (ten sam, ktory zwraca sbom_zdecyduj_o_probie) i zwraca
+# 0 = PROBA MA BIEC, 1 = PROBA NIE BIEGNIE. DATA domyslnie date +%F.
+sbom_probka_ma_biec() {
+  local katalog_repo="$1" commit="$2" katalog_znacznikow="$3"
+  local data="${4:-$(date +%F)}" plik_log_bledu="${5:-/dev/null}"
+  local lista kod_diff=0 powod="" znacznik_dzis="nie"
+
+  if ! lista="$(sbom_lista_plikow_zmiany "$katalog_repo" "$commit" "$plik_log_bledu")"; then
+    kod_diff=2
+    powod="git diff nie policzyl roznicy dla ${commit} (brak rodzica w tym klonie / plytki klon): $(tail -1 "$plik_log_bledu" 2>/dev/null)"
+  fi
+
+  if sbom_znacznik_dzis_istnieje "$katalog_znacznikow" "$data"; then
+    znacznik_dzis="tak"
+  fi
+
+  sbom_zdecyduj_o_probie "$kod_diff" "$lista" "$znacznik_dzis" "$powod"
+}
+
+# sbom_kod_kroku KOD_TEST_SBOM PROBA_LOGIKI_BIEGLA
+#
+#   KOD_TEST_SBOM        = kod wyjscia bash deploy/tests/test-bramka-sbom.sh
+#                           (0 zielono, 1 czerwono, 3 NIE ZMIERZONO - brak
+#                           dockera na maszynie TESTUJACEJ, patrz komentarz
+#                           w bramka-hosta.sh) - IGNOROWANY, gdy proba NIE
+#                           biegla (patrz nizej).
+#   PROBA_LOGIKI_BIEGLA   = "tak" / "nie" - decyzja z sbom_zdecyduj_o_probie.
+#
+# Wypisuje na stdout kod, ktory KROK 3g wnosi do KODU WYJSCIA CALEJ BRAMKI:
+#   - PROBA_LOGIKI_BIEGLA=nie -> ZAWSZE 0. Pominiecie jest jawne w dzienniku
+#     (wiersz sbom_zdecyduj_o_probie powyzej), a nie ciche - i wlasnie
+#     DLATEGO jego czerwien nie ma jak wplynac na kod wyjscia.
+#   - PROBA_LOGIKI_BIEGLA=tak i KOD_TEST_SBOM=1 (czerwono) -> 1: pomiar,
+#     ktory nie umie sie zatrzymac, nie jest kryterium - ten juz umie.
+#   - PROBA_LOGIKI_BIEGLA=tak i KOD_TEST_SBOM=3 (NIE ZMIERZONO) -> 0 - to NIE
+#     jest czerwien testu logiki, tylko brak Dockera na maszynie testujacej.
+#   - PROBA_LOGIKI_BIEGLA=tak i KOD_TEST_SBOM=0 -> 0.
+#
+# Skan podatnosci (generator, skaner, LICZBA podatnosci) NIGDY nie wchodzi
+# tutaj - ta funkcja w ogole nie przyjmuje ich kodu jako argumentu, bo
+# w Zalaczniku 1 nie ma kryterium podatnosciowego.
+sbom_kod_kroku() {
+  local kod_test="$1" proba_biegla="$2"
+  if [[ "$proba_biegla" != "tak" ]]; then
+    echo 0
+    return 0
+  fi
+  if [[ "$kod_test" -eq 1 ]]; then
+    echo 1
+    return 0
+  fi
+  echo 0
+  return 0
+}

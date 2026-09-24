@@ -430,6 +430,310 @@ EOF
   fi
 fi
 
+
+# ==================== CZESC 5: sbom_zdecyduj_o_probie (funkcja decyzyjna) =
+# Czysta funkcja - wejscia sa JUZ POLICZONE (kod diffu, tresc diffu, obecnosc
+# znacznika), bez gita/dockera/zegara. Piec przypadkow ponizej odpowiadaja
+# N2 (a)-(e) dosłownie, kazdy pod wlasna nazwa mowiaca o swoim warunku.
+
+echo "=== 18 (N2-a) decyzja: roznica DOTYKA deploy/lib/sbom.sh -> BIEGNIE, powod nazywa plik ==="
+LINIA_18="$(sbom_zdecyduj_o_probie 0 $'deploy/lib/sbom.sh\nbackend/app/Cos.php' "nie")"
+RC_18=$?
+echo "  wiersz: $LINIA_18"
+echo "  rc: $RC_18"
+NIEZAL_18=0
+[[ "$RC_18" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0 (BIEGNIE), jest $RC_18"; NIEZAL_18=1; }
+[[ "$LINIA_18" == *"BIEGNIE"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie mowi BIEGNIE"; NIEZAL_18=1; }
+[[ "$LINIA_18" == *"deploy/lib/sbom.sh"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie nazywa sprawcy (deploy/lib/sbom.sh)"; NIEZAL_18=1; }
+if [[ "$NIEZAL_18" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 19 (N2-b) decyzja: roznica DOTYKA frontend/package-lock.json -> BIEGNIE, powod nazywa plik ==="
+LINIA_19="$(sbom_zdecyduj_o_probie 0 $'frontend/src/App.vue\nfrontend/package-lock.json' "nie")"
+RC_19=$?
+echo "  wiersz: $LINIA_19"
+echo "  rc: $RC_19"
+NIEZAL_19=0
+[[ "$RC_19" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0 (BIEGNIE), jest $RC_19"; NIEZAL_19=1; }
+[[ "$LINIA_19" == *"BIEGNIE"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie mowi BIEGNIE"; NIEZAL_19=1; }
+[[ "$LINIA_19" == *"frontend/package-lock.json"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie nazywa sprawcy (frontend/package-lock.json)"; NIEZAL_19=1; }
+if [[ "$NIEZAL_19" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 20 (N2-c) decyzja: roznica NIE dotyka progu, znacznik DZISIEJSZY JEST -> NIE BIEGNIE ==="
+LINIA_20="$(sbom_zdecyduj_o_probie 0 $'backend/app/Http/Controllers/CosInnego.php' "tak")"
+RC_20=$?
+echo "  wiersz: $LINIA_20"
+echo "  rc: $RC_20"
+NIEZAL_20=0
+[[ "$RC_20" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=1 (NIE BIEGNIE), jest $RC_20"; NIEZAL_20=1; }
+[[ "$LINIA_20" == *"NIE BIEGNIE"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie mowi NIE BIEGNIE"; NIEZAL_20=1; }
+[[ "$LINIA_20" == *"znacznik"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie nazywa znacznika jako powodu"; NIEZAL_20=1; }
+if [[ "$NIEZAL_20" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 21 (N2-d) decyzja: roznica NIE dotyka progu, znacznika doby NIE MA -> BIEGNIE (pierwszy bieg dnia) ==="
+LINIA_21="$(sbom_zdecyduj_o_probie 0 $'backend/app/Http/Controllers/CosInnego.php' "nie")"
+RC_21=$?
+echo "  wiersz: $LINIA_21"
+echo "  rc: $RC_21"
+NIEZAL_21=0
+[[ "$RC_21" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0 (BIEGNIE), jest $RC_21"; NIEZAL_21=1; }
+[[ "$LINIA_21" == *"BIEGNIE"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie mowi BIEGNIE"; NIEZAL_21=1; }
+[[ "$LINIA_21" == *"pierwszy bieg"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie nazywa 'pierwszy bieg dzisiejszej doby' jako powodu"; NIEZAL_21=1; }
+if [[ "$NIEZAL_21" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 22 (N2-e, N3) decyzja: roznicy NIE DA SIE POLICZYC -> BIEGNIE (bezpieczne domyslne), NIGDY ciche pominiecie ==="
+LINIA_22="$(sbom_zdecyduj_o_probie 2 "" "tak" "brak rodzica (plytki klon)")"
+RC_22=$?
+echo "  wiersz: $LINIA_22"
+echo "  rc: $RC_22"
+NIEZAL_22=0
+[[ "$RC_22" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0 (BIEGNIE, bezpieczne domyslne), jest $RC_22 - N3 wymaga BIEGU, nie cichego pominiecia"; NIEZAL_22=1; }
+[[ "$LINIA_22" == *"BIEGNIE"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie mowi BIEGNIE"; NIEZAL_22=1; }
+[[ "$LINIA_22" == *"nie dalo sie policzyc"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie tlumaczy, ze roznicy nie dalo sie policzyc"; NIEZAL_22=1; }
+[[ "$LINIA_22" == *"brak rodzica (plytki klon)"* ]] || { echo "  WYNIK: NIEZALICZONY - wiersz nie niesie przekazanego powodu"; NIEZAL_22=1; }
+if [[ "$NIEZAL_22" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# ==================== CZESC 6: sbom_kod_kroku (kontrybucja do EXIT bramki) =
+# N4/N5/N6 - bez uruchamiania prawdziwej bramki/hosta (zakazane w tym
+# zadaniu): funkcja jest CZYSTA, wiec jej semantyke da sie zmierzyc lokalnie.
+
+echo "=== 23 (N4) kod kroku: proba BIEGLA i jest CZERWONA (KOD_TEST_SBOM=1) -> kontrybucja=1 (!=0) ==="
+KOD_23="$(sbom_kod_kroku 1 "tak")"
+echo "  sbom_kod_kroku 1 tak -> $KOD_23"
+zaliczone_gdy "$([[ "$KOD_23" -eq 1 ]] && echo 0 || echo 1)" \
+  "oczekiwano 1 (czerwien proby MA wejsc do kodu wyjscia, gdy proba biegla), jest $KOD_23"
+
+echo "=== 24 (N5) kod kroku: proba NIE BIEGLA, nawet gdyby KOD_TEST_SBOM niosl '1' -> kontrybucja=0 ==="
+KOD_24="$(sbom_kod_kroku 1 "nie")"
+echo "  sbom_kod_kroku 1 nie -> $KOD_24"
+zaliczone_gdy "$([[ "$KOD_24" -eq 0 ]] && echo 0 || echo 1)" \
+  "oczekiwano 0 (pominiecie nie ma jak wplynac na kod wyjscia), jest $KOD_24"
+
+echo "=== 25 kod kroku: proba BIEGLA i jest ZIELONA (KOD_TEST_SBOM=0) -> kontrybucja=0 ==="
+KOD_25="$(sbom_kod_kroku 0 "tak")"
+echo "  sbom_kod_kroku 0 tak -> $KOD_25"
+zaliczone_gdy "$([[ "$KOD_25" -eq 0 ]] && echo 0 || echo 1)" \
+  "oczekiwano 0, jest $KOD_25"
+
+echo "=== 26 kod kroku: proba BIEGLA, ale NIE ZMIERZYLA konca (KOD_TEST_SBOM=3, brak dockera) -> kontrybucja=0 ==="
+KOD_26="$(sbom_kod_kroku 3 "tak")"
+echo "  sbom_kod_kroku 3 tak -> $KOD_26"
+zaliczone_gdy "$([[ "$KOD_26" -eq 0 ]] && echo 0 || echo 1)" \
+  "oczekiwano 0 (kod 3 nie jest czerwienia testu logiki), jest $KOD_26"
+
+echo "=== 27 (N6) kod kroku: NIE przyjmuje liczby podatnosci jako wejscia w ogole (podpis funkcji: 2 argumenty) ==="
+LICZBA_ARGUMENTOW="$(declare -f sbom_kod_kroku | grep -c '\$3')"
+echo "  wystapien \$3 w ciele sbom_kod_kroku: $LICZBA_ARGUMENTOW"
+zaliczone_gdy "$([[ "$LICZBA_ARGUMENTOW" -eq 0 ]] && echo 0 || echo 1)" \
+  "sbom_kod_kroku odwoluje sie do trzeciego argumentu - liczba podatnosci NIE MA prawa tam wplywac na kod wyjscia"
+
+# ==================== CZESC 7: znacznik doby (N8) ==========================
+
+echo "=== 28 znacznik: sciezka niesie DATE w nazwie pliku, NIE w drzewie repo (katalog podany przez wolajacego) ==="
+KATALOG_ZNAK="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_ZNAK")
+SCIEZKA_ZNAK="$(sbom_znacznik_sciezka "$KATALOG_ZNAK" "2026-09-24")"
+echo "  sciezka: $SCIEZKA_ZNAK"
+zaliczone_gdy "$([[ "$SCIEZKA_ZNAK" == "$KATALOG_ZNAK"/*2026-09-24* ]] && echo 0 || echo 1)" \
+  "sciezka znacznika nie niesie podanej daty w podanym katalogu"
+
+echo "=== 29 znacznik: PRZED zapisem nie istnieje, PO zapisie istnieje, INNA data dalej nie istnieje ==="
+NIEZAL_29=0
+sbom_znacznik_dzis_istnieje "$KATALOG_ZNAK" "2026-09-24" && { echo "  WYNIK: NIEZALICZONY - znacznik istnieje PRZED zapisem"; NIEZAL_29=1; }
+sbom_zapisz_znacznik "$KATALOG_ZNAK" "2026-09-24"
+sbom_znacznik_dzis_istnieje "$KATALOG_ZNAK" "2026-09-24" || { echo "  WYNIK: NIEZALICZONY - znacznik NIE istnieje PO zapisie"; NIEZAL_29=1; }
+sbom_znacznik_dzis_istnieje "$KATALOG_ZNAK" "2026-09-25" && { echo "  WYNIK: NIEZALICZONY - znacznik z INNEJ daty (2026-09-25) niesluznie istnieje"; NIEZAL_29=1; }
+if [[ "$NIEZAL_29" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 30 (N8) dwa biegi tej samej doby przez PELNY sbom_probka_ma_biec (git+znacznik): drugi NIE biegnie, jutro biegnie ==="
+# Wlasny mini-klon (spoza REPO_GIT z CZESCI 8 nizej, celowo - ten test
+# potrzebuje repo, ktorego commit NIE dotyka zadnego progowego pliku, zeby o
+# wyniku decydowal WYLACZNIE znacznik).
+REPO_N8="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$REPO_N8")
+(
+  cd "$REPO_N8" || exit 1
+  git init -q
+  git config user.email "test@example.invalid"
+  git config user.name "Test"
+  echo "x" > plik-x.txt
+  git add plik-x.txt
+  git commit -q -m "pierwszy"
+  echo "y" > plik-poza-progiem.txt
+  git add plik-poza-progiem.txt
+  git commit -q -m "drugi, nie dotyka progu"
+)
+SHA_N8="$(cd "$REPO_N8" && git rev-parse HEAD)"
+KATALOG_ZNAK_N8="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_ZNAK_N8")
+
+LINIA_30A="$(sbom_probka_ma_biec "$REPO_N8" "$SHA_N8" "$KATALOG_ZNAK_N8" "2026-09-24")"
+RC_30A=$?
+echo "  pierwszy bieg doby 2026-09-24: $LINIA_30A (rc=$RC_30A)"
+sbom_zapisz_znacznik "$KATALOG_ZNAK_N8" "2026-09-24"
+
+LINIA_30B="$(sbom_probka_ma_biec "$REPO_N8" "$SHA_N8" "$KATALOG_ZNAK_N8" "2026-09-24")"
+RC_30B=$?
+echo "  drugi bieg TEJ SAMEJ doby 2026-09-24: $LINIA_30B (rc=$RC_30B)"
+
+LINIA_30C="$(sbom_probka_ma_biec "$REPO_N8" "$SHA_N8" "$KATALOG_ZNAK_N8" "2026-09-25")"
+RC_30C=$?
+echo "  pierwszy bieg NASTEPNEGO dnia 2026-09-25: $LINIA_30C (rc=$RC_30C)"
+
+NIEZAL_30=0
+[[ "$RC_30A" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - pierwszy bieg doby powinien BIEC (rc=0), jest rc=$RC_30A"; NIEZAL_30=1; }
+[[ "$RC_30B" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - drugi bieg TEJ SAMEJ doby powinien NIE BIEC (rc=1), jest rc=$RC_30B"; NIEZAL_30=1; }
+[[ "$RC_30C" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - pierwszy bieg NASTEPNEGO dnia powinien BIEC (rc=0), jest rc=$RC_30C"; NIEZAL_30=1; }
+if [[ "$NIEZAL_30" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+# ==================== CZESC 8: sbom_lista_plikow_zmiany (prawdziwy git) ===
+# N3 na prawdziwym gicie: commit BEZ rodzica (pierwszy commit historii) jest
+# DOKLADNIE przypadkiem "roznicy nie da sie policzyc" z tabeli N2-e/N3.
+
+echo "=== 31 (N3) sbom_lista_plikow_zmiany: PIERWSZY commit historii (brak rodzica) -> rc=2, NIC na stdout ==="
+REPO_GIT="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$REPO_GIT")
+(
+  cd "$REPO_GIT" || exit 1
+  git init -q
+  git config user.email "test@example.invalid"
+  git config user.name "Test"
+  echo "a" > plik-a.txt
+  git add plik-a.txt
+  git commit -q -m "pierwszy"
+)
+PIERWSZY_SHA="$(cd "$REPO_GIT" && git rev-parse HEAD)"
+LOG_BLAD_31="$(mktemp -p "$TU")"; PLIKI_TESTOWE+=("$LOG_BLAD_31")
+WYJSCIE_31="$(sbom_lista_plikow_zmiany "$REPO_GIT" "$PIERWSZY_SHA" "$LOG_BLAD_31")"
+RC_31=$?
+echo "  rc: $RC_31, stdout: '$WYJSCIE_31', log bledu: $(cat "$LOG_BLAD_31")"
+NIEZAL_31=0
+[[ "$RC_31" -eq 2 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=2 (nie da sie policzyc), jest $RC_31"; NIEZAL_31=1; }
+[[ -z "$WYJSCIE_31" ]] || { echo "  WYNIK: NIEZALICZONY - stdout mial byc pusty przy bledzie, jest '$WYJSCIE_31'"; NIEZAL_31=1; }
+if [[ "$NIEZAL_31" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 32 sbom_lista_plikow_zmiany: DRUGI commit (rodzic istnieje) -> rc=0, lista niesie zmieniony plik ==="
+(
+  cd "$REPO_GIT" || exit 1
+  echo "b" > plik-b.txt
+  git add plik-b.txt
+  git commit -q -m "drugi"
+)
+DRUGI_SHA="$(cd "$REPO_GIT" && git rev-parse HEAD)"
+WYJSCIE_32="$(sbom_lista_plikow_zmiany "$REPO_GIT" "$DRUGI_SHA")"
+RC_32=$?
+echo "  rc: $RC_32, stdout: '$WYJSCIE_32'"
+NIEZAL_32=0
+[[ "$RC_32" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0, jest $RC_32"; NIEZAL_32=1; }
+[[ "$WYJSCIE_32" == "plik-b.txt" ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano 'plik-b.txt', jest '$WYJSCIE_32'"; NIEZAL_32=1; }
+if [[ "$NIEZAL_32" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 33 sbom_lista_plikow_zmiany: commit SCALAJACY -> liczy wzgledem PIERWSZEGO rodzica (bez bledu) ==="
+(
+  cd "$REPO_GIT" || exit 1
+  git checkout -q -b galaz
+  echo "c" > plik-c.txt
+  git add plik-c.txt
+  git commit -q -m "trzeci na galezi"
+  git checkout -q -
+  git merge -q --no-ff galaz -m "scalenie"
+)
+SCALENIE_SHA="$(cd "$REPO_GIT" && git rev-parse HEAD)"
+WYJSCIE_33="$(sbom_lista_plikow_zmiany "$REPO_GIT" "$SCALENIE_SHA")"
+RC_33=$?
+echo "  rc: $RC_33, stdout: '$WYJSCIE_33'"
+zaliczone_gdy "$([[ "$RC_33" -eq 0 ]] && echo 0 || echo 1)" \
+  "commit scalajacy MA rodzica (pierwszego) - oczekiwano rc=0, jest $RC_33"
+
+# ==================== CZESC 9: sbom_lista_dotyka_progu =====================
+
+echo "=== 34 sbom_lista_dotyka_progu: lista BEZ zadnego pliku progowego -> rc=1, nic na stdout ==="
+WYJSCIE_34="$(sbom_lista_dotyka_progu $'backend/app/Model.php\nfrontend/src/App.vue')"
+RC_34=$?
+echo "  rc: $RC_34, stdout: '$WYJSCIE_34'"
+NIEZAL_34=0
+[[ "$RC_34" -eq 1 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=1, jest $RC_34"; NIEZAL_34=1; }
+[[ -z "$WYJSCIE_34" ]] || { echo "  WYNIK: NIEZALICZONY - stdout mial byc pusty, jest '$WYJSCIE_34'"; NIEZAL_34=1; }
+if [[ "$NIEZAL_34" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+
+# ==================== CZESC 10: generator kroku 3g biegnie BEZWARUNKOWO ===
+# N7 potrzebuje SWIADKA ZACHOWANIA, nie napisu: przypadek nizej URUCHAMIA
+# WYCIETY, PRAWDZIWY fragment deploy/bramka-hosta.sh (krok 3g, scalenie do
+# KOD_FRONT, koncowy lancuch kodu wyjscia) - CYTOWANY sedem z pliku PRZY
+# KAZDYM biegu testu, NIE przepisany recznie, zeby test i bramka nie mogly
+# sie rozjechac i zeby przypadek naprawde zaczerwienil sie, gdyby ktos
+# kiedys owinal wywolanie generatora w warunek decyzji (dokladnie ta klasa
+# usterki, ktorej struktura kodu sama NIE pilnuje).
+#
+# Jedyna ingerencja w cytowany tekst: PO linii `source .../lib/sbom.sh`
+# (kwarantanna miedzy dwoma czesciami kroku 3g) wstawiamy ATRAPE funkcji
+# sbom_probka_ma_biec, ktora ZAWSZE zwraca "NIE BIEGNIE" (rc=1) - analogicznie
+# do PATH-owej atrapy dockera w CZESCI 3 wyzej, tylko przez redefinicje
+# funkcji (bo sbom_probka_ma_biec nie idzie przez PATH). Teza pod probe:
+# NAWET gdy decyzja mowi "NIE BIEGNIE", dziennik i tak ma niesc liczbe
+# skladnikow z generatora (krok 3g, generator bezwarunkowy).
+echo "=== 35 (N7) krok 3g URUCHOMIONY z wymuszona decyzja NIE BIEGNIE -> generator i tak dowozi 'skladnikow N' w dzienniku ==="
+
+KATALOG_HARNESS_35="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$KATALOG_HARNESS_35")
+# W $REPO_ROOT/deploy, NIE w $TU: cytowana linia `source
+# "$(dirname "${BASH_SOURCE[0]}")/lib/sbom.sh"` rozwiazuje sciezke wzgledem
+# WLASNEGO polozenia pliku - ma wskazac deploy/lib/sbom.sh, dokladnie jak w
+# prawdziwej bramce.
+FRAGMENT_35="$(mktemp -p "$REPO_ROOT/deploy" bramka-swiadek-3g.XXXXXX.sh)"
+PLIKI_TESTOWE+=("$FRAGMENT_35")
+
+{
+  echo "#!/usr/bin/env bash"
+  # Pomocnicze funkcje uzywane przez cytowane fragmenty - cytowane TEZ sedem,
+  # nie przepisane, z gory pliku bramka-hosta.sh.
+  sed -n '/^czas_od() {/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  sed -n '/^naglowek() {/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  # Zmienne, ktore w prawdziwej bramce dostarczaja wczesniejsze kroki
+  # (A, B, statyczna, ...) - tutaj nieuruchamiane, wiec zerowe. KATALOG_BIEGU
+  # jest WLASNY dla tego biegu testu.
+  cat <<VARS
+KOD_A=0
+KOD_B=0
+KOD_STATYCZNA=0
+KOD_ACTIONLINT=0
+KOD_GITLEAKS=0
+KOD_SWIADEK_LOGOWANIA=0
+KOD_LIBC=0
+KOD_DRZEWO=0
+KOD_SEMGREP=0
+KOD_FRONT=0
+KATALOG_BIEGU="$KATALOG_HARNESS_35/bieg"
+mkdir -p "\$KATALOG_BIEGU"
+VARS
+  echo
+  # --- krok 3g, CZESC A: naglowek + zrodlowanie lib/sbom.sh (cytat doslowny) ---
+  sed -n '/^naglowek "3g - inwentarz skladnikow/,/lib\/sbom\.sh"$/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  # --- ATRAPA: jedyna nie-cytowana linia w calym przypadku - wymusza decyzje
+  echo 'sbom_probka_ma_biec() { echo "SBOM: proba logiki NIE BIEGNIE - powod: ATRAPA przypadku 35 wymusza pominiecie"; return 1; }'
+  echo
+  # --- krok 3g, CZESC B: reszta kroku (cytat doslowny, uzywa atrapy powyzej) ---
+  sed -n '/^# Znacznik doby idzie do katalogu NADRZEDNEGO/,/^KOD_SBOM="\$(sbom_kod_kroku/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  # --- scalenie do KOD_FRONT (cytat doslowny) ---
+  sed -n '/^# Scalenie proby logiki SBOM/,/^fi$/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  echo
+  # --- koncowy lancuch kodu wyjscia + exit (cytat doslowny) ---
+  sed -n '/^if \[ "\$KOD_A"/,$p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+} > "$FRAGMENT_35"
+chmod +x "$FRAGMENT_35"
+
+WYJSCIE_35="$(cd "$REPO_ROOT" && bash "$FRAGMENT_35" 2>&1)"
+RC_35=$?
+echo "  fragment: $FRAGMENT_35"
+echo "  rc calego fragmentu (kod wyjscia symulowanej bramki): $RC_35"
+echo "$WYJSCIE_35" | sed 's/^/  | /'
+
+NIEZAL_35=0
+echo "$WYJSCIE_35" | grep -q "NIE BIEGNIE" || { echo "  WYNIK: NIEZALICZONY - atrapa decyzji nie wymusila 'NIE BIEGNIE' (uprzaz sama zepsuta)"; NIEZAL_35=1; }
+echo "$WYJSCIE_35" | grep -qE 'SBOM \(pomiar, poza kodem wyjscia\): EXIT=0.*skladnikow [0-9]' || {
+  echo "  WYNIK: NIEZALICZONY - mimo decyzji NIE BIEGNIE, dziennik NIE niesie wiersza 'SBOM (...): EXIT=0 ... skladnikow N' - generator zostal (kiedys) uwarunkowany decyzja, zamiast biec bezwarunkowo"
+  NIEZAL_35=1
+}
+if [[ "$NIEZAL_35" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
 echo
 if [[ "$NIEZALICZONE" -gt 0 ]]; then
   echo "PROBY LOGIKI SBOM: NIEZALICZONE PRZYPADKI: $NIEZALICZONE"
