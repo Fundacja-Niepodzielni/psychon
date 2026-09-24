@@ -396,45 +396,53 @@ BLEDOW_SL="$(grep -acE '^  WYNIK: NIEZALICZONY' "$KATALOG_BIEGU"/bramka-swiadek-
 echo "swiadek logowania (testy): EXIT=$KOD_SWIADEK_LOGOWANIA, $CZAS_SWIADEK_LOGOWANIA s, przypadkow $PRZYPADKOW_SL, bledow $BLEDOW_SL"
 [ "$KOD_SWIADEK_LOGOWANIA" -ne 0 ] && tail -20 "$KATALOG_BIEGU"/bramka-swiadek-logowania.log | sed 's/^/  ! /'
 
-# --- 3g - inwentarz skladnikow (SBOM) i skan podatnosci (pomiar) -----------
-# Analogicznie do audytu PHP/npm (3b, 4b): to jest POMIAR, nie bramka -
-# podatnosc w cudzej zaleznosci nie jest czyms, co TEN commit zepsul, wiec
-# krok NIE wchodzi do kodu wyjscia ponizej, W ZADNYM ze swoich trzech elementow (test
-# wlasnej logiki, generator, skaner). Generator (trivy) czyta WYLACZNIE
-# zlockowane pliki zaleznosci (backend/composer.lock, frontend/package-
-# lock.json) z montowanego drzewa - bez sieci, bo do samego SPISU siec jest
-# niepotrzebna (odwrotnie niz do skanu podatnosci nizej, ktory siega po baze
-# CVE, siecia wlaczona - tak jak composer audit/npm audit).
+# --- 3g - inwentarz skladnikow (SBOM) i skan podatnosci ---------------------
+# Generator (trivy, ~1s) biegnie BEZWARUNKOWO - jego koszt jest pomijalny i
+# liczba skladnikow w dzienniku jest tania do utrzymania na kazdym biegu.
+# Zlockowane pliki zaleznosci (backend/composer.lock, frontend/package-
+# lock.json) - bez sieci, bo do samego SPISU siec jest niepotrzebna
+# (odwrotnie niz do skanu podatnosci nizej, ktory siega po baze CVE, siecia
+# wlaczona - tak jak composer audit/npm audit).
 #
-# Plik wynikowy idzie do KATALOGU BIEGU (deploy/lib/sbom.sh, funkcja
-# sbom_uruchom_generator, przez `docker cp`), NIE do drzewa repo: od 23.09
-# brudne drzewo po biegu konczy caly bieg kodem 6 (deploy/lib/drzewo-po-
-# biegu.sh) - generator, ktory pisalby do repo, czerwienilby pierwszy bieg
-# po wpieciu WLASNYM artefaktem, zanim ktokolwiek zdazylby go przeczytac.
+# Test WLASNEJ LOGIKI (94-100s) i skan podatnosci (91-101s) biegna
+# WARUNKOWO od 24.09 - do 23.09 biegly bezwarunkowo na kazdym commicie
+# (+183..201s/commit) za pomiar, ktorego czerwien nawet wtedy nic nie
+# zatrzymywala. Decyzja (i jej POWOD, jeden wiersz w dzienniku - ZAWSZE,
+# takze gdy proba NIE biegnie) zyje w deploy/lib/sbom.sh, funkcja
+# sbom_probka_ma_biec: BIEGNIE, gdy diff gatowanego commita (wzgledem
+# pierwszego rodzica) dotyka deploy/lib/sbom.sh, deploy/tests/test-bramka-
+# sbom.sh, backend/composer.lock albo frontend/package-lock.json, ALBO gdy
+# to pierwszy bieg dzisiejszej doby (znacznik poza drzewem repo - brudne
+# drzewo po biegu konczy caly bieg kodem 6, deploy/lib/drzewo-po-biegu.sh).
+# Gdy roznicy nie da sie policzyc (brak rodzica, plytki klon) - BIEGNIE,
+# nigdy cicho pomija.
 #
-# Logika liczenia/uruchamiania NIE zyje tutaj - zyje w deploy/lib/sbom.sh,
-# zrodlowanym ponizej. Ten sam plik zrodlowuje deploy/tests/test-bramka-
-# sbom.sh, wiec test i bramka NIE MOGA sie rozjechac. Test biegnie NAJPIERW,
-# tak jak przy liczniku sekretow i ocenie drzewa - ale, w odroznieniu od
-# tamtych dwoch krokow, jego czerwien tu NIE eskaluje do blokady: caly krok
-# 3g jest pomiarem, wiec zostaje pomiarem takze wtedy, gdy wlasny test jest
-# czerwony (ostrzezenie w dzienniku ma to jednak zawsze nazwac po imieniu).
+# Gdy proba BIEGNIE, jej czerwien WCHODZI do kodu wyjscia bramki (KOD_SBOM
+# ponizej, przez sbom_kod_kroku) - pomiar, ktory nie umie sie zatrzymac, nie
+# jest kryterium. Gdy proba NIE biegnie, nie ma jak wplynac na kod wyjscia -
+# pominiecie jest jawne w dzienniku, nie ciche.
+#
+# Skan podatnosci biegnie TA SAMA decyzja co proba logiki, ale jego LICZBA
+# (jak i liczba skladnikow generatora) zostaje pomiarem i NIE WCHODZI do
+# kodu wyjscia w zadnym przypadku (w Zalaczniku 1 nie ma kryterium
+# podatnosciowego) - sbom_kod_kroku w ogole nie przyjmuje jej jako wejscia.
+#
+# Logika liczenia/decyzji/uruchamiania NIE zyje tutaj - zyje w deploy/lib/
+# sbom.sh, zrodlowanym ponizej. Ten sam plik zrodlowuje deploy/tests/
+# test-bramka-sbom.sh, wiec test i bramka NIE MOGA sie rozjechac.
 naglowek "3g - inwentarz skladnikow (SBOM) i skan podatnosci"
 
 # shellcheck source=deploy/lib/sbom.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/sbom.sh"
 
-T="$(date +%s)"
-bash deploy/tests/test-bramka-sbom.sh > "$KATALOG_BIEGU"/bramka-test-sbom.log 2>&1
-KOD_TEST_SBOM=$?
-CZAS_TEST_SBOM="$(czas_od "$T")"
-echo "test logiki SBOM: EXIT=$KOD_TEST_SBOM, $CZAS_TEST_SBOM s"
-if [ "$KOD_TEST_SBOM" -eq 1 ]; then
-    echo "SBOM: test wlasnej logiki (deploy/tests/test-bramka-sbom.sh) jest CZERWONY - nie ufam licznikom ponizej, ale krok POZOSTAJE POMIAREM (nie wchodzi do kodu wyjscia)" >&2
-    tail -20 "$KATALOG_BIEGU"/bramka-test-sbom.log | sed 's/^/  ! /'
-elif [ "$KOD_TEST_SBOM" -eq 3 ]; then
-    echo "SBOM: test wlasnej logiki NIE ZMIERZYL czesci koncowej (EXIT=3, brak docker na TEJ maszynie testujacej) - to NIE jest czerwien, ale licznikom ponizej ufam tylko o tyle, o ile sam bieg generatora/skanera nizej naprawde ma docker" >&2
-fi
+# Znacznik doby idzie do katalogu NADRZEDNEGO wobec $KATALOG_BIEGU - ten
+# ostatni jest per-SHA i czyszczony/zakladany od nowa przy kazdym biegu
+# (deploy/bramka-zdalna.sh: `rm -rf "$KATALOG_BIEGU"; mkdir -p ...`), wiec
+# znacznik zapisany W NIM nie przetrwalby do nastepnego commita tej samej
+# doby. Katalog nadrzedny jest wspolny dla kolejnych biegow (i, lokalnie,
+# wspolnym katalogiem tymczasowym hosta) i NIGDY nie jest drzewem repo.
+KATALOG_ZNACZNIKOW_SBOM="$(dirname "$KATALOG_BIEGU")"
+DZIEN_SBOM="$(date +%F)"
 
 T="$(date +%s)"
 sbom_uruchom_generator "$PWD" "$KATALOG_BIEGU/sbom.cdx.json" "$KATALOG_BIEGU"/bramka-sbom-generator.log
@@ -451,21 +459,56 @@ else
     echo "SBOM (pomiar, poza kodem wyjscia): EXIT=$KOD_SBOM_GEN, $CZAS_SBOM_GEN s, plik $KATALOG_BIEGU/sbom.cdx.json, skladnikow $SKLADNIKOW (composer $SKLADNIKOW_COMPOSER, npm $SKLADNIKOW_NPM)"
 fi
 
-T="$(date +%s)"
-if [ "$KOD_SBOM_GEN" -ne 0 ]; then
-    echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): NIEZMIERZONY - generator nie zostawil pliku do przeskanowania"
+LINIA_DECYZJI_SBOM="$(sbom_probka_ma_biec "$PWD" "$(git rev-parse HEAD)" "$KATALOG_ZNACZNIKOW_SBOM" "$DZIEN_SBOM" "$KATALOG_BIEGU"/bramka-sbom-diff-blad.log)"
+PROBA_SBOM_MA_BIEC=$?
+echo "$LINIA_DECYZJI_SBOM"
+if [ "$PROBA_SBOM_MA_BIEC" -eq 0 ]; then
+    PROBA_SBOM_BIEGLA="tak"
 else
-    sbom_uruchom_skaner "$KATALOG_BIEGU/sbom.cdx.json" "$KATALOG_BIEGU"/bramka-sbom-skan.log
-    KOD_SBOM_SKAN=$?
-    CZAS_SBOM_SKAN="$(czas_od "$T")"
-    if [ "$KOD_SBOM_SKAN" -ne 0 ]; then
-        echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): NIEZMIERZONY - EXIT=$KOD_SBOM_SKAN, $CZAS_SBOM_SKAN s, powod ponizej"
-        tail -10 "$KATALOG_BIEGU"/bramka-sbom-skan.log | sed 's/^/  ! /'
-    else
-        PODATNOSCI_SBOM="$(sbom_policz_podatnosci "$KATALOG_BIEGU"/bramka-sbom-skan.log)"
-        echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): EXIT=$KOD_SBOM_SKAN, $CZAS_SBOM_SKAN s, podatnosci $PODATNOSCI_SBOM"
-    fi
+    PROBA_SBOM_BIEGLA="nie"
 fi
+
+if [ "$PROBA_SBOM_BIEGLA" = "tak" ]; then
+    T="$(date +%s)"
+    bash deploy/tests/test-bramka-sbom.sh > "$KATALOG_BIEGU"/bramka-test-sbom.log 2>&1
+    KOD_TEST_SBOM=$?
+    CZAS_TEST_SBOM="$(czas_od "$T")"
+    echo "test logiki SBOM: EXIT=$KOD_TEST_SBOM, $CZAS_TEST_SBOM s"
+    if [ "$KOD_TEST_SBOM" -eq 1 ]; then
+        echo "SBOM: test wlasnej logiki (deploy/tests/test-bramka-sbom.sh) jest CZERWONY - krok 3g WCHODZI z tym do kodu wyjscia bramki (patrz sbom_kod_kroku)" >&2
+        tail -20 "$KATALOG_BIEGU"/bramka-test-sbom.log | sed 's/^/  ! /'
+    elif [ "$KOD_TEST_SBOM" -eq 3 ]; then
+        echo "SBOM: test wlasnej logiki NIE ZMIERZYL czesci koncowej (EXIT=3, brak docker na TEJ maszynie testujacej) - to NIE jest czerwien, ale licznikom ponizej ufam tylko o tyle, o ile sam bieg generatora/skanera nizej naprawde ma docker" >&2
+    else
+        # Znacznik idzie WYLACZNIE po udanym (zielonym) biegu - czerwony albo
+        # niezmierzony bieg ma dostac szanse zmierzyc sie ponownie na
+        # NASTEPNYM commicie tej samej doby (patrz sbom_zapisz_znacznik).
+        sbom_zapisz_znacznik "$KATALOG_ZNACZNIKOW_SBOM" "$DZIEN_SBOM"
+    fi
+
+    T="$(date +%s)"
+    if [ "$KOD_SBOM_GEN" -ne 0 ]; then
+        echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): NIEZMIERZONY - generator nie zostawil pliku do przeskanowania"
+    else
+        sbom_uruchom_skaner "$KATALOG_BIEGU/sbom.cdx.json" "$KATALOG_BIEGU"/bramka-sbom-skan.log
+        KOD_SBOM_SKAN=$?
+        CZAS_SBOM_SKAN="$(czas_od "$T")"
+        if [ "$KOD_SBOM_SKAN" -ne 0 ]; then
+            echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): NIEZMIERZONY - EXIT=$KOD_SBOM_SKAN, $CZAS_SBOM_SKAN s, powod ponizej"
+            tail -10 "$KATALOG_BIEGU"/bramka-sbom-skan.log | sed 's/^/  ! /'
+        else
+            PODATNOSCI_SBOM="$(sbom_policz_podatnosci "$KATALOG_BIEGU"/bramka-sbom-skan.log)"
+            echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): EXIT=$KOD_SBOM_SKAN, $CZAS_SBOM_SKAN s, podatnosci $PODATNOSCI_SBOM"
+        fi
+    fi
+else
+    KOD_TEST_SBOM=0
+    CZAS_TEST_SBOM=0
+    echo "test logiki SBOM (pomiar, poza kodem wyjscia): POMINIETY - patrz wiersz SBOM: powyzej dla powodu"
+    echo "skan podatnosci SBOM (pomiar, poza kodem wyjscia): POMINIETY - ta sama decyzja co proba logiki (patrz wiersz SBOM: powyzej)"
+fi
+
+KOD_SBOM="$(sbom_kod_kroku "$KOD_TEST_SBOM" "$PROBA_SBOM_BIEGLA")"
 
 # --- 4 - front -------------------------------------------------------------
 KOD_FRONT=0
@@ -524,6 +567,20 @@ else
     echo "audyt npm (pomiar, poza kodem wyjscia): EXIT=$KOD_AUDYT_NPM, ${PODATNOSCI_NPM:-brak odczytu}"
 fi
 
+# Scalenie proby logiki SBOM (krok 3g, warunkowy) do priorytetowego lancucha
+# ponizej (krok 5): DOKLADNIE ten sam mechanizm co KOD_TEST_DRZEWO scalajacy
+# sie w KOD_DRZEWO nizej - zamiast dopisywac WLASNA galaz do lancucha, krok
+# 3g POZYCZA najnizszy priorytet, jaki tam juz istnieje (KOD_FRONT, ostatnia
+# galaz przed domyslnym `else`). Poza tym miejscem (poza dziennikiem, ktory
+# ma powyzej WLASNY wiersz "test logiki SBOM: EXIT=...") SCALENIE NIC nie
+# ukrywa - front ZACHOWUJE WLASNY kod, gdy oba zawiodly naraz, bo warunek
+# nizej scala TYLKO wtedy, gdy front sam jest czysty. Dziala TAKZE, gdy front
+# jest pominiety (POMIN_FRONT=tak, KOD_FRONT zostaje przy swoim domyslnym 0):
+# krok 3g ma wtedy wplynac na kod wyjscia NIEZALEZNIE od frontu.
+if [ "${KOD_SBOM:-0}" -ne 0 ] && [ "${KOD_FRONT:-0}" -eq 0 ]; then
+    KOD_FRONT=$KOD_SBOM
+fi
+
 # --- 5 - sprzatanie i wynik ------------------------------------------------
 naglowek "5 - wynik"
 
@@ -564,7 +621,10 @@ echo "czasy: A=${CZAS_A}s B=${CZAS_B}s statyczna=${CZAS_STATYCZNA:-0}s semgrep=$
 # KOD_SEMGREP sa tu wymienione (blokuja). Audyty (KOD_AUDYT_PHP, KOD_AUDYT_NPM)
 # NIE sa i to jest decyzja, nie przeoczenie: ich liczby stoja w logu wyzej i
 # ida do rejestru z numerem, a podatnosc w cudzej zaleznosci nie jest rzecza,
-# ktora ten commit zepsul.
+# ktora ten commit zepsul. KOD_SBOM (od 24.09) NIE ma tu wlasnej galezi -
+# scalony jest w KOD_FRONT wyzej (patrz komentarz przy tym scaleniu, krok
+# "4 - front"), z tym samym priorytetem, jaki mialaby tu wlasna galaz: sam
+# koniec lancucha, tuz przed domyslnym `else`.
 if [ "$KOD_A" -ne 0 ]; then KOD=$KOD_A
 elif [ "$KOD_B" -ne 0 ]; then KOD=$KOD_B
 elif [ "${KOD_STATYCZNA:-0}" -ne 0 ]; then KOD=$KOD_STATYCZNA
