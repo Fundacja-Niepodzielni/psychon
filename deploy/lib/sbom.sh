@@ -610,6 +610,19 @@ sbom_probka_ma_biec() {
 #   - PROBA_LOGIKI_BIEGLA=tak i KOD_TEST_SBOM=3 (NIE ZMIERZONO) -> 0 - to NIE
 #     jest czerwien testu logiki, tylko brak Dockera na maszynie testujacej.
 #   - PROBA_LOGIKI_BIEGLA=tak i KOD_TEST_SBOM=0 -> 0.
+#   - PROBA_LOGIKI_BIEGLA=tak i KOD_TEST_SBOM SPOZA {0,1,3} -> 4: AWARIA
+#     PRZYRZADU. Zestaw prob wypisuje 0/1/3 SAM, swoim koncowym `exit` -
+#     kazda inna liczba znaczy, ze do tego `exit` nie doszedl: blad skladni
+#     w pliku zestawu daje 2, brakujacy plik zestawu daje 127, przerwanie
+#     sygnalem daje 128+N. Zestaw, ktory NIE WYSTARTOWAL, nie zmierzyl
+#     niczego - a "brak wyniku musi byc czerwony" tak samo jak przy awarii
+#     generatora wyzej. Kod 4 jest CELOWO inny od 1 (czerwien zmierzonej
+#     proby) i od 2 (awaria generatora): trzy niezalezne powody czerwieni
+#     kroku 3g maja sie dac rozroznic w kodzie wyjscia, nie tylko w
+#     dzienniku. Bramka dopisuje do dziennika LICZBE i SCIEZKE LOGU, a
+#     znacznika dobowego ani skrotu NIE zapisuje - inaczej zestaw, ktory
+#     sie nie uruchomil, wyciszalby wlasne uruchomienie do konca doby i
+#     zostawial slad, ze przyrzad zostal udowodniony.
 #
 # Skan podatnosci (generator, skaner, LICZBA podatnosci) NIGDY nie wchodzi
 # tutaj - ta funkcja w ogole nie przyjmuje ich kodu jako argumentu, bo
@@ -624,7 +637,15 @@ sbom_kod_kroku() {
     echo 1
     return 0
   fi
-  echo 0
+  # Dopiero TU domyslnym wynikiem przestaje byc zero: zielen nalezy sie
+  # WYLACZNIE kodom, ktore zestaw prob wypisal SAM (0 zielono, 3 nie
+  # zmierzyl konca). Wszystko pozostale jest awaria przyrzadu - patrz
+  # komentarz nad funkcja.
+  if [[ "$kod_test" -eq 0 || "$kod_test" -eq 3 ]]; then
+    echo 0
+    return 0
+  fi
+  echo 4
   return 0
 }
 

@@ -1085,6 +1085,147 @@ NIEZAL_47=0
 [[ "$RC_DRZEWO_N47" -eq 0 ]] || { echo "  WYNIK: NIEZALICZONY - oczekiwano rc=0 (czysto), jest $RC_DRZEWO_N47 (6 = brud konczylby caly bieg)"; NIEZAL_47=1; }
 if [[ "$NIEZAL_47" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
 
+# ==================== CZESC 15: kod zestawu prob SPOZA {0,1,3} =============
+# Zestaw prob wypisuje 0 / 1 / 3 SAM, swoim koncowym `exit`. Kazda INNA
+# liczba znaczy, ze do tego `exit` w ogole nie doszedl - zmierzone: blad
+# skladni w pliku zestawu daje 2, brakujacy plik zestawu daje 127. Do tej
+# pory galaz `else` w kroku 3g lapala oba te przypadki jako ZIELONE i - co
+# gorsza - zapisywala znacznik dobowy oraz skrot tresci plikow progowych
+# "jako sprawdzony": zestaw, ktory NIE WYSTARTOWAL, wyciszal wlasne
+# uruchomienie do konca doby i zostawial slad, ze przyrzad zostal
+# udowodniony. Ta sama regula co przy generatorze: brak wyniku musi byc
+# czerwony.
+
+echo "=== 48 kod kroku: zestaw prob NIE WYSTARTOWAL (kod 2 = blad skladni w pliku zestawu) -> kontrybucja != 0 ==="
+KOD_48="$(sbom_kod_kroku 2 "tak")"
+echo "  sbom_kod_kroku 2 tak -> $KOD_48"
+NIEZAL_48=0
+[[ "$KOD_48" -ne 0 ]] || { echo "  WYNIK: NIEZALICZONY - kod 2 (zestaw sie nie uruchomil) zostal potraktowany jak zielony bieg, jest $KOD_48 - brak wyniku ma byc czerwony"; NIEZAL_48=1; }
+[[ "$KOD_48" -ne 1 ]] || { echo "  WYNIK: NIEZALICZONY - awaria przyrzadu dostala kod 1, nieodrozialny od CZERWIENI ZMIERZONEJ proby, jest $KOD_48"; NIEZAL_48=1; }
+if [[ "$NIEZAL_48" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 49 kod kroku: pliku zestawu prob NIE MA (kod 127) -> kontrybucja != 0, ta sama co dla 2 ==="
+KOD_49="$(sbom_kod_kroku 127 "tak")"
+echo "  sbom_kod_kroku 127 tak -> $KOD_49"
+NIEZAL_49=0
+[[ "$KOD_49" -ne 0 ]] || { echo "  WYNIK: NIEZALICZONY - kod 127 (brak pliku zestawu) zostal potraktowany jak zielony bieg, jest $KOD_49"; NIEZAL_49=1; }
+[[ "$KOD_49" -eq "$KOD_48" ]] || { echo "  WYNIK: NIEZALICZONY - dwa warianty TEJ SAMEJ awarii (2 i 127) daja rozne kody kroku ($KOD_48 vs $KOD_49) - kod wyjscia ma nazywac POWOD, nie liczbe, ktora akurat wrocila"; NIEZAL_49=1; }
+if [[ "$NIEZAL_49" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+
+echo "=== 50 kod kroku: pominiecie nadal pochlania WSZYSTKO - kod 2 przy probie, ktora NIE BIEGLA -> kontrybucja 0 ==="
+# Granica poprawki w druga strone: gdy proba w ogole nie biegla, bramka
+# wymusza KOD_TEST_SBOM=0, wiec zadna liczba niesiona w tej zmiennej nie ma
+# prawa czerwienic kroku - pominiecie jest jawne w dzienniku i DLATEGO nie
+# wchodzi do kodu wyjscia (ten sam kontrakt co przypadek 24).
+KOD_50="$(sbom_kod_kroku 2 "nie")"
+echo "  sbom_kod_kroku 2 nie -> $KOD_50"
+zaliczone_gdy "$([[ "$KOD_50" -eq 0 ]] && echo 0 || echo 1)" \
+  "oczekiwano 0 (proba NIE BIEGLA - nic z tej zmiennej nie ma jak wplynac na kod wyjscia), jest $KOD_50"
+
+# --- przypadki 51 i 52: WPIECIE, na cytowanym doslownie kroku 3g ----------
+# Mierza to, czego przypadki 48-50 zmierzyc nie moga: ze bramka NAPRAWDE
+# oddaje te czerwien i ze NIE ZAPISUJE ani znacznika dobowego, ani skrotu.
+# Generator, skaner i decyzja sa atrapami (bez dockera i bez gita), a kod
+# wyjscia zestawu prob jest wymuszony atrapa funkcji `bash` - to jedyne
+# nie-cytowane linie w calym fragmencie.
+zmierz_wpiecie_kodu_zestawu() {  # $1 = wymuszony kod wyjscia zestawu prob
+  local kod="$1" kat fragment
+  kat="$(mktemp -d -p "$TU")"; KATALOGI_TESTOWE+=("$kat")
+  mkdir -p "$kat/bieg"
+  fragment="$(mktemp -p "$REPO_ROOT/deploy" bramka-swiadek-3g-kod-zestawu.XXXXXX.sh)"
+  PLIKI_TESTOWE+=("$fragment")
+  {
+    echo "#!/usr/bin/env bash"
+    sed -n '/^czas_od() {/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+    sed -n '/^naglowek() {/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+    cat <<VARS
+KOD_A=0
+KOD_B=0
+KOD_STATYCZNA=0
+KOD_ACTIONLINT=0
+KOD_GITLEAKS=0
+KOD_SWIADEK_LOGOWANIA=0
+KOD_LIBC=0
+KOD_DRZEWO=0
+KOD_SEMGREP=0
+KOD_FRONT=0
+KATALOG_BIEGU="$kat/bieg"
+mkdir -p "\$KATALOG_BIEGU"
+VARS
+    # --- krok 3g, CZESC A: naglowek + zrodlowanie lib/sbom.sh (cytat doslowny) ---
+    sed -n '/^naglowek "3g - inwentarz skladnikow/,/lib\/sbom\.sh"$/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+    # --- ATRAPY: generator i skaner UDAJA SIE (bez dockera), decyzja mowi
+    # BIEGNIE, a zestaw prob oddaje wymuszony kod. Zadna z nich nie jest
+    # zrodlem czerwieni - jedynym badanym zrodlem zostaje kod zestawu.
+    echo 'sbom_uruchom_generator() { echo "atrapa generatora - liczy sie EXIT, nie tresc" > "$2"; echo "atrapa generatora" > "$3"; return 0; }'
+    echo 'sbom_uruchom_skaner() { echo "atrapa skanera" > "$2"; return 0; }'
+    echo 'sbom_probka_ma_biec() { echo "SBOM: proba logiki BIEGNIE - powod: ATRAPA przypadku wpiecia"; return 0; }'
+    echo "bash() { if [ \"\$1\" = deploy/tests/test-bramka-sbom.sh ]; then echo 'atrapa zestawu prob - ten bieg NIE WYSTARTOWAL'; return $kod; fi; command bash \"\$@\"; }"
+    # --- krok 3g, CZESC B: reszta kroku (cytat doslowny, uzywa atrap powyzej) ---
+    # Kotwica LUZNA (bez _ostateczny) - jak w przypadku 41: ten przypadek
+    # mierzy ZACHOWANIE, nie KSZTALT cytatu (to robia 35 i 42), i ma zostac
+    # bezpiecznie ograniczony niezaleznie od tego, ktora funkcja stoi w
+    # KOD_SBOM=... w tej chwili.
+    sed -n '/^# Znacznik doby idzie do katalogu NADRZEDNEGO/,/^KOD_SBOM="\$(sbom_kod_kroku/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+    echo 'echo "KROK_3G=$KOD_SBOM"'
+    # --- scalenie do KOD_FRONT + koncowy lancuch kodu wyjscia (cytat doslowny) ---
+    sed -n '/^# Scalenie proby logiki SBOM/,/^fi$/p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+    sed -n '/^if \[ "\$KOD_A"/,$p' "$REPO_ROOT/deploy/bramka-hosta.sh"
+  } > "$fragment"
+  chmod +x "$fragment"
+
+  WPIECIE_PRZED="$(ls -1 "$kat" | tr '\n' ' ')"
+  WPIECIE_WYJSCIE="$(cd "$REPO_ROOT" && bash "$fragment" 2>&1)"
+  WPIECIE_RC=$?
+  WPIECIE_PO="$(ls -1 "$kat" | tr '\n' ' ')"
+  WPIECIE_ZNACZNIK="$(sbom_znacznik_sciezka "$kat" "$(date +%F)")"
+  WPIECIE_SKROT="$(sbom_skrot_sciezka "$kat")"
+  rm -f "$fragment"
+}
+
+for KOD_WYMUSZONY in 2 127; do
+  if [[ "$KOD_WYMUSZONY" == "2" ]]; then
+    NUMER_PRZYPADKU=51
+    POWOD="blad skladni w pliku zestawu"
+  else
+    NUMER_PRZYPADKU=52
+    POWOD="pliku zestawu nie ma"
+  fi
+  echo "=== $NUMER_PRZYPADKU (rozstrzygajacy) WPIECIE: zestaw prob oddaje $KOD_WYMUSZONY ($POWOD) -> krok 3g CZERWONY, znacznik i skrot NIE POWSTAJA ==="
+  zmierz_wpiecie_kodu_zestawu "$KOD_WYMUSZONY"
+  echo "  katalog znacznikow PRZED biegiem: $WPIECIE_PRZED"
+  echo "$WPIECIE_WYJSCIE" | sed 's/^/  | /'
+  echo "  rc calego cytowanego biegu (kod wyjscia symulowanej bramki): $WPIECIE_RC"
+  echo "  katalog znacznikow PO biegu: $WPIECIE_PO"
+  echo "  znacznik doby ($WPIECIE_ZNACZNIK): $([[ -f "$WPIECIE_ZNACZNIK" ]] && echo JEST || echo BRAK)"
+  echo "  skrot ($WPIECIE_SKROT): $([[ -f "$WPIECIE_SKROT" ]] && echo JEST || echo BRAK)"
+
+  NIEZAL_WPIECIE=0
+  echo "$WPIECIE_WYJSCIE" | grep -q "BIEGNIE" || { echo "  WYNIK: NIEZALICZONY - atrapa decyzji nie wymusila biegu proby (uprzaz sama zepsuta)"; NIEZAL_WPIECIE=1; }
+  echo "$WPIECIE_WYJSCIE" | grep -q "test logiki SBOM: EXIT=$KOD_WYMUSZONY" || { echo "  WYNIK: NIEZALICZONY - atrapa zestawu prob nie wymusila kodu $KOD_WYMUSZONY (uprzaz sama zepsuta)"; NIEZAL_WPIECIE=1; }
+  [[ "$WPIECIE_RC" -ne 0 ]] || {
+    echo "  WYNIK: NIEZALICZONY - zestaw prob oddal $KOD_WYMUSZONY (NIE WYSTARTOWAL), a caly cytowany bieg zakonczyl sie RC=0 - brak wyniku zostal zielony"
+    NIEZAL_WPIECIE=1
+  }
+  echo "$WPIECIE_WYJSCIE" | grep -q "kod wyjscia $KOD_WYMUSZONY jest SPOZA" || {
+    echo "  WYNIK: NIEZALICZONY - dziennik NIE niesie wiersza z LICZBA kodu ($KOD_WYMUSZONY) - wynik sprawdzenia nie ma czego zacytowac"
+    NIEZAL_WPIECIE=1
+  }
+  echo "$WPIECIE_WYJSCIE" | grep -q "bramka-test-sbom.log" || {
+    echo "  WYNIK: NIEZALICZONY - dziennik NIE niesie SCIEZKI LOGU zestawu prob"
+    NIEZAL_WPIECIE=1
+  }
+  [[ ! -f "$WPIECIE_ZNACZNIK" ]] || {
+    echo "  WYNIK: NIEZALICZONY - znacznik dobowy POWSTAL mimo ze zestaw prob nie wystartowal - bieg wyciszylby wlasne uruchomienie do konca doby"
+    NIEZAL_WPIECIE=1
+  }
+  [[ ! -f "$WPIECIE_SKROT" ]] || {
+    echo "  WYNIK: NIEZALICZONY - skrot tresci plikow progowych POWSTAL mimo ze zestaw prob nie wystartowal - zostal slad mowiacy, ze przyrzad udowodniono"
+    NIEZAL_WPIECIE=1
+  }
+  if [[ "$NIEZAL_WPIECIE" -eq 1 ]]; then NIEZALICZONE=$((NIEZALICZONE + 1)); else echo "  WYNIK: ZALICZONY"; fi
+done
+
 echo
 if [[ "$NIEZALICZONE" -gt 0 ]]; then
   echo "PROBY LOGIKI SBOM: NIEZALICZONE PRZYPADKI: $NIEZALICZONE"
