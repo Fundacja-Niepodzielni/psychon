@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, ApiError } from "@/lib/api";
 
 interface Edition {
@@ -139,153 +140,162 @@ export default function EditionSettingsPage() {
 
   if (loadError && loadErrorStatus === 403) {
     return (
-      <div className="flex max-w-2xl flex-col gap-6">
-        <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
-        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tych ustawień." />
-      </div>
+      <PageTemplate naglowek={{ title: "Ustawienia edycji" }}>
+        <div className="flex max-w-2xl flex-col gap-6">
+          <ForbiddenState message="Nie masz uprawnień do wyświetlenia tych ustawień." />
+        </div>
+      </PageTemplate>
     );
   }
 
   if (loadError) {
     return (
-      <div className="flex max-w-2xl flex-col gap-6">
-        <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
-        <ErrorState
-          message={loadError}
-          onRetry={() => {
-            setLoadError(null);
-            setLoadErrorStatus(undefined);
-            setReloadKey((value) => value + 1);
-          }}
-        />
-      </div>
+      <PageTemplate naglowek={{ title: "Ustawienia edycji" }}>
+        <div className="flex max-w-2xl flex-col gap-6">
+          <ErrorState
+            message={loadError}
+            onRetry={() => {
+              setLoadError(null);
+              setLoadErrorStatus(undefined);
+              setReloadKey((value) => value + 1);
+            }}
+          />
+        </div>
+      </PageTemplate>
     );
   }
 
   if (!edition || !form) {
     return (
-      <div className="flex max-w-2xl flex-col gap-6">
-        <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
-        <LoadingState label="Wczytywanie ustawień…" />
-      </div>
+      <PageTemplate naglowek={{ title: "Ustawienia edycji" }}>
+        <div className="flex max-w-2xl flex-col gap-6">
+          <LoadingState label="Wczytywanie ustawień…" />
+        </div>
+      </PageTemplate>
     );
   }
 
   const err = (key: string) => fieldErrors[key]?.[0];
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-h2 font-black text-ink">Ustawienia edycji</h1>
+    <PageTemplate naglowek={{ title: "Ustawienia edycji" }}>
+      <div className="flex max-w-2xl flex-col gap-6">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-col gap-6"
+        >
+          {formError && <Alert variant="error">{formError}</Alert>}
+          {saved && <Alert variant="success">Zapisano zmiany.</Alert>}
 
-      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-        {formError && <Alert variant="error">{formError}</Alert>}
-        {saved && <Alert variant="success">Zapisano zmiany.</Alert>}
-
-        <Card title="Edycja">
-          <div className="flex flex-col gap-4">
-            <Input
-              label="Nazwa edycji"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-              error={err("name")}
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
+          <Card title="Edycja">
+            <div className="flex flex-col gap-4">
               <Input
-                label="Data rozpoczęcia"
-                type="date"
-                value={form.starts_at}
-                onChange={(e) => update("starts_at", e.target.value)}
-                error={err("starts_at")}
+                label="Nazwa edycji"
+                value={form.name}
+                onChange={(e) => update("name", e.target.value)}
+                error={err("name")}
               />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="Data rozpoczęcia"
+                  type="date"
+                  value={form.starts_at}
+                  onChange={(e) => update("starts_at", e.target.value)}
+                  error={err("starts_at")}
+                />
+                <Input
+                  label="Data zakończenia"
+                  type="date"
+                  value={form.ends_at}
+                  onChange={(e) => update("ends_at", e.target.value)}
+                  error={err("ends_at")}
+                />
+              </div>
               <Input
-                label="Data zakończenia"
-                type="date"
-                value={form.ends_at}
-                onChange={(e) => update("ends_at", e.target.value)}
-                error={err("ends_at")}
+                className="sm:max-w-[200px]"
+                label="Limit miejsc"
+                type="number"
+                min={1}
+                value={form.seats_limit}
+                onChange={(e) => update("seats_limit", e.target.value)}
+                error={err("seats_limit")}
               />
             </div>
-            <Input
-              className="sm:max-w-[200px]"
-              label="Limit miejsc"
-              type="number"
-              min={1}
-              value={form.seats_limit}
-              onChange={(e) => update("seats_limit", e.target.value)}
-              error={err("seats_limit")}
-            />
-          </div>
-        </Card>
+          </Card>
 
-        <Card title="Reguły programu">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Próg zaliczenia testu (%)"
-              type="number"
-              min={0}
-              max={100}
-              value={form.test_pass_threshold}
-              onChange={(e) => update("test_pass_threshold", e.target.value)}
-              error={err("test_pass_threshold")}
-            />
-            <Input
-              label="Limit podejść do testu"
-              type="number"
-              min={1}
-              value={form.test_attempts_limit}
-              onChange={(e) => update("test_attempts_limit", e.target.value)}
-              error={err("test_attempts_limit")}
-            />
-            <Input
-              label="Wymagane godziny stażu"
-              type="number"
-              min={1}
-              value={form.internship_hours_required}
-              onChange={(e) =>
-                update("internship_hours_required", e.target.value)
-              }
-              error={err("internship_hours_required")}
-            />
-            <Input
-              label="Wymagana liczba obecności na superwizji"
-              type="number"
-              min={1}
-              value={form.supervision_required_count}
-              onChange={(e) =>
-                update("supervision_required_count", e.target.value)
-              }
-              error={err("supervision_required_count")}
-            />
-            <Input
-              label="Próg rzetelności (%)"
-              type="number"
-              min={0}
-              max={100}
-              value={form.reliability_threshold}
-              onChange={(e) => update("reliability_threshold", e.target.value)}
-              error={err("reliability_threshold")}
-            />
-            <Input
-              label="Próg ukończenia lekcji (%)"
-              type="number"
-              min={0}
-              max={100}
-              value={form.lesson_completion_percent}
-              onChange={(e) =>
-                update("lesson_completion_percent", e.target.value)
-              }
-              error={err("lesson_completion_percent")}
-              hint="Udział czasu aktywnego oglądania wymagany do ukończenia lekcji."
-            />
-          </div>
-        </Card>
+          <Card title="Reguły programu">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="Próg zaliczenia testu (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={form.test_pass_threshold}
+                onChange={(e) => update("test_pass_threshold", e.target.value)}
+                error={err("test_pass_threshold")}
+              />
+              <Input
+                label="Limit podejść do testu"
+                type="number"
+                min={1}
+                value={form.test_attempts_limit}
+                onChange={(e) => update("test_attempts_limit", e.target.value)}
+                error={err("test_attempts_limit")}
+              />
+              <Input
+                label="Wymagane godziny stażu"
+                type="number"
+                min={1}
+                value={form.internship_hours_required}
+                onChange={(e) =>
+                  update("internship_hours_required", e.target.value)
+                }
+                error={err("internship_hours_required")}
+              />
+              <Input
+                label="Wymagana liczba obecności na superwizji"
+                type="number"
+                min={1}
+                value={form.supervision_required_count}
+                onChange={(e) =>
+                  update("supervision_required_count", e.target.value)
+                }
+                error={err("supervision_required_count")}
+              />
+              <Input
+                label="Próg rzetelności (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={form.reliability_threshold}
+                onChange={(e) =>
+                  update("reliability_threshold", e.target.value)
+                }
+                error={err("reliability_threshold")}
+              />
+              <Input
+                label="Próg ukończenia lekcji (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={form.lesson_completion_percent}
+                onChange={(e) =>
+                  update("lesson_completion_percent", e.target.value)
+                }
+                error={err("lesson_completion_percent")}
+                hint="Udział czasu aktywnego oglądania wymagany do ukończenia lekcji."
+              />
+            </div>
+          </Card>
 
-        <div className="flex justify-end">
-          <Button type="submit" loading={saving}>
-            Zapisz zmiany
-          </Button>
-        </div>
-      </form>
-    </div>
+          <div className="flex justify-end">
+            <Button type="submit" loading={saving}>
+              Zapisz zmiany
+            </Button>
+          </div>
+        </form>
+      </div>
+    </PageTemplate>
   );
 }
