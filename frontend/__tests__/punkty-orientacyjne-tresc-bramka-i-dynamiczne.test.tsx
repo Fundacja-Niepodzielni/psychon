@@ -459,7 +459,7 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
     expect(
       screen.getByRole("heading", { level: 1 }),
       "/admin/uczestniczki/[id] (ładowanie): h1 ma nieść tytuł ekranu",
-    ).toHaveTextContent("Karta osoby");
+    ).toHaveTextContent(/^Karta osoby$/);
   });
 
   it("stan „nie znaleziono osoby” (404)", async () => {
@@ -485,7 +485,7 @@ describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () 
     expect(
       screen.getByRole("heading", { level: 1 }),
       "/admin/uczestniczki/[id] (błąd 500): h1 ma nieść tytuł ekranu",
-    ).toHaveTextContent("Karta osoby");
+    ).toHaveTextContent(/^Karta osoby$/);
   });
 
   it("stan sukcesu (karta osoby wczytana)", async () => {
