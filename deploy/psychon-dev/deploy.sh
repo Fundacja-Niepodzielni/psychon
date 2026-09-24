@@ -9,6 +9,13 @@
 #
 # Skrypt nie tworzy zadnych sekretow. Plik /opt/psychon/.env zaklada czlowiek.
 #
+# Krok zrzutu bazy przed migracja (nizej) porownuje liczbe tabel zapisanych
+# w zrzucie z liczba tabel w samej bazie. Gdy obie liczby sa znane, ale sie
+# roznia, caly bieg konczy sie WLASNYM kodem wyjscia 2 - poza 0/1 i poza
+# zakresem 40-47 (ten zakres nalezy do deploy/wdroz-zdalnie.sh, ten plik go
+# nie uzywa) - PRZED migracja. Gdy ktorejs z dwoch liczb nie da sie policzyc,
+# to jest osobny wynik ("nie wiem"), nigdy ciche zaliczenie zgodnosci.
+#
 # Funkcje `_swiadek_logowania_*` nizej ocenia sciezke logowania:
 # nie tylko trase, ale przekierowanie do dostawcy tozsamosci az do formularza.
 # Sa zdefiniowane PRZED `set -euo pipefail` i przed reszta skryptu, a zaraz
@@ -157,7 +164,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 env_file="${PSYCHON_ENV_FILE:-/opt/psychon/.env}"
 tls_dir="${PSYCHON_TLS_DIR:-/opt/psychon/tls}"
-# Katalog na hoscie (poza kontenerami) na zrzuty tabeli documents wykonywane
+# Katalog na hoscie (poza kontenerami) na zrzuty calej bazy wykonywane
 # tuz przed kazda migracja - patrz komentarz przy kroku migracji nizej.
 backup_dir="${PSYCHON_DB_BACKUP_DIR:-/opt/psychon/kopie-bazy}"
 compose=(docker compose --env-file "$env_file" -f docker-compose.yml -f docker-compose.psychon-dev.yml)
@@ -242,7 +249,7 @@ if [[ "$tryb" = "bez-zrzutu" ]]; then
   echo "Tryb --bez-zrzutu: zrzut i rotacja juz zrobione wczesniej (przed checkoutem) - pomijam ten krok."
 fi
 if [[ "$tryb" != "bez-zrzutu" ]]; then
-echo "Zrzucam kopie tabeli documents przed migracja..."
+echo "Zrzucam kopie calej bazy przed migracja..."
 # Kolejnosc zrzut -> migrate -> documents:encrypt-snapshots jest wymuszona,
 # nie stylistyczna - ale opisuje ja tu FAKTYCZNA kolejnosc kroku wyzej, nie
 # zyczeniowa. Kontenery aplikacji sa juz PRZEBUDOWANE na nowy kod
@@ -280,15 +287,50 @@ mkdir -p "$backup_dir"
 # WYLACZNIE ten rejestr i przed kasowaniem porownuje sume NA NOWO, wiec
 # zgodnosc samej nazwy nigdy nie wystarcza do usuniecia pliku.
 rejestr_zrzutow="$backup_dir/.rejestr-psychondev-zrzutow.tsv"
-backup_file="$backup_dir/documents-psychondev-$(date +%Y%m%d-%H%M%S).sql"
+# Czlon "pelna-baza" odroznia ten format od dawnego jednotabelowego
+# ("documents-psychondev-...") - dwa ksztalty nazwy nigdy nie powstaja z
+# tego samego biegu skryptu, wiec rejestr od teraz przyjmuje wylacznie ten
+# nowy ksztalt.
+backup_file="$backup_dir/pelna-baza-psychondev-$(date +%Y%m%d-%H%M%S).sql"
 # `umask 077` w podpowloce, zanim pg_dump zacznie pisac - plik dostaje prawa
-# 600 OD PIERWSZEGO bajtu tresci (PESEL-e sa w nim jawne az do pierwszego
-# udanego przebiegu documents:encrypt-snapshots), nie dopiero po fakcie.
-if ! (umask 077 && "${compose[@]}" exec -T pgsql pg_dump -U "$db_user" -d "$db_name" -t documents > "$backup_file"); then
-  echo "BLAD: zrzut tabeli documents (pg_dump) nie powiodl sie. Przerywam bez migracji."
+# 600 OD PIERWSZEGO bajtu tresci (dane osobowe sa w nim jawne az do
+# pierwszego udanego przebiegu documents:encrypt-snapshots), nie dopiero po
+# fakcie. Zrzut jest CALEJ bazy (bez `-t`) - jednotabelowy zrzut zostawial
+# poza kopia 42 z 43 tabel.
+if ! (umask 077 && "${compose[@]}" exec -T pgsql pg_dump -U "$db_user" -d "$db_name" > "$backup_file"); then
+  echo "BLAD: zrzut calej bazy (pg_dump) nie powiodl sie. Przerywam bez migracji."
   rm -f "$backup_file"
   exit 1
 fi
+
+# Zrzut, ktory sie "udal" (kod wyjscia pg_dump byl 0), moze wciaz obejmowac
+# mniej tabel niz baza naprawde ma - to dokladnie wada, ktora ten krok mial
+# naprawic. Liczba tabel W ZRZUCIE liczona jest z tresci, ktora pg_dump
+# wlasnie napisal (linie `CREATE TABLE `), liczba tabel W BAZIE - osobnym
+# zapytaniem do katalogu bazy, poza schematami systemowymi. Obie liczby
+# wypisujemy ZAWSZE, jako osobne wartosci, zanim cokolwiek innego zdecyduje
+# o ich zgodnosci.
+liczba_tabel_zrzut="$(grep -c -E '^CREATE TABLE ' "$backup_file" 2>/dev/null || true)"
+liczba_tabel_baza="$("${compose[@]}" exec -T pgsql psql -U "$db_user" -d "$db_name" -tAc \
+  "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema');" \
+  2>/dev/null | tr -d '[:space:]' || true)"
+echo "ZRZUT: tabel w zrzucie=${liczba_tabel_zrzut:-brak} tabel w bazie=${liczba_tabel_baza:-brak}"
+
+# Rozstrzygniecie ma TRZY drogi, nie dwie: zgodne, niezgodne, i "nie da sie
+# policzyc". Trzecia droga NIE jest cicho skladana z pierwsza - pusty albo
+# niecyfrowy wynik ktorejkolwiek liczby NIGDY nie jest liczony jako dowod
+# zgodnosci, dostaje wlasny, osobny komunikat.
+if [[ "$liczba_tabel_zrzut" =~ ^[0-9]+$ && "$liczba_tabel_baza" =~ ^[0-9]+$ ]]; then
+  if [[ "$liczba_tabel_zrzut" -ne "$liczba_tabel_baza" ]]; then
+    echo "BLAD: liczba tabel w zrzucie ($liczba_tabel_zrzut) rozni sie od liczby tabel w bazie ($liczba_tabel_baza). Przerywam przed migracja (kod wyjscia 2)."
+    rm -f "$backup_file"
+    exit 2
+  fi
+  echo "ZRZUT: liczba tabel w zrzucie i w bazie sie zgadza."
+else
+  echo "ZRZUT: NIE WIEM - przynajmniej jednej z dwoch liczb tabel nie da sie policzyc. To NIE jest zgodnosc, ale nie przerywa biegu tutaj."
+fi
+
 # Suma liczona ZARAZ PO udanym zrzucie - jedyny moment pewnosci, ze plik na
 # dysku to dokladnie to, co pg_dump napisal. Bez sumy nie ma wpisu w
 # rejestrze: nowy plik zostaje na dysku, ale rotacja nigdy go nie skasuje

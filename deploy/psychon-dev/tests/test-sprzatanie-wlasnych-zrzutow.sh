@@ -115,6 +115,57 @@ EOF
   chmod +x "$bin/docker"
 }
 
+# $1=katalog STUB_BIN (juz istnieje). Jak zaloz_zaslepki, ale zaslepka
+# "docker" odpowiada na `pg_dump` piecioma liniami `CREATE TABLE` i na
+# `psql` (zapytanie o liczbe tabel w bazie) liczba DZIEWIEC - dwie ROZNE
+# liczby, naumyslnie, zeby zaczerwienic sciezke porownania w deploy.sh, gdy
+# ta sciezka jest zla. Kazde inne wywolanie (up/config/exec migrate/...)
+# dostaje to samo domyslne zachowanie co w zaloz_zaslepki: log i sukces.
+zaloz_zaslepki_niezgodnosc() {
+  local bin="$1"
+  cat > "$bin/stat" <<'EOF'
+#!/bin/bash
+echo 600
+EOF
+  chmod +x "$bin/stat"
+
+  cat > "$bin/curl" <<'EOF'
+#!/bin/bash
+out_file=""
+dump_file=""
+prev=""
+for a in "$@"; do
+  if [[ "$prev" == "-o" ]]; then out_file="$a"; fi
+  if [[ "$prev" == "-D" ]]; then dump_file="$a"; fi
+  prev="$a"
+done
+[[ -n "$out_file" ]] && : > "$out_file"
+[[ -n "$dump_file" ]] && printf 'HTTP/1.1 200 OK\r\n\r\n' > "$dump_file"
+printf '200'
+exit 0
+EOF
+  chmod +x "$bin/curl"
+
+  cat > "$bin/docker" <<'EOF'
+#!/bin/bash
+echo "$*" >> "${DOCKER_CALL_LOG:-/dev/null}"
+for a in "$@"; do
+  if [[ "$a" == "pg_dump" ]]; then
+    for n in 1 2 3 4 5; do
+      printf 'CREATE TABLE public.tabela_%d (\n' "$n"
+    done
+    exit 0
+  fi
+  if [[ "$a" == "psql" ]]; then
+    printf '9\n'
+    exit 0
+  fi
+done
+exit 0
+EOF
+  chmod +x "$bin/docker"
+}
+
 # Zasiewa BACKUP_DIR z OSMIOMA obcymi plikami o zwyklych nazwach (rozpoznawalna,
 # rozna tresc kazdego) i DZIEWIECIOMA WLASNYMI zrzutami sprzed biegu - dla
 # kazdego z nich zapisuje TEZ PRAWDZIWA pozycje w rejestrze (nazwa + suma
@@ -308,6 +359,133 @@ if [[ ! -d "$REJESTR2" ]]; then
   ZLE=1
 fi
 wynik "P2 rejestr nie jest zwyklym plikiem - NIE WIEM w zapisie i rotacji, zero skasowanych" "$ZLE"
+
+zaloz_zaslepki_niepoliczalne() {
+  local bin="$1"
+  zaloz_zaslepki_niezgodnosc "$bin"
+  # Rozni sie od zaslepek niezgodnosci JEDNA rzecza: psql nie zwraca liczby,
+  # tylko pusty wynik na wyjsciu i komunikat bledu na strumieniu bledow -
+  # dokladnie to, co robi niedostepna baza. Zrzut nadal daje 5 tabel, wiec
+  # jedna z dwoch liczb jest znana, a druga nie. Tego przypadku nie da sie
+  # rozstrzygnac ani na "zgadza sie", ani na "rozni sie".
+  cat > "$bin/docker" <<'EOF'
+#!/bin/bash
+echo "$*" >> "${DOCKER_CALL_LOG:-/dev/null}"
+for a in "$@"; do
+  if [[ "$a" == "pg_dump" ]]; then
+    for n in 1 2 3 4 5; do
+      printf 'CREATE TABLE public.tabela_%d (
+' "$n"
+    done
+    exit 0
+  fi
+  if [[ "$a" == "psql" ]]; then
+    echo "psql: error: connection to server failed" >&2
+    exit 2
+  fi
+done
+exit 0
+EOF
+  chmod +x "$bin/docker"
+}
+
+# ====================== CZESC trzecia (P3) - liczba tabel w zrzucie i w bazie sie roznia ==========
+echo "=== P3 zrzut 'widzi' 5 tabel, baza 'widzi' 9: skrypt przerywa PRZED migracja wlasnym kodem wyjscia, nic nie trafia do rejestru ==="
+KATALOG3="$(mktemp -d)"; KATALOGI_TESTOWE+=("$KATALOG3")
+zaloz_katalog_testowy "$KATALOG3"
+STUB3="$(mktemp -d)"; KATALOGI_TESTOWE+=("$STUB3")
+zaloz_zaslepki_niezgodnosc "$STUB3"
+ENV_PLIK3="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_PLIK3")
+printf 'STAGING_DOMAIN=przyklad.test\nAUTH_KEYCLOAK_ISSUER=https://idp.przyklad.test/realms/dummy\n' > "$ENV_PLIK3"
+TLS_DIR3="$(mktemp -d)"; KATALOGI_TESTOWE+=("$TLS_DIR3")
+printf dummy > "$TLS_DIR3/origin.crt"; printf dummy > "$TLS_DIR3/origin.key"
+BACKUP_DIR3="$(mktemp -d)"; KATALOGI_TESTOWE+=("$BACKUP_DIR3")
+REJESTR3="$BACKUP_DIR3/.rejestr-psychondev-zrzutow.tsv"
+LOG3="$(mktemp)"; PLIKI_TESTOWE+=("$LOG3")
+
+WYJSCIE_P3="$(DOCKER_CALL_LOG="$LOG3" PATH="$STUB3:$PATH" \
+  PSYCHON_ENV_FILE="$ENV_PLIK3" PSYCHON_TLS_DIR="$TLS_DIR3" PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR3" \
+  bash "$KATALOG3/deploy/psychon-dev/deploy.sh" 2>&1)"
+RC_P3=$?
+echo "  rc=$RC_P3 (oczekiwano kodu wyjscia deploy.sh dla niezgodnosci liczby tabel, NIE 0 i NIE 1)"
+printf '%s\n' "$WYJSCIE_P3" | grep -F 'ZRZUT:' || true
+printf '%s\n' "$WYJSCIE_P3" | grep -F 'BLAD: liczba tabel' || true
+
+ZLE=0
+# Asercja wlasciwa tej probie (to jest wiersz mutowany przy perturbacji): kod
+# wyjscia MUSI byc rozny od 0 i od 1 - to jest jedyny dowod, ze deploy.sh
+# naprawde przerwal na niezgodnosci, a nie przeszedl cicho dalej.
+if [[ "$RC_P3" -eq 0 || "$RC_P3" -eq 1 ]]; then
+  echo "  BLAD: kod wyjscia = $RC_P3, oczekiwano czegos INNEGO niz 0 i 1 (wlasny kod niezgodnosci)"
+  ZLE=1
+fi
+if ! printf '%s\n' "$WYJSCIE_P3" | grep -qF 'BLAD: liczba tabel'; then
+  echo "  BLAD: brak komunikatu o niezgodnosci liczby tabel w wyjsciu"
+  ZLE=1
+fi
+if grep -qF 'migrate' "$LOG3" 2>/dev/null; then
+  echo "  BLAD: migracja zostala wywolana mimo niezgodnosci liczby tabel (wpis 'migrate' w logu wywolan docker)"
+  ZLE=1
+fi
+if [[ -e "$REJESTR3" ]]; then
+  echo "  BLAD: mimo przerwania przed migracja, rejestr zrzutow zostal zalozony/zapisany"
+  ZLE=1
+fi
+wynik "P3 liczba tabel w zrzucie i w bazie sie rozni - przerwanie przed migracja wlasnym kodem wyjscia" "$ZLE"
+
+# ============ CZESC czwarta (P4) - liczby tabel NIE DA SIE policzyc ============
+# Ta proba istnieje, bo trzecia droga rozstrzygniecia ("nie wiem") do tej pory
+# nie miala niczego, co potrafiloby sie dla niej zaczerwienic. Sciezka kodu
+# byla napisana i nigdy nie wywolana w miejscu, w ktorym zachodzi zdarzenie.
+#
+# Proba **utrwala zachowanie, ktore jest dzisiaj**, i nazywa je wprost:
+# "nie wiem" NIE jest liczone jako zgodnosc, dostaje wlasny wiersz w logu,
+# ale biegu tutaj NIE przerywa. Jesli kiedys zapadnie decyzja, ze niepoliczalna
+# liczba tabel ma zatrzymywac wdrozenie, ta proba zaczerwieni sie pierwsza -
+# i o to chodzi: zmiana tej zasady ma byc decyzja, a nie skutkiem ubocznym.
+echo "=== P4 liczby tabel nie da sie policzyc: wlasny wiersz NIE WIEM, zero udawanej zgodnosci, bieg idzie dalej ==="
+KATALOG4="$(mktemp -d)"; KATALOGI_TESTOWE+=("$KATALOG4")
+zaloz_katalog_testowy "$KATALOG4"
+STUB4="$(mktemp -d)"; KATALOGI_TESTOWE+=("$STUB4")
+zaloz_zaslepki_niepoliczalne "$STUB4"
+ENV_PLIK4="$(mktemp)"; PLIKI_TESTOWE+=("$ENV_PLIK4")
+printf 'STAGING_DOMAIN=przyklad.test
+AUTH_KEYCLOAK_ISSUER=https://idp.przyklad.test/realms/dummy
+' > "$ENV_PLIK4"
+TLS_DIR4="$(mktemp -d)"; KATALOGI_TESTOWE+=("$TLS_DIR4")
+printf dummy > "$TLS_DIR4/origin.crt"; printf dummy > "$TLS_DIR4/origin.key"
+BACKUP_DIR4="$(mktemp -d)"; KATALOGI_TESTOWE+=("$BACKUP_DIR4")
+LOG4="$(mktemp)"; PLIKI_TESTOWE+=("$LOG4")
+
+WYJSCIE_P4="$(DOCKER_CALL_LOG="$LOG4" PATH="$STUB4:$PATH"   PSYCHON_ENV_FILE="$ENV_PLIK4" PSYCHON_TLS_DIR="$TLS_DIR4" PSYCHON_DB_BACKUP_DIR="$BACKUP_DIR4"   bash "$KATALOG4/deploy/psychon-dev/deploy.sh" 2>&1)"
+RC_P4=$?
+echo "  rc=$RC_P4 (oczekiwano 0 - dzisiejsza zasada: brak pomiaru nie zatrzymuje biegu)"
+printf '%s
+' "$WYJSCIE_P4" | grep -F 'ZRZUT:' || true
+
+ZLE=0
+if ! printf '%s
+' "$WYJSCIE_P4" | grep -qF 'ZRZUT: NIE WIEM'; then
+  echo "  BLAD: brak wlasnego wiersza NIE WIEM, gdy liczby tabel nie da sie policzyc"
+  ZLE=1
+fi
+# Asercja najwazniejsza tej proby: niepoliczalnosc NIE moze zostac wypisana
+# jako zgodnosc. To jest ta sama pomylka, co uznanie braku pomiaru za pomiar.
+if printf '%s
+' "$WYJSCIE_P4" | grep -qF 'liczba tabel w zrzucie i w bazie sie zgadza'; then
+  echo "  BLAD: niepoliczalna liczba tabel zostala wypisana jako ZGODNOSC"
+  ZLE=1
+fi
+if printf '%s
+' "$WYJSCIE_P4" | grep -qF 'BLAD: liczba tabel'; then
+  echo "  BLAD: niepoliczalna liczba tabel zostala wypisana jako NIEZGODNOSC"
+  ZLE=1
+fi
+if [[ "$RC_P4" -ne 0 ]]; then
+  echo "  BLAD: kod wyjscia = $RC_P4, a dzisiejsza zasada mowi 0 (jesli to zmieniono celowo - zmien tez ta probe)"
+  ZLE=1
+fi
+wynik "P4 liczby tabel nie da sie policzyc - wlasny wiersz NIE WIEM, bez udawanej zgodnosci" "$ZLE"
 
 echo
 if [[ "$NIEZALICZONE" -eq 0 ]]; then
