@@ -62,6 +62,9 @@ fi
 case "$*" in
     *"bash -s -- warunki"*) FAZA=warunki ;;
     *"bash -s -- zaloz"*) FAZA=zaloz ;;
+    *"bash -s -- sprawdz-tryb"*) FAZA=sprawdz-tryb ;;
+    *"bash -s -- czubek"*) FAZA=czubek ;;
+    *"bash -s -- zrzut"*) FAZA=zrzut ;;
     *"bash -s -- wdrozenie"*) FAZA=wdrozenie ;;
     *) echo "atrapa ssh: nie rozpoznaje fazy" >&2; exit 97 ;;
 esac
@@ -155,6 +158,79 @@ if [ "$FAZA" = "zaloz" ]; then
     exit 0
 fi
 
+if [ "$FAZA" = "sprawdz-tryb" ]; then
+    # pomiar CZYTAJACY, czy deploy.sh na hoscie zna
+    # PSYCHON_TRYB_WDROZENIA - poprzedza kazdy zrzut w --ustaw-czubek.
+    # Domyslnie odpowiada "tak" (zgodnie z deploy.sh z f2b1fa0), zeby
+    # istniejace przypadki --ustaw-czubek nie musialy znac tego knobu.
+    if [ -n "${ATRAPA_TRYB_KANAL:-}" ]; then
+        echo "ssh: connect to host $ATRAPA_ADRES port 22: Connection reset" >&2
+        exit "$ATRAPA_TRYB_KANAL"
+    fi
+    if [ "${ATRAPA_TRYB_URWANY:-0}" = "1" ]; then
+        # Kanal konczy sie ZEREM, ale wyjscie urywa sie PRZED linia konca.
+        echo "POMIAR-DEPLOY-ISTNIEJE=tak"
+        exit 0
+    fi
+    if [ "${ATRAPA_DEPLOY_BRAK:-0}" = "1" ]; then
+        echo "POMIAR-DEPLOY-ISTNIEJE=nie"
+        echo "POMIAR-KONIEC-TRYB=0"
+        exit 0
+    fi
+    echo "POMIAR-DEPLOY-ISTNIEJE=tak"
+    echo "POMIAR-DEPLOY-ZNA-TRYB=${ATRAPA_DEPLOY_ZNA_TRYB:-tak}"
+    echo "POMIAR-KONIEC-TRYB=0"
+    exit 0
+fi
+
+if [ "$FAZA" = "czubek" ]; then
+    if [ -n "${ATRAPA_CZUBEK_KANAL:-}" ]; then
+        # Kanal pada, zanim czesc zdalna cokolwiek wypisze: ani jednego POMIAR-.
+        echo "ssh: connect to host $ATRAPA_ADRES port 22: Connection reset" >&2
+        exit "$ATRAPA_CZUBEK_KANAL"
+    fi
+    if [ "${ATRAPA_CZUBEK_URWANY:-0}" = "1" ]; then
+        # Wyjscie urywa sie PRZED linia konca, choc checkout MOGL realnie
+        # zajsc - znacznik stoi, tak jak przy analogicznej dziurze w --zaloz.
+        : > "$ATRAPA_PO_ZALOZENIU"
+        exit 0
+    fi
+    CZUBEK_CHECKOUT="${ATRAPA_CZUBEK_CHECKOUT:-ok}"
+    if [ "$CZUBEK_CHECKOUT" = "ok" ]; then
+        : > "$ATRAPA_PO_ZALOZENIU"
+    fi
+    echo "POMIAR-CHECKOUT=$CZUBEK_CHECKOUT"
+    echo "POMIAR-KONIEC-CZUBEK=0"
+    exit 0
+fi
+
+if [ "$FAZA" = "zrzut" ]; then
+    if [ -n "${ATRAPA_ZRZUT_KANAL:-}" ]; then
+        # Kanal pada, zanim czesc zdalna zrzutu cokolwiek wypisze: ani
+        # jednego POMIAR- - checkout SIE NIE ODBYWA, bo do niego kod stacji
+        # w ogole nie dochodzi.
+        echo "ssh: connect to host $ATRAPA_ADRES port 22: Connection reset" >&2
+        exit "$ATRAPA_ZRZUT_KANAL"
+    fi
+    if [ "${ATRAPA_ZRZUT_URWANY:-0}" = "1" ]; then
+        # Kanal konczy sie ZEREM, ale wyjscie zrzutu urywa sie PRZED linia
+        # konca (albo przed samym POMIAR-ZRZUT) - pomiar zrzutu niepelny.
+        echo "POMIAR-KTO=deploy"
+        exit 0
+    fi
+    if [ "${ATRAPA_ZRZUT_ZERO_POMIAR:-0}" = "1" ]; then
+        # kanal zrzutu konczy sie ZEREM, ale bez ani jednego wiersza
+        # POMIAR- w ogole - rozne od ATRAPA_ZRZUT_KANAL (tam kanal sam
+        # konczy sie niezerowo): tu polaczenie doszlo i wyszlo zerem, ale
+        # tresc zdalna nie zdazyla wypisac ani jednego echo, np. padla tuz
+        # przed pierwszym z nich.
+        exit 0
+    fi
+    echo "POMIAR-ZRZUT=${ATRAPA_ZRZUT:-ok}"
+    echo "POMIAR-KONIEC-ZRZUT=0"
+    exit 0
+fi
+
 if [ "$FAZA" = "warunki" ]; then
     if [ -e "$ATRAPA_PO_ZALOZENIU" ]; then
         # Pomiar PO zalozeniu ma prawo pokazac inny stan niz pomiar przed nim -
@@ -180,7 +256,43 @@ if [ "$FAZA" = "warunki" ]; then
     echo "POMIAR-RODZIC-PRAWA=755"
     echo "POMIAR-RODZIC-ZAPIS=${ATRAPA_RODZIC_ZAPIS:-nie}"
     echo "POMIAR-RODZIC-WOLNE-KB=${ATRAPA_WOLNE:-4194304}"
-    echo "POMIAR-HEAD=${ATRAPA_HEAD:-$ATRAPA_SHA}"
+    if [ "${ATRAPA_REPO_BRAK:-0}" = "1" ]; then
+        # Zadna ze znanych sciezek nie ma .git - dokladnie jak na prawdziwym
+        # hoscie, zanim przyrzad zaczal mierzyc.
+        echo "POMIAR-HEAD=brak-repozytorium"
+        echo "POMIAR-REPO=brak"
+        echo "POMIAR-FETCH=brak-repozytorium"
+        echo "POMIAR-SHA-NA-ZDALNYM=nie"
+        echo "POMIAR-REPO-DRZEWO-LINII=-1"
+        echo "POMIAR-REPO-DRZEWO-LISTA="
+    else
+        if [ -e "$ATRAPA_PO_ZALOZENIU" ] && [ -n "${ATRAPA_CZUBEK_HEAD_PO:-}" ]; then
+            # Pomiar PO checkoucie ma prawo pokazac inny czubek niz pomiar
+            # przed nim - inaczej "zmierz ponownie" nie dalo by sie odroznic
+            # od "przepisz poprzedni wynik".
+            echo "POMIAR-HEAD=$ATRAPA_CZUBEK_HEAD_PO"
+        elif [ -n "${ATRAPA_HEAD_POMIAR_NR:-}" ] && [ "$(cat "$ATRAPA_LICZNIK" 2>/dev/null)" = "$ATRAPA_HEAD_POMIAR_NR" ]; then
+            # odpowiada INNA wartoscia na KONKRETNE (numerowane wg
+            # licznika wywolan atrapy) wywolanie pomiaru "warunki" w tym
+            # samym biegu - niezaleznie od znacznika $ATRAPA_PO_ZALOZENIU
+            # (ktory na sciezce NIEUDANEGO zrzutu nigdy nie powstaje, bo
+            # checkout tam sie nie odbywa). Uzywane do dowodu, ze drugi
+            # pomiar czubka PO nieudanym zrzucie jest PRAWDZIWYM, ODREBNYM
+            # odczytem, a nie przepisaniem pierwszego: mutacja, ktora by go
+            # przepisala, zwrocilaby tu STARA wartosc
+            # ($ATRAPA_HEAD), nie te.
+            echo "POMIAR-HEAD=${ATRAPA_HEAD_INNY:-$ATRAPA_SHA}"
+        else
+            echo "POMIAR-HEAD=${ATRAPA_HEAD:-$ATRAPA_SHA}"
+        fi
+        echo "POMIAR-REPO=${ATRAPA_REPO:-/opt/psychon/app}"
+        if [ "${ATRAPA_FETCH_OMIN:-0}" != "1" ]; then
+            echo "POMIAR-FETCH=${ATRAPA_FETCH:-ok}"
+        fi
+        echo "POMIAR-SHA-NA-ZDALNYM=${ATRAPA_SHA_ZDALNY:-tak}"
+        echo "POMIAR-REPO-DRZEWO-LINII=${ATRAPA_REPO_DRZEWO:-0}"
+        echo "POMIAR-REPO-DRZEWO-LISTA=${ATRAPA_REPO_DRZEWO_LISTA:-}"
+    fi
     echo "POMIAR-KONIEC=0"
     exit 0
 fi
@@ -387,15 +499,85 @@ grep -q 'WARUNEK b. NIEZALICZONY' "$WYJ" || zle "brak wiersza nazywajacego warun
 grep 'WARUNEK b' "$WYJ" | sed 's/^/    | /'
 koniec_przypadku
 
-przypadek "czubek na hoscie inny niz zadany: kod 13"
+przypadek "warunek (c'): zadany commit NIE istnieje na zdalnym po fetch - kod 13"
 zeruj
-ATRAPA_HEAD="$INNY_SHA" HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+ATRAPA_SHA_ZDALNY=nie HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
 RC=$?
 rowne "rc" "$RC" "13"
 rowne "wystapien 'pg_dump' w wyjsciu" "$(grep -c 'pg_dump' "$WYJ")" "0"
 rowne "wystapien 'migrate' w wyjsciu" "$(grep -c 'migrate' "$WYJ")" "0"
 grep -q 'WARUNEK c. NIEZALICZONY' "$WYJ" || zle "brak wiersza nazywajacego warunek (c)"
+grep -q 'istnieje na zdalnym po fetch' "$WYJ" || zle "komunikat nie mowi o fetchu ani o zdalnym"
 grep 'WARUNEK c' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "warunek (c'): sam fetch od zdalnego nieudany - kod 13, rozny od braku repozytorium (15)"
+zeruj
+ATRAPA_FETCH=nie-udalo-sie HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "13"
+grep -q 'WARUNEK c. NIEZALICZONY' "$WYJ" || zle "brak wiersza nazywajacego warunek (c)"
+grep -q 'fetch od zdalnego nie powiodl sie' "$WYJ" || zle "komunikat nie nazywa nieudanego fetcha"
+grep 'WARUNEK c' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "warunek (c'): brakujace pole POMIAR-FETCH nigdy nie wypada zielono (bezpieczne domkniecie na niepelnym odczycie)"
+zeruj
+ATRAPA_FETCH_OMIN=1 HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc (brakujacy odczyt = czerwien, nigdy 0)" "$RC" "13"
+koniec_przypadku
+
+przypadek "warunek (d): drzewo robocze na hoscie brudne - kod 16, odmowa niesie liste pozycji"
+zeruj
+ATRAPA_REPO_DRZEWO=2 ATRAPA_REPO_DRZEWO_LISTA=" M app/foo.php; M app/bar.php;" \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "16"
+grep -q 'WARUNEK d. NIEZALICZONY' "$WYJ" || zle "brak wiersza nazywajacego warunek (d)"
+# Lista pozycji MUSI byc w samym wierszu odmowy, nie tylko gdzies w surowym
+# pomiarze wypisanym wyzej (ten wypisuje POMIAR-REPO-DRZEWO-LISTA zawsze,
+# niezaleznie od tego, czy odmowa cokolwiek z niej cytuje).
+WIERSZ_D="$(grep 'WARUNEK d. NIEZALICZONY' "$WYJ")"
+case "$WIERSZ_D" in
+    *"app/foo.php"*) : ;;
+    *) zle "wiersz odmowy warunku (d) nie wymienia pierwszej brudnej pozycji" ;;
+esac
+case "$WIERSZ_D" in
+    *"app/bar.php"*) : ;;
+    *) zle "wiersz odmowy warunku (d) nie wymienia drugiej brudnej pozycji" ;;
+esac
+grep 'WARUNEK d' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "sciezka repozytorium: zmierzona i zameldowana wlasnym wierszem POMIAR-REPO"
+zeruj
+HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --warunki-wstepne > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "0"
+rowne "wierszy POMIAR-REPO= w wyjsciu" "$(grep -c '^POMIAR-REPO=' "$WYJ")" "1"
+grep -q 'WARUNEK repo. ZALICZONY' "$WYJ" || zle "brak wiersza nazywajacego zaliczony warunek repo"
+rowne "wystapien '/opt/psychon' (niezamaskowanej sciezki stosu) w wyjsciu" "$(grep -c '/opt/psychon' "$WYJ")" "0"
+grep -E 'POMIAR-REPO=|WARUNEK repo' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "sciezka repozytorium: zadna ze znanych sciezek nie ma .git - wlasny kod 15, rozny od 13"
+zeruj
+ATRAPA_REPO_BRAK=1 HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "15"
+rowne "rc rozny od warunku (c)" "$([ "$RC" -ne 13 ] && echo tak || echo nie)" "tak"
+grep -q 'WARUNEK repo. NIEZALICZONY' "$WYJ" || zle "brak wiersza nazywajacego niezaliczony warunek repo"
+grep -q 'psychon-platforma' "$WYJ" || zle "komunikat nie wymienia pierwszego (starego) kandydata"
+grep -q '/app' "$WYJ" || zle "komunikat nie wymienia drugiego kandydata"
+grep 'WARUNEK repo' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "sciezka repozytorium: stara stala zostaje jako PIERWSZY kandydat (nie skasowana)"
+grep -q 'REPO_HOSTA_DOMYSLNY="\${PSYCHON_REPO_HOSTA:-\$KATALOG_STOSU/psychon-platforma}"' "$PRZYRZAD" \
+    || zle "stara stala domyslna zniknela albo zmienila brzmienie"
+grep -q 'KANDYDACI_REPO_HOSTA=("\$REPO_HOSTA_DOMYSLNY" "\$KATALOG_STOSU/app")' "$PRZYRZAD" \
+    || zle "stara stala nie jest pierwszym kandydatem w liscie"
 koniec_przypadku
 
 przypadek "pomiar warunkow wstepnych urwany w polowie (kanal konczy zerem): kod 14, nic nie rusza"
@@ -859,6 +1041,318 @@ rowne "wystapien 'unlink' w tresci wyslanej na hosta" "$(grep -c 'unlink' "$ATRA
 rowne "wystapien 'find .* -delete' w tresci wyslanej na hosta" "$(grep -c 'delete' "$ATRAPA_TRESC")" "0"
 rowne "wywolan fazy wdrozenia w argumentach" "$(grep -c 'bash -s -- wdrozenie' "$ATRAPA_ARGI")" "1"
 echo "  bajtow ladunku biegu pelnego: $(wc -c < "$ATRAPA_TRESC")"
+koniec_przypadku
+
+# --- przypadki trybu --ustaw-czubek ----------------------------------------
+przypadek "ustaw-czubek: tryb jawny nie wlacza sie sam - ani w biegu pelnym, ani w --warunki-wstepne"
+zeruj
+HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" > "$WYJ" 2>&1
+RC=$?
+rowne "rc biegu pelnego" "$RC" "0"
+rowne "wywolan fazy czubek w argumentach (bieg pelny)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+zeruj
+HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --warunki-wstepne > "$WYJ" 2>&1
+RC=$?
+rowne "rc --warunki-wstepne" "$RC" "0"
+rowne "wywolan fazy czubek w argumentach (--warunki-wstepne)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+koniec_przypadku
+
+przypadek "ustaw-czubek: czubek na hoscie juz rowny zadanemu SHA - kod 40, zaden checkout"
+zeruj
+HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "40"
+rowne "wywolan atrapy ssh (sam pomiar, bez checkout)" "$(licznik)" "1"
+rowne "wywolan fazy czubek w argumentach" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+grep -q 'nic nie ruszam' "$WYJ" || zle "brak zdania o nieruszaniu stanu hosta"
+grep 'CZUBEK' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "ustaw-czubek: drzewo robocze na hoscie brudne - kod 43, odmowa PRZED fetchem/checkoutem"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_REPO_DRZEWO=1 ATRAPA_REPO_DRZEWO_LISTA=" M zmieniony.php;" \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "43"
+rowne "wywolan atrapy ssh (sam pomiar, bez checkout)" "$(licznik)" "1"
+rowne "wywolan fazy czubek w argumentach" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+# Pozycja MUSI byc w samym wierszu odmowy [CZUBEK], nie tylko gdzies w
+# surowym pomiarze wypisanym wyzej (ten wypisuje POMIAR-REPO-DRZEWO-LISTA
+# zawsze, niezaleznie od tego, czy odmowa cokolwiek z niej cytuje).
+WIERSZ_CZUBEK_D="$(grep 'CZUBEK. NIEZALICZONY' "$WYJ")"
+case "$WIERSZ_CZUBEK_D" in
+    *"zmieniony.php"*) : ;;
+    *) zle "wiersz odmowy nie wymienia brudnej pozycji" ;;
+esac
+case "$WIERSZ_CZUBEK_D" in
+    *"NIE nadpisuje cudzych zmian"*) : ;;
+    *) zle "brak zdania o nienadpisywaniu w wierszu odmowy" ;;
+esac
+grep 'CZUBEK' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "ustaw-czubek: fetch nie przyniosl zadanego commita - kod 42, zaden checkout"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_SHA_ZDALNY=nie \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "42"
+rowne "wywolan atrapy ssh (sam pomiar, bez checkout)" "$(licznik)" "1"
+rowne "wywolan fazy czubek w argumentach" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+koniec_przypadku
+
+przypadek "ustaw-czubek: sciezka repozytorium niezmierzona - kod 15, zaden checkout"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_REPO_BRAK=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "15"
+rowne "wywolan atrapy ssh (sam pomiar, bez checkout)" "$(licznik)" "1"
+koniec_przypadku
+
+# --- warunek wstepny hosta (skrot deploy.sh) - MIERZONY PRZED
+# zrzutem i checkoutem, wlasny kod 46 rozlaczny z 40-45/47. Dwie nogi
+# zadane przez lidera: (1) STARY deploy.sh (skrot nieznany) -> kod 46, ZERO
+# polecen zwyklego przeplywu (zero wywolan faz zrzut i czubek); (2) NOWY
+# deploy.sh (domyslna atrapa, znany skrot) -> kod 46 NIE pada, przeplyw idzie
+# dalej (juz dowiedzione w kazdym innym przypadku --ustaw-czubek nizej/wyzej,
+# ktory dochodzi do zrzutu/checkoutu - tu osobny, jawny swiadek tej nogi).
+przypadek "ustaw-czubek: deploy.sh na hoscie NIE zna trybu (stary skrot) - kod 46, ZERO polecen zwyklego przeplywu"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_DEPLOY_ZNA_TRYB=nie \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "46"
+rowne "wywolan atrapy ssh (pomiar + sprawdz-tryb, bez zrzutu/checkoutu)" "$(licznik)" "2"
+rowne "wywolan fazy zrzut w argumentach (ZERO polecen zwyklego przeplywu)" "$(grep -c 'bash -s -- zrzut' "$ATRAPA_ARGI")" "0"
+rowne "wywolan fazy czubek w argumentach (ZERO polecen zwyklego przeplywu)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+grep -q 'NIE zna PSYCHON_TRYB_WDROZENIA' "$WYJ" || zle "brak zdania nazywajacego stary skrypt"
+koniec_przypadku
+
+przypadek "ustaw-czubek: na hoscie nie ma pliku deploy.sh - kod 46, ZERO polecen zwyklego przeplywu"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_DEPLOY_BRAK=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "46"
+rowne "wywolan fazy zrzut w argumentach (ZERO polecen zwyklego przeplywu)" "$(grep -c 'bash -s -- zrzut' "$ATRAPA_ARGI")" "0"
+rowne "wywolan fazy czubek w argumentach (ZERO polecen zwyklego przeplywu)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+koniec_przypadku
+
+przypadek "ustaw-czubek: pomiar trybu deploy.sh urwany w polowie - NIE WIEM, kod 46 (nie 0/47), ZERO polecen"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_TRYB_URWANY=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc (NIE WIEM tez konczy 46, nie zgoda)" "$RC" "46"
+rowne "wywolan fazy zrzut w argumentach (ZERO polecen zwyklego przeplywu)" "$(grep -c 'bash -s -- zrzut' "$ATRAPA_ARGI")" "0"
+rowne "wywolan fazy czubek w argumentach (ZERO polecen zwyklego przeplywu)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+koniec_przypadku
+
+przypadek "ustaw-czubek: kanal pada CALKOWICIE w kroku sprawdz-tryb - kod kanalu na wierzchu, nie 46"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_TRYB_KANAL=255 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc (kod kanalu, nie zmierzony stan)" "$RC" "255"
+rowne "wywolan fazy zrzut w argumentach (ZERO polecen zwyklego przeplywu)" "$(grep -c 'bash -s -- zrzut' "$ATRAPA_ARGI")" "0"
+grep -q 'kanal zdalny sprawdzenia trybu skryptu wdrozeniowego hosta nie doszedl' "$WYJ" || zle "brak zdania o kanale"
+koniec_przypadku
+
+przypadek "ustaw-czubek, druga noga: NOWY deploy.sh (skrot znany) -> kod 46 NIE pada, przeplyw idzie dalej"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_CZUBEK_HEAD_PO="$SHA_PROBNY" \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc (46 NIE pada, przeplyw doszedl do stanu docelowego)" "$RC" "41"
+rowne "wywolan fazy sprawdz-tryb w argumentach" "$(grep -c 'bash -s -- sprawdz-tryb' "$ATRAPA_ARGI")" "1"
+rowne "wywolan fazy zrzut w argumentach (przeplyw NIE zatrzymal sie na warunku)" "$(grep -c 'bash -s -- zrzut' "$ATRAPA_ARGI")" "1"
+grep -q 'zna PSYCHON_TRYB_WDROZENIA' "$WYJ" || zle "brak zdania potwierdzajacego znany skrot"
+koniec_przypadku
+
+przypadek "ustaw-czubek: checkout udany i potwierdzony pomiarem po zmianie - kod 41, stan docelowy"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_CZUBEK_HEAD_PO="$SHA_PROBNY" \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "41"
+rowne "wywolan atrapy ssh (pomiar + sprawdz-tryb + zrzut + checkout + pomiar po)" "$(licznik)" "5"
+rowne "wywolan fazy czubek w argumentach" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "1"
+rowne "wywolan fazy zrzut w argumentach" "$(grep -c 'bash -s -- zrzut' "$ATRAPA_ARGI")" "1"
+rowne "wywolan fazy sprawdz-tryb w argumentach" "$(grep -c 'bash -s -- sprawdz-tryb' "$ATRAPA_ARGI")" "1"
+# Dowod 1 z odbioru: wiersz zrzutu stoi PRZED wierszem checkoutu w dzienniku
+# WYWOLAN (ATRAPA_ARGI - jedna linia na kazde wywolanie ssh, w kolejnosci, w
+# jakiej faktycznie wypadly) - liczba linii PRZED pierwszym wystapieniem
+# "zrzut" musi byc MNIEJSZA niz liczba linii przed pierwszym "czubek".
+WIERSZ_ZRZUT="$(grep -n 'bash -s -- zrzut' "$ATRAPA_ARGI" | head -1 | cut -d: -f1)"
+WIERSZ_CZUBEK="$(grep -n 'bash -s -- czubek' "$ATRAPA_ARGI" | head -1 | cut -d: -f1)"
+echo "  wiersz zrzutu w dzienniku wywolan: $WIERSZ_ZRZUT | wiersz checkoutu: $WIERSZ_CZUBEK"
+[ -n "$WIERSZ_ZRZUT" ] && [ -n "$WIERSZ_CZUBEK" ] && [ "$WIERSZ_ZRZUT" -lt "$WIERSZ_CZUBEK" ] || zle "zrzut nie stoi PRZED checkoutem w dzienniku wywolan"
+# Ten sam dowod, ale w DZIENNIKU BIEGU ($WYJ - to, co przyrzad naprawde
+# wypisuje), nie tylko w wewnetrznym dzienniku atrapy: zdanie o udanym
+# zrzucie ma stac PRZED zdaniem o udanym checkoutcie.
+LW_ZRZUT="$(grep -n 'zrzut PRZED checkoutem zameldowal sukces' "$WYJ" | head -1 | cut -d: -f1)"
+LW_CHECKOUT="$(grep -n 'checkout zameldowal sukces' "$WYJ" | head -1 | cut -d: -f1)"
+echo "  w dzienniku biegu: wiersz zrzutu na linii $LW_ZRZUT, wiersz checkoutu na linii $LW_CHECKOUT"
+[ -n "$LW_ZRZUT" ] && [ -n "$LW_CHECKOUT" ] && [ "$LW_ZRZUT" -lt "$LW_CHECKOUT" ] || zle "w dzienniku biegu zrzut nie stoi PRZED checkoutem"
+grep -q 'stan docelowy osiagniety' "$WYJ" || zle "brak zdania o stanie docelowym"
+# Poza komentarzami - "git checkout" pada TEZ w komentarzu heredoku, wiec
+# dopasowanie liczone po samym tekscie (bez odciecia '^#') przechodzi nawet
+# gdy prawdziwe polecenie zostanie zepsute. Swiadek ma widziec kod, nie komentarz.
+rowne "wystapien 'checkout --quiet' w KODZIE (poza komentarzami) w tresci wyslanej na hosta" "$(grep -v '^#' "$ATRAPA_TRESC" | grep -c 'checkout --quiet')" "1"
+rowne "wystapien 'reset' w KODZIE (poza komentarzami) w tresci wyslanej na hosta" "$(grep -v '^#' "$ATRAPA_TRESC" | grep -c 'reset')" "0"
+# Ten sam swiadek co "checkout --quiet" wyzej, ale dla strony ZRZUTU:
+# heredoc zrzutu ma naprawde wolac deploy.sh w trybie --tylko-zrzut (poza
+# komentarzem) - swiadek widzi kod wyslany na hosta, nie zdanie stacji.
+rowne "wystapien 'PSYCHON_TRYB_WDROZENIA=tylko-zrzut' w KODZIE (poza komentarzami) w tresci wyslanej na hosta" "$(grep -v '^#' "$ATRAPA_TRESC" | grep -c 'PSYCHON_TRYB_WDROZENIA=tylko-zrzut')" "1"
+grep 'CZUBEK' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "ustaw-czubek: checkout urwal sie bez linii konca - stan NIEZNANY (44), nie 41 ani 40"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_CZUBEK_URWANY=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "44"
+rowne "rc rozny od stanu docelowego potwierdzonego" "$([ "$RC" -ne 41 ] && echo tak || echo nie)" "tak"
+rowne "wywolan atrapy ssh (pomiar + sprawdz-tryb + zrzut + krok checkout, bez pomiaru po)" "$(licznik)" "4"
+grep -q 'stan NIEZNANY' "$WYJ" || zle "brak zdania o stanie nieznanym"
+grep 'CZUBEK' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+przypadek "ustaw-czubek: checkout na hoscie zameldowal niepowodzenie - stan NIEZNANY (44)"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_CZUBEK_CHECKOUT=nie-udalo-sie \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "44"
+rowne "wywolan atrapy ssh (pomiar + sprawdz-tryb + zrzut + krok checkout, bez pomiaru po)" "$(licznik)" "4"
+grep -q 'stan NIEZNANY' "$WYJ" || zle "brak zdania o stanie nieznanym"
+koniec_przypadku
+
+przypadek "ustaw-czubek: kanal pada CALKOWICIE w kroku checkout - kod kanalu na wierzchu, nie 44"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_CZUBEK_KANAL=255 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc (kod kanalu, nie zmierzony stan)" "$RC" "255"
+grep -q 'kanal zdalny nie doszedl' "$WYJ" || zle "brak zdania o kanale"
+koniec_przypadku
+
+przypadek "ustaw-czubek: pomiar po zmianie urwany mimo checkout potwierdzony - stan NIEZNANY (44)"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_POMIAR_PO_URWANY=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "44"
+rowne "wywolan atrapy ssh (pomiar + sprawdz-tryb + zrzut + checkout + pomiar-po ktory sie urywa)" "$(licznik)" "5"
+grep -q 'stan NIEZNANY' "$WYJ" || zle "brak zdania o stanie nieznanym"
+koniec_przypadku
+
+przypadek "ustaw-czubek: kanal pada w pomiarze po zmianie mimo checkout potwierdzony - stan NIEZNANY (44), nie surowy kanal"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_POMIAR_PO_KANAL=255 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc (zmierzony stan, nie surowy kod kanalu)" "$RC" "44"
+rowne "rc rozny od surowego kodu kanalu" "$([ "$RC" -ne 255 ] && echo tak || echo nie)" "tak"
+koniec_przypadku
+
+# --- zrzut PRZED checkoutem: dowod (a) nieudany zrzut => checkout SIE NIE
+# ODBYWA, z DWOMA pomiarami czubka (przed/po), identycznymi; (b) wiersz
+# zrzutu stoi PRZED wierszem checkoutu, gdy oba sie udaja (patrz przypadek
+# "checkout udany..." wyzej - dowod ordynku juz tam). Kod 45 to kontrola
+# psujaca ZACHOWANIE atrapy zrzutu (ATRAPA_ZRZUT=nie-udalo-sie), nie
+# przestawiona stala.
+przypadek "ustaw-czubek: zrzut PRZED checkoutem nie powiodl sie - kod 45, checkout SIE NIE ODBYWA, HEAD przed/po IDENTYCZNE"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_ZRZUT=nie-udalo-sie \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "45"
+rowne "wywolan atrapy ssh (pomiar + sprawdz-tryb + zrzut nieudany + pomiar potwierdzajacy)" "$(licznik)" "4"
+# CIEZAR tej kontroli lezy TU - na liczbie wywolan checkoutu,
+# nie na rownosci wartosci ponizej. Mutacja "drugi pomiar HEAD przepisany z
+# pierwszego" NIE zmienia tego, ile razy checkout zostal wywolany (nadal
+# zero), wiec sama rownosc ponizej nie umie sczerwienic w tamtym kierunku -
+# ta linia umie, i jest osobno przemierzona mutacja lapiaca ponizej.
+rowne "wywolan fazy czubek w argumentach (checkout NIGDY nie wywolany)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+rowne "wywolan fazy zrzut w argumentach" "$(grep -c 'bash -s -- zrzut' "$ATRAPA_ARGI")" "1"
+grep -q 'zrzut PRZED checkoutem nie powiodl sie' "$WYJ" || zle "brak zdania o nieudanym zrzucie"
+grep -q 'checkout zameldowal sukces' "$WYJ" && zle "wiersz o udanym checkoutcie NIE MOZE wystapic - checkout sie nie odbyl"
+# Dwa pomiary czubka, przed i po nieudanym zrzucie, jako WIERSZE Z
+# WARTOSCIAMI (nie zdanie) - INFORMACYJNE dla czytajacego dziennik biegu.
+# Sa identyczne, bo checkout nigdy nie zostal wywolany - ale ta rownosc SAMA
+# NIE JEST dowodem (przepisanie pierwszej wartosci do drugiej dawaloby tu
+# identyczny wynik): dowod jest w przypadku NIZEJ, ktory wymusza na atrapie
+# INNA odpowiedz na DRUGIM pomiarze i sprawdza, ze przyrzad ja naprawde
+# przekazuje dalej.
+HEAD_PRZED="$(grep -m1 '^\[CZUBEK\] POMIAR-HEAD-PRZED-ZRZUTEM=' "$WYJ" | cut -d= -f2-)"
+HEAD_PO="$(grep -m1 '^\[CZUBEK\] POMIAR-HEAD-PO-NIEUDANYM-ZRZUCIE=' "$WYJ" | cut -d= -f2-)"
+echo "  POMIAR-HEAD-PRZED-ZRZUTEM=$HEAD_PRZED | POMIAR-HEAD-PO-NIEUDANYM-ZRZUCIE=$HEAD_PO (informacyjne, patrz komentarz)"
+[ -n "$HEAD_PRZED" ] || zle "brak pomiaru HEAD przed zrzutem"
+[ -n "$HEAD_PO" ] || zle "brak pomiaru HEAD po nieudanym zrzucie"
+grep 'CZUBEK' "$WYJ" | sed 's/^/    | /'
+koniec_przypadku
+
+# kontrola negatywna mutacji przepisujacej pierwszy odczyt: atrapa odpowiada
+# na CZWARTE wywolanie ssh w tym biegu (pomiar + sprawdz-tryb + zrzut +
+# TEN pomiar potwierdzajacy) wartoscia HEAD RÓZNA od pierwszego pomiaru.
+# Kod POPRAWNY przekazuje ja dalej (bo naprawde woła zmierz_stan_katalogow
+# drugi raz i czyta jej WLASNY wynik). Mutacja "head_po_zrzut=$head_przed"
+# ta mutacja zwrocilaby tu STARA wartosc $INNY_SHA zamiast tej, wiec
+# TEN przypadek jest tym, ktory ta mutacja ma sczerwienic.
+przypadek "ustaw-czubek: pomiar HEAD po nieudanym zrzucie jest PRAWDZIWYM drugim odczytem, nie przepisaniem pierwszego"
+zeruj
+INNY_HEAD_PO_ZRZUCIE="fedcba9876543210fedcba9876543210fedcba98"
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_ZRZUT=nie-udalo-sie ATRAPA_HEAD_POMIAR_NR=4 ATRAPA_HEAD_INNY="$INNY_HEAD_PO_ZRZUCIE" \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "45"
+HEAD_PRZED2="$(grep -m1 '^\[CZUBEK\] POMIAR-HEAD-PRZED-ZRZUTEM=' "$WYJ" | cut -d= -f2-)"
+HEAD_PO2="$(grep -m1 '^\[CZUBEK\] POMIAR-HEAD-PO-NIEUDANYM-ZRZUCIE=' "$WYJ" | cut -d= -f2-)"
+echo "  POMIAR-HEAD-PRZED-ZRZUTEM=$HEAD_PRZED2 | POMIAR-HEAD-PO-NIEUDANYM-ZRZUCIE=$HEAD_PO2 (atrapa na 4. wywolaniu odpowiada CELOWO INNA wartoscia: $INNY_HEAD_PO_ZRZUCIE)"
+rowne "HEAD przed zrzutem (pierwszy pomiar)" "$HEAD_PRZED2" "$INNY_SHA"
+rowne "HEAD po nieudanym zrzucie (DRUGI, ODREBNY odczyt - MUSI pokazac wartosc atrapy z TEGO wywolania, nie przepisanie pierwszego)" "$HEAD_PO2" "$INNY_HEAD_PO_ZRZUCIE"
+koniec_przypadku
+
+przypadek "ustaw-czubek: kanal pada CALKOWICIE w kroku zrzutu - kod kanalu na wierzchu, checkout SIE NIE ODBYWA"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_ZRZUT_KANAL=255 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc (kod kanalu, nie 45)" "$RC" "255"
+rowne "wywolan fazy czubek w argumentach (checkout NIGDY nie wywolany)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+grep -q 'kanal zdalny zrzutu nie doszedl' "$WYJ" || zle "brak zdania o kanale zrzutu"
+koniec_przypadku
+
+przypadek "ustaw-czubek: pomiar zrzutu urwany (bez POMIAR-ZRZUT/POMIAR-KONIEC-ZRZUT) - kod 45, nie 0/44, checkout SIE NIE ODBYWA"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_ZRZUT_URWANY=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "45"
+rowne "wywolan fazy czubek w argumentach (checkout NIGDY nie wywolany)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+grep -q 'zrzut PRZED checkoutem nie powiodl sie' "$WYJ" || zle "brak zdania o nieudanym/niepelnym zrzucie"
+koniec_przypadku
+
+# kanal zrzutu konczy sie ZEREM, ale bez ani
+# jednego wiersza POMIAR- - dokladnie ta dziura, ktora skasowanie "exit 47"
+# (przywrocenie starej wady) otwiera z powrotem. CIEZAR tej kontroli
+# lezy na LICZNIKU wywolan fazy czubek w przechwyconych argumentach atrapy
+# (tak jak wyzej), nie na samym kodzie wyjscia - kod wyjscia sam w
+# sobie moglby sie zgadzac przypadkiem, licznik nie.
+przypadek "ustaw-czubek: zrzut konczy sie zerem bez zadnego POMIAR- - stan NIEZNANY (47), nie 0/44/45; checkout NIGDY nie wywolany"
+zeruj
+ATRAPA_HEAD="$INNY_SHA" ATRAPA_ZRZUT_ZERO_POMIAR=1 \
+    HOST_BRAMKOWY="$ADRES" "$PRZYRZAD" "$SHA_PROBNY" --ustaw-czubek > "$WYJ" 2>&1
+RC=$?
+rowne "rc" "$RC" "47"
+rowne "wywolan atrapy ssh (pomiar + sprawdz-tryb + zrzut bez zadnego pomiaru)" "$(licznik)" "3"
+rowne "wywolan fazy czubek w argumentach (checkout NIGDY nie wywolany)" "$(grep -c 'bash -s -- czubek' "$ATRAPA_ARGI")" "0"
+grep -q 'stan NIEZNANY: kanal zdalny zrzutu zakonczyl sie zerem bez zadnego pomiaru' "$WYJ" || zle "brak zdania o stanie NIEZNANYM kanalu zrzutu"
+grep -q 'checkout zameldowal sukces' "$WYJ" && zle "wiersz o udanym checkoutcie NIE MOZE wystapic - checkout sie nie odbyl"
+grep 'CZUBEK' "$WYJ" | sed 's/^/    | /'
 koniec_przypadku
 
 # Kontrola "zadnego sudo/chown/chmod w calym pliku, tez po dolozeniu trybu

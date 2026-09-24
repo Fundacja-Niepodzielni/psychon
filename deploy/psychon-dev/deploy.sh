@@ -162,6 +162,25 @@ tls_dir="${PSYCHON_TLS_DIR:-/opt/psychon/tls}"
 backup_dir="${PSYCHON_DB_BACKUP_DIR:-/opt/psychon/kopie-bazy}"
 compose=(docker compose --env-file "$env_file" -f docker-compose.yml -f docker-compose.psychon-dev.yml)
 
+# Tryb dzieli ten skrypt na wywolywalne kawalki - domyslnie ("pelny") nic sie
+# nie zmienia wzgledem dawnego zachowania. Dwa pozostale tryby istnieja
+# WYLACZNIE dla `wdroz-zdalnie.sh --ustaw-czubek`, ktory musi zrobic zrzut
+# bazy PRZED checkoutem (checkout stoi POZA tym plikiem, w narzedziu
+# wdrozeniowym) - a nie PO nim, jak wychodzi z samego biegu ponizej. `--tylko-zrzut`
+# nie dotyka kodu aplikacji (nie buduje, nie podnosi app/queue/frontend/caddy,
+# bo to jeszcze STARY kod przed checkoutem) - podnosi WYLACZNIE pgsql (baza
+# jest niezalezna od checkoutu repo), robi zrzut i rotacje, i konczy. Wolajacy
+# wtedy sam robi checkout, po czym `--bez-zrzutu` odtwarza reszte dawnego
+# biegu (budowanie + migracja) bez powtarzania juz zrobionego zrzutu.
+tryb="${PSYCHON_TRYB_WDROZENIA:-pelny}"
+case "$tryb" in
+  pelny|tylko-zrzut|bez-zrzutu) ;;
+  *)
+    echo "BLAD: nieznany PSYCHON_TRYB_WDROZENIA='$tryb'. Dozwolone: pelny, tylko-zrzut, bez-zrzutu. Przerywam bez zmian."
+    exit 1
+    ;;
+esac
+
 cd "$repo_root"
 
 if [[ ! -f "$env_file" ]]; then
@@ -177,39 +196,52 @@ if [[ "$prawa" != "600" ]]; then
   exit 1
 fi
 
-for plik in origin.crt origin.key; do
-  if [[ ! -s "$tls_dir/$plik" ]]; then
-    echo "BLAD: brak $tls_dir/$plik (certyfikat Cloudflare Origin CA). Przerywam bez zmian."
-    exit 1
-  fi
-done
+if [[ "$tryb" != "tylko-zrzut" ]]; then
+  # Certyfikat Caddy jest potrzebny tylko wtedy, gdy Caddy w ogole wstaje w
+  # tym biegu - `--tylko-zrzut` nigdy go nie podnosi.
+  for plik in origin.crt origin.key; do
+    if [[ ! -s "$tls_dir/$plik" ]]; then
+      echo "BLAD: brak $tls_dir/$plik (certyfikat Cloudflare Origin CA). Przerywam bez zmian."
+      exit 1
+    fi
+  done
+fi
 
 "${compose[@]}" config --quiet
 
-echo "Przygotowuje prywatne wolumeny aplikacji..."
-"${compose[@]}" run --rm --no-deps --user 0:0 --entrypoint sh app -lc \
-  'mkdir -p vendor storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chown -R 33:33 vendor storage bootstrap/cache'
+if [[ "$tryb" = "tylko-zrzut" ]]; then
+  echo "Tryb --tylko-zrzut: podnosze WYLACZNIE baze (kod aplikacji jeszcze NIE jest checkoutowany na docelowy commit)..."
+  "${compose[@]}" up -d pgsql
+else
+  echo "Przygotowuje prywatne wolumeny aplikacji..."
+  "${compose[@]}" run --rm --no-deps --user 0:0 --entrypoint sh app -lc \
+    'mkdir -p vendor storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chown -R 33:33 vendor storage bootstrap/cache'
 
-echo "Instaluje zaleznosci backendu..."
-"${compose[@]}" run --rm --no-deps app \
-  composer install --no-interaction --no-dev --prefer-dist --no-progress --optimize-autoloader
+  echo "Instaluje zaleznosci backendu..."
+  "${compose[@]}" run --rm --no-deps app \
+    composer install --no-interaction --no-dev --prefer-dist --no-progress --optimize-autoloader
 
-echo "Buduje frontend..."
-"${compose[@]}" build frontend
+  echo "Buduje frontend..."
+  "${compose[@]}" build frontend
 
-echo "Uruchamiam uslugi..."
-"${compose[@]}" up -d pgsql redis mailpit
-# Frontend powstaje jako niezmienny obraz, wiec dzialajacy kontener zachowuje
-# kompletny poprzedni build az do chwili pomyslnego utworzenia nowego obrazu.
-# Procesy Laravel sa odtwarzane, zeby workery i OPcache nie trzymaly starego kodu.
-"${compose[@]}" up -d --force-recreate app queue scheduler frontend
-# Caddyfile jest montowany jako pojedynczy plik: `git checkout` kladzie nowy
-# plik (nowy i-wezel), a dzialajacy kontener dalej widzi stary. Przy
-# `admin off` nie ma tez przeladowania z zewnatrz. Samo `up -d` zostawia
-# kontener, bo jego definicja sie nie zmienila - tak zmiana tras logowania
-# nie weszla przy pierwszym wdrozeniu. Kilka sekund przerwy na 443 to cena.
-"${compose[@]}" up -d --force-recreate caddy
+  echo "Uruchamiam uslugi..."
+  "${compose[@]}" up -d pgsql redis mailpit
+  # Frontend powstaje jako niezmienny obraz, wiec dzialajacy kontener zachowuje
+  # kompletny poprzedni build az do chwili pomyslnego utworzenia nowego obrazu.
+  # Procesy Laravel sa odtwarzane, zeby workery i OPcache nie trzymaly starego kodu.
+  "${compose[@]}" up -d --force-recreate app queue scheduler frontend
+  # Caddyfile jest montowany jako pojedynczy plik: `git checkout` kladzie nowy
+  # plik (nowy i-wezel), a dzialajacy kontener dalej widzi stary. Przy
+  # `admin off` nie ma tez przeladowania z zewnatrz. Samo `up -d` zostawia
+  # kontener, bo jego definicja sie nie zmienila - tak zmiana tras logowania
+  # nie weszla przy pierwszym wdrozeniu. Kilka sekund przerwy na 443 to cena.
+  "${compose[@]}" up -d --force-recreate caddy
+fi
 
+if [[ "$tryb" = "bez-zrzutu" ]]; then
+  echo "Tryb --bez-zrzutu: zrzut i rotacja juz zrobione wczesniej (przed checkoutem) - pomijam ten krok."
+fi
+if [[ "$tryb" != "bez-zrzutu" ]]; then
 echo "Zrzucam kopie tabeli documents przed migracja..."
 # Kolejnosc zrzut -> migrate -> documents:encrypt-snapshots jest wymuszona,
 # nie stylistyczna - ale opisuje ja tu FAKTYCZNA kolejnosc kroku wyzej, nie
@@ -338,6 +370,15 @@ else
     pozostalo_w_rejestrze="$(grep -c . "$rejestr_zrzutow" || true)"
     echo "ROTACJA ZRZUTOW: skasowano=$skasowano nie-wiem=$nie_wiem nic-do-zrobienia=$nic_do_zrobienia pozostaje-w-rejestrze=$pozostalo_w_rejestrze"
   fi
+fi
+fi
+
+if [[ "$tryb" = "tylko-zrzut" ]]; then
+  # Zrzut (i jego rotacja) sa jedynym zadaniem tego trybu - kod aplikacji
+  # jeszcze nie jest na docelowym commicie, wiec migracja/budowanie/swiadkowie
+  # ponizej NIE MOGA tu ruszyc (dzialalyby na STARYM kodzie).
+  echo "Tryb --tylko-zrzut: zrzut zakonczony, konczy sie tutaj (bez migracji, bez budowania)."
+  exit 0
 fi
 
 echo "Migracje i cache konfiguracji..."

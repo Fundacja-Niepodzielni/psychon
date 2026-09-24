@@ -2,7 +2,7 @@
 # Przyrzad wdrozeniowy po stronie stacji operatora: uruchamia wdrozenie
 # srodowiska psychon-dev na hoscie i sprowadza z niego POMIARY, a nie akapit.
 #
-#   wdroz-zdalnie.sh <pelny-40-znakowy-sha> [--warunki-wstepne | --zaloz-katalog-kopii]
+#   wdroz-zdalnie.sh <pelny-40-znakowy-sha> [--warunki-wstepne | --zaloz-katalog-kopii | --ustaw-czubek]
 #
 # Adres hosta bierze WYLACZNIE ze zmiennej HOST_BRAMKOWY. Nie ma go w
 # argumencie, w pliku ani w dokumencie - i nie pada w wyjsciu: cale wyjscie
@@ -23,7 +23,24 @@
 #      `--zaloz-katalog-kopii`, ktory dziala wylacznie prawem konta
 #      wdrazajacego do katalogu nadrzednego: praw nie podnosi, cudzego
 #      katalogu nie kasuje - przenosi go obok. O jego uruchomieniu decyduje
-#      czlowiek, zadna sciezka nie wlacza go sama.
+#      czlowiek, zadna sciezka nie wlacza go sama;
+#   4. sciezke repozytorium na hoscie MIERZY, nie zgaduje: sprawdza po kolei
+#      znanych kandydatow (pierwszy - stara stala - zostaje jako PIERWSZY
+#      sprawdzany, nie jako prawda przyjmowana bez pomiaru) i melduje
+#      wybranego wierszem POMIAR-REPO=;
+#   5. czubek repozytorium na hoscie da sie NAPRAWDE ustawic, ale tylko
+#      jawnym, osobnym trybem `--ustaw-czubek` (ten sam wzorzec co
+#      `--zaloz-katalog-kopii`): fetch + checkout na juz-zmierzony, czysty
+#      commit, zadnego `reset --hard` na cudzym drzewie. O uruchomieniu
+#      decyduje czlowiek, zadna sciezka nie wlacza go sama.
+#   6. `--ustaw-czubek` robi zrzut bazy (`deploy.sh --tylko-zrzut`) PRZED
+#      checkoutem, nie po nim - kodem JUZ stojacym na hoscie, nie kodem z
+#      przychodzacego commita - bo inaczej pozniejszy zwykly bieg zmienialby
+#      kolejnosc na checkout -> budowanie -> zrzut -> migracja, w ktorej
+#      zrzut juz nie chroni przed zlym CHECKOUTEM, tylko przed zla migracja.
+#      Nieudany zrzut => checkout SIE NIE ODBYWA (kod 45), a host zostaje
+#      taki, jaki byl - co ten krok potwierdza DRUGIM pomiarem czubka, obok
+#      pierwszego sprzed zrzutu.
 #
 # Czesc zdalna idzie przez `stdin` (`bash -s`), argumenty przez `printf %q`.
 # Na hoscie nie lezy zadna kopia tego pliku, ktora moglaby sie z nim rozjechac.
@@ -35,8 +52,20 @@
 #   2    - uzycie: brak SHA, SHA nie ma 40 znakow, nadmiarowy argument, dwa tryby naraz, brak HOST_BRAMKOWY
 #   11   - warunek (a): katalog kopii nie jest zapisywalny dla uzytkownika wdrazajacego
 #   12   - warunek (b): wolne miejsce ponizej progu
-#   13   - warunek (c): czubek repozytorium na hoscie != zadany SHA
+#   13   - warunek (c'): zadany commit NIE istnieje na zdalnym po `fetch` (fetch
+#          sam nieudany liczy sie tak samo - porownanie jest ZAWSZE tak/nie,
+#          nigdy nic posredniego, wiec nieudany odczyt nigdy nie wypada zielono).
+#          To byl dawniej warunek KONCOWY checkoutu przebrany za wstepny
+#          (host mial juz STAC na zadanym SHA) - stad zawsze czerwony; teraz
+#          mierzy to, co da sie zmierzyc PRZED checkoutem.
 #   14   - pomiar warunkow nie doszedl w calosci (brak linii konca pomiaru)
+#   15   - sciezka repozytorium NIE zostala zmierzona: zadna ze znanych
+#          sciezek-kandydatow nie zawiera .git - komunikat nazywa sprawdzone
+#          sciezki. Rozlaczny z 13: 13 mowi o SHA, 15 o tym, ze nie ma gdzie
+#          go szukac.
+#   16   - warunek (d): drzewo robocze na hoscie NIE jest czyste - odmowa
+#          niesie liste pozycji, nie tylko ich liczbe. Zaden checkout nigdy
+#          nie nadpisuje cudzych zmian.
 #   21   - kontrola 1: HEAD na hoscie po wdrozeniu != zadany SHA
 #   22   - kontrola 2: liczba dzialajacych kontenerow != oczekiwana
 #   23   - kontrola 3: drzewo robocze na hoscie nie jest czyste
@@ -60,6 +89,50 @@
 #          zalozeniu, choc jedno z nich moglo realnie zajsc; obok katalogu
 #          kopii moze wtedy lezec .zastane-<stempel> do recznego sprawdzenia
 #          (33, 35, 36 i 37 mowia o STANIE hosta, nie o tym, gdzie bieg sie urwal)
+#   40   - --ustaw-czubek: czubek na hoscie JUZ byl rowny zadanemu SHA -
+#          nic nie ruszone, zaden checkout sie nie odbyl
+#   41   - --ustaw-czubek: czubek NAPRAWDE zmieniony na zadany SHA (stan
+#          docelowy) - checkout zameldowal sukces I pomiar po zmianie to
+#          potwierdzil
+#   42   - --ustaw-czubek: `fetch` nie przyniosl zadanego commita (albo sam
+#          `fetch` sie nie udal) - commita nie ma na zdalnym, checkout sie
+#          nie odbyl
+#   43   - --ustaw-czubek: drzewo robocze na hoscie NIE jest czyste - odmowa
+#          PRZED jakimkolwiek fetchem/checkoutem, z lista pozycji; cudzych
+#          zmian nie nadpisuje
+#   44   - --ustaw-czubek: stan hosta NIEZNANY - wyjscie urwalo sie w
+#          miejscu, ktore nie potwierdza ani nie zaprzecza checkoutowi, choc
+#          mogl realnie zajsc (kanal pada w trakcie albo pomiar po zmianie
+#          jest niepelny); nigdy nie zwijane w kod sukcesu ani porazki
+#   45   - --ustaw-czubek: zrzut bazy PRZED checkoutem (deploy.sh
+#          --tylko-zrzut, kodem JUZ stojacym na hoscie, nie kodem z
+#          przychodzacego commita) nie powiodl sie albo jego pomiar nie
+#          doszedl w calosci - checkout SIE NIE ODBYWA. Host zostaje TAKI,
+#          jaki byl: czubek repozytorium NIETKNIETY (mierzony PONOWNIE po
+#          nieudanym zrzucie i wypisywany obok pomiaru sprzed), zadne uslugi
+#          nie sa przebudowywane (tryb --tylko-zrzut podnosi wylacznie
+#          baze). Rozlaczny z 42/43: te mowia o stanie PRZED zrzutem
+#          (fetch/drzewo), 45 o samym zrzucie.
+#   46   - --ustaw-czubek: deploy.sh na hoscie (pod zmierzona sciezka
+#          repozytorium) NIE ZNA zmiennej PSYCHON_TRYB_WDROZENIA (skrot pliku
+#          nie jest na liscie ZNANE_DOBRE_SKROTY_DEPLOY - stary skrypt sprzed
+#          wprowadzenia trybu --tylko-zrzut) ALBO pomiar tego NIE WIEM (pliku
+#          nie ma, kanal padl bez pomiaru, albo pomiar urwal sie w polowie) -
+#          oba wyniki odmawiaja TYM SAMYM kodem, bo brak pomiaru nigdy nie
+#          jest zgoda. Odmawiam PRZED jakimkolwiek poleceniem zmieniajacym
+#          hosta (zero `docker compose`, zero pg_dump): stary skrypt nie
+#          parsuje argumentow w ogole, wiec samo jego WYWOLANIE (nawet ze
+#          znacznikiem wersji) przebieglo w pomiarze PELNY zwykly przeplyw
+#          (build, force-recreate, migrate) zamiast samego zrzutu bazy - stad
+#          pomiar jest WYLACZNIE CZYSTYM ODCZYTEM (sha256sum pliku na hoscie),
+#          zero wywolania deploy.sh.
+#   47   - --ustaw-czubek: kanal zdalny zrzutu zakonczyl sie ZEREM,
+#          ale bez ani jednego wiersza POMIAR- - nie wiem, czy zrzut na
+#          hoscie w ogole ruszyl, czy polaczenie padlo tuz przed pierwszym
+#          echo. Zerowy kod kanalu tu NIE MOZE byc cicho odczytany jako
+#          sukces (kod 0 nie nalezy do tego rozlacznego zbioru) - checkout
+#          SIE NIE ODBYWA. Blizniaczy przypadek w kroku checkout ma kod 44;
+#          ten sam brak w kroku zrzutu mial dawniej kod 0.
 #   inne - kod kanalu zdalnego przepuszczony bez zmiany (np. 9, 255 z `ssh`)
 set -uo pipefail
 
@@ -69,7 +142,7 @@ MASKA="HOST-UKRYTY"
 # byc wiadomo, CO sie stalo, a nie GDZIE stoi stos.
 MASKA_KONTA="KONTO-UKRYTE"
 MASKA_SCIEZKI="SCIEZKA-UKRYTA"
-UZYCIE='uzycie: wdroz-zdalnie.sh <pelny-40-znakowy-sha> [--warunki-wstepne | --zaloz-katalog-kopii]   (adres hosta wylacznie ze zmiennej HOST_BRAMKOWY)'
+UZYCIE='uzycie: wdroz-zdalnie.sh <pelny-40-znakowy-sha> [--warunki-wstepne | --zaloz-katalog-kopii | --ustaw-czubek]   (adres hosta wylacznie ze zmiennej HOST_BRAMKOWY)'
 
 # --- argumenty -------------------------------------------------------------
 # Adresu tu nie ma i nie bedzie: kazdy nadmiarowy argument pozycyjny konczy
@@ -79,7 +152,7 @@ SHA=""
 TRYB="pelny"
 for arg in "$@"; do
     case "$arg" in
-        --warunki-wstepne|--zaloz-katalog-kopii)
+        --warunki-wstepne|--zaloz-katalog-kopii|--ustaw-czubek)
             # Tryb jest JEDEN i jawny. Dwa tryby naraz to pytanie bez
             # odpowiedzi, a nie polecenie - konczymy uzyciem.
             if [ "$TRYB" != "pelny" ]; then
@@ -88,7 +161,8 @@ for arg in "$@"; do
             fi
             case "$arg" in
                 --warunki-wstepne) TRYB="warunki" ;;
-                *) TRYB="zaloz" ;;
+                --zaloz-katalog-kopii) TRYB="zaloz" ;;
+                *) TRYB="czubek" ;;
             esac
             ;;
         -*) echo "$UZYCIE" >&2; exit 2 ;;
@@ -122,7 +196,15 @@ KATALOG_STOSU="${PSYCHON_KATALOG_STOSU:-/opt/psychon}"
 # Domyslnie ten sam katalog kopii, ktorego uzywa deploy/psychon-dev/deploy.sh.
 KATALOG_KOPII="${PSYCHON_DB_BACKUP_DIR:-$KATALOG_STOSU/kopie-bazy}"
 KATALOG_NADRZEDNY="$(dirname "$KATALOG_KOPII")"
-REPO_HOSTA="${PSYCHON_REPO_HOSTA:-$KATALOG_STOSU/psychon-platforma}"
+# Kandydaci na sciezke repozytorium hosta, sprawdzani PO KOLEI na hoscie -
+# pierwszy, ktory ma .git, WYGRYWA. Pierwszy kandydat to STARA stala (kiedys
+# jedyny, cichy domysl, nigdy nie zmierzony) - zostaje, ale juz tylko jako
+# PIERWSZY sprawdzany, nie jako prawda przyjmowana bez pomiaru. REPO_HOSTA
+# samo zaczyna PUSTE: dostaje wartosc wylacznie z pomiaru (patrz
+# `zmierz_stan_katalogow`/`wymagaj_repo` nizej), nigdy z zgadywania.
+REPO_HOSTA_DOMYSLNY="${PSYCHON_REPO_HOSTA:-$KATALOG_STOSU/psychon-platforma}"
+KANDYDACI_REPO_HOSTA=("$REPO_HOSTA_DOMYSLNY" "$KATALOG_STOSU/app")
+REPO_HOSTA=""
 PLIK_SRODOWISKA="${PSYCHON_ENV_FILE:-$KATALOG_STOSU/.env}"
 PROG_WOLNE_KB="${PSYCHON_PROG_WOLNE_KB:-1048576}"
 OCZEKIWANE_KONTENEROW="${PSYCHON_LICZBA_KONTENEROW:-8}"
@@ -132,6 +214,22 @@ KATALOG_LOGOW_LOKALNY="${PSYCHON_KATALOG_LOGOW:-${TMPDIR:-/tmp}/psychon-wdrozeni
 STEMPEL="$(date +%Y%m%d-%H%M%S)"
 LOG_HOSTA="$KATALOG_LOGOW_HOSTA/wdrozenie-$SHA-$STEMPEL.log"
 LOG_LOKALNY="$KATALOG_LOGOW_LOKALNY/wdrozenie-$SHA-$STEMPEL.log"
+# krok zrzutu (--ustaw-czubek) zostawia SWOJ log na hoscie, tym samym
+# wzorcem co krok wdrozenia (LOG_HOSTA) - dawniej cale wyjscie deploy.sh w tym
+# kroku szlo w `/dev/null`, wiec trojwartosciowe rozstrzygniecia rotacji zrzutow
+# ("NIE WIEM") nie docieraly nigdzie, ani na stacje, ani na hosta.
+LOG_HOSTA_ZRZUT="$KATALOG_LOGOW_HOSTA/zrzut-$SHA-$STEMPEL.log"
+
+# skroty (sha256) deploy/psychon-dev/deploy.sh, ktore ZNAJA zmienna
+# PSYCHON_TRYB_WDROZENIA - jedyna prawda o tym, czy `--ustaw-czubek` smie
+# wolac `deploy.sh --tylko-zrzut` na hoscie PRZED checkoutem. KAZDY commit,
+# ktory zmienia ten plik (takze komentarzem - sha256 nie odroznia tresci od
+# komentarza), MUSI dopisac tu swoj nowy skrot: `sha256sum
+# deploy/psychon-dev/deploy.sh`. Pierwsza pozycja to skrot ze stanu tego
+# repozytorium w chwili wprowadzenia trybu (commit, ktory dolozyl ta liste).
+ZNANE_DOBRE_SKROTY_DEPLOY=(
+    "7824bdef4fddaab4fdeb8f238abbb7d615d8df8e2d131bb171158bf5dfa15537"
+)
 
 # Warunek wstepny STACJI, sprawdzany przed czymkolwiek, co siega hosta. Na
 # koncu potoku stoi `tee`: gdy nie ma gdzie pisac, `tee` i tak konczy zerem, a
@@ -146,6 +244,9 @@ if ! ( : > "$LOG_LOKALNY" ) 2>/dev/null; then
 fi
 
 WDROZENIE_RUSZYLO=0
+# czy krok zrzutu (--ustaw-czubek) w ogole ruszyl - stopka ma prawo
+# wspomniec jego log na hoscie tylko wtedy, gdy plik tam realnie mogl powstac.
+ZRZUT_RUSZYLO=0
 
 # --- maska -----------------------------------------------------------------
 # Filtr na CALYM wyjsciu przyrzadu, nie tylko na wlasnych `echo`: adres
@@ -182,6 +283,9 @@ stopka() {
         uwaga=" (krok wdrozenia nie ruszyl - tego pliku moze na hoscie nie byc)"
     fi
     echo "[WDROZENIE] log na hoscie: $LOG_HOSTA$uwaga | kopia lokalna: $LOG_LOKALNY"
+    if [ "$ZRZUT_RUSZYLO" -eq 1 ]; then
+        echo "[CZUBEK] log zrzutu (skrypt wdrozeniowy hosta, tryb --tylko-zrzut) na hoscie: $LOG_HOSTA_ZRZUT"
+    fi
 }
 
 # --- odczyt pomiaru --------------------------------------------------------
@@ -209,11 +313,13 @@ liczba_lub_minus() {
 POMIAR_WYJSCIE=""
 zmierz_stan_katalogow() {
     local argi rc
-    argi="$(printf '%q %q %q' "$KATALOG_KOPII" "$SHA" "$REPO_HOSTA")"
+    argi="$(printf '%q %q' "$KATALOG_KOPII" "$SHA"; printf ' %q' "${KANDYDACI_REPO_HOSTA[@]}")"
     POMIAR_WYJSCIE="$(ssh -o BatchMode=yes -o ServerAliveInterval=20 \
         "$UZYTKOWNIK@$HOST" "bash -s -- warunki $argi" 2>&1 <<"ZDALNE"
 set -uo pipefail
-KATALOG_KOPII="$2"; SHA="$3"; REPO_HOSTA="$4"
+KATALOG_KOPII="$2"; SHA="$3"; shift 3
+# Pozostale argumenty ("$@") sa kandydatami na sciezke repozytorium, w
+# kolejnosci pierwszenstwa.
 
 # Pomiar, nie naprawa: zadnego zakladania katalogu, zadnej zmiany praw ani
 # wlasciciela. Ta czesc zdalna nie zmienia na hoscie niczego - takze wtedy,
@@ -242,10 +348,48 @@ opisz_katalog() {
 echo "POMIAR-KTO=$(id -un)"
 opisz_katalog KOPIE "$KATALOG_KOPII"
 opisz_katalog RODZIC "$(dirname "$KATALOG_KOPII")"
-if [ -d "$REPO_HOSTA/.git" ]; then
-    echo "POMIAR-HEAD=$(git -C "$REPO_HOSTA" rev-parse HEAD 2>/dev/null || echo brak)"
+
+# Sciezka repozytorium jest MIERZONA, nie zgadywana: pierwszy kandydat z
+# .git wygrywa. Zadnego z kandydatow nie zakladamy ani nie tworzymy - sam
+# poszukiwania nie zmieniaja na hoscie niczego.
+REPO_WYBRANY=""
+for kandydat in "$@"; do
+    if [ -d "$kandydat/.git" ]; then
+        REPO_WYBRANY="$kandydat"
+        break
+    fi
+done
+
+if [ -n "$REPO_WYBRANY" ]; then
+    echo "POMIAR-REPO=$REPO_WYBRANY"
+    echo "POMIAR-HEAD=$(git -C "$REPO_WYBRANY" rev-parse HEAD 2>/dev/null || echo brak)"
+    # Warunek (c'): zadany commit ISTNIEJE na zdalnym PO fetch - nie
+    # porownanie z czubkiem lokalnym (to byl warunek KONCOWY checkoutu,
+    # przebrany za wstepny). Fetch tu jest jedynym sposobem, zeby to w ogole
+    # zmierzyc PRZED checkoutem - nie zaklada, nie zmienia drzewa roboczego,
+    # dotyka wylacznie zdalnie sledzonych referencji.
+    if git -C "$REPO_WYBRANY" fetch --quiet origin 2>/dev/null; then
+        echo "POMIAR-FETCH=ok"
+    else
+        echo "POMIAR-FETCH=nie-udalo-sie"
+    fi
+    if git -C "$REPO_WYBRANY" cat-file -e "$SHA^{commit}" 2>/dev/null; then
+        echo "POMIAR-SHA-NA-ZDALNYM=tak"
+    else
+        echo "POMIAR-SHA-NA-ZDALNYM=nie"
+    fi
+    # Warunek (d): drzewo robocze musi byc czyste. Lista pozycji - nie tylko
+    # ich liczba - bo odmowa ma NAZYWAC, co stoi na przeszkodzie.
+    DRZEWO_POZYCJE="$(git -C "$REPO_WYBRANY" status --porcelain 2>/dev/null)"
+    echo "POMIAR-REPO-DRZEWO-LINII=$(printf '%s\n' "$DRZEWO_POZYCJE" | grep -c .)"
+    echo "POMIAR-REPO-DRZEWO-LISTA=$(printf '%s' "$DRZEWO_POZYCJE" | tr '\n' ';')"
 else
+    echo "POMIAR-REPO=brak"
     echo "POMIAR-HEAD=brak-repozytorium"
+    echo "POMIAR-FETCH=brak-repozytorium"
+    echo "POMIAR-SHA-NA-ZDALNYM=nie"
+    echo "POMIAR-REPO-DRZEWO-LINII=-1"
+    echo "POMIAR-REPO-DRZEWO-LISTA="
 fi
 echo "POMIAR-KONIEC=0"
 ZDALNE
@@ -259,6 +403,7 @@ ZDALNE
 # przed zmiana i po niej.
 P_KTO=""; P_ISTNIEJE=""; P_WLASCICIEL=""; P_PRAWA=""; P_ZAPIS=""; P_WOLNE=""
 P_R_WLASCICIEL=""; P_R_PRAWA=""; P_R_ZAPIS=""; P_R_WOLNE=""
+P_REPO=""; P_FETCH=""; P_SHA_ZDALNY=""; P_REPO_DRZEWO=""; P_REPO_DRZEWO_LISTA=""
 # Pola wlasciciela niosa nazwe konta, wiec maja osobna postac DO WYPISANIA.
 # Wartosci surowe zostaja do porownan - gdyby maska wchodzila do nich, warunek
 # "rodzic nalezy do konta wdrazajacego" porownywalby maske z maska i zawsze
@@ -276,6 +421,11 @@ wczytaj_pomiar() {
     P_R_PRAWA="$(pomiar RODZIC-PRAWA "$wyjscie")"
     P_R_ZAPIS="$(pomiar RODZIC-ZAPIS "$wyjscie")"
     P_R_WOLNE="$(liczba_lub_minus "$(pomiar RODZIC-WOLNE-KB "$wyjscie")")"
+    P_REPO="$(pomiar REPO "$wyjscie")"
+    P_FETCH="$(pomiar FETCH "$wyjscie")"
+    P_SHA_ZDALNY="$(pomiar SHA-NA-ZDALNYM "$wyjscie")"
+    P_REPO_DRZEWO="$(liczba_lub_minus "$(pomiar REPO-DRZEWO-LINII "$wyjscie")")"
+    P_REPO_DRZEWO_LISTA="$(pomiar REPO-DRZEWO-LISTA "$wyjscie")"
     P_WLASCICIEL_POKAZ="$P_WLASCICIEL"
     P_R_WLASCICIEL_POKAZ="$P_R_WLASCICIEL"
     if [ -n "$P_KTO" ]; then
@@ -319,6 +469,22 @@ wypisz_pomiar() {
     echo "$tag katalog kopii $KATALOG_KOPII: istnieje=$P_ISTNIEJE, wlasciciel=$P_WLASCICIEL_POKAZ, prawa=$P_PRAWA, zapis=$P_ZAPIS, wolne=$P_WOLNE KB"
     echo "$tag katalog nadrzedny $KATALOG_NADRZEDNY: wlasciciel=$P_R_WLASCICIEL_POKAZ, prawa=$P_R_PRAWA, zapis=$P_R_ZAPIS, wolne=$P_R_WOLNE KB"
     echo "$tag uzytkownik wdrazajacy na hoscie: $(konto_do_wypisu)"
+}
+
+# Wymaga zmierzonej sciezki repozytorium z OSTATNIEGO pomiaru: ustawia
+# globalne REPO_HOSTA, albo konczy caly bieg kodem 15, gdy zadna ze znanych
+# sciezek-kandydatow nie ma .git. Wspolna dla warunkow wstepnych i
+# --ustaw-czubek - obie potrzebuja tej samej prawdy o polozeniu
+# repozytorium, zmierzonej, nie zgadywanej.
+wymagaj_repo() {
+    local wyjscie="$1" repo
+    repo="$(pomiar REPO "$wyjscie")"
+    if [ -z "$repo" ] || [ "$repo" = "brak" ]; then
+        echo "[WARUNEK repo] NIEZALICZONY: zadna ze znanych sciezek-kandydatow nie zawiera .git - sprawdzilem: ${KANDYDACI_REPO_HOSTA[*]}"
+        exit 15
+    fi
+    echo "[WARUNEK repo] ZALICZONY: sciezka repozytorium na hoscie zmierzona: $repo"
+    REPO_HOSTA="$repo"
 }
 
 # --- krok 1: warunki wstepne ----------------------------------------------
@@ -366,15 +532,37 @@ warunki_wstepne() {
     fi
     echo "[WARUNEK b] ZALICZONY: wolne miejsce $wolne_do_progu KB, prog $PROG_WOLNE_KB KB"
 
-    # (c) Czubek na hoscie MIERZYMY, nie ustawiamy: przyrzad nie przestawia
-    # cudzego drzewa. Rozjazd to wynik do pokazania, nie rzecz do zalatania.
-    local head_hosta
-    head_hosta="$(pomiar HEAD "$POMIAR_WYJSCIE")"
-    if [ "$head_hosta" != "$SHA" ]; then
-        echo "[WARUNEK c] NIEZALICZONY: czubek na hoscie $head_hosta, zadano $SHA"
+    # Sciezke repozytorium wymagamy PRZED warunkiem (c'): bez niej nie ma
+    # czego fetchowac ani czyjego drzewa sprawdzac.
+    wymagaj_repo "$POMIAR_WYJSCIE"
+
+    # (c') Zadany commit ISTNIEJE na zdalnym PO fetch. To NIE jest
+    # porownanie z czubkiem lokalnym - ten dawny warunek byl w istocie
+    # warunkiem KONCOWYM checkoutu (host mial juz STAC na zadanym SHA),
+    # przebranym za wstepny, i dlatego byl zawsze czerwony: nic w przyrzadzie
+    # nie umialo tam host ustawic. Porownanie jest tu ZAWSZE "rowne slowu
+    # tak" albo nie - nigdy nic posredniego, wiec nieudany fetch i brak
+    # commita na zdalnym oba ladujA sie w tej samej czerwieni, tak jak dawne
+    # porownanie z "brak-repozytorium" nigdy nie wypadalo rowne prawdziwemu
+    # SHA.
+    if [ "$P_FETCH" != "ok" ]; then
+        echo "[WARUNEK c] NIEZALICZONY: fetch od zdalnego nie powiodl sie (POMIAR-FETCH=${P_FETCH:-brak}) - commita $SHA nie dalo sie sprawdzic"
         exit 13
     fi
-    echo "[WARUNEK c] ZALICZONY: czubek na hoscie rowny zadanemu $SHA"
+    if [ "$P_SHA_ZDALNY" != "tak" ]; then
+        echo "[WARUNEK c] NIEZALICZONY: zadany commit $SHA nie istnieje na zdalnym po fetch"
+        exit 13
+    fi
+    echo "[WARUNEK c] ZALICZONY: zadany commit $SHA istnieje na zdalnym po fetch"
+
+    # (d) Drzewo robocze na hoscie musi byc czyste - inaczej pozniejszy
+    # checkout nadpisalby cudze zmiany. Odmowa NAZYWA pozycje, nie tylko ich
+    # liczbe; zaden `reset --hard` nigdzie w tym przyrzadzie nie pada.
+    if [ "$P_REPO_DRZEWO" -ne 0 ]; then
+        echo "[WARUNEK d] NIEZALICZONY: drzewo robocze na hoscie ma $P_REPO_DRZEWO linii zmian: ${P_REPO_DRZEWO_LISTA:-(lista niedostepna)}"
+        exit 16
+    fi
+    echo "[WARUNEK d] ZALICZONY: drzewo robocze na hoscie czyste"
 }
 
 # --- stan hosta po kroku zakladania ----------------------------------------
@@ -555,7 +743,16 @@ ZDALNE
         # Kod hosta a kod kanalu to dwie rozne wiadomosci. Skoro w wyjsciu sa
         # nasze wiersze POMIAR-, czesc zdalna RUSZYLA i to ona odmowila -
         # wolajacy nie ma prawa czytac tego jako zerwanego polaczenia.
-        if printf '%s\n' "$wyjscie" | grep -q '^POMIAR-'; then
+        # DOPASOWANIE BEZ POTOKU. `printf ... | grep -q` pod `set -o
+        # pipefail` (naglowek pliku) potrafil odwrocic sie SAM: `grep -q`
+        # konczy natychmiast po pierwszym dopasowaniu i zamyka swoj koniec
+        # potoku, `printf` przy duzej tresci dostaje SIGPIPE (rc 141), a
+        # pipefail bierze TEN kod jako kod calego potoku - warunek staje sie
+        # falszem, choc POMIAR- naprawde stal w tresci. Zmierzone: przy ~200
+        # kB tresci status potoku = 141, przy kilkunastu bajtach = 0.
+        # Tu-string (`<<<`) nie jest potokiem - grep czyta z tymczasowego
+        # deskryptora, zaden proces nie moze dostac SIGPIPE.
+        if grep -q '^POMIAR-' <<<"$wyjscie"; then
             echo "[KATALOG-KOPII] NIEZALICZONY: krok zakladania na hoscie nie powiodl sie (kod z hosta: $rc)"
             opisz_stan_hosta "$wyjscie" "$przenies"
             exit "$(kod_stanu_hosta "$wyjscie" "$przenies")"
@@ -604,6 +801,282 @@ ZDALNE
         exit 32
     fi
     echo "[KATALOG-KOPII] ZALICZONY: katalog kopii zapisywalny dla $(konto_do_wypisu), wlasciciel=$P_WLASCICIEL_POKAZ, prawa=$P_PRAWA"
+}
+
+# --- tryb --ustaw-czubek ----------------------------------------------------
+# Tryb JAWNY i osobny, na wzor --zaloz-katalog-kopii: nie wlacza sie z zadnej
+# innej sciezki. Rozwiazuje ten sam brak co ten katalog rozwiazal dla praw
+# katalogu kopii - tu chodzi o czubek repozytorium, ktorego przyrzad wczesniej
+# tylko MIERZYL (warunek c'), nigdy nie ustawial. Dziala w dwoch krokach:
+# fetch+checkout na hoscie (WYLACZNIE gdy drzewo jest juz zmierzone jako
+# czyste), a nie `reset --hard` - cudzych zmian nigdy nie nadpisuje, tylko
+# odmawia. Mierzy stan PRZED i PO, z rozlacznymi kodami dla rozlacznych
+# stanow hosta (patrz naglowek pliku, kody 40-44).
+ustaw_czubek() {
+    local rc head_przed argi wyjscie rc2 head_po
+    local argi_zrzut wyjscie_zrzut rc_zrzut_kanal rc_po_zrzut head_po_zrzut
+    local argi_tryb wyjscie_tryb rc_tryb_kanal
+
+    echo "[CZUBEK] tryb jawny: mierze stan przed zmiana (w tym fetch od zdalnego)"
+    zmierz_stan_katalogow
+    rc=$?
+    wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
+    if [ "$rc" -ne 0 ]; then
+        echo "[CZUBEK] kanal zdalny nie doszedl (kod $rc) - niczego nie ustawiam"
+        exit "$rc"
+    fi
+    if [ -z "$(pomiar KONIEC "$POMIAR_WYJSCIE")" ]; then
+        echo "[CZUBEK] NIEZALICZONY: pomiar urwal sie w polowie - niczego nie ustawiam"
+        exit 14
+    fi
+    wczytaj_pomiar "$POMIAR_WYJSCIE"
+    wymagaj_repo "$POMIAR_WYJSCIE"
+
+    head_przed="$(pomiar HEAD "$POMIAR_WYJSCIE")"
+    echo "[CZUBEK] stan przed: repo=$REPO_HOSTA, HEAD=$head_przed, drzewo robocze: $P_REPO_DRZEWO linii zmian"
+
+    # (1) Juz na miejscu - wlasny, ROZLACZNY kod. Zaden fetch/checkout sie
+    # nie odbywa: nie ma czego ustawiac.
+    if [ "$head_przed" = "$SHA" ]; then
+        echo "[CZUBEK] ZALICZONY: czubek na hoscie juz rowny zadanemu $SHA - nic nie ruszam"
+        exit 40
+    fi
+
+    # (2) Drzewo brudne - odmawiam PRZED jakimkolwiek fetchem/checkoutem.
+    # Nigdy `reset --hard`: cudzych zmian nie nadpisuje.
+    if [ "$P_REPO_DRZEWO" -ne 0 ]; then
+        echo "[CZUBEK] NIEZALICZONY: drzewo robocze na hoscie ma $P_REPO_DRZEWO linii zmian: ${P_REPO_DRZEWO_LISTA:-(lista niedostepna)} - NIE nadpisuje cudzych zmian, odmawiam"
+        exit 43
+    fi
+
+    # (3) Fetch nie przyniosl zadanego commita - checkout by i tak nie mial
+    # na czym stanac.
+    if [ "$P_FETCH" != "ok" ]; then
+        echo "[CZUBEK] NIEZALICZONY: fetch od zdalnego nie powiodl sie (POMIAR-FETCH=${P_FETCH:-brak}) - checkout sie nie odbywa"
+        exit 42
+    fi
+    if [ "$P_SHA_ZDALNY" != "tak" ]; then
+        echo "[CZUBEK] NIEZALICZONY: fetch nie przyniosl commita $SHA - na zdalnym go nie ma, checkout sie nie odbywa"
+        exit 42
+    fi
+    echo "[CZUBEK] fetch potwierdzony, commit $SHA jest na zdalnym i drzewo jest czyste - checkout dozwolony"
+
+    # LUKA ROZRUCHOWA. `deploy.sh` z PRZED tego trybu nie zna
+    # PSYCHON_TRYB_WDROZENIA (0 wystapien) - ustawiony a nieznany, zmienna
+    # jest po prostu IGNOROWANA: stary skrypt nie parsuje ARGUMENTOW w ogole,
+    # wiec samo jego WYWOLANIE (nawet ze znacznikiem wersji jako argumentem)
+    # przebieglo w pomiarze PELNY zwykly przeplyw - 6 polecen zmieniajacych
+    # hosta (composer, build, force-recreate, migrate...) PRZED jakakolwiek
+    # odmowa, mimo ze repozytorium NIE jest jeszcze checkoutowane na $SHA.
+    # Z dwoch dopuszczalnych przyrzadow pomiaru (znacznik wersji w argumencie
+    # ALBO skrot tresci porownany z lista znanych) wybieram DRUGI: wywolanie
+    # deploy.sh z NIEZNANYM MU argumentem jest dokladnie tym niebezpiecznym
+    # trikiem, ktory ten warunek ma wykluczyc - pomiar musi wiec zostac
+    # CZYSTYM ODCZYTEM PLIKU (sha256sum), zero wywolania. Lista znanych
+    # skrotow rosnie z kazdym commitem, ktory zmienia
+    # deploy/psychon-dev/deploy.sh - znany koszt utrzymania, przyjety
+    # swiadomie w zamian za bezpieczenstwo pomiaru.
+    argi_tryb="$(printf '%q' "$REPO_HOSTA"; printf ' %q' "${ZNANE_DOBRE_SKROTY_DEPLOY[@]}")"
+    wyjscie_tryb="$(ssh -o BatchMode=yes -o ServerAliveInterval=20 \
+        "$UZYTKOWNIK@$HOST" "bash -s -- sprawdz-tryb $argi_tryb" 2>&1 <<"ZDALNE"
+set -uo pipefail
+REPO_HOSTA="$2"; shift 2
+# Pozostale argumenty ("$@") sa znanymi-dobrymi skrotami deploy.sh, w
+# kolejnosci przyjscia - zaden nie jest zgadywany, wszystkie przyszly ze
+# stacji.
+plik_deploy="$REPO_HOSTA/deploy/psychon-dev/deploy.sh"
+if [ ! -f "$plik_deploy" ]; then
+    echo "POMIAR-DEPLOY-ISTNIEJE=nie"
+else
+    echo "POMIAR-DEPLOY-ISTNIEJE=tak"
+    skrot_zmierzony="$(sha256sum -- "$plik_deploy" 2>/dev/null | awk '{print $1}')"
+    echo "POMIAR-DEPLOY-SKROT=${skrot_zmierzony:-nieczytelny}"
+    znany="nie"
+    if [ -n "$skrot_zmierzony" ]; then
+        for kandydat in "$@"; do
+            if [ "$kandydat" = "$skrot_zmierzony" ]; then
+                znany="tak"
+                break
+            fi
+        done
+    fi
+    echo "POMIAR-DEPLOY-ZNA-TRYB=$znany"
+fi
+echo "POMIAR-KONIEC-TRYB=0"
+ZDALNE
+)"
+    rc_tryb_kanal=$?
+    printf '%s\n' "$wyjscie_tryb"
+    if ! grep -q '^POMIAR-' <<<"$wyjscie_tryb"; then
+        if [ "$rc_tryb_kanal" -ne 0 ]; then
+            echo "[CZUBEK] kanal zdalny sprawdzenia trybu skryptu wdrozeniowego hosta nie doszedl (kod $rc_tryb_kanal) - checkout SIE NIE ODBYWA"
+            exit "$rc_tryb_kanal"
+        fi
+        # Kanal skonczyl ZEREM bez zadnego pomiaru - to jest "NIE WIEM", nie
+        # "wolno": kod 46 obejmuje ROWNIEZ ten wynik (nie tylko jawne "nie
+        # zna"), bo brak pomiaru nigdy nie jest zgoda.
+        echo "[CZUBEK] NIEZALICZONY: pomiar trybu skryptu wdrozeniowego hosta zakonczyl sie zerem bez zadnego pomiaru (NIE WIEM) - checkout SIE NIE ODBYWA, zero polecen zmieniajacych hosta"
+        exit 46
+    fi
+    if [ -z "$(pomiar KONIEC-TRYB "$wyjscie_tryb")" ]; then
+        echo "[CZUBEK] NIEZALICZONY: pomiar trybu skryptu wdrozeniowego hosta urwal sie w polowie (NIE WIEM) - checkout SIE NIE ODBYWA, zero polecen zmieniajacych hosta"
+        exit 46
+    fi
+    if [ "$(pomiar DEPLOY-ISTNIEJE "$wyjscie_tryb")" != "tak" ]; then
+        echo "[CZUBEK] NIEZALICZONY: na hoscie nie ma skryptu wdrozeniowego (deploy/psychon-dev/) pod zmierzona sciezka repozytorium $REPO_HOSTA - checkout SIE NIE ODBYWA, zero polecen zmieniajacych hosta"
+        exit 46
+    fi
+    if [ "$(pomiar DEPLOY-ZNA-TRYB "$wyjscie_tryb")" != "tak" ]; then
+        echo "[CZUBEK] NIEZALICZONY: skrypt wdrozeniowy hosta NIE zna PSYCHON_TRYB_WDROZENIA (skrot $(pomiar DEPLOY-SKROT "$wyjscie_tryb") nie jest na liscie znanych-dobrych - stara wersja sprzed wprowadzenia trybu czubka) - zrzut PRZED checkoutem wykonalby PELNY przeplyw zamiast samej bazy. Odmawiam PRZED jakimkolwiek poleceniem zmieniajacym hosta (WARUNEK WDROZENIA: przeprowadz host raz zwyklym wdrozeniem PRZED pierwszym uzyciem --ustaw-czubek)"
+        exit 46
+    fi
+    echo "[CZUBEK] skrypt wdrozeniowy hosta zna PSYCHON_TRYB_WDROZENIA (skrot $(pomiar DEPLOY-SKROT "$wyjscie_tryb") jest na liscie znanych-dobrych) - zrzut PRZED checkoutem dozwolony"
+
+    # Zrzut kopii bazy MUSI stac PRZED checkoutem, nie po nim: gdyby stal po
+    # nim (jak w zwyklym biegu `wdrozenie`), kolejnosc przy uzyciu tego trybu
+    # wychodzilaby checkout -> budowanie -> zrzut -> migracja, i zrzut
+    # przestawalby chronic przed zlym CHECKOUTEM, chronilby juz tylko przed
+    # zla migracja - a to jest dokladnie ryzyko, ktore ten krok ma usunac.
+    # Wola WYLACZNIE deploy/psychon-dev/deploy.sh w trybie --tylko-zrzut:
+    # kod juz stojacy na hoscie (repozytorium jeszcze NIE jest checkoutowane
+    # na $SHA), nie kod z commita, ktory dopiero wjezdza. Ten tryb podnosi
+    # wylacznie baze (zadnego app/queue/frontend/caddy), robi zrzut i
+    # rotacje, i konczy - migracje/budowanie zostaja dla pozniejszego biegu
+    # `deploy.sh --bez-zrzutu`, PO checkoucie.
+    ZRZUT_RUSZYLO=1
+    argi_zrzut="$(printf '%q %q %q %q' "$REPO_HOSTA" "$PLIK_SRODOWISKA" "$KATALOG_KOPII" "$LOG_HOSTA_ZRZUT")"
+    wyjscie_zrzut="$(ssh -o BatchMode=yes -o ServerAliveInterval=20 \
+        "$UZYTKOWNIK@$HOST" "bash -s -- zrzut $argi_zrzut" 2>&1 <<"ZDALNE"
+set -uo pipefail
+REPO_HOSTA="$2"; PLIK_SRODOWISKA="$3"; KATALOG_KOPII="$4"; LOG_HOSTA_ZRZUT="$5"
+
+cd "$REPO_HOSTA" 2>/dev/null || { echo "POMIAR-ZRZUT=brak-repozytorium"; echo "POMIAR-KONIEC-ZRZUT=0"; exit 0; }
+# log deploy.sh tego kroku ZOSTAJE na hoscie (tym samym wzorcem co
+# krok wdrozenia), nie ginie w `/dev/null` - inaczej trojwartosciowe rozstrzygniecia
+# rotacji zrzutow ("NIE WIEM") nie dochodza nigdzie. Katalog logu zakladamy
+# PRZED biegiem: nieudany mkdir nie ma przerywac samego zrzutu, wiec brak
+# katalogu tylko obcina log, nie blokuje pomiaru POMIAR-ZRZUT ponizej.
+mkdir -p "$(dirname "$LOG_HOSTA_ZRZUT")" 2>/dev/null
+PSYCHON_TRYB_WDROZENIA=tylko-zrzut PSYCHON_ENV_FILE="$PLIK_SRODOWISKA" PSYCHON_DB_BACKUP_DIR="$KATALOG_KOPII" \
+    bash deploy/psychon-dev/deploy.sh < /dev/null > "$LOG_HOSTA_ZRZUT" 2>&1
+rc_zrzut=$?
+if [ "$rc_zrzut" -eq 0 ]; then
+    echo "POMIAR-ZRZUT=ok"
+else
+    echo "POMIAR-ZRZUT=nie-udalo-sie"
+fi
+echo "POMIAR-KONIEC-ZRZUT=0"
+ZDALNE
+)"
+    rc_zrzut_kanal=$?
+    printf '%s\n' "$wyjscie_zrzut"
+    # DOPASOWANIE BEZ POTOKU (patrz komentarz przy pierwszym
+    # wystapieniu wyzej w pliku) - `printf | grep -q` pod pipefail potrafil
+    # odwrocic sie sam przy duzej tresci (SIGPIPE na `printf`, pipefail
+    # podnosi to do statusu potoku). Tu-string nie jest potokiem.
+    if ! grep -q '^POMIAR-' <<<"$wyjscie_zrzut"; then
+        if [ "$rc_zrzut_kanal" -ne 0 ]; then
+            # Ani jeden POMIAR-, kanal skonczyl niezerowo: kanal zrzutu nie
+            # doszedl do hosta - checkout SIE NIE ODBYWA, kod kanalu idzie na
+            # wierzch bez zmiany.
+            echo "[CZUBEK] kanal zdalny zrzutu nie doszedl (kod $rc_zrzut_kanal) - zrzut nie ruszyl, checkout SIE NIE ODBYWA"
+            exit "$rc_zrzut_kanal"
+        fi
+        # kanal skonczyl ZEREM, ale bez ani jednego POMIAR- - nie wiem,
+        # czy zrzut na hoscie w ogole ruszyl, czy polaczenie padlo tuz przed
+        # pierwszym echo. Zerowy kod kanalu NIE MOZE byc tu cicho odczytany
+        # jako sukces (kod 0 nie nalezy do rozlacznego zbioru 40-47 tego
+        # trybu) - blizniaczy przypadek w kroku checkout nizej ma kod 44,
+        # ten sam brak tutaj mial dawniej kod 0.
+        echo "[CZUBEK] stan NIEZNANY: kanal zdalny zrzutu zakonczyl sie zerem bez zadnego pomiaru - nie wiem, czy zrzut realnie ruszyl, checkout SIE NIE ODBYWA"
+        exit 47
+    fi
+    if [ -z "$(pomiar KONIEC-ZRZUT "$wyjscie_zrzut")" ] || [ "$(pomiar ZRZUT "$wyjscie_zrzut")" != "ok" ]; then
+        echo "[CZUBEK] NIEZALICZONY: zrzut PRZED checkoutem nie powiodl sie albo jego pomiar nie doszedl w calosci (POMIAR-ZRZUT=$(pomiar ZRZUT "$wyjscie_zrzut")) - checkout SIE NIE ODBYWA"
+        # Dowod, ze czubek na hoscie NIE ruszyl: DRUGI pomiar HEAD, obok
+        # pierwszego sprzed zrzutu - nie zdanie, tylko dwa wiersze z
+        # wartosciami. Checkout i tak nigdy nie zostal wywolany (kod nizej
+        # po prostu do niego nie dochodzi), wiec host zostaje taki, jaki byl,
+        # niezaleznie od tego, czy ten potwierdzajacy pomiar sam dojdzie.
+        echo "[CZUBEK] POMIAR-HEAD-PRZED-ZRZUTEM=$head_przed"
+        zmierz_stan_katalogow
+        rc_po_zrzut=$?
+        wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
+        if [ "$rc_po_zrzut" -eq 0 ] && [ -n "$(pomiar KONIEC "$POMIAR_WYJSCIE")" ]; then
+            head_po_zrzut="$(pomiar HEAD "$POMIAR_WYJSCIE")"
+            echo "[CZUBEK] POMIAR-HEAD-PO-NIEUDANYM-ZRZUCIE=$head_po_zrzut"
+        else
+            echo "[CZUBEK] POMIAR-HEAD-PO-NIEUDANYM-ZRZUCIE=niedostepny (kanal potwierdzenia nie doszedl w calosci) - checkout i tak nigdy nie zostal wywolany"
+        fi
+        exit 45
+    fi
+    echo "[CZUBEK] zrzut PRZED checkoutem zameldowal sukces - checkout dozwolony"
+
+    argi="$(printf '%q %q' "$REPO_HOSTA" "$SHA")"
+    wyjscie="$(ssh -o BatchMode=yes -o ServerAliveInterval=20 \
+        "$UZYTKOWNIK@$HOST" "bash -s -- czubek $argi" 2>&1 <<"ZDALNE"
+set -uo pipefail
+REPO_HOSTA="$2"; SHA="$3"
+
+# Checkout WYLACZNIE na juz-zmierzony, czysty commit. Zaden `reset --hard`:
+# gdyby ktos zmienil drzewo MIEDZY pomiarem a tym krokiem, `git checkout`
+# sam odmowi, zamiast po cichu nadpisac cudza zmiane.
+if git -C "$REPO_HOSTA" checkout --quiet "$SHA" 2>/dev/null; then
+    echo "POMIAR-CHECKOUT=ok"
+else
+    echo "POMIAR-CHECKOUT=nie-udalo-sie"
+fi
+echo "POMIAR-KONIEC-CZUBEK=0"
+ZDALNE
+)"
+    rc2=$?
+    printf '%s\n' "$wyjscie"
+    # dopasowanie bez potoku - patrz komentarz przy pierwszym
+    # wystapieniu wyzej w pliku.
+    if ! grep -q '^POMIAR-' <<<"$wyjscie"; then
+        if [ "$rc2" -ne 0 ]; then
+            # Ani jeden POMIAR-, kanal skonczyl niezerowo: kanal nie doszedl
+            # do hosta, kod kanalu idzie na wierzch bez zmiany - to co innego
+            # niz "host ruszyl i odmowil".
+            echo "[CZUBEK] kanal zdalny nie doszedl (kod $rc2) - krok checkout nie ruszyl"
+            exit "$rc2"
+        fi
+        # Kanal skonczyl ZEREM, ale bez ani jednego POMIAR-: nie wiem, czy
+        # checkout zaszedl, czy polaczenie padlo tuz przed pierwszym echo.
+        # Zerowy kod kanalu NIE MOZE byc tu cicho odczytany jako sukces.
+        echo "[CZUBEK] stan NIEZNANY: krok checkout zakonczyl sie bez zadnego pomiaru - nie wiem, czy checkout realnie zaszedl"
+        exit 44
+    fi
+    if [ -z "$(pomiar KONIEC-CZUBEK "$wyjscie")" ]; then
+        echo "[CZUBEK] stan NIEZNANY: krok checkout urwal sie - brak linii konca, choc checkout MOGL realnie zajsc"
+        exit 44
+    fi
+    if [ "$(pomiar CHECKOUT "$wyjscie")" != "ok" ]; then
+        echo "[CZUBEK] stan NIEZNANY: checkout na hoscie zameldowal niepowodzenie (mogl czesciowo zajsc)"
+        exit 44
+    fi
+    echo "[CZUBEK] checkout zameldowal sukces - mierze stan po zmianie"
+
+    zmierz_stan_katalogow
+    rc=$?
+    wypisz_surowy_pomiar "$POMIAR_WYJSCIE"
+    if [ "$rc" -ne 0 ]; then
+        echo "[CZUBEK] stan NIEZNANY: checkout byl potwierdzony, ale pomiar po zmianie nie doszedl (kod $rc)"
+        exit 44
+    fi
+    if [ -z "$(pomiar KONIEC "$POMIAR_WYJSCIE")" ]; then
+        echo "[CZUBEK] stan NIEZNANY: checkout byl potwierdzony, ale pomiar po zmianie urwal sie w polowie"
+        exit 44
+    fi
+    wczytaj_pomiar "$POMIAR_WYJSCIE"
+    head_po="$(pomiar HEAD "$POMIAR_WYJSCIE")"
+    echo "[CZUBEK] stan po: HEAD=$head_po"
+    if [ "$head_po" = "$SHA" ]; then
+        echo "[CZUBEK] ZALICZONY: czubek na hoscie ustawiony na zadany $SHA - stan docelowy osiagniety"
+        exit 41
+    fi
+    echo "[CZUBEK] stan NIEZNANY: checkout zameldowal sukces, ale pomiar po zmianie pokazuje inny czubek na hoscie ($head_po)"
+    exit 44
 }
 
 # --- krok 2: wdrozenie i kroki kontrolne -----------------------------------
@@ -706,6 +1179,14 @@ glowna() {
         zaloz_katalog_kopii
         echo "[KATALOG-KOPII] tryb --zaloz-katalog-kopii: warunkow wstepnych ani wdrozenia NIE uruchamiam"
         exit 0
+    fi
+    if [ "$TRYB" = "czubek" ]; then
+        ustaw_czubek
+        # Nieosiagalne: ustaw_czubek zawsze konczy WLASNYM kodem (40-44,
+        # 14/15, albo surowym kodem kanalu) - to nizej jest tylko siatka
+        # bezpieczenstwa, gdyby kiedys przybyla sciezka, ktora zapomni exit.
+        echo "[CZUBEK] tryb --ustaw-czubek: warunkow wstepnych ani wdrozenia NIE uruchamiam"
+        exit 1
     fi
     warunki_wstepne
     if [ "$TRYB" = "warunki" ]; then
