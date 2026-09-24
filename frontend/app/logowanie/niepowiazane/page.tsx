@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 import {
   checkAccountBinding,
   endSession,
@@ -151,12 +152,8 @@ export default function NiepowiazanePage() {
       : "Twoje konto w PsychON";
 
   return (
-    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
+    <PublicPageTemplate naglowek={{ title: naglowek }}>
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-h2 font-black text-ink">{naglowek}</h1>
-        </div>
-
         <Card>
           <div className="flex flex-col gap-4">
             <div aria-live="polite" className="flex flex-col gap-4">
@@ -213,6 +210,6 @@ export default function NiepowiazanePage() {
           </div>
         </Card>
       </div>
-    </main>
+    </PublicPageTemplate>
   );
 }

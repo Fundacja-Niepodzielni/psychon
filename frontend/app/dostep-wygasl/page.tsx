@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Card from "@/components/ui/Card";
-import Logo from "@/components/ui/Logo";
+import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 
 export const metadata: Metadata = {
   title: "Dostęp wygasł — Niepodzielni",
@@ -8,15 +8,11 @@ export const metadata: Metadata = {
 
 export default function AccessExpiredPage() {
   return (
-    <main id="tresc" className="flex min-h-screen flex-col items-center justify-center gap-6 bg-page p-6">
-      <Logo className="h-10 w-auto" />
+    <PublicPageTemplate naglowek={{ title: "Twój dostęp do platformy wygasł" }}>
       <Card className="w-full max-w-xl text-center">
         <p className="text-caption font-bold uppercase tracking-wide text-subtle">
           Konto nieaktywne
         </p>
-        <h1 className="mt-1 text-h3 font-bold text-ink">
-          Twój dostęp do platformy wygasł
-        </h1>
         <p className="mt-3 text-body text-muted">
           Sześciomiesięczny okres dostępu do programu dobiegł końca. Jeśli
           chcesz dokończyć program albo uważasz, że to pomyłka — napisz do nas,
@@ -32,6 +28,6 @@ export default function AccessExpiredPage() {
           </a>
         </p>
       </Card>
-    </main>
+    </PublicPageTemplate>
   );
 }

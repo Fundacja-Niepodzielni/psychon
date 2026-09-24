@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
+import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 import { ApiError, endSession, fetchWhoAmI, type WhoAmI } from "@/lib/api";
 
 type Usterka =
@@ -90,12 +91,8 @@ export default function AccountPage() {
   }
 
   return (
-    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
+    <PublicPageTemplate naglowek={{ title: "Twoje konto" }}>
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-h2 font-black text-ink">Twoje konto</h1>
-        </div>
-
         <Card>
           {loading && <LoadingState label="Wczytywanie…" />}
 
@@ -142,6 +139,6 @@ export default function AccountPage() {
           </Button>
         </Card>
       </div>
-    </main>
+    </PublicPageTemplate>
   );
 }
