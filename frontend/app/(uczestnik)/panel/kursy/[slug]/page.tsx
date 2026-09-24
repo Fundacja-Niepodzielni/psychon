@@ -7,6 +7,7 @@ import CourseLocked from "@/components/courses/CourseLocked";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { ApiError } from "@/lib/api";
 import {
   fetchCourse,
@@ -113,53 +114,76 @@ export default function CoursePage({
 
   if (screen.kind === "loading") {
     return (
-      <p role="status" className="text-body text-muted">
-        Ładowanie kursu…
-      </p>
+      <PageTemplate naglowek={{ title: "Kurs" }}>
+        <p role="status" className="text-body text-muted">
+          Ładowanie kursu…
+        </p>
+      </PageTemplate>
     );
   }
 
   if (screen.kind === "ready") {
-    return <CourseDetail course={screen.course} />;
+    return (
+      <PageTemplate
+        naglowek={{
+          title: screen.course.title,
+          breadcrumbs: (
+            <Link
+              href="/panel/kursy"
+              className="inline-flex min-h-11 items-center gap-2 self-start text-small font-medium text-muted transition-colors duration-200 hover:text-ink focus-visible:focus-ring"
+            >
+              <span aria-hidden="true">←</span> Wróć do listy kursów
+            </Link>
+          ),
+        }}
+      >
+        <CourseDetail course={screen.course} />
+      </PageTemplate>
+    );
   }
 
   if (screen.kind === "locked") {
     const required = screen.locked.requiredCourseId;
 
     return (
-      <CourseLocked
-        message={screen.locked.message}
-        missing={screen.locked.missing}
-        requiredCourse={catalogue.find((item) => item.id === required) ?? null}
-      />
+      <PageTemplate naglowek={{ title: "Kurs zablokowany" }}>
+        <CourseLocked
+          message={screen.locked.message}
+          missing={screen.locked.missing}
+          requiredCourse={catalogue.find((item) => item.id === required) ?? null}
+        />
+      </PageTemplate>
     );
   }
 
   if (screen.kind === "not_found") {
     return (
-      <Card className="flex max-w-2xl flex-col gap-4">
-        <h1 className="text-h3 font-black text-ink">Nie znaleziono kursu</h1>
-        <p className="text-body text-muted">
-          Ten kurs nie istnieje albo nie należy do Twojej ścieżki.
-        </p>
-        <Link
-          href="/panel/kursy"
-          className="inline-flex min-h-11 items-center justify-center self-start rounded-pill bg-primary px-6 py-2.5 text-body font-medium text-light transition-colors duration-200 hover:bg-ink focus-visible:focus-ring"
-        >
-          Wróć do listy kursów
-        </Link>
-      </Card>
+      <PageTemplate naglowek={{ title: "Nie znaleziono kursu" }}>
+        <Card className="flex max-w-2xl flex-col gap-4">
+          <p className="text-body text-muted">
+            Ten kurs nie istnieje albo nie należy do Twojej ścieżki.
+          </p>
+          <Link
+            href="/panel/kursy"
+            className="inline-flex min-h-11 items-center justify-center self-start rounded-pill bg-primary px-6 py-2.5 text-body font-medium text-light transition-colors duration-200 hover:bg-ink focus-visible:focus-ring"
+          >
+            Wróć do listy kursów
+          </Link>
+        </Card>
+      </PageTemplate>
     );
   }
 
   return (
-    <div className="flex flex-col items-start gap-3">
-      <Alert variant="error" title="Nie udało się wczytać kursu">
-        {screen.message}
-      </Alert>
-      <Button variant="secondary" onClick={retry}>
-        Spróbuj ponownie
-      </Button>
-    </div>
+    <PageTemplate naglowek={{ title: "Kurs" }}>
+      <div className="flex flex-col items-start gap-3">
+        <Alert variant="error" title="Nie udało się wczytać kursu">
+          {screen.message}
+        </Alert>
+        <Button variant="secondary" onClick={retry}>
+          Spróbuj ponownie
+        </Button>
+      </div>
+    </PageTemplate>
   );
 }

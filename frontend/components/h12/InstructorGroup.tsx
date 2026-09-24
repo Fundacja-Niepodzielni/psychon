@@ -10,6 +10,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import Select from "@/components/ui/Select";
 import Skeleton from "@/components/ui/Skeleton";
 import Table from "@/components/ui/Table";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, ApiError, createInstructorCase } from "@/lib/api";
 import type { Column } from "@/components/ui/Table";
 import type {
@@ -289,17 +290,18 @@ export default function InstructorGroup() {
 
   if (loading) {
     return (
-      <div role="status" aria-label="Wczytywanie grupy…">
-        <span className="sr-only">Wczytywanie grupy…</span>
-        <Skeleton lines={3} />
-      </div>
+      <PageTemplate naglowek={{ title: "Moja grupa" }}>
+        <div role="status" aria-label="Wczytywanie grupy…">
+          <span className="sr-only">Wczytywanie grupy…</span>
+          <Skeleton lines={3} />
+        </div>
+      </PageTemplate>
     );
   }
 
   if (loadError || group === null) {
     return (
-      <div className="flex flex-col gap-4">
-        <h1 className="text-h2 font-black text-ink">Moja grupa</h1>
+      <PageTemplate naglowek={{ title: "Moja grupa" }}>
         <Alert variant="error">{loadError ?? "Nie udało się wczytać grupy."}</Alert>
         <Button
           variant="secondary"
@@ -310,18 +312,17 @@ export default function InstructorGroup() {
         >
           Spróbuj ponownie
         </Button>
-      </div>
+      </PageTemplate>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-h2 font-black text-ink">Moja grupa</h1>
-        <p className="mt-2 text-body text-muted">
-          Sprawdzaj postępy uczestników i zarządzaj terminami superwizji.
-        </p>
-      </div>
+    <PageTemplate
+      naglowek={{
+        title: "Moja grupa",
+        description: "Sprawdzaj postępy uczestników i zarządzaj terminami superwizji.",
+      }}
+    >
       {success && <Alert variant="success">{success}</Alert>}
       {attendanceError && <Alert variant="error">{attendanceError}</Alert>}
 
@@ -530,6 +531,6 @@ export default function InstructorGroup() {
       </Card>
 
       <H07ReliabilitySlot />
-    </div>
+    </PageTemplate>
   );
 }

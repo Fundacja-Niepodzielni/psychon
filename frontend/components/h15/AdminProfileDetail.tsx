@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
+import PageTemplate from "@/components/templates/PageTemplate";
 import { api, downloadFile, ApiError } from "@/lib/api";
 import type { AdminPsychologistProfile, ProfileDocumentType } from "@/lib/h15/types";
 
@@ -97,56 +98,53 @@ export default function AdminProfileDetail({ id }: { id: number }) {
 
   if (loadError && loadErrorStatus === 403) {
     return (
-      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
-        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
+      <PageTemplate naglowek={{ title: "Wniosek o profil psychologa" }}>
         <ForbiddenState message="Nie masz uprawnień do wyświetlenia tego wniosku." />
-      </div>
+      </PageTemplate>
     );
   }
 
   if (loadError) {
     return (
-      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
-        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
+      <PageTemplate naglowek={{ title: "Wniosek o profil psychologa" }}>
         <ErrorState
-        message={loadError}
-        onRetry={() => {
-          setLoadError(null);
-          setLoadErrorStatus(undefined);
-          setReloadKey((value) => value + 1);
-        }}
-      />
-      </div>
+          message={loadError}
+          onRetry={() => {
+            setLoadError(null);
+            setLoadErrorStatus(undefined);
+            setReloadKey((value) => value + 1);
+          }}
+        />
+      </PageTemplate>
     );
   }
 
   if (!profile) {
     return (
-      <div className="mx-auto flex max-w-2xl flex-col gap-6 py-10">
-        <h1 className="text-h2 font-black text-ink">Wniosek o profil psychologa</h1>
+      <PageTemplate naglowek={{ title: "Wniosek o profil psychologa" }}>
         <LoadingState label="Wczytywanie wniosku…" />
-      </div>
+      </PageTemplate>
     );
   }
 
   const decidable = profile.status === "submitted";
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <div>
-        <Link href="/admin/profile" className="text-small text-primary hover:underline">
-          ← Wróć do kolejki
-        </Link>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-h2 font-black text-ink">
-          {profile.user.first_name} {profile.user.last_name}
-        </h1>
-        <Badge variant={profile.status === "submitted" ? "info" : "neutral"}>
-          {profile.status}
-        </Badge>
-      </div>
-
+    <PageTemplate
+      naglowek={{
+        title: `${profile.user.first_name} ${profile.user.last_name}`,
+        breadcrumbs: (
+          <Link href="/admin/profile" className="text-small text-primary hover:underline">
+            ← Wróć do kolejki
+          </Link>
+        ),
+        action: (
+          <Badge variant={profile.status === "submitted" ? "info" : "neutral"}>
+            {profile.status}
+          </Badge>
+        ),
+      }}
+    >
       <Card title="Dane wniosku">
         <dl className="flex flex-col gap-2 text-body text-ink">
           <div><dt className="inline text-muted">Specjalizacje: </dt><dd className="inline">{(profile.specializations ?? []).join(", ") || "—"}</dd></div>
@@ -200,6 +198,6 @@ export default function AdminProfileDetail({ id }: { id: number }) {
           </div>
         </Card>
       )}
-    </div>
+    </PageTemplate>
   );
 }

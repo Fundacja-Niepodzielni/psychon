@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import ErrorState from "@/components/molecules/ErrorState";
 import ForbiddenState from "@/components/molecules/ForbiddenState";
 import LoadingState from "@/components/molecules/LoadingState";
-import PageHeader from "@/components/molecules/PageHeader";
+import PageTemplate from "@/components/templates/PageTemplate";
 import OnboardingEditor from "@/components/onboarding/OnboardingEditor";
 import OnboardingView from "@/components/onboarding/OnboardingView";
 import type { Onboarding } from "@/components/onboarding/types";
@@ -66,12 +66,12 @@ export default function AdminOnboardingPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Ekran startowy"
-        description="Treść ekranu „Zacznij tutaj”, który uczestnicy widzą po zalogowaniu."
-      />
-
+    <PageTemplate
+      naglowek={{
+        title: "Ekran startowy",
+        description: "Treść ekranu „Zacznij tutaj”, który uczestnicy widzą po zalogowaniu.",
+      }}
+    >
       {loading && <LoadingState label="Wczytywanie ekranu startowego…" />}
       {!loading && loadError && loadErrorStatus === 403 && (
         <ForbiddenState message="Nie masz uprawnień do wyświetlenia tego ekranu." />
@@ -90,6 +90,6 @@ export default function AdminOnboardingPage() {
           </div>
         </>
       )}
-    </div>
+    </PageTemplate>
   );
 }
