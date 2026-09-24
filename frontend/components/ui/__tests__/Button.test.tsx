@@ -5,7 +5,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 
 /**
- * Uwaga werdyktu (mutacja nieuchwycona: prefiks pseudoklasy `focus-visible:`
+ * Uwaga (mutacja nieuchwycona: prefiks pseudoklasy `focus-visible:`
  * zamieniony na sam `focus:`). Test na tekście `globals.css` nie łapie tej
  * zmiany, bo mutacja dotyczy klasy użytej w atomie, nie tokenu w arkuszu —
  * sprawdzamy więc klasę faktycznie wyrenderowanego elementu (Z-9: pierścień
@@ -21,7 +21,7 @@ function classList(el: Element): string[] {
  * wygenerował martwej reguły w buildzie: skaner treści czyta surowy tekst
  * pliku i dla dosłownej nazwy klasy `focus` + dwukropek + `focus-ring`
  * generuje regułę CSS, mimo że żaden element jej nie używa (uwaga
- * werdyktu).
+ * dodatkowa).
  */
 const LEGACY_FOCUS_CLASS = ["focus", "focus-ring"].join(":");
 

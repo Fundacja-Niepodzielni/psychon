@@ -25,7 +25,7 @@ useDefault = true
 # zostanie zlapany, o ile nie ma akurat ksztaltu tych dwoch.
 #
 # Reszte pilnuje `.semgrep/ZRODLO.md`: sumy sha256 kazdego pliku. Podmiana tresci
-# zmienia sume, a odswiezenie migawki jest OSOBNA runda z przegladem roznicy -
+# zmienia sume, a odswiezenie migawki jest OSOBNYM krokiem z przegladem roznicy -
 # nie automatem i nie przy okazji.
 [[allowlists]]
 description = "Wzorce sekretow wewnatrz przypietych regul skanera statycznego"

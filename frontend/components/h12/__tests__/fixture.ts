@@ -8,7 +8,7 @@
  * paginuje, więc `meta` nigdy nie istnieje).
  *
  * Czym się odświeża: gdy zmieni się `toArray()` w zasobie albo koperta w
- * kontrolerze, przepisać ręcznie te dwa pliki (tylko do odczytu z roli TESTY)
+ * kontrolerze, przepisać ręcznie te dwa pliki (tylko do odczytu)
  * i zaktualizować fixture — najlepiej porównując `php artisan route:list` +
  * ręczne wywołanie endpointu albo test backendowy `AdminSupervisionControllerTest`,
  * jeśli istnieje.

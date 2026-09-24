@@ -28,7 +28,7 @@
 # inny ksztalt: <SHA commitu>:<sciezka>:<regula>:<linia>. Oba ksztalty musza lezec w jednym
 # pliku, bo oba biegi dostaja te sama sciezke --gitleaks-ignore-path.
 #
-# 16.09.2026, runda odbiorcza historii galezi sprint-2 (189 commitow, 5,07 MB).
+# 16.09.2026, skan historii galezi (189 commitow, 5,07 MB).
 # Falszywy alarm: regula generic-api-key, entropia 3,578. Linia 409 w TAMTYM commicie to
 # naglowek `echo` z nazwa zmiennej srodowiskowej, nie sekret - tresc sprawdzona w tamtym
 # commicie, nie w biezacym drzewie.

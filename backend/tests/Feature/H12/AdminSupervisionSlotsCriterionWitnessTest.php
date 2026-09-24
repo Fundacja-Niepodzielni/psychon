@@ -10,7 +10,7 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * Świadek pisany z kryterium pozycji 6 („Potwierdzenie odbycia widoczne w administracji"),
+ * Świadek pisany z kryterium („Potwierdzenie odbycia widoczne w administracji"),
  * NIE z odczytu `AdminSupervisionSlotsTest.php` — ten plik nie był otwarty przy pisaniu
  * tego świadka. Kryterium czytane z trasy (`routes/api/h12.php`), kontrolera
  * (`AdminSupervisionController`) i zasobu (`InstructorSlotResource`), nie z cudzego testu.

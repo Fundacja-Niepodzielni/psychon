@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * H09 · brak regresji P0 — zmiana przypisań musi poprawnie zasilać
+ * Brak regresji krytycznej — zmiana przypisań musi poprawnie zasilać
  * `GET /courses/{slug}` → `data.instructor` (kontrakt §2 „Kursy"), bez zmiany
  * kształtu pozostałych pól odpowiedzi.
  */
