@@ -491,6 +491,20 @@ if [ "$PROBA_SBOM_BIEGLA" = "tak" ]; then
         tail -20 "$KATALOG_BIEGU"/bramka-test-sbom.log | sed 's/^/  ! /'
     elif [ "$KOD_TEST_SBOM" -eq 3 ]; then
         echo "SBOM: test wlasnej logiki NIE ZMIERZYL czesci koncowej (EXIT=3, brak docker na TEJ maszynie testujacej) - to NIE jest czerwien, ale licznikom ponizej ufam tylko o tyle, o ile sam bieg generatora/skanera nizej naprawde ma docker" >&2
+    elif [ "$KOD_TEST_SBOM" -ne 0 ]; then
+        # Kod SPOZA {0,1,3}: zestaw prob wypisuje 0/1/3 SAM, swoim koncowym
+        # `exit` - kazda inna liczba znaczy, ze do tego `exit` w ogole nie
+        # doszedl (blad skladni w pliku zestawu = 2, brak pliku zestawu =
+        # 127, sygnal = 128+N). To jest AWARIA PRZYRZADU, nie wynik pomiaru:
+        # krok 3g czerwieni sie kodem 4 (patrz sbom_kod_kroku), a znacznik
+        # dobowy i skrot NIE powstaja - zestaw, ktory nie wystartowal, nie
+        # ma prawa ani wyciszyc wlasnego uruchomienia do konca doby, ani
+        # zostawic sladu mowiacego, ze przyrzad zostal udowodniony.
+        # Dziennik dostaje LICZBE (jaki to byl kod) i SCIEZKE LOGU, zeby
+        # "nie wystartowal" dalo sie odroznic od "zmierzyl i jest czerwono"
+        # bez wchodzenia na hosta.
+        echo "SBOM: zestaw prob wlasnej logiki NIE WYSTARTOWAL - kod wyjscia $KOD_TEST_SBOM jest SPOZA {0,1,3} (0 zielono, 1 czerwono, 3 niezmierzone), log $KATALOG_BIEGU/bramka-test-sbom.log - to AWARIA PRZYRZADU, krok 3g WCHODZI z nia do kodu wyjscia bramki, znacznik doby ani skrot NIE sa zapisywane" >&2
+        tail -20 "$KATALOG_BIEGU"/bramka-test-sbom.log | sed 's/^/  ! /'
     else
         # Znacznik i skrot ida WYLACZNIE po udanym (zielonym) biegu - czerwony
         # albo niezmierzony bieg ma dostac szanse zmierzyc sie ponownie na
