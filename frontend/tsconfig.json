@@ -22,6 +22,9 @@
       "@/*": ["./*"]
     }
   },
+  // `**/*.ts` obejmuje też `e2e/` i `playwright.config.ts` — zostają w zakresie
+  // kontroli typów celowo: ich zależności (`@playwright/test`, `@axe-core/playwright`)
+  // są w `devDependencies`, więc `npm ci` je instaluje i nic nie wymaga wyłączenia.
   "include": [
     "next-env.d.ts",
     "**/*.ts",
