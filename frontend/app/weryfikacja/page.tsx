@@ -9,6 +9,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ErrorState from "@/components/molecules/ErrorState";
 import Input from "@/components/ui/Input";
+import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 import { api, ApiError } from "@/lib/api";
 
 export default function VerificationSearchPage() {
@@ -21,18 +22,22 @@ export default function VerificationSearchPage() {
 
   async function wyszukaj(query: string) {
     setLoading(true);
-    setResult(null);
     setNotFound(false);
     setAwaria(false);
     setOstatnieZapytanie(query);
 
     try {
-      setResult(await api<VerifyResult>(`/verify/${query}`));
+      const wynik = await api<VerifyResult>(`/verify/${query}`);
+      setResult(wynik);
     } catch (err) {
-      // 404 (numer nieznany/w złym formacie) — komunikat „nie znaleziono";
-      // każda inna odpowiedź (5xx, sieć) — osobny komunikat awarii z ponowieniem.
+      // 404 (numer nieznany/w złym formacie) — to rozstrzygnięcie samo w
+      // sobie, stary wynik przestaje być aktualną odpowiedzią na pytanie
+      // użytkownika. Każda inna odpowiedź (5xx, sieć) to awaria połączenia,
+      // nie odpowiedź na pytanie — poprzednio wczytany wynik zostaje na
+      // ekranie, komunikat awarii idzie obok niego, nie zamiast niego.
       if (err instanceof ApiError && err.status === 404) {
         setNotFound(true);
+        setResult(null);
       } else {
         setAwaria(true);
       }
@@ -49,45 +54,39 @@ export default function VerificationSearchPage() {
   }
 
   return (
-    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
-      <div className="w-full max-w-lg">
-        <div className="mb-6 text-center">
-          <h1 className="text-h2 font-black text-ink">Weryfikacja certyfikatu</h1>
-          <p className="mt-1 text-small text-subtle">
-            Wpisz numer certyfikatu, np. NP/2026/001
-          </p>
-        </div>
+    <PublicPageTemplate
+      naglowek={{
+        title: "Weryfikacja certyfikatu",
+        description: "Wpisz numer certyfikatu, np. NP/2026/001",
+      }}
+    >
+      <Card>
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+          <Input
+            label="Numer certyfikatu"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="NP/2026/001"
+            required
+          />
+          <Button type="submit" loading={loading} className="w-full">
+            Sprawdź
+          </Button>
+        </form>
+      </Card>
 
-        <Card>
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-            <Input
-              label="Numer certyfikatu"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              placeholder="NP/2026/001"
-              required
-            />
-            <Button type="submit" loading={loading} className="w-full">
-              Sprawdź
-            </Button>
-          </form>
-        </Card>
-
-        <div className="mt-4">
-          {result && <VerificationCard result={result} />}
-          {notFound && (
-            <Alert variant="error">
-              Nie znaleziono certyfikatu o podanym numerze.
-            </Alert>
-          )}
-          {awaria && (
-            <ErrorState
-              message="Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę."
-              onRetry={() => void wyszukaj(ostatnieZapytanie)}
-            />
-          )}
-        </div>
-      </div>
-    </main>
+      {result && <VerificationCard result={result} />}
+      {notFound && (
+        <Alert variant="error">
+          Nie znaleziono certyfikatu o podanym numerze.
+        </Alert>
+      )}
+      {awaria && (
+        <ErrorState
+          message="Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę."
+          onRetry={() => void wyszukaj(ostatnieZapytanie)}
+        />
+      )}
+    </PublicPageTemplate>
   );
 }
