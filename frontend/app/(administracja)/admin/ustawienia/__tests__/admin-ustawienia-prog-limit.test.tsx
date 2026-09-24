@@ -34,6 +34,22 @@ const { default: EditionSettingsPage } = await import(
   "@/app/(administracja)/admin/ustawienia/page"
 );
 
+/**
+ * Komunikat błędu pola jest powiązany z kontrolką przez `aria-describedby`
+ * (atom `Field`, C2 §3) — czyta go program czytający ekran razem z polem,
+ * niezależnie od tego, gdzie fizycznie wyląduje w drzewie. Ta funkcja czyta
+ * DOKŁADNIE tamto powiązanie: bierze `aria-describedby` z kontrolki i zwraca
+ * treść węzła o tym `id`. Sprawdzenie „komunikat gdziekolwiek w dokumencie"
+ * (`findByText`) przechodzi też wtedy, gdy komunikat wyląduje przy złym polu
+ * — to jest luka, którą ta funkcja zamyka.
+ */
+function komunikatPrzyPolu(pole: HTMLElement): string | null {
+  const describedBy = pole.getAttribute("aria-describedby");
+  if (!describedBy) return null;
+  const id = describedBy.split(" ")[0];
+  return document.getElementById(id)?.textContent ?? null;
+}
+
 const edycja = {
   id: 1,
   name: "Edycja 2026",
@@ -164,13 +180,19 @@ describe("EditionSettingsPage — próg zaliczenia testu i limit podejść", () 
       body: expect.objectContaining({ test_pass_threshold: 150 }),
     });
 
-    expect(
-      await screen.findByText("Próg zaliczenia testu musi być liczbą od 0 do 100."),
-    ).toBeInTheDocument();
+    // Komunikat musi wisieć PRZY polu progu (aria-describedby), nie tylko
+    // gdziekolwiek w dokumencie — inaczej odpowiedź przypięta do złego pola
+    // (np. do limitu) przeszłaby ten sam test.
+    await waitFor(() =>
+      expect(komunikatPrzyPolu(prog)).toBe(
+        "Próg zaliczenia testu musi być liczbą od 0 do 100.",
+      ),
+    );
     expect(screen.queryByText("Zapisano zmiany.")).not.toBeInTheDocument();
 
     const limit = screen.getByLabelText("Limit podejść do testu") as HTMLInputElement;
     expect(limit.value).toBe("3");
+    expect(komunikatPrzyPolu(limit)).toBeNull();
   });
 
   it("negatywna: limit podejść poza zakresem (422 z backendu) pokazuje błąd przy polu limitu, nie zapisuje wartości", async () => {
@@ -197,12 +219,17 @@ describe("EditionSettingsPage — próg zaliczenia testu i limit podejść", () 
       body: expect.objectContaining({ test_attempts_limit: 0 }),
     });
 
-    expect(
-      await screen.findByText("Limit podejść do testu musi być liczbą co najmniej 1."),
-    ).toBeInTheDocument();
+    // Komunikat musi wisieć PRZY polu limitu (aria-describedby), nie tylko
+    // gdziekolwiek w dokumencie.
+    await waitFor(() =>
+      expect(komunikatPrzyPolu(limit)).toBe(
+        "Limit podejść do testu musi być liczbą co najmniej 1.",
+      ),
+    );
     expect(screen.queryByText("Zapisano zmiany.")).not.toBeInTheDocument();
 
     const prog = screen.getByLabelText("Próg zaliczenia testu (%)") as HTMLInputElement;
     expect(prog.value).toBe("70");
+    expect(komunikatPrzyPolu(prog)).toBeNull();
   });
 });
