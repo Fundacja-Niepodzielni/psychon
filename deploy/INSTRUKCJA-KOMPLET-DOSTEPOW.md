@@ -120,12 +120,22 @@ Poniżej — pozycje dostępu. Każda ma odpowiedź na cztery pytania: **co** to
 ## 5. Plik środowiskowy aplikacji na hoście
 
 - **Co**: plik konfiguracyjny aplikacji przechowywany **poza repozytorium**, prawa
-  dostępu ograniczone do właściciela (600). Wzorzec pól (bez wartości) w
-  `deploy/.env.example`. Zawiera m.in. pola: `APP_KEY`, `DB_DATABASE`,
-  `DB_USERNAME`, `DB_PASSWORD`, `AUTH_KEYCLOAK_ISSUER`, `AUTH_SECRET`,
-  `BASIC_AUTH_USER`, `BASIC_AUTH_HASH`, `BUNNY_API_KEY`, `BUNNY_CDN_HOSTNAME`,
-  `BUNNY_LIBRARY_ID`, `BUNNY_TOKEN_SECURITY_KEY`, `STAGING_DOMAIN` i inne pola
-  portów/adresów.
+  dostępu ograniczone do właściciela (600). Wzorce pól (bez wartości) leżą w
+  dwóch osobnych plikach szablonowych, bo aplikacja ma dwie części (backend i
+  środowisko odbiorcze), każda z własnym `.env`:
+  - `deploy/.env.example` — pola: `APP_KEY`, `DB_DATABASE`, `DB_USERNAME`,
+    `DB_PASSWORD`, `AUTH_KEYCLOAK_ISSUER`, `AUTH_SECRET`, `STAGING_DOMAIN`
+    i inne pola portów/adresów.
+  - `backend/.env.example` — pola: `BUNNY_API_KEY`, `BUNNY_CDN_HOSTNAME`,
+    `BUNNY_LIBRARY_ID`, `BUNNY_TOKEN_SECURITY_KEY`.
+  - `BASIC_AUTH_USER` i `BASIC_AUTH_HASH` **nie mają wzorca w żadnym pliku
+    `.env.example`** — są wymagane wprost w `docker-compose.staging.yml`
+    (jako `${BASIC_AUTH_USER:?ustaw w .env}` / `${BASIC_AUTH_HASH:?ustaw w
+    .env}`) i odczytywane przez `staging/Caddyfile`. Nie przepisuje się tu
+    starej wartości — po przejęciu odbierający generuje własną parę: nazwę
+    użytkownika dowolnie, a hash poleceniem `caddy hash-password` (Caddy —
+    serwer wejściowy z punktu 7/8), i wpisuje obie wartości bezpośrednio do
+    pliku środowiskowego środowiska odbiorczego.
 - **Gdzie**: host produkcyjny i host środowiska odbiorczego, ścieżka poza
   repozytorium (skrypt `deploy/psychon-dev/deploy.sh` domyślnie oczekuje
   `/opt/psychon/.env`, ale to tylko wartość domyślna — właściwa ścieżka na
