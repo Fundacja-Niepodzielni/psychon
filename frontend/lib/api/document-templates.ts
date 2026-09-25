@@ -16,19 +16,24 @@ export interface DocumentTemplateAuthor {
   name: string;
 }
 
+/**
+ * `updated_by` dopuszcza brak (`null`): wzór, którego nikt jeszcze nie
+ * edytował (seed bazy), naprawdę nie ma osoby edytującej — to stan
+ * prawdziwy, nie błąd danych. Ekran ma to obsłużyć.
+ */
 export interface DocumentTemplate {
   type: DocumentTemplateType;
   content: string;
   version: number;
   updated_at: string;
-  updated_by: DocumentTemplateAuthor;
+  updated_by: DocumentTemplateAuthor | null;
 }
 
 /** Jeden wpis historii wersji — bez treści (sam odczyt, lista dat i osób). */
 export interface DocumentTemplateVersion {
   version: number;
   updated_at: string;
-  updated_by: DocumentTemplateAuthor;
+  updated_by: DocumentTemplateAuthor | null;
 }
 
 export function fetchDocumentTemplate(type: DocumentTemplateType): Promise<DocumentTemplate> {
