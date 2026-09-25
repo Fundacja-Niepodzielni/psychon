@@ -40,6 +40,14 @@ export interface ChatMessage {
   created_at: string | null;
 }
 
+/** Odpowiada `SupervisorAssignmentResource` (zaplecze: `backend/app/Http/Resources/H12/SupervisorAssignmentResource.php`). */
+export interface SupervisorAssignment {
+  volunteer_id: number;
+  supervisor_id: number;
+  assigned_at: string | null;
+  unassigned_at: string | null;
+}
+
 /** Wątki grupowe widoczne prowadzącemu — w praktyce dokładnie jeden (własna grupa). */
 export async function fetchInstructorGroupThreads(): Promise<ChatThread[]> {
   const { data } = await apiPaged<ChatThread>("/threads");
@@ -61,16 +69,18 @@ export function createInstructorGroupThread(): Promise<ChatThread> {
  * właścicielem tego wątku (`POST /threads/{id}/members/{user}`); inna rola
  * albo inny prowadzący dostaje 403.
  */
-export function addThreadMember(threadId: number, userId: number): Promise<void> {
-  return api<void>(`/threads/${threadId}/members/${userId}`, { method: "POST" });
+export function addThreadMember(threadId: number, userId: number): Promise<SupervisorAssignment> {
+  return api<SupervisorAssignment>(`/threads/${threadId}/members/${userId}`, { method: "POST" });
 }
 
 /**
  * Usunięcie osoby ze składu wątku grupowego — te same reguły dostępu co
- * dodanie (`DELETE /threads/{id}/members/{user}`).
+ * dodanie (`DELETE /threads/{id}/members/{user}`). Zaplecze zwraca kopertę
+ * `{data: null}` (`ThreadMemberController::destroy`) — `api<T>()` zdejmuje
+ * kopertę i oddaje samo `null`.
  */
-export function removeThreadMember(threadId: number, userId: number): Promise<void> {
-  return api<void>(`/threads/${threadId}/members/${userId}`, { method: "DELETE" });
+export function removeThreadMember(threadId: number, userId: number): Promise<null> {
+  return api<null>(`/threads/${threadId}/members/${userId}`, { method: "DELETE" });
 }
 
 /** Wiadomości jednego wątku, stronicowane (kontroler: `routes/api/chat.php:29`). */

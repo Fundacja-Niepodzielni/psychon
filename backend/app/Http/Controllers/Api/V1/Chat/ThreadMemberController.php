@@ -30,6 +30,13 @@ use Illuminate\Http\Request;
  * 403 zanim dotrą tutaj. Własność TEGO wątku (czy wywołujący jest jego
  * `supervisor_id`) jest sprawdzana tutaj — inny prowadzący, spoza tej
  * konkretnej grupy, też dostaje 403.
+ *
+ * Dodanie osoby (`store`) woła `SupervisorAssignmentService::assign()` z
+ * `requireNoConflict: true` — wolontariusz z aktywnym przypisaniem do
+ * INNEGO prowadzącego nie zostaje cicho przejęty (skład tamtego
+ * prowadzącego by się skurczył bez jego wiedzy); zamiast tego zwracana
+ * jest odmowa 409. Wolontariusz bez przypisania albo już przypisany do
+ * TEGO prowadzącego przechodzi normalnie.
  */
 class ThreadMemberController extends Controller
 {
@@ -41,7 +48,12 @@ class ThreadMemberController extends Controller
     ): JsonResponse {
         $threadModel = $this->ownGroupThread($request, $thread);
 
-        $assignment = $service->assign($request->user(), $user, (int) $threadModel->supervisor_id);
+        $assignment = $service->assign(
+            $request->user(),
+            $user,
+            (int) $threadModel->supervisor_id,
+            requireNoConflict: true,
+        );
 
         $volunteer = User::query()->find($user);
         if ($volunteer !== null) {
