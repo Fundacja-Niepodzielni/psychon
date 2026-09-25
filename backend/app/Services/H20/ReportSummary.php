@@ -65,7 +65,7 @@ final class ReportSummary
      *     summary: array{
      *         admitted: int, active: int, completed: int,
      *         hours_accepted_total: string, hours_accepted_average: string,
-     *         consultations_total: int, certificates_issued: int, tests_passed: int,
+     *         consultations_total: int, certificates_issued: int, people_with_passed_test: int,
      *     },
      *     people: list<array{
      *         id: int, first_name: string, last_name: string, role: string,
@@ -83,9 +83,17 @@ final class ReportSummary
         $consultationsTotal = (int) self::acceptedEntries($from, $to)->sum('consultations_count');
         $active = $dashboard['counters']['participants'];
 
-        // Jedno źródło (kryterium ★1): `summary.tests_passed` liczony z TEJ
-        // SAMEJ kolekcji `people`, którą odpowiedź i tak zwraca — nie osobnym
-        // zapytaniem po `ProgressAggregator::passedTestsCount()` drugi raz.
+        // Dwie RÓŻNE wielkości, dwie różne nazwy (naprawa rozjazdu: wcześniej
+        // obie nosiły nazwę `tests_passed`, mimo że liczą co innego — osoby
+        // kontra testy — i na seedzie demo dawały różne liczby, 2 i 4).
+        // `summary.people_with_passed_test` liczy OSOBY z co najmniej jednym
+        // zaliczonym testem, z TEJ SAMEJ kolekcji `people`, którą odpowiedź i
+        // tak zwraca (kryterium ★1) — nie osobnym zapytaniem po
+        // `ProgressAggregator::passedTestsCount()` drugi raz.
+        // `people[].tests_passed` (niżej, `people()`) to LICZBA TESTÓW danej
+        // osoby — osobna wielkość, patrz próba
+        // `ReportTest::test_report_summary_people_with_passed_test_is_distinct_from_the_row_sum_of_tests_passed`,
+        // która pilnuje, że ktoś znowu nie zlepi tych dwóch liczb w jedną.
         // `tests_passed` w wierszu osoby nie zależy od `$from`/`$to` (patrz
         // `people()` niżej), więc to podliczenie jest poprawne niezależnie
         // od zakresu dat raportu.
@@ -102,7 +110,7 @@ final class ReportSummary
                 ),
                 'consultations_total' => $consultationsTotal,
                 'certificates_issued' => $dashboard['counters']['certificates'],
-                'tests_passed' => count(array_filter($people, static fn (array $row): bool => $row['tests_passed'] > 0)),
+                'people_with_passed_test' => count(array_filter($people, static fn (array $row): bool => $row['tests_passed'] > 0)),
             ],
             'people' => $people,
         ];
@@ -110,10 +118,8 @@ final class ReportSummary
 
     /**
      * Raport zamknięcia wskazanej edycji (kryterium ★2: „raport zamknięcia
-     * edycji" jako osobne działanie) — kształt dopasowany do kontraktu pary
-     * frontowej (`frontend/lib/api/raport.ts`, PR #30, sekcja
-     * `ClosingReportData`), węższy niż koperta `build()`: `edition` (z
-     * `EditionResource`, tylko pola potrzebne frontowi), `summary` liczone
+     * edycji" jako osobne działanie), węższy niż koperta `build()`: `edition`
+     * (z `EditionResource`, tylko pola potrzebne frontowi), `summary` liczone
      * z tej samej listy `people` co odpowiedź (kryterium ★1 — jedno źródło:
      * `total`/`certified`/`not_certified` to nie osobne zapytania, tylko
      * podliczenie kolekcji poniżej), `people` zawężone do `edition_id` przez
@@ -122,6 +128,16 @@ final class ReportSummary
      * etap i certyfikat, nie dziennik stażu). `$from`/`$to` świadomie
      * pominięte: „zamknięcie" to stan na koniec edycji, nie wycinek
      * dziennika.
+     *
+     * UWAGA (poprawka po odbiorze PR #34): realny kontrakt frontu to
+     * `frontend/lib/api/h20.ts` — `frontend/lib/api/raport.ts` i typ
+     * `ClosingReportData`, na które wcześniej wskazywał ten komentarz, NIE
+     * ISTNIEJĄ ani na tym czubku, ani na `sprint-2`. `h20.ts` dziś w ogóle
+     * nie deklaruje typu dla odpowiedzi zamknięcia edycji, a `ReportPersonRow`
+     * z tego pliku nie ma pól `status` ani `tests_passed` — kształt `closing()`
+     * poniżej jest więc zaprojektowany pod kontrakt, którego jeszcze nie ma
+     * po stronie frontu (opis PR wypisuje to wprost, nie dodaję tu plików
+     * frontu — poza zakresem tej poprawki).
      *
      * @return array{
      *     edition: array{id: int, name: string, ends_at: string|null},
@@ -245,10 +261,11 @@ final class ReportSummary
                     // (kryterium ★1) — `ProgressAggregator::passedTestsCount()`,
                     // to samo źródło co `passed_tests_count` karty warunków
                     // certyfikatu (`Support/H13/CertificateConditions.php:31,115`).
-                    // Nazwa pola `tests_passed` (nie `passed_tests_count`)
-                    // dopasowana do kontraktu pary frontowej (PR #30,
-                    // `frontend/lib/api/raport.ts`) — patrz opis PR, rozjazd
-                    // nazw wypisany wytłuszczeniem.
+                    // Nazwa pola `tests_passed` (nie `passed_tests_count`) —
+                    // decyzja backendu, NIE dopasowanie do frontu: realny
+                    // kontrakt (`frontend/lib/api/h20.ts`, `ReportPersonRow`)
+                    // dziś NIE MA tego pola w ogóle (ani `status` — patrz opis
+                    // PR, sekcja o polach bez odpowiednika po stronie frontu).
                     'tests_passed' => ProgressAggregator::passedTestsCount($user),
                 ];
             })
