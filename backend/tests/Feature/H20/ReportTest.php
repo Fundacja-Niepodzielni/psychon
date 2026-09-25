@@ -11,6 +11,7 @@ use App\Models\TestAttempt;
 use App\Models\User;
 use App\Models\WorkshopCompletion;
 use App\Services\H19\DashboardSummary;
+use App\Support\ProgressAggregator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\Concerns\ActsAsRole;
@@ -68,6 +69,78 @@ class ReportTest extends TestCase
         $this->assertSame('41.5', $martaRow['hours_accepted']);
         $this->assertSame(37, $martaRow['consultations']);
         $this->assertFalse($martaRow['certificate_issued']);
+    }
+
+    /**
+     * Kryterium ★1, druga połowa: zaliczone testy jako pole ODDZIELNE od
+     * `stage`/`stage_label`, nie doklejone do etapu. Wartości z
+     * `DemoSeeder::seedMartaProgress/seedOlaProgress/seedFilipProgress`:
+     * Marta — test 1 zaliczony (90%), test 2 nie (70%) → 1; Ola — testy
+     * 1-3 zaliczone → 3; Filip — zero prób → 0. Trzy różne wartości, więc
+     * próba nie przechodzi na stałej "dowolna liczba".
+     */
+    public function test_report_shows_passed_tests_count_as_a_field_separate_from_stage(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $response = $this->getJson('/api/v1/admin/report');
+        $response->assertOk();
+
+        $people = collect($response->json('data.people'));
+        $marta = $people->firstWhere('id', User::where('email', 'marta@demo.pl')->firstOrFail()->id);
+        $ola = $people->firstWhere('id', User::where('email', 'ola@demo.pl')->firstOrFail()->id);
+        $filip = $people->firstWhere('id', User::where('email', 'filip@demo.pl')->firstOrFail()->id);
+
+        $this->assertArrayHasKey('passed_tests_count', $marta);
+        $this->assertSame(1, $marta['passed_tests_count']);
+        $this->assertSame(3, $ola['passed_tests_count']);
+        $this->assertSame(0, $filip['passed_tests_count']);
+
+        // Pole odrębne od etapu, nie od niego wyprowadzone: Ola ma etap
+        // 'certyfikat' (10/10 ukończonych kursów — `courses_done` w
+        // `ProgressAggregator::for()`), ale `passed_tests_count` = 3, nie
+        // 10. Gdyby pole było doklejone do liczby ukończonych kursów
+        // (a nie do odrębnego `ProgressAggregator::passedTestsCount()`),
+        // te dwie liczby wyszłyby równe.
+        $this->assertSame('certyfikat', $ola['stage']);
+        $this->assertNotSame(
+            ProgressAggregator::for(User::where('email', 'ola@demo.pl')->firstOrFail())['courses_done'],
+            $ola['passed_tests_count'],
+        );
+    }
+
+    /**
+     * Kryterium ★2: alias trasy z kontraktu API (`/admin/reports`, liczba
+     * mnoga) obok istniejącej `/admin/report` — ta sama koperta danych.
+     */
+    public function test_reports_alias_route_returns_the_same_payload_as_the_existing_route(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $singular = $this->getJson('/api/v1/admin/report')->assertOk()->json('data');
+        $plural = $this->getJson('/api/v1/admin/reports')->assertOk()->json('data');
+
+        $this->assertSame($singular, $plural);
+    }
+
+    /**
+     * Kryterium ★3 „jedno źródło liczb": ta sama osoba, ta sama liczba
+     * godzin zaakceptowanego stażu na raporcie (`ReportSummary::people()`)
+     * i na karcie osoby (`AdminUserCardResource`, H18, `ProgressAggregator::for()`)
+     * — dwa NIEZALEŻNE zapytania, wartość porównana na żywo, nie ze stałej.
+     */
+    public function test_report_numbers_match_the_admin_user_card_for_the_same_person(): void
+    {
+        $this->actingAsRole('super_admin');
+        $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
+
+        $reportRow = collect($this->getJson('/api/v1/admin/report')->assertOk()->json('data.people'))
+            ->firstWhere('id', $marta->id);
+
+        $card = $this->getJson("/api/v1/admin/users/{$marta->id}")->assertOk()->json('data.progress');
+
+        $this->assertNotNull($reportRow);
+        $this->assertSame($card['hours_accepted'], $reportRow['hours_accepted']);
     }
 
     /**
