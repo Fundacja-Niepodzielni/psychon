@@ -110,14 +110,14 @@ class ReportTest extends TestCase
     }
 
     /**
-     * `summary.tests_passed` — kryterium ★1 (jedno źródło): podliczenie
-     * TEJ SAMEJ listy `people`, którą odpowiedź i tak zwraca (patrz
-     * `ReportSummary::build()`), nie osobne zapytanie. Filip ma zero
+     * `summary.people_with_passed_test` — kryterium ★1 (jedno źródło):
+     * podliczenie TEJ SAMEJ listy `people`, którą odpowiedź i tak zwraca
+     * (patrz `ReportSummary::build()`), nie osobne zapytanie. Filip ma zero
      * zaliczonych testów, Marta i Ola co najmniej jeden — licznik musi więc
      * być mniejszy niż liczba wszystkich osób w zestawieniu, nie równy jej
      * (kontrola przeciw stałej "wszyscy" albo "nikt").
      */
-    public function test_report_summary_tests_passed_counts_people_with_at_least_one_passed_test(): void
+    public function test_report_summary_people_with_passed_test_counts_people_with_at_least_one_passed_test(): void
     {
         $this->actingAsRole('super_admin');
 
@@ -129,7 +129,41 @@ class ReportTest extends TestCase
 
         $this->assertGreaterThan(0, $expected);
         $this->assertLessThan($people->count(), $expected);
-        $response->assertJsonPath('data.summary.tests_passed', $expected);
+        $response->assertJsonPath('data.summary.people_with_passed_test', $expected);
+    }
+
+    /**
+     * Poprawka po odbiorze PR #34, kryterium ★1: `summary.people_with_passed_test`
+     * (LICZBA OSÓB z co najmniej jednym zaliczonym testem) i
+     * `people[].tests_passed` (LICZBA TESTÓW danej osoby) to DWIE RÓŻNE
+     * wielkości — wcześniej obie nosiły tę samą nazwę `tests_passed` w
+     * odpowiedzi, mimo że liczyły co innego. Na bazowym seedzie (dokładnie
+     * trzy osoby volunteer/student: Marta=1, Ola=3, Filip=0 zaliczonych
+     * testów, `DemoSeeder::seedMartaProgress/seedOlaProgress/seedFilipProgress`)
+     * podsumowanie pokazuje 2 (Marta i Ola mają >0), a suma pól
+     * `tests_passed` z wierszy to 4 (1+3+0) — inna liczba. Próba pilnuje
+     * DOKŁADNIE tego rozjazdu: mutacja, która policzy podsumowanie jako sumę
+     * wierszy zamiast jako liczbę osób, ma tu skończyć czerwono.
+     */
+    public function test_report_summary_people_with_passed_test_is_distinct_from_the_row_sum_of_tests_passed(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $response = $this->getJson('/api/v1/admin/report');
+        $response->assertOk();
+
+        $people = collect($response->json('data.people'));
+        $rowSum = $people->sum('tests_passed');
+        $summaryPeopleCount = $response->json('data.summary.people_with_passed_test');
+
+        $this->assertSame(3, $people->count(), 'Seed bazowy ma dokładnie trzy osoby volunteer/student (Marta/Ola/Filip).');
+        $this->assertSame(4, $rowSum, 'Suma pól tests_passed z wierszy (Marta 1 + Ola 3 + Filip 0).');
+        $this->assertSame(2, $summaryPeopleCount, 'Liczba OSÓB z co najmniej jednym zaliczonym testem (Marta, Ola).');
+        $this->assertNotSame(
+            $rowSum,
+            $summaryPeopleCount,
+            'summary.people_with_passed_test i suma people[].tests_passed to dwie różne wielkości, nie ta sama liczba pod dwiema nazwami.',
+        );
     }
 
     /**
@@ -337,6 +371,61 @@ class ReportTest extends TestCase
         $this->assertNotNull($martaRow, 'Brak Marty w zestawieniu imiennym.');
         $this->assertSame('0', $martaRow['hours_accepted']);
         $this->assertSame(0, $martaRow['consultations']);
+    }
+
+    /**
+     * Poprawka po odbiorze PR #34: górny brzeg zakresu dat (`whereDate('date',
+     * '<=', $to)`) NIE był strzeżony przez żadną z trzech dotychczasowych prób
+     * dat (`test_report_narrows_by_date_range`, `..._for_an_empty_date_range`,
+     * `..._rejects_an_inverted_date_range`) — wszystkie trzy używają
+     * `from == to` w dacie bez ŻADNEGO wpisu, więc już sam DOLNY brzeg odcina
+     * wszystko i mutacja na `<=` przechodziła niezauważona (zmierzone: 0/27
+     * czerwonych). Ta próba wbija igłę w kierunku, którego dotąd nikt nie
+     * strzegł: wpis DOKŁADNIE w dniu `$to` ma WEJŚĆ do sumy, wpis DZIEŃ PO
+     * `$to` ma zostać ODCIĘTY — oba wewnątrz szerokiego `$from`, więc dolny
+     * brzeg jest tu nieistotny i nie może ukryć złamania górnego.
+     */
+    public function test_report_date_range_includes_an_entry_exactly_on_the_upper_bound_and_excludes_the_day_after(): void
+    {
+        $this->actingAsRole('super_admin');
+        $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
+        $joanna = User::where('email', 'joanna@demo.pl')->firstOrFail();
+
+        $from = now()->subDays(200)->toDateString();
+        $to = now()->subDays(100)->toDateString();
+        $afterTo = now()->subDays(100)->addDay()->toDateString();
+
+        InternshipEntry::create([
+            'user_id' => $marta->id,
+            'date' => $to,
+            'hours' => '5.0',
+            'form' => 'phone_duty',
+            'consultations_count' => 7,
+            'description' => 'Wpis dokładnie na górnym brzegu zakresu — ma wejść.',
+            'status' => 'accepted',
+            'decided_by' => $joanna->id,
+            'decided_at' => now(),
+        ]);
+
+        InternshipEntry::create([
+            'user_id' => $marta->id,
+            'date' => $afterTo,
+            'hours' => '9.0',
+            'form' => 'phone_duty',
+            'consultations_count' => 11,
+            'description' => 'Wpis dzień po górnym brzegu zakresu — ma zostać odcięty.',
+            'status' => 'accepted',
+            'decided_by' => $joanna->id,
+            'decided_at' => now(),
+        ]);
+
+        $response = $this->getJson("/api/v1/admin/report?from={$from}&to={$to}");
+        $response->assertOk();
+
+        $martaRow = collect($response->json('data.people'))->firstWhere('id', $marta->id);
+        $this->assertNotNull($martaRow, 'Brak Marty w zestawieniu imiennym.');
+        $this->assertSame('5', $martaRow['hours_accepted'], 'Wpis W dniu $to musi wejść do sumy.');
+        $this->assertSame(7, $martaRow['consultations'], 'Wpis W dniu $to musi wejść do sumy konsultacji.');
     }
 
     /**
