@@ -158,6 +158,9 @@ final class SequenceReorderer
         return self::pathQuery()->withCount(['lessons', 'materials'])->get();
     }
 
+    /**
+     * @return Builder<Course>
+     */
     private static function pathQuery(): Builder
     {
         return Course::query()
@@ -185,6 +188,9 @@ final class SequenceReorderer
             ->all();
     }
 
+    /**
+     * @return Builder<Lesson>
+     */
     private static function lessonQuery(Course $course): Builder
     {
         return Lesson::query()

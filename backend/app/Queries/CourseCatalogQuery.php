@@ -30,6 +30,7 @@ final class CourseCatalogQuery
      * @param  list<string>  $roles  Local role names from the CALLER's token
      *                               (`TokenRoles::current()`) — never a column
      *                               read straight off the `$user` record.
+     * @return Builder<Course>
      */
     public static function visibleTo(User $user, array $roles): Builder
     {

@@ -4,6 +4,7 @@ namespace App\Services\H09;
 
 use App\Models\Course;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -27,7 +28,7 @@ final class InstructorCourses
      * listy wizytówek.
      *
      * @param  iterable<int>  $instructorIds
-     * @return Collection<int, Collection<int, Course>>
+     * @return Collection<array-key, EloquentCollection<int, Course>>
      */
     public static function forMany(iterable $instructorIds): Collection
     {

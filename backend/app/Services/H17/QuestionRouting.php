@@ -39,6 +39,8 @@ final class QuestionRouting
      * to them, plus everything they answered themselves. The second term matters
      * — without it, closing an assignment would erase the instructor's own
      * answer history.
+     *
+     * @return Builder<InstructorQuestion>
      */
     public static function scopeFor(User $instructor): Builder
     {

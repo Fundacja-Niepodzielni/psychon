@@ -7,88 +7,16 @@ parameters:
 			path: app/Console/Commands/PurgeExpiredDataExports.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\User\)\: array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/Admin/AdminUserController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\Course\)\: array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/Admin/CourseCatalogAdminController.php
-
-		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/Api/V1/AdminWorkshopController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: App\\Http\\Resources\\CourseListResource, Closure\(App\\Models\\Course\)\: App\\Http\\Resources\\CourseListResource given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/CourseController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{course\: App\\Models\\Course, state\: array\{status\: ''completed''\|''in_progress''\|''locked'', missing\: list\<string\>, required_course_id\?\: int\}\}, Closure\(App\\Models\\Course\)\: array\{course\: App\\Models\\Course, state\: array\{status\: ''completed''\|''in_progress''\|''locked'', missing\: list\<string\>, required_course_id\?\: int\}\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/CourseController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:mapWithKeys\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\<int, array\{status\: ''completed''\|''in_progress''\|''locked'', missing\: list\<string\>, required_course_id\?\: int\}\>, Closure\(App\\Models\\Course\)\: non\-empty\-array\<int, array\{status\: ''completed''\|''in_progress''\|''locked'', missing\: list\<string\>, required_course_id\?\: int\}\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/CourseController.php
-
-		-
-			message: '#^Parameter \#2 \$course of static method App\\Support\\CourseAccess\:\:state\(\) expects App\\Models\\Course, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/CourseController.php
-
-		-
-			message: '#^Parameter \#2 \$coursesWithState of method App\\Services\\CourseUnlockNotifier\:\:announce\(\) expects Illuminate\\Support\\Collection\<int, array\{course\: App\\Models\\Course, state\: array\{status\: string, missing\: list\<string\>, required_course_id\?\: int\}\}\>, Illuminate\\Support\\Collection\<int, array\{course\: App\\Models\\Course, state\: array\{status\: ''completed''\|''in_progress''\|''locked'', missing\: list\<string\>, required_course_id\?\: int\}\}\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/CourseController.php
-
-		-
 			message: '#^Instanceof between App\\Models\\User and App\\Models\\User will always evaluate to true\.$#'
 			identifier: instanceof.alwaysTrue
 			count: 1
 			path: app/Http/Controllers/Api/V1/H11/AdminInternshipController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$answer\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$answered_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$answered_by\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
-
-		-
-			message: '#^Anonymous function should return App\\Models\\InstructorQuestion but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array, Closure\(App\\Models\\InstructorQuestion\)\: array given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -175,26 +103,7 @@ parameters:
 			path: app/Services/H08/ReorderImpactPreview.php
 
 		-
-			message: '#^Method App\\Services\\H08\\SequenceReorderer\:\:lessonsOf\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Lesson\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/H08/SequenceReorderer.php
-
-		-
-			message: '#^Method App\\Services\\H08\\SequenceReorderer\:\:pathCourses\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/H08/SequenceReorderer.php
-
-		-
-			message: '#^Method App\\Services\\H09\\InstructorCourses\:\:forMany\(\) should return Illuminate\\Support\\Collection\<int, Illuminate\\Support\\Collection\<int, App\\Models\\Course\>\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/H09/InstructorCourses.php
-
-		-
 			message: '#^Method App\\Services\\H12\\SupervisionTiming\:\:endsAt\(\) should return Illuminate\\Support\\Carbon but returns Carbon\\Carbon\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/H12/SupervisionTiming.php
-
