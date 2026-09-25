@@ -65,13 +65,13 @@ certyfikatu pokazują puste sekcje.
 **Zakres:** formularz danych (telefon, adres, PESEL — szyfrowane po stronie serwera
 PESEL **i adres**, walidacja PESEL); pole e-mail tylko do odczytu (zmiana przez
 administrację); podgląd zgód z wersją i datą; eksport RODO w tle (profil, zgody,
-postępy, wpisy stażu, metadane dokumentów) + powiadomienie `export.ready`.
+postępy, wyniki testów wiedzy, wpisy stażu, metadane dokumentów) + powiadomienie `export.ready`.
 **Kryteria:**
 1. ★ PESEL niepoprawny → 422 z komunikatem przy polu; poprawny zapisuje się;
    właściciel widzi pełny numer w `GET /me`, administracja na karcie osoby,
    nikt inny nigdzie.
 2. ★ `PATCH /me` z polem `email` nie zmienia e-maila (pole ignorowane lub 422).
-3. Eksport: plik zawiera wszystkie pięć zakresów danych; pobranie cudzego
+3. Eksport: plik zawiera wszystkie sześć zakresów danych; pobranie cudzego
    `GET /me/exports/{id}` → 404 (test).
 
 ## H02 · Uprawnienia — test-kit matrycy — P0 · M

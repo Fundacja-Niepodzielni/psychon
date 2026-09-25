@@ -7,6 +7,7 @@ use App\Models\DataExport;
 use App\Models\Document;
 use App\Models\InternshipEntry;
 use App\Models\LessonProgress;
+use App\Models\TestAttempt;
 use App\Support\Notify;
 use App\Support\ProgressAggregator;
 use Illuminate\Bus\Queueable;
@@ -19,8 +20,9 @@ use Throwable;
 
 /**
  * Builds a participant's RODO data export (H01 · M2 pkt 4) in the background:
- * profile, consents, progress, internship entries, document metadata. Writes
- * one JSON file to the `local` disk, then fires `export.ready` (contract §3.1).
+ * profile, consents, progress, test results, internship entries, document
+ * metadata. Writes one JSON file to the `local` disk, then fires
+ * `export.ready` (contract §3.1).
  */
 class GenerateDataExport implements ShouldQueue
 {
@@ -72,7 +74,7 @@ class GenerateDataExport implements ShouldQueue
     }
 
     /**
-     * The five data scopes required by the H01 acceptance criteria.
+     * The six data scopes required by the H01 acceptance criteria.
      *
      * @return array<string, mixed>
      */
@@ -128,6 +130,19 @@ class GenerateDataExport implements ShouldQueue
                     ])
                     ->all(),
             ],
+
+            // Every attempt at every knowledge test, regardless of pass/fail (§2.4).
+            'test_results' => $user->testAttempts()
+                ->with('test.course')
+                ->orderBy('created_at')
+                ->get()
+                ->map(fn (TestAttempt $a): array => [
+                    'test_name' => $a->test?->course?->title,
+                    'attempted_at' => $a->created_at?->toIso8601ZuluString(),
+                    'score_percent' => $a->score_percent,
+                    'passed' => $a->passed,
+                ])
+                ->all(),
 
             'internship_entries' => $user->internshipEntries()
                 ->get()

@@ -75,19 +75,19 @@ zalogowanego użytkownika i uruchamiać jego przygotowanie w tle. Odpowiedź MUS
 - **THEN** odpowiedź ma status 202 i `data.status` = `"queued"`, a `data.id` zaczyna się
   od `ex_`
 
-### Requirement: Zawartość eksportu obejmuje pięć zakresów danych
+### Requirement: Zawartość eksportu obejmuje sześć zakresów danych
 
-Wygenerowany plik eksportu SHALL zawierać dokładnie pięć zakresów: profil, zgody, postęp
-(w tym liczniki per lekcja), wpisy stażu i metadane dokumentów (bez samych plików). Po
-ukończeniu status eksportu MUST zmienić się na `ready`.
+Wygenerowany plik eksportu SHALL zawierać dokładnie sześć zakresów: profil, zgody, postęp
+(w tym liczniki per lekcja), wyniki testów wiedzy, wpisy stażu i metadane dokumentów (bez
+samych plików). Po ukończeniu status eksportu MUST zmienić się na `ready`.
 
 #### Scenario: Gotowy eksport zawiera wszystkie zakresy
 
 - **WHEN** eksport zlecony przez właściciela z zapisanym PESEL-em i co najmniej jedną zgodą
   zostaje ukończony
 - **THEN** `GET /me/exports/{id}` zwraca `status: "ready"`, a wygenerowany plik JSON zawiera
-  klucze `profile`, `consents`, `progress`, `internship_entries` i `documents`, przy czym
-  `profile.pesel` odpowiada zapisanemu numerowi
+  klucze `profile`, `consents`, `progress`, `test_results`, `internship_entries` i
+  `documents`, przy czym `profile.pesel` odpowiada zapisanemu numerowi
 
 ### Requirement: Pobranie eksportu jest chronione własnością
 
