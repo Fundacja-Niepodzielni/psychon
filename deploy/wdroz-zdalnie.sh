@@ -964,6 +964,13 @@ cd "$REPO_HOSTA" 2>/dev/null || { echo "POMIAR-ZRZUT=brak-repozytorium"; echo "P
 # PRZED biegiem: nieudany mkdir nie ma przerywac samego zrzutu, wiec brak
 # katalogu tylko obcina log, nie blokuje pomiaru POMIAR-ZRZUT ponizej.
 mkdir -p "$(dirname "$LOG_HOSTA_ZRZUT")" 2>/dev/null
+# Nazwa zrzutu ma wyjsc na wierzch, ale NIE zgadywana ze stempla -
+# bierzemy ja z rejestru, ktory zaklada sam instrument zrzutu (ostatni
+# wiersz, pole 1 = basename). Stan PRZED biegiem zapamietany: jesli po
+# biegu ostatni wiersz sie nie zmienil, nazwa jest NIEZNANA - a nie cudza,
+# poprzednia.
+REJESTR_ZRZUTOW="$KATALOG_KOPII/.rejestr-psychondev-zrzutow.tsv"
+rej_przed="$(tail -n 1 "$REJESTR_ZRZUTOW" 2>/dev/null | cut -f1)"
 PSYCHON_TRYB_WDROZENIA=tylko-zrzut PSYCHON_ENV_FILE="$PLIK_SRODOWISKA" PSYCHON_DB_BACKUP_DIR="$KATALOG_KOPII" \
     bash deploy/psychon-dev/deploy.sh < /dev/null > "$LOG_HOSTA_ZRZUT" 2>&1
 rc_zrzut=$?
@@ -971,6 +978,12 @@ if [ "$rc_zrzut" -eq 0 ]; then
     echo "POMIAR-ZRZUT=ok"
 else
     echo "POMIAR-ZRZUT=nie-udalo-sie"
+fi
+rej_po="$(tail -n 1 "$REJESTR_ZRZUTOW" 2>/dev/null | cut -f1)"
+if [ -n "$rej_po" ] && [ "$rej_po" != "$rej_przed" ]; then
+    echo "POMIAR-ZRZUT-PLIK=$rej_po"
+else
+    echo "POMIAR-ZRZUT-PLIK=nieznana"
 fi
 echo "POMIAR-KONIEC-ZRZUT=0"
 ZDALNE
@@ -1016,6 +1029,13 @@ ZDALNE
             echo "[CZUBEK] POMIAR-HEAD-PO-NIEUDANYM-ZRZUCIE=niedostepny (kanal potwierdzenia nie doszedl w calosci) - checkout i tak nigdy nie zostal wywolany"
         fi
         exit 45
+    fi
+    # Sama NAZWA pliku zrzutu (nigdy zawartosc) - bez niej tabela przed/po
+    # po wdrozeniu nie ma czego czytac i konczy sie zgadywaniem po stemplu.
+    zrzut_plik="$(pomiar ZRZUT-PLIK "$wyjscie_zrzut")"
+    echo "[CZUBEK] POMIAR-ZRZUT-PLIK=${zrzut_plik:-nieznana}"
+    if [ -z "$zrzut_plik" ] || [ "$zrzut_plik" = "nieznana" ]; then
+        echo "[CZUBEK] UWAGA: nazwy zrzutu NIE ZNAM - tabeli przed/po nie wolno zlozyc z nazwy zgadnietej ze stempla czasu"
     fi
     echo "[CZUBEK] zrzut PRZED checkoutem zameldowal sukces - checkout dozwolony"
 
