@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Services\DocumentTemplates\DocumentTemplateRenderer;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Facades\Storage;
@@ -47,7 +48,7 @@ final class PdfService
      */
     public static function renderBytes(string $view, array $data = []): string
     {
-        $html = view($view, $data)->render();
+        $html = DocumentTemplateRenderer::html($view, $data);
 
         $options = new Options;
         $options->setIsRemoteEnabled(false);
