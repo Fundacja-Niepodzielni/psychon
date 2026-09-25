@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             DemoSeeder::class,
             CoursesPackageSeeder::class, // H05
             LegalDocumentSeeder::class, // H22
+            DocumentTemplateSeeder::class, // Edytor wzorow dokumentow (zaplecze)
             // H11: InternshipPackageSeeder::class,
             // …
         ]);
