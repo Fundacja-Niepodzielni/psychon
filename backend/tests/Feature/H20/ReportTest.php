@@ -91,22 +91,63 @@ class ReportTest extends TestCase
         $ola = $people->firstWhere('id', User::where('email', 'ola@demo.pl')->firstOrFail()->id);
         $filip = $people->firstWhere('id', User::where('email', 'filip@demo.pl')->firstOrFail()->id);
 
-        $this->assertArrayHasKey('passed_tests_count', $marta);
-        $this->assertSame(1, $marta['passed_tests_count']);
-        $this->assertSame(3, $ola['passed_tests_count']);
-        $this->assertSame(0, $filip['passed_tests_count']);
+        $this->assertArrayHasKey('tests_passed', $marta);
+        $this->assertSame(1, $marta['tests_passed']);
+        $this->assertSame(3, $ola['tests_passed']);
+        $this->assertSame(0, $filip['tests_passed']);
 
         // Pole odrębne od etapu, nie od niego wyprowadzone: Ola ma etap
         // 'certyfikat' (10/10 ukończonych kursów — `courses_done` w
-        // `ProgressAggregator::for()`), ale `passed_tests_count` = 3, nie
+        // `ProgressAggregator::for()`), ale `tests_passed` = 3, nie
         // 10. Gdyby pole było doklejone do liczby ukończonych kursów
         // (a nie do odrębnego `ProgressAggregator::passedTestsCount()`),
         // te dwie liczby wyszłyby równe.
         $this->assertSame('certyfikat', $ola['stage']);
         $this->assertNotSame(
             ProgressAggregator::for(User::where('email', 'ola@demo.pl')->firstOrFail())['courses_done'],
-            $ola['passed_tests_count'],
+            $ola['tests_passed'],
         );
+    }
+
+    /**
+     * `summary.tests_passed` — kryterium ★1 (jedno źródło): podliczenie
+     * TEJ SAMEJ listy `people`, którą odpowiedź i tak zwraca (patrz
+     * `ReportSummary::build()`), nie osobne zapytanie. Filip ma zero
+     * zaliczonych testów, Marta i Ola co najmniej jeden — licznik musi więc
+     * być mniejszy niż liczba wszystkich osób w zestawieniu, nie równy jej
+     * (kontrola przeciw stałej "wszyscy" albo "nikt").
+     */
+    public function test_report_summary_tests_passed_counts_people_with_at_least_one_passed_test(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $response = $this->getJson('/api/v1/admin/report');
+        $response->assertOk();
+
+        $people = collect($response->json('data.people'));
+        $expected = $people->filter(fn (array $row): bool => $row['tests_passed'] > 0)->count();
+
+        $this->assertGreaterThan(0, $expected);
+        $this->assertLessThan($people->count(), $expected);
+        $response->assertJsonPath('data.summary.tests_passed', $expected);
+    }
+
+    /**
+     * `status` — pole z kontraktu pary frontowej (`active`/`blocked`,
+     * `users.status`), zwykły atrybut modelu, nie licznik.
+     */
+    public function test_report_person_row_includes_the_account_status(): void
+    {
+        $this->actingAsRole('super_admin');
+        $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
+
+        $response = $this->getJson('/api/v1/admin/report');
+        $response->assertOk();
+
+        $martaRow = collect($response->json('data.people'))->firstWhere('id', $marta->id);
+
+        $this->assertNotNull($martaRow);
+        $this->assertSame($marta->status, $martaRow['status']);
     }
 
     /**
@@ -296,6 +337,41 @@ class ReportTest extends TestCase
         $this->assertNotNull($martaRow, 'Brak Marty w zestawieniu imiennym.');
         $this->assertSame('0', $martaRow['hours_accepted']);
         $this->assertSame(0, $martaRow['consultations']);
+    }
+
+    /**
+     * Stan pusty: zakres dat bez ŻADNEGO wpisu stażu u ŻADNEJ
+     * osoby — pola liczbowe muszą być `0`/pustą tablicą, nigdy `null` ani
+     * nieobecne, a odpowiedź musi zostać `200`, nie błędem. Sprawdzone dla
+     * WSZYSTKICH osób w zestawieniu (nie tylko jednej), żeby wykluczyć
+     * przypadek, w którym pojedyncza osoba akurat nie ma wpisów niezależnie
+     * od zakresu dat.
+     */
+    public function test_report_returns_zero_not_null_for_an_empty_date_range(): void
+    {
+        $this->actingAsRole('super_admin');
+        $farFuture = now()->addYears(5)->toDateString();
+
+        $response = $this->getJson("/api/v1/admin/report?from={$farFuture}&to={$farFuture}");
+        $response->assertOk();
+
+        $response->assertJsonPath('data.summary.hours_accepted_total', '0');
+        $response->assertJsonPath('data.summary.hours_accepted_average', '0');
+        $response->assertJsonPath('data.summary.consultations_total', 0);
+
+        $people = collect($response->json('data.people'));
+        $this->assertGreaterThan(0, $people->count(), 'Lista osób nie powinna zniknąć przy pustym zakresie dat.');
+
+        foreach ($people as $row) {
+            $this->assertArrayHasKey('hours_accepted', $row);
+            $this->assertArrayHasKey('consultations', $row);
+            $this->assertArrayHasKey('tests_passed', $row);
+            $this->assertNotNull($row['hours_accepted']);
+            $this->assertNotNull($row['consultations']);
+            $this->assertNotNull($row['tests_passed']);
+            $this->assertSame('0', $row['hours_accepted']);
+            $this->assertSame(0, $row['consultations']);
+        }
     }
 
     public function test_report_rejects_an_inverted_date_range(): void
