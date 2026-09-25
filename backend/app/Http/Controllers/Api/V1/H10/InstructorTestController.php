@@ -34,7 +34,7 @@ class InstructorTestController extends Controller
         /** @var Test|null $test */
         $test = $course->test;
 
-        return response()->json(['data' => $this->present($test)]);
+        return response()->json(['data' => TestGrader::present($test)]);
     }
 
     public function store(StoreInstructorTestRequest $request, Course $course): JsonResponse
@@ -54,7 +54,7 @@ class InstructorTestController extends Controller
 
         $test->refresh();
 
-        return response()->json(['data' => $this->present($test)], 201);
+        return response()->json(['data' => TestGrader::present($test)], 201);
     }
 
     public function update(UpdateInstructorTestRequest $request, Test $test): JsonResponse
@@ -69,7 +69,7 @@ class InstructorTestController extends Controller
         $test->save();
         $test->refresh();
 
-        return response()->json(['data' => $this->present($test)]);
+        return response()->json(['data' => TestGrader::present($test)]);
     }
 
     private function authorizeCourse(Request $request, Course $course): void
@@ -77,25 +77,5 @@ class InstructorTestController extends Controller
         if ($request->user()->cannot('update', $course)) {
             throw new ApiException(403, 'forbidden', 'Nie jesteś przypisany do tego kursu.');
         }
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function present(?Test $test): ?array
-    {
-        if ($test === null) {
-            return null;
-        }
-
-        return [
-            'id' => $test->id,
-            'course_id' => $test->course_id,
-            'pass_threshold' => $test->pass_threshold,
-            'attempts_limit' => $test->attempts_limit,
-            'question_count' => $test->question_count,
-            'effective_pass_threshold' => TestGrader::passThreshold($test),
-            'effective_attempts_limit' => TestGrader::attemptsLimit($test),
-        ];
     }
 }

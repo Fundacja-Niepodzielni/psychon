@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api\V1\H08;
 
 use App\Exceptions\ApiException;
+use App\Http\Controllers\Concerns\RespondsWithLesson;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H08\StoreInstructorLessonRequest;
 use App\Http\Requests\H08\UpdateInstructorLessonRequest;
-use App\Http\Resources\H08\AdminLessonResource;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Services\H08\LessonWriter;
+use App\Support\H08\LessonIndex;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,21 +26,13 @@ use Illuminate\Http\Request;
  */
 class InstructorLessonController extends Controller
 {
+    use RespondsWithLesson;
+
     public function index(Request $request, Course $course): JsonResponse
     {
         $this->authorizeCourse($request, $course);
 
-        $lessons = $course->lessons()
-            ->withCount('materials')
-            ->orderBy('id')
-            ->get();
-
-        return response()->json([
-            'data' => $lessons
-                ->map(fn (Lesson $lesson): array => AdminLessonResource::make($lesson)->resolve($request))
-                ->values()
-                ->all(),
-        ]);
+        return LessonIndex::response($course, $request);
     }
 
     public function store(StoreInstructorLessonRequest $request, Course $course): JsonResponse
@@ -91,12 +84,5 @@ class InstructorLessonController extends Controller
         if ($course === null || $request->user()->cannot('update', $course)) {
             throw new ApiException(403, 'forbidden', 'Nie jesteś przypisany do tego kursu.');
         }
-    }
-
-    private function resourceResponse(Request $request, Lesson $lesson, int $status = 200): JsonResponse
-    {
-        return response()->json([
-            'data' => AdminLessonResource::make($lesson->refresh()->loadCount('materials'))->resolve($request),
-        ], $status);
     }
 }

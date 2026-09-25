@@ -29,7 +29,7 @@ class AdminTestController extends Controller
         $test = $course->test;
 
         return response()->json([
-            'data' => $this->present($test),
+            'data' => TestGrader::present($test),
         ]);
     }
 
@@ -48,7 +48,7 @@ class AdminTestController extends Controller
 
         $test->refresh();
 
-        return response()->json(['data' => $this->present($test)], 201);
+        return response()->json(['data' => TestGrader::present($test)], 201);
     }
 
     public function update(UpdateTestRequest $request, Test $test): JsonResponse
@@ -57,26 +57,6 @@ class AdminTestController extends Controller
         $test->save();
         $test->refresh();
 
-        return response()->json(['data' => $this->present($test)]);
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function present(?Test $test): ?array
-    {
-        if ($test === null) {
-            return null;
-        }
-
-        return [
-            'id' => $test->id,
-            'course_id' => $test->course_id,
-            'pass_threshold' => $test->pass_threshold,
-            'attempts_limit' => $test->attempts_limit,
-            'question_count' => $test->question_count,
-            'effective_pass_threshold' => TestGrader::passThreshold($test),
-            'effective_attempts_limit' => TestGrader::attemptsLimit($test),
-        ];
+        return response()->json(['data' => TestGrader::present($test)]);
     }
 }
