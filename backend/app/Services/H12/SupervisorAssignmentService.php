@@ -57,4 +57,30 @@ final class SupervisorAssignmentService
             return $assignment;
         });
     }
+
+    /**
+     * Zamyka aktywne przypisanie wolontariusza do tego prowadzącego — użyte
+     * przez `ThreadMemberController::destroy` (usunięcie osoby ze składu
+     * wątku grupowego). Brak aktywnego przypisania tej pary = 404: ta osoba
+     * nie jest (już) w składzie.
+     */
+    public function unassign(int $volunteerId, int $supervisorId): SupervisorAssignment
+    {
+        return DB::transaction(function () use ($volunteerId, $supervisorId): SupervisorAssignment {
+            $assignment = SupervisorAssignment::query()
+                ->where('volunteer_id', $volunteerId)
+                ->where('supervisor_id', $supervisorId)
+                ->whereNull('unassigned_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($assignment === null) {
+                throw new ApiException(404, 'not_found', 'Ta osoba nie jest w składzie tego wątku.');
+            }
+
+            $assignment->forceFill(['unassigned_at' => now()])->save();
+
+            return $assignment;
+        });
+    }
 }

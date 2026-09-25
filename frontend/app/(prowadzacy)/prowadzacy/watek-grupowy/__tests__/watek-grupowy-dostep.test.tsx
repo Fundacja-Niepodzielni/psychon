@@ -6,7 +6,10 @@ import { render, screen, waitFor } from "@testing-library/react";
  * grupowego stoi pod layoutem panelu prowadzącego (`RequireRole
  * allowedRoles={["instructor"]}`), więc rola spoza tej listy dostaje wspólny
  * ekran „Brak dostępu" zamiast treści wątku, a treść w ogóle się nie renderuje
- * (żadnego wywołania `/threads`).
+ * (żadnego wywołania `/threads`). Uczestnik (`volunteer`) i administracja
+ * (`project_manager`/`super_admin`) — obie
+ * dostają tę samą odmowę, bo strażnik działa wg listy ról, nie pojedynczej
+ * wykluczonej wartości.
  */
 
 const api = vi.fn();
@@ -44,22 +47,29 @@ beforeEach(() => {
 });
 
 describe("ekran /prowadzacy/watek-grupowy pod strażnikiem roli", () => {
-  it('rola "volunteer" dostaje "Brak dostępu", ekran wątku się nie renderuje i nie woła /threads', async () => {
-    api.mockResolvedValue({ role: "volunteer" });
+  it.each([
+    ["volunteer", "uczestnik"],
+    ["project_manager", "administracja"],
+    ["super_admin", "administracja"],
+  ] as const)(
+    'rola "%s" (%s) dostaje "Brak dostępu", ekran wątku się nie renderuje i nie woła /threads',
+    async (role, _etykieta) => {
+      api.mockResolvedValue({ role });
 
-    render(
-      <InstructorLayout>
-        <InstructorGroupThreadPage />
-      </InstructorLayout>,
-    );
+      render(
+        <InstructorLayout>
+          <InstructorGroupThreadPage />
+        </InstructorLayout>,
+      );
 
-    await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
-    // Menu wpis "Wątek grupowy" nieobecny: PanelShell (a z nim PanelNav)
-    // w ogóle się nie montuje pod odmową — żadnego linku z tą etykietą.
-    expect(screen.queryByRole("link", { name: "Wątek grupowy" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Wątek grupowy")).not.toBeInTheDocument();
-    expect(apiPaged).not.toHaveBeenCalled();
-  });
+      await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
+      // Menu wpis "Wątek grupowy" nieobecny: PanelShell (a z nim PanelNav)
+      // w ogóle się nie montuje pod odmową — żadnego linku z tą etykietą.
+      expect(screen.queryByRole("link", { name: "Wątek grupowy" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Wątek grupowy")).not.toBeInTheDocument();
+      expect(apiPaged).not.toHaveBeenCalled();
+    },
+  );
 
   it('rola "instructor" renderuje ekran wątku grupowego', async () => {
     api.mockResolvedValue({ role: "instructor" });

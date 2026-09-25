@@ -149,6 +149,107 @@ describe("InstructorGroupThread", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("noga pozytywna: brak wątku pokazuje przycisk założenia, kliknięcie zakłada wątek i odświeża listę", async () => {
+    apiPaged.mockImplementationOnce(() => Promise.resolve({ data: [] }));
+    apiPaged.mockImplementationOnce(() => Promise.resolve({ data: [grupowyWatek] }));
+    api.mockResolvedValue(grupowyWatek);
+
+    render(<InstructorGroupThread />);
+
+    const zalozButton = await screen.findByRole("button", { name: "Załóż wątek grupowy" });
+    await userEvent.click(zalozButton);
+
+    await waitFor(() => expect(api).toHaveBeenCalledWith("/threads", { method: "POST" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Otwórz wątek" })).toBeInTheDocument(),
+    );
+  });
+
+  it("noga negatywna: 403 przy zakładaniu wątku pokazuje błąd i nie odświeża na wątek (kontrola: 201 na ścieżce pozytywnej / 403 tutaj)", async () => {
+    apiPaged.mockResolvedValue({ data: [] });
+    api.mockRejectedValue(new ApiError(403, "forbidden", "Nie masz dostępu do tej sekcji."));
+
+    render(<InstructorGroupThread />);
+
+    const zalozButton = await screen.findByRole("button", { name: "Załóż wątek grupowy" });
+    await userEvent.click(zalozButton);
+
+    await waitFor(() =>
+      expect(screen.getByText("Nie masz dostępu do tej sekcji.")).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Otwórz wątek" })).not.toBeInTheDocument();
+  });
+
+  it("noga pozytywna: dodanie osoby do składu woła POST /threads/{id}/members/{user} i pokazuje potwierdzenie", async () => {
+    apiPaged.mockImplementation((path: string) => {
+      if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });
+      if (path === "/threads/41") return Promise.resolve({ data: [] });
+      throw new Error("nieoczekiwana ścieżka: " + path);
+    });
+    api.mockResolvedValue(undefined);
+
+    render(<InstructorGroupThread />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Otwórz wątek" }));
+    await waitFor(() => expect(screen.getByLabelText("Identyfikator osoby")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12");
+    await userEvent.click(screen.getByRole("button", { name: "Dodaj do wątku" }));
+
+    await waitFor(() =>
+      expect(api).toHaveBeenCalledWith("/threads/41/members/12", { method: "POST" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Osoba dodana do składu wątku.")).toBeInTheDocument(),
+    );
+  });
+
+  it("noga negatywna: 403 przy dodaniu osoby (np. osoba spoza grupy) pokazuje błąd, bez potwierdzenia (kontrola: potwierdzenie na ścieżce pozytywnej / błąd tutaj)", async () => {
+    apiPaged.mockImplementation((path: string) => {
+      if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });
+      if (path === "/threads/41") return Promise.resolve({ data: [] });
+      throw new Error("nieoczekiwana ścieżka: " + path);
+    });
+    api.mockRejectedValue(new ApiError(403, "forbidden", "Nie zarządzasz składem tego wątku."));
+
+    render(<InstructorGroupThread />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Otwórz wątek" }));
+    await waitFor(() => expect(screen.getByLabelText("Identyfikator osoby")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12");
+    await userEvent.click(screen.getByRole("button", { name: "Dodaj do wątku" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Nie zarządzasz składem tego wątku.")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Osoba dodana do składu wątku.")).not.toBeInTheDocument();
+  });
+
+  it("noga pozytywna: usunięcie osoby ze składu woła DELETE /threads/{id}/members/{user} i pokazuje potwierdzenie", async () => {
+    apiPaged.mockImplementation((path: string) => {
+      if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });
+      if (path === "/threads/41") return Promise.resolve({ data: [] });
+      throw new Error("nieoczekiwana ścieżka: " + path);
+    });
+    api.mockResolvedValue(undefined);
+
+    render(<InstructorGroupThread />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Otwórz wątek" }));
+    await waitFor(() => expect(screen.getByLabelText("Identyfikator osoby")).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12");
+    await userEvent.click(screen.getByRole("button", { name: "Usuń z wątku" }));
+
+    await waitFor(() =>
+      expect(api).toHaveBeenCalledWith("/threads/41/members/12", { method: "DELETE" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Osoba usunięta ze składu wątku.")).toBeInTheDocument(),
+    );
+  });
+
   it("noga negatywna: błąd wysyłki pokazuje komunikat i nie czyści treści szkicu", async () => {
     apiPaged.mockImplementation((path: string) => {
       if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });

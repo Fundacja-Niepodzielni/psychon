@@ -19,11 +19,29 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Collection;
 
 /**
- * Wątki czatu asynchronicznego — lista wątków zalogowanego i odczyt
- * jednego wątku ze stronicowaniem wiadomości.
+ * Wątki czatu asynchronicznego — lista wątków zalogowanego, założenie
+ * własnego wątku grupowego i odczyt jednego wątku ze stronicowaniem
+ * wiadomości.
  */
 class ThreadController extends Controller
 {
+    /**
+     * Jawne założenie wątku grupowego przez prowadzącego — dotąd powstawał
+     * wyłącznie jako efekt uboczny `index()`/`ensureGroup()` przy pierwszym
+     * odczycie (brak trasy zakładania).
+     * Rola sprawdzona trasą (`role:instructor`); idempotentne —
+     * `wasRecentlyCreated` decyduje 200 (już istniał) / 201 (nowy).
+     */
+    public function store(Request $request, ChatThreadProvisioner $provisioner): JsonResponse
+    {
+        $thread = $provisioner->ensureGroup($request->user());
+        $thread->loadMissing(['supervisor', 'volunteer']);
+
+        return response()->json([
+            'data' => MessageThreadResource::make($thread)->resolve($request),
+        ], $thread->wasRecentlyCreated ? 201 : 200);
+    }
+
     public function index(
         Request $request,
         TokenRoles $tokenRoles,
