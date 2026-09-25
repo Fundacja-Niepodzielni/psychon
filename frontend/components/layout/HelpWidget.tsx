@@ -6,6 +6,7 @@ import { CircleHelp, X } from "lucide-react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import { ApiError, sendHelpMessage } from "@/lib/api";
+import useCloseOnOutsideOrEscape from "@/lib/hooks/useCloseOnOutsideOrEscape";
 
 const MAX_CONTENT_LENGTH = 2000;
 
@@ -59,28 +60,7 @@ export default function HelpWidget() {
     if (open) textareaRef.current?.focus();
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handleClick(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
+  useCloseOnOutsideOrEscape(containerRef, open, setOpen);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
