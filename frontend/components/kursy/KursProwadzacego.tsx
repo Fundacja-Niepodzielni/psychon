@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Breadcrumbs from "@/components/molecules/Breadcrumbs";
 import DetailTemplate from "@/components/templates/DetailTemplate";
-import EdytorTresciKursu from "@/components/kursy/EdytorTresciKursu";
-import TestWiedzyKursu from "@/components/testy/TestWiedzyKursu";
-import { api, ApiError } from "@/lib/api";
+import EdytorTresciKursuProwadzacego from "@/components/kursy/EdytorTresciKursuProwadzacego";
+import TestWiedzyKursuProwadzacego from "@/components/kursy/TestWiedzyKursuProwadzacego";
+import { ApiError } from "@/lib/api/klient";
+import { fetchInstructorCourse, fetchInstructorLessons } from "@/lib/api/prowadzacy-kursy";
 import {
   COURSE_TYPE_LABELS,
   PRODUCT_GROUP_LABELS,
@@ -23,22 +24,21 @@ export interface KursProwadzacegoProps {
 }
 
 /**
- * Karta kursu w panelu prowadzącego — montuje ten sam
- * `EdytorTresciKursu`, co karta administracji (`admin/kursy/[id]/page.tsx`),
- * te same punkty API (`/admin/courses/{id}...` — kontrakt H08/H10 adresuje
- * je tak niezależnie od roli wołającej), ale BEZ paneli admin-only: „Publikacja”
- * (publikacja/usunięcie kursu), przypisań (H09) i zaproszeń (H08b).
- *
- * `TestWiedzyKursu` dokłada wejście do banku pytań testu (H10) — tej samej
- * karty, którą montuje `admin/testy/[id]/pytania/page.tsx` pod adresem
- * `/prowadzacy/testy/{id}/pytania` — o ile zasób kursu poda `test_id`
- * (dziś nie podaje, patrz komentarz w `TestWiedzyKursu`).
+ * Karta kursu w panelu prowadzącego — tryb edycji treści: opis i tytuł
+ * kursu, lekcje i materiały (`EdytorTresciKursuProwadzacego`), test wiedzy
+ * (`TestWiedzyKursuProwadzacego`). Osobne komponenty od karty administracji:
+ * tamta montuje panele admin-only (publikacja, przypisania H09, zaproszenia
+ * H08b, bank pytań), do których prowadzący nie ma dostępu.
  *
  * Bramka roli stoi w `app/(prowadzacy)/prowadzacy/layout.tsx`
  * (`RequireRole allowedRoles={["instructor"]}`) — ten komponent się w ogóle
  * nie montuje dla innej roli. Kto może edytować KTÓRY kurs, rozstrzyga
  * backend (`CoursePolicy`) — ekran nie duplikuje tej reguły,
  * tylko pokazuje 403/404 z API jak każdy inny błąd wczytania.
+ *
+ * Wczytuje kurs i lekcje przez `/instructor/courses/...` (własny moduł
+ * `lib/api/prowadzacy-kursy.ts`), nie przez `/admin/...` — te trasy wymagają
+ * roli administracji i dla prowadzącego zawsze zwrócą 403.
  */
 export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
   const [reloadKey, setReloadKey] = useState(0);
@@ -54,8 +54,8 @@ export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
     let active = true;
 
     Promise.all([
-      api<AdminCourse>(`/admin/courses/${id}`),
-      api<AdminLesson[]>(`/admin/courses/${id}/lessons`),
+      fetchInstructorCourse(Number(id)),
+      fetchInstructorLessons(Number(id)),
     ])
       .then(([courseData, lessonData]) => {
         if (!active) return;
@@ -113,13 +113,13 @@ export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
     >
       {course && (
         <>
-          <EdytorTresciKursu
+          <EdytorTresciKursuProwadzacego
             course={course}
             lessons={lessons}
             onCourseUpdated={setCourse}
             onLessonsReload={() => setReloadKey((value) => value + 1)}
           />
-          <TestWiedzyKursu course={course} />
+          <TestWiedzyKursuProwadzacego course={course} />
         </>
       )}
     </DetailTemplate>

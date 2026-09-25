@@ -4,22 +4,20 @@ import { render, screen, waitFor } from "@testing-library/react";
 /**
  * Karta kursu w panelu prowadzącego pod strażnikiem roli
  * (`RequireRole allowedRoles={["instructor"]}` w `prowadzacy/layout.tsx`,
- * wzorzec z `watek-grupowy-dostep.test.tsx`) i bez paneli admin-only:
- * mierzone jest to, że po wydzieleniu `EdytorTresciKursu` karta prowadzącego
- * NIE montuje przypisań (H09, nagłówek „Prowadzący") ani zaproszeń (H08b,
- * nagłówek „Zaproszenia") — obie są renderowane wprost w
- * `admin/kursy/[id]/page.tsx`, nie w edytorze, który tu się montuje.
+ * wzorzec z `watek-grupowy-dostep.test.tsx`) i bez paneli admin-only: mierzone
+ * jest to, że karta prowadzącego NIE montuje przypisań (H09, nagłówek
+ * „Prowadzący") ani zaproszeń (H08b, nagłówek „Zaproszenia") — te trasy w
+ * ogóle nie istnieją dla `role:instructor` w `routes/api/h08.php`.
  *
- * UWAGA (kontrola pozorna): test „rola
- * instructor montuje edytor" niżej mockuje `/admin/courses/4` jako sukces —
- * to KONTRAKT OCZEKIWANY (backend ma dodać rolę `instructor`
- * do bramek `h08.php`/`h10.php`), NIE dzisiejszy stan. DZIŚ backend zwraca
- * 403 na każdą z 11 tras (`h08.php:32` wymaga `project_manager,super_admin`)
- * — patrz test „DZIŚ: backend odmawia (403)" niżej, który mierzy realny stan.
+ * `RequireRole` woła `/me` przez `@/lib/api` (barrel); karta kursu ładuje
+ * treść przez `@/lib/api/prowadzacy-kursy` (`/instructor/courses/{id}...`) —
+ * oba mockowane osobno, bo to różne moduły.
  */
 
-const api = vi.fn();
+const me = vi.fn();
 const apiPaged = vi.fn();
+const fetchInstructorCourse = vi.fn();
+const fetchInstructorLessons = vi.fn();
 
 class ApiError extends Error {
   status: number;
@@ -30,9 +28,20 @@ class ApiError extends Error {
 }
 
 vi.mock("@/lib/api", () => ({
-  api: (...args: unknown[]) => api(...args),
+  api: (...args: unknown[]) => me(...args),
   apiPaged: (...args: unknown[]) => apiPaged(...args),
   ApiError,
+}));
+
+vi.mock("@/lib/api/klient", () => ({ ApiError }));
+
+vi.mock("@/lib/api/prowadzacy-kursy", () => ({
+  fetchInstructorCourse: (...args: unknown[]) => fetchInstructorCourse(...args),
+  fetchInstructorLessons: (...args: unknown[]) => fetchInstructorLessons(...args),
+  // `TestWiedzyKursuProwadzacego` montuje się razem z edytorem — jego
+  // wywołanie nie jest przedmiotem tego świadka (dostęp do EKRANU), stąd
+  // nierozwiązująca się obietnica zamiast realnej implementacji.
+  fetchInstructorTest: () => new Promise(() => {}),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -66,14 +75,16 @@ function paramsFor(id: string) {
 }
 
 beforeEach(() => {
-  api.mockReset();
+  me.mockReset();
   apiPaged.mockReset();
   apiPaged.mockResolvedValue({ data: [], meta: undefined });
+  fetchInstructorCourse.mockReset();
+  fetchInstructorLessons.mockReset();
 });
 
 describe("karta /prowadzacy/kursy/[id] pod strażnikiem roli", () => {
-  it('rola "volunteer" dostaje "Brak dostępu" i ekran nie woła /admin/courses', async () => {
-    api.mockResolvedValue({ role: "volunteer" });
+  it('rola "volunteer" dostaje "Brak dostępu" i ekran nie woła /instructor/courses', async () => {
+    me.mockResolvedValue({ role: "volunteer" });
 
     render(
       <InstructorLayout>
@@ -82,17 +93,14 @@ describe("karta /prowadzacy/kursy/[id] pod strażnikiem roli", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Brak dostępu")).toBeInTheDocument());
-    expect(api).not.toHaveBeenCalledWith(`/admin/courses/4`);
-    expect(api).not.toHaveBeenCalledWith(`/admin/courses/4/lessons`);
+    expect(fetchInstructorCourse).not.toHaveBeenCalled();
+    expect(fetchInstructorLessons).not.toHaveBeenCalled();
   });
 
-  it('KONTRAKT OCZEKIWANY (po dodaniu roli instructor do bramek h08/h10): rola "instructor" montuje edytor BEZ paneli przypisań i zaproszeń', async () => {
-    api.mockImplementation((url: string) => {
-      if (url === "/me") return Promise.resolve({ role: "instructor" });
-      if (url === "/admin/courses/4") return Promise.resolve(kurs);
-      if (url === "/admin/courses/4/lessons") return Promise.resolve([]);
-      return Promise.reject(new Error(`nieoczekiwane wywołanie: ${url}`));
-    });
+  it('rola "instructor" montuje tryb edycji BEZ paneli przypisań i zaproszeń', async () => {
+    me.mockResolvedValue({ role: "instructor" });
+    fetchInstructorCourse.mockResolvedValue(kurs);
+    fetchInstructorLessons.mockResolvedValue([]);
 
     render(
       <InstructorLayout>
@@ -101,24 +109,20 @@ describe("karta /prowadzacy/kursy/[id] pod strażnikiem roli", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Dane kursu" })).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "Treść kursu" })).toBeInTheDocument(),
     );
+    expect(fetchInstructorCourse).toHaveBeenCalledWith(4);
     expect(screen.getByRole("heading", { name: "Lekcje" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Prowadzący" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Zaproszenia" })).not.toBeInTheDocument();
     expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
   });
 
-  it('DZIŚ: backend odmawia (403) rolę "instructor" na /admin/courses/{id} — ekran pokazuje stan odmowy, BEZ przycisku „Ponów" (WERDYKT-POZ11-front-e9cf1c9.md §2)', async () => {
-    api.mockImplementation((url: string) => {
-      if (url === "/me") return Promise.resolve({ role: "instructor" });
-      if (url === "/admin/courses/4") {
-        return Promise.reject(
-          new ApiError(403, "Nie masz dostępu do tej sekcji."),
-        );
-      }
-      return Promise.reject(new Error(`nieoczekiwane wywołanie: ${url}`));
-    });
+  it('kurs cudzy: backend odmawia (403) — ekran pokazuje stan odmowy zdaniem, BEZ przycisku „Ponów"', async () => {
+    me.mockResolvedValue({ role: "instructor" });
+    fetchInstructorCourse.mockRejectedValue(
+      new ApiError(403, "Nie jesteś przypisany do tego kursu."),
+    );
 
     render(
       <InstructorLayout>
