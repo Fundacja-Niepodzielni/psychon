@@ -22,6 +22,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * agrees with what a protected route actually does; see
  * `TokenRoles::effectiveRoleFor()` for the self-view rule and the
  * disagreement log.
+ *
+ * @mixin User
  */
 class UserResource extends JsonResource
 {

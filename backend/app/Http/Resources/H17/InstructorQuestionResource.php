@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\H17;
 
+use App\Models\InstructorQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,6 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * The instructor's view: the asker's identity is limited to the three fields the
  * inbox needs to address a person, and the lesson carries its course so the panel
  * can link back without a second request.
+ *
+ * @mixin InstructorQuestion
  */
 class InstructorQuestionResource extends JsonResource
 {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\H17;
 
+use App\Models\InstructorQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,6 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * The asker's view of their own question. Deliberately narrower than the
  * instructor resource: the answering instructor appears as a name only, never as
  * an id or an e-mail address.
+ *
+ * @mixin InstructorQuestion
  */
 class ParticipantQuestionResource extends JsonResource
 {

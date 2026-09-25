@@ -25,3 +25,8 @@ parameters:
     # katalog roboczy w storage/ — jest w .gitignore, wiec cache analizy nigdy
     # nie trafi do repozytorium
     tmpDir: storage/framework/cache/phpstan
+
+    # Models declare casts in a `casts(): array` method. Without this flag
+    # Larastan reads only the native `array` return type, misses every cast and
+    # types e.g. a `datetime` column as string instead of Carbon.
+    parseModelCastsMethod: true

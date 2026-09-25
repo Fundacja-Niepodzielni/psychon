@@ -2,9 +2,13 @@
 
 namespace App\Http\Resources\H15;
 
+use App\Models\PsychologistProfile;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin PsychologistProfile
+ */
 class AdminPsychologistProfileResource extends JsonResource
 {
     public function toArray(Request $request): array
