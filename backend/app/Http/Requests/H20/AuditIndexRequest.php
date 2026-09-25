@@ -29,7 +29,7 @@ class AuditIndexRequest extends FormRequest
         'user.created', 'user.updated', 'user.blocked', 'user.anonymized',
         'edition.updated',
         'sensitive.viewed',
-        'supervision.attendance_marked',
+        'supervision.attendance_marked', 'supervision.slot_cancelled',
         'certificate.revoked',
         'legal_document.published', 'legal_document.accepted',
     ];

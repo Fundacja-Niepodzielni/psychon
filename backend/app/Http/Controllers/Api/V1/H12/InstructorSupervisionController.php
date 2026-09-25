@@ -13,10 +13,10 @@ use App\Models\SupervisionCase;
 use App\Models\SupervisionSlot;
 use App\Models\SupervisorAssignment;
 use App\Services\H12\SupervisionAttendanceService;
+use App\Services\H12\SupervisionSlotService;
 use App\Services\H12\SupervisionSlotView;
 use App\Support\ProgressAggregator;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Carbon;
 
 class InstructorSupervisionController extends Controller
 {
@@ -68,29 +68,9 @@ class InstructorSupervisionController extends Controller
         ]);
     }
 
-    public function storeSlot(StoreSupervisionSlotRequest $request): JsonResponse
+    public function storeSlot(StoreSupervisionSlotRequest $request, SupervisionSlotService $service): JsonResponse
     {
-        $validated = $request->validated();
-        $startsAt = Carbon::parse($validated['starts_at'])->utc();
-
-        if (! $startsAt->isFuture()) {
-            return response()->json([
-                'error' => [
-                    'status' => 422,
-                    'code' => 'validation_failed',
-                    'message' => 'Termin musi rozpoczynać się w przyszłości.',
-                    'errors' => ['starts_at' => ['Termin musi rozpoczynać się w przyszłości.']],
-                ],
-            ], 422);
-        }
-
-        $slot = SupervisionSlot::query()->create([
-            'supervisor_id' => $request->user()->id,
-            'starts_at' => $startsAt,
-            'duration_minutes' => $validated['duration_minutes'] ?? 90,
-            'seats_limit' => $validated['seats_limit'] ?? 3,
-            'location_or_link' => $validated['location_or_link'] ?? null,
-        ]);
+        $slot = $service->create($request->user(), $request->validated());
 
         return response()->json([
             'data' => InstructorSlotResource::make(
