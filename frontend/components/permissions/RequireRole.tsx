@@ -70,7 +70,12 @@ export default function RequireRole({ allowedRoles, deniedMessage, children }: R
   if (state.status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-page">
-        <p className="text-body text-subtle">Wczytywanie…</p>
+        {/* Ten strażnik renderuje się PRZED szablonem strony (który
+         * dopiero niesie własny `h1` przez `PageHeader`), więc bez własnego
+         * `h1` stan pośredni (ładowanie roli) nie ma żadnego nagłówka
+         * głównego — a to stan, w którym realnie ktoś może wylądować
+         * (wolne łącze, wolne API `/me`), nie tylko migawka między klatkami. */}
+        <h1 className="text-body text-subtle">Wczytywanie…</h1>
       </div>
     );
   }
@@ -86,7 +91,10 @@ export default function RequireRole({ allowedRoles, deniedMessage, children }: R
 
   if (state.status === "error") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-page p-6">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-page p-6 text-center">
+        {/* Jak wyżej przy stanie "loading" — bez własnego `h1` ten
+         * ekran (backend nieosiągalny) nie miał żadnego nagłówka głównego. */}
+        <h1 className="text-h3 font-bold text-ink">Błąd połączenia</h1>
         <p className="text-body text-subtle">
           Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.
         </p>
