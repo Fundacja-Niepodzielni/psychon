@@ -3,6 +3,7 @@
 namespace Tests\Feature\DocumentTemplates;
 
 use App\Models\DocumentTemplate;
+use Database\Seeders\DocumentTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\ActsAsRole;
 use Tests\TestCase;
@@ -14,6 +15,10 @@ use Tests\TestCase;
  *     (PUT -> 200, version +1);
  *   - rola: 403 dla roli spoza `project_manager,super_admin`;
  *   - wersjonowanie: dwa zapisy dają dwa wpisy historii.
+ *   - kontrakt `updated_by`: pole dopuszcza `null` - wzor, ktorego nikt
+ *     jeszcze nie edytowal, nie ma osoby edytujacej i to jest stan
+ *     prawdziwy, nie blad danych. Ponizej stan pusty (prosto po seedzie)
+ *     i stan przeciwny (po edycji).
  */
 class DocumentTemplateAdminTest extends TestCase
 {
@@ -181,5 +186,41 @@ class DocumentTemplateAdminTest extends TestCase
         $this->getJson('/api/v1/document-templates/agreement/versions')
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'forbidden');
+    }
+
+    /**
+     * Stan pusty: zasilenie idzie przez PRAWDZIWY seeder (nie przez helper
+     * `seedTemplate()`, ktory nadpisuje `updated_by` recznie) - tak jak
+     * dzieje sie to na swiezej instalacji. `DocumentTemplateSeeder`
+     * zapisuje `updated_by => null`, bo wzoru jeszcze nikt nie edytowal -
+     * GET musi to oddac jako `null`, nie 500 ani wartosc zastepcza.
+     */
+    public function test_show_returns_null_updated_by_right_after_seeding(): void
+    {
+        $this->seed(DocumentTemplateSeeder::class);
+        $this->actingAsRole('super_admin');
+
+        $this->getJson('/api/v1/document-templates/agreement')
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['updated_by']])
+            ->assertJsonPath('data.updated_by', null);
+    }
+
+    /**
+     * Stan przeciwny: po edycji przez uzytkownika `updated_by` przestaje
+     * byc `null` i niesie `name`.
+     */
+    public function test_show_returns_the_editor_name_after_an_edit(): void
+    {
+        $this->seedTemplate('agreement');
+        $admin = $this->actingAsRole('super_admin');
+
+        $this->putJson('/api/v1/document-templates/agreement', ['content' => 'Nowa tresc.'])
+            ->assertOk();
+
+        $this->getJson('/api/v1/document-templates/agreement')
+            ->assertOk()
+            ->assertJsonPath('data.updated_by.id', $admin->id)
+            ->assertJsonPath('data.updated_by.name', fn (string $name): bool => $name !== '');
     }
 }
