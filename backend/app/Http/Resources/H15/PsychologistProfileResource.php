@@ -2,10 +2,14 @@
 
 namespace App\Http\Resources\H15;
 
+use App\Models\PsychologistProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin PsychologistProfile
+ */
 class PsychologistProfileResource extends JsonResource
 {
     public function __construct($resource, private readonly User $user)

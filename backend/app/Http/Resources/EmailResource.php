@@ -2,12 +2,15 @@
 
 namespace App\Http\Resources;
 
+use App\Models\EmailMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Sent-mailbox row for the administration inbox (contract §2 — Powiadomienia,
  * GET /admin/emails). Everything is `status: simulated` during the hackathon.
+ *
+ * @mixin EmailMessage
  */
 class EmailResource extends JsonResource
 {

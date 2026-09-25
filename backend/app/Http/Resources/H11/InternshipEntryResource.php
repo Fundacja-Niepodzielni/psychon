@@ -2,9 +2,13 @@
 
 namespace App\Http\Resources\H11;
 
+use App\Models\InternshipEntry;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin InternshipEntry
+ */
 class InternshipEntryResource extends JsonResource
 {
     public function toArray(Request $request): array

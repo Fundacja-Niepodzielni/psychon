@@ -2,11 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Bell notification shape (contract §2 — Powiadomienia).
+ *
+ * @mixin Notification
  */
 class NotificationResource extends JsonResource
 {
