@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
@@ -8,20 +9,38 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Table, { type Column } from "@/components/ui/Table";
 import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
+import { ApiError, downloadReportCsv } from "@/lib/api";
 import {
-  ApiError,
-  downloadReportCsv,
-  fetchReport,
-  type ReportData,
-  type ReportFilters,
-  type ReportPersonRow,
-} from "@/lib/api";
-import { ROLE_LABELS } from "@/lib/h18/labels";
+  fetchReports,
+  type ReportsData,
+  type ReportsFilters,
+  type ReportsPersonRow,
+} from "@/lib/api/raport";
+import { adresListyOsob, ODNOSNIKI_LICZB, type KluczLiczby } from "@/lib/h20/raportOdnosniki";
+import { kolumnyOsoby } from "@/components/h20/kolumny-osoby";
 
 const EMPTY_FILTERS = { from: "", to: "" };
 
+/** Kafelek podsumowania z odnośnikiem do listy osób, z której liczba pochodzi. */
+function KafelekLiczby({ tytul, klucz, wartosc }: { tytul: string; klucz: KluczLiczby; wartosc: number | undefined }) {
+  return (
+    <Card>
+      <p className="text-caption font-bold uppercase tracking-wide text-subtle">{tytul}</p>
+      <p className="mt-1 text-h3 font-black text-ink">
+        <Link
+          href={adresListyOsob(klucz)}
+          className="underline decoration-control underline-offset-4 transition-colors duration-150 hover:decoration-heading focus-visible:focus-ring"
+          title={`${ODNOSNIKI_LICZB[klucz].etykieta} — lista osób`}
+        >
+          {wartosc}
+        </Link>
+      </p>
+    </Card>
+  );
+}
+
 export default function ReportView() {
-  const [report, setReport] = useState<ReportData | null>(null);
+  const [report, setReport] = useState<ReportsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | undefined>();
   const [reload, setReload] = useState(0);
@@ -31,11 +50,11 @@ export default function ReportView() {
   // Pola formularza (co użytkownik wpisuje) vs zastosowane filtry
   // (co poszło do API) — domyślnie oba puste, czyli zachowanie bez zmian.
   const [form, setForm] = useState(EMPTY_FILTERS);
-  const [applied, setApplied] = useState<ReportFilters>({});
+  const [applied, setApplied] = useState<ReportsFilters>({});
 
   useEffect(() => {
     let active = true;
-    fetchReport(applied)
+    fetchReports(applied)
       .then((data) => {
         if (active) setReport(data);
       })
@@ -61,6 +80,9 @@ export default function ReportView() {
     });
   }
 
+  // Eksport CSV zostaje na dotychczasowym `GET /admin/report/export.csv`
+  // (pakiet H20, `lib/api/h20.ts`) — osobna trasa, niezależna od nowego
+  // `GET /admin/reports` użytego przez ten ekran do wyświetlania liczb.
   async function exportCsv() {
     setDownloading(true);
     setDownloadError(null);
@@ -75,25 +97,13 @@ export default function ReportView() {
     }
   }
 
-  const columns: Column<ReportPersonRow>[] = [
+  const columns: Column<ReportsPersonRow>[] = [
+    ...kolumnyOsoby<ReportsPersonRow>(),
     {
-      key: "name",
-      header: "Osoba",
-      render: (row) => `${row.first_name} ${row.last_name}`,
-    },
-    {
-      key: "role",
-      header: "Rola",
-      render: (row) => ROLE_LABELS[row.role] ?? row.role,
-    },
-    {
-      key: "stage",
-      header: "Etap",
-      render: (row) => (
-        <Badge variant={row.stage === "certyfikat" ? "success" : "neutral"}>
-          {row.stage_label}
-        </Badge>
-      ),
+      // Zaliczone testy jako osobna liczba — nie zwinięte w etap (★ kryterium).
+      key: "tests_passed",
+      header: "Zaliczone testy",
+      render: (row) => row.tests_passed,
     },
     {
       key: "hours",
@@ -125,7 +135,7 @@ export default function ReportView() {
     <ListTemplate
       naglowek={{
         title: "Raport edycji",
-        description: "Liczby do grantu — te same źródła co karta osoby i pulpit.",
+        description: "Liczby do grantu — każda liczba prowadzi do listy osób, z której pochodzi.",
         action: (
           <>
             <Button variant="secondary" onClick={exportCsv} loading={downloading}>
@@ -180,44 +190,29 @@ export default function ReportView() {
         Raport edycji — Fundacja Niepodzielni
       </h1>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Osoby przyjęte
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.admitted}</p>
-        </Card>
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Osoby aktywne
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.active}</p>
-        </Card>
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Programy ukończone
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.completed}</p>
-        </Card>
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Certyfikaty wydane
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">
-            {report?.summary.certificates_issued}
-          </p>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <KafelekLiczby tytul="Osoby przyjęte" klucz="admitted" wartosc={report?.summary.admitted} />
+        <KafelekLiczby tytul="Osoby aktywne" klucz="active" wartosc={report?.summary.active} />
+        <KafelekLiczby tytul="Programy ukończone" klucz="completed" wartosc={report?.summary.completed} />
+        <KafelekLiczby
+          tytul="Certyfikaty wydane"
+          klucz="certificates_issued"
+          wartosc={report?.summary.certificates_issued}
+        />
+        <KafelekLiczby
+          tytul="Zaliczone testy"
+          klucz="tests_passed"
+          wartosc={report?.summary.tests_passed}
+        />
       </div>
 
       <Card title="Pozostałe liczby">
-        <dl className="grid gap-4 text-small sm:grid-cols-3">
+        {/* Sumy, nie liczba osób — bez odnośnika (patrz komentarz w
+            `lib/h20/raportOdnosniki.ts`: filtr listy osób nie odda sumy). */}
+        <dl className="grid gap-4 text-small sm:grid-cols-2">
           <div>
             <dt className="text-muted">Suma godzin stażu</dt>
             <dd className="mt-1 font-bold text-ink">{report?.summary.hours_accepted_total}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Średnia godzin / osobę</dt>
-            <dd className="mt-1 font-bold text-ink">{report?.summary.hours_accepted_average}</dd>
           </div>
           <div>
             <dt className="text-muted">Konsultacje łącznie</dt>

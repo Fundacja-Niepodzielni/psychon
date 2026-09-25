@@ -111,15 +111,15 @@ const SCREENS: ScreenCase[] = [
     url: "/admin/raport",
     element: () => <ReportPage />,
     routes: {
-      "/admin/report": {
+      "/admin/reports": {
         summary: {
           admitted: 5,
           active: 3,
           completed: 1,
-          hours_accepted_total: "113.5",
-          hours_accepted_average: "37.8",
-          consultations_total: 101,
           certificates_issued: 1,
+          tests_passed: 2,
+          hours_accepted_total: "113.5",
+          consultations_total: 101,
         },
         people: [],
       },
