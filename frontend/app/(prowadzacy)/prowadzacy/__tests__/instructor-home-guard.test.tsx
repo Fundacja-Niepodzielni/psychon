@@ -56,8 +56,8 @@ beforeEach(() => {
   apiPaged.mockReset();
 });
 
-describe("ekran /prowadzacy pod strażnikiem roli", () => {
-  it('rola "volunteer" dostaje "Brak dostępu" i ekran nie woła /instructor/group ani skrzynki pytań', async () => {
+describe("/prowadzacy under the instructor role guard", () => {
+  it('role "volunteer" gets "Brak dostępu" and the screen fetches neither the group nor the questions', async () => {
     api.mockResolvedValue({ role: "volunteer" });
 
     renderScreen();
@@ -68,7 +68,7 @@ describe("ekran /prowadzacy pod strażnikiem roli", () => {
     expect(apiPaged).not.toHaveBeenCalled();
   });
 
-  it('rola "instructor" widzi nagłówek i liczby z /instructor/group oraz skrzynki pytań', async () => {
+  it('role "instructor" sees the heading and counters from the group and questions endpoints', async () => {
     api.mockImplementation((url: string) => {
       if (url === "/me") return Promise.resolve({ role: "instructor" });
       if (url === "/instructor/group") return Promise.resolve(group);

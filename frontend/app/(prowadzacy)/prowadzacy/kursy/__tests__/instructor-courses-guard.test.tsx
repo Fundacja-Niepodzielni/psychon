@@ -50,8 +50,8 @@ beforeEach(() => {
   apiPaged.mockResolvedValue({ data: [], meta: undefined });
 });
 
-describe("ekran /prowadzacy/kursy pod strażnikiem roli", () => {
-  it('rola "volunteer" dostaje "Brak dostępu" i ekran nie woła /instructor/courses', async () => {
+describe("/prowadzacy/kursy under the instructor role guard", () => {
+  it('role "volunteer" gets "Brak dostępu" and the screen does not fetch /instructor/courses', async () => {
     api.mockResolvedValue({ role: "volunteer" });
 
     renderScreen();
@@ -62,7 +62,7 @@ describe("ekran /prowadzacy/kursy pod strażnikiem roli", () => {
     expect(apiPaged).not.toHaveBeenCalled();
   });
 
-  it('rola "instructor" widzi listę kursów z /instructor/courses', async () => {
+  it('role "instructor" sees the course list from /instructor/courses', async () => {
     api.mockImplementation((url: string) => {
       if (url === "/me") return Promise.resolve({ role: "instructor" });
       if (url === "/instructor/courses") {
