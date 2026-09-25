@@ -67,6 +67,17 @@ export {
   downloadAuditLogCsv,
 } from "./api/h20";
 
+// Wzory dokumentów — treść wzorów (porozumienie, zaświadczenie, certyfikat) i historia wersji
+export {
+  type DocumentTemplateType,
+  type DocumentTemplateAuthor,
+  type DocumentTemplate,
+  type DocumentTemplateVersion,
+  fetchDocumentTemplate,
+  updateDocumentTemplate,
+  fetchDocumentTemplateVersions,
+} from "./api/document-templates";
+
 // klient — fetch wrapper, nagłówek autoryzacji, typ błędu (współdzielone przez wszystkie moduły)
 export {
   type PaginationMeta,

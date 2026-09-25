@@ -73,7 +73,7 @@ describe("rejestry menu — sekcje", () => {
       ["Praktyka", ["Akceptacja stażu", "Superwizje"]],
       ["Obsługa", ["Sprawy", "Skrzynka e-maili"]],
       ["Raporty", ["Raport", "Dziennik działań"]],
-      ["Konfiguracja", ["Ekran startowy", "Ustawienia"]],
+      ["Konfiguracja", ["Ekran startowy", "Ustawienia", "Wzory dokumentów"]],
     ]);
   });
 

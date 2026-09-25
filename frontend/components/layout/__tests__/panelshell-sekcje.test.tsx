@@ -87,7 +87,7 @@ describe("PanelShell — sekcje menu administracji", () => {
       const lista = document.getElementById(b.getAttribute("aria-controls") ?? "");
       expect(lista?.tagName).toBe("UL");
     }
-    expect(within(nav).getAllByRole("link")).toHaveLength(14);
+    expect(within(nav).getAllByRole("link")).toHaveLength(15);
   });
 
   it("klik zwija sekcję, chowa jej listę i zapisuje stan w pamięci przeglądarki", () => {
@@ -133,7 +133,7 @@ describe("PanelShell — sekcje menu administracji", () => {
     const nav = menuBoczne();
     const ikony = nav.querySelectorAll("svg");
 
-    expect(ikony.length).toBe(14 + 6);
+    expect(ikony.length).toBe(15 + 6);
     expect([...ikony].filter((s) => s.getAttribute("aria-hidden") !== "true")).toHaveLength(0);
     expect(within(nav).getByRole("link", { name: "Skrzynka e-maili" })).toBeInTheDocument();
   });
