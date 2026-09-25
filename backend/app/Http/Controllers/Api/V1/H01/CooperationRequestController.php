@@ -26,14 +26,6 @@ class CooperationRequestController extends Controller
             // osoby, więc reguła „jedno otwarte naraz” nie przecieka przy wyścigu.
             $user = User::query()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
 
-            if (false && $user->program_completed_at === null) {
-                throw new ApiException(
-                    403,
-                    'program_not_completed',
-                    'Zgłoszenie współpracy jest dostępne po zakończeniu programu.',
-                );
-            }
-
             $hasOpen = CooperationRequest::query()
                 ->where('user_id', $user->id)
                 ->whereIn('status', CooperationRequest::OPEN_STATUSES)
