@@ -201,6 +201,44 @@ describe("DocumentTemplateTab — historia wersji (sam odczyt)", () => {
   });
 });
 
+describe("DocumentTemplateTab — updated_by dopuszcza brak (seed bazy)", () => {
+  it("pozytywna: updated_by: null (świeży seed) renderuje ekran ze zdaniem, bez wyjątku", async () => {
+    fetchDocumentTemplate.mockResolvedValueOnce(szablon({ updated_by: null }));
+    fetchDocumentTemplateVersions.mockResolvedValueOnce([
+      { version: 1, updated_at: "2026-09-01T10:00:00Z", updated_by: null },
+    ]);
+
+    render(<DocumentTemplateTab type="agreement" label="wzoru porozumienia" />);
+
+    await screen.findByLabelText("Treść wzoru");
+
+    // Zdanie po polsku, nie "undefined" ani puste miejsce — raz w podpisie pod
+    // formularzem, raz w wierszu historii (oba miejsca czytały `.name`).
+    expect(screen.getAllByText(/wzór nie był jeszcze edytowany/i)).toHaveLength(2);
+  });
+
+  it("pozytywna (stan przeciwny): updated_by z nazwą osoby renderuje nazwę", async () => {
+    fetchDocumentTemplate.mockResolvedValueOnce(
+      szablon({ updated_by: { id: 5, name: "Zofia Krawczyk" } }),
+    );
+    fetchDocumentTemplateVersions.mockResolvedValueOnce([
+      {
+        version: 1,
+        updated_at: "2026-09-01T10:00:00Z",
+        updated_by: { id: 5, name: "Zofia Krawczyk" },
+      },
+    ]);
+
+    render(<DocumentTemplateTab type="agreement" label="wzoru porozumienia" />);
+
+    await screen.findByLabelText("Treść wzoru");
+
+    // Podpis pod formularzem i wiersz historii — obie nazwy, bez zdania zastępczego.
+    expect(screen.getAllByText(/Zofia Krawczyk/)).toHaveLength(2);
+    expect(screen.queryByText(/nie był jeszcze edytowany/i)).not.toBeInTheDocument();
+  });
+});
+
 describe("DocumentTemplateTab — błąd uprawnień", () => {
   it("negatywna: 403 przy wczytywaniu pokazuje komunikat i NIE udaje zapisu (brak formularza)", async () => {
     fetchDocumentTemplate.mockRejectedValueOnce(

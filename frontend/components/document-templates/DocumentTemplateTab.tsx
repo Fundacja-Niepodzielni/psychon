@@ -35,6 +35,9 @@ function formatDate(iso: string): string {
 
 const LOAD_ERROR_MESSAGE = "Nie udało się wczytać wzoru dokumentu. Spróbuj ponownie.";
 
+/** Gdy wzór nie ma jeszcze osoby edytującej (seed bazy) — `updated_by` to `null`. */
+const NOT_EDITED_YET_MESSAGE = "wzór nie był jeszcze edytowany";
+
 /**
  * Zawartość jednej zakładki ekranu „Wzory dokumentów" (administracja) —
  * treść jednego typu wzoru (`type`): edytor obok podglądu, zapis (`PUT`,
@@ -134,7 +137,11 @@ export default function DocumentTemplateTab({ type, label }: DocumentTemplateTab
   const columns: Column<DocumentTemplateVersion>[] = [
     { key: "version", header: "Wersja", render: (row) => `#${row.version}` },
     { key: "when", header: "Data", render: (row) => formatDate(row.updated_at) },
-    { key: "who", header: "Osoba", render: (row) => row.updated_by.name },
+    {
+      key: "who",
+      header: "Osoba",
+      render: (row) => (row.updated_by ? row.updated_by.name : "Wzór nie był jeszcze edytowany"),
+    },
   ];
 
   return (
@@ -167,8 +174,8 @@ export default function DocumentTemplateTab({ type, label }: DocumentTemplateTab
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-caption text-muted">
-            Wersja #{data.version} · zapisano {formatDate(data.updated_at)} przez{" "}
-            {data.updated_by.name}
+            Wersja #{data.version} · zapisano {formatDate(data.updated_at)}
+            {data.updated_by ? <> przez {data.updated_by.name}</> : <> — {NOT_EDITED_YET_MESSAGE}</>}
           </p>
           <Button type="submit" loading={saving}>
             Zapisz zmiany
