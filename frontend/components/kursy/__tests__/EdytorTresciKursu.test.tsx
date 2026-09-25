@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -102,7 +102,8 @@ describe("EdytorTresciKursu", () => {
         method: "PATCH",
         body: {
           title: "Praca z emocjami — v2",
-          slug: kurs.slug,
+          // U-11: slug wciąż idzie za tytułem — nikt go tu nie dotknął ręcznie.
+          slug: "praca-z-emocjami-v2",
           type: kurs.type,
           product_group: kurs.product_group,
           sequence_order: kurs.sequence_order,
@@ -111,6 +112,77 @@ describe("EdytorTresciKursu", () => {
       }),
     );
     await waitFor(() => expect(onCourseUpdated).toHaveBeenCalled());
+  });
+
+  it("pozytyw (U-11): slug wypełnia się sam z tytułu, dopóki nikt go nie zmieni ręcznie", async () => {
+    render(
+      <EdytorTresciKursu
+        course={kurs}
+        lessons={[lekcja]}
+        onCourseUpdated={vi.fn()}
+        onLessonsReload={vi.fn()}
+      />,
+    );
+
+    await userEvent.clear(screen.getByLabelText("Tytuł"));
+    await userEvent.type(screen.getByLabelText("Tytuł"), "Wywiad psychologiczny");
+
+    expect(screen.getByLabelText("Identyfikator (slug)")).toHaveValue(
+      "wywiad-psychologiczny",
+    );
+  });
+
+  it("pozytyw (U-11): po ręcznej zmianie sluga kolejna zmiana tytułu go nie rusza", async () => {
+    render(
+      <EdytorTresciKursu
+        course={kurs}
+        lessons={[lekcja]}
+        onCourseUpdated={vi.fn()}
+        onLessonsReload={vi.fn()}
+      />,
+    );
+
+    await userEvent.clear(screen.getByLabelText("Identyfikator (slug)"));
+    await userEvent.type(
+      screen.getByLabelText("Identyfikator (slug)"),
+      "wlasny-adres",
+    );
+
+    await userEvent.clear(screen.getByLabelText("Tytuł"));
+    await userEvent.type(screen.getByLabelText("Tytuł"), "Zupełnie inny tytuł");
+
+    expect(screen.getByLabelText("Identyfikator (slug)")).toHaveValue(
+      "wlasny-adres",
+    );
+  });
+
+  it("pozytyw (U-9): kolumna Pozycja przelicza się natychmiast po przesunięciu strzałką", async () => {
+    const lekcja2 = { ...lekcja, id: 11, title: "Druga lekcja", sequence_order: 2 };
+
+    render(
+      <EdytorTresciKursu
+        course={kurs}
+        lessons={[lekcja, lekcja2]}
+        onCourseUpdated={vi.fn()}
+        onLessonsReload={vi.fn()}
+      />,
+    );
+
+    const rowFor = (title: string) =>
+      screen.getByText(title).closest("tr") as HTMLTableRowElement;
+
+    expect(within(rowFor("Lekcja wstępna")).getAllByRole("cell")[1]).toHaveTextContent("1");
+    expect(within(rowFor("Druga lekcja")).getAllByRole("cell")[1]).toHaveTextContent("2");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Przesuń w dół: Lekcja wstępna" }),
+    );
+
+    // Przesunięcie w dół zamienia obie lekcje miejscami — kolumna Pozycja ma
+    // pokazywać nowy układ NATYCHMIAST, bez zapisu na serwer (dawny błąd
+    // zostawiał tu stare wartości "2, 1" aż do zapisu kolejności).
+    expect(within(rowFor("Lekcja wstępna")).getAllByRole("cell")[1]).toHaveTextContent("2");
+    expect(within(rowFor("Druga lekcja")).getAllByRole("cell")[1]).toHaveTextContent("1");
   });
 
   it("pozytyw: nowa lekcja woła POST /admin/courses/{id}/lessons i przeładowuje listę u rodzica", async () => {
@@ -178,6 +250,31 @@ describe("EdytorTresciKursu", () => {
         "Praca z emocjami — z serwera",
       ),
     );
+  });
+
+  it("pozytyw (U-8/U-4): „Edytuj” rozwija formularz w wierszu TUŻ POD lekcją, nie na dole tabeli", async () => {
+    const lekcja2 = { ...lekcja, id: 11, title: "Druga lekcja", sequence_order: 2 };
+
+    render(
+      <EdytorTresciKursu
+        course={kurs}
+        lessons={[lekcja, lekcja2]}
+        onCourseUpdated={vi.fn()}
+        onLessonsReload={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edytuj lekcję: Lekcja wstępna" }),
+    );
+
+    const editedRow = screen.getByText("Lekcja wstępna").closest("tr");
+    const nextRow = editedRow?.nextElementSibling as HTMLElement | null;
+
+    expect(nextRow).not.toBeNull();
+    expect(
+      within(nextRow as HTMLElement).getByLabelText("Tytuł lekcji"),
+    ).toBeInTheDocument();
   });
 
   it("negatyw: błąd API przy zapisie kursu pokazuje komunikat i NIE woła onCourseUpdated", async () => {

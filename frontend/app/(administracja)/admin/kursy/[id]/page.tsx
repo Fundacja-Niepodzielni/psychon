@@ -5,6 +5,7 @@ import { use, useEffect, useState } from "react";
 import ActionRow from "@/components/molecules/ActionRow";
 import Breadcrumbs from "@/components/molecules/Breadcrumbs";
 import DetailTemplate from "@/components/templates/DetailTemplate";
+import TwoColumnDetail from "@/components/templates/TwoColumnDetail";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -160,63 +161,71 @@ export default function AdminCoursePage({
       onPonow={() => setReloadKey((value) => value + 1)}
     >
       {course && (
-        <>
-          <Card title="Publikacja">
-            <Stack>
-              {publishError && <Alert variant="error">{publishError}</Alert>}
-              <Text>
-                Stan kursu:{" "}
-                <Badge variant={course.is_published ? "success" : "neutral"}>
-                  {course.is_published ? "Opublikowany" : "Szkic"}
-                </Badge>
-              </Text>
-              <Text size="small" tone="muted">
-                Kurs publikujesz dopiero z lekcjami, bo opublikowany pusty etap
-                zablokowałby ścieżkę wszystkim uczestniczkom i uczestnikom za
-                nim.
-              </Text>
-              <ActionRow>
-                <Button
-                  variant="ghost"
-                  onClick={deleteCourse}
-                  loading={deletingCourse}
-                >
-                  Usuń kurs
-                </Button>
-                {course.is_published ? (
-                  <Button
-                    variant="secondary"
-                    onClick={() => setPublished(false)}
-                    loading={publishing}
-                  >
-                    Cofnij publikację
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => setPublished(true)}
-                    loading={publishing}
-                  >
-                    Opublikuj kurs
-                  </Button>
-                )}
-              </ActionRow>
-            </Stack>
-          </Card>
+        // U-1: TwoColumnDetail — kolumna główna (Dane kursu, Lekcje) +
+        // boczna (Publikacja, Prowadzący, Zaproszenia, Test wiedzy) od
+        // 1280 px; jedna kolumna w pionie poniżej tego progu.
+        <TwoColumnDetail
+          main={
+            <EdytorTresciKursu
+              course={course}
+              lessons={lessons}
+              onCourseUpdated={setCourse}
+              onLessonsReload={() => setReloadKey((value) => value + 1)}
+            />
+          }
+          sidebar={
+            <>
+              <Card title="Publikacja">
+                <Stack>
+                  {publishError && <Alert variant="error">{publishError}</Alert>}
+                  <Text>
+                    Stan kursu:{" "}
+                    <Badge variant={course.is_published ? "success" : "neutral"}>
+                      {course.is_published ? "Opublikowany" : "Szkic"}
+                    </Badge>
+                  </Text>
+                  <Text size="small" tone="muted">
+                    Kurs publikujesz dopiero z lekcjami, bo opublikowany pusty
+                    etap zablokowałby ścieżkę wszystkim uczestniczkom i
+                    uczestnikom za nim.
+                  </Text>
+                  <ActionRow>
+                    <Button
+                      variant="ghost"
+                      onClick={deleteCourse}
+                      loading={deletingCourse}
+                    >
+                      Usuń kurs
+                    </Button>
+                    {course.is_published ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setPublished(false)}
+                        loading={publishing}
+                      >
+                        Cofnij publikację
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setPublished(true)}
+                        loading={publishing}
+                      >
+                        Opublikuj kurs
+                      </Button>
+                    )}
+                  </ActionRow>
+                </Stack>
+              </Card>
 
-          <EdytorTresciKursu
-            course={course}
-            lessons={lessons}
-            onCourseUpdated={setCourse}
-            onLessonsReload={() => setReloadKey((value) => value + 1)}
-          />
-
-          {assignmentSlots.map(({ id: slotId, Component }) => (
-            <Component key={slotId} course={course} lessons={lessons} />
-          ))}
-          {actionSlots.map(({ id: slotId, Component }) => (
-            <Component key={slotId} course={course} />
-          ))}
-        </>
+              {assignmentSlots.map(({ id: slotId, Component }) => (
+                <Component key={slotId} course={course} lessons={lessons} />
+              ))}
+              {actionSlots.map(({ id: slotId, Component }) => (
+                <Component key={slotId} course={course} />
+              ))}
+            </>
+          }
+        />
       )}
     </DetailTemplate>
   );

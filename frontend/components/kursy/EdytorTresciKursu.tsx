@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import ActionRow from "@/components/molecules/ActionRow";
+import ExpandableTable from "@/components/molecules/ExpandableTable";
 import MoveButtons from "@/components/molecules/MoveButtons";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
@@ -12,7 +13,7 @@ import Input from "@/components/ui/Input";
 import Inset from "@/components/ui/Inset";
 import Select from "@/components/ui/Select";
 import Stack from "@/components/ui/Stack";
-import Table, { type Column } from "@/components/ui/Table";
+import { type Column } from "@/components/ui/Table";
 import { api, ApiError } from "@/lib/api";
 import {
   COURSE_TYPE_LABELS,
@@ -74,6 +75,29 @@ function messageFrom(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
 }
 
+const POLISH_DIACRITICS: Record<string, string> = {
+  ą: "a",
+  ć: "c",
+  ę: "e",
+  ł: "l",
+  ń: "n",
+  ó: "o",
+  ś: "s",
+  ź: "z",
+  ż: "z",
+};
+
+/** Tytuł → identyfikator (slug): polskie znaki na ASCII, spacje na myślniki, małe litery (U-11). */
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[ąćęłńóśźż]/g, (ch) => POLISH_DIACRITICS[ch] ?? ch)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export interface EdytorTresciKursuProps {
   course: AdminCourse;
   lessons: AdminLesson[];
@@ -100,6 +124,9 @@ export default function EdytorTresciKursu({
   onLessonsReload,
 }: EdytorTresciKursuProps) {
   const [courseForm, setCourseForm] = useState<CourseForm>(() => toCourseForm(course));
+  // U-11: automat wypełnia `slug` z `title`, dopóki ktoś nie zmieni sluga
+  // ręcznie — wtedy automat milknie aż do przeładowania kursu.
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   // Zachowanie sprzed podziału (`admin/kursy/[id]/page.tsx` przed 9e20d8f):
   // formularz kursu resetował się do danych serwera przy KAŻDYM pełnym
   // przeładunku (tam: efekt zależny od `[id, reloadKey]`). Tu rodzic
@@ -117,6 +144,7 @@ export default function EdytorTresciKursu({
   if (lessons !== prevLessons) {
     setPrevLessons(lessons);
     setCourseForm(toCourseForm(course));
+    setSlugManuallyEdited(false);
   }
   const [savingCourse, setSavingCourse] = useState(false);
   const [courseSaved, setCourseSaved] = useState(false);
@@ -153,6 +181,21 @@ export default function EdytorTresciKursu({
   ) {
     setCourseForm((prev) => ({ ...prev, [key]: value }));
     setCourseSaved(false);
+  }
+
+  /** Tytuł zmienia się → slug idzie za nim, dopóki nikt go nie poprawił ręcznie (U-11). */
+  function updateCourseTitle(value: string) {
+    setCourseForm((prev) => ({
+      ...prev,
+      title: value,
+      slug: slugManuallyEdited ? prev.slug : slugify(value),
+    }));
+    setCourseSaved(false);
+  }
+
+  function updateCourseSlug(value: string) {
+    setSlugManuallyEdited(true);
+    updateCourse("slug", value);
   }
 
   async function submitCourse(event: FormEvent) {
@@ -291,6 +334,24 @@ export default function EdytorTresciKursu({
     setLessonActionError(null);
   }
 
+  /** Przenosi lekcję z `fromIndex` na `toIndex` — droga przeciągania (U-9). */
+  function moveLessonTo(fromIndex: number, toIndex: number) {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= orderedLessons.length ||
+      toIndex >= orderedLessons.length
+    ) {
+      return;
+    }
+    const next = [...orderedLessons];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setOrderDraft(next);
+    setLessonActionError(null);
+  }
+
   async function saveLessonOrder() {
     setSavingOrder(true);
     setLessonActionError(null);
@@ -327,7 +388,11 @@ export default function EdytorTresciKursu({
     {
       key: "sequence_order",
       header: "Pozycja",
-      render: (row) => row.sequence_order ?? "–",
+      // U-9: pozycja liczona z BIEŻĄCEJ kolejności (`orderedLessons`), nie z
+      // `sequence_order` zapisanego na serwerze — inaczej po przesunięciu
+      // wiersza kolumna pokazywała stare wartości aż do zapisu.
+      render: (row) =>
+        orderedLessons.findIndex((lesson) => lesson.id === row.id) + 1,
     },
     { key: "title", header: "Tytuł", render: (row) => row.title },
     {
@@ -346,6 +411,9 @@ export default function EdytorTresciKursu({
     {
       key: "order",
       header: "Kolejność",
+      // U-9: droga klawiaturowa (strzałki) — równorzędna z uchwytem
+      // przeciągania, który `ExpandableTable` dokłada sam jako osobną
+      // kolumnę, gdy dostanie `onReorder`.
       render: (row) => (
         <MoveButtons
           label={row.title}
@@ -391,14 +459,19 @@ export default function EdytorTresciKursu({
               <Input
                 label="Tytuł"
                 value={courseForm.title}
-                onChange={(e) => updateCourse("title", e.target.value)}
+                onChange={(e) => updateCourseTitle(e.target.value)}
                 error={courseErr("title")}
               />
               <Input
                 label="Identyfikator (slug)"
                 value={courseForm.slug}
-                onChange={(e) => updateCourse("slug", e.target.value)}
+                onChange={(e) => updateCourseSlug(e.target.value)}
                 error={courseErr("slug")}
+                hint={
+                  slugManuallyEdited
+                    ? "Zmieniony ręcznie — tytuł już go nie nadpisze."
+                    : "Wypełnia się sam z tytułu, dopóki go nie zmienisz."
+                }
               />
               <Select
                 label="Typ"
@@ -482,23 +555,12 @@ export default function EdytorTresciKursu({
             </Button>
           </ActionRow>
 
-          <Table
-            columns={lessonColumns}
-            rows={orderedLessons}
-            rowKey={(row) => row.id}
-            caption={`Lekcje kursu ${course.title}`}
-            emptyMessage="Ten kurs nie ma jeszcze lekcji. Dodaj pierwszą, żeby móc go opublikować."
-          />
-
-          {lessonFormOpen !== null && (
+          {/* U-8: „Nowa lekcja” otwiera się TU, tuż nad tabelą — widoczna bez
+              przewijania, zamiast na dole poza ekranem. */}
+          {lessonFormOpen === "new" && (
             <Form onSubmit={submitLesson} bledyPol={lessonFieldErrors}>
-              <Inset
-                title={lessonFormOpen === "new" ? "Nowa lekcja" : "Edycja lekcji"}
-              >
-                {lessonFormError && (
-                  <Alert variant="error">{lessonFormError}</Alert>
-                )}
-
+              <Inset title="Nowa lekcja" warm>
+                {lessonFormError && <Alert variant="error">{lessonFormError}</Alert>}
                 <Columns>
                   <Input
                     label="Tytuł lekcji"
@@ -537,34 +599,111 @@ export default function EdytorTresciKursu({
                     hint="Zero oznacza, że lekcji nie da się ukończyć."
                   />
                 </Columns>
-
                 <Input
                   label="Opis"
                   value={lessonForm.description}
                   onChange={(e) => updateLesson("description", e.target.value)}
                   error={lessonErr("description")}
                 />
-
                 <ActionRow>
                   <Button variant="ghost" onClick={() => setLessonFormOpen(null)}>
                     Anuluj
                   </Button>
                   <Button type="submit" loading={savingLesson}>
-                    {lessonFormOpen === "new" ? "Dodaj lekcję" : "Zapisz lekcję"}
+                    Dodaj lekcję
                   </Button>
                 </ActionRow>
-
-                {editedLesson &&
-                  materialSlots.map(({ id: slotId, Component }) => (
-                    <Component
-                      key={slotId}
-                      course={course}
-                      lesson={editedLesson}
-                    />
-                  ))}
               </Inset>
             </Form>
           )}
+
+          {/* U-3/U-4/U-8/U-9: molekuła `ExpandableTable` — tabela leży wprost
+              w sekcji (bez karty w karcie), edycja rozwija się POD wierszem
+              (bez przewijania), przeciąganie zmienia kolejność z uchwytem. */}
+          <ExpandableTable
+            columns={lessonColumns}
+            rows={orderedLessons}
+            rowKey={(row) => row.id}
+            caption={`Lekcje kursu ${course.title}`}
+            emptyMessage="Ten kurs nie ma jeszcze lekcji. Dodaj pierwszą, żeby móc go opublikować."
+            expandedRowKey={lessonFormOpen === "new" ? null : lessonFormOpen}
+            onReorder={moveLessonTo}
+            renderExpanded={(row) => (
+              <Form onSubmit={submitLesson} bledyPol={lessonFieldErrors}>
+                <Inset title="Edycja lekcji" warm>
+                  {lessonFormError && (
+                    <Alert variant="error">{lessonFormError}</Alert>
+                  )}
+                  <Columns>
+                    <Input
+                      label="Tytuł lekcji"
+                      value={lessonForm.title}
+                      onChange={(e) => updateLesson("title", e.target.value)}
+                      error={lessonErr("title")}
+                    />
+                    <Input
+                      label="Pozycja w kursie"
+                      type="number"
+                      min={1}
+                      value={lessonForm.sequence_order}
+                      onChange={(e) =>
+                        updateLesson("sequence_order", e.target.value)
+                      }
+                      error={lessonErr("sequence_order")}
+                      hint="Puste pole = kolejny wolny numer."
+                    />
+                    <Input
+                      label="Identyfikator nagrania (mock)"
+                      value={lessonForm.video_provider_id}
+                      onChange={(e) =>
+                        updateLesson("video_provider_id", e.target.value)
+                      }
+                      error={lessonErr("video_provider_id")}
+                    />
+                    <Input
+                      label="Czas trwania (sekundy)"
+                      type="number"
+                      min={0}
+                      value={lessonForm.duration_seconds}
+                      onChange={(e) =>
+                        updateLesson("duration_seconds", e.target.value)
+                      }
+                      error={lessonErr("duration_seconds")}
+                      hint="Zero oznacza, że lekcji nie da się ukończyć."
+                    />
+                  </Columns>
+                  <Input
+                    label="Opis"
+                    value={lessonForm.description}
+                    onChange={(e) =>
+                      updateLesson("description", e.target.value)
+                    }
+                    error={lessonErr("description")}
+                  />
+                  <ActionRow>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setLessonFormOpen(null)}
+                    >
+                      Anuluj
+                    </Button>
+                    <Button type="submit" loading={savingLesson}>
+                      Zapisz lekcję
+                    </Button>
+                  </ActionRow>
+
+                  {editedLesson?.id === row.id &&
+                    materialSlots.map(({ id: slotId, Component }) => (
+                      <Component
+                        key={slotId}
+                        course={course}
+                        lesson={editedLesson}
+                      />
+                    ))}
+                </Inset>
+              </Form>
+            )}
+          />
         </Stack>
       </Card>
 
