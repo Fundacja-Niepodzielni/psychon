@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1\H08;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\H08\StoreMaterialRequest;
+use App\Http\Requests\H08\StoreInstructorMaterialRequest;
 use App\Http\Resources\H08\AdminMaterialResource;
 use App\Models\Course;
 use App\Models\Lesson;
@@ -23,7 +23,7 @@ use Illuminate\Http\UploadedFile;
  */
 class InstructorMaterialController extends Controller
 {
-    public function storeForLesson(StoreMaterialRequest $request, Lesson $lesson): JsonResponse
+    public function storeForLesson(StoreInstructorMaterialRequest $request, Lesson $lesson): JsonResponse
     {
         $course = $lesson->course()->withTrashed()->first();
 
@@ -41,7 +41,7 @@ class InstructorMaterialController extends Controller
         return $this->resourceResponse($request, $material);
     }
 
-    public function storeForCourse(StoreMaterialRequest $request, Course $course): JsonResponse
+    public function storeForCourse(StoreInstructorMaterialRequest $request, Course $course): JsonResponse
     {
         if ($request->user()->cannot('update', $course)) {
             throw new ApiException(403, 'forbidden', 'Nie jesteś przypisany do tego kursu.');
@@ -92,7 +92,7 @@ class InstructorMaterialController extends Controller
         return $courseId === null ? null : Course::withTrashed()->find($courseId);
     }
 
-    private function uploadedFile(StoreMaterialRequest $request): UploadedFile
+    private function uploadedFile(StoreInstructorMaterialRequest $request): UploadedFile
     {
         /** @var UploadedFile $file */
         $file = $request->file('file');

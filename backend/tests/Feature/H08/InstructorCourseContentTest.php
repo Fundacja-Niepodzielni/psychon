@@ -105,6 +105,60 @@ class InstructorCourseContentTest extends TestCase
         ])->assertStatus(403)->assertJsonPath('error.code', 'forbidden');
     }
 
+    /**
+     * `FormRequest::authorize()` biegnie przed `rules()` — odmowa musi
+     * wyprzedzać walidację ciała, inaczej cudze niepoprawne body dawało 422
+     * zamiast 403 (`UpdateInstructorCourseRequest`).
+     */
+    public function test_foreign_course_update_is_forbidden_even_with_an_invalid_body(): void
+    {
+        $course = $this->course('etap-1');
+        $this->assignedInstructor($course);
+        $stranger = User::factory()->role('instructor')->create();
+
+        $this->actingAs($stranger, 'keycloak');
+
+        $this->patchJson("/api/v1/instructor/courses/{$course->id}", [
+            'title' => str_repeat('a', 300),
+        ])->assertStatus(403);
+    }
+
+    /**
+     * `slug` cudzego kursu jako ciało nie może działać jak wyrocznia
+     * istnienia identyfikatora — reguła `unique` z `UpdateCourseRequest`
+     * biegnie tylko wtedy, gdy `authorize()` już przepuściło.
+     */
+    public function test_foreign_course_update_is_forbidden_with_another_courses_slug(): void
+    {
+        $course = $this->course('etap-1');
+        $this->assignedInstructor($course);
+        $this->course('etap-2');
+        $stranger = User::factory()->role('instructor')->create();
+
+        $this->actingAs($stranger, 'keycloak');
+
+        $this->patchJson("/api/v1/instructor/courses/{$course->id}", [
+            'slug' => 'etap-2',
+        ])->assertStatus(403);
+    }
+
+    /**
+     * Kontrola przeciwna do dwóch powyższych: własny kurs z niepoprawnym
+     * ciałem dalej dostaje 422 — odmowa wyprzedza walidację tylko dla
+     * nieprzypisanego prowadzącego, nie zastępuje jej dla właściciela.
+     */
+    public function test_own_course_update_with_invalid_body_is_unprocessable(): void
+    {
+        $course = $this->course('etap-1');
+        $instructor = $this->assignedInstructor($course);
+
+        $this->actingAs($instructor, 'keycloak');
+
+        $this->patchJson("/api/v1/instructor/courses/{$course->id}", [
+            'title' => str_repeat('a', 300),
+        ])->assertStatus(422);
+    }
+
     public function test_administration_is_forbidden_on_instructor_course_route(): void
     {
         $course = $this->course('etap-1');
@@ -193,6 +247,35 @@ class InstructorCourseContentTest extends TestCase
         $this->assertSame(0, Lesson::count());
     }
 
+    /** Odmowa przed walidacją — patrz `test_foreign_course_update_is_forbidden_even_with_an_invalid_body`. */
+    public function test_foreign_course_lesson_creation_is_forbidden_even_with_an_invalid_body(): void
+    {
+        $course = $this->course('etap-1');
+        $this->assignedInstructor($course);
+        $stranger = User::factory()->role('instructor')->create();
+
+        $this->actingAs($stranger, 'keycloak');
+
+        $this->postJson("/api/v1/instructor/courses/{$course->id}/lessons", [
+            'title' => str_repeat('a', 300),
+        ])->assertStatus(403);
+
+        $this->assertSame(0, Lesson::count());
+    }
+
+    /** Noga obronna: własny kurs z niepoprawnym ciałem dalej dostaje 422. */
+    public function test_own_course_lesson_creation_with_invalid_body_is_unprocessable(): void
+    {
+        $course = $this->course('etap-1');
+        $instructor = $this->assignedInstructor($course);
+
+        $this->actingAs($instructor, 'keycloak');
+
+        $this->postJson("/api/v1/instructor/courses/{$course->id}/lessons", [
+            'title' => str_repeat('a', 300),
+        ])->assertStatus(422);
+    }
+
     public function test_assigned_instructor_updates_a_lesson_in_own_course(): void
     {
         $course = $this->course('etap-1');
@@ -262,6 +345,35 @@ class InstructorCourseContentTest extends TestCase
         ])->assertStatus(403);
 
         $this->assertSame(0, Material::count());
+    }
+
+    /** Odmowa przed walidacją — patrz `test_foreign_course_update_is_forbidden_even_with_an_invalid_body`. */
+    public function test_foreign_course_material_upload_is_forbidden_even_with_an_invalid_file(): void
+    {
+        $course = $this->course('etap-1');
+        $this->assignedInstructor($course);
+        $stranger = User::factory()->role('instructor')->create();
+
+        $this->actingAs($stranger, 'keycloak');
+
+        $this->postJson("/api/v1/instructor/courses/{$course->id}/materials", [
+            'file' => UploadedFile::fake()->create('zlosliwy.exe', 10),
+        ])->assertStatus(403);
+
+        $this->assertSame(0, Material::count());
+    }
+
+    /** Noga obronna: własny kurs z niepoprawnym plikiem dalej dostaje 422. */
+    public function test_own_course_material_upload_with_invalid_file_is_unprocessable(): void
+    {
+        $course = $this->course('etap-1');
+        $instructor = $this->assignedInstructor($course);
+
+        $this->actingAs($instructor, 'keycloak');
+
+        $this->postJson("/api/v1/instructor/courses/{$course->id}/materials", [
+            'file' => UploadedFile::fake()->create('zlosliwy.exe', 10),
+        ])->assertStatus(422);
     }
 
     public function test_assigned_instructor_deletes_a_material_of_own_course(): void

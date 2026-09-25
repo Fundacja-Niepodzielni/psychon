@@ -89,6 +89,64 @@ class InstructorTestManagementTest extends TestCase
         ])->assertStatus(403);
     }
 
+    /** Odmowa przed walidacją — patrz analogiczna próba w H08 (`InstructorCourseContentTest`). */
+    public function test_foreign_course_test_creation_is_forbidden_even_with_an_invalid_body(): void
+    {
+        $course = $this->course('etap-1');
+        $this->assignedInstructor($course);
+        $stranger = User::factory()->role('instructor')->create();
+
+        $this->actingAs($stranger, 'keycloak');
+
+        $this->postJson("/api/v1/instructor/courses/{$course->id}/tests", [
+            'pass_threshold' => 200,
+        ])->assertStatus(403);
+
+        $this->assertSame(0, KnowledgeTest::count());
+    }
+
+    /** Noga obronna: własny kurs z niepoprawnym ciałem dalej dostaje 422. */
+    public function test_own_course_test_creation_with_invalid_body_is_unprocessable(): void
+    {
+        $course = $this->course('etap-1');
+        $instructor = $this->assignedInstructor($course);
+
+        $this->actingAs($instructor, 'keycloak');
+
+        $this->postJson("/api/v1/instructor/courses/{$course->id}/tests", [
+            'pass_threshold' => 200,
+        ])->assertStatus(422);
+    }
+
+    /** Odmowa przed walidacją, tym razem na PATCH `/instructor/tests/{test}`. */
+    public function test_foreign_course_test_update_is_forbidden_even_with_an_invalid_body(): void
+    {
+        $course = $this->course('etap-1');
+        $this->assignedInstructor($course);
+        $test = KnowledgeTest::create(['course_id' => $course->id]);
+        $stranger = User::factory()->role('instructor')->create();
+
+        $this->actingAs($stranger, 'keycloak');
+
+        $this->patchJson("/api/v1/instructor/tests/{$test->id}", [
+            'attempts_limit' => 999999,
+        ])->assertStatus(403);
+    }
+
+    /** Noga obronna: własny kurs z niepoprawnym ciałem dalej dostaje 422. */
+    public function test_own_course_test_update_with_invalid_body_is_unprocessable(): void
+    {
+        $course = $this->course('etap-1');
+        $instructor = $this->assignedInstructor($course);
+        $test = KnowledgeTest::create(['course_id' => $course->id]);
+
+        $this->actingAs($instructor, 'keycloak');
+
+        $this->patchJson("/api/v1/instructor/tests/{$test->id}", [
+            'attempts_limit' => 999999,
+        ])->assertStatus(422);
+    }
+
     public function test_administration_is_forbidden_on_instructor_test_routes(): void
     {
         $course = $this->course('etap-1');

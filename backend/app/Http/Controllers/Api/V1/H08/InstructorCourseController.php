@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1\H08;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\H08\UpdateCourseRequest;
+use App\Http\Requests\H08\UpdateInstructorCourseRequest;
 use App\Http\Resources\H08\AdminCourseResource;
 use App\Models\Course;
 use App\Services\H08\CourseWriter;
@@ -18,9 +18,12 @@ use Illuminate\Http\Request;
  * wyłącznie zmianę opisu i tytułu, nie status publikacji ani kolejność
  * w ścieżce.
  *
- * Walidacja jest współdzielona z panelem administracji
- * (`UpdateCourseRequest`); to, co z niej trafia do zapisu, ogranicza to
- * dopiero ten kontroler.
+ * Walidacja jest współdzielona z panelem administracji przez
+ * `UpdateInstructorCourseRequest extends UpdateCourseRequest`; to, co
+ * z niej trafia do zapisu, ogranicza to dopiero ten kontroler.
+ * `UpdateInstructorCourseRequest::authorize()` sprawdza przypisanie
+ * prowadzącego PRZED walidacją ciała — inaczej `FormRequest` biegnie
+ * przed sprawdzeniem niżej i cudze `slug`/`title` dawały 422 zamiast 403.
  */
 class InstructorCourseController extends Controller
 {
@@ -41,7 +44,7 @@ class InstructorCourseController extends Controller
         return $this->resourceResponse($request, $course);
     }
 
-    public function update(UpdateCourseRequest $request, Course $course): JsonResponse
+    public function update(UpdateInstructorCourseRequest $request, Course $course): JsonResponse
     {
         if ($request->user()->cannot('update', $course)) {
             throw new ApiException(403, 'forbidden', 'Nie jesteś przypisany do tego kursu.');

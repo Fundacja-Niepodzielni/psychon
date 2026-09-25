@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1\H10;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\H10\StoreTestRequest;
-use App\Http\Requests\H10\UpdateTestRequest;
+use App\Http\Requests\H10\StoreInstructorTestRequest;
+use App\Http\Requests\H10\UpdateInstructorTestRequest;
 use App\Models\Course;
 use App\Models\Test;
 use App\Support\H10\TestGrader;
@@ -19,6 +19,11 @@ use Illuminate\Http\Request;
  * kursu, bez banku pytań (ten zostaje wyłącznie w panelu administracji).
  * Reszta zachowania — w tym konflikt 409, gdy kurs ma już test — jest
  * wspólna z `AdminTestController`.
+ *
+ * `StoreInstructorTestRequest`/`UpdateInstructorTestRequest` (rozszerzenia
+ * `StoreTestRequest`/`UpdateTestRequest` z panelu administracji) sprawdzają
+ * przypisanie przez `CoursePolicy` w `authorize()`, PRZED walidacją ciała —
+ * inaczej `FormRequest` biegnie przed sprawdzeniem niżej.
  */
 class InstructorTestController extends Controller
 {
@@ -32,7 +37,7 @@ class InstructorTestController extends Controller
         return response()->json(['data' => $this->present($test)]);
     }
 
-    public function store(StoreTestRequest $request, Course $course): JsonResponse
+    public function store(StoreInstructorTestRequest $request, Course $course): JsonResponse
     {
         $this->authorizeCourse($request, $course);
 
@@ -52,7 +57,7 @@ class InstructorTestController extends Controller
         return response()->json(['data' => $this->present($test)], 201);
     }
 
-    public function update(UpdateTestRequest $request, Test $test): JsonResponse
+    public function update(UpdateInstructorTestRequest $request, Test $test): JsonResponse
     {
         $course = $test->course()->withTrashed()->first();
 

@@ -73,7 +73,15 @@ describe("EdytorTresciKursuProwadzacego", () => {
     expect(screen.queryByLabelText("Pozycja w ścieżce")).not.toBeInTheDocument();
   });
 
-  it("pozytyw: zapis treści woła instructor-endpoint i odzwierciedla zaktualizowaną wartość", async () => {
+  /**
+   * UWAGA: `@/lib/api/prowadzacy-kursy` jest tu zamockowany w całości (patrz
+   * `vi.mock` na górze pliku) — ta próba mierzy przekazywanie danych
+   * formularza do funkcji modułu i odzwierciedlenie odpowiedzi w ekranie,
+   * NIE prawdziwy adres HTTP. Podmiana `/instructor/` -> `/admin/` w
+   * `lib/api/prowadzacy-kursy.ts` tej próby nie poruszy — adres na
+   * poziomie `fetch` pilnuje `lib/api/__tests__/prowadzacy-kursy-adres.test.ts`.
+   */
+  it("pozytyw: zapis treści przekazuje dane formularza do updateInstructorCourse i odzwierciedla odpowiedź (atrapa modułu, nie adres)", async () => {
     const user = userEvent.setup();
     const onCourseUpdated = vi.fn();
     updateInstructorCourse.mockResolvedValue({
