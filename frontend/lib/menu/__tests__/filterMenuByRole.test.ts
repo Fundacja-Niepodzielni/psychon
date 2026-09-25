@@ -37,8 +37,8 @@ describe("filterMenuByRole — filtr roli w rejestrze menu uczestnika", () => {
   });
 
   it("K2: rola null nie rzuca wyjątku i chowa pozycję z deklarowaną rolą (fail closed)", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- świadomy zapis granicy: wywołanie spoza typu (np. dane z sieci)
-    const rolaNull = null as any;
+    // Deliberate boundary: a call from outside the type (e.g. network data).
+    const rolaNull = null as unknown as Role;
     expect(() => filterMenuByRole(participantMenu, rolaNull)).not.toThrow();
     expect(liczHref(filterMenuByRole(participantMenu, rolaNull), SUPERWIZJA_HREF)).toBe(0);
   });
