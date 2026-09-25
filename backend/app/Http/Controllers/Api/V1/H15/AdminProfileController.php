@@ -9,6 +9,7 @@ use App\Http\Resources\H15\AdminPsychologistProfileResource;
 use App\Models\ProfileDocument;
 use App\Models\PsychologistProfile;
 use App\Models\SensitiveAccessLogEntry;
+use App\Services\H15\ProfileDocumentCipher;
 use App\Support\AuditLog;
 use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
@@ -158,7 +159,17 @@ class AdminProfileController extends Controller
         $extension = pathinfo($document->file_path, PATHINFO_EXTENSION) ?: 'bin';
         $filename = "{$document->type}-{$document->id}.{$extension}";
 
-        return Storage::disk('local')->download($document->file_path, $filename);
+        // Odczyt z odszyfrowaniem: na dysku leży wyłącznie szyfrogram,
+        // więc pobranie musi go najpierw odszyfrować — ta sama ścieżka co
+        // dotąd (`Storage::disk('local')`), inna wyłącznie treść odpowiedzi.
+        $plainContent = (new ProfileDocumentCipher)->decrypt(
+            Storage::disk('local')->get($document->file_path)
+        );
+
+        return response()->streamDownload(
+            fn () => print ($plainContent),
+            $filename,
+        );
     }
 
     private function assertSubmitted(?PsychologistProfile $profile): void
