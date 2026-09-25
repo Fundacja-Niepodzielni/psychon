@@ -78,6 +78,9 @@ class CourseCatalogAdminController extends Controller
         ], $status);
     }
 
+    /**
+     * @return Builder<Course>
+     */
     private function listQuery(Request $request): Builder
     {
         $query = Course::query()->withCount(['lessons', 'materials']);

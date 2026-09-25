@@ -24,7 +24,7 @@ final class CourseUnlockNotifier
     private const string TYPE = 'course.unlocked';
 
     /**
-     * @param  Collection<int, array{course: Course, state: array{status: string, missing: list<string>, required_course_id?: int}}>  $coursesWithState
+     * @param  Collection<int, array{course: Course, state: array{status: 'locked'|'in_progress'|'completed', missing: list<string>, required_course_id?: int}}>  $coursesWithState
      */
     public function announce(User $user, Collection $coursesWithState): void
     {

@@ -20,6 +20,9 @@ final class AdminUserQuery
     /** Kolumny dopuszczone w parametrze `sort`. */
     private const array SORTABLE = ['created_at', 'last_name', 'email', 'role'];
 
+    /**
+     * @return Builder<User>
+     */
     public static function fromRequest(Request $request): Builder
     {
         $query = User::query();
