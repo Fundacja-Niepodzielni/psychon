@@ -30,6 +30,11 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     Route::get('/admin/report/export.csv', [ReportController::class, 'export']);
     Route::get('/admin/report', [ReportController::class, 'show']);
 
+    // Alias kontraktu API (§ opis PR N4/N5) — sama trasa `show()` co
+    // `/admin/report`, druga ścieżka obok istniejącej, nic nie usunięte.
+    Route::get('/admin/reports/closing', [ReportController::class, 'closing']);
+    Route::get('/admin/reports', [ReportController::class, 'show']);
+
     Route::get('/admin/audit/export.csv', [AuditController::class, 'export']);
     Route::get('/admin/audit', [AuditController::class, 'index']);
 });

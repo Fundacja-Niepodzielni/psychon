@@ -3,6 +3,7 @@
 namespace App\Services\H20;
 
 use App\Models\Application;
+use App\Models\Certificate;
 use App\Models\InternshipEntry;
 use App\Models\User;
 use App\Services\H19\DashboardSummary;
@@ -26,6 +27,14 @@ use Illuminate\Support\Collection;
  * (`DashboardSummary`/`Application::accepted()`), nie z dziennika zdarzeń
  * z własną datą; to alternatywna interpretacja „okresu", tu świadomie
  * pominięta jako wymagająca osobnej zmiany w H19.
+ *
+ * `closing()` — raport zamknięcia edycji: ten sam `people()` (ta sama
+ * budowa wiersza co `build()`, więc te same liczby co karta osoby — bez
+ * osobnej ścieżki liczenia), zawężony do `edition_id` wskazanej edycji
+ * zamiast do zakresu dat. Liczniki `summary` liczone tu wprost (nie przez
+ * `DashboardSummary::build()`, bo ten nie przyjmuje edycji — sygnatura
+ * H19, poza zakresem tej zmiany), ale tymi samymi warunkami co pulpit,
+ * dopisanymi o `edition_id`.
  */
 final class ReportSummary
 {
@@ -61,7 +70,7 @@ final class ReportSummary
      *     people: list<array{
      *         id: int, first_name: string, last_name: string, role: string,
      *         hours_accepted: string, consultations: int, certificate_issued: bool,
-     *         stage: string, stage_label: string,
+     *         stage: string, stage_label: string, passed_tests_count: int,
      *     }>,
      * }
      */
@@ -90,6 +99,66 @@ final class ReportSummary
     }
 
     /**
+     * Raport zamknięcia wskazanej edycji — ta sama koperta co `build()`
+     * (kryterium ★2: „raport zamknięcia edycji" jako osobne działanie), ale
+     * zawężona do `edition_id` zamiast do zakresu dat: `people()` z filtrem
+     * edycji, liczniki `summary` liczone tymi samymi warunkami co pulpit
+     * (`User::whereIn('role', [...])->where('status', 'active')`,
+     * `whereNotNull('program_completed_at')`), dopisanymi o `edition_id`
+     * — `DashboardSummary::build()` nie przyjmuje edycji, więc nie da się
+     * go tu wprost wywołać bez zmiany jego zamrożonej sygnatury (H19, poza
+     * zakresem). `$from`/`$to` świadomie pominięte: „zamknięcie" to stan na
+     * koniec edycji, nie wycinek dziennika.
+     *
+     * @return array{
+     *     summary: array{
+     *         admitted: int, active: int, completed: int,
+     *         hours_accepted_total: string, hours_accepted_average: string,
+     *         consultations_total: int, certificates_issued: int,
+     *     },
+     *     people: list<array{
+     *         id: int, first_name: string, last_name: string, role: string,
+     *         hours_accepted: string, consultations: int, certificate_issued: bool,
+     *         stage: string, stage_label: string, passed_tests_count: int,
+     *     }>,
+     * }
+     */
+    public static function closing(int $editionId): array
+    {
+        $editionUserIds = User::whereIn('role', ['volunteer', 'student'])
+            ->where('edition_id', $editionId)
+            ->pluck('id');
+
+        $hoursTotal = (float) self::acceptedEntries(null, null)
+            ->whereIn('user_id', $editionUserIds)
+            ->sum('hours');
+        $consultationsTotal = (int) self::acceptedEntries(null, null)
+            ->whereIn('user_id', $editionUserIds)
+            ->sum('consultations_count');
+        $active = User::whereIn('role', ['volunteer', 'student'])
+            ->where('edition_id', $editionId)
+            ->where('status', 'active')
+            ->count();
+
+        return [
+            'summary' => [
+                'admitted' => Application::accepted()->forEdition($editionId)->count(),
+                'active' => $active,
+                'completed' => User::where('edition_id', $editionId)
+                    ->whereNotNull('program_completed_at')
+                    ->count(),
+                'hours_accepted_total' => ProgressAggregator::formatDecimal($hoursTotal),
+                'hours_accepted_average' => ProgressAggregator::formatDecimal(
+                    $active > 0 ? $hoursTotal / $active : 0.0,
+                ),
+                'consultations_total' => $consultationsTotal,
+                'certificates_issued' => Certificate::where('edition_id', $editionId)->count(),
+            ],
+            'people' => self::people(null, null, $editionId)->all(),
+        ];
+    }
+
+    /**
      * Zestawienie imienne — jedno źródło dla ekranu raportu i CSV. Kształt
      * elementu jak w `build()` @return (`people: list<array{...}>` wyżej) —
      * tu wypisany wprost zamiast owinięty w luźny `array<string, mixed>`,
@@ -100,10 +169,10 @@ final class ReportSummary
      * @return Collection<int, array{
      *     id: int, first_name: string, last_name: string, role: string,
      *     hours_accepted: string, consultations: int, certificate_issued: bool,
-     *     stage: string, stage_label: string,
+     *     stage: string, stage_label: string, passed_tests_count: int,
      * }>
      */
-    public static function people(?string $from = null, ?string $to = null): Collection
+    public static function people(?string $from = null, ?string $to = null, ?int $editionId = null): Collection
     {
         $certifiedUserIds = User::query()
             ->whereHas('certificates')
@@ -117,8 +186,17 @@ final class ReportSummary
         $hoursRequired = (float) Settings::edition('internship_hours_required');
         $supervisionRequired = (int) Settings::edition('supervision_required_count');
 
-        return User::query()
-            ->whereIn('role', ['volunteer', 'student'])
+        $query = User::query()->whereIn('role', ['volunteer', 'student']);
+
+        // `$editionId` — użyty wyłącznie przez `closing()` (raport
+        // zamknięcia jednej wskazanej edycji); `build()` woła `people()`
+        // bez niego, jak dotąd, bo raport bieżący pokazuje wszystkie osoby
+        // niezależnie od edycji.
+        if ($editionId !== null) {
+            $query->where('edition_id', $editionId);
+        }
+
+        return $query
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
@@ -151,6 +229,11 @@ final class ReportSummary
                     'certificate_issued' => $certificateIssued,
                     'stage' => $stage,
                     'stage_label' => $stageLabel,
+                    // Osobne pole, nie doklejone do `stage`/`stage_label`
+                    // (kryterium ★1) — `ProgressAggregator::passedTestsCount()`,
+                    // to samo źródło co `passed_tests_count` karty warunków
+                    // certyfikatu (`Support/H13/CertificateConditions.php:31,115`).
+                    'passed_tests_count' => ProgressAggregator::passedTestsCount($user),
                 ];
             })
             ->values();
