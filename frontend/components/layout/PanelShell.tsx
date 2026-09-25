@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { LogOut, Menu, X } from "lucide-react";
+import HelpWidget from "@/components/layout/HelpWidget";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import PanelNav, { type PanelNavGroup } from "@/components/organisms/PanelNav";
 import Logo from "@/components/ui/Logo";
@@ -48,7 +49,7 @@ function Brand({ panelName }: { panelName: string }) {
 /**
  * Wspólny szkielet paneli: menu boczne (rejestr per panel, sekcje, ikony),
  * na wąskim ekranie menu wysuwane z tymi samymi sekcjami, nagłówek
- * z dzwonkiem powiadomień i wylogowaniem.
+ * z oknem pomocy (`HelpWidget`), dzwonkiem powiadomien i wylogowaniem.
  */
 export default function PanelShell({
   panelName,
@@ -140,6 +141,9 @@ export default function PanelShell({
           <Logo className="h-6 w-auto lg:hidden" />
 
           <div className="ml-auto flex items-center gap-2">
+            {/* Okno pomocy — dostepne z kazdego ekranu zalogowanej strefy
+                przez wspolny szkielet paneli, poza rejestrem menu roli. */}
+            <HelpWidget />
             <NotificationBell />
             <button
               type="button"
