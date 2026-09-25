@@ -31,4 +31,5 @@ return [
     'h20' => true, // Raporty i widoki dziennika działań
     'h21' => true, // Onboarding „Zacznij tutaj"
     'h22' => true, // Dokumenty prawne z wersjami
+    'document_templates' => true, // Edytor wzorow dokumentow (zaplecze)
 ];
