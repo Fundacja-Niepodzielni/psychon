@@ -143,6 +143,39 @@ class InstructorCourseContentTest extends TestCase
     }
 
     /**
+     * Powyższa próba sprawdza wyłącznie kod stanu — argument „to zamyka
+     * wyrocznię" w opisie zmiany nie jest jeszcze pomiarem. Tu porównujemy
+     * CIAŁO odpowiedzi: nieprzypisany prowadzący z niepoprawnym tytułem i
+     * ze `slug` wskazującym na istniejący cudzy kurs musi dostać dokładnie
+     * to samo ciało, co przy `slug`, który nie istnieje nigdzie — inaczej
+     * treść błędu (np. komunikat reguły `unique`) mogłaby zdradzić istnienie
+     * identyfikatora nawet przy poprawnym kodzie 403. Brak klucza `errors`
+     * potwierdza dodatkowo, że walidacja ciała w ogóle nie ruszyła.
+     */
+    public function test_foreign_course_update_response_body_does_not_reveal_whether_the_slug_exists(): void
+    {
+        $course = $this->course('etap-1');
+        $this->assignedInstructor($course);
+        $this->course('etap-2');
+        $stranger = User::factory()->role('instructor')->create();
+
+        $this->actingAs($stranger, 'keycloak');
+
+        $withExistingSlug = $this->patchJson("/api/v1/instructor/courses/{$course->id}", [
+            'title' => str_repeat('a', 300),
+            'slug' => 'etap-2',
+        ])->assertStatus(403);
+
+        $withMissingSlug = $this->patchJson("/api/v1/instructor/courses/{$course->id}", [
+            'title' => str_repeat('a', 300),
+            'slug' => 'nigdzie-takiego-nie-ma',
+        ])->assertStatus(403);
+
+        $this->assertArrayNotHasKey('errors', $withExistingSlug->json());
+        $this->assertSame($withMissingSlug->json(), $withExistingSlug->json());
+    }
+
+    /**
      * Kontrola przeciwna do dwóch powyższych: własny kurs z niepoprawnym
      * ciałem dalej dostaje 422 — odmowa wyprzedza walidację tylko dla
      * nieprzypisanego prowadzącego, nie zastępuje jej dla właściciela.
