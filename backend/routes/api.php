@@ -27,4 +27,5 @@ Route::prefix('v1')->group(function (): void {
     require __DIR__.'/api/chat.php';
     require __DIR__.'/api/video.php';
     require __DIR__.'/api/pomoc.php';
+    require __DIR__.'/api/document_templates.php';
 });
