@@ -264,8 +264,10 @@ final class ReportSummary
                     // Nazwa pola `tests_passed` (nie `passed_tests_count`) —
                     // decyzja backendu, NIE dopasowanie do frontu: realny
                     // kontrakt (`frontend/lib/api/h20.ts`, `ReportPersonRow`)
-                    // dziś NIE MA tego pola w ogóle (ani `status` — patrz opis
-                    // PR, sekcja o polach bez odpowiednika po stronie frontu).
+                    // dziś NIE MA tego pola w ogóle (ani `status` w tym
+                    // wierszu, ani `summary.people_with_passed_test` wyżej w
+                    // `build()` — patrz opis PR, sekcja o polach bez
+                    // odpowiednika po stronie frontu).
                     'tests_passed' => ProgressAggregator::passedTestsCount($user),
                 ];
             })
