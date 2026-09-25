@@ -111,6 +111,81 @@ class GroupThreadCompositionTest extends TestCase
         $this->assertNotNull($assignment->unassigned_at);
     }
 
+    public function test_adding_member_already_supervised_by_me_is_idempotent(): void
+    {
+        $instructor = User::factory()->role('instructor')->create();
+        $volunteer = User::factory()->role('volunteer')->create();
+
+        $thread = MessageThread::query()->create([
+            'type' => 'group',
+            'supervisor_id' => $instructor->id,
+        ]);
+
+        SupervisorAssignment::query()->create([
+            'volunteer_id' => $volunteer->id,
+            'supervisor_id' => $instructor->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($instructor, 'keycloak')
+            ->postJson("/api/v1/threads/{$thread->id}/members/{$volunteer->id}")
+            ->assertCreated()
+            ->assertJsonPath('data.supervisor_id', $instructor->id);
+
+        $this->assertDatabaseCount('supervisor_assignments', 1);
+    }
+
+    /**
+     * Powod zwrotu PR #35: prowadzacy A wolajac POST na WLASNY watek z ID
+     * wolontariusza B, ktory ma juz aktywne przypisanie do prowadzacego C,
+     * wyjmowal osobe ze skladu C bez jego wiedzy i zgody. Nowy straznik w
+     * `SupervisorAssignmentService::assign($requireNoConflict: true)` ma to
+     * blokowac odmowa 409 zamiast cichego przejecia — sklad C ma miec po
+     * probie dokladnie tyle samo osob co przed.
+     */
+    public function test_adding_member_with_active_assignment_to_another_instructor_is_refused(): void
+    {
+        $attacker = User::factory()->role('instructor')->create();
+        $rightfulOwner = User::factory()->role('instructor')->create();
+        $volunteer = User::factory()->role('volunteer')->create();
+
+        $attackerThread = MessageThread::query()->create([
+            'type' => 'group',
+            'supervisor_id' => $attacker->id,
+        ]);
+
+        SupervisorAssignment::query()->create([
+            'volunteer_id' => $volunteer->id,
+            'supervisor_id' => $rightfulOwner->id,
+            'assigned_at' => now(),
+        ]);
+
+        $rightfulOwnerCompositionBefore = SupervisorAssignment::query()
+            ->where('supervisor_id', $rightfulOwner->id)
+            ->whereNull('unassigned_at')
+            ->count();
+
+        $this->actingAs($attacker, 'keycloak')
+            ->postJson("/api/v1/threads/{$attackerThread->id}/members/{$volunteer->id}")
+            ->assertStatus(409);
+
+        $rightfulOwnerCompositionAfter = SupervisorAssignment::query()
+            ->where('supervisor_id', $rightfulOwner->id)
+            ->whereNull('unassigned_at')
+            ->count();
+
+        $this->assertSame($rightfulOwnerCompositionBefore, $rightfulOwnerCompositionAfter);
+        $this->assertDatabaseHas('supervisor_assignments', [
+            'volunteer_id' => $volunteer->id,
+            'supervisor_id' => $rightfulOwner->id,
+            'unassigned_at' => null,
+        ]);
+        $this->assertDatabaseMissing('supervisor_assignments', [
+            'volunteer_id' => $volunteer->id,
+            'supervisor_id' => $attacker->id,
+        ]);
+    }
+
     public static function forbiddenMemberManagers(): array
     {
         return [
