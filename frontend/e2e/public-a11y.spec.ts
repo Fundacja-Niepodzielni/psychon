@@ -16,12 +16,28 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * PsychON i nie wolno tam próbować logowania (nawet bez wpisywania hasła,
  * to poza zakresem tego zlecenia). Ta decyzja i uzasadnienie: patrz plik
  * pomiaru.
+ *
+ * CELOWO pominięte też `/logowanie/konta`: ta trasa istnieje wyłącznie po
+ * to, żeby przekierować (`router.replace`, `app/logowanie/konta/page.tsx`)
+ * do `/logowanie` przy montowaniu — ten sam powód co `/logowanie` wyżej.
+ *
+ * DOPISANE (pomiar świeży): `/certyfikat`, `/konto`,
+ * `/dokumenty-prawne/regulamin` i `/logowanie/niepowiazane` — cztery trasy
+ * bez grupy panelu, których wcześniej nie mierzono. Żadna z nich
+ * nie przekierowuje przy montowaniu (w kodzie każdej `router.push`/`.replace`
+ * siedzi wyłącznie w handlerze zdarzenia — wylogowanie, ponowienie — nie w
+ * efekcie montowania), sprawdzone pomiarem w przeglądarce lokalnego `next
+ * dev` bez sesji, tak jak reszta listy niżej.
  */
 const TRASY_PUBLICZNE = [
   "/deklaracja-dostepnosci",
   "/dostep-wygasl",
   "/weryfikacja",
   "/aktywacja",
+  "/certyfikat",
+  "/konto",
+  "/dokumenty-prawne/regulamin",
+  "/logowanie/niepowiazane",
 ];
 
 for (const trasa of TRASY_PUBLICZNE) {
@@ -103,5 +119,54 @@ test(
 
     const maImageAlt = naruszenia.some((n) => n.id === "image-alt");
     expect(maImageAlt, "axe powinien zgłosić image-alt dla obrazka bez alt").toBe(true);
+  },
+);
+
+/**
+ * Kontrola negatywna DLA KONTRASTU: dowód, że pomiar
+ * `color-contrast` w tym pliku faktycznie wykrywa naruszenie, gdy jest
+ * wstrzyknięte celowo — bez tego 0 węzłów na trasę wyżej mogłoby znaczyć
+ * "reguła się nie liczy" zamiast "trasa jest OK". `jsdom` (świadek
+ * `components/__tests__/axe-helper.ts`) nie umie tego wykryć w ogóle —
+ * `getBoundingClientRect` zwraca tam same zera i axe kończy na
+ * "incomplete", nigdy na "violation" (zmierzone przy włączaniu reguły) —
+ * dlatego ten dowód stoi w przeglądarce, jedynym miejscu, gdzie
+ * `color-contrast` w ogóle może się rozstrzygnąć.
+ *
+ * Domyślnie pominięty (test.skip) — odpalany świadomie przez
+ * `PW_NEGATYWNA=1 npx playwright test`.
+ */
+test(
+  "@negatywna kontrola: axe wykrywa zły kontrast na wstrzykniętym tekście",
+  async ({ page }, testInfo) => {
+    test.skip(process.env.PW_NEGATYWNA !== "1", "Uruchamiane tylko z PW_NEGATYWNA=1");
+
+    await page.goto("/deklaracja-dostepnosci");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+
+    const przed = await uruchomAxe(page);
+    const kontrastPrzed = przed.filter((n) => n.id === "color-contrast").length;
+
+    await page.evaluate(() => {
+      const zly = document.createElement("p");
+      zly.id = "kontrola-negatywna-kontrast";
+      zly.textContent = "tekst o niewystarczającym kontraście, wstrzyknięty przez kontrolę negatywną";
+      zly.style.color = "#f0f0f0";
+      zly.style.backgroundColor = "#ffffff";
+      zly.style.fontSize = "16px";
+      document.body.appendChild(zly);
+    });
+
+    const po = await uruchomAxe(page);
+    await dolaczNaruszeniaDoRaportu(testInfo, "kontrola negatywna naruszenia axe (kontrast)", po);
+    const kontrastPo = po.filter((n) => n.id === "color-contrast").length;
+
+    await testInfo.attach("kontrola negatywna color-contrast: przed/po", {
+      body: `przed=${kontrastPrzed} po=${kontrastPo}`,
+      contentType: "text/plain",
+    });
+
+    expect(kontrastPrzed, "przed wstrzyknięciem: 0 naruszeń color-contrast").toBe(0);
+    expect(kontrastPo, "po wstrzyknięciu: axe powinien zgłosić color-contrast").toBeGreaterThan(0);
   },
 );
