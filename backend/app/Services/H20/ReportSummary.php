@@ -3,7 +3,7 @@
 namespace App\Services\H20;
 
 use App\Models\Application;
-use App\Models\Certificate;
+use App\Models\Edition;
 use App\Models\InternshipEntry;
 use App\Models\User;
 use App\Services\H19\DashboardSummary;
@@ -28,13 +28,13 @@ use Illuminate\Support\Collection;
  * z własną datą; to alternatywna interpretacja „okresu", tu świadomie
  * pominięta jako wymagająca osobnej zmiany w H19.
  *
- * `closing()` — raport zamknięcia edycji: ten sam `people()` (ta sama
- * budowa wiersza co `build()`, więc te same liczby co karta osoby — bez
- * osobnej ścieżki liczenia), zawężony do `edition_id` wskazanej edycji
- * zamiast do zakresu dat. Liczniki `summary` liczone tu wprost (nie przez
- * `DashboardSummary::build()`, bo ten nie przyjmuje edycji — sygnatura
- * H19, poza zakresem tej zmiany), ale tymi samymi warunkami co pulpit,
- * dopisanymi o `edition_id`.
+ * `closing()` — raport zamknięcia edycji: wywołuje ten sam `people()` (ta
+ * sama budowa wiersza co `build()`, więc te same liczby co karta osoby —
+ * bez osobnej ścieżki liczenia) zawężony do `edition_id` wskazanej edycji
+ * zamiast do zakresu dat, a `summary` (`total`/`certified`/`not_certified`)
+ * podlicza tę samą listę zamiast wołać osobne zapytania — koperta odpowiedzi
+ * węższa niż `build()`, dopasowana do kontraktu pary frontowej (patrz
+ * docblock `closing()` niżej).
  */
 final class ReportSummary
 {
@@ -65,12 +65,13 @@ final class ReportSummary
      *     summary: array{
      *         admitted: int, active: int, completed: int,
      *         hours_accepted_total: string, hours_accepted_average: string,
-     *         consultations_total: int, certificates_issued: int,
+     *         consultations_total: int, certificates_issued: int, tests_passed: int,
      *     },
      *     people: list<array{
      *         id: int, first_name: string, last_name: string, role: string,
-     *         hours_accepted: string, consultations: int, certificate_issued: bool,
-     *         stage: string, stage_label: string, passed_tests_count: int,
+     *         status: string, hours_accepted: string, consultations: int,
+     *         certificate_issued: bool, stage: string, stage_label: string,
+     *         tests_passed: int,
      *     }>,
      * }
      */
@@ -81,6 +82,14 @@ final class ReportSummary
         $hoursTotal = (float) self::acceptedEntries($from, $to)->sum('hours');
         $consultationsTotal = (int) self::acceptedEntries($from, $to)->sum('consultations_count');
         $active = $dashboard['counters']['participants'];
+
+        // Jedno źródło (kryterium ★1): `summary.tests_passed` liczony z TEJ
+        // SAMEJ kolekcji `people`, którą odpowiedź i tak zwraca — nie osobnym
+        // zapytaniem po `ProgressAggregator::passedTestsCount()` drugi raz.
+        // `tests_passed` w wierszu osoby nie zależy od `$from`/`$to` (patrz
+        // `people()` niżej), więc to podliczenie jest poprawne niezależnie
+        // od zakresu dat raportu.
+        $people = self::people($from, $to)->all();
 
         return [
             'summary' => [
@@ -93,68 +102,66 @@ final class ReportSummary
                 ),
                 'consultations_total' => $consultationsTotal,
                 'certificates_issued' => $dashboard['counters']['certificates'],
+                'tests_passed' => count(array_filter($people, static fn (array $row): bool => $row['tests_passed'] > 0)),
             ],
-            'people' => self::people($from, $to)->all(),
+            'people' => $people,
         ];
     }
 
     /**
-     * Raport zamknięcia wskazanej edycji — ta sama koperta co `build()`
-     * (kryterium ★2: „raport zamknięcia edycji" jako osobne działanie), ale
-     * zawężona do `edition_id` zamiast do zakresu dat: `people()` z filtrem
-     * edycji, liczniki `summary` liczone tymi samymi warunkami co pulpit
-     * (`User::whereIn('role', [...])->where('status', 'active')`,
-     * `whereNotNull('program_completed_at')`), dopisanymi o `edition_id`
-     * — `DashboardSummary::build()` nie przyjmuje edycji, więc nie da się
-     * go tu wprost wywołać bez zmiany jego zamrożonej sygnatury (H19, poza
-     * zakresem). `$from`/`$to` świadomie pominięte: „zamknięcie" to stan na
-     * koniec edycji, nie wycinek dziennika.
+     * Raport zamknięcia wskazanej edycji (kryterium ★2: „raport zamknięcia
+     * edycji" jako osobne działanie) — kształt dopasowany do kontraktu pary
+     * frontowej (`frontend/lib/api/raport.ts`, PR #30, sekcja
+     * `ClosingReportData`), węższy niż koperta `build()`: `edition` (z
+     * `EditionResource`, tylko pola potrzebne frontowi), `summary` liczone
+     * z tej samej listy `people` co odpowiedź (kryterium ★1 — jedno źródło:
+     * `total`/`certified`/`not_certified` to nie osobne zapytania, tylko
+     * podliczenie kolekcji poniżej), `people` zawężone do `edition_id` przez
+     * `people()` i przycięte do pól, których front używa (bez `status`,
+     * `hours_accepted`, `consultations`, `tests_passed` — „zamknięcie" pokazuje
+     * etap i certyfikat, nie dziennik stażu). `$from`/`$to` świadomie
+     * pominięte: „zamknięcie" to stan na koniec edycji, nie wycinek
+     * dziennika.
      *
      * @return array{
-     *     summary: array{
-     *         admitted: int, active: int, completed: int,
-     *         hours_accepted_total: string, hours_accepted_average: string,
-     *         consultations_total: int, certificates_issued: int,
-     *     },
+     *     edition: array{id: int, name: string, ends_at: string|null},
+     *     summary: array{total: int, certified: int, not_certified: int},
      *     people: list<array{
      *         id: int, first_name: string, last_name: string, role: string,
-     *         hours_accepted: string, consultations: int, certificate_issued: bool,
-     *         stage: string, stage_label: string, passed_tests_count: int,
+     *         stage: string, stage_label: string, certificate_issued: bool,
      *     }>,
      * }
      */
     public static function closing(int $editionId): array
     {
-        $editionUserIds = User::whereIn('role', ['volunteer', 'student'])
-            ->where('edition_id', $editionId)
-            ->pluck('id');
+        // `ReportClosingRequest` już sprawdza `exists:editions,id` — model
+        // tu i tak istnieje; `findOrFail` to tylko druga linia obrony.
+        $edition = Edition::findOrFail($editionId);
 
-        $hoursTotal = (float) self::acceptedEntries(null, null)
-            ->whereIn('user_id', $editionUserIds)
-            ->sum('hours');
-        $consultationsTotal = (int) self::acceptedEntries(null, null)
-            ->whereIn('user_id', $editionUserIds)
-            ->sum('consultations_count');
-        $active = User::whereIn('role', ['volunteer', 'student'])
-            ->where('edition_id', $editionId)
-            ->where('status', 'active')
-            ->count();
+        $people = self::people(null, null, $editionId)->all();
+        $certified = count(array_filter($people, static fn (array $row): bool => $row['certificate_issued']));
+        $total = count($people);
 
         return [
-            'summary' => [
-                'admitted' => Application::accepted()->forEdition($editionId)->count(),
-                'active' => $active,
-                'completed' => User::where('edition_id', $editionId)
-                    ->whereNotNull('program_completed_at')
-                    ->count(),
-                'hours_accepted_total' => ProgressAggregator::formatDecimal($hoursTotal),
-                'hours_accepted_average' => ProgressAggregator::formatDecimal(
-                    $active > 0 ? $hoursTotal / $active : 0.0,
-                ),
-                'consultations_total' => $consultationsTotal,
-                'certificates_issued' => Certificate::where('edition_id', $editionId)->count(),
+            'edition' => [
+                'id' => $edition->id,
+                'name' => $edition->name,
+                'ends_at' => $edition->ends_at?->toDateString(),
             ],
-            'people' => self::people(null, null, $editionId)->all(),
+            'summary' => [
+                'total' => $total,
+                'certified' => $certified,
+                'not_certified' => $total - $certified,
+            ],
+            'people' => array_map(static fn (array $row): array => [
+                'id' => $row['id'],
+                'first_name' => $row['first_name'],
+                'last_name' => $row['last_name'],
+                'role' => $row['role'],
+                'stage' => $row['stage'],
+                'stage_label' => $row['stage_label'],
+                'certificate_issued' => $row['certificate_issued'],
+            ], $people),
         ];
     }
 
@@ -168,8 +175,9 @@ final class ReportSummary
      *
      * @return Collection<int, array{
      *     id: int, first_name: string, last_name: string, role: string,
-     *     hours_accepted: string, consultations: int, certificate_issued: bool,
-     *     stage: string, stage_label: string, passed_tests_count: int,
+     *     status: string, hours_accepted: string, consultations: int,
+     *     certificate_issued: bool, stage: string, stage_label: string,
+     *     tests_passed: int,
      * }>
      */
     public static function people(?string $from = null, ?string $to = null, ?int $editionId = null): Collection
@@ -222,6 +230,10 @@ final class ReportSummary
                     'first_name' => $user->first_name,
                     'last_name' => $user->last_name,
                     'role' => $user->role,
+                    // `active`/`blocked` (`users.status`, migracja tabeli
+                    // `users`) — pole z kontraktu pary frontowej, nie liczone
+                    // niczym: zwykły atrybut modelu.
+                    'status' => $user->status,
                     'hours_accepted' => ProgressAggregator::formatDecimal(
                         (float) self::acceptedEntries($from, $to, $user->id)->sum('hours'),
                     ),
@@ -233,7 +245,11 @@ final class ReportSummary
                     // (kryterium ★1) — `ProgressAggregator::passedTestsCount()`,
                     // to samo źródło co `passed_tests_count` karty warunków
                     // certyfikatu (`Support/H13/CertificateConditions.php:31,115`).
-                    'passed_tests_count' => ProgressAggregator::passedTestsCount($user),
+                    // Nazwa pola `tests_passed` (nie `passed_tests_count`)
+                    // dopasowana do kontraktu pary frontowej (PR #30,
+                    // `frontend/lib/api/raport.ts`) — patrz opis PR, rozjazd
+                    // nazw wypisany wytłuszczeniem.
+                    'tests_passed' => ProgressAggregator::passedTestsCount($user),
                 ];
             })
             ->values();
