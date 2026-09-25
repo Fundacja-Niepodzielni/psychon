@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, apiPaged } from "@/lib/api";
+import useCloseOnOutsideOrEscape from "@/lib/hooks/useCloseOnOutsideOrEscape";
 import type { NotificationItem } from "@/lib/notifications/types";
 
 const POLL_INTERVAL_MS = 30_000;
@@ -49,28 +50,7 @@ export default function NotificationBell() {
     return () => clearInterval(interval);
   }, [loadNotifications]);
 
-  useEffect(() => {
-    if (!open) return;
-
-    function handleClick(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
+  useCloseOnOutsideOrEscape(containerRef, open, setOpen);
 
   async function handleToggle() {
     const next = !open;
