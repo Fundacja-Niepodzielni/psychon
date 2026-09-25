@@ -6,6 +6,7 @@ use App\Exceptions\ProfileDocumentEncryptionKeyMissingException;
 use App\Models\PsychologistProfile;
 use App\Models\User;
 use App\Services\H15\ProfileDocumentCipher;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -15,11 +16,15 @@ use Tests\TestCase;
 
 /**
  * Załączniki wniosku o wpis do bazy psychologów (H15)
- * leżą na dysku zaszyfrowane. Trzy kryteria atomowe:
+ * leżą na dysku zaszyfrowane. Cztery kryteria atomowe:
  *
  *   (a) plik na dysku NIE zawiera treści wejściowej,
  *   (b) odczyt (pobranie przez administrację) zwraca dokładnie treść wejściową,
- *   (c) brak klucza w konfiguracji kończy się wyjątkiem o własnej nazwie.
+ *   (c) brak klucza w konfiguracji kończy się wyjątkiem o własnej nazwie,
+ *   (d) zapis zależy od klucza, nie tylko od treści — inaczej (a) i (b) razem
+ *       udowadnia najwyżej kodowanie, nie szyfrowanie: zwykłe kodowanie też
+ *       chowa podpis pliku i też odwraca się bezstratnie, ale robi to
+ *       identycznie niezależnie od klucza.
  */
 class ProfileDocumentEncryptionTest extends TestCase
 {
@@ -61,6 +66,44 @@ class ProfileDocumentEncryptionTest extends TestCase
             self::MARKER,
             $onDisk,
             'plik na dysku zawiera treść wejściową w postaci jawnej — zapis nie szyfruje.',
+        );
+    }
+
+    /**
+     * (d) Zapis zależy od klucza: ta sama treść zaszyfrowana dwoma różnymi
+     * kluczami daje dwa różne zapisy, a odczyt zapisu kluczem, którym nie
+     * został zaszyfrowany, NIE zwraca treści wejściowej. Kodowanie (np.
+     * base64) ignoruje klucz — dałoby identyczny zapis i "poprawny" odczyt
+     * niezależnie od tego, jaki klucz akurat stoi w konfiguracji.
+     */
+    public function test_ciphertext_depends_on_the_key_not_just_the_content(): void
+    {
+        $plainText = self::MARKER;
+
+        config(['profile_documents.encryption_key' => 'base64:'.base64_encode(random_bytes(32))]);
+        $cipherWithKeyA = new ProfileDocumentCipher;
+        $encryptedWithKeyA = $cipherWithKeyA->encrypt($plainText);
+
+        config(['profile_documents.encryption_key' => 'base64:'.base64_encode(random_bytes(32))]);
+        $cipherWithKeyB = new ProfileDocumentCipher;
+        $encryptedWithKeyB = $cipherWithKeyB->encrypt($plainText);
+
+        $this->assertNotSame(
+            $encryptedWithKeyA,
+            $encryptedWithKeyB,
+            'ta sama treść zaszyfrowana dwoma różnymi kluczami dała identyczny zapis na dysku — zapis nie zależy od klucza.',
+        );
+
+        try {
+            $decryptedWithWrongKey = $cipherWithKeyB->decrypt($encryptedWithKeyA);
+        } catch (DecryptException) {
+            $decryptedWithWrongKey = null;
+        }
+
+        $this->assertNotSame(
+            $plainText,
+            $decryptedWithWrongKey,
+            'odczyt zapisu obcym kluczem zwrócił dokładnie treść wejściową — odczyt nie zależy od klucza.',
         );
     }
 
