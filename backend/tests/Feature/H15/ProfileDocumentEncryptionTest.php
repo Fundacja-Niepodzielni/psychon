@@ -93,6 +93,42 @@ class ProfileDocumentEncryptionTest extends TestCase
 
         $response->assertOk();
         $this->assertSame(self::MARKER, $response->streamedContent());
+        $response->assertHeader('content-type', 'application/pdf');
+        $response->assertHeader('content-length', (string) strlen(self::MARKER));
+    }
+
+    /**
+     * (b), dopełnienie: `Content-Type` policzony z odszyfrowanej treści,
+     * nie wpisany na sztywno jako `application/pdf`. Treść bez sygnatury
+     * PDF musi dać inny, prawdziwie rozpoznany typ.
+     */
+    public function test_admin_download_content_type_reflects_actual_decrypted_content(): void
+    {
+        $plainText = str_repeat('to jest zwykly tekst bez zadnej sygnatury pliku binarnego. ', 3);
+        $graduate = $this->graduate();
+        $admin = User::factory()->create(['role' => 'project_manager']);
+
+        $upload = $this->actingAs($graduate, 'keycloak')
+            ->postJson('/api/v1/psychologist-profile/documents', [
+                'type' => 'dyplom',
+                'file' => UploadedFile::fake()->createWithContent('dyplom.pdf', $plainText),
+            ])
+            ->assertCreated();
+
+        $profile = PsychologistProfile::where('user_id', $graduate->id)->firstOrFail();
+        $documentId = $upload->json('data.id');
+
+        $downloadUrl = URL::temporarySignedRoute(
+            'admin.profiles.documents.download',
+            now()->addMinutes(15),
+            ['profileId' => $profile->id, 'docId' => $documentId],
+        );
+
+        $response = $this->actingAs($admin, 'keycloak')->get($downloadUrl);
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'text/plain; charset=utf-8');
+        $response->assertHeader('content-length', (string) strlen($plainText));
     }
 
     /**
