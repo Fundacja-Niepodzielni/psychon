@@ -12,11 +12,15 @@ use App\Http\Resources\H15\PsychologistProfileResource;
 use App\Models\Consent;
 use App\Models\PsychologistProfile;
 use App\Models\User;
+use App\Services\H15\ProfileDocumentCipher;
 use App\Support\AuditLog;
 use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PsychologistProfileController extends Controller
 {
@@ -127,7 +131,7 @@ class PsychologistProfileController extends Controller
 
             $profile ??= PsychologistProfile::create(['user_id' => $user->id, 'status' => 'draft']);
 
-            $path = $request->file('file')->store("profile-documents/{$profile->id}", 'local');
+            $path = $this->storeEncrypted($request->file('file'), "profile-documents/{$profile->id}");
 
             return $profile->documents()->create([
                 'type' => $request->string('type')->value(),
@@ -139,6 +143,23 @@ class PsychologistProfileController extends Controller
         return response()->json([
             'data' => ProfileDocumentResource::make($document)->resolve($request),
         ], 201);
+    }
+
+    /**
+     * Zapis przez szyfrowanie: ścieżka i nazwa pliku zostają takie
+     * jak dawniej (rozszerzenie z oryginału, katalog wg profilu), zmienia
+     * się wyłącznie zawartość zapisana pod tą ścieżką — to ona jest
+     * szyfrogramem, nie surową treścią wgranego pliku.
+     */
+    private function storeEncrypted(UploadedFile $file, string $directory): string
+    {
+        $extension = $file->getClientOriginalExtension();
+        $filename = Str::random(40).($extension !== '' ? ".{$extension}" : '');
+        $path = trim($directory, '/')."/{$filename}";
+
+        Storage::disk('local')->put($path, (new ProfileDocumentCipher)->encrypt($file->get()));
+
+        return $path;
     }
 
     public function withdrawConsent(Request $request): JsonResponse
