@@ -12,6 +12,7 @@ class SupervisionSignup extends Model
         'user_id',
         'signed_up_at',
         'cancelled_at',
+        'reminder_sent_at',
         'attendance',
         'attendance_marked_by',
     ];
@@ -21,6 +22,7 @@ class SupervisionSignup extends Model
         return [
             'signed_up_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'reminder_sent_at' => 'datetime',
         ];
     }
 

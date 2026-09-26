@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $date
  * @property string $hours
  * @property string $form
+ * @property int|null $internship_form_id
  * @property int $consultations_count
  * @property string|null $description
  * @property string $status
@@ -24,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read User $user
  * @property-read User|null $decidedBy
+ * @property-read InternshipForm|null $internshipForm
  */
 class InternshipEntry extends Model
 {
@@ -34,6 +36,7 @@ class InternshipEntry extends Model
         'date',
         'hours',
         'form',
+        'internship_form_id',
         'consultations_count',
         'description',
         'status',
@@ -66,5 +69,13 @@ class InternshipEntry extends Model
     public function decidedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');
+    }
+
+    /**
+     * @return BelongsTo<InternshipForm, $this>
+     */
+    public function internshipForm(): BelongsTo
+    {
+        return $this->belongsTo(InternshipForm::class);
     }
 }
