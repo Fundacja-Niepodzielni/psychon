@@ -3,8 +3,12 @@
   background: none;
   border: none;
   text-decoration: none;
-  padding: var(--space-2) var(--space-2);
-  margin: calc(var(--space-10) * -1) calc(var(--space-2) * -1);
+  /* Wcięcie w pionie daje realny prostokąt klikalny >=44px — zmierzone
+     Playwrightem na rzeczywistym renderze, nie założone z liczby w
+     specyfikacji. Ujemny margines tej samej wielkości nie zmienia odstępu
+     w treści akapitu. */
+  padding: var(--space-16) var(--space-2);
+  margin: calc(var(--space-16) * -1) calc(var(--space-2) * -1);
   display: inline-block;
 }
 .odnosnik:hover,
