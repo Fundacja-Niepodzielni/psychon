@@ -20,9 +20,13 @@ const LOAD_ERROR_MESSAGE = "Nie udało się wczytać ekranu. Spróbuj ponownie."
 /**
  * Ekran po ukończeniu programu — `GET /me`. `program_completed_at`
  * ustawione → status ukończenia + odnośniki do dokumentów, kursów i (dla
- * `volunteer`) certyfikatu. Puste → stan informacyjny bez odnośników;
- * trasy zgłoszenia dalszej współpracy jeszcze nie istnieją, więc formularz
- * nie jest tu budowany.
+ * `volunteer`) certyfikatu. Puste → stan informacyjny bez odnośników.
+ *
+ * Formularz zgłoszenia dalszej współpracy nie jest tu budowany dlatego, że
+ * ekrany są zamrożone do czasu przyjęcia makiet — a nie dlatego, że brakuje
+ * tras. Trasy istnieją: `POST /cooperation-requests`,
+ * `GET /cooperation-requests/mine` oraz dwie po stronie obsługi zgłoszeń
+ * (`backend/routes/api/h01.php`).
  */
 export default function PoProgramiePage() {
   const [me, setMe] = useState<Me | null>(null);
