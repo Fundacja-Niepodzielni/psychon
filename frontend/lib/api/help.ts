@@ -7,9 +7,8 @@
  * zgloszenia i ekran nadawcy (biezaca sciezka frontu, patrz
  * `components/layout/HelpWidget.tsx`).
  *
- * Zaplecze powstaje rownolegle w innej galezi i w chwili pisania tego
- * modulu nie jest jeszcze scalone — kontrakt nizej jest jedynym zrodlem
- * prawdy, atrapa `sendHelpMessage` siedzi w testach `HelpWidget`
+ * Backend: `POST /help-messages` w `backend/routes/api/pomoc.php:21`.
+ * Atrapa `sendHelpMessage` siedzi w testach `HelpWidget`
  * (`components/layout/__tests__/help-widget-*.test.tsx`).
  */
 import { api } from "./klient";
