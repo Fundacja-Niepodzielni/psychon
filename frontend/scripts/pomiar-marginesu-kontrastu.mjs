@@ -119,15 +119,26 @@
 // ta sama konwencja nazywania ("pomiar-*").
 //
 // Stan dzisiejszy, do zapisania wprost: ten przyrząd NIE MA dziś żadnego
-// automatycznego wołającego. Jedyne odwołanie do niego w repo to
-// `frontend/package.json` → skrypt npm `pomiar:kontrast-statusow`
-// (`node scripts/pomiar-marginesu-kontrastu.mjs`) — żaden CI, żaden hook,
-// żaden inny skrypt nie uruchamia go sam z siebie, więc jego kody sterowane
-// {0,2,3} nie są dziś przez nic automatycznie czytane. Ten bieg NIE dodaje
-// wołającego — to jest tylko nazwanie stanu, żeby nikt nie zakładał inaczej.
+// automatycznego wołającego. Sprawdzone poleceniem
+// `grep -rn "pomiar-marginesu-kontrastu\|pomiar:kontrast-statusow" .`
+// (uruchomionym z korzenia repo) — poza tym plikiem samym w sobie wychodzą
+// dokładnie cztery miejsca: `frontend/package.json` (definicja aliasu npm
+// `pomiar:kontrast-statusow` → `node scripts/pomiar-marginesu-kontrastu.mjs`),
+// `frontend/AUDYT-DOSTEPNOSCI.md:193` (zdanie prozy odsyłające do tego
+// polecenia) oraz `frontend/app/globals.css:84` i `frontend/app/globals.css:95`
+// (komentarze przy tokenach `--psy-success`/`--psy-info-badge`, też prozą, nie
+// kodem). Żadne z tych czterech miejsc nie jest automatycznym wołającym:
+// `package.json` tylko DEFINIUJE alias, którego trzeba użyć ręcznie
+// (`npm run pomiar:kontrast-statusow`), a pozostałe trzy to tekst dla
+// człowieka, nie instrukcja wykonywalna. Ten sam grep na katalogu `.github`
+// daje 0 dopasowań — żaden CI, żaden hook, żaden inny skrypt nie uruchamia
+// go sam z siebie, więc jego kody sterowane {0,2,3} nie są dziś przez nic
+// automatycznie czytane. Ten bieg NIE dodaje wołającego — to jest tylko
+// nazwanie zmierzonego stanu, żeby nikt nie zakładał dopełnienia, którego
+// nikt nie wyliczył.
 
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SCIEZKA_CSS = fileURLToPath(new URL("../app/globals.css", import.meta.url));
 
@@ -409,7 +420,7 @@ const WYKLUCZENIA = [
 // jednej z dwóch list — nie może zawieść, więc nic nie sprawdzała).
 // ---------------------------------------------------------------------------
 
-const ETYKIETY_PAR_ZNANE = [
+export const ETYKIETY_PAR_ZNANE = [
   "Odznaka: sukces",
   "Odznaka: ostrzeżenie",
   "Odznaka: błąd",
@@ -423,7 +434,7 @@ const ETYKIETY_PAR_ZNANE = [
   "Łącze: przygaszony (tone=muted)",
 ];
 
-const NAZWY_TEL_ZNANE = [
+export const NAZWY_TEL_ZNANE = [
   "Karta biała",
   "Tło strony",
   "Podkład najechania wiersza tabeli",
@@ -438,7 +449,7 @@ const NAZWY_TEL_ZNANE = [
  * względem znanej listy) albo zniknięcie znanej pary/tła (niedomiar) —
  * oba rzuca jako błąd, bo oba oznaczają brak jawnej decyzji.
  */
-function sprawdzWzgledemZnanejListy(pary, tla) {
+export function sprawdzWzgledemZnanejListy(pary, tla) {
   const etykietyFaktyczne = pary.map((p) => p.etykieta);
   const nazwyTelFaktyczne = tla.map((t) => t.nazwa);
 
@@ -848,4 +859,17 @@ function main() {
   console.log("\nWYNIK: wszystkie pary/tła powyżej progu albo pokryte świeżym wpisem rejestru.");
 }
 
-main();
+// Wywołanie main() tylko wtedy, gdy ten plik jest URUCHAMIANY (node
+// scripts/pomiar-marginesu-kontrastu.mjs), NIE gdy jest IMPORTOWANY (np. z
+// testu w __tests__/, patrz tam) — standardowy wzorzec Node na "entry point"
+// modułu ESM. Bez tej straży `import` samego `sprawdzWzgledemZnanejListy` do
+// testu odpalałby całą macierz na prawdziwym globals.css przy każdym imporcie
+// (i wołał `process.exit` przy naruszeniu), co ubijałoby proces testowy
+// zamiast dać czysty wynik jednej funkcji. CLI (npm run
+// pomiar:kontrast-statusow) ma `process.argv[1]` równe temu plikowi, więc tam
+// main() rusza dokładnie jak dotąd — ta straż nie zmienia zachowania CLI.
+const tenPlikJestUruchamiany =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (tenPlikJestUruchamiany) {
+  main();
+}
