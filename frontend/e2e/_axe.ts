@@ -14,6 +14,8 @@ export interface WynikAxe {
   impact: WagaNaruszenia | null;
   liczbaWezlow: number;
   pomoc: string;
+  /** Selektory CSS węzłów, na których axe zgłosił naruszenie (do komunikatu błędu). */
+  selektory: string[];
 }
 
 /**
@@ -27,6 +29,7 @@ export async function uruchomAxe(page: Page): Promise<WynikAxe[]> {
     impact: (v.impact as WagaNaruszenia | null) ?? null,
     liczbaWezlow: v.nodes.length,
     pomoc: v.help,
+    selektory: v.nodes.map((n) => n.target.map(String).join(" ")),
   }));
 }
 

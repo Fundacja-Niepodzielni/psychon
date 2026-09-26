@@ -64,11 +64,12 @@ for (const trasa of TRASY_PUBLICZNE) {
       asercjaBrakPowaznychNaruszen(naruszenia);
     });
 
-    // Osobny test: TYLKO rejestruje liczbę naruszeń `color-contrast` na
-    // trasę — to pierwszy realny pomiar kontrastu w przeglądarce,
-    // decyzję co dalej podejmuje lider/właściciel, nie ten test. Dlatego
-    // nigdy nie failuje na samym kontraście.
-    test(`${trasa} — pomiar naruszeń color-contrast (nie failuje)`, async ({
+    // Realny pomiar kontrastu w prawdziwej przeglądarce (axe-core przez
+    // Playwright — w jsdom `color-contrast` zawsze kończy na "incomplete",
+    // patrz `components/__tests__/axe-helper.ts`). Test PADA, gdy axe
+    // zgłosi choć jeden węzeł z naruszeniem `color-contrast` — z liczbą
+    // naruszeń i listą selektorów w komunikacie błędu.
+    test(`${trasa} — brak naruszeń color-contrast`, async ({
       page,
     }, testInfo) => {
       await page.goto(trasa);
@@ -77,6 +78,7 @@ for (const trasa of TRASY_PUBLICZNE) {
       const naruszenia = await uruchomAxe(page);
       const kontrast = naruszenia.filter((n) => n.id === "color-contrast");
       const liczbaWezlow = kontrast.reduce((suma, n) => suma + n.liczbaWezlow, 0);
+      const selektory = kontrast.flatMap((n) => n.selektory);
 
       await testInfo.attach(`${trasa} color-contrast`, {
         body: JSON.stringify(kontrast, null, 2),
@@ -87,7 +89,11 @@ for (const trasa of TRASY_PUBLICZNE) {
         contentType: "text/plain",
       });
 
-      // Pomiar, nie asercja — celowo brak expect() na wyniku kontrastu.
+      expect(
+        liczbaWezlow,
+        `${trasa}: ${liczbaWezlow} naruszeń color-contrast na selektorach: ` +
+          (selektory.length > 0 ? selektory.join(", ") : "(brak)"),
+      ).toBe(0);
     });
   });
 }
