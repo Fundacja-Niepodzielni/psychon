@@ -44,6 +44,10 @@ Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void
 
 Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/admin/supervision/slots', [AdminSupervisionController::class, 'index']);
+    Route::patch('/admin/supervision/slots/{id}', [AdminSupervisionController::class, 'updateSlot'])
+        ->whereNumber('id');
+    Route::delete('/admin/supervision/slots/{id}', [AdminSupervisionController::class, 'cancelSlot'])
+        ->whereNumber('id');
     Route::get('/admin/supervision/cases', [AdminSupervisionController::class, 'cases']);
     Route::put('/admin/users/{id}/supervisor', [AdminSupervisionController::class, 'assignSupervisor'])
         ->whereNumber('id');

@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
 # Konfiguracja środowiska — macOS / Linux / WSL2. Uruchom z katalogu głównego repo:
-#   bash scripts/setup.sh
+#   bash scripts/setup.sh             # sprawdzenia wstępne + pełna konfiguracja
+#   bash scripts/setup.sh --sprawdz   # tylko sprawdzenia wstępne, niczego nie zmienia
 set -euo pipefail
 
-command -v docker >/dev/null || { echo "BRAK: zainstaluj Docker Desktop"; exit 1; }
-command -v npm >/dev/null || { echo "BRAK: zainstaluj Node.js 20+"; exit 1; }
+brak() { echo "BRAK: $1" >&2; exit 1; }
+
+# Sprawdzenia wstępne: każdy brak kończy skrypt czytelnym komunikatem i kodem 1,
+# zanim cokolwiek zostanie skopiowane albo uruchomione.
+[ -f docker-compose.yml ] && [ -d backend ] && [ -d frontend ] \
+  || brak "uruchom skrypt z katalogu głównego repozytorium (tam, gdzie leży docker-compose.yml)"
+command -v docker >/dev/null || brak "zainstaluj Docker Desktop"
+docker compose version >/dev/null 2>&1 || brak "polecenie 'docker compose' nie działa — zainstaluj Docker Desktop (albo wtyczkę Compose v2)"
+docker info >/dev/null 2>&1 || brak "Docker jest zainstalowany, ale nie działa — uruchom Docker Desktop i poczekaj, aż wystartuje"
+command -v node >/dev/null || brak "zainstaluj Node.js 20+"
+NODE_WERSJA="$(node -v)"; NODE_GLOWNA="${NODE_WERSJA#v}"; NODE_GLOWNA="${NODE_GLOWNA%%.*}"
+[ "$NODE_GLOWNA" -ge 20 ] 2>/dev/null || brak "Node.js 20+ (jest $NODE_WERSJA)"
+command -v npm >/dev/null || brak "npm (instaluje się razem z Node.js 20+)"
+echo "==> Sprawdzenia wstępne: docker, docker compose, demon Dockera, node $NODE_WERSJA, npm — OK"
+if [ "${1:-}" = "--sprawdz" ]; then exit 0; fi
 
 echo "==> Pliki środowiskowe"
 [ -f backend/.env ] || cp backend/.env.example backend/.env

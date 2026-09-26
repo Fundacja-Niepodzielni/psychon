@@ -27,6 +27,30 @@ final class TestGrader
     }
 
     /**
+     * Reprezentacja testu do odpowiedzi JSON — wspólna dla panelu
+     * administracji i prowadzącego (`AdminTestController`,
+     * `InstructorTestController`): oba czytają dokładnie te same pola.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function present(?Test $test): ?array
+    {
+        if ($test === null) {
+            return null;
+        }
+
+        return [
+            'id' => $test->id,
+            'course_id' => $test->course_id,
+            'pass_threshold' => $test->pass_threshold,
+            'attempts_limit' => $test->attempts_limit,
+            'question_count' => $test->question_count,
+            'effective_pass_threshold' => self::passThreshold($test),
+            'effective_attempts_limit' => self::attemptsLimit($test),
+        ];
+    }
+
+    /**
      * Zamrożony obraz treści pytań i odpowiedzi (z flagą poprawności) —
      * zapisywany razem z podejściem, żeby późniejsza edycja banku pytań
      * nie zmieniła historii (kryteria 3 i 6).

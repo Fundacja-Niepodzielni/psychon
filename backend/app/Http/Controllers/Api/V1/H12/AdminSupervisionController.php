@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api\V1\H12;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H12\AssignSupervisorRequest;
+use App\Http\Requests\H12\CancelSupervisionSlotRequest;
+use App\Http\Requests\H12\UpdateSupervisionSlotRequest;
 use App\Http\Resources\H12\InstructorSlotResource;
 use App\Http\Resources\H12\SupervisionCaseResource;
 use App\Http\Resources\H12\SupervisorAssignmentResource;
 use App\Models\SupervisionCase;
 use App\Models\SupervisionSlot;
+use App\Services\H12\SupervisionSlotService;
+use App\Services\H12\SupervisionSlotView;
 use App\Services\H12\SupervisorAssignmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,6 +40,35 @@ class AdminSupervisionController extends Controller
 
         return response()->json([
             'data' => $slots,
+        ]);
+    }
+
+    public function updateSlot(
+        UpdateSupervisionSlotRequest $request,
+        int $id,
+        SupervisionSlotService $service,
+    ): JsonResponse {
+        $slot = $service->update($id, $request->validated());
+
+        return response()->json([
+            'data' => InstructorSlotResource::make(
+                SupervisionSlotView::instructor($slot->load('supervisor')),
+            )->resolve($request),
+        ]);
+    }
+
+    public function cancelSlot(
+        CancelSupervisionSlotRequest $request,
+        int $id,
+        SupervisionSlotService $service,
+    ): JsonResponse {
+        $released = $service->cancel($request->user(), $id);
+
+        return response()->json([
+            'data' => [
+                'id' => $id,
+                'signups_released' => $released,
+            ],
         ]);
     }
 
