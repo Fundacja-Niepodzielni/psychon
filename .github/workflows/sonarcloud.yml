@@ -73,7 +73,12 @@ jobs:
         id: ci-run
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.sha }}
+          # W przebiegu wyzwolonym przez zgloszenie `github.sha` to skrot PROBNEGO
+          # SCALENIA, a nie czubka galezi - i dla tego skrotu nie ma zadnego
+          # przebiegu prob. Zmierzone na zgloszeniu 44: `gh run list --commit`
+          # dla skrotu scalenia zwraca 0 przebiegow, wiec petla czekala pelne
+          # 15 minut i konczyla sie kodem 1, zamiast czegokolwiek zmierzyc.
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           for i in $(seq 1 60); do
             RUN_JSON=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$SHA" \

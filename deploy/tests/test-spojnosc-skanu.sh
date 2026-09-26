@@ -86,6 +86,15 @@ sprawdz_warunki() {
     return $wynik
 }
 
+# Skrot, po ktorym szuka sie przebiegu prob. W zgloszeniu `github.sha` wskazuje
+# probne scalenie, dla ktorego nie ma zadnego przebiegu - czekanie konczy sie
+# wtedy kodem 1 po 15 minutach i nic nie zostaje zmierzone.
+SKROT_CZEKANIA='          SHA: ${{ github.event.pull_request.head.sha || github.sha }}'
+sprawdz_skrot() {
+    grep -qxF "$SKROT_CZEKANIA" "$1" || { echo "        krok czekania bierze zly skrot - w zgloszeniu nie znajdzie przebiegu prob"; return 1; }
+    return 0
+}
+
 sprawdz_wolajacego() {
     local plik="$1" wiersz coe warunek
     wiersz="$(spis_krokow "$plik" | awk -F'|' '$1 == "Spojnosc przebiegu skanu"')"
@@ -125,6 +134,11 @@ if sprawdz_warunki "$PLIK_SKANU"; then
 else
     oblej "skan moze pobiec bez raportow pokrycia albo czerwien jest pozorna"
 fi
+if sprawdz_skrot "$PLIK_SKANU"; then
+    zdaj "krok czekania szuka przebiegu prob po skrocie czubka, nie po skrocie probnego scalenia"
+else
+    oblej "krok czekania szuka po zlym skrocie - w zgloszeniu nie zmierzy nic"
+fi
 if sprawdz_wolajacego "$PLIK_CI"; then
     zdaj "ci.yml wola te probe krokiem blokujacym"
 else
@@ -153,7 +167,7 @@ noga() {
         oblej "noga [$opis] nie zmienila pliku - pomiar ponizej nic nie dowodzi"
         return
     fi
-    if sprawdz_warunki "$KOPIA_A" >/dev/null 2>&1 && sprawdz_wolajacego "$KOPIA_CI" >/dev/null 2>&1 && porownaj_filtry "$KOPIA_CI" "$KOPIA_A" >/dev/null 2>&1; then
+    if sprawdz_warunki "$KOPIA_A" >/dev/null 2>&1 && sprawdz_skrot "$KOPIA_A" >/dev/null 2>&1 && sprawdz_wolajacego "$KOPIA_CI" >/dev/null 2>&1 && porownaj_filtry "$KOPIA_CI" "$KOPIA_A" >/dev/null 2>&1; then
         oblej "$opis - pomiar nadal zielony"
     else
         zdaj "$opis - pomiar czerwienieje"
@@ -217,6 +231,12 @@ noga "sama fraza w komentarzu zamiast kroku" zostaw_sama_fraze
 noga "exit 1 zamieniony na echo o exit 1" zamien_exit_na_echo
 noga "krok czerwieniacy jako nieblokujacy" odblokuj_krok_czerwieniacy
 noga "warunek falszu na jobie skanu" wylacz_job_skanu
+zepsuj_skrot_czekania() {
+    sed -i 's|^          SHA: .*|          SHA: ${{ github.sha }}|' "$KOPIA_A"
+    ! grep -q 'pull_request.head.sha' "$KOPIA_A"
+}
+
+noga "skrot czekania cofniety do samego github.sha" zepsuj_skrot_czekania
 noga "zwezenie listy galezi skanu" zwez_galezie
 noga "zdjecie filtra sciezek z jednego przebiegu" zdejmij_filtr
 noga "wolajacy jako nieblokujacy" odblokuj_wolajacego
