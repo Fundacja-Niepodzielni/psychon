@@ -271,8 +271,10 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(dialog, { relatedTarget: dialog.querySelector("h2") });
 
-    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
-    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
+    // fireEvent.focusOut rozsyła zdarzenie synchronicznie: nasłuch `focusout`
+    // na `document` — rejestrowany w komponencie tylko przy `open && loading` —
+    // wykonałby się w tym samym wywołaniu, gdyby był zarejestrowany. Nie ma więc
+    // na co czekać: brak wywołania focus() po powrocie z fireEvent rozstrzyga.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });
@@ -287,8 +289,10 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(dialog, { relatedTarget: null });
 
-    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
-    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
+    // fireEvent.focusOut rozsyła zdarzenie synchronicznie: nasłuch `focusout`
+    // na `document` — rejestrowany w komponencie tylko przy `open && loading` —
+    // wykonałby się w tym samym wywołaniu, gdyby był zarejestrowany. Nie ma więc
+    // na co czekać: brak wywołania focus() po powrocie z fireEvent rozstrzyga.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });
@@ -312,8 +316,10 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(confirmButton, { relatedTarget: null });
 
-    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
-    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
+    // fireEvent.focusOut rozsyła zdarzenie synchronicznie: nasłuch `focusout`
+    // na `document` — rejestrowany w komponencie tylko przy `open && loading` —
+    // wykonałby się w tym samym wywołaniu, gdyby był zarejestrowany. Nie ma więc
+    // na co czekać: brak wywołania focus() po powrocie z fireEvent rozstrzyga.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });
@@ -337,8 +343,10 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(confirmButton, { relatedTarget: null });
 
-    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
-    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
+    // fireEvent.focusOut rozsyła zdarzenie synchronicznie: nasłuch `focusout`
+    // na `document` — rejestrowany w komponencie tylko przy `open && loading` —
+    // wykonałby się w tym samym wywołaniu, gdyby był zarejestrowany. Nie ma więc
+    // na co czekać: brak wywołania focus() po powrocie z fireEvent rozstrzyga.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });
