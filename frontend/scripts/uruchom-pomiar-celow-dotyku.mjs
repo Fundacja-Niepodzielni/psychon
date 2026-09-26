@@ -6,74 +6,73 @@
 // czerwienił się poprawnie, ale nic go nie uruchamiało, więc nikt tego nie
 // widział. Ten plik nie mierzy niczego sam — buduje statyczny poligon,
 // odpala go lokalnym serwerem podglądu, czeka aż odpowiada, uruchamia
-// pomiar-celow-dotyku.mjs i NIE przenosi jego kod wyjścia ślepo: kod 1 ("naruszenia")
-// wolno oddać na zewnątrz WYŁĄCZNIE gdy pomiar-celow-dotyku.mjs zwrócił dokładnie 0
-// albo 1 (patrz gałąź "else" na końcu tego pliku).
+// pomiar-celow-dotyku.mjs i przenosi jego kod wyjścia dalej BEZ MAPOWANIA (patrz gałąź
+// "else" na końcu tego pliku) — pomiar-celow-dotyku.mjs sam oddaje już jeden z kodów
+// sterowanych.
 //
-// Co konkretnie daje kod 2 = NIE ZMIERZONO — wyliczenie wyprowadzone grepem
-// po tym pliku, po trzech kształtach (`process.exit`, `return` z kodem,
-// przypisanie do `kodWyjscia`). Metoda pokazuje pozycje tych trzech
-// kształtów, nie twierdzi, że innych ścieżek wyjścia nie ma — granica tej
-// listy jest nazwana pod nią:
+// Kody sterowane tego wołającego, dokładnie trzy: {0, 2, 3} — 0 = zaliczony,
+// 2 = NIE ZMIERZONO z nazwaną przyczyną, 3 = ZMIERZONE NARUSZENIE (lista
+// celów poniżej progu, w stdout pomiar-celow-dotyku.mjs). Kod spoza {0,2,3} = narzędzie
+// nie doszło do końca; przyczyna w stderr, jeżeli środowisko ją wypisało —
+// ten zbiór jest środowiska uruchomieniowego (sygnał, nieobsłużony wyjątek,
+// ubicie procesu), nie tego pliku, więc nie jest tu wyliczany: żadna lista
+// nie byłaby zupełna.
+//
+// Co konkretnie daje kod 2 = NIE ZMIERZONO Z TEGO PLIKU — wyliczenie
+// wyprowadzone grepem po tym pliku, po trzech kształtach (`process.exit`,
+// `return` z kodem, przypisanie do `kodWyjscia`). Metoda pokazuje pozycje
+// tych trzech kształtów, nie twierdzi, że innych ścieżek wyjścia nie ma —
+// granica tej listy jest nazwana pod nią:
 //   - w linii 145: nieudany build poligonu (uruchomSynchronicznie zwraca
 //     kod liczbowy != 0),
-//   - w linii 278: port zajęty (serwer podglądu odmawia startu z
+//   - w linii 282: port zajęty (serwer podglądu odmawia startu z
 //     --strict-port),
-//   - w linii 278: serwer podglądu kończy się przedwcześnie z INNEGO
+//   - w linii 282: serwer podglądu kończy się przedwcześnie z INNEGO
 //     powodu niż zajęty port (np. błąd jego własnej konfiguracji) — ten
 //     sam branch "zakonczony" co punkt wyżej, rozróżniony testem stderr na
 //     EADDRINUSE (patrz `portZajety` niżej w tym pliku),
-//   - w linii 283: serwer nasłuchuje, ale nie odpowiada w
+//   - w linii 287: serwer nasłuchuje, ale nie odpowiada w
 //     LIMIT_CZEKANIA_MS (20s, liczone OD wejścia w czekajNaSerwer(), czyli
 //     PO budowie — patrz ta funkcja),
-//   - w linii 220: przerwanie tego procesu sygnałem (SIGINT/SIGTERM/SIGHUP),
-//   - w linii 127: błąd samego spawnu dziecka (np. ENOENT) — spawnSync
+//   - w linii 224: przerwanie tego procesu sygnałem (SIGINT/SIGTERM/SIGHUP),
+//   - w linii 126: błąd samego spawnu dziecka (np. ENOENT) — spawnSync
 //     zwraca `error` zamiast statusu (zmierzone sondą, win32:
 //     `B_BLAD_SPAWNU={"error":"ENOENT","status":null}`) — wspólne dla
 //     kroku budowy i kroku pomiaru, bo oba wołają uruchomSynchronicznie,
-//   - w linii 131: dziecko ubite sygnałem — POSIX daje wtedy
+//   - w linii 129: dziecko ubite sygnałem — POSIX daje wtedy
 //     `status === null` (na Windows sonda dała
 //     `A_UBITE={"status":1,"signal":null}`; gałąź `status === null` po
 //     sygnale jest POSIX-owa — na tej maszynie nie została zmierzona
 //     żadnym biegiem, bo sonda wyżej działała na Windows) — tak samo
 //     wspólne dla obu kroków,
-//   - w linii 309: pomiar-celow-dotyku.mjs, który zwrócił kod inny niż 0 i 1 (jego
-//     jedyna dziś istniejąca taka gałąź to w linii 83 pomiar-celow-dotyku.mjs:
-//     exit(3), np. brak przeglądarki — ale warunek w linii 301 tego pliku
-//     łapie KAŻDY kod różny od 0 i 1 wracający tą drogą, nie wyłącznie 3).
-// Te dwie środkowe pozycje (w linii 127, w linii 131: błąd spawnu, dziecko
+//   - w linii 298: pomiar-celow-dotyku.mjs w ogóle nie oddał kodu wyjścia
+//     (`pomiar.kod === null` — błąd spawnu albo sygnał, ta sama funkcja
+//     uruchomSynchronicznie co wyżej). To JEDYNE miejsce, w którym ten plik
+//     sam decyduje o kodzie pomiaru — każdy INNY kod, jaki odda
+//     pomiar-celow-dotyku.mjs (w tym jego własne 0/2/3), leci dalej wprost, bez
+//     interpretacji.
+// Te dwie środkowe pozycje (w linii 126, w linii 129: błąd spawnu, dziecko
 // ubite sygnałem) to powód, dla którego uruchomSynchronicznie (patrz niżej)
 // zwraca strukturę { kod, powod } zamiast gołej liczby: `kod` jest `null`,
 // gdy proces w ogóle nie oddał kodu wyjścia, a oba miejsca drukujące
 // (gałąź budowy i gałąź pomiaru) piszą wtedy `powod`, nie zmyślony
 // "exit N".
 //
-// Granica powyższej listy: to są miejsca, gdzie TEN plik (albo, przy
-// ostatniej pozycji, wprost pomiar-celow-dotyku.mjs) sam ustawia albo zwraca kod
-// wyjścia. Poza nią zostaje `serwer` (spawn w linii 168, asynchroniczny,
-// nie spawnSync) — ten plik NIE rejestruje dla niego
+// Granica powyższej listy: to są miejsca, gdzie TEN plik sam ustawia albo
+// zwraca kod wyjścia. Poza nią zostaje `serwer` (spawn w linii 168,
+// asynchroniczny, nie spawnSync) — ten plik NIE rejestruje dla niego
 // `serwer.on("error", ...)`. Ścieżka nieopisana wyżej: nieobsłużone
 // zdarzenie "error" na `serwer` kończy ten proces kodem, który oddaje
 // domyślna obsługa nieprzechwyconego wyjątku w Node.js, nie żadna z linii
-// wypisanych wyżej; ten kod nie jest pomiarem.
-//
-// Znana, zmierzona, NIENAPRAWIONA luka (ten commit jej nie zamyka — patrz
-// design-system/poligon/pomiar-celow-dotyku.mjs, komentarz przy imporcie): awaria
-// ładowania modułu w pomiar-celow-dotyku.mjs (dwa importy na początku pliku, PRZED
-// osłoną try niżej w tym samym pliku) kończy dziecko nieprzechwyconym
-// wyjątkiem = domyślny kod 1 Node.js. Z punktu widzenia spawnSync to zwykłe,
-// kompletne zakończenie (status=1, brak `error`) — nieodróżnialne stąd od
-// realnie wykrytego naruszenia, bo rozstrzyga się wcześniej, w samym
-// pomiar-celow-dotyku.mjs, poza zasięgiem tego pliku. Zmierzone (odbiór 2bd5f6b, bieg
-// M6): `real 0m3.889s`, `KOD_REALNY=1`, `Error [ERR_MODULE_NOT_FOUND]`, zero
-// linii `NIE ZMIERZONO`, 0 z 40 oczekiwanych pomiarów.
+// wypisanych wyżej; ten kod nie jest pomiarem — i jest, jak każdy kod spoza
+// {0,2,3}, rozpoznawalny właśnie po tym, że do tego zbioru nie należy.
 //
 // Uruchamiany poleceniem `npm run pomiar:cele-dotyku`. Wpięty w
 // `.github/workflows/ci.yml` jako krok zadania „Frontend (lint + build)” —
 // zmierzone: `git grep -c "pomiar:cele-dotyku" -- .github` daje 1 trafienie. Jego
-// czerwień (kod 1 lub 2) zatrzymuje więc ten zestaw; krok NIE zastępuje ani
-// nie rozluźnia żadnego istniejącego — kontrast koloru w `public-a11y.spec.ts`
-// zostaje osobnym, nietkniętym krokiem.
+// czerwień (KAŻDY kod różny od 0) zatrzymuje więc ten zestaw; krok NIE
+// zastępuje ani nie rozluźnia żadnego istniejącego — kontrast koloru w
+// `public-a11y.spec.ts` zostaje osobnym, nietkniętym krokiem.
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -90,33 +89,34 @@ process.env.PORT_POLIGONU = PORT;
 const URL_PODGLADU = `http://127.0.0.1:${PORT}/`;
 const KATALOG_FRONTEND = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-// Trzy rozłączne kody wyjścia tego wołającego:
-//   0 = zmierzono, poligon czysty
-//   1 = zmierzono, pomiar REALNIE wykrył naruszenia (albo rozjazd rejestru
-//       celów) — jedyne dopuszczalne źródło tego kodu to własny kod 0 albo 1
-//       zwrócony przez pomiar-celow-dotyku.mjs, nigdy domysł ani przepisanie czegoś
-//       innego. WYJĄTEK, dziś nienaprawiony i nazwany w nagłówku pliku:
-//       awaria ładowania modułu w pomiar-celow-dotyku.mjs też oddaje jego kod 1, bez
-//       żadnego pomiaru — z tego miejsca nieodróżnialna od realnego 1.
-//   2 = NIE ZMIERZONO — powód nie ma nic wspólnego z jakością poligonu: port,
-//       build, brak odpowiedzi serwera, przerwanie, ALBO pomiar-celow-dotyku.mjs, który
-//       nie zdołał uruchomić narzędzia pomiarowego (jego własny kod inny niż
-//       0/1 — patrz ten plik). Bramka, która pada z cudzego powodu tym samym
-//       kodem co prawdziwe naruszenie, uczy zespół ignorować czerwień, a
-//       prędzej czy później dostaje `continue-on-error`.
+// Kody sterowane tego wołającego, dokładnie trzy — {0, 2, 3}:
+//   0 = zaliczony, poligon czysty.
+//   2 = NIE ZMIERZONO, z nazwaną przyczyną w stderr — port, build, brak
+//       odpowiedzi serwera, przerwanie sygnałem, ALBO pomiar-celow-dotyku.mjs, który
+//       sam nie oddał żadnego kodu (spawn padł albo dziecko ubił sygnał —
+//       patrz uruchomSynchronicznie niżej). Bramka, która pada z cudzego
+//       powodu tym samym kodem co prawdziwe naruszenie, uczy zespół
+//       ignorować czerwień, a prędzej czy później dostaje `continue-on-error`.
+//   3 = ZMIERZONE NARUSZENIE — pomiar-celow-dotyku.mjs realnie wykonał pomiar i
+//       znalazł cele poniżej progu (albo rozjazd rejestru celów); lista jest
+//       w jego własnym stdout.
+// Kod spoza {0,2,3} = narzędzie nie doszło do końca; przyczyna w stderr,
+// jeżeli środowisko ją wypisało. Ten zbiór należy do środowiska uruchomienio-
+// wego (sygnał, nieobsłużony wyjątek, ubicie procesu) — nie jest tu
+// wyliczany, bo żadna lista nie byłaby zupełna.
 const KOD_NIE_ZMIERZONO = 2;
 
 // Zwraca { kod, powod }, NIE gołą liczbę: `kod` jest `null` dokładnie wtedy,
 // gdy proces nie oddał żadnego kodu wyjścia (spawn padł zanim cokolwiek
-// wystartowało, albo dziecko zabił sygnał) — czyli gdy nie ma czego przełożyć
-// na 0/1, więc dawne `?? 1` ("brak kodu → udawaj, że to 1") pisało "zmierzono
-// naruszenie" o biegu, w którym nic się nie zmierzyło. `powod` jest tekstem
-// WYŁĄCZNIE gdy `kod === null` — obaj wołający (budowa, pomiar) drukują ten
-// tekst zamiast zmyślonego "exit N". Ta funkcja NIE rozróżnia (i nie może)
-// kodu 1 "dziecko zmierzyło i zgłosiło naruszenie" od kodu 1 "dziecko padło
-// nieprzechwyconym wyjątkiem, zanim zmierzyło cokolwiek" — oba to zwykłe,
-// kompletne zakończenie procesu z punktu widzenia spawnSync (status=1, brak
-// `error`). Ta druga droga to nazwana w nagłówku pliku, nienaprawiona luka.
+// wystartowało, albo dziecko zabił sygnał) — czyli gdy nie ma czego przenieść
+// dalej, więc dawne `?? 1` ("brak kodu → udawaj, że to naruszenie") pisało
+// "zmierzono naruszenie" o biegu, w którym nic się nie zmierzyło. `powod` jest
+// tekstem WYŁĄCZNIE gdy `kod === null` — obaj wołający (budowa, pomiar)
+// drukują ten tekst zamiast zmyślonego "exit N". Ta funkcja NIE rozróżnia (i
+// nie może) zakończenia sterowanego kodem spoza {0,2,3} od nieprzechwyconego
+// wyjątku, który akurat oddał ten sam numer — oba to zwykłe, kompletne
+// zakończenie procesu z punktu widzenia spawnSync (status ustawiony, brak
+// `error`); patrz właściwość nazwana w nagłówku obu plików.
 function uruchomSynchronicznie(polecenie, argumenty) {
   const wynik = spawnSync(polecenie, argumenty, {
     stdio: "inherit",
@@ -153,7 +153,7 @@ if (budowa.kod !== 0) {
 // co na części maszyn (zmierzone: `netstat` pokazywał `[::1]:PORT LISTENING`,
 // nie `127.0.0.1:PORT`) rozstrzyga się WYŁĄCZNIE do IPv6 — `fetch` niżej i
 // Playwright w pomiar-celow-dotyku.mjs pytają jawnie o `127.0.0.1`, więc dostawały
-// ECONNREFUSED i owijka wychodziła kodem 1 ZAWSZE, niezależnie od realnych
+// ECONNREFUSED i owijka kończyła się czerwienią ZAWSZE, niezależnie od realnych
 // celów dotyku (fail-closed, ale niemy - bramka, która nigdy nie może przejść,
 // prędzej czy później dostanie `continue-on-error` i zniknie). Wymuszam
 // IPv4 jawnie w konfiguracji serwera, a nie odwrotnie (`[::1]` po stronie
@@ -202,11 +202,15 @@ function ubijServerCalkowicie() {
 // czasu narzędzia wywołującego, awaria dalej w potoku) i zostawał osierocony,
 // trzymając PORT na kolejne biegi — dokładnie tak powstał zator zmierzony na
 // tej maszynie: proces z osobnego klonu trzymał port od 12:46 do 16:0x i
-// zablokował trzy kolejne odbiory pomiaru celow dotyku. `process.on("exit", ...)`
-// odpala się przy KAŻDYM wyjściu z tego procesu — normalnym zakończeniu,
-// `process.exit()` wywołanym z dowolnego miejsca wyżej, i sygnale obsłużonym
-// niżej — i może wykonać WYŁĄCZNIE kod synchroniczny, dlatego
-// ubijServerCalkowicie() jest w całości synchroniczne (spawnSync / kill).
+// zablokował trzy kolejne odbiory pomiaru celów dotyku. `process.on("exit", ...)`
+// odpala się przy wyjściu STEROWANYM z tego procesu — normalnym zakończeniu i
+// `process.exit()` wywołanym z dowolnego miejsca wyżej (w tym z handlerów
+// sygnałów niżej, które same wołają `process.exit()`) — i może wykonać
+// WYŁĄCZNIE kod synchroniczny, dlatego ubijServerCalkowicie() jest w całości
+// synchroniczne (spawnSync / kill). Zmierzona właściwość: proces ubity
+// SYGNAŁEM bez pośrednictwa naszego handlera (np. SIGKILL, którego w Node.js
+// nie da się obsłużyć) ten uchwyt OMIJA — wtedy serwer podglądu może zostać
+// osierocony lokalnie, mimo tej siatki.
 let posprzatnieteJuz = false;
 function posprzataj() {
   if (posprzatnieteJuz) return;
@@ -283,30 +287,19 @@ if (wynikCzekania === "zakonczony") {
   kodWyjscia = KOD_NIE_ZMIERZONO;
 } else {
   const pomiar = uruchomSynchronicznie("node", ["design-system/poligon/pomiar-celow-dotyku.mjs"]);
-  // Kod 1 wolno oddać na zewnątrz WYŁĄCZNIE gdy pomiar-celow-dotyku.mjs oddal dokładnie
-  // kod 0 albo 1 (warunek niżej równoważny `kodPomiaru === 0 || kodPomiaru
-  // === 1`). KAŻDY inny kod (jego jedyna dziś istniejąca gałąź błędu oddaje
-  // kod 3, "narzędzie nie wystartowało", ale warunek niżej łapie każdy kod
-  // != 0 i != 1, nie wyłącznie 3) NIE jest naruszeniem — zamieniamy na NIE
-  // ZMIERZONO z nazwanym powodem,
-  // zamiast przepisywać kod dziecka wprost jak poprzednio (ta ślepa
-  // passthrough była właśnie wadą: brakująca przeglądarka kończyła się kodem
-  // 1 Node.js, nieodróżnialnym od realnych naruszeń). `pomiar.kod === null`
-  // (błąd spawnu albo dziecko ubite sygnałem — patrz uruchomSynchronicznie)
-  // też trafia tutaj i też dostaje nazwany `powod`, nie zmyślony "exit N".
-  // Wyjątek, dziś NIENAPRAWIONY (patrz nagłówek pliku): awaria ładowania
-  // modułu w pomiar-celow-dotyku.mjs oddaje jego kod 1 przez tę samą drogę co realne
-  // naruszenie — stąd nieodróżnialna i wpadnie w gałąź "kodPomiaru === 1"
-  // niżej, mimo że pomiar się nie odbył.
-  if (pomiar.kod === 0 || pomiar.kod === 1) {
-    kodWyjscia = pomiar.kod;
-  } else {
-    const powodPomiaru =
-      pomiar.kod === null
-        ? pomiar.powod
-        : `pomiar-celow-dotyku.mjs zakonczyl sie kodem ${pomiar.kod} (ani 0, ani 1), wiec pomiar sie nie odbyl`;
-    console.error(`WOLAJACY POMIARU CELOW DOTYKU: NIE ZMIERZONO — ${powodPomiaru}.`);
+  // Wołający NIE mapuje kodu pomiaru — przenosi go dalej wprost. pomiar-celow-dotyku.mjs
+  // sam oddaje już jeden z kodów sterowanych {0, 2, 3} (patrz jego nagłówek);
+  // ten plik nie zgaduje, nie tłumaczy i nie przepisuje tej liczby na inną.
+  // Jedyny przypadek, w którym TEN plik sam decyduje o kodzie, to gdy
+  // pomiar-celow-dotyku.mjs w ogóle nie oddał żadnego kodu — `pomiar.kod === null`,
+  // czyli błąd spawnu albo dziecko ubite sygnałem (patrz uruchomSynchronicznie
+  // wyżej) — wtedy drukujemy nazwany `powod`, nie zmyślony "exit N", i kończymy
+  // kodem 2 = NIE ZMIERZONO.
+  if (pomiar.kod === null) {
+    console.error(`WOLAJACY POMIARU CELOW DOTYKU: NIE ZMIERZONO — ${pomiar.powod}.`);
     kodWyjscia = KOD_NIE_ZMIERZONO;
+  } else {
+    kodWyjscia = pomiar.kod;
   }
 }
 

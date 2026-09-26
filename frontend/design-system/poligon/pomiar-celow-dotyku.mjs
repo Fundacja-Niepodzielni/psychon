@@ -2,17 +2,24 @@
 // Otwiera lokalny poligon (statyczny build atomów) i mierzy realne
 // prostokąty elementów klikalnych przy 412 i 1440 px, w obu motywach.
 //
-// Znana, zmierzona, NIENAPRAWIONA luka: te dwa importy (niżej) stoją PRZED
+// Kody sterowane tego pliku, dokładnie trzy: 0 = zaliczony, 2 = NIE
+// ZMIERZONO (z nazwaną przyczyną w stderr), 3 = ZMIERZONE NARUSZENIE (lista
+// celów poniżej progu w stdout). Kod spoza {0,2,3} = narzędzie nie doszło do
+// końca; przyczyna w stderr, jeżeli środowisko ją wypisało.
+//
+// Zmierzona, wciąż otwarta właściwość: te dwa importy (niżej) stoją PRZED
 // osłoną try (patrz komentarz tam), więc awaria ładowania modułu (np.
-// zniknięcie cele-oczekiwane.mjs) kończy proces nieprzechwyconym wyjątkiem =
-// domyślny kod 1 Node.js, BEZ ŻADNEGO pomiaru — nieodróżnialny z zewnątrz od
-// kodu 1 zwróconego niżej po realnie wykonanym pomiarze z naruszeniami.
-// Zmierzone (odbiór 2bd5f6b, bieg M6, perturbacja: chwilowe ukrycie
-// cele-oczekiwane.mjs): `real 0m3.889s`, `KOD_REALNY=1`,
-// `Error [ERR_MODULE_NOT_FOUND]`, zero linii „NIE ZMIERZONO”, 0 z 40
-// oczekiwanych pomiarów. Ten commit tej luki NIE zamyka (przeniesienie
-// importów za try przebudowałoby plik już zmierzony sześcioma scenariuszami
-// osobno) — jest tylko nazwana tutaj i w scripts/uruchom-pomiar-celow-dotyku.mjs.
+// zniknięcie cele-oczekiwane.mjs) kończy proces nieprzechwyconym wyjątkiem —
+// domyślnym kodem Node.js, który leży POZA {0,2,3} (zmierzone: kod 1, patrz
+// niżej). Od tego commitu ten kod już NIE koliduje z żadnym kodem sterowanym
+// (naruszenie to teraz 3, nie 1), więc wołający rozpoznaje go po samej
+// przynależności do {0,2,3}, bez specjalnego przypadku. Zmierzone (odbiór
+// 2bd5f6b, bieg M6, perturbacja: chwilowe ukrycie cele-oczekiwane.mjs):
+// `real 0m3.889s`, `KOD_REALNY=1`, `Error [ERR_MODULE_NOT_FOUND]`, zero linii
+// „NIE ZMIERZONO”, 0 z 40 oczekiwanych pomiarów. Ten commit przeniesienia
+// importów za try nie robi (przebudowałoby plik już zmierzony sześcioma
+// scenariuszami osobno) — luka zostaje nazwana tutaj i w
+// scripts/uruchom-pomiar-celow-dotyku.mjs.
 import { chromium } from "@playwright/test";
 import { OCZEKIWANE_CELE } from "./cele-oczekiwane.mjs";
 
@@ -44,15 +51,15 @@ const CELE = [
 ];
 
 // Wszystko od uruchomienia przeglądarki aż po ostatnie zamknięcie strony jest
-// w try/catch z JEDNEGO powodu: kod 1 poniżej ma znaczyć WYŁĄCZNIE "pomiar się
+// w try/catch z JEDNEGO powodu: kod 3 poniżej ma znaczyć WYŁĄCZNIE "pomiar się
 // odbył i wykrył naruszenia". Brak przeglądarki (np. zła ścieżka w
 // PLAYWRIGHT_BROWSERS_PATH), padnięcie nawigacji czy inny wyjątek w trakcie
-// pomiaru to NIE naruszenie — to brak pomiaru. Bez tego rozdziału
-// nieprzechwycony wyjątek kończy proces domyślnym kodem 1 Node.js,
-// nieodróżnialnym od realnie wykrytych naruszeń, i wołający (patrz
-// scripts/uruchom-pomiar-celow-dotyku.mjs) zamelduje fałszywą czerwień z nazwanym, ale
-// nieprawdziwym powodem — gorszą niż brak pomiaru, bo następny czytający
-// zacznie szukać celów dotykowych, których nikt nie zmierzył.
+// pomiaru to NIE naruszenie — to brak pomiaru, kod 2 (NIE ZMIERZONO). Bez tego
+// rozdziału nieprzechwycony wyjątek kończyłby proces domyślnym kodem Node.js,
+// nieodróżnialnym od realnie wykrytych naruszeń, i wołający zamelduje fałszywą
+// czerwień z nazwanym, ale nieprawdziwym powodem — gorszą niż brak pomiaru, bo
+// następny czytający zacznie szukać celów dotykowych, których nikt nie
+// zmierzył.
 let wyniki;
 try {
   const browser = await chromium.launch();
@@ -78,9 +85,10 @@ try {
   await browser.close();
 } catch (blad) {
   console.error(`POMIAR CELOW DOTYKU: NARZEDZIE NIE URUCHOMIONE — ${blad.message}`);
-  // Kod 3, celowo różny od 0 i 1: to jedyna gałąź tego pliku, którą wołający
-  // MUSI przełożyć na 2 = NIE ZMIERZONO, niezależnie od treści komunikatu.
-  process.exit(3);
+  // Kod 2 = NIE ZMIERZONO: to jedyna gałąź tego pliku, w której pomiar w
+  // ogóle się nie odbył — przyczyna jest w stderr wyżej, niezależnie od jej
+  // treści.
+  process.exit(2);
 }
 
 console.log(JSON.stringify(wyniki, null, 2));
@@ -148,4 +156,4 @@ if (zawiodl) {
     `POMIAR CELOW DOTYKU NIEUDANY: ${ponizejProgu.length} ponizej ${PROG_PX}px, ${brakujace.length} brakujacych pomiarow z ${oczekiwanePomiarow} oczekiwanych, ${brakujaceWCELE.length} celow brakujacych w CELE, ${nadmiaroweWCELE.length} celow nadmiarowych w CELE`,
   );
 }
-process.exit(zawiodl ? 1 : 0);
+process.exit(zawiodl ? 3 : 0);
