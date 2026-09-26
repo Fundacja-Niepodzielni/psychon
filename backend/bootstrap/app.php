@@ -23,8 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Nagłówki bezpieczeństwa (no-store, nosniff, zakaz ramek, HSTS) na
-        // każdej odpowiedzi API, także na kopercie błędu.
-        $middleware->api(append: [SecurityHeaders::class]);
+        // każdej odpowiedzi API. Globalnie, nie w grupie `api`: sortowanie
+        // priorytetów stawia `auth` przed middleware grupy, więc koperta 401
+        // ominęłaby nagłówki.
+        $middleware->append(SecurityHeaders::class);
 
         // API nie ma strony logowania — goście dostają JSON 401 zamiast
         // przekierowania do nieistniejącej trasy "login" (500 przy żądaniach bez Accept).

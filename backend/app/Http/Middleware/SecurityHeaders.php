@@ -23,6 +23,10 @@ class SecurityHeaders
         /** @var Response $response */
         $response = $next($request);
 
+        if (! $request->is('api/*')) {
+            return $response;
+        }
+
         $response->headers->set('Cache-Control', 'no-store, private');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');

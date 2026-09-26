@@ -14,8 +14,8 @@ use Tests\TestCase;
  * Próby z przeglądu ASVS L2 (`docs/bezpieczenstwo/przeglad-asvs-dane.md`),
  * wiersze V8.1.1, V8.2.1, V14.4.3, V14.4.4, V14.4.5, V14.4.6 i V14.4.7.
  *
- * Pilnowany warunek: middleware `App\Http\Middleware\SecurityHeaders`
- * dopięty do grupy `api` w `bootstrap/app.php`.
+ * Pilnowany warunek: globalne middleware `App\Http\Middleware\SecurityHeaders`
+ * (`bootstrap/app.php`), działające dla ścieżek `api/*`.
  */
 class NaglowkiOdpowiedziTest extends TestCase
 {

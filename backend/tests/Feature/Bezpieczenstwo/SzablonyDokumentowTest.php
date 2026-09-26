@@ -65,7 +65,8 @@ class SzablonyDokumentowTest extends TestCase
 
     public function test_wzor_z_repozytorium_przechodzi_walidacje(): void
     {
-        $tresc = File::get(resource_path('views/documents/volunteer-agreement.blade.php'));
+        // Middleware `TrimStrings` obcina końcowy znak nowego wiersza pliku.
+        $tresc = trim(File::get(resource_path('views/documents/volunteer-agreement.blade.php')));
 
         $this->putJson('/api/v1/document-templates/agreement', ['content' => $tresc])
             ->assertOk()
