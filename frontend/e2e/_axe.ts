@@ -9,9 +9,11 @@ import AxeBuilder from "@axe-core/playwright";
  * `axe.run()` skanuje DOM w stanie spoczynku — bez kursora nad elementem i
  * bez fokusu klawiatury. Kontrast, który zależy WYŁĄCZNIE od `:hover` albo
  * `:focus-visible` (a nie jest już niewystarczający w stanie spoczynku),
- * NIE jest tu łapany — zmierzone wstrzyknięciem takiej reguły osobno: axe
- * przechodzi zielono mimo złego kontrastu w tych dwóch stanach. Kontrast
- * jest więc pokryty tylko w stanie spoczynku, nie w całości.
+ * NIE jest tu łapany: axe liczy kontrast ze stylów obliczonych w chwili
+ * skanu, a w tej chwili żaden element nie jest ani najechany, ani
+ * sfokusowany. W drzewie nie ma próby, która potwierdzałaby to
+ * wstrzyknięciem takiej reguły — to założenie wynikające z trybu skanu.
+ * Kontrast jest więc pokryty tylko w stanie spoczynku, nie w całości.
  */
 const TAGI_WCAG = ["wcag2a", "wcag2aa", "wcag21aa"];
 
@@ -32,10 +34,12 @@ export interface WynikAxe {
  * widok — np. stopka publiczna, `PublicFooter.tsx`, ma kilka takich
  * odnośników). Prefetch sam w sobie nic nie psuje, ale IntersectionObserver
  * Next.js ponawia go w kółko i przez to strona NIGDY nie jest sieciowo
- * bezczynna — zmierzone: `waitForLoadState("networkidle")` bez tego blokowania
- * potrafił trwać kilkanaście-24,5 s na trasach ze stopką (limit testu to
- * 30 s), więc naprawa jednego wyścigu wprowadzałaby drugi, nowy, na granicy
- * timeoutu. Inne zapytania (w tym prawdziwe wywołania API aplikacji) idą
+ * bezczynna. Według autora zmiany 45a8102
+ * `waitForLoadState("networkidle")` bez tego blokowania potrafił trwać
+ * kilkanaście-24,5 s na trasach ze stopką (ówczesny limit testu to 30 s;
+ * w drzewie nie ma zapisu polecenia, przeglądarki, rozmiaru okna ani daty
+ * tych biegów), więc naprawa jednego wyścigu wprowadzałaby drugi, nowy, na
+ * granicy timeoutu. Inne zapytania (w tym prawdziwe wywołania API aplikacji) idą
  * dalej bez zmian — przepuszczone przez `route.continue()`.
  */
 async function zatrzymajPrefetchLinkow(page: Page): Promise<void> {
@@ -55,10 +59,12 @@ async function zatrzymajPrefetchLinkow(page: Page): Promise<void> {
  * obramowania/tła) w reakcji na odpowiedź sieciową ustaloną w efekcie po
  * zamontowaniu (`/logowanie/niepowiazane`: wariant przycisku "Wyloguj"
  * zmienia się z `primary` na `secondary`, gdy sprawdzenie powiązania konta
- * rozstrzygnie się na "awaria"). Zmierzone jako niestabilna czerwień na
- * `.border-primary` tego przycisku: 4/7 pełnych biegów lokalnie, 1/7 na
- * WSL, zawsze to samo miejsce — axe skanował dokładnie w oknie interpolacji
- * koloru, nie po jej zakończeniu. Najpierw czekamy na ustanie ruchu
+ * rozstrzygnie się na "awaria"). Objawem była niestabilna czerwień na
+ * `.border-primary` tego przycisku — autor zmiany 45a8102 podaje 4/7
+ * pełnych biegów lokalnie i 1/7 na WSL, zawsze to samo miejsce (w drzewie
+ * nie ma zapisu polecenia, przeglądarki, rozmiaru okna ani daty tych
+ * biegów). Przyjmujemy, że axe skanował w oknie interpolacji koloru, nie po
+ * jej zakończeniu. Najpierw czekamy na ustanie ruchu
  * sieciowego (żeby efekt zdążył w ogóle przełączyć wariant — stąd
  * `zatrzymajPrefetchLinkow` wyżej, bez niego to czekanie samo staje się
  * niestabilne), potem na zakończenie przejścia.
