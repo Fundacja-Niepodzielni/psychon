@@ -1,10 +1,28 @@
-// Skrypt pomiarowy P-7 — nie jest testem jednostkowym ani e2e MVP.
+// Skrypt pomiarowy celow dotyku (prog 44px) — nie jest testem jednostkowym ani e2e MVP.
 // Otwiera lokalny poligon (statyczny build atomów) i mierzy realne
 // prostokąty elementów klikalnych przy 412 i 1440 px, w obu motywach.
+//
+// Znana, zmierzona, NIENAPRAWIONA luka: te dwa importy (niżej) stoją PRZED
+// osłoną try (patrz komentarz tam), więc awaria ładowania modułu (np.
+// zniknięcie cele-oczekiwane.mjs) kończy proces nieprzechwyconym wyjątkiem =
+// domyślny kod 1 Node.js, BEZ ŻADNEGO pomiaru — nieodróżnialny z zewnątrz od
+// kodu 1 zwróconego niżej po realnie wykonanym pomiarze z naruszeniami.
+// Zmierzone (odbiór 2bd5f6b, bieg M6, perturbacja: chwilowe ukrycie
+// cele-oczekiwane.mjs): `real 0m3.889s`, `KOD_REALNY=1`,
+// `Error [ERR_MODULE_NOT_FOUND]`, zero linii „NIE ZMIERZONO”, 0 z 40
+// oczekiwanych pomiarów. Ten commit tej luki NIE zamyka (przeniesienie
+// importów za try przebudowałoby plik już zmierzony sześcioma scenariuszami
+// osobno) — jest tylko nazwana tutaj i w scripts/uruchom-pomiar-celow-dotyku.mjs.
 import { chromium } from "@playwright/test";
 import { OCZEKIWANE_CELE } from "./cele-oczekiwane.mjs";
 
-const URL = "http://127.0.0.1:4173/";
+// Port z PORT_POLIGONU (domyślnie 4173) — ta sama zmienna i ta sama wartość
+// domyślna, jaką ustawia scripts/uruchom-pomiar-celow-dotyku.mjs, zanim uruchomi ten
+// plik jako dziecko. Jedno źródło prawdy: gdyby oba pliki miały własną
+// domyślną wartość portu, rozjazd między nimi nie dawałby żadnego błędu, tylko
+// cichy ECONNREFUSED albo pomiar pustego adresu.
+const PORT = process.env.PORT_POLIGONU || "4173";
+const URL = `http://127.0.0.1:${PORT}/`;
 const PROG_PX = 44; // obie strony prostokąta — patrz filtr `ponizejProgu` niżej
 const VIEWPORTY = [
   { nazwa: "412", width: 412, height: 900 },
@@ -25,28 +43,45 @@ const CELE = [
   { nazwa: "Textarea", selektor: '[data-testid="textarea"]' },
 ];
 
-const browser = await chromium.launch();
-const wyniki = [];
-
-for (const motyw of MOTYWY) {
-  for (const viewport of VIEWPORTY) {
-    const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
-    await page.goto(`${URL}?theme=${motyw}`);
-    await page.waitForSelector('[data-testid="button-primary"]');
-    for (const cel of CELE) {
-      const box = await page.locator(cel.selektor).boundingBox();
-      wyniki.push({
-        motyw,
-        viewport: viewport.nazwa,
-        element: cel.nazwa,
-        szerokosc: box ? Math.round(box.width * 100) / 100 : null,
-        wysokosc: box ? Math.round(box.height * 100) / 100 : null,
-      });
+// Wszystko od uruchomienia przeglądarki aż po ostatnie zamknięcie strony jest
+// w try/catch z JEDNEGO powodu: kod 1 poniżej ma znaczyć WYŁĄCZNIE "pomiar się
+// odbył i wykrył naruszenia". Brak przeglądarki (np. zła ścieżka w
+// PLAYWRIGHT_BROWSERS_PATH), padnięcie nawigacji czy inny wyjątek w trakcie
+// pomiaru to NIE naruszenie — to brak pomiaru. Bez tego rozdziału
+// nieprzechwycony wyjątek kończy proces domyślnym kodem 1 Node.js,
+// nieodróżnialnym od realnie wykrytych naruszeń, i wołający (patrz
+// scripts/uruchom-pomiar-celow-dotyku.mjs) zamelduje fałszywą czerwień z nazwanym, ale
+// nieprawdziwym powodem — gorszą niż brak pomiaru, bo następny czytający
+// zacznie szukać celów dotykowych, których nikt nie zmierzył.
+let wyniki;
+try {
+  const browser = await chromium.launch();
+  wyniki = [];
+  for (const motyw of MOTYWY) {
+    for (const viewport of VIEWPORTY) {
+      const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+      await page.goto(`${URL}?theme=${motyw}`);
+      await page.waitForSelector('[data-testid="button-primary"]');
+      for (const cel of CELE) {
+        const box = await page.locator(cel.selektor).boundingBox();
+        wyniki.push({
+          motyw,
+          viewport: viewport.nazwa,
+          element: cel.nazwa,
+          szerokosc: box ? Math.round(box.width * 100) / 100 : null,
+          wysokosc: box ? Math.round(box.height * 100) / 100 : null,
+        });
+      }
+      await page.close();
     }
-    await page.close();
   }
+  await browser.close();
+} catch (blad) {
+  console.error(`POMIAR CELOW DOTYKU: NARZEDZIE NIE URUCHOMIONE — ${blad.message}`);
+  // Kod 3, celowo różny od 0 i 1: to jedyna gałąź tego pliku, którą wołający
+  // MUSI przełożyć na 2 = NIE ZMIERZONO, niezależnie od treści komunikatu.
+  process.exit(3);
 }
-await browser.close();
 
 console.log(JSON.stringify(wyniki, null, 2));
 
@@ -110,7 +145,7 @@ const zawiodl =
   nadmiaroweWCELE.length > 0;
 if (zawiodl) {
   console.error(
-    `POMIAR P-7 NIEUDANY: ${ponizejProgu.length} ponizej ${PROG_PX}px, ${brakujace.length} brakujacych pomiarow z ${oczekiwanePomiarow} oczekiwanych, ${brakujaceWCELE.length} celow brakujacych w CELE, ${nadmiaroweWCELE.length} celow nadmiarowych w CELE`,
+    `POMIAR CELOW DOTYKU NIEUDANY: ${ponizejProgu.length} ponizej ${PROG_PX}px, ${brakujace.length} brakujacych pomiarow z ${oczekiwanePomiarow} oczekiwanych, ${brakujaceWCELE.length} celow brakujacych w CELE, ${nadmiaroweWCELE.length} celow nadmiarowych w CELE`,
   );
 }
 process.exit(zawiodl ? 1 : 0);

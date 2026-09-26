@@ -47,5 +47,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# poligon pomiarowy P-7 (build tymczasowy, nie produkt)
+# poligon pomiarowy celow dotyku (build tymczasowy, nie produkt)
 /dist-poligon

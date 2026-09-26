@@ -1,4 +1,4 @@
-// Rejestr NIEZALEŻNY od tablicy `CELE` w pomiar-p7.mjs — tylko nazwy celów
+// Rejestr NIEZALEŻNY od tablicy `CELE` w pomiar-celow-dotyku.mjs — tylko nazwy celów
 // dotyku, bez selektorów, w OSOBNYM pliku. Cel: gdy ktoś skróci `CELE`
 // (pomyłką, refaktorem, pośpiechem), ten plik NIE rusza się razem z nią, więc
 // rozjazd jest widoczny i nazwany, zamiast po cichu obniżyć próg pokrycia.
@@ -11,7 +11,7 @@
 //
 // Utrzymanie: gdy w design-system/poligon/main.tsx przybywa albo ubywa
 // zmierzalny element, ZAKTUALIZUJ TEN PLIK ręcznie i osobno od `CELE` w
-// pomiar-p7.mjs — to jest jego jedyny sens istnienia w osobnym pliku.
+// pomiar-celow-dotyku.mjs — to jest jego jedyny sens istnienia w osobnym pliku.
 export const OCZEKIWANE_CELE = [
   "Button primary",
   "Button outline",

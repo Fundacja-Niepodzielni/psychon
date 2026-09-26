@@ -180,6 +180,17 @@ jobs:
           PW_WEB_SERVER: "1"
           AUTH_SECRET: ci-only-placeholder-not-a-secret
           AUTH_KEYCLOAK_ISSUER: http://localhost:8080/realms/niepodzielni
+      # Wolajacy scripts/uruchom-pomiar-celow-dotyku.mjs: buduje statyczny poligon atomow,
+      # stawia go lokalnym serwerem podgladu (vite preview, port z
+      # PORT_POLIGONU - tutaj nieustawiony, wiec domyslne 4173) i mierza
+      # realne prostokaty elementow klikalnych wobec progu 44px (patrz
+      # design-system/poligon/pomiar-celow-dotyku.mjs). Krok JEST blokujacy: kod 1
+      # (naruszenie realnie wykryte) i kod 2 (NIE ZMIERZONO - zajety port,
+      # nieudany build poligonu albo serwer bez odpowiedzi w 20s) sa oba
+      # czerwone tutaj, zeby awaria startu nie przechodzila w ciszy pod
+      # pozorem braku naruszen. Przegladarke instaluje krok wyzej.
+      - name: Pomiar celow dotyku (prog 44px)
+        run: npm run pomiar:cele-dotyku
       # `--omit=dev` swiadomie: zmierzone
       # 6 podatnosci lacznie, z tego 2 produkcyjne - cztery zdjete flaga siedza
       # w narzedziach (vitest, js-yaml), ktore nie ida do przegladarki uzytkownika.

@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "pomiar:kontrast-statusow": "node scripts/pomiar-marginesu-kontrastu.mjs",
-    "pomiar:p7": "node scripts/uruchom-pomiar-p7.mjs"
+    "pomiar:cele-dotyku": "node scripts/uruchom-pomiar-celow-dotyku.mjs"
   },
   "dependencies": {
     "lucide-react": "1.47.0",

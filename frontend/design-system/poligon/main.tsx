@@ -18,7 +18,7 @@ if (motyw === "dark" || motyw === "light") {
 function Poligon() {
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-      <p>Poligon pomiarowy P-7 — nie jest stroną produktu, tylko narzędziem pomiarowym.</p>
+      <p>Poligon pomiarowy celów dotyku — nie jest stroną produktu, tylko narzędziem pomiarowym.</p>
       <Button poziom="primary" data-testid="button-primary">Zapisz zmiany</Button>
       <Button poziom="outline" data-testid="button-outline">Anuluj</Button>
       <Button poziom="quiet" data-testid="button-quiet">Pomiń</Button>

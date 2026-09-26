@@ -6,7 +6,7 @@
 # atrape `docker` (monitor_wyslij_mail wola `docker compose exec`, nie `curl`
 # wprost z hosta - patrz komentarz w monitorowanie.sh) i odpowiedz HTTP na
 # atrapie `curl`. Prawdziwa wysylka przez Mailpit i prawdziwy stan kontenerow
-# sa mierzone na stosie (P7 pelne, z host-slot.sh), nie tutaj.
+# sa mierzone na stosie (pelny bieg, z host-slot.sh), nie tutaj.
 set -uo pipefail
 
 TU="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
