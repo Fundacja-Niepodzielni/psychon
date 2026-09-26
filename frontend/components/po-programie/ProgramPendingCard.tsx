@@ -3,8 +3,8 @@ import Text from "@/components/ui/Text";
 
 /**
  * Stan „program jeszcze nieukończony" ekranu `/panel/po-programie`.
- * Bez odnośników — nic tu nie prowadzi do trasy, której serwer jeszcze nie
- * pozwoli otworzyć (`program_completed_at` warunkuje H13/H14 po stronie API).
+ * Bez odnośników. H14 (`h14.php:21`) wymaga `auth:keycloak` +
+ * `access.active`; H13 (`h13.php:26`) tego samego plus `role:volunteer`.
  */
 export default function ProgramPendingCard() {
   return (
