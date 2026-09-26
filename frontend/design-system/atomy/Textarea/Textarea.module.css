@@ -1,0 +1,16 @@
+.pole {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  min-height: 96px;
+  resize: vertical;
+  padding: 9px var(--space-12);
+  border: 1px solid var(--control);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-8);
+  background: var(--card);
+  color: var(--text);
+}
+.pole[aria-invalid="true"] {
+  border-color: var(--error);
+}
