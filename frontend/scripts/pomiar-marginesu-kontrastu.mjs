@@ -5,21 +5,59 @@
 // śledztwa w sprawie kontrastu kolorów stanu.
 //
 // TO JEST TERAZ NAPRAWDĘ KONTROLA, NIE TYLKO POMIAR:
-//   - Kończy się kodem NIEZEROWYM, gdy którakolwiek para/tło poniżej progu
-//     nie jest jawnie zarejestrowana w ZASTANE_ODSTĘPSTWA ani w
-//     ODKRYTE_POMIAREM_TYMCZASOWE niżej.
-//   - Kończy się kodem NIEZEROWYM też wtedy, gdy wpis w którymkolwiek z tych
-//     dwóch rejestrów jest już NIEPRAWDZIWY (para się poprawiła powyżej
-//     progu) — rejestr, którego nikt nie musi utrzymywać w prawdzie, gnije
-//     w tydzień.
-//   - Kończy się kodem 0 tylko wtedy, gdy każda zmierzona para/tło jest
-//     powyżej progu ALBO jest świeżym, prawdziwym wpisem w jednym z
-//     rejestrów.
+//   - Kończy się kodem 3 (ZMIERZONE NARUSZENIE), gdy którakolwiek para/tło
+//     poniżej progu nie jest jawnie zarejestrowana w ZASTANE_ODSTĘPSTWA ani
+//     w ODKRYTE_POMIAREM_TYMCZASOWE niżej.
+//   - Kończy się kodem 3 też wtedy, gdy wpis w którymkolwiek z tych dwóch
+//     rejestrów jest już NIEPRAWDZIWY (para się poprawiła powyżej progu) —
+//     rejestr, którego nikt nie musi utrzymywać w prawdzie, gnije w tydzień.
+//   - Kończy się kodem 0 tylko wtedy, gdy pomiar się odbył I każda zmierzona
+//     para/tło jest powyżej progu ALBO jest świeżym, prawdziwym wpisem w
+//     jednym z rejestrów.
 //   - Dwa rejestry, nie jeden, i to naumyślnie: ZASTANE_ODSTĘPSTWA to
 //     świadomie zaakceptowane odstępstwa; ODKRYTE_POMIAREM_TYMCZASOWE to
 //     świeże odkrycia samego rozszerzenia pomiaru (para × tło, o której
 //     wcześniej nikt nie wiedział, bo nikt jej nie mierzył) — stan
 //     tymczasowy, nie zaakceptowany, czekający na decyzję o odcieniu.
+//
+// KODY STEROWANE TEGO PRZYRZĄDU, DOKŁADNIE TRZY — {0, 2, 3}:
+//   0 = zaliczony: pomiar się odbył i nie ma naruszeń (patrz punkty wyżej).
+//   2 = NIE ZMIERZONO, z nazwaną przyczyną w stderr. Zmierzone dziś kształty,
+//       każdy odtwarzalny osobnym, konkretnym poleceniem uruchomienia:
+//       plik CSS nieodczytany (`readFileSync` rzuca), blok tokenów
+//       `--psy-*` nieznaleziony w tym pliku (zero dopasowań wzorca), zbiór
+//       par do pomiaru pusty, pojedynczy token wymagany do zbudowania pary
+//       albo tła brakujący (`brak tokenu --X w globals.css`), zbiór par/teł
+//       faktycznie zwróconych przez `zbudujPary`/`zbudujTla` nie zgadza się
+//       z jawnie zadeklarowaną, osobną listą znaną (`ETYKIETY_PAR_ZNANE` /
+//       `NAZWY_TEL_ZNANE`, sprawdzane przez `sprawdzWzgledemZnanejListy` —
+//       patrz komentarz tam: to jest źródło INNE niż pętla, która potem
+//       liczy macierz), tylko jeden z `--para`/`--tlo` podany zamiast obu
+//       naraz, nieznana etykieta przekazana przez `--para`, niepoprawny
+//       zapis koloru hex w `--tlo`,
+//       nieznaleziony token do podmiany przez `--nadpisz` (włącznie z
+//       nazwą zawierającą metaznak RegExp — taka nazwa jest dziś szukana
+//       DOSŁOWNIE, patrz `escapujMetaznakiRegex`, więc po prostu nie
+//       zostaje znaleziona, nie wywraca procesu), oraz (tylko przy
+//       `--self-test`) kontrola niezależna, która nie przeszła — w każdym
+//       z tych przypadków rzetelny pomiar SIĘ NIE ODBYŁ, więc nawet
+//       gdyby jakaś liczba wypadła, nie ma jej czym podeprzeć. Nieobjęte:
+//       każdy inny sposób, w jaki wejście może być zepsute (np. wartość w
+//       `--nadpisz=--token=WARTOŚĆ` niebędąca poprawnym zapisem koloru hex),
+//       jest nienazwany tutaj dopóki nie zostanie zmierzony i dopisany do
+//       tej listy.
+//   3 = ZMIERZONE NARUSZENIE — pomiar się odbył w całości i albo znalazł
+//       parę/tło poniżej progu spoza obu rejestrów, albo wpis w którymś z
+//       rejestrów jest już nieprawdziwy; lista jest w stderr poniżej.
+// Kod spoza {0,2,3} = narzędzie nie doszło do końca; przyczyna w stderr,
+// jeżeli środowisko ją wypisało. Ten zbiór należy do środowiska
+// uruchomieniowego (sygnał, nieobsłużony wyjątek, ubicie procesu) — nie
+// jest tu wyliczany, bo żadna lista nie byłaby zupełna. Jedyna dotąd
+// zmierzona droga, którą ten plik SAM potrafił wywołać taki kod (metaznak w
+// nazwie tokenu `--nadpisz` wywalał `new RegExp` wyjątkiem SyntaxError, co
+// dawało kod 1 z Node) jest dziś zamknięta — patrz kod 2 wyżej. To nie jest
+// obietnica, że kod 1 (ani inny) nie pojawi się z jakiejś jeszcze
+// niezmierzonej ścieżki w tym pliku albo z samego środowiska.
 //
 // Skąd biorą się liczby:
 //   - Kolory NIE są tu wpisane na sztywno — skrypt czyta je z app/globals.css
@@ -40,12 +78,17 @@
 //   (patrz `zbudujTla` — każde tło ma cytat z konkretnego pliku/linii) —
 //   czyli 55 możliwych pomiarów. Ten skrypt liczy WSZYSTKIE 55: albo
 //   drukuje wynik, albo wyklucza kombinację JAWNIE z podanym powodem
-//   (`WYKLUCZENIA` niżej — np. `Alert` nigdy nie żyje w wierszu tabeli,
-//   `TextLink` w całym repo żyje tylko w 3 miejscach, żadne na tle strony/
-//   karcie ciepłej/podkładzie najechania na szarym). Asercja na końcu
-//   `zbudujPelnaMacierz` pilnuje, żeby zmierzone + wykluczone zawsze sumowały
-//   się do pełnego iloczynu — nowa para albo nowe tło bez decyzji
-//   (zmierz/wyklucz) wywali skrypt, nie przemilczy się cicho.
+//   (`WYKLUCZENIA` niżej, z powodem przy każdym wpisie — patrz
+//   `POWOD_ALERT_KONTENERY` i `POWOD_TEXTLINK_WASKI_ZAKRES` tam). Strażnikiem nowej pary
+//   albo nowego tła bez decyzji NIE jest suma zmierzone+wykluczone==iloczyn
+//   w `zbudujPelnaMacierz` — ta suma z definicji tej samej pętli nie może
+//   się nie zgadzać (każda kombinacja trafia do dokładnie jednej z dwóch
+//   list), więc to była tożsamość arytmetyczna, nie kontrola. Strażnikiem
+//   jest `sprawdzWzgledemZnanejListy`: porównuje etykiety/nazwy faktycznie
+//   zwrócone przez `zbudujPary`/`zbudujTla` z listą zadeklarowaną ręcznie i
+//   OSOBNO (`ETYKIETY_PAR_ZNANE`, `NAZWY_TEL_ZNANE`) — dopisanie tła w
+//   `zbudujTla` bez dopisania go też tam (i decyzji zmierz/wyklucz w
+//   `WYKLUCZENIA`) daje dziś kod 2, nie ciche zmierzenie.
 //
 // Dodatkowe tło, wcześniej pominięte: `--psy-bg-grey` (#f5f5f5), podkład
 // najechania, płaski (bez przezroczystości) — inny niż podkład najechania
@@ -59,24 +102,46 @@
 // Użycie:
 //   node scripts/pomiar-marginesu-kontrastu.mjs
 //     — pełna macierz par × teł, ocena wobec progu i rejestru zastanych
-//     odstępstw, kod wyjścia 0/niezerowy jak opisano wyżej.
+//     odstępstw, kod wyjścia 0 albo 3 jak opisano wyżej (2, jeśli pomiar
+//     się nie odbył — patrz „KODY STEROWANE" wyżej).
 //   node scripts/pomiar-marginesu-kontrastu.mjs --self-test
 //     — jak wyżej, plus kontrola niezależna (patrz `KONTROLA_NIEZALEZNA`):
-//     kończy się kodem niezerowym, jeśli rachunek w tym pliku odbiega od
-//     wartości znanych z góry (obliczonych innym narzędziem).
+//     kończy się kodem 2 = NIE ZMIERZONO, jeśli rachunek w tym pliku
+//     odbiega od wartości znanych z góry (obliczonych innym narzędziem) —
+//     wtedy zmierzonym marginesom nie ma czego wierzyć.
 //   node scripts/pomiar-marginesu-kontrastu.mjs --para="Odznaka: sukces" --tlo=#f9f8f6
 //     — jedna, konkretna para na PODANYM realnym tle (poza macierzą główną,
-//     do doraźnego sprawdzenia „co by było, gdyby"). Nie wpływa na kod
-//     wyjścia.
+//     do doraźnego sprawdzenia „co by było, gdyby"). Oba argumenty wymagane
+//     RAZEM — podanie tylko `--para` albo tylko `--tlo` kończy się kodem 2 =
+//     NIE ZMIERZONO (niepełne polecenie, nie spada cicho do pełnej macierzy).
+//     Przy obu podanych i trafionej etykiecie nie wpływa na kod wyjścia
+//     (kończy proces naturalnie, kod 0); przy nieznanej etykiecie albo
+//     niepoprawnym zapisie `--tlo` kończy się kodem 2 = NIE ZMIERZONO.
 //
 // Umiejscowienie: obok istniejących narzędzi pomiarowych frontu
 // (scripts/pomiar-kc.sh, scripts/check-lock-libc.mjs) — ten sam katalog,
 // ta sama konwencja nazywania ("pomiar-*").
+//
+// Ten nagłówek celowo NIE liczy dziś miejsc/odwołań/wołających w drzewie
+// (np. "ile plików wspomina ten skrypt") prozą: taka liczba się starzeje i
+// nic w bramce jej nie odświeża ani nie pilnuje. Kto potrzebuje aktualnej
+// liczby, niech uruchomi polecenie sam, z korzenia repo, np.:
+// `grep -rln "pomiar-marginesu-kontrastu\|pomiar:kontrast-statusow" .`
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const SCIEZKA_CSS = fileURLToPath(new URL("../app/globals.css", import.meta.url));
+const SCIEZKA_TEGO_PLIKU = fileURLToPath(import.meta.url);
+
+// Patrz "KODY STEROWANE TEGO PRZYRZĄDU" w nagłówku wyżej — te dwie stałe są
+// jedynymi miejscami, w których ten plik ŚWIADOMIE wybiera kod niezerowy,
+// przez `process.exit(...)` (patrz wykaz wywołań w main() niżej). Każdy inny
+// kod (patrz akapit o kodzie spoza {0,2,3} w nagłówku) pochodzi z
+// nieobsłużonego błędu w środowisku uruchomieniowym — plik go nie
+// "decyduje", tylko mu się przydarza.
+const KOD_NIE_ZMIERZONO = 2;
+const KOD_NARUSZENIE = 3;
 
 // ---------------------------------------------------------------------------
 // Matematyka WCAG — identyczna z ręcznie zweryfikowanym przelicznikiem
@@ -99,8 +164,32 @@ function kontrast(rgb1, rgb2) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/**
+ * Escapuje znaki specjalne RegExp w tekście z argv, zanim ten tekst wejdzie
+ * do `new RegExp(...)`. Bez tego metaznak w nazwie tokenu podanej przez
+ * `--nadpisz` (np. `(`, `*`, `[`) wywraca proces wyjątkiem SyntaxError
+ * zamiast dać kod 2 z nazwaną przyczyną — patrz `main()`, jedyne miejsce
+ * w tym pliku, gdzie wartość z argv trafia do konstrukcji wzorca.
+ */
+function escapujMetaznakiRegex(tekst) {
+  return tekst.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Rozkłada zapis hex (`#rgb`, `#rgba`, `#rrggbb` albo `#rrggbbaa`, `#`
+ * opcjonalny) na `{r,g,b,a}`. Rzuca dla wszystkiego innego — bez tej
+ * kontroli `parseInt` na śmieciu (np. `"zzz"`) cicho daje `NaN`, a `NaN >>
+ * 16 & 255` cicho daje `0`: wynik (czarny, bez podstawy) wygląda jak
+ * prawdziwy pomiar, tylko nim nie jest.
+ */
 function hexNaRgba(hex) {
-  let h = hex.replace("#", "");
+  const bezKrzyzyka = hex.startsWith("#") ? hex.slice(1) : hex;
+  if (![3, 4, 6, 8].includes(bezKrzyzyka.length) || !/^[0-9a-fA-F]+$/.test(bezKrzyzyka)) {
+    throw new Error(
+      `"${hex}" nie jest poprawnym zapisem koloru hex (oczekiwano 3, 4, 6 albo 8 cyfr szesnastkowych, z opcjonalnym "#" na początku)`,
+    );
+  }
+  let h = bezKrzyzyka;
   if (h.length === 3 || h.length === 4) {
     h = h.split("").map((c) => c + c).join("");
   }
@@ -154,32 +243,30 @@ function poznajRowHoverNaBieli(tokeny) {
 
 // ---------------------------------------------------------------------------
 // Definicje par (token tekstu / tło / kontekst) — realne użycia w kodzie:
-//   - Badge.tsx warianty success/warning/danger/info/accent, wszystkie
-//     wewnątrz Table.tsx w co najmniej 9 plikach (zmierzone grepem:
-//     admin/emails, admin/kursy, admin/kursy/[id], panel/dokumenty,
-//     h03/ApplicationsTab, h09/CourseAssignmentPanel, h12/InstructorGroup,
-//     h18/AdminUsersList, h20/ReportView) — stąd kolumna "po najechaniu"
-//     dotyczy ich naprawdę, nie hipotetycznie: Table.tsx nakłada
-//     `hover:bg-row-hover` na CAŁY wiersz, więc każda komórka (a więc
-//     i odznaka w niej) dziedziczy ten podkład. `Badge` jest też
-//     komponentem ogólnym (design system), więc traktowany jest jako
-//     ważny na KAŻDYM z pięciu teł niżej — potwierdza to m.in.
+//   - Badge.tsx warianty success/warning/danger/info/accent są używane
+//     wewnątrz Table.tsx — stąd kolumna "po najechaniu" dotyczy ich
+//     naprawdę, nie hipotetycznie: Table.tsx nakłada `hover:bg-row-hover`
+//     na CAŁY wiersz, więc każda komórka (a więc i odznaka w niej)
+//     dziedziczy ten podkład. `Badge` jest też komponentem ogólnym (design
+//     system), więc traktowany jest jako ważny na KAŻDYM z pięciu teł
+//     niżej — przykładowo (nie wyczerpująco) potwierdzają to
 //     app/(administracja)/admin/emails/page.tsx (odznaka statusu wprost na
 //     `bg-card-warm`) i components/organisms/NotificationList.tsx (odznaka
-//     "info" na `hover:bg-grey`).
+//     "info" na `hover:bg-grey`). Kryterium, nie liczba: dopóki `Badge` jest
+//     komponentem design-systemu bez własnej listy dozwolonych teł, jest
+//     mierzony na wszystkich pięciu; ograniczenie go do podzbioru wymagałoby
+//     najpierw takiej listy, nie zliczenia dzisiejszych wystąpień.
 //   - Alert.tsx warianty success/info/error — nie żyją w wierszu tabeli
 //     (potwierdzone grepem `<Alert` w całym repo: zawsze w karcie/formularzu
 //     albo wprost w treści strony przez `ListTemplate`/`ErrorState`, nigdy
 //     w komórce `Table.tsx`) — stąd wykluczenie tła "podkład najechania
 //     wiersza tabeli" dla wszystkich trzech par `Alert:*` w `WYKLUCZENIA`.
-//   - TextLink.tsx tony primary/muted — w całym repo żyje dokładnie w 3
-//     miejscach (grep `TextLink` poza `components/ui/TextLink.tsx` i
-//     testami): app/(administracja)/admin/kursy/page.tsx (komórka tabeli),
-//     app/(uczestnik)/panel/dokumenty/page.tsx (karta),
-//     components/po-programie/ProgramCompletedCard.tsx (karta) — nigdy
-//     wprost na tle strony, karcie ciepłej ani podkładzie najechania na
-//     szarym, stąd wykluczenie tych trzech teł dla wszystkich par
-//     `Łącze:*` w `WYKLUCZENIA`.
+//   - TextLink.tsx tony primary/muted — używany w komórce tabeli i w
+//     kartach (patrz `POWOD_TEXTLINK_WASKI_ZAKRES` niżej dla kryterium
+//     wykluczenia i polecenia, którym je sprawdzić), nigdy wprost na tle
+//     strony, karcie ciepłej ani podkładzie najechania na szarym — stąd
+//     wykluczenie tych trzech teł dla wszystkich par `Łącze:*` w
+//     `WYKLUCZENIA`.
 // ---------------------------------------------------------------------------
 
 function zbudujPary(tokeny, rozmiary, rowHoverNaBieli) {
@@ -301,7 +388,7 @@ const POWOD_ALERT_KONTENERY =
   "Alert.tsx renderuje się wyłącznie w kartach/formularzach (bg-card) albo wprost w treści strony przez ListTemplate/ErrorState (bg-page) — potwierdzone grepem `<Alert` w całym repo, sprawdzone też pod kątem sąsiedztwa z `bg-grey`/`bg-card-warm`/`hover:bg-row-hover` w tych samych plikach (żadne wystąpienie nie jest w środku takiego kontenera). Nigdy w komórce/wierszu Table.tsx, nigdy w nagłówku podglądu e-maila (bg-card-warm), nigdy w przycisku z hover:bg-grey.";
 
 const POWOD_TEXTLINK_WASKI_ZAKRES =
-  'TextLink w całym repo żyje dokładnie w 3 miejscach (grep "TextLink" poza components/ui/TextLink.tsx i testami): app/(administracja)/admin/kursy/page.tsx (komórka tabeli), app/(uczestnik)/panel/dokumenty/page.tsx (karta), components/po-programie/ProgramCompletedCard.tsx (karta) — nigdy wprost na tym tle.';
+  'TextLink.tsx renderuje się w komórce tabeli i w karcie (bg-card) — kontekstach z własnym, znanym tłem — nigdy wprost na tle strony, karcie ciepłej ani podkładzie najechania (szary, płaski). Kryterium wykluczenia (nie liczba): zasadne dopóki żadne użycie <TextLink poza components/ui/TextLink.tsx i katalogiem testów nie renderuje się na jednym z tych trzech teł. Sprawdź poleceniem z korzenia repo: `grep -rn "<TextLink" --include=*.tsx . | grep -v components/ui/TextLink.tsx | grep -v __tests__` i porównaj kontekst (tło) każdego trafienia z tłem strony/kartą ciepłą/podkładem najechania na szarym — trafienie w jednym z nich unieważnia to wykluczenie.';
 
 const ETYKIETY_LACZY = [
   "Łącze: główny (tone=primary)",
@@ -324,13 +411,86 @@ const WYKLUCZENIA = [
   ]),
 ];
 
+// ---------------------------------------------------------------------------
+// Listy ZNANE — zadeklarowane tu, ręcznie, NIEZALEŻNIE od pętli w
+// `zbudujPary`/`zbudujTla` niżej. To jest źródło prawdy, wobec którego
+// `sprawdzWzgledemZnanejListy` wykrywa nadmiar: jeżeli `zbudujPary` albo
+// `zbudujTla` zaczną zwracać etykietę/nazwę, której nie ma na tej liście
+// (np. ktoś dopisze szóste tło w `zbudujTla` bez decyzji), to jest dokładnie
+// to zdarzenie, które ma dać kod 2 — NIE arytmetyczna zgodność sum (patrz
+// historia tego pliku: `zmierzone.length + wykluczone.length === iloczyn`
+// jest tożsamością matematyczną, bo pętla wkłada każdą parę do dokładnie
+// jednej z dwóch list — nie może zawieść, więc nic nie sprawdzała).
+// ---------------------------------------------------------------------------
+
+export const ETYKIETY_PAR_ZNANE = [
+  "Odznaka: sukces",
+  "Odznaka: ostrzeżenie",
+  "Odznaka: błąd",
+  "Odznaka: informacja",
+  "Odznaka: akcent",
+  "Alert: sukces",
+  "Alert: informacja",
+  "Alert: błąd",
+  "Łącze: główny (tone=primary)",
+  "Łącze: główny po najechaniu na sam link",
+  "Łącze: przygaszony (tone=muted)",
+];
+
+export const NAZWY_TEL_ZNANE = [
+  "Karta biała",
+  "Tło strony",
+  "Podkład najechania wiersza tabeli",
+  "Karta ciepła",
+  "Podkład najechania (szary, płaski)",
+];
+
+/**
+ * Porównuje etykiety par i nazwy teł faktycznie zwrócone przez
+ * `zbudujPary`/`zbudujTla` z listami zadeklarowanymi wyżej — źródłem
+ * INNYM niż pętla, która później liczy macierz. Nowa para/tło (nadmiar
+ * względem znanej listy) albo zniknięcie znanej pary/tła (niedomiar) —
+ * oba rzuca jako błąd, bo oba oznaczają brak jawnej decyzji.
+ */
+export function sprawdzWzgledemZnanejListy(pary, tla) {
+  const etykietyFaktyczne = pary.map((p) => p.etykieta);
+  const nazwyTelFaktyczne = tla.map((t) => t.nazwa);
+
+  const nadmiaroweParyPar = etykietyFaktyczne.filter((e) => !ETYKIETY_PAR_ZNANE.includes(e));
+  const brakujacePary = ETYKIETY_PAR_ZNANE.filter((e) => !etykietyFaktyczne.includes(e));
+  const nadmiaroweTla = nazwyTelFaktyczne.filter((n) => !NAZWY_TEL_ZNANE.includes(n));
+  const brakujaceTla = NAZWY_TEL_ZNANE.filter((n) => !nazwyTelFaktyczne.includes(n));
+
+  if (
+    nadmiaroweParyPar.length > 0 ||
+    brakujacePary.length > 0 ||
+    nadmiaroweTla.length > 0 ||
+    brakujaceTla.length > 0
+  ) {
+    const czesci = [];
+    if (nadmiaroweParyPar.length > 0) czesci.push(`nowa(e) para(y) spoza ETYKIETY_PAR_ZNANE: ${nadmiaroweParyPar.join(", ")}`);
+    if (brakujacePary.length > 0) czesci.push(`znana(e) para(y) z ETYKIETY_PAR_ZNANE już nie istnieje(ą): ${brakujacePary.join(", ")}`);
+    if (nadmiaroweTla.length > 0) czesci.push(`nowe tło(a) spoza NAZWY_TEL_ZNANE: ${nadmiaroweTla.join(", ")}`);
+    if (brakujaceTla.length > 0) czesci.push(`znane tło(a) z NAZWY_TEL_ZNANE już nie istnieje(ą): ${brakujaceTla.join(", ")}`);
+    throw new Error(
+      `zbiór par/teł nie zgadza się z jawnie zadeklarowaną listą znaną (ETYKIETY_PAR_ZNANE / NAZWY_TEL_ZNANE): ${czesci.join("; ")}. Dopisz etykietę/nazwę do właściwej listy ZNANE (z decyzją zmierz/wyklucz w WYKLUCZENIA), zanim to tło/para wejdzie do pomiaru.`,
+    );
+  }
+}
+
 /**
  * Pełny iloczyn par × teł: dla każdej kombinacji albo liczy kontrast, albo
- * bierze wykluczenie z `WYKLUCZENIA`. Asercja na końcu pilnuje, żeby suma
- * zmierzonych i wykluczonych zawsze równała się pełnemu iloczynowi — nowa
- * para albo nowe tło bez jawnej decyzji wywala skrypt, nie ginie w ciszy.
+ * bierze wykluczenie z `WYKLUCZENIA`. Zanim to policzy, `sprawdzWzgledemZnanejListy`
+ * porównuje faktyczne pary/tła z listą zadeklarowaną NIEZALEŻNIE od tej
+ * pętli (`ETYKIETY_PAR_ZNANE`, `NAZWY_TEL_ZNANE`) — nowa para albo nowe tło
+ * bez jawnej decyzji rzuca błąd tam, nie ginie w ciszy. Suma zmierzonych i
+ * wykluczonych poniżej zawsze równa się pełnemu iloczynowi z definicji tej
+ * pętli (każda kombinacja trafia do dokładnie jednej z dwóch list) — to
+ * liczba do raportu, nie kontrola.
  */
-function zbudujPelnaMacierz(pary, tla) {
+export function zbudujPelnaMacierz(pary, tla) {
+  sprawdzWzgledemZnanejListy(pary, tla);
+
   const wynik = [];
   const wykluczone = [];
 
@@ -354,14 +514,27 @@ function zbudujPelnaMacierz(pary, tla) {
   }
 
   const oczekiwane = pary.length * tla.length;
-  const rzeczywiste = wynik.length + wykluczone.length;
-  if (rzeczywiste !== oczekiwane) {
-    throw new Error(
-      `Asercja pełnego iloczynu nie zgadza się: ${wynik.length} zmierzonych + ${wykluczone.length} wykluczonych = ${rzeczywiste}, oczekiwano ${pary.length} par × ${tla.length} teł = ${oczekiwane}. Dodano parę albo tło bez jawnej decyzji (zmierz albo wyklucz z powodem).`,
-    );
-  }
 
   return { wynik, wykluczone, oczekiwane };
+}
+
+/**
+ * Buduje pary i tła PRAWDZIWĄ ścieżką produkcyjną: czyta `app/globals.css`
+ * z dysku i przepuszcza go przez te same `wczytajTokeny` / `zbudujPary` /
+ * `zbudujTla`, których używa `main()`. Dla próby w drzewie: pozwala
+ * sprawdzić `sprawdzWzgledemZnanejListy`/`zbudujPelnaMacierz` na WYNIKU
+ * realnych `zbudujPary`/`zbudujTla`, nie na literałach przepisanych ręcznie
+ * do pliku testowego — dopisanie tu (w tym pliku) nowej pary albo nowego
+ * tła bez wpisania go do `ETYKIETY_PAR_ZNANE`/`NAZWY_TEL_ZNANE` psuje ten
+ * import, nie tylko uruchomienie CLI.
+ */
+export function wczytajProdukcyjneParyITla() {
+  const tekstCss = readFileSync(SCIEZKA_CSS, "utf8");
+  const { tokeny, rozmiary } = wczytajTokeny(tekstCss);
+  const rowHoverNaBieli = poznajRowHoverNaBieli(tokeny);
+  const pary = zbudujPary(tokeny, rozmiary, rowHoverNaBieli);
+  const tla = zbudujTla(tokeny, rowHoverNaBieli);
+  return { pary, tla };
 }
 
 // ---------------------------------------------------------------------------
@@ -478,7 +651,9 @@ function uruchomKontroleNiezalezna() {
     console.error(
       "\nKONTROLA NIEZALEŻNA NIE PRZESZŁA — rachunek w przyrządzie odbiega od wartości znanych z góry, niezależnie wyliczonych.",
     );
-    process.exitCode = 1;
+    // Kod wyjścia NIE jest ustawiany tutaj — decyduje o nim main() na końcu,
+    // razem z resztą wyniku (patrz `selfTestOk` tam), żeby był dokładnie
+    // jeden punkt w tym pliku, który wybiera kod procesu.
     return false;
   }
   console.log(
@@ -534,20 +709,48 @@ function argWartosc(klucz) {
   return arg ? arg.slice(przedrostek.length) : null;
 }
 
-/** Wszystkie wystąpienia `--nadpisz=--psy-token=#hex` (może być kilka naraz). */
+/**
+ * Wszystkie wystąpienia `--nadpisz=--psy-token=#hex` (może być kilka naraz).
+ * Wymaga zapisu w JEDNYM argumencie argv, ze znakiem "=" oddzielającym
+ * `--nadpisz` od reszty. `--nadpisz --psy-x=#eee` (spacja zamiast "=") to
+ * DWA osobne argumenty argv — pierwszy ("--nadpisz") nie zaczyna się od
+ * `--nadpisz=`, więc bez tej kontroli filtr niżej po prostu go pomija: zero
+ * nadpisań, pełny, NIENADPISANY pomiar kończy się cicho kodem 0, jakby
+ * `--nadpisz` w ogóle nie było na linii poleceń.
+ */
 function nadpisaniaZArgv() {
   const przedrostek = "--nadpisz=";
-  return process.argv
-    .filter((a) => a.startsWith(przedrostek))
+  const podobneDoNadpisz = process.argv.filter((a) => a === "--nadpisz" || a.startsWith("--nadpisz"));
+  for (const a of podobneDoNadpisz) {
+    if (!a.startsWith(przedrostek)) {
+      console.error(
+        `NIE ZMIERZONO — --nadpisz wymaga zapisu "--nadpisz=--<token>=<wartość>" w JEDNYM argumencie (ze znakiem "="); otrzymano "${a}".`,
+      );
+      process.exit(KOD_NIE_ZMIERZONO);
+    }
+  }
+  return podobneDoNadpisz
     .map((a) => a.slice(przedrostek.length))
     .map((para) => {
       const i = para.indexOf("=");
+      if (i === -1) {
+        console.error(
+          `NIE ZMIERZONO — --nadpisz=${para}: brak drugiego "=" oddzielającego nazwę tokenu od wartości.`,
+        );
+        process.exit(KOD_NIE_ZMIERZONO);
+      }
       return [para.slice(0, i).replace(/^--/, ""), para.slice(i + 1)];
     });
 }
 
 function main() {
-  const tekstCssZDysku = readFileSync(SCIEZKA_CSS, "utf8");
+  let tekstCssZDysku;
+  try {
+    tekstCssZDysku = readFileSync(SCIEZKA_CSS, "utf8");
+  } catch (err) {
+    console.error(`NIE ZMIERZONO — nie udało się odczytać pliku CSS ${SCIEZKA_CSS}: ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
 
   // `--nadpisz=--psy-token=#hex` (powtarzalne) — podmiana W PAMIĘCI: liczenie
   // „co by było, gdyby" (np. inny podkład najechania wiersza) PRZEZ TEN SAM
@@ -556,12 +759,20 @@ function main() {
   const nadpisania = nadpisaniaZArgv();
   let tekstCss = tekstCssZDysku;
   for (const [nazwa, wartosc] of nadpisania) {
-    const wzorzec = new RegExp(`--${nazwa}:\\s*#[0-9a-fA-F]{3,8}\\s*;`);
+    // Nazwa tokenu pochodzi z argv (`--nadpisz=--<nazwa>=<wartość>`) i może
+    // zawierać dowolny tekst, w tym metaznaki RegExp — `escapujMetaznakiRegex`
+    // sprawia, że taki tekst jest szukany DOSŁOWNIE, nigdy jako wzorzec.
+    // Efekt metaznaku w nazwie: token dosłownie z nawiasem/gwiazdką itd. nie
+    // istnieje w CSS, więc trafiamy w gałąź "nie znalazłem" niżej (kod 2),
+    // nie w wyjątek.
+    const wzorzec = new RegExp(`--${escapujMetaznakiRegex(nazwa)}:\\s*#[0-9a-fA-F]{3,8}\\s*;`);
     if (!wzorzec.test(tekstCss)) {
-      console.error(`--nadpisz: nie znalazłem --${nazwa} do podmiany.`);
-      process.exit(2);
+      console.error(`NIE ZMIERZONO — --nadpisz: nie znalazłem --${nazwa} do podmiany.`);
+      process.exit(KOD_NIE_ZMIERZONO);
     }
-    tekstCss = tekstCss.replace(wzorzec, `--${nazwa}: ${wartosc};`);
+    // Replacer jako funkcja, nie string: unika interpretacji `$&`/`$1` itd.
+    // na wypadek, gdyby `nazwa` albo `wartosc` zawierały znak `$`.
+    tekstCss = tekstCss.replace(wzorzec, () => `--${nazwa}: ${wartosc};`);
   }
   if (nadpisania.length > 0) {
     console.log(
@@ -570,21 +781,56 @@ function main() {
   }
 
   const { tokeny, rozmiary } = wczytajTokeny(tekstCss);
-  const rowHoverNaBieli = poznajRowHoverNaBieli(tokeny);
-  const pary = zbudujPary(tokeny, rozmiary, rowHoverNaBieli);
+  if (Object.keys(tokeny).length === 0) {
+    console.error(
+      `NIE ZMIERZONO — blok tokenów --psy-* nie został znaleziony w ${SCIEZKA_CSS} (0 dopasowań wzorca --psy-<nazwa>: #hex).`,
+    );
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+
+  let rowHoverNaBieli;
+  let pary;
+  try {
+    rowHoverNaBieli = poznajRowHoverNaBieli(tokeny);
+    pary = zbudujPary(tokeny, rozmiary, rowHoverNaBieli);
+  } catch (err) {
+    console.error(`NIE ZMIERZONO — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+  if (pary.length === 0) {
+    console.error("NIE ZMIERZONO — zbiór par do pomiaru jest pusty.");
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
 
   const paraNazwa = argWartosc("para");
   const tloParam = argWartosc("tlo");
-  if (paraNazwa && tloParam) {
-    // Tryb jednej pary na podanym, realnym tle — nie zastępuje macierzy
-    // głównej ani kodu wyjścia, tylko liczy dokładnie to, o co proszono.
+  if (paraNazwa || tloParam) {
+    // Tryb jednej pary na podanym, realnym tle wymaga OBU argumentów naraz —
+    // `--para` i `--tlo` razem. Podanie tylko jednego z nich NIE jest błąd
+    // walidacji hex (ten jest niżej, na wartości `--tlo`), tylko niepełne
+    // polecenie: bez tej kontroli brakująca druga połowa cicho spadała do
+    // pełnej macierzy głównej, więc np. literówka w nazwie `--para` (przy
+    // podanym `--tlo`) dawała pełny, poprawnie wyglądający raport kodem 0
+    // zamiast sygnału, że o cokolwiek proszono, nie zostało to policzone.
+    if (!paraNazwa || !tloParam) {
+      console.error(
+        `NIE ZMIERZONO — tryb jednej pary na podanym tle wymaga OBU argumentów naraz: --para=<etykieta> i --tlo=<hex>. Otrzymano ${paraNazwa ? `--para=${paraNazwa}` : "brak --para"}, ${tloParam ? `--tlo=${tloParam}` : "brak --tlo"}.`,
+      );
+      process.exit(KOD_NIE_ZMIERZONO);
+    }
     const p = pary.find((x) => x.etykieta === paraNazwa);
     if (!p) {
-      console.error(`Nie znam pary "${paraNazwa}". Dostępne etykiety:`);
+      console.error(`NIE ZMIERZONO — nie znam pary "${paraNazwa}". Dostępne etykiety:`);
       for (const x of pary) console.error(`  - ${x.etykieta}`);
-      process.exit(2);
+      process.exit(KOD_NIE_ZMIERZONO);
     }
-    const tloRgb = hexNaRgba(tloParam);
+    let tloRgb;
+    try {
+      tloRgb = hexNaRgba(tloParam);
+    } catch (err) {
+      console.error(`NIE ZMIERZONO — --tlo: ${err.message}.`);
+      process.exit(KOD_NIE_ZMIERZONO);
+    }
     const tloOpaczne = [tloRgb.r, tloRgb.g, tloRgb.b];
     const tloZlozone =
       p.bgHexLubNull === null ? tloOpaczne : zloz(p.bgHexLubNull, tloOpaczne);
@@ -601,13 +847,23 @@ function main() {
   console.log(`Źródło tokenów: ${SCIEZKA_CSS}`);
   console.log(`Odczytano ${Object.keys(tokeny).length} tokenów --psy-* z globals.css.`);
 
-  const tla = zbudujTla(tokeny, rowHoverNaBieli);
+  let tla;
+  let macierz;
+  let wykluczone;
+  let oczekiwane;
+  try {
+    tla = zbudujTla(tokeny, rowHoverNaBieli);
+    ({ wynik: macierz, wykluczone, oczekiwane } = zbudujPelnaMacierz(pary, tla));
+  } catch (err) {
+    console.error(`NIE ZMIERZONO — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+
   console.log(`\nTła w zestawie (${tla.length}):`);
   for (const t of tla) {
     console.log(`  - ${t.nazwa}: ${t.opis}`);
   }
 
-  const { wynik: macierz, wykluczone, oczekiwane } = zbudujPelnaMacierz(pary, tla);
   wypiszMacierz(macierz, wykluczone, oczekiwane);
 
   const pelnyRejestr = [...ZASTANE_ODSTEPSTWA, ...ODKRYTE_POMIAREM_TYMCZASOWE];
@@ -643,12 +899,88 @@ function main() {
     }
   }
 
-  if (naruszeniaNiepokryte.length > 0 || nieaktualneWpisyRejestru.length > 0 || !selfTestOk) {
-    console.error("\nWYNIK: NIEPOWODZENIE.");
-    process.exit(1);
+  // Kontrola niezależna sprawdza samą matematykę (`kontrast()`), nie
+  // konkretne pary — jeśli nie przeszła, żadnemu marginesowi zmierzonemu
+  // wyżej (w tym naruszeniom) nie ma czego wierzyć. Dlatego ten sprawdzian
+  // ma pierwszeństwo przed listą naruszeń: NIE ZMIERZONO, nie ZMIERZONE
+  // NARUSZENIE.
+  if (!selfTestOk) {
+    console.error(
+      "\nWYNIK: NIE ZMIERZONO — kontrola niezależna (--self-test) nie przeszła (patrz BŁĄD wyżej); rachunek przyrządu odbiega od wartości znanych z góry, więc zmierzonym marginesom nie ma czego wierzyć.",
+    );
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+
+  if (naruszeniaNiepokryte.length > 0 || nieaktualneWpisyRejestru.length > 0) {
+    console.error("\nWYNIK: ZMIERZONE NARUSZENIE.");
+    process.exit(KOD_NARUSZENIE);
   }
 
   console.log("\nWYNIK: wszystkie pary/tła powyżej progu albo pokryte świeżym wpisem rejestru.");
 }
 
-main();
+// Wywołanie main() tylko wtedy, gdy ten plik jest URUCHAMIANY (node
+// scripts/pomiar-marginesu-kontrastu.mjs), NIE gdy jest IMPORTOWANY (np. z
+// testu w __tests__/, patrz tam) — standardowy wzorzec Node na "entry point"
+// modułu ESM. Bez tej straży `import` samego `sprawdzWzgledemZnanejListy` do
+// testu odpalałby całą macierz na prawdziwym globals.css przy każdym imporcie
+// (i wołał `process.exit` przy naruszeniu), co ubijałoby proces testowy
+// zamiast dać czysty wynik jednej funkcji. CLI (npm run
+// pomiar:kontrast-statusow) ma `process.argv[1]` równe temu plikowi, więc tam
+// main() rusza dokładnie jak dotąd — ta straż nie zmienia zachowania CLI.
+//
+// Rozstrzyga PO `fs.realpathSync` OBU stron (własnej ścieżki i
+// `process.argv[1]`), nie po porównaniu surowego `import.meta.url` z
+// `pathToFileURL(process.argv[1])`: Node rozwiązuje dowiązania/symlinki przy
+// budowaniu `import.meta.url`, ale NIE przy pozostawianiu `process.argv[1]`
+// takim, jak podano w powłoce — uruchomienie przez złącze katalogowe (np.
+// `mklink /J`) sprawiało, że te dwie wartości się różniły, `tenPlikJestUruchamiany`
+// wychodziło `false`, `main()` milczał, a proces oddawał kod 0 z zerem bajtów
+// wyjścia. Pusty pomiar to NIE jest zero, więc trzy stany, nie dwa:
+//   - realpath(argv[1]) === realpath(tego pliku) -> uruchomiony wprost, licz.
+//   - realpath(argv[1]) rozwiązuje się na INNY istniejący plik -> import
+//     (np. z testu), main() się nie odpala, ale to nie jest błąd.
+//   - realpath którejkolwiek strony nie da się ustalić (argv[1] brak, ścieżka
+//     nie istnieje, itp.) -> NIE ZMIERZONO, kod 2 z nazwaną przyczyną —
+//     nigdy ciche 0.
+function ustalTrybUruchomienia() {
+  if (process.argv[1] === undefined) {
+    return {
+      stan: "nierozstrzygalne",
+      powod: "process.argv[1] nie jest ustawiony (brak ścieżki wołającego procesu).",
+    };
+  }
+  let realTegoPliku;
+  try {
+    realTegoPliku = realpathSync(SCIEZKA_TEGO_PLIKU);
+  } catch (err) {
+    return {
+      stan: "nierozstrzygalne",
+      powod: `nie udało się rozwiązać realpath własnej ścieżki (${SCIEZKA_TEGO_PLIKU}): ${err.message}.`,
+    };
+  }
+  let realWolajacego;
+  try {
+    realWolajacego = realpathSync(process.argv[1]);
+  } catch (err) {
+    return {
+      stan: "nierozstrzygalne",
+      powod: `nie udało się rozwiązać realpath wołającego (process.argv[1]="${process.argv[1]}"): ${err.message}.`,
+    };
+  }
+  if (realWolajacego === realTegoPliku) {
+    return { stan: "ten-plik" };
+  }
+  return { stan: "inny-plik" };
+}
+
+const TRYB_URUCHOMIENIA = ustalTrybUruchomienia();
+if (TRYB_URUCHOMIENIA.stan === "nierozstrzygalne") {
+  console.error(
+    `NIE ZMIERZONO — nie udało się rozstrzygnąć, czy ten plik jest uruchamiany bezpośrednio, czy importowany: ${TRYB_URUCHOMIENIA.powod}`,
+  );
+  process.exit(KOD_NIE_ZMIERZONO);
+}
+if (TRYB_URUCHOMIENIA.stan === "ten-plik") {
+  main();
+}
