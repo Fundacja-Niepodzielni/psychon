@@ -22,27 +22,40 @@
 //
 // KODY STEROWANE TEGO PRZYRZĄDU, DOKŁADNIE TRZY — {0, 2, 3}:
 //   0 = zaliczony: pomiar się odbył i nie ma naruszeń (patrz punkty wyżej).
-//   2 = NIE ZMIERZONO, z nazwaną przyczyną w stderr. Objęte dziś kształty:
+//   2 = NIE ZMIERZONO, z nazwaną przyczyną w stderr. Zmierzone dziś kształty,
+//       każdy odtwarzalny osobnym, konkretnym poleceniem uruchomienia:
 //       plik CSS nieodczytany (`readFileSync` rzuca), blok tokenów
 //       `--psy-*` nieznaleziony w tym pliku (zero dopasowań wzorca), zbiór
 //       par do pomiaru pusty, pojedynczy token wymagany do zbudowania pary
-//       albo tła brakujący (`brak tokenu --X w globals.css`), asercja
-//       pełnego iloczynu par × teł się nie zgadza (nowa para/tło bez
-//       jawnej decyzji zmierz/wyklucz), nieznana etykieta przekazana przez
-//       `--para`, nieznaleziony token do podmiany przez `--nadpisz`, oraz
-//       (tylko przy `--self-test`) kontrola niezależna, która nie przeszła —
-//       w każdym z tych przypadków rzetelny pomiar SIĘ NIE ODBYŁ, więc nawet
+//       albo tła brakujący (`brak tokenu --X w globals.css`), zbiór par/teł
+//       faktycznie zwróconych przez `zbudujPary`/`zbudujTla` nie zgadza się
+//       z jawnie zadeklarowaną, osobną listą znaną (`ETYKIETY_PAR_ZNANE` /
+//       `NAZWY_TEL_ZNANE`, sprawdzane przez `sprawdzWzgledemZnanejListy` —
+//       patrz komentarz tam: to jest źródło INNE niż pętla, która potem
+//       liczy macierz), nieznana etykieta przekazana przez `--para`,
+//       nieznaleziony token do podmiany przez `--nadpisz` (włącznie z
+//       nazwą zawierającą metaznak RegExp — taka nazwa jest dziś szukana
+//       DOSŁOWNIE, patrz `escapujMetaznakiRegex`, więc po prostu nie
+//       zostaje znaleziona, nie wywraca procesu), oraz (tylko przy
+//       `--self-test`) kontrola niezależna, która nie przeszła — w każdym
+//       z tych przypadków rzetelny pomiar SIĘ NIE ODBYŁ, więc nawet
 //       gdyby jakaś liczba wypadła, nie ma jej czym podeprzeć. Nieobjęte:
-//       każdy inny sposób, w jaki wejście może być zepsute, jest nienazwany
-//       tutaj dopóki nie zostanie zmierzony i dopisany do tej listy.
+//       każdy inny sposób, w jaki wejście może być zepsute (np. wartość w
+//       `--nadpisz=--token=WARTOŚĆ` niebędąca poprawnym zapisem koloru hex),
+//       jest nienazwany tutaj dopóki nie zostanie zmierzony i dopisany do
+//       tej listy.
 //   3 = ZMIERZONE NARUSZENIE — pomiar się odbył w całości i albo znalazł
 //       parę/tło poniżej progu spoza obu rejestrów, albo wpis w którymś z
 //       rejestrów jest już nieprawdziwy; lista jest w stderr poniżej.
 // Kod spoza {0,2,3} = narzędzie nie doszło do końca; przyczyna w stderr,
 // jeżeli środowisko ją wypisało. Ten zbiór należy do środowiska
 // uruchomieniowego (sygnał, nieobsłużony wyjątek, ubicie procesu) — nie
-// jest tu wyliczany, bo żadna lista nie byłaby zupełna. Kodu 1 ten
-// przyrząd nie zwraca sam z siebie nigdy.
+// jest tu wyliczany, bo żadna lista nie byłaby zupełna. Jedyna dotąd
+// zmierzona droga, którą ten plik SAM potrafił wywołać taki kod (metaznak w
+// nazwie tokenu `--nadpisz` wywalał `new RegExp` wyjątkiem SyntaxError, co
+// dawało kod 1 z Node) jest dziś zamknięta — patrz kod 2 wyżej. To nie jest
+// obietnica, że kod 1 (ani inny) nie pojawi się z jakiejś jeszcze
+// niezmierzonej ścieżki w tym pliku albo z samego środowiska.
 //
 // Skąd biorą się liczby:
 //   - Kolory NIE są tu wpisane na sztywno — skrypt czyta je z app/globals.css
@@ -65,10 +78,16 @@
 //   drukuje wynik, albo wyklucza kombinację JAWNIE z podanym powodem
 //   (`WYKLUCZENIA` niżej — np. `Alert` nigdy nie żyje w wierszu tabeli,
 //   `TextLink` w całym repo żyje tylko w 3 miejscach, żadne na tle strony/
-//   karcie ciepłej/podkładzie najechania na szarym). Asercja na końcu
-//   `zbudujPelnaMacierz` pilnuje, żeby zmierzone + wykluczone zawsze sumowały
-//   się do pełnego iloczynu — nowa para albo nowe tło bez decyzji
-//   (zmierz/wyklucz) wywali skrypt, nie przemilczy się cicho.
+//   karcie ciepłej/podkładzie najechania na szarym). Strażnikiem nowej pary
+//   albo nowego tła bez decyzji NIE jest suma zmierzone+wykluczone==iloczyn
+//   w `zbudujPelnaMacierz` — ta suma z definicji tej samej pętli nie może
+//   się nie zgadzać (każda kombinacja trafia do dokładnie jednej z dwóch
+//   list), więc to była tożsamość arytmetyczna, nie kontrola. Strażnikiem
+//   jest `sprawdzWzgledemZnanejListy`: porównuje etykiety/nazwy faktycznie
+//   zwrócone przez `zbudujPary`/`zbudujTla` z listą zadeklarowaną ręcznie i
+//   OSOBNO (`ETYKIETY_PAR_ZNANE`, `NAZWY_TEL_ZNANE`) — dopisanie tła w
+//   `zbudujTla` bez dopisania go też tam (i decyzji zmierz/wyklucz w
+//   `WYKLUCZENIA`) daje dziś kod 2, nie ciche zmierzenie.
 //
 // Dodatkowe tło, wcześniej pominięte: `--psy-bg-grey` (#f5f5f5), podkład
 // najechania, płaski (bez przezroczystości) — inny niż podkład najechania
@@ -98,6 +117,14 @@
 // Umiejscowienie: obok istniejących narzędzi pomiarowych frontu
 // (scripts/pomiar-kc.sh, scripts/check-lock-libc.mjs) — ten sam katalog,
 // ta sama konwencja nazywania ("pomiar-*").
+//
+// Stan dzisiejszy, do zapisania wprost: ten przyrząd NIE MA dziś żadnego
+// automatycznego wołającego. Jedyne odwołanie do niego w repo to
+// `frontend/package.json` → skrypt npm `pomiar:kontrast-statusow`
+// (`node scripts/pomiar-marginesu-kontrastu.mjs`) — żaden CI, żaden hook,
+// żaden inny skrypt nie uruchamia go sam z siebie, więc jego kody sterowane
+// {0,2,3} nie są dziś przez nic automatycznie czytane. Ten bieg NIE dodaje
+// wołającego — to jest tylko nazwanie stanu, żeby nikt nie zakładał inaczej.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -105,7 +132,11 @@ import { fileURLToPath } from "node:url";
 const SCIEZKA_CSS = fileURLToPath(new URL("../app/globals.css", import.meta.url));
 
 // Patrz "KODY STEROWANE TEGO PRZYRZĄDU" w nagłówku wyżej — te dwie stałe są
-// jedynymi miejscami, z których ten plik sam decyduje o kodzie niezerowym.
+// jedynymi miejscami, w których ten plik ŚWIADOMIE wybiera kod niezerowy,
+// przez `process.exit(...)` (patrz wykaz wywołań w main() niżej). Każdy inny
+// kod (patrz akapit o kodzie spoza {0,2,3} w nagłówku) pochodzi z
+// nieobsłużonego błędu w środowisku uruchomieniowym — plik go nie
+// "decyduje", tylko mu się przydarza.
 const KOD_NIE_ZMIERZONO = 2;
 const KOD_NARUSZENIE = 3;
 
@@ -128,6 +159,17 @@ function kontrast(rgb1, rgb2) {
   const l2 = relLum(rgb2);
   const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Escapuje znaki specjalne RegExp w tekście z argv, zanim ten tekst wejdzie
+ * do `new RegExp(...)`. Bez tego metaznak w nazwie tokenu podanej przez
+ * `--nadpisz` (np. `(`, `*`, `[`) wywraca proces wyjątkiem SyntaxError
+ * zamiast dać kod 2 z nazwaną przyczyną — patrz `main()`, jedyne miejsce
+ * w tym pliku, gdzie wartość z argv trafia do konstrukcji wzorca.
+ */
+function escapujMetaznakiRegex(tekst) {
+  return tekst.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function hexNaRgba(hex) {
@@ -355,13 +397,86 @@ const WYKLUCZENIA = [
   ]),
 ];
 
+// ---------------------------------------------------------------------------
+// Listy ZNANE — zadeklarowane tu, ręcznie, NIEZALEŻNIE od pętli w
+// `zbudujPary`/`zbudujTla` niżej. To jest źródło prawdy, wobec którego
+// `sprawdzWzgledemZnanejListy` wykrywa nadmiar: jeżeli `zbudujPary` albo
+// `zbudujTla` zaczną zwracać etykietę/nazwę, której nie ma na tej liście
+// (np. ktoś dopisze szóste tło w `zbudujTla` bez decyzji), to jest dokładnie
+// to zdarzenie, które ma dać kod 2 — NIE arytmetyczna zgodność sum (patrz
+// historia tego pliku: `zmierzone.length + wykluczone.length === iloczyn`
+// jest tożsamością matematyczną, bo pętla wkłada każdą parę do dokładnie
+// jednej z dwóch list — nie może zawieść, więc nic nie sprawdzała).
+// ---------------------------------------------------------------------------
+
+const ETYKIETY_PAR_ZNANE = [
+  "Odznaka: sukces",
+  "Odznaka: ostrzeżenie",
+  "Odznaka: błąd",
+  "Odznaka: informacja",
+  "Odznaka: akcent",
+  "Alert: sukces",
+  "Alert: informacja",
+  "Alert: błąd",
+  "Łącze: główny (tone=primary)",
+  "Łącze: główny po najechaniu na sam link",
+  "Łącze: przygaszony (tone=muted)",
+];
+
+const NAZWY_TEL_ZNANE = [
+  "Karta biała",
+  "Tło strony",
+  "Podkład najechania wiersza tabeli",
+  "Karta ciepła",
+  "Podkład najechania (szary, płaski)",
+];
+
+/**
+ * Porównuje etykiety par i nazwy teł faktycznie zwrócone przez
+ * `zbudujPary`/`zbudujTla` z listami zadeklarowanymi wyżej — źródłem
+ * INNYM niż pętla, która później liczy macierz. Nowa para/tło (nadmiar
+ * względem znanej listy) albo zniknięcie znanej pary/tła (niedomiar) —
+ * oba rzuca jako błąd, bo oba oznaczają brak jawnej decyzji.
+ */
+function sprawdzWzgledemZnanejListy(pary, tla) {
+  const etykietyFaktyczne = pary.map((p) => p.etykieta);
+  const nazwyTelFaktyczne = tla.map((t) => t.nazwa);
+
+  const nadmiaroweParyPar = etykietyFaktyczne.filter((e) => !ETYKIETY_PAR_ZNANE.includes(e));
+  const brakujacePary = ETYKIETY_PAR_ZNANE.filter((e) => !etykietyFaktyczne.includes(e));
+  const nadmiaroweTla = nazwyTelFaktyczne.filter((n) => !NAZWY_TEL_ZNANE.includes(n));
+  const brakujaceTla = NAZWY_TEL_ZNANE.filter((n) => !nazwyTelFaktyczne.includes(n));
+
+  if (
+    nadmiaroweParyPar.length > 0 ||
+    brakujacePary.length > 0 ||
+    nadmiaroweTla.length > 0 ||
+    brakujaceTla.length > 0
+  ) {
+    const czesci = [];
+    if (nadmiaroweParyPar.length > 0) czesci.push(`nowa(e) para(y) spoza ETYKIETY_PAR_ZNANE: ${nadmiaroweParyPar.join(", ")}`);
+    if (brakujacePary.length > 0) czesci.push(`znana(e) para(y) z ETYKIETY_PAR_ZNANE już nie istnieje(ą): ${brakujacePary.join(", ")}`);
+    if (nadmiaroweTla.length > 0) czesci.push(`nowe tło(a) spoza NAZWY_TEL_ZNANE: ${nadmiaroweTla.join(", ")}`);
+    if (brakujaceTla.length > 0) czesci.push(`znane tło(a) z NAZWY_TEL_ZNANE już nie istnieje(ą): ${brakujaceTla.join(", ")}`);
+    throw new Error(
+      `zbiór par/teł nie zgadza się z jawnie zadeklarowaną listą znaną (ETYKIETY_PAR_ZNANE / NAZWY_TEL_ZNANE): ${czesci.join("; ")}. Dopisz etykietę/nazwę do właściwej listy ZNANE (z decyzją zmierz/wyklucz w WYKLUCZENIA), zanim to tło/para wejdzie do pomiaru.`,
+    );
+  }
+}
+
 /**
  * Pełny iloczyn par × teł: dla każdej kombinacji albo liczy kontrast, albo
- * bierze wykluczenie z `WYKLUCZENIA`. Asercja na końcu pilnuje, żeby suma
- * zmierzonych i wykluczonych zawsze równała się pełnemu iloczynowi — nowa
- * para albo nowe tło bez jawnej decyzji wywala skrypt, nie ginie w ciszy.
+ * bierze wykluczenie z `WYKLUCZENIA`. Zanim to policzy, `sprawdzWzgledemZnanejListy`
+ * porównuje faktyczne pary/tła z listą zadeklarowaną NIEZALEŻNIE od tej
+ * pętli (`ETYKIETY_PAR_ZNANE`, `NAZWY_TEL_ZNANE`) — nowa para albo nowe tło
+ * bez jawnej decyzji rzuca błąd tam, nie ginie w ciszy. Suma zmierzonych i
+ * wykluczonych poniżej zawsze równa się pełnemu iloczynowi z definicji tej
+ * pętli (każda kombinacja trafia do dokładnie jednej z dwóch list) — to
+ * liczba do raportu, nie kontrola.
  */
 function zbudujPelnaMacierz(pary, tla) {
+  sprawdzWzgledemZnanejListy(pary, tla);
+
   const wynik = [];
   const wykluczone = [];
 
@@ -385,12 +500,6 @@ function zbudujPelnaMacierz(pary, tla) {
   }
 
   const oczekiwane = pary.length * tla.length;
-  const rzeczywiste = wynik.length + wykluczone.length;
-  if (rzeczywiste !== oczekiwane) {
-    throw new Error(
-      `Asercja pełnego iloczynu nie zgadza się: ${wynik.length} zmierzonych + ${wykluczone.length} wykluczonych = ${rzeczywiste}, oczekiwano ${pary.length} par × ${tla.length} teł = ${oczekiwane}. Dodano parę albo tło bez jawnej decyzji (zmierz albo wyklucz z powodem).`,
-    );
-  }
 
   return { wynik, wykluczone, oczekiwane };
 }
@@ -595,12 +704,20 @@ function main() {
   const nadpisania = nadpisaniaZArgv();
   let tekstCss = tekstCssZDysku;
   for (const [nazwa, wartosc] of nadpisania) {
-    const wzorzec = new RegExp(`--${nazwa}:\\s*#[0-9a-fA-F]{3,8}\\s*;`);
+    // Nazwa tokenu pochodzi z argv (`--nadpisz=--<nazwa>=<wartość>`) i może
+    // zawierać dowolny tekst, w tym metaznaki RegExp — `escapujMetaznakiRegex`
+    // sprawia, że taki tekst jest szukany DOSŁOWNIE, nigdy jako wzorzec.
+    // Efekt metaznaku w nazwie: token dosłownie z nawiasem/gwiazdką itd. nie
+    // istnieje w CSS, więc trafiamy w gałąź "nie znalazłem" niżej (kod 2),
+    // nie w wyjątek.
+    const wzorzec = new RegExp(`--${escapujMetaznakiRegex(nazwa)}:\\s*#[0-9a-fA-F]{3,8}\\s*;`);
     if (!wzorzec.test(tekstCss)) {
       console.error(`NIE ZMIERZONO — --nadpisz: nie znalazłem --${nazwa} do podmiany.`);
       process.exit(KOD_NIE_ZMIERZONO);
     }
-    tekstCss = tekstCss.replace(wzorzec, `--${nazwa}: ${wartosc};`);
+    // Replacer jako funkcja, nie string: unika interpretacji `$&`/`$1` itd.
+    // na wypadek, gdyby `nazwa` albo `wartosc` zawierały znak `$`.
+    tekstCss = tekstCss.replace(wzorzec, () => `--${nazwa}: ${wartosc};`);
   }
   if (nadpisania.length > 0) {
     console.log(
