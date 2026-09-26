@@ -17,60 +17,81 @@ use Tests\TestCase;
  * authentication, session management and authorization
  * (`docs/bezpieczenstwo/przeglad-asvs-dostep.md`, sections 3–5).
  *
- * Every probe is marked incomplete on its first line, so the gate stays
- * green while the gap is open. The assertions below that line describe the
- * target state after the fix: once a gap is closed, delete the
- * `markTestIncomplete` line and the probe becomes a regression test.
- * The row number in each message points at the table row it documents.
+ * Every probe asserts the behaviour that makes the gap real today, so it
+ * runs green while the gap is open and turns red the moment someone closes
+ * it. That red is intended: whoever fixes the gap inverts the probe into a
+ * regression test and updates the matching table row. Each failure message
+ * names that row.
  */
 class LukiAsvsDostepuTest extends TestCase
 {
     use ActsAsRole;
     use RefreshDatabase;
 
-    public function test_asvs_6_3_4_every_identity_binding_path_is_documented(): void
-    {
-        $this->markTestIncomplete('Luka ASVS 6.3.4 (przeglad-asvs-dostep.md, wiersz 6.3.4): ścieżki wiązania tożsamości nie są opisane w dokumentacji architektury, a kontrakt API opisuje usunięte logowanie hasłem.');
+    private const ARCHITECTURE_DOC = '../docs/system/01-architektura-i-integracje.md';
 
-        $architecture = (string) file_get_contents(base_path('../docs/system/01-architektura-i-integracje.md'));
-        $contract = (string) file_get_contents(base_path('../docs/hackathon/02-kontrakt-api.md'));
+    private const CONTRACT_DOC = '../docs/hackathon/02-kontrakt-api.md';
+
+    private const ROLE_MATRIX_DOC = '../docs/system/03-role-i-uprawnienia.md';
+
+    public function test_asvs_6_3_4_identity_binding_paths_are_missing_from_the_architecture_doc(): void
+    {
+        $architecture = (string) file_get_contents(base_path(self::ARCHITECTURE_DOC));
+        $contract = (string) file_get_contents(base_path(self::CONTRACT_DOC));
 
         $principalOnlyPaths = collect(Route::getRoutes()->getRoutes())
             ->filter(fn (RouteDefinition $route): bool => in_array('auth.keycloak', $route->gatherMiddleware(), true))
-            ->map(fn (RouteDefinition $route): string => '/'.Str::after($route->uri(), 'api/v1/'));
+            ->map(fn (RouteDefinition $route): string => '/'.Str::after($route->uri(), 'api/v1/'))
+            ->sort()
+            ->values()
+            ->all();
 
-        $this->assertNotEmpty($principalOnlyPaths);
+        $undocumented = array_values(array_filter(
+            $principalOnlyPaths,
+            fn (string $path): bool => ! str_contains($architecture, $path),
+        ));
 
-        foreach ($principalOnlyPaths as $path) {
-            $this->assertStringContainsString($path, $architecture, "Ścieżka {$path} nie jest opisana w architekturze.");
-        }
-
-        $this->assertStringNotContainsString('POST /auth/login', $contract);
+        $this->assertSame(
+            ['/applications/first-login', '/sso/powiaz', '/sso/whoami'],
+            $undocumented,
+            'Wiersz 6.3.4: zmienił się zbiór nieudokumentowanych ścieżek wiązania tożsamości — zaktualizuj próbę i wiersz dokumentu.',
+        );
+        $this->assertStringContainsString(
+            'POST /auth/login',
+            $contract,
+            'Wiersz 6.3.4: kontrakt przestał opisywać usunięte logowanie hasłem — zaktualizuj wiersz dokumentu.',
+        );
     }
 
-    public function test_asvs_6_4_1_an_old_invitation_token_no_longer_binds_an_account(): void
+    public function test_asvs_6_4_1_a_month_old_invitation_token_still_binds_an_account(): void
     {
-        $this->markTestIncomplete('Luka ASVS 6.4.1 (przeglad-asvs-dostep.md, wiersz 6.4.1): token zaproszenia nie ma terminu ważności i jest przechowywany jawnie.');
-
         $realm = (new KeycloakTokenFactory)->installAsRealm();
+        $sub = (string) Str::uuid();
         $invitationToken = 'tok-'.Str::random(20);
         $user = User::factory()->invited()->create(['activation_token' => $invitationToken]);
 
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'activation_token' => $invitationToken]);
+
         $this->travel(30)->days();
 
-        $this->withHeader('Authorization', 'Bearer '.$realm->mint(['email' => $user->email, 'email_verified' => true]))
+        $this->withHeader('Authorization', 'Bearer '.$realm->mint([
+            'sub' => $sub,
+            'email' => $user->email,
+            'email_verified' => true,
+        ]))
             ->postJson('/api/v1/sso/powiaz', ['token' => $invitationToken])
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'invalid_token');
+            ->assertOk();
 
-        $this->assertNull($user->fresh()->keycloak_sub);
-        $this->assertDatabaseMissing('users', ['id' => $user->id, 'activation_token' => $invitationToken]);
+        $this->assertSame(
+            $sub,
+            $user->fresh()->keycloak_sub,
+            'Wiersz 6.4.1: zaproszenie sprzed 30 dni przestało wiązać konto — luka zamknięta, odwróć próbę.',
+        );
     }
 
-    public function test_asvs_6_8_4_admin_routes_require_the_expected_authentication_strength(): void
+    public function test_asvs_6_8_4_admin_routes_accept_a_password_only_token(): void
     {
-        $this->markTestIncomplete('Luka ASVS 6.8.4 (przeglad-asvs-dostep.md, wiersz 6.8.4): trasy administracyjne nie sprawdzają poziomu uwierzytelnienia (acr/amr) z tokenu.');
-
+        $this->seed();
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $sub = (string) Str::uuid();
         User::factory()->role('super_admin')->create(['keycloak_sub' => $sub]);
@@ -84,13 +105,11 @@ class LukiAsvsDostepuTest extends TestCase
 
         $this->withHeader('Authorization', 'Bearer '.$passwordOnlyToken)
             ->getJson('/api/v1/admin/users')
-            ->assertForbidden();
+            ->assertOk();
     }
 
-    public function test_asvs_7_4_1_a_subject_only_backchannel_logout_ends_the_session(): void
+    public function test_asvs_7_4_1_a_subject_only_backchannel_logout_leaves_the_session_usable(): void
     {
-        $this->markTestIncomplete('Luka ASVS 7.4.1 (przeglad-asvs-dostep.md, wiersz 7.4.1, punkt a): wylogowanie kanałem zwrotnym z samym `sub` nie zapisuje znacznika, więc token tej sesji dalej działa.');
-
         $realm = (new KeycloakTokenFactory)->installAsRealm();
         $sub = (string) Str::uuid();
         User::factory()->role('volunteer')->create(['keycloak_sub' => $sub]);
@@ -101,42 +120,49 @@ class LukiAsvsDostepuTest extends TestCase
             ->assertOk();
 
         $this->postJson('/oidc/backchannel-logout', ['logout_token' => $realm->mintLogoutToken(['sub' => $sub])])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('decision', 'SKIPPED');
 
         // The request guard caches its resolved user per instance.
         $this->app['auth']->forgetGuards();
 
         $this->withHeader('Authorization', 'Bearer '.$accessToken)
             ->getJson('/api/v1/me')
-            ->assertUnauthorized();
+            ->assertOk();
     }
 
-    public function test_asvs_7_4_5_administration_can_end_a_users_sessions_without_blocking(): void
+    public function test_asvs_7_4_5_administration_has_no_route_to_end_a_users_sessions(): void
     {
-        $this->markTestIncomplete('Luka ASVS 7.4.5 (przeglad-asvs-dostep.md, wiersz 7.4.5): administracja może tylko zablokować konto, nie może zakończyć jego sesji.');
+        $userRoutes = collect(Route::getRoutes()->getRoutes())
+            ->map(fn (RouteDefinition $route): string => $route->uri())
+            ->filter(fn (string $uri): bool => str_starts_with($uri, 'api/v1/admin/users/{id}/'))
+            ->sort()
+            ->values();
 
-        // The exact route is a contract decision; the probe only requires
-        // that some administrative route for ending a user's sessions exists.
-        $sessionRoutes = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn (RouteDefinition $route): bool => str_starts_with($route->uri(), 'api/v1/admin/users/{id}/')
-                && str_contains($route->uri(), 'session'));
-
-        $this->assertNotEmpty($sessionRoutes);
+        $this->assertContains('api/v1/admin/users/{id}/block', $userRoutes);
+        $this->assertSame(
+            [],
+            $userRoutes->filter(fn (string $uri): bool => str_contains($uri, 'session'))->values()->all(),
+            'Wiersz 7.4.5: pojawiła się trasa kończenia sesji użytkownika — luka zamknięta, odwróć próbę.',
+        );
     }
 
-    public function test_asvs_8_1_2_field_level_access_rules_are_documented(): void
+    public function test_asvs_8_1_2_the_role_matrix_has_no_field_level_rules(): void
     {
-        $this->markTestIncomplete('Luka ASVS 8.1.2 (przeglad-asvs-dostep.md, wiersz 8.1.2): brak dokumentacji uprawnień do pól (odczyt i zapis per rola).');
+        $matrix = (string) file_get_contents(base_path(self::ROLE_MATRIX_DOC));
+        $contract = (string) file_get_contents(base_path(self::CONTRACT_DOC));
 
-        $matrix = (string) file_get_contents(base_path('../docs/system/03-role-i-uprawnienia.md'));
-
-        $this->assertMatchesRegularExpression('/uprawnienia do pól/iu', $matrix);
+        $this->assertDoesNotMatchRegularExpression(
+            '/uprawnienia do pól/iu',
+            $matrix,
+            'Wiersz 8.1.2: matryca ról ma już reguły dla pól — luka zamknięta, odwróć próbę.',
+        );
+        $this->assertStringContainsString('pole `email` tylko do odczytu', $contract);
     }
 
-    public function test_asvs_8_2_2_an_instructor_cannot_assign_an_unassigned_volunteer_to_themselves(): void
+    public function test_asvs_8_2_2_an_instructor_assigns_an_unassigned_volunteer_to_themselves(): void
     {
-        $this->markTestIncomplete('Luka ASVS 8.2.2 (przeglad-asvs-dostep.md, wiersz 8.2.2): prowadzący sam tworzy przypisanie superwizora dla dowolnego nieprzypisanego wolontariusza; zachowanie utrwala GroupThreadCompositionTest — wymaga decyzji właściciela matrycy.');
-
+        $this->seed();
         $instructor = $this->actingAsRole('instructor');
         $volunteer = User::factory()->role('volunteer')->create();
 
@@ -145,12 +171,17 @@ class LukiAsvsDostepuTest extends TestCase
             'supervisor_id' => $instructor->id,
         ]);
 
-        $status = $this->postJson("/api/v1/threads/{$thread->id}/members/{$volunteer->id}")->status();
+        $this->postJson("/api/v1/threads/{$thread->id}/members/{$volunteer->id}")
+            ->assertCreated();
 
-        $this->assertContains($status, [403, 404]);
-        $this->assertDatabaseMissing('supervisor_assignments', [
+        $this->assertDatabaseHas('supervisor_assignments', [
             'volunteer_id' => $volunteer->id,
             'supervisor_id' => $instructor->id,
+            'unassigned_at' => null,
         ]);
+
+        $this->getJson('/api/v1/instructor/group')
+            ->assertOk()
+            ->assertJsonPath('data.members.0.id', $volunteer->id);
     }
 }

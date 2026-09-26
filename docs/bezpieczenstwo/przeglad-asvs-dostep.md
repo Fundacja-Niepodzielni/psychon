@@ -1,8 +1,8 @@
 # Przegląd bezpieczeństwa ASVS L2: uwierzytelnianie, sesja, kontrola dostępu
 
-Baza pomiaru: `sprint-2` @ `3463eac`. Przegląd tylko czyta kod — nie zmienia kodu
+Baza pomiaru: `sprint-2` @ `3463eac`; dowody sprawdzone ponownie na `f229ca8` (cytowane pliki bez zmian). Przegląd tylko czyta kod — nie zmienia kodu
 produkcyjnego. Luki o ryzyku wysokim lub średnim mają próby, które dziś dokumentują lukę
-i nie czerwienią bramki (sekcja 5).
+i czerwienieją dopiero po jej zamknięciu (sekcja 5).
 
 ## 1. Zakres i metoda
 
@@ -49,7 +49,7 @@ Skróty dowodów używane w tabelach:
 | luki średnie (niespełnione, ryzyko średnie) | 9 |
 | luki niskie (niespełnione, ryzyko niskie) | 4 |
 | niezmierzone o ryzyku wysokim | 1 (6.3.3 — drugi składnik dla kont administracyjnych) |
-| próby dopisane | 10 (7 PHPUnit `markTestIncomplete`, 3 Vitest `it.todo`) + 1 aktywny pomiar Vitest |
+| próby dopisane | 10 aktywnych (7 PHPUnit, 18 asercji; 3 Vitest), 0 niedokończonych |
 
 ## 3. Tabele wymagań
 
@@ -162,17 +162,31 @@ Skróty dowodów używane w tabelach:
 
 ## 5. Próby
 
-Próby dokumentują lukę i nie czerwienią bramki. Każda odwołuje się do wiersza tej tabeli.
+Każda luka o ryzyku średnim ma aktywną próbę. Próba sprawdza zachowanie, które dziś czyni lukę
+realną, więc przechodzi, dopóki luka jest otwarta, i czerwienieje w chwili jej zamknięcia. To
+zamierzone: kto zamyka lukę, odwraca próbę w test regresji i aktualizuje wiersz tabeli —
+komunikat błędu wskazuje wiersz. Żadna próba nie jest oznaczona jako niedokończona.
 
-- **PHPUnit Feature** — `backend/tests/Feature/Bezpieczenstwo/LukiAsvsDostepuTest.php`. Każda
-  metoda zaczyna się od `markTestIncomplete` z numerem wiersza, a pod nim zawiera asercje stanu
-  docelowego — po poprawce wystarczy usunąć jedną linię. Metody: 6.3.4, 6.4.1, 6.8.4, 7.4.1 (a),
-  7.4.5, 8.1.2, 8.2.2.
-- **Vitest** — `frontend/__tests__/bezpieczenstwo-asvs-dostep.test.ts`: `it.todo` dla 7.1.1,
-  7.4.1 (b) i 7.6.2 oraz jeden aktywny pomiar stanu dziś (brak jawnego `session.maxAge`). Obecne
-  zachowanie 7.4.1 (b) i 7.6.2 przypinają już istniejące testy:
-  `frontend/components/layout/__tests__/panelshell-wylogowanie.test.tsx:86-101` i
-  `frontend/app/logowanie/__tests__/logowanie-stany.test.tsx:60-71` — po poprawce trzeba je odwrócić.
+- **PHPUnit Feature** — `backend/tests/Feature/Bezpieczenstwo/LukiAsvsDostepuTest.php`,
+  7 metod (6.3.4, 6.4.1, 6.8.4, 7.4.1 a, 7.4.5, 8.1.2, 8.2.2), 18 asercji.
+- **Vitest** — trzy pliki w `frontend/__tests__/`: `bezpieczenstwo-asvs-dostep.test.ts` (7.1.1),
+  `bezpieczenstwo-asvs-wylogowanie.test.tsx` (7.4.1 b), `bezpieczenstwo-asvs-logowanie.test.tsx` (7.6.2).
+
+Dowód, że każda próba pilnuje swojego warunku: dla każdej wykonano bieg po celowym zepsuciu
+warunku (czerwony) i po jego przywróceniu (zielony).
+
+| Próba | Celowe zepsucie warunku (zmiana tymczasowa, cofnięta) | Bieg po zepsuciu | Po przywróceniu |
+|---|---|---|---|
+| 6.3.4 | trzy ścieżki wiązania dopisane do dokumentu architektury | czerwony | zielony |
+| 6.4.1 | wyszukanie tokenu zaproszenia z terminem ważności 7 dni | czerwony (422) | zielony |
+| 6.8.4 | trasy `/admin` odrzucają token bez podniesionego uwierzytelnienia | czerwony (403) | zielony |
+| 7.4.1 a | wylogowanie po samym `sub` oznacza znane `sid` tej osoby | czerwony (401) | zielony |
+| 7.4.5 | dodana trasa `/admin/users/{id}/sessions/terminate` | czerwony | zielony |
+| 8.1.2 | dopisany rozdział „Uprawnienia do pól” w matrycy ról | czerwony | zielony |
+| 8.2.2 | serwis przypisań odmawia dodania nieprzypisanego wolontariusza | czerwony (403) | zielony |
+| 7.1.1 | jawne `session.maxAge` w `auth.ts` | czerwony | zielony |
+| 7.4.1 b | gałąź błędu wylogowania nawiguje pełnym przejściem | czerwony | zielony |
+| 7.6.2 | usunięte automatyczne `signIn` na `/logowanie` | czerwony | zielony |
 
 ## 6. Uwagi poza zakresem V6–V8
 
