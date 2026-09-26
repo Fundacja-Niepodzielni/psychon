@@ -35,21 +35,31 @@ OBLANE=0
 zdaj() { echo "  [OK]     $1"; ZDANE=$((ZDANE + 1)); }
 oblej() { echo "  [ZLE]    $1"; OBLANE=$((OBLANE + 1)); }
 
-# Spis krokow, po jednym wierszu: nazwa | tresc-if | czy-konczy-kodem-1 | czy-nieblokujacy
+# Spis krokow, po jednym wierszu: nazwa | tresc-if | czy-konczy-sie-kodem-1 | czy-nieblokujacy
+# "Konczy sie kodem 1" znaczy: OSTATNI niepusty wiersz kroku to `exit 1`. Szukanie
+# `exit 1` gdziekolwiek w kroku zalicza `echo "nie robimy exit 1"` zakonczone zerem.
 spis_krokow() {
     awk '
-        function zamknij() { if (nazwa != "") printf "%s|%s|%d|%d\n", nazwa, warunek, exit1, coe }
+        function zamknij() {
+            if (nazwa != "") printf "%s|%s|%d|%d\n", nazwa, warunek, (ostatni ~ /^[[:space:]]*exit 1$/), coe
+        }
         /^      - / {
-            zamknij(); nazwa = ""; warunek = ""; exit1 = 0; coe = 0
+            zamknij(); nazwa = ""; warunek = ""; ostatni = ""; coe = 0
             if ($0 ~ /^      - name: /) { nazwa = $0; sub(/^      - name: /, "", nazwa) }
             next
         }
         nazwa != "" && /^        if:/ { w = $0; sub(/^        if:[[:space:]]*/, "", w); warunek = w; next }
         nazwa != "" && /^        continue-on-error:[[:space:]]*true/ { coe = 1; next }
-        nazwa != "" && /exit 1/ { exit1 = 1 }
+        nazwa != "" && /[^[:space:]]/ { ostatni = $0 }
         END { zamknij() }
     ' "$1"
 }
+
+# Warunki porownywane DOKLADNIE, nie podciagiem. Podciag przepuszcza `&& false`
+# doklejone na koncu - a to ta sama klasa bledu, co fraza wpisana w komentarz.
+WARUNEK_MIERZACY="env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion == 'success'"
+WARUNEK_CZERWIENI="env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion != 'success'"
+GALEZIE_SKANU='    branches: [main, dev, "sprint-*"]'
 
 sprawdz_warunki() {
     local plik="$1" wynik=0 krok wiersz warunek coe znaleziony=0 exit1
@@ -60,29 +70,32 @@ sprawdz_warunki() {
         fi
         warunek="$(printf '%s' "$wiersz" | cut -d'|' -f2)"
         coe="$(printf '%s' "$wiersz" | cut -d'|' -f4)"
-        case "$warunek" in
-            *"steps.ci-run.outputs.conclusion == 'success'"*) ;;
-            *) echo "        krok [$krok] nie wymaga udanego przebiegu prob"; wynik=1 ;;
-        esac
+        [ "$warunek" = "$WARUNEK_MIERZACY" ] || { echo "        krok [$krok] ma inny warunek niz wymagany"; wynik=1; }
         [ "$coe" = "0" ] || { echo "        krok [$krok] jest nieblokujacy - jego czerwien nic nie znaczy"; wynik=1; }
     done
     while IFS='|' read -r krok warunek exit1 coe; do
-        case "$warunek" in *"conclusion != 'success'"*) ;; *) continue ;; esac
+        [ "$warunek" = "$WARUNEK_CZERWIENI" ] || continue
         znaleziony=1
         [ "$exit1" = "1" ] || { echo "        krok [$krok] lapie brak pomiaru, ale nie konczy sie kodem 1"; wynik=1; }
         [ "$coe" = "0" ] || { echo "        krok [$krok] lapie brak pomiaru, ale jest nieblokujacy"; wynik=1; }
     done < <(spis_krokow "$plik")
     [ "$znaleziony" = "1" ] || { echo "        zaden KROK nie lapie nieudanego przebiegu prob"; wynik=1; }
+    # Warunek na JOBIE wylacza wszystkie jego kroki naraz i nie widac tego w krokach.
+    grep -qE '^    if:' "$plik" && { echo "        job ma wlasny warunek - potrafi wylaczyc caly pomiar"; wynik=1; }
+    grep -qxF "$GALEZIE_SKANU" "$plik" || { echo "        lista galezi skanu inna niz wymagana"; wynik=1; }
     return $wynik
 }
 
 sprawdz_wolajacego() {
-    local plik="$1" wiersz coe
+    local plik="$1" wiersz coe warunek
     wiersz="$(spis_krokow "$plik" | awk -F'|' '$1 == "Spojnosc przebiegu skanu"')"
     [ -n "$wiersz" ] || { echo "        w ci.yml nie ma kroku wolajacego te probe"; return 1; }
     grep -q 'test-spojnosc-skanu.sh' "$plik" || { echo "        krok jest, ale nie wola tego pliku"; return 1; }
+    warunek="$(printf '%s' "$wiersz" | cut -d'|' -f2)"
     coe="$(printf '%s' "$wiersz" | cut -d'|' -f4)"
+    [ -z "$warunek" ] || { echo "        wolajacy ma warunek [$warunek] - potrafi nie ruszyc wcale"; return 1; }
     [ "$coe" = "0" ] || { echo "        wolajacy jest nieblokujacy - proba nie zatrzyma niczego"; return 1; }
+    grep -qE '^    if:' "$plik" && { echo "        job w ci.yml ma wlasny warunek - potrafi wylaczyc wolajacego"; return 1; }
     return 0
 }
 
@@ -149,7 +162,11 @@ noga() {
 
 zdejmij_warunek_skanu() {
     perl -0777 -i -pe "s/(- name: Skan SonarCloud\n        if: env\.SONAR_TOKEN != '')[^\n]*/\$1/" "$KOPIA_A"
-    spis_krokow "$KOPIA_A" | awk -F'|' '$1 == "Skan SonarCloud" && $2 !~ /success/ { zn = 1 } END { exit !zn }'
+    spis_krokow "$KOPIA_A" | awk -F'|' -v w="$WARUNEK_MIERZACY" '$1 == "Skan SonarCloud" && $2 != w { zn = 1 } END { exit !zn }'
+}
+doklej_falsz_do_warunku() {
+    perl -0777 -i -pe "s/(if: env\.SONAR_TOKEN != '' && steps\.ci-run\.outputs\.conclusion != 'success')/\$1 && false/" "$KOPIA_A"
+    grep -q "!= 'success' && false" "$KOPIA_A"
 }
 usun_krok_czerwieniacy() {
     perl -0777 -i -pe "s/      - name: Bez raportow pokrycia nie ma skanu\n(?:.*?\n)*?          exit 1\n\n//" "$KOPIA_A"
@@ -160,9 +177,21 @@ zostaw_sama_fraze() {
     printf '%s\n' "# wzmianka w komentarzu: conclusion != 'success'" >> "$KOPIA_A"
     grep -q "conclusion != 'success'" "$KOPIA_A"
 }
+zamien_exit_na_echo() {
+    perl -0777 -i -pe "s/(          echo \"To nie jest pokrycie 0,0 % - to brak pomiaru\.\" >&2\n)          exit 1\n/\$1          echo \"tu kiedys bylo exit 1\"\n/" "$KOPIA_A"
+    ! spis_krokow "$KOPIA_A" | awk -F'|' '$1 == "Bez raportow pokrycia nie ma skanu" && $3 == 1 { zn = 1 } END { exit !zn }'
+}
 odblokuj_krok_czerwieniacy() {
     perl -0777 -i -pe "s/(      - name: Bez raportow pokrycia nie ma skanu\n)/\$1        continue-on-error: true\n/" "$KOPIA_A"
     spis_krokow "$KOPIA_A" | awk -F'|' '$1 == "Bez raportow pokrycia nie ma skanu" && $4 == 1 { zn = 1 } END { exit !zn }'
+}
+wylacz_job_skanu() {
+    perl -0777 -i -pe "s/^(  sonarcloud:\n)/\$1    if: false\n/m" "$KOPIA_A"
+    grep -qE '^    if: false' "$KOPIA_A"
+}
+zwez_galezie() {
+    perl -0777 -i -pe "s/^    branches: \[main, dev, \"sprint-\*\"\]\$/    branches: [main]/m" "$KOPIA_A"
+    grep -qxF '    branches: [main]' "$KOPIA_A"
 }
 zdejmij_filtr() {
     perl -0777 -i -pe "s/    paths-ignore:\n      - .docs\/\*\*.\n//" "$KOPIA_A"
@@ -172,13 +201,27 @@ odblokuj_wolajacego() {
     perl -0777 -i -pe "s/(      - name: Spojnosc przebiegu skanu\n)/\$1        continue-on-error: true\n/" "$KOPIA_CI"
     spis_krokow "$KOPIA_CI" | awk -F'|' '$1 == "Spojnosc przebiegu skanu" && $4 == 1 { zn = 1 } END { exit !zn }'
 }
+wylacz_wolajacego() {
+    perl -0777 -i -pe "s/(      - name: Spojnosc przebiegu skanu\n)/\$1        if: false\n/" "$KOPIA_CI"
+    spis_krokow "$KOPIA_CI" | awk -F'|' '$1 == "Spojnosc przebiegu skanu" && $2 == "false" { zn = 1 } END { exit !zn }'
+}
+wylacz_job_prob() {
+    perl -0777 -i -pe "s/^(  backend:\n)/\$1    if: false\n/m" "$KOPIA_CI"
+    grep -qE '^    if: false' "$KOPIA_CI"
+}
 
 noga "zdjecie warunku ze skanu" zdejmij_warunek_skanu
+noga "doklejenie falszu do warunku kroku czerwieniacego" doklej_falsz_do_warunku
 noga "usuniecie kroku konczacego kodem 1" usun_krok_czerwieniacy
 noga "sama fraza w komentarzu zamiast kroku" zostaw_sama_fraze
+noga "exit 1 zamieniony na echo o exit 1" zamien_exit_na_echo
 noga "krok czerwieniacy jako nieblokujacy" odblokuj_krok_czerwieniacy
+noga "warunek falszu na jobie skanu" wylacz_job_skanu
+noga "zwezenie listy galezi skanu" zwez_galezie
 noga "zdjecie filtra sciezek z jednego przebiegu" zdejmij_filtr
 noga "wolajacy jako nieblokujacy" odblokuj_wolajacego
+noga "wolajacy z warunkiem falszu" wylacz_wolajacego
+noga "warunek falszu na jobie prob" wylacz_job_prob
 
 echo "─────────────────────────────────────────"
 echo "  zdane: $ZDANE   ·   oblane: $OBLANE"
