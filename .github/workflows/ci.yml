@@ -93,6 +93,12 @@ jobs:
       - name: Sprawdzenia wstepne instalatora
         run: bash scripts/tests/setup-preflight.sh
         working-directory: ${{ github.workspace }}
+      # Proba plikow samego potoku: czy skan jakosci moze pobiec bez raportow
+      # pokrycia (zielone 0,0 % zamiast pomiaru) i czy oba przebiegi pomijaja te
+      # same sciezki. Obie wady byly w drzewie naraz, obie dawaly wynik bez pomiaru.
+      - name: Spojnosc przebiegu skanu
+        run: bash deploy/tests/test-spojnosc-skanu.sh
+        working-directory: ${{ github.workspace }}
       # Proba niedokonczona (`markTestIncomplete`) konczy sie domyslnie jako
       # przechodzaca i wchodzi do sumy "passed" - a wtedy lista sprawdzen swieci
       # na zielono, choc asercji nie przybylo ani jednej. Zmierzone dzis na tym
