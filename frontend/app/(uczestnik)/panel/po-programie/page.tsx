@@ -32,7 +32,15 @@ export default function PoProgramiePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  /** 403 to odmowa roli, nie awaria — ekran pokazuje ją bez ponowienia. */
+  /**
+   * `GET /me` (`backend/routes/api/h01.php`) nie ma tu ani `role:`, ani
+   * `access.active`, a `ProfileController::show` nie woła `authorize()` —
+   * strażnik Keycloak przy złym tokenie rzuca 401 (`AuthenticateKeycloakToken`),
+   * nie 403. `ApiExceptionRenderer` mapuje `AuthorizationException` i
+   * `AccessDeniedHttpException` na 403 dla całego API, ale nic na tej trasie
+   * dziś takiego wyjątku nie rzuca — ta gałąź jest tu obsługą zachowawczą,
+   * której zaplecze w tym drzewie nie wytwarza.
+   */
   const [forbidden, setForbidden] = useState(false);
 
   // Fetch-on-mount jako łańcuch obietnic (bez synchronicznego setState przed
