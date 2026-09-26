@@ -16,6 +16,8 @@ describe("ConfirmDialog", () => {
       />,
     );
 
+    // ConfirmDialog zwraca null z open=false w tym samym, synchronicznym
+    // render() wyżej — nie ma efektu, który mógłby dorenderować dialog.
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -269,6 +271,8 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(dialog, { relatedTarget: dialog.querySelector("h2") });
 
+    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
+    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });
@@ -283,6 +287,8 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(dialog, { relatedTarget: null });
 
+    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
+    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });
@@ -306,6 +312,8 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(confirmButton, { relatedTarget: null });
 
+    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
+    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });
@@ -329,6 +337,8 @@ describe("ConfirmDialog", () => {
 
     fireEvent.focusOut(confirmButton, { relatedTarget: null });
 
+    // fireEvent.focusOut wyżej wywołuje synchronicznie handler onBlur — jeśli
+    // focus() miałby zostać wywołany, stałoby się to w tym samym wywołaniu.
     expect(focusSpy).not.toHaveBeenCalled();
     focusSpy.mockRestore();
   });

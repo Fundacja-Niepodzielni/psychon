@@ -14,6 +14,9 @@ describe("MainBlock", () => {
   it("bez akcji: nie renderuje żadnego przycisku", () => {
     render(<MainBlock title="Twój najbliższy krok" />);
 
+    // MainBlock renderuje przycisk akcji tylko, gdy props action jest
+    // podane — render() wyżej bez action kończy się synchronicznie bez tego
+    // węzła.
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 

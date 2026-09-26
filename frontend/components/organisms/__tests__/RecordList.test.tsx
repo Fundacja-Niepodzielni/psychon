@@ -31,6 +31,8 @@ describe("RecordList", () => {
     );
 
     expect(screen.getByText("Brak wpisów")).toBeInTheDocument();
+    // RecordList z pustym rows renderuje emptyMessage zamiast <ul>
+    // synchronicznie w tym samym render() wyżej — obie gałęzie się wykluczają.
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 

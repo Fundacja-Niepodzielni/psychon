@@ -14,6 +14,9 @@ describe("SupportBlock", () => {
   it("bez akcji: nie renderuje żadnego przycisku", () => {
     render(<SupportBlock title="Potrzebujesz pomocy?" />);
 
+    // SupportBlock renderuje przycisk akcji tylko, gdy props action jest
+    // podane — render() wyżej bez action kończy się synchronicznie bez tego
+    // węzła.
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 

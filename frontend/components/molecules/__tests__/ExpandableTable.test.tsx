@@ -30,7 +30,8 @@ describe("ExpandableTable", () => {
 
     expect(screen.getByText("Pierwszy")).toBeInTheDocument();
     expect(screen.getByText("Drugi")).toBeInTheDocument();
-    // Bez `onReorder` nie ma kolumny uchwytu.
+    // Bez `onReorder` nie ma kolumny uchwytu — to gałąź warunku w tym samym,
+    // synchronicznym render() wyżej, nie skutek żadnego efektu.
     expect(screen.queryByText("Uchwyt przeciągania")).not.toBeInTheDocument();
   });
 
@@ -52,7 +53,9 @@ describe("ExpandableTable", () => {
     expect(
       within(nastepnyWiersz).getByText("Formularz dla Pierwszy"),
     ).toBeInTheDocument();
-    // Drugi wiersz nie ma rozwinięcia — klucz się nie zgadza.
+    // Drugi wiersz nie ma rozwinięcia — klucz się nie zgadza. renderExpanded
+    // dla wiersza 2 nie jest wywoływane w tym samym, synchronicznym render()
+    // wyżej (expandedRowKey wskazuje wiersz 1), bez żadnego efektu.
     expect(screen.queryByText("Formularz dla Drugi")).not.toBeInTheDocument();
   });
 

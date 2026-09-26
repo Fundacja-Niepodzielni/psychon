@@ -36,6 +36,9 @@ describe("PageHeader", () => {
     render(<PageHeader title="Kursy" />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Kursy" })).toBeInTheDocument();
+    // PageHeader renderuje przycisk akcji tylko, gdy props action jest
+    // podane — render() wyżej bez action i description kończy się
+    // synchronicznie bez tych węzłów.
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 

@@ -98,6 +98,9 @@ describe("PanelShell — sekcje menu administracji", () => {
 
     expect(nauka).toHaveAttribute("aria-expanded", "false");
     expect(document.getElementById(nauka.getAttribute("aria-controls") ?? "")).toHaveAttribute("hidden");
+    // fireEvent.click wyżej wywołuje synchroniczny handler onClick (toggle
+    // stanu przez useState), opakowany przez RTL w act() — zwinięcie sekcji
+    // jest widoczne od razu w tym samym wywołaniu, bez oczekiwania.
     expect(within(menuBoczne()).queryByRole("link", { name: "Kursy" })).not.toBeInTheDocument();
     expect(JSON.parse(window.localStorage.getItem(KLUCZ) ?? "null")).toEqual(["nauka"]);
 

@@ -15,6 +15,9 @@ describe("LoadingState", () => {
     expect(
       screen.getByRole("status", { name: "Wczytywanie listy kursów…" }),
     ).toBeInTheDocument();
+    // LoadingState wybiera etykietę synchronicznie na podstawie props label w
+    // tym samym render() wyżej — etykieta domyślna nie może współistnieć z
+    // własną.
     expect(screen.queryByRole("status", { name: "Wczytywanie…" })).not.toBeInTheDocument();
   });
 });

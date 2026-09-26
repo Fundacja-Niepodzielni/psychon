@@ -13,6 +13,8 @@ describe("ListTemplate", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Kursy" })).toBeInTheDocument();
     expect(screen.getByText("Tabela kursów")).toBeInTheDocument();
+    // ListTemplate wybiera gałąź stan="success" synchronicznie w tym samym
+    // render() wyżej — LoadingState/ErrorState nie są tworzone w tej gałęzi.
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -25,6 +27,8 @@ describe("ListTemplate", () => {
     );
 
     expect(screen.getByRole("status")).toBeInTheDocument();
+    // ListTemplate wybiera gałąź stan="loading" synchronicznie w tym samym
+    // render() wyżej — children (treść) nie są renderowane w tej gałęzi.
     expect(screen.queryByText("Tabela kursów")).not.toBeInTheDocument();
   });
 
@@ -54,6 +58,8 @@ describe("ListTemplate", () => {
     );
 
     expect(screen.getByText("Brak dostępu")).toBeInTheDocument();
+    // httpStatus=403 mapuje na ForbiddenState synchronicznie w tym samym
+    // render() wyżej — ErrorState (rola alert) nie powstaje w tej gałęzi.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -65,6 +71,8 @@ describe("ListTemplate", () => {
     );
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
+    // httpStatus=500 utrzymuje gałąź ErrorState synchronicznie w tym samym
+    // render() wyżej — ForbiddenState nie powstaje w tej gałęzi.
     expect(screen.queryByText("Brak dostępu")).not.toBeInTheDocument();
   });
 
@@ -87,6 +95,9 @@ describe("ListTemplate", () => {
       </ListTemplate>,
     );
     expect(screen.getByRole("alert")).toHaveTextContent("Awaria.");
+    // rerender() wyżej jest synchroniczne tak jak render() — puste
+    // komunikatBleduTytul chowa domyślny tytuł w tym samym przebiegu, bez
+    // efektu.
     expect(screen.queryByText("Nie udało się wczytać danych")).not.toBeInTheDocument();
   });
 
@@ -98,6 +109,8 @@ describe("ListTemplate", () => {
     );
 
     expect(screen.getByText("Brak dostępu")).toBeInTheDocument();
+    // ListTemplate wybiera gałąź stan="forbidden" synchronicznie w tym samym
+    // render() wyżej — children nie są renderowane w tej gałęzi.
     expect(screen.queryByText("Tabela kursów")).not.toBeInTheDocument();
   });
 
@@ -122,6 +135,9 @@ describe("ListTemplate", () => {
       </ListTemplate>,
     );
 
+    // Z ostatniaStrona=1 ListTemplate nie renderuje kontrolek stronicowania
+    // synchronicznie w tym samym render() wyżej — jednostronicowy zestaw nie
+    // ma przycisków.
     expect(screen.queryByRole("button", { name: "Poprzednia" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Następna" })).not.toBeInTheDocument();
   });

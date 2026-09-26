@@ -35,6 +35,9 @@ describe("/katalog-komponentow/a — poza produkcją", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Katalog komponentów — zestaw A" }),
     ).toBeInTheDocument();
+    // render() above renders the static catalog page synchronously from its
+    // own props — the page fetches nothing, so notFound has no later async
+    // chance to run after this point.
     expect(notFound).not.toHaveBeenCalled();
   });
 });

@@ -26,6 +26,8 @@ describe("PageHeader ze slotem okruszków", () => {
   it("bez slotu breadcrumbs nie renderuje nav (zgodność wsteczna)", () => {
     render(<PageHeader title="Kursy" />);
 
+    // PageHeader renderuje nav tylko, gdy props breadcrumbs jest podane —
+    // render() wyżej bez tego slotu kończy się synchronicznie bez tego węzła.
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
   });
 

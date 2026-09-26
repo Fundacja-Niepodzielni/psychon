@@ -49,6 +49,9 @@ describe("/logowanie/konta — przekierowanie na /logowanie", () => {
 
   it("nie ma już linku logowania hasłem", () => {
     render(<AccountSystemLoginRedirect />);
+    // Sprawdzamy sam pierwszy, synchroniczny render — usunięcie linku
+    // logowania hasłem jest częścią JSX zwracanego od razu, nie skutkiem
+    // efektu przekierowania (ten jest sprawdzany osobno przez waitFor wyżej).
     expect(screen.queryByText(/hasłem/i)).not.toBeInTheDocument();
   });
 

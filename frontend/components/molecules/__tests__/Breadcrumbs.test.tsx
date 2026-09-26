@@ -36,6 +36,9 @@ describe("Breadcrumbs", () => {
     render(<Breadcrumbs items={[{ label: "Panel" }]} />);
 
     expect(screen.getByText("Panel")).toHaveAttribute("aria-current", "page");
+    // Breadcrumbs renderuje listę z props items w jednym przebiegu render()
+    // wyżej, bez pobierania danych — brak linku dla jedynego elementu jest
+    // częścią tego samego, synchronicznego drzewa JSX.
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 

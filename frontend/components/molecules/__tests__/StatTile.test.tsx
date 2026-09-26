@@ -27,6 +27,8 @@ describe("StatTile", () => {
   it("wariant zwykła pomija kontekst, nawet gdy podany", () => {
     render(<StatTile value={5} label="Otwarte zgłoszenia" context="powinno zniknąć" />);
 
+    // StatTile pomija węzeł kontekstu w wariancie zwykłym synchronicznie, na
+    // podstawie props variant przekazanych do render() wyżej — bez efektu.
     expect(screen.queryByText("powinno zniknąć")).not.toBeInTheDocument();
   });
 
@@ -34,6 +36,9 @@ describe("StatTile", () => {
     render(<StatTile value={7} label="Certyfikaty" variant="dominant" />);
 
     expect(screen.getByText("7")).toBeInTheDocument();
+    // Bez props context StatTile nie renderuje pustego węzła kontekstu w
+    // tym samym, synchronicznym render() wyżej — brak wartości nie jest
+    // stanem ustalanym asynchronicznie.
     expect(screen.queryByText("undefined")).not.toBeInTheDocument();
   });
 

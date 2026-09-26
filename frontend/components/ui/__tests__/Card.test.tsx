@@ -26,6 +26,8 @@ describe("Card", () => {
   it("noga negatywna: bez tytułu nie renderuje żadnego nagłówka", () => {
     render(<Card>Treść bez tytułu</Card>);
 
+    // Card renderuje nagłówek tylko, gdy props title jest podane — render()
+    // wyżej bez title kończy się synchronicznie bez tego węzła.
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 });

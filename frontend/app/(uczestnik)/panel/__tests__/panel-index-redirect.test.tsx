@@ -34,6 +34,9 @@ describe("PanelIndexPage", () => {
   });
 
   it("does not call the API before redirecting", () => {
+    // PanelIndexPage() above throws synchronously (redirect() throws before
+    // any return) — there is no async gap in which apiMock could still be
+    // invoked later, so no await is needed here.
     expect(() => PanelIndexPage()).toThrow();
     expect(apiMock).not.toHaveBeenCalled();
   });

@@ -21,6 +21,8 @@ describe("EmptyState", () => {
     render(<EmptyState title="Brak kursów" />);
 
     expect(screen.getByRole("heading", { name: "Brak kursów" })).toBeInTheDocument();
+    // EmptyState renderuje przycisk tylko, gdy props action jest podane —
+    // render() wyżej bez action kończy się synchronicznie bez tego węzła.
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

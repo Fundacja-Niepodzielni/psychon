@@ -49,6 +49,8 @@ describe("Logo", () => {
   it("noga negatywna: title pusty ukrywa znak przed czytnikiem ekranu (kontekst ma już etykietę)", () => {
     render(<Logo title="" />);
 
+    // Logo wybiera aria-hidden zamiast role="img" synchronicznie na podstawie
+    // props title pustego stringu w tym samym render() wyżej, bez efektu.
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 });

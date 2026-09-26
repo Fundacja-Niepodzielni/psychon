@@ -16,6 +16,9 @@ describe("RecordForm", () => {
 
     expect(screen.getByLabelText("Imię")).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
+    // RecordForm renderuje alert błędu tylko, gdy pole ma wpisany błąd w
+    // values/errors — render() wyżej bez błędów kończy się synchronicznie
+    // bez tego węzła.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

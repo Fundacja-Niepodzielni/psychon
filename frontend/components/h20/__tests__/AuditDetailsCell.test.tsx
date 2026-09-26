@@ -30,7 +30,10 @@ describe("AuditDetailsCell", () => {
     expect(podglad.textContent).toContain("pole_testowe");
     expect(podglad.textContent).toContain("wartosc-zmyslona-42");
 
-    // Przed rozwinięciem nie ma jeszcze pełnej treści w <pre>.
+    // Przed rozwinięciem nie ma jeszcze pełnej treści w <pre>. Rozwinięcie w
+    // tym komponencie następuje tylko po kliknięciu, którego tu nie wywołano
+    // — render() wyżej ustawił stan spoczynku synchronicznie, więc sprawdzenie
+    // od razu mierzy ten sam stan, bez oczekiwania.
     expect(screen.queryByText(/wartosc-zmyslona-42/, { selector: "pre" })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Szczegóły" }));

@@ -69,6 +69,10 @@ describe("EdytorTresciKursuProwadzacego", () => {
 
     expect(screen.getByLabelText("Tytuł")).toHaveValue(kurs.title);
     expect(screen.getByLabelText("Opis")).toHaveValue(kurs.description);
+    // Formularz jest budowany z samych propsów (course, lessons) przekazanych
+    // do render() wyżej, bez zapytania sieciowego — pola publikacji/kolejności
+    // są warunkowane synchronicznie trybem edycji, nie danymi doładowanymi
+    // później.
     expect(screen.queryByLabelText("Status publikacji")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Pozycja w ścieżce")).not.toBeInTheDocument();
   });

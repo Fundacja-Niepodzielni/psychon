@@ -96,6 +96,8 @@ describe("StatRow", () => {
       expect(screen.getByText("W toku")).toBeInTheDocument();
       expect(screen.getByText("Ukończone")).toBeInTheDocument();
       expect(screen.getByText("Zaległe")).toBeInTheDocument();
+      // render() wyżej obcina items do 4 kafli synchronicznie (produkcyjna
+      // gałąź warunku) — piąty element nigdy nie trafia do zwróconego JSX.
       expect(screen.queryByText("Nadmiarowy")).not.toBeInTheDocument();
     } finally {
       vi.unstubAllEnvs();

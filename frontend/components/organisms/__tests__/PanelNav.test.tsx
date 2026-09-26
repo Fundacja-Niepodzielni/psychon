@@ -32,6 +32,8 @@ describe("PanelNav", () => {
 
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Pulpit" })).toBeInTheDocument();
+    // PanelNav z płaską listą grup (bez podgrupy "Szkolenia" w danych)
+    // renderuje wyłącznie przekazane linki synchronicznie w render() wyżej.
     expect(screen.queryByText("Szkolenia")).not.toBeInTheDocument();
   });
 

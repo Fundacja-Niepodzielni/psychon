@@ -15,6 +15,9 @@ describe("ForbiddenState", () => {
     render(<ForbiddenState message="Ta lista jest dostępna tylko administracji." />);
 
     expect(screen.getByText("Ta lista jest dostępna tylko administracji.")).toBeInTheDocument();
+    // ForbiddenState wybiera tekst komunikatu synchronicznie na podstawie
+    // props message w tym samym render() wyżej — domyślny tekst nie może się
+    // pojawić obok własnego.
     expect(screen.queryByText("Nie masz uprawnień do wyświetlenia tej listy.")).not.toBeInTheDocument();
   });
 });

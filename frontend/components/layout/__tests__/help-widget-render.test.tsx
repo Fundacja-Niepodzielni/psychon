@@ -20,6 +20,9 @@ describe("HelpWidget — render", () => {
     render(<HelpWidget />);
 
     expect(screen.getByRole("button", { name: "Pomoc" })).toBeInTheDocument();
+    // HelpWidget otwiera formularz wyłącznie przez lokalny useState
+    // inicjalizowany na "zamknięte" — render() wyżej ustawia ten stan
+    // synchronicznie, bez efektu, który mógłby otworzyć dialog później.
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 

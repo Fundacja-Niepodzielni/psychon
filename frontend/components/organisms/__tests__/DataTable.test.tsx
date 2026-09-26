@@ -87,6 +87,9 @@ describe("DataTable", () => {
     );
 
     expect(screen.getByText("Brak dostępu")).toBeInTheDocument();
+    // DataTable wybiera gałąź stan="forbidden" synchronicznie w tym samym
+    // render() wyżej — ForbiddenState wyklucza jednoczesne renderowanie
+    // alertu/przycisku ponowienia bez żadnego efektu.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Spróbuj ponownie/ })).not.toBeInTheDocument();
   });
@@ -122,6 +125,9 @@ describe("DataTable", () => {
       />,
     );
 
+    // Bez props onRetry ErrorState nie renderuje przycisku ponowienia w
+    // tym samym, synchronicznym render() wyżej — brak funkcji jest znany od
+    // razu, nie doładowywany później.
     expect(screen.queryByRole("button", { name: /Spróbuj ponownie/ })).not.toBeInTheDocument();
   });
 
@@ -199,6 +205,10 @@ describe("DataTable", () => {
     Object.defineProperty(kontener, "clientWidth", { value: 300, configurable: true });
     fireEvent(window, new Event("resize"));
 
+    // fireEvent(window, resize) wyżej wywołuje zarejestrowany handler resize
+    // synchronicznie — scrollWidth/clientWidth są już ustawione przez
+    // Object.defineProperty przed zdarzeniem, więc porównanie i renderowanie
+    // oznaczenia dzieje się w tym samym cyklu, bez oczekiwania.
     expect(screen.queryByText(/Przewiń w bok/)).not.toBeInTheDocument();
   });
 

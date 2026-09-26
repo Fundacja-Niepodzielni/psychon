@@ -17,6 +17,9 @@ describe("ErrorState", () => {
   it("noga negatywna: bez onRetry nie renderuje przycisku ponowienia", () => {
     render(<ErrorState message="Serwer nie odpowiada." />);
 
+    // ErrorState renderuje przycisk ponowienia tylko, gdy props onRetry jest
+    // podane — render() wyżej bez onRetry kończy się synchronicznie bez
+    // tego węzła.
     expect(screen.queryByRole("button", { name: "Spróbuj ponownie" })).not.toBeInTheDocument();
   });
 });

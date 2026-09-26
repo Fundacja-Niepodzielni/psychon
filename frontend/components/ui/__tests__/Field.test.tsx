@@ -40,6 +40,8 @@ describe("Field", () => {
       </Field>,
     );
 
+    // Field renderuje komunikat błędu tylko, gdy props error jest podane —
+    // render() wyżej bez error kończy się synchronicznie bez tego węzła.
     expect(screen.queryByText(/wymagane/i)).not.toBeInTheDocument();
   });
 });

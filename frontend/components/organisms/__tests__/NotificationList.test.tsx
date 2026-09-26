@@ -57,6 +57,9 @@ describe("NotificationList", () => {
     render(<NotificationList items={pozycje} error="Nie udało się wczytać powiadomień." />);
 
     expect(screen.getByText("Nie udało się wczytać powiadomień.")).toBeInTheDocument();
+    // NotificationList z props error renderuje ErrorState zamiast listy
+    // synchronicznie w tym samym render() wyżej — pozycje z items nie trafiają
+    // do drzewa w tej gałęzi.
     expect(screen.queryByText("Nowy kurs dostępny")).not.toBeInTheDocument();
   });
 
