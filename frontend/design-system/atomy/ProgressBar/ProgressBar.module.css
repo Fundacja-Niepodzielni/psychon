@@ -1,0 +1,21 @@
+.oprawa {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+}
+.tor {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--r-pill);
+  background: var(--grey);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.wypelnienie {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--primary);
+}
+.wypelnienieOdtwarzacz {
+  background: var(--green);
+}

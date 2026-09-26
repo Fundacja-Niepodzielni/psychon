@@ -1,0 +1,34 @@
+.plakietka {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 104px;
+  justify-content: center;
+  padding: var(--space-2) var(--space-10);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+}
+/* Stan dobry NIGDY z barwą — neutralny i "ok" wyglądają tak samo. */
+.neutral {
+  background: var(--grey);
+  color: var(--muted);
+}
+.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.error {
+  background: var(--error-bg);
+  color: var(--error);
+}
+.pending {
+  background: var(--grey);
+  color: var(--muted);
+}
+.kropka {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-round);
+  background: currentColor;
+}

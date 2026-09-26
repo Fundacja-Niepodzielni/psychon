@@ -1,0 +1,13 @@
+.awatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-round);
+  background: var(--brand-tint);
+  color: var(--brand);
+  font-size: var(--fs-10);
+  font-weight: var(--fw-bold);
+  flex: none;
+}

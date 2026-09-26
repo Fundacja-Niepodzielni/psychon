@@ -1,0 +1,5 @@
+.linia {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}

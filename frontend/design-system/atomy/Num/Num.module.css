@@ -1,0 +1,6 @@
+.liczba {
+  font-variant-numeric: tabular-nums;
+}
+.etykieta {
+  margin-left: var(--space-4);
+}

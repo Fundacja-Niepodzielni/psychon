@@ -1,0 +1,31 @@
+.dotyk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--hit-min);
+  min-height: var(--hit-min);
+  gap: var(--space-8);
+  cursor: pointer;
+}
+.pole {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--r-check);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.zaznaczony {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-primary);
+}
+.ukryty {
+  position: absolute;
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}

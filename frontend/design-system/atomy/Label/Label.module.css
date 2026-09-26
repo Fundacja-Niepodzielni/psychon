@@ -1,0 +1,12 @@
+.etykieta {
+  display: block;
+  margin-bottom: var(--space-6);
+  color: var(--ink);
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+}
+.gwiazdka {
+  color: var(--error);
+  font-weight: var(--fw-bold);
+  margin-left: var(--space-2);
+}

@@ -1,0 +1,275 @@
+/*
+ * Tokeny warstwy 1 nowego frontu.
+ * Jedyne miejsce z zapisaną wprost wartością wyglądu (barwa, odstęp, promień,
+ * stopień pisma, warstwa). Wszystko inne w warstwie atomów odwołuje się do
+ * tych zmiennych przez var(--nazwa) i nigdy nie zapisuje wartości wprost.
+ *
+ * Ten plik NIE jest importowany przez istniejący front — osobny strumień,
+ * osobny zestaw nazw zmiennych.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* --- Barwy, motyw jasny --- */
+  --bg: #f3f1ed;
+  --card: #ffffff;
+  --card-warm: #f5f4ef;
+  --grey: #f1f0ec;
+  --border: #e6e4df;
+  --border-strong: #8a8781;
+  --control: #6f6d68;
+  --ink: #1a1a1a;
+  --text: #323232;
+  --muted: #5f5d58;
+  --subtle: #6b6964;
+  --invert-bg: #1a1a1a;
+  --invert-ink: #f4f3ef;
+  --invert-link: #8be3ad;
+  --brand: #1500bb;
+  --brand-tint: #1500bb12;
+  --link: #594ef9;
+  --primary: #00803a;
+  --primary-hover: #006b30;
+  --green: #01be4a;
+  --green-tint: #01be4a1f;
+  --success: #006b30;
+  --success-bg: #01be4a1a;
+  --warn: #8a5a00;
+  --warn-bg: #f59e0b1f;
+  --error: #b23324;
+  --error-bg: #fdf3f3;
+  --info: #2f6cb3;
+  --info-bg: #4a90e21a;
+  --shadow: 0 1px 2px rgba(26, 26, 26, .08), 0 4px 14px rgba(26, 26, 26, .10);
+
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --sidebar: 260px;
+  --font: "Roboto", system-ui, -apple-system, sans-serif;
+  --on-primary: #ffffff;
+
+  /* dwie zmienne lokalne */
+  --card-px: 24px;
+  --topbar-h: 58px;
+
+  /* --- Skala odstępów i wcięć, nic pomiędzy --- */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-36: 36px;
+  --space-40: 40px;
+  --space-64: 64px;
+
+  /* --- Promienie poza trzema nazwanymi wyżej --- */
+  --r-2xs: 6px;
+  --r-pill: 999px;
+  --r-round: 50%;
+  --r-check: 5px;
+
+  /* --- Pismo: 14 stopni, 4 grubości --- */
+  --fs-1: 44px;
+  --fs-2: 30px;
+  --fs-2-sm: 23px;
+  --fs-3: 24px;
+  --fs-4: 22px;
+  --fs-5: 20px;
+  --fs-6: 18px;
+  --fs-7: 17px;
+  --fs-8: 16px;
+  --fs-9: 15px;
+  --fs-10: 14px;
+  --fs-11: 13px;
+  --fs-12: 12px;
+  --fs-13: 11px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+  --fw-black: 900;
+
+  --lh-heading: 1.2;
+  --lh-text: 1.55;
+  --lh-lesson: 1.65;
+  --lh-title-phone: 1.35;
+
+  /* --- Warstwy: 8 nazwanych, jedyne dozwolone --- */
+  --z-sticky-col: 1;
+  --z-savebar: 4;
+  --z-topbar: 5;
+  --z-listbox: 10;
+  --z-scrim: 19;
+  --z-drawer: 20;
+  --z-toast: 50;
+  --z-skiplink: 100;
+
+  /* --- Ruch --- */
+  --dur-fast: .15s;
+  --dur-drawer: .2s;
+  --dur-skeleton: 1.2s;
+
+  /* --- Wspólne: fokus i cel dotykowy, jedna reguła na front --- */
+  --focus-width: 3px;
+  --focus-offset: 2px;
+  --hit-min: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15151a;
+    --card: #1e1e24;
+    --card-warm: #23232a;
+    --grey: #26262d;
+    --border: #32323b;
+    --border-strong: #6f6f7d;
+    --control: #9a9aa6;
+    --ink: #f4f3ef;
+    --text: #e3e2dc;
+    --muted: #a9a8a1;
+    --subtle: #8e8d87;
+    --invert-bg: #2e2e38;
+    --invert-ink: #f4f3ef;
+    --invert-link: #8be3ad;
+    --brand: #9d92ff;
+    --brand-tint: #9d92ff1f;
+    --link: #a79eff;
+    --primary: #1fb862;
+    --primary-hover: #35cc76;
+    --green: #35d97a;
+    --green-tint: #35d97a24;
+    --success: #4ad686;
+    --success-bg: #35d97a24;
+    --warn: #f2b84b;
+    --warn-bg: #f59e0b26;
+    --error: #ff7b6b;
+    --error-bg: #3a2320;
+    --info: #7fb2ff;
+    --info-bg: #4a90e226;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .5);
+    --on-primary: #0c1a10;
+    color-scheme: dark;
+  }
+}
+
+/* wyłącznik jasnego motywu — wygrywa nad prefers-color-scheme dzięki wyższej specyficzności */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f1ed;
+  --card: #ffffff;
+  --card-warm: #f5f4ef;
+  --grey: #f1f0ec;
+  --border: #e6e4df;
+  --border-strong: #8a8781;
+  --control: #6f6d68;
+  --ink: #1a1a1a;
+  --text: #323232;
+  --muted: #5f5d58;
+  --subtle: #6b6964;
+  --invert-bg: #1a1a1a;
+  --invert-ink: #f4f3ef;
+  --invert-link: #8be3ad;
+  --brand: #1500bb;
+  --brand-tint: #1500bb12;
+  --link: #594ef9;
+  --primary: #00803a;
+  --primary-hover: #006b30;
+  --green: #01be4a;
+  --green-tint: #01be4a1f;
+  --success: #006b30;
+  --success-bg: #01be4a1a;
+  --warn: #8a5a00;
+  --warn-bg: #f59e0b1f;
+  --error: #b23324;
+  --error-bg: #fdf3f3;
+  --info: #2f6cb3;
+  --info-bg: #4a90e21a;
+  --shadow: 0 1px 2px rgba(26, 26, 26, .08), 0 4px 14px rgba(26, 26, 26, .10);
+  --on-primary: #ffffff;
+}
+
+/* wymuszenie ciemnego motywu — niezależnie od prefers-color-scheme */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15151a;
+  --card: #1e1e24;
+  --card-warm: #23232a;
+  --grey: #26262d;
+  --border: #32323b;
+  --border-strong: #6f6f7d;
+  --control: #9a9aa6;
+  --ink: #f4f3ef;
+  --text: #e3e2dc;
+  --muted: #a9a8a1;
+  --subtle: #8e8d87;
+  --invert-bg: #2e2e38;
+  --invert-ink: #f4f3ef;
+  --invert-link: #8be3ad;
+  --brand: #9d92ff;
+  --brand-tint: #9d92ff1f;
+  --link: #a79eff;
+  --primary: #1fb862;
+  --primary-hover: #35cc76;
+  --green: #35d97a;
+  --green-tint: #35d97a24;
+  --success: #4ad686;
+  --success-bg: #35d97a24;
+  --warn: #f2b84b;
+  --warn-bg: #f59e0b26;
+  --error: #ff7b6b;
+  --error-bg: #3a2320;
+  --info: #7fb2ff;
+  --info-bg: #4a90e226;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .5);
+  --on-primary: #0c1a10;
+}
+
+/* ograniczony ruch: zeruje przejścia, animacje, płynne przewijanie */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0s;
+    --dur-drawer: 0s;
+    --dur-skeleton: 0s;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Fokus widoczny — jedna reguła na cały front (§2 „Wspólne”). Każdy atom
+ * interaktywny dostaje tę klasę albo :focus-visible bez własnej definicji.
+ */
+:focus-visible {
+  outline: var(--focus-width) solid var(--brand);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--r-xs);
+}
+
+/*
+ * Reguła bazowa — jedyne miejsce, które ją definiuje. Bez niej padding i
+ * border form-controli (Input, Textarea) i grubość toru (ProgressBar)
+ * dodają się do min-height/height zamiast się w nie mieścić — zmierzone
+ * rozjazdy wobec makiety 2.0.4 (Input 64px vs 44,8; Textarea 116px vs 96;
+ * tor 12px vs 10).
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* jedyne miejsce, które używa --font — bez tego token jest martwy */
+body {
+  font-family: var(--font);
+}

@@ -1,0 +1,23 @@
+.odnosnik {
+  color: var(--link);
+  background: none;
+  border: none;
+  text-decoration: none;
+  /* Wcięcie w pionie daje realny prostokąt klikalny >=44px — zmierzone
+     Playwrightem na rzeczywistym renderze, nie założone z liczby w
+     specyfikacji. Ujemny margines tej samej wielkości nie zmienia odstępu
+     w treści akapitu. */
+  padding: var(--space-16) var(--space-2);
+  margin: calc(var(--space-16) * -1) calc(var(--space-2) * -1);
+  display: inline-block;
+}
+.odnosnik:hover,
+.odnosnik:focus-visible {
+  text-decoration: underline;
+}
+.okruszek {
+  /* space-12 dawało 42px zmierzone poligonem (< 44) — space-14 dociąga
+     pole klikalne do progu bez zmiany widocznego odstępu w treści. */
+  padding: var(--space-14) var(--space-6);
+  margin: calc(var(--space-14) * -1) calc(var(--space-6) * -1);
+}
