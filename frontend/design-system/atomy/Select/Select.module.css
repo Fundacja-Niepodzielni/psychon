@@ -1,5 +1,7 @@
 .pole {
   min-height: var(--hit-min);
+  max-width: 480px;
+  width: 100%;
   padding: var(--space-8) var(--space-12);
   border: 1px solid var(--control);
   border-radius: var(--r-xs);
@@ -15,6 +17,3 @@
   border-color: var(--error);
   outline: var(--focus-width) solid var(--error-bg);
 }
-.tekst { max-width: 480px; }
-.liczba { max-width: 160px; }
-.data { max-width: 180px; }

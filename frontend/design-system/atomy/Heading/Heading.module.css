@@ -5,6 +5,10 @@
   line-height: var(--lh-heading);
 }
 .stopien1 { font-size: var(--fs-2-sm); }
+/* Prog 640px zostaje zapisany wprost: CSS @media nie umie odwolac sie do
+   stalej ZALAMANIA.dziennikBezZawijania (tokeny/zalamania.ts) inaczej niz
+   liczba, a ta sama wartosc (639/640) jest granica "telefon" w makiecie
+   2.0.4 (h1 30px -> 23px). Swiadoma decyzja, nie przeoczenie. */
 @media (min-width: 640px) { .stopien1 { font-size: var(--fs-2); } }
 .stopien2 { font-size: var(--fs-4); }
 .stopien3 { font-size: var(--fs-6); }

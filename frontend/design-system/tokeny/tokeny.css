@@ -255,3 +255,21 @@
   outline-offset: var(--focus-offset);
   border-radius: var(--r-xs);
 }
+
+/*
+ * Reguła bazowa — jedyne miejsce, które ją definiuje. Bez niej padding i
+ * border form-controli (Input, Textarea) i grubość toru (ProgressBar)
+ * dodają się do min-height/height zamiast się w nie mieścić — zmierzone
+ * rozjazdy wobec makiety 2.0.4 (Input 64px vs 44,8; Textarea 116px vs 96;
+ * tor 12px vs 10).
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* jedyne miejsce, które używa --font — bez tego token jest martwy */
+body {
+  font-family: var(--font);
+}

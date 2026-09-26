@@ -25,6 +25,7 @@ function Poligon() {
       <Button poziom="primary" rozmiar="sm" data-testid="button-sm">Dodaj</Button>
       <Button poziom="quiet" data-testid="icon-button"><Icon nazwa="home" /></Button>
       <p><Link href="#" data-testid="link">Przejdź do lekcji</Link></p>
+      <p><Link href="#" wariant="okruszek" data-testid="link-okruszek">Kurs / Lekcja 3</Link></p>
       <Checkbox id="pol-zgoda" zaznaczony onZmiana={() => {}} etykieta="Zgadzam się" />
       <Input rodzaj="tekst" aria-label="Imię" data-testid="input" />
       <Textarea aria-label="Opis" data-testid="textarea" />

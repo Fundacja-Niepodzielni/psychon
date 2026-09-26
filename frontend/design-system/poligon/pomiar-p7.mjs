@@ -17,6 +17,7 @@ const CELE = [
   { nazwa: "Button sm", selektor: '[data-testid="button-sm"]' },
   { nazwa: "Icon jako przycisk", selektor: '[data-testid="icon-button"]' },
   { nazwa: "Link (pole klikalne)", selektor: '[data-testid="link"]' },
+  { nazwa: "Link wariant okruszek", selektor: '[data-testid="link-okruszek"]' },
   { nazwa: "Checkbox (etykieta = pole dotyku)", selektor: 'label[for="pol-zgoda"]' },
   { nazwa: "Input", selektor: '[data-testid="input"]' },
   { nazwa: "Textarea", selektor: '[data-testid="textarea"]' },
@@ -47,9 +48,32 @@ await browser.close();
 
 console.log(JSON.stringify(wyniki, null, 2));
 
+// Pomiar OCZEKIWANY liczy się z macierzy (cele x motywy x viewporty), nie z
+// tego, ile faktycznie udało się zmierzyć — inaczej element, który w ogóle
+// się nie renderuje (display:none, zły selektor), po prostu znika z próby
+// zamiast ją zaczerwienić.
+const oczekiwanePomiarow = CELE.length * MOTYWY.length * VIEWPORTY.length;
+const brakujace = wyniki.filter((w) => w.wysokosc === null || w.szerokosc === null);
+const wykonanePomiarow = wyniki.length - brakujace.length;
 const ponizej44 = wyniki.filter((w) => w.wysokosc !== null && w.wysokosc < 44);
-console.log(`\nRAZEM POMIAROW: ${wyniki.length}`);
+
+console.log(`\nOCZEKIWANE POMIAROW: ${oczekiwanePomiarow}`);
+console.log(`WYKONANE POMIAROW: ${wykonanePomiarow}`);
+if (brakujace.length > 0) {
+  console.log(`BRAKUJACE POMIARY: ${brakujace.length}`);
+  for (const b of brakujace) {
+    console.log(`  BRAK: ${b.element} (${b.motyw}, ${b.viewport}px) — boundingBox() zwrocil null`);
+  }
+}
 console.log(`PONIZEJ 44px WYSOKOSCI: ${ponizej44.length}`);
 if (ponizej44.length > 0) {
   console.log(JSON.stringify(ponizej44, null, 2));
 }
+
+const zawiodl = ponizej44.length > 0 || brakujace.length > 0 || wykonanePomiarow !== oczekiwanePomiarow;
+if (zawiodl) {
+  console.error(
+    `POMIAR P-7 NIEUDANY: ${ponizej44.length} ponizej 44px, ${brakujace.length} brakujacych z ${oczekiwanePomiarow} oczekiwanych`,
+  );
+}
+process.exit(zawiodl ? 1 : 0);

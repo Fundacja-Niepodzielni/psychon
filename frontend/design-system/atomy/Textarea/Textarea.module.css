@@ -4,7 +4,7 @@
   max-width: 720px;
   min-height: 96px;
   resize: vertical;
-  padding: 9px var(--space-12);
+  padding: var(--space-8) var(--space-12);
   border: 1px solid var(--control);
   border-radius: var(--r-xs);
   font-size: var(--fs-8);

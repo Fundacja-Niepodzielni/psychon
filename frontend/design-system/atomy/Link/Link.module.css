@@ -16,6 +16,8 @@
   text-decoration: underline;
 }
 .okruszek {
-  padding: var(--space-12) var(--space-6);
-  margin: calc(var(--space-12) * -1) calc(var(--space-6) * -1);
+  /* space-12 dawało 42px zmierzone poligonem (< 44) — space-14 dociąga
+     pole klikalne do progu bez zmiany widocznego odstępu w treści. */
+  padding: var(--space-14) var(--space-6);
+  margin: calc(var(--space-14) * -1) calc(var(--space-6) * -1);
 }

@@ -1,10 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve, join } from "node:path";
 import { ZALAMANIA } from "../zalamania";
 
 const sciezkaCss = resolve(process.cwd(), "design-system/tokeny/tokeny.css");
 const css = readFileSync(sciezkaCss, "utf-8");
+
+/** Zwraca zawartość wszystkich plików *.module.css pod katalogiem atomów. */
+function tresciCssAtomow(): string[] {
+  const katalogAtomow = resolve(process.cwd(), "design-system/atomy");
+  const wyniki: string[] = [];
+  for (const nazwaAtomu of readdirSync(katalogAtomow)) {
+    const sciezka = join(katalogAtomow, nazwaAtomu, `${nazwaAtomu}.module.css`);
+    try {
+      wyniki.push(readFileSync(sciezka, "utf-8"));
+    } catch {
+      // atom bez własnego pliku CSS (np. czysto strukturalny) — pomijamy
+    }
+  }
+  return wyniki;
+}
 
 /** Wyciąga wartość zmiennej z pierwszego bloku, w którym występuje. */
 function wartosc(nazwaZmiennej: string, blok: string): string {
@@ -52,9 +67,14 @@ describe("tokeny — barwy §1.1", () => {
     },
   );
 
-  it("--info i --info-bg istnieją w tokenach (36 zmiennych z makiety), ale 0 użyć w atomach", () => {
+  it("--info i --info-bg istnieją w tokenach (36 zmiennych z makiety)", () => {
     expect(wartosc("info", blokJasny)).toBe("#2f6cb3");
     expect(wartosc("info-bg", blokJasny)).toBe("#4a90e21a");
+  });
+
+  it("--info i --info-bg mają 0 użyć w CSS atomów", () => {
+    const cssAtomow = tresciCssAtomow().join("\n");
+    expect([...cssAtomow.matchAll(/var\(--info(-bg)?\)/g)]).toHaveLength(0);
   });
 });
 

@@ -5,7 +5,7 @@
   gap: var(--space-8);
   min-height: var(--hit-min);
   max-width: 320px;
-  padding: 9px var(--space-16);
+  padding: var(--space-8) var(--space-16);
   border-radius: var(--r-xs);
   border: 1px solid transparent;
   font-size: var(--fs-9);
