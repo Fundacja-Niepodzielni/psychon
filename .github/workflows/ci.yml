@@ -158,22 +158,28 @@ jobs:
         run: npm run lint
       - name: Testy
         run: npm test
-      # Przegladarka dla poligonu pomiarowego P-7 nizej. Bez tego kroku
-      # `npx playwright` w wolajacym nie ma czym zmierzyc celow dotyku -
-      # instalacja jest wiec czescia tego samego zestawu, nie osobnym zadaniem.
-      - name: Przeglądarka do pomiaru P-7 (Playwright)
-        run: npx playwright install --with-deps chromium
-      # Zaczerwienienie tego kroku zatrzymuje CALY zestaw `frontend`, nie
-      # tylko sam pomiar-p7.mjs - to jest jedyny cel tego wpisu (patrz
-      # scripts/uruchom-pomiar-p7.mjs i design-system/poligon/pomiar-p7.mjs).
-      # Przedtem `grep -rl "pomiar-p7"` po calym repo dawal 0 trafien poza
-      # samym plikiem - przyrzad istnial, ale nic go nie wolalo.
-      - name: Pomiar celu dotyku P-7 (poligon atomów)
-        run: npm run pomiar:p7
       - name: Build
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
+      # Wolajacy: zestaw e2e (Playwright + axe-core) mierzy kontrast w
+      # prawdziwej przegladarce - w jsdom (krok "Testy" wyzej) reguła
+      # `color-contrast` zawsze konczy na "incomplete", nigdy na naruszeniu
+      # (patrz `components/__tests__/axe-helper.ts`). Krok JEST blokujacy:
+      # bez `continue-on-error`, bez `|| true`. Serwer nie stoi nigdzie w
+      # tym zadaniu, wiec `PW_WEB_SERVER=1` (patrz `playwright.config.ts`)
+      # stawia zbudowana wyzej aplikacje lokalnie (`npm run start`) i dopiero
+      # na niej odpala testy - `AUTH_SECRET` to placeholder wylacznie na czas
+      # tego efemerycznego przebiegu (Auth.js zglasza `MissingSecret` bez
+      # niego przy proba odczytu sesji), nie sekret produkcyjny.
+      - name: Instalacja przegladarki Playwright
+        run: npx playwright install --with-deps chromium
+      - name: E2E (axe-core, w tym kontrast kolorow)
+        run: npm run e2e -- e2e/public-a11y.spec.ts
+        env:
+          PW_WEB_SERVER: "1"
+          AUTH_SECRET: ci-only-placeholder-not-a-secret
+          AUTH_KEYCLOAK_ISSUER: http://localhost:8080/realms/niepodzielni
       # `--omit=dev` swiadomie: zmierzone
       # 6 podatnosci lacznie, z tego 2 produkcyjne - cztery zdjete flaga siedza
       # w narzedziach (vitest, js-yaml), ktore nie ida do przegladarki uzytkownika.
