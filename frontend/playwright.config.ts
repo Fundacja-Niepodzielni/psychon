@@ -21,11 +21,11 @@ export default defineConfig({
   // strony przed skanem axe (patrz tam), a w CI (`PW_WEB_SERVER=1`) nie ma
   // żadnego backendu pod `NEXT_PUBLIC_API_URL` - zapytania aplikacji do
   // niego (np. `/sso/whoami` na `/konto`) kończą się niepowodzeniem, ale nie
-  // natychmiast. Zmierzone na czystym drzewie: do ok. 9 s na trasę z takim
-  // zapytaniem, w 10 pełnych biegach pod rząd. To NIE jest próba ukrycia
-  // niestabilności retryami czy timeoutem dopasowanym pod jeden zły wynik -
-  // to realny, powtarzalny czas nieudanego połączenia w tej topologii, z
-  // zapasem, nie z docięciem pod najgorszy zmierzony przypadek.
+  // natychmiast. Zakładamy do ok. 9 s na trasę z takim zapytaniem - tyle
+  // podaje autor zmiany 45a8102 (10 pełnych biegów pod rząd); w drzewie nie
+  // ma zapisu polecenia, przeglądarki, rozmiaru okna ani daty tych biegów.
+  // Limit jest ustawiony na 60 s z zapasem ponad tę wartość, a nie
+  // dopasowany pod jeden zły wynik; retry są wyłączone (`retries: 0`).
   timeout: 60_000,
   retries: 0,
   use: {
@@ -51,7 +51,8 @@ export default defineConfig({
   // Sciezka wzgledna: dziala tak samo na stanowisku deweloperskim jak i na
   // runnerze CI (ubuntu-latest) - bezwzgledna sciezka windowsowa tu wczesniej
   // nie istniala nigdzie poza jednym stanowiskiem lokalnym i psula zapis
-  // (kod wyjscia 2 mimo zielonych testow, zmierzone przy wpiecu do CI).
+  // (kod wyjscia 2 mimo zielonych testow - tak opisuje to 9a96281; zapisu
+  // tego biegu w drzewie nie ma).
   // `/test-results` jest juz w `.gitignore`.
   reporter: [
     ["list"],
