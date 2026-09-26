@@ -32,7 +32,9 @@
 //       z jawnie zadeklarowaną, osobną listą znaną (`ETYKIETY_PAR_ZNANE` /
 //       `NAZWY_TEL_ZNANE`, sprawdzane przez `sprawdzWzgledemZnanejListy` —
 //       patrz komentarz tam: to jest źródło INNE niż pętla, która potem
-//       liczy macierz), nieznana etykieta przekazana przez `--para`,
+//       liczy macierz), tylko jeden z `--para`/`--tlo` podany zamiast obu
+//       naraz, nieznana etykieta przekazana przez `--para`, niepoprawny
+//       zapis koloru hex w `--tlo`,
 //       nieznaleziony token do podmiany przez `--nadpisz` (włącznie z
 //       nazwą zawierającą metaznak RegExp — taka nazwa jest dziś szukana
 //       DOSŁOWNIE, patrz `escapujMetaznakiRegex`, więc po prostu nie
@@ -76,9 +78,8 @@
 //   (patrz `zbudujTla` — każde tło ma cytat z konkretnego pliku/linii) —
 //   czyli 55 możliwych pomiarów. Ten skrypt liczy WSZYSTKIE 55: albo
 //   drukuje wynik, albo wyklucza kombinację JAWNIE z podanym powodem
-//   (`WYKLUCZENIA` niżej — np. `Alert` nigdy nie żyje w wierszu tabeli,
-//   `TextLink` w całym repo żyje tylko w 3 miejscach, żadne na tle strony/
-//   karcie ciepłej/podkładzie najechania na szarym). Strażnikiem nowej pary
+//   (`WYKLUCZENIA` niżej, z powodem przy każdym wpisie — patrz
+//   `POWOD_ALERT_KONTENERY` i `POWOD_TEXTLINK_WASKI_ZAKRES` tam). Strażnikiem nowej pary
 //   albo nowego tła bez decyzji NIE jest suma zmierzone+wykluczone==iloczyn
 //   w `zbudujPelnaMacierz` — ta suma z definicji tej samej pętli nie może
 //   się nie zgadzać (każda kombinacja trafia do dokładnie jednej z dwóch
@@ -110,9 +111,12 @@
 //     wtedy zmierzonym marginesom nie ma czego wierzyć.
 //   node scripts/pomiar-marginesu-kontrastu.mjs --para="Odznaka: sukces" --tlo=#f9f8f6
 //     — jedna, konkretna para na PODANYM realnym tle (poza macierzą główną,
-//     do doraźnego sprawdzenia „co by było, gdyby"). Przy trafionej etykiecie
-//     nie wpływa na kod wyjścia (kończy proces naturalnie, kod 0); przy
-//     nieznanej etykiecie kończy się kodem 2 = NIE ZMIERZONO.
+//     do doraźnego sprawdzenia „co by było, gdyby"). Oba argumenty wymagane
+//     RAZEM — podanie tylko `--para` albo tylko `--tlo` kończy się kodem 2 =
+//     NIE ZMIERZONO (niepełne polecenie, nie spada cicho do pełnej macierzy).
+//     Przy obu podanych i trafionej etykiecie nie wpływa na kod wyjścia
+//     (kończy proces naturalnie, kod 0); przy nieznanej etykiecie albo
+//     niepoprawnym zapisie `--tlo` kończy się kodem 2 = NIE ZMIERZONO.
 //
 // Umiejscowienie: obok istniejących narzędzi pomiarowych frontu
 // (scripts/pomiar-kc.sh, scripts/check-lock-libc.mjs) — ten sam katalog,
@@ -239,32 +243,30 @@ function poznajRowHoverNaBieli(tokeny) {
 
 // ---------------------------------------------------------------------------
 // Definicje par (token tekstu / tło / kontekst) — realne użycia w kodzie:
-//   - Badge.tsx warianty success/warning/danger/info/accent, wszystkie
-//     wewnątrz Table.tsx w co najmniej 9 plikach (zmierzone grepem:
-//     admin/emails, admin/kursy, admin/kursy/[id], panel/dokumenty,
-//     h03/ApplicationsTab, h09/CourseAssignmentPanel, h12/InstructorGroup,
-//     h18/AdminUsersList, h20/ReportView) — stąd kolumna "po najechaniu"
-//     dotyczy ich naprawdę, nie hipotetycznie: Table.tsx nakłada
-//     `hover:bg-row-hover` na CAŁY wiersz, więc każda komórka (a więc
-//     i odznaka w niej) dziedziczy ten podkład. `Badge` jest też
-//     komponentem ogólnym (design system), więc traktowany jest jako
-//     ważny na KAŻDYM z pięciu teł niżej — potwierdza to m.in.
+//   - Badge.tsx warianty success/warning/danger/info/accent są używane
+//     wewnątrz Table.tsx — stąd kolumna "po najechaniu" dotyczy ich
+//     naprawdę, nie hipotetycznie: Table.tsx nakłada `hover:bg-row-hover`
+//     na CAŁY wiersz, więc każda komórka (a więc i odznaka w niej)
+//     dziedziczy ten podkład. `Badge` jest też komponentem ogólnym (design
+//     system), więc traktowany jest jako ważny na KAŻDYM z pięciu teł
+//     niżej — przykładowo (nie wyczerpująco) potwierdzają to
 //     app/(administracja)/admin/emails/page.tsx (odznaka statusu wprost na
 //     `bg-card-warm`) i components/organisms/NotificationList.tsx (odznaka
-//     "info" na `hover:bg-grey`).
+//     "info" na `hover:bg-grey`). Kryterium, nie liczba: dopóki `Badge` jest
+//     komponentem design-systemu bez własnej listy dozwolonych teł, jest
+//     mierzony na wszystkich pięciu; ograniczenie go do podzbioru wymagałoby
+//     najpierw takiej listy, nie zliczenia dzisiejszych wystąpień.
 //   - Alert.tsx warianty success/info/error — nie żyją w wierszu tabeli
 //     (potwierdzone grepem `<Alert` w całym repo: zawsze w karcie/formularzu
 //     albo wprost w treści strony przez `ListTemplate`/`ErrorState`, nigdy
 //     w komórce `Table.tsx`) — stąd wykluczenie tła "podkład najechania
 //     wiersza tabeli" dla wszystkich trzech par `Alert:*` w `WYKLUCZENIA`.
-//   - TextLink.tsx tony primary/muted — w całym repo żyje dokładnie w 3
-//     miejscach (grep `TextLink` poza `components/ui/TextLink.tsx` i
-//     testami): app/(administracja)/admin/kursy/page.tsx (komórka tabeli),
-//     app/(uczestnik)/panel/dokumenty/page.tsx (karta),
-//     components/po-programie/ProgramCompletedCard.tsx (karta) — nigdy
-//     wprost na tle strony, karcie ciepłej ani podkładzie najechania na
-//     szarym, stąd wykluczenie tych trzech teł dla wszystkich par
-//     `Łącze:*` w `WYKLUCZENIA`.
+//   - TextLink.tsx tony primary/muted — używany w komórce tabeli i w
+//     kartach (patrz `POWOD_TEXTLINK_WASKI_ZAKRES` niżej dla kryterium
+//     wykluczenia i polecenia, którym je sprawdzić), nigdy wprost na tle
+//     strony, karcie ciepłej ani podkładzie najechania na szarym — stąd
+//     wykluczenie tych trzech teł dla wszystkich par `Łącze:*` w
+//     `WYKLUCZENIA`.
 // ---------------------------------------------------------------------------
 
 function zbudujPary(tokeny, rozmiary, rowHoverNaBieli) {
@@ -386,7 +388,7 @@ const POWOD_ALERT_KONTENERY =
   "Alert.tsx renderuje się wyłącznie w kartach/formularzach (bg-card) albo wprost w treści strony przez ListTemplate/ErrorState (bg-page) — potwierdzone grepem `<Alert` w całym repo, sprawdzone też pod kątem sąsiedztwa z `bg-grey`/`bg-card-warm`/`hover:bg-row-hover` w tych samych plikach (żadne wystąpienie nie jest w środku takiego kontenera). Nigdy w komórce/wierszu Table.tsx, nigdy w nagłówku podglądu e-maila (bg-card-warm), nigdy w przycisku z hover:bg-grey.";
 
 const POWOD_TEXTLINK_WASKI_ZAKRES =
-  'TextLink w całym repo żyje dokładnie w 3 miejscach (grep "TextLink" poza components/ui/TextLink.tsx i testami): app/(administracja)/admin/kursy/page.tsx (komórka tabeli), app/(uczestnik)/panel/dokumenty/page.tsx (karta), components/po-programie/ProgramCompletedCard.tsx (karta) — nigdy wprost na tym tle.';
+  'TextLink.tsx renderuje się w komórce tabeli i w karcie (bg-card) — kontekstach z własnym, znanym tłem — nigdy wprost na tle strony, karcie ciepłej ani podkładzie najechania (szary, płaski). Kryterium wykluczenia (nie liczba): zasadne dopóki żadne użycie <TextLink poza components/ui/TextLink.tsx i katalogiem testów nie renderuje się na jednym z tych trzech teł. Sprawdź poleceniem z korzenia repo: `grep -rn "<TextLink" --include=*.tsx . | grep -v components/ui/TextLink.tsx | grep -v __tests__` i porównaj kontekst (tło) każdego trafienia z tłem strony/kartą ciepłą/podkładem najechania na szarym — trafienie w jednym z nich unieważnia to wykluczenie.';
 
 const ETYKIETY_LACZY = [
   "Łącze: główny (tone=primary)",
@@ -802,10 +804,20 @@ function main() {
 
   const paraNazwa = argWartosc("para");
   const tloParam = argWartosc("tlo");
-  if (paraNazwa && tloParam) {
-    // Tryb jednej pary na podanym, realnym tle — nie zastępuje macierzy
-    // głównej ani kodu wyjścia (przy trafionej etykiecie), tylko liczy
-    // dokładnie to, o co proszono.
+  if (paraNazwa || tloParam) {
+    // Tryb jednej pary na podanym, realnym tle wymaga OBU argumentów naraz —
+    // `--para` i `--tlo` razem. Podanie tylko jednego z nich NIE jest błąd
+    // walidacji hex (ten jest niżej, na wartości `--tlo`), tylko niepełne
+    // polecenie: bez tej kontroli brakująca druga połowa cicho spadała do
+    // pełnej macierzy głównej, więc np. literówka w nazwie `--para` (przy
+    // podanym `--tlo`) dawała pełny, poprawnie wyglądający raport kodem 0
+    // zamiast sygnału, że o cokolwiek proszono, nie zostało to policzone.
+    if (!paraNazwa || !tloParam) {
+      console.error(
+        `NIE ZMIERZONO — tryb jednej pary na podanym tle wymaga OBU argumentów naraz: --para=<etykieta> i --tlo=<hex>. Otrzymano ${paraNazwa ? `--para=${paraNazwa}` : "brak --para"}, ${tloParam ? `--tlo=${tloParam}` : "brak --tlo"}.`,
+      );
+      process.exit(KOD_NIE_ZMIERZONO);
+    }
     const p = pary.find((x) => x.etykieta === paraNazwa);
     if (!p) {
       console.error(`NIE ZMIERZONO — nie znam pary "${paraNazwa}". Dostępne etykiety:`);
