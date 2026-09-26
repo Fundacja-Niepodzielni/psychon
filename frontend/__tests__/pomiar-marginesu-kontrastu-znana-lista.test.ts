@@ -12,6 +12,8 @@ import {
   ETYKIETY_PAR_ZNANE,
   NAZWY_TEL_ZNANE,
   sprawdzWzgledemZnanejListy,
+  zbudujPelnaMacierz,
+  wczytajProdukcyjneParyITla,
 } from "../scripts/pomiar-marginesu-kontrastu.mjs";
 
 /**
@@ -31,6 +33,24 @@ import {
  * testowym, nie czymś wyliczonym przez sam `pomiar-marginesu-kontrastu.mjs`.
  * Oczekiwanie ("to ma rzucić") pochodzi więc z innego źródła niż przyrząd
  * pod testem — nie jest to porównanie wyniku z samym sobą.
+ *
+ * Ta sama zasada dotyczy dwóch dalszych bloków niżej:
+ *   - "zbudujPelnaMacierz odmawia..." nie sprawdza `sprawdzWzgledemZnanejListy`
+ *     wprost, tylko drogę PRODUKCYJNĄ (`zbudujPelnaMacierz`, linia wywołania
+ *     w `scripts/pomiar-marginesu-kontrastu.mjs`) na fikcyjnej, jednoelementowej
+ *     parze/tle — usunięcie samego wywołania strażnika z ciała
+ *     `zbudujPelnaMacierz` (bez ruszania ciała strażnika) nie jest dziś
+ *     wykrywane żadnym innym testem w tym pliku, bo wszystkie pozostałe wołają
+ *     `sprawdzWzgledemZnanejListy` bezpośrednio, z pominięciem tej linii.
+ *   - "wczytajProdukcyjneParyITla(): zgadza się..." buduje pary/tła PRAWDZIWĄ
+ *     ścieżką (czyta `app/globals.css`, przepuszcza przez realne
+ *     `zbudujPary`/`zbudujTla`) — dopisanie w drzewie szóstego tła (albo
+ *     dwunastej pary) w tych funkcjach BEZ dopisania go też do
+ *     `ETYKIETY_PAR_ZNANE`/`NAZWY_TEL_ZNANE` psuje TEN test, nie tylko
+ *     dopiero pełne CLI. Testy "nie rzuca, gdy zbiór pokrywa się..." itd.
+ *     (zobacz niżej) budowały wejście z tych samych stałych, które sprawdzają
+ *     — porównanie przyrządu z samym sobą, które nie potrafi zgasnąć — więc
+ *     ten blok go zastępuje realnymi `zbudujPary`/`zbudujTla` jako źródłem.
  */
 
 function paryZEtykiet(etykiety: readonly string[]) {
@@ -42,12 +62,6 @@ function tlaZNazw(nazwy: readonly string[]) {
 }
 
 describe("sprawdzWzgledemZnanejListy (scripts/pomiar-marginesu-kontrastu.mjs)", () => {
-  it("nie rzuca, gdy zbiór par i teł dokładnie pokrywa się z listą znaną", () => {
-    const pary = paryZEtykiet(ETYKIETY_PAR_ZNANE);
-    const tla = tlaZNazw(NAZWY_TEL_ZNANE);
-    expect(() => sprawdzWzgledemZnanejListy(pary, tla)).not.toThrow();
-  });
-
   it("rzuca, gdy pojawia się para spoza listy znanej (nadmiar) — dopisana etykieta bez decyzji", () => {
     const pary = paryZEtykiet([
       ...ETYKIETY_PAR_ZNANE,
@@ -73,5 +87,39 @@ describe("sprawdzWzgledemZnanejListy (scripts/pomiar-marginesu-kontrastu.mjs)", 
     const pary = paryZEtykiet(ETYKIETY_PAR_ZNANE);
     const tla = tlaZNazw(NAZWY_TEL_ZNANE.slice(1));
     expect(() => sprawdzWzgledemZnanejListy(pary, tla)).toThrow(/już nie istnieje/);
+  });
+});
+
+describe("zbudujPelnaMacierz odmawia policzenia macierzy dla wejścia spoza znanej listy (scripts/pomiar-marginesu-kontrastu.mjs)", () => {
+  it("rzuca dla fikcyjnej pary spoza ETYKIETY_PAR_ZNANE — sprawdza WYWOŁANIE strażnika wewnątrz zbudujPelnaMacierz, nie samo ciało strażnika", () => {
+    // Dane fikcyjne, wystarczające do przejścia pętli liczącej macierz, GDYBY
+    // strażnik nie zatrzymał wykonania wcześniej — gdyby ktoś usunął samo
+    // wywołanie `sprawdzWzgledemZnanejListy(pary, tla);` z ciała
+    // `zbudujPelnaMacierz`, ta para/tło policzyłyby się bez błędu (etykieta
+    // "Fikcyjna..." nie pasuje do żadnego wpisu w WYKLUCZENIA, więc trafia w
+    // zwykłą gałąź liczenia kontrastu), i to `expect(...).toThrow(...)` niżej
+    // by nie przeszło.
+    const paraSpozaListy = {
+      etykieta: "Fikcyjna para spoza listy — test wywołania strażnika",
+      textRgb: [0, 0, 0],
+      bgHexLubNull: null,
+      prog: 4.5,
+    };
+    const tloZnane = { nazwa: "Karta biała", rgb: [255, 255, 255] };
+    expect(() => zbudujPelnaMacierz([paraSpozaListy], [tloZnane])).toThrow(/nowa\(e\) para\(y\)/);
+  });
+});
+
+describe("wczytajProdukcyjneParyITla(): zgadza się z ETYKIETY_PAR_ZNANE/NAZWY_TEL_ZNANE (scripts/pomiar-marginesu-kontrastu.mjs)", () => {
+  it("nie rzuca dla par/teł zbudowanych PRAWDZIWĄ ścieżką produkcyjną (czyta app/globals.css, przechodzi przez realne zbudujPary/zbudujTla)", () => {
+    const { pary, tla } = wczytajProdukcyjneParyITla();
+    // Dopisanie w drzewie nowej pary w `zbudujPary` albo nowego tła w
+    // `zbudujTla` bez dopisania go też do `ETYKIETY_PAR_ZNANE`/
+    // `NAZWY_TEL_ZNANE` sprawia, że `pary`/`tla` niżej mają element, którego
+    // strażnik nie zna — ten test (oczekujący braku rzutu) idzie wtedy na
+    // czerwono, bez potrzeby uruchamiania CLI.
+    expect(() => sprawdzWzgledemZnanejListy(pary, tla)).not.toThrow();
+    expect(pary.length).toBe(ETYKIETY_PAR_ZNANE.length);
+    expect(tla.length).toBe(NAZWY_TEL_ZNANE.length);
   });
 });

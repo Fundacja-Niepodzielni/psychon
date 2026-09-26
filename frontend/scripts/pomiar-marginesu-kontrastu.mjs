@@ -118,29 +118,17 @@
 // (scripts/pomiar-kc.sh, scripts/check-lock-libc.mjs) — ten sam katalog,
 // ta sama konwencja nazywania ("pomiar-*").
 //
-// Stan dzisiejszy, do zapisania wprost: ten przyrząd NIE MA dziś żadnego
-// automatycznego wołającego. Sprawdzone poleceniem
-// `grep -rn "pomiar-marginesu-kontrastu\|pomiar:kontrast-statusow" .`
-// (uruchomionym z korzenia repo) — poza tym plikiem samym w sobie wychodzą
-// dokładnie cztery miejsca: `frontend/package.json` (definicja aliasu npm
-// `pomiar:kontrast-statusow` → `node scripts/pomiar-marginesu-kontrastu.mjs`),
-// `frontend/AUDYT-DOSTEPNOSCI.md:193` (zdanie prozy odsyłające do tego
-// polecenia) oraz `frontend/app/globals.css:84` i `frontend/app/globals.css:95`
-// (komentarze przy tokenach `--psy-success`/`--psy-info-badge`, też prozą, nie
-// kodem). Żadne z tych czterech miejsc nie jest automatycznym wołającym:
-// `package.json` tylko DEFINIUJE alias, którego trzeba użyć ręcznie
-// (`npm run pomiar:kontrast-statusow`), a pozostałe trzy to tekst dla
-// człowieka, nie instrukcja wykonywalna. Ten sam grep na katalogu `.github`
-// daje 0 dopasowań — żaden CI, żaden hook, żaden inny skrypt nie uruchamia
-// go sam z siebie, więc jego kody sterowane {0,2,3} nie są dziś przez nic
-// automatycznie czytane. Ten bieg NIE dodaje wołającego — to jest tylko
-// nazwanie zmierzonego stanu, żeby nikt nie zakładał dopełnienia, którego
-// nikt nie wyliczył.
+// Ten nagłówek celowo NIE liczy dziś miejsc/odwołań/wołających w drzewie
+// (np. "ile plików wspomina ten skrypt") prozą: taka liczba się starzeje i
+// nic w bramce jej nie odświeża ani nie pilnuje. Kto potrzebuje aktualnej
+// liczby, niech uruchomi polecenie sam, z korzenia repo, np.:
+// `grep -rln "pomiar-marginesu-kontrastu\|pomiar:kontrast-statusow" .`
 
-import { readFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { readFileSync, realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const SCIEZKA_CSS = fileURLToPath(new URL("../app/globals.css", import.meta.url));
+const SCIEZKA_TEGO_PLIKU = fileURLToPath(import.meta.url);
 
 // Patrz "KODY STEROWANE TEGO PRZYRZĄDU" w nagłówku wyżej — te dwie stałe są
 // jedynymi miejscami, w których ten plik ŚWIADOMIE wybiera kod niezerowy,
@@ -183,8 +171,21 @@ function escapujMetaznakiRegex(tekst) {
   return tekst.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Rozkłada zapis hex (`#rgb`, `#rgba`, `#rrggbb` albo `#rrggbbaa`, `#`
+ * opcjonalny) na `{r,g,b,a}`. Rzuca dla wszystkiego innego — bez tej
+ * kontroli `parseInt` na śmieciu (np. `"zzz"`) cicho daje `NaN`, a `NaN >>
+ * 16 & 255` cicho daje `0`: wynik (czarny, bez podstawy) wygląda jak
+ * prawdziwy pomiar, tylko nim nie jest.
+ */
 function hexNaRgba(hex) {
-  let h = hex.replace("#", "");
+  const bezKrzyzyka = hex.startsWith("#") ? hex.slice(1) : hex;
+  if (![3, 4, 6, 8].includes(bezKrzyzyka.length) || !/^[0-9a-fA-F]+$/.test(bezKrzyzyka)) {
+    throw new Error(
+      `"${hex}" nie jest poprawnym zapisem koloru hex (oczekiwano 3, 4, 6 albo 8 cyfr szesnastkowych, z opcjonalnym "#" na początku)`,
+    );
+  }
+  let h = bezKrzyzyka;
   if (h.length === 3 || h.length === 4) {
     h = h.split("").map((c) => c + c).join("");
   }
@@ -485,7 +486,7 @@ export function sprawdzWzgledemZnanejListy(pary, tla) {
  * pętli (każda kombinacja trafia do dokładnie jednej z dwóch list) — to
  * liczba do raportu, nie kontrola.
  */
-function zbudujPelnaMacierz(pary, tla) {
+export function zbudujPelnaMacierz(pary, tla) {
   sprawdzWzgledemZnanejListy(pary, tla);
 
   const wynik = [];
@@ -513,6 +514,25 @@ function zbudujPelnaMacierz(pary, tla) {
   const oczekiwane = pary.length * tla.length;
 
   return { wynik, wykluczone, oczekiwane };
+}
+
+/**
+ * Buduje pary i tła PRAWDZIWĄ ścieżką produkcyjną: czyta `app/globals.css`
+ * z dysku i przepuszcza go przez te same `wczytajTokeny` / `zbudujPary` /
+ * `zbudujTla`, których używa `main()`. Dla próby w drzewie: pozwala
+ * sprawdzić `sprawdzWzgledemZnanejListy`/`zbudujPelnaMacierz` na WYNIKU
+ * realnych `zbudujPary`/`zbudujTla`, nie na literałach przepisanych ręcznie
+ * do pliku testowego — dopisanie tu (w tym pliku) nowej pary albo nowego
+ * tła bez wpisania go do `ETYKIETY_PAR_ZNANE`/`NAZWY_TEL_ZNANE` psuje ten
+ * import, nie tylko uruchomienie CLI.
+ */
+export function wczytajProdukcyjneParyITla() {
+  const tekstCss = readFileSync(SCIEZKA_CSS, "utf8");
+  const { tokeny, rozmiary } = wczytajTokeny(tekstCss);
+  const rowHoverNaBieli = poznajRowHoverNaBieli(tokeny);
+  const pary = zbudujPary(tokeny, rozmiary, rowHoverNaBieli);
+  const tla = zbudujTla(tokeny, rowHoverNaBieli);
+  return { pary, tla };
 }
 
 // ---------------------------------------------------------------------------
@@ -687,14 +707,36 @@ function argWartosc(klucz) {
   return arg ? arg.slice(przedrostek.length) : null;
 }
 
-/** Wszystkie wystąpienia `--nadpisz=--psy-token=#hex` (może być kilka naraz). */
+/**
+ * Wszystkie wystąpienia `--nadpisz=--psy-token=#hex` (może być kilka naraz).
+ * Wymaga zapisu w JEDNYM argumencie argv, ze znakiem "=" oddzielającym
+ * `--nadpisz` od reszty. `--nadpisz --psy-x=#eee` (spacja zamiast "=") to
+ * DWA osobne argumenty argv — pierwszy ("--nadpisz") nie zaczyna się od
+ * `--nadpisz=`, więc bez tej kontroli filtr niżej po prostu go pomija: zero
+ * nadpisań, pełny, NIENADPISANY pomiar kończy się cicho kodem 0, jakby
+ * `--nadpisz` w ogóle nie było na linii poleceń.
+ */
 function nadpisaniaZArgv() {
   const przedrostek = "--nadpisz=";
-  return process.argv
-    .filter((a) => a.startsWith(przedrostek))
+  const podobneDoNadpisz = process.argv.filter((a) => a === "--nadpisz" || a.startsWith("--nadpisz"));
+  for (const a of podobneDoNadpisz) {
+    if (!a.startsWith(przedrostek)) {
+      console.error(
+        `NIE ZMIERZONO — --nadpisz wymaga zapisu "--nadpisz=--<token>=<wartość>" w JEDNYM argumencie (ze znakiem "="); otrzymano "${a}".`,
+      );
+      process.exit(KOD_NIE_ZMIERZONO);
+    }
+  }
+  return podobneDoNadpisz
     .map((a) => a.slice(przedrostek.length))
     .map((para) => {
       const i = para.indexOf("=");
+      if (i === -1) {
+        console.error(
+          `NIE ZMIERZONO — --nadpisz=${para}: brak drugiego "=" oddzielającego nazwę tokenu od wartości.`,
+        );
+        process.exit(KOD_NIE_ZMIERZONO);
+      }
       return [para.slice(0, i).replace(/^--/, ""), para.slice(i + 1)];
     });
 }
@@ -770,7 +812,13 @@ function main() {
       for (const x of pary) console.error(`  - ${x.etykieta}`);
       process.exit(KOD_NIE_ZMIERZONO);
     }
-    const tloRgb = hexNaRgba(tloParam);
+    let tloRgb;
+    try {
+      tloRgb = hexNaRgba(tloParam);
+    } catch (err) {
+      console.error(`NIE ZMIERZONO — --tlo: ${err.message}.`);
+      process.exit(KOD_NIE_ZMIERZONO);
+    }
     const tloOpaczne = [tloRgb.r, tloRgb.g, tloRgb.b];
     const tloZlozone =
       p.bgHexLubNull === null ? tloOpaczne : zloz(p.bgHexLubNull, tloOpaczne);
@@ -868,8 +916,59 @@ function main() {
 // zamiast dać czysty wynik jednej funkcji. CLI (npm run
 // pomiar:kontrast-statusow) ma `process.argv[1]` równe temu plikowi, więc tam
 // main() rusza dokładnie jak dotąd — ta straż nie zmienia zachowania CLI.
-const tenPlikJestUruchamiany =
-  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (tenPlikJestUruchamiany) {
+//
+// Rozstrzyga PO `fs.realpathSync` OBU stron (własnej ścieżki i
+// `process.argv[1]`), nie po porównaniu surowego `import.meta.url` z
+// `pathToFileURL(process.argv[1])`: Node rozwiązuje dowiązania/symlinki przy
+// budowaniu `import.meta.url`, ale NIE przy pozostawianiu `process.argv[1]`
+// takim, jak podano w powłoce — uruchomienie przez złącze katalogowe (np.
+// `mklink /J`) sprawiało, że te dwie wartości się różniły, `tenPlikJestUruchamiany`
+// wychodziło `false`, `main()` milczał, a proces oddawał kod 0 z zerem bajtów
+// wyjścia. Pusty pomiar to NIE jest zero, więc trzy stany, nie dwa:
+//   - realpath(argv[1]) === realpath(tego pliku) -> uruchomiony wprost, licz.
+//   - realpath(argv[1]) rozwiązuje się na INNY istniejący plik -> import
+//     (np. z testu), main() się nie odpala, ale to nie jest błąd.
+//   - realpath którejkolwiek strony nie da się ustalić (argv[1] brak, ścieżka
+//     nie istnieje, itp.) -> NIE ZMIERZONO, kod 2 z nazwaną przyczyną —
+//     nigdy ciche 0.
+function ustalTrybUruchomienia() {
+  if (process.argv[1] === undefined) {
+    return {
+      stan: "nierozstrzygalne",
+      powod: "process.argv[1] nie jest ustawiony (brak ścieżki wołającego procesu).",
+    };
+  }
+  let realTegoPliku;
+  try {
+    realTegoPliku = realpathSync(SCIEZKA_TEGO_PLIKU);
+  } catch (err) {
+    return {
+      stan: "nierozstrzygalne",
+      powod: `nie udało się rozwiązać realpath własnej ścieżki (${SCIEZKA_TEGO_PLIKU}): ${err.message}.`,
+    };
+  }
+  let realWolajacego;
+  try {
+    realWolajacego = realpathSync(process.argv[1]);
+  } catch (err) {
+    return {
+      stan: "nierozstrzygalne",
+      powod: `nie udało się rozwiązać realpath wołającego (process.argv[1]="${process.argv[1]}"): ${err.message}.`,
+    };
+  }
+  if (realWolajacego === realTegoPliku) {
+    return { stan: "ten-plik" };
+  }
+  return { stan: "inny-plik" };
+}
+
+const TRYB_URUCHOMIENIA = ustalTrybUruchomienia();
+if (TRYB_URUCHOMIENIA.stan === "nierozstrzygalne") {
+  console.error(
+    `NIE ZMIERZONO — nie udało się rozstrzygnąć, czy ten plik jest uruchamiany bezpośrednio, czy importowany: ${TRYB_URUCHOMIENIA.powod}`,
+  );
+  process.exit(KOD_NIE_ZMIERZONO);
+}
+if (TRYB_URUCHOMIENIA.stan === "ten-plik") {
   main();
 }
