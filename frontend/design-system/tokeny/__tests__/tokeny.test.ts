@@ -60,6 +60,7 @@ describe("tokeny — barwy §1.1", () => {
 
 describe("tokeny — kształt i skala §1.2", () => {
   it("promienie nazwane mają wartości z makiety", () => {
+    expect(wartosc("r-2xs", blokJasny)).toBe("6px");
     expect(wartosc("r-xs", blokJasny)).toBe("8px");
     expect(wartosc("r-sm", blokJasny)).toBe("12px");
     expect(wartosc("r-md", blokJasny)).toBe("16px");

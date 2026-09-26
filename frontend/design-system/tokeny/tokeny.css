@@ -73,6 +73,7 @@
   --space-64: 64px;
 
   /* --- Promienie poza trzema nazwanymi wyżej --- */
+  --r-2xs: 6px;
   --r-pill: 999px;
   --r-round: 50%;
   --r-check: 5px;
