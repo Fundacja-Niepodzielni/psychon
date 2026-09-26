@@ -5,21 +5,44 @@
 // śledztwa w sprawie kontrastu kolorów stanu.
 //
 // TO JEST TERAZ NAPRAWDĘ KONTROLA, NIE TYLKO POMIAR:
-//   - Kończy się kodem NIEZEROWYM, gdy którakolwiek para/tło poniżej progu
-//     nie jest jawnie zarejestrowana w ZASTANE_ODSTĘPSTWA ani w
-//     ODKRYTE_POMIAREM_TYMCZASOWE niżej.
-//   - Kończy się kodem NIEZEROWYM też wtedy, gdy wpis w którymkolwiek z tych
-//     dwóch rejestrów jest już NIEPRAWDZIWY (para się poprawiła powyżej
-//     progu) — rejestr, którego nikt nie musi utrzymywać w prawdzie, gnije
-//     w tydzień.
-//   - Kończy się kodem 0 tylko wtedy, gdy każda zmierzona para/tło jest
-//     powyżej progu ALBO jest świeżym, prawdziwym wpisem w jednym z
-//     rejestrów.
+//   - Kończy się kodem 3 (ZMIERZONE NARUSZENIE), gdy którakolwiek para/tło
+//     poniżej progu nie jest jawnie zarejestrowana w ZASTANE_ODSTĘPSTWA ani
+//     w ODKRYTE_POMIAREM_TYMCZASOWE niżej.
+//   - Kończy się kodem 3 też wtedy, gdy wpis w którymkolwiek z tych dwóch
+//     rejestrów jest już NIEPRAWDZIWY (para się poprawiła powyżej progu) —
+//     rejestr, którego nikt nie musi utrzymywać w prawdzie, gnije w tydzień.
+//   - Kończy się kodem 0 tylko wtedy, gdy pomiar się odbył I każda zmierzona
+//     para/tło jest powyżej progu ALBO jest świeżym, prawdziwym wpisem w
+//     jednym z rejestrów.
 //   - Dwa rejestry, nie jeden, i to naumyślnie: ZASTANE_ODSTĘPSTWA to
 //     świadomie zaakceptowane odstępstwa; ODKRYTE_POMIAREM_TYMCZASOWE to
 //     świeże odkrycia samego rozszerzenia pomiaru (para × tło, o której
 //     wcześniej nikt nie wiedział, bo nikt jej nie mierzył) — stan
 //     tymczasowy, nie zaakceptowany, czekający na decyzję o odcieniu.
+//
+// KODY STEROWANE TEGO PRZYRZĄDU, DOKŁADNIE TRZY — {0, 2, 3}:
+//   0 = zaliczony: pomiar się odbył i nie ma naruszeń (patrz punkty wyżej).
+//   2 = NIE ZMIERZONO, z nazwaną przyczyną w stderr. Objęte dziś kształty:
+//       plik CSS nieodczytany (`readFileSync` rzuca), blok tokenów
+//       `--psy-*` nieznaleziony w tym pliku (zero dopasowań wzorca), zbiór
+//       par do pomiaru pusty, pojedynczy token wymagany do zbudowania pary
+//       albo tła brakujący (`brak tokenu --X w globals.css`), asercja
+//       pełnego iloczynu par × teł się nie zgadza (nowa para/tło bez
+//       jawnej decyzji zmierz/wyklucz), nieznana etykieta przekazana przez
+//       `--para`, nieznaleziony token do podmiany przez `--nadpisz`, oraz
+//       (tylko przy `--self-test`) kontrola niezależna, która nie przeszła —
+//       w każdym z tych przypadków rzetelny pomiar SIĘ NIE ODBYŁ, więc nawet
+//       gdyby jakaś liczba wypadła, nie ma jej czym podeprzeć. Nieobjęte:
+//       każdy inny sposób, w jaki wejście może być zepsute, jest nienazwany
+//       tutaj dopóki nie zostanie zmierzony i dopisany do tej listy.
+//   3 = ZMIERZONE NARUSZENIE — pomiar się odbył w całości i albo znalazł
+//       parę/tło poniżej progu spoza obu rejestrów, albo wpis w którymś z
+//       rejestrów jest już nieprawdziwy; lista jest w stderr poniżej.
+// Kod spoza {0,2,3} = narzędzie nie doszło do końca; przyczyna w stderr,
+// jeżeli środowisko ją wypisało. Ten zbiór należy do środowiska
+// uruchomieniowego (sygnał, nieobsłużony wyjątek, ubicie procesu) — nie
+// jest tu wyliczany, bo żadna lista nie byłaby zupełna. Kodu 1 ten
+// przyrząd nie zwraca sam z siebie nigdy.
 //
 // Skąd biorą się liczby:
 //   - Kolory NIE są tu wpisane na sztywno — skrypt czyta je z app/globals.css
@@ -59,15 +82,18 @@
 // Użycie:
 //   node scripts/pomiar-marginesu-kontrastu.mjs
 //     — pełna macierz par × teł, ocena wobec progu i rejestru zastanych
-//     odstępstw, kod wyjścia 0/niezerowy jak opisano wyżej.
+//     odstępstw, kod wyjścia 0 albo 3 jak opisano wyżej (2, jeśli pomiar
+//     się nie odbył — patrz „KODY STEROWANE" wyżej).
 //   node scripts/pomiar-marginesu-kontrastu.mjs --self-test
 //     — jak wyżej, plus kontrola niezależna (patrz `KONTROLA_NIEZALEZNA`):
-//     kończy się kodem niezerowym, jeśli rachunek w tym pliku odbiega od
-//     wartości znanych z góry (obliczonych innym narzędziem).
+//     kończy się kodem 2 = NIE ZMIERZONO, jeśli rachunek w tym pliku
+//     odbiega od wartości znanych z góry (obliczonych innym narzędziem) —
+//     wtedy zmierzonym marginesom nie ma czego wierzyć.
 //   node scripts/pomiar-marginesu-kontrastu.mjs --para="Odznaka: sukces" --tlo=#f9f8f6
 //     — jedna, konkretna para na PODANYM realnym tle (poza macierzą główną,
-//     do doraźnego sprawdzenia „co by było, gdyby"). Nie wpływa na kod
-//     wyjścia.
+//     do doraźnego sprawdzenia „co by było, gdyby"). Przy trafionej etykiecie
+//     nie wpływa na kod wyjścia (kończy proces naturalnie, kod 0); przy
+//     nieznanej etykiecie kończy się kodem 2 = NIE ZMIERZONO.
 //
 // Umiejscowienie: obok istniejących narzędzi pomiarowych frontu
 // (scripts/pomiar-kc.sh, scripts/check-lock-libc.mjs) — ten sam katalog,
@@ -77,6 +103,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const SCIEZKA_CSS = fileURLToPath(new URL("../app/globals.css", import.meta.url));
+
+// Patrz "KODY STEROWANE TEGO PRZYRZĄDU" w nagłówku wyżej — te dwie stałe są
+// jedynymi miejscami, z których ten plik sam decyduje o kodzie niezerowym.
+const KOD_NIE_ZMIERZONO = 2;
+const KOD_NARUSZENIE = 3;
 
 // ---------------------------------------------------------------------------
 // Matematyka WCAG — identyczna z ręcznie zweryfikowanym przelicznikiem
@@ -478,7 +509,9 @@ function uruchomKontroleNiezalezna() {
     console.error(
       "\nKONTROLA NIEZALEŻNA NIE PRZESZŁA — rachunek w przyrządzie odbiega od wartości znanych z góry, niezależnie wyliczonych.",
     );
-    process.exitCode = 1;
+    // Kod wyjścia NIE jest ustawiany tutaj — decyduje o nim main() na końcu,
+    // razem z resztą wyniku (patrz `selfTestOk` tam), żeby był dokładnie
+    // jeden punkt w tym pliku, który wybiera kod procesu.
     return false;
   }
   console.log(
@@ -547,7 +580,13 @@ function nadpisaniaZArgv() {
 }
 
 function main() {
-  const tekstCssZDysku = readFileSync(SCIEZKA_CSS, "utf8");
+  let tekstCssZDysku;
+  try {
+    tekstCssZDysku = readFileSync(SCIEZKA_CSS, "utf8");
+  } catch (err) {
+    console.error(`NIE ZMIERZONO — nie udało się odczytać pliku CSS ${SCIEZKA_CSS}: ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
 
   // `--nadpisz=--psy-token=#hex` (powtarzalne) — podmiana W PAMIĘCI: liczenie
   // „co by było, gdyby" (np. inny podkład najechania wiersza) PRZEZ TEN SAM
@@ -558,8 +597,8 @@ function main() {
   for (const [nazwa, wartosc] of nadpisania) {
     const wzorzec = new RegExp(`--${nazwa}:\\s*#[0-9a-fA-F]{3,8}\\s*;`);
     if (!wzorzec.test(tekstCss)) {
-      console.error(`--nadpisz: nie znalazłem --${nazwa} do podmiany.`);
-      process.exit(2);
+      console.error(`NIE ZMIERZONO — --nadpisz: nie znalazłem --${nazwa} do podmiany.`);
+      process.exit(KOD_NIE_ZMIERZONO);
     }
     tekstCss = tekstCss.replace(wzorzec, `--${nazwa}: ${wartosc};`);
   }
@@ -570,19 +609,38 @@ function main() {
   }
 
   const { tokeny, rozmiary } = wczytajTokeny(tekstCss);
-  const rowHoverNaBieli = poznajRowHoverNaBieli(tokeny);
-  const pary = zbudujPary(tokeny, rozmiary, rowHoverNaBieli);
+  if (Object.keys(tokeny).length === 0) {
+    console.error(
+      `NIE ZMIERZONO — blok tokenów --psy-* nie został znaleziony w ${SCIEZKA_CSS} (0 dopasowań wzorca --psy-<nazwa>: #hex).`,
+    );
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+
+  let rowHoverNaBieli;
+  let pary;
+  try {
+    rowHoverNaBieli = poznajRowHoverNaBieli(tokeny);
+    pary = zbudujPary(tokeny, rozmiary, rowHoverNaBieli);
+  } catch (err) {
+    console.error(`NIE ZMIERZONO — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+  if (pary.length === 0) {
+    console.error("NIE ZMIERZONO — zbiór par do pomiaru jest pusty.");
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
 
   const paraNazwa = argWartosc("para");
   const tloParam = argWartosc("tlo");
   if (paraNazwa && tloParam) {
     // Tryb jednej pary na podanym, realnym tle — nie zastępuje macierzy
-    // głównej ani kodu wyjścia, tylko liczy dokładnie to, o co proszono.
+    // głównej ani kodu wyjścia (przy trafionej etykiecie), tylko liczy
+    // dokładnie to, o co proszono.
     const p = pary.find((x) => x.etykieta === paraNazwa);
     if (!p) {
-      console.error(`Nie znam pary "${paraNazwa}". Dostępne etykiety:`);
+      console.error(`NIE ZMIERZONO — nie znam pary "${paraNazwa}". Dostępne etykiety:`);
       for (const x of pary) console.error(`  - ${x.etykieta}`);
-      process.exit(2);
+      process.exit(KOD_NIE_ZMIERZONO);
     }
     const tloRgb = hexNaRgba(tloParam);
     const tloOpaczne = [tloRgb.r, tloRgb.g, tloRgb.b];
@@ -601,13 +659,23 @@ function main() {
   console.log(`Źródło tokenów: ${SCIEZKA_CSS}`);
   console.log(`Odczytano ${Object.keys(tokeny).length} tokenów --psy-* z globals.css.`);
 
-  const tla = zbudujTla(tokeny, rowHoverNaBieli);
+  let tla;
+  let macierz;
+  let wykluczone;
+  let oczekiwane;
+  try {
+    tla = zbudujTla(tokeny, rowHoverNaBieli);
+    ({ wynik: macierz, wykluczone, oczekiwane } = zbudujPelnaMacierz(pary, tla));
+  } catch (err) {
+    console.error(`NIE ZMIERZONO — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+
   console.log(`\nTła w zestawie (${tla.length}):`);
   for (const t of tla) {
     console.log(`  - ${t.nazwa}: ${t.opis}`);
   }
 
-  const { wynik: macierz, wykluczone, oczekiwane } = zbudujPelnaMacierz(pary, tla);
   wypiszMacierz(macierz, wykluczone, oczekiwane);
 
   const pelnyRejestr = [...ZASTANE_ODSTEPSTWA, ...ODKRYTE_POMIAREM_TYMCZASOWE];
@@ -643,9 +711,21 @@ function main() {
     }
   }
 
-  if (naruszeniaNiepokryte.length > 0 || nieaktualneWpisyRejestru.length > 0 || !selfTestOk) {
-    console.error("\nWYNIK: NIEPOWODZENIE.");
-    process.exit(1);
+  // Kontrola niezależna sprawdza samą matematykę (`kontrast()`), nie
+  // konkretne pary — jeśli nie przeszła, żadnemu marginesowi zmierzonemu
+  // wyżej (w tym naruszeniom) nie ma czego wierzyć. Dlatego ten sprawdzian
+  // ma pierwszeństwo przed listą naruszeń: NIE ZMIERZONO, nie ZMIERZONE
+  // NARUSZENIE.
+  if (!selfTestOk) {
+    console.error(
+      "\nWYNIK: NIE ZMIERZONO — kontrola niezależna (--self-test) nie przeszła (patrz BŁĄD wyżej); rachunek przyrządu odbiega od wartości znanych z góry, więc zmierzonym marginesom nie ma czego wierzyć.",
+    );
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+
+  if (naruszeniaNiepokryte.length > 0 || nieaktualneWpisyRejestru.length > 0) {
+    console.error("\nWYNIK: ZMIERZONE NARUSZENIE.");
+    process.exit(KOD_NARUSZENIE);
   }
 
   console.log("\nWYNIK: wszystkie pary/tła powyżej progu albo pokryte świeżym wpisem rejestru.");
