@@ -33,13 +33,19 @@ export default function PoProgramiePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   /**
-   * `GET /me` (`backend/routes/api/h01.php`) nie ma tu ani `role:`, ani
+   * `GET /me` (`backend/routes/api/h01.php:27`) idzie przez `auth:keycloak`
+   * — gwardię `keycloak` (`backend/config/auth.php:49-52`, driver
+   * `keycloak`), rejestrowaną `Auth::viaRequest('keycloak', ...)` w
+   * `AppServiceProvider::boot()` i realizowaną przez `KeycloakGuardResolver`
+   * (nie przez pośrednika `AuthenticateKeycloakToken` — ten stoi wyłącznie
+   * na `h03.php` i `sso.php`). Brak/zły token, unieważniona back-channel
+   * sesja, konto zablokowane/zanonimizowane — resolver zwraca `null`,
+   * Laravelowy `Authenticate` rzuca `AuthenticationException`, którą
+   * `ApiExceptionRenderer` mapuje na 401 `unauthenticated`. Token bez
+   * powiązanego konta dostaje wprost 401 `konto_niepowiazane`
+   * (`AccountNotLinkedException`). Trasa nie niesie `role:` ani
    * `access.active`, a `ProfileController::show` nie woła `authorize()` —
-   * strażnik Keycloak przy złym tokenie rzuca 401 (`AuthenticateKeycloakToken`),
-   * nie 403. `ApiExceptionRenderer` mapuje `AuthorizationException` i
-   * `AccessDeniedHttpException` na 403 dla całego API, ale nic na tej trasie
-   * dziś takiego wyjątku nie rzuca — ta gałąź jest tu obsługą zachowawczą,
-   * której zaplecze w tym drzewie nie wytwarza.
+   * 403 z odmowy roli stąd nie przyjdzie.
    */
   const [forbidden, setForbidden] = useState(false);
 
