@@ -1,0 +1,15 @@
+.tekst {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-8);
+  line-height: var(--lh-text);
+  overflow-wrap: break-word;
+}
+.lekcja {
+  line-height: var(--lh-lesson);
+  max-width: 68ch;
+}
+.pusty {
+  color: var(--muted);
+  max-width: 46ch;
+}
