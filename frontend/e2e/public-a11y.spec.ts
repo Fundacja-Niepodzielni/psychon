@@ -61,7 +61,17 @@ for (const trasa of TRASY_PUBLICZNE) {
       const naruszenia = await uruchomAxe(page);
       await dolaczNaruszeniaDoRaportu(testInfo, `${trasa} naruszenia axe`, naruszenia);
 
-      asercjaBrakPowaznychNaruszen(naruszenia);
+      // Nazwa testu mówi "bez color-contrast" — do 2026-09-26 to było
+      // nieprawdą: `asercjaBrakPowaznychNaruszen` nie filtrowała po `id`,
+      // więc ten test PADAŁ też na `color-contrast` (impact "serious"),
+      // zmierzone perturbacją. `color-contrast` ma OSOBNY test niżej, z
+      // liczbą naruszeń i listą selektorów w komunikacie — dokładniejszym
+      // niż to, co dałoby się dopisać tutaj. Stąd świadome wykluczenie: ten
+      // test ocenia WSZYSTKO OPRÓCZ kontrastu, kontrast ocenia wyłącznie
+      // test niżej. Dwa testy padające na tym samym naruszeniu nie dodają
+      // informacji, tylko szum.
+      const bezKontrastu = naruszenia.filter((n) => n.id !== "color-contrast");
+      asercjaBrakPowaznychNaruszen(bezKontrastu);
     });
 
     // Realny pomiar kontrastu w prawdziwej przeglądarce (axe-core przez

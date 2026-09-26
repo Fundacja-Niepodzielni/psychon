@@ -17,7 +17,16 @@ const UZYJ_LOKALNEGO_SERWERA = process.env.PW_WEB_SERVER === "1";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 30_000,
+  // 60 s, nie 30 s: `uruchomAxe` (`e2e/_axe.ts`) czeka na ustabilizowanie
+  // strony przed skanem axe (patrz tam), a w CI (`PW_WEB_SERVER=1`) nie ma
+  // żadnego backendu pod `NEXT_PUBLIC_API_URL` - zapytania aplikacji do
+  // niego (np. `/sso/whoami` na `/konto`) kończą się niepowodzeniem, ale nie
+  // natychmiast. Zmierzone na czystym drzewie: do ok. 9 s na trasę z takim
+  // zapytaniem, w 10 pełnych biegach pod rząd. To NIE jest próba ukrycia
+  // niestabilności retryami czy timeoutem dopasowanym pod jeden zły wynik -
+  // to realny, powtarzalny czas nieudanego połączenia w tej topologii, z
+  // zapasem, nie z docięciem pod najgorszy zmierzony przypadek.
+  timeout: 60_000,
   retries: 0,
   use: {
     baseURL: UZYJ_LOKALNEGO_SERWERA
