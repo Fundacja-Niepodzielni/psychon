@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * `EdytorTresciKursuProwadzacego.test.tsx:76` nazywał się „zapis treści
- * woła instructor-endpoint", ale mockował cały moduł `prowadzacy-kursy`
+ * Próba w `EdytorTresciKursuProwadzacego.test.tsx`, dziś
+ * „pozytyw: zapis treści przekazuje dane formularza do updateInstructorCourse…",
+ * nazywała się wcześniej „zapis treści woła instructor-endpoint", ale
+ * mockowała cały moduł `prowadzacy-kursy`
  * (`vi.mock("@/lib/api/prowadzacy-kursy")`) — dowód: podmiana wszystkich
  * 14 wystąpień `/instructor/` na `/admin/` w `lib/api/prowadzacy-kursy.ts`
  * zostawiała 6/6 zielonych, bo atrapa nigdy nie czytała prawdziwego adresu.

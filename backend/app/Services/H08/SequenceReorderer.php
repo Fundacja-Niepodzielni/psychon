@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  * ścieżki.
  *
  * `courses.sequence_order` nie ma w bazie unikalności
- * (`2026_01_01_000040_create_courses_tables.php:22` — `nullable()->index()`),
+ * (`2026_01_01_000040_create_courses_tables.php` —
+ * `unsignedSmallInteger('sequence_order')->nullable()->index()`),
  * a `CourseAccess::state()` wybiera poprzednika właśnie po tej kolumnie:
  * duplikat czyni ten wybór niedeterministycznym. Dlatego renumeracja obejmuje
  * **cały** zbiór, nie tylko przestawiane elementy, i dlatego żądanie musi być

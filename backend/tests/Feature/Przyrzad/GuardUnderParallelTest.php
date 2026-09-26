@@ -25,7 +25,8 @@ use Tests\TestCase;
  * tę samą lukę od kuchni.
  *
  * Token równoległy ustawiamy tak, jak robi to sam runner
- * (`Illuminate/Testing/Concerns/RunsInParallel.php:151` → `resolveTokenUsing`).
+ * (`Illuminate/Testing/Concerns/RunsInParallel.php` →
+ * `ParallelTesting::resolveTokenUsing(fn () => $token);`).
  *
  * ⚠ Bez `RefreshDatabase` celowo: świadek przestawia połączenie na bazę `postgres`,
  * a cecha owijająca test w transakcję nie przeżyłaby `DB::purge()`.
@@ -33,7 +34,8 @@ use Tests\TestCase;
  * `php artisan test --filter=GuardUnderParallel`
  */
 // Bez cechy bazodanowej runner rownolegly nie przelacza tej klasy na wlasna baze
-// procesu (`TestDatabases.php:56`), wiec zostaje na bazie WSPOLNEJ i sciga sie z
+// procesu (`TestDatabases.php`, `Arr::hasAny($uses, $databaseTraits)`), wiec
+// zostaje na bazie WSPOLNEJ i sciga sie z
 // sasiadami. Grupa `wspolna-baza` wypada z kroku A bramki i biegnie sekwencyjnie w B.
 // Regula pilnowana mechanicznie: `tests/Feature/Przyrzad/GrupaWspolnejBazyTest.php`.
 #[Group('wspolna-baza')]

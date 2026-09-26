@@ -7,7 +7,8 @@
  * zgloszenia i ekran nadawcy (biezaca sciezka frontu, patrz
  * `components/layout/HelpWidget.tsx`).
  *
- * Backend: `POST /help-messages` w `backend/routes/api/pomoc.php:21`.
+ * Backend: `POST /help-messages` w `backend/routes/api/pomoc.php`
+ * (`->post('/help-messages'`).
  * Atrapa `sendHelpMessage` siedzi w testach `HelpWidget`
  * (`components/layout/__tests__/help-widget-*.test.tsx`).
  */

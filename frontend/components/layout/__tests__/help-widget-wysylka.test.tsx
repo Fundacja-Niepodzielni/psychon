@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 /**
  * Wysylka zgloszenia z okna pomocy i potwierdzenie numerem zgloszenia.
  *
- * Backend: `POST /help-messages` w `backend/routes/api/pomoc.php:21`.
+ * Backend: `POST /help-messages` w `backend/routes/api/pomoc.php`
+ * (`->post('/help-messages'`).
  * `sendHelpMessage` jest tu atrapa; kod produktu
  * (`components/layout/HelpWidget.tsx`) wola prawdziwa trase.
  *

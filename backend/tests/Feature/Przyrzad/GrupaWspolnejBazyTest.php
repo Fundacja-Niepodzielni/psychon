@@ -20,7 +20,7 @@ use Tests\TestCase;
  *
  * REGUŁA. Runner równoległy przełącza na własną bazę procesu WYŁĄCZNIE klasy z cechą
  * bazodanową; cytat ze źródła (własny `grep -n`):
- *   `vendor/laravel/framework/src/Illuminate/Testing/Concerns/TestDatabases.php:56`
+ *   `vendor/laravel/framework/src/Illuminate/Testing/Concerns/TestDatabases.php`
  *     → `if (Arr::hasAny($uses, $databaseTraits) && ! ParallelTesting::option('without_databases'))`
  * Klasa BEZ takiej cechy zostaje więc na bazie WSPÓLNEJ — razem ze wszystkimi innymi
  * takimi klasami, w sześciu procesach naraz. Wtedy nie mierzy już swojego niezmiennika,

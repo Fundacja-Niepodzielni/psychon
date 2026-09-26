@@ -229,7 +229,8 @@ export default function ReportView() {
       {report && report.people.length === 0 && (
         <h2 className="text-h4 font-bold text-ink">Brak osób do zestawienia.</h2>
       )}
-      {/* Zdanie zgodne z warunkiem zapytania w ReportSummary.php:71-72 —
+      {/* Zdanie zgodne z warunkiem zapytania w ReportSummary.php
+          (`whereIn('role', ['volunteer', 'student'])`) —
           lista obejmuje wszystkie konta wolontariuszy i studentów, bez
           warunku ukończenia programu i bez filtra edycji. */}
       <Table

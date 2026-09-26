@@ -21,7 +21,8 @@ final class AllowedTestDatabasesTest extends TestCase
     public function test_przebieg_sekwencyjny_dopuszcza_wylacznie_deklaracje(): void
     {
         // `ParallelTesting::token()` zwraca `false` poza przebiegiem równoległym
-        // (`Illuminate/Testing/ParallelTesting.php:297`), a wtedy żadna postać
+        // (`Illuminate/Testing/ParallelTesting.php`, `($_SERVER['TEST_TOKEN'] ?? false)`),
+        // a wtedy żadna postać
         // per proces nie ma prawa być dopuszczona.
         $this->assertSame(
             ['niepodzielni_testing'],

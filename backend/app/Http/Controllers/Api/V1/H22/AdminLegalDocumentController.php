@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 
 /**
  * Pakiet H22 · Dokumenty prawne — administracja (rola: matryca uprawnień,
- * wiersz „Panel: CMS kursów i lekcji" — docs/system/03-role-i-uprawnienia.md:49
+ * wiersz „Panel: CMS kursów i lekcji" — docs/system/03-role-i-uprawnienia.md
  * — najbliższy odpowiednik dla zarządzania treścią; ta sama bramka co inne
  * panele CMS, `role:project_manager,super_admin`,
  * backend/app/Http/Middleware/EnsureRole.php).

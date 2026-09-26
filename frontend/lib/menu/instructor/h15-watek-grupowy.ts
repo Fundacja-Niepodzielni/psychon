@@ -9,7 +9,8 @@ import type { MenuEntry } from "../types";
  * jest tu wołane (inaczej niż w panelu uczestnika, dzielonym przez kilka
  * ról). Ta sama zasada („wpis tylko dla ról, którym backend odda
  * dane") jest więc egzekwowany na poziomie layoutu, nie pojedynczego wpisu:
- * `ThreadController.php:56-57` — tylko rola `instructor` dostaje własny
+ * `ThreadController.php` (`if (in_array('instructor', $roles, true))` →
+ * `$provisioner->ensureGroup($user)`) — tylko rola `instructor` dostaje własny
  * wątek grupowy z `GET /threads`.
  */
 const entry: MenuEntry = {
