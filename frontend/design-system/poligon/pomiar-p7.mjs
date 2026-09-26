@@ -2,8 +2,10 @@
 // Otwiera lokalny poligon (statyczny build atomów) i mierzy realne
 // prostokąty elementów klikalnych przy 412 i 1440 px, w obu motywach.
 import { chromium } from "@playwright/test";
+import { OCZEKIWANE_CELE } from "./cele-oczekiwane.mjs";
 
 const URL = "http://127.0.0.1:4173/";
+const PROG_PX = 44; // obie strony prostokąta — patrz filtr `ponizejProgu` niżej
 const VIEWPORTY = [
   { nazwa: "412", width: 412, height: 900 },
   { nazwa: "1440", width: 1440, height: 900 },
@@ -48,14 +50,32 @@ await browser.close();
 
 console.log(JSON.stringify(wyniki, null, 2));
 
-// Pomiar OCZEKIWANY liczy się z macierzy (cele x motywy x viewporty), nie z
-// tego, ile faktycznie udało się zmierzyć — inaczej element, który w ogóle
-// się nie renderuje (display:none, zły selektor), po prostu znika z próby
-// zamiast ją zaczerwienić.
-const oczekiwanePomiarow = CELE.length * MOTYWY.length * VIEWPORTY.length;
+// Pomiar OCZEKIWANY liczy się z rejestru NIEZALEŻNEGO (cele-oczekiwane.mjs),
+// nie z `CELE.length` tego pliku — inaczej usunięcie wpisu z `CELE` obniża
+// oczekiwaną liczbę razem z wykonaną i próba wychodzi zielona mimo skróconego
+// pokrycia (zmierzone: `OCZEKIWANE 36 / WYKONANE 36` po usunięciu wpisu, gdy
+// liczono z tej samej tablicy). Element, który w ogóle się nie renderuje
+// (display:none, zły selektor), nadal ma po prostu zniknąć z `wyniki`, więc
+// `wykonanePomiarow` porównujemy z tym niezależnym rejestrem, nie z `CELE`.
+const oczekiwanePomiarow = OCZEKIWANE_CELE.length * MOTYWY.length * VIEWPORTY.length;
 const brakujace = wyniki.filter((w) => w.wysokosc === null || w.szerokosc === null);
 const wykonanePomiarow = wyniki.length - brakujace.length;
-const ponizej44 = wyniki.filter((w) => w.wysokosc !== null && w.wysokosc < 44);
+
+// Rozjazd między rejestrem niezależnym i tablicą `CELE` samego tego pliku —
+// nazwany, nie tylko policzony, żeby dało się od razu wiedzieć, czego brakuje
+// i w którym pliku to dopisać.
+const nazwyWCELE = new Set(CELE.map((cel) => cel.nazwa));
+const nazwyWRejestrze = new Set(OCZEKIWANE_CELE);
+const brakujaceWCELE = OCZEKIWANE_CELE.filter((nazwa) => !nazwyWCELE.has(nazwa));
+const nadmiaroweWCELE = [...nazwyWCELE].filter((nazwa) => !nazwyWRejestrze.has(nazwa));
+
+// Bramka 44px porównuje OBA wymiary, nie tylko wysokość — cel wąski (np.
+// 20px szerokości) przy poprawnej wysokości jest tak samo niedotykalny jak
+// cel niski. Wcześniej skrypt zbierał `szerokosc`, drukował ją w JSON i nigdy
+// z niczym nie porównywał — 20px szerokości przy 44px wysokości dawało exit 0.
+const ponizejProgu = wyniki.filter(
+  (w) => (w.wysokosc !== null && w.wysokosc < PROG_PX) || (w.szerokosc !== null && w.szerokosc < PROG_PX),
+);
 
 console.log(`\nOCZEKIWANE POMIAROW: ${oczekiwanePomiarow}`);
 console.log(`WYKONANE POMIAROW: ${wykonanePomiarow}`);
@@ -65,15 +85,32 @@ if (brakujace.length > 0) {
     console.log(`  BRAK: ${b.element} (${b.motyw}, ${b.viewport}px) — boundingBox() zwrocil null`);
   }
 }
-console.log(`PONIZEJ 44px WYSOKOSCI: ${ponizej44.length}`);
-if (ponizej44.length > 0) {
-  console.log(JSON.stringify(ponizej44, null, 2));
+if (brakujaceWCELE.length > 0) {
+  console.log(`CELE BRAKUJACE WZGLEDEM REJESTRU NIEZALEZNEGO (cele-oczekiwane.mjs): ${brakujaceWCELE.length}`);
+  for (const nazwa of brakujaceWCELE) {
+    console.log(`  BRAK W CELE: "${nazwa}" jest w cele-oczekiwane.mjs, nie ma go w tablicy CELE tego pliku.`);
+  }
+}
+if (nadmiaroweWCELE.length > 0) {
+  console.log(`CELE NADMIAROWE WZGLEDEM REJESTRU NIEZALEZNEGO: ${nadmiaroweWCELE.length}`);
+  for (const nazwa of nadmiaroweWCELE) {
+    console.log(`  BRAK W REJESTRZE: "${nazwa}" jest w tablicy CELE, nie ma go w cele-oczekiwane.mjs.`);
+  }
+}
+console.log(`PONIZEJ ${PROG_PX}px (WYSOKOSC LUB SZEROKOSC): ${ponizejProgu.length}`);
+if (ponizejProgu.length > 0) {
+  console.log(JSON.stringify(ponizejProgu, null, 2));
 }
 
-const zawiodl = ponizej44.length > 0 || brakujace.length > 0 || wykonanePomiarow !== oczekiwanePomiarow;
+const zawiodl =
+  ponizejProgu.length > 0 ||
+  brakujace.length > 0 ||
+  wykonanePomiarow !== oczekiwanePomiarow ||
+  brakujaceWCELE.length > 0 ||
+  nadmiaroweWCELE.length > 0;
 if (zawiodl) {
   console.error(
-    `POMIAR P-7 NIEUDANY: ${ponizej44.length} ponizej 44px, ${brakujace.length} brakujacych z ${oczekiwanePomiarow} oczekiwanych`,
+    `POMIAR P-7 NIEUDANY: ${ponizejProgu.length} ponizej ${PROG_PX}px, ${brakujace.length} brakujacych pomiarow z ${oczekiwanePomiarow} oczekiwanych, ${brakujaceWCELE.length} celow brakujacych w CELE, ${nadmiaroweWCELE.length} celow nadmiarowych w CELE`,
   );
 }
 process.exit(zawiodl ? 1 : 0);

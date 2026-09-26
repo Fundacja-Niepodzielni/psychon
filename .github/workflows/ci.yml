@@ -158,6 +158,18 @@ jobs:
         run: npm run lint
       - name: Testy
         run: npm test
+      # Przegladarka dla poligonu pomiarowego P-7 nizej. Bez tego kroku
+      # `npx playwright` w wolajacym nie ma czym zmierzyc celow dotyku -
+      # instalacja jest wiec czescia tego samego zestawu, nie osobnym zadaniem.
+      - name: Przeglądarka do pomiaru P-7 (Playwright)
+        run: npx playwright install --with-deps chromium
+      # Zaczerwienienie tego kroku zatrzymuje CALY zestaw `frontend`, nie
+      # tylko sam pomiar-p7.mjs - to jest jedyny cel tego wpisu (patrz
+      # scripts/uruchom-pomiar-p7.mjs i design-system/poligon/pomiar-p7.mjs).
+      # Przedtem `grep -rl "pomiar-p7"` po calym repo dawal 0 trafien poza
+      # samym plikiem - przyrzad istnial, ale nic go nie wolalo.
+      - name: Pomiar celu dotyku P-7 (poligon atomów)
+        run: npm run pomiar:p7
       - name: Build
         run: npm run build
         env:

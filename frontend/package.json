@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "pomiar:kontrast-statusow": "node scripts/pomiar-marginesu-kontrastu.mjs"
+    "pomiar:kontrast-statusow": "node scripts/pomiar-marginesu-kontrastu.mjs",
+    "pomiar:p7": "node scripts/uruchom-pomiar-p7.mjs"
   },
   "dependencies": {
     "lucide-react": "1.47.0",
