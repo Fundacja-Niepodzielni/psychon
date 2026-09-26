@@ -35,8 +35,9 @@ use App\Models\User;
  * Związanie linku CDN z konkretną osobą: referencyjna funkcja
  * `sign_bcdn_url()` (plik jw.) domyślnie wciąga KAŻDY parametr zapytania z
  * podpisywanego URL-a do materiału podpisu — `$parameters = $query_params;`
- * (`url_signing.php:69`), potem `ksort($parameters)` (`:76`) i dopiero
- * posortowany zbiór trafia do wiadomości HMAC (`:94`). Dopisanie własnego
+ * (`url_signing.php`), potem `ksort($parameters);` i dopiero posortowany
+ * zbiór trafia do wiadomości HMAC
+ * (`$message = $signature_path . $expires . $ip_bytes . $signing_data;`). Dopisanie własnego
  * parametru do URL-a zmienia więc sam podpis, nie tylko treść linku — stąd
  * `viewer` niżej: skrót nieodwracalny wobec surowego ID (HMAC z tym samym
  * kluczem bezpieczeństwa co reszta podpisu), nigdy identyfikator ani e-mail

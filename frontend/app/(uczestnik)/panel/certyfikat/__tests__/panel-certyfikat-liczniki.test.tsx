@@ -6,7 +6,8 @@ import { render, screen, waitFor } from "@testing-library/react";
  * (1) każda liczba, którą API już zwraca osobno (internship, supervision),
  *     renderuje się jako osobny licznik, a brakujące pole pokazuje „brak
  *     danych", nigdy fałszywe 0 — `courses` nadal scala etapy z testami po
- *     stronie API (backend/app/Support/H13/CertificateConditions.php:29-43,
+ *     stronie API (backend/app/Support/H13/CertificateConditions.php,
+ *     `'done' => $progress['courses_done']`,
  *     ProgressAggregator.php — jedno pole `courses_done`, bez zmian);
  * (1a) `passed_tests_count` — osobna liczba zaliczonych testów,
  *     dodatkowe pole odpowiedzi API; brak/null pokazuje „brak danych" (ten

@@ -6,7 +6,8 @@ import userEvent from "@testing-library/user-event";
  * Świadek zakładki wzoru dokumentu (`DocumentTemplateTab`), użytej trzykrotnie
  * na ekranie `/admin/wzory-dokumentow` — raz na typ wzoru (`agreement`,
  * `attendance_certificate`, `certificate`). Backend:
- * `GET/PUT /document-templates/{type}` w `backend/routes/api/document_templates.php:26-27`.
+ * `GET/PUT /document-templates/{type}` w `backend/routes/api/document_templates.php`
+ * (`Route::get('/document-templates/{type}'`, `Route::put('/document-templates/{type}'`).
  * Atrapa odpowiedzi API siedzi tutaj, w próbach, nie w kodzie ekranu.
  */
 

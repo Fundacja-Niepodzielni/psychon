@@ -40,24 +40,24 @@ const PAKIETY: Record<string, MenuEntry> = {
  * trasy backendu, którą czyta/wywołuje dany ekran.
  */
 const OCZEKIWANE_ROLE: Record<string, Role[]> = {
-  // backend/routes/api/h01.php:24-25 — grupa `auth:keycloak`, bez `role:` → GET /me
+  // backend/routes/api/h01.php — grupa `Route::middleware('auth:keycloak')->group(`, bez `role:` → GET /me
   "/panel/po-programie": ["volunteer", "student"],
-  // backend/routes/api/h01.php:24-26 — grupa `auth:keycloak`, bez `role:` → GET/PATCH /me
+  // backend/routes/api/h01.php — grupa `Route::middleware('auth:keycloak')->group(`, bez `role:` → GET/PATCH /me
   "/panel/profil": ["volunteer", "student"],
-  // backend/routes/api/h05.php:22-23 — grupa ['auth:keycloak','access.active'], bez `role:` → GET /courses
+  // backend/routes/api/h05.php — grupa `Route::middleware(['auth:keycloak', 'access.active'])->group(`, bez `role:` → GET /courses
   "/panel/kursy": ["volunteer", "student"],
-  // backend/routes/api/h11.php:25 — `role:volunteer` → /internship/entries
+  // backend/routes/api/h11.php — `role:volunteer` → /internship/entries
   "/panel/staz": ["volunteer"],
-  // backend/routes/api/h12.php:25 — `role:volunteer` → /supervision/slots
+  // backend/routes/api/h12.php — `role:volunteer` → /supervision/slots
   "/panel/superwizja": ["volunteer"],
-  // backend/routes/api/h13.php:26 — `role:volunteer` → /certificate/*
+  // backend/routes/api/h13.php — `role:volunteer` → /certificate/*
   "/panel/certyfikat": ["volunteer"],
-  // backend/routes/api/h14.php:21-22 — grupa ['auth:keycloak','access.active'], bez `role:` → GET /documents
+  // backend/routes/api/h14.php — grupa `Route::middleware(['auth:keycloak', 'access.active'])->group(`, bez `role:` → GET /documents
   "/panel/dokumenty": ["volunteer", "student"],
-  // backend/routes/api/h15.php:25 — `role:volunteer` → /psychologist-profile
+  // backend/routes/api/h15.php — `role:volunteer` → /psychologist-profile
   "/panel/profil-psychologa": ["volunteer"],
-  // backend/routes/api/h21.php:24-25 — grupa `auth:keycloak`, bez `role:` → GET /onboarding
-  // (`role:super_admin,project_manager` na h21.php:27 dotyczy tylko PATCH /admin/onboarding)
+  // backend/routes/api/h21.php — grupa `Route::middleware('auth:keycloak')->group(`, bez `role:` → GET /onboarding
+  // (`role:super_admin,project_manager` w h21.php dotyczy tylko PATCH /admin/onboarding)
   "/panel/start": ["volunteer", "student"],
 };
 

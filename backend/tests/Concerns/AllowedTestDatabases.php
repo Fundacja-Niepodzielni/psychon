@@ -10,12 +10,12 @@ use RuntimeException;
  * Pod `--parallel` każdy proces dostaje własną bazę: runner dokleja do nazwy
  * przyrostek, który sam generuje. Format jest odczytany ze źródła frameworka,
  * nie zgadnięty:
- *   `vendor/laravel/framework/src/Illuminate/Testing/Concerns/TestDatabases.php:208`
+ *   `vendor/laravel/framework/src/Illuminate/Testing/Concerns/TestDatabases.php`
  *     → `return "{$database}_test_{$token}";`
- *   `vendor/laravel/framework/src/Illuminate/Testing/ParallelTesting.php:297`
- *     → `token()` (albo `$_SERVER['TEST_TOKEN']`, albo resolver runnera)
- *   `vendor/laravel/framework/src/Illuminate/Testing/Concerns/RunsInParallel.php:149-151`
- *     → przydział tokenów 1..N w procesie nadrzędnym
+ *   `vendor/laravel/framework/src/Illuminate/Testing/ParallelTesting.php`
+ *     → `token()` (albo `($_SERVER['TEST_TOKEN'] ?? false)`, albo resolver runnera)
+ *   `vendor/laravel/framework/src/Illuminate/Testing/Concerns/RunsInParallel.php`
+ *     → `Collection::range(1, $processes)` — przydział tokenów 1..N w procesie nadrzędnym
  *
  * DLACZEGO WYPROWADZENIE, A NIE DRUGA LISTA NAZW — kryterium: jedno źródło prawdy.
  * Lista dopisana obok deklaracji byłaby DRUGIM źródłem prawdy: w dniu, w którym
@@ -31,7 +31,7 @@ use RuntimeException;
  */
 final class AllowedTestDatabases
 {
-    /** Przyrostek runnera — cytat z `TestDatabases.php:208`, nie wynalazek strażnika. */
+    /** Przyrostek runnera — cytat z `TestDatabases.php` (wyżej), nie wynalazek strażnika. */
     private const PRZYROSTEK = '_test_';
 
     /**

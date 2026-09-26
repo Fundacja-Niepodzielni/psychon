@@ -2,7 +2,7 @@ import type { MenuEntry } from "../types";
 
 /**
  * Pakiet H12 — terminy superwizji uczestniczki. Superwizja przysługuje
- * wyłącznie wolontariuszom (backend/routes/api/h12.php:25 —
+ * wyłącznie wolontariuszom (backend/routes/api/h12.php —
  * `role:volunteer` na `/supervision/slots`); inne role dostają 403 z API,
  * więc wpis pokazujemy tylko im.
  */

@@ -43,7 +43,8 @@ final class ReportSummary
      * etapów-kursów `pathStages` we froncie). Słownik NIE jest nowym
      * wymysłem: to kolejność czterech warunków certyfikatu z
      * `CertificateConditions` (`courses` → `internship` → `supervision`
-     * → `workshop`, plik `Support/H13/CertificateConditions.php:36-63`) plus
+     * → `workshop`, plik `Support/H13/CertificateConditions.php`, tablica
+     * `$this->conditions = [`) plus
      * dwa dalsze stany po spełnieniu wszystkich czterech — „gotowa" i
      * „certyfikat" (decyzja właściciela z 23.09.2026, patrz `stage()`).
      * Etap to wartość punktowa (aktualny stan `ProgressAggregator::for()`),
@@ -260,7 +261,8 @@ final class ReportSummary
                     // Osobne pole, nie doklejone do `stage`/`stage_label`
                     // (kryterium ★1) — `ProgressAggregator::passedTestsCount()`,
                     // to samo źródło co `passed_tests_count` karty warunków
-                    // certyfikatu (`Support/H13/CertificateConditions.php:31,115`).
+                    // certyfikatu (`Support/H13/CertificateConditions.php`,
+                    // `'passed_tests_count' => $this->passedTestsCount`).
                     // Nazwa pola `tests_passed` (nie `passed_tests_count`) —
                     // decyzja backendu, NIE dopasowanie do frontu: realny
                     // kontrakt (`frontend/lib/api/h20.ts`, `ReportPersonRow`)

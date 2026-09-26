@@ -29,7 +29,8 @@ export function fetchAdminCertificates(
 /**
  * Unieważnienie certyfikatu z powodem — jedyna trasa w H13, która dotąd nie
  * miała odbiorcy w interfejsie („administracja
- * unieważnia certyfikat z powodem"; `backend/routes/api/h13.php:37`).
+ * unieważnia certyfikat z powodem"; `backend/routes/api/h13.php`,
+ * `/admin/certificates/{certificate}/revoke`).
  * Rola sprawdzana middlewarem trasy (`role:project_manager,super_admin`) —
  * ten sam warunek, którym `RequireRole` osłania cały panel `/admin`.
  */

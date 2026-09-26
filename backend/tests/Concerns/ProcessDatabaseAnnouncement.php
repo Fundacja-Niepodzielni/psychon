@@ -18,10 +18,10 @@ use Throwable;
  * Przyrząd, którego nie widać w logu, przestaje być przyrządem — zostaje wiara.
  *
  * Dlatego ogłoszenie idzie z procesu NADRZĘDNEGO, przez `ParallelTesting::setUpProcess()`.
- * Cytaty ze źródła frameworka (własny `grep -n`, nie przepisane):
- *   `Illuminate/Testing/Concerns/RunsInParallel.php:112-114` → `forEachProcess(fn () => ParallelTesting::callSetUpProcessCallbacks())`
- *   `Illuminate/Testing/Concerns/RunsInParallel.php:149-151` → pętla po tokenach 1..N i `resolveTokenUsing`
- *   `Illuminate/Testing/ParallelTesting.php:176`            → `callSetUpProcessCallbacks()` (tylko pod `--parallel`)
+ * Cytaty ze źródła frameworka (dosłowna treść, nie numery wierszy):
+ *   `Illuminate/Testing/Concerns/RunsInParallel.php` → `ParallelTesting::callSetUpProcessCallbacks();` wewnątrz `forEachProcess(...)`
+ *   `Illuminate/Testing/Concerns/RunsInParallel.php` → pętla po tokenach 1..N i `ParallelTesting::resolveTokenUsing(fn () => $token);`
+ *   `Illuminate/Testing/ParallelTesting.php`         → `public function callSetUpProcessCallbacks()` (tylko pod `--parallel`)
  * Efekt: tyle linii `[PRZYRZĄD]`, ile procesów, każda z INNĄ nazwą bazy.
  *
  * Nazwa jest MIERZONA, nie wypisana z konfiguracji: łączymy się do bazy procesu
@@ -46,7 +46,8 @@ final class ProcessDatabaseAnnouncement
 
         if ($zmierzona === null) {
             // Baza procesu jeszcze nie istnieje: runner tworzy ją dopiero przy PIERWSZYM
-            // teście w workerze (`TestDatabases.php:94-113`), a ogłoszenie ma stać w logu
+            // teście w workerze (`TestDatabases.php`, `Schema::createDatabase($testDatabase);`),
+            // a ogłoszenie ma stać w logu
             // wcześniej. Tworzymy więc dokładnie to samo, co i tak powstanie za chwilę —
             // pusta baza, którą `RefreshDatabase` zaraz zmigruje. Bez tego pierwszy przebieg
             // na świeżym stosie miałby przyrząd czerwony, mimo że kod nic nie zawinił —

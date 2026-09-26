@@ -2,7 +2,7 @@ import type { MenuEntry } from "../types";
 
 /**
  * Wpis pakietu H14 (dokumenty generowane z profilu). `GET /documents`
- * (backend/routes/api/h14.php:21-22) bez `role:`, więc dostępny dla obu
+ * (backend/routes/api/h14.php, `Route::get('/documents'`) bez `role:`, więc dostępny dla obu
  * ról uczestniczących.
  */
 const entry: MenuEntry = {
