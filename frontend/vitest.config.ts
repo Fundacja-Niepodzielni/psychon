@@ -27,6 +27,18 @@ export default defineConfig({
     // nie znalazł, wygląda dokładnie tak samo jak runner, w którym wszystko przeszło.
     passWithNoTests: false,
     setupFiles: ["./__tests__/setup.ts"],
+    // Reporter i katalog dopiete pod `sonar.javascript.lcov.reportPaths` w
+    // `sonar-project.properties` (frontend/coverage/lcov.info). Provider "v8"
+    // czyta pokrycie z silnika V8 bez instrumentacji zrodel (w odroznieniu od
+    // "istanbul"), stad brak zauwazalnego spowolnienia testow innego niz sam
+    // zbior danych po biegu - zmierzone lokalnie: 33,4s bez `--coverage`,
+    // 49,5s z nim (+16,1s / +48%, patrz `ci.yml`, krok "Testy" frontu).
+    coverage: {
+      provider: "v8",
+      reportsDirectory: "coverage",
+      reporter: ["text-summary", "lcov"],
+      include: ["app/**", "components/**", "lib/**"],
+    },
   },
   resolve: {
     alias: {
