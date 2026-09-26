@@ -24,6 +24,9 @@ use Illuminate\Support\Str;
 
 class PsychologistProfileController extends Controller
 {
+    /** Limit załączników jednego wniosku (przegląd ASVS, wiersz V12.1.3). */
+    private const int MAX_DOCUMENTS = 10;
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -130,6 +133,12 @@ class PsychologistProfileController extends Controller
             $this->assertEditable($profile);
 
             $profile ??= PsychologistProfile::create(['user_id' => $user->id, 'status' => 'draft']);
+
+            if ($profile->documents()->count() >= self::MAX_DOCUMENTS) {
+                throw new ApiException(422, 'validation_failed', 'Popraw zaznaczone pola.', errors: [
+                    'file' => ['Wniosek może mieć najwyżej '.self::MAX_DOCUMENTS.' załączników.'],
+                ]);
+            }
 
             $path = $this->storeEncrypted($request->file('file'), "profile-documents/{$profile->id}");
 

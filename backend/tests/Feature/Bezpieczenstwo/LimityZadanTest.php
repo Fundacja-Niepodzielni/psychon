@@ -2,56 +2,65 @@
 
 namespace Tests\Feature\Bezpieczenstwo;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Tests\Concerns\ActsAsRole;
+use Illuminate\Testing\TestResponse;
+use Tests\Concerns\WithProfileDocumentEncryptionKey;
 use Tests\TestCase;
 
 /**
- * Próby luk z przeglądu ASVS L2 (`docs/bezpieczenstwo/przeglad-asvs-dane.md`),
+ * Próby z przeglądu ASVS L2 (`docs/bezpieczenstwo/przeglad-asvs-dane.md`),
  * wiersz V8.1.4.
  *
- * Limit żądań mają tylko trzy trasy (`routes/api/sso.php`, `routes/api/h03.php`,
- * `routes/api/h01.php`). Publiczna weryfikacja certyfikatu i wgrywanie plików
- * przyjmują dowolnie wiele żądań.
+ * Pilnowany warunek: `throttle:60,1` na trasach `verify/*`
+ * (`routes/api/h13.php`) i `throttle:20,1` na wgrywaniu załączników profilu
+ * (`routes/api/h15.php`).
  */
 class LimityZadanTest extends TestCase
 {
-    use ActsAsRole;
     use RefreshDatabase;
-
-    private const string DOKUMENT = 'docs/bezpieczenstwo/przeglad-asvs-dane.md';
+    use WithProfileDocumentEncryptionKey;
 
     public function test_publiczna_weryfikacja_certyfikatu_ma_limit_zadan(): void
     {
-        $this->markTestIncomplete(self::DOKUMENT.', wiersz V8.1.4: publiczna weryfikacja certyfikatu nie ma limitu żądań.');
-
-        $statusy = [];
-
-        for ($i = 0; $i < 120; $i++) {
-            $statusy[] = $this->getJson('/api/v1/verify/NP-2026-'.$i)->status();
+        for ($i = 1; $i <= 60; $i++) {
+            $this->assertNotSame(
+                429,
+                $this->getJson('/api/v1/verify/NP-2026-'.$i)->status(),
+                "Żądanie {$i} z 60 dozwolonych zostało zablokowane.",
+            );
         }
 
-        $this->assertContains(429, $statusy);
+        $this->getJson('/api/v1/verify/NP-2026-61')
+            ->assertStatus(429)
+            ->assertJsonPath('error.status', 429);
     }
 
     public function test_wgrywanie_zalacznikow_ma_limit_zadan(): void
     {
-        $this->markTestIncomplete(self::DOKUMENT.', wiersz V8.1.4: wgrywanie załączników profilu nie ma limitu żądań.');
-
         Storage::fake('local');
-        $this->actingAsRole('volunteer');
+        $this->useFreshProfileDocumentEncryptionKey();
+        $absolwent = User::factory()->create(['role' => 'volunteer', 'program_completed_at' => now()->subDay()]);
+        $this->actingAs($absolwent, 'keycloak');
 
-        $statusy = [];
-
-        for ($i = 0; $i < 60; $i++) {
-            $statusy[] = $this->post('/api/v1/psychologist-profile/documents', [
-                'type' => 'inne',
-                'file' => UploadedFile::fake()->createWithContent("plik-{$i}.pdf", '%PDF-1.4 próba'),
-            ], ['Accept' => 'application/json'])->status();
+        for ($i = 1; $i <= 20; $i++) {
+            $this->assertNotSame(
+                429,
+                $this->wgraj($i)->status(),
+                "Wgranie {$i} z 20 dozwolonych zostało zablokowane.",
+            );
         }
 
-        $this->assertContains(429, $statusy);
+        $this->wgraj(21)->assertStatus(429);
+    }
+
+    private function wgraj(int $numer): TestResponse
+    {
+        return $this->postJson('/api/v1/psychologist-profile/documents', [
+            'type' => 'inne',
+            'file' => UploadedFile::fake()->createWithContent("plik-{$numer}.pdf", '%PDF-1.4 próba'),
+        ]);
     }
 }
