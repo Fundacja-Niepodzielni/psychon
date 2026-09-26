@@ -1,0 +1,22 @@
+# Wzorce tekstowe danych probnych/zastepczych.
+#
+# Dopasowanie idzie na TEKSCIE zrzutu "pg_dump --data-only" (kazda wartosc
+# w kazdej kolumnie kazdej wypisanej relacji, jako string) - nie na typie
+# zadeklarowanym w schemacie. Ten plik nie twierdzi nic o typach kolumn.
+#
+# Format: jeden wzorzec (wyrazenie regularne Perla, dopasowanie
+# bez rozroznienia wielkosci liter) na linie. Puste linie i linie
+# zaczynajace sie od "#" sa pomijane. Wzorzec jest testowany na CALEJ
+# wartosci pola (przeciecie z dowolnym fragmentem wystarcza - "search",
+# nie "match calosci").
+#
+# Domeny powszechnie uzywane do adresow zastepczych/probnych:
+@example\.(com|org|net|pl)
+@demo\.pl
+@test\.(pl|com)
+#
+# Znacznik wlasny, celowo NIE wygladajacy jak adres - dowod, ze wzorzec
+# nie jest martwy (martwy wzorzec nie moze zdac egzaminu z nietrafiania):
+# ten ciag jest wstawiony w fixtures/dane-probne.sql i MUSI zostac znaleziony
+# w kazdym przebiegu na "brudnym" zrzucie.
+ZNACZNIK-PROBNY-KONTROLA-DODATNIA
