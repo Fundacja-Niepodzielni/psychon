@@ -55,20 +55,34 @@
 #                           PER WYWOLANIE lowrite. Wolajacy (kontrola-zrzutu.sh)
 #                           PODNOSI stan do 3, gdy DUZY_OBIEKT_TRAFIENIA>0.
 #   DUZY_OBIEKT_WIELOKROTNY=<n> - liczba ROZNYCH duzych obiektow, ktorych
-#                           tresc zostala zapisana WIECEJ NIZ jednym kolejnym
-#                           wywolaniem lowrite (tresc dluzsza niz jeden kawalek
-#                           - zmierzone empirycznie na postgres:17: kawalek ma
+#                           tresc zostala zapisana WIECEJ NIZ jednym wywolaniem
+#                           lowrite W TYM SAMYM NAWIASIE "lo_open(...)" ...
+#                           "lo_close(...)" (tresc dluzsza niz jeden kawalek -
+#                           zmierzone empirycznie na postgres:17: kawalek ma
 #                           16384 B, nie 2048 B, jak zakladal wczesniejszy
-#                           komentarz w tym miejscu). Kazde wywolanie jest
-#                           dekodowane OSOBNO (patrz DUZY_OBIEKT_TRAFIENIA) -
-#                           wzorzec rozdzielony DOKLADNIE na granicy dwoch
-#                           takich wywolan NIE JEST wykryty przez zadne z nich
-#                           z osobna. Ten licznik istnieje, zeby ta luka nie
-#                           byla cicha: wolajacy (kontrola-zrzutu.sh) PODNOSI
-#                           stan do 2 (NIE ZMIERZONO), gdy
-#                           DUZY_OBIEKT_WIELOKROTNY>0 i zadne inne kryterium
-#                           nie juz dalo 3 - obecnosc wielokrotnego zapisu
-#                           znaczy "nie wiem", nigdy cicho "0".
+#                           komentarz w tym miejscu). Przynaleznosc wywolan
+#                           lowrite do JEDNEGO obiektu jest liczona PO NAWIASIE
+#                           lo_open/lo_close, NIE po sasiedztwie linii w pliku -
+#                           inne linie (np. "ALTER LARGE OBJECT ... OWNER TO
+#                           ...") MOGA lezec miedzy dwoma wywolaniami lowrite
+#                           tego samego obiektu i nadal maja zostac policzone
+#                           razem (zmierzone empirycznie: wersja liczaca po
+#                           sasiedztwie linii dawala tu CICHE zero). Kazde
+#                           wywolanie jest dekodowane OSOBNO (patrz
+#                           DUZY_OBIEKT_TRAFIENIA) - wzorzec rozdzielony
+#                           DOKLADNIE na granicy dwoch takich wywolan NIE JEST
+#                           wykryty przez zadne z nich z osobna. Ten licznik
+#                           istnieje, zeby ta luka nie byla cicha: wolajacy
+#                           (kontrola-zrzutu.sh) PODNOSI stan do 2 (NIE
+#                           ZMIERZONO), gdy DUZY_OBIEKT_WIELOKROTNY>0 i zadne
+#                           inne kryterium nie juz dalo 3 - obecnosc
+#                           wielokrotnego zapisu znaczy "nie wiem", nigdy
+#                           cicho "0". Gdy "lowrite" NIE lezy w zadnym otwartym
+#                           nawiasie lo_open/lo_close (zrzut bez odpowiadajacej
+#                           linii "lo_open" - np. fragment uciety/wyjety z
+#                           wiekszego zrzutu), ten licznik wraca do liczenia
+#                           PRZYLEGLYCH linii "lowrite" (adjacencja), zeby taki
+#                           ksztalt tez nie wracal cicho do zera.
 #   TRAFIENIE relacja=<schema.tabela|(brak)> kolumna=<nazwa> wzorzec=P<i>
 #                         liczba=<n>
 #                         - jedna linia na kazda (relacja,kolumna,wzorzec)
@@ -138,8 +152,20 @@ my $linie_nie_copy = 0;    # WSZYSTKIE linie spoza blokow COPY, dopasowane czy n
 my $duzy_obiekt_linie = 0;      # PODZBIOR linie_nie_copy: wywolania lowrite() rozpoznane
 my $duzy_obiekt_trafienia = 0;  # z tych, ile po zdekodowaniu hex dopasowalo wzorzec
 my $duzy_obiekt_wielokrotny = 0;   # liczba obiektow zapisanych wiecej niz jednym lowrite
-my $poprzednia_byla_lowrite = 0;   # sledzi ciag kolejnych linii lowrite (ten sam obiekt)
-my $biezacy_ciag_juz_liczony = 0;  # zeby ciag >2 linii policzyc jako JEDEN obiekt wielokrotny
+my $w_otwartym_duzym_obiekcie = 0; # miedzy "lo_open(...)" a odpowiadajacym "lo_close(...)"
+my $lowrite_w_biezacym_obiekcie = 0; # liczba wywolan lowrite W BIEZACYM nawiasie lo_open/lo_close
+my $lowrite_bez_nawiasu_stan = 0; # 0=brak serii, 1=jedno "lowrite" bez otwartego
+                                   # nawiasu lo_open/lo_close jeszcze niepoliczone,
+                                   # 2=seria juz policzona do DUZY_OBIEKT_WIELOKROTNY.
+                                   # Zrzut, w ktorym "lowrite" wystepuje BEZ
+                                   # POPRZEDZAJACEGO "lo_open" (np. fragment
+                                   # uciety/wyjety z wiekszego zrzutu) nie ma zadnego
+                                   # nawiasu do policzenia - PRZYLEGLE wywolania
+                                   # "lowrite" w takim ksztalcie sa liczone ADJACENCJA
+                                   # LINII (ten sam pomysl, co liczenie po nawiasie
+                                   # dla ksztaltu z lo_open/lo_close), zeby ten
+                                   # ksztalt nie wracal cicho do zera, gdy zadnego
+                                   # nawiasu nigdy nie widac.
 my @trafienia_poza;         # linie TRAFIENIE dla POZA_COPY/DUZY_OBIEKT_TRAFIENIA,
                              # zebrane tu i wypisane RAZEM z reszta na koncu, zeby
                              # kolejnosc wyjscia zostala taka sama jak przedtem
@@ -151,6 +177,21 @@ my @trafienia_poza;         # linie TRAFIENIE dla POZA_COPY/DUZY_OBIEKT_TRAFIENI
 # to samo co POZA_COPY) prawie nigdy nie trafi w PLAINTEKSTOWY wzorzec - stad
 # osobne dekodowanie PRZED sprawdzeniem wzorca (patrz DUZY_OBIEKT_* w naglowku).
 my $wzorzec_lowrite = qr/^SELECT\s+pg_catalog\.lowrite\(\s*\d+\s*,\s*'\\x([0-9a-fA-F]*)'\s*\)\s*;?\s*$/i;
+
+# Nawiasy jednego duzego obiektu w formacie tekstowym pg_dump:
+#   SELECT pg_catalog.lo_open('<oid>', <tryb>);
+#   SELECT pg_catalog.lowrite(<fd>, '\x<...>');   -- 1 lub wiecej wywolan
+#   SELECT pg_catalog.lo_close(<fd>);
+# Grupowanie PO NAWIASIE lo_open/lo_close (nie po sasiedztwie linii w pliku) -
+# zmierzone empirycznie na postgres:17 (patrz sonda w trakcie tej naprawy):
+# miedzy "lo_open" a "lo_close" TEGO SAMEGO obiektu moga wystapic inne linie
+# (np. "ALTER LARGE OBJECT ... OWNER TO ...", puste linie, komentarze) - a
+# mimo to wszystkie wywolania "lowrite" pomiedzy nimi naleza do JEDNEGO
+# obiektu. Liczenie "poprzednia linia byla lowrite" (dawna wersja) gubilo to,
+# gdy cokolwiek rozsuwalo dwa "lowrite" tego samego obiektu - dawalo wtedy
+# CICHE zero zamiast DUZY_OBIEKT_WIELOKROTNY>0.
+my $wzorzec_lo_open  = qr/^SELECT\s+pg_catalog\.lo_open\(/i;
+my $wzorzec_lo_close = qr/^SELECT\s+pg_catalog\.lo_close\(/i;
 
 while (my $linia = <$fz>) {
     chomp $linia;
@@ -190,22 +231,48 @@ while (my $linia = <$fz>) {
                 . ' wzorzec=P' . ($numer_wzorca_poza + 1) . ' liczba=1';
         }
 
+        # Nawias lo_open/lo_close jednego duzego obiektu - patrz komentarz
+        # przy $wzorzec_lo_open wyzej. "lo_close" zamyka nawias i TU (nie przy
+        # kazdym lowrite z osobna) decyduje, czy ten obiekt byl "wielokrotny";
+        # dziala niezaleznie od tego, co (jesli cokolwiek) lezy MIEDZY dwoma
+        # wywolaniami lowrite tego samego obiektu. Kazdy nawias zaczyna sie tu
+        # bez zadnej "wiszacej" serii beznawiasowej sprzed niego (patrz nizej).
+        if ($linia =~ $wzorzec_lo_open) {
+            $w_otwartym_duzym_obiekcie = 1;
+            $lowrite_w_biezacym_obiekcie = 0;
+            $lowrite_bez_nawiasu_stan = 0;
+        } elsif ($linia =~ $wzorzec_lo_close) {
+            if ($w_otwartym_duzym_obiekcie && $lowrite_w_biezacym_obiekcie > 1) {
+                $duzy_obiekt_wielokrotny++;
+            }
+            $w_otwartym_duzym_obiekcie = 0;
+            $lowrite_w_biezacym_obiekcie = 0;
+            $lowrite_bez_nawiasu_stan = 0;
+        }
+
         # Duzy obiekt w postaci szesnastkowej: osobna, jawnie nazwana proba
-        # zasiegu - patrz DUZY_OBIEKT_* w naglowku pliku. Ciag KOLEJNYCH linii
-        # lowrite (bez zadnej innej linii spoza COPY pomiedzy nimi) to TEN
-        # SAM obiekt zapisany wiecej niz jednym kawalkiem - liczony raz do
-        # DUZY_OBIEKT_WIELOKROTNY, niezaleznie od tego, ile kawalkow ma.
+        # zasiegu - patrz DUZY_OBIEKT_* w naglowku pliku. Kazde wywolanie jest
+        # zliczone do DUZY_OBIEKT_LINIE i dekodowane OSOBNO nizej; przynaleznosc
+        # do "tego samego obiektu" (DUZY_OBIEKT_WIELOKROTNY) liczy PRZEDE
+        # WSZYSTKIM nawias lo_open/lo_close powyzej, nie sasiedztwo linii - ALE
+        # gdy TEN konkretny "lowrite" nie lezy w zadnym otwartym nawiasie (bo
+        # zrzut nie niesie odpowiadajacego "lo_open" - fragment uciety/wyjety),
+        # zasieg SPRZED liczenia po nawiasie wraca jako zapasowa siatka:
+        # PRZYLEGLE wywolania "lowrite" poza nawiasem licza sie ADJACENCJA
+        # LINII, zeby taki ksztalt nie oddawal cicho zera zamiast "nie wiem".
         if ($linia =~ $wzorzec_lowrite) {
             $duzy_obiekt_linie++;
-            if ($poprzednia_byla_lowrite) {
-                if (!$biezacy_ciag_juz_liczony) {
-                    $duzy_obiekt_wielokrotny++;
-                    $biezacy_ciag_juz_liczony = 1;
-                }
+            if ($w_otwartym_duzym_obiekcie) {
+                $lowrite_w_biezacym_obiekcie++;
+                $lowrite_bez_nawiasu_stan = 0;
             } else {
-                $biezacy_ciag_juz_liczony = 0;
+                if ($lowrite_bez_nawiasu_stan == 1) {
+                    $duzy_obiekt_wielokrotny++;
+                    $lowrite_bez_nawiasu_stan = 2;
+                } elsif ($lowrite_bez_nawiasu_stan == 0) {
+                    $lowrite_bez_nawiasu_stan = 1;
+                }
             }
-            $poprzednia_byla_lowrite = 1;
             my $hex = $1;
             if (length($hex) > 0 && length($hex) % 2 == 0) {
                 my $bajty = pack('H*', $hex);
@@ -219,7 +286,11 @@ while (my $linia = <$fz>) {
                 }
             }
         } else {
-            $poprzednia_byla_lowrite = 0;
+            # Kazda inna linia (naglowek COPY, komentarz, "lo_open"/"lo_close"
+            # wlacznie - patrz wyzej) przerywa serie PRZYLEGLYCH "lowrite" bez
+            # nawiasu - adjacencja liczy WYLACZNIE linie bezposrednio po sobie,
+            # dokladnie jak przed liczeniem po nawiasie.
+            $lowrite_bez_nawiasu_stan = 0;
         }
 
         # Naglowek bloku COPY w formacie tekstowym pg_dump:
