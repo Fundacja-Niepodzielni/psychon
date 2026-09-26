@@ -8,7 +8,6 @@ use App\Models\ProfileDocument;
 use App\Models\PsychologistProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\ActsAsRole;
 use Tests\TestCase;
@@ -85,23 +84,6 @@ class DaneWrazliweTest extends TestCase
         $this->assertStringNotContainsString($osoba->email, $zawartosc);
     }
 
-    public function test_zalacznik_profilu_jest_zaszyfrowany_na_dysku(): void
-    {
-        $this->markTestIncomplete(self::DOKUMENT.', wiersz V8.3.7: załącznik profilu leży na dysku w postaci jawnej.');
-
-        Storage::fake('local');
-        $this->actingAsRole('volunteer');
-
-        $this->post('/api/v1/psychologist-profile/documents', [
-            'type' => 'dyplom',
-            'file' => UploadedFile::fake()->createWithContent('dyplom.pdf', '%PDF-1.4 TRESC-JAWNA-PROBY'),
-        ], ['Accept' => 'application/json'])->assertSuccessful();
-
-        $sciezka = (string) ProfileDocument::query()->sole()->file_path;
-
-        $this->assertStringNotContainsString('TRESC-JAWNA-PROBY', (string) Storage::disk('local')->get($sciezka));
-    }
-
     public function test_anonimizacja_czysci_profil_psychologa(): void
     {
         $this->markTestIncomplete(self::DOKUMENT.', wiersz V8.3.8: anonimizacja pomija treści profilu psychologa.');
@@ -129,6 +111,7 @@ class DaneWrazliweTest extends TestCase
         Storage::fake('local');
         $osoba = $this->actingAsRole('volunteer');
         $profil = PsychologistProfile::query()->create(['user_id' => $osoba->id, 'status' => 'submitted']);
+        $osoba->consents()->create(['type' => 'publikacja_profilu', 'granted_at' => now()->subDay()]);
         Storage::disk('local')->put("profile-documents/{$profil->id}/dyplom.pdf", '%PDF-1.4 próba');
         $profil->documents()->create([
             'type' => 'dyplom',

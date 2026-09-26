@@ -1,6 +1,6 @@
 # Przegląd ASVS L2 — walidacja, pliki, konfiguracja, API, dane wrażliwe
 
-Baza pomiaru: gałąź `sprint-2` @ `3463eac`. Przegląd jest statyczny i obejmuje tylko kod oraz
+Baza pomiaru: gałąź `sprint-2` @ `3463eac`; wiersze dotyczące załączników profilu psychologa zaktualizowano do `8b58c0a` (włączenie szyfrowania załączników). Przegląd jest statyczny i obejmuje tylko kod oraz
 konfigurację w repozytorium. Kod produkcyjny nie był zmieniany. Dokument nie zawiera danych
 osobowych, adresów hostów, kluczy ani haseł.
 
@@ -53,7 +53,7 @@ Ograniczenia pomiaru:
 | Luki o ryzyku niskim | 18 |
 | Ustalenia spoza listy ASVS: niespełnione (średnie / niskie) | 3 (1 / 2) |
 | Ustalenia spoza listy ASVS: niezmierzone | 1 |
-| Próby dopisane (PHPUnit, `markTestIncomplete`) | 23 |
+| Próby dopisane (PHPUnit, `markTestIncomplete`) | 22 |
 | Próby dopisane (Vitest, `test.todo`) | 5 |
 
 Najpoważniejsza luka to V5.2.4, V5.2.5, V5.2.8 i V12.3.6 — jedna przyczyna. Wzory dokumentów
@@ -127,10 +127,10 @@ następnym generowaniu dokumentu.
 | **V8.3.2** Osoba może wyeksportować albo usunąć swoje dane. | spełnione | eksport `POST /me/exports` (`backend/routes/api/h01.php:31`); anonimizacja konta w `backend/app/Services/H18/UserAnonymizer.php:82`–`:94` | — | — |
 | **V8.3.3** Osoba dostaje jasną informację o zbieraniu i użyciu danych. | spełnione | dokumenty prawne z wersjonowaniem i akceptacją (trasy `backend/routes/api/h22.php:28`–`:29`) | — | — |
 | **V8.3.4** Dane wrażliwe są zidentyfikowane i objęte polityką. | niezmierzone | polityka klasyfikacji danych jest dokumentem organizacyjnym spoza repozytorium | — | — |
-| **V8.3.5** Dostęp do danych wrażliwych jest audytowany (bez zapisu samych danych). | niespełnione | wgląd zapisywany tylko dla skanu dyplomu (`backend/app/Services/H03/DiplomaScanAccess.php:42`–`:48`) i załącznika profilu (`backend/app/Http/Controllers/Api/V1/H15/AdminProfileController.php:147`–`:156`); karta osoby z pełnym PESEL (`backend/app/Http/Controllers/Api/V1/Admin/AdminUserController.php:54`–`:65`) i eksport CSV osób (`:227`) bez śladu | średnie | Zapisywać `sensitive.viewed` przy odczycie karty osoby i przy eksporcie CSV. |
+| **V8.3.5** Dostęp do danych wrażliwych jest audytowany (bez zapisu samych danych). | niespełnione | wgląd zapisywany tylko dla skanu dyplomu (`backend/app/Services/H03/DiplomaScanAccess.php:42`–`:48`) i załącznika profilu (`backend/app/Http/Controllers/Api/V1/H15/AdminProfileController.php:149`–`:158`); karta osoby z pełnym PESEL (`backend/app/Http/Controllers/Api/V1/Admin/AdminUserController.php:54`–`:65`) i eksport CSV osób (`:227`) bez śladu | średnie | Zapisywać `sensitive.viewed` przy odczycie karty osoby i przy eksporcie CSV. |
 | **V8.3.6** Dane wrażliwe w pamięci są nadpisywane po użyciu. | nie dotyczy | PHP i JavaScript nie dają kontroli nad zwalnianiem pamięci | — | — |
-| **V8.3.7** Dane wrażliwe są szyfrowane zatwierdzonym algorytmem. | niespełnione | PESEL i adres szyfrowane w bazie (`backend/app/Models/User.php:49`–`:52`); pliki na dysku jawne: załączniki profilu (`backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:130`), eksport RODO z PESEL (`backend/app/Jobs/GenerateDataExport.php:44`–`:52`) | średnie | Szyfrować pliki z danymi osobowymi przed zapisem (Crypt z kluczem aplikacji) i odszyfrowywać przy pobraniu. |
-| **V8.3.8** Dane osobowe mają zasady retencji, a nieaktualne są usuwane. | niespełnione | wycofanie zgody nie usuwa załączników ani treści profilu (`backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:144`–`:181`); anonimizacja pomija treści profilu psychologa i zgłoszenia (`backend/app/Services/H18/UserAnonymizer.php:82`–`:94`) | średnie | Rozszerzyć anonimizację o profil psychologa, zgłoszenie i treści e-maili, a przy wycofaniu zgody usuwać załączniki. |
+| **V8.3.7** Dane wrażliwe są szyfrowane zatwierdzonym algorytmem. | niespełnione | PESEL i adres szyfrowane w bazie (`backend/app/Models/User.php:49`–`:52`); załączniki profilu szyfrowane przed zapisem (`backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:156`–`:163`, `backend/app/Services/H15/ProfileDocumentCipher.php:30`); jawny na dysku pozostaje eksport RODO z PESEL (`backend/app/Jobs/GenerateDataExport.php:44`–`:52`) | średnie | Szyfrować plik eksportu RODO przed zapisem tym samym mechanizmem co załączniki profilu i odszyfrowywać przy pobraniu. |
+| **V8.3.8** Dane osobowe mają zasady retencji, a nieaktualne są usuwane. | niespełnione | wycofanie zgody nie usuwa załączników ani treści profilu (`backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:165`–`:202`); anonimizacja pomija treści profilu psychologa i zgłoszenia (`backend/app/Services/H18/UserAnonymizer.php:82`–`:94`) | średnie | Rozszerzyć anonimizację o profil psychologa, zgłoszenie i treści e-maili, a przy wycofaniu zgody usuwać załączniki. |
 
 ## V9 — komunikacja
 
@@ -150,16 +150,16 @@ następnym generowaniu dokumentu.
 |---|---|---|---|---|
 | **V12.1.1** Aplikacja nie przyjmuje plików tak dużych, że zapełnią dysk lub spowodują odmowę usługi. | spełnione | limity rozmiaru: materiał 10 MB (`backend/app/Http/Requests/H08/StoreMaterialRequest.php:21`, `:31`), załącznik profilu 10 MB (`backend/app/Http/Requests/H15/StoreProfileDocumentRequest.php:19`), import CSV 5 MB (`backend/app/Http/Requests/H03/ImportApplicationsRequest.php:18`) | — | — |
 | **V12.1.2** Pliki skompresowane są sprawdzane pod kątem bomb dekompresyjnych. | nie dotyczy | żaden endpoint nie przyjmuje archiwów | — | — |
-| **V12.1.3** Obowiązuje limit rozmiaru i liczby plików na osobę. | niespełnione | brak limitu liczby załączników profilu: `backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:130`–`:136`; brak limitu importu wierszy CSV (`backend/app/Services/H03/ApplicationCsvImporter.php:64`) | średnie | Ograniczyć liczbę załączników na profil i łączny rozmiar, a import CSV ograniczyć liczbą wierszy. |
+| **V12.1.3** Obowiązuje limit rozmiaru i liczby plików na osobę. | niespełnione | brak limitu liczby załączników profilu: `backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:134`–`:140`; brak limitu importu wierszy CSV (`backend/app/Services/H03/ApplicationCsvImporter.php:64`) | średnie | Ograniczyć liczbę załączników na profil i łączny rozmiar, a import CSV ograniczyć liczbą wierszy. |
 | **V12.2.1** Typ pliku z niezaufanego źródła jest sprawdzany po treści. | spełnione | reguła `mimes` rozpoznaje typ po treści pliku (`backend/app/Http/Requests/H15/StoreProfileDocumentRequest.php:19`, `backend/app/Http/Requests/H08/StoreMaterialRequest.php:31`) | — | — |
-| **V12.3.1** Nazwa pliku od użytkownika nie trafia bezpośrednio do systemu plików. | spełnione | nazwa na dysku to ULID z uproszczoną nazwą (`backend/app/Services/H08/MaterialStore.php:96`–`:101`) albo losowa nazwa (`backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:130`) | — | — |
+| **V12.3.1** Nazwa pliku od użytkownika nie trafia bezpośrednio do systemu plików. | spełnione | nazwa na dysku to ULID z uproszczoną nazwą (`backend/app/Services/H08/MaterialStore.php:96`–`:101`) albo losowa nazwa (`backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:157`–`:159`) | — | — |
 | **V12.3.2** Metadane nazwy pliku nie pozwalają na odczyt lub zapis plików lokalnych. | spełnione | ścieżki pobierania z bazy, nigdy z żądania: `backend/app/Http/Controllers/Api/V1/MaterialDownloadController.php:48`, `backend/app/Http/Controllers/Api/V1/CertificateController.php:63` | — | — |
 | **V12.3.3** Metadane nazwy pliku nie pozwalają na dołączanie zdalnych plików ani SSRF. | spełnione | nazwa pliku nie jest używana jako adres; generator PDF bez zasobów zdalnych (`backend/app/Support/PdfService.php:54`) | — | — |
 | **V12.3.4** Nazwy plików w odpowiedziach są stałe albo oczyszczone (ochrona przed RFD). | niespełnione | nazwa pobieranego materiału to oryginalna nazwa klienta (`backend/app/Services/H08/MaterialStore.php:68`, `:73` → `backend/app/Http/Controllers/Api/V1/MaterialDownloadController.php:52`); rozszerzenie na dysku też od klienta (`backend/app/Services/H08/MaterialStore.php:99`) | niskie | Budować nazwę pobrania z uproszczonej nazwy i rozszerzenia wynikającego z wykrytego typu. |
 | **V12.3.5** Metadane pliku nie trafiają do poleceń systemu. | spełnione | brak wywołań poleceń systemu w `backend/app` | — | — |
 | **V12.3.6** Aplikacja nie dołącza ani nie wykonuje funkcji z niezaufanych źródeł. | niespełnione | wzór dokumentu z bazy jest kompilowany do PHP i wykonywany (`backend/app/Services/DocumentTemplates/DocumentTemplateRenderer.php:41`) | wysokie | Jak V5.2.4: wzory z bazy renderować bez wykonywania kodu. |
 | **V12.4.1** Pliki z niezaufanych źródeł leżą poza katalogiem publicznym, z ograniczonymi uprawnieniami. | spełnione | dysk `local` w `storage/app/private` (`backend/config/filesystems.php:33`–`:35`) | — | — |
-| **V12.4.2** Pliki z niezaufanych źródeł są skanowane programem antywirusowym. | niespełnione | brak skanowania w ścieżkach wgrywania (`backend/app/Services/H08/MaterialStore.php:65`–`:83`, `backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:115`–`:142`) | średnie | Skanować plik przed zapisem (np. usługą antywirusową w sieci kontenerów) i odrzucać zainfekowane z kodem 422. |
+| **V12.4.2** Pliki z niezaufanych źródeł są skanowane programem antywirusowym. | niespełnione | brak skanowania w ścieżkach wgrywania (`backend/app/Services/H08/MaterialStore.php:65`–`:83`, `backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:119`–`:146`) | średnie | Skanować plik przed zapisem (np. usługą antywirusową w sieci kontenerów) i odrzucać zainfekowane z kodem 422. |
 | **V12.5.1** Warstwa webowa serwuje tylko pliki o określonych rozszerzeniach. | niespełnione | dysk prywatny ma `'serve' => true` (`backend/config/filesystems.php:36`), co rejestruje zbędną trasę serwowania plików poza listą tras publicznych | niskie | Ustawić `'serve' => false`, bo aplikacja nie wystawia tymczasowych adresów do dysku. |
 | **V12.5.2** Wgrane pliki nigdy nie są wykonywane jako HTML ani JavaScript. | spełnione | wszystkie pobrania mają nagłówek `attachment` (np. `backend/app/Http/Controllers/Api/V1/DocumentController.php:88`–`:93`); brak serwowania plików `inline` | — | — |
 | **V12.6.1** Serwer wysyła żądania tylko do dozwolonych zasobów (SSRF). | spełnione | ruch wychodzący tylko do adresów z konfiguracji (dostawca tożsamości, dostawca wideo); generator PDF bez zasobów zdalnych (`backend/app/Support/PdfService.php:54`) | — | — |
@@ -241,7 +241,6 @@ testem regresji.
 | V8.3.5 | `backend/tests/Feature/Bezpieczenstwo/DaneWrazliweTest.php` | `test_odczyt_karty_osoby_jest_audytowany` |
 | V8.3.5 | `backend/tests/Feature/Bezpieczenstwo/DaneWrazliweTest.php` | `test_eksport_csv_osob_jest_audytowany` |
 | V8.3.7 | `backend/tests/Feature/Bezpieczenstwo/DaneWrazliweTest.php` | `test_plik_eksportu_rodo_jest_zaszyfrowany_na_dysku` |
-| V8.3.7 | `backend/tests/Feature/Bezpieczenstwo/DaneWrazliweTest.php` | `test_zalacznik_profilu_jest_zaszyfrowany_na_dysku` |
 | V8.3.8 | `backend/tests/Feature/Bezpieczenstwo/DaneWrazliweTest.php` | `test_anonimizacja_czysci_profil_psychologa` |
 | V8.3.8 | `backend/tests/Feature/Bezpieczenstwo/DaneWrazliweTest.php` | `test_wycofanie_zgody_usuwa_zalaczniki` |
 | V12.1.3 | `backend/tests/Feature/Bezpieczenstwo/PlikiTest.php` | `test_liczba_zalacznikow_profilu_jest_ograniczona` |
