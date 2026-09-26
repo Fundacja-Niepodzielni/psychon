@@ -3,13 +3,14 @@ import Text from "@/components/ui/Text";
 
 /**
  * Stan „program jeszcze nieukończony" ekranu `/panel/po-programie`.
- * Bez odnośników — ale nie dlatego, że `program_completed_at` warunkuje
- * dostęp do H13/H14 po stronie API: `EnsureAccessActive` czyta to pole
- * odwrotnie, jako zwolnienie z wygaśnięcia dostępu, a warunki certyfikatu
- * (`CertificateConditions`) i dokumentów (`DocumentTypeGate`) sprawdzają
- * odrębny postęp, nie ten znacznik. Backend w tym drzewie nie blokuje tych
- * tras samym brakiem ukończenia programu — brak odnośników tutaj nie ma
- * więc oparcia w bramkach API i jest wyłącznie decyzją interfejsu.
+ * Bez odnośników. `program_completed_at` samo w sobie o niczym nie
+ * przesądza — H13 (`h13.php:26`) i H14 (`h14.php:21`) niosą
+ * `access.active`, a `EnsureAccessActive.php:24-34` odmawia (403) dopiero
+ * w koniunkcji: `program_completed_at === null` ORAZ wygasły
+ * `access_expires_at`. Na tym ekranie pierwszy warunek jest zawsze
+ * spełniony, więc o wyniku decyduje wyłącznie drugie pole: część osób
+ * oglądających tę kartę dostałaby z tych tras 403, reszta (z jeszcze
+ * ważnym dostępem) — nie.
  */
 export default function ProgramPendingCard() {
   return (
