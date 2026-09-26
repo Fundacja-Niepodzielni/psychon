@@ -7,9 +7,10 @@
 // widział. Ten plik nie mierzy niczego sam — buduje statyczny poligon,
 // odpala go lokalnym serwerem podglądu, czeka aż odpowiada, uruchamia
 // pomiar-p7.mjs i PRZENOSI jego kod wyjścia na zewnątrz (patrz `process.exit`
-// na końcu). Wpięty jako krok `npm run pomiar:p7` w zestawie `frontend` w
-// .github/workflows/ci.yml — czerwień stąd zatrzymuje ten zestaw, nie tylko
-// ten plik.
+// na końcu). Uruchamiany poleceniem `npm run pomiar:p7`. W TYM DRZEWIE NIE JEST
+// wpięty w `.github/workflows/ci.yml` — zmierzone: `git grep "pomiar:p7" -- .github`
+// daje 0 trafień. Jego czerwień nie zatrzymuje więc żadnego zestawu; wpięcie to
+// osobna zmiana, która ma dodać krok, a nie wymienić żaden istniejący.
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
