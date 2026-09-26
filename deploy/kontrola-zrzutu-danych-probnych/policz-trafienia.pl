@@ -77,7 +77,12 @@
 #                           ZMIERZONO), gdy DUZY_OBIEKT_WIELOKROTNY>0 i zadne
 #                           inne kryterium nie juz dalo 3 - obecnosc
 #                           wielokrotnego zapisu znaczy "nie wiem", nigdy
-#                           cicho "0".
+#                           cicho "0". Gdy "lowrite" NIE lezy w zadnym otwartym
+#                           nawiasie lo_open/lo_close (zrzut bez odpowiadajacej
+#                           linii "lo_open" - np. fragment uciety/wyjety z
+#                           wiekszego zrzutu), ten licznik wraca do liczenia
+#                           PRZYLEGLYCH linii "lowrite" (adjacencja), zeby taki
+#                           ksztalt tez nie wracal cicho do zera.
 #   TRAFIENIE relacja=<schema.tabela|(brak)> kolumna=<nazwa> wzorzec=P<i>
 #                         liczba=<n>
 #                         - jedna linia na kazda (relacja,kolumna,wzorzec)
@@ -149,6 +154,18 @@ my $duzy_obiekt_trafienia = 0;  # z tych, ile po zdekodowaniu hex dopasowalo wzo
 my $duzy_obiekt_wielokrotny = 0;   # liczba obiektow zapisanych wiecej niz jednym lowrite
 my $w_otwartym_duzym_obiekcie = 0; # miedzy "lo_open(...)" a odpowiadajacym "lo_close(...)"
 my $lowrite_w_biezacym_obiekcie = 0; # liczba wywolan lowrite W BIEZACYM nawiasie lo_open/lo_close
+my $lowrite_bez_nawiasu_stan = 0; # 0=brak serii, 1=jedno "lowrite" bez otwartego
+                                   # nawiasu lo_open/lo_close jeszcze niepoliczone,
+                                   # 2=seria juz policzona do DUZY_OBIEKT_WIELOKROTNY.
+                                   # Zrzut, w ktorym "lowrite" wystepuje BEZ
+                                   # POPRZEDZAJACEGO "lo_open" (np. fragment
+                                   # uciety/wyjety z wiekszego zrzutu) nie ma zadnego
+                                   # nawiasu do policzenia - PRZYLEGLE wywolania
+                                   # "lowrite" w takim ksztalcie sa liczone ADJACENCJA
+                                   # LINII (ten sam pomysl, co liczenie po nawiasie
+                                   # dla ksztaltu z lo_open/lo_close), zeby ten
+                                   # ksztalt nie wracal cicho do zera, gdy zadnego
+                                   # nawiasu nigdy nie widac.
 my @trafienia_poza;         # linie TRAFIENIE dla POZA_COPY/DUZY_OBIEKT_TRAFIENIA,
                              # zebrane tu i wypisane RAZEM z reszta na koncu, zeby
                              # kolejnosc wyjscia zostala taka sama jak przedtem
@@ -218,27 +235,43 @@ while (my $linia = <$fz>) {
         # przy $wzorzec_lo_open wyzej. "lo_close" zamyka nawias i TU (nie przy
         # kazdym lowrite z osobna) decyduje, czy ten obiekt byl "wielokrotny";
         # dziala niezaleznie od tego, co (jesli cokolwiek) lezy MIEDZY dwoma
-        # wywolaniami lowrite tego samego obiektu.
+        # wywolaniami lowrite tego samego obiektu. Kazdy nawias zaczyna sie tu
+        # bez zadnej "wiszacej" serii beznawiasowej sprzed niego (patrz nizej).
         if ($linia =~ $wzorzec_lo_open) {
             $w_otwartym_duzym_obiekcie = 1;
             $lowrite_w_biezacym_obiekcie = 0;
+            $lowrite_bez_nawiasu_stan = 0;
         } elsif ($linia =~ $wzorzec_lo_close) {
             if ($w_otwartym_duzym_obiekcie && $lowrite_w_biezacym_obiekcie > 1) {
                 $duzy_obiekt_wielokrotny++;
             }
             $w_otwartym_duzym_obiekcie = 0;
             $lowrite_w_biezacym_obiekcie = 0;
+            $lowrite_bez_nawiasu_stan = 0;
         }
 
         # Duzy obiekt w postaci szesnastkowej: osobna, jawnie nazwana proba
         # zasiegu - patrz DUZY_OBIEKT_* w naglowku pliku. Kazde wywolanie jest
         # zliczone do DUZY_OBIEKT_LINIE i dekodowane OSOBNO nizej; przynaleznosc
-        # do "tego samego obiektu" (DUZY_OBIEKT_WIELOKROTNY) liczy nawias
-        # lo_open/lo_close powyzej, nie sasiedztwo linii.
+        # do "tego samego obiektu" (DUZY_OBIEKT_WIELOKROTNY) liczy PRZEDE
+        # WSZYSTKIM nawias lo_open/lo_close powyzej, nie sasiedztwo linii - ALE
+        # gdy TEN konkretny "lowrite" nie lezy w zadnym otwartym nawiasie (bo
+        # zrzut nie niesie odpowiadajacego "lo_open" - fragment uciety/wyjety),
+        # zasieg SPRZED liczenia po nawiasie wraca jako zapasowa siatka:
+        # PRZYLEGLE wywolania "lowrite" poza nawiasem licza sie ADJACENCJA
+        # LINII, zeby taki ksztalt nie oddawal cicho zera zamiast "nie wiem".
         if ($linia =~ $wzorzec_lowrite) {
             $duzy_obiekt_linie++;
             if ($w_otwartym_duzym_obiekcie) {
                 $lowrite_w_biezacym_obiekcie++;
+                $lowrite_bez_nawiasu_stan = 0;
+            } else {
+                if ($lowrite_bez_nawiasu_stan == 1) {
+                    $duzy_obiekt_wielokrotny++;
+                    $lowrite_bez_nawiasu_stan = 2;
+                } elsif ($lowrite_bez_nawiasu_stan == 0) {
+                    $lowrite_bez_nawiasu_stan = 1;
+                }
             }
             my $hex = $1;
             if (length($hex) > 0 && length($hex) % 2 == 0) {
@@ -252,6 +285,12 @@ while (my $linia = <$fz>) {
                     }
                 }
             }
+        } else {
+            # Kazda inna linia (naglowek COPY, komentarz, "lo_open"/"lo_close"
+            # wlacznie - patrz wyzej) przerywa serie PRZYLEGLYCH "lowrite" bez
+            # nawiasu - adjacencja liczy WYLACZNIE linie bezposrednio po sobie,
+            # dokladnie jak przed liczeniem po nawiasie.
+            $lowrite_bez_nawiasu_stan = 0;
         }
 
         # Naglowek bloku COPY w formacie tekstowym pg_dump:

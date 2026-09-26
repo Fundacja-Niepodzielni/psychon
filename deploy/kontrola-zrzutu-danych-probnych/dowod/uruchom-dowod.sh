@@ -336,20 +336,34 @@ echo "dowod: wszystkie biegi zapisane pod $KATALOG_LOGOW"
 echo "dowod: kody wyjscia (oczekiwany/faktyczny/wynik), patrz tez $PODSUMOWANIE:"
 sed 's/^/  /' "$PODSUMOWANIE"
 
-# --- Symetria biegow tego skryptu i wierszy "OCZEKIWANIA.md" (kolumna
+# --- Symetria biegow tego skryptu i WIERSZY TABELI w "OCZEKIWANIA.md" (kolumna
 #     "przypadek w dowodzie", tekst w odwrotnych apostrofach) - SPRAWDZANA
 #     NIEZALEZNIE od tego, czy biegi wyzej wyszly zgodne czy nie: bieg bez
 #     wiersza (OCZEKIWANIA.md nie nadazyl za dowodem) i wiersz bez biegu
 #     (przypadek zniknal z zestawu biegow) sa OBA odmowa, w KTORAKOLWIEK
 #     strone - "18/18" nie ma prawa wygladac na komplet, gdy ktos usunal
-#     "run_kontrola" ponizej albo zapomnial dopisac wiersz wyzej. ---
+#     "run_kontrola" ponizej albo zapomnial dopisac wiersz wyzej. Zrodlem
+#     nazw jest WYLACZNIE PIATA KOLUMNA wiersza tabeli ("przypadek w
+#     dowodzie") - NIE caly plik grepem i NIE caly wiersz: nazwa biegu
+#     wspomniana gdzie indziej w tym samym pliku - w prozie (np. sekcja
+#     "Pomiar odwrotny" nizej) ALBO w kolumnie "dlaczego" INNEGO wiersza
+#     tabeli (np. wiersz #19 przywoluje w swoim uzasadnieniu nazwe biegu z
+#     wiersza #5, patrz "ten sam powod co #5/`26-...`" nizej) - NIE zaspokaja
+#     tego sprawdzenia: istnienie NAPISU w dokumencie to inny przedmiot niz
+#     istnienie WIERSZA W TABELI dla TEGO biegu. Kazdy wiersz tabeli ma tu
+#     DOKLADNIE 5 kolumn (linia zaczynajaca sie od "| <numer wiersza> |" ma
+#     6 znakow "|" - zmierzone na biezacej tabeli), wiec piata kolumna to
+#     pole numer 5 po rozbiciu linii po "|". ---
 OCZEKIWANIA_PLIK="$TU/dowod/OCZEKIWANIA.md"
 if [ ! -f "$OCZEKIWANIA_PLIK" ]; then
     echo "dowod: brak $OCZEKIWANIA_PLIK - nie da sie porownac oczekiwan z biegami" >&2
     echo "dowod: DOWOD NIEZGODNY (kod tego skryptu: $DOWOD_KOD_NIEZGODNE_OCZEKIWANIA, patrz naglowek)" >&2
     exit "$DOWOD_KOD_NIEZGODNE_OCZEKIWANIA"
 fi
-mapfile -t NAZWY_W_OCZEKIWANIACH < <(grep -oE '`[0-9]+[a-z]?-[a-z0-9-]+`' "$OCZEKIWANIA_PLIK" | tr -d '`' | sort -u)
+mapfile -t NAZWY_W_OCZEKIWANIACH < <(
+    awk -F'|' '/^\|[[:space:]]*[0-9]+[a-z]?[[:space:]]*\|/ { print $5 }' "$OCZEKIWANIA_PLIK" \
+        | grep -oE '`[0-9]+[a-z]?-[a-z0-9-]+`' | tr -d '`' | sort -u
+)
 mapfile -t NAZWY_WYKONANE_UNIKALNE < <(printf '%s\n' "${NAZWY_WYKONANE[@]}" | sort -u)
 
 BRAK_WIERSZA=()
