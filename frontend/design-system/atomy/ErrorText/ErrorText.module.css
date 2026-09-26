@@ -1,0 +1,21 @@
+.blad {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+  color: var(--error);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+}
+.znacznik {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-round);
+  border: 1px solid var(--error);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-bold);
+  flex: none;
+}
