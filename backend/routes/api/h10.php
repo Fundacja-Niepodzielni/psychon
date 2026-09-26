@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AdminTestController;
 use App\Http\Controllers\Api\V1\AdminTestQuestionController;
 use App\Http\Controllers\Api\V1\AdminTestResetController;
 use App\Http\Controllers\Api\V1\AdminWorkshopController;
+use App\Http\Controllers\Api\V1\H10\InstructorTestController;
 use App\Http\Controllers\Api\V1\TestController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,4 +43,12 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
 
     Route::post('/admin/workshop/{user}/complete', [AdminWorkshopController::class, 'store']);
     Route::post('/admin/tests/{test}/users/{user}/reset-attempts', [AdminTestResetController::class, 'store']);
+});
+
+// Prowadzący: test wiedzy wyłącznie kursu, do którego jest przypisany
+// (`CoursePolicy`). Bez banku pytań — ten zostaje w panelu administracji.
+Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void {
+    Route::get('/instructor/courses/{course}/tests', [InstructorTestController::class, 'index'])->whereNumber('course');
+    Route::post('/instructor/courses/{course}/tests', [InstructorTestController::class, 'store'])->whereNumber('course');
+    Route::patch('/instructor/tests/{test}', [InstructorTestController::class, 'update'])->whereNumber('test');
 });

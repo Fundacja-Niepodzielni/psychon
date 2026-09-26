@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Http\Controllers\Concerns\RespondsWithLesson;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H08\StoreLessonRequest;
 use App\Http\Requests\H08\UpdateLessonRequest;
-use App\Http\Resources\H08\AdminLessonResource;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Services\H08\LessonWriter;
+use App\Support\H08\LessonIndex;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,21 +28,11 @@ use Illuminate\Http\Request;
  */
 class LessonAdminController extends Controller
 {
+    use RespondsWithLesson;
+
     public function index(Request $request, Course $course): JsonResponse
     {
-        // Relacja `Course::lessons()` porządkuje po `sequence_order`; `id`
-        // domyka remis, bo kolumna nie ma unikalności w bazie.
-        $lessons = $course->lessons()
-            ->withCount('materials')
-            ->orderBy('id')
-            ->get();
-
-        return response()->json([
-            'data' => $lessons
-                ->map(fn (Lesson $lesson): array => AdminLessonResource::make($lesson)->resolve($request))
-                ->values()
-                ->all(),
-        ]);
+        return LessonIndex::response($course, $request);
     }
 
     public function store(StoreLessonRequest $request, Course $course): JsonResponse
@@ -65,17 +56,5 @@ class LessonAdminController extends Controller
         return response()->json([
             'data' => ['id' => $lesson->id, 'deleted' => true],
         ]);
-    }
-
-    /**
-     * `refresh()` przed serializacją, bo kolumny z domyślną wartością bazy
-     * (`duration_seconds`) nie trafiają do modelu przy zapisie — bez odczytu
-     * odpowiedź na `POST` pokazałaby `null` zamiast zapisanego `0`.
-     */
-    private function resourceResponse(Request $request, Lesson $lesson, int $status = 200): JsonResponse
-    {
-        return response()->json([
-            'data' => AdminLessonResource::make($lesson->refresh()->loadCount('materials'))->resolve($request),
-        ], $status);
     }
 }

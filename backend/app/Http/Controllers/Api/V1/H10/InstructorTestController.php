@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1\H10;
+
+use App\Exceptions\ApiException;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\H10\StoreInstructorTestRequest;
+use App\Http\Requests\H10\UpdateInstructorTestRequest;
+use App\Models\Course;
+use App\Models\Test;
+use App\Support\H10\TestGrader;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * Test wiedzy w kursie przypisanego prowadzącego — trasy `role:instructor`
+ * w `routes/api/h10.php`. Zakres to dokładnie GET/POST/PATCH testu samego
+ * kursu, bez banku pytań (ten zostaje wyłącznie w panelu administracji).
+ * Reszta zachowania — w tym konflikt 409, gdy kurs ma już test — jest
+ * wspólna z `AdminTestController`.
+ *
+ * `StoreInstructorTestRequest`/`UpdateInstructorTestRequest` (rozszerzenia
+ * `StoreTestRequest`/`UpdateTestRequest` z panelu administracji) sprawdzają
+ * przypisanie przez `CoursePolicy` w `authorize()`, PRZED walidacją ciała —
+ * inaczej `FormRequest` biegnie przed sprawdzeniem niżej.
+ */
+class InstructorTestController extends Controller
+{
+    public function index(Request $request, Course $course): JsonResponse
+    {
+        $this->authorizeCourse($request, $course);
+
+        /** @var Test|null $test */
+        $test = $course->test;
+
+        return response()->json(['data' => TestGrader::present($test)]);
+    }
+
+    public function store(StoreInstructorTestRequest $request, Course $course): JsonResponse
+    {
+        $this->authorizeCourse($request, $course);
+
+        if ($course->test()->exists()) {
+            throw new ApiException(409, 'test_exists', 'Ten kurs ma już test.');
+        }
+
+        try {
+            /** @var Test $test */
+            $test = $course->test()->create($request->validated());
+        } catch (UniqueConstraintViolationException) {
+            throw new ApiException(409, 'test_exists', 'Ten kurs ma już test.');
+        }
+
+        $test->refresh();
+
+        return response()->json(['data' => TestGrader::present($test)], 201);
+    }
+
+    public function update(UpdateInstructorTestRequest $request, Test $test): JsonResponse
+    {
+        $course = $test->course()->withTrashed()->first();
+
+        if ($course === null || $request->user()->cannot('update', $course)) {
+            throw new ApiException(403, 'forbidden', 'Nie jesteś przypisany do tego kursu.');
+        }
+
+        $test->fill($request->validated());
+        $test->save();
+        $test->refresh();
+
+        return response()->json(['data' => TestGrader::present($test)]);
+    }
+
+    private function authorizeCourse(Request $request, Course $course): void
+    {
+        if ($request->user()->cannot('update', $course)) {
+            throw new ApiException(403, 'forbidden', 'Nie jesteś przypisany do tego kursu.');
+        }
+    }
+}
