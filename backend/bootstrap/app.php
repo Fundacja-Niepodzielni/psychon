@@ -3,6 +3,7 @@
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\EnsureAccessActive;
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,6 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureRole::class,           // role:project_manager,super_admin
             'access.active' => EnsureAccessActive::class, // blocks after access_expires_at
         ]);
+
+        // Nagłówki bezpieczeństwa (no-store, nosniff, zakaz ramek, HSTS) na
+        // każdej odpowiedzi API. Globalnie, nie w grupie `api`: sortowanie
+        // priorytetów stawia `auth` przed middleware grupy, więc koperta 401
+        // ominęłaby nagłówki.
+        $middleware->append(SecurityHeaders::class);
 
         // API nie ma strony logowania — goście dostają JSON 401 zamiast
         // przekierowania do nieistniejącej trasy "login" (500 przy żądaniach bez Accept).

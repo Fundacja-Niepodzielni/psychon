@@ -41,5 +41,9 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
 // `qr` musi być zarejestrowane przed `{number}` — numer certyfikatu zawiera
 // ukośniki (`NP/2026/001`), więc jego parametr dopuszcza `.*` i inaczej przejąłby
 // też ścieżkę `verify/qr/...`.
-Route::get('/verify/qr/{token}', [VerifyController::class, 'byQrToken']);
-Route::get('/verify/{number}', [VerifyController::class, 'byNumber'])->where('number', '.*');
+// Limit żądań na adres IP: numer certyfikatu da się zgadywać (przegląd ASVS,
+// wiersz V8.1.4), a trasa nie wymaga logowania.
+Route::middleware('throttle:60,1')->group(function (): void {
+    Route::get('/verify/qr/{token}', [VerifyController::class, 'byQrToken']);
+    Route::get('/verify/{number}', [VerifyController::class, 'byNumber'])->where('number', '.*');
+});
