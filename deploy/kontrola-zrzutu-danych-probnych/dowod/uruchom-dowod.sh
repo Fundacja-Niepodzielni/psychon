@@ -15,18 +15,31 @@
 #   gita, np. katalog tymczasowy).
 #
 # Kody wyjscia TEGO skryptu (dowodu, nie kontrola-zrzutu.sh):
-#   0 = DOWOD ZIELONY - wszystkie biegi zgodne z oczekiwanym kodem.
+#   0 = DOWOD ZIELONY - wszystkie biegi zgodne z oczekiwanym kodem, I zbior
+#       biegow tego skryptu jest DOKLADNIE tym samym zbiorem, co przypadki
+#       nazwane w "OCZEKIWANIA.md" (patrz DOWOD_KOD_NIEZGODNE_OCZEKIWANIA).
 #   DOWOD_KOD_CZERWONY (patrz nizej) = DOWOD CZERWONY - skrypt DOSZEDL DO
 #       KONCA (wszystkie kroki, wlacznie ze sprzataniem, wykonaly sie), ale
 #       co najmniej jeden bieg kontrola-zrzutu.sh mial kod inny niz
 #       oczekiwany - patrz 00-podsumowanie.txt pod KATALOG_LOGOW.
+#   DOWOD_KOD_NIEZGODNE_OCZEKIWANIA (patrz nizej) = zbior biegow WYKONANYCH
+#       przez ten skrypt i zbior przypadkow WYMIENIONYCH w "OCZEKIWANIA.md"
+#       (kolumna "przypadek w dowodzie", tekst w odwrotnych apostrofach) SIE
+#       ROZJECHAL - w KTORAKOLWIEK strone: bieg bez wiersza (OCZEKIWANIA.md
+#       nie nadazyl za dowodem) ALBO wiersz bez biegu (przypadek zniknal z
+#       zestawu biegow, a "LICZBA_BIEGOW" nizej jest liczone automatycznie,
+#       wiec zniknieciu nie ma jak schowac sie w ulamku, ktory wyglada na
+#       komplet). Nazwy brakujacych biegow/wierszy sa wypisane na stderr -
+#       to NIE JEST DOWOD_KOD_CZERWONY (nie jest to zmierzone niezgodne
+#       zachowanie kontrola-zrzutu.sh), tylko niespojnosc SAMEGO dowodu.
 #   Kazdy INNY kod (np. z "set -e" po nieudanym docker/psql w trakcie
 #       przygotowania) jest WYWROTKA SRODOWISKA, nie zmierzonym wynikiem -
-#       odrozniona od DOWOD_KOD_CZERWONY wlasnie tym, ze nie jest tym samym
-#       kodem.
+#       odrozniona od powyzszych wlasnie tym, ze nie jest zadnym z tych
+#       kodow.
 set -euo pipefail
 
 DOWOD_KOD_CZERWONY=3
+DOWOD_KOD_NIEZGODNE_OCZEKIWANIA=4
 
 KATALOG_LOGOW="${1:?uzycie: uruchom-dowod.sh KATALOG_LOGOW}"
 mkdir -p "$KATALOG_LOGOW"
@@ -199,6 +212,25 @@ docker exec "$KONTENER" pg_dump -U dowod -d dowod --data-only > "$KATALOG_LOGOW/
 docker exec "$KONTENER" psql -U dowod -d dowod -v ON_ERROR_STOP=1 \
     -c "select lo_unlink(oid) from pg_largeobject_metadata;" > "$KATALOG_LOGOW/06g-usun-duzy-obiekt-rozciety.log"
 
+# 31: TEN SAM duzy obiekt rozciety co "26" wyzej, ale z JEDNA linia obojetna
+#     (komentarz, sam nie niesie zadnego wzorca) WSTRZYKNIETA MIEDZY dwa
+#     wywolania "lowrite" TEGO SAMEGO obiektu - nadal wewnatrz TEGO SAMEGO
+#     nawiasu "lo_open(...)"/"lo_close(...)", ale juz NIE SASIADUJACE w
+#     pliku. Dowod, ze DUZY_OBIEKT_WIELOKROTNY (patrz policz-trafienia.pl)
+#     jest liczony PO NAWIASIE lo_open/lo_close, nie po sasiedztwie linii -
+#     rozsuniecie NIE MA prawa dac cichego stanu 0.
+awk '
+    /^SELECT pg_catalog\.lowrite\(/ {
+        if (poprzednia_lowrite) {
+            print "-- uwaga-dowod: rozdzielenie testowe miedzy dwoma czesciami tego samego duzego obiektu, nie wyciek"
+        }
+        poprzednia_lowrite = 1
+        print
+        next
+    }
+    { poprzednia_lowrite = 0; print }
+' "$KATALOG_LOGOW/26-duzy-obiekt-rozciety.sql" > "$KATALOG_LOGOW/31-duzy-obiekt-rozciety-rozsuniete.sql"
+
 # --- Usuniecie mv + fdw -> manifest ZEROWY (log ma sie roznic od 03) ---
 docker exec "$KONTENER" psql -U dowod -d dowod -v ON_ERROR_STOP=1 \
     -c "drop foreign table fdw_uczestnicy; drop server serwer_samoodwolujacy cascade; drop materialized view mv_archiwum_kontaktow;" \
@@ -239,9 +271,16 @@ awk '1; /^\\\.$/ && !w { print "-- uwaga-dowod: jan.kowalski@example.com poza bl
 PODSUMOWANIE="$KATALOG_LOGOW/00-podsumowanie.txt"
 : > "$PODSUMOWANIE"
 NIEZGODNYCH=0
+# Nazwy WYKONANYCH biegow - zbierane tu, PORONWANE nizej (po ostatnim
+# "run_kontrola") ze zbiorem przypadkow wymienionych w "OCZEKIWANIA.md".
+# "LICZBA_BIEGOW" liczy sie z DLUGOSCI tej tablicy, NIGDY z liczby wpisanej
+# recznie - usuniecie jednego "run_kontrola" ponizej ma OD RAZU zmniejszyc
+# mianownik ulamka na koncu, nie zostawic go wygladajacym na komplet.
+NAZWY_WYKONANE=()
 
 run_kontrola() {
     NAZWA="$1"; OCZEKIWANY="$2"; shift 2
+    NAZWY_WYKONANE+=("$NAZWA")
     # Kod procesu zlapany PRZEZ "if" na samym wywolaniu (jak reszta tego
     # pliku) - "if polecenie; then...else..." NIE wylacza "set -e" dla tego
     # polecenia i nie wymaga wlasnego "set +e"/"set -e" dookola niego.
@@ -284,6 +323,7 @@ run_kontrola "24-stan3-naglowek-copy"      3 "$KATALOG_LOGOW/04-przed.sql" "$KAT
 run_kontrola "25-stan3-duzy-obiekt"        3 "$KATALOG_LOGOW/04-przed.sql" "$KATALOG_LOGOW/25-duzy-obiekt-widoczny.sql" "$TU/wzorce-probne.txt"
 run_kontrola "26-stan2-duzy-obiekt-rozciety" 2 "$KATALOG_LOGOW/04-przed.sql" "$KATALOG_LOGOW/26-duzy-obiekt-rozciety.sql" "$TU/wzorce-probne.txt"
 run_kontrola "30-stan3-nazwa-relacji"      3 "$KATALOG_LOGOW/04-przed.sql" "$KATALOG_LOGOW/30-relacja-widoczna.sql" "$TU/wzorce-probne.txt"
+run_kontrola "31-stan2-duzy-obiekt-rozciety-rozsuniete" 2 "$KATALOG_LOGOW/04-przed.sql" "$KATALOG_LOGOW/31-duzy-obiekt-rozciety-rozsuniete.sql" "$TU/wzorce-probne.txt"
 
 # --- Trzy dodatkowe wiersze z tabeli zlecenia: format nieobslugiwany (-F
 #     custom, -F directory) ma dawac 2 Z NAZWANA PRZYCZYNA (nie milczec), a
@@ -296,7 +336,53 @@ echo "dowod: wszystkie biegi zapisane pod $KATALOG_LOGOW"
 echo "dowod: kody wyjscia (oczekiwany/faktyczny/wynik), patrz tez $PODSUMOWANIE:"
 sed 's/^/  /' "$PODSUMOWANIE"
 
-LICZBA_BIEGOW=18
+# --- Symetria biegow tego skryptu i wierszy "OCZEKIWANIA.md" (kolumna
+#     "przypadek w dowodzie", tekst w odwrotnych apostrofach) - SPRAWDZANA
+#     NIEZALEZNIE od tego, czy biegi wyzej wyszly zgodne czy nie: bieg bez
+#     wiersza (OCZEKIWANIA.md nie nadazyl za dowodem) i wiersz bez biegu
+#     (przypadek zniknal z zestawu biegow) sa OBA odmowa, w KTORAKOLWIEK
+#     strone - "18/18" nie ma prawa wygladac na komplet, gdy ktos usunal
+#     "run_kontrola" ponizej albo zapomnial dopisac wiersz wyzej. ---
+OCZEKIWANIA_PLIK="$TU/dowod/OCZEKIWANIA.md"
+if [ ! -f "$OCZEKIWANIA_PLIK" ]; then
+    echo "dowod: brak $OCZEKIWANIA_PLIK - nie da sie porownac oczekiwan z biegami" >&2
+    echo "dowod: DOWOD NIEZGODNY (kod tego skryptu: $DOWOD_KOD_NIEZGODNE_OCZEKIWANIA, patrz naglowek)" >&2
+    exit "$DOWOD_KOD_NIEZGODNE_OCZEKIWANIA"
+fi
+mapfile -t NAZWY_W_OCZEKIWANIACH < <(grep -oE '`[0-9]+[a-z]?-[a-z0-9-]+`' "$OCZEKIWANIA_PLIK" | tr -d '`' | sort -u)
+mapfile -t NAZWY_WYKONANE_UNIKALNE < <(printf '%s\n' "${NAZWY_WYKONANE[@]}" | sort -u)
+
+BRAK_WIERSZA=()
+for N in "${NAZWY_WYKONANE_UNIKALNE[@]}"; do
+    ZNALEZIONY=0
+    for M in "${NAZWY_W_OCZEKIWANIACH[@]}"; do
+        [ "$N" = "$M" ] && { ZNALEZIONY=1; break; }
+    done
+    [ "$ZNALEZIONY" -eq 0 ] && BRAK_WIERSZA+=("$N")
+done
+BRAK_BIEGU=()
+for M in "${NAZWY_W_OCZEKIWANIACH[@]}"; do
+    ZNALEZIONY=0
+    for N in "${NAZWY_WYKONANE_UNIKALNE[@]}"; do
+        [ "$N" = "$M" ] && { ZNALEZIONY=1; break; }
+    done
+    [ "$ZNALEZIONY" -eq 0 ] && BRAK_BIEGU+=("$M")
+done
+
+if [ "${#BRAK_WIERSZA[@]}" -gt 0 ] || [ "${#BRAK_BIEGU[@]}" -gt 0 ]; then
+    echo "dowod: OCZEKIWANIA.md i zbior biegow tego skryptu SIE ROZJECHALY:" >&2
+    for N in "${BRAK_WIERSZA[@]:-}"; do
+        [ -n "$N" ] && echo "dowod:   bieg '$N' wykonany, ale BRAK dla niego wiersza w $OCZEKIWANIA_PLIK" >&2
+    done
+    for M in "${BRAK_BIEGU[@]:-}"; do
+        [ -n "$M" ] && echo "dowod:   wiersz '$M' w $OCZEKIWANIA_PLIK, ale ZADEN biezacy bieg tego skryptu go nie wykonuje" >&2
+    done
+    echo "dowod: DOWOD NIEZGODNY (kod tego skryptu: $DOWOD_KOD_NIEZGODNE_OCZEKIWANIA, patrz naglowek)" >&2
+    exit "$DOWOD_KOD_NIEZGODNE_OCZEKIWANIA"
+fi
+echo "dowod: OCZEKIWANIA.md zgodne ze zbiorem biegow (${#NAZWY_WYKONANE_UNIKALNE[@]} biegow = ${#NAZWY_W_OCZEKIWANIACH[@]} wierszy)"
+
+LICZBA_BIEGOW="${#NAZWY_WYKONANE[@]}"
 ZGODNYCH=$((LICZBA_BIEGOW - NIEZGODNYCH))
 echo "dowod: zgodnych z oczekiwaniem: $ZGODNYCH/$LICZBA_BIEGOW"
 if [ "$NIEZGODNYCH" -gt 0 ]; then
