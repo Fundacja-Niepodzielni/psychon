@@ -8,20 +8,34 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Table, { type Column } from "@/components/ui/Table";
 import ListTemplate, { type StanListy } from "@/components/templates/ListTemplate";
+import { ApiError, downloadReportCsv } from "@/lib/api";
 import {
-  ApiError,
-  downloadReportCsv,
-  fetchReport,
-  type ReportData,
-  type ReportFilters,
-  type ReportPersonRow,
-} from "@/lib/api";
-import { ROLE_LABELS } from "@/lib/h18/labels";
+  fetchReports,
+  type ReportsData,
+  type ReportsFilters,
+  type ReportsPersonRow,
+} from "@/lib/api/raport";
+import { kolumnyOsoby } from "@/components/h20/kolumny-osoby";
 
 const EMPTY_FILTERS = { from: "", to: "" };
 
+/**
+ * Kafelek podsumowania — sama liczba, bez odnośnika. Lista osób
+ * (`/admin/uczestniczki`) nie ma filtrów, które odtwarzałyby te liczby
+ * (zaplecze listy zna tylko rolę, status, frazę i sortowanie, a sama lista
+ * nie czyta parametrów adresu), więc odnośnik udawałby filtr, którego nie ma.
+ */
+function KafelekLiczby({ tytul, wartosc }: { tytul: string; wartosc: number | undefined }) {
+  return (
+    <Card>
+      <p className="text-caption font-bold uppercase tracking-wide text-subtle">{tytul}</p>
+      <p className="mt-1 text-h3 font-black text-ink">{wartosc}</p>
+    </Card>
+  );
+}
+
 export default function ReportView() {
-  const [report, setReport] = useState<ReportData | null>(null);
+  const [report, setReport] = useState<ReportsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | undefined>();
   const [reload, setReload] = useState(0);
@@ -31,11 +45,11 @@ export default function ReportView() {
   // Pola formularza (co użytkownik wpisuje) vs zastosowane filtry
   // (co poszło do API) — domyślnie oba puste, czyli zachowanie bez zmian.
   const [form, setForm] = useState(EMPTY_FILTERS);
-  const [applied, setApplied] = useState<ReportFilters>({});
+  const [applied, setApplied] = useState<ReportsFilters>({});
 
   useEffect(() => {
     let active = true;
-    fetchReport(applied)
+    fetchReports(applied)
       .then((data) => {
         if (active) setReport(data);
       })
@@ -61,6 +75,9 @@ export default function ReportView() {
     });
   }
 
+  // Eksport CSV zostaje na dotychczasowym `GET /admin/report/export.csv`
+  // (pakiet H20, `lib/api/h20.ts`) — osobna trasa, niezależna od nowego
+  // `GET /admin/reports` użytego przez ten ekran do wyświetlania liczb.
   async function exportCsv() {
     setDownloading(true);
     setDownloadError(null);
@@ -75,25 +92,13 @@ export default function ReportView() {
     }
   }
 
-  const columns: Column<ReportPersonRow>[] = [
+  const columns: Column<ReportsPersonRow>[] = [
+    ...kolumnyOsoby<ReportsPersonRow>(),
     {
-      key: "name",
-      header: "Osoba",
-      render: (row) => `${row.first_name} ${row.last_name}`,
-    },
-    {
-      key: "role",
-      header: "Rola",
-      render: (row) => ROLE_LABELS[row.role] ?? row.role,
-    },
-    {
-      key: "stage",
-      header: "Etap",
-      render: (row) => (
-        <Badge variant={row.stage === "certyfikat" ? "success" : "neutral"}>
-          {row.stage_label}
-        </Badge>
-      ),
+      // Zaliczone testy jako osobna liczba — nie zwinięte w etap (★ kryterium).
+      key: "tests_passed",
+      header: "Zaliczone testy",
+      render: (row) => row.tests_passed,
     },
     {
       key: "hours",
@@ -180,44 +185,19 @@ export default function ReportView() {
         Raport edycji — Fundacja Niepodzielni
       </h1>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Osoby przyjęte
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.admitted}</p>
-        </Card>
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Osoby aktywne
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.active}</p>
-        </Card>
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Programy ukończone
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">{report?.summary.completed}</p>
-        </Card>
-        <Card>
-          <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-            Certyfikaty wydane
-          </p>
-          <p className="mt-1 text-h3 font-black text-ink">
-            {report?.summary.certificates_issued}
-          </p>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <KafelekLiczby tytul="Osoby przyjęte" wartosc={report?.summary.admitted} />
+        <KafelekLiczby tytul="Osoby aktywne" wartosc={report?.summary.active} />
+        <KafelekLiczby tytul="Programy ukończone" wartosc={report?.summary.completed} />
+        <KafelekLiczby tytul="Certyfikaty wydane" wartosc={report?.summary.certificates_issued} />
+        <KafelekLiczby tytul="Zaliczone testy" wartosc={report?.summary.people_with_passed_test} />
       </div>
 
       <Card title="Pozostałe liczby">
-        <dl className="grid gap-4 text-small sm:grid-cols-3">
+        <dl className="grid gap-4 text-small sm:grid-cols-2">
           <div>
             <dt className="text-muted">Suma godzin stażu</dt>
             <dd className="mt-1 font-bold text-ink">{report?.summary.hours_accepted_total}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Średnia godzin / osobę</dt>
-            <dd className="mt-1 font-bold text-ink">{report?.summary.hours_accepted_average}</dd>
           </div>
           <div>
             <dt className="text-muted">Konsultacje łącznie</dt>
