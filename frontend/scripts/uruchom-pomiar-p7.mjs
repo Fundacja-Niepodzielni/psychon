@@ -43,6 +43,17 @@ if (kodBudowy !== 0) {
 // --strict-port: gdy port zajęty, ma być czerwono, nie po cichu przeskoczyć
 // na inny — inaczej pomiar-p7.mjs pytałby pusty adres, a próba padłaby
 // mylącym „brak pomiarów”, nie prawdziwym powodem.
+// --host 127.0.0.1: bez tego `vite preview` wiąże się z hostname "localhost",
+// co na części maszyn (zmierzone: `netstat` pokazywał `[::1]:PORT LISTENING`,
+// nie `127.0.0.1:PORT`) rozstrzyga się WYŁĄCZNIE do IPv6 — `fetch` niżej i
+// Playwright w pomiar-p7.mjs pytają jawnie o `127.0.0.1`, więc dostawały
+// ECONNREFUSED i owijka wychodziła kodem 1 ZAWSZE, niezależnie od realnych
+// celów dotyku (fail-closed, ale niemy - bramka, która nigdy nie może przejść,
+// prędzej czy później dostanie `continue-on-error` i zniknie). Wymuszam
+// IPv4 jawnie w konfiguracji serwera, a nie odwrotnie (`[::1]` po stronie
+// klienta), bo 127.0.0.1 istnieje na każdym systemie i każdym runnerze
+// (w tym `ubuntu-latest`), a loopback IPv6 bywa wyłączony (kontenery,
+// minimalne obrazy) — to jedyny z dwóch adresów, który jest gwarantowany.
 // `detached: true` (POSIX) czyni proces wiodącym w jego własnej grupie, żeby dało się
 // ubić CAŁE drzewo (npx -> node -> vite) jednym `process.kill(-pid)` niżej —
 // bez tego `serwer.kill()` ubijał tylko `npx`, a `vite preview` zostawał
@@ -50,7 +61,7 @@ if (kodBudowy !== 0) {
 // wisiał po zakończeniu tego skryptu, drugi bieg dostawał "port zajęty").
 const serwer = spawn(
   "npx",
-  ["vite", "preview", "--config", "vite.config.poligon.ts", "--port", String(PORT), "--strict-port"],
+  ["vite", "preview", "--config", "vite.config.poligon.ts", "--host", "127.0.0.1", "--port", String(PORT), "--strict-port"],
   {
     cwd: KATALOG_FRONTEND,
     stdio: ["ignore", "pipe", "pipe"],
