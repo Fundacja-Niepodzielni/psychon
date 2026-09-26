@@ -24,6 +24,11 @@ on:
 
 permissions:
   contents: read
+  # `gh run list` (ponizej) i `actions/download-artifact` czytaja przebiegi i
+  # artefakty INNEGO workflow (`ci.yml`) w tym samym repo - bez tego zawezenie
+  # `contents: read` odcina rowniez odczyt Actions, bo jawna lista uprawnien
+  # zastepuje domyslna, nie dodaje sie do niej.
+  actions: read
 
 concurrency:
   group: sonarcloud-${{ github.ref }}
@@ -33,7 +38,10 @@ jobs:
   sonarcloud:
     name: SonarCloud (skan tylko przy ustawionym sekrecie)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15 -> 30: krok ponizej czeka az `ci.yml` dla TEGO SAME sha sie zakonczy
+    # (do 15 minut oczekiwania), zanim skan w ogole ruszy - patrz uzasadnienie
+    # przy sciezkach raportow w `sonar-project.properties`.
+    timeout-minutes: 30
     env:
       # `secrets` wolno uzyc w `env` joba. Nieustawiony sekret daje pusty napis,
       # a nie blad — i to jest caly przelacznik tego workflow.
@@ -43,6 +51,52 @@ jobs:
         with:
           # Sonar liczy "nowy kod" z historii; plytki klon zawyza go do calego repo.
           fetch-depth: 0
+
+      # Raporty pokrycia POWSTAJA w `ci.yml` (ten sam commit, ta sama usluga
+      # Postgres/Redis, ten sam `composer install`/`npm ci`) i trafiaja tu jako
+      # artefakty zamiast bycia liczonymi drugi raz w tym zadaniu - uzasadnienie
+      # wyboru stoi w `sonar-project.properties`. Krok gasnie razem ze skanem:
+      # bez sekretu czekanie na cudzy przebieg byloby czasem straconym na nic.
+      - name: Poczekaj na przebieg CI dla tego commita
+        if: env.SONAR_TOKEN != ''
+        id: ci-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          for i in $(seq 1 60); do
+            RUN_JSON=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$SHA" \
+              --json databaseId,status,conclusion --jq '.[0] // empty')
+            if [ -n "$RUN_JSON" ]; then
+              STATUS=$(echo "$RUN_JSON" | jq -r '.status')
+              if [ "$STATUS" = "completed" ]; then
+                echo "id=$(echo "$RUN_JSON" | jq -r '.databaseId')" >> "$GITHUB_OUTPUT"
+                echo "conclusion=$(echo "$RUN_JSON" | jq -r '.conclusion')" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+            sleep 15
+          done
+          echo "Przebieg ci.yml dla ${SHA} nie zakonczyl sie w limicie oczekiwania (15 min)." >&2
+          exit 1
+
+      - name: Pobierz raport pokrycia zaplecza
+        if: env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pokrycie-backend
+          path: backend/coverage
+          run-id: ${{ steps.ci-run.outputs.id }}
+          github-token: ${{ github.token }}
+
+      - name: Pobierz raport pokrycia frontu
+        if: env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pokrycie-frontend
+          path: frontend/coverage
+          run-id: ${{ steps.ci-run.outputs.id }}
+          github-token: ${{ github.token }}
 
       - name: Skan SonarCloud
         if: env.SONAR_TOKEN != ''

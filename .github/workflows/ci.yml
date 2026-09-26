@@ -51,7 +51,17 @@ jobs:
           # Bez niego nie sa pomijane po cichu, tylko czerwone - patrz
           # backend/tests/Concerns/RequiresProcessConcurrency.php
           extensions: pdo_pgsql, redis, pcntl
-          coverage: none
+          # pcov, nie xdebug: lokalnie (kontener z ta sama wersja PHP i tymi
+          # samymi testami) wygenerowal `backend/coverage/clover.xml` (287
+          # znacznikow `<file`, 595215 B) - wlasnie dowod, ze mechanizm
+          # dziala. Czystego pomiaru narzutu czasowego SAMEGO sterownika na
+          # tym repo nie dalo sie zrobic lokalnie (baza testowa w tym
+          # srodowisku miala inne haslo niz `backend/phpunit.xml`, wiec 902
+          # testow padalo na polaczeniu, nie na asercji - patrz uzasadnienie
+          # przy sciezkach raportow w sonar-project.properties). Xdebug w
+          # trybie pokrycia jest ogolnie wolniejszy od pcov na tej samej
+          # suicie (pcov liczy tylko linie wykonane, bez pelnego trace'u).
+          coverage: pcov
       - name: Zależności
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Konfiguracja testowa
@@ -89,8 +99,12 @@ jobs:
       # czubku: takich prob jest **0**, wiec flaga niczego nie czerwieni teraz,
       # tylko zamyka droge nastepnym. Pominiecia warunkowe (`markTestSkipped`,
       # np. brak `pcntl`) zostaja dozwolone - one MOWIA, czego nie zmierzono.
+      # `--coverage-clover` idzie do phpunit wprost (Collision przepuszcza
+      # nieznane sobie opcje) i wymaga sterownika ustawionego wyzej w kroku
+      # `setup-php` (`coverage: pcov`) - bez niego ten sam krok konczy sie
+      # bledem "No code coverage driver available", a nie cichym pominieciem.
       - name: Testy
-        run: php artisan test --fail-on-incomplete
+        run: php artisan test --fail-on-incomplete --coverage-clover=coverage/clover.xml
         env:
           # Tylko topologia runnera. Zadanie biegnie na maszynie runnera, a nie
           # w kontenerze, wiec uslugi widac wylacznie pod 127.0.0.1 - etykieta
@@ -104,6 +118,16 @@ jobs:
           CACHE_STORE: array
           QUEUE_CONNECTION: sync
           MAIL_MAILER: array
+      # Raport idzie do skanu SonarCloud, ktory biegnie w OSOBNYM workflow
+      # (`.github/workflows/sonarcloud.yml`) po zakonczeniu tego zadania -
+      # uzasadnienie wyboru (artefakt zamiast powtarzania calego srodowiska
+      # testowego w workflow skanu) stoi w `sonar-project.properties`.
+      - name: Raport pokrycia zaplecza (artefakt dla skanu)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pokrycie-backend
+          path: backend/coverage/clover.xml
+          retention-days: 1
 
   frontend:
     name: Frontend (lint + build)
@@ -170,8 +194,20 @@ jobs:
         run: node scripts/check-lock-libc.mjs
       - name: Lint
         run: npm run lint
+      # `--coverage.reporter=lcov` obok `text-summary`: lcov idzie do pliku dla
+      # skanu, `text-summary` zostaje w logu, zeby procent byl widoczny bez
+      # otwierania artefaktu. Provider `v8` jest juz w zaleznosciach rozwojowych
+      # (`@vitest/coverage-v8`), wiec ten krok nie dotyka `package-lock.json`.
       - name: Testy
-        run: npm test
+        run: npm test -- --coverage --coverage.reporter=lcov --coverage.reporter=text-summary
+      # Raport idzie do skanu SonarCloud, ktory biegnie w OSOBNYM workflow -
+      # uzasadnienie stoi w `sonar-project.properties`.
+      - name: Raport pokrycia frontu (artefakt dla skanu)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pokrycie-frontend
+          path: frontend/coverage/lcov.info
+          retention-days: 1
       - name: Build
         run: npm run build
         env:
