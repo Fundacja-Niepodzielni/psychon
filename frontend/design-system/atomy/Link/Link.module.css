@@ -3,8 +3,8 @@
   background: none;
   border: none;
   text-decoration: none;
-  padding: var(--space-2) 2px;
-  margin: -10px -2px;
+  padding: var(--space-2) var(--space-2);
+  margin: calc(var(--space-10) * -1) calc(var(--space-2) * -1);
   display: inline-block;
 }
 .odnosnik:hover,
