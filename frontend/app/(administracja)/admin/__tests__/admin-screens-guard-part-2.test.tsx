@@ -50,6 +50,9 @@ const { default: ProfileDetailPage } = await import(
 );
 const { default: SettingsPage } = await import("@/app/(administracja)/admin/ustawienia/page");
 const { default: AdminHomePage } = await import("@/app/(administracja)/admin/page");
+const { default: DocumentTemplatesPage } = await import(
+  "@/app/(administracja)/admin/wzory-dokumentow/page"
+);
 
 const page = <T,>(data: T[]) => ({
   data,
@@ -214,6 +217,27 @@ const SCREENS: ScreenCase[] = [
       },
     },
     seen: "Zgłoszenia rekrutacyjne",
+  },
+  {
+    url: "/admin/wzory-dokumentow",
+    element: () => <DocumentTemplatesPage />,
+    routes: {
+      "/document-templates/agreement": {
+        type: "agreement",
+        content: "Treść porozumienia wolontariackiego.",
+        version: 1,
+        updated_at: "2026-09-01T10:00:00Z",
+        updated_by: { id: 1, name: "Anna Kowalska" },
+      },
+      "/document-templates/agreement/versions": [
+        {
+          version: 1,
+          updated_at: "2026-09-01T10:00:00Z",
+          updated_by: { id: 1, name: "Anna Kowalska" },
+        },
+      ],
+    },
+    seen: "Treść porozumienia wolontariackiego.",
   },
 ];
 

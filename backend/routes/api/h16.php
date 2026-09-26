@@ -23,6 +23,12 @@ Route::middleware('auth:keycloak')->group(function (): void {
     Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'read'])
         ->whereNumber('id');
+    Route::post('/notifications/{id}/unread', [NotificationController::class, 'unread'])
+        ->whereNumber('id');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])
+        ->whereNumber('id');
+    Route::get('/notifications/preferences', [NotificationController::class, 'preferences']);
+    Route::put('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
 
     Route::middleware('role:project_manager,super_admin')
         ->get('/admin/emails', [EmailController::class, 'index']);

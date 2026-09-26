@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\EmailMessage;
 use App\Models\Notification;
+use App\Models\NotificationPreference;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +17,8 @@ final class Notify
     /**
      * Create a bell notification and its simulated e-mail copy.
      * Nothing is ever sent to the outside world during the hackathon.
+     * The e-mail copy is skipped when the recipient turned e-mail off for
+     * this type (`notification_preferences`); the bell entry is always kept.
      */
     public static function send(
         User $user,
@@ -32,6 +35,16 @@ final class Notify
                 'body' => $body,
                 'link' => $link,
             ]);
+
+            $emailDisabled = NotificationPreference::query()
+                ->where('user_id', $user->id)
+                ->where('type', $type)
+                ->where('email', false)
+                ->exists();
+
+            if ($emailDisabled) {
+                return $notification;
+            }
 
             EmailMessage::create([
                 'to_email' => $user->email,

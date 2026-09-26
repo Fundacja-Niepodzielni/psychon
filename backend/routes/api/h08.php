@@ -19,6 +19,9 @@ use App\Http\Controllers\Api\V1\Admin\CourseInviteController;
 use App\Http\Controllers\Api\V1\Admin\CourseSequenceController;
 use App\Http\Controllers\Api\V1\Admin\LessonAdminController;
 use App\Http\Controllers\Api\V1\Admin\MaterialAdminController;
+use App\Http\Controllers\Api\V1\H08\InstructorCourseController;
+use App\Http\Controllers\Api\V1\H08\InstructorLessonController;
+use App\Http\Controllers\Api\V1\H08\InstructorMaterialController;
 use Illuminate\Support\Facades\Route;
 
 if (! config('features.h08')) {
@@ -57,4 +60,21 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     // (M4 pkt 6) — regułę trzyma `CourseInviter`, trasa jest zwykłą akcją
     // domenową na pod-zasobie.
     Route::post('/admin/courses/{course}/invite', [CourseInviteController::class, 'invite'])->whereNumber('course');
+});
+
+// Prowadzący: edycja treści wyłącznie kursu, do którego jest przypisany
+// (`CoursePolicy`). Bez trasy zakładania kursu — kurs zakłada administracja.
+// `GET /instructor/courses` (lista przypisanych) już istnieje w H09.
+Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void {
+    Route::get('/instructor/courses/{course}', [InstructorCourseController::class, 'show'])->whereNumber('course');
+    Route::patch('/instructor/courses/{course}', [InstructorCourseController::class, 'update'])->whereNumber('course');
+
+    Route::get('/instructor/courses/{course}/lessons', [InstructorLessonController::class, 'index'])->whereNumber('course');
+    Route::post('/instructor/courses/{course}/lessons', [InstructorLessonController::class, 'store'])->whereNumber('course');
+    Route::patch('/instructor/lessons/{lesson}', [InstructorLessonController::class, 'update'])->whereNumber('lesson');
+    Route::delete('/instructor/lessons/{lesson}', [InstructorLessonController::class, 'destroy'])->whereNumber('lesson');
+
+    Route::post('/instructor/lessons/{lesson}/materials', [InstructorMaterialController::class, 'storeForLesson'])->whereNumber('lesson');
+    Route::post('/instructor/courses/{course}/materials', [InstructorMaterialController::class, 'storeForCourse'])->whereNumber('course');
+    Route::delete('/instructor/materials/{material}', [InstructorMaterialController::class, 'destroy'])->whereNumber('material');
 });

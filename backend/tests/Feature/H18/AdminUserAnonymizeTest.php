@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use RuntimeException;
+use Tests\Concerns\WithProfileDocumentEncryptionKey;
 use Tests\Feature\H13\CertificatePackageCase;
 
 /**
@@ -35,6 +36,14 @@ use Tests\Feature\H13\CertificatePackageCase;
 class AdminUserAnonymizeTest extends CertificatePackageCase
 {
     use RefreshDatabase;
+    use WithProfileDocumentEncryptionKey;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->useFreshProfileDocumentEncryptionKey();
+    }
 
     private function admin(): User
     {

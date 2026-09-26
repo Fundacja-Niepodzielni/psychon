@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\WithProfileDocumentEncryptionKey;
 use Tests\TestCase;
 
 /**
@@ -40,6 +41,7 @@ use Tests\TestCase;
 class ConsentWithdrawalTest extends TestCase
 {
     use RefreshDatabase;
+    use WithProfileDocumentEncryptionKey;
 
     private const SLUG = 'profile.withdrawn';
 
@@ -50,6 +52,7 @@ class ConsentWithdrawalTest extends TestCase
     {
         parent::setUp();
         $this->seed();
+        $this->useFreshProfileDocumentEncryptionKey();
     }
 
     public function test_withdrawing_consent_sets_the_profile_status(): void

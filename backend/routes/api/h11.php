@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\H11\AdminInternshipController;
+use App\Http\Controllers\Api\V1\H11\AdminInternshipFormController;
 use App\Http\Controllers\Api\V1\H11\InternshipEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,5 +37,10 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     Route::post('/admin/internship/{id}/return', [AdminInternshipController::class, 'return'])
         ->whereNumber('id');
     Route::post('/admin/internship/{id}/reject', [AdminInternshipController::class, 'reject'])
+        ->whereNumber('id');
+
+    Route::get('/admin/internship/forms', [AdminInternshipFormController::class, 'index']);
+    Route::post('/admin/internship/forms', [AdminInternshipFormController::class, 'store']);
+    Route::patch('/admin/internship/forms/{id}', [AdminInternshipFormController::class, 'update'])
         ->whereNumber('id');
 });

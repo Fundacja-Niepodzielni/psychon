@@ -14,3 +14,7 @@ Schedule::command('access:check-expired')->daily();
 // H01 · Eksport RODO — paczka z danymi osobowymi znika po terminie ważności
 // (config/exports.php `ttl_hours`). Godzinowo, bo TTL liczy się w godzinach.
 Schedule::command('exports:purge-expired')->hourly()->withoutOverlapping();
+
+// H12 · Superwizja — day-before reminder for every active signup, once per signup
+// (`supervision_signups.reminder_sent_at`). 08:00 in the application time zone.
+Schedule::command('supervision:send-reminders')->dailyAt('08:00')->withoutOverlapping();

@@ -101,7 +101,12 @@ describe("/prowadzacy/grupa under the instructor role guard", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Moja grupa" })).toBeInTheDocument();
     expect(screen.getByText("12.5 h")).toBeInTheDocument();
     expect(screen.getByText("Nie utworzyłeś/aś jeszcze żadnego terminu.")).toBeInTheDocument();
-    expect(apiPaged).toHaveBeenCalledWith("/instructor/reliability");
+    // Osobne zapytanie sekcji rzetelnosci wychodzi z komponentu, ktory montuje sie
+    // dopiero z tabela - czekamy na nie, zamiast zakladac, ze efekt zdazyl sie
+    // wykonac w tym samym takcie, w ktorym pojawila sie komorka.
+    await waitFor(() =>
+      expect(apiPaged).toHaveBeenCalledWith("/instructor/reliability"),
+    );
   });
 
   it("a group load error shows the server message and a retry button", async () => {

@@ -8,17 +8,20 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\WithProfileDocumentEncryptionKey;
 use Tests\TestCase;
 
 class PsychologistProfileTest extends TestCase
 {
     use RefreshDatabase;
+    use WithProfileDocumentEncryptionKey;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         Storage::fake('local');
+        $this->useFreshProfileDocumentEncryptionKey();
     }
 
     public function test_read_before_program_completion_returns_not_eligible_without_error(): void
