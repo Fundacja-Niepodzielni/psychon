@@ -17,6 +17,7 @@ final class NotificationTypes
         'assignment.removed',
         'attempt.failed_final',
         'certificate.ready',
+        'cooperation_request.answered',
         'course.invited',
         'course.unlocked',
         'document.ready',
