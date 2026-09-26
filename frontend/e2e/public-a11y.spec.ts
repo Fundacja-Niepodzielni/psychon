@@ -66,7 +66,7 @@ for (const trasa of TRASY_PUBLICZNE) {
 
     // Osobny test: TYLKO rejestruje liczbę naruszeń `color-contrast` na
     // trasę — to pierwszy realny pomiar kontrastu w przeglądarce,
-    // decyzję co dalej podejmuje lider/właściciel, nie ten test. Dlatego
+    // decyzję co dalej podejmuje człowiek czytający wynik, nie ten test. Dlatego
     // nigdy nie failuje na samym kontraście.
     test(`${trasa} — pomiar naruszeń color-contrast (nie failuje)`, async ({
       page,
