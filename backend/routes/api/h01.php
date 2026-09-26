@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\H01\AdminCooperationRequestController;
+use App\Http\Controllers\Api\V1\H01\CooperationRequestController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,4 +34,16 @@ Route::middleware('auth:keycloak')->group(function (): void {
         ->middleware('throttle:'.config('exports.rate_limit'));
     Route::get('/me/exports/{export}', [ProfileController::class, 'showExport']);
     Route::get('/me/exports/{export}/download', [ProfileController::class, 'downloadExport']);
+
+    // Zgłoszenie dalszej współpracy po zakończeniu programu. Bez
+    // `access.active` z tego samego powodu co profil: po zakończeniu programu
+    // dostęp do kursów może już wygasnąć, a zgłoszenie ma zostać osiągalne.
+    Route::post('/cooperation-requests', [CooperationRequestController::class, 'store']);
+    Route::get('/cooperation-requests/mine', [CooperationRequestController::class, 'mine']);
+
+    Route::middleware('role:project_manager,super_admin')->group(function (): void {
+        Route::get('/admin/cooperation-requests', [AdminCooperationRequestController::class, 'index']);
+        Route::patch('/admin/cooperation-requests/{id}', [AdminCooperationRequestController::class, 'respond'])
+            ->whereNumber('id');
+    });
 });
