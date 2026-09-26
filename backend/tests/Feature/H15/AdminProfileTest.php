@@ -7,21 +7,25 @@ use App\Models\Notification;
 use App\Models\PsychologistProfile;
 use App\Models\SensitiveAccessLogEntry;
 use App\Models\User;
+use App\Services\H15\ProfileDocumentCipher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Tests\Concerns\WithProfileDocumentEncryptionKey;
 use Tests\TestCase;
 
 class AdminProfileTest extends TestCase
 {
     use RefreshDatabase;
+    use WithProfileDocumentEncryptionKey;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         Storage::fake('local');
+        $this->useFreshProfileDocumentEncryptionKey();
     }
 
     public function test_default_queue_contains_only_submitted_profiles(): void
@@ -174,10 +178,13 @@ class AdminProfileTest extends TestCase
             'city' => 'Gdańsk',
             'status' => 'submitted',
         ]);
+        $path = "profile-documents/{$profile->id}/dyplom.pdf";
+        Storage::disk('local')->put($path, (new ProfileDocumentCipher)->encrypt(
+            UploadedFile::fake()->create('dyplom.pdf', 100, 'application/pdf')->get()
+        ));
         $profile->documents()->create([
             'type' => 'dyplom',
-            'file_path' => UploadedFile::fake()->create('dyplom.pdf', 100, 'application/pdf')
-                ->store("profile-documents/{$profile->id}", 'local'),
+            'file_path' => $path,
             'uploaded_at' => now(),
         ]);
 

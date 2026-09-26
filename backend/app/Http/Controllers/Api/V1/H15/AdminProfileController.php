@@ -9,8 +9,10 @@ use App\Http\Resources\H15\AdminPsychologistProfileResource;
 use App\Models\ProfileDocument;
 use App\Models\PsychologistProfile;
 use App\Models\SensitiveAccessLogEntry;
+use App\Services\H15\ProfileDocumentCipher;
 use App\Support\AuditLog;
 use App\Support\Notify;
+use finfo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -158,7 +160,26 @@ class AdminProfileController extends Controller
         $extension = pathinfo($document->file_path, PATHINFO_EXTENSION) ?: 'bin';
         $filename = "{$document->type}-{$document->id}.{$extension}";
 
-        return Storage::disk('local')->download($document->file_path, $filename);
+        // Odczyt z odszyfrowaniem: na dysku leży wyłącznie szyfrogram,
+        // więc pobranie musi go najpierw odszyfrować — ta sama ścieżka co
+        // dotąd (`Storage::disk('local')`), inna wyłącznie treść odpowiedzi.
+        $plainContent = (new ProfileDocumentCipher)->decrypt(
+            Storage::disk('local')->get($document->file_path)
+        );
+
+        // Nagłówki liczone z odszyfrowanej treści, nie z pliku na dysku:
+        // na dysku leży szyfrogram, więc jego typ i rozmiar nie mają nic
+        // wspólnego z tym, co faktycznie trafia do przeglądarki.
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->buffer($plainContent) ?: 'application/octet-stream';
+
+        return response()->streamDownload(
+            fn () => print ($plainContent),
+            $filename,
+            [
+                'Content-Type' => $mimeType,
+                'Content-Length' => (string) strlen($plainContent),
+            ],
+        );
     }
 
     private function assertSubmitted(?PsychologistProfile $profile): void
