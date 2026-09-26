@@ -1,0 +1,40 @@
+.przycisk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: var(--hit-min);
+  max-width: 320px;
+  padding: 9px var(--space-16);
+  border-radius: var(--r-xs);
+  border: 1px solid transparent;
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+.mala {
+  padding: var(--space-6) var(--space-12);
+  font-size: var(--fs-10);
+}
+.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
+.outline {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+.quiet {
+  background: transparent;
+  color: var(--link);
+  border-color: transparent;
+}
+.niebezpieczny {
+  color: var(--error);
+}
+.zablokowany {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
