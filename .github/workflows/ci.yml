@@ -75,8 +75,14 @@ jobs:
       - name: Podatności zależności PHP (pomiar, nie blokada)
         run: composer audit --locked --format=plain
         continue-on-error: true
+      # Proba niedokonczona (`markTestIncomplete`) konczy sie domyslnie jako
+      # przechodzaca i wchodzi do sumy "passed" - a wtedy lista sprawdzen swieci
+      # na zielono, choc asercji nie przybylo ani jednej. Zmierzone dzis na tym
+      # czubku: takich prob jest **0**, wiec flaga niczego nie czerwieni teraz,
+      # tylko zamyka droge nastepnym. Pominiecia warunkowe (`markTestSkipped`,
+      # np. brak `pcntl`) zostaja dozwolone - one MOWIA, czego nie zmierzono.
       - name: Testy
-        run: php artisan test
+        run: php artisan test --fail-on-incomplete
         env:
           # Tylko topologia runnera. Zadanie biegnie na maszynie runnera, a nie
           # w kontenerze, wiec uslugi widac wylacznie pod 127.0.0.1 - etykieta
