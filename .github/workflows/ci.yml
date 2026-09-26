@@ -75,6 +75,14 @@ jobs:
       - name: Podatności zależności PHP (pomiar, nie blokada)
         run: composer audit --locked --format=plain
         continue-on-error: true
+      # Proba sprawdzen wstepnych `scripts/setup.sh --sprawdz`. Lezala w drzewie
+      # bez zadnego wolajacego, wiec nie wykonala sie ani razu - a proba, ktorej
+      # nikt nie uruchamia, nie pilnuje niczego. Dziala na atrapach narzedzi w
+      # `PATH`, nie potrzebuje dockera ani sieci; biegnie z korzenia repozytorium,
+      # bo tego wymaga jej wlasny sposob ustalania sciezek.
+      - name: Sprawdzenia wstepne instalatora
+        run: bash scripts/tests/setup-preflight.sh
+        working-directory: ${{ github.workspace }}
       # Proba niedokonczona (`markTestIncomplete`) konczy sie domyslnie jako
       # przechodzaca i wchodzi do sumy "passed" - a wtedy lista sprawdzen swieci
       # na zielono, choc asercji nie przybylo ani jednej. Zmierzone dzis na tym
