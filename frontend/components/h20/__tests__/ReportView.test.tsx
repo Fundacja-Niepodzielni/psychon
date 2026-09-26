@@ -4,10 +4,10 @@ import userEvent from "@testing-library/user-event";
 
 /**
  * Ekran raportu (H20, nowy kontrakt `GET /admin/reports`): etap każdej
- * osoby, zaliczone testy jako osobna liczba, zakres dat i odnośnik od
- * każdej liczby-kafelka do listy osób z filtrem, który dokładnie tę
- * liczbę daje. Eksport CSV zostaje na starej trasie H20 (`lib/api/h20.ts`
- * przez barrel `@/lib/api`) — patrz komentarz w `ReportView.tsx`.
+ * osoby, zaliczone testy jako osobna liczba i zakres dat. Eksport CSV
+ * zostaje na starej trasie H20 (`lib/api/h20.ts` przez barrel `@/lib/api`)
+ * — patrz komentarz w `ReportView.tsx`. Zgodność kafelków z kopertą
+ * zaplecza i brak odnośników udających filtr: `ReportView-zaplecze.test.tsx`.
  */
 
 const fetchReports = vi.fn();
@@ -34,6 +34,12 @@ vi.mock("@/lib/api/raport", () => ({
 
 const { default: ReportView } = await import("@/components/h20/ReportView");
 
+/** Wartość kafelka podsumowania o danym tytule (akapit tuż pod tytułem). */
+async function wartoscKafelka(tytul: string): Promise<string> {
+  const naglowek = await screen.findByText(tytul, { selector: "p" });
+  return naglowek.nextElementSibling?.textContent ?? "";
+}
+
 const osoba = (over: Partial<Record<string, unknown>>) => ({
   id: 1,
   first_name: "Marta",
@@ -55,7 +61,7 @@ const raport = {
     active: 3,
     completed: 1,
     certificates_issued: 1,
-    tests_passed: 2,
+    people_with_passed_test: 2,
     hours_accepted_total: "113.5",
     consultations_total: 101,
   },
@@ -84,9 +90,7 @@ describe("ReportView — zakres dat", () => {
     render(<ReportView />);
 
     await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(1));
-    expect(await screen.findByTitle("Wszystkie osoby przyjęte — lista osób")).toHaveTextContent(
-      "5",
-    );
+    await waitFor(async () => expect(await wartoscKafelka("Osoby przyjęte")).toBe("5"));
 
     await userEvent.type(screen.getByLabelText("Od"), "2026-01-01");
     await userEvent.type(screen.getByLabelText("Do"), "2026-01-31");
@@ -94,9 +98,7 @@ describe("ReportView — zakres dat", () => {
 
     await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(2));
     expect(fetchReports).toHaveBeenLastCalledWith({ from: "2026-01-01", to: "2026-01-31" });
-    await waitFor(() =>
-      expect(screen.getByTitle("Wszystkie osoby przyjęte — lista osób")).toHaveTextContent("9"),
-    );
+    await waitFor(async () => expect(await wartoscKafelka("Osoby przyjęte")).toBe("9"));
   });
 
   it("filtr: wysłanie pustego formularza po wcześniejszym zakresie znów nie przekazuje from/to", async () => {
@@ -191,13 +193,13 @@ describe("ReportView — etap i zaliczone testy jako osobna liczba", () => {
   it("kafelek Zaliczone testy pokazuje liczbę osób z backendu, niezależną od kafelka etapów", async () => {
     fetchReports.mockResolvedValue({
       ...raport,
-      summary: { ...raport.summary, completed: 1, tests_passed: 4 },
+      summary: { ...raport.summary, completed: 1, people_with_passed_test: 4 },
       people: [],
     });
     render(<ReportView />);
 
-    expect(await screen.findByTitle("Programy ukończone — lista osób")).toHaveTextContent("1");
-    expect(screen.getByTitle("Osoby z zaliczonym testem — lista osób")).toHaveTextContent("4");
+    expect(await wartoscKafelka("Programy ukończone")).toBe("1");
+    expect(await wartoscKafelka("Zaliczone testy")).toBe("4");
   });
 
   it("pusta lista osób pokazuje istniejący stan pusty tabeli (bez etapu i testów do wyświetlenia)", async () => {
@@ -215,76 +217,4 @@ describe("ReportView — etap i zaliczone testy jako osobna liczba", () => {
   // testy" z kolumną „Etap" (usunięcie osobnej kolumny w `ReportView.tsx`)
   // psuje pierwszy test tego bloku — „2" i „6" przestają być odnajdywalne
   // jako osobne komórki wiersza.
-});
-
-/**
- * Odnośnik od każdej liczby-kafelka do listy osób z filtrem, który
- * dokładnie tę liczbę daje. Sprawdzany jest FILTR w adresie docelowym
- * (query zbudowane niezależnie od `ODNOSNIKI_LICZB`, na podstawie surowych
- * danych `people`), a nie samo istnienie odnośnika.
- */
-describe("ReportView — odnośnik od liczby do źródła", () => {
-  const people = [
-    osoba({ id: 1, status: "active", stage: "kurs", certificate_issued: false, tests_passed: 0 }),
-    osoba({ id: 2, status: "active", stage: "gotowa", certificate_issued: false, tests_passed: 3 }),
-    osoba({ id: 3, status: "blocked", stage: "certyfikat", certificate_issued: true, tests_passed: 5 }),
-    osoba({ id: 4, status: "active", stage: "warsztat", certificate_issued: false, tests_passed: 0 }),
-  ];
-
-  // Filtry przepisane NIEZALEŻNIE od `lib/h20/raportOdnosniki.ts` — test
-  // sprawdza, że adres docelowy i wyświetlana liczba są ze sobą zgodne,
-  // a nie że komponent zgadza się sam ze sobą.
-  const filtryNiezalezne: Record<string, (o: (typeof people)[number]) => boolean> = {
-    "": () => true,
-    "status=active": (o) => o.status === "active",
-    "etap=ukonczony": (o) => o.stage === "gotowa" || o.stage === "certyfikat",
-    "certyfikat=1": (o) => o.certificate_issued,
-    "testy=zaliczone": (o) => o.tests_passed > 0,
-  };
-
-  const kafelki: Array<{ tytul: string; query: string; oczekiwanaLiczba: number }> = [
-    { tytul: "Wszystkie osoby przyjęte", query: "", oczekiwanaLiczba: 4 },
-    { tytul: "Osoby aktywne", query: "status=active", oczekiwanaLiczba: 3 },
-    { tytul: "Programy ukończone", query: "etap=ukonczony", oczekiwanaLiczba: 2 },
-    { tytul: "Certyfikaty wydane", query: "certyfikat=1", oczekiwanaLiczba: 1 },
-    { tytul: "Osoby z zaliczonym testem", query: "testy=zaliczone", oczekiwanaLiczba: 2 },
-  ];
-
-  it.each(kafelki)(
-    "kafelek $tytul prowadzi do adresu z filtrem, który daje dokładnie tę liczbę",
-    async ({ tytul, query, oczekiwanaLiczba }) => {
-      fetchReports.mockResolvedValue({
-        summary: {
-          admitted: 4,
-          active: 3,
-          completed: 2,
-          certificates_issued: 1,
-          tests_passed: 2,
-          hours_accepted_total: "0",
-          consultations_total: 0,
-        },
-        people,
-      });
-      render(<ReportView />);
-
-      const link = (await screen.findByTitle(`${tytul} — lista osób`)) as HTMLAnchorElement;
-      const href = link.getAttribute("href") ?? "";
-      expect(href.startsWith("/admin/uczestniczki")).toBe(true);
-
-      const oczekiwanaSciezka = query ? `/admin/uczestniczki?${query}` : "/admin/uczestniczki";
-      expect(href).toBe(oczekiwanaSciezka);
-
-      // Filtr z adresu, zastosowany niezależnie do surowych danych, daje
-      // dokładnie tyle, ile pokazuje kafelek.
-      const zFiltra = people.filter(filtryNiezalezne[query]).length;
-      expect(zFiltra).toBe(oczekiwanaLiczba);
-      expect(link).toHaveTextContent(String(oczekiwanaLiczba));
-    },
-  );
-
-  // Kontrola negatywna (ręczna, opisana w PR): zamiana query „status=active"
-  // na „status=blocked" dla kafelka „Osoby aktywne" w
-  // `lib/h20/raportOdnosniki.ts` psuje test dla tego wiersza tabeli
-  // parametryzowanej (href przestaje zgadzać się z `oczekiwanaSciezka`,
-  // a niezależnie policzony filtr przestaje dawać `oczekiwanaLiczba`).
 });

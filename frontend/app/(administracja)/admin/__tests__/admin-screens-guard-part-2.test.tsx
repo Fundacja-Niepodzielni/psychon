@@ -117,7 +117,7 @@ const SCREENS: ScreenCase[] = [
           active: 3,
           completed: 1,
           certificates_issued: 1,
-          tests_passed: 2,
+          people_with_passed_test: 2,
           hours_accepted_total: "113.5",
           consultations_total: 101,
         },

@@ -41,8 +41,12 @@ export interface ReportsSummary {
   active: number;
   completed: number;
   certificates_issued: number;
-  /** Liczba osób z co najmniej jednym zaliczonym testem (nie suma testów). */
-  tests_passed: number;
+  /**
+   * Liczba OSÓB z co najmniej jednym zaliczonym testem — nazwa jak w
+   * odpowiedzi zaplecza (`ReportSummary::build()`). Celowo inna niż
+   * `ReportsPersonRow.tests_passed`, które liczy TESTY jednej osoby.
+   */
+  people_with_passed_test: number;
   hours_accepted_total: string;
   consultations_total: number;
 }

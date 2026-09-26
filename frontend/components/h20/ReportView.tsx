@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
@@ -16,25 +15,21 @@ import {
   type ReportsFilters,
   type ReportsPersonRow,
 } from "@/lib/api/raport";
-import { adresListyOsob, ODNOSNIKI_LICZB, type KluczLiczby } from "@/lib/h20/raportOdnosniki";
 import { kolumnyOsoby } from "@/components/h20/kolumny-osoby";
 
 const EMPTY_FILTERS = { from: "", to: "" };
 
-/** Kafelek podsumowania z odnośnikiem do listy osób, z której liczba pochodzi. */
-function KafelekLiczby({ tytul, klucz, wartosc }: { tytul: string; klucz: KluczLiczby; wartosc: number | undefined }) {
+/**
+ * Kafelek podsumowania — sama liczba, bez odnośnika. Lista osób
+ * (`/admin/uczestniczki`) nie ma filtrów, które odtwarzałyby te liczby
+ * (zaplecze listy zna tylko rolę, status, frazę i sortowanie, a sama lista
+ * nie czyta parametrów adresu), więc odnośnik udawałby filtr, którego nie ma.
+ */
+function KafelekLiczby({ tytul, wartosc }: { tytul: string; wartosc: number | undefined }) {
   return (
     <Card>
       <p className="text-caption font-bold uppercase tracking-wide text-subtle">{tytul}</p>
-      <p className="mt-1 text-h3 font-black text-ink">
-        <Link
-          href={adresListyOsob(klucz)}
-          className="underline decoration-control underline-offset-4 transition-colors duration-150 hover:decoration-heading focus-visible:focus-ring"
-          title={`${ODNOSNIKI_LICZB[klucz].etykieta} — lista osób`}
-        >
-          {wartosc}
-        </Link>
-      </p>
+      <p className="mt-1 text-h3 font-black text-ink">{wartosc}</p>
     </Card>
   );
 }
@@ -135,7 +130,7 @@ export default function ReportView() {
     <ListTemplate
       naglowek={{
         title: "Raport edycji",
-        description: "Liczby do grantu — każda liczba prowadzi do listy osób, z której pochodzi.",
+        description: "Liczby do grantu — te same źródła co karta osoby i pulpit.",
         action: (
           <>
             <Button variant="secondary" onClick={exportCsv} loading={downloading}>
@@ -191,24 +186,14 @@ export default function ReportView() {
       </h1>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <KafelekLiczby tytul="Osoby przyjęte" klucz="admitted" wartosc={report?.summary.admitted} />
-        <KafelekLiczby tytul="Osoby aktywne" klucz="active" wartosc={report?.summary.active} />
-        <KafelekLiczby tytul="Programy ukończone" klucz="completed" wartosc={report?.summary.completed} />
-        <KafelekLiczby
-          tytul="Certyfikaty wydane"
-          klucz="certificates_issued"
-          wartosc={report?.summary.certificates_issued}
-        />
-        <KafelekLiczby
-          tytul="Zaliczone testy"
-          klucz="tests_passed"
-          wartosc={report?.summary.tests_passed}
-        />
+        <KafelekLiczby tytul="Osoby przyjęte" wartosc={report?.summary.admitted} />
+        <KafelekLiczby tytul="Osoby aktywne" wartosc={report?.summary.active} />
+        <KafelekLiczby tytul="Programy ukończone" wartosc={report?.summary.completed} />
+        <KafelekLiczby tytul="Certyfikaty wydane" wartosc={report?.summary.certificates_issued} />
+        <KafelekLiczby tytul="Zaliczone testy" wartosc={report?.summary.people_with_passed_test} />
       </div>
 
       <Card title="Pozostałe liczby">
-        {/* Sumy, nie liczba osób — bez odnośnika (patrz komentarz w
-            `lib/h20/raportOdnosniki.ts`: filtr listy osób nie odda sumy). */}
         <dl className="grid gap-4 text-small sm:grid-cols-2">
           <div>
             <dt className="text-muted">Suma godzin stażu</dt>
