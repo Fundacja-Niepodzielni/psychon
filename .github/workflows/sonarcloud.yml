@@ -17,10 +17,21 @@ name: SonarCloud
 
 # `sprint-*` jest tu od chwili, gdy sekret zostal zmierzony - wczesniej przebieg na galezi
 # sprintu bylby zielony bez zmierzenia czegokolwiek.
+# Filtry sciezek sa DOKLADNIE takie same jak w `ci.yml`. Kiedy byly rozne,
+# push z sama dokumentacja nie tworzyl przebiegu prob (`ci.yml` pomijal
+# `docs/**` i `*.md`), a skan startowal i czekal na nieistniejacy przebieg
+# pelne 15 minut, po czym czerwienil sie za nic. Zmiana filtra w jednym pliku
+# bez drugiego wraca do tego samego stanu - pilnuje tego proba spojnosci.
 on:
   push:
     branches: [main, dev, "sprint-*"]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
 
 permissions:
   contents: read

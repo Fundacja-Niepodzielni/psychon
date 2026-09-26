@@ -97,6 +97,55 @@ else
     zdaj "usuniecie kroku czerwieniacego brak pokrycia czerwieni pomiar"
 fi
 
+# --- pomiar 2: filtry sciezek obu przebiegow ---------------------------------
+# Wypisuje pary "wyzwalacz:wzorzec" w kolejnosci pliku. Rozne zbiory znacza, ze
+# jeden przebieg rusza tam, gdzie drugi nie rusza - i wtedy czekanie na cudzy
+# przebieg nie ma na co czekac.
+filtry_sciezek() {
+    awk '
+        /^[a-z]/ && !/^on:/ { w_on = 0 }
+        /^on:$/ { w_on = 1; next }
+        w_on && /^  [a-z_]+:/ { wyzwalacz = $1; sub(/:$/, "", wyzwalacz); w_filtrze = 0; next }
+        w_on && /^    paths-ignore:/ { w_filtrze = 1; next }
+        w_on && /^    [a-z-]+:/ { w_filtrze = 0; next }
+        w_on && w_filtrze && /^      - / { wzorzec = $0; sub(/^      - /, "", wzorzec); print wyzwalacz ":" wzorzec }
+    ' "$1"
+}
+
+porownaj_filtry() {
+    local a b
+    # Kolejnosc wyzwalaczy w pliku nie ma znaczenia, zbior wzorcow ma - dlatego
+    # porownujemy posortowane listy, a nie tekst w kolejnosci zapisu.
+    a="$(filtry_sciezek "$1" | sort)"
+    b="$(filtry_sciezek "$2" | sort)"
+    if [ -z "$a" ]; then
+        echo "        w pierwszym pliku nie ma ani jednego wzorca paths-ignore"
+        return 1
+    fi
+    if [ "$a" != "$b" ]; then
+        echo "        filtry rozne - pierwszy: [$(echo $a)] drugi: [$(echo $b)]"
+        return 1
+    fi
+    return 0
+}
+
+echo "FILTRY SCIEZEK - oba przebiegi pomijaja to samo:"
+if porownaj_filtry "$PLIK_CI" "$PLIK_SKANU"; then
+    zdaj "ci.yml i sonarcloud.yml maja identyczne listy paths-ignore ($(filtry_sciezek "$PLIK_CI" | wc -l | tr -d ' ') par)"
+else
+    oblej "filtry sciezek sie rozjezdzaja - push pomijany przez jeden przebieg czerwieni drugi"
+fi
+
+cp "$PLIK_SKANU" "$KOPIA_A"
+perl -0777 -i -pe "s/    paths-ignore:\n      - .docs\/\*\*.\n//" "$KOPIA_A"
+if [ "$(grep -c 'paths-ignore' "$KOPIA_A")" -eq 2 ]; then
+    oblej "noga negatywna nie zdjela filtra - pomiar ponizej nic nie dowodzi"
+elif porownaj_filtry "$PLIK_CI" "$KOPIA_A" >/dev/null 2>&1; then
+    oblej "po zdjeciu filtra z jednego przebiegu pomiar nadal zielony"
+else
+    zdaj "zdjecie filtra sciezek z jednego przebiegu czerwieni pomiar"
+fi
+
 echo "─────────────────────────────────────────"
 echo "  zdane: $ZDANE   ·   oblane: $OBLANE"
 [ "$OBLANE" -eq 0 ]
