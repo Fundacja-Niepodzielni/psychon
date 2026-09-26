@@ -1,0 +1,14 @@
+.pasek {
+  height: 14px;
+  border-radius: var(--r-2xs);
+  margin-bottom: var(--space-8);
+  background: var(--grey);
+  animation: poswiata var(--dur-skeleton) ease-in-out infinite;
+}
+.pasek:last-child {
+  margin-bottom: 0;
+}
+@keyframes poswiata {
+  0%, 100% { background-color: var(--grey); }
+  50% { background-color: var(--card-warm); }
+}
