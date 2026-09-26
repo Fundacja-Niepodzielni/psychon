@@ -120,6 +120,7 @@ if (!wystartowal) {
 ubijServerCalkowicie();
 
 // To jest cały sens tego pliku: kod wyjścia wołającego = kod wyjścia pomiaru
-// (albo błędu startu serwera powyżej), więc czerwień P-7 zatrzymuje zestaw
-// npm/CI, w którym ten plik stoi, a nie tylko samą siebie.
+// (albo błędu startu serwera powyżej), więc czerwień P-7 zatrzyma każdy zestaw,
+// który ten plik wywoła, a nie tylko samą siebie. Dziś nie wywołuje go żaden
+// zestaw CI — patrz nagłówek pliku.
 process.exit(kodPomiaru);
