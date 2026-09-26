@@ -5,8 +5,8 @@ import userEvent from "@testing-library/user-event";
 /**
  * Wysylka zgloszenia z okna pomocy i potwierdzenie numerem zgloszenia.
  *
- * Zaplecze (`POST /help-messages`) powstaje rownolegle w innej galezi i nie
- * jest jeszcze scalone — `sendHelpMessage` jest tu atrapa; kod produktu
+ * Backend: `POST /help-messages` w `backend/routes/api/pomoc.php:21`.
+ * `sendHelpMessage` jest tu atrapa; kod produktu
  * (`components/layout/HelpWidget.tsx`) wola prawdziwa trase.
  *
  * Kontrola negatywna kryterium "zalogowany wysyla wiadomosc": usuniecie

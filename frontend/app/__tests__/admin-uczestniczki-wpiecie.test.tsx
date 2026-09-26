@@ -3,13 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Świadek WPIĘCIA ekranu H03 do interfejsu (ekran jeszcze nie ma zakładki we froncie).
- *
- * `ApplicationsTab` istnieje i działa — ma własnego świadka zachowania obok
- * (`components/h03/__tests__`, 8 zielonych). Luka jest gdzie indziej: ekran jest
- * **nieosiągalny z interfejsu**, bo `#/admin/uczestniczki` renderuje wyłącznie listę
- * H18, bez zakładek. Kompletny komponent, do którego nie da się dojść, jest
- * z punktu widzenia użytkowniczki tym samym co komponent nieistniejący.
+ * Świadek WPIĘCIA ekranu H03 do interfejsu: `#/admin/uczestniczki`
+ * (`app/(administracja)/admin/uczestniczki/page.tsx:29-34`) renderuje obie
+ * zakładki, `AdminUsersList` (H18) i `ApplicationsTab` (H03).
  *
  * Dlaczego świadek czyta ŹRÓDŁO strony, a nie renderuje jej w jsdom: to jest
  * komponent serwerowy Next.js z `metadata` i bez `"use client"`. Renderowanie go
@@ -17,10 +13,8 @@ import { join } from "node:path";
  * Pytanie jest strukturalne — „czy ta strona w ogóle sięga po zakładkę zgłoszeń" —
  * i uczciwiej odpowiada na nie odczyt importów.
  *
- * ⚠ Czego NIE dowodzi: że zakładki działają, przełączają się i mają dostęp roli.
- * Dowodzi, że droga do ekranu istnieje. Dziś nie istnieje.
- *
- * ⚠ CZERWONY do czasu naprawy. Nie naprawiam cudzego kodu.
+ * Czego NIE dowodzi: że zakładki działają, przełączają się i mają dostęp roli.
+ * Dowodzi tylko, że droga do ekranu istnieje.
  */
 
 // Ścieżka liczona od katalogu, w którym biegnie Vitest (`frontend`), a nie od
