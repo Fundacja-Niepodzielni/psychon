@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Hak commit-msg: na galezi pozycyjnej wymaga linii "Pozycja: <wartosc>" w
+# komunikacie commita. Instalowany RECZNIE, indywidualnie, we WLASNYM
+# klonie (patrz zainstaluj.sh w tym katalogu) - nie jest czescia
+# ci.yml i nie jest niczym narzucanym cudzym klonom; kto go nie zainstaluje,
+# ten go nie ma.
+#
+# Galaz pozycyjna, w rozumieniu tego haka: nazwa zaczynajaca sie od
+# przedrostka "poz" (segment przed pierwszym ukosnikiem, patrz wzorzec
+# `case` nizej) albo od "narzedzia/" (przyrzady i narzedzia licza sie pod
+# wlasnym numerem pozycji, np. 0). Inne galezie hak przepuszcza bez zmian.
+# (Konkretny numer pozycji nalezy do komunikatu commita i do nazwy galezi
+# na danym stanowisku pracy - nie do tego wspolnego skryptu, wiec ten opis
+# nazywa tylko KSZTALT przedrostka, bez podawania zadnego rzeczywistego
+# numeru.)
+#
+# Luka zmierzona przy odbiorze 356febf (2026-09-26): w stanie detached HEAD
+# `git rev-parse --abbrev-ref HEAD` zwraca literalne "HEAD" (nie nazwe
+# galezi), wiec `case` nizej nie trafial w zaden wzorzec i hak PRZEPUSZCZAL
+# commit BEZ SPRAWDZENIA - cicho, bez ostrzezenia, tak samo jak na galezi
+# main. To jest ta sama rodzina bledu: zabezpieczenie, ktore w
+# nieprzewidzianym stanie milczy zamiast odmowic. Detached HEAD zdarza sie
+# przy zwyklej pracy z gitem (np. przy przegladaniu konkretnego commita),
+# wiec ten stan nie jest rzadkoscia do zignorowania.
+#
+# Decyzja: NIE probujemy "dzialac tez tam" (nie da sie ustalic z samego
+# detached HEAD, czy commit trafia na galaz pozycyjna - `--abbrev-ref` nie
+# ma z czego wziac nazwy, a zgadywanie po ostatniej nazwanej galezi
+# zawierajacej HEAD dawaloby falszywe alarmy przy zwyklym `git rebase -i`
+# review). Zamiast tego: trzeci stan, GLOSNY - hak melduje na stderr, ze w
+# tym stanie NIE MIERZY (nie blokuje, ale tez nie milczy), zeby nikt nie
+# odczytal braku bledu jako "sprawdzone".
+set -uo pipefail
+PLIK_KOMUNIKATU="${1:-}"
+if [ -z "$PLIK_KOMUNIKATU" ] || [ ! -f "$PLIK_KOMUNIKATU" ]; then
+  exit 0
+fi
+GALAZ="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+if [ "$GALAZ" = "HEAD" ]; then
+  echo "hak commit-msg: detached HEAD - nazwy galezi nie da sie ustalic, wiec regula 'Pozycja:' NIE JEST sprawdzana dla tego commita (trzeci stan, nie ciche przepuszczenie)" >&2
+  exit 0
+fi
+
+case "$GALAZ" in
+  poz*/*|narzedzia/*) ;;
+  *) exit 0 ;;
+esac
+
+if ! grep -qE '^Pozycja: (0|[A-Za-z]-[0-9]+|[0-9]+)$' "$PLIK_KOMUNIKATU"; then
+  echo "hak commit-msg: brak linii 'Pozycja: <wartosc>' w komunikacie na galezi pozycyjnej (${GALAZ})" >&2
+  exit 1
+fi
+exit 0
