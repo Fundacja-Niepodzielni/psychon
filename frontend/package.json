@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "pomiar:kontrast-statusow": "node scripts/pomiar-marginesu-kontrastu.mjs",
-    "pomiar:cele-dotyku": "node scripts/uruchom-pomiar-celow-dotyku.mjs"
+    "pomiar:cele-dotyku": "node scripts/uruchom-pomiar-celow-dotyku.mjs",
+    "pomiar:styl-atomow": "node scripts/uruchom-pomiar-stylu-atomow.mjs",
+    "sprawdz:tautologie": "node design-system/poligon/wykrywacz-tautologii.mjs"
   },
   "dependencies": {
     "lucide-react": "1.47.0",

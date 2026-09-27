@@ -56,6 +56,14 @@ describe("tokeny — barwy §1.1", () => {
     ["success", "#006b30", "#4ad686"],
     ["warn", "#8a5a00", "#f2b84b"],
     ["error", "#b23324", "#ff7b6b"],
+    ["error-bg", "#fdf3f3", "#3a2320"],
+    ["invert-bg", "#1a1a1a", "#2e2e38"],
+    ["invert-ink", "#f4f3ef", "#f4f3ef"],
+    ["invert-link", "#8be3ad", "#8be3ad"],
+    ["brand-tint", "#1500bb12", "#9d92ff1f"],
+    ["green-tint", "#01be4a1f", "#35d97a24"],
+    ["success-bg", "#01be4a1a", "#35d97a24"],
+    ["warn-bg", "#f59e0b1f", "#f59e0b26"],
     ["on-primary", "#ffffff", "#0c1a10"],
   ];
 
@@ -67,14 +75,67 @@ describe("tokeny — barwy §1.1", () => {
     },
   );
 
-  it("--info i --info-bg istnieją w tokenach (36 zmiennych z makiety)", () => {
-    expect(wartosc("info", blokJasny)).toBe("#2f6cb3");
-    expect(wartosc("info-bg", blokJasny)).toBe("#4a90e21a");
+  it("shadow ma wartość jasną i ciemną znak w znak z makiety", () => {
+    expect(wartosc("shadow", blokJasny)).toBe(
+      "0 1px 2px rgba(26, 26, 26, .08), 0 4px 14px rgba(26, 26, 26, .10)",
+    );
+    expect(wartosc("shadow", blokCiemny)).toBe(
+      "0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .5)",
+    );
   });
 
   it("--info i --info-bg mają 0 użyć w CSS atomów", () => {
     const cssAtomow = tresciCssAtomow().join("\n");
     expect([...cssAtomow.matchAll(/var\(--info(-bg)?\)/g)]).toHaveLength(0);
+  });
+});
+
+/** Nazwy zmiennych (bez `--` i bez wartości) zadeklarowanych w podanym bloku tekstu CSS. */
+function nazwyZmiennych(blok: string): string[] {
+  return [...blok.matchAll(/--([\w-]+):/g)].map((m) => m[1]);
+}
+
+// Wada zgłoszona w odrębnym pomiarze:
+// poprzednia wersja robiła `toHaveLength` na tablicach LITERALNYCH napisanych
+// dwa wiersze wyżej w TYM SAMYM teście — mierzyła długość własnego tekstu, nie
+// treści pliku; dodanie zmiennej `--brand-xtra` do :root dawało wtedy 39
+// zielonych testów, zero czerwieni. Liczniki niżej są WYCIĘTE z `tokeny.css`
+// (funkcją `nazwyZmiennych` na strukturalnie wydzielonym segmencie pliku, nie
+// z literalnej listy), a lista `zSpecyfikacji34` służy WYŁĄCZNIE jako punkt
+// odniesienia (treść z 06-ATOMY-MOLEKULY-ORGANIZMY.md §1.1), do porównania
+// z tym, co naprawdę jest w pliku — nie jako to, czego długość się mierzy.
+describe("tokeny — mianownik §1.1 wycięty z pliku, nie z literału", () => {
+  // Segment strukturalny: od ":root {" do komentarza "dwie zmienne lokalne" —
+  // to WSZYSTKO, co plik zapisuje MIĘDZY otwarciem `:root` a zmiennymi
+  // lokalnymi/skalami (barwy+cień+kształt/pismo jednej wartości, §1.1).
+  // Wycinane granicą KOMENTARZA w pliku, nie numerem linii ani listą nazw.
+  const segment34 = css.split(":root {")[1].split("/* dwie zmienne lokalne */")[0];
+  const nazwyWSegmencie = nazwyZmiennych(segment34);
+  const nazwyWBlokuCiemnym = nazwyZmiennych(blokCiemny);
+
+  const zSpecyfikacji34 = [
+    "bg", "card", "card-warm", "grey", "border", "border-strong", "control",
+    "ink", "text", "muted", "subtle", "invert-bg", "invert-ink", "invert-link",
+    "brand", "brand-tint", "link", "primary", "primary-hover", "green",
+    "green-tint", "success", "success-bg", "warn", "warn-bg", "error",
+    "error-bg", "shadow", "on-primary",
+    "r-xs", "r-sm", "r-md", "sidebar", "font",
+  ];
+
+  it("segment §1.1 pliku ma dokładnie te 34 nazwy ze specyfikacji, ani jednej więcej, ani jednej mniej", () => {
+    expect(nazwyWSegmencie).toHaveLength(34);
+    expect([...nazwyWSegmencie].sort()).toEqual([...zSpecyfikacji34].sort());
+  });
+
+  it("--info i --info-bg nie należą do segmentu §1.1 wyciętego z pliku", () => {
+    expect(nazwyWSegmencie).not.toContain("info");
+    expect(nazwyWSegmencie).not.toContain("info-bg");
+  });
+
+  it("blok ciemny ma dokładnie 29 nazw — te same barwy+cień, bez 5 tokenów kształtu/pisma", () => {
+    const oczekiwane29 = zSpecyfikacji34.filter((n) => !["r-xs", "r-sm", "r-md", "sidebar", "font"].includes(n));
+    expect(nazwyWBlokuCiemnym).toHaveLength(29);
+    expect([...nazwyWBlokuCiemnym].sort()).toEqual([...oczekiwane29].sort());
   });
 });
 
@@ -106,23 +167,62 @@ describe("tokeny — kształt i skala §1.2", () => {
     expect(wartosc("fw-bold", blokJasny)).toBe("700");
     expect(wartosc("fw-black", blokJasny)).toBe("900");
   });
+
+  // Powyższy test liczy TYLKO ILE jest różnych stopni — zmiana
+  // KTÓRY token ma KTÓRĄ wartość (np. --fs-9: 15px -> 21px) zostawiała ten test
+  // zielonym, bo zbiór wartości nadal miał 14 elementów, tylko przesuniętych.
+  // Ten test przypina KAŻDĄ nazwę z §1.2/§2 do jej liczby, znak w znak.
+  it.each([
+    ["fs-1", "44px"],
+    ["fs-2", "30px"],
+    ["fs-2-sm", "23px"],
+    ["fs-3", "24px"],
+    ["fs-4", "22px"],
+    ["fs-5", "20px"],
+    ["fs-6", "18px"],
+    ["fs-7", "17px"],
+    ["fs-8", "16px"],
+    ["fs-9", "15px"],
+    ["fs-10", "14px"],
+    ["fs-11", "13px"],
+    ["fs-12", "12px"],
+    ["fs-13", "11px"],
+  ])("--%s ma wartość %s, przypięta do §1.2/§2 (nie tylko policzona)", (nazwa, oczekiwana) => {
+    expect(wartosc(nazwa, blokJasny)).toBe(oczekiwana);
+  });
 });
 
+// Poprzednia wersja robiła
+// `expect(Object.keys(oczekiwane)).toHaveLength(8)` na Record LITERALNYM
+// napisanym w tym samym teście — mierzyła długość własnych kluczy, nie
+// zawartość pliku. Dowód zaburzeniem: `--z-podstepny: 77`
+// dopisany do `tokeny.css` -> 55 zdanych, zero czerwieni. Licznik niżej jest
+// WYCIĘTY z segmentu `tokeny.css` ograniczonego komentarzami "Warstwy: 8
+// nazwanych" / "Ruch" (ta sama metoda co mianownik §1.1), nie z literału.
 describe("tokeny — warstwy §1.4", () => {
-  it("ma dokładnie 8 nazwanych z-index, znak w znak z makiety", () => {
-    const oczekiwane: Record<string, number> = {
-      "z-sticky-col": 1,
-      "z-savebar": 4,
-      "z-topbar": 5,
-      "z-listbox": 10,
-      "z-scrim": 19,
-      "z-drawer": 20,
-      "z-toast": 50,
-      "z-skiplink": 100,
-    };
-    const nazwy = Object.keys(oczekiwane);
-    expect(nazwy).toHaveLength(8);
-    for (const nazwa of nazwy) {
+  const segmentWarstw = css
+    .split("/* --- Warstwy: 8 nazwanych, jedyne dozwolone --- */")[1]
+    .split("/* --- Ruch --- */")[0];
+  const nazwyWSegmencieWarstw = nazwyZmiennych(segmentWarstw);
+
+  const oczekiwane: Record<string, number> = {
+    "z-sticky-col": 1,
+    "z-savebar": 4,
+    "z-topbar": 5,
+    "z-listbox": 10,
+    "z-scrim": 19,
+    "z-drawer": 20,
+    "z-toast": 50,
+    "z-skiplink": 100,
+  };
+
+  it("segment warstw w pliku ma dokładnie te 8 nazw ze specyfikacji, ani jednej więcej, ani jednej mniej", () => {
+    expect(nazwyWSegmencieWarstw).toHaveLength(8);
+    expect([...nazwyWSegmencieWarstw].sort()).toEqual([...Object.keys(oczekiwane)].sort());
+  });
+
+  it("każda nazwana warstwa ma wartość znak w znak z makiety", () => {
+    for (const nazwa of Object.keys(oczekiwane)) {
       expect(wartosc(nazwa, blokJasny)).toBe(String(oczekiwane[nazwa]));
     }
   });
@@ -146,5 +246,23 @@ describe("tokeny — wspólne: fokus i cel dotykowy", () => {
 
   it("cel dotykowy ma dokładnie jedną nazwaną wartość 44px", () => {
     expect(wartosc("hit-min", blokJasny)).toBe("44px");
+  });
+
+  // Wersja SPRZED tej naprawy pilnowała tylko wartości --r-2xs/--r-xs
+  // jako oddzielnych deklaracji (wyżej, "promienie nazwane mają wartości z
+  // makiety") — to przechodziło zielono nawet wtedy, gdy sama REGUŁA
+  // :focus-visible używała złego tokenu (--r-xs zamiast --r-2xs), bo test nie
+  // czytał treści tej konkretnej reguły. Ten test wycina treść reguły
+  // :focus-visible z pliku i sprawdza, KTÓREGO tokenu ona faktycznie używa —
+  // rozjazd między wartością tokenu a użyciem w regule jest teraz wykrywalny
+  // tu (wartość statyczna z pliku CSS) i osobno w prawdziwej przeglądarce
+  // (design-system/poligon/pomiar-styl-atomow.mjs mierzy wyliczony
+  // border-radius elementu W STANIE FOKUSU, nie sam zapis w arkuszu).
+  it("reguła :focus-visible używa var(--r-2xs), nie var(--r-xs)", () => {
+    const regulaFokusu = css.match(/:focus-visible\s*\{([^}]*)\}/);
+    expect(regulaFokusu).not.toBeNull();
+    const trescReguly = regulaFokusu![1];
+    expect(trescReguly).toMatch(/border-radius:\s*var\(--r-2xs\)/);
+    expect(trescReguly).not.toMatch(/border-radius:\s*var\(--r-xs\)/);
   });
 });
