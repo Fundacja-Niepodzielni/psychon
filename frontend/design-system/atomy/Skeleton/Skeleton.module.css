@@ -8,6 +8,12 @@
 .pasek:last-child {
   margin-bottom: 0;
 }
+.przycisk {
+  height: 34px;
+  border-radius: var(--r-2xs);
+  background: var(--grey);
+  animation: poswiata var(--dur-skeleton) ease-in-out infinite;
+}
 @keyframes poswiata {
   0%, 100% { background-color: var(--grey); }
   50% { background-color: var(--card-warm); }

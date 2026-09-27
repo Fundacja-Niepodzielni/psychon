@@ -392,15 +392,20 @@ const stanyZmierzoneWystapienia = stanyOgolem.filter((p) => pozycjeZmierzone.has
 // rejestru (świadek: A9 Label — zwykła, grupa/pozycja na null)
 // dawało "zmierzonych 65 z 69", linię "UWAGA", i mimo to kod wyjścia 0,
 // bo kodCalosci zależał wyłącznie od rozjezdzajaceSie/nieZmierzone. PROG
-// nazwany wprost i uzasadniony: nie mniej niż POKRYCIE OSIĄGNIĘTE tu,
-// 66 z 69 pozycji (rachunek mianownika wyżej w tym pliku)
-// — utrzymanie tego pokrycia jest zielone (3 niepokryte pozycje
-// to jawne luki/wady w GAPY_JAWNE, nie regresja), a KAŻDY spadek poniżej —
-// czy to przez zerwane dopasowanie, czy przez usunięcie wpisu z rejestru —
-// jest regresją i ma kod niezerowy (4), O ILE żaden atom nie ma jednocześnie
-// kodu 2 albo 3 (patrz kolejność `else if` i umowa kodów w nagłówku pliku — pomiar
-// i log pokrycia dzieją się zawsze, kod wyjścia ma pierwszeństwo 3>2>4>0).
-const PROG_POKRYCIA = 66;
+// nazwany wprost i uzasadniony: nie mniej niż POKRYCIE OSIĄGNIĘTE, a KAŻDY
+// spadek poniżej — czy to przez zerwane dopasowanie, czy przez usunięcie
+// wpisu z rejestru — jest regresją i ma kod niezerowy (4), O ILE żaden atom
+// nie ma jednocześnie kodu 2 albo 3 (patrz kolejność `else if` i umowa kodów w
+// nagłówku pliku — pomiar i log pokrycia dzieją się zawsze, kod wyjścia ma
+// pierwszeństwo 3>2>4>0).
+//
+// Podniesiony z 66 na 68: A2 „tło odwrócone” i A13 „wys. przycisku 34px”
+// (dwie wady wykonania z GAPY_JAWNE) dostały wpis w cele-atomy-styl.mjs i
+// mount w main.tsx — `npm run pomiar:styl-atomow` mierzy teraz "68 z 69"
+// (jedyna pozostała pozycja poza pokryciem to A14 „przerywana”, luka
+// specyfikacji w GAPY_JAWNE, nie wada wykonania — nie ma tu wpisu do
+// zbudowania). 68 jest wartością ZMIERZONĄ tym poleceniem, nie założoną.
+const PROG_POKRYCIA = 68;
 
 console.log("\n--- MIANOWNIK PAR. 8.2 (par. 2, kolumna \"Warianty i stany\") ---");
 console.log(

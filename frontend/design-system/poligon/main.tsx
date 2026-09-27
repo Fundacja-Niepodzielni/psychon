@@ -47,9 +47,11 @@ if (motyw === "dark" || motyw === "light") {
 // dostają własny mount, bo to jedyny sposób, żeby atrybut w ogóle istniał
 // w drzewie.
 //
-// Trzy pozycje NIE są tu montowane — GAPY_JAWNE w pozycje-warianty-stany-par2.mjs
-// (A2 „tło odwrócone” nieobecne w Link.tsx, A13 „wys. przycisku 34px”
-// nieobecne w Skeleton.tsx, A14 „przerywana” to w specyfikacji „tylko nota”).
+// Jedna pozycja NIE jest tu montowana — GAPY_JAWNE w pozycje-warianty-stany-par2.mjs
+// (A14 „przerywana” to w specyfikacji „tylko nota”, materia do
+// rozstrzygnięcia w samej specyfikacji, nie
+// wada wykonania). A2 „tło odwrócone” i A13 „wys. przycisku 34px” były tu
+// gapami wcześniej — teraz zbudowane w Link.tsx/Skeleton.tsx i zmontowane niżej.
 function Poligon() {
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -65,9 +67,12 @@ function Poligon() {
       <Button poziom="outline" disabled data-testid="a1-lock">Zablokowane (lekcja)</Button>
       <Button poziom="outline" disabled data-testid="a1-nieaktywny">Nieaktywny</Button>
 
-      {/* A2 Link — warianty: w treści, okruszki (tło odwrócone: GAP, patrz main.tsx wstęp); stany: kursor (statyczny), fokus (akcja) */}
+      {/* A2 Link — warianty: w treści, okruszki, tło odwrócone; stany: kursor (statyczny), fokus (akcja) */}
       <p><Link href="#" data-testid="link">Przejdź do lekcji</Link></p>
       <p><Link href="#" wariant="okruszek" data-testid="link-okruszek">Kurs / Lekcja 3</Link></p>
+      <p style={{ background: "var(--invert-bg)", padding: 8 }}>
+        <Link href="#" wariant="tlo-odwrocone" data-testid="link-tlo-odwrocone">Zakładka wybrana</Link>
+      </p>
 
       {/* A6 Checkbox — wariant/stan: zaznaczony (mount checked=true); stany: kursor (statyczny), fokus (akcja na #pol-zgoda) */}
       <Checkbox id="pol-zgoda" zaznaczony onZmiana={() => {}} etykieta="Zgadzam się" />
@@ -146,6 +151,11 @@ function Poligon() {
       {/* A13 Skeleton — wariant: pasek; stan: pojemnik aria-busy (ten sam mount, dwa odczyty) */}
       <div data-style-id="atom-skeleton">
         <Skeleton wiersze={1} />
+      </div>
+
+      {/* A13 Skeleton — wariant: wysokość przycisku 34px */}
+      <div data-style-id="atom-skeleton-przycisk">
+        <Skeleton wariant="przycisk" />
       </div>
 
       {/* A14 Divider — wariant: pełna (rola=separator jednoznaczna na stronie); "przerywana" to GAP jawny, spec ją oznacza jako "tylko nota" */}

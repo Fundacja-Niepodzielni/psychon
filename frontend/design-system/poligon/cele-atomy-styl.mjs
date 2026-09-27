@@ -9,8 +9,11 @@
 // `grupa`/`pozycja` odpowiadające DOKŁADNIE jednej pozycji z
 // design-system/poligon/pozycje-warianty-stany-par2.mjs (mianownik 69/15
 // liczony TAM, nie tu — ten plik jest licznikiem pokrycia, nie mianownikiem).
-// Trzy pozycje z tamtego pliku (GAPY_JAWNE) nie mają tu odpowiednika —
-// świadomie, z podanym powodem w tamtym pliku, nie przez przeoczenie.
+// Jedna pozycja z tamtego pliku (GAPY_JAWNE — A14 „przerywana”, luka
+// specyfikacji) nie ma tu odpowiednika — świadomie, z podanym powodem w
+// tamtym pliku, nie przez przeoczenie. A2 „tło odwrócone” i A13 „wys.
+// przycisku 34px” miały tu wcześniej luki — usunięte razem z domknięciem
+// wad wykonania w Link.tsx i Skeleton.tsx.
 //
 // `akcje`: tablica kroków wykonywanych PRZED odczytem (pomiar-styl-atomow.mjs
 // je interpretuje). Każdy krok: `{ typ: "hover" | "otworz-jesli-zamknieta" |
@@ -74,7 +77,7 @@ export const OCZEKIWANE_ATOMY_STYL = [
     atrybut: { nazwa: "disabled", oczekiwana: "" },
   },
 
-  // --- A2 Link: 2 warianty (tło odwrócone: GAP) + kursor ---
+  // --- A2 Link: 3 warianty + kursor ---
   {
     nazwa: "A2 Link — w treści", grupa: "A2", pozycja: "w tresci",
     selektor: '[data-testid="link"]',
@@ -86,6 +89,12 @@ export const OCZEKIWANE_ATOMY_STYL = [
     selektor: '[data-testid="link-okruszek"]',
     minWysokosc: 44,
     wlasciwosci: { color: "var(--link)" },
+  },
+  {
+    nazwa: "A2 Link — tło odwrócone", grupa: "A2", pozycja: "tlo odwrocone",
+    selektor: '[data-testid="link-tlo-odwrocone"]',
+    minWysokosc: 44,
+    wlasciwosci: { color: "var(--invert-link)" },
   },
   {
     nazwa: "A2 Link — kursor", grupa: "A2", pozycja: "kursor",
@@ -284,11 +293,17 @@ export const OCZEKIWANE_ATOMY_STYL = [
     wysokoscDokladna: 26, szerokoscDokladna: 26, tolerancjaPx: 0,
   },
 
-  // --- A13 Skeleton: pasek + aria-busy (ten sam mount) ---
+  // --- A13 Skeleton: pasek + wys. przycisku 34px + aria-busy (ten sam mount) ---
   {
     nazwa: "A13 Skeleton — pasek", grupa: "A13", pozycja: "pasek",
     selektor: '[data-style-id="atom-skeleton"] [class*="pasek"]',
     wysokoscDokladna: 14, tolerancjaPx: 0,
+    wlasciwosci: { "border-radius": "var(--r-2xs)" },
+  },
+  {
+    nazwa: "A13 Skeleton — wys. przycisku 34px", grupa: "A13", pozycja: "wys. przycisku 34px",
+    selektor: '[data-style-id="atom-skeleton-przycisk"] [class*="przycisk"]',
+    wysokoscDokladna: 34, tolerancjaPx: 0,
     wlasciwosci: { "border-radius": "var(--r-2xs)" },
   },
   {

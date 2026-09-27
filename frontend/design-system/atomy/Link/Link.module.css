@@ -21,3 +21,12 @@
   padding: var(--space-14) var(--space-6);
   margin: calc(var(--space-14) * -1) calc(var(--space-6) * -1);
 }
+.tloOdwrocone {
+  /* Tylko barwa tekstu — element nadal bez WŁASNEGO tła ani ramki (patrz
+     komentarz w Link.tsx). Odwrócone jest tło OTOCZENIA, nie tego elementu. */
+  color: var(--invert-link);
+}
+.tloOdwrocone:hover,
+.tloOdwrocone:focus-visible {
+  text-decoration: underline;
+}

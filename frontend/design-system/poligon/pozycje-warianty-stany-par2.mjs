@@ -129,24 +129,17 @@ export const POZYCJE_PAR2 = [
 // tekstem w `powod`.
 export const GAPY_JAWNE = [
   {
-    grupa: "A2",
-    pozycja: "tlo odwrocone",
-    klasyfikacja: "wada wykonania",
-    powod: 'PRZEKLASYFIKOWANE w r4 (bylo bledne "luka specyfikacji"): spec par. 1.1 w. 38 podaje token `--invert-link 8be3ad/8be3ad` - nazwa wprost mowi "odnosnik na tle odwroconym". Token istnieje w `tokeny.css` w czterech miejscach (grep "invert-link" -> w. 28, 141, 177, 211), ale zaden skladnik go nie uzywa: `Link.tsx` ma tylko `wariant?: "tresc" | "okruszek"`, `Link.module.css` nie ma reguly tla. Spec PODAJE wartosc, drzewo jej nie realizuje - wlasciciel: front, warstwa 2, Link.',
-  },
-  {
-    grupa: "A13",
-    pozycja: "wys. przycisku 34px",
-    klasyfikacja: "wada wykonania",
-    powod: "Skeleton.tsx przyjmuje tylko `wiersze: number` - jeden ksztalt paska. Odmiana \"pod przycisk 34px wysokosci\" nie istnieje w komponencie. Spec w. 123 podaje liczbe wprost (34 px), drzewo nie ma mechanizmu, zeby ja wyprodukowac.",
-  },
-  {
     grupa: "A14",
     pozycja: "przerywana",
     klasyfikacja: "luka specyfikacji",
     powod: '06-ATOMY-MOLEKULY-ORGANIZMY.md w. 124 przy tej pozycji: "tylko nota" - specyfikacja SAMA oznacza to jako opis, nie jako cos do zaimplementowania. Sprawdzone osobno: jedyna inna wzmianka "przerywana" w calym pliku (w. 145, ramka 2px przerywana) dotyczy INNEGO komponentu (M5 FileDropZone), nie Dividera - brak jakiejkolwiek konkretnej wartosci przypisanej A14 gdziekolwiek w spec.',
   },
 ];
+// A2 "tlo odwrocone" i A13 "wys. przycisku 34px" byly tu jako wady wykonania
+// (patrz historia pliku) - domkniete: Link.tsx dostal wariant "tlo-odwrocone"
+// (kolor `--invert-link`, bez wlasnego tla), Skeleton.tsx dostal wariant
+// "przycisk" (pasek 34px wysokosci). Obie pozycje maja teraz wpis w
+// cele-atomy-styl.mjs i sa mierzone, nie wymienione tutaj.
 
 /** Unikalne nazwy koncepcji stanu (dla "Y z 15") - policzone z tablicy, nie wpisane osobno. */
 export function nazwyKoncepcjiStanu() {
