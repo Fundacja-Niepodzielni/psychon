@@ -11,3 +11,33 @@
   color: var(--text);
   font-family: var(--font);
 }
+
+.ustawienia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.listaTypow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.wierszTypu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.przypomnienie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--border);
+}
