@@ -401,13 +401,111 @@ const stanyZmierzoneWystapienia = stanyOgolem.filter((p) => pozycjeZmierzone.has
 //
 // Podniesiony z 66 na 68: A2 „tło odwrócone” i A13 „wys. przycisku 34px”
 // (dwie wady wykonania z GAPY_JAWNE) dostały wpis w cele-atomy-styl.mjs i
-// mount w main.tsx — `npm run pomiar:styl-atomow` mierzy teraz "68 z 69"
+// mount w main.tsx — `npm run pomiar:styl-atomow` mierzył wtedy "68 z 69"
 // (jedyna pozostała pozycja poza pokryciem to A14 „przerywana”, luka
 // specyfikacji w GAPY_JAWNE, nie wada wykonania — nie ma tu wpisu do
-// zbudowania). 68 jest wartością ZMIERZONĄ tym poleceniem, nie założoną.
-const PROG_POKRYCIA = 68;
+// zbudowania). 68 było wartością ZMIERZONĄ tym poleceniem, nie założoną.
+//
+// Podniesiony z 68 na 92: siedem
+// molekuł warstwy 3, grupa A (M1 Field, M2 SearchBox, M3 ListRow, M4
+// KeyValueRow, M7 Breadcrumbs, M8 Tabs, M9 MenuItem) dostały mount w
+// main.tsx i wpis w cele-atomy-styl.mjs/pozycje-warianty-stany-par2.mjs, tym
+// samym przyrządem co atomy §2 — żaden nowy przyrząd nie powstał. Mianownik
+// urósł z 69 do 95 (26 nowych nazwanych pozycji z §3), z czego 2 zostały
+// GAPAMI JAWNYMI (M7 „skrócone”, M8 „zwinięta poniżej 639” — obie wady
+// wykonania, nie zbudowane wcześniej). `npm run pomiar:styl-atomow`
+// mierzy teraz „92 z 95”. 92 jest wartością ZMIERZONĄ tym poleceniem, nie
+// założoną — jeżeli spadnie (zerwane dopasowanie albo usunięty wpis), kod
+// wyjścia ma być 4, nie 0.
+//
+// Podniesiony z 92 na 105 (warstwa 3, grupa C): mianownik
+// POZYCJE_PAR2 urósł z 95 do 108 (dopisane M14-M19, §3), a
+// `npm run pomiar:styl-atomow` po dopisaniu mountów molekuł w main.tsx i
+// celów w cele-atomy-styl.mjs mierzy "105 z 108 pozycji" — jedyna pozostała
+// pozycja poza pokryciem sprzed tej zmiany jest wciąż TA SAMA: A14
+// „przerywana” (luka specyfikacji w GAPY_JAWNE, nie wada wykonania). M14
+// Pagination wnosi 0 do obu liczników (mianownik i licznik), zgodnie z
+// komentarzem przy jego wpisie w pozycje-warianty-stany-par2.mjs — nie jest
+// to więc "nowa luka", tylko istniejące zero z innego powodu niż A14.
+// 105 jest wartością ZMIERZONĄ tym poleceniem (patrz linia "zmierzonych X z
+// Y pozycji" w logu), nie założoną.
+//
+// Podniesiony z 105 na 110: organizm O7 `PublishChecklist`
+// dopisany do POZYCJE_PAR2 (5 nowych pozycji: 2 warianty + 3 stany, mianownik
+// 108 -> 113) i w całości okablowany w cele-atomy-styl.mjs + REGULY_FOKUSU +
+// main.tsx (dwa mounty, z brakami / bez braków) — `npm run pomiar:styl-atomow`
+// mierzy teraz "110 z 113" (jedyna pozostała pozycja poza pokryciem nadal A14
+// „przerywana”, ta sama luka specyfikacji sprzed tej zmiany, bez zmian). 110
+// jest wartością ZMIERZONĄ tym poleceniem, nie założoną.
+//
+// Pozycje poza progiem, kazda z powodem i wlascicielem, pelna lista w
+// GAPY_JAWNE (pozycje-warianty-stany-par2.mjs):
+//   (A14 "przerywana" NIE JEST tu wymieniona: zrodlo zdjelo ja z mianownika,
+//    patrz cytat w. 124 przy tej pozycji w pozycje-warianty-stany-par2.mjs)
+//   M5  "nad obszarem"                   - ograniczenie silnika: brak akcji
+//                                          "dragover" w zestawie;
+//   M12 "fokus poczatkowy na wycofaniu"  - ograniczenie silnika: fokus DOM
+//                                          jest stanem globalnym strony,
+//                                          wynik zalezalby od kolejnosci;
+//   M13 "ukryty"                         - ograniczenie silnika: 0 dopasowan
+//                                          selektora zawsze daje kod 2, brak
+//                                          rozroznienia "ma nie istniec".
+// Wszystkie trzy to ograniczenia PRZYRZADU: produkt je realizuje, tylko pomiar
+// dzis nie siega, i kazda ma plik, wlasciciela naprawy oraz termin powrotu.
+// Zadna nie jest brakiem produktu - taki wpis konczylby bieg kodem 4.
+//
+// Podniesiony z 110 na 123 (molekuły warstwy 3, grupa B): mianownik
+// POZYCJE_PAR2 urósł z 113 do 129 (dopisanych 16 pozycji M5/M6/M10-M13),
+// pokrycie ze 110 do 123 (13 nowych pozycji zmierzonych, 3 zostały GAPAMI
+// JAWNYMI — patrz GAPY_JAWNE w pozycje-warianty-stany-par2.mjs: M5 „nad
+// obszarem”, M12 „fokus poczatkowy na wycofaniu”, M13 „ukryty”). Próg NIE
+// zostaje na poprzedniej wartości: gdyby ktoś później usunął jeden z 13
+// nowych wpisów, pokrycie spadłoby o jeden, a stary próg by tego nie złapał.
+// 123 jest wartością ZMIERZONĄ poleceniem `npm run pomiar:styl-atomow` na
+// tej zmianie, nie założoną z ręki.
+//
+// Stosunek próg/N:
+//   przed:        110 / 113 = 0,97345
+//   po:           123 / 129 = 0,95349
+// Stosunek PO jest niższy niż PRZED. Napisane wprost, nie ukryte: to
+// MAKSIMUM matematycznie osiągalne, nie niedopatrzenie. 129 − 123 = 6 pozycji
+// dziś niemierzalnych, wszystkie nazwane w GAPY_JAWNE z powodem i właścicielem:
+//   A14 „przerywana”, M7 „skrócone”, M8 „zwinięta poniżej 639” (luki
+//     specyfikacji/wady wykonania zastane — nie z tej zmiany);
+//   M5 „nad obszarem” (wada wykonania — silnik nie ma akcji „dragover”);
+//   M12 „fokus poczatkowy na wycofaniu” (wada wykonania — fokus DOM globalny
+//     dla całej strony poligonu, wynik zależałby od kolejności wpisów);
+//   M13 „ukryty” (wada wykonania — silnik traktuje 0 dopasowań selektora
+//     zawsze jako kod 2, nie rozróżnia „nie powinien istnieć” od błędu).
+// 123 = 129 − 6: próg równy dokładnie liczbie pozycji dziś mierzalnych, czyli
+// najsilniejszy próg możliwy bez rozszerzania silnika (osobne zmiany, poza
+// zakresem tej zmiany).
+//
+// Zdjęte z mianownika (commit "Zdejmij pozycje bez pomiaru z mianownika za
+// zrodlem"): A14 „przerywana” w ogóle przestaje być pozycją POZYCJE_PAR2, nie
+// tylko GAPĄ JAWNĄ — źródło (06-ATOMY-MOLEKULY-ORGANIZMY.md w. 124, cytat przy
+// wpisie A14 w pozycje-warianty-stany-par2.mjs) mówi wprost „bez pozycji
+// pomiaru”, więc mianownika w ogóle nie dotyczy. Mianownik: 129 -> 128. Próg
+// tym pojedynczym krokiem BEZ ZMIANY: A14 nigdy nie była pozycją POKRYTĄ,
+// więc jej zdjęcie z mianownika samo z siebie nie zmienia liczby pozycji
+// zmierzonych, tylko zmniejsza listę nazwanych luk o jeden.
+//
+// Podniesiony ze 123 na 125 (commit "Zbuduj warianty Breadcrumbs
+// skrocone i Tabs zwinieta ponizej 639"): M7 „skrócone” i M8 „zwinięta
+// poniżej 639” dostały własny mount w main.tsx i cel pomiaru w
+// cele-atomy-styl.mjs — wyszły z GAPY_JAWNE, są teraz pozycjami MIERZONYMI,
+// nie nazwanymi lukami. Mianownik bez zmiany (128, obie pozycje już w nim
+// były liczone jako nieosiągnięte), lista luk: 5 -> 3 (M5, M12, M13). 125 =
+// 128 − 3: próg równy dokładnie liczbie pozycji dziś mierzalnych, ten sam
+// dowód „najsilniejszy możliwy bez rozszerzania silnika” jak wyżej.
+const PROG_POKRYCIA = 125;
 
-console.log("\n--- MIANOWNIK PAR. 8.2 (par. 2, kolumna \"Warianty i stany\") ---");
+// Nagłówek celowo NIE mówi już tylko "par. 2": od warstwy 3 mianownik
+// obejmuje par. 2 (atomy, kolumna "Warianty i stany") ORAZ par. 3 (molekuły
+// M14-M19, kolumna "Z czego, warianty, stany") — sprostowanie koordynatora,
+// 27.09: nazwa PLIKU `pozycje-warianty-stany-par2.mjs` jest artefaktem
+// warstwy 2 i myliła, treść już nie jest wyłącznie par. 2.
+console.log("\n--- MIANOWNIK PAR. 8.2 (par. 2 atomy + par. 3 molekuły, kolumny \"Warianty i stany\" / \"Z czego, warianty, stany\") ---");
 console.log(
   `zmierzonych ${pozycjeZmierzone.size} z ${POZYCJE_PAR2.length} pozycji, w tym ${stanyZmierzoneWystapienia.length} z ${stanyOgolem.length} stanow-wystapien`,
 );
@@ -415,11 +513,40 @@ console.log(
   `  (podzial: ${wariantyZmierzone.length} z ${wariantyOgolem.length} wariantow + ${stanyZmierzoneWystapienia.length} z ${stanyOgolem.length} stanow-wystapien = ${pozycjeZmierzone.size} z ${POZYCJE_PAR2.length}; koncepcji stanu zdeduplikowanych: ${koncepcjeStanuZmierzone.size} z ${koncepcjeStanuWszystkie.length})`,
 );
 console.log(`  PROG_POKRYCIA = ${PROG_POKRYCIA}; pokrycie ${pozycjeZmierzone.size >= PROG_POKRYCIA ? "NA PROGU LUB WYŻEJ" : "PONIŻEJ PROGU"}`);
-if (GAPY_JAWNE.length > 0) {
-  console.log("Gapy jawne (nie zmierzone, z powodem i klasyfikacja):");
-  for (const gap of GAPY_JAWNE) {
-    console.log(`  ${gap.grupa} "${gap.pozycja}" [${gap.klasyfikacja ?? "BRAK KLASYFIKACJI"}]: ${gap.powod}`);
+// Trzy klasy luk liczone OSOBNO. Suma po klasach nie wystarcza:
+// klasa "niezbudowane" nie jest luka, tylko czerwona pozycja zakresu, a klasa
+// "przyrzad" jest dozwolona tylko z plikiem, wlascicielem i terminem powrotu.
+const KLASY_LUK = ["spec", "przyrzad", "niezbudowane"];
+const wadyRejestruLuk = [];
+const licznikKlas = new Map(KLASY_LUK.map((k) => [k, 0]));
+for (const gap of GAPY_JAWNE) {
+  const gdzie = `${gap.grupa} "${gap.pozycja}"`;
+  if (!KLASY_LUK.includes(gap.klasa)) {
+    wadyRejestruLuk.push(`${gdzie}: klasa "${gap.klasa ?? "BRAK"}" spoza zbioru ${KLASY_LUK.join("/")}`);
+    continue;
   }
+  licznikKlas.set(gap.klasa, licznikKlas.get(gap.klasa) + 1);
+  if (gap.klasa === "niezbudowane") {
+    wadyRejestruLuk.push(`${gdzie}: klasa "niezbudowane" - produktu nie ma, to czerwona pozycja zakresu, nie luka`);
+  }
+  if (gap.klasa === "przyrzad") {
+    for (const pole of ["plik", "wlasciciel", "termin"]) {
+      if (!gap[pole]) wadyRejestruLuk.push(`${gdzie}: klasa "przyrzad" bez pola ${pole}`);
+    }
+  }
+}
+
+if (GAPY_JAWNE.length > 0) {
+  console.log("Gapy jawne (nie zmierzone, z powodem i klasa):");
+  console.log(`  podzial klas: ${KLASY_LUK.map((k) => `${k}=${licznikKlas.get(k)}`).join(", ")}`);
+  for (const gap of GAPY_JAWNE) {
+    const ogon = gap.klasa === "przyrzad" ? ` | plik: ${gap.plik} | wlasciciel: ${gap.wlasciciel} | termin: ${gap.termin}` : "";
+    console.log(`  ${gap.grupa} "${gap.pozycja}" [${gap.klasa ?? "BRAK KLASY"}]: ${gap.powod}${ogon}`);
+  }
+}
+if (wadyRejestruLuk.length > 0) {
+  console.log("WADA REJESTRU LUK - bieg konczy sie kodem 4:");
+  for (const w of wadyRejestruLuk) console.log(`  ${w}`);
 }
 const niepokryte = POZYCJE_PAR2.filter((p) => !pozycjeZmierzone.has(`${p.grupa}::${p.pozycja}`));
 const niepokryteBezGapow = niepokryte.filter(
@@ -447,6 +574,13 @@ if (rozjezdzajaceSie.length > 0) {
   console.log(
     `\nKOD 4: POKRYCIE PONIŻEJ PROGU — zmierzonych ${pozycjeZmierzone.size} z ${POZYCJE_PAR2.length}, próg ${PROG_POKRYCIA}`,
   );
+} else if (wadyRejestruLuk.length > 0) {
+  // Rejestr luk jest czescia bramki, nie notatka obok niej: wpis klasy
+  // "niezbudowane" albo klasa "przyrzad" bez pliku/wlasciciela/terminu
+  // konczy bieg czerwono nawet przy pelnym pokryciu.
+  kodCalosci = 4;
+  console.log(`
+kod 4: WADA REJESTRU LUK - ${wadyRejestruLuk.length} wpis(ow) nie spelnia zasad rejestru luk`);
 } else {
   kodCalosci = 0;
 }

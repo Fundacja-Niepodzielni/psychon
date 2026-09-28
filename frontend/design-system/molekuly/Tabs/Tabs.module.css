@@ -1,0 +1,44 @@
+.zestaw {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+.licznik {
+  margin-left: var(--space-6);
+}
+
+/* M8, w. 148: ponizej 639 caly zestaw Tabs zwija sie w rozwiniecie z
+   etykieta Filtr i biezaca pozycja. Dwa rzedy w DOM
+   naraz, przelaczane widocznoscia (nie display:none) - visibility:hidden
+   zachowuje mierzalny boundingBox (kontrolowane empirycznie), display:none
+   zwracalby null i psulby pomiar na wezszym viewporcie. */
+.zestawSzeroki {
+  visibility: visible;
+  height: auto;
+}
+.filtrZwiniety {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
+.filtrPodpis {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-min);
+  padding: var(--space-8) var(--space-14);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong);
+  font-size: var(--fs-9);
+}
+@media (max-width: 639px) {
+  .zestawSzeroki {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+  }
+  .filtrZwiniety {
+    visibility: visible;
+    height: auto;
+  }
+}

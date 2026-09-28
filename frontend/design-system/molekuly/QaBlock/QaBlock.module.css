@@ -1,0 +1,11 @@
+.blok {
+  border-top: 1px solid var(--border);
+  padding: var(--space-10) 0;
+  font-size: var(--fs-10);
+}
+.odpowiedz {
+  margin: var(--space-8) 0 0;
+  padding: var(--space-8) var(--space-12);
+  background: var(--card-warm);
+  border-radius: var(--r-2xs);
+}

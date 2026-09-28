@@ -1,0 +1,25 @@
+.pasek {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: var(--z-savebar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  flex-wrap: wrap;
+  border: 1px solid var(--warn);
+  border-radius: var(--r-sm);
+  padding: var(--space-10) var(--space-14);
+  background: var(--card);
+}
+
+.opis {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+
+.akcje {
+  display: flex;
+  gap: var(--space-8);
+}

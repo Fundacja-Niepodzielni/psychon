@@ -1,0 +1,35 @@
+.pozycja {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--r-xs);
+  min-height: var(--hit-min);
+  color: var(--text);
+  text-decoration: none;
+}
+.biezaca {
+  background: var(--green-tint);
+}
+.grupa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.naglowekGrupy {
+  font-size: var(--fs-13);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wPrzygotowaniu {
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--fs-11);
+  color: var(--muted);
+}

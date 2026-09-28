@@ -1,0 +1,23 @@
+.okruszki {
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+.lista {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pozycja {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-8) var(--space-6);
+}
+.pozycja:last-child {
+  color: var(--ink);
+}
+.separator {
+  margin-left: var(--space-6);
+}

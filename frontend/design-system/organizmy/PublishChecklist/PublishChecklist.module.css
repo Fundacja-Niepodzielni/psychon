@@ -1,0 +1,53 @@
+/* Panel braków `PublishChecklist` (O7) — ramka 2 px `--border-strong`,
+   jedyny wyjątek grubości ramki w katalogu atomów (06-ATOMY §4, O7).
+   „Przewija się na siebie” (w. 171, kolumna zachowań): panel ma własne
+   przewijanie pionowe zamiast rozpychać układ strony — stąd max-height
+   + overflow-y zamiast naturalnej wysokości listy. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.wiersz {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.listaBrakow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gotowe {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-8);
+}
+
+.podsumowanie {
+  cursor: pointer;
+  min-height: var(--hit-min);
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.listaGotowych {
+  margin: var(--space-8) 0 0;
+  padding: 0 0 0 var(--space-16);
+  color: var(--muted);
+  font-size: var(--fs-11);
+}

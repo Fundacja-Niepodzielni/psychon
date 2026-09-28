@@ -1,0 +1,35 @@
+.komunikat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-10);
+  color: var(--ink);
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.akcja {
+  margin-top: var(--space-6);
+}
+
+.ok {
+  background: var(--success-bg);
+}
+
+.warn {
+  background: var(--warn-bg);
+}
+
+.error {
+  background: var(--error-bg);
+}
+
+.info {
+  background: var(--brand-tint);
+}

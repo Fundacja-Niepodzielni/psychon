@@ -19,6 +19,26 @@ import { Heading } from "../atomy/Heading/Heading";
 import { Text } from "../atomy/Text/Text";
 import { Num } from "../atomy/Num/Num";
 import { Divider } from "../atomy/Divider/Divider";
+import { Field } from "../molekuly/Field/Field";
+import { SearchBox } from "../molekuly/SearchBox/SearchBox";
+import { ListRow } from "../molekuly/ListRow/ListRow";
+import { KeyValueRow } from "../molekuly/KeyValueRow/KeyValueRow";
+import { Breadcrumbs } from "../molekuly/Breadcrumbs/Breadcrumbs";
+import { Tabs } from "../molekuly/Tabs/Tabs";
+import { MenuGroup } from "../molekuly/MenuItem/MenuGroup";
+import { Pagination } from "../molekuly/Pagination/Pagination";
+import { Toast } from "../molekuly/Toast/Toast";
+import { CollapsibleSection } from "../molekuly/CollapsibleSection/CollapsibleSection";
+import { EmptyState } from "../molekuly/EmptyState/EmptyState";
+import { RichTextEditor } from "../molekuly/RichTextEditor/RichTextEditor";
+import { QaBlock } from "../molekuly/QaBlock/QaBlock";
+import { PublishChecklist } from "../organizmy/PublishChecklist/PublishChecklist";
+import { FileDropZone } from "../molekuly/FileDropZone/FileDropZone";
+import { FileRow } from "../molekuly/FileRow/FileRow";
+import { StatTile } from "../molekuly/StatTile/StatTile";
+import { Notice } from "../molekuly/Notice/Notice";
+import { DialogActions } from "../molekuly/DialogActions/DialogActions";
+import { SaveBar } from "../molekuly/SaveBar/SaveBar";
 
 // Motyw sterowany parametrem ?theme=dark|light, żeby Playwright mógł go
 // ustawić przed pomiarem bez dotykania localStorage ani MVP.
@@ -207,6 +227,364 @@ function Poligon() {
       </table>
       <div data-style-id="atom-num-kafel">
         <Num wartosc={92} etykieta="% ukończenia" />
+      </div>
+
+      {/* Molekuły warstwy 3, grupa A
+          (M1, M2, M3, M4, M7, M8, M9), wpięte w ISTNIEJĄCY poligon zamiast
+          osobnego przyrządu — warianty i stany z 06-ATOMY-MOLEKULY-ORGANIZMY.md
+          §3, ta sama zasada co §2 (design-system/poligon/pozycje-warianty-stany-par2.mjs). */}
+
+      {/* M1 Field — warianty: pięć rodzajów kontrolki; stany: niepoprawny, obowiązkowy, zablokowany */}
+      <div data-style-id="molekula-field-tekst">
+        <Field id="m1-tekst" etykieta="Imię" rodzaj="tekst" wartosc="" onZmiana={() => {}} />
+      </div>
+      <div data-style-id="molekula-field-liczba">
+        <Field id="m1-liczba" etykieta="Wiek" rodzaj="liczba" wartosc="" onZmiana={() => {}} />
+      </div>
+      <div data-style-id="molekula-field-data">
+        <Field id="m1-data" etykieta="Data urodzenia" rodzaj="data" wartosc="" onZmiana={() => {}} />
+      </div>
+      <div data-style-id="molekula-field-wieloliniowy">
+        <Field id="m1-opis" etykieta="Opis" rodzaj="wieloliniowy" wartosc="" onZmiana={() => {}} />
+      </div>
+      <div data-style-id="molekula-field-wybor">
+        <Field
+          id="m1-wybor"
+          etykieta="Rola"
+          rodzaj="wybor"
+          opcje={[{ wartosc: "a", etykieta: "Wariant A" }, { wartosc: "b", etykieta: "Wariant B" }]}
+          wartosc="a"
+          onZmiana={() => {}}
+        />
+      </div>
+      <div data-style-id="molekula-field-niepoprawny">
+        <Field id="m1-niepoprawny" etykieta="E-mail" rodzaj="tekst" wartosc="" onZmiana={() => {}} blad="Podaj poprawny adres" />
+      </div>
+      <div data-style-id="molekula-field-wymagane">
+        <Field id="m1-wymagane" etykieta="Nazwisko" rodzaj="tekst" wartosc="" onZmiana={() => {}} wymagane />
+      </div>
+      <div data-style-id="molekula-field-zablokowany">
+        <Field id="m1-zablokowany" etykieta="Identyfikator" rodzaj="tekst" wartosc="ABC-1" onZmiana={() => {}} zablokowany />
+      </div>
+
+      {/* M2 SearchBox — stany: z wpisem, bez wyników (0 wystąpień w aplikacji) */}
+      <div data-style-id="molekula-searchbox-z-wpisem">
+        <SearchBox id="m2-a" etykieta="Szukaj kursu" wartosc="jog" onZmiana={() => {}} />
+      </div>
+      <div data-style-id="molekula-searchbox-bez-wynikow">
+        <SearchBox
+          id="m2-b"
+          etykieta="Szukaj kursu"
+          wartosc="zzz"
+          onZmiana={() => {}}
+          brakWynikow
+          tekstBrakuWynikow="Brak wyników. Zmień szukaną frazę."
+        />
+      </div>
+
+      {/* M3 ListRow — warianty: prosty, ze stanem, rozwijalny, materiał, z licznikiem; stan: otwarty */}
+      <div data-style-id="molekula-listrow-prosty">
+        <ListRow tytul="Jan Kowalski" akcja={{ etykieta: "Otwórz", href: "#" }} />
+      </div>
+      <div data-style-id="molekula-listrow-ze-stanem">
+        <ListRow
+          wariant="ze-stanem"
+          tytul="Sprawa 12"
+          plakietka={{ wariant: "warn", tekst: "Do decyzji" }}
+          akcja={{ etykieta: "Otwórz", href: "#" }}
+        />
+      </div>
+      <div data-style-id="molekula-listrow-rozwijalny">
+        <ListRow wariant="rozwijalny" tytul="Temat 1: Wprowadzenie" akcja={{ etykieta: "Rozwiń", onKliknij: () => {} }} />
+      </div>
+      <div data-style-id="molekula-listrow-material">
+        <ListRow wariant="material" tytul="materiał.pdf" akcja={{ etykieta: "Pobierz", href: "#" }} />
+      </div>
+      <div data-style-id="molekula-listrow-z-licznikiem">
+        <ListRow
+          wariant="z-licznikiem"
+          tytul="Materiały lekcji"
+          licznik={{ wartosc: 5, etykieta: "plików" }}
+          akcja={{ etykieta: "Pobierz", href: "#" }}
+        />
+      </div>
+      <div data-style-id="molekula-listrow-otwarty">
+        <ListRow tytul="Sprawa 9" otwarty akcja={{ etykieta: "Zamknij", onKliknij: () => {} }} />
+      </div>
+
+      {/* M4 KeyValueRow — warianty: wartość jawna, zamaskowana */}
+      <div data-style-id="molekula-keyvaluerow-jawna">
+        <KeyValueRow etykieta="Imię" wartosc="Anna" />
+      </div>
+      <div data-style-id="molekula-keyvaluerow-zamaskowana">
+        <KeyValueRow etykieta="PESEL" wartosc="12345678901" zamaskowana />
+      </div>
+
+      {/* M7 Breadcrumbs — warianty: pełne, skrócone (06-ATOMY-MOLEKULY-ORGANIZMY.md w. 147) */}
+      <div data-style-id="molekula-breadcrumbs-pelne">
+        <Breadcrumbs
+          pozycje={[
+            { etykieta: "Kursy", href: "#" },
+            { etykieta: "Edycja 24", href: "#" },
+            { etykieta: "Ustawienia" },
+          ]}
+        />
+      </div>
+      <div data-style-id="m7-breadcrumbs-skrocone">
+        <Breadcrumbs
+          wariant="skrocone"
+          pozycje={[
+            { etykieta: "Kursy", href: "#" },
+            { etykieta: "Edycja 24", href: "#" },
+            { etykieta: "Modul 2", href: "#" },
+            { etykieta: "Lekcja 5", href: "#" },
+            { etykieta: "Ustawienia" },
+          ]}
+        />
+      </div>
+
+      {/* M8 Tabs — stany: wybrana, fokus (REGULY_FOKUSU); wariant: zwinięta poniżej
+          639 (06-ATOMY-MOLEKULY-ORGANIZMY.md w. 148), własny mount (patrz Tabs.tsx) */}
+      <div data-style-id="molekula-tabs">
+        <Tabs
+          zakladki={[
+            { id: "wszystkie", etykieta: "Wszystkie", liczba: 6 },
+            { id: "otwarte", etykieta: "Otwarte", liczba: 2 },
+          ]}
+          wybranaId="wszystkie"
+          onWybierz={() => {}}
+        />
+      </div>
+      <div data-style-id="m8-tabs-zwiniete">
+        <Tabs
+          zwinPonizej639
+          zakladki={[
+            { id: "wszystkie", etykieta: "Wszystkie", liczba: 6 },
+            { id: "otwarte", etykieta: "Otwarte", liczba: 2 },
+          ]}
+          wybranaId="wszystkie"
+          onWybierz={() => {}}
+        />
+      </div>
+
+      {/* M9 MenuItem/MenuGroup — warianty: bieżąca, linia "W przygotowaniu", nagłówek grupy */}
+      <div data-style-id="molekula-menugroup">
+        <MenuGroup
+          naglowek="Program"
+          pozycje={[
+            { ikona: "home", etykieta: "Pulpit", href: "#", biezaca: true },
+            { ikona: "book", etykieta: "Kursy", href: "#" },
+          ]}
+          wPrzygotowaniu={["Eksport PDF"]}
+        />
+      </div>
+
+      {/* --- Warstwa 3, grupa C: M14-M19, wg kolumny "Z czego, warianty, stany"
+          §3 06-ATOMY-MOLEKULY-ORGANIZMY.md. Dołączone do TEGO SAMEGO poligonu
+          (grupa C) zamiast osobnego narzędzia — rozstrzygnięcie
+          specyfikacji: przyrząd istnieje od warstwy 2, molekuły mają do niego
+          wejść. */}
+
+      {/* M14 Pagination — 0 pozycji nazwanych w kolumnie "Z czego, warianty,
+          stany" (w. 154: "Button x2 + Text", sam skład, bez wypisanych
+          wariantów/stanów) — zmontowana mimo to, bo ma mierzalny wymiar w
+          kolumnie "Wymiary" ("pola ≥ 44 px"); wpis w cele-atomy-styl.mjs jest
+          __pomocniczy_wymiar i NIE liczy się do mianownika POZYCJE_PAR2,
+          dokładnie jak pole dotyku A6 Checkbox. */}
+      <div data-style-id="m14-pagination">
+        <Pagination strona={3} stron={7} naPoprzednia={() => {}} naNastepna={() => {}} />
+      </div>
+
+      {/* M15 Toast — warianty: bez akcji (znika po 8s), z akcją (czeka),
+          z odnośnikiem do dziennika. Wszystkie trzy mounty naraz nachodzą na
+          siebie wizualnie (position: fixed) — bez znaczenia dla pomiaru
+          stylu obliczonego, który czyta właściwości niezależnie od nakładania. */}
+      <div data-style-id="m15-toast-bez-akcji">
+        <Toast komunikat="Zapisano zmiany." onZamknij={() => {}} />
+      </div>
+      <div data-style-id="m15-toast-z-akcja">
+        <Toast komunikat="Usunięto wiersz." onCofnij={() => {}} onZamknij={() => {}} />
+      </div>
+      <div data-style-id="m15-toast-z-odnosnikiem">
+        <Toast
+          komunikat="Zapisano w dzienniku."
+          onZamknij={() => {}}
+          odnosnikDziennika={{ href: "#", etykieta: "Zobacz w dzienniku" }}
+        />
+      </div>
+
+      {/* M16 CollapsibleSection — stany: zwinięta, rozwinięta (akcje na TYM
+          SAMYM mouncie, idempotentne — kolejność wpisów w rejestrze bez
+          znaczenia, tak jak A5 Select), fokus (REGULY_FOKUSU). */}
+      <div data-style-id="m16-collapsible">
+        <CollapsibleSection tytul="Materiały" liczba={4} dzieci={<Text>Treść sekcji.</Text>} />
+      </div>
+
+      {/* M17 EmptyState — warianty: pusto, brak uprawnień, brak wyników filtra */}
+      <div data-style-id="m17-pusto">
+        <EmptyState
+          naglowek="Brak danych"
+          tresc="Dane pojawią się po pierwszym zapisie."
+          przycisk={{ etykieta: "Dodaj", onClick: () => {} }}
+        />
+      </div>
+      <div data-style-id="m17-brak-uprawnien">
+        <EmptyState
+          naglowek="Brak dostępu"
+          wariant="brak-uprawnien"
+          rola="administratora"
+          przycisk={{ etykieta: "Wróć", onClick: () => {} }}
+        />
+      </div>
+      <div data-style-id="m17-brak-wynikow-filtra">
+        <EmptyState
+          naglowek="Brak wyników"
+          wariant="brak-wynikow-filtra"
+          tresc="Żaden wynik nie pasuje do filtra."
+          przycisk={{ etykieta: "Wyczyść filtr", onClick: () => {} }}
+        />
+      </div>
+
+      {/* M18 RichTextEditor — stany: fokus w pojemniku (klik na przycisk paska,
+          :focus-within na kontenerze), fokus w treści (REGULY_FOKUSU, obszar
+          edytowalny) */}
+      <div data-style-id="m18-richtext">
+        <RichTextEditor
+          etykieta="Treść lekcji"
+          wartoscHtml="<p>Przykładowa treść.</p>"
+          onZmiana={() => {}}
+          onAkcja={() => {}}
+        />
+      </div>
+
+      {/* M19 QaBlock — stany: odpowiedziana, czeka */}
+      <div data-style-id="m19-odpowiedziana">
+        <QaBlock
+          pytanie="Czy termin można przesunąć?"
+          stan="odpowiedziana"
+          kto="Prowadząca"
+          kiedy="wczoraj"
+          odpowiedz="Tak, napisz do mnie."
+        />
+      </div>
+      <div data-style-id="m19-czeka">
+        <QaBlock
+          pytanie="Ile trwa superwizja?"
+          stan="czeka"
+          obiecanyCzas="jutra"
+          poPrzekroczeniu="Zobaczysz przypomnienie w dzienniku."
+        />
+      </div>
+
+      {/* O7 PublishChecklist — jedyny organizm złożony wprost z atomów (§4, w. 171).
+          Korekta: "bez braków" ZDJĘTE z mianownika — po poprawce
+          składu (Text usunięty, "zamyka się sam" zaimplementowane jako
+          `return null` w komponencie) ten stan nie rysuje już żadnego stylu
+          do zmierzenia, więc nie jest pozycją stylu obliczonego. Jeden mount
+          zostaje: "z brakami" (lista + plakietka + zamknięcie + fokus). */}
+      <div data-style-id="organizm-o7-z-brakami">
+        <PublishChecklist
+          tytul="Braki przed publikacją"
+          braki={[
+            { id: "opis", tekst: "Brak opisu kursu", href: "#opis" },
+            { id: "lekcje", tekst: "Brak lekcji w kursie", href: "#lekcje" },
+          ]}
+          gotowe={[{ id: "materialy", tekst: "Materiały dodane (3)" }]}
+          onZamknij={() => {}}
+        />
+      </div>
+
+      {/* M5 FileDropZone — stan: po dodaniu (drugi mount, niepusta lista
+          plików); fokus (akcja na [role="button"], patrz REGULY_FOKUSU w
+          cele-atomy-styl.mjs). "nad obszarem" jest GAPEM jawnym w
+          pozycje-warianty-stany-par2.mjs — wymaga symulacji dragover, poza
+          zestawem akcji silnika (hover/klik/otworz-jesli.../zamknij-jesli...). */}
+      <div data-style-id="m5-filedropzone">
+        <FileDropZone
+          id="m5-plik"
+          etykieta="Przeciągnij plik albo wybierz z dysku"
+          podpowiedz="PDF, JPG, PNG do 10 MB"
+          pliki={[]}
+          onWybierzPliki={() => {}}
+        />
+      </div>
+      <div data-style-id="m5-filedropzone-po-dodaniu">
+        <FileDropZone
+          id="m5-plik-dodany"
+          etykieta="Przeciągnij plik albo wybierz z dysku"
+          podpowiedz="PDF, JPG, PNG do 10 MB"
+          pliki={[{ nazwa: "zaswiadczenie.pdf", stan: "gotowy", komunikat: "Gotowy" }]}
+          onWybierzPliki={() => {}}
+        />
+      </div>
+
+      {/* M6 FileRow — warianty: przetwarzanie, gotowy, błąd */}
+      <ul data-style-id="m6-filerow-przetwarzanie">
+        <FileRow nazwa="dowod.pdf" stan="przetwarzanie" komunikat="Przetwarzanie…" />
+      </ul>
+      <ul data-style-id="m6-filerow-gotowy">
+        <FileRow nazwa="zdjecie.png" stan="gotowy" komunikat="Gotowy" />
+      </ul>
+      <ul data-style-id="m6-filerow-blad">
+        <FileRow nazwa="skan.jpg" stan="blad" komunikat="Plik za duży (maks. 10 MB)" />
+      </ul>
+
+      {/* M10 StatTile — warianty: zwykły, dominujący, bez danych */}
+      <div data-style-id="m10-stattile-zwykly">
+        <StatTile id="m10-zwykly" etykieta="Zaliczone testy" wartosc={18} mianownik="z 72 godzin" />
+      </div>
+      <div data-style-id="m10-stattile-dominujacy">
+        <StatTile id="m10-dominujacy" etykieta="Postęp programu" wartosc={62} mianownik="%" dominujacy />
+      </div>
+      <div data-style-id="m10-stattile-brak">
+        <StatTile id="m10-brak" etykieta="Ocena" mianownik="w skali 100" />
+      </div>
+
+      {/* M11 Notice — warianty: ok, warn, error, info. Mount tutaj mierzy
+          STYL (zgodność z §3, tokeny), nie jest "użyciem" w sensie ekranu
+          aplikacji — realne użycie `info` na ekranie nadal wynosi 0.
+          Poligon mierzy WSZYSTKIE warianty każdego
+          atomu bez względu na to, czy ekran już z nich korzysta (tak samo
+          jak np. A1 Button "danger" wyżej). */}
+      <div data-style-id="m11-notice-ok">
+        <Notice wariant="ok" tytul="Zapisano">Zmiany zostały zapisane.</Notice>
+      </div>
+      <div data-style-id="m11-notice-warn">
+        <Notice wariant="warn" tytul="Sprawdź dane">Numer telefonu wygląda niepoprawnie.</Notice>
+      </div>
+      <div data-style-id="m11-notice-error">
+        <Notice wariant="error" tytul="Nie udało się zapisać">Sprawdź połączenie i spróbuj ponownie.</Notice>
+      </div>
+      <div data-style-id="m11-notice-info">
+        <Notice wariant="info" tytul="Informacja">Nowa funkcja jest dostępna od tego tygodnia.</Notice>
+      </div>
+
+      {/* M12 DialogActions — "fokus początkowy na wycofaniu" jest GAPEM
+          jawnym: fokus DOM jest stanem globalnym jednej strony, a inne
+          pozycje poligonu (np. akcje "klik" A5 Select) przenoszą fokus
+          gdzie indziej, zanim przyszłaby kolej na odczyt tej pozycji. */}
+      <div data-style-id="m12-dialogactions">
+        <DialogActions
+          etykietaWycofania="Anuluj"
+          etykietaPotwierdzenia="Zapisz"
+          onWycofaj={() => {}}
+          onPotwierdz={() => {}}
+        />
+      </div>
+
+      {/* M13 SaveBar — stan: widoczny. "ukryty" (liczbaZmian=0, komponent
+          renderuje null) jest GAPEM jawnym: silnik pomiaru wymaga ISTNIENIA
+          elementu pod selektorem (0 dopasowań = kod 2 "nie da się
+          zmierzyć") i nie ma dziś sposobu potwierdzenia NIEOBECNOŚCI
+          elementu jako wyniku POPRAWNEGO. */}
+      <div data-style-id="m13-savebar-widoczny">
+        <SaveBar
+          liczbaZmian={2}
+          temat="Zmieniono dane profilu"
+          onCofnij={() => {}}
+          onPorzucWszystko={() => {}}
+          onZapisz={() => {}}
+        />
       </div>
     </div>
   );

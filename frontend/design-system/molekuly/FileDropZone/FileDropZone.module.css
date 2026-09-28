@@ -1,0 +1,51 @@
+.oprawa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  max-width: 720px;
+}
+
+.obszar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--r-sm);
+  padding: var(--space-18) var(--space-14);
+  background: var(--card-warm);
+  font-size: var(--fs-10);
+  cursor: pointer;
+  min-height: var(--hit-min);
+}
+
+/* Fokus widoczny NIE dostaje własnej reguły — jedna reguła na front stoi w
+   tokeny.css (`:root :focus-visible`, r6/var(--r-2xs)). Wcześniejsza wersja
+   tego pliku miała tu własną regułę z border-radius: var(--r-sm) (12px) —
+   ta sama specyficzność (0-2-0) co regułą wspólną, więc o wygranej
+   decydowała wyłącznie kolejność w arkuszu (tokeny.css ładowany pierwszy w
+   main.tsx), a lokalna reguła cicho ją przykrywała promieniem obszaru
+   zamiast promieniem wspólnym r6 — zmierzone przy dopisywaniu tej molekuły
+   do design-system/poligon/pomiar-styl-atomow.mjs, poprawione tutaj. */
+
+.nadObszarem {
+  border-color: var(--primary);
+  background: var(--green-tint);
+}
+
+.wejscieUkryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}

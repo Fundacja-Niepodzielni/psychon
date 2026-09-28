@@ -1,0 +1,46 @@
+.pojemnik {
+  max-width: 720px;
+  border: 1px solid var(--control);
+  border-radius: var(--r-xs);
+}
+/* "fokus w pojemniku" (06 §3 M18): jakikolwiek fokus wewnątrz — pasek albo
+   treść — podświetla RAMKĘ CAŁEGO pojemnika. Odróżnione od "fokus w treści"
+   (.obszar:focus-visible niżej), który rysuje mocniejszy obrys TYLKO na
+   obszarze edytowalnym. Dwa różne, zmierzalne stany z tej samej kolumny. */
+.pojemnik:focus-within {
+  border-color: var(--brand);
+}
+.pasek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.grupa {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.grupa :global(button) {
+  min-width: var(--hit-min);
+  min-height: var(--hit-min);
+  font-size: var(--fs-11);
+}
+.rozdzielacz {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 var(--space-4);
+  background: var(--border);
+}
+.obszar {
+  padding: var(--space-12) var(--space-14);
+  min-height: 150px;
+  font-size: var(--fs-9);
+  line-height: var(--lh-lesson);
+}
+.obszar:focus-visible {
+  outline: var(--focus-width) solid var(--brand);
+  outline-offset: calc(var(--focus-offset) * -1);
+}

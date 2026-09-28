@@ -1,0 +1,24 @@
+.wiersz {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--r-2xs);
+  border: 1px solid var(--border);
+  font-size: var(--fs-10);
+  background: var(--card);
+  list-style: none;
+}
+
+.przetwarzanie {
+  border-color: var(--control);
+}
+
+.gotowy {
+  border-color: var(--border);
+}
+
+.blad {
+  border-color: var(--error);
+}

@@ -1,0 +1,33 @@
+.sekcja {
+  width: 100%;
+}
+.naglowek {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--hit-min);
+  width: 100%;
+  padding: var(--space-8) 0;
+  background: transparent;
+  border: none;
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.strzalka {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-right: 2px solid var(--control);
+  border-bottom: 2px solid var(--control);
+  transform: rotate(-45deg);
+  transition: transform var(--dur-fast);
+}
+.rozwinieta {
+  transform: rotate(45deg);
+}
+.tresc {
+  padding-bottom: var(--space-8);
+}
