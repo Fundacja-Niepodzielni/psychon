@@ -9,13 +9,18 @@ import {
 } from "@/lib/przelaczenie/grupy";
 
 /**
- * Stan flag rejestru: wyłączona grupa nie zmienia zachowania produktu, więc
- * każda grupa, której włączenie nie zostało jeszcze wdrożone, ma
- * `wlaczona: false`.
+ * Stan flag rejestru: włączona jest wyłącznie grupa `wspolpraca` — jedyna,
+ * dla której są już strony pod nowymi trasami i wpisy menu. Pozostałe grupy
+ * opisują tylko docelowe pary tras i zostają wyłączone.
  */
 describe("rejestr GRUPY — stan flag", () => {
-  it("każda grupa jest dziś wyłączona", () => {
+  it("grupa wspolpraca jest włączona", () => {
+    expect(GRUPY.wspolpraca.wlaczona).toBe(true);
+  });
+
+  it("każda pozostała grupa jest wyłączona", () => {
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
+      if (klucz === "wspolpraca") continue;
       expect(grupa.wlaczona, `grupa "${klucz}" powinna być wyłączona dziś`).toBe(false);
     }
   });
@@ -56,12 +61,12 @@ describe("celTrasyEkranu — czysta funkcja, obie gałęzie flagi", () => {
 });
 
 describe("celTrasy — wygoda po kluczu rejestru", () => {
-  it("odpowiada dziś (wyłączone) staraTrasa uczestnika grupy wspolpraca", () => {
-    expect(celTrasy("wspolpraca", "uczestnik")).toBe("/panel/po-programie");
+  it("odpowiada dziś (włączone) nową trasą uczestnika grupy wspolpraca", () => {
+    expect(celTrasy("wspolpraca", "uczestnik")).toBe("/panel/dalsza-wspolpraca");
   });
 
-  it("odpowiada dziś (wyłączone) null dla administracji grupy wspolpraca", () => {
-    expect(celTrasy("wspolpraca", "administracja")).toBeNull();
+  it("odpowiada dziś (włączone) nową trasą administracji grupy wspolpraca", () => {
+    expect(celTrasy("wspolpraca", "administracja")).toBe("/admin/zgloszenia-wspolpracy");
   });
 });
 

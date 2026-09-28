@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Wszystkie poza `wspolpraca` mają tu jeszcze
+ * Grupy dzisiejszego kanonu. Włączona jest jedna: `wspolpraca`. Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -68,7 +68,7 @@ export const GRUPY = {
    */
   wspolpraca: {
     klucz: "wspolpraca",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",

@@ -102,13 +102,6 @@ afterEach(() => {
 });
 
 describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia", () => {
-  it("rejestr zna co najmniej jedną grupę i każda grupa rejestru jest wyłączona", () => {
-    expect(Object.keys(GRUPY).length).toBeGreaterThan(0);
-    for (const [klucz, grupa] of Object.entries(GRUPY)) {
-      expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(false);
-    }
-  });
-
   it("wzorzec obejmuje wszystkie pięć ról i niepuste menu każdej", () => {
     expect(Object.keys(menuBazowe).sort()).toEqual([...ROLE].sort());
     for (const rola of ROLE) {
@@ -117,31 +110,27 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
     }
   });
 
-  it("menu rzeczywiste każdej roli jest identyczne ze wzorcem, wpis po wpisie", () => {
-    for (const rola of ROLE) {
-      expect(rozwiazMenuRoli(zestawRzeczywisty, rola), `rola ${rola}`).toEqual(menuBazowe[rola]);
-    }
-  });
-
-  it("menu z rejestrem podmienionym na same wyłączone grupy jest identyczne ze wzorcem", async () => {
+  it("menu z rejestrem podmienionym na same wyłączone grupy jest identyczne ze wzorcem, wpis po wpisie", async () => {
     const zestaw = await zaladujMenuZFlagami({});
     for (const rola of ROLE) {
       expect(rozwiazMenuRoli(zestaw, rola), `rola ${rola}`).toEqual(menuBazowe[rola]);
     }
   });
 
-  it("przypadek odwrotny: zmieniony adres w kopii wzorca daje czerwień porównania", () => {
+  it("przypadek odwrotny: zmieniony adres w kopii wzorca daje czerwień porównania", async () => {
+    const zestaw = await zaladujMenuZFlagami({});
     const kopia = JSON.parse(JSON.stringify(menuBazowe)) as Record<Role, MenuGroup[]>;
     const wpis = kopia.volunteer.flatMap((grupa) => grupa.entries).find((e) => e.href === "/panel/po-programie");
     expect(wpis).toBeDefined();
     wpis!.href = "/panel/dalsza-wspolpraca";
-    expect(rozwiazMenuRoli(zestawRzeczywisty, "volunteer")).not.toEqual(kopia.volunteer);
+    expect(rozwiazMenuRoli(zestaw, "volunteer")).not.toEqual(kopia.volunteer);
   });
 
-  it("przypadek odwrotny: usunięty wpis w kopii wzorca daje czerwień porównania", () => {
+  it("przypadek odwrotny: usunięty wpis w kopii wzorca daje czerwień porównania", async () => {
+    const zestaw = await zaladujMenuZFlagami({});
     const kopia = JSON.parse(JSON.stringify(menuBazowe)) as Record<Role, MenuGroup[]>;
     kopia.super_admin[0].entries.pop();
-    expect(rozwiazMenuRoli(zestawRzeczywisty, "super_admin")).not.toEqual(kopia.super_admin);
+    expect(rozwiazMenuRoli(zestaw, "super_admin")).not.toEqual(kopia.super_admin);
   });
 
   it("żaden wpis żadnego menu nie wskazuje segmentu nowego frontu", () => {
@@ -151,6 +140,29 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
     for (const wpis of [...participantMenu, ...adminMenu, ...instructorMenu]) {
       expect(wpis.href).not.toMatch(segment);
     }
+  });
+});
+
+describe("menu rzeczywiste przy stanie flag rejestru", () => {
+  it("włączona jest tylko grupa współpracy", () => {
+    for (const [klucz, grupa] of Object.entries(GRUPY)) {
+      expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(klucz === "wspolpraca");
+    }
+  });
+
+  it("menu rzeczywiste każdej roli jest identyczne z menu przy włączonej samej grupie współpracy", async () => {
+    const zestaw = await zaladujMenuZFlagami({ wspolpraca: true });
+    for (const rola of ROLE) {
+      expect(rozwiazMenuRoli(zestawRzeczywisty, rola), `rola ${rola}`).toEqual(rozwiazMenuRoli(zestaw, rola));
+    }
+  });
+
+  it("przypadek odwrotny: menu rzeczywiste różni się od wzorca sprzed rejestru dla uczestnika i administracji, nie dla prowadzącego", () => {
+    expect(rozwiazMenuRoli(zestawRzeczywisty, "volunteer")).not.toEqual(menuBazowe.volunteer);
+    expect(rozwiazMenuRoli(zestawRzeczywisty, "student")).not.toEqual(menuBazowe.student);
+    expect(rozwiazMenuRoli(zestawRzeczywisty, "project_manager")).not.toEqual(menuBazowe.project_manager);
+    expect(rozwiazMenuRoli(zestawRzeczywisty, "super_admin")).not.toEqual(menuBazowe.super_admin);
+    expect(rozwiazMenuRoli(zestawRzeczywisty, "instructor")).toEqual(menuBazowe.instructor);
   });
 });
 
@@ -168,7 +180,8 @@ describe("menu przy włączonej grupie współpracy — wpisy prowadzą na nowe 
 
   it("administracja: powstaje wpis „Zgłoszenia współpracy” z nową trasą, tylko dla obu ról administracji", async () => {
     const zestaw = await zaladujMenuZFlagami({ wspolpraca: true });
-    expect(zestaw.admin).toHaveLength(adminMenu.length + 1);
+    const wylaczony = await zaladujMenuZFlagami({});
+    expect(zestaw.admin).toHaveLength(wylaczony.admin.length + 1);
     for (const rola of ["project_manager", "super_admin"] as Role[]) {
       const wpis = wpisyRoli(zestaw, rola).find((w) => w.label === "Zgłoszenia współpracy");
       expect(wpis?.href, rola).toBe("/admin/zgloszenia-wspolpracy");
