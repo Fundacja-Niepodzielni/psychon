@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Queries\AdminUserQuery;
 use App\Services\Auth\TokenRoles;
 use App\Services\H18\UserAnonymizer;
+use App\Services\H18\UserNumberSourcesQuery;
 use App\Support\AuditLog;
 use App\Support\Csv;
 use Illuminate\Http\JsonResponse;
@@ -61,6 +62,27 @@ class AdminUserController extends Controller
 
         return response()->json([
             'data' => AdminUserCardResource::make($user)->resolve($request),
+        ]);
+    }
+
+    /**
+     * Jeden punkt zaplecza, pięć sekcji: wiersze, z których powstała każda
+     * z pięciu liczb karty osoby (D-106) — `hours_accepted`,
+     * `supervision_present`, `workshop`, `passed_tests`, `reliability`.
+     * Istniejące punkty (karta, `/certificate/conditions`,
+     * `/admin/reliability/{userId}`) zostają bez zmian; ten punkt jest
+     * do wglądu źródeł, nie ich zastąpieniem.
+     */
+    public function numberSources(Request $request, int $id): JsonResponse
+    {
+        $user = User::query()->find($id);
+
+        if ($user === null) {
+            throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
+        }
+
+        return response()->json([
+            'data' => UserNumberSourcesQuery::for($user),
         ]);
     }
 

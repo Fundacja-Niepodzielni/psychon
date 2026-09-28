@@ -912,3 +912,73 @@ panelu) — lista rośnie z 17 do 19. Osobną decyzją dochodzi `supervision.slo
 (H12 — termin superwizji odwołany przez prowadzącego albo administrację, typ i
 slug audytu już emitowane przez kod) — lista rośnie do **20**. `supervision.reminder`
 nadal ma wyłącznie własny blok i nie wchodzi do `TYPES`.
+
+---
+
+## Aneks z 2026-09-28 — źródła liczb osoby (H18)
+
+`GET /admin/users/{id}/number-sources` → 200 — dostęp wyłącznie dla
+`project_manager` i `super_admin`; nieznana osoba → 404 `not_found`. Odpowiedź
+niesie pięć sekcji, każda w kształcie `{ "rows": [...], "sum": ... }`, sekcja
+`workshop` dodatkowo `"done"`. Każdy wiersz ma dokładnie te pola:
+
+- `date` (`YYYY-MM-DD` albo `null`) i `occurred_at` (znacznik ISO 8601 UTC
+  albo `null`) — dokładnie jedno z obu jest niepuste w każdym wierszu; sekcja
+  `hours_accepted` niesie `date`, pozostałe cztery sekcje niosą `occurred_at`.
+- `value` — dla `hours_accepted` godziny jako dziesiętny string (jak wszędzie
+  indziej w kontrakcie); w pozostałych sekcjach liczba całkowita właściwa
+  danej sekcji.
+- `state` — kod ze słownika zamkniętego danej sekcji (patrz niżej); pole nie
+  jest wolnym tekstem.
+- `form` — kod `internship.form` wyłącznie w sekcji `hours_accepted`; w
+  pozostałych czterech sekcjach zawsze `null`.
+- `label` — tekst do wyświetlenia (imię i nazwisko prowadzącego/oznaczającego
+  albo tytuł kursu) albo `null`, gdy sekcja nie ma naturalnej etykiety.
+
+Pole `source` **nie istnieje** w tym kształcie — zastąpione parą `form`/`label`
+powyżej.
+
+### Wiersze są dokładnie rekordami źródłowymi liczby
+
+Każda sekcja pokazuje wyłącznie te rekordy, z których policzona jest jej
+`sum` — żadnych dodatkowych ani pominiętych: `hours_accepted` to wpisy stażu
+w stanie `accepted` (nie `submitted` ani `returned`); `supervision_present`
+to zapisy na superwizję z `attendance = present` i aktywne (`cancelled_at`
+puste); `workshop` to komplety `WorkshopCompletion` (dziś co najwyżej jeden
+na edycję); `passed_tests` to kursy ścieżki z testem, dla których
+`CourseAccess::testPassed()` jest prawdziwe, po jednym wierszu na kurs, ze
+wskazaniem najwcześniejszej zaliczającej próby; `reliability` to ukończone
+lekcje z dodatnim `duration_seconds`, tak samo jak liczy je
+`ProgressAggregator::reliabilityPercent()`.
+
+### Punkt 4 — `sum` jest tą samą liczbą co gdzie indziej, nigdy drugą definicją
+
+| sekcja | `sum` liczony dokładnie jak | ta sama liczba na |
+|---|---|---|
+| `hours_accepted` | `ProgressAggregator::for()['hours_accepted']` | karta osoby (`GET /admin/users/{id}` → `data.progress.hours_accepted`) |
+| `supervision_present` | `ProgressAggregator::for()['supervision_present']` | karta osoby → `data.progress.supervision_present` |
+| `workshop` (`done`) | `ProgressAggregator::for()['workshop_done']` | karta osoby → `data.progress.workshop_done` |
+| `passed_tests` | `ProgressAggregator::for()['path_tests_passed']` — **nie** `ProgressAggregator::passedTestsCount()`, która liczy inną wielkość (zaliczone testy na całej platformie, bez mianownika ścieżki) | karta osoby → `data.progress.path_tests_passed` |
+| `reliability` | `ProgressAggregator::reliabilityPercent()` — string albo `null`, stosunek nie suma kolumny `value` | `GET /admin/reliability/{userId}` → `data.reliability_percent` |
+
+### Słownik `state` — jawnie, po sekcji (odczytany z kodu, nie wymyślony)
+
+Każda sekcja pokazuje wyłącznie rekordy uwzględnione w jej `sum` (patrz wyżej),
+dlatego dziś każda z nich niesie w praktyce dokładnie jedną wartość `state`:
+
+- `hours_accepted` → `accepted` (sekcja filtruje `internship.status = accepted`
+  przed zbudowaniem wierszy; pełny słownik pola w bazie to
+  `submitted · accepted · returned · rejected`, ale tu nigdy nie zobaczysz nic
+  poza `accepted`).
+- `supervision_present` → `present` (sekcja filtruje `attendance = present`;
+  pełny słownik pola to `present · absent`).
+- `workshop` → `completed` (jedyna wartość, jaką niesie ukończenie warsztatu).
+- `passed_tests` → `passed` (sekcja filtruje próby zaliczające).
+- `reliability` → `completed` (sekcja pokazuje wyłącznie ukończone lekcje).
+
+### Osoba bez rekordów danej sekcji
+
+Sekcja jest obecna zawsze, z `rows: []`; liczbowe `sum` wynosi `0` (`"0"` dla
+`hours_accepted`, liczba całkowita `0` dla pozostałych trzech), `workshop.done`
+wynosi `false`, a `reliability.sum` wynosi `null` — dokładnie ten sam `null`,
+który niesie `reliability_percent` osoby bez mierzalnej ukończonej lekcji.

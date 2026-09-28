@@ -2580,6 +2580,319 @@
                 }
             }
         },
+        "/v1/admin/users/{id}/number-sources": {
+            "get": {
+                "operationId": "adminUser.numberSources",
+                "summary": "Jeden punkt zaplecza, pi\u0119\u0107 sekcji: wiersze, z kt\u00f3rych powsta\u0142a ka\u017cda\nz pi\u0119ciu liczb karty osoby (D-106) \u2014 `hours_accepted`,\n`supervision_present`, `workshop`, `passed_tests`, `reliability`.\nIstniej\u0105ce punkty (karta, `/certificate/conditions`,\n`/admin/reliability/{userId}`) zostaj\u0105 bez zmian; ten punkt jest\ndo wgl\u0105du \u017ar\u00f3de\u0142, nie ich zast\u0105pieniem",
+                "tags": [
+                    "AdminUser"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "hours_accepted": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "date": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "occurred_at": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "form": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": "null"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "date",
+                                                                    "occurred_at",
+                                                                    "value",
+                                                                    "state",
+                                                                    "form",
+                                                                    "label"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "sum": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "rows",
+                                                        "sum"
+                                                    ]
+                                                },
+                                                "supervision_present": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "date": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "occurred_at": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "integer",
+                                                                        "const": 1
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string",
+                                                                        "const": "present"
+                                                                    },
+                                                                    "form": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "date",
+                                                                    "occurred_at",
+                                                                    "value",
+                                                                    "state",
+                                                                    "form",
+                                                                    "label"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "sum": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "rows",
+                                                        "sum"
+                                                    ]
+                                                },
+                                                "workshop": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "date": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "occurred_at": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "integer",
+                                                                        "const": 1
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string",
+                                                                        "const": "completed"
+                                                                    },
+                                                                    "form": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "date",
+                                                                    "occurred_at",
+                                                                    "value",
+                                                                    "state",
+                                                                    "form",
+                                                                    "label"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "sum": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "done": {
+                                                            "type": "boolean"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "rows",
+                                                        "sum",
+                                                        "done"
+                                                    ]
+                                                },
+                                                "passed_tests": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "date": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "occurred_at": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "integer",
+                                                                        "const": 1
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string",
+                                                                        "const": "passed"
+                                                                    },
+                                                                    "form": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "date",
+                                                                    "occurred_at",
+                                                                    "value",
+                                                                    "state",
+                                                                    "form",
+                                                                    "label"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "sum": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "rows",
+                                                        "sum"
+                                                    ]
+                                                },
+                                                "reliability": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "date": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "occurred_at": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ]
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string",
+                                                                        "const": "completed"
+                                                                    },
+                                                                    "form": {
+                                                                        "type": "null"
+                                                                    },
+                                                                    "label": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "date",
+                                                                    "occurred_at",
+                                                                    "value",
+                                                                    "state",
+                                                                    "form",
+                                                                    "label"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "sum": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "rows",
+                                                        "sum"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "hours_accepted",
+                                                "supervision_present",
+                                                "workshop",
+                                                "passed_tests",
+                                                "reliability"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/admin/users/{id}/block": {
             "post": {
                 "operationId": "adminUser.block",
@@ -9445,7 +9758,7 @@
         },
         "/v1/admin/report": {
             "get": {
-                "operationId": "v1.admin.report.show_145",
+                "operationId": "v1.admin.report.show_146",
                 "tags": [
                     "Report"
                 ],
@@ -9714,7 +10027,7 @@
         },
         "/v1/admin/reports": {
             "get": {
-                "operationId": "v1.admin.report.show_147",
+                "operationId": "v1.admin.report.show_148",
                 "tags": [
                     "Report"
                 ],
