@@ -23,6 +23,21 @@
 .pozycja:last-child {
   color: var(--ink);
 }
+/* Wysokość odnośnika NIEZALEŻNA od metryk czcionki platformy: ta sama
+   reguła CSS dawała różny line-height tej samej rodziny fontu na dwóch
+   platformach, więc box mierzony poniżej progu 44 px na jednej z nich.
+   `box-sizing: border-box` jest globalne (tokeny.css), więc
+   `min-height` liczy się RAZEM z paddingiem odnośnika (`.okruszek` w
+   Link.module.css, poza zakresem tej zmiany) — box `<a>` ma odtąd
+   zagwarantowane ≥44 px z tokenu, niezależnie od tego, jaką wysokość linii
+   przeglądarka/font nadadzą `--fs-11`. `display: inline-flex; align-items:
+   center` centruje treść w tej wysokości — bez tej pary tekst wypadałby u
+   góry pudełka, gdy min-height przewyższa naturalną wysokość wiersza. */
+.pozycja > a {
+  min-height: var(--hit-min);
+  display: inline-flex;
+  align-items: center;
+}
 /* Pierwsza wersja tej reguły: ::after wyśrodkowany NA ODNOŚNIKU (kontenerem
    odniesienia był `<a>`, bo to on miał `position: relative`), szerokość
    `max(46px, 100%)` — stała podłoga 46 px bez względu na sąsiada.
