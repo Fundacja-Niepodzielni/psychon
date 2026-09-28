@@ -39,7 +39,11 @@ interface WlasciwosciDataTable {
   tytul: string;
   kolumny: KolumnaDataTable[];
   wiersze: WierszDataTable[];
-  szukajka: WlasciwosciSzukajkiDataTable;
+  /** OPCJONALNA — pomiń, gdy trasa zaplecza nie ma parametru wyszukiwania
+   * (np. `GET /admin/emails`, H16): szukajka filtrująca tylko bieżącą,
+   * już pobraną stronę udawałaby wyszukiwanie w całym zbiorze, którego nie
+   * ma. Bez tej właściwości `SearchBox` się nie renderuje. */
+  szukajka?: WlasciwosciSzukajkiDataTable;
   stronicowanie?: WlasciwosciStronicowaniaDataTable;
   /** Komunikat, gdy `wiersze` jest puste (np. po odfiltrowaniu) — `Text`
    * wariant `pusty`, ta sama konwencja co stan `brakWynikow` w `SearchBox`. */
@@ -58,13 +62,15 @@ interface WlasciwosciDataTable {
 export function DataTable({ tytul, kolumny, wiersze, szukajka, stronicowanie, komunikatPusty }: WlasciwosciDataTable) {
   return (
     <div className={style.tabela}>
-      <SearchBox
-        id={szukajka.id}
-        etykieta={szukajka.etykieta}
-        wartosc={szukajka.wartosc}
-        onZmiana={szukajka.onZmiana}
-        placeholder={szukajka.placeholder}
-      />
+      {szukajka && (
+        <SearchBox
+          id={szukajka.id}
+          etykieta={szukajka.etykieta}
+          wartosc={szukajka.wartosc}
+          onZmiana={szukajka.onZmiana}
+          placeholder={szukajka.placeholder}
+        />
+      )}
 
       {wiersze.length === 0 ? (
         <Text wariant="pusty">{komunikatPusty ?? "Brak wyników. Zmień szukaną frazę."}</Text>

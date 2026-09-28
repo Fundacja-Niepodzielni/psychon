@@ -24,8 +24,11 @@ export interface WierszRecordList {
   plakietka?: PlakietkaRecordList;
   /** Wielkość wiersza („data, wielkość, stan, źródło”) —
    * wchodzi jednocześnie do licznika `ListRow` i do sumy w stopce, jedno
-   * źródło prawdy, bez osobnego pola tylko do wyświetlenia. */
-  wartosc: number;
+   * źródło prawdy, bez osobnego pola tylko do wyświetlenia. OPCJONALNA:
+   * pomiń razem z `jednostkaSumy` niżej, gdy wiersz nie ma wartości, którą
+   * miałoby sens sumować (np. ranga/kolejność) — wtedy ani licznik przy
+   * wierszu, ani stopka „Razem” się nie renderują. */
+  wartosc?: number;
   akcja: AkcjaRecordList;
 }
 
@@ -38,8 +41,11 @@ interface WlasciwosciPustyRecordList {
 interface WlasciwosciRecordList {
   tytul: string;
   wiersze: WierszRecordList[];
-  /** Jednostka/mianownik sumy w stopce (KO-6, jak `Num`/`StatTile`). */
-  jednostkaSumy: string;
+  /** Jednostka/mianownik sumy w stopce (KO-6, jak `Num`/`StatTile`).
+   * OPCJONALNA — pomiń, gdy `wartosc` wierszy nie ma sensownej sumy
+   * zbiorczej (np. ranga/kolejność); stopka „Razem” wtedy się nie
+   * renderuje, zamiast pokazywać liczbę bez znaczenia. */
+  jednostkaSumy?: string;
   /** Renderowane zamiast listy i stopki, gdy `wiersze` jest puste
    * („EmptyState gdy zero wierszy”). */
   pusty: WlasciwosciPustyRecordList;
@@ -64,7 +70,8 @@ export function RecordList({ tytul, wiersze, jednostkaSumy, pusty }: Wlasciwosci
     );
   }
 
-  const suma = wiersze.reduce((laczna, wiersz) => laczna + wiersz.wartosc, 0);
+  const maSume = jednostkaSumy !== undefined && wiersze.every((wiersz) => wiersz.wartosc !== undefined);
+  const suma = maSume ? wiersze.reduce((laczna, wiersz) => laczna + (wiersz.wartosc ?? 0), 0) : 0;
 
   return (
     <section className={style.sekcja} aria-label={tytul}>
@@ -77,15 +84,21 @@ export function RecordList({ tytul, wiersze, jednostkaSumy, pusty }: Wlasciwosci
             tytul={wiersz.tytul}
             podpowiedz={wiersz.podpowiedz}
             plakietka={wiersz.plakietka}
-            licznik={{ wartosc: wiersz.wartosc, etykieta: jednostkaSumy }}
+            licznik={
+              jednostkaSumy !== undefined && wiersz.wartosc !== undefined
+                ? { wartosc: wiersz.wartosc, etykieta: jednostkaSumy }
+                : undefined
+            }
             akcja={wiersz.akcja}
           />
         ))}
       </div>
-      <div className={style.stopka}>
-        <span>Razem</span>
-        <Num wartosc={suma} etykieta={jednostkaSumy} />
-      </div>
+      {maSume && (
+        <div className={style.stopka}>
+          <span>Razem</span>
+          <Num wartosc={suma} etykieta={jednostkaSumy} />
+        </div>
+      )}
     </section>
   );
 }

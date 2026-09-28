@@ -1,0 +1,286 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
+import { Text } from "@/design-system/atomy/Text/Text";
+import { Button } from "@/design-system/atomy/Button/Button";
+import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
+import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
+import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import { Field } from "@/design-system/molekuly/Field/Field";
+import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActions";
+import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import { ApiError } from "@/lib/api/klient";
+import { utworzFormeStazu, zaktualizujFormeStazu } from "@/lib/api/h11-formy";
+import { pobierzFormyStazu, type FormaStazu } from "./dane";
+import style from "./FormyStazu.module.css";
+
+type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
+
+interface StanFormularza {
+  name: string;
+  description: string;
+  is_active: boolean;
+  sort_order: string;
+}
+
+const PUSTY_FORMULARZ: StanFormularza = {
+  name: "",
+  description: "",
+  is_active: true,
+  sort_order: "0",
+};
+
+/**
+ * Trasa `/nowy-front/admin/formy-stazu` — słownik form stażu (H11), jedyny
+ * ekran administracji dla `AdminInternshipFormController`
+ * (`backend/routes/api/h11.php:42-44`). Bez usuwania: pozycja wygasa przez
+ * `is_active = false`, tak jak opisuje kontroler backendu — ten ekran nie
+ * dorabia przycisku „Usuń”, którego trasa API nie ma.
+ *
+ * Odczyt startowy biegnie z przeglądarki (`pobierzFormyStazu`, patrz
+ * `./dane.ts` — powód, dla którego ta trasa NIE woła `@/auth` po stronie
+ * serwera, tak jak `nowy-front/kurs-publikacja`). Cztery stany trasy:
+ * `ladowanie`, `brak-uprawnien`, `blad`, `ok`. Stanu „pusty” nie ma osobno:
+ * pusty słownik to `ok` z zerem wierszy, `RecordList` ma na to własny
+ * `EmptyState`.
+ */
+export function FormyStazu() {
+  const router = useRouter();
+  const [stan, setStan] = useState<StanEkranu>("ladowanie");
+  const [formy, setFormy] = useState<FormaStazu[]>([]);
+  const [edytowanaId, setEdytowanaId] = useState<number | null>(null);
+  const [formularz, setFormularz] = useState<StanFormularza>(PUSTY_FORMULARZ);
+  const [dodajOtwarte, setDodajOtwarte] = useState(false);
+  const [blad, setBlad] = useState<string | null>(null);
+  const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
+  const [zapisywanie, setZapisywanie] = useState(false);
+
+  useEffect(() => {
+    let anulowane = false;
+    pobierzFormyStazu()
+      .then((dane) => {
+        if (anulowane) return;
+        setFormy(dane);
+        setStan("ok");
+      })
+      .catch((wyjatek: unknown) => {
+        if (anulowane) return;
+        setStan(wyjatek instanceof ApiError && wyjatek.status === 403 ? "brak-uprawnien" : "blad");
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, []);
+
+  const wiersze: WierszRecordList[] = useMemo(
+    () =>
+      formy
+        .slice()
+        .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+        .map((forma) => ({
+          id: String(forma.id),
+          tytul: forma.name,
+          // Kolejność stoi w tekście podpowiedzi, nie w polu `wartosc` —
+          // ranga sortowania nie ma sensownej sumy zbiorczej, więc `RecordList`
+          // tu jej nie liczy ani nie pokazuje w stopce.
+          podpowiedz: `Kolejność: ${forma.sort_order}. ${forma.description ?? "Bez opisu."}`,
+          plakietka: forma.is_active
+            ? { wariant: "ok" as const, tekst: "Aktywna" }
+            : { wariant: "neutral" as const, tekst: "Nieaktywna" },
+          akcja: {
+            etykieta: "Edytuj",
+            onKliknij: () => otworzEdycje(forma),
+          },
+        })),
+    [formy],
+  );
+
+  function otworzEdycje(forma: FormaStazu) {
+    setBlad(null);
+    setBledyPol(undefined);
+    setDodajOtwarte(false);
+    setEdytowanaId(forma.id);
+    setFormularz({
+      name: forma.name,
+      description: forma.description ?? "",
+      is_active: forma.is_active,
+      sort_order: String(forma.sort_order),
+    });
+  }
+
+  function otworzDodawanie() {
+    setBlad(null);
+    setBledyPol(undefined);
+    setEdytowanaId(null);
+    setDodajOtwarte(true);
+    setFormularz(PUSTY_FORMULARZ);
+  }
+
+  function zamknijPanel() {
+    setEdytowanaId(null);
+    setDodajOtwarte(false);
+    setBlad(null);
+    setBledyPol(undefined);
+    setFormularz(PUSTY_FORMULARZ);
+  }
+
+  async function zapisz() {
+    setZapisywanie(true);
+    setBlad(null);
+    setBledyPol(undefined);
+    // Puste albo nieliczbowe pole kolejności trafia do serwera dosłownie —
+    // bez cichej zamiany na `0`, żeby walidacja serwera (`sort_order.integer`)
+    // naprawdę zobaczyła to, co wpisano.
+    const wpisanaKolejnosc = formularz.sort_order.trim();
+    const payload = {
+      name: formularz.name.trim(),
+      description: formularz.description.trim() === "" ? null : formularz.description.trim(),
+      is_active: formularz.is_active,
+      sort_order: /^\d+$/.test(wpisanaKolejnosc) ? Number(wpisanaKolejnosc) : wpisanaKolejnosc,
+    };
+    try {
+      if (edytowanaId !== null) {
+        const zaktualizowana = await zaktualizujFormeStazu(edytowanaId, payload);
+        setFormy((poprzednie) =>
+          poprzednie.map((forma) => (forma.id === zaktualizowana.id ? zaktualizowana : forma)),
+        );
+      } else {
+        const nowa = await utworzFormeStazu(payload);
+        setFormy((poprzednie) => [...poprzednie, nowa]);
+      }
+      zamknijPanel();
+      router.refresh();
+    } catch (wyjatek) {
+      if (wyjatek instanceof ApiError && wyjatek.errors) {
+        setBledyPol(wyjatek.errors);
+        setBlad(wyjatek.message);
+      } else {
+        setBledyPol(undefined);
+        setBlad(
+          wyjatek instanceof ApiError
+            ? wyjatek.message
+            : "Nie udało się zapisać formy stażu. Spróbuj ponownie.",
+        );
+      }
+    } finally {
+      setZapisywanie(false);
+    }
+  }
+
+  if (stan === "ladowanie") {
+    return (
+      <main id="tresc" className={style.uklad}>
+        <Heading stopien={1}>Słownik form stażu</Heading>
+        <Skeleton wiersze={4} />
+      </main>
+    );
+  }
+  if (stan === "brak-uprawnien") {
+    return (
+      <main id="tresc" className={style.uklad}>
+        <Heading stopien={1}>Słownik form stażu</Heading>
+        <Text>Brak uprawnień do tego ekranu — tylko dla opiekuna projektu i super-admina.</Text>
+      </main>
+    );
+  }
+  if (stan === "blad") {
+    return (
+      <main id="tresc" className={style.uklad}>
+        <Heading stopien={1}>Słownik form stażu</Heading>
+        <Text>Backend H11 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
+      </main>
+    );
+  }
+
+  const panelOtwarty = dodajOtwarte || edytowanaId !== null;
+
+  return (
+    <main id="tresc" className={style.uklad}>
+      <PageHeader
+        okruszki={[{ etykieta: "Administracja" }, { etykieta: "Słownik form stażu" }]}
+        tytul="Słownik form stażu"
+        opis="Formy dyżuru dostępne przy zgłaszaniu wpisu w dzienniku stażu (H11). Pozycji nie da się usunąć — wygasza ją przełącznik aktywności."
+        onPowrot={() => router.back()}
+      />
+
+      <RecordList
+        tytul="Formy stażu"
+        wiersze={wiersze}
+        pusty={{
+          naglowek: "Brak form stażu",
+          tresc: "Dodaj pierwszą formę, aby uczestnicy mogli wybrać ją w dzienniku.",
+          przycisk: { etykieta: "Dodaj formę", onClick: otworzDodawanie },
+        }}
+      />
+
+      {!panelOtwarty && (
+        <Button poziom="primary" onClick={otworzDodawanie}>
+          Dodaj formę
+        </Button>
+      )}
+
+      {panelOtwarty && (
+        <div className={style.panel}>
+          <Heading stopien={3}>{edytowanaId !== null ? "Edytuj formę" : "Nowa forma"}</Heading>
+
+          {blad && (
+            <Notice wariant="error" tytul="Nie udało się zapisać">
+              {blad}
+            </Notice>
+          )}
+
+          <Field
+            id="forma-nazwa"
+            etykieta="Nazwa"
+            rodzaj="tekst"
+            wartosc={formularz.name}
+            onZmiana={(wartosc) => setFormularz((f) => ({ ...f, name: wartosc }))}
+            blad={bledyPol?.name?.[0]}
+            wymagane
+          />
+          <Field
+            id="forma-opis"
+            etykieta="Opis"
+            rodzaj="wieloliniowy"
+            wartosc={formularz.description}
+            onZmiana={(wartosc) => setFormularz((f) => ({ ...f, description: wartosc }))}
+            blad={bledyPol?.description?.[0]}
+          />
+          <div className={style.wiersz}>
+            <Field
+              id="forma-kolejnosc"
+              etykieta="Kolejność"
+              rodzaj="liczba"
+              wartosc={formularz.sort_order}
+              onZmiana={(wartosc) => setFormularz((f) => ({ ...f, sort_order: wartosc }))}
+              blad={bledyPol?.sort_order?.[0]}
+            />
+            <Field
+              id="forma-aktywna"
+              etykieta="Stan"
+              rodzaj="wybor"
+              opcje={[
+                { wartosc: "tak", etykieta: "Aktywna" },
+                { wartosc: "nie", etykieta: "Nieaktywna" },
+              ]}
+              wartosc={formularz.is_active ? "tak" : "nie"}
+              onZmiana={(wartosc) => setFormularz((f) => ({ ...f, is_active: wartosc === "tak" }))}
+              blad={bledyPol?.is_active?.[0]}
+            />
+          </div>
+
+          <DialogActions
+            etykietaWycofania="Anuluj"
+            etykietaPotwierdzenia={zapisywanie ? "Zapisywanie…" : "Zapisz"}
+            onWycofaj={zamknijPanel}
+            onPotwierdz={() => {
+              if (!zapisywanie) void zapisz();
+            }}
+          />
+        </div>
+      )}
+    </main>
+  );
+}

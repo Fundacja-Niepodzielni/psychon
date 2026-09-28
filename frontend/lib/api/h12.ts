@@ -96,3 +96,47 @@ export function fetchAdminSupervisionCases(): Promise<{
     ({ data }) => ({ data }),
   );
 }
+
+export interface UpdateAdminSupervisionSlotPayload {
+  starts_at?: string;
+  /** `number | string` naumyślnie: puste albo nieliczbowe wpisanie w polu
+   * ma trafić do serwera bez zamiany na `undefined` (czyli „brak zmiany”)
+   * po stronie frontu — serwer waliduje (`integer`, `422
+   * validation_failed`), front nie połyka błędu po cichu. Patrz
+   * `SuperwizjeTerminy.tsx:zapisz`. */
+  duration_minutes?: number | string;
+  seats_limit?: number | string;
+  location_or_link?: string | null;
+}
+
+/**
+ * `PATCH /admin/supervision/slots/{id}` (`AdminSupervisionController::updateSlot`,
+ * `backend/routes/api/h12.php:47`) — wszystkie pola opcjonalne (`UpdateSupervisionSlotRequest`).
+ */
+export function updateAdminSupervisionSlot(
+  id: number,
+  payload: UpdateAdminSupervisionSlotPayload,
+): Promise<AdminSupervisionSlot> {
+  return api<AdminSupervisionSlot>(`/admin/supervision/slots/${id}`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export interface CancelAdminSupervisionSlotResult {
+  id: number;
+  signups_released: number;
+}
+
+/**
+ * `DELETE /admin/supervision/slots/{id}` (`AdminSupervisionController::cancelSlot`,
+ * `backend/routes/api/h12.php:49`) — odwołanie terminu; zwraca liczbę
+ * zwolnionych zapisów.
+ */
+export function cancelAdminSupervisionSlot(
+  id: number,
+): Promise<CancelAdminSupervisionSlotResult> {
+  return api<CancelAdminSupervisionSlotResult>(`/admin/supervision/slots/${id}`, {
+    method: "DELETE",
+  });
+}
