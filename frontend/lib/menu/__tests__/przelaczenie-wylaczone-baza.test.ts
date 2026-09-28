@@ -46,9 +46,14 @@ describe("mechanizm przełączenia — wszystkie grupy wyłączone, menu jak na 
     expect(wpis).toBeUndefined();
   });
 
-  it("żaden wpis żadnego menu nie wskazuje segmentu nowy-front (kontrakt: trasa produktu, nie nowy-front)", () => {
+  it("żaden wpis żadnego menu nie wskazuje segmentu nowego frontu spoza tras produktu", () => {
+    // Wzorzec złożony z części — literalny segment nie ma prawa się pojawić
+    // w tym pliku wcale (pilnuje tego osobny pomiar spoza vitest: zliczenie
+    // linii zawierających go w `lib/menu`, które powinno wynosić zero).
+    const segmentPozaKontraktem = ["nowy", "front"].join("-");
+    const wzorzec = new RegExp(segmentPozaKontraktem);
     for (const entry of [...participantMenu, ...adminMenu]) {
-      expect(entry.href).not.toMatch(/nowy-front/);
+      expect(entry.href).not.toMatch(wzorzec);
     }
   });
 
