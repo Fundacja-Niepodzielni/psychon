@@ -150,23 +150,49 @@ export const WYKLUCZENIA = [
   { komponent: "QaBlock", plik: "molekuly/QaBlock/QaBlock.tsx", powod: "Text + Hint + <p>, bez handlera." },
   { komponent: "StatTile", plik: "molekuly/StatTile/StatTile.tsx", powod: "Label + Num + ProgressBar + Hint — żaden z tych czterech nie niesie własnego celu (patrz ich własne wykluczenia wyżej)." },
   { komponent: "Dialog", plik: "organizmy/Dialog/Dialog.tsx", powod: "div przesłony + div okna + Heading (nieinteraktywny) + treść przekazana przez wywołującego + DialogActions OPAKOWYWANY (już rozliczony jako „DialogActions (wycofanie)”) — sam ten plik nie renderuje własnego uchwytu aktywacji poza dzieckiem już rozliczonym gdzie indziej." },
+  // Sześć organizmów odczytanych przy odbiorze rejestru celów (2026-09-28) — te same dwa
+  // składniki reguły co przy `Dialog` wyżej: żaden z tych sześciu plików nie
+  // ma WŁASNEGO uchwytu aktywacji (raw onClick/<a>/<button>/tabIndex/role
+  // aktywacyjny poza JSX już rozliczonego atomu/molekuły) — sprawdzone
+  // czytaniem źródła i `grep -n "onClick|onKliknij|tabIndex|role=\"button\"|<a |<button"`
+  // (zero trafień poza `AkcjaRecordList`/`onPowrot`, oba przekazywane DALEJ do
+  // `Button`/`ListRow` już rozliczonych, nie obsługiwane surowo tutaj) oraz
+  // `grep -n "role=|tabIndex"` (trafienia to wyłącznie role STRUKTURALNE:
+  // `list`/`listitem`/`table`/`row`/`cell`/`columnheader`, żadna aktywacyjna).
+  { komponent: "CaseCard", plik: "organizmy/CaseCard/CaseCard.tsx", powod: "składa wyłącznie KeyValueRow (już z celem „KeyValueRow (pokaż/ukryj)”), StatTile, ProgressBar i Heading (wszystkie trzy już wykluczone wyżej) — sam plik nie renderuje żadnego własnego uchwytu aktywacji." },
+  { komponent: "DataTable", plik: "organizmy/DataTable/DataTable.tsx", powod: "składa wyłącznie SearchBox (cel „SearchBox (pole wyszukiwania)”), Pagination (cel „Pagination (poprzednia)”), Num i Text (oba już wykluczone) — siatka `role=\"table\"` jest strukturą, nie kontrolką, bez własnego handlera." },
+  { komponent: "PageHeader", plik: "organizmy/PageHeader/PageHeader.tsx", powod: "przycisk powrotu i odnośnik akcji idą przez Button (cel „Button outline”) i Link (cel „Link (pole klikalne)”), okruszki przez Breadcrumbs (już z celem) — Badge/Heading/Text bez własnej interakcji (już wykluczone) — organizm nie dodaje nic ponad te dzieci." },
+  { komponent: "PanelNav", plik: "organizmy/PanelNav/PanelNav.tsx", powod: "składa wyłącznie Avatar i Text (oba już wykluczone) oraz MenuGroup (cel „MenuItem/MenuGroup (pozycja menu)”) — pozycje menu są jedynym uchwytem aktywacji i są już rozliczone przez dziecko." },
+  { komponent: "RecordList", plik: "organizmy/RecordList/RecordList.tsx", powod: "składa wyłącznie ListRow (cel „ListRow (akcja wiersza)”) i EmptyState (cel „EmptyState (przycisk)”) w wariancie z wierszami, Heading i Num (oba już wykluczone) — stopka „Razem” jest tekstem, bez uchwytu." },
+  { komponent: "StatRow", plik: "organizmy/StatRow/StatRow.tsx", powod: "składa wyłącznie StatTile (już wykluczony) i — gdy podane `href` — Link (cel „Link (pole klikalne)”) opakowujący kafel; sam organizm nie dokłada własnego handlera poza tym opakowaniem." },
 ];
 
 // K3, noga trzecia: lista WSZYSTKICH plików `*.tsx`, które ten odbiór
-// PRZEJRZAŁ i rozliczył — czy to nazwanym celem (22 pozycje wyżej, `Button`
+// PRZEJRZAŁ i rozliczył — czy to nazwanym celem (28 pozycji wyżej, `Button`
 // niesie ich kilka, ale plik jest jeden — stąd `MenuGroup.tsx` I
 // `MenuItem.tsx` są DWOMA wpisami tu, mimo że dzielą JEDNĄ pozycję
-// `KOMPONENT_CELU`), czy jawnym wykluczeniem (17 pozycji w `WYKLUCZENIA`
+// `KOMPONENT_CELU`), czy jawnym wykluczeniem (24 pozycje w `WYKLUCZENIA`
 // wyżej). To jest mechanizm, który ma ZAUWAŻYĆ nowy plik komponentu dopisany
 // do drzewa i NIE dopisany ani tu, ani do `WYKLUCZENIA` — pomiar-celow-dotyku.mjs
 // skanuje realny katalog `design-system/{atomy,molekuly,organizmy}` (poza
 // `__tests__`) i porównuje z tą listą; plik spoza niej jest ROZJAZDEM (kod
-// 3), nazwanym z pełnej ścieżki, nie cichym pominięciem. 23 pliki mają
-// własny cel (patrz komentarz przy OCZEKIWANE_CELE — MenuGroup+MenuItem to
-// DWA pliki pod jedną pozycją), 17 ma wykluczenie — razem 40, cały dzisiejszy
-// stan `design-system/{atomy,molekuly,organizmy}` poza `__tests__`.
+// 3), nazwanym z pełnej ścieżki, nie cichym pominięciem.
+//
+// Liczby zmierzone przy TEJ zmianie (2026-09-28, `wc -l`/przeliczenie tej
+// tablicy, nie pamięcią poprzedniego komentarza — poprzednia wersja tego
+// komentarza mówiła „23 pliki mają własny cel … 17 ma wykluczenie — razem
+// 40”, co było już wtedy niezgodne z rzeczywistą treścią tego pliku: sam
+// dodał kolejne organizmy z `lekcja.html`/`formularze.html` bez odświeżenia
+// tej sumy — nie było to celem TEJ zmiany, więc naprawiam tylko przy okazji,
+// zamiast zostawić trzecią z rzędu nieprawdziwą liczbę): 28 plików ma własny
+// cel, 24 ma wykluczenie (18 bazowych sprzed tego odbioru — 17 atomów/
+// molekuł + `Dialog` — plus 6 organizmów dopisanych tym odbiorem (2026-09-28): `CaseCard`,
+// `DataTable`, `PageHeader`, `PanelNav`, `RecordList`, `StatRow`) — razem 52,
+// cały stan `design-system/{atomy,molekuly,organizmy}` poza `__tests__` na tę
+// zmianę (zmierzone: `find atomy molekuly organizmy -name "*.tsx" -not -path
+// "*__tests__*" | wc -l` → 52).
 export const PLIKI_ROZLICZONE = [
-  // 23 pliki z własnym celem (patrz OCZEKIWANE_CELE/KOMPONENT_CELU wyżej):
+  // 28 plików z własnym celem (patrz OCZEKIWANE_CELE/KOMPONENT_CELU wyżej):
   "atomy/Button/Button.tsx",
   "atomy/Checkbox/Checkbox.tsx",
   "atomy/Input/Input.tsx",
@@ -199,7 +225,9 @@ export const PLIKI_ROZLICZONE = [
   // nowe pliki formularzy i dziennika):
   "organizmy/FormSection/FormSection.tsx",
   "organizmy/JournalTable/JournalTable.tsx",
-  // 18 plików wykluczonych (patrz WYKLUCZENIA wyżej — te same `plik`; `Dialog`
-  // dopisany do WYKLUCZENIA podnosi tę listę z 17 do 18):
+  // 24 pliki wykluczone (patrz WYKLUCZENIA wyżej — te same `plik`; 17 atomów/
+  // molekuł + `Dialog` = 18 bazowych, plus 6 organizmów dopisanych tym
+  // odbiorem (CaseCard, DataTable, PageHeader, PanelNav, RecordList,
+  // StatRow) = 24 razem):
   ...WYKLUCZENIA.map((w) => w.plik),
 ];
