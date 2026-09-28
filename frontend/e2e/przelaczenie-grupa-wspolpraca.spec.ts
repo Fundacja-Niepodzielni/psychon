@@ -76,6 +76,39 @@ async function instalujAtrapyApi(page: Page, rola: string): Promise<void> {
     }),
   );
 
+  // Ekran startowy uczestnika (`/panel/start`) i pulpit administracji
+  // (`/admin`) — trasy, przez które przechodzimy do menu — wołają też te
+  // dwie: bez atrapy o poprawnym kształcie obiektu (nie listy z ogólnej
+  // atrapy niżej) render rzuca wyjątek i cała strona (łącznie z nawigacją)
+  // znika pod granicą błędu w `app/error.tsx`.
+  await page.route("http://localhost:8000/api/v1/onboarding", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          video: { title: "", url: null, caption: null },
+          program: { title: "", body: "" },
+          expectations: { title: "", body: "" },
+          updated_at: null,
+        },
+      }),
+    }),
+  );
+
+  await page.route("http://localhost:8000/api/v1/admin/dashboard", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          counters: { participants: 0, completed: 0, certificates: 0 },
+          queues: [],
+        },
+      }),
+    }),
+  );
+
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({
       status: 200,
