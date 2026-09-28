@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath } from "node:url";
 
 /**
  * Konfiguracja WYŁĄCZNIE do zmierzenia atomów w prawdziwej przeglądarce
@@ -15,5 +16,14 @@ export default defineConfig({
   build: {
     outDir: "../../dist-poligon",
     emptyOutDir: true,
+    // Dwa wejścia poligonu: atomy i molekuły (`index.html`) oraz organizmy
+    // kursu, wykresu i lekcji (`lekcja.html`). Bez jawnej listy budowa bierze
+    // tylko `index.html` i `vite preview` nie ma drugiej strony do pokazania.
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL("./design-system/poligon/index.html", import.meta.url)),
+        lekcja: fileURLToPath(new URL("./design-system/poligon/lekcja.html", import.meta.url)),
+      },
+    },
   },
 });

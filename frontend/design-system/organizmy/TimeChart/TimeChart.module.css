@@ -1,0 +1,117 @@
+/* Wykres `TimeChart` (O13) — zero twardych kolorów, wyłącznie tokeny. */
+.oprawa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.opisDostepny {
+  margin: 0;
+  font-size: var(--fs-10);
+  color: var(--muted);
+}
+
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  font-size: var(--fs-10);
+  color: var(--text);
+}
+
+.pozycjaLegendy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.znacznik {
+  width: 12px;
+  height: 2.5px;
+  border-radius: var(--r-2xs);
+  display: inline-block;
+}
+
+.znacznikNauka {
+  background: var(--brand);
+}
+
+.znacznikSuperwizja {
+  background: var(--primary);
+}
+
+.wykresSzeroki {
+  display: block;
+}
+
+.wykresWaski {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .wykresSzeroki {
+    display: none;
+  }
+  .wykresWaski {
+    display: block;
+  }
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+}
+
+.os {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.siatka {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.podpisWartosci {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  fill: var(--ink);
+}
+
+.szkielet {
+  aspect-ratio: 640 / 260;
+  background: var(--grey);
+  border-radius: var(--r-sm);
+}
+
+.liniaNauka {
+  stroke: var(--brand);
+  stroke-width: 2.5px;
+}
+
+.liniaSuperwizja {
+  stroke: var(--primary);
+  stroke-width: 2.5px;
+}
+
+.opisOsi {
+  font-size: var(--fs-12);
+  fill: var(--muted);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-10);
+}
+
+.tabela th,
+.tabela td {
+  text-align: left;
+  padding: var(--space-8) var(--space-10);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabela td {
+  text-align: right;
+}

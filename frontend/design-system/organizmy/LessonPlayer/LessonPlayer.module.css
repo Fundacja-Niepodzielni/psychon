@@ -1,0 +1,123 @@
+/* Blok lekcji `LessonPlayer` (O6) — wyłącznie tokeny. */
+.blok {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.odtwarzacz {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--invert-bg);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--invert-ink);
+}
+
+/* Fokus w odtwarzaczu jest jasny: domyślny obrys `--brand` na ciemnym tle
+   odtwarzacza ma kontrast około 1,45:1. `--invert-ink` na `--invert-bg` to ta
+   sama para co tekst odtwarzacza. Selektor 0-2-1 przebija regułę globalną
+   `:root :focus-visible` (0-2-0) niezależnie od kolejności arkuszy. */
+.odtwarzacz button:focus-visible {
+  outline-color: var(--invert-ink);
+}
+
+.szkieletOdtwarzacza {
+  aspect-ratio: 16 / 9;
+  background: var(--grey);
+  border-radius: var(--r-md);
+}
+
+.przyciskOdtwarzania {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-round);
+  border: none;
+  background: var(--brand-tint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.znakOdtwarzania {
+  width: 0;
+  height: 0;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-left: 20px solid var(--invert-ink);
+  margin-left: 4px;
+}
+
+.znakPauzy {
+  width: 18px;
+  height: 20px;
+  border-left: 6px solid var(--invert-ink);
+  border-right: 6px solid var(--invert-ink);
+}
+
+.paskSterowania {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+}
+
+.czas {
+  font-size: var(--fs-10);
+  min-width: 100px;
+}
+
+.powiekszenie {
+  min-width: var(--hit-min);
+  min-height: var(--hit-min);
+  border: 1px solid var(--invert-ink);
+  border-radius: var(--r-2xs);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.znakPowiekszenia {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--invert-ink);
+}
+
+.materialy,
+.pytania {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.warunek {
+  padding: var(--space-14);
+  background: var(--card-warm);
+  border-radius: var(--r-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.listaBrakow {
+  margin: 0;
+  padding-left: var(--space-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (min-width: 1380px) {
+  .blok {
+    max-width: 68ch;
+  }
+}

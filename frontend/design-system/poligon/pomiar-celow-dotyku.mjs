@@ -166,6 +166,22 @@ const VIEWPORTY = [
 ];
 const MOTYWY = ["light", "dark"];
 
+// Strona wejścia poligonu, na której stoi cel. Cel bez pola `strona` stoi na
+// `index.html` — to wartość domyślna, więc wpisy sprzed tej zmiany mierzą się
+// dokładnie tak samo jak wcześniej (ten sam adres, ten sam znacznik gotowości).
+// Każda strona ma własny znacznik gotowości: element, na który przyrząd czeka
+// po wejściu, zanim zacznie mierzyć. Strona bez znacznika w tej mapie to błąd
+// narzędzia (wyjątek w try niżej, kod 2), nie cichy pomiar pustej strony.
+const STRONA_DOMYSLNA = "index.html";
+const ZNACZNIK_GOTOWOSCI = {
+  "index.html": '[data-testid="button-primary"]',
+  "lekcja.html": '[data-style-id="o12-coursetree-rozwiniete"]',
+};
+function adresStrony(strona, motyw) {
+  const sciezka = strona === STRONA_DOMYSLNA ? "" : strona;
+  return `${URL}${sciezka}?theme=${motyw}`;
+}
+
 const CELE = [
   { nazwa: "Button primary", selektor: '[data-testid="button-primary"]' },
   { nazwa: "Button outline", selektor: '[data-testid="button-outline"]' },
@@ -200,6 +216,14 @@ const CELE = [
   { nazwa: "Tabs (zakładka)", selektor: '[data-style-id="molekula-tabs"] button:nth-of-type(1)' },
   { nazwa: "Toast (zamknij)", selektor: '[data-style-id="m15-toast-bez-akcji"] [data-testid="toast-zamknij"]' },
   { nazwa: "PublishChecklist (odnośnik braku)", selektor: '[data-style-id="organizm-o7-z-brakami"] li:nth-of-type(1) a' },
+  // Organizmy kursu, wykresu i lekcji — montowane w `lekcja.html`, nie w main.tsx.
+  { nazwa: "TimeChart (rozwinięcie tabeli)", strona: "lekcja.html", selektor: '[data-style-id="o13-timechart-z-danymi"] button' },
+  { nazwa: "CourseTree (strzałka przeniesienia)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-kolejnosc"] [aria-label="Przenieś „Zasady programu” niżej"]' },
+  { nazwa: "CourseTree (zmiana nazwy)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-edytuj-l1"]' },
+  { nazwa: "CourseTree (dodanie lekcji)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-dodaj-temat-1"]' },
+  { nazwa: "LessonPlayer (odtwarzanie)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] button[aria-label="Odtwórz"]' },
+  { nazwa: "LessonPlayer (powiększenie)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] button[aria-label="Powiększ"]' },
+  { nazwa: "LessonPlayer (odnośnik braku)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] [role="status"] li:nth-of-type(1) a' },
 ];
 
 // Wszystko od uruchomienia przeglądarki aż po ostatnie zamknięcie strony jest
@@ -216,24 +240,29 @@ let wyniki;
 try {
   const browser = await chromium.launch();
   wyniki = [];
+  const strony = [...new Set(CELE.map((cel) => cel.strona ?? STRONA_DOMYSLNA))];
   for (const motyw of MOTYWY) {
     for (const viewport of VIEWPORTY) {
-      const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
-      await page.goto(`${URL}?theme=${motyw}`);
-      await page.waitForSelector('[data-testid="button-primary"]');
-      for (const cel of CELE) {
-        const { box, niestabilny, brakElementu } = await zmierzStabilnyBox(page, cel.selektor);
-        wyniki.push({
-          motyw,
-          viewport: viewport.nazwa,
-          element: cel.nazwa,
-          szerokosc: box ? Math.round(box.width * 100) / 100 : null,
-          wysokosc: box ? Math.round(box.height * 100) / 100 : null,
-          niestabilny,
-          brakElementu,
-        });
+      for (const strona of strony) {
+        const znacznik = ZNACZNIK_GOTOWOSCI[strona];
+        if (!znacznik) throw new Error(`strona ${strona} nie ma znacznika gotowosci w ZNACZNIK_GOTOWOSCI`);
+        const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+        await page.goto(adresStrony(strona, motyw));
+        await page.waitForSelector(znacznik);
+        for (const cel of CELE.filter((c) => (c.strona ?? STRONA_DOMYSLNA) === strona)) {
+          const { box, niestabilny, brakElementu } = await zmierzStabilnyBox(page, cel.selektor);
+          wyniki.push({
+            motyw,
+            viewport: viewport.nazwa,
+            element: cel.nazwa,
+            szerokosc: box ? Math.round(box.width * 100) / 100 : null,
+            wysokosc: box ? Math.round(box.height * 100) / 100 : null,
+            niestabilny,
+            brakElementu,
+          });
+        }
+        await page.close();
       }
-      await page.close();
     }
   }
   await browser.close();

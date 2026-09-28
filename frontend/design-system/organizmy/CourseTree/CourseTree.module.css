@@ -1,0 +1,154 @@
+/* Drzewo kursu `CourseTree` (O12) — wyłącznie tokeny, zero barw wprost. */
+.drzewo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Przełącznik „Kolejność” istnieje tylko na wąskim ekranie (niżej), gdzie nie
+   ma uchwytu i strzałki są schowane, dopóki osoba ich nie włączy. */
+.pasekKolejnosci {
+  display: none;
+}
+
+.temat {
+  display: flex;
+  flex-direction: column;
+}
+
+.pasmo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  background: var(--grey);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--r-2xs);
+}
+
+.akcjePasma {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-left: auto;
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Kolumna uchwytu ma szerokość progu dotyku, a nie 34 px z układu: uchwyt
+   jest celem dotyku, więc obowiązuje go ten sam próg co każdy inny cel.
+   Kolumna tytułu `minmax(0, 1fr)` zawija długi tytuł zamiast ściskać akcje. */
+.wiersz {
+  display: grid;
+  grid-template-columns: 44px var(--hit-min) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 1px solid var(--border);
+  min-height: var(--hit-min);
+}
+
+.przeciagana {
+  opacity: 0.45;
+}
+
+.celPrzeciagania {
+  box-shadow: inset 0 3px 0 0 var(--primary);
+}
+
+.celNaKoncu {
+  box-shadow: inset 0 -3px 0 0 var(--primary);
+}
+
+.numer {
+  position: relative;
+  font-size: var(--fs-11);
+  color: var(--muted);
+  text-align: center;
+}
+
+.kropkaZmiany {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-round);
+  background: var(--warn);
+}
+
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.uchwyt {
+  cursor: grab;
+  color: var(--control);
+  min-height: var(--hit-min);
+  min-width: var(--hit-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.akcjeWiersza {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.strzalki {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.strzalka {
+  width: var(--hit-min);
+  height: var(--hit-min);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-2xs);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.strzalka:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tytulLekcji {
+  font-size: var(--fs-9);
+  color: var(--text);
+}
+
+@media (max-width: 639px) {
+  .pasekKolejnosci {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .wiersz {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+  }
+  .uchwyt {
+    display: none;
+  }
+  .strzalki {
+    display: none;
+  }
+  .drzewo[data-tryb-kolejnosci="tak"] .strzalki {
+    display: flex;
+  }
+  .drzewo[data-tryb-kolejnosci="tak"] .akcjaNazwy {
+    display: none;
+  }
+}

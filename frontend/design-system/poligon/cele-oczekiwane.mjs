@@ -68,6 +68,15 @@ export const OCZEKIWANE_CELE = [
   "Tabs (zakładka)",
   "Toast (zamknij)",
   "PublishChecklist (odnośnik braku)",
+  // Organizmy z `lekcja.html` (osobna strona wejścia poligonu, pole `strona`
+  // w `CELE`): każdy z trzech plików ma co najmniej jeden własny cel.
+  "TimeChart (rozwinięcie tabeli)",
+  "CourseTree (strzałka przeniesienia)",
+  "CourseTree (zmiana nazwy)",
+  "CourseTree (dodanie lekcji)",
+  "LessonPlayer (odtwarzanie)",
+  "LessonPlayer (powiększenie)",
+  "LessonPlayer (odnośnik braku)",
 ];
 
 // Mapa cel -> komponent źródłowy. Osobna od nazw celów, bo jeden komponent
@@ -102,6 +111,13 @@ export const KOMPONENT_CELU = {
   "Tabs (zakładka)": "Tabs",
   "Toast (zamknij)": "Toast",
   "PublishChecklist (odnośnik braku)": "PublishChecklist",
+  "TimeChart (rozwinięcie tabeli)": "TimeChart", // nagłówek CollapsibleSection osadzonej w organizmie
+  "CourseTree (strzałka przeniesienia)": "CourseTree",
+  "CourseTree (zmiana nazwy)": "CourseTree",
+  "CourseTree (dodanie lekcji)": "CourseTree",
+  "LessonPlayer (odtwarzanie)": "LessonPlayer",
+  "LessonPlayer (powiększenie)": "LessonPlayer",
+  "LessonPlayer (odnośnik braku)": "LessonPlayer",
 };
 
 // Lista jawnych wykluczeń: komponent BEZ własnego celu dotyku, z powodem
@@ -165,6 +181,10 @@ export const PLIKI_ROZLICZONE = [
   "molekuly/Tabs/Tabs.tsx",
   "molekuly/Toast/Toast.tsx",
   "organizmy/PublishChecklist/PublishChecklist.tsx",
+  // 3 organizmy z `lekcja.html`, rozliczone celami wyżej:
+  "organizmy/CourseTree/CourseTree.tsx",
+  "organizmy/LessonPlayer/LessonPlayer.tsx",
+  "organizmy/TimeChart/TimeChart.tsx",
   // 17 plików wykluczonych (patrz WYKLUCZENIA wyżej — te same `plik`):
   ...WYKLUCZENIA.map((w) => w.plik),
 ];
