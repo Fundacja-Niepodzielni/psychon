@@ -1,0 +1,13 @@
+/* Moduł CSS trasy `/nowy-front/po-programie` — wartości wyglądu wyłącznie
+   z tokenów (KO-1), zero zapisów wprost. */
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-24) var(--card-px);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}

@@ -1,0 +1,49 @@
+/* Moduł CSS trasy `/nowy-front/admin/zgloszenia-wspolpracy` — wartości
+   wyglądu wyłącznie z tokenów (KO-1), zero zapisów wprost. */
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-24) var(--card-px);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.filtr {
+  max-width: 320px;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wiersz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.naglowekWiersza {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.tresc {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
