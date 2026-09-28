@@ -52,6 +52,9 @@
   --card-px: 24px;
   --topbar-h: 58px;
 
+  /* Nakładka okna modalnego (Dialog); jedna wartość, bez odmiany dla ciemnego motywu. */
+  --scrim: rgba(0, 0, 0, .4);
+
   /* --- Skala odstępów i wcięć, nic pomiędzy --- */
   --space-2: 2px;
   --space-4: 4px;

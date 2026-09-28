@@ -1,0 +1,31 @@
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  max-width: 640px;
+}
+
+.lekcja {
+  max-width: 760px;
+}
+
+.pola {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.przyciski {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+/* Odnośnik podsumowania błędów bywa krótszy od progu celu dotyku (np.
+   "Imię" mierzone 34,28px szerokości) — dociągnięte do 44px szerokości
+   bez zmiany widocznego odstępu w treści podsumowania (samo `Link` nie
+   przyjmuje własnej klasy, więc próg wymuszony tu, na jego rodzicu). */
+.odnosnikBledu a {
+  min-width: 44px;
+  text-align: center;
+}

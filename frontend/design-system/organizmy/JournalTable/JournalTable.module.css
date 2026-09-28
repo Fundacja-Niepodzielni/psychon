@@ -1,0 +1,22 @@
+.obszar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.naglowek {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.filtry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+}
+
+.filtr {
+  flex: 1 1 200px;
+}

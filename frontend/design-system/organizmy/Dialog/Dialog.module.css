@@ -1,0 +1,27 @@
+.przeslona {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scrim);
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16);
+}
+
+.okno {
+  width: min(440px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-20);
+  background: var(--card);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}

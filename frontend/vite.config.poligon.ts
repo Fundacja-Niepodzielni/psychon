@@ -16,13 +16,15 @@ export default defineConfig({
   build: {
     outDir: "../../dist-poligon",
     emptyOutDir: true,
-    // Dwa wejścia poligonu: atomy i molekuły (`index.html`) oraz organizmy
-    // kursu, wykresu i lekcji (`lekcja.html`). Bez jawnej listy budowa bierze
-    // tylko `index.html` i `vite preview` nie ma drugiej strony do pokazania.
+    // Trzy wejścia poligonu: atomy i molekuły (`index.html`), organizmy
+    // kursu, wykresu i lekcji (`lekcja.html`) oraz organizmy formularzy
+    // i dziennika (`formularze.html`). Bez jawnej listy budowa bierze
+    // tylko `index.html` i `vite preview` nie ma pozostałych stron do pokazania.
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL("./design-system/poligon/index.html", import.meta.url)),
         lekcja: fileURLToPath(new URL("./design-system/poligon/lekcja.html", import.meta.url)),
+        formularze: fileURLToPath(new URL("./design-system/poligon/formularze.html", import.meta.url)),
       },
     },
   },

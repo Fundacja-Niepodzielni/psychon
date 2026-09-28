@@ -77,6 +77,12 @@ export const OCZEKIWANE_CELE = [
   "LessonPlayer (odtwarzanie)",
   "LessonPlayer (powiększenie)",
   "LessonPlayer (odnośnik braku)",
+  // Organizmy z `formularze.html` (trzecia strona wejścia poligonu, pole
+  // `strona` w `CELE`): `Dialog` sam nie ma własnego celu (patrz WYKLUCZENIA
+  // niżej — opakowuje wyłącznie `DialogActions`, już rozliczony), `FormSection`
+  // i `JournalTable` mają po jednym.
+  "FormSection (zapisz)",
+  "JournalTable (odnośnik pobrania)",
 ];
 
 // Mapa cel -> komponent źródłowy. Osobna od nazw celów, bo jeden komponent
@@ -118,6 +124,8 @@ export const KOMPONENT_CELU = {
   "LessonPlayer (odtwarzanie)": "LessonPlayer",
   "LessonPlayer (powiększenie)": "LessonPlayer",
   "LessonPlayer (odnośnik braku)": "LessonPlayer",
+  "FormSection (zapisz)": "FormSection",
+  "JournalTable (odnośnik pobrania)": "JournalTable",
 };
 
 // Lista jawnych wykluczeń: komponent BEZ własnego celu dotyku, z powodem
@@ -141,6 +149,7 @@ export const WYKLUCZENIA = [
   { komponent: "Notice", plik: "molekuly/Notice/Notice.tsx", powod: "div tabIndex={-1} to metka fokusu programowego (ogłoszenie błędu), nie cel dotyku; ewentualna akcja pochodzi z przekazanego z zewnątrz `akcja`, którego żaden z czterech montów w poligonie nie podaje." },
   { komponent: "QaBlock", plik: "molekuly/QaBlock/QaBlock.tsx", powod: "Text + Hint + <p>, bez handlera." },
   { komponent: "StatTile", plik: "molekuly/StatTile/StatTile.tsx", powod: "Label + Num + ProgressBar + Hint — żaden z tych czterech nie niesie własnego celu (patrz ich własne wykluczenia wyżej)." },
+  { komponent: "Dialog", plik: "organizmy/Dialog/Dialog.tsx", powod: "div przesłony + div okna + Heading (nieinteraktywny) + treść przekazana przez wywołującego + DialogActions OPAKOWYWANY (już rozliczony jako „DialogActions (wycofanie)”) — sam ten plik nie renderuje własnego uchwytu aktywacji poza dzieckiem już rozliczonym gdzie indziej." },
 ];
 
 // K3, noga trzecia: lista WSZYSTKICH plików `*.tsx`, które ten odbiór
@@ -185,6 +194,12 @@ export const PLIKI_ROZLICZONE = [
   "organizmy/CourseTree/CourseTree.tsx",
   "organizmy/LessonPlayer/LessonPlayer.tsx",
   "organizmy/TimeChart/TimeChart.tsx",
-  // 17 plików wykluczonych (patrz WYKLUCZENIA wyżej — te same `plik`):
+  // 2 organizmy z `formularze.html`, rozliczone celami wyżej (`Dialog` jest
+  // wykluczeniem, patrz niżej — dwa opisane cele + jedno wykluczenie = trzy
+  // nowe pliki formularzy i dziennika):
+  "organizmy/FormSection/FormSection.tsx",
+  "organizmy/JournalTable/JournalTable.tsx",
+  // 18 plików wykluczonych (patrz WYKLUCZENIA wyżej — te same `plik`; `Dialog`
+  // dopisany do WYKLUCZENIA podnosi tę listę z 17 do 18):
   ...WYKLUCZENIA.map((w) => w.plik),
 ];

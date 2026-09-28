@@ -176,6 +176,7 @@ const STRONA_DOMYSLNA = "index.html";
 const ZNACZNIK_GOTOWOSCI = {
   "index.html": '[data-testid="button-primary"]',
   "lekcja.html": '[data-style-id="o12-coursetree-rozwiniete"]',
+  "formularze.html": '[data-style-id="o8-dialog-wywolania"]',
 };
 function adresStrony(strona, motyw) {
   const sciezka = strona === STRONA_DOMYSLNA ? "" : strona;
@@ -224,6 +225,12 @@ const CELE = [
   { nazwa: "LessonPlayer (odtwarzanie)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] button[aria-label="Odtwórz"]' },
   { nazwa: "LessonPlayer (powiększenie)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] button[aria-label="Powiększ"]' },
   { nazwa: "LessonPlayer (odnośnik braku)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] [role="status"] li:nth-of-type(1) a' },
+  // Organizmy formularzy i dziennika — montowane w `formularze.html`, nie w
+  // main.tsx/lekcja.html. `Dialog` sam nie ma własnego celu (patrz
+  // WYKLUCZENIA w cele-oczekiwane.mjs) — jego przyciski to `DialogActions`,
+  // już zmierzony wyżej na `index.html`.
+  { nazwa: "FormSection (zapisz)", strona: "formularze.html", selektor: '[data-style-id="o11-formsection-bez-bledow"] button[type="submit"]' },
+  { nazwa: "JournalTable (odnośnik pobrania)", strona: "formularze.html", selektor: '[data-style-id="o9-journaltable"] a[href="/admin/audit/export.csv"]' },
 ];
 
 // Wszystko od uruchomienia przeglądarki aż po ostatnie zamknięcie strony jest
