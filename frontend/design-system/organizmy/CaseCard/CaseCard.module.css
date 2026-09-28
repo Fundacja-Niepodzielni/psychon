@@ -1,0 +1,15 @@
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--card-px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.pary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}

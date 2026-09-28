@@ -10,9 +10,11 @@
 // "else" na końcu tego pliku) — pomiar-celow-dotyku.mjs sam oddaje już jeden z kodów
 // sterowanych.
 //
-// Kody sterowane tego wołającego, dokładnie trzy: {0, 2, 3} — 0 = zaliczony,
-// 2 = NIE ZMIERZONO z nazwaną przyczyną, 3 = ZMIERZONE NARUSZENIE (lista
-// celów poniżej progu, w stdout pomiar-celow-dotyku.mjs). Kod spoza {0,2,3} = narzędzie
+// Kody sterowane tego wołającego, dokładnie cztery: {0, 2, 3, 4} — 0 =
+// zaliczony, 2 = NIE ZMIERZONO z nazwaną przyczyną, 3 = ZMIERZONY ROZJAZD
+// REJESTRU (cele-oczekiwane.mjs vs CELE, albo pomiar, który nie znalazł
+// elementu), 4 = ZMIERZONE NARUSZENIE PROGU (lista celów poniżej progu, w
+// stdout pomiar-celow-dotyku.mjs). Kod spoza {0,2,3,4} = narzędzie
 // nie doszło do końca; przyczyna w stderr, jeżeli środowisko ją wypisało —
 // ten zbiór jest środowiska uruchomieniowego (sygnał, nieobsłużony wyjątek,
 // ubicie procesu), nie tego pliku, więc nie jest tu wyliczany: żadna lista
@@ -49,7 +51,7 @@
 //     (`pomiar.kod === null` — błąd spawnu albo sygnał, ta sama funkcja
 //     uruchomSynchronicznie co wyżej). To JEDYNE miejsce, w którym ten plik
 //     sam decyduje o kodzie pomiaru — każdy INNY kod, jaki odda
-//     pomiar-celow-dotyku.mjs (w tym jego własne 0/2/3), leci dalej wprost, bez
+//     pomiar-celow-dotyku.mjs (w tym jego własne 0/2/3/4), leci dalej wprost, bez
 //     interpretacji.
 // Te dwie środkowe pozycje (w linii 126, w linii 129: błąd spawnu, dziecko
 // ubite sygnałem) to powód, dla którego uruchomSynchronicznie (patrz niżej)
@@ -65,7 +67,7 @@
 // zdarzenie "error" na `serwer` kończy ten proces kodem, który oddaje
 // domyślna obsługa nieprzechwyconego wyjątku w Node.js, nie żadna z linii
 // wypisanych wyżej; ten kod nie jest pomiarem — i jest, jak każdy kod spoza
-// {0,2,3}, rozpoznawalny właśnie po tym, że do tego zbioru nie należy.
+// {0,2,3,4}, rozpoznawalny właśnie po tym, że do tego zbioru nie należy.
 //
 // Uruchamiany poleceniem `npm run pomiar:cele-dotyku`. Wpięty w
 // `.github/workflows/ci.yml` jako krok zadania „Frontend (lint + build)” —
@@ -89,7 +91,7 @@ process.env.PORT_POLIGONU = PORT;
 const URL_PODGLADU = `http://127.0.0.1:${PORT}/`;
 const KATALOG_FRONTEND = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-// Kody sterowane tego wołającego, dokładnie trzy — {0, 2, 3}:
+// Kody sterowane tego wołającego, dokładnie cztery — {0, 2, 3, 4}:
 //   0 = zaliczony, poligon czysty.
 //   2 = NIE ZMIERZONO, z nazwaną przyczyną w stderr — port, build, brak
 //       odpowiedzi serwera, przerwanie sygnałem, ALBO pomiar-celow-dotyku.mjs, który
@@ -97,10 +99,14 @@ const KATALOG_FRONTEND = path.dirname(path.dirname(fileURLToPath(import.meta.url
 //       patrz uruchomSynchronicznie niżej). Bramka, która pada z cudzego
 //       powodu tym samym kodem co prawdziwe naruszenie, uczy zespół
 //       ignorować czerwień, a prędzej czy później dostaje `continue-on-error`.
-//   3 = ZMIERZONE NARUSZENIE — pomiar-celow-dotyku.mjs realnie wykonał pomiar i
-//       znalazł cele poniżej progu (albo rozjazd rejestru celów); lista jest
-//       w jego własnym stdout.
-// Kod spoza {0,2,3} = narzędzie nie doszło do końca; przyczyna w stderr,
+//   3 = ZMIERZONY ROZJAZD REJESTRU — pomiar-celow-dotyku.mjs wykonał pomiar,
+//       ale rejestr (cele-oczekiwane.mjs) i tablica CELE się nie zgadzają,
+//       albo selektor nie znalazł elementu; ŻADEN zmierzony cel nie jest
+//       poniżej progu. Lista jest w jego własnym stdout.
+//   4 = ZMIERZONE NARUSZENIE PROGU — pomiar-celow-dotyku.mjs realnie wykonał
+//       pomiar i znalazł co najmniej jeden cel poniżej progu; lista (z nazwy)
+//       jest w jego własnym stdout.
+// Kod spoza {0,2,3,4} = narzędzie nie doszło do końca; przyczyna w stderr,
 // jeżeli środowisko ją wypisało. Ten zbiór należy do środowiska uruchomienio-
 // wego (sygnał, nieobsłużony wyjątek, ubicie procesu) — nie jest tu
 // wyliczany, bo żadna lista nie byłaby zupełna.
@@ -113,7 +119,7 @@ const KOD_NIE_ZMIERZONO = 2;
 // "zmierzono naruszenie" o biegu, w którym nic się nie zmierzyło. `powod` jest
 // tekstem WYŁĄCZNIE gdy `kod === null` — obaj wołający (budowa, pomiar)
 // drukują ten tekst zamiast zmyślonego "exit N". Ta funkcja NIE rozróżnia (i
-// nie może) zakończenia sterowanego kodem spoza {0,2,3} od nieprzechwyconego
+// nie może) zakończenia sterowanego kodem spoza {0,2,3,4} od nieprzechwyconego
 // wyjątku, który akurat oddał ten sam numer — oba to zwykłe, kompletne
 // zakończenie procesu z punktu widzenia spawnSync (status ustawiony, brak
 // `error`); patrz właściwość nazwana w nagłówku obu plików.
@@ -288,7 +294,7 @@ if (wynikCzekania === "zakonczony") {
 } else {
   const pomiar = uruchomSynchronicznie("node", ["design-system/poligon/pomiar-celow-dotyku.mjs"]);
   // Wołający NIE mapuje kodu pomiaru — przenosi go dalej wprost. pomiar-celow-dotyku.mjs
-  // sam oddaje już jeden z kodów sterowanych {0, 2, 3} (patrz jego nagłówek);
+  // sam oddaje już jeden z kodów sterowanych {0, 2, 3, 4} (patrz jego nagłówek);
   // ten plik nie zgaduje, nie tłumaczy i nie przepisuje tej liczby na inną.
   // Jedyny przypadek, w którym TEN plik sam decyduje o kodzie, to gdy
   // pomiar-celow-dotyku.mjs w ogóle nie oddał żadnego kodu — `pomiar.kod === null`,

@@ -10,13 +10,108 @@
   margin: 0;
   padding: 0;
 }
+/* WCAG 2.5.5 (AAA), próg 44 px: pozycja z odnośnikiem. Obszar DOTYKU rośnie
+   warstwą ::after (bez tła i ramki — niewidoczna). `position: relative` na
+   `.pozycja` (nie na `.pozycja > a`, jak w pierwszej wersji tej reguły) jest
+   celowe — patrz niżej, to jest część naprawy, nie kosmetyka. */
 .pozycja {
   display: inline-flex;
   align-items: center;
   padding: var(--space-8) var(--space-6);
+  position: relative;
 }
 .pozycja:last-child {
   color: var(--ink);
+}
+/* Pierwsza wersja tej reguły: ::after wyśrodkowany NA ODNOŚNIKU (kontenerem
+   odniesienia był `<a>`, bo to on miał `position: relative`), szerokość
+   `max(46px, 100%)` — stała podłoga 46 px bez względu na sąsiada.
+   Zmierzone (świadek własny, poza repo, metoda: siatka `elementFromPoint`
+   co 1 px w pasie ±22 px wokół środka, 3 wiersze): w ciasnym śladzie
+   (odstępy środków 30,03 / 29,87 / 30,70 / 29,96 px) sąsiednie warstwy
+   46 px zachodzą na siebie o kilkanaście px, a późniejsza w DOM (malowana
+   na wierzchu) podkrada trafienia wcześniejszej — dokładnie wada zlecenia.
+
+   Próba naprawy "rozciągnij tylko o własny padding `<li>` (2×space-6)"
+   ZMIERZONA JAKO NIEWYSTARCZAJĄCA: `.okruszek` w Link.module.css (atom,
+   poza zakresem tej zmiany) daje odnośnikowi WŁASNY padding + ujemny
+   margines tej samej wielkości (sztuczka poszerzająca pole kliknięcia w
+   pionie z poprzedniego zlecenia). Ujemny margines ciągnie renderowany
+   box odnośnika, w efekcie odnośnik B zaczyna się DOKŁADNIE na granicy
+   `<li>` A/B, zero zapasu po jego stronie — więc PROSTE rozciągnięcie
+   `::after` o padding własnego `<li>` w OBU kierunkach nadal wchodziło w
+   `<li>` sąsiada o ok. 1,9 px (zmierzone).
+
+   Naprawa: `top/left/transform` zostają identyczne (50%/50%/translate
+   -50%,-50%), ale KONTENEREM ODNIESIENIA dla procentów jest teraz
+   `.pozycja` (`<li>`), nie `<a>` — bo `position: relative` przeniosło się
+   wyżej. Efekt uboczny nazwany: środek warstwy przesuwa się ze środka
+   `<a>` na środek `<li>` (który wypadałby lekko bliżej separatora „›"),
+   nieistotne dla tej wady (chodzi o granice, nie o środek). `::after`
+   zostaje pseudoelementem `<a>` (klik nadal aktywuje
+   odnośnik — przynależność do drzewa zdarzeń nie zależy od tego, który
+   przodek jest `position: relative`), ale jego geometria liczy się
+   względem `<li>`. `<li>` w `.lista` (flex, zero odstępu) stykają się
+   krawędziami dokładnie — więc `width: 100%` (100% szerokości WŁASNEGO
+   `<li>`) nigdy nie sięga w `<li>` sąsiada, z definicji tego layoutu,
+   NIEZALEŻNIE od paddingów/ujemnych marginesów wewnątrz. Gwarancja jest
+   strukturalna (granica `<li>`), nie liczbowa (żaden token spacing).
+
+   Cena: bez podłogi `max(46px, ...)` na szerokości (podłoga wymuszałaby z
+   powrotem stałe 46 px, czyli wracała wada) — w bardzo ciasnym śladzie
+   `<li>` bywa węższe niż 44 px i obszar dotyku zostaje pod progiem. To
+   jest odrzucona podłoga na szerokości, świadomie: zapas do 44 px w takim
+   śladzie to kwestia odstępu MIĘDZY pozycjami (poza zakresem tego
+   zlecenia — dotyczy tylko "nie zabiera trafień sąsiadowi"), nie tej
+   reguły. W realnej treści (dłuższe etykiety, `<li>` szersze niż 44 px z
+   marginesem) próg i tak jest zapewniony bez podłogi.
+   Odrzucone warianty (i dlaczego):
+   - powiększenie odstępu między pozycjami (padding/margin) — zmieniłoby
+     rysunek (odstęp od separatora „›" jest widoczny), a ograniczenie
+     zlecenia jest twarde: rysunek się nie rusza;
+   - warstwa zawężona dynamicznie do połowy odstępu do NAJBLIŻSZEGO sąsiada
+     (JS albo selektor sąsiedztwa) — nie daje nic więcej niż oparcie się o
+     granicę własnego `<li>`, które jest czystym CSS bez zależności od
+     DOM/JS sąsiada i bez znajomości jego szerokości.
+   Link.module.css (atom, poza zakresem tej zmiany) nie jest dotykany. */
+/* Próg dla ŚLADU okruszków obniżony do
+   24 px (AA 2.5.8) — ślad jest nawigacją ZAPASOWĄ, próg 44 px poza śladem
+   się NIE zmienia. `width: 100%` (bez podłogi, wersja wyżej w historii tego
+   pliku) zmierzone przyrządem pomiar-celow-sladu.mjs (elementFromPoint,
+   siatka co 2 px w ±22 px wokół środka) na fixture "slad-ciasny" w
+   design-system/poligon/main.tsx (etykiety P1/M2/L5): szerokość realna
+   nawet ~19 px przy krótkich etykietach — POD progiem 24 px, choć bez
+   zachodzenia na sąsiada (gwarancja `width: 100% <li>` z komentarza niżej
+   nadal trzyma). Dodano wtedy podłogę `max(24px, 100%)`.
+
+   Dalszy pomiar: ta podłoga zmierzona jako MARTWA na fixture "slad-ciasny" —
+   usunięcie jej dawało bajt-identyczne cztery wymiary i liczby trafień
+   (kontrola B2/P3 w odbiorze). Powód: `width: 100%` liczy się względem
+   WŁASNEGO `<li>` (kontener `position: relative` to `.pozycja`), a
+   najwęższe `<li>` osiągalne realną etykietą na tym fixture to 29,39 px —
+   zawsze > 24 px, więc `max(24px, 100%)` zawsze wygrywa przez `100%`,
+   podłoga nigdy się nie uaktywnia. Jednocześnie podłoga jest podłogą W
+   PIKSELACH BEZWZGLĘDNYCH, nie względem `<li>` — gdyby kiedyś jakieś `<li>`
+   w tym śladzie było węższe niż 24 px, podłoga wymusiłaby szerokość 24 px
+   NIEZALEŻNIE od szerokości tego `<li>`, przebijając strukturalną gwarancję
+   granicy `<li>` z komentarza niżej i odtwarzając dokładnie wadę, którą ta
+   gwarancja miała zamykać (dawna kontrola ujemna miała sufit
+   (24-szerLi)/2 < 12 px i nie widziała skutków). Martwy kod trzymany "na
+   wszelki wypadek" jest zakazany — usunięto zamiast
+   spinać z realnym wymiarem, bo jedyny realny wymiar, z którym dałoby się
+   ją bezpiecznie spiąć (odstęp do najbliższego sąsiada), wymagałby JS/CSS
+   zależnego od sąsiada — odrzucone już w komentarzu wyżej jako
+   poza zakresem. Jeśli realna treść kiedyś da `<li>` < 24 px, przyrząd
+   pomiar-celow-sladu.mjs (skan promienia trafieniem, kryterium A i B) to
+   wykryje kodem 3 — nie cichym zielonym wynikiem. */
+.pozycja > a::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: max(46px, 100%);
 }
 .separator {
   margin-left: var(--space-6);

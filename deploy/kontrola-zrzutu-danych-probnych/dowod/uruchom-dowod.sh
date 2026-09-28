@@ -253,7 +253,7 @@ head -n "$((TERMINATOR_LINIA - 1))" "$KATALOG_LOGOW/04-przed.sql" > "$KATALOG_LO
 # 22: zrzut PO strukturalnie kompletny, oparty na 07-po-czysty.sql (teraz
 #     GENUINIE czysty - oba wektory wyzej juz usuniete z bazy zrodlowej), z
 #     JEDNA linia wstrzyknieta POZA blokiem COPY (zaraz za pierwszym
-#     terminatorem, nie naglowkiem) - trzeci wektor z tabeli w zleceniu
+#     terminatorem, nie naglowkiem) - trzeci wektor z tabeli wymagan
 #     ("wartosc poza blokiem COPY"), izolowany od pozostalych dwoch: dowod, ze
 #     TAKA tresc PODNOSI stan do 3 (wada rozstrzygajaca - dawniej dawala
 #     stan 0, cicho).
@@ -325,7 +325,7 @@ run_kontrola "26-stan2-duzy-obiekt-rozciety" 2 "$KATALOG_LOGOW/04-przed.sql" "$K
 run_kontrola "30-stan3-nazwa-relacji"      3 "$KATALOG_LOGOW/04-przed.sql" "$KATALOG_LOGOW/30-relacja-widoczna.sql" "$TU/wzorce-probne.txt"
 run_kontrola "31-stan2-duzy-obiekt-rozciety-rozsuniete" 2 "$KATALOG_LOGOW/04-przed.sql" "$KATALOG_LOGOW/31-duzy-obiekt-rozciety-rozsuniete.sql" "$TU/wzorce-probne.txt"
 
-# --- Trzy dodatkowe wiersze z tabeli zlecenia: format nieobslugiwany (-F
+# --- Trzy dodatkowe wiersze z tabeli wymagan: format nieobslugiwany (-F
 #     custom, -F directory) ma dawac 2 Z NAZWANA PRZYCZYNA (nie milczec), a
 #     zrzut TUZ PO SCHEMACIE (wszystkie tabele legalnie puste) ma dawac 0. ---
 run_kontrola "27-stan0-wszystkie-puste"    0 "$KATALOG_LOGOW/04-przed.sql" "$KATALOG_LOGOW/00-schema-pusty.sql" "$TU/wzorce-probne.txt"

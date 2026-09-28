@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * Pakiet H22 · akceptacja bieżącej wersji dokumentu prawnego — kryterium L4
- * zlecenia (`POST /legal-documents/{type}/accept`), oraz odbicie stanu na
+ * wymagań (`POST /legal-documents/{type}/accept`), oraz odbicie stanu na
  * profilu (`legal_documents_pending_acceptance`, `ProfileResource`).
  */
 class LegalDocumentAcceptanceTest extends TestCase

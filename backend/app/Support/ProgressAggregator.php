@@ -22,7 +22,21 @@ final class ProgressAggregator
      *     supervision_present: int,
      *     workshop_done: bool,
      *     reliability_percent: int|null,
+     *     path_tests_passed: int,
+     *     path_tests_total: int,
      * }
+     *
+     * `path_tests_passed` / `path_tests_total` dopisane tutaj (nie na osobnej
+     * ścieżce): zaliczone testy jako osobna liczba muszą liczyć się na TYM
+     * SAMYM zbiorze ścieżki co `courses_total`, żeby nie rozjechać się z kartą
+     * osoby. `path_tests_total` liczy tylko kursy ścieżki, które MAJĄ test —
+     * kurs bez testu nie wchodzi, bo `CourseAccess::testPassed()` zwraca dla
+     * niego `true` z definicji i zawyżyłby `path_tests_passed` ponad liczbę
+     * realnie zdanych testów. Przedrostek `path_` odróżnia tę parę od
+     * `passedTestsCount()` niżej w tym pliku: tamta liczy inną wielkość
+     * (różne testy zaliczone choć jedną próbą, na całej platformie, bez
+     * mianownika); pole `tests_passed` w wierszu osoby raportu H20 pochodzi
+     * właśnie z `passedTestsCount()`, nie stąd.
      */
     public static function for(User $user): array
     {
@@ -35,6 +49,12 @@ final class ProgressAggregator
 
         $coursesDone = $pathCourses
             ->filter(fn (Course $course): bool => CourseAccess::state($user, $course)['status'] === 'completed')
+            ->count();
+
+        $coursesWithTest = $pathCourses->filter(fn (Course $course): bool => $course->test !== null);
+
+        $testsPassed = $coursesWithTest
+            ->filter(fn (Course $course): bool => CourseAccess::testPassed($user, $course))
             ->count();
 
         $hoursAccepted = (float) $user->internshipEntries()
@@ -56,6 +76,8 @@ final class ProgressAggregator
             'supervision_present' => $supervisionPresent,
             'workshop_done' => $workshopDone,
             'reliability_percent' => self::reliabilityPercent($user),
+            'path_tests_passed' => $testsPassed,
+            'path_tests_total' => $coursesWithTest->count(),
         ];
     }
 

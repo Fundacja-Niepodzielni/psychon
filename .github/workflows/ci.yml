@@ -239,6 +239,35 @@ jobs:
             exit 1
           fi
 
+          # DUBLURA CELOWA, NIE UPRASZCZAC: skrypt pomiaru juz sam konczy
+          # sie kodem wyjscia 4, gdy pokrycie spadnie ponizej PROG_POKRYCIA (patrz
+          # design-system/poligon/pomiar-styl-atomow.mjs, w. 572-575 - warunek
+          # `pozycjeZmierzone.size < PROG_POKRYCIA`). Warunek ponizej NIE
+          # czyta tamtego kodu wyjscia ani mu nie ufa - wylusk uje X z
+          # WLASNEGO stdout ($WYJSCIE_STYLU, juz zebranego wyzej) i porownuje
+          # je z PROG_POKRYCIA NIEZALEZNIE, tutaj, w workflow. Gdyby ktos
+          # kiedys "uproscil" ten krok, licząc na to, ze KOD_STYLU!=0 wyzej
+          # juz to zlapal - to zdejmuje jedyne zabezpieczenie, ktore nie
+          # zalezy od tego, czy sam skrypt pomiaru nadal poprawnie liczy i
+          # zwraca swoj kod wyjscia. Wolajacy ma nie wierzyc kodowi wyjscia
+          # na slowo - to cala racja tej zmiany.
+          PROG_POKRYCIA_PLIK="design-system/poligon/pomiar-styl-atomow.mjs"
+          PROG_POKRYCIA_DUBLURA=$(grep -oE 'PROG_POKRYCIA = [0-9]+' "$PROG_POKRYCIA_PLIK" | head -1 | grep -oE '[0-9]+')
+          if [ -z "$PROG_POKRYCIA_DUBLURA" ]; then
+            echo "WOLAJACY POMIARU STYLU ATOMOW: NIE ZMIERZONO - nie udalo sie wyluskac PROG_POKRYCIA z $PROG_POKRYCIA_PLIK." >&2
+            exit 1
+          fi
+          X_ZMIERZONYCH=$(echo "$WYJSCIE_STYLU" | grep -oE 'zmierzonych [0-9]+' | head -1 | grep -oE '[0-9]+')
+          if [ -z "$X_ZMIERZONYCH" ]; then
+            echo "WOLAJACY POMIARU STYLU ATOMOW: NIE ZMIERZONO - nie udalo sie wyluskac X z wiersza \"zmierzonych X z N pozycji\"." >&2
+            exit 1
+          fi
+          echo "WOLAJACY POMIARU STYLU ATOMOW (dublura): zmierzonych $X_ZMIERZONYCH pozycji, PROG_POKRYCIA=$PROG_POKRYCIA_DUBLURA."
+          if [ "$X_ZMIERZONYCH" -lt "$PROG_POKRYCIA_DUBLURA" ]; then
+            echo "WOLAJACY POMIARU STYLU ATOMOW: krok czerwony (dublura) - zmierzonych $X_ZMIERZONYCH pozycji ponizej PROG_POKRYCIA=$PROG_POKRYCIA_DUBLURA." >&2
+            exit 1
+          fi
+
           set +e
           WYJSCIE_TYPOW=$(npm run sprawdz-typy -- --listFilesOnly 2>&1)
           KOD_LISTA=$?
@@ -256,6 +285,61 @@ jobs:
           fi
 
           npm run sprawdz-typy
+      # ZAPADKA: PROG_POKRYCIA (design-system/poligon/pomiar-styl-atomow.mjs)
+      # wolno tylko PODNOSIC albo zostawic bez zmian - nigdy obnizyc bez
+      # jawnej, osobnej decyzji poza tym krokiem CI. Krok czyta stala z DWOCH
+      # miejsc niezaleznie: z pliku w drzewie roboczym (galaz) i z tego
+      # samego pliku w commicie bazy porownania (PR: base SHA zdarzenia;
+      # push: SHA sprzed pushu) - i odmawia (exit != 0), gdy wartosc w
+      # galezi jest MNIEJSZA niz w bazie. Rowna przechodzi, wieksza
+      # przechodzi. Domyslny checkout tego joba jest PLYTKI (brak
+      # fetch-depth), wiec commit bazy trzeba dociagnac osobno, po SHA -
+      # GitHub na repo publicznym na to pozwala.
+      - name: Zapadka progu pokrycia (PROG_POKRYCIA tylko w gore)
+        working-directory: .
+        run: |
+          set +e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+          fi
+          PLIK_POMIARU="frontend/design-system/poligon/pomiar-styl-atomow.mjs"
+          # Brak bazy porownania (BASE_SHA pusty albo same zera - np. pchniecie
+          # SWIEZEJ galezi, gdzie github.event.before to zera) NIE oznacza
+          # "nie ma z czym porownac, wiec przepuscmy". Oznacza NIE ZMIERZONO:
+          # zapadka nie sprawdzila, czy PROG_POKRYCIA zostal obnizony, wiec nie
+          # ma prawa dac zielonego. Kod 0 tutaj byl furtka - jednym pchnieciem
+          # nowej galezi z juz obnizonym progiem omijalo sie caly przyrzad.
+          # Dlatego ta noga konczy sie kodem 2, nie 0: krok czerwony, dopoki
+          # ktos swiadomie nie zmierzy progu wobec prawdziwej bazy. Nie
+          # upraszczac tego z powrotem do exit 0.
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            if [ -z "$BASE_SHA" ]; then
+              PRZYCZYNA_BRAKU_BAZY="pusty BASE_SHA"
+            else
+              PRZYCZYNA_BRAKU_BAZY="same zera w BASE_SHA"
+            fi
+            echo "ZAPADKA PROGU POKRYCIA: NIE ZMIERZONO - brak bazy porownania (${PRZYCZYNA_BRAKU_BAZY}, zdarzenie ${{ github.event_name }}) - krok nie przepuszcza, bo nie mial czego zmierzyc." >&2
+            exit 2
+          fi
+          git fetch --depth=1 origin "$BASE_SHA" >/dev/null 2>&1
+          if ! BAZA_TRESC=$(git show "$BASE_SHA:$PLIK_POMIARU" 2>&1); then
+            echo "ZAPADKA PROGU POKRYCIA: NIE ZMIERZONO - nie udalo sie odczytac $PLIK_POMIARU z bazy $BASE_SHA (fetch/show zawiodl)." >&2
+            exit 1
+          fi
+          PROG_BAZA=$(echo "$BAZA_TRESC" | grep -oE 'PROG_POKRYCIA = [0-9]+' | head -1 | grep -oE '[0-9]+')
+          PROG_GALAZ=$(grep -oE 'PROG_POKRYCIA = [0-9]+' "$PLIK_POMIARU" | head -1 | grep -oE '[0-9]+')
+          if [ -z "$PROG_BAZA" ] || [ -z "$PROG_GALAZ" ]; then
+            echo "ZAPADKA PROGU POKRYCIA: NIE ZMIERZONO - nie udalo sie wyluskac PROG_POKRYCIA (baza=\"$PROG_BAZA\" galaz=\"$PROG_GALAZ\")." >&2
+            exit 1
+          fi
+          echo "ZAPADKA PROGU POKRYCIA: PROG_POKRYCIA w galezi = $PROG_GALAZ, w bazie ($BASE_SHA) = $PROG_BAZA."
+          if [ "$PROG_GALAZ" -lt "$PROG_BAZA" ]; then
+            echo "ZAPADKA PROGU POKRYCIA: krok czerwony - PROG_POKRYCIA obnizony z $PROG_BAZA do $PROG_GALAZ." >&2
+            exit 1
+          fi
+          echo "ZAPADKA PROGU POKRYCIA: zielony - prog nie zostal obnizony ($PROG_GALAZ >= $PROG_BAZA)."
       # `--omit=dev` swiadomie: zmierzone
       # 6 podatnosci lacznie, z tego 2 produkcyjne - cztery zdjete flaga siedza
       # w narzedziach (vitest, js-yaml), ktore nie ida do przegladarki uzytkownika.

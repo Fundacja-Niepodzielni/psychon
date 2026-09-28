@@ -51,13 +51,17 @@ export function Breadcrumbs({ pozycje, wariant = "pelne" }: WlasciwosciBreadcrum
         {wezly.map((wezel, indeks) => {
           const ostatnia = indeks === wezly.length - 1;
           return (
-            <li key={`${wezel.etykieta}-${indeks}`} className={style.pozycja}>
+            <li
+              key={`${wezel.etykieta}-${indeks}`}
+              className={style.pozycja}
+              data-testid={`slad-pozycja-${indeks}`}
+            >
               {wezel.elipsa ? (
                 <span aria-hidden="true" data-testid="breadcrumbs-elipsa">
                   {wezel.etykieta}
                 </span>
               ) : !ostatnia && wezel.href ? (
-                <Link wariant="okruszek" href={wezel.href}>
+                <Link wariant="okruszek" href={wezel.href} data-testid={`slad-cel-${indeks}`}>
                   {wezel.etykieta}
                 </Link>
               ) : (

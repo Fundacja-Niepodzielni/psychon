@@ -41,6 +41,8 @@ class AdminUserCardResource extends JsonResource
                 'hours_accepted' => $progress['hours_accepted'],
                 'supervision_present' => $progress['supervision_present'],
                 'workshop_done' => $progress['workshop_done'],
+                'path_tests_passed' => $progress['path_tests_passed'],
+                'path_tests_total' => $progress['path_tests_total'],
             ],
             'documents' => $user->documents
                 ->map(fn (Document $document): array => [

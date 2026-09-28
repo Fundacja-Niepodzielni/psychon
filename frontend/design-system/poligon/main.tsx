@@ -33,6 +33,12 @@ import { EmptyState } from "../molekuly/EmptyState/EmptyState";
 import { RichTextEditor } from "../molekuly/RichTextEditor/RichTextEditor";
 import { QaBlock } from "../molekuly/QaBlock/QaBlock";
 import { PublishChecklist } from "../organizmy/PublishChecklist/PublishChecklist";
+import { PageHeader } from "../organizmy/PageHeader/PageHeader";
+import { PanelNav } from "../organizmy/PanelNav/PanelNav";
+import { StatRow } from "../organizmy/StatRow/StatRow";
+import { RecordList } from "../organizmy/RecordList/RecordList";
+import { CaseCard } from "../organizmy/CaseCard/CaseCard";
+import { DataTable } from "../organizmy/DataTable/DataTable";
 import { FileDropZone } from "../molekuly/FileDropZone/FileDropZone";
 import { FileRow } from "../molekuly/FileRow/FileRow";
 import { StatTile } from "../molekuly/StatTile/StatTile";
@@ -343,6 +349,30 @@ function Poligon() {
         />
       </div>
 
+      {/* M7 Breadcrumbs — slad CIASNY, wariant "pelne" (nie "skrocone" — "skrocone"
+          zwija środek do jednej "…", więc NIGDY nie daje ciasnego rzędu wielu
+          sąsiadujących odnośników). Etykiety celowo krótkie (skrót ścieżki
+          kurs/poziom/moduł/lekcja na wąskim ekranie) — to jest fixture do
+          pomiar-celow-sladu.mjs: reprodukuje realny
+          "ciasny ślad" z komentarza w Breadcrumbs.module.css (krótkie
+          etykiety, wiele pozycji, odstęp środków < 46px), gdzie szerokość
+          `.pozycja > a::after` (100% własnego `<li>`, bez podłogi) może
+          zejść poniżej progu 24 px AA 2.5.8 (ślad jest nawigacją zapasową,
+          próg 24 px, nie 44 px). 4 pozycje klikalne
+          (Kursy/P1/M2/L5) + 1 Text na końcu (Quiz — Breadcrumbs.tsx: ostatnia
+          pozycja NIGDY nie jest odnośnikiem, więc nie jest celem dotyku). */}
+      <div data-style-id="m7-breadcrumbs-slad-ciasny">
+        <Breadcrumbs
+          pozycje={[
+            { etykieta: "Kursy", href: "#" },
+            { etykieta: "P1", href: "#" },
+            { etykieta: "M2", href: "#" },
+            { etykieta: "L5", href: "#" },
+            { etykieta: "Quiz" },
+          ]}
+        />
+      </div>
+
       {/* M8 Tabs — stany: wybrana, fokus (REGULY_FOKUSU); wariant: zwinięta poniżej
           639 (06-ATOMY-MOLEKULY-ORGANIZMY.md w. 148), własny mount (patrz Tabs.tsx) */}
       <div data-style-id="molekula-tabs">
@@ -584,6 +614,280 @@ function Poligon() {
           onCofnij={() => {}}
           onPorzucWszystko={() => {}}
           onZapisz={() => {}}
+        />
+      </div>
+
+      {/* O1 PageHeader — warianty: okruszki pełne (z opisem),
+          okruszki skrócone (z plakietką statusu i odnośnikiem pobocznym).
+          Przycisk powrotu ma pole dotyku ≥44px wbudowane w atom `Button`
+          (`.przycisk { min-height: var(--hit-min) }`) — ten sam atom, który
+          poligon atomów już mierzy jako "Button outline" w A1. */}
+      <div data-style-id="o1-pageheader-pelne">
+        <PageHeader
+          okruszki={[
+            { etykieta: "Osoby", href: "#" },
+            { etykieta: "Anna Kowalska", href: "#" },
+            { etykieta: "Źródła liczb" },
+          ]}
+          tytul="Źródła liczb — Anna Kowalska"
+          opis="Skąd biorą się liczby z karty osoby."
+          onPowrot={() => {}}
+        />
+      </div>
+      <div data-style-id="o1-pageheader-skrocone-status">
+        <PageHeader
+          okruszki={[
+            { etykieta: "Kursy", href: "#" },
+            { etykieta: "Edycja 24", href: "#" },
+            { etykieta: "Moduł 2", href: "#" },
+            { etykieta: "Lekcja 5", href: "#" },
+            { etykieta: "Ustawienia" },
+          ]}
+          wariantOkruszkow="skrocone"
+          tytul="Ustawienia lekcji"
+          status={{ wariant: "warn", etykieta: "Wersja robocza" }}
+          akcja={{ etykieta: "Zobacz dokumentację", href: "#" }}
+          onPowrot={() => {}}
+        />
+      </div>
+
+      {/* O2 PanelNav — 3 zestawy wg roli (64 ekrany, 3 zestawy). Treść
+          zestawu (który grupy/pozycje) ustala wywołujący —
+          tu trzy różne wartości `grupy` pokazują trzy role osobno. */}
+      <div data-style-id="o2-panelnav-podopieczny">
+        <PanelNav
+          uzytkownik={{ imie: "Anna", nazwisko: "Kowalska", rola: "Podopieczny" }}
+          grupy={[
+            {
+              naglowek: "Program",
+              pozycje: [
+                { ikona: "home", etykieta: "Pulpit", href: "#", biezaca: true },
+                { ikona: "book", etykieta: "Kursy", href: "#" },
+                { ikona: "clock", etykieta: "Dziennik", href: "#", licznik: { wartosc: 3, etykieta: "nowe" } },
+              ],
+              wPrzygotowaniu: ["Eksport PDF"],
+            },
+          ]}
+        />
+      </div>
+      <div data-style-id="o2-panelnav-terapeuta">
+        <PanelNav
+          uzytkownik={{ imie: "Piotr", nazwisko: "Nowak", rola: "Terapeuta" }}
+          grupy={[
+            {
+              naglowek: "Osoby",
+              pozycje: [
+                { ikona: "users", etykieta: "Podopieczni", href: "#", biezaca: true },
+                { ikona: "chat", etykieta: "Pytania", href: "#", licznik: { wartosc: 2, etykieta: "czeka" } },
+              ],
+            },
+            {
+              naglowek: "Superwizje",
+              pozycje: [{ ikona: "award", etykieta: "Terminy", href: "#" }],
+            },
+          ]}
+        />
+      </div>
+      <div data-style-id="o2-panelnav-admin">
+        <PanelNav
+          uzytkownik={{ imie: "Ola", nazwisko: "Zych", rola: "Administrator" }}
+          grupy={[
+            {
+              naglowek: "Zarządzanie",
+              pozycje: [
+                { ikona: "users", etykieta: "Wszystkie osoby", href: "#" },
+                { ikona: "chart", etykieta: "Raporty", href: "#" },
+                { ikona: "cog", etykieta: "Ustawienia", href: "#", biezaca: true },
+              ],
+            },
+          ]}
+        />
+      </div>
+
+      {/* O10 StatRow (w4) — warianty: zwykły (bez odnośników), odnośnikowy
+          (każdy kafel = `Link` do sekcji źródeł, D-106 "karta linkuje z
+          każdej liczby", użyty na T3). Kafel "bez danych" pokazuje stan
+          braku wartości dziedziczony z `StatTile`. */}
+      <div data-style-id="o10-statrow-zwykly">
+        <StatRow
+          kafle={[
+            { id: "o10-godziny", etykieta: "Godziny przyjęte", wartosc: 42, mianownik: "godz." },
+            { id: "o10-superwizje", etykieta: "Obecności na superwizjach", wartosc: 6, mianownik: "z 8" },
+            { id: "o10-ocena", etykieta: "Rzetelność", mianownik: "w skali 100" },
+          ]}
+        />
+      </div>
+      <div data-style-id="o10-statrow-odnosnikowy">
+        <StatRow
+          kafle={[
+            { id: "o10-l-godziny", etykieta: "Godziny przyjęte", wartosc: 42, mianownik: "godz.", href: "#godziny" },
+            {
+              id: "o10-l-superwizje",
+              etykieta: "Obecności na superwizjach",
+              wartosc: 6,
+              mianownik: "z 8",
+              href: "#superwizje",
+            },
+            { id: "o10-l-warsztat", etykieta: "Warsztat", wartosc: 3, mianownik: "z 4", href: "#warsztat" },
+            {
+              id: "o10-l-testy",
+              etykieta: "Testy ścieżki",
+              wartosc: 18,
+              mianownik: "z 24 zaliczonych",
+              procent: 75,
+              href: "#testy",
+            },
+            {
+              id: "o10-l-czas",
+              etykieta: "Czas nauki",
+              wartosc: 120,
+              mianownik: "godz.",
+              dominujacy: true,
+              href: "#czas",
+            },
+          ]}
+        />
+      </div>
+
+      {/* O4 RecordList — warianty/stany: z wierszami (lista + suma w stopce),
+          pusty (EmptyState, ZERO wierszy). Składa 5 sekcji ekranu T3 „źródła
+          liczb osoby” (KARTA-EKRANU-T3-ZRODLA-LICZB-OSOBY) — tu zmontowany
+          jako pojedynczy organizm, nie cała strona T3. */}
+      <div data-style-id="organizm-o4-z-wierszami">
+        <RecordList
+          tytul="Godziny przyjęte"
+          jednostkaSumy="godzin"
+          wiersze={[
+            { id: "r1", tytul: "12.01.2026 — sesja indywidualna", podpowiedz: "Źródło: dziennik", wartosc: 2, akcja: { etykieta: "Otwórz", href: "#" } },
+            { id: "r2", tytul: "15.01.2026 — konsultacja", plakietka: { wariant: "ok", tekst: "Zatwierdzone" }, wartosc: 1, akcja: { etykieta: "Otwórz", href: "#" } },
+            { id: "r3", tytul: "20.01.2026 — sesja grupowa", plakietka: { wariant: "pending", tekst: "Do weryfikacji" }, wartosc: 3, akcja: { etykieta: "Otwórz", href: "#" } },
+          ]}
+          pusty={{ naglowek: "Brak godzin", tresc: "Godziny pojawią się po pierwszym wpisie w dzienniku.", przycisk: { etykieta: "Dodaj wpis", onClick: () => {} } }}
+        />
+      </div>
+      <div data-style-id="organizm-o4-pusty">
+        <RecordList
+          tytul="Obecności na superwizjach"
+          jednostkaSumy="godzin"
+          wiersze={[]}
+          pusty={{ naglowek: "Brak obecności", tresc: "Obecności pojawią się po pierwszej zarejestrowanej superwizji.", przycisk: { etykieta: "Zarejestruj", onClick: () => {} } }}
+        />
+      </div>
+
+      {/* O5 CaseCard — 6 RODZAJÓW (strukturalne warianty składu, patrz
+          komentarz przy `RodzajCaseCard` w CaseCard.tsx). */}
+      <div data-style-id="organizm-o5-podstawowa">
+        <CaseCard
+          rodzaj="podstawowa"
+          tytul="Sprawa 14 — wniosek o certyfikat"
+          pary={[
+            { etykieta: "Status", wartosc: "Otwarta" },
+            { etykieta: "Opiekun", wartosc: "Anna Kowalska" },
+          ]}
+        />
+      </div>
+      <div data-style-id="organizm-o5-ze-statystyka">
+        <CaseCard
+          rodzaj="ze-statystyka"
+          tytul="Sprawa 15 — korekta danych"
+          pary={[{ etykieta: "Status", wartosc: "W toku" }]}
+          statystyka={{ id: "o5-stat-1", etykieta: "Dni otwarta", wartosc: 4, mianownik: "dni" }}
+        />
+      </div>
+      <div data-style-id="organizm-o5-z-postepem">
+        <CaseCard
+          rodzaj="z-postepem"
+          tytul="Sprawa 16 — audyt superwizji"
+          pary={[{ etykieta: "Status", wartosc: "W realizacji" }]}
+          postep={{ procent: 60, etykieta: "6 z 10 kroków" }}
+        />
+      </div>
+      <div data-style-id="organizm-o5-pelna">
+        <CaseCard
+          rodzaj="pelna"
+          tytul="Sprawa 17 — eskalacja"
+          pary={[
+            { etykieta: "Status", wartosc: "Eskalowana" },
+            { etykieta: "Priorytet", wartosc: "Wysoki" },
+          ]}
+          statystyka={{ id: "o5-stat-2", etykieta: "Postęp programu", wartosc: 62, mianownik: "%", procent: 62 }}
+          postep={{ procent: 30, etykieta: "3 z 10 dni do terminu", wariant: "odtwarzacz" }}
+        />
+      </div>
+      <div data-style-id="organizm-o5-zamaskowana">
+        <CaseCard
+          rodzaj="zamaskowana"
+          tytul="Sprawa 18 — dane osobowe"
+          pary={[{ etykieta: "PESEL", wartosc: "12345678901", zamaskowana: true }]}
+          statystyka={{ id: "o5-stat-3", etykieta: "Zaliczone testy", wartosc: 18, mianownik: "z 72 godzin" }}
+        />
+      </div>
+      <div data-style-id="organizm-o5-bez-danych">
+        <CaseCard
+          rodzaj="bez-danych"
+          tytul="Sprawa 19 — nowa"
+          pary={[{ etykieta: "Status", wartosc: "Nowa" }]}
+          statystyka={{ id: "o5-stat-4", etykieta: "Ocena", mianownik: "w skali 100" }}
+        />
+      </div>
+
+      {/* O3 DataTable — 5 UŻYĆ: pełna (szeroka, ze stronicowaniem), wąska
+          (opakowanie zawężające szerokość, żeby pokazać zamianę na
+          pary/karty poniżej 639px — patrz DataTable.module.css), pusta (0
+          wierszy po filtrze), bez stronicowania (mało wierszy), z wieloma
+          kolumnami liczbowymi (`Num` × 2). */}
+      <div data-style-id="organizm-o3-pelna">
+        <DataTable
+          tytul="Uczestnicy kursu"
+          kolumny={[
+            { klucz: "imie", etykieta: "Imię i nazwisko" },
+            { klucz: "godziny", etykieta: "Godziny", liczbowa: true, jednostka: "godz." },
+          ]}
+          wiersze={[
+            { id: "u1", wartosci: { imie: "Jan Kowalski", godziny: 12 } },
+            { id: "u2", wartosci: { imie: "Anna Nowak", godziny: 8 } },
+          ]}
+          szukajka={{ id: "o3-szukaj-1", etykieta: "Szukaj uczestnika", wartosc: "", onZmiana: () => {} }}
+          stronicowanie={{ strona: 1, stron: 3, naPoprzednia: () => {}, naNastepna: () => {} }}
+        />
+      </div>
+      <div data-style-id="organizm-o3-waska" style={{ maxWidth: 320 }}>
+        <DataTable
+          tytul="Uczestnicy kursu (widok wąski)"
+          kolumny={[
+            { klucz: "imie", etykieta: "Imię i nazwisko" },
+            { klucz: "godziny", etykieta: "Godziny", liczbowa: true, jednostka: "godz." },
+          ]}
+          wiersze={[{ id: "u3", wartosci: { imie: "Piotr Wiśniewski", godziny: 5 } }]}
+          szukajka={{ id: "o3-szukaj-2", etykieta: "Szukaj uczestnika", wartosc: "", onZmiana: () => {} }}
+        />
+      </div>
+      <div data-style-id="organizm-o3-pusta">
+        <DataTable
+          tytul="Uczestnicy kursu (brak wyników)"
+          kolumny={[{ klucz: "imie", etykieta: "Imię i nazwisko" }]}
+          wiersze={[]}
+          szukajka={{ id: "o3-szukaj-3", etykieta: "Szukaj uczestnika", wartosc: "zzz", onZmiana: () => {} }}
+        />
+      </div>
+      <div data-style-id="organizm-o3-bez-stronicowania">
+        <DataTable
+          tytul="Materiały lekcji"
+          kolumny={[{ klucz: "nazwa", etykieta: "Nazwa pliku" }]}
+          wiersze={[{ id: "m1", wartosci: { nazwa: "materiał.pdf" } }]}
+          szukajka={{ id: "o3-szukaj-4", etykieta: "Szukaj materiału", wartosc: "", onZmiana: () => {} }}
+        />
+      </div>
+      <div data-style-id="organizm-o3-liczby">
+        <DataTable
+          tytul="Postępy uczestników"
+          kolumny={[
+            { klucz: "imie", etykieta: "Imię i nazwisko" },
+            { klucz: "godziny", etykieta: "Godziny", liczbowa: true, jednostka: "godz." },
+            { klucz: "testy", etykieta: "Testy zaliczone", liczbowa: true, jednostka: "z 24" },
+          ]}
+          wiersze={[{ id: "p1", wartosci: { imie: "Ewa Zielińska", godziny: 20, testy: 18 } }]}
+          szukajka={{ id: "o3-szukaj-5", etykieta: "Szukaj uczestnika", wartosc: "", onZmiana: () => {} }}
         />
       </div>
     </div>

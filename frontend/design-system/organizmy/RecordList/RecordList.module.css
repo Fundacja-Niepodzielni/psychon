@@ -1,0 +1,21 @@
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.stopka {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--card-px);
+  font-weight: var(--fw-bold);
+  min-height: var(--hit-min);
+}

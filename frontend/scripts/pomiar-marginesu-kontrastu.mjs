@@ -128,6 +128,22 @@
 // liczby, niech uruchomi polecenie sam, z korzenia repo, np.:
 // `grep -rln "pomiar-marginesu-kontrastu\|pomiar:kontrast-statusow" .`
 
+// ---------------------------------------------------------------------------
+// DODATEK: tekst treści na tłach powierzchni, strumień NOWEGO FRONTU
+// (design-system/tokeny/tokeny.css: --ink/--text/--muted/--subtle na
+// --bg/--card/--card-warm/--grey, oba motywy) — używany realnie w
+// design-system/atomy/molekuly, mimo komentarza w tamtym pliku ("osobny
+// strumień") sugerującego, że jeszcze nie jest podpięty. STARY front
+// (app/globals.css, --psy-*) jest świadomie POZA zakresem tego dodatku —
+// decyzja właściciela (D-64 p.3, D-91): drzewo zastępowane ekranami T1–T3,
+// nie mierzone i nie naprawiane tutaj.
+// Kod 4 (KOD_NARUSZENIE_TEKSTU niżej), gdy choć jedna zmierzona para tego
+// strumienia jest poniżej progu 4,5:1. Implementacja i uzasadnienia niżej
+// (szukaj "nowy front"). Ta część NIE zmienia ani nie zastępuje niczego z
+// części statusowej wyżej (11 par, 5 teł, kody 0/2/3) — tylko dodaje kroki do
+// main() i nowe funkcje.
+// ---------------------------------------------------------------------------
+
 import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -538,6 +554,413 @@ export function wczytajProdukcyjneParyITla() {
 }
 
 // ---------------------------------------------------------------------------
+// CZĘŚĆ DRUGA: TEKST TREŚCI NA TLE POWIERZCHNI
+// ---------------------------------------------------------------------------
+
+const KOD_NARUSZENIE_TEKSTU = 4;
+
+// Próg 4,5:1 dla WSZYSTKICH tokenów tekstu obu strumieni — NIE zakładane,
+// sprawdzone (28.09.2026) poleceniem
+// `grep -rn "var(--ink)\|var(--text)\|var(--muted)\|var(--subtle)" design-system --include=*.module.css`
+// dla nowego frontu:
+//   - --text/--muted/--subtle: wyłącznie konteksty <18,66px pogrubiony i
+//     <24px niepogrubiony (np. Text.module.css var(--fs-8)=16px zwykły,
+//     Hint/Breadcrumbs var(--fs-11)=13px, Badge var(--fs-11)=13px
+//     pogrubiony) — zawsze "tekst zwykły" wg `prog()` wyżej.
+//   - --ink: W WIĘKSZOŚCI mały/średni tekst (Button.outline 15px medium,
+//     Label 14px medium, Breadcrumbs 13px, CollapsibleSection 15px medium,
+//     Notice 14px) ale TEŻ Heading.module.css .stopien1/.stopien2 (30/23/22px,
+//     zawsze pogrubiony) — kwalifikuje się tam jako "duży tekst" (próg 3,0).
+//     Token barwy nie niesie kontekstu rozmiaru (jedna barwa, wiele użyć) —
+//     próg 4,5 przyjęty tu dla WSZYSTKICH użyć --ink jest świadomie
+//     surowszy niż wymaga WCAG dla nagłówków, ale jedyny bezpieczny dla
+//     pozostałych, mniejszych użyć. Para przechodząca 4,5 przechodzi 3,0 z
+//     definicji (4,5>3,0) — nie ma przypadku fałszywego odrzucenia.
+// Dla starego frontu (--psy-text-strong/--psy-heading używany w text-h1..h4,
+// prawdopodobnie pogrubionych nagłówkach) NIE zgrepowano wyczerpująco każdego
+// miejsca użycia (ograniczony budżet czasu) — przyjęto TĘ SAMĄ, surowszą
+// regułę 4,5 jako bezpieczny domyślny wybór z tego samego powodu jak wyżej
+// (4,5>3,0, nigdy fałszywego odrzucenia), NIE jako potwierdzony pomiarem
+// rozmiaru każdego użycia — zgłoszone jawnie jako otwarta luka, nie
+// ukryte.
+const PROG_TEKSTU_TRESCI = 4.5;
+
+// Zakres zawężony do JEDNEGO strumienia (decyzja właściciela D-64 p.3 i D-91,
+// zawężenie utrzymane w kolejnych zmianach tego pliku): stary front
+// (app/globals.css, --psy-*) jest zastępowany ekranami T1–T3 i świadomie NIE
+// jest tu mierzony ani naprawiany. Ten plik ma dziś TYLKO jeden dodatkowy
+// strumień pomiaru tekstu treści — nowy front, design-system/tokeny/tokeny.css
+// — poniżej. Nazwa strumienia ("nowy front") zostaje w każdym wierszu wyjścia
+// mimo że jest dziś jedynym strumieniem, żeby dopisanie drugiego (gdyby
+// decyzja właściciela się zmieniła) nie wymagało przepisywania formatu.
+
+// ---------------------------------------------------------------------------
+// nowy front (design-system/tokeny/tokeny.css)
+// ---------------------------------------------------------------------------
+//
+// Wcześniejsza klasyfikacja sprawdzała nazwy odkryte WZGLĘDEM
+// listy, ale same PARY budowała z listy — nowy token w tokeny.css (np.
+// `--text-probny`) nigdy nie wchodził do mianownika, tylko wywoływał kod 2.
+// Poprawka: klasyfikacja jest teraz REGUŁĄ PO PRZEDROSTKU (KORZENIE_* niżej),
+// a `zbudujParyTekstuNaPowierzchni` buduje pary z NAZW FAKTYCZNIE ODKRYTYCH i
+// zaklasyfikowanych tą regułą — nie z `KORZENIE_*` wprost. Token, którego
+// nazwa równa się korzeniowi albo zaczyna się od `${korzeń}-` (np.
+// `card-warm` od korzenia `card`, albo `text-probny` od korzenia `text`),
+// wchodzi do pomiaru automatycznie, bez zmiany kodu. Wartości (kolory hex)
+// NIGDY nie są tu wpisane wprost — czytane z pliku przy każdym uruchomieniu.
+//
+// Token spoza wszystkich korzeni I spoza `TOKENY_POZA_ZAKRESEM` (z powodem)
+// nadal kończy pomiar kodem 2 — to jest dobre i zostaje: odmowa dla NAPRAWDĘ
+// niesklasyfikowanej nazwy, nie dla każdej nowej.
+//
+// `--nadpisz` (patrz `nadpisaniaZArgv` wyżej) NIE działa na ten strumień:
+// dotyka wyłącznie app/globals.css (nie czytanego przez tę część —
+// zakres zawężony do nowego frontu, patrz komentarz wyżej) — rozszerzenie
+// `--nadpisz` na tokeny.css ruszałoby wspólną pętlę w main(), którą może
+// dziś równolegle zmieniać inna gałąź (część NIETEKSTOWA, próg 3,0, obrysy).
+// Świadek kod 4 dla tego strumienia (opisany niżej) używa zamiast
+// tego bezpośredniej, tymczasowej edycji tokeny.css na dysku, cofniętej
+// `git checkout` po pomiarze.
+
+const SCIEZKA_TOKENY_CSS = fileURLToPath(
+  new URL("../design-system/tokeny/tokeny.css", import.meta.url),
+);
+
+// Korzenie nazw — token pasuje, gdy jego nazwa RÓWNA SIĘ korzeniowi albo
+// ZACZYNA SIĘ od `${korzeń}-`. `--grey` dołączony do powierzchni, bo zmierzono, że
+// Badge.module.css `.neutral`/`.pending` dają
+// `background: var(--grey)` z `color: var(--muted)` w środku — realnie
+// hostuje tekst treści, potwierdzone grepem
+// `grep -n "background: var(--grey)" design-system/atomy/Badge/Badge.module.css`.
+const KORZENIE_TEKSTU_NOWY = ["ink", "text", "muted", "subtle"];
+const KORZENIE_POWIERZCHNI_NOWY = ["bg", "card", "grey"];
+
+/** `nazwa` pasuje do `korzenie[i]`, gdy jest mu równa albo zaczyna się od
+ * `${korzenie[i]}-` — np. "card-warm" pasuje do korzenia "card", "text-probny"
+ * (świadek K1/R1) pasuje do korzenia "text". */
+function pasujeDoKorzenia(nazwa, korzenie) {
+  return korzenie.some((k) => nazwa === k || nazwa.startsWith(`${k}-`));
+}
+
+// Powody "poza zakresem" dla nazw, które NIE pasują do żadnego korzenia
+// wyżej — każdy sprawdzalny grepem po `var(--<nazwa>)` w
+// design-system/**/*.module.css (28.09.2026). `grey` USUNIĘTE stąd i
+// przeniesione do KORZENIE_POWIERZCHNI_NOWY (patrz wyżej).
+export const TOKENY_POZA_ZAKRESEM = [
+  { nazwa: "border", powod: "Obrys, nie barwa tekstu ani tło — zakres równoległej gałęzi (próg 3,0, obrysy)." },
+  { nazwa: "border-strong", powod: "Jak wyżej — obrys, zakres równoległej gałęzi." },
+  { nazwa: "control", powod: "Obrys kontrolki (np. Input.module.css border) — zakres równoległej gałęzi." },
+  {
+    nazwa: "invert-bg",
+    powod: "Tło odwróconego kontrastu — nie jedna z mierzonych tu powierzchni; brak potwierdzonego grepem użycia tekstu treści na tym tle.",
+  },
+  { nazwa: "invert-ink", powod: "Barwa tekstu WYŁĄCZNIE na --invert-bg — para własna, poza tym pomiarem." },
+  { nazwa: "invert-link", powod: "Łącze na --invert-bg — rola linku, nie tekstu treści." },
+  { nazwa: "brand", powod: "Barwa marki/fokusu (outline), nie tekst treści ani tło powierzchni." },
+  { nazwa: "brand-tint", powod: "Tło akcentu (np. Notice.module.css .info), nie jedna z powierzchni w zakresie." },
+  { nazwa: "link", powod: "Barwa łącza — poza zakresem (tekst treści, nie łącza; łącza mierzy część statusowa)." },
+  { nazwa: "primary", powod: "Barwa akcji/przycisku głównego, nie tekst treści na tle powierzchni." },
+  { nazwa: "primary-hover", powod: "Jak wyżej, stan najechania przycisku głównego." },
+  { nazwa: "green", powod: "Barwa akcentu (np. pasek postępu), nie tekst treści." },
+  { nazwa: "green-tint", powod: "Tło akcentu (np. MenuItem.module.css .biezaca), nie jedna z powierzchni w zakresie." },
+  { nazwa: "success", powod: "Barwa stanu — pokryta częścią statusową wyżej." },
+  { nazwa: "success-bg", powod: "Tło stanu — pokryte częścią statusową." },
+  { nazwa: "warn", powod: "Barwa stanu — jak success wyżej." },
+  { nazwa: "warn-bg", powod: "Tło stanu — jak success-bg wyżej." },
+  { nazwa: "error", powod: "Barwa stanu — jak success wyżej." },
+  { nazwa: "error-bg", powod: "Tło stanu — jak success-bg wyżej." },
+  { nazwa: "on-primary", powod: "Barwa tekstu WYŁĄCZNIE na --primary — para własna, nie jedna z powierzchni w zakresie." },
+];
+
+/** Wycina treść PIERWSZEGO bloku `:root { ... }` (motyw jasny, domyślny —
+ * wartości identyczne z `:root[data-theme="light"]` dziś). Bez zagnieżdżonych
+ * `{}` w wartościach tokenów (sprawdzone: żadna wartość w tokeny.css nie
+ * zawiera `{`/`}`), więc dopasowanie niezachłanne do pierwszego `}` jest
+ * bezpieczne. */
+function wytnijBlokJasny(tekstTokenyCss) {
+  const m = /:root\s*\{([\s\S]*?)\}/.exec(tekstTokenyCss);
+  if (!m) {
+    throw new Error(`nie znalazłem bloku ":root { ... }" (motyw jasny) w ${SCIEZKA_TOKENY_CSS}`);
+  }
+  return m[1];
+}
+
+/** Jak wyżej, dla `@media (prefers-color-scheme: dark) { :root { ... } }`
+ * (motyw ciemny domyślny — wartości identyczne z `:root[data-theme="dark"]`
+ * dziś). */
+function wytnijBlokCiemny(tekstTokenyCss) {
+  const m =
+    /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([\s\S]*?)\}\s*\}/.exec(tekstTokenyCss);
+  if (!m) {
+    throw new Error(
+      `nie znalazłem bloku "@media (prefers-color-scheme: dark) { :root { ... } }" (motyw ciemny) w ${SCIEZKA_TOKENY_CSS}`,
+    );
+  }
+  return m[1];
+}
+
+/** Czyta WSZYSTKIE tokeny barw (dowolna nazwa) z podanego fragmentu CSS —
+ * źródło nazw: lista par nie jest wpisana ręką, wyprowadzona z tego,
+ * co faktycznie stoi w bloku. */
+function wczytajTokenyBarwZBloku(blokCss) {
+  const tokeny = {};
+  const rx = /--([\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g;
+  let m;
+  while ((m = rx.exec(blokCss))) {
+    tokeny[m[1]] = m[2];
+  }
+  return tokeny;
+}
+
+/** Klasyfikuje KAŻDĄ nazwę z `nazwyOdkryte` (faktycznie odczytane z pliku, nie
+ * lista pisana ręką) w dokładnie jedną z trzech ról: tekst / powierzchnia /
+ * poza zakresem — regułą po korzeniu nazwy (`pasujeDoKorzenia`) dla dwóch
+ * pierwszych, jawnym wpisem z powodem (`rejestrPozaZakresem`) dla trzeciej.
+ * Nazwa spoza wszystkich trzech (albo pasująca do korzenia OBU ról naraz —
+ * sprzeczność) kończy pomiar kodem 2 w wołającym (`main()`), nie wchodzi do
+ * pomiaru po cichu. Zwraca same LISTY NAZW ODKRYTYCH w każdej roli — to z
+ * nich (nie z `KORZENIE_*` wprost) buduje pary `zbudujParyTekstuNaPowierzchni`
+ * niżej, więc nowy token pasujący do korzenia automatycznie rusza mianownik,
+ * bez zmiany kodu.
+ *
+ * `rejestrPozaZakresem` (domyślnie `TOKENY_POZA_ZAKRESEM`, PEŁNY rejestr) jest
+ * drugim, JAWNYM parametrem — nie warunkiem wewnątrz tej funkcji. Produkcja
+ * (`zbudujParyTekstuNaPowierzchni` wołane z `main()`) nie podaje go, więc
+ * dostaje PEŁNY rejestr i sprawdza go BEZWARUNKOWO, dla KAŻDEJ liczby nazw w
+ * `nazwyOdkryte` — 0 obecnych z 20 wpisów rejestru kończy się tak samo jak 19
+ * obecnych z 20: rzutem, z nazwami WSZYSTKICH brakujących. Zero progu, zero
+ * wyjątku od reguły (poprzedni próg "> połowy rejestru
+ * obecna" dawał ciszę przy 10 z 20 i mniej, WŁĄCZNIE z 0 z 20, czyli gdy CAŁY
+ * rejestr jest nieaktualny; to była odwrotność celu tej kontroli).
+ *
+ * Wołający z MAŁYM, SYNTETYCZNYM `nazwyOdkryte` (próba izolowanego bilansu,
+ * nie realny arkusz z tokeny.css) podaje WŁASNY, jawnie zadeklarowany
+ * `rejestrPozaZakresem` — podzbiór (albo pustą listę), o którym TEN wołający
+ * twierdzi, że jest dla niego kompletny. Niepełność danych syntetycznych jest
+ * więc biorą na siebie WOŁAJĄCY, nie ukrywa jej cichy próg w produkcji. */
+export function wyklasyfikujTokenyTresci(nazwyOdkryte, rejestrPozaZakresem = TOKENY_POZA_ZAKRESEM) {
+  const poza = new Set(rejestrPozaZakresem.map((t) => t.nazwa));
+  const teksty = [];
+  const powierzchnie = [];
+  const pozaZakresu = [];
+  const sprzeczne = [];
+  const niezaklasyfikowane = [];
+
+  for (const nazwa of nazwyOdkryte) {
+    const jestTekstem = pasujeDoKorzenia(nazwa, KORZENIE_TEKSTU_NOWY);
+    const jestPowierzchnia = pasujeDoKorzenia(nazwa, KORZENIE_POWIERZCHNI_NOWY);
+    if (jestTekstem && jestPowierzchnia) {
+      sprzeczne.push(nazwa);
+    } else if (jestTekstem) {
+      teksty.push(nazwa);
+    } else if (jestPowierzchnia) {
+      powierzchnie.push(nazwa);
+    } else if (poza.has(nazwa)) {
+      pozaZakresu.push(nazwa);
+    } else {
+      niezaklasyfikowane.push(nazwa);
+    }
+  }
+
+  // Wpis w `rejestrPozaZakresem`, którego nazwa zniknęła z `nazwyOdkryte`
+  // (token USUNIĘTY z tokeny.css, wpis w rejestrze pozostał) — odpowiednik,
+  // dla tego rejestru, tego co część STATUSOWA tego pliku już robi dla
+  // ETYKIETY_PAR_ZNANE/NAZWY_TEL_ZNANE w `sprawdzWzgledemZnanejListy`
+  // (gałąź "już nie istnieje", patrz tam). Bez tej kontroli taki wpis nie
+  // zostawiał dziś ŻADNEGO śladu — ani w wyniku, ani w kodzie wyjścia.
+  //
+  // BEZWARUNKOWO, bez progu: KAŻDY wpis `rejestrPozaZakresem` bez odpowiednika
+  // w `nazwyOdkryte` trafia tu, niezależnie od tego, ile innych wpisów TEGO
+  // SAMEGO rejestru jest obecnych — przy rejestrze pełnym (20 wpisów, domyślny
+  // parametr, ścieżka produkcyjna) i 0 obecnych to 20 nazw w komunikacie, nie
+  // cisza. Zestaw syntetyczny, dla którego pełny 20-wpisowy rejestr NIE jest
+  // właściwym punktem odniesienia (próba bilansu, dane budowane w izolacji),
+  // podaje WŁASNY `rejestrPozaZakresem` w drugim argumencie (patrz JSDoc
+  // funkcji wyżej i próba K3/K1, dane syntetyczne, w pliku
+  // __tests__/pomiar-marginesu-kontrastu-nowy-front-swiadek.test.ts) — to ten
+  // wołający deklaruje, jakiego podzbioru rejestru oczekuje, i bierze na
+  // siebie odpowiedzialność za jego kompletność względem własnych danych.
+  const brakujaceWRejestrzePozaZakresem = rejestrPozaZakresem.filter((t) => !nazwyOdkryte.includes(t.nazwa));
+
+  if (sprzeczne.length > 0 || niezaklasyfikowane.length > 0 || brakujaceWRejestrzePozaZakresem.length > 0) {
+    const czesci = [];
+    if (sprzeczne.length > 0)
+      czesci.push(
+        `token(y) pasujące jednocześnie do korzenia tekstu I powierzchni (sprzeczna klasyfikacja): ${sprzeczne.join(", ")}`,
+      );
+    if (niezaklasyfikowane.length > 0)
+      czesci.push(
+        `token(y) barwy spoza znanych korzeni (KORZENIE_TEKSTU_NOWY / KORZENIE_POWIERZCHNI_NOWY) i spoza TOKENY_POZA_ZAKRESEM: ${niezaklasyfikowane.join(", ")}`,
+      );
+    if (brakujaceWRejestrzePozaZakresem.length > 0)
+      czesci.push(
+        `wpis(y) TOKENY_POZA_ZAKRESEM bez odpowiednika w arkuszu (token usunięty z tokeny.css, wpis w rejestrze pozostał — usuń wpis albo przywróć token, zanim to wejdzie do pomiaru): ${brakujaceWRejestrzePozaZakresem.map((t) => `--${t.nazwa}`).join(", ")}`,
+      );
+    throw new Error(
+      `zbiór tokenów barw w tokeny.css nie da się jednoznacznie zaklasyfikować: ${czesci.join("; ")}. Dopisz nazwę do właściwego korzenia (jeśli to wariant tekstu/powierzchni) albo do TOKENY_POZA_ZAKRESEM z powodem, zanim ten token wejdzie do pomiaru.`,
+    );
+  }
+
+  return { teksty, powierzchnie, pozaZakresu };
+}
+
+/** Pełny iloczyn: token tekstu × token powierzchni × motyw (jasny/ciemny),
+ * nowy front — z NAZW FAKTYCZNIE ODKRYTYCH w tokeny.css i zaklasyfikowanych
+ * przez `wyklasyfikujTokenyTresci` wyżej (nie z listy pisanej ręką). Bez
+ * osobnego mechanizmu wykluczeń par: wcześniejsza wersja miała `WYKLUCZENIA_TEKSTU_NOWY`
+ * zawsze pustą — martwą gałąź, której klucze (tekst/powierzchnia/motyw) nie
+ * pasowały nawet do kształtu użytego w części statusowej (etykieta/tlo) i
+ * której nikt nigdy nie wykonał — usunięta, nie
+ * "naprawiona bez użycia": jeśli realna potrzeba wykluczenia pary nowego
+ * frontu się pojawi, wraca razem z pierwszym prawdziwym wpisem i świadkiem,
+ * nie jako pusty rusztunek.
+ *
+ * `rejestrPozaZakresem` (domyślnie `TOKENY_POZA_ZAKRESEM`, PEŁNY) przechodzi
+ * WPROST do `wyklasyfikujTokenyTresci` niżej — patrz JSDoc tam. Produkcja
+ * (wołanie z `main()`) nie podaje go: dostaje pełny rejestr, sprawdzany
+ * bezwarunkowo. Próba z syntetycznym `tokenyMotywow` podaje własny. */
+export function zbudujParyTekstuNaPowierzchni(tokenyMotywow, rejestrPozaZakresem = TOKENY_POZA_ZAKRESEM) {
+  const nazwyJasny = Object.keys(tokenyMotywow.jasny);
+  const nazwyCiemny = Object.keys(tokenyMotywow.ciemny);
+  if (nazwyJasny.length !== nazwyCiemny.length || nazwyJasny.some((n) => !nazwyCiemny.includes(n))) {
+    throw new Error(
+      `zestaw tokenów barw motywu ciemnego różni się od jasnego w tokeny.css: jasny ma ${nazwyJasny.length} (${nazwyJasny.join(", ")}), ciemny ma ${nazwyCiemny.length} (${nazwyCiemny.join(", ")}).`,
+    );
+  }
+
+  const {
+    teksty: nazwyTekstu,
+    powierzchnie: nazwyPowierzchni,
+    pozaZakresu,
+  } = wyklasyfikujTokenyTresci(nazwyJasny, rejestrPozaZakresem);
+
+  if (nazwyTekstu.length === 0) {
+    throw new Error(
+      `0 tokenów pasujących do korzeni ${KORZENIE_TEKSTU_NOWY.join("/")} znaleziono w tokeny.css (nowy front, tekst)`,
+    );
+  }
+  if (nazwyPowierzchni.length === 0) {
+    throw new Error(
+      `0 tokenów pasujących do korzeni ${KORZENIE_POWIERZCHNI_NOWY.join("/")} znaleziono w tokeny.css (nowy front, powierzchnia)`,
+    );
+  }
+
+  const wynik = [];
+  for (const [motyw, tokeny] of [
+    ["jasny", tokenyMotywow.jasny],
+    ["ciemny", tokenyMotywow.ciemny],
+  ]) {
+    for (const tekstNazwa of nazwyTekstu) {
+      for (const powierzchniaNazwa of nazwyPowierzchni) {
+        const etykieta = `--${tekstNazwa} na --${powierzchniaNazwa} (${motyw}, nowy front)`;
+        const tekstHex = tokeny[tekstNazwa];
+        const powierzchniaHex = tokeny[powierzchniaNazwa];
+        if (!tekstHex) throw new Error(`brak tokenu --${tekstNazwa} w tokeny.css (motyw ${motyw})`);
+        if (!powierzchniaHex) throw new Error(`brak tokenu --${powierzchniaNazwa} w tokeny.css (motyw ${motyw})`);
+        const tekstRgb = (() => {
+          const c = hexNaRgba(tekstHex);
+          return [c.r, c.g, c.b];
+        })();
+        const powierzchniaRgb = (() => {
+          const c = hexNaRgba(powierzchniaHex);
+          return [c.r, c.g, c.b];
+        })();
+        const k = kontrast(tekstRgb, powierzchniaRgb);
+        wynik.push({
+          etykieta,
+          kontrast: k,
+          prog: PROG_TEKSTU_TRESCI,
+          margines: k - PROG_TEKSTU_TRESCI,
+        });
+      }
+    }
+  }
+
+  const oczekiwanePary = nazwyTekstu.length * nazwyPowierzchni.length * 2;
+  return {
+    wynik,
+    oczekiwanePary,
+    liczbaTokenowOdkrytych: nazwyJasny.length,
+    liczbaTokenowTekstu: nazwyTekstu.length,
+    liczbaTokenowPowierzchni: nazwyPowierzchni.length,
+    liczbaTokenowPozaZakresem: pozaZakresu.length,
+    nazwyPozaZakresem: pozaZakresu,
+  };
+}
+
+/** Buduje tokeny motywów PRAWDZIWĄ ścieżką produkcyjną — czyta tokeny.css z
+ * dysku (mirror `wczytajProdukcyjneParyITla` wyżej, część statusowa). */
+export function wczytajProdukcyjneTokenyTresci() {
+  const tekstTokenyCss = readFileSync(SCIEZKA_TOKENY_CSS, "utf8");
+  const jasny = wczytajTokenyBarwZBloku(wytnijBlokJasny(tekstTokenyCss));
+  const ciemny = wczytajTokenyBarwZBloku(wytnijBlokCiemny(tekstTokenyCss));
+  return { jasny, ciemny };
+}
+
+// ---------------------------------------------------------------------------
+// Pary dodatkowe, nowy front — dwie konkretne, nazwane pary zostawione jako
+// otwarty kod 2 przy przeglądzie paska postępu, domykane tu pomiarem (decyzja
+// właściciela, ustalona przy przeglądzie paska postępu):
+//   - `--border-strong` na `--grey` (ciemny), próg 3,0 — to OBRYS, nie tekst
+//     treści (`--border-strong` zostaje w TOKENY_POZA_ZAKRESEM, zakres
+//     równoległej gałęzi). Wpis niżej jest ŚWIADOMIE WĄSKIM, NAZWANYM
+//     wyjątkiem dla tej jednej pary — NIE przenosi `border-strong` do
+//     KORZENIE_TEKSTU_NOWY/KORZENIE_POWIERZCHNI_NOWY i nie zmienia żadnej
+//     klasyfikacji wyżej.
+//   - `--subtle` na `--card-warm` (ciemny), próg 4,5 — już policzona w
+//     iloczynie tekst×powierzchnia wyżej (KORZENIE_TEKSTU_NOWY ×
+//     KORZENIE_POWIERZCHNI_NOWY); wypisana tu PONOWNIE pod jawną,
+//     wyszukiwalną nazwą, żeby obie ciasne pary z paska postępu były widoczne
+//     w jednym miejscu wyniku bez przeszukiwania macierzy 4×4×2.
+// Liczone TĄ SAMĄ matematyką (`kontrast()`/`hexNaRgba`) z TYCH SAMYCH
+// tokenów, czytanych raz przez `wczytajProdukcyjneTokenyTresci` — żadna
+// wartość koloru nie jest tu wpisana na sztywno. Barwy NIE są tu poprawiane:
+// margines/próg poniżej to znalezisko dla osobnego strumienia wyglądu.
+const PARY_DODATKOWE_NOWY_FRONT = [
+  {
+    tekst: "border-strong",
+    powierzchnia: "grey",
+    motyw: "ciemny",
+    prog: 3.0,
+    opis: "obrys, nie tekst treści — próg 3,0, wyjątek nazwany, nie reguła",
+  },
+  {
+    tekst: "subtle",
+    powierzchnia: "card-warm",
+    motyw: "ciemny",
+    prog: PROG_TEKSTU_TRESCI,
+    opis: "już w iloczynie tekst×powierzchnia wyżej, wypisana tu ponownie pod jawną nazwą",
+  },
+];
+
+/** Mierzy `PARY_DODATKOWE_NOWY_FRONT` z tokenów faktycznie wczytanych z
+ * tokeny.css (`tokenyMotywow`, ten sam obiekt co iloczyn tekst×powierzchnia
+ * wyżej) — rzuca (kod 2 w main()) gdy któryś z dwóch tokenów pary nie
+ * istnieje w danym motywie. */
+export function zbudujParyDodatkoweNowegoFrontu(tokenyMotywow) {
+  return PARY_DODATKOWE_NOWY_FRONT.map(({ tekst, powierzchnia, motyw, prog: progPary, opis }) => {
+    const tokeny = motyw === "jasny" ? tokenyMotywow.jasny : tokenyMotywow.ciemny;
+    const tekstHex = tokeny[tekst];
+    const powierzchniaHex = tokeny[powierzchnia];
+    if (!tekstHex) {
+      throw new Error(`brak tokenu --${tekst} w tokeny.css (motyw ${motyw}, para dodatkowa)`);
+    }
+    if (!powierzchniaHex) {
+      throw new Error(`brak tokenu --${powierzchnia} w tokeny.css (motyw ${motyw}, para dodatkowa)`);
+    }
+    const a = hexNaRgba(tekstHex);
+    const b = hexNaRgba(powierzchniaHex);
+    const k = kontrast([a.r, a.g, a.b], [b.r, b.g, b.b]);
+    return {
+      etykieta: `--${tekst} na --${powierzchnia} (${motyw}, nowy front, para dodatkowa: ${opis})`,
+      kontrast: k,
+      prog: progPary,
+      margines: k - progPary,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Rejestr zastanych odstępstw — pary/tła, które SĄ dziś poniżej progu,
 // o których wiemy i które ŚWIADOMIE przepuszczamy. Para spoza tego rejestru
 // (i spoza rejestru tymczasowego niżej) poniżej progu = kod niezerowy.
@@ -866,6 +1289,95 @@ function main() {
 
   wypiszMacierz(macierz, wykluczone, oczekiwane);
 
+  // ===========================================================================
+  // CZĘŚĆ DRUGA: tekst treści na tłach powierzchni — strumień NOWEGO FRONTU
+  // (zakres zawężony, patrz komentarz przy definicjach wyżej: stary front,
+  // app/globals.css, jest świadomie poza zakresem tego dodatku — decyzja
+  // właściciela D-64 p.3 / D-91). Nazwa strumienia zostaje w każdym wierszu
+  // wyjścia mimo że jest dziś jedynym strumieniem.
+  // `--nadpisz` NIE działa tutaj (patrz uzasadnienie przy SCIEZKA_TOKENY_CSS
+  // wyżej).
+  // ===========================================================================
+
+  let tokenyMotywowTresci;
+  try {
+    tokenyMotywowTresci = wczytajProdukcyjneTokenyTresci();
+  } catch (err) {
+    console.error(`NIE ZMIERZONO (tekst treści, nowy front) — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+  let macierzTekstuNowy,
+    oczekiwaneParyNowy,
+    liczbaOdkrytychNowy,
+    liczbaTekstuNowy,
+    liczbaPowierzchniNowy,
+    liczbaPozaZakresemNowy,
+    nazwyPozaZakresemNowy;
+  try {
+    ({
+      wynik: macierzTekstuNowy,
+      oczekiwanePary: oczekiwaneParyNowy,
+      liczbaTokenowOdkrytych: liczbaOdkrytychNowy,
+      liczbaTokenowTekstu: liczbaTekstuNowy,
+      liczbaTokenowPowierzchni: liczbaPowierzchniNowy,
+      liczbaTokenowPozaZakresem: liczbaPozaZakresemNowy,
+      nazwyPozaZakresem: nazwyPozaZakresemNowy,
+    } = zbudujParyTekstuNaPowierzchni(tokenyMotywowTresci));
+  } catch (err) {
+    console.error(`NIE ZMIERZONO (tekst treści, nowy front) — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+  console.log(
+    `\n=== Margines kontrastu — tekst treści na tłach powierzchni, nowy front (design-system/tokeny/tokeny.css) ===`,
+  );
+  console.log(
+    `Tokeny barw odkryte w :root (motyw jasny): ${liczbaOdkrytychNowy}. Tekst: ${liczbaTekstuNowy}. Powierzchnia: ${liczbaPowierzchniNowy}. Poza zakresem: ${liczbaPozaZakresemNowy}. Suma: ${liczbaTekstuNowy}+${liczbaPowierzchniNowy}+${liczbaPozaZakresemNowy}=${liczbaTekstuNowy + liczbaPowierzchniNowy + liczbaPozaZakresemNowy} (odkrytych: ${liczbaOdkrytychNowy}).`,
+  );
+  console.log(`Poza zakresem, z powodem (${nazwyPozaZakresemNowy.length}):`);
+  for (const nazwa of nazwyPozaZakresemNowy) {
+    const wpis = TOKENY_POZA_ZAKRESEM.find((t) => t.nazwa === nazwa);
+    console.log(
+      `  - --${nazwa}\n    powód: ${wpis ? wpis.powod : "(BŁĄD WEWNĘTRZNY: brak wpisu z powodem — guard powinien to złapać wcześniej)"}`,
+    );
+  }
+  const posortNowy = [...macierzTekstuNowy].sort((a, b) => a.margines - b.margines);
+  console.log("\nmargines".padEnd(9) + "kontrast".padEnd(10) + "próg".padEnd(7) + "para");
+  for (const w of posortNowy) {
+    console.log(
+      formatuj(w.margines).padEnd(9) + formatuj(w.kontrast).padEnd(10) + w.prog.toFixed(1).padEnd(7) + w.etykieta,
+    );
+  }
+  console.log(
+    `\nZmierzone pary (tekst treści, nowy front): ${macierzTekstuNowy.length} (tekst ${liczbaTekstuNowy} × powierzchnia ${liczbaPowierzchniNowy} × motywy 2 = ${oczekiwaneParyNowy}).`,
+  );
+  const ponizejNowy = macierzTekstuNowy.filter((w) => w.margines < 0);
+  console.log(
+    `\ntekst-tlo (nowy front): ${ponizejNowy.length} z ${macierzTekstuNowy.length} ponizej progu, ${liczbaPozaZakresemNowy} tokenow poza zakresem`,
+  );
+
+  let paryDodatkoweNowy;
+  try {
+    paryDodatkoweNowy = zbudujParyDodatkoweNowegoFrontu(tokenyMotywowTresci);
+  } catch (err) {
+    console.error(`NIE ZMIERZONO (tekst treści, nowy front, pary dodatkowe) — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+  console.log(
+    `\n=== Pary dodatkowe, nowy front (znaleziska z przeglądu paska postępu, domknięte pomiarem) ===`,
+  );
+  console.log("\nmargines".padEnd(9) + "kontrast".padEnd(10) + "próg".padEnd(7) + "para");
+  for (const w of paryDodatkoweNowy) {
+    console.log(
+      formatuj(w.margines).padEnd(9) + formatuj(w.kontrast).padEnd(10) + w.prog.toFixed(1).padEnd(7) + w.etykieta,
+    );
+  }
+  const ponizejDodatkoweNowy = paryDodatkoweNowy.filter((w) => w.margines < 0);
+  console.log(
+    `\npary dodatkowe (nowy front): ${ponizejDodatkoweNowy.length} z ${paryDodatkoweNowy.length} ponizej progu`,
+  );
+
+  const ponizejNowyRazem = [...ponizejNowy, ...ponizejDodatkoweNowy];
+
   const pelnyRejestr = [...ZASTANE_ODSTEPSTWA, ...ODKRYTE_POMIAREM_TYMCZASOWE];
   const { naruszeniaNiepokryte, nieaktualneWpisyRejestru } = ocenProgi(macierz, pelnyRejestr);
 
@@ -886,6 +1398,25 @@ function main() {
     selfTestOk = uruchomKontroleNiezalezna();
   }
 
+  // Wiersz podsumowania dla wolajacego, ktory czyta tylko jeden wiersz, nie
+  // cala macierz: licznik I mianownik, oba z pomiaru (macierz.length NIE jest
+  // wpisany na sztywno - to dlugosc tablicy faktycznie zmierzonych par/tel w
+  // tym biegu). "w rejestrze" pojawia sie TYLKO gdy kazde odstepstwo ponizej
+  // progu jest pokryte swiezym wpisem w ZASTANE_ODSTEPSTWA/ODKRYTE_POMIAREM_TYMCZASOWE
+  // (naruszeniaNiepokryte.length === 0 w tym miejscu) - to jest gwarantowane
+  // przez ocenProgi() wyzej, nie zgadywane tutaj.
+  const ponizejProguLiczba = macierz.filter((w) => w.margines < 0).length;
+  if (ponizejProguLiczba === 0) {
+    console.log(`\nkontrast: ${ponizejProguLiczba} z ${macierz.length} ponizej progu`);
+  } else if (naruszeniaNiepokryte.length === 0) {
+    console.log(`\nkontrast: ${ponizejProguLiczba} z ${macierz.length} ponizej progu, w rejestrze`);
+  } else {
+    const pokryte = ponizejProguLiczba - naruszeniaNiepokryte.length;
+    console.log(
+      `\nkontrast: ${ponizejProguLiczba} z ${macierz.length} ponizej progu, ${pokryte} w rejestrze, ${naruszeniaNiepokryte.length} NIEPOKRYTE`,
+    );
+  }
+
   if (naruszeniaNiepokryte.length > 0) {
     console.error(`\nNIEPOKRYTE NARUSZENIA PROGU (${naruszeniaNiepokryte.length}) — poniżej progu i spoza obu rejestrów:`);
     for (const w of naruszeniaNiepokryte) {
@@ -897,6 +1428,11 @@ function main() {
     for (const w of nieaktualneWpisyRejestru) {
       console.error(`  - ${w.etykieta} × ${w.tlo}: ${w.stan}`);
     }
+  }
+
+  if (ponizejNowyRazem.length > 0) {
+    console.error(`\nNARUSZENIE PROGU TEKSTU TREŚCI — nowy front (${ponizejNowyRazem.length}):`);
+    for (const w of ponizejNowyRazem) console.error(`  - ${w.etykieta}: margines=${formatuj(w.margines)}`);
   }
 
   // Kontrola niezależna sprawdza samą matematykę (`kontrast()`), nie
@@ -914,6 +1450,11 @@ function main() {
   if (naruszeniaNiepokryte.length > 0 || nieaktualneWpisyRejestru.length > 0) {
     console.error("\nWYNIK: ZMIERZONE NARUSZENIE.");
     process.exit(KOD_NARUSZENIE);
+  }
+
+  if (ponizejNowyRazem.length > 0) {
+    console.error("\nWYNIK: ZMIERZONE NARUSZENIE (tekst treści).");
+    process.exit(KOD_NARUSZENIE_TEKSTU);
   }
 
   console.log("\nWYNIK: wszystkie pary/tła powyżej progu albo pokryte świeżym wpisem rejestru.");

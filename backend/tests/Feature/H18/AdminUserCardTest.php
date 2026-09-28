@@ -48,7 +48,39 @@ class AdminUserCardTest extends TestCase
             'hours_accepted' => $aggregate['hours_accepted'],
             'supervision_present' => $aggregate['supervision_present'],
             'workshop_done' => $aggregate['workshop_done'],
+            'path_tests_passed' => $aggregate['path_tests_passed'],
+            'path_tests_total' => $aggregate['path_tests_total'],
         ], $card);
+    }
+
+    public function test_card_progress_keeps_both_path_tests_keys_under_their_own_names(): void
+    {
+        $this->seed();
+        $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
+
+        $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
+
+        // Osobna proba od test_card_progress_is_the_same_source_as_the_aggregator: ta
+        // pilnuje KONTRAKTU KARTY (nazwy kluczy path_tests_passed / path_tests_total i ich
+        // typu), nie zrodla liczb. Nie dubluje passedTestsCount() - to inna wielkosc
+        // (rozne testy zaliczone choc jedna proba, na calej platformie, bez mianownika),
+        // z wlasnym pokryciem gdzie indziej.
+        $progress = $this->getJson("/api/v1/admin/users/{$marta->id}")->assertOk()->json('data.progress');
+
+        // Noga pozytywna: oba klucze SA i sa liczbami calkowitymi.
+        $this->assertArrayHasKey('path_tests_passed', $progress);
+        $this->assertArrayHasKey('path_tests_total', $progress);
+        $this->assertIsInt($progress['path_tests_passed']);
+        $this->assertIsInt($progress['path_tests_total']);
+
+        // Noga negatywna: gdyby klucz zniknal albo zmienil nazwe (np. na
+        // "tests_passed"/"pathTestsTotal"), assertArrayHasKey powyzej juz by padl - ta
+        // asercja przygważdza, ze zestaw kluczy progress NIE rosnie ponad znane siedem,
+        // wiec cichy dopisek/zmiana nazwy zostaje zlapana, nie przemilczana.
+        $this->assertEqualsCanonicalizing(
+            ['courses_done', 'courses_total', 'hours_accepted', 'supervision_present', 'workshop_done', 'path_tests_passed', 'path_tests_total'],
+            array_keys($progress),
+        );
     }
 
     public function test_card_has_all_five_blocks_and_full_pesel_for_administration(): void

@@ -14,7 +14,7 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * przekierowują (kod JS, `signIn("keycloak", …)`) na zewnętrzną domenę
  * Keycloak w ciągu sekund, bez żadnego kliknięcia — to NIE jest ekran
  * PsychON i nie wolno tam próbować logowania (nawet bez wpisywania hasła,
- * to poza zakresem tego zlecenia). Ta decyzja i uzasadnienie: patrz plik
+ * to poza zakresem tej zmiany). Ta decyzja i uzasadnienie: patrz plik
  * pomiaru.
  *
  * CELOWO pominięte też `/logowanie/konta`: ta trasa istnieje wyłącznie po

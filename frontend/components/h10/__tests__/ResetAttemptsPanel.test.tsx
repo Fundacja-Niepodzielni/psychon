@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 /**
  * Świadek panelu resetu limitu podejść (H10 · karta osoby, region
- * „user-actions"). Mierzone jest zachowanie opisane w zleceniu, nie kształt
+ * „user-actions"). Mierzone jest zachowanie opisane w wymaganiach, nie kształt
  * komponentu:
  *
  * 1. powód jest obowiązkowy — bez niego żądanie w ogóle nie wychodzi;
@@ -149,7 +149,7 @@ describe("cztery stany ekranu", () => {
   });
 
   it("nie wiem — błąd sieci NIE jest porażką: brak roli alert i informacja, że stan jest nieznany", async () => {
-    // Kryterium 4, ostatni z czterech stanów — i najważniejszy w zleceniu.
+    // Kryterium 4, ostatni z czterech stanów — i najważniejszy w wymaganiach.
     // Asercja sprawdza WPROST brak komunikatu o porażce (roli „alert"), a nie
     // tylko obecność własnego tekstu — inaczej test przeszedłby także wtedy,
     // gdyby ekran pokazywał OBA komunikaty naraz.

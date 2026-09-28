@@ -1,0 +1,12 @@
+/* Rząd liczb `StatRow` (O10) — siatka elastyczna, zero własnego tła/ramki
+   (kafle same w sobie już nie mają obudowy, patrz StatTile.module.css). */
+.rzad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-24);
+}
+
+.komorka {
+  flex: 1 1 160px;
+  min-width: 160px;
+}

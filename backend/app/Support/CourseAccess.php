@@ -105,7 +105,7 @@ final class CourseAccess
     /**
      * A course without a test has the test condition satisfied by definition.
      */
-    private static function testPassed(User $user, Course $course): bool
+    public static function testPassed(User $user, Course $course): bool
     {
         $test = $course->test;
 

@@ -1,0 +1,25 @@
+/* Nagłówek ekranu `PageHeader` (O1) — sama rama, zero własnego tła/ramki
+   (nagłówek strony, nie karta). Odstępy tylko z tokenów `--space-*`. */
+.naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.gornyWiersz {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  flex-wrap: wrap;
+}
+
+.tytulWiersz {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.akcja {
+  margin: 0;
+}

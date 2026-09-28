@@ -215,7 +215,7 @@ const WSZYSTKIE = wykryjTrasy();
  * do jednej trasy (podział na kubełki jest tożsamościowy — suma ZAWSZE się
  * zgadza, to nie jest realny strażnik). Próg niżej pada, gdy detekcja
  * znajdzie MNIEJ tras niż dziś — dowód czerwieni i cofnięcie opisane w
- * meldunku zlecenia, nie w tym pliku.
+ * zapisie z tamtego pomiaru, nie w tym pliku.
  */
 const MINIMUM_TRAS_ZMIERZONE_DZIS = 46;
 

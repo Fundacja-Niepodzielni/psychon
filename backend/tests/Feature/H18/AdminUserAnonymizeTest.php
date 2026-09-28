@@ -322,7 +322,7 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
      * `AuditLogEntry::creating` — `AuditLog::record()` woła je jako ostatni
      * krok WEWNĄTRZ transakcji procedury, więc awaria tam gwarantuje, że
      * krok plikowy już się wykonał. To najmniej inwazyjny z trzech sposobów
-     * wymienionych w zleceniu: `AuditLog` to klasa `final` z metodą statyczną
+     * wymienionych w wymaganiach: `AuditLog` to klasa `final` z metodą statyczną
      * (nie da się jej podmienić partial mockiem bez zmiany produkcyjnego
      * kodu), a osobne zdarzenie domenowe dla tej operacji nie istnieje.
      *

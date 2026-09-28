@@ -248,7 +248,7 @@ class AdminLegalDocumentTest extends TestCase
         $this->assertDatabaseMissing('legal_document_versions', ['type' => 'regulamin', 'version' => 'v9']);
     }
 
-    /** Limit treści (20000 znaków) — kryterium L5 zlecenia. */
+    /** Limit treści (20000 znaków) — kryterium L5 wymagań. */
     public function test_content_over_the_limit_is_rejected(): void
     {
         $this->actingAsRole('super_admin');

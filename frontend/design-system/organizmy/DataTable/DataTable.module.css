@@ -1,0 +1,65 @@
+.tabela {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.siatka {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.wierszNaglowka,
+.wiersz {
+  display: grid;
+  grid-template-columns: repeat(var(--kolumny), 1fr);
+  gap: var(--space-12);
+}
+
+.wierszNaglowka {
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+  padding: var(--space-8) var(--card-px);
+  border-bottom: 1px solid var(--border);
+}
+
+.wiersz {
+  padding: var(--space-12) var(--card-px);
+  border-bottom: 1px solid var(--border);
+  min-height: var(--hit-min);
+  align-items: center;
+}
+
+.komorka {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Ponizej progu: siatka -> pary/karty, ZERO poziomego przewijania. */
+@media (max-width: 639px) {
+  .wierszNaglowka {
+    display: none;
+  }
+
+  .wiersz {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    margin-bottom: var(--space-12);
+  }
+
+  .wiersz .komorka {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-8);
+  }
+
+  .wiersz .komorka::before {
+    content: attr(data-etykieta);
+    font-weight: var(--fw-medium);
+    color: var(--muted);
+  }
+}

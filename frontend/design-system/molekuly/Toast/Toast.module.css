@@ -16,3 +16,25 @@
 .powiadomienie :global(p) {
   color: inherit;
 }
+/* WCAG 2.5.5 (AAA), próg 44 px: przycisk zamknięcia — zmierzone przed tą
+   zmianą, poligon, boundingBox(): 42.77×44 (< 44 szerokością). Obszar
+   DOTYKU rośnie warstwą ::after (bez tła i ramki — niewidoczna),
+   wyśrodkowaną na przycisku, wyciągniętą do co najmniej 46 px w obu
+   wymiarach (44 + 2 px zapasu). ::after jest position:absolute, poza
+   przepływem flex — szerokość widocznej pigułki `.powiadomienie` i odstęp
+   `gap` do sąsiednich elementów (Cofnij, odnośnik dziennika) zostają bez
+   zmian. Button.module.css (atom, poza zakresem tej zmiany) nie jest
+   dotykany — selektor celuje w konkretny przycisk po `aria-label`
+   nadanym w Toast.tsx. */
+.powiadomienie [aria-label="Zamknij powiadomienie"] {
+  position: relative;
+}
+.powiadomienie [aria-label="Zamknij powiadomienie"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(46px, 100%);
+  height: max(46px, 100%);
+}

@@ -51,7 +51,7 @@ wektor 2. — teraz liczy się do `POZA_COPY`), i dekoduje **każde** wywołanie
 (`DUZY_OBIEKT_LINIE=<n>` linii rozpoznanych, `DUZY_OBIEKT_TRAFIENIA=<n>` po
 dekodowaniu — zamykając wektor 1.).
 
-**Druga naprawa, w tym samym zleceniu jak powyższa: te liczniki dziś ZMIENIAJĄ
+**Druga naprawa, w tych samych wymaganiach co powyższa: te liczniki dziś ZMIENIAJĄ
 kod wyjścia**, nie tylko trafiają do logu. `POZA_COPY>0` **lub**
 `DUZY_OBIEKT_TRAFIENIA>0` w `PLIK_PO` podnosi stan do `3` — dokładnie tak samo,
 jak trafienie wewnątrz bloku `COPY` — i `policz-trafienia.pl` wypisuje dla
@@ -80,7 +80,7 @@ ZMIERZONO), gdy `DUZY_OBIEKT_WIELOKROTNY_PO>0`: obecność wielokrotnego
 zapisu znaczy "nie wiem, czy jest tam znacznik", nigdy cicho "0". Konsekwencja
 nazwana wprost: **każdy** duży obiekt zapisany więcej niż jednym `lowrite`
 (nie tylko taki z rozdzielonym znacznikiem) daje dziś `2`, nie tylko te ze
-zmierzonym w tym zleceniu przypadkiem.
+zmierzonym w tych wymaganiach przypadkiem.
 
 Dwie klasy relacji **zmierzone empirycznie** (obraz `postgres:17`, patrz
 `dowod/uruchom-dowod.sh`) jako pomijane przez `pg_dump --data-only` bez
@@ -225,7 +225,7 @@ dodatnia przechodzi), żeby pokazać, że popsucie/format samego `PLIK_PO`
 wystarcza do stanu 2 lub 3 niezależnie od `PLIK_PRZED`.
 
 Uruchamia `kontrola-zrzutu.sh` w **osiemnastu** konfiguracjach łącznie —
-mapowanie każdego przypadku na wektor zlecenia jest w `dowod/OCZEKIWANIA.md`
+mapowanie każdego przypadku na wektor wymagań jest w `dowod/OCZEKIWANIA.md`
 (czytelne PRZED uruchomieniem, bez czytania kodu). Każdy bieg niesie **kod
 OCZEKIWANY**, doklejony do wywołania jako argument — `run_kontrola` porównuje
 go z kodem FAKTYCZNYM tego samego procesu i zapisuje wynik (`OK`/`ZLE`) do

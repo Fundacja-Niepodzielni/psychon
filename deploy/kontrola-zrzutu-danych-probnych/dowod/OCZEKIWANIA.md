@@ -8,9 +8,9 @@ obecnego w bazie zrodlowej znacznika, ma tu wlasne zdanie, dlaczego to NIE
 jest wyciek. Wiersz bez odpowiadajacego przypadku w "uruchom-dowod.sh" jest
 bledem tego pliku, nie przyrzadu.
 
-Numeracja "#" nizej to numeracja wektorow ze zlecenia (14 wierszy minimum);
+Numeracja "#" nizej to numeracja wektorow z wymagań (14 wierszy minimum);
 wiersz "6a" to dodatkowy wektor dopisany w trakcie biegu (nazwa relacji), bo
-zlecenie mowi wprost: "Lista jest minimum, nie sufitem."
+wymaganie mowi wprost: "Lista jest minimum, nie sufitem."
 
 | # | wektor | oczekiwany kod | przypadek w dowodzie | dlaczego |
 |---|---|---|---|---|
@@ -35,7 +35,7 @@ zlecenie mowi wprost: "Lista jest minimum, nie sufitem."
 | 18 | manifest klas pominietych ZEROWY (mv+fdw juz usuniete z bazy zrodlowej), przekazany jako 4. argument, przy TYM SAMYM PLIK_PO co #17 | 0 | `16-log-manifest-zero` | To NIE jest wyciek z tego samego powodu co #17 - manifest (obecnie zerowy) nadal jest wylacznie logiem, nie wejsciem do zadnej bramki; PLIK_PO jest niezmieniony wzgledem #17, wiec wynik ma byc identyczny (0), co dowodzi, ze TRESC manifestu nie wplywa na stan. |
 | 19 | duzy obiekt zapisany DWOMA wywolaniami lowrite, ROZSUNIETYMI inna linia (nie sasiadujacymi w pliku, ale wewnatrz TEGO SAMEGO nawiasu lo_open/lo_close) | 2 | `31-stan2-duzy-obiekt-rozciety-rozsuniete` | To NIE jest zaliczenie na 0: rozsuniecie nie zmienia tego, ze ZADEN pojedynczy kawalek, zdekodowany z osobna, nie niesie pelnego znacznika (ten sam powod co #5/`26-stan2-duzy-obiekt-rozciety`) - "DUZY_OBIEKT_WIELOKROTNY" w "policz-trafienia.pl" liczy przynaleznosc do jednego obiektu PO NAWIASIE "lo_open(...)"/"lo_close(...)", nie po sasiedztwie linii w pliku, wiec rozsuniecie inna linia miedzy dwoma wywolaniami TEGO SAMEGO obiektu nadal daje "nie wiem" (stan 2), nigdy ciche 0. |
 
-## Pomiar odwrotny (kontrola negatywna wymagana przez zlecenie)
+## Pomiar odwrotny (kontrola negatywna, obowiazkowa)
 
 Cofnieta zostala WYLACZNIE jedna linia bramki w "kontrola-zrzutu.sh" (ta,
 ktora sprawdza `SUMA_PO`/`POZA_COPY_PO`/`DUZY_OBIEKT_TRAFIENIA_PO` przed

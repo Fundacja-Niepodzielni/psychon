@@ -184,7 +184,7 @@ zapytaj_app_bezposrednio() {
     "http://127.0.0.1:${PORT_APP}/api/v1/me"
 }
 
-# Dwa liczniki osobno: 6 przypadkow z opisu zlecenia (K1 mowi o nich "6/6") i osobno
+# Dwa liczniki osobno: 6 przypadkow z opisu wymagan (K1 mowi o nich "6/6") i osobno
 # kontrola K4 (atrapa app ma domyslne bufory) - K1 i K4 sa oddzielnymi kryteriami, wiec
 # raport ponizej podaje obie liczby osobno, a kod wyjscia jest 0 tylko gdy OBIE sa zerowe.
 NIEZALICZONE=0

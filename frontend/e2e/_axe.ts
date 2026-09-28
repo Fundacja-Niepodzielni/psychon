@@ -5,7 +5,7 @@ import AxeBuilder from "@axe-core/playwright";
  * Reguły WCAG objęte skanem — te same tagi co deklaracja dostępności
  * (WCAG 2.1 AA), plus 2A jako podstawa.
  *
- * GRANICA ZASIĘGU (nie do rozszerzenia w tym zleceniu, tylko do zapisania):
+ * GRANICA ZASIĘGU (nie do rozszerzenia w tej zmianie, tylko do zapisania):
  * `axe.run()` skanuje DOM w stanie spoczynku — bez kursora nad elementem i
  * bez fokusu klawiatury. Kontrast, który zależy WYŁĄCZNIE od `:hover` albo
  * `:focus-visible` (a nie jest już niewystarczający w stanie spoczynku),

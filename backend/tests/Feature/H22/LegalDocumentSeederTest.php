@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Pakiet H22 · kryterium L7 zlecenia — seed zwraca zaślepkę treści, nigdy
+ * Pakiet H22 · kryterium L7 wymagań — seed zwraca zaślepkę treści, nigdy
  * tekst prawny napisany przez wykonawcę.
  */
 class LegalDocumentSeederTest extends TestCase

@@ -22,6 +22,11 @@
 /tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:218
 /tresc/frontend/__tests__/auth-rotacja-tokenu.test.ts:generic-api-key:269
 
+# 28.09.2026 - syntetyczna nazwa tokenu w tescie pomiaru marginesu kontrastu
+# ("zzz-..."): nazwa wymyslona po to, zeby przyrzad jej NIE znalazl w arkuszu stylow;
+# nigdy nie byla sekretem. gitleaks widzi ksztalt (stala z TOKEN w nazwie = wartosc), nie rzecz.
+/tresc/frontend/__tests__/pomiar-marginesu-kontrastu-nowy-front-swiadek.test.ts:generic-api-key:123
+
 # --- drugi ksztalt odcisku: skan HISTORII galezi (gitleaks w trybie `git`) ----------------
 # Powyzsze wpisy maja sciezke od /tresc/, bo krok bramki skanuje ROZPAKOWANY eksport commitu
 # zamontowany w kontenerze. Skan historii to inny tryb tego samego narzedzia i jego odcisk ma

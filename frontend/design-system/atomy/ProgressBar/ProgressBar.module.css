@@ -8,7 +8,7 @@
   height: 10px;
   border-radius: var(--r-pill);
   background: var(--grey);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   overflow: hidden;
 }
 .wypelnienie {
@@ -17,5 +17,5 @@
   background: var(--primary);
 }
 .wypelnienieOdtwarzacz {
-  background: var(--green);
+  background: var(--primary);
 }
