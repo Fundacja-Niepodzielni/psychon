@@ -64,13 +64,13 @@ class SupervisionReminderCommandTest extends TestCase
         $this->assertSame(0, Notification::query()->where('type', 'supervision.reminder')->count());
     }
 
-    public function test_the_command_is_scheduled_daily_at_eight(): void
+    public function test_the_command_is_scheduled_hourly(): void
     {
         $events = collect(app(Schedule::class)->events())
             ->filter(fn (Event $event): bool => str_contains((string) $event->command, 'supervision:send-reminders'));
 
         $this->assertCount(1, $events);
-        $this->assertSame('0 8 * * *', $events->first()->expression);
+        $this->assertSame('0 * * * *', $events->first()->expression);
     }
 
     private function slot(Carbon $startsAt): SupervisionSlot

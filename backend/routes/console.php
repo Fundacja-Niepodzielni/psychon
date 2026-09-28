@@ -16,5 +16,8 @@ Schedule::command('access:check-expired')->daily();
 Schedule::command('exports:purge-expired')->hourly()->withoutOverlapping();
 
 // H12 · Superwizja — day-before reminder for every active signup, once per signup
-// (`supervision_signups.reminder_sent_at`). 08:00 in the application time zone.
-Schedule::command('supervision:send-reminders')->dailyAt('08:00')->withoutOverlapping();
+// (`supervision_signups.reminder_sent_at`). Hourly: the command itself gates on
+// the administration's block toggle and configurable `send_at` hour
+// (`NotificationSettings::supervisionReminder()`), application time zone; a
+// same-day change of `send_at` is caught within the hour, not only the next day.
+Schedule::command('supervision:send-reminders')->hourly()->withoutOverlapping();

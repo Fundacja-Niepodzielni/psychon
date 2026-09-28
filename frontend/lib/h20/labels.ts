@@ -31,5 +31,9 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   "legal_document.published": "Dokument prawny opublikowany",
   "legal_document.accepted": "Dokument prawny zaakceptowany",
   "supervision.attendance_marked": "Obecność na superwizji odnotowana",
+  "supervision.slot_cancelled": "Termin superwizji odwołany",
   "user.anonymized": "Konto zanonimizowane",
+  "notification_settings.updated": "Ustawienia powiadomień zmienione",
+  "cooperation_request.created": "Zgłoszenie współpracy złożone",
+  "cooperation_request.answered": "Odpowiedź na zgłoszenie współpracy",
 };

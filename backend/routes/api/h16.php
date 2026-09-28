@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\EmailController;
+use App\Http\Controllers\Api\V1\Admin\NotificationSettingsController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,4 +33,9 @@ Route::middleware('auth:keycloak')->group(function (): void {
 
     Route::middleware('role:project_manager,super_admin')
         ->get('/admin/emails', [EmailController::class, 'index']);
+
+    Route::middleware('role:project_manager,super_admin')->group(function (): void {
+        Route::get('/admin/notification-settings', [NotificationSettingsController::class, 'show']);
+        Route::patch('/admin/notification-settings', [NotificationSettingsController::class, 'update']);
+    });
 });

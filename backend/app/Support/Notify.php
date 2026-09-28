@@ -19,6 +19,10 @@ final class Notify
      * Nothing is ever sent to the outside world during the hackathon.
      * The e-mail copy is skipped when the recipient turned e-mail off for
      * this type (`notification_preferences`); the bell entry is always kept.
+     *
+     * A type switched off by administration (`NotificationSettings`)
+     * creates neither the bell entry nor the e-mail — person preferences
+     * only ever narrow a type already switched on.
      */
     public static function send(
         User $user,
@@ -26,7 +30,11 @@ final class Notify
         string $title,
         string $body,
         ?string $link = null,
-    ): Notification {
+    ): ?Notification {
+        if (! NotificationSettings::isTypeEnabled($type)) {
+            return null;
+        }
+
         return DB::transaction(function () use ($user, $type, $title, $body, $link): Notification {
             $notification = Notification::create([
                 'user_id' => $user->id,

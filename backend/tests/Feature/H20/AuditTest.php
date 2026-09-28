@@ -49,6 +49,21 @@ class AuditTest extends TestCase
         $this->assertSame(['access.extended'], $actions);
     }
 
+    public function test_notification_settings_update_is_filterable_in_the_audit_log(): void
+    {
+        $this->actingAsRole('project_manager');
+
+        $this->patchJson('/api/v1/admin/notification-settings', [
+            'supervision_reminder' => ['send_at' => '09:00'],
+        ])->assertOk();
+
+        $response = $this->getJson('/api/v1/admin/audit?action=notification_settings.updated');
+
+        $response->assertOk();
+        $actions = collect($response->json('data'))->pluck('action')->unique()->all();
+        $this->assertSame(['notification_settings.updated'], $actions);
+    }
+
     public function test_unknown_action_slug_is_rejected(): void
     {
         $this->actingAsRole('super_admin');

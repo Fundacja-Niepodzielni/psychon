@@ -90,7 +90,11 @@ export const AUDIT_ACTIONS = [
   "legal_document.published",
   "legal_document.accepted",
   "supervision.attendance_marked",
+  "supervision.slot_cancelled",
   "user.anonymized",
+  "notification_settings.updated",
+  "cooperation_request.created",
+  "cooperation_request.answered",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

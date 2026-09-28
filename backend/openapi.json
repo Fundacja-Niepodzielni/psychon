@@ -3505,9 +3505,13 @@
                                 "edition.updated",
                                 "sensitive.viewed",
                                 "supervision.attendance_marked",
+                                "supervision.slot_cancelled",
                                 "certificate.revoked",
                                 "legal_document.published",
                                 "legal_document.accepted",
+                                "notification_settings.updated",
+                                "cooperation_request.created",
+                                "cooperation_request.answered",
                                 null
                             ]
                         }
@@ -3620,9 +3624,13 @@
                                 "edition.updated",
                                 "sensitive.viewed",
                                 "supervision.attendance_marked",
+                                "supervision.slot_cancelled",
                                 "certificate.revoked",
                                 "legal_document.published",
                                 "legal_document.accepted",
+                                "notification_settings.updated",
+                                "cooperation_request.created",
+                                "cooperation_request.answered",
                                 null
                             ]
                         }
@@ -8279,6 +8287,159 @@
                 }
             }
         },
+        "/v1/admin/notification-settings": {
+            "get": {
+                "operationId": "notificationSettings.show",
+                "tags": [
+                    "NotificationSettings"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "types": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "enabled": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "type",
+                                                            "enabled"
+                                                        ]
+                                                    }
+                                                },
+                                                "supervision_reminder": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "enabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "send_at": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "enabled",
+                                                        "send_at"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "types",
+                                                "supervision_reminder"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "notificationSettings.update",
+                "tags": [
+                    "NotificationSettings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateNotificationSettingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "types": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "enabled": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "type",
+                                                            "enabled"
+                                                        ]
+                                                    }
+                                                },
+                                                "supervision_reminder": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "enabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "send_at": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "enabled",
+                                                        "send_at"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "types",
+                                                "supervision_reminder"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
         "/v1/onboarding": {
             "get": {
                 "operationId": "onboarding.show",
@@ -9284,7 +9445,7 @@
         },
         "/v1/admin/report": {
             "get": {
-                "operationId": "v1.admin.report.show_143",
+                "operationId": "v1.admin.report.show_145",
                 "tags": [
                     "Report"
                 ],
@@ -9553,7 +9714,7 @@
         },
         "/v1/admin/reports": {
             "get": {
-                "operationId": "v1.admin.report.show_145",
+                "operationId": "v1.admin.report.show_147",
                 "tags": [
                     "Report"
                 ],
@@ -12600,6 +12761,70 @@
                     "preferences"
                 ],
                 "title": "UpdateNotificationPreferencesRequest"
+            },
+            "UpdateNotificationSettingsRequest": {
+                "type": "object",
+                "description": "PATCH /admin/notification-settings \u2014 cz\u0119\u015bciowa aktualizacja.\n\n`types.*.type` przyjmuje wy\u0142\u0105cznie kody z kontraktu \u00a73.1 bez `supervision.reminder`\n(ten typ ma osobny blok) \u2014 kod spoza listy albo `supervision.reminder` w `types`\nko\u0144czy si\u0119 tym samym `422 validation_failed` przez regu\u0142\u0119 `in`.\n`supervision_reminder.send_at` przyjmuje wy\u0142\u0105cznie pe\u0142n\u0105 godzin\u0119 `HH:00` (00\u201323).",
+                "properties": {
+                    "types": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "application.accepted",
+                                        "application.rejected",
+                                        "assignment.created",
+                                        "assignment.removed",
+                                        "course.invited",
+                                        "course.unlocked",
+                                        "question.asked",
+                                        "question.answered",
+                                        "internship.accepted",
+                                        "internship.returned",
+                                        "internship.rejected",
+                                        "attempt.failed_final",
+                                        "certificate.ready",
+                                        "document.ready",
+                                        "profile.accepted",
+                                        "profile.returned",
+                                        "profile.withdrawn",
+                                        "export.ready",
+                                        "cooperation_request.answered",
+                                        "supervision.slot_cancelled"
+                                    ]
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "enabled"
+                            ]
+                        },
+                        "uniqueItems": true
+                    },
+                    "supervision_reminder": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            },
+                            "send_at": {
+                                "type": "string",
+                                "pattern": "^([01]\\d|2[0-3]):00$"
+                            }
+                        },
+                        "required": [
+                            "enabled",
+                            "send_at"
+                        ]
+                    }
+                },
+                "title": "UpdateNotificationSettingsRequest"
             },
             "UpdateOnboardingRequest": {
                 "type": "object",

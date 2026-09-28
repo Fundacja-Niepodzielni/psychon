@@ -47,9 +47,9 @@ wynik jest dopisywany tutaj i ogłaszany.
 |---|---|---|
 | brak/nieważny token | **401** | `unauthenticated` |
 | rola nie ma dostępu do sekcji/akcji (matryca ról) | **403** | `forbidden` |
-| reguła domenowa blokuje dostęp/akcję (stan, nie własność) | **403** | `course_locked`, `attempts_exhausted`, `access_expired`, `not_your_supervisor`, `entry_locked`, `profile_not_eligible` |
+| reguła domenowa blokuje dostęp/akcję (stan, nie własność) | **403** | `course_locked`, `attempts_exhausted`, `access_expired`, `not_your_supervisor`, `entry_locked`, `profile_not_eligible`, `program_not_completed`, `cooperation_request_closed` |
 | zasób nie istnieje **lub należy do innego użytkownika** (pojedynczy rekord wskazywany identyfikatorem — nie ujawniamy istnienia) | **404** | `not_found` |
-| wyścig o ograniczony zasób (limit miejsc, duplikat unikalny) | **409** | `slot_full`, `email_already_registered` |
+| wyścig o ograniczony zasób (limit miejsc, duplikat unikalny) | **409** | `slot_full`, `email_already_registered`, `cooperation_request_open` |
 | błędne dane wejściowe / niespełnione warunki operacji | **422** | `validation_failed`, `not_enough_active_time`, `conditions_not_met`, `profile_incomplete` |
 | przyjęto zadanie w tle | **202** | — |
 
@@ -804,3 +804,111 @@ anonimizacji sam niósłby dane, które anonimizacja ma usunąć — zapisanie i
 w `audit_log` unieważniłoby cel operacji. Jedynym śladem pozostają standardowe
 kolumny każdego wpisu audytu (`actor_id`, `subject_type`, `subject_id`,
 `created_at`), które wskazują na wiersz `User`, ale nie niosą jego treści.
+
+---
+
+## Aneks z 2026-09-28 — ustawienia powiadomień administracji (H16)
+
+Nowy wyjątek singletonowy, tego samego kształtu co `/admin/edition` i
+`/admin/onboarding` — jedna edycja naraz, trasa nie przyjmuje identyfikatora.
+
+### 1. Trasy
+
+- `GET /admin/notification-settings` → 200
+  `{ "data": { "types": [ { "type": "application.accepted", "enabled": true }, … ],
+  "supervision_reminder": { "enabled": true, "send_at": "08:00" } } }`.
+- `PATCH /admin/notification-settings`, te same pola, częściowo → 200 z pełnym
+  stanem po zapisie.
+- Dostęp: `project_manager`, `super_admin`; inne role → 403 `forbidden`.
+- `types` to typy z §3.1 **bez** `supervision.reminder`, który ma wyłącznie
+  własny blok. Typ spoza tej listy, `supervision.reminder` w `types` albo
+  `send_at` spoza wzorca `HH:00` (00–23, strefa `config('app.timezone')`) →
+  422 `validation_failed`.
+
+### 2. Zapis
+
+Tabela `settings`, jeden klucz `notification_settings` (JSON), wzorzec
+`OnboardingContent`. Brak wiersza = obecne zachowanie sprzed tej zmiany:
+wszystkie typy włączone, przypomnienie o superwizji włączone, `08:00`.
+`Settings::edition` (sygnatura zamrożona) bez zmian.
+
+### 3. Skutek
+
+- Typ wyłączony przez administrację: `Notify::send` nie tworzy ani wpisu
+  dzwonka, ani e-maila. Preferencje osoby (`/notifications/preferences`)
+  działają tylko wewnątrz typów włączonych przez administrację.
+- E-maile startera (aktywacja, reset hasła) są poza `Notify` i nie są
+  przełączane tym panelem.
+- `supervision:send-reminders` działa w harmonogramie co godzinę. Wysyła,
+  gdy blok jest włączony i bieżąca godzina (strefa `config('app.timezone')`)
+  jest równa albo późniejsza niż `send_at`. Idempotencję nadal daje istniejące
+  `reminder_sent_at` — zmiana `send_at` w ciągu dnia nie gubi przypomnień.
+- `supervision.reminder` przechodzi w §3.1 z „Po hackathonie” do MVP: kod już
+  go emituje (`SendSupervisionReminders.php`).
+
+### 4. Audyt
+
+Nowy slug `notification_settings.updated` w §3.2 (administracja zmienia
+ustawienia powiadomień). Pola ładunku: kody typów z ich flagami (`types`) i
+blok `supervision_reminder` (`enabled`, `send_at`) — bez wolnego tekstu,
+zgodnie z zasadą ogólną z erraty 2026-09-18.
+
+---
+
+## Aneks z 2026-09-28 (2) — zgłoszenia dalszej współpracy (H01)
+
+Zał. 1 wymaga formularza zgłoszenia dalszej współpracy na ekranie po programie.
+Zgłoszenie trafia do panelu administracji ze statusem i możliwością odpowiedzi.
+
+### 1. Trasy
+
+- `POST /cooperation-requests` — złożenie zgłoszenia przez osobę zalogowaną.
+- `GET /cooperation-requests/mine` — własne zgłoszenia (koperta `{data}`,
+  paginacja jak w innych listach).
+- `GET /admin/cooperation-requests` — lista wszystkich zgłoszeń, filtr
+  `?status=`, standardowa paginacja.
+- `PATCH /admin/cooperation-requests/{id}` — decyzja administracji, pola
+  `response` (string, do 2000 znaków) i `status` ∈ `answered · closed`.
+
+### 2. Uprawnienia
+
+Trasy administracyjne wymagają roli `project_manager` albo `super_admin`.
+Trasy osoby (`POST /cooperation-requests`, `GET /cooperation-requests/mine`)
+działają bez middleware `access.active`: po zakończeniu programu dostęp do
+kursów może już wygasnąć, a zgłoszenie dalszej współpracy ma zostać osiągalne
+mimo to (ten sam powód co przy `/me` i eksporcie RODO w H01).
+
+### 3. Wyjątek nazewniczy
+
+`PATCH /admin/cooperation-requests/{id}` jest legalnym wyjątkiem od reguły
+„akcja domenowa jako `POST` na pod-zasób”, obok `PATCH .../attendance` — to
+zmiana stanu rekordu razem z treścią odpowiedzi, a nie akcja bez danych.
+Nowych wyjątków ten aneks nie tworzy.
+
+### 4. Kody
+
+- `403 program_not_completed` — zgłoszenie przed zakończeniem programu.
+- `409 cooperation_request_open` — osoba ma już jedno otwarte zgłoszenie.
+- `403 cooperation_request_closed` — próba odpowiedzi na zgłoszenie już
+  zamknięte.
+- `404 not_found` — nieznany albo cudzy identyfikator.
+
+Te cztery kody dopisane do przykładów tabeli §1.1.
+
+### 5. Rejestry
+
+- **§3.1** (typy `Notify::send`): `cooperation_request.answered`.
+- **§3.2** (rejestr audytu): `cooperation_request.created`,
+  `cooperation_request.answered`.
+- **§3.4** (słowniki): `cooperation_request.status`: `new · answered · closed`.
+
+### 6. Lista przełączników ustawień powiadomień (H16)
+
+`NotificationSettings::TYPES` (panel `GET`/`PATCH /admin/notification-settings`,
+poprzedni aneks tej daty) rośnie o dwie pozycje zdecydowane wprost, nie
+„automatycznie”: `cooperation_request.answered` (ten aneks) i
+`internship.rejected` (aneks z 2026-09-17, dotąd pominięty przy zakładaniu
+panelu) — lista rośnie z 17 do 19. Osobną decyzją dochodzi `supervision.slot_cancelled`
+(H12 — termin superwizji odwołany przez prowadzącego albo administrację, typ i
+slug audytu już emitowane przez kod) — lista rośnie do **20**. `supervision.reminder`
+nadal ma wyłącznie własny blok i nie wchodzi do `TYPES`.

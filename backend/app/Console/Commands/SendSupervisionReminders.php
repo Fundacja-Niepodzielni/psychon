@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\SupervisionSignup;
+use App\Support\NotificationSettings;
 use App\Support\Notify;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -16,6 +17,14 @@ use Illuminate\Support\Facades\DB;
  * `reminder_sent_at` in the same transaction as the notification, so running
  * the command twice — or two overlapping runs — yields one notification per
  * person.
+ *
+ * Gated by administration (`NotificationSettings::supervisionReminder()`):
+ * the whole block can be switched off, and the hour of day it starts
+ * sending (`send_at`, default `08:00`) is configurable.
+ * The command runs hourly (routes/console.php) and only acts once the
+ * current hour (application time zone) reaches `send_at` — a later change
+ * of `send_at` within the same day does not skip anyone, because
+ * `reminder_sent_at` still guards each signup exactly once.
  */
 class SendSupervisionReminders extends Command
 {
@@ -27,6 +36,23 @@ class SendSupervisionReminders extends Command
 
     public function handle(): int
     {
+        $reminderBlock = NotificationSettings::supervisionReminder();
+
+        if (! $reminderBlock['enabled']) {
+            $this->info('Blok przypomnień o superwizji jest wyłączony — 0 wysłanych.');
+
+            return self::SUCCESS;
+        }
+
+        $sendAtHour = (int) substr($reminderBlock['send_at'], 0, 2);
+        $currentHour = Carbon::now(config('app.timezone'))->hour;
+
+        if ($currentHour < $sendAtHour) {
+            $this->info("Bieżąca godzina ({$currentHour}) nie osiągnęła jeszcze send_at ({$sendAtHour}) — 0 wysłanych.");
+
+            return self::SUCCESS;
+        }
+
         $tomorrow = Carbon::now(config('app.timezone'))->addDay();
         $from = $tomorrow->copy()->startOfDay();
         $to = $tomorrow->copy()->endOfDay();
