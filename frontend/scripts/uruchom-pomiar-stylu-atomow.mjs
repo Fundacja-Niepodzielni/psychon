@@ -34,6 +34,37 @@ function uruchomSynchronicznie(polecenie, argumenty) {
   return { kod: wynik.status, powod: null };
 }
 
+// Zmierzone (recznie, przed wpisaniem tego kroku do ci.yml): modul przyrzadu
+// oprozniony do zera bajtow konczy sie kodem 0 (pusty modul ES nie rzuca,
+// spawnSync zwraca status procesu node, nie tresc). Kod 0 przekazany dalej
+// BEZ SPRAWDZENIA sladu pomiaru zamienilby wolajacego w ozdobe: bramka
+// przepuscilaby kazdy uszkodzony/oprozniony przyrzad na zielono. Dlatego
+// stdout przyrzadu jest PRZECHWYTYWANY (nie tylko dziedziczony) i sprawdzany
+// na obecnosc wiersza mianownika ("zmierzonych X z Y pozycji") — jego brak
+// jest kodem NIE ZMIERZONO, niezaleznie od kodu wyjscia samego procesu.
+function uruchomZPrzechwyceniemStdout(polecenie, argumenty) {
+  const wynik = spawnSync(polecenie, argumenty, {
+    cwd: KATALOG_FRONTEND,
+    shell: process.platform === "win32",
+    encoding: "utf8",
+  });
+  if (wynik.stdout) process.stdout.write(wynik.stdout);
+  if (wynik.stderr) process.stderr.write(wynik.stderr);
+  if (wynik.error) {
+    return { kod: null, powod: `nie udalo sie uruchomic "${polecenie}": ${wynik.error.message}`, stdout: "" };
+  }
+  if (wynik.status === null) {
+    return {
+      kod: null,
+      powod: `proces "${polecenie}" zostal przerwany sygnalem ${wynik.signal ?? "nieznanym"}`,
+      stdout: wynik.stdout ?? "",
+    };
+  }
+  return { kod: wynik.status, powod: null, stdout: wynik.stdout ?? "" };
+}
+
+const WZORZEC_SLADU_POMIARU = /zmierzonych\s+\d+\s+z\s+\d+\s+pozycji/;
+
 const budowa = uruchomSynchronicznie("npx", ["vite", "build", "--config", "vite.config.poligon.ts"]);
 if (budowa.kod !== 0) {
   const powodBudowy = budowa.kod === null ? budowa.powod : `budowa poligonu nie powiodla sie (exit ${budowa.kod})`;
@@ -132,9 +163,14 @@ if (wynikCzekania === "zakonczony") {
   );
   kodWyjscia = KOD_NIE_ZMIERZONO;
 } else {
-  const pomiar = uruchomSynchronicznie("node", ["design-system/poligon/pomiar-styl-atomow.mjs"]);
+  const pomiar = uruchomZPrzechwyceniemStdout("node", ["design-system/poligon/pomiar-styl-atomow.mjs"]);
   if (pomiar.kod === null) {
     console.error(`WOLAJACY POMIARU STYLU ATOMOW: NIE ZMIERZONO — ${pomiar.powod}.`);
+    kodWyjscia = KOD_NIE_ZMIERZONO;
+  } else if (!WZORZEC_SLADU_POMIARU.test(pomiar.stdout)) {
+    console.error(
+      `WOLAJACY POMIARU STYLU ATOMOW: NIE ZMIERZONO — brak sladu pomiaru ("zmierzonych X z Y pozycji") w wyjsciu przyrzadu (kod procesu byl ${pomiar.kod}); przyrzad pusty albo uszkodzony moze zwrocic 0 bez pomiaru czegokolwiek.`,
+    );
     kodWyjscia = KOD_NIE_ZMIERZONO;
   } else {
     kodWyjscia = pomiar.kod;

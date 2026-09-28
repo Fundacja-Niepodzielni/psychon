@@ -192,6 +192,70 @@ jobs:
       # Przegladarke instaluje krok wyzej.
       - name: Pomiar celow dotyku (prog 44px)
         run: npm run pomiar:cele-dotyku
+      # Wolajacy: JEDEN krok, dwa przyrzady - krok wolajacy pomiar stylu
+      # nowego frontu (pomiar:styl-atomow) i sprawdzanie typow (sprawdz-typy)
+      # wchodzi jednym wywolaniem, ze swiadkiem na poziomie calego przeplywu,
+      # i zastepuje dwa osobne kroki sprzed tej zmiany. Przed
+      # tym krokiem przyrzad pomiar:styl-atomow istnial tylko jako definicja w
+      # package.json - zero wywolan w calym repozytorium. Krok JEST
+      # blokujacy: bez `continue-on-error`, bez `if:`, ktore go ominie - kod
+      # kazdej komendy jest czytany wprost z `$?` zaraz po niej (patrz nizej),
+      # wiec krok nie polega na zachowaniu potoku (pipefail) przez powloke.
+      # Przegladarke instaluje krok wyzej.
+      #
+      # pomiar:styl-atomow ma wlasny slad (scripts/uruchom-pomiar-stylu-atomow.mjs,
+      # wzorzec "zmierzonych X z Y pozycji" w stdout przyrzadu): pusty albo
+      # uszkodzony modul przyrzadu inaczej konczylby sie kodem 0 bez zmierzenia
+      # niczego - wolajacy to lapie i oddaje kod 2 (NIE ZMIERZONO).
+      #
+      # sprawdz-typy NIE MIAL takiego sladu: `tsc --noEmit` przy sukcesie nie
+      # wypisuje nic, wiec pusta albo zepsuta konfiguracja typow (np. pusty
+      # "include" w tsconfig.json) konczylaby sie kodem 0 bez sprawdzenia choc
+      # jednego pliku projektu - ten sam ksztalt wady, na drugim przyrzadzie.
+      # To jest dodatkowe zabezpieczenie, ktorego samo WOLANIE sprawdz-typy
+      # nie daje: przed wlasciwym sprawdzeniem ten krok liczy pliki PROJEKTU
+      # (bez node_modules) w zasiegu tsconfig.json przez `--listFilesOnly` i
+      # wymaga N > 0; N = 0 konczy caly krok kodem niezerowym WOLAJACEGO,
+      # zanim jeszcze padnie wlasciwe `tsc --noEmit`.
+      #
+      # Kod przechwytywany JAWNIE (`set +e` / `$?` / `set -e`), nie przez
+      # `if ! zmienna=$(polecenie)`: ten drugi wzorzec byl sprobowany lokalnie
+      # i przekazywal dalej kod NEGACJI testu warunkowego (0/1), nie prawdziwy
+      # kod wyjscia przyrzadu (np. 3 przy zmierzonym rozjezdzie w poligonie
+      # zamienialo sie po drodze w 0) - stad ten, bardziej ostrozny, ksztalt.
+      - name: Pomiar stylu atomow i sprawdzenie typow
+        run: |
+          set +e
+          WYJSCIE_STYLU=$(npm run pomiar:styl-atomow 2>&1)
+          KOD_STYLU=$?
+          set -e
+          echo "$WYJSCIE_STYLU"
+          if [ "$KOD_STYLU" -ne 0 ]; then
+            echo "WOLAJACY POMIARU STYLU ATOMOW: krok czerwony, kod $KOD_STYLU." >&2
+            exit "$KOD_STYLU"
+          fi
+          if ! echo "$WYJSCIE_STYLU" | grep -Eq 'zmierzonych [0-9]+ z [1-9][0-9]* pozycji'; then
+            echo "WOLAJACY POMIARU STYLU ATOMOW: NIE ZMIERZONO - brak wiersza \"zmierzonych X z N pozycji\" z N > 0 w wyjsciu (wpis przyrzadu pusty albo zepsuty)." >&2
+            exit 1
+          fi
+
+          set +e
+          WYJSCIE_TYPOW=$(npm run sprawdz-typy -- --listFilesOnly 2>&1)
+          KOD_LISTA=$?
+          set -e
+          if [ "$KOD_LISTA" -ne 0 ]; then
+            echo "$WYJSCIE_TYPOW"
+            echo "WOLAJACY SPRAWDZENIA TYPOW: listowanie plikow zakonczylo sie bledem, kod $KOD_LISTA." >&2
+            exit "$KOD_LISTA"
+          fi
+          LICZBA_PLIKOW_TYPOW=$(echo "$WYJSCIE_TYPOW" | grep -v 'node_modules' | grep -c '\.tsx\?$' || true)
+          echo "SPRAWDZ-TYPY: plikow projektu w zasiegu tsconfig.json = $LICZBA_PLIKOW_TYPOW"
+          if [ "$LICZBA_PLIKOW_TYPOW" -eq 0 ]; then
+            echo "WOLAJACY SPRAWDZENIA TYPOW: NIE ZMIERZONO - zero plikow projektu w zasiegu tsconfig.json (pusta, zepsuta albo podmieniona konfiguracja albo przyrzad typow)." >&2
+            exit 1
+          fi
+
+          npm run sprawdz-typy
       # `--omit=dev` swiadomie: zmierzone
       # 6 podatnosci lacznie, z tego 2 produkcyjne - cztery zdjete flaga siedza
       # w narzedziach (vitest, js-yaml), ktore nie ida do przegladarki uzytkownika.
