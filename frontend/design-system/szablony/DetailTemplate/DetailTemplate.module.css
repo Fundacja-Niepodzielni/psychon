@@ -1,0 +1,25 @@
+/* Szablon `DetailTemplate` — sama rama i siatka 7/5, zero własnego tła/ramki
+   (odstępy tylko z tokenów `--space-*`). Próg 1380px zgodny z progiem już
+   użytym w `LessonPlayer.module.css` (`@media (min-width: 1380px)`). */
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.kolumny {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-24);
+}
+
+.glowna,
+.wspierajaca {
+  min-width: 0;
+}
+
+@media (min-width: 1380px) {
+  .kolumny {
+    grid-template-columns: 7fr 5fr;
+  }
+}

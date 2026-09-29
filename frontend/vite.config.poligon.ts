@@ -22,6 +22,7 @@ export default defineConfig({
     // tylko `index.html` i `vite preview` nie ma pozostałych stron do pokazania.
     rollupOptions: {
       input: {
+        "szablony-podzial": fileURLToPath(new URL("./design-system/poligon/szablony-podzial.html", import.meta.url)),
         index: fileURLToPath(new URL("./design-system/poligon/index.html", import.meta.url)),
         lekcja: fileURLToPath(new URL("./design-system/poligon/lekcja.html", import.meta.url)),
         formularze: fileURLToPath(new URL("./design-system/poligon/formularze.html", import.meta.url)),

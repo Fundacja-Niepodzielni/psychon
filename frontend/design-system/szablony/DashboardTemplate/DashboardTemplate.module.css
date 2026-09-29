@@ -1,0 +1,36 @@
+/* Szablon `DashboardTemplate` — siatka 7/5 jak `DetailTemplate`, plus blok
+   „następny krok” na 2 kolumny od 900px (06-ATOMY §5, w. 188). */
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.nastepnyKrok {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-16);
+}
+
+.kolumny {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-24);
+}
+
+.glowna,
+.wspierajaca {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .nastepnyKrok {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1380px) {
+  .kolumny {
+    grid-template-columns: 7fr 5fr;
+  }
+}
