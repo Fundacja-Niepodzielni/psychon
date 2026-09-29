@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -9,8 +9,21 @@ import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { LessonTemplate } from "@/design-system/szablony/LessonTemplate/LessonTemplate";
 import { LessonPlayer } from "@/design-system/organizmy/LessonPlayer/LessonPlayer";
-import { pobierzDaneLekcji, procentAktywnegoCzasu, ukonczLekcje, type DaneLekcji } from "./dane";
+import {
+  pobierzDaneLekcji,
+  procentAktywnegoCzasu,
+  ukonczLekcje,
+  wyslijPostep,
+  type DaneLekcji,
+} from "./dane";
 import style from "./Lekcja.module.css";
+
+/** Heartbeat cadence — the upper bound the contract allows ("co <= 30 s").
+ * Both increments equal the tick length in seconds: the mock player has no
+ * real elapsed-time source, only a play/pause flag, so a full tick counts as
+ * fully watched and fully active whenever it fires at all. */
+const HEARTBEAT_INTERWAL_MS = 30000;
+const HEARTBEAT_INTERWAL_SEKUND = HEARTBEAT_INTERWAL_MS / 1000;
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
@@ -30,20 +43,21 @@ interface WlasciwosciLekcja {
  * and the recording frame; the completion button lives at this level
  * because `LessonPlayer` has no callback for it (see note below the fetch).
  *
- * Automatic progress heartbeat (`POST /lessons/{id}/progress`, contract
- * "Postęp lekcji") is not wired here: `LessonPlayer` keeps its play/pause
- * state internally (`odtwarzacz` `useState`) and exposes neither that flag
- * nor an elapsed-time tick to its caller, so nothing outside the organism
- * can know when a recording is playing, paused, or how much time passed.
- * Adding that logic here would mean guessing an event the organism never
- * emits, which the task description calls out as a stopping condition —
- * left out and reported instead of invented.
+ * Progress heartbeat (`POST /lessons/{id}/progress`, contract "Postęp
+ * lekcji") ticks on a fixed interval while the lesson is loaded, but only
+ * sends when the recording is actually playing and the tab is visible.
+ * "Playing" comes from `LessonPlayer`'s `onZmianaOdtwarzania` callback
+ * (`design-system/organizmy/LessonPlayer/LessonPlayer.tsx`, play/pause
+ * button handler) into a ref read at tick time; "visible" is read straight
+ * off `document.hidden` at the same moment, so a tab hidden between ticks
+ * is caught without a separate listener.
  */
 export function Lekcja({ id }: WlasciwosciLekcja) {
   const router = useRouter();
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
   const [wysylanie, setWysylanie] = useState(false);
   const [bladUkonczenia, setBladUkonczenia] = useState<string | null>(null);
+  const odtwarzaneRef = useRef(false);
 
   function wczytaj(straz?: { anulowane: boolean }) {
     return pobierzDaneLekcji(id).then((wynik) => {
@@ -69,6 +83,24 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
     // Fetch only on mount/id change — nothing else in this effect changes it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (stan.rodzaj !== "ok") return undefined;
+    // `LessonPlayer` always mounts with its internal `odtwarzane` at `false`.
+    odtwarzaneRef.current = false;
+
+    function wyslijHeartbeat() {
+      if (!odtwarzaneRef.current) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      void wyslijPostep(id, {
+        watched_delta: HEARTBEAT_INTERWAL_SEKUND,
+        active_delta: HEARTBEAT_INTERWAL_SEKUND,
+      });
+    }
+
+    const idInterwalu = setInterval(wyslijHeartbeat, HEARTBEAT_INTERWAL_MS);
+    return () => clearInterval(idInterwalu);
+  }, [stan.rodzaj, id]);
 
   function ponow() {
     setStan({ rodzaj: "ladowanie" });
@@ -164,6 +196,9 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
               materialy={[]}
               pytania={[]}
               onZadajPytanie={() => {}}
+              onZmianaOdtwarzania={(odtwarzane) => {
+                odtwarzaneRef.current = odtwarzane;
+              }}
               czasTrwaniaSekund={dane.duration_seconds}
               obejrzaneSekundy={dane.watched_seconds}
               procentAktywnegoCzasu={procent}

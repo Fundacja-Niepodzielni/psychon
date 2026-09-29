@@ -77,6 +77,24 @@ export function procentAktywnegoCzasu(dane: Pick<DaneLekcji, "active_seconds" | 
   return Math.min(100, Math.round((dane.active_seconds / dane.duration_seconds) * 100));
 }
 
+/**
+ * Heartbeat tick, `POST /lessons/{id}/progress` (`backend/routes/api/h06.php:159-206`,
+ * request field names bound by `H06ProgressRequest` in `backend/openapi.json`:
+ * `watched_delta`/`active_delta`, both required non-negative integers). A failed
+ * tick is swallowed on purpose: there is no per-tick UI state to show for a lost
+ * heartbeat, and the next tick sends the same fixed increment again.
+ */
+export async function wyslijPostep(
+  id: string,
+  przyrosty: { watched_delta: number; active_delta: number },
+): Promise<void> {
+  try {
+    await api(`/lessons/${id}/progress`, { method: "POST", body: przyrosty });
+  } catch {
+    // Retried by the next tick — see note above.
+  }
+}
+
 export type WynikUkonczenia =
   | { status: "ok"; completed_at: string | null }
   | { status: "za-malo-czasu" }
