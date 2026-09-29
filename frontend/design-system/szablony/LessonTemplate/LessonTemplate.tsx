@@ -24,7 +24,7 @@ interface WlasciwosciLessonTemplate {
  */
 export function LessonTemplate({ naglowek, checklist, pasekKrokow, glowna, wspierajaca }: WlasciwosciLessonTemplate) {
   return (
-    <div className={style.uklad} data-style-id="szablon-lekcja">
+    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-lekcja">
       <div data-obszar="naglowek">
         <PageHeader {...naglowek} />
       </div>
@@ -42,6 +42,6 @@ export function LessonTemplate({ naglowek, checklist, pasekKrokow, glowna, wspie
           {wspierajaca}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

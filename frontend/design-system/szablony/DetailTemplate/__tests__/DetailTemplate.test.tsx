@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { DetailTemplate } from "../DetailTemplate";
+import { jedenMain } from "../../__tests__/jeden-main";
+import { Skeleton } from "../../../atomy/Skeleton/Skeleton";
+import { Notice } from "../../../molekuly/Notice/Notice";
+import { EmptyState } from "../../../molekuly/EmptyState/EmptyState";
 
 function naglowek() {
   return {
@@ -55,5 +59,73 @@ describe("DetailTemplate", () => {
     const uklad = container.querySelector("[data-style-id='szablon-szczegol']") as HTMLElement;
     expect(uklad).toBeTruthy();
     expect(uklad).toBe(container.firstElementChild);
+  });
+});
+
+describe("DetailTemplate — świadek jedenMain, pięć stanów obszaru treści", () => {
+  it("stan sukces: korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DetailTemplate naglowek={naglowek()} glowna={<div>Zwykła treść szczegółu.</div>} wspierajaca={<div>Wspierająca</div>} />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-szczegol");
+  });
+
+  it("stan ladowanie (Skeleton): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DetailTemplate naglowek={naglowek()} glowna={<Skeleton wiersze={3} />} wspierajaca={<div>Wspierająca</div>} />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-szczegol");
+  });
+
+  it("stan blad (Notice): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DetailTemplate
+        naglowek={naglowek()}
+        glowna={
+          <Notice wariant="error" tytul="Błąd">
+            Nie udało się pobrać szczegółu.
+          </Notice>
+        }
+        wspierajaca={<div>Wspierająca</div>}
+      />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-szczegol");
+  });
+
+  it("stan brak uprawnien (Notice): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DetailTemplate
+        naglowek={naglowek()}
+        glowna={
+          <Notice wariant="warn" tytul="Brak uprawnień">
+            Ten widok wymaga innej roli.
+          </Notice>
+        }
+        wspierajaca={<div>Wspierająca</div>}
+      />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-szczegol");
+  });
+
+  it("stan pusty (EmptyState): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DetailTemplate
+        naglowek={naglowek()}
+        glowna={
+          <EmptyState
+            naglowek="Brak szczegółów"
+            tresc="Nie ma jeszcze żadnych szczegółów."
+            przycisk={{ etykieta: "Odśwież", onClick: () => {} }}
+          />
+        }
+        wspierajaca={<div>Wspierająca</div>}
+      />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-szczegol");
   });
 });

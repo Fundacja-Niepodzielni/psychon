@@ -22,7 +22,7 @@ interface WlasciwosciDashboardTemplate {
  */
 export function DashboardTemplate({ naglowek, nastepnyKrok, kafle, glowna, wspierajaca }: WlasciwosciDashboardTemplate) {
   return (
-    <div className={style.uklad} data-style-id="szablon-pulpit">
+    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-pulpit">
       <div data-obszar="naglowek">
         <PageHeader {...naglowek} />
       </div>
@@ -44,6 +44,6 @@ export function DashboardTemplate({ naglowek, nastepnyKrok, kafle, glowna, wspie
           {wspierajaca}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

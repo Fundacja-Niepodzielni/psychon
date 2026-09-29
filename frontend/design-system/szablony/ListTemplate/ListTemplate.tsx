@@ -26,7 +26,7 @@ interface WlasciwosciListTemplate {
  */
 export function ListTemplate({ naglowek, filtry, lista, stronicowanie }: WlasciwosciListTemplate) {
   return (
-    <div className={style.uklad} data-style-id="szablon-lista">
+    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-lista">
       <div className={style.naglowek} data-testid="obszar-naglowek">
         {naglowek}
       </div>
@@ -43,6 +43,6 @@ export function ListTemplate({ naglowek, filtry, lista, stronicowanie }: Wlasciw
           {stronicowanie}
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { DashboardTemplate } from "../DashboardTemplate";
+import { jedenMain } from "../../__tests__/jeden-main";
+import { Skeleton } from "../../../atomy/Skeleton/Skeleton";
+import { Notice } from "../../../molekuly/Notice/Notice";
+import { EmptyState } from "../../../molekuly/EmptyState/EmptyState";
 
 function naglowek() {
   return {
@@ -42,5 +46,73 @@ describe("DashboardTemplate", () => {
     const uklad = container.querySelector("[data-style-id='szablon-pulpit']") as HTMLElement;
     expect(uklad).toBeTruthy();
     expect(uklad).toBe(container.firstElementChild);
+  });
+});
+
+describe("DashboardTemplate — świadek jedenMain, pięć stanów obszaru treści", () => {
+  it("stan sukces: korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DashboardTemplate naglowek={naglowek()} glowna={<div>Zwykła treść pulpitu.</div>} wspierajaca={<div>Wspierająca</div>} />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-pulpit");
+  });
+
+  it("stan ladowanie (Skeleton): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DashboardTemplate naglowek={naglowek()} glowna={<Skeleton wiersze={3} />} wspierajaca={<div>Wspierająca</div>} />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-pulpit");
+  });
+
+  it("stan blad (Notice): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DashboardTemplate
+        naglowek={naglowek()}
+        glowna={
+          <Notice wariant="error" tytul="Błąd">
+            Nie udało się pobrać pulpitu.
+          </Notice>
+        }
+        wspierajaca={<div>Wspierająca</div>}
+      />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-pulpit");
+  });
+
+  it("stan brak uprawnien (Notice): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DashboardTemplate
+        naglowek={naglowek()}
+        glowna={
+          <Notice wariant="warn" tytul="Brak uprawnień">
+            Ten widok wymaga innej roli.
+          </Notice>
+        }
+        wspierajaca={<div>Wspierająca</div>}
+      />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-pulpit");
+  });
+
+  it("stan pusty (EmptyState): korzeń jest jedynym main z id=tresc i niesie data-style-id", () => {
+    const { container } = render(
+      <DashboardTemplate
+        naglowek={naglowek()}
+        glowna={
+          <EmptyState
+            naglowek="Brak danych pulpitu"
+            tresc="Nie ma jeszcze żadnych danych do pokazania."
+            przycisk={{ etykieta: "Odśwież", onClick: () => {} }}
+          />
+        }
+        wspierajaca={<div>Wspierająca</div>}
+      />,
+    );
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.dataset.styleId).toBe("szablon-pulpit");
   });
 });

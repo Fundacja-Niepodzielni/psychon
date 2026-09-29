@@ -38,7 +38,7 @@ export function TableTemplate({
   wsparcie,
 }: WlasciwosciTableTemplate) {
   return (
-    <div className={style.uklad} data-style-id="szablon-tabela">
+    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-tabela">
       <div className={style.naglowek} data-testid="obszar-naglowek">
         {naglowek}
       </div>
@@ -70,6 +70,6 @@ export function TableTemplate({
           {wsparcie}
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -37,7 +37,9 @@ export function FormTemplate({
   drobnyDruk,
 }: WlasciwosciFormTemplate) {
   return (
-    <div
+    <main
+      id="tresc"
+      tabIndex={-1}
       className={`${style.uklad} ${wariant === "publiczny" ? style.publiczny : ""}`.trim()}
       data-style-id="szablon-formularz"
     >
@@ -64,6 +66,6 @@ export function FormTemplate({
           {drobnyDruk}
         </div>
       )}
-    </div>
+    </main>
   );
 }
