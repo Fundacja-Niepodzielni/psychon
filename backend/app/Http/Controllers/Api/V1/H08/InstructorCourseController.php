@@ -4,21 +4,21 @@ namespace App\Http\Controllers\Api\V1\H08;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\H08\InstructorStoreCourseRequest;
 use App\Http\Requests\H08\UpdateInstructorCourseRequest;
 use App\Http\Resources\H08\AdminCourseResource;
 use App\Models\Course;
 use App\Services\H08\CourseWriter;
+use App\Services\H08\InstructorCourseAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Edycja treści kursu przez przypisanego prowadzącego — trasy
- * `role:instructor` w `routes/api/h08.php`. Kurs zakłada wyłącznie
- * administracja (`CourseCatalogAdminController`); ta trasa umożliwia
- * wyłącznie zmianę opisu i tytułu, nie status publikacji ani kolejność
- * w ścieżce.
+ * Treść kursu przez prowadzącego — trasy `role:instructor`
+ * w `routes/api/h08.php`. Założenie nowego kursu (`store`) i edycja treści
+ * kursu, do którego prowadzący jest przypisany (`show`/`update`).
  *
- * Walidacja jest współdzielona z panelem administracji przez
+ * Walidacja edycji jest współdzielona z panelem administracji przez
  * `UpdateInstructorCourseRequest extends UpdateCourseRequest`; to, co
  * z niej trafia do zapisu, ogranicza to dopiero ten kontroler.
  * `UpdateInstructorCourseRequest::authorize()` sprawdza przypisanie
@@ -29,6 +29,22 @@ class InstructorCourseController extends Controller
 {
     /** Pola treści, które prowadzący może zmienić — bez publikacji i kolejności. */
     private const array EDITABLE_FIELDS = ['title', 'description'];
+
+    /**
+     * Prowadzący zakłada własny kurs — powstaje jako szkic
+     * (`CourseWriter::create`, ten sam zasób co `POST /admin/courses`) i od
+     * razu zostaje jego prowadzącym (`InstructorCourseAssignment`,
+     * istniejąca ścieżka H09). Publikacja i kolejność w ścieżce zostają przy
+     * administracji.
+     */
+    public function store(InstructorStoreCourseRequest $request): JsonResponse
+    {
+        $course = CourseWriter::create($request->validated(), $request->user());
+
+        InstructorCourseAssignment::assignCreator($course, $request->user());
+
+        return $this->resourceResponse($request, $course, 201);
+    }
 
     /**
      * Pojedynczy kurs do ekranu edycji: `GET /instructor/courses` (H09) niesie
@@ -57,10 +73,10 @@ class InstructorCourseController extends Controller
         return $this->resourceResponse($request, $course);
     }
 
-    private function resourceResponse(Request $request, Course $course): JsonResponse
+    private function resourceResponse(Request $request, Course $course, int $status = 200): JsonResponse
     {
         return response()->json([
             'data' => AdminCourseResource::make($course->loadCount(['lessons', 'materials']))->resolve($request),
-        ]);
+        ], $status);
     }
 }

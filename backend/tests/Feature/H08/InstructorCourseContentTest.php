@@ -218,24 +218,25 @@ class InstructorCourseContentTest extends TestCase
         ])->assertStatus(403);
     }
 
-    public function test_instructor_has_no_course_creation_route(): void
+    /**
+     * `POST /instructor/courses` — prowadzący zakłada własny kurs; pełne
+     * pokrycie (dozwolone i `prohibited` pola, przypisanie, widoczność) leży
+     * w `InstructorStoreCourseTest`. Ten test zostaje tu wyłącznie jako
+     * strażnik regresji: potwierdza, że trasa istnieje i zwraca 201, nie
+     * że jej brak (poprzednia wersja tego testu, sprzed zatwierdzenia trasy).
+     */
+    public function test_instructor_creates_a_course_through_the_dedicated_route(): void
     {
         $instructor = User::factory()->role('instructor')->create();
         $this->actingAs($instructor, 'keycloak');
 
-        // `GET /instructor/courses` (lista własnych kursów, H09) już zajmuje ten
-        // adres, więc próba założenia kursu pod tym samym URL-em odbija się od
-        // braku zarejestrowanej metody — 405, renderowany w tej samej kopercie
-        // błędu co 403/404 (`ApiExceptionRenderer`). Brak jakiejkolwiek innej
-        // trasy zakładania kursu dla prowadzącego (grep po `instructor/courses`
-        // w `routes/api/h08.php` — jedyna metoda POST tam to materiały, nie kurs).
         $response = $this->postJson('/api/v1/instructor/courses', [
             'title' => 'Nowy kurs',
             'slug' => 'nowy-kurs',
         ]);
 
-        $this->assertContains($response->getStatusCode(), [403, 404, 405]);
-        $this->assertSame(0, Course::where('slug', 'nowy-kurs')->count());
+        $response->assertCreated();
+        $this->assertSame(1, Course::where('slug', 'nowy-kurs')->count());
     }
 
     public function test_assigned_instructor_lists_lessons_of_own_course(): void

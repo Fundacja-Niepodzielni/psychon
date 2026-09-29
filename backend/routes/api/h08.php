@@ -62,10 +62,11 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     Route::post('/admin/courses/{course}/invite', [CourseInviteController::class, 'invite'])->whereNumber('course');
 });
 
-// Prowadzący: edycja treści wyłącznie kursu, do którego jest przypisany
-// (`CoursePolicy`). Bez trasy zakładania kursu — kurs zakłada administracja.
-// `GET /instructor/courses` (lista przypisanych) już istnieje w H09.
+// Prowadzący: założenie własnego kursu i edycja treści wyłącznie kursu,
+// do którego jest przypisany (`CoursePolicy`). `GET /instructor/courses`
+// (lista przypisanych) już istnieje w H09.
 Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void {
+    Route::post('/instructor/courses', [InstructorCourseController::class, 'store']);
     Route::get('/instructor/courses/{course}', [InstructorCourseController::class, 'show'])->whereNumber('course');
     Route::patch('/instructor/courses/{course}', [InstructorCourseController::class, 'update'])->whereNumber('course');
 

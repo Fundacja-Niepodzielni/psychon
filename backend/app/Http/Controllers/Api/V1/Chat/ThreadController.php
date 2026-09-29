@@ -6,7 +6,6 @@ use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Chat\MessageResource;
 use App\Http\Resources\Chat\MessageThreadResource;
-use App\Models\Message;
 use App\Models\MessageThread;
 use App\Models\SupervisorAssignment;
 use App\Models\User;
@@ -119,10 +118,7 @@ class ThreadController extends Controller
             ->paginate($perPage);
 
         return response()->json([
-            'data' => collect($paginator->items())
-                ->map(fn (Message $message): array => MessageResource::make($message)->resolve($request))
-                ->values()
-                ->all(),
+            'data' => MessageResource::collection($paginator->items())->resolve($request),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'per_page' => $paginator->perPage(),

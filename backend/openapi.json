@@ -6101,6 +6101,107 @@
                 }
             }
         },
+        "/v1/instructor/courses": {
+            "post": {
+                "operationId": "instructorCourse.store",
+                "summary": "Prowadz\u0105cy zak\u0142ada w\u0142asny kurs \u2014 powstaje jako szkic\n(`CourseWriter::create`, ten sam zas\u00f3b co `POST /admin/courses`) i od\nrazu zostaje jego prowadz\u0105cym (`InstructorCourseAssignment`,\nistniej\u0105ca \u015bcie\u017cka H09). Publikacja i kolejno\u015b\u0107 w \u015bcie\u017cce zostaj\u0105 przy\nadministracji",
+                "tags": [
+                    "InstructorCourse"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InstructorStoreCourseRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "get": {
+                "operationId": "myInstructorProfile.courses",
+                "tags": [
+                    "MyInstructorProfile"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "slug": {
+                                                        "type": "string"
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    },
+                                                    "sequence_order": {
+                                                        "type": [
+                                                            "integer",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "slug",
+                                                    "title",
+                                                    "sequence_order"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/v1/instructor/courses/{course}": {
             "get": {
                 "operationId": "instructorCourse.show",
@@ -8418,63 +8519,6 @@
                 }
             }
         },
-        "/v1/instructor/courses": {
-            "get": {
-                "operationId": "myInstructorProfile.courses",
-                "tags": [
-                    "MyInstructorProfile"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "slug": {
-                                                        "type": "string"
-                                                    },
-                                                    "title": {
-                                                        "type": "string"
-                                                    },
-                                                    "sequence_order": {
-                                                        "type": [
-                                                            "integer",
-                                                            "null"
-                                                        ]
-                                                    }
-                                                },
-                                                "required": [
-                                                    "id",
-                                                    "slug",
-                                                    "title",
-                                                    "sequence_order"
-                                                ]
-                                            }
-                                        }
-                                    },
-                                    "required": [
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/v1/notifications": {
             "get": {
                 "operationId": "notification.index",
@@ -9956,7 +10000,7 @@
         },
         "/v1/admin/report": {
             "get": {
-                "operationId": "v1.admin.report.show_146",
+                "operationId": "v1.admin.report.show_147",
                 "tags": [
                     "Report"
                 ],
@@ -10225,7 +10269,7 @@
         },
         "/v1/admin/reports": {
             "get": {
-                "operationId": "v1.admin.report.show_148",
+                "operationId": "v1.admin.report.show_149",
                 "tags": [
                     "Report"
                 ],
@@ -10902,10 +10946,7 @@
                                     "properties": {
                                         "data": {
                                             "type": "array",
-                                            "items": {
-                                                "type": "array",
-                                                "items": {}
-                                            }
+                                            "items": {}
                                         },
                                         "meta": {
                                             "type": "object",
@@ -11614,6 +11655,62 @@
                     "file"
                 ],
                 "title": "ImportApplicationsRequest"
+            },
+            "InstructorStoreCourseRequest": {
+                "type": "object",
+                "description": "POST /instructor/courses \u2014 prowadz\u0105cy zak\u0142ada w\u0142asny kurs. Lista dozwolonych\np\u00f3l tre\u015bci jest to\u017csama z `StoreCourseRequest` (panel administracji),\nregu\u0142y i komunikaty przepisane 1:1. Stan i przypisanie ustawia wy\u0142\u0105cznie\nserwer (`CourseWriter::create`, `InstructorCourseAssignment::assignCreator`)\n\u2014 dlatego ka\u017cde pole stanu albo przypisania jest tu `prohibited`, nie\npo prostu pomini\u0119te: pomini\u0119cie da\u0142oby ciche zignorowanie wej\u015bcia,\n`prohibited` daje jawne `422 validation_failed`, gdy kto\u015b je jednak wy\u015ble.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "slug": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "course",
+                            "webinar"
+                        ]
+                    },
+                    "is_published": {
+                        "type": "string",
+                        "description": "Stan kursu \u2014 ustawia wy\u0142\u0105cznie serwer (zawsze szkic)."
+                    },
+                    "instructor_id": {
+                        "type": "string",
+                        "description": "Pola przypisania \u2014 zak\u0142adaj\u0105cy zostaje przypisany automatycznie,\nistniej\u0105c\u0105 \u015bcie\u017ck\u0105 H09; \u017cadne z tych p\u00f3l nie jest wej\u015bciem."
+                    },
+                    "lesson_id": {
+                        "type": "string"
+                    },
+                    "assigned_by": {
+                        "type": "string"
+                    },
+                    "assigned_at": {
+                        "type": "string"
+                    },
+                    "sequence_order": {
+                        "type": "string",
+                        "description": "Zastrze\u017cone administracji (kolejno\u015b\u0107 i grupa produktowa \u015bcie\u017cki)."
+                    },
+                    "product_group": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title",
+                    "slug"
+                ],
+                "title": "InstructorStoreCourseRequest"
             },
             "InviteToCourseRequest": {
                 "type": "object",

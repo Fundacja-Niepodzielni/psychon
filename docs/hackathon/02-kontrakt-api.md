@@ -1007,3 +1007,30 @@ Układ ogólny MVP; wzór konkretnego grantodawcy wymaga osobnego uzgodnienia
 (Zał. 2 umowy) i jest poza MVP.
 
 Odczyt, bez audytu i bez powiadomień (jak H07).
+
+---
+
+## Aneks — prowadzący zakłada własny kurs (H08/H09)
+
+`POST /instructor/courses` w grupie `role:instructor` — prowadzący zakłada nowy kurs. `201` w
+kopercie `{"data": ...}`, ten sam zasób co odpowiedź `POST /admin/courses`.
+
+Pola dozwolone w ciele: `title` (wymagane, string, do 255 znaków), `slug` (wymagany, string,
+`alpha_dash`, do 255 znaków, unikalny w `courses`), `description` (opcjonalny, string albo
+`null`), `type` (opcjonalny, `course` albo `webinar`) — te same reguły i komunikaty co
+`POST /admin/courses`.
+
+Pola zakazane (`prohibited`, każde osobno → `422 validation_failed`): `is_published`,
+`instructor_id`, `lesson_id`, `assigned_by`, `assigned_at`, `sequence_order`, `product_group`.
+Stan i przypisanie ustawia wyłącznie serwer — wejście nigdy ich nie niesie.
+
+Kurs powstaje zawsze jako szkic (`is_published: false`) — ta sama reguła co
+`POST /admin/courses` (kurs bez lekcji nie może być opublikowany). Zakładający zostaje od razu
+przypisany jako jego prowadzący, tą samą ścieżką przypisań co administracja (H09):
+`assignment.created` w rejestrze audytu (§3.2) i w typach powiadomień (§3.1) — bez nowego kodu
+błędu, sluga audytu ani typu powiadomienia. Publikacja i kolejność w ścieżce zostają przy
+administracji.
+
+Kod: `Http/Requests/H08/InstructorStoreCourseRequest.php`,
+`Services/H08/InstructorCourseAssignment.php`,
+`Http/Controllers/Api/V1/H08/InstructorCourseController.php::store`.
