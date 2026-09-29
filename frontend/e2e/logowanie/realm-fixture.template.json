@@ -1,0 +1,223 @@
+{
+  "realm": "niepodzielni",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "editUsernameAllowed": false,
+  "internationalizationEnabled": true,
+  "defaultLocale": "pl",
+  "supportedLocales": [
+    "pl"
+  ],
+  "accessTokenLifespan": 8,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 86400,
+  "roles": {
+    "realm": [
+      {
+        "name": "pacjent",
+        "composite": false
+      },
+      {
+        "name": "wolontariusz",
+        "composite": false
+      },
+      {
+        "name": "prowadzacy",
+        "composite": false
+      },
+      {
+        "name": "koordynator",
+        "composite": false
+      },
+      {
+        "name": "admin-fundacja",
+        "composite": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "psychon-web",
+      "name": "PsychON - front (Next.js) - E2E EFEMERYCZNE",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "consentRequired": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "__PSYCHON_WEB_ORIGIN__/api/auth/callback/keycloak"
+      ],
+      "webOrigins": [
+        "__PSYCHON_WEB_ORIGIN__"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false",
+        "use.refresh.tokens": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-psychon-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "psychon-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "lightweight.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "psychon-api",
+      "name": "PsychON - API (Laravel) - E2E EFEMERYCZNE",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "__PSYCHON_API_CLIENT_SECRET__",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "e2e-admin-fundacja",
+      "email": "e2e-admin-fundacja@niepodzielni.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-niepodzielni",
+        "admin-fundacja"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__NP_E2E_HASLO__",
+          "temporary": false
+        }
+      ],
+      "firstName": "E2E",
+      "lastName": "e2e-admin-fundacja"
+    },
+    {
+      "username": "e2e-koordynator",
+      "email": "e2e-koordynator@niepodzielni.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-niepodzielni",
+        "koordynator"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__NP_E2E_HASLO__",
+          "temporary": false
+        }
+      ],
+      "firstName": "E2E",
+      "lastName": "e2e-koordynator"
+    },
+    {
+      "username": "e2e-prowadzacy",
+      "email": "e2e-prowadzacy@niepodzielni.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-niepodzielni",
+        "prowadzacy"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__NP_E2E_HASLO__",
+          "temporary": false
+        }
+      ],
+      "firstName": "E2E",
+      "lastName": "e2e-prowadzacy"
+    },
+    {
+      "username": "e2e-wolontariusz",
+      "email": "e2e-wolontariusz@niepodzielni.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-niepodzielni",
+        "wolontariusz"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__NP_E2E_HASLO__",
+          "temporary": false
+        }
+      ],
+      "firstName": "E2E",
+      "lastName": "e2e-wolontariusz"
+    },
+    {
+      "username": "e2e-pacjent",
+      "email": "e2e-pacjent@niepodzielni.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-niepodzielni",
+        "pacjent"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__NP_E2E_HASLO__",
+          "temporary": false
+        }
+      ],
+      "firstName": "E2E",
+      "lastName": "e2e-pacjent"
+    },
+    {
+      "username": "e2e-swiadek-rozjazdu",
+      "email": "e2e-swiadek-rozjazdu@niepodzielni.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-niepodzielni",
+        "wolontariusz"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__NP_E2E_HASLO__",
+          "temporary": false
+        }
+      ],
+      "firstName": "E2E",
+      "lastName": "e2e-swiadek-rozjazdu"
+    }
+  ]
+}
