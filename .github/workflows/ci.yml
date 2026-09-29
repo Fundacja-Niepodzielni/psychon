@@ -293,8 +293,23 @@ jobs:
       # push: SHA sprzed pushu) - i odmawia (exit != 0), gdy wartosc w
       # galezi jest MNIEJSZA niz w bazie. Rowna przechodzi, wieksza
       # przechodzi. Domyslny checkout tego joba jest PLYTKI (brak
-      # fetch-depth), wiec commit bazy trzeba dociagnac osobno, po SHA -
-      # GitHub na repo publicznym na to pozwala.
+      # fetch-depth): krok sam dociaga pelna historie bazy przez `git fetch`
+      # (nigdy reczna ingerencje w `.git/shallow` - plik granic jest tylko
+      # CZYTANY). Pelnosc historii jest mierzona dla SAMEJ BAZY, nie dla
+      # calego repozytorium: flaga repozytorium potrafi zostac prawdziwa
+      # (plytkie) nawet gdy historia bazy jest juz kompletna, bo plik granic
+      # niesie odciski z zupelnie innych pobran; a odwrotnie, flaga
+      # repozytorium potrafi wygladac na pelna, gdy w istocie to wlasnie baza
+      # jest ucieta. Krok czyta plik granic i dla kazdej granicy sprawdza, czy
+      # lezy w historii bazy (`git merge-base --is-ancestor`); dopiero gdy
+      # zadna granica nie tnie historii bazy, wolno uznac pusty
+      # `git log BASE -- PLIK` za dowod, ze pliku nigdy nie bylo w historii
+      # bazy - wtedy krok wprowadza zapadke i konczy sie zielono, zamiast
+      # probowac odczytac plik, ktorego nigdy nie bylo. Gdy choc jedna granica
+      # tnie historie bazy, ten sam pusty odczyt nie dowodzi niczego (historia
+      # bazy moze byc po prostu obcieta) - krok wtedy wraca do odczytu tresci
+      # pliku wprost z bazy, tak jak wtedy, gdy plik kiedys w historii bazy
+      # byl, albo gdy pobranie samo w sobie zawodzi.
       - name: Zapadka progu pokrycia (PROG_POKRYCIA tylko w gore)
         working-directory: .
         run: |
@@ -323,7 +338,103 @@ jobs:
             echo "ZAPADKA PROGU POKRYCIA: NIE ZMIERZONO - brak bazy porownania (${PRZYCZYNA_BRAKU_BAZY}, zdarzenie ${{ github.event_name }}) - krok nie przepuszcza, bo nie mial czego zmierzyc." >&2
             exit 2
           fi
-          git fetch --depth=1 origin "$BASE_SHA" >/dev/null 2>&1
+          # Doganianie pelnej historii wylacznie przez `git fetch` - `--unshallow`
+          # na klonie juz pelnym konczy sie bledem, a `--depth=N` na klonie juz
+          # pelnym potrafi go z powrotem splycic (obie pulapki wykluczone przez
+          # warunek nizej: `--unshallow` wolane TYLKO, gdy klon FAKTYCZNIE jest
+          # plytki, a druga komenda nigdy nie niesie `--depth`).
+          if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+            git fetch --quiet --unshallow origin 2>/dev/null
+          fi
+          git fetch --quiet origin "$BASE_SHA" 2>/dev/null
+          # Pelnosc historii bazy liczona per baza, nie po fladze calego
+          # repozytorium: czytamy plik granic (nigdy go nie zmieniamy) i dla
+          # kazdej wpisanej tam granicy sprawdzamy, czy jest przodkiem bazy.
+          # Granica bedaca przodkiem bazy znaczy, ze historia BAZY jest ucieta
+          # w tym miejscu - wtedy baza nie ma pelnej historii, bez wzgledu na
+          # to, co flaga repozytorium mowi o innych, niepowiazanych granicach.
+          IS_SHALLOW_REPO="$(git rev-parse --is-shallow-repository 2>/dev/null)"
+          PLIK_GRANIC="$(git rev-parse --git-path shallow 2>/dev/null)"
+          GRANICE_SCIEZKA_KOD=$?
+          LICZBA_GRANIC_REPO=0
+          LICZBA_GRANIC_W_HISTORII_BAZY=0
+          HISTORIA_BAZY_PELNA="true"
+          PRZYCZYNA_GRANIC="brak sciezki granic (repozytorium nigdy nie bylo plytkie)"
+          # Sama sciezka granic bywa zwodnicza: polecenie jej wyliczajace
+          # potrafi zawiesc albo dac pusty wynik, sama sciezka potrafi
+          # wskazywac na katalog zamiast na plik, na dowiazanie symboliczne,
+          # albo na plik bez prawa odczytu - w kazdym z tych przypadkow NIE
+          # WOLNO czytac tego jako "pelna historia", bo nie ma dowodu ani w
+          # jedna, ani w druga strone. Dowiazanie symboliczne liczy sie jako
+          # NIEPELNA niezaleznie od tego, czy jego cel istnieje: git sam
+          # nigdy nie zapisuje tej sciezki jako dowiazania, wiec dowiazanie
+          # tutaj jest zawsze cudzym, niezaufanym stanem. Tylko brak sciezki
+          # (repozytorium nigdy plytkie) i pusty, zwykly, czytelny plik
+          # (repozytorium bez zadnej biezacej granicy) licza sie jako dowod
+          # pelnosci.
+          if [ "$GRANICE_SCIEZKA_KOD" -ne 0 ] || [ -z "$PLIK_GRANIC" ]; then
+            HISTORIA_BAZY_PELNA="false"
+            PRZYCZYNA_GRANIC="rev-parse sciezki granic zawiodl albo dal pusty wynik"
+          elif [ -L "$PLIK_GRANIC" ]; then
+            HISTORIA_BAZY_PELNA="false"
+            PRZYCZYNA_GRANIC="sciezka granic jest dowiazaniem symbolicznym, nie zwyklym plikiem zapisanym przez git"
+          elif [ ! -e "$PLIK_GRANIC" ]; then
+            PRZYCZYNA_GRANIC="brak sciezki granic (repozytorium nigdy nie bylo plytkie)"
+          elif [ ! -f "$PLIK_GRANIC" ] || [ ! -r "$PLIK_GRANIC" ]; then
+            HISTORIA_BAZY_PELNA="false"
+            PRZYCZYNA_GRANIC="sciezka granic istnieje, ale nie jest zwyklym czytelnym plikiem (katalog albo brak prawa odczytu)"
+          else
+            GRANICE_TRESC=""
+            if ! GRANICE_TRESC=$(cat < "$PLIK_GRANIC" 2>/dev/null); then
+              HISTORIA_BAZY_PELNA="false"
+              PRZYCZYNA_GRANIC="odczyt pliku granic zakonczyl sie bledem"
+            elif [ -z "$GRANICE_TRESC" ]; then
+              PRZYCZYNA_GRANIC="plik granic pusty (repozytorium bez zadnej biezacej granicy)"
+            else
+              PRZYCZYNA_GRANIC="plik granic odczytany, granice sprawdzone wzgledem bazy"
+              while IFS= read -r GRANICA || [ -n "$GRANICA" ]; do
+                [ -z "$GRANICA" ] && continue
+                LICZBA_GRANIC_REPO=$((LICZBA_GRANIC_REPO + 1))
+                git merge-base --is-ancestor "$GRANICA" "$BASE_SHA" 2>/dev/null
+                GRANICA_KOD=$?
+                if [ "$GRANICA_KOD" -eq 0 ]; then
+                  LICZBA_GRANIC_W_HISTORII_BAZY=$((LICZBA_GRANIC_W_HISTORII_BAZY + 1))
+                  HISTORIA_BAZY_PELNA="false"
+                elif [ "$GRANICA_KOD" -ne 1 ]; then
+                  HISTORIA_BAZY_PELNA="false"
+                fi
+              done <<< "$GRANICE_TRESC"
+            fi
+          fi
+          echo "ZAPADKA PROGU POKRYCIA: granice w repozytorium=$LICZBA_GRANIC_REPO, granice w historii bazy=$LICZBA_GRANIC_W_HISTORII_BAZY, is-shallow-repository=$IS_SHALLOW_REPO, historia bazy pelna=$HISTORIA_BAZY_PELNA, przyczyna granic=$PRZYCZYNA_GRANIC."
+          # Pelna historia bazy (zmierzona wyzej per granica) nie wystarcza sama w sobie: BASE_SHA
+          # bywa skladniowo poprawny, a mimo to nieosiagalny (nigdy nie
+          # istnial) albo istnieje, ale nie jest commitem (blob/drzewo z tego
+          # samego repozytorium) - w obu przypadkach `git log BASE -- PLIK`
+          # potrafi zakonczyc sie bledem (kod niezerowy) z PUSTYM wyjsciem,
+          # co bez tej kontroli czyta sie jako "pliku nigdy nie bylo". Dlatego
+          # najpierw peelowanie obiektu do commita, dopiero potem odczyt
+          # historii pliku - i wynik tego odczytu liczy sie po kodzie
+          # wyjscia, nigdy po samej tresci.
+          if [ "$HISTORIA_BAZY_PELNA" = "true" ]; then
+            if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+              echo "ZAPADKA PROGU POKRYCIA: NIE ZMIERZONO - baza $BASE_SHA nieosiagalna po pobraniu - brak dowodu nieobecnosci." >&2
+              exit 1
+            fi
+            GIT_LOG_WYJSCIE=$(git log "$BASE_SHA" -- "$PLIK_POMIARU" 2>/dev/null)
+            GIT_LOG_KOD=$?
+            if [ "$GIT_LOG_KOD" -ne 0 ]; then
+              echo "ZAPADKA PROGU POKRYCIA: NIE ZMIERZONO - odczyt historii $PLIK_POMIARU w bazie $BASE_SHA zakonczyl sie bledem (kod $GIT_LOG_KOD) - blad nie jest dowodem braku pliku." >&2
+              exit 1
+            fi
+            if [ -z "$GIT_LOG_WYJSCIE" ]; then
+              PROG_WPROWADZENIE=$(grep -oE 'PROG_POKRYCIA = [0-9]+' "$PLIK_POMIARU" | head -1 | grep -oE '[0-9]+')
+              if [ -n "$PROG_WPROWADZENIE" ]; then
+                echo "WPROWADZENIE ZAPADKI: baza $BASE_SHA bez pliku w pelnej historii, prog na czubku = $PROG_WPROWADZENIE"
+                exit 0
+              fi
+            fi
+          fi
           if ! BAZA_TRESC=$(git show "$BASE_SHA:$PLIK_POMIARU" 2>&1); then
             echo "ZAPADKA PROGU POKRYCIA: NIE ZMIERZONO - nie udalo sie odczytac $PLIK_POMIARU z bazy $BASE_SHA (fetch/show zawiodl)." >&2
             exit 1
