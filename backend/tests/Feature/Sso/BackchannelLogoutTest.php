@@ -4,6 +4,7 @@ namespace Tests\Feature\Sso;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Tests\Support\Sso\KeycloakTokenFactory;
@@ -103,6 +104,17 @@ class BackchannelLogoutTest extends TestCase
             ->assertStatus(200);
     }
 
+    /**
+     * A frozen clock instead of a real `sleep()`: the throttle's own TTL
+     * math (`Illuminate\Cache\ArrayStore::toTimestamp()` and `::get()`,
+     * `vendor/laravel/framework/src/Illuminate/Cache/ArrayStore.php:96,275`,
+     * reached via `Cache::add()` in
+     * `app/Services/Keycloak/BackchannelLogoutAlarm.php:30`) reads
+     * `Carbon::now()` exclusively — never `time()`/`microtime()` outside
+     * Carbon, never a TTL kept by the store itself — so `travelTo()`
+     * (`Carbon::setTestNow()`) drives it precisely. A real `sleep(2)` only
+     * raced the wall clock under a loaded parallel test run.
+     */
     public function test_alarm_is_raised_once_per_window_with_the_genuine_cause(): void
     {
         config(['keycloak.alarm_throttle_seconds' => 1]);
@@ -118,6 +130,9 @@ class BackchannelLogoutTest extends TestCase
 
         $realm = (new KeycloakTokenFactory)->installAsRealm();
 
+        $start = Carbon::now();
+        $this->travelTo($start);
+
         $this->postJson(self::ROUTE, ['logout_token' => $realm->mintLogoutToken(['sid' => 'sid-a-'.uniqid()])])
             ->assertStatus(503);
 
@@ -131,18 +146,36 @@ class BackchannelLogoutTest extends TestCase
             'The alarm must carry the genuine cause, not merely note that something failed.',
         );
 
-        // Second failure, still inside the 1s window: suppressed.
+        // Second failure, still inside the 1s window (same frozen instant): suppressed.
         $this->postJson(self::ROUTE, ['logout_token' => $realm->mintLogoutToken(['sid' => 'sid-b-'.uniqid()])])
             ->assertStatus(503);
 
         $this->assertCount(1, $critical, 'A second failure inside the same window must not raise a second alarm.');
 
-        sleep(2); // past the 1s window
+        // Exactly at the window boundary. ArrayStore::get() expires the key
+        // once `Carbon::now() >= $expiresAt` — `>=`, not `>`
+        // (ArrayStore.php:96) — and `$expiresAt` was computed as
+        // `now + $seconds` at the moment the first failure armed the
+        // throttle (ArrayStore.php:275). So the instant the window ends is
+        // already expired, not "still valid for one more tick": the alarm
+        // must re-arm here, not one tick later.
+        $this->travelTo($start->clone()->addSecond());
 
         $this->postJson(self::ROUTE, ['logout_token' => $realm->mintLogoutToken(['sid' => 'sid-c-'.uniqid()])])
             ->assertStatus(503);
 
-        $this->assertCount(2, $critical, 'Once the window passes, the next failure must re-arm the alarm.');
+        $this->assertCount(2, $critical, 'Exactly at the window boundary the throttle has already expired (>=, ArrayStore.php:96): the alarm must re-arm.');
+
+        // One second after that boundary: still re-armed, confirming the
+        // boundary leg above was the genuine `>=` edge and not a fluke.
+        $this->travelTo($start->clone()->addSeconds(2));
+
+        $this->postJson(self::ROUTE, ['logout_token' => $realm->mintLogoutToken(['sid' => 'sid-d-'.uniqid()])])
+            ->assertStatus(503);
+
+        $this->assertCount(3, $critical, 'Once the window passes, the next failure must re-arm the alarm.');
+
+        $this->travelBack();
     }
 
     /**
