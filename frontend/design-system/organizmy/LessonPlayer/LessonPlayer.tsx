@@ -43,6 +43,8 @@ interface WlasciwosciLessonPlayer {
   materialy: MaterialLessonPlayer[];
   pytania: PytanieLessonPlayer[];
   onZadajPytanie: (tresc: string) => void;
+  /** Wołane przy każdej zmianie wewnętrznego stanu odtwarzania (start, pauza). */
+  onZmianaOdtwarzania?: (odtwarzane: boolean) => void;
   /** Długość nagrania i obejrzana część, w sekundach — źródło paska i licznika czasu. */
   czasTrwaniaSekund: number;
   obejrzaneSekundy: number;
@@ -84,6 +86,7 @@ export function LessonPlayer({
   materialy,
   pytania,
   onZadajPytanie,
+  onZmianaOdtwarzania,
   czasTrwaniaSekund,
   obejrzaneSekundy,
   procentAktywnegoCzasu,
@@ -97,6 +100,10 @@ export function LessonPlayer({
   const baza = id ?? zapasowyId;
   const odtwarzacz = useRef<HTMLDivElement>(null);
   const [odtwarzane, setOdtwarzane] = useState(false);
+  // Ostatnia zgłoszona wartość, aktualizowana synchronicznie w obsłudze kliknięcia —
+  // nie czyta `odtwarzane` z domknięcia renderu, więc dwa kliknięcia w jednym akcie
+  // zgłaszają dwie różne wartości zamiast dwa razy tej samej nieaktualnej.
+  const ostatnieOdtwarzane = useRef(odtwarzane);
   const [pelnyEkran, setPelnyEkran] = useState(false);
   const [trescPytania, setTrescPytania] = useState("");
 
@@ -160,7 +167,12 @@ export function LessonPlayer({
             type="button"
             className={style.przyciskOdtwarzania}
             aria-label={odtwarzane ? "Zatrzymaj" : "Odtwórz"}
-            onClick={() => setOdtwarzane((p) => !p)}
+            onClick={() => {
+              const nastepny = !ostatnieOdtwarzane.current;
+              ostatnieOdtwarzane.current = nastepny;
+              setOdtwarzane((poprzednie) => !poprzednie);
+              onZmianaOdtwarzania?.(nastepny);
+            }}
           >
             <span className={odtwarzane ? style.znakPauzy : style.znakOdtwarzania} aria-hidden="true" />
           </button>
