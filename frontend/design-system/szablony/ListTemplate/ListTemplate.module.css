@@ -1,0 +1,26 @@
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.naglowek {
+  display: flex;
+  flex-direction: column;
+}
+
+.filtry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.stronicowanie {
+  display: flex;
+  justify-content: center;
+}

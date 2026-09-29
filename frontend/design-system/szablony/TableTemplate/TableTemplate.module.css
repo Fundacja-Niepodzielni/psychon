@@ -1,0 +1,41 @@
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.naglowek {
+  display: flex;
+  flex-direction: column;
+}
+
+.statystyki {
+  display: flex;
+  flex-direction: column;
+}
+
+.zdanie {
+  margin: 0;
+}
+
+.zakres {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.wykres {
+  display: flex;
+  flex-direction: column;
+}
+
+.tabela {
+  display: flex;
+  flex-direction: column;
+}
+
+.wsparcie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}

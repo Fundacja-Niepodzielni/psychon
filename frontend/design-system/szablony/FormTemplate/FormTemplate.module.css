@@ -1,0 +1,43 @@
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  max-width: 640px;
+}
+
+.publiczny {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: var(--space-36) var(--space-32);
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+}
+
+.logoTresc {
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.naglowek {
+  display: flex;
+  flex-direction: column;
+}
+
+.powiadomienie {
+  display: flex;
+  flex-direction: column;
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+}
+
+.drobnyDruk {
+  font-size: var(--fs-11);
+  text-align: center;
+  margin: 0;
+}

@@ -25,6 +25,7 @@ export default defineConfig({
         index: fileURLToPath(new URL("./design-system/poligon/index.html", import.meta.url)),
         lekcja: fileURLToPath(new URL("./design-system/poligon/lekcja.html", import.meta.url)),
         formularze: fileURLToPath(new URL("./design-system/poligon/formularze.html", import.meta.url)),
+        "szablony-kolumna": fileURLToPath(new URL("./design-system/poligon/szablony-kolumna.html", import.meta.url)),
       },
     },
   },
