@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\AuditController;
+use App\Http\Controllers\Api\V1\Admin\GrantorReportController;
 use App\Http\Controllers\Api\V1\Admin\ReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,4 +38,9 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
 
     Route::get('/admin/audit/export.csv', [AuditController::class, 'export']);
     Route::get('/admin/audit', [AuditController::class, 'index']);
+
+    // Raport w ukladzie grantodawcy — wylacznie liczby zbiorcze
+    // (`GrantorReportAggregates`), zero wierszy osob w JSON i w CSV.
+    Route::get('/admin/report/grantor/export.csv', [GrantorReportController::class, 'export']);
+    Route::get('/admin/report/grantor', [GrantorReportController::class, 'show']);
 });

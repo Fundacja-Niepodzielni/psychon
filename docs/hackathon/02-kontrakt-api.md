@@ -982,3 +982,28 @@ Sekcja jest obecna zawsze, z `rows: []`; liczbowe `sum` wynosi `0` (`"0"` dla
 `hours_accepted`, liczba całkowita `0` dla pozostałych trzech), `workshop.done`
 wynosi `false`, a `reliability.sum` wynosi `null` — dokładnie ten sam `null`,
 który niesie `reliability_percent` osoby bez mierzalnej ukończonej lekcji.
+
+---
+
+## Aneks z 2026-09-28 (4) — raport w układzie grantodawcy (H20), układ ogólny MVP
+
+`GET /admin/report/grantor?from=&to=` → 200
+`{"data":{"period":{"from","to"},"indicators":{...}}}` oraz
+`GET /admin/report/grantor/export.csv?from=&to=` (wspólny helper CSV z §1: BOM,
+`;`, `text/csv; charset=utf-8`) — w istniejącej grupie
+`role:project_manager,super_admin` pakietu H20. `from`/`to` opcjonalne, format
+`YYYY-MM-DD`; data początkowa późniejsza niż końcowa, zły format albo parametr
+spoza tych dwóch → 422 `validation_failed`.
+
+Wskaźniki (`indicators`): `participants_by_status` (`accepted`, `in_program`,
+`completed`, `removed`), `tests_passed_total`, `certificates_issued_total`,
+`supervisions_confirmed_total` — wyłącznie liczby zbiorcze, zero danych
+osobowych w odpowiedzi i w pliku CSV (żadnego identyfikatora, imienia,
+nazwiska ani e-maila). Każdy wskaźnik wspólny z `GET /admin/report` albo z
+kartą osoby (`GET /admin/users/{id}`) pochodzi z tego samego źródła co jego
+odpowiednik — bez drugiej reguły liczenia.
+
+Układ ogólny MVP; wzór konkretnego grantodawcy wymaga osobnego uzgodnienia
+(Zał. 2 umowy) i jest poza MVP.
+
+Odczyt, bez audytu i bez powiadomień (jak H07).
