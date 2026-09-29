@@ -9,6 +9,7 @@ use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
@@ -136,6 +137,22 @@ class LessonQuestionTest extends TestCase
             'access_expires_at' => now()->addYear(),
         ]);
 
+        // This row must sort ahead of the seed's own question on this
+        // lesson (`DemoSeeder.php:326`, inserted moments earlier in `setUp()`).
+        // Relying on plain `now()` here ties the assertion below to real
+        // wall-clock ordering between two `now()` calls in the same process —
+        // a failing run once measured the seed row ending up with a
+        // `created_at` LATER than this row's, which the query's `id` tie-break
+        // cannot compensate for (`created_at` differed, so it was never a
+        // tie). Anchoring explicitly to the latest existing `created_at` for
+        // this lesson removes the race entirely: this row is guaranteed to
+        // sort first regardless of any wall-clock behaviour between the
+        // seeder and the test body.
+        $latestExisting = InstructorQuestion::where('lesson_id', $lesson->id)->max('created_at');
+        $mineCreatedAt = $latestExisting !== null
+            ? Carbon::parse($latestExisting)->addSecond()
+            : Carbon::now();
+
         $mine = InstructorQuestion::create([
             'user_id' => $marta->id,
             'lesson_id' => $lesson->id,
@@ -144,6 +161,13 @@ class LessonQuestionTest extends TestCase
             'answered_by' => $this->user('joanna@demo.pl')->id,
             'answered_at' => now(),
         ]);
+        // `created_at` nie jest w $fillable modelu (celowo — bez tego wyjatku
+        // nikt spoza tego pliku nie mogby sfalszowac czasu powstania pytania),
+        // wiec jawna wartosc wymaga `forceFill()` (omija liste dopuszczonych
+        // pol) i DRUGIEGO `save()`. Drugi zapis nie rusza juz `created_at`
+        // (Eloquent ustawia je wylacznie przy INSERCIE, `!$this->exists`),
+        // wiec tylko `updated_at` idzie na `now()` — bez znaczenia tutaj.
+        $mine->forceFill(['created_at' => $mineCreatedAt])->save();
         InstructorQuestion::create([
             'user_id' => $other->id,
             'lesson_id' => $lesson->id,
@@ -173,6 +197,150 @@ class LessonQuestionTest extends TestCase
         $this->assertSame('Odpowiedź prowadzącej.', $response->json('data.0.answer'));
         $this->assertSame('Joanna Demo', $response->json('data.0.answered_by_name'));
         $this->assertNotNull($response->json('data.0.answered_at'));
+    }
+
+    /**
+     * Deterministic positive control for the mechanism actually measured
+     * behind a once-failing run of the test above: the seed's own question
+     * on this lesson (`DemoSeeder.php:326`) ended up with a `created_at`
+     * strictly LATER than the participant row created moments afterwards in
+     * the test body. That is not a tie — the `id` tie-break at
+     * `LessonQuestionController.php:38-39` only ever activates on genuinely
+     * equal timestamps — so no tie-break change could have fixed it. This
+     * test reproduces the exact same precondition explicitly (a row whose
+     * `created_at` is 1 second BEFORE the seed row's, simulating whatever
+     * made the seed row's clock read later) and asserts the query's actual,
+     * correct behaviour under it: the row with the later `created_at`
+     * legitimately sorts first. The fragility was never in this ordering
+     * rule; it was in the OTHER test's assumption that its own row would
+     * always be newer than the seed's, which that test no longer assumes
+     * (its `created_at` is now anchored explicitly to `max(created_at)` for
+     * the lesson, see the comment there).
+     */
+    public function test_a_strictly_earlier_created_at_correctly_loses_the_ordering_race(): void
+    {
+        $lesson = $this->unlockedLesson();
+        $marta = $this->user('marta@demo.pl');
+
+        $seedQuestion = InstructorQuestion::where('lesson_id', $lesson->id)
+            ->where('user_id', $marta->id)
+            ->firstOrFail();
+
+        $earlier = InstructorQuestion::create([
+            'user_id' => $marta->id,
+            'lesson_id' => $lesson->id,
+            'question' => 'Symulacja kroku zegara wstecz wzgledem pytania seeda.',
+        ]);
+        // Patrz komentarz przy `forceFill` powyzej: `created_at` nie jest
+        // fillable, wiec jawna wartosc trzeba nadac po utworzeniu wiersza.
+        $earlier->forceFill(['created_at' => $seedQuestion->created_at->clone()->subSecond()])->save();
+
+        $this->actingAs($marta, 'keycloak');
+        $response = $this->getJson("/api/v1/lessons/{$lesson->id}/questions")->assertOk();
+
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertContains($earlier->id, $ids);
+        $this->assertSame(
+            $seedQuestion->id,
+            $ids[0],
+            'Ze scisle wczesniejszym created_at wiersz testu poprawnie przegrywa wyscig o kolejnosc — to mechanizm zmierzony w prawdziwym czerwonym biegu, nie usterka zapytania.',
+        );
+    }
+
+    /**
+     * The route's query orders `created_at` DESC with an explicit
+     * `id` DESC tie-break (`LessonQuestionController.php:38-39`). Two
+     * questions created in the same frozen instant must still resolve
+     * deterministically — the row created later (the higher `id`) wins the
+     * tie, matching "newest first". Without the tie-break, ties are decided
+     * by whatever order Postgres happens to return equal keys in, which is
+     * not guaranteed to be insertion order.
+     */
+    public function test_tie_in_created_at_is_broken_by_id_descending(): void
+    {
+        $lesson = $this->unlockedLesson();
+        $marta = $this->user('marta@demo.pl');
+
+        $this->travelTo(Carbon::now());
+
+        $older = InstructorQuestion::create([
+            'user_id' => $marta->id,
+            'lesson_id' => $lesson->id,
+            'question' => 'Pytanie A, ten sam znacznik czasu.',
+        ]);
+        $newer = InstructorQuestion::create([
+            'user_id' => $marta->id,
+            'lesson_id' => $lesson->id,
+            'question' => 'Pytanie B, ten sam znacznik czasu.',
+        ]);
+
+        // Sanity check on the fixture itself: this test only proves anything
+        // if both rows genuinely share one instant.
+        $this->assertSame(
+            $older->created_at->format('Y-m-d H:i:s.u'),
+            $newer->created_at->format('Y-m-d H:i:s.u'),
+            'Ten test ma sens tylko, gdy oba wpisy dzieli dokladnie ta sama chwila.',
+        );
+        $this->assertGreaterThan($older->id, $newer->id);
+
+        $this->actingAs($marta, 'keycloak');
+        $response = $this->getJson("/api/v1/lessons/{$lesson->id}/questions")->assertOk();
+
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertSame(
+            $newer->id,
+            $ids[0],
+            'Przy remisie czasu wygrywa wyzszy id (najnowsze pierwsze, malejaco).',
+        );
+
+        $this->travelBack();
+    }
+
+    /**
+     * When timestamps genuinely differ, `created_at` —
+     * not `id` — still decides the order. Constructed adversarially: the
+     * row that is later in TIME is created FIRST (so it gets the smaller
+     * id), by travelling forward then back before the second insert. If the
+     * order followed `id` instead of `created_at`, this assertion would
+     * fail.
+     */
+    public function test_order_by_time_is_unaffected_by_id_when_timestamps_differ(): void
+    {
+        $lesson = $this->unlockedLesson();
+        $marta = $this->user('marta@demo.pl');
+
+        $this->travelTo(Carbon::now()->addMinute());
+        $laterInTime = InstructorQuestion::create([
+            'user_id' => $marta->id,
+            'lesson_id' => $lesson->id,
+            'question' => 'Nowszy czasowo, ale utworzony pierwszy (nizszy id).',
+        ]);
+
+        $this->travelTo(Carbon::now()->subMinutes(2));
+        $earlierInTime = InstructorQuestion::create([
+            'user_id' => $marta->id,
+            'lesson_id' => $lesson->id,
+            'question' => 'Starszy czasowo, ale utworzony drugi (wyzszy id).',
+        ]);
+
+        $this->assertGreaterThan(
+            $laterInTime->id,
+            $earlierInTime->id,
+            'Ten test ma sens tylko, gdy id i czas sa rozbiezne.',
+        );
+        $this->assertTrue($laterInTime->created_at->gt($earlierInTime->created_at));
+
+        $this->actingAs($marta, 'keycloak');
+        $response = $this->getJson("/api/v1/lessons/{$lesson->id}/questions")->assertOk();
+
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertSame(
+            $laterInTime->id,
+            $ids[0],
+            'Rozne znaczniki czasu: kolejnosc idzie za czasem, nie za id.',
+        );
+
+        $this->travelBack();
     }
 
     public function test_listing_questions_of_a_locked_course_is_refused(): void

@@ -274,13 +274,33 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
      * nie zakłada NIC o mechanizmie naprawy — działa identycznie na pliku
      * niezmienionym, przerenderowanym bez nazwiska, i na dowolnym innym PDF.
      */
+    /**
+     * Nie tnie strumienia po DOSLOWNYM ciagu bajtow `endstream` — tresc
+     * miedzy `stream` a `endstream` jest skompresowana (FlateDecode), czyli w
+     * praktyce ciagiem bajtow bliskim losowemu; gdy ten ciag PRZYPADKIEM
+     * zawiera bajty `\nendstream`, stary (nieznajaca-granicy) wersja obcinala
+     * przechwycony fragment przedwczesnie, dekompresja realnego strumienia
+     * nigdy nie byla nawet probowana na pelnych bajtach i `gzuncompress()`
+     * padal na niekompletnych danych — stad prawdziwy czerwony bieg
+     * (`czat-r2-444-A.log:42-49`, „Failed asserting that false is true.” na
+     * linii `:192`, mimo ze certyfikat naprawde niesie nazwisko).
+     *
+     * Naprawa: zamiast szukac KONCA strumienia doslownym `endstream`, szuka
+     * WYLACZNIE jego POCZATKU (`stream\r?\n`) i probuje dekompresowac WSZYSTKO
+     * od tego miejsca do konca bufora. `gzuncompress()` jest odporny na dane
+     * ZA prawdziwym koncem strumienia zlib — zatrzymuje sie sam na wewnetrznym
+     * znaczniku konca strumienia deflate i ignoruje reszte (zmierzone ponizej
+     * i w `test_helper_survives_a_compressed_stream_that_contains_the_literal_endstream_marker`),
+     * wiec nie trzeba juz wcale znac ani parsowac granicy koncowej.
+     */
     private static function pdfBytesContainSurname(string $pdfBytes, string $surname): bool
     {
         $needle = mb_convert_encoding($surname, 'UTF-16BE', 'UTF-8');
 
-        if (preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdfBytes, $matches)) {
-            foreach ($matches[1] as $stream) {
-                $decompressed = @gzuncompress($stream);
+        if (preg_match_all('/stream\r?\n/', $pdfBytes, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as [$token, $offset]) {
+                $start = $offset + strlen($token);
+                $decompressed = @gzuncompress(substr($pdfBytes, $start));
                 if ($decompressed !== false && str_contains($decompressed, $needle)) {
                     return true;
                 }
@@ -288,6 +308,55 @@ class AdminUserAnonymizeTest extends CertificatePackageCase
         }
 
         return false;
+    }
+
+    /**
+     * Kontrola dodatnia deterministyczna: stary pomocnik (doslowny
+     * `endstream`) na tych samych, stalych bajtach zwraca `false`; nowy —
+     * `true`. Bajty sa w pelni deterministyczne (`gzcompress($tresc, 0)` =
+     * poziom 0 = bloki "stored" bez rzeczywistej kompresji, wiec bajty
+     * wyjsciowe sa bajt-w-bajt przewidywalne z wejscia), a `$tresc` jest
+     * skonstruowana tak, zeby jej skompresowana postac zawierala doslowny
+     * ciag `\nendstream` W SRODKU prawdziwego strumienia — dokladnie warunek
+     * brzegowy opisany w komentarzu nad pomocnikiem.
+     */
+    public function test_helper_survives_a_compressed_stream_that_contains_the_literal_endstream_marker(): void
+    {
+        $surname = 'Górniak-Wysocka';
+        $needle = mb_convert_encoding($surname, 'UTF-16BE', 'UTF-8');
+        $streamText = 'PREFIX-'.$needle."-MID-\nendstream-MID-".$needle.'-SUFFIX';
+        $compressed = gzcompress($streamText, 0);
+        $this->assertStringContainsString(
+            "\nendstream",
+            $compressed,
+            'fixture assumption: skompresowane bajty rzeczywiscie zawieraja doslowny znacznik w srodku strumienia',
+        );
+
+        $pdfBytes = "1 0 obj\r\n<< /Length ".strlen($compressed)." /Filter /FlateDecode >>\r\nstream\r\n"
+            .$compressed
+            ."\r\nendstream\r\nendobj\r\n";
+
+        $oldHelper = static function (string $pdfBytes, string $needle): bool {
+            if (preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdfBytes, $matches)) {
+                foreach ($matches[1] as $stream) {
+                    $decompressed = @gzuncompress($stream);
+                    if ($decompressed !== false && str_contains($decompressed, $needle)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        };
+
+        $this->assertFalse(
+            $oldHelper($pdfBytes, $needle),
+            'kontrola dodatnia: stary pomocnik (doslowny endstream) musi na tych bajtach zwrocic false',
+        );
+        $this->assertTrue(
+            self::pdfBytesContainSurname($pdfBytes, $surname),
+            'nowy pomocnik (dekompresja odporna na dane po strumieniu) musi na tych samych bajtach zwrocic true',
+        );
     }
 
     public function test_operation_is_recorded_in_the_audit_log_with_actor_and_timestamp(): void
