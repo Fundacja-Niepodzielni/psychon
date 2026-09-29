@@ -6,6 +6,7 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
+import { TableTemplate } from "@/design-system/szablony/TableTemplate/TableTemplate";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import { DataTable } from "@/design-system/organizmy/DataTable/DataTable";
@@ -46,10 +47,13 @@ interface WlasciwosciKartyOsoby {
  * (`backend/routes/api/h18.php:28`, `h07.php:18`); zapis wyłącznie
  * `PATCH /admin/users/{id}` (`h18.php:30`), bez pola roli.
  *
- * Szablon `TableTemplate`: nagłówek → `StatRow` (cztery filary + rzetelność)
- * → zdanie o źródle liczb → `DataTable` (dane kontaktowe i data wygaśnięcia
- * dostępu) → blok wspierający (sekcje rzadkie zwinięte z licznikiem:
- * powiadomienia, dziennik — bez ładunku zdarzenia).
+ * Układ renderuje `TableTemplate`
+ * (`@/design-system/szablony/TableTemplate/TableTemplate`): slot `naglowek`
+ * (`PageHeader`) → `statystyki` (`StatRow`, cztery filary + rzetelność) →
+ * `zdanie` (źródło liczb) → `tabela` (`DataTable`, dane kontaktowe i data
+ * wygaśnięcia dostępu) → `wsparcie` (sekcje rzadkie zwinięte z licznikiem:
+ * powiadomienia, dziennik — bez ładunku zdarzenia). Sloty `zakres` i `wykres`
+ * pominięte — ekran nie ma zakresu dat ani wykresu.
  */
 export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
   const router = useRouter();
@@ -217,80 +221,87 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
     : [];
 
   return (
-    <main id="tresc" className={style.uklad}>
-      <PageHeader
-        okruszki={[{ etykieta: "Administracja" }, { etykieta: "Osoby" }, { etykieta: `${karta.profile.first_name} ${karta.profile.last_name}` }]}
-        tytul={`${karta.profile.first_name} ${karta.profile.last_name}`}
-        opis={`Rola: ${karta.profile.role}`}
-        onPowrot={() => router.back()}
-        dzieci={
-          <div className={style.akcjaGlowna}>
-            <Button poziom="primary" onClick={otworzFormularz}>
-              Zmień dane
-            </Button>
+    <main id="tresc">
+      <TableTemplate
+        naglowek={
+          <PageHeader
+            okruszki={[{ etykieta: "Administracja" }, { etykieta: "Osoby" }, { etykieta: `${karta.profile.first_name} ${karta.profile.last_name}` }]}
+            tytul={`${karta.profile.first_name} ${karta.profile.last_name}`}
+            opis={`Rola: ${karta.profile.role}`}
+            onPowrot={() => router.back()}
+            dzieci={
+              <div className={style.akcjaGlowna}>
+                <Button poziom="primary" onClick={otworzFormularz}>
+                  Zmień dane
+                </Button>
+              </div>
+            }
+          />
+        }
+        statystyki={
+          <>
+            <StatRow kafle={kafle} />
+            {stanRzetelnosci === "blad" && (
+              <Notice wariant="warn" tytul="Rzetelność niedostępna">
+                Nie udało się pobrać rzetelności nauki tej osoby — reszta karty działa.
+              </Notice>
+            )}
+          </>
+        }
+        zdanie={<Text>Liczby pochodzą z jednego źródła (ProgressAggregator) — to samo, co pulpit i raport.</Text>}
+        tabela={
+          <DataTable
+            tytul="Dane osoby"
+            kolumny={kolumnyDanychOsoby()}
+            wiersze={wiersze}
+          />
+        }
+        wsparcie={
+          <div className={style.sekcjeRzadkie}>
+            <CollapsibleSection
+              tytul="Powiadomienia"
+              liczba={karta.recent_notifications.length}
+              dzieci={
+                karta.recent_notifications.length === 0 ? (
+                  <Text wariant="pusty">Brak powiadomień.</Text>
+                ) : (
+                  <ul className={style.listaPowiadomien}>
+                    {karta.recent_notifications.map((powiadomienie) => (
+                      <li key={powiadomienie.id}>
+                        <Text>{powiadomienie.title}</Text>
+                        <Text wariant="pusty">
+                          {powiadomienie.created_at} — {powiadomienie.read_at ? "przeczytane" : "nieprzeczytane"}
+                        </Text>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            />
+
+            <CollapsibleSection
+              tytul="Dziennik działań"
+              liczba={karta.audit_entries.length}
+              dzieci={
+                karta.audit_entries.length === 0 ? (
+                  <Text wariant="pusty">Brak wpisów dziennika.</Text>
+                ) : (
+                  <ul className={style.listaDziennika} data-testid="dziennik-lista">
+                    {karta.audit_entries.map((wpis) => (
+                      <li key={wpis.id}>
+                        <Text>{wpis.action}</Text>
+                        <Text wariant="pusty">
+                          {wpis.created_at ?? "brak daty"} — kto: {wpis.actor_id ?? "brak"}
+                        </Text>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            />
           </div>
         }
       />
-
-      <StatRow kafle={kafle} />
-
-      {stanRzetelnosci === "blad" && (
-        <Notice wariant="warn" tytul="Rzetelność niedostępna">
-          Nie udało się pobrać rzetelności nauki tej osoby — reszta karty działa.
-        </Notice>
-      )}
-
-      <Text>Liczby pochodzą z jednego źródła (ProgressAggregator) — to samo, co pulpit i raport.</Text>
-
-      <DataTable
-        tytul="Dane osoby"
-        kolumny={kolumnyDanychOsoby()}
-        wiersze={wiersze}
-      />
-
-      <div className={style.sekcjeRzadkie}>
-        <CollapsibleSection
-          tytul="Powiadomienia"
-          liczba={karta.recent_notifications.length}
-          dzieci={
-            karta.recent_notifications.length === 0 ? (
-              <Text wariant="pusty">Brak powiadomień.</Text>
-            ) : (
-              <ul className={style.listaPowiadomien}>
-                {karta.recent_notifications.map((powiadomienie) => (
-                  <li key={powiadomienie.id}>
-                    <Text>{powiadomienie.title}</Text>
-                    <Text wariant="pusty">
-                      {powiadomienie.created_at} — {powiadomienie.read_at ? "przeczytane" : "nieprzeczytane"}
-                    </Text>
-                  </li>
-                ))}
-              </ul>
-            )
-          }
-        />
-
-        <CollapsibleSection
-          tytul="Dziennik działań"
-          liczba={karta.audit_entries.length}
-          dzieci={
-            karta.audit_entries.length === 0 ? (
-              <Text wariant="pusty">Brak wpisów dziennika.</Text>
-            ) : (
-              <ul className={style.listaDziennika} data-testid="dziennik-lista">
-                {karta.audit_entries.map((wpis) => (
-                  <li key={wpis.id}>
-                    <Text>{wpis.action}</Text>
-                    <Text wariant="pusty">
-                      {wpis.created_at ?? "brak daty"} — kto: {wpis.actor_id ?? "brak"}
-                    </Text>
-                  </li>
-                ))}
-              </ul>
-            )
-          }
-        />
-      </div>
 
       {formularzOtwarty && formularz && (
         <Dialog

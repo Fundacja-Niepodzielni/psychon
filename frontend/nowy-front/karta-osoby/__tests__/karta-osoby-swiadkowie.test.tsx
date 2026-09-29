@@ -131,6 +131,20 @@ describe("KartaOsoby — stan dane", () => {
     // nie pokazuje etykiety braku danych.
     expect(screen.getAllByText("0", { selector: "span" }).length).toBeGreaterThanOrEqual(3);
   });
+
+  it("kontrola dodatnia: ekran renderuje uklad TableTemplate (bez tego komponentu ten swiadek jest czerwony)", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+
+    const { container } = render(<KartaOsoby id={17} />);
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Marta Demo" })).toBeInTheDocument());
+
+    const szablon = container.querySelector('[data-style-id="szablon-tabela"]');
+    expect(szablon).not.toBeNull();
+    const obszarTabeli = screen.getByTestId("obszar-tabela");
+    expect(within(obszarTabeli).getByRole("table")).toBeInTheDocument();
+  });
 });
 
 describe("KartaOsoby — rzetelność", () => {
