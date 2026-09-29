@@ -149,6 +149,10 @@ export const WYKLUCZENIA = [
   { komponent: "Notice", plik: "molekuly/Notice/Notice.tsx", powod: "div tabIndex={-1} to metka fokusu programowego (ogłoszenie błędu), nie cel dotyku; ewentualna akcja pochodzi z przekazanego z zewnątrz `akcja`, którego żaden z czterech montów w poligonie nie podaje." },
   { komponent: "QaBlock", plik: "molekuly/QaBlock/QaBlock.tsx", powod: "Text + Hint + <p>, bez handlera." },
   { komponent: "StatTile", plik: "molekuly/StatTile/StatTile.tsx", powod: "Label + Num + ProgressBar + Hint — żaden z tych czterech nie niesie własnego celu (patrz ich własne wykluczenia wyżej)." },
+  // Dopisane 2026-09-29 z molekułą treści lekcji: od tej zmiany wykluczeń jest 25,
+  // a plików `*.tsx` w drzewie 53 (liczby w komentarzu przy `PLIKI_ROZLICZONE` niżej
+  // opisują stan z 2026-09-28).
+  { komponent: "TrescLekcji", plik: "molekuly/TrescLekcji/TrescLekcji.tsx", powod: "Heading + Text (oba już wykluczone) oraz <strong>/<em>/<code>/<ul>/<ol>/<br> bez handlera; jedyny uchwyt aktywacji to odnośnik z treści, renderowany przez atom Link (cel „Link (pole klikalne)”), bez surowego <a> ani własnego handlera w tym pliku." },
   { komponent: "Dialog", plik: "organizmy/Dialog/Dialog.tsx", powod: "div przesłony + div okna + Heading (nieinteraktywny) + treść przekazana przez wywołującego + DialogActions OPAKOWYWANY (już rozliczony jako „DialogActions (wycofanie)”) — sam ten plik nie renderuje własnego uchwytu aktywacji poza dzieckiem już rozliczonym gdzie indziej." },
   // Sześć organizmów odczytanych przy odbiorze rejestru celów (2026-09-28) — te same dwa
   // składniki reguły co przy `Dialog` wyżej: żaden z tych sześciu plików nie

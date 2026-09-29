@@ -143,6 +143,9 @@ if (config('features.h06')) {
                     'id' => (int) $lesson->id,
                     'title' => $lesson->title,
                     'description' => $lesson->description,
+                    // Treść lekcji (podzbiór Markdown) albo `null`; HTML w treści
+                    // jest tekstem — klient go nie interpretuje.
+                    'content' => $lesson->content,
                     // Temat lekcji w kursie (okruszki ekranu lekcji) albo `null`.
                     'topic' => $lesson->topic === null ? null : [
                         'id' => $lesson->topic->id,

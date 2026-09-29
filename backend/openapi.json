@@ -46,6 +46,13 @@
                                                         "null"
                                                     ]
                                                 },
+                                                "content": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Tre\u015b\u0107 lekcji (podzbi\u00f3r Markdown) albo `null`; HTML w tre\u015bci\njest tekstem \u2014 klient go nie interpretuje."
+                                                },
                                                 "topic": {
                                                     "type": [
                                                         "object",
@@ -96,6 +103,7 @@
                                                 "id",
                                                 "title",
                                                 "description",
+                                                "content",
                                                 "topic",
                                                 "duration_seconds",
                                                 "position_seconds",
@@ -13100,6 +13108,13 @@
                             "null"
                         ]
                     },
+                    "content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 20000
+                    },
                     "sequence_order": {
                         "type": [
                             "integer",
@@ -13293,7 +13308,7 @@
             },
             "StoreLessonRequest": {
                 "type": "object",
-                "description": "POST /admin/courses/{course}/lessons \u2014 nowa lekcja w kursie.\n\n`video_provider_id` jest zwyk\u0142ym polem tekstowym, nie uploadem: kontrakt \u00a74\nwy\u0142\u0105cza prawdziwe Bunny Stream z hackathonu, a odtwarzacz jest mockiem\n(etykieta w panelu: \u201eIdentyfikator nagrania (mock)\").\n *\n * Brak `sequence_order` (albo jawny `null`) znaczy \u201enadaj kolejny wolny numer\n * w kursie\" \u2014 numeracj\u0119 nadaje `LessonWriter`, bo potrzebuje kontekstu kursu.\n\n`topic_id` (opcjonalny) wskazuje temat kursu; bez niego lekcja trafia na\nkoniec ostatniego tematu. Przynale\u017cno\u015b\u0107 tematu do kursu sprawdza\n`LessonWriter`, bo potrzebuje kontekstu kursu.",
+                "description": "POST /admin/courses/{course}/lessons \u2014 nowa lekcja w kursie.\n\n`video_provider_id` jest zwyk\u0142ym polem tekstowym, nie uploadem: kontrakt \u00a74\nwy\u0142\u0105cza prawdziwe Bunny Stream z hackathonu, a odtwarzacz jest mockiem\n(etykieta w panelu: \u201eIdentyfikator nagrania (mock)\").\n *\n * Brak `sequence_order` (albo jawny `null`) znaczy \u201enadaj kolejny wolny numer\n * w kursie\" \u2014 numeracj\u0119 nadaje `LessonWriter`, bo potrzebuje kontekstu kursu.\n\n`topic_id` (opcjonalny) wskazuje temat kursu; bez niego lekcja trafia na\nkoniec ostatniego tematu. Przynale\u017cno\u015b\u0107 tematu do kursu sprawdza\n`LessonWriter`, bo potrzebuje kontekstu kursu.\n\n`content` to tre\u015b\u0107 lekcji w podzbiorze Markdown, do 20 000 znak\u00f3w (nie\nbajt\u00f3w). Zapisywana dok\u0142adnie tak, jak przysz\u0142a: HTML w tre\u015bci jest\ntekstem, kt\u00f3rego klient nie interpretuje \u2014 dlatego nic tu nie jest\nprzycinane ani czyszczone. Trasy prowadz\u0105cego dziedzicz\u0105 t\u0119 regu\u0142\u0119.",
                 "properties": {
                     "title": {
                         "type": "string",
@@ -13304,6 +13319,13 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 20000
                     },
                     "sequence_order": {
                         "type": [
@@ -13843,6 +13865,13 @@
                             "null"
                         ]
                     },
+                    "content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 20000
+                    },
                     "sequence_order": {
                         "type": [
                             "integer",
@@ -13984,6 +14013,13 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "content": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 20000
                     },
                     "sequence_order": {
                         "type": [
