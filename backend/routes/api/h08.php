@@ -17,9 +17,11 @@
 use App\Http\Controllers\Api\V1\Admin\CourseCatalogAdminController;
 use App\Http\Controllers\Api\V1\Admin\CourseInviteController;
 use App\Http\Controllers\Api\V1\Admin\CourseSequenceController;
+use App\Http\Controllers\Api\V1\Admin\CourseTopicAdminController;
 use App\Http\Controllers\Api\V1\Admin\LessonAdminController;
 use App\Http\Controllers\Api\V1\Admin\MaterialAdminController;
 use App\Http\Controllers\Api\V1\H08\InstructorCourseController;
+use App\Http\Controllers\Api\V1\H08\InstructorCourseTopicController;
 use App\Http\Controllers\Api\V1\H08\InstructorLessonController;
 use App\Http\Controllers\Api\V1\H08\InstructorMaterialController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +52,15 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     Route::post('/admin/courses/reorder/preview', [CourseSequenceController::class, 'preview']);
     Route::patch('/admin/courses/{course}/lessons/reorder', [CourseSequenceController::class, 'reorderLessons'])->whereNumber('course');
 
+    // Tematy kursu. Parametry są liczbami bez wiązania modelu — kurs i temat
+    // odnajduje żądanie (`CourseTopicRequest`, `TopicRequest`). `…/topics/reorder`
+    // to ten sam wyjątek nazewniczy co `…/lessons/reorder` wyżej.
+    Route::get('/admin/courses/{course}/topics', [CourseTopicAdminController::class, 'index'])->whereNumber('course');
+    Route::post('/admin/courses/{course}/topics', [CourseTopicAdminController::class, 'store'])->whereNumber('course');
+    Route::patch('/admin/courses/{course}/topics/reorder', [CourseTopicAdminController::class, 'reorder'])->whereNumber('course');
+    Route::patch('/admin/topics/{topic}', [CourseTopicAdminController::class, 'update'])->whereNumber('topic');
+    Route::delete('/admin/topics/{topic}', [CourseTopicAdminController::class, 'destroy'])->whereNumber('topic');
+
     // H08b · materiały. Pobranie NIE jest tutaj: `GET /materials/{material}/download`
     // dowiózł H05 (podpisany link, re-sprawdzanie dostępu w chwili pobrania).
     Route::post('/admin/lessons/{lesson}/materials', [MaterialAdminController::class, 'storeForLesson'])->whereNumber('lesson');
@@ -74,6 +85,14 @@ Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void
     Route::post('/instructor/courses/{course}/lessons', [InstructorLessonController::class, 'store'])->whereNumber('course');
     Route::patch('/instructor/lessons/{lesson}', [InstructorLessonController::class, 'update'])->whereNumber('lesson');
     Route::delete('/instructor/lessons/{lesson}', [InstructorLessonController::class, 'destroy'])->whereNumber('lesson');
+
+    // Tematy przypisanego kursu: obcy i nieistniejący kurs albo temat dają
+    // identyczne 404 (`ScopesTopicsToAssignedInstructor`), przed walidacją ciała.
+    Route::get('/instructor/courses/{course}/topics', [InstructorCourseTopicController::class, 'index'])->whereNumber('course');
+    Route::post('/instructor/courses/{course}/topics', [InstructorCourseTopicController::class, 'store'])->whereNumber('course');
+    Route::patch('/instructor/courses/{course}/topics/reorder', [InstructorCourseTopicController::class, 'reorder'])->whereNumber('course');
+    Route::patch('/instructor/topics/{topic}', [InstructorCourseTopicController::class, 'update'])->whereNumber('topic');
+    Route::delete('/instructor/topics/{topic}', [InstructorCourseTopicController::class, 'destroy'])->whereNumber('topic');
 
     Route::post('/instructor/lessons/{lesson}/materials', [InstructorMaterialController::class, 'storeForLesson'])->whereNumber('lesson');
     Route::post('/instructor/courses/{course}/materials', [InstructorMaterialController::class, 'storeForCourse'])->whereNumber('course');

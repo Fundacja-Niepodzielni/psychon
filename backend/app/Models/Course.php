@@ -48,6 +48,14 @@ class Course extends Model
     }
 
     /**
+     * @return HasMany<CourseTopic, $this>
+     */
+    public function topics(): HasMany
+    {
+        return $this->hasMany(CourseTopic::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
      * @return HasMany<Material, $this>
      */
     public function materials(): HasMany

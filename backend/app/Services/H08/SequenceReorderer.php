@@ -54,7 +54,18 @@ final class SequenceReorderer
             // operacje na kolejności lekcji się spotykają.
             Course::query()->whereKey($course->getKey())->lockForUpdate()->firstOrFail();
 
+            // Płaska kolejność działa tylko w kursie z najwyżej jednym tematem;
+            // wtedy pozycje w temacie idą za nowym `sequence_order`.
+            LessonWriter::assertFlatOrderAllowed($course, true, 'lesson_ids');
+            TopicLayout::adoptOrphans($course);
+
             self::renumberLessons($lessonIds);
+
+            $topic = TopicLayout::liveTopics($course)->first();
+
+            if ($topic !== null) {
+                TopicLayout::rankBySequence($topic);
+            }
 
             // Rejestr audytu §3.2 nie ma slugów dla lekcji — operacje podrzędne
             // mapujemy na `course.updated` z opisem w `details`.

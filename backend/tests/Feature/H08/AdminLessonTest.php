@@ -28,6 +28,8 @@ class AdminLessonTest extends TestCase
         'title',
         'description',
         'sequence_order',
+        'topic_id',
+        'topic_position',
         'video_provider_id',
         'duration_seconds',
         'materials_count',

@@ -26,6 +26,8 @@ class AdminLessonResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'sequence_order' => $this->sequence_order,
+            'topic_id' => $this->topic_id,
+            'topic_position' => $this->topic_position,
             'video_provider_id' => $this->video_provider_id,
             'duration_seconds' => $this->duration_seconds,
             'materials_count' => (int) $this->materials_count,

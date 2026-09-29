@@ -27,6 +27,7 @@ class LessonSummaryResource extends JsonResource
             'sequence_order' => $this->sequence_order,
             'duration_seconds' => $this->duration_seconds,
             'is_completed' => $this->isCompleted,
+            'topic_id' => $this->topic_id,
         ];
     }
 }

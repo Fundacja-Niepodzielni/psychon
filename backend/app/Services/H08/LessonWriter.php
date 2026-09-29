@@ -2,7 +2,9 @@
 
 namespace App\Services\H08;
 
+use App\Exceptions\ApiException;
 use App\Models\Course;
+use App\Models\CourseTopic;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Support\AuditLog;
@@ -31,10 +33,29 @@ final class LessonWriter
             // materiału zależną od przypadku, po cichu.
             Course::query()->whereKey($course->getKey())->lockForUpdate()->firstOrFail();
 
+            TopicLayout::adoptOrphans($course);
+
             $attributes = self::attributes($validated);
+            $explicitOrder = array_key_exists('sequence_order', $attributes);
+            self::assertFlatOrderAllowed($course, $explicitOrder);
+
+            $topic = self::targetTopic($course, $attributes['topic_id'] ?? null);
+            unset($attributes['topic_id']);
+
             $attributes['sequence_order'] ??= self::nextSequenceOrder($course);
+            $attributes['topic_id'] = $topic->id;
+            $attributes['topic_position'] = $explicitOrder ? null : TopicLayout::nextLessonPosition($topic);
 
             $lesson = $course->lessons()->create($attributes);
+
+            // Jawny numer w kursie z jednym tematem: pozycje w temacie idą za
+            // `sequence_order`. Bez jawnego numeru lekcja trafia na koniec
+            // tematu, a spłaszczona kolejność kursu idzie za tematami.
+            if ($explicitOrder) {
+                TopicLayout::rankBySequence($topic);
+            } else {
+                TopicLayout::flatten($course);
+            }
 
             self::audit($actor, $course, 'lesson.created', $lesson);
 
@@ -48,10 +69,23 @@ final class LessonWriter
     public static function update(Lesson $lesson, array $validated, User $actor): Lesson
     {
         return DB::transaction(function () use ($lesson, $validated, $actor): Lesson {
-            $lesson->fill(self::attributes($validated));
+            $attributes = self::attributes($validated);
+            $course = self::courseOf($lesson);
+            $explicitOrder = array_key_exists('sequence_order', $attributes);
+
+            if ($explicitOrder && $course !== null) {
+                Course::query()->withTrashed()->whereKey($course->getKey())->lockForUpdate()->firstOrFail();
+                self::assertFlatOrderAllowed($course, true);
+            }
+
+            $lesson->fill($attributes);
             $lesson->save();
 
-            self::audit($actor, self::courseOf($lesson), 'lesson.updated', $lesson);
+            if ($explicitOrder && $lesson->topic !== null) {
+                TopicLayout::rankBySequence($lesson->topic);
+            }
+
+            self::audit($actor, $course, 'lesson.updated', $lesson);
 
             return $lesson;
         });
@@ -89,6 +123,51 @@ final class LessonWriter
         }
 
         return $validated;
+    }
+
+    /**
+     * Płaska kolejność (jawny `sequence_order`) ma sens tylko w kursie
+     * z najwyżej jednym tematem. W kursie z kilkoma tematami kolejność
+     * zmienia się wyłącznie przez `PATCH …/topics/reorder`.
+     *
+     * @throws ApiException
+     */
+    public static function assertFlatOrderAllowed(Course $course, bool $explicitOrder, string $field = 'sequence_order'): void
+    {
+        if (! $explicitOrder || TopicLayout::liveTopics($course)->count() <= 1) {
+            return;
+        }
+
+        throw new ApiException(422, 'validation_failed', 'Popraw zaznaczone pola.', errors: [
+            $field => ['Kurs ma kilka tematów — kolejność lekcji zmień przez kolejność tematów.'],
+        ]);
+    }
+
+    /**
+     * Temat wskazany w żądaniu musi być żywym tematem tego kursu — obcy
+     * i nieistniejący identyfikator dają ten sam błąd pola. Bez wskazania
+     * lekcja trafia do ostatniego tematu; kurs bez tematu dostaje temat
+     * domyślny.
+     *
+     * @throws ApiException
+     */
+    private static function targetTopic(Course $course, mixed $topicId): CourseTopic
+    {
+        $topics = TopicLayout::liveTopics($course);
+
+        if ($topicId === null) {
+            return $topics->last() ?? TopicLayout::createDefaultTopic($course);
+        }
+
+        $topic = $topics->firstWhere('id', (int) $topicId);
+
+        if ($topic === null) {
+            throw new ApiException(422, 'validation_failed', 'Popraw zaznaczone pola.', errors: [
+                'topic_id' => ['Wybierz temat tego kursu.'],
+            ]);
+        }
+
+        return $topic;
     }
 
     /**

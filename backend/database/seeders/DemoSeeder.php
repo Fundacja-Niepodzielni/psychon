@@ -26,6 +26,7 @@ use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
 use App\Models\WorkshopCompletion;
+use App\Services\H08\TopicLayout;
 use App\Support\OnboardingContent;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -54,6 +55,7 @@ class DemoSeeder extends Seeder
         $users = $this->seedUsers($edition);
         $courses = $this->seedCourses($edition);
         $webinar = $this->seedInvitedWebinar();
+        $this->seedTopics([...$courses, $webinar]);
         $this->seedTests($courses);
         $this->seedInstructor($users, $courses);
 
@@ -260,6 +262,20 @@ class DemoSeeder extends Seeder
         ]);
 
         return $webinar;
+    }
+
+    /**
+     * Lessons above are created directly on the model, bypassing the lesson
+     * writer — so each course gets its default topic here, through the same
+     * service path the writer uses (one topic, lessons in `sequence_order`).
+     *
+     * @param  array<int, Course>  $courses
+     */
+    private function seedTopics(array $courses): void
+    {
+        foreach ($courses as $course) {
+            TopicLayout::adoptOrphans($course);
+        }
     }
 
     /**

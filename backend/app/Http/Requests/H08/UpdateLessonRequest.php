@@ -12,6 +12,9 @@ use Illuminate\Foundation\Http\FormRequest;
  * Jawny `null` w `sequence_order` zostawia dotychczasową pozycję: kolumna
  * `lessons.sequence_order` nie jest nullable, a przestawianie kolejności ma
  * własną trasę (faza 4).
+ *
+ * `topic_id` i `topic_position` są zakazane: układ lekcji w tematach ma
+ * jednego pisarza (`PATCH …/topics/reorder`).
  */
 class UpdateLessonRequest extends FormRequest
 {
@@ -28,6 +31,8 @@ class UpdateLessonRequest extends FormRequest
             'sequence_order' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'video_provider_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'duration_seconds' => ['sometimes', 'integer', 'min:0'],
+            'topic_id' => ['prohibited'],
+            'topic_position' => ['prohibited'],
         ];
     }
 
@@ -39,6 +44,8 @@ class UpdateLessonRequest extends FormRequest
             'video_provider_id.max' => 'Identyfikator nagrania może mieć najwyżej 255 znaków.',
             'duration_seconds.integer' => 'Czas trwania podaj w pełnych sekundach.',
             'duration_seconds.min' => 'Czas trwania nie może być ujemny.',
+            'topic_id.prohibited' => 'Temat lekcji zmienia się przez kolejność tematów.',
+            'topic_position.prohibited' => 'Temat lekcji zmienia się przez kolejność tematów.',
         ];
     }
 }

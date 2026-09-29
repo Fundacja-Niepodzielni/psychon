@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Course;
 use App\Models\CourseAssignment;
+use App\Models\CourseTopic;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\Material;
@@ -31,6 +32,7 @@ class CourseDetailResource extends CourseListResource
         return [
             ...parent::toArray($request),
             'instructor' => $this->instructor(),
+            'topics' => $this->topics(),
             'lessons' => $lessons->map(fn (Lesson $lesson): LessonSummaryResource => new LessonSummaryResource(
                 $lesson,
                 in_array($lesson->id, $completedLessonIds, true),
@@ -60,6 +62,25 @@ class CourseDetailResource extends CourseListResource
             'id' => $assignment->instructor->id,
             'name' => $assignment->instructor->fullName(),
         ];
+    }
+
+    /**
+     * Topics of the course in order; each lesson carries its `topic_id`, so
+     * the flat `lessons` list stays as it was and can be grouped client-side.
+     *
+     * @return list<array{id: int, title: string, position: int}>
+     */
+    private function topics(): array
+    {
+        return $this->resource->topics()
+            ->get(['id', 'title', 'position'])
+            ->map(fn (CourseTopic $topic): array => [
+                'id' => $topic->id,
+                'title' => $topic->title,
+                'position' => $topic->position,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

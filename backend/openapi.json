@@ -46,6 +46,29 @@
                                                         "null"
                                                     ]
                                                 },
+                                                "topic": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "description": "Temat lekcji w kursie (okruszki ekranu lekcji) albo `null`.",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "title": {
+                                                            "type": "string"
+                                                        },
+                                                        "position": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "title",
+                                                        "position"
+                                                    ]
+                                                },
                                                 "duration_seconds": {
                                                     "type": "integer"
                                                 },
@@ -73,6 +96,7 @@
                                                 "id",
                                                 "title",
                                                 "description",
+                                                "topic",
                                                 "duration_seconds",
                                                 "position_seconds",
                                                 "watched_seconds",
@@ -5194,6 +5218,274 @@
                 }
             }
         },
+        "/v1/admin/courses/{course}/topics": {
+            "get": {
+                "operationId": "courseTopicAdmin.index",
+                "tags": [
+                    "CourseTopicAdmin"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {}
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "courseTopicAdmin.store",
+                "tags": [
+                    "CourseTopicAdmin"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreTopicRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/courses/{course}/topics/reorder": {
+            "patch": {
+                "operationId": "courseTopicAdmin.reorder",
+                "tags": [
+                    "CourseTopicAdmin"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReorderTopicsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {}
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/admin/topics/{topic}": {
+            "patch": {
+                "operationId": "courseTopicAdmin.update",
+                "tags": [
+                    "CourseTopicAdmin"
+                ],
+                "parameters": [
+                    {
+                        "name": "topic",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTopicRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "courseTopicAdmin.destroy",
+                "tags": [
+                    "CourseTopicAdmin"
+                ],
+                "parameters": [
+                    {
+                        "name": "topic",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "deleted": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "deleted"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/v1/admin/dashboard": {
             "get": {
                 "operationId": "dashboard.show",
@@ -6304,6 +6596,274 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
+        "/v1/instructor/courses/{course}/topics": {
+            "get": {
+                "operationId": "instructorCourseTopic.index",
+                "tags": [
+                    "InstructorCourseTopic"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {}
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "instructorCourseTopic.store",
+                "tags": [
+                    "InstructorCourseTopic"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InstructorStoreTopicRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/instructor/courses/{course}/topics/reorder": {
+            "patch": {
+                "operationId": "instructorCourseTopic.reorder",
+                "tags": [
+                    "InstructorCourseTopic"
+                ],
+                "parameters": [
+                    {
+                        "name": "course",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InstructorReorderTopicsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {}
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/instructor/topics/{topic}": {
+            "patch": {
+                "operationId": "instructorCourseTopic.update",
+                "tags": [
+                    "InstructorCourseTopic"
+                ],
+                "parameters": [
+                    {
+                        "name": "topic",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/InstructorUpdateTopicRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "instructorCourseTopic.destroy",
+                "tags": [
+                    "InstructorCourseTopic"
+                ],
+                "parameters": [
+                    {
+                        "name": "topic",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "deleted": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "deleted"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
@@ -10000,7 +10560,7 @@
         },
         "/v1/admin/report": {
             "get": {
-                "operationId": "v1.admin.report.show_147",
+                "operationId": "v1.admin.report.show_157",
                 "tags": [
                     "Report"
                 ],
@@ -10269,7 +10829,7 @@
         },
         "/v1/admin/reports": {
             "get": {
-                "operationId": "v1.admin.report.show_149",
+                "operationId": "v1.admin.report.show_159",
                 "tags": [
                     "Report"
                 ],
@@ -11409,6 +11969,28 @@
                             "name"
                         ]
                     },
+                    "topics": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "title": {
+                                    "type": "string"
+                                },
+                                "position": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "title",
+                                "position"
+                            ]
+                        }
+                    },
                     "lessons": {
                         "type": "array",
                         "items": {
@@ -11431,6 +12013,7 @@
                     "status",
                     "progress_percent",
                     "instructor",
+                    "topics",
                     "lessons",
                     "materials"
                 ],
@@ -11656,6 +12239,40 @@
                 ],
                 "title": "ImportApplicationsRequest"
             },
+            "InstructorReorderTopicsRequest": {
+                "type": "object",
+                "description": "PATCH /instructor/courses/{course}/topics/reorder \u2014 regu\u0142y\n`ReorderTopicsRequest`, zasi\u0119g prowadz\u0105cego.",
+                "properties": {
+                    "topics": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "lesson_ids": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "uniqueItems": true
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "lesson_ids"
+                            ]
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                    }
+                },
+                "required": [
+                    "topics"
+                ],
+                "title": "InstructorReorderTopicsRequest"
+            },
             "InstructorStoreCourseRequest": {
                 "type": "object",
                 "description": "POST /instructor/courses \u2014 prowadz\u0105cy zak\u0142ada w\u0142asny kurs. Lista dozwolonych\np\u00f3l tre\u015bci jest to\u017csama z `StoreCourseRequest` (panel administracji),\nregu\u0142y i komunikaty przepisane 1:1. Stan i przypisanie ustawia wy\u0142\u0105cznie\nserwer (`CourseWriter::create`, `InstructorCourseAssignment::assignCreator`)\n\u2014 dlatego ka\u017cde pole stanu albo przypisania jest tu `prohibited`, nie\npo prostu pomini\u0119te: pomini\u0119cie da\u0142oby ciche zignorowanie wej\u015bcia,\n`prohibited` daje jawne `422 validation_failed`, gdy kto\u015b je jednak wy\u015ble.",
@@ -11712,6 +12329,34 @@
                 ],
                 "title": "InstructorStoreCourseRequest"
             },
+            "InstructorStoreTopicRequest": {
+                "type": "object",
+                "description": "POST /instructor/courses/{course}/topics \u2014 regu\u0142y `StoreTopicRequest`,\nzasi\u0119g prowadz\u0105cego.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "title": "InstructorStoreTopicRequest"
+            },
+            "InstructorUpdateTopicRequest": {
+                "type": "object",
+                "description": "PATCH /instructor/topics/{topic} \u2014 regu\u0142y `UpdateTopicRequest`, zasi\u0119g\nprowadz\u0105cego.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "title": "InstructorUpdateTopicRequest"
+            },
             "InviteToCourseRequest": {
                 "type": "object",
                 "description": "POST /admin/courses/{course}/invite \u2014 zaproszenie os\u00f3b na kurs poza g\u0142\u00f3wn\u0105\n\u015bcie\u017ck\u0105. Regu\u0142a domenowa \u201etylko kurs spoza \u015bcie\u017cki\" potrzebuje kursu\ni mieszka w `CourseInviter`.",
@@ -11747,6 +12392,12 @@
                     },
                     "is_completed": {
                         "type": "boolean"
+                    },
+                    "topic_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -11754,7 +12405,8 @@
                     "title",
                     "sequence_order",
                     "duration_seconds",
-                    "is_completed"
+                    "is_completed",
+                    "topic_id"
                 ],
                 "title": "LessonSummaryResource"
             },
@@ -11774,6 +12426,13 @@
                         ],
                         "description": "Widening of contract \u00a72, which lists a material as exactly\n{id, name, download_url}. The plan asked the UI to show a\nhuman-readable size and the column already carries it, so the\nfield is shipped ahead of the guardian's ruling and flagged as\ndeviation (7) in DEMO/H05.md. Bytes, integer \u2014 the front formats."
                     },
+                    "lesson_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Lekcja, do kt\u00f3rej nale\u017cy materia\u0142, albo `null` dla materia\u0142u\nca\u0142ego kursu \u2014 lista \u0142\u0105czy oba rodzaje w jednej tablicy."
+                    },
                     "download_url": {
                         "type": "string"
                     }
@@ -11782,6 +12441,7 @@
                     "id",
                     "name",
                     "size",
+                    "lesson_id",
                     "download_url"
                 ],
                 "title": "MaterialResource"
@@ -12118,6 +12778,40 @@
                 ],
                 "title": "ReorderLessonsRequest"
             },
+            "ReorderTopicsRequest": {
+                "type": "object",
+                "description": "PATCH \u2026/courses/{course}/topics/reorder \u2014 ca\u0142y uk\u0142ad kursu jednym\n\u017c\u0105daniem: tematy w nowej kolejno\u015bci, a w ka\u017cdym lekcje w nowej kolejno\u015bci.\nTu \u017cyj\u0105 wy\u0142\u0105cznie regu\u0142y p\u00f3l; to, \u017ce lista jest pe\u0142n\u0105 permutacj\u0105 temat\u00f3w\ni lekcji kursu, sprawdza `TopicWriter::reorder`, bo potrzebuje kontekstu\nkursu.",
+                "properties": {
+                    "topics": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "lesson_ids": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "uniqueItems": true
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "lesson_ids"
+                            ]
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                    }
+                },
+                "required": [
+                    "topics"
+                ],
+                "title": "ReorderTopicsRequest"
+            },
             "ResetAttemptsRequest": {
                 "type": "object",
                 "description": "POST /admin/tests/{test}/users/{user}/reset-attempts \u2014 reset limitu podej\u015b\u0107\nprzez opiekuna. Pow\u00f3d obowi\u0105zkowy (kryterium 4); brak powodu \u2192 422.",
@@ -12423,6 +13117,15 @@
                     "duration_seconds": {
                         "type": "integer",
                         "minimum": 0
+                    },
+                    "topic_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "topic_position": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -12590,7 +13293,7 @@
             },
             "StoreLessonRequest": {
                 "type": "object",
-                "description": "POST /admin/courses/{course}/lessons \u2014 nowa lekcja w kursie.\n\n`video_provider_id` jest zwyk\u0142ym polem tekstowym, nie uploadem: kontrakt \u00a74\nwy\u0142\u0105cza prawdziwe Bunny Stream z hackathonu, a odtwarzacz jest mockiem\n(etykieta w panelu: \u201eIdentyfikator nagrania (mock)\").\n *\n * Brak `sequence_order` (albo jawny `null`) znaczy \u201enadaj kolejny wolny numer\n * w kursie\" \u2014 numeracj\u0119 nadaje `LessonWriter`, bo potrzebuje kontekstu kursu.",
+                "description": "POST /admin/courses/{course}/lessons \u2014 nowa lekcja w kursie.\n\n`video_provider_id` jest zwyk\u0142ym polem tekstowym, nie uploadem: kontrakt \u00a74\nwy\u0142\u0105cza prawdziwe Bunny Stream z hackathonu, a odtwarzacz jest mockiem\n(etykieta w panelu: \u201eIdentyfikator nagrania (mock)\").\n *\n * Brak `sequence_order` (albo jawny `null`) znaczy \u201enadaj kolejny wolny numer\n * w kursie\" \u2014 numeracj\u0119 nadaje `LessonWriter`, bo potrzebuje kontekstu kursu.\n\n`topic_id` (opcjonalny) wskazuje temat kursu; bez niego lekcja trafia na\nkoniec ostatniego tematu. Przynale\u017cno\u015b\u0107 tematu do kursu sprawdza\n`LessonWriter`, bo potrzebuje kontekstu kursu.",
                 "properties": {
                     "title": {
                         "type": "string",
@@ -12619,6 +13322,15 @@
                     "duration_seconds": {
                         "type": "integer",
                         "minimum": 0
+                    },
+                    "topic_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "topic_position": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -12804,6 +13516,20 @@
                     }
                 },
                 "title": "StoreTestRequest"
+            },
+            "StoreTopicRequest": {
+                "type": "object",
+                "description": "POST \u2026/courses/{course}/topics \u2014 nowy temat na ko\u0144cu kursu.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "title": "StoreTopicRequest"
             },
             "StoreUserRequest": {
                 "type": "object",
@@ -13134,6 +13860,12 @@
                     "duration_seconds": {
                         "type": "integer",
                         "minimum": 0
+                    },
+                    "topic_id": {
+                        "type": "string"
+                    },
+                    "topic_position": {
+                        "type": "string"
                     }
                 },
                 "title": "UpdateInstructorLessonRequest"
@@ -13241,7 +13973,7 @@
             },
             "UpdateLessonRequest": {
                 "type": "object",
-                "description": "PATCH /admin/lessons/{lesson} \u2014 cz\u0119\u015bciowa aktualizacja lekcji. Ka\u017cde pole\nz `sometimes`, \u017ceby \u017c\u0105danie zmieniaj\u0105ce jedn\u0105 kolumn\u0119 nie wymusza\u0142o\nprzes\u0142ania ca\u0142ego zasobu.\n\nJawny `null` w `sequence_order` zostawia dotychczasow\u0105 pozycj\u0119: kolumna\n`lessons.sequence_order` nie jest nullable, a przestawianie kolejno\u015bci ma\nw\u0142asn\u0105 tras\u0119 (faza 4).",
+                "description": "PATCH /admin/lessons/{lesson} \u2014 cz\u0119\u015bciowa aktualizacja lekcji. Ka\u017cde pole\nz `sometimes`, \u017ceby \u017c\u0105danie zmieniaj\u0105ce jedn\u0105 kolumn\u0119 nie wymusza\u0142o\nprzes\u0142ania ca\u0142ego zasobu.\n\nJawny `null` w `sequence_order` zostawia dotychczasow\u0105 pozycj\u0119: kolumna\n`lessons.sequence_order` nie jest nullable, a przestawianie kolejno\u015bci ma\nw\u0142asn\u0105 tras\u0119 (faza 4).\n\n`topic_id` i `topic_position` s\u0105 zakazane: uk\u0142ad lekcji w tematach ma\njednego pisarza (`PATCH \u2026/topics/reorder`).",
                 "properties": {
                     "title": {
                         "type": "string",
@@ -13270,6 +14002,12 @@
                     "duration_seconds": {
                         "type": "integer",
                         "minimum": 0
+                    },
+                    "topic_id": {
+                        "type": "string"
+                    },
+                    "topic_position": {
+                        "type": "string"
                     }
                 },
                 "title": "UpdateLessonRequest"
@@ -13669,6 +14407,20 @@
                     }
                 },
                 "title": "UpdateTestRequest"
+            },
+            "UpdateTopicRequest": {
+                "type": "object",
+                "description": "PATCH \u2026/topics/{topic} \u2014 zmiana tytu\u0142u tematu. Pozycj\u0119 tematu zmienia\nwy\u0142\u0105cznie `PATCH \u2026/courses/{course}/topics/reorder`.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "title": "UpdateTopicRequest"
             },
             "UpdateUserRequest": {
                 "type": "object",

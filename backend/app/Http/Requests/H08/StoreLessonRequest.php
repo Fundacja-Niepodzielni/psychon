@@ -13,6 +13,10 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * Brak `sequence_order` (albo jawny `null`) znaczy „nadaj kolejny wolny numer
  * w kursie" — numerację nadaje `LessonWriter`, bo potrzebuje kontekstu kursu.
+ *
+ * `topic_id` (opcjonalny) wskazuje temat kursu; bez niego lekcja trafia na
+ * koniec ostatniego tematu. Przynależność tematu do kursu sprawdza
+ * `LessonWriter`, bo potrzebuje kontekstu kursu.
  */
 class StoreLessonRequest extends FormRequest
 {
@@ -29,6 +33,8 @@ class StoreLessonRequest extends FormRequest
             'sequence_order' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'video_provider_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'duration_seconds' => ['sometimes', 'integer', 'min:0'],
+            'topic_id' => ['sometimes', 'nullable', 'integer'],
+            'topic_position' => ['prohibited'],
         ];
     }
 
@@ -41,6 +47,8 @@ class StoreLessonRequest extends FormRequest
             'video_provider_id.max' => 'Identyfikator nagrania może mieć najwyżej 255 znaków.',
             'duration_seconds.integer' => 'Czas trwania podaj w pełnych sekundach.',
             'duration_seconds.min' => 'Czas trwania nie może być ujemny.',
+            'topic_id.integer' => 'Wybierz temat tego kursu.',
+            'topic_position.prohibited' => 'Pozycję lekcji w temacie nadaje serwer.',
         ];
     }
 }

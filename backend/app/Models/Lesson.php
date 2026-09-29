@@ -18,6 +18,8 @@ class Lesson extends Model
         'sequence_order',
         'video_provider_id',
         'duration_seconds',
+        'topic_id',
+        'topic_position',
     ];
 
     protected function casts(): array
@@ -25,6 +27,8 @@ class Lesson extends Model
         return [
             'sequence_order' => 'integer',
             'duration_seconds' => 'integer',
+            'topic_id' => 'integer',
+            'topic_position' => 'integer',
         ];
     }
 
@@ -34,6 +38,14 @@ class Lesson extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    /**
+     * @return BelongsTo<CourseTopic, $this>
+     */
+    public function topic(): BelongsTo
+    {
+        return $this->belongsTo(CourseTopic::class, 'topic_id');
     }
 
     /**

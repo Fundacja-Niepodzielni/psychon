@@ -6,8 +6,10 @@
 # Powod jednorazowej bazy: Scramble w trakcie analizy typow modeli odpytuje
 # ZYWE polaczenie z baza (introspekcja schematu kolumn), wiec potrzebuje
 # realnej, zmigrowanej bazy - nie wystarczy sama obecnosc .env. Kontener jest
-# jednorazowy, na wlasnym porcie, zdejmowany na koncu biegu niezaleznie od
-# wyniku (trap). Dane logowania czytane z backend/phpunit.xml, nigdy nie
+# jednorazowy, z nazwa i etykieta psychon.bieg wlasnego biegu; na koncu biegu
+# (trap) jest tylko ZATRZYMYWANY, i to wylacznie wtedy, gdy zalozyl go ten bieg.
+# Skrypt nigdy nie usuwa kontenerow - zatrzymany kontener zostaje z etykieta do
+# sprzatania rejestrem. Dane logowania czytane z backend/phpunit.xml, nigdy nie
 # drukowane.
 #
 # Uzycie (z katalogu backend/ lub skadkolwiek - skrypt sam ustawia katalog):
@@ -19,7 +21,12 @@ cd "$(dirname "$0")/.." || exit 2   # -> backend/
 BACKEND="$(pwd)"
 
 PORT="${PSYCHON_OPENAPI_DB_PORT:-55433}"
-KONTENER="psy-openapi-baza-${PORT}"
+# Etykieta biegu na kontenerze (psychon.bieg), zeby kazdy kontener dalo sie
+# przypisac do biegu, ktory go zalozyl. Zmienna PSYCHON_BIEG nadaje wlasna.
+ETYKIETA_BIEGU="${PSYCHON_BIEG:-generuj-openapi-$(date +%Y%m%d-%H%M%S)}"
+# Nazwa kontenera z etykiety biegu (znaki spoza [a-z0-9_.-] zamienione na -):
+# stala nazwa pozwalalaby trafic w kontener innego biegu.
+KONTENER="psy-openapi-baza-$(printf '%s' "$ETYKIETA_BIEGU" | sed 's/[^a-z0-9_.-]/-/g')"
 
 HASLO="$(grep -oP '(?<=name="DB_PASSWORD" value=")[^"]+' phpunit.xml | head -1)"
 UZYTKOWNIK="$(grep -oP '(?<=name="DB_USERNAME" value=")[^"]+' phpunit.xml | head -1)"
@@ -30,20 +37,32 @@ if [ -z "$HASLO" ] || [ -z "$UZYTKOWNIK" ] || [ -z "$BAZA" ]; then
 fi
 echo "[GENERUJ-OPENAPI] baza jednorazowa: uzytkownik=${UZYTKOWNIK} nazwa=${BAZA} port=${PORT} (haslo odczytane z repo, nie drukowane)"
 
-sprzataj() {
+# Znacznik ustawiany dopiero po udanym `docker run`: pulapka zatrzymuje
+# wylacznie kontener zalozony przez ten bieg, nigdy cudzy.
+ZALOZONY=0
+zatrzymaj() {
     WYJSCIE=$?
-    docker.exe rm -f "$KONTENER" >/dev/null 2>&1 && echo "[GENERUJ-OPENAPI] kontener ${KONTENER} zdjety"
+    if [ "$ZALOZONY" -eq 1 ]; then
+        docker.exe stop "$KONTENER" >/dev/null 2>&1 \
+            && echo "[GENERUJ-OPENAPI] kontener ${KONTENER} zatrzymany (zostaje, etykieta psychon.bieg=${ETYKIETA_BIEGU})"
+    fi
     exit "$WYJSCIE"
 }
-trap sprzataj EXIT
+trap zatrzymaj EXIT
 
-docker.exe rm -f "$KONTENER" >/dev/null 2>&1
+# Katalog danych w pamieci (--tmpfs): obraz postgres:17 deklaruje VOLUME
+# /var/lib/postgresql/data, wiec bez tmpfs kazdy start zakladalby nowy
+# anonimowy wolumen, ktory zostawalby na dysku po kazdym biegu.
 if ! docker.exe run -d --name "$KONTENER" \
+        --tmpfs /var/lib/postgresql/data:size=512m \
+        --label "psychon.bieg=${ETYKIETA_BIEGU}" \
         -e POSTGRES_USER="$UZYTKOWNIK" -e POSTGRES_PASSWORD="$HASLO" -e POSTGRES_DB="$BAZA" \
         -p "${PORT}:5432" postgres:17 >/dev/null; then
     echo "[GENERUJ-OPENAPI] ODMOWA: kontener bazy nie wstal." >&2
     exit 2
 fi
+ZALOZONY=1
+echo "[GENERUJ-OPENAPI] kontener ${KONTENER} (etykieta psychon.bieg=${ETYKIETA_BIEGU})"
 
 GOTOWA=0
 for _ in $(seq 1 30); do

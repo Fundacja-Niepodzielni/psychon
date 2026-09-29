@@ -1034,3 +1034,112 @@ administracji.
 Kod: `Http/Requests/H08/InstructorStoreCourseRequest.php`,
 `Services/H08/InstructorCourseAssignment.php`,
 `Http/Controllers/Api/V1/H08/InstructorCourseController.php::store`.
+
+---
+
+## Aneks — tematy kursu (H05, H06, H08)
+
+Warstwa między kursem a lekcjami: kurs → tematy → lekcje. Zmiana jest addytywna —
+dotychczasowe pola, trasy i kody zostają bez zmian. Bez nowego kodu błędu, sluga audytu
+ani typu powiadomienia.
+
+### 1. Odczyt uczestnika
+
+`GET /courses/{slug}` niesie dodatkowo `topics` — żywe tematy kursu rosnąco po `position`
+— a każda lekcja w `lessons` dodatkowo `topic_id` (liczba albo `null`). `lessons` zostaje
+płaską listą w kolejności `sequence_order`; ta kolejność jest spłaszczona (najpierw
+kolejność tematów, potem kolejność lekcji w temacie), więc grupowanie po `topic_id` jej nie
+zmienia. Każdy element `materials` niesie dodatkowo `lesson_id`: liczbę dla materiału lekcji
+albo `null` dla materiału całego kursu.
+
+```json
+{ "data": { "…pola bez zmian…": "…",
+  "topics": [ { "id": 7, "title": "Lekcje kursu", "position": 1 } ],
+  "lessons": [ { "id": 21, "title": "…", "sequence_order": 1, "duration_seconds": 1800,
+                 "is_completed": true, "topic_id": 7 } ],
+  "materials": [ { "id": 3, "name": "Karta pracy.pdf", "size": 245760,
+                   "lesson_id": null, "download_url": "<podpisany, wygasa>" } ] } }
+```
+
+`GET /lessons/{id}` niesie dodatkowo `topic`: `{ "id", "title", "position" }` albo `null`.
+
+Widoczność tematów jest tą samą regułą co `GET /courses/{slug}` (katalog i dostęp kursu);
+uczestnik nie ma trasy czytającej temat po identyfikatorze. Kody obu tras bez zmian:
+`200`, `401 unauthenticated`, `403 course_locked`, `404 not_found`.
+
+### 2. Zapis tematów — administracja i prowadzący własnego kursu
+
+Te same trasy w dwóch grupach: `/admin/…` (`project_manager`, `super_admin`) oraz
+`/instructor/…` (`instructor`). Parametry `{course}` i `{topic}` są liczbami.
+
+| Trasa | Ciało | Sukces | Błędy |
+|---|---|---|---|
+| `GET …/courses/{course}/topics` | — | `200 {data:[Topic]}` | 401, 403, 404 |
+| `POST …/courses/{course}/topics` | `{ "title" }` | `201 {data:Topic}` | 401, 403, 404, 422 `validation_failed` |
+| `PATCH …/topics/{topic}` | `{ "title" }` | `200 {data:Topic}` | 401, 403, 404, 422 `validation_failed` |
+| `DELETE …/topics/{topic}` | — | `200 {data:{id, deleted:true}}` | 401, 403, 404, 422 `conditions_not_met` |
+| `PATCH …/courses/{course}/topics/reorder` | `{ "topics": [ { "id", "lesson_ids": [...] } ] }` | `200 {data:[Topic]}` | 401, 403, 404, 422 `validation_failed` |
+
+`Topic` = `{ "id", "course_id", "title", "position", "lesson_ids", "created_at",
+"updated_at" }`; `lesson_ids` to żywe lekcje tematu w jego kolejności. Lista tematów nie
+jest stronicowana (jak lista lekcji kursu). `title` jest wymagany, string, do 255 znaków.
+Nowy temat trafia na koniec kursu. Usunięcie jest miękkie i dotyczy wyłącznie tematu bez
+żywych lekcji — temat z lekcjami daje `422 conditions_not_met` bez zmian; pozostałe tematy
+dostają ciągłą numerację `position`.
+
+`PATCH …/topics/reorder` jest tym samym legalnym wyjątkiem nazewniczym co
+`PATCH …/reorder` z §1, nie nowym wyjątkiem. Jedno żądanie niesie cały układ kursu:
+`topics` musi być pełną permutacją żywych tematów kursu, a suma wszystkich `lesson_ids` —
+pełną permutacją żywych lekcji kursu (pusta lista lekcji tematu jest dozwolona).
+Przeniesienie lekcji między tematami jest tą samą operacją. Brak, obcy identyfikator albo
+duplikat → `422 validation_failed` (`errors.topics` albo pole ciała), bez żadnej zmiany i bez
+wpisu audytu. `position`, pozycję lekcji w temacie i spłaszczony `sequence_order` nadaje
+wyłącznie serwer.
+
+Dostęp: brak tokenu → `401 unauthenticated`; rola spoza grupy trasy → `403 forbidden`,
+zanim cokolwiek zostanie odczytane. Dla prowadzącego kurs albo temat bez jego aktywnego
+przypisania na poziomie kursu wygląda jak nieistniejący: identyczne `404 not_found`
+(„Nie znaleziono zasobu.”), także przy niepoprawnym ciele żądania — odmowa pada przed
+walidacją ciała i niczego nie zapisuje.
+
+### 3. Trasy lekcji (H08) — uzupełnienia
+
+- `POST …/courses/{course}/lessons` przyjmuje opcjonalne `topic_id` — żywy temat tego kursu;
+  temat obcy albo nieistniejący → `422 validation_failed` na polu `topic_id`. Bez `topic_id`
+  lekcja trafia na koniec ostatniego tematu; kurs bez tematu dostaje temat domyślny
+  „Lekcje kursu”. `topic_position` jest zakazane (`prohibited`).
+- `PATCH …/lessons/{lesson}`: `topic_id` i `topic_position` są zakazane (`prohibited` →
+  `422 validation_failed`); układ w tematach zmienia wyłącznie `…/topics/reorder`.
+- Zasób lekcji administracji i prowadzącego niesie dodatkowo `topic_id` i `topic_position`.
+- Kurs z więcej niż jednym tematem: jawny `sequence_order` w `POST`/`PATCH` lekcji oraz
+  `PATCH /admin/courses/{course}/lessons/reorder` → `422 validation_failed`. Kurs z jednym
+  tematem działa jak dotąd, a pozycje lekcji w temacie idą za `sequence_order`.
+
+### 4. Audyt
+
+Każda operacja zapisu tematu zapisuje slug `course.updated` z rejestru §3.2, podmiotem jest
+kurs. Słownik kodów operacji rośnie z 8 do 12:
+
+| kod | co się wydarzyło | towarzysz |
+|---|---|---|
+| `topic.created` | temat dodany | `topic_id` |
+| `topic.updated` | tytuł tematu zmieniony | `topic_id` |
+| `topic.deleted` | temat usunięty | `topic_id` |
+| `topics.reordered` | zmieniony układ tematów i lekcji w tematach | `course_id` |
+
+`topic_id` jest nowym dozwolonym polem towarzyszącym. Każdy kod niesie dokładnie jeden
+identyfikator, nigdy listę. Kod operacji zapisuje dziś pole `op` — to samo, którym zapisują
+się pozostałe operacje na treści kursu; wyrównanie nazwy pola do `operation` z tabeli
+aneksu z 2026-09-17 obejmie wszystkie kody naraz.
+
+### 5. Dane
+
+Nowa tabela `course_topics` (`course_id`, `title`, `position`, miękkie usuwanie, unikat
+`(course_id, position)` wśród żywych) oraz kolumny `lessons.topic_id` i
+`lessons.topic_position` (obie nullable, unikat `(topic_id, topic_position)` wśród żywych).
+Migracja zakłada jeden temat domyślny „Lekcje kursu” dla każdego kursu z lekcjami; postęp
+(`lesson_progress`) wiąże się wyłącznie przez `lesson_id` i nie zmienia się.
+
+Kod: `Services/H08/TopicWriter.php`, `Services/H08/TopicLayout.php`,
+`Services/H08/TopicScope.php`, `Http/Controllers/Api/V1/Admin/CourseTopicAdminController.php`,
+`Http/Controllers/Api/V1/H08/InstructorCourseTopicController.php`.

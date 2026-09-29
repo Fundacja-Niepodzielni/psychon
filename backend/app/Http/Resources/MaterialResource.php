@@ -25,6 +25,9 @@ class MaterialResource extends JsonResource
             // field is shipped ahead of the guardian's ruling and flagged as
             // deviation (7) in DEMO/H05.md. Bytes, integer — the front formats.
             'size' => $this->size,
+            // Lekcja, do której należy materiał, albo `null` dla materiału
+            // całego kursu — lista łączy oba rodzaje w jednej tablicy.
+            'lesson_id' => $this->lesson_id,
             'download_url' => URL::temporarySignedRoute(
                 'materials.download',
                 // R2 (sprint-2 §1): visibility of the COURSE this material

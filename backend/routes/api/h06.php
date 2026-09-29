@@ -143,6 +143,12 @@ if (config('features.h06')) {
                     'id' => (int) $lesson->id,
                     'title' => $lesson->title,
                     'description' => $lesson->description,
+                    // Temat lekcji w kursie (okruszki ekranu lekcji) albo `null`.
+                    'topic' => $lesson->topic === null ? null : [
+                        'id' => $lesson->topic->id,
+                        'title' => $lesson->topic->title,
+                        'position' => $lesson->topic->position,
+                    ],
                     'duration_seconds' => (int) $lesson->duration_seconds,
                     // Pozycja wznowienia (★ H06.1): bez niej odtwarzacz nie ma
                     // skąd wiedzieć, gdzie uczestnik skończył oglądać.
