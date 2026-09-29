@@ -47,4 +47,13 @@ describe("DetailTemplate", () => {
     // Jedyne przyciski/odnośniki pochodzą z PageHeader (organizm, nie szablon).
     expect(container.querySelectorAll("[data-testid='pageheader-powrot']")).toHaveLength(1);
   });
+
+  it("korzeń układu niesie znacznik data-style-id=szablon-szczegol", () => {
+    const { container } = render(
+      <DetailTemplate naglowek={naglowek()} glowna={<div>Główna</div>} wspierajaca={<div>Wspierająca</div>} />,
+    );
+    const uklad = container.querySelector("[data-style-id='szablon-szczegol']") as HTMLElement;
+    expect(uklad).toBeTruthy();
+    expect(uklad).toBe(container.firstElementChild);
+  });
 });

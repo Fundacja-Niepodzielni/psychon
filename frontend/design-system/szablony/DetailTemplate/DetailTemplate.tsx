@@ -27,7 +27,7 @@ interface WlasciwosciDetailTemplate {
  */
 export function DetailTemplate({ naglowek, checklist, kafle, glowna, wspierajaca }: WlasciwosciDetailTemplate) {
   return (
-    <div className={style.uklad}>
+    <div className={style.uklad} data-style-id="szablon-szczegol">
       <div data-obszar="naglowek">
         <PageHeader {...naglowek} />
       </div>

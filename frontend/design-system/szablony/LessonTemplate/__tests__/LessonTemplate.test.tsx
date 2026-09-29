@@ -39,4 +39,13 @@ describe("LessonTemplate", () => {
     );
     expect(obszary(container)).toEqual(["naglowek", "kolumny", "glowna", "wspierajaca"]);
   });
+
+  it("korzeń układu niesie znacznik data-style-id=szablon-lekcja", () => {
+    const { container } = render(
+      <LessonTemplate naglowek={naglowek()} glowna={<div>Główna</div>} wspierajaca={<div>Wspierająca</div>} />,
+    );
+    const uklad = container.querySelector("[data-style-id='szablon-lekcja']") as HTMLElement;
+    expect(uklad).toBeTruthy();
+    expect(uklad).toBe(container.firstElementChild);
+  });
 });

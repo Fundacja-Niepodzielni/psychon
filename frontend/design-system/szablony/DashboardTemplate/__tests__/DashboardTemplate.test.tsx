@@ -34,4 +34,13 @@ describe("DashboardTemplate", () => {
     );
     expect(obszary(container)).toEqual(["naglowek", "kolumny", "glowna", "wspierajaca"]);
   });
+
+  it("korzeń układu niesie znacznik data-style-id=szablon-pulpit", () => {
+    const { container } = render(
+      <DashboardTemplate naglowek={naglowek()} glowna={<div>Główna</div>} wspierajaca={<div>Wspierająca</div>} />,
+    );
+    const uklad = container.querySelector("[data-style-id='szablon-pulpit']") as HTMLElement;
+    expect(uklad).toBeTruthy();
+    expect(uklad).toBe(container.firstElementChild);
+  });
 });
