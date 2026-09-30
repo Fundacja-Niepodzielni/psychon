@@ -11,11 +11,12 @@ import {
 /**
  * Stan flag rejestru: włączone są grupy, dla których są już strony pod
  * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
- * `pulpitAdministracji`) oraz `pulpitUczestnika`, `lekcja` i `pulpitProwadzacego`
- * (ten sam adres, treść strony zamienia się na ekran nowego frontu). Pozostałe
- * grupy opisują tylko docelowe pary tras i zostają wyłączone.
+ * `pulpitAdministracji`), `pulpitUczestnika`, `lekcja` i `pulpitProwadzacego`
+ * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
+ * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`.
+ * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["formyStazu", "lekcja", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca"];
+const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "lekcja", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca", "wzoryDokumentow"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -31,7 +32,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, lekcja, formy stażu, pulpit administracji i pulpit prowadzącego", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, lekcja, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów i ekran startowy", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -46,7 +47,15 @@ describe("rejestr GRUPY — stan flag", () => {
     }
   });
 
-  it("grupa wspolpraca niesie dokładnie dwa ekrany: uczestnika i administrację", () => {
+  it("grupy z podmianą treści mają ten sam adres starej i nowej trasy", () => {
+    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy"] as const) {
+      const [ekran] = GRUPY[klucz].ekrany;
+      expect(ekran.panel, klucz).toBe("administracja");
+      expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
+    }
+  });
+
+it("grupa wspolpraca niesie dokładnie dwa ekrany: uczestnika i administrację", () => {
     const panele = GRUPY.wspolpraca.ekrany.map((e) => e.panel).sort();
     expect(panele).toEqual(["administracja", "uczestnik"]);
   });

@@ -55,8 +55,9 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest sześć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `formyStazu`,
- * `pulpitAdministracji` i `pulpitProwadzacego`. Pozostałe mają tu jeszcze tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
+ * Grupy dzisiejszego kanonu. Włączonych jest dziewięć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `formyStazu`,
+ * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`. Pozostałe mają tu jeszcze
+ * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
  */
@@ -269,7 +270,7 @@ export const GRUPY = {
   /** Decyzja o wniosku o profil psychologa (H15) — ten sam adres co dzisiejszy szczegół wniosku. */
   decyzjaProfilu: {
     klucz: "decyzjaProfilu",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -314,7 +315,7 @@ export const GRUPY = {
   /** Wzory dokumentów z wersjami (H14) — ten sam adres co dzisiejszy ekran wzorów. */
   wzoryDokumentow: {
     klucz: "wzoryDokumentow",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -340,7 +341,14 @@ export const GRUPY = {
       },
     ],
   },
-  /** Ustawienia roku programu (H19) — ten sam adres co dzisiejsze ustawienia edycji. */
+  /**
+   * Ustawienia roku programu (H19) — ten sam adres co dzisiejsze ustawienia edycji.
+   * Zostaje wyłączona: stara strona zmienia też nazwę edycji, daty rozpoczęcia i
+   * zakończenia oraz limit miejsc (`PATCH /admin/edition`), a nowy ekran pokazuje
+   * tylko sześć progów z kontraktu §3.3 — bez odpowiednika tych czterech pól
+   * administracja nie mogłaby ich zmienić z panelu. Strona `ustawienia/page.tsx`
+   * jest już podpięta pod tę flagę.
+   */
   ustawieniaProgramu: {
     klucz: "ustawieniaProgramu",
     wlaczona: false,
@@ -356,7 +364,7 @@ export const GRUPY = {
   /** Redakcja ekranu startowego (H21) — ten sam adres co dzisiejsza redakcja treści. */
   ekranStartowy: {
     klucz: "ekranStartowy",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
