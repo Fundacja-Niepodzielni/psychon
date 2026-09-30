@@ -118,12 +118,16 @@ describe("Zgłoszenie — decyzja: stany w szablonie, jeden main", () => {
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 
-  it("brak uprawnień (403): jedyny szablon zdania w kolumnie głównej", async () => {
-    trasy({ show: () => Promise.reject(bladApi(403, "forbidden", "Brak dostępu.")) });
+  it.each([401, 403])("brak uprawnień (%i): wariant odmowy z rolą w kolumnie głównej, zero danych zgłoszenia", async (status) => {
+    trasy({ show: () => Promise.reject(bladApi(status, status === 401 ? "unauthenticated" : "forbidden", "Odmowa.")) });
     const { container } = render(<ZgloszenieDecyzja id="31" />);
-    const zdanie = await screen.findByText("Ten widok jest dostępny tylko dla administracji Fundacji.");
+    const naglowek = await screen.findByRole("heading", { level: 2, name: "Zgłoszenie jest niedostępne" });
     sprawdzSzablon(container);
-    expect(container.querySelector("[data-obszar='glowna']")!.contains(zdanie)).toBe(true);
+    const glowna = container.querySelector<HTMLElement>("[data-obszar='glowna']")!;
+    expect(glowna.contains(naglowek)).toBe(true);
+    expect(glowna).toHaveTextContent(/administracji/);
+    expect(container.textContent).not.toMatch(/Marta|marta\.demo|Uniwersytet Demo/);
+    expect(screen.queryByRole("button", { name: "Pobierz skan dyplomu" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 

@@ -129,8 +129,8 @@ export function ZgloszenieDecyzja({ id }: { id: string }) {
         glowna={
           <EmptyState
             wariant="brak-uprawnien"
-            naglowek="Brak dostępu do zgłoszenia"
-            rola="administracji Fundacji"
+            naglowek="Zgłoszenie jest niedostępne"
+            rola="administracji"
             przycisk={{ etykieta: "Wróć do listy", onClick: wroc }}
           />
         }
