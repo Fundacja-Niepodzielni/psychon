@@ -10,6 +10,10 @@ export interface DaneLekcji {
   id: number;
   title: string;
   description: string | null;
+  /** Treść w podzbiorze Markdown (kontrakt, „Treść lekcji”) albo `null`. */
+  content: string | null;
+  /** Temat lekcji w kursie (okruszki) albo `null`. */
+  topic: { id: number; title: string; position: number } | null;
   duration_seconds: number;
   position_seconds: number;
   watched_seconds: number;
@@ -24,6 +28,40 @@ export type WynikLekcji =
   | { status: "zablokowany"; komunikat: string }
   | { status: "nie-znaleziono" }
   | { status: "blad" };
+
+/** Whether a text field carries anything besides whitespace. */
+export function maTekst(tekst: string | null | undefined): boolean {
+  return typeof tekst === "string" && tekst.trim() !== "";
+}
+
+/**
+ * What the main column shows for a loaded lesson:
+ * - `odtwarzacz` — `LessonPlayer` (recording frame, steps, questions, completion
+ *   condition); also used for a lesson without a recording as long as it has a
+ *   short description, because the organism hands its own empty state to any
+ *   recording-less lesson with a blank description;
+ * - `sama-tresc` — no recording, no description, but a content body: only the
+ *   title and the content, no empty player frame;
+ * - `pusta` — nothing to show at all: an honest empty state, no fake content.
+ */
+export type UkladGlownej = "odtwarzacz" | "sama-tresc" | "pusta";
+
+export function ukladGlownej(
+  dane: Pick<DaneLekcji, "description" | "content">,
+  bezNagrania: boolean,
+): UkladGlownej {
+  if (!bezNagrania || maTekst(dane.description)) return "odtwarzacz";
+  return maTekst(dane.content) ? "sama-tresc" : "pusta";
+}
+
+/** Breadcrumb trail: course area, the topic when the lesson has one, the lesson itself. */
+export function okruszkiLekcji(dane: Pick<DaneLekcji, "title" | "topic">): { etykieta: string }[] {
+  return [
+    { etykieta: "Kursy" },
+    ...(dane.topic ? [{ etykieta: dane.topic.title }] : []),
+    { etykieta: dane.title },
+  ];
+}
 
 /**
  * Whether a signed recording link can be issued for this lesson

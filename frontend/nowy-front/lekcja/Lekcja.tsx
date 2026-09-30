@@ -6,12 +6,17 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
+import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import { TrescLekcji } from "@/design-system/molekuly/TrescLekcji/TrescLekcji";
 import { LessonTemplate } from "@/design-system/szablony/LessonTemplate/LessonTemplate";
 import { LessonPlayer } from "@/design-system/organizmy/LessonPlayer/LessonPlayer";
 import {
+  maTekst,
+  okruszkiLekcji,
   pobierzDaneLekcji,
   procentAktywnegoCzasu,
+  ukladGlownej,
   ukonczLekcje,
   wyslijPostep,
   type DaneLekcji,
@@ -39,9 +44,14 @@ interface WlasciwosciLekcja {
 /**
  * Route `/nowy-front/lekcja/[id]`. Five states: loading, error, blocked
  * (course locked, message straight from the response envelope), not found,
- * and the lesson itself. `LessonTemplate` + `LessonPlayer` carry the content
- * and the recording frame; the completion button lives at this level
- * because `LessonPlayer` has no callback for it (see note below the fetch).
+ * and the lesson itself. Every state renders INSIDE `LessonTemplate`, whose
+ * root is the only `main` of the page. In the lesson state `LessonPlayer`
+ * carries the recording frame and the short description, `TrescLekcji` the
+ * lesson body (`content`, Markdown subset, never raw HTML); the completion
+ * button lives at this level because `LessonPlayer` has no callback for it.
+ * The button is the one primary action while it can act; below the
+ * threshold it is an outline button, disabled, with the reason next to it
+ * (a primary button is never disabled in the design system).
  *
  * Progress heartbeat (`POST /lessons/{id}/progress`, contract "Postęp
  * lekcji") ticks on a fixed interval while the lesson is loaded, but only
@@ -108,6 +118,7 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   }
 
   async function oznaczUkonczona() {
+    if (wysylanie) return;
     setWysylanie(true);
     setBladUkonczenia(null);
     const wynik = await ukonczLekcje(id);
@@ -125,51 +136,53 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
     }
   }
 
+  const naglowekStanu = {
+    okruszki: [{ etykieta: "Kursy" }, { etykieta: "Lekcja" }],
+    tytul: "Lekcja",
+    onPowrot: () => router.back(),
+  };
+
   if (stan.rodzaj === "ladowanie") {
-    return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Skeleton wiersze={6} />
-      </main>
-    );
+    return <LessonTemplate naglowek={naglowekStanu} glowna={<Skeleton wiersze={6} />} wspierajaca={null} />;
   }
 
   if (stan.rodzaj === "nie-znaleziono") {
-    return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Text>Nie znaleziono lekcji.</Text>
-      </main>
-    );
+    return <LessonTemplate naglowek={naglowekStanu} glowna={<Text>Nie znaleziono lekcji.</Text>} wspierajaca={null} />;
   }
 
   if (stan.rodzaj === "zablokowany") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Notice wariant="warn" tytul="Dostęp zablokowany">
-          {stan.komunikat}
-        </Notice>
-      </main>
+      <LessonTemplate
+        naglowek={naglowekStanu}
+        glowna={
+          <Notice wariant="warn" tytul="Dostęp zablokowany">
+            {stan.komunikat}
+          </Notice>
+        }
+        wspierajaca={null}
+      />
     );
   }
 
   if (stan.rodzaj === "blad") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Notice
-          wariant="error"
-          tytul="Nie udało się wczytać lekcji"
-          akcja={
-            <Button poziom="outline" onClick={ponow}>
-              Spróbuj ponownie
-            </Button>
-          }
-        >
-          Backend nie odpowiedział poprawnie — spróbuj ponownie później.
-        </Notice>
-      </main>
+      <LessonTemplate
+        naglowek={naglowekStanu}
+        glowna={
+          <Notice
+            wariant="error"
+            tytul="Nie udało się wczytać lekcji"
+            akcja={
+              <Button poziom="outline" onClick={ponow}>
+                Spróbuj ponownie
+              </Button>
+            }
+          >
+            Backend nie odpowiedział poprawnie — spróbuj ponownie później.
+          </Notice>
+        }
+        wspierajaca={null}
+      />
     );
   }
 
@@ -177,17 +190,18 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   const procent = procentAktywnegoCzasu(dane);
   const mozeUkonczyc = dane.completable && !dane.is_completed;
   const brakujacyProcent = Math.max(0, dane.completable_at_percent - procent);
+  const uklad = ukladGlownej(dane, bezNagrania);
 
   return (
-    <main id="tresc" className={style.uklad}>
-      <LessonTemplate
-        naglowek={{
-          okruszki: [{ etykieta: "Kurs" }, { etykieta: dane.title }],
-          tytul: dane.title,
-          onPowrot: () => router.back(),
-        }}
-        glowna={
-          <div className={style.glowna}>
+    <LessonTemplate
+      naglowek={{
+        okruszki: okruszkiLekcji(dane),
+        tytul: dane.title,
+        onPowrot: () => router.back(),
+      }}
+      glowna={
+        <div className={style.glowna}>
+          {uklad === "odtwarzacz" && (
             <LessonPlayer
               tytul={dane.title}
               tresc={dane.description ?? ""}
@@ -207,44 +221,58 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
               bezNagrania={bezNagrania}
               pusty={{
                 naglowek: "Lekcja bez treści",
-                tresc: "Ta lekcja nie ma jeszcze nagrania ani opisu.",
+                tresc: "Ta lekcja nie ma jeszcze nagrania ani treści.",
                 przycisk: { etykieta: "Wróć do kursu", onClick: () => router.back() },
               }}
             />
+          )}
+          {uklad === "sama-tresc" && <Heading stopien={2}>{dane.title}</Heading>}
+          {uklad === "pusta" && (
+            <EmptyState
+              naglowek="Lekcja bez treści"
+              tresc="Ta lekcja nie ma jeszcze nagrania ani treści."
+              przycisk={{ etykieta: "Wróć do kursu", onClick: () => router.back() }}
+            />
+          )}
 
-            <div className={style.ukonczenie} role="group" aria-label="Ukończenie lekcji">
-              {dane.is_completed ? (
-                <Notice wariant="ok" tytul="Lekcja ukończona">
-                  Ta lekcja jest już ukończona.
-                </Notice>
-              ) : (
-                <>
-                  {bladUkonczenia && (
-                    <Notice wariant="error" tytul="Nie udało się ukończyć lekcji">
-                      {bladUkonczenia}
-                    </Notice>
-                  )}
-                  <Button
-                    poziom="outline"
-                    disabled={!mozeUkonczyc || wysylanie}
-                    onClick={() => void oznaczUkonczona()}
-                  >
-                    {wysylanie ? "Zapisywanie…" : "Oznacz jako ukończoną"}
-                  </Button>
-                  {!dane.completable && (
-                    <Text wariant="pusty">
-                      Brakuje {brakujacyProcent}% aktywnego czasu do progu {dane.completable_at_percent}%.
-                    </Text>
-                  )}
-                </>
-              )}
-            </div>
+          <div className={style.ukonczenie} role="group" aria-label="Ukończenie lekcji">
+            {dane.is_completed ? (
+              <Notice wariant="ok" tytul="Lekcja ukończona">
+                Ta lekcja jest już ukończona.
+              </Notice>
+            ) : (
+              <>
+                {bladUkonczenia && (
+                  <Notice wariant="error" tytul="Nie udało się ukończyć lekcji">
+                    {bladUkonczenia}
+                  </Notice>
+                )}
+                <Button
+                  poziom={mozeUkonczyc ? "primary" : "outline"}
+                  disabled={!mozeUkonczyc || wysylanie}
+                  onClick={() => void oznaczUkonczona()}
+                >
+                  {wysylanie ? "Zapisywanie…" : "Oznacz jako ukończoną"}
+                </Button>
+                {!dane.completable && (
+                  <Text wariant="pusty">
+                    Brakuje {brakujacyProcent}% aktywnego czasu do progu {dane.completable_at_percent}%.
+                  </Text>
+                )}
+              </>
+            )}
           </div>
-        }
-        wspierajaca={
-          <Text wariant="pusty">Ta lekcja nie ma jeszcze materiałów do pobrania w tym widoku.</Text>
-        }
-      />
-    </main>
+
+          {maTekst(dane.content) && (
+            <div role="region" aria-label="Treść lekcji">
+              <TrescLekcji tresc={dane.content} />
+            </div>
+          )}
+        </div>
+      }
+      wspierajaca={
+        <Text wariant="pusty">Ta lekcja nie ma jeszcze materiałów do pobrania w tym widoku.</Text>
+      }
+    />
   );
 }

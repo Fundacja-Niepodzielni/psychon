@@ -25,6 +25,8 @@ const LEKCJA_PODSTAWOWA = {
   id: 21,
   title: "Wprowadzenie do wywiadu",
   description: "Opis lekcji",
+  content: null,
+  topic: null,
   duration_seconds: 1800,
   position_seconds: 0,
   watched_seconds: 812,
