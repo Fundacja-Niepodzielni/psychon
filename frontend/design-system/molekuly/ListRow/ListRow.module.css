@@ -1,6 +1,6 @@
 .wiersz {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-12);
   align-items: center;
   padding: var(--space-12) var(--card-px);
@@ -10,14 +10,23 @@
 .otwarty {
   background: var(--card-warm);
 }
+/* Treść nigdy nie dostaje mniej niż 40% szerokości wnętrza wiersza: gdy akcja (liczba + długi
+   link) nie mieści się obok, zawija się POD treść, zamiast ściskać ją do
+   jednej litery w wierszu. Gdy mieści się obok, treść rośnie do końca
+   wiersza, a akcja stoi przy prawej krawędzi, jak przy dwóch kolumnach. */
 .tresc {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  flex: 1 1 40%;
   min-width: 0;
 }
+/* `flex-wrap` i `max-width`: sama akcja też musi się zmieścić w wierszu, gdy
+   liczba i link razem są szersze niż ekran. */
 .akcje {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-12);
+  max-width: 100%;
 }

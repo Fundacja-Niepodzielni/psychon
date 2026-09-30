@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/klient";
+import { odmien } from "../wspolne/odmiana";
 import type { KolejkaPulpitu, LicznikiPulpitu, PulpitAdministracji } from "./dane";
 
 /** Nazwy spraw po polsku; klucze to kody kolejek z odpowiedzi serwera. */
@@ -13,10 +14,24 @@ export const NAZWA_INNYCH_SPRAW = "Inne sprawy";
 
 export const TEKST_BRAK_SPRAW = "Brak spraw do decyzji";
 
-const KAFLE: { klucz: keyof LicznikiPulpitu; id: string; etykieta: string; mianownik: string }[] = [
-  { klucz: "participants", id: "pulpit-uczestnicy", etykieta: "Uczestnicy w programie", mianownik: "osób" },
-  { klucz: "completed", id: "pulpit-ukonczenia", etykieta: "Ukończenia programu", mianownik: "osób" },
-  { klucz: "certificates", id: "pulpit-certyfikaty", etykieta: "Wydane certyfikaty", mianownik: "certyfikatów" },
+/** Formy jednostki przy liczbie: 1 · 2-4 (poza 12-14) · pozostałe (w tym 0). */
+type FormyJednostki = readonly [jeden: string, kilka: string, wiele: string];
+
+export const FORMY_SPRAW: FormyJednostki = ["sprawa", "sprawy", "spraw"];
+export const FORMY_ZGLOSZEN: FormyJednostki = ["zgłoszenie", "zgłoszenia", "zgłoszeń"];
+
+const FORMY_OSOB: FormyJednostki = ["osoba", "osoby", "osób"];
+const FORMY_CERTYFIKATOW: FormyJednostki = ["certyfikat", "certyfikaty", "certyfikatów"];
+
+/** Jednostka odmieniona przez liczbę, np. `jednostka(3, FORMY_OSOB)` daje „osoby”. */
+export function jednostka(liczba: number, [jeden, kilka, wiele]: FormyJednostki): string {
+  return odmien(liczba, jeden, kilka, wiele);
+}
+
+const KAFLE: { klucz: keyof LicznikiPulpitu; id: string; etykieta: string; formy: FormyJednostki }[] = [
+  { klucz: "participants", id: "pulpit-uczestnicy", etykieta: "Uczestnicy w programie", formy: FORMY_OSOB },
+  { klucz: "completed", id: "pulpit-ukonczenia", etykieta: "Ukończenia programu", formy: FORMY_OSOB },
+  { klucz: "certificates", id: "pulpit-certyfikaty", etykieta: "Wydane certyfikaty", formy: FORMY_CERTYFIKATOW },
 ];
 
 export interface KafelPulpitu {
@@ -117,11 +132,11 @@ export const KLUCZ_KOLEJKI_CELU = "applications";
  * ekran pokazuje powód.
  */
 export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
-  const kafle = KAFLE.map(({ klucz, id, etykieta, mianownik }) => ({
+  const kafle = KAFLE.map(({ klucz, id, etykieta, formy }) => ({
     id,
     etykieta,
     wartosc: dane.counters[klucz],
-    mianownik,
+    mianownik: jednostka(dane.counters[klucz], formy),
   }));
 
   const wiersze = dane.queues.map((kolejka) => ({
