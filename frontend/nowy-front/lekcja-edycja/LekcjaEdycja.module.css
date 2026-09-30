@@ -1,0 +1,26 @@
+/* Moduł CSS ekranu „Lekcja: treść, nagranie, materiały” — wartości wyglądu
+   wyłącznie z tokeny.css, zero zapisów wprost. */
+.naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.kolumna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  max-width: 760px;
+}
+
+.szkielet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
