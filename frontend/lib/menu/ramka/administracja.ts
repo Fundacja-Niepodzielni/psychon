@@ -32,7 +32,9 @@ import type { MenuEntry } from "../types";
  * - funkcje starego panelu bez miejsca w menu makiety — grupa na dole
  *   „Dotychczasowy panel” ze starymi wpisami (etykieta i adres wprost ze
  *   starego rejestru);
- * - linie „W przygotowaniu” słowo w słowo z makiety, bez łączy.
+ * - linie „W przygotowaniu” z makiety, bez łączy; w „Rozliczeniu” bez
+ *   „treści i dokumenty” (wzory dokumentów i ekran startowy są już pozycjami
+ *   tej grupy).
  */
 
 export interface PozycjaMenuRamki {
@@ -132,7 +134,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...pozycja(cel(grupy, "wzoryDokumentow"), "file", n.wzoryDokumentow),
         ...pozycja(cel(grupy, "ekranStartowy"), "cog", n.ekranStartowy),
       ],
-      wPrzygotowaniu: "certyfikaty · ustawienia roku programu · treści i dokumenty",
+      wPrzygotowaniu: "certyfikaty · ustawienia roku programu",
     },
     {
       naglowek: GRUPA_DOTYCHCZASOWA,

@@ -14,7 +14,8 @@ import { GRUPY, type DefinicjaGrupy, type KluczGrupy } from "@/lib/przelaczenie/
  * Codziennie: Pulpit · Sprawy · Uczestnicy; Program: Kursy + „W
  * przygotowaniu: prowadzący · staż i superwizja”; Rozliczenie: Raport roku
  * programu · Dziennik działań + „W przygotowaniu: certyfikaty · ustawienia
- * roku programu · treści i dokumenty”; Konto: Wyloguj (w powłoce).
+ * roku programu” (bez „treści i dokumenty” — wzory dokumentów i ekran
+ * startowy są już pozycjami tej grupy); Konto: Wyloguj (w powłoce).
  */
 
 function zFlagami(flagi: Partial<Record<KluczGrupy, boolean>>): Record<string, DefinicjaGrupy> {
@@ -67,7 +68,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Wzory dokumentów", "/admin/wzory-dokumentow"],
           ["Treść ekranu „Zacznij tutaj”", "/admin/ekran-startowy"],
         ],
-        linia: "certyfikaty · ustawienia roku programu · treści i dokumenty",
+        linia: "certyfikaty · ustawienia roku programu",
       },
       {
         naglowek: GRUPA_DOTYCHCZASOWA,

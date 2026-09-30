@@ -21,7 +21,9 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - axe: 0 naruszeń;
  * - bez „Wstecz”, okruszki tylko jako łącza;
  * - `--brand` niepusty na menu i pasku ramki (także w szufladzie 390 px),
- *   pusty na `documentElement` (tokeny tylko w poddrzewie z `data-theme`).
+ *   pusty na `documentElement` (tokeny tylko w poddrzewie z `data-theme`);
+ * - nazwy pozycji menu w całości, bez wielokropka, najwyżej 2 wiersze;
+ * - przycisk „Menu” (390 px) z ikoną menu z makiety i napisem „Menu”.
  * Kontrola dodatnia: strona grupy wyłączonej (`/admin/kursy`) ma dalej
  * dotychczasową powłokę.
  *
@@ -181,7 +183,7 @@ const MENU_OCZEKIWANE = [
       ["Wzory dokumentów", "/admin/wzory-dokumentow"],
       ["Treść ekranu „Zacznij tutaj”", "/admin/ekran-startowy"],
     ],
-    linia: "W przygotowaniu: certyfikaty · ustawienia roku programu · treści i dokumenty.",
+    linia: "W przygotowaniu: certyfikaty · ustawienia roku programu.",
   },
   {
     naglowek: "Dotychczasowy panel",
@@ -280,7 +282,9 @@ async function menuWidoczne(page: Page, szerokosc: number): Promise<Locator> {
     return page.getByRole("complementary", { name: "Menu i konto" }).getByRole("navigation", { name: "Menu — Administracja" });
   }
   await expect(page.getByRole("complementary", { name: "Menu i konto" })).toBeHidden();
-  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const przycisk = page.getByRole("button", { name: "Menu", exact: true });
+  await expect(przycisk.locator('svg[aria-hidden="true"] path')).toHaveAttribute("d", "M3 6h18M3 12h18M3 18h18");
+  await przycisk.click();
   const okno = page.getByRole("dialog", { name: "Menu i konto" });
   await expect(okno).toBeVisible();
   return okno.getByRole("navigation", { name: "Menu — Administracja" });
@@ -395,6 +399,29 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         expect(tokeny.menu, "--brand na menu ramki").not.toBe("");
         expect(tokeny.pasek, "--brand na pasku ramki").not.toBe("");
         expect(tokeny.dokument, "--brand na documentElement").toBe("");
+
+        // Długie nazwy pozycji: pełny tekst widoczny, bez wielokropka, najwyżej 2 wiersze.
+        const nazwyPozycji = await nav.locator("a").evaluateAll((linki) =>
+          linki.map((a) => {
+            const etykieta = a.querySelector("p") ?? a;
+            const styl = getComputedStyle(etykieta);
+            const zakres = document.createRange();
+            zakres.selectNodeContents(etykieta);
+            const wiersze = new Set(Array.from(zakres.getClientRects()).map((r) => Math.round(r.top))).size;
+            return {
+              tekst: (etykieta.textContent ?? "").trim(),
+              wielokropek: styl.textOverflow === "ellipsis",
+              obciety: etykieta.scrollWidth > etykieta.clientWidth + 1 || etykieta.scrollHeight > etykieta.clientHeight + 1,
+              wiersze,
+            };
+          }),
+        );
+        const zle = nazwyPozycji.filter((n) => n.wielokropek || n.obciety || n.wiersze > 2 || n.wiersze < 1);
+        expect(zle, JSON.stringify(zle)).toEqual([]);
+        if (szerokosc >= 1024) {
+          const dluga = nazwyPozycji.find((n) => n.tekst === "Treść ekranu „Zacznij tutaj”");
+          expect(dluga?.wiersze, "najdłuższa nazwa mieści się w 1–2 wierszach").toBeLessThanOrEqual(2);
+        }
 
         const menu = await odczytajMenu(nav);
         expect(menu.grupy).toEqual(MENU_OCZEKIWANE);

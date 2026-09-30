@@ -2,6 +2,27 @@ import {
   Home, BookOpen, Clock, Users, File, Award, MessageSquare,
   Inbox, BarChart, Settings, HelpCircle, User, LogOut,
 } from "lucide-react";
+import type { SVGProps } from "react";
+
+type WlasciwosciGlifu = SVGProps<SVGSVGElement> & { color?: string; strokeWidth?: number };
+
+/** Glif „menu” — ścieżka z makiety 2.0.4 (przycisk `#mbtn`), te same atrybuty kreski co glify lucide. */
+function GlifMenu({ color, strokeWidth, ...reszta }: WlasciwosciGlifu) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...reszta}
+    >
+      <path d="M3 6h18M3 12h18M3 18h18" />
+    </svg>
+  );
+}
 
 const MAPA_IKON = {
   home: Home,
@@ -17,6 +38,7 @@ const MAPA_IKON = {
   help: HelpCircle,
   user: User,
   out: LogOut,
+  menu: GlifMenu,
 } as const;
 
 export type NazwaIkony = keyof typeof MAPA_IKON;

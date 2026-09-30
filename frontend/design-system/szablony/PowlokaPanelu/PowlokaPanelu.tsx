@@ -135,6 +135,7 @@ export function PowlokaPanelu({
               aria-controls="menu-panelu"
               onClick={() => setMenuOtwarte(true)}
             >
+              <Icon nazwa="menu" rozmiar={16} />
               Menu
             </Button>
           </span>
