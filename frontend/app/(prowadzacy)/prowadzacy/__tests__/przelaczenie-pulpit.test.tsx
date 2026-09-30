@@ -10,8 +10,8 @@ import { grupa, kurs, pytanie, termin } from "@/nowy-front/pulpit-prowadzacego/_
  * - grupa wyłączona → strona zwraca `StaraTresc`, a złożona w układzie daje
  *   dokładnie ten sam kod HTML co sama `StaraTresc`;
  * - grupa włączona → strona zwraca ekran nowego frontu w `DostawcaPowloki`;
- *   złożona z prawdziwym układem prowadzącego (`RequireRole` + `PanelShell`)
- *   ma w czterech stanach (ładowanie, dane, błąd sieci, odmowa 403)
+ *   złożona z prawdziwym układem prowadzącego (`RequireRole` + wybór ramki:
+ *   pod tym adresem nowa ramka z makiety `PowlokaProwadzacego`) ma w czterech stanach (ładowanie, dane, błąd sieci, odmowa 403)
  *   dokładnie jeden `main`, jeden `#tresc` i jeden odnośnik do treści;
  * - odmowa roli: układ pokazuje „Brak dostępu”, ekran niczego nie pobiera.
  * Podmienione są wyłącznie transport HTTP i rejestr grup.
@@ -207,13 +207,34 @@ describe("/prowadzacy włączona — układ prowadzącego, jeden main w czterech
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
-  it("kontrola dodatnia: ekran bez dostawcy powłoki daje dwa main", async () => {
+  /**
+   * Para kontroli sygnału powłoki. Nowa ramka (`PowlokaPanelu`) sama owija
+   * treść w `DostawcaPowloki`, więc w niej ekran bez sygnału z własnej strony
+   * nie może już dać drugiego `main` — noga ujemna stoi dlatego na
+   * dotychczasowym `PanelShell`, który sygnału nie daje.
+   */
+  it("kontrola ujemna: ekran bez sygnału powłoki w dotychczasowym PanelShell daje dokładnie dwa main", async () => {
+    const z = await zaladuj({ pulpitProwadzacego: true });
+    ustawSerwer("ladowanie", "instructor", z.ApiError);
+    const { default: PanelShell } = await import("@/components/layout/PanelShell");
+    const { container } = render(
+      <PanelShell panelName="Panel prowadzącego" menu={[]}>
+        <z.PulpitProwadzacego />
+      </PanelShell>,
+    );
+
+    await screen.findByRole("heading", { level: 1, name: "Pulpit prowadzącego" }, DLUGO);
+    expect(zmierz(container).main).toBe(2);
+  });
+
+  it("kontrola dodatnia: ten sam ekran bez sygnału powłoki w nowej ramce daje dokładnie jeden main", async () => {
     const z = await zaladuj({ pulpitProwadzacego: true });
     ustawSerwer("ladowanie", "instructor", z.ApiError);
     const { container } = trasa(z, <z.PulpitProwadzacego />);
 
     await screen.findByRole("heading", { level: 1, name: "Pulpit prowadzącego" }, DLUGO);
-    expect(zmierz(container).main).toBe(2);
+    expect(container.querySelector("[data-powloka-panelu]")).not.toBeNull();
+    expect(zmierz(container)).toEqual(JEDEN);
   });
 });
 
@@ -231,13 +252,14 @@ describe("/prowadzacy włączona — odmowa roli (strażnik układu)", () => {
     expect(zmierz(container).main).toBeLessThanOrEqual(1);
   });
 
+  /** Trzy trasy ekranu i jedno `/me` ramki (imię w karcie osoby, makieta w. 1108). */
   it("kontrola dodatnia: rola instructor z tymi samymi odpowiedziami dostaje pulpit i pobiera trzy trasy", async () => {
     const z = await zaladuj({ pulpitProwadzacego: true });
     ustawSerwer("dane", "instructor", z.ApiError);
     trasa(z);
 
     await screen.findByText("Moja grupa: 2 osoby", {}, DLUGO);
-    expect(api.mock.calls.map(([url]) => url).sort()).toEqual(["/instructor/courses", "/instructor/group", "/me"]);
+    expect(api.mock.calls.map(([url]) => url).sort()).toEqual(["/instructor/courses", "/instructor/group", "/me", "/me"]);
     expect(apiPaged.mock.calls.map(([url]) => url)).toContain("/instructor/questions?answered=false");
   });
 });

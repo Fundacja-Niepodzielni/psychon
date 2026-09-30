@@ -110,11 +110,11 @@ test.describe("panel prowadzącego — pulpit przełączony, kurs bez zmian", ()
     await expect(page.getByRole("heading", { level: 1, name: "Pulpit prowadzącego" })).toBeVisible();
     await expect(page.getByText("Moja grupa: 1 osoba")).toBeVisible();
     await expect(page).toHaveURL(/\/prowadzacy$/);
-    await expect(page).toHaveTitle("Panel prowadzącego — Niepodzielni");
+    await expect(page).toHaveTitle("Pulpit prowadzącego — Niepodzielni");
     expect(await zliczPunktyOrientacyjne(page)).toEqual({ main: 1, cele: 1, odnosniki: 1 });
 
     const menu = page.getByRole("navigation", { name: "Menu — Panel prowadzącego" }).first();
-    await expect(menu.getByRole("link", { name: "Start" })).toHaveAttribute("href", "/prowadzacy");
+    await expect(menu.getByRole("link", { name: "Pulpit" })).toHaveAttribute("href", "/prowadzacy");
 
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });

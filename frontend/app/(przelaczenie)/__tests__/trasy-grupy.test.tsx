@@ -92,10 +92,10 @@ describe("wykrywacz importów z warstwy components/", () => {
 });
 
 describe("strona /admin/formy-stazu — tytuł i brak starej trasy", () => {
-  it("niesie tytuł w tej samej formie co pozostałe strony administracji", async () => {
+  it("niesie tytuł w tej samej formie co pozostałe strony administracji — nagłówek ekranu i pozycja menu nowej ramki", async () => {
     podmienRejestr({ formyStazu: true });
     const modul = await import("../admin/formy-stazu/page");
-    expect(modul.metadata).toEqual({ title: "Formy stażu — Niepodzielni" });
+    expect(modul.metadata).toEqual({ title: "Słownik form stażu — Niepodzielni" });
   });
 
   it("grupa nie ma starej trasy: czyStaraTrasaPrzekierowuje jest fałszem także po włączeniu", async () => {

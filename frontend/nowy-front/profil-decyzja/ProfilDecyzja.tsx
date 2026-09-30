@@ -15,7 +15,12 @@ import { PanelDecyzji } from "./PanelDecyzji";
 import { ETYKIETY_ZALACZNIKOW, dataPl, pobierzZalacznik, poprawneId, wczytajWniosek, type Wniosek } from "./dane";
 import style from "./ProfilDecyzja.module.css";
 
-const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Profile psychologów" }];
+/**
+ * Ekran szczegółu: pierwszy okruszek to pozycja menu, pod którą stoi ekran
+ * (nazwa i adres jak w menu ramki administracji), ostatni — bieżąca pozycja.
+ * W nowej ramce to jedyna droga powrotu (nagłówek nie ma tam „Wstecz”).
+ */
+const OKRUSZKI = [{ etykieta: "Profile psychologa", href: "/admin/profile" }, { etykieta: "Wniosek o profil" }];
 
 type WariantStatusu = "neutral" | "ok" | "warn" | "error" | "pending";
 

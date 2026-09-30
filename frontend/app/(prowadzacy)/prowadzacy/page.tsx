@@ -5,8 +5,13 @@ import { PulpitProwadzacego } from "@/nowy-front/pulpit-prowadzacego/PulpitProwa
 import { GRUPY } from "@/lib/przelaczenie/grupy";
 import StaraTresc from "./StaraTresc";
 
+/**
+ * Tytuł dokumentu: przy włączonej grupie — nagłówek ekranu nowej ramki
+ * („Pulpit prowadzącego”, para menu/nagłówek ze słownika: „Pulpit”); przy
+ * wyłączonej — dotychczasowy tytuł bez zmian.
+ */
 export const metadata: Metadata = {
-  title: "Panel prowadzącego — Niepodzielni",
+  title: GRUPY.pulpitProwadzacego.wlaczona ? "Pulpit prowadzącego — Niepodzielni" : "Panel prowadzącego — Niepodzielni",
 };
 
 /**

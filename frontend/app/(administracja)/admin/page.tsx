@@ -1,8 +1,18 @@
 import "@/design-system/tokeny/tokeny.css";
+import type { Metadata } from "next";
 import { GRUPY } from "@/lib/przelaczenie/grupy";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
 import { PulpitAdministracji } from "@/nowy-front/pulpit-administracji/PulpitAdministracji";
 import AdminHomeStaraTresc from "./StaraTresc";
+
+/**
+ * Tytuł karty przy włączonej grupie = nagłówek ekranu („Pulpit
+ * administracji”, para ze słownika interfejsu z pozycją menu „Pulpit”).
+ * Przy wyłączonej — brak własnego tytułu, jak dotąd (tytuł z korzenia).
+ */
+export const metadata: Metadata = GRUPY.pulpitAdministracji.wlaczona
+  ? { title: "Pulpit administracji — Niepodzielni" }
+  : {};
 
 /**
  * Strona startowa administracji `/admin` — korzeń panelu. Adres się nie

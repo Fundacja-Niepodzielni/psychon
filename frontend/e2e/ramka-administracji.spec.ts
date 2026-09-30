@@ -1,0 +1,479 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
+import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
+
+/**
+ * Nowa ramka panelu administracji (makieta 2.0.4, `#s-panel .shell`) na
+ * zbudowanej aplikacji, z atrapą API przez `page.route` i atrapą sesji (jak
+ * w `przelaczenie-grupa-*.spec.ts`). Dane atrap według
+ * `docs/hackathon/04-seed-demo.md` (Edycja 2026, konta demo).
+ *
+ * Dla każdego ekranu administracji z włączonej grupy, na 1280 i 390 px:
+ * - menu jest listą z makiety (grupy, pozycje, linie „W przygotowaniu”,
+ *   grupa „Konto”) uzupełnioną o ekrany włączonych grup i grupę
+ *   „Dotychczasowy panel”;
+ * - nazwa w menu == `h1` == tytuł karty (dla pulpitu para ze słownika:
+ *   „Pulpit” w menu, „Pulpit administracji” w nagłówku);
+ * - jeden `main`, jeden `#tresc`, link skoku jako pierwszy cel klawiatury;
+ * - brak przewijania w poziomie, treść co najmniej 16 px od krawędzi okna;
+ * - axe: 0 naruszeń;
+ * - bez „Wstecz”, okruszki tylko jako łącza;
+ * - `--brand` niepusty na menu i pasku ramki (także w szufladzie 390 px),
+ *   pusty na `documentElement` (tokeny tylko w poddrzewie z `data-theme`);
+ * - nazwy pozycji menu w całości, bez wielokropka, najwyżej 2 wiersze;
+ * - przycisk „Menu” (390 px) z ikoną menu z makiety i napisem „Menu”.
+ * Kontrola dodatnia: strona grupy wyłączonej (`/admin/kursy`) ma dalej
+ * dotychczasową powłokę.
+ *
+ * Zrzuty ekranu powstają tylko przy ustawionej zmiennej `PW_ZRZUTY_RAMKI`
+ * (katalog poza repozytorium).
+ */
+
+const ATRAPA_SESJI = {
+  accessToken: "atrapa-tokenu-testowego",
+  expiresAt: Date.now() + 3_600_000,
+};
+
+const EDYCJA = {
+  id: 1,
+  name: "Edycja 2026",
+  starts_at: "2026-10-01",
+  ends_at: "2027-03-31",
+  seats_limit: 40,
+  test_pass_threshold: 80,
+  test_attempts_limit: 3,
+  internship_hours_required: 72,
+  supervision_required_count: 6,
+  reliability_threshold: 60,
+  lesson_completion_percent: 60,
+};
+
+const WNIOSEK = {
+  id: 12,
+  user: { id: 18, first_name: "Ola", last_name: "Demo" },
+  specializations: ["interwencja kryzysowa"],
+  approach: "poznawczo-behawioralne",
+  city: "Gdańsk",
+  bio: "Pracuję z osobami dorosłymi.",
+  publication_consent_granted: true,
+  status: "submitted",
+  return_reason: null,
+  decided_at: null,
+  documents: [],
+  created_at: "2026-09-10T08:00:00Z",
+  updated_at: "2026-09-11T08:00:00Z",
+};
+
+const FORMA = {
+  id: 7,
+  name: "Dyżur telefoniczny",
+  description: "Rozmowa telefoniczna w godzinach dyżuru.",
+  is_active: true,
+  sort_order: 1,
+  created_at: null,
+  updated_at: null,
+};
+
+const ZGLOSZENIE = {
+  id: 3,
+  body: "Chcę dalej prowadzić dyżury czatu.",
+  status: "new",
+  response: null,
+  responded_at: null,
+  responded_by: null,
+  created_at: "2026-09-20T08:00:00Z",
+  updated_at: "2026-09-20T08:00:00Z",
+  user: { id: 18, first_name: "Ola", last_name: "Demo", email: "ola@demo.pl" },
+};
+
+const EKRAN_STARTOWY = {
+  video: { title: "Film powitalny", url: null, caption: null },
+  program: { title: "Przebieg programu", body: "Dziesięć etapów, staż i superwizje." },
+  expectations: { title: "Oczekiwania", body: "Regularna nauka i obecność na superwizjach." },
+  updated_at: null,
+};
+
+function odpowiedz(dane: unknown, meta?: unknown) {
+  return { status: 200, contentType: "application/json", body: JSON.stringify(meta ? { data: dane, meta } : { data: dane }) };
+}
+
+const META = { current_page: 1, per_page: 25, total: 1, last_page: 1 };
+
+/**
+ * Atrapy API roli administracji. Ogólna atrapa jest rejestrowana PIERWSZA —
+ * Playwright wybiera trasę zarejestrowaną PÓŹNIEJ jako pierwszą.
+ */
+async function instalujAtrapyApi(page: Page): Promise<void> {
+  const api = "http://localhost:8000/api/v1";
+  await page.route(`${api}/**`, (route) => route.fulfill(odpowiedz([], { ...META, total: 0 })));
+  await page.route(`${api}/me`, (route) =>
+    route.fulfill(odpowiedz({ id: 1, role: "project_manager", first_name: "Opiekun", last_name: "Demo", program_completed_at: null })),
+  );
+  await page.route(`${api}/notifications**`, (route) =>
+    route.fulfill(odpowiedz([], { ...META, total: 0, extra: { unread: 0 } })),
+  );
+  await page.route(`${api}/admin/dashboard`, (route) =>
+    route.fulfill(
+      odpowiedz({
+        counters: { participants: 3, completed: 1, certificates: 1 },
+        queues: [
+          { key: "applications", count: 1, link: "/admin/uczestniczki" },
+          { key: "internship_entries", count: 2, link: "/admin/staz" },
+        ],
+      }),
+    ),
+  );
+  await page.route(`${api}/admin/edition`, (route) => route.fulfill(odpowiedz(EDYCJA)));
+  await page.route(`${api}/admin/profiles/12`, (route) => route.fulfill(odpowiedz(WNIOSEK)));
+  await page.route(`${api}/admin/internship/forms**`, (route) => route.fulfill(odpowiedz([FORMA])));
+  await page.route(`${api}/admin/cooperation-requests**`, (route) => route.fulfill(odpowiedz([ZGLOSZENIE], META)));
+  await page.route(`${api}/document-templates/agreement`, (route) =>
+    route.fulfill(
+      odpowiedz({
+        type: "agreement",
+        content: "<p>Porozumienie wolontariackie — wzór.</p>",
+        version: 2,
+        updated_at: "2026-09-28T10:00:00Z",
+        updated_by: { id: 1, name: "Opiekun Demo" },
+      }),
+    ),
+  );
+  await page.route(`${api}/document-templates/agreement/versions`, (route) =>
+    route.fulfill(odpowiedz([{ version: 2, updated_at: "2026-09-28T10:00:00Z", updated_by: { id: 1, name: "Opiekun Demo" } }])),
+  );
+  await page.route(`${api}/onboarding`, (route) => route.fulfill(odpowiedz(EKRAN_STARTOWY)));
+
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ATRAPA_SESJI) }),
+  );
+  await page.route("**/api/auth/end-session-url", (route) => route.fulfill(odpowiedz({ url: null })));
+}
+
+/**
+ * Menu oczekiwane — makieta 2.0.4, menu roli administracji (skrypt nawigacji,
+ * w. 1105), plus ekrany włączonych grup i grupa „Dotychczasowy panel”
+ * (`lib/menu/ramka/administracja.ts`).
+ */
+const MENU_OCZEKIWANE = [
+  {
+    naglowek: "Codziennie",
+    pozycje: [
+      ["Pulpit", "/admin"],
+      ["Sprawy", "/admin/sprawy"],
+      ["Uczestnicy", "/admin/uczestniczki"],
+      ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
+    ],
+    linia: null,
+  },
+  {
+    naglowek: "Program",
+    pozycje: [
+      ["Kursy", "/admin/kursy"],
+      ["Słownik form stażu", "/admin/formy-stazu"],
+    ],
+    linia: "W przygotowaniu: prowadzący · staż i superwizja.",
+  },
+  {
+    naglowek: "Rozliczenie",
+    pozycje: [
+      ["Raport roku programu", "/admin/raport"],
+      ["Dziennik działań", "/admin/dziennik"],
+      ["Wzory dokumentów", "/admin/wzory-dokumentow"],
+      ["Treść ekranu „Zacznij tutaj”", "/admin/ekran-startowy"],
+    ],
+    linia: "W przygotowaniu: certyfikaty · ustawienia roku programu.",
+  },
+  {
+    naglowek: "Dotychczasowy panel",
+    pozycje: [
+      ["Czas nauki", "/admin/czas-nauki"],
+      ["Certyfikaty", "/admin/certyfikaty"],
+      ["Profile psychologa", "/admin/profile"],
+      ["Akceptacja stażu", "/admin/staz"],
+      ["Superwizje", "/admin/superwizje"],
+      ["Skrzynka e-maili", "/admin/emails"],
+      ["Ustawienia", "/admin/ustawienia"],
+    ],
+    linia: null,
+  },
+];
+
+interface Ekran {
+  nazwa: string;
+  adres: string;
+  /** Nazwa pozycji menu oznaczonej jako bieżąca. */
+  menu: string;
+  /** Oczekiwany `h1`; dla szczegółu — wzorzec. */
+  h1: string | RegExp;
+  /** Oczekiwany tytuł karty — także dla szczegółu rekordu (stały, bez danych osoby). */
+  tytul: string;
+}
+
+const EKRANY: Ekran[] = [
+  { nazwa: "pulpit", adres: "/admin", menu: "Pulpit", h1: "Pulpit administracji", tytul: "Pulpit administracji — Niepodzielni" },
+  {
+    nazwa: "zgloszenia-wspolpracy",
+    adres: "/admin/zgloszenia-wspolpracy",
+    menu: "Zgłoszenia współpracy",
+    h1: "Zgłoszenia współpracy",
+    tytul: "Zgłoszenia współpracy — Niepodzielni",
+  },
+  {
+    nazwa: "formy-stazu",
+    adres: "/admin/formy-stazu",
+    menu: "Słownik form stażu",
+    h1: "Słownik form stażu",
+    tytul: "Słownik form stażu — Niepodzielni",
+  },
+  {
+    nazwa: "profil-decyzja",
+    adres: "/admin/profile/12",
+    menu: "Profile psychologa",
+    h1: /^Wniosek o profil: Ola Demo/,
+    tytul: "Wniosek o profil — Niepodzielni",
+  },
+  {
+    nazwa: "wzory-dokumentow",
+    adres: "/admin/wzory-dokumentow",
+    menu: "Wzory dokumentów",
+    h1: "Wzory dokumentów",
+    tytul: "Wzory dokumentów — Niepodzielni",
+  },
+  {
+    nazwa: "ekran-startowy",
+    adres: "/admin/ekran-startowy",
+    menu: "Treść ekranu „Zacznij tutaj”",
+    h1: "Treść ekranu „Zacznij tutaj”",
+    tytul: "Treść ekranu „Zacznij tutaj” — Niepodzielni",
+  },
+];
+
+const SZEROKOSCI = [1280, 390] as const;
+
+/** Odczyt menu z DOM: grupy (nagłówek, pozycje, linia „W przygotowaniu”) i blok konta. */
+async function odczytajMenu(nav: Locator) {
+  return nav.evaluate((el) => {
+    const grupy = Array.from(el.querySelectorAll("ul")).map((ul) => {
+      const opakowanie = ul.parentElement?.parentElement;
+      const linia = Array.from(opakowanie?.children ?? []).find(
+        (dziecko) => dziecko.tagName === "P" && (dziecko.textContent ?? "").startsWith("W przygotowaniu"),
+      );
+      return {
+        naglowek: (ul.previousElementSibling?.textContent ?? "").trim(),
+        pozycje: Array.from(ul.querySelectorAll("a")).map((a) => [(a.textContent ?? "").trim(), a.getAttribute("href")]),
+        linia: linia?.textContent ?? null,
+      };
+    });
+    const przyciski = Array.from(el.querySelectorAll("button"));
+    const wyloguj = przyciski.find((b) => (b.textContent ?? "").trim() === "Wyloguj");
+    return {
+      grupy,
+      konto: wyloguj ? (wyloguj.parentElement?.firstElementChild?.textContent ?? "").trim() : null,
+      przyciski: przyciski.map((b) => (b.textContent ?? "").trim()),
+    };
+  });
+}
+
+async function menuWidoczne(page: Page, szerokosc: number): Promise<Locator> {
+  if (szerokosc >= 1024) {
+    await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
+    return page.getByRole("complementary", { name: "Menu i konto" }).getByRole("navigation", { name: "Menu — Administracja" });
+  }
+  await expect(page.getByRole("complementary", { name: "Menu i konto" })).toBeHidden();
+  const przycisk = page.getByRole("button", { name: "Menu", exact: true });
+  await expect(przycisk.locator('svg[aria-hidden="true"] path')).toHaveAttribute("d", "M3 6h18M3 12h18M3 18h18");
+  await przycisk.click();
+  const okno = page.getByRole("dialog", { name: "Menu i konto" });
+  await expect(okno).toBeVisible();
+  return okno.getByRole("navigation", { name: "Menu — Administracja" });
+}
+
+async function zmierzUklad(page: Page) {
+  return page.evaluate(() => {
+    const h1 = document.querySelector("h1");
+    const prostokat = h1?.getBoundingClientRect();
+    const szerokosc = document.documentElement.clientWidth;
+    return {
+      main: document.querySelectorAll("main").length,
+      cele: document.querySelectorAll("#tresc").length,
+      mainToCel: document.querySelector("main")?.id === "tresc",
+      przewijanieWPoziomie: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      odstepLewy: prostokat ? Math.round(prostokat.left) : -1,
+      odstepPrawy: prostokat ? Math.round(szerokosc - prostokat.right) : -1,
+    };
+  });
+}
+
+function katalogZrzutow(): string | null {
+  const katalog = process.env.PW_ZRZUTY_RAMKI;
+  if (!katalog) return null;
+  mkdirSync(katalog, { recursive: true });
+  return katalog;
+}
+
+test.describe("nowa ramka panelu administracji — ekrany włączonych grup", () => {
+  for (const szerokosc of SZEROKOSCI) {
+    for (const ekran of EKRANY) {
+      test(`${ekran.adres} @${szerokosc}: menu z makiety, nazwa == h1 == tytuł, jeden main, skok, bez przewijania, odstęp, axe 0`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize({ width: szerokosc, height: szerokosc >= 1024 ? 900 : 844 });
+        await instalujAtrapyApi(page);
+
+        const odpowiedzStrony = await page.goto(ekran.adres);
+        await zabezpieczeniePrzedEkranemDostepu(page);
+        expect(odpowiedzStrony?.status()).toBe(200);
+
+        const naglowek = page.getByRole("heading", { level: 1 });
+        await expect(naglowek).toHaveCount(1);
+        await expect(naglowek).toBeVisible();
+        if (typeof ekran.h1 === "string") {
+          // Miękko: rozjazd nazwy nie zatrzymuje pozostałych pomiarów, test i tak pada.
+          await expect.soft(naglowek, "h1").toHaveText(ekran.h1);
+        } else {
+          await expect(naglowek).toHaveText(ekran.h1);
+        }
+        await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
+
+        // Rok programu z GET /admin/edition, bez „zmień”.
+        await expect(page.getByRole("banner").filter({ hasText: "2026/27" })).toHaveCount(1);
+
+        // Układ: jeden main pod #tresc, bez przewijania w poziomie, odstęp treści.
+        const uklad = await zmierzUklad(page);
+        expect(uklad, JSON.stringify(uklad)).toMatchObject({ main: 1, cele: 1, mainToCel: true, przewijanieWPoziomie: false });
+        expect(uklad.odstepLewy, "odstęp lewy h1").toBeGreaterThanOrEqual(16);
+        expect(uklad.odstepPrawy, "odstęp prawy h1").toBeGreaterThanOrEqual(16);
+
+        // Bez „Wstecz”; okruszki — jeśli są — tylko łącza i bieżąca pozycja na końcu.
+        await expect(page.getByRole("button", { name: "Wstecz" })).toHaveCount(0);
+        const okruszki = page.getByRole("navigation", { name: "Okruszki" });
+        if ((await okruszki.count()) > 0) {
+          const elementy = await okruszki.locator("li").count();
+          await expect(okruszki.getByRole("link")).toHaveCount(elementy - 1);
+        }
+        // Ekran szczegółu (adres inny niż adres pozycji menu): okruszki są drogą powrotu —
+        // pierwsze łącze ma nazwę i adres oznaczonej pozycji menu.
+        const adresMenu = MENU_OCZEKIWANE.flatMap((g) => g.pozycje).find(([nazwa]) => nazwa === ekran.menu)?.[1];
+        expect(adresMenu, `pozycja menu „${ekran.menu}” w MENU_OCZEKIWANE`).toBeTruthy();
+        if (adresMenu !== ekran.adres) {
+          const pierwszeLacze = okruszki.getByRole("link").first();
+          await expect(pierwszeLacze).toHaveText(ekran.menu);
+          await expect(pierwszeLacze).toHaveAttribute("href", adresMenu as string);
+        }
+
+        // Axe na stanie spoczynku (menu zamknięte).
+        const naruszenia = await uruchomAxe(page);
+        await dolaczNaruszeniaDoRaportu(testInfo, `axe-${ekran.nazwa}-${szerokosc}`, naruszenia);
+        expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
+
+        const zrzuty = katalogZrzutow();
+        if (zrzuty) {
+          await page.screenshot({ path: path.join(zrzuty, `ramka-${ekran.nazwa}-${szerokosc}-z-danymi.png`), fullPage: true });
+        }
+
+        // Link skoku: pierwszy cel klawiatury, przenosi na #tresc.
+        const skok = page.getByRole("link", { name: "Przejdź do treści" });
+        await expect(skok).toHaveCount(1);
+        await expect(skok).toHaveAttribute("href", "#tresc");
+        const pierwszyCel = await page.evaluate(() => {
+          const wybor = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]";
+          const el = Array.from(document.querySelectorAll<HTMLElement>(wybor)).find((e) => e.tabIndex >= 0);
+          return el ? { tekst: (el.textContent ?? "").trim(), href: el.getAttribute("href") } : null;
+        });
+        expect(pierwszyCel, "pierwszy cel klawiatury w kolejności dokumentu").toEqual({ tekst: "Przejdź do treści", href: "#tresc" });
+        // Ekran, który sam przenosi fokus po wczytaniu, zaczyna od niego — wtedy skok dostaje fokus wprost.
+        const fokusNaStarcie = await page.evaluate(() =>
+          document.activeElement === document.body ? null : `${document.activeElement?.tagName}#${document.activeElement?.id}`,
+        );
+        testInfo.annotations.push({ type: "fokus po wczytaniu", description: fokusNaStarcie ?? "body" });
+        if (fokusNaStarcie === null) await page.keyboard.press("Tab");
+        else await skok.focus();
+        await expect(skok).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(page.locator("#tresc")).toBeFocused();
+
+        // Menu: lista z makiety, bieżąca pozycja, nazwa w menu, tytuł karty.
+        const nav = await menuWidoczne(page, szerokosc);
+        // Tokeny wyglądu tylko w poddrzewie z `data-theme`: ramka (menu, pasek) je ma, korzeń dokumentu — nie.
+        const tokeny = {
+          menu: await nav.evaluate((el) => getComputedStyle(el).getPropertyValue("--brand").trim()),
+          pasek: await page
+            .locator("[data-powloka-panelu] header")
+            .first()
+            .evaluate((el) => getComputedStyle(el).getPropertyValue("--brand").trim()),
+          dokument: await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--brand").trim()),
+        };
+        expect(tokeny.menu, "--brand na menu ramki").not.toBe("");
+        expect(tokeny.pasek, "--brand na pasku ramki").not.toBe("");
+        expect(tokeny.dokument, "--brand na documentElement").toBe("");
+
+        // Długie nazwy pozycji: pełny tekst widoczny, bez wielokropka, najwyżej 2 wiersze.
+        const nazwyPozycji = await nav.locator("a").evaluateAll((linki) =>
+          linki.map((a) => {
+            const etykieta = a.querySelector("p") ?? a;
+            const styl = getComputedStyle(etykieta);
+            const zakres = document.createRange();
+            zakres.selectNodeContents(etykieta);
+            const wiersze = new Set(Array.from(zakres.getClientRects()).map((r) => Math.round(r.top))).size;
+            return {
+              tekst: (etykieta.textContent ?? "").trim(),
+              wielokropek: styl.textOverflow === "ellipsis",
+              obciety: etykieta.scrollWidth > etykieta.clientWidth + 1 || etykieta.scrollHeight > etykieta.clientHeight + 1,
+              wiersze,
+            };
+          }),
+        );
+        const zle = nazwyPozycji.filter((n) => n.wielokropek || n.obciety || n.wiersze > 2 || n.wiersze < 1);
+        expect(zle, JSON.stringify(zle)).toEqual([]);
+        if (szerokosc >= 1024) {
+          const dluga = nazwyPozycji.find((n) => n.tekst === "Treść ekranu „Zacznij tutaj”");
+          expect(dluga?.wiersze, "najdłuższa nazwa mieści się w 1–2 wierszach").toBeLessThanOrEqual(2);
+        }
+
+        const menu = await odczytajMenu(nav);
+        expect(menu.grupy).toEqual(MENU_OCZEKIWANE);
+        expect(menu.konto).toBe("Konto");
+        expect(menu.przyciski).toEqual(["Wyloguj"]);
+        await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
+        expect((await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(ekran.menu);
+        await expect.soft(page, "tytuł karty").toHaveTitle(ekran.tytul);
+
+        if (zrzuty && szerokosc < 1024) {
+          await page.screenshot({ path: path.join(zrzuty, `ramka-${ekran.nazwa}-${szerokosc}-menu-z-danymi.png`) });
+        }
+
+        if (szerokosc < 1024) {
+          await page.getByRole("dialog", { name: "Menu i konto" }).getByRole("button", { name: "Zamknij" }).click();
+          await expect(page.getByRole("dialog", { name: "Menu i konto" })).toHaveCount(0);
+        }
+      });
+    }
+  }
+
+  test("wejście z menu nowej ramki: klik pozycji włączonej grupy zostaje w nowej ramce", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+
+    const nav = page.getByRole("complementary", { name: "Menu i konto" }).getByRole("navigation", { name: "Menu — Administracja" });
+    await nav.getByRole("link", { name: "Wzory dokumentów", exact: true }).click();
+    await expect(page).toHaveURL(/\/admin\/wzory-dokumentow$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Wzory dokumentów", exact: true })).toBeVisible();
+    await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
+    await expect(page.locator("main")).toHaveCount(1);
+  });
+
+  test("kontrola dodatnia: /admin/kursy (grupa wyłączona) ma dotychczasową powłokę, bez nowej ramki", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin/kursy");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+
+    await expect(page.getByRole("navigation", { name: "Menu — Administracja" }).first()).toBeVisible();
+    await expect(page.locator("[data-powloka-panelu]")).toHaveCount(0);
+    await expect(page.locator("main")).toHaveCount(1);
+  });
+});

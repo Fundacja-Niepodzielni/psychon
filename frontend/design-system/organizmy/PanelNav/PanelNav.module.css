@@ -1,26 +1,93 @@
 /* Panel nawigacji `PanelNav` (O2) — kolumna, zero własnego tła/ramki na tym
-   poziomie (ramkę/tło nosi kontener strony, nie ten organizm). */
+   poziomie (ramkę/tło nosi kontener strony, nie ten organizm). Wygląd karty
+   osoby, nagłówków grup, pozycji i linii „W przygotowaniu” wg makiety 2.0.4
+   (`.who`, `.nav .grp`, `.nav a`, `.nav a.on`, `.nav .soon`); molekuły
+   `MenuGroup`/`MenuItem` zostają bez zmian — organizm dopasowuje je tylko
+   wewnątrz siebie, selektorami potomków. */
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-24);
-  padding: var(--space-16);
+  gap: var(--space-18);
+  padding: 0;
 }
 
 .profil {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-10);
+  padding: var(--space-10) var(--space-12);
+  background: var(--card-warm);
+  border-radius: var(--r-sm);
 }
 
 .profilTekst {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 0;
+  min-width: 0;
+}
+
+.profilTekst > p:first-child {
+  font-size: var(--fs-10);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+}
+
+.profilTekst > p:last-child {
+  font-size: var(--fs-11);
+  color: var(--muted);
 }
 
 .grupy {
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-4);
+}
+
+.grupa {
+  display: flex;
+  flex-direction: column;
+}
+
+/* nagłówek grupy (`MenuGroup` → `p` przed listą) */
+.grupa > div > p:first-child {
+  padding: var(--space-12) var(--space-12) var(--space-4);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.08em;
+  color: var(--subtle);
+}
+
+.grupa ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.grupa a {
+  gap: var(--space-10);
+  padding: var(--space-8) var(--space-12);
+  color: var(--text);
+}
+
+.grupa a p {
+  font-size: var(--fs-9);
+  color: inherit;
+}
+
+.grupa a:hover {
+  background: var(--brand-tint);
+}
+
+.grupa a[aria-current="page"] {
+  background: var(--green-tint);
+  color: var(--success);
+  font-weight: var(--fw-medium);
+}
+
+.wPrzygotowaniu {
+  margin: var(--space-2) var(--space-12) var(--space-8);
+  font-size: var(--fs-12);
+  line-height: 1.45;
+  color: var(--subtle);
 }
