@@ -81,7 +81,7 @@ export function PulpitAdministracji() {
         glowna={
           <EmptyState
             wariant="brak-uprawnien"
-            naglowek="Brak dostępu do pulpitu"
+            naglowek="Pulpit dla administracji"
             rola="administracji"
             przycisk={{ etykieta: "Wróć", onClick: wroc }}
           />

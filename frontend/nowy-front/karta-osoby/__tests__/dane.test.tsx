@@ -5,6 +5,8 @@ import {
   formularzZProfilu,
   kluczBleduPola,
   opisRoliOsoby,
+  etykietaGrupyProduktowej,
+  POLA_FORMULARZA_KARTY,
   type PostepOsobyKarty,
   type ProfilOsobyKarty,
   type RzetelnoscOsobyKarty,
@@ -114,7 +116,41 @@ describe("wierszeDanychOsoby", () => {
     });
     expect(wiersze.find((w) => w.id === "telefon")?.wartosci.wartosc).toBe("+48 600 100 200");
     expect(wiersze.find((w) => w.id === "adres")?.wartosci.wartosc).toBe("Polna 1, Warszawa, 00-001");
-    expect(wiersze.find((w) => w.id === "dostep")?.wartosci.wartosc).toBe("2027-02-01T00:00:00Z");
+    expect(wiersze.find((w) => w.id === "dostep")?.wartosci.wartosc).toBe("1 lutego 2027");
+  });
+
+  it("data dostępu: pole brzmi „Dostęp do materiałów do”, wartość to data polska bez ISO; bezterminowy bez „do”", () => {
+    const zData = wierszeDanychOsoby({ ...PROFIL, access_expires_at: "2027-02-01T00:00:00Z" }).find((w) => w.id === "dostep");
+    expect(zData?.wartosci.pole).toBe("Dostęp do materiałów do");
+    expect(zData?.wartosci.wartosc).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
+    const bezTerminu = wierszeDanychOsoby(PROFIL).find((w) => w.id === "dostep");
+    expect(bezTerminu?.wartosci.pole).toBe("Dostęp do materiałów");
+    expect(bezTerminu?.wartosci.wartosc).toBe("Bezterminowo");
+    // Kontrola dodatnia: nieczytelna data to „—”, nie surowy napis.
+    const zepsuta = wierszeDanychOsoby({ ...PROFIL, access_expires_at: "to-nie-data" }).find((w) => w.id === "dostep");
+    expect(zepsuta?.wartosci.wartosc).toBe("—");
+  });
+
+  it("grupa produktowa: etykieta polska ze słownika, nieznana wartość → „—”, bez surowego kodu", () => {
+    const grupa = (product_group: string) =>
+      wierszeDanychOsoby({ ...PROFIL, product_group }).find((w) => w.id === "grupa")?.wartosci.wartosc;
+    expect(grupa("psychon")).toBe("PsychON");
+    expect(grupa("dobrostan")).toBe("Dobrostan");
+    expect(grupa("both")).toBe("PsychON i Dobrostan");
+    for (const obca of ["obca", "", "constructor", "toString", "__proto__", "PSYCHON"]) {
+      expect(grupa(obca)).toBe("—");
+    }
+    expect(etykietaGrupyProduktowej(null)).toBe("—");
+    expect(etykietaGrupyProduktowej(undefined)).toBe("—");
+  });
+
+  it("formularz: opcje grupy produktowej niosą te same etykiety co tabela (kontrola dodatnia: trzy opcje)", () => {
+    const pole = POLA_FORMULARZA_KARTY.find((p) => p.klucz === "product_group");
+    expect(pole?.opcje?.map((o) => [o.wartosc, o.etykieta])).toEqual([
+      ["psychon", "PsychON"],
+      ["dobrostan", "Dobrostan"],
+      ["both", "PsychON i Dobrostan"],
+    ]);
   });
 });
 
@@ -148,4 +184,11 @@ describe("opisRoliOsoby", () => {
   it("rola spoza słownika nie zwraca opisu z surowym kodem", () => {
     expect(opisRoliOsoby("obca_rola")).toBeUndefined();
   });
+
+  it.each(["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"])(
+    "klucz odziedziczony %s nie jest rolą: brak pary „Rola”",
+    (klucz) => {
+      expect(opisRoliOsoby(klucz)).toBeUndefined();
+    },
+  );
 });

@@ -145,8 +145,8 @@ describe("/admin/formy-stazu w układach grupy", () => {
     pobierzFormyStazu.mockRejectedValue(blad());
     const { container } = trasaFormyStazu();
 
-    await screen.findByText(/Ten widok jest dostępny tylko dla opiekuna projektu i administracji\./);
-    expect(screen.getByRole("heading", { level: 2, name: "Brak dostępu do słownika form stażu" })).toBeInTheDocument();
+    await screen.findByText(/tylko dla administracji/);
+    expect(screen.getByRole("heading", { level: 2, name: "Słownik form stażu dla administracji" })).toBeInTheDocument();
     expect(screen.queryByText(FORMA.name)).toBeNull();
     expect(screen.queryByText(/nieosiągalny/)).toBeNull();
     expect(container.querySelector("#tresc")?.querySelectorAll("li").length).toBe(0);
@@ -186,8 +186,8 @@ describe("/admin (pulpit) w układzie administracji", () => {
     atrapaApi(() => Promise.reject(blad()));
     const { container } = trasaStartowa();
 
-    await screen.findByText(/Ten widok jest dostępny tylko dla administracji\./);
-    expect(screen.getByRole("heading", { level: 2, name: "Brak dostępu do pulpitu" })).toBeInTheDocument();
+    await screen.findByText(/tylko dla administracji/);
+    expect(screen.getByRole("heading", { level: 2, name: "Pulpit dla administracji" })).toBeInTheDocument();
     expect(screen.queryByText("137")).toBeNull();
     expect(screen.queryByText("Zgłoszenia rekrutacyjne")).toBeNull();
     // Okruszki nagłówka to lista w `nav` — rekordem jest wyłącznie `li` poza nią.

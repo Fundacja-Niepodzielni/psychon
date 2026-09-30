@@ -46,9 +46,9 @@ beforeEach(() => {
 
 describe("statusy i role", () => {
   it("każdy status ma polską etykietę", () => {
-    expect(PLAKIETKA_STATUSU.new.tekst).toBe("Nowe");
-    expect(PLAKIETKA_STATUSU.answered.tekst).toBe("Z odpowiedzią");
-    expect(PLAKIETKA_STATUSU.closed.tekst).toBe("Zamknięte");
+    expect(PLAKIETKA_STATUSU.new.tekst).toBe("nowe");
+    expect(PLAKIETKA_STATUSU.answered.tekst).toBe("z odpowiedzią");
+    expect(PLAKIETKA_STATUSU.closed.tekst).toBe("zamknięte");
   });
 
   it("prawo do zgłoszenia mają wolontariusz i student", () => {

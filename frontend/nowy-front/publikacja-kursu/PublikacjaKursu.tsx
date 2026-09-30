@@ -8,6 +8,7 @@ import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
+import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice, type WariantNotice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
@@ -46,7 +47,7 @@ const ADRES_LISTY_KURSOW = "/admin/kursy";
 
 function komunikatBledu(blad: BladOperacji, tytul: string): Komunikat | null {
   if (blad.rodzaj === "zakazane") {
-    return { wariant: "warn", tytul: "Brak uprawnień", tresc: "Ta zmiana wymaga roli opiekuna projektu albo administratora." };
+    return { wariant: "warn", tytul: "Nie zapisano zmiany", tresc: zdanieOdmowyRoli("administracji") };
   }
   if (blad.rodzaj === "blad") return { wariant: "error", tytul, tresc: blad.komunikat };
   if (blad.rodzaj === "siec") {
@@ -154,7 +155,7 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
         setPotwierdzenieUsuniecia(false);
         setStan("nie-znaleziono");
       } else if (blad.rodzaj === "zakazane") {
-        setBladUsuniecia("Brak uprawnień do usunięcia kursu.");
+        setBladUsuniecia(zdanieOdmowyRoli("administracji"));
       } else if (blad.rodzaj === "siec") {
         setBladUsuniecia("Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.");
       } else if (blad.rodzaj === "blad" || blad.rodzaj === "braki") {
@@ -218,9 +219,12 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
   if (stan === "zakazane") {
     return szablon(
       "Publikacja kursu",
-      <Notice wariant="warn" tytul="Brak dostępu">
-        Publikacja kursu jest dostępna dla opiekuna projektu i administratora.
-      </Notice>,
+      <EmptyState
+        wariant="brak-uprawnien"
+        naglowek="Publikacja kursu dla administracji"
+        rola="administracji"
+        przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+      />,
     );
   }
 

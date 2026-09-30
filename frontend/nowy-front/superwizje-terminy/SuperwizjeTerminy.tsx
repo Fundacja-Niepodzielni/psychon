@@ -13,6 +13,7 @@ import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActions";
+import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { ApiError } from "@/lib/api/klient";
 import {
@@ -244,7 +245,12 @@ export function SuperwizjeTerminy() {
     return (
       <main id="tresc" className={style.uklad}>
         <Heading stopien={1}>Terminy superwizji</Heading>
-        <Text>Brak uprawnień do tego ekranu — tylko dla opiekuna projektu i super-admina.</Text>
+        <EmptyState
+          wariant="brak-uprawnien"
+          naglowek="Terminy superwizji dla administracji"
+          rola="administracji"
+          przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+        />
       </main>
     );
   }

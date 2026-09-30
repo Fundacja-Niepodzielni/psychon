@@ -153,12 +153,12 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
 
   it("brak uprawnień: stan pusty z jedynym szablonem zdania w kolumnie głównej", () => {
     const { container } = render(<KursTematy idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
-    sprawdzSzablon(container, screen.getByText("Ten widok jest dostępny tylko dla prowadzącego tego kursu."));
+    sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
   });
 
   it("brak sesji: ten sam stan braku uprawnień w szablonie", () => {
     const { container } = render(<KursTematy idKursu="4" wynik={{ status: "brak-sesji" }} />);
-    sprawdzSzablon(container, screen.getByText("Brak dostępu do kursu"));
+    sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
   });
 
   it("pusty: „Dodaj pierwszy temat” w kolumnie głównej", async () => {

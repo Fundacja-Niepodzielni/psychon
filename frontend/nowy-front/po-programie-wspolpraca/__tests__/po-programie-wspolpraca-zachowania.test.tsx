@@ -71,7 +71,7 @@ describe("PoProgramieWspolpraca — wysyłka zgłoszenia", () => {
     await waitFor(() => expect(zglosWspolprace).toHaveBeenCalledTimes(1));
     expect(zglosWspolprace).toHaveBeenCalledWith(ZGLOSZENIE_NOWE.body);
 
-    await waitFor(() => expect(screen.getByText("Nowe")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("nowe")).toBeInTheDocument());
     expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
     expect(screen.getByText("Masz otwarte zgłoszenie. Poczekaj na odpowiedź.")).toBeInTheDocument();

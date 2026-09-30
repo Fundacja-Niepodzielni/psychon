@@ -22,9 +22,9 @@ export type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
 export const LICZBA_ZNAKOW_MAX = 2000;
 
 export const PLAKIETKA_STATUSU: Record<CooperationRequestStatus, { wariant: WariantPlakietki; tekst: string }> = {
-  new: { wariant: "pending", tekst: "Nowe" },
-  answered: { wariant: "ok", tekst: "Z odpowiedzią" },
-  closed: { wariant: "neutral", tekst: "Zamknięte" },
+  new: { wariant: "pending", tekst: "nowe" },
+  answered: { wariant: "ok", tekst: "z odpowiedzią" },
+  closed: { wariant: "neutral", tekst: "zamknięte" },
 };
 
 const ROLE_Z_PRAWEM_DO_ZGLOSZENIA = ["volunteer", "student"];

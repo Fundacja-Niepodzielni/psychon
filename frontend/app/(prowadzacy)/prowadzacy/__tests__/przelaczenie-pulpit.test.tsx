@@ -199,7 +199,7 @@ describe("/prowadzacy włączona — układ prowadzącego, jeden main w czterech
     ustawSerwer("zakaz", "instructor", z.ApiError);
     const { container } = trasa(z);
 
-    await screen.findByText("Brak dostępu do pulpitu", {}, DLUGO);
+    await screen.findByText(/tylko dla prowadzących/, {}, DLUGO);
     expect(screen.queryByText(/Demo/)).toBeNull();
     expect(screen.queryByText(/^Moja grupa:/)).toBeNull();
     expect(screen.queryByText(/^Pytania bez odpowiedzi:/)).toBeNull();

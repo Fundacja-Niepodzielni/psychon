@@ -78,7 +78,7 @@ export function PulpitProwadzacego() {
         glowna={
           <EmptyState
             wariant="brak-uprawnien"
-            naglowek="Brak dostępu do pulpitu"
+            naglowek="Pulpit dla prowadzących"
             rola="prowadzących"
             przycisk={{ etykieta: "Wróć", onClick: onPowrot }}
           />

@@ -1,4 +1,5 @@
 import { api, ApiError } from "@/lib/api/klient";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import type { AdminUserCard } from "@/lib/api/h18";
 
 /**
@@ -159,7 +160,7 @@ export function wynikZBleduZapisu(blad: unknown): WynikBleduZapisu {
       return { rodzaj: "ogolny", tresc: "Popraw dane przedłużenia i spróbuj ponownie." };
     }
     if (blad.status === 401 || blad.status === 403) {
-      return { rodzaj: "ogolny", tresc: "Przedłużanie dostępu jest dostępne tylko dla administracji." };
+      return { rodzaj: "ogolny", tresc: zdanieOdmowyRoli("administracji") };
     }
     if (blad.status === 404) {
       return { rodzaj: "ogolny", tresc: "Nie znaleziono osoby. Dostęp nie został zmieniony." };

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DocumentTemplate, DocumentTemplateVersion } from "@/lib/api/document-templates";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 
 /**
@@ -229,7 +230,7 @@ describe("wzory dokumentów — zapis nowej wersji", () => {
     wpisz("<p>x</p>");
     fireEvent.click(screen.getByRole("button", { name: "Zapisz nową wersję" }));
     const komunikat = await screen.findByRole("alert");
-    expect(komunikat.textContent).toContain("Zapis wzoru jest dostępny tylko dla administracji");
+    expect(komunikat.textContent).toContain(zdanieOdmowyRoli("administracji"));
     expect(poleTresci().value).toBe("<p>x</p>");
   });
 

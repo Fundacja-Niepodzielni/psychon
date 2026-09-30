@@ -10,6 +10,7 @@ import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { DataTable, type WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
 import { Field } from "@/design-system/molekuly/Field/Field";
+import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { SaveBar } from "@/design-system/molekuly/SaveBar/SaveBar";
 import { ApiError } from "@/lib/api/klient";
@@ -310,7 +311,12 @@ export function PowiadomieniaEmail() {
     return (
       <main id="tresc" className={style.uklad}>
         <Heading stopien={1}>Powiadomienia e-mail</Heading>
-        <Text>Brak uprawnień do tego ekranu — tylko dla opiekuna projektu i super-admina.</Text>
+        <EmptyState
+          wariant="brak-uprawnien"
+          naglowek="Powiadomienia e-mail dla administracji"
+          rola="administracji"
+          przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+        />
       </main>
     );
   }
@@ -338,8 +344,8 @@ export function PowiadomieniaEmail() {
         <Heading stopien={2}>Ustawienia powiadomień</Heading>
 
         {ustNoticeUprawnien && (
-          <Notice wariant="error" tytul="Brak uprawnień">
-            Brak uprawnień do zmiany ustawień powiadomień.
+          <Notice wariant="error" tytul="Nie zapisano ustawień">
+            {zdanieOdmowyRoli("administracji")}
           </Notice>
         )}
 
