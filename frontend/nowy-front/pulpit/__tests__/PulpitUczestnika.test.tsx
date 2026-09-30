@@ -141,7 +141,7 @@ describe("PulpitUczestnika — stany z danymi", () => {
     szablonPulpitu(container);
     fireEvent.click(screen.getByRole("button", { name: "Zobacz warunki certyfikatu" }));
     expect(push).toHaveBeenCalledWith("/panel/certyfikat");
-    expect(screen.getAllByText("Ukończony")).toHaveLength(2);
+    expect(screen.getAllByText("ukończony")).toHaveLength(2);
     cleanup();
 
     pobierzKursy.mockResolvedValue([oba[0], { ...oba[1], status: "in_progress" as const }]);

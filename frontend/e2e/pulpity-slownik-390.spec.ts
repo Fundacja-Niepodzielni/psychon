@@ -117,15 +117,56 @@ async function instalujAtrapyProwadzacego(page: Page): Promise<void> {
           },
         },
       ],
-      slots: [],
+      slots: [
+        {
+          id: 7,
+          starts_at: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+          duration_minutes: 90,
+          seats_limit: 8,
+          location_or_link: "https://example.org/spotkanie",
+          active_signups_count: 3,
+          available_seats: 5,
+          can_mark_attendance: false,
+          signups: [],
+        },
+      ],
     },
   });
   await odpowiedz(page, `${API}/instructor/questions**`, {
-    data: [],
-    meta: { ...STRONA, extra: { unanswered: 0 } },
+    data: [
+      {
+        id: 1,
+        lesson_id: 21,
+        question: "Jak zacząć rozmowę z osobą w kryzysie?",
+        answer: null,
+        answered_by: null,
+        answered_by_name: null,
+        answered_at: null,
+        created_at: "2026-09-30T08:00:00Z",
+        updated_at: "2026-09-30T08:00:00Z",
+        user: { id: 17, first_name: "Marta", last_name: "Demo" },
+        lesson: { id: 21, title: "Wprowadzenie do wywiadu", course: { id: 2, slug: "wywiad", title: "Wywiad psychologiczny" } },
+      },
+    ],
+    meta: { ...STRONA, extra: { unanswered: 1 } },
   });
   await odpowiedz(page, `${API}/instructor/courses`, {
     data: [{ id: 5, slug: "wywiad", title: "Wywiad psychologiczny", sequence_order: 2 }],
+  });
+  await instalujSesje(page);
+}
+
+async function instalujAtrapyAdministracji(page: Page): Promise<void> {
+  await odpowiedz(page, `${API}/**`, { data: [], meta: STRONA });
+  await odpowiedz(page, `${API}/me`, { data: { id: 1, role: "project_manager", first_name: "Anna" } });
+  await odpowiedz(page, `${API}/admin/dashboard`, {
+    data: {
+      counters: { participants: 137, completed: 29, certificates: 23 },
+      queues: [
+        { key: "applications", count: 4, link: "/admin/uczestniczki" },
+        { key: "internship_entries", count: 7, link: "/admin/staz" },
+      ],
+    },
   });
   await instalujSesje(page);
 }
@@ -143,6 +184,64 @@ async function brakPoziomegoPrzewijania(page: Page): Promise<void> {
   expect(miary.przewijane, `scrollWidth ${miary.przewijane} > clientWidth ${miary.widoczne}`).toBeLessThanOrEqual(
     miary.widoczne,
   );
+}
+
+/**
+ * Pomiary wyglądu w przeglądarce: sekcje list w karcie (tło == token karty,
+ * z nagłówkiem) oraz liczby kafli (liczba co najmniej 1,5 raza większa od
+ * jednostki, kolor == token tekstu głównego, nie odnośnika).
+ */
+async function zmierzWyglad(page: Page) {
+  return page.evaluate(() => {
+    const token = (wlasciwosc: "background-color" | "color", nazwa: string) => {
+      const sonda = document.createElement("div");
+      sonda.style.setProperty(wlasciwosc, `var(${nazwa})`);
+      // Tokeny są zakresowane do korzenia szablonu, nie do body.
+      (document.querySelector("main") ?? document.body).appendChild(sonda);
+      const wartosc = getComputedStyle(sonda).getPropertyValue(wlasciwosc);
+      sonda.remove();
+      return wartosc;
+    };
+    const tloKarty = token("background-color", "--card");
+    const tekstGlowny = token("color", "--ink");
+    const sekcje = Array.from(
+      document.querySelectorAll('main [data-obszar="glowna"] section, main [data-obszar="wspierajaca"] section'),
+    ).map((sekcja) => ({
+      naglowek: sekcja.querySelector("h2, h3")?.textContent ?? null,
+      tlo: getComputedStyle(sekcja).backgroundColor,
+    }));
+    const kafle = Array.from(document.querySelectorAll('main [data-obszar="staty"] [role="listitem"] [id]')).flatMap(
+      (wartosc) => {
+        const liczba = wartosc.querySelector(":scope > span > span:first-child");
+        const jednostka = wartosc.querySelector(":scope > span > span + span");
+        if (!liczba || !jednostka) return [];
+        const stylLiczby = getComputedStyle(liczba);
+        return [
+          {
+            id: wartosc.id,
+            rozmiarLiczby: parseFloat(stylLiczby.fontSize),
+            rozmiarJednostki: parseFloat(getComputedStyle(jednostka).fontSize),
+            kolorLiczby: stylLiczby.color,
+          },
+        ];
+      },
+    );
+    return { tloKarty, tekstGlowny, sekcje, kafle };
+  });
+}
+
+async function sprawdzWyglad(page: Page, oczekiwaneSekcje: number): Promise<void> {
+  const wyglad = await zmierzWyglad(page);
+  expect(wyglad.sekcje.length, JSON.stringify(wyglad.sekcje)).toBeGreaterThanOrEqual(oczekiwaneSekcje);
+  for (const sekcja of wyglad.sekcje) {
+    expect(sekcja.naglowek, "sekcja listy bez nagłówka").toBeTruthy();
+    expect(sekcja.tlo, `sekcja „${sekcja.naglowek}” nie stoi w karcie`).toBe(wyglad.tloKarty);
+  }
+  expect(wyglad.kafle.length, "brak kafli z liczbą i jednostką").toBeGreaterThan(0);
+  for (const kafel of wyglad.kafle) {
+    expect(kafel.rozmiarLiczby, JSON.stringify(kafel)).toBeGreaterThanOrEqual(1.5 * kafel.rozmiarJednostki);
+    expect(kafel.kolorLiczby, `liczba kafla ${kafel.id} nie ma koloru tekstu głównego`).toBe(wyglad.tekstGlowny);
+  }
 }
 
 const ROZMIARY = [
@@ -213,6 +312,26 @@ for (const rozmiar of ROZMIARY) {
       expect(godziny).toMatch(/72,5/);
       expect(tekst).not.toMatch(/41\.5|72\.5/);
 
+      // Plakietki statusu małą literą; wielka litera to regres.
+      for (const plakietka of ["ukończony", "w toku", "zablokowany"]) {
+        await expect(main.getByText(plakietka, { exact: true })).toHaveCount(1);
+      }
+      expect(tekst.match(/Ukończony|W toku|Zablokowany/g) ?? []).toEqual([]);
+
+      // Karty list i wygląd liczb (2 sekcje: „Twoja ścieżka”, „Najbliższe terminy superwizji”).
+      await sprawdzWyglad(page, 2);
+
+      await brakPoziomegoPrzewijania(page);
+    });
+
+    test("administracja: pulpit na tym samym szablonie się wczytuje (zrzut przed/po zmiany szablonu)", async ({ page }) => {
+      await instalujAtrapyAdministracji(page);
+      await page.goto("/admin");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+      await expect(page.locator("main")).toHaveCount(1);
+      await page.waitForLoadState("networkidle");
+      await zrzut(page, `administracja-${rozmiar.nazwa}`);
       await brakPoziomegoPrzewijania(page);
     });
 
@@ -227,6 +346,11 @@ for (const rozmiar of ROZMIARY) {
       const tekst = await page.locator("main").innerText();
       expect(tekst.match(/41,5/g) ?? [], `main: ${JSON.stringify(tekst)}`).toHaveLength(1);
       expect(tekst.match(/41\.5/g) ?? []).toHaveLength(0);
+
+      // Plakietka pytania małą literą; karty czterech list i wygląd liczb.
+      await expect(page.locator("main").getByText("czeka na odpowiedź", { exact: true })).toHaveCount(1);
+      expect(tekst.match(/Czeka na odpowiedź/g) ?? []).toEqual([]);
+      await sprawdzWyglad(page, 4);
 
       await brakPoziomegoPrzewijania(page);
     });

@@ -71,7 +71,7 @@ export function SekcjaPytan({ sekcja, onOdswiez }: { sekcja: Sekcja<PytaniaPulpi
     id: `pytanie-${pytanie.id}`,
     tytul: `${pelneImie(pytanie.user)} — ${pytanie.lesson.title}`,
     podpowiedz: `${pytanie.lesson.course.title}: ${skrocTresc(pytanie.question)}`,
-    plakietka: { wariant: "pending", tekst: "Czeka na odpowiedź" },
+    plakietka: { wariant: "pending", tekst: "czeka na odpowiedź" },
     akcja: { etykieta: "Odpowiedz", href: ADRES_PYTAN },
   }));
   return (

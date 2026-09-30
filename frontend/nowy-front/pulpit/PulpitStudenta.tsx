@@ -24,9 +24,9 @@ type LekcjeKursu = { stan: "ladowanie" } | { stan: "blad" } | { stan: "ok"; dane
 export const ADRES_KONTAKTOWY = "kontakt@niepodzielni.com";
 
 const ETYKIETA_STATUSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok" | "pending"; tekst: string }> = {
-  locked: { wariant: "neutral", tekst: "Zablokowany" },
-  in_progress: { wariant: "pending", tekst: "W toku" },
-  completed: { wariant: "ok", tekst: "Ukończony" },
+  locked: { wariant: "neutral", tekst: "zablokowany" },
+  in_progress: { wariant: "pending", tekst: "w toku" },
+  completed: { wariant: "ok", tekst: "ukończony" },
 };
 
 /**

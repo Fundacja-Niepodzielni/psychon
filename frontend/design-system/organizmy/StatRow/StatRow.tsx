@@ -15,10 +15,9 @@ interface KafelStatRow {
    * (KARTA-EKRANU-T3-ZRODLA-LICZB-OSOBY, D-106: "karta linkuje z każdej
    * liczby"). Bez `href` kafel renderuje się jak zwykły `StatTile`. */
   href?: string;
-  /** Układ pulpitu (makieta „Pulpit”): etykieta stoi raz — przy liczbie — a
-   * pasek niesie ją wyłącznie jako nazwę dostępną (`aria-label`), bez drugiego
-   * widocznego napisu; mianownik jest małym stopniem w tej samej linii co
-   * liczba. Domyślnie wyłączone — bez tego pola kafel wygląda jak dotąd. */
+  /** Układ pulpitu (makieta „Pulpit”): pasek niesie etykietę wyłącznie jako
+   * nazwę dostępną (`aria-label`), bez drugiego widocznego napisu obok —
+   * etykieta stoi raz, przy liczbie. Domyślnie wyłączone. */
   ukladPulpitu?: boolean;
 }
 
