@@ -55,8 +55,8 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest pięć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `formyStazu` i
- * `pulpitAdministracji`. Pozostałe mają tu jeszcze tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
+ * Grupy dzisiejszego kanonu. Włączonych jest sześć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `formyStazu`,
+ * `pulpitAdministracji` i `pulpitProwadzacego`. Pozostałe mają tu jeszcze tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
  */
@@ -174,7 +174,7 @@ export const GRUPY = {
   /** Pulpit prowadzącego — ten sam adres co dzisiejsza strona startowa prowadzącego. */
   pulpitProwadzacego: {
     klucz: "pulpitProwadzacego",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "prowadzacy",

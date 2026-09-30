@@ -143,13 +143,13 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
   });
 });
 
-const WLACZONE_DZIS: KluczGrupy[] = ["formyStazu", "lekcja", "pulpitAdministracji", "pulpitUczestnika", "wspolpraca"];
+const WLACZONE_DZIS: KluczGrupy[] = ["formyStazu", "lekcja", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca"];
 const FLAGI_DZIS: Partial<Record<KluczGrupy, boolean>> = Object.fromEntries(
   WLACZONE_DZIS.map((klucz) => [klucz, true]),
 );
 
 describe("menu rzeczywiste przy stanie flag rejestru", () => {
-  it("włączone są tylko grupy współpracy, pulpitu uczestnika, lekcji, form stażu i pulpitu administracji", () => {
+  it("włączone są tylko grupy współpracy, pulpitu uczestnika, lekcji, form stażu, pulpitu administracji i pulpitu prowadzącego", () => {
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
       expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(WLACZONE_DZIS.includes(klucz as KluczGrupy));
     }
@@ -244,5 +244,24 @@ describe("menu przy włączonej grupie pulpitu administracji — ten sam adres",
       expect(wpisyRoli(wlaczona, rola).find((w) => w.label === "Pulpit")?.href, rola).toBe("/admin");
       expect(rozwiazMenuRoli(wlaczona, rola), rola).toEqual(rozwiazMenuRoli(wylaczona, rola));
     }
+  });
+});
+
+describe("menu prowadzącego przy włączonej grupie pulpitu — bez zmian, bo adres strony jest ten sam", () => {
+  it("menu każdej roli przy samej włączonej grupie pulpitu jest identyczne ze wzorcem sprzed rejestru", async () => {
+    const zestaw = await zaladujMenuZFlagami({ pulpitProwadzacego: true });
+    for (const rola of ROLE) {
+      expect(rozwiazMenuRoli(zestaw, rola), `rola ${rola}`).toEqual(menuBazowe[rola]);
+    }
+    expect(wpisyRoli(zestaw, "instructor").find((w) => w.label === "Start")?.href).toBe("/prowadzacy");
+  });
+
+  it("przypadek odwrotny: zmieniony adres wpisu „Start” w kopii wzorca daje czerwień porównania", async () => {
+    const zestaw = await zaladujMenuZFlagami({ pulpitProwadzacego: true });
+    const kopia = JSON.parse(JSON.stringify(menuBazowe)) as Record<Role, MenuGroup[]>;
+    const wpis = kopia.instructor.flatMap((grupa) => grupa.entries).find((e) => e.label === "Start");
+    expect(wpis).toBeDefined();
+    wpis!.href = "/nowy-adres";
+    expect(rozwiazMenuRoli(zestaw, "instructor")).not.toEqual(kopia.instructor);
   });
 });

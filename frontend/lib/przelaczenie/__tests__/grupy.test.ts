@@ -11,11 +11,11 @@ import {
 /**
  * Stan flag rejestru: włączone są grupy, dla których są już strony pod
  * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
- * `pulpitAdministracji`) oraz `pulpitUczestnika` i `lekcja` (ten sam adres, treść
- * strony zamienia się na ekran nowego frontu). Pozostałe grupy opisują tylko
- * docelowe pary tras i zostają wyłączone.
+ * `pulpitAdministracji`) oraz `pulpitUczestnika`, `lekcja` i `pulpitProwadzacego`
+ * (ten sam adres, treść strony zamienia się na ekran nowego frontu). Pozostałe
+ * grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["formyStazu", "lekcja", "pulpitAdministracji", "pulpitUczestnika", "wspolpraca"];
+const WLACZONE = ["formyStazu", "lekcja", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -27,7 +27,11 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.lekcja.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, lekcja, formy stażu i pulpit administracji", () => {
+  it("grupa pulpitProwadzacego jest włączona", () => {
+    expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
+  });
+
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, lekcja, formy stażu, pulpit administracji i pulpit prowadzącego", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
