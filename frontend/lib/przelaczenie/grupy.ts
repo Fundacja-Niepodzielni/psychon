@@ -240,14 +240,24 @@ export const GRUPY = {
     ],
   },
   /**
-   * Nabór rekrutacyjny (H03): szczegół zgłoszenia. Lista (`/admin/nabor`, dziś zakładka
-   * „Zgłoszenia” pod `/admin/uczestniczki`) dochodzi do tej grupy razem z ekranem listy;
-   * szczegół nie miał w starym froncie osobnej strony.
+   * Nabór rekrutacyjny (H03): lista zgłoszeń (dziś zakładka „Zgłoszenia” pod
+   * `/admin/uczestniczki`, stąd stara trasa listy) i szczegół zgłoszenia (w starym
+   * froncie bez osobnej strony). Lista stoi w tablicy pierwsza: wpis menu administracji
+   * czyta pierwszy ekran panelu, a menu ma prowadzić na listę, nie na szczegół.
+   * Stara trasa listy jest też trasą grupy `listaOsob`, więc strona pod nią NIE
+   * przekierowuje w całości — po włączeniu grupy tylko jej zakładka „Zgłoszenia”
+   * prowadzi na nową trasę listy.
    */
   nabor: {
     klucz: "nabor",
     wlaczona: false,
     ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/uczestniczki",
+        nowaTrasa: "/admin/nabor",
+        trasaPoligonu: "/nowy-front/admin/zgloszenia",
+      },
       {
         panel: "administracja",
         staraTrasa: null,
@@ -366,6 +376,71 @@ export const GRUPY = {
         staraTrasa: "/admin/kursy/[id]",
         nowaTrasa: "/admin/kursy/[id]",
         trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
+      },
+    ],
+  },
+  /** Lista osób w administracji — ten sam adres co dzisiejsza strona osób (zakładka „Osoby”). */
+  listaOsob: {
+    klucz: "listaOsob",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/uczestniczki",
+        nowaTrasa: "/admin/uczestniczki",
+        trasaPoligonu: "/nowy-front/admin/uczestniczki",
+      },
+    ],
+  },
+  /** Kolejka wniosków o profil psychologa (H15) — ten sam adres co dzisiejsza kolejka. */
+  kolejkaProfili: {
+    klucz: "kolejkaProfili",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/profile",
+        nowaTrasa: "/admin/profile",
+        trasaPoligonu: "/nowy-front/admin/profile",
+      },
+    ],
+  },
+  /** Kolejka wpisów stażu do akceptacji (H11) — ten sam adres co dzisiejsza kolejka. */
+  kolejkaStazu: {
+    klucz: "kolejkaStazu",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/staz",
+        nowaTrasa: "/admin/staz",
+        trasaPoligonu: "/nowy-front/admin/staz",
+      },
+    ],
+  },
+  /** Lista kursów prowadzącego — ten sam adres co dzisiejsza lista kursów prowadzącego. */
+  kursyProwadzacego: {
+    klucz: "kursyProwadzacego",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "prowadzacy",
+        staraTrasa: "/prowadzacy/kursy",
+        nowaTrasa: "/prowadzacy/kursy",
+        trasaPoligonu: "/nowy-front/prowadzacy/kursy",
+      },
+    ],
+  },
+  /** Skrzynka pytań prowadzącego (H17) — ten sam adres co dzisiejsza skrzynka. */
+  skrzynkaPytan: {
+    klucz: "skrzynkaPytan",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "prowadzacy",
+        staraTrasa: "/prowadzacy/pytania",
+        nowaTrasa: "/prowadzacy/pytania",
+        trasaPoligonu: "/nowy-front/prowadzacy/pytania",
       },
     ],
   },
