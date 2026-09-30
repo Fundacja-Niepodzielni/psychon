@@ -151,6 +151,89 @@ async function atrapyAdministracji(page: Page, bezSpraw = false): Promise<void> 
   await instalujSesje(page);
 }
 
+const ZGLOSZENIE = {
+  id: 11,
+  edition_id: 1,
+  first_name: "Kamil",
+  last_name: "Demo",
+  email: "kandydat11@demo.pl",
+  phone: null,
+  source: null,
+  role: "volunteer",
+  payload: null,
+  university: null,
+  graduation_year: null,
+  status: "new",
+  rejection_reason: null,
+  decided_by: null,
+  decided_at: null,
+  user_id: null,
+  has_diploma_scan: false,
+  diploma_scan_url: null,
+  created_at: "2026-09-20T10:00:00Z",
+  updated_at: "2026-09-20T10:00:00Z",
+};
+
+/** Ekrany poligonu (`/nowy-front/admin/...`): grupy przełączenia tych ekranów są wyłączone, więc pod adresem poligonu. */
+async function atrapySpraw(page: Page): Promise<void> {
+  await odpowiedz(page, `${API}/**`, { data: [], meta: STRONA });
+  await odpowiedz(page, `${API}/me`, { data: { id: 1, role: "project_manager", first_name: "Anna" } });
+  await odpowiedz(page, `${API}/admin/applications**`, {
+    data: [ZGLOSZENIE],
+    meta: { current_page: 1, per_page: 100, total: 1, last_page: 1 },
+  });
+  await odpowiedz(page, `${API}/admin/internship/pending**`, {
+    data: [{ id: 5, created_at: "2026-09-22T10:00:00Z", user: { id: 18, first_name: "Ola", last_name: "Demo" } }],
+    meta: { current_page: 1, per_page: 100, total: 1, last_page: 1 },
+  });
+  await instalujSesje(page);
+}
+
+async function atrapyListyZgloszen(page: Page): Promise<void> {
+  await odpowiedz(page, `${API}/**`, { data: [], meta: STRONA });
+  await odpowiedz(page, `${API}/me`, { data: { id: 1, role: "project_manager", first_name: "Anna" } });
+  await odpowiedz(page, `${API}/admin/applications**`, {
+    data: [ZGLOSZENIE],
+    meta: { current_page: 1, per_page: 25, total: 1, last_page: 1 },
+  });
+  await instalujSesje(page);
+}
+
+async function atrapyKartyOsoby(page: Page): Promise<void> {
+  await odpowiedz(page, `${API}/**`, { data: [], meta: STRONA });
+  await odpowiedz(page, `${API}/me`, { data: { id: 1, role: "project_manager", first_name: "Anna" } });
+  await odpowiedz(page, `${API}/admin/users/17`, {
+    data: {
+      profile: {
+        id: 17,
+        first_name: "Marta",
+        last_name: "Demo",
+        email: "marta@demo.pl",
+        role: "volunteer",
+        phone: "+48 600 100 200",
+        pesel: "90010112345",
+        address: { street: "Polna 1", city: "Warszawa", zip: "00-001" },
+        access_expires_at: "2027-02-01T00:00:00Z",
+        program_completed_at: null,
+        product_group: "psychon",
+      },
+      progress: {
+        courses_done: 8,
+        courses_total: 10,
+        hours_accepted: "41.5",
+        supervision_present: 5,
+        workshop_done: true,
+        path_tests_passed: 3,
+        path_tests_total: 4,
+      },
+      recent_notifications: [],
+      audit_entries: [],
+    },
+  });
+  await odpowiedz(page, `${API}/admin/reliability/17`, { data: { reliability_percent: "40", below_threshold: true } });
+  await instalujSesje(page);
+}
+
 interface Ekran {
   nazwa: string;
   url: string;
@@ -163,6 +246,24 @@ interface Ekran {
 }
 
 const EKRANY: Ekran[] = [
+  {
+    nazwa: "sprawy",
+    url: "/nowy-front/admin/sprawy",
+    etykieta: "Otwórz najstarszą sprawę",
+    instaluj: (page) => atrapySpraw(page),
+  },
+  {
+    nazwa: "zgloszenia-lista",
+    url: "/nowy-front/admin/zgloszenia",
+    etykieta: "Dodaj zgłoszenie",
+    instaluj: (page) => atrapyListyZgloszen(page),
+  },
+  {
+    nazwa: "karta-osoby",
+    url: "/nowy-front/admin/uczestniczki/17",
+    etykieta: "Zmień dane",
+    instaluj: (page) => atrapyKartyOsoby(page),
+  },
   {
     nazwa: "pulpit-administracji",
     url: "/admin",
