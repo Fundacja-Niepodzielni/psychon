@@ -1,0 +1,36 @@
+/* Moduł CSS ekranu A-12 „Kurs: tematy i lekcje” — wyłącznie układ treści
+   w obszarach szablonu `DetailTemplate`; wartości tylko z tokeny.css. */
+.kolumna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.listaTematow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wierszTematu {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.tytulTematu {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-family: var(--font);
+}
