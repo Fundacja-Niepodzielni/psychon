@@ -144,10 +144,21 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
 });
 
 describe("menu rzeczywiste przy stanie flag rejestru", () => {
-  it("włączona jest tylko grupa współpracy", () => {
+  it("włączone są tylko grupy: współpraca, pulpit uczestnika i lekcja", () => {
+    const wlaczone = ["wspolpraca", "pulpitUczestnika", "lekcja"];
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
-      expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(klucz === "wspolpraca");
+      expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(wlaczone.includes(klucz));
     }
+  });
+
+  it("grupy pulpitu uczestnika i lekcji (ten sam adres) nie zmieniają menu żadnej roli", async () => {
+    const tylkoWspolpraca = await zaladujMenuZFlagami({ wspolpraca: true });
+    const zTrzema = await zaladujMenuZFlagami({ wspolpraca: true, pulpitUczestnika: true, lekcja: true });
+    for (const rola of ROLE) {
+      expect(rozwiazMenuRoli(zTrzema, rola), `rola ${rola}`).toEqual(rozwiazMenuRoli(tylkoWspolpraca, rola));
+    }
+    const pulpit = wpisyRoli(zTrzema, "volunteer").find((w) => w.label === "Pulpit");
+    expect(pulpit?.href).toBe("/panel/pulpit");
   });
 
   it("menu rzeczywiste każdej roli jest identyczne z menu przy włączonej samej grupie współpracy", async () => {

@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączona jest jedna: `wspolpraca`. Pozostałe mają tu jeszcze
+ * Grupy dzisiejszego kanonu. Włączone są trzy: `wspolpraca`, `pulpitUczestnika` i `lekcja`. Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -148,7 +148,7 @@ export const GRUPY = {
   /** Pulpit uczestnika — ten sam adres co dzisiejszy pulpit, treść strony zamienia się na ekran nowego frontu. */
   pulpitUczestnika: {
     klucz: "pulpitUczestnika",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",
@@ -161,7 +161,7 @@ export const GRUPY = {
   /** Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu. */
   lekcja: {
     klucz: "lekcja",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",

@@ -9,18 +9,26 @@ import {
 } from "@/lib/przelaczenie/grupy";
 
 /**
- * Stan flag rejestru: włączona jest wyłącznie grupa `wspolpraca` — jedyna,
- * dla której są już strony pod nowymi trasami i wpisy menu. Pozostałe grupy
- * opisują tylko docelowe pary tras i zostają wyłączone.
+ * Stan flag rejestru: włączone są trzy grupy — `wspolpraca` (strony pod nowymi
+ * trasami i wpisy menu) oraz `pulpitUczestnika` i `lekcja` (ten sam adres, treść
+ * strony zamienia się na ekran nowego frontu). Pozostałe grupy opisują tylko
+ * docelowe pary tras i zostają wyłączone.
  */
+const WLACZONE = ["wspolpraca", "pulpitUczestnika", "lekcja"];
+
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
     expect(GRUPY.wspolpraca.wlaczona).toBe(true);
   });
 
+  it("grupy pulpitUczestnika i lekcja są włączone", () => {
+    expect(GRUPY.pulpitUczestnika.wlaczona).toBe(true);
+    expect(GRUPY.lekcja.wlaczona).toBe(true);
+  });
+
   it("każda pozostała grupa jest wyłączona", () => {
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
-      if (klucz === "wspolpraca") continue;
+      if (WLACZONE.includes(klucz)) continue;
       expect(grupa.wlaczona, `grupa "${klucz}" powinna być wyłączona dziś`).toBe(false);
     }
   });
@@ -28,6 +36,17 @@ describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca niesie dokładnie dwa ekrany: uczestnika i administrację", () => {
     const panele = GRUPY.wspolpraca.ekrany.map((e) => e.panel).sort();
     expect(panele).toEqual(["administracja", "uczestnik"]);
+  });
+
+  it("pulpitUczestnika i lekcja: ten sam adres starej i nowej trasy, więc zamiana treści, nie przekierowanie", () => {
+    for (const grupa of [GRUPY.pulpitUczestnika, GRUPY.lekcja]) {
+      const [ekran] = grupa.ekrany;
+      expect(grupa.ekrany).toHaveLength(1);
+      expect(ekran.panel).toBe("uczestnik");
+      expect(ekran.staraTrasa).toBe(ekran.nowaTrasa);
+      expect(czyStaraTrasaPrzekierowuje(grupa, "uczestnik"), grupa.klucz).toBe(false);
+      expect(celTrasyEkranu(grupa, "uczestnik"), grupa.klucz).toBe(ekran.nowaTrasa);
+    }
   });
 });
 
