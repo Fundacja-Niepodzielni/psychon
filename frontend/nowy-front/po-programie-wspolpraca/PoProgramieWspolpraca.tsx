@@ -21,10 +21,10 @@ import {
 import { HistoriaZgloszen } from "./HistoriaZgloszen";
 import { KartaProgramuUkonczonego } from "./KartaProgramuUkonczonego";
 
-const OKRUSZKI = [{ etykieta: "Po programie" }, { etykieta: "Dalsza współpraca" }];
+const OKRUSZKI = [{ etykieta: "Po programie" }];
 
 /**
- * Ekran „Dalsza współpraca” (uczestnik) na szablonie `DetailTemplate`:
+ * Ekran „Po programie” (uczestnik) na szablonie `DetailTemplate`:
  * nagłówek, w kolumnie głównej karta „Program ukończony” i formularz
  * zgłoszenia, w kolumnie wspierającej historia własnych zgłoszeń. Każdy stan
  * — ładowanie, dane, brak uprawnień, błąd sieci, program jeszcze
@@ -128,7 +128,7 @@ export function PoProgramieWspolpraca() {
 
   const naglowek = {
     okruszki: OKRUSZKI,
-    tytul: "Dalsza współpraca",
+    tytul: "Po programie",
     opis: "Zgłoszenie dalszej współpracy po zakończeniu programu i historia dotychczasowych zgłoszeń.",
     onPowrot: () => router.back(),
   };
@@ -144,7 +144,7 @@ export function PoProgramieWspolpraca() {
         glowna={
           <EmptyState
             wariant="brak-uprawnien"
-            naglowek="Dalsza współpraca"
+            naglowek="Po programie"
             rola="uczestników"
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />

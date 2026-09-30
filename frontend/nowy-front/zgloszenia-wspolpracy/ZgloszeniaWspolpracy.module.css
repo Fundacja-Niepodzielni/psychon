@@ -1,6 +1,12 @@
 /* Moduł CSS ekranu zgłoszeń dalszej współpracy — wartości wyglądu wyłącznie
    z tokenów, zero zapisów wprost. Szerokość, odstępy obszarów i kolumnę daje
    szablon. */
+.naglowekEkranu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
 .filtr {
   max-width: 320px;
 }

@@ -104,7 +104,7 @@ function wiersz(nazwa: string) {
 }
 
 function wierszeListy() {
-  return Array.from(document.querySelectorAll("ul[aria-label='Zgłoszenia dalszej współpracy'] > li"));
+  return Array.from(document.querySelectorAll("ul[aria-label='Zgłoszenia współpracy'] > li"));
 }
 
 function sprawdzSzablon(container: HTMLElement) {
@@ -150,7 +150,7 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
     const { container } = render(<ZgloszeniaWspolpracy />);
     sprawdzSzablon(container);
     expect(container.querySelector("[data-testid='obszar-lista'] [aria-busy='true']")).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 1, name: "Zgłoszenia dalszej współpracy" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Zgłoszenia współpracy" })).toBeInTheDocument();
   });
 
   it("dane: trzy wiersze, jeden main, zapytanie o pierwszą stronę", async () => {
@@ -416,7 +416,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
 describe("ZgloszeniaWspolpracy — zapis słownikowy", () => {
   it("statusy mają etykiety polskie, kody wewnętrzne nie trafiają na listę", async () => {
     await renderZDanymi();
-    const lista = document.querySelector("ul[aria-label='Zgłoszenia dalszej współpracy']") as HTMLElement;
+    const lista = document.querySelector("ul[aria-label='Zgłoszenia współpracy']") as HTMLElement;
     expect(wiersz("Marta Demo")).toHaveTextContent("Nowe");
     expect(wiersz("Filip Demo")).toHaveTextContent("Z odpowiedzią");
     expect(wiersz("Ewa Demo")).toHaveTextContent("Zamknięte");
@@ -501,5 +501,59 @@ describe("ZgloszeniaWspolpracy — zapis słownikowy", () => {
 
   it("kontrola: wzorzec kodu wewnętrznego wykrywa kod pakietu w tekście", () => {
     expect(`Odczyt i odpowiedź (H${"01"}).`).toMatch(/\bH[0-9]{2}\b/);
+  });
+});
+
+describe("ZgloszeniaWspolpracy — nagłówek ekranu pierwszego poziomu", () => {
+  /** Nagłówek = nazwa ekranu z menu; ekran z menu nie ma okruszków ani przycisku powrotu. */
+  function sprawdzNaglowekPierwszegoPoziomu(container: HTMLElement) {
+    const naglowki = screen.getAllByRole("heading", { level: 1 });
+    expect(naglowki).toHaveLength(1);
+    expect(naglowki[0]).toHaveTextContent(/^Zgłoszenia współpracy$/);
+    expect(container.querySelector('nav[aria-label*="Okruszki"]')).toBeNull();
+    expect(container.querySelector('[data-testid="pageheader-powrot"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: /^(Wstecz|Wróć)$/ })).toBeNull();
+  }
+
+  it("ładowanie", () => {
+    apiPaged.mockReturnValue(new Promise(() => undefined));
+    const { container } = render(<ZgloszeniaWspolpracy />);
+    sprawdzNaglowekPierwszegoPoziomu(container);
+  });
+
+  it("dane", async () => {
+    const { container } = await renderZDanymi();
+    sprawdzNaglowekPierwszegoPoziomu(container);
+  });
+
+  it("błąd sieci", async () => {
+    apiPaged.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { container } = render(<ZgloszeniaWspolpracy />);
+    await screen.findByRole("button", { name: "Spróbuj ponownie" });
+    sprawdzNaglowekPierwszegoPoziomu(container);
+  });
+
+  it("odmowa: ten sam nagłówek, nazwa roli, bez okruszków; przycisk „Wróć” należy do stanu odmowy, nie do nagłówka", async () => {
+    apiPaged.mockRejectedValueOnce(blad(403, "forbidden", "Odmowa."));
+    const { container } = render(<ZgloszeniaWspolpracy />);
+    await waitFor(() => expect(container.textContent).toContain("administracji"));
+    const naglowki = screen.getAllByRole("heading", { level: 1 });
+    expect(naglowki).toHaveLength(1);
+    expect(naglowki[0]).toHaveTextContent(/^Zgłoszenia współpracy$/);
+    expect(container.querySelector('nav[aria-label*="Okruszki"]')).toBeNull();
+    expect(container.querySelector('[data-testid="pageheader-powrot"]')).toBeNull();
+  });
+
+  it("kontrola: nagłówek z okruszkami i przyciskiem powrotu jest wykrywany tymi samymi selektorami", () => {
+    const { container } = render(
+      <header>
+        <nav aria-label="Okruszki" />
+        <button type="button" data-testid="pageheader-powrot">
+          Wstecz
+        </button>
+      </header>,
+    );
+    expect(container.querySelector('nav[aria-label*="Okruszki"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="pageheader-powrot"]')).not.toBeNull();
   });
 });

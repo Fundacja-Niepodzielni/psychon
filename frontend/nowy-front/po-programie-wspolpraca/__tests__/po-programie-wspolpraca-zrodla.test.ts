@@ -11,7 +11,7 @@ import {
 } from "../../staz-kolejka/__tests__/zrodla-ekranu";
 
 /**
- * Pomiary tekstu plików ekranu „Dalsza współpraca” (uczestnik) (bez `__tests__`):
+ * Pomiary tekstu plików ekranu „Po programie” (uczestnik) (bez `__tests__`):
  * zero surowych przycisków, odnośników i pól oraz zdarzeń na elementach DOM,
  * zero kolorów zapisanych wprost, zero importów ze starego drzewa
  * `components/`, zero `dangerouslySetInnerHTML`, zero własnego znacznika `main`,
@@ -42,7 +42,7 @@ function dataZApiWprost(kod: string): string[] {
   return kod.match(/toLocale\w*String|Intl\.DateTimeFormat|\{[^{}]*\.(?:created_at|responded_at|updated_at)\s*\}/g) ?? [];
 }
 
-describe("ekran „Dalsza współpraca” (uczestnik) — źródła", () => {
+describe("ekran „Po programie” (uczestnik) — źródła", () => {
   it("pomiar nie jest pusty: dane, ekran, arkusz stylów i strona istnieją", () => {
     const nazwy = PLIKI.map(wzgledna);
     expect(nazwy).toEqual(

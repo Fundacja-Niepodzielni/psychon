@@ -12,7 +12,7 @@ import {
 } from "../../staz-kolejka/__tests__/zrodla-ekranu";
 
 /**
- * Ekran „Dalsza współpraca” (uczestnik) na szablonie `DetailTemplate`, z
+ * Ekran „Po programie” (uczestnik) na szablonie `DetailTemplate`, z
  * podmienionym wyłącznie transportem HTTP:
  *  - każdy stan (ładowanie, dane, program nieukończony, brak uprawnień, błąd
  *    sieci, po zapisie) ma jeden `main` i znacznik szablonu szczegółu w DOM;
@@ -157,7 +157,7 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
     const { container } = render(<PoProgramieWspolpraca />);
     sprawdzSzablon(container);
     expect(container.querySelector("[aria-busy='true']")).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 1, name: "Dalsza współpraca" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Po programie" })).toBeInTheDocument();
   });
 
   it("dane: karta, formularz i historia, jeden main, pytania o /me i własne zgłoszenia", async () => {
@@ -560,5 +560,45 @@ describe("PoProgramieWspolpraca — dostępność", () => {
       expect(tekst).not.toMatch(/\bH[0-9]{2}\b/);
       for (const zwrot of zakazane) expect(tekst).not.toContain(zwrot);
     }
+  });
+});
+
+describe("PoProgramieWspolpraca — nagłówek ekranu z menu", () => {
+  function sprawdzNazweEkranu() {
+    const naglowki = screen.getAllByRole("heading", { level: 1 });
+    expect(naglowki).toHaveLength(1);
+    expect(naglowki[0]).toHaveTextContent(/^Po programie$/);
+  }
+
+  it("ładowanie, dane, program nieukończony, odmowa i błąd sieci mają ten sam nagłówek pierwszego stopnia", async () => {
+    api.mockReturnValueOnce(new Promise(() => undefined));
+    const a = render(<PoProgramieWspolpraca />);
+    sprawdzNazweEkranu();
+    a.unmount();
+
+    const b = await renderUkonczony([NOWE]);
+    sprawdzNazweEkranu();
+    b.unmount();
+
+    const c = await renderPrzedUkonczeniem();
+    sprawdzNazweEkranu();
+    c.unmount();
+
+    api.mockRejectedValueOnce(blad(403, "forbidden", "Odmowa."));
+    const d = render(<PoProgramieWspolpraca />);
+    await waitFor(() => expect(d.container.textContent).toContain("uczestników"));
+    sprawdzNazweEkranu();
+    d.unmount();
+
+    api.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const e = render(<PoProgramieWspolpraca />);
+    await screen.findByRole("button", { name: "Spróbuj ponownie" });
+    sprawdzNazweEkranu();
+    e.unmount();
+  });
+
+  it("kontrola: nagłówek o innej nazwie jest wykrywany tym samym pomiarem", () => {
+    render(<h1>Dalsza współpraca</h1>);
+    expect(() => sprawdzNazweEkranu()).toThrow();
   });
 });

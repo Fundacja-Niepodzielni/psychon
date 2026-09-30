@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/h01-wspolpraca";
 
 /**
- * Logika danych ekranu „Dalsza współpraca” (uczestnik): słownik statusów,
+ * Logika danych ekranu „Po programie” (uczestnik): słownik statusów,
  * ustalenie, czy osoba ma prawo do zgłoszenia, wczytanie stanu ekranu i
  * klasyfikacja błędów wysyłki. Ekran tylko wybiera szablon i wstawia organizmy.
  *

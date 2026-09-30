@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Zachowania ekranu „Dalsza współpraca”: pusta lista i wysyłka zgłoszenia,
+ * Zachowania ekranu „Po programie”: pusta lista i wysyłka zgłoszenia,
  * ekran przed ukończeniem programu, błędy 422/409/403 przy wysyłce,
  * widoczność odpowiedzi administracji oraz odmowa dla ról spoza
  * wolontariusza i studenta. Funkcje danych są tu podmienione; stany szablonu,

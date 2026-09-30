@@ -91,7 +91,7 @@ describe("/panel/dalsza-wspolpraca w układach grupy", () => {
     pobierzMojeZgloszenia.mockReturnValue(new Promise(() => {}));
     const { container } = trasaPanelu();
 
-    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Dalsza współpraca");
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe("Po programie");
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
@@ -134,7 +134,7 @@ describe("/admin/zgloszenia-wspolpracy w układach grupy (rola administracji z a
     pobierzZgloszeniaAdministracji.mockReturnValue(new Promise(() => {}));
     const { container } = trasaAdministracji();
 
-    await screen.findByRole("heading", { level: 1, name: "Zgłoszenia dalszej współpracy" });
+    await screen.findByRole("heading", { level: 1, name: "Zgłoszenia współpracy" });
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
@@ -158,7 +158,7 @@ describe("/admin/zgloszenia-wspolpracy w układach grupy (rola administracji z a
     pobierzZgloszeniaAdministracji.mockRejectedValue(ZAKAZ());
     const { container } = trasaAdministracji();
 
-    await screen.findByText("Brak uprawnień do obsługi zgłoszeń.");
+    await screen.findByText(/administracji/);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 });

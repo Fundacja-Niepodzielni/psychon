@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/design-system/atomy/Badge/Badge";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -13,7 +14,6 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
-import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import type { PaginationMeta } from "@/lib/api/klient";
 import {
@@ -48,8 +48,6 @@ interface OtwartaOdpowiedz {
   status: "answered" | "closed";
   bledy: Record<string, string[]> | undefined;
 }
-
-const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Zgłoszenia dalszej współpracy" }];
 
 /**
  * Ekran zgłoszeń dalszej współpracy (administracja) na szablonie
@@ -170,12 +168,10 @@ export function ZgloszeniaWspolpracy() {
   }
 
   const naglowek = (
-    <PageHeader
-      okruszki={OKRUSZKI}
-      tytul="Zgłoszenia dalszej współpracy"
-      opis="Zgłoszenia uczestników po zakończeniu programu. Odpowiedz na zgłoszenie albo je zamknij."
-      onPowrot={() => router.back()}
-    />
+    <header className={style.naglowekEkranu}>
+      <Heading stopien={1}>Zgłoszenia współpracy</Heading>
+      <Text>Zgłoszenia uczestników po zakończeniu programu. Odpowiedz na zgłoszenie albo je zamknij.</Text>
+    </header>
   );
 
   if (stan.rodzaj === "brak-uprawnien") {
@@ -185,7 +181,7 @@ export function ZgloszeniaWspolpracy() {
         lista={
           <EmptyState
             wariant="brak-uprawnien"
-            naglowek="Zgłoszenia dalszej współpracy"
+            naglowek="Zgłoszenia współpracy"
             rola="administracji"
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
@@ -257,7 +253,7 @@ export function ZgloszeniaWspolpracy() {
     ) : (
       <>
         {komunikat && <KomunikatBledu tresc={komunikat} />}
-        <ul className={style.lista} aria-label="Zgłoszenia dalszej współpracy">
+        <ul className={style.lista} aria-label="Zgłoszenia współpracy">
           {zgloszenia.map((zgloszenie) => (
             <li key={zgloszenie.id} className={style.wiersz}>
               <div className={style.naglowekWiersza}>

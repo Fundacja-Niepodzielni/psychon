@@ -194,7 +194,7 @@ describe("ZgloszeniaWspolpracy — odmowa przy odczycie", () => {
     const { container } = render(<ZgloszeniaWspolpracy />);
 
     await waitFor(() => expect(container.textContent).toContain("administracji"));
-    expect(screen.queryByRole("list", { name: "Zgłoszenia dalszej współpracy" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Zgłoszenia współpracy" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Odpowiedz na zgłoszenie" })).toBeNull();
   });
 });
