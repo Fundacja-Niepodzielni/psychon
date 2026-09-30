@@ -93,7 +93,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
     expect(container.querySelector("#pulpit-zgloszenia")).toBeNull();
     expect(screen.getAllByText("Zgłoszenia rekrutacyjne")).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 3, name: "Co czeka na decyzję" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Co czeka na decyzję" })).toBeTruthy();
     // Widoczny napis akcji jest krótki, pełną nazwę niesie nazwa dostępna linku.
     expect(odnosnik.textContent).toMatch(/^Otwórz\s*›$/);
     expect(screen.getAllByText("czeka na decyzję").length).toBeGreaterThan(0);
@@ -268,5 +268,35 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     await uzytkownik.click(screen.getByRole("button", { name: "Wstecz" }));
     expect(back).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Pulpit administracji — przycisk główny w nagłówku (makieta 2.0.4, `.head .acts`)", () => {
+  it("dane: „Otwórz sprawy” stoi w nagłówku przy tytule, nie w treści (kontrola dodatnia: jest dokładnie jeden)", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    const { container } = render(<PulpitAdministracji />);
+    await waitFor(() => expect(przyciskiGlowne(container)).toHaveLength(1));
+
+    const glowa = container.querySelector("[data-testid='pageheader-glowa']")!;
+    expect(glowa).toContainElement(screen.getByRole("heading", { level: 1, name: "Pulpit administracji" }));
+    expect(glowa).toContainElement(przyciskiGlowne(container)[0]);
+    expect(container.querySelector("[data-obszar='naglowek']")).toContainElement(przyciskiGlowne(container)[0]);
+  });
+
+  it("pusty: powód niedostępności stoi pod nagłówkiem i opisuje przycisk (aria-describedby)", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(ZERA);
+    const { container } = render(<PulpitAdministracji />);
+    await waitFor(() => expect(screen.getByText("Brak spraw do decyzji")).toBeInTheDocument());
+
+    const powod = screen.getByText("Brak zgłoszeń rekrutacyjnych do decyzji.");
+    expect(container.querySelector("[data-obszar='naglowek']")).toContainElement(powod);
+    expect(przyciskiGlowne(container)[0].getAttribute("aria-describedby")).toBe(powod.id);
+  });
+
+  it("lista spraw ma nagłówek h2 (pod h1, bez przeskoku stopnia)", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    render(<PulpitAdministracji />);
+    expect(await screen.findByRole("heading", { level: 2, name: "Co czeka na decyzję" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
   });
 });

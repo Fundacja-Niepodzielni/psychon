@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
@@ -210,15 +209,9 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
         tytul: "Pulpit",
         opis: "Twój następny krok i podgląd całej ścieżki.",
         onPowrot: () => router.back(),
+        przyciskGlowny: przyciskNastepnegoKroku(krok, lekcjeEtapu, wToku, (href) => router.push(href)),
       }}
-      nastepnyKrok={
-        <NastepnyKrokBlok
-          krok={krok}
-          lekcjeEtapu={lekcjeEtapu}
-          wToku={wToku}
-          naPrzejdz={(href) => router.push(href)}
-        />
-      }
+      nastepnyKrok={<NastepnyKrokBlok krok={krok} lekcjeEtapu={lekcjeEtapu} wToku={wToku} />}
       kafle={kafle}
       glowna={
         <>
@@ -235,6 +228,7 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
           )}
           <RecordList
             tytul="Twoja ścieżka"
+            stopienNaglowka={2}
             wiersze={wierszeSciezki}
             pusty={{
               naglowek: "Ścieżka jest przygotowywana",
@@ -275,16 +269,47 @@ function nadchodzace(terminy: TerminSuperwizji[]): TerminSuperwizji[] {
     .slice(0, 3);
 }
 
+/**
+ * Przycisk główny „następnego kroku” stoi w nagłówku strony (makieta 2.0.4,
+ * `.head .acts`: „Przycisk … jest u góry, przy tytule strony”), a blok
+ * „Twój następny krok” niesie tylko opis. Brak kroku (ładowanie, brak
+ * dostępnego etapu) = brak przycisku; błąd szczegółów kursu w toku zostawia
+ * przycisk „Otwórz kurs”, jak dotąd.
+ */
+function przyciskNastepnegoKroku(
+  krok: NastepnyKrok | null,
+  lekcjeEtapu: Pomocnicza<LekcjaKursu[]>,
+  wToku: KursSciezki | undefined,
+  naPrzejdz: (href: string) => void,
+): { etykieta: string; onKliknij: () => void } | undefined {
+  if (krok === null) {
+    if (lekcjeEtapu.stan === "blad" && wToku) {
+      return { etykieta: "Otwórz kurs", onKliknij: () => naPrzejdz(`/panel/kursy/${wToku.slug}`) };
+    }
+    return undefined;
+  }
+  switch (krok.rodzaj) {
+    case "lekcja":
+      return { etykieta: "Wróć do lekcji", onKliknij: () => naPrzejdz(`/panel/lekcje/${krok.lekcja.id}`) };
+    case "test":
+      return { etykieta: "Przejdź do testu", onKliknij: () => naPrzejdz(`/panel/kursy/${krok.kurs.slug}/test`) };
+    case "certyfikat":
+      return { etykieta: "Zobacz warunki certyfikatu", onKliknij: () => naPrzejdz("/panel/certyfikat") };
+    case "po-programie":
+      return { etykieta: "Przejdź do dalszej współpracy", onKliknij: () => naPrzejdz("/panel/po-programie") };
+    case "brak":
+      return undefined;
+  }
+}
+
 function NastepnyKrokBlok({
   krok,
   lekcjeEtapu,
   wToku,
-  naPrzejdz,
 }: {
   krok: NastepnyKrok | null;
   lekcjeEtapu: Pomocnicza<LekcjaKursu[]>;
   wToku: KursSciezki | undefined;
-  naPrzejdz: (href: string) => void;
 }) {
   if (krok === null && lekcjeEtapu.stan !== "blad") {
     return (
@@ -302,9 +327,6 @@ function NastepnyKrokBlok({
         <Notice wariant="warn" tytul="Szczegóły kursu niedostępne">
           Nie udało się ustalić dokładnej lekcji — możesz otworzyć bieżący kurs.
         </Notice>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${wToku.slug}`)}>
-          Otwórz kurs
-        </Button>
         <Text>{wToku.title}</Text>
       </div>
     );
@@ -321,9 +343,6 @@ function NastepnyKrokBlok({
         <Text>
           {krok.kurs.title} · {krok.lekcja.title}
         </Text>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/lekcje/${krok.lekcja.id}`)}>
-          Wróć do lekcji
-        </Button>
       </div>
     );
   }
@@ -333,9 +352,6 @@ function NastepnyKrokBlok({
       <div>
         <Heading stopien={2}>Twój następny krok</Heading>
         <Text>Masz za sobą wszystkie lekcje kursu „{krok.kurs.title}”. Czas na test sprawdzający.</Text>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${krok.kurs.slug}/test`)}>
-          Przejdź do testu
-        </Button>
       </div>
     );
   }
@@ -345,9 +361,6 @@ function NastepnyKrokBlok({
       <div>
         <Heading stopien={2}>Twój następny krok</Heading>
         <Text>Masz wszystkie kursy za sobą. Dobra robota.</Text>
-        <Button poziom="primary" onClick={() => naPrzejdz("/panel/certyfikat")}>
-          Zobacz warunki certyfikatu
-        </Button>
       </div>
     );
   }
@@ -357,9 +370,6 @@ function NastepnyKrokBlok({
       <div>
         <Heading stopien={2}>Twój następny krok</Heading>
         <Text>Program masz już za sobą. Możesz zgłosić chęć dalszej współpracy.</Text>
-        <Button poziom="primary" onClick={() => naPrzejdz("/panel/po-programie")}>
-          Przejdź do dalszej współpracy
-        </Button>
       </div>
     );
   }

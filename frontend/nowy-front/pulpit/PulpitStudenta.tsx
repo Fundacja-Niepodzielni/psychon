@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
@@ -128,16 +127,14 @@ export function PulpitStudenta() {
         tytul: "Pulpit",
         opis: "Wróć do swojego kursu i zobacz wszystkie kursy.",
         onPowrot: () => router.back(),
+        przyciskGlowny: maKursy ? przyciskWznowienia(kursy, lekcje, (href) => router.push(href)) : undefined,
       }}
-      nastepnyKrok={
-        maKursy ? (
-          <BlokWznowienia kursy={kursy} lekcje={lekcje} naPrzejdz={(href) => router.push(href)} />
-        ) : undefined
-      }
+      nastepnyKrok={maKursy ? <BlokWznowienia kursy={kursy} lekcje={lekcje} /> : undefined}
       kafle={kafle}
       glowna={
         <RecordList
           tytul="Twoje kursy"
+          stopienNaglowka={2}
           wiersze={wiersze}
           pusty={{
             naglowek: "Nie masz jeszcze żadnego kursu",
@@ -157,15 +154,32 @@ export function PulpitStudenta() {
   );
 }
 
-function BlokWznowienia({
-  kursy,
-  lekcje,
-  naPrzejdz,
-}: {
-  kursy: KursSciezki[];
-  lekcje: LekcjeKursu;
-  naPrzejdz: (href: string) => void;
-}) {
+/**
+ * Przycisk główny wznowienia nauki stoi w nagłówku strony (makieta 2.0.4,
+ * `.head .acts`), a blok „Wznów naukę” niesie tylko opis. Ładowanie
+ * szczegółów kursu i brak kursu do wznowienia = brak przycisku.
+ */
+function przyciskWznowienia(
+  kursy: KursSciezki[],
+  lekcje: LekcjeKursu,
+  naPrzejdz: (href: string) => void,
+): { etykieta: string; onKliknij: () => void } | undefined {
+  const wToku = kursDoWznowienia(kursy);
+  if (wToku && lekcje.stan === "ladowanie") return undefined;
+  if (wToku && lekcje.stan === "blad") {
+    return { etykieta: "Otwórz kurs", onKliknij: () => naPrzejdz(`/panel/kursy/${wToku.slug}`) };
+  }
+  const wznowienie = wyliczWznowienie(kursy, lekcje.stan === "ok" ? lekcje.dane : []);
+  if (wznowienie.rodzaj === "lekcja") {
+    return { etykieta: "Wznów lekcję", onKliknij: () => naPrzejdz(`/panel/lekcje/${wznowienie.lekcja.id}`) };
+  }
+  if (wznowienie.rodzaj === "kurs") {
+    return { etykieta: "Otwórz kurs", onKliknij: () => naPrzejdz(`/panel/kursy/${wznowienie.kurs.slug}`) };
+  }
+  return undefined;
+}
+
+function BlokWznowienia({ kursy, lekcje }: { kursy: KursSciezki[]; lekcje: LekcjeKursu }) {
   const wToku = kursDoWznowienia(kursy);
 
   if (wToku && lekcje.stan === "ladowanie") {
@@ -184,9 +198,6 @@ function BlokWznowienia({
         <Notice wariant="warn" tytul="Szczegóły kursu niedostępne">
           Nie udało się ustalić dokładnej lekcji — możesz otworzyć kurs.
         </Notice>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${wToku.slug}`)}>
-          Otwórz kurs
-        </Button>
         <Text>{wToku.title}</Text>
       </div>
     );
@@ -201,9 +212,6 @@ function BlokWznowienia({
         <Text>
           {wznowienie.kurs.title} · {wznowienie.lekcja.title}
         </Text>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/lekcje/${wznowienie.lekcja.id}`)}>
-          Wznów lekcję
-        </Button>
       </div>
     );
   }
@@ -213,9 +221,6 @@ function BlokWznowienia({
       <div>
         <Heading stopien={2}>Wznów naukę</Heading>
         <Text>W kursie „{wznowienie.kurs.title}” masz już za sobą wszystkie lekcje.</Text>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${wznowienie.kurs.slug}`)}>
-          Otwórz kurs
-        </Button>
       </div>
     );
   }

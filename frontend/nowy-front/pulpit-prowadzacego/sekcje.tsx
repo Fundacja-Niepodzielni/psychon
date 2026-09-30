@@ -25,6 +25,11 @@ interface WspolneSekcji {
   onOdswiez: () => void;
 }
 
+/** Stopień nagłówka sekcji; główna kolumna pulpitu podaje 2 (pod `h1`). */
+interface StopienSekcji {
+  stopien?: 2 | 3;
+}
+
 function pusty(naglowek: string, tresc: string, onOdswiez: () => void) {
   return { naglowek, tresc, przycisk: { etykieta: "Odśwież pulpit", onClick: onOdswiez } };
 }
@@ -64,7 +69,7 @@ function ResztaListy({ pokazano, razem, nazwa, href, etykieta }: { pokazano: num
   );
 }
 
-export function SekcjaPytan({ sekcja, onOdswiez }: { sekcja: Sekcja<PytaniaPulpitu> } & WspolneSekcji) {
+export function SekcjaPytan({ sekcja, onOdswiez, stopien = 3 }: { sekcja: Sekcja<PytaniaPulpitu> } & WspolneSekcji & StopienSekcji) {
   if (sekcja.stan === "awaria") return <AwariaSekcji nazwa="pytania bez odpowiedzi" rodzaj={sekcja.rodzaj} onOdswiez={onOdswiez} />;
   const { liczba, wiersze } = sekcja.dane;
   const pokazane: WierszRecordList[] = wiersze.slice(0, LIMIT_WIERSZY).map((pytanie) => ({
@@ -78,6 +83,7 @@ export function SekcjaPytan({ sekcja, onOdswiez }: { sekcja: Sekcja<PytaniaPulpi
     <>
       <RecordList
         tytul={`Pytania bez odpowiedzi: ${liczba}`}
+        stopienNaglowka={stopien}
         wiersze={pokazane}
         pusty={pusty("Brak pytań bez odpowiedzi", "Pytania z Twoich kursów pojawią się tu, gdy uczestnicy je zadadzą.", onOdswiez)}
       />
@@ -86,7 +92,7 @@ export function SekcjaPytan({ sekcja, onOdswiez }: { sekcja: Sekcja<PytaniaPulpi
   );
 }
 
-export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez }: { sekcja: Sekcja<InstructorGroup>; teraz: Date } & WspolneSekcji) {
+export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez, stopien = 3 }: { sekcja: Sekcja<InstructorGroup>; teraz: Date } & WspolneSekcji & StopienSekcji) {
   // Ta sama trasa co grupa: jedna awaria to jeden komunikat, w sekcji grupy.
   if (sekcja.stan === "awaria") return null;
   const terminy = nadchodzaceTerminy(sekcja.dane.slots, teraz);
@@ -100,6 +106,7 @@ export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez }: { sekcja: Sekcja<
     <>
       <RecordList
         tytul={`Nadchodzące superwizje: ${terminy.length}`}
+        stopienNaglowka={stopien}
         wiersze={wiersze}
         pusty={pusty("Brak nadchodzących terminów", "Terminy superwizji wystawiasz w widoku grupy.", onOdswiez)}
       />

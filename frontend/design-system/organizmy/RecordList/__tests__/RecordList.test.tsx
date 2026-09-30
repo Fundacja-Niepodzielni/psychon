@@ -71,3 +71,22 @@ describe("RecordList — nazwa akcji", () => {
     expect(screen.getByRole("link", { name: "Otwórz: B" })).not.toHaveAttribute("aria-label");
   });
 });
+
+describe("RecordList — stopień nagłówka sekcji", () => {
+  it("domyślnie h3 (jak dotąd), z listą i ze stanem pustym", () => {
+    const { unmount } = render(<RecordList tytul="Lista" wiersze={wiersze(1)} pusty={PUSTY} />);
+    expect(screen.getByRole("heading", { level: 3, name: "Lista" })).toBeInTheDocument();
+    unmount();
+    render(<RecordList tytul="Lista" wiersze={[]} pusty={PUSTY} />);
+    expect(screen.getByRole("heading", { level: 3, name: "Lista" })).toBeInTheDocument();
+  });
+
+  it("stopienNaglowka={2}: h2 z listą i ze stanem pustym (kontrola dodatnia: nie ma wtedy h3 tytułu)", () => {
+    const { unmount } = render(<RecordList tytul="Lista" stopienNaglowka={2} wiersze={wiersze(1)} pusty={PUSTY} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Lista" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: "Lista" })).toBeNull();
+    unmount();
+    render(<RecordList tytul="Lista" stopienNaglowka={2} wiersze={[]} pusty={PUSTY} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Lista" })).toBeInTheDocument();
+  });
+});

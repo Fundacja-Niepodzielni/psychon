@@ -55,6 +55,10 @@ interface WlasciwosciRecordList {
   /** Renderowane zamiast listy i stopki, gdy `wiersze` jest puste
    * („EmptyState gdy zero wierszy”). */
   pusty: WlasciwosciPustyRecordList;
+  /** Stopień nagłówka sekcji. Domyślnie 3 (jak dotąd); pulpity podają 2 dla
+   * głównej listy — bezpośrednio pod `h1`, bez przeskoku stopnia
+   * (makieta 2.0.4: „h2 z lewej”, reguła axe `heading-order`). */
+  stopienNaglowka?: 2 | 3;
 }
 
 /**
@@ -66,11 +70,11 @@ interface WlasciwosciRecordList {
  * liczbą karty osoby — to porównanie i `Notice` żyją na poziomie strony,
  * która montuje po jednym `RecordList` na sekcję.
  */
-export function RecordList({ tytul, wiersze, jednostkaSumy, pusty }: WlasciwosciRecordList) {
+export function RecordList({ tytul, wiersze, jednostkaSumy, pusty, stopienNaglowka = 3 }: WlasciwosciRecordList) {
   if (wiersze.length === 0) {
     return (
       <section className={style.sekcja} aria-label={tytul}>
-        <Heading stopien={3}>{tytul}</Heading>
+        <Heading stopien={stopienNaglowka}>{tytul}</Heading>
         <EmptyState naglowek={pusty.naglowek} tresc={pusty.tresc} przycisk={pusty.przycisk} />
       </section>
     );
@@ -83,7 +87,7 @@ export function RecordList({ tytul, wiersze, jednostkaSumy, pusty }: Wlasciwosci
 
   return (
     <section className={style.sekcja} aria-label={tytul}>
-      <Heading stopien={3}>{tytul}</Heading>
+      <Heading stopien={stopienNaglowka}>{tytul}</Heading>
       <div className={style.lista}>
         {wiersze.map((wiersz) => (
           <ListRow

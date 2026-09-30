@@ -1,12 +1,5 @@
 /* Moduł CSS ekranu „Pulpit administracji” — wyłącznie układ treści
    w obszarach szablonu `DashboardTemplate`; wartości tylko z tokeny.css. */
-.akcjaGlowna {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-8);
-}
-
 .kolumna {
   display: flex;
   flex-direction: column;

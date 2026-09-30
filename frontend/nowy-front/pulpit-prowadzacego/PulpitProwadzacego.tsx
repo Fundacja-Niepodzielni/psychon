@@ -115,12 +115,15 @@ export function PulpitProwadzacego() {
   const liczbaPytan = dane.pytania.stan === "ok" ? dane.pytania.dane.liczba : null;
   const terminy = dane.grupa.stan === "ok" ? nadchodzaceTerminy(dane.grupa.dane.slots, teraz) : [];
 
+  // Przycisk główny stoi w nagłówku (makieta 2.0.4, `.head .acts`). Bez pytań
+  // zostaje pod nagłówkiem, jak dotąd: nieaktywny `outline` z powodem obok.
+  const przyciskGlowny =
+    liczbaPytan !== null && liczbaPytan > 0
+      ? { etykieta: "Odpowiedz na pytania", onKliknij: () => router.push(ADRES_PYTAN) }
+      : undefined;
+
   const akcjaGlowna: ReactNode =
-    liczbaPytan === null ? null : liczbaPytan > 0 ? (
-      <Button poziom="primary" onClick={() => router.push(ADRES_PYTAN)}>
-        Odpowiedz na pytania
-      </Button>
-    ) : (
+    liczbaPytan === null || liczbaPytan > 0 ? null : (
       <div className={style.akcja}>
         <Button poziom="outline" disabled aria-describedby={ID_POWODU_BRAKU_PYTAN}>
           Odpowiedz na pytania
@@ -156,8 +159,8 @@ export function PulpitProwadzacego() {
       />
     ) : (
       <div className={style.sekcje}>
-        <SekcjaPytan sekcja={dane.pytania} onOdswiez={odswiez} />
-        <SekcjaSuperwizji sekcja={dane.grupa} teraz={teraz} onOdswiez={odswiez} />
+        <SekcjaPytan sekcja={dane.pytania} onOdswiez={odswiez} stopien={2} />
+        <SekcjaSuperwizji sekcja={dane.grupa} teraz={teraz} onOdswiez={odswiez} stopien={2} />
       </div>
     );
 
@@ -167,6 +170,7 @@ export function PulpitProwadzacego() {
         okruszki,
         tytul: "Pulpit prowadzącego",
         onPowrot,
+        przyciskGlowny,
         dzieci: akcjaGlowna,
       }}
       nastepnyKrok={nastepnyKrok}
