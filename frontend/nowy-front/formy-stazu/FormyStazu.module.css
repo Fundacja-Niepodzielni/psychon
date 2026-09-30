@@ -32,3 +32,14 @@
   display: flex;
   gap: var(--space-8);
 }
+
+/* W ramce panelu z makiety (powłoka `PowlokaPanelu`, atrybut
+   `data-powloka-panelu`) ekran nie dokłada własnego tła ani wyśrodkowanej
+   szerokości — treść stoi od lewej w obszarze treści powłoki, który sam
+   niesie odstępy. Poza powłoką (poligon) bez zmian. */
+:global([data-powloka-panelu]) .uklad {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: none;
+}

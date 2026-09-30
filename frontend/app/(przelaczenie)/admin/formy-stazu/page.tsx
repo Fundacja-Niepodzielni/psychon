@@ -4,7 +4,7 @@ import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
 import { FormyStazu } from "@/nowy-front/formy-stazu/FormyStazu";
 
 export const metadata: Metadata = {
-  title: "Formy stażu — Niepodzielni",
+  title: "Słownik form stażu — Niepodzielni",
 };
 
 /**

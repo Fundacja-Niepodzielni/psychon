@@ -25,4 +25,16 @@ describe("Icon", () => {
     const html = nazwy.map((n) => render(<Icon nazwa={n} />).container.innerHTML);
     expect(new Set(html).size).toBe(13);
   });
+
+  it("„menu”: ścieżka z makiety, aria-hidden, rozmiar i kreska jak pozostałe glify", () => {
+    const { container } = render(<Icon nazwa="menu" rozmiar={16} />);
+    const svg = container.querySelector("svg");
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+    expect(svg).toHaveAttribute("width", "16");
+    expect(svg).toHaveAttribute("stroke", "currentColor");
+    expect(svg).toHaveAttribute("stroke-width", "1.8");
+    expect(svg?.querySelector("path")).toHaveAttribute("d", "M3 6h18M3 12h18M3 18h18");
+    const inne = render(<Icon nazwa="home" rozmiar={16} />).container.innerHTML;
+    expect(container.innerHTML).not.toBe(inne);
+  });
 });

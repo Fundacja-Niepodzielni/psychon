@@ -3,6 +3,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import { WNIOSEK, WNIOSEK_ODESLANY, WNIOSEK_ZAAKCEPTOWANY } from "./atrapy";
+import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
+import { DostawcaRamki } from "@/design-system/szablony/KontekstRamki";
 
 /**
  * Ekran decyzji o wniosku o profil: każdy stan w szablonie `DetailTemplate` (jeden `main`,
@@ -372,5 +374,43 @@ describe("Wniosek o profil — decyzja: załączniki", () => {
     const { container } = await renderGotowy({ ...WNIOSEK, bio: "<img src=x onerror=alert(1)>Opis" });
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByText("<img src=x onerror=alert(1)>Opis")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Okruszki ekranu szczegółu: pierwszy to pozycja menu ramki administracji
+ * („Profile psychologa” → `/admin/profile`), ostatni — bieżąca pozycja. W nowej
+ * ramce to jedyna droga powrotu; w starej powłoce i bez dostawców zostaje
+ * „Wstecz” i pełny ślad.
+ */
+describe("Wniosek o profil — decyzja: okruszki", () => {
+  it("w nowej ramce: bez „Wstecz”, pierwsze łącze = pozycja menu „Profile psychologa” → /admin/profile", async () => {
+    trasy({ show: WNIOSEK });
+    render(
+      <DostawcaRamki>
+        <ProfilDecyzja id="12" />
+      </DostawcaRamki>,
+    );
+    await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
+    expect(screen.queryByRole("button", { name: "Wstecz" })).toBeNull();
+    const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
+    const lacza = within(okruszki).getAllByRole("link");
+    expect(lacza.map((a) => [a.textContent?.trim(), a.getAttribute("href")])).toEqual([["Profile psychologa", "/admin/profile"]]);
+    expect(okruszki.textContent).toContain("Wniosek o profil");
+  });
+
+  it("sam DostawcaPowloki (stara powłoka): „Wstecz” i ten sam ślad", async () => {
+    trasy({ show: WNIOSEK });
+    render(
+      <DostawcaPowloki>
+        <ProfilDecyzja id="12" />
+      </DostawcaPowloki>,
+    );
+    await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
+    expect(screen.getByRole("button", { name: "Wstecz" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Okruszki" })).getByRole("link", { name: "Profile psychologa" })).toHaveAttribute(
+      "href",
+      "/admin/profile",
+    );
   });
 });

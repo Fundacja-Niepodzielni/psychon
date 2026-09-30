@@ -36,8 +36,10 @@ import { render, screen, waitFor } from "@testing-library/react";
  * z kodu, a nie z uznania:
  *  - trasy z segmentem dynamicznym (`[id]`, `[slug]`) — przyrząd nie ma skąd
  *    wziąć konkretnego identyfikatora, więc nie zgaduje;
- *  - trasy, w których łańcuchu layoutów ISTNIEJE plik zawierający
- *    JEDNOCZEŚNIE `PanelShell` i `RequireRole` — czyli gate i punkt
+ *  - trasy, w których łańcuchu layoutów ISTNIEJE plik, w którym
+ *    `<RequireRole` owija znaną powłokę z punktem orientacyjnym
+ *    (`PanelShell`, `RamkaAdministracji`, `PowlokaAdministracji` — lista
+ *    `POWLOKI_Z_PUNKTEM_ORIENTACYJNYM` niżej) — czyli gate i punkt
  *    orientacyjny są w TYM SAMYM pliku, więc gate naprawdę stoi PRZED
  *    `<main id="tresc">` (np. `admin/layout.tsx`,
  *    `prowadzacy/layout.tsx`) i punkt orientacyjny trafia do DOM dopiero
@@ -123,9 +125,10 @@ interface OdkrytaTrasa {
   /** Specyfikatory importu layoutów w łańcuchu, KOLEJNOŚĆ: korzeń → liść.
    * Pusta tablica, gdy trasa nie ma żadnego layoutu poza `app/layout.tsx`. */
   importLayouty: string[];
-  /** `true`, gdy w łańcuchu istnieje JEDEN plik layoutu zawierający
-   * jednocześnie `RequireRole` i `PanelShell` (gate stoi przed punktem
-   * orientacyjnym w tym samym pliku). */
+  /** `true`, gdy w łańcuchu istnieje JEDEN plik layoutu, w którego JSX
+   * `<RequireRole` otwiera się PRZED znaną powłoką z punktem orientacyjnym
+   * (`POWLOKI_Z_PUNKTEM_ORIENTACYJNYM`) — gate stoi przed punktem
+   * orientacyjnym w tym samym pliku. */
   bramkaRoli: boolean;
   dynamiczna: boolean;
   przekierowanieSerwera: boolean;
@@ -167,6 +170,37 @@ function doSpecyfikatoraImportu(absPlik: string): string {
   return `@/${relFrontend.replace(/\.tsx$/, "")}`;
 }
 
+/**
+ * Powłoki, które same renderują `<main id="tresc">`: dotychczasowy
+ * `PanelShell` oraz wybór ramki administracji `RamkaAdministracji` (renderuje
+ * `PanelShell` albo `PowlokaAdministracji`, obie z `main#tresc`) i sama
+ * `PowlokaAdministracji` (układ `(przelaczenie)/admin`), a tak samo ich
+ * odpowiedniki ról: `RamkaUczestnika`/`PowlokaUczestnika` i
+ * `RamkaProwadzacego`/`PowlokaProwadzacego`. Rozpoznanie idzie po
+ * znaczniku JSX (`<Nazwa`), nie po samym słowie — wzmianka w komentarzu nie
+ * czyni pliku bramką.
+ */
+const POWLOKI_Z_PUNKTEM_ORIENTACYJNYM = [
+  "PanelShell",
+  "RamkaAdministracji",
+  "PowlokaAdministracji",
+  "RamkaUczestnika",
+  "PowlokaUczestnika",
+  "RamkaProwadzacego",
+  "PowlokaProwadzacego",
+];
+
+/** Straż roli przed powłoką w tym samym pliku: `<RequireRole` otwiera się
+ * w źródle przed pierwszym znacznikiem znanej powłoki (straż ją owija). */
+function strazPrzedPowloka(src: string): boolean {
+  const straz = src.indexOf("<RequireRole");
+  if (straz < 0) return false;
+  return POWLOKI_Z_PUNKTEM_ORIENTACYJNYM.some((nazwa) => {
+    const powloka = src.indexOf(`<${nazwa}`);
+    return powloka > straz;
+  });
+}
+
 function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {
   const wynik: OdkrytaTrasa[] = [];
   for (const wpis of readdirSync(dir, { withFileTypes: true })) {
@@ -189,9 +223,7 @@ function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {
 
     const layoutyPliki = lancuchLayoutow(dir);
     const layoutyZrodla = layoutyPliki.map((p) => readFileSync(p, "utf8"));
-    const bramkaRoli = layoutyZrodla.some(
-      (src) => src.includes("RequireRole") && src.includes("PanelShell"),
-    );
+    const bramkaRoli = layoutyZrodla.some(strazPrzedPowloka);
 
     wynik.push({
       url,

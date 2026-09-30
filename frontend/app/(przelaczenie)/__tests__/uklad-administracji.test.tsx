@@ -66,6 +66,8 @@ describe.each(["project_manager", "super_admin"])("układ administracji w grupie
 
     expect(zmierz(container)).toEqual({ main: 1, cele: 1, odnosniki: 1 });
     expect(container.querySelector("nav[aria-label='Menu — Administracja']")).not.toBeNull();
+    // Nowa ramka z makiety (ta sama nazwa menu co w dotychczasowej powłoce).
+    expect(container.querySelector("[data-powloka-panelu]")).not.toBeNull();
     expect(hrefyMenu(container)).toEqual(expect.arrayContaining(["/admin/kursy", "/admin/uczestniczki"]));
     expect(container.querySelector<HTMLElement>("[data-style-id='szablon-lista']")?.tagName).toBe("DIV");
   });
