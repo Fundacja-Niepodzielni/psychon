@@ -1,14 +1,20 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import LessonPlayer from "@/components/lesson/LessonPlayer";
-import PageTemplate from "@/components/templates/PageTemplate";
+import { GRUPY } from "@/lib/przelaczenie/grupy";
+import LekcjaNowyEkran from "./NowyEkran";
+import LekcjaStaraTresc from "./StaraTresc";
 
 interface LessonPageProps {
   params: Promise<{ id: string }>;
 }
 
-/** H06 lesson screen, opened from the lesson slot on the H05 course page. */
+/**
+ * H06 lesson screen, opened from the lesson slot on the H05 course page.
+ * The id is validated here for both variants. The address stays the same,
+ * the content changes: switch group `lekcja` (`lib/przelaczenie/grupy.ts`)
+ * enabled → the new-front screen (`NowyEkran.tsx`), disabled → the previous
+ * content (`StaraTresc.tsx`, unchanged).
+ */
 export default async function LessonPage({ params }: LessonPageProps) {
   const { id } = await params;
   const lessonId = Number(id);
@@ -17,21 +23,5 @@ export default async function LessonPage({ params }: LessonPageProps) {
     notFound();
   }
 
-  return (
-    <PageTemplate
-      naglowek={{
-        title: "Lekcja",
-        breadcrumbs: (
-          <Link
-            href="/panel/kursy"
-            className="inline-flex min-h-11 items-center gap-2 self-start text-small font-medium text-muted transition-colors duration-200 hover:text-ink focus-visible:focus-ring"
-          >
-            <span aria-hidden="true">←</span> Wróć do listy kursów
-          </Link>
-        ),
-      }}
-    >
-      <LessonPlayer lessonId={lessonId} />
-    </PageTemplate>
-  );
+  return GRUPY.lekcja.wlaczona ? <LekcjaNowyEkran id={String(lessonId)} /> : <LekcjaStaraTresc lessonId={lessonId} />;
 }

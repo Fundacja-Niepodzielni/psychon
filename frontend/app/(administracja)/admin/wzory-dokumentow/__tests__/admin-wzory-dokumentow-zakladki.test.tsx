@@ -35,7 +35,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { default: DocumentTemplatesPage } = await import(
-  "@/app/(administracja)/admin/wzory-dokumentow/page"
+  "@/app/(administracja)/admin/wzory-dokumentow/StaraTresc"
 );
 
 beforeEach(() => {

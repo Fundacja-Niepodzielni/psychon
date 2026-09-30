@@ -118,7 +118,7 @@ beforeEach(() => {
 });
 
 describe("/admin/ustawienia — h1 dla każdego wysterowanego stanu", () => {
-  const importPage = () => import("@/app/(administracja)/admin/ustawienia/page");
+  const importPage = () => import("@/app/(administracja)/admin/ustawienia/StaraTresc");
 
   it("stan ładowania (przed rozstrzygnięciem GET /admin/edition)", async () => {
     api.mockImplementation(() => new Promise(() => {})); // zawieszone na stałe
@@ -355,7 +355,7 @@ const LEKCJA = {
 
 describe("/admin/ekran-startowy — h1 dla każdego wysterowanego stanu", () => {
   const importPage = () =>
-    import("@/app/(administracja)/admin/ekran-startowy/page");
+    import("@/app/(administracja)/admin/ekran-startowy/StaraTresc");
 
   it("stan ładowania (przed rozstrzygnięciem GET /onboarding)", async () => {
     api.mockImplementation(() => new Promise(() => {}));
@@ -396,7 +396,7 @@ describe("/admin/ekran-startowy — h1 dla każdego wysterowanego stanu", () => 
 
 describe("/admin/profile/[id] — h1 dla każdego wysterowanego stanu", () => {
   const importPage = () =>
-    import("@/app/(administracja)/admin/profile/[id]/page");
+    import("@/app/(administracja)/admin/profile/[id]/StaraTresc");
 
   it("stan ładowania (przed rozstrzygnięciem GET /admin/profiles/:id)", async () => {
     api.mockImplementation(() => new Promise(() => {}));
@@ -649,12 +649,14 @@ describe("/panel/kursy/[slug] — h1 dla każdego wysterowanego stanu", () => {
 });
 
 describe("/panel/lekcje/[id] — h1 dla każdego wysterowanego stanu", () => {
-  const importPage = () => import("@/app/(uczestnik)/panel/lekcje/[id]/page");
+  // Stary ekran lekcji żyje w `StaraTresc.tsx` (strona zwraca go przy wyłączonej grupie
+  // przełączenia `lekcja`); ten opis mierzy starą treść, więc importuje ją wprost.
+  const importPage = () => import("@/app/(uczestnik)/panel/lekcje/[id]/StaraTresc");
 
   it("stan ładowania odtwarzacza (przed rozstrzygnięciem GET /lessons/:id)", async () => {
     api.mockImplementation(() => new Promise(() => {}));
     const { default: LessonPage } = await importPage();
-    render(await LessonPage({ params: Promise.resolve({ id: "5" }) }));
+    render(<LessonPage lessonId={5} />);
 
     await screen.findByText("Ładowanie lekcji…");
     jedenH1("/panel/lekcje/[id] (ładowanie)");
@@ -663,7 +665,7 @@ describe("/panel/lekcje/[id] — h1 dla każdego wysterowanego stanu", () => {
   it("stan błędu odtwarzacza (500)", async () => {
     api.mockRejectedValue(new ApiError(500, "server_error", "Błąd serwera."));
     const { default: LessonPage } = await importPage();
-    render(await LessonPage({ params: Promise.resolve({ id: "5" }) }));
+    render(<LessonPage lessonId={5} />);
 
     await screen.findByText("Nie udało się otworzyć lekcji");
     jedenH1("/panel/lekcje/[id] (błąd 500)");
@@ -672,7 +674,7 @@ describe("/panel/lekcje/[id] — h1 dla każdego wysterowanego stanu", () => {
   it("stan sukcesu (lekcja wczytana)", async () => {
     api.mockResolvedValue(LEKCJA);
     const { default: LessonPage } = await importPage();
-    render(await LessonPage({ params: Promise.resolve({ id: "5" }) }));
+    render(<LessonPage lessonId={5} />);
 
     await screen.findByText("Lekcja o oddechu");
     jedenH1("/panel/lekcje/[id] (sukces)");

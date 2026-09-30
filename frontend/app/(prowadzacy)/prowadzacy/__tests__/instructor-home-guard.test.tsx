@@ -7,6 +7,10 @@ import { render, screen, waitFor } from "@testing-library/react";
  * pattern of `watek-grupowy-dostep.test.tsx`. A role outside the list gets
  * the shared "Brak dostępu" screen and the start tiles never fetch; the
  * allowed role gets the heading and the counters read from the API.
+ *
+ * The screen under test is the previous page content (`StaraTresc`), which
+ * `page.tsx` renders while the `pulpitProwadzacego` switch group is off; the
+ * switched page is covered by `przelaczenie-pulpit.test.tsx`.
  */
 
 const api = vi.fn();
@@ -33,7 +37,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { default: InstructorLayout } = await import("@/app/(prowadzacy)/prowadzacy/layout");
-const { default: InstructorHomePage } = await import("@/app/(prowadzacy)/prowadzacy/page");
+const { default: InstructorHomePage } = await import("@/app/(prowadzacy)/prowadzacy/StaraTresc");
 
 const group = {
   members: [

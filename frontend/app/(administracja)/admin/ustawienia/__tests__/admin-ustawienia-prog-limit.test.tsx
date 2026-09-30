@@ -31,7 +31,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 const { default: EditionSettingsPage } = await import(
-  "@/app/(administracja)/admin/ustawienia/page"
+  "@/app/(administracja)/admin/ustawienia/StaraTresc"
 );
 
 /**

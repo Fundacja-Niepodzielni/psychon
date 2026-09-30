@@ -9,25 +9,66 @@ import {
 } from "@/lib/przelaczenie/grupy";
 
 /**
- * Stan flag rejestru: włączona jest wyłącznie grupa `wspolpraca` — jedyna,
- * dla której są już strony pod nowymi trasami i wpisy menu. Pozostałe grupy
- * opisują tylko docelowe pary tras i zostają wyłączone.
+ * Stan flag rejestru: włączone są grupy, dla których są już strony pod
+ * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
+ * `pulpitAdministracji`), `pulpitUczestnika` i `pulpitProwadzacego`
+ * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
+ * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`.
+ * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
+const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca", "wzoryDokumentow"];
+
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
     expect(GRUPY.wspolpraca.wlaczona).toBe(true);
   });
 
+  it("grupa pulpitUczestnika jest włączona, a grupa lekcja wyłączona", () => {
+    expect(GRUPY.pulpitUczestnika.wlaczona).toBe(true);
+    expect(GRUPY.lekcja.wlaczona).toBe(false);
+  });
+
+  it("grupa pulpitProwadzacego jest włączona", () => {
+    expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
+  });
+
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów i ekran startowy", () => {
+    const wlaczone = Object.entries(GRUPY)
+      .filter(([, grupa]) => grupa.wlaczona)
+      .map(([klucz]) => klucz)
+      .sort();
+    expect(wlaczone).toEqual(WLACZONE);
+  });
+
   it("każda pozostała grupa jest wyłączona", () => {
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
-      if (klucz === "wspolpraca") continue;
+      if (WLACZONE.includes(klucz)) continue;
       expect(grupa.wlaczona, `grupa "${klucz}" powinna być wyłączona dziś`).toBe(false);
     }
   });
 
-  it("grupa wspolpraca niesie dokładnie dwa ekrany: uczestnika i administrację", () => {
+  it("grupy z podmianą treści mają ten sam adres starej i nowej trasy", () => {
+    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy"] as const) {
+      const [ekran] = GRUPY[klucz].ekrany;
+      expect(ekran.panel, klucz).toBe("administracja");
+      expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
+    }
+  });
+
+it("grupa wspolpraca niesie dokładnie dwa ekrany: uczestnika i administrację", () => {
     const panele = GRUPY.wspolpraca.ekrany.map((e) => e.panel).sort();
     expect(panele).toEqual(["administracja", "uczestnik"]);
+  });
+
+  it("pulpitUczestnika i lekcja: ten sam adres starej i nowej trasy, więc zamiana treści, nie przekierowanie", () => {
+    for (const grupa of [GRUPY.pulpitUczestnika, GRUPY.lekcja]) {
+      const [ekran] = grupa.ekrany;
+      expect(grupa.ekrany).toHaveLength(1);
+      expect(ekran.panel).toBe("uczestnik");
+      expect(ekran.staraTrasa).toBe(ekran.nowaTrasa);
+      expect(czyStaraTrasaPrzekierowuje(grupa, "uczestnik"), grupa.klucz).toBe(false);
+      expect(celTrasyEkranu(grupa, "uczestnik"), grupa.klucz).toBe(ekran.nowaTrasa);
+    }
   });
 });
 

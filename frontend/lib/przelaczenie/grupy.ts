@@ -55,7 +55,8 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączona jest jedna: `wspolpraca`. Pozostałe mają tu jeszcze
+ * Grupy dzisiejszego kanonu. Włączonych jest osiem: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`. Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -87,7 +88,7 @@ export const GRUPY = {
   /** Słownik form stażu (H11) — administracja, funkcji dotąd nie było. */
   formyStazu: {
     klucz: "formyStazu",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -148,7 +149,7 @@ export const GRUPY = {
   /** Pulpit uczestnika — ten sam adres co dzisiejszy pulpit, treść strony zamienia się na ekran nowego frontu. */
   pulpitUczestnika: {
     klucz: "pulpitUczestnika",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",
@@ -158,7 +159,13 @@ export const GRUPY = {
       },
     ],
   },
-  /** Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu. */
+  /**
+   * Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu.
+   * Zostaje wyłączona: gdy nagranie lekcji jest niedostępne (`video-link` odpowiada 503 albo 404 — lekcja bez
+   * nagrania albo bez usługi wideo), nowy ekran nie ma przycisku „Odtwórz”, nie wysyła zapisu postępu, a „Oznacz
+   * jako ukończoną” zostaje nieaktywne, podczas gdy stara strona w tych samych warunkach działa. Strona
+   * `panel/lekcje/[id]/page.tsx` jest już podpięta pod tę flagę.
+   */
   lekcja: {
     klucz: "lekcja",
     wlaczona: false,
@@ -174,7 +181,7 @@ export const GRUPY = {
   /** Pulpit prowadzącego — ten sam adres co dzisiejsza strona startowa prowadzącego. */
   pulpitProwadzacego: {
     klucz: "pulpitProwadzacego",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "prowadzacy",
@@ -187,7 +194,7 @@ export const GRUPY = {
   /** Pulpit administracji — ten sam adres co dzisiejsza strona startowa administracji. */
   pulpitAdministracji: {
     klucz: "pulpitAdministracji",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -269,7 +276,7 @@ export const GRUPY = {
   /** Decyzja o wniosku o profil psychologa (H15) — ten sam adres co dzisiejszy szczegół wniosku. */
   decyzjaProfilu: {
     klucz: "decyzjaProfilu",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -314,7 +321,7 @@ export const GRUPY = {
   /** Wzory dokumentów z wersjami (H14) — ten sam adres co dzisiejszy ekran wzorów. */
   wzoryDokumentow: {
     klucz: "wzoryDokumentow",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -340,7 +347,14 @@ export const GRUPY = {
       },
     ],
   },
-  /** Ustawienia roku programu (H19) — ten sam adres co dzisiejsze ustawienia edycji. */
+  /**
+   * Ustawienia roku programu (H19) — ten sam adres co dzisiejsze ustawienia edycji.
+   * Zostaje wyłączona: stara strona zmienia też nazwę edycji, daty rozpoczęcia i
+   * zakończenia oraz limit miejsc (`PATCH /admin/edition`), a nowy ekran pokazuje
+   * tylko sześć progów z kontraktu §3.3 — bez odpowiednika tych czterech pól
+   * administracja nie mogłaby ich zmienić z panelu. Strona `ustawienia/page.tsx`
+   * jest już podpięta pod tę flagę.
+   */
   ustawieniaProgramu: {
     klucz: "ustawieniaProgramu",
     wlaczona: false,
@@ -356,7 +370,7 @@ export const GRUPY = {
   /** Redakcja ekranu startowego (H21) — ten sam adres co dzisiejsza redakcja treści. */
   ekranStartowy: {
     klucz: "ekranStartowy",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",

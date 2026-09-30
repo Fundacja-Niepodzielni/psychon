@@ -41,17 +41,17 @@ const { default: AuditLogPage } = await import("@/app/(administracja)/admin/dzie
 const { default: ReportPage } = await import("@/app/(administracja)/admin/raport/page");
 const { default: LearningTimePage } = await import("@/app/(administracja)/admin/czas-nauki/page");
 const { default: OnboardingPage } = await import(
-  "@/app/(administracja)/admin/ekran-startowy/page"
+  "@/app/(administracja)/admin/ekran-startowy/StaraTresc"
 );
 const { default: EmailsPage } = await import("@/app/(administracja)/admin/emails/page");
 const { default: ProfileQueuePage } = await import("@/app/(administracja)/admin/profile/page");
 const { default: ProfileDetailPage } = await import(
-  "@/app/(administracja)/admin/profile/[id]/page"
+  "@/app/(administracja)/admin/profile/[id]/StaraTresc"
 );
-const { default: SettingsPage } = await import("@/app/(administracja)/admin/ustawienia/page");
-const { default: AdminHomePage } = await import("@/app/(administracja)/admin/page");
+const { default: SettingsPage } = await import("@/app/(administracja)/admin/ustawienia/StaraTresc");
+const { default: AdminHomePage } = await import("@/app/(administracja)/admin/StaraTresc");
 const { default: DocumentTemplatesPage } = await import(
-  "@/app/(administracja)/admin/wzory-dokumentow/page"
+  "@/app/(administracja)/admin/wzory-dokumentow/StaraTresc"
 );
 
 const page = <T,>(data: T[]) => ({

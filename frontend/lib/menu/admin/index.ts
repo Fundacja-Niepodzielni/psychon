@@ -21,6 +21,7 @@ import h20Dziennik from "./h20-dziennik";
 import h21EkranStartowy from "./h21-ekran-startowy";
 import h22WzoryDokumentow from "./h22-wzory-dokumentow";
 import h01ZgloszeniaWspolpracy from "./h01-zgloszenia-wspolpracy";
+import h11FormyStazu from "./h11-formy-stazu";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
 import { sortMenu, type MenuEntry, type MenuSection } from "../types";
@@ -47,6 +48,8 @@ export const adminMenu: MenuEntry[] = sortMenu([
   // włączeniu. Rozpłaszczona `...`, żeby ta lista nie potrzebowała gałęzi
   // `if` na wpis, którego dziś może tu nie być.
   ...h01ZgloszeniaWspolpracy,
+  // Wpis grupy `formyStazu` — ta sama zasada: 0 elementów przy grupie wyłączonej.
+  ...h11FormyStazu,
   // hXXNazwa, // ← i drugą tutaj
 ]);
 
