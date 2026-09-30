@@ -424,6 +424,24 @@ describe("KartaOsoby — sekcje rzadkie zwinięte z licznikiem", () => {
   });
 });
 
+describe("KartaOsoby — wpis dziennika bez czasu", () => {
+  it("brak czasu wpisu to „—” z wspólnego formatera, nie własny napis i nie surowy null", async () => {
+    const karta = {
+      ...(KARTA as object),
+      audit_entries: [{ id: 502, action: "user.updated", actor_id: 7, created_at: null }],
+    };
+    pobierzKarteOsoby.mockResolvedValue(karta);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<KartaOsoby id={17} />);
+    await screen.findByRole("heading", { name: "Marta Demo" });
+    await uzytkownik.click(screen.getByRole("button", { name: "Dziennik działań (1)" }));
+    expect(screen.getByText("— — kto: 7")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("brak daty");
+    expect(container.textContent).not.toContain("null");
+  });
+});
+
 describe("KartaOsoby — formularz „Zmień dane”", () => {
   it("brak pola roli w formularzu (kontrola dodatnia: inne pola obecne)", async () => {
     pobierzKarteOsoby.mockResolvedValue(KARTA);

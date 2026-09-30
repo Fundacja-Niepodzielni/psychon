@@ -355,7 +355,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
                       <li key={wpis.id}>
                         <Text>{wpis.action}</Text>
                         <Text wariant="pusty">
-                          {wpis.created_at ? formatujDateICzas(wpis.created_at) : "brak daty"} — kto: {wpis.actor_id ?? "brak"}
+                          {formatujDateICzas(wpis.created_at)} — kto: {wpis.actor_id ?? "brak"}
                         </Text>
                       </li>
                     ))}
