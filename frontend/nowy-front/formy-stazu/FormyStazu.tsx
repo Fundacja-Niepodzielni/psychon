@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -8,13 +8,25 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActions";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { ApiError } from "@/lib/api/klient";
 import { utworzFormeStazu, zaktualizujFormeStazu } from "@/lib/api/h11-formy";
+import { useWPowloce } from "@/design-system/szablony/KontekstPowloki";
 import { pobierzFormyStazu, type FormaStazu } from "./dane";
 import style from "./FormyStazu.module.css";
+
+/**
+ * Korzeń ekranu. Poza powłoką panelu: `main` pod `id="tresc"` jak dotąd.
+ * W powłoce (`DostawcaPowloki`) `main` niesie powłoka, więc tu jest zwykły `div`.
+ */
+function Korzen({ children }: { children: ReactNode }) {
+  const wPowloce = useWPowloce();
+  if (wPowloce) return <div className={style.uklad}>{children}</div>;
+  return <main id="tresc" className={style.uklad}>{children}</main>;
+}
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 
@@ -67,7 +79,9 @@ export function FormyStazu() {
       })
       .catch((wyjatek: unknown) => {
         if (anulowane) return;
-        setStan(wyjatek instanceof ApiError && wyjatek.status === 403 ? "brak-uprawnien" : "blad");
+        setStan(
+          wyjatek instanceof ApiError && (wyjatek.status === 401 || wyjatek.status === 403) ? "brak-uprawnien" : "blad",
+        );
       });
     return () => {
       anulowane = true;
@@ -171,33 +185,38 @@ export function FormyStazu() {
 
   if (stan === "ladowanie") {
     return (
-      <main id="tresc" className={style.uklad}>
+      <Korzen>
         <Heading stopien={1}>Słownik form stażu</Heading>
         <Skeleton wiersze={4} />
-      </main>
+      </Korzen>
     );
   }
   if (stan === "brak-uprawnien") {
     return (
-      <main id="tresc" className={style.uklad}>
+      <Korzen>
         <Heading stopien={1}>Słownik form stażu</Heading>
-        <Text>Brak uprawnień do tego ekranu — tylko dla opiekuna projektu i super-admina.</Text>
-      </main>
+        <EmptyState
+          wariant="brak-uprawnien"
+          naglowek="Brak dostępu do słownika form stażu"
+          rola="opiekuna projektu i administracji"
+          przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+        />
+      </Korzen>
     );
   }
   if (stan === "blad") {
     return (
-      <main id="tresc" className={style.uklad}>
+      <Korzen>
         <Heading stopien={1}>Słownik form stażu</Heading>
         <Text>Backend H11 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
-      </main>
+      </Korzen>
     );
   }
 
   const panelOtwarty = dodajOtwarte || edytowanaId !== null;
 
   return (
-    <main id="tresc" className={style.uklad}>
+    <Korzen>
       <PageHeader
         okruszki={[{ etykieta: "Administracja" }, { etykieta: "Słownik form stażu" }]}
         tytul="Słownik form stażu"
@@ -281,6 +300,6 @@ export function FormyStazu() {
           />
         </div>
       )}
-    </main>
+    </Korzen>
   );
 }
