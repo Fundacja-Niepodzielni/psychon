@@ -1,266 +1,267 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
-import { Text } from "@/design-system/atomy/Text/Text";
+import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
-import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
-import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
-import { ApiError, type PaginationMeta } from "@/lib/api/klient";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
+import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
+import { zglosWspolprace, pobierzMojeZgloszenia } from "@/lib/api/h01-wspolpraca";
 import {
-  pobierzJa,
-  pobierzMojeZgloszenia,
-  zglosWspolprace,
-  type CooperationRequest,
-  type CooperationRequestStatus,
-} from "@/lib/api/h01-wspolpraca";
-import { useWPowloce } from "@/design-system/szablony/KontekstPowloki";
-import style from "./PoProgramieWspolpraca.module.css";
+  LICZBA_ZNAKOW_MAX,
+  maOtwarteZgloszenie,
+  sklasyfikujBladWysylki,
+  wczytajStan,
+  type StanEkranu,
+} from "./dane";
+import { HistoriaZgloszen } from "./HistoriaZgloszen";
+import { KartaProgramuUkonczonego } from "./KartaProgramuUkonczonego";
+
+const OKRUSZKI = [{ etykieta: "Po programie" }, { etykieta: "Dalsza współpraca" }];
 
 /**
- * Korzeń ekranu. Poza powłoką panelu: `main` pod `id="tresc"` jak dotąd.
- * W powłoce (`DostawcaPowloki`) `main` niesie powłoka, więc tu jest zwykły `div`.
- */
-function Korzen({ children }: { children: ReactNode }) {
-  const wPowloce = useWPowloce();
-  if (wPowloce) return <div className={style.uklad}>{children}</div>;
-  return <main id="tresc" className={style.uklad}>{children}</main>;
-}
-
-type StanEkranu = "ladowanie" | "blad" | "ok";
-type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
-
-const LICZBA_ZNAKOW_MAX = 2000;
-
-const PLAKIETKA_STATUSU: Record<CooperationRequestStatus, { wariant: WariantPlakietki; tekst: string }> = {
-  new: { wariant: "pending", tekst: "Nowe" },
-  answered: { wariant: "ok", tekst: "Z odpowiedzią" },
-  closed: { wariant: "neutral", tekst: "Zamknięte" },
-};
-
-/** Jedna linia `Hint` łącząca datę złożenia oraz — gdy jest — treść
- * odpowiedzi administracji i jej datę (kontrakt H01: "przy odpowiedzi —
- * treść odpowiedzi i jej data"). Bez formatowania daty na coś innego niż
- * znacznik ISO z API — ten sam wybór co w innych ekranach nowego frontu
- * (np. `SuperwizjeTerminy.tsx`), które nie przeliczają dat serwera na
- * lokalny zapis w miejscach czysto informacyjnych. */
-function opisZgloszenia(zgloszenie: CooperationRequest): string {
-  const podstawa = `Złożono: ${zgloszenie.created_at ?? "brak daty"}.`;
-  if (zgloszenie.response !== null && zgloszenie.responded_at !== null) {
-    return `${podstawa} Odpowiedź (${zgloszenie.responded_at}): ${zgloszenie.response}`;
-  }
-  return podstawa;
-}
-
-/**
- * Trasa `/nowy-front/po-programie`, sekcja „Dalsza współpraca” (H01) —
- * trasy przyjęte bez zmian wobec stanu kodu.
- * `CooperationRequestController::store`/`mine`
- * (`backend/routes/api/h01.php:38-39`).
+ * Ekran „Dalsza współpraca” (uczestnik) na szablonie `DetailTemplate`:
+ * nagłówek, w kolumnie głównej karta „Program ukończony” i formularz
+ * zgłoszenia, w kolumnie wspierającej historia własnych zgłoszeń. Każdy stan
+ * — ładowanie, dane, brak uprawnień, błąd sieci, program jeszcze
+ * nieukończony, po zapisie — stoi w obszarach szablonu, więc jedyny `main`
+ * jest korzeniem szablonu (pod powłoką panelu szablon jest zwykłym `div`).
  *
- * Cztery stany trasy: `ladowanie`, `blad`, `ok` (dalej rozgałęzione przez
- * `zakazane`/`programUkonczony`/`maOtwarte` — pochodne z odpowiedzi, nigdy
- * osobny stan mogący się z nimi rozjechać). Formularz znika automatycznie,
- * gdy na liście własnych zgłoszeń jest pozycja `new` — także zaraz po 201,
- * bo nowe zgłoszenie trafia na początek TEJ SAMEJ tablicy, z której liczy
- * się `maOtwarte`; nie ma osobnej flagi „właśnie wysłano”, która mogłaby
- * się z listą rozjechać.
+ * Trasy: `POST /cooperation-requests` i `GET /cooperation-requests/mine`
+ * (`backend/routes/api/h01.php:41-42`). Gdy osoba nie ma prawa do zgłoszenia
+ * (inna rola albo program nieukończony), ekran nie pyta o historię i nie
+ * obiecuje wysyłki; historia wraca tylko wtedy, gdy osoba już ma zgłoszenia.
  *
- * Akcja wiersza `RecordList` (organizm wymaga jej dla każdego wiersza —
- * `WierszRecordList.akcja` nie jest opcjonalna) kopiuje treść zgłoszenia do
- * schowka: to jedyna czynność, jaką ma sens wykonać na własnym, tylko do
- * odczytu wpisie historii, bez dokładania nowej trasy API ani nowego atomu.
- *
- * Odczyt startowy biegnie z przeglądarki — ten sam powód co
- * `nowy-front/formy-stazu/dane.ts`: `@/auth` po stronie serwera nie wstaje
- * pod Vitest/jsdom na trasach statycznych.
+ * Formularz znika, gdy na liście jest zgłoszenie `new`: nowe zgłoszenie
+ * trafia na początek TEJ SAMEJ tablicy, z której liczy się „otwarte”, więc
+ * nie ma osobnej flagi, która mogłaby się z listą rozjechać.
  */
 export function PoProgramieWspolpraca() {
   const router = useRouter();
-  const [stan, setStan] = useState<StanEkranu>("ladowanie");
-  const [zakazane, setZakazane] = useState(false);
-  const [programUkonczony, setProgramUkonczony] = useState(false);
-  const [zgloszenia, setZgloszenia] = useState<CooperationRequest[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | undefined>(undefined);
+  const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
+  const [proba, setProba] = useState(0);
   const [tresc, setTresc] = useState("");
   const [wysylanie, setWysylanie] = useState(false);
   const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
-  const [bladOgolny, setBladOgolny] = useState<string | null>(null);
-
-  function wczytaj(strona: number, straz?: { anulowane: boolean }) {
-    return Promise.all([pobierzJa(), pobierzMojeZgloszenia({ page: strona })])
-      .then(([ja, mine]) => {
-        if (straz?.anulowane) return;
-        setProgramUkonczony(ja.program_completed_at !== null);
-        setZakazane(false);
-        setZgloszenia(mine.data);
-        setMeta(mine.meta);
-        setStan("ok");
-      })
-      .catch((wyjatek: unknown) => {
-        if (straz?.anulowane) return;
-        if (wyjatek instanceof ApiError && wyjatek.status === 403 && wyjatek.code === "forbidden") {
-          setZakazane(true);
-          setStan("ok");
-          return;
-        }
-        setStan("blad");
-      });
-  }
+  const [komunikat, setKomunikat] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    const straz = { anulowane: false };
-    void wczytaj(1, straz);
+    let aktualne = true;
+    wczytajStan()
+      .then((wczytany) => {
+        if (aktualne) setStan(wczytany);
+      })
+      .catch(() => {
+        if (aktualne) setStan({ rodzaj: "blad" });
+      });
     return () => {
-      straz.anulowane = true;
+      aktualne = false;
     };
-    // Wyłącznie przy zamontowaniu — kolejne strony wczytuje `Pagination` niżej.
-  }, []);
+  }, [proba]);
+
+  function ponow() {
+    setStan({ rodzaj: "ladowanie" });
+    setProba((p) => p + 1);
+  }
+
+  /** Ponowny odczyt historii po 409 — zgłoszenie oczekujące pojawia się na liście. */
+  function odswiezHistorie() {
+    pobierzMojeZgloszenia({ page: 1 })
+      .then(({ data, meta }) => {
+        setStan((poprzedni) =>
+          poprzedni.rodzaj === "gotowy" ? { ...poprzedni, zgloszenia: data, meta } : poprzedni,
+        );
+      })
+      .catch(() => undefined);
+  }
+
+  function zmienStrone(nowa: number) {
+    pobierzMojeZgloszenia({ page: nowa })
+      .then(({ data, meta }) => {
+        setStan((poprzedni) =>
+          poprzedni.rodzaj === "gotowy" ? { ...poprzedni, zgloszenia: data, meta } : poprzedni,
+        );
+      })
+      .catch(() => setKomunikat("Nie udało się wczytać zgłoszeń. Spróbuj ponownie."));
+  }
 
   async function wyslij() {
+    if (wysylanie) return;
     setWysylanie(true);
-    setBladOgolny(null);
+    setKomunikat(null);
     setBledyPol(undefined);
     try {
       const nowe = await zglosWspolprace(tresc.trim());
-      setZgloszenia((poprzednie) => [nowe, ...poprzednie]);
+      setStan((poprzedni) =>
+        poprzedni.rodzaj === "gotowy"
+          ? {
+              ...poprzedni,
+              zgloszenia: [nowe, ...poprzedni.zgloszenia],
+              meta: poprzedni.meta && { ...poprzedni.meta, total: poprzedni.meta.total + 1 },
+            }
+          : poprzedni,
+      );
       setTresc("");
-    } catch (wyjatek) {
-      if (wyjatek instanceof ApiError && wyjatek.errors) {
-        setBledyPol(wyjatek.errors);
-      } else if (wyjatek instanceof ApiError) {
-        setBladOgolny(wyjatek.message);
+      setToast("Zgłoszenie zostało wysłane.");
+    } catch (blad: unknown) {
+      const opis = sklasyfikujBladWysylki(blad);
+      if (opis.rodzaj === "pola") {
+        setBledyPol(opis.bledy);
+      } else if (opis.rodzaj === "program-nieukonczony") {
+        setStan((poprzedni) => (poprzedni.rodzaj === "gotowy" ? { ...poprzedni, program: "w-toku" } : poprzedni));
+        setTresc("");
+      } else if (opis.rodzaj === "otwarte") {
+        setKomunikat(opis.komunikat);
+        odswiezHistorie();
       } else {
-        setBladOgolny("Nie udało się wysłać zgłoszenia. Spróbuj ponownie.");
+        setKomunikat(opis.komunikat);
       }
     } finally {
       setWysylanie(false);
     }
   }
 
-  const maOtwarte = zgloszenia.some((zgloszenie) => zgloszenie.status === "new");
+  const naglowek = {
+    okruszki: OKRUSZKI,
+    tytul: "Dalsza współpraca",
+    opis: "Zgłoszenie dalszej współpracy po zakończeniu programu i historia dotychczasowych zgłoszeń.",
+    onPowrot: () => router.back(),
+  };
 
-  const wiersze: WierszRecordList[] = zgloszenia.map((zgloszenie) => ({
-    id: String(zgloszenie.id),
-    tytul: zgloszenie.body,
-    podpowiedz: opisZgloszenia(zgloszenie),
-    plakietka: PLAKIETKA_STATUSU[zgloszenie.status],
-    akcja: {
-      etykieta: "Kopiuj treść",
-      onKliknij: () => {
-        if (typeof navigator !== "undefined" && navigator.clipboard) {
-          navigator.clipboard.writeText(zgloszenie.body).catch(() => {});
-        }
-      },
-    },
-  }));
+  if (stan.rodzaj === "ladowanie") {
+    return <DetailTemplate naglowek={naglowek} glowna={<Skeleton wiersze={4} />} wspierajaca={null} />;
+  }
 
-  const pola: PoleFormSection[] = [
-    {
-      id: "wspolpraca-tresc",
-      etykieta: "Treść zgłoszenia",
-      rodzaj: "wieloliniowy",
-      wartosc: tresc,
-      onZmiana: (wartosc: string) => setTresc(wartosc.slice(0, LICZBA_ZNAKOW_MAX)),
-      blad: bledyPol?.body?.[0],
-      podpowiedz: `${tresc.length}/${LICZBA_ZNAKOW_MAX} znaków`,
-      wymagane: true,
-    },
-  ];
-
-  if (stan === "ladowanie") {
+  if (stan.rodzaj === "brak-uprawnien") {
     return (
-      <Korzen>
-        <Heading stopien={1}>Dalsza współpraca</Heading>
-        <Skeleton wiersze={4} />
-      </Korzen>
+      <DetailTemplate
+        naglowek={naglowek}
+        glowna={
+          <EmptyState
+            wariant="brak-uprawnien"
+            naglowek="Dalsza współpraca"
+            rola="uczestników"
+            przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+          />
+        }
+        wspierajaca={null}
+      />
     );
   }
-  if (stan === "blad") {
+
+  if (stan.rodzaj === "blad") {
     return (
-      <Korzen>
-        <Heading stopien={1}>Dalsza współpraca</Heading>
-        <Text>Backend H01 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
-      </Korzen>
+      <DetailTemplate
+        naglowek={naglowek}
+        glowna={
+          <Notice
+            wariant="error"
+            tytul="Nie udało się wczytać ekranu"
+            akcja={
+              <Button poziom="outline" onClick={ponow}>
+                Spróbuj ponownie
+              </Button>
+            }
+          >
+            Serwer jest nieosiągalny albo zwrócił błąd. Żadne dane nie zostały zmienione.
+          </Notice>
+        }
+        wspierajaca={null}
+      />
+    );
+  }
+
+  const { program, rola, zakonczonoO, zgloszenia, meta } = stan;
+  const maOtwarte = maOtwarteZgloszenie(zgloszenia);
+
+  const stronicowanie =
+    meta && meta.last_page > 1 ? (
+      <Pagination
+        strona={meta.current_page}
+        stron={meta.last_page}
+        naPoprzednia={() => zmienStrone(meta.current_page - 1)}
+        naNastepna={() => zmienStrone(meta.current_page + 1)}
+      />
+    ) : undefined;
+
+  const blokKomunikatu = komunikat ? (
+    <Notice wariant="error" tytul="Nie udało się wysłać zgłoszenia">
+      {komunikat}
+    </Notice>
+  ) : null;
+
+  if (program === "w-toku") {
+    return (
+      <>
+        <DetailTemplate
+          naglowek={naglowek}
+          glowna={
+            <EmptyState
+              naglowek="Ten ekran otworzy się po ukończeniu programu"
+              tresc="Zgłoszenie dalszej współpracy będzie można wysłać po ukończeniu programu."
+              przycisk={{ etykieta: "Przejdź do kursów", onClick: () => router.push("/panel/kursy") }}
+            />
+          }
+          wspierajaca={<HistoriaZgloszen zgloszenia={zgloszenia} stronicowanie={stronicowanie} />}
+        />
+        {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
+      </>
     );
   }
 
   return (
-    <Korzen>
-      <PageHeader
-        okruszki={[{ etykieta: "Po programie" }, { etykieta: "Dalsza współpraca" }]}
-        tytul="Dalsza współpraca"
-        opis="Zgłoszenie dalszej współpracy po zakończeniu programu i historia dotychczasowych zgłoszeń."
-        onPowrot={() => router.back()}
+    <>
+      <DetailTemplate
+        naglowek={naglowek}
+        glowna={
+          <>
+            <KartaProgramuUkonczonego zakonczonoO={zakonczonoO} rola={rola} />
+            {blokKomunikatu}
+            {maOtwarte ? (
+              <Notice wariant="info" tytul="Zgłoszenie w toku">
+                Masz otwarte zgłoszenie. Poczekaj na odpowiedź.
+              </Notice>
+            ) : (
+              <FormSection
+                tytul="Zgłoszenie dalszej współpracy"
+                pola={[
+                  {
+                    id: "wspolpraca-tresc",
+                    etykieta: "Treść zgłoszenia",
+                    rodzaj: "wieloliniowy",
+                    wartosc: tresc,
+                    onZmiana: (wartosc: string) => setTresc(wartosc.slice(0, LICZBA_ZNAKOW_MAX)),
+                    blad: bledyPol?.body?.[0],
+                    podpowiedz: `${tresc.length}/${LICZBA_ZNAKOW_MAX} znaków`,
+                    wymagane: true,
+                  },
+                ]}
+                etykietaZapisz={wysylanie ? "Wysyłanie…" : "Wyślij zgłoszenie"}
+                etykietaAnuluj="Wyczyść"
+                onAnuluj={() => {
+                  setTresc("");
+                  setBledyPol(undefined);
+                  setKomunikat(null);
+                }}
+                onZapisz={() => void wyslij()}
+              />
+            )}
+          </>
+        }
+        wspierajaca={
+          <HistoriaZgloszen
+            zgloszenia={zgloszenia}
+            pusty="Nie masz jeszcze zgłoszeń. Zgłoszenia dalszej współpracy pojawią się tu po wysłaniu."
+            stronicowanie={stronicowanie}
+          />
+        }
       />
-
-      {zakazane && (
-        <Notice wariant="warn" tytul="Brak dostępu">
-          Ta sekcja jest dostępna dla wolontariuszy i studentów.
-        </Notice>
-      )}
-
-      {!zakazane && !programUkonczony && (
-        <Notice wariant="info" tytul="Sekcja niedostępna">
-          Zgłoszenie dalszej współpracy będzie dostępne po zakończeniu programu.
-        </Notice>
-      )}
-
-      {!zakazane && programUkonczony && maOtwarte && (
-        <Notice wariant="info" tytul="Zgłoszenie w toku">
-          Masz otwarte zgłoszenie. Poczekaj na odpowiedź.
-        </Notice>
-      )}
-
-      {!zakazane && programUkonczony && !maOtwarte && (
-        <>
-          {bladOgolny && (
-            <Notice wariant="error" tytul="Nie udało się wysłać zgłoszenia">
-              {bladOgolny}
-            </Notice>
-          )}
-          <FormSection
-            tytul="Zgłoszenie dalszej współpracy"
-            pola={pola}
-            etykietaZapisz={wysylanie ? "Wysyłanie…" : "Wyślij zgłoszenie"}
-            etykietaAnuluj="Wyczyść"
-            onAnuluj={() => {
-              setTresc("");
-              setBledyPol(undefined);
-              setBladOgolny(null);
-            }}
-            onZapisz={() => {
-              if (!wysylanie) void wyslij();
-            }}
-          />
-        </>
-      )}
-
-      {!zakazane && (
-        <>
-          <RecordList
-            tytul="Moje zgłoszenia"
-            wiersze={wiersze}
-            pusty={{
-              naglowek: "Brak zgłoszeń",
-              tresc: "Zgłoszenia dalszej współpracy pojawią się tu po wysłaniu.",
-              przycisk: { etykieta: "Odśwież", onClick: () => void wczytaj(1) },
-            }}
-          />
-          {meta && meta.last_page > 1 && (
-            <Pagination
-              strona={meta.current_page}
-              stron={meta.last_page}
-              naPoprzednia={() => void wczytaj(meta.current_page - 1)}
-              naNastepna={() => void wczytaj(meta.current_page + 1)}
-            />
-          )}
-        </>
-      )}
-    </Korzen>
+      {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
+    </>
   );
 }

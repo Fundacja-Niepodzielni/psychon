@@ -1,13 +1,65 @@
-/* Moduł CSS trasy `/nowy-front/po-programie` — wartości wyglądu wyłącznie
-   z tokenów (KO-1), zero zapisów wprost. */
-.uklad {
+/* Moduł CSS ekranu „Dalsza współpraca” — wartości wyglądu wyłącznie z
+   tokenów, zero zapisów wprost. Szerokość, odstępy obszarów i kolumny daje
+   szablon. */
+.karta {
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-24) var(--card-px);
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.odnosniki {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.historia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pozycja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+/* Plakietka statusu ma szerokość własnej treści, nie całego wiersza. */
+.plakietka {
+  align-self: flex-start;
+}
+
+.tresc {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.odpowiedz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--r-sm);
+  background: var(--card-warm);
 }
