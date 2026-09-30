@@ -173,7 +173,8 @@ const MENU_OCZEKIWANE = [
       ["Kursy", "/admin/kursy"],
       ["Słownik form stażu", "/admin/formy-stazu"],
     ],
-    linia: "W przygotowaniu: prowadzący · staż i superwizja.",
+    // Bez „staż i superwizja” — „Akceptacja stażu” i „Superwizje” są pozycjami menu („Dotychczasowy panel”).
+    linia: "W przygotowaniu: prowadzący.",
   },
   {
     naglowek: "Rozliczenie",

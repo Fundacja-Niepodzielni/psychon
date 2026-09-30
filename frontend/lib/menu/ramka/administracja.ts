@@ -32,7 +32,9 @@ import type { MenuEntry } from "../types";
  * - funkcje starego panelu bez miejsca w menu makiety — grupa na dole
  *   „Dotychczasowy panel” ze starymi wpisami (etykieta i adres wprost ze
  *   starego rejestru);
- * - linie „W przygotowaniu” z makiety, bez łączy; w „Rozliczeniu” bez
+ * - linie „W przygotowaniu” z makiety, bez łączy i bez funkcji obecnych
+ *   w menu: w „Programie” bez „staż i superwizja” (w menu „Akceptacja
+ *   stażu” i „Superwizje”); w „Rozliczeniu” bez
  *   „treści i dokumenty” (wzory dokumentów i ekran startowy są już pozycjami
  *   tej grupy).
  */
@@ -124,7 +126,8 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...pozycja(h08Kursy.href, "book", n.kursy),
         ...pozycja(cel(grupy, "formyStazu"), "clock", n.formyStazu),
       ],
-      wPrzygotowaniu: "prowadzący · staż i superwizja",
+      // Bez „staż i superwizja”: „Akceptacja stażu” i „Superwizje” są pozycjami menu („Dotychczasowy panel”).
+      wPrzygotowaniu: "prowadzący",
     },
     {
       naglowek: "Rozliczenie",

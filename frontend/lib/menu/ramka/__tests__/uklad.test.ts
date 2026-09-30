@@ -69,3 +69,12 @@ describe("liniaBezPozycjiMenu", () => {
     expect(liniaBezPozycjiMenu(undefined, menu)).toBeUndefined();
   });
 });
+
+describe("administracja — linia programu bez stażu i superwizji", () => {
+  it("żadna linia „W przygotowaniu” administracji nie wymienia stażu ani superwizji (obie funkcje są w menu)", () => {
+    const { grupy, grupaZwinieta } = ukladMenuRamki(menuRamkiAdministracji(), "/admin");
+    const linie = [...grupy, ...(grupaZwinieta ? [grupaZwinieta] : [])].map((g) => g.liniaWPrzygotowaniu ?? "");
+    expect(linie.join(" | ")).not.toMatch(/staż|superwizj/i);
+    expect(grupy.find((g) => g.naglowek === "Program")?.liniaWPrzygotowaniu).toBe("prowadzący");
+  });
+});
