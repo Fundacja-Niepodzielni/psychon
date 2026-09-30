@@ -207,8 +207,8 @@ interface Ekran {
   menu: string;
   /** Oczekiwany `h1`; dla szczegółu — wzorzec. */
   h1: string | RegExp;
-  /** Oczekiwany tytuł karty; `null` — szczegół rekordu (nazwa z danych, poza tą miarą). */
-  tytul: string | null;
+  /** Oczekiwany tytuł karty — także dla szczegółu rekordu (stały, bez danych osoby). */
+  tytul: string;
 }
 
 const EKRANY: Ekran[] = [
@@ -232,7 +232,7 @@ const EKRANY: Ekran[] = [
     adres: "/admin/profile/12",
     menu: "Profile psychologa",
     h1: /^Wniosek o profil: Ola Demo/,
-    tytul: null,
+    tytul: "Wniosek o profil — Niepodzielni",
   },
   {
     nazwa: "wzory-dokumentow",
@@ -353,6 +353,15 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
           const elementy = await okruszki.locator("li").count();
           await expect(okruszki.getByRole("link")).toHaveCount(elementy - 1);
         }
+        // Ekran szczegółu (adres inny niż adres pozycji menu): okruszki są drogą powrotu —
+        // pierwsze łącze ma nazwę i adres oznaczonej pozycji menu.
+        const adresMenu = MENU_OCZEKIWANE.flatMap((g) => g.pozycje).find(([nazwa]) => nazwa === ekran.menu)?.[1];
+        expect(adresMenu, `pozycja menu „${ekran.menu}” w MENU_OCZEKIWANE`).toBeTruthy();
+        if (adresMenu !== ekran.adres) {
+          const pierwszeLacze = okruszki.getByRole("link").first();
+          await expect(pierwszeLacze).toHaveText(ekran.menu);
+          await expect(pierwszeLacze).toHaveAttribute("href", adresMenu as string);
+        }
 
         // Axe na stanie spoczynku (menu zamknięte).
         const naruszenia = await uruchomAxe(page);
@@ -429,7 +438,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         expect(menu.przyciski).toEqual(["Wyloguj"]);
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
         expect((await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(ekran.menu);
-        if (ekran.tytul) await expect.soft(page, "tytuł karty").toHaveTitle(ekran.tytul);
+        await expect.soft(page, "tytuł karty").toHaveTitle(ekran.tytul);
 
         if (zrzuty && szerokosc < 1024) {
           await page.screenshot({ path: path.join(zrzuty, `ramka-${ekran.nazwa}-${szerokosc}-menu-z-danymi.png`) });

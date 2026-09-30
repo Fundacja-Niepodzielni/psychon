@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import "@/design-system/tokeny/tokeny.css";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
 import { GRUPY } from "@/lib/przelaczenie/grupy";
@@ -11,8 +12,12 @@ import StaraTresc from "./StaraTresc";
  * dotychczasowa treść (`StaraTresc.tsx`, przeniesiona bez zmiany; komponent
  * kliencki odpakowuje `params` przez `use()`); grupa włączona → ekran nowego
  * frontu w powłoce panelu administracji. `params` to Promise (Next.js 16).
- * Strona starej wersji nie miała własnego tytułu karty, więc nowa też nie ma.
+ * Tytuł karty: przy włączonej grupie „Wniosek o profil — Niepodzielni” (bez
+ * imienia i nazwiska — dane osoby nie trafiają do tytułu karty); przy
+ * wyłączonej — bez własnego tytułu, jak dotychczasowa strona.
  */
+export const metadata: Metadata = GRUPY.decyzjaProfilu.wlaczona ? { title: "Wniosek o profil — Niepodzielni" } : {};
+
 export default async function StronaWniosku({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 

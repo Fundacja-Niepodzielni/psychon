@@ -5,13 +5,15 @@ import { DetailTemplate } from "../DetailTemplate/DetailTemplate";
 import { PageHeader } from "../../organizmy/PageHeader/PageHeader";
 import { PanelNav } from "../../organizmy/PanelNav/PanelNav";
 import { DostawcaPowloki } from "../KontekstPowloki";
+import { DostawcaRamki } from "../KontekstRamki";
 
 /**
  * Szablon powłoki panelu (ramka z makiety 2.0.4) i nagłówek ekranu w tej
  * powłoce: jeden `main` pod `id="tresc"`, jeden link skoku, menu w `nav`
  * „Menu główne” z linią „W przygotowaniu”, grupa „Konto” z wylogowaniem,
- * rok programu tylko wtedy, gdy jest; nagłówek ekranu w powłoce bez
- * „Wstecz”, okruszki tylko z łączami — poza powłoką bez zmian.
+ * rok programu tylko wtedy, gdy jest; nagłówek ekranu w nowej ramce
+ * (`DostawcaRamki`, wstawiany przez powłokę) bez „Wstecz”, okruszki tylko
+ * z łączami — w starej powłoce (sam `DostawcaPowloki`) i bez dostawców bez zmian.
  */
 
 const GRUPY = [
@@ -127,7 +129,7 @@ describe("PanelNav poza powłoką", () => {
   });
 });
 
-describe("PageHeader w powłoce i poza nią", () => {
+describe("PageHeader w nowej ramce i poza nią", () => {
   const okruszkiListy = [{ etykieta: "Słownik form stażu" }];
   const okruszkiSzczegolu = [
     { etykieta: "Pulpit", href: "/admin" },
@@ -135,7 +137,7 @@ describe("PageHeader w powłoce i poza nią", () => {
     { etykieta: "Profil 12" },
   ];
 
-  it("poza powłoką: przycisk „Wstecz” i pełne okruszki, także bez łączy (bez zmian)", () => {
+  it("bez dostawców: przycisk „Wstecz” i pełne okruszki, także bez łączy (bez zmian)", () => {
     const onPowrot = vi.fn();
     render(<PageHeader okruszki={okruszkiListy} tytul="Słownik form stażu" onPowrot={onPowrot} />);
     fireEvent.click(screen.getByTestId("pageheader-powrot"));
@@ -143,11 +145,11 @@ describe("PageHeader w powłoce i poza nią", () => {
     expect(screen.getByRole("navigation", { name: "Okruszki" }).textContent).toContain("Słownik form stażu");
   });
 
-  it("w powłoce, ekran bez łączy w okruszkach: bez „Wstecz” i bez okruszków, tytuł zostaje", () => {
+  it("w nowej ramce, ekran bez łączy w okruszkach: bez „Wstecz” i bez okruszków, tytuł zostaje", () => {
     render(
-      <DostawcaPowloki>
+      <DostawcaRamki>
         <PageHeader okruszki={okruszkiListy} tytul="Słownik form stażu" onPowrot={() => {}} />
-      </DostawcaPowloki>,
+      </DostawcaRamki>,
     );
     expect(screen.queryByTestId("pageheader-powrot")).toBeNull();
     expect(screen.queryByRole("button", { name: "Wstecz" })).toBeNull();
@@ -158,28 +160,28 @@ describe("PageHeader w powłoce i poza nią", () => {
   it.each([
     ["jeden okruszek bez łącza", [{ etykieta: "Po programie" }]],
     ["dwa okruszki bez łącza", [{ etykieta: "Po programie" }, { etykieta: "Dalsza współpraca" }]],
-  ])("w powłoce, ekran „Po programie” (%s, z obsługą powrotu): bez „Wstecz”, bez okruszków, bez błędu", (_opis, okruszki) => {
+  ])("w nowej ramce, ekran „Po programie” (%s, z obsługą powrotu): bez „Wstecz”, bez okruszków, bez błędu", (_opis, okruszki) => {
     render(
-      <DostawcaPowloki>
+      <DostawcaRamki>
         <PageHeader okruszki={okruszki} tytul="Po programie" onPowrot={() => {}} />
-      </DostawcaPowloki>,
+      </DostawcaRamki>,
     );
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByRole("navigation", { name: "Okruszki" })).toBeNull();
     expect(screen.getByRole("heading", { level: 1, name: "Po programie" })).toBeTruthy();
   });
 
-  it("poza powłoką ten sam ekran „Po programie”: „Wstecz” i okruszki jak dotąd", () => {
+  it("bez dostawców ten sam ekran „Po programie”: „Wstecz” i okruszki jak dotąd", () => {
     render(<PageHeader okruszki={[{ etykieta: "Po programie" }]} tytul="Po programie" onPowrot={() => {}} />);
     expect(screen.getByRole("button", { name: "Wstecz" })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Okruszki" }).textContent).toContain("Po programie");
   });
 
-  it("w powłoce, ekran szczegółu: okruszki z łączami i bieżącą pozycją, bez „Wstecz”", () => {
+  it("w nowej ramce, ekran szczegółu: okruszki z łączami i bieżącą pozycją, bez „Wstecz”", () => {
     render(
-      <DostawcaPowloki>
+      <DostawcaRamki>
         <PageHeader okruszki={okruszkiSzczegolu} tytul="Profil 12" onPowrot={() => {}} />
-      </DostawcaPowloki>,
+      </DostawcaRamki>,
     );
     expect(screen.queryByTestId("pageheader-powrot")).toBeNull();
     const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
@@ -187,7 +189,39 @@ describe("PageHeader w powłoce i poza nią", () => {
     expect(okruszki.textContent).toContain("Profil 12");
   });
 
-  it("w powłoce: pozycje bez łącza w środku śladu odpadają, ostatnia zostaje", () => {
+  it("w nowej ramce: pozycje bez łącza w środku śladu odpadają, ostatnia zostaje", () => {
+    render(
+      <DostawcaRamki>
+        <PageHeader
+          okruszki={[{ etykieta: "Pulpit", href: "/admin" }, { etykieta: "Grupa bez adresu" }, { etykieta: "Profil 12" }]}
+          tytul="Profil 12"
+          onPowrot={() => {}}
+        />
+      </DostawcaRamki>,
+    );
+    const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
+    expect(okruszki.textContent).not.toContain("Grupa bez adresu");
+    expect(okruszki.textContent).toContain("Profil 12");
+  });
+
+  /**
+   * Stara powłoka (`PanelShell`) wstawia sam `DostawcaPowloki` („`main` niesie
+   * powłoka”). To nie jest nowa ramka: nagłówek zostaje jak przed nową ramką —
+   * „Wstecz” i pełne okruszki, także pozycje bez łącza.
+   */
+  it("sam DostawcaPowloki (stara powłoka), ekran listy: „Wstecz” działa i pełne okruszki bez łączy", () => {
+    const onPowrot = vi.fn();
+    render(
+      <DostawcaPowloki>
+        <PageHeader okruszki={okruszkiListy} tytul="Słownik form stażu" onPowrot={onPowrot} />
+      </DostawcaPowloki>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Wstecz" }));
+    expect(onPowrot).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("navigation", { name: "Okruszki" }).textContent).toContain("Słownik form stażu");
+  });
+
+  it("sam DostawcaPowloki (stara powłoka), ekran szczegółu: „Wstecz” i wszystkie okruszki, także bez łącza", () => {
     render(
       <DostawcaPowloki>
         <PageHeader
@@ -197,9 +231,36 @@ describe("PageHeader w powłoce i poza nią", () => {
         />
       </DostawcaPowloki>,
     );
+    expect(screen.getByTestId("pageheader-powrot")).toBeTruthy();
     const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
-    expect(okruszki.textContent).not.toContain("Grupa bez adresu");
+    expect(okruszki.textContent).toContain("Pulpit");
+    expect(okruszki.textContent).toContain("Grupa bez adresu");
     expect(okruszki.textContent).toContain("Profil 12");
+  });
+
+  it("sam DostawcaPowloki, ekran „Po programie”: „Wstecz” i okruszki jak bez dostawców", () => {
+    render(
+      <DostawcaPowloki>
+        <PageHeader okruszki={[{ etykieta: "Po programie" }]} tytul="Po programie" onPowrot={() => {}} />
+      </DostawcaPowloki>,
+    );
+    expect(screen.getByRole("button", { name: "Wstecz" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Okruszki" }).textContent).toContain("Po programie");
+  });
+
+  it("PowlokaPanelu wstawia dostawcę nowej ramki: nagłówek ekranu bez „Wstecz”, okruszki tylko z łączami", () => {
+    render(
+      <PowlokaPanelu uzytkownik={{ imie: "Ewa", nazwisko: "Demo", rola: "administracja Fundacji" }} grupy={GRUPY} onWyloguj={() => {}}>
+        <PageHeader
+          okruszki={[{ etykieta: "Profile psychologa", href: "/admin/profile" }, { etykieta: "Wniosek o profil" }]}
+          tytul="Wniosek o profil: Ola Demo"
+          onPowrot={() => {}}
+        />
+      </PowlokaPanelu>,
+    );
+    expect(screen.queryByTestId("pageheader-powrot")).toBeNull();
+    const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
+    expect(within(okruszki).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/admin/profile"]);
   });
 });
 

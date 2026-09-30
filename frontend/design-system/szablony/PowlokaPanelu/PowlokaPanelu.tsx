@@ -5,6 +5,7 @@ import { Button } from "../../atomy/Button/Button";
 import { Icon } from "../../atomy/Icon/Icon";
 import { PanelNav } from "../../organizmy/PanelNav/PanelNav";
 import { DostawcaPowloki } from "../KontekstPowloki";
+import { DostawcaRamki } from "../KontekstRamki";
 import style from "./PowlokaPanelu.module.css";
 
 type WlasciwosciNawigacji = ComponentProps<typeof PanelNav>;
@@ -45,7 +46,9 @@ interface WlasciwosciPowlokiPanelu {
  *
  * Powłoka niesie jedyny link skoku „Przejdź do treści” i jedyny `main` pod
  * `id="tresc"`; treść dostaje `DostawcaPowloki`, więc szablon ekranu
- * renderuje zwykły `div` zamiast drugiego `main`.
+ * renderuje zwykły `div` zamiast drugiego `main`, oraz `DostawcaRamki`, po
+ * którym nagłówek ekranu poznaje nową ramkę (bez „Wstecz”, okruszki tylko
+ * z łączami). Stara powłoka `PanelShell` wstawia tylko `DostawcaPowloki`.
  */
 export function PowlokaPanelu({
   logo,
@@ -179,7 +182,9 @@ export function PowlokaPanelu({
         </header>
 
         <main id="tresc" tabIndex={-1} className={style.tresc}>
-          <DostawcaPowloki>{children}</DostawcaPowloki>
+          <DostawcaPowloki>
+            <DostawcaRamki>{children}</DostawcaRamki>
+          </DostawcaPowloki>
         </main>
       </div>
     </div>
