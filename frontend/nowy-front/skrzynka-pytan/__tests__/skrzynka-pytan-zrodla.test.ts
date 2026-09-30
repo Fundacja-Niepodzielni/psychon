@@ -189,6 +189,7 @@ describe("zgodność z zapleczem", () => {
     expect([...new Set(wywolane)].sort()).toEqual([
       "/instructor/questions/{id}/answer",
       "/instructor/questions?answered=false&page={id}",
+      "/instructor/questions?page={id}",
     ]);
   });
 
@@ -218,5 +219,17 @@ describe("zgodność z zapleczem", () => {
     expect(kontroler).toContain("'unanswered' =>");
     expect(kontroler).toContain("new ApiException(404, 'not_found'");
     expect(kontroler).toContain("new ApiException(403, 'entry_locked'");
+  });
+
+  it("filtr widoku: kontroler czyta wyłącznie parametr answered (obecny = filtr, brak = wszystkie), a ekran wysyła go tylko w widoku „bez-odpowiedzi”", () => {
+    const kontroler = tresc(join(ZAPLECZE, "app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php"));
+    const indeks = kontroler.slice(kontroler.indexOf("public function index"), kontroler.indexOf("public function answer"));
+    const parametry = [...indeks.matchAll(/\$request->(?:has|boolean|integer|input|query|get|string)\('([a-z_]+)'/g)].map((m) => m[1]);
+    expect([...new Set(parametry)].sort()).toEqual(["answered", "per_page"]);
+    expect(indeks).toMatch(/if \(\$request->has\('answered'\)\) \{\s*\$request->boolean\('answered'\)/);
+
+    const bezKomentarz = bezKomentarzy(dane);
+    expect(bezKomentarz).toMatch(/if \(widok === "wszystkie"\) return apiPaged<PytanieSkrzynki>\(`\/instructor\/questions\?page=\$\{strona\}`\);/);
+    expect(bezKomentarz).toMatch(/return apiPaged<PytanieSkrzynki>\(`\/instructor\/questions\?answered=false&page=\$\{strona\}`\);/);
   });
 });

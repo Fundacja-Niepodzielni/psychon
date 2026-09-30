@@ -23,3 +23,9 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.podgladOdpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}

@@ -5,12 +5,15 @@ import {
   bladPolaOdpowiedzi,
   formatujDate,
   liczbaBezOdpowiedzi,
+  OPCJE_WIDOKU,
   odmianaPytan,
   opisLicznika,
   opisPytania,
   rodzajBledu,
   stronaDoWczytania,
+  tekstPustegoStanu,
   wierszePytan,
+  zastapPytanie,
   zdejmijPytanie,
 } from "../logika";
 
@@ -26,6 +29,14 @@ const PYTANIE = {
   updated_at: "2026-09-29T10:15:00Z",
   user: { id: 17, first_name: "Marta", last_name: "Demo" },
   lesson: { id: 21, title: "Wprowadzenie do wywiadu", course: { id: 3, slug: "wywiad", title: "Wywiad psychologiczny" } },
+} satisfies PytanieSkrzynki;
+
+const ODPOWIEDZIANE = {
+  ...PYTANIE,
+  answer: "Około 40 minut.",
+  answered_by: 5,
+  answered_by_name: "Joanna Demo",
+  answered_at: "2026-09-30T08:00:00Z",
 } satisfies PytanieSkrzynki;
 
 const DRUGIE = { ...PYTANIE, id: 12, question: "Drugie pytanie?" } satisfies PytanieSkrzynki;
@@ -93,13 +104,75 @@ describe("wiersze listy", () => {
 
   it("wiersz niesie treść pytania jako tytuł i akcję „Odpowiedz”, która woła wywołanie z pytaniem", () => {
     const naOdpowiedz = vi.fn();
-    const wiersze = wierszePytan([PYTANIE, DRUGIE], naOdpowiedz);
+    const naPodglad = vi.fn();
+    const wiersze = wierszePytan([PYTANIE, DRUGIE], naOdpowiedz, naPodglad);
     expect(wiersze.map((wiersz) => [wiersz.id, wiersz.tytul, wiersz.akcja.etykieta])).toEqual([
       ["11", PYTANIE.question, "Odpowiedz"],
       ["12", DRUGIE.question, "Odpowiedz"],
     ]);
     wiersze[1].akcja.onKliknij?.();
     expect(naOdpowiedz).toHaveBeenCalledWith(DRUGIE);
+    expect(naPodglad).not.toHaveBeenCalled();
+  });
+
+  it("pytanie z odpowiedzią: plakietka „Odpowiedziane” i akcja „Zobacz odpowiedź” wołająca podgląd; bez odpowiedzi — „Oczekuje”", () => {
+    const naOdpowiedz = vi.fn();
+    const naPodglad = vi.fn();
+    const wiersze = wierszePytan([PYTANIE, ODPOWIEDZIANE], naOdpowiedz, naPodglad);
+    expect(wiersze.map((wiersz) => [wiersz.plakietka?.tekst, wiersz.plakietka?.wariant, wiersz.akcja.etykieta])).toEqual([
+      ["Oczekuje", "pending", "Odpowiedz"],
+      ["Odpowiedziane", "ok", "Zobacz odpowiedź"],
+    ]);
+    wiersze[1].akcja.onKliknij?.();
+    expect(naPodglad).toHaveBeenCalledWith(ODPOWIEDZIANE);
+    expect(naOdpowiedz).not.toHaveBeenCalled();
+  });
+});
+
+describe("widok listy", () => {
+  it("opcje filtra: „Tylko nieodpowiedziane” pierwsza (domyślna), potem „Pokaż wszystkie”", () => {
+    expect(OPCJE_WIDOKU).toEqual([
+      { wartosc: "bez-odpowiedzi", etykieta: "Tylko nieodpowiedziane" },
+      { wartosc: "wszystkie", etykieta: "Pokaż wszystkie" },
+    ]);
+  });
+
+  it("osobny stan pusty i tytuł listy dla każdego widoku", () => {
+    const bez = tekstPustegoStanu("bez-odpowiedzi");
+    const wszystkie = tekstPustegoStanu("wszystkie");
+    expect(bez.naglowek).toBe("Brak pytań bez odpowiedzi");
+    expect(wszystkie.naglowek).toBe("Nie masz jeszcze żadnych pytań");
+    expect(bez.tytulListy).not.toBe(wszystkie.tytulListy);
+    expect(bez.tresc).not.toBe(wszystkie.tresc);
+  });
+});
+
+describe("zastapPytanie", () => {
+  const STRONA = {
+    data: [PYTANIE, DRUGIE],
+    meta: { current_page: 1, per_page: 25, total: 2, last_page: 1, extra: { unanswered: 2 } },
+  } satisfies StronaPytan;
+
+  it("podmienia pytanie na wersję z odpowiedzią, zostawia sumę, zmniejsza licznik o jeden, nie zmienia wejścia", () => {
+    const wynik = zastapPytanie(STRONA, ODPOWIEDZIANE);
+    expect(wynik.data.map((p) => [p.id, p.answer])).toEqual([
+      [11, ODPOWIEDZIANE.answer],
+      [12, null],
+    ]);
+    expect(wynik.meta).toMatchObject({ total: 2, extra: { unanswered: 1 } });
+    expect(STRONA.data[0].answer).toBeNull();
+    expect(STRONA.meta.extra.unanswered).toBe(2);
+  });
+
+  it("pytanie już odpowiedziane nie zmniejsza licznika drugi raz; pytanie spoza strony nic nie zmienia", () => {
+    const juz = { data: [ODPOWIEDZIANE, DRUGIE], meta: { ...STRONA.meta, extra: { unanswered: 1 } } } satisfies StronaPytan;
+    expect(zastapPytanie(juz, { ...ODPOWIEDZIANE, answer: "Poprawiona." }).meta).toMatchObject({ extra: { unanswered: 1 } });
+    expect(zastapPytanie(STRONA, { ...ODPOWIEDZIANE, id: 999 })).toBe(STRONA);
+  });
+
+  it("licznik nie schodzi poniżej zera", () => {
+    const zero = { data: [PYTANIE], meta: { current_page: 1, per_page: 25, total: 1, last_page: 1, extra: { unanswered: 0 } } } satisfies StronaPytan;
+    expect(zastapPytanie(zero, ODPOWIEDZIANE).meta).toMatchObject({ extra: { unanswered: 0 } });
   });
 });
 

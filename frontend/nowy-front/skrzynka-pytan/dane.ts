@@ -5,8 +5,10 @@ import { api, apiPaged, type PaginationMeta } from "@/lib/api/klient";
  * `backend/routes/api/h17.php`:
  *  - `GET /instructor/questions` (w. 37) — `InstructorQuestionController::index`
  *    (`backend/app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php:21-59`),
- *    filtr `answered=false` (w. 29-33), stronicowanie (`per_page` 25), licznik
- *    bez odpowiedzi w `meta.extra.unanswered` (w. 50-56);
+ *    filtr `answered` (w. 29-33: `$request->has('answered')` i
+ *    `$request->boolean('answered')` — brak parametru oznacza wszystkie pytania),
+ *    stronicowanie (`per_page` 25), licznik bez odpowiedzi w
+ *    `meta.extra.unanswered` (w. 50-56);
  *  - `POST /instructor/questions/{id}/answer` (w. 38) — `answer` (w. 61-102),
  *    ciało `{ answer }`, reguły w `AnswerQuestionRequest::rules` (w. 19-22):
  *    wymagane, 1-5000 znaków, przycinane przed walidacją.
@@ -66,7 +68,16 @@ export interface StronaPytan {
 /** Limit znaków odpowiedzi — `AnswerQuestionRequest` (`max:5000`). */
 export const LIMIT_ODPOWIEDZI = 5000;
 
-export function pobierzPytaniaBezOdpowiedzi(strona: number): Promise<StronaPytan> {
+/** Widok listy: „Tylko nieodpowiedziane” (domyślny, jak na poprzedniej stronie) albo „Pokaż wszystkie”. */
+export type WidokPytan = "bez-odpowiedzi" | "wszystkie";
+
+/**
+ * Widok „bez-odpowiedzi” prosi o `answered=false`; widok „wszystkie” nie
+ * wysyła parametru `answered` wcale (kontroler filtruje tylko wtedy, gdy
+ * parametr jest obecny — `InstructorQuestionController.php:29-33`).
+ */
+export function pobierzPytania(widok: WidokPytan, strona: number): Promise<StronaPytan> {
+  if (widok === "wszystkie") return apiPaged<PytanieSkrzynki>(`/instructor/questions?page=${strona}`);
   return apiPaged<PytanieSkrzynki>(`/instructor/questions?answered=false&page=${strona}`);
 }
 

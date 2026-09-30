@@ -1,6 +1,6 @@
 import { ApiError, type PaginationMeta } from "@/lib/api/klient";
 import type { WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
-import type { PytanieSkrzynki, StronaPytan } from "./dane";
+import type { PytanieSkrzynki, StronaPytan, WidokPytan } from "./dane";
 
 /**
  * Logika ekranu „Skrzynka pytań” bez Reacta: klasyfikacja błędów serwera,
@@ -71,14 +71,71 @@ export function opisPytania(pytanie: PytanieSkrzynki): string {
   return [autor, pytanie.lesson.course.title, pytanie.lesson.title, formatujDate(pytanie.created_at)].join(" · ");
 }
 
-/** Wiersze `RecordList`: treść pytania jako tekst, akcja „Odpowiedz”. */
-export function wierszePytan(pytania: PytanieSkrzynki[], naOdpowiedz: (pytanie: PytanieSkrzynki) => void): WierszRecordList[] {
-  return pytania.map((pytanie) => ({
-    id: String(pytanie.id),
-    tytul: pytanie.question,
-    podpowiedz: opisPytania(pytanie),
-    akcja: { etykieta: "Odpowiedz", onKliknij: () => naOdpowiedz(pytanie) },
-  }));
+/** Opcje filtra widoku — etykiety jak na poprzedniej stronie. */
+export const OPCJE_WIDOKU: { wartosc: WidokPytan; etykieta: string }[] = [
+  { wartosc: "bez-odpowiedzi", etykieta: "Tylko nieodpowiedziane" },
+  { wartosc: "wszystkie", etykieta: "Pokaż wszystkie" },
+];
+
+/** Tytuł listy i osobny stan pusty dla każdego widoku. */
+export function tekstPustegoStanu(widok: WidokPytan): { tytulListy: string; naglowek: string; tresc: string } {
+  if (widok === "wszystkie") {
+    return {
+      tytulListy: "Wszystkie pytania",
+      naglowek: "Nie masz jeszcze żadnych pytań",
+      tresc: "Gdy uczestnik zada pytanie przy lekcji Twojego kursu, pojawi się tutaj.",
+    };
+  }
+  return {
+    tytulListy: "Pytania bez odpowiedzi",
+    naglowek: "Brak pytań bez odpowiedzi",
+    tresc: "Gdy uczestnik zada nowe pytanie przy lekcji Twojego kursu, pojawi się tutaj.",
+  };
+}
+
+/**
+ * Wiersze `RecordList`: treść pytania jako tekst; bez odpowiedzi — plakietka
+ * „Oczekuje” i akcja „Odpowiedz”, z odpowiedzią — plakietka „Odpowiedziane” i
+ * akcja „Zobacz odpowiedź” (podgląd bez formularza).
+ */
+export function wierszePytan(
+  pytania: PytanieSkrzynki[],
+  naOdpowiedz: (pytanie: PytanieSkrzynki) => void,
+  naPodglad: (pytanie: PytanieSkrzynki) => void,
+): WierszRecordList[] {
+  return pytania.map((pytanie) => {
+    const odpowiedziane = pytanie.answer !== null;
+    return {
+      id: String(pytanie.id),
+      tytul: pytanie.question,
+      podpowiedz: opisPytania(pytanie),
+      plakietka: odpowiedziane
+        ? { wariant: "ok", tekst: "Odpowiedziane" }
+        : { wariant: "pending", tekst: "Oczekuje" },
+      akcja: odpowiedziane
+        ? { etykieta: "Zobacz odpowiedź", onKliknij: () => naPodglad(pytanie) }
+        : { etykieta: "Odpowiedz", onKliknij: () => naOdpowiedz(pytanie) },
+    };
+  });
+}
+
+/**
+ * Strona, na której pytanie zostaje i dostaje odpowiedź z serwera (widok
+ * „Pokaż wszystkie”); licznik bez odpowiedzi maleje tylko wtedy, gdy pytanie
+ * do tej pory nie miało odpowiedzi.
+ */
+export function zastapPytanie(strona: StronaPytan, odpowiedziane: PytanieSkrzynki): StronaPytan {
+  const dotychczasowe = strona.data.find((pytanie) => pytanie.id === odpowiedziane.id);
+  if (dotychczasowe === undefined) return strona;
+  const meta = strona.meta;
+  const nieodpowiedziane = meta?.extra?.unanswered;
+  return {
+    data: strona.data.map((pytanie) => (pytanie.id === odpowiedziane.id ? odpowiedziane : pytanie)),
+    meta:
+      meta === undefined || dotychczasowe.answer !== null || typeof nieodpowiedziane !== "number"
+        ? meta
+        : { ...meta, extra: { ...meta.extra, unanswered: Math.max(nieodpowiedziane - 1, 0) } },
+  };
 }
 
 function pomniejsz(meta: PaginationMeta | undefined): PaginationMeta | undefined {

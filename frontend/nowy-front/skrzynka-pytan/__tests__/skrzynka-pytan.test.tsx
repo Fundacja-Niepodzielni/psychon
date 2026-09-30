@@ -83,6 +83,28 @@ const ODPOWIEDZIANE = {
   answered_at: "2026-09-30T08:00:00Z",
 } satisfies PytanieSkrzynki;
 
+const ODPOWIEDZ_Z_HTML = '<img src=x onerror="window.zlo=3"> <script>window.zlo=4</script> Zapytaj o <b>dyżur</b>.';
+
+const ODPOWIEDZIANE_Z_HTML = {
+  ...PYTANIE_DRUGIE,
+  id: 14,
+  question: "Jak zapisać notatkę po dyżurze?",
+  answer: ODPOWIEDZ_Z_HTML,
+  answered_by: 5,
+  answered_by_name: "Joanna Demo",
+  answered_at: "2026-09-30T09:30:00Z",
+} satisfies PytanieSkrzynki;
+
+const WSZYSTKIE = {
+  data: [PYTANIE_PIERWSZE, ODPOWIEDZIANE_Z_HTML],
+  meta: { current_page: 1, per_page: 25, total: 2, last_page: 1, extra: { unanswered: 1 } },
+} satisfies StronaPytan;
+
+const NIC_NIE_ZADANO = {
+  data: [],
+  meta: { current_page: 1, per_page: 25, total: 0, last_page: 1, extra: { unanswered: 0 } },
+} satisfies StronaPytan;
+
 beforeEach(() => {
   api.mockReset();
   apiPaged.mockReset();
@@ -381,5 +403,207 @@ describe("Skrzynka pytań — odpowiedź", () => {
     expect(screen.getByText(PYTANIE_PIERWSZE.question)).toBeInTheDocument();
     expect(przyciskiOdpowiedz()).toHaveLength(2);
     expect(api).not.toHaveBeenCalled();
+  });
+});
+
+describe("Skrzynka pytań — filtr widoku i podgląd odpowiedzi", () => {
+  /** Zwraca dane zależnie od adresu: bez `answered` — wszystkie, z `answered=false` — bez odpowiedzi. */
+  function odpowiadajWgAdresu(bezOdpowiedzi: StronaPytan, wszystkie: StronaPytan) {
+    apiPaged.mockImplementation((adres: string) => Promise.resolve(adres.includes("answered=false") ? bezOdpowiedzi : wszystkie));
+  }
+
+  async function wybierzWidok(uzytkownik: ReturnType<typeof userEvent.setup>, etykieta: string) {
+    await uzytkownik.click(screen.getByRole("combobox", { name: "Które pytania pokazać" }));
+    await uzytkownik.click(screen.getByRole("option", { name: etykieta }));
+  }
+
+  it("domyślnie „Tylko nieodpowiedziane” (jak na poprzedniej stronie): filtr to pole wyboru, nie surowy przycisk, z dwiema opcjami", async () => {
+    const uzytkownik = userEvent.setup();
+    odpowiadajWgAdresu(DWA_PYTANIA, WSZYSTKIE);
+    const { container } = render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+    const filtr = screen.getByRole("combobox", { name: "Które pytania pokazać" });
+    expect(filtr).toHaveTextContent("Tylko nieodpowiedziane");
+    expect(apiPaged).toHaveBeenCalledTimes(1);
+    expect(apiPaged).toHaveBeenCalledWith("/instructor/questions?answered=false&page=1");
+    expect(container.querySelector("select")).toBeNull();
+
+    await uzytkownik.click(filtr);
+    expect(screen.getAllByRole("option").map((opcja) => opcja.textContent)).toEqual(["Tylko nieodpowiedziane", "Pokaż wszystkie"]);
+  });
+
+  it("zmiana filtra zmienia listę: „Pokaż wszystkie” prosi bez parametru answered i pokazuje pytania z odpowiedzią; powrót przywraca samą kolejkę", async () => {
+    const uzytkownik = userEvent.setup();
+    odpowiadajWgAdresu(DWA_PYTANIA, WSZYSTKIE);
+    const { container } = render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_DRUGIE.question);
+    expect(screen.getByText("Pytania bez odpowiedzi")).toBeInTheDocument();
+
+    await wybierzWidok(uzytkownik, "Pokaż wszystkie");
+
+    expect(await screen.findByText("Wszystkie pytania")).toBeInTheDocument();
+    expect(apiPaged).toHaveBeenLastCalledWith("/instructor/questions?page=1");
+    expect(apiPaged.mock.calls.at(-1)?.[0]).not.toContain("answered");
+    expect(screen.getByRole("combobox", { name: "Które pytania pokazać" })).toHaveTextContent("Pokaż wszystkie");
+    expect(screen.queryByText(PYTANIE_DRUGIE.question)).toBeNull();
+    expect(screen.getByText(ODPOWIEDZIANE_Z_HTML.question)).toBeInTheDocument();
+    expect(screen.getByText("Odpowiedziane")).toBeInTheDocument();
+    expect(screen.getByText("Oczekuje")).toBeInTheDocument();
+    expect(screen.getByText("1 pytanie bez odpowiedzi")).toBeInTheDocument();
+    expect(przyciskiOdpowiedz()).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Zobacz odpowiedź" })).toHaveLength(1);
+    sprawdzSzablon(container);
+
+    await wybierzWidok(uzytkownik, "Tylko nieodpowiedziane");
+
+    expect(await screen.findByText("Pytania bez odpowiedzi")).toBeInTheDocument();
+    expect(apiPaged).toHaveBeenLastCalledWith("/instructor/questions?answered=false&page=1");
+    expect(screen.getByText(PYTANIE_DRUGIE.question)).toBeInTheDocument();
+    expect(screen.queryByText(ODPOWIEDZIANE_Z_HTML.question)).toBeNull();
+  });
+
+  it("próba kontrolna filtra: listy obu widoków różnią się treścią, więc sprawdzenie zmiany listy nie przechodzi trywialnie", () => {
+    const tekstyBez = DWA_PYTANIA.data.map((p) => p.question).sort();
+    const tekstyWszystkie = WSZYSTKIE.data.map((p) => p.question).sort();
+    expect(tekstyBez).not.toEqual(tekstyWszystkie);
+  });
+
+  it("stronicowanie w widoku „Pokaż wszystkie” używa tego widoku (bez answered)", async () => {
+    const uzytkownik = userEvent.setup();
+    apiPaged.mockImplementation((adres: string) =>
+      Promise.resolve({
+        data: [adres.includes("answered=false") ? PYTANIE_PIERWSZE : ODPOWIEDZIANE_Z_HTML],
+        meta: { current_page: 1, per_page: 1, total: 2, last_page: 2, extra: { unanswered: 1 } },
+      } satisfies StronaPytan),
+    );
+    render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+    await wybierzWidok(uzytkownik, "Pokaż wszystkie");
+    await screen.findByText(ODPOWIEDZIANE_Z_HTML.question);
+    await uzytkownik.click(screen.getByRole("button", { name: "Następna" }));
+
+    await waitFor(() => expect(apiPaged).toHaveBeenLastCalledWith("/instructor/questions?page=2"));
+  });
+
+  it("odpowiedź pokazana jako dosłowny tekst: zero elementów i zero wykonania z HTML w odpowiedzi, bez formularza i bez przycisku głównego", async () => {
+    const uzytkownik = userEvent.setup();
+    odpowiadajWgAdresu(DWA_PYTANIA, WSZYSTKIE);
+    const { container } = render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_DRUGIE.question);
+    await wybierzWidok(uzytkownik, "Pokaż wszystkie");
+    await screen.findByText(ODPOWIEDZIANE_Z_HTML.question);
+    await uzytkownik.click(screen.getByRole("button", { name: "Zobacz odpowiedź" }));
+
+    expect(screen.getByRole("heading", { level: 2, name: "Twoja odpowiedź" })).toBeInTheDocument();
+    expect(screen.getByText(ODPOWIEDZ_Z_HTML)).toBeInTheDocument();
+    expect(screen.getByText(ODPOWIEDZIANE_Z_HTML.question)).toBeInTheDocument();
+    expect(screen.getByText(/30\.09\.2026/)).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("script")).toBeNull();
+    expect(container.querySelector("b")).toBeNull();
+    expect("zlo" in window).toBe(false);
+    expect(screen.queryByRole("form")).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij odpowiedź" })).toBeNull();
+    expect(przyciskiGlowne(container)).toHaveLength(0);
+    sprawdzSzablon(container);
+
+    await uzytkownik.click(screen.getByRole("button", { name: "Wróć do listy" }));
+    expect(screen.getByText("Wszystkie pytania")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Które pytania pokazać" })).toHaveTextContent("Pokaż wszystkie");
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it("próba kontrolna odpowiedzi: to samo sprawdzenie widzi element, gdy odpowiedź jest naprawdę wstrzyknięta jako HTML", () => {
+    const { container } = render(<div dangerouslySetInnerHTML={{ __html: ODPOWIEDZ_Z_HTML }} />);
+    expect(container.querySelector("img")).not.toBeNull();
+    expect(container.querySelector("b")).not.toBeNull();
+  });
+
+  it("w widoku „Pokaż wszystkie” pytanie zostaje po odpowiedzi, z odpowiedzią, licznik maleje, Toast potwierdza; lista nie jest wczytywana ponownie", async () => {
+    const uzytkownik = userEvent.setup();
+    odpowiadajWgAdresu(DWA_PYTANIA, WSZYSTKIE);
+    api.mockResolvedValue(ODPOWIEDZIANE);
+    const { container } = render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+    await wybierzWidok(uzytkownik, "Pokaż wszystkie");
+    await screen.findByText("Wszystkie pytania");
+    const wywolanPrzed = apiPaged.mock.calls.length;
+    await uzytkownik.click(przyciskiOdpowiedz()[0]);
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Odpowiedź/ }), ODPOWIEDZ);
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij odpowiedź" }));
+
+    expect(await screen.findByText("Odpowiedź wysłana.")).toBeInTheDocument();
+    expect(api).toHaveBeenCalledWith("/instructor/questions/11/answer", { method: "POST", body: { answer: ODPOWIEDZ } });
+    expect(screen.getByText(PYTANIE_PIERWSZE.question)).toBeInTheDocument();
+    expect(screen.getByText("0 pytań bez odpowiedzi")).toBeInTheDocument();
+    expect(przyciskiOdpowiedz()).toHaveLength(0);
+    expect(screen.getAllByRole("button", { name: "Zobacz odpowiedź" })).toHaveLength(2);
+    expect(apiPaged).toHaveBeenCalledTimes(wywolanPrzed);
+    sprawdzSzablon(container);
+
+    await uzytkownik.click(screen.getAllByRole("button", { name: "Zobacz odpowiedź" })[0]);
+    expect(screen.getByText(ODPOWIEDZ)).toBeInTheDocument();
+  });
+
+  it("osobne stany puste: bez odpowiedzi — „Brak pytań bez odpowiedzi”, wszystkie — „Nie masz jeszcze żadnych pytań”", async () => {
+    const uzytkownik = userEvent.setup();
+    odpowiadajWgAdresu(PUSTA_SKRZYNKA, NIC_NIE_ZADANO);
+    const { container } = render(<SkrzynkaPytan />);
+
+    expect(await screen.findByText("Brak pytań bez odpowiedzi")).toBeInTheDocument();
+    expect(screen.queryByText("Nie masz jeszcze żadnych pytań")).toBeNull();
+
+    await wybierzWidok(uzytkownik, "Pokaż wszystkie");
+
+    expect(await screen.findByText("Nie masz jeszcze żadnych pytań")).toBeInTheDocument();
+    expect(screen.queryByText("Brak pytań bez odpowiedzi")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Które pytania pokazać" })).toHaveTextContent("Pokaż wszystkie");
+    sprawdzSzablon(container);
+  });
+
+  it("jeden main i najwyżej jeden przycisk główny w stanach widoku: ładowanie, błąd, dane", async () => {
+    const uzytkownik = userEvent.setup();
+    odpowiadajWgAdresu(DWA_PYTANIA, WSZYSTKIE);
+    const { container } = render(<SkrzynkaPytan />);
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+
+    apiPaged.mockReturnValue(new Promise(() => {}));
+    await wybierzWidok(uzytkownik, "Pokaż wszystkie");
+    sprawdzSzablon(container);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(przyciskiGlowne(container).length).toBeLessThanOrEqual(1);
+
+    apiPaged.mockRejectedValue(new TypeError("Failed to fetch"));
+    await wybierzWidok(uzytkownik, "Tylko nieodpowiedziane");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Nie udało się wczytać pytań");
+    sprawdzSzablon(container);
+    expect(przyciskiGlowne(container).length).toBeLessThanOrEqual(1);
+    expect(screen.getByRole("combobox", { name: "Które pytania pokazać" })).toHaveTextContent("Tylko nieodpowiedziane");
+
+    apiPaged.mockResolvedValue(WSZYSTKIE);
+    await uzytkownik.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
+    await screen.findByText(ODPOWIEDZIANE_Z_HTML.question);
+    sprawdzSzablon(container);
+    expect(przyciskiGlowne(container).length).toBeLessThanOrEqual(1);
+  });
+
+  it("odmowa z powodu roli przy zmianie filtra: stan odmowy, zero pytań w DOM", async () => {
+    const uzytkownik = userEvent.setup();
+    apiPaged.mockResolvedValueOnce(DWA_PYTANIA);
+    const { container } = render(<SkrzynkaPytan />);
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+
+    apiPaged.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tej sekcji." }));
+    await wybierzWidok(uzytkownik, "Pokaż wszystkie");
+
+    expect(await screen.findByText(/prowadzących/)).toBeInTheDocument();
+    expect(container.textContent).not.toContain(PYTANIE_PIERWSZE.question);
+    sprawdzSzablon(container);
   });
 });
