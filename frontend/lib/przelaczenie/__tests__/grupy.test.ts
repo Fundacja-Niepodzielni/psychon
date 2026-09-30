@@ -120,20 +120,29 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna dwanaście grup dzisiejszego kanonu", () => {
+  it("zna dwadzieścia jeden grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
+      "decyzjaProfilu",
+      "decyzjaZgloszenia",
+      "edycjaLekcji",
+      "ekranStartowy",
       "formyStazu",
       "kartaOsoby",
       "kurs",
       "lekcja",
+      "noweKonto",
       "powiadomienia",
+      "przedluzenieDostepu",
       "publikacjaKursu",
       "pulpitAdministracji",
       "pulpitProwadzacego",
       "pulpitUczestnika",
       "sprawy",
       "superwizje",
+      "ustawieniaProgramu",
       "wspolpraca",
+      "wzoryDokumentow",
+      "zaproszeniaNaKurs",
     ]);
   });
 

@@ -223,7 +223,10 @@ export const GRUPY = {
       },
     ],
   },
-  /** Publikacja kursu w administracji — ten sam adres co dzisiejszy szczegół kursu. */
+  /**
+   * Publikacja kursu w administracji — ten sam adres co dzisiejszy szczegół kursu.
+   * Publikacja jest sekcją ekranu kursu (`/admin/kursy/[id]`), nie osobną trasą.
+   */
   publikacjaKursu: {
     klucz: "publikacjaKursu",
     wlaczona: false,
@@ -233,6 +236,135 @@ export const GRUPY = {
         staraTrasa: "/admin/kursy/[id]",
         nowaTrasa: "/admin/kursy/[id]",
         trasaPoligonu: "/nowy-front/admin/kursy/[id]/publikacja",
+      },
+    ],
+  },
+  /**
+   * Decyzja o zgłoszeniu rekrutacyjnym (H03) — dziś zgłoszenia obsługuje zakładka
+   * „Zgłoszenia” na liście osób administracji, bez osobnej trasy zgłoszenia.
+   */
+  decyzjaZgloszenia: {
+    klucz: "decyzjaZgloszenia",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/uczestniczki",
+        nowaTrasa: "/admin/uczestniczki",
+        trasaPoligonu: "/nowy-front/admin/zgloszenia/[id]",
+      },
+    ],
+  },
+  /** Decyzja o wniosku o profil psychologa (H15) — ten sam adres co dzisiejszy szczegół wniosku. */
+  decyzjaProfilu: {
+    klucz: "decyzjaProfilu",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/profile/[id]",
+        nowaTrasa: "/admin/profile/[id]",
+        trasaPoligonu: "/nowy-front/admin/profile/[id]",
+      },
+    ],
+  },
+  /**
+   * Nowe konto poza rekrutacją (H18) — funkcji w starym froncie nie ma; ekran
+   * powstaje przy karcie osoby administracji.
+   */
+  noweKonto: {
+    klucz: "noweKonto",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: null,
+        nowaTrasa: "/admin/uczestniczki/[id]",
+        trasaPoligonu: "/nowy-front/admin/osoby/nowa",
+      },
+    ],
+  },
+  /**
+   * Zaproszenia na kurs (H08) — dziś panel zaproszeń na stronie szczegółu kursu,
+   * ten sam adres.
+   */
+  zaproszeniaNaKurs: {
+    klucz: "zaproszeniaNaKurs",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/kursy/[id]",
+        nowaTrasa: "/admin/kursy/[id]",
+        trasaPoligonu: "/nowy-front/admin/kursy/[id]/zaproszenia",
+      },
+    ],
+  },
+  /** Wzory dokumentów z wersjami (H14) — ten sam adres co dzisiejszy ekran wzorów. */
+  wzoryDokumentow: {
+    klucz: "wzoryDokumentow",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/wzory-dokumentow",
+        nowaTrasa: "/admin/wzory-dokumentow",
+        trasaPoligonu: "/nowy-front/admin/wzory-dokumentow",
+      },
+    ],
+  },
+  /**
+   * Przedłużenie dostępu osoby (H04) — funkcji w starym froncie nie ma (karta osoby
+   * tylko pokazuje datę ważności); ekran powstaje przy karcie osoby administracji.
+   */
+  przedluzenieDostepu: {
+    klucz: "przedluzenieDostepu",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: null,
+        nowaTrasa: "/admin/uczestniczki/[id]",
+        trasaPoligonu: "/nowy-front/admin/uczestniczki/[id]/przedluzenie",
+      },
+    ],
+  },
+  /** Ustawienia roku programu (H19) — ten sam adres co dzisiejsze ustawienia edycji. */
+  ustawieniaProgramu: {
+    klucz: "ustawieniaProgramu",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/ustawienia",
+        nowaTrasa: "/admin/ustawienia",
+        trasaPoligonu: "/nowy-front/admin/ustawienia",
+      },
+    ],
+  },
+  /** Redakcja ekranu startowego (H21) — ten sam adres co dzisiejsza redakcja treści. */
+  ekranStartowy: {
+    klucz: "ekranStartowy",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/ekran-startowy",
+        nowaTrasa: "/admin/ekran-startowy",
+        trasaPoligonu: "/nowy-front/admin/ekran-startowy",
+      },
+    ],
+  },
+  /** Edycja lekcji: treść, nagranie, materiały (H08) — dziś część strony szczegółu kursu, ten sam adres. */
+  edycjaLekcji: {
+    klucz: "edycjaLekcji",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/kursy/[id]",
+        nowaTrasa: "/admin/kursy/[id]",
+        trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
       },
     ],
   },
