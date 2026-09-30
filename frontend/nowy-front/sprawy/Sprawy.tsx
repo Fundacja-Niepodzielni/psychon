@@ -136,6 +136,11 @@ export function Sprawy() {
       tytul="Sprawy do decyzji"
       opis="Zgłoszenia, dyżury i profile psychologów czekające na Twoją decyzję — w jednym miejscu."
       onPowrot={() => router.back()}
+      przyciskGlowny={
+        stan === "ok" && najstarsza
+          ? { etykieta: "Otwórz najstarszą sprawę", onKliknij: () => router.push(najstarsza.href) }
+          : undefined
+      }
     />
   );
 
@@ -220,14 +225,6 @@ export function Sprawy() {
             pierwsza strona (do 100 pozycji) — przy większej liczbie „najstarsza sprawa” może nie być
             dokładna.
           </Notice>
-        )}
-
-        {najstarsza && (
-          <div className={style.glownaAkcja}>
-            <Button poziom="primary" onClick={() => router.push(najstarsza.href)}>
-              Otwórz najstarszą sprawę
-            </Button>
-          </div>
         )}
 
         {pokazListe && <RecordList tytul="Sprawy" wiersze={wierszeListy} pusty={pustyStanListy} />}
