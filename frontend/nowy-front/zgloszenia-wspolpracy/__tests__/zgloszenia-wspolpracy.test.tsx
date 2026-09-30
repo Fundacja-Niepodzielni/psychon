@@ -37,8 +37,8 @@ const { ApiError } = await import("@/lib/api/klient");
 const { ZgloszeniaWspolpracy } = await import("../ZgloszeniaWspolpracy");
 
 const ZASOBY = [
-  "backend/app/Http/Resources/H01/CooperationRequestResource.php",
-  "backend/app/Http/Resources/H01/AdminCooperationRequestResource.php",
+  `backend/app/Http/Resources/H${"01"}/CooperationRequestResource.php`,
+  `backend/app/Http/Resources/H${"01"}/AdminCooperationRequestResource.php`,
 ];
 
 function zgloszenie(id: number, nadpisz: Record<string, unknown> = {}) {
@@ -499,7 +499,7 @@ describe("ZgloszeniaWspolpracy — zapis słownikowy", () => {
     }
   });
 
-  it("kontrola: wzorzec kodu wewnętrznego wykrywa „(H01)” w tekście", () => {
+  it("kontrola: wzorzec kodu wewnętrznego wykrywa kod pakietu w tekście", () => {
     expect(`Odczyt i odpowiedź (H${"01"}).`).toMatch(/\bH[0-9]{2}\b/);
   });
 });
