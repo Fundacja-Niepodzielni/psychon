@@ -4,7 +4,7 @@ import type { CialoLekcji, LekcjaAdmin, StanNagrania } from "./dane";
 /**
  * Logika formularza lekcji — bez Reacta, bez sieci. Limit treści to 20 000
  * ZNAKÓW, nie bajtów (aneks kontraktu „treść lekcji”, pkt 1; reguła
- * `max:20000` w `UpdateLessonRequest.php:37` liczy znaki). Znak to punkt
+ * `max:20000` w `UpdateLessonRequest.php:34` liczy znaki). Znak to punkt
  * kodowy, więc `ż` i emoji liczą się po jednym, tak jak w walidatorze serwera.
  */
 

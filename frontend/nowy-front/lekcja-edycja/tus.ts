@@ -4,7 +4,7 @@ import type { ZlecenieWgrania } from "./dane";
  * Wgranie nagrania PROSTO do Bunny Stream protokołem TUS 1.0.0 — serwer
  * PsychON nie przyjmuje bajtów wideo, wydaje tylko podpisane pozwolenie
  * (`BunnyVideoAdminController::createUpload`, `backend/app/Http/Controllers/
- * Api/V1/Admin/BunnyVideoAdminController.php:97-107`). Bez nowej zależności:
+ * Api/V1/Admin/BunnyVideoAdminController.php:47-112`). Bez nowej zależności:
  * dwa rodzaje żądań (utworzenie wgrania i wysyłka kawałków) wystarczą na
  * `fetch`.
  *

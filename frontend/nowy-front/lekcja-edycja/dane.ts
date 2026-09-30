@@ -15,11 +15,11 @@ import { pobierzJa } from "@/lib/api/h01-wspolpraca";
  *  - rola osoby: `GET /me` (`h01.php:27`).
  *
  * Kształt lekcji to `AdminLessonResource::toArray`
- * (`backend/app/Http/Resources/H08/AdminLessonResource.php:26-42`), materiału
- * — `AdminMaterialResource::toArray` (`…/AdminMaterialResource.php:20-29`).
+ * (`backend/app/Http/Resources/H08/AdminLessonResource.php:24-36`), materiału
+ * — `AdminMaterialResource::toArray` (`…/AdminMaterialResource.php:22-28`).
  */
 
-/** `AdminLessonResource` (w. 26-42). */
+/** `AdminLessonResource` (w. 24-36). */
 export interface LekcjaAdmin {
   id: number;
   course_id: number;
@@ -36,7 +36,7 @@ export interface LekcjaAdmin {
   updated_at: string | null;
 }
 
-/** `AdminMaterialResource` (w. 20-29). */
+/** `AdminMaterialResource` (w. 22-28). */
 export interface MaterialAdmin {
   id: number;
   name: string;
@@ -49,7 +49,7 @@ export interface MaterialAdmin {
 
 /**
  * Ciało `PATCH /admin/lessons/{lesson}` — wyłącznie pola, które ten ekran
- * zapisuje (`UpdateLessonRequest::rules`, `…/UpdateLessonRequest.php:34-44`).
+ * zapisuje (`UpdateLessonRequest::rules`, `…/UpdateLessonRequest.php:32-39`).
  * `topic_id` i `topic_position` są tam `prohibited`, `sequence_order`
  * przy kursie z wieloma tematami też — ekran ich nie wysyła.
  */
@@ -60,7 +60,7 @@ export interface CialoLekcji {
   duration_seconds: number;
 }
 
-/** `BunnyVideoAdminController::status` (w. 98-140). */
+/** `BunnyVideoAdminController::status` (w. 116-146). */
 export type StanNagrania =
   | { status: "no_video" }
   | {
@@ -69,7 +69,7 @@ export type StanNagrania =
       preview_embed_url: string | null;
     };
 
-/** `BunnyVideoAdminController::createUpload` (w. 97-107): pozwolenie TUS. */
+/** `BunnyVideoAdminController::createUpload` (w. 47-112, dane w. 106-112): pozwolenie TUS. */
 export interface ZlecenieWgrania {
   video_id: string;
   upload_url: string;
@@ -97,14 +97,14 @@ export function zapiszLekcje(idLekcji: number, cialo: CialoLekcji): Promise<Lekc
   return api<LekcjaAdmin>(`/admin/lessons/${idLekcji}`, { method: "PATCH", body: cialo });
 }
 
-/** Multipart z polem `file` (`StoreMaterialRequest::rules`, w. 27-32). */
+/** Multipart z polem `file` (`StoreMaterialRequest::rules`, w. 31). */
 export function wgrajMaterial(idLekcji: number, plik: File): Promise<MaterialAdmin> {
   const cialo = new FormData();
   cialo.append("file", plik);
   return api<MaterialAdmin>(`/admin/lessons/${idLekcji}/materials`, { method: "POST", body: cialo });
 }
 
-/** Ciało dokładnie `{ title }` — trasa odrzuca każde inne pole (w. 66-72). */
+/** Ciało dokładnie `{ title }` — trasa odrzuca każde inne pole (w. 64-70). */
 export function zlecWgranieNagrania(idLekcji: number, title: string): Promise<ZlecenieWgrania> {
   return api<ZlecenieWgrania>(`/admin/lessons/${idLekcji}/video-uploads`, {
     method: "POST",
