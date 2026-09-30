@@ -15,6 +15,7 @@ import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { ApiError } from "@/lib/api/klient";
+import { formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzKarteOsoby,
   pobierzRzetelnoscOsoby,
@@ -51,7 +52,7 @@ interface WlasciwosciKartyOsoby {
  * (`@/design-system/szablony/TableTemplate/TableTemplate`), którego korzeń jest
  * jedynym `main`. Sloty: `naglowek` (`PageHeader`) → `statystyki` (`StatRow`,
  * cztery filary + rzetelność) → `zdanie` (źródło liczb) → `tabela` (`DataTable`
- * z danymi kontaktowymi i datą wygaśnięcia dostępu) → `wsparcie` (sekcje rzadkie
+ * z danymi kontaktowymi i datą końca dostępu do materiałów) → `wsparcie` (sekcje rzadkie
  * zwinięte z licznikiem: powiadomienia, dziennik — bez ładunku zdarzenia).
  * Sloty `zakres` i `wykres` pominięte — ekran nie ma zakresu dat ani wykresu.
  *
@@ -71,6 +72,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
   const [formularz, setFormularz] = useState<DaneFormularzaKarty | null>(null);
   const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
   const [zapisywanie, setZapisywanie] = useState(false);
+  const [bladZapisu, setBladZapisu] = useState(false);
   const [pokazToast, setPokazToast] = useState(false);
 
   function wczytajRzetelnosc(straz?: { anulowane: boolean }) {
@@ -128,6 +130,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
     if (!karta) return;
     setFormularz(formularzZProfilu(karta.profile));
     setBledyPol(undefined);
+    setBladZapisu(false);
     setFormularzOtwarty(true);
   }
 
@@ -135,20 +138,26 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
     setFormularzOtwarty(false);
     setFormularz(null);
     setBledyPol(undefined);
+    setBladZapisu(false);
   }
 
   async function zapisz() {
     if (!formularz) return;
     setZapisywanie(true);
     setBledyPol(undefined);
+    setBladZapisu(false);
     try {
       await zapiszKarteOsoby(id, formularz);
       zamknijFormularz();
       setPokazToast(true);
       wczytajKarte();
     } catch (wyjatek) {
-      if (wyjatek instanceof ApiError && wyjatek.errors) {
+      if (wyjatek instanceof ApiError && wyjatek.status === 422 && wyjatek.errors) {
         setBledyPol(wyjatek.errors);
+      } else {
+        // Błąd serwera (500), sieci albo 422 bez pól: formularz zostaje
+        // otwarty z wpisanymi danymi, a osoba dostaje komunikat i ponowienie.
+        setBladZapisu(true);
       }
     } finally {
       setZapisywanie(false);
@@ -277,16 +286,36 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
         zdanie={<Text>Liczby pochodzą z jednego źródła (ProgressAggregator) — to samo, co pulpit i raport.</Text>}
         tabela={
           edycja ? (
-            <FormSection
-              tytul="Dane osoby"
-              pola={pola}
-              tytulDodatkowych="Adres i grupa produktowa"
-              etykietaZapisz={zapisywanie ? "Zapisywanie…" : "Zapisz zmiany"}
-              onAnuluj={zamknijFormularz}
-              onZapisz={() => {
-                if (!zapisywanie) void zapisz();
-              }}
-            />
+            <>
+              <FormSection
+                tytul="Dane osoby"
+                pola={pola}
+                tytulDodatkowych="Adres i grupa produktowa"
+                etykietaZapisz={zapisywanie ? "Zapisywanie…" : "Zapisz zmiany"}
+                onAnuluj={zamknijFormularz}
+                onZapisz={() => {
+                  if (!zapisywanie) void zapisz();
+                }}
+              />
+              {bladZapisu && (
+                <Notice
+                  wariant="error"
+                  tytul="Nie udało się zapisać zmian"
+                  akcja={
+                    <Button
+                      poziom="outline"
+                      onClick={() => {
+                        if (!zapisywanie) void zapisz();
+                      }}
+                    >
+                      Spróbuj ponownie
+                    </Button>
+                  }
+                >
+                  Serwer nie odpowiedział albo zwrócił błąd. Dane w formularzu zostały zachowane — spróbuj zapisać jeszcze raz.
+                </Notice>
+              )}
+            </>
           ) : (
             <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
           )
@@ -305,7 +334,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
                       <li key={powiadomienie.id}>
                         <Text>{powiadomienie.title}</Text>
                         <Text wariant="pusty">
-                          {powiadomienie.created_at} — {powiadomienie.read_at ? "przeczytane" : "nieprzeczytane"}
+                          {formatujDateICzas(powiadomienie.created_at)} — {powiadomienie.read_at ? "przeczytane" : "nieprzeczytane"}
                         </Text>
                       </li>
                     ))}
@@ -326,7 +355,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
                       <li key={wpis.id}>
                         <Text>{wpis.action}</Text>
                         <Text wariant="pusty">
-                          {wpis.created_at ?? "brak daty"} — kto: {wpis.actor_id ?? "brak"}
+                          {formatujDateICzas(wpis.created_at)} — kto: {wpis.actor_id ?? "brak"}
                         </Text>
                       </li>
                     ))}

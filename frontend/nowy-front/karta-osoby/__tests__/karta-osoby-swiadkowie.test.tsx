@@ -117,8 +117,47 @@ describe("KartaOsoby — stan dane", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Marta Demo" })).toBeInTheDocument());
     expect(screen.getByText("+48 600 100 200")).toBeInTheDocument();
-    expect(screen.getByText("2027-02-01T00:00:00Z")).toBeInTheDocument();
+    expect(screen.getByText("1 lutego 2027")).toBeInTheDocument();
+    expect(screen.getByText("Dostęp do materiałów do")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Zmień dane" })).toBeInTheDocument();
+  });
+
+  it("grupa produktowa i data dostępu: etykieta polska, zero surowego kodu i zero ISO w DOM stanu z danymi", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const { container } = render(<KartaOsoby id={17} />);
+    await screen.findByRole("heading", { name: "Marta Demo" });
+    const tabela = within(screen.getByTestId("obszar-tabela")).getByRole("table");
+    expect(within(tabela).getByText("PsychON")).toBeInTheDocument();
+    expect(within(tabela).getByText("1 lutego 2027")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("psychon");
+    expect(container.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("obca grupa produktowa: „—”, surowy kod nie trafia do DOM", async () => {
+    const karta = { ...(KARTA as object), profile: { ...PROFIL, product_group: "obca_grupa" } };
+    pobierzKarteOsoby.mockResolvedValue(karta);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const { container } = render(<KartaOsoby id={17} />);
+    await screen.findByRole("heading", { name: "Marta Demo" });
+    const tabela = within(screen.getByTestId("obszar-tabela")).getByRole("table");
+    const wiersz = within(tabela).getByText("Grupa produktowa").closest('[role="row"]');
+    expect(wiersz).not.toBeNull();
+    expect(within(wiersz as HTMLElement).getByText("—")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("obca_grupa");
+  });
+
+  it("po rozwinięciu sekcji rzadkich zero surowego ISO (powiadomienia i dziennik przez wspólny formater)", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<KartaOsoby id={17} />);
+    await screen.findByRole("heading", { name: "Marta Demo" });
+    await uzytkownik.click(screen.getByRole("button", { name: "Powiadomienia (1)" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Dziennik działań (1)" }));
+    expect(screen.getByText(/21 września 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/20 września 2026/)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
   });
 
   it("kontrola dodatnia: osoba bez postępu pokazuje zera z karty, nie stan pusty", async () => {
@@ -293,6 +332,22 @@ describe("KartaOsoby — rola w nagłówku", () => {
     expect(screen.queryByText(/^Rola:/)).toBeNull();
     expect(container.textContent).not.toContain("obca_rola");
   });
+
+  it.each(["constructor", "toString", "__proto__"])(
+    "rola odziedziczona %s: bez pary „Rola”, surowy kod nie trafia do dokumentu",
+    async (klucz) => {
+      const profil = JSON.parse(JSON.stringify(PROFIL)) as Record<string, unknown>;
+      // `__proto__` jako własny klucz wartości: literał ustawiałby prototyp,
+      // dlatego pole roli zapisujemy jawnie przez defineProperty.
+      Object.defineProperty(profil, "role", { value: klucz, enumerable: true, writable: true, configurable: true });
+      pobierzKarteOsoby.mockResolvedValue({ ...(KARTA as object), profile: profil });
+      pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+      const { container } = render(<KartaOsoby id={17} />);
+      await screen.findByRole("heading", { name: "Marta Demo" });
+      expect(screen.queryByText(/^Rola:/)).toBeNull();
+      expect(container.textContent).not.toContain(klucz);
+    },
+  );
 });
 
 describe("KartaOsoby — rzetelność", () => {
@@ -362,10 +417,28 @@ describe("KartaOsoby — sekcje rzadkie zwinięte z licznikiem", () => {
 
     // Kontrola dodatnia: pola DOZWOLONE są widoczne (renderowanie działa).
     expect(screen.getByText("user.updated")).toBeInTheDocument();
-    expect(screen.getByText(/2026-09-21T09:00:00Z/)).toBeInTheDocument();
+    expect(screen.getByText(/21 września 2026, 11:00/)).toBeInTheDocument();
     expect(screen.getByText(/kto: 3/)).toBeInTheDocument();
     // Ładunek zdarzenia NIGDY nie trafia do dokumentu.
     expect(screen.queryByText(/TAJNY-LADUNEK-NIE-POKAZYWAC/)).toBeNull();
+  });
+});
+
+describe("KartaOsoby — wpis dziennika bez czasu", () => {
+  it("brak czasu wpisu to „—” z wspólnego formatera, nie własny napis i nie surowy null", async () => {
+    const karta = {
+      ...(KARTA as object),
+      audit_entries: [{ id: 502, action: "user.updated", actor_id: 7, created_at: null }],
+    };
+    pobierzKarteOsoby.mockResolvedValue(karta);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<KartaOsoby id={17} />);
+    await screen.findByRole("heading", { name: "Marta Demo" });
+    await uzytkownik.click(screen.getByRole("button", { name: "Dziennik działań (1)" }));
+    expect(screen.getByText("— — kto: 7")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("brak daty");
+    expect(container.textContent).not.toContain("null");
   });
 });
 
@@ -407,6 +480,59 @@ describe("KartaOsoby — formularz „Zmień dane”", () => {
 
     expect(await screen.findByText("Podaj poprawny adres e-mail.")).toBeInTheDocument();
     expect(zapiszKarteOsoby).toHaveBeenCalledWith(17, expect.not.objectContaining({ role: expect.anything() }));
+    // 422 to błąd pola, nie komunikat o awarii zapisu.
+    expect(screen.queryByText("Nie udało się zapisać zmian")).toBeNull();
+  });
+
+  describe.each([
+    ["błąd serwera 500", () => new ApiError({ status: 500, code: "unknown_error", message: "Błąd serwera." })],
+    ["odrzucenie sieci", () => new TypeError("Failed to fetch")],
+  ])("zapis: %s", (_nazwa, blad) => {
+    it("formularz zostaje otwarty z danymi, Notice z ponowieniem; ponowienie zapisuje", async () => {
+      pobierzKarteOsoby.mockResolvedValueOnce(KARTA).mockResolvedValueOnce(KARTA_ZERA);
+      pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+      zapiszKarteOsoby.mockRejectedValueOnce(blad()).mockResolvedValueOnce(KARTA_ZERA);
+      const uzytkownik = userEvent.setup();
+
+      render(<KartaOsoby id={17} />);
+      await uzytkownik.click(await screen.findByRole("button", { name: "Zmień dane" }));
+      const formularz = await screen.findByRole("form", { name: "Dane osoby" });
+      const nazwisko = within(formularz).getByLabelText(/^Nazwisko/);
+      await uzytkownik.clear(nazwisko);
+      await uzytkownik.type(nazwisko, "Zmienione");
+      await uzytkownik.click(within(formularz).getByRole("button", { name: "Zapisz zmiany" }));
+
+      const komunikat = await screen.findByRole("alert");
+      expect(within(komunikat).getByText("Nie udało się zapisać zmian")).toBeInTheDocument();
+      // Formularz otwarty, dane wpisane zachowane, bez Toastu sukcesu.
+      expect(screen.getByRole("form", { name: "Dane osoby" })).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Nazwisko/)).toHaveValue("Zmienione");
+      expect(screen.queryByText("Zapisano zmiany.")).toBeNull();
+      expect(zapiszKarteOsoby).toHaveBeenCalledTimes(1);
+      expect(pobierzKarteOsoby).toHaveBeenCalledTimes(1);
+
+      await uzytkownik.click(within(komunikat).getByRole("button", { name: "Spróbuj ponownie" }));
+      expect(await screen.findByText("Zapisano zmiany.")).toBeInTheDocument();
+      expect(zapiszKarteOsoby).toHaveBeenCalledTimes(2);
+      expect(zapiszKarteOsoby).toHaveBeenLastCalledWith(17, expect.objectContaining({ last_name: "Zmienione" }));
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("Anuluj po błędzie zamyka formularz i gasi komunikat", async () => {
+      pobierzKarteOsoby.mockResolvedValue(KARTA);
+      pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+      zapiszKarteOsoby.mockRejectedValue(blad());
+      const uzytkownik = userEvent.setup();
+
+      render(<KartaOsoby id={17} />);
+      await uzytkownik.click(await screen.findByRole("button", { name: "Zmień dane" }));
+      const formularz = await screen.findByRole("form", { name: "Dane osoby" });
+      await uzytkownik.click(within(formularz).getByRole("button", { name: "Zapisz zmiany" }));
+      await screen.findByRole("alert");
+      await uzytkownik.click(within(screen.getByRole("form", { name: "Dane osoby" })).getByRole("button", { name: "Anuluj" }));
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(await screen.findByRole("button", { name: "Zmień dane" })).toBeInTheDocument();
+    });
   });
 
   it("sukces → okno się zamyka, karta wczytuje się ponownie, Toast po zapisaniu", async () => {
