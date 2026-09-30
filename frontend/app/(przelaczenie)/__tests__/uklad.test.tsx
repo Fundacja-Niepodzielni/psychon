@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
@@ -12,18 +12,27 @@ function fokusowalne(container: HTMLElement): HTMLElement[] {
   );
 }
 
-describe("układ grupy tras (przelaczenie) — link skoku i cel main", () => {
-  it('pierwszym elementem fokusu jest link "Przejdź do treści" (href="#tresc")', () => {
+describe("układ grupy tras (przelaczenie) — wspólny korzeń bez własnego linku skoku", () => {
+  it('układ grupy nie dokłada linku "Przejdź do treści" — jedyny niesie powłoka segmentu', () => {
     const { container } = render(
       <UkladPrzelaczenia>
         <ListTemplate naglowek={<div>Nagłówek</div>} lista={<div>Lista</div>} />
       </UkladPrzelaczenia>,
     );
 
-    const elementy = fokusowalne(container);
-    expect(elementy[0].tagName).toBe("A");
-    expect(elementy[0].getAttribute("href")).toBe("#tresc");
-    expect(elementy[0].textContent).toBe("Przejdź do treści");
+    expect(container.querySelectorAll('a[href="#tresc"]')).toHaveLength(0);
+    expect(fokusowalne(container).filter((el) => el.tagName === "A")).toHaveLength(0);
+  });
+
+  it("kontrola dodatnia: licznik odnośników do treści widzi odnośnik dołożony do układu", () => {
+    const { container } = render(
+      <UkladPrzelaczenia>
+        <a href="#tresc">Przejdź do treści</a>
+        <ListTemplate naglowek={<div>Nagłówek</div>} lista={<div>Lista</div>} />
+      </UkladPrzelaczenia>,
+    );
+
+    expect(container.querySelectorAll('a[href="#tresc"]')).toHaveLength(1);
   });
 
   it("cel #tresc to jedyny main szablonu i przyjmuje fokus programowy", () => {
@@ -96,5 +105,59 @@ describe("tokeny nowego frontu pod trasą produktu", () => {
     expect(importujeArkusz("// import \"@/app/globals.css\";\n", "globals.css")).toBe(false);
     expect(definiujeZmienna(":root { --space-16: 16px; }", "--space-16")).toBe(true);
     expect(definiujeZmienna(":root { --space-160: 16px; }", "--space-16")).toBe(false);
+  });
+});
+
+/**
+ * Powłoka panelu wchodzi do grupy wyłącznie przez dwa układy segmentów:
+ * dokładnie dwa importy `components/layout/PanelShell` poza testami, po
+ * jednym w `panel/layout.tsx` i `admin/layout.tsx`; układ grupy go nie
+ * importuje, a oba układy segmentów owijają treść w dostawcę kontekstu
+ * powłoki.
+ */
+const KORZEN_GRUPY = path.join(KATALOG, "app", "(przelaczenie)");
+
+function plikiZrodlowe(katalog: string): string[] {
+  return readdirSync(katalog).flatMap((nazwa) => {
+    const pelna = path.join(katalog, nazwa);
+    if (statSync(pelna).isDirectory()) return nazwa === "__tests__" ? [] : plikiZrodlowe(pelna);
+    return /\.tsx?$/.test(nazwa) ? [pelna] : [];
+  });
+}
+
+function importyPanelShell(zrodlo: string): number {
+  return zrodlo
+    .split(/\r?\n/)
+    .filter((linia) => /^\s*import\b.*from\s+["']@\/components\/layout\/PanelShell["']/.test(linia)).length;
+}
+
+describe("powłoka panelu w grupie tras (przelaczenie)", () => {
+  it("dokładnie dwa importy PanelShell poza testami: panel/layout.tsx i admin/layout.tsx", () => {
+    const wPlikach = plikiZrodlowe(KORZEN_GRUPY)
+      .map((plik) => ({ plik: path.relative(KORZEN_GRUPY, plik).split(path.sep).join("/"), liczba: importyPanelShell(readFileSync(plik, "utf-8")) }))
+      .filter((wpis) => wpis.liczba > 0);
+
+    expect(wPlikach).toEqual([
+      { plik: "admin/layout.tsx", liczba: 1 },
+      { plik: "panel/layout.tsx", liczba: 1 },
+    ]);
+  });
+
+  it("układ grupy nie importuje PanelShell", () => {
+    expect(importyPanelShell(ZRODLO_UKLADU)).toBe(0);
+  });
+
+  it("oba układy segmentów owijają treść w dostawcę kontekstu powłoki", () => {
+    for (const plik of ["panel/layout.tsx", "admin/layout.tsx"]) {
+      const zrodlo = readFileSync(path.join(KORZEN_GRUPY, plik), "utf-8");
+      expect(zrodlo).toMatch(/import\s*\{\s*DostawcaPowloki\s*\}\s*from\s*["']@\/design-system\/szablony\/KontekstPowloki["']/);
+      expect(zrodlo).toMatch(/<DostawcaPowloki>\{children\}<\/DostawcaPowloki>/);
+    }
+  });
+
+  it("przypadek odwrotny: licznik importów rozpoznaje import i pomija komentarz", () => {
+    expect(importyPanelShell('import PanelShell from "@/components/layout/PanelShell";')).toBe(1);
+    expect(importyPanelShell('// import PanelShell from "@/components/layout/PanelShell";')).toBe(0);
+    expect(importyPanelShell('import X from "@/components/layout/HelpWidget";')).toBe(0);
   });
 });
