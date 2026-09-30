@@ -25,6 +25,9 @@ interface OpisPodmiany {
   zaladujNowy: () => Promise<ComponentType<never>>;
 }
 
+/** Pierwszy import strony z zimną pamięcią podręczną transformacji przekracza domyślne 5 s. */
+const LIMIT_CZASU_MS = 30_000;
+
 interface Element {
   type: unknown;
   props: { children?: { type?: unknown } | null; [klucz: string]: unknown };
@@ -49,7 +52,7 @@ export function opiszPodmianeTresci(opis: OpisPodmiany): void {
 
       expect(element.type).toBe(StaraTresc);
       expect(element.type).not.toBe(Nowy);
-    });
+    }, LIMIT_CZASU_MS);
 
     it("grupa włączona: strona zwraca nowy ekran owinięty w DostawcaPowloki", async () => {
       podmienRejestr({ [opis.klucz]: true });
@@ -61,7 +64,7 @@ export function opiszPodmianeTresci(opis: OpisPodmiany): void {
       expect(element.type).toBe(DostawcaPowloki);
       expect(element.type).not.toBe(StaraTresc);
       expect(element.props.children?.type).toBe(Nowy);
-    });
+    }, LIMIT_CZASU_MS);
 
     it("przypadek odwrotny: włączona inna grupa nie zmienia tej strony", async () => {
       const inna: KluczGrupy = opis.klucz === "wspolpraca" ? "formyStazu" : "wspolpraca";
@@ -70,7 +73,7 @@ export function opiszPodmianeTresci(opis: OpisPodmiany): void {
       const { default: StaraTresc } = await opis.zaladujStara();
 
       expect(element.type).toBe(StaraTresc);
-    });
+    }, LIMIT_CZASU_MS);
 
     it("plik strony nie importuje niczego z warstwy components/", () => {
       const zrodlo = readFileSync(path.join(process.cwd(), "app", opis.plikStrony), "utf-8");
