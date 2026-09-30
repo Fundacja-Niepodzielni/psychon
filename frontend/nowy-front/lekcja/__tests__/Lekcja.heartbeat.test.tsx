@@ -35,6 +35,14 @@ const LEKCJA = {
   completable_at_percent: 60,
 };
 
+/** Server counters returned by a successful heartbeat tick. */
+const POSTEP_PO_TYKU = {
+  watched_seconds: 30,
+  active_seconds: 30,
+  completable: false,
+  completable_at_percent: 60,
+};
+
 /** Own `document.hidden` stub — jsdom's own getter is read-only. */
 function ustawUkryta(ukryta: boolean) {
   Object.defineProperty(document, "hidden", { configurable: true, get: () => ukryta });
@@ -58,6 +66,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   pobierzDaneLekcji.mockReset();
   wyslijPostep.mockReset();
+  wyslijPostep.mockResolvedValue(POSTEP_PO_TYKU);
   back.mockReset();
   ustawUkryta(false);
 });
@@ -132,5 +141,76 @@ describe("Lekcja — heartbeat, brak wysyłki po odmontowaniu", () => {
       vi.advanceTimersByTime(60000);
     });
     expect(wyslijPostep).not.toHaveBeenCalled();
+  });
+});
+
+describe("Lekcja — heartbeat, przyrosty liczone z realnego czasu odtwarzania", () => {
+  it("pauza nie wlicza się do przyrostów: 20 s gry + 5 s pauzy + 10 s gry → jedna wysyłka po 30 s gry", async () => {
+    await wyswietlLekcje();
+    kliknijOdtwarzanie(); // Odtwórz
+    await act(async () => {
+      vi.advanceTimersByTime(20000);
+    });
+    kliknijOdtwarzanie(); // Zatrzymaj
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(wyslijPostep).not.toHaveBeenCalled();
+    kliknijOdtwarzanie(); // Odtwórz
+    await act(async () => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(wyslijPostep).toHaveBeenCalledTimes(1);
+    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30 });
+  });
+
+  it("karta ukryta: sekundy gry liczą się jako obejrzane, nie jako aktywne", async () => {
+    await wyswietlLekcje();
+    kliknijOdtwarzanie(); // Odtwórz
+    ustawUkryta(true);
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+    ustawUkryta(false);
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(wyslijPostep).toHaveBeenCalledTimes(1);
+    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 60, active_delta: 30 });
+  });
+});
+
+describe("Lekcja — odpowiedź heartbeatu odświeża ekran", () => {
+  it("po tyku z completable=true przycisk ukończenia staje się dostępny bez przeładowania", async () => {
+    wyslijPostep.mockResolvedValue({
+      watched_seconds: 1100,
+      active_seconds: 1100,
+      completable: true,
+      completable_at_percent: 60,
+    });
+    await wyswietlLekcje();
+    expect(screen.getByRole("button", { name: "Oznacz jako ukończoną" })).toBeDisabled();
+    kliknijOdtwarzanie(); // Odtwórz
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByRole("button", { name: "Oznacz jako ukończoną" })).toBeEnabled();
+  });
+
+  it("nieudany zapis: widać komunikat, a przyrosty nie przepadają — następna wysyłka niesie sumę", async () => {
+    wyslijPostep.mockResolvedValueOnce(null);
+    await wyswietlLekcje();
+    kliknijOdtwarzanie(); // Odtwórz
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Postęp nie został zapisany");
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(wyslijPostep).toHaveBeenCalledTimes(2);
+    expect(wyslijPostep).toHaveBeenLastCalledWith("21", { watched_delta: 60, active_delta: 60 });
+    expect(screen.queryByText("Postęp nie został zapisany")).not.toBeInTheDocument();
   });
 });
