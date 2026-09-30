@@ -6,9 +6,15 @@
  *
  * Ten plik NIE jest importowany przez istniejący front — osobny strumień,
  * osobny zestaw nazw zmiennych.
+ *
+ * ZAKRES: każda reguła działa wyłącznie w poddrzewie elementu z atrybutem
+ * `data-theme` (korzeń układu nowego frontu albo element dokumentu poligonu).
+ * Żadna reguła nie dotyczy elementu głównego dokumentu ani `body`: Next.js
+ * zostawia arkusz po nawigacji klienckiej, więc reguła na poziomie dokumentu
+ * przeciekałaby na stare strony otwarte po nowym ekranie.
  */
 
-:root {
+[data-theme] {
   color-scheme: light;
 
   /* --- Barwy, motyw jasny --- */
@@ -127,7 +133,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  [data-theme] {
     --bg: #15151a;
     --card: #1e1e24;
     --card-warm: #23232a;
@@ -161,8 +167,10 @@
   }
 }
 
-/* wyłącznik jasnego motywu — wygrywa nad prefers-color-scheme dzięki wyższej specyficzności */
-:root[data-theme="light"], [data-theme="light"] {
+/* wyłącznik jasnego motywu — wygrywa nad prefers-color-scheme jawnie: dwa selektory
+   atrybutu (specyficzność 0-2-0) kontra jeden w bloku ciemnym (0-1-0), niezależnie
+   od kolejności w arkuszu */
+[data-theme][data-theme="light"] {
   color-scheme: light;
   --bg: #f3f1ed;
   --card: #ffffff;
@@ -196,7 +204,7 @@
 }
 
 /* wymuszenie ciemnego motywu — niezależnie od prefers-color-scheme */
-:root[data-theme="dark"] {
+[data-theme="dark"] {
   color-scheme: dark;
   --bg: #15151a;
   --card: #1e1e24;
@@ -231,12 +239,13 @@
 
 /* ograniczony ruch: zeruje przejścia, animacje, płynne przewijanie */
 @media (prefers-reduced-motion: reduce) {
-  :root {
+  [data-theme] {
     --dur-fast: 0s;
     --dur-drawer: 0s;
     --dur-skeleton: 0s;
   }
-  * {
+  [data-theme],
+  [data-theme] * {
     scroll-behavior: auto !important;
   }
 }
@@ -248,15 +257,16 @@
  * `!important` ZDJĘTY — zmierzone (sonda getComputedStyle
  * w odrębnym pomiarze i powtórzone tu), że wynik 6px jest identyczny z i bez
  * `!important`, gdy specyficzność selektora jest WYŻSZA niż `.przycisk` i
- * analogicznych klas bazowych atomów (0-1-0). Selektor `:root :focus-visible`
- * ma specyficzność 0-2-0 (typ `:root` liczy się jak klasa + pseudoklasa) —
+ * analogicznych klas bazowych atomów (0-1-0). Selektor
+ * `[data-theme] :focus-visible` ma specyficzność 0-2-0 (atrybut i pseudoklasa
+ * liczą się jak po jednej klasie) —
  * wygrywa z `.przycisk` NIEZALEŻNIE od kolejności w zbudowanym arkuszu, więc
  * nie trzeba już polegać na `!important`, który maskował problem kolejności
  * zamiast go rozwiązać (i który żadna przyszła molekuła nie mogłaby nadpisać
  * inaczej niż swoim własnym `!important` — zmierzone na plakietce `--r-pill`,
  * patrz odczyt fokusu w design-system/poligon/cele-atomy-styl.mjs).
  */
-:root :focus-visible {
+[data-theme] :focus-visible {
   outline: var(--focus-width) solid var(--brand);
   outline-offset: var(--focus-offset);
   border-radius: var(--r-2xs);
@@ -269,13 +279,14 @@
  * rozjazdy wobec makiety 2.0.4 (Input 64px vs 44,8; Textarea 116px vs 96;
  * tor 12px vs 10).
  */
-*,
-*::before,
-*::after {
+:where([data-theme]),
+:where([data-theme]) *,
+:where([data-theme]) *::before,
+:where([data-theme]) *::after {
   box-sizing: border-box;
 }
 
 /* jedyne miejsce, które używa --font — bez tego token jest martwy */
-body {
+[data-theme] {
   font-family: var(--font);
 }

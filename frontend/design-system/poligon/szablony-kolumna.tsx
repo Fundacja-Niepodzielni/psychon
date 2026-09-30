@@ -21,9 +21,9 @@ import { FormTemplate } from "../szablony/FormTemplate/FormTemplate";
 // zmiane), zeby Playwright mogl go ustawic przed pomiarem bez localStorage.
 const parametry = new URLSearchParams(window.location.search);
 const motyw = parametry.get("theme");
-if (motyw === "dark" || motyw === "light") {
-  document.documentElement.setAttribute("data-theme", motyw);
-}
+// Bez parametru poligon jest jasny (MVP tylko jasny): arkusz tokenów działa
+// wyłącznie pod elementem z `data-theme`, więc atrybut jest ustawiany zawsze.
+document.documentElement.setAttribute("data-theme", motyw === "dark" ? "dark" : "light");
 
 const okruszkiPrzykladowe = [
   { etykieta: "Panel", href: "#" },

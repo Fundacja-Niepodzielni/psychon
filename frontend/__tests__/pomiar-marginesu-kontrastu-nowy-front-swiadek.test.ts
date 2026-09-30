@@ -142,13 +142,13 @@ describe("token niesklasyfikowalny: kod 2 I nazwa tokenu w komunikacie (proces C
     const tokenyOryginalne = readFileSync(SCIEZKA_TOKENY_CSS, "utf8");
     // Dopisujemy token o nazwie, która NIE pasuje do żadnego korzenia
     // (ink/text/muted/subtle/bg/card/grey) i której NIE ma w
-    // TOKENY_POZA_ZAKRESEM — w OBU blokach (:root jasny i @media dark), żeby
+    // TOKENY_POZA_ZAKRESEM — w OBU blokach ([data-theme] jasny i @media dark), żeby
     // zestaw nazw jasny/ciemny się zgadzał i przyrząd doszedł do klasyfikacji,
     // a nie zatrzymał się wcześniej na kontroli spójności motywów.
     const wiersz = `  --${NAZWA_TOKENU_SWIADKA}: #123456;\n`;
     const tokenyZDodatkiem = tokenyOryginalne
-      .replace(/:root\s*\{/, (m) => `${m}\n${wiersz}`)
-      .replace(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{/, (m) => `${m}\n${wiersz}`);
+      .replace(/\[data-theme\]\s*\{/, (m) => `${m}\n${wiersz}`)
+      .replace(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*\[data-theme\]\s*\{/, (m) => `${m}\n${wiersz}`);
 
     writeFileSync(join(dir, "design-system", "tokeny", "tokeny.css"), tokenyZDodatkiem, "utf8");
     return dir;

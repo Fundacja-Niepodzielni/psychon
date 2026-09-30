@@ -111,7 +111,9 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     expect(screen.getByText("Zaakceptowane")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/\b(volunteer|student|instructor)\b/);
     expect(screen.getByText(/Razem zgłoszeń: 2/)).toBeInTheDocument();
-    expect(przyciskiGlowne(container)).toBe(0);
+    // Jedyny przycisk w kolorze to „Dodaj zgłoszenie” w nagłówku (wiersze mają tylko odnośniki).
+    expect(przyciskiGlowne(container)).toBe(1);
+    expect(container.querySelector("button[class*='primary']")?.textContent).toBe("Dodaj zgłoszenie");
   });
 
   it("pusty bez filtra: tekst o braku zgłoszeń w roku programu i przejście do wczytania z pliku", async () => {
