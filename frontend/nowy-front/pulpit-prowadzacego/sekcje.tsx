@@ -18,6 +18,7 @@ import {
   type RodzajAwarii,
   type Sekcja,
 } from "./dane";
+import { formatujDziesietny } from "./formatuj-dziesietny";
 import type { InstructorGroup } from "@/lib/h12/types";
 
 interface WspolneSekcji {
@@ -113,7 +114,7 @@ export function SekcjaGrupy({ sekcja, onOdswiez }: { sekcja: Sekcja<InstructorGr
   const wiersze: WierszRecordList[] = members.slice(0, LIMIT_WIERSZY).map((osoba) => ({
     id: `osoba-${osoba.id}`,
     tytul: pelneImie(osoba),
-    podpowiedz: `Kursy: ${osoba.progress.courses_done} z ${osoba.progress.courses_total} · staż: ${osoba.progress.hours_accepted} godz. · superwizje: ${osoba.progress.supervision_present}`,
+    podpowiedz: `Kursy: ${osoba.progress.courses_done} z ${osoba.progress.courses_total} · staż: ${formatujDziesietny(osoba.progress.hours_accepted)} godz. · superwizje: ${osoba.progress.supervision_present}`,
     akcja: { etykieta: "Otwórz grupę", href: ADRES_GRUPY },
   }));
   return (

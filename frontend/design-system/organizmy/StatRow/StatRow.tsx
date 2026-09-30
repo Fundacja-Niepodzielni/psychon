@@ -15,6 +15,11 @@ interface KafelStatRow {
    * (KARTA-EKRANU-T3-ZRODLA-LICZB-OSOBY, D-106: "karta linkuje z każdej
    * liczby"). Bez `href` kafel renderuje się jak zwykły `StatTile`. */
   href?: string;
+  /** Układ pulpitu (makieta „Pulpit”): etykieta stoi raz — przy liczbie — a
+   * pasek niesie ją wyłącznie jako nazwę dostępną (`aria-label`), bez drugiego
+   * widocznego napisu; mianownik jest małym stopniem w tej samej linii co
+   * liczba. Domyślnie wyłączone — bez tego pola kafel wygląda jak dotąd. */
+  ukladPulpitu?: boolean;
 }
 
 interface WlasciwosciStatRow {
@@ -32,10 +37,15 @@ interface WlasciwosciStatRow {
 export function StatRow({ kafle }: WlasciwosciStatRow) {
   return (
     <div className={style.rzad} role="list">
-      {kafle.map(({ href, ...kafel }) => {
+      {kafle.map(({ href, ukladPulpitu, ...kafel }) => {
         const tile = <StatTile {...kafel} />;
         return (
-          <div key={kafel.id} className={style.komorka} role="listitem">
+          <div
+            key={kafel.id}
+            className={style.komorka}
+            role="listitem"
+            data-uklad={ukladPulpitu ? "pulpit" : undefined}
+          >
             {href ? (
               <Link href={href} aria-label={`${kafel.etykieta} — zobacz źródła`}>
                 {tile}

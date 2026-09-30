@@ -10,3 +10,15 @@
   flex: 1 1 160px;
   min-width: 160px;
 }
+
+/* Układ pulpitu (opt-in przez `ukladPulpitu` kafla). Pasek zostaje nazwany
+   (`aria-label`), ale jego drugi widoczny napis znika — etykieta stoi raz, przy
+   liczbie. Mianownik jest małym stopniem w linii z liczbą (makieta „Pulpit”). */
+.komorka[data-uklad="pulpit"] [role="progressbar"] + span {
+  display: none;
+}
+
+.komorka[data-uklad="pulpit"] [id] > span > span + span {
+  font-size: var(--fs-8);
+  font-weight: var(--fw-regular);
+}

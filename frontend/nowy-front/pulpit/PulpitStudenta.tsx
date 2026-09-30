@@ -99,6 +99,7 @@ export function PulpitStudenta() {
           mianownik: `z ${kursy.length} kursów`,
           procent: Math.round((ukonczone / kursy.length) * 100),
           dominujacy: true,
+          ukladPulpitu: true,
         },
         {
           id: "pulpit-studenta-biezacy",
@@ -107,6 +108,7 @@ export function PulpitStudenta() {
           mianownik: "% ukończone",
           procent: wToku?.progress_percent,
           podpowiedz: wToku?.title,
+          ukladPulpitu: true,
         },
       ]
     : undefined;
