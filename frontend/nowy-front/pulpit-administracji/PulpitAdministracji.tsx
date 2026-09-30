@@ -151,7 +151,7 @@ export function PulpitAdministracji() {
           <ListaSpraw widok={widok} naNieprawidlowyAdres={setOstrzezenie} naOdswiez={wczytajPonownie} />
         </div>
       }
-      wspierajaca={widok.cel ? <ZgloszeniaDoDecyzji cel={widok.cel} /> : null}
+      wspierajaca={widok.cel ? <ZgloszeniaRekrutacyjne cel={widok.cel} /> : null}
     />
   );
 }
@@ -197,13 +197,12 @@ function ListaSpraw({
   );
 }
 
-function ZgloszeniaDoDecyzji({ cel }: { cel: NonNullable<WidokPulpitu["cel"]> }) {
+function ZgloszeniaRekrutacyjne({ cel }: { cel: NonNullable<WidokPulpitu["cel"]> }) {
   return (
     <CaseCard
       rodzaj="ze-statystyka"
-      tytul="Zgłoszenia do decyzji"
+      tytul="Zgłoszenia rekrutacyjne"
       pary={[
-        { etykieta: "Rodzaj", wartosc: cel.nazwa },
         { etykieta: "Stan", wartosc: "czeka na decyzję" },
       ]}
       statystyka={{ id: "pulpit-zgloszenia", etykieta: "Czeka na decyzję", wartosc: cel.liczba, mianownik: "zgłoszeń" }}

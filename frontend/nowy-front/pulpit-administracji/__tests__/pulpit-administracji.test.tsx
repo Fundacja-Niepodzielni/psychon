@@ -86,7 +86,11 @@ describe("Pulpit administracji — stany ekranu", () => {
       "href",
       "/prowadzacy/pytania",
     );
-    expect(screen.getByText("Zgłoszenia do decyzji")).toBeInTheDocument();
+    const karta = screen.getByRole("article", { name: "Zgłoszenia rekrutacyjne" });
+    expect(container.querySelector("[data-obszar='wspierajaca']")?.contains(karta)).toBe(true);
+    expect(screen.getByRole("heading", { level: 3, name: "Zgłoszenia rekrutacyjne" })).toBeTruthy();
+    expect(karta.querySelector("#pulpit-zgloszenia")?.textContent).toContain("4");
+    expect(screen.queryByText("Zgłoszenia do decyzji")).not.toBeInTheDocument();
     expect(przyciskiGlowne(container)).toHaveLength(1);
     expect(container.querySelectorAll("button")).toHaveLength(2);
   });
@@ -245,7 +249,7 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     await waitFor(() => expect(screen.getByText("Brak spraw do decyzji")).toBeInTheDocument());
     await uzytkownik.click(screen.getByRole("button", { name: "Odśwież" }));
-    await waitFor(() => expect(screen.getByText("Zgłoszenia do decyzji")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("article", { name: "Zgłoszenia rekrutacyjne" })).toBeInTheDocument());
     expect(pobierzPulpitAdministracji).toHaveBeenCalledTimes(2);
   });
 
