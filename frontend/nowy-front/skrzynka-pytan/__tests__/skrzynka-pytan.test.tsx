@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import type { PytanieSkrzynki, StronaPytan } from "../dane";
+import style from "../SkrzynkaPytan.module.css";
 
 /**
  * Ekran „Skrzynka pytań” (prowadzący): każdy stan w szablonie listy z jednym
@@ -625,7 +626,8 @@ describe("Skrzynka pytań — treść pytania na liście zachowuje podziały wie
     const akapit = await screen.findByText((_tresc, element) => element?.tagName === "P" && element.textContent === WIELOWIERSZOWE.question);
     expect(akapit.textContent).toContain("\n\n");
     expect(akapit.closest("[data-wariant]")).not.toBeNull();
-    expect(akapit.closest('div[class*="lista"]')).not.toBeNull();
+    expect(style.lista).toBeTruthy();
+    expect(akapit.closest(`.${style.lista}`)).not.toBeNull();
   });
 
   it("próba kontrolna: akapit poza pojemnikiem listy (formularz, nagłówek) nie jest objęty tym samym sprawdzeniem", async () => {
@@ -636,7 +638,7 @@ describe("Skrzynka pytań — treść pytania na liście zachowuje podziały wie
     render(<SkrzynkaPytan />);
 
     const opis = await screen.findByText("Pytania uczestników zadane przy lekcjach Twoich kursów.");
-    expect(opis.closest('div[class*="lista"]')).toBeNull();
+    expect(opis.closest(`.${style.lista}`)).toBeNull();
   });
 });
 
