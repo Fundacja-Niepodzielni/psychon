@@ -1,0 +1,7 @@
+/* Moduł CSS ekranu „Wzory dokumentów” — wyłącznie układ treści w obszarach
+   szablonu `DetailTemplate`; wartości tylko z tokeny.css. */
+.kolumna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
