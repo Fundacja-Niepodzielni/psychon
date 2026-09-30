@@ -42,7 +42,7 @@ function jestWariantemUprawnien(
 export function EmptyState(wlasciwosci: WlasciwosciEmptyState) {
   const { naglowek, przycisk } = wlasciwosci;
   const tresc = jestWariantemUprawnien(wlasciwosci)
-    ? `Ten widok jest dostępny tylko dla ${wlasciwosci.rola}.`
+    ? `Ta funkcja jest dostępna tylko dla ${wlasciwosci.rola}.`
     : wlasciwosci.tresc;
 
   return (

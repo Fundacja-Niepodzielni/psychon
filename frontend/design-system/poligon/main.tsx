@@ -460,9 +460,9 @@ function Poligon() {
       </div>
       <div data-style-id="m17-brak-uprawnien">
         <EmptyState
-          naglowek="Brak dostępu"
+          naglowek="Sekcja dla administracji"
           wariant="brak-uprawnien"
-          rola="administratora"
+          rola="administracji"
           przycisk={{ etykieta: "Wróć", onClick: () => {} }}
         />
       </div>
