@@ -123,13 +123,13 @@ describe("rejestr GRUPY — zawartość", () => {
   it("zna dwadzieścia jeden grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "decyzjaProfilu",
-      "decyzjaZgloszenia",
       "edycjaLekcji",
       "ekranStartowy",
       "formyStazu",
       "kartaOsoby",
       "kurs",
       "lekcja",
+      "nabor",
       "noweKonto",
       "powiadomienia",
       "przedluzenieDostepu",

@@ -240,17 +240,18 @@ export const GRUPY = {
     ],
   },
   /**
-   * Decyzja o zgłoszeniu rekrutacyjnym (H03) — dziś zgłoszenia obsługuje zakładka
-   * „Zgłoszenia” na liście osób administracji, bez osobnej trasy zgłoszenia.
+   * Nabór rekrutacyjny (H03): szczegół zgłoszenia. Lista (`/admin/nabor`, dziś zakładka
+   * „Zgłoszenia” pod `/admin/uczestniczki`) dochodzi do tej grupy razem z ekranem listy;
+   * szczegół nie miał w starym froncie osobnej strony.
    */
-  decyzjaZgloszenia: {
-    klucz: "decyzjaZgloszenia",
+  nabor: {
+    klucz: "nabor",
     wlaczona: false,
     ekrany: [
       {
         panel: "administracja",
-        staraTrasa: "/admin/uczestniczki",
-        nowaTrasa: "/admin/uczestniczki",
+        staraTrasa: null,
+        nowaTrasa: "/admin/nabor/[id]",
         trasaPoligonu: "/nowy-front/admin/zgloszenia/[id]",
       },
     ],
