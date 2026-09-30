@@ -1,0 +1,19 @@
+/* Moduł CSS ekranu decyzji o zgłoszeniu rekrutacyjnym — wyłącznie układ treści
+   w obszarach szablonu `DetailTemplate`; wartości tylko z tokenów. */
+.kolumna {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.rzad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+}
