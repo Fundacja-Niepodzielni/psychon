@@ -16,7 +16,9 @@
  *  2. ten sam etap, ale wszystkie jego lekcje ukończone (test jeszcze nie
  *     zdany) → `test`;
  *  3. cała ścieżka `completed` → `certyfikat`;
- *  4. inaczej (ścieżka pusta albo pierwszy etap jeszcze niedostępny) → `brak`.
+ *  4. program zamknięty (`GET /me` → `program_completed_at`) → `po-programie`,
+ *     przed wszystkimi powyższymi — ukończony program nie wraca do lekcji;
+ *  5. inaczej (ścieżka pusta albo pierwszy etap jeszcze niedostępny) → `brak`.
  */
 
 export type StatusKursu = "locked" | "in_progress" | "completed";
@@ -43,6 +45,7 @@ export type NastepnyKrok =
   | { rodzaj: "lekcja"; kurs: KursSciezki; lekcja: LekcjaKursu }
   | { rodzaj: "test"; kurs: KursSciezki }
   | { rodzaj: "certyfikat" }
+  | { rodzaj: "po-programie" }
   | { rodzaj: "brak" };
 
 /**
@@ -71,7 +74,15 @@ function pierwszaNieukonczonaLekcja(lekcje: LekcjaKursu[]): LekcjaKursu | undefi
  * `Skeleton`/`Notice` i NIE wywołuje tej funkcji, żeby „jeszcze się ładuje"
  * nie zostało wzięte za „brak").
  */
-export function wyliczNastepnyKrok(kursy: KursSciezki[], lekcjeEtapu: LekcjaKursu[]): NastepnyKrok {
+export function wyliczNastepnyKrok(
+  kursy: KursSciezki[],
+  lekcjeEtapu: LekcjaKursu[],
+  programUkonczony = false,
+): NastepnyKrok {
+  if (programUkonczony) {
+    return { rodzaj: "po-programie" };
+  }
+
   const etapy = etapySciezki(kursy);
   const wToku = etapy.find((kurs) => kurs.status === "in_progress");
 

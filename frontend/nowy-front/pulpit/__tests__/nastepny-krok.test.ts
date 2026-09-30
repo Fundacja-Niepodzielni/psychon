@@ -34,6 +34,7 @@ describe("wyliczNastepnyKrok — tabela gałęzi (kod 0/2/3, kontrola dodatnia)"
     nazwa: string;
     kursy: KursSciezki[];
     lekcjeEtapu: LekcjaKursu[];
+    programUkonczony?: boolean;
     oczekiwany: NastepnyKrok;
   }> = [
     {
@@ -74,10 +75,17 @@ describe("wyliczNastepnyKrok — tabela gałęzi (kod 0/2/3, kontrola dodatnia)"
       lekcjeEtapu: [],
       oczekiwany: { rodzaj: "brak" },
     },
+    {
+      nazwa: "5) program zamknięty → „po-programie” (także przy etapie w toku)",
+      kursy: [kurs({ id: 1, status: "in_progress" })],
+      lekcjeEtapu: [lekcja({ id: 22, sequence_order: 2, is_completed: false })],
+      programUkonczony: true,
+      oczekiwany: { rodzaj: "po-programie" },
+    },
   ];
 
-  it.each(przypadki)("$nazwa", ({ kursy, lekcjeEtapu, oczekiwany }) => {
-    expect(wyliczNastepnyKrok(kursy, lekcjeEtapu)).toEqual(oczekiwany);
+  it.each(przypadki)("$nazwa", ({ kursy, lekcjeEtapu, programUkonczony, oczekiwany }) => {
+    expect(wyliczNastepnyKrok(kursy, lekcjeEtapu, programUkonczony)).toEqual(oczekiwany);
   });
 
   // --- Kontrola dodatnia: każdy przypadek wyżej zmieniony o jeden szczegół
@@ -131,6 +139,16 @@ describe("wyliczNastepnyKrok — tabela gałęzi (kod 0/2/3, kontrola dodatnia)"
 
     const zEtapem = [kurs({ id: 1, status: "in_progress" })];
     expect(wyliczNastepnyKrok(zEtapem, [])).not.toEqual({ rodzaj: "brak" });
+  });
+});
+
+describe("wyliczNastepnyKrok — program zamknięty", () => {
+  it("kontrola dodatnia (5): ten sam stan bez zamknięcia programu daje krok „lekcja”", () => {
+    const kursy = [kurs({ id: 1, status: "in_progress" })];
+    const lekcjeEtapu = [lekcja({ id: 22, sequence_order: 2, is_completed: false })];
+    expect(wyliczNastepnyKrok(kursy, lekcjeEtapu, true)).toEqual({ rodzaj: "po-programie" });
+    expect(wyliczNastepnyKrok(kursy, lekcjeEtapu, false)).toMatchObject({ rodzaj: "lekcja" });
+    expect(wyliczNastepnyKrok(kursy, lekcjeEtapu)).toMatchObject({ rodzaj: "lekcja" });
   });
 });
 

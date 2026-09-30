@@ -1,6 +1,8 @@
 /**
- * Dane pulpitu uczestnika (U-01, `02-MAPA-EKRANOW.md` w. 84). Wyłącznie
- * dokładnie te pięć tras:
+ * Dane pulpitów uczestnika (U-01, `02-MAPA-EKRANOW.md` w. 84) i studenta
+ * (U-02, w. 85). Wyłącznie dokładnie te trasy:
+ *  - `GET /me`                     (H01, `backend/routes/api/h01.php:27`) — tylko `role` i
+ *                                   `program_completed_at`
  *  - `GET /courses`                (H05, `backend/routes/api/h05.php:23`)
  *  - `GET /courses/{slug}`         (H05, `backend/routes/api/h05.php:24`)
  *  - `GET /internship/entries`     (H11, `backend/routes/api/h11.php:26`) — tylko `meta.extra`
@@ -8,6 +10,9 @@
  *  - `GET /certificate/conditions` (H13, `backend/routes/api/h13.php:27`)
  *
  * Kształty odpowiedzi odczytane z zasobów zaplecza (nie zgadywane):
+ *  - `backend/app/Http/Resources/ProfileResource.php:67,77` (`role`,
+ *    `program_completed_at`) i `backend/openapi.json:12526`, schemat
+ *    `ProfileResource`
  *  - `backend/app/Http/Resources/CourseListResource.php:38-45`
  *  - `backend/app/Http/Resources/CourseDetailResource.php:26-36` +
  *    `LessonSummaryResource` (pola w `backend/openapi.json`,
@@ -26,6 +31,13 @@ import { api, apiPaged } from "@/lib/api/klient";
 import type { KursSciezki, LekcjaKursu } from "./nastepny-krok";
 
 export type { KursSciezki, LekcjaKursu };
+
+/** Wycinek `GET /me`: rola rozstrzyga, który pulpit się pokaże, data zakończenia
+ * programu — czy uczestnik jest już po programie. */
+export interface KontoPulpitu {
+  role: string;
+  program_completed_at: string | null;
+}
 
 export interface SzczegolKursu extends KursSciezki {
   lessons: LekcjaKursu[];
@@ -53,6 +65,10 @@ export interface TerminSuperwizji {
   id: number;
   starts_at: string;
   location_or_link: string | null;
+}
+
+export function pobierzKonto(): Promise<KontoPulpitu> {
+  return api<KontoPulpitu>("/me");
 }
 
 export function pobierzKursy(): Promise<KursSciezki[]> {
