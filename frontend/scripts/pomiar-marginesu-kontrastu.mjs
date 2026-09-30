@@ -672,28 +672,28 @@ export const TOKENY_POZA_ZAKRESEM = [
   { nazwa: "on-primary", powod: "Barwa tekstu WYŁĄCZNIE na --primary — para własna, nie jedna z powierzchni w zakresie." },
 ];
 
-/** Wycina treść PIERWSZEGO bloku `:root { ... }` (motyw jasny, domyślny —
- * wartości identyczne z `:root[data-theme="light"]` dziś). Bez zagnieżdżonych
+/** Wycina treść PIERWSZEGO bloku `[data-theme] { ... }` (motyw jasny, domyślny —
+ * wartości identyczne z `[data-theme][data-theme="light"]` dziś). Bez zagnieżdżonych
  * `{}` w wartościach tokenów (sprawdzone: żadna wartość w tokeny.css nie
  * zawiera `{`/`}`), więc dopasowanie niezachłanne do pierwszego `}` jest
  * bezpieczne. */
 function wytnijBlokJasny(tekstTokenyCss) {
-  const m = /:root\s*\{([\s\S]*?)\}/.exec(tekstTokenyCss);
+  const m = /\[data-theme\]\s*\{([\s\S]*?)\}/.exec(tekstTokenyCss);
   if (!m) {
-    throw new Error(`nie znalazłem bloku ":root { ... }" (motyw jasny) w ${SCIEZKA_TOKENY_CSS}`);
+    throw new Error(`nie znalazłem bloku "[data-theme] { ... }" (motyw jasny) w ${SCIEZKA_TOKENY_CSS}`);
   }
   return m[1];
 }
 
-/** Jak wyżej, dla `@media (prefers-color-scheme: dark) { :root { ... } }`
- * (motyw ciemny domyślny — wartości identyczne z `:root[data-theme="dark"]`
+/** Jak wyżej, dla `@media (prefers-color-scheme: dark) { [data-theme] { ... } }`
+ * (motyw ciemny domyślny — wartości identyczne z `[data-theme="dark"]`
  * dziś). */
 function wytnijBlokCiemny(tekstTokenyCss) {
   const m =
-    /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([\s\S]*?)\}\s*\}/.exec(tekstTokenyCss);
+    /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*\[data-theme\]\s*\{([\s\S]*?)\}\s*\}/.exec(tekstTokenyCss);
   if (!m) {
     throw new Error(
-      `nie znalazłem bloku "@media (prefers-color-scheme: dark) { :root { ... } }" (motyw ciemny) w ${SCIEZKA_TOKENY_CSS}`,
+      `nie znalazłem bloku "@media (prefers-color-scheme: dark) { [data-theme] { ... } }" (motyw ciemny) w ${SCIEZKA_TOKENY_CSS}`,
     );
   }
   return m[1];
@@ -1331,7 +1331,7 @@ function main() {
     `\n=== Margines kontrastu — tekst treści na tłach powierzchni, nowy front (design-system/tokeny/tokeny.css) ===`,
   );
   console.log(
-    `Tokeny barw odkryte w :root (motyw jasny): ${liczbaOdkrytychNowy}. Tekst: ${liczbaTekstuNowy}. Powierzchnia: ${liczbaPowierzchniNowy}. Poza zakresem: ${liczbaPozaZakresemNowy}. Suma: ${liczbaTekstuNowy}+${liczbaPowierzchniNowy}+${liczbaPozaZakresemNowy}=${liczbaTekstuNowy + liczbaPowierzchniNowy + liczbaPozaZakresemNowy} (odkrytych: ${liczbaOdkrytychNowy}).`,
+    `Tokeny barw odkryte w [data-theme] (motyw jasny): ${liczbaOdkrytychNowy}. Tekst: ${liczbaTekstuNowy}. Powierzchnia: ${liczbaPowierzchniNowy}. Poza zakresem: ${liczbaPozaZakresemNowy}. Suma: ${liczbaTekstuNowy}+${liczbaPowierzchniNowy}+${liczbaPozaZakresemNowy}=${liczbaTekstuNowy + liczbaPowierzchniNowy + liczbaPozaZakresemNowy} (odkrytych: ${liczbaOdkrytychNowy}).`,
   );
   console.log(`Poza zakresem, z powodem (${nazwyPozaZakresemNowy.length}):`);
   for (const nazwa of nazwyPozaZakresemNowy) {

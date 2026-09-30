@@ -104,9 +104,11 @@ try {
   // TREŚCI (tekst etykiety) i layoutu flex bez wzrostu/skurczu procentowego
   // względem kontenera, nie funkcją szerokości viewportu — 1440px dałoby
   // identyczne piksele tego konkretnego pomiaru, drugi bieg byłby
-  // powtórzeniem, nie nowym pomiarem. Jeden motyw (domyślny, "light" przez
-  // brak parametru) z tego samego powodu: kolor nie zmienia geometrii.
-  await page.goto(URL);
+  // powtórzeniem, nie nowym pomiarem. Jeden motyw ("light", jawnie parametrem —
+  // arkusz tokenów działa tylko pod elementem z `data-theme`, a poligon ustawia
+  // go z `?theme=`; bez parametru strona nie miałaby tokenów) z tego samego
+  // powodu: kolor nie zmienia geometrii.
+  await page.goto(`${URL}?theme=light`);
   await page.waitForSelector(KONTENER);
   // Poligon montuje WSZYSTKIE atomy/molekuły jeden pod drugim (main.tsx) —
   // fixture "slad-ciasny" jest daleko poniżej pierwszego ekranu (viewport
