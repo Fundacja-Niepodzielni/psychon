@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
@@ -101,8 +100,8 @@ export function FormyStazu() {
           // tu jej nie liczy ani nie pokazuje w stopce.
           podpowiedz: `Kolejność: ${forma.sort_order}. ${forma.description ?? "Bez opisu."}`,
           plakietka: forma.is_active
-            ? { wariant: "ok" as const, tekst: "Aktywna" }
-            : { wariant: "neutral" as const, tekst: "Nieaktywna" },
+            ? { wariant: "ok" as const, tekst: "aktywna" }
+            : { wariant: "neutral" as const, tekst: "nieaktywna" },
           akcja: {
             etykieta: "Edytuj",
             onKliknij: () => otworzEdycje(forma),
@@ -208,7 +207,7 @@ export function FormyStazu() {
     return (
       <Korzen>
         <Heading stopien={1}>Słownik form stażu</Heading>
-        <Text>Backend H11 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
+        <Text>Serwer jest nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
       </Korzen>
     );
   }
@@ -220,8 +219,9 @@ export function FormyStazu() {
       <PageHeader
         okruszki={[{ etykieta: "Administracja" }, { etykieta: "Słownik form stażu" }]}
         tytul="Słownik form stażu"
-        opis="Formy dyżuru dostępne przy zgłaszaniu wpisu w dzienniku stażu (H11). Pozycji nie da się usunąć — wygasza ją przełącznik aktywności."
+        opis="Formy dyżuru dostępne przy zgłaszaniu wpisu w dzienniku stażu. Pozycji nie da się usunąć — wygasza ją przełącznik aktywności."
         onPowrot={() => router.back()}
+        przyciskGlowny={panelOtwarty ? undefined : { etykieta: "Dodaj formę", onKliknij: otworzDodawanie }}
       />
 
       <RecordList
@@ -233,12 +233,6 @@ export function FormyStazu() {
           przycisk: { etykieta: "Dodaj formę", onClick: otworzDodawanie },
         }}
       />
-
-      {!panelOtwarty && (
-        <Button poziom="primary" onClick={otworzDodawanie}>
-          Dodaj formę
-        </Button>
-      )}
 
       {panelOtwarty && (
         <div className={style.panel}>

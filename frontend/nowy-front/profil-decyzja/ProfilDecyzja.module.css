@@ -18,6 +18,12 @@
   gap: var(--space-12);
 }
 
+/* „Wróć do listy” to wyjście z decyzji bez wyboru (słownik §4): trzeci
+   przycisk, odsunięty od dwóch rozstrzygających do prawej krawędzi rzędu. */
+.odsuniety {
+  margin-inline-start: auto;
+}
+
 .tresc {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

@@ -96,17 +96,17 @@ describe("Wniosek o profil — decyzja: stany w szablonie, jeden main", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Wczytywanie wniosku" })).toBeInTheDocument();
   });
 
-  it("dane: karta wniosku, opis, załączniki i jeden przycisk główny „Zaakceptuj”", async () => {
+  it("dane: karta wniosku, opis, załączniki i jeden przycisk główny „Zatwierdź”", async () => {
     const { container } = await renderGotowy();
     sprawdzSzablon(container);
     expect(screen.getByText("Gdańsk")).toBeInTheDocument();
     expect(screen.getByText("interwencja kryzysowa, terapia poznawczo-behawioralna")).toBeInTheDocument();
     expect(screen.getByText("udzielona")).toBeInTheDocument();
     expect(screen.getByText(/Pracuję z osobami dorosłymi\./)).toBeInTheDocument();
-    expect(screen.getByText("Czeka na decyzję")).toBeInTheDocument();
+    expect(screen.getByText("czeka na decyzję")).toBeInTheDocument();
     const glowne = przyciskiGlowne();
     expect(glowne).toHaveLength(1);
-    expect(glowne[0]).toHaveTextContent("Zaakceptuj");
+    expect(glowne[0]).toHaveTextContent("Zatwierdź");
     expect(screen.getByRole("button", { name: "Poproś o poprawkę" })).toBeInTheDocument();
     const wspierajaca = container.querySelector<HTMLElement>("[data-obszar='wspierajaca']")!;
     expect(within(wspierajaca).getByRole("heading", { level: 2, name: "Decyzja o wniosku" })).toBeInTheDocument();
@@ -115,8 +115,8 @@ describe("Wniosek o profil — decyzja: stany w szablonie, jeden main", () => {
   it("po decyzji zapisanej na serwerze (zaakceptowany): informacja bez przycisku głównego", async () => {
     const { container } = await renderGotowy(WNIOSEK_ZAAKCEPTOWANY);
     sprawdzSzablon(container);
-    expect(screen.getAllByText("Zaakceptowany").length).toBeGreaterThan(0);
-    expect(screen.getByText("Wniosek zaakceptowany")).toBeInTheDocument();
+    expect(screen.getAllByText("zatwierdzony").length).toBeGreaterThan(0);
+    expect(screen.getByText("Wniosek zatwierdzony")).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Poproś o poprawkę" })).toBeNull();
   });
@@ -128,10 +128,10 @@ describe("Wniosek o profil — decyzja: stany w szablonie, jeden main", () => {
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 
-  it("wniosek opublikowany (status spoza typu klienta): znacznik „Opublikowany” i brak decyzji", async () => {
+  it("wniosek opublikowany (status spoza typu klienta): znacznik „opublikowany” i brak decyzji", async () => {
     const { container } = await renderGotowy({ ...WNIOSEK, status: "published" as never });
     sprawdzSzablon(container);
-    expect(screen.getByText("Opublikowany")).toBeInTheDocument();
+    expect(screen.getByText("opublikowany")).toBeInTheDocument();
     expect(screen.getByText("Wniosek nie czeka na decyzję")).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(0);
   });
@@ -190,11 +190,11 @@ describe("Wniosek o profil — decyzja: akceptacja", () => {
     const { container } = render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
 
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź" }));
 
-    await screen.findByText("Wniosek zaakceptowany");
+    await screen.findByText("Wniosek zatwierdzony");
     expect(api).toHaveBeenCalledWith("/admin/profiles/12/accept", { method: "POST" });
-    expect(screen.getByRole("status")).toHaveTextContent("Wniosek zaakceptowany.");
+    expect(screen.getByRole("status")).toHaveTextContent("Wniosek zatwierdzony.");
     expect(przyciskiGlowne()).toHaveLength(0);
     sprawdzSzablon(container);
   });
@@ -209,11 +209,11 @@ describe("Wniosek o profil — decyzja: akceptacja", () => {
     });
     render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź" }));
     await screen.findByText("Wniosek jest już rozstrzygnięty");
     expect(screen.getByText("Ten wniosek został już rozstrzygnięty.")).toBeInTheDocument();
     await uzytkownik.click(screen.getByRole("button", { name: "Wczytaj wniosek ponownie" }));
-    await waitFor(() => expect(screen.getByText("Wniosek zaakceptowany")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Wniosek zatwierdzony")).toBeInTheDocument());
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 
@@ -222,7 +222,7 @@ describe("Wniosek o profil — decyzja: akceptacja", () => {
     trasy({ show: WNIOSEK, accept: () => Promise.reject(bladApi(403, "forbidden", "Nie masz dostępu do tej akcji.")) });
     const { container } = render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź" }));
     expect(await screen.findByText("Nie masz dostępu do tej akcji.")).toBeInTheDocument();
     sprawdzSzablon(container);
   });
@@ -232,7 +232,7 @@ describe("Wniosek o profil — decyzja: akceptacja", () => {
     trasy({ show: WNIOSEK, accept: () => Promise.reject(bladApi(404, "not_found", "Nie znaleziono wniosku.")) });
     render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź" }));
     expect(await screen.findByText("Nie znaleziono wniosku", { selector: "*" })).toBeInTheDocument();
   });
 
@@ -241,7 +241,7 @@ describe("Wniosek o profil — decyzja: akceptacja", () => {
     trasy({ show: WNIOSEK, accept: () => Promise.reject(new TypeError("Failed to fetch")) });
     render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź" }));
     expect(await screen.findByText("Nie udało się zaakceptować wniosku. Spróbuj ponownie.")).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(1);
   });
@@ -261,7 +261,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     expect(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Wyślij prośbę o poprawkę" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Wróć do decyzji" })).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: "Zaakceptuj" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Zatwierdź" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(1);
     sprawdzSzablon(container);
   });
@@ -339,7 +339,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     await renderGotowy();
     const uzytkownik = await otworzPoprawke();
     await uzytkownik.click(await screen.findByRole("button", { name: "Wróć do decyzji" }));
-    expect(await screen.findByRole("button", { name: "Zaakceptuj" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Zatwierdź" })).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(1);
   });
 });

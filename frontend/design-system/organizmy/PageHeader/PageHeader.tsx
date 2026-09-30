@@ -23,6 +23,11 @@ interface AkcjaPageHeader {
   href: string;
 }
 
+interface PrzyciskGlownyPageHeader {
+  etykieta: string;
+  onKliknij: () => void;
+}
+
 interface WlasciwosciPageHeader {
   okruszki: PozycjaOkruszkow[];
   /** Przekazane wprost do `Breadcrumbs` (M7) — "pełne" domyślnie. */
@@ -38,6 +43,11 @@ interface WlasciwosciPageHeader {
   etykietaPowrotu?: string;
   /** Odnośnik poboczny (np. do dokumentacji ekranu) — opcjonalny, `Link` (A2). */
   akcja?: AkcjaPageHeader;
+  /** Jedyny przycisk w kolorze na ekranie. Od 768 px stoi w nagłówku przy
+   * prawej krawędzi, na wysokości tytułu (makieta 2.0.4, `.head .acts`);
+   * poniżej 768 px ma pełną szerokość pod opisem. Szerokość jest jedna na
+   * wszystkich ekranach (`PageHeader.module.css`, `.akcje`). */
+  przyciskGlowny?: PrzyciskGlownyPageHeader;
   dzieci?: ReactNode;
 }
 
@@ -65,12 +75,30 @@ export function PageHeader({
   onPowrot,
   etykietaPowrotu = "Wstecz",
   akcja,
+  przyciskGlowny,
   dzieci,
 }: WlasciwosciPageHeader) {
   const wPowloce = useWRamce();
   const okruszkiWPowloce = okruszki.some((pozycja) => pozycja.href)
     ? okruszki.filter((pozycja, indeks) => pozycja.href || indeks === okruszki.length - 1)
     : [];
+
+  const blokTekstu = (
+    <>
+      <div className={style.tytulWiersz}>
+        <Heading stopien={1}>{tytul}</Heading>
+        {status && <Badge wariant={status.wariant}>{status.etykieta}</Badge>}
+      </div>
+
+      {opis && <Text>{opis}</Text>}
+
+      {akcja && (
+        <p className={style.akcja}>
+          <Link href={akcja.href}>{akcja.etykieta}</Link>
+        </p>
+      )}
+    </>
+  );
 
   return (
     <header className={style.naglowek}>
@@ -89,17 +117,17 @@ export function PageHeader({
         </div>
       )}
 
-      <div className={style.tytulWiersz}>
-        <Heading stopien={1}>{tytul}</Heading>
-        {status && <Badge wariant={status.wariant}>{status.etykieta}</Badge>}
-      </div>
-
-      {opis && <Text>{opis}</Text>}
-
-      {akcja && (
-        <p className={style.akcja}>
-          <Link href={akcja.href}>{akcja.etykieta}</Link>
-        </p>
+      {przyciskGlowny ? (
+        <div className={style.glowa} data-testid="pageheader-glowa">
+          <div className={style.tekst}>{blokTekstu}</div>
+          <div className={style.akcje} data-testid="pageheader-przycisk-glowny">
+            <Button poziom="primary" onClick={przyciskGlowny.onKliknij}>
+              {przyciskGlowny.etykieta}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        blokTekstu
       )}
 
       {dzieci}

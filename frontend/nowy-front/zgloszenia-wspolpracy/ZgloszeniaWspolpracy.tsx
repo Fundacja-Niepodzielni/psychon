@@ -194,7 +194,7 @@ export function ZgloszeniaWspolpracy() {
     <div className={style.filtr}>
       <Field
         id="zgloszenia-filtr-status"
-        etykieta="Status"
+        etykieta="Stan"
         rodzaj="wybor"
         opcje={OPCJE_FILTRA}
         wartosc={filtr}
@@ -304,7 +304,7 @@ export function ZgloszeniaWspolpracy() {
                       },
                       {
                         id: `odpowiedz-status-${zgloszenie.id}`,
-                        etykieta: "Status po odpowiedzi",
+                        etykieta: "Stan po odpowiedzi",
                         rodzaj: "wybor",
                         opcje: OPCJE_STATUSU_PO_ODPOWIEDZI,
                         wartosc: otwarta.status,
