@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import style from "./ListTemplate.module.css";
+import { KorzenSzablonu } from "../KontekstPowloki";
 
 interface WlasciwosciListTemplate {
   /** Naglowek ekranu — element PageHeader (O1), ktory sam niesie okruszki
@@ -26,7 +27,7 @@ interface WlasciwosciListTemplate {
  */
 export function ListTemplate({ naglowek, filtry, lista, stronicowanie }: WlasciwosciListTemplate) {
   return (
-    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-lista">
+    <KorzenSzablonu className={style.uklad} styleId="szablon-lista">
       <div className={style.naglowek} data-testid="obszar-naglowek">
         {naglowek}
       </div>
@@ -43,6 +44,6 @@ export function ListTemplate({ naglowek, filtry, lista, stronicowanie }: Wlasciw
           {stronicowanie}
         </div>
       )}
-    </main>
+    </KorzenSzablonu>
   );
 }

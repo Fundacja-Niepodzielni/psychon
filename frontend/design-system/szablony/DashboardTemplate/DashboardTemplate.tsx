@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { PageHeader } from "../../organizmy/PageHeader/PageHeader";
 import { StatRow } from "../../organizmy/StatRow/StatRow";
 import style from "./DashboardTemplate.module.css";
+import { KorzenSzablonu } from "../KontekstPowloki";
 
 interface WlasciwosciDashboardTemplate {
   naglowek: ComponentProps<typeof PageHeader>;
@@ -22,7 +23,7 @@ interface WlasciwosciDashboardTemplate {
  */
 export function DashboardTemplate({ naglowek, nastepnyKrok, kafle, glowna, wspierajaca }: WlasciwosciDashboardTemplate) {
   return (
-    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-pulpit">
+    <KorzenSzablonu className={style.uklad} styleId="szablon-pulpit">
       <div data-obszar="naglowek">
         <PageHeader {...naglowek} />
       </div>
@@ -44,6 +45,6 @@ export function DashboardTemplate({ naglowek, nastepnyKrok, kafle, glowna, wspie
           {wspierajaca}
         </div>
       </div>
-    </main>
+    </KorzenSzablonu>
   );
 }

@@ -3,6 +3,7 @@ import { PageHeader } from "../../organizmy/PageHeader/PageHeader";
 import { PublishChecklist } from "../../organizmy/PublishChecklist/PublishChecklist";
 import { StatRow } from "../../organizmy/StatRow/StatRow";
 import style from "./DetailTemplate.module.css";
+import { KorzenSzablonu } from "../KontekstPowloki";
 
 interface WlasciwosciDetailTemplate {
   naglowek: ComponentProps<typeof PageHeader>;
@@ -27,7 +28,7 @@ interface WlasciwosciDetailTemplate {
  */
 export function DetailTemplate({ naglowek, checklist, kafle, glowna, wspierajaca }: WlasciwosciDetailTemplate) {
   return (
-    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-szczegol">
+    <KorzenSzablonu className={style.uklad} styleId="szablon-szczegol">
       <div data-obszar="naglowek">
         <PageHeader {...naglowek} />
       </div>
@@ -49,6 +50,6 @@ export function DetailTemplate({ naglowek, checklist, kafle, glowna, wspierajaca
           {wspierajaca}
         </div>
       </div>
-    </main>
+    </KorzenSzablonu>
   );
 }

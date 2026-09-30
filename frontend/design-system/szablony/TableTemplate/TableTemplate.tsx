@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import style from "./TableTemplate.module.css";
+import { KorzenSzablonu } from "../KontekstPowloki";
 
 interface WlasciwosciTableTemplate {
   /** PageHeader (O1) — niesie okruszki jako swoj pierwszy wewnetrzny wiersz. */
@@ -38,7 +39,7 @@ export function TableTemplate({
   wsparcie,
 }: WlasciwosciTableTemplate) {
   return (
-    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-tabela">
+    <KorzenSzablonu className={style.uklad} styleId="szablon-tabela">
       <div className={style.naglowek} data-testid="obszar-naglowek">
         {naglowek}
       </div>
@@ -70,6 +71,6 @@ export function TableTemplate({
           {wsparcie}
         </div>
       )}
-    </main>
+    </KorzenSzablonu>
   );
 }
