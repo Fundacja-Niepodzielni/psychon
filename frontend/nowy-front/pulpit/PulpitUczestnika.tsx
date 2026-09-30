@@ -12,6 +12,7 @@ import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
 import { rodzajBledu } from "./rodzaj-bledu";
+import { formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzGodzinyStazu,
   pobierzKursy,
@@ -39,17 +40,6 @@ const ETYKIETA_STATUSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok
   in_progress: { wariant: "pending", tekst: "W toku" },
   completed: { wariant: "ok", tekst: "Ukończony" },
 };
-
-function formatDataSuperwizji(iso: string): string {
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return iso;
-  return new Intl.DateTimeFormat("pl-PL", {
-    day: "2-digit",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(data);
-}
 
 interface WlasciwosciPulpitUczestnika {
   /** `GET /me` → `program_completed_at` różne od `null`. */
@@ -203,7 +193,7 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
   const terminySuperwizji = superwizje.stan === "ok" ? nadchodzace(superwizje.dane) : [];
   const wierszeSuperwizji: WierszRecordList[] = terminySuperwizji.map((termin) => ({
     id: String(termin.id),
-    tytul: formatDataSuperwizji(termin.starts_at),
+    tytul: formatujDateICzas(termin.starts_at),
     podpowiedz: termin.location_or_link ?? "Bez podanej lokalizacji.",
     akcja: { etykieta: "Szczegóły", href: "/panel/superwizja" },
   }));

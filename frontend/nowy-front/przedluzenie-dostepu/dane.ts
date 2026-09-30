@@ -1,6 +1,7 @@
 import { api, ApiError } from "@/lib/api/klient";
 import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import type { AdminUserCard } from "@/lib/api/h18";
+import { formatujDate as formatujDateWspolna } from "../wspolne/daty";
 
 /**
  * Logika danych ekranu „Przedłużenie dostępu”: ciało żądania, kontrola pól,
@@ -107,17 +108,11 @@ export function dataPoPrzedluzeniu(
   return dodajMiesiace(baza, liczba);
 }
 
-const FORMAT_DATY = new Intl.DateTimeFormat("pl-PL", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/Warsaw",
-});
-
+/** Wejście `Date` (wynik `dataPoPrzedluzeniu`) przechodzi na znacznik ISO i dalej przez wspólny formater. */
 export function formatujDate(data: Date | string | null): string {
   if (data === null) return "—";
-  const wartosc = typeof data === "string" ? new Date(data) : data;
-  return Number.isNaN(wartosc.getTime()) ? "—" : FORMAT_DATY.format(wartosc);
+  if (typeof data === "string") return formatujDateWspolna(data);
+  return Number.isNaN(data.getTime()) ? "—" : formatujDateWspolna(data.toISOString());
 }
 
 /** Czy data po przedłużeniu jest wcześniejsza niż obecna (skrócenie dostępu). */

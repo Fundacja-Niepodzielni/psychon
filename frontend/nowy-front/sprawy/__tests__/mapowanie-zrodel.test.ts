@@ -67,6 +67,6 @@ describe("mapowanie źródeł na jednolity element kolejki", () => {
   it("brak daty źródłowej (created_at null) -> czekaOd pusty string, nigdy null/undefined (kontrola dodatnia)", () => {
     const wynik = mapujDyzur({ id: 1, created_at: null, user: { id: 1, first_name: "A", last_name: "B" } });
     expect(wynik.czekaOd).toBe("");
-    expect(wynik.podpowiedz).toBe("Czeka od nieznana data");
+    expect(wynik.podpowiedz).toBe("Czeka od —");
   });
 });

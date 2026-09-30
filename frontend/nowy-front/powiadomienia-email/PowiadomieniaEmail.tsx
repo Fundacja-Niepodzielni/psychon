@@ -15,6 +15,7 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { SaveBar } from "@/design-system/molekuly/SaveBar/SaveBar";
 import { ApiError } from "@/lib/api/klient";
 import { fetchAdminEmailsPage } from "@/lib/api/h16-emails";
+import { formatujDateICzas } from "../wspolne/daty";
 import {
   fetchNotificationSettings,
   updateNotificationSettings,
@@ -279,7 +280,7 @@ export function PowiadomieniaEmail() {
           do_email: wiadomosc.to_email,
           temat: wiadomosc.subject,
           status: ETYKIETY_STATUSU[wiadomosc.status],
-          wyslano: wiadomosc.sent_at ?? "—",
+          wyslano: formatujDateICzas(wiadomosc.sent_at),
         },
       })),
     [wiadomosci],

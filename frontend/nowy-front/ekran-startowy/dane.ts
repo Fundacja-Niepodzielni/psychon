@@ -1,4 +1,5 @@
 import { ApiError, api } from "@/lib/api/klient";
+import { formatujDateICzas } from "../wspolne/daty";
 
 /**
  * Dane ekranu „Zacznij tutaj — treść” (A-30): odczyt `GET /onboarding` i zapis
@@ -183,10 +184,5 @@ export function opisOstatniejZmiany(znacznik: string | null): string {
   if (znacznik === null) return "Treść domyślna — jeszcze nie była zmieniana.";
   const data = new Date(znacznik);
   if (Number.isNaN(data.getTime())) return "Nie znamy daty ostatniej zmiany.";
-  const tekst = new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "long",
-    timeStyle: "short",
-    timeZone: "Europe/Warsaw",
-  }).format(data);
-  return `Ostatnia zmiana: ${tekst}.`;
+  return `Ostatnia zmiana: ${formatujDateICzas(znacznik)}.`;
 }

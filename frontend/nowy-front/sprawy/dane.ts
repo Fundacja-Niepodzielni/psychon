@@ -1,4 +1,5 @@
 import { apiPaged, ApiError } from "@/lib/api/klient";
+import { formatujDate } from "../wspolne/daty";
 
 /**
  * Ekran A-02 „Sprawy" — jedna kolejka decyzji administracji, złożona z trzech
@@ -70,13 +71,6 @@ export interface WynikZrodla {
   /** `meta.total` pierwszej strony — do adnotacji „ponad 100 pozycji"
    * (patrz `MA_NIEPEWNA_KOLEJNOSC` w `Sprawy.tsx`). */
   liczbaCalkowita: number;
-}
-
-function formatujDate(iso: string | null): string {
-  if (!iso) return "nieznana data";
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return "nieznana data";
-  return data.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 interface OsobaSkrot {

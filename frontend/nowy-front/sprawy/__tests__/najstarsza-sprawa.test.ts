@@ -9,7 +9,7 @@ function pozycja(overrides: Partial<PozycjaKolejki> & Pick<PozycjaKolejki, "id" 
   return {
     idLiczbowe: domyslneIdLiczbowe,
     tytul: `Sprawa ${overrides.id}`,
-    podpowiedz: "Czeka od nieznana data",
+    podpowiedz: "Czeka od —",
     czekaOd: "",
     href: `/sprawa/${overrides.id}`,
     ...overrides,

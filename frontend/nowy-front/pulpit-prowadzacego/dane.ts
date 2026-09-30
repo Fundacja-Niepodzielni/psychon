@@ -16,6 +16,7 @@ import { api, ApiError } from "@/lib/api/klient";
 import { fetchInstructorQuestions, unansweredCount, type InstructorQuestion } from "@/lib/questions";
 import type { InstructorGroup, InstructorSlot } from "@/lib/h12/types";
 import type { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
+import { formatujDateICzas } from "../wspolne/daty";
 
 /** Kształt z `MyInstructorProfileController::courses` (`h09`, wiersze 63-71). */
 export interface KursProwadzacego {
@@ -115,16 +116,8 @@ export function wybierzWidok(dane: DanePulpitu, teraz: Date = new Date()): Widok
   return "dane";
 }
 
-const FORMAT_TERMINU = new Intl.DateTimeFormat("pl-PL", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 export function formatujTermin(znacznikIso: string): string {
-  return FORMAT_TERMINU.format(new Date(znacznikIso));
+  return formatujDateICzas(znacznikIso);
 }
 
 export function pelneImie(osoba: { first_name: string; last_name: string }): string {

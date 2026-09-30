@@ -162,7 +162,7 @@ describe("Skrzynka pytań — dane", () => {
     expect(await screen.findByText(PYTANIE_PIERWSZE.question)).toBeInTheDocument();
     expect(apiPaged).toHaveBeenCalledWith("/instructor/questions?answered=false&page=1");
     expect(screen.getByText(PYTANIE_DRUGIE.question)).toBeInTheDocument();
-    expect(screen.getByText(/Marta Demo · Wywiad psychologiczny · Wprowadzenie do wywiadu · 29\.09\.2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Marta Demo · Wywiad psychologiczny · Wprowadzenie do wywiadu · 29 września 2026, 12:15/)).toBeInTheDocument();
     expect(screen.getByText("2 pytania bez odpowiedzi")).toBeInTheDocument();
     expect(przyciskiOdpowiedz()).toHaveLength(2);
     sprawdzSzablon(container);
@@ -502,7 +502,7 @@ describe("Skrzynka pytań — filtr widoku i podgląd odpowiedzi", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Twoja odpowiedź" })).toBeInTheDocument();
     expect(screen.getByText(ODPOWIEDZ_Z_HTML)).toBeInTheDocument();
     expect(screen.getByText(ODPOWIEDZIANE_Z_HTML.question)).toBeInTheDocument();
-    expect(screen.getByText(/30\.09\.2026/)).toBeInTheDocument();
+    expect(screen.getByText(/30 września 2026, 11:30/)).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("script")).toBeNull();
     expect(container.querySelector("b")).toBeNull();

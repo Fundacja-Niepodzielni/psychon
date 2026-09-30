@@ -149,7 +149,7 @@ describe("wzory dokumentów — treść i historia", () => {
   });
 
   it("moment zmiany w strefie Warszawy, zły zapis daje kreskę", () => {
-    expect(formatujMomentZmiany("2026-09-28T10:00:00Z")).toBe("28 września 2026 12:00");
+    expect(formatujMomentZmiany("2026-09-28T10:00:00Z")).toBe("28 września 2026, 12:00");
     expect(formatujMomentZmiany("nie-data")).toBe("—");
   });
 

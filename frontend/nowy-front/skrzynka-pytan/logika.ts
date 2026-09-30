@@ -1,5 +1,6 @@
 import { ApiError, type PaginationMeta } from "@/lib/api/klient";
 import type { WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import { formatujDateICzas } from "../wspolne/daty";
 import type { PytanieSkrzynki, StronaPytan, WidokPytan } from "./dane";
 
 /**
@@ -57,17 +58,9 @@ export function opisLicznika(liczba: number): string {
   return `${liczba} ${odmianaPytan(liczba)} bez odpowiedzi`;
 }
 
-/** Data i godzina pytania, czas polski, bez sekund. */
+/** Data i godzina pytania, czas polski, bez sekund; brak wartości to „—”. */
 export function formatujDate(iso: string | null): string {
-  if (iso === null) return "brak daty";
-  return new Date(iso).toLocaleString("pl-PL", {
-    timeZone: "Europe/Warsaw",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatujDateICzas(iso);
 }
 
 /** Kto, z jakiego kursu i lekcji, kiedy — jedna linia pod treścią pytania. */

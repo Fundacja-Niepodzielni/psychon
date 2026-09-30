@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api/klient";
 import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { formatujDateICzas } from "../wspolne/daty";
 import type {
   DocumentTemplate,
   DocumentTemplateAuthor,
@@ -88,18 +89,8 @@ export function czyZmieniona(tresc: string, zapisana: string): boolean {
   return tresc !== zapisana;
 }
 
-const FORMAT_DATY = new Intl.DateTimeFormat("pl-PL", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/Warsaw",
-});
-
 export function formatujMomentZmiany(iso: string): string {
-  const data = new Date(iso);
-  return Number.isNaN(data.getTime()) ? "—" : FORMAT_DATY.format(data);
+  return formatujDateICzas(iso);
 }
 
 /** Osoba przy wersji; `null` to wzór, którego nikt jeszcze nie edytował. */

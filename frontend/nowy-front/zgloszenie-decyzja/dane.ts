@@ -9,6 +9,7 @@ import { api, ApiError, baseUrl } from "@/lib/api/klient";
 import { downloadFile } from "@/lib/api/pliki";
 import type { ApplicationItem, ApplicationRole } from "@/lib/h03/types";
 import { ROLE_LABELS } from "@/lib/h18/labels";
+import { formatujDate } from "../wspolne/daty";
 
 /** `ApplicationResource` (`backend/app/Http/Resources/H03/ApplicationResource.php:15-40`). */
 export type Zgloszenie = ApplicationItem & {
@@ -71,12 +72,8 @@ export function adresKartyOsoby(idOsoby: number): string {
   return `/admin/uczestniczki/${idOsoby}`;
 }
 
-const FORMAT_DATY = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Warsaw" });
-
 export function dataPl(iso: string | null): string {
-  if (!iso) return "—";
-  const data = new Date(iso);
-  return Number.isNaN(data.getTime()) ? "—" : FORMAT_DATY.format(data);
+  return formatujDate(iso);
 }
 
 function liczbaZReason(reason: ApiError["reason"], klucz: string): number | null {
