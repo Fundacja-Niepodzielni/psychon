@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
@@ -10,7 +9,6 @@ import { TableTemplate } from "@/design-system/szablony/TableTemplate/TableTempl
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import { DataTable } from "@/design-system/organizmy/DataTable/DataTable";
-import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
@@ -47,13 +45,19 @@ interface WlasciwosciKartyOsoby {
  * (`backend/routes/api/h18.php:28`, `h07.php:18`); zapis wyłącznie
  * `PATCH /admin/users/{id}` (`h18.php:30`), bez pola roli.
  *
- * Układ renderuje `TableTemplate`
- * (`@/design-system/szablony/TableTemplate/TableTemplate`): slot `naglowek`
- * (`PageHeader`) → `statystyki` (`StatRow`, cztery filary + rzetelność) →
- * `zdanie` (źródło liczb) → `tabela` (`DataTable`, dane kontaktowe i data
- * wygaśnięcia dostępu) → `wsparcie` (sekcje rzadkie zwinięte z licznikiem:
- * powiadomienia, dziennik — bez ładunku zdarzenia). Sloty `zakres` i `wykres`
- * pominięte — ekran nie ma zakresu dat ani wykresu.
+ * Każdy stan (ładowanie, dane, błąd, brak uprawnień, nie znaleziono) renderuje
+ * się WEWNĄTRZ `TableTemplate`
+ * (`@/design-system/szablony/TableTemplate/TableTemplate`), którego korzeń jest
+ * jedynym `main`. Sloty: `naglowek` (`PageHeader`) → `statystyki` (`StatRow`,
+ * cztery filary + rzetelność) → `zdanie` (źródło liczb) → `tabela` (`DataTable`
+ * z danymi kontaktowymi i datą wygaśnięcia dostępu) → `wsparcie` (sekcje rzadkie
+ * zwinięte z licznikiem: powiadomienia, dziennik — bez ładunku zdarzenia).
+ * Sloty `zakres` i `wykres` pominięte — ekran nie ma zakresu dat ani wykresu.
+ *
+ * Edycja danych żyje w JEDNYM kontenerze: w stanie edycji slot `tabela` niesie
+ * `FormSection` zamiast `DataTable` (bez `Dialog`), więc na ekranie jest jeden
+ * rząd przycisków „Anuluj” / „Zapisz zmiany”, a przycisk główny „Zmień dane”
+ * znika z nagłówka na czas edycji.
  */
 export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
   const router = useRouter();
@@ -150,54 +154,71 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
     }
   }
 
+  const okruszki = [{ etykieta: "Administracja" }, { etykieta: "Osoby" }, { etykieta: "Karta osoby" }];
+  const wroc = () => router.back();
+
   if (stan === "ladowanie") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Karta osoby</Heading>
-        <Skeleton wiersze={6} />
-      </main>
+      <TableTemplate
+        naglowek={<PageHeader okruszki={okruszki} tytul="Karta osoby" onPowrot={wroc} />}
+        tabela={<Skeleton wiersze={6} />}
+      />
     );
   }
 
   if (stan === "blad") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Karta osoby</Heading>
-        <Text>Backend H18 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
-      </main>
+      <TableTemplate
+        naglowek={<PageHeader okruszki={okruszki} tytul="Karta osoby" onPowrot={wroc} />}
+        tabela={
+          <Notice
+            wariant="error"
+            tytul="Nie udało się wczytać karty osoby"
+            akcja={
+              <Button
+                poziom="outline"
+                onClick={() => {
+                  setStan("ladowanie");
+                  wczytajKarte();
+                }}
+              >
+                Spróbuj ponownie
+              </Button>
+            }
+          >
+            Serwer nie odpowiedział albo zwrócił błąd. Dane osoby nie są zgadywane bez odpowiedzi.
+          </Notice>
+        }
+      />
     );
   }
 
   if (stan === "brak-uprawnien") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <PageHeader
-          okruszki={[{ etykieta: "Administracja" }, { etykieta: "Karta osoby" }]}
-          tytul="Karta osoby"
-          onPowrot={() => router.back()}
-        />
-        <EmptyState
-          naglowek="Brak dostępu"
-          wariant="brak-uprawnien"
-          rola="opiekuna projektu i Super Admina"
-          przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
-        />
-      </main>
+      <TableTemplate
+        naglowek={<PageHeader okruszki={okruszki} tytul="Karta osoby" onPowrot={wroc} />}
+        tabela={
+          <EmptyState
+            naglowek="Brak dostępu"
+            wariant="brak-uprawnien"
+            rola="opiekuna projektu i Super Admina"
+            przycisk={{ etykieta: "Wróć", onClick: wroc }}
+          />
+        }
+      />
     );
   }
 
   if (stan === "nie-znaleziono") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <PageHeader
-          okruszki={[{ etykieta: "Administracja" }, { etykieta: "Karta osoby" }]}
-          tytul="Karta osoby"
-          onPowrot={() => router.back()}
-        />
-        <Notice wariant="warn" tytul="Nie znaleziono osoby">
-          Nie znaleziono osoby.
-        </Notice>
-      </main>
+      <TableTemplate
+        naglowek={<PageHeader okruszki={okruszki} tytul="Karta osoby" onPowrot={wroc} />}
+        tabela={
+          <Notice wariant="warn" tytul="Nie znaleziono osoby">
+            Nie znaleziono osoby.
+          </Notice>
+        }
+      />
     );
   }
 
@@ -220,21 +241,25 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
       }))
     : [];
 
+  const edycja = formularzOtwarty && formularz !== null;
+
   return (
-    <main id="tresc">
+    <>
       <TableTemplate
         naglowek={
           <PageHeader
             okruszki={[{ etykieta: "Administracja" }, { etykieta: "Osoby" }, { etykieta: `${karta.profile.first_name} ${karta.profile.last_name}` }]}
             tytul={`${karta.profile.first_name} ${karta.profile.last_name}`}
             opis={`Rola: ${karta.profile.role}`}
-            onPowrot={() => router.back()}
+            onPowrot={wroc}
             dzieci={
-              <div className={style.akcjaGlowna}>
-                <Button poziom="primary" onClick={otworzFormularz}>
-                  Zmień dane
-                </Button>
-              </div>
+              edycja ? undefined : (
+                <div className={style.akcjaGlowna}>
+                  <Button poziom="primary" onClick={otworzFormularz}>
+                    Zmień dane
+                  </Button>
+                </div>
+              )
             }
           />
         }
@@ -250,11 +275,20 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
         }
         zdanie={<Text>Liczby pochodzą z jednego źródła (ProgressAggregator) — to samo, co pulpit i raport.</Text>}
         tabela={
-          <DataTable
-            tytul="Dane osoby"
-            kolumny={kolumnyDanychOsoby()}
-            wiersze={wiersze}
-          />
+          edycja ? (
+            <FormSection
+              tytul="Dane osoby"
+              pola={pola}
+              tytulDodatkowych="Adres i grupa produktowa"
+              etykietaZapisz={zapisywanie ? "Zapisywanie…" : "Zapisz zmiany"}
+              onAnuluj={zamknijFormularz}
+              onZapisz={() => {
+                if (!zapisywanie) void zapisz();
+              }}
+            />
+          ) : (
+            <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
+          )
         }
         wsparcie={
           <div className={style.sekcjeRzadkie}>
@@ -303,30 +337,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
         }
       />
 
-      {formularzOtwarty && formularz && (
-        <Dialog
-          tytul="Zmień dane"
-          etykietaWycofania="Anuluj"
-          etykietaPotwierdzenia={zapisywanie ? "Zapisywanie…" : "Zapisz zmiany"}
-          onWycofaj={zamknijFormularz}
-          onPotwierdz={() => {
-            if (!zapisywanie) void zapisz();
-          }}
-        >
-          <FormSection
-            tytul="Dane osoby"
-            pola={pola}
-            tytulDodatkowych="Adres i grupa produktowa"
-            etykietaZapisz={zapisywanie ? "Zapisywanie…" : "Zapisz zmiany"}
-            onAnuluj={zamknijFormularz}
-            onZapisz={() => {
-              if (!zapisywanie) void zapisz();
-            }}
-          />
-        </Dialog>
-      )}
-
       {pokazToast && <Toast komunikat="Zapisano zmiany." onZamknij={() => setPokazToast(false)} />}
-    </main>
+    </>
   );
 }

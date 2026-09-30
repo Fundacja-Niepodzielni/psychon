@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 
 /**
  * Świadkowie ekranu A-07 „Karta osoby” (H18/H07, administracja): pięć stanów
@@ -102,7 +103,8 @@ describe("KartaOsoby — stan ładowanie", () => {
   it("pokazuje szkielet, zanim odpowiedź wróci", () => {
     pobierzKarteOsoby.mockReturnValue(new Promise(() => {}));
     render(<KartaOsoby id={17} />);
-    expect(screen.getByText("Karta osoby")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Karta osoby" })).toBeInTheDocument();
+    expect(screen.getByTestId("obszar-tabela")).toBeInTheDocument();
   });
 });
 
@@ -144,6 +146,131 @@ describe("KartaOsoby — stan dane", () => {
     expect(szablon).not.toBeNull();
     const obszarTabeli = screen.getByTestId("obszar-tabela");
     expect(within(obszarTabeli).getByRole("table")).toBeInTheDocument();
+  });
+});
+
+const SZABLON = '[data-style-id="szablon-tabela"]';
+
+function opisStanu(nazwa: string, przygotuj: () => void, czekaj: () => Promise<unknown>) {
+  it(`stan ${nazwa}: jeden main z celem skip-linku i szablon tabelaryczny w DOM`, async () => {
+    przygotuj();
+    const { container } = render(<KartaOsoby id={17} />);
+    await czekaj();
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector(SZABLON)).not.toBeNull();
+    expect(screen.getByTestId("obszar-tabela")).toBeInTheDocument();
+  });
+}
+
+describe("KartaOsoby — jeden main i szablon w każdym stanie", () => {
+  opisStanu(
+    "ładowanie",
+    () => pobierzKarteOsoby.mockReturnValue(new Promise(() => {})),
+    async () => expect(screen.getByRole("heading", { name: "Karta osoby" })).toBeInTheDocument(),
+  );
+  opisStanu(
+    "dane",
+    () => {
+      pobierzKarteOsoby.mockResolvedValue(KARTA);
+      pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    },
+    () => screen.findByRole("heading", { name: "Marta Demo" }),
+  );
+  opisStanu(
+    "błąd sieci",
+    () => pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 500, code: "unknown_error", message: "Błąd serwera." })),
+    () => screen.findByText("Nie udało się wczytać karty osoby"),
+  );
+  opisStanu(
+    "brak uprawnień (403)",
+    () => pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu." })),
+    () => screen.findByText(/dostępny tylko dla/),
+  );
+  opisStanu(
+    "brak uprawnień (401)",
+    () => pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 401, code: "unauthenticated", message: "Zaloguj się ponownie." })),
+    () => screen.findByText(/dostępny tylko dla/),
+  );
+  opisStanu(
+    "nie znaleziono (404)",
+    () => pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono osoby." })),
+    () => screen.findByText("Nie znaleziono osoby."),
+  );
+
+  it("stan po zapisie: Toast obok szablonu, nadal jeden main", async () => {
+    pobierzKarteOsoby.mockResolvedValueOnce(KARTA).mockResolvedValueOnce(KARTA_ZERA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    zapiszKarteOsoby.mockResolvedValue(KARTA_ZERA);
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<KartaOsoby id={17} />);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Zmień dane" }));
+    await uzytkownik.click(within(await screen.findByRole("form", { name: "Dane osoby" })).getByRole("button", { name: "Zapisz zmiany" }));
+    expect(await screen.findByText("Zapisano zmiany.")).toBeInTheDocument();
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector(SZABLON)).not.toBeNull();
+  });
+
+  it("błąd sieci: „Spróbuj ponownie” wczytuje kartę jeszcze raz", async () => {
+    pobierzKarteOsoby
+      .mockRejectedValueOnce(new ApiError({ status: 500, code: "unknown_error", message: "Błąd serwera." }))
+      .mockResolvedValueOnce(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const uzytkownik = userEvent.setup();
+    render(<KartaOsoby id={17} />);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Spróbuj ponownie" }));
+    expect(await screen.findByRole("heading", { name: "Marta Demo" })).toBeInTheDocument();
+    expect(pobierzKarteOsoby).toHaveBeenCalledTimes(2);
+  });
+
+  it("kontrola dodatnia: dwa `main` albo brak szablonu dają czerwień", () => {
+    const podwojny = document.createElement("div");
+    podwojny.innerHTML = '<main id="tresc" tabindex="-1"></main><main id="tresc" tabindex="-1"></main>';
+    expect(() => jedenMain(podwojny)).toThrow();
+    const bezSzablonu = document.createElement("div");
+    bezSzablonu.innerHTML = '<main id="tresc" tabindex="-1"></main>';
+    expect(bezSzablonu.querySelector(SZABLON)).toBeNull();
+  });
+});
+
+describe("KartaOsoby — jeden rząd przycisków w edycji", () => {
+  const liczPrzyciski = (korzen: ParentNode) => ({
+    zapisz: Array.from(korzen.querySelectorAll("button")).filter((przycisk) => /^Zapisz zmiany$/.test(przycisk.textContent ?? "")).length,
+    anuluj: Array.from(korzen.querySelectorAll("button")).filter((przycisk) => /^Anuluj$/.test(przycisk.textContent ?? "")).length,
+  });
+
+  it("w stanie edycji jest dokładnie jeden przycisk zapisu i jeden anulowania, bez okna dialogowego", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<KartaOsoby id={17} />);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Zmień dane" }));
+    await screen.findByRole("form", { name: "Dane osoby" });
+
+    expect(liczPrzyciski(document.body)).toEqual({ zapisz: 1, anuluj: 1 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // Jeden przycisk główny: „Zmień dane” znika na czas edycji.
+    expect(screen.queryByRole("button", { name: "Zmień dane" })).toBeNull();
+    // Formularz siedzi w obszarze tabeli szablonu.
+    expect(within(screen.getByTestId("obszar-tabela")).getByRole("form", { name: "Dane osoby" })).toBeInTheDocument();
+    expect(() => jedenMain(container)).not.toThrow();
+  });
+
+  it("Anuluj zamyka edycję i wraca „Zmień dane” z tabelą danych", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const uzytkownik = userEvent.setup();
+    render(<KartaOsoby id={17} />);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Zmień dane" }));
+    await uzytkownik.click(within(await screen.findByRole("form", { name: "Dane osoby" })).getByRole("button", { name: "Anuluj" }));
+    expect(await screen.findByRole("button", { name: "Zmień dane" })).toBeInTheDocument();
+    expect(within(screen.getByTestId("obszar-tabela")).getByRole("table")).toBeInTheDocument();
+    expect(zapiszKarteOsoby).not.toHaveBeenCalled();
+  });
+
+  it("kontrola dodatnia licznika: dwa rzędy przycisków dają wynik 2", () => {
+    const podwojny = document.createElement("div");
+    podwojny.innerHTML = "<button>Zapisz zmiany</button><button>Anuluj</button><button>Zapisz zmiany</button><button>Anuluj</button>";
+    expect(liczPrzyciski(podwojny)).toEqual({ zapisz: 2, anuluj: 2 });
   });
 });
 
