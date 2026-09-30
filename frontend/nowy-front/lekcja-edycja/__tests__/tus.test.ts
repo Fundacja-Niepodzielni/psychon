@@ -18,7 +18,7 @@ type Wywolanie = [string, { method: string; headers: Record<string, string>; bod
 
 function atrapaDostawcy(odpowiedzi: Response[]) {
   const kolejka = [...odpowiedzi];
-  const atrapa = vi.fn(async (..._argumenty: Wywolanie) => {
+  const atrapa = vi.fn(async () => {
     const nastepna = kolejka.shift();
     if (!nastepna) throw new Error("Zabrakło odpowiedzi atrapy");
     return nastepna;
