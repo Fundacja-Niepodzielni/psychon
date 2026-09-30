@@ -86,9 +86,10 @@ async function instalujAtrapyApi(page: Page): Promise<void> {
 /** Menu oczekiwane — makieta 2.0.4, rola `p` (w. 1108), plus „Dotychczasowy panel” (`lib/menu/ramka/prowadzacy.ts`). */
 const MENU_OCZEKIWANE = [
   { naglowek: "Codziennie", pozycje: [["Pulpit", "/prowadzacy"]], linia: null },
-  { naglowek: "Program", pozycje: [["Moje kursy", "/prowadzacy/kursy"]], linia: "W przygotowaniu: moja grupa · superwizja." },
+  // Bez „moja grupa” — „Moja grupa” jest pozycją menu („Dotychczasowy panel”).
+  { naglowek: "Program", pozycje: [["Moje kursy", "/prowadzacy/kursy"]], linia: "W przygotowaniu: superwizja." },
   {
-    naglowek: "Dotychczasowy panel",
+    naglowek: "Dotychczasowy panel (3)",
     pozycje: [
       ["Moja grupa", "/prowadzacy/grupa"],
       ["Wątek grupowy", "/prowadzacy/watek-grupowy"],
@@ -113,13 +114,23 @@ const EKRANY: Ekran[] = [
 /** Odczyt menu z DOM: grupy (nagłówek, pozycje, linia „W przygotowaniu”) i blok konta. */
 async function odczytajMenu(nav: Locator) {
   return nav.evaluate((el) => {
+    // Nazwa przycisku bez znaków ukrytych dla czytnika (np. „+” grupy zwiniętej).
+    const nazwa = (b: Element) =>
+      Array.from(b.childNodes)
+        .filter((w) => !(w instanceof Element && w.getAttribute("aria-hidden") === "true"))
+        .map((w) => w.textContent ?? "")
+        .join("")
+        .trim();
     const grupy = Array.from(el.querySelectorAll("ul")).map((ul) => {
       const opakowanie = ul.parentElement?.parentElement;
-      const linia = Array.from(opakowanie?.children ?? []).find(
+      const linia = [...Array.from(ul.parentElement?.children ?? []), ...Array.from(opakowanie?.children ?? [])].find(
         (dziecko) => dziecko.tagName === "P" && (dziecko.textContent ?? "").startsWith("W przygotowaniu"),
       );
+      // Grupa zwinięta: nagłówkiem jest przycisk sterujący listą (`aria-controls`).
+      const idListy = ul.parentElement?.id;
+      const sterujacy = idListy ? el.querySelector(`button[aria-controls="${CSS.escape(idListy)}"]`) : null;
       return {
-        naglowek: (ul.previousElementSibling?.textContent ?? "").trim(),
+        naglowek: sterujacy ? nazwa(sterujacy) : (ul.previousElementSibling?.textContent ?? "").trim(),
         pozycje: Array.from(ul.querySelectorAll("a")).map((a) => [(a.textContent ?? "").trim(), a.getAttribute("href")]),
         linia: linia?.textContent ?? null,
       };
@@ -129,7 +140,7 @@ async function odczytajMenu(nav: Locator) {
     return {
       grupy,
       konto: wyloguj ? (wyloguj.parentElement?.firstElementChild?.textContent ?? "").trim() : null,
-      przyciski: przyciski.map((b) => (b.textContent ?? "").trim()),
+      przyciski: przyciski.map(nazwa),
     };
   });
 }
@@ -259,7 +270,8 @@ test.describe("nowa ramka panelu prowadzącego — ekrany włączonych grup", ()
         expect(tokeny.dokument, "--brand na documentElement").toBe("");
 
         // Długie nazwy pozycji: pełny tekst widoczny, bez wielokropka, najwyżej 2 wiersze.
-        const nazwyPozycji = await nav.locator("a").evaluateAll((linki) =>
+        // Pozycje widoczne (grupa zwinięta „Dotychczasowy panel” jest na wejściu ukryta).
+        const nazwyPozycji = await nav.locator("a:visible").evaluateAll((linki) =>
           linki.map((a) => {
             const etykieta = a.querySelector("p") ?? a;
             const styl = getComputedStyle(etykieta);
@@ -280,9 +292,11 @@ test.describe("nowa ramka panelu prowadzącego — ekrany włączonych grup", ()
         const menu = await odczytajMenu(nav);
         expect(menu.grupy).toEqual(MENU_OCZEKIWANE);
         expect(menu.konto).toBe("Konto");
-        expect(menu.przyciski).toEqual(["Wyloguj"]);
+        expect(menu.przyciski).toEqual(["Dotychczasowy panel (3)", "Wyloguj"]);
         await expect(nav.locator("p").filter({ hasText: LINIA_KONTA })).toHaveText(LINIA_KONTA);
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
+        // Bieżąca pozycja widoczna także wtedy, gdy stoi w grupie zwiniętej („Dotychczasowy panel”).
+        await expect(nav.locator('a[aria-current="page"]')).toBeVisible();
         expect((await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(ekran.menu);
         if (ekran.tytul) await expect.soft(page, "tytuł karty").toHaveTitle(ekran.tytul);
 
@@ -308,5 +322,92 @@ test.describe("nowa ramka panelu prowadzącego — ekrany włączonych grup", ()
     await expect(page.getByRole("navigation", { name: "Menu — Panel prowadzącego" }).first()).toBeVisible();
     await expect(page.locator("[data-powloka-panelu]")).toHaveCount(0);
     await expect(page.locator("main")).toHaveCount(1);
+  });
+});
+
+/**
+ * Menu na 1280×800 i pasek górny: „Wyloguj” w oknie bez przewijania menu
+ * (dolna krawędź ≤ 800 przy `scrollTop` 0, nie zasłonięte), „Dotychczasowy
+ * panel (n)” zwinięty na wejściu i rozwijany kliknięciem, linie „W
+ * przygotowaniu” rozłączne z nazwami pozycji menu, pasek „PsychON”; na 390
+ * „Zamknij” okna menu ze znakiem „×”.
+ */
+test.describe("nowa ramka panelu prowadzącego — menu 1280×800 i pasek", () => {
+  test(`${EKRANY[0].adres} @1280x800: „Wyloguj” bez przewijania, grupa zwinięta, linie rozłączne z menu, pasek`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto(EKRANY[0].adres);
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    const nav = bok.getByRole("navigation", { name: "Menu — Panel prowadzącego" });
+    await expect(nav).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+
+    // „Wyloguj” widoczne bez przewijania menu.
+    expect(await bok.evaluate((el) => el.scrollTop), "scrollTop menu").toBe(0);
+    const wyloguj = bok.getByRole("button", { name: "Wyloguj" });
+    await expect(wyloguj).toBeVisible();
+    const pomiar = await wyloguj.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const trafiony = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { gora: Math.round(r.top), dol: Math.round(r.bottom), nieZasloniete: !!trafiony && el.contains(trafiony) };
+    });
+    expect(pomiar, JSON.stringify(pomiar)).toMatchObject({ nieZasloniete: true });
+    expect(pomiar.gora, "górna krawędź „Wyloguj”").toBeGreaterThanOrEqual(0);
+    expect(pomiar.dol, "dolna krawędź „Wyloguj” przy 800 px").toBeLessThanOrEqual(800);
+
+    // „Dotychczasowy panel (n)”: zwinięty na wejściu, przed „Konto”, rozwijany kliknięciem.
+    const grupa = MENU_OCZEKIWANE.find((g) => g.naglowek.startsWith("Dotychczasowy panel"));
+    expect(grupa?.naglowek).toBe(`Dotychczasowy panel (${grupa?.pozycje.length})`);
+    const przycisk = nav.getByRole("button", { name: grupa?.naglowek, exact: true });
+    await expect(przycisk).toHaveAttribute("aria-expanded", "false");
+    const lista = page.locator(`[id="${await przycisk.getAttribute("aria-controls")}"]`);
+    await expect(lista).toBeHidden();
+    const przedKontem = await przycisk.evaluate((el) => {
+      const w = el.closest("nav")?.querySelectorAll("button") ?? [];
+      const wyl = Array.from(w).find((b) => (b.textContent ?? "").trim() === "Wyloguj");
+      return !!wyl && !!(el.compareDocumentPosition(wyl) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(przedKontem, "grupa zwinięta przed „Wyloguj”").toBe(true);
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, `ramka-${EKRANY[0].nazwa}-1280x800-menu.png`) });
+    await przycisk.click();
+    await expect(przycisk).toHaveAttribute("aria-expanded", "true");
+    await expect(lista).toBeVisible();
+    await expect(lista.getByRole("link")).toHaveCount(grupa?.pozycje.length ?? -1);
+    await expect(lista.getByRole("link").first()).toHaveText(grupa?.pozycje[0][0] ?? "");
+
+    // Linie „W przygotowaniu” nie wymieniają pozycji menu.
+    const { linie, pozycje } = await nav.evaluate((el) => ({
+      linie: Array.from(el.querySelectorAll("p"))
+        .map((p) => (p.textContent ?? "").trim())
+        .filter((t) => t.startsWith("W przygotowaniu: "))
+        .flatMap((t) => t.replace(/^W przygotowaniu: /, "").replace(/\.$/, "").split(" · "))
+        .map((n) => n.trim().toLocaleLowerCase("pl")),
+      pozycje: Array.from(el.querySelectorAll("a")).map((a) => (a.textContent ?? "").trim().toLocaleLowerCase("pl")),
+    }));
+    expect(linie.length, "linie „W przygotowaniu” odczytane").toBeGreaterThan(0);
+    expect(linie.filter((n) => pozycje.includes(n))).toEqual([]);
+
+    // Pasek górny.
+    await expect(page.locator("[data-powloka-panelu] header [data-pasek-programu]")).toHaveText("PsychON");
+    await expect(page.locator("[data-powloka-panelu] header").first()).not.toContainText("Rok programu:");
+  });
+
+  test(`${EKRANY[0].adres} @390: okno menu z „Zamknij” ze znakiem „×”, grupa zwinięta`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await instalujAtrapyApi(page);
+    await page.goto(EKRANY[0].adres);
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    const okno = page.getByRole("dialog", { name: "Menu i konto" });
+    await expect(okno).toBeVisible();
+    const zamknij = okno.getByRole("button", { name: "Zamknij", exact: true });
+    await expect(zamknij.locator('[data-znak-zamknij][aria-hidden="true"]')).toHaveText("×");
+    await expect(okno.getByRole("button", { name: /^Dotychczasowy panel \(\d+\)$/ })).toHaveAttribute("aria-expanded", "false");
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, `ramka-${EKRANY[0].nazwa}-390-menu-otwarte.png`) });
+    await zamknij.click();
+    await expect(okno).toHaveCount(0);
   });
 });

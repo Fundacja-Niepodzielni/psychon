@@ -12,7 +12,9 @@ import { GRUPY, type DefinicjaGrupy, type KluczGrupy } from "@/lib/przelaczenie/
  * Menu administracji nowej ramki wobec makiety 2.0.4 (menu roli
  * administracji, skrypt `#nav`, w. 1105):
  * Codziennie: Pulpit · Sprawy · Uczestnicy; Program: Kursy + „W
- * przygotowaniu: prowadzący · staż i superwizja”; Rozliczenie: Raport roku
+ * przygotowaniu: prowadzący” (makieta: „prowadzący · staż i superwizja”;
+ * staż i superwizja są w menu jako „Akceptacja stażu” i „Superwizje”);
+ * Rozliczenie: Raport roku
  * programu · Dziennik działań + „W przygotowaniu: certyfikaty · ustawienia
  * roku programu” (bez „treści i dokumenty” — wzory dokumentów i ekran
  * startowy są już pozycjami tej grupy); Konto: Wyloguj (w powłoce).
@@ -58,7 +60,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Kursy", "/admin/kursy"],
           ["Słownik form stażu", "/admin/formy-stazu"],
         ],
-        linia: "prowadzący · staż i superwizja",
+        linia: "prowadzący",
       },
       {
         naglowek: "Rozliczenie",

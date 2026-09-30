@@ -5,8 +5,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import Logo from "@/components/ui/Logo";
 import { PowlokaPanelu } from "@/design-system/szablony/PowlokaPanelu/PowlokaPanelu";
 import { api } from "@/lib/api";
-import { czyPozycjaBiezaca } from "@/lib/menu/ramka/administracja";
 import { menuRamkiProwadzacego, W_PRZYGOTOWANIU_KONTO_PROWADZACEGO } from "@/lib/menu/ramka/prowadzacy";
+import { ukladMenuRamki } from "@/lib/menu/ramka/uklad";
 import { NarzedziaPaskaRamki, StopkaRamki, useWylogowanieRamki } from "../WspolneRamki";
 
 interface Ja {
@@ -48,24 +48,20 @@ export function PowlokaProwadzacego({ children }: { children: ReactNode }) {
   const imie = ja?.first_name?.trim() || "Prowadzący";
   const nazwisko = ja?.first_name?.trim() ? ja?.last_name?.trim() || undefined : undefined;
 
-  const grupy = menuRamkiProwadzacego().map((grupa) => ({
-    naglowek: grupa.naglowek,
-    liniaWPrzygotowaniu: grupa.wPrzygotowaniu,
-    pozycje: grupa.pozycje.map((p) => ({
-      ikona: p.ikona,
-      etykieta: p.etykieta,
-      href: p.href,
-      biezaca: czyPozycjaBiezaca(p, sciezka),
-    })),
-  }));
+  const { grupy, grupaZwinieta, liniaKonta } = ukladMenuRamki(
+    menuRamkiProwadzacego(),
+    sciezka,
+    W_PRZYGOTOWANIU_KONTO_PROWADZACEGO,
+  );
 
   return (
     <PowlokaPanelu
       logo={<Logo title="Fundacja Niepodzielni" />}
       uzytkownik={{ imie, nazwisko, rola: PODPIS_ROLI_PROWADZACEGO }}
       grupy={grupy}
+      grupaZwinieta={grupaZwinieta}
       etykietaMenu="Menu — Panel prowadzącego"
-      liniaKonta={W_PRZYGOTOWANIU_KONTO_PROWADZACEGO}
+      liniaKonta={liniaKonta}
       onNawigacja={(href) => router.push(href)}
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}
