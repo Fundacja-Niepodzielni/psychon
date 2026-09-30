@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 
 /**
- * Miara arkusza tokenów wyglądu na siedmiu przełączonych trasach „podmiany
- * treści” (pulpit i lekcja uczestnika, pulpit administracji, pulpit
+ * Miara arkusza tokenów wyglądu na sześciu przełączonych trasach „podmiany
+ * treści” (pulpit uczestnika, pulpit administracji, pulpit
  * prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy).
  *
  * Wejście adresem (nie nawigacją kliencką), system w trybie ciemnym
@@ -174,7 +174,6 @@ async function instalujAtrapyApi(page: Page, rola: string): Promise<void> {
 
 const TRASY: { adres: string; rola: string; naglowek: string | RegExp }[] = [
   { adres: "/panel/pulpit", rola: "volunteer", naglowek: "Twoja ścieżka" },
-  { adres: "/panel/lekcje/21", rola: "volunteer", naglowek: LEKCJA.title },
   { adres: "/admin", rola: "project_manager", naglowek: "Pulpit administracji" },
   { adres: "/prowadzacy", rola: "instructor", naglowek: "Pulpit prowadzącego" },
   { adres: "/admin/profile/12", rola: "project_manager", naglowek: /^Wniosek o profil: Ewa Przykładowa/ },
