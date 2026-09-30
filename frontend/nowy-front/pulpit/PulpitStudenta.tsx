@@ -10,6 +10,7 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
+import { odmien } from "../wspolne/odmiana";
 import { pobierzKursy, pobierzSzczegolKursu, type KursSciezki, type LekcjaKursu } from "./dane";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
 import { rodzajBledu } from "./rodzaj-bledu";
@@ -21,6 +22,12 @@ type LekcjeKursu = { stan: "ladowanie" } | { stan: "blad" } | { stan: "ok"; dane
 /** Adres kontaktowy fundacji — ten sam co na stronach „Dostęp wygasł” i
  * „Deklaracja dostępności”. */
 export const ADRES_KONTAKTOWY = "kontakt@niepodzielni.com";
+
+/** Mianownik kafla „Ukończone kursy” po „z” (dopełniacz): 1 kursu · 2 kursów · 5 kursów · 12 kursów · 22 kursów
+ * (słownik 2.1 §6, pomocnik `odmien`). */
+export function mianownikKursow(liczba: number): string {
+  return `z ${liczba} ${odmien(liczba, "kursu", "kursów", "kursów")}`;
+}
 
 const ETYKIETA_STATUSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok" | "pending"; tekst: string }> = {
   locked: { wariant: "neutral", tekst: "zablokowany" },
@@ -95,7 +102,7 @@ export function PulpitStudenta() {
           id: "pulpit-studenta-ukonczone",
           etykieta: "Ukończone kursy",
           wartosc: ukonczone,
-          mianownik: `z ${kursy.length} kursów`,
+          mianownik: mianownikKursow(kursy.length),
           procent: Math.round((ukonczone / kursy.length) * 100),
           dominujacy: true,
           ukladPulpitu: true,
