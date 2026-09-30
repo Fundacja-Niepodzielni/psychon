@@ -9,7 +9,7 @@ import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/po
  * (`app/(administracja)/admin/layout.tsx`): przy wszystkich grupach
  * przełączenia wyłączonych KAŻDA ścieżka `/admin/**` (każda strona z drzewa,
  * `[param]` zamieniony na liczbę) dostaje dotychczasowy `PanelShell` —
- * menu „Menu — Administracja”, bez nowej ramki. Kontrola dodatnia: po
+ * z menu „Menu — Administracja”, bez nowej ramki. Kontrola dodatnia: po
  * włączeniu grupy z tym samym adresem (pulpit) ta jedna ścieżka dostaje
  * nową ramkę, a sąsiednia nadal `PanelShell`. Podmienione są wyłącznie
  * transport HTTP, adres strony i rejestr przełączenia.
@@ -57,10 +57,15 @@ async function wyrenderujUklad(adres: string) {
   return wynik.container;
 }
 
+/**
+ * Obie ramki nazywają menu tak samo („Menu — Administracja”); nową odróżnia
+ * znacznik `data-powloka-panelu` szablonu `PowlokaPanelu`.
+ */
 function ramka(container: HTMLElement) {
+  const nowa = container.querySelector("[data-powloka-panelu]") !== null;
   return {
-    stara: container.querySelector('nav[aria-label="Menu — Administracja"]') !== null,
-    nowa: container.querySelector("[data-powloka-panelu]") !== null,
+    stara: !nowa && container.querySelector('nav[aria-label="Menu — Administracja"]') !== null,
+    nowa,
     main: container.querySelectorAll("main").length,
     cele: container.querySelectorAll("#tresc").length,
   };

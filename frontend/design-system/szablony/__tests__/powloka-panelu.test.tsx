@@ -155,6 +155,26 @@ describe("PageHeader w powłoce i poza nią", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Słownik form stażu" })).toBeTruthy();
   });
 
+  it.each([
+    ["jeden okruszek bez łącza", [{ etykieta: "Po programie" }]],
+    ["dwa okruszki bez łącza", [{ etykieta: "Po programie" }, { etykieta: "Dalsza współpraca" }]],
+  ])("w powłoce, ekran „Po programie” (%s, z obsługą powrotu): bez „Wstecz”, bez okruszków, bez błędu", (_opis, okruszki) => {
+    render(
+      <DostawcaPowloki>
+        <PageHeader okruszki={okruszki} tytul="Po programie" onPowrot={() => {}} />
+      </DostawcaPowloki>,
+    );
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Okruszki" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Po programie" })).toBeTruthy();
+  });
+
+  it("poza powłoką ten sam ekran „Po programie”: „Wstecz” i okruszki jak dotąd", () => {
+    render(<PageHeader okruszki={[{ etykieta: "Po programie" }]} tytul="Po programie" onPowrot={() => {}} />);
+    expect(screen.getByRole("button", { name: "Wstecz" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Okruszki" }).textContent).toContain("Po programie");
+  });
+
   it("w powłoce, ekran szczegółu: okruszki z łączami i bieżącą pozycją, bez „Wstecz”", () => {
     render(
       <DostawcaPowloki>

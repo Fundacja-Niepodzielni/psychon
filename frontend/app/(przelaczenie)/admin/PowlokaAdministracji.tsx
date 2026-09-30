@@ -107,6 +107,7 @@ export function PowlokaAdministracji({ children }: { children: ReactNode }) {
       logo={<Logo title="Fundacja Niepodzielni" />}
       uzytkownik={{ imie, nazwisko, rola: PODPIS_ROLI_ADMINISTRACJI }}
       grupy={grupy}
+      etykietaMenu="Menu — Administracja"
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}
       rokProgramu={rok}

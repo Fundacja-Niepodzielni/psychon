@@ -14,6 +14,8 @@ interface WlasciwosciPowlokiPanelu {
   logo?: ReactNode;
   uzytkownik: WlasciwosciNawigacji["uzytkownik"];
   grupy: WlasciwosciNawigacji["grupy"];
+  /** Nazwa punktu orientacyjnego menu (`nav`); domyślnie „Menu główne”. */
+  etykietaMenu?: string;
   /** Wylogowanie — ostatnia pozycja grupy „Konto”. */
   onWyloguj: () => void;
   wylogowywanie?: boolean;
@@ -42,6 +44,7 @@ export function PowlokaPanelu({
   logo,
   uzytkownik,
   grupy,
+  etykietaMenu = "Menu główne",
   onWyloguj,
   wylogowywanie = false,
   rokProgramu = null,
@@ -85,7 +88,7 @@ export function PowlokaPanelu({
     return (
       <>
         {logo && <div className={style.logo}>{logo}</div>}
-        <PanelNav uzytkownik={uzytkownik} grupy={grupy} etykieta="Menu główne" konto={konto} />
+        <PanelNav uzytkownik={uzytkownik} grupy={grupy} etykieta={etykietaMenu} konto={konto} />
         {stopka && <div className={style.stopka}>{stopka}</div>}
       </>
     );

@@ -49,7 +49,7 @@ function zmierz(container: HTMLElement) {
 }
 
 function hrefyMenu(container: HTMLElement): string[] {
-  const nawigacja = container.querySelector('nav[aria-label="Menu główne"]');
+  const nawigacja = container.querySelector('nav[aria-label="Menu — Administracja"]');
   return Array.from(nawigacja?.querySelectorAll("a") ?? []).map((a) => a.getAttribute("href") ?? "");
 }
 
@@ -65,9 +65,8 @@ describe.each(["project_manager", "super_admin"])("układ administracji w grupie
     await waitFor(() => expect(screen.getByText("Treść strony próbnej")).toBeTruthy());
 
     expect(zmierz(container)).toEqual({ main: 1, cele: 1, odnosniki: 1 });
-    expect(container.querySelector("nav[aria-label='Menu główne']")).not.toBeNull();
-    // Nowa ramka z makiety, nie dotychczasowa powłoka.
-    expect(container.querySelector("nav[aria-label='Menu — Administracja']")).toBeNull();
+    expect(container.querySelector("nav[aria-label='Menu — Administracja']")).not.toBeNull();
+    // Nowa ramka z makiety (ta sama nazwa menu co w dotychczasowej powłoce).
     expect(container.querySelector("[data-powloka-panelu]")).not.toBeNull();
     expect(hrefyMenu(container)).toEqual(expect.arrayContaining(["/admin/kursy", "/admin/uczestniczki"]));
     expect(container.querySelector<HTMLElement>("[data-style-id='szablon-lista']")?.tagName).toBe("DIV");
