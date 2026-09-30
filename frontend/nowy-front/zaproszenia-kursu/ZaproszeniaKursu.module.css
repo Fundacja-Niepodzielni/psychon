@@ -1,0 +1,33 @@
+/* Moduł CSS ekranu „Zaproszenia na kurs” — wartości wyglądu wyłącznie z tokenów. */
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.wybor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  max-height: 24rem;
+  margin: 0;
+  padding: var(--space-12) var(--space-16);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.legenda {
+  padding: 0 var(--space-4);
+}
+
+.zaproszeni {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
