@@ -151,7 +151,7 @@ export function PulpitAdministracji() {
           <ListaSpraw widok={widok} naNieprawidlowyAdres={setOstrzezenie} naOdswiez={wczytajPonownie} />
         </div>
       }
-      wspierajaca={widok.cel ? <OdCzegoZaczac cel={widok.cel} /> : null}
+      wspierajaca={widok.cel ? <ZgloszeniaDoDecyzji cel={widok.cel} /> : null}
     />
   );
 }
@@ -197,16 +197,16 @@ function ListaSpraw({
   );
 }
 
-function OdCzegoZaczac({ cel }: { cel: NonNullable<WidokPulpitu["cel"]> }) {
+function ZgloszeniaDoDecyzji({ cel }: { cel: NonNullable<WidokPulpitu["cel"]> }) {
   return (
     <CaseCard
       rodzaj="ze-statystyka"
-      tytul="Od czego zacząć"
+      tytul="Zgłoszenia do decyzji"
       pary={[
-        { etykieta: "Sprawy", wartosc: cel.nazwa },
+        { etykieta: "Rodzaj", wartosc: cel.nazwa },
         { etykieta: "Stan", wartosc: "czeka na decyzję" },
       ]}
-      statystyka={{ id: "pulpit-najwiecej-spraw", etykieta: "Czeka na decyzję", wartosc: cel.liczba, mianownik: "spraw" }}
+      statystyka={{ id: "pulpit-zgloszenia", etykieta: "Czeka na decyzję", wartosc: cel.liczba, mianownik: "zgłoszeń" }}
     />
   );
 }

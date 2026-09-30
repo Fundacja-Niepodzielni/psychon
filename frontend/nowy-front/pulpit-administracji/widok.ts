@@ -107,10 +107,14 @@ export function odczytajPulpit(surowe: unknown): PulpitAdministracji | null {
   };
 }
 
+/** Kod kolejki, do której prowadzi przycisk „Otwórz sprawy”. */
+export const KLUCZ_KOLEJKI_CELU = "applications";
+
 /**
- * Cel przycisku „Otwórz sprawy”: kolejka z największą liczbą spraw czekających
- * na decyzję (przy remisie pierwsza w odpowiedzi), o ile jej adres jest
- * ścieżką wewnętrzną. Adresu nie budujemy — bierzemy `link` z odpowiedzi.
+ * Cel przycisku „Otwórz sprawy”: `link` kolejki `applications` z odpowiedzi
+ * serwera, o ile jej liczba jest większa od zera, a adres jest ścieżką
+ * wewnętrzną. Adresu nie budujemy. Bez takiej kolejki przycisk nie ma celu i
+ * ekran pokazuje powód.
  */
 export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
   const kafle = KAFLE.map(({ klucz, id, etykieta, mianownik }) => ({
@@ -130,22 +134,17 @@ export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
   const razem = wiersze.reduce((suma, wiersz) => suma + wiersz.liczba, 0);
   const brakSpraw = razem === 0;
 
+  const kolejkaCelu = wiersze.find((wiersz) => wiersz.id === KLUCZ_KOLEJKI_CELU);
   let cel: CelSpraw | null = null;
-  for (const wiersz of wiersze) {
-    if (wiersz.liczba > 0 && wiersz.link !== null && (cel === null || wiersz.liczba > cel.liczba)) {
-      cel = { nazwa: wiersz.nazwa, liczba: wiersz.liczba, link: wiersz.link };
-    }
-  }
-
   let powodBrakuCelu: string | null = null;
-  if (cel === null) {
-    if (wiersze.length === 0) {
-      powodBrakuCelu = "Odpowiedź serwera nie zawiera spraw do otwarcia.";
-    } else if (brakSpraw) {
-      powodBrakuCelu = `${TEKST_BRAK_SPRAW}.`;
-    } else {
-      powodBrakuCelu = "Adres spraw z odpowiedzi serwera jest nieprawidłowy.";
-    }
+  if (!kolejkaCelu) {
+    powodBrakuCelu = "Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.";
+  } else if (kolejkaCelu.liczba === 0) {
+    powodBrakuCelu = "Brak zgłoszeń rekrutacyjnych do decyzji.";
+  } else if (kolejkaCelu.link === null) {
+    powodBrakuCelu = "Adres zgłoszeń rekrutacyjnych z odpowiedzi serwera jest nieprawidłowy.";
+  } else {
+    cel = { nazwa: kolejkaCelu.nazwa, liczba: kolejkaCelu.liczba, link: kolejkaCelu.link };
   }
 
   return { kafle, wiersze, razem, brakSpraw: wiersze.length === 0 || brakSpraw, cel, powodBrakuCelu };

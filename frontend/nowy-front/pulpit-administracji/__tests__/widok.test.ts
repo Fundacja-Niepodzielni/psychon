@@ -119,15 +119,27 @@ describe("zbudujWidok", () => {
     ]);
   });
 
-  it("cel to kolejka z największą liczbą spraw, przy remisie pierwsza z odpowiedzi", () => {
+  it("cel to link kolejki applications, także gdy inna kolejka ma więcej spraw", () => {
     const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu())!);
-    expect(widok.cel).toEqual({ nazwa: NAZWY_SPRAW.internship_entries, liczba: 7, link: "/admin/staz" });
+    expect(widok.cel).toEqual({ nazwa: NAZWY_SPRAW.applications, liczba: 4, link: "/admin/uczestniczki" });
     expect(widok.razem).toBe(18);
     expect(widok.brakSpraw).toBe(false);
     expect(widok.powodBrakuCelu).toBeNull();
   });
 
-  it("kolejka z nieprawidłowym adresem nie zostaje celem, a ekran wskazuje następną", () => {
+  it("kolejka applications ustawiona nie na pierwszym miejscu nadal jest celem", () => {
+    const dane = odczytajPulpit(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "internship_entries", count: 9, link: "/admin/staz" },
+          { key: "applications", count: 2, link: "/admin/uczestniczki" },
+        ],
+      }),
+    )!;
+    expect(zbudujWidok(dane).cel?.link).toBe("/admin/uczestniczki");
+  });
+
+  it("inna kolejka z nieprawidłowym adresem nie wpływa na cel", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
@@ -141,14 +153,44 @@ describe("zbudujWidok", () => {
     expect(widok.wiersze[0].link).toBeNull();
   });
 
-  it("wszystkie kolejki z nieprawidłowym adresem: brak celu z powodem", () => {
+  it("brak kolejki applications przy innych kolejkach ze sprawami: brak celu z powodem", () => {
+    const dane = odczytajPulpit(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "internship_entries", count: 7, link: "/admin/staz" },
+          { key: "questions", count: 3, link: "/prowadzacy/pytania" },
+        ],
+      }),
+    )!;
+    const widok = zbudujWidok(dane);
+    expect(widok.brakSpraw).toBe(false);
+    expect(widok.cel).toBeNull();
+    expect(widok.powodBrakuCelu).toBe("Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.");
+  });
+
+  it("kolejka applications z liczbą 0 przy innych kolejkach ze sprawami: brak celu z powodem", () => {
+    const dane = odczytajPulpit(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "applications", count: 0, link: "/admin/uczestniczki" },
+          { key: "internship_entries", count: 7, link: "/admin/staz" },
+        ],
+      }),
+    )!;
+    const widok = zbudujWidok(dane);
+    expect(widok.brakSpraw).toBe(false);
+    expect(widok.cel).toBeNull();
+    expect(widok.powodBrakuCelu).toBe("Brak zgłoszeń rekrutacyjnych do decyzji.");
+  });
+
+  it("kolejka applications z nieprawidłowym adresem: brak celu z powodem", () => {
     const dane = odczytajPulpit(odpowiedzPulpitu({ queues: [{ key: "applications", count: 2, link: "//obcy" }] }))!;
     const widok = zbudujWidok(dane);
     expect(widok.cel).toBeNull();
     expect(widok.powodBrakuCelu).toMatch(/nieprawidłowy/);
   });
 
-  it("wszystkie liczby zerowe: brak spraw, brak celu, powód „Brak spraw do decyzji.”", () => {
+  it("wszystkie liczby zerowe: brak spraw, brak celu, powód o zgłoszeniach rekrutacyjnych", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
@@ -160,7 +202,7 @@ describe("zbudujWidok", () => {
     const widok = zbudujWidok(dane);
     expect(widok.brakSpraw).toBe(true);
     expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toBe("Brak spraw do decyzji.");
+    expect(widok.powodBrakuCelu).toBe("Brak zgłoszeń rekrutacyjnych do decyzji.");
   });
 
   it("odpowiedź bez kolejek: brak spraw i osobny powód", () => {

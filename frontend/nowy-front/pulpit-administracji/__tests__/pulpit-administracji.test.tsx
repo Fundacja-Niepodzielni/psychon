@@ -86,12 +86,12 @@ describe("Pulpit administracji — stany ekranu", () => {
       "href",
       "/prowadzacy/pytania",
     );
-    expect(screen.getByText("Od czego zacząć")).toBeInTheDocument();
+    expect(screen.getByText("Zgłoszenia do decyzji")).toBeInTheDocument();
     expect(przyciskiGlowne(container)).toHaveLength(1);
     expect(container.querySelectorAll("button")).toHaveLength(2);
   });
 
-  it("dane: przycisk „Otwórz sprawy” przechodzi pod adres kolejki z największą liczbą spraw", async () => {
+  it("dane: przycisk „Otwórz sprawy” przechodzi pod link kolejki applications", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
     const uzytkownik = userEvent.setup();
     const { container } = render(<PulpitAdministracji />);
@@ -100,7 +100,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     await uzytkownik.click(przyciskiGlowne(container)[0]);
 
     expect(push).toHaveBeenCalledTimes(1);
-    expect(push).toHaveBeenCalledWith("/admin/staz");
+    expect(push).toHaveBeenCalledWith("/admin/uczestniczki");
     expect(przyciskiGlowne(container)[0]).not.toHaveAttribute("aria-disabled");
   });
 
@@ -116,10 +116,49 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     const glowny = przyciskiGlowne(container)[0];
     expect(glowny).toHaveAttribute("aria-disabled", "true");
-    expect(glowny).toHaveAccessibleDescription("Brak spraw do decyzji.");
+    expect(glowny).toHaveAccessibleDescription("Brak zgłoszeń rekrutacyjnych do decyzji.");
     await uzytkownik.click(glowny);
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByText("Nie można otworzyć spraw")).toBeInTheDocument();
+  });
+
+  it("dane: inne kolejki mają sprawy, ale applications ma 0 — przycisk niedostępny z powodem, bez przejścia", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "applications", count: 0, link: "/admin/uczestniczki" },
+          { key: "internship_entries", count: 7, link: "/admin/staz" },
+        ],
+      }),
+    );
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<PulpitAdministracji />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Otwórz: Dyżury czekające na decyzję" })).toBeInTheDocument(),
+    );
+    const glowny = przyciskiGlowne(container)[0];
+    expect(glowny).toHaveAttribute("aria-disabled", "true");
+    expect(glowny).toHaveAccessibleDescription("Brak zgłoszeń rekrutacyjnych do decyzji.");
+    await uzytkownik.click(glowny);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("dane: bez kolejki applications w odpowiedzi przycisk jest niedostępny z powodem, bez przejścia", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(
+      odpowiedzPulpitu({ queues: [{ key: "internship_entries", count: 7, link: "/admin/staz" }] }),
+    );
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<PulpitAdministracji />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "Otwórz: Dyżury czekające na decyzję" })).toBeInTheDocument(),
+    );
+    const glowny = przyciskiGlowne(container)[0];
+    expect(glowny).toHaveAttribute("aria-disabled", "true");
+    expect(glowny).toHaveAccessibleDescription("Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.");
+    await uzytkownik.click(glowny);
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("pusty: odpowiedź bez kolejek też pokazuje stan pusty i przycisk bez celu", async () => {
@@ -146,7 +185,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     await waitFor(() => expect(screen.getByText("Zgłoszenia rekrutacyjne")).toBeInTheDocument());
     expect(container.querySelector("a[href^='http']")).toBeNull();
     await uzytkownik.click(screen.getByRole("button", { name: "Otwórz: Zgłoszenia rekrutacyjne" }));
-    expect(screen.getByText(/nieprawidłowy/)).toBeInTheDocument();
+    expect(screen.getByText("Adres tych spraw z odpowiedzi serwera jest nieprawidłowy.")).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 
@@ -206,7 +245,7 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     await waitFor(() => expect(screen.getByText("Brak spraw do decyzji")).toBeInTheDocument());
     await uzytkownik.click(screen.getByRole("button", { name: "Odśwież" }));
-    await waitFor(() => expect(screen.getByText("Od czego zacząć")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Zgłoszenia do decyzji")).toBeInTheDocument());
     expect(pobierzPulpitAdministracji).toHaveBeenCalledTimes(2);
   });
 
