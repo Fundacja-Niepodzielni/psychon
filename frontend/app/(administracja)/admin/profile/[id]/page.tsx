@@ -1,3 +1,4 @@
+import "@/design-system/tokeny/tokeny.css";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
 import { GRUPY } from "@/lib/przelaczenie/grupy";
 import { ProfilDecyzja } from "@/nowy-front/profil-decyzja/ProfilDecyzja";
@@ -18,8 +19,10 @@ export default async function StronaWniosku({ params }: { params: Promise<{ id: 
   if (!GRUPY.decyzjaProfilu.wlaczona) return <StaraTresc params={Promise.resolve({ id })} />;
 
   return (
-    <DostawcaPowloki>
-      <ProfilDecyzja id={id} />
-    </DostawcaPowloki>
+    <div data-theme="light">
+      <DostawcaPowloki>
+        <ProfilDecyzja id={id} />
+      </DostawcaPowloki>
+    </div>
   );
 }

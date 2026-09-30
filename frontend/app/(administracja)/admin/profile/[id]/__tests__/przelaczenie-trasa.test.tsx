@@ -7,6 +7,7 @@ opiszPodmianeTresci({
   klucz: "decyzjaProfilu",
   plikStrony: "(administracja)/admin/profile/[id]/page.tsx",
   argumenty: { params: Promise.resolve({ id: "3" }) },
+  zOwinieciem: true,
   zaladujStrone: () => import("../page"),
   zaladujStara: () => import("../StaraTresc"),
   zaladujNowy: () => import("@/nowy-front/profil-decyzja/ProfilDecyzja").then((m) => m.ProfilDecyzja),
@@ -17,9 +18,9 @@ describe("trasa /admin/profile/[id] — numer wniosku z adresu", () => {
     podmienRejestr({ decyzjaProfilu: true });
     const { default: Strona } = await import("../page");
     const element = (await Strona({ params: Promise.resolve({ id: "17" }) })) as {
-      props: { children: { props: { id: string } } };
+      props: { children: { props: { children: { props: { id: string } } } } };
     };
-    expect(element.props.children.props.id).toBe("17");
+    expect(element.props.children.props.children.props.id).toBe("17");
     przywrocRejestr();
   });
 

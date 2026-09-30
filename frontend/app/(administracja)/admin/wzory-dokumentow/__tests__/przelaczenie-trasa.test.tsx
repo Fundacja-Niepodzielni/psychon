@@ -5,6 +5,7 @@ opiszPodmianeTresci({
   nazwa: "/admin/wzory-dokumentow",
   klucz: "wzoryDokumentow",
   plikStrony: "(administracja)/admin/wzory-dokumentow/page.tsx",
+  zOwinieciem: true,
   zaladujStrone: () => import("../page"),
   zaladujStara: () => import("../StaraTresc"),
   zaladujNowy: () => import("@/nowy-front/wzory-dokumentow/WzoryDokumentow").then((m) => m.WzoryDokumentow),

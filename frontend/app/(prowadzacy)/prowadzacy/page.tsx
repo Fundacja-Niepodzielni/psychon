@@ -1,3 +1,4 @@
+import "@/design-system/tokeny/tokeny.css";
 import type { Metadata } from "next";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
 import { PulpitProwadzacego } from "@/nowy-front/pulpit-prowadzacego/PulpitProwadzacego";
@@ -19,9 +20,11 @@ export const metadata: Metadata = {
 export default function InstructorHomePage() {
   if (GRUPY.pulpitProwadzacego.wlaczona) {
     return (
-      <DostawcaPowloki>
-        <PulpitProwadzacego />
-      </DostawcaPowloki>
+      <div data-theme="light">
+        <DostawcaPowloki>
+          <PulpitProwadzacego />
+        </DostawcaPowloki>
+      </div>
     );
   }
 

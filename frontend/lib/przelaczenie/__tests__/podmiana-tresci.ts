@@ -23,6 +23,11 @@ interface OpisPodmiany {
   zaladujStrone: () => Promise<{ default: (argumenty: never) => unknown }>;
   zaladujStara: () => Promise<{ default: ComponentType<never> }>;
   zaladujNowy: () => Promise<ComponentType<never>>;
+  /**
+   * Strona owija ekran nowego frontu w `<div data-theme="light">` (arkusz tokenów
+   * jest wtedy ładowany przez stronę, a nie przez układ grupy tras).
+   */
+  zOwinieciem?: boolean;
 }
 
 /** Pierwszy import strony z zimną pamięcią podręczną transformacji przekracza domyślne 5 s. */
@@ -61,9 +66,14 @@ export function opiszPodmianeTresci(opis: OpisPodmiany): void {
       const { default: StaraTresc } = await opis.zaladujStara();
       const Nowy = await opis.zaladujNowy();
 
-      expect(element.type).toBe(DostawcaPowloki);
-      expect(element.type).not.toBe(StaraTresc);
-      expect(element.props.children?.type).toBe(Nowy);
+      const dostawca = opis.zOwinieciem ? (element.props.children as Element) : element;
+      if (opis.zOwinieciem) {
+        expect(element.type).toBe("div");
+        expect(element.props["data-theme"]).toBe("light");
+      }
+      expect(dostawca.type).toBe(DostawcaPowloki);
+      expect(dostawca.type).not.toBe(StaraTresc);
+      expect(dostawca.props.children?.type).toBe(Nowy);
     }, LIMIT_CZASU_MS);
 
     it("przypadek odwrotny: włączona inna grupa nie zmienia tej strony", async () => {

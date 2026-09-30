@@ -1,3 +1,4 @@
+import "@/design-system/tokeny/tokeny.css";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
 import { GRUPY } from "@/lib/przelaczenie/grupy";
 import { EkranStartowy } from "@/nowy-front/ekran-startowy/EkranStartowy";
@@ -17,8 +18,10 @@ export default function StronaEkranuStartowego() {
   if (!GRUPY.ekranStartowy.wlaczona) return <StaraTresc />;
 
   return (
-    <DostawcaPowloki>
-      <EkranStartowy />
-    </DostawcaPowloki>
+    <div data-theme="light">
+      <DostawcaPowloki>
+        <EkranStartowy />
+      </DostawcaPowloki>
+    </div>
   );
 }

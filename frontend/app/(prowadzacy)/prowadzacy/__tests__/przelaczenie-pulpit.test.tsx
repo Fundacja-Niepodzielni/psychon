@@ -123,9 +123,11 @@ describe("/prowadzacy — strona a rejestr przełączenia", () => {
 
   it("grupa włączona: strona zwraca ekran nowego frontu w DostawcyPowloki", async () => {
     const z = await zaladuj({ pulpitProwadzacego: true });
-    const element = z.Strona() as ReactElement<{ children: ReactElement }>;
-    expect(element.type).toBe(z.DostawcaPowloki);
-    expect(element.props.children.type).toBe(z.PulpitProwadzacego);
+    const element = z.Strona() as ReactElement<{ children: ReactElement<{ children: ReactElement }> }>;
+    expect(element.type).toBe("div");
+    expect(element.props).toMatchObject({ "data-theme": "light" });
+    expect(element.props.children.type).toBe(z.DostawcaPowloki);
+    expect(element.props.children.props.children.type).toBe(z.PulpitProwadzacego);
   });
 
   it("wyłączona: strona w układzie daje ten sam kod HTML co sama StaraTresc (bit w bit)", async () => {

@@ -1,3 +1,4 @@
+import "@/design-system/tokeny/tokeny.css";
 import type { Metadata } from "next";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
 import { GRUPY } from "@/lib/przelaczenie/grupy";
@@ -20,8 +21,10 @@ export default function StronaWzorowDokumentow() {
   if (!GRUPY.wzoryDokumentow.wlaczona) return <StaraTresc />;
 
   return (
-    <DostawcaPowloki>
-      <WzoryDokumentow />
-    </DostawcaPowloki>
+    <div data-theme="light">
+      <DostawcaPowloki>
+        <WzoryDokumentow />
+      </DostawcaPowloki>
+    </div>
   );
 }
