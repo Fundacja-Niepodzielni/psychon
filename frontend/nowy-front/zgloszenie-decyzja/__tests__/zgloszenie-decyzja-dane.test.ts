@@ -128,7 +128,7 @@ describe("akceptacja", () => {
       komunikat: "Popraw zaznaczone pola.",
       bledy: { role: ["Nieznana rola."] },
     });
-    api.mockRejectedValueOnce(bladApi(403, "forbidden", "Brak dostępu."));
+    api.mockRejectedValueOnce(bladApi(403, "forbidden", "Nie masz dostępu do tego zasobu."));
     expect((await dane.zaakceptujZgloszenie(31, "volunteer", false)).rodzaj).toBe("brak-uprawnien");
     api.mockRejectedValueOnce(bladApi(404, "not_found", "Nie znaleziono zgłoszenia."));
     expect((await dane.zaakceptujZgloszenie(31, "volunteer", false)).rodzaj).toBe("nie-znaleziono");
@@ -150,7 +150,7 @@ describe("odrzucenie", () => {
     expect((await dane.odrzucZgloszenie(31, "x")).rodzaj).toBe("bledy-pol");
     api.mockRejectedValueOnce(bladApi(409, "application_already_decided", "Zgłoszenie zostało już rozstrzygnięte."));
     expect((await dane.odrzucZgloszenie(31, "x")).rodzaj).toBe("rozstrzygniete");
-    api.mockRejectedValueOnce(bladApi(403, "forbidden", "Brak dostępu."));
+    api.mockRejectedValueOnce(bladApi(403, "forbidden", "Nie masz dostępu do tego zasobu."));
     expect((await dane.odrzucZgloszenie(31, "x")).rodzaj).toBe("brak-uprawnien");
     api.mockRejectedValueOnce(bladApi(404, "not_found", "Nie znaleziono zgłoszenia."));
     expect((await dane.odrzucZgloszenie(31, "x")).rodzaj).toBe("nie-znaleziono");

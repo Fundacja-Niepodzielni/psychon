@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/klient";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import type {
   DocumentTemplate,
   DocumentTemplateAuthor,
@@ -64,7 +65,7 @@ export function wynikZBleduZapisu(blad: unknown): WynikZapisu {
       return { rodzaj: "pole", tresc: zPola ?? "Popraw treść wzoru." };
     }
     if (blad.status === 401 || blad.status === 403) {
-      return { rodzaj: "ogolny", tresc: "Zapis wzoru jest dostępny tylko dla administracji. Twoja treść została w polu." };
+      return { rodzaj: "ogolny", tresc: `${zdanieOdmowyRoli("administracji")} Twoja treść została w polu.` };
     }
     if (blad.status === 404) {
       return {

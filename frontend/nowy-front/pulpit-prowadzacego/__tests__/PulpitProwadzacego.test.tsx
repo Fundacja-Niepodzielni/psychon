@@ -192,7 +192,7 @@ describe("PulpitProwadzacego — 403", () => {
     const uzytkownik = userEvent.setup();
     const { container } = render(<PulpitProwadzacego />);
 
-    expect(await screen.findByText("Ten widok jest dostępny tylko dla prowadzących.")).toBeInTheDocument();
+    expect(await screen.findByText(/tylko dla prowadzących/)).toBeInTheDocument();
     sprawdzSzablon(container);
     expect(przyciskiGlowne(container)).toHaveLength(0);
     await uzytkownik.click(screen.getByRole("button", { name: "Wróć" }));

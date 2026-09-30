@@ -69,7 +69,7 @@ describe("Pulpit — wybór po roli", () => {
   it("inna rola → brak dostępu w szablonie, bez cudzego pulpitu (kontrola dodatnia: rola wolontariusza przechodzi)", async () => {
     pobierzKonto.mockResolvedValue({ ...KONTO_WOLONTARIUSZA, role: "instructor", roles: ["instructor"] });
     const { container } = render(<Pulpit />);
-    await waitFor(() => expect(screen.getByText("Brak dostępu do pulpitu")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/tylko dla uczestników/)).toBeInTheDocument());
     szablonPulpitu(container);
     expect(screen.queryByText(/pulpit-/)).not.toBeInTheDocument();
   });
@@ -82,7 +82,7 @@ describe("Pulpit — wybór po roli", () => {
   });
 
   const przypadki = [
-    { nazwa: "403", wyjatek: blad(403, "forbidden"), tekst: "Brak dostępu do pulpitu" },
+    { nazwa: "403", wyjatek: blad(403, "forbidden"), tekst: /tylko dla uczestników/ },
     { nazwa: "404", wyjatek: blad(404, "not_found"), tekst: "Nie znaleziono danych pulpitu" },
     { nazwa: "błąd sieci", wyjatek: new TypeError("Failed to fetch"), tekst: "Brak połączenia" },
     { nazwa: "błąd serwera", wyjatek: blad(500, "server_error"), tekst: "Nie udało się wczytać pulpitu" },

@@ -156,7 +156,7 @@ describe("/panel/pulpit w układzie panelu uczestnika", () => {
     atrapaPulpitu({ "/me": () => Promise.reject(blad(403, "forbidden")) });
     const { container } = trasaPulpitu();
 
-    await screen.findByRole("heading", { level: 2, name: /pulpitu/ });
+    await screen.findByRole("heading", { level: 2, name: "Pulpit dla uczestników" });
     expect(screen.queryByText("Wywiad psychologiczny")).toBeNull();
     expect(screen.queryByText("Twoja ścieżka")).toBeNull();
     expect(zapytane()).not.toContain("/courses");
@@ -167,7 +167,7 @@ describe("/panel/pulpit w układzie panelu uczestnika", () => {
     atrapaPulpitu({ "/me": () => Promise.resolve({ role: "instructor", first_name: "Piotr", program_completed_at: null }) });
     const { container } = trasaPulpitu();
 
-    await screen.findByText(/dostępny tylko dla uczestników programu/);
+    await screen.findByText(/tylko dla uczestników/);
     expect(screen.queryByText("Wywiad psychologiczny")).toBeNull();
     expect(zapytane()).not.toContain("/courses");
     expect(zmierz(container)).toEqual(JEDEN);

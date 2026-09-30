@@ -183,13 +183,13 @@ describe("KartaOsoby — jeden main i szablon w każdym stanie", () => {
   );
   opisStanu(
     "brak uprawnień (403)",
-    () => pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu." })),
-    () => screen.findByText(/dostępny tylko dla/),
+    () => pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tego zasobu." })),
+    () => screen.findByText(/tylko dla administracji/),
   );
   opisStanu(
     "brak uprawnień (401)",
     () => pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 401, code: "unauthenticated", message: "Zaloguj się ponownie." })),
-    () => screen.findByText(/dostępny tylko dla/),
+    () => screen.findByText(/tylko dla administracji/),
   );
   opisStanu(
     "nie znaleziono (404)",
@@ -327,15 +327,15 @@ describe("KartaOsoby — 404 karty i brak uprawnień", () => {
   });
 
   it("403 → stan brak uprawnień, tak jak inne ekrany administracji nowego frontu", async () => {
-    pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu." }));
+    pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tego zasobu." }));
     render(<KartaOsoby id={17} />);
-    expect(await screen.findByText(/dostępny tylko dla/)).toBeInTheDocument();
+    expect(await screen.findByText(/tylko dla administracji/)).toBeInTheDocument();
   });
 
   it("401 → ten sam stan brak uprawnień co 403", async () => {
     pobierzKarteOsoby.mockRejectedValue(new ApiError({ status: 401, code: "unauthenticated", message: "Zaloguj się ponownie." }));
     render(<KartaOsoby id={17} />);
-    expect(await screen.findByText(/dostępny tylko dla/)).toBeInTheDocument();
+    expect(await screen.findByText(/tylko dla administracji/)).toBeInTheDocument();
   });
 });
 

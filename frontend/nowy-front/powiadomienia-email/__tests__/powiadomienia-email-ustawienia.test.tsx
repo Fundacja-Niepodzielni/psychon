@@ -159,7 +159,7 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
 
   it("e) 403 przy zapisie pokazuje Notice i blokuje dalszy zapis", async () => {
     updateNotificationSettings.mockRejectedValue(
-      new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu." }),
+      new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tego zasobu." }),
     );
     const uzytkownik = userEvent.setup();
     render(<PowiadomieniaEmail />);
@@ -169,7 +169,7 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
 
     await waitFor(() =>
-      expect(screen.getByText("Brak uprawnień do zmiany ustawień powiadomień.")).toBeInTheDocument(),
+      expect(screen.getByText(/tylko dla administracji/)).toBeInTheDocument(),
     );
     expect(screen.queryByRole("region", { name: "Niezapisane zmiany" })).toBeNull();
   });

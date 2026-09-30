@@ -200,9 +200,9 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
         naglowek={<PageHeader okruszki={okruszki} tytul="Karta osoby" onPowrot={wroc} />}
         tabela={
           <EmptyState
-            naglowek="Brak dostępu"
+            naglowek="Karta osoby dla administracji"
             wariant="brak-uprawnien"
-            rola="opiekuna projektu i Super Admina"
+            rola="administracji"
             przycisk={{ etykieta: "Wróć", onClick: wroc }}
           />
         }

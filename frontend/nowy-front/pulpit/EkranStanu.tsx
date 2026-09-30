@@ -79,8 +79,8 @@ function TrescStanu({
       return (
         <EmptyState
           wariant="brak-uprawnien"
-          naglowek="Brak dostępu do pulpitu"
-          rola="uczestników programu"
+          naglowek="Pulpit dla uczestników"
+          rola="uczestników"
           przycisk={{ etykieta: "Wróć", onClick: onWstecz }}
         />
       );

@@ -94,7 +94,7 @@ describe("akceptacja", () => {
   it("403 entry_locked → rozstrzygniete; inne 403 → brak uprawnień; 404; błąd sieci", async () => {
     api.mockRejectedValueOnce(bladApi(403, "entry_locked", "Ten wniosek został już rozstrzygnięty."));
     expect(await dane.zaakceptujWniosek(12)).toEqual({ rodzaj: "rozstrzygniete", komunikat: "Ten wniosek został już rozstrzygnięty." });
-    api.mockRejectedValueOnce(bladApi(403, "forbidden", "Brak dostępu."));
+    api.mockRejectedValueOnce(bladApi(403, "forbidden", "Nie masz dostępu do tego zasobu."));
     expect((await dane.zaakceptujWniosek(12)).rodzaj).toBe("brak-uprawnien");
     api.mockRejectedValueOnce(bladApi(404, "not_found", "Nie znaleziono wniosku."));
     expect((await dane.zaakceptujWniosek(12)).rodzaj).toBe("nie-znaleziono");
