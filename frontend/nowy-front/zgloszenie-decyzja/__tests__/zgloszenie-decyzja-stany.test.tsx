@@ -66,6 +66,13 @@ function sprawdzSzablon(container: HTMLElement) {
   expect(container.querySelector("#tresc")).toBe(main);
 }
 
+/** Sekcja formularza ma być treścią strony, nie oknem modalnym: żadnej roli okna ani `aria-modal` w całym DOM. */
+function sprawdzBezOkna() {
+  expect(document.querySelector("[role='dialog'], [role='alertdialog'], [aria-modal]")).toBeNull();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+}
+
 async function renderGotowy(zgloszenie = ZGLOSZENIE) {
   ustawZgloszenie(zgloszenie);
   const wynik = render(<ZgloszenieDecyzja id="31" />);
@@ -323,6 +330,22 @@ describe("Zgłoszenie — decyzja: odrzucenie z powodem", () => {
     expect(screen.getAllByRole("button", { name: "Wróć do decyzji" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Zaakceptuj i utwórz konto" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(1);
+    sprawdzSzablon(container);
+  });
+
+  it("sekcja odrzucenia nie jest oknem: brak dialogu i aria-modal, formularz w głównej treści", async () => {
+    ustawZgloszenie();
+    const { container } = render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+    sprawdzBezOkna();
+    await otworzOdrzucenie();
+
+    const pole = await screen.findByRole("textbox", { name: /^Powód odrzucenia/ });
+    sprawdzBezOkna();
+    const main = container.querySelector("main")!;
+    expect(main.contains(pole)).toBe(true);
+    expect(main.contains(screen.getByRole("button", { name: "Odrzuć zgłoszenie" }))).toBe(true);
+    expect(main.contains(screen.getByRole("button", { name: "Wróć do decyzji" }))).toBe(true);
     sprawdzSzablon(container);
   });
 

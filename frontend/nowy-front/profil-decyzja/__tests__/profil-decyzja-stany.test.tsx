@@ -64,6 +64,13 @@ function sprawdzSzablon(container: HTMLElement) {
   expect(container.querySelector("#tresc")).toBe(main);
 }
 
+/** Sekcja formularza ma być treścią strony, nie oknem modalnym: żadnej roli okna ani `aria-modal` w całym DOM. */
+function sprawdzBezOkna() {
+  expect(document.querySelector("[role='dialog'], [role='alertdialog'], [aria-modal]")).toBeNull();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+}
+
 async function renderGotowy(wniosek = WNIOSEK) {
   trasy({ show: wniosek });
   const wynik = render(<ProfilDecyzja id="12" />);
@@ -254,6 +261,20 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     expect(screen.getAllByRole("button", { name: "Wróć do decyzji" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Zaakceptuj" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(1);
+    sprawdzSzablon(container);
+  });
+
+  it("sekcja prośby o poprawkę nie jest oknem: brak dialogu i aria-modal, formularz w głównej treści", async () => {
+    const { container } = await renderGotowy();
+    sprawdzBezOkna();
+    await otworzPoprawke();
+
+    const pole = await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ });
+    sprawdzBezOkna();
+    const main = container.querySelector("main")!;
+    expect(main.contains(pole)).toBe(true);
+    expect(main.contains(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }))).toBe(true);
+    expect(main.contains(screen.getByRole("button", { name: "Wróć do decyzji" }))).toBe(true);
     sprawdzSzablon(container);
   });
 
