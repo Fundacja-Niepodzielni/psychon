@@ -29,6 +29,11 @@ export function rodzajBledu(blad: unknown): RodzajBledu {
   return "inny";
 }
 
+/** Komunikat z koperty błędu serwera (`error.message`); `undefined`, gdy koperty nie ma (np. brak połączenia). */
+export function komunikatKoperty(blad: unknown): string | undefined {
+  return blad instanceof ApiError && blad.message.trim() !== "" ? blad.message : undefined;
+}
+
 /** Pierwszy komunikat błędu pola `answer` z koperty 422 albo `undefined`. */
 export function bladPolaOdpowiedzi(blad: unknown): string | undefined {
   return blad instanceof ApiError ? blad.errors?.answer?.[0] : undefined;

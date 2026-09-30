@@ -160,14 +160,18 @@ describe("Moje kursy — odmowa z powodu roli", () => {
 
 describe("Moje kursy — błąd połączenia", () => {
   it.each([
-    ["brak połączenia", () => new TypeError("Failed to fetch")],
-    ["500 z koperty", () => new ApiError({ status: 500, code: "server_error", message: "Błąd serwera." })],
-  ])("%s: Notice z „Spróbuj ponownie”, ponowienie wczytuje listę", async (_nazwa, blad) => {
+    ["brak połączenia", () => new TypeError("Failed to fetch"), "Serwer nie odpowiedział albo zwrócił błąd. Kursy nie są pokazywane bez danych."],
+    ["500 z koperty", () => new ApiError({ status: 500, code: "server_error", message: "Błąd serwera." }), "Błąd serwera."],
+  ])("%s: Notice z „Spróbuj ponownie”, komunikat z koperty (albo ogólny bez koperty), ponowienie wczytuje listę", async (_nazwa, blad, tresc) => {
     const uzytkownik = userEvent.setup();
     api.mockRejectedValueOnce(blad()).mockResolvedValue([KURS_W_PROGRAMIE] satisfies KursProwadzacego[]);
     const { container } = render(<KursyProwadzacego />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Nie udało się wczytać kursów");
+    expect(screen.getByRole("alert")).toHaveTextContent(tresc);
+    if (blad() instanceof ApiError) {
+      expect(screen.getByRole("alert")).not.toHaveTextContent("Serwer nie odpowiedział");
+    }
     sprawdzSzablon(container);
     expect(odnosnikiOtworz()).toHaveLength(0);
 

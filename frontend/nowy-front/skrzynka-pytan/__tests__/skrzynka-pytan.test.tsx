@@ -607,3 +607,140 @@ describe("Skrzynka pytań — filtr widoku i podgląd odpowiedzi", () => {
     sprawdzSzablon(container);
   });
 });
+
+describe("Skrzynka pytań — treść pytania na liście zachowuje podziały wierszy", () => {
+  const WIELOWIERSZOWE = {
+    ...PYTANIE_PIERWSZE,
+    id: 15,
+    question: "Pierwszy wiersz pytania.\n\nDrugi akapit, po pustym wierszu.\n  - punkt z wcięciem",
+  } satisfies PytanieSkrzynki;
+
+  it("akapit z treścią pytania niesie cały tekst z podziałami wierszy i stoi w pojemniku listy, do którego ekran stosuje pre-wrap", async () => {
+    apiPaged.mockResolvedValue({
+      data: [WIELOWIERSZOWE],
+      meta: { current_page: 1, per_page: 25, total: 1, last_page: 1, extra: { unanswered: 1 } },
+    } satisfies StronaPytan);
+    render(<SkrzynkaPytan />);
+
+    const akapit = await screen.findByText((_tresc, element) => element?.tagName === "P" && element.textContent === WIELOWIERSZOWE.question);
+    expect(akapit.textContent).toContain("\n\n");
+    expect(akapit.closest("[data-wariant]")).not.toBeNull();
+    expect(akapit.closest('div[class*="lista"]')).not.toBeNull();
+  });
+
+  it("próba kontrolna: akapit poza pojemnikiem listy (formularz, nagłówek) nie jest objęty tym samym sprawdzeniem", async () => {
+    apiPaged.mockResolvedValue({
+      data: [WIELOWIERSZOWE],
+      meta: { current_page: 1, per_page: 25, total: 1, last_page: 1, extra: { unanswered: 1 } },
+    } satisfies StronaPytan);
+    render(<SkrzynkaPytan />);
+
+    const opis = await screen.findByText("Pytania uczestników zadane przy lekcjach Twoich kursów.");
+    expect(opis.closest('div[class*="lista"]')).toBeNull();
+  });
+});
+
+describe("Skrzynka pytań — sygnał wysyłania odpowiedzi", () => {
+  it("w czasie wysyłki: aria-busy i widoczny tekst stanu, bez drugiego żądania przy ponownym kliknięciu; po odpowiedzi sygnał znika", async () => {
+    const uzytkownik = userEvent.setup();
+    apiPaged.mockResolvedValue(DWA_PYTANIA);
+    let zakoncz: (wartosc: PytanieSkrzynki) => void = () => {};
+    api.mockReturnValue(new Promise<PytanieSkrzynki>((rozwiaz) => (zakoncz = rozwiaz)));
+    const { container } = render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+    await uzytkownik.click(przyciskiOdpowiedz()[0]);
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(screen.queryByText("Wysyłanie odpowiedzi…")).toBeNull();
+
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Odpowiedź/ }), ODPOWIEDZ);
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij odpowiedź" }));
+
+    expect(await screen.findByText("Wysyłanie odpowiedzi…")).toBeInTheDocument();
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Wysyłanie odpowiedzi…");
+
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij odpowiedź" }));
+    expect(api).toHaveBeenCalledTimes(1);
+
+    zakoncz(ODPOWIEDZIANE);
+    expect(await screen.findByText("Odpowiedź wysłana.")).toBeInTheDocument();
+    expect(screen.queryByText("Wysyłanie odpowiedzi…")).toBeNull();
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
+  it("po błędzie wysyłki sygnał znika, a formularz wraca do stanu do ponowienia", async () => {
+    const uzytkownik = userEvent.setup();
+    apiPaged.mockResolvedValue(DWA_PYTANIA);
+    api.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { container } = render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+    await uzytkownik.click(przyciskiOdpowiedz()[0]);
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Odpowiedź/ }), "x");
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij odpowiedź" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Nie udało się wysłać odpowiedzi");
+    expect(screen.queryByText("Wysyłanie odpowiedzi…")).toBeNull();
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+});
+
+describe("Skrzynka pytań — komunikat z koperty błędu", () => {
+  it("błąd odczytu z kopertą: w Notice stoi komunikat serwera, nie tekst ogólny", async () => {
+    apiPaged.mockRejectedValue(new ApiError({ status: 500, code: "server_error", message: "Skrzynka pytań jest chwilowo niedostępna." }));
+    render(<SkrzynkaPytan />);
+
+    const alarm = await screen.findByRole("alert");
+    expect(alarm).toHaveTextContent("Nie udało się wczytać pytań");
+    expect(alarm).toHaveTextContent("Skrzynka pytań jest chwilowo niedostępna.");
+    expect(alarm).not.toHaveTextContent("Serwer nie odpowiedział");
+  });
+
+  it("błąd odczytu bez koperty (brak połączenia): tekst ogólny", async () => {
+    apiPaged.mockRejectedValue(new TypeError("Failed to fetch"));
+    render(<SkrzynkaPytan />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Serwer nie odpowiedział albo zwrócił błąd.");
+  });
+
+  it("błąd odpowiedzi inny niż 422, 404 i 403 (tu 500 z kopertą): komunikat serwera w Notice, formularz zostaje", async () => {
+    const uzytkownik = userEvent.setup();
+    apiPaged.mockResolvedValue(DWA_PYTANIA);
+    api.mockRejectedValue(new ApiError({ status: 500, code: "server_error", message: "Nie udało się zapisać odpowiedzi — spróbuj za chwilę." }));
+    render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_PIERWSZE.question);
+    await uzytkownik.click(przyciskiOdpowiedz()[0]);
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Odpowiedź/ }), "x");
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij odpowiedź" }));
+
+    const alarm = await screen.findByRole("alert");
+    expect(alarm).toHaveTextContent("Nie udało się zapisać odpowiedzi — spróbuj za chwilę.");
+    expect(alarm).not.toHaveTextContent("Spróbuj ponownie.");
+    expect(screen.getByRole("form", { name: "Odpowiedź na pytanie" })).toBeInTheDocument();
+  });
+});
+
+describe("Skrzynka pytań — otwarty formularz niesie treść pytania jako tekst", () => {
+  it("pytanie z HTML w otwartym formularzu: tekst dosłowny, zero elementów z treści, zero wykonania", async () => {
+    const uzytkownik = userEvent.setup();
+    apiPaged.mockResolvedValue({
+      data: [PYTANIE_Z_HTML],
+      meta: { current_page: 1, per_page: 25, total: 1, last_page: 1, extra: { unanswered: 1 } },
+    } satisfies StronaPytan);
+    const { container } = render(<SkrzynkaPytan />);
+
+    await screen.findByText(PYTANIE_Z_HTML.question);
+    await uzytkownik.click(przyciskiOdpowiedz()[0]);
+
+    const formularz = screen.getByRole("form", { name: "Odpowiedź na pytanie" });
+    expect(formularz).toBeInTheDocument();
+    expect(screen.getByText(PYTANIE_Z_HTML.question)).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("script")).toBeNull();
+    expect("zlo" in window).toBe(false);
+    sprawdzSzablon(container);
+    expect(przyciskiGlowne(container)).toHaveLength(1);
+  });
+});

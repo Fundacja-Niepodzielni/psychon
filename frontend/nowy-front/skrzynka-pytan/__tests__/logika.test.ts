@@ -4,6 +4,7 @@ import type { PytanieSkrzynki, StronaPytan } from "../dane";
 import {
   bladPolaOdpowiedzi,
   formatujDate,
+  komunikatKoperty,
   liczbaBezOdpowiedzi,
   OPCJE_WIDOKU,
   odmianaPytan,
@@ -126,6 +127,15 @@ describe("wiersze listy", () => {
     wiersze[1].akcja.onKliknij?.();
     expect(naPodglad).toHaveBeenCalledWith(ODPOWIEDZIANE);
     expect(naOdpowiedz).not.toHaveBeenCalled();
+  });
+});
+
+describe("komunikatKoperty", () => {
+  it("komunikat z koperty błędu serwera; bez koperty (brak połączenia, pusty komunikat) undefined", () => {
+    expect(komunikatKoperty(blad(500, "server_error"))).toBe("komunikat");
+    expect(komunikatKoperty(new ApiError({ status: 500, code: "server_error", message: "" }))).toBeUndefined();
+    expect(komunikatKoperty(new TypeError("Failed to fetch"))).toBeUndefined();
+    expect(komunikatKoperty("tekst")).toBeUndefined();
   });
 });
 

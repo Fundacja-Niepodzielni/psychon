@@ -10,13 +10,13 @@ import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import { pobierzKursyProwadzacego, type KursProwadzacego } from "./dane";
-import { czyBrakUprawnien, wierszeKursow } from "./logika";
+import { czyBrakUprawnien, komunikatKoperty, wierszeKursow } from "./logika";
 import style from "./KursyProwadzacego.module.css";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
   | { rodzaj: "brak-uprawnien" }
-  | { rodzaj: "blad" }
+  | { rodzaj: "blad"; komunikat?: string }
   | { rodzaj: "dane"; kursy: KursProwadzacego[] };
 
 interface WlasciwosciSzablonu {
@@ -62,7 +62,7 @@ export function KursyProwadzacego() {
         if (aktualne) setStan({ rodzaj: "dane", kursy });
       })
       .catch((blad: unknown) => {
-        if (aktualne) setStan({ rodzaj: czyBrakUprawnien(blad) ? "brak-uprawnien" : "blad" });
+        if (aktualne) setStan(czyBrakUprawnien(blad) ? { rodzaj: "brak-uprawnien" } : { rodzaj: "blad", komunikat: komunikatKoperty(blad) });
       });
     return () => {
       aktualne = false;
@@ -117,7 +117,7 @@ export function KursyProwadzacego() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Kursy nie są pokazywane bez danych.
+            {stan.komunikat ?? "Serwer nie odpowiedział albo zwrócił błąd. Kursy nie są pokazywane bez danych."}
           </Notice>
         }
       />

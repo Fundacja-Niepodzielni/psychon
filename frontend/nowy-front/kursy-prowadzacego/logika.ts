@@ -18,6 +18,11 @@ export function czyBrakUprawnien(blad: unknown): boolean {
   return blad instanceof ApiError && (blad.status === 401 || (blad.status === 403 && blad.code === "forbidden"));
 }
 
+/** Komunikat z koperty błędu serwera (`error.message`); `undefined`, gdy koperty nie ma (np. brak połączenia). */
+export function komunikatKoperty(blad: unknown): string | undefined {
+  return blad instanceof ApiError && blad.message.trim() !== "" ? blad.message : undefined;
+}
+
 export function opisPozycji(pozycja: number | null): string {
   return pozycja === null ? "Poza kolejnością programu" : `Kurs ${pozycja} w programie`;
 }

@@ -233,3 +233,28 @@ describe("zgodność z zapleczem", () => {
     expect(bezKomentarz).toMatch(/return apiPaged<PytanieSkrzynki>\(`\/instructor\/questions\?answered=false&page=\$\{strona\}`\);/);
   });
 });
+
+describe("pre-wrap treści pytania na liście (tylko w CSS ekranu, bez zmiany design-system)", () => {
+  const css = tresc(join(KORZEN, "nowy-front/skrzynka-pytan/SkrzynkaPytan.module.css"));
+  const reguly = (zrodlo: string) => [...zrodlo.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selektor: m[1].trim(), cialo: m[2] }));
+
+  it("reguła dla akapitów wierszy listy ma white-space: pre-wrap, a selektor trafia w to, co renderują ListRow i Text", () => {
+    const regula = reguly(bezKomentarzy(css)).find((r) => r.selektor === ".lista [data-wariant] p");
+    expect(regula?.cialo).toMatch(/white-space:\s*pre-wrap/);
+
+    const wiersz = tresc(join(KORZEN, "design-system/molekuly/ListRow/ListRow.tsx"));
+    expect(wiersz).toMatch(/data-wariant=\{wariant\}/);
+    expect(wiersz).toMatch(/<Text>\{tytul\}<\/Text>/);
+    const tekst = tresc(join(KORZEN, "design-system/atomy/Text/Text.tsx"));
+    expect(tekst).toMatch(/<p /);
+  });
+
+  it("ekran opakowuje RecordList w pojemnik .lista", () => {
+    expect(bezKomentarzy(tresc(EKRAN))).toMatch(/<div className=\{style\.lista\}>\s*<RecordList/);
+  });
+
+  it("próba kontrolna: parser reguł widzi brak pre-wrap w złej próbce", () => {
+    const zla = ".lista [data-wariant] p { overflow-wrap: anywhere; }";
+    expect(reguly(zla).find((r) => r.selektor === ".lista [data-wariant] p")?.cialo).not.toMatch(/white-space:\s*pre-wrap/);
+  });
+});

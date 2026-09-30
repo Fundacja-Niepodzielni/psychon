@@ -28,6 +28,7 @@ import {
   OPCJE_WIDOKU,
   bladPolaOdpowiedzi,
   formatujDate,
+  komunikatKoperty,
   liczbaBezOdpowiedzi,
   opisLicznika,
   opisPytania,
@@ -43,7 +44,7 @@ import style from "./SkrzynkaPytan.module.css";
 type StanListy =
   | { rodzaj: "ladowanie" }
   | { rodzaj: "brak-uprawnien" }
-  | { rodzaj: "blad" }
+  | { rodzaj: "blad"; komunikat?: string }
   | { rodzaj: "dane"; strona: StronaPytan; numer: number; widok: WidokPytan };
 
 interface OstrzezenieListy {
@@ -141,6 +142,7 @@ export function SkrzynkaPytan() {
   const [ostrzezenie, setOstrzezenie] = useState<OstrzezenieListy | null>(null);
   const [komunikat, setKomunikat] = useState<string | null>(null);
   const wysylanie = useRef(false);
+  const [wysyla, setWysyla] = useState(false);
 
   useEffect(() => {
     let aktualne = true;
@@ -150,7 +152,7 @@ export function SkrzynkaPytan() {
       })
       .catch((blad: unknown) => {
         if (!aktualne) return;
-        setStan({ rodzaj: rodzajBledu(blad) === "brak-uprawnien" ? "brak-uprawnien" : "blad" });
+        setStan(rodzajBledu(blad) === "brak-uprawnien" ? { rodzaj: "brak-uprawnien" } : { rodzaj: "blad", komunikat: komunikatKoperty(blad) });
       });
     return () => {
       aktualne = false;
@@ -185,6 +187,7 @@ export function SkrzynkaPytan() {
   async function wyslij() {
     if (otwarte === null || wysylanie.current) return;
     wysylanie.current = true;
+    setWysyla(true);
     setBladPola(undefined);
     setBladWysylki(null);
     const pytanie = otwarte;
@@ -217,10 +220,11 @@ export function SkrzynkaPytan() {
         if (bladOdpowiedzi !== undefined) setBladPola(bladOdpowiedzi);
         else setBladWysylki(tresc);
       } else {
-        setBladWysylki("Nie udało się wysłać odpowiedzi. Spróbuj ponownie.");
+        setBladWysylki(komunikatKoperty(blad) ?? "Nie udało się wysłać odpowiedzi. Spróbuj ponownie.");
       }
     } finally {
       wysylanie.current = false;
+      setWysyla(false);
     }
   }
 
@@ -284,7 +288,7 @@ export function SkrzynkaPytan() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Pytania nie są pokazywane bez danych.
+            {stan.komunikat ?? "Serwer nie odpowiedział albo zwrócił błąd. Pytania nie są pokazywane bez danych."}
           </Notice>
         }
       />
@@ -299,8 +303,9 @@ export function SkrzynkaPytan() {
         {...wspolne}
         liczba={liczba}
         lista={
-          <div className={style.odpowiedz}>
+          <div className={style.odpowiedz} aria-busy={wysyla}>
             <KontekstPytania pytanie={otwarte} />
+            <div role="status">{wysyla && <Hint>Wysyłanie odpowiedzi…</Hint>}</div>
             {bladWysylki !== null && (
               <Notice
                 wariant="error"
@@ -379,15 +384,17 @@ export function SkrzynkaPytan() {
               {ostrzezenie.tresc}
             </Notice>
           )}
-          <RecordList
-            tytul={pusty.tytulListy}
-            wiersze={wierszePytan(stan.strona.data, otworz, pokazOdpowiedz)}
-            pusty={{
-              naglowek: pusty.naglowek,
-              tresc: pusty.tresc,
-              przycisk: { etykieta: "Wróć do pulpitu", onClick: () => router.push("/prowadzacy") },
-            }}
-          />
+          <div className={style.lista}>
+            <RecordList
+              tytul={pusty.tytulListy}
+              wiersze={wierszePytan(stan.strona.data, otworz, pokazOdpowiedz)}
+              pusty={{
+                naglowek: pusty.naglowek,
+                tresc: pusty.tresc,
+                przycisk: { etykieta: "Wróć do pulpitu", onClick: () => router.push("/prowadzacy") },
+              }}
+            />
+          </div>
         </>
       }
       stronicowanie={

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api/klient";
 import type { KursProwadzacego } from "../dane";
-import { adresKursu, czyBrakUprawnien, opisPozycji, wierszeKursow } from "../logika";
+import { adresKursu, czyBrakUprawnien, komunikatKoperty, opisPozycji, wierszeKursow } from "../logika";
 
 function blad(status: number, code: string) {
   return new ApiError({ status, code, message: "komunikat" });
@@ -17,6 +17,15 @@ describe("czyBrakUprawnien", () => {
     [new TypeError("Failed to fetch"), false],
   ])("%s → %s", (wejscie, oczekiwane) => {
     expect(czyBrakUprawnien(wejscie)).toBe(oczekiwane);
+  });
+});
+
+describe("komunikatKoperty", () => {
+  it("komunikat z koperty błędu serwera; bez koperty (brak połączenia, pusty komunikat) undefined", () => {
+    expect(komunikatKoperty(new ApiError({ status: 500, code: "server_error", message: "Błąd serwera." }))).toBe("Błąd serwera.");
+    expect(komunikatKoperty(new ApiError({ status: 500, code: "server_error", message: "  " }))).toBeUndefined();
+    expect(komunikatKoperty(new TypeError("Failed to fetch"))).toBeUndefined();
+    expect(komunikatKoperty(undefined)).toBeUndefined();
   });
 });
 
