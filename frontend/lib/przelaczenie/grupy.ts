@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dziewięć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest osiem: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`. Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
@@ -159,10 +159,16 @@ export const GRUPY = {
       },
     ],
   },
-  /** Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu. */
+  /**
+   * Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu.
+   * Zostaje wyłączona: gdy nagranie lekcji jest niedostępne (`video-link` odpowiada 503 albo 404 — lekcja bez
+   * nagrania albo bez usługi wideo), nowy ekran nie ma przycisku „Odtwórz”, nie wysyła zapisu postępu, a „Oznacz
+   * jako ukończoną” zostaje nieaktywne, podczas gdy stara strona w tych samych warunkach działa. Strona
+   * `panel/lekcje/[id]/page.tsx` jest już podpięta pod tę flagę.
+   */
   lekcja: {
     klucz: "lekcja",
-    wlaczona: true,
+    wlaczona: false,
     ekrany: [
       {
         panel: "uczestnik",

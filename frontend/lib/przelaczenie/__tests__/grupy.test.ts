@@ -11,28 +11,28 @@ import {
 /**
  * Stan flag rejestru: włączone są grupy, dla których są już strony pod
  * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
- * `pulpitAdministracji`), `pulpitUczestnika`, `lekcja` i `pulpitProwadzacego`
+ * `pulpitAdministracji`), `pulpitUczestnika` i `pulpitProwadzacego`
  * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
  * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`.
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "lekcja", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca", "wzoryDokumentow"];
+const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca", "wzoryDokumentow"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
     expect(GRUPY.wspolpraca.wlaczona).toBe(true);
   });
 
-  it("grupy pulpitUczestnika i lekcja są włączone", () => {
+  it("grupa pulpitUczestnika jest włączona, a grupa lekcja wyłączona", () => {
     expect(GRUPY.pulpitUczestnika.wlaczona).toBe(true);
-    expect(GRUPY.lekcja.wlaczona).toBe(true);
+    expect(GRUPY.lekcja.wlaczona).toBe(false);
   });
 
   it("grupa pulpitProwadzacego jest włączona", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, lekcja, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów i ekran startowy", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów i ekran startowy", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
