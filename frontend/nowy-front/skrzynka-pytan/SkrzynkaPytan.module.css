@@ -1,0 +1,39 @@
+/* Moduł CSS ekranu „Skrzynka pytań” — wartości wyglądu wyłącznie z tokeny.css. */
+.szkielet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.odpowiedz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.pytanie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Treść pytania to tekst uczestnika: zachowuje jego podziały wierszy i łamie
+   bardzo długie ciągi znaków zamiast wypychać układ. */
+.trescPytania {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.podgladOdpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Treść pytania na liście zachowuje podziały wierszy jak na poprzedniej
+   stronie (`white-space: pre-wrap`). Wiersz listy niesie ją w akapicie
+   atomu, którego nie zmieniamy — stąd zawężenie do akapitów wierszy. */
+.lista [data-wariant] p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

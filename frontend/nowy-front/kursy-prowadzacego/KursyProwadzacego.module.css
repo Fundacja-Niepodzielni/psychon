@@ -1,0 +1,6 @@
+/* Moduł CSS ekranu „Moje kursy” — wartości wyglądu wyłącznie z tokeny.css. */
+.szkielet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
