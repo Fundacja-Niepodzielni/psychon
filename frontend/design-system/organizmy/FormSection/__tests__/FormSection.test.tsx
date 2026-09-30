@@ -104,6 +104,40 @@ describe("FormSection", () => {
     expect(document.getElementById("pole-6")).not.toBeNull();
   });
 
+  it("blad w polu dodatkowym przekazany po montowaniu rozwija sekcje, komunikat widoczny, pole osiagalne", async () => {
+    function Rodzic() {
+      const [blad, setBlad] = useState<string | undefined>(undefined);
+      const pola = [
+        ...Array.from({ length: 5 }, (_, indeks) => pole({ id: `pole-${indeks}`, etykieta: `Pole ${indeks}` })),
+        pole({ id: "pole-5", etykieta: "Pole 5", blad }),
+      ];
+      return (
+        <FormSection
+          tytul="Dane osoby"
+          pola={pola}
+          tytulDodatkowych="Wiecej danych"
+          onAnuluj={() => {}}
+          onZapisz={() => setBlad("Uzupelnij pole")}
+        />
+      );
+    }
+    render(<Rodzic />);
+    const naglowek = screen.getByRole("button", { name: /Wiecej danych/ });
+    expect(naglowek).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(naglowek);
+    await userEvent.click(naglowek);
+    expect(naglowek).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById("pole-5")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
+
+    expect(screen.getByRole("button", { name: /Wiecej danych/ })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByText("Uzupelnij pole").length).toBeGreaterThan(0);
+    expect(screen.getByRole("textbox", { name: "Pole 5" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Pole 5" })).toHaveAttribute("href", "#pole-5");
+    expect(document.getElementById("pole-5")).not.toBeNull();
+  });
+
   it("wymagane puste pole nie blokuje zapisu — formularz ma noValidate", async () => {
     const onZapisz = vi.fn();
     render(

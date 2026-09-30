@@ -243,6 +243,30 @@ describe("A-30 — zapis", () => {
     await waitFor(() => expect(screen.getByLabelText(/^Treść o oczekiwaniach/)).toHaveAttribute("aria-invalid", "true"));
   });
 
+  it("422 na polu po ręcznym zwinięciu sekcji „Oczekiwania”: sekcja rozwinięta, komunikat przy polu widoczny", async () => {
+    const uzytkownik = userEvent.setup();
+    api.mockResolvedValueOnce(EKRAN).mockRejectedValueOnce(
+      blad(422, "validation_failed", { "expectations.body": ["To pole jest wymagane."] }),
+    );
+    render(<EkranStartowy />);
+    await poczekajNaFormularz();
+    const naglowek = screen.getByRole("button", { name: /^Oczekiwania wobec uczestników/ });
+    await uzytkownik.click(naglowek);
+    await uzytkownik.clear(screen.getByLabelText(/^Treść o oczekiwaniach/));
+    await uzytkownik.click(naglowek);
+    expect(naglowek).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText(/^Treść o oczekiwaniach/)).toBeNull();
+
+    await uzytkownik.click(screen.getByRole("button", { name: "Zapisz i opublikuj" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /^Oczekiwania wobec uczestników/ })).toHaveAttribute("aria-expanded", "true"),
+    );
+    expect(screen.getByLabelText(/^Treść o oczekiwaniach/)).toBeVisible();
+    expect(screen.getByLabelText(/^Treść o oczekiwaniach/)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getAllByText("To pole jest wymagane.").length).toBeGreaterThan(0);
+  });
+
   it("błąd sieci przy zapisie: Notice z „Spróbuj ponownie”, formularz zachowany, ponowienie zapisuje", async () => {
     const uzytkownik = userEvent.setup();
     api

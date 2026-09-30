@@ -203,6 +203,32 @@ describe("A-29 — zapis", () => {
     await waitFor(() => expect(screen.getByLabelText(/^Próg czasu nauki/)).toHaveAttribute("aria-invalid", "true"));
   });
 
+  it("422 na progu po ręcznym zwinięciu sekcji „Czas nauki”: sekcja rozwinięta, komunikat przy polu widoczny", async () => {
+    const uzytkownik = userEvent.setup();
+    const komunikat = "Próg rzetelności musi mieścić się w zakresie 0-100%.";
+    api.mockResolvedValueOnce(ROK).mockRejectedValueOnce(
+      blad(422, "validation_failed", { reliability_threshold: [komunikat] }),
+    );
+    render(<UstawieniaEdycji />);
+    await poczekajNaFormularz();
+    const naglowek = screen.getByRole("button", { name: /^Czas nauki/ });
+    await uzytkownik.click(naglowek);
+    const pole = screen.getByLabelText(/^Próg czasu nauki/);
+    await uzytkownik.clear(pole);
+    await uzytkownik.type(pole, "101");
+    await uzytkownik.click(naglowek);
+    expect(naglowek).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText(/^Próg czasu nauki/)).toBeNull();
+
+    await uzytkownik.click(screen.getByRole("button", { name: "Zapisz ustawienia" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Czas nauki/ })).toHaveAttribute("aria-expanded", "true"));
+    expect(screen.getByLabelText(/^Próg czasu nauki/)).toBeVisible();
+    expect(screen.getByLabelText(/^Próg czasu nauki/)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/^Próg czasu nauki/)).toHaveValue(101);
+    expect(screen.getAllByText(komunikat).length).toBeGreaterThan(0);
+  });
+
   it("błąd sieci przy zapisie: Notice z „Spróbuj ponownie”, formularz zachowany, ponowienie zapisuje", async () => {
     const uzytkownik = userEvent.setup();
     api
