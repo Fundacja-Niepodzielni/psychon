@@ -242,7 +242,7 @@ describe("Wniosek o profil — decyzja: akceptacja", () => {
     render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
     await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź" }));
-    expect(await screen.findByText("Nie udało się zaakceptować wniosku. Spróbuj ponownie.")).toBeInTheDocument();
+    expect(await screen.findByText("Nie udało się zatwierdzić wniosku. Spróbuj ponownie.")).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(1);
   });
 });
