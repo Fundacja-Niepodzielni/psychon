@@ -98,8 +98,8 @@ describe("PulpitUczestnika — stany z danymi", () => {
     expect(push).toHaveBeenCalledWith("/panel/lekcje/22");
     // Liczby pochodzą z /courses, /certificate/conditions i /internship/entries
     // bez własnej reguły liczenia; mianownik występuje w DOM kilka razy.
-    expect(screen.getAllByText("z 3 etapów").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("z 72 godz.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("z 3 ukończone").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("z 72 godzin").length).toBeGreaterThan(0);
     cleanup();
 
     pobierzSzczegolKursu.mockResolvedValue({
@@ -121,7 +121,7 @@ describe("PulpitUczestnika — stany z danymi", () => {
     await waitFor(() => expect(screen.getByText("Ścieżka jest przygotowywana")).toBeInTheDocument());
     szablonPulpitu(container);
     expect(
-      screen.getByText("Gdy pierwszy etap ścieżki stanie się dostępny, pojawi się tutaj Twój następny krok."),
+      screen.getByText("Gdy pierwszy kurs ścieżki stanie się dostępny, pojawi się tutaj Twój następny krok."),
     ).toBeInTheDocument();
     expect(liczPrzyciskiGlowne(container)).toBe(0);
     cleanup();
@@ -132,7 +132,7 @@ describe("PulpitUczestnika — stany z danymi", () => {
     expect(screen.queryByText("Ścieżka jest przygotowywana")).not.toBeInTheDocument();
   });
 
-  it("wszystko ukończone: krok „certyfikat” (kontrola dodatnia: cofnięcie jednego etapu usuwa przycisk certyfikatu)", async () => {
+  it("wszystko ukończone: krok „certyfikat” (kontrola dodatnia: cofnięcie jednego kursu usuwa przycisk certyfikatu)", async () => {
     const oba = [KURS_UKONCZONY, { ...KURS_W_TOKU, status: "completed" as const, progress_percent: 100 }];
     pobierzKursy.mockResolvedValue(oba);
 
@@ -141,7 +141,7 @@ describe("PulpitUczestnika — stany z danymi", () => {
     szablonPulpitu(container);
     fireEvent.click(screen.getByRole("button", { name: "Zobacz warunki certyfikatu" }));
     expect(push).toHaveBeenCalledWith("/panel/certyfikat");
-    expect(screen.getAllByText("Ukończony")).toHaveLength(2);
+    expect(screen.getAllByText("ukończony")).toHaveLength(2);
     cleanup();
 
     pobierzKursy.mockResolvedValue([oba[0], { ...oba[1], status: "in_progress" as const }]);
@@ -184,15 +184,15 @@ describe("PulpitUczestnika — stany z danymi", () => {
     expect(screen.queryByText("Warunki certyfikatu niedostępne")).not.toBeInTheDocument();
   });
 
-  it("błąd szczegółów etapu: krok pokazuje Notice i przycisk „Otwórz etap” (kontrola dodatnia: przy sukcesie jest lekcja)", async () => {
+  it("błąd szczegółów kursu: krok pokazuje Notice i przycisk „Otwórz kurs” (kontrola dodatnia: przy sukcesie jest lekcja)", async () => {
     pobierzKursy.mockResolvedValue([KURS_W_TOKU]);
     pobierzSzczegolKursu.mockRejectedValue(new Error("500"));
 
     const { container } = render(<PulpitUczestnika programUkonczony={false} />);
-    await waitFor(() => expect(screen.getByText("Szczegóły etapu niedostępne")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Szczegóły kursu niedostępne")).toBeInTheDocument());
     szablonPulpitu(container);
     expect(liczPrzyciskiGlowne(container)).toBe(1);
-    fireEvent.click(screen.getByRole("button", { name: "Otwórz etap" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otwórz kurs" }));
     expect(push).toHaveBeenCalledWith("/panel/kursy/wywiad-psychologiczny");
     expect(screen.queryByRole("button", { name: "Wróć do lekcji" })).not.toBeInTheDocument();
   });
