@@ -11,10 +11,6 @@ import { PowlokaAdministracji } from "./PowlokaAdministracji";
  * administracji (`project_manager`, `super_admin`). Rola spoza tej pary
  * dostaje wspólny ekran 403 bez powłoki i bez menu. `DostawcaPowloki` mówi
  * szablonowi ekranu, że `main` niesie już powłoka.
- *
- * `PowlokaAdministracji` zastępuje tu dotychczasowy `PanelShell`: strażnik
- * ról i powłoka z `main#tresc` stoją w tym samym pliku, strażnik przed
- * punktem orientacyjnym (tak jak wcześniej `RequireRole` przed `PanelShell`).
  */
 export default function UkladAdministracji({ children }: { children: ReactNode }) {
   return (
