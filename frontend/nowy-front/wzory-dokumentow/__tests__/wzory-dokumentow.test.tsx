@@ -271,6 +271,15 @@ describe("wzory dokumentów — zapis nowej wersji", () => {
 });
 
 describe("wzory dokumentów — zmiana rodzaju i utrata zmian", () => {
+  const ROLE_POL = ["textbox", "searchbox", "combobox", "spinbutton", "checkbox", "radio", "switch", "slider", "listbox"] as const;
+
+  /** Pola wejściowe w oknie potwierdzenia: po rolach dostępności i po znacznikach pól. */
+  function polaWOknie(okno: HTMLElement) {
+    const poRolach = ROLE_POL.flatMap((rola) => within(okno).queryAllByRole(rola));
+    const poZnacznikach = Array.from(okno.querySelectorAll("input, textarea, select, [contenteditable]"));
+    return [...poRolach, ...poZnacznikach];
+  }
+
   async function wybierzRodzaj(nazwa: string) {
     const uzytkownik = userEvent.setup();
     await uzytkownik.click(screen.getByRole("combobox", { name: "Rodzaj wzoru" }));
@@ -295,6 +304,8 @@ describe("wzory dokumentów — zmiana rodzaju i utrata zmian", () => {
     await wybierzRodzaj("Zaświadczenie o stażu");
     const okno = await screen.findByRole("dialog");
     expect(within(okno).getByRole("heading", { name: "Porzucić niezapisane zmiany?" })).toBeTruthy();
+    expect(within(okno).queryAllByRole("textbox")).toHaveLength(0);
+    expect(polaWOknie(okno)).toHaveLength(0);
     fireEvent.click(within(okno).getByRole("button", { name: "Zostań i edytuj" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(api.mock.calls.length).toBe(wywolaniaPrzed);

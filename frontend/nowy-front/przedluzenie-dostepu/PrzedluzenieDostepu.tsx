@@ -46,7 +46,7 @@ interface WlasciwosciPrzedluzenieDostepu {
 /**
  * Ekran „Przedłużenie dostępu” na szablonie formularza: nagłówek, dwie daty
  * obok siebie (obecna i po przedłużeniu) oraz `FormSection` z akcją główną
- * „Przedłuż dostęp”. Każdy stan (ładowanie, dane, brak osoby, odmowa, błąd
+ * „Zmień datę”. Każdy stan (ładowanie, dane, brak osoby, odmowa, błąd
  * sieci) renderuje się wewnątrz szablonu — jego korzeń jest jedynym `main`.
  *
  * Dane: karta osoby (`GET /admin/users/{id}`), zapis
@@ -223,7 +223,7 @@ export function PrzedluzenieDostepu({ idOsoby }: WlasciwosciPrzedluzenieDostepu)
         </Hint>
       </div>
       <FormSection
-        tytul="Przedłuż dostęp"
+        tytul="Zmień datę"
         pola={[
           {
             id: "przedluzenie-tryb",
@@ -238,7 +238,7 @@ export function PrzedluzenieDostepu({ idOsoby }: WlasciwosciPrzedluzenieDostepu)
           },
           poleZalezne,
         ]}
-        etykietaZapisz="Przedłuż dostęp"
+        etykietaZapisz="Zmień datę"
         onAnuluj={wroc}
         onZapisz={() => void przedluz()}
       />

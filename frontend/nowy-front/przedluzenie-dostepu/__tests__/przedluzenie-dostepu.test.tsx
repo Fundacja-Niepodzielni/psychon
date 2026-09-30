@@ -83,7 +83,7 @@ function ustawSerwer({ karta = KARTA, post }: Ustawienia = {}) {
 async function renderGotowy(id = "17") {
   ustawSerwer();
   const wynik = render(<PrzedluzenieDostepu idOsoby={id} />);
-  await screen.findByRole("button", { name: "Przedłuż dostęp" });
+  await screen.findByRole("button", { name: "Zmień datę" });
   return wynik;
 }
 
@@ -116,7 +116,7 @@ describe("przedłużenie dostępu — stany w szablonie formularza, jeden main",
 
   it("dane: formularz z akcją główną w obszarze treści", async () => {
     const { container } = await renderGotowy();
-    sprawdzSzablon(container, screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    sprawdzSzablon(container, screen.getByRole("button", { name: "Zmień datę" }));
     expect(screen.getByRole("heading", { level: 1, name: "Przedłużenie dostępu" })).toBeTruthy();
     expect(screen.getByText("Marta Testowa, Wolontariusz")).toBeTruthy();
   });
@@ -157,7 +157,7 @@ describe("przedłużenie dostępu — stany w szablonie formularza, jeden main",
     sprawdzSzablon(container, await screen.findByRole("alert"));
     ustawSerwer();
     fireEvent.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
-    await screen.findByRole("button", { name: "Przedłuż dostęp" });
+    await screen.findByRole("button", { name: "Zmień datę" });
     expect(container.querySelectorAll("main")).toHaveLength(1);
   });
 });
@@ -181,23 +181,23 @@ describe("przedłużenie dostępu — odczyt i daty obok siebie", () => {
   it("dostęp już wygasły: miesiące liczą się od dziś", async () => {
     ustawSerwer({ karta: { ...KARTA, profile: { ...KARTA.profile, access_expires_at: "2026-01-15T00:00:00Z" } } });
     render(<PrzedluzenieDostepu idOsoby="17" />);
-    await screen.findByRole("button", { name: "Przedłuż dostęp" });
+    await screen.findByRole("button", { name: "Zmień datę" });
     expect(screen.getByText("30 marca 2027")).toBeTruthy();
   });
 
   it("brak daty: zdanie zamiast kreski, miesiące liczą się od dziś", async () => {
     ustawSerwer({ karta: { ...KARTA, profile: { ...KARTA.profile, access_expires_at: null } } });
     render(<PrzedluzenieDostepu idOsoby="17" />);
-    await screen.findByRole("button", { name: "Przedłuż dostęp" });
+    await screen.findByRole("button", { name: "Zmień datę" });
     expect(screen.getByText("brak ustawionej daty")).toBeTruthy();
     expect(screen.getByText("30 marca 2027")).toBeTruthy();
   });
 
-  it("jeden przycisk główny na ekranie: „Przedłuż dostęp”", async () => {
+  it("jeden przycisk główny na ekranie: „Zmień datę”", async () => {
     const { container } = await renderGotowy();
     const glowne = przyciskiGlowne(container);
     expect(glowne).toHaveLength(1);
-    expect(glowne[0].textContent).toBe("Przedłuż dostęp");
+    expect(glowne[0].textContent).toBe("Zmień datę");
   });
 });
 
@@ -211,7 +211,7 @@ describe("przedłużenie dostępu — zapis", () => {
   it("miesiące: POST z samym polem months, potem powiadomienie i nowa obecna data", async () => {
     await renderGotowy();
     fireEvent.change(screen.getByLabelText(/Liczba miesięcy/), { target: { value: "12" } });
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
 
     const powiadomienie = await screen.findByRole("status");
     expect(powiadomienie.textContent).toContain("przedłużony do 1 lipca 2027");
@@ -230,7 +230,7 @@ describe("przedłużenie dostępu — zapis", () => {
     await wybierzTryb("Do wybranej daty");
     fireEvent.change(screen.getByLabelText(/Data końca dostępu/), { target: { value: "2027-03-31" } });
     expect(screen.getByText("31 marca 2027")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     await screen.findByRole("status");
     expect(wywolaniaZapisu()[0][1]).toEqual({ method: "POST", body: { until: "2027-03-31" } });
   });
@@ -250,7 +250,7 @@ describe("przedłużenie dostępu — zapis", () => {
   ])("miesiące „%s”: błąd przy polu, żadnego żądania zapisu", async (wpis, komunikat) => {
     await renderGotowy();
     fireEvent.change(screen.getByLabelText(/Liczba miesięcy/), { target: { value: wpis } });
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     expect((await screen.findAllByText(komunikat)).length).toBeGreaterThan(0);
     expect(wywolaniaZapisu()).toHaveLength(0);
   });
@@ -258,7 +258,7 @@ describe("przedłużenie dostępu — zapis", () => {
   it("brak daty w trybie daty: błąd przy polu, żadnego żądania zapisu", async () => {
     await renderGotowy();
     await wybierzTryb("Do wybranej daty");
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     expect((await screen.findAllByText("Wybierz datę.")).length).toBeGreaterThan(0);
     expect(wywolaniaZapisu()).toHaveLength(0);
   });
@@ -270,8 +270,8 @@ describe("przedłużenie dostępu — zapis", () => {
       },
     });
     render(<PrzedluzenieDostepu idOsoby="17" />);
-    await screen.findByRole("button", { name: "Przedłuż dostęp" });
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    await screen.findByRole("button", { name: "Zmień datę" });
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     expect((await screen.findAllByText("Pole months nie może być większe niż 60.")).length).toBeGreaterThan(0);
     expect((screen.getByLabelText(/Liczba miesięcy/) as HTMLInputElement).value).toBe("6");
   });
@@ -283,10 +283,10 @@ describe("przedłużenie dostępu — zapis", () => {
       },
     });
     render(<PrzedluzenieDostepu idOsoby="17" />);
-    await screen.findByRole("button", { name: "Przedłuż dostęp" });
+    await screen.findByRole("button", { name: "Zmień datę" });
     await wybierzTryb("Do wybranej daty");
     fireEvent.change(screen.getByLabelText(/Data końca dostępu/), { target: { value: "2027-03-31" } });
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     expect((await screen.findAllByText("Pole until nie jest prawidłową datą.")).length).toBeGreaterThan(0);
   });
 
@@ -300,8 +300,8 @@ describe("przedłużenie dostępu — zapis", () => {
       },
     });
     render(<PrzedluzenieDostepu idOsoby="17" />);
-    await screen.findByRole("button", { name: "Przedłuż dostęp" });
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    await screen.findByRole("button", { name: "Zmień datę" });
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     const komunikat = await screen.findByRole("alert");
     expect(komunikat.textContent).toContain(fragment);
     expect(screen.getByText("31 grudnia 2026")).toBeTruthy();
@@ -318,20 +318,20 @@ describe("przedłużenie dostępu — zapis", () => {
       },
     });
     render(<PrzedluzenieDostepu idOsoby="17" />);
-    await screen.findByRole("button", { name: "Przedłuż dostęp" });
+    await screen.findByRole("button", { name: "Zmień datę" });
     fireEvent.change(screen.getByLabelText(/Liczba miesięcy/), { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     const komunikat = await screen.findByRole("alert");
     expect(komunikat.textContent).toContain("Dostęp nie został zmieniony");
     expect((screen.getByLabelText(/Liczba miesięcy/) as HTMLInputElement).value).toBe("3");
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     await waitFor(() => expect(screen.getByRole("status")).toBeTruthy());
     expect(proby).toBe(2);
   });
 
   it("ekran niczego nie wysyła do dziennika działań: jedyne żądania to karta osoby i przedłużenie", async () => {
     await renderGotowy();
-    fireEvent.click(screen.getByRole("button", { name: "Przedłuż dostęp" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zmień datę" }));
     await screen.findByRole("status");
     expect(api.mock.calls.map((wywolanie) => wywolanie[0])).toEqual([
       "/admin/users/17",
@@ -341,7 +341,7 @@ describe("przedłużenie dostępu — zapis", () => {
 
   it("„Anuluj” wraca bez żadnego zapisu", async () => {
     await renderGotowy();
-    const formularz = screen.getByRole("form", { name: "Przedłuż dostęp" });
+    const formularz = screen.getByRole("form", { name: "Zmień datę" });
     fireEvent.click(within(formularz).getByRole("button", { name: "Anuluj" }));
     expect(back).toHaveBeenCalledTimes(1);
     expect(wywolaniaZapisu()).toHaveLength(0);
