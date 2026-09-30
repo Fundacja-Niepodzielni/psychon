@@ -1143,3 +1143,69 @@ Migracja zakłada jeden temat domyślny „Lekcje kursu” dla każdego kursu z 
 Kod: `Services/H08/TopicWriter.php`, `Services/H08/TopicLayout.php`,
 `Services/H08/TopicScope.php`, `Http/Controllers/Api/V1/Admin/CourseTopicAdminController.php`,
 `Http/Controllers/Api/V1/H08/InstructorCourseTopicController.php`.
+
+---
+
+## Aneks — treść lekcji (H06, H08)
+
+Lekcja dostaje pole `content` — treść lekcji w podzbiorze Markdown. `description` zostaje
+krótkim opisem lekcji. Zmiana jest addytywna: bez nowych tras, kodów błędu, slugów audytu
+i typów powiadomień.
+
+### 1. Pole
+
+- `content`: string albo `null` (lekcja bez treści ma `null`).
+- Limit: **20 000 znaków** (znaków, nie bajtów — 20 000 znaków wielobajtowych, np. `ż`,
+  mieści się w limicie). Przekroczenie → `422 validation_failed` z błędem na polu
+  `errors.content`; nic nie jest zapisywane.
+- Serwer zapisuje treść **dokładnie tak, jak przyszła**: nie przycina białych znaków,
+  nie czyści i nie odrzuca treści za HTML. Pusty string jest zapisywany jako `null`.
+
+### 2. Podzbiór Markdown
+
+Akapity (rozdzielone pustym wierszem) · nagłówki `##` i `###` · `**pogrubienie**` ·
+`*kursywa*` · listy punktowane `- ` i numerowane `1. ` · `` `kod w linii` `` · twarde
+łamanie wiersza (dwie spacje albo `\` na końcu wiersza) · linki `[tekst](adres)`
+wyłącznie dla `https:`, `http:`, `mailto:` i ścieżek zaczynających się od jednego `/`.
+Link z innym schematem (w tym `javascript:`, `data:`, `vbscript:` w dowolnej wielkości
+liter i z białymi znakami) klient pokazuje jako sam tekst linku, bez odnośnika. Linki
+zewnętrzne (`https:`, `http:`) dostają `rel="noopener noreferrer"`. Obrazów, tabel,
+bloków HTML i surowego HTML w podzbiorze **nie ma** — taki zapis zostaje dosłownym
+tekstem.
+
+**HTML w treści jest tekstem.** Odpowiedź zaplecza niesie `content` bajt w bajt tak,
+jak został zapisany (JSON, bez escapowania HTML i bez przycinania); klient nie
+interpretuje HTML — `<script>` czy `<img onerror>` w treści są wyświetlane jako tekst.
+
+### 3. Trasy
+
+Odczyt — pole `content` niesie:
+
+- `GET /lessons/{id}` (obok `description`),
+- zasób lekcji administracji i prowadzącego: odpowiedzi `POST /admin/courses/{course}/lessons`,
+  `PATCH /admin/lessons/{lesson}`, `POST /instructor/courses/{course}/lessons`,
+  `PATCH /instructor/lessons/{lesson}` oraz listy
+  `GET /admin/courses/{course}/lessons` i `GET /instructor/courses/{course}/lessons`
+  (edytor potrzebuje treści), a także odpowiedź `PATCH /admin/courses/{course}/lessons/reorder`.
+
+Lista lekcji uczestnika w `GET /courses/{slug}` (`data.lessons`) **nie niesie** `content`
+— treść do 20 000 znaków na lekcję jest czytana wyłącznie przez `GET /lessons/{id}`.
+
+Zapis — te same istniejące trasy lekcji przyjmują opcjonalne `content`
+(`POST`/`PATCH` administracji i prowadzącego wymienione wyżej).
+
+### 4. Audyt
+
+Bez zmian rodzaju i pól: zapis lekcji dalej emituje `course.updated` z `op`
+(`lesson.created`/`lesson.updated`) i `lesson_id`. Treść wpisana ręcznie **nie trafia**
+do ładunku audytu — zgodnie z zasadą ogólną z erraty 2026-09-18.
+
+### 5. Dane
+
+Migracja addytywna `2026_09_29_130000_add_content_to_lessons_table.php`: kolumna
+`lessons.content` (`text`, nullable); `down()` usuwa wyłącznie tę kolumnę.
+
+Kod: `Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLessonRequest.php`
+(trasy prowadzącego dziedziczą reguły), `Http/Requests/Concerns/KeepsLessonContentVerbatim.php`,
+`Http/Resources/H08/AdminLessonResource.php`, `routes/api/h06.php`; front:
+`frontend/design-system/molekuly/TrescLekcji/`.

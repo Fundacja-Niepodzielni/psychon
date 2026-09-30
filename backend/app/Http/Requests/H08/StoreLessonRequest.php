@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\H08;
 
+use App\Http\Requests\Concerns\KeepsLessonContentVerbatim;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -17,9 +18,16 @@ use Illuminate\Foundation\Http\FormRequest;
  * `topic_id` (opcjonalny) wskazuje temat kursu; bez niego lekcja trafia na
  * koniec ostatniego tematu. Przynależność tematu do kursu sprawdza
  * `LessonWriter`, bo potrzebuje kontekstu kursu.
+ *
+ * `content` to treść lekcji w podzbiorze Markdown, do 20 000 znaków (nie
+ * bajtów). Zapisywana dokładnie tak, jak przyszła: HTML w treści jest
+ * tekstem, którego klient nie interpretuje — dlatego nic tu nie jest
+ * przycinane ani czyszczone. Trasy prowadzącego dziedziczą tę regułę.
  */
 class StoreLessonRequest extends FormRequest
 {
+    use KeepsLessonContentVerbatim;
+
     public function authorize(): bool
     {
         return true; // rola sprawdzana przez middleware `role:` na trasie
@@ -30,6 +38,7 @@ class StoreLessonRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
+            'content' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'sequence_order' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'video_provider_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'duration_seconds' => ['sometimes', 'integer', 'min:0'],
@@ -43,6 +52,8 @@ class StoreLessonRequest extends FormRequest
         return [
             'title.required' => 'Podaj tytuł lekcji.',
             'title.max' => 'Tytuł lekcji może mieć najwyżej 255 znaków.',
+            'content.string' => 'Treść lekcji musi być tekstem.',
+            'content.max' => 'Treść lekcji może mieć najwyżej 20 000 znaków.',
             'sequence_order.min' => 'Pozycja lekcji musi być liczbą co najmniej 1.',
             'video_provider_id.max' => 'Identyfikator nagrania może mieć najwyżej 255 znaków.',
             'duration_seconds.integer' => 'Czas trwania podaj w pełnych sekundach.',

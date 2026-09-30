@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\H08;
 
+use App\Http\Requests\Concerns\KeepsLessonContentVerbatim;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -18,6 +19,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class UpdateLessonRequest extends FormRequest
 {
+    use KeepsLessonContentVerbatim;
+
     public function authorize(): bool
     {
         return true; // rola sprawdzana przez middleware `role:` na trasie
@@ -28,6 +31,7 @@ class UpdateLessonRequest extends FormRequest
         return [
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
+            'content' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'sequence_order' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'video_provider_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'duration_seconds' => ['sometimes', 'integer', 'min:0'],
@@ -40,6 +44,8 @@ class UpdateLessonRequest extends FormRequest
     {
         return [
             'title.max' => 'Tytuł lekcji może mieć najwyżej 255 znaków.',
+            'content.string' => 'Treść lekcji musi być tekstem.',
+            'content.max' => 'Treść lekcji może mieć najwyżej 20 000 znaków.',
             'sequence_order.min' => 'Pozycja lekcji musi być liczbą co najmniej 1.',
             'video_provider_id.max' => 'Identyfikator nagrania może mieć najwyżej 255 znaków.',
             'duration_seconds.integer' => 'Czas trwania podaj w pełnych sekundach.',

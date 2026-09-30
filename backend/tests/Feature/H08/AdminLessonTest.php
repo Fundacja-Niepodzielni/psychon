@@ -27,6 +27,7 @@ class AdminLessonTest extends TestCase
         'course_id',
         'title',
         'description',
+        'content',
         'sequence_order',
         'topic_id',
         'topic_position',
