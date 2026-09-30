@@ -33,7 +33,6 @@ vi.mock("next/navigation", () => ({
 const { ApiError } = await import("@/lib/api/klient");
 const { default: UkladUczestnika } = await import("@/app/(uczestnik)/panel/layout");
 const { default: StronaPulpitu } = await import("@/app/(uczestnik)/panel/pulpit/page");
-const { default: StronaLekcji } = await import("@/app/(uczestnik)/panel/lekcje/[id]/page");
 const { default: NowyEkranPulpitu } = await import("@/app/(uczestnik)/panel/pulpit/NowyEkran");
 const { default: NowyEkranLekcji } = await import("@/app/(uczestnik)/panel/lekcje/[id]/NowyEkran");
 
@@ -104,9 +103,18 @@ function trasaPulpitu() {
   );
 }
 
+/**
+ * Grupa `lekcja` jest wyłączona, więc strona pod `/panel/lekcje/[id]` zwraca starą
+ * treść. Ekran lekcji nowego frontu jest nadal mierzony w układzie panelu wprost
+ * (ten sam element, który strona zwraca po włączeniu grupy), żeby jeden `main`
+ * był pilnowany, zanim grupa wróci.
+ */
 async function trasaLekcji() {
-  const strona = await StronaLekcji({ params: Promise.resolve({ id: "21" }) });
-  return render(<UkladUczestnika>{strona}</UkladUczestnika>);
+  return render(
+    <UkladUczestnika>
+      <NowyEkranLekcji id="21" />
+    </UkladUczestnika>,
+  );
 }
 
 beforeEach(() => {
