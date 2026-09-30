@@ -95,12 +95,12 @@ describe("licznik", () => {
 
 describe("wiersze listy", () => {
   it("formatuje datę w czasie polskim, a brak daty nazywa", () => {
-    expect(formatujDate("2026-09-29T10:15:00Z")).toMatch(/29\.09\.2026.*12:15/);
-    expect(formatujDate(null)).toBe("brak daty");
+    expect(formatujDate("2026-09-29T10:15:00Z")).toBe("29 września 2026, 12:15");
+    expect(formatujDate(null)).toBe("—");
   });
 
   it("opis pytania: autor, kurs, lekcja, data", () => {
-    expect(opisPytania(PYTANIE)).toMatch(/^Marta Demo · Wywiad psychologiczny · Wprowadzenie do wywiadu · 29\.09\.2026/);
+    expect(opisPytania(PYTANIE)).toMatch(/^Marta Demo · Wywiad psychologiczny · Wprowadzenie do wywiadu · 29 września 2026, 12:15/);
   });
 
   it("wiersz niesie treść pytania jako tytuł i akcję „Odpowiedz”, która woła wywołanie z pytaniem", () => {

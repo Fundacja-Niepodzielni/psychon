@@ -16,6 +16,7 @@ import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActi
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { ApiError } from "@/lib/api/klient";
+import { formatujDateICzas } from "../wspolne/daty";
 import {
   cancelAdminSupervisionSlot,
   fetchAdminSupervisionSlots,
@@ -144,7 +145,7 @@ export function SuperwizjeTerminy() {
             : "Bez przypisanego prowadzącego";
           return {
             id: String(termin.id),
-            tytul: `${termin.starts_at} — ${superwizor}`,
+            tytul: `${formatujDateICzas(termin.starts_at)} — ${superwizor}`,
             podpowiedz: termin.location_or_link ?? "Bez podanej lokalizacji.",
             plakietka: pelny
               ? { wariant: "warn" as const, tekst: "Brak wolnych miejsc" }

@@ -167,7 +167,7 @@ describe("A-30 — błędy, adres filmu, data", () => {
   });
 
   it("opis ostatniej zmiany: data po polsku w czasie warszawskim albo informacja o treści domyślnej", () => {
-    expect(opisOstatniejZmiany("2026-09-30T10:15:00Z")).toMatch(/^Ostatnia zmiana: 30 września 2026.*12:15\.$/);
+    expect(opisOstatniejZmiany("2026-09-30T10:15:00Z")).toBe("Ostatnia zmiana: 30 września 2026, 12:15.");
     expect(opisOstatniejZmiany(null)).toBe("Treść domyślna — jeszcze nie była zmieniana.");
     expect(opisOstatniejZmiany("nie data")).toBe("Nie znamy daty ostatniej zmiany.");
   });

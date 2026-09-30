@@ -7,6 +7,7 @@
  */
 import { api, ApiError } from "@/lib/api/klient";
 import { downloadFile } from "@/lib/api/pliki";
+import { formatujDate } from "../wspolne/daty";
 import type { AdminPsychologistProfile, ProfileDocumentType } from "@/lib/h15/types";
 
 /** `AdminPsychologistProfileResource` (`backend/app/Http/Resources/H15/AdminPsychologistProfileResource.php:16-37`). */
@@ -39,12 +40,8 @@ export function poprawneId(id: string): number | null {
   return /^[1-9][0-9]*$/.test(id) ? Number(id) : null;
 }
 
-const FORMAT_DATY = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Warsaw" });
-
 export function dataPl(iso: string | null): string {
-  if (!iso) return "—";
-  const data = new Date(iso);
-  return Number.isNaN(data.getTime()) ? "—" : FORMAT_DATY.format(data);
+  return formatujDate(iso);
 }
 
 export async function wczytajWniosek(id: number): Promise<WynikOdczytu> {
