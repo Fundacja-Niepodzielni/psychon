@@ -13,9 +13,9 @@ export type FiltrStatusu = CooperationRequestStatus | "";
 export const LICZBA_ZNAKOW_MAX = 2000;
 
 export const PLAKIETKA_STATUSU: Record<CooperationRequestStatus, { wariant: WariantPlakietki; tekst: string }> = {
-  new: { wariant: "pending", tekst: "Nowe" },
-  answered: { wariant: "ok", tekst: "Z odpowiedzią" },
-  closed: { wariant: "neutral", tekst: "Zamknięte" },
+  new: { wariant: "pending", tekst: "nowe" },
+  answered: { wariant: "ok", tekst: "z odpowiedzią" },
+  closed: { wariant: "neutral", tekst: "zamknięte" },
 };
 
 export const OPCJE_FILTRA: { wartosc: FiltrStatusu; etykieta: string }[] = [

@@ -309,7 +309,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
       method: "PATCH",
       body: { response: "Zapraszamy do współpracy.", status: "answered" },
     });
-    expect(wiersz("Marta Demo")).toHaveTextContent("Z odpowiedzią");
+    expect(wiersz("Marta Demo")).toHaveTextContent("z odpowiedzią");
     expect(wiersz("Marta Demo")).toHaveTextContent("Zapraszamy do współpracy.");
     expect(przyciskiGlowne()).toHaveLength(0);
   });
@@ -331,7 +331,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
       body: { response: "", status: "answered" },
     });
     expect(screen.queryByRole("status")).toBeNull();
-    expect(wiersz("Marta Demo")).toHaveTextContent("Nowe");
+    expect(wiersz("Marta Demo")).toHaveTextContent("nowe");
   });
 
   it("zamknięcie: wybrany status „Zamknięte” idzie w ciele PATCH, wiersz traci przycisk odpowiedzi", async () => {
@@ -351,7 +351,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
       method: "PATCH",
       body: { response: "Dziękujemy.", status: "closed" },
     });
-    expect(wiersz("Marta Demo")).toHaveTextContent("Zamknięte");
+    expect(wiersz("Marta Demo")).toHaveTextContent("zamknięte");
     expect(within(wiersz("Marta Demo")).queryAllByRole("button")).toHaveLength(0);
     expect(screen.getByRole("status")).toHaveTextContent("Zgłoszenie zamknięte: Marta Demo.");
   });
@@ -417,9 +417,9 @@ describe("ZgloszeniaWspolpracy — zapis słownikowy", () => {
   it("statusy mają etykiety polskie, kody wewnętrzne nie trafiają na listę", async () => {
     await renderZDanymi();
     const lista = document.querySelector("ul[aria-label='Zgłoszenia współpracy']") as HTMLElement;
-    expect(wiersz("Marta Demo")).toHaveTextContent("Nowe");
-    expect(wiersz("Filip Demo")).toHaveTextContent("Z odpowiedzią");
-    expect(wiersz("Ewa Demo")).toHaveTextContent("Zamknięte");
+    expect(wiersz("Marta Demo")).toHaveTextContent("nowe");
+    expect(wiersz("Filip Demo")).toHaveTextContent("z odpowiedzią");
+    expect(wiersz("Ewa Demo")).toHaveTextContent("zamknięte");
     expect(lista.textContent).not.toMatch(/\b(new|answered|closed)\b/);
   });
 
