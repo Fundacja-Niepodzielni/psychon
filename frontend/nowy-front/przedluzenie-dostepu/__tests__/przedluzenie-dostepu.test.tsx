@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AdminUserCard } from "@/lib/api/h18";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 
 /**
@@ -291,7 +292,7 @@ describe("przedłużenie dostępu — zapis", () => {
   });
 
   it.each([
-    [403, "forbidden", "tylko dla administracji"],
+    [403, "forbidden", zdanieOdmowyRoli("administracji")],
     [404, "not_found", "Nie znaleziono osoby"],
   ])("%i przy zapisie: komunikat nad formularzem, dostęp bez zmian", async (status, code, fragment) => {
     ustawSerwer({

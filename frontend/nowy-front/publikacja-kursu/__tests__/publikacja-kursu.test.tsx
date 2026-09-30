@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import { kursZeSchematu } from "./pomocnicy";
 
@@ -273,7 +274,7 @@ describe("odmowa publikacji", () => {
     serwer({ GET: kurs(), PATCH: blad(403, "forbidden", "Nie masz dostępu do tego zasobu.") });
     const { container } = wyrenderuj();
     await uzytkownik.click(await screen.findByRole("button", { name: "Opublikuj kurs" }));
-    expect(await screen.findByText(/tylko dla administracji/)).toBeInTheDocument();
+    expect(await screen.findByText(zdanieOdmowyRoli("administracji"))).toBeInTheDocument();
     expect(stanPublikacji(container)).toBe("szkic");
   });
 
@@ -347,6 +348,17 @@ describe("usunięcie kursu", () => {
     await uzytkownik.click(within(okno).getByRole("button", { name: "Usuń kurs" }));
     expect(await within(await screen.findByRole("dialog")).findByText(/prerekwizytem/)).toBeInTheDocument();
     expect(stanPublikacji(container)).toBe("szkic");
+  });
+
+  it("403 przy usuwaniu: w oknie pełne zdanie odmowy z rolą, kurs zostaje", async () => {
+    const s = serwer({ GET: kurs(), DELETE: blad(403, "forbidden", "Nie masz dostępu do tego zasobu.") });
+    const { container } = wyrenderuj();
+    const { uzytkownik, okno } = await otworzOknoUsuniecia();
+    await uzytkownik.click(within(okno).getByRole("button", { name: "Usuń kurs" }));
+    expect(await within(await screen.findByRole("dialog")).findByText(zdanieOdmowyRoli("administracji"))).toBeInTheDocument();
+    expect(s.zapisy()).toHaveLength(1);
+    expect(stanPublikacji(container)).toBe("szkic");
+    expect(screen.queryByText("Kurs został usunięty")).toBeNull();
   });
 
   it("Escape w oknie zamyka okno i nie przenosi na inny ekran", async () => {
