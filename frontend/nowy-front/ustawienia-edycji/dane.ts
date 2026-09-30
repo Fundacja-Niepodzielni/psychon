@@ -6,10 +6,10 @@ import { ApiError, api } from "@/lib/api/klient";
  * `EditionSettingsController`). Dostęp: `project_manager`, `super_admin`.
  *
  * Kształt odpowiedzi: `EditionResource`
- * (`backend/app/Http/Resources/EditionResource.php:19-33`), schemat
+ * (`backend/app/Http/Resources/EditionResource.php:19-31`), schemat
  * `backend/openapi.json` (`components.schemas.EditionResource`). Zakresy
  * pól: `UpdateEditionRequest::rules()`
- * (`backend/app/Http/Requests/H19/UpdateEditionRequest.php:22-31`),
+ * (`backend/app/Http/Requests/H19/UpdateEditionRequest.php:25-30`),
  * powtórzone w `ZAKRESY` i porównywane z `openapi.json` przez test.
  *
  * Wołane z przeglądarki (`lib/api/klient.ts`) — ten sam powód co

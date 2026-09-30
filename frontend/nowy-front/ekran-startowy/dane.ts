@@ -9,11 +9,11 @@ import { ApiError, api } from "@/lib/api/klient";
  *
  * Kształt odpowiedzi: trzy sekcje (`video`, `program`, `expectations`) i
  * `updated_at` (`OnboardingController::payload`,
- * `backend/app/Http/Controllers/Api/V1/OnboardingController.php:44-51`;
+ * `backend/app/Http/Controllers/Api/V1/OnboardingController.php:40-48`;
  * sekcje i pola z `OnboardingContent::DEFAULTS`,
- * `backend/app/Support/OnboardingContent.php:24-45`). Limity długości pól:
+ * `backend/app/Support/OnboardingContent.php:25-44`). Limity długości pól:
  * `UpdateOnboardingRequest::rules()`
- * (`backend/app/Http/Requests/H21/UpdateOnboardingRequest.php:24-36`),
+ * (`backend/app/Http/Requests/H21/UpdateOnboardingRequest.php:23-34`),
  * powtórzone w `LIMITY` i porównywane z `backend/openapi.json` przez test.
  * Schemat odpowiedzi w `openapi.json` nazywa tylko `updated_at` (sekcje idą
  * jako `additionalProperties`) — rozjazd opisany w teście, zaplecza nie zmieniam.
