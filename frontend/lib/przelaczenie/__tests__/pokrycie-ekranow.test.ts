@@ -112,6 +112,7 @@ describe("włączona grupa ma strony pod nowymi trasami", () => {
 
   it("przypadek odwrotny: grupa naboru po włączeniu nie ma jeszcze strony, więc zostaje wykryta", () => {
     expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: true }, wszystkieTrasy)).toEqual([
+      "/admin/nabor",
       "/admin/nabor/[id]",
     ]);
     expect(brakujaceStronyWlaczonejGrupy(GRUPY.nabor, wszystkieTrasy)).toEqual([]);
