@@ -12,13 +12,15 @@ export const NAZWY_SPRAW: Record<string, string> = {
 
 export const NAZWA_INNYCH_SPRAW = "Inne sprawy";
 
+/** Tytuł listy spraw na pulpicie (nagłówek i nazwa regionu). */
+export const TYTUL_LISTY = "Co czeka na decyzję";
+
 export const TEKST_BRAK_SPRAW = "Brak spraw do decyzji";
 
 /** Formy jednostki przy liczbie: 1 · 2-4 (poza 12-14) · pozostałe (w tym 0). */
 type FormyJednostki = readonly [jeden: string, kilka: string, wiele: string];
 
 export const FORMY_SPRAW: FormyJednostki = ["sprawa", "sprawy", "spraw"];
-export const FORMY_ZGLOSZEN: FormyJednostki = ["zgłoszenie", "zgłoszenia", "zgłoszeń"];
 
 const FORMY_OSOB: FormyJednostki = ["osoba", "osoby", "osób"];
 const FORMY_CERTYFIKATOW: FormyJednostki = ["certyfikat", "certyfikaty", "certyfikatów"];

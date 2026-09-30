@@ -18,7 +18,10 @@ interface LicznikListRow {
   etykieta: string;
 }
 interface AkcjaListRow {
+  /** Widoczny napis akcji; bez `etykietaDostepna` jest też jej nazwą dla czytnika. */
   etykieta: string;
+  /** Pełna nazwa akcji dla czytnika ekranu (np. „Otwórz: Dyżury”), gdy widoczny napis jest krótki („Otwórz”). */
+  etykietaDostepna?: string;
   href?: string;
   onKliknij?: () => void;
 }
@@ -39,7 +42,10 @@ interface WlasciwosciListRow {
  * atomów warstwy 2. Nie jest pojemnikiem z ramką (ZU-3, rozdziela linia w
  * `.module.css`, nie ramka/cień). Akcja ma WŁASNY, jawny, klawiaturowo
  * dostępny element (`Link` albo `Button`) — kliknięcie w tło wiersza
- * (`onKliknijWiersz`) jest wygodą myszy, nie zastępuje jej.
+ * (`onKliknijWiersz`) jest wygodą myszy, nie zastępuje jej. Plakietka stoi w
+ * linii tytułu, PRZED nim, i ma szerokość własnej treści (nie kolumny).
+ * Akcja z `href` wygląda od 640 px jak przycisk drugorzędny, a na węższym
+ * ekranie jak „Otwórz ›”; `etykietaDostepna` daje czytnikowi pełną nazwę.
  */
 export function ListRow({
   wariant = "prosty",
@@ -55,16 +61,29 @@ export function ListRow({
   return (
     <div className={klasy} data-wariant={wariant} onClick={onKliknijWiersz}>
       <div className={style.tresc}>
-        {plakietka && <Badge wariant={plakietka.wariant}>{plakietka.tekst}</Badge>}
-        <Text>{tytul}</Text>
+        <div className={style.naglowek}>
+          {plakietka && (
+            <span className={style.plakietka}>
+              <Badge wariant={plakietka.wariant}>{plakietka.tekst}</Badge>
+            </span>
+          )}
+          <Text>{tytul}</Text>
+        </div>
         {podpowiedz && <Hint>{podpowiedz}</Hint>}
       </div>
       <div className={style.akcje} onClick={(zdarzenie) => zdarzenie.stopPropagation()}>
         {licznik && <Num wartosc={licznik.wartosc} etykieta={licznik.etykieta} />}
         {akcja.href ? (
-          <Link href={akcja.href}>{akcja.etykieta}</Link>
+          <span className={style.akcjaOdnosnik}>
+            <Link href={akcja.href} aria-label={akcja.etykietaDostepna}>
+              {akcja.etykieta}{" "}
+              <span className={style.strzalka} aria-hidden="true">
+                ›
+              </span>
+            </Link>
+          </span>
         ) : (
-          <Button poziom="quiet" rozmiar="sm" onClick={akcja.onKliknij}>
+          <Button poziom="quiet" rozmiar="sm" onClick={akcja.onKliknij} aria-label={akcja.etykietaDostepna}>
             {akcja.etykieta}
           </Button>
         )}

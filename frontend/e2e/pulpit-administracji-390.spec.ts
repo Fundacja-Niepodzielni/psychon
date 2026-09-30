@@ -6,12 +6,16 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 /**
  * Miara dla pulpitu administracji na wąskim ekranie (grupa `pulpitAdministracji`
  * włączona w `lib/przelaczenie/grupy.ts`):
- * - wiersze listy „Sprawy do decyzji” przy 390 px i 1280 px: element tytułu
+ * - wiersze listy „Co czeka na decyzję” przy 390 px i 1280 px: element tytułu
  *   ma co najmniej 40% szerokości wiersza, mieści się w dwóch liniach, a strona
  *   nie przewija się w poziomie (dawniej długi link akcji ściskał tytuł do
  *   jednej litery w wierszu);
  * - odmiana liczebników przy liczbach 1, 2-4, 5 i więcej (w tym 12-14 i 22):
- *   kafle, karta zgłoszeń, liczniki wierszy i suma listy;
+ *   kafle, liczniki wierszy i suma listy;
+ * - plakietka wiersza: pigułka na szerokość treści, w linii tytułu przed nim;
+ * - akcja wiersza: rola `link`, pełna nazwa dla czytnika, widoczne „Otwórz”
+ *   (1280) albo „Otwórz ›” (390);
+ * - brak dubla „Zgłoszenia rekrutacyjne” poza listą;
  * - ten sam wiersz listy na drugim ekranie (formy stażu) przy 390 i 1280 px.
  *
  * Atrapy API jak w `przelaczenie-grupa-administracja-b1.spec.ts`. Zrzuty
@@ -133,7 +137,14 @@ async function bezPrzewijaniaPoziomego(page: Page): Promise<void> {
 }
 
 function listaSpraw(page: Page): Locator {
-  return page.getByRole("region", { name: "Sprawy do decyzji" });
+  return page.getByRole("region", { name: "Co czeka na decyzję" });
+}
+
+/** Tekst plakietki wiersza: element obok tytułu z jednym z dwóch napisów stanu. */
+async function tekstPlakietki(wiersz: Locator): Promise<string> {
+  const napis = wiersz.getByText(/^(czeka na decyzję|brak spraw)$/);
+  await expect(napis).toHaveCount(1);
+  return (await napis.textContent())!;
 }
 
 async function sprawdzWiersze(page: Page): Promise<void> {
@@ -153,8 +164,42 @@ async function sprawdzWiersze(page: Page): Promise<void> {
     ).toBeGreaterThanOrEqual(0.4);
     const linie = await liczbaLinii(tytul);
     expect(linie, `„${nazwa}”: liczba linii tytułu`).toBeLessThanOrEqual(2);
+    const wuski = (page.viewportSize()?.width ?? 0) < 640;
+    await sprawdzPlakietke(wiersz, tytul, await tekstPlakietki(wiersz), wuski);
+    await sprawdzAkcje(page, wiersz, nazwa, wuski);
   }
   await bezPrzewijaniaPoziomego(page);
+}
+
+/** Tekst widoczny elementu (bez ukrytych fragmentów, w odróżnieniu od textContent). */
+async function widocznyTekst(element: Locator): Promise<string> {
+  return element.evaluate((el) => (el as HTMLElement).innerText.replace(/\s+/g, " ").trim());
+}
+
+/**
+ * Plakietka wiersza: węższa niż połowa wiersza, jej lewa krawędź przed tytułem,
+ * obie w tej samej linii (środek plakietki w pionie mieści się w pudełku tytułu).
+ * Przy 390 px tytuł może zawinąć się pod plakietkę — wtedy sprawdzana jest tylko szerokość.
+ */
+async function sprawdzPlakietke(wiersz: Locator, tytul: Locator, tekst: string, wuskiEkran: boolean): Promise<void> {
+  const plakietka = wiersz.getByText(tekst, { exact: true });
+  const pWiersza = (await wiersz.boundingBox())!;
+  const pPlakietki = (await plakietka.boundingBox())!;
+  const pTytulu = (await tytul.boundingBox())!;
+  expect(pPlakietki.width / pWiersza.width, `plakietka „${tekst}”: szerokość względem wiersza`).toBeLessThan(0.5);
+  if (wuskiEkran) return;
+  expect(pPlakietki.x, `plakietka „${tekst}” przed tytułem`).toBeLessThan(pTytulu.x);
+  const srodek = pPlakietki.y + pPlakietki.height / 2;
+  expect(srodek, `plakietka „${tekst}” w linii tytułu`).toBeGreaterThanOrEqual(pTytulu.y);
+  expect(srodek).toBeLessThanOrEqual(pTytulu.y + pTytulu.height);
+}
+
+/** Akcja wiersza: rola `link`, nazwa dostępna = pełna nazwa, widoczny krótki napis. */
+async function sprawdzAkcje(page: Page, wiersz: Locator, nazwa: string, wuskiEkran: boolean): Promise<void> {
+  const odnosnik = wiersz.getByRole("link", { name: `Otwórz: ${nazwa}`, exact: true });
+  await expect(odnosnik, `akcja wiersza „${nazwa}”`).toHaveCount(1);
+  const widoczny = await widocznyTekst(odnosnik);
+  expect(widoczny, `widoczny napis akcji „${nazwa}”`).toBe(wuskiEkran ? "Otwórz ›" : "Otwórz");
 }
 
 /** Licznik wiersza: liczba i jednostka stoją w osobnych elementach (margines, nie spacja). */
@@ -170,7 +215,7 @@ for (const [nazwaWidoku, okno] of [
   test.describe(`pulpit administracji ${nazwaWidoku} px`, () => {
     test.use({ viewport: okno });
 
-    test("małe liczby: czytelne tytuły, „1 sprawa”, „2 sprawy”, suma „3 sprawy”, „3 osoby”, „1 osoba”, „1 certyfikat”, „1 zgłoszenie”", async ({
+    test("małe liczby: czytelne tytuły, „1 sprawa”, „2 sprawy”, suma „3 sprawy”, „3 osoby”, „1 osoba”, „1 certyfikat”", async ({
       page,
     }) => {
       await instalujAtrapy(page, MALE);
@@ -186,14 +231,18 @@ for (const [nazwaWidoku, okno] of [
       await expect(licznikWiersza(page, NAZWY[1], "2", "sprawy")).toBeVisible();
       await expect(licznikWiersza(page, NAZWY[2], "0", "spraw")).toBeVisible();
       await expect(listaSpraw(page).getByText(/^Razem\s*3\s*sprawy$/)).toBeVisible();
+      // Dolna karta-dubel „Zgłoszenia rekrutacyjne / Stan / … zgłoszeń” nie istnieje:
+      // ten napis występuje tylko jako nazwa wiersza listy.
+      await expect(page.getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
+      await expect(listaSpraw(page).getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
+      await expect(page.getByRole("article")).toHaveCount(0);
 
       await expect(page.locator("#pulpit-uczestnicy")).toHaveText(/3\s*osoby/);
       await expect(page.locator("#pulpit-ukonczenia")).toHaveText(/1\s*osoba/);
       await expect(page.locator("#pulpit-certyfikaty")).toHaveText(/1\s*certyfikat(?!y)/);
-      await expect(page.locator("#pulpit-zgloszenia")).toHaveText(/1\s*zgłoszenie/);
     });
 
-    test("duże liczby: „5 zgłoszeń”, „12 spraw”, „22 sprawy”, „12 osób”, „22 osoby”, „25 certyfikatów”, suma „41 spraw”", async ({
+    test("duże liczby: „5 spraw”, „12 spraw”, „22 sprawy”, „12 osób”, „22 osoby”, „25 certyfikatów”, suma „41 spraw”", async ({
       page,
     }) => {
       await instalujAtrapy(page, DUZE);
@@ -213,10 +262,9 @@ for (const [nazwaWidoku, okno] of [
       await expect(page.locator("#pulpit-uczestnicy")).toHaveText(/12\s*osób/);
       await expect(page.locator("#pulpit-ukonczenia")).toHaveText(/22\s*osoby/);
       await expect(page.locator("#pulpit-certyfikaty")).toHaveText(/25\s*certyfikatów/);
-      await expect(page.locator("#pulpit-zgloszenia")).toHaveText(/5\s*zgłoszeń/);
     });
 
-    test("liczby od 5 w górę: „5 spraw”, „0 spraw”, suma „21 spraw”, „5 osób”, „9 certyfikatów”, „5 zgłoszeń”", async ({
+    test("liczby od 5 w górę: „5 spraw”, „0 spraw”, suma „21 spraw”, „5 osób”, „9 certyfikatów”", async ({
       page,
     }) => {
       await instalujAtrapy(page, PIATKI);
@@ -233,7 +281,6 @@ for (const [nazwaWidoku, okno] of [
       await expect(listaSpraw(page).getByText(/^Razem\s*21\s*spraw$/)).toBeVisible();
       await expect(page.locator("#pulpit-uczestnicy")).toHaveText(/5\s*osób/);
       await expect(page.locator("#pulpit-certyfikaty")).toHaveText(/9\s*certyfikatów/);
-      await expect(page.locator("#pulpit-zgloszenia")).toHaveText(/5\s*zgłoszeń/);
     });
 
     test("ten sam wiersz listy na innym ekranie (formy stażu): co najmniej 40% wiersza, bez przewijania poziomego", async ({
@@ -244,11 +291,13 @@ for (const [nazwaWidoku, okno] of [
       await zabezpieczeniePrzedEkranemDostepu(page);
       const wiersz = page.locator('[data-wariant="z-licznikiem"]').first();
       await expect(wiersz).toBeVisible();
+      await zrzut(page, `formy-stazu-${nazwaWidoku}`);
       const pudelkoWiersza = await wiersz.boundingBox();
       const pudelkoTytulu = await wiersz.getByText(FORMA_DLUGA.name, { exact: true }).boundingBox();
       expect(pudelkoTytulu!.width / pudelkoWiersza!.width).toBeGreaterThanOrEqual(0.4);
+      const pudelkoPlakietki = await wiersz.getByText("Aktywna", { exact: true }).boundingBox();
+      expect(pudelkoPlakietki!.width / pudelkoWiersza!.width).toBeLessThan(0.5);
       await bezPrzewijaniaPoziomego(page);
-      await zrzut(page, `formy-stazu-${nazwaWidoku}`);
     });
   });
 }
