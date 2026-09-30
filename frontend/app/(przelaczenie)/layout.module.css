@@ -1,0 +1,30 @@
+/* Link skoku "Przejdź do treści" — pierwszy element fokusu układu segmentu
+ * `/nowy-front`. Domyślnie niewidoczny (technika `clip`, ten sam wzorzec co
+ * `.wejscieUkryte` w FileDropZone.module.css i `.wizualnieUkryty` w
+ * CourseTree.module.css), widoczny wyłącznie na fokusie — na warstwie
+ * `--z-skiplink` (jedyna z ośmiu nazwanych warstw dedykowana temu celowi). */
+.skipLink {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skipLink:focus {
+  position: fixed;
+  top: var(--space-16);
+  left: var(--space-16);
+  z-index: var(--z-skiplink);
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  padding: var(--space-12) var(--space-16);
+  background: var(--card);
+  color: var(--link);
+  border-radius: var(--r-xs);
+  box-shadow: var(--shadow);
+}
