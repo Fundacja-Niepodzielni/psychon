@@ -55,8 +55,8 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączone są trzy: `wspolpraca`, `pulpitUczestnika` i `lekcja`. Pozostałe mają tu jeszcze
- * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
+ * Grupy dzisiejszego kanonu. Włączonych jest pięć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `formyStazu` i
+ * `pulpitAdministracji`. Pozostałe mają tu jeszcze tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
  */
@@ -87,7 +87,7 @@ export const GRUPY = {
   /** Słownik form stażu (H11) — administracja, funkcji dotąd nie było. */
   formyStazu: {
     klucz: "formyStazu",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -187,7 +187,7 @@ export const GRUPY = {
   /** Pulpit administracji — ten sam adres co dzisiejsza strona startowa administracji. */
   pulpitAdministracji: {
     klucz: "pulpitAdministracji",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",

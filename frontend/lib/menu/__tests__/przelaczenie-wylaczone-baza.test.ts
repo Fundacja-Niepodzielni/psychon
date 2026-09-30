@@ -143,11 +143,15 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
   });
 });
 
+const WLACZONE_DZIS: KluczGrupy[] = ["formyStazu", "lekcja", "pulpitAdministracji", "pulpitUczestnika", "wspolpraca"];
+const FLAGI_DZIS: Partial<Record<KluczGrupy, boolean>> = Object.fromEntries(
+  WLACZONE_DZIS.map((klucz) => [klucz, true]),
+);
+
 describe("menu rzeczywiste przy stanie flag rejestru", () => {
-  it("włączone są tylko grupy: współpraca, pulpit uczestnika i lekcja", () => {
-    const wlaczone = ["wspolpraca", "pulpitUczestnika", "lekcja"];
+  it("włączone są tylko grupy współpracy, pulpitu uczestnika, lekcji, form stażu i pulpitu administracji", () => {
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
-      expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(wlaczone.includes(klucz));
+      expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(WLACZONE_DZIS.includes(klucz as KluczGrupy));
     }
   });
 
@@ -161,8 +165,8 @@ describe("menu rzeczywiste przy stanie flag rejestru", () => {
     expect(pulpit?.href).toBe("/panel/pulpit");
   });
 
-  it("menu rzeczywiste każdej roli jest identyczne z menu przy włączonej samej grupie współpracy", async () => {
-    const zestaw = await zaladujMenuZFlagami({ wspolpraca: true });
+  it("menu rzeczywiste każdej roli jest identyczne z menu przy włączonych dokładnie tych grupach", async () => {
+    const zestaw = await zaladujMenuZFlagami(FLAGI_DZIS);
     for (const rola of ROLE) {
       expect(rozwiazMenuRoli(zestawRzeczywisty, rola), `rola ${rola}`).toEqual(rozwiazMenuRoli(zestaw, rola));
     }
@@ -206,5 +210,39 @@ describe("menu przy włączonej grupie współpracy — wpisy prowadzą na nowe 
     const zestaw = await zaladujMenuZFlagami({});
     expect(zestaw.admin.find((w) => w.label === "Zgłoszenia współpracy")).toBeUndefined();
     expect(zestaw.uczestnik.find((w) => w.label === "Po programie")?.href).toBe("/panel/po-programie");
+  });
+});
+
+describe("menu przy włączonej grupie form stażu — wpis prowadzi na nową trasę produktu", () => {
+  it("administracja: powstaje wpis „Formy stażu” z nową trasą, tylko dla obu ról administracji", async () => {
+    const zestaw = await zaladujMenuZFlagami({ formyStazu: true });
+    const wylaczony = await zaladujMenuZFlagami({});
+    expect(zestaw.admin).toHaveLength(wylaczony.admin.length + 1);
+    for (const rola of ["project_manager", "super_admin"] as Role[]) {
+      const wpis = wpisyRoli(zestaw, rola).find((w) => w.label === "Formy stażu");
+      expect(wpis?.href, rola).toBe("/admin/formy-stazu");
+    }
+    for (const rola of ["instructor", "volunteer", "student"] as Role[]) {
+      expect(wpisyRoli(zestaw, rola).find((w) => w.label === "Formy stażu"), rola).toBeUndefined();
+    }
+  });
+
+  it("przypadek odwrotny: przy wyłączonej grupie wpis nie istnieje, a pozostałe menu administracji nie zmienia się", async () => {
+    const zestaw = await zaladujMenuZFlagami({});
+    expect(zestaw.admin.find((w) => w.label === "Formy stażu")).toBeUndefined();
+    for (const rola of ["project_manager", "super_admin"] as Role[]) {
+      expect(rozwiazMenuRoli(zestaw, rola), rola).toEqual(menuBazowe[rola]);
+    }
+  });
+});
+
+describe("menu przy włączonej grupie pulpitu administracji — ten sam adres", () => {
+  it("wpis „Pulpit” wskazuje /admin przy grupie włączonej i wyłączonej, a menu nie zmienia się", async () => {
+    const wlaczona = await zaladujMenuZFlagami({ pulpitAdministracji: true });
+    const wylaczona = await zaladujMenuZFlagami({});
+    for (const rola of ["project_manager", "super_admin"] as Role[]) {
+      expect(wpisyRoli(wlaczona, rola).find((w) => w.label === "Pulpit")?.href, rola).toBe("/admin");
+      expect(rozwiazMenuRoli(wlaczona, rola), rola).toEqual(rozwiazMenuRoli(wylaczona, rola));
+    }
   });
 });

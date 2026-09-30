@@ -49,7 +49,7 @@ const { default: ProfileDetailPage } = await import(
   "@/app/(administracja)/admin/profile/[id]/page"
 );
 const { default: SettingsPage } = await import("@/app/(administracja)/admin/ustawienia/page");
-const { default: AdminHomePage } = await import("@/app/(administracja)/admin/page");
+const { default: AdminHomePage } = await import("@/app/(administracja)/admin/StaraTresc");
 const { default: DocumentTemplatesPage } = await import(
   "@/app/(administracja)/admin/wzory-dokumentow/page"
 );

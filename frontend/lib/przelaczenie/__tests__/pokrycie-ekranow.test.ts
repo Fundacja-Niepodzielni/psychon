@@ -106,10 +106,14 @@ describe("włączona grupa ma strony pod nowymi trasami", () => {
     expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.wspolpraca, wlaczona: true }, wszystkieTrasy)).toEqual([]);
   });
 
-  it("przypadek odwrotny: grupa formy stażu po włączeniu nie ma jeszcze strony, więc zostaje wykryta", () => {
-    expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.formyStazu, wlaczona: true }, wszystkieTrasy)).toEqual([
-      "/admin/formy-stazu",
+  it("grupa formy stażu po włączeniu ma stronę pod nową trasą", () => {
+    expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.formyStazu, wlaczona: true }, wszystkieTrasy)).toEqual([]);
+  });
+
+  it("przypadek odwrotny: grupa naboru po włączeniu nie ma jeszcze strony, więc zostaje wykryta", () => {
+    expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: true }, wszystkieTrasy)).toEqual([
+      "/admin/nabor/[id]",
     ]);
-    expect(brakujaceStronyWlaczonejGrupy(GRUPY.formyStazu, wszystkieTrasy)).toEqual([]);
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.nabor, wszystkieTrasy)).toEqual([]);
   });
 });

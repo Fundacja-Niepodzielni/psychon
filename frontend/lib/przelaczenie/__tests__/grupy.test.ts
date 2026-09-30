@@ -9,12 +9,13 @@ import {
 } from "@/lib/przelaczenie/grupy";
 
 /**
- * Stan flag rejestru: włączone są trzy grupy — `wspolpraca` (strony pod nowymi
- * trasami i wpisy menu) oraz `pulpitUczestnika` i `lekcja` (ten sam adres, treść
+ * Stan flag rejestru: włączone są grupy, dla których są już strony pod
+ * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
+ * `pulpitAdministracji`) oraz `pulpitUczestnika` i `lekcja` (ten sam adres, treść
  * strony zamienia się na ekran nowego frontu). Pozostałe grupy opisują tylko
  * docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["wspolpraca", "pulpitUczestnika", "lekcja"];
+const WLACZONE = ["formyStazu", "lekcja", "pulpitAdministracji", "pulpitUczestnika", "wspolpraca"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -24,6 +25,14 @@ describe("rejestr GRUPY — stan flag", () => {
   it("grupy pulpitUczestnika i lekcja są włączone", () => {
     expect(GRUPY.pulpitUczestnika.wlaczona).toBe(true);
     expect(GRUPY.lekcja.wlaczona).toBe(true);
+  });
+
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, lekcja, formy stażu i pulpit administracji", () => {
+    const wlaczone = Object.entries(GRUPY)
+      .filter(([, grupa]) => grupa.wlaczona)
+      .map(([klucz]) => klucz)
+      .sort();
+    expect(wlaczone).toEqual(WLACZONE);
   });
 
   it("każda pozostała grupa jest wyłączona", () => {

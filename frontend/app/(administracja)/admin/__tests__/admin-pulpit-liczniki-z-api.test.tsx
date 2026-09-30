@@ -25,7 +25,7 @@ vi.mock("@/lib/api", () => ({
   ApiError,
 }));
 
-const { default: AdminHomePage } = await import("@/app/(administracja)/admin/page");
+const { default: AdminHomePage } = await import("@/app/(administracja)/admin/StaraTresc");
 
 const dashboard = {
   counters: { participants: 137, completed: 29, certificates: 23 },
