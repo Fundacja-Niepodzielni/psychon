@@ -6,8 +6,8 @@ import Logo from "@/components/ui/Logo";
 import { PowlokaPanelu } from "@/design-system/szablony/PowlokaPanelu/PowlokaPanelu";
 import { api, ApiError } from "@/lib/api";
 import type { Role } from "@/lib/home-by-role";
-import { czyPozycjaBiezaca } from "@/lib/menu/ramka/administracja";
 import { menuRamkiUczestnika, W_PRZYGOTOWANIU_KONTO_UCZESTNIKA } from "@/lib/menu/ramka/uczestnik";
+import { ukladMenuRamki } from "@/lib/menu/ramka/uklad";
 import { NarzedziaPaskaRamki, StopkaRamki, useWylogowanieRamki } from "../WspolneRamki";
 
 interface Ja {
@@ -54,24 +54,20 @@ export function PowlokaUczestnika({ children }: { children: ReactNode }) {
   const nazwisko = ja?.first_name?.trim() ? ja?.last_name?.trim() || undefined : undefined;
   const rola = (ja?.role && PODPISY_ROLI_UCZESTNIKA[ja.role]) || "uczestnik programu";
 
-  const grupy = menuRamkiUczestnika(ja?.role).map((grupa) => ({
-    naglowek: grupa.naglowek,
-    liniaWPrzygotowaniu: grupa.wPrzygotowaniu,
-    pozycje: grupa.pozycje.map((p) => ({
-      ikona: p.ikona,
-      etykieta: p.etykieta,
-      href: p.href,
-      biezaca: czyPozycjaBiezaca(p, sciezka),
-    })),
-  }));
+  const { grupy, grupaZwinieta, liniaKonta } = ukladMenuRamki(
+    menuRamkiUczestnika(ja?.role),
+    sciezka,
+    W_PRZYGOTOWANIU_KONTO_UCZESTNIKA,
+  );
 
   return (
     <PowlokaPanelu
       logo={<Logo title="Fundacja Niepodzielni" />}
       uzytkownik={{ imie, nazwisko, rola }}
       grupy={grupy}
+      grupaZwinieta={grupaZwinieta}
       etykietaMenu="Menu — Panel uczestnika"
-      liniaKonta={W_PRZYGOTOWANIU_KONTO_UCZESTNIKA}
+      liniaKonta={liniaKonta}
       onNawigacja={(href) => router.push(href)}
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}

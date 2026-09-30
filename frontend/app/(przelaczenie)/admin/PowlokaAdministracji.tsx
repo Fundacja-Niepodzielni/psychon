@@ -9,7 +9,8 @@ import Logo from "@/components/ui/Logo";
 import { PowlokaPanelu } from "@/design-system/szablony/PowlokaPanelu/PowlokaPanelu";
 import { api, endSession } from "@/lib/api";
 import { LEGAL_DOCUMENT_LABELS, LEGAL_DOCUMENT_TYPES } from "@/lib/h22/legal-documents";
-import { czyPozycjaBiezaca, menuRamkiAdministracji } from "@/lib/menu/ramka/administracja";
+import { menuRamkiAdministracji } from "@/lib/menu/ramka/administracja";
+import { ukladMenuRamki } from "@/lib/menu/ramka/uklad";
 
 interface Ja {
   first_name?: string | null;
@@ -91,22 +92,14 @@ export function PowlokaAdministracji({ children }: { children: ReactNode }) {
   const imie = ja?.first_name?.trim() || "Administracja";
   const nazwisko = ja?.first_name?.trim() ? ja?.last_name?.trim() || undefined : undefined;
 
-  const grupy = menuRamkiAdministracji().map((grupa) => ({
-    naglowek: grupa.naglowek,
-    liniaWPrzygotowaniu: grupa.wPrzygotowaniu,
-    pozycje: grupa.pozycje.map((p) => ({
-      ikona: p.ikona,
-      etykieta: p.etykieta,
-      href: p.href,
-      biezaca: czyPozycjaBiezaca(p, sciezka),
-    })),
-  }));
+  const { grupy, grupaZwinieta } = ukladMenuRamki(menuRamkiAdministracji(), sciezka);
 
   return (
     <PowlokaPanelu
       logo={<Logo title="Fundacja Niepodzielni" />}
       uzytkownik={{ imie, nazwisko, rola: PODPIS_ROLI_ADMINISTRACJI }}
       grupy={grupy}
+      grupaZwinieta={grupaZwinieta}
       etykietaMenu="Menu — Administracja"
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}

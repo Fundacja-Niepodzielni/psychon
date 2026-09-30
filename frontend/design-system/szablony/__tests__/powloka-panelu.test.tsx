@@ -85,14 +85,18 @@ describe("PowlokaPanelu", () => {
     expect((screen.getByRole("button", { name: "Wylogowywanie…" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("rok programu w pasku tylko, gdy jest; bez roku brak napisu i brak komunikatu", () => {
-    wyrenderuj({ rokProgramu: "2026/27" });
+  it("pasek: „PsychON · rok programu 2026/27” z rokiem, samo „PsychON” bez roku, bez komunikatu", () => {
+    const { container } = wyrenderuj({ rokProgramu: "2026/27" });
+    const pasek = () => container.querySelector("[data-pasek-programu]");
+    expect(pasek()?.textContent?.replace(/\s+/g, " ").trim()).toBe("PsychON · rok programu 2026/27");
     expect(screen.getByText("2026/27")).toBeTruthy();
-    expect(screen.getByText(/Rok programu/)).toBeTruthy();
+    expect(container.textContent).not.toContain("Rok programu:");
     cleanup();
 
-    wyrenderuj({ rokProgramu: null });
-    expect(screen.queryByText(/Rok programu/)).toBeNull();
+    const bezRoku = wyrenderuj({ rokProgramu: null });
+    expect(bezRoku.container.querySelector("[data-pasek-programu]")?.textContent?.trim()).toBe("PsychON");
+    expect(bezRoku.container.textContent).not.toMatch(/rok programu/i);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("przycisk „Menu” otwiera okno menu z przyciskiem „Zamknij”, zamknięcie je usuwa", () => {
@@ -322,5 +326,69 @@ describe("PowlokaPanelu — nawigacja kliencka menu", () => {
     cleanup();
     wyrenderuj();
     expect(screen.queryByText(/W przygotowaniu: profil/)).toBeNull();
+  });
+});
+
+/**
+ * Grupa zwinięta („Dotychczasowy panel (n)”) przed grupą „Konto”: na wejściu
+ * zwinięta, przycisk z `aria-expanded` i `aria-controls`, po kliknięciu
+ * pozycje widoczne. Przycisk „Zamknij” okna menu ze znakiem „×” (ukrytym dla
+ * czytnika, nazwa przycisku zostaje „Zamknij”).
+ */
+describe("PowlokaPanelu — grupa zwinięta i zamknięcie okna", () => {
+  const ZWINIETA = {
+    naglowek: "Dotychczasowy panel",
+    pozycje: [
+      { ikona: "clock" as const, etykieta: "Dziennik stażu", href: "/panel/staz" },
+      { ikona: "file" as const, etykieta: "Dokumenty", href: "/panel/dokumenty" },
+    ],
+  };
+
+  it("na wejściu zwinięta: przycisk „Dotychczasowy panel (2)”, aria-expanded=false, lista ukryta", () => {
+    wyrenderuj({ grupaZwinieta: ZWINIETA });
+    const bok = screen.getByRole("complementary", { name: "Menu i konto" });
+    const przycisk = within(bok).getByRole("button", { name: "Dotychczasowy panel (2)" });
+    expect(przycisk.getAttribute("aria-expanded")).toBe("false");
+    const lista = document.getElementById(przycisk.getAttribute("aria-controls") ?? "");
+    expect(lista).not.toBeNull();
+    expect(lista?.hidden).toBe(true);
+    expect(within(bok).queryByRole("link", { name: "Dziennik stażu" })).toBeNull();
+  });
+
+  it("kliknięcie rozwija: aria-expanded=true i pozycje jako łącza; drugie zwija", () => {
+    wyrenderuj({ grupaZwinieta: ZWINIETA });
+    const bok = screen.getByRole("complementary", { name: "Menu i konto" });
+    const przycisk = within(bok).getByRole("button", { name: "Dotychczasowy panel (2)" });
+    fireEvent.click(przycisk);
+    expect(przycisk.getAttribute("aria-expanded")).toBe("true");
+    expect(within(bok).getByRole("link", { name: "Dziennik stażu" }).getAttribute("href")).toBe("/panel/staz");
+    expect(within(bok).getByRole("link", { name: "Dokumenty" }).getAttribute("href")).toBe("/panel/dokumenty");
+    fireEvent.click(przycisk);
+    expect(przycisk.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("stoi przed grupą „Konto” i przed „Wyloguj”", () => {
+    wyrenderuj({ grupaZwinieta: ZWINIETA });
+    const bok = screen.getByRole("complementary", { name: "Menu i konto" });
+    const przycisk = within(bok).getByRole("button", { name: "Dotychczasowy panel (2)" });
+    const konto = within(bok).getByText("Konto");
+    const wyloguj = within(bok).getByRole("button", { name: "Wyloguj" });
+    expect(przycisk.compareDocumentPosition(konto) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(przycisk.compareDocumentPosition(wyloguj) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("bez grupy zwiniętej: brak przycisku grupy", () => {
+    wyrenderuj();
+    expect(screen.queryByRole("button", { name: /Dotychczasowy panel/ })).toBeNull();
+  });
+
+  it("okno menu: „Zamknij” ze znakiem „×” ukrytym dla czytnika", () => {
+    wyrenderuj();
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    const okno = document.querySelector("dialog#menu-panelu") as HTMLElement;
+    const zamknij = within(okno).getByRole("button", { name: "Zamknij" });
+    const znak = zamknij.querySelector("[data-znak-zamknij]");
+    expect(znak?.textContent?.trim()).toBe("×");
+    expect(znak?.getAttribute("aria-hidden")).toBe("true");
   });
 });
