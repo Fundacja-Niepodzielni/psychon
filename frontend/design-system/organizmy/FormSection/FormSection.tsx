@@ -31,6 +31,13 @@ interface WlasciwosciFormSection {
   onZapisz: () => void;
   /** Kolumna ≤ 640 px domyślnie; wariant `lekcja` rozszerza do 760 px. */
   szerokosc?: "domyslna" | "lekcja";
+  /** Włącza przeniesienie fokusu przy zamontowaniu (pierwsze pole albo
+   * podsumowanie błędów). Domyślnie WYŁĄCZONE: formularz będący treścią
+   * strony od wejścia nie może zabierać fokusu, bo pierwszy Tab omija wtedy
+   * odnośnik „Przejdź do treści”. Włącza je wyłącznie sekcja OTWIERANA
+   * działaniem użytkownika (rozwinięty formularz przy wierszu, tryb decyzji),
+   * gdzie fokus ma pójść za kliknięciem. */
+  fokusPrzyOtwarciu?: boolean;
 }
 
 /**
@@ -46,8 +53,12 @@ interface WlasciwosciFormSection {
  *
  * „Zapisz…” dostaje ramkę i tło (`Button` `primary`), „Anuluj” żadnego
  * z nich (`Button` `quiet`) — różnią się oboma naraz. Fokus startowy
- * ląduje na PIERWSZYM polu przy montowaniu; gdy podsumowanie błędów jest
- * obecne PRZY montowaniu, fokus ląduje tam zamiast na polu — użytkownik
+ * ląduje na PIERWSZYM polu przy montowaniu TYLKO z `fokusPrzyOtwarciu`
+ * (sekcja otwierana działaniem użytkownika); bez niego, czyli dla
+ * formularza będącego treścią strony od wejścia, fokus przy montowaniu
+ * się nie rusza, żeby klawiatura zaczynała od odnośnika „Przejdź do
+ * treści”. Gdy podsumowanie błędów jest obecne PRZY montowaniu, fokus
+ * ląduje na nim zamiast na polu — niezależnie od propu, bo użytkownik
  * ma najpierw przeczytać, co poprawić. Fokus przenosi się WYŁĄCZNIE raz,
  * przy zamontowaniu (zależności efektu puste): sekcja nie skacze
  * z powrotem na górę przy KAŻDEJ zmianie stanu `zapisano` — po zapisie
@@ -81,6 +92,7 @@ export function FormSection({
   onAnuluj,
   onZapisz,
   szerokosc = "domyslna",
+  fokusPrzyOtwarciu = false,
 }: WlasciwosciFormSection) {
   const pierwszyPoziom = pola.slice(0, 5);
   const dodatkowe = pola.slice(5);
@@ -109,9 +121,12 @@ export function FormSection({
     // ten efekt celuje wprost w ten węzeł zamiast dokładać drugi,
     // opakowujący `tabIndex`, żeby fokus i ogłoszenie czytnika
     // (`role="alert"`) trafiały w TEN SAM element.
-    const cel = bledy.length > 0
-      ? kontenerRef.current?.querySelector<HTMLElement>('[role="alert"]')
-      : kontenerRef.current?.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
+    let cel: HTMLElement | null | undefined;
+    if (bledy.length > 0) {
+      cel = kontenerRef.current?.querySelector<HTMLElement>('[role="alert"]');
+    } else if (fokusPrzyOtwarciu) {
+      cel = kontenerRef.current?.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
+    }
     cel?.focus();
     // Wyłącznie przy zamontowaniu — patrz dokumentacja funkcji wyżej.
     // eslint-disable-next-line react-hooks/exhaustive-deps

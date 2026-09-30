@@ -262,6 +262,16 @@ describe("StazKolejka — decyzje", () => {
     expect(oknaDialogowe().length).toBeGreaterThan(0);
   });
 
+  it("otwarcie decyzji przenosi fokus na pierwsze pole formularza (sekcja otwierana działaniem)", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderZDanymi();
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Poproś o poprawkę" }));
+    const formularz = await screen.findByRole("form", { name: /Poproś o poprawkę: Marta Demo/ });
+    const pierwsze = formularz.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
+    expect(pierwsze).not.toBeNull();
+    expect(pierwsze).toHaveFocus();
+  });
+
   it("Poproś o poprawkę bez komentarza: 422 z serwera, błąd przy polu, wiersz zostaje", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();

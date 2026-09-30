@@ -368,6 +368,15 @@ describe("A-12 — akcja główna „Opublikuj kurs”", () => {
     expect(updateInstructorCourse).not.toHaveBeenCalled();
   });
 
+  it("„Zmień dane kursu” przenosi fokus na pierwsze pole formularza (sekcja otwierana działaniem)", async () => {
+    await renderGotowy();
+    await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
+    const formularz = screen.getByRole("form", { name: "Dane kursu" });
+    const pierwsze = formularz.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
+    expect(pierwsze).not.toBeNull();
+    expect(pierwsze).toHaveFocus();
+  });
+
   it("zapis opisu kursu przez FormSection zdejmuje brak „opis” z panelu O7", async () => {
     await renderGotowy();
     updateInstructorCourse.mockResolvedValue({ ...KURS, description: "Nowy opis." });

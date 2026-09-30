@@ -320,6 +320,7 @@ export function SkrzynkaPytan() {
               </Notice>
             )}
             <FormSection
+              fokusPrzyOtwarciu
               tytul="Odpowiedź na pytanie"
               pola={[
                 {

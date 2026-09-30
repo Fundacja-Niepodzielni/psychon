@@ -333,6 +333,15 @@ describe("Zgłoszenie — decyzja: odrzucenie z powodem", () => {
     sprawdzSzablon(container);
   });
 
+  it("otwarcie odrzucenia przenosi fokus na pole powodu (sekcja otwierana działaniem)", async () => {
+    ustawZgloszenie();
+    render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+    await otworzOdrzucenie();
+
+    expect(await screen.findByRole("textbox", { name: /^Powód odrzucenia/ })).toHaveFocus();
+  });
+
   it("sekcja odrzucenia nie jest oknem: brak dialogu i aria-modal, formularz w głównej treści", async () => {
     ustawZgloszenie();
     const { container } = render(<ZgloszenieDecyzja id="31" />);

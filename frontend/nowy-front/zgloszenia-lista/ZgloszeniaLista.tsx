@@ -393,6 +393,7 @@ export function ZgloszeniaLista() {
     <div className={style.panel}>
       {bladDodania !== null && <BladDodaniaNotice blad={bladDodania} adres={dane.email.trim()} />}
       <FormSection
+        fokusPrzyOtwarciu
         tytul="Nowe zgłoszenie"
         pola={[
           poleFormularza("first_name", "zgloszenie-nowe-imie", "Imię", true),

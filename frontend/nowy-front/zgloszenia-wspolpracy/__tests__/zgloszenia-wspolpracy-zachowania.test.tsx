@@ -106,6 +106,22 @@ describe("ZgloszeniaWspolpracy — odpowiedź na zgłoszenie", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("otwarcie odpowiedzi przenosi fokus na pierwsze pole (sekcja otwierana działaniem)", async () => {
+    const uzytkownik = userEvent.setup();
+    pobierzZgloszeniaAdministracji.mockResolvedValue({
+      data: [ZGLOSZENIE_NOWE],
+      meta: { current_page: 1, per_page: 25, total: 1, last_page: 1 },
+    });
+    render(<ZgloszeniaWspolpracy />);
+    await waitFor(() => expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument());
+    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
+
+    const formularz = screen.getByRole("form", { name: /^Odpowiedź na zgłoszenie/ });
+    const pierwsze = formularz.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
+    expect(pierwsze).not.toBeNull();
+    expect(pierwsze).toHaveFocus();
+  });
+
   it("wiersz closed nie ma przycisku „Odpowiedz na zgłoszenie”", async () => {
     pobierzZgloszeniaAdministracji.mockResolvedValue({
       data: [ZGLOSZENIE_ZAMKNIETE],

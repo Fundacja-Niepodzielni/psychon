@@ -286,6 +286,7 @@ export function ZgloszeniaWspolpracy() {
               {otwarta?.id === zgloszenie.id && (
                 <div className={style.formularz}>
                   <FormSection
+                    fokusPrzyOtwarciu
                     tytul={`Odpowiedź na zgłoszenie: ${nazwaOsoby(zgloszenie)}`}
                     pola={[
                       {

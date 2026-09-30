@@ -132,6 +132,7 @@ function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
       <div className={style.sekcja}>
         <Uwagi uwaga={uwaga} odswiez={odswiez} />
         <FormSection
+          fokusPrzyOtwarciu
           tytul="Poproś o poprawkę"
           pola={[
             {

@@ -273,6 +273,16 @@ describe("Zgłoszenia rekrutacyjne — dodanie zgłoszenia", () => {
     expect(screen.getByRole("textbox", { name: /^E-mail/ })).toHaveValue("");
   });
 
+  it("otwarcie formularza przenosi fokus na pierwsze pole (sekcja otwierana działaniem)", async () => {
+    const uzytkownik = userEvent.setup();
+    api.mockResolvedValue(zgloszenie(99));
+    render(<ZgloszeniaLista />);
+    await screen.findByText("Anna Kandydat11");
+
+    await otworzFormularz(uzytkownik);
+    expect(screen.getByRole("textbox", { name: /^Imię/ })).toHaveFocus();
+  });
+
   it("pusty telefon nie jest wysyłany", async () => {
     const uzytkownik = userEvent.setup();
     api.mockResolvedValue(zgloszenie(99));
