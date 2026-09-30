@@ -145,6 +145,97 @@ export const GRUPY = {
       },
     ],
   },
+  /** Pulpit uczestnika — ten sam adres co dzisiejszy pulpit, treść strony zamienia się na ekran nowego frontu. */
+  pulpitUczestnika: {
+    klucz: "pulpitUczestnika",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/pulpit",
+        nowaTrasa: "/panel/pulpit",
+        trasaPoligonu: "/nowy-front/pulpit",
+      },
+    ],
+  },
+  /** Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu. */
+  lekcja: {
+    klucz: "lekcja",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/lekcje/[id]",
+        nowaTrasa: "/panel/lekcje/[id]",
+        trasaPoligonu: "/nowy-front/lekcja/[id]",
+      },
+    ],
+  },
+  /** Pulpit prowadzącego — ten sam adres co dzisiejsza strona startowa prowadzącego. */
+  pulpitProwadzacego: {
+    klucz: "pulpitProwadzacego",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "prowadzacy",
+        staraTrasa: "/prowadzacy",
+        nowaTrasa: "/prowadzacy",
+        trasaPoligonu: "/nowy-front/prowadzacy",
+      },
+    ],
+  },
+  /** Pulpit administracji — ten sam adres co dzisiejsza strona startowa administracji. */
+  pulpitAdministracji: {
+    klucz: "pulpitAdministracji",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin",
+        nowaTrasa: "/admin",
+        trasaPoligonu: "/nowy-front/admin/pulpit",
+      },
+    ],
+  },
+  /** Sprawy administracji — ten sam adres co dzisiejsza kolejka spraw. */
+  sprawy: {
+    klucz: "sprawy",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/sprawy",
+        nowaTrasa: "/admin/sprawy",
+        trasaPoligonu: "/nowy-front/admin/sprawy",
+      },
+    ],
+  },
+  /** Karta osoby w administracji — ten sam adres co dzisiejsza karta uczestnika. */
+  kartaOsoby: {
+    klucz: "kartaOsoby",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/uczestniczki/[id]",
+        nowaTrasa: "/admin/uczestniczki/[id]",
+        trasaPoligonu: "/nowy-front/admin/uczestniczki/[id]",
+      },
+    ],
+  },
+  /** Publikacja kursu w administracji — ten sam adres co dzisiejszy szczegół kursu. */
+  publikacjaKursu: {
+    klucz: "publikacjaKursu",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/kursy/[id]",
+        nowaTrasa: "/admin/kursy/[id]",
+        trasaPoligonu: "/nowy-front/admin/kursy/[id]/publikacja",
+      },
+    ],
+  },
 } as const satisfies Record<string, DefinicjaGrupy>;
 
 export type KluczGrupy = keyof typeof GRUPY;
