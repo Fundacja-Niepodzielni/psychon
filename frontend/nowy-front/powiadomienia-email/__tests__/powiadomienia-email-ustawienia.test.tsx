@@ -159,7 +159,7 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
 
   it("e) 403 przy zapisie pokazuje Notice i blokuje dalszy zapis", async () => {
     updateNotificationSettings.mockRejectedValue(
-      new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu." }),
+      new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tego zasobu." }),
     );
     const uzytkownik = userEvent.setup();
     render(<PowiadomieniaEmail />);

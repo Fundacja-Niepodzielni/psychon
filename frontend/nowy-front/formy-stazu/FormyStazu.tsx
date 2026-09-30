@@ -197,8 +197,8 @@ export function FormyStazu() {
         <Heading stopien={1}>Słownik form stażu</Heading>
         <EmptyState
           wariant="brak-uprawnien"
-          naglowek="Brak dostępu do słownika form stażu"
-          rola="opiekuna projektu i administracji"
+          naglowek="Słownik form stażu dla administracji"
+          rola="administracji"
           przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
         />
       </Korzen>

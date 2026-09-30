@@ -8,6 +8,7 @@ import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
+import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice, type WariantNotice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
@@ -218,9 +219,12 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
   if (stan === "zakazane") {
     return szablon(
       "Publikacja kursu",
-      <Notice wariant="warn" tytul="Brak dostępu">
-        Publikacja kursu jest dostępna dla opiekuna projektu i administratora.
-      </Notice>,
+      <EmptyState
+        wariant="brak-uprawnien"
+        naglowek="Publikacja kursu dla administracji"
+        rola="administracji"
+        przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+      />,
     );
   }
 

@@ -109,8 +109,8 @@ function BrakUprawnien({ idKursu, wroc }: { idKursu: string; wroc: () => void })
       glowna={
         <EmptyState
           wariant="brak-uprawnien"
-          naglowek="Brak dostępu do kursu"
-          rola="prowadzącego tego kursu"
+          naglowek="Tematy kursu dla prowadzących"
+          rola="prowadzących"
           przycisk={{ etykieta: "Wróć", onClick: wroc }}
         />
       }

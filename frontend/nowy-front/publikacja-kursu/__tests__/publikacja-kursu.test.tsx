@@ -130,9 +130,9 @@ describe("stany ekranu w szablonie formularza", () => {
   });
 
   it("403: komunikat o braku dostępu, jeden main, znacznik szablonu", async () => {
-    serwer({ GET: blad(403, "forbidden", "Brak dostępu.") });
+    serwer({ GET: blad(403, "forbidden", "Nie masz dostępu do tego zasobu.") });
     const { container } = wyrenderuj();
-    expect(await screen.findByText("Brak dostępu")).toBeInTheDocument();
+    expect(await screen.findByText(/tylko dla administracji/)).toBeInTheDocument();
     expect(() => jedenMain(container)).not.toThrow();
     expect(znacznikSzablonu(container)).toBe("szablon-formularz");
     expect(screen.queryByRole("button", { name: "Opublikuj kurs" })).toBeNull();
@@ -270,7 +270,7 @@ describe("odmowa publikacji", () => {
 
   it("403 przy zapisie: Notice o braku uprawnień, stan bez zmian", async () => {
     const uzytkownik = userEvent.setup();
-    serwer({ GET: kurs(), PATCH: blad(403, "forbidden", "Brak dostępu.") });
+    serwer({ GET: kurs(), PATCH: blad(403, "forbidden", "Nie masz dostępu do tego zasobu.") });
     const { container } = wyrenderuj();
     await uzytkownik.click(await screen.findByRole("button", { name: "Opublikuj kurs" }));
     expect(await screen.findByText("Brak uprawnień")).toBeInTheDocument();
