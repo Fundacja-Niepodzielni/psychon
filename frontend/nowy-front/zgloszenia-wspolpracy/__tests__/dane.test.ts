@@ -32,9 +32,9 @@ function blad(status: number, code: string, message: string, errors?: Record<str
 
 describe("statusy zgłoszeń", () => {
   it("każdy status ma polską etykietę, bez kodu wewnętrznego", () => {
-    expect(PLAKIETKA_STATUSU.new.tekst).toBe("Nowe");
-    expect(PLAKIETKA_STATUSU.answered.tekst).toBe("Z odpowiedzią");
-    expect(PLAKIETKA_STATUSU.closed.tekst).toBe("Zamknięte");
+    expect(PLAKIETKA_STATUSU.new.tekst).toBe("nowe");
+    expect(PLAKIETKA_STATUSU.answered.tekst).toBe("z odpowiedzią");
+    expect(PLAKIETKA_STATUSU.closed.tekst).toBe("zamknięte");
   });
 
   it("filtr zawiera „Wszystkie” i trzy statusy z kontraktu", () => {

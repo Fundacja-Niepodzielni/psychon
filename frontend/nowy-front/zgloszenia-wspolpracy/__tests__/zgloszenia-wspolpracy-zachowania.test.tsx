@@ -102,7 +102,7 @@ describe("ZgloszeniaWspolpracy — odpowiedź na zgłoszenie", () => {
       status: "answered",
     });
 
-    await waitFor(() => expect(screen.getByText("Z odpowiedzią")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("z odpowiedzią")).toBeInTheDocument());
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

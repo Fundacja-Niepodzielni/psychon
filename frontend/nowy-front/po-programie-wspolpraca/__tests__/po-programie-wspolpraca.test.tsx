@@ -338,7 +338,7 @@ describe("PoProgramieWspolpraca — wysyłka zgłoszenia", () => {
     expect(api).toHaveBeenCalledWith("/cooperation-requests", { method: "POST", body: { body: NOWE.body } });
     const pozycje = Array.from(document.querySelectorAll("section[aria-label='Moje zgłoszenia'] ul > li"));
     expect(pozycje).toHaveLength(2);
-    expect(pozycje[0]).toHaveTextContent("Nowe");
+    expect(pozycje[0]).toHaveTextContent("nowe");
     expect(pozycje[0]).toHaveTextContent(NOWE.body);
     expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);
@@ -459,9 +459,9 @@ describe("PoProgramieWspolpraca — historia zgłoszeń", () => {
     await renderUkonczony([NOWE, Z_ODPOWIEDZIA, ZAMKNIETE]);
     const lista = document.querySelector("section[aria-label='Moje zgłoszenia'] ul") as HTMLElement;
     const pozycje = Array.from(lista.querySelectorAll(":scope > li"));
-    expect(pozycje[0]).toHaveTextContent("Nowe");
-    expect(pozycje[1]).toHaveTextContent("Z odpowiedzią");
-    expect(pozycje[2]).toHaveTextContent("Zamknięte");
+    expect(pozycje[0]).toHaveTextContent("nowe");
+    expect(pozycje[1]).toHaveTextContent("z odpowiedzią");
+    expect(pozycje[2]).toHaveTextContent("zamknięte");
     expect(lista.textContent).not.toMatch(/\b(new|answered|closed)\b/);
   });
 
