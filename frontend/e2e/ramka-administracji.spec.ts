@@ -19,7 +19,9 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - jeden `main`, jeden `#tresc`, link skoku jako pierwszy cel klawiatury;
  * - brak przewijania w poziomie, treść co najmniej 16 px od krawędzi okna;
  * - axe: 0 naruszeń;
- * - bez „Wstecz”, okruszki tylko jako łącza.
+ * - bez „Wstecz”, okruszki tylko jako łącza;
+ * - `--brand` niepusty na menu i pasku ramki (także w szufladzie 390 px),
+ *   pusty na `documentElement` (tokeny tylko w poddrzewie z `data-theme`).
  * Kontrola dodatnia: strona grupy wyłączonej (`/admin/kursy`) ma dalej
  * dotychczasową powłokę.
  *
@@ -381,6 +383,19 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
 
         // Menu: lista z makiety, bieżąca pozycja, nazwa w menu, tytuł karty.
         const nav = await menuWidoczne(page, szerokosc);
+        // Tokeny wyglądu tylko w poddrzewie z `data-theme`: ramka (menu, pasek) je ma, korzeń dokumentu — nie.
+        const tokeny = {
+          menu: await nav.evaluate((el) => getComputedStyle(el).getPropertyValue("--brand").trim()),
+          pasek: await page
+            .locator("[data-powloka-panelu] header")
+            .first()
+            .evaluate((el) => getComputedStyle(el).getPropertyValue("--brand").trim()),
+          dokument: await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--brand").trim()),
+        };
+        expect(tokeny.menu, "--brand na menu ramki").not.toBe("");
+        expect(tokeny.pasek, "--brand na pasku ramki").not.toBe("");
+        expect(tokeny.dokument, "--brand na documentElement").toBe("");
+
         const menu = await odczytajMenu(nav);
         expect(menu.grupy).toEqual(MENU_OCZEKIWANE);
         expect(menu.konto).toBe("Konto");

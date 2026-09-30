@@ -145,7 +145,7 @@ const TRASY_PODMIANY = [
     adres: "/admin/ekran-startowy",
     naglowek: /^Treść ekranu „Zacznij tutaj”$/,
     tytulKarty: null,
-    wpisMenu: { nazwa: "Ekran startowy", href: "/admin/ekran-startowy" },
+    wpisMenu: { nazwa: "Treść ekranu „Zacznij tutaj”", href: "/admin/ekran-startowy" },
   },
 ] as const;
 

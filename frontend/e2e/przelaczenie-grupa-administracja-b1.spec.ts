@@ -134,7 +134,7 @@ test.describe("partia przełączenia administracji — pulpit i formy stażu wł
 
     const nav = page.getByRole("navigation", { name: "Menu — Administracja" }).first();
     await expect(nav.getByRole("link", { name: "Pulpit" })).toHaveAttribute("href", "/admin");
-    const link = nav.getByRole("link", { name: "Formy stażu" });
+    const link = nav.getByRole("link", { name: "Słownik form stażu" });
     await expect(link).toHaveAttribute("href", "/admin/formy-stazu");
 
     await link.click();

@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
 import { ZgloszeniaWspolpracy } from "@/nowy-front/zgloszenia-wspolpracy/ZgloszeniaWspolpracy";
+
+/** Tytuł karty = nazwa pozycji menu = nagłówek ekranu. */
+export const metadata: Metadata = {
+  title: "Zgłoszenia współpracy — Niepodzielni",
+};
 
 /**
  * Trasa produktu `/admin/zgloszenia-wspolpracy` — nowa trasa grupy
