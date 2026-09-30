@@ -7,17 +7,16 @@ import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { CaseCard } from "@/design-system/organizmy/CaseCard/CaseCard";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import { pobierzPulpitAdministracji, type PulpitAdministracji as DanePulpitu } from "./dane";
 import {
   FORMY_SPRAW,
-  FORMY_ZGLOSZEN,
   jednostka,
   odczytajPulpit,
   rodzajBledu,
   TEKST_BRAK_SPRAW,
+  TYTUL_LISTY,
   zbudujWidok,
   type WidokPulpitu,
 } from "./widok";
@@ -35,8 +34,8 @@ type StanEkranu =
 /**
  * Ekran „Pulpit administracji” na szablonie `DashboardTemplate`
  * (`GET /admin/dashboard`, `backend/routes/api/h19.php:25`). Liczniki edycji
- * w `StatRow`, sprawy do decyzji w `RecordList`, „od czego zacząć” w
- * `CaseCard`. Akcja główna „Otwórz sprawy” prowadzi do adresu `link` tych
+ * w `StatRow`, sprawy do decyzji w `RecordList` („Co czeka na decyzję”).
+ * Akcja główna „Otwórz sprawy” prowadzi do adresu `link` tych
  * spraw, których czeka najwięcej. Każdy stan renderuje się wewnątrz szablonu,
  * więc jego korzeń jest jedynym `main`.
  */
@@ -160,7 +159,7 @@ export function PulpitAdministracji() {
           <ListaSpraw widok={widok} naNieprawidlowyAdres={setOstrzezenie} naOdswiez={wczytajPonownie} />
         </div>
       }
-      wspierajaca={widok.cel ? <ZgloszeniaRekrutacyjne cel={widok.cel} /> : null}
+      wspierajaca={null}
     />
   );
 }
@@ -176,7 +175,7 @@ function ListaSpraw({
 }) {
   return (
     <RecordList
-      tytul="Sprawy do decyzji"
+      tytul={TYTUL_LISTY}
       jednostkaSumy={(liczba) => jednostka(liczba, FORMY_SPRAW)}
       wiersze={
         widok.brakSpraw
@@ -187,10 +186,11 @@ function ListaSpraw({
               wartosc: wiersz.liczba,
               plakietka:
                 wiersz.liczba > 0
-                  ? { wariant: "warn" as const, tekst: "Czeka na decyzję" }
-                  : { wariant: "neutral" as const, tekst: "Brak spraw" },
+                  ? { wariant: "warn" as const, tekst: "czeka na decyzję" }
+                  : { wariant: "neutral" as const, tekst: "brak spraw" },
               akcja: {
-                etykieta: `Otwórz: ${wiersz.nazwa}`,
+                etykieta: "Otwórz",
+                etykietaDostepna: `Otwórz: ${wiersz.nazwa}`,
                 ...(wiersz.link
                   ? { href: wiersz.link }
                   : { onKliknij: () => naNieprawidlowyAdres("Adres tych spraw z odpowiedzi serwera jest nieprawidłowy.") }),
@@ -202,19 +202,6 @@ function ListaSpraw({
         tresc: "Nic nie czeka na decyzję administracji. Nowe sprawy pojawią się tutaj.",
         przycisk: { etykieta: "Odśwież", onClick: naOdswiez },
       }}
-    />
-  );
-}
-
-function ZgloszeniaRekrutacyjne({ cel }: { cel: NonNullable<WidokPulpitu["cel"]> }) {
-  return (
-    <CaseCard
-      rodzaj="ze-statystyka"
-      tytul="Zgłoszenia rekrutacyjne"
-      pary={[
-        { etykieta: "Stan", wartosc: "czeka na decyzję" },
-      ]}
-      statystyka={{ id: "pulpit-zgloszenia", etykieta: "Czeka na decyzję", wartosc: cel.liczba, mianownik: jednostka(cel.liczba, FORMY_ZGLOSZEN) }}
     />
   );
 }

@@ -12,7 +12,10 @@ interface PlakietkaRecordList {
 }
 
 interface AkcjaRecordList {
+  /** Widoczny napis akcji (np. „Otwórz”). */
   etykieta: string;
+  /** Pełna nazwa akcji dla czytnika (np. „Otwórz: Dyżury”); bez niej czytnik dostaje `etykieta`. */
+  etykietaDostepna?: string;
   href?: string;
   onKliknij?: () => void;
 }

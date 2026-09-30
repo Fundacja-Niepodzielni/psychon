@@ -89,11 +89,15 @@ describe("Pulpit administracji — stany ekranu", () => {
       "href",
       "/prowadzacy/pytania",
     );
-    const karta = screen.getByRole("article", { name: "Zgłoszenia rekrutacyjne" });
-    expect(container.querySelector("[data-obszar='wspierajaca']")?.contains(karta)).toBe(true);
-    expect(screen.getByRole("heading", { level: 3, name: "Zgłoszenia rekrutacyjne" })).toBeTruthy();
-    expect(karta.querySelector("#pulpit-zgloszenia")?.textContent).toContain("4");
-    expect(karta.querySelector("#pulpit-zgloszenia")?.textContent).toContain("zgłoszenia");
+    // Dolna karta „Zgłoszenia rekrutacyjne” była dublem wiersza listy — jej już nie ma.
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
+    expect(container.querySelector("#pulpit-zgloszenia")).toBeNull();
+    expect(screen.getAllByText("Zgłoszenia rekrutacyjne")).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 3, name: "Co czeka na decyzję" })).toBeTruthy();
+    // Widoczny napis akcji jest krótki, pełną nazwę niesie nazwa dostępna linku.
+    expect(odnosnik.textContent).toMatch(/^Otwórz\s*›$/);
+    expect(screen.getAllByText("czeka na decyzję").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Czeka na decyzję")).not.toBeInTheDocument();
     expect(screen.queryByText("Zgłoszenia do decyzji")).not.toBeInTheDocument();
     expect(przyciskiGlowne(container)).toHaveLength(1);
     expect(container.querySelectorAll("button")).toHaveLength(2);
@@ -252,7 +256,7 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     await waitFor(() => expect(screen.getByText("Brak spraw do decyzji")).toBeInTheDocument());
     await uzytkownik.click(screen.getByRole("button", { name: "Odśwież" }));
-    await waitFor(() => expect(screen.getByRole("article", { name: "Zgłoszenia rekrutacyjne" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("link", { name: "Otwórz: Zgłoszenia rekrutacyjne" })).toBeInTheDocument());
     expect(pobierzPulpitAdministracji).toHaveBeenCalledTimes(2);
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { RecordList } from "../RecordList";
 
 const PUSTY = { naglowek: "Brak", tresc: "Nic tu nie ma.", przycisk: { etykieta: "Odśwież", onClick: vi.fn() } };
@@ -52,5 +52,22 @@ describe("RecordList — jednostka sumy", () => {
     const { container } = render(<RecordList tytul="Lista" wiersze={wiersze(1, 2)} pusty={PUSTY} />);
     expect(napisyLicznikow(container)).toEqual([]);
     expect(container.textContent).not.toContain("Razem");
+  });
+});
+
+describe("RecordList — nazwa akcji", () => {
+  it("etykietaDostepna z wiersza trafia do linku; stary wiersz jej nie ma", () => {
+    render(
+      <RecordList
+        tytul="Lista"
+        wiersze={[
+          { id: "a", tytul: "A", akcja: { etykieta: "Otwórz", etykietaDostepna: "Otwórz: A", href: "/a" } },
+          { id: "b", tytul: "B", akcja: { etykieta: "Otwórz: B", href: "/b" } },
+        ]}
+        pusty={PUSTY}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Otwórz: A" })).toHaveAttribute("aria-label", "Otwórz: A");
+    expect(screen.getByRole("link", { name: "Otwórz: B" })).not.toHaveAttribute("aria-label");
   });
 });

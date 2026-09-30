@@ -5,7 +5,6 @@ import { ApiError } from "@/lib/api/klient";
 import {
   adresWewnetrzny,
   FORMY_SPRAW,
-  FORMY_ZGLOSZEN,
   jednostka,
   NAZWY_SPRAW,
   odczytajPulpit,
@@ -136,14 +135,13 @@ describe("zbudujWidok", () => {
   });
 
   it.each([
-    [0, "spraw", "zgłoszeń"],
-    [1, "sprawa", "zgłoszenie"],
-    [3, "sprawy", "zgłoszenia"],
-    [5, "spraw", "zgłoszeń"],
-    [13, "spraw", "zgłoszeń"],
-  ])("formy jednostek spraw i zgłoszeń przy liczbie %i", (liczba, sprawy, zgloszenia) => {
+    [0, "spraw"],
+    [1, "sprawa"],
+    [3, "sprawy"],
+    [5, "spraw"],
+    [13, "spraw"],
+  ])("forma jednostki spraw przy liczbie %i", (liczba, sprawy) => {
     expect(jednostka(liczba, FORMY_SPRAW)).toBe(sprawy);
-    expect(jednostka(liczba, FORMY_ZGLOSZEN)).toBe(zgloszenia);
   });
 
   it("cel to link kolejki applications, także gdy inna kolejka ma więcej spraw", () => {

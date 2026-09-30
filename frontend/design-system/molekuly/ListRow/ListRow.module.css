@@ -10,15 +10,35 @@
 .otwarty {
   background: var(--card-warm);
 }
-/* Treść nigdy nie dostaje mniej niż 40% szerokości wnętrza wiersza: gdy akcja (liczba + długi
-   link) nie mieści się obok, zawija się POD treść, zamiast ściskać ją do
-   jednej litery w wierszu. Gdy mieści się obok, treść rośnie do końca
+/* Treść nigdy nie dostaje mniej niż 60% szerokości wnętrza wiersza: gdy akcja
+   (liczba + link) nie mieści się obok, zawija się POD treść, zamiast ściskać
+   ją do jednej litery w wierszu. Gdy mieści się obok, treść rośnie do końca
    wiersza, a akcja stoi przy prawej krawędzi, jak przy dwóch kolumnach. */
 .tresc {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  flex: 1 1 40%;
+  flex: 1 1 60%;
+  min-width: 0;
+}
+/* Plakietka przed tytułem, w jednej linii z nim; ma szerokość własnej treści,
+   nigdy nie rozciąga się na kolumnę. Tytuł ma bazę 70% nagłówka, więc na
+   wąskim ekranie (mało miejsca obok plakietki) zawija się pod plakietkę
+   zamiast zwężać do kilku liter. */
+.naglowek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+.plakietka {
+  display: inline-flex;
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+/* Tytuł to akapit `Text` (atom nie przyjmuje klasy) — stąd selektor potomka. */
+.naglowek > p {
+  flex: 1 1 70%;
   min-width: 0;
 }
 /* `flex-wrap` i `max-width`: sama akcja też musi się zmieścić w wierszu, gdy
@@ -29,4 +49,30 @@
   align-items: center;
   gap: var(--space-12);
   max-width: 100%;
+}
+/* Akcja z `href`: na wąskim ekranie zwykły odnośnik z „›” („Otwórz ›”), od
+   640 px wygląda jak przycisk drugorzędny (`Button` outline: te same tokeny). */
+@media (min-width: 640px) {
+  .strzalka {
+    display: none;
+  }
+  .akcjaOdnosnik a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: var(--hit-min);
+    margin: 0;
+    padding: var(--space-8) var(--space-16);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-xs);
+    background: transparent;
+    color: var(--ink);
+    font-size: var(--fs-9);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+  }
+  .akcjaOdnosnik a:hover {
+    text-decoration: none;
+  }
 }
