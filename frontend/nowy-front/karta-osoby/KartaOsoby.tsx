@@ -23,6 +23,7 @@ import {
   filaryKartyOsoby,
   wierszeDanychOsoby,
   kolumnyDanychOsoby,
+  opisRoliOsoby,
   POLA_FORMULARZA_KARTY,
   kluczBleduPola,
   type KartaOsobyDane,
@@ -250,7 +251,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
           <PageHeader
             okruszki={[{ etykieta: "Administracja" }, { etykieta: "Osoby" }, { etykieta: `${karta.profile.first_name} ${karta.profile.last_name}` }]}
             tytul={`${karta.profile.first_name} ${karta.profile.last_name}`}
-            opis={`Rola: ${karta.profile.role}`}
+            opis={opisRoliOsoby(karta.profile.role)}
             onPowrot={wroc}
             dzieci={
               edycja ? undefined : (

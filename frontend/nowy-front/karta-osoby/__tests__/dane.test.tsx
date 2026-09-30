@@ -4,6 +4,7 @@ import {
   wierszeDanychOsoby,
   formularzZProfilu,
   kluczBleduPola,
+  opisRoliOsoby,
   type PostepOsobyKarty,
   type ProfilOsobyKarty,
   type RzetelnoscOsobyKarty,
@@ -130,5 +131,21 @@ describe("formularzZProfilu i kluczBleduPola", () => {
     expect(kluczBleduPola("address_city")).toBe("address.city");
     expect(kluczBleduPola("address_zip")).toBe("address.zip");
     expect(kluczBleduPola("first_name")).toBe("first_name");
+  });
+});
+
+describe("opisRoliOsoby", () => {
+  it.each([
+    ["volunteer", "Rola: Wolontariusz"],
+    ["student", "Rola: Student"],
+    ["instructor", "Rola: Psycholog prowadzący"],
+    ["project_manager", "Rola: Opiekun Projektu"],
+    ["super_admin", "Rola: Super Admin"],
+  ])("rola %s ma etykietę polską", (rola, oczekiwany) => {
+    expect(opisRoliOsoby(rola)).toBe(oczekiwany);
+  });
+
+  it("rola spoza słownika nie zwraca opisu z surowym kodem", () => {
+    expect(opisRoliOsoby("obca_rola")).toBeUndefined();
   });
 });

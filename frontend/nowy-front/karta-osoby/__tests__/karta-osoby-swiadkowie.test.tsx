@@ -274,6 +274,27 @@ describe("KartaOsoby — jeden rząd przycisków w edycji", () => {
   });
 });
 
+describe("KartaOsoby — rola w nagłówku", () => {
+  it("nagłówek pokazuje etykietę polską roli, bez surowego kodu", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const { container } = render(<KartaOsoby id={17} />);
+    await screen.findByRole("heading", { name: "Marta Demo" });
+    expect(screen.getByText("Rola: Wolontariusz")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("volunteer");
+  });
+
+  it("rola spoza słownika: bez pary „Rola”, surowy kod nie trafia do dokumentu", async () => {
+    const karta = { ...(KARTA as object), profile: { ...PROFIL, role: "obca_rola" } };
+    pobierzKarteOsoby.mockResolvedValue(karta);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const { container } = render(<KartaOsoby id={17} />);
+    await screen.findByRole("heading", { name: "Marta Demo" });
+    expect(screen.queryByText(/^Rola:/)).toBeNull();
+    expect(container.textContent).not.toContain("obca_rola");
+  });
+});
+
 describe("KartaOsoby — rzetelność", () => {
   it("404 rzetelności: reszta karty działa, bez komunikatu błędu", async () => {
     pobierzKarteOsoby.mockResolvedValue(KARTA);

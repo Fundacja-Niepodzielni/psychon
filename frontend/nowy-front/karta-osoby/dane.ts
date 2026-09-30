@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/klient";
+import { ROLE_LABELS } from "@/lib/h18/labels";
 import type { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import type { KolumnaDataTable, WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
 
@@ -281,4 +282,11 @@ export function wierszeDanychOsoby(profile: ProfilOsobyKarty): WierszDataTable[]
 
 export function kolumnyDanychOsoby(): KolumnaDataTable[] {
   return KOLUMNY_DANYCH_OSOBY;
+}
+
+/** Opis roli do nagłówka karty: etykieta polska z `ROLE_LABELS` albo `undefined`
+ * dla roli spoza słownika — surowy kod roli nigdy nie trafia do interfejsu. */
+export function opisRoliOsoby(rola: string): string | undefined {
+  const etykieta = (ROLE_LABELS as Record<string, string | undefined>)[rola];
+  return etykieta ? `Rola: ${etykieta}` : undefined;
 }
