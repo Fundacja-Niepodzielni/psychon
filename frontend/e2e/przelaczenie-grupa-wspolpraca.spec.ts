@@ -146,7 +146,7 @@ test.describe("grupa przełączenia wspolpraca — nowa trasa osiągalna z menu,
 
     await link.click();
     await expect(page).toHaveURL(/\/panel\/dalsza-wspolpraca$/);
-    await expect(page.getByText("Dalsza współpraca").first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Po programie" })).toBeVisible();
 
     // Stara trasa: bezpośrednie żądanie HTTP (bez sesji — strażnik
     // przełączenia w page.tsx nie sprawdza roli/tokenu, tylko stan grupy).
@@ -176,7 +176,7 @@ test.describe("grupa przełączenia wspolpraca — nowa trasa osiągalna z menu,
 
     await link.click();
     await expect(page).toHaveURL(/\/admin\/zgloszenia-wspolpracy$/);
-    await expect(page.getByText("Zgłoszenia dalszej współpracy").first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Zgłoszenia współpracy" })).toBeVisible();
 
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
