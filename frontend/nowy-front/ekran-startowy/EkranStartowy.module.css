@@ -1,0 +1,29 @@
+/* Moduł CSS ekranu „Zacznij tutaj — treść” — wartości wyglądu wyłącznie
+   z tokenów, zero zapisów wprost. */
+.podglad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16) var(--card-px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  color: var(--text);
+}
+
+.kartaFilm {
+  background: var(--card-warm);
+}
+
+/* Treść wpisana przez administrację jest tekstem: akapity po pustym wierszu,
+   pojedyncze łamania wiersza zachowane — jak u odbiorcy. */
+.tekst {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
