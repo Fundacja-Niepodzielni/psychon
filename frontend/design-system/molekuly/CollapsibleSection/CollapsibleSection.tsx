@@ -30,6 +30,17 @@ export function CollapsibleSection({
   domyslnieRozwinieta = false,
 }: WlasciwosciCollapsibleSection) {
   const [rozwinieta, setRozwinieta] = useState(domyslnieRozwinieta);
+  // Zmiana `domyslnieRozwinieta` po montowaniu: zbocze `false` -> `true`
+  // rozwija sekcję (np. błąd pola pojawia się po zapisie), zbocze `true` ->
+  // `false` jej nie zwija — zwijanie zostaje decyzją osoby. Ustawienie stanu
+  // w trakcie renderu (wzorzec „poprzednia wartość”) — bez migania sekcji.
+  const [poprzedniaDomyslna, setPoprzedniaDomyslna] = useState(domyslnieRozwinieta);
+  if (poprzedniaDomyslna !== domyslnieRozwinieta) {
+    setPoprzedniaDomyslna(domyslnieRozwinieta);
+    if (domyslnieRozwinieta) {
+      setRozwinieta(true);
+    }
+  }
   const idTresci = useId();
 
   return (
