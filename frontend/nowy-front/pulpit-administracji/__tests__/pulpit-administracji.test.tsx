@@ -78,7 +78,10 @@ describe("Pulpit administracji — stany ekranu", () => {
     expect(screen.getByText("Ukończenia programu")).toBeInTheDocument();
     expect(screen.getByText("Wydane certyfikaty")).toBeInTheDocument();
     expect(container.querySelector("#pulpit-uczestnicy")?.textContent).toContain("12");
+    expect(container.querySelector("#pulpit-uczestnicy")?.textContent).toContain("osób");
+    expect(container.querySelector("#pulpit-ukonczenia")?.textContent).toContain("osoby");
     expect(container.querySelector("#pulpit-certyfikaty")?.textContent).toContain("2");
+    expect(container.querySelector("#pulpit-certyfikaty")?.textContent).toContain("certyfikaty");
 
     const odnosnik = screen.getByRole("link", { name: "Otwórz: Zgłoszenia rekrutacyjne" });
     expect(odnosnik).toHaveAttribute("href", "/admin/uczestniczki");
@@ -90,6 +93,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     expect(container.querySelector("[data-obszar='wspierajaca']")?.contains(karta)).toBe(true);
     expect(screen.getByRole("heading", { level: 3, name: "Zgłoszenia rekrutacyjne" })).toBeTruthy();
     expect(karta.querySelector("#pulpit-zgloszenia")?.textContent).toContain("4");
+    expect(karta.querySelector("#pulpit-zgloszenia")?.textContent).toContain("zgłoszenia");
     expect(screen.queryByText("Zgłoszenia do decyzji")).not.toBeInTheDocument();
     expect(przyciskiGlowne(container)).toHaveLength(1);
     expect(container.querySelectorAll("button")).toHaveLength(2);

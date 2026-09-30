@@ -42,10 +42,13 @@ interface WlasciwosciRecordList {
   tytul: string;
   wiersze: WierszRecordList[];
   /** Jednostka/mianownik sumy w stopce (KO-6, jak `Num`/`StatTile`).
+   * Napis stoi przy każdej liczbie bez zmian; funkcja `(liczba) => napis`
+   * dostaje liczbę wiersza albo sumy i zwraca jednostkę w odpowiedniej
+   * formie (odmiana liczebnika po stronie wołającego — DS nie zna języka).
    * OPCJONALNA — pomiń, gdy `wartosc` wierszy nie ma sensownej sumy
    * zbiorczej (np. ranga/kolejność); stopka „Razem” wtedy się nie
    * renderuje, zamiast pokazywać liczbę bez znaczenia. */
-  jednostkaSumy?: string;
+  jednostkaSumy?: string | ((liczba: number) => string);
   /** Renderowane zamiast listy i stopki, gdy `wiersze` jest puste
    * („EmptyState gdy zero wierszy”). */
   pusty: WlasciwosciPustyRecordList;
@@ -70,6 +73,8 @@ export function RecordList({ tytul, wiersze, jednostkaSumy, pusty }: Wlasciwosci
     );
   }
 
+  const jednostka = (liczba: number): string =>
+    typeof jednostkaSumy === "function" ? jednostkaSumy(liczba) : (jednostkaSumy ?? "");
   const maSume = jednostkaSumy !== undefined && wiersze.every((wiersz) => wiersz.wartosc !== undefined);
   const suma = maSume ? wiersze.reduce((laczna, wiersz) => laczna + (wiersz.wartosc ?? 0), 0) : 0;
 
@@ -86,7 +91,7 @@ export function RecordList({ tytul, wiersze, jednostkaSumy, pusty }: Wlasciwosci
             plakietka={wiersz.plakietka}
             licznik={
               jednostkaSumy !== undefined && wiersz.wartosc !== undefined
-                ? { wartosc: wiersz.wartosc, etykieta: jednostkaSumy }
+                ? { wartosc: wiersz.wartosc, etykieta: jednostka(wiersz.wartosc) }
                 : undefined
             }
             akcja={wiersz.akcja}
@@ -96,7 +101,7 @@ export function RecordList({ tytul, wiersze, jednostkaSumy, pusty }: Wlasciwosci
       {maSume && (
         <div className={style.stopka}>
           <span>Razem</span>
-          <Num wartosc={suma} etykieta={jednostkaSumy} />
+          <Num wartosc={suma} etykieta={jednostka(suma)} />
         </div>
       )}
     </section>

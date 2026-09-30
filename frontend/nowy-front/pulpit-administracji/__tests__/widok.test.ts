@@ -4,6 +4,9 @@ import { join } from "node:path";
 import { ApiError } from "@/lib/api/klient";
 import {
   adresWewnetrzny,
+  FORMY_SPRAW,
+  FORMY_ZGLOSZEN,
+  jednostka,
   NAZWY_SPRAW,
   odczytajPulpit,
   rodzajBledu,
@@ -114,9 +117,33 @@ describe("zbudujWidok", () => {
     const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu())!);
     expect(widok.kafle.map((k) => [k.id, k.wartosc, k.mianownik])).toEqual([
       ["pulpit-uczestnicy", 12, "osób"],
-      ["pulpit-ukonczenia", 3, "osób"],
-      ["pulpit-certyfikaty", 2, "certyfikatów"],
+      ["pulpit-ukonczenia", 3, "osoby"],
+      ["pulpit-certyfikaty", 2, "certyfikaty"],
     ]);
+  });
+
+  it.each([
+    [0, "osób", "certyfikatów"],
+    [1, "osoba", "certyfikat"],
+    [4, "osoby", "certyfikaty"],
+    [12, "osób", "certyfikatów"],
+    [22, "osoby", "certyfikaty"],
+  ])("jednostki kafli przy liczbie %i: osoba/certyfikat w odpowiedniej formie", (liczba, osoby, certyfikaty) => {
+    const dane = odczytajPulpit(
+      odpowiedzPulpitu({ counters: { participants: liczba, completed: liczba, certificates: liczba } }),
+    )!;
+    expect(zbudujWidok(dane).kafle.map((k) => k.mianownik)).toEqual([osoby, osoby, certyfikaty]);
+  });
+
+  it.each([
+    [0, "spraw", "zgłoszeń"],
+    [1, "sprawa", "zgłoszenie"],
+    [3, "sprawy", "zgłoszenia"],
+    [5, "spraw", "zgłoszeń"],
+    [13, "spraw", "zgłoszeń"],
+  ])("formy jednostek spraw i zgłoszeń przy liczbie %i", (liczba, sprawy, zgloszenia) => {
+    expect(jednostka(liczba, FORMY_SPRAW)).toBe(sprawy);
+    expect(jednostka(liczba, FORMY_ZGLOSZEN)).toBe(zgloszenia);
   });
 
   it("cel to link kolejki applications, także gdy inna kolejka ma więcej spraw", () => {

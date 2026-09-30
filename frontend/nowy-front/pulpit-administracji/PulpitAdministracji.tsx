@@ -11,7 +11,16 @@ import { CaseCard } from "@/design-system/organizmy/CaseCard/CaseCard";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import { pobierzPulpitAdministracji, type PulpitAdministracji as DanePulpitu } from "./dane";
-import { odczytajPulpit, rodzajBledu, TEKST_BRAK_SPRAW, zbudujWidok, type WidokPulpitu } from "./widok";
+import {
+  FORMY_SPRAW,
+  FORMY_ZGLOSZEN,
+  jednostka,
+  odczytajPulpit,
+  rodzajBledu,
+  TEKST_BRAK_SPRAW,
+  zbudujWidok,
+  type WidokPulpitu,
+} from "./widok";
 import style from "./PulpitAdministracji.module.css";
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Pulpit" }];
@@ -168,7 +177,7 @@ function ListaSpraw({
   return (
     <RecordList
       tytul="Sprawy do decyzji"
-      jednostkaSumy="spraw"
+      jednostkaSumy={(liczba) => jednostka(liczba, FORMY_SPRAW)}
       wiersze={
         widok.brakSpraw
           ? []
@@ -205,7 +214,7 @@ function ZgloszeniaRekrutacyjne({ cel }: { cel: NonNullable<WidokPulpitu["cel"]>
       pary={[
         { etykieta: "Stan", wartosc: "czeka na decyzję" },
       ]}
-      statystyka={{ id: "pulpit-zgloszenia", etykieta: "Czeka na decyzję", wartosc: cel.liczba, mianownik: "zgłoszeń" }}
+      statystyka={{ id: "pulpit-zgloszenia", etykieta: "Czeka na decyzję", wartosc: cel.liczba, mianownik: jednostka(cel.liczba, FORMY_ZGLOSZEN) }}
     />
   );
 }
