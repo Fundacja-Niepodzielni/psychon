@@ -109,11 +109,14 @@ describe("tokeny nowego frontu pod trasą produktu", () => {
 });
 
 /**
- * Powłoka panelu wchodzi do grupy wyłącznie przez dwa układy segmentów:
+ * Dotychczasowa powłoka panelu wchodzi do grupy wyłącznie w dwóch miejscach:
  * dokładnie dwa importy `components/layout/PanelShell` poza testami, po
- * jednym w `panel/layout.tsx` i `admin/layout.tsx`; układ grupy go nie
- * importuje, a oba układy segmentów owijają treść w dostawcę kontekstu
- * powłoki.
+ * jednym w `panel/layout.tsx` (panel uczestnika — nowa ramka tej roli
+ * przyjdzie osobno) i `admin/RamkaAdministracji.tsx` (wybór ramki dla stron
+ * starej grupy tras administracji). Układ segmentu `admin/layout.tsx`
+ * niesie już nową ramkę z makiety (`PowlokaAdministracji`) i `PanelShell`
+ * nie importuje. Układ grupy go nie importuje, a oba układy segmentów
+ * owijają treść w dostawcę kontekstu powłoki.
  */
 const KORZEN_GRUPY = path.join(KATALOG, "app", "(przelaczenie)");
 
@@ -132,15 +135,22 @@ function importyPanelShell(zrodlo: string): number {
 }
 
 describe("powłoka panelu w grupie tras (przelaczenie)", () => {
-  it("dokładnie dwa importy PanelShell poza testami: panel/layout.tsx i admin/layout.tsx", () => {
+  it("dokładnie dwa importy PanelShell poza testami: panel/layout.tsx i admin/RamkaAdministracji.tsx", () => {
     const wPlikach = plikiZrodlowe(KORZEN_GRUPY)
       .map((plik) => ({ plik: path.relative(KORZEN_GRUPY, plik).split(path.sep).join("/"), liczba: importyPanelShell(readFileSync(plik, "utf-8")) }))
       .filter((wpis) => wpis.liczba > 0);
 
     expect(wPlikach).toEqual([
-      { plik: "admin/layout.tsx", liczba: 1 },
+      { plik: "admin/RamkaAdministracji.tsx", liczba: 1 },
       { plik: "panel/layout.tsx", liczba: 1 },
     ]);
+  });
+
+  it("układ segmentu admin/layout.tsx niesie nową ramkę z makiety, nie PanelShell", () => {
+    const zrodlo = readFileSync(path.join(KORZEN_GRUPY, "admin", "layout.tsx"), "utf-8");
+    expect(importyPanelShell(zrodlo)).toBe(0);
+    expect(zrodlo).toMatch(/import\s*\{\s*PowlokaAdministracji\s*\}\s*from\s*["']\.\/PowlokaAdministracji["']/);
+    expect(zrodlo).toMatch(/<PowlokaAdministracji>/);
   });
 
   it("układ grupy nie importuje PanelShell", () => {

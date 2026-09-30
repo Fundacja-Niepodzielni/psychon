@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Avatar } from "../../atomy/Avatar/Avatar";
 import { Text } from "../../atomy/Text/Text";
 import { MenuGroup } from "../../molekuly/MenuItem/MenuGroup";
@@ -16,6 +17,12 @@ interface GrupaPanelNav {
   naglowek: string;
   pozycje: PozycjaGrupyPanelNav[];
   wPrzygotowaniu?: string[];
+  /**
+   * Jedna linia na dole grupy: „W przygotowaniu: {treść}.” — brzmienie ze
+   * słownika interfejsu 2.1 (pozycje menu jeszcze niegotowe) i z makiety
+   * 2.0.4. Zwykły tekst, bez łącza i bez roli odnośnika.
+   */
+  liniaWPrzygotowaniu?: string;
 }
 
 interface UzytkownikPanelNav {
@@ -36,6 +43,13 @@ interface WlasciwosciPanelNav {
    * poligonie, a nie trzy tryby zaszyte tutaj.
    */
   grupy: GrupaPanelNav[];
+  /** Nazwa punktu orientacyjnego `nav` (domyślnie „Nawigacja panelu”). */
+  etykieta?: string;
+  /**
+   * Blok konta na końcu menu (np. grupa „Konto” z wylogowaniem). Organizm go
+   * tylko umieszcza — przycisk i jego obsługę dostarcza wywołujący.
+   */
+  konto?: ReactNode;
 }
 
 /**
@@ -45,9 +59,9 @@ interface WlasciwosciPanelNav {
  * dotyku każdej pozycji ma `min-height: var(--hit-min)` wbudowane w
  * `MenuItem.module.css` `.pozycja` — nic tu tego nie nadpisuje.
  */
-export function PanelNav({ uzytkownik, grupy }: WlasciwosciPanelNav) {
+export function PanelNav({ uzytkownik, grupy, etykieta = "Nawigacja panelu", konto }: WlasciwosciPanelNav) {
   return (
-    <nav aria-label="Nawigacja panelu" className={style.panel}>
+    <nav aria-label={etykieta} className={style.panel}>
       <div className={style.profil}>
         <Avatar imie={uzytkownik.imie} nazwisko={uzytkownik.nazwisko} />
         <div className={style.profilTekst}>
@@ -57,9 +71,15 @@ export function PanelNav({ uzytkownik, grupy }: WlasciwosciPanelNav) {
       </div>
 
       <div className={style.grupy}>
-        {grupy.map((grupa) => (
-          <MenuGroup key={grupa.naglowek} {...grupa} />
+        {grupy.map(({ liniaWPrzygotowaniu, ...grupa }) => (
+          <div key={grupa.naglowek} className={style.grupa}>
+            <MenuGroup {...grupa} />
+            {liniaWPrzygotowaniu && (
+              <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${liniaWPrzygotowaniu}.`}</p>
+            )}
+          </div>
         ))}
+        {konto}
       </div>
     </nav>
   );
