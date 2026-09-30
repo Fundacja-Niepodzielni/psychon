@@ -30,6 +30,7 @@ function plikiZrodlowe(katalog: string): string[] {
 const PLIKI_EKRANU = [
   ...plikiZrodlowe("nowy-front/kurs-tematy"),
   join(KATALOG_APLIKACJI, "app/nowy-front/kurs/[id]/page.tsx"),
+  join(KATALOG_APLIKACJI, "app/nowy-front/kurs/[id]/loading.tsx"),
 ];
 
 function tresc(sciezka: string) {
@@ -50,6 +51,11 @@ describe("A-12 — źródła ekranu", () => {
       /import \{ DetailTemplate \} from "@\/design-system\/szablony\/DetailTemplate\/DetailTemplate";/,
     );
     expect(ekran).toMatch(/<DetailTemplate\b/);
+    const ladowanie = tresc(join(KATALOG_APLIKACJI, "app/nowy-front/kurs/[id]/loading.tsx"));
+    expect(ladowanie).toMatch(
+      /import \{ DetailTemplate \} from "@\/design-system\/szablony\/DetailTemplate\/DetailTemplate";/,
+    );
+    expect(ladowanie).toMatch(/<DetailTemplate\b/);
   });
 
   it("checklistaPublikacji: jedna definicja w dane.ts, ekran ją importuje", () => {
