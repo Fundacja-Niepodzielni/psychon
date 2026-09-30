@@ -1,0 +1,20 @@
+/* Moduł CSS ekranu „Pulpit prowadzącego” — wartości wyglądu wyłącznie z
+   tokenów, zero zapisów wprost. */
+.sekcje {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.krok {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.akcja {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
