@@ -120,15 +120,19 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna dwadzieścia jeden grup dzisiejszego kanonu", () => {
+  it("zna dwadzieścia sześć grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "decyzjaProfilu",
       "edycjaLekcji",
       "ekranStartowy",
       "formyStazu",
       "kartaOsoby",
+      "kolejkaProfili",
+      "kolejkaStazu",
       "kurs",
+      "kursyProwadzacego",
       "lekcja",
+      "listaOsob",
       "nabor",
       "noweKonto",
       "powiadomienia",
@@ -137,6 +141,7 @@ describe("rejestr GRUPY — zawartość", () => {
       "pulpitAdministracji",
       "pulpitProwadzacego",
       "pulpitUczestnika",
+      "skrzynkaPytan",
       "sprawy",
       "superwizje",
       "ustawieniaProgramu",
@@ -156,5 +161,23 @@ describe("rejestr GRUPY — zawartość", () => {
     const [ekran] = GRUPY.kurs.ekrany;
     expect(ekran.panel).toBe("prowadzacy");
     expect(ekran.staraTrasa).toBe(ekran.nowaTrasa);
+  });
+
+  it("nabór niesie dwa ekrany administracji: listę (pierwsza, bo menu czyta pierwszy ekran panelu) i szczegół", () => {
+    expect(GRUPY.nabor.ekrany.map((e) => e.nowaTrasa)).toEqual(["/admin/nabor", "/admin/nabor/[id]"]);
+    expect(GRUPY.nabor.ekrany.map((e) => e.staraTrasa)).toEqual(["/admin/uczestniczki", null]);
+    expect(celTrasyEkranu({ ...GRUPY.nabor, wlaczona: true }, "administracja")).toBe("/admin/nabor");
+    expect(celTrasyEkranu(GRUPY.nabor, "administracja")).toBe("/admin/uczestniczki");
+  });
+
+  it("pięć grup kolejek i list zachowuje adres starej strony (podmiana treści)", () => {
+    const klucze = ["listaOsob", "kolejkaProfili", "kolejkaStazu", "kursyProwadzacego", "skrzynkaPytan"] as const;
+    const panele = ["administracja", "administracja", "administracja", "prowadzacy", "prowadzacy"];
+    klucze.forEach((klucz, i) => {
+      const [ekran] = GRUPY[klucz].ekrany;
+      expect(ekran.panel, klucz).toBe(panele[i]);
+      expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
+      expect(GRUPY[klucz].wlaczona, klucz).toBe(false);
+    });
   });
 });
