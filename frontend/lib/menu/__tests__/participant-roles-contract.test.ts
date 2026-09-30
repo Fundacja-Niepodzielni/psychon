@@ -41,7 +41,11 @@ const PAKIETY: Record<string, MenuEntry> = {
  */
 const OCZEKIWANE_ROLE: Record<string, Role[]> = {
   // backend/routes/api/h01.php:24-25 — grupa `auth:keycloak`, bez `role:` → GET /me
-  "/panel/po-programie": ["volunteer", "student"],
+  // Na tej gałęzi grupa przełączenia `wspolpraca` jest włączona
+  // (`lib/przelaczenie/grupy.ts`), więc wpis niesie już nową trasę produktu,
+  // nie starą `/panel/po-programie` — sam middleware backendu (rola) jest
+  // bez zmian, zmienia się tylko adres.
+  "/panel/dalsza-wspolpraca": ["volunteer", "student"],
   // backend/routes/api/h01.php:24-26 — grupa `auth:keycloak`, bez `role:` → GET/PATCH /me
   "/panel/profil": ["volunteer", "student"],
   // backend/routes/api/h05.php:22-23 — grupa ['auth:keycloak','access.active'], bez `role:` → GET /courses

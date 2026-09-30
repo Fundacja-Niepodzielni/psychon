@@ -20,6 +20,7 @@ import h20Raport from "./h20-raport";
 import h20Dziennik from "./h20-dziennik";
 import h21EkranStartowy from "./h21-ekran-startowy";
 import h22WzoryDokumentow from "./h22-wzory-dokumentow";
+import h01ZgloszeniaWspolpracy from "./h01-zgloszenia-wspolpracy";
 // import hXXNazwa from "./hXX-nazwa"; // ← dodaj swój wpis jedną linią
 
 import { sortMenu, type MenuEntry, type MenuSection } from "../types";
@@ -40,6 +41,12 @@ export const adminMenu: MenuEntry[] = sortMenu([
   h20Dziennik,
   h21EkranStartowy,
   h22WzoryDokumentow,
+  // Wpis grupy przełączenia `wspolpraca` (`lib/przelaczenie/grupy.ts`) —
+  // tablica 0/1 elementów: pusta, dopóki grupa jest wyłączona (bit w bit
+  // jak na bazie, patrz `h01-zgloszenia-wspolpracy.ts`), jeden wpis po
+  // włączeniu. Rozpłaszczona `...`, żeby ta lista nie potrzebowała gałęzi
+  // `if` na wpis, którego dziś może tu nie być.
+  ...h01ZgloszeniaWspolpracy,
   // hXXNazwa, // ← i drugą tutaj
 ]);
 

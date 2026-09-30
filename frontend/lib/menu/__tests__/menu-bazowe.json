@@ -1,0 +1,525 @@
+{
+  "super_admin": [
+    {
+      "entries": [
+        {
+          "label": "Pulpit",
+          "href": "/admin",
+          "order": 10,
+          "icon": "dashboard",
+          "exact": true
+        }
+      ]
+    },
+    {
+      "id": "nauka",
+      "label": "Nauka",
+      "entries": [
+        {
+          "label": "Kursy",
+          "href": "/admin/kursy",
+          "order": 20,
+          "icon": "book",
+          "section": "nauka"
+        },
+        {
+          "label": "Czas nauki",
+          "href": "/admin/czas-nauki",
+          "order": 30,
+          "icon": "clock",
+          "section": "nauka"
+        }
+      ]
+    },
+    {
+      "id": "osoby",
+      "label": "Osoby",
+      "entries": [
+        {
+          "label": "Uczestniczki",
+          "href": "/admin/uczestniczki",
+          "order": 40,
+          "icon": "users",
+          "section": "osoby"
+        },
+        {
+          "label": "Certyfikaty",
+          "href": "/admin/certyfikaty",
+          "order": 45,
+          "icon": "award",
+          "section": "osoby"
+        },
+        {
+          "label": "Profile psychologa",
+          "href": "/admin/profile",
+          "order": 50,
+          "icon": "badge-check",
+          "section": "osoby"
+        }
+      ]
+    },
+    {
+      "id": "praktyka",
+      "label": "Praktyka",
+      "entries": [
+        {
+          "label": "Akceptacja stażu",
+          "href": "/admin/staz",
+          "order": 60,
+          "icon": "clipboard-check",
+          "section": "praktyka"
+        },
+        {
+          "label": "Superwizje",
+          "href": "/admin/superwizje",
+          "order": 70,
+          "icon": "messages",
+          "section": "praktyka"
+        }
+      ]
+    },
+    {
+      "id": "obsluga",
+      "label": "Obsługa",
+      "entries": [
+        {
+          "label": "Sprawy",
+          "href": "/admin/sprawy",
+          "order": 80,
+          "icon": "folder",
+          "section": "obsluga"
+        },
+        {
+          "label": "Skrzynka e-maili",
+          "href": "/admin/emails",
+          "order": 90,
+          "icon": "mail",
+          "section": "obsluga"
+        }
+      ]
+    },
+    {
+      "id": "raporty",
+      "label": "Raporty",
+      "entries": [
+        {
+          "label": "Raport",
+          "href": "/admin/raport",
+          "order": 100,
+          "icon": "chart",
+          "section": "raporty"
+        },
+        {
+          "label": "Dziennik działań",
+          "href": "/admin/dziennik",
+          "order": 110,
+          "icon": "history",
+          "section": "raporty"
+        }
+      ]
+    },
+    {
+      "id": "konfiguracja",
+      "label": "Konfiguracja",
+      "entries": [
+        {
+          "label": "Ekran startowy",
+          "href": "/admin/ekran-startowy",
+          "order": 120,
+          "icon": "layout",
+          "section": "konfiguracja"
+        },
+        {
+          "label": "Ustawienia",
+          "href": "/admin/ustawienia",
+          "order": 130,
+          "icon": "settings",
+          "section": "konfiguracja"
+        },
+        {
+          "label": "Wzory dokumentów",
+          "href": "/admin/wzory-dokumentow",
+          "order": 140,
+          "icon": "file-text",
+          "section": "konfiguracja",
+          "roles": [
+            "project_manager",
+            "super_admin"
+          ]
+        }
+      ]
+    }
+  ],
+  "project_manager": [
+    {
+      "entries": [
+        {
+          "label": "Pulpit",
+          "href": "/admin",
+          "order": 10,
+          "icon": "dashboard",
+          "exact": true
+        }
+      ]
+    },
+    {
+      "id": "nauka",
+      "label": "Nauka",
+      "entries": [
+        {
+          "label": "Kursy",
+          "href": "/admin/kursy",
+          "order": 20,
+          "icon": "book",
+          "section": "nauka"
+        },
+        {
+          "label": "Czas nauki",
+          "href": "/admin/czas-nauki",
+          "order": 30,
+          "icon": "clock",
+          "section": "nauka"
+        }
+      ]
+    },
+    {
+      "id": "osoby",
+      "label": "Osoby",
+      "entries": [
+        {
+          "label": "Uczestniczki",
+          "href": "/admin/uczestniczki",
+          "order": 40,
+          "icon": "users",
+          "section": "osoby"
+        },
+        {
+          "label": "Certyfikaty",
+          "href": "/admin/certyfikaty",
+          "order": 45,
+          "icon": "award",
+          "section": "osoby"
+        },
+        {
+          "label": "Profile psychologa",
+          "href": "/admin/profile",
+          "order": 50,
+          "icon": "badge-check",
+          "section": "osoby"
+        }
+      ]
+    },
+    {
+      "id": "praktyka",
+      "label": "Praktyka",
+      "entries": [
+        {
+          "label": "Akceptacja stażu",
+          "href": "/admin/staz",
+          "order": 60,
+          "icon": "clipboard-check",
+          "section": "praktyka"
+        },
+        {
+          "label": "Superwizje",
+          "href": "/admin/superwizje",
+          "order": 70,
+          "icon": "messages",
+          "section": "praktyka"
+        }
+      ]
+    },
+    {
+      "id": "obsluga",
+      "label": "Obsługa",
+      "entries": [
+        {
+          "label": "Sprawy",
+          "href": "/admin/sprawy",
+          "order": 80,
+          "icon": "folder",
+          "section": "obsluga"
+        },
+        {
+          "label": "Skrzynka e-maili",
+          "href": "/admin/emails",
+          "order": 90,
+          "icon": "mail",
+          "section": "obsluga"
+        }
+      ]
+    },
+    {
+      "id": "raporty",
+      "label": "Raporty",
+      "entries": [
+        {
+          "label": "Raport",
+          "href": "/admin/raport",
+          "order": 100,
+          "icon": "chart",
+          "section": "raporty"
+        },
+        {
+          "label": "Dziennik działań",
+          "href": "/admin/dziennik",
+          "order": 110,
+          "icon": "history",
+          "section": "raporty"
+        }
+      ]
+    },
+    {
+      "id": "konfiguracja",
+      "label": "Konfiguracja",
+      "entries": [
+        {
+          "label": "Ekran startowy",
+          "href": "/admin/ekran-startowy",
+          "order": 120,
+          "icon": "layout",
+          "section": "konfiguracja"
+        },
+        {
+          "label": "Ustawienia",
+          "href": "/admin/ustawienia",
+          "order": 130,
+          "icon": "settings",
+          "section": "konfiguracja"
+        },
+        {
+          "label": "Wzory dokumentów",
+          "href": "/admin/wzory-dokumentow",
+          "order": 140,
+          "icon": "file-text",
+          "section": "konfiguracja",
+          "roles": [
+            "project_manager",
+            "super_admin"
+          ]
+        }
+      ]
+    }
+  ],
+  "instructor": [
+    {
+      "entries": [
+        {
+          "label": "Start",
+          "href": "/prowadzacy",
+          "order": 10,
+          "icon": "home",
+          "exact": true
+        },
+        {
+          "label": "Kursy",
+          "href": "/prowadzacy/kursy",
+          "order": 12,
+          "icon": "book"
+        },
+        {
+          "label": "Moja grupa",
+          "href": "/prowadzacy/grupa",
+          "order": 15,
+          "icon": "users"
+        },
+        {
+          "label": "Wątek grupowy",
+          "href": "/prowadzacy/watek-grupowy",
+          "order": 17,
+          "icon": "messages"
+        },
+        {
+          "label": "Pytania",
+          "href": "/prowadzacy/pytania",
+          "order": 20,
+          "icon": "question"
+        }
+      ]
+    }
+  ],
+  "volunteer": [
+    {
+      "entries": [
+        {
+          "label": "Start",
+          "href": "/panel/start",
+          "order": 10,
+          "icon": "rocket",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        },
+        {
+          "label": "Pulpit",
+          "href": "/panel/pulpit",
+          "order": 15,
+          "icon": "dashboard"
+        }
+      ]
+    },
+    {
+      "id": "program",
+      "label": "Program",
+      "entries": [
+        {
+          "label": "Kursy",
+          "href": "/panel/kursy",
+          "order": 20,
+          "icon": "book",
+          "section": "program",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        },
+        {
+          "label": "Dziennik stażu",
+          "href": "/panel/staz",
+          "order": 30,
+          "icon": "clipboard-list",
+          "section": "program",
+          "roles": [
+            "volunteer"
+          ]
+        },
+        {
+          "label": "Superwizja",
+          "href": "/panel/superwizja",
+          "order": 35,
+          "icon": "messages",
+          "section": "program",
+          "roles": [
+            "volunteer"
+          ]
+        },
+        {
+          "label": "Certyfikat",
+          "href": "/panel/certyfikat",
+          "order": 80,
+          "icon": "award",
+          "section": "program",
+          "roles": [
+            "volunteer"
+          ]
+        },
+        {
+          "label": "Po programie",
+          "href": "/panel/po-programie",
+          "order": 82,
+          "icon": "flag",
+          "section": "program",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "konto",
+      "label": "Twoje konto",
+      "entries": [
+        {
+          "label": "Dokumenty",
+          "href": "/panel/dokumenty",
+          "order": 78,
+          "icon": "file-text",
+          "section": "konto",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        },
+        {
+          "label": "Profil psychologa",
+          "href": "/panel/profil-psychologa",
+          "order": 85,
+          "icon": "badge-check",
+          "section": "konto",
+          "roles": [
+            "volunteer"
+          ]
+        },
+        {
+          "label": "Profil",
+          "href": "/panel/profil",
+          "order": 90,
+          "icon": "user",
+          "section": "konto",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        }
+      ]
+    }
+  ],
+  "student": [
+    {
+      "entries": [
+        {
+          "label": "Start",
+          "href": "/panel/start",
+          "order": 10,
+          "icon": "rocket",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        },
+        {
+          "label": "Pulpit",
+          "href": "/panel/pulpit",
+          "order": 15,
+          "icon": "dashboard"
+        },
+        {
+          "label": "Kursy",
+          "href": "/panel/kursy",
+          "order": 20,
+          "icon": "book",
+          "section": "program",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        },
+        {
+          "label": "Dokumenty",
+          "href": "/panel/dokumenty",
+          "order": 78,
+          "icon": "file-text",
+          "section": "konto",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        },
+        {
+          "label": "Po programie",
+          "href": "/panel/po-programie",
+          "order": 82,
+          "icon": "flag",
+          "section": "program",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        },
+        {
+          "label": "Profil",
+          "href": "/panel/profil",
+          "order": 90,
+          "icon": "user",
+          "section": "konto",
+          "roles": [
+            "volunteer",
+            "student"
+          ]
+        }
+      ]
+    }
+  ]
+}

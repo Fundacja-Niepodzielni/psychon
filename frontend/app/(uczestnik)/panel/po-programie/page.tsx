@@ -1,115 +1,23 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import ErrorState from "@/components/molecules/ErrorState";
-import ForbiddenState from "@/components/molecules/ForbiddenState";
-import LoadingState from "@/components/molecules/LoadingState";
-import PageTemplate from "@/components/templates/PageTemplate";
-import ProgramCompletedCard from "@/components/po-programie/ProgramCompletedCard";
-import ProgramPendingCard from "@/components/po-programie/ProgramPendingCard";
-import { api, ApiError } from "@/lib/api";
-import type { Role } from "@/lib/home-by-role";
-
-interface Me {
-  role: Role;
-  program_completed_at: string | null;
-}
-
-const LOAD_ERROR_MESSAGE = "Nie udało się wczytać ekranu. Spróbuj ponownie.";
+import { redirect } from "next/navigation";
+import { GRUPY, czyStaraTrasaPrzekierowuje } from "@/lib/przelaczenie/grupy";
+import PoProgramieStaraTresc from "./StaraTresc";
 
 /**
- * Ekran po ukończeniu programu — `GET /me`. `program_completed_at`
- * ustawione → status ukończenia + odnośniki do dokumentów, kursów i (dla
- * `volunteer`) certyfikatu. Puste → stan informacyjny bez odnośników.
- *
- * Formularz zgłoszenia dalszej współpracy nie jest tu budowany dlatego, że
- * ekrany są zamrożone do czasu przyjęcia makiet — a nie dlatego, że brakuje
- * tras. Trasy istnieją: `POST /cooperation-requests`,
- * `GET /cooperation-requests/mine` oraz dwie po stronie obsługi zgłoszeń
- * (`backend/routes/api/h01.php`).
+ * Stara trasa produktu `/panel/po-programie`. Bramka
+ * czyta rejestr przełączenia (`lib/przelaczenie/grupy.ts`, grupa
+ * `wspolpraca`): grupa wyłączona (dziś, na tej gałęzi) → renderuje dokładnie
+ * starą treść (`StaraTresc.tsx`, przeniesioną bez zmiany); grupa włączona →
+ * przekierowuje na nową trasę produktu, bez 404. Serwerowy `redirect()` z
+ * `next/navigation` (Server Component, żadnych hooków w tym pliku) — ten sam
+ * powód co przy każdej innej trasie tego mechanizmu: warunek jest stały na
+ * całą gałąź/build, nie zmienia się między renderami jednego działającego
+ * procesu.
  */
 export default function PoProgramiePage() {
-  const [me, setMe] = useState<Me | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  /**
-   * `GET /me` (`backend/routes/api/h01.php:27`) idzie przez `auth:keycloak`
-   * — gwardię `keycloak` (`backend/config/auth.php:49-52`, driver
-   * `keycloak`), rejestrowaną `Auth::viaRequest('keycloak', ...)` w
-   * `AppServiceProvider::boot()` i realizowaną przez `KeycloakGuardResolver`
-   * (nie przez pośrednika `AuthenticateKeycloakToken` — ten stoi wyłącznie
-   * na `h03.php` i `sso.php`). Brak/zły token, unieważniona back-channel
-   * sesja, konto zablokowane/zanonimizowane — resolver zwraca `null`,
-   * Laravelowy `Authenticate` rzuca `AuthenticationException`, którą
-   * `ApiExceptionRenderer` mapuje na 401 `unauthenticated`. Token bez
-   * powiązanego konta dostaje wprost 401 `konto_niepowiazane`
-   * (`AccountNotLinkedException`). Trasa nie niesie `role:` ani
-   * `access.active`, a `ProfileController::show` nie woła `authorize()` —
-   * 403 z odmowy roli stąd nie przyjdzie.
-   */
-  const [forbidden, setForbidden] = useState(false);
-
-  // Fetch-on-mount jako łańcuch obietnic (bez synchronicznego setState przed
-  // pierwszym `await`) — wzorzec z `panel/dokumenty/page.tsx`, wymagany przez
-  // `react-hooks/set-state-in-effect`.
-  useEffect(() => {
-    let cancelled = false;
-    api<Me>("/me")
-      .then((result) => {
-        if (!cancelled) setMe(result);
-      })
-      .catch((caught: unknown) => {
-        if (!cancelled) {
-          setForbidden(caught instanceof ApiError && caught.status === 403);
-          setLoadError(
-            caught instanceof ApiError ? caught.message : LOAD_ERROR_MESSAGE,
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Ponowienie z przycisku `ErrorState` — poza efektem, więc reset stanu na
-  // początku jest w porządku (to zwykły handler zdarzenia, nie ciało efektu).
-  function retry() {
-    setLoading(true);
-    setLoadError(null);
-    api<Me>("/me")
-      .then((result) => setMe(result))
-      .catch((caught: unknown) => {
-        setForbidden(caught instanceof ApiError && caught.status === 403);
-        setLoadError(
-          caught instanceof ApiError ? caught.message : LOAD_ERROR_MESSAGE,
-        );
-      })
-      .finally(() => setLoading(false));
+  if (czyStaraTrasaPrzekierowuje(GRUPY.wspolpraca, "uczestnik")) {
+    const ekranUczestnika = GRUPY.wspolpraca.ekrany.find((e) => e.panel === "uczestnik");
+    redirect(ekranUczestnika!.nowaTrasa);
   }
 
-  return (
-    <PageTemplate naglowek={{ title: "Po programie" }}>
-      {loading && <LoadingState label="Wczytywanie stanu programu…" />}
-      {!loading && loadError && forbidden && (
-        <ForbiddenState message="Nie masz uprawnień do wyświetlenia tego ekranu." />
-      )}
-      {!loading && loadError && !forbidden && (
-        <ErrorState message={loadError} onRetry={retry} />
-      )}
-
-      {!loading && !loadError && me && (
-        me.program_completed_at ? (
-          <ProgramCompletedCard
-            completedAt={me.program_completed_at}
-            role={me.role}
-          />
-        ) : (
-          <ProgramPendingCard />
-        )
-      )}
-    </PageTemplate>
-  );
+  return <PoProgramieStaraTresc />;
 }

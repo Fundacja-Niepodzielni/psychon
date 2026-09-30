@@ -1,82 +1,45 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
-import { expectLabelledControlsAndImages } from "@/app/(uczestnik)/panel/__tests__/a11y-smoke";
+import { render } from "@testing-library/react";
 
 /**
- * `/panel/po-programie` — reads `GET /me`; `program_completed_at` decides
- * between the completed card (with links) and the pending card.
+ * `/panel/po-programie` na tej gałęzi (grupa przełączenia `wspolpraca`
+ * włączona, `lib/przelaczenie/grupy.ts`): stara trasa produktu ma
+ * przekierować na nową (`/panel/dalsza-wspolpraca`), bez renderowania
+ * starej treści. Stara treść (dawny zakres tego testu: stany ładowania,
+ * błędu, zakazu, karty programu) żyje teraz niezmieniona w
+ * `StaraTresc.tsx` — tam, gdzie grupa jest wyłączona (gałąź mechanizmu),
+ * to właśnie ten plik dalej renderuje się i jest pokryty tamtejszym
+ * odpowiednikiem tego testu.
  */
 
-const apiMock = vi.fn();
+const redirectMock = vi.fn();
 
-vi.mock("@/lib/api", async (importActual) => {
-  const actual = await importActual<typeof import("@/lib/api")>();
-  return { ...actual, api: (...args: unknown[]) => apiMock(...args) };
-});
+// Prawdziwy `redirect()` z `next/navigation` przerywa renderowanie
+// (rzuca specjalny błąd rozpoznawany przez Next) — atrapa robi to samo,
+// żeby test sprawdzał realny kształt: strona NIE renderuje żadnej treści
+// po wywołaniu `redirect`, tylko przerywa się na nim.
+vi.mock("next/navigation", () => ({
+  redirect: (...args: unknown[]) => {
+    redirectMock(...args);
+    throw new Error("NEXT_REDIRECT (atrapa testu)");
+  },
+}));
 
-const { ApiError } = await import("@/lib/api");
 const { default: PoProgramiePage } = await import("@/app/(uczestnik)/panel/po-programie/page");
 
-async function renderPage() {
-  let result: ReturnType<typeof render> | undefined;
-  await act(async () => {
-    result = render(<PoProgramiePage />);
-  });
-  return result!;
-}
-
 beforeEach(() => {
-  apiMock.mockReset();
+  redirectMock.mockReset();
 });
 
-describe("PoProgramiePage", () => {
-  it("renders the heading and the loading state while /me is pending", async () => {
-    apiMock.mockReturnValue(new Promise(() => {}));
-    await renderPage();
-
-    expect(screen.getByRole("heading", { level: 1, name: "Po programie" })).toBeInTheDocument();
-    expect(screen.getByRole("status", { name: "Wczytywanie stanu programu…" })).toBeInTheDocument();
-    expect(apiMock).toHaveBeenCalledWith("/me");
-  });
-
-  it("shows the error state with a retry action on a server error", async () => {
-    apiMock.mockRejectedValue(new ApiError({ status: 500, code: "server_error", message: "Serwer nie odpowiada." }));
-    await renderPage();
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Serwer nie odpowiada.");
-    expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
-  });
-
-  it("shows the forbidden state on 403", async () => {
-    apiMock.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Brak." }));
-    await renderPage();
-
-    expect(screen.getByText("Nie masz uprawnień do wyświetlenia tego ekranu.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Spróbuj ponownie" })).not.toBeInTheDocument();
-  });
-
-  it("shows the pending card while the programme is not completed", async () => {
-    apiMock.mockResolvedValue({ role: "volunteer", program_completed_at: null });
-    await renderPage();
-
-    expect(screen.getByText("Ekran będzie dostępny po ukończeniu programu.")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Certyfikat" })).not.toBeInTheDocument();
-  });
-
-  it("shows the completed card with links, including the certificate for a volunteer", async () => {
-    apiMock.mockResolvedValue({ role: "volunteer", program_completed_at: "2026-09-20T10:00:00Z" });
-    await renderPage();
-
-    expect(screen.getByText("Program ukończony")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Twoje dokumenty" })).toHaveAttribute("href", "/panel/dokumenty");
-    expect(screen.getByRole("link", { name: "Certyfikat" })).toHaveAttribute("href", "/panel/certyfikat");
-  });
-
-  it("passes the accessibility smoke check after loading", async () => {
-    apiMock.mockResolvedValue({ role: "student", program_completed_at: "2026-09-20T10:00:00Z" });
-    const { container } = await renderPage();
-
-    expect(screen.queryByRole("link", { name: "Certyfikat" })).not.toBeInTheDocument();
-    expectLabelledControlsAndImages(container);
+describe("PoProgramiePage — grupa wspolpraca włączona", () => {
+  it("przekierowuje na nową trasę produktu, bez renderowania starej treści", () => {
+    expect(() => render(<PoProgramiePage />)).toThrow();
+    // React (tryb deweloperski testów) może wywołać funkcję komponentu więcej
+    // niż raz przy błędzie w renderze — liczy się WYŁĄCZNIE cel przekierowania,
+    // nie liczba wywołań.
+    expect(redirectMock).toHaveBeenCalled();
+    for (const wywolanie of redirectMock.mock.calls) {
+      expect(wywolanie).toEqual(["/panel/dalsza-wspolpraca"]);
+    }
   });
 });
