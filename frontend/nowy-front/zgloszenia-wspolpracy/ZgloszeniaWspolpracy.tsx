@@ -1,321 +1,363 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
-import { Text } from "@/design-system/atomy/Text/Text";
-import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Badge } from "@/design-system/atomy/Badge/Badge";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
-import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
-import { Field } from "@/design-system/molekuly/Field/Field";
+import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
-import { ApiError, type PaginationMeta } from "@/lib/api/klient";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
+import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
+import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
+import type { PaginationMeta } from "@/lib/api/klient";
 import {
-  pobierzZgloszeniaAdministracji,
   odpowiedzNaZgloszenie,
+  pobierzZgloszeniaAdministracji,
   type AdminCooperationRequest,
-  type CooperationRequestStatus,
 } from "@/lib/api/h01-wspolpraca";
-import { useWPowloce } from "@/design-system/szablony/KontekstPowloki";
+import { formatujDateICzas } from "../wspolne/daty";
+import {
+  LICZBA_ZNAKOW_MAX,
+  OPCJE_FILTRA,
+  OPCJE_STATUSU_PO_ODPOWIEDZI,
+  PLAKIETKA_STATUSU,
+  czyBrakUprawnien,
+  czyPasujeDoFiltra,
+  moznaOdpowiedziec,
+  nazwaOsoby,
+  sklasyfikujBladOdpowiedzi,
+  type FiltrStatusu,
+} from "./dane";
 import style from "./ZgloszeniaWspolpracy.module.css";
 
-/**
- * Korzeń ekranu. Poza powłoką panelu: `main` pod `id="tresc"` jak dotąd.
- * W powłoce (`DostawcaPowloki`) `main` niesie powłoka, więc tu jest zwykły `div`.
- */
-function Korzen({ children }: { children: ReactNode }) {
-  const wPowloce = useWPowloce();
-  if (wPowloce) return <div className={style.uklad}>{children}</div>;
-  return <main id="tresc" className={style.uklad}>{children}</main>;
-}
+type StanListy =
+  | { rodzaj: "ladowanie" }
+  | { rodzaj: "brak-uprawnien" }
+  | { rodzaj: "blad" }
+  | { rodzaj: "gotowy"; zgloszenia: AdminCooperationRequest[]; meta: PaginationMeta | undefined };
 
-type StanEkranu = "ladowanie" | "blad" | "ok";
-type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
-type FiltrStatusu = CooperationRequestStatus | "";
-
-const LICZBA_ZNAKOW_MAX = 2000;
-
-const PLAKIETKA_STATUSU: Record<CooperationRequestStatus, { wariant: WariantPlakietki; tekst: string }> = {
-  new: { wariant: "pending", tekst: "Nowe" },
-  answered: { wariant: "ok", tekst: "Z odpowiedzią" },
-  closed: { wariant: "neutral", tekst: "Zamknięte" },
-};
-
-const OPCJE_FILTRA = [
-  { wartosc: "", etykieta: "Wszystkie" },
-  { wartosc: "new", etykieta: "Nowe" },
-  { wartosc: "answered", etykieta: "Z odpowiedzią" },
-  { wartosc: "closed", etykieta: "Zamknięte" },
-];
-
-interface StanFormularzaOdpowiedzi {
+interface OtwartaOdpowiedz {
+  id: number;
   response: string;
   status: "answered" | "closed";
+  bledy: Record<string, string[]> | undefined;
 }
 
-const PUSTY_FORMULARZ: StanFormularzaOdpowiedzi = { response: "", status: "answered" };
+const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Zgłoszenia dalszej współpracy" }];
 
 /**
- * Trasa `/nowy-front/admin/zgloszenia-wspolpracy` (H01) —
- * `AdminCooperationRequestController::index`/`respond`
- * (`backend/routes/api/h01.php:41-43`).
+ * Ekran zgłoszeń dalszej współpracy (administracja) na szablonie
+ * `ListTemplate`: nagłówek, filtr statusu, lista zgłoszeń i stronicowanie.
+ * Każdy stan — ładowanie, dane, pusty, brak uprawnień, błąd sieci — stoi
+ * w obszarach szablonu, więc jedyny `main` jest korzeniem szablonu.
  *
- * Lista jest złożona wprost z atomów (`Badge`/`Text`/`Hint`/`Button`), nie z
- * `RecordList` — ten organizm wymaga JEDNEJ akcji na wiersz
- * (`WierszRecordList.akcja` nie jest opcjonalna), a tu wiersz `closed` ma
- * mieć ZERO przycisków (kontrakt: „przy `closed` przycisku NIE ma”), nie
- * jeden nieaktywny. Treść zgłoszenia renderuje się w całości, zawijana
- * (`.tresc` w module CSS), bez obcinania znakami.
+ * Trasy: `GET /admin/cooperation-requests` i
+ * `PATCH /admin/cooperation-requests/{id}` (`backend/routes/api/h01.php:45-46`).
  *
- * Odczyt startowy biegnie z przeglądarki — ten sam powód co
- * `nowy-front/formy-stazu/dane.ts`.
+ * Wiersz to atomy (`Badge`/`Text`/`Hint`), nie `RecordList`: zgłoszenie
+ * zamknięte nie ma żadnego przycisku, a organizm wymaga akcji w każdym
+ * wierszu. „Odpowiedz na zgłoszenie” otwiera pod wierszem `FormSection`
+ * z odpowiedzią i statusem po odpowiedzi — bez okna dialogowego. Przycisk
+ * „Odpowiedz” w tej sekcji jest jedynym przyciskiem głównym ekranu.
+ * Zgłoszenia z odpowiedzią (`answered`, `closed`) pokazują jej treść i datę.
  */
 export function ZgloszeniaWspolpracy() {
   const router = useRouter();
-  const [stan, setStan] = useState<StanEkranu>("ladowanie");
-  const [zakazane, setZakazane] = useState(false);
+  const [stan, setStan] = useState<StanListy>({ rodzaj: "ladowanie" });
   const [filtr, setFiltr] = useState<FiltrStatusu>("");
-  const [zgloszenia, setZgloszenia] = useState<AdminCooperationRequest[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | undefined>(undefined);
-
-  const [otwartyId, setOtwartyId] = useState<number | null>(null);
-  const [formularz, setFormularz] = useState<StanFormularzaOdpowiedzi>(PUSTY_FORMULARZ);
-  const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
-  const [bladDialogu, setBladDialogu] = useState<string | null>(null);
+  const [strona, setStrona] = useState(1);
+  const [proba, setProba] = useState(0);
+  const [otwarta, setOtwarta] = useState<OtwartaOdpowiedz | null>(null);
   const [zapisywanie, setZapisywanie] = useState(false);
-
-  function wczytaj(filtrWartosc: FiltrStatusu, strona: number, straz?: { anulowane: boolean }) {
-    return pobierzZgloszeniaAdministracji({
-      status: filtrWartosc === "" ? undefined : filtrWartosc,
-      page: strona,
-    })
-      .then(({ data, meta: metaOdpowiedzi }) => {
-        if (straz?.anulowane) return;
-        setZakazane(false);
-        setZgloszenia(data);
-        setMeta(metaOdpowiedzi);
-        setStan("ok");
-      })
-      .catch((wyjatek: unknown) => {
-        if (straz?.anulowane) return;
-        if (wyjatek instanceof ApiError && wyjatek.status === 403 && wyjatek.code === "forbidden") {
-          setZakazane(true);
-          setStan("ok");
-          return;
-        }
-        setStan("blad");
-      });
-  }
+  const [komunikat, setKomunikat] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [wczytanoRaz, setWczytanoRaz] = useState(false);
 
   useEffect(() => {
-    const straz = { anulowane: false };
-    void wczytaj(filtr, 1, straz);
+    let aktualne = true;
+    pobierzZgloszeniaAdministracji({
+      status: filtr === "" ? undefined : filtr,
+      page: strona,
+    })
+      .then(({ data, meta }) => {
+        if (!aktualne) return;
+        setWczytanoRaz(true);
+        setStan({ rodzaj: "gotowy", zgloszenia: data, meta });
+      })
+      .catch((blad: unknown) => {
+        if (!aktualne) return;
+        setStan(czyBrakUprawnien(blad) ? { rodzaj: "brak-uprawnien" } : { rodzaj: "blad" });
+      });
     return () => {
-      straz.anulowane = true;
+      aktualne = false;
     };
-    // Wyłącznie przy zamontowaniu — zmiana filtra i stronicowanie wołają
-    // `wczytaj` wprost, z aktualnym filtrem/stroną w domknięciu.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filtr, strona, proba]);
+
+  function ponow() {
+    setStan({ rodzaj: "ladowanie" });
+    setProba((p) => p + 1);
+  }
+
+  function odswiez() {
+    setProba((p) => p + 1);
+  }
 
   function naZmianeFiltra(wartosc: string) {
-    const nowyFiltr = wartosc as FiltrStatusu;
-    setFiltr(nowyFiltr);
-    void wczytaj(nowyFiltr, 1);
+    setOtwarta(null);
+    setKomunikat(null);
+    setStan({ rodzaj: "ladowanie" });
+    setStrona(1);
+    setFiltr(wartosc as FiltrStatusu);
   }
 
-  function otworzDialog(zgloszenie: AdminCooperationRequest) {
-    setOtwartyId(zgloszenie.id);
-    setFormularz(PUSTY_FORMULARZ);
-    setBledyPol(undefined);
-    setBladDialogu(null);
+  function zmienStrone(nowa: number) {
+    setOtwarta(null);
+    setKomunikat(null);
+    setStan({ rodzaj: "ladowanie" });
+    setStrona(nowa);
   }
 
-  function zamknijDialog() {
-    setOtwartyId(null);
-    setFormularz(PUSTY_FORMULARZ);
-    setBledyPol(undefined);
-    setBladDialogu(null);
+  function otworz(zgloszenie: AdminCooperationRequest) {
+    setKomunikat(null);
+    setOtwarta({ id: zgloszenie.id, response: "", status: "answered", bledy: undefined });
   }
 
-  async function zapisz() {
-    if (otwartyId === null) return;
+  async function zapisz(otwartaOdpowiedz: OtwartaOdpowiedz) {
+    if (zapisywanie) return;
     setZapisywanie(true);
-    setBladDialogu(null);
-    setBledyPol(undefined);
+    setKomunikat(null);
+    setOtwarta((biezaca) => (biezaca ? { ...biezaca, bledy: undefined } : biezaca));
     try {
-      const zaktualizowany = await odpowiedzNaZgloszenie(otwartyId, {
-        response: formularz.response.trim(),
-        status: formularz.status,
+      const zaktualizowany = await odpowiedzNaZgloszenie(otwartaOdpowiedz.id, {
+        response: otwartaOdpowiedz.response.trim(),
+        status: otwartaOdpowiedz.status,
       });
-      setZgloszenia((poprzednie) =>
-        poprzednie.map((zgloszenie) => (zgloszenie.id === zaktualizowany.id ? zaktualizowany : zgloszenie)),
+      setStan((poprzedni) => {
+        if (poprzedni.rodzaj !== "gotowy") return poprzedni;
+        const zgloszenia = poprzedni.zgloszenia
+          .map((zgloszenie) => (zgloszenie.id === zaktualizowany.id ? zaktualizowany : zgloszenie))
+          .filter((zgloszenie) => czyPasujeDoFiltra(zgloszenie, filtr));
+        const usuniete = poprzedni.zgloszenia.length - zgloszenia.length;
+        const meta = poprzedni.meta && { ...poprzedni.meta, total: Math.max(poprzedni.meta.total - usuniete, 0) };
+        return { rodzaj: "gotowy", zgloszenia, meta };
+      });
+      setOtwarta(null);
+      setToast(
+        zaktualizowany.status === "closed"
+          ? `Zgłoszenie zamknięte: ${nazwaOsoby(zaktualizowany)}.`
+          : `Odpowiedź zapisana: ${nazwaOsoby(zaktualizowany)}.`,
       );
-      zamknijDialog();
-    } catch (wyjatek) {
-      if (wyjatek instanceof ApiError && wyjatek.errors) {
-        setBledyPol(wyjatek.errors);
-      } else if (wyjatek instanceof ApiError && wyjatek.status === 403 && wyjatek.code === "cooperation_request_closed") {
-        setBladDialogu(wyjatek.message);
-        void wczytaj(filtr, meta?.current_page ?? 1);
-      } else if (wyjatek instanceof ApiError && wyjatek.status === 404) {
-        setBladDialogu("Zgłoszenie nie istnieje.");
-        void wczytaj(filtr, meta?.current_page ?? 1);
-      } else if (wyjatek instanceof ApiError) {
-        setBladDialogu(wyjatek.message);
+    } catch (blad: unknown) {
+      const opis = sklasyfikujBladOdpowiedzi(blad);
+      if (opis.rodzaj === "pola") {
+        setOtwarta((biezaca) => (biezaca ? { ...biezaca, bledy: opis.bledy } : biezaca));
+      } else if (opis.rodzaj === "zamkniete" || opis.rodzaj === "brak-zgloszenia") {
+        setOtwarta(null);
+        setKomunikat(opis.komunikat);
+        odswiez();
       } else {
-        setBladDialogu("Nie udało się zapisać odpowiedzi. Spróbuj ponownie.");
+        setKomunikat(opis.komunikat);
       }
     } finally {
       setZapisywanie(false);
     }
   }
 
-  if (stan === "ladowanie") {
-    return (
-      <Korzen>
-        <Heading stopien={1}>Zgłoszenia dalszej współpracy</Heading>
-        <Skeleton wiersze={4} />
-      </Korzen>
-    );
-  }
-  if (stan === "blad") {
-    return (
-      <Korzen>
-        <Heading stopien={1}>Zgłoszenia dalszej współpracy</Heading>
-        <Text>Backend H01 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
-      </Korzen>
-    );
-  }
+  const naglowek = (
+    <PageHeader
+      okruszki={OKRUSZKI}
+      tytul="Zgłoszenia dalszej współpracy"
+      opis="Zgłoszenia uczestników po zakończeniu programu. Odpowiedz na zgłoszenie albo je zamknij."
+      onPowrot={() => router.back()}
+    />
+  );
 
-  if (zakazane) {
+  if (stan.rodzaj === "brak-uprawnien") {
     return (
-      <Korzen>
-        <PageHeader
-          okruszki={[{ etykieta: "Administracja" }, { etykieta: "Zgłoszenia dalszej współpracy" }]}
-          tytul="Zgłoszenia dalszej współpracy"
-          onPowrot={() => router.back()}
-        />
-        <Notice wariant="warn" tytul="Brak dostępu">
-          Brak uprawnień do obsługi zgłoszeń.
-        </Notice>
-      </Korzen>
-    );
-  }
-
-  return (
-    <Korzen>
-      <PageHeader
-        okruszki={[{ etykieta: "Administracja" }, { etykieta: "Zgłoszenia dalszej współpracy" }]}
-        tytul="Zgłoszenia dalszej współpracy"
-        opis="Zgłoszenia osób po zakończeniu programu — odczyt i odpowiedź (H01)."
-        onPowrot={() => router.back()}
-        dzieci={
-          <div className={style.filtr}>
-            <Field
-              id="zgloszenia-filtr-status"
-              etykieta="Status"
-              rodzaj="wybor"
-              opcje={OPCJE_FILTRA}
-              wartosc={filtr}
-              onZmiana={naZmianeFiltra}
-            />
-          </div>
+      <ListTemplate
+        naglowek={naglowek}
+        lista={
+          <EmptyState
+            wariant="brak-uprawnien"
+            naglowek="Zgłoszenia dalszej współpracy"
+            rola="administracji"
+            przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+          />
         }
       />
+    );
+  }
 
-      {zgloszenia.length === 0 ? (
-        <EmptyState
-          naglowek="Brak zgłoszeń"
-          tresc="Dla wybranego filtra nie ma dziś żadnych zgłoszeń."
-          przycisk={{ etykieta: "Odśwież", onClick: () => void wczytaj(filtr, meta?.current_page ?? 1) }}
-        />
-      ) : (
+  const filtry = wczytanoRaz ? (
+    <div className={style.filtr}>
+      <Field
+        id="zgloszenia-filtr-status"
+        etykieta="Status"
+        rodzaj="wybor"
+        opcje={OPCJE_FILTRA}
+        wartosc={filtr}
+        onZmiana={naZmianeFiltra}
+      />
+    </div>
+  ) : undefined;
+
+  if (stan.rodzaj === "ladowanie") {
+    return <ListTemplate naglowek={naglowek} filtry={filtry} lista={<Skeleton wiersze={4} />} />;
+  }
+
+  if (stan.rodzaj === "blad") {
+    return (
+      <ListTemplate
+        naglowek={naglowek}
+        filtry={filtry}
+        lista={
+          <Notice
+            wariant="error"
+            tytul="Nie udało się wczytać zgłoszeń"
+            akcja={
+              <Button poziom="outline" onClick={ponow}>
+                Spróbuj ponownie
+              </Button>
+            }
+          >
+            Serwer jest nieosiągalny albo zwrócił błąd. Żadne dane nie zostały zmienione.
+          </Notice>
+        }
+      />
+    );
+  }
+
+  const { zgloszenia, meta } = stan;
+
+  const lista =
+    zgloszenia.length === 0 ? (
+      <>
+        {komunikat && <KomunikatBledu tresc={komunikat} />}
+        {filtr === "" ? (
+          <EmptyState
+            naglowek="Brak zgłoszeń współpracy"
+            tresc="Zgłoszenia pojawią się tutaj, gdy uczestnicy wyślą je po zakończeniu programu."
+            przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+          />
+        ) : (
+          <EmptyState
+            wariant="brak-wynikow-filtra"
+            naglowek="Brak zgłoszeń współpracy"
+            tresc="Żadne zgłoszenie nie ma wybranego statusu."
+            przycisk={{ etykieta: "Pokaż wszystkie", onClick: () => naZmianeFiltra("") }}
+          />
+        )}
+      </>
+    ) : (
+      <>
+        {komunikat && <KomunikatBledu tresc={komunikat} />}
         <ul className={style.lista} aria-label="Zgłoszenia dalszej współpracy">
           {zgloszenia.map((zgloszenie) => (
             <li key={zgloszenie.id} className={style.wiersz}>
               <div className={style.naglowekWiersza}>
-                <Text>
-                  {zgloszenie.user
-                    ? `${zgloszenie.user.first_name} ${zgloszenie.user.last_name}`
-                    : "Osoba nieznana"}
-                </Text>
+                <Text>{nazwaOsoby(zgloszenie)}</Text>
                 <Badge wariant={PLAKIETKA_STATUSU[zgloszenie.status].wariant}>
                   {PLAKIETKA_STATUSU[zgloszenie.status].tekst}
                 </Badge>
               </div>
               <Hint>
-                {(zgloszenie.user?.email ?? "brak e-maila")} — {zgloszenie.created_at ?? "brak daty"}
+                {`${zgloszenie.user?.email ?? "brak e-maila"} — złożono ${formatujDateICzas(zgloszenie.created_at)}`}
               </Hint>
               <div className={style.tresc}>
                 <Text>{zgloszenie.body}</Text>
               </div>
-              {zgloszenie.status !== "closed" && (
-                <Button poziom="outline" onClick={() => otworzDialog(zgloszenie)}>
-                  Odpowiedz
-                </Button>
+              {zgloszenie.status !== "new" && zgloszenie.response !== null && zgloszenie.response.trim() !== "" && (
+                <div className={style.odpowiedz} data-testid={`odpowiedz-${zgloszenie.id}`}>
+                  <Hint>{`Odpowiedź z ${formatujDateICzas(zgloszenie.responded_at)}`}</Hint>
+                  <div className={style.tresc}>
+                    <Text>{zgloszenie.response}</Text>
+                  </div>
+                </div>
+              )}
+              {moznaOdpowiedziec(zgloszenie) && (
+                <div className={style.akcje}>
+                  <Button poziom="outline" disabled={zapisywanie} onClick={() => otworz(zgloszenie)}>
+                    Odpowiedz na zgłoszenie
+                  </Button>
+                </div>
+              )}
+              {otwarta?.id === zgloszenie.id && (
+                <div className={style.formularz}>
+                  <FormSection
+                    tytul={`Odpowiedź na zgłoszenie: ${nazwaOsoby(zgloszenie)}`}
+                    pola={[
+                      {
+                        id: `odpowiedz-tresc-${zgloszenie.id}`,
+                        etykieta: "Odpowiedź",
+                        rodzaj: "wieloliniowy",
+                        wartosc: otwarta.response,
+                        onZmiana: (wartosc) =>
+                          setOtwarta((biezaca) =>
+                            biezaca ? { ...biezaca, response: wartosc.slice(0, LICZBA_ZNAKOW_MAX) } : biezaca,
+                          ),
+                        blad: otwarta.bledy?.response?.[0],
+                        podpowiedz: `${otwarta.response.length}/${LICZBA_ZNAKOW_MAX} znaków`,
+                        wymagane: true,
+                      },
+                      {
+                        id: `odpowiedz-status-${zgloszenie.id}`,
+                        etykieta: "Status po odpowiedzi",
+                        rodzaj: "wybor",
+                        opcje: OPCJE_STATUSU_PO_ODPOWIEDZI,
+                        wartosc: otwarta.status,
+                        onZmiana: (wartosc) =>
+                          setOtwarta((biezaca) =>
+                            biezaca ? { ...biezaca, status: wartosc as "answered" | "closed" } : biezaca,
+                          ),
+                        blad: otwarta.bledy?.status?.[0],
+                        wymagane: true,
+                      },
+                    ]}
+                    etykietaAnuluj="Wróć do listy"
+                    etykietaZapisz={zapisywanie ? "Zapisywanie…" : "Odpowiedz"}
+                    onAnuluj={() => setOtwarta(null)}
+                    onZapisz={() => void zapisz(otwarta)}
+                  />
+                </div>
               )}
             </li>
           ))}
         </ul>
-      )}
+      </>
+    );
 
-      {meta && meta.last_page > 1 && (
-        <Pagination
-          strona={meta.current_page}
-          stron={meta.last_page}
-          naPoprzednia={() => void wczytaj(filtr, meta.current_page - 1)}
-          naNastepna={() => void wczytaj(filtr, meta.current_page + 1)}
-        />
-      )}
+  return (
+    <>
+      <ListTemplate
+        naglowek={naglowek}
+        filtry={filtry}
+        lista={lista}
+        stronicowanie={
+          meta && meta.last_page > 1 ? (
+            <Pagination
+              strona={meta.current_page}
+              stron={meta.last_page}
+              naPoprzednia={() => zmienStrone(meta.current_page - 1)}
+              naNastepna={() => zmienStrone(meta.current_page + 1)}
+            />
+          ) : undefined
+        }
+      />
+      {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
+    </>
+  );
+}
 
-      {otwartyId !== null && (
-        <Dialog
-          tytul="Odpowiedz na zgłoszenie"
-          etykietaWycofania="Anuluj"
-          etykietaPotwierdzenia={zapisywanie ? "Zapisywanie…" : "Zapisz odpowiedź"}
-          onWycofaj={zamknijDialog}
-          onPotwierdz={() => {
-            if (!zapisywanie) void zapisz();
-          }}
-        >
-          {bladDialogu && (
-            <Notice wariant="error" tytul="Nie udało się zapisać odpowiedzi">
-              {bladDialogu}
-            </Notice>
-          )}
-          <Field
-            id="odpowiedz-tresc"
-            etykieta="Odpowiedź"
-            rodzaj="wieloliniowy"
-            wartosc={formularz.response}
-            onZmiana={(wartosc) =>
-              setFormularz((f) => ({ ...f, response: wartosc.slice(0, LICZBA_ZNAKOW_MAX) }))
-            }
-            blad={bledyPol?.response?.[0]}
-            podpowiedz={`${formularz.response.length}/${LICZBA_ZNAKOW_MAX} znaków`}
-            wymagane
-          />
-          <Field
-            id="odpowiedz-status"
-            etykieta="Status po odpowiedzi"
-            rodzaj="wybor"
-            opcje={[
-              { wartosc: "answered", etykieta: "Z odpowiedzią" },
-              { wartosc: "closed", etykieta: "Zamknięte" },
-            ]}
-            wartosc={formularz.status}
-            onZmiana={(wartosc) => setFormularz((f) => ({ ...f, status: wartosc as "answered" | "closed" }))}
-            blad={bledyPol?.status?.[0]}
-            wymagane
-          />
-        </Dialog>
-      )}
-    </Korzen>
+function KomunikatBledu({ tresc }: { tresc: string }) {
+  return (
+    <Notice wariant="error" tytul="Nie udało się zapisać odpowiedzi">
+      {tresc}
+    </Notice>
   );
 }
