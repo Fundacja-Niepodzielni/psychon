@@ -114,6 +114,9 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     // Jedyny przycisk w kolorze to „Dodaj zgłoszenie” w nagłówku (wiersze mają tylko odnośniki).
     expect(przyciskiGlowne(container)).toBe(1);
     expect(container.querySelector("button[class*='primary']")?.textContent).toBe("Dodaj zgłoszenie");
+    expect(container.querySelector("[data-testid='pageheader-glowa']")).toContainElement(
+      container.querySelector("button[class*='primary']") as HTMLElement,
+    );
   });
 
   it("pusty bez filtra: tekst o braku zgłoszeń w roku programu i przejście do wczytania z pliku", async () => {
