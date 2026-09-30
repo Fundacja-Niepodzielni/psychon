@@ -262,15 +262,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
             tytul={`${karta.profile.first_name} ${karta.profile.last_name}`}
             opis={opisRoliOsoby(karta.profile.role)}
             onPowrot={wroc}
-            dzieci={
-              edycja ? undefined : (
-                <div className={style.akcjaGlowna}>
-                  <Button poziom="primary" onClick={otworzFormularz}>
-                    Zmień dane
-                  </Button>
-                </div>
-              )
-            }
+            przyciskGlowny={edycja ? undefined : { etykieta: "Zmień dane", onKliknij: otworzFormularz }}
           />
         }
         statystyki={

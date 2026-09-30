@@ -122,6 +122,17 @@ describe("KartaOsoby — stan dane", () => {
     expect(screen.getByRole("button", { name: "Zmień dane" })).toBeInTheDocument();
   });
 
+  it("„Zmień dane” stoi w nagłówku przy tytule (makieta 2.0.4, `.head .acts`)", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const { container } = render(<KartaOsoby id={17} />);
+    const przycisk = await screen.findByRole("button", { name: "Zmień dane" });
+
+    const glowa = container.querySelector("[data-testid='pageheader-glowa']")!;
+    expect(glowa).toContainElement(screen.getByRole("heading", { level: 1, name: "Marta Demo" }));
+    expect(glowa).toContainElement(przycisk);
+  });
+
   it("grupa produktowa i data dostępu: etykieta polska, zero surowego kodu i zero ISO w DOM stanu z danymi", async () => {
     pobierzKarteOsoby.mockResolvedValue(KARTA);
     pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
