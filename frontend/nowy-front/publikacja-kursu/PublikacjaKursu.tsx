@@ -64,9 +64,10 @@ function komunikatBledu(blad: BladOperacji, tytul: string): Komunikat | null {
  * Jedno zadanie: wypuścić kurs. Kurs jest szkicem → `FormSection` z jednym
  * przyciskiem głównym „Opublikuj kurs”. Serwer odrzuca kurs bez lekcji
  * (`422 conditions_not_met`, `reason.missing`) — wtedy stan kursu zostaje
- * bez zmian, a braki pokazuje `PublishChecklist`. Cofnięcie publikacji
- * i usunięcie kursu są rzadkie, więc siedzą w zwiniętej sekcji „Cofnięcie
- * i usunięcie kursu”, jako przyciski drugorzędne; usunięcie wymaga
+ * bez zmian, a braki pokazuje `PublishChecklist`. Kurs opublikowany ma
+ * w pierwszym bloku widoczny, drugorzędny przycisk „Cofnij publikację”.
+ * Usunięcie kursu jest rzadkie, więc siedzi w zwiniętej sekcji „Usunięcie
+ * kursu” poza pierwszym blokiem, jako przycisk drugorzędny; wymaga
  * potwierdzenia w oknie `Dialog`.
  */
 export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
@@ -260,8 +261,6 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
     );
   }
 
-  const czynnosciRzadkie = kurs.is_published ? 2 : 1;
-
   return szablon(
     kurs.title,
     <div className={style.kolumna} data-stan-publikacji={kurs.is_published ? "opublikowany" : "szkic"}>
@@ -269,6 +268,11 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
         <section className={style.blok}>
           <Heading stopien={2}>Publikacja kursu</Heading>
           <Text>Kurs jest opublikowany — uczestnicy widzą go w swojej ścieżce.</Text>
+          <div className={style.rzadkie}>
+            <Button poziom="outline" onClick={() => void ustawPublikacje(false)}>
+              Cofnij publikację
+            </Button>
+          </div>
         </section>
       ) : (
         <FormSection
@@ -288,15 +292,10 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
       )}
 
       <CollapsibleSection
-        tytul="Cofnięcie i usunięcie kursu"
-        liczba={czynnosciRzadkie}
+        tytul="Usunięcie kursu"
+        liczba={1}
         dzieci={
           <div className={style.rzadkie}>
-            {kurs.is_published && (
-              <Button poziom="outline" onClick={() => void ustawPublikacje(false)}>
-                Cofnij publikację
-              </Button>
-            )}
             <Button
               poziom="outline"
               niebezpieczny

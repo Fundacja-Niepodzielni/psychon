@@ -116,17 +116,16 @@ describe("stany ekranu w szablonie formularza", () => {
     expect(glowne[0]).toHaveTextContent("Opublikuj kurs");
   });
 
-  it("kurs opublikowany: „Cofnij publikację” jest drugorzędny, brak przycisku głównego", async () => {
-    const uzytkownik = userEvent.setup();
+  it("kurs opublikowany: „Cofnij publikację” jest w DOM bez interakcji, drugorzędny, brak przycisku głównego", async () => {
     serwer({ GET: kurs({ is_published: true }) });
     const { container } = wyrenderuj();
     await screen.findByText("Opublikowany");
     expect(stanPublikacji(container)).toBe("opublikowany");
     expect(screen.queryByRole("button", { name: "Opublikuj kurs" })).toBeNull();
-    await uzytkownik.click(screen.getByRole("button", { name: /Cofnięcie i usunięcie kursu/ }));
     const cofnij = screen.getByRole("button", { name: "Cofnij publikację" });
     expect(cofnij.className).not.toMatch(/(^|_)primary(_|$)/);
     expect(przyciskiGlowne(container)).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Usuń kurs" })).toBeNull();
     expect(() => jedenMain(container)).not.toThrow();
   });
 
@@ -222,8 +221,7 @@ describe("cofnięcie publikacji", () => {
       PATCH: kurs({ is_published: false }),
     });
     const { container } = wyrenderuj();
-    await uzytkownik.click(await screen.findByRole("button", { name: /Cofnięcie i usunięcie kursu/ }));
-    await uzytkownik.click(screen.getByRole("button", { name: "Cofnij publikację" }));
+    await uzytkownik.click(await screen.findByRole("button", { name: "Cofnij publikację" }));
     await waitFor(() => expect(stanPublikacji(container)).toBe("szkic"));
     const zapisy = s.zapisy();
     expect(zapisy).toHaveLength(1);
@@ -304,7 +302,7 @@ describe("odmowa publikacji", () => {
 describe("usunięcie kursu", () => {
   async function otworzOknoUsuniecia() {
     const uzytkownik = userEvent.setup();
-    await uzytkownik.click(await screen.findByRole("button", { name: /Cofnięcie i usunięcie kursu/ }));
+    await uzytkownik.click(await screen.findByRole("button", { name: /Usunięcie kursu/ }));
     const usun = screen.getByRole("button", { name: "Usuń kurs" });
     expect(usun.className).not.toMatch(/(^|_)primary(_|$)/);
     await uzytkownik.click(usun);
