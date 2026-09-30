@@ -2,8 +2,9 @@ import type { MenuEntry } from "../types";
 
 /**
  * Pakiet H21 — onboarding „Zacznij tutaj". Stała pozycja dla ról
- * uczestniczących. `GET /onboarding` (backend/routes/api/h21.php:24-25)
- * bez `role:` (rola `role:super_admin,project_manager` na h21.php:27
+ * uczestniczących. `GET /onboarding` (backend/routes/api/h21.php,
+ * `Route::get('/onboarding'`) bez `role:` (rola
+ * `role:super_admin,project_manager` w h21.php
  * dotyczy tylko `PATCH /admin/onboarding`).
  */
 const entry: MenuEntry = {

@@ -2,7 +2,8 @@
  * Pakiet H22 · dokumenty prawne — odczyt publiczny (bez tokenu).
  *
  * Rodzaje zamknięte po stronie backendu w `LegalDocumentVersion::TYPES`
- * (`backend/app/Models/LegalDocumentVersion.php:23`) — TRZY rodzaje
+ * (`backend/app/Models/LegalDocumentVersion.php`,
+ * `public const array TYPES = ['regulamin', 'polityka', 'klauzula-rodo'];`) — TRZY rodzaje
  * (`regulamin`, `polityka`, `klauzula-rodo`, ten ostatni dodany decyzją
  * właściciela z 18.09.2026: „Klauzula RODO (informacja o
  * przetwarzaniu)"). Front renderuje dokładnie to, co wystawia backend —
@@ -10,10 +11,11 @@
  * (ta lista ma się wtedy zmienić razem z backendem).
  *
  * Wywołanie: `GET /legal-documents/{type}/current` — trasa publiczna
- * (`backend/routes/api/h22.php:28`), przepuszczona przez bramkę CI
+ * (`backend/routes/api/h22.php`, `Route::get('/legal-documents/{type}/current'`), przepuszczona przez bramkę CI
  * autoryzacji (wzorzec w `config/public_routes.php`); nieznany rodzaj albo
  * brak opublikowanej wersji → 404 (`LegalDocumentController::current`,
- * `backend/app/Http/Controllers/Api/V1/H22/LegalDocumentController.php:22-35`).
+ * `backend/app/Http/Controllers/Api/V1/H22/LegalDocumentController.php`,
+ * `public function current(Request $request, string $type)`).
  */
 
 import { api } from "@/lib/api";
@@ -30,7 +32,8 @@ export const LEGAL_DOCUMENT_LABELS: Record<LegalDocumentType, string> = {
 };
 
 /** Kształt zgodny z `PublicLegalDocumentResource`
- * (`backend/app/Http/Resources/H22/PublicLegalDocumentResource.php:18-26`). */
+ * (`backend/app/Http/Resources/H22/PublicLegalDocumentResource.php`,
+ * `'published_at' => $this->published_at?->toIso8601ZuluString()`). */
 export interface LegalDocument {
   type: LegalDocumentType;
   version: string;

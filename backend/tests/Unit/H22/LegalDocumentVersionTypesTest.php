@@ -31,7 +31,8 @@ use Tests\TestCase;
  *
  * Test nie dotyka bazy danych (same stałe PHP) — nie potrzebuje własnego
  * świata do ustawienia ani sprzątania. Bez cechy bazodanowej runner równoległy
- * zostawiłby go na bazie WSPÓLNEJ (`TestDatabases.php:56`), więc trafia do grupy
+ * zostawiłby go na bazie WSPÓLNEJ (`TestDatabases.php`,
+ * `Arr::hasAny($uses, $databaseTraits)`), więc trafia do grupy
  * `wspolna-baza` — tak samo jak inne klasy bez tej cechy (`GrupaWspolnejBazyTest`).
  */
 #[Group('wspolna-baza')]

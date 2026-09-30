@@ -28,8 +28,9 @@ function errorFor(
  * z tokena po stronie backendu (`POST /help-messages`) — front ich nie zna
  * i nie wysyla.
  *
- * Zaplecze (`POST /help-messages`) jest scalone: `backend/routes/api/pomoc.php:20-21`,
- * za flaga `features.help` (domyslnie wlaczona, `pomoc.php:16`), obsluga w
+ * Zaplecze (`POST /help-messages`) jest scalone: `backend/routes/api/pomoc.php`
+ * (`->post('/help-messages'`), za flaga `features.help` (domyslnie wlaczona,
+ * `config('features.help', true)`), obsluga w
  * `HelpMessageController::store`. Ten plik wola prawdziwa trase przez
  * `sendHelpMessage` (`lib/api/help.ts`) — atrapa w testach
  * (`components/layout/__tests__/help-widget-*.test.tsx`) tylko podmienia

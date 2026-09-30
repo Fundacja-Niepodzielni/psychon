@@ -4,8 +4,9 @@ import { join } from "node:path";
 
 /**
  * Świadek WPIĘCIA ekranu H03 do interfejsu: `#/admin/uczestniczki`
- * (`app/(administracja)/admin/uczestniczki/page.tsx:29-34`) renderuje obie
- * zakładki, `AdminUsersList` (H18) i `ApplicationsTab` (H03).
+ * (`app/(administracja)/admin/uczestniczki/page.tsx`) renderuje obie
+ * zakładki, `AdminUsersList` (H18) i `ApplicationsTab` (H03):
+ * `panel: <AdminUsersList />` i `panel: <ApplicationsTab />`.
  *
  * Dlaczego świadek czyta ŹRÓDŁO strony, a nie renderuje jej w jsdom: to jest
  * komponent serwerowy Next.js z `metadata` i bez `"use client"`. Renderowanie go

@@ -20,7 +20,8 @@ export interface ProgramCompletedCardProps {
 /**
  * Stan „program ukończony" ekranu `/panel/po-programie`. Certyfikat
  * jest odnośnikiem tylko dla `volunteer` — `role:volunteer` na
- * `GET /certificate/conditions` (`backend/routes/api/h13.php:26`) odrzuca
+ * `GET /certificate/conditions` (`backend/routes/api/h13.php`,
+ * `Route::get('/certificate/conditions'`) odrzuca
  * `student`, więc front nie obiecuje linku, którego serwer i tak nie spełni.
  */
 export default function ProgramCompletedCard({

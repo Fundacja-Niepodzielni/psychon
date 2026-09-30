@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 /**
  * Świadek `/dokumenty-prawne/[typ]` (H22).
  * Kontrakt: `GET /legal-documents/{type}/current`, publiczny, bez tokenu
- * (`backend/routes/api/h22.php:28`).
+ * (`backend/routes/api/h22.php`, `Route::get('/legal-documents/{type}/current'`).
  *
  * Renderuje `DokumentPrawnyEkran` (nazwany eksport) zamiast domyślnego
  * `DokumentPrawnyPage` — ten drugi rozpakowuje `params: Promise<...>` przez

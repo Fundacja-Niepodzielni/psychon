@@ -83,14 +83,14 @@ export function removeThreadMember(threadId: number, userId: number): Promise<nu
   return api<null>(`/threads/${threadId}/members/${userId}`, { method: "DELETE" });
 }
 
-/** Wiadomości jednego wątku, stronicowane (kontroler: `routes/api/chat.php:29`). */
+/** Wiadomości jednego wątku, stronicowane (`routes/api/chat.php`, `Route::get('/threads/{thread}'`). */
 export function fetchThreadMessages(
   threadId: number,
 ): Promise<{ data: ChatMessage[]; meta?: PaginationMeta }> {
   return apiPaged<ChatMessage>(`/threads/${threadId}`);
 }
 
-/** Wysłanie wiadomości do wątku (`routes/api/chat.php:30`). */
+/** Wysłanie wiadomości do wątku (`routes/api/chat.php`, `Route::post('/threads/{thread}/messages'`). */
 export function sendThreadMessage(
   threadId: number,
   body: string,

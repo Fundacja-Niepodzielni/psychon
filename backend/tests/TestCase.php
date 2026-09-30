@@ -36,10 +36,11 @@ use Throwable;
  * DRUGI PUNKT KONTROLNY (`setUpTraits()`) — powód zmierzony, nie teoretyczny.
  * Pod `--parallel` bazę podmienia sam framework, i robi to POMIĘDZY jednym punktem
  * a drugim. Kolejność z
- * `vendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithTestCaseLifecycle.php:101-106`:
- *   101  `$this->refreshApplication();`                  ← tu mierzy punkt pierwszy
- *   103  `ParallelTesting::callSetUpTestCaseCallbacks($this);` ← tu framework PRZEŁĄCZA bazę
- *   106  `$this->setUpTraits();`                          ← tu czyści ją `RefreshDatabase`
+ * `vendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithTestCaseLifecycle.php`,
+ * metoda `setUpTheTestEnvironment()`:
+ *   1. `$this->refreshApplication();`                  ← tu mierzy punkt pierwszy
+ *   2. `ParallelTesting::callSetUpTestCaseCallbacks($this);` ← tu framework PRZEŁĄCZA bazę
+ *   3. `$this->setUpTraits();`                          ← tu czyści ją `RefreshDatabase`
  * Skutek dla samego strażnika był gorszy niż fałszywy alarm: punkt pierwszy mierzył
  * bazę bazową (`niepodzielni_testing`) i był zielony, a `RefreshDatabase` czyścił
  * bazę `…_test_N`, której NIKT nie sprawdzał. Strażnik nie blokował — przestawał
@@ -308,7 +309,8 @@ Powód: '.self::$connectionFailure,
      * równoległy a czyszczeniem jej przez `RefreshDatabase`.
      *
      * Pomiar jest tu ŚWIEŻY (bez pamięci procesu), bo pamięć procesu to dokładnie ta
-     * rzecz, którą framework unieważnił w wierszu 103 cyklu życia: baza z chwili
+     * rzecz, którą framework unieważnił w cyklu życia wywołaniem
+     * `ParallelTesting::callSetUpTestCaseCallbacks($this);`: baza z chwili
      * `refreshApplication()` już nie jest bazą, którą zaraz wyczyści cecha.
      */
     protected function setUpTraits()

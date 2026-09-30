@@ -10,7 +10,7 @@ import useCloseOnOutsideOrEscape from "@/lib/hooks/useCloseOnOutsideOrEscape";
  * odmontowaniu.
  *
  * Kontrola negatywna: podmiana ciala haka na pusty efekt gasi te proby
- * (sam `return;` w `useEffect`, linia 19 pliku hooka) — wszystkie ponizsze
+ * (sam `return;` w `useEffect` w miejscu `if (!open) return;` pliku hooka) — wszystkie ponizsze
  * testy padaja na czerwono, bo hook przestaje cokolwiek robic.
  */
 

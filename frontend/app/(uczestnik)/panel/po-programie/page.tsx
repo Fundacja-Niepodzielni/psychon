@@ -33,9 +33,9 @@ export default function PoProgramiePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   /**
-   * `GET /me` (`backend/routes/api/h01.php:27`) idzie przez `auth:keycloak`
-   * — gwardię `keycloak` (`backend/config/auth.php:49-52`, driver
-   * `keycloak`), rejestrowaną `Auth::viaRequest('keycloak', ...)` w
+   * `GET /me` (`backend/routes/api/h01.php`, `Route::get('/me'`) idzie przez
+   * `auth:keycloak` — gwardię `keycloak` (`backend/config/auth.php`,
+   * `'driver' => 'keycloak'`), rejestrowaną `Auth::viaRequest('keycloak', ...)` w
    * `AppServiceProvider::boot()` i realizowaną przez `KeycloakGuardResolver`
    * (nie przez pośrednika `AuthenticateKeycloakToken` — ten stoi wyłącznie
    * na `h03.php` i `sso.php`). Brak/zły token, unieważniona back-channel

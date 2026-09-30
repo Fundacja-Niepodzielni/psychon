@@ -101,8 +101,10 @@ class IdentityBindingNoElevationNoAutoCreateTest extends TestCase
      * itself, at the moment it is sent to the database, before any rollback
      * gets a chance to hide it.
      *
-     * The listener assertion (line 126) runs before the row-count assertion
-     * (line 127) and PHPUnit stops at the first failing assertion — so once
+     * The listener assertion (`$this->assertSame(0, $attemptedUserInserts`)
+     * runs before the row-count assertion
+     * (`$this->assertSame($before, User::query()->count()`) and PHPUnit
+     * stops at the first failing assertion — so once
      * an attempted insert is observed, the row-count check never executes
      * and covers nothing for that run. Given this ordering, the row-count
      * assertion only earns its place for the one case the listener cannot

@@ -21,7 +21,7 @@ class StrazniczaAtrapa extends TestCase
     /**
      * Wykonuje DOKŁADNIE to, co framework wykonuje między przełączeniem bazy przez
      * runner równoległy a jej wyczyszczeniem przez `RefreshDatabase`
-     * (`InteractsWithTestCaseLifecycle.php:106`). Atrapa nie używa żadnej cechy
+     * (`InteractsWithTestCaseLifecycle.php`, `$this->setUpTraits();`). Atrapa nie używa żadnej cechy
      * bazodanowej, więc `parent::setUpTraits()` po przejściu kontroli nic nie kasuje.
      */
     public function przejdzPunktKontrolnyPrzedCzyszczeniem(Application $app): void

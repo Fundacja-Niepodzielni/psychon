@@ -12,7 +12,7 @@ use Tests\TestCase;
  * Pakiet H22 · administracja dokumentów prawnych — kryterium L3 (lista,
  * dodanie, publikacja, odmowa edycji/usunięcia opublikowanej wersji, wpis
  * audytu) i L5 (walidacja wejść, zero zmian w bazie po odmowie). Rola
- * dopuszczona do panelu: `docs/system/03-role-i-uprawnienia.md:49`
+ * dopuszczona do panelu: `docs/system/03-role-i-uprawnienia.md`
  * (wiersz „Panel: CMS kursów i lekcji" — ta sama bramka co inne panele CMS,
  * `backend/routes/api/h22.php` grupuje trasy administracji pod
  * `role:project_manager,super_admin`).
