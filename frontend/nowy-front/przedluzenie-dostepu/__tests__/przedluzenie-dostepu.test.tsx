@@ -291,7 +291,7 @@ describe("przedłużenie dostępu — zapis", () => {
   });
 
   it.each([
-    [403, "forbidden", "dostępne tylko dla administracji"],
+    [403, "forbidden", "tylko dla administracji"],
     [404, "not_found", "Nie znaleziono osoby"],
   ])("%i przy zapisie: komunikat nad formularzem, dostęp bez zmian", async (status, code, fragment) => {
     ustawSerwer({

@@ -24,6 +24,15 @@ interface WlasciwosciEmptyStateBrakUprawnien extends WlasciwosciEmptyStateBazowe
   rola: string;
 }
 
+/**
+ * Zdanie odmowy z powodu roli — jedyne miejsce, w którym powstaje. Używa go
+ * molekuła i każdy komunikat odmowy AKCJI (ekran zostaje, odmowa dotyczy
+ * zapisu), żeby brzmienie nie rozjechało się między ekranami.
+ */
+export function zdanieOdmowyRoli(rola: string): string {
+  return `Ta funkcja jest dostępna tylko dla ${rola}.`;
+}
+
 type WlasciwosciEmptyState = WlasciwosciEmptyStateZwykle | WlasciwosciEmptyStateBrakUprawnien;
 
 function jestWariantemUprawnien(
@@ -42,7 +51,7 @@ function jestWariantemUprawnien(
 export function EmptyState(wlasciwosci: WlasciwosciEmptyState) {
   const { naglowek, przycisk } = wlasciwosci;
   const tresc = jestWariantemUprawnien(wlasciwosci)
-    ? `Ta funkcja jest dostępna tylko dla ${wlasciwosci.rola}.`
+    ? zdanieOdmowyRoli(wlasciwosci.rola)
     : wlasciwosci.tresc;
 
   return (

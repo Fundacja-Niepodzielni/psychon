@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { EmptyState } from "../EmptyState";
+import { EmptyState, zdanieOdmowyRoli } from "../EmptyState";
 
 describe("EmptyState", () => {
   it("wariant brak-uprawnien sklada zdanie slownika z nazwa roli w dopelniaczu", () => {
@@ -55,5 +55,11 @@ describe("EmptyState", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Wróć" }));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("zdanieOdmowyRoli", () => {
+  it("sklada to samo zdanie co wariant brak-uprawnien", () => {
+    expect(zdanieOdmowyRoli("administracji")).toBe("Ta funkcja jest dostępna tylko dla administracji.");
   });
 });

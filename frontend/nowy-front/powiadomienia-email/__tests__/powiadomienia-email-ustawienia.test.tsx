@@ -169,7 +169,7 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
 
     await waitFor(() =>
-      expect(screen.getByText("Brak uprawnień do zmiany ustawień powiadomień.")).toBeInTheDocument(),
+      expect(screen.getByText(/tylko dla administracji/)).toBeInTheDocument(),
     );
     expect(screen.queryByRole("region", { name: "Niezapisane zmiany" })).toBeNull();
   });

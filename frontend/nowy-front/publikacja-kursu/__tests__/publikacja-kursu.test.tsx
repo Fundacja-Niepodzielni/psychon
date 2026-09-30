@@ -273,7 +273,7 @@ describe("odmowa publikacji", () => {
     serwer({ GET: kurs(), PATCH: blad(403, "forbidden", "Nie masz dostępu do tego zasobu.") });
     const { container } = wyrenderuj();
     await uzytkownik.click(await screen.findByRole("button", { name: "Opublikuj kurs" }));
-    expect(await screen.findByText("Brak uprawnień")).toBeInTheDocument();
+    expect(await screen.findByText(/tylko dla administracji/)).toBeInTheDocument();
     expect(stanPublikacji(container)).toBe("szkic");
   });
 

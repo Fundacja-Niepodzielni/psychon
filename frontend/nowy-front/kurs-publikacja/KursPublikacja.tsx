@@ -1,10 +1,12 @@
 "use client";
 
 import { useId, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/design-system/atomy/Badge/Badge";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
+import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { PublishChecklist } from "@/design-system/organizmy/PublishChecklist/PublishChecklist";
 import { checklistaPublikacji, type WynikDanychKursu } from "./dane";
 import style from "./KursPublikacja.module.css";
@@ -29,6 +31,7 @@ interface WlasciwosciKursPublikacja {
  * do kliknięcia przycisku głównego, wyjście oddaje fokus temu przyciskowi.
  */
 export function KursPublikacja({ idKursu, wynik }: WlasciwosciKursPublikacja) {
+  const router = useRouter();
   const [otwarty, setOtwarty] = useState(false);
   const idPrzycisku = useId();
 
@@ -47,7 +50,12 @@ export function KursPublikacja({ idKursu, wynik }: WlasciwosciKursPublikacja) {
     return (
       <div className={style.uklad}>
         <Heading stopien={1}>Kurs {idKursu}</Heading>
-        <Text>Brak uprawnień do tego kursu — tylko dla prowadzącego.</Text>
+        <EmptyState
+          wariant="brak-uprawnien"
+          naglowek="Publikacja kursu dla prowadzących"
+          rola="prowadzących"
+          przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
+        />
       </div>
     );
   }
