@@ -3,19 +3,20 @@ import {
   GRUPY,
   celTrasy,
   celTrasyEkranu,
+  czyNowaTrasaDostepna,
   czyStaraTrasaPrzekierowuje,
   type DefinicjaGrupy,
 } from "@/lib/przelaczenie/grupy";
 
 /**
- * Świadek "wyłączone = baza" (Miara B1): na tej gałęzi (`przelaczenie-mechanizm`)
- * KAŻDA grupa rejestru ma `wlaczona: false` — to jest bit, który różni tę
- * gałąź od gałęzi świadka (`przelaczenie-grupa-wspolpraca`), i nic więcej.
+ * Stan flag rejestru: wyłączona grupa nie zmienia zachowania produktu, więc
+ * każda grupa, której włączenie nie zostało jeszcze wdrożone, ma
+ * `wlaczona: false`.
  */
-describe("rejestr GRUPY — stan tej gałęzi", () => {
+describe("rejestr GRUPY — stan flag", () => {
   it("każda grupa jest dziś wyłączona", () => {
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
-      expect(grupa.wlaczona, `grupa "${klucz}" powinna być wyłączona na tej gałęzi`).toBe(false);
+      expect(grupa.wlaczona, `grupa "${klucz}" powinna być wyłączona dziś`).toBe(false);
     }
   });
 
@@ -30,8 +31,8 @@ describe("celTrasyEkranu — czysta funkcja, obie gałęzie flagi", () => {
     klucz: "przyklad",
     wlaczona: false,
     ekrany: [
-      { panel: "uczestnik", staraTrasa: "/panel/stara", nowaTrasa: "/panel/nowa" },
-      { panel: "administracja", staraTrasa: null, nowaTrasa: "/admin/nowa" },
+      { panel: "uczestnik", staraTrasa: "/panel/stara", nowaTrasa: "/panel/nowa", trasaPoligonu: "/poligon/a" },
+      { panel: "administracja", staraTrasa: null, nowaTrasa: "/admin/nowa", trasaPoligonu: "/poligon/b" },
     ],
   };
 
@@ -69,8 +70,8 @@ describe("czyStaraTrasaPrzekierowuje", () => {
     klucz: "przyklad",
     wlaczona: false,
     ekrany: [
-      { panel: "uczestnik", staraTrasa: "/panel/stara", nowaTrasa: "/panel/nowa" },
-      { panel: "administracja", staraTrasa: null, nowaTrasa: "/admin/nowa" },
+      { panel: "uczestnik", staraTrasa: "/panel/stara", nowaTrasa: "/panel/nowa", trasaPoligonu: "/poligon/a" },
+      { panel: "administracja", staraTrasa: null, nowaTrasa: "/admin/nowa", trasaPoligonu: "/poligon/b" },
     ],
   };
 
@@ -86,11 +87,47 @@ describe("czyStaraTrasaPrzekierowuje", () => {
     expect(czyStaraTrasaPrzekierowuje({ ...grupa, wlaczona: true }, "administracja")).toBe(false);
   });
 
-  it("KONTROLA NEGATYWNA: gdyby wyłączona grupa fałszywie zgłaszała przekierowanie, ten test by to złapał", () => {
+  it("włączona grupa, ekran o tym samym adresie starej i nowej trasy: nie przekierowuje (zamiana treści, nie pętla)", () => {
+    const tenSamAdres: DefinicjaGrupy = {
+      klucz: "przyklad",
+      wlaczona: true,
+      ekrany: [{ panel: "administracja", staraTrasa: "/admin/x", nowaTrasa: "/admin/x", trasaPoligonu: "/poligon/c" }],
+    };
+    expect(czyStaraTrasaPrzekierowuje(tenSamAdres, "administracja")).toBe(false);
+    expect(celTrasyEkranu(tenSamAdres, "administracja")).toBe("/admin/x");
+  });
+
+  it("przypadek odwrotny: gdyby wyłączona grupa fałszywie zgłaszała przekierowanie, ten test by to złapał", () => {
     // Kopia z odwróconą flagą — dowód, że asercja wyżej faktycznie rozróżnia obie gałęzie,
     // a nie zawsze zwraca to samo niezależnie od `wlaczona`.
     expect(czyStaraTrasaPrzekierowuje({ ...grupa, wlaczona: true }, "uczestnik")).not.toBe(
       czyStaraTrasaPrzekierowuje(grupa, "uczestnik"),
     );
+  });
+});
+
+describe("czyNowaTrasaDostepna", () => {
+  it("nowa trasa jest dostępna dokładnie wtedy, gdy grupa jest włączona", () => {
+    const grupa: DefinicjaGrupy = { klucz: "przyklad", wlaczona: false, ekrany: [] };
+    expect(czyNowaTrasaDostepna(grupa)).toBe(false);
+    expect(czyNowaTrasaDostepna({ ...grupa, wlaczona: true })).toBe(true);
+  });
+});
+
+describe("rejestr GRUPY — zawartość", () => {
+  it("zna pięć grup dzisiejszego kanonu", () => {
+    expect(Object.keys(GRUPY).sort()).toEqual(["formyStazu", "kurs", "powiadomienia", "superwizje", "wspolpraca"]);
+  });
+
+  it("klucz każdej grupy zgadza się z jej kluczem w rejestrze", () => {
+    for (const [klucz, grupa] of Object.entries(GRUPY)) {
+      expect(grupa.klucz).toBe(klucz);
+    }
+  });
+
+  it("kurs należy do panelu prowadzącego, a jego adres zostaje ten sam", () => {
+    const [ekran] = GRUPY.kurs.ekrany;
+    expect(ekran.panel).toBe("prowadzacy");
+    expect(ekran.staraTrasa).toBe(ekran.nowaTrasa);
   });
 });
