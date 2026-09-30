@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -23,12 +23,16 @@ import {
 } from "./dane";
 import style from "./Lekcja.module.css";
 
-/** Heartbeat cadence — the upper bound the contract allows ("co <= 30 s").
- * Both increments equal the tick length in seconds: the mock player has no
- * real elapsed-time source, only a play/pause flag, so a full tick counts as
- * fully watched and fully active whenever it fires at all. */
-const HEARTBEAT_INTERWAL_MS = 30000;
-const HEARTBEAT_INTERWAL_SEKUND = HEARTBEAT_INTERWAL_MS / 1000;
+/** Heartbeat cadence — the upper bound the contract allows ("co <= 30 s"). */
+const HEARTBEAT_INTERWAL_SEKUND = 30;
+
+/** Seconds counted locally since the last send: played, played with the tab
+ * visible, and played since the last cadence tick. */
+interface ZebranePrzyrosty {
+  obejrzane: number;
+  aktywne: number;
+  odTyku: number;
+}
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
@@ -54,20 +58,62 @@ interface WlasciwosciLekcja {
  * (a primary button is never disabled in the design system).
  *
  * Progress heartbeat (`POST /lessons/{id}/progress`, contract "Postęp
- * lekcji") ticks on a fixed interval while the lesson is loaded, but only
- * sends when the recording is actually playing and the tab is visible.
- * "Playing" comes from `LessonPlayer`'s `onZmianaOdtwarzania` callback
+ * lekcji"): while the recording is playing a one-second clock counts played
+ * seconds (`watched_delta`) and played seconds with the tab visible
+ * (`active_delta`); every 30 s of playing the collected increments are sent,
+ * unless the tab is hidden at that moment. "Playing" comes from
+ * `LessonPlayer`'s `onZmianaOdtwarzania` callback
  * (`design-system/organizmy/LessonPlayer/LessonPlayer.tsx`, play/pause
- * button handler) into a ref read at tick time; "visible" is read straight
- * off `document.hidden` at the same moment, so a tab hidden between ticks
- * is caught without a separate listener.
+ * button handler) into a ref; "visible" is read off `document.hidden` each
+ * second. The response carries the server counters, which refresh the screen
+ * (progress bar, active-time sentence, the completion button unlocking when
+ * `completable` turns true). A failed send keeps the increments for the next
+ * tick and shows a notice with a retry button.
  */
 export function Lekcja({ id }: WlasciwosciLekcja) {
   const router = useRouter();
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
   const [wysylanie, setWysylanie] = useState(false);
   const [bladUkonczenia, setBladUkonczenia] = useState<string | null>(null);
+  const [bladZapisu, setBladZapisu] = useState(false);
   const odtwarzaneRef = useRef(false);
+  const przyrostyRef = useRef<ZebranePrzyrosty>({ obejrzane: 0, aktywne: 0, odTyku: 0 });
+  const wysylanieRef = useRef(false);
+  const zamontowanaRef = useRef(true);
+
+  const wyslijZebrane = useCallback(async () => {
+    const zebrane = przyrostyRef.current;
+    if (wysylanieRef.current || (zebrane.obejrzane === 0 && zebrane.aktywne === 0)) return;
+    wysylanieRef.current = true;
+    const przyrosty = { watched_delta: zebrane.obejrzane, active_delta: zebrane.aktywne };
+    zebrane.obejrzane = 0;
+    zebrane.aktywne = 0;
+    const postep = await wyslijPostep(id, przyrosty);
+    wysylanieRef.current = false;
+    if (!zamontowanaRef.current) return;
+    if (!postep) {
+      // Not saved: keep the increments, the next tick sends them together.
+      zebrane.obejrzane += przyrosty.watched_delta;
+      zebrane.aktywne += przyrosty.active_delta;
+      setBladZapisu(true);
+      return;
+    }
+    setBladZapisu(false);
+    setStan((poprzedni) =>
+      poprzedni.rodzaj === "ok"
+        ? {
+            ...poprzedni,
+            dane: {
+              ...poprzedni.dane,
+              watched_seconds: postep.watched_seconds,
+              active_seconds: postep.active_seconds,
+              completable: postep.completable,
+              completable_at_percent: postep.completable_at_percent,
+            },
+          }
+        : poprzedni,
+    );
+  }, [id]);
 
   function wczytaj(straz?: { anulowane: boolean }) {
     return pobierzDaneLekcji(id).then((wynik) => {
@@ -95,22 +141,34 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   }, [id]);
 
   useEffect(() => {
+    zamontowanaRef.current = true;
+    return () => {
+      zamontowanaRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (stan.rodzaj !== "ok") return undefined;
     // `LessonPlayer` always mounts with its internal `odtwarzane` at `false`.
     odtwarzaneRef.current = false;
+    przyrostyRef.current = { obejrzane: 0, aktywne: 0, odTyku: 0 };
 
-    function wyslijHeartbeat() {
+    function tyk() {
       if (!odtwarzaneRef.current) return;
-      if (typeof document !== "undefined" && document.hidden) return;
-      void wyslijPostep(id, {
-        watched_delta: HEARTBEAT_INTERWAL_SEKUND,
-        active_delta: HEARTBEAT_INTERWAL_SEKUND,
-      });
+      const ukryta = typeof document !== "undefined" && document.hidden;
+      const zebrane = przyrostyRef.current;
+      zebrane.obejrzane += 1;
+      if (!ukryta) zebrane.aktywne += 1;
+      zebrane.odTyku += 1;
+      if (zebrane.odTyku < HEARTBEAT_INTERWAL_SEKUND) return;
+      zebrane.odTyku = 0;
+      if (ukryta) return;
+      void wyslijZebrane();
     }
 
-    const idInterwalu = setInterval(wyslijHeartbeat, HEARTBEAT_INTERWAL_MS);
+    const idInterwalu = setInterval(tyk, 1000);
     return () => clearInterval(idInterwalu);
-  }, [stan.rodzaj, id]);
+  }, [stan.rodzaj, id, wyslijZebrane]);
 
   function ponow() {
     setStan({ rodzaj: "ladowanie" });
@@ -233,6 +291,20 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
               tresc="Ta lekcja nie ma jeszcze nagrania ani treści."
               przycisk={{ etykieta: "Wróć do kursu", onClick: () => router.back() }}
             />
+          )}
+
+          {bladZapisu && (
+            <Notice
+              wariant="error"
+              tytul="Postęp nie został zapisany"
+              akcja={
+                <Button poziom="outline" onClick={() => void wyslijZebrane()}>
+                  Spróbuj ponownie
+                </Button>
+              }
+            >
+              Sprawdź połączenie i spróbuj ponownie. Czas oglądania zostanie dopisany przy następnym zapisie.
+            </Notice>
           )}
 
           <div className={style.ukonczenie} role="group" aria-label="Ukończenie lekcji">

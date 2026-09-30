@@ -39,7 +39,9 @@ vi.mock("@/components/molecules/PageHeader", async (importOriginal) => {
 });
 
 const { default: PageHeader } = await import("@/components/molecules/PageHeader");
-const { default: PulpitPage } = await import("@/app/(uczestnik)/panel/pulpit/page");
+// Stary pulpit żyje w `StaraTresc.tsx` (strona `page.tsx` zwraca ją przy wyłączonej grupie
+// `pulpitUczestnika`); ten test mierzy starą treść, więc importuje ją wprost.
+const { default: PulpitPage } = await import("@/app/(uczestnik)/panel/pulpit/StaraTresc");
 
 beforeEach(() => {
   api.mockReset();

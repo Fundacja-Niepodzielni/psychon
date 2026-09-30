@@ -21,6 +21,10 @@ vi.mock("next/navigation", () => ({ notFound: () => notFound() }));
 
 const { ApiError } = await import("@/lib/api");
 const { default: LessonPage } = await import("@/app/(uczestnik)/panel/lekcje/[id]/page");
+// Stary ekran lekcji żyje w `StaraTresc.tsx` (strona `page.tsx` zwraca go przy wyłączonej grupie
+// `lekcja`); testy treści mierzą starą treść, więc importują ją wprost. Sprawdzenie
+// identyfikatora zostaje na stronie — wspólne dla obu wariantów.
+const { default: LekcjaStaraTresc } = await import("@/app/(uczestnik)/panel/lekcje/[id]/StaraTresc");
 
 const LESSON = {
   id: 21,
@@ -36,7 +40,7 @@ const LESSON = {
 };
 
 async function renderLesson(id = "21") {
-  const element = await LessonPage({ params: Promise.resolve({ id }) });
+  const element = <LekcjaStaraTresc lessonId={Number(id)} />;
   let result: ReturnType<typeof render> | undefined;
   await act(async () => {
     result = render(element);
@@ -77,7 +81,7 @@ describe("LessonPage", () => {
   });
 
   it.each(["abc", "0", "-3"])("calls notFound for an invalid id %s without fetching", async (id) => {
-    await expect(renderLesson(id)).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(LessonPage({ params: Promise.resolve({ id }) })).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFound).toHaveBeenCalledTimes(1);
     expect(apiMock).not.toHaveBeenCalled();
   });
