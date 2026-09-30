@@ -18,6 +18,11 @@ interface WlasciwosciPowlokiPanelu {
   etykietaMenu?: string;
   /** Linia „W przygotowaniu: …” pod wylogowaniem w grupie „Konto” (bez przedrostka i kropki). */
   liniaKonta?: string;
+  /**
+   * Nawigacja kliencka po kliknięciu pozycji menu (np. `router.push`). Bez
+   * propu pozycje menu są zwykłymi łączami (pełne przejście strony).
+   */
+  onNawigacja?: (href: string) => void;
   /** Wylogowanie — ostatnia pozycja grupy „Konto”. */
   onWyloguj: () => void;
   wylogowywanie?: boolean;
@@ -48,6 +53,7 @@ export function PowlokaPanelu({
   grupy,
   etykietaMenu = "Menu główne",
   liniaKonta,
+  onNawigacja,
   onWyloguj,
   wylogowywanie = false,
   rokProgramu = null,
@@ -72,9 +78,28 @@ export function PowlokaPanelu({
     else setMenuOtwarte(false);
   }
 
+  /**
+   * Zwykłe kliknięcie łącza wewnętrznego w menu idzie przez `onNawigacja`
+   * (nawigacja kliencka), gdy wywołujący ją podał. Kliknięcie z modyfikatorem,
+   * łącze z `target` i łącze obsłużone już przez kogoś innego (np. `next/link`
+   * w stopce) zostają bez zmian.
+   */
+  function klikniecieWMenu(e: MouseEvent<HTMLElement>) {
+    if (!onNawigacja || e.defaultPrevented || e.button !== 0) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const lacze = e.target instanceof Element ? e.target.closest("a") : null;
+    const href = lacze?.getAttribute("href");
+    if (!lacze || !href || !href.startsWith("/") || href.startsWith("//") || lacze.getAttribute("target")) return;
+    e.preventDefault();
+    onNawigacja(href);
+  }
+
   function kliknieciePoOknie(e: MouseEvent<HTMLDialogElement>) {
     if (e.target === e.currentTarget) zamknijMenu();
-    else if (e.target instanceof Element && e.target.closest("a")) zamknijMenu();
+    else if (e.target instanceof Element && e.target.closest("a")) {
+      klikniecieWMenu(e);
+      zamknijMenu();
+    }
   }
 
   const konto = (
@@ -104,7 +129,7 @@ export function PowlokaPanelu({
         Przejdź do treści
       </a>
 
-      <aside className={style.bok} aria-label="Menu i konto">
+      <aside className={style.bok} aria-label="Menu i konto" onClick={onNawigacja ? klikniecieWMenu : undefined}>
         {zawartoscMenu()}
       </aside>
 

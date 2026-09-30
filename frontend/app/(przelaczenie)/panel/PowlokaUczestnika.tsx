@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import Logo from "@/components/ui/Logo";
 import { PowlokaPanelu } from "@/design-system/szablony/PowlokaPanelu/PowlokaPanelu";
@@ -31,6 +31,7 @@ export const PODPISY_ROLI_UCZESTNIKA: Partial<Record<Role, string>> = {
  */
 export function PowlokaUczestnika({ children }: { children: ReactNode }) {
   const sciezka = usePathname() ?? "";
+  const router = useRouter();
   const [ja, setJa] = useState<Ja | null>(null);
   const { wyloguj, wylogowywanie } = useWylogowanieRamki();
 
@@ -71,6 +72,7 @@ export function PowlokaUczestnika({ children }: { children: ReactNode }) {
       grupy={grupy}
       etykietaMenu="Menu — Panel uczestnika"
       liniaKonta={W_PRZYGOTOWANIU_KONTO_UCZESTNIKA}
+      onNawigacja={(href) => router.push(href)}
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}
       narzedziaPaska={<NarzedziaPaskaRamki />}

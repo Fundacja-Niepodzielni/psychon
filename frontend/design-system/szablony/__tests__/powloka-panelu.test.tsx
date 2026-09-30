@@ -202,3 +202,64 @@ describe("PageHeader w powłoce i poza nią", () => {
     expect(okruszki.textContent).toContain("Profil 12");
   });
 });
+
+/**
+ * Nawigacja kliencka menu (`onNawigacja`): zwykły klik łącza wewnętrznego idzie
+ * przez wywołującego (np. `router.push`) i nie przeładowuje strony; klik
+ * z Ctrl/Meta/Shift, środkowym przyciskiem i łącze zewnętrzne działają
+ * domyślnie. Bez propu (administracja) każdy klik działa domyślnie.
+ * `fireEvent.click` zwraca `false`, gdy domyślna akcja została zatrzymana.
+ */
+describe("PowlokaPanelu — nawigacja kliencka menu", () => {
+  const Z_ZEWNETRZNYM = [
+    ...GRUPY,
+    { naglowek: "Pomoc", pozycje: [{ ikona: "help" as const, etykieta: "Strona Fundacji", href: "https://niepodzielni.example" }] },
+  ];
+
+  function menuBoczne() {
+    return within(screen.getByRole("complementary", { name: "Menu i konto" }));
+  }
+
+  it("zwykły klik pozycji wewnętrznej: onNawigacja(href) i zatrzymana domyślna akcja", () => {
+    const onNawigacja = vi.fn();
+    wyrenderuj({ onNawigacja });
+    const domyslna = fireEvent.click(menuBoczne().getByRole("link", { name: "Sprawy" }));
+    expect(onNawigacja).toHaveBeenCalledTimes(1);
+    expect(onNawigacja).toHaveBeenCalledWith("/admin/sprawy");
+    expect(domyslna).toBe(false);
+  });
+
+  it.each([
+    ["Ctrl", { ctrlKey: true }],
+    ["Meta", { metaKey: true }],
+    ["Shift", { shiftKey: true }],
+    ["środkowy przycisk", { button: 1 }],
+  ])("klik z modyfikatorem (%s): bez onNawigacja, domyślna akcja", (_nazwa, opcje) => {
+    const onNawigacja = vi.fn();
+    wyrenderuj({ onNawigacja });
+    const domyslna = fireEvent.click(menuBoczne().getByRole("link", { name: "Sprawy" }), opcje);
+    expect(onNawigacja).not.toHaveBeenCalled();
+    expect(domyslna).toBe(true);
+  });
+
+  it("łącze zewnętrzne: bez onNawigacja, domyślna akcja", () => {
+    const onNawigacja = vi.fn();
+    wyrenderuj({ onNawigacja, grupy: Z_ZEWNETRZNYM });
+    const domyslna = fireEvent.click(menuBoczne().getByRole("link", { name: "Strona Fundacji" }));
+    expect(onNawigacja).not.toHaveBeenCalled();
+    expect(domyslna).toBe(true);
+  });
+
+  it("bez propu (administracja): zwykły klik działa domyślnie", () => {
+    wyrenderuj();
+    expect(fireEvent.click(menuBoczne().getByRole("link", { name: "Sprawy" }))).toBe(true);
+  });
+
+  it("linia konta: „W przygotowaniu: …” pod wylogowaniem tylko z propem liniaKonta", () => {
+    wyrenderuj({ liniaKonta: "profil · pomoc" });
+    expect(screen.getAllByText("W przygotowaniu: profil · pomoc.")).toHaveLength(1);
+    cleanup();
+    wyrenderuj();
+    expect(screen.queryByText(/W przygotowaniu: profil/)).toBeNull();
+  });
+});

@@ -10,6 +10,9 @@ interface WlasciwosciProgressBar {
 /**
  * Pasek postępu `ProgressBar` (A16). Tor widoczny nawet przy 0%. Obok zawsze
  * stoi wartość z jednostką albo mianownikiem — atom odmawia pracy bez niej.
+ * Ta sama etykieta jest nazwą dostępną paska (`aria-label`), więc czytnik
+ * ekranu ogłasza pasek jej treścią, a nie samym procentem. Nazwa nie zależy
+ * od identyfikatora, więc kod HTML atomu jest ten sam przy każdym montowaniu.
  */
 export function ProgressBar({ procent, etykieta, wariant = "kafel" }: WlasciwosciProgressBar) {
   if (etykieta.trim() === "") {
@@ -23,6 +26,7 @@ export function ProgressBar({ procent, etykieta, wariant = "kafel" }: Wlasciwosc
         aria-valuenow={bezpiecznyProcent}
         aria-valuemin={0}
         aria-valuemax={100}
+        aria-label={etykieta}
         className={style.tor}
       >
         <div
