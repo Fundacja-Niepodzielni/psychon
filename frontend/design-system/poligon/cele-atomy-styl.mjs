@@ -801,7 +801,7 @@ export const OCZEKIWANE_ATOMY_STYL = [
 ];
 
 // Reguły fokusu — osobny wykaz, bo mierzą REGUŁĘ WSPÓLNĄ
-// (`:root :focus-visible`), nie tabelę atomów. `grupa`/`pozycja` wypełnione
+// (`[data-theme] :focus-visible`), nie tabelę atomów. `grupa`/`pozycja` wypełnione
 // TYLKO tam, gdzie odpowiadają realnej pozycji "fokus" z kolumny par. 2 —
 // Badge nie ma tam wiersza (A8 nie wymienia fokusu w par. 2), więc liczy się
 // jako dowód uogólnienia reguły wspólnej, nie jako jedna z 69 pozycji.

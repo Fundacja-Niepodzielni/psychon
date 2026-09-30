@@ -19,7 +19,7 @@
 /* Fokus w odtwarzaczu jest jasny: domyślny obrys `--brand` na ciemnym tle
    odtwarzacza ma kontrast około 1,45:1. `--invert-ink` na `--invert-bg` to ta
    sama para co tekst odtwarzacza. Selektor 0-2-1 przebija regułę globalną
-   `:root :focus-visible` (0-2-0) niezależnie od kolejności arkuszy. */
+   `[data-theme] :focus-visible` (0-2-0) niezależnie od kolejności arkuszy. */
 .odtwarzacz button:focus-visible {
   outline-color: var(--invert-ink);
 }

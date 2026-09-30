@@ -291,7 +291,7 @@ try {
         const wynik = await zmierzAtom(page, atom, viewport.nazwa);
         wyniki.push({ atom: atom.nazwa, grupa: atom.grupa, pozycja: atom.pozycja, motyw, viewport: viewport.nazwa, ...wynik });
       }
-      // Reguła WSPÓLNA `:root :focus-visible` — wołana REGUŁA, nie
+      // Reguła WSPÓLNA `[data-theme] :focus-visible` — wołana REGUŁA, nie
       // sam token (patrz komentarz przy zmierzPromienFokusu). Jedna pętla dla
       // wszystkich atomów interaktywnych, zamiast osobnych wywołań na sztywno.
       for (const regula of REGULY_FOKUSU) {
