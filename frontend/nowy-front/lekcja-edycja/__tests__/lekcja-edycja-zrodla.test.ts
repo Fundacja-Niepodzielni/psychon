@@ -161,6 +161,60 @@ describe("zgodność z zapleczem", () => {
     expect(polaTypu).toEqual(polaZaplecza);
   });
 
+  describe("odpowiedzi kontrolera nagrań (BunnyVideoAdminController.php)", () => {
+    const kontroler = tresc(join(ZAPLECZE, "app/Http/Controllers/Api/V1/Admin/BunnyVideoAdminController.php"));
+    const dane = tresc(join(KORZEN, "nowy-front/lekcja-edycja/dane.ts"));
+
+    /** Fragment kontrolera od początku metody do znacznika kolejnej deklaracji. */
+    function fragment(od: string, do_: string): string {
+      const poczatek = kontroler.indexOf(od);
+      expect(poczatek, `brak w kontrolerze: ${od}`).toBeGreaterThan(-1);
+      const koniec = kontroler.indexOf(do_, poczatek);
+      expect(koniec, `brak w kontrolerze: ${do_}`).toBeGreaterThan(poczatek);
+      return kontroler.slice(poczatek, koniec);
+    }
+
+    /** Klucze ostatniego bloku `'data' => [ … ]` w metodzie, czyli odpowiedzi 2xx z danymi. */
+    function kluczeDanych(metoda: string): string[] {
+      const blok = metoda.slice(metoda.lastIndexOf("'data' => ["));
+      return [...blok.matchAll(/^\s+'([a-z_]+)' =>/gm)].map((m) => m[1]).sort();
+    }
+
+    function fragmentTypu(od: string, do_: string): string {
+      const poczatek = dane.indexOf(od);
+      const koniec = dane.indexOf(do_, poczatek);
+      expect(poczatek, `brak w dane.ts: ${od}`).toBeGreaterThan(-1);
+      expect(koniec, `brak w dane.ts: ${do_}`).toBeGreaterThan(poczatek);
+      return dane.slice(poczatek, koniec);
+    }
+
+    it("klucze zlecenia wgrania z createUpload są kluczami typu ZlecenieWgrania", () => {
+      const metoda = fragment("public function createUpload(", "public function status(");
+      const polaZaplecza = kluczeDanych(metoda);
+      expect(polaZaplecza).toEqual(["expiration_time", "library_id", "signature", "upload_url", "video_id"]);
+      const typ = fragmentTypu("export interface ZlecenieWgrania", "/** Rola z");
+      const polaTypu = [...typ.matchAll(/^\s+([a-z_]+):/gm)].map((m) => m[1]).sort();
+      expect(polaTypu).toEqual(polaZaplecza);
+    });
+
+    it("klucze i stany odpowiedzi status są kluczami i stanami typu StanNagrania", () => {
+      const metoda = fragment("public function status(", "private function assertNotMultipartUpload(");
+      const mapowanie = fragment("private function mapStatus(", "\n}");
+      const typ = fragmentTypu("export type StanNagrania", "/** `BunnyVideoAdminController::createUpload`");
+
+      expect(metoda).toMatch(/\['data' => \['status' => 'no_video'\]\]/);
+      const polaZaplecza = [...new Set(["status", ...kluczeDanych(metoda)])].sort();
+      expect(polaZaplecza).toEqual(["duration_seconds", "preview_embed_url", "status"]);
+      const polaTypu = [...new Set([...typ.matchAll(/\b([a-z_]+):/g)].map((m) => m[1]))].sort();
+      expect(polaTypu).toEqual(polaZaplecza);
+
+      const stanyZaplecza = [...new Set(["no_video", ...[...mapowanie.matchAll(/=> '([a-z_]+)'/g)].map((m) => m[1])])].sort();
+      expect(stanyZaplecza).toEqual(["error", "finished", "no_video", "processing"]);
+      const stanyTypu = [...new Set([...typ.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]))].sort();
+      expect(stanyTypu).toEqual(stanyZaplecza);
+    });
+  });
+
   it("schemat odpowiedzi nagrania z openapi.json ma pola typów ZlecenieWgrania i StanNagrania", () => {
     const schemat = JSON.parse(tresc(join(ZAPLECZE, "openapi.json"))) as {
       paths: Record<string, Record<string, { responses: Record<string, { content?: Record<string, { schema: unknown }> }> }>>;

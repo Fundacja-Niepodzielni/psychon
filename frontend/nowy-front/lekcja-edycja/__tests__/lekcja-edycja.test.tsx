@@ -2,12 +2,15 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
+import type { CialoLekcji, LekcjaAdmin, MaterialAdmin, StanNagrania, ZlecenieWgrania } from "../dane";
 
 /**
  * Ekran „Lekcja: treść, nagranie, materiały” (administracja): każdy stan
  * w szablonie formularza z jednym `main`, zapis treści bez przycinania,
  * licznik znaków, 422 na polu treści, materiały, nagranie dla obu ról
  * administracji, odmowa z powodu roli (atrapa 401/403, 0 danych w DOM).
+ * Każda atrapa odpowiedzi serwera ma jawny typ z `../dane`, więc brak albo
+ * obcy klucz w atrapie czerwieni `npm run sprawdz-typy`.
  */
 
 const api = vi.fn();
@@ -30,7 +33,7 @@ vi.mock("@/lib/api/h01-wspolpraca", () => ({
 const { ApiError } = await import("@/lib/api/klient");
 const { LekcjaEdycja } = await import("../LekcjaEdycja");
 
-const LEKCJA = {
+const LEKCJA: LekcjaAdmin = {
   id: 21,
   course_id: 3,
   title: "Wprowadzenie do wywiadu",
@@ -46,26 +49,29 @@ const LEKCJA = {
   updated_at: "2026-09-01T08:00:00Z",
 };
 
-const INNA_LEKCJA = { ...LEKCJA, id: 22, title: "Inna lekcja" };
+const INNA_LEKCJA: LekcjaAdmin = { ...LEKCJA, id: 22, title: "Inna lekcja" };
 
-const BRAK_NAGRANIA = { status: "no_video" };
+const BRAK_NAGRANIA: StanNagrania = { status: "no_video" };
+
+const GOTOWE_NAGRANIE: StanNagrania = { status: "finished", duration_seconds: 125, preview_embed_url: "https://x.test/e" };
 
 interface Ustawienia {
   rola?: string;
-  lekcje?: unknown[];
-  nagranie?: unknown;
-  patch?: (cialo: Record<string, unknown>) => unknown;
+  lekcje?: LekcjaAdmin[];
+  nagranie?: StanNagrania;
+  patch?: (cialo: CialoLekcji) => LekcjaAdmin;
 }
 
 /** Atrapa API: odpowiada na każdą z tras ekranu; reszta tras nie istnieje. */
 function ustawApi({ rola = "super_admin", lekcje = [LEKCJA, INNA_LEKCJA], nagranie = BRAK_NAGRANIA, patch }: Ustawienia = {}) {
   pobierzJa.mockResolvedValue({ program_completed_at: null, role: rola });
-  api.mockImplementation(async (sciezka: string, opcje?: { method?: string; body?: unknown }) => {
+  api.mockImplementation(async (sciezka: string, opcje?: { method?: string; body?: CialoLekcji }) => {
     const metoda = opcje?.method ?? "GET";
     if (metoda === "GET" && sciezka === "/admin/courses/3/lessons") return lekcje;
     if (metoda === "GET" && sciezka === "/admin/lessons/21/video-status") return nagranie;
     if (metoda === "PATCH" && sciezka === "/admin/lessons/21") {
-      const cialo = opcje?.body as Record<string, unknown>;
+      const cialo = opcje?.body;
+      if (!cialo) throw new Error("Zapis bez ciała");
       return patch ? patch(cialo) : { ...LEKCJA, ...cialo };
     }
     throw new Error(`Nieoczekiwana trasa: ${metoda} ${sciezka}`);
@@ -366,10 +372,17 @@ describe("materiały", () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderujDane();
     expect(screen.getByText("Materiały przy tej lekcji: 2.")).toBeInTheDocument();
-    api.mockImplementation(async (sciezka: string, opcje?: { method?: string; body?: unknown }) => {
-      if (sciezka === "/admin/lessons/21/materials" && opcje?.method === "POST") {
-        return { id: 9, name: "karta.pdf", mime: "application/pdf", size: 4, lesson_id: 21, course_id: null, created_at: null };
-      }
+    const wgrany: MaterialAdmin = {
+      id: 9,
+      name: "karta.pdf",
+      mime: "application/pdf",
+      size: 4,
+      lesson_id: 21,
+      course_id: null,
+      created_at: null,
+    };
+    api.mockImplementation(async (sciezka: string, opcje?: { method?: string }) => {
+      if (sciezka === "/admin/lessons/21/materials" && opcje?.method === "POST") return wgrany;
       throw new Error(`Nieoczekiwana trasa: ${sciezka}`);
     });
     const plik = new File(["%PDF"], "karta.pdf", { type: "application/pdf" });
@@ -415,7 +428,7 @@ describe("nagranie", () => {
   it("opiekun projektu: stan nagrania z serwera widoczny, wgrywania brak", async () => {
     await renderujDane({
       rola: "project_manager",
-      nagranie: { status: "finished", duration_seconds: 125, preview_embed_url: "https://x.test/e" },
+      nagranie: GOTOWE_NAGRANIE,
     });
     expect(screen.getByText("Nagranie jest gotowe. Czas trwania: 2 min 5 s.")).toBeInTheDocument();
   });
@@ -423,15 +436,15 @@ describe("nagranie", () => {
   it("Super Admin: zlecenie wgrania z samym tytułem, potem wysyłka do dostawcy", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderujDane({ rola: "super_admin" });
-    const zlecenie = {
+    const zlecenie: ZlecenieWgrania = {
       video_id: "vid-1",
       upload_url: "https://video.test/tusupload",
       library_id: "77",
       expiration_time: 1790000000,
       signature: "sig",
     };
-    const ponowny = { status: "processing", duration_seconds: 0, preview_embed_url: "https://x.test/e" };
-    api.mockImplementation(async (sciezka: string, opcje?: { method?: string; body?: unknown }) => {
+    const ponowny: StanNagrania = { status: "processing", duration_seconds: 0, preview_embed_url: "https://x.test/e" };
+    api.mockImplementation(async (sciezka: string, opcje?: { method?: string }) => {
       if (sciezka === "/admin/lessons/21/video-uploads" && opcje?.method === "POST") return zlecenie;
       if (sciezka === "/admin/lessons/21/video-status") return ponowny;
       throw new Error(`Nieoczekiwana trasa: ${sciezka}`);
