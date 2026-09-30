@@ -3,11 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Zestaw testów dwustronnych dla ekranu `/nowy-front/po-programie`, sekcja
- * „Dalsza współpraca” (H01): pusta lista i wysyłka zgłoszenia, sekcja
- * niedostępna przed zakończeniem programu, błędy 422/409/403 przy wysyłce,
- * widoczność odpowiedzi administracji oraz brak dostępu dla ról spoza
- * wolontariusza/studenta.
+ * Zachowania ekranu „Po programie”: pusta lista i wysyłka zgłoszenia,
+ * ekran przed ukończeniem programu, błędy 422/409/403 przy wysyłce,
+ * widoczność odpowiedzi administracji oraz odmowa dla ról spoza
+ * wolontariusza i studenta. Funkcje danych są tu podmienione; stany szablonu,
+ * transport i kartę „Program ukończony” mierzy `po-programie-wspolpraca.test.tsx`.
  */
 
 const pobierzJa = vi.fn();
@@ -55,7 +55,7 @@ beforeEach(() => {
   back.mockReset();
 });
 
-describe("PoProgramieWspolpraca — świadek 1a", () => {
+describe("PoProgramieWspolpraca — wysyłka zgłoszenia", () => {
   it("program ukończony, pusta lista → formularz; wysyłka ma ciało {\"body\":\"…\"}; po 201 wiersz „Nowe” na górze, formularz zastąpiony Notice", async () => {
     const uzytkownik = userEvent.setup();
     pobierzJa.mockResolvedValue({ program_completed_at: "2026-09-01T00:00:00Z", role: "volunteer" });
@@ -78,24 +78,22 @@ describe("PoProgramieWspolpraca — świadek 1a", () => {
   });
 });
 
-describe("PoProgramieWspolpraca — świadek 1b", () => {
-  it("program_completed_at = null → Notice informacyjny, zero wywołań POST (brak formularza)", async () => {
+describe("PoProgramieWspolpraca — program nieukończony", () => {
+  it("program_completed_at = null → ekran otworzy się po ukończeniu programu, zero wywołań POST (brak formularza)", async () => {
     pobierzJa.mockResolvedValue({ program_completed_at: null, role: "volunteer" });
     pobierzMojeZgloszenia.mockResolvedValue({ data: [], meta: undefined });
 
     render(<PoProgramieWspolpraca />);
 
-    await waitFor(() =>
-      expect(
-        screen.getByText("Zgłoszenie dalszej współpracy będzie dostępne po zakończeniu programu."),
-      ).toBeInTheDocument(),
-    );
+    expect(
+      await screen.findByRole("heading", { name: "Ten ekran otworzy się po ukończeniu programu" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
     expect(zglosWspolprace).not.toHaveBeenCalled();
   });
 });
 
-describe("PoProgramieWspolpraca — świadek 1c", () => {
+describe("PoProgramieWspolpraca — błędy wysyłki", () => {
   it("422 z errors.body pokazuje tekst pod polem", async () => {
     const uzytkownik = userEvent.setup();
     pobierzJa.mockResolvedValue({ program_completed_at: "2026-09-01T00:00:00Z", role: "volunteer" });
@@ -139,7 +137,7 @@ describe("PoProgramieWspolpraca — świadek 1c", () => {
     ).toBeInTheDocument();
   });
 
-  it("403 program_not_completed → Notice z message serwera", async () => {
+  it("403 program_not_completed → ekran otworzy się po ukończeniu programu, formularz znika", async () => {
     const uzytkownik = userEvent.setup();
     pobierzJa.mockResolvedValue({ program_completed_at: "2026-09-01T00:00:00Z", role: "volunteer" });
     pobierzMojeZgloszenia.mockResolvedValue({ data: [], meta: undefined });
@@ -157,12 +155,13 @@ describe("PoProgramieWspolpraca — świadek 1c", () => {
     await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
 
     expect(
-      await screen.findByText("Zgłoszenie współpracy jest dostępne po zakończeniu programu."),
+      await screen.findByRole("heading", { name: "Ten ekran otworzy się po ukończeniu programu" }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
   });
 });
 
-describe("PoProgramieWspolpraca — świadek 1d", () => {
+describe("PoProgramieWspolpraca — odpowiedź administracji", () => {
   it("zgłoszenie answered → widoczna odpowiedź i jej data", async () => {
     pobierzJa.mockResolvedValue({ program_completed_at: "2026-09-01T00:00:00Z", role: "volunteer" });
     pobierzMojeZgloszenia.mockResolvedValue({ data: [ZGLOSZENIE_Z_ODPOWIEDZIA], meta: undefined });
@@ -170,24 +169,22 @@ describe("PoProgramieWspolpraca — świadek 1d", () => {
     render(<PoProgramieWspolpraca />);
 
     await waitFor(() => expect(screen.getByText(ZGLOSZENIE_Z_ODPOWIEDZIA.body)).toBeInTheDocument());
-    const wiersz = screen.getByText(ZGLOSZENIE_Z_ODPOWIEDZIA.body).closest("div");
-    expect(wiersz?.textContent).toContain(ZGLOSZENIE_Z_ODPOWIEDZIA.response);
-    expect(wiersz?.textContent).toContain(ZGLOSZENIE_Z_ODPOWIEDZIA.responded_at);
+    const odpowiedz = screen.getByTestId(`odpowiedz-${ZGLOSZENIE_Z_ODPOWIEDZIA.id}`);
+    expect(odpowiedz.textContent).toContain(ZGLOSZENIE_Z_ODPOWIEDZIA.response);
+    expect(odpowiedz.textContent).toContain("Odpowiedź z 15 września 2026, 11:00");
   });
 });
 
-describe("PoProgramieWspolpraca — świadek 1h (osoba)", () => {
-  it("403 forbidden z mine → Notice, brak listy i formularza", async () => {
+describe("PoProgramieWspolpraca — odmowa roli", () => {
+  it("rola spoza wolontariusza i studenta → odmowa z nazwą roli, brak listy i formularza", async () => {
     pobierzJa.mockResolvedValue({ program_completed_at: "2026-09-01T00:00:00Z", role: "instructor" });
     pobierzMojeZgloszenia.mockRejectedValue(
       new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tej sekcji." }),
     );
 
-    render(<PoProgramieWspolpraca />);
+    const { container } = render(<PoProgramieWspolpraca />);
 
-    expect(
-      await screen.findByText("Ta sekcja jest dostępna dla wolontariuszy i studentów."),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(container.textContent).toContain("uczestników"));
     expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Moje zgłoszenia" })).toBeNull();
   });
