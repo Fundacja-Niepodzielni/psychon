@@ -16,6 +16,8 @@ interface WlasciwosciPowlokiPanelu {
   grupy: WlasciwosciNawigacji["grupy"];
   /** Nazwa punktu orientacyjnego menu (`nav`); domyślnie „Menu główne”. */
   etykietaMenu?: string;
+  /** Linia „W przygotowaniu: …” pod wylogowaniem w grupie „Konto” (bez przedrostka i kropki). */
+  liniaKonta?: string;
   /** Wylogowanie — ostatnia pozycja grupy „Konto”. */
   onWyloguj: () => void;
   wylogowywanie?: boolean;
@@ -45,6 +47,7 @@ export function PowlokaPanelu({
   uzytkownik,
   grupy,
   etykietaMenu = "Menu główne",
+  liniaKonta,
   onWyloguj,
   wylogowywanie = false,
   rokProgramu = null,
@@ -81,6 +84,7 @@ export function PowlokaPanelu({
         <Icon nazwa="out" />
         <span>{wylogowywanie ? "Wylogowywanie…" : "Wyloguj"}</span>
       </button>
+      {liniaKonta && <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${liniaKonta}.`}</p>}
     </div>
   );
 

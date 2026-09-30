@@ -174,11 +174,21 @@ function doSpecyfikatoraImportu(absPlik: string): string {
  * Powłoki, które same renderują `<main id="tresc">`: dotychczasowy
  * `PanelShell` oraz wybór ramki administracji `RamkaAdministracji` (renderuje
  * `PanelShell` albo `PowlokaAdministracji`, obie z `main#tresc`) i sama
- * `PowlokaAdministracji` (układ `(przelaczenie)/admin`). Rozpoznanie idzie po
+ * `PowlokaAdministracji` (układ `(przelaczenie)/admin`), a tak samo ich
+ * odpowiedniki ról: `RamkaUczestnika`/`PowlokaUczestnika` i
+ * `RamkaProwadzacego`/`PowlokaProwadzacego`. Rozpoznanie idzie po
  * znaczniku JSX (`<Nazwa`), nie po samym słowie — wzmianka w komentarzu nie
  * czyni pliku bramką.
  */
-const POWLOKI_Z_PUNKTEM_ORIENTACYJNYM = ["PanelShell", "RamkaAdministracji", "PowlokaAdministracji"];
+const POWLOKI_Z_PUNKTEM_ORIENTACYJNYM = [
+  "PanelShell",
+  "RamkaAdministracji",
+  "PowlokaAdministracji",
+  "RamkaUczestnika",
+  "PowlokaUczestnika",
+  "RamkaProwadzacego",
+  "PowlokaProwadzacego",
+];
 
 /** Straż roli przed powłoką w tym samym pliku: `<RequireRole` otwiera się
  * w źródle przed pierwszym znacznikiem znanej powłoki (straż ją owija). */

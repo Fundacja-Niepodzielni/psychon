@@ -1,7 +1,12 @@
-import PanelShell from "@/components/layout/PanelShell";
 import RequireRole from "@/components/permissions/RequireRole";
-import { instructorMenu, instructorMenuSections } from "@/lib/menu/instructor";
+import { RamkaProwadzacego } from "@/app/(przelaczenie)/prowadzacy/RamkaProwadzacego";
 
+/**
+ * Układ starej grupy tras prowadzącego. Strażnik ról bez zmian; ramkę
+ * wybiera `RamkaProwadzacego`: dotychczasowy `PanelShell` dla każdej
+ * ścieżki poza stronami, które przy włączonej grupie przełączenia zamieniają
+ * treść na ekran nowego frontu (te dostają nową ramkę z makiety).
+ */
 export default function InstructorLayout({
   children,
 }: {
@@ -9,14 +14,7 @@ export default function InstructorLayout({
 }) {
   return (
     <RequireRole allowedRoles={["instructor"]}>
-      <PanelShell
-        panelName="Panel prowadzącego"
-        menu={instructorMenu}
-        sections={instructorMenuSections}
-        menuKey="prowadzacy"
-      >
-        {children}
-      </PanelShell>
+      <RamkaProwadzacego>{children}</RamkaProwadzacego>
     </RequireRole>
   );
 }

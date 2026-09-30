@@ -109,14 +109,15 @@ describe("tokeny nowego frontu pod trasą produktu", () => {
 });
 
 /**
- * Dotychczasowa powłoka panelu wchodzi do grupy wyłącznie w dwóch miejscach:
- * dokładnie dwa importy `components/layout/PanelShell` poza testami, po
- * jednym w `panel/layout.tsx` (panel uczestnika — nowa ramka tej roli
- * przyjdzie osobno) i `admin/RamkaAdministracji.tsx` (wybór ramki dla stron
- * starej grupy tras administracji). Układ segmentu `admin/layout.tsx`
- * niesie już nową ramkę z makiety (`PowlokaAdministracji`) i `PanelShell`
- * nie importuje. Układ grupy go nie importuje, a oba układy segmentów
- * owijają treść w dostawcę kontekstu powłoki.
+ * Dotychczasowa powłoka panelu wchodzi do grupy wyłącznie w trzech miejscach:
+ * dokładnie trzy importy `components/layout/PanelShell` poza testami, po
+ * jednym w każdym wyborze ramki dla stron starej grupy tras —
+ * `admin/RamkaAdministracji.tsx`, `panel/RamkaUczestnika.tsx` i
+ * `prowadzacy/RamkaProwadzacego.tsx`. Układy segmentów `admin/layout.tsx`
+ * i `panel/layout.tsx` niosą już nową ramkę z makiety
+ * (`PowlokaAdministracji`, `PowlokaUczestnika`) i `PanelShell` nie
+ * importują. Układ grupy go nie importuje, a oba układy segmentów owijają
+ * treść w dostawcę kontekstu powłoki.
  */
 const KORZEN_GRUPY = path.join(KATALOG, "app", "(przelaczenie)");
 
@@ -135,15 +136,23 @@ function importyPanelShell(zrodlo: string): number {
 }
 
 describe("powłoka panelu w grupie tras (przelaczenie)", () => {
-  it("dokładnie dwa importy PanelShell poza testami: panel/layout.tsx i admin/RamkaAdministracji.tsx", () => {
+  it("dokładnie trzy importy PanelShell poza testami: wybory ramki administracji, uczestnika i prowadzącego", () => {
     const wPlikach = plikiZrodlowe(KORZEN_GRUPY)
       .map((plik) => ({ plik: path.relative(KORZEN_GRUPY, plik).split(path.sep).join("/"), liczba: importyPanelShell(readFileSync(plik, "utf-8")) }))
       .filter((wpis) => wpis.liczba > 0);
 
     expect(wPlikach).toEqual([
       { plik: "admin/RamkaAdministracji.tsx", liczba: 1 },
-      { plik: "panel/layout.tsx", liczba: 1 },
+      { plik: "panel/RamkaUczestnika.tsx", liczba: 1 },
+      { plik: "prowadzacy/RamkaProwadzacego.tsx", liczba: 1 },
     ]);
+  });
+
+  it("układ segmentu panel/layout.tsx niesie nową ramkę uczestnika z makiety, nie PanelShell", () => {
+    const zrodlo = readFileSync(path.join(KORZEN_GRUPY, "panel", "layout.tsx"), "utf-8");
+    expect(importyPanelShell(zrodlo)).toBe(0);
+    expect(zrodlo).toMatch(/import\s*\{\s*PowlokaUczestnika\s*\}\s*from\s*["']\.\/PowlokaUczestnika["']/);
+    expect(zrodlo).toMatch(/<PowlokaUczestnika>/);
   });
 
   it("układ segmentu admin/layout.tsx niesie nową ramkę z makiety, nie PanelShell", () => {
