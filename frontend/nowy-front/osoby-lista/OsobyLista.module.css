@@ -1,0 +1,17 @@
+/* Układ pasków filtrów ekranu listy osób — wartości wyglądu wyłącznie z tokenów. */
+.filtry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-12);
+}
+
+.rola {
+  flex: 0 1 240px;
+  min-width: 200px;
+}
+
+.szukaj {
+  flex: 1 1 280px;
+  min-width: 200px;
+}
