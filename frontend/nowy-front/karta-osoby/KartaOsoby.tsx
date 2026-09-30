@@ -288,6 +288,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
           edycja ? (
             <>
               <FormSection
+                fokusPrzyOtwarciu
                 tytul="Dane osoby"
                 pola={pola}
                 tytulDodatkowych="Adres i grupa produktowa"

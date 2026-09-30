@@ -294,6 +294,18 @@ describe("KartaOsoby — jeden rząd przycisków w edycji", () => {
     expect(() => jedenMain(container)).not.toThrow();
   });
 
+  it("otwarcie edycji przenosi fokus na pierwsze pole formularza (sekcja otwierana działaniem)", async () => {
+    pobierzKarteOsoby.mockResolvedValue(KARTA);
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    const uzytkownik = userEvent.setup();
+    render(<KartaOsoby id={17} />);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Zmień dane" }));
+    const formularz = await screen.findByRole("form", { name: "Dane osoby" });
+    const pierwsze = formularz.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
+    expect(pierwsze).not.toBeNull();
+    expect(pierwsze).toHaveFocus();
+  });
+
   it("Anuluj zamyka edycję i wraca „Zmień dane” z tabelą danych", async () => {
     pobierzKarteOsoby.mockResolvedValue(KARTA);
     pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);

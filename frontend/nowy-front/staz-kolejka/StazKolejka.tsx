@@ -272,6 +272,7 @@ export function StazKolejka() {
               {otwarta?.id === wpis.id && (
                 <div className={style.decyzja}>
                   <FormSection
+                    fokusPrzyOtwarciu
                     tytul={`${TEKSTY_DECYZJI[otwarta.rodzaj].tytul}: ${nazwaOsoby(wpis)}`}
                     pola={[
                       {

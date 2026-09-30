@@ -264,6 +264,13 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     sprawdzSzablon(container);
   });
 
+  it("otwarcie prośby o poprawkę przenosi fokus na pole komentarza (sekcja otwierana działaniem)", async () => {
+    await renderGotowy();
+    await otworzPoprawke();
+
+    expect(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ })).toHaveFocus();
+  });
+
   it("sekcja prośby o poprawkę nie jest oknem: brak dialogu i aria-modal, formularz w głównej treści", async () => {
     const { container } = await renderGotowy();
     sprawdzBezOkna();

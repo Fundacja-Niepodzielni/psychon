@@ -479,6 +479,7 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
               </Notice>
             )}
             <FormSection
+              fokusPrzyOtwarciu
               tytul="Dane kursu"
               pola={[
                 {

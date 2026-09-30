@@ -272,6 +272,15 @@ describe("Skrzynka pytań — odpowiedź", () => {
     return { uzytkownik, ...wynik };
   }
 
+  it("„Odpowiedz” przenosi fokus na pierwsze pole formularza (sekcja otwierana działaniem)", async () => {
+    await otworzPierwsze();
+
+    const formularz = screen.getByRole("form", { name: "Odpowiedź na pytanie" });
+    const pierwsze = formularz.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
+    expect(pierwsze).not.toBeNull();
+    expect(pierwsze).toHaveFocus();
+  });
+
   it("„Odpowiedz” otwiera formularz w treści przy pytaniu: bez okna, jeden rząd przycisków, tekst pytania widoczny", async () => {
     const { container } = await otworzPierwsze();
 

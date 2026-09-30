@@ -152,6 +152,14 @@ describe("wzory dokumentów — stany w szablonie widoku szczegółu, jeden main
   });
 });
 
+describe("wzory dokumentów — fokus przy wejściu", () => {
+  it("po wejściu pole treści nie ma fokusu, więc pierwszy Tab trafia w „Przejdź do treści”", async () => {
+    await renderGotowy();
+    expect(poleTresci()).not.toHaveFocus();
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
 describe("wzory dokumentów — odczyt", () => {
   it("odczyt biegnie dwiema trasami z kontraktu, dla pierwszego rodzaju", async () => {
     await renderGotowy();

@@ -66,12 +66,57 @@ describe("FormSection", () => {
     expect(onAnuluj).toHaveBeenCalledTimes(1);
   });
 
-  it("fokus startowy ląduje na pierwszym polu, gdy nie ma błędów", () => {
-    render(<FormSection tytul="Dane osoby" pola={[pole()]} onAnuluj={() => {}} onZapisz={() => {}} />);
+  it("z fokusPrzyOtwarciu fokus startowy ląduje na pierwszym polu, gdy nie ma błędów", () => {
+    render(
+      <FormSection
+        tytul="Dane osoby"
+        pola={[pole()]}
+        fokusPrzyOtwarciu
+        onAnuluj={() => {}}
+        onZapisz={() => {}}
+      />,
+    );
     expect(screen.getByRole("textbox", { name: "Imię" })).toHaveFocus();
   });
 
+  it("bez fokusPrzyOtwarciu fokus po zamontowaniu się nie rusza — zostaje na elemencie aktywnym przed montowaniem", () => {
+    const poprzedni = document.activeElement;
+    render(<FormSection tytul="Dane osoby" pola={[pole()]} onAnuluj={() => {}} onZapisz={() => {}} />);
+    expect(screen.getByRole("textbox", { name: "Imię" })).not.toHaveFocus();
+    expect(document.activeElement).toBe(poprzedni);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("bez fokusPrzyOtwarciu fokus zostaje tam, gdzie był, także gdy ma go inny element", () => {
+    function Rodzic() {
+      return (
+        <>
+          <button>Wcześniejszy</button>
+          <FormSection tytul="Dane osoby" pola={[pole()]} onAnuluj={() => {}} onZapisz={() => {}} />
+        </>
+      );
+    }
+    const { unmount } = render(<Rodzic />);
+    expect(screen.getByRole("textbox", { name: "Imię" })).not.toHaveFocus();
+    expect(screen.getByRole("form", { name: "Dane osoby" }).contains(document.activeElement)).toBe(false);
+    unmount();
+  });
+
   it("fokus startowy ląduje na podsumowaniu błędów, gdy błędy są obecne przy montowaniu", () => {
+    render(
+      <FormSection
+        tytul="Dane osoby"
+        pola={[pole({ blad: "Podaj imię" })]}
+        fokusPrzyOtwarciu
+        onAnuluj={() => {}}
+        onZapisz={() => {}}
+      />,
+    );
+    const [podsumowanie] = screen.getAllByRole("alert");
+    expect(podsumowanie).toHaveFocus();
+  });
+
+  it("podsumowanie błędów obecne przy montowaniu dostaje fokus także bez fokusPrzyOtwarciu", () => {
     render(
       <FormSection
         tytul="Dane osoby"

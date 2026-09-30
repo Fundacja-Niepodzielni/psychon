@@ -188,6 +188,7 @@ function Decyzja({ zgloszenie, onZaakceptowano, onOdrzucono, odswiez }: Wlasciwo
       <div className={style.sekcja}>
         <Uwagi uwaga={uwaga} odswiez={odswiez} />
         <FormSection
+          fokusPrzyOtwarciu
           tytul="Odrzuć zgłoszenie"
           pola={[
             {

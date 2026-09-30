@@ -124,6 +124,17 @@ describe("A-30 — stany w szablonie FormTemplate", () => {
   });
 });
 
+describe("A-30 — fokus przy wejściu", () => {
+  it("po wejściu żadne pole nie ma fokusu, więc pierwszy Tab trafia w „Przejdź do treści”", async () => {
+    api.mockResolvedValue(EKRAN);
+    render(<EkranStartowy />);
+    await poczekajNaFormularz();
+    expect(screen.getByLabelText(/^Tytuł filmu powitalnego/)).not.toHaveFocus();
+    expect(screen.getByRole("form", { name: "Treść ekranu" }).contains(document.activeElement)).toBe(false);
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
 describe("A-30 — podgląd", () => {
   it("podgląd na żywo: wpisany tekst widać od razu, przed zapisem i bez wołania serwera", async () => {
     const uzytkownik = userEvent.setup();
