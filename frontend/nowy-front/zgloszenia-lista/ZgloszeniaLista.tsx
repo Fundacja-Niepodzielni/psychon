@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
+import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
+import { FileDropZone, type PlikFileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
@@ -16,12 +21,22 @@ import type { ApplicationItem, ApplicationStatus } from "@/lib/h03/types";
 import {
   OPCJE_STATUSU,
   PUSTY_FILTR,
+  PUSTY_FORMULARZ_ZGLOSZENIA,
   SCIEZKA_WCZYTANIA_Z_PLIKU,
+  dodajZgloszenie,
   filtrAktywny,
+  importujZgloszenia,
+  klasyfikujBladDodania,
+  klasyfikujBladImportu,
   pobierzZgloszenia,
+  powodPominiecia,
   rodzajBledu,
   wierszeZgloszen,
+  type BladDodania,
+  type BladImportu,
   type FiltrZgloszen,
+  type FormularzZgloszenia,
+  type RaportImportu,
 } from "./dane";
 import style from "./ZgloszeniaLista.module.css";
 
@@ -30,6 +45,13 @@ type StanEkranu =
   | { rodzaj: "dane"; zgloszenia: ApplicationItem[]; meta: PaginationMeta | undefined }
   | { rodzaj: "brak-uprawnien" }
   | { rodzaj: "siec" };
+
+/** Stan importu z pliku: panel z wyborem pliku, wysyłka, raport albo błąd. */
+type StanImportu =
+  | { rodzaj: "bezczynny" }
+  | { rodzaj: "trwa"; plik: File }
+  | { rodzaj: "raport"; plik: File; raport: RaportImportu }
+  | { rodzaj: "blad"; plik: File | null; blad: Exclude<BladImportu, { rodzaj: "brak-uprawnien" }> };
 
 interface Zapytanie {
   filtr: FiltrZgloszen;
@@ -42,8 +64,11 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Zgłoszenia rekrut
 
 /**
  * Ekran A-03 „Zgłoszenia rekrutacyjne” — lista na szablonie `ListTemplate`
- * (administracja). Jedyna trasa: `GET /admin/applications`. Główna akcja to
- * „Otwórz zgłoszenie” w każdym wierszu (odnośnik do ekranu szczegółu).
+ * (administracja). Odczyt: `GET /admin/applications`. Akcja wiersza to
+ * „Otwórz zgłoszenie” (odnośnik do ekranu szczegółu). Dwie akcje nagłówka:
+ * „Dodaj zgłoszenie” (jedyny przycisk w kolorze, `POST /admin/applications`;
+ * gdy formularz jest otwarty, kolor przejmuje jego przycisk zapisu) oraz
+ * „Importuj z pliku CSV” (wtórna, `POST /admin/applications/import`).
  * Stany: ładowanie, dane, pusty (z filtrem i bez), brak uprawnień, błąd sieci
  * — każdy w tym samym szablonie, więc jeden `main` i znacznik szablonu są
  * zawsze w drzewie.
@@ -53,12 +78,25 @@ export function ZgloszeniaLista() {
   const [formularz, setFormularz] = useState<FiltrZgloszen>(PUSTY_FILTR);
   const [zapytanie, setZapytanie] = useState<Zapytanie>({ filtr: PUSTY_FILTR, strona: 1, proba: 0 });
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
+  /** Akcje nagłówka pokazujemy dopiero po pierwszym udanym odczycie listy — wtedy rola jest potwierdzona. */
+  const [rolaPotwierdzona, setRolaPotwierdzona] = useState(false);
+
+  const [formularzOtwarty, setFormularzOtwarty] = useState(false);
+  const [dane, setDane] = useState<FormularzZgloszenia>(PUSTY_FORMULARZ_ZGLOSZENIA);
+  const [zapisuje, setZapisuje] = useState(false);
+  const [bladDodania, setBladDodania] = useState<BladDodania | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [importOtwarty, setImportOtwarty] = useState(false);
+  const [stanImportu, setImport] = useState<StanImportu>({ rodzaj: "bezczynny" });
 
   useEffect(() => {
     let anulowane = false;
     pobierzZgloszenia(zapytanie.filtr, zapytanie.strona)
       .then(({ data, meta }) => {
-        if (!anulowane) setStan({ rodzaj: "dane", zgloszenia: data, meta });
+        if (anulowane) return;
+        setRolaPotwierdzona(true);
+        setStan({ rodzaj: "dane", zgloszenia: data, meta });
       })
       .catch((wyjatek: unknown) => {
         if (!anulowane) setStan({ rodzaj: rodzajBledu(wyjatek) });
@@ -71,6 +109,62 @@ export function ZgloszeniaLista() {
   function przejdz(filtr: FiltrZgloszen, strona: number) {
     setStan({ rodzaj: "ladowanie" });
     setZapytanie((poprzednie) => ({ filtr, strona, proba: poprzednie.proba + 1 }));
+  }
+
+  /** Po zapisie lista wczytuje się jeszcze raz bez szkieletu — filtr i strona zostają, akcje nie migają. */
+  function odswiez() {
+    setZapytanie((poprzednie) => ({ ...poprzednie, proba: poprzednie.proba + 1 }));
+  }
+
+  function odmowaRoli() {
+    setStan({ rodzaj: "brak-uprawnien" });
+  }
+
+  async function wyslijPlik(plik: File) {
+    setImport({ rodzaj: "trwa", plik });
+    try {
+      const raport = await importujZgloszenia(plik);
+      setImport({ rodzaj: "raport", plik, raport });
+      odswiez();
+    } catch (wyjatek) {
+      const blad = klasyfikujBladImportu(wyjatek);
+      if (blad.rodzaj === "brak-uprawnien") odmowaRoli();
+      else setImport({ rodzaj: "blad", plik, blad });
+    }
+  }
+
+  function wybierzPliki(pliki: FileList) {
+    if (stanImportu.rodzaj === "trwa") return;
+    if (pliki.length > 1) {
+      setImport({ rodzaj: "blad", plik: null, blad: { rodzaj: "plik", komunikat: "Wybierz jeden plik naraz." } });
+      return;
+    }
+    void wyslijPlik(pliki[0]);
+  }
+
+  function przelaczImport() {
+    setImportOtwarty((otwarty) => !otwarty);
+    setImport({ rodzaj: "bezczynny" });
+  }
+
+  async function zapiszZgloszenie() {
+    if (zapisuje) return;
+    setZapisuje(true);
+    setBladDodania(null);
+    setToast(null);
+    try {
+      await dodajZgloszenie(dane);
+      setDane(PUSTY_FORMULARZ_ZGLOSZENIA);
+      setFormularzOtwarty(false);
+      setToast("Zgłoszenie zostało dodane.");
+      odswiez();
+    } catch (wyjatek) {
+      const blad = klasyfikujBladDodania(wyjatek);
+      if (blad.rodzaj === "brak-uprawnien") odmowaRoli();
+      else setBladDodania(blad);
+    } finally {
+      setZapisuje(false);
+    }
   }
 
   function zastosujFiltr(zdarzenie: FormEvent<HTMLFormElement>) {
@@ -91,8 +185,43 @@ export function ZgloszeniaLista() {
       ? `Kandydaci zgłoszeni do programu. Razem zgłoszeń: ${meta.total}.`
       : "Kandydaci zgłoszeni do programu.";
 
+  const zamknijToast = useCallback(() => setToast(null), []);
+
+  const akcjeNaglowka =
+    rolaPotwierdzona && stan.rodzaj !== "brak-uprawnien" ? (
+      <div className={style.akcjeNaglowka}>
+        <Button
+          poziom="outline"
+          type="button"
+          aria-expanded={importOtwarty}
+          disabled={stanImportu.rodzaj === "trwa"}
+          onClick={przelaczImport}
+        >
+          Importuj z pliku CSV
+        </Button>
+        {!formularzOtwarty && (
+          <Button
+            poziom="primary"
+            type="button"
+            onClick={() => {
+              setToast(null);
+              setFormularzOtwarty(true);
+            }}
+          >
+            Dodaj zgłoszenie
+          </Button>
+        )}
+      </div>
+    ) : undefined;
+
   const naglowek = (
-    <PageHeader okruszki={OKRUSZKI} tytul="Zgłoszenia rekrutacyjne" opis={opis} onPowrot={() => router.back()} />
+    <PageHeader
+      okruszki={OKRUSZKI}
+      tytul="Zgłoszenia rekrutacyjne"
+      opis={opis}
+      onPowrot={() => router.back()}
+      dzieci={akcjeNaglowka}
+    />
   );
 
   if (stan.rodzaj === "brak-uprawnien") {
@@ -204,5 +333,177 @@ export function ZgloszeniaLista() {
       />
     ) : undefined;
 
-  return <ListTemplate naglowek={naglowek} filtry={filtry} lista={lista} stronicowanie={stronicowanie} />;
+  const pliki: PlikFileDropZone[] =
+    stanImportu.rodzaj === "trwa"
+      ? [{ nazwa: stanImportu.plik.name, stan: "przetwarzanie", komunikat: "Wczytywanie…" }]
+      : stanImportu.rodzaj === "raport"
+        ? [{ nazwa: stanImportu.plik.name, stan: "gotowy", komunikat: "Plik wczytany." }]
+        : stanImportu.rodzaj === "blad" && stanImportu.plik !== null
+          ? [{ nazwa: stanImportu.plik.name, stan: "blad", komunikat: "Plik nie został wczytany." }]
+          : [];
+
+  const panelImportu = importOtwarty ? (
+    <section className={style.panel} aria-label="Import zgłoszeń z pliku">
+      <Heading stopien={2}>Importuj z pliku CSV</Heading>
+      <Text>
+        Każdy wiersz pliku to jedno zgłoszenie. Pierwszy wiersz zawiera nazwy kolumn; wymagane są imię, nazwisko i
+        adres e-mail. Jeśli w pliku czegoś zabraknie, raport pokaże, których wierszy nie wczytano i dlaczego.
+      </Text>
+      <FileDropZone
+        id="zgloszenia-import-plik"
+        etykieta="Wybierz plik CSV albo upuść go tutaj"
+        podpowiedz="Jeden plik, do 5 MB."
+        pliki={pliki}
+        onWybierzPliki={wybierzPliki}
+      />
+      {stanImportu.rodzaj === "raport" && <RaportImportuNotice raport={stanImportu.raport} />}
+      {stanImportu.rodzaj === "blad" && (
+        <BladImportuNotice
+          blad={stanImportu.blad}
+          ponow={stanImportu.plik !== null ? () => void wyslijPlik(stanImportu.plik as File) : undefined}
+        />
+      )}
+      <div>
+        <Button poziom="outline" type="button" onClick={przelaczImport}>
+          Wróć do listy
+        </Button>
+      </div>
+    </section>
+  ) : null;
+
+  const bledyPol = bladDodania?.rodzaj === "pola" ? bladDodania.bledy : {};
+  const dopisz = (pole: keyof FormularzZgloszenia) => (wartosc: string) =>
+    setDane((poprzednie) => ({ ...poprzednie, [pole]: wartosc }));
+  const poleFormularza = (
+    pole: keyof FormularzZgloszenia,
+    id: string,
+    etykieta: string,
+    wymagane: boolean,
+  ): PoleFormSection => ({
+    id,
+    etykieta,
+    rodzaj: "tekst",
+    wartosc: dane[pole],
+    onZmiana: dopisz(pole),
+    blad: bledyPol[pole],
+    wymagane,
+  });
+
+  const panelFormularza = formularzOtwarty ? (
+    <div className={style.panel}>
+      {bladDodania !== null && <BladDodaniaNotice blad={bladDodania} adres={dane.email.trim()} />}
+      <FormSection
+        tytul="Nowe zgłoszenie"
+        pola={[
+          poleFormularza("first_name", "zgloszenie-nowe-imie", "Imię", true),
+          poleFormularza("last_name", "zgloszenie-nowe-nazwisko", "Nazwisko", true),
+          poleFormularza("email", "zgloszenie-nowe-email", "E-mail", true),
+          poleFormularza("phone", "zgloszenie-nowe-telefon", "Telefon", false),
+        ]}
+        etykietaAnuluj="Wróć do listy"
+        etykietaZapisz={zapisuje ? "Zapisywanie…" : "Zapisz zgłoszenie"}
+        onAnuluj={() => {
+          setFormularzOtwarty(false);
+          setBladDodania(null);
+        }}
+        onZapisz={() => void zapiszZgloszenie()}
+      />
+    </div>
+  ) : null;
+
+  const zawartosc = (
+    <div className={style.zawartosc}>
+      {toast !== null && <Toast komunikat={toast} onZamknij={zamknijToast} />}
+      {panelImportu}
+      {panelFormularza}
+      {lista}
+    </div>
+  );
+
+  return <ListTemplate naglowek={naglowek} filtry={filtry} lista={zawartosc} stronicowanie={stronicowanie} />;
+}
+
+/** Raport z importu: liczby z odpowiedzi serwera i lista pominiętych wierszy (numer wiersza pliku + powód po polsku). */
+function RaportImportuNotice({ raport }: { raport: RaportImportu }) {
+  const pominiete = raport.skipped;
+  const brakWierszy = raport.imported === 0 && pominiete.length === 0;
+  return (
+    <Notice
+      wariant={pominiete.length === 0 && raport.imported > 0 ? "ok" : "warn"}
+      tytul="Raport z wczytywania pliku"
+      // Lista pominiętych wierszy stoi w miejscu na akcję, bo `Notice` ma tam zwykły `div`;
+      // w `Text` (akapit) lista byłaby niepoprawnym HTML.
+      akcja={
+        pominiete.length > 0 ? (
+          <>
+            <Heading stopien={3}>Pominięte wiersze</Heading>
+            <ul className={style.pominiete}>
+              {pominiete.map((wiersz) => (
+                <li key={`${wiersz.line}-${wiersz.reason}`}>
+                  <Text>{`Wiersz ${wiersz.line}: ${powodPominiecia(wiersz.reason)}`}</Text>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : undefined
+      }
+    >
+      {`Zaimportowano zgłoszeń: ${raport.imported}. Pominięto wierszy: ${pominiete.length}.${
+        brakWierszy ? " W pliku nie było żadnych wierszy z danymi." : ""
+      }`}
+    </Notice>
+  );
+}
+
+function BladImportuNotice({
+  blad,
+  ponow,
+}: {
+  blad: Exclude<BladImportu, { rodzaj: "brak-uprawnien" }>;
+  ponow: (() => void) | undefined;
+}) {
+  if (blad.rodzaj === "plik") {
+    return (
+      <Notice wariant="error" tytul="Nie udało się wczytać pliku">
+        {blad.komunikat}
+      </Notice>
+    );
+  }
+  const akcja = ponow ? (
+    <Button poziom="outline" type="button" onClick={ponow}>
+      Spróbuj ponownie
+    </Button>
+  ) : undefined;
+  return (
+    <Notice wariant="error" tytul="Nie udało się wczytać pliku" akcja={akcja}>
+      {blad.rodzaj === "serwer"
+        ? "Serwer zwrócił błąd. Spróbuj ponownie za chwilę."
+        : "Sprawdź połączenie z internetem i spróbuj jeszcze raz."}
+    </Notice>
+  );
+}
+
+function BladDodaniaNotice({ blad, adres }: { blad: BladDodania; adres: string }) {
+  if (blad.rodzaj === "duplikat") {
+    return (
+      <Notice wariant="warn" tytul="Zgłoszenie z tym adresem już istnieje">
+        {`Na liście jest już zgłoszenie z adresem e-mail ${adres}. Zmień adres albo znajdź to zgłoszenie na liście.`}
+      </Notice>
+    );
+  }
+  if (blad.rodzaj === "pola") {
+    if (blad.pozostale.length === 0) return null;
+    return (
+      <Notice wariant="error" tytul="Popraw dane zgłoszenia">
+        {blad.pozostale.join(" ")}
+      </Notice>
+    );
+  }
+  return (
+    <Notice wariant="error" tytul="Nie udało się dodać zgłoszenia">
+      {blad.rodzaj === "serwer"
+        ? "Serwer zwrócił błąd. Dane w formularzu zostały — spróbuj ponownie za chwilę."
+        : "Sprawdź połączenie z internetem. Dane w formularzu zostały — spróbuj jeszcze raz."}
+    </Notice>
+  );
 }
