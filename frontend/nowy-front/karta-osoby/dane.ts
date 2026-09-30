@@ -1,5 +1,6 @@
 import { api } from "@/lib/api/klient";
 import { ROLE_LABELS } from "@/lib/h18/labels";
+import { formatujDate } from "../wspolne/daty";
 import type { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import type { KolumnaDataTable, WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
 
@@ -143,11 +144,28 @@ export function formularzZProfilu(profile: ProfilOsobyKarty): DaneFormularzaKart
   };
 }
 
-const OPCJE_GRUPY_PRODUKTOWEJ = [
-  { wartosc: "psychon", etykieta: "PsychON" },
-  { wartosc: "dobrostan", etykieta: "Dobrostan" },
-  { wartosc: "both", etykieta: "Obie" },
-];
+/** Słownik `product_group` (kontrakt §3.4: `psychon · dobrostan · both`) —
+ * jedyne źródło etykiet: formularz i tabela danych czytają stąd, więc surowy
+ * kod nie ma drogi do interfejsu. */
+const ETYKIETY_GRUPY_PRODUKTOWEJ: Readonly<Record<string, string>> = {
+  psychon: "PsychON",
+  dobrostan: "Dobrostan",
+  both: "PsychON i Dobrostan",
+};
+
+const OPCJE_GRUPY_PRODUKTOWEJ = Object.entries(ETYKIETY_GRUPY_PRODUKTOWEJ).map(([wartosc, etykieta]) => ({
+  wartosc,
+  etykieta,
+}));
+
+/** Etykieta polska grupy produktowej; wartość spoza słownika (także klucze
+ * odziedziczone po `Object.prototype`) → „—”, nigdy surowy kod. */
+export function etykietaGrupyProduktowej(grupa: string | null | undefined): string {
+  if (typeof grupa === "string" && Object.hasOwn(ETYKIETY_GRUPY_PRODUKTOWEJ, grupa)) {
+    return ETYKIETY_GRUPY_PRODUKTOWEJ[grupa];
+  }
+  return "—";
+}
 
 /** Konfiguracja pól formularza „Zmień dane" — kolejność decyduje, które pięć
  * `FormSection` pokazuje od razu (`FormSection.tsx:85`), a które trafiają do
@@ -272,10 +290,12 @@ export function wierszeDanychOsoby(profile: ProfilOsobyKarty): WierszDataTable[]
     { id: "telefon", wartosci: { pole: "Telefon", wartosc: tekstAlboBrak(profile.phone) } },
     { id: "pesel", wartosci: { pole: "PESEL", wartosc: tekstAlboBrak(profile.pesel) } },
     { id: "adres", wartosci: { pole: "Adres", wartosc: adres === "" ? "Brak danych" : adres } },
-    { id: "grupa", wartosci: { pole: "Grupa produktowa", wartosc: profile.product_group } },
+    { id: "grupa", wartosci: { pole: "Grupa produktowa", wartosc: etykietaGrupyProduktowej(profile.product_group) } },
     {
       id: "dostep",
-      wartosci: { pole: "Dostęp wygasa", wartosc: profile.access_expires_at ?? "Bezterminowo" },
+      wartosci: profile.access_expires_at
+        ? { pole: "Dostęp do materiałów do", wartosc: formatujDate(profile.access_expires_at) }
+        : { pole: "Dostęp do materiałów", wartosc: "Bezterminowo" },
     },
   ];
 }
@@ -284,9 +304,12 @@ export function kolumnyDanychOsoby(): KolumnaDataTable[] {
   return KOLUMNY_DANYCH_OSOBY;
 }
 
-/** Opis roli do nagłówka karty: etykieta polska z `ROLE_LABELS` albo `undefined`
- * dla roli spoza słownika — surowy kod roli nigdy nie trafia do interfejsu. */
+/** Opis roli do nagłówka karty: etykieta polska z `ROLE_LABELS` (tylko własne klucze) albo
+ * `undefined` dla roli spoza słownika — surowy kod roli nigdy nie trafia do interfejsu. */
 export function opisRoliOsoby(rola: string): string | undefined {
+  // Tylko własne klucze słownika: `constructor`, `toString`, `__proto__`
+  // odziedziczone z `Object.prototype` nie są rolami.
+  if (typeof rola !== "string" || !Object.hasOwn(ROLE_LABELS, rola)) return undefined;
   const etykieta = (ROLE_LABELS as Record<string, string | undefined>)[rola];
-  return etykieta ? `Rola: ${etykieta}` : undefined;
+  return typeof etykieta === "string" && etykieta !== "" ? `Rola: ${etykieta}` : undefined;
 }
