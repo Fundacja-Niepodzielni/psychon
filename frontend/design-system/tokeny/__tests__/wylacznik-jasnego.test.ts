@@ -4,13 +4,15 @@ import { resolve } from "node:path";
 
 /**
  * Wyłącznik jasnego motywu musi działać na DOWOLNYM elemencie z atrybutem
- * `data-theme="light"`, nie tylko na korzeniu dokumentu: układy nowego frontu
- * (`app/nowy-front/layout.tsx`, `app/(przelaczenie)/layout.tsx`) niosą ten
- * atrybut na `div`, a selektor `:root[data-theme="light"]` takiego `div`a nie
- * łapie — przy systemie w trybie ciemnym tokeny szłyby wtedy za
- * `@media (prefers-color-scheme: dark)`. jsdom nie liczy `@media`, więc
- * skutek w przeglądarce mierzy `e2e/tryb-jasny-nowego-frontu.spec.ts`; ten
- * test pilnuje samego zapisu reguły w pliku.
+ * `data-theme="light"`: układy nowego frontu (`app/nowy-front/layout.tsx`,
+ * `app/(przelaczenie)/layout.tsx`) niosą ten atrybut na `div`, a arkusz nie
+ * ma żadnej reguły na elemencie głównym dokumentu — przy systemie w trybie
+ * ciemnym tokeny szłyby inaczej za `@media (prefers-color-scheme: dark)`.
+ * Wyłącznik wygrywa z blokiem ciemnym JAWNIE specyficznością (dwa selektory
+ * atrybutu, 0-2-0, kontra jeden, 0-1-0), nie samą kolejnością. jsdom nie
+ * liczy `@media`, więc skutek w przeglądarce mierzy
+ * `e2e/tryb-jasny-nowego-frontu.spec.ts`; ten test pilnuje samego zapisu
+ * reguły w pliku.
  */
 const sciezkaCss = resolve(process.cwd(), "design-system/tokeny/tokeny.css");
 const css = readFileSync(sciezkaCss, "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
@@ -39,12 +41,12 @@ describe("tokeny — wyłącznik jasnego motywu", () => {
     expect(reguleJasne).toHaveLength(1);
   });
 
-  it('zawiera selektor [data-theme="light"] bez :root (łapie div układu)', () => {
-    expect(reguleJasne[0].selektory).toContain('[data-theme="light"]');
+  it('zawiera selektor [data-theme][data-theme="light"] (łapie div układu, specyficzność 0-2-0)', () => {
+    expect(reguleJasne[0].selektory).toContain('[data-theme][data-theme="light"]');
   });
 
-  it('zachowuje selektor :root[data-theme="light"] (korzeń dokumentu)', () => {
-    expect(reguleJasne[0].selektory).toContain(':root[data-theme="light"]');
+  it("wyłącznik nie ma selektora :root (nie dotyczy elementu głównego dokumentu)", () => {
+    expect(reguleJasne[0].selektory.some((s) => s.includes(":root"))).toBe(false);
   });
 
   it("niesie jasne wartości tokenów", () => {

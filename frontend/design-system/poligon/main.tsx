@@ -50,9 +50,9 @@ import { SaveBar } from "../molekuly/SaveBar/SaveBar";
 // ustawić przed pomiarem bez dotykania localStorage ani MVP.
 const parametry = new URLSearchParams(window.location.search);
 const motyw = parametry.get("theme");
-if (motyw === "dark" || motyw === "light") {
-  document.documentElement.setAttribute("data-theme", motyw);
-}
+// Bez parametru poligon jest jasny (MVP tylko jasny): arkusz tokenów działa
+// wyłącznie pod elementem z `data-theme`, więc atrybut jest ustawiany zawsze.
+document.documentElement.setAttribute("data-theme", motyw === "dark" ? "dark" : "light");
 
 // Poligon montuje WSZYSTKIE 19 zbudowanych atomów z 06-ATOMY-MOLEKULY-ORGANIZMY.md
 // §2 (poprzednia wersja tego

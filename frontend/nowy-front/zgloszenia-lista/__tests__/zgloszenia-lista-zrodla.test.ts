@@ -89,9 +89,9 @@ describe("Lista zgłoszeń — źródła ekranu", () => {
     );
   });
 
-  it("ekran nie ma przycisku głównego (poziom primary)", () => {
-    const trafienia = PLIKI_EKRANU.filter((p) => /poziom=["']primary["']/.test(tresc(p)));
-    expect(trafienia).toEqual([]);
+  it("ekran ma dokładnie jeden przycisk główny (poziom primary) — „Dodaj zgłoszenie” w nagłówku", () => {
+    const trafienia = PLIKI_EKRANU.flatMap((p) => (tresc(p).match(/poziom=["']primary["']/g) ?? []).map(() => relative(KORZEN, p)));
+    expect(trafienia).toEqual([join("nowy-front", "zgloszenia-lista", "ZgloszeniaLista.tsx")]);
   });
 });
 

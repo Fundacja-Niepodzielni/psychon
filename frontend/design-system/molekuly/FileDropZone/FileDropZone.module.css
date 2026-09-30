@@ -19,7 +19,7 @@
 }
 
 /* Fokus widoczny NIE dostaje własnej reguły — jedna reguła na front stoi w
-   tokeny.css (`:root :focus-visible`, r6/var(--r-2xs)). Wcześniejsza wersja
+   tokeny.css (`[data-theme] :focus-visible`, r6/var(--r-2xs)). Wcześniejsza wersja
    tego pliku miała tu własną regułę z border-radius: var(--r-sm) (12px) —
    ta sama specyficzność (0-2-0) co regułą wspólną, więc o wygranej
    decydowała wyłącznie kolejność w arkuszu (tokeny.css ładowany pierwszy w

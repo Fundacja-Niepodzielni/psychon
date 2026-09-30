@@ -1,11 +1,14 @@
 import type { WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
-import { ApiError, apiPaged, type PaginationMeta } from "@/lib/api/klient";
+import { ApiError, api, apiPaged, type PaginationMeta } from "@/lib/api/klient";
 import type { ApplicationItem, ApplicationStatus } from "@/lib/h03/types";
 import { ROLE_LABELS } from "@/lib/h18/labels";
 
 /**
- * Dane ekranu „Zgłoszenia rekrutacyjne” — wyłącznie `GET /admin/applications`
- * (`backend/routes/api/h03.php:31`, `ApplicationController::index`). Filtry,
+ * Dane ekranu „Zgłoszenia rekrutacyjne” — `GET /admin/applications`
+ * (`backend/routes/api/h03.php:31`, `ApplicationController::index`) oraz dwa
+ * zapisy tej samej grupy tras: `POST /admin/applications/import` (plik CSV,
+ * `h03.php:36`) i `POST /admin/applications` (ręczne dodanie, `h03.php:32`).
+ * Żadnej innej trasy ekran nie woła. Filtry,
  * które kontroler przyjmuje (`ListApplicationsRequest::rules`): `page`,
  * `per_page` (1–100), `status` (`new|accepted|rejected`), `search` (do 255
  * znaków), `sort`. Ekran używa pierwszych czterech; kolejność to domyślne
@@ -98,4 +101,139 @@ export function wierszeZgloszen(zgloszenia: ApplicationItem[]): WierszRecordList
     plakietka: PLAKIETKA_STATUSU[zgloszenie.status],
     akcja: { etykieta: "Otwórz zgłoszenie", href: `${SCIEZKA_SZCZEGOLU}/${zgloszenie.id}` },
   }));
+}
+
+/* ------------------------------------------------------------------ */
+/* Import z pliku CSV — `POST /admin/applications/import` (multipart)  */
+/* ------------------------------------------------------------------ */
+
+export const ADRES_IMPORTU = "/admin/applications/import";
+
+/** Klucz pliku w żądaniu multipart — ten sam, którego używał stary ekran i który czyta `ImportApplicationsRequest`. */
+export const KLUCZ_PLIKU_IMPORTU = "file";
+
+export interface PominietyWiersz {
+  line: number;
+  reason: string;
+}
+
+export interface RaportImportu {
+  imported: number;
+  skipped: PominietyWiersz[];
+}
+
+export async function importujZgloszenia(plik: File): Promise<RaportImportu> {
+  const tresc = new FormData();
+  tresc.append(KLUCZ_PLIKU_IMPORTU, plik);
+  const raport = await api<Partial<RaportImportu> | null>(ADRES_IMPORTU, { method: "POST", body: tresc });
+  return {
+    imported: typeof raport?.imported === "number" ? raport.imported : 0,
+    skipped: Array.isArray(raport?.skipped) ? raport.skipped : [],
+  };
+}
+
+/** Powody pominięcia wiersza, które zwraca `ApplicationCsvImporter` — kod z serwera nie wychodzi na ekran. */
+const POWODY_POMINIECIA: Record<string, string> = {
+  empty_file: "Plik jest pusty.",
+  missing_first_name: "Brakuje imienia.",
+  missing_last_name: "Brakuje nazwiska.",
+  invalid_email: "Adres e-mail jest nieprawidłowy.",
+  duplicate_email: "Zgłoszenie z tym adresem e-mail już jest na liście albo adres powtarza się w pliku.",
+  email_already_registered: "Konto z tym adresem e-mail już istnieje.",
+  invalid_role: "Nieznana rola.",
+  invalid_graduation_year: "Rok ukończenia studiów jest nieprawidłowy.",
+  invalid_consent_date: "Data zgody jest nieprawidłowa.",
+};
+
+const PREFIKS_BRAKUJACYCH_KOLUMN = "missing_headers:";
+
+export function powodPominiecia(kod: string): string {
+  if (kod.startsWith(PREFIKS_BRAKUJACYCH_KOLUMN)) {
+    const kolumny = kod.slice(PREFIKS_BRAKUJACYCH_KOLUMN.length).split(",").filter((k) => k !== "");
+    return kolumny.length > 0
+      ? `W pierwszym wierszu pliku brakuje wymaganych kolumn: ${kolumny.join(", ")}.`
+      : "W pierwszym wierszu pliku brakuje wymaganych kolumn.";
+  }
+  return POWODY_POMINIECIA[kod] ?? "Wiersz ma nieprawidłowe dane.";
+}
+
+export const TEKST_BLEDU_PLIKU = "Nie udało się wczytać pliku. Sprawdź plik i spróbuj jeszcze raz.";
+
+export type BladImportu =
+  | { rodzaj: "brak-uprawnien" }
+  | { rodzaj: "plik"; komunikat: string }
+  | { rodzaj: "serwer" }
+  | { rodzaj: "siec" };
+
+/** 401/403 → odmowa roli; 422 (i 413) → zły plik z komunikatem serwera; inny błąd serwera; brak odpowiedzi. */
+export function klasyfikujBladImportu(wyjatek: unknown): BladImportu {
+  if (!(wyjatek instanceof ApiError)) return { rodzaj: "siec" };
+  if (wyjatek.status === 401 || wyjatek.status === 403) return { rodzaj: "brak-uprawnien" };
+  if (wyjatek.status === 422) {
+    const komunikat = wyjatek.errors?.file?.[0];
+    return { rodzaj: "plik", komunikat: komunikat && komunikat.trim() !== "" ? komunikat : TEKST_BLEDU_PLIKU };
+  }
+  if (wyjatek.status === 413) return { rodzaj: "plik", komunikat: "Plik może mieć najwyżej 5 MB." };
+  return { rodzaj: "serwer" };
+}
+
+/* ------------------------------------------------------------------ */
+/* Ręczne dodanie — `POST /admin/applications`                         */
+/* ------------------------------------------------------------------ */
+
+export const ADRES_DODANIA = "/admin/applications";
+
+export interface FormularzZgloszenia {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+}
+
+export const PUSTY_FORMULARZ_ZGLOSZENIA: FormularzZgloszenia = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+};
+
+export function dodajZgloszenie(formularz: FormularzZgloszenia): Promise<ApplicationItem> {
+  const telefon = formularz.phone.trim();
+  return api<ApplicationItem>(ADRES_DODANIA, {
+    method: "POST",
+    body: {
+      first_name: formularz.first_name.trim(),
+      last_name: formularz.last_name.trim(),
+      email: formularz.email.trim(),
+      ...(telefon !== "" ? { phone: telefon } : {}),
+    },
+  });
+}
+
+export type BladDodania =
+  | { rodzaj: "brak-uprawnien" }
+  | { rodzaj: "pola"; bledy: Partial<Record<keyof FormularzZgloszenia, string>>; pozostale: string[] }
+  | { rodzaj: "duplikat" }
+  | { rodzaj: "serwer" }
+  | { rodzaj: "siec" };
+
+const POLA_FORMULARZA: (keyof FormularzZgloszenia)[] = ["first_name", "last_name", "email", "phone"];
+
+/** 401/403 → odmowa roli; 422 → błędy pod polami z `error.errors`; 409 → duplikat adresu; reszta → serwer/sieć. */
+export function klasyfikujBladDodania(wyjatek: unknown): BladDodania {
+  if (!(wyjatek instanceof ApiError)) return { rodzaj: "siec" };
+  if (wyjatek.status === 401 || wyjatek.status === 403) return { rodzaj: "brak-uprawnien" };
+  if (wyjatek.status === 409) return { rodzaj: "duplikat" };
+  if (wyjatek.status === 422 && wyjatek.errors) {
+    const bledy: Partial<Record<keyof FormularzZgloszenia, string>> = {};
+    const pozostale: string[] = [];
+    for (const [klucz, komunikaty] of Object.entries(wyjatek.errors)) {
+      const pierwszy = komunikaty[0] ?? "Nieprawidłowa wartość.";
+      const pole = POLA_FORMULARZA.find((p) => p === klucz);
+      if (pole) bledy[pole] = pierwszy;
+      else pozostale.push(pierwszy);
+    }
+    return { rodzaj: "pola", bledy, pozostale };
+  }
+  return { rodzaj: "serwer" };
 }

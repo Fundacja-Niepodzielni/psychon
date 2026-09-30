@@ -32,7 +32,7 @@ function wartosc(nazwaZmiennej: string, blok: string): string {
 }
 
 // Bloki motywów wycięte z pliku, żeby test mierzył jasny i ciemny osobno.
-const blokJasny = css.split(":root {")[1].split("}")[0];
+const blokJasny = css.split("[data-theme] {")[1].split("}")[0];
 const blokCiemny = css.split('@media (prefers-color-scheme: dark) {')[1].split("}")[0];
 
 describe("tokeny — barwy §1.1", () => {
@@ -98,18 +98,18 @@ function nazwyZmiennych(blok: string): string[] {
 // Wada zgłoszona w odrębnym pomiarze:
 // poprzednia wersja robiła `toHaveLength` na tablicach LITERALNYCH napisanych
 // dwa wiersze wyżej w TYM SAMYM teście — mierzyła długość własnego tekstu, nie
-// treści pliku; dodanie zmiennej `--brand-xtra` do :root dawało wtedy 39
+// treści pliku; dodanie zmiennej `--brand-xtra` do bloku bazowego dawało wtedy 39
 // zielonych testów, zero czerwieni. Liczniki niżej są WYCIĘTE z `tokeny.css`
 // (funkcją `nazwyZmiennych` na strukturalnie wydzielonym segmencie pliku, nie
 // z literalnej listy), a lista `zSpecyfikacji34` służy WYŁĄCZNIE jako punkt
 // odniesienia (treść z 06-ATOMY-MOLEKULY-ORGANIZMY.md §1.1), do porównania
 // z tym, co naprawdę jest w pliku — nie jako to, czego długość się mierzy.
 describe("tokeny — mianownik §1.1 wycięty z pliku, nie z literału", () => {
-  // Segment strukturalny: od ":root {" do komentarza "dwie zmienne lokalne" —
-  // to WSZYSTKO, co plik zapisuje MIĘDZY otwarciem `:root` a zmiennymi
+  // Segment strukturalny: od pierwszego "[data-theme] {" do komentarza "dwie zmienne lokalne" —
+  // to WSZYSTKO, co plik zapisuje MIĘDZY otwarciem `[data-theme]` a zmiennymi
   // lokalnymi/skalami (barwy+cień+kształt/pismo jednej wartości, §1.1).
   // Wycinane granicą KOMENTARZA w pliku, nie numerem linii ani listą nazw.
-  const segment34 = css.split(":root {")[1].split("/* dwie zmienne lokalne */")[0];
+  const segment34 = css.split("[data-theme] {")[1].split("/* dwie zmienne lokalne */")[0];
   const nazwyWSegmencie = nazwyZmiennych(segment34);
   const nazwyWBlokuCiemnym = nazwyZmiennych(blokCiemny);
 

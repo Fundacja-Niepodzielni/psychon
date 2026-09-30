@@ -118,9 +118,17 @@ test.describe("partia przełączenia administracji — pulpit i formy stażu wł
 
     await expect(page.getByRole("heading", { level: 1, name: "Pulpit administracji" })).toBeVisible();
     await expect(page.getByText("137")).toBeVisible();
-    // Ekran nowego frontu ma zmienne stylu tylko wtedy, gdy strona ładuje arkusz tokenów.
-    const marka = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--brand").trim());
+    // Ekran nowego frontu ma zmienne stylu tylko wtedy, gdy strona ładuje arkusz tokenów;
+    // arkusz działa wyłącznie w poddrzewie korzenia ekranu, nie na elemencie głównym dokumentu.
+    const marka = await page
+      .locator('#tresc [data-theme="light"]')
+      .first()
+      .evaluate((el) => getComputedStyle(el).getPropertyValue("--brand").trim());
     expect(marka).not.toBe("");
+    const markaNaDokumencie = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--brand").trim(),
+    );
+    expect(markaNaDokumencie).toBe("");
     await expect(page.locator("main")).toHaveCount(1);
     await expect(page.locator("#tresc")).toHaveCount(1);
 
