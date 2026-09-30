@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -20,7 +21,7 @@ interface WlasciwosciPanelu {
 /**
  * Panel decyzji w kolumnie wspierającej. Wniosek, który nie czeka na decyzję,
  * pokazuje jej skutek bez przycisku głównego; wniosek złożony pokazuje albo
- * „Zaakceptuj” z prośbą o poprawkę, albo (po „Poproś o poprawkę”) sekcję z
+ * „Zatwierdź” z prośbą o poprawkę, albo (po „Poproś o poprawkę”) sekcję z
  * komentarzem — nigdy oba naraz, więc jest jeden przycisk główny i jeden rząd przycisków.
  */
 export function PanelDecyzji(wlasciwosci: WlasciwosciPanelu) {
@@ -33,7 +34,7 @@ function PoDecyzji({ wniosek }: { wniosek: Wniosek }) {
     <section className={style.sekcja}>
       <Heading stopien={2}>Decyzja o wniosku</Heading>
       {wniosek.status === "accepted" && (
-        <Notice wariant="ok" tytul="Wniosek zaakceptowany">
+        <Notice wariant="ok" tytul="Wniosek zatwierdzony">
           {`Decyzja z ${dataPl(wniosek.decided_at)}.`}
         </Notice>
       )}
@@ -90,6 +91,7 @@ function Uwagi({ uwaga, odswiez }: { uwaga: Uwaga | null; odswiez: () => void })
 }
 
 function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
+  const router = useRouter();
   const [tryb, setTryb] = useState<"decyzja" | "poprawka">("decyzja");
   const [komentarz, setKomentarz] = useState("");
   const [bladKomentarza, setBladKomentarza] = useState<string | undefined>(undefined);
@@ -166,7 +168,7 @@ function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
       <Uwagi uwaga={uwaga} odswiez={odswiez} />
       <div className={style.rzad}>
         <Button poziom="primary" onClick={() => void akceptuj()}>
-          {wysylanie ? "Zapisywanie…" : "Zaakceptuj"}
+          {wysylanie ? "Zapisywanie…" : "Zatwierdź"}
         </Button>
         <Button
           poziom="outline"
@@ -177,6 +179,11 @@ function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
         >
           Poproś o poprawkę
         </Button>
+        <span className={style.odsuniety}>
+          <Button poziom="quiet" onClick={() => router.push("/admin/profile")}>
+            Wróć do listy
+          </Button>
+        </span>
       </div>
     </section>
   );

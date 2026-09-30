@@ -59,7 +59,7 @@ describe("ZgloszeniaWspolpracy — plakietki stanu małą literą, filtr wielką
     expect(screen.getAllByText("z odpowiedzią")).toHaveLength(1);
     expect(screen.getAllByText("zamknięte")).toHaveLength(1);
 
-    await uzytkownik.click(screen.getByRole("combobox", { name: /^Status/ }));
+    await uzytkownik.click(screen.getByRole("combobox", { name: /^Stan/ }));
     const opcje = screen.getAllByRole("option").map((opcja) => opcja.textContent);
     expect(opcje).toEqual(["Wszystkie", "Nowe", "Z odpowiedzią", "Zamknięte"]);
     expect(screen.getAllByText("nowe")).toHaveLength(1);

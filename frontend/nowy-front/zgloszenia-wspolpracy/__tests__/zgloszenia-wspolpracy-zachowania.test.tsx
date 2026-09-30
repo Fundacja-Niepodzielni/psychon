@@ -64,7 +64,7 @@ describe("ZgloszeniaWspolpracy — filtr statusu", () => {
     render(<ZgloszeniaWspolpracy />);
     await waitFor(() => expect(pobierzZgloszeniaAdministracji).toHaveBeenCalledTimes(1));
 
-    await uzytkownik.click(screen.getByRole("combobox", { name: /^Status/ }));
+    await uzytkownik.click(screen.getByRole("combobox", { name: /^Stan/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Nowe" }));
 
     await waitFor(() => expect(pobierzZgloszeniaAdministracji).toHaveBeenCalledTimes(2));

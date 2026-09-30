@@ -174,7 +174,7 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
-    await uzytkownik.click(screen.getByRole("combobox", { name: /^Status/ }));
+    await uzytkownik.click(screen.getByRole("combobox", { name: /^Stan/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Zamknięte" }));
     await screen.findByRole("heading", { name: "Brak zgłoszeń współpracy" });
     expect(apiPaged).toHaveBeenLastCalledWith("/admin/cooperation-requests?status=closed&page=1");
@@ -340,7 +340,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
     await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
     const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie: Marta Demo/ });
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "Dziękujemy.");
-    await uzytkownik.click(within(formularz).getByRole("combobox", { name: /^Status po odpowiedzi/ }));
+    await uzytkownik.click(within(formularz).getByRole("combobox", { name: /^Stan po odpowiedzi/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Zamknięte" }));
     api.mockResolvedValueOnce(
       zgloszenie(11, { status: "closed", response: "Dziękujemy.", responded_at: "2026-09-22T10:00:00Z", responded_by: 3 }),
@@ -362,7 +362,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
     render(<ZgloszeniaWspolpracy />);
     await screen.findByText("Marta Demo");
     apiPaged.mockResolvedValueOnce({ data: [NOWE], meta: { ...META, total: 1 } });
-    await uzytkownik.click(screen.getByRole("combobox", { name: /^Status/ }));
+    await uzytkownik.click(screen.getByRole("combobox", { name: /^Stan/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Nowe" }));
     await screen.findByText("Marta Demo");
     await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));

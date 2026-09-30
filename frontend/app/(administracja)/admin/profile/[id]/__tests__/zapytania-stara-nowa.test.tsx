@@ -102,7 +102,7 @@ async function przebieg(wersja: Wersja, scenariusz: Scenariusz): Promise<Zapytan
     await uzytkownik.click(przycisk);
     await waitFor(() => expect(zapytania.some((z) => z.adres === DOKUMENT)).toBe(true));
   } else if (scenariusz === "akceptacja") {
-    await uzytkownik.click(screen.getByRole("button", { name: wersja === "stara" ? "Akceptuj wniosek" : "Zaakceptuj" }));
+    await uzytkownik.click(screen.getByRole("button", { name: wersja === "stara" ? "Akceptuj wniosek" : "Zatwierdź" }));
     await waitFor(() => expect(zapytania.some((z) => z.adres.endsWith("/accept"))).toBe(true));
   } else {
     if (wersja === "stara") {
