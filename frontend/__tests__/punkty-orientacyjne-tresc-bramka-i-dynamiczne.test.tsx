@@ -118,7 +118,7 @@ beforeEach(() => {
 });
 
 describe("/admin/ustawienia — h1 dla każdego wysterowanego stanu", () => {
-  const importPage = () => import("@/app/(administracja)/admin/ustawienia/page");
+  const importPage = () => import("@/app/(administracja)/admin/ustawienia/StaraTresc");
 
   it("stan ładowania (przed rozstrzygnięciem GET /admin/edition)", async () => {
     api.mockImplementation(() => new Promise(() => {})); // zawieszone na stałe
@@ -355,7 +355,7 @@ const LEKCJA = {
 
 describe("/admin/ekran-startowy — h1 dla każdego wysterowanego stanu", () => {
   const importPage = () =>
-    import("@/app/(administracja)/admin/ekran-startowy/page");
+    import("@/app/(administracja)/admin/ekran-startowy/StaraTresc");
 
   it("stan ładowania (przed rozstrzygnięciem GET /onboarding)", async () => {
     api.mockImplementation(() => new Promise(() => {}));
@@ -396,7 +396,7 @@ describe("/admin/ekran-startowy — h1 dla każdego wysterowanego stanu", () => 
 
 describe("/admin/profile/[id] — h1 dla każdego wysterowanego stanu", () => {
   const importPage = () =>
-    import("@/app/(administracja)/admin/profile/[id]/page");
+    import("@/app/(administracja)/admin/profile/[id]/StaraTresc");
 
   it("stan ładowania (przed rozstrzygnięciem GET /admin/profiles/:id)", async () => {
     api.mockImplementation(() => new Promise(() => {}));
