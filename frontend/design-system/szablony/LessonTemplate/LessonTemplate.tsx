@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { PageHeader } from "../../organizmy/PageHeader/PageHeader";
 import { PublishChecklist } from "../../organizmy/PublishChecklist/PublishChecklist";
 import style from "./LessonTemplate.module.css";
+import { KorzenSzablonu } from "../KontekstPowloki";
 
 interface WlasciwosciLessonTemplate {
   naglowek: ComponentProps<typeof PageHeader>;
@@ -24,7 +25,7 @@ interface WlasciwosciLessonTemplate {
  */
 export function LessonTemplate({ naglowek, checklist, pasekKrokow, glowna, wspierajaca }: WlasciwosciLessonTemplate) {
   return (
-    <main id="tresc" tabIndex={-1} className={style.uklad} data-style-id="szablon-lekcja">
+    <KorzenSzablonu className={style.uklad} styleId="szablon-lekcja">
       <div data-obszar="naglowek">
         <PageHeader {...naglowek} />
       </div>
@@ -42,6 +43,6 @@ export function LessonTemplate({ naglowek, checklist, pasekKrokow, glowna, wspie
           {wspierajaca}
         </div>
       </div>
-    </main>
+    </KorzenSzablonu>
   );
 }

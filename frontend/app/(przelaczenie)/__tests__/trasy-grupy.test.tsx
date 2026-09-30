@@ -6,7 +6,8 @@ import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/po
 /**
  * Nowe trasy produktu w grupie tras `(przelaczenie)`: przy wyłączonej grupie
  * adres odpowiada jak na bazie (404), po włączeniu strona osadza ekran
- * nowego frontu bez żadnego opakowania z warstwy starego frontu.
+ * nowego frontu bez żadnego opakowania w pliku strony. Powłokę panelu
+ * (menu, nagłówek) niesie układ segmentu `panel/` albo `admin/`.
  */
 
 type Blad = Error & { digest?: string };

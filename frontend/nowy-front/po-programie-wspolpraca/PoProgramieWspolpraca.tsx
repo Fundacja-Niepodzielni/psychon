@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -18,7 +18,18 @@ import {
   type CooperationRequest,
   type CooperationRequestStatus,
 } from "@/lib/api/h01-wspolpraca";
+import { useWPowloce } from "@/design-system/szablony/KontekstPowloki";
 import style from "./PoProgramieWspolpraca.module.css";
+
+/**
+ * Korzeń ekranu. Poza powłoką panelu: `main` pod `id="tresc"` jak dotąd.
+ * W powłoce (`DostawcaPowloki`) `main` niesie powłoka, więc tu jest zwykły `div`.
+ */
+function Korzen({ children }: { children: ReactNode }) {
+  const wPowloce = useWPowloce();
+  if (wPowloce) return <div className={style.uklad}>{children}</div>;
+  return <main id="tresc" className={style.uklad}>{children}</main>;
+}
 
 type StanEkranu = "ladowanie" | "blad" | "ok";
 type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
@@ -163,23 +174,23 @@ export function PoProgramieWspolpraca() {
 
   if (stan === "ladowanie") {
     return (
-      <main id="tresc" className={style.uklad}>
+      <Korzen>
         <Heading stopien={1}>Dalsza współpraca</Heading>
         <Skeleton wiersze={4} />
-      </main>
+      </Korzen>
     );
   }
   if (stan === "blad") {
     return (
-      <main id="tresc" className={style.uklad}>
+      <Korzen>
         <Heading stopien={1}>Dalsza współpraca</Heading>
         <Text>Backend H01 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
-      </main>
+      </Korzen>
     );
   }
 
   return (
-    <main id="tresc" className={style.uklad}>
+    <Korzen>
       <PageHeader
         okruszki={[{ etykieta: "Po programie" }, { etykieta: "Dalsza współpraca" }]}
         tytul="Dalsza współpraca"
@@ -250,6 +261,6 @@ export function PoProgramieWspolpraca() {
           )}
         </>
       )}
-    </main>
+    </Korzen>
   );
 }

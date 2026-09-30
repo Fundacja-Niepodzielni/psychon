@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import style from "./FormTemplate.module.css";
+import { KorzenSzablonu } from "../KontekstPowloki";
 
 interface WlasciwosciFormTemplate {
   /** "panel" (domyslny, ekrany panelu) albo "publiczny" (ekrany wejscia —
@@ -37,11 +38,9 @@ export function FormTemplate({
   drobnyDruk,
 }: WlasciwosciFormTemplate) {
   return (
-    <main
-      id="tresc"
-      tabIndex={-1}
+    <KorzenSzablonu
       className={`${style.uklad} ${wariant === "publiczny" ? style.publiczny : ""}`.trim()}
-      data-style-id="szablon-formularz"
+      styleId="szablon-formularz"
     >
       {logo && (
         <div className={style.logo} data-testid="obszar-logo">
@@ -66,6 +65,6 @@ export function FormTemplate({
           {drobnyDruk}
         </div>
       )}
-    </main>
+    </KorzenSzablonu>
   );
 }
