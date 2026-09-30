@@ -449,6 +449,8 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         expect(menu.konto).toBe("Konto");
         expect(menu.przyciski).toEqual(["Dotychczasowy panel (7)", "Wyloguj"]);
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
+        // Bieżąca pozycja widoczna także wtedy, gdy stoi w grupie zwiniętej („Dotychczasowy panel”).
+        await expect(nav.locator('a[aria-current="page"]')).toBeVisible();
         expect((await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(ekran.menu);
         await expect.soft(page, "tytuł karty").toHaveTitle(ekran.tytul);
 

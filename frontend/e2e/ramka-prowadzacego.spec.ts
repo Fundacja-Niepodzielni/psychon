@@ -295,6 +295,8 @@ test.describe("nowa ramka panelu prowadzącego — ekrany włączonych grup", ()
         expect(menu.przyciski).toEqual(["Dotychczasowy panel (3)", "Wyloguj"]);
         await expect(nav.locator("p").filter({ hasText: LINIA_KONTA })).toHaveText(LINIA_KONTA);
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
+        // Bieżąca pozycja widoczna także wtedy, gdy stoi w grupie zwiniętej („Dotychczasowy panel”).
+        await expect(nav.locator('a[aria-current="page"]')).toBeVisible();
         expect((await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(ekran.menu);
         if (ekran.tytul) await expect.soft(page, "tytuł karty").toHaveTitle(ekran.tytul);
 

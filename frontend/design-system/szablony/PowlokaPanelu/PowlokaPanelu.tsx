@@ -25,7 +25,8 @@ interface WlasciwosciPowlokiPanelu {
   grupy: WlasciwosciNawigacji["grupy"];
   /**
    * Grupa zwinięta przyciskiem „{nagłówek} ({liczba pozycji})” tuż przed
-   * grupą „Konto” (np. „Dotychczasowy panel”); na wejściu zwinięta.
+   * grupą „Konto” (np. „Dotychczasowy panel”); na wejściu zwinięta, chyba
+   * że niesie bieżącą pozycję.
    */
   grupaZwinieta?: GrupaZwinieta;
   /** Nazwa punktu orientacyjnego menu (`nav`); domyślnie „Menu główne”. */
@@ -227,12 +228,13 @@ export function PowlokaPanelu({
 
 /**
  * Grupa zwinięta przyciskiem (np. „Dotychczasowy panel (7)”): na wejściu
- * zwinięta; przycisk niesie `aria-expanded` i `aria-controls` listy, lista
+ * zwinięta — chyba że niesie bieżącą pozycję (ekran szczegółu pod jej
+ * adresem), wtedy rozwinięta, żeby oznaczona pozycja była widoczna; przycisk niesie `aria-expanded` i `aria-controls` listy, lista
  * zwiniętej grupy jest w DOM z atrybutem `hidden`. Każde wystąpienie menu
  * (bok i okno) ma własny identyfikator listy i własny stan.
  */
 function GrupaZwijana({ grupa }: { grupa: GrupaZwinieta }) {
-  const [rozwinieta, setRozwinieta] = useState(false);
+  const [rozwinieta, setRozwinieta] = useState(() => grupa.pozycje.some((pozycja) => pozycja.biezaca));
   const idListy = useId();
   return (
     <div className={style.zwijana}>

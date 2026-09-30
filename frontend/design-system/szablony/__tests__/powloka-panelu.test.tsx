@@ -377,6 +377,15 @@ describe("PowlokaPanelu — grupa zwinięta i zamknięcie okna", () => {
     expect(przycisk.compareDocumentPosition(wyloguj) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("grupa z bieżącą pozycją (ekran szczegółu pod jej adresem) na wejściu rozwinięta", () => {
+    wyrenderuj({
+      grupaZwinieta: { ...ZWINIETA, pozycje: [ZWINIETA.pozycje[0], { ...ZWINIETA.pozycje[1], biezaca: true }] },
+    });
+    const bok = screen.getByRole("complementary", { name: "Menu i konto" });
+    expect(within(bok).getByRole("button", { name: "Dotychczasowy panel (2)" }).getAttribute("aria-expanded")).toBe("true");
+    expect(within(bok).getByRole("link", { name: "Dokumenty" }).getAttribute("aria-current")).toBe("page");
+  });
+
   it("bez grupy zwiniętej: brak przycisku grupy", () => {
     wyrenderuj();
     expect(screen.queryByRole("button", { name: /Dotychczasowy panel/ })).toBeNull();
