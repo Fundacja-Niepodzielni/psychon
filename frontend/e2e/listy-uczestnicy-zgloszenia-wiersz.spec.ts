@@ -275,11 +275,16 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
           await expect(nav.getByRole("link", { name: "Zgłoszenia rekrutacyjne" })).toHaveCount(0);
           await expect(nav.getByRole("link", { name: "Dyżury do decyzji" })).toHaveCount(0);
         }
-        const pozycje = await page
-          .getByRole("navigation", { name: "Okruszki" })
-          .locator("li")
-          .evaluateAll((li) => li.map((el) => (el.textContent ?? "").replace("›", "").trim()));
-        expect(pozycje.join(" › ")).toBe(okruszek);
+        // Ostatnia pozycja szczegółu to osoba ze zgłoszenia: do wczytania zgłoszenia stoi tam „Zgłoszenie” — czekamy na stan końcowy.
+        await expect
+          .poll(async () => {
+            const pozycje = await page
+              .getByRole("navigation", { name: "Okruszki" })
+              .locator("li")
+              .evaluateAll((li) => li.map((el) => (el.textContent ?? "").replace("›", "").trim()));
+            return pozycje.join(" › ");
+          })
+          .toBe(okruszek);
       }
       // Na liście Spraw „Sprawy” to strona bieżąca.
       await page.goto("/admin/sprawy");
