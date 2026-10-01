@@ -44,10 +44,10 @@ describe("wiersze kursów", () => {
     expect(opisPozycji(null)).toBe("Poza kolejnością programu");
   });
 
-  it("wiersz: tytuł kursu, opis pozycji i akcja „Otwórz kurs” jako odnośnik", () => {
+  it("wiersz: tytuł kursu, opis pozycji i akcja „Otwórz” (nazwa dla czytnika „Otwórz kurs: …”) jako odnośnik", () => {
     expect(wierszeKursow(KURSY).map((wiersz) => [wiersz.id, wiersz.tytul, wiersz.podpowiedz, wiersz.akcja])).toEqual([
-      ["3", "Wywiad psychologiczny", "Kurs 2 w programie", { etykieta: "Otwórz kurs", href: "/prowadzacy/kursy/3" }],
-      ["9", "Dyżur w praktyce", "Poza kolejnością programu", { etykieta: "Otwórz kurs", href: "/prowadzacy/kursy/9" }],
+      ["3", "Wywiad psychologiczny", "Kurs 2 w programie", { etykieta: "Otwórz", etykietaDostepna: "Otwórz kurs: Wywiad psychologiczny", href: "/prowadzacy/kursy/3" }],
+      ["9", "Dyżur w praktyce", "Poza kolejnością programu", { etykieta: "Otwórz", etykietaDostepna: "Otwórz kurs: Dyżur w praktyce", href: "/prowadzacy/kursy/9" }],
     ]);
   });
 

@@ -116,6 +116,20 @@ describe("PulpitProwadzacego — stan dane, prowadzący z pytaniami", () => {
     expect(adresy).toContain("/prowadzacy/kursy/3");
   });
 
+  it("wiersz kursu: widoczne „Otwórz”, nazwa dla czytnika zaczyna się od „Otwórz” i zawiera tytuł kursu", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    render(<PulpitProwadzacego />);
+    await screen.findByRole("button", { name: "Odpowiedz na pytania" });
+
+    const odnosniki = screen.getAllByRole("link", { name: /^Otwórz kurs: / });
+    expect(odnosniki.length).toBeGreaterThan(0);
+    for (const odnosnik of odnosniki) {
+      expect(odnosnik.textContent?.replace("›", "").trim()).toBe("Otwórz");
+      expect(odnosnik.getAttribute("aria-label")).toMatch(/^Otwórz kurs: .+/);
+    }
+    expect(screen.getByRole("link", { name: "Otwórz kurs: Kurs 2" })).toBeInTheDocument();
+  });
+
   it("pokazuje tylko pięć wierszy pytań i dopisuje, ile jest w skrzynce", async () => {
     const wiersze = Array.from({ length: 7 }, (_, i) => pytanie(i + 1));
     pobierzPulpit.mockResolvedValue(pulpitZTerminem({ pytania: { stan: "ok", dane: { liczba: 12, wiersze } } }));

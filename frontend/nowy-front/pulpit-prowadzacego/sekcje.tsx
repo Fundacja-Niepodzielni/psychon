@@ -141,7 +141,7 @@ export function SekcjaKursow({ sekcja, onOdswiez }: { sekcja: Sekcja<KursProwadz
   const wiersze: WierszRecordList[] = kursy.slice(0, LIMIT_WIERSZY).map((kurs) => ({
     id: `kurs-${kurs.id}`,
     tytul: kurs.title,
-    akcja: { etykieta: "Otwórz kurs", href: `${ADRES_KURSOW}/${kurs.id}` },
+    akcja: { etykieta: "Otwórz", etykietaDostepna: `Otwórz kurs: ${kurs.title}`, href: `${ADRES_KURSOW}/${kurs.id}` },
   }));
   return (
     <>
