@@ -36,6 +36,14 @@ describe("FormyStazu — lista w karcie", () => {
     expect(within(karta!).getAllByRole("button", { name: "Edytuj" })).toHaveLength(2);
   });
 
+  it("podlinia wiersza: „Kolejność N · opis”, bez dwukropka i kropki po liczbie; bez opisu zostaje „Bez opisu.”", async () => {
+    render(<FormyStazu />);
+    await waitFor(() => expect(screen.getByText("Dyżur telefoniczny")).toBeInTheDocument());
+    expect(screen.getByText("Kolejność 1 · Rozmowa.")).toBeInTheDocument();
+    expect(screen.getByText("Kolejność 2 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.queryByText(/Kolejność: /)).toBeNull();
+  });
+
   it("pusty słownik: stan pusty też stoi w karcie z h2", async () => {
     pobierzFormyStazu.mockResolvedValue([]);
     const { container } = render(<FormyStazu />);

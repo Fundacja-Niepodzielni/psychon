@@ -98,7 +98,7 @@ export function FormyStazu() {
           // Kolejność stoi w tekście podpowiedzi, nie w polu `wartosc` —
           // ranga sortowania nie ma sensownej sumy zbiorczej, więc `RecordList`
           // tu jej nie liczy ani nie pokazuje w stopce.
-          podpowiedz: `Kolejność: ${forma.sort_order}. ${forma.description ?? "Bez opisu."}`,
+          podpowiedz: `Kolejność ${forma.sort_order} · ${forma.description ?? "Bez opisu."}`,
           plakietka: forma.is_active
             ? { wariant: "ok" as const, tekst: "aktywna" }
             : { wariant: "neutral" as const, tekst: "nieaktywna" },
