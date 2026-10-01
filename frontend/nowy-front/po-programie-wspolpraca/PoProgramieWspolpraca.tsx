@@ -8,6 +8,7 @@ import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { EmptyStateCard } from "@/design-system/organizmy/EmptyStateCard/EmptyStateCard";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
@@ -40,8 +41,8 @@ const OKRUSZKI = [{ etykieta: "Po programie" }];
  * obiecuje wysyłki; historia wraca tylko wtedy, gdy osoba już ma zgłoszenia.
  *
  * Stan „program jeszcze nieukończony” stoi na szablonie `ListTemplate` (jedna
- * kolumna na każdej szerokości): biała karta ze stanem pustym zajmuje całą
- * szerokość treści, a historia zgłoszeń, jeśli osoba ją ma, stoi pod nią.
+ * kolumna na każdej szerokości): wspólna karta stanu pustego (`EmptyStateCard`)
+ * zajmuje całą szerokość treści, a historia zgłoszeń, jeśli osoba ją ma, stoi pod nią.
  * Na `DetailTemplate` (kolumny 7/5 od 1380 px) karta zajmowałaby tylko
  * kolumnę główną i stan pusty leżałby na lewo od środka treści.
  *
@@ -211,13 +212,11 @@ export function PoProgramieWspolpraca() {
           naglowek={<PageHeader {...naglowek} />}
           lista={
             <div className={style.stanPusty}>
-              <div className={style.karta} data-testid="karta-stanu-pustego">
-                <EmptyState
-                  naglowek="Ten ekran otworzy się po ukończeniu programu"
-                  tresc="Zgłoszenie dalszej współpracy będzie można wysłać po ukończeniu programu."
-                  przycisk={{ etykieta: "Przejdź do kursów", onClick: () => router.push("/panel/kursy") }}
-                />
-              </div>
+              <EmptyStateCard
+                naglowek="Ten ekran otworzy się po ukończeniu programu"
+                tresc="Zgłoszenie dalszej współpracy będzie można wysłać po ukończeniu programu."
+                przycisk={{ etykieta: "Przejdź do kursów", onClick: () => router.push("/panel/kursy") }}
+              />
               <HistoriaZgloszen zgloszenia={zgloszenia} stronicowanie={stronicowanie} />
             </div>
           }
