@@ -18,7 +18,9 @@ interface WlasciwosciSprawProwadzacych {
  * Sekcja „Sprawy zgłoszone przez prowadzących” pod kolejką decyzji: `h2`,
  * a w nim każda sprawa jako `h3` z tematem, linia „data · zgłaszający · osoba”
  * i treść jako zwykły tekst (React escapuje; podział wierszy zachowuje CSS
- * `white-space: pre-wrap`). Stany: ładowanie (szkielet), błąd (komunikat i
+ * `white-space: pre-wrap`). Separator „·” należy do elementu, który po nim
+ * stoi (jest jego pierwszym dzieckiem), więc przy zawinięciu linii nigdy nie
+ * zostaje na jej końcu. Stany: ładowanie (szkielet), błąd (komunikat i
  * „Spróbuj ponownie” ponawiające tylko tę sekcję), pusto, dane. Odmowa
  * 401/403 nie jest stanem sekcji — obsługuje ją cały ekran.
  */
@@ -49,10 +51,18 @@ export function SprawyProwadzacych({ stan, sprawy, blad, onPonow }: WlasciwosciS
             <Heading stopien={3}>{sprawa.temat}</Heading>
             <p className={style.meta}>
               <span>{sprawa.data}</span>
-              <span aria-hidden="true">·</span>
-              <span>{sprawa.zglaszajacy}</span>
-              <span aria-hidden="true">·</span>
-              <span>{sprawa.osoba}</span>
+              <span className={style.elementMeta}>
+                <span className={style.separator} aria-hidden="true">
+                  ·
+                </span>
+                <span>{sprawa.zglaszajacy}</span>
+              </span>
+              <span className={style.elementMeta}>
+                <span className={style.separator} aria-hidden="true">
+                  ·
+                </span>
+                <span>{sprawa.osoba}</span>
+              </span>
             </p>
             <p className={style.tresc}>{sprawa.tresc}</p>
           </li>

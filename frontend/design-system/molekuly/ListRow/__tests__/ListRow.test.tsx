@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ListRow } from "../ListRow";
+import { naruszeniaSeparatora } from "./separator-linii";
 
 describe("ListRow — akcja", () => {
   it("stare wywołanie (bez etykietaDostepna): nazwa dostępna to widoczny napis, bez aria-label", () => {
@@ -79,5 +80,85 @@ describe("ListRow — akcja nieaktywna", () => {
     render(<ListRow tytul="Kurs" akcja={{ etykieta: "Otwórz", href: "/k" }} />);
     expect(screen.getByRole("link", { name: /^Otwórz/ })).toHaveAttribute("href", "/k");
     expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("ListRow — wiersz kolejki decyzji (makieta A-02)", () => {
+  it("tytuł pogrubiony i druga część tytułu po separatorze, który należy do tej drugiej części", () => {
+    render(
+      <ListRow
+        tytul="Dyżur"
+        tytulPogrubiony
+        tytulDodatek="Filip Demo"
+        plakietka={{ wariant: "warn", tekst: "czeka 5 dni" }}
+        akcja={{ etykieta: "Otwórz", href: "/w" }}
+      />,
+    );
+    const naglowek = screen.getByText("Dyżur").parentElement!;
+    expect(naglowek.className).toMatch(/pogrubiony/);
+    const dodatek = screen.getByText("Filip Demo").parentElement!;
+    expect(dodatek.textContent).toBe("·Filip Demo");
+    // Separator jest pierwszym dzieckiem dodatku i nigdy nie zostaje na końcu linii.
+    expect(naruszeniaSeparatora(naglowek)).toEqual([]);
+    // Kolejność w DOM: plakietka, tytuł, dodatek (poniżej 640 px układ przestawia `order`).
+    const tekst = naglowek.textContent ?? "";
+    expect(tekst.indexOf("czeka 5 dni")).toBeLessThan(tekst.indexOf("Dyżur"));
+    expect(tekst.indexOf("Dyżur")).toBeLessThan(tekst.indexOf("Filip Demo"));
+  });
+
+  it("kontrola dodatnia miernika separatora: separator osobno, na końcu albo bez tekstu jest naruszeniem", () => {
+    const osobno = document.createElement("div");
+    osobno.innerHTML = '<span>Dyżur</span><span aria-hidden="true">·</span><span>Filip Demo</span>';
+    expect(naruszeniaSeparatora(osobno)).toHaveLength(1);
+
+    const naKoncu = document.createElement("div");
+    naKoncu.innerHTML = '<span><span>Filip Demo</span><span aria-hidden="true">·</span></span>';
+    expect(naruszeniaSeparatora(naKoncu)).not.toEqual([]);
+
+    const poprawny = document.createElement("div");
+    poprawny.innerHTML = '<span><span aria-hidden="true">·</span><span>Filip Demo</span></span>';
+    expect(naruszeniaSeparatora(poprawny)).toEqual([]);
+  });
+
+  it("podpowiedzTylkoDlaCzytnika: tekst jest w drzewie dostępności, ale wzrokowo ukryty (bez Hint)", () => {
+    render(
+      <ListRow
+        tytul="Dyżur"
+        podpowiedz="Czeka od 1 stycznia 2026"
+        podpowiedzTylkoDlaCzytnika
+        akcja={{ etykieta: "Otwórz", href: "/w" }}
+      />,
+    );
+    expect(screen.getByText("Czeka od 1 stycznia 2026").className).toMatch(/ukryte/);
+  });
+
+  it("bez podpowiedzTylkoDlaCzytnika podpowiedź jest widoczna jak dotąd", () => {
+    render(<ListRow tytul="Dyżur" podpowiedz="Czeka od 1 stycznia 2026" akcja={{ etykieta: "Otwórz", href: "/w" }} />);
+    expect(screen.getByText("Czeka od 1 stycznia 2026").className).not.toMatch(/ukryte/);
+  });
+
+  it("bezWciecia dodaje klasę bez wcięcia; domyślnie wiersz ma wcięcie", () => {
+    const { container, rerender } = render(<ListRow tytul="Wiersz" akcja={{ etykieta: "Otwórz", href: "/w" }} />);
+    expect((container.firstElementChild as HTMLElement).className).not.toMatch(/bezWciecia/);
+    rerender(<ListRow tytul="Wiersz" bezWciecia akcja={{ etykieta: "Otwórz", href: "/w" }} />);
+    expect((container.firstElementChild as HTMLElement).className).toMatch(/bezWciecia/);
+  });
+
+  it("punkt odniesienia dla tekstu ukrytego (position) dostaje wyłącznie wiersz z ukrytą podpowiedzią", () => {
+    const akcja = { etykieta: "Otwórz", href: "/w" };
+    const klasaTresci = (kontener: HTMLElement) => (kontener.querySelector('[data-wariant] > div') as HTMLElement).className;
+    const { container, rerender } = render(<ListRow tytul="Wiersz" podpowiedz="Data" akcja={akcja} />);
+    expect(klasaTresci(container)).not.toMatch(/trescZUkrytym/);
+    rerender(<ListRow tytul="Wiersz" akcja={akcja} />);
+    expect(klasaTresci(container)).not.toMatch(/trescZUkrytym/);
+    rerender(<ListRow tytul="Wiersz" podpowiedzTylkoDlaCzytnika akcja={akcja} />);
+    expect(klasaTresci(container)).not.toMatch(/trescZUkrytym/);
+    rerender(<ListRow tytul="Wiersz" podpowiedz="Data" podpowiedzTylkoDlaCzytnika akcja={akcja} />);
+    expect(klasaTresci(container)).toMatch(/trescZUkrytym/);
+  });
+
+  it("bez tytulDodatek nie ma separatora ani drugiej części (dotychczasowe wywołania)", () => {
+    const { container } = render(<ListRow tytul="Wiersz" akcja={{ etykieta: "Otwórz", href: "/w" }} />);
+    expect(container.textContent).not.toContain("·");
   });
 });

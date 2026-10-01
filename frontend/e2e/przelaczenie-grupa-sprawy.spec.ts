@@ -169,10 +169,35 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         await expect(menu.getByRole("link", { name: "Sprawy", exact: true })).toHaveAttribute("href", "/admin/sprawy");
       }
 
-      // Kolejka decyzji.
-      await expect(page.getByText("Zgłoszenie — Marta Demo")).toBeVisible();
-      await expect(page.getByText("Dyżur — Ola Demo")).toBeVisible();
+      // Kolejka decyzji: rodzaj i osoba osobno, plakietka „czeka N dni”, akcja „Otwórz”
+      // z pełną nazwą dla czytnika; nagłówek listy tylko dla czytnika.
+      await expect(page.getByText("Marta Demo", { exact: true })).toBeVisible();
+      // Osoba z kolejki (to samo imię stoi też w sekcji spraw prowadzących — stąd zawężenie do wierszy kolejki).
+      await expect(page.locator("[data-wariant='z-licznikiem']").getByText("Ola Demo", { exact: true })).toBeVisible();
+      await expect(page.getByText(/^czeka \d+ (dni|dzień)$/)).toHaveCount(2);
+      await expect(page.getByRole("link", { name: "Otwórz sprawę: Dyżur — Ola Demo" })).toBeVisible();
       await expect(page.getByRole("button", { name: "Otwórz najstarszą sprawę" })).toBeVisible();
+      await expect(page.getByText(/Najstarsza sprawa czeka \d+ (dni|dzień)\./)).toBeVisible();
+      // Nagłówek listy jest w drzewie (czytnik go ma), ale wzrokowo zajmuje 1 px × 1 px, ucięty.
+      const naglowekListy = page.getByRole("heading", { level: 2, name: "Sprawy", exact: true });
+      await expect(naglowekListy).toHaveCount(1);
+      const ramkaNaglowka = await naglowekListy.evaluate((el) => {
+        const kontener = el.parentElement!.getBoundingClientRect();
+        return { szerokosc: kontener.width, wysokosc: kontener.height, ucieto: getComputedStyle(el.parentElement!).clipPath };
+      });
+      expect(ramkaNaglowka.szerokosc).toBeLessThanOrEqual(1);
+      expect(ramkaNaglowka.wysokosc).toBeLessThanOrEqual(1);
+      expect(ramkaNaglowka.ucieto).not.toBe("none");
+      // Filtr zwijany, z licznikami rodzajów obecnych w danych.
+      const filtr = page.getByRole("button", { name: "Filtr: Wszystkie (2)" });
+      await expect(filtr).toHaveAttribute("aria-expanded", "false");
+      await filtr.focus();
+      await page.keyboard.press("Enter");
+      await expect(filtr).toHaveAttribute("aria-expanded", "true");
+      await expect(page.getByRole("button", { name: "Rekrutacja (1)" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Dyżury (1)" })).toBeVisible();
+      await page.keyboard.press("Enter");
+      await expect(filtr).toHaveAttribute("aria-expanded", "false");
 
       // Sprawy zgłoszone przez prowadzących.
       await expect(page.getByRole("heading", { level: 2, name: "Sprawy zgłoszone przez prowadzących" })).toBeVisible();
@@ -199,13 +224,43 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
     });
 
+    test("margines boczny treści: odstęp h1 i wiersza od krawędzi jak na innych ekranach ramki", async ({ page }) => {
+      await instalujAtrapy(page, "dane");
+      await page.goto("/admin/sprawy");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(page.locator("[data-wariant='z-licznikiem']").first()).toBeVisible();
+
+      const pomiar = await page.evaluate(() => {
+        const szerokosc = document.documentElement.clientWidth;
+        const h1 = document.querySelector("h1")!.getBoundingClientRect();
+        const wiersz = document.querySelector("[data-wariant='z-licznikiem']")!.getBoundingClientRect();
+        const tekst = document.querySelector("[data-wariant='z-licznikiem']")!.firstElementChild!.getBoundingClientRect();
+        return {
+          h1Lewy: Math.round(h1.left),
+          wierszPrawy: Math.round(szerokosc - wiersz.right),
+          wierszLewy: Math.round(wiersz.left),
+          tekstLewy: Math.round(tekst.left),
+        };
+      });
+      console.log(`POMIAR-MARGINESU /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
+      if (szerokosc < 1024) {
+        expect(pomiar.h1Lewy, "odstęp lewy h1").toBeGreaterThanOrEqual(16);
+        expect(pomiar.h1Lewy, "odstęp lewy h1").toBeLessThanOrEqual(18);
+        expect(pomiar.wierszPrawy, "odstęp prawy wiersza").toBeGreaterThanOrEqual(16);
+        expect(pomiar.wierszPrawy, "odstęp prawy wiersza").toBeLessThanOrEqual(18);
+      }
+      // Wiersz bez wcięcia: tekst wiersza równo z h1.
+      expect(pomiar.wierszLewy, "wiersz równo z h1").toBe(pomiar.h1Lewy);
+      expect(pomiar.tekstLewy, "treść wiersza równo z h1").toBe(pomiar.h1Lewy);
+    });
+
     test("błąd sekcji spraw prowadzących: kolejka działa, ponowienie, heading-order 0", async ({ page }) => {
       await instalujAtrapy(page, "blad");
 
       await page.goto("/admin/sprawy");
       await zabezpieczeniePrzedEkranemDostepu(page);
 
-      await expect(page.getByText("Zgłoszenie — Marta Demo")).toBeVisible();
+      await expect(page.getByText("Marta Demo", { exact: true })).toBeVisible();
       await expect(page.getByText("Nie udało się wczytać spraw zgłoszonych przez prowadzących")).toBeVisible();
       await expect(page.getByText("Serwer nie odpowiada.")).toBeVisible();
       await expect(page.getByRole("button", { name: "Spróbuj ponownie" })).toBeVisible();
@@ -221,7 +276,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await zabezpieczeniePrzedEkranemDostepu(page);
 
       await expect(page.getByText("Ta funkcja jest dostępna tylko dla administracji.")).toBeVisible();
-      await expect(page.getByText("Zgłoszenie — Marta Demo")).toHaveCount(0);
+      await expect(page.getByText("Marta Demo", { exact: true })).toHaveCount(0);
       await expect(page.getByText("Nieobecność na dyżurze")).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "Sprawy zgłoszone przez prowadzących" })).toHaveCount(0);
       expect(await page.locator("main").count()).toBe(1);

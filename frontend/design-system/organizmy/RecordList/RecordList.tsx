@@ -25,6 +25,12 @@ export interface WierszRecordList {
   tytul: string;
   podpowiedz?: string;
   plakietka?: PlakietkaRecordList;
+  /** Pogrubia tytuł wiersza (rodzaj w wierszu kolejki decyzji). */
+  tytulPogrubiony?: boolean;
+  /** Druga część tytułu po separatorze „·” (np. osoba); patrz `ListRow`. */
+  tytulDodatek?: string;
+  /** Podpowiedź (np. data) tylko dla czytnika ekranu; wzrokowo jej nie ma. */
+  podpowiedzTylkoDlaCzytnika?: boolean;
   /** Wielkość wiersza („data, wielkość, stan, źródło”) —
    * wchodzi jednocześnie do licznika `ListRow` i do sumy w stopce, jedno
    * źródło prawdy, bez osobnego pola tylko do wyświetlenia. OPCJONALNA:
@@ -59,6 +65,12 @@ interface WlasciwosciRecordList {
    * głównej listy — bezpośrednio pod `h1`, bez przeskoku stopnia
    * (makieta 2.0.4: „h2 z lewej”, reguła axe `heading-order`). */
   stopienNaglowka?: 2 | 3;
+  /** Nagłówek sekcji tylko dla czytnika ekranu (zostaje w drzewie nagłówków,
+   * ale wzrokowo go nie ma) — dla list, które stoją bezpośrednio pod `h1`
+   * i same mówią, czym są. Domyślnie nagłówek jest widoczny. */
+  naglowekTylkoDlaCzytnika?: boolean;
+  /** Wiersze bez wcięcia poziomego: tekst równo z krawędzią treści ekranu. */
+  wierszeBezWciecia?: boolean;
 }
 
 /**
@@ -70,11 +82,29 @@ interface WlasciwosciRecordList {
  * liczbą karty osoby — to porównanie i `Notice` żyją na poziomie strony,
  * która montuje po jednym `RecordList` na sekcję.
  */
-export function RecordList({ tytul, wiersze, jednostkaSumy, pusty, stopienNaglowka = 3 }: WlasciwosciRecordList) {
+export function RecordList({
+  tytul,
+  wiersze,
+  jednostkaSumy,
+  pusty,
+  stopienNaglowka = 3,
+  naglowekTylkoDlaCzytnika = false,
+  wierszeBezWciecia = false,
+}: WlasciwosciRecordList) {
+  const naglowek = naglowekTylkoDlaCzytnika ? (
+    <div className={style.ukryte}>
+      <Heading stopien={stopienNaglowka}>{tytul}</Heading>
+    </div>
+  ) : (
+    <Heading stopien={stopienNaglowka}>{tytul}</Heading>
+  );
+
+  const klasaSekcji = naglowekTylkoDlaCzytnika ? `${style.sekcja} ${style.sekcjaZUkrytym}` : style.sekcja;
+
   if (wiersze.length === 0) {
     return (
-      <section className={style.sekcja} aria-label={tytul}>
-        <Heading stopien={stopienNaglowka}>{tytul}</Heading>
+      <section className={klasaSekcji} aria-label={tytul}>
+        {naglowek}
         <EmptyState naglowek={pusty.naglowek} tresc={pusty.tresc} przycisk={pusty.przycisk} />
       </section>
     );
@@ -86,15 +116,19 @@ export function RecordList({ tytul, wiersze, jednostkaSumy, pusty, stopienNaglow
   const suma = maSume ? wiersze.reduce((laczna, wiersz) => laczna + (wiersz.wartosc ?? 0), 0) : 0;
 
   return (
-    <section className={style.sekcja} aria-label={tytul}>
-      <Heading stopien={stopienNaglowka}>{tytul}</Heading>
+    <section className={klasaSekcji} aria-label={tytul}>
+      {naglowek}
       <div className={style.lista}>
         {wiersze.map((wiersz) => (
           <ListRow
             key={wiersz.id}
             wariant="z-licznikiem"
             tytul={wiersz.tytul}
+            tytulPogrubiony={wiersz.tytulPogrubiony}
+            tytulDodatek={wiersz.tytulDodatek}
             podpowiedz={wiersz.podpowiedz}
+            podpowiedzTylkoDlaCzytnika={wiersz.podpowiedzTylkoDlaCzytnika}
+            bezWciecia={wierszeBezWciecia}
             plakietka={wiersz.plakietka}
             licznik={
               jednostkaSumy !== undefined && wiersz.wartosc !== undefined

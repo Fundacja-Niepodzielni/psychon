@@ -6,7 +6,9 @@
   gap: var(--space-16);
   max-width: 960px;
   margin: 0 auto;
-  padding: var(--space-24) var(--card-px);
+  /* Boczny margines treści daje ramka panelu (40 px, na wąskim ekranie 18 px);
+     ekran nie dokłada własnego, żeby nie wcinać się głębiej niż inne ekrany. */
+  padding: var(--space-24) 0;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -14,8 +16,30 @@
 
 .filtr {
   display: flex;
-  gap: var(--space-12);
+  flex-direction: column;
+}
+
+/* Przyciski rodzajów w rozwiniętym filtrze; wybrany ma ramkę i tło, nie tylko `aria-pressed`. */
+.opcjeFiltra {
+  display: flex;
   flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.opcjeFiltra button[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--grey);
+  font-weight: var(--fw-bold);
+}
+
+/* Tekst tylko dla czytnika ekranu (nagłówek listy „Sprawy”). */
+.dlaCzytnika {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .glownaAkcja {

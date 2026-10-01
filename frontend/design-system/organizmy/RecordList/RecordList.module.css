@@ -4,6 +4,13 @@
   gap: var(--space-12);
 }
 
+/* Punkt odniesienia dla nagłówka tylko dla czytnika (`.ukryte` jest
+   pozycjonowane absolutnie). Tylko wtedy: bezwarunkowy `position: relative`
+   zmieniałby styl obliczony każdej listy. */
+.sekcjaZUkrytym {
+  position: relative;
+}
+
 .lista {
   display: flex;
   flex-direction: column;
@@ -18,4 +25,14 @@
   padding: var(--space-12) var(--card-px);
   font-weight: var(--fw-bold);
   min-height: var(--hit-min);
+}
+
+/* Nagłówek tylko dla czytnika ekranu: zostaje w drzewie nagłówków. */
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

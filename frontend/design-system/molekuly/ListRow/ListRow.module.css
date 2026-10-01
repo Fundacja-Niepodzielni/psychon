@@ -10,6 +10,10 @@
 .otwarty {
   background: var(--card-warm);
 }
+/* Wiersz bez wcięcia poziomego: tekst równo z krawędzią treści ekranu. */
+.bezWciecia {
+  padding-inline: 0;
+}
 /* Treść nigdy nie dostaje mniej niż 60% szerokości wnętrza wiersza: gdy akcja
    (liczba + link) nie mieści się obok, zawija się POD treść, zamiast ściskać
    ją do jednej litery w wierszu. Gdy mieści się obok, treść rośnie do końca
@@ -20,6 +24,12 @@
   gap: var(--space-2);
   flex: 1 1 60%;
   min-width: 0;
+}
+/* Punkt odniesienia dla tekstu tylko dla czytnika (`.ukryte` jest
+   pozycjonowane absolutnie). Tylko wtedy: bezwarunkowy `position: relative`
+   zmieniałby styl obliczony każdego wiersza listy. */
+.trescZUkrytym {
+  position: relative;
 }
 /* Plakietka przed tytułem, w jednej linii z nim; ma szerokość własnej treści,
    nigdy nie rozciąga się na kolumnę. Tytuł ma bazę 70% nagłówka, więc na
@@ -41,6 +51,36 @@
   flex: 1 1 70%;
   min-width: 0;
 }
+/* Tytuł pogrubiony (waga jak rodzaj sprawy w makiecie, `.li .m b`). */
+.pogrubiony > p {
+  font-weight: var(--fw-medium);
+}
+/* Druga część tytułu: separator „·” jest jej pierwszym elementem, więc
+   zawija się razem z nią i nigdy nie zostaje na końcu linii. */
+.dodatek {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 640px) {
+  .naglowek > p:has(+ .dodatek) {
+    flex: 0 1 auto;
+  }
+}
+.separator {
+  color: var(--muted);
+}
+/* Tekst tylko dla czytnika ekranu (np. data „Czeka od …”). */
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* Poniżej 640 px tytuł zajmuje pierwszą linię na całą szerokość treści, a
    plakietka (pigułka) stoi w następnej linii pod nim. Kolejność w DOM się nie
    zmienia (plakietka przed tytułem): przestawia ją wyłącznie `order`. */
@@ -51,6 +91,15 @@
   }
   .plakietka {
     order: 2;
+  }
+  /* Druga część tytułu w drugiej linii, przed plakietką; separator znika. */
+  .dodatek {
+    order: 1;
+    color: var(--muted);
+    font-size: var(--fs-10);
+  }
+  .separator {
+    display: none;
   }
 }
 /* `flex-wrap` i `max-width`: sama akcja też musi się zmieścić w wierszu, gdy
