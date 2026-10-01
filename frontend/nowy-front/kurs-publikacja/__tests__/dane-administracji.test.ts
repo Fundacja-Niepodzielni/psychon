@@ -58,9 +58,14 @@ describe("pobierzDaneKursuAdministracji — trasy i kształt wyniku", () => {
     expect(wynik.status === "pusty" && wynik.dane.lekcje).toEqual([]);
   });
 
-  it.each([401, 403])("odpowiedź %i: brak uprawnień", async (status) => {
-    odpowiedzi(new ApiError({ status, code: "forbidden", message: "Brak uprawnień." }), [LEKCJA]);
+  it("odpowiedź 403: brak uprawnień", async () => {
+    odpowiedzi(new ApiError({ status: 403, code: "forbidden", message: "Brak uprawnień." }), [LEKCJA]);
     expect(await pobierzDaneKursuAdministracji("4")).toEqual({ status: "brak-uprawnien" });
+  });
+
+  it("odpowiedź 401: brak sesji, nie brak uprawnień", async () => {
+    odpowiedzi(new ApiError({ status: 401, code: "unauthenticated", message: "Brak ważnego tokenu." }), [LEKCJA]);
+    expect(await pobierzDaneKursuAdministracji("4")).toEqual({ status: "brak-sesji" });
   });
 
   it("błąd odczytu lekcji daje „blad”, nie kurs z pustą listą lekcji", async () => {
@@ -68,9 +73,9 @@ describe("pobierzDaneKursuAdministracji — trasy i kształt wyniku", () => {
     expect(await pobierzDaneKursuAdministracji("4")).toEqual({ status: "blad" });
   });
 
-  it("brak kursu (404) i wyjątek sieci: „blad”", async () => {
+  it("brak kursu (404): „nie-znaleziono”; wyjątek sieci: „blad”", async () => {
     odpowiedzi(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." }), []);
-    expect(await pobierzDaneKursuAdministracji("4")).toEqual({ status: "blad" });
+    expect(await pobierzDaneKursuAdministracji("4")).toEqual({ status: "nie-znaleziono" });
     odpowiedzi(new TypeError("Failed to fetch"), []);
     expect(await pobierzDaneKursuAdministracji("4")).toEqual({ status: "blad" });
   });

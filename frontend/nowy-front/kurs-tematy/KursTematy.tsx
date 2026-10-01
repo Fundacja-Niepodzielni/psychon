@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   COURSE_TYPE_LABELS,
@@ -58,9 +59,16 @@ import style from "./KursTematy.module.css";
 /** Kotwica drzewa tematów i lekcji — cel odnośników z panelu braków. */
 const KOTWICA_LEKCJI = "lekcje";
 
+/**
+ * Wynik odczytu kursu, który przyjmuje ekran: do stanów wspólnych z ekranem
+ * prowadzącego dochodzi „nie znaleziono” — odczyt administracji odróżnia brak
+ * kursu (404) od braku roli (403) i od wygasłej sesji (401).
+ */
+export type WynikOdczytuKursu = WynikDanychKursu | { status: "nie-znaleziono" };
+
 interface WlasciwosciKursTematy {
   idKursu: string;
-  wynik: WynikDanychKursu;
+  wynik: WynikOdczytuKursu;
   /**
    * Grupa tras ekranu: tą samą grupą ekran czyta kurs, zapisuje tematy, dane
    * kursu i tytuły lekcji. `instructor` — dane z tras `/instructor/…`
@@ -69,7 +77,10 @@ interface WlasciwosciKursTematy {
    * kurs” naprawdę zmienia stan kursu.
    */
   grupa: GrupaTras;
-  /** Ponowienie odczytu kursu po błędzie; bez niej odświeżenie trasy. */
+  /**
+   * Ponowny odczyt kursu: po błędzie odczytu i po odmowie zapisu układu, który
+   * na serwerze już się zmienił. Bez niej — odświeżenie trasy.
+   */
   onPonow?: () => void;
   /** Sekcje pod drzewem tematów, w kolumnie głównej — z bieżącym stanem kursu. */
   podDrzewem?: (kurs: AdminCourse, lekcje: AdminLesson[]) => ReactNode;
@@ -98,7 +109,11 @@ export function KursTematy({
   const router = useRouter();
   const wroc = () => router.back();
 
-  if (wynik.status === "brak-sesji" || wynik.status === "brak-uprawnien") {
+  // Trzy różne odmowy, trzy różne stany: zdanie o roli pada wyłącznie przy 403.
+  if (wynik.status === "brak-sesji" || wynik.status === "nie-znaleziono") {
+    return <BezKursu rodzaj={wynik.status} idKursu={idKursu} grupa={grupa} wroc={wroc} />;
+  }
+  if (wynik.status === "brak-uprawnien") {
     return <BrakUprawnien idKursu={idKursu} grupa={grupa} wroc={wroc} />;
   }
   if (wynik.status === "blad") {
@@ -130,6 +145,7 @@ export function KursTematy({
       podDrzewem={podDrzewem}
       ostatniBlok={ostatniBlok}
       edycjaLekcji={edycjaLekcji}
+      onWczytajPonownie={onPonow}
       wroc={wroc}
       przejdz={(adres) => router.push(adres)}
     />
@@ -154,8 +170,56 @@ function BrakUprawnien({ idKursu, grupa, wroc }: { idKursu: string; grupa: Grupa
   );
 }
 
+/**
+ * Wygasła sesja i brak kursu — te same zdania co na pozostałych ekranach:
+ * „Nie znaleziono kursu” jak po usunięciu kursu na tym ekranie, „Sesja
+ * wygasła” jak w zgłoszeniu pomocy. Bez zdania o roli: rola nie jest powodem.
+ */
+function BezKursu({
+  rodzaj,
+  idKursu,
+  grupa,
+  wroc,
+}: {
+  rodzaj: "brak-sesji" | "nie-znaleziono";
+  idKursu: string;
+  grupa: GrupaTras;
+  wroc: () => void;
+}) {
+  const teksty = tekstyDlaGrupy(grupa);
+  const adresListy = teksty.okruszki[0]?.href;
+  return (
+    <DetailTemplate
+      naglowek={{ okruszki: teksty.okruszki, tytul: `Kurs ${idKursu}`, onPowrot: wroc }}
+      glowna={
+        <div className={style.sekcja}>
+          {rodzaj === "brak-sesji" ? (
+            <Notice wariant="warn" tytul="Sesja wygasła">
+              Zaloguj się ponownie, aby wrócić do kursu.
+            </Notice>
+          ) : (
+            <>
+              <Notice wariant="warn" tytul="Nie znaleziono kursu">
+                Kurs nie istnieje albo został usunięty.
+              </Notice>
+              {adresListy && (
+                <Text>
+                  <Link href={adresListy}>Wróć do listy kursów</Link>
+                </Text>
+              )}
+            </>
+          )}
+        </div>
+      }
+      wspierajaca={null}
+    />
+  );
+}
+
 type StanTematow =
   | { rodzaj: "ladowanie" }
+  | { rodzaj: "brak-sesji" }
+  | { rodzaj: "nie-znaleziono" }
   | { rodzaj: "blad"; tresc: string }
   | { rodzaj: "brak-uprawnien" }
   | { rodzaj: "gotowy"; serwer: Uklad; lokalny: Uklad; historia: Uklad[]; ostatniTytul: number | null };
@@ -237,6 +301,8 @@ interface WlasciwosciEdytora {
   podDrzewem?: (kurs: AdminCourse, lekcje: AdminLesson[]) => ReactNode;
   ostatniBlok?: (kurs: AdminCourse) => ReactNode;
   edycjaLekcji?: EdycjaLekcjiWiersza;
+  /** Odczyt kursu z lekcjami od nowa; bez niej ekran czyta od nowa same tematy. */
+  onWczytajPonownie?: () => void;
   wroc: () => void;
   przejdz: (adres: string) => void;
 }
@@ -248,6 +314,7 @@ function EdytorTematow({
   podDrzewem,
   ostatniBlok,
   edycjaLekcji,
+  onWczytajPonownie,
   wroc,
   przejdz,
 }: WlasciwosciEdytora) {
@@ -270,12 +337,20 @@ function EdytorTematow({
   const [stan, setStan] = useState<StanTematow>({ rodzaj: "ladowanie" });
   const [proba, setProba] = useState(0);
   const [bladTresci, setBladTresci] = useState<string | null>(null);
+  // Serwer odrzucił zapis układu, bo kurs ma już inne tematy albo lekcje
+  // (`422 validation_failed` na `topics`): ponowny zapis da tę samą odmowę,
+  // więc ekran proponuje wczytanie układu z serwera.
+  const [ukladNieaktualny, setUkladNieaktualny] = useState(false);
+  // Temat, którego nie da się usunąć, bo ma lekcje — zdanie przy liście tematów.
+  const [odmowaUsuniecia, setOdmowaUsuniecia] = useState<string | null>(null);
   const [zapisywanie, setZapisywanie] = useState(false);
   const [checklistaOtwarta, setChecklistaOtwarta] = useState(false);
   const [gotowyDoPublikacji, setGotowyDoPublikacji] = useState(false);
   const [dialog, setDialog] = useState<StanDialogu | null>(null);
   const [poleDialogu, setPoleDialogu] = useState("");
   const [bladDialogu, setBladDialogu] = useState<string | null>(null);
+  // Błąd, który nie dotyczy pola okna (sieć, odmowa serwera): komunikat w oknie.
+  const [bladOkna, setBladOkna] = useState<string | null>(null);
   const [formularz, setFormularz] = useState<FormularzKursu | null>(null);
   const [bledyFormularza, setBledyFormularza] = useState<BledyKursu>({});
   const [publikowanie, setPublikowanie] = useState(false);
@@ -298,8 +373,16 @@ function EdytorTematow({
       })
       .catch((blad: unknown) => {
         if (!aktualne) return;
-        if (blad instanceof ApiError && (blad.status === 401 || blad.status === 403 || blad.status === 404)) {
+        if (blad instanceof ApiError && blad.status === 401) {
+          setStan({ rodzaj: "brak-sesji" });
+          return;
+        }
+        if (blad instanceof ApiError && blad.status === 403) {
           setStan({ rodzaj: "brak-uprawnien" });
+          return;
+        }
+        if (blad instanceof ApiError && blad.status === 404) {
+          setStan({ rodzaj: "nie-znaleziono" });
           return;
         }
         setStan({ rodzaj: "blad", tresc: zdanieBleduTematow(blad) });
@@ -371,6 +454,9 @@ function EdytorTematow({
     }
   }, [fokus]);
 
+  if (stan.rodzaj === "brak-sesji" || stan.rodzaj === "nie-znaleziono") {
+    return <BezKursu rodzaj={stan.rodzaj} idKursu={String(kursPoczatkowy.id)} grupa={grupa} wroc={wroc} />;
+  }
   if (stan.rodzaj === "brak-uprawnien") {
     return <BrakUprawnien idKursu={String(kursPoczatkowy.id)} grupa={grupa} wroc={wroc} />;
   }
@@ -418,7 +504,9 @@ function EdytorTematow({
     } catch (wyjatek) {
       const blad = sklasyfikujBlad(idKursu, wyjatek);
       const tytul = opublikowany ? "Nie udało się opublikować kursu" : "Nie udało się cofnąć publikacji";
-      if (blad.rodzaj === "braki") {
+      if (wyjatek instanceof ApiError && wyjatek.status === 401) {
+        setBladPublikacji({ tytul, tresc: "Sesja wygasła. Zaloguj się ponownie." });
+      } else if (blad.rodzaj === "braki") {
         // Braki uzupełnia się na tym ekranie, więc odnośnik prowadzi do drzewa lekcji.
         setBrakiSerwera(blad.braki.map((brak) => ({ ...brak, href: `#${KOTWICA_LEKCJI}` })));
       } else if (blad.rodzaj === "zakazane") {
@@ -622,10 +710,14 @@ function EdytorTematow({
     const { serwer, lokalny } = stan;
     setZapisywanie(true);
     setBladTresci(null);
+    setUkladNieaktualny(false);
+    let wysylanyUklad = false;
     try {
       let potwierdzony = serwer;
       if (kolejnoscZmieniona(serwer, lokalny)) {
+        wysylanyUklad = true;
         const tematy = await zapiszUkladTematow(grupa, kurs.id, cialoUkladu(lokalny));
+        wysylanyUklad = false;
         potwierdzony = { ...ukladZSerwera(tematy, lekcje), tytulyLekcji: serwer.tytulyLekcji };
       }
       for (const { id, title } of tytulyDoZapisu(serwer, lokalny)) {
@@ -661,15 +753,57 @@ function EdytorTematow({
     } catch (blad) {
       // Stan lokalny zostaje nietknięty — osoba poprawia i zapisuje ponownie.
       setBladTresci(zdanieBleduTematow(blad));
+      setUkladNieaktualny(wysylanyUklad && blad instanceof ApiError && (blad.status === 409 || blad.status === 422));
     } finally {
       setZapisywanie(false);
     }
   }
 
+  /**
+   * Układ z serwera od nowa. Administracja czyta cały kurs z lekcjami (ktoś
+   * mógł dopisać lekcję), więc ekran montuje się od zera; bez tej drogi ekran
+   * czyta od nowa same tematy. Niezapisane zmiany z ekranu przepadają — mówi
+   * to zdanie przy przycisku.
+   */
+  function wczytajUklad() {
+    setBladTresci(null);
+    setUkladNieaktualny(false);
+    if (onWczytajPonownie) {
+      onWczytajPonownie();
+      return;
+    }
+    setStan({ rodzaj: "ladowanie" });
+    setProba((poprzednia) => poprzednia + 1);
+  }
+
   function otworzDialog(nowy: StanDialogu, wartosc = "") {
     setPoleDialogu(wartosc);
     setBladDialogu(null);
+    setBladOkna(null);
     setDialog(nowy);
+  }
+
+  /**
+   * Serwer usuwa wyłącznie temat bez lekcji. Ekran zna liczbę lekcji tematu —
+   * na ekranie i w ostatnio zapisanym układzie — więc dla tematu z lekcjami nie
+   * otwiera okna z potwierdzeniem, które na pewno zostanie odrzucone, tylko
+   * mówi przy liście tematów, co zrobić najpierw.
+   */
+  function poprosOUsuniecieTematu(temat: TematUkladu) {
+    const naSerwerze =
+      stan.rodzaj === "gotowy" ? (stan.serwer.tematy.find((wpis) => wpis.id === temat.id)?.lekcje.length ?? 0) : 0;
+    if (temat.lekcje.length > 0) {
+      setOdmowaUsuniecia(`Temat „${temat.tytul}” ma ${zdanieLiczbyLekcji(temat.lekcje.length)}, a potem usuń temat.`);
+      return;
+    }
+    if (naSerwerze > 0) {
+      setOdmowaUsuniecia(
+        `Temat „${temat.tytul}” ma lekcje na serwerze, bo zmiany w drzewie nie są jeszcze zapisane. Zapisz zmiany, a potem usuń temat.`,
+      );
+      return;
+    }
+    setOdmowaUsuniecia(null);
+    otworzDialog({ rodzaj: "usun", temat });
   }
 
   async function potwierdzDialog() {
@@ -697,7 +831,9 @@ function EdytorTematow({
     }
     if (dialog.rodzaj === "usun") {
       const { temat } = dialog;
-      setDialog(null);
+      if (wysylanieDialogu.current) return;
+      wysylanieDialogu.current = true;
+      setBladOkna(null);
       try {
         await usunTemat(grupa, temat.id);
         setStan((poprzedni) =>
@@ -710,10 +846,13 @@ function EdytorTematow({
               }
             : poprzedni,
         );
-        setBladTresci(null);
+        setDialog(null);
       } catch (blad) {
-        // 422 `conditions_not_met`: temat ma lekcje — drzewo bez zmian, jedno zdanie.
-        setBladTresci(zdanieBleduTematow(blad));
+        // Odmowa (np. 422 `conditions_not_met`: ktoś dopisał do tematu lekcję):
+        // drzewo bez zmian, okno zostaje, zdanie stoi w oknie przy przycisku.
+        setBladOkna(zdanieBleduTematow(blad));
+      } finally {
+        wysylanieDialogu.current = false;
       }
       return;
     }
@@ -724,6 +863,8 @@ function EdytorTematow({
     }
     if (wysylanieDialogu.current) return;
     wysylanieDialogu.current = true;
+    setBladDialogu(null);
+    setBladOkna(null);
     try {
       if (dialog.rodzaj === "dodaj") {
         const temat = await dodajTemat(grupa, kurs.id, tytul);
@@ -752,7 +893,11 @@ function EdytorTematow({
       }
       setDialog(null);
     } catch (blad) {
-      setBladDialogu(zdanieBleduTematow(blad));
+      // Do pola „Nazwa tematu” trafia wyłącznie błąd nazwy (422 na `title`);
+      // sieć i każda inna odmowa to komunikat okna, nie błąd wpisanej nazwy.
+      const nazwy = blad instanceof ApiError && blad.code === "validation_failed" ? blad.errors?.title?.[0] : undefined;
+      if (nazwy) setBladDialogu(nazwy);
+      else setBladOkna(zdanieBleduTematow(blad));
     } finally {
       wysylanieDialogu.current = false;
     }
@@ -784,14 +929,19 @@ function EdytorTematow({
       setBledyFormularza({});
     } catch (blad) {
       if (blad instanceof ApiError && blad.code === "validation_failed") {
-        setBledyFormularza({
+        const pol: BledyKursu = {
           tytul: blad.errors?.title?.[0],
           opis: blad.errors?.description?.[0],
           identyfikator: blad.errors?.slug?.[0],
           typ: blad.errors?.type?.[0],
           grupaProduktowa: blad.errors?.product_group?.[0],
-        });
-        return;
+        };
+        if (Object.values(pol).some(Boolean)) {
+          setBledyFormularza(pol);
+          return;
+        }
+        // Odmowa bez błędu na którymkolwiek polu formularza (inny klucz albo
+        // sama wiadomość): zdanie serwera nad formularzem, nigdy cisza.
       }
       setBledyFormularza({ ogolny: zdanieBleduTematow(blad) });
     }
@@ -828,8 +978,20 @@ function EdytorTematow({
         </Notice>
       )}
       {bladTresci && (
-        <Notice wariant="error" tytul="Zmiana nie została zapisana">
-          {bladTresci}
+        <Notice
+          wariant="error"
+          tytul="Zmiana nie została zapisana"
+          akcja={
+            ukladNieaktualny ? (
+              <Button poziom="outline" onClick={wczytajUklad}>
+                Wczytaj aktualny układ
+              </Button>
+            ) : undefined
+          }
+        >
+          {ukladNieaktualny
+            ? "Układ kursu na serwerze jest inny niż na tym ekranie. Wczytaj aktualny układ — niezapisane zmiany z tego ekranu przepadną."
+            : bladTresci}
         </Notice>
       )}
       {gotowyDoPublikacji && (
@@ -1005,13 +1167,18 @@ function EdytorTematow({
                   poziom="quiet"
                   niebezpieczny
                   aria-label={`Usuń temat „${temat.tytul}”`}
-                  onClick={() => otworzDialog({ rodzaj: "usun", temat })}
+                  onClick={() => poprosOUsuniecieTematu(temat)}
                 >
                   Usuń
                 </Button>
               </li>
             ))}
           </ul>
+          {odmowaUsuniecia && (
+            <Notice wariant="warn" tytul="Tematu nie można jeszcze usunąć">
+              {odmowaUsuniecia}
+            </Notice>
+          )}
           <div>
             <Button poziom="outline" onClick={() => otworzDialog({ rodzaj: "dodaj" })}>
               Dodaj temat
@@ -1201,6 +1368,7 @@ function EdytorTematow({
           idPola={`${baza}-pole-dialogu`}
           wartosc={poleDialogu}
           blad={bladDialogu}
+          bladOkna={bladOkna}
           onZmiana={setPoleDialogu}
           onWycofaj={() => {
             // „Zostań” wraca do formularza lekcji, nie na przycisk, który wywołał pytanie.
@@ -1219,13 +1387,25 @@ interface WlasciwosciOkna {
   dialog: StanDialogu;
   idPola: string;
   wartosc: string;
+  /** Błąd pola „Nazwa tematu”. */
   blad: string | null;
+  /** Błąd, który nie dotyczy pola: komunikat w treści okna. */
+  bladOkna: string | null;
   onZmiana: (wartosc: string) => void;
   onWycofaj: () => void;
   onPotwierdz: () => void;
 }
 
-function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPotwierdz }: WlasciwosciOkna) {
+/** „ma 1 lekcję. Przenieś ją do innego tematu” / „ma 3 lekcje. Przenieś je…” / „ma 5 lekcji. Przenieś je…”. */
+function zdanieLiczbyLekcji(liczba: number): string {
+  if (liczba === 1) return "1 lekcję. Przenieś ją do innego tematu";
+  const jednosci = liczba % 10;
+  const dziesiatki = liczba % 100;
+  const kilka = jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14);
+  return `${liczba} ${kilka ? "lekcje" : "lekcji"}. Przenieś je do innego tematu`;
+}
+
+function OknoDialogu({ dialog, idPola, wartosc, blad, bladOkna, onZmiana, onWycofaj, onPotwierdz }: WlasciwosciOkna) {
   if (dialog.rodzaj === "dodaj" || dialog.rodzaj === "zmien") {
     return (
       <Dialog
@@ -1235,6 +1415,14 @@ function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPot
         onWycofaj={onWycofaj}
         onPotwierdz={onPotwierdz}
       >
+        {bladOkna && (
+          <Notice
+            wariant="error"
+            tytul={dialog.rodzaj === "dodaj" ? "Temat nie został dodany" : "Nazwa tematu nie została zapisana"}
+          >
+            {bladOkna}
+          </Notice>
+        )}
         <Field
           id={idPola}
           etykieta="Nazwa tematu"
@@ -1256,6 +1444,11 @@ function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPot
         onWycofaj={onWycofaj}
         onPotwierdz={onPotwierdz}
       >
+        {bladOkna && (
+          <Notice wariant="error" tytul="Temat nie został usunięty">
+            {bladOkna}
+          </Notice>
+        )}
         <Text>Usunąć można tylko temat bez lekcji. Lekcje zostają w kursie.</Text>
       </Dialog>
     );

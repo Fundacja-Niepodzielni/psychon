@@ -19,7 +19,9 @@ import type { DaneKursu, WynikDanychKursu } from "./dane";
  * pustą listę — ekran administracji zapisuje układ kursu i nie może udawać,
  * że kurs nie ma lekcji.
  */
-export async function pobierzDaneKursuAdministracji(idKursu: string): Promise<WynikDanychKursu> {
+export async function pobierzDaneKursuAdministracji(
+  idKursu: string,
+): Promise<WynikDanychKursu | { status: "nie-znaleziono" }> {
   if (!czyPoprawnyIdentyfikator(idKursu)) return { status: "blad" };
 
   try {
@@ -28,9 +30,10 @@ export async function pobierzDaneKursuAdministracji(idKursu: string): Promise<Wy
     if (lekcje.length === 0 && kurs.materials_count === 0) return { status: "pusty", dane };
     return { status: "ok", dane };
   } catch (blad) {
-    if (blad instanceof ApiError && (blad.status === 401 || blad.status === 403)) {
-      return { status: "brak-uprawnien" };
-    }
+    // Trzy odmowy, trzy stany: wygasła sesja, brak roli, brak kursu.
+    if (blad instanceof ApiError && blad.status === 401) return { status: "brak-sesji" };
+    if (blad instanceof ApiError && blad.status === 403) return { status: "brak-uprawnien" };
+    if (blad instanceof ApiError && blad.status === 404) return { status: "nie-znaleziono" };
     return { status: "blad" };
   }
 }
