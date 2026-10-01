@@ -62,15 +62,19 @@ interface OpcjaFiltra {
  * `ListTemplate`: jego korzeń jest jedynym `main` (cel linku skoku `#tresc`),
  * a stan wybiera wyłącznie zawartość slotów. Slot `naglowek` — `PageHeader`
  * (podtytuł niesie wiek najstarszej sprawy); slot `filtry` — zwijany „Filtr:
- * rodzaj (N)” z przyciskami rodzajów obecnych w danych, każdy z liczbą (tylko
- * w stanie z danymi); slot `lista` — szkielet, komunikat błędu, stan braku
+ * rodzaj (N)” z pozycjami rodzajów obecnych w danych, każda z liczbą (tylko
+ * w stanie z danymi): „Dyżury” i „Zgłoszenia rekrutacyjne” są odnośnikami do
+ * swoich ekranów, „Wszystkie” i „Wnioski o profil psychologa” przyciskami
+ * zawężającymi listę; slot `lista` — szkielet, komunikat błędu, stan braku
  * dostępu albo komunikaty źródeł i `RecordList` (stan pusty „Brak spraw do
  * decyzji" niesie sam `RecordList`); slot `stronicowanie` pominięty — ekran
  * pobiera do 100 pozycji na źródło bez podziału na strony, patrz
- * `PER_PAGE_MAX` w `./dane.ts`. Wiersz `RecordList` (makieta A-02): plakietka
- * „czeka N dni” na początku (ostrzegawcza od `PROG_OSTRZEZENIA_DNI`, niżej
- * szara), rodzaj pogrubiony, po „·” osoba, akcja „Otwórz” z `href`; pełna
- * nazwa akcji i data „Czeka od …” tylko dla czytnika. Nagłówek `h2` kolejki
+ * `PER_PAGE_MAX` w `./dane.ts`. Wiersze stoją od najstarszej sprawy
+ * (`sortujSprawy`, to samo porównanie co „Otwórz najstarszą sprawę”). Wiersz
+ * `RecordList` (makieta A-02): plakietka „czeka od dziś” / „czeka N dni” na
+ * początku (ostrzegawcza od `PROG_OSTRZEZENIA_DNI`, niżej szara), rodzaj
+ * pogrubiony (nazwa ze słownika `NAZWY_RODZAJOW`), po „·” osoba, akcja „Otwórz”
+ * z `href`; pełna nazwa akcji i data „Czeka od …” tylko dla czytnika. Nagłówek `h2` kolejki
  * jest tylko dla czytnika — wzrokowo lista stoi bezpośrednio pod nagłówkiem
  * ekranu.
  *
