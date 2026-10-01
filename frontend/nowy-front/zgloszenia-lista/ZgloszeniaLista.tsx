@@ -59,15 +59,19 @@ interface Zapytanie {
   proba: number;
 }
 
-const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Zgłoszenia rekrutacyjne" }];
+// Ekran jest podstroną „Spraw” (rejestr menu ramki): w nowej ramce okruszek składa reguła z rejestru.
+const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Sprawy" }, { etykieta: "Zgłoszenia rekrutacyjne" }];
 
 /**
  * Ekran A-03 „Zgłoszenia rekrutacyjne” — lista na szablonie `ListTemplate`
- * (administracja). Odczyt: `GET /admin/applications`. Akcja wiersza to
- * „Otwórz zgłoszenie” (odnośnik do ekranu szczegółu). Dwie akcje nagłówka:
+ * (administracja). Odczyt: `GET /admin/applications`. Wiersz zgłoszenia to wzór
+ * wiersza kolejki spraw (`wierszeZgloszen`): pogrubione imię i nazwisko, meta,
+ * plakietka małą literą, akcja „Otwórz” (odnośnik do ekranu szczegółu; pełna
+ * nazwa „Otwórz zgłoszenie: …” tylko dla czytnika); nagłówek `h2` listy jest
+ * tylko dla czytnika. Dwie akcje nagłówka, każda raz, obok siebie:
  * „Dodaj zgłoszenie” (jedyny przycisk w kolorze, `POST /admin/applications`;
  * gdy formularz jest otwarty, kolor przejmuje jego przycisk zapisu) oraz
- * „Importuj z pliku CSV” (wtórna, `POST /admin/applications/import`).
+ * „Importuj z pliku CSV” (drugorzędna, `POST /admin/applications/import`).
  * Stany: ładowanie, dane, pusty (z filtrem i bez), brak uprawnień, błąd sieci
  * — każdy w tym samym szablonie, więc jeden `main` i znacznik szablonu są
  * zawsze w drzewie.
@@ -192,20 +196,15 @@ export function ZgloszeniaLista() {
 
   const zamknijToast = useCallback(() => setToast(null), []);
 
-  const akcjeNaglowka =
-    rolaPotwierdzona && stan.rodzaj !== "brak-uprawnien" ? (
-      <div className={style.akcjeNaglowka}>
-        <Button
-          poziom="outline"
-          type="button"
-          aria-expanded={importOtwarty}
-          disabled={stanImportu.rodzaj === "trwa"}
-          onClick={przelaczImport}
-        >
-          Importuj z pliku CSV
-        </Button>
-      </div>
-    ) : undefined;
+  const akcjaImportu =
+    rolaPotwierdzona && stan.rodzaj !== "brak-uprawnien"
+      ? {
+          etykieta: "Importuj z pliku CSV",
+          onKliknij: przelaczImport,
+          wylaczona: stanImportu.rodzaj === "trwa",
+          rozwinieta: importOtwarty,
+        }
+      : undefined;
 
   // Jedyny przycisk w kolorze stoi w nagłówku (`przyciskGlowny`); gdy
   // formularz jest otwarty, kolor przejmuje jego przycisk zapisu.
@@ -227,7 +226,7 @@ export function ZgloszeniaLista() {
       opis={opis}
       onPowrot={() => router.back()}
       przyciskGlowny={przyciskGlowny}
-      dzieci={akcjeNaglowka}
+      akcjaDrugorzedna={akcjaImportu}
     />
   );
 
@@ -320,6 +319,9 @@ export function ZgloszeniaLista() {
     lista = (
       <RecordList
         tytul="Lista zgłoszeń"
+        stopienNaglowka={2}
+        naglowekTylkoDlaCzytnika
+        wierszeBezWciecia
         wiersze={wierszeZgloszen(stan.zgloszenia)}
         pusty={{
           naglowek: "Brak zgłoszeń",

@@ -9,7 +9,13 @@ interface PozycjaGrupyPanelNav {
   ikona: NazwaIkony;
   etykieta: string;
   href: string;
-  biezaca?: boolean;
+  /** `"sekcja"` — rodzic bieżącej podstrony bez własnej pozycji w menu (`aria-current="true"`). */
+  biezaca?: boolean | "sekcja";
+  /**
+   * Podstrony bez własnej pozycji w menu, które mają tę pozycję za rodzica.
+   * Menu ich nie rysuje — czytają je szablon powłoki i reguła okruszka.
+   */
+  podstrony?: { etykieta: string; href: string }[];
   licznik?: { wartosc: number; etykieta: string };
 }
 

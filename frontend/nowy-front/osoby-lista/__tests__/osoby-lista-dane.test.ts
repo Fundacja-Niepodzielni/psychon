@@ -133,18 +133,25 @@ describe("Uczestnicy programu — klasyfikacja błędu", () => {
 });
 
 describe("Uczestnicy programu — wiersze", () => {
-  it("wiersz niesie nazwisko, rolę po polsku, stan konta i odnośnik do karty", () => {
+  // Wiersz jak wiersz Spraw: pogrubione imię i nazwisko, meta po „·”, plakietka małą literą, akcja „Otwórz”.
+  it("wiersz niesie pogrubione nazwisko, rolę po polsku w meta, stan konta małą literą i „Otwórz” z pełną nazwą dla czytnika", () => {
     const [wiersz] = wierszeOsob([{ ...ATRAPA, role: "project_manager" }]);
     expect(wiersz.id).toBe("17");
     expect(wiersz.tytul).toBe("Marta Demo");
-    expect(wiersz.podpowiedz).toBe("marta@demo.pl · Opiekun Projektu");
-    expect(wiersz.plakietka).toEqual({ wariant: "ok", tekst: "Konto aktywne" });
-    expect(wiersz.akcja).toEqual({ etykieta: "Otwórz kartę", href: "/admin/uczestniczki/17" });
+    expect(wiersz.tytulPogrubiony).toBe(true);
+    expect(wiersz.tytulDodatek).toBe("marta@demo.pl · Opiekun Projektu");
+    expect(wiersz.podpowiedz).toBeUndefined();
+    expect(wiersz.plakietka).toEqual({ wariant: "ok", tekst: "konto aktywne" });
+    expect(wiersz.akcja).toEqual({
+      etykieta: "Otwórz",
+      etykietaDostepna: "Otwórz kartę: Marta Demo",
+      href: "/admin/uczestniczki/17",
+    });
   });
 
-  it("konto zablokowane ma osobną plakietkę", () => {
+  it("konto zablokowane ma osobną plakietkę, małą literą", () => {
     const [wiersz] = wierszeOsob([{ ...ATRAPA, status: "blocked" }]);
-    expect(wiersz.plakietka).toEqual({ wariant: "error", tekst: "Konto zablokowane" });
+    expect(wiersz.plakietka).toEqual({ wariant: "error", tekst: "konto zablokowane" });
   });
 
   it("nieznana rola nie wychodzi na ekran jako surowy kod", () => {

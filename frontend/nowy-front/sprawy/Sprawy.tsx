@@ -234,7 +234,11 @@ export function Sprawy() {
       tytul="Sprawy do decyzji"
       opis={
         stanEkranu === "ok" && dniNajstarszej !== null
-          ? `${OPIS_EKRANU} Najstarsza sprawa czeka ${tekstWieku(dniNajstarszej)}.`
+          ? (
+              <>
+                {OPIS_EKRANU} Najstarsza sprawa czeka <strong>{tekstWieku(dniNajstarszej)}</strong>.
+              </>
+            )
           : OPIS_EKRANU
       }
       onPowrot={() => router.back()}

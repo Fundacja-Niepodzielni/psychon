@@ -162,11 +162,10 @@ const MENU_OCZEKIWANE = [
     naglowek: "Codziennie",
     pozycje: [
       ["Pulpit", "/admin"],
+      // „Dyżury do decyzji” i „Zgłoszenia rekrutacyjne” nie mają własnej pozycji: są podstronami „Spraw”
+      // (rejestr menu ramki), a „Sprawy” prowadzą do nich filtrami na liście.
       ["Sprawy", "/admin/sprawy"],
-      ["Dyżury do decyzji", "/admin/staz"],
       ["Uczestnicy", "/admin/uczestniczki"],
-      // Grupa `nabor` włączona: lista zgłoszeń rekrutacyjnych jest pozycją zaraz po „Uczestnicy” (nazwa == h1 ekranu).
-      ["Zgłoszenia rekrutacyjne", "/admin/nabor"],
       ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
     ],
     linia: null,
@@ -177,7 +176,7 @@ const MENU_OCZEKIWANE = [
       ["Kursy", "/admin/kursy"],
       ["Słownik form stażu", "/admin/formy-stazu"],
     ],
-    // Bez „staż i superwizja” — „Dyżury do decyzji” (Codziennie) i „Superwizje” (Dotychczasowy panel) są pozycjami menu.
+    // Bez „staż i superwizja” — „Dyżury do decyzji” (podstrona „Spraw”) i „Superwizje” (Dotychczasowy panel) są w menu.
     linia: "W przygotowaniu: prowadzący.",
   },
   {
@@ -661,6 +660,37 @@ test.describe("nowa ramka panelu administracji — bieżąca pozycja menu widocz
     expect(biezacaWidoczna(m), `pozycja widoczna ${opis}`).toBe(true);
     expect(m.scrollTop, `scrollTop menu ${opis}`).toBe(0);
     expect(m.scrollY, `okno nieprzewinięte ${opis}`).toBe(0);
+  });
+
+  test("/admin @1280x800: pozycje menu do „Dziennika działań” (w tym „Raport roku programu”) widoczne bez przewijania, nad „Konto”", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
+    const pomiar = await bok.evaluate((el) => {
+      const konto = el.querySelector("[data-konto-menu]");
+      const gora = konto ? konto.getBoundingClientRect().top : null;
+      const pozycje = Array.from(el.querySelectorAll("nav a:not([hidden])"))
+        .filter((a) => (a as HTMLElement).offsetParent !== null)
+        .map((a) => ({ tekst: (a.textContent ?? "").trim(), dol: a.getBoundingClientRect().bottom }));
+      return { gora, pozycje, scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight };
+    });
+    const opis = JSON.stringify(pomiar);
+    console.log(`POMIAR-MENU-1280x800 ${opis}`);
+    const teksty = pomiar.pozycje.map((p) => p.tekst);
+    expect(teksty, opis).toContain("Raport roku programu");
+    expect(teksty, opis).toContain("Dziennik działań");
+    expect(teksty, opis).not.toContain("Dyżury do decyzji");
+    expect(teksty, opis).not.toContain("Zgłoszenia rekrutacyjne");
+    // Dwie ostatnie pozycje „Rozliczenia” („Wzory dokumentów”, „Treść ekranu”) mieszczą się dopiero po przewinięciu menu —
+    // to zmierzone i zapisane w `POMIAR-MENU-1280x800`, nie jest tu ukrywane; test pilnuje pozycji do „Dziennika działań”.
+    const doDziennika = teksty.indexOf("Dziennik działań");
+    for (const p of pomiar.pozycje.slice(0, doDziennika + 1)) {
+      expect(p.dol, `${p.tekst} nad „Konto” ${opis}`).toBeLessThanOrEqual(pomiar.gora!);
+    }
+    expect(pomiar.scrollTop, opis).toBe(0);
   });
 
   test("/admin/profile/12 @390: po otwarciu okna menu pozycja bieżąca nad „Konto”", async ({ page }) => {

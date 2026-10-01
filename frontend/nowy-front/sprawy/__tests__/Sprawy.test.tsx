@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 
@@ -33,6 +33,7 @@ vi.mock("../dane-prowadzacych", async () => {
 });
 
 const { Sprawy } = await import("../Sprawy");
+const { tekstWieku } = await import("../wiek");
 
 const WYNIK_PUSTY = (rodzaj: "applications" | "internship_entries" | "profiles") => ({
   rodzaj,
@@ -532,5 +533,101 @@ describe("Sprawy — awaria źródeł nie udaje pustej listy", () => {
     const { container } = render(<Sprawy />);
     await screen.findByText(/Źródło „Dyżur” nieosiągalne/);
     expect(container.textContent).not.toMatch(/wpis(y|u)? stażu|kolejk/i);
+  });
+});
+
+describe("Sprawy — wiek najstarszej sprawy w podtytule jest wyróżniony tekstem z wiek.ts", () => {
+  const TERAZ = new Date("2026-10-01T12:00:00Z");
+  const DOBA = 24 * 60 * 60 * 1000;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(TERAZ);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function zPozycja(czekaOd: string) {
+    return [
+      {
+        rodzaj: "applications",
+        pozycje: [
+          {
+            id: "applications-1",
+            idLiczbowe: 1,
+            rodzaj: "applications",
+            tytul: "Zgłoszenie rekrutacyjne — Marta Demo",
+            osoba: "Marta Demo",
+            nazwisko: "Demo",
+            podpowiedz: "Czeka od 26 września 2026",
+            czekaOd,
+            href: "/sprawa/applications/1",
+          },
+        ],
+        blad: null,
+        kodBledu: null,
+        liczbaCalkowita: 1,
+      },
+      WYNIK_PUSTY("internship_entries"),
+      WYNIK_PUSTY("profiles"),
+    ];
+  }
+
+  /** Akapit podtytułu nagłówka (nie okruszki): ten, który niesie opis ekranu. */
+  function podtytul(): HTMLElement {
+    return screen.getByText(/w jednym miejscu\./).closest("p") as HTMLElement;
+  }
+
+  /** Tekst podtytułu bez wieku — ten sam ekran z pustą kolejką pokazuje wyłącznie opis. */
+  async function opisBezWieku(): Promise<string> {
+    pobierzKolejkeSpraw.mockResolvedValue([
+      WYNIK_PUSTY("applications"),
+      WYNIK_PUSTY("internship_entries"),
+      WYNIK_PUSTY("profiles"),
+    ]);
+    const { unmount } = render(<Sprawy />);
+    await screen.findByText("Brak spraw do decyzji");
+    const tekst = podtytul().textContent ?? "";
+    unmount();
+    return tekst;
+  }
+
+  it.each([0, 1, 2, 5, 22])(
+    "%i dni: <strong> niesie dokładnie tekstWieku(dni), a tekst podtytułu jest taki jak przy zwykłym tekście",
+    async (dni) => {
+      const opis = await opisBezWieku();
+      pobierzKolejkeSpraw.mockResolvedValue(zPozycja(new Date(TERAZ.getTime() - dni * DOBA).toISOString()));
+      render(<Sprawy />);
+
+      await screen.findByText("Marta Demo");
+      await waitFor(() => expect(podtytul().textContent, "podtytuł z wiekiem").toContain("Najstarsza sprawa czeka"));
+      const akapit = podtytul();
+      const wyrozniony = akapit.querySelectorAll("strong");
+      expect(wyrozniony).toHaveLength(1);
+      expect(wyrozniony[0].textContent).toBe(tekstWieku(dni));
+      expect(akapit.textContent).toBe(`${opis} Najstarsza sprawa czeka ${tekstWieku(dni)}.`);
+    },
+  );
+
+  it("pusta kolejka: podtytuł bez <strong>", async () => {
+    await opisBezWieku();
+    pobierzKolejkeSpraw.mockResolvedValue([
+      WYNIK_PUSTY("applications"),
+      WYNIK_PUSTY("internship_entries"),
+      WYNIK_PUSTY("profiles"),
+    ]);
+    render(<Sprawy />);
+    await screen.findByText("Brak spraw do decyzji");
+    expect(podtytul().querySelector("strong")).toBeNull();
+  });
+
+  it("sprawa bez daty źródłowej: podtytuł bez <strong> i bez zdania o wieku", async () => {
+    pobierzKolejkeSpraw.mockResolvedValue(zPozycja(""));
+    render(<Sprawy />);
+    await screen.findByText("Marta Demo");
+    expect(podtytul().querySelector("strong")).toBeNull();
+    expect(podtytul().textContent).not.toContain("Najstarsza sprawa");
   });
 });

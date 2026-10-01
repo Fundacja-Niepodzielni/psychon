@@ -152,16 +152,17 @@ const TRASY: Trasa[] = [
   // „Codziennie” — bez okruszka.
   { rola: "administracja", adres: "/admin", okruszek: null },
   { rola: "administracja", adres: "/admin/sprawy", okruszek: null },
-  { rola: "administracja", adres: "/admin/staz", okruszek: null },
   { rola: "administracja", adres: "/admin/uczestniczki", okruszek: null },
-  { rola: "administracja", adres: "/admin/nabor", okruszek: null },
+  // Podstrony „Spraw” (bez własnej pozycji w menu): okruszek przez rodzica, nazwa ekranu z rejestru menu.
+  { rola: "administracja", adres: "/admin/staz", okruszek: "Administracja › Sprawy › Dyżury do decyzji" },
+  { rola: "administracja", adres: "/admin/nabor", okruszek: "Administracja › Sprawy › Zgłoszenia rekrutacyjne" },
   { rola: "administracja", adres: "/admin/zgloszenia-wspolpracy", okruszek: null },
   // „Program” i „Rozliczenie” — korzeń „Administracja” i bieżąca z nazwą pozycji menu.
   { rola: "administracja", adres: "/admin/formy-stazu", okruszek: "Administracja › Słownik form stażu" },
   { rola: "administracja", adres: "/admin/wzory-dokumentow", okruszek: "Administracja › Wzory dokumentów" },
   { rola: "administracja", adres: "/admin/ekran-startowy", okruszek: "Administracja › Treść ekranu „Zacznij tutaj”" },
   // Szczegół — zawsze łańcuch, także gdy lista stoi w „Codziennie”.
-  { rola: "administracja", adres: "/admin/nabor/12", okruszek: "Administracja › Zgłoszenia rekrutacyjne › Zgłoszenie" },
+  { rola: "administracja", adres: "/admin/nabor/12", okruszek: "Administracja › Sprawy › Zgłoszenia rekrutacyjne › Anna Kandydacka" },
   { rola: "administracja", adres: "/admin/profile/12", okruszek: "Administracja › Profile psychologa › Wniosek o profil" },
   // Uczestnik i prowadzący: bez korzenia roli, jedna pozycja nigdy.
   { rola: "uczestnik", adres: "/panel/pulpit", okruszek: null },

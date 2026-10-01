@@ -90,15 +90,24 @@ export function etykietaRoli(rola: string): string {
   return (ROLE_LABELS as Record<string, string>)[rola] ?? "Nieznana rola";
 }
 
+/**
+ * Wiersz osoby — wzór wiersza kolejki spraw: pogrubione imię i nazwisko, po „·”
+ * meta (e-mail, rola), plakietka stanu małą literą (słownik 2.1), akcja
+ * „Otwórz” (pełną nazwę „Otwórz kartę: …” słyszy tylko czytnik ekranu).
+ */
 export function wierszeOsob(osoby: AdminUserListItem[]): WierszRecordList[] {
-  return osoby.map((osoba) => ({
-    id: String(osoba.id),
-    tytul: `${osoba.first_name} ${osoba.last_name}`,
-    podpowiedz: `${osoba.email} · ${etykietaRoli(osoba.role)}`,
-    plakietka:
-      osoba.status === "blocked"
-        ? { wariant: "error", tekst: "Konto zablokowane" }
-        : { wariant: "ok", tekst: "Konto aktywne" },
-    akcja: { etykieta: "Otwórz kartę", href: `${SCIEZKA_KARTY}/${osoba.id}` },
-  }));
+  return osoby.map((osoba) => {
+    const nazwa = `${osoba.first_name} ${osoba.last_name}`;
+    return {
+      id: String(osoba.id),
+      tytul: nazwa,
+      tytulPogrubiony: true,
+      tytulDodatek: `${osoba.email} · ${etykietaRoli(osoba.role)}`,
+      plakietka:
+        osoba.status === "blocked"
+          ? { wariant: "error", tekst: "konto zablokowane" }
+          : { wariant: "ok", tekst: "konto aktywne" },
+      akcja: { etykieta: "Otwórz", etykietaDostepna: `Otwórz kartę: ${nazwa}`, href: `${SCIEZKA_KARTY}/${osoba.id}` },
+    };
+  });
 }

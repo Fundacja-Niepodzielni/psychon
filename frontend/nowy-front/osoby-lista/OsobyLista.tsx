@@ -46,11 +46,15 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Uczestnicy" }];
 /**
  * Ekran A-06 „Uczestnicy programu” — lista osób na szablonie `ListTemplate`
  * (administracja). Trasy: `GET /admin/users` (lista) i
- * `GET /admin/users/export.csv` (akcja drugorzędna „Pobierz tabelę (Excel)”,
- * z bieżącym filtrem). Główna akcja to „Otwórz kartę” w każdym wierszu.
+ * `GET /admin/users/export.csv` (akcja drugorzędna nagłówka „Pobierz tabelę
+ * (Excel)”, z bieżącym filtrem; `PageHeader.akcjaDrugorzedna`). Wiersz osoby to
+ * wzór wiersza kolejki spraw (`wierszeOsob`): pogrubione imię i nazwisko, meta,
+ * plakietka małą literą i akcja „Otwórz” (pełna nazwa „Otwórz kartę: …” tylko
+ * dla czytnika), tekst równo z nagłówkiem ekranu; nagłówek `h2` listy jest
+ * tylko dla czytnika.
  * Dawna zakładka „Zgłoszenia” tej trasy to dziś osobny ekran (`/admin/nabor`):
- * dojście do niego to odnośnik w nagłówku (po potwierdzeniu roli odczytem
- * listy) i przycisk pustego stanu; „Otwórz kartę” prowadzi na kartę osoby pod
+ * dojście do niego to zwykły odnośnik pod `h1` (po potwierdzeniu roli odczytem
+ * listy) i przycisk pustego stanu; „Otwórz” prowadzi na kartę osoby pod
  * trasą produktu.
  * Stany: ładowanie, dane, dwa różne stany puste (z filtrem i bez), brak
  * uprawnień, błąd sieci — każdy w tym samym szablonie.
@@ -121,14 +125,14 @@ export function OsobyLista() {
       opis={opis}
       onPowrot={() => router.back()}
       akcja={stan.rodzaj === "dane" ? { etykieta: "Zgłoszenia rekrutacyjne", href: SCIEZKA_ZGLOSZEN } : undefined}
-      dzieci={
-        mozeEksportowac ? (
-          <div>
-            <Button poziom="outline" disabled={pobranie.rodzaj === "trwa"} onClick={() => void pobierzTabeleOsob()}>
-              {pobranie.rodzaj === "trwa" ? "Pobieranie…" : "Pobierz tabelę (Excel)"}
-            </Button>
-          </div>
-        ) : undefined
+      akcjaDrugorzedna={
+        mozeEksportowac
+          ? {
+              etykieta: pobranie.rodzaj === "trwa" ? "Pobieranie…" : "Pobierz tabelę (Excel)",
+              onKliknij: () => void pobierzTabeleOsob(),
+              wylaczona: pobranie.rodzaj === "trwa",
+            }
+          : undefined
       }
     />
   );
@@ -234,6 +238,9 @@ export function OsobyLista() {
     lista = (
       <RecordList
         tytul="Lista uczestników"
+        stopienNaglowka={2}
+        naglowekTylkoDlaCzytnika
+        wierszeBezWciecia
         wiersze={wierszeOsob(stan.osoby)}
         pusty={{
           naglowek: "Brak osób",
