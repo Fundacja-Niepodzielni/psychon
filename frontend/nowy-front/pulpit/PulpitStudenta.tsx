@@ -6,6 +6,7 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
+import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKroku/KartaNastepnegoKroku";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
@@ -172,27 +173,26 @@ function przyciskWznowienia(
   return undefined;
 }
 
+const ETYKIETA_KROKU = "Następny krok";
+
 function BlokWznowienia({ kursy, lekcje }: { kursy: KursSciezki[]; lekcje: LekcjeKursu }) {
   const wToku = kursDoWznowienia(kursy);
 
   if (wToku && lekcje.stan === "ladowanie") {
     return (
-      <div>
-        <Heading stopien={2}>Wznów naukę</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU}>
         <Skeleton wiersze={2} />
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (wToku && lekcje.stan === "blad") {
     return (
-      <div>
-        <Heading stopien={2}>Wznów naukę</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={wToku.title}>
         <Notice wariant="warn" tytul="Szczegóły kursu niedostępne">
           Nie udało się ustalić dokładnej lekcji — możesz otworzyć kurs.
         </Notice>
-        <Text>{wToku.title}</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
@@ -200,37 +200,31 @@ function BlokWznowienia({ kursy, lekcje }: { kursy: KursSciezki[]; lekcje: Lekcj
 
   if (wznowienie.rodzaj === "lekcja") {
     return (
-      <div>
-        <Heading stopien={2}>Wznów naukę</Heading>
-        <Text>
-          {wznowienie.kurs.title} · {wznowienie.lekcja.title}
-        </Text>
-      </div>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={wznowienie.lekcja.title}>
+        <Text>Kurs „{wznowienie.kurs.title}”.</Text>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (wznowienie.rodzaj === "kurs") {
     return (
-      <div>
-        <Heading stopien={2}>Wznów naukę</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={wznowienie.kurs.title}>
         <Text>W kursie „{wznowienie.kurs.title}” masz już za sobą wszystkie lekcje.</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (wznowienie.rodzaj === "wszystko-ukonczone") {
     return (
-      <div>
-        <Heading stopien={2}>Wznów naukę</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Ukończone kursy">
         <Text>Wszystkie Twoje kursy są ukończone. Dobra robota.</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   return (
-    <div>
-      <Heading stopien={2}>Wznów naukę</Heading>
+    <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Brak kursu w toku">
       <Text wariant="pusty">Gdy któryś kurs będzie w toku, pojawi się tutaj lekcja do wznowienia.</Text>
-    </div>
+    </KartaNastepnegoKroku>
   );
 }

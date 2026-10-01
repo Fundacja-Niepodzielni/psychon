@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
+import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKroku/KartaNastepnegoKroku";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
 import { rodzajBledu } from "./rodzaj-bledu";
@@ -292,6 +292,8 @@ function przyciskNastepnegoKroku(
   }
 }
 
+const ETYKIETA_KROKU = "Następny krok";
+
 function NastepnyKrokBlok({
   krok,
   lekcjeEtapu,
@@ -303,22 +305,19 @@ function NastepnyKrokBlok({
 }) {
   if (krok === null && lekcjeEtapu.stan !== "blad") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU}>
         <Skeleton wiersze={2} />
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok === null && wToku) {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={wToku.title}>
         <Notice wariant="warn" tytul="Szczegóły kursu niedostępne">
           Nie udało się ustalić dokładnej lekcji — możesz otworzyć bieżący kurs.
         </Notice>
-        <Text>{wToku.title}</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
@@ -328,46 +327,39 @@ function NastepnyKrokBlok({
 
   if (krok.rodzaj === "lekcja") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
-        <Text>
-          {krok.kurs.title} · {krok.lekcja.title}
-        </Text>
-      </div>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={krok.lekcja.title}>
+        <Text>Kurs „{krok.kurs.title}”.</Text>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok.rodzaj === "test") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Test sprawdzający">
         <Text>Masz za sobą wszystkie lekcje kursu „{krok.kurs.title}”. Czas na test sprawdzający.</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok.rodzaj === "certyfikat") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Certyfikat">
         <Text>Masz wszystkie kursy za sobą. Dobra robota.</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok.rodzaj === "po-programie") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Dalsza współpraca">
         <Text>Program masz już za sobą. Możesz zgłosić chęć dalszej współpracy.</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   return (
-    <div>
-      <Heading stopien={2}>Twój następny krok</Heading>
+    <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Pierwszy krok wkrótce">
       <Text wariant="pusty">Gdy pierwszy kurs ścieżki stanie się dostępny, pojawi się tutaj Twój następny krok.</Text>
-    </div>
+    </KartaNastepnegoKroku>
   );
 }

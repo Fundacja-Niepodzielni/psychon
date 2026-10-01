@@ -47,7 +47,9 @@ vi.mock("../dane", () => ({
 const { PulpitUczestnika } = await import("../PulpitUczestnika");
 
 function naglowekKroku() {
-  return screen.getByRole("heading", { level: 2, name: "Twój następny krok" });
+  const naglowek = document.querySelector('[data-karta="nastepny-krok"] h2');
+  if (naglowek === null) throw new Error("Brak nagłówka karty następnego kroku");
+  return naglowek;
 }
 
 function terminWPrzyszlosci(dni: number) {
@@ -94,6 +96,12 @@ describe("PulpitUczestnika — stany z danymi", () => {
     await waitFor(() => expect(screen.getByText(/Struktura wywiadu/)).toBeInTheDocument());
     szablonPulpitu(container);
     expect(liczPrzyciskiGlowne(container)).toBe(1);
+    // Karta kroku: etykieta zdaniem, jeden h2 z tytułem lekcji, przycisku w karcie brak.
+    const karta = container.querySelector('[data-karta="nastepny-krok"]') as HTMLElement;
+    expect(karta.textContent).toContain("Następny krok");
+    expect(karta.querySelectorAll("h2")).toHaveLength(1);
+    expect(karta.querySelector("h2")?.textContent).toMatch(/Struktura wywiadu/);
+    expect(karta.querySelector("button")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Wróć do lekcji" }));
     expect(push).toHaveBeenCalledWith("/panel/lekcje/22");
     // Liczby pochodzą z /courses, /certificate/conditions i /internship/entries
@@ -241,7 +249,7 @@ describe("PulpitUczestnika — stany bez danych", () => {
     await waitFor(() => expect(screen.getByText(tekst)).toBeInTheDocument());
     szablonPulpitu(container);
     expect(liczPrzyciskiGlowne(container)).toBe(0);
-    expect(screen.queryByRole("heading", { level: 2, name: "Twój następny krok" })).not.toBeInTheDocument();
+    expect(document.querySelector('[data-karta="nastepny-krok"]')).toBeNull();
   });
 
   it("ponowienie z błędu sieci: drugi odczyt kończy się danymi (kontrola dodatnia: bez kliknięcia pulpit zostaje w błędzie)", async () => {
