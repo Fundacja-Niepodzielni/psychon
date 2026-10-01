@@ -1524,6 +1524,10 @@ Słownik zamknięty `lesson.video_status`: `none · uploading · processing · r
 `null` znaczy „stan jeszcze nieustalony”: lekcja ma nagranie sprzed tej zmiany, o którego
 stan nikt jeszcze nie zapytał. Takie nagranie jest traktowane jak grające.
 
+Zastane nagranie (przypisane przed wprowadzeniem stanu) ma stan nieznany i wydaje link do
+odtwarzania jak dotąd. Pierwszy odczyt stanu przez administrację ustala stan według dostawcy
+i od tej chwili link zależy od stanu.
+
 Lekcja ma nagranie **odtwarzane** (`video_provider_id`) i co najwyżej jedno nagranie
 **w drodze** — wysyłane albo przetwarzane obok odtwarzanego. Identyfikator nagrania w drodze
 nie jest polem żadnego zasobu.
