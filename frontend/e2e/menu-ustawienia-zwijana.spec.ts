@@ -12,7 +12,7 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  *    „Ustawienia (4)” w całości między górą menu a górą bloku „Konto”, menu nieprzewinięte;
  * 2. 1280×800, ekran w grupie: grupa rozwinięta, bieżąca pozycja w całości nad „Konto”;
  * 3. sygnał przewijania: w oknie, w którym menu się nie mieści, blok „Konto” niesie krawędź
- *    (klasa i cień), po przewinięciu do końca jej nie niesie; w oknie, w którym się mieści — nie;
+ *    (klasa i jedna linia u góry, bez cienia), po przewinięciu do końca jej nie niesie; w oknie, w którym się mieści — nie;
  * 4. 390×844, okno menu: zwinięta na ekranie spoza grupy, rozwinięta na ekranie grupy,
  *    przełączanie klawiaturą, bez przewijania w poziomie;
  * 5. kolejność Tab przy grupie zwiniętej i rozwiniętej;
@@ -179,10 +179,11 @@ async function geometriaMenu(kontener: Locator) {
   });
 }
 
-/** Krawędź „Konto”: klasa sygnału (część nazwy klasy modułu CSS) i obliczony cień. */
+/** Krawędź „Konto”: klasa sygnału (część nazwy klasy modułu CSS), obliczona grubość górnej linii i obliczony cień. */
 async function krawedzKonta(kontener: Locator) {
   return kontener.locator("[data-konto-menu]").evaluate((el) => ({
     klasaSygnalu: /kontoNadTrescia/.test(el.getAttribute("class") ?? ""),
+    linia: getComputedStyle(el).borderTopWidth,
     cien: getComputedStyle(el).boxShadow,
   }));
 }
@@ -254,17 +255,19 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
     const nieMiesci = await geometriaMenu(kontener);
     const znak1 = await krawedzKonta(kontener);
     console.log(
-      `POMIAR-USTAWIENIA-3 nie-miesci 1280x560 scrollHeight=${nieMiesci.scrollHeight} clientHeight=${nieMiesci.clientHeight} klasa=${znak1.klasaSygnalu} cien=${znak1.cien}`,
+      `POMIAR-USTAWIENIA-3 nie-miesci 1280x560 scrollHeight=${nieMiesci.scrollHeight} clientHeight=${nieMiesci.clientHeight} klasa=${znak1.klasaSygnalu} linia=${znak1.linia} cien=${znak1.cien}`,
     );
     expect(nieMiesci.scrollHeight, "menu dłuższe od okna").toBeGreaterThan(nieMiesci.clientHeight);
-    expect(znak1.cien, "cień krawędzi „Konto”").not.toBe("none");
+    expect(znak1.linia, "linia krawędzi „Konto”").toBe("1px");
+    expect(znak1.cien, "krawędź „Konto” bez cienia").toBe("none");
     await kontener.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
     await expect.poll(async () => (await krawedzKonta(kontener)).klasaSygnalu, { timeout: 5000 }).toBe(false);
     const znak2 = await krawedzKonta(kontener);
     const koniec = await geometriaMenu(kontener);
     console.log(
-      `POMIAR-USTAWIENIA-3 po-przewinieciu-do-konca scrollTop=${koniec.scrollTop} klasa=${znak2.klasaSygnalu} cien=${znak2.cien}`,
+      `POMIAR-USTAWIENIA-3 po-przewinieciu-do-konca scrollTop=${koniec.scrollTop} klasa=${znak2.klasaSygnalu} linia=${znak2.linia} cien=${znak2.cien}`,
     );
+    expect(znak2.linia, "po przewinięciu do końca brak linii").toBe("0px");
     expect(znak2.cien, "po przewinięciu do końca brak cienia").toBe("none");
 
     // Okno, w którym menu się mieści (obie grupy zwinięte): brak klasy sygnału.
@@ -274,9 +277,10 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
     const miesci = await geometriaMenu(kontener);
     const znak3 = await krawedzKonta(kontener);
     console.log(
-      `POMIAR-USTAWIENIA-3 miesci 1280x1100 scrollHeight=${miesci.scrollHeight} clientHeight=${miesci.clientHeight} klasa=${znak3.klasaSygnalu} cien=${znak3.cien}`,
+      `POMIAR-USTAWIENIA-3 miesci 1280x1100 scrollHeight=${miesci.scrollHeight} clientHeight=${miesci.clientHeight} klasa=${znak3.klasaSygnalu} linia=${znak3.linia} cien=${znak3.cien}`,
     );
     expect(miesci.scrollHeight, "menu mieści się w oknie").toBeLessThanOrEqual(miesci.clientHeight + 1);
+    expect(znak3.linia, "brak linii, gdy menu się mieści").toBe("0px");
     expect(znak3.cien, "brak cienia, gdy menu się mieści").toBe("none");
 
     // Rozwinięcie obu grup w oknie, które mieści zwinięte menu, a nie mieści rozwiniętego: sygnał wraca.
