@@ -11,9 +11,9 @@ import { ADRES_DOSTAWCY, atrapaDostawcy, pamiecProbna } from "./atrapa-dostawcy"
  * przeglądarki.
  */
 
-const PODPIS = ["pod", "pis", "probny", "640"].join("-");
-const TERMIN = 1_790_000_000 + 640;
-const ID_NAGRANIA = ["wideo", "probne", "640"].join("-");
+const PODPIS = ["pod", "pis", "probny"].join("-");
+const TERMIN = 1_790_000_000 + 17;
+const ID_NAGRANIA = ["wideo", "probne"].join("-");
 const ID_BIBLIOTEKI = String(7 * 11 * 13);
 
 const LEKCJA: LekcjaWysylania = { id: 22, tytul: "Trudny rozmówca", adres: "/admin/kursy/4/lekcje/22" };

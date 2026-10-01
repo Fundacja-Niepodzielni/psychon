@@ -76,6 +76,9 @@ export function PasekWysylania() {
       if (cel === null || czyAdresZPaskiemWysylania(cel.getAttribute("href") ?? "")) return;
       zdarzenie.preventDefault();
       zdarzenie.stopImmediatePropagation();
+      // Odnośnik w oknie modalnym (menu na wąskim ekranie): okno zasłoniłoby pytanie, więc najpierw się zamyka.
+      const okno = cel.closest("dialog");
+      if (okno !== null && okno.open && typeof okno.close === "function") okno.close();
       setWyjscie({ adres: cel.getAttribute("href") ?? "/", wyzwalacz: cel });
     }
 
@@ -103,7 +106,8 @@ export function PasekWysylania() {
   function zostan() {
     const wyzwalacz = wyjscie?.wyzwalacz;
     setWyjscie(null);
-    wyzwalacz?.focus();
+    // Odnośnik z zamkniętego menu już nie istnieje: fokus wraca tam, gdzie był przed pytaniem.
+    if (wyzwalacz?.isConnected) wyzwalacz.focus();
   }
 
   function przejdz() {

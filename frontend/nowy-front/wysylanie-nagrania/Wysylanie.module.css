@@ -16,9 +16,14 @@
   font-size: var(--fs-10);
 }
 
+/* Barwa ostrzeżenia leży na pełnym tle karty, więc kontrast tekstu nie zależy od tła ekranu pod paskiem. */
 .pasekPrzerwany {
-  background: var(--warn-bg);
+  background: linear-gradient(var(--warn-bg), var(--warn-bg)), var(--card);
   color: var(--ink);
+}
+
+.pasekPrzerwany .odnosnik > a {
+  color: var(--brand);
 }
 
 .zdanie {

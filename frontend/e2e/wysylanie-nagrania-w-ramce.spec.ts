@@ -3,7 +3,6 @@ import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
-import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
 import { DOSTAWCA, MB, instalujDostawce, type OpcjeDostawcy } from "./_dostawca-nagran";
 import { GRUPY } from "../lib/przelaczenie/grupy";
 
@@ -29,7 +28,7 @@ const ATRAPA_SESJI = {
   expiresAt: Date.now() + 3_600_000,
 };
 const PODPIS = ["atrapa", "podpisu", "wgrania"].join("-");
-const ID_NAGRANIA = ["wideo", "nowe", "640"].join("-");
+const ID_NAGRANIA = ["wideo", "nowe", "probne"].join("-");
 
 const META = { current_page: 1, per_page: 100, total: 0, last_page: 1 };
 
@@ -176,14 +175,16 @@ async function zrzut(page: Page, nazwa: string): Promise<void> {
 }
 
 async function sprawdzAxe(page: Page, testInfo: TestInfo, nazwa: string): Promise<void> {
-  const naruszenia = await uruchomAxe(page);
-  await dolaczNaruszeniaDoRaportu(testInfo, nazwa, naruszenia);
-  expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
+  // Bez czekania na ciszę w sieci: w trakcie wysyłania kawałek pliku jest w drodze przez cały czas.
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.constructor?.name !== "CSSTransition" || a.playState !== "running"),
+  );
   const pelny = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"]).analyze();
-  expect(
-    pelny.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.map(String).join(" ")).join(" | ")}`),
-    `axe z best-practice: ${nazwa}`,
-  ).toEqual([]);
+  const naruszenia = pelny.violations.map(
+    (v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.map(String).join(" ")).join(" | ")}`,
+  );
+  await testInfo.attach(nazwa, { body: JSON.stringify(naruszenia, null, 2), contentType: "application/json" });
+  expect(naruszenia, `axe z best-practice: ${nazwa}`).toEqual([]);
 }
 
 /** Pasek stoi na samej górze treści ramy, od krawędzi do krawędzi; strona nie przewija się w poziomie. */
@@ -387,7 +388,13 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await poleNagrania(page).setInputFiles(plikNagrania(testInfo, "pytania-otwarte.mp4", 13));
       await expect(pasek(page, "wysylanie")).toContainText(/76.%/);
 
-      const odnosnik = page.getByRole("link", { name: "Deklaracja dostępności" }).first();
+      // Na wąskim ekranie stopka ramy jest w menu, które otwiera się jako okno.
+      const menu = page.getByRole("button", { name: "Menu", exact: true });
+      const waski = szerokosc < 1024;
+      const odnosnik = waski
+        ? page.locator("#menu-panelu").getByRole("link", { name: "Deklaracja dostępności" })
+        : page.getByRole("link", { name: "Deklaracja dostępności" }).first();
+      if (waski) await menu.click();
       await odnosnik.click();
       const okno = page.getByRole("dialog", { name: "Wysyłanie nagrania zostanie przerwane" });
       await expect(okno).toBeVisible();
@@ -397,11 +404,13 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
       await okno.getByRole("button", { name: "Zostań" }).click();
       await expect(okno).toHaveCount(0);
-      await expect(odnosnik).toBeFocused();
+      // Fokus wraca na odnośnik; z zamkniętego menu — na przycisk, który je otwiera.
+      await expect(waski ? menu : odnosnik).toBeFocused();
       await expect(page).toHaveURL(/\/admin\/kursy\/4\/lekcje\/22$/);
       await expect(pasek(page, "wysylanie")).toContainText(/76.%/);
       expect(dostawca.utworzone).toBe(1);
 
+      if (waski) await menu.click();
       await odnosnik.click();
       await okno.getByRole("button", { name: "Przejdź i przerwij wysyłanie" }).click();
       await expect(page).toHaveURL(/\/deklaracja-dostepnosci$/);
