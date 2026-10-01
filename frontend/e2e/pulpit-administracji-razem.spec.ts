@@ -142,7 +142,16 @@ test.describe("pulpit administracji 1280 px — liczba „Razem” w kolumnie li
       }
       expect(sprawdzone, "porównane wiersze").toBe(NAZWY.length);
 
-      // Puste miejsce po akcji nie podnosi stopki: jej wysokość to wysokość treści plus wypełnienie.
+      // Przyczyna: puste miejsce po akcji w stopce nie ma wysokości (inaczej podnosi stopkę).
+      const miejsca = pasek.locator('[aria-hidden="true"]');
+      expect(await miejsca.count(), "puste miejsca po akcji w stopce (od 640 px)").toBeGreaterThan(0);
+      for (let i = 0; i < (await miejsca.count()); i += 1) {
+        const wysokoscMiejsca = await miejsca.nth(i).evaluate((el) => el.getBoundingClientRect().height);
+        expect.soft(wysokoscMiejsca, "wysokość pustego miejsca po akcji w stopce").toBe(0);
+      }
+
+      // Skutek: wysokość stopki wyznacza jej własna treść (z wypełnieniem lub minimum), tolerancja 0,1 px
+      // — mniejsza niż 0,45 px, o które podnosiło ją puste miejsce z wysokością.
       const wysokosci = await pasek.evaluate((el) => {
         const styl = getComputedStyle(el);
         const wypelnienie = parseFloat(styl.paddingTop) + parseFloat(styl.paddingBottom);
@@ -152,10 +161,11 @@ test.describe("pulpit administracji 1280 px — liczba „Razem” w kolumnie li
         const najwyzsze = Math.max(...tresc.map((n) => n.getBoundingClientRect().height));
         return { stopka: el.getBoundingClientRect().height, wypelnienie, najwyzsze, minimum: parseFloat(styl.minHeight) || 0 };
       });
-      expect(
-        wysokosci.stopka,
-        `wysokość stopki ${wysokosci.stopka} px a treść ${wysokosci.najwyzsze} px + wypełnienie ${wysokosci.wypelnienie} px`,
-      ).toBeLessThanOrEqual(Math.max(wysokosci.najwyzsze + wysokosci.wypelnienie, wysokosci.minimum) + 0.5);
+      const oczekiwana = Math.max(wysokosci.najwyzsze + wysokosci.wypelnienie, wysokosci.minimum);
+      expect.soft(
+        Math.abs(wysokosci.stopka - oczekiwana),
+        `wysokość stopki ${wysokosci.stopka} px a oczekiwana ${oczekiwana} px (treść ${wysokosci.najwyzsze} px + wypełnienie ${wysokosci.wypelnienie} px, minimum ${wysokosci.minimum} px)`,
+      ).toBeLessThanOrEqual(0.1);
     });
   }
 });
