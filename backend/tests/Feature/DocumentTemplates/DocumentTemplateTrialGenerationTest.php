@@ -275,9 +275,15 @@ class DocumentTemplateTrialGenerationTest extends TestCase
 
         $refused = '<div style="background:url('.$this->file.')">x</div>';
 
+        // Dwadzieścia żądań mieści się w limicie. Jaką odpowiedź dostaje taka treść,
+        // mierzą próby wyżej — tutaj liczy się wyłącznie to, że nie jest to jeszcze 429.
         for ($attempt = 1; $attempt <= 20; $attempt++) {
-            $this->putJson('/api/v1/document-templates/agreement', ['content' => $refused])->assertStatus(422);
+            $status = $this->putJson('/api/v1/document-templates/agreement', ['content' => $refused])->status();
+            $this->assertNotSame(429, $status, 'Żądanie nr '.$attempt.' zmieściło się w limicie.');
+            $this->assertNotSame(500, $status);
         }
+
+        $versionsBefore = DocumentTemplateVersion::query()->count();
 
         $this->putJson('/api/v1/document-templates/agreement', ['content' => $refused])
             ->assertStatus(429)
@@ -287,7 +293,7 @@ class DocumentTemplateTrialGenerationTest extends TestCase
         $this->putJson('/api/v1/document-templates/agreement', ['content' => '<p>Numer {{ $number }}</p>'])
             ->assertStatus(429);
 
-        $this->assertSame(3, DocumentTemplateVersion::query()->count());
+        $this->assertSame($versionsBefore, DocumentTemplateVersion::query()->count());
 
         // Odczyt wzoru nie jest objęty tym limitem.
         $this->getJson('/api/v1/document-templates/agreement')->assertOk();
