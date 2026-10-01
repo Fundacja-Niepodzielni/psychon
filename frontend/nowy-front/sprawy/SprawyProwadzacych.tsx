@@ -19,8 +19,11 @@ interface WlasciwosciSprawProwadzacych {
  * a w nim każda sprawa jako `h3` z tematem, linia „data · zgłaszający · osoba”
  * i treść jako zwykły tekst (React escapuje; podział wierszy zachowuje CSS
  * `white-space: pre-wrap`). Separator „·” należy do elementu, który po nim
- * stoi (jest jego pierwszym dzieckiem), więc przy zawinięciu linii nigdy nie
- * zostaje na jej końcu. Stany: ładowanie (szkielet), błąd (komunikat i
+ * stoi (jest jego pierwszym dzieckiem), więc nigdy nie zostaje na końcu
+ * linii. Poniżej 640 px elementy stoją w osobnych liniach, a separatory są
+ * ukryte (`display: none`); od 640 px stoją w jednym rzędzie, a za długi tekst
+ * zawija się wewnątrz swojego elementu — żadna linia nie zaczyna się od
+ * separatora. Stany: ładowanie (szkielet), błąd (komunikat i
  * „Spróbuj ponownie” ponawiające tylko tę sekcję), pusto, dane. Odmowa
  * 401/403 nie jest stanem sekcji — obsługuje ją cały ekran.
  */
@@ -50,7 +53,7 @@ export function SprawyProwadzacych({ stan, sprawy, blad, onPonow }: WlasciwosciS
           <li key={sprawa.id} className={style.sprawa} data-testid={`sprawa-prowadzacego-${sprawa.id}`}>
             <Heading stopien={3}>{sprawa.temat}</Heading>
             <p className={style.meta}>
-              <span>{sprawa.data}</span>
+              <span className={style.data}>{sprawa.data}</span>
               <span className={style.elementMeta}>
                 <span className={style.separator} aria-hidden="true">
                   ·
