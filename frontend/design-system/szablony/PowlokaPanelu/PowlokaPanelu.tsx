@@ -87,6 +87,7 @@ export function PowlokaPanelu({
   children,
 }: WlasciwosciPowlokiPanelu) {
   const [menuOtwarte, setMenuOtwarte] = useState(false);
+  const [trescPodKontem, setTrescPodKontem] = useState(false);
   const oknoRef = useRef<HTMLDialogElement | null>(null);
   const bokRef = useRef<HTMLElement | null>(null);
   const zawieraBiezaca = !!grupaZwinieta?.pozycje.some((pozycja) => pozycja.biezaca);
@@ -98,6 +99,25 @@ export function PowlokaPanelu({
   useEffect(() => {
     if (bokRef.current) odslonBiezacaPozycje(bokRef.current);
   }, [biezacyAdres]);
+
+  // Krawędź „Konto” tylko wtedy, gdy pod przyklejonym blokiem jest treść menu
+  // (menu przewijane i nieprzewinięte do końca). Stan odświeża przewinięcie
+  // menu, zmiana rozmiaru okna i zmiana wysokości treści menu (np. rozwinięcie grupy).
+  useEffect(() => {
+    const bok = bokRef.current;
+    if (!bok) return;
+    const sprawdz = () => setTrescPodKontem(bok.scrollHeight - bok.clientHeight - bok.scrollTop > 1);
+    sprawdz();
+    bok.addEventListener("scroll", sprawdz, { passive: true });
+    window.addEventListener("resize", sprawdz);
+    const obserwator = typeof ResizeObserver === "function" ? new ResizeObserver(sprawdz) : null;
+    for (const dziecko of Array.from(bok.children)) obserwator?.observe(dziecko);
+    return () => {
+      bok.removeEventListener("scroll", sprawdz);
+      window.removeEventListener("resize", sprawdz);
+      obserwator?.disconnect();
+    };
+  }, []);
 
   /** Okno menu istnieje tylko, gdy jest otwarte — otwiera się jako modalne. */
   function podepnijOkno(el: HTMLDialogElement | null) {
@@ -145,7 +165,10 @@ export function PowlokaPanelu({
         // Klucz: grupa zaczyna od nowa (rozwinięta), gdy po zmianie trasy zaczyna nieść bieżącą pozycję.
         <GrupaZwijana key={zawieraBiezaca ? "z-biezaca" : "bez-biezacej"} grupa={grupaZwinieta} />
       )}
-      <div className={style.konto} data-konto-menu="">
+      <div
+        className={trescPodKontem ? `${style.konto} ${style.kontoNadTrescia}` : style.konto}
+        data-konto-menu=""
+      >
         <p className={style.kontoNaglowek}>Konto</p>
         <button type="button" className={style.wyloguj} onClick={onWyloguj} disabled={wylogowywanie}>
           <Icon nazwa="out" />

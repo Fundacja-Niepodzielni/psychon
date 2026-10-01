@@ -671,3 +671,76 @@ test.describe("nowa ramka panelu administracji — bieżąca pozycja menu widocz
     expect(m.scrollY, JSON.stringify(m)).toBe(0);
   });
 });
+
+/** Obliczony cień i kolor górnej krawędzi bloku „Konto” w menu bocznym. */
+async function krawedzKonta(bok: Locator) {
+  return bok.locator("[data-konto-menu]").evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { cien: s.boxShadow, linia: s.borderTopColor, grubosc: s.borderTopWidth };
+  });
+}
+
+test.describe("nowa ramka panelu administracji — krawędź „Konto” nad treścią menu", () => {
+  const TRASY = [
+    { adres: "/admin/ekran-startowy", nazwa: "ekran-startowy", menu: "Treść ekranu „Zacznij tutaj”" },
+    { adres: "/admin/wzory-dokumentow", nazwa: "wzory-dokumentow", menu: "Wzory dokumentów" },
+  ];
+  for (const trasa of TRASY) {
+    test(`${trasa.adres} @1280x800: pozycja bieżąca cała nad górą „Konto”`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await instalujAtrapyApi(page);
+      await page.goto(trasa.adres);
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      const bok = page.getByRole("complementary", { name: "Menu i konto" });
+      await expect(bok.locator('a[aria-current="page"]')).toHaveText(trasa.menu);
+      await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(bok)), { timeout: 5000 }).toBe(true);
+      const katalog = katalogZrzutow();
+      if (katalog) await page.screenshot({ path: path.join(katalog, `ramka-${trasa.nazwa}-1280x800-konto.png`) });
+      const m = await pomiarBiezacejPozycji(bok);
+      const opis = JSON.stringify({ ...m, ...(await krawedzKonta(bok)) });
+      console.log(`POMIAR-KONTO admin ${trasa.adres} ${opis}`);
+      expect(m.dolPozycji!, `dół pozycji <= góra „Konto” ${opis}`).toBeLessThanOrEqual(m.goraKonta!);
+      expect(m.goraPozycji!, `góra pozycji >= góra menu ${opis}`).toBeGreaterThanOrEqual(m.goraKontenera);
+      expect(m.scrollY, `okno nieprzewinięte ${opis}`).toBe(0);
+    });
+  }
+
+  test("/admin @1280x800: na wejściu treść pod „Konto” — linia i cień", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
+    await expect.poll(async () => (await krawedzKonta(bok)).cien, { timeout: 5000 }).not.toBe("none");
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-1280x800-konto.png") });
+    const k = await krawedzKonta(bok);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify({ ...k, scrollTop: m.scrollTop, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO admin /admin wejscie ${opis}`);
+    expect(m.scrollHeight, `menu przewijane ${opis}`).toBeGreaterThan(m.clientHeight);
+    expect(k.grubosc, opis).toBe("1px");
+    expect(k.linia, `linia widoczna ${opis}`).not.toBe("rgba(0, 0, 0, 0)");
+  });
+
+  test("/admin @1280x800: menu przewinięte do końca — bez cienia i bez linii", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await bok.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+    await expect.poll(async () => (await krawedzKonta(bok)).cien, { timeout: 5000 }).toBe("none");
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-1280x800-konto-koniec.png") });
+    const k = await krawedzKonta(bok);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify({ ...k, scrollTop: m.scrollTop, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO admin /admin koniec ${opis}`);
+    expect(m.scrollTop + m.clientHeight, `przewinięte do końca ${opis}`).toBeGreaterThanOrEqual(m.scrollHeight - 1);
+    expect(k.linia, `linia przezroczysta ${opis}`).toBe("rgba(0, 0, 0, 0)");
+  });
+});

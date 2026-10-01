@@ -472,3 +472,30 @@ test.describe("nowa ramka panelu prowadzącego — bieżąca pozycja menu widocz
     });
   }
 });
+
+/** Obliczony cień i kolor górnej krawędzi bloku „Konto” w menu bocznym. */
+async function krawedzKonta(bok: Locator) {
+  return bok.locator("[data-konto-menu]").evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { cien: s.boxShadow, linia: s.borderTopColor, grubosc: s.borderTopWidth };
+  });
+}
+
+test.describe("nowa ramka panelu prowadzącego — krawędź „Konto” bez treści pod spodem", () => {
+  test(`${EKRANY[0].adres} @1280x800: menu się nie przewija — „Konto” bez cienia`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto(EKRANY[0].adres);
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText(EKRANY[0].menu);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    const k = await krawedzKonta(bok);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opisPomiaru = JSON.stringify({ ...k, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO prowadzacy ${EKRANY[0].adres} ${opisPomiaru}`);
+    expect(m.scrollHeight, `menu się nie przewija ${opisPomiaru}`).toBeLessThanOrEqual(m.clientHeight);
+    expect(k.cien, opisPomiaru).toBe("none");
+    expect(k.linia, opisPomiaru).toBe("rgba(0, 0, 0, 0)");
+  });
+});
