@@ -150,3 +150,31 @@ export function usunTematZUkladu(uklad: Uklad, idTematu: number): Uklad {
   }
   return { ...uklad, tematy: pozostale };
 }
+
+/**
+ * Lekcja założona przez serwer wchodzi na koniec swojego tematu (`topic_id`
+ * z odpowiedzi); bez tematu w układzie — na koniec ostatniego tematu, tak jak
+ * robi to serwer (aneks kontraktu „tematy kursu”, pkt 3).
+ */
+export function dopiszLekcje(uklad: Uklad, lekcja: { id: number; title: string; topic_id: number | null }): Uklad {
+  if (uklad.tematy.length === 0) return uklad;
+  const cel = uklad.tematy.some((temat) => temat.id === lekcja.topic_id)
+    ? lekcja.topic_id
+    : uklad.tematy[uklad.tematy.length - 1].id;
+  return {
+    tematy: uklad.tematy.map((temat) =>
+      temat.id === cel ? { ...temat, lekcje: [...temat.lekcje.filter((id) => id !== lekcja.id), lekcja.id] } : temat,
+    ),
+    tytulyLekcji: { ...uklad.tytulyLekcji, [lekcja.id]: lekcja.title },
+  };
+}
+
+/** Lekcja usunięta przez serwer znika z każdego tematu i z tytułów. */
+export function usunLekcjeZUkladu(uklad: Uklad, idLekcji: number): Uklad {
+  const tytulyLekcji = { ...uklad.tytulyLekcji };
+  delete tytulyLekcji[idLekcji];
+  return {
+    tematy: uklad.tematy.map((temat) => ({ ...temat, lekcje: temat.lekcje.filter((id) => id !== idLekcji) })),
+    tytulyLekcji,
+  };
+}

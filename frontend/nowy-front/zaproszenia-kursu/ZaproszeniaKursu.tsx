@@ -10,7 +10,7 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { SearchBox } from "@/design-system/molekuly/SearchBox/SearchBox";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
@@ -206,6 +206,90 @@ interface WlasciwosciFormularza {
 }
 
 function FormularzZaproszen({ kurs, naglowek, wroc }: WlasciwosciFormularza) {
+  return (
+    <RdzenZaproszen
+      kurs={kurs}
+      etykietaAnuluj="Wróć do listy"
+      onAnuluj={wroc}
+      uloz={({ odmowa, powiadomienie, tresc }) =>
+        odmowa ? (
+          <FormTemplate
+            naglowek={naglowek}
+            tresc={
+              <EmptyState
+                wariant="brak-uprawnien"
+                naglowek="Zaproszenia na kurs"
+                rola="administracji"
+                przycisk={{ etykieta: "Wróć", onClick: wroc }}
+              />
+            }
+          />
+        ) : (
+          <FormTemplate naglowek={naglowek} powiadomienie={powiadomienie} tresc={tresc} />
+        )
+      }
+    />
+  );
+}
+
+interface WlasciwosciSekcjiZaproszen {
+  kurs: AdminCourse;
+  /** Zamknięcie sekcji — przycisk drugorzędny w rzędzie z „Wyślij zaproszenia”. */
+  onZamknij: () => void;
+}
+
+/**
+ * Zaproszenia jako sekcja większego ekranu (ekran kursu administracji): ten
+ * sam rdzeń co ekran „Zaproszenia na kurs” — wyszukiwarka, wybór osób, jedno
+ * wysłanie `POST /admin/courses/{course}/invite` — bez własnego szablonu
+ * i nagłówka strony. Kurs z miejscem w kolejności programu nie przyjmuje
+ * zaproszeń, więc sekcja mówi to jednym zdaniem zamiast formularza.
+ */
+export function SekcjaZaproszenKursu({ kurs, onZamknij }: WlasciwosciSekcjiZaproszen) {
+  if (!kursPozaKolejnoscia(kurs)) {
+    return (
+      <Notice wariant="info" tytul="Ten kurs ma miejsce w kolejności programu">
+        {`Kurs odblokowuje się kolejnymi krokami programu (numer w kolejności: ${kurs.sequence_order}), więc zaproszenie niczego by nie odblokowało. Zaproszenia dotyczą kursów poza kolejnością programu, na przykład spotkań na żywo w internecie.`}
+      </Notice>
+    );
+  }
+  return (
+    <RdzenZaproszen
+      kurs={kurs}
+      etykietaAnuluj="Zamknij"
+      onAnuluj={onZamknij}
+      uloz={({ odmowa, powiadomienie, tresc }) =>
+        odmowa ? (
+          <Notice wariant="warn" tytul="Zaproszenia na kurs">
+            {zdanieOdmowyRoli("administracji")}
+          </Notice>
+        ) : (
+          <>
+            {powiadomienie}
+            {tresc}
+          </>
+        )
+      }
+    />
+  );
+}
+
+interface CzesciZaproszen {
+  /** Serwer odmówił z powodu roli — zamiast formularza ekran pokazuje odmowę. */
+  odmowa: boolean;
+  powiadomienie: ReactNode;
+  tresc: ReactNode;
+}
+
+interface WlasciwosciRdzenia {
+  kurs: AdminCourse;
+  etykietaAnuluj: string;
+  onAnuluj: () => void;
+  /** Układ części: ekran wkłada je w szablon strony, sekcja — wprost w treść. */
+  uloz: (czesci: CzesciZaproszen) => ReactNode;
+}
+
+function RdzenZaproszen({ kurs, etykietaAnuluj, onAnuluj, uloz }: WlasciwosciRdzenia) {
   const [fraza, setFraza] = useState("");
   const [osoby, setOsoby] = useState<StanOsob>({ rodzaj: "ladowanie" });
   const [odmowa, setOdmowa] = useState(false);
@@ -276,21 +360,7 @@ function FormularzZaproszen({ kurs, naglowek, wroc }: WlasciwosciFormularza) {
     });
   }
 
-  if (odmowa) {
-    return (
-      <FormTemplate
-        naglowek={naglowek}
-        tresc={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Zaproszenia na kurs"
-            rola="administracji"
-            przycisk={{ etykieta: "Wróć", onClick: wroc }}
-          />
-        }
-      />
-    );
-  }
+  if (odmowa) return uloz({ odmowa: true, powiadomienie: null, tresc: null });
 
   const komunikatyBledu = komunikatyWyboru(blad);
   const liczbaZaznaczonych = Object.keys(zaznaczone).length;
@@ -324,11 +394,10 @@ function FormularzZaproszen({ kurs, naglowek, wroc }: WlasciwosciFormularza) {
     );
   }
 
-  return (
-    <FormTemplate
-      naglowek={naglowek}
-      powiadomienie={powiadomienie}
-      tresc={
+  return uloz({
+    odmowa: false,
+    powiadomienie,
+    tresc: (
         <>
           <section className={style.sekcja} aria-label="Wybór osób">
             <Heading stopien={2}>Kogo zapraszasz</Heading>
@@ -391,9 +460,9 @@ function FormularzZaproszen({ kurs, naglowek, wroc }: WlasciwosciFormularza) {
           <FormSection
             tytul="Zaproszenie na kurs"
             pola={[]}
-            etykietaAnuluj="Wróć do listy"
+            etykietaAnuluj={etykietaAnuluj}
             etykietaZapisz={wysyla ? "Wysyłanie…" : "Wyślij zaproszenia"}
-            onAnuluj={wroc}
+            onAnuluj={onAnuluj}
             onZapisz={() => void wyslij()}
           />
 
@@ -414,7 +483,6 @@ function FormularzZaproszen({ kurs, naglowek, wroc }: WlasciwosciFormularza) {
 
           {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
         </>
-      }
-    />
-  );
+    ),
+  });
 }

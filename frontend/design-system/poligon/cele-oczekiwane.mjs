@@ -40,6 +40,10 @@
 // każdym w `WYKLUCZENIA` niżej: Avatar, Badge, Divider, ErrorText, Heading,
 // Hint, Icon, Num, ProgressBar, Skeleton, StepBar, Text, Label (atomy) oraz
 // FileRow, KartaNastepnegoKroku, Notice, QaBlock, StatTile (molekuły).
+// Dopisane przy grupie zwijanej menu: `molekuly/MenuItem/GrupaZwijana.tsx` ma WŁASNY `button`
+// zwijania (nie przekazany potomek), więc jest rozliczony MIERZONYM celem „GrupaZwijana (przycisk
+// zwijania)” (mount `molekula-grupazwijana` w main.tsx), nie wykluczeniem. Od tej zmiany celów
+// jest o jeden więcej, a plików z własnym celem 29 (liczby w komentarzach niżej opisują stan sprzed niej).
 export const OCZEKIWANE_CELE = [
   "Button primary",
   "Button outline",
@@ -61,6 +65,7 @@ export const OCZEKIWANE_CELE = [
   "KeyValueRow (pokaż/ukryj)",
   "ListRow (akcja wiersza)",
   "MenuItem/MenuGroup (pozycja menu)",
+  "GrupaZwijana (przycisk zwijania)",
   "Pagination (poprzednia)",
   "RichTextEditor (przycisk paska)",
   "SaveBar (cofnij)",
@@ -73,6 +78,7 @@ export const OCZEKIWANE_CELE = [
   "TimeChart (rozwinięcie tabeli)",
   "CourseTree (strzałka przeniesienia)",
   "CourseTree (zmiana nazwy)",
+  "CourseTree (edycja lekcji)",
   "CourseTree (dodanie lekcji)",
   "LessonPlayer (odtwarzanie)",
   "LessonPlayer (powiększenie)",
@@ -110,6 +116,7 @@ export const KOMPONENT_CELU = {
   "KeyValueRow (pokaż/ukryj)": "KeyValueRow",
   "ListRow (akcja wiersza)": "ListRow",
   "MenuItem/MenuGroup (pozycja menu)": "MenuItem/MenuGroup",
+  "GrupaZwijana (przycisk zwijania)": "GrupaZwijana", // własny `button` zwijania grupy menu; pozycje w środku to MenuItem (już rozliczony)
   "Pagination (poprzednia)": "Pagination",
   "RichTextEditor (przycisk paska)": "RichTextEditor",
   "SaveBar (cofnij)": "SaveBar",
@@ -120,6 +127,7 @@ export const KOMPONENT_CELU = {
   "TimeChart (rozwinięcie tabeli)": "TimeChart", // nagłówek CollapsibleSection osadzonej w organizmie
   "CourseTree (strzałka przeniesienia)": "CourseTree",
   "CourseTree (zmiana nazwy)": "CourseTree",
+  "CourseTree (edycja lekcji)": "CourseTree",
   "CourseTree (dodanie lekcji)": "CourseTree",
   "LessonPlayer (odtwarzanie)": "LessonPlayer",
   "LessonPlayer (powiększenie)": "LessonPlayer",
@@ -214,6 +222,7 @@ export const PLIKI_ROZLICZONE = [
   "molekuly/FileDropZone/FileDropZone.tsx",
   "molekuly/KeyValueRow/KeyValueRow.tsx",
   "molekuly/ListRow/ListRow.tsx",
+  "molekuly/MenuItem/GrupaZwijana.tsx", // dopisany z grupą zwijaną menu: własny przycisk zwijania, cel „GrupaZwijana (przycisk zwijania)”
   "molekuly/MenuItem/MenuGroup.tsx",
   "molekuly/MenuItem/MenuItem.tsx",
   "molekuly/Pagination/Pagination.tsx",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type DragEvent } from "react";
+import { useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Heading } from "../../atomy/Heading/Heading";
 import { Button } from "../../atomy/Button/Button";
 import { Hint } from "../../atomy/Hint/Hint";
@@ -38,6 +38,12 @@ interface PrzeciaganieCourseTree {
   celIndeks: number;
 }
 
+/** Treść rozwinięcia pod wierszem jednej lekcji (np. formularz edycji). */
+export interface RozwiniecieCourseTree {
+  lekcjaId: string;
+  tresc: ReactNode;
+}
+
 interface WlasciwosciCourseTree {
   tematy: TematCourseTree[];
   liczbaZmian: number;
@@ -47,6 +53,30 @@ interface WlasciwosciCourseTree {
   onZapisz: () => void;
   onCofnij: () => void;
   onPorzucWszystko: () => void;
+  /**
+   * Gdy podane, wiersz lekcji ma przycisk „Edytuj” ZAMIAST „Zmień nazwę”:
+   * lekcja ma wtedy jedną drogę edycji — tę, którą otwiera wywołujący.
+   * Organizm tylko zgłasza kliknięcie; nie zna formularza ani zapisu.
+   */
+  onEdytujLekcje?: (tematId: string, lekcjaId: string) => void;
+  /**
+   * Treść rysowana wewnątrz elementu listy wskazanej lekcji, bezpośrednio pod
+   * jej wierszem, na całą szerokość wiersza. Wiersz zostaje widoczny jako
+   * nagłówek rozwinięcia; na czas rozwinięcia nie da się go przeciągać.
+   */
+  rozwiniecie?: RozwiniecieCourseTree;
+  /**
+   * Pytanie przed WŁĄCZENIEM trybu kolejności: organizm oddaje wywołującemu
+   * funkcję, która tryb włącza, i sam go nie przełącza. Wywołujący woła ją od
+   * razu albo po potwierdzeniu (np. gdy pod wierszem jest otwarty formularz).
+   * Wyłączenie trybu nie pyta. Bez tej właściwości przycisk przełącza od razu.
+   */
+  onPrzedTrybemKolejnosci?: (wlacz: () => void) => void;
+  /**
+   * Treść rysowana na końcu wskazanego tematu, pod listą jego lekcji (np.
+   * formularz nowej lekcji otwarty przez „Dodaj lekcję w tym temacie”).
+   */
+  podTematem?: { tematId: string; tresc: ReactNode };
   /** Stan pusty: pokazywany, gdy kurs nie ma żadnego tematu. */
   pusty: PustyCourseTree;
   stan?: StanDanych;
@@ -124,6 +154,12 @@ function celPrzeniesienia(
  * ≤ 639 px uchwyt znika, a strzałki pokazuje przełącznik „Kolejność”.
  * Po przeniesieniu z klawiatury fokus wraca na tę samą strzałkę tej samej
  * lekcji, żeby dało się przenosić ją dalej bez szukania wiersza.
+ *
+ * Cztery właściwości opcjonalne — `onEdytujLekcje`, `rozwiniecie`,
+ * `onPrzedTrybemKolejnosci` i `podTematem` — dają edycję lekcji przy wierszu:
+ * przycisk „Edytuj”, treść pod wierszem w tym samym elemencie listy, pytanie
+ * przed włączeniem trybu kolejności i treść pod listą lekcji tematu. Bez nich
+ * organizm rysuje i działa jak dotąd.
  */
 export function CourseTree({
   tematy,
@@ -134,6 +170,10 @@ export function CourseTree({
   onZapisz,
   onCofnij,
   onPorzucWszystko,
+  onEdytujLekcje,
+  rozwiniecie,
+  onPrzedTrybemKolejnosci,
+  podTematem,
   pusty,
   stan = STAN_GOTOWY,
   poczatkowoZwiniete = [],
@@ -232,7 +272,17 @@ export function CourseTree({
   return (
     <div ref={korzen} className={style.drzewo} data-tryb-kolejnosci={trybKolejnosci ? "tak" : "nie"}>
       <div className={style.pasekKolejnosci}>
-        <Button poziom="quiet" aria-pressed={trybKolejnosci} onClick={() => setTrybKolejnosci((p) => !p)}>
+        <Button
+          poziom="quiet"
+          aria-pressed={trybKolejnosci}
+          onClick={() => {
+            if (!trybKolejnosci && onPrzedTrybemKolejnosci) {
+              onPrzedTrybemKolejnosci(() => setTrybKolejnosci(true));
+              return;
+            }
+            setTrybKolejnosci((p) => !p);
+          }}
+        >
           Kolejność
         </Button>
       </div>
@@ -277,6 +327,8 @@ export function CourseTree({
               {temat.lekcje.map((lekcja, indeks) => {
                 const wyzej = celPrzeniesienia(tematy, indeksTematu, indeks, "wyzej");
                 const nizej = celPrzeniesienia(tematy, indeksTematu, indeks, "nizej");
+                const rozwinieta = rozwiniecie?.lekcjaId === lekcja.id;
+                const idRozwiniecia = `${baza}-rozwiniecie-${lekcja.id}`;
                 const klasy = [
                   style.wiersz,
                   cel?.temat === temat.id && cel.indeks === indeks ? style.celPrzeciagania : "",
@@ -289,7 +341,7 @@ export function CourseTree({
                     key={lekcja.id}
                     data-lekcja={lekcja.id}
                     className={klasy}
-                    draggable
+                    draggable={!rozwinieta}
                     onDragStart={(e: DragEvent) => {
                       e.dataTransfer.effectAllowed = "move";
                       e.dataTransfer.setData("text/plain", lekcja.id);
@@ -349,19 +401,42 @@ export function CourseTree({
                         </button>
                       </div>
                       <span className={style.akcjaNazwy}>
-                        <Button
-                          poziom="quiet"
-                          onClick={() => setEdytowana(edytowana === lekcja.id ? null : lekcja.id)}
-                          data-testid={`ct-edytuj-${lekcja.id}`}
-                        >
-                          {edytowana === lekcja.id ? "Zapisz nazwę" : "Zmień nazwę"}
-                        </Button>
+                        {onEdytujLekcje ? (
+                          <Button
+                            poziom="quiet"
+                            aria-label={`Edytuj lekcję „${lekcja.tytul}”`}
+                            aria-expanded={rozwinieta}
+                            aria-controls={rozwinieta ? idRozwiniecia : undefined}
+                            onClick={() => onEdytujLekcje(temat.id, lekcja.id)}
+                            data-edytuj-lekcje={lekcja.id}
+                          >
+                            Edytuj
+                          </Button>
+                        ) : (
+                          <Button
+                            poziom="quiet"
+                            onClick={() => setEdytowana(edytowana === lekcja.id ? null : lekcja.id)}
+                            data-testid={`ct-edytuj-${lekcja.id}`}
+                          >
+                            {edytowana === lekcja.id ? "Zapisz nazwę" : "Zmień nazwę"}
+                          </Button>
+                        )}
                       </span>
                     </div>
+                    {rozwinieta && (
+                      <div id={idRozwiniecia} className={style.rozwiniecie} data-rozwiniecie-lekcji={lekcja.id}>
+                        {rozwiniecie.tresc}
+                      </div>
+                    )}
                   </li>
                 );
               })}
             </ol>
+            {podTematem?.tematId === temat.id && (
+              <div className={style.podTematem} data-pod-tematem={temat.id}>
+                {podTematem.tresc}
+              </div>
+            )}
           </section>
         );
       })}

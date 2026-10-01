@@ -1,0 +1,60 @@
+/* Moduł CSS ekranu kursu administracji — wyłącznie układ bloków w obszarach
+   szablonu `DetailTemplate`; wartości tylko z tokeny.css. */
+.blok {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wiersz {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.nazwa {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-family: var(--font);
+  overflow-wrap: anywhere;
+}
+
+.formularz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  max-width: 640px;
+}
+
+.polePliku {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: 640px;
+}
+
+.etykietaPliku {
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--fs-10);
+  font-weight: 600;
+}
+
+.wejsciePliku {
+  max-width: 100%;
+  min-height: 44px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-10);
+}

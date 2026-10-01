@@ -18,5 +18,5 @@ export default async function StronaKursuNowyFront({
   const sesja = await auth();
   const wynik = await pobierzDaneKursu(id, sesja?.accessToken ?? null);
 
-  return <KursTematy idKursu={id} wynik={wynik} />;
+  return <KursTematy idKursu={id} wynik={wynik} grupa="instructor" />;
 }
