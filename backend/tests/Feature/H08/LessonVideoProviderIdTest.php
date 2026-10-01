@@ -50,6 +50,7 @@ class LessonVideoProviderIdTest extends TestCase
             'one character' => ['a'],
             'seed style' => ['mock-etap-1-3'],
             'provider guid' => ['3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+            // Przyjęty, ale zapisywany małymi literami (patrz AdminLessonRecordingCaseTest).
             'mixed case' => ['AbC-xyz-09'],
             'sixty four characters' => [str_repeat('a', 64)],
         ];
@@ -97,8 +98,8 @@ class LessonVideoProviderIdTest extends TestCase
             'video_provider_id' => $id,
         ])->assertCreated();
 
-        $this->assertSame($id, $created->json('data.video_provider_id'));
-        $this->assertSame($id, Lesson::findOrFail($created->json('data.id'))->video_provider_id);
+        $this->assertSame(strtolower($id), $created->json('data.video_provider_id'));
+        $this->assertSame(strtolower($id), Lesson::findOrFail($created->json('data.id'))->video_provider_id);
     }
 
     #[DataProvider('acceptedIds')]
@@ -109,9 +110,9 @@ class LessonVideoProviderIdTest extends TestCase
 
         $this->patchJson("/api/v1/admin/lessons/{$lesson->id}", ['video_provider_id' => $id])
             ->assertOk()
-            ->assertJsonPath('data.video_provider_id', $id);
+            ->assertJsonPath('data.video_provider_id', strtolower($id));
 
-        $this->assertSame($id, $lesson->fresh()->video_provider_id);
+        $this->assertSame(strtolower($id), $lesson->fresh()->video_provider_id);
     }
 
     public function test_null_is_still_allowed_and_clears_the_id(): void

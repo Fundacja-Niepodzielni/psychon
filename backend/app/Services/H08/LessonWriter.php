@@ -7,8 +7,11 @@ use App\Models\Course;
 use App\Models\CourseTopic;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Services\Video\VideoProviderId;
 use App\Support\AuditLog;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Pakiet H08 · zapis lekcji, domyślna numeracja i audyt. Kontroler zostaje
@@ -46,7 +49,11 @@ final class LessonWriter
             $attributes['topic_id'] = $topic->id;
             $attributes['topic_position'] = $explicitOrder ? null : TopicLayout::nextLessonPosition($topic);
 
-            $lesson = $course->lessons()->create($attributes);
+            try {
+                $lesson = $course->lessons()->create($attributes);
+            } catch (UniqueConstraintViolationException $e) {
+                throw self::translated($e);
+            }
 
             // Jawny numer w kursie z jednym tematem: pozycje w temacie idą za
             // `sequence_order`. Bez jawnego numeru lekcja trafia na koniec
@@ -78,8 +85,24 @@ final class LessonWriter
                 self::assertFlatOrderAllowed($course, true);
             }
 
-            $lesson->fill($attributes);
-            $lesson->save();
+            // Zwrot identyfikatora różniącego się od zapisanego wyłącznie
+            // wielkością liter nie jest zmianą nagrania: zastana wartość
+            // z wielkimi literami zostaje bez zmian, zamiast cicho się
+            // przepisywać przy edycji innego pola.
+            if (
+                array_key_exists('video_provider_id', $attributes)
+                && $attributes['video_provider_id'] !== null
+                && VideoProviderId::normalize($lesson->video_provider_id) === $attributes['video_provider_id']
+            ) {
+                unset($attributes['video_provider_id']);
+            }
+
+            try {
+                $lesson->fill($attributes);
+                $lesson->save();
+            } catch (UniqueConstraintViolationException $e) {
+                throw self::translated($e);
+            }
 
             if ($explicitOrder && $lesson->topic !== null) {
                 TopicLayout::rankBySequence($lesson->topic);
@@ -122,7 +145,27 @@ final class LessonWriter
             unset($validated['sequence_order']);
         }
 
+        // Identyfikator nagrania trafia do bazy w postaci znormalizowanej (bez
+        // białych znaków na brzegach, małymi literami), tak samo z panelu
+        // administracji, jak z panelu prowadzącego.
+        if (
+            array_key_exists('video_provider_id', $validated)
+            && ($validated['video_provider_id'] === null || is_string($validated['video_provider_id']))
+        ) {
+            $validated['video_provider_id'] = VideoProviderId::normalize($validated['video_provider_id']);
+        }
+
         return $validated;
+    }
+
+    /**
+     * Wyścig o identyfikator nagrania, przegrany w bazie po przejściu reguły
+     * żądania, daje tę samą odmowę co reguła. Naruszenie innego indeksu zostaje
+     * błędem, jakim było.
+     */
+    private static function translated(UniqueConstraintViolationException $e): Throwable
+    {
+        return RecordingIdIndex::isViolatedBy($e) ? RecordingIdIndex::refusal() : $e;
     }
 
     /**

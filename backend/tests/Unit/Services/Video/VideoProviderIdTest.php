@@ -80,4 +80,24 @@ class VideoProviderIdTest extends TestCase
             'space' => ['a b', 'a%20b'],
         ];
     }
+
+    #[DataProvider('normalizedForms')]
+    public function test_normalize_trims_the_edges_and_lowercases(?string $id, ?string $expected): void
+    {
+        $this->assertSame($expected, VideoProviderId::normalize($id));
+    }
+
+    /** @return array<string, array{?string, ?string}> */
+    public static function normalizedForms(): array
+    {
+        return [
+            'lower case id is unchanged' => ['mock-etap-1-3', 'mock-etap-1-3'],
+            'upper case' => ['MOCK-ETAP-1-3', 'mock-etap-1-3'],
+            'mixed case guid' => ['3Fa85F64-5717-4562-B3fc-2C963f66AFA6', '3fa85f64-5717-4562-b3fc-2c963f66afa6'],
+            'white space around' => ["  \tMock-1\n ", 'mock-1'],
+            'null stays null' => [null, null],
+            'empty string means no recording' => ['', null],
+            'only white space means no recording' => ["  \n\t ", null],
+        ];
+    }
 }

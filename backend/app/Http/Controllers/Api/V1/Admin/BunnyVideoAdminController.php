@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
+use App\Services\H08\RecordingIdIndex;
 use App\Services\Video\VideoProviderId;
 use App\Services\Video\VideoTokenService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
@@ -94,8 +97,22 @@ class BunnyVideoAdminController extends Controller
             throw new ApiException(502, 'bunny_error', 'Bunny Stream nie zwrócił identyfikatora wideo.');
         }
 
-        $lesson->video_provider_id = $videoId;
-        $lesson->save();
+        // Do lekcji trafia postać znormalizowana (małymi literami). Identyfikator,
+        // który trzyma już inna żywa lekcja, dałby dwóm lekcjom dostęp do tego
+        // samego nagrania — indeks bazy go nie przepuszcza, a odpowiedź jest
+        // błędem usługi wideo, bo to ona zwróciła identyfikator, jakiego nie
+        // powinna. Lekcja zostaje bez zmian.
+        $lesson->video_provider_id = VideoProviderId::normalize($videoId);
+
+        try {
+            DB::transaction(fn (): bool => $lesson->save());
+        } catch (UniqueConstraintViolationException $e) {
+            if (! RecordingIdIndex::isViolatedBy($e)) {
+                throw $e;
+            }
+
+            throw new ApiException(502, 'bunny_error', 'Bunny Stream zwrócił identyfikator nagrania, który jest już przypisany do innej lekcji.');
+        }
 
         $expiresAt = now()->addHours(6)->getTimestamp();
         // Wzór TUS: SHA256(library_id + api_key + expiration_time + video_id)

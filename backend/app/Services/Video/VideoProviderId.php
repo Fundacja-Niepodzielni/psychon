@@ -16,6 +16,12 @@ namespace App\Services\Video;
  * zadaniem wychodzącym czytają ten sam zapis, więc nie rozjadą się.
  * Kotwice `\A` i `\z` (nie `^` i `$`) nie przepuszczają znaku nowego wiersza
  * na końcu napisu.
+ *
+ * Do bazy trafia postać znormalizowana (`normalize`): bez białych znaków na
+ * brzegach i małymi literami. GUID w zapisie kanonicznym ma małe litery, więc
+ * dla identyfikatora nadanego przez usługę normalizacja zwykle nic nie zmienia;
+ * pozwala za to porównywać identyfikatory bez rozróżniania wielkości liter
+ * (indeks `lessons_video_provider_id_unique` liczy `lower`).
  */
 final class VideoProviderId
 {
@@ -29,6 +35,23 @@ final class VideoProviderId
     public static function isValid(mixed $value): bool
     {
         return is_string($value) && preg_match(self::PATTERN, $value) === 1;
+    }
+
+    /**
+     * Postać identyfikatora zapisywana w bazie i używana do porównań: bez
+     * białych znaków na brzegach, małymi literami. Pusta wartość znaczy „brak
+     * nagrania” i daje `null`. Wywołuje się ją po walidacji wzorca, więc
+     * `strtolower` (bajtowe) wystarcza.
+     */
+    public static function normalize(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return $normalized === '' ? null : $normalized;
     }
 
     /**
