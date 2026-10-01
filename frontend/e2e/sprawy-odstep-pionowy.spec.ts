@@ -137,7 +137,7 @@ test.describe("odstęp pionowy opakowania ekranu Spraw", () => {
       await page.goto("/admin/staz");
       await zabezpieczeniePrzedEkranemDostepu(page);
       await expect(page.getByRole("heading", { level: 1, name: "Dyżury do decyzji" })).toBeVisible();
-      await expect(page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem")).toHaveCount(1);
+      await expect(page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]')).toHaveCount(1);
       const staz = await zmierz(page);
 
       await page.goto("/admin");

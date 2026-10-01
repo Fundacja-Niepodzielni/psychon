@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\DocumentTemplate;
+use App\Services\DocumentTemplates\DocumentTemplateRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,9 @@ class DocumentTemplateResource extends JsonResource
             'version' => $this->version,
             'updated_at' => $this->updated_at?->toIso8601ZuluString(),
             'updated_by' => $this->updatedBy(),
+            // `true`: biezaca tresc ma stary zapis i nie jest uzywana - dokumenty tego
+            // rodzaju powstaja z pliku w repozytorium (ten sam warunek co w generatorze).
+            'current_version_unused' => DocumentTemplateRenderer::ignoresStoredContent($this->type, $this->content),
         ];
     }
 

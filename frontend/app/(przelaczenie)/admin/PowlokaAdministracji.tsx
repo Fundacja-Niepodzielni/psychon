@@ -44,7 +44,9 @@ export function rokProgramuZEdycji(edycja: Edycja | null | undefined): string | 
  * osoby z `/me`, rokiem programu z `/admin/edition` i tym samym
  * wylogowaniem co dotychczasowa powłoka. Narzędzia paska (pomoc,
  * powiadomienia) i łącza stopki są te same co w dotychczasowej powłoce.
- * Strażnika ról nie niesie — stoi nad nią w układzie.
+ * Kliknięcie pozycji menu to przejście po stronie klienta (`router.push`),
+ * bez przeładowania dokumentu; pełnym przejściem zostaje tylko wylogowanie
+ * pod adres SSO. Strażnika ról nie niesie — stoi nad nią w układzie.
  */
 export function PowlokaAdministracji({ children }: { children: ReactNode }) {
   const sciezka = usePathname() ?? "";
@@ -101,6 +103,7 @@ export function PowlokaAdministracji({ children }: { children: ReactNode }) {
       grupy={grupy}
       grupaZwinieta={grupaZwinieta}
       etykietaMenu="Menu — Administracja"
+      onNawigacja={(href) => router.push(href)}
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}
       rokProgramu={rok}

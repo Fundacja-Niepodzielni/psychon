@@ -24,6 +24,10 @@ if (! config('features.document_templates')) {
 
 Route::middleware(['auth:keycloak', 'access.active', 'role:project_manager,super_admin'])->group(function (): void {
     Route::get('/document-templates/{type}', [DocumentTemplateController::class, 'show']);
-    Route::put('/document-templates/{type}', [DocumentTemplateController::class, 'update']);
+    // Zapis probnie generuje dokument (PDF) z zapisywanej tresci, wiec ma limit zadan:
+    // 20 na minute na osobe - wielokrotnie wiecej niz reczna edycja, a gorna granica
+    // kosztu generowania. Przekroczenie = 429 w standardowej kopercie bledu.
+    Route::put('/document-templates/{type}', [DocumentTemplateController::class, 'update'])
+        ->middleware('throttle:20,1');
     Route::get('/document-templates/{type}/versions', [DocumentTemplateController::class, 'versions']);
 });

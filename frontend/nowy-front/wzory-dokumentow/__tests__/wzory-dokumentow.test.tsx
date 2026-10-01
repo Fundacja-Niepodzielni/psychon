@@ -196,6 +196,57 @@ describe("wzory dokumentów — stany w szablonie widoku szczegółu, jeden main
   });
 });
 
+describe("wzory dokumentów — wzór ze starym zapisem", () => {
+  const ZDANIE = "Ten wzór ma stary zapis. Dokumenty powstają z wzoru domyślnego.";
+
+  async function renderZeZnacznikiem(znacznik: Record<string, unknown>) {
+    ustawSerwer({ wzor: { ...WZOR, ...znacznik } as DocumentTemplate });
+    const wynik = render(<WzoryDokumentow />);
+    await screen.findByRole("textbox", { name: /Treść wzoru/ });
+    return wynik;
+  }
+
+  it("znacznik true: zdanie stoi w kolumnie głównej od wejścia, przed próbą zapisu", async () => {
+    const { container } = await renderZeZnacznikiem({ current_version_unused: true });
+    const zdanie = screen.getByText(ZDANIE);
+    expect(obszarGlowny(container).contains(zdanie)).toBe(true);
+    expect(screen.getAllByText(ZDANIE)).toHaveLength(1);
+    // Zdanie stoi przed polem treści i nie jest błędem przerywającym czytnik.
+    expect(zdanie.compareDocumentPosition(poleTresci()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(api.mock.calls.some((wywolanie) => wywolanie[1]?.method === "PUT")).toBe(false);
+    // Stara treść jest pokazana w polu taka, jaka leży w bazie.
+    expect(poleTresci().value).toBe(WZOR.content);
+  });
+
+  it("znacznik false: zdania nie ma", async () => {
+    await renderZeZnacznikiem({ current_version_unused: false });
+    expect(screen.queryByText(ZDANIE)).toBeNull();
+    expect(screen.queryByText(/stary zapis/i)).toBeNull();
+  });
+
+  it("brak pola w odpowiedzi: zdania nie ma", async () => {
+    await renderGotowy();
+    expect(WZOR).not.toHaveProperty("current_version_unused");
+    expect(screen.queryByText(ZDANIE)).toBeNull();
+    expect(screen.queryByText(/stary zapis/i)).toBeNull();
+  });
+
+  it("zapis w nowym zapisie zdejmuje zdanie, gdy serwer odpowiada znacznikiem false", async () => {
+    ustawSerwer({
+      wzor: { ...WZOR, current_version_unused: true } as DocumentTemplate,
+      put: (tresc) => ({ ...WZOR, content: tresc, version: 3, current_version_unused: false }),
+    });
+    render(<WzoryDokumentow />);
+    await screen.findByRole("textbox", { name: /Treść wzoru/ });
+    expect(screen.getByText(ZDANIE)).toBeInTheDocument();
+    wpisz("<p>Numer {{ $number }}</p>");
+    fireEvent.click(screen.getByRole("button", { name: "Zapisz nową wersję" }));
+    await screen.findByRole("status");
+    await waitFor(() => expect(screen.queryByText(ZDANIE)).toBeNull());
+  });
+});
+
 describe("wzory dokumentów — fokus przy wejściu", () => {
   it("po wejściu pole treści nie ma fokusu, więc pierwszy Tab trafia w „Przejdź do treści”", async () => {
     await renderGotowy();

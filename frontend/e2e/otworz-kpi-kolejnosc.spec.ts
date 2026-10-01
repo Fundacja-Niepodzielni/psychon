@@ -11,7 +11,7 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - liczba w kaflu zostaje 24 px / 700, a dominująca 44 px / 900;
  * - w wierszu kursu prowadzącego widoczne jest „Otwórz”, a pełna nazwa
  *   „Otwórz kurs: …” jest tylko dla czytnika;
- * - podlinia formy stażu to „Kolejność N · opis”.
+ * - pod nazwą formy stażu stoi jej opis, a miejsce na liście we własnej kolumnie.
  * Atrapy API i sesji jak w `przycisk-glowny-szerokosc.spec.ts`.
  */
 
@@ -241,15 +241,21 @@ for (const rozmiar of [
       expect((await odnosnik.innerText()).replace("›", "").trim()).toBe("Otwórz");
     });
 
-    test("słownik form stażu: podlinia „Kolejność N · opis”", async ({ page }) => {
+    test("słownik form stażu: opis pod nazwą, miejsce na liście we własnej kolumnie", async ({ page }) => {
       await atrapyFormStazu(page);
       await page.goto("/admin/formy-stazu");
       await zabezpieczeniePrzedEkranemDostepu(page);
 
-      await expect(page.getByText("Kolejność 1 · Rozmowa z osobą w kryzysie.", { exact: true })).toHaveCount(1);
-      await expect(page.getByText("Kolejność 2 · Bez opisu.", { exact: true })).toHaveCount(1);
-      await expect(page.getByText("Kolejność 3 · Bez opisu.", { exact: true })).toHaveCount(1);
-      await expect(page.getByText(/Kolejność: /)).toHaveCount(0);
+      const wiersze = page.getByRole("table", { name: "Formy stażu" }).locator('[role="row"][data-wiersz]');
+      await expect(wiersze).toHaveCount(3);
+      await expect(page.getByText("Rozmowa z osobą w kryzysie.", { exact: true })).toHaveCount(1);
+      await expect(page.getByText("Bez opisu.", { exact: true })).toHaveCount(2);
+      for (const [indeks, miejsce] of [1, 2, 3].entries()) {
+        const komorki = wiersze.nth(indeks).getByRole("cell");
+        await expect(komorki.nth(2)).toHaveText(new RegExp(`^Miejsce na liście\\s*${miejsce}\\s*na liście$`));
+      }
+      await expect(wiersze.nth(0).getByRole("cell").nth(0)).toContainText("Rozmowa z osobą w kryzysie.");
+      await expect(page.getByText(/Kolejność:? /)).toHaveCount(0);
     });
   });
 }

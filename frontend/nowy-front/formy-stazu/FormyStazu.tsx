@@ -6,7 +6,11 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
-import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import {
+  RecordList,
+  type KolumnaRecordList,
+  type WierszRecordList,
+} from "@/design-system/organizmy/RecordList/RecordList";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -44,6 +48,14 @@ const PUSTY_FORMULARZ: StanFormularza = {
 
 /** Pola API, które formularz pokazuje pod kontrolką (reszta błędów trafia do ogólnego komunikatu). */
 const POLA_FORMULARZA = ["name", "description", "sort_order", "is_active"] as const;
+
+/** Kolumny listy form: nazwa z opisem, stan, miejsce na liście do prawej, akcja na końcu. */
+export const KOLUMNY_FORM: KolumnaRecordList[] = [
+  { nazwa: "Forma", rodzaj: "tekst" },
+  { nazwa: "Stan", rodzaj: "stan" },
+  { nazwa: "Miejsce na liście", rodzaj: "liczba", klucz: "miejsce" },
+  { nazwa: "Akcja", rodzaj: "akcja" },
+];
 
 /**
  * Domyślne miejsce nowej formy na liście: następne wolne po największym
@@ -106,14 +118,15 @@ export function FormyStazu() {
         .map((forma) => ({
           id: String(forma.id),
           tytul: forma.name,
-          // Miejsce na liście stoi w tekście podpowiedzi, nie w polu `wartosc` —
-          // ranga sortowania nie ma sensownej sumy zbiorczej, więc `RecordList`
-          // tu jej nie liczy ani nie pokazuje w stopce.
           // Opis pusty albo z samych białych znaków liczy się jak brak opisu.
-          podpowiedz: `Miejsce na liście: ${forma.sort_order} · ${forma.description?.trim() || "Bez opisu."}`,
+          podpowiedz: forma.description?.trim() || "Bez opisu.",
           plakietka: forma.is_active
             ? { wariant: "ok" as const, tekst: "aktywna" }
             : { wariant: "neutral" as const, tekst: "nieaktywna" },
+          // Miejsce na liście stoi we własnej kolumnie (komórka), nie w polu
+          // `wartosc` — ranga sortowania nie ma sensownej sumy zbiorczej, więc
+          // `RecordList` jej nie liczy ani nie pokazuje w stopce.
+          komorki: { miejsce: { liczba: forma.sort_order, jednostka: "na liście" } },
           akcja: {
             etykieta: "Edytuj",
             onKliknij: () => otworzEdycje(forma),
@@ -279,10 +292,12 @@ export function FormyStazu() {
         przyciskGlowny={panelOtwarty ? undefined : { etykieta: "Dodaj formę", onKliknij: otworzDodawanie }}
       />
 
-      <div className={style.karta} data-obszar="lista-form">
+      <div data-obszar="lista-form">
         <RecordList
           tytul="Formy stażu"
           stopienNaglowka={2}
+          naKarcie
+          kolumny={KOLUMNY_FORM}
           wiersze={wiersze}
           pusty={{
             naglowek: "Brak form stażu",

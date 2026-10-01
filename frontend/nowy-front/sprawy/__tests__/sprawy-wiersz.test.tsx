@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { naruszeniaSeparatora } from "@/design-system/molekuly/ListRow/__tests__/separator-linii";
 
 /**
  * Ekran A-02 „Sprawy” w układzie makiety: wiersz z plakietką „czeka N dni”,
@@ -77,6 +76,14 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Komórka wiersza pod nagłówkiem kolumny o podanej nazwie. */
+function komorka(wiersz: HTMLElement, kolumna: string): HTMLElement {
+  const naglowki = within(screen.getByRole("table", { name: "Sprawy" })).getAllByRole("columnheader");
+  const indeks = naglowki.findIndex((naglowek) => naglowek.textContent === kolumna);
+  expect(indeks, `kolumna „${kolumna}”`).toBeGreaterThanOrEqual(0);
+  return within(wiersz).getAllByRole("cell")[indeks];
+}
+
 describe("Sprawy — wiersz kolejki jak w makiecie A-02", () => {
   it("plakietka „czeka N dni”: 4 dni szara, 5 dni ostrzegawcza; rodzaj i osoba osobno, bez pigułki rodzaju", async () => {
     pobierzKolejkeSpraw.mockResolvedValue([
@@ -92,14 +99,27 @@ describe("Sprawy — wiersz kolejki jak w makiecie A-02", () => {
     expect(czteryDni.className).not.toMatch(/warn/);
     expect(piecDni.className).toMatch(/warn/);
 
-    // Rodzaj to pogrubiony akapit, nie plakietka; osoba stoi obok, rodzaj nie powtarza się w tytule.
+    // Kolumny w kolejności: Sprawa, Stan, akcja — dane z jednego odczytu kolejki.
+    const tabela = screen.getByRole("table", { name: "Sprawy" });
+    expect(within(tabela).getAllByRole("columnheader").map((naglowek) => naglowek.textContent)).toEqual([
+      "Sprawa",
+      "Stan",
+      "Akcja",
+    ]);
+    expect(pobierzKolejkeSpraw).toHaveBeenCalledTimes(1);
+
+    // Rodzaj to akapit nazwy w pierwszej kolumnie, nie plakietka; osoba stoi pod nim, rodzaj nie powtarza się w tytule.
     const rodzaj = screen.getByText("Dyżur");
     expect(rodzaj.tagName).toBe("P");
-    expect(rodzaj.parentElement?.className).toMatch(/pogrubiony/);
-    expect(screen.getByText("Filip Demo")).toBeInTheDocument();
+    const wiersz = rodzaj.closest('[role="row"]') as HTMLElement;
+    expect(within(wiersz).getAllByRole("cell")[0]).toBe(komorka(wiersz, "Sprawa"));
+    expect(komorka(wiersz, "Sprawa")).toContainElement(rodzaj);
+    expect(komorka(wiersz, "Sprawa")).toContainElement(screen.getByText("Filip Demo"));
+    expect(rodzaj.compareDocumentPosition(screen.getByText("Filip Demo")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText(/Dyżur — /)).toBeNull();
-    // Jedyne plakietki w wierszach to „czeka N dni”.
-    const wiersz = rodzaj.closest("[data-wariant]") as HTMLElement;
+    // Jedyne plakietki w wierszach to „czeka N dni” — w kolumnie stanu, po nazwie.
+    expect(komorka(wiersz, "Stan")).toContainElement(piecDni);
+    expect(komorka(wiersz, "Sprawa")).not.toHaveTextContent(/czeka/);
     expect(wiersz.textContent).not.toMatch(/Dyżur.*Dyżur/);
   });
 
@@ -115,10 +135,11 @@ describe("Sprawy — wiersz kolejki jak w makiecie A-02", () => {
     expect(odnosnik.textContent).toMatch(/^Otwórz\s*›$/);
     expect(odnosnik).toHaveAttribute("href", "/sprawa/internship_entries/9");
     expect(screen.getByText("Czeka od 26 września 2026").className).toMatch(/ukryte/);
-    const wiersz = odnosnik.closest("[data-wariant]") as HTMLElement;
-    expect(wiersz.className).toMatch(/bezWciecia/);
-    // Separator „·” jest pierwszym dzieckiem elementu z osobą (nigdy na końcu linii).
-    expect(naruszeniaSeparatora(screen.getByText("Dyżur").parentElement as HTMLElement)).toEqual([]);
+    const wiersz = odnosnik.closest('[role="row"]') as HTMLElement;
+    expect(within(wiersz).getAllByRole("cell").at(-1)).toContainElement(odnosnik);
+    expect(screen.getByRole("table", { name: "Sprawy" }).className).toMatch(/bezWciecia/);
+    // Osoba stoi pod rodzajem we własnej linii — w wierszu nie ma już separatora „·”.
+    expect(wiersz.textContent).not.toContain("·");
   });
 
   it("sprawa bez daty źródłowej nie dostaje plakietki (wiek się nie zgaduje)", async () => {

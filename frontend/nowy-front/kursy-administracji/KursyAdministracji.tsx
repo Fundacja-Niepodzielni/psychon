@@ -36,6 +36,7 @@ import {
   przesun,
   wierszePodgladu,
   wierszeKursow,
+  KOLUMNY_KURSOW,
 } from "./logika";
 import style from "./KursyAdministracji.module.css";
 
@@ -551,7 +552,8 @@ export function KursyAdministracji() {
             tytul="Lista kursów"
             stopienNaglowka={2}
             naglowekTylkoDlaCzytnika
-            wierszeBezWciecia
+            naKarcie
+            kolumny={KOLUMNY_KURSOW}
             wiersze={wierszeKursow(stan.kursy)}
             pusty={{
               naglowek: "Brak kursów w tej edycji",

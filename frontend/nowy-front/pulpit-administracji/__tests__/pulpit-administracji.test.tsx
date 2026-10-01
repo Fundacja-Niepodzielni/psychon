@@ -271,12 +271,47 @@ describe("Pulpit administracji — stany ekranu", () => {
 });
 
 describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do odmowy", () => {
-  /** Wiersz listy z tytułem `nazwa` (najbliższy przodek niosący wariant wiersza). */
+  /** Wiersz listy z tytułem `nazwa` (najbliższy przodek będący wierszem tabeli listy). */
   function wiersz(nazwa: string): HTMLElement {
-    const w = screen.getByText(nazwa).closest("[data-wariant]");
+    const w = screen.getByText(nazwa).closest('[role="row"]');
     if (!(w instanceof HTMLElement)) throw new Error(`brak wiersza „${nazwa}”`);
     return w;
   }
+
+  /** Komórka wiersza pod nagłówkiem kolumny o podanej nazwie. */
+  function komorka(wierszListy: HTMLElement, kolumna: string): HTMLElement {
+    const naglowki = within(screen.getByRole("table", { name: "Co czeka na decyzję" })).getAllByRole("columnheader");
+    const indeks = naglowki.findIndex((naglowek) => naglowek.textContent === kolumna);
+    expect(indeks, `kolumna „${kolumna}”`).toBeGreaterThanOrEqual(0);
+    return within(wierszListy).getAllByRole("cell")[indeks];
+  }
+
+  it("kolumny w kolejności: Kolejka, Stan, Liczba, akcja — nazwa pierwsza, dane z jednego odczytu pulpitu", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    render(<PulpitAdministracji />);
+    await screen.findByText("Pytania bez odpowiedzi");
+
+    const tabela = screen.getByRole("table", { name: "Co czeka na decyzję" });
+    expect(within(tabela).getAllByRole("columnheader").map((naglowek) => naglowek.textContent)).toEqual([
+      "Kolejka",
+      "Stan",
+      "Liczba",
+      "Akcja",
+    ]);
+    const zgloszenia = wiersz("Zgłoszenia rekrutacyjne");
+    expect(within(zgloszenia).getAllByRole("cell")[0]).toBe(komorka(zgloszenia, "Kolejka"));
+    expect(komorka(zgloszenia, "Kolejka")).toHaveTextContent(/^Zgłoszenia rekrutacyjne$/);
+    expect(komorka(zgloszenia, "Stan")).toHaveTextContent(/^Stan\s*czeka na decyzję$/);
+    expect(komorka(zgloszenia, "Liczba")).toHaveTextContent(/^Liczba\s*4\s*sprawy$/);
+    expect(komorka(zgloszenia, "Akcja")).toContainElement(
+      screen.getByRole("link", { name: "Otwórz: Zgłoszenia rekrutacyjne" }),
+    );
+    // Adnotacja kolejki bez akcji stoi pod jej nazwą, w pierwszej kolumnie.
+    expect(komorka(wiersz("Pytania bez odpowiedzi"), "Kolejka")).toHaveTextContent(
+      /^Pytania bez odpowiedziodpowiada prowadzący$/,
+    );
+    expect(pobierzPulpitAdministracji).toHaveBeenCalledTimes(1);
+  });
 
   it("wiersz questions: liczba i adnotacja „odpowiada prowadzący”, zero odnośnika i zero przycisku", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
@@ -292,29 +327,33 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     expect(pytania.textContent).not.toMatch(/Otwórz/);
   });
 
-  it("wiersz questions: nie fokusowalny, nie klikalny, bez roli i odnośnika; puste miejsce po akcji jest ukryte i bez treści", async () => {
+  it("wiersz questions: nie fokusowalny, nie klikalny, bez odnośnika; komórka akcji jest pusta", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
     render(<PulpitAdministracji />);
     await screen.findByText("Pytania bez odpowiedzi");
 
     const pytania = wiersz("Pytania bez odpowiedzi");
-    // Trzy warunki: ani tabindex, ani role, ani href, ani obsługi kliknięcia na żadnym elemencie wiersza.
+    // Ani tabindex, ani href, ani obsługi kliknięcia na żadnym elemencie wiersza; jedyne role to struktura tabeli.
     for (const element of [pytania, ...Array.from(pytania.querySelectorAll("*"))]) {
       expect(element.hasAttribute("tabindex")).toBe(false);
       expect(element.hasAttribute("href")).toBe(false);
       expect(element.hasAttribute("onclick")).toBe(false);
-      expect(element.hasAttribute("role")).toBe(false);
+      expect([null, "row", "cell"]).toContain(element.getAttribute("role"));
     }
+    expect(pytania.getAttribute("role")).toBe("row");
     expect(pytania.querySelectorAll("a, button, input, select, textarea, [contenteditable]")).toHaveLength(0);
-    // Puste miejsce po akcji: jedno, ukryte przed czytnikiem, bez dzieci i bez tekstu.
-    const miejsca = pytania.querySelectorAll('[aria-hidden="true"]');
-    expect(miejsca).toHaveLength(1);
-    expect(miejsca[0].textContent).toBe("");
-    expect(miejsca[0].children).toHaveLength(0);
-    // Sąsiednie wiersze nie mają takiego miejsca: ich ukryta jest tylko strzałka wewnątrz odnośnika „Otwórz”.
-    for (const ukryty of Array.from(wiersz("Zgłoszenia rekrutacyjne").querySelectorAll('[aria-hidden="true"]'))) {
-      expect(ukryty.closest("a")).not.toBeNull();
-    }
+    // Komórka akcji stoi w swojej kolumnie (liczba zostaje w kolumnie liczb), ale nic w niej nie ma.
+    const komorki = within(pytania).getAllByRole("cell");
+    expect(komorki).toHaveLength(4);
+    expect(komorki[3].textContent).toBe("");
+    expect(komorki[3].children).toHaveLength(0);
+    // Ukryte przed czytnikiem są w tym wierszu tylko podpisy kolumn przy wartościach.
+    const ukryte = Array.from(pytania.querySelectorAll('[aria-hidden="true"]')).map((el) => el.textContent);
+    expect(ukryte).toEqual(["Stan", "Liczba"]);
+    // W sąsiednim wierszu dochodzi tylko strzałka wewnątrz odnośnika „Otwórz”.
+    const ukryteSasiada = Array.from(wiersz("Zgłoszenia rekrutacyjne").querySelectorAll('[aria-hidden="true"]'));
+    expect(ukryteSasiada.filter((el) => el.closest("a") === null).map((el) => el.textContent)).toEqual(["Stan", "Liczba"]);
+    expect(ukryteSasiada.filter((el) => el.closest("a") !== null)).toHaveLength(1);
   });
 
   it("pozostałe wiersze mają „Otwórz” na swoje adresy z odpowiedzi serwera", async () => {
@@ -351,6 +390,10 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     await screen.findByText("Pytania bez odpowiedzi");
     // 4 + 7 + 0 + 7 z atrapy.
     expect(screen.getByText("Razem").parentElement).toHaveTextContent(/^Razem\s*18\s*spraw$/);
+    // Suma stoi w kolumnie liczb — tej samej, w której stoją liczby wierszy.
+    const stopka = screen.getByText("Razem").closest('[role="row"]') as HTMLElement;
+    expect(within(stopka).getAllByRole("cell")[2]).toHaveTextContent(/^18\s*spraw$/);
+    expect(komorka(wiersz("Pytania bez odpowiedzi"), "Liczba")).toHaveTextContent(/^Liczba\s*7\s*spraw$/);
   });
 
   it("reguła idzie po kluczu kolejki: questions z adresem w aplikacji i z obcym nadal bez akcji", async () => {

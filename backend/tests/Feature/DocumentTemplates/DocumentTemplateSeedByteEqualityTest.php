@@ -20,9 +20,12 @@ use Tests\TestCase;
  * bajt w bajt nawet bez zadnej zmiany tresci; HTML jest tym, co definiuje
  * dokument i co ten seed przenosi z pliku do bazy.
  *
+ * Zasilenie kopiuje wzor w zapisie pol (`resources/document-templates/`),
+ * a generator podstawia pola zwykla zamiana tekstu - ponizsze proby pilnuja,
+ * ze taki wzor i plik widoku nie rozjada sie ani o znak.
+ *
  * Kontrola negatywna (osobny bieg, nie w tym pliku): podmiana jednego znaku
- * w `DocumentTemplateSeeder::SOURCE_VIEWS` (np. dopisanie spacji do tresci
- * kopiowanej z pliku) oblewa kazda z ponizszych prob.
+ * w tresci kopiowanej przez `DocumentTemplateSeeder` oblewa kazda z ponizszych prob.
  */
 class DocumentTemplateSeedByteEqualityTest extends TestCase
 {
@@ -39,13 +42,18 @@ class DocumentTemplateSeedByteEqualityTest extends TestCase
     #[DataProvider('typeAndViewProvider')]
     public function test_seeded_template_renders_byte_identical_to_the_file(string $type, string $view): void
     {
-        $fromFile = view($view, [])->render();
+        // Dane z numerem, jak u wywolujacych: pole `number` ma jedna wartosc
+        // domyslna, a plik widoku mial dwie (pusta w tytule). Przypadek bez
+        // numeru mierzy `DocumentTemplateNoCompilationTest`.
+        $data = ['number' => 'PW/2026/001'];
+
+        $fromFile = view($view, $data)->render();
 
         $this->seed(DocumentTemplateSeeder::class);
 
         $this->assertDatabaseHas('document_templates', ['type' => $type, 'version' => 1]);
 
-        $fromDatabase = DocumentTemplateRenderer::html($view, []);
+        $fromDatabase = DocumentTemplateRenderer::html($view, $data);
 
         $this->assertSame($fromFile, $fromDatabase);
     }

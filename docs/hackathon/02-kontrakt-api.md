@@ -1209,3 +1209,87 @@ Kod: `Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLesson
 (trasy prowadzącego dziedziczą reguły), `Http/Requests/Concerns/KeepsLessonContentVerbatim.php`,
 `Http/Resources/H08/AdminLessonResource.php`, `routes/api/h06.php`; front:
 `frontend/design-system/molekuly/TrescLekcji/`.
+
+---
+
+## Aneks — wzory dokumentów: edytor administracji
+
+Trzy trasy edytora wzorów dokumentów generowanych dla osoby (porozumienie, zaświadczenie o
+stażu, certyfikat). Aneks opisuje stan kodu; nie dodaje sluga audytu ani typu powiadomienia.
+
+### 1. Trasy
+
+Wszystkie w grupie `role:project_manager,super_admin` (brak tokenu → `401 unauthenticated`,
+inna rola → `403 forbidden`), pod flagą `features.document_templates`.
+
+- `GET /document-templates/{type}` → `200 {data: Wzor}`.
+- `PUT /document-templates/{type}` z ciałem `{ "content": "..." }` → `200 {data: Wzor}` po
+  zapisie nowej wersji. Limit: **20 żądań na minutę na osobę**.
+- `GET /document-templates/{type}/versions` → `200 {data: [Wersja]}`, od najnowszej, bez
+  stronicowania.
+
+`{type}` jest słownikiem zamkniętym: `agreement · attendance_certificate · certificate`.
+Rodzaj spoza słownika → `404 not_found` („Nie znaleziono zasobu.”) na każdej z trzech tras.
+
+### 2. Zasoby
+
+`Wzor` = `{ "type", "content", "version", "updated_at", "updated_by", "current_version_unused" }`.
+`Wersja` = `{ "version", "updated_at", "updated_by" }`. `updated_at` — ISO 8601 UTC;
+`updated_by` — `{ "id", "name" }` albo `null`.
+
+`current_version_unused` (wartość logiczna): `true` oznacza, że bieżąca treść ma stary zapis
+i **nie jest używana** — dokumenty tego rodzaju powstają z wzoru domyślnego z repozytorium.
+Ten sam warunek stosuje generator, więc pole i generowanie nie mogą się rozjechać.
+
+### 3. Zapis treści
+
+`content`: wymagany string, od 1 do **20 000 znaków**. Treść z bazy **nigdy nie jest
+kompilowana ani wykonywana** — serwer podstawia w niej wyłącznie pola zapisane dokładnie jako
+`{{ $nazwa }}`, z listy pól danego rodzaju dokumentu.
+
+Odmowa zapisu → `422 validation_failed` w standardowej kopercie, zdanie w `errors.content`,
+nic nie jest zapisywane:
+
+- pole spoza listy rodzaju: „Pole „…” nie istnieje w tym dokumencie.”;
+- zapis `{!! … !!}`;
+- podwójne nawiasy klamrowe otaczające cokolwiek poza nazwą pola (wyrażenie, wartość
+  domyślna, komentarz);
+- znaczniki `<?` albo `?>`;
+- słowo zaczynające się od znaku `@` (adres e-mail jest dozwolony).
+
+Każde z tych zdań kończy się dopiskiem z listą pól dostępnych w tym rodzaju dokumentu.
+
+Po regule pól serwer wykonuje **próbne generowanie** dokumentu z danych przykładowych. Gdy
+się nie powiedzie → `422 validation_failed`, `errors.content[0]` = „Z tego wzoru nie da się
+wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.”
+
+```json
+{ "error": { "status": 422, "code": "validation_failed",
+    "message": "Popraw zaznaczone pola.",
+    "errors": { "content": ["Treść nie może zawierać znaczników „<?” ani „?>”. …"] } } }
+```
+
+### 4. Limit żądań
+
+Przekroczenie limitu zapisu → **429** `too_many_requests`; odmowy `422` liczą się do limitu.
+`reason` ma dokładnie jeden klucz — liczbę sekund do następnej próby (liczba całkowita 1–60):
+
+```json
+{ "error": { "status": 429, "code": "too_many_requests",
+    "message": "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
+    "reason": { "retry_after_seconds": 42 } } }
+```
+
+Kod `429 too_many_requests` dochodzi do tabeli §1.1 jako „przekroczony limit żądań trasy”.
+
+### 5. Czego ten aneks nie wprowadza
+
+Zapis wzoru nie emituje dziś zdarzenia audytu ani powiadomienia — slug i ładunek dojdą
+osobnym aneksem razem ze zmianą kodu. Trasy „przywróć wzór domyślny” nie ma.
+
+Kod: `routes/api/document_templates.php`,
+`Http/Controllers/Api/V1/DocumentTemplateController.php`,
+`Http/Requests/DocumentTemplates/UpdateDocumentTemplateRequest.php`,
+`Http/Resources/DocumentTemplateResource.php`,
+`Services/DocumentTemplates/DocumentTemplateFields.php`,
+`Services/DocumentTemplates/DocumentTemplateTrial.php`.

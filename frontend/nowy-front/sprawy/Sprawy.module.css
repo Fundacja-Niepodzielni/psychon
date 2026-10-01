@@ -4,13 +4,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  max-width: 960px;
-  margin: 0 auto;
-  /* Odstęp od górnego paska i od końca treści oraz boczny margines daje ramka
-     panelu (boczny 40 px, na wąskim ekranie 18 px); ekran nie dokłada własnego
-     odstępu, żeby nie wcinać się głębiej ani niżej niż inne ekrany. */
+  /* Szerokość, odstęp od górnego paska i od końca treści oraz boczny margines
+     daje ramka panelu (boczny 40 px, na wąskim ekranie 18 px); ekran nie
+     dokłada własnej szerokości, odstępu ani tła, żeby stać dokładnie tam,
+     gdzie inne ekrany administracji — na tle strony. */
   padding: 0;
-  background: var(--bg);
   color: var(--text);
   font-family: var(--font);
 }
