@@ -15,7 +15,7 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * `page.route` i atrapą sesji (jak w `przelaczenie-grupa-wspolpraca.spec.ts`):
  * - adres po wejściu ten sam, `h1` ekranu, tytuł karty „Akceptacja stażu”,
  *   jedyny `main` i `#tresc`, jedyny link skoku, nowa ramka (przycisk „Menu”
- *   przy 390 px), pozycja menu „Akceptacja stażu” prowadzi na ten sam adres;
+ *   przy 390 px), pozycja menu „Dyżury do decyzji” prowadzi na ten sam adres;
  * - trzy decyzje na atrapach: zatwierdzenie, odesłanie i odrzucenie z
  *   komentarzem (ciało żądania), pusty komentarz kończy się błędem pola
  *   (422 z atrapy) i wpis zostaje, rozstrzygnięty wcześniej wpis
@@ -241,7 +241,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
       if (szerokosc >= 1024) {
         await expect(przyciskMenu).toBeHidden();
         const nav = page.getByRole("complementary", { name: "Menu i konto" }).getByRole("navigation", { name: "Menu — Administracja" });
-        await expect(nav.getByRole("link", { name: "Akceptacja stażu" })).toHaveAttribute("href", "/admin/staz");
+        await expect(nav.getByRole("link", { name: "Dyżury do decyzji", exact: true })).toHaveAttribute("href", "/admin/staz");
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
       } else {
         await expect(przyciskMenu).toBeVisible();
@@ -249,7 +249,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
         const okno = page.getByRole("dialog", { name: "Menu i konto" });
         await expect(okno).toBeVisible();
         const nav = okno.getByRole("navigation", { name: "Menu — Administracja" });
-        await expect(nav.getByRole("link", { name: "Akceptacja stażu" })).toHaveAttribute("href", "/admin/staz");
+        await expect(nav.getByRole("link", { name: "Dyżury do decyzji", exact: true })).toHaveAttribute("href", "/admin/staz");
         await okno.getByRole("button", { name: "Zamknij" }).click();
         await expect(page.getByRole("dialog", { name: "Menu i konto" })).toHaveCount(0);
       }

@@ -13,7 +13,7 @@ import { GRUPY, type DefinicjaGrupy, type KluczGrupy } from "@/lib/przelaczenie/
  * administracji, skrypt `#nav`, w. 1105):
  * Codziennie: Pulpit · Sprawy · Uczestnicy; Program: Kursy + „W
  * przygotowaniu: prowadzący” (makieta: „prowadzący · staż i superwizja”;
- * staż i superwizja są w menu jako „Akceptacja stażu” i „Superwizje”);
+ * staż i superwizja są w menu jako „Dyżury do decyzji” i „Superwizje”);
  * Rozliczenie: Raport roku
  * programu · Dziennik działań + „W przygotowaniu: certyfikaty · ustawienia
  * roku programu” (bez „treści i dokumenty” — wzory dokumentów i ekran
@@ -50,6 +50,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
         pozycje: [
           ["Pulpit", "/admin"],
           ["Sprawy", "/admin/sprawy"],
+          ["Dyżury do decyzji", "/admin/staz"],
           ["Uczestnicy", "/admin/uczestniczki"],
           ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
         ],
@@ -79,7 +80,6 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Czas nauki", "/admin/czas-nauki"],
           ["Certyfikaty", "/admin/certyfikaty"],
           ["Profile psychologa", "/admin/profile"],
-          ["Akceptacja stażu", "/admin/staz"],
           ["Superwizje", "/admin/superwizje"],
           ["Skrzynka e-maili", "/admin/emails"],
           ["Ustawienia", "/admin/ustawienia"],
@@ -112,6 +112,28 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
   it("kontrola dodatnia: włączenie grupy form stażu dokłada pozycję w grupie Program", () => {
     const program = menuRamkiAdministracji(zFlagami({ formyStazu: true })).find((g) => g.naglowek === "Program");
     expect(program?.pozycje.map((p) => p.href)).toEqual(["/admin/kursy", "/admin/formy-stazu"]);
+  });
+
+  it("kolejka stażu: „Dyżury do decyzji” w „Codziennie” zaraz po „Sprawy” prowadzi na /admin/staz, a „Akceptacja stażu” nie ma w całym menu", () => {
+    const menu = menuRamkiAdministracji(zFlagami({ kolejkaStazu: true }));
+    const codziennie = menu.find((g) => g.naglowek === "Codziennie");
+    const etykiety = codziennie?.pozycje.map((p) => p.etykieta);
+    expect(etykiety).toEqual(["Pulpit", "Sprawy", "Dyżury do decyzji", "Uczestnicy"]);
+    const wpis = codziennie?.pozycje.find((p) => p.etykieta === "Dyżury do decyzji");
+    expect(wpis?.href).toBe("/admin/staz");
+    expect(etykiety?.indexOf("Dyżury do decyzji")).toBe((etykiety?.indexOf("Sprawy") ?? -2) + 1);
+    const wszystkie = menu.flatMap((g) => g.pozycje.map((p) => p.etykieta));
+    expect(wszystkie).not.toContain("Akceptacja stażu");
+  });
+
+  it("kolejka stażu przy obu stanach flagi: dokładnie jedno wejście na /admin/staz, w „Codziennie”, nigdy w „Dotychczasowym panelu”", () => {
+    for (const wlaczona of [true, false]) {
+      const menu = menuRamkiAdministracji(zFlagami({ kolejkaStazu: wlaczona }));
+      const wejscia = menu.flatMap((g) => g.pozycje.filter((p) => p.href === "/admin/staz").map((p) => [g.naglowek, p.etykieta]));
+      expect(wejscia, `flaga ${wlaczona}`).toEqual([["Codziennie", "Dyżury do decyzji"]]);
+      const wszystkie = menu.flatMap((g) => g.pozycje.map((p) => p.etykieta));
+      expect(wszystkie, `flaga ${wlaczona}`).not.toContain("Akceptacja stażu");
+    }
   });
 
   it("żaden adres nie wskazuje segmentu nowego frontu i nie powtarza się", () => {
