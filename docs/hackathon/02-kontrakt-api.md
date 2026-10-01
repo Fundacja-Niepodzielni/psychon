@@ -1417,7 +1417,13 @@ pierwszej stronie ponad limit.
   wczytuje. Lista dozwolonych obrazów jest ustalana osobno dla każdego generowania i niesie
   wyłącznie kod QR tego certyfikatu.
 - Wartość pola dłuższa niż wiersz (ciąg bez spacji) jest w dokumencie łamana na kolejne
-  wiersze i strony — tak samo dla wzoru domyślnego i dla wzoru zapisanego w bazie.
+  wiersze — tak samo dla wzoru domyślnego i dla wzoru zapisanego w bazie.
+- Tekst w akapicie przechodzi na kolejne strony.
+- Wiersz tabeli nie jest dzielony między strony: wartość w komórce tabeli dłuższa niż
+  miejsce do końca strony nie jest widoczna w całości. To zastane ograniczenie silnika
+  generowania, nie reguła wzoru.
+- Pola walidowane mają najwyżej 255 znaków; wartość tej długości jest widoczna w całości
+  w każdym wzorze domyślnym.
 
 ### 5. Czego ten aneks nie wprowadza
 

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bootstrap\HandleExceptions;
 use Illuminate\Support\Facades\Facade;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * Wyraz dłuższy niż wiersz jest w dokumencie łamany, a nie wychodzi poza stronę.
@@ -17,11 +18,17 @@ use PHPUnit\Framework\TestCase;
  * Reguła łamania stoi w jednym miejscu — w arkuszu bazowym usługi generowania,
  * dokładanym przed stylami wzoru — więc obejmuje każdy wzór bez zmiany jego treści.
  *
- * Miara (strumień dokumentu bez kompresji, napisy operatorów tekstu): wartość pola
- * to 10 000 liter „W” bez spacji. Bez łamania cała wartość jest JEDNYM napisem, który
- * wychodzi poza stronę; z łamaniem — wieloma napisami nie dłuższymi niż wiersz.
- * Liczone są ciągi co najmniej dwóch „W”, więc pojedyncze „W” ze stałego tekstu
+ * Miara to POŁOŻENIE znaków na stronie, a nie ich obecność w strumieniu dokumentu:
+ * dla każdego wiersza tekstu z dokumentu brane są jego współrzędne, czcionka i
+ * rozmiar, a litera wartości liczy się jako widoczna tylko wtedy, gdy leży w
+ * granicach strony — w pionie i w poziomie. Wartość pola to litery „W” bez spacji;
+ * liczone są ciągi co najmniej dwóch „W”, więc pojedyncze „W” ze stałego tekstu
  * wzoru nie wchodzą do sumy.
+ *
+ * Ograniczenie silnika, nazwane próbą: wiersz tabeli nie jest dzielony między
+ * strony, więc wartość w komórce tabeli dłuższa niż miejsce do końca strony nie
+ * jest widoczna w całości. Wartość o długości pola walidowanego (255 znaków)
+ * mieści się w całości w każdym wzorze z repozytorium.
  *
  * Bez bazy: aplikacja jest podnoszona tutaj.
  * `./vendor/bin/phpunit --no-configuration --bootstrap vendor/autoload.php tests/Unit/DocumentTemplates/PdfLongWordWrapTest.php`
@@ -29,6 +36,9 @@ use PHPUnit\Framework\TestCase;
 final class PdfLongWordWrapTest extends TestCase
 {
     private const int LENGTH = 10000;
+
+    /** Największa długość pola walidowanego (imię, nazwisko, ulica, miasto, nazwa edycji). */
+    private const int FIELD_LENGTH = 255;
 
     private ?Application $app = null;
 
@@ -53,19 +63,6 @@ final class PdfLongWordWrapTest extends TestCase
     }
 
     /**
-     * Najdłuższy napis = tyle liter „W”, ile mieści wiersz w miejscu pola (z pomiaru).
-     *
-     * @return array<string, array{0: string, 1: int}>
-     */
-    public static function templatesFromFiles(): array
-    {
-        return [
-            'porozumienie, komórka tabeli' => ['agreement', 28],
-            'zaświadczenie, komórka tabeli' => ['attendance_certificate', 28],
-        ];
-    }
-
-    /**
      * @return array<string, array{0: string}>
      */
     public static function templateTypes(): array
@@ -76,18 +73,106 @@ final class PdfLongWordWrapTest extends TestCase
         ];
     }
 
-    #[DataProvider('templatesFromFiles')]
-    public function test_field_value_longer_than_a_line_is_broken_into_lines_in_the_template_from_the_file(string $type, int $lineWidth): void
+    /**
+     * Każde pole walidowane (do 255 znaków) osobno, w każdym wzorze, który je pokazuje.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function validatedFields(): array
+    {
+        $cases = [];
+
+        foreach (['agreement', 'attendance_certificate'] as $type) {
+            foreach (['first_name', 'last_name', 'address_street', 'address_city', 'edition_name'] as $field) {
+                $cases[$type.' '.$field] = [$type, $field];
+            }
+        }
+
+        foreach (['first_name', 'last_name', 'edition_name'] as $field) {
+            $cases['certificate '.$field] = ['certificate', $field];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * Najdłuższa wartość, jaką przyjmuje pole walidowane, jest widoczna w całości
+     * w każdym wzorze z repozytorium. Wzór może pokazać pole więcej niż raz, stąd
+     * suma jest wielokrotnością długości pola.
+     */
+    #[DataProvider('validatedFields')]
+    public function test_value_of_the_longest_validated_field_is_visible_whole_in_every_repository_template(string $type, string $field): void
+    {
+        $placement = self::placement($this->documentWithField($type, $field, self::FIELD_LENGTH));
+
+        $this->assertGreaterThanOrEqual(self::FIELD_LENGTH, $placement['total'], 'Wzór nie pokazuje tego pola.');
+        $this->assertSame(0, $placement['total'] % self::FIELD_LENGTH);
+        $this->assertSame(
+            ['total' => $placement['total'], 'on_page' => $placement['total'], 'below' => 0, 'above' => 0, 'beyond_right_edge' => 0],
+            $placement,
+            'Wartość pola nie jest widoczna na stronie w całości.',
+        );
+    }
+
+    /**
+     * Tekst poza tabelą przechodzi na kolejne strony: żaden znak nie leży poza stroną.
+     */
+    public function test_long_value_outside_a_table_is_visible_whole_across_pages(): void
+    {
+        $certificate = self::placement($this->documentWithFirstName('certificate', self::LENGTH));
+        $paragraph = self::placement((string) PdfService::generated('<html><head></head><body><p>'.str_repeat('W', self::LENGTH).'</p></body></html>')->output(['compress' => 0]));
+
+        foreach (['certyfikat' => $certificate, 'akapit' => $paragraph] as $name => $placement) {
+            $this->assertSame(
+                ['total' => self::LENGTH, 'on_page' => self::LENGTH, 'below' => 0, 'above' => 0, 'beyond_right_edge' => 0],
+                $placement,
+                'Część wartości leży poza stroną: '.$name.'.',
+            );
+        }
+    }
+
+    /**
+     * OGRANICZENIE, nie cel: silnik nie dzieli wiersza tabeli między strony. Wartość
+     * 10 000 znaków w komórce tabeli jest połamana na wiersze (nic nie wychodzi za
+     * prawą krawędź), ale tylko jej początek leży na stronie — reszta poniżej.
+     * Liczby są z pomiaru; zmiana silnika albo wzoru, która to naprawi lub pogorszy,
+     * ma tę próbę zaczerwienić.
+     */
+    #[DataProvider('templateTypes')]
+    public function test_table_row_is_not_split_between_pages_so_an_oversized_cell_value_is_cut_off(string $type): void
+    {
+        $placement = self::placement($this->documentWithFirstName($type, self::LENGTH));
+
+        $this->assertSame(
+            ['total' => self::LENGTH, 'on_page' => 1680, 'below' => 8320, 'above' => 0, 'beyond_right_edge' => 0],
+            $placement,
+            'Zmieniło się ograniczenie: wartość w komórce tabeli dłuższa niż strona.',
+        );
+    }
+
+    private function documentWithFirstName(string $type, int $length): string
+    {
+        return $this->documentWithField($type, 'first_name', $length);
+    }
+
+    private function documentWithField(string $type, string $field, int $length): string
     {
         $case = (require base_path('tests/Fixtures/DocumentTemplates/golden-data.php'))[$type];
-        $case['data']['first_name'] = str_repeat('W', self::LENGTH);
+        $data = $case['data'];
+        $allowed = isset($data['qr_svg']) ? [(string) $data['qr_svg']] : [];
+        $value = str_repeat('W', $length);
 
-        $generated = PdfService::generated(DocumentTemplateRenderer::fileHtml($case['view'], $case['data']));
-        $runs = self::runs((string) $generated->output(['compress' => 0]));
+        if (array_key_exists($field, $data)) {
+            $data[$field] = $value;
+        } else {
+            // Certyfikat niesie osobę i edycję jako obiekty.
+            [$holder, $attribute] = $field === 'edition_name' ? ['edition', 'name'] : ['user', $field];
+            $object = clone $data[$holder];
+            $object->{$attribute} = $value;
+            $data[$holder] = $object;
+        }
 
-        $this->assertSame(self::LENGTH, array_sum($runs), 'W dokumencie nie ma całej wartości pola.');
-        $this->assertLessThanOrEqual($lineWidth, max($runs), 'Wartość pola nie została połamana na wiersze.');
-        $this->assertGreaterThanOrEqual(2, $generated->getCanvas()->get_page_count());
+        return (string) PdfService::generated(DocumentTemplateRenderer::fileHtml($case['view'], $data), $allowed)->output(['compress' => 0]);
     }
 
     /**
@@ -124,6 +209,109 @@ final class PdfLongWordWrapTest extends TestCase
         $this->assertSame(500, array_sum($default));
         $this->assertLessThanOrEqual(44, max($default), 'Arkusz bazowy nie połamał wyrazu.');
         $this->assertSame([500], $overridden, 'Styl wzoru nie nadpisał arkusza bazowego.');
+    }
+
+    /**
+     * Gdzie leżą litery wartości: na stronie, poniżej, powyżej albo za prawą krawędzią.
+     *
+     * Czyta gotowy plik (także skompresowany): rozmiar strony, wiersze tekstu z ich
+     * współrzędnymi, czcionką i rozmiarem. Szerokość litery pochodzi z metryk silnika
+     * dla czcionki zapisanej w pliku; nieznana czcionka przerywa próbę.
+     *
+     * @return array{total: int, on_page: int, below: int, above: int, beyond_right_edge: int}
+     */
+    public static function placement(string $bytes): array
+    {
+        $content = $bytes;
+        preg_match_all('~stream\r?\n(.*?)\r?\nendstream~s', $bytes, $streams);
+
+        foreach ($streams[1] as $stream) {
+            $plain = @gzuncompress($stream);
+            $content .= $plain === false ? '' : "\n".$plain;
+        }
+
+        if (preg_match('~/MediaBox\s*\[\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)\s*\]~', $bytes, $box) !== 1) {
+            throw new RuntimeException('W pliku nie ma rozmiaru strony.');
+        }
+
+        [$pageWidth, $pageHeight] = [(float) $box[1], (float) $box[2]];
+
+        // Nazwa zasobu czcionki (F1, F2, ...) -> nazwa czcionki zapisana w pliku.
+        preg_match_all('~(\d+) 0 obj\s*<<(?:(?!endobj).)*?/BaseFont\s*/(?:[A-Z]{6}\+)?([A-Za-z0-9-]+)~s', $bytes, $objects, PREG_SET_ORDER);
+        $baseFonts = [];
+
+        foreach ($objects as $object) {
+            $baseFonts[$object[1]] ??= $object[2];
+        }
+
+        preg_match_all('~/(F\d+)\s+(\d+) 0 R~', $bytes, $resources, PREG_SET_ORDER);
+        $fonts = [];
+
+        foreach ($resources as $resource) {
+            if (isset($baseFonts[$resource[2]])) {
+                $fonts[$resource[1]] = $baseFonts[$resource[2]];
+            }
+        }
+
+        $families = [
+            'Helvetica' => ['helvetica', 'normal'],
+            'Helvetica-Bold' => ['helvetica', 'bold'],
+            'DejaVuSans' => ['dejavu sans', 'normal'],
+            'DejaVuSans-Bold' => ['dejavu sans', 'bold'],
+            'DejaVuSerif' => ['dejavu serif', 'normal'],
+            'DejaVuSerif-Bold' => ['dejavu serif', 'bold'],
+        ];
+        $metrics = PdfService::engine()->getFontMetrics();
+
+        $placement = ['total' => 0, 'on_page' => 0, 'below' => 0, 'above' => 0, 'beyond_right_edge' => 0];
+        preg_match_all('~BT\s+(-?[\d.]+)\s+(-?[\d.]+)\s+Td\s+/(F\d+)\s+([\d.]+)\s+Tf\s+(.*?)\s+ET~s', $content, $lines, PREG_SET_ORDER);
+
+        foreach ($lines as $line) {
+            $text = str_replace(chr(0), '', implode('', self::strings($line[5])));
+
+            $count = self::lettersOfTheValue($text);
+
+            if ($count === 0) {
+                continue;
+            }
+
+            $family = $families[$fonts[$line[3]] ?? ''] ?? null;
+
+            if ($family === null) {
+                throw new RuntimeException('Nieznana czcionka wiersza z wartością pola: '.($fonts[$line[3]] ?? $line[3]).'.');
+            }
+
+            $font = $metrics->getFont($family[0], $family[1]);
+            [$x, $y, $size] = [(float) $line[1], (float) $line[2], (float) $line[4]];
+            $placement['total'] += $count;
+
+            if ($y < 0.0) {
+                $placement['below'] += $count;
+            } elseif ($y > $pageHeight) {
+                $placement['above'] += $count;
+            } else {
+                // Tyle znaków wiersza, ile mieści się przed prawą krawędzią strony.
+                $visible = strlen($text);
+
+                while ($visible > 0 && ($x < 0.0 || $x + $metrics->getTextWidth(substr($text, 0, $visible), $font, $size) > $pageWidth)) {
+                    $visible--;
+                }
+
+                $fits = self::lettersOfTheValue(substr($text, 0, $visible));
+                $placement['on_page'] += $fits;
+                $placement['beyond_right_edge'] += $count - $fits;
+            }
+        }
+
+        return $placement;
+    }
+
+    /** Litery wartości pola w tekście wiersza: ciągi co najmniej dwóch „W”. */
+    private static function lettersOfTheValue(string $text): int
+    {
+        preg_match_all('~W{2,}~', $text, $found);
+
+        return array_sum(array_map(strlen(...), $found[0]));
     }
 
     /**
