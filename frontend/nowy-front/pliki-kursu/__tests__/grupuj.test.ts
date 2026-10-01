@@ -12,13 +12,14 @@ function plik(id: number, lesson_id: number | null, name = `plik-${id}.pdf`): Pl
 
 describe("grupujPliki — układ listy plików kursu", () => {
   it("grupuje pliki według lekcji w kolejności sequence_order, nie w kolejności odpowiedzi", () => {
-    const lekcje = [lekcja(30, 3), lekcja(10, 1), lekcja(20, 2)];
+    // Identyfikatory celowo idą w drugą stronę niż sequence_order: kolejność po id dałaby inny wynik.
+    const lekcje = [lekcja(30, 1), lekcja(10, 3), lekcja(20, 2)];
     const pliki = [plik(1, 30), plik(2, 10), plik(3, 20)];
 
     const grupy = grupujPliki(lekcje, pliki);
 
-    expect(grupy.map((grupa) => grupa.lekcja?.id)).toEqual([10, 20, 30]);
-    expect(grupy.map((grupa) => grupa.pliki.map((p) => p.id))).toEqual([[2], [3], [1]]);
+    expect(grupy.map((grupa) => grupa.lekcja?.id)).toEqual([30, 20, 10]);
+    expect(grupy.map((grupa) => grupa.pliki.map((p) => p.id))).toEqual([[1], [3], [2]]);
   });
 
   it("pliki w grupie zostają w kolejności z odpowiedzi", () => {
