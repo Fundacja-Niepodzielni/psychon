@@ -63,6 +63,7 @@ describe("EmptyStateCard — arkusz stylów", () => {
     expect(css).toMatch(/border:\s*1px solid var\(--border\);/);
     expect(css).toMatch(/border-radius:\s*var\(--r-md\);/);
     expect(css).toMatch(/padding:\s*var\(--space-16\);/);
+    expect(css).toMatch(/display:\s*flex;\s*flex-direction:\s*column;/);
   });
 
   it("zero kolorów i wymiarów zapisanych wprost poza grubością ramki", () => {
