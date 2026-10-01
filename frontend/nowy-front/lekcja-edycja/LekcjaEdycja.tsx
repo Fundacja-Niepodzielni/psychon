@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
@@ -16,12 +17,14 @@ import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { FormTemplate } from "@/design-system/szablony/FormTemplate/FormTemplate";
+import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
 import {
   czyBrakUprawnien,
   czyNieZnaleziono,
   pobierzLekcjeKursu,
   pobierzRole,
   pobierzStanNagrania,
+  usunLekcje,
   wgrajMaterial,
   zapiszLekcje,
   zlecWgranieNagrania,
@@ -39,10 +42,12 @@ import {
   powodNieaktywnegoNagrania,
   walidujLokalnie,
   zdanieBleduPliku,
+  zdanieBleduUsuniecia,
   zdanieBleduZapisu,
   type BledyFormularza,
   type StanFormularza,
 } from "./formularz";
+import { useWgrywanieMaterialow } from "./materialy";
 import { wgrajNagranie } from "./tus";
 import style from "./LekcjaEdycja.module.css";
 
@@ -60,10 +65,17 @@ type StanEkranu =
   | { rodzaj: "blad" }
   | { rodzaj: "dane"; lekcja: LekcjaAdmin; rola: string | null; nagranie: StanNagrania | null };
 
+/** Ekran kursu administracji: adres produktu po włączeniu grupy, wcześniej trasa poligonu. */
+function adresKursu(idKursu: number): string {
+  const [ekran] = GRUPY.kursAdministracji.ekrany;
+  const wzorzec = czyNowaTrasaDostepna(GRUPY.kursAdministracji) ? ekran.nowaTrasa : ekran.trasaPoligonu;
+  return wzorzec.replace("[id]", String(idKursu));
+}
+
 function okruszki(idKursu: number | null) {
   return [
     { etykieta: "Kursy" },
-    { etykieta: "Tematy i lekcje", href: idKursu === null ? undefined : `/nowy-front/kurs/${idKursu}` },
+    { etykieta: "Tematy i lekcje", href: idKursu === null ? undefined : adresKursu(idKursu) },
     { etykieta: "Lekcja" },
   ];
 }
@@ -232,13 +244,25 @@ interface WlasciwosciEdytora {
    */
   uklad?: "strona" | "wiersz";
   onZapisano?: (lekcja: LekcjaAdmin) => void;
+  /** Dodatki formularza przy wierszu; ekran lekcji ich nie podaje. */
+  wiersz?: DodatkiWiersza;
 }
 
-/** Zastępuje wpis o tej samej nazwie albo dopisuje nowy (`FileRow` kluczuje po nazwie). */
-function ustawPlik(lista: PlikFileDropZone[], plik: PlikFileDropZone): PlikFileDropZone[] {
-  return lista.some((wpis) => wpis.nazwa === plik.nazwa)
-    ? lista.map((wpis) => (wpis.nazwa === plik.nazwa ? plik : wpis))
-    : [...lista, plik];
+/**
+ * To, co formularz przy wierszu zgłasza ekranowi kursu i czego od niego
+ * potrzebuje. Ekran kursu decyduje o pytaniu przed porzuceniem zmian —
+ * formularz tylko mówi, czy je ma.
+ */
+export interface DodatkiWiersza {
+  /** Czy formularz ma niezapisane zmiany — przy każdej zmianie tej odpowiedzi. */
+  onZmieniono: (zmieniony: boolean) => void;
+  /** Ekran kursu pokazuje własne okno pytania: Escape i „Anuluj” nic wtedy nie robią. */
+  wstrzymany: boolean;
+  /** Adres ekranu lekcji z materiałami i nagraniem; `null` = ekran niedostępny, odnośnika nie ma. */
+  adresMaterialow: string | null;
+  onPrzejdz: (adres: string) => void;
+  /** Lekcja została usunięta na serwerze. */
+  onUsunieto: () => void;
 }
 
 function EdytorLekcji({
@@ -249,6 +273,7 @@ function EdytorLekcji({
   wroc,
   uklad = "strona",
   onZapisano,
+  wiersz,
 }: WlasciwosciEdytora) {
   const baza = useId();
   const [zapisana, setZapisana] = useState(lekcja);
@@ -258,8 +283,14 @@ function EdytorLekcji({
   const [zapisywanie, setZapisywanie] = useState(false);
   const [zapisano, setZapisano] = useState(false);
   const [dialogPorzucenia, setDialogPorzucenia] = useState(false);
-  const [plikiMaterialow, setPlikiMaterialow] = useState<PlikFileDropZone[]>([]);
+  const [dialogUsuniecia, setDialogUsuniecia] = useState(false);
+  const [usuwanie, setUsuwanie] = useState(false);
+  const [bladUsuniecia, setBladUsuniecia] = useState<string | null>(null);
   const [liczbaMaterialow, setLiczbaMaterialow] = useState(lekcja.materials_count);
+  const materialy = useWgrywanieMaterialow(
+    (plik) => wgrajMaterial(zapisana.id, plik),
+    () => setLiczbaMaterialow((poprzednia) => poprzednia + 1),
+  );
   const [plikiNagrania, setPlikiNagrania] = useState<PlikFileDropZone[]>([]);
   const [nagranie, setNagranie] = useState<StanNagrania | null>(nagranieStart);
 
@@ -277,6 +308,12 @@ function EdytorLekcji({
     return () => window.removeEventListener("beforeunload", naWyjscie);
   }, [zmieniony]);
 
+  // Ekran kursu pyta przed porzuceniem zmian — musi wiedzieć, czy są.
+  const zglosZmiane = wiersz?.onZmieniono;
+  useEffect(() => {
+    zglosZmiane?.(zmieniony);
+  }, [zglosZmiane, zmieniony]);
+
   // Formularz otwarty przy wierszu zaczyna od pierwszego pola.
   useEffect(() => {
     if (uklad === "wiersz") document.getElementById(`${baza}-tytul`)?.focus();
@@ -289,7 +326,7 @@ function EdytorLekcji({
 
   function anuluj() {
     // Escape i przycisk „Anuluj” wołają to samo; przy otwartym oknie pytania nic nie robią.
-    if (zapisywanie || dialogPorzucenia) return;
+    if (zapisywanie || dialogPorzucenia || dialogUsuniecia || wiersz?.wstrzymany) return;
     if (zmieniony) {
       setDialogPorzucenia(true);
       return;
@@ -324,22 +361,17 @@ function EdytorLekcji({
     }
   }
 
-  async function dodajMaterialy(lista: FileList) {
-    for (const plik of Array.from(lista)) {
-      setPlikiMaterialow((poprzednie) =>
-        ustawPlik(poprzednie, { nazwa: plik.name, stan: "przetwarzanie", komunikat: "Wgrywanie…" }),
-      );
-      try {
-        await wgrajMaterial(zapisana.id, plik);
-        setLiczbaMaterialow((poprzednia) => poprzednia + 1);
-        setPlikiMaterialow((poprzednie) =>
-          ustawPlik(poprzednie, { nazwa: plik.name, stan: "gotowy", komunikat: "Wgrano materiał." }),
-        );
-      } catch (blad) {
-        setPlikiMaterialow((poprzednie) =>
-          ustawPlik(poprzednie, { nazwa: plik.name, stan: "blad", komunikat: zdanieBleduPliku(blad) }),
-        );
-      }
+  async function usun() {
+    if (usuwanie) return;
+    setDialogUsuniecia(false);
+    setUsuwanie(true);
+    setBladUsuniecia(null);
+    try {
+      await usunLekcje(zapisana.id);
+      wiersz?.onUsunieto();
+    } catch (blad) {
+      setBladUsuniecia(zdanieBleduUsuniecia(blad));
+      setUsuwanie(false);
     }
   }
 
@@ -411,7 +443,6 @@ function EdytorLekcji({
           tytul="Porzucić niezapisane zmiany?"
           etykietaWycofania="Wróć do edycji"
           etykietaPotwierdzenia="Porzuć zmiany"
-          niebezpieczne
           onWycofaj={() => setDialogPorzucenia(false)}
           onPotwierdz={() => {
             setDialogPorzucenia(false);
@@ -421,8 +452,29 @@ function EdytorLekcji({
           <Text>Zmiany wpisane w tej lekcji nie zostały zapisane i przepadną.</Text>
         </Dialog>
       )}
-      {zapisano && <Toast komunikat="Lekcja została zapisana." onZamknij={() => setZapisano(false)} />}
+      {dialogUsuniecia && (
+        <Dialog
+          tytul={`Usunąć lekcję „${zapisana.title}”?`}
+          etykietaWycofania="Anuluj"
+          etykietaPotwierdzenia="Usuń lekcję"
+          onWycofaj={() => setDialogUsuniecia(false)}
+          onPotwierdz={() => void usun()}
+        >
+          <Text>Lekcja zniknie z kursu. Postęp historyczny uczestników zostaje zachowany.</Text>
+        </Dialog>
+      )}
+      {zapisano && uklad === "strona" && (
+        <Toast komunikat="Lekcja została zapisana." onZamknij={() => setZapisano(false)} />
+      )}
     </>
+  );
+
+  // Przy wierszu powiadomienie stoi pod formularzem, w jego miejscu na stronie —
+  // nie na dole okna, gdzie zasłaniało nagłówek kolejnego tematu.
+  const powiadomienieWiersza = zapisano && (
+    <div className={style.powiadomienieWiersza}>
+      <Toast komunikat="Lekcja została zapisana." onZamknij={() => setZapisano(false)} />
+    </div>
   );
 
   if (uklad === "wiersz") {
@@ -443,6 +495,35 @@ function EdytorLekcji({
             onAnuluj={anuluj}
             onZapisz={() => void zapisz()}
           />
+          {powiadomienieWiersza}
+          {bladUsuniecia && (
+            <Notice wariant="error" tytul="Lekcja nie została usunięta">
+              {bladUsuniecia}
+            </Notice>
+          )}
+          {wiersz && (
+            <div className={style.akcjeWiersza}>
+              {wiersz.adresMaterialow !== null && (
+                <Link
+                  href={wiersz.adresMaterialow}
+                  onClick={(zdarzenie) => {
+                    zdarzenie.preventDefault();
+                    if (wiersz.adresMaterialow !== null) wiersz.onPrzejdz(wiersz.adresMaterialow);
+                  }}
+                >
+                  Materiały i nagranie
+                </Link>
+              )}
+              <Button
+                poziom="quiet"
+                niebezpieczny
+                aria-label={`Usuń lekcję „${zapisana.title}”`}
+                onClick={() => setDialogUsuniecia(true)}
+              >
+                Usuń lekcję
+              </Button>
+            </div>
+          )}
         </div>
         {okna}
       </>
@@ -492,8 +573,8 @@ function EdytorLekcji({
                 id={`${baza}-plik-materialu`}
                 etykieta="Upuść tutaj materiały albo wybierz je z dysku."
                 podpowiedz="Dozwolone formaty: PDF, DOC, DOCX, PPT, PPTX, PNG, JPG. Plik może mieć najwyżej 10 MB."
-                pliki={plikiMaterialow}
-                onWybierzPliki={(lista) => void dodajMaterialy(lista)}
+                pliki={materialy.pliki}
+                onWybierzPliki={(lista) => void materialy.dodaj(lista)}
               />
             </section>
 
@@ -529,6 +610,7 @@ interface WlasciwosciEdycjiPrzyWierszu {
   onZamknij: () => void;
   /** Lekcja po udanym zapisie; formularz zostaje otwarty. */
   onZapisano: (lekcja: LekcjaAdmin) => void;
+  wiersz: DodatkiWiersza;
 }
 
 /**
@@ -536,7 +618,13 @@ interface WlasciwosciEdycjiPrzyWierszu {
  * administracji. Ten sam edytor i ta sama funkcja zapisu (`zapiszLekcje`) co
  * trasa lekcji; lekcję czyta świeżo z listy lekcji kursu przy każdym otwarciu.
  */
-export function EdycjaLekcjiPrzyWierszu({ idLekcji, idKursu, onZamknij, onZapisano }: WlasciwosciEdycjiPrzyWierszu) {
+export function EdycjaLekcjiPrzyWierszu({
+  idLekcji,
+  idKursu,
+  onZamknij,
+  onZapisano,
+  wiersz,
+}: WlasciwosciEdycjiPrzyWierszu) {
   const [stan, setStan] = useState<
     { rodzaj: "ladowanie" } | { rodzaj: "blad"; tresc: string } | { rodzaj: "dane"; lekcja: LekcjaAdmin }
   >({ rodzaj: "ladowanie" });
@@ -592,6 +680,7 @@ export function EdycjaLekcjiPrzyWierszu({ idLekcji, idKursu, onZamknij, onZapisa
       wroc={onZamknij}
       uklad="wiersz"
       onZapisano={onZapisano}
+      wiersz={wiersz}
     />
   );
 }

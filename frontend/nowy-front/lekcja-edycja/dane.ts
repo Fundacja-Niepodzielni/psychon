@@ -94,7 +94,8 @@ export function pobierzStanNagrania(idLekcji: number): Promise<StanNagrania> {
 }
 
 /**
- * Jedyne miejsce nowego frontu z adresem zapisu lekcji administracji. Pełne
+ * Ten plik jest jedynym miejscem nowego frontu z adresem lekcji administracji
+ * (zapis, usunięcie, materiały, nagranie). Pełne
  * ciało wysyła formularz edycji lekcji; samo `title` — zmiana nazwy w drzewie
  * tematów (każde pole trasy jest opcjonalne).
  */
@@ -105,11 +106,46 @@ export function zapiszLekcje(
   return api<LekcjaAdmin>(`/admin/lessons/${idLekcji}`, { method: "PATCH", body: cialo });
 }
 
-/** Multipart z polem `file` (`StoreMaterialRequest::rules`, w. 31). */
-export function wgrajMaterial(idLekcji: number, plik: File): Promise<MaterialAdmin> {
+/**
+ * Ciało `POST /admin/courses/{course}/lessons` — pola nowej lekcji z ekranu
+ * kursu (`StoreLessonRequest::rules`). `topic_id` wskazuje temat, w którym
+ * osoba wybrała „Dodaj lekcję”; pozycję w temacie nadaje serwer.
+ */
+export interface CialoNowejLekcji {
+  title: string;
+  description: string | null;
+  duration_seconds: number;
+  topic_id: number;
+}
+
+export function dodajLekcje(idKursu: number, cialo: CialoNowejLekcji): Promise<LekcjaAdmin> {
+  return api<LekcjaAdmin>(`/admin/courses/${idKursu}/lessons`, { method: "POST", body: cialo });
+}
+
+/** `DELETE /admin/lessons/{lesson}` → 200 `{ id, deleted: true }`. */
+export function usunLekcje(idLekcji: number): Promise<{ id: number; deleted: boolean }> {
+  return api<{ id: number; deleted: boolean }>(`/admin/lessons/${idLekcji}`, { method: "DELETE" });
+}
+
+function cialoPliku(plik: File): FormData {
   const cialo = new FormData();
   cialo.append("file", plik);
-  return api<MaterialAdmin>(`/admin/lessons/${idLekcji}/materials`, { method: "POST", body: cialo });
+  return cialo;
+}
+
+/** Multipart z polem `file` (`StoreMaterialRequest::rules`, w. 31). */
+export function wgrajMaterial(idLekcji: number, plik: File): Promise<MaterialAdmin> {
+  return api<MaterialAdmin>(`/admin/lessons/${idLekcji}/materials`, { method: "POST", body: cialoPliku(plik) });
+}
+
+/** Materiał całego kursu, bez lekcji — to samo ciało co materiał lekcji. */
+export function wgrajMaterialKursu(idKursu: number, plik: File): Promise<MaterialAdmin> {
+  return api<MaterialAdmin>(`/admin/courses/${idKursu}/materials`, { method: "POST", body: cialoPliku(plik) });
+}
+
+/** `DELETE /admin/materials/{material}` → 200 `{ id, deleted: true }`. */
+export function usunMaterial(idMaterialu: number): Promise<{ id: number; deleted: boolean }> {
+  return api<{ id: number; deleted: boolean }>(`/admin/materials/${idMaterialu}`, { method: "DELETE" });
 }
 
 /** Ciało dokładnie `{ title }` — trasa odrzuca każde inne pole (w. 64-70). */

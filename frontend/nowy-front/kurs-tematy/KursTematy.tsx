@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import type { AdminCourse, AdminLesson } from "@/lib/h08/types";
+import {
+  COURSE_TYPE_LABELS,
+  PRODUCT_GROUP_LABELS,
+  type AdminCourse,
+  type AdminLesson,
+  type CourseType,
+  type ProductGroup,
+} from "@/lib/h08/types";
 import { ApiError } from "@/lib/api/klient";
 import {
   dodajTemat,
@@ -27,15 +34,18 @@ import type { PozycjaChecklisty } from "@/design-system/organizmy/PublishCheckli
 import type { StanDanych } from "@/design-system/organizmy/stanDanych";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
 import { checklistaPublikacji, type WynikDanychKursu } from "@/nowy-front/kurs-publikacja/dane";
+import { bledyZSerwera, cialoZapisu, walidujLokalnie, type BledyFormularza } from "@/nowy-front/lekcja-edycja/formularz";
 import { sklasyfikujBlad, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
 import {
   cialoUkladu,
+  dopiszLekcje,
   dopiszTemat,
   kolejnoscZmieniona,
   przeniesLekcje,
   tematyDrzewa,
   tytulyDoZapisu,
   ukladZSerwera,
+  usunLekcjeZUkladu,
   usunTematZUkladu,
   zmienTytulLekcji,
   zmienTytulTematu,
@@ -62,7 +72,7 @@ interface WlasciwosciKursTematy {
   /** Ponowienie odczytu kursu po błędzie; bez niej odświeżenie trasy. */
   onPonow?: () => void;
   /** Sekcje pod drzewem tematów, w kolumnie głównej — z bieżącym stanem kursu. */
-  podDrzewem?: (kurs: AdminCourse) => ReactNode;
+  podDrzewem?: (kurs: AdminCourse, lekcje: AdminLesson[]) => ReactNode;
   /** Ostatni blok ekranu, na końcu kolumny wspierającej — z bieżącym stanem kursu. */
   ostatniBlok?: (kurs: AdminCourse) => ReactNode;
   /** Formularz edycji lekcji pod jej wierszem; bez niego wiersz ma „Zmień nazwę”. */
@@ -155,7 +165,42 @@ type StanDialogu =
   | { rodzaj: "zmien"; temat: TematUkladu }
   | { rodzaj: "usun"; temat: TematUkladu }
   | { rodzaj: "porzuc" }
+  | { rodzaj: "porzuc-lekcje"; dokad: () => void }
   | { rodzaj: "wyjscie"; dokad: () => void };
+
+/** Dokąd ma wrócić fokus po zamknięciu formularza albo okna pytania. */
+type CelFokusu =
+  | { cel: "edytuj"; lekcja: number }
+  | { cel: "dodaj"; temat: number }
+  | { cel: "formularz" }
+  | { cel: "kolejnosc" };
+
+interface FormularzNowejLekcji {
+  temat: number;
+  tytul: string;
+  opis: string;
+  czas: string;
+}
+
+interface FormularzKursu {
+  tytul: string;
+  opis: string;
+  identyfikator: string;
+  typ: CourseType;
+  grupaProduktowa: ProductGroup;
+}
+
+type BledyKursu = Partial<Record<"tytul" | "opis" | "identyfikator" | "typ" | "grupaProduktowa" | "ogolny", string>>;
+
+const OPCJE_TYPU = (Object.keys(COURSE_TYPE_LABELS) as CourseType[]).map((wartosc) => ({
+  wartosc,
+  etykieta: COURSE_TYPE_LABELS[wartosc],
+}));
+
+const OPCJE_GRUPY = (Object.keys(PRODUCT_GROUP_LABELS) as ProductGroup[]).map((wartosc) => ({
+  wartosc,
+  etykieta: PRODUCT_GROUP_LABELS[wartosc],
+}));
 
 /** Lekcja po zapisie z formularza przy wierszu — tyle, ile pokazuje drzewo. */
 export interface LekcjaPoZapisie {
@@ -169,16 +214,26 @@ export interface LekcjaPoZapisie {
  * zamienia w wierszu „Zmień nazwę” na „Edytuj”: lekcja ma wtedy jedną drogę
  * edycji i jeden zapis — ten z formularza.
  */
-export type EdycjaLekcjiWiersza = (
-  idLekcji: number,
-  akcje: { zamknij: () => void; zapisano: (lekcja: LekcjaPoZapisie) => void },
-) => ReactNode;
+export type EdycjaLekcjiWiersza = (idLekcji: number, akcje: AkcjeEdycjiLekcji) => ReactNode;
+
+export interface AkcjeEdycjiLekcji {
+  zamknij: () => void;
+  zapisano: (lekcja: LekcjaPoZapisie) => void;
+  /** Formularz zgłasza, czy ma niezapisane zmiany — ekran pyta przed ich porzuceniem. */
+  zmieniono: (zmieniony: boolean) => void;
+  /** Lekcja usunięta na serwerze: znika z drzewa, formularz się zamyka. */
+  usunieto: () => void;
+  /** Wyjście na inny ekran z formularza — przez pytanie o niezapisane zmiany. */
+  przejdz: (adres: string) => void;
+  /** Ekran pokazuje okno pytania; formularz nie reaguje wtedy na Escape. */
+  wstrzymany: boolean;
+}
 
 interface WlasciwosciEdytora {
   grupa: GrupaTras;
   kursPoczatkowy: AdminCourse;
   lekcje: AdminLesson[];
-  podDrzewem?: (kurs: AdminCourse) => ReactNode;
+  podDrzewem?: (kurs: AdminCourse, lekcje: AdminLesson[]) => ReactNode;
   ostatniBlok?: (kurs: AdminCourse) => ReactNode;
   edycjaLekcji?: EdycjaLekcjiWiersza;
   wroc: () => void;
@@ -188,7 +243,7 @@ interface WlasciwosciEdytora {
 function EdytorTematow({
   grupa,
   kursPoczatkowy,
-  lekcje,
+  lekcje: lekcjePoczatkowe,
   podDrzewem,
   ostatniBlok,
   edycjaLekcji,
@@ -197,8 +252,15 @@ function EdytorTematow({
 }: WlasciwosciEdytora) {
   const baza = useId();
   const [edytowanaLekcja, setEdytowanaLekcja] = useState<number | null>(null);
+  const [lekcjaZmieniona, setLekcjaZmieniona] = useState(false);
   // Nowy obiekt przy każdym zamknięciu — efekt fokusu rusza także dla tej samej lekcji drugi raz.
-  const [fokusNaEdytuj, setFokusNaEdytuj] = useState<{ lekcja: number } | null>(null);
+  const [fokus, setFokus] = useState<CelFokusu | null>(null);
+  const [nowaLekcja, setNowaLekcja] = useState<FormularzNowejLekcji | null>(null);
+  const [bledyNowejLekcji, setBledyNowejLekcji] = useState<BledyFormularza & { ogolny?: string }>({});
+  // Lekcje założone i usunięte na tym ekranie — drzewo zmienia się bez ponownego
+  // odczytu kursu, więc niezapisane zmiany kolejności zostają.
+  const [dodane, setDodane] = useState<AdminLesson[]>([]);
+  const [usuniete, setUsuniete] = useState<number[]>([]);
   const [czasyPoZapisie, setCzasyPoZapisie] = useState<Record<number, number>>({});
   const teksty = tekstyDlaGrupy(grupa);
   const zapis = zapisDlaGrupy(grupa);
@@ -213,8 +275,8 @@ function EdytorTematow({
   const [dialog, setDialog] = useState<StanDialogu | null>(null);
   const [poleDialogu, setPoleDialogu] = useState("");
   const [bladDialogu, setBladDialogu] = useState<string | null>(null);
-  const [formularz, setFormularz] = useState<{ tytul: string; opis: string } | null>(null);
-  const [bledyFormularza, setBledyFormularza] = useState<{ tytul?: string; opis?: string; ogolny?: string }>({});
+  const [formularz, setFormularz] = useState<FormularzKursu | null>(null);
+  const [bledyFormularza, setBledyFormularza] = useState<BledyKursu>({});
   const [publikowanie, setPublikowanie] = useState(false);
   const [brakiSerwera, setBrakiSerwera] = useState<PozycjaChecklisty[]>([]);
   const [bladPublikacji, setBladPublikacji] = useState<{ tytul: string; tresc: string } | null>(null);
@@ -225,7 +287,7 @@ function EdytorTematow({
     pobierzTematy(grupa, kursPoczatkowy.id)
       .then((tematy) => {
         if (!aktualne) return;
-        const serwer = ukladZSerwera(tematy, lekcje);
+        const serwer = ukladZSerwera(tematy, lekcjePoczatkowe);
         setStan({ rodzaj: "gotowy", serwer, lokalny: serwer, historia: [], ostatniTytul: null });
       })
       .catch((blad: unknown) => {
@@ -239,7 +301,9 @@ function EdytorTematow({
     return () => {
       aktualne = false;
     };
-  }, [grupa, kursPoczatkowy.id, lekcje, proba]);
+  }, [grupa, kursPoczatkowy.id, lekcjePoczatkowe, proba]);
+
+  const lekcje = [...lekcjePoczatkowe.filter((lekcja) => !usuniete.includes(lekcja.id)), ...dodane];
 
   const liczbaZmian = stan.rodzaj === "gotowy" ? stan.historia.length : 0;
 
@@ -265,11 +329,27 @@ function EdytorTematow({
 
   const zamknijToast = useCallback(() => setToast(null), []);
 
-  // Zamknięcie formularza przy wierszu oddaje fokus przyciskowi „Edytuj” tej lekcji.
+  // Zamknięcie formularza albo okna pytania oddaje fokus przyciskowi, który
+  // istnieje i jest widoczny: „Edytuj” tej lekcji, „Dodaj lekcję” tematu albo
+  // pierwsze pole formularza, a gdy go nie ma („Edytuj” ukryte w trybie
+  // kolejności na wąskim oknie) — przełącznik „Kolejność”. Fokus nigdy nie
+  // zostaje na `body`.
   useEffect(() => {
-    if (fokusNaEdytuj === null) return;
-    document.querySelector<HTMLElement>(`[data-edytuj-lekcje="${fokusNaEdytuj.lekcja}"]`)?.focus();
-  }, [fokusNaEdytuj]);
+    if (fokus === null) return;
+    const selektory: string[] = [];
+    if (fokus.cel === "edytuj") selektory.push(`[data-edytuj-lekcje="${fokus.lekcja}"]`);
+    if (fokus.cel === "dodaj") selektory.push(`[data-testid="ct-dodaj-${fokus.temat}"]`);
+    if (fokus.cel === "formularz") selektory.push("[data-rozwiniecie-lekcji] input", "[data-pod-tematem] input");
+    // Przełącznik „Kolejność” istnieje tylko na wąskim oknie; na szerokim
+    // ostatnim celem jest pierwszy przycisk „Dodaj lekcję” drzewa.
+    selektory.push(`#${KOTWICA_LEKCJI} button[aria-pressed]`, `#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`);
+    for (const selektor of selektory) {
+      const element = document.querySelector<HTMLElement>(selektor);
+      if (!element) continue;
+      element.focus();
+      if (document.activeElement === element) return;
+    }
+  }, [fokus]);
 
   if (stan.rodzaj === "brak-uprawnien") {
     return <BrakUprawnien idKursu={String(kursPoczatkowy.id)} grupa={grupa} wroc={wroc} />;
@@ -376,8 +456,105 @@ function EdytorTematow({
   }
 
   function zamknijEdycjeLekcji() {
-    if (edytowanaLekcja !== null) setFokusNaEdytuj({ lekcja: edytowanaLekcja });
+    if (edytowanaLekcja !== null) setFokus({ cel: "edytuj", lekcja: edytowanaLekcja });
     setEdytowanaLekcja(null);
+    setLekcjaZmieniona(false);
+  }
+
+  const nowaLekcjaZmieniona =
+    nowaLekcja !== null && (nowaLekcja.tytul !== "" || nowaLekcja.opis !== "" || nowaLekcja.czas !== "");
+  const niezapisanaLekcja = (edytowanaLekcja !== null && lekcjaZmieniona) || nowaLekcjaZmieniona;
+
+  /**
+   * Każda droga, która zamknęłaby formularz lekcji (inna lekcja, „Dodaj
+   * lekcję”, tryb kolejności, wyjście na ekran lekcji), idzie tędy: gdy
+   * formularz ma niezapisane zmiany, ekran najpierw pyta.
+   */
+  function zFormularzaLekcji(dokad: () => void) {
+    if (niezapisanaLekcja) {
+      setDialog({ rodzaj: "porzuc-lekcje", dokad });
+      return;
+    }
+    dokad();
+  }
+
+  function zamknijFormularzeLekcji() {
+    setEdytowanaLekcja(null);
+    setLekcjaZmieniona(false);
+    setNowaLekcja(null);
+    setBledyNowejLekcji({});
+  }
+
+  /** Lekcja usunięta na serwerze znika z drzewa — także z niezapisanego układu. */
+  function przyjmijUsuniecieLekcji(idLekcji: number) {
+    setUsuniete((poprzednie) => [...poprzednie, idLekcji]);
+    setDodane((poprzednie) => poprzednie.filter((lekcja) => lekcja.id !== idLekcji));
+    setStan((poprzedni) =>
+      poprzedni.rodzaj === "gotowy"
+        ? {
+            ...poprzedni,
+            serwer: usunLekcjeZUkladu(poprzedni.serwer, idLekcji),
+            lokalny: usunLekcjeZUkladu(poprzedni.lokalny, idLekcji),
+            historia: poprzedni.historia.map((krok) => usunLekcjeZUkladu(krok, idLekcji)),
+          }
+        : poprzedni,
+    );
+    zamknijFormularzeLekcji();
+    // Wiersza już nie ma: fokus dostaje „Dodaj lekcję” tematu, w którym stała.
+    const temat = stan.rodzaj === "gotowy" ? stan.lokalny.tematy.find((wpis) => wpis.lekcje.includes(idLekcji)) : null;
+    setFokus(temat ? { cel: "dodaj", temat: temat.id } : { cel: "kolejnosc" });
+    setToast("Lekcja została usunięta.");
+  }
+
+  async function dodajNowaLekcje() {
+    if (!nowaLekcja || !zapis.nowaLekcja || zapisywanie) return;
+    const pola = { title: nowaLekcja.tytul, description: nowaLekcja.opis, content: "", duration: nowaLekcja.czas };
+    const lokalne = walidujLokalnie(pola);
+    if (Object.keys(lokalne).length > 0) {
+      setBledyNowejLekcji(lokalne);
+      return;
+    }
+    const { title, description, duration_seconds } = cialoZapisu(pola);
+    try {
+      const lekcja = await zapis.nowaLekcja(kurs.id, {
+        title,
+        description,
+        duration_seconds,
+        topic_id: nowaLekcja.temat,
+      });
+      setDodane((poprzednie) => [
+        ...poprzednie,
+        {
+          id: lekcja.id,
+          course_id: kurs.id,
+          title: lekcja.title,
+          description,
+          sequence_order: null,
+          video_provider_id: null,
+          duration_seconds: lekcja.duration_seconds,
+          materials_count: 0,
+          created_at: null,
+          updated_at: null,
+        },
+      ]);
+      setStan((poprzedni) =>
+        poprzedni.rodzaj === "gotowy"
+          ? {
+              ...poprzedni,
+              serwer: dopiszLekcje(poprzedni.serwer, lekcja),
+              lokalny: dopiszLekcje(poprzedni.lokalny, lekcja),
+              historia: poprzedni.historia.map((krok) => dopiszLekcje(krok, lekcja)),
+            }
+          : poprzedni,
+      );
+      setNowaLekcja(null);
+      setBledyNowejLekcji({});
+      setFokus({ cel: "edytuj", lekcja: lekcja.id });
+      setToast("Lekcja została dodana.");
+    } catch (blad) {
+      const bledyPol = bledyZSerwera(blad);
+      setBledyNowejLekcji(bledyPol ?? { ogolny: zdanieBleduTematow(blad) });
+    }
   }
 
   function cofnij() {
@@ -436,6 +613,12 @@ function EdytorTematow({
     }
     if (dialog.rodzaj === "wyjscie") {
       setDialog(null);
+      dialog.dokad();
+      return;
+    }
+    if (dialog.rodzaj === "porzuc-lekcje") {
+      setDialog(null);
+      zamknijFormularzeLekcji();
       dialog.dokad();
       return;
     }
@@ -505,17 +688,32 @@ function EdytorTematow({
       setBledyFormularza({ tytul: "Podaj tytuł kursu." });
       return;
     }
+    const identyfikator = formularz.identyfikator.trim();
+    if (grupa === "admin" && identyfikator === "") {
+      setBledyFormularza({ identyfikator: "Podaj identyfikator kursu." });
+      return;
+    }
+    const podstawowe = { title: tytul, description: formularz.opis.trim() === "" ? null : formularz.opis };
     try {
-      const zapisany = await zapis.daneKursu(kurs.id, {
-        title: tytul,
-        description: formularz.opis.trim() === "" ? null : formularz.opis,
-      });
+      // Pozycji kursu w ścieżce ten formularz nie wysyła — pokazuje ją tylko do odczytu.
+      const zapisany = await zapis.daneKursu(
+        kurs.id,
+        grupa === "admin"
+          ? { ...podstawowe, slug: identyfikator, type: formularz.typ, product_group: formularz.grupaProduktowa }
+          : podstawowe,
+      );
       setKurs(zapisany);
       setFormularz(null);
       setBledyFormularza({});
     } catch (blad) {
       if (blad instanceof ApiError && blad.code === "validation_failed") {
-        setBledyFormularza({ tytul: blad.errors?.title?.[0], opis: blad.errors?.description?.[0] });
+        setBledyFormularza({
+          tytul: blad.errors?.title?.[0],
+          opis: blad.errors?.description?.[0],
+          identyfikator: blad.errors?.slug?.[0],
+          typ: blad.errors?.type?.[0],
+          grupaProduktowa: blad.errors?.product_group?.[0],
+        });
         return;
       }
       setBledyFormularza({ ogolny: zdanieBleduTematow(blad) });
@@ -544,6 +742,9 @@ function EdytorTematow({
 
   const drzewo = (
     <div id={KOTWICA_LEKCJI} className={style.sekcja}>
+      {/* Ekran z sekcjami pod drzewem (administracja): tematy są nagłówkami
+          trzeciego stopnia, więc drzewo dostaje własny nagłówek drugiego. */}
+      {podDrzewem && tematyUkladu.length > 0 && <Heading stopien={2}>Tematy i lekcje</Heading>}
       {bladPublikacji && (
         <Notice wariant="error" tytul={bladPublikacji.tytul}>
           {bladPublikacji.tresc}
@@ -566,10 +767,19 @@ function EdytorTematow({
         onPrzenies={(zTematu, lekcja, doTematu, indeks) =>
           zmien((lokalny) => przeniesLekcje(lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks))
         }
-        // Lekcję zakłada istniejący edytor treści kursu (prowadzącego albo
-        // administracji); bez `topic_id` trafia na koniec ostatniego tematu
-        // (aneks kontraktu, pkt 3).
-        onDodajLekcje={() => wyjdz(() => przejdz(teksty.adresDodaniaLekcji(kurs.id)))}
+        // Administracja zakłada lekcję tutaj, w wybranym temacie (`topic_id`).
+        // Prowadzący — w istniejącym edytorze treści kursu; tam lekcja bez
+        // `topic_id` trafia na koniec ostatniego tematu (aneks kontraktu, pkt 3).
+        onDodajLekcje={(temat) => {
+          if (!zapis.nowaLekcja) {
+            wyjdz(() => przejdz(teksty.adresDodaniaLekcji(kurs.id)));
+            return;
+          }
+          zFormularzaLekcji(() => {
+            zamknijFormularzeLekcji();
+            setNowaLekcja({ temat: Number(temat), tytul: "", opis: "", czas: "" });
+          });
+        }}
         onZmienTytulLekcji={(_temat, lekcja, tytul) =>
           zmien((lokalny) => zmienTytulLekcji(lokalny, Number(lekcja), tytul), Number(lekcja))
         }
@@ -580,8 +790,86 @@ function EdytorTematow({
           edycjaLekcji
             ? (_temat, lekcja) => {
                 const id = Number(lekcja);
-                if (edytowanaLekcja === id) zamknijEdycjeLekcji();
-                else setEdytowanaLekcja(id);
+                zFormularzaLekcji(() => {
+                  if (edytowanaLekcja === id) {
+                    zamknijEdycjeLekcji();
+                    return;
+                  }
+                  zamknijFormularzeLekcji();
+                  setEdytowanaLekcja(id);
+                });
+              }
+            : undefined
+        }
+        // Tryb kolejności przy otwartym formularzu lekcji: pytanie, gdy są
+        // zmiany, a bez zmian formularz się zamyka. Fokus zostaje na przełączniku.
+        onPrzedTrybemKolejnosci={
+          edycjaLekcji
+            ? (wlacz) =>
+                zFormularzaLekcji(() => {
+                  zamknijFormularzeLekcji();
+                  wlacz();
+                  setFokus({ cel: "kolejnosc" });
+                })
+            : undefined
+        }
+        podTematem={
+          nowaLekcja
+            ? {
+                tematId: String(nowaLekcja.temat),
+                tresc: (
+                  <>
+                    {bledyNowejLekcji.ogolny && (
+                      <Notice wariant="error" tytul="Lekcja nie została dodana">
+                        {bledyNowejLekcji.ogolny}
+                      </Notice>
+                    )}
+                    <FormSection
+                      fokusPrzyOtwarciu
+                      tytul="Nowa lekcja"
+                      szerokosc="lekcja"
+                      pola={[
+                        {
+                          id: `${baza}-nowa-tytul`,
+                          etykieta: "Tytuł lekcji",
+                          rodzaj: "tekst",
+                          wymagane: true,
+                          wartosc: nowaLekcja.tytul,
+                          onZmiana: (tytul) => setNowaLekcja({ ...nowaLekcja, tytul }),
+                          blad: bledyNowejLekcji.title,
+                        },
+                        {
+                          id: `${baza}-nowa-opis`,
+                          etykieta: "Krótki opis lekcji",
+                          rodzaj: "wieloliniowy",
+                          wartosc: nowaLekcja.opis,
+                          onZmiana: (opis) => setNowaLekcja({ ...nowaLekcja, opis }),
+                          blad: bledyNowejLekcji.description,
+                        },
+                        {
+                          id: `${baza}-nowa-czas`,
+                          etykieta: "Czas trwania w sekundach",
+                          rodzaj: "liczba",
+                          wartosc: nowaLekcja.czas,
+                          onZmiana: (czas) => setNowaLekcja({ ...nowaLekcja, czas }),
+                          podpowiedz:
+                            "Lekcja z czasem 0 nie może zostać ukończona przez uczestnika. Treść, materiały i nagranie dodasz po założeniu lekcji.",
+                          blad: bledyNowejLekcji.duration,
+                        },
+                      ]}
+                      etykietaZapisz="Dodaj lekcję"
+                      onAnuluj={() => {
+                        if (dialog !== null) return;
+                        const temat = nowaLekcja.temat;
+                        zFormularzaLekcji(() => {
+                          zamknijFormularzeLekcji();
+                          setFokus({ cel: "dodaj", temat });
+                        });
+                      }}
+                      onZapisz={() => void dodajNowaLekcje()}
+                    />
+                  </>
+                ),
               }
             : undefined
         }
@@ -589,7 +877,14 @@ function EdytorTematow({
           edycjaLekcji && edytowanaLekcja !== null
             ? {
                 lekcjaId: String(edytowanaLekcja),
-                tresc: edycjaLekcji(edytowanaLekcja, { zamknij: zamknijEdycjeLekcji, zapisano: przyjmijZapisLekcji }),
+                tresc: edycjaLekcji(edytowanaLekcja, {
+                  zamknij: zamknijEdycjeLekcji,
+                  zapisano: przyjmijZapisLekcji,
+                  zmieniono: setLekcjaZmieniona,
+                  usunieto: () => przyjmijUsuniecieLekcji(edytowanaLekcja),
+                  przejdz: (adres) => zFormularzaLekcji(() => wyjdz(() => przejdz(adres))),
+                  wstrzymany: dialog !== null,
+                }),
               }
             : undefined
         }
@@ -605,7 +900,7 @@ function EdytorTematow({
   const glowna = podDrzewem ? (
     <div className={style.kolumna}>
       {drzewo}
-      {podDrzewem(kurs)}
+      {podDrzewem(kurs, lekcjeDrzewa)}
     </div>
   ) : (
     drzewo
@@ -677,6 +972,39 @@ function EdytorTematow({
                   onZmiana: (opis) => setFormularz({ ...formularz, opis }),
                   blad: bledyFormularza.opis,
                 },
+                ...(grupa === "admin"
+                  ? [
+                      {
+                        id: `${baza}-typ`,
+                        etykieta: "Typ",
+                        rodzaj: "wybor" as const,
+                        opcje: OPCJE_TYPU,
+                        wartosc: formularz.typ,
+                        onZmiana: (typ: string) => setFormularz({ ...formularz, typ: typ as CourseType }),
+                        blad: bledyFormularza.typ,
+                      },
+                      {
+                        id: `${baza}-grupa`,
+                        etykieta: "Grupa produktowa",
+                        rodzaj: "wybor" as const,
+                        opcje: OPCJE_GRUPY,
+                        wartosc: formularz.grupaProduktowa,
+                        onZmiana: (wybrana: string) =>
+                          setFormularz({ ...formularz, grupaProduktowa: wybrana as ProductGroup }),
+                        blad: bledyFormularza.grupaProduktowa,
+                      },
+                      {
+                        id: `${baza}-identyfikator`,
+                        etykieta: "Identyfikator",
+                        rodzaj: "tekst" as const,
+                        wymagane: true,
+                        wartosc: formularz.identyfikator,
+                        onZmiana: (identyfikator: string) => setFormularz({ ...formularz, identyfikator }),
+                        podpowiedz: "Krótka nazwa w adresie kursu: litery, cyfry, myślniki i podkreślenia.",
+                        blad: bledyFormularza.identyfikator,
+                      },
+                    ]
+                  : []),
               ]}
               onAnuluj={() => {
                 setFormularz(null);
@@ -691,10 +1019,38 @@ function EdytorTematow({
               Dane kursu
             </Heading>
             <Text>{kurs.description && kurs.description.trim() !== "" ? kurs.description : "Kurs bez opisu."}</Text>
+            {grupa === "admin" && (
+              <dl className={style.daneKursu}>
+                <div>
+                  <dt>Typ</dt>
+                  <dd>{COURSE_TYPE_LABELS[kurs.type]}</dd>
+                </div>
+                <div>
+                  <dt>Grupa produktowa</dt>
+                  <dd>{PRODUCT_GROUP_LABELS[kurs.product_group]}</dd>
+                </div>
+                <div>
+                  <dt>Identyfikator</dt>
+                  <dd>{kurs.slug}</dd>
+                </div>
+                <div>
+                  <dt>Pozycja w ścieżce</dt>
+                  <dd>{kurs.sequence_order === null ? "Poza ścieżką" : kurs.sequence_order}</dd>
+                </div>
+              </dl>
+            )}
             <div>
               <Button
                 poziom="quiet"
-                onClick={() => setFormularz({ tytul: kurs.title, opis: kurs.description ?? "" })}
+                onClick={() =>
+                  setFormularz({
+                    tytul: kurs.title,
+                    opis: kurs.description ?? "",
+                    identyfikator: kurs.slug,
+                    typ: kurs.type,
+                    grupaProduktowa: kurs.product_group,
+                  })
+                }
               >
                 Zmień dane kursu
               </Button>
@@ -752,7 +1108,11 @@ function EdytorTematow({
           wartosc={poleDialogu}
           blad={bladDialogu}
           onZmiana={setPoleDialogu}
-          onWycofaj={() => setDialog(null)}
+          onWycofaj={() => {
+            // „Zostań” wraca do formularza lekcji, nie na przycisk, który wywołał pytanie.
+            if (dialog.rodzaj === "porzuc-lekcje") setFokus({ cel: "formularz" });
+            setDialog(null);
+          }}
           onPotwierdz={() => void potwierdzDialog()}
         />
       )}
@@ -799,7 +1159,6 @@ function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPot
         tytul={`Usunąć temat „${dialog.temat.tytul}”?`}
         etykietaWycofania="Anuluj"
         etykietaPotwierdzenia="Usuń temat"
-        niebezpieczne
         onWycofaj={onWycofaj}
         onPotwierdz={onPotwierdz}
       >
@@ -813,11 +1172,23 @@ function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPot
         tytul="Porzucić wszystkie zmiany?"
         etykietaWycofania="Wróć do edycji"
         etykietaPotwierdzenia="Porzuć wszystko"
-        niebezpieczne
         onWycofaj={onWycofaj}
         onPotwierdz={onPotwierdz}
       >
         <Text>Drzewo wróci do ostatnio zapisanego układu tematów i lekcji.</Text>
+      </Dialog>
+    );
+  }
+  if (dialog.rodzaj === "porzuc-lekcje") {
+    return (
+      <Dialog
+        tytul="Porzucić niezapisane zmiany w lekcji?"
+        etykietaWycofania="Zostań"
+        etykietaPotwierdzenia="Porzuć zmiany"
+        onWycofaj={onWycofaj}
+        onPotwierdz={onPotwierdz}
+      >
+        <Text>To, co wpisano w formularzu lekcji, nie zostało zapisane i przepadnie.</Text>
       </Dialog>
     );
   }
@@ -826,7 +1197,6 @@ function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPot
       tytul="Wyjść bez zapisu?"
       etykietaWycofania="Zostań"
       etykietaPotwierdzenia="Wyjdź bez zapisu"
-      niebezpieczne
       onWycofaj={onWycofaj}
       onPotwierdz={onPotwierdz}
     >

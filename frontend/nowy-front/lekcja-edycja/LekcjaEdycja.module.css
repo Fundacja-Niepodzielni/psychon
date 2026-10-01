@@ -24,3 +24,22 @@
   flex-direction: column;
   gap: var(--space-16);
 }
+
+/* Formularz przy wierszu: odnośnik do ekranu lekcji i usunięcie lekcji. */
+.akcjeWiersza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+/* Powiadomienie o zapisie przy wierszu stoi w toku strony, pod formularzem —
+   reguła ekranu zdejmuje z niego przyklejenie do dołu okna. */
+.powiadomienieWiersza {
+  display: flex;
+}
+
+.powiadomienieWiersza [role="status"] {
+  position: static;
+  transform: none;
+}

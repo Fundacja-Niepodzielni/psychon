@@ -60,6 +60,12 @@
   padding: var(--space-8) 0 var(--space-12);
 }
 
+/* Treść pod listą lekcji tematu (np. formularz nowej lekcji). */
+.podTematem {
+  min-width: 0;
+  padding: var(--space-8) 0 var(--space-12);
+}
+
 .przeciagana {
   opacity: 0.45;
 }
