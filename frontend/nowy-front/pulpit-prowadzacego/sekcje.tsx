@@ -17,7 +17,7 @@ import {
   type RodzajAwarii,
   type Sekcja,
 } from "./dane";
-import { formatujDziesietny } from "./formatuj-dziesietny";
+import { formatujDziesietny } from "../wspolne/formatuj-dziesietny";
 import type { InstructorGroup } from "@/lib/h12/types";
 
 interface WspolneSekcji {
