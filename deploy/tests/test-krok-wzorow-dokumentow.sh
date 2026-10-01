@@ -22,16 +22,24 @@
 #      bledu - tak samo jak blad migracji;
 #   4. poziom skladniowy (przypadek 7): wiersz migracji i wiersz kroku sa
 #      samodzielnymi poleceniami najwyzszego poziomu skryptu.
+# Poza przypadkami biegnie stala kontrola rozpoznawania (przy kazdym biegu):
+# trzy zapisy wylaczajace przerywanie, w ktorych `errexit` stoi obok innej
+# nazwy opcji, przechodza przez ta sama funkcje wyciagajaca i ten sam warunek
+# co przypadek 3. Zapis nierozpoznany daje kod 1 z jego nazwa. Ma osobna linie
+# wyniku (`kontrola rozpoznawania: n/3`) i nie zmienia liczby przypadkow.
 #
 # CO PROBA ROZPOZNAJE (lista zamknieta):
 #   a. Wylaczenie przerywania na bledzie (errexit) albo pipefail poleceniem
 #      `set`, zapisanym w jednym wierszu miedzy `set -euo pipefail` a krokiem:
 #      `set +e`, `set +eu`, `set +o errexit`, `set +o pipefail`, zapis zlozony
 #      (`set -u +e`, `set +o errexit +o pipefail`), takze w wierszu z innym
-#      poleceniem (`cos; set +e`).
+#      poleceniem (`cos; set +e`). Inne nazwy opcji w tym samym poleceniu nie
+#      ukrywaja wylaczenia: `set +o noglob +o errexit`,
+#      `set -o noclobber +o errexit`.
 #   b. To samo poleceniem `shopt` z flagami `u` oraz `o` i nazwa `errexit`
 #      albo `pipefail`: `shopt -u -o errexit`, `shopt -uo errexit`,
-#      `shopt -o -u pipefail`, takze w wierszu z innym poleceniem.
+#      `shopt -o -u pipefail`, takze w wierszu z innym poleceniem. Inne nazwy
+#      opcji obok nie ukrywaja wylaczenia: `shopt -u -o noglob errexit`.
 #      Szukanie z punktow a-b jest tekstowe, po wierszach niebedacych
 #      komentarzem: trafienie w ciele funkcji, w galezi warunku albo w tekscie
 #      dokumentu wbudowanego tez sie liczy, a pozniejsze ponowne wlaczenie
@@ -70,14 +78,18 @@
 # z niego niczego (definicja funkcji nie uruchamia jej tresci, a `bash -n`
 # tylko czyta). Przypadki 4-6
 # wykonuja w osobnej powloce wylacznie: rozpoznane polecenia `set`/`shopt -o`
-# (same opcje i nazwy opcji) oraz wiersze bloku, ale tylko gdy kazdy wiersz
+# (same flagi i slowa z liter, cyfr i `_` - dowolne nazwy opcji, bez znakow
+# powloki, wiec zadne slowo z pliku nie uruchomi tu polecenia ani podstawienia;
+# zapis, ktorego nie da sie odtworzyc bez bledu, daje czerwien) oraz wiersze
+# bloku, ale tylko gdy kazdy wiersz
 # bloku jest komentarzem, wierszem `echo "<tekst bez podstawien>"` albo
 # wywolaniem atrapy `"${compose[@]}" <slowa>` bez znakow powloki. Blok
 # z jakimkolwiek innym wierszem NIE jest uruchamiany, a przypadki 4-6 sa
 # wtedy niezaliczone.
 #
-# Kody: 0 wszystkie zaliczone, 1 co najmniej jeden niezaliczony,
-# 2 nie da sie zmierzyc.
+# Kody: 0 wszystkie zaliczone i kontrola rozpoznawania 3/3, 1 co najmniej
+# jeden niezaliczony przypadek albo nierozpoznany zapis kontroli, 2 nie da sie
+# zmierzyc.
 set -uo pipefail
 
 TU="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -118,19 +130,26 @@ else
   niezaliczony "krok wzorow nie jest pierwszym wywolaniem po migracji"
 fi
 
+# Slowo po `set`/`shopt`: flaga (`-e`, `+o`) albo dowolna nazwa opcji - same
+# litery, cyfry i `_` (zadnych znakow powloki, `$`, cudzyslowow, `=`).
+SLOWO_OPCJI='[-+][A-Za-z]+|[A-Za-z0-9_]+'
 # Polecenia `set` z opcjami (nie `set --`) i polecenia `shopt` z flaga `o`
-# z wierszy niebedacych komentarzem, po jednym na wiersz wyjscia, w kolejnosci
-# z pliku. $1 = pierwszy wiersz zakresu (wlacznie), $2 = ostatni (wylacznie).
+# z tekstu czytanego ze standardowego wejscia (wiersze niebedace komentarzem),
+# po jednym na wiersz wyjscia, w kolejnosci wejscia.
 flagi_polecenia() { grep -oE '(^|[[:space:]])-[A-Za-z]+' <<< "$1" | tr -d ' \n-'; }
 polecenia_opcji() {
   local polecenie
-  awk -v od="$1" -v do_="$2" 'NR >= od && NR < do_ && $0 !~ /^[[:space:]]*#/' "$PLIK_DEPLOY" \
-    | grep -oE '(^|[;&|({[:space:]])(set|shopt)([[:space:]]+([-+][A-Za-z]+|errexit|pipefail|nounset|errtrace|xtrace))+' \
+  grep -oE "(^|[;&|({[:space:]])(set|shopt)([[:space:]]+($SLOWO_OPCJI))+" \
     | sed -E 's/^[;&|({[:space:]]+//' \
     | while IFS= read -r polecenie; do
         if [[ "$polecenie" == shopt* && "$(flagi_polecenia "$polecenie")" != *o* ]]; then continue; fi
         printf '%s\n' "$polecenie"
       done
+}
+# Wiersze pliku niebedace komentarzem. $1 = pierwszy wiersz zakresu (wlacznie),
+# $2 = ostatni (wylacznie).
+polecenia_opcji_z_pliku() {
+  awk -v od="$1" -v do_="$2" 'NR >= od && NR < do_ && $0 !~ /^[[:space:]]*#/' "$PLIK_DEPLOY" | polecenia_opcji
 }
 # Czy polecenie wylacza przerywanie na bledzie (errexit) albo pipefail.
 wylacza_przerywanie() {
@@ -142,6 +161,16 @@ wylacza_przerywanie() {
   fi
   grep -qE '[[:space:]]\+[A-Za-z]*e[A-Za-z]*([[:space:]]|$)|[[:space:]]\+[A-Za-z]*o[[:space:]]+(errexit|pipefail)([[:space:]]|$)' <<< " $1"
 }
+# Z tekstu na standardowym wejsciu wypisuje rozpoznane polecenia, ktore wylaczaja
+# przerywanie (jedna funkcja wyciagajaca i jeden warunek: dla przypadku 3
+# i dla kontroli rozpoznawania).
+wylaczenia_przerywania() {
+  local polecenie
+  polecenia_opcji | while IFS= read -r polecenie; do
+    [[ -n "$polecenie" ]] || continue
+    if wylacza_przerywanie "$polecenie"; then printf '%s\n' "$polecenie"; fi
+  done
+}
 
 W_BLOKU="$(nr_wiersza 'echo "Migracje i cache konfiguracji..."')"
 
@@ -151,11 +180,9 @@ ILE_WYLACZEN=0
 if [[ -n "$W_SET" && -n "$W_WZOROW" ]]; then
   while IFS= read -r POLECENIE; do
     [[ -n "$POLECENIE" ]] || continue
-    if wylacza_przerywanie "$POLECENIE"; then
-      ILE_WYLACZEN=$((ILE_WYLACZEN+1))
-      echo "  wylaczenie przerywania: $POLECENIE"
-    fi
-  done < <(polecenia_opcji "$((W_SET+1))" "$W_WZOROW")
+    ILE_WYLACZEN=$((ILE_WYLACZEN+1))
+    echo "  wylaczenie przerywania: $POLECENIE"
+  done < <(polecenia_opcji_z_pliku "$((W_SET+1))" "$W_WZOROW" | wylaczenia_przerywania)
 fi
 ILE_OSLON="$(grep -F -- 'DocumentTemplateSeeder' "$PLIK_DEPLOY" | grep -cE '\|\| *(true|:)')"
 echo "  wiersz 'set -euo pipefail': ${W_SET:-BRAK}, wylaczen przerywania miedzy nim a krokiem: $ILE_WYLACZEN, krok oslaniany '|| true': $ILE_OSLON"
@@ -174,7 +201,7 @@ fi
 
 # Opcje powloki, ktore plik FAKTYCZNIE ma w miejscu bloku: wszystkie polecenia
 # `set` i `shopt -o` od poczatku pliku do pierwszego wiersza bloku, w kolejnosci.
-OPCJE_PLIKU="$(polecenia_opcji 1 "${W_BLOKU:-1}")"
+OPCJE_PLIKU="$(polecenia_opcji_z_pliku 1 "${W_BLOKU:-1}")"
 
 # Blok wolno uruchomic tylko wtedy, gdy kazdy jego wiersz jest pusty, jest
 # komentarzem, wierszem `echo "<tekst bez podstawien>"` albo wywolaniem atrapy.
@@ -188,6 +215,17 @@ while IFS= read -r WIERSZ_BLOKU; do
     echo "wiersz bloku spoza dozwolonych (bloku nie uruchamiam): $WIERSZ_BLOKU"
   fi
 done <<< "$BLOK"
+# Odtwarzane sa tylko wiersze zlozone z `set`/`shopt`, flag i slow z liter,
+# cyfr i `_` (ten sam wzorzec slowa co przy wycinaniu); inny wiersz = nie
+# uruchamiam.
+WIERSZ_OPCJI_DOZWOLONY="^(set|shopt)([[:space:]]+($SLOWO_OPCJI))+\$"
+while IFS= read -r WIERSZ_OPCJI; do
+  [[ -n "$WIERSZ_OPCJI" ]] || continue
+  if ! [[ "$WIERSZ_OPCJI" =~ $WIERSZ_OPCJI_DOZWOLONY ]]; then
+    BLOK_DOZWOLONY=0
+    echo "polecenie opcji spoza dozwolonych (bloku nie uruchamiam): $WIERSZ_OPCJI"
+  fi
+done <<< "$OPCJE_PLIKU"
 echo "opcje powloki wyciete z pliku przed blokiem: $(printf '%s' "$OPCJE_PLIKU" | paste -sd';' -)"
 
 # Uruchamia blok z atrapa compose pod opcjami wycietymi z pliku. $1 = fragment
@@ -207,7 +245,10 @@ uruchom_blok() {
       return 0
     }
     compose=(atrapa)
-    eval "$2"
+    while IFS= read -r opcja; do
+      [[ -n "$opcja" ]] || continue
+      eval "$opcja" || exit 97
+    done <<< "$2"
     eval "$1"
   ' _ "$BLOK" "$OPCJE_PLIKU" 2>/dev/null)"
   kod=$?
@@ -299,11 +340,30 @@ else
   niezaliczony "migracja albo krok wzorow stoi w poleceniu zlozonym albo w liscie z ||, &&, !"
 fi
 
+# Stala kontrola rozpoznawania: zapisy z inna nazwa opcji obok `errexit` musza
+# zostac rozpoznane jako wylaczenie przerywania - ta sama funkcja i ten sam
+# warunek co w przypadku 3, tekst ze strumienia (bez plikow). Nie jest
+# przypadkiem i nie zmienia liczby przypadkow.
+echo
+echo "=== kontrola rozpoznawania (stala, poza przypadkami) ==="
+KONTROLA_ZAPISY=('set +o noglob +o errexit' 'set -o noclobber +o errexit' 'shopt -u -o noglob errexit')
+KONTROLA_OK=0
+for ZAPIS in "${KONTROLA_ZAPISY[@]}"; do
+  ROZPOZNANO="$(printf '%s\n' "$ZAPIS" | wylaczenia_przerywania)"
+  if [[ "$ROZPOZNANO" == "$ZAPIS" ]]; then
+    KONTROLA_OK=$((KONTROLA_OK+1))
+    echo "  rozpoznano: $ROZPOZNANO"
+  else
+    echo "  NIEROZPOZNANY zapis: $ZAPIS (rozpoznano: ${ROZPOZNANO:-nic})"
+  fi
+done
+
 echo
 echo "przypadki: $((PRZYPADKOW-BLEDOW))/$PRZYPADKOW zaliczone"
-if [[ "$BLEDOW" -eq 0 ]]; then
+echo "kontrola rozpoznawania: $KONTROLA_OK/${#KONTROLA_ZAPISY[@]}"
+if [[ "$BLEDOW" -eq 0 && "$KONTROLA_OK" -eq "${#KONTROLA_ZAPISY[@]}" ]]; then
   echo "PROBA KROKU WZOROW: WSZYSTKIE ZALICZONE"
   exit 0
 fi
-echo "PROBA KROKU WZOROW: $BLEDOW NIEZALICZONYCH"
+echo "PROBA KROKU WZOROW: $BLEDOW NIEZALICZONYCH, KONTROLA ROZPOZNAWANIA $KONTROLA_OK/${#KONTROLA_ZAPISY[@]}"
 exit 1
