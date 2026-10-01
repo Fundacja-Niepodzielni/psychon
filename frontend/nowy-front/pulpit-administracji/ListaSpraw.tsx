@@ -101,7 +101,11 @@ export function ListaSpraw({ widok, naNieprawidlowyAdres, naOdswiez }: Wlasciwos
       </div>
       <div className={style.stopka}>
         <span>Razem</span>
-        <Num wartosc={widok.razem} etykieta={jednostka(widok.razem, FORMY_SPRAW)} />
+        {/* Liczba z tym samym pustym miejscem po akcji co wiersze (od 640 px): stoi w kolumnie ich liczb, nie przy prawej krawędzi. */}
+        <div className={style.liczbaStopki}>
+          <Num wartosc={widok.razem} etykieta={jednostka(widok.razem, FORMY_SPRAW)} />
+          <span className={style.miejsceAkcji} aria-hidden="true" />
+        </div>
       </div>
     </section>
   );

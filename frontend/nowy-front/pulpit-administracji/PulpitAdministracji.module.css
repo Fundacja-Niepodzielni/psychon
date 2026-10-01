@@ -107,6 +107,32 @@
   }
 }
 
+/* Liczba w stopce „Razem”: od 640 px razem z pustym miejscem po akcji, tak samo
+   jak liczba w wierszu (`.akcje` + `.miejsceAkcji`), więc stoi w kolumnie liczb
+   wierszy. Miejsce nie ma tu własnej wysokości (stopka zostaje tak niska jak
+   dotąd). Poniżej 640 px opakowanie nie istnieje w układzie (`display: contents`),
+   a miejsce po akcji jest ukryte — stopka wygląda dokładnie jak przedtem. */
+.liczbaStopki {
+  display: contents;
+}
+
+@media (min-width: 640px) {
+  .liczbaStopki {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+  }
+
+  .liczbaStopki .miejsceAkcji {
+    min-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    line-height: 0;
+  }
+}
+
 /* Poniżej 640 px tytuł zajmuje pierwszą linię, a plakietka stoi pod nim; liczba
    stoi w osobnej linii pod treścią, jak w pozostałych wierszach listy. */
 @media (max-width: 639px) {
