@@ -363,7 +363,7 @@ export function Sprawy() {
             tytul="Sprawy"
             stopienNaglowka={2}
             naglowekTylkoDlaCzytnika
-            wierszeBezWciecia
+            naKarcie
             kolumny={KOLUMNY_SPRAW}
             wiersze={wierszeListy}
             pusty={pustyStanListy}

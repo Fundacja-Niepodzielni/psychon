@@ -35,6 +35,7 @@ export type RodzajKolumnyRecordList = "tekst" | "stan" | "liczba" | "akcja";
  * `plakietka`, kolumna `akcja` — `akcja`. Kolumna `liczba` bez `klucz` bierze
  * `wartosc` wiersza z `jednostkaSumy` (i niesie sumę „Razem” w stopce);
  * pozostałe kolumny `liczba` i `tekst` biorą komórkę `komorki[klucz]`.
+ * Nazwa kolumny `liczba` jest jednostką komórki z samą liczbą.
  */
 export interface KolumnaRecordList {
   /** Nazwa kolumny: nagłówek od 640 px, podpis wartości poniżej 640 px. */
@@ -43,8 +44,16 @@ export interface KolumnaRecordList {
   klucz?: string;
 }
 
-/** Komórka kolumny z `klucz`: liczba z jednostką (przez `Num`) albo napis. */
-export type KomorkaRecordList = { tekst: string } | { liczba: number; jednostka: string };
+/**
+ * Komórka kolumny z `klucz`: liczba z jednostką (przez `Num`), napis albo sama
+ * liczba. Sama liczba (`bezJednostki`) jest dla kolumn, w których znaczenie
+ * liczby niesie nazwa kolumny — nagłówek od 640 px, podpis przy wartości
+ * poniżej (np. miejsce w kolejności).
+ */
+export type KomorkaRecordList =
+  | { tekst: string }
+  | { liczba: number; jednostka: string }
+  | { liczba: number; bezJednostki: true };
 
 export interface WierszRecordList {
   id: string;
@@ -137,10 +146,11 @@ function komorkaWartosci(
   if (kolumna.klucz !== undefined) {
     const komorka = wiersz.komorki?.[kolumna.klucz];
     if (!komorka) return null;
-    return "liczba" in komorka ? (
+    if (!("liczba" in komorka)) return <span>{komorka.tekst}</span>;
+    return "jednostka" in komorka ? (
       <Num wartosc={komorka.liczba} etykieta={komorka.jednostka} />
     ) : (
-      <span>{komorka.tekst}</span>
+      <span className={style.samaLiczba}>{komorka.liczba.toLocaleString("pl-PL")}</span>
     );
   }
   if (kolumna.rodzaj === "liczba" && maJednostke && wiersz.wartosc !== undefined) {

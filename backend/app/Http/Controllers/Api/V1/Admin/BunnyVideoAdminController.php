@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
+use App\Services\H08\RecordingIdIndex;
 use App\Services\Video\LessonRecording;
 use App\Services\Video\RecordingStateRefresher;
 use App\Services\Video\RecordingStatus;
@@ -172,7 +173,7 @@ class BunnyVideoAdminController extends Controller
                 $fresh->save();
             });
         } catch (UniqueConstraintViolationException $e) {
-            if (! str_contains($e->getMessage(), self::PENDING_INDEX)) {
+            if (! $this->isRecordingIndexViolation($e)) {
                 throw $e;
             }
 
@@ -180,6 +181,18 @@ class BunnyVideoAdminController extends Controller
         }
 
         $lesson->refresh();
+    }
+
+    /**
+     * Naruszenie jednego z dwóch indeksów niepowtarzalności nagrania: nagrania
+     * odtwarzanego (`lessons_video_provider_id_unique`) albo nagrania „w drodze”
+     * (`lessons_video_pending_id_unique`). Rozpoznanie po NAZWIE indeksu —
+     * naruszenie innego indeksu lekcji zostaje błędem, jakim było.
+     */
+    private function isRecordingIndexViolation(UniqueConstraintViolationException $e): bool
+    {
+        return RecordingIdIndex::isViolatedBy($e)
+            || str_contains($e->getMessage(), '"'.self::PENDING_INDEX.'"');
     }
 
     /**

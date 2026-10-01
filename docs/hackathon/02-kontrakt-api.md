@@ -1414,6 +1414,102 @@ Kod: `routes/api/h08.php`,
 
 ---
 
+## Aneks — identyfikator nagrania niepowtarzalny w bazie (H08)
+
+Domyka punkt 3 („Czego ten aneks nie wprowadza”) aneksu „nagranie lekcji tylko
+z wgrania”: niepowtarzalności identyfikatora nagrania pilnuje teraz indeks bazy,
+porównanie nie rozróżnia wielkości liter, a ścieżka wgrania nie przypisze
+identyfikatora, który trzyma już inna lekcja. Aneks opisuje stan kodu: bez nowych
+tras, kodów błędu, slugów audytu i typów powiadomień.
+
+### 1. Zapis małymi literami
+
+Identyfikator nagrania (`lessons.video_provider_id`) trafia do bazy w postaci
+znormalizowanej: bez białych znaków na brzegach i małymi literami; pusta wartość
+znaczy „brak nagrania” (`null`). Dotyczy każdego zapisu kolumny z API:
+
+- zapisu lekcji w panelu administracji i w panelu prowadzącego
+  (`POST`/`PATCH` lekcji),
+- ścieżki wgrania (`POST /admin/lessons/{id}/video-uploads`).
+
+Odpowiedź zasobu lekcji niesie wartość zapisaną, a odczyty (stan przetwarzania,
+link do odtwarzania) używają wartości zapisanej. Wzorzec kształtu (od 1 do 64
+znaków z klasy `A-Z a-z 0-9 -`) bez zmian: wielkie litery są przyjmowane, ale
+zapisywane małymi.
+
+Zwrot identyfikatora różniącego się od zapisanego wyłącznie wielkością liter nie
+jest zmianą nagrania: wartość zapisana wcześniej z wielkimi literami zostaje bez
+zmian, zamiast przepisywać się przy edycji innego pola. W odpowiedzi ścieżki
+wgrania `video_id` i podpis TUS niosą identyfikator tak, jak zwrócił go dostawca;
+do lekcji trafia jego postać znormalizowana.
+
+### 2. Porównanie bez rozróżniania wielkości liter
+
+Reguła „już przypisany” w żądaniach administracji porównuje postać
+znormalizowaną: `MOCK-ABC` przy zajętym `mock-abc` — tak samo jak ` mock-abc `
+z białymi znakami na brzegach — daje `422 validation_failed` z dotychczasowym
+zdaniem w `errors.video_provider_id`:
+
+```json
+{ "error": { "status": 422, "code": "validation_failed",
+    "message": "Popraw zaznaczone pola.",
+    "errors": { "video_provider_id": [
+      "Ten identyfikator nagrania jest już przypisany do innej lekcji." ] } } }
+```
+
+Reguła prowadzącego (aneks „nagranie lekcji tylko z wgrania”) jest bez zmian:
+prowadzący może odesłać wyłącznie wartość zapisaną.
+
+### 3. Wyścig po przejściu reguły żądania: 422
+
+Dwa równoczesne zapisy tego samego, wolnego jeszcze identyfikatora do dwóch
+lekcji mogą oba przejść regułę żądania. Przegrany w bazie zapis (naruszenie
+indeksu z punktu 5) kończy się tą samą odmową co reguła: `422 validation_failed`,
+błąd na `video_provider_id`, to samo zdanie i ta sama koperta — zamiast `500`.
+Nic nie jest zapisywane. Rozpoznanie idzie po NAZWIE indeksu: naruszenie innego
+indeksu (np. kolejności lekcji w kursie) nie jest nazywane zajętym nagraniem.
+
+### 4. Ścieżka wgrania: 502 `bunny_error`
+
+Gdy dostawca nagrań zwróci identyfikator, który trzyma już inna żywa lekcja
+(po zrównaniu wielkości liter), trasa wgrania zwraca `502 bunny_error` ze zdaniem
+„Bunny Stream zwrócił identyfikator nagrania, który jest już przypisany do innej
+lekcji.” Lekcja zostaje bez zmian. Ten sam identyfikator we własnej lekcji nie
+jest błędem; identyfikator lekcji usuniętej jest wolny.
+
+### 5. Dane
+
+Migracja addytywna `2026_10_01_205639_add_unique_recording_id_index_to_lessons.php`
+zakłada indeks częściowy `lessons_video_provider_id_unique`:
+
+```sql
+CREATE UNIQUE INDEX lessons_video_provider_id_unique
+ON lessons (lower(video_provider_id))
+WHERE deleted_at IS NULL AND video_provider_id IS NOT NULL AND video_provider_id <> ''
+```
+
+Indeks dotyczy tylko żywych lekcji z niepustym identyfikatorem — wiele lekcji bez
+nagrania jest normalne, a lekcja usunięta miękko zwalnia identyfikator. `down()`
+usuwa wyłącznie ten indeks. Migracja nie zmienia danych: gdy w żywych lekcjach
+znajdzie powtórzony identyfikator (po zrównaniu wielkości liter), zatrzymuje się
+z liczbą powtórzeń w komunikacie — bez wartości identyfikatorów — i niczego nie
+zakłada.
+
+### 6. Czego ten aneks nie wprowadza
+
+Zastane identyfikatory z wielkimi literami nie są przepisywane (migracja nie
+zmienia danych); zapis przepisuje je dopiero przy faktycznej zmianie nagrania.
+Ścieżka przywrócenia lekcji usuniętej miękko w kodzie nie istnieje — gdyby
+powstała, baza odrzuci przywrócenie nad lekcją trzymającą ten sam identyfikator.
+Wideo utworzone u dostawcy, którego identyfikator został odrzucony w punkcie 4,
+nie jest usuwane po stronie dostawcy.
+
+Kod: `Services/Video/VideoProviderId.php`, `Services/H08/RecordingIdIndex.php`,
+`Services/H08/LessonWriter.php`, `Rules/RecordingIdNotTaken.php`,
+`Http/Controllers/Api/V1/Admin/BunnyVideoAdminController.php`.
+
+---
+
 ## Aneks — stan nagrania lekcji (H08)
 
 Lekcja pamięta stan swojego nagrania w bazie, nowe nagranie zastępuje dotychczasowe dopiero
@@ -1516,6 +1612,20 @@ logiczna):
   co pozwalałoby wysyłać bez ponownego uprawnienia.
 - Identyfikator od dostawcy, który inna żywa lekcja ma już jako odtwarzany albo w drodze →
   `502 bunny_error`, lekcja bez zmian.
+- Identyfikator nagrania w drodze jest zapisywany tak samo jak odtwarzany: bez białych
+  znaków na brzegach i **małymi literami**. Ścieżka wysyłki nie zapisuje już
+  `video_provider_id` (punkt 1 aneksu „identyfikator nagrania niepowtarzalny w bazie” w
+  części o ścieżce wgrania): identyfikator trafia do niego dopiero przy podmianie, w tej
+  samej, znormalizowanej postaci. Przy wznowieniu `video_id` i podpis niosą postać zapisaną.
+- Niepowtarzalności pilnują dwa indeksy bazy — nagrania odtwarzanego
+  (`lessons_video_provider_id_unique`) i nagrania w drodze
+  (`lessons_video_pending_id_unique`). Wyścig przegrany na którymkolwiek z nich przy
+  rozpoczęciu wysyłki daje to samo `502 bunny_error` z tym samym zdaniem, lekcja bez zmian.
+  Wyścig przegrany na indeksie nagrania odtwarzanego przy podmianie niczego nie zapisuje:
+  lekcja zachowuje dotychczasowe nagranie odtwarzane i nagranie w drodze.
+- Zapis lekcji przez administrację odmawia identyfikatora, który inna żywa lekcja ma jako
+  odtwarzany **albo w drodze** — `422 validation_failed` z dotychczasowym zdaniem w
+  `errors.video_provider_id`, bez ujawniania, w której kolumnie stoi identyfikator.
 
 ### 5. Braki kursu i reguła publikacji
 

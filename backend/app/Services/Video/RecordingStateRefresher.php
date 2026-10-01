@@ -3,6 +3,8 @@
 namespace App\Services\Video;
 
 use App\Models\Lesson;
+use App\Services\H08\RecordingIdIndex;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -115,6 +117,24 @@ class RecordingStateRefresher
 
     private function apply(Lesson $lesson, string $askedId, string $status, int $length): void
     {
+        try {
+            $this->write($lesson, $askedId, $status, $length);
+        } catch (UniqueConstraintViolationException $e) {
+            // Podmiana przegrała wyścig o identyfikator z zapisem innej lekcji:
+            // indeks nagrania odtwarzanego jej nie przepuścił, transakcja
+            // niczego nie zapisała. Lekcja zachowuje dotychczasowe nagranie.
+            if (! RecordingIdIndex::isViolatedBy($e)) {
+                throw $e;
+            }
+
+            Log::warning('Gotowe nagranie ma identyfikator odtwarzany w innej lekcji — podmiana wstrzymana.');
+        }
+
+        $lesson->refresh();
+    }
+
+    private function write(Lesson $lesson, string $askedId, string $status, int $length): void
+    {
         DB::transaction(function () use ($lesson, $askedId, $status, $length): void {
             $fresh = Lesson::query()->whereKey($lesson->getKey())->lockForUpdate()->first();
 
@@ -143,8 +163,6 @@ class RecordingStateRefresher
 
             $fresh->save();
         });
-
-        $lesson->refresh();
     }
 
     private function applyToPending(Lesson $fresh, LessonRecording $recording, string $status, int $length): void
