@@ -14,6 +14,11 @@ interface WlasciwosciBreadcrumbs {
    * skrócone". Domyślnie "pelne" — dotychczasowe wywołania niezmienione.
    */
   wariant?: "pelne" | "skrocone";
+  /**
+   * Ostatnia pozycja (bieżąca) dostaje `aria-current="page"`. Domyślnie
+   * wyłączone — poza nową ramką panelu znacznik się nie pojawia.
+   */
+  oznaczBiezaca?: boolean;
 }
 
 interface WezelBreadcrumbs {
@@ -32,7 +37,7 @@ interface WezelBreadcrumbs {
  * — 13px `--muted`). Przy ≤2 pozycjach nie ma czego zwinąć — renderuje się
  * jak "pełne" (zwinięcie dwóch pozycji w jedną nie skróciłoby niczego).
  */
-export function Breadcrumbs({ pozycje, wariant = "pelne" }: WlasciwosciBreadcrumbs) {
+export function Breadcrumbs({ pozycje, wariant = "pelne", oznaczBiezaca = false }: WlasciwosciBreadcrumbs) {
   if (pozycje.length === 0) {
     throw new Error("Breadcrumbs: lista pozycji nie może być pusta");
   }
@@ -54,6 +59,7 @@ export function Breadcrumbs({ pozycje, wariant = "pelne" }: WlasciwosciBreadcrum
             <li
               key={`${wezel.etykieta}-${indeks}`}
               className={style.pozycja}
+              aria-current={ostatnia && oznaczBiezaca ? "page" : undefined}
               data-testid={`slad-pozycja-${indeks}`}
             >
               {wezel.elipsa ? (

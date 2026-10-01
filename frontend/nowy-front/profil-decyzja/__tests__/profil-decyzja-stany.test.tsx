@@ -16,6 +16,8 @@ import { DostawcaRamki } from "@/design-system/szablony/KontekstRamki";
 const back = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back, push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
+  // Nowa ramka składa okruszek ze ścieżki: wniosek stoi pod pozycją menu „Profile psychologa”.
+  usePathname: () => "/admin/profile/12",
 }));
 vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 
@@ -387,7 +389,14 @@ describe("Wniosek o profil — decyzja: okruszki", () => {
   it("w nowej ramce: bez „Wstecz”, pierwsze łącze = pozycja menu „Profile psychologa” → /admin/profile", async () => {
     trasy({ show: WNIOSEK });
     render(
-      <DostawcaRamki>
+      <DostawcaRamki
+        menu={[
+          {
+            naglowek: "Dotychczasowy panel",
+            pozycje: [{ etykieta: "Profile psychologa", href: "/admin/profile", biezaca: true }],
+          },
+        ]}
+      >
         <ProfilDecyzja id="12" />
       </DostawcaRamki>,
     );
@@ -395,7 +404,10 @@ describe("Wniosek o profil — decyzja: okruszki", () => {
     expect(screen.queryByRole("button", { name: "Wstecz" })).toBeNull();
     const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
     const lacza = within(okruszki).getAllByRole("link");
-    expect(lacza.map((a) => [a.textContent?.trim(), a.getAttribute("href")])).toEqual([["Profile psychologa", "/admin/profile"]]);
+    expect(lacza.map((a) => [a.textContent?.trim(), a.getAttribute("href")])).toEqual([
+      ["Administracja", "/admin"],
+      ["Profile psychologa", "/admin/profile"],
+    ]);
     expect(okruszki.textContent).toContain("Wniosek o profil");
   });
 
