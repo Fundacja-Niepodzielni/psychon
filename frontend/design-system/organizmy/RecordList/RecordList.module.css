@@ -309,11 +309,13 @@
 
   /* Akcja wiersza jako odnośnik ze strzałką („Otwórz ›”), dla odnośnika i dla
      przycisku jednakowo; prawa krawędź pola klikalnego kończy się na krawędzi
-     wiersza (bez przewijania poziomego). */
+     wiersza (bez przewijania poziomego). Odstęp napisu od strzałki daje tylko
+     margines strzałki — przycisk nie dokłada własnego odstępu między dziećmi. */
   .akcja a,
   .akcja button {
     display: inline-flex;
     align-items: center;
+    gap: 0;
     box-sizing: border-box;
     min-height: var(--hit-min);
     margin: 0;

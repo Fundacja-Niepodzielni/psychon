@@ -139,6 +139,7 @@ interface PomiarAkcji {
   znacznik: string;
   tekst: string;
   ramka: string;
+  odstepDzieci: string;
   strzalkaWidoczna: boolean;
   nazwaDostepna: string | null;
 }
@@ -198,6 +199,7 @@ async function zmierz(page: Page, lista: OpisListy): Promise<PomiarListy> {
               znacznik: element.tagName,
               tekst: (element.textContent ?? "").trim(),
               ramka: getComputedStyle(element).borderTopWidth,
+              odstepDzieci: getComputedStyle(element).columnGap,
               strzalkaWidoczna: strzalka !== null && widoczny(strzalka),
               nazwaDostepna: element.getAttribute("aria-label"),
             }
@@ -335,6 +337,8 @@ for (const lista of LISTY) {
         expect(wiersz.akcja.tekst).toMatch(new RegExp(`^${lista.akcja}\\s*›$`));
         expect(wiersz.akcja.strzalkaWidoczna).toBe(true);
         expect(wiersz.akcja.ramka).toBe("0px");
+        // Odnośnik i przycisk wyglądają jednakowo: napis od strzałki dzieli tylko margines strzałki.
+        expect(wiersz.akcja.odstepDzieci, "odstęp między napisem a strzałką poza marginesem strzałki").toBe("0px");
         expect(wiersz.komorki.at(-1)!.lewa, "akcja z prawej strony treści").toBeGreaterThanOrEqual(nazwa.prawa);
       }
     }
