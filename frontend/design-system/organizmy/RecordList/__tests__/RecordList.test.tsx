@@ -105,6 +105,15 @@ describe("RecordList — nagłówek tylko dla czytnika i wiersze bez wcięcia", 
     expect(screen.getByRole("heading", { level: 2, name: "Sprawy" }).parentElement?.className).toMatch(/ukryte/);
   });
 
+  it("punkt odniesienia dla ukrytego nagłówka (position) dostaje wyłącznie lista z naglowekTylkoDlaCzytnika", () => {
+    const { container, rerender } = render(<RecordList tytul="Sprawy" wiersze={wiersze(1)} pusty={PUSTY} />);
+    expect((container.querySelector("section") as HTMLElement).className).not.toMatch(/sekcjaZUkrytym/);
+    rerender(<RecordList tytul="Sprawy" naglowekTylkoDlaCzytnika wiersze={wiersze(1)} pusty={PUSTY} />);
+    expect((container.querySelector("section") as HTMLElement).className).toMatch(/sekcjaZUkrytym/);
+    rerender(<RecordList tytul="Sprawy" naglowekTylkoDlaCzytnika wiersze={[]} pusty={PUSTY} />);
+    expect((container.querySelector("section") as HTMLElement).className).toMatch(/sekcjaZUkrytym/);
+  });
+
   it("wierszeBezWciecia przekazuje bezWciecia do każdego wiersza; pola wiersza docierają do ListRow", () => {
     const { container } = render(
       <RecordList
