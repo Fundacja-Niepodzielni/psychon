@@ -44,11 +44,22 @@ final class DocumentTemplateRenderer
 
         $template = DocumentTemplate::query()->where('type', $type)->first();
 
-        if ($template === null || DocumentTemplateFields::violation($type, $template->content) !== null) {
+        if ($template === null || self::ignoresStoredContent($type, $template->content)) {
             return self::fromFile($view, $data);
         }
 
         return DocumentTemplateFields::render($type, $template->content, $data);
+    }
+
+    /**
+     * Czy tresc z bazy jest pomijana, a dokument powstaje z pliku w repozytorium.
+     *
+     * Jedno zrodlo prawdy: tym samym warunkiem generator wybiera plik, a odczyt
+     * wzoru ustawia znacznik `current_version_unused`.
+     */
+    public static function ignoresStoredContent(string $type, string $content): bool
+    {
+        return DocumentTemplateFields::violation($type, $content) !== null;
     }
 
     /**

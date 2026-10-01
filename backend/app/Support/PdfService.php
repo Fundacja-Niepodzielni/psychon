@@ -63,8 +63,7 @@ final class PdfService
      */
     public static function bytesFromHtml(string $html): string
     {
-        $dompdf = new Dompdf(self::options());
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf = self::engine();
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
 
@@ -72,9 +71,22 @@ final class PdfService
     }
 
     /**
-     * Ustawienia silnika — jedno miejsce, czytane też przez próby.
+     * Silnik gotowy do generowania — jedyne miejsce, w którym powstaje. Próby
+     * czytają ustawienia z obiektu zwróconego stąd, czyli takiego samego, jakim
+     * generowany jest każdy dokument, a nie z kopii ustawień.
      */
-    public static function options(): Options
+    public static function engine(): Dompdf
+    {
+        $dompdf = new Dompdf(self::options());
+        $dompdf->setPaper('A4', 'portrait');
+
+        return $dompdf;
+    }
+
+    /**
+     * Ustawienia silnika — jedno miejsce.
+     */
+    private static function options(): Options
     {
         $options = new Options;
         $options->setIsRemoteEnabled(false);

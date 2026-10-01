@@ -208,6 +208,133 @@ class DocumentTemplateNoCompilationTest extends TestCase
         );
     }
 
+    public function test_stored_content_with_an_unknown_field_gives_the_document_from_the_file_and_stays_out_of_the_log(): void
+    {
+        DocumentTemplate::create([
+            'type' => 'agreement',
+            'content' => '<p>tajny-tekst-wzoru {{ $password }}</p>',
+            'version' => 2,
+            'updated_by' => null,
+        ]);
+
+        $logged = [];
+        Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$logged): void {
+            $logged[] = $event->message.' '.json_encode($event->context);
+        });
+
+        $case = $this->goldenCase('agreement');
+        $html = DocumentTemplateRenderer::html($case['view'], $case['data']);
+
+        $this->assertSame($this->golden('agreement'), $html);
+        $this->assertStringStartsWith('%PDF', PdfService::renderBytes($case['view'], $case['data']));
+        $this->assertSame([], array_values(array_filter(
+            $logged,
+            static fn (string $line): bool => str_contains($line, 'tajny-tekst-wzoru') || str_contains($line, 'password'),
+        )));
+    }
+
+    public function test_reading_a_template_says_whether_its_current_version_is_unused(): void
+    {
+        $this->actingAsRole('project_manager');
+
+        // Stary zapis: plik widoku skopiowany do bazy bajt w bajt.
+        DocumentTemplate::create([
+            'type' => 'agreement',
+            'content' => File::get(resource_path('views/documents/volunteer-agreement.blade.php')),
+            'version' => 1,
+            'updated_by' => null,
+        ]);
+        // Zapis pól: wiersz taki, jaki zakłada ziarno.
+        DocumentTemplate::create([
+            'type' => 'certificate',
+            'content' => File::get(resource_path('document-templates/certificate.html')),
+            'version' => 1,
+            'updated_by' => null,
+        ]);
+
+        $this->getJson('/api/v1/document-templates/agreement')
+            ->assertOk()
+            ->assertJsonPath('data.current_version_unused', true);
+        $this->getJson('/api/v1/document-templates/certificate')
+            ->assertOk()
+            ->assertJsonPath('data.current_version_unused', false);
+
+        // Zapis w zapisie pól zdejmuje znacznik — i w odpowiedzi zapisu, i w odczycie.
+        $this->putJson('/api/v1/document-templates/agreement', ['content' => '<p>Numer {{ $number }}</p>'])
+            ->assertOk()
+            ->assertJsonPath('data.current_version_unused', false);
+        $this->getJson('/api/v1/document-templates/agreement')
+            ->assertOk()
+            ->assertJsonPath('data.current_version_unused', false);
+    }
+
+    /**
+     * Znacznik odczytu i wybór generatora to jeden warunek: dla każdej treści
+     * znacznik jest prawdziwy dokładnie wtedy, gdy dokument powstaje z pliku.
+     */
+    public function test_unused_flag_is_true_exactly_when_the_generator_takes_the_file(): void
+    {
+        $this->actingAsRole('super_admin');
+        $case = $this->goldenCase('agreement');
+
+        $contents = [
+            'stary zapis' => File::get(resource_path('views/documents/volunteer-agreement.blade.php')),
+            'nieznane pole' => '<p>inny-dokument {{ $password }}</p>',
+            'zapis pól' => '<p>inny-dokument {{ $number }}</p>',
+            'sam tekst' => '<p>inny-dokument</p>',
+        ];
+
+        $template = DocumentTemplate::create(['type' => 'agreement', 'content' => 'x', 'version' => 1, 'updated_by' => null]);
+
+        foreach ($contents as $name => $content) {
+            $template->forceFill(['content' => $content])->save();
+
+            $unused = $this->getJson('/api/v1/document-templates/agreement')->assertOk()->json('data.current_version_unused');
+            $fromFile = DocumentTemplateRenderer::html($case['view'], $case['data']) === $this->golden('agreement');
+
+            $this->assertIsBool($unused, $name);
+            $this->assertSame($fromFile, $unused, $name);
+        }
+    }
+
+    public function test_saving_the_old_notation_unchanged_is_refused_with_a_reason_in_plain_polish(): void
+    {
+        $this->actingAsRole('super_admin');
+
+        $old = File::get(resource_path('views/documents/volunteer-agreement.blade.php'));
+        $template = DocumentTemplate::create(['type' => 'agreement', 'content' => $old, 'version' => 1, 'updated_by' => null]);
+        DocumentTemplateVersion::create([
+            'document_template_id' => $template->id,
+            'type' => 'agreement',
+            'content' => $old,
+            'version' => 1,
+            'updated_by' => null,
+        ]);
+        $auditBefore = DB::table('audit_log')->count();
+
+        $logged = [];
+        Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$logged): void {
+            $logged[] = $event->message.' '.json_encode($event->context);
+        });
+
+        $response = $this->putJson('/api/v1/document-templates/agreement', ['content' => $old]);
+
+        $response->assertStatus(422)->assertJsonPath('error.code', 'validation_failed');
+
+        $message = (string) $response->json('error.errors.content.0');
+        $this->assertStringContainsString('Wolno wstawić wyłącznie pola z listy tego dokumentu', $message);
+        $this->assertStringContainsString('number, edition_name', $message);
+        $this->assertDoesNotMatchRegularExpression('/blade|php|dompdf|szablon/i', $message);
+
+        $this->assertDatabaseHas('document_templates', ['type' => 'agreement', 'version' => 1]);
+        $this->assertSame(1, DocumentTemplateVersion::query()->count());
+        $this->assertSame($auditBefore, DB::table('audit_log')->count());
+        $this->assertSame([], array_values(array_filter(
+            $logged,
+            static fn (string $line): bool => str_contains($line, 'Porozumienie') || str_contains($line, 'edition_name'),
+        )));
+    }
+
     public function test_content_limit_counts_characters_not_bytes(): void
     {
         $this->seed(DocumentTemplateSeeder::class);
@@ -255,7 +382,8 @@ class DocumentTemplateNoCompilationTest extends TestCase
 
     public function test_pdf_engine_is_closed_in_the_document_frame(): void
     {
-        $options = PdfService::options();
+        // Ustawienia czytane z silnika, którym generowany jest każdy dokument.
+        $options = PdfService::engine()->getOptions();
 
         $this->assertSame([realpath(resource_path('pdf-frame'))], $options->getChroot());
         $this->assertSame(['.gitkeep'], array_values(array_diff((array) scandir(resource_path('pdf-frame')), ['.', '..'])));

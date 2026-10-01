@@ -131,6 +131,39 @@ final class DocumentTemplateFieldsTest extends TestCase
         );
     }
 
+    public function test_value_with_a_script_tag_leaves_the_document_as_text_not_as_a_tag(): void
+    {
+        $html = DocumentTemplateFields::render(
+            'agreement',
+            '<td>{{ $first_name }}</td>',
+            ['first_name' => '<script>alert(1)</script>'],
+        );
+
+        $this->assertSame('<td>&lt;script&gt;alert(1)&lt;/script&gt;</td>', $html);
+        $this->assertStringNotContainsString('<script', $html);
+    }
+
+    /**
+     * Podstawianie jest jednoprzebiegowe: wynik podstawienia nie jest ponownie
+     * przeszukiwany, więc wartość, która sama wygląda jak miejsce na pole,
+     * zostaje w dokumencie dosłownym tekstem — niezależnie od kolejności pól.
+     */
+    public function test_value_that_looks_like_a_field_is_not_substituted_a_second_time(): void
+    {
+        $data = ['number' => 'PW/2026/001', 'pesel' => '00000000000', 'edition_name' => 'Edycja'];
+        $value = '{{ $number }} {{ number }} {{ $pesel }} {{ $edition_name }}';
+
+        foreach (['first_name', 'last_name', 'phone', 'edition_ends_at', 'generated_at'] as $field) {
+            $html = DocumentTemplateFields::render(
+                'agreement',
+                '[{{ $'.$field.' }}] {{ $number }} {{ $pesel }} {{ $edition_name }}',
+                [$field => $value] + $data,
+            );
+
+            $this->assertSame('['.$value.'] PW/2026/001 00000000000 Edycja', $html, $field);
+        }
+    }
+
     public function test_missing_values_get_the_single_default_of_the_field(): void
     {
         $values = DocumentTemplateFields::values('agreement', ['first_name' => 'Zażółć', 'address_zip' => null, 'phone' => ['tablica']]);
