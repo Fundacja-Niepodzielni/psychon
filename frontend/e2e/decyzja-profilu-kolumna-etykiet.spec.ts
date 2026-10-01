@@ -276,6 +276,12 @@ for (const { nazwa, viewport } of SZEROKOSCI) {
       expect(naglowek.kolor, "tekst plakietki przy h1 == --warn").toBe(token.kolor);
       expect(wzorzec.tlo, "tło plakietki w wierszu listy == --warn-bg").toBe(token.tlo);
       expect(naglowek.obrys, "plakietka przy h1 bez obrysu").toBe("none");
+
+      // Plakietka stoi w linii pod h1 (ekran nie ma opisu, więc sama w tej linii), nie obok niego.
+      const bH1 = (await h1.boundingBox())!;
+      const bPlakietki = (await plakietkaNaglowka.boundingBox())!;
+      expect(bPlakietki.y, "plakietka pod h1 (top >= bottom h1)").toBeGreaterThanOrEqual(bH1.y + bH1.height - 1);
+      expect(Math.abs(bPlakietki.x - bH1.x), "lewa krawędź plakietki == lewa krawędź h1").toBeLessThanOrEqual(2);
     });
   });
 }

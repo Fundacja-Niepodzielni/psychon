@@ -68,6 +68,9 @@ interface WlasciwosciPageHeader {
  * zmierzone poligonem atomów, patrz komentarz w Link.module.css) — z
  * zapasem powyżej progu, nie tylko go osiągając.
  *
+ * Plakietka stanu stoi w linii pod tytułem, po kropce środkowej za opisem (makieta 2.0.4,
+ * `.head .sub`); bez opisu stoi sama w tej linii.
+ *
  * W nowej ramce panelu (`useWRamce()`, ramka z makiety 2.0.4) nagłówek nie ma
  * przycisku powrotu, a okruszki pokazuje tylko ekran, którego okruszki mają
  * łącza (ekran szczegółu): łącza w kolejności plus bieżąca pozycja na końcu.
@@ -96,10 +99,23 @@ export function PageHeader({
     <>
       <div className={style.tytulWiersz}>
         <Heading stopien={1}>{tytul}</Heading>
-        {status && <Badge wariant={status.wariant}>{status.etykieta}</Badge>}
       </div>
 
-      {opis && <Text>{opis}</Text>}
+      {(opis || status) && (
+        <Text>
+          {opis && <span>{opis}</span>}
+          {opis && status && (
+            <span aria-hidden="true" className={style.separator}>
+              {" · "}
+            </span>
+          )}
+          {status && (
+            <span className={style.status}>
+              <Badge wariant={status.wariant}>{status.etykieta}</Badge>
+            </span>
+          )}
+        </Text>
+      )}
 
       {akcja && (
         <p className={style.akcja}>

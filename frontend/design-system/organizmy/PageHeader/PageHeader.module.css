@@ -20,6 +20,16 @@
   flex-wrap: wrap;
 }
 
+/* Plakietka stanu w linii pod tytułem: w jednej linii z opisem, wyrównana do
+   jego środka; po zawinięciu opisu schodzi do następnej linii. */
+.status {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.separator {
+  white-space: pre;
+}
+
 .akcja {
   margin: 0;
 }
