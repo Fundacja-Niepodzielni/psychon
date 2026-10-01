@@ -1293,3 +1293,50 @@ Kod: `routes/api/document_templates.php`,
 `Http/Resources/DocumentTemplateResource.php`,
 `Services/DocumentTemplates/DocumentTemplateFields.php`,
 `Services/DocumentTemplates/DocumentTemplateTrial.php`.
+
+---
+
+## Aneks — nagranie lekcji tylko z wgrania (H08)
+
+Identyfikator nagrania lekcji (`video_provider_id`) nadaje serwer w ścieżce wgrania pliku.
+Trasy zapisu lekcji nie przyjmują go od prowadzącego, a u administracji pilnują, żeby jedno
+nagranie nie było przypisane do dwóch lekcji. Aneks opisuje stan kodu: bez nowych tras, kodów
+błędu, slugów audytu i typów powiadomień; zero zmian w danych.
+
+### 1. Prowadzący
+
+- `POST /instructor/courses/{course}/lessons`: każda niepusta wartość `video_provider_id` →
+  `422 validation_failed`, lekcja nie powstaje.
+- `PATCH /instructor/lessons/{lesson}`: pole nieobecne albo równe zapisanej wartości → `200`
+  bez zmiany nagrania. Każda inna wartość — także `null` albo pusty napis przy lekcji, która
+  ma nagranie — → `422 validation_failed`, kolumna bez zmian.
+
+Zdanie odmowy jest jedno dla wszystkich przypadków i nie ujawnia, czy podany identyfikator
+istnieje:
+
+```json
+{ "error": { "status": 422, "code": "validation_failed",
+    "message": "Popraw zaznaczone pola.",
+    "errors": { "video_provider_id": [
+      "Nagranie do lekcji przypisuje administracja. Tego pola nie można tutaj zmienić." ] } } }
+```
+
+### 2. Administracja
+
+`POST /admin/courses/{course}/lessons` i `PATCH /admin/lessons/{lesson}`: identyfikator
+przypisany już do innej żywej lekcji → `422 validation_failed` w tej samej kopercie, zdanie
+w `errors.video_provider_id`: „Ten identyfikator nagrania jest już przypisany do innej
+lekcji.” Wartość niezmieniona przechodzi zawsze; `null` odpina nagranie; identyfikator
+lekcji usuniętej jest wolny.
+
+### 3. Czego ten aneks nie wprowadza
+
+Niepowtarzalności nie pilnuje jeszcze indeks w bazie (dwa równoległe żądania administracji
+mogą ją ominąć), porównanie rozróżnia wielkość liter, a ścieżka wgrania nie sprawdza, czy
+identyfikator jest już przypisany — domknięcie przyjdzie osobnym aneksem razem ze zmianą
+kodu i danych.
+
+Kod: `Rules/RecordingAssignedByAdministration.php`, `Rules/RecordingIdNotTaken.php`,
+`Http/Requests/H08/StoreInstructorLessonRequest.php`,
+`Http/Requests/H08/UpdateInstructorLessonRequest.php`,
+`Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLessonRequest.php`.
