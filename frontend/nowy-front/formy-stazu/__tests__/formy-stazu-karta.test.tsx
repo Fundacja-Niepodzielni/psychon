@@ -36,12 +36,12 @@ describe("FormyStazu — lista w karcie", () => {
     expect(within(karta!).getAllByRole("button", { name: "Edytuj" })).toHaveLength(2);
   });
 
-  it("podlinia wiersza: „Kolejność N · opis”, bez dwukropka i kropki po liczbie; bez opisu zostaje „Bez opisu.”", async () => {
+  it("podlinia wiersza: „Miejsce na liście: N · opis”, bez dwukropka i kropki po liczbie; bez opisu zostaje „Bez opisu.”", async () => {
     render(<FormyStazu />);
     await waitFor(() => expect(screen.getByText("Dyżur telefoniczny")).toBeInTheDocument());
-    expect(screen.getByText("Kolejność 1 · Rozmowa.")).toBeInTheDocument();
-    expect(screen.getByText("Kolejność 2 · Bez opisu.")).toBeInTheDocument();
-    expect(screen.queryByText(/Kolejność: /)).toBeNull();
+    expect(screen.getByText("Miejsce na liście: 1 · Rozmowa.")).toBeInTheDocument();
+    expect(screen.getByText("Miejsce na liście: 2 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.queryByText(/Miejsce na liście: \d+[.:]/)).toBeNull();
   });
 
   it("podlinia: opis, brak opisu (null) i opis pusty albo z samych spacji — nigdy samo „ · ” na końcu", async () => {
@@ -53,10 +53,10 @@ describe("FormyStazu — lista w karcie", () => {
     ]);
     render(<FormyStazu />);
     await waitFor(() => expect(screen.getByText("Czwarta")).toBeInTheDocument());
-    expect(screen.getByText("Kolejność 1 · Rozmowa.")).toBeInTheDocument();
-    expect(screen.getByText("Kolejność 2 · Bez opisu.")).toBeInTheDocument();
-    expect(screen.getByText("Kolejność 3 · Bez opisu.")).toBeInTheDocument();
-    expect(screen.getByText("Kolejność 4 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.getByText("Miejsce na liście: 1 · Rozmowa.")).toBeInTheDocument();
+    expect(screen.getByText("Miejsce na liście: 2 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.getByText("Miejsce na liście: 3 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.getByText("Miejsce na liście: 4 · Bez opisu.")).toBeInTheDocument();
     expect(screen.queryByText(/ · $/)).toBeNull();
   });
 

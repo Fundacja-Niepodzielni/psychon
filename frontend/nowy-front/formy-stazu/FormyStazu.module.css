@@ -12,7 +12,12 @@
   font-family: var(--font);
 }
 
-.panel {
+/* Panel formularza: karta jak sekcje list; w środku `FormSection` w jednej
+   kolumnie 480 px (jak najszersze pole tekstowe i lista wyboru). Pola mają
+   w atomach własne górne granice szerokości (liczba 160 px, opis 720 px),
+   więc w tej kolumnie zdejmujemy je, żeby cztery kontrolki — „Nazwa”, „Opis”,
+   „Miejsce na liście” i „Stan” — miały tę samą lewą i prawą krawędź. */
+.formularz {
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
@@ -20,6 +25,16 @@
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--card);
+}
+
+.formularz form {
+  width: 100%;
+  max-width: 480px;
+}
+
+.formularz input,
+.formularz textarea {
+  max-width: none;
 }
 
 /* Lista form stoi w białej karcie z nagłówkiem h2, jak sekcje list na pulpitach
@@ -51,17 +66,6 @@
     font-size: var(--fs-9);
     font-weight: var(--fw-medium);
   }
-}
-
-.wiersz {
-  display: flex;
-  gap: var(--space-12);
-  flex-wrap: wrap;
-}
-
-.akcje {
-  display: flex;
-  gap: var(--space-8);
 }
 
 /* W ramce panelu z makiety (powłoka `PowlokaPanelu`, atrybut
