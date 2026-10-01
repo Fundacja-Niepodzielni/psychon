@@ -44,7 +44,7 @@ export function useWgrywanieMaterialow(
         setWgrane((poprzednie) => [...poprzednie, material]);
         onWgrano(material);
         setPliki((poprzednie) =>
-          ustawPlik(poprzednie, { nazwa: plik.name, stan: "gotowy", komunikat: "Wgrano materiał." }),
+          ustawPlik(poprzednie, { nazwa: plik.name, stan: "gotowy", komunikat: "Wgrano plik." }),
         );
       } catch (blad) {
         setPliki((poprzednie) =>

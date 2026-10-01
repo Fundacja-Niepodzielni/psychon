@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ZlecenieWgrania } from "../dane";
-import { wgrajNagranie } from "../tus";
+import { odczytajPrzesuniecie, wgrajNagranie, wyslijKawalki } from "../tus";
 
 const ZLECENIE: ZlecenieWgrania = {
   video_id: "vid-1",
@@ -126,6 +126,46 @@ describe("wgrywanie nagrania protokołem TUS", () => {
     await expect(wgrajNagranie(new File([], "pusty.mp4", { type: "video/mp4" }), ZLECENIE, "T")).rejects.toThrow(
       "Plik nagrania jest pusty.",
     );
+    expect(atrapa).not.toHaveBeenCalled();
+  });
+});
+
+describe("dokończenie wgrania: pytanie o postęp i wysyłka reszty", () => {
+  const ADRES = "https://video.test/tusupload/abc";
+
+  it("pytanie o postęp idzie metodą HEAD pod adres wgrania, z pozwoleniem, i zwraca liczbę bajtów dostawcy", async () => {
+    const atrapa = atrapaDostawcy([new Response(null, { status: 200, headers: { "Upload-Offset": "3" } })]);
+    expect(await odczytajPrzesuniecie(ADRES, ZLECENIE, 5)).toBe(3);
+    const [adres, opcje] = atrapa.mock.calls[0] as unknown as Wywolanie;
+    expect(adres).toBe(ADRES);
+    expect(opcje.method).toBe("HEAD");
+    expect(opcje.headers).toMatchObject({ "Tus-Resumable": "1.0.0", AuthorizationSignature: "podpis", VideoId: "vid-1" });
+  });
+
+  it.each([
+    ["dostawca nie zna wgrania", new Response(null, { status: 404 })],
+    ["odpowiedź bez liczby bajtów", new Response(null, { status: 200 })],
+    ["liczba bajtów nie jest liczbą całkowitą", new Response(null, { status: 200, headers: { "Upload-Offset": "3.5" } })],
+    ["dostawca ma więcej bajtów, niż ma plik", new Response(null, { status: 200, headers: { "Upload-Offset": "6" } })],
+  ])("%s: brak przesunięcia, czyli wysyłka od zera", async (_opis, odpowiedz) => {
+    atrapaDostawcy([odpowiedz]);
+    expect(await odczytajPrzesuniecie(ADRES, ZLECENIE, 5)).toBeNull();
+  });
+
+  it("wysyłka od przesunięcia niesie tylko resztę pliku", async () => {
+    const atrapa = atrapaDostawcy([new Response(null, { status: 204, headers: { "Upload-Offset": "5" } })]);
+    const postepy: number[] = [];
+    await wyslijKawalki(new File(["12345"], "n.mp4", { type: "video/mp4" }), ADRES, ZLECENIE, 3, (postep) => postepy.push(postep.wyslano));
+    const [adres, opcje] = atrapa.mock.calls[0] as unknown as Wywolanie;
+    expect(adres).toBe(ADRES);
+    expect(opcje.headers["Upload-Offset"]).toBe("3");
+    expect(opcje.body!.size).toBe(2);
+    expect(postepy).toEqual([3, 5]);
+  });
+
+  it("dostawca ma już cały plik: żadnego żądania z bajtami", async () => {
+    const atrapa = atrapaDostawcy([]);
+    await wyslijKawalki(new File(["12345"], "n.mp4", { type: "video/mp4" }), ADRES, ZLECENIE, 5);
     expect(atrapa).not.toHaveBeenCalled();
   });
 });

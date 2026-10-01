@@ -16,6 +16,12 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 
+// Stan wysyłania nagrania podaje próba; `null` = żadna lekcja nie ma wysyłania.
+const wysylanie = vi.hoisted(() => ({ stan: null as null | { rodzaj: string; lekcja: { id: number; tytul: string; adres: string } } }));
+vi.mock("@/nowy-front/wysylanie-nagrania/useWysylanie", () => ({
+  useWysylanieLekcji: (idLekcji: number) => (wysylanie.stan !== null && wysylanie.stan.lekcja.id === idLekcji ? wysylanie.stan : null),
+}));
+
 let serwer: AtrapaSerwera;
 vi.mock("@/lib/api/klient", async (importOriginal) => {
   const oryginal = await importOriginal<typeof import("@/lib/api/klient")>();
@@ -74,6 +80,7 @@ function odroczony() {
 
 beforeEach(() => {
   serwer = utworzSerwer();
+  wysylanie.stan = null;
 });
 
 describe("ekran kursu — odczyt i układ", () => {
@@ -156,6 +163,38 @@ describe("ekran kursu — odczyt i układ", () => {
     expect(within(karta).getByRole("heading", { level: 3, name: "Czekamy (1)" })).toBeInTheDocument();
     expect(within(karta).getByText("Lekcja 2: nagranie się przetwarza, zwykle 10–30 minut.")).toBeInTheDocument();
     expect(within(karta).getByText("Gotowe: tytuł, opis, 1 lekcja.")).toBeInTheDocument();
+  });
+
+  it("wiersz lekcji, której nagranie się wysyła: procent z paskiem zamiast stanu z serwera; inne wiersze bez zmian", async () => {
+    wysylanie.stan = {
+      rodzaj: "wysylanie",
+      lekcja: { id: 22, tytul: "Lekcja B", adres: "/admin/kursy/4/lekcje/22" },
+      ...{ nazwa: "b.mp4", rozmiar: 1000, wyslano: 620, zostaloSekund: 240, zastepuje: null },
+    };
+    await renderEkranu();
+    const wiersz = document.querySelector('li[data-lekcja="22"]') as HTMLElement;
+    const miejsce = wiersz.querySelector<HTMLElement>('[data-wysylanie-w-wierszu="wysylanie"]')!;
+    expect(miejsce.textContent!.replace(/ /g, " ")).toBe("Wysyłanie 62 %");
+    expect(within(miejsce).getByRole("progressbar", { name: "Wysyłanie nagrania lekcji Lekcja B" })).toHaveAttribute(
+      "aria-valuenow",
+      "62",
+    );
+    expect(within(wiersz).queryByText("Gotowa")).toBeNull();
+    expect(document.querySelectorAll("[data-wysylanie-w-wierszu]")).toHaveLength(1);
+    // Kolejność fokusu wiersza bez zmian: pasek postępu nie jest kontrolką.
+    expect(Array.from(wiersz.querySelectorAll("button, a"))).toHaveLength(3);
+  });
+
+  it("wiersz lekcji z przerwanym wysyłaniem mówi „Wysyłanie przerwane”", async () => {
+    wysylanie.stan = {
+      rodzaj: "przerwane",
+      lekcja: { id: 23, tytul: "Lekcja C", adres: "/admin/kursy/4/lekcje/23" },
+      ...{ nazwa: "c.mp4", rozmiar: 1000, wyslano: 480, innyPlik: false, zastepuje: null },
+    };
+    await renderEkranu();
+    const wiersz = document.querySelector('li[data-lekcja="23"]') as HTMLElement;
+    expect(wiersz.querySelector('[data-wysylanie-w-wierszu="przerwane"]')).toHaveTextContent("Wysyłanie przerwane");
+    expect(document.querySelector('li[data-lekcja="22"] [data-wysylanie-w-wierszu]')).toBeNull();
   });
 
   it("zwinięty temat z lekcją do poprawy mówi „1 lekcja wymaga uwagi”", async () => {

@@ -39,7 +39,7 @@ const ADRES = "/admin/kursy/4";
 const GRUPA_LEKCJI = GRUPY.edycjaLekcji.wlaczona;
 const ADRES_LEKCJI = "/admin/kursy/4/lekcje/22";
 const ZDANIE_O_LISCIE_MATERIALOW =
-  "Lista wcześniej wgranych materiałów pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
+  "Lista wcześniej wgranych plików pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
 
 const ATRAPA_SESJI = {
   accessToken: "atrapa-tokenu-testowego",
@@ -679,7 +679,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await otworzLekcje(page);
 
       await expect(page.getByRole("heading", { level: 1, name: "Pytania otwarte i zamknięte" })).toBeVisible();
-      await expect(page.getByText("Ta lekcja nie ma jeszcze materiałów.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja nie ma jeszcze plików.")).toBeVisible();
       await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toHaveCount(0);
       await expect(page.getByText("Ta lekcja nie ma jeszcze nagrania.")).toBeVisible();
       await expect(page.getByLabel(/^Czas trwania w minutach/)).toHaveValue("25");
@@ -697,9 +697,9 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const { zapisy } = await instalujAtrapy(page, { rola: "super_admin", lekcjaZNagraniem: true });
       await otworzLekcje(page);
 
-      await expect(page.getByText("Ta lekcja ma 3 materiały.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja ma 3 pliki.")).toBeVisible();
       await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toBeVisible();
-      await expect(page.getByText("Ta lekcja nie ma jeszcze materiałów.")).toHaveCount(0);
+      await expect(page.getByText("Ta lekcja nie ma jeszcze plików.")).toHaveCount(0);
       await zrzut(page, `lekcja-${szerokosc}-materialy-licznik-3`, page.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" }));
       await expect(page.getByText("Nagranie jest gotowe. Czas trwania:", { exact: false })).toBeVisible();
       await zrzut(page, `lekcja-${szerokosc}-nagranie-gotowe`, page.getByRole("heading", { level: 2, name: "Nagranie" }));
@@ -709,7 +709,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
         .locator('input[type="file"]')
         .setInputFiles({ name: "karta-pracy.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-") });
       await expect(page.getByRole("status").filter({ hasText: "Wgrano plik „karta-pracy.pdf”." })).toHaveCount(1);
-      await expect(page.getByText("Ta lekcja ma 4 materiały.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja ma 4 pliki.")).toBeVisible();
       await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toBeVisible();
       await expect(page.getByText("karta-pracy.pdf", { exact: true })).toHaveCount(1);
       const usun = page.getByRole("button", { name: "Usuń plik karta-pracy.pdf" });
@@ -724,7 +724,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-okno-usuniecia-materialu`);
       await okno.getByRole("button", { name: "Usuń plik" }).click();
 
-      await expect(page.getByText("Ta lekcja ma 3 materiały.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja ma 3 pliki.")).toBeVisible();
       await expect(usun).toHaveCount(0);
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
       expect(zapisy.map((zapis) => `${zapis.metoda} ${zapis.sciezka}`)).toEqual([

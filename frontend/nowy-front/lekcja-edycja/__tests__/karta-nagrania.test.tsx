@@ -7,13 +7,11 @@ import type { StanKartyNagrania } from "../nagranie";
 /**
  * Karta „Nagranie” — jeden komponent, każdy stan osobno: brak, wysyłanie,
  * przerwane, przetwarzanie, gotowe, błąd oraz zdanie o wymianie poprzedniego
- * nagrania. Karta nie zna sieci, więc stany, których strona lekcji dziś nie
- * ustawia (przerwane z dokończeniem, wymiana z zachowaniem poprzedniego
- * nagrania), mają tu pełne pokrycie.
+ * nagrania. Karta nie zna sieci, więc stan, którego strona lekcji dziś nie
+ * ustawia (wymiana z zachowaniem poprzedniego nagrania), ma tu pełne pokrycie.
  */
 
 const MB = 1024 * 1024;
-const NBSP = String.fromCharCode(160);
 
 const WYSYLANIE: StanKartyNagrania = { rodzaj: "wysylanie", nazwa: "wywiad.mp4", rozmiar: 1000 * MB, wyslano: 620 * MB, zostaloSekund: 240 };
 const PRZERWANE: StanKartyNagrania = { rodzaj: "przerwane", nazwa: "wywiad.mp4", rozmiar: 1000 * MB, wyslano: 480 * MB, innyPlik: false };
@@ -97,22 +95,25 @@ describe("stan: wysyłanie", () => {
     expect(etapy.map((etap) => etap.getAttribute("aria-current"))).toEqual(["step", null, null]);
     const pasek = within(sekcja).getByRole("progressbar");
     expect(pasek).toHaveAttribute("aria-valuenow", "62");
-    expect(pasek).toHaveAttribute("aria-label", `62${NBSP}% · zostało ok. 4${NBSP}min`);
+    expect(pasek).toHaveAttribute("aria-label", "Wysyłanie nagrania");
+    expect(pasek).toHaveAttribute("data-postep-wysylania", "trwa");
+    expect(within(sekcja).getByText("62 % · zostało ok. 4 min")).toBeInTheDocument();
     expect(
       within(sekcja).getByText("Gdy wysyłanie dojdzie do 100 %, możesz wszystko zamknąć. Przetwarzanie trwa zwykle 10–30 minut."),
     ).toBeInTheDocument();
     expect(wejsciePliku(container)).toBeNull();
   });
 
-  it("bez wznawiania: po przerwaniu plik trzeba wysłać od nowa", () => {
+  it("zdanie o przejściu do kursu i innych lekcji; bez prośby o zostanie w lekcji", () => {
     const { sekcja } = karta(WYSYLANIE);
     expect(
-      within(sekcja).getByText("Nie zamykaj karty przeglądarki do końca wysyłania. Jeśli się przerwie, trzeba będzie wysłać plik od nowa."),
+      within(sekcja).getByText("Możesz przejść do kursu i innych lekcji – wysyłanie trwa dalej, a postęp widać na liście lekcji."),
     ).toBeInTheDocument();
+    expect(sekcja.textContent).not.toMatch(/Zostań w tej lekcji/);
   });
 
-  it("ze wznawianiem: zdanie o tym samym pliku", () => {
-    const { sekcja } = karta(WYSYLANIE, { wznawia: true });
+  it("zdanie o dokończeniu tym samym plikiem", () => {
+    const { sekcja } = karta(WYSYLANIE);
     expect(
       within(sekcja).getByText(
         "Nie zamykaj karty przeglądarki do końca wysyłania. Jeśli się przerwie, wybierz ten sam plik – wysyłanie ruszy od miejsca, w którym stanęło.",
@@ -140,7 +141,10 @@ describe("stan: przerwane", () => {
     const { sekcja, container } = karta(PRZERWANE);
     expect(within(sekcja).getByText("Wysyłanie stanęło przy 48 % (480 MB z 1000 MB).")).toBeInTheDocument();
     expect(sekcja).toHaveTextContent("Wybierz ten sam plik: wywiad.mp4, 1000 MB, a wyślemy resztę.");
-    expect(within(sekcja).getByRole("progressbar")).toHaveAttribute("aria-label", `48${NBSP}% · wysyłanie przerwane`);
+    const pasek = within(sekcja).getByRole("progressbar");
+    expect(pasek).toHaveAttribute("aria-label", "Wysyłanie nagrania, przerwane");
+    expect(pasek).toHaveAttribute("aria-valuenow", "48");
+    expect(pasek).toHaveAttribute("data-postep-wysylania", "zatrzymany");
     expect(within(sekcja).getByText("Wybierz plik, żeby dokończyć")).toBeInTheDocument();
     expect(wejsciePliku(container)).not.toBeNull();
     expect(within(sekcja).queryByText("To nie jest ten sam plik")).toBeNull();
@@ -151,14 +155,30 @@ describe("stan: przerwane", () => {
     expect(within(sekcja).getByText("To nie jest ten sam plik")).toBeInTheDocument();
   });
 
-  it("„Wyślij inny plik od nowa” woła ekran i nie jest przyciskiem głównym", async () => {
+  it("„Wyślij inny plik od nowa” nie jest przyciskiem głównym; po nim wybór pliku idzie drogą „od nowa”", async () => {
     const uzytkownik = userEvent.setup();
     const onOdNowa = vi.fn();
-    karta(PRZERWANE, { onOdNowa });
+    const { sekcja, container, onWybierzPlik } = karta({ ...PRZERWANE, innyPlik: true }, { onOdNowa });
     const przycisk = screen.getByRole("button", { name: "Wyślij inny plik od nowa" });
     expect(przycisk.className).not.toMatch(/primary/);
+    expect(przycisk).toHaveAttribute("aria-pressed", "false");
     await uzytkownik.click(przycisk);
+    expect(przycisk).toHaveAttribute("aria-pressed", "true");
+    expect(within(sekcja).getByText("Wybierz inny plik")).toBeInTheDocument();
+    expect(within(sekcja).queryByText("Wybierz plik, żeby dokończyć")).toBeNull();
+    expect(within(sekcja).queryByText("To nie jest ten sam plik")).toBeNull();
+    await uzytkownik.upload(wejsciePliku(container)!, new File(["2"], "inny.mp4", { type: "video/mp4" }));
     expect(onOdNowa).toHaveBeenCalledTimes(1);
+    expect(onWybierzPlik).not.toHaveBeenCalled();
+  });
+
+  it("bez „od nowa” wybór pliku idzie drogą dokończenia", async () => {
+    const uzytkownik = userEvent.setup();
+    const onOdNowa = vi.fn();
+    const { container, onWybierzPlik } = karta(PRZERWANE, { onOdNowa });
+    await uzytkownik.upload(wejsciePliku(container)!, new File(["1"], "wywiad.mp4", { type: "video/mp4" }));
+    expect(onWybierzPlik).toHaveBeenCalledTimes(1);
+    expect(onOdNowa).not.toHaveBeenCalled();
   });
 });
 

@@ -9,6 +9,8 @@ import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Input } from "@/design-system/atomy/Input/Input";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { odmien } from "@/nowy-front/wspolne/odmiana";
+import { StanWysylaniaWWierszu } from "@/nowy-front/wysylanie-nagrania/StanWysylaniaWWierszu";
+import { useWysylanieLekcji } from "@/nowy-front/wysylanie-nagrania/useWysylanie";
 import { ETYKIETY_STANU_LEKCJI, KOTWICA_DRZEWA, wymagaUwagi, type StanLekcji } from "./braki";
 import style from "./EkranKursu.module.css";
 
@@ -316,6 +318,8 @@ function WierszLekcji({
 }) {
   const pierwsza = lekcja.numer === 1;
   const ostatnia = lekcja.numer === liczbaLekcji;
+  // Trwające albo przerwane wysyłanie nagrania tej lekcji zastępuje w wierszu stan z serwera.
+  const wysylanie = useWysylanieLekcji(lekcja.id);
   return (
     <li className={style.wiersz} data-lekcja={lekcja.id}>
       <span className={style.strzalki}>
@@ -345,9 +349,15 @@ function WierszLekcji({
         {lekcja.tytul}
       </span>
       {lekcja.meta.length > 0 && <span className={style.meta}>{lekcja.meta.join(" · ")}</span>}
-      <span className={lekcja.stan === "blad-nagrania" ? `${style.stan} ${style.stanBledu}` : style.stan}>
-        {ETYKIETY_STANU_LEKCJI[lekcja.stan]}
-      </span>
+      {wysylanie !== null ? (
+        <span className={style.stan}>
+          <StanWysylaniaWWierszu stan={wysylanie} />
+        </span>
+      ) : (
+        <span className={lekcja.stan === "blad-nagrania" ? `${style.stan} ${style.stanBledu}` : style.stan}>
+          {ETYKIETY_STANU_LEKCJI[lekcja.stan]}
+        </span>
+      )}
       {lekcja.adres && (
         <a className={style.otworz} href={lekcja.adres} aria-label={`Otwórz lekcję ${lekcja.numer}: ${lekcja.tytul}`}>
           Otwórz

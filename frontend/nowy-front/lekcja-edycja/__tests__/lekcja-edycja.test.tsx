@@ -37,6 +37,7 @@ vi.mock("@/lib/api/h01-wspolpraca", () => ({
 
 const { ApiError } = await import("@/lib/api/klient");
 const { LekcjaEdycja } = await import("../LekcjaEdycja");
+const { uchwytWysylania } = await import("@/nowy-front/wysylanie-nagrania/uchwyt");
 
 const LEKCJA: LekcjaAdmin = {
   id: 21,
@@ -139,6 +140,8 @@ beforeEach(() => {
   back.mockReset();
   push.mockReset();
   vi.unstubAllGlobals();
+  // Uchwyt wysyłania żyje ponad ekranami — każda próba zaczyna bez wysyłania.
+  uchwytWysylania.porzuc(21);
 });
 
 describe("stany ekranu: jeden main, dane w układzie dwóch kolumn", () => {
@@ -501,7 +504,7 @@ describe("pliki lekcji", () => {
   it("wgranie pliku: multipart z polem file, licznik rośnie, wiersz pliku gotowy", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderujDane();
-    expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 2 pliki.")).toBeInTheDocument();
     const wgrany: MaterialAdmin = {
       id: 9,
       name: "karta.pdf",
@@ -523,7 +526,7 @@ describe("pliki lekcji", () => {
     const cialo = (wywolanie[1] as { body: FormData }).body;
     expect(cialo).toBeInstanceOf(FormData);
     expect((cialo.get("file") as File).name).toBe("karta.pdf");
-    expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
     const lista = screen.getByRole("list", { name: "Pliki dodane teraz" });
     expect(within(lista).getByText("PDF · 4 B")).toBeInTheDocument();
     expect(within(lista).getByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
@@ -545,7 +548,7 @@ describe("pliki lekcji", () => {
     );
     await uzytkownik.upload(wejscieMaterialu(container), new File(["x"], "duzy.pdf", { type: "application/pdf" }));
     expect(await screen.findByText("Plik może mieć najwyżej 10 MB.")).toBeInTheDocument();
-    expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 2 pliki.")).toBeInTheDocument();
   });
 });
 
@@ -647,7 +650,7 @@ describe("nagranie: wysyłanie i przerwanie", () => {
 
   async function zacznijWysylanie() {
     const uzytkownik = userEvent.setup();
-    const { container } = await renderujDane({ rola: "super_admin" });
+    const { container, unmount } = await renderujDane({ rola: "super_admin" });
     const dawne = api.getMockImplementation()!;
     api.mockImplementation(async (sciezka: string, opcje?: { method?: string; body?: CialoLekcji }) => {
       if (sciezka === "/admin/lessons/21/video-uploads" && opcje?.method === "POST") return ZLECENIE;
@@ -667,7 +670,7 @@ describe("nagranie: wysyłanie i przerwanie", () => {
     vi.stubGlobal("fetch", dostawca);
     await uzytkownik.upload(wejscieNagrania(container), new File(["12345"], "nagranie.mp4", { type: "video/mp4" }));
     await waitFor(() => expect(dostawca).toHaveBeenCalledTimes(2));
-    return { uzytkownik, container };
+    return { uzytkownik, container, unmount };
   }
 
   it("w trakcie: nazwa pliku, etapy, pasek postępu, zdanie o karcie przeglądarki; stan lekcji czeka", async () => {
@@ -688,14 +691,46 @@ describe("nagranie: wysyłanie i przerwanie", () => {
     expect(zdarzenie.defaultPrevented).toBe(true);
   });
 
-  it("„Przerwij wysyłanie”: błąd ze zdaniem i „Wyślij ponownie”; stan lekcji wymaga uwagi", async () => {
+  it("zdanie o przejściu do kursu i innych lekcji zamiast prośby o zostanie w lekcji", async () => {
+    const { container } = await zacznijWysylanie();
+    const karta = container.querySelector<HTMLElement>('[data-stan-nagrania="wysylanie"]')!;
+    expect(
+      within(karta).getByText("Możesz przejść do kursu i innych lekcji – wysyłanie trwa dalej, a postęp widać na liście lekcji."),
+    ).toBeInTheDocument();
+    expect(karta.textContent).not.toMatch(/Zostań w tej lekcji/);
+  });
+
+  it("odmontowanie ekranu lekcji nie przerywa wysyłania; po powrocie karta pokazuje to samo wysyłanie", async () => {
+    const { container, unmount } = await zacznijWysylanie();
+    expect(container.querySelector('[data-stan-nagrania="wysylanie"]')).not.toBeNull();
+    unmount();
+    expect(uchwytWysylania.stan().rodzaj).toBe("wysylanie");
+
+    const ponownie = render(<LekcjaEdycja idLekcji={21} idKursu={3} />);
+    await screen.findByLabelText(/^Tytuł lekcji/);
+    const karta = ponownie.container.querySelector<HTMLElement>('[data-stan-nagrania="wysylanie"]')!;
+    expect(within(karta).getByText("nagranie.mp4")).toBeInTheDocument();
+  });
+
+  it("„Przerwij wysyłanie”: stan przerwany ze zdaniem i wyborem tego samego pliku; stan lekcji wymaga uwagi", async () => {
     const { uzytkownik, container } = await zacznijWysylanie();
     await uzytkownik.click(screen.getByRole("button", { name: "Przerwij wysyłanie" }));
-    await waitFor(() => expect(container.querySelector('[data-stan-nagrania="blad"]')).not.toBeNull());
-    const karta = container.querySelector<HTMLElement>('[data-stan-nagrania="blad"]')!;
-    expect(within(karta).getByText("Wysyłanie zostało przerwane. Wyślij plik ponownie.")).toBeInTheDocument();
-    expect(within(karta).getByRole("button", { name: /Wyślij ponownie/ })).toBeInTheDocument();
-    expect(screen.getByText(/nagranie trzeba wysłać ponownie/)).toBeInTheDocument();
+    await waitFor(() => expect(container.querySelector('[data-stan-nagrania="przerwane"]')).not.toBeNull());
+    const karta = container.querySelector<HTMLElement>('[data-stan-nagrania="przerwane"]')!;
+    expect(within(karta).getByText(/^Wysyłanie stanęło przy 0/)).toBeInTheDocument();
+    expect(within(karta).getByText("Wybierz plik, żeby dokończyć")).toBeInTheDocument();
+    expect(within(karta).getByRole("button", { name: "Wyślij inny plik od nowa" })).toBeInTheDocument();
+    expect(screen.getByText(/wysyłanie nagrania przerwane/)).toBeInTheDocument();
+  });
+
+  it("po przerwaniu inny plik: „To nie jest ten sam plik”, zero nowych pozwoleń", async () => {
+    const { uzytkownik, container } = await zacznijWysylanie();
+    await uzytkownik.click(screen.getByRole("button", { name: "Przerwij wysyłanie" }));
+    await waitFor(() => expect(container.querySelector('[data-stan-nagrania="przerwane"]')).not.toBeNull());
+    const zlecen = wywolania("POST", "/admin/lessons/21/video-uploads").length;
+    await uzytkownik.upload(wejscieNagrania(container), new File(["inna treść"], "inne.mp4", { type: "video/mp4" }));
+    expect(await screen.findByText("To nie jest ten sam plik")).toBeInTheDocument();
+    expect(wywolania("POST", "/admin/lessons/21/video-uploads")).toHaveLength(zlecen);
   });
 });
 

@@ -22,7 +22,6 @@ import {
   usunMaterial,
   wgrajMaterial,
   zapiszLekcje,
-  zlecWgranieNagrania,
   type LekcjaAdmin,
   type MaterialAdmin,
   type StanNagrania,
@@ -52,11 +51,11 @@ import {
   opisPliku,
   stanKartyZSerwera,
   stanLekcji,
-  szacujPozostalyCzas,
   type StanKartyNagrania,
 } from "./nagranie";
 import { godzinaZapisu, opisStanuZapisu, zmienionePola, type OpisStanuZapisu } from "./stan-zapisu";
-import { wgrajNagranie } from "./tus";
+import { uchwytWysylania, type TrybWysylania } from "@/nowy-front/wysylanie-nagrania/uchwyt";
+import { useWysylanieLekcji } from "@/nowy-front/wysylanie-nagrania/useWysylanie";
 import style from "./StronaLekcji.module.css";
 
 export interface WlasciwosciStronyLekcji {
@@ -79,7 +78,6 @@ interface Wyjscie {
   wyzwalacz: HTMLElement | null;
 }
 
-const ZDANIE_PRZERWANIA_PRZEZ_OSOBE = "Wysyłanie zostało przerwane. Wyślij plik ponownie.";
 const SELEKTOR_STRONY = '[data-style-id="szablon-edycja"]';
 /** Kolejność pól na ekranie — fokus idzie na pierwsze z błędem. */
 const KOLEJNOSC_POL: ReadonlyArray<[PolaFormularza, string]> = [
@@ -195,11 +193,33 @@ export function StronaLekcji({
   // których listy ekran jeszcze nie ma.
   const wczesniejszeMaterialy = liczbaMaterialow - materialy.wgrane.length;
 
-  const [nagranie, setNagranie] = useState<StanKartyNagrania>(() => stanKartyZSerwera(nagranieStart));
+  // Stan nagrania z serwera; trwające albo przerwane wysyłanie tej lekcji (z uchwytu ponad ekranami) go zasłania.
+  const [nagranieZSerwera, setNagranieZSerwera] = useState<StanKartyNagrania>(() => stanKartyZSerwera(nagranieStart));
   const [bladWyboruNagrania, setBladWyboruNagrania] = useState<string | null>(null);
+  const wysylanie = useWysylanieLekcji(lekcja.id);
+  const nagranie: StanKartyNagrania =
+    wysylanie === null
+      ? nagranieZSerwera
+      : wysylanie.rodzaj === "wysylanie"
+        ? {
+            rodzaj: "wysylanie",
+            nazwa: wysylanie.nazwa,
+            rozmiar: wysylanie.rozmiar,
+            wyslano: wysylanie.wyslano,
+            zostaloSekund: wysylanie.zostaloSekund,
+          }
+        : wysylanie.rodzaj === "przerwane"
+          ? {
+              rodzaj: "przerwane",
+              nazwa: wysylanie.nazwa,
+              rozmiar: wysylanie.rozmiar,
+              wyslano: wysylanie.wyslano,
+              innyPlik: wysylanie.innyPlik,
+            }
+          : { rodzaj: "przetwarzanie" };
   // Lekcja miała nagranie, zanim osoba zaczęła wysyłać nowe — karta mówi wtedy, co widzą uczestnicy.
-  const [zastapionoNagranie, setZastapionoNagranie] = useState(false);
-  const przerwanie = useRef<AbortController | null>(null);
+  const zastapionoNagranie = wysylanie?.zastepuje === true;
+  const wyslanoCalyPlik = wysylanie?.rodzaj === "wyslane";
   const poleDoFokusu = useRef<string | null>(null);
 
   const zapisanyFormularz = formularzZLekcji(zapisana);
@@ -214,6 +234,27 @@ export function StronaLekcji({
     liczbaMaterialow,
     nagranie,
   );
+
+  // Plik jest u dostawcy w całości: stan nagrania mówi odtąd serwer, uchwyt nie ma nic więcej do pokazania.
+  useEffect(() => {
+    if (!wyslanoCalyPlik) return;
+    let aktualne = true;
+    pobierzStanNagrania(lekcja.id)
+      .catch(() => null)
+      .then((stanNagrania) => {
+        if (!aktualne) return;
+        // Bez odpowiedzi trasy stanu wiadomo tyle, że nagranie czeka na przetworzenie.
+        setNagranieZSerwera(
+          stanNagrania === null || stanNagrania.status === "no_video"
+            ? { rodzaj: "przetwarzanie" }
+            : stanKartyZSerwera(stanNagrania),
+        );
+        uchwytWysylania.zamknijWyslane(lekcja.id);
+      });
+    return () => {
+      aktualne = false;
+    };
+  }, [wyslanoCalyPlik, lekcja.id]);
 
   // Zamknięcie karty przeglądarki pyta, gdy jest niezapisany tekst albo trwa wysyłanie nagrania.
   useEffect(() => {
@@ -327,6 +368,8 @@ export function StronaLekcji({
     setBladUsuniecia(null);
     try {
       await usunLekcje(zapisana.id);
+      // Nagranie usuniętej lekcji nie ma dokąd trafić: wysyłanie kończy się razem z lekcją.
+      uchwytWysylania.porzuc(zapisana.id);
       if (adresKursu !== null) router.push(adresKursu);
       else router.back();
     } catch (blad) {
@@ -349,7 +392,7 @@ export function StronaLekcji({
     }
   }
 
-  async function wyslijNagranie(lista: FileList) {
+  async function wyslijNagranie(lista: FileList, tryb: TrybWysylania) {
     const plik = lista[0];
     if (!plik || wysylanieTrwa) return;
     if (plik.type !== "" && !plik.type.startsWith("video/")) {
@@ -357,54 +400,19 @@ export function StronaLekcji({
       return;
     }
     setBladWyboruNagrania(null);
-    const poprzedniStan = nagranie;
-    const kontroler = new AbortController();
-    przerwanie.current = kontroler;
-    const wTrakcie = (wyslano: number, zostaloSekund: number | null): StanKartyNagrania => ({
-      rodzaj: "wysylanie",
-      nazwa: plik.name,
-      rozmiar: plik.size,
-      wyslano,
-      zostaloSekund,
-    });
-    setNagranie(wTrakcie(0, null));
-    let zlecono = false;
-    try {
-      const zlecenie = await zlecWgranieNagrania(zapisana.id, zapisana.title);
-      zlecono = true;
+    // Wysyłanie prowadzi uchwyt ponad ekranami: trwa dalej po przejściu do kursu albo innej lekcji.
+    const wynik = await uchwytWysylania.wyslij(
+      plik,
+      { id: zapisana.id, tytul: zapisana.title, adres: adresLekcji(zapisana.id) },
+      tryb,
       // Zaplecze przypina nowe nagranie do lekcji już przy zleceniu — poprzednie przestaje być widoczne.
-      if (zapisana.video_provider_id !== null) setZastapionoNagranie(true);
-      setZapisana((poprzednia) => ({ ...poprzednia, video_provider_id: zlecenie.video_id }));
-      let poczatek: number | null = null;
-      await wgrajNagranie(
-        plik,
-        zlecenie,
-        zapisana.title,
-        (postep) => {
-          const teraz = Date.now();
-          if (poczatek === null) poczatek = teraz;
-          setNagranie(wTrakcie(postep.wyslano, szacujPozostalyCzas(postep.wyslano, postep.razem, teraz - poczatek)));
-        },
-        kontroler.signal,
+      nagranieZSerwera.rodzaj === "gotowe" ? { zastepuje: true } : {},
+    );
+    if (wynik.rodzaj === "odmowa") setBladWyboruNagrania(zdanieBleduPliku(wynik.blad));
+    if (wynik.rodzaj === "zajete") {
+      setBladWyboruNagrania(
+        `Trwa wysyłanie nagrania lekcji „${wynik.lekcja.tytul}”. Poczekaj, aż się skończy, albo je przerwij.`,
       );
-      const poWyslaniu = await pobierzStanNagrania(zapisana.id).catch(() => null);
-      // Plik jest u dostawcy: bez odpowiedzi trasy stanu wiadomo tyle, że nagranie czeka na przetworzenie.
-      setNagranie(
-        poWyslaniu === null || poWyslaniu.status === "no_video" ? { rodzaj: "przetwarzanie" } : stanKartyZSerwera(poWyslaniu),
-      );
-    } catch (blad) {
-      if (!zlecono) {
-        // Odmowa przed zleceniem: nagranie lekcji jest takie, jak było.
-        setNagranie(poprzedniStan);
-        setBladWyboruNagrania(zdanieBleduPliku(blad));
-      } else {
-        setNagranie({
-          rodzaj: "blad",
-          zdanie: kontroler.signal.aborted ? ZDANIE_PRZERWANIA_PRZEZ_OSOBE : zdanieBleduPliku(blad),
-        });
-      }
-    } finally {
-      przerwanie.current = null;
     }
   }
 
@@ -514,8 +522,9 @@ export function StronaLekcji({
               niezapisanyTekst={zmieniony}
               wymiana={zastapionoNagranie ? "podmienia-od-razu" : "brak"}
               bladWyboru={bladWyboruNagrania}
-              onWybierzPlik={(lista) => void wyslijNagranie(lista)}
-              onPrzerwij={() => przerwanie.current?.abort()}
+              onWybierzPlik={(lista) => void wyslijNagranie(lista, nagranie.rodzaj === "przerwane" ? "dokoncz" : "nowe")}
+              onPrzerwij={() => uchwytWysylania.przerwij()}
+              onOdNowa={(lista) => void wyslijNagranie(lista, "od-nowa")}
             />
 
             <KartaBoczna tytul="Treść lekcji" kotwica={`${baza}-karta-tresci`}>
