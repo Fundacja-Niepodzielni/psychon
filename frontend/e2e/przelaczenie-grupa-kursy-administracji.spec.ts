@@ -102,7 +102,7 @@ const PODGLAD = [
  * Atrapy API roli administracji. Ogólna atrapa jest rejestrowana PIERWSZA —
  * Playwright wybiera trasę zarejestrowaną PÓŹNIEJ jako pierwszą.
  */
-async function instalujAtrapyApi(page: Page, opcje: { kursy?: ReturnType<typeof kurs>[]; odmowa?: boolean } = {}): Promise<Atrapy> {
+async function instalujAtrapyApi(page: Page, opcje: { kursy?: ReturnType<typeof kurs>[]; odmowa?: boolean; blad?: boolean } = {}): Promise<Atrapy> {
   const stan: Atrapy = { zapytania: [] };
   const kursy = opcje.kursy ?? czteryKursy();
 
@@ -126,6 +126,14 @@ async function instalujAtrapyApi(page: Page, opcje: { kursy?: ReturnType<typeof 
           status: 403,
           contentType: "application/json",
           body: JSON.stringify({ error: { status: 403, code: "forbidden", message: "Brak uprawnień." } }),
+        });
+        return;
+      }
+      if (opcje.blad) {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ error: { status: 500, code: "server_error", message: "Błąd serwera." } }),
         });
         return;
       }
@@ -344,6 +352,19 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
       await expect(okno.getByText("Marta Demo")).toBeVisible();
       await sprawdzAxe(page, testInfo, `axe-kursy-okno-${szerokosc}`);
       await zrzut(page, `kursy-${szerokosc}-okno`);
+    });
+
+    test(`/admin/kursy @${szerokosc}: stan błędu wczytania listy bez naruszeń axe (z best-practice), nagłówki w kolejności`, async ({ page }) => {
+      await page.setViewportSize({ width: szerokosc, height: szerokosc >= 1024 ? 900 : 844 });
+      await instalujAtrapyApi(page, { blad: true });
+      await page.goto("/admin/kursy");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(page.getByText("Nie udało się wczytać listy kursów")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Spróbuj ponownie" })).toBeVisible();
+
+      const poziomy = await page.locator("main").locator("h1, h2, h3, h4").evaluateAll((e) => e.map((x) => Number(x.tagName.slice(1))));
+      poziomy.forEach((poziom, i) => expect(i === 0 || poziom <= poziomy[i - 1] + 1).toBe(true));
+      expect(await naruszeniaZBestPractice(page)).toEqual([]);
     });
 
     test(`/admin/kursy @${szerokosc}: okno potwierdzenia nie łamie wyrazów w środku i nie przewija się poziomo`, async ({ page }) => {

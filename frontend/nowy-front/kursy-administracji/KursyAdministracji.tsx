@@ -525,17 +525,21 @@ export function KursyAdministracji() {
     );
   } else if (stan.rodzaj === "blad") {
     lista = (
-      <Notice
-        wariant="error"
-        tytul="Nie udało się wczytać listy kursów"
-        akcja={
-          <Button poziom="outline" onClick={() => wczytaj(zapytanie.strona)}>
-            Spróbuj ponownie
-          </Button>
-        }
-      >
-        {stan.komunikat ?? "Serwer nie odpowiedział albo zwrócił błąd. Lista kursów nie jest pokazywana bez danych."}
-      </Notice>
+      <div className={style.zawartosc}>
+        {/* Tytuł komunikatu to nagłówek trzeciego stopnia: poprzedza go nagłówek drugiego stopnia, jak na innych listach. */}
+        <Heading stopien={2}>Lista kursów</Heading>
+        <Notice
+          wariant="error"
+          tytul="Nie udało się wczytać listy kursów"
+          akcja={
+            <Button poziom="outline" onClick={() => wczytaj(zapytanie.strona)}>
+              Spróbuj ponownie
+            </Button>
+          }
+        >
+          {stan.komunikat ?? "Serwer nie odpowiedział albo zwrócił błąd. Lista kursów nie jest pokazywana bez danych."}
+        </Notice>
+      </div>
     );
   } else {
     lista = (

@@ -186,6 +186,12 @@ describe("KursyAdministracji — stany w szablonie", () => {
     sprawdzSzablon(container);
     expect(screen.getByText("Lista kursów niedostępna.")).toBeInTheDocument();
     expect(screen.queryByText(/tylko dla administracji/)).toBeNull();
+    // Nagłówki w kolejności: h1 „Kursy”, h2 „Lista kursów”, dopiero potem h3 tytułu komunikatu.
+    expect(screen.getAllByRole("heading").map((h) => `${h.tagName}:${h.textContent}`)).toEqual([
+      "H1:Kursy",
+      "H2:Lista kursów",
+      "H3:Nie udało się wczytać listy kursów",
+    ]);
 
     apiPaged.mockResolvedValueOnce({ data: TRZY_KURSY, meta: META });
     await userEvent.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
