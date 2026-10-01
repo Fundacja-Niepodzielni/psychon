@@ -286,6 +286,11 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
 
       // Bez przewijania w poziomie.
       const przewijanie = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      const szerokoscStrony = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      console.log(`POMIAR-SZEROKOSC staz @${szerokosc} lista ${JSON.stringify(szerokoscStrony)}`);
       expect(przewijanie, "przewijanie w poziomie").toBe(false);
 
       const naruszenia = await uruchomAxe(page);
@@ -314,6 +319,14 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
       );
       expect(przewijaniePanelu, "przewijanie w poziomie z otwartym panelem").toBe(false);
+      console.log(
+        `POMIAR-SZEROKOSC staz @${szerokosc} panel ${JSON.stringify(
+          await page.evaluate(() => ({
+            scrollWidth: document.documentElement.scrollWidth,
+            clientWidth: document.documentElement.clientWidth,
+          })),
+        )}`,
+      );
 
       const naruszeniaPanelu = await uruchomAxe(page);
       await dolaczNaruszeniaDoRaportu(testInfo, `axe-staz-${szerokosc}-panel`, naruszeniaPanelu);
