@@ -60,10 +60,13 @@ describe("ekran decyzji o dyżurach — źródła", () => {
     expect(ekran + panel).not.toMatch(/organizmy\/Dialog\//);
   });
 
-  it("wiersz to ListRow z design-system, wiek z sprawy/wiek.ts bez kopii progu i tekstu", () => {
+  it("lista to RecordList z design-system, wiek z sprawy/wiek.ts bez kopii progu i tekstu", () => {
     const ekran = tresc(PLIKI.find((p) => wzgledna(p).endsWith("StazKolejka.tsx"))!);
     const dane = tresc(PLIKI.find((p) => wzgledna(p).endsWith("staz-kolejka/dane.ts"))!);
-    expect(ekran).toMatch(/import \{ ListRow \} from "@\/design-system\/molekuly\/ListRow\/ListRow";/);
+    expect(ekran).toMatch(/from "@\/design-system\/organizmy\/RecordList\/RecordList";/);
+    expect(ekran).toMatch(/<RecordList\b/);
+    // Ekran nie rysuje własnych wierszy: molekuła wiersza i własna lista zniknęły.
+    expect(ekran).not.toMatch(/ListRow|<ul\b|<li\b/);
     expect(ekran).toMatch(
       /import \{ dniOczekiwania, tekstPlakietkiCzekania, wariantPlakietkiCzekania \} from "\.\.\/sprawy\/wiek";/,
     );
@@ -76,6 +79,8 @@ describe("ekran decyzji o dyżurach — źródła", () => {
     const dane = tresc(PLIKI.find((p) => wzgledna(p).endsWith("staz-kolejka/dane.ts"))!);
     expect(panel).toMatch(/import \{ formatujDziesietny \} from "\.\.\/wspolne\/formatuj-dziesietny";/);
     expect(panel).toMatch(/formatujDziesietny\(wpis\.hours\)/);
+    // Kolumna godzin dostaje liczbę i jednostkę; zapis po polsku nadaje atom liczby organizmu.
+    expect(ekran).toMatch(/komorki: \{ godziny: komorkaGodzin\(wpis\.hours\) \}/);
     expect(ekran + panel + dane).not.toMatch(/Intl\.NumberFormat|toFixed|toLocaleString/);
     // Surowy zapis godzin wpisu (`${wpis.hours} h`) bez formatera jest naruszeniem.
     expect(ekran + panel).not.toMatch(/\$\{wpis\.hours\}/);
