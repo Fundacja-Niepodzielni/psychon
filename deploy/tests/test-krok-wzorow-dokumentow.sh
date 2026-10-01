@@ -12,10 +12,18 @@
 #   2. stoi po migracji i jest pierwszym wywolaniem `exec` po niej;
 #   3. zachowanie: blok potoku od migracji do `optimize` jest wyciety z pliku
 #      i uruchomiony z atrapa `docker compose` (wywolania wypisywane na
-#      standardowe wyjscie, zadnych plikow tymczasowych) pod tymi samymi
-#      opcjami powloki, ktore plik ustawia przed blokiem. Mierzona jest
-#      kolejnosc wywolan i to, ze blad kroku zatrzymuje dalsze kroki z
-#      kodem bledu - tak samo jak blad migracji.
+#      standardowe wyjscie, zadnych plikow tymczasowych) pod opcjami
+#      powloki WYCIETYMI Z PLIKU: kazde polecenie `set` z opcjami, ktore
+#      stoi w pliku przed blokiem, jest odtwarzane w tej samej kolejnosci
+#      (nic nie jest tu wpisane na sztywno). Mierzona jest kolejnosc wywolan
+#      i to, ze blad kroku zatrzymuje dalsze kroki z kodem bledu - tak samo
+#      jak blad migracji.
+#
+# Wylaczenie przerywania na bledzie jest rozpoznawane w kazdym zapisie:
+# `set +e`, `set +eu`, `set +o errexit`, zapis zlozony (`set -u +e`,
+# `set +o errexit +o pipefail`) i w wierszu z innym poleceniem (`cos; set +e`).
+# Polecenie `set` w ciele funkcji albo w galezi warunku tez sie liczy: proba
+# nie zgaduje, czy ta galaz sie wykona, tylko czerwienieje.
 #
 # Kody: 0 wszystkie zaliczone, 1 co najmniej jeden niezaliczony,
 # 2 nie da sie zmierzyc.
@@ -58,15 +66,36 @@ else
   niezaliczony "krok wzorow nie jest pierwszym wywolaniem po migracji"
 fi
 
+# Polecenia `set` z opcjami (nie `set --`) z wierszy niebedacych komentarzem,
+# po jednym na wiersz wyjscia, w kolejnosci z pliku. $1 = pierwszy wiersz
+# zakresu (wlacznie), $2 = ostatni wiersz zakresu (wylacznie).
+polecenia_set() {
+  awk -v od="$1" -v do_="$2" 'NR >= od && NR < do_ && $0 !~ /^[[:space:]]*#/' "$PLIK_DEPLOY" \
+    | grep -oE '(^|[;&|({[:space:]])set([[:space:]]+([-+][A-Za-z]+|errexit|pipefail|nounset|errtrace|xtrace))+' \
+    | sed -E 's/^[;&|({[:space:]]+//'
+}
+# Czy polecenie `set` wylacza przerywanie na bledzie (errexit) albo pipefail.
+wylacza_przerywanie() {
+  grep -qE '[[:space:]]\+[A-Za-z]*e[A-Za-z]*([[:space:]]|$)|[[:space:]]\+[A-Za-z]*o[[:space:]]+(errexit|pipefail)([[:space:]]|$)' <<< " $1"
+}
+
+W_BLOKU="$(nr_wiersza 'echo "Migracje i cache konfiguracji..."')"
+
 naglowek "3 opcje powloki przerywajace potok obowiazuja w miejscu kroku"
 W_SET="$(nr_wiersza 'set -euo pipefail')"
-ILE_SET_PLUS=0
+ILE_WYLACZEN=0
 if [[ -n "$W_SET" && -n "$W_WZOROW" ]]; then
-  ILE_SET_PLUS="$(awk -v od="$W_SET" -v do_="$W_WZOROW" 'NR > od && NR < do_ && /^[[:space:]]*set \+[a-z]*e/ { n++ } END { print n+0 }' "$PLIK_DEPLOY")"
+  while IFS= read -r POLECENIE; do
+    [[ -n "$POLECENIE" ]] || continue
+    if wylacza_przerywanie "$POLECENIE"; then
+      ILE_WYLACZEN=$((ILE_WYLACZEN+1))
+      echo "  wylaczenie przerywania: $POLECENIE"
+    fi
+  done < <(polecenia_set "$((W_SET+1))" "$W_WZOROW")
 fi
 ILE_OSLON="$(grep -F -- 'DocumentTemplateSeeder' "$PLIK_DEPLOY" | grep -cE '\|\| *(true|:)')"
-echo "  wiersz 'set -euo pipefail': ${W_SET:-BRAK}, 'set +e' miedzy nim a krokiem: $ILE_SET_PLUS, krok oslaniany '|| true': $ILE_OSLON"
-if [[ -n "$W_SET" && -n "$W_WZOROW" && "$W_SET" -lt "$W_WZOROW" && "$ILE_SET_PLUS" -eq 0 && "$ILE_OSLON" -eq 0 ]]; then
+echo "  wiersz 'set -euo pipefail': ${W_SET:-BRAK}, wylaczen przerywania miedzy nim a krokiem: $ILE_WYLACZEN, krok oslaniany '|| true': $ILE_OSLON"
+if [[ -n "$W_SET" && -n "$W_WZOROW" && "$W_SET" -lt "$W_WZOROW" && "$ILE_WYLACZEN" -eq 0 && "$ILE_OSLON" -eq 0 ]]; then
   zaliczony
 else
   niezaliczony "blad kroku nie przerwalby potoku"
@@ -79,21 +108,27 @@ if [[ -z "$BLOK" ]]; then
   exit 2
 fi
 
-# Uruchamia blok z atrapa compose. $1 = fragment polecenia, ktory ma zawiesc
-# (pusty = nic nie zawodzi). Wypisuje wywolania i na koncu STAN=<n>.
+# Opcje powloki, ktore plik FAKTYCZNIE ma w miejscu bloku: wszystkie polecenia
+# `set` z opcjami od poczatku pliku do pierwszego wiersza bloku, w kolejnosci.
+OPCJE_PLIKU="$(polecenia_set 1 "${W_BLOKU:-1}")"
+echo "opcje powloki wyciete z pliku przed blokiem: $(printf '%s' "$OPCJE_PLIKU" | paste -sd';' -)"
+
+# Uruchamia blok z atrapa compose pod opcjami wycietymi z pliku. $1 = fragment
+# polecenia, ktory ma zawiesc (pusty = nic nie zawodzi). Wypisuje wywolania
+# i na koncu STAN=<n>.
 uruchom_blok() {
   local zawodzi="$1"
   local wyjscie kod
   wyjscie="$(ZAWODZI="$zawodzi" bash -c '
-    set -euo pipefail
     atrapa() {
       echo "WYWOLANIE: $*"
       if [[ -n "$ZAWODZI" && "$*" == *"$ZAWODZI"* ]]; then return 7; fi
       return 0
     }
     compose=(atrapa)
+    eval "$2"
     eval "$1"
-  ' _ "$BLOK" 2>/dev/null)"
+  ' _ "$BLOK" "$OPCJE_PLIKU" 2>/dev/null)"
   kod=$?
   printf '%s\nSTAN=%s\n' "$wyjscie" "$kod"
 }
