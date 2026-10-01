@@ -56,7 +56,7 @@ class DocumentTemplateTrialGenerationTest extends TestCase
     use ActsAsRole;
     use RefreshDatabase;
 
-    private const string REFUSAL = 'Z tego wzoru nie da się wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.';
+    private const string REFUSAL = 'Z tego wzoru nie da się wygenerować dokumentu. Wzór nie wczytuje obrazów ani plików — usuń odwołania do adresów. Jedyny obraz w dokumencie to kod QR, który wstawia system.';
 
     private const string TOO_COSTLY = 'Wzór jest zbyt złożony, żeby wygenerować z niego dokument: ma za dużo elementów, zbyt głębokie zagnieżdżenie, zbyt duże scalenie komórek tabeli albo za dużo stron.';
 

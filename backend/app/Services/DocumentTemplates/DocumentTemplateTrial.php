@@ -15,7 +15,7 @@ use Throwable;
  */
 final class DocumentTemplateTrial
 {
-    public const string FAILURE_MESSAGE = 'Z tego wzoru nie da się wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.';
+    public const string FAILURE_MESSAGE = 'Z tego wzoru nie da się wygenerować dokumentu. Wzór nie wczytuje obrazów ani plików — usuń odwołania do adresów. Jedyny obraz w dokumencie to kod QR, który wstawia system.';
 
     public const string TOO_COSTLY_MESSAGE = 'Wzór jest zbyt złożony, żeby wygenerować z niego dokument: ma za dużo elementów, zbyt głębokie zagnieżdżenie, zbyt duże scalenie komórek tabeli albo za dużo stron.';
 
