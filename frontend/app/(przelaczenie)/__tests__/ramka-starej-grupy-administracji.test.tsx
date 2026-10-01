@@ -18,6 +18,14 @@ import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/po
 const api = vi.fn();
 let sciezka = "/admin";
 
+// Powłoki administracji (`PowlokaAdministracji`: `api`, `endSession`; `PanelShell`: `endSession`) biorą klienta API z beczki `@/lib/api`, a transport z `@/lib/api/klient` — podmieniamy oba moduły na te same atrapy.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...args: unknown[]) => api(...args),
+  apiPaged: vi.fn().mockResolvedValue({ data: [], meta: undefined }),
+  endSession: vi.fn(),
+}));
+
 vi.mock("@/lib/api/klient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/klient")>()),
   api: (...args: unknown[]) => api(...args),
@@ -86,7 +94,7 @@ afterEach(() => {
 describe("układ starej grupy administracji — wszystkie grupy wyłączone", () => {
   it("drzewo stron jest niepuste i obejmuje strony A.2", () => {
     expect(STRONY_ADMIN.length).toBeGreaterThanOrEqual(15);
-    expect(STRONY_ADMIN).toEqual(expect.arrayContaining(["/admin", "/admin/profile/12", "/admin/wzory-dokumentow", "/admin/ekran-startowy"]));
+    expect(STRONY_ADMIN).toEqual(expect.arrayContaining(["/admin", "/admin/profile/12", "/admin/staz", "/admin/wzory-dokumentow", "/admin/ekran-startowy"]));
   });
 
   it.each(STRONY_ADMIN)("%s: dotychczasowy PanelShell, bez nowej ramki", async (adres) => {

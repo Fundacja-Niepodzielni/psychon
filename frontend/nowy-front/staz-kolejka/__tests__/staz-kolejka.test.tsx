@@ -25,6 +25,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ back, push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
 }));
 vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
+// Ekran bierze klienta z `@/lib/api/klient`; beczkę `@/lib/api` podmieniamy zapobiegawczo, żeby przyszły import z beczki nie poszedł do prawdziwego transportu.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...a: unknown[]) => api(...a),
+  apiPaged: (...a: unknown[]) => apiPaged(...a),
+}));
 vi.mock("@/lib/api/klient", async (importOriginal) => {
   const oryginal = await importOriginal<typeof import("@/lib/api/klient")>();
   return {
@@ -135,7 +141,7 @@ describe("StazKolejka — stany w szablonie", () => {
     expect(wierszeListy()).toHaveLength(2);
     expect(screen.getAllByText("czeka na decyzję")).toHaveLength(2);
     const pierwszy = wiersz("Marta Demo");
-    expect(pierwszy).toHaveTextContent("Dyżur z 27.08.2026 · 3.5 h · dyżur telefoniczny · konsultacje: 4");
+    expect(pierwszy).toHaveTextContent("Dyżur z 27 sierpnia 2026 · 3.5 h · dyżur telefoniczny · konsultacje: 4");
     expect(pierwszy).toHaveTextContent("Dyżur telefoniczny — bez danych osób.");
     const drugi = wiersz("Filip Demo");
     expect(drugi).toHaveTextContent("2 h · czat · konsultacje: 0");
@@ -378,5 +384,18 @@ describe("StazKolejka — decyzje", () => {
     await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Zatwierdź" }));
     await screen.findByRole("heading", { name: "Brak wpisów do decyzji" });
     expect(screen.getByRole("status")).toHaveTextContent("Dyżur zatwierdzony");
+  });
+});
+
+describe("StazKolejka — data wpisu przez wspólny formater", () => {
+  it("data kalendarzowa jako „27 sierpnia 2026”, brak daty jako „—”, bez surowego zapisu ISO", async () => {
+    const bezDaty = wpis(93, { date: null, user: { id: 19, first_name: "Ewa", last_name: "Demo" } });
+    await renderZDanymi([wpis(91), bezDaty]);
+    const zData = wiersz("Marta Demo").textContent ?? "";
+    const pusty = wiersz("Ewa Demo").textContent ?? "";
+    expect(zData).toContain("Dyżur z 27 sierpnia 2026 · 3.5 h");
+    expect(zData).not.toContain("2026-08-27");
+    expect(pusty).toContain("Dyżur z — · 3.5 h");
+    expect(pusty).not.toContain("brak daty");
   });
 });

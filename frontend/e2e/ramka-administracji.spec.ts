@@ -162,6 +162,7 @@ const MENU_OCZEKIWANE = [
     pozycje: [
       ["Pulpit", "/admin"],
       ["Sprawy", "/admin/sprawy"],
+      ["Dyżury do decyzji", "/admin/staz"],
       ["Uczestnicy", "/admin/uczestniczki"],
       ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
     ],
@@ -173,7 +174,7 @@ const MENU_OCZEKIWANE = [
       ["Kursy", "/admin/kursy"],
       ["Słownik form stażu", "/admin/formy-stazu"],
     ],
-    // Bez „staż i superwizja” — „Akceptacja stażu” i „Superwizje” są pozycjami menu („Dotychczasowy panel”).
+    // Bez „staż i superwizja” — „Dyżury do decyzji” (Codziennie) i „Superwizje” (Dotychczasowy panel) są pozycjami menu.
     linia: "W przygotowaniu: prowadzący.",
   },
   {
@@ -188,12 +189,11 @@ const MENU_OCZEKIWANE = [
     linia: "W przygotowaniu: ustawienia roku programu.",
   },
   {
-    naglowek: "Dotychczasowy panel (7)",
+    naglowek: "Dotychczasowy panel (6)",
     pozycje: [
       ["Czas nauki", "/admin/czas-nauki"],
       ["Certyfikaty", "/admin/certyfikaty"],
       ["Profile psychologa", "/admin/profile"],
-      ["Akceptacja stażu", "/admin/staz"],
       ["Superwizje", "/admin/superwizje"],
       ["Skrzynka e-maili", "/admin/emails"],
       ["Ustawienia", "/admin/ustawienia"],
@@ -448,7 +448,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         const menu = await odczytajMenu(nav);
         expect(menu.grupy).toEqual(MENU_OCZEKIWANE);
         expect(menu.konto).toBe("Konto");
-        expect(menu.przyciski).toEqual(["Dotychczasowy panel (7)", "Wyloguj"]);
+        expect(menu.przyciski).toEqual(["Dotychczasowy panel (6)", "Wyloguj"]);
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
         // Bieżąca pozycja widoczna także wtedy, gdy stoi w grupie zwiniętej („Dotychczasowy panel”).
         await expect(nav.locator('a[aria-current="page"]')).toBeVisible();

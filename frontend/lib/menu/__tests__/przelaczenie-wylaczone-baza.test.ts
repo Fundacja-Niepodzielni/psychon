@@ -143,13 +143,13 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
   });
 });
 
-const WLACZONE_DZIS: KluczGrupy[] = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow"];
+const WLACZONE_DZIS: KluczGrupy[] = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "kolejkaStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow"];
 const FLAGI_DZIS: Partial<Record<KluczGrupy, boolean>> = Object.fromEntries(
   WLACZONE_DZIS.map((klucz) => [klucz, true]),
 );
 
 describe("menu rzeczywiste przy stanie flag rejestru", () => {
-  it("włączone są tylko grupy współpracy, pulpitu uczestnika, form stażu, pulpitu administracji, pulpitu prowadzącego, decyzji o profilu, wzorów dokumentów, ekranu startowego i spraw", () => {
+  it("włączone są tylko grupy współpracy, pulpitu uczestnika, form stażu, pulpitu administracji, pulpitu prowadzącego, decyzji o profilu, wzorów dokumentów, ekranu startowego, spraw i kolejki stażu", () => {
     // Grupy z podmianą treści (ten sam adres starej i nowej trasy) nie zmieniają menu.
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
       expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(WLACZONE_DZIS.includes(klucz as KluczGrupy));

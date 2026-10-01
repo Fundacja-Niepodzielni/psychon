@@ -32,9 +32,12 @@ import type { MenuEntry } from "../types";
  * - funkcje starego panelu bez miejsca w menu makiety — grupa na dole
  *   „Dotychczasowy panel” ze starymi wpisami (etykieta i adres wprost ze
  *   starego rejestru);
+ * - kolejka stażu (`/admin/staz`) to pozycja „Dyżury do decyzji” w „Codziennie”
+ *   zaraz po „Sprawy” (nazwa == `h1` ekranu); stary wpis „Akceptacja stażu”
+ *   nie wchodzi wtedy do „Dotychczasowego panelu”;
  * - linie „W przygotowaniu” z makiety, bez łączy i bez funkcji obecnych
- *   w menu: w „Programie” bez „staż i superwizja” (w menu „Akceptacja
- *   stażu” i „Superwizje”); w „Rozliczeniu” bez
+ *   w menu: w „Programie” bez „staż i superwizja” (w menu „Dyżury do decyzji”
+ *   i „Superwizje”); w „Rozliczeniu” bez
  *   „treści i dokumenty” (wzory dokumentów i ekran startowy są już pozycjami
  *   tej grupy).
  */
@@ -58,6 +61,7 @@ export interface GrupaMenuRamki {
 export const NAZWY_RAMKI_ADMINISTRACJI = {
   pulpit: "Pulpit",
   sprawy: "Sprawy",
+  kolejkaStazu: "Dyżury do decyzji",
   uczestnicy: "Uczestnicy",
   zgloszeniaWspolpracy: "Zgłoszenia współpracy",
   kursy: "Kursy",
@@ -110,12 +114,21 @@ function dotychczasowa(wpis: MenuEntry): PozycjaMenuRamki {
  */
 export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
   const n = NAZWY_RAMKI_ADMINISTRACJI;
+  // „Dyżury do decyzji” (kolejka stażu, `/admin/staz`) stoi w „Codziennie”; stary wpis
+  // „Akceptacja stażu” znika z „Dotychczasowego panelu” dokładnie wtedy, gdy ta pozycja
+  // jest w menu — adres jest ten sam przy obu stanach flagi, więc wejście nie ginie
+  // i nie ma duplikatu.
+  const kolejkaStazu = pozycja(cel(grupy, "kolejkaStazu"), "inbox", n.kolejkaStazu);
+  const dotychczasowe = [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails, h19Ustawienia].filter(
+    (wpis) => !(kolejkaStazu.length > 0 && wpis === h11Staz),
+  );
   return [
     {
       naglowek: "Codziennie",
       pozycje: [
         ...pozycja(cel(grupy, "pulpitAdministracji"), "home", n.pulpit, true),
         ...pozycja(cel(grupy, "sprawy"), "inbox", n.sprawy),
+        ...kolejkaStazu,
         ...pozycja(cel(grupy, "listaOsob"), "users", n.uczestnicy),
         ...pozycja(cel(grupy, "wspolpraca"), "chat", n.zgloszeniaWspolpracy),
       ],
@@ -126,7 +139,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...pozycja(h08Kursy.href, "book", n.kursy),
         ...pozycja(cel(grupy, "formyStazu"), "clock", n.formyStazu),
       ],
-      // Bez „staż i superwizja”: „Akceptacja stażu” i „Superwizje” są pozycjami menu („Dotychczasowy panel”).
+      // Bez „staż i superwizja”: „Dyżury do decyzji” (Codziennie) i „Superwizje” („Dotychczasowy panel”) są pozycjami menu.
       wPrzygotowaniu: "prowadzący",
     },
     {
@@ -141,9 +154,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
     },
     {
       naglowek: GRUPA_DOTYCHCZASOWA,
-      pozycje: [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails, h19Ustawienia].map(
-        dotychczasowa,
-      ),
+      pozycje: dotychczasowe.map(dotychczasowa),
     },
   ].filter((grupa) => grupa.pozycje.length > 0);
 }

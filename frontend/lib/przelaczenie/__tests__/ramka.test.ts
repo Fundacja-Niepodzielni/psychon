@@ -38,7 +38,7 @@ describe("czyTrasaWNowejRamce — wszystkie grupy wyłączone", () => {
   it("drzewo stron administracji jest niepuste i obejmuje strony A.2", () => {
     expect(STRONY_ADMIN.length).toBeGreaterThanOrEqual(15);
     expect(STRONY_ADMIN).toEqual(
-      expect.arrayContaining(["/admin", "/admin/profile/12", "/admin/wzory-dokumentow", "/admin/ekran-startowy"]),
+      expect.arrayContaining(["/admin", "/admin/profile/12", "/admin/staz", "/admin/wzory-dokumentow", "/admin/ekran-startowy"]),
     );
   });
 
@@ -56,7 +56,7 @@ describe("czyTrasaWNowejRamce — wszystkie grupy wyłączone", () => {
 });
 
 describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
-  it("nową ramkę dostają dokładnie pięć stron A.2 administracji", () => {
+  it("nową ramkę dostają dokładnie sześć stron A.2 administracji", () => {
     const wNowej = STRONY_ADMIN.filter((s) => czyTrasaWNowejRamce(s, "administracja")).sort();
     const oczekiwane = [
       GRUPY.pulpitAdministracji.wlaczona && "/admin",
@@ -64,6 +64,7 @@ describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
       GRUPY.wzoryDokumentow.wlaczona && "/admin/wzory-dokumentow",
       GRUPY.ekranStartowy.wlaczona && "/admin/ekran-startowy",
       GRUPY.sprawy.wlaczona && "/admin/sprawy",
+      GRUPY.kolejkaStazu.wlaczona && "/admin/staz",
     ].filter((s): s is string => typeof s === "string");
     expect(wNowej).toEqual(oczekiwane.sort());
   });

@@ -5,8 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { WNIOSEK } from "@/nowy-front/profil-decyzja/__tests__/atrapy";
 
 /**
- * Trzy trasy grup z podmianą treści (`/admin/profile/[id]`,
- * `/admin/wzory-dokumentow`, `/admin/ekran-startowy`) złożone tak jak robi to
+ * Cztery trasy grup z podmianą treści (`/admin/profile/[id]`,
+ * `/admin/wzory-dokumentow`, `/admin/ekran-startowy`, `/admin/staz`) złożone tak jak robi to
  * router: prawdziwy układ administracji (strażnik ról i powłoka panelu) i
  * prawdziwa strona, czytająca prawdziwy rejestr przełączenia (grupy włączone).
  * Dwa zestawy:
@@ -15,11 +15,18 @@ import { WNIOSEK } from "@/nowy-front/profil-decyzja/__tests__/atrapy";
  * - odmowa roli: rola spoza administracji dostaje wspólny ekran „Brak dostępu”,
  *   a odpowiedź 401/403 z serwera — stan „brak uprawnień” ekranu; w obu
  *   przypadkach w DOM nie ma żadnego rekordu.
- * Podmieniony jest wyłącznie transport HTTP (`api`, `apiPaged`, `downloadFile`).
+ * Podmieniony jest wyłącznie transport HTTP (`api`, `apiPaged`, `downloadFile`)
+ * — w obu modułach klienta: beczce `@/lib/api` i `@/lib/api/klient`.
  */
 
 const api = vi.fn();
 const apiPaged = vi.fn();
+
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...args: unknown[]) => api(...args),
+  apiPaged: (...args: unknown[]) => apiPaged(...args),
+}));
 
 vi.mock("@/lib/api/klient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/klient")>()),
@@ -41,10 +48,12 @@ const { default: UkladAdministracji } = await import("@/app/(administracja)/admi
 const { default: StronaProfilu } = await import("@/app/(administracja)/admin/profile/[id]/page");
 const { default: StronaWzorow } = await import("@/app/(administracja)/admin/wzory-dokumentow/page");
 const { default: StronaEkranu } = await import("@/app/(administracja)/admin/ekran-startowy/page");
+const { default: StronaStazu } = await import("@/app/(administracja)/admin/staz/page");
 const { default: PanelShell } = await import("@/components/layout/PanelShell");
 const { ProfilDecyzja } = await import("@/nowy-front/profil-decyzja/ProfilDecyzja");
 const { WzoryDokumentow } = await import("@/nowy-front/wzory-dokumentow/WzoryDokumentow");
 const { EkranStartowy } = await import("@/nowy-front/ekran-startowy/EkranStartowy");
+const { StazKolejka } = await import("@/nowy-front/staz-kolejka/StazKolejka");
 
 const STRONA_PUSTA = { data: [], meta: { current_page: 1, per_page: 25, total: 0, last_page: 1 } };
 const BLAD = () => new ApiError({ status: 500, code: "server_error", message: "Błąd serwera." });
@@ -65,6 +74,22 @@ const EKRAN = {
   expectations: { title: "Oczekiwania testowe", body: "Treść oczekiwań testowych." },
   updated_at: null,
 };
+
+const WPIS_STAZU = {
+  id: 91,
+  date: "2026-08-27",
+  hours: "3.5",
+  form: "phone_duty",
+  consultations_count: 4,
+  description: "Dyżur telefoniczny — bez danych osób.",
+  status: "submitted",
+  review_comment: null,
+  decided_at: null,
+  created_at: "2026-08-27T18:00:00Z",
+  updated_at: "2026-08-27T18:00:00Z",
+  user: { id: 17, first_name: "Marta", last_name: "Demo" },
+};
+const STRONA_STAZU = { data: [WPIS_STAZU], meta: { current_page: 1, per_page: 25, total: 1, last_page: 1 } };
 
 type Odpowiedz = unknown;
 
@@ -211,15 +236,53 @@ describe("/admin/ekran-startowy w układzie administracji", () => {
   });
 });
 
+describe("/admin/staz w układzie administracji", () => {
+  const dane = (lista: Odpowiedz) => ({ "/admin/internship/pending": lista });
+
+  it("ładowanie: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(ZAWIESZONE));
+    const { container } = await zloz(<StronaStazu />);
+    await screen.findByRole("heading", { level: 1, name: "Dyżury do decyzji" });
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("dane: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(STRONA_STAZU));
+    const { container } = await zloz(<StronaStazu />);
+    await screen.findByText("Marta Demo");
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("błąd sieci: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(BLAD()));
+    const { container } = await zloz(<StronaStazu />);
+    await screen.findByText("Nie udało się wczytać dyżurów");
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("odmowa 403: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(ZAKAZ()));
+    const { container } = await zloz(<StronaStazu />);
+    await screen.findByText(/tylko dla administracji/);
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+});
+
 describe("kontrola dodatnia: ekran bez dostawcy powłoki", () => {
-  it("każdy z trzech ekranów wewnątrz samej powłoki, bez DostawcyPowloki, daje dwa main", async () => {
+  it("każdy z czterech ekranów wewnątrz samej powłoki, bez DostawcyPowloki, daje dwa main", async () => {
     transport("project_manager", {
       "/admin/profiles/12": ZAWIESZONE,
       "/document-templates/agreement": ZAWIESZONE,
       "/document-templates/agreement/versions": ZAWIESZONE,
       "/onboarding": ZAWIESZONE,
+      "/admin/internship/pending": ZAWIESZONE,
     });
-    for (const ekran of [<ProfilDecyzja key="p" id="12" />, <WzoryDokumentow key="w" />, <EkranStartowy key="e" />]) {
+    for (const ekran of [
+      <ProfilDecyzja key="p" id="12" />,
+      <WzoryDokumentow key="w" />,
+      <EkranStartowy key="e" />,
+      <StazKolejka key="s" />,
+    ]) {
       const { container, unmount } = render(
         <PanelShell panelName="Administracja" menu={[]}>
           {ekran}
@@ -237,12 +300,14 @@ describe("odmowa roli — rola spoza administracji i odmowa serwera", () => {
     "/document-templates/agreement": WZOR,
     "/document-templates/agreement/versions": HISTORIA,
     "/onboarding": EKRAN,
+    "/admin/internship/pending": STRONA_STAZU,
   };
 
   it.each([
     ["wniosek o profil", "Ewa Przykładowa", trasaProfilu],
     ["wzory dokumentów", "Treść wzoru testowego", async () => <StronaWzorow />],
     ["ekran startowy", "Film powitalny testowy", async () => <StronaEkranu />],
+    ["kolejka stażu", "Marta Demo", async () => <StronaStazu />],
   ] as const)(
     "%s: rola prowadzącego dostaje wspólny ekran odmowy, bez rekordów i bez żądań poza /me",
     async (_nazwa, rekord, element) => {
@@ -286,6 +351,22 @@ describe("odmowa roli — rola spoza administracji i odmowa serwera", () => {
       await screen.findByText(/tylko dla administracji/);
       expect(container.querySelectorAll("textarea")).toHaveLength(0);
       expect(container.textContent ?? "").not.toContain("Treść wzoru testowego");
+    },
+  );
+
+  it.each([401, 403])(
+    "kolejka stażu: odpowiedź %i serwera pokazuje stan brak uprawnień, zero rekordów i zero przycisków decyzji",
+    async (status) => {
+      transport("project_manager", { "/admin/internship/pending": ZAKAZ(status) });
+      const { container } = await zloz(<StronaStazu />);
+
+      await screen.findByText(/tylko dla administracji/);
+      expect(container.textContent ?? "").not.toContain("Marta Demo");
+      expect(container.textContent ?? "").not.toContain("Dyżur z");
+      expect(container.querySelectorAll("ul[aria-label='Dyżury do decyzji']")).toHaveLength(0);
+      expect(screen.queryByRole("button", { name: "Zatwierdź" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Odrzuć dyżur" })).toBeNull();
+      expect(zmierz(container)).toEqual(JEDEN);
     },
   );
 
