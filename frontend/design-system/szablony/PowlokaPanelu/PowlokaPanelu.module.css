@@ -80,6 +80,17 @@
   flex-direction: column;
   gap: var(--space-4);
   background: var(--card);
+  /* Linia stale zajmuje 1 px (przezroczysta), więc jej pojawienie się nie przesuwa menu. */
+  border-top: 1px solid transparent;
+}
+
+/* Pod „Konto” jest treść menu (menu przewijane, nieprzewinięte do końca):
+   linia `--border` i miękki cień `--shadow`. Makieta nie przykleja „Konto”
+   (zwykły nagłówek grupy `.nav .grp`, bez linii), więc bez treści pod spodem
+   blok wygląda jak w makiecie — linia jest warunkowa, tak jak cień. */
+.kontoNadTrescia {
+  border-top-color: var(--border);
+  box-shadow: var(--shadow);
 }
 
 /* Grupa zwinięta („Dotychczasowy panel (n)”): przycisk w stylu nagłówka grupy. */

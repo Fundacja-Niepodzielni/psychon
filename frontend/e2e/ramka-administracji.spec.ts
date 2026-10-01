@@ -579,3 +579,197 @@ test.describe("nowa ramka panelu administracji — menu 1280×800 i pasek", () =
     await expect(okno).toHaveCount(0);
   });
 });
+
+/**
+ * Położenie bieżącej pozycji menu (`aria-current="page"`) w kontenerze menu
+ * (bok albo okno szuflady) względem jego górnej krawędzi i górnej krawędzi
+ * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna. Wartości
+ * surowe z `getBoundingClientRect()` — bez zaokrąglania, tolerancja 0.
+ */
+async function pomiarBiezacejPozycji(kontener: Locator) {
+  return kontener.evaluate((el) => {
+    const pozycja = el.querySelector('a[aria-current="page"]');
+    const konto = el.querySelector("[data-konto-menu]");
+    const wyloguj = Array.from(el.querySelectorAll("button")).find((b) => (b.textContent ?? "").trim() === "Wyloguj");
+    const k = el.getBoundingClientRect();
+    const p = pozycja?.getBoundingClientRect();
+    return {
+      pozycja: (pozycja?.textContent ?? "").trim(),
+      goraPozycji: p ? p.top : null,
+      dolPozycji: p ? p.bottom : null,
+      goraKontenera: k.top,
+      goraKonta: konto ? konto.getBoundingClientRect().top : null,
+      dolWyloguj: wyloguj ? wyloguj.getBoundingClientRect().bottom : null,
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      scrollY: window.scrollY,
+      fokus: document.activeElement?.tagName ?? null,
+    };
+  });
+}
+
+type PomiarBiezacej = Awaited<ReturnType<typeof pomiarBiezacejPozycji>>;
+
+function biezacaWidoczna(m: PomiarBiezacej): boolean {
+  return (
+    m.goraPozycji !== null &&
+    m.dolPozycji !== null &&
+    m.goraKonta !== null &&
+    m.goraPozycji >= m.goraKontenera &&
+    m.dolPozycji <= m.goraKonta
+  );
+}
+
+test.describe("nowa ramka panelu administracji — bieżąca pozycja menu widoczna", () => {
+  test("/admin/profile/12 @1280x800: pozycja bieżąca nad „Konto”, przewija się tylko menu", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin/profile/12");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Profile psychologa");
+    await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(bok)), { timeout: 5000 }).toBe(true);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify(m);
+    console.log(`POMIAR-MENU admin /admin/profile/12 ${opis}`);
+    expect(m.dolPozycji!, `dół pozycji <= góra „Konto” ${opis}`).toBeLessThanOrEqual(m.goraKonta!);
+    expect(m.goraPozycji!, `góra pozycji >= góra menu ${opis}`).toBeGreaterThanOrEqual(m.goraKontenera);
+    expect(m.scrollTop, `menu przewinięte ${opis}`).toBeGreaterThan(0);
+    expect(m.scrollY, `okno nieprzewinięte ${opis}`).toBe(0);
+    expect(m.fokus, `fokus bez zmian ${opis}`).toBe("BODY");
+    expect(m.dolWyloguj!, `„Wyloguj” przy 800 px ${opis}`).toBeLessThanOrEqual(800);
+  });
+
+  test("/admin @1280x800: pozycja bieżąca widoczna, menu nieprzewinięte", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify(m);
+    console.log(`POMIAR-MENU admin /admin ${opis}`);
+    expect(biezacaWidoczna(m), `pozycja widoczna ${opis}`).toBe(true);
+    expect(m.scrollTop, `scrollTop menu ${opis}`).toBe(0);
+    expect(m.scrollY, `okno nieprzewinięte ${opis}`).toBe(0);
+  });
+
+  test("/admin/profile/12 @390: po otwarciu okna menu pozycja bieżąca nad „Konto”", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin/profile/12");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    const okno = page.getByRole("dialog", { name: "Menu i konto" });
+    await expect(okno).toBeVisible();
+    await expect(okno.locator('a[aria-current="page"]')).toHaveText("Profile psychologa");
+    await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(okno)), { timeout: 5000 }).toBe(true);
+    const m = await pomiarBiezacejPozycji(okno);
+    console.log(`POMIAR-MENU admin @390 /admin/profile/12 ${JSON.stringify(m)}`);
+    expect(m.scrollY, JSON.stringify(m)).toBe(0);
+  });
+});
+
+/** Obliczony cień i kolor górnej krawędzi bloku „Konto” w menu bocznym. */
+async function krawedzKonta(bok: Locator) {
+  return bok.locator("[data-konto-menu]").evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { cien: s.boxShadow, linia: s.borderTopColor, grubosc: s.borderTopWidth };
+  });
+}
+
+test.describe("nowa ramka panelu administracji — krawędź „Konto” nad treścią menu", () => {
+  const TRASY = [
+    { adres: "/admin/ekran-startowy", nazwa: "ekran-startowy", menu: "Treść ekranu „Zacznij tutaj”" },
+    { adres: "/admin/wzory-dokumentow", nazwa: "wzory-dokumentow", menu: "Wzory dokumentów" },
+  ];
+  for (const trasa of TRASY) {
+    test(`${trasa.adres} @1280x800: pozycja bieżąca cała nad górą „Konto”`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await instalujAtrapyApi(page);
+      await page.goto(trasa.adres);
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      const bok = page.getByRole("complementary", { name: "Menu i konto" });
+      await expect(bok.locator('a[aria-current="page"]')).toHaveText(trasa.menu);
+      await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(bok)), { timeout: 5000 }).toBe(true);
+      const katalog = katalogZrzutow();
+      if (katalog) await page.screenshot({ path: path.join(katalog, `ramka-${trasa.nazwa}-1280x800-konto.png`) });
+      const m = await pomiarBiezacejPozycji(bok);
+      const opis = JSON.stringify({ ...m, ...(await krawedzKonta(bok)) });
+      console.log(`POMIAR-KONTO admin ${trasa.adres} ${opis}`);
+      expect(m.dolPozycji!, `dół pozycji <= góra „Konto” ${opis}`).toBeLessThanOrEqual(m.goraKonta!);
+      expect(m.goraPozycji!, `góra pozycji >= góra menu ${opis}`).toBeGreaterThanOrEqual(m.goraKontenera);
+      expect(m.scrollY, `okno nieprzewinięte ${opis}`).toBe(0);
+    });
+  }
+
+  test("/admin @1280x800: na wejściu treść pod „Konto” — linia i cień", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
+    await expect.poll(async () => (await krawedzKonta(bok)).cien, { timeout: 5000 }).not.toBe("none");
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-1280x800-konto.png") });
+    const k = await krawedzKonta(bok);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify({ ...k, scrollTop: m.scrollTop, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO admin /admin wejscie ${opis}`);
+    expect(m.scrollHeight, `menu przewijane ${opis}`).toBeGreaterThan(m.clientHeight);
+    expect(k.grubosc, opis).toBe("1px");
+    expect(k.linia, `linia widoczna ${opis}`).not.toBe("rgba(0, 0, 0, 0)");
+  });
+
+  test("/admin @1280x800: menu przewinięte do końca — bez cienia i bez linii", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await bok.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+    await expect.poll(async () => (await krawedzKonta(bok)).cien, { timeout: 5000 }).toBe("none");
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-1280x800-konto-koniec.png") });
+    const k = await krawedzKonta(bok);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify({ ...k, scrollTop: m.scrollTop, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO admin /admin koniec ${opis}`);
+    expect(m.scrollTop + m.clientHeight, `przewinięte do końca ${opis}`).toBeGreaterThanOrEqual(m.scrollHeight - 1);
+    expect(k.linia, `linia przezroczysta ${opis}`).toBe("rgba(0, 0, 0, 0)");
+  });
+});
+
+test.describe("nowa ramka panelu administracji — krawędź „Konto” w szufladzie 390", () => {
+  test("/admin @390: szuflada z treścią pod „Konto” — cień, po przewinięciu do końca bez cienia", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    const okno = page.getByRole("dialog", { name: "Menu i konto" });
+    await expect(okno).toBeVisible();
+    await expect(okno.getByRole("button", { name: "Zamknij", exact: true })).toBeFocused();
+    await expect.poll(async () => (await krawedzKonta(okno)).cien, { timeout: 5000 }).not.toBe("none");
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-390-szuflada-konto.png") });
+    const m = await pomiarBiezacejPozycji(okno);
+    const k = await krawedzKonta(okno);
+    const opis = JSON.stringify({ ...k, scrollTop: m.scrollTop, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO admin @390 /admin szuflada ${opis}`);
+    expect(m.scrollHeight, `szuflada przewijana ${opis}`).toBeGreaterThan(m.clientHeight);
+    expect(k.linia, `linia widoczna ${opis}`).not.toBe("rgba(0, 0, 0, 0)");
+    await okno.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+    await expect.poll(async () => (await krawedzKonta(okno)).cien, { timeout: 5000 }).toBe("none");
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-390-szuflada-konto-koniec.png") });
+    await expect(okno.getByRole("button", { name: "Zamknij", exact: true })).toBeFocused();
+    await okno.getByRole("button", { name: "Zamknij", exact: true }).click();
+    await expect(okno).toHaveCount(0);
+  });
+});

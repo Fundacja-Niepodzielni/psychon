@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { PowlokaPanelu } from "../PowlokaPanelu/PowlokaPanelu";
+import { odslonBiezacaPozycje, PowlokaPanelu } from "../PowlokaPanelu/PowlokaPanelu";
 import { DetailTemplate } from "../DetailTemplate/DetailTemplate";
 import { PageHeader } from "../../organizmy/PageHeader/PageHeader";
 import { PanelNav } from "../../organizmy/PanelNav/PanelNav";
@@ -399,5 +399,71 @@ describe("PowlokaPanelu — grupa zwinięta i zamknięcie okna", () => {
     const znak = zamknij.querySelector("[data-znak-zamknij]");
     expect(znak?.textContent?.trim()).toBe("×");
     expect(znak?.getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+describe("odslonBiezacaPozycje — przewija tylko kontener menu", () => {
+  afterEach(cleanup);
+
+  function prostokat(top: number, height: number) {
+    return { top, bottom: top + height, height, left: 0, right: 200, width: 200, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+  }
+
+  /** Kontener 0–800, „Konto” od `goraKonta`; pozycja w treści na `yWTresci` (wysokość 40). */
+  function zbuduj(yWTresci: number, goraKonta = 640) {
+    const kontener = document.createElement("aside");
+    kontener.innerHTML = '<a href="/x" aria-current="page">X</a><div data-konto-menu=""></div>';
+    const pozycja = kontener.querySelector("a")!;
+    const konto = kontener.querySelector("div")!;
+    let przewiniecie = 0;
+    const zachowania: (ScrollBehavior | undefined)[] = [];
+    Object.defineProperty(kontener, "scrollTop", {
+      get: () => przewiniecie,
+      set: (v: number) => {
+        przewiniecie = v;
+      },
+    });
+    kontener.scrollTo = ((opcje: ScrollToOptions) => {
+      zachowania.push(opcje.behavior);
+      przewiniecie = opcje.top ?? przewiniecie;
+    }) as typeof kontener.scrollTo;
+    kontener.getBoundingClientRect = () => prostokat(0, 800);
+    konto.getBoundingClientRect = () => prostokat(goraKonta, 800 - goraKonta);
+    pozycja.getBoundingClientRect = () => prostokat(yWTresci - przewiniecie, 40);
+    return { kontener, scrollTop: () => przewiniecie, zachowania, dolPozycji: () => pozycja.getBoundingClientRect().bottom };
+  }
+
+  it("pozycja pod blokiem „Konto” — przewija, aż dół pozycji stanie nad „Konto”", () => {
+    const { kontener, scrollTop } = zbuduj(994);
+    odslonBiezacaPozycje(kontener);
+    expect(scrollTop()).toBe(994 + 40 - 640);
+  });
+
+  it("przewinięcie bez animacji — każde wywołanie z `behavior: \"instant\"`", () => {
+    const { kontener, zachowania } = zbuduj(994);
+    odslonBiezacaPozycje(kontener);
+    expect(zachowania.length).toBeGreaterThan(0);
+    expect(zachowania.every((z) => z === "instant")).toBe(true);
+  });
+
+  it("pozycja wystaje o ułamek piksela — po przewinięciu dół pozycji <= góra „Konto” bez zaokrąglania", () => {
+    // Pozycja wystaje pod górę „Konto” o ułamek piksela.
+    const { kontener, scrollTop, dolPozycji } = zbuduj(658.17, 697.95);
+    odslonBiezacaPozycje(kontener);
+    expect(scrollTop()).toBeGreaterThan(0);
+    expect(dolPozycji()).toBeLessThanOrEqual(697.95);
+  });
+
+  it("pozycja już widoczna — scrollTop bez zmian", () => {
+    const { kontener, scrollTop } = zbuduj(200);
+    odslonBiezacaPozycje(kontener);
+    expect(scrollTop()).toBe(0);
+  });
+
+  it("bez pozycji bieżącej — scrollTop bez zmian", () => {
+    const kontener = document.createElement("aside");
+    kontener.scrollTop = 0;
+    odslonBiezacaPozycje(kontener);
+    expect(kontener.scrollTop).toBe(0);
   });
 });

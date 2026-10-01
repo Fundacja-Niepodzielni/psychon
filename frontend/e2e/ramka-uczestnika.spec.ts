@@ -430,3 +430,92 @@ test.describe("nowa ramka panelu uczestnika — menu 1280×800 i pasek", () => {
     await expect(okno).toHaveCount(0);
   });
 });
+
+/**
+ * Położenie bieżącej pozycji menu (`aria-current="page"`) w kontenerze menu
+ * (bok albo okno szuflady) względem jego górnej krawędzi i górnej krawędzi
+ * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna. Wartości
+ * surowe z `getBoundingClientRect()` — bez zaokrąglania, tolerancja 0.
+ */
+async function pomiarBiezacejPozycji(kontener: Locator) {
+  return kontener.evaluate((el) => {
+    const pozycja = el.querySelector('a[aria-current="page"]');
+    const konto = el.querySelector("[data-konto-menu]");
+    const wyloguj = Array.from(el.querySelectorAll("button")).find((b) => (b.textContent ?? "").trim() === "Wyloguj");
+    const k = el.getBoundingClientRect();
+    const p = pozycja?.getBoundingClientRect();
+    return {
+      pozycja: (pozycja?.textContent ?? "").trim(),
+      goraPozycji: p ? p.top : null,
+      dolPozycji: p ? p.bottom : null,
+      goraKontenera: k.top,
+      goraKonta: konto ? konto.getBoundingClientRect().top : null,
+      dolWyloguj: wyloguj ? wyloguj.getBoundingClientRect().bottom : null,
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      scrollY: window.scrollY,
+      fokus: document.activeElement?.tagName ?? null,
+    };
+  });
+}
+
+type PomiarBiezacej = Awaited<ReturnType<typeof pomiarBiezacejPozycji>>;
+
+function biezacaWidoczna(m: PomiarBiezacej): boolean {
+  return (
+    m.goraPozycji !== null &&
+    m.dolPozycji !== null &&
+    m.goraKonta !== null &&
+    m.goraPozycji >= m.goraKontenera &&
+    m.dolPozycji <= m.goraKonta
+  );
+}
+
+test.describe("nowa ramka panelu uczestnika — bieżąca pozycja menu widoczna", () => {
+  for (const ekran of EKRANY) {
+    test(`${ekran.adres} @1280x800: pozycja bieżąca nad „Konto”, okno nieprzewinięte`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await instalujAtrapyApi(page);
+      await page.goto(ekran.adres);
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      const bok = page.getByRole("complementary", { name: "Menu i konto" });
+      await expect(bok.locator('a[aria-current="page"]')).toHaveText(ekran.menu);
+      await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(bok)), { timeout: 5000 }).toBe(true);
+      const m = await pomiarBiezacejPozycji(bok);
+      const opisPomiaru = JSON.stringify(m);
+      console.log(`POMIAR-MENU uczestnik ${ekran.adres} ${opisPomiaru}`);
+      expect(m.scrollY, `okno nieprzewinięte ${opisPomiaru}`).toBe(0);
+      expect(m.dolWyloguj!, `„Wyloguj” przy 800 px ${opisPomiaru}`).toBeLessThanOrEqual(800);
+      // Menu, które się mieści, zostaje nieprzewinięte.
+      expect(m.scrollHeight > m.clientHeight || m.scrollTop === 0, `menu bez przewijania ma scrollTop 0 ${opisPomiaru}`).toBe(true);
+    });
+  }
+});
+
+/** Obliczony cień i kolor górnej krawędzi bloku „Konto” w menu bocznym. */
+async function krawedzKonta(bok: Locator) {
+  return bok.locator("[data-konto-menu]").evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { cien: s.boxShadow, linia: s.borderTopColor, grubosc: s.borderTopWidth };
+  });
+}
+
+test.describe("nowa ramka panelu uczestnika — krawędź „Konto” bez treści pod spodem", () => {
+  test(`${EKRANY[0].adres} @1280x800: menu się nie przewija — „Konto” bez cienia`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto(EKRANY[0].adres);
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText(EKRANY[0].menu);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    const k = await krawedzKonta(bok);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opisPomiaru = JSON.stringify({ ...k, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO uczestnik ${EKRANY[0].adres} ${opisPomiaru}`);
+    expect(m.scrollHeight, `menu się nie przewija ${opisPomiaru}`).toBeLessThanOrEqual(m.clientHeight);
+    expect(k.cien, opisPomiaru).toBe("none");
+    expect(k.linia, opisPomiaru).toBe("rgba(0, 0, 0, 0)");
+  });
+});
