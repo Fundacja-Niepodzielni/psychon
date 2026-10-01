@@ -405,6 +405,46 @@ class AdminLessonRecordingCaseTest extends TestCase
     }
 
     /**
+     * Kolejność wdrożenia: kod przed migracją. Bez indeksu nic nie odmawia
+     * zapisu po stronie bazy, a zapis małymi literami i reguła „już przypisany"
+     * działają tak samo.
+     */
+    public function test_the_code_works_on_the_schema_without_the_index(): void
+    {
+        DB::statement('DROP INDEX lessons_video_provider_id_unique');
+        $this->configureBunny();
+        $course = $this->course('etap-1');
+        $lesson = $this->lesson($course, 1, self::OWN_ID);
+        $holder = $this->lesson($this->course('etap-2'), 1, self::HELD_ID);
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
+
+        $created = $this->postJson("/api/v1/admin/courses/{$course->id}/lessons", [
+            'title' => 'Nowa lekcja',
+            'video_provider_id' => 'MOCK-NOWE-NAGRANIE',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.video_provider_id', 'mock-nowe-nagranie');
+        $this->assertSame('mock-nowe-nagranie', Lesson::findOrFail($created->json('data.id'))->video_provider_id);
+
+        $this->postJson("/api/v1/admin/courses/{$course->id}/lessons", [
+            'title' => 'Zajęte',
+            'video_provider_id' => 'MOCK-ZAJETE-NAGRANIE',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.errors.video_provider_id.0', self::TAKEN_MESSAGE);
+
+        $this->patchJson("/api/v1/admin/lessons/{$lesson->id}", ['video_provider_id' => 'Mock-Inne-Nagranie'])
+            ->assertOk()
+            ->assertJsonPath('data.video_provider_id', 'mock-inne-nagranie');
+        $this->assertSame('mock-inne-nagranie', $lesson->fresh()->video_provider_id);
+
+        Http::fake(['*' => Http::response(['guid' => '3FA85F64-5717-4562-B3FC-2C963F66AFA6'])]);
+        $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])->assertCreated();
+        $this->assertSame('3fa85f64-5717-4562-b3fc-2c963f66afa6', $lesson->fresh()->video_provider_id);
+        $this->assertSame(self::HELD_ID, $holder->fresh()->video_provider_id);
+    }
+
+    /**
      * Konkurent zapisuje ten sam identyfikator do innej lekcji dokładnie raz,
      * tuż przed zapisem lekcji z żądania (po przejściu reguły żądania).
      */

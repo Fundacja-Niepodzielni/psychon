@@ -277,6 +277,40 @@ class LessonRecordingIndexTest extends TestCase
         $this->assertEquals($rowsBefore, $this->lessonRows());
     }
 
+    /**
+     * Kolejność wdrożenia: migracja przed kodem. Kod sprzed zmiany zapisywał
+     * kolumnę wprost, bez normalizacji — te same operacje na modelu przechodzą
+     * na schemacie z indeksem; zmienia się jedno: powtórzenie odrzuca baza.
+     */
+    public function test_the_previous_write_path_still_works_on_the_schema_with_the_index(): void
+    {
+        $course = $this->course('etap-1');
+        $write = fn (?string $recording): Lesson => Lesson::create([
+            'course_id' => $course->id,
+            'title' => 'Lekcja zapisana wprost',
+            'sequence_order' => ++$this->order,
+            'duration_seconds' => 600,
+            'video_provider_id' => $recording,
+        ]);
+
+        $first = $write('AbC-xyz-09');
+        $write(null);
+        $write('');
+        $write(null);
+
+        $first->fill(['video_provider_id' => 'Inne-Nagranie']);
+        $first->save();
+        $first->update(['title' => 'Zmieniony tytuł']);
+        $first->delete();
+        $reused = $write('Inne-Nagranie');
+
+        $this->assertSame('Inne-Nagranie', $reused->fresh()->video_provider_id);
+        $this->assertSame(4, Lesson::where('course_id', $course->id)->count());
+        $this->assertIndexRefuses(fn () => $write('INNE-NAGRANIE'));
+        $this->assertSame(4, Lesson::where('course_id', $course->id)->count());
+        $this->assertSame(5, Lesson::withTrashed()->where('course_id', $course->id)->count());
+    }
+
     private function assertIndexRefuses(Closure $write): void
     {
         $caught = null;
