@@ -783,6 +783,27 @@ function Poligon() {
           pusty={{ naglowek: "Brak godzin", tresc: "Godziny pojawią się po pierwszym wpisie w dzienniku.", przycisk: { etykieta: "Dodaj wpis", onClick: () => {} } }}
         />
       </div>
+      {/* Tryb kolumn: nazwa pierwsza, stan w osobnej kolumnie, liczba do
+          prawej, akcja na końcu; suma „Razem” w kolumnie liczb; wiersz bez akcji. */}
+      <div data-style-id="organizm-o4-kolumny">
+        <RecordList
+          tytul="Co czeka na decyzję"
+          naKarcie
+          jednostkaSumy="spraw"
+          kolumny={[
+            { nazwa: "Kolejka", rodzaj: "tekst" },
+            { nazwa: "Stan", rodzaj: "stan" },
+            { nazwa: "Liczba", rodzaj: "liczba" },
+            { nazwa: "Akcja", rodzaj: "akcja" },
+          ]}
+          wiersze={[
+            { id: "k1", tytul: "Zgłoszenia rekrutacyjne", plakietka: { wariant: "warn", tekst: "czeka na decyzję" }, wartosc: 5, akcja: { etykieta: "Otwórz", href: "#" } },
+            { id: "k2", tytul: "Profile prowadzących", plakietka: { wariant: "neutral", tekst: "brak spraw" }, wartosc: 0, akcja: { etykieta: "Otwórz", href: "#" } },
+            { id: "k3", tytul: "Pytania bez odpowiedzi", podpowiedz: "odpowiada prowadzący", plakietka: { wariant: "warn", tekst: "czeka na decyzję" }, wartosc: 12 },
+          ]}
+          pusty={{ naglowek: "Brak spraw", tresc: "Nowe sprawy pojawią się tutaj.", przycisk: { etykieta: "Odśwież", onClick: () => {} } }}
+        />
+      </div>
       <div data-style-id="organizm-o4-pusty">
         <RecordList
           tytul="Obecności na superwizjach"

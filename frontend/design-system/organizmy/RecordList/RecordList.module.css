@@ -36,3 +36,306 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ---------- Karta listy ---------- */
+
+/* Lista w białej karcie: jedno miejsce dla każdego ekranu, który stawia listę
+   na karcie (tło, cienka ramka i zaokrąglenie z tokenów). Wiersze niosą własne
+   wcięcie poziome, więc wcięcie dostaje tylko nagłówek. */
+.karta {
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.kartaZNaglowkiem {
+  padding: var(--space-20) 0 0;
+}
+
+.kartaZNaglowkiem > :is(h2, h3) {
+  padding: 0 var(--card-px);
+  font-size: var(--fs-4);
+}
+
+/* Karta bez widocznego nagłówka zaczyna się od wiersza: górną krawędź daje
+   ramka karty, nie linia listy. */
+.kartaBezNaglowka .tabela,
+.kartaBezNaglowka .lista {
+  border-top: 0;
+}
+
+.karta .tabela > :last-child {
+  border-bottom: 0;
+}
+
+/* ---------- Tryb kolumn ---------- */
+
+/* Nazwa pierwsza, stan w osobnej kolumnie o szerokości własnej treści, liczby
+   do prawej, akcja na końcu. Od 640 px siatka z nagłówkami kolumn (wiersze są
+   podsiatkami, więc lewa krawędź kolumny jest ta sama w każdym wierszu),
+   poniżej układ piętrowy: nazwa, pod nią wartości z podpisem kolumny. */
+.tabela {
+  position: relative;
+  border-top: 1px solid var(--border);
+}
+
+.naglowki,
+.wierszTabeli,
+.wierszSumy {
+  padding: var(--space-12) var(--card-px);
+  border-bottom: 1px solid var(--border);
+}
+
+.naglowki {
+  padding-block: var(--space-8);
+  color: var(--muted);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+}
+
+.naglowekKolumny {
+  position: relative;
+}
+
+.wierszTabeli {
+  min-height: var(--hit-min);
+  box-sizing: border-box;
+}
+
+.wierszSumy {
+  min-height: var(--hit-min);
+  box-sizing: border-box;
+  font-weight: var(--fw-bold);
+}
+
+.bezWciecia > .naglowki,
+.bezWciecia > .wierszTabeli,
+.bezWciecia > .wierszSumy {
+  padding-inline: 0;
+}
+
+.komorka {
+  min-width: 0;
+}
+
+.nazwa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+  overflow-wrap: anywhere;
+}
+
+/* Nazwa wiersza to akapit `Text` (atom nie przyjmuje klasy) — stąd selektor potomka. */
+.nazwa > p:first-child {
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+}
+
+/* Plakietka w kolumnie stanu: szerokość własnej treści, od lewej. To reguła
+   listy — atom `Badge` zostaje bez zmian. */
+.plakietka {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.plakietka > span {
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.podpis {
+  color: var(--muted);
+  font-size: var(--fs-11);
+}
+
+/* Otwarty wiersz i panel pod nim na jednym, ciepłym tle. */
+.otwarty {
+  border-bottom: 0;
+  background: var(--card-warm);
+}
+
+.wierszPanelu {
+  padding: 0 var(--card-px) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  background: var(--card-warm);
+}
+
+.bezWciecia > .otwarty,
+.bezWciecia > .wierszPanelu {
+  padding-inline: var(--space-16);
+}
+
+.panel {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .tabela {
+    display: grid;
+    column-gap: var(--space-16);
+  }
+
+  .tabela[data-liczba-kolumn="2"] {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .tabela[data-liczba-kolumn="3"] {
+    grid-template-columns: minmax(0, 1fr) repeat(2, max-content);
+  }
+
+  .tabela[data-liczba-kolumn="4"] {
+    grid-template-columns: minmax(0, 1fr) repeat(3, max-content);
+  }
+
+  .tabela[data-liczba-kolumn="5"] {
+    grid-template-columns: minmax(0, 1fr) repeat(4, max-content);
+  }
+
+  .tabela[data-liczba-kolumn="6"] {
+    grid-template-columns: minmax(0, 1fr) repeat(5, max-content);
+  }
+
+  .naglowki,
+  .wierszTabeli,
+  .wierszSumy {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+    align-items: center;
+  }
+
+  .wierszPanelu {
+    grid-column: 1 / -1;
+  }
+
+  .podpis {
+    display: none;
+  }
+
+  /* Liczby do prawej: prawa krawędź liczby jest prawą krawędzią kolumny. */
+  .naglowekKolumny[data-rodzaj="liczba"],
+  .komorka[data-rodzaj="liczba"] {
+    justify-self: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .komorka[data-rodzaj="akcja"] {
+    justify-self: end;
+  }
+
+  /* Akcja wiersza od 640 px wygląda jak przycisk drugorzędny (`Button`
+     outline: te same tokeny), dla odnośnika i dla przycisku jednakowo. */
+  .strzalka {
+    display: none;
+  }
+
+  .akcja a,
+  .akcja button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: var(--hit-min);
+    margin: 0;
+    padding: var(--space-8) var(--space-16);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-xs);
+    background: transparent;
+    color: var(--ink);
+    font-size: var(--fs-9);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+  }
+
+  .akcja a:hover {
+    text-decoration: none;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Nagłówki kolumn zostają w drzewie dostępności (każda wartość ma nazwę
+     swojej kolumny), wzrokowo zastępuje je podpis przy wartości. */
+  .naglowki {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Treść z lewej (nazwa, pod nią wartości), akcja z prawej na wysokość
+     całego wiersza. Akcja obejmuje więcej rzędów, niż wiersz ma wartości —
+     puste rzędy nie mają wysokości (bez odstępu między rzędami). */
+  .wierszTabeli {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-12);
+    align-items: center;
+  }
+
+  .wierszTabeli > .komorka {
+    grid-column: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-8);
+    margin-top: var(--space-4);
+  }
+
+  .wierszTabeli > .nazwa {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    margin-top: 0;
+  }
+
+  .wierszTabeli > .komorka:empty {
+    display: none;
+  }
+
+  .wierszTabeli > .komorka[data-rodzaj="akcja"] {
+    grid-column: 2;
+    grid-row: 1 / span 12;
+    margin-top: 0;
+  }
+
+  /* Akcja wiersza jako odnośnik ze strzałką („Otwórz ›”), dla odnośnika i dla
+     przycisku jednakowo; prawa krawędź pola klikalnego kończy się na krawędzi
+     wiersza (bez przewijania poziomego). */
+  .akcja a,
+  .akcja button {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: var(--hit-min);
+    margin: 0;
+    padding: 0 0 0 var(--space-8);
+    border: 0;
+    background: transparent;
+    color: var(--link);
+    font-size: var(--fs-8);
+    font-weight: var(--fw-regular);
+    white-space: nowrap;
+  }
+
+  .strzalka {
+    margin-left: var(--space-4);
+  }
+
+  .wierszSumy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .wierszSumy > .komorka:empty {
+    display: none;
+  }
+}
