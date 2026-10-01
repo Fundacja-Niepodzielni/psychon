@@ -302,6 +302,29 @@ for (const [nazwaWidoku, okno] of [
       await expect(page.locator("#pulpit-certyfikaty")).toHaveText(/9\s*certyfikatów/);
     });
 
+    test("liczba w wierszu pytań stoi w kolumnie liczb sąsiednich wierszy (lewa i prawa krawędź, tolerancja 1 px)", async ({
+      page,
+    }) => {
+      await instalujAtrapy(page, PIATKI);
+      await page.goto("/admin");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(listaSpraw(page)).toBeVisible();
+
+      const liczba = async (nazwa: string) => {
+        const wiersz = listaSpraw(page).locator('[data-wariant="z-licznikiem"]').filter({ hasText: nazwa });
+        const pudelko = await wiersz.getByText(/^\d+\s*spraw$/).boundingBox();
+        expect(pudelko, `liczba w wierszu „${nazwa}”`).not.toBeNull();
+        return { lewa: pudelko!.x, prawa: pudelko!.x + pudelko!.width };
+      };
+      const pytania = await liczba(NAZWA_PYTAN);
+      for (const nazwa of NAZWY.filter((n) => n !== NAZWA_PYTAN)) {
+        const sasiad = await liczba(nazwa);
+        expect(Math.abs(pytania.lewa - sasiad.lewa), `lewa krawędź liczby: „${NAZWA_PYTAN}” a „${nazwa}”`).toBeLessThanOrEqual(1);
+        expect(Math.abs(pytania.prawa - sasiad.prawa), `prawa krawędź liczby: „${NAZWA_PYTAN}” a „${nazwa}”`).toBeLessThanOrEqual(1);
+      }
+      await zrzut(page, `pulpit-${nazwaWidoku}-liczby-w-kolumnie`);
+    });
+
     test("ten sam wiersz listy na innym ekranie (formy stażu): co najmniej 40% wiersza, bez przewijania poziomego", async ({
       page,
     }) => {

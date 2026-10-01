@@ -23,6 +23,8 @@ function plakietkaWiersza(liczba: number) {
 /**
  * Wiersz kolejki, której administracja nie otwiera: plakietka, tytuł,
  * adnotacja i liczba — bez akcji (ani odnośnika, ani przycisku nieaktywnego).
+ * Od 640 px za liczbą stoi puste, niewidoczne miejsce o rozmiarze akcji
+ * „Otwórz” sąsiednich wierszy, żeby liczba stała w ich kolumnie.
  * `ListRow` i `RecordList` wymagają akcji w każdym wierszu, więc ten jeden
  * wiersz składa się z tych samych atomów i ma układ wiersza `ListRow`
  * (`PulpitAdministracji.module.css`, `.wiersz`).
@@ -42,6 +44,8 @@ function WierszBezAkcji({ wiersz }: { wiersz: WierszSprawy }) {
       </div>
       <div className={style.akcje}>
         <Num wartosc={wiersz.liczba} etykieta={jednostka(wiersz.liczba, FORMY_SPRAW)} />
+        {/* Puste miejsce po akcji sąsiednich wierszy: liczba stoi w tej samej kolumnie co ich liczby. Nic w nim nie ma. */}
+        <span className={style.miejsceAkcji} aria-hidden="true" />
       </div>
     </div>
   );

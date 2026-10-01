@@ -292,6 +292,31 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     expect(pytania.textContent).not.toMatch(/Otwórz/);
   });
 
+  it("wiersz questions: nie fokusowalny, nie klikalny, bez roli i odnośnika; puste miejsce po akcji jest ukryte i bez treści", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    render(<PulpitAdministracji />);
+    await screen.findByText("Pytania bez odpowiedzi");
+
+    const pytania = wiersz("Pytania bez odpowiedzi");
+    // Trzy warunki: ani tabindex, ani role, ani href, ani obsługi kliknięcia na żadnym elemencie wiersza.
+    for (const element of [pytania, ...Array.from(pytania.querySelectorAll("*"))]) {
+      expect(element.hasAttribute("tabindex")).toBe(false);
+      expect(element.hasAttribute("href")).toBe(false);
+      expect(element.hasAttribute("onclick")).toBe(false);
+      expect(element.hasAttribute("role")).toBe(false);
+    }
+    expect(pytania.querySelectorAll("a, button, input, select, textarea, [contenteditable]")).toHaveLength(0);
+    // Puste miejsce po akcji: jedno, ukryte przed czytnikiem, bez dzieci i bez tekstu.
+    const miejsca = pytania.querySelectorAll('[aria-hidden="true"]');
+    expect(miejsca).toHaveLength(1);
+    expect(miejsca[0].textContent).toBe("");
+    expect(miejsca[0].children).toHaveLength(0);
+    // Sąsiednie wiersze nie mają takiego miejsca: ich ukryta jest tylko strzałka wewnątrz odnośnika „Otwórz”.
+    for (const ukryty of Array.from(wiersz("Zgłoszenia rekrutacyjne").querySelectorAll('[aria-hidden="true"]'))) {
+      expect(ukryty.closest("a")).not.toBeNull();
+    }
+  });
+
   it("pozostałe wiersze mają „Otwórz” na swoje adresy z odpowiedzi serwera", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(
       odpowiedzPulpitu({
