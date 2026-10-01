@@ -116,3 +116,54 @@ describe("okruszek ramki z rejestru menu", () => {
     expect(inni.filter((p) => podAdmin(p.href))).toEqual([]);
   });
 });
+
+describe("okruszek ramki: ekrany bez własnej pozycji w menu (podstrony „Spraw”)", () => {
+  const menu = menuRamkiAdministracji(WSZYSTKIE_WLACZONE);
+
+  it.each([
+    ["/admin/staz", "Dyżury do decyzji"],
+    ["/admin/nabor", "Zgłoszenia rekrutacyjne"],
+  ])("%s: Administracja › Sprawy › %s, korzeń i rodzic jako łącza", (sciezka, nazwa) => {
+    const okruszek = okruszekRamki({
+      menu: menuDlaSciezki(menu, sciezka),
+      sciezka,
+      okruszki: [{ etykieta: "Administracja" }, { etykieta: "Nazwa z ekranu" }],
+      tytul: nazwa,
+    });
+    expect(okruszek).toEqual([
+      { etykieta: "Administracja", href: "/admin" },
+      { etykieta: "Sprawy", href: "/admin/sprawy" },
+      { etykieta: nazwa },
+    ]);
+  });
+
+  it("szczegół zgłoszenia: Administracja › Sprawy › Zgłoszenia rekrutacyjne › osoba, ostatnia bez łącza", () => {
+    const sciezka = "/admin/nabor/31";
+    const okruszek = okruszekRamki({
+      menu: menuDlaSciezki(menu, sciezka),
+      sciezka,
+      okruszki: [
+        { etykieta: "Administracja" },
+        { etykieta: "Sprawy" },
+        { etykieta: "Zgłoszenia rekrutacyjne", href: "/admin/nabor" },
+        { etykieta: "Marta Demo" },
+      ],
+      tytul: "Zgłoszenie: Marta Demo",
+    });
+    expect(okruszek).toEqual([
+      { etykieta: "Administracja", href: "/admin" },
+      { etykieta: "Sprawy", href: "/admin/sprawy" },
+      { etykieta: "Zgłoszenia rekrutacyjne", href: "/admin/nabor" },
+      { etykieta: "Marta Demo" },
+    ]);
+  });
+
+  it("lista Spraw nie ma okruszka, a „Uczestnicy” (pozycja Codziennie) też nie", () => {
+    for (const sciezka of ["/admin/sprawy", "/admin/uczestniczki"]) {
+      expect(
+        okruszekRamki({ menu: menuDlaSciezki(menu, sciezka), sciezka, okruszki: [], tytul: "Tytuł" }),
+        sciezka,
+      ).toEqual([]);
+    }
+  });
+});

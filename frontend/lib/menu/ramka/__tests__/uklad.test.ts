@@ -78,3 +78,34 @@ describe("administracja — linia programu bez stażu i superwizji", () => {
     expect(grupy.find((g) => g.naglowek === "Program")?.liniaWPrzygotowaniu).toBe("prowadzący");
   });
 });
+
+describe("administracja — rodzic podstrony („Sprawy”) w układzie menu", () => {
+  const pozycjaSpraw = (sciezka: string) =>
+    ukladMenuRamki(menuRamkiAdministracji(), sciezka)
+      .grupy.flatMap((g) => g.pozycje)
+      .find((p) => p.etykieta === "Sprawy");
+
+  it.each(["/admin/staz", "/admin/staz/4", "/admin/nabor", "/admin/nabor/17"])(
+    "%s: „Sprawy” oznaczone jako sekcja (aria-current=\"true\"), nie jako strona bieżąca",
+    (sciezka) => {
+      expect(pozycjaSpraw(sciezka)?.biezaca).toBe("sekcja");
+    },
+  );
+
+  it("na liście Spraw „Sprawy” to strona bieżąca (true), a na obcej ścieżce — false", () => {
+    expect(pozycjaSpraw("/admin/sprawy")?.biezaca).toBe(true);
+    expect(pozycjaSpraw("/admin/sprawy/5")?.biezaca).toBe(true);
+    expect(pozycjaSpraw("/admin/uczestniczki")?.biezaca).toBe(false);
+  });
+
+  it("na podstronie nic innego w menu nie jest bieżące, a pozycji Dyżurów ani zgłoszeń w menu nie ma", () => {
+    for (const sciezka of ["/admin/staz", "/admin/nabor/17"]) {
+      const { grupy, grupaZwinieta } = ukladMenuRamki(menuRamkiAdministracji(), sciezka);
+      const wszystkie = [...grupy, ...(grupaZwinieta ? [grupaZwinieta] : [])].flatMap((g) => g.pozycje);
+      expect(wszystkie.filter((p) => p.biezaca === true).map((p) => p.etykieta), sciezka).toEqual([]);
+      expect(wszystkie.filter((p) => p.biezaca === "sekcja").map((p) => p.etykieta), sciezka).toEqual(["Sprawy"]);
+      expect(wszystkie.map((p) => p.etykieta), sciezka).not.toContain("Dyżury do decyzji");
+      expect(wszystkie.map((p) => p.etykieta), sciezka).not.toContain("Zgłoszenia rekrutacyjne");
+    }
+  });
+});
