@@ -24,11 +24,18 @@ import { ROLE_LABELS } from "@/lib/h18/labels";
 export const LICZBA_NA_STRONE = 25;
 export const LIMIT_SZUKANEJ_FRAZY = 255;
 
-/** Ścieżka ekranu karty osoby (A-07). */
-export const SCIEZKA_KARTY = "/nowy-front/admin/uczestniczki";
+/**
+ * Ścieżka karty osoby: trasa produktu `/admin/uczestniczki/[id]` (dziś stara
+ * karta — grupa `kartaOsoby` jest wyłączona; po jej włączeniu ten sam adres
+ * niesie ekran A-07), nie trasa poligonu.
+ */
+export const SCIEZKA_KARTY = "/admin/uczestniczki";
 
-/** Ścieżka ekranu zgłoszeń rekrutacyjnych — skąd biorą się osoby w programie. */
-export const SCIEZKA_ZGLOSZEN = "/nowy-front/admin/zgloszenia";
+/**
+ * Ścieżka listy zgłoszeń rekrutacyjnych (trasa produktu grupy `nabor`) — skąd
+ * biorą się osoby w programie. Dawna zakładka „Zgłoszenia” tego ekranu.
+ */
+export const SCIEZKA_ZGLOSZEN = "/admin/nabor";
 
 export interface FiltrOsob {
   role: UserRole | "";

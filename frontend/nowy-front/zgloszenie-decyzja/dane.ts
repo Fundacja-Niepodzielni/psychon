@@ -67,6 +67,9 @@ export function poprawneId(id: string): number | null {
   return /^[1-9][0-9]*$/.test(id) ? Number(id) : null;
 }
 
+/** Lista zgłoszeń rekrutacyjnych — trasa produktu grupy `nabor` (A-03), dokąd wraca „Wróć do listy”. */
+export const SCIEZKA_LISTY = "/admin/nabor";
+
 /** Adres karty osoby w istniejącej trasie produktu (`app/(administracja)/admin/uczestniczki/[id]`). */
 export function adresKartyOsoby(idOsoby: number): string {
   return `/admin/uczestniczki/${idOsoby}`;

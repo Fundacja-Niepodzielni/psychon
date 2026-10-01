@@ -102,8 +102,8 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
 
     const odnosniki = screen.getAllByRole("link", { name: "Otwórz zgłoszenie" });
     expect(odnosniki.map((a) => a.getAttribute("href"))).toEqual([
-      "/nowy-front/admin/zgloszenia/11",
-      "/nowy-front/admin/zgloszenia/12",
+      "/admin/nabor/11",
+      "/admin/nabor/12",
     ]);
     expect(screen.getByText(/kandydat11@demo\.pl · proponowana rola: Wolontariusz · zgłoszono 20\.09\.2026/)).toBeInTheDocument();
     expect(screen.getByText(/proponowana rola: Student/)).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     );
   });
 
-  it("pusty bez filtra: tekst o braku zgłoszeń w roku programu i przejście do wczytania z pliku", async () => {
+  it("pusty bez filtra: tekst o braku zgłoszeń w roku programu i otwarcie wczytania z pliku na tym samym ekranie", async () => {
     const uzytkownik = userEvent.setup();
     apiPaged.mockResolvedValue(odpowiedz([]));
     const { container } = render(<ZgloszeniaLista />);
@@ -129,7 +129,8 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     expect(screen.queryByText("Brak zgłoszeń spełniających filtr")).toBeNull();
 
     await uzytkownik.click(screen.getByRole("button", { name: "Wczytaj zgłoszenia z pliku" }));
-    expect(push).toHaveBeenCalledWith("/admin/uczestniczki?zakladka=zgloszenia");
+    expect(screen.getByRole("heading", { level: 2, name: "Importuj z pliku CSV" })).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("pusty z filtrem: osobny tekst, a „Wyczyść filtr” wraca do zapytania bez filtra", async () => {

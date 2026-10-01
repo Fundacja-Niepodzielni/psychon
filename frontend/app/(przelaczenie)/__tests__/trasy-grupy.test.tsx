@@ -43,6 +43,13 @@ const TRASY = [
     plik: "admin/formy-stazu/page.tsx",
     ekran: () => import("@/nowy-front/formy-stazu/FormyStazu").then((m) => m.FormyStazu),
   },
+  {
+    nazwa: "/admin/nabor",
+    grupa: "nabor",
+    zaladuj: () => import("../admin/nabor/page"),
+    plik: "admin/nabor/page.tsx",
+    ekran: () => import("@/nowy-front/zgloszenia-lista/ZgloszeniaLista").then((m) => m.ZgloszeniaLista),
+  },
 ] as const;
 
 afterEach(() => {
@@ -88,6 +95,44 @@ describe("wykrywacz importów z warstwy components/", () => {
     expect(importujeZComponents('import X from "@/components/permissions/RequireRole";\n')).toBe(true);
     expect(importujeZComponents('// import X from "@/components/x";\n')).toBe(false);
     expect(importujeZComponents('import { Y } from "@/nowy-front/y/Y";\n')).toBe(false);
+  });
+});
+
+describe("trasa /admin/nabor/[id] — szczegół zgłoszenia", () => {
+  it("grupa wyłączona: adres kończy się notFound() jak na bazie", async () => {
+    podmienRejestr({});
+    const { default: Strona } = await import("../admin/nabor/[id]/page");
+
+    let rzucony: Blad | null = null;
+    try {
+      await Strona({ params: Promise.resolve({ id: "12" }) });
+    } catch (blad) {
+      rzucony = blad as Blad;
+    }
+
+    expect(rzucony?.digest).toBe("NEXT_HTTP_ERROR_FALLBACK;404");
+  });
+
+  it("grupa włączona: strona zwraca ekran decyzji z identyfikatorem z adresu", async () => {
+    podmienRejestr({ nabor: true });
+    const { default: Strona } = await import("../admin/nabor/[id]/page");
+    const { ZgloszenieDecyzja } = await import("@/nowy-front/zgloszenie-decyzja/ZgloszenieDecyzja");
+
+    const element = (await Strona({ params: Promise.resolve({ id: "12" }) })) as { type: unknown; props: { id: string } };
+
+    expect(element.type).toBe(ZgloszenieDecyzja);
+    expect(element.props.id).toBe("12");
+  });
+
+  it("plik strony nie importuje niczego z warstwy components/", () => {
+    const zrodlo = readFileSync(path.join(process.cwd(), "app", "(przelaczenie)", "admin/nabor/[id]/page.tsx"), "utf-8");
+    expect(importujeZComponents(zrodlo)).toBe(false);
+  });
+
+  it("tytuły obu stron naboru niosą nagłówek ekranu", async () => {
+    podmienRejestr({ nabor: true });
+    expect((await import("../admin/nabor/page")).metadata).toEqual({ title: "Zgłoszenia rekrutacyjne — Niepodzielni" });
+    expect((await import("../admin/nabor/[id]/page")).metadata).toEqual({ title: "Zgłoszenie rekrutacyjne — Niepodzielni" });
   });
 });
 

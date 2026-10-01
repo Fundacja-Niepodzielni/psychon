@@ -22,11 +22,11 @@ import { ROLE_LABELS } from "@/lib/h18/labels";
 export const LICZBA_NA_STRONE = 25;
 export const LIMIT_SZUKANEJ_FRAZY = 255;
 
-/** Ścieżka ekranu szczegółu zgłoszenia (A-04). */
-export const SCIEZKA_SZCZEGOLU = "/nowy-front/admin/zgloszenia";
-
-/** Istniejąca strona wczytywania zgłoszeń z pliku (stary front, zakładka „Zgłoszenia”). */
-export const SCIEZKA_WCZYTANIA_Z_PLIKU = "/admin/uczestniczki?zakladka=zgloszenia";
+/**
+ * Ścieżka ekranu szczegółu zgłoszenia (A-04): trasa produktu grupy `nabor`
+ * (`lib/przelaczenie/grupy.ts`, `/admin/nabor/[id]`), nie trasa poligonu.
+ */
+export const SCIEZKA_SZCZEGOLU = "/admin/nabor";
 
 export interface FiltrZgloszen {
   status: ApplicationStatus | "";
