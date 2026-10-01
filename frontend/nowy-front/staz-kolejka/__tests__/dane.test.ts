@@ -10,6 +10,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.fn();
 const apiPaged = vi.fn();
 vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
+// Kod danych bierze klienta z `@/lib/api/klient`; beczkę `@/lib/api` podmieniamy zapobiegawczo, żeby przyszły import z beczki nie poszedł do prawdziwego transportu.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...a: unknown[]) => api(...a),
+  apiPaged: (...a: unknown[]) => apiPaged(...a),
+}));
 vi.mock("@/lib/api/klient", async (importOriginal) => {
   const oryginal = await importOriginal<typeof import("@/lib/api/klient")>();
   return {

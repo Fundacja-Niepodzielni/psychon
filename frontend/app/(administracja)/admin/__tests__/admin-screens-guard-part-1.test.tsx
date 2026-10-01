@@ -20,6 +20,14 @@ import { dwaTerminyPrawdziwyKsztalt } from "@/components/h12/__tests__/fixture";
 const api = vi.fn();
 const apiPaged = vi.fn();
 
+// Powłoka układu (`PanelShell`: `endSession`) i część ekranów (np. `components/h12`) biorą klienta API z beczki `@/lib/api`, pozostałe ekrany z `@/lib/api/klient` — podmieniamy oba moduły na te same atrapy.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...args: unknown[]) => api(...args),
+  apiPaged: (...args: unknown[]) => apiPaged(...args),
+  endSession: vi.fn(),
+}));
+
 vi.mock("@/lib/api/klient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/klient")>()),
   api: (...args: unknown[]) => api(...args),
