@@ -151,7 +151,9 @@ async function zrzut(page: Page, nazwa: string): Promise<void> {
   const katalog = process.env.PW_ZRZUTY;
   if (!katalog) return;
   mkdirSync(katalog, { recursive: true });
-  await page.screenshot({ path: join(katalog, `${nazwa}.png`), fullPage: true });
+  // Bez animacji: strzałka zwijanego filtru obraca się przejściem CSS, więc zrzut
+  // zrobiony w trakcie obrotu różnił się między biegami o kilkadziesiąt pikseli.
+  await page.screenshot({ path: join(katalog, `${nazwa}.png`), fullPage: true, animations: "disabled" });
 }
 
 async function headingOrder(page: Page): Promise<string[]> {
