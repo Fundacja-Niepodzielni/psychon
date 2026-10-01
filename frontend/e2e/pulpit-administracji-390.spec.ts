@@ -250,8 +250,9 @@ for (const [nazwaWidoku, okno] of [
       await expect(licznikWiersza(page, NAZWY[2], "0", "spraw")).toBeVisible();
       await expect(listaSpraw(page).getByText(/^Razem\s*3\s*sprawy$/)).toBeVisible();
       // Dolna karta-dubel „Zgłoszenia rekrutacyjne / Stan / … zgłoszeń” nie istnieje:
-      // ten napis występuje tylko jako nazwa wiersza listy.
-      await expect(page.getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
+      // ten napis występuje tylko jako nazwa wiersza listy. Szukamy w treści strony (`main`):
+      // ten sam napis jest też pozycją menu panelu, która nie należy do treści pulpitu.
+      await expect(page.getByRole("main").getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
       await expect(listaSpraw(page).getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
       await expect(page.getByRole("article")).toHaveCount(0);
 
