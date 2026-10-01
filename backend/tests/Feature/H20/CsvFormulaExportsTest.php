@@ -53,6 +53,24 @@ class CsvFormulaExportsTest extends TestCase
         $this->assertStringNotContainsString(';@SUM(1);', $body);
     }
 
+    public function test_people_export_neutralises_a_formula_after_a_comma_or_a_line_break_inside_a_name(): void
+    {
+        $person = $this->personWithFormulaName('Jan,=HYPERLINK(A1)', "Kowalski\n=1+1");
+        $this->actingAsAdministration();
+
+        $body = $this->get('/api/v1/admin/users/export.csv')
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertStringContainsString(
+            $person->id.";Jan,'=HYPERLINK(A1);\"Kowalski\n'=1+1\";".self::EMAIL.';volunteer;',
+            $body,
+            'Formuła po przecinku albo nowej linii wewnątrz nazwiska wyszła z eksportu osób bez apostrofu.',
+        );
+        $this->assertStringNotContainsString(',=HYPERLINK(', $body);
+        $this->assertStringNotContainsString("\n=1+1", $body);
+    }
+
     public function test_report_export_neutralises_a_name_set_through_the_profile(): void
     {
         $person = $this->personWithFormulaName();
@@ -118,7 +136,7 @@ class CsvFormulaExportsTest extends TestCase
      * Wolontariuszka ustawia sobie imię i nazwisko własnym `PATCH /me` —
      * dokładnie tą drogą, którą dostaje się do eksportu każda rola.
      */
-    private function personWithFormulaName(): User
+    private function personWithFormulaName(string $firstName = self::FIRST_NAME, string $lastName = self::LAST_NAME): User
     {
         $this->seed();
 
@@ -126,8 +144,8 @@ class CsvFormulaExportsTest extends TestCase
 
         $this->actingAs($person, 'keycloak');
         $this->patchJson('/api/v1/me', [
-            'first_name' => self::FIRST_NAME,
-            'last_name' => self::LAST_NAME,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
         ])->assertOk();
 
         $this->app['auth']->forgetGuards();

@@ -3,6 +3,8 @@
 namespace App\Http\Requests\H08;
 
 use App\Http\Requests\Concerns\KeepsLessonContentVerbatim;
+use App\Models\Lesson;
+use App\Rules\RecordingIdNotTaken;
 use App\Services\Video\VideoProviderId;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,6 +19,9 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * `topic_id` i `topic_position` są zakazane: układ lekcji w tematach ma
  * jednego pisarza (`PATCH …/topics/reorder`).
+ *
+ * Jedno nagranie należy do jednej żywej lekcji (`RecordingIdNotTaken`).
+ * Wartość niezmieniona wobec zapisanej w tej lekcji przechodzi zawsze.
  */
 class UpdateLessonRequest extends FormRequest
 {
@@ -29,12 +34,20 @@ class UpdateLessonRequest extends FormRequest
 
     public function rules(): array
     {
+        $lesson = $this->route('lesson');
+
         return [
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
             'content' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'sequence_order' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'video_provider_id' => ['sometimes', 'nullable', 'string', 'regex:'.VideoProviderId::PATTERN],
+            'video_provider_id' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'regex:'.VideoProviderId::PATTERN,
+                new RecordingIdNotTaken($lesson instanceof Lesson ? $lesson->video_provider_id : null),
+            ],
             'duration_seconds' => ['sometimes', 'integer', 'min:0'],
             'topic_id' => ['prohibited'],
             'topic_position' => ['prohibited'],
