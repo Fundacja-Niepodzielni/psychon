@@ -146,6 +146,7 @@ async function atrapyAdministracji(page: Page, bezSpraw = false): Promise<void> 
 const FORMY = [
   { id: 7, name: "Dyżur telefoniczny", description: "Rozmowa z osobą w kryzysie.", is_active: true, sort_order: 1, created_at: null, updated_at: null },
   { id: 8, name: "Dyżur na czacie", description: null, is_active: false, sort_order: 2, created_at: null, updated_at: null },
+  { id: 9, name: "Inna forma", description: "  ", is_active: true, sort_order: 3, created_at: null, updated_at: null },
 ];
 
 async function atrapyFormStazu(page: Page): Promise<void> {
@@ -237,6 +238,7 @@ for (const rozmiar of [
 
       await expect(page.getByText("Kolejność 1 · Rozmowa z osobą w kryzysie.", { exact: true })).toHaveCount(1);
       await expect(page.getByText("Kolejność 2 · Bez opisu.", { exact: true })).toHaveCount(1);
+      await expect(page.getByText("Kolejność 3 · Bez opisu.", { exact: true })).toHaveCount(1);
       await expect(page.getByText(/Kolejność: /)).toHaveCount(0);
     });
   });

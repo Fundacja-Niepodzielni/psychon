@@ -44,6 +44,22 @@ describe("FormyStazu — lista w karcie", () => {
     expect(screen.queryByText(/Kolejność: /)).toBeNull();
   });
 
+  it("podlinia: opis, brak opisu (null) i opis pusty albo z samych spacji — nigdy samo „ · ” na końcu", async () => {
+    pobierzFormyStazu.mockResolvedValue([
+      { ...FORMY[0], id: 1, sort_order: 1, description: "Rozmowa." },
+      { ...FORMY[0], id: 2, name: "Druga", sort_order: 2, description: null },
+      { ...FORMY[0], id: 3, name: "Trzecia", sort_order: 3, description: "" },
+      { ...FORMY[0], id: 4, name: "Czwarta", sort_order: 4, description: "  " },
+    ]);
+    render(<FormyStazu />);
+    await waitFor(() => expect(screen.getByText("Czwarta")).toBeInTheDocument());
+    expect(screen.getByText("Kolejność 1 · Rozmowa.")).toBeInTheDocument();
+    expect(screen.getByText("Kolejność 2 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.getByText("Kolejność 3 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.getByText("Kolejność 4 · Bez opisu.")).toBeInTheDocument();
+    expect(screen.queryByText(/ · $/)).toBeNull();
+  });
+
   it("pusty słownik: stan pusty też stoi w karcie z h2", async () => {
     pobierzFormyStazu.mockResolvedValue([]);
     const { container } = render(<FormyStazu />);
