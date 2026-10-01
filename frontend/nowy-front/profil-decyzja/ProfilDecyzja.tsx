@@ -25,17 +25,17 @@ const OKRUSZKI = [{ etykieta: "Profile psychologa", href: "/admin/profile" }, { 
 type WariantStatusu = "neutral" | "ok" | "warn" | "error" | "pending";
 
 const STATUS_WNIOSKU: Record<string, { wariant: WariantStatusu; etykieta: string }> = {
-  draft: { wariant: "neutral", etykieta: "Wersja robocza" },
-  submitted: { wariant: "pending", etykieta: "Czeka na decyzję" },
-  returned: { wariant: "warn", etykieta: "Do poprawy" },
-  accepted: { wariant: "ok", etykieta: "Zaakceptowany" },
+  draft: { wariant: "neutral", etykieta: "wersja robocza" },
+  submitted: { wariant: "pending", etykieta: "czeka na decyzję" },
+  returned: { wariant: "warn", etykieta: "do poprawy" },
+  accepted: { wariant: "ok", etykieta: "zatwierdzony" },
   // Serwer zna też „published” (`AdminProfileController::VALID_STATUSES`), którego typ klienta nie wylicza.
-  published: { wariant: "ok", etykieta: "Opublikowany" },
-  withdrawn: { wariant: "neutral", etykieta: "Wycofany" },
+  published: { wariant: "ok", etykieta: "opublikowany" },
+  withdrawn: { wariant: "neutral", etykieta: "wycofany" },
 };
 
 function statusWniosku(status: string): { wariant: WariantStatusu; etykieta: string } {
-  return STATUS_WNIOSKU[status] ?? { wariant: "neutral", etykieta: "Status nieznany" };
+  return STATUS_WNIOSKU[status] ?? { wariant: "neutral", etykieta: "stan nieznany" };
 }
 
 type Stan =
@@ -259,7 +259,7 @@ function Widok({ poczatkowy, wroc, odswiez }: WlasciwosciWidoku) {
           onRozstrzygniety={(rozstrzygniety) => {
             setWniosek(rozstrzygniety);
             setKomunikat(
-              rozstrzygniety.status === "accepted" ? "Wniosek zaakceptowany." : "Wniosek odesłany do poprawy.",
+              rozstrzygniety.status === "accepted" ? "Wniosek zatwierdzony." : "Wniosek odesłany do poprawy.",
             );
           }}
         />

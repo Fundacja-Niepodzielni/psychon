@@ -1,12 +1,45 @@
 /* Rząd liczb `StatRow` (O10) — siatka elastyczna, zero własnego tła/ramki
-   (kafle same w sobie już nie mają obudowy, patrz StatTile.module.css). */
+   (kafle same w sobie już nie mają obudowy, patrz StatTile.module.css).
+   Rząd stoi między dwiema cienkimi liniami (makieta „Pulpit”). */
 .rzad {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-24);
+  padding: var(--space-16) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .komorka {
   flex: 1 1 160px;
   min-width: 160px;
+}
+
+/* Jedna definicja wyglądu liczby dla każdego użycia rzędu: etykieta mała szara,
+   liczba DUŻA i czarna (także wtedy, gdy kafel jest odnośnikiem — kolor
+   odnośnika nie przechodzi na liczbę), jednostka albo mianownik mały szary
+   w tej samej linii co liczba. */
+.komorka label {
+  color: var(--muted);
+}
+
+.komorka a {
+  color: inherit;
+}
+
+.komorka [id] {
+  color: var(--ink);
+}
+
+.komorka [id] > span > span + span {
+  color: var(--muted);
+  font-size: var(--fs-8);
+  font-weight: var(--fw-regular);
+}
+
+/* Układ pulpitu (opt-in przez `ukladPulpitu` kafla): pasek zostaje nazwany
+   (`aria-label`), ale jego drugi widoczny napis znika — etykieta stoi raz,
+   przy liczbie. */
+.komorka[data-uklad="pulpit"] [role="progressbar"] + span {
+  display: none;
 }

@@ -142,7 +142,7 @@ describe("/admin/zgloszenia-wspolpracy w układach grupy (rola administracji z a
     pobierzZgloszeniaAdministracji.mockResolvedValue(PUSTA);
     const { container } = trasaAdministracji();
 
-    await screen.findByRole("combobox", { name: /^Status/ });
+    await screen.findByRole("combobox", { name: /^Stan/ });
     expect(zmierz(container)).toEqual(JEDEN);
   });
 

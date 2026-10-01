@@ -49,6 +49,8 @@
   gap: var(--space-18);
   height: 100vh;
   overflow: auto;
+  /* Fokus pozycji menu nie chowa się pod przyklejoną grupą „Konto”. */
+  scroll-padding-bottom: 9rem;
   padding: var(--space-20) var(--space-16);
   background: var(--card);
   border-right: 1px solid var(--border);
@@ -66,10 +68,85 @@
   height: auto;
 }
 
+/* Grupa „Konto” przyklejona do dołu menu: „Wyloguj” widoczne bez przewijania.
+   Ujemne `bottom` i dolne wypełnienie o dolne wypełnienie menu: tło grupy
+   zakrywa pas pod nią, więc przewinięte pozycje nie prześwitują pod „Wyloguj”. */
 .konto {
+  position: sticky;
+  bottom: calc(-1 * var(--space-20));
+  padding-bottom: var(--space-20);
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  background: var(--card);
+}
+
+/* Grupa zwinięta („Dotychczasowy panel (n)”): przycisk w stylu nagłówka grupy. */
+.zwijana {
+  display: flex;
+  flex-direction: column;
+}
+
+.zwijanaPrzycisk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: var(--hit-min);
+  padding: var(--space-8) var(--space-12);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--subtle);
+  font: inherit;
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zwijanaPrzycisk:hover {
+  background: var(--brand-tint);
+  color: var(--ink);
+}
+
+.zwijanaZnak {
+  font-size: var(--fs-9);
+  line-height: 1;
+}
+
+.zwijanaLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zwijanaLista a {
+  gap: var(--space-10);
+  padding: var(--space-8) var(--space-12);
+  color: var(--text);
+}
+
+.zwijanaLista a p {
+  font-size: var(--fs-9);
+  color: inherit;
+}
+
+.zwijanaLista a:hover {
+  background: var(--brand-tint);
+}
+
+.zwijanaLista a[aria-current="page"] {
+  background: var(--green-tint);
+  color: var(--success);
+  font-weight: var(--fw-medium);
 }
 
 .kontoNaglowek {
@@ -140,6 +217,11 @@
   display: none;
 }
 
+.znakZamknij {
+  font-size: var(--fs-8);
+  line-height: 1;
+}
+
 .glowna {
   min-width: 0;
   display: flex;
@@ -167,9 +249,6 @@
 }
 
 .rok {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
   margin: 0;
   font-size: var(--fs-10);
   color: var(--muted);
@@ -251,7 +330,8 @@
     padding: var(--space-10) var(--space-16);
   }
 
-  .rokEtykieta {
+  /* Wąski ekran jak makieta 390: „rok programu 2026/27” bez „PsychON ·”. */
+  .markaZRokiem {
     display: none;
   }
 

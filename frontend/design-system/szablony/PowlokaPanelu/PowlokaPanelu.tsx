@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
+import { useId, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { Button } from "../../atomy/Button/Button";
-import { Icon } from "../../atomy/Icon/Icon";
+import { Icon, type NazwaIkony } from "../../atomy/Icon/Icon";
+import { MenuItem } from "../../molekuly/MenuItem/MenuItem";
 import { PanelNav } from "../../organizmy/PanelNav/PanelNav";
 import { DostawcaPowloki } from "../KontekstPowloki";
 import { DostawcaRamki } from "../KontekstRamki";
@@ -10,11 +11,24 @@ import style from "./PowlokaPanelu.module.css";
 
 type WlasciwosciNawigacji = ComponentProps<typeof PanelNav>;
 
+interface GrupaZwinieta {
+  naglowek: string;
+  pozycje: { ikona: NazwaIkony; etykieta: string; href: string; biezaca?: boolean }[];
+  /** Linia „W przygotowaniu: …” pod pozycjami (bez przedrostka i kropki). */
+  liniaWPrzygotowaniu?: string;
+}
+
 interface WlasciwosciPowlokiPanelu {
   /** Znak na górze menu (dostarcza wywołujący — np. logo Fundacji). */
   logo?: ReactNode;
   uzytkownik: WlasciwosciNawigacji["uzytkownik"];
   grupy: WlasciwosciNawigacji["grupy"];
+  /**
+   * Grupa zwinięta przyciskiem „{nagłówek} ({liczba pozycji})” tuż przed
+   * grupą „Konto” (np. „Dotychczasowy panel”); na wejściu zwinięta, chyba
+   * że niesie bieżącą pozycję.
+   */
+  grupaZwinieta?: GrupaZwinieta;
   /** Nazwa punktu orientacyjnego menu (`nav`); domyślnie „Menu główne”. */
   etykietaMenu?: string;
   /** Linia „W przygotowaniu: …” pod wylogowaniem w grupie „Konto” (bez przedrostka i kropki). */
@@ -27,7 +41,10 @@ interface WlasciwosciPowlokiPanelu {
   /** Wylogowanie — ostatnia pozycja grupy „Konto”. */
   onWyloguj: () => void;
   wylogowywanie?: boolean;
-  /** Rok programu w górnym pasku (np. „2026/27”); `null` — pasek bez roku. */
+  /**
+   * Rok programu w górnym pasku (np. „2026/27”): „PsychON · rok programu
+   * 2026/27”; `null` — sam „PsychON” (rola bez trasy z rokiem).
+   */
   rokProgramu?: string | null;
   /** Dodatkowe narzędzia po prawej stronie górnego paska (np. pomoc, powiadomienia). */
   narzedziaPaska?: ReactNode;
@@ -44,6 +61,10 @@ interface WlasciwosciPowlokiPanelu {
  * „Menu” w górnym pasku i otwiera jako okno modalne z przyciskiem „Zamknij”
  * (jak `.side.open` w makiecie).
  *
+ * Grupa „Konto” przykleja się do dołu menu (`position: sticky`), więc
+ * „Wyloguj” jest widoczne bez przewijania menu także przy długim menu;
+ * grupa zwinięta (`grupaZwinieta`) stoi tuż przed nią.
+ *
  * Powłoka niesie jedyny link skoku „Przejdź do treści” i jedyny `main` pod
  * `id="tresc"`; treść dostaje `DostawcaPowloki`, więc szablon ekranu
  * renderuje zwykły `div` zamiast drugiego `main`, oraz `DostawcaRamki`, po
@@ -54,6 +75,7 @@ export function PowlokaPanelu({
   logo,
   uzytkownik,
   grupy,
+  grupaZwinieta,
   etykietaMenu = "Menu główne",
   liniaKonta,
   onNawigacja,
@@ -106,14 +128,17 @@ export function PowlokaPanelu({
   }
 
   const konto = (
-    <div className={style.konto}>
-      <p className={style.kontoNaglowek}>Konto</p>
-      <button type="button" className={style.wyloguj} onClick={onWyloguj} disabled={wylogowywanie}>
-        <Icon nazwa="out" />
-        <span>{wylogowywanie ? "Wylogowywanie…" : "Wyloguj"}</span>
-      </button>
-      {liniaKonta && <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${liniaKonta}.`}</p>}
-    </div>
+    <>
+      {grupaZwinieta && grupaZwinieta.pozycje.length > 0 && <GrupaZwijana grupa={grupaZwinieta} />}
+      <div className={style.konto}>
+        <p className={style.kontoNaglowek}>Konto</p>
+        <button type="button" className={style.wyloguj} onClick={onWyloguj} disabled={wylogowywanie}>
+          <Icon nazwa="out" />
+          <span>{wylogowywanie ? "Wylogowywanie…" : "Wyloguj"}</span>
+        </button>
+        {liniaKonta && <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${liniaKonta}.`}</p>}
+      </div>
+    </>
   );
 
   function zawartoscMenu() {
@@ -148,6 +173,10 @@ export function PowlokaPanelu({
           <div className={style.oknoTresc}>
             <div className={style.zamknij}>
               <Button poziom="quiet" rozmiar="sm" type="button" onClick={zamknijMenu}>
+                {/* Znak „×” jak w makiecie (`.side .close`); mapa `Icon` nie ma glifu zamknięcia — ten sam wzór co `Toast`. */}
+                <span aria-hidden="true" data-znak-zamknij="" className={style.znakZamknij}>
+                  ×
+                </span>
                 Zamknij
               </Button>
             </div>
@@ -171,12 +200,18 @@ export function PowlokaPanelu({
               Menu
             </Button>
           </span>
-          {rokProgramu && (
-            <p className={style.rok}>
-              <span className={style.rokEtykieta}>Rok programu: </span>
-              <b>{rokProgramu}</b>
-            </p>
-          )}
+          <p className={style.rok} data-pasek-programu="">
+            {rokProgramu ? (
+              <>
+                <span className={style.markaZRokiem}>
+                  <b>PsychON</b> ·{" "}
+                </span>
+                rok programu <b>{rokProgramu}</b>
+              </>
+            ) : (
+              <b>PsychON</b>
+            )}
+          </p>
           <span className={style.odstep} />
           {narzedziaPaska && <div className={style.narzedzia}>{narzedziaPaska}</div>}
         </header>
@@ -186,6 +221,46 @@ export function PowlokaPanelu({
             <DostawcaRamki>{children}</DostawcaRamki>
           </DostawcaPowloki>
         </main>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Grupa zwinięta przyciskiem (np. „Dotychczasowy panel (7)”): na wejściu
+ * zwinięta — chyba że niesie bieżącą pozycję (ekran szczegółu pod jej
+ * adresem), wtedy rozwinięta, żeby oznaczona pozycja była widoczna; przycisk niesie `aria-expanded` i `aria-controls` listy, lista
+ * zwiniętej grupy jest w DOM z atrybutem `hidden`. Każde wystąpienie menu
+ * (bok i okno) ma własny identyfikator listy i własny stan.
+ */
+function GrupaZwijana({ grupa }: { grupa: GrupaZwinieta }) {
+  const [rozwinieta, setRozwinieta] = useState(() => grupa.pozycje.some((pozycja) => pozycja.biezaca));
+  const idListy = useId();
+  return (
+    <div className={style.zwijana}>
+      <button
+        type="button"
+        className={style.zwijanaPrzycisk}
+        aria-expanded={rozwinieta}
+        aria-controls={idListy}
+        onClick={() => setRozwinieta((stan) => !stan)}
+      >
+        <span>{`${grupa.naglowek} (${grupa.pozycje.length})`}</span>
+        <span aria-hidden="true" className={style.zwijanaZnak}>
+          {rozwinieta ? "−" : "+"}
+        </span>
+      </button>
+      <div id={idListy} hidden={!rozwinieta}>
+        <ul className={style.zwijanaLista}>
+          {grupa.pozycje.map((pozycja) => (
+            <li key={pozycja.href}>
+              <MenuItem {...pozycja} />
+            </li>
+          ))}
+        </ul>
+        {grupa.liniaWPrzygotowaniu && (
+          <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${grupa.liniaWPrzygotowaniu}.`}</p>
+        )}
       </div>
     </div>
   );

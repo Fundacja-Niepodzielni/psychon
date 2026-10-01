@@ -25,6 +25,7 @@ import {
   type TerminSuperwizji,
   type WarunkiCertyfikatu,
 } from "./dane";
+import { formatujDziesietny } from "./formatuj-dziesietny";
 import { etapySciezki, wyliczNastepnyKrok, type NastepnyKrok } from "./nastepny-krok";
 
 type StanEkranu = StanBezDanych | "ok";
@@ -36,9 +37,9 @@ type StanEkranu = StanBezDanych | "ok";
 type Pomocnicza<T> = { stan: "ladowanie" } | { stan: "blad" } | { stan: "ok"; dane: T };
 
 const ETYKIETA_STATUSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok" | "pending"; tekst: string }> = {
-  locked: { wariant: "neutral", tekst: "Zablokowany" },
-  in_progress: { wariant: "pending", tekst: "W toku" },
-  completed: { wariant: "ok", tekst: "Ukończony" },
+  locked: { wariant: "neutral", tekst: "zablokowany" },
+  in_progress: { wariant: "pending", tekst: "w toku" },
+  completed: { wariant: "ok", tekst: "ukończony" },
 };
 
 interface WlasciwosciPulpitUczestnika {
@@ -153,41 +154,45 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
   const kafle: ComponentProps<typeof StatRow>["kafle"] = [
     {
       id: "pulpit-etapy",
-      etykieta: "Ukończone etapy",
+      etykieta: "Kursy w programie",
       wartosc: etapy.length > 0 ? ukonczoneEtapy : undefined,
-      mianownik: `z ${etapy.length} etapów`,
+      mianownik: `z ${etapy.length} ukończone`,
       procent: etapy.length > 0 ? Math.round((ukonczoneEtapy / etapy.length) * 100) : undefined,
       dominujacy: true,
+      ukladPulpitu: true,
     },
     {
       id: "pulpit-biezacy-etap",
-      etykieta: "Bieżący etap",
+      etykieta: "Bieżący kurs",
       wartosc: wToku?.progress_percent,
       mianownik: "% ukończone",
       procent: wToku?.progress_percent,
       podpowiedz: wToku?.title,
+      ukladPulpitu: true,
     },
     {
       id: "pulpit-godziny-stazu",
-      etykieta: "Godziny stażu",
+      etykieta: "Dziennik stażu",
       wartosc: godzinyLiczba,
-      mianownik: godziny.stan === "ok" ? `z ${godziny.dane.required_hours} godz.` : "godz.",
+      mianownik: godziny.stan === "ok" ? `z ${formatujDziesietny(godziny.dane.required_hours)} godzin` : "godzin",
+      ukladPulpitu: true,
     },
     {
       id: "pulpit-superwizje",
-      etykieta: "Obecności na superwizjach",
+      etykieta: "Superwizja",
       wartosc: typeof warunekSuperwizji?.done === "number" ? warunekSuperwizji.done : undefined,
       mianownik:
-        warunekSuperwizji?.required !== undefined ? `z ${warunekSuperwizji.required}` : "obecności",
+        warunekSuperwizji?.required !== undefined ? `z ${warunekSuperwizji.required} odbyta` : "odbyta",
+      ukladPulpitu: true,
     },
   ];
 
   const wierszeSciezki: WierszRecordList[] = etapy.map((kurs) => ({
     id: String(kurs.id),
     tytul: kurs.title,
-    podpowiedz: `Etap ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`,
+    podpowiedz: `Kurs ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`,
     plakietka: ETYKIETA_STATUSU[kurs.status],
-    akcja: { etykieta: "Otwórz etap", href: `/panel/kursy/${kurs.slug}` },
+    akcja: { etykieta: "Otwórz kurs", href: `/panel/kursy/${kurs.slug}` },
   }));
 
   const terminySuperwizji = superwizje.stan === "ok" ? nadchodzace(superwizje.dane) : [];
@@ -233,7 +238,7 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
             wiersze={wierszeSciezki}
             pusty={{
               naglowek: "Ścieżka jest przygotowywana",
-              tresc: "Gdy administracja doda pierwszy etap, pojawi się tutaj.",
+              tresc: "Gdy administracja doda pierwszy kurs, pojawi się tutaj.",
               przycisk: { etykieta: "Odśwież", onClick: () => wczytaj() },
             }}
           />
@@ -294,11 +299,11 @@ function NastepnyKrokBlok({
     return (
       <div>
         <Heading stopien={2}>Twój następny krok</Heading>
-        <Notice wariant="warn" tytul="Szczegóły etapu niedostępne">
-          Nie udało się ustalić dokładnej lekcji — możesz otworzyć bieżący etap.
+        <Notice wariant="warn" tytul="Szczegóły kursu niedostępne">
+          Nie udało się ustalić dokładnej lekcji — możesz otworzyć bieżący kurs.
         </Notice>
         <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${wToku.slug}`)}>
-          Otwórz etap
+          Otwórz kurs
         </Button>
         <Text>{wToku.title}</Text>
       </div>
@@ -327,7 +332,7 @@ function NastepnyKrokBlok({
     return (
       <div>
         <Heading stopien={2}>Twój następny krok</Heading>
-        <Text>Masz za sobą wszystkie lekcje etapu „{krok.kurs.title}”. Czas na test sprawdzający.</Text>
+        <Text>Masz za sobą wszystkie lekcje kursu „{krok.kurs.title}”. Czas na test sprawdzający.</Text>
         <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${krok.kurs.slug}/test`)}>
           Przejdź do testu
         </Button>
@@ -339,7 +344,7 @@ function NastepnyKrokBlok({
     return (
       <div>
         <Heading stopien={2}>Twój następny krok</Heading>
-        <Text>Masz wszystkie etapy za sobą. Dobra robota.</Text>
+        <Text>Masz wszystkie kursy za sobą. Dobra robota.</Text>
         <Button poziom="primary" onClick={() => naPrzejdz("/panel/certyfikat")}>
           Zobacz warunki certyfikatu
         </Button>
@@ -362,7 +367,7 @@ function NastepnyKrokBlok({
   return (
     <div>
       <Heading stopien={2}>Twój następny krok</Heading>
-      <Text wariant="pusty">Gdy pierwszy etap ścieżki stanie się dostępny, pojawi się tutaj Twój następny krok.</Text>
+      <Text wariant="pusty">Gdy pierwszy kurs ścieżki stanie się dostępny, pojawi się tutaj Twój następny krok.</Text>
     </div>
   );
 }

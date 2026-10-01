@@ -23,6 +23,26 @@
   min-width: 0;
 }
 
+/* Sekcje list w kolumnach pulpitu (`RecordList` to `section` z nagłówkiem) stoją
+   w białej karcie — raz, tutaj, dla każdego pulpitu na tym szablonie (makieta:
+   nagłówek z lewej, wiersze na całą szerokość karty). Karta ma ten sam wygląd
+   co `CaseCard`: tło, cienka ramka i zaokrąglenie z tokenów. Wiersze (`ListRow`)
+   niosą własne wcięcie poziome, więc wcięcie dostaje tylko nagłówek. */
+.glowna section,
+.wspierajaca section {
+  padding: var(--space-20) 0 0;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.glowna section > :is(h2, h3),
+.wspierajaca section > :is(h2, h3) {
+  padding: 0 var(--card-px);
+  font-size: var(--fs-4);
+}
+
 @media (min-width: 900px) {
   .nastepnyKrok {
     grid-template-columns: 1fr 1fr;

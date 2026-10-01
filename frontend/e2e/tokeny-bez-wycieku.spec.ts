@@ -165,6 +165,11 @@ test("stara strona po nowym ekranie nie dostaje tokenów ani fokusu nowego front
   });
 
   const nav = strona.getByRole("navigation", { name: "Menu — Panel uczestnika" }).first();
+  // „Profil” stoi w grupie „Dotychczasowy panel”, zwiniętej na tym ekranie (brak w niej bieżącej pozycji).
+  const dotychczasowy = nav.getByRole("button", { name: /^Dotychczasowy panel \(\d+\)$/ });
+  await expect(dotychczasowy).toHaveAttribute("aria-expanded", "false");
+  await dotychczasowy.click();
+  await expect(dotychczasowy).toHaveAttribute("aria-expanded", "true");
   await nav.getByRole("link", { name: "Profil", exact: true }).click();
   await expect(strona).toHaveURL(/\/panel\/profil$/);
   expect(

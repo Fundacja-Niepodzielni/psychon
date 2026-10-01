@@ -23,3 +23,49 @@
 .akcja {
   margin: 0;
 }
+
+/* Przycisk główny nagłówka (makieta 2.0.4, `.head .acts`). Poniżej 768 px
+   pełna szerokość pod opisem; od 768 px obok tytułu, przy prawej krawędzi,
+   u góry wiersza (na wysokości h1), w jednej szerokości dla wszystkich
+   ekranów. Szerokość atomu `Button` (`max-width: 320px`) jest tu nadpisana,
+   żeby nie wychodziła raz 320 px, raz „auto”. */
+.glowa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.tekst {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.akcje {
+  inline-size: 100%;
+}
+
+.akcje button {
+  inline-size: 100%;
+  max-width: none;
+  white-space: normal;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .glowa {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-16);
+  }
+
+  .tekst {
+    flex: 1 1 0;
+  }
+
+  .akcje {
+    flex: none;
+    inline-size: 240px;
+  }
+}
