@@ -13,10 +13,10 @@ import {
  * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
  * `pulpitAdministracji`), `pulpitUczestnika` i `pulpitProwadzacego`
  * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
- * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`.
+ * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy` i `sprawy`.
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca", "wzoryDokumentow"];
+const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -32,7 +32,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów i ekran startowy", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy i sprawy", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -48,7 +48,7 @@ describe("rejestr GRUPY — stan flag", () => {
   });
 
   it("grupy z podmianą treści mają ten sam adres starej i nowej trasy", () => {
-    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy"] as const) {
+    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy", "sprawy"] as const) {
       const [ekran] = GRUPY[klucz].ekrany;
       expect(ekran.panel, klucz).toBe("administracja");
       expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);

@@ -23,6 +23,15 @@ vi.mock("../dane", async () => {
   return { ...rzeczywiste, pobierzKolejkeSpraw: (...args: unknown[]) => pobierzKolejkeSpraw(...args) };
 });
 
+// Sprawy zgłoszone przez prowadzących mają osobne testy (`sprawy-prowadzacych.test.tsx`);
+// tutaj ich odczyt jest atrapą z pustą listą, żeby nie wołał sieci.
+const pobierzSprawyProwadzacych = vi.fn();
+
+vi.mock("../dane-prowadzacych", async () => {
+  const rzeczywiste = await vi.importActual<typeof import("../dane-prowadzacych")>("../dane-prowadzacych");
+  return { ...rzeczywiste, pobierzSprawyProwadzacych: (...args: unknown[]) => pobierzSprawyProwadzacych(...args) };
+});
+
 const { Sprawy } = await import("../Sprawy");
 
 const WYNIK_PUSTY = (rodzaj: "applications" | "internship_entries" | "profiles") => ({
@@ -34,6 +43,8 @@ const WYNIK_PUSTY = (rodzaj: "applications" | "internship_entries" | "profiles")
 });
 
 beforeEach(() => {
+  pobierzSprawyProwadzacych.mockReset();
+  pobierzSprawyProwadzacych.mockResolvedValue({ sprawy: [], blad: null, odmowa: false });
   pobierzKolejkeSpraw.mockReset();
   push.mockReset();
   back.mockReset();

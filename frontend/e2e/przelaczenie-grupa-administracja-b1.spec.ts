@@ -171,18 +171,26 @@ test.describe("partia przełączenia administracji — pulpit i formy stażu wł
     await expect(page.getByRole("navigation", { name: "Menu — Administracja" })).toHaveCount(0);
   });
 
-  test("trzy grupy wyłączone zostają na starych ekranach: tytuły stron starych", async ({ page }) => {
+  test("dwie grupy wyłączone zostają na starych ekranach: tytuły stron starych", async ({ page }) => {
     await instalujAtrapyApi(page, { rola: "project_manager", formy: "dane" });
 
     for (const [adres, tytul] of [
       ["/admin/emails", /^Niepodzielni — platforma szkoleniowa$/],
       ["/admin/superwizje", /^Superwizje — Niepodzielni$/],
-      ["/admin/sprawy", /^Sprawy — Niepodzielni$/],
     ] as const) {
       const odpowiedz = await page.goto(adres);
       expect(odpowiedz?.status(), adres).toBe(200);
       await expect(page, adres).toHaveTitle(tytul);
     }
-    await expect(page.getByRole("heading", { level: 1, name: "Sprawy" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Superwizje" })).toBeVisible();
+  });
+
+  test("/admin/sprawy (grupa włączona): ten sam tytuł karty co dotąd, ale nowy ekran „Sprawy do decyzji”", async ({ page }) => {
+    await instalujAtrapyApi(page, { rola: "project_manager", formy: "dane" });
+
+    const odpowiedz = await page.goto("/admin/sprawy");
+    expect(odpowiedz?.status()).toBe(200);
+    await expect(page).toHaveTitle(/^Sprawy — Niepodzielni$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Sprawy do decyzji", exact: true })).toBeVisible();
   });
 });
