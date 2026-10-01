@@ -162,7 +162,7 @@ const TRASY: Trasa[] = [
   { rola: "administracja", adres: "/admin/wzory-dokumentow", okruszek: "Administracja › Wzory dokumentów" },
   { rola: "administracja", adres: "/admin/ekran-startowy", okruszek: "Administracja › Treść ekranu „Zacznij tutaj”" },
   // Szczegół — zawsze łańcuch, także gdy lista stoi w „Codziennie”.
-  { rola: "administracja", adres: "/admin/nabor/12", okruszek: "Administracja › Sprawy › Zgłoszenia rekrutacyjne › Zgłoszenie" },
+  { rola: "administracja", adres: "/admin/nabor/12", okruszek: "Administracja › Sprawy › Zgłoszenia rekrutacyjne › Anna Kandydacka" },
   { rola: "administracja", adres: "/admin/profile/12", okruszek: "Administracja › Profile psychologa › Wniosek o profil" },
   // Uczestnik i prowadzący: bez korzenia roli, jedna pozycja nigdy.
   { rola: "uczestnik", adres: "/panel/pulpit", okruszek: null },
