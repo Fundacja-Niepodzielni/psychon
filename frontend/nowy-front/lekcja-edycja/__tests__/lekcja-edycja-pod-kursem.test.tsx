@@ -168,6 +168,8 @@ describe("usunięcie materiału lekcji wgranego na ekranie", () => {
     expect(screen.queryByRole("list", { name: "Materiały wgrane teraz" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Usuń materiał „karta.pdf”" })).toBeNull();
     expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toHaveAttribute("role", "button");
+    expect(document.activeElement?.id).toMatch(/-plik-materialu-obszar$/);
   });
 
   it("„Anuluj” w oknie nie wysyła żądania i zostawia plik", async () => {

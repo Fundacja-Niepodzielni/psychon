@@ -25,6 +25,10 @@ interface WlasciwosciFileDropZone {
  * działa z samej KLAWIATURY (Enter, spacja otwierają wybór pliku systemowy)
  * — Odbiór M5. Stan „plik nad obszarem” dostaje osobną ramkę i tło, nie tylko
  * zmienioną barwę tekstu, żeby reakcja była widoczna, nie tylko odczytywalna.
+ *
+ * Jedynym elementem obsługi jest przycisk obszaru (`{id}-obszar`). Ukryte pole
+ * wyboru pliku (`{id}`) stoi obok przycisku, nie w nim, nie jest przystankiem
+ * tabulatora i nie jest ogłaszane — służy wyłącznie do otwarcia okna systemu.
  */
 export function FileDropZone({ id, etykieta, podpowiedz, pliki, onWybierzPliki }: WlasciwosciFileDropZone) {
   const [nadObszarem, setNadObszarem] = useState(false);
@@ -59,6 +63,7 @@ export function FileDropZone({ id, etykieta, podpowiedz, pliki, onWybierzPliki }
   return (
     <div className={style.oprawa}>
       <div
+        id={`${id}-obszar`}
         role="button"
         tabIndex={0}
         aria-describedby={podpowiedzId}
@@ -74,15 +79,17 @@ export function FileDropZone({ id, etykieta, podpowiedz, pliki, onWybierzPliki }
       >
         <Text>{etykieta}</Text>
         <Hint id={podpowiedzId}>{podpowiedz}</Hint>
-        <input
-          ref={wejscie}
-          id={id}
-          type="file"
-          multiple
-          className={style.wejscieUkryte}
-          onChange={naZmianeWejscia}
-        />
       </div>
+      <input
+        ref={wejscie}
+        id={id}
+        type="file"
+        multiple
+        tabIndex={-1}
+        aria-hidden="true"
+        className={style.wejscieUkryte}
+        onChange={naZmianeWejscia}
+      />
       {pliki.length > 0 && (
         <ul className={style.lista}>
           {pliki.map((plik) => (
