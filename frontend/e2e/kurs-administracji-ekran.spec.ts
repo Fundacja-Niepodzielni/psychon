@@ -15,6 +15,9 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - „Opublikuj kurs” wysyła `PATCH /admin/courses/{id}` z `is_published: true`,
  *   po czym plakietka mówi „Opublikowany” i zostaje „Cofnij publikację”;
  * - kurs bez lekcji: ten sam ekran w stanie pustym;
+ * - „Edytuj” w wierszu lekcji (A-13) otwiera formularz pod wierszem, cel
+ *   dotyku przycisku ma co najmniej 44 px, zapis to jedno
+ *   `PATCH /admin/lessons/{id}`, „Anuluj” oddaje fokus przyciskowi;
  * - bez przewijania w poziomie i 0 naruszeń axe na 1280 i 390 px.
  * Zrzuty ekranu powstają tylko przy ustawionej zmiennej `PW_ZRZUTY` (katalog
  * poza repozytorium) — okno przeglądarki po przewinięciu do elementu.
@@ -97,7 +100,7 @@ async function instalujAtrapy(page: Page, tryb: "tematy" | "pusty"): Promise<{ z
   const zapisy: Zapis[] = [];
   const sciezki: string[] = [];
   let kurs = tryb === "pusty" ? { ...KURS, lessons_count: 0, materials_count: 0 } : KURS;
-  const lekcje = tryb === "pusty" ? [] : LEKCJE;
+  let lekcje = tryb === "pusty" ? [] : LEKCJE;
   const tematy = tryb === "pusty" ? [] : TEMATY;
 
   page.on("request", (zadanie) => {
@@ -122,6 +125,12 @@ async function instalujAtrapy(page: Page, tryb: "tematy" | "pusty"): Promise<{ z
   });
   await page.route(`${API}/admin/courses/4/lessons`, (route) => route.fulfill(json(lekcje)));
   await page.route(`${API}/admin/courses/4/topics`, (route) => route.fulfill(json(tematy)));
+  await page.route(`${API}/admin/lessons/22`, (route) => {
+    const cialo = route.request().postDataJSON() as Record<string, unknown>;
+    zapisy.push({ metoda: route.request().method(), sciezka: "/admin/lessons/22", cialo });
+    lekcje = lekcje.map((wpis) => (wpis.id === 22 ? { ...wpis, ...cialo } : wpis));
+    return route.fulfill(json(lekcje.find((wpis) => wpis.id === 22)));
+  });
 
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ATRAPA_SESJI) }),
@@ -203,6 +212,59 @@ for (const { szerokosc, wysokosc } of OKNA) {
       expect(sciezki).toEqual(
         expect.arrayContaining(["/admin/courses/4", "/admin/courses/4/lessons", "/admin/courses/4/topics"]),
       );
+    });
+
+    test("edycja lekcji pod wierszem: formularz w elemencie listy, zapis jednym żądaniem, fokus wraca", async ({
+      page,
+    }, testInfo) => {
+      const { zapisy, sciezki } = await instalujAtrapy(page, "tematy");
+      await page.goto(ADRES);
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(page.getByRole("heading", { level: 3, name: "Podstawy" })).toBeVisible();
+
+      await expect(page.getByRole("button", { name: "Zmień nazwę" })).toHaveCount(0);
+      const edytuj = page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" });
+      const ramkaPrzycisku = await edytuj.boundingBox();
+      expect(ramkaPrzycisku!.height, "wysokość celu dotyku „Edytuj”").toBeGreaterThanOrEqual(44);
+      expect(ramkaPrzycisku!.width, "szerokość celu dotyku „Edytuj”").toBeGreaterThanOrEqual(44);
+
+      await edytuj.click();
+      const wiersz = page.locator("li[data-lekcja='22']");
+      const formularz = wiersz.getByRole("form", { name: "Edycja lekcji" });
+      await expect(formularz).toBeVisible();
+      await expect(edytuj).toHaveAttribute("aria-expanded", "true");
+      const tytul = formularz.getByLabel(/^Tytuł lekcji/);
+      await expect(tytul).toBeFocused();
+
+      // Formularz stoi pod wierszem i na jego szerokość, następna lekcja pod formularzem.
+      const ramkaWiersza = await wiersz.boundingBox();
+      const ramkaFormularza = await wiersz.locator("[data-rozwiniecie-lekcji='22']").boundingBox();
+      const ramkaPoEdycji = await edytuj.boundingBox();
+      expect(ramkaFormularza!.y).toBeGreaterThanOrEqual(ramkaPoEdycji!.y + ramkaPoEdycji!.height - 1);
+      expect(ramkaFormularza!.width).toBeGreaterThan(ramkaWiersza!.width * 0.9);
+
+      await bezPrzewijaniaPoziomego(page);
+      const naruszenia = await uruchomAxe(page);
+      await dolaczNaruszeniaDoRaportu(testInfo, `axe-kurs-administracji-edycja-lekcji-${szerokosc}`, naruszenia);
+      expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
+      await zrzut(page, `kurs-admin-${szerokosc}-edycja-lekcji`, wiersz);
+
+      await tytul.fill("Pytania otwarte");
+      await formularz.getByRole("button", { name: "Zapisz lekcję" }).click();
+      await expect(wiersz.getByText("Pytania otwarte · 25 min")).toBeVisible();
+      expect(zapisy).toEqual([
+        {
+          metoda: "PATCH",
+          sciezka: "/admin/lessons/22",
+          cialo: { title: "Pytania otwarte", description: null, content: "", duration_seconds: 1500 },
+        },
+      ]);
+      await zrzut(page, `kurs-admin-${szerokosc}-edycja-lekcji-zapisana`, wiersz);
+
+      await formularz.getByRole("button", { name: "Anuluj" }).click();
+      await expect(wiersz.locator("[data-rozwiniecie-lekcji]")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte”" })).toBeFocused();
+      expect(sciezki.filter((sciezka) => sciezka.startsWith("/instructor/"))).toEqual([]);
     });
 
     test("kurs bez lekcji: stan pusty w tym samym ekranie", async ({ page }, testInfo) => {

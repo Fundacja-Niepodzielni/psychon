@@ -73,6 +73,7 @@ export const OCZEKIWANE_CELE = [
   "TimeChart (rozwinięcie tabeli)",
   "CourseTree (strzałka przeniesienia)",
   "CourseTree (zmiana nazwy)",
+  "CourseTree (edycja lekcji)",
   "CourseTree (dodanie lekcji)",
   "LessonPlayer (odtwarzanie)",
   "LessonPlayer (powiększenie)",
@@ -120,6 +121,7 @@ export const KOMPONENT_CELU = {
   "TimeChart (rozwinięcie tabeli)": "TimeChart", // nagłówek CollapsibleSection osadzonej w organizmie
   "CourseTree (strzałka przeniesienia)": "CourseTree",
   "CourseTree (zmiana nazwy)": "CourseTree",
+  "CourseTree (edycja lekcji)": "CourseTree",
   "CourseTree (dodanie lekcji)": "CourseTree",
   "LessonPlayer (odtwarzanie)": "LessonPlayer",
   "LessonPlayer (powiększenie)": "LessonPlayer",

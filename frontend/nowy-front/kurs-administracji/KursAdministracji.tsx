@@ -12,6 +12,7 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
 import type { WynikDanychKursu } from "@/nowy-front/kurs-publikacja/dane";
 import { pobierzDaneKursuAdministracji } from "@/nowy-front/kurs-publikacja/dane-administracji";
+import { EdycjaLekcjiPrzyWierszu } from "@/nowy-front/lekcja-edycja/LekcjaEdycja";
 import { KursTematy } from "@/nowy-front/kurs-tematy/KursTematy";
 import { UsuniecieKursu } from "@/nowy-front/publikacja-kursu/UsuniecieKursu";
 import { kursPozaKolejnoscia } from "@/nowy-front/zaproszenia-kursu/dane";
@@ -30,6 +31,8 @@ interface WlasciwosciKursAdministracji {
  * na jednej stronie. Składa istniejące sekcje, żadnej akcji nie powtarza:
  *  - nagłówek z jedną akcją główną „Opublikuj kurs” oraz tematy, lekcje i dane
  *    kursu — `KursTematy` z grupą tras administracji;
+ *  - edycja lekcji — formularz „Edycji lekcji” pod wierszem lekcji (A-13),
+ *    z tą samą funkcją zapisu co ekran lekcji;
  *  - zaproszenia na kurs — rdzeń ekranu „Zaproszenia na kurs” jako sekcja
  *    pod drzewem tematów, otwierana przyciskiem drugorzędnym;
  *  - „Usuń kurs” — blok z ekranu „Publikacja kursu”, ostatni na stronie.
@@ -104,6 +107,15 @@ export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
         setProba((poprzednia) => poprzednia + 1);
       }}
       podDrzewem={(kurs) => <BlokZaproszen kurs={kurs} />}
+      edycjaLekcji={(idLekcji, akcje) => (
+        <EdycjaLekcjiPrzyWierszu
+          key={idLekcji}
+          idLekcji={idLekcji}
+          idKursu={Number(idKursu)}
+          onZamknij={akcje.zamknij}
+          onZapisano={akcje.zapisano}
+        />
+      )}
       ostatniBlok={(kurs) => (
         <UsuniecieKursu
           idKursu={idKursu}

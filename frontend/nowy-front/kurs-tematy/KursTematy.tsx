@@ -65,6 +65,8 @@ interface WlasciwosciKursTematy {
   podDrzewem?: (kurs: AdminCourse) => ReactNode;
   /** Ostatni blok ekranu, na końcu kolumny wspierającej — z bieżącym stanem kursu. */
   ostatniBlok?: (kurs: AdminCourse) => ReactNode;
+  /** Formularz edycji lekcji pod jej wierszem; bez niego wiersz ma „Zmień nazwę”. */
+  edycjaLekcji?: EdycjaLekcjiWiersza;
 }
 
 /**
@@ -74,7 +76,15 @@ interface WlasciwosciKursTematy {
  * wspierającej. Każdy stan (sukces, ładowanie, błąd, brak uprawnień, pusty)
  * renderuje się WEWNĄTRZ szablonu — korzeń szablonu jest jedynym `main`.
  */
-export function KursTematy({ idKursu, wynik, grupa, onPonow, podDrzewem, ostatniBlok }: WlasciwosciKursTematy) {
+export function KursTematy({
+  idKursu,
+  wynik,
+  grupa,
+  onPonow,
+  podDrzewem,
+  ostatniBlok,
+  edycjaLekcji,
+}: WlasciwosciKursTematy) {
   const router = useRouter();
   const wroc = () => router.back();
 
@@ -109,6 +119,7 @@ export function KursTematy({ idKursu, wynik, grupa, onPonow, podDrzewem, ostatni
       lekcje={wynik.dane.lekcje}
       podDrzewem={podDrzewem}
       ostatniBlok={ostatniBlok}
+      edycjaLekcji={edycjaLekcji}
       wroc={wroc}
       przejdz={(adres) => router.push(adres)}
     />
@@ -146,12 +157,30 @@ type StanDialogu =
   | { rodzaj: "porzuc" }
   | { rodzaj: "wyjscie"; dokad: () => void };
 
+/** Lekcja po zapisie z formularza przy wierszu — tyle, ile pokazuje drzewo. */
+export interface LekcjaPoZapisie {
+  id: number;
+  title: string;
+  duration_seconds: number;
+}
+
+/**
+ * Formularz edycji lekcji rysowany pod jej wierszem. Podanie tej funkcji
+ * zamienia w wierszu „Zmień nazwę” na „Edytuj”: lekcja ma wtedy jedną drogę
+ * edycji i jeden zapis — ten z formularza.
+ */
+export type EdycjaLekcjiWiersza = (
+  idLekcji: number,
+  akcje: { zamknij: () => void; zapisano: (lekcja: LekcjaPoZapisie) => void },
+) => ReactNode;
+
 interface WlasciwosciEdytora {
   grupa: GrupaTras;
   kursPoczatkowy: AdminCourse;
   lekcje: AdminLesson[];
   podDrzewem?: (kurs: AdminCourse) => ReactNode;
   ostatniBlok?: (kurs: AdminCourse) => ReactNode;
+  edycjaLekcji?: EdycjaLekcjiWiersza;
   wroc: () => void;
   przejdz: (adres: string) => void;
 }
@@ -162,10 +191,15 @@ function EdytorTematow({
   lekcje,
   podDrzewem,
   ostatniBlok,
+  edycjaLekcji,
   wroc,
   przejdz,
 }: WlasciwosciEdytora) {
   const baza = useId();
+  const [edytowanaLekcja, setEdytowanaLekcja] = useState<number | null>(null);
+  // Nowy obiekt przy każdym zamknięciu — efekt fokusu rusza także dla tej samej lekcji drugi raz.
+  const [fokusNaEdytuj, setFokusNaEdytuj] = useState<{ lekcja: number } | null>(null);
+  const [czasyPoZapisie, setCzasyPoZapisie] = useState<Record<number, number>>({});
   const teksty = tekstyDlaGrupy(grupa);
   const zapis = zapisDlaGrupy(grupa);
   const idPrzyciskuPublikacji = `${baza}-opublikuj`;
@@ -230,6 +264,12 @@ function EdytorTematow({
   }, [idPrzyciskuPublikacji]);
 
   const zamknijToast = useCallback(() => setToast(null), []);
+
+  // Zamknięcie formularza przy wierszu oddaje fokus przyciskowi „Edytuj” tej lekcji.
+  useEffect(() => {
+    if (fokusNaEdytuj === null) return;
+    document.querySelector<HTMLElement>(`[data-edytuj-lekcje="${fokusNaEdytuj.lekcja}"]`)?.focus();
+  }, [fokusNaEdytuj]);
 
   if (stan.rodzaj === "brak-uprawnien") {
     return <BrakUprawnien idKursu={String(kursPoczatkowy.id)} grupa={grupa} wroc={wroc} />;
@@ -314,6 +354,30 @@ function EdytorTematow({
         ostatniTytul: tytulLekcji,
       };
     });
+  }
+
+  /**
+   * Zapis lekcji z formularza przy wierszu jest już na serwerze, więc nowy
+   * tytuł wchodzi do stanu serwera, do stanu lokalnego i do każdego kroku
+   * historii — niezapisane zmiany kolejności i ich licznik zostają bez zmian.
+   */
+  function przyjmijZapisLekcji(lekcja: LekcjaPoZapisie) {
+    setCzasyPoZapisie((poprzednie) => ({ ...poprzednie, [lekcja.id]: lekcja.duration_seconds }));
+    setStan((poprzedni) =>
+      poprzedni.rodzaj === "gotowy"
+        ? {
+            ...poprzedni,
+            serwer: zmienTytulLekcji(poprzedni.serwer, lekcja.id, lekcja.title),
+            lokalny: zmienTytulLekcji(poprzedni.lokalny, lekcja.id, lekcja.title),
+            historia: poprzedni.historia.map((krok) => zmienTytulLekcji(krok, lekcja.id, lekcja.title)),
+          }
+        : poprzedni,
+    );
+  }
+
+  function zamknijEdycjeLekcji() {
+    if (edytowanaLekcja !== null) setFokusNaEdytuj({ lekcja: edytowanaLekcja });
+    setEdytowanaLekcja(null);
   }
 
   function cofnij() {
@@ -472,7 +536,10 @@ function EdytorTematow({
           }
         : { rodzaj: "gotowy" };
 
-  const tematy = stan.rodzaj === "gotowy" ? tematyDrzewa(stan.serwer, stan.lokalny, lekcje) : [];
+  const lekcjeDrzewa = lekcje.map((lekcja) =>
+    lekcja.id in czasyPoZapisie ? { ...lekcja, duration_seconds: czasyPoZapisie[lekcja.id] } : lekcja,
+  );
+  const tematy = stan.rodzaj === "gotowy" ? tematyDrzewa(stan.serwer, stan.lokalny, lekcjeDrzewa) : [];
   const tematyUkladu = stan.rodzaj === "gotowy" ? stan.lokalny.tematy : [];
 
   const drzewo = (
@@ -509,6 +576,23 @@ function EdytorTematow({
         onZapisz={() => void zapisz()}
         onCofnij={cofnij}
         onPorzucWszystko={() => otworzDialog({ rodzaj: "porzuc" })}
+        onEdytujLekcje={
+          edycjaLekcji
+            ? (_temat, lekcja) => {
+                const id = Number(lekcja);
+                if (edytowanaLekcja === id) zamknijEdycjeLekcji();
+                else setEdytowanaLekcja(id);
+              }
+            : undefined
+        }
+        rozwiniecie={
+          edycjaLekcji && edytowanaLekcja !== null
+            ? {
+                lekcjaId: String(edytowanaLekcja),
+                tresc: edycjaLekcji(edytowanaLekcja, { zamknij: zamknijEdycjeLekcji, zapisano: przyjmijZapisLekcji }),
+              }
+            : undefined
+        }
         pusty={{
           naglowek: "Kurs nie ma jeszcze tematów",
           tresc: "Tematy porządkują lekcje kursu. Zacznij od pierwszego tematu, potem dodasz do niego lekcje.",

@@ -52,6 +52,14 @@
   min-height: var(--hit-min);
 }
 
+/* Rozwinięcie pod wierszem lekcji: osobny rząd siatki wiersza na całą jego
+   szerokość, w tym samym elemencie listy. */
+.rozwiniecie {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: var(--space-8) 0 var(--space-12);
+}
+
 .przeciagana {
   opacity: 0.45;
 }

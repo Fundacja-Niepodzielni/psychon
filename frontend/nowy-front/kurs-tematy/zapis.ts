@@ -2,6 +2,7 @@ import { api } from "@/lib/api/klient";
 import type { GrupaTras } from "@/lib/api/h08-tematy";
 import { updateInstructorCourse, updateInstructorLesson } from "@/lib/api/prowadzacy-kursy";
 import type { AdminCourse } from "@/lib/h08/types";
+import { zapiszLekcje } from "@/nowy-front/lekcja-edycja/dane";
 
 /**
  * Zapis danych kursu i tytułu lekcji z ekranu „Kurs: tematy i lekcje” — po
@@ -11,8 +12,9 @@ import type { AdminCourse } from "@/lib/h08/types";
  *
  *  - prowadzący: `PATCH /instructor/courses/{course}` i
  *    `PATCH /instructor/lessons/{lesson}` (`lib/api/prowadzacy-kursy.ts`);
- *  - administracja: `PATCH /admin/courses/{course}` i
- *    `PATCH /admin/lessons/{lesson}` (`backend/routes/api/h08.php:38,45`).
+ *  - administracja: `PATCH /admin/courses/{course}` (`backend/routes/api/h08.php:38`)
+ *    oraz zapis lekcji funkcją `zapiszLekcje` z „Edycji lekcji” — adres trasy
+ *    lekcji administracji stoi tylko tam.
  *
  * Obie trasy kursu przyjmują `title` i `description`; obie trasy lekcji
  * przyjmują samo `title` (pola opcjonalne w `UpdateLessonRequest::rules`).
@@ -35,8 +37,7 @@ const ZAPIS: Record<GrupaTras, ZapisKursu> = {
   admin: {
     daneKursu: (idKursu, dane) =>
       api<AdminCourse>(`/admin/courses/${idKursu}`, { method: "PATCH", body: dane }),
-    tytulLekcji: (idLekcji, title) =>
-      api<{ title: string }>(`/admin/lessons/${idLekcji}`, { method: "PATCH", body: { title } }),
+    tytulLekcji: (idLekcji, title) => zapiszLekcje(idLekcji, { title }),
   },
 };
 
