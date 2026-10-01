@@ -66,6 +66,20 @@
   text-align: center;
 }
 
+/* Dwie akcje nagłówka (drugorzędna i główna; makieta 2.0.4, `.head .acts`).
+   Poniżej 768 px jedna pod drugą, na pełną szerokość, główna pierwsza
+   (`order: -1`, jak `.head .acts .btn.p` w makiecie); od 768 px w jednym
+   wierszu: drugorzędna po lewej, główna przy prawej krawędzi. */
+.akcjeDwie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.akcjeDwie > button:last-child {
+  order: -1;
+}
+
 @media (min-width: 768px) {
   .glowa {
     flex-direction: row;
@@ -87,5 +101,18 @@
   .akcje button {
     inline-size: auto;
     max-width: 320px;
+  }
+}
+
+@media (min-width: 768px) {
+  .akcjeDwie {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .akcjeDwie > button:last-child {
+    order: 0;
   }
 }
