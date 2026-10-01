@@ -20,6 +20,18 @@
   flex-wrap: wrap;
 }
 
+/* Plakietka stanu przy h1: ta sama pigułka co w wierszach (`Badge`: to samo tło,
+   promień i wypełnienie). Tło neutralnej plakietki (`--grey`) jest prawie takie
+   samo jak tło panelu (`--bg`), więc sama wypełniona pigułka na nim nie jest
+   widoczna; cienki obrys (cień wewnętrzny, bez zmiany wymiarów) pokazuje jej
+   kształt także tam. */
+.status {
+  display: inline-flex;
+}
+.status > span {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 .akcja {
   margin: 0;
 }

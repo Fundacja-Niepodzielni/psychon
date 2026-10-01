@@ -96,7 +96,11 @@ export function PageHeader({
     <>
       <div className={style.tytulWiersz}>
         <Heading stopien={1}>{tytul}</Heading>
-        {status && <Badge wariant={status.wariant}>{status.etykieta}</Badge>}
+        {status && (
+          <span className={style.status}>
+            <Badge wariant={status.wariant}>{status.etykieta}</Badge>
+          </span>
+        )}
       </div>
 
       {opis && <Text>{opis}</Text>}
