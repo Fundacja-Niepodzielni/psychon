@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -10,7 +10,7 @@ import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyStat
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
-import { DataTable } from "@/design-system/organizmy/DataTable/DataTable";
+import type { WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
@@ -74,6 +74,38 @@ const OPCJE_GRUPY = (Object.keys(PRODUCT_GROUP_LABELS) as ProductGroup[]).map((w
   wartosc,
   etykieta: PRODUCT_GROUP_LABELS[wartosc],
 }));
+
+const POLA_WPLYWU = [
+  { klucz: "osoba", etykieta: "Osoba" },
+  { klucz: "kurs", etykieta: "Kurs" },
+  { klucz: "bylo", etykieta: "Było" },
+  { klucz: "bedzie", etykieta: "Będzie" },
+] as const;
+
+/**
+ * Podgląd wpływu zmiany kolejności w oknie potwierdzenia: jedna pozycja na osobę, pola pod sobą
+ * (Osoba, Kurs, Było, Będzie). Okno ma stałą szerokość 440 px, więc czterokolumnowa tabela łamałaby
+ * wyrazy w środku; w układzie pionowym każda wartość ma całą szerokość pozycji i łamie się tylko na spacjach.
+ */
+function WplywZmiany({ wiersze }: { wiersze: WierszDataTable[] }) {
+  if (wiersze.length === 0) return <Text wariant="pusty">Ta zmiana nie zmienia statusu żadnej osoby.</Text>;
+  return (
+    <ul className={style.wplyw} aria-label="Wpływ nowej kolejności na statusy kursów">
+      {wiersze.map((wiersz) => (
+        <li key={wiersz.id} className={style.wplywPozycja}>
+          <dl className={style.wplywPola}>
+            {POLA_WPLYWU.map((pole) => (
+              <Fragment key={pole.klucz}>
+                <dt className={style.wplywEtykieta}>{pole.etykieta}</dt>
+                <dd className={style.wplywWartosc}>{String(wiersz.wartosci[pole.klucz])}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 const SELEKTOR_PRZYCISKU_GLOWNEGO = '[data-testid="pageheader-przycisk-glowny"] button';
 const SELEKTOR_PRZYCISKU_KOLEJNOSCI = '[data-fokus="kolejnosc"]';
@@ -397,7 +429,7 @@ export function KursyAdministracji() {
       rodzaj: "liczba",
       wartosc: pola.pozycja,
       onZmiana: (wartosc) => zmienPole("pozycja", wartosc),
-      podpowiedz: "Puste pole = kurs poza główną ścieżką (np. webinar).",
+      podpowiedz: "Puste pole oznacza kurs poza główną ścieżką, na przykład webinar.",
       blad: bledyPol.sequence_order?.[0],
     },
   ];
@@ -559,17 +591,7 @@ export function KursyAdministracji() {
                 {bladOkna}
               </Notice>
             )}
-            <DataTable
-              tytul="Wpływ nowej kolejności na statusy kursów"
-              kolumny={[
-                { klucz: "osoba", etykieta: "Osoba" },
-                { klucz: "kurs", etykieta: "Kurs" },
-                { klucz: "bylo", etykieta: "Było" },
-                { klucz: "bedzie", etykieta: "Będzie" },
-              ]}
-              wiersze={wierszePodgladu(podglad)}
-              komunikatPusty="Ta zmiana nie zmienia statusu żadnej osoby."
-            />
+            <WplywZmiany wiersze={wierszePodgladu(podglad)} />
           </div>
         </Dialog>
       )}

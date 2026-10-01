@@ -246,6 +246,13 @@ describe("KursyAdministracji — Utwórz kurs", () => {
     expect(identyfikator.value).toBe("zazolc-gesla-v2");
   });
 
+  it("podpowiedź pola „Pozycja w ścieżce” mówi zwykłym językiem, że puste pole oznacza kurs poza główną ścieżką", async () => {
+    await otworz();
+    await userEvent.click(screen.getByRole("button", { name: /Miejsce w ścieżce/ }));
+    expect(screen.getByText("Puste pole oznacza kurs poza główną ścieżką, na przykład webinar.")).toBeInTheDocument();
+    expect(screen.queryByText(/Puste pole =/)).toBeNull();
+  });
+
   it("zapis: POST z przyciętym tytułem, domyślnym typem i grupą, pozycją jako liczbą; przejście na ekran kursu", async () => {
     await otworz();
     api.mockResolvedValueOnce(kurs(9, { title: "Nowy" }));
@@ -413,6 +420,18 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
     expect(within(okno).getByText("Marta Demo")).toBeInTheDocument();
     expect(within(okno).getByText("W trakcie")).toBeInTheDocument();
     expect(within(okno).getByText("Zablokowany")).toBeInTheDocument();
+
+    const lista = within(okno).getByRole("list", { name: "Wpływ nowej kolejności na statusy kursów" });
+    const pozycje = within(lista).getAllByRole("listitem");
+    expect(pozycje).toHaveLength(1);
+    expect(Array.from(pozycje[0].querySelectorAll("dt")).map((dt) => dt.textContent)).toEqual(["Osoba", "Kurs", "Było", "Będzie"]);
+    expect(Array.from(pozycje[0].querySelectorAll("dd")).map((dd) => dd.textContent)).toEqual([
+      "Marta Demo",
+      "Wywiad psychologiczny",
+      "W trakcie",
+      "Zablokowany",
+    ]);
+    expect(within(okno).queryByRole("table")).toBeNull();
   });
 
   it("pusty podgląd: okno mówi, że żaden status się nie zmienia", async () => {

@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
 
@@ -168,6 +168,35 @@ function katalogZrzutow(): string | null {
   return katalog;
 }
 
+/**
+ * Pomiar przeglądarki dla okna: wyrazy łamane w środku (wyraz, którego prostokąty leżą w dwóch liniach) oraz
+ * poziome przewinięcie okna (`scrollWidth - clientWidth`). Wyraz = ciąg znaków bez białych w jednym węźle tekstu.
+ */
+async function zmierzOkno(okno: Locator): Promise<{ lamane: string[]; przewiniecie: number; wyrazy: number }> {
+  return okno.evaluate((element) => {
+    const lamane: string[] = [];
+    let wyrazy = 0;
+    const przechodzenie = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    for (let wezel = przechodzenie.nextNode(); wezel; wezel = przechodzenie.nextNode()) {
+      const tekst = wezel.textContent ?? "";
+      for (const wyraz of tekst.matchAll(/\S+/g)) {
+        const zakres = document.createRange();
+        zakres.setStart(wezel, wyraz.index ?? 0);
+        zakres.setEnd(wezel, (wyraz.index ?? 0) + wyraz[0].length);
+        const linie = new Set(
+          Array.from(zakres.getClientRects())
+            .filter((prostokat) => prostokat.width > 0)
+            .map((prostokat) => Math.round(prostokat.top)),
+        );
+        if (linie.size === 0) continue;
+        wyrazy += 1;
+        if (linie.size > 1) lamane.push(wyraz[0]);
+      }
+    }
+    return { lamane, przewiniecie: element.scrollWidth - element.clientWidth, wyrazy };
+  });
+}
+
 async function zrzut(page: Page, nazwa: string): Promise<void> {
   const katalog = katalogZrzutow();
   if (katalog) await page.screenshot({ path: path.join(katalog, `${nazwa}.png`), fullPage: true });
@@ -315,6 +344,25 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
       await expect(okno.getByText("Marta Demo")).toBeVisible();
       await sprawdzAxe(page, testInfo, `axe-kursy-okno-${szerokosc}`);
       await zrzut(page, `kursy-${szerokosc}-okno`);
+    });
+
+    test(`/admin/kursy @${szerokosc}: okno potwierdzenia nie łamie wyrazów w środku i nie przewija się poziomo`, async ({ page }) => {
+      await page.setViewportSize({ width: szerokosc, height: szerokosc >= 1024 ? 900 : 844 });
+      await instalujAtrapyApi(page);
+      await page.goto("/admin/kursy");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+
+      await page.getByRole("button", { name: "Zmień kolejność ścieżki" }).click();
+      await page.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy psychologicznej" }).click();
+      await page.getByRole("button", { name: "Sprawdź wpływ zmiany" }).click();
+      const okno = page.getByRole("dialog", { name: "Potwierdź zmianę kolejności" });
+      await expect(okno.getByText("Marta Demo")).toBeVisible();
+      await expect(okno.getByText("Wywiad psychologiczny")).toBeVisible();
+
+      const pomiar = await zmierzOkno(okno);
+      expect(pomiar.wyrazy).toBeGreaterThan(20);
+      expect(pomiar.lamane).toEqual([]);
+      expect(pomiar.przewiniecie).toBeLessThanOrEqual(0);
     });
   }
 

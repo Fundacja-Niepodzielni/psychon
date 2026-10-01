@@ -99,7 +99,7 @@ export function przesun<T>(lista: T[], indeks: number, kierunek: -1 | 1): T[] {
   return kopia;
 }
 
-/** Wiersze `DataTable` podglądu: osoba, kurs, status było → będzie. */
+/** Wiersze podglądu wpływu zmiany (kształt `DataTable`): osoba, kurs, status było → będzie. */
 export function wierszePodgladu(podglad: ReorderImpactRow[]): WierszDataTable[] {
   return podglad.map((wiersz) => ({
     id: `${wiersz.user_id}-${wiersz.course_id}`,
