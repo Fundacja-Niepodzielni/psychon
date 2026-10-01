@@ -40,6 +40,8 @@ const API = "http://localhost:8000/api/v1";
 const ADRES = "/admin/kursy/4";
 const GRUPA_LEKCJI = GRUPY.edycjaLekcji.wlaczona;
 const ADRES_LEKCJI = "/admin/kursy/4/lekcje/22";
+const ZDANIE_O_LISCIE_MATERIALOW =
+  "Lista wcześniej wgranych materiałów pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
 
 const ATRAPA_SESJI = {
   accessToken: "atrapa-tokenu-testowego",
@@ -141,7 +143,7 @@ interface Opcje {
   odmowaPublikacji?: boolean;
   /** Lista lekcji kursu odpowiada 403 — ekran lekcji pokazuje stan odmowy. */
   odmowaLekcji?: boolean;
-  /** Lekcja 22 ma gotowe nagranie i dwa zapisane materiały. */
+  /** Lekcja 22 ma gotowe nagranie i trzy zapisane materiały. */
   lekcjaZNagraniem?: boolean;
 }
 
@@ -222,7 +224,7 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
           return route.fulfill(json(nowa, undefined, 201));
         }
         return route.fulfill(
-          json(opcje.lekcjaZNagraniem ? lekcje.map((wpis) => (wpis.id === 22 ? { ...wpis, materials_count: 2 } : wpis)) : lekcje),
+          json(opcje.lekcjaZNagraniem ? lekcje.map((wpis) => (wpis.id === 22 ? { ...wpis, materials_count: 3 } : wpis)) : lekcje),
         );
       }
       if (/^\/admin\/lessons\/\d+\/video-status$/.test(sciezka)) {
@@ -826,7 +828,8 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await otworzLekcje(page);
 
       await expect(page.getByRole("heading", { level: 1, name: "Pytania otwarte i zamknięte" })).toBeVisible();
-      await expect(page.getByText("Materiały przy tej lekcji: 0.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja nie ma jeszcze materiałów.")).toBeVisible();
+      await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toHaveCount(0);
       await expect(page.getByText("Ta lekcja nie ma jeszcze nagrania.")).toBeVisible();
       await expect(page.getByLabel(/^Czas trwania w minutach/)).toHaveValue("25");
       await expect(page.locator("main")).toHaveCount(1);
@@ -843,7 +846,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const { zapisy } = await instalujAtrapy(page, { rola: "super_admin", lekcjaZNagraniem: true });
       await otworzLekcje(page);
 
-      await expect(page.getByText("Materiały przy tej lekcji: 2.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja ma 3 materiały.")).toBeVisible();
+      await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toBeVisible();
+      await expect(page.getByText("Ta lekcja nie ma jeszcze materiałów.")).toHaveCount(0);
+      await zrzut(page, `lekcja-${szerokosc}-materialy-licznik-3`, page.getByRole("heading", { level: 2, name: "Materiały" }));
       await expect(page.getByText("Nagranie jest gotowe. Czas trwania:", { exact: false })).toBeVisible();
       await zrzut(page, `lekcja-${szerokosc}-nagranie-gotowe`, page.getByRole("heading", { level: 2, name: "Nagranie" }));
 
@@ -851,8 +857,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
         .locator("section", { has: page.getByRole("heading", { level: 2, name: "Materiały" }) })
         .locator('input[type="file"]')
         .setInputFiles({ name: "karta-pracy.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-") });
-      await expect(page.getByText("Wgrano materiał.")).toBeVisible();
-      await expect(page.getByText("Materiały przy tej lekcji: 3.")).toBeVisible();
+      await expect(page.getByRole("status").filter({ hasText: "Wgrano materiał „karta-pracy.pdf”." })).toHaveCount(1);
+      await expect(page.getByText("Ta lekcja ma 4 materiały.")).toBeVisible();
+      await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toBeVisible();
+      await expect(page.getByText("karta-pracy.pdf", { exact: true })).toHaveCount(1);
       const usun = page.getByRole("button", { name: "Usuń materiał „karta-pracy.pdf”" });
       await expect(usun).toBeVisible();
       await bezPrzewijaniaPoziomego(page);
@@ -865,7 +873,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-okno-usuniecia-materialu`);
       await okno.getByRole("button", { name: "Usuń materiał" }).click();
 
-      await expect(page.getByText("Materiały przy tej lekcji: 2.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja ma 3 materiały.")).toBeVisible();
       await expect(usun).toHaveCount(0);
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
       expect(zapisy.map((zapis) => `${zapis.metoda} ${zapis.sciezka}`)).toEqual([
