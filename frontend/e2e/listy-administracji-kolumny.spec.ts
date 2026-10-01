@@ -352,6 +352,49 @@ for (const lista of LISTY) {
   });
 }
 
+/**
+ * Kolumny miejsca: w komórce stoi sama liczba — znaczenie niesie nagłówek
+ * kolumny (od 640 px) albo podpis kolumny przy wartości (poniżej). Kurs spoza
+ * ścieżki zostaje opisany słownie.
+ */
+const KOLUMNY_MIEJSCA = [
+  { lista: LISTY[0], kolumna: "Miejsce w ścieżce", wartosci: ["1", "2", "3", "poza ścieżką"], poLiczbie: /\d\s*w ścieżce/ },
+  { lista: LISTY[5], kolumna: "Miejsce na liście", wartosci: ["1", "2", "10"], poLiczbie: /\d\s*na liście/ },
+];
+
+for (const { lista, kolumna, wartosci, poLiczbie } of KOLUMNY_MIEJSCA) {
+  for (const okno of [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`${lista.nazwa} @${okno.width}: w kolumnie „${kolumna}” stoi sama liczba, bez dopisku po liczbie`, async ({ page }) => {
+      await otworz(page, okno, lista);
+      const tabela = page.locator(`main [role="table"][aria-label="${lista.lista}"]`);
+      const indeks = lista.kolumny.indexOf(kolumna);
+      const teksty = await tabela.locator('[role="row"][data-wiersz]').evaluateAll((wiersze, indeksKolumny) => {
+        const zwin = (napis: string) => napis.replace(/\s+/g, " ").trim();
+        return wiersze.map((wiersz) => {
+          const komorka = wiersz.querySelectorAll(':scope > [role="cell"]')[indeksKolumny] as HTMLElement;
+          return { rodzaj: komorka.getAttribute("data-rodzaj"), komorka: zwin(komorka.innerText), wiersz: zwin((wiersz as HTMLElement).innerText) };
+        });
+      }, indeks);
+      console.log(`POMIAR-MIEJSCA ${lista.nazwa} @${okno.width} ${JSON.stringify(teksty)}`);
+
+      expect(teksty.map((tekst) => tekst.rodzaj)).toEqual(wartosci.map(() => "liczba"));
+      if (okno.width >= 640) {
+        // Komórka to sama wartość; nazwę kolumny niesie widoczny nagłówek.
+        expect(teksty.map((tekst) => tekst.komorka)).toEqual(wartosci);
+        await expect(tabela.getByRole("columnheader", { name: kolumna })).toBeVisible();
+      } else {
+        // Wiersz zawiera podpis kolumny i zaraz po nim wartość.
+        expect(teksty.map((tekst) => tekst.komorka)).toEqual(wartosci.map((wartosc) => `${kolumna} ${wartosc}`));
+        for (const [numer, tekst] of teksty.entries()) expect(tekst.wiersz).toContain(`${kolumna} ${wartosci[numer]}`);
+      }
+      for (const tekst of teksty) expect(tekst.wiersz, "dopisek po liczbie").not.toMatch(poLiczbie);
+    });
+  }
+}
+
 /** Krawędzie kontenera ekranu i listy oraz tło kontenera. */
 async function krawedzie(page: Page, kontener: string, lista: string) {
   return page.evaluate(
