@@ -137,6 +137,17 @@ export function zdanieBleduUsuniecia(blad: unknown): string {
   return "Nie udało się usunąć lekcji. Sprawdź połączenie i spróbuj ponownie.";
 }
 
+/** Odmowa usunięcia materiału lekcji — zdanie dla osoby, bez kodu i bez nazwy trasy. */
+export function zdanieBleduUsunieciaMaterialu(blad: unknown): string {
+  if (blad instanceof ApiError) {
+    if (blad.status === 401) return "Sesja wygasła. Zaloguj się ponownie.";
+    if (blad.status === 403) return "Usunięcie materiału nie jest dostępne dla Twojej roli.";
+    if (blad.status === 404) return "Tego materiału już nie ma. Odśwież stronę, żeby zobaczyć aktualną lekcję.";
+    if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
+  }
+  return "Nie udało się usunąć materiału. Sprawdź połączenie i spróbuj ponownie.";
+}
+
 export function zdanieBleduPliku(blad: unknown): string {
   if (blad instanceof ApiError) {
     const komunikatPola = blad.errors?.file?.[0];

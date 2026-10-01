@@ -195,6 +195,17 @@ describe("rejestr GRUPY — zawartość", () => {
     ]);
   });
 
+  it("edycja lekcji ma własny adres produktu z kursem w ścieżce i nie ma starej trasy", () => {
+    expect(GRUPY.edycjaLekcji.ekrany).toEqual([
+      {
+        panel: "administracja",
+        staraTrasa: null,
+        nowaTrasa: "/admin/kursy/[id]/lekcje/[idLekcji]",
+        trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
+      },
+    ]);
+  });
+
   it("klucz każdej grupy zgadza się z jej kluczem w rejestrze", () => {
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
       expect(grupa.klucz).toBe(klucz);

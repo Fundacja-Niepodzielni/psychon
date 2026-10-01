@@ -1042,16 +1042,32 @@ function EdytorTematow({
         liczbaZmian={liczbaZmian}
         stan={stanDrzewa}
         onPrzenies={(zTematu, lekcja, doTematu, indeks) => {
-          zmien((lokalny) => przeniesLekcje(lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks));
-          if (stan.rodzaj !== "gotowy") return;
-          const poPrzeniesieniu = przeniesLekcje(stan.lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks);
-          const cel = poPrzeniesieniu.tematy.find((temat) => temat.id === Number(doTematu));
-          const miejsce = cel ? cel.lekcje.indexOf(Number(lekcja)) + 1 : 0;
-          if (!cel || miejsce === 0) return;
-          const tytul = stan.lokalny.tytulyLekcji[Number(lekcja)] ?? "";
-          setOgloszenie(
-            `Lekcja „${tytul}” przeniesiona do tematu „${cel.tytul}”, miejsce ${miejsce} z ${cel.lekcje.length}.`,
-          );
+          const przenies = () => {
+            zmien((lokalny) => przeniesLekcje(lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks));
+            if (stan.rodzaj !== "gotowy") return;
+            const poPrzeniesieniu = przeniesLekcje(stan.lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks);
+            const cel = poPrzeniesieniu.tematy.find((temat) => temat.id === Number(doTematu));
+            const miejsce = cel ? cel.lekcje.indexOf(Number(lekcja)) + 1 : 0;
+            if (!cel || miejsce === 0) return;
+            const tytul = stan.lokalny.tytulyLekcji[Number(lekcja)] ?? "";
+            setOgloszenie(
+              `Lekcja „${tytul}” przeniesiona do tematu „${cel.tytul}”, miejsce ${miejsce} z ${cel.lekcje.length}.`,
+            );
+          };
+          // Wiersz z otwartym formularzem, przenoszony do innego tematu, zmienia
+          // listę: formularz zamontowałby się od nowa i zgubił wpisane zmiany.
+          // Ta droga zamyka więc formularz — a gdy są w nim zmiany, najpierw pyta.
+          if (edytowanaLekcja === Number(lekcja) && zTematu !== doTematu) {
+            const pytano = niezapisanaLekcja;
+            zFormularzaLekcji(() => {
+              zamknijFormularzeLekcji();
+              przenies();
+              // Po oknie pytania strzałki, która je otworzyła, już nie ma w tym miejscu.
+              if (pytano) setFokus({ cel: "edytuj", lekcja: Number(lekcja) });
+            });
+            return;
+          }
+          przenies();
         }}
         // Administracja zakłada lekcję tutaj, w wybranym temacie (`topic_id`).
         // Prowadzący — w istniejącym edytorze treści kursu; tam lekcja bez

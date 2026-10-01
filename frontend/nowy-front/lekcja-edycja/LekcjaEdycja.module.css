@@ -43,3 +43,28 @@
   position: static;
   transform: none;
 }
+
+/* Materiały wgrane na tym ekranie — lista z przyciskiem usunięcia przy pliku. */
+.wgrane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgrany {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.nazwaPliku {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-family: var(--font);
+  overflow-wrap: anywhere;
+}

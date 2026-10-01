@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
+import { GRUPY } from "../lib/przelaczenie/grupy";
 
 /**
  * Miara dla tej gałęzi: grupy przełączenia `kursAdministracji`,
@@ -24,12 +25,21 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - usunięcie kursu;
  * - axe (WCAG 2.1 AA i `best-practice`) na 1280 i 390 px w stanach: z tematami,
  *   pusty, z rozwiniętą lekcją, z oknami potwierdzeń.
+ * - ekran lekcji `/admin/kursy/{id}/lekcje/{idLekcji}` (grupa `edycjaLekcji`):
+ *   próby czytają flagę grupy z rejestru — przy wyłączonej adres pokazuje
+ *   „Nie znaleziono strony” (bez żądań o lekcję) i ekran kursu nie ma do niego
+ *   odnośnika; przy włączonej obie role
+ *   administracji dochodzą odnośnikiem z ekranu kursu do nagłówka lekcji,
+ *   okruszki niosą nazwę kursu, lekcja spoza kursu to „nie znaleziono”,
+ *   materiał lekcji da się wgrać i usunąć, odmowa serwera nie pokazuje danych;
  * Zrzuty ekranu powstają tylko przy ustawionej zmiennej `PW_ZRZUTY` (katalog
  * poza repozytorium) — okno przeglądarki po przewinięciu do elementu.
  */
 
 const API = "http://localhost:8000/api/v1";
 const ADRES = "/admin/kursy/4";
+const GRUPA_LEKCJI = GRUPY.edycjaLekcji.wlaczona;
+const ADRES_LEKCJI = "/admin/kursy/4/lekcje/22";
 
 const ATRAPA_SESJI = {
   accessToken: "atrapa-tokenu-testowego",
@@ -129,6 +139,10 @@ interface Opcje {
   tryb?: "tematy" | "pusty";
   /** Pierwsza próba publikacji kończy się odmową 422 z brakami. */
   odmowaPublikacji?: boolean;
+  /** Lista lekcji kursu odpowiada 403 — ekran lekcji pokazuje stan odmowy. */
+  odmowaLekcji?: boolean;
+  /** Lekcja 22 ma gotowe nagranie i dwa zapisane materiały. */
+  lekcjaZNagraniem?: boolean;
 }
 
 /**
@@ -191,6 +205,7 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
         return route.fulfill(json(kurs));
       }
       if (sciezka === "/admin/courses/4/lessons") {
+        if (opcje.odmowaLekcji) return route.fulfill(blad(403, "forbidden", "Brak uprawnień."));
         if (metoda === "POST") {
           const cialo = cialoJson();
           zapisz(cialo);
@@ -206,7 +221,28 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
           );
           return route.fulfill(json(nowa, undefined, 201));
         }
-        return route.fulfill(json(lekcje));
+        return route.fulfill(
+          json(opcje.lekcjaZNagraniem ? lekcje.map((wpis) => (wpis.id === 22 ? { ...wpis, materials_count: 2 } : wpis)) : lekcje),
+        );
+      }
+      if (/^\/admin\/lessons\/\d+\/video-status$/.test(sciezka)) {
+        return route.fulfill(
+          json(
+            opcje.lekcjaZNagraniem
+              ? { status: "finished", duration_seconds: 1500, preview_embed_url: null }
+              : { status: "no_video" },
+          ),
+        );
+      }
+      if (/^\/admin\/lessons\/\d+\/materials$/.test(sciezka) && metoda === "POST") {
+        zapisz("plik");
+        return route.fulfill(
+          json(
+            { id: nastepnyId++, name: "karta-pracy.pdf", mime: "application/pdf", size: 5, lesson_id: 22, course_id: null, created_at: null },
+            undefined,
+            201,
+          ),
+        );
       }
       const jednaLekcja = /^\/admin\/lessons\/(\d+)$/.exec(sciezka);
       if (jednaLekcja) {
@@ -382,7 +418,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await zrzut(page, `kurs-${szerokosc}-pusty`);
     });
 
-    test("rozwinięta lekcja: formularz czterech pól, żadnego odnośnika, powiadomienie o zapisie pod formularzem, axe", async ({
+    test("rozwinięta lekcja: formularz czterech pól, odnośnik do ekranu lekcji tylko przy włączonej grupie, powiadomienie o zapisie pod formularzem, axe", async ({
       page,
     }, testInfo) => {
       const { zapisy } = await instalujAtrapy(page);
@@ -393,7 +429,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const formularz = li.getByRole("form", { name: "Edycja lekcji" });
       await expect(formularz).toBeVisible();
       await expect(formularz.locator("input, textarea")).toHaveCount(4);
-      await expect(li.getByRole("link")).toHaveCount(0);
+      await expect(li.getByRole("link")).toHaveCount(GRUPA_LEKCJI ? 1 : 0);
+      if (GRUPA_LEKCJI) {
+        await expect(li.getByRole("link", { name: "Materiały i nagranie" })).toHaveAttribute("href", ADRES_LEKCJI);
+      }
       await expect(li.getByRole("button", { name: "Usuń lekcję „Pytania otwarte i zamknięte”" })).toBeVisible();
 
       await bezPrzewijaniaPoziomego(page);
@@ -714,3 +753,149 @@ test.describe("formularz lekcji a tryb kolejności — 390 px", () => {
     expect(zapisy).toEqual([]);
   });
 });
+
+test.describe("ekran lekcji — grupa wyłączona", () => {
+  test.skip(GRUPA_LEKCJI, "grupa ekranu lekcji jest włączona");
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("adres ekranu lekcji pokazuje „Nie znaleziono strony”, a ekran kursu nie ma do niego odnośnika", async ({ page }) => {
+    const { sciezki } = await instalujAtrapy(page);
+    await page.goto(ADRES_LEKCJI);
+    await expect(page.getByRole("heading", { level: 1, name: "Nie znaleziono strony" })).toBeVisible();
+    await expect(page.getByLabel(/^Tytuł lekcji/)).toHaveCount(0);
+    expect(sciezki.filter((wpis) => wpis.includes("/lessons"))).toEqual([]);
+
+    await otworzKurs(page);
+    await page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" }).click();
+    await expect(wiersz(page, 22).getByRole("form", { name: "Edycja lekcji" })).toBeVisible();
+    await expect(page.locator("a[href*='/lekcje/']")).toHaveCount(0);
+  });
+});
+
+async function otworzLekcje(page: Page, adres = ADRES_LEKCJI): Promise<void> {
+  const odpowiedz = await page.goto(adres);
+  expect(odpowiedz?.status()).toBe(200);
+  await zabezpieczeniePrzedEkranemDostepu(page);
+}
+
+for (const rola of ["project_manager", "super_admin"] as const) {
+  test.describe(`ekran lekcji z ekranu kursu — rola ${rola}`, () => {
+    test.skip(!GRUPA_LEKCJI, "grupa ekranu lekcji jest wyłączona");
+    test.use({ viewport: { width: 1280, height: 800 } });
+
+    test("„Materiały i nagranie” prowadzi do ekranu lekcji: adres z kursem, nagłówek lekcji, okruszki z nazwą kursu, nowa ramka", async ({
+      page,
+    }) => {
+      await instalujAtrapy(page, { rola });
+      await otworzKurs(page);
+
+      await page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" }).click();
+      const odnosnik = wiersz(page, 22).getByRole("link", { name: "Materiały i nagranie" });
+      await expect(odnosnik).toHaveAttribute("href", ADRES_LEKCJI);
+      await odnosnik.click();
+
+      await expect(page).toHaveURL(new RegExp(`${ADRES_LEKCJI}$`));
+      await expect(page.getByRole("heading", { level: 1, name: "Pytania otwarte i zamknięte" })).toBeVisible();
+      const okruszki = page.getByRole("navigation", { name: "Okruszki" });
+      await expect(okruszki.getByRole("link", { name: "Kursy" })).toHaveAttribute("href", "/admin/kursy");
+      await expect(okruszki.getByRole("link", { name: KURS.title })).toHaveAttribute("href", ADRES);
+      await expect(page.getByRole("heading", { level: 2, name: "Materiały" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Nagranie" })).toBeVisible();
+      await expect(page.locator("main")).toHaveCount(1);
+      await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
+      await expect(page.getByText(/Brak dostępu|Nie masz uprawnień/)).toHaveCount(0);
+
+      // Sekcja nagrania: wgrywa tylko Super Admin, opiekun projektu widzi stan i powód.
+      const wgrywanie = page.getByText("Upuść tutaj nagranie albo wybierz je z dysku.");
+      const powod = page.getByText("Nagranie może wgrać tylko Super Admin. Stan nagrania widzisz, ale go nie zmienisz.");
+      await expect(wgrywanie).toHaveCount(rola === "super_admin" ? 1 : 0);
+      await expect(powod).toHaveCount(rola === "super_admin" ? 0 : 1);
+    });
+  });
+}
+
+for (const { szerokosc, wysokosc } of OKNA) {
+  test.describe(`ekran lekcji pod adresem /admin/kursy/{id}/lekcje/{idLekcji} — ${szerokosc} px`, () => {
+    test.skip(!GRUPA_LEKCJI, "grupa ekranu lekcji jest wyłączona");
+    test.use({ viewport: { width: szerokosc, height: wysokosc } });
+
+    test("stan pusty: lekcja bez nagrania i bez materiałów; jeden main, bez przewijania poziomego, axe", async ({
+      page,
+    }, testInfo) => {
+      await instalujAtrapy(page, { rola: "super_admin" });
+      await otworzLekcje(page);
+
+      await expect(page.getByRole("heading", { level: 1, name: "Pytania otwarte i zamknięte" })).toBeVisible();
+      await expect(page.getByText("Materiały przy tej lekcji: 0.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja nie ma jeszcze nagrania.")).toBeVisible();
+      await expect(page.getByLabel(/^Czas trwania w minutach/)).toHaveValue("25");
+      await expect(page.locator("main")).toHaveCount(1);
+      await expect(page.locator("#tresc")).toHaveCount(1);
+      await bezPrzewijaniaPoziomego(page);
+      await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-pusta`);
+      await zrzut(page, `lekcja-${szerokosc}-stan-pusty-gora`);
+      await zrzut(page, `lekcja-${szerokosc}-stan-pusty-materialy-i-nagranie`, page.getByRole("heading", { level: 2, name: "Materiały" }));
+    });
+
+    test("nagranie gotowe i materiały: wgranie materiału, usunięcie z potwierdzeniem — po jednym żądaniu; axe", async ({
+      page,
+    }, testInfo) => {
+      const { zapisy } = await instalujAtrapy(page, { rola: "super_admin", lekcjaZNagraniem: true });
+      await otworzLekcje(page);
+
+      await expect(page.getByText("Materiały przy tej lekcji: 2.")).toBeVisible();
+      await expect(page.getByText("Nagranie jest gotowe. Czas trwania:", { exact: false })).toBeVisible();
+      await zrzut(page, `lekcja-${szerokosc}-nagranie-gotowe`, page.getByRole("heading", { level: 2, name: "Nagranie" }));
+
+      await page
+        .locator("section", { has: page.getByRole("heading", { level: 2, name: "Materiały" }) })
+        .locator('input[type="file"]')
+        .setInputFiles({ name: "karta-pracy.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-") });
+      await expect(page.getByText("Wgrano materiał.")).toBeVisible();
+      await expect(page.getByText("Materiały przy tej lekcji: 3.")).toBeVisible();
+      const usun = page.getByRole("button", { name: "Usuń materiał „karta-pracy.pdf”" });
+      await expect(usun).toBeVisible();
+      await bezPrzewijaniaPoziomego(page);
+      await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-materialy`);
+      await zrzut(page, `lekcja-${szerokosc}-materialy-wgrany-plik`, page.getByRole("heading", { level: 2, name: "Materiały" }));
+
+      await usun.click();
+      const okno = page.getByRole("dialog", { name: "Usunąć materiał „karta-pracy.pdf”?" });
+      await expect(okno).toBeVisible();
+      await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-okno-usuniecia-materialu`);
+      await okno.getByRole("button", { name: "Usuń materiał" }).click();
+
+      await expect(page.getByText("Materiały przy tej lekcji: 2.")).toBeVisible();
+      await expect(usun).toHaveCount(0);
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
+      expect(zapisy.map((zapis) => `${zapis.metoda} ${zapis.sciezka}`)).toEqual([
+        "POST /admin/lessons/22/materials",
+        "DELETE /admin/materials/100",
+      ]);
+    });
+
+    test("odmowa serwera 403: stan odmowy bez danych lekcji, okruszki z nazwą kursu, axe", async ({ page }, testInfo) => {
+      await instalujAtrapy(page, { odmowaLekcji: true });
+      await otworzLekcje(page);
+
+      await expect(page.getByRole("heading", { level: 1, name: "Lekcja" })).toBeVisible();
+      await expect(page.getByText("Pytania otwarte i zamknięte")).toHaveCount(0);
+      await expect(page.getByLabel(/^Tytuł lekcji/)).toHaveCount(0);
+      await expect(page.getByRole("navigation", { name: "Okruszki" }).getByRole("link", { name: KURS.title })).toBeVisible();
+      await expect(page.locator("main")).toHaveCount(1);
+      await bezPrzewijaniaPoziomego(page);
+      await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-odmowa`);
+      await zrzut(page, `lekcja-${szerokosc}-odmowa-serwera-403`);
+    });
+
+    test("lekcja spoza kursu z adresu: „Nie znaleziono lekcji”, zero żądań o tę lekcję", async ({ page }) => {
+      const { sciezki } = await instalujAtrapy(page);
+      await otworzLekcje(page, "/admin/kursy/4/lekcje/999");
+
+      await expect(page.getByRole("heading", { name: "Nie znaleziono lekcji" })).toBeVisible();
+      await expect(page.getByLabel(/^Tytuł lekcji/)).toHaveCount(0);
+      expect(sciezki.filter((sciezka) => sciezka.includes("/lessons/999"))).toEqual([]);
+      await zrzut(page, `lekcja-${szerokosc}-nie-znaleziono`);
+    });
+  });
+}

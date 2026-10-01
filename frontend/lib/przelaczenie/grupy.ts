@@ -396,15 +396,20 @@ export const GRUPY = {
       },
     ],
   },
-  /** Edycja lekcji: treść, nagranie, materiały (H08) — dziś część strony szczegółu kursu, ten sam adres. */
+  /**
+   * Edycja lekcji: treść, nagranie, materiały (H08). Osobny ekran pod własnym
+   * adresem z kursem w ścieżce — bez starej trasy, bo w starym froncie lekcję
+   * edytowało się na stronie kursu. Wchodzi się na niego z ekranu kursu
+   * odnośnikiem „Materiały i nagranie” w formularzu przy wierszu lekcji.
+   */
   edycjaLekcji: {
     klucz: "edycjaLekcji",
     wlaczona: false,
     ekrany: [
       {
         panel: "administracja",
-        staraTrasa: "/admin/kursy/[id]",
-        nowaTrasa: "/admin/kursy/[id]",
+        staraTrasa: null,
+        nowaTrasa: "/admin/kursy/[id]/lekcje/[idLekcji]",
         trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
       },
     ],
