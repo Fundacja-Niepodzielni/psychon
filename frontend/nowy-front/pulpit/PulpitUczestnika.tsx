@@ -25,6 +25,7 @@ import {
   type WarunkiCertyfikatu,
 } from "./dane";
 import { formatujDziesietny } from "./formatuj-dziesietny";
+import { mianownikOdbytychSuperwizji, mianownikUkonczonychKursow } from "./odmiana-kafli";
 import { etapySciezki, wyliczNastepnyKrok, type NastepnyKrok } from "./nastepny-krok";
 
 type StanEkranu = StanBezDanych | "ok";
@@ -155,7 +156,7 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
       id: "pulpit-etapy",
       etykieta: "Kursy w programie",
       wartosc: etapy.length > 0 ? ukonczoneEtapy : undefined,
-      mianownik: `z ${etapy.length} ukończone`,
+      mianownik: mianownikUkonczonychKursow(ukonczoneEtapy, etapy.length),
       procent: etapy.length > 0 ? Math.round((ukonczoneEtapy / etapy.length) * 100) : undefined,
       dominujacy: true,
       ukladPulpitu: true,
@@ -180,8 +181,10 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
       id: "pulpit-superwizje",
       etykieta: "Superwizja",
       wartosc: typeof warunekSuperwizji?.done === "number" ? warunekSuperwizji.done : undefined,
-      mianownik:
-        warunekSuperwizji?.required !== undefined ? `z ${warunekSuperwizji.required} odbyta` : "odbyta",
+      mianownik: mianownikOdbytychSuperwizji(
+        typeof warunekSuperwizji?.done === "number" ? warunekSuperwizji.done : undefined,
+        warunekSuperwizji?.required,
+      ),
       ukladPulpitu: true,
     },
   ];

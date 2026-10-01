@@ -98,7 +98,7 @@ describe("PulpitUczestnika — stany z danymi", () => {
     expect(push).toHaveBeenCalledWith("/panel/lekcje/22");
     // Liczby pochodzą z /courses, /certificate/conditions i /internship/entries
     // bez własnej reguły liczenia; mianownik występuje w DOM kilka razy.
-    expect(screen.getAllByText("z 3 ukończone").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("z 3 ukończony").length).toBeGreaterThan(0);
     expect(screen.getAllByText("z 72 godzin").length).toBeGreaterThan(0);
     cleanup();
 
