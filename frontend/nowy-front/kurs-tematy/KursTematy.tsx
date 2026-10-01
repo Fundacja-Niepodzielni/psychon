@@ -238,6 +238,7 @@ type CelFokusu =
   | { cel: "edytuj"; lekcja: number }
   | { cel: "dodaj"; temat: number }
   | { cel: "formularz" }
+  | { cel: "tematy" }
   | { cel: "kolejnosc" };
 
 interface FormularzNowejLekcji {
@@ -323,6 +324,10 @@ function EdytorTematow({
   const [lekcjaZmieniona, setLekcjaZmieniona] = useState(false);
   // Nowy obiekt przy każdym zamknięciu — efekt fokusu rusza także dla tej samej lekcji drugi raz.
   const [fokus, setFokus] = useState<CelFokusu | null>(null);
+  // Jeden cichy obszar ogłoszeń ekranu (czytnik ekranu): dokąd trafiła
+  // przeniesiona lekcja i że zmiany zostały zapisane. Zdarzenia, które mają już
+  // `Toast` albo `Notice`, tu nie trafiają — nie byłyby czytane dwa razy.
+  const [ogloszenie, setOgloszenie] = useState("");
   const [nowaLekcja, setNowaLekcja] = useState<FormularzNowejLekcji | null>(null);
   const [bledyNowejLekcji, setBledyNowejLekcji] = useState<BledyFormularza & { ogolny?: string }>({});
   // Lekcje założone i usunięte na tym ekranie — drzewo zmienia się bez ponownego
@@ -443,9 +448,15 @@ function EdytorTematow({
     if (fokus.cel === "edytuj") selektory.push(`[data-edytuj-lekcje="${fokus.lekcja}"]`);
     if (fokus.cel === "dodaj") selektory.push(`[data-testid="ct-dodaj-${fokus.temat}"]`);
     if (fokus.cel === "formularz") selektory.push("[data-rozwiniecie-lekcji] input", "[data-pod-tematem] input");
+    if (fokus.cel === "tematy") selektory.push("[data-dodaj-temat]");
     // Przełącznik „Kolejność” istnieje tylko na wąskim oknie; na szerokim
     // ostatnim celem jest pierwszy przycisk „Dodaj lekcję” drzewa.
-    selektory.push(`#${KOTWICA_LEKCJI} button[aria-pressed]`, `#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`);
+    // Kurs bez tematów ma w tym miejscu tylko przycisk stanu pustego.
+    selektory.push(
+      `#${KOTWICA_LEKCJI} button[aria-pressed]`,
+      `#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`,
+      `#${KOTWICA_LEKCJI} button`,
+    );
     for (const selektor of selektory) {
       const element = document.querySelector<HTMLElement>(selektor);
       if (!element) continue;
@@ -453,6 +464,19 @@ function EdytorTematow({
       if (document.activeElement === element) return;
     }
   }, [fokus]);
+
+  // Pasek zapisu znika razem z ostatnią niezapisaną zmianą (zapis, cofnięcie,
+  // porzucenie), a z nim przycisk, który miał fokus. Fokus wraca wtedy do
+  // drzewa, zamiast spaść na `body`.
+  const liczbaZmianTeraz = stan.rodzaj === "gotowy" ? stan.historia.length : 0;
+  const poprzedniaLiczbaZmian = useRef(0);
+  useEffect(() => {
+    const bylo = poprzedniaLiczbaZmian.current;
+    poprzedniaLiczbaZmian.current = liczbaZmianTeraz;
+    if (bylo === 0 || liczbaZmianTeraz !== 0) return;
+    const aktywny = document.activeElement;
+    if (aktywny === null || aktywny === document.body || !document.body.contains(aktywny)) setFokus({ cel: "kolejnosc" });
+  }, [liczbaZmianTeraz]);
 
   if (stan.rodzaj === "brak-sesji" || stan.rodzaj === "nie-znaleziono") {
     return <BezKursu rodzaj={stan.rodzaj} idKursu={String(kursPoczatkowy.id)} grupa={grupa} wroc={wroc} />;
@@ -750,8 +774,10 @@ function EdytorTematow({
           ostatniTytul: poprzedni.ostatniTytul,
         };
       });
+      setOgloszenie("Zmiany w kursie zostały zapisane.");
     } catch (blad) {
       // Stan lokalny zostaje nietknięty — osoba poprawia i zapisuje ponownie.
+      setOgloszenie("");
       setBladTresci(zdanieBleduTematow(blad));
       setUkladNieaktualny(wysylanyUklad && blad instanceof ApiError && (blad.status === 409 || blad.status === 422));
     } finally {
@@ -847,6 +873,8 @@ function EdytorTematow({
             : poprzedni,
         );
         setDialog(null);
+        // Przycisk „Usuń” tego tematu znika razem z nim.
+        setFokus({ cel: "tematy" });
       } catch (blad) {
         // Odmowa (np. 422 `conditions_not_met`: ktoś dopisał do tematu lekcję):
         // drzewo bez zmian, okno zostaje, zdanie stoi w oknie przy przycisku.
@@ -867,7 +895,10 @@ function EdytorTematow({
     setBladOkna(null);
     try {
       if (dialog.rodzaj === "dodaj") {
+        const pierwszy = stan.rodzaj === "gotowy" && stan.lokalny.tematy.length === 0;
         const temat = await dodajTemat(grupa, kurs.id, tytul);
+        // Pierwszy temat zdejmuje z ekranu przycisk stanu pustego, który otworzył okno.
+        if (pierwszy) setFokus({ cel: "dodaj", temat: temat.id });
         setStan((poprzedni) =>
           poprzedni.rodzaj === "gotowy"
             ? {
@@ -1003,9 +1034,18 @@ function EdytorTematow({
         tematy={tematy}
         liczbaZmian={liczbaZmian}
         stan={stanDrzewa}
-        onPrzenies={(zTematu, lekcja, doTematu, indeks) =>
-          zmien((lokalny) => przeniesLekcje(lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks))
-        }
+        onPrzenies={(zTematu, lekcja, doTematu, indeks) => {
+          zmien((lokalny) => przeniesLekcje(lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks));
+          if (stan.rodzaj !== "gotowy") return;
+          const poPrzeniesieniu = przeniesLekcje(stan.lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks);
+          const cel = poPrzeniesieniu.tematy.find((temat) => temat.id === Number(doTematu));
+          const miejsce = cel ? cel.lekcje.indexOf(Number(lekcja)) + 1 : 0;
+          if (!cel || miejsce === 0) return;
+          const tytul = stan.lokalny.tytulyLekcji[Number(lekcja)] ?? "";
+          setOgloszenie(
+            `Lekcja „${tytul}” przeniesiona do tematu „${cel.tytul}”, miejsce ${miejsce} z ${cel.lekcje.length}.`,
+          );
+        }}
         // Administracja zakłada lekcję tutaj, w wybranym temacie (`topic_id`).
         // Prowadzący — w istniejącym edytorze treści kursu; tam lekcja bez
         // `topic_id` trafia na koniec ostatniego tematu (aneks kontraktu, pkt 3).
@@ -1180,14 +1220,19 @@ function EdytorTematow({
             </Notice>
           )}
           <div>
-            <Button poziom="outline" onClick={() => otworzDialog({ rodzaj: "dodaj" })}>
+            <Button poziom="outline" data-dodaj-temat onClick={() => otworzDialog({ rodzaj: "dodaj" })}>
               Dodaj temat
             </Button>
           </div>
         </section>
       )}
 
-      <section id="opis" className={style.sekcja} aria-labelledby={`${baza}-dane`}>
+      <section
+        id="opis"
+        className={style.sekcja}
+        aria-label={formularz ? "Dane kursu" : undefined}
+        aria-labelledby={formularz ? undefined : `${baza}-dane`}
+      >
         {formularz ? (
           <>
             {bledyFormularza.ogolny && (
@@ -1379,6 +1424,10 @@ function EdytorTematow({
         />
       )}
       {toast && <Toast komunikat={toast} onZamknij={zamknijToast} />}
+      {/* Bez roli „status”: tę rolę ma `Toast`, a obszar żywy wystarcza czytnikowi. */}
+      <p aria-live="polite" aria-atomic="true" data-ogloszenia className={style.ogloszenia}>
+        {ogloszenie}
+      </p>
     </>
   );
 }

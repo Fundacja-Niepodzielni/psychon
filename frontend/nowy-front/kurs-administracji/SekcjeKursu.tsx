@@ -51,6 +51,8 @@ export function MaterialyKursu({ kurs }: { kurs: AdminCourse }) {
     setBlad(null);
     try {
       await usunMaterial(material.id);
+      // Przycisk „Usuń” tego pliku znika razem z wierszem — fokus idzie na pole dodawania.
+      document.getElementById(`${baza}-plik`)?.focus();
       materialy.zdejmij(material);
       setLiczba((poprzednia) => Math.max(0, poprzednia - 1));
     } catch (wyjatek) {
