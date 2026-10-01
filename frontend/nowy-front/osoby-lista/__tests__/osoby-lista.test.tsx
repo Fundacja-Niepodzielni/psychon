@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
+import { naruszeniaSeparatora } from "@/design-system/molekuly/ListRow/__tests__/separator-linii";
 import { Button } from "@/design-system/atomy/Button/Button";
 
 /**
@@ -87,7 +88,7 @@ describe("Uczestnicy programu — stany", () => {
 
     sprawdzSzablon(container);
     expect(container.querySelector("[aria-busy='true']")).not.toBeNull();
-    expect(screen.queryByRole("link", { name: "Otwórz kartę" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz kartę: / })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pobierz tabelę (Excel)" })).toBeNull();
   });
 
@@ -100,18 +101,59 @@ describe("Uczestnicy programu — stany", () => {
     await screen.findByText("Marta Demo17");
     sprawdzSzablon(container);
 
-    const odnosniki = screen.getAllByRole("link", { name: "Otwórz kartę" });
+    const odnosniki = screen.getAllByRole("link", { name: /^Otwórz kartę: / });
     expect(odnosniki.map((a) => a.getAttribute("href"))).toEqual([
       "/admin/uczestniczki/17",
       "/admin/uczestniczki/18",
     ]);
     expect(screen.getByText("osoba17@demo.pl · Wolontariusz")).toBeInTheDocument();
     expect(screen.getByText("osoba18@demo.pl · Psycholog prowadzący")).toBeInTheDocument();
-    expect(screen.getByText("Konto aktywne")).toBeInTheDocument();
-    expect(screen.getByText("Konto zablokowane")).toBeInTheDocument();
+    expect(screen.getByText("konto aktywne")).toBeInTheDocument();
+    expect(screen.getByText("konto zablokowane")).toBeInTheDocument();
+    expect(screen.queryByText("Konto aktywne")).toBeNull();
+    expect(screen.queryByText("Konto zablokowane")).toBeNull();
     expect(container.textContent).not.toMatch(/\b(volunteer|student|instructor|project_manager|super_admin)\b/);
     expect(screen.getByText(/Razem osób: 2/)).toBeInTheDocument();
     expect(apiPaged).toHaveBeenCalledWith(ADRES_LISTY);
+    expect(przyciskiGlowne(container)).toBe(0);
+  });
+
+  it("wiersz jak wiersz Spraw: pogrubione imię i nazwisko, meta po „·”, „Otwórz” z pełną nazwą dla czytnika, tekst równo z h1", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([osoba(17)], { total: 1 }));
+    render(<OsobyLista />);
+
+    const tytul = await screen.findByText("Marta Demo17");
+    expect(tytul.tagName).toBe("P");
+    expect(tytul.parentElement?.className).toMatch(/pogrubiony/);
+    const odnosnik = screen.getByRole("link", { name: "Otwórz kartę: Marta Demo17" });
+    expect(odnosnik.textContent).toMatch(/^Otwórz\s*›$/);
+    const wiersz = odnosnik.closest("[data-wariant]") as HTMLElement;
+    expect(wiersz.className).toMatch(/bezWciecia/);
+    expect(naruszeniaSeparatora(tytul.parentElement as HTMLElement)).toEqual([]);
+    // Plakietka stanu małą literą stoi w wierszu (stan dobry w atomie Badge wygląda jak „neutral”, bez barwy).
+    expect(within(wiersz).getByText("konto aktywne").className).toMatch(/neutral/);
+    // Nagłówek listy zostaje w drzewie nagłówków (h2 bezpośrednio pod h1), wzrokowo go nie ma.
+    const naglowekListy = screen.getByRole("heading", { level: 2, name: "Lista uczestników" });
+    expect(naglowekListy.parentElement?.className).toMatch(/ukryte/);
+    expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
+  });
+
+  it("akcje nagłówka: eksport jako akcja drugorzędna w nagłówku, odnośnik „Zgłoszenia rekrutacyjne” pod h1 jako zwykły link", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([osoba(17)]));
+    const { container } = render(<OsobyLista />);
+    await screen.findByText("Marta Demo17");
+
+    const glowa = container.querySelector("[data-testid='pageheader-glowa']") as HTMLElement;
+    const eksport = screen.getByRole("button", { name: "Pobierz tabelę (Excel)" });
+    expect(glowa).toContainElement(eksport);
+    expect(container.querySelector("[data-testid='pageheader-akcje']")).toContainElement(eksport);
+    expect(eksport.className).not.toMatch(/primary/);
+    // Eksport nie stoi już w treści pod nagłówkiem, a odnośnik do zgłoszeń to link w bloku tekstu pod h1.
+    expect(screen.getAllByRole("button", { name: "Pobierz tabelę (Excel)" })).toHaveLength(1);
+    const zgloszenia = screen.getByRole("link", { name: "Zgłoszenia rekrutacyjne" });
+    expect(zgloszenia).toHaveAttribute("href", "/admin/nabor");
+    expect(glowa).toContainElement(zgloszenia);
+    expect(container.querySelector("[data-testid='pageheader-akcje']")).not.toContainElement(zgloszenia);
     expect(przyciskiGlowne(container)).toBe(0);
   });
 
@@ -156,7 +198,7 @@ describe("Uczestnicy programu — stany", () => {
     await screen.findByText(/administracji/);
     sprawdzSzablon(container);
     expect(container.textContent).toMatch(/tylko dla administracji/);
-    expect(screen.queryByRole("link", { name: "Otwórz kartę" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz kartę: / })).toBeNull();
     expect(screen.queryByRole("form")).toBeNull();
     expect(screen.queryByRole("button", { name: "Pobierz tabelę (Excel)" })).toBeNull();
     expect(container.textContent).not.toMatch(/Brak dostępu|Nie masz uprawnień/);
@@ -183,7 +225,7 @@ describe("Uczestnicy programu — stany", () => {
 
     await screen.findByText(/administracji/);
     sprawdzSzablon(container);
-    expect(screen.queryByRole("link", { name: "Otwórz kartę" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz kartę: / })).toBeNull();
   });
 
   it("błąd sieci: komunikat z „Spróbuj ponownie”, które wczytuje listę jeszcze raz", async () => {
@@ -195,7 +237,7 @@ describe("Uczestnicy programu — stany", () => {
     const komunikat = await screen.findByRole("alert");
     expect(within(komunikat).getByText("Nie udało się wczytać listy uczestników")).toBeInTheDocument();
     sprawdzSzablon(container);
-    expect(screen.queryByRole("link", { name: "Otwórz kartę" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz kartę: / })).toBeNull();
 
     await uzytkownik.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
     await screen.findByText("Marta Demo17");

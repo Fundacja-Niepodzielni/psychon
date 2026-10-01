@@ -165,6 +165,16 @@ describe("Zgłoszenie — decyzja: stany w szablonie, jeden main", () => {
     expect(okruszek.getAttribute("href")).toBe("/admin/nabor");
   });
 
+  it("okruszek szczegółu: Administracja › Sprawy › Zgłoszenia rekrutacyjne › osoba ze zgłoszenia", async () => {
+    trasy({ show: ZGLOSZENIE });
+    render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+    const okruszek = screen.getByRole("navigation", { name: "Okruszki" });
+    const elementy = Array.from(okruszek.querySelectorAll("li")).map((li) => li.firstElementChild?.textContent);
+    expect(elementy).toEqual(["Administracja", "Sprawy", "Zgłoszenia rekrutacyjne", "Marta Demo"]);
+    expect(okruszek.querySelector("a[href='/admin/nabor']")?.textContent).toBe("Zgłoszenia rekrutacyjne");
+  });
+
   it("niepoprawny identyfikator w adresie: ten sam stan, bez żądania", () => {
     const { container } = render(<ZgloszenieDecyzja id="abc" />);
     sprawdzSzablon(container);

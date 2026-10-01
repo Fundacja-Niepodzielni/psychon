@@ -26,13 +26,19 @@ import style from "./ZgloszenieDecyzja.module.css";
 /**
  * Okruszki z łączem do listy: w nowej ramce panelu nagłówek nie ma przycisku
  * powrotu, więc łącze „Zgłoszenia rekrutacyjne” jest drogą z powrotem na listę
- * (`/admin/nabor`); ostatnia pozycja to bieżący ekran.
+ * (`/admin/nabor`); ostatnia pozycja to bieżący ekran — osoba ze zgłoszenia,
+ * a przed wczytaniem „Zgłoszenie”. Ekran jest podstroną „Spraw” (rejestr menu
+ * ramki), więc w nowej ramce okruszek składa reguła z rejestru:
+ * „Administracja › Sprawy › Zgłoszenia rekrutacyjne › <osoba>”.
  */
-const OKRUSZKI = [
-  { etykieta: "Administracja" },
-  { etykieta: "Zgłoszenia rekrutacyjne", href: SCIEZKA_LISTY },
-  { etykieta: "Zgłoszenie" },
-];
+function okruszki(biezaca: string) {
+  return [
+    { etykieta: "Administracja" },
+    { etykieta: "Sprawy" },
+    { etykieta: "Zgłoszenia rekrutacyjne", href: SCIEZKA_LISTY },
+    { etykieta: biezaca },
+  ];
+}
 
 type WariantStatusu = "neutral" | "ok" | "warn" | "error" | "pending";
 
@@ -51,16 +57,18 @@ type Stan =
 
 interface WlasciwosciRamy {
   tytul: string;
+  /** Ostatnia pozycja okruszka (bieżący ekran); domyślnie „Zgłoszenie”. */
+  okruszekBiezacy?: string;
   status?: { wariant: WariantStatusu; etykieta: string };
   wroc: () => void;
   glowna: ReactNode;
   wspierajaca?: ReactNode;
 }
 
-function Rama({ tytul, status, wroc, glowna, wspierajaca = null }: WlasciwosciRamy) {
+function Rama({ tytul, okruszekBiezacy = "Zgłoszenie", status, wroc, glowna, wspierajaca = null }: WlasciwosciRamy) {
   return (
     <DetailTemplate
-      naglowek={{ okruszki: OKRUSZKI, tytul, status, onPowrot: wroc }}
+      naglowek={{ okruszki: okruszki(okruszekBiezacy), tytul, status, onPowrot: wroc }}
       glowna={glowna}
       wspierajaca={wspierajaca}
     />
@@ -200,6 +208,7 @@ function Widok({ poczatkowe, wroc, odswiez }: WlasciwosciWidoku) {
   return (
     <Rama
       tytul={`Zgłoszenie: ${nazwa}`}
+      okruszekBiezacy={nazwa}
       status={STATUS_ZGLOSZENIA[zgloszenie.status]}
       wroc={wroc}
       glowna={

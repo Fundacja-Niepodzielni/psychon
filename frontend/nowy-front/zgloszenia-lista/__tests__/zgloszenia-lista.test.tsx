@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
+import { naruszeniaSeparatora } from "@/design-system/molekuly/ListRow/__tests__/separator-linii";
 import { Button } from "@/design-system/atomy/Button/Button";
 
 /**
@@ -94,7 +95,7 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
 
     sprawdzSzablon(container);
     expect(container.querySelector("[aria-busy='true']")).not.toBeNull();
-    expect(screen.queryByRole("link", { name: "Otwórz zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz zgłoszenie: / })).toBeNull();
   });
 
   it("dane: wiersze z rolą po polsku, stanem i odnośnikiem do szczegółu", async () => {
@@ -106,15 +107,16 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     await screen.findByText("Anna Kandydat11");
     sprawdzSzablon(container);
 
-    const odnosniki = screen.getAllByRole("link", { name: "Otwórz zgłoszenie" });
+    const odnosniki = screen.getAllByRole("link", { name: /^Otwórz zgłoszenie: / });
     expect(odnosniki.map((a) => a.getAttribute("href"))).toEqual([
       "/admin/nabor/11",
       "/admin/nabor/12",
     ]);
     expect(screen.getByText(/kandydat11@demo\.pl · proponowana rola: Wolontariusz · zgłoszono 20\.09\.2026/)).toBeInTheDocument();
     expect(screen.getByText(/proponowana rola: Student/)).toBeInTheDocument();
-    expect(screen.getByText("Czeka na decyzję")).toBeInTheDocument();
-    expect(screen.getByText("Zaakceptowane")).toBeInTheDocument();
+    expect(screen.getByText("czeka na decyzję")).toBeInTheDocument();
+    expect(screen.getByText("zaakceptowane")).toBeInTheDocument();
+    expect(screen.queryByText("Czeka na decyzję")).toBeNull();
     expect(container.textContent).not.toMatch(/\b(volunteer|student|instructor)\b/);
     expect(screen.getByText(/Razem zgłoszeń: 2/)).toBeInTheDocument();
     // Jedyny przycisk w kolorze to „Dodaj zgłoszenie” w nagłówku (wiersze mają tylko odnośniki).
@@ -123,6 +125,41 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     expect(container.querySelector("[data-testid='pageheader-glowa']")).toContainElement(
       container.querySelector("button[class*='primary']") as HTMLElement,
     );
+  });
+
+  it("wiersz jak wiersz Spraw: pogrubione imię i nazwisko, meta po „·”, „Otwórz” z pełną nazwą dla czytnika, tekst równo z h1", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([zgloszenie(11)], { total: 1 }));
+    render(<ZgloszeniaLista />);
+
+    const tytul = await screen.findByText("Anna Kandydat11");
+    expect(tytul.tagName).toBe("P");
+    expect(tytul.parentElement?.className).toMatch(/pogrubiony/);
+    const odnosnik = screen.getByRole("link", { name: "Otwórz zgłoszenie: Anna Kandydat11" });
+    expect(odnosnik.textContent).toMatch(/^Otwórz\s*›$/);
+    expect(odnosnik).toHaveAttribute("href", "/admin/nabor/11");
+    const wiersz = odnosnik.closest("[data-wariant]") as HTMLElement;
+    expect(wiersz.className).toMatch(/bezWciecia/);
+    expect(naruszeniaSeparatora(tytul.parentElement as HTMLElement)).toEqual([]);
+    const naglowekListy = screen.getByRole("heading", { level: 2, name: "Lista zgłoszeń" });
+    expect(naglowekListy.parentElement?.className).toMatch(/ukryte/);
+  });
+
+  it("akcje nagłówka: „Dodaj zgłoszenie” (główna) i „Importuj z pliku CSV” (drugorzędna) obok siebie w nagłówku, każda raz", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([zgloszenie(11)]));
+    const { container } = render(<ZgloszeniaLista />);
+    await screen.findByText("Anna Kandydat11");
+
+    const akcje = container.querySelector("[data-testid='pageheader-przycisk-glowny']") as HTMLElement;
+    const dodaj = screen.getAllByRole("button", { name: "Dodaj zgłoszenie" });
+    const importuj = screen.getAllByRole("button", { name: "Importuj z pliku CSV" });
+    expect(dodaj).toHaveLength(1);
+    expect(importuj).toHaveLength(1);
+    expect(akcje).toContainElement(dodaj[0]);
+    expect(akcje).toContainElement(importuj[0]);
+    expect(importuj[0].className).not.toMatch(/primary/);
+    expect(dodaj[0].className).toMatch(/primary/);
+    // Drugorzędna stoi przed główną (po jej lewej stronie od 768 px), obie w jednym kontenerze akcji.
+    expect(Array.from(akcje.querySelectorAll("button"))).toEqual([importuj[0], dodaj[0]]);
   });
 
   it("pusty bez filtra: tekst o braku zgłoszeń w roku programu i otwarcie wczytania z pliku na tym samym ekranie", async () => {
@@ -165,7 +202,7 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     await screen.findByText(/administracji/);
     sprawdzSzablon(container);
     expect(container.textContent).toMatch(/tylko dla administracji/);
-    expect(screen.queryByRole("link", { name: "Otwórz zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz zgłoszenie: / })).toBeNull();
     expect(screen.queryByRole("form")).toBeNull();
     expect(container.textContent).not.toMatch(/Brak dostępu|Nie masz uprawnień/);
   });
@@ -176,7 +213,7 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
 
     await screen.findByText(/administracji/);
     sprawdzSzablon(container);
-    expect(screen.queryByRole("link", { name: "Otwórz zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz zgłoszenie: / })).toBeNull();
   });
 
   it("błąd sieci: komunikat z „Spróbuj ponownie”, które wczytuje listę jeszcze raz", async () => {
@@ -188,7 +225,7 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     const komunikat = await screen.findByRole("alert");
     expect(within(komunikat).getByText("Nie udało się wczytać zgłoszeń")).toBeInTheDocument();
     sprawdzSzablon(container);
-    expect(screen.queryByRole("link", { name: "Otwórz zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Otwórz zgłoszenie: / })).toBeNull();
 
     await uzytkownik.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
     await screen.findByText("Anna Kandydat11");
