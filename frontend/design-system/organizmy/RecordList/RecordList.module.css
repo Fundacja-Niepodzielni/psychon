@@ -103,9 +103,11 @@
   box-sizing: border-box;
 }
 
+/* Stopka z sumą zamyka listę: bez linii pod spodem, jak stopka listy bez kolumn. */
 .wierszSumy {
   min-height: var(--hit-min);
   box-sizing: border-box;
+  border-bottom: 0;
   font-weight: var(--fw-bold);
 }
 

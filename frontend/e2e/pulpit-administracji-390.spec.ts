@@ -12,8 +12,9 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  *   jednej litery w wierszu);
  * - odmiana liczebników przy liczbach 1, 2-4, 5 i więcej (w tym 12-14 i 22):
  *   kafle, liczniki wierszy i suma listy;
- * - plakietka wiersza: pigułka na szerokość treści; od 640 px w linii tytułu przed nim,
- *   poniżej 640 px w linii pod tytułem, z lewą krawędzią tytułu;
+ * - plakietka wiersza: pigułka na szerokość treści; od 640 px we własnej kolumnie stanu
+ *   po tytule, poniżej 640 px w linii pod tytułem, za podpisem kolumny stojącym od lewej
+ *   krawędzi tytułu;
  * - akcja wiersza: rola `link`, pełna nazwa dla czytnika, widoczne „Otwórz”
  *   (1280) albo „Otwórz ›” (390); wiersz „Pytania bez odpowiedzi” nie ma akcji
  *   (ani odnośnika, ani przycisku) i niesie adnotację „odpowiada prowadzący”;
@@ -150,7 +151,7 @@ async function tekstPlakietki(wiersz: Locator): Promise<string> {
 }
 
 async function sprawdzWiersze(page: Page): Promise<void> {
-  const wiersze = listaSpraw(page).locator('[data-wariant="z-licznikiem"]');
+  const wiersze = listaSpraw(page).locator('[role="row"][data-wiersz]');
   await expect(wiersze).toHaveCount(NAZWY.length);
   for (const [i, nazwa] of NAZWY.entries()) {
     const wiersz = wiersze.nth(i);
@@ -179,10 +180,11 @@ async function widocznyTekst(element: Locator): Promise<string> {
 }
 
 /**
- * Plakietka wiersza: węższa niż połowa wiersza. Od 640 px stoi PRZED tytułem, w tej
- * samej linii (środek plakietki w pionie mieści się w pudełku tytułu). Poniżej 640 px
- * tytuł jest w pierwszej linii, a plakietka w następnej, pod nim, z lewą krawędzią
- * równą lewej krawędzi tytułu (±2 px).
+ * Plakietka wiersza: węższa niż połowa wiersza. Od 640 px stoi PO tytule, we własnej
+ * kolumnie stanu, w tym samym wierszu (środek plakietki w pionie mieści się w pudełku
+ * wiersza). Poniżej 640 px tytuł jest w pierwszej linii, a plakietka w następnej, pod
+ * nim; komórka stanu (podpis kolumny i plakietka) zaczyna się od lewej krawędzi tytułu
+ * (±2 px).
  */
 async function sprawdzPlakietke(wiersz: Locator, tytul: Locator, plakietka: Locator, wuskiEkran: boolean): Promise<void> {
   const pWiersza = (await wiersz.boundingBox())!;
@@ -190,14 +192,16 @@ async function sprawdzPlakietke(wiersz: Locator, tytul: Locator, plakietka: Loca
   const pTytulu = (await tytul.boundingBox())!;
   expect(pPlakietki.width / pWiersza.width, "plakietka: szerokość względem wiersza").toBeLessThan(0.5);
   if (wuskiEkran) {
+    const pKomorki = (await wiersz.locator('[role="cell"][data-rodzaj="stan"]').boundingBox())!;
     expect(pPlakietki.y, "plakietka pod tytułem (top > bottom tytułu − 2 px)").toBeGreaterThan(pTytulu.y + pTytulu.height - 2);
-    expect(Math.abs(pPlakietki.x - pTytulu.x), "lewa krawędź plakietki == lewa krawędź tytułu").toBeLessThanOrEqual(2);
+    expect(Math.abs(pKomorki.x - pTytulu.x), "lewa krawędź komórki stanu == lewa krawędź tytułu").toBeLessThanOrEqual(2);
+    expect(pPlakietki.x, "plakietka za podpisem kolumny").toBeGreaterThan(pKomorki.x);
     return;
   }
-  expect(pPlakietki.x, "plakietka przed tytułem").toBeLessThan(pTytulu.x);
+  expect(pPlakietki.x, "plakietka po tytule, we własnej kolumnie").toBeGreaterThanOrEqual(pTytulu.x + pTytulu.width);
   const srodek = pPlakietki.y + pPlakietki.height / 2;
-  expect(srodek, "plakietka w linii tytułu").toBeGreaterThanOrEqual(pTytulu.y);
-  expect(srodek).toBeLessThanOrEqual(pTytulu.y + pTytulu.height);
+  expect(srodek, "plakietka w wierszu tytułu").toBeGreaterThanOrEqual(pWiersza.y);
+  expect(srodek).toBeLessThanOrEqual(pWiersza.y + pWiersza.height);
 }
 
 /** Nazwa wiersza kolejki pytań: administracja jej nie otwiera (trasa prowadzącego dałaby jej odmowę). */
@@ -222,7 +226,7 @@ async function sprawdzAkcje(page: Page, wiersz: Locator, nazwa: string, wuskiEkr
 
 /** Licznik wiersza: liczba i jednostka stoją w osobnych elementach (margines, nie spacja). */
 function licznikWiersza(page: Page, nazwa: string, liczba: string, jednostka: string): Locator {
-  const wiersz = listaSpraw(page).locator('[data-wariant="z-licznikiem"]').filter({ hasText: nazwa });
+  const wiersz = listaSpraw(page).locator('[role="row"][data-wiersz]').filter({ hasText: nazwa });
   return wiersz.getByText(new RegExp(`^${liczba}\\s*${jednostka}$`));
 }
 
@@ -311,7 +315,7 @@ for (const [nazwaWidoku, okno] of [
       await expect(listaSpraw(page)).toBeVisible();
 
       const liczba = async (nazwa: string) => {
-        const wiersz = listaSpraw(page).locator('[data-wariant="z-licznikiem"]').filter({ hasText: nazwa });
+        const wiersz = listaSpraw(page).locator('[role="row"][data-wiersz]').filter({ hasText: nazwa });
         const pudelko = await wiersz.getByText(/^\d+\s*spraw$/).boundingBox();
         expect(pudelko, `liczba w wierszu „${nazwa}”`).not.toBeNull();
         return { lewa: pudelko!.x, prawa: pudelko!.x + pudelko!.width };
@@ -331,7 +335,7 @@ for (const [nazwaWidoku, okno] of [
       await instalujAtrapy(page, MALE);
       await page.goto("/admin/formy-stazu");
       await zabezpieczeniePrzedEkranemDostepu(page);
-      const wiersz = page.locator('[data-wariant="z-licznikiem"]').first();
+      const wiersz = page.locator('[role="row"][data-wiersz]').first();
       await expect(wiersz).toBeVisible();
       await zrzut(page, `formy-stazu-${nazwaWidoku}`);
       const pudelkoWiersza = await wiersz.boundingBox();
