@@ -162,6 +162,31 @@ for (const rozmiar of [
         expect(Math.abs(a!.x - b!.x), "lewa krawędź karty").toBeLessThanOrEqual(1);
         expect(Math.abs(a!.width - b!.width), "szerokość karty").toBeLessThanOrEqual(1);
       }
+
+      // Układ telefonu i układ szeroki różnią się zaokrągleniem i bocznymi ramkami.
+      const obrys = await karta.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return {
+          lewyGorny: s.borderTopLeftRadius,
+          prawyGorny: s.borderTopRightRadius,
+          lewa: s.borderLeftWidth,
+          prawa: s.borderRightWidth,
+          gora: s.borderTopWidth,
+        };
+      });
+      const opis = JSON.stringify(obrys);
+      if (rozmiar.nazwa === "390") {
+        expect(obrys.lewyGorny, opis).toBe("0px");
+        expect(obrys.prawyGorny, opis).toBe("0px");
+        expect(obrys.lewa, opis).toBe("0px");
+        expect(obrys.prawa, opis).toBe("0px");
+      } else {
+        expect(obrys.lewyGorny, opis).not.toBe("0px");
+        expect(obrys.prawyGorny, opis).not.toBe("0px");
+        expect(obrys.lewa, opis).toBe("1px");
+        expect(obrys.prawa, opis).toBe("1px");
+        expect(obrys.gora, opis).toBe("1px");
+      }
     });
   }
 }
