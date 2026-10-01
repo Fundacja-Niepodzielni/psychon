@@ -9,6 +9,7 @@ const back = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back, refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("../dane", async (importOriginal) => {

@@ -103,7 +103,7 @@ describe("PulpitUczestnika — stany z danymi", () => {
     expect(karta.querySelector("h2")?.textContent).toMatch(/Struktura wywiadu/);
     expect(karta.querySelector("button")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Wróć do lekcji" }));
-    expect(push).toHaveBeenCalledWith("/panel/lekcje/22");
+    expect(push).toHaveBeenCalledWith("/panel/lekcje/22?kurs=wywiad-psychologiczny");
     // Liczby pochodzą z /courses, /certificate/conditions i /internship/entries
     // bez własnej reguły liczenia; mianownik występuje w DOM kilka razy.
     expect(screen.getAllByText("z 3 ukończony").length).toBeGreaterThan(0);

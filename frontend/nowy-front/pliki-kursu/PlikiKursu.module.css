@@ -1,0 +1,45 @@
+/* Pliki do pobrania: wartości wyglądu wyłącznie z tokenów. Długa nazwa bez
+   spacji zawija się w dowolnym miejscu — nigdy nie poszerza strony. */
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.grupa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.naglowekGrupy {
+  overflow-wrap: anywhere;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.plik {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.plik p {
+  overflow-wrap: anywhere;
+}
+
+/* Stan pobierania („Pobieranie…”, zdanie błędu) stoi pod wierszem pliku, z tym
+   samym wcięciem co jego tekst. */
+.stan {
+  padding: var(--space-4) var(--card-px) var(--space-12);
+}

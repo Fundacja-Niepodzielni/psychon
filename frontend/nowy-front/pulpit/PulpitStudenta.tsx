@@ -10,6 +10,7 @@ import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKr
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
+import { adresLekcji } from "../lekcja/adres";
 import { odmien } from "../wspolne/odmiana";
 import { pobierzKursy, pobierzSzczegolKursu, type KursSciezki, type LekcjaKursu } from "./dane";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
@@ -165,7 +166,7 @@ function przyciskWznowienia(
   }
   const wznowienie = wyliczWznowienie(kursy, lekcje.stan === "ok" ? lekcje.dane : []);
   if (wznowienie.rodzaj === "lekcja") {
-    return { etykieta: "Wznów lekcję", onKliknij: () => naPrzejdz(`/panel/lekcje/${wznowienie.lekcja.id}`) };
+    return { etykieta: "Wznów lekcję", onKliknij: () => naPrzejdz(adresLekcji(wznowienie.lekcja.id, wznowienie.kurs.slug)) };
   }
   if (wznowienie.rodzaj === "kurs") {
     return { etykieta: "Otwórz kurs", onKliknij: () => naPrzejdz(`/panel/kursy/${wznowienie.kurs.slug}`) };
