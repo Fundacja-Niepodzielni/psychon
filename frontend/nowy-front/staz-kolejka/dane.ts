@@ -10,6 +10,15 @@ import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api/klient";
  * Kształt elementu listy: `AdminInternshipEntryResource::toArray`
  * (`backend/app/Http/Resources/H11/AdminInternshipEntryResource.php:15-31`).
  *
+ * Do panelu „Ile godzin ma teraz” dochodzą dwa ISTNIEJĄCE odczyty, bez nowych
+ * tras i pól:
+ *  - `GET /admin/users/{id}` -> `data.progress.hours_accepted` (zatwierdzone
+ *    godziny osoby; `backend/routes/api/h18.php:28`, ten sam `ProgressAggregator`
+ *    co karta osoby i certyfikat),
+ *  - `GET /admin/edition` -> `internship_hours_required` (wymagane godziny;
+ *    `backend/routes/api/h19.php:27`).
+ * Obie trasy mają tę samą bramkę ról co kolejka (`project_manager`, `super_admin`).
+ *
  * Wołane z przeglądarki przez `lib/api/klient.ts` — token płynie z sesji,
  * tak samo jak na pozostałych ekranach nowego frontu.
  */
@@ -50,6 +59,12 @@ const ETYKIETY_FORM: Record<FormaDyzuru, string> = {
 
 export function etykietaFormy(forma: string): string {
   return ETYKIETY_FORM[forma as FormaDyzuru] ?? ETYKIETY_FORM.other;
+}
+
+/** Etykieta formy z wielkiej litery — wartość w panelu („Dyżur telefoniczny”). */
+export function etykietaFormyZWielkiej(forma: string): string {
+  const etykieta = etykietaFormy(forma);
+  return etykieta.charAt(0).toUpperCase() + etykieta.slice(1);
 }
 
 export function nazwaOsoby(wpis: WpisDoDecyzji): string {
@@ -103,4 +118,57 @@ export function sklasyfikujBladDecyzji(blad: unknown): BladDecyzji {
   }
   if (blad.status === 404) return { rodzaj: "brak-wpisu", komunikat: blad.message };
   return { rodzaj: "inny", komunikat: blad.message };
+}
+
+/** Godziny osoby do panelu: zatwierdzone teraz i wymagane w edycji (`null`, gdy edycji nie udało się odczytać). */
+export interface GodzinyOsoby {
+  /** Dziesiętny string z karty osoby (`progress.hours_accepted`). */
+  zaakceptowane: string;
+  /** Wymagana liczba godzin jako string (`internship_hours_required`) albo `null`. */
+  wymagane: string | null;
+}
+
+interface KartaZGodzinami {
+  progress: { hours_accepted: string };
+}
+
+interface EdycjaZWymaganymiGodzinami {
+  internship_hours_required: number;
+}
+
+/**
+ * Odczyt przy otwarciu panelu. Karta osoby jest konieczna — jej błąd wraca
+ * wołającemu, który nie pokazuje wtedy żadnej liczby. Wymagane godziny są
+ * dodatkiem: gdy odczyt edycji zawiedzie, panel pokazuje same zatwierdzone
+ * godziny, bez mianownika.
+ */
+export async function pobierzGodzinyOsoby(osobaId: number): Promise<GodzinyOsoby> {
+  const [karta, edycja] = await Promise.allSettled([
+    api<KartaZGodzinami>(`/admin/users/${osobaId}`),
+    api<EdycjaZWymaganymiGodzinami>("/admin/edition"),
+  ]);
+  if (karta.status === "rejected") throw karta.reason;
+  const wymagane = edycja.status === "fulfilled" ? edycja.value.internship_hours_required : null;
+  return {
+    zaakceptowane: karta.value.progress.hours_accepted,
+    wymagane: typeof wymagane === "number" && Number.isFinite(wymagane) ? String(wymagane) : null,
+  };
+}
+
+/**
+ * Suma dwóch godzin podanych jako dziesiętne stringi („18” + „4” → „22”,
+ * „21” + „0.5” → „21.5”). `null`, gdy któryś składnik nie jest liczbą —
+ * panel wtedy nie podaje stanu „po zatwierdzeniu”.
+ */
+export function dodajGodziny(a: string, b: string): string | null {
+  const suma = Number(a) + Number(b);
+  return a.trim() === "" || b.trim() === "" || !Number.isFinite(suma) ? null : String(suma);
+}
+
+/** Procent wypełnienia paska: zatwierdzone godziny do wymaganych, w granicach 0–100. */
+export function procentGodzin(zaakceptowane: string, wymagane: string): number {
+  const wymagana = Number(wymagane);
+  const zrobione = Number(zaakceptowane);
+  if (!Number.isFinite(wymagana) || !Number.isFinite(zrobione) || wymagana <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((zrobione / wymagana) * 100)));
 }

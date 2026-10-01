@@ -29,6 +29,7 @@ describe("ekran decyzji o dyżurach — źródła", () => {
       expect.arrayContaining([
         "nowy-front/staz-kolejka/dane.ts",
         "nowy-front/staz-kolejka/StazKolejka.tsx",
+        "nowy-front/staz-kolejka/PanelDyzuru.tsx",
         "nowy-front/staz-kolejka/StazKolejka.module.css",
         "app/nowy-front/admin/staz/page.tsx",
       ]),
@@ -51,11 +52,33 @@ describe("ekran decyzji o dyżurach — źródła", () => {
     expect(PLIKI_KODU.filter((p) => znacznikiMain(tresc(p)).length > 0).map(wzgledna)).toEqual([]);
   });
 
-  it("szablon ListTemplate wyłącznie z design-system, formularz decyzji z FormSection", () => {
+  it("szablon ListTemplate wyłącznie z design-system, formularz decyzji z FormSection w panelu", () => {
     const ekran = tresc(PLIKI.find((p) => wzgledna(p).endsWith("StazKolejka.tsx"))!);
+    const panel = tresc(PLIKI.find((p) => wzgledna(p).endsWith("PanelDyzuru.tsx"))!);
     expect(ekran).toMatch(/import \{ ListTemplate \} from "@\/design-system\/szablony\/ListTemplate\/ListTemplate";/);
-    expect(ekran).toMatch(/import \{ FormSection \} from "@\/design-system\/organizmy\/FormSection\/FormSection";/);
-    expect(ekran).not.toMatch(/organizmy\/Dialog\//);
+    expect(panel).toMatch(/import \{ FormSection \} from "@\/design-system\/organizmy\/FormSection\/FormSection";/);
+    expect(ekran + panel).not.toMatch(/organizmy\/Dialog\//);
+  });
+
+  it("wiersz to ListRow z design-system, wiek z sprawy/wiek.ts bez kopii progu i tekstu", () => {
+    const ekran = tresc(PLIKI.find((p) => wzgledna(p).endsWith("StazKolejka.tsx"))!);
+    const dane = tresc(PLIKI.find((p) => wzgledna(p).endsWith("staz-kolejka/dane.ts"))!);
+    expect(ekran).toMatch(/import \{ ListRow \} from "@\/design-system\/molekuly\/ListRow\/ListRow";/);
+    expect(ekran).toMatch(
+      /import \{ dniOczekiwania, tekstPlakietkiCzekania, wariantPlakietkiCzekania \} from "\.\.\/sprawy\/wiek";/,
+    );
+    expect(ekran + dane).not.toMatch(/PROG_OSTRZEZENIA_DNI\s*=|MS_NA_DOBE|24 \* 60 \* 60|czeka \$\{|"dzień"|"dni"/);
+  });
+
+  it("godziny na ekranie przechodzą przez wspólny formater liczb dziesiętnych, bez własnego formatu", () => {
+    const ekran = tresc(PLIKI.find((p) => wzgledna(p).endsWith("StazKolejka.tsx"))!);
+    const panel = tresc(PLIKI.find((p) => wzgledna(p).endsWith("PanelDyzuru.tsx"))!);
+    const dane = tresc(PLIKI.find((p) => wzgledna(p).endsWith("staz-kolejka/dane.ts"))!);
+    expect(panel).toMatch(/import \{ formatujDziesietny \} from "\.\.\/wspolne\/formatuj-dziesietny";/);
+    expect(panel).toMatch(/formatujDziesietny\(wpis\.hours\)/);
+    expect(ekran + panel + dane).not.toMatch(/Intl\.NumberFormat|toFixed|toLocaleString/);
+    // Surowy zapis godzin wpisu (`${wpis.hours} h`) bez formatera jest naruszeniem.
+    expect(ekran + panel).not.toMatch(/\$\{wpis\.hours\}/);
   });
 
   it("data dyżuru przechodzi przez wspólny formater dat, ekran nie ma własnego", () => {
