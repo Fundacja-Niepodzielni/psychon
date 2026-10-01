@@ -41,6 +41,18 @@
   flex: 1 1 70%;
   min-width: 0;
 }
+/* Poniżej 640 px tytuł zajmuje pierwszą linię na całą szerokość treści, a
+   plakietka (pigułka) stoi w następnej linii pod nim. Kolejność w DOM się nie
+   zmienia (plakietka przed tytułem): przestawia ją wyłącznie `order`. */
+@media (max-width: 639px) {
+  .naglowek > p {
+    flex-basis: 100%;
+    order: 0;
+  }
+  .plakietka {
+    order: 2;
+  }
+}
 /* `flex-wrap` i `max-width`: sama akcja też musi się zmieścić w wierszu, gdy
    liczba i link razem są szersze niż ekran. */
 .akcje {

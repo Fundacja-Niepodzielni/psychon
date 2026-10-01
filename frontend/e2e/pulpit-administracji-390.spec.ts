@@ -12,7 +12,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  *   jednej litery w wierszu);
  * - odmiana liczebników przy liczbach 1, 2-4, 5 i więcej (w tym 12-14 i 22):
  *   kafle, liczniki wierszy i suma listy;
- * - plakietka wiersza: pigułka na szerokość treści, w linii tytułu przed nim;
+ * - plakietka wiersza: pigułka na szerokość treści; od 640 px w linii tytułu przed nim,
+ *   poniżej 640 px w linii pod tytułem, z lewą krawędzią tytułu;
  * - akcja wiersza: rola `link`, pełna nazwa dla czytnika, widoczne „Otwórz”
  *   (1280) albo „Otwórz ›” (390);
  * - brak dubla „Zgłoszenia rekrutacyjne” poza listą;
@@ -165,7 +166,7 @@ async function sprawdzWiersze(page: Page): Promise<void> {
     const linie = await liczbaLinii(tytul);
     expect(linie, `„${nazwa}”: liczba linii tytułu`).toBeLessThanOrEqual(2);
     const wuski = (page.viewportSize()?.width ?? 0) < 640;
-    await sprawdzPlakietke(wiersz, tytul, await tekstPlakietki(wiersz), wuski);
+    await sprawdzPlakietke(wiersz, tytul, wiersz.getByText(await tekstPlakietki(wiersz), { exact: true }), wuski);
     await sprawdzAkcje(page, wiersz, nazwa, wuski);
   }
   await bezPrzewijaniaPoziomego(page);
@@ -177,20 +178,24 @@ async function widocznyTekst(element: Locator): Promise<string> {
 }
 
 /**
- * Plakietka wiersza: węższa niż połowa wiersza, jej lewa krawędź przed tytułem,
- * obie w tej samej linii (środek plakietki w pionie mieści się w pudełku tytułu).
- * Przy 390 px tytuł może zawinąć się pod plakietkę — wtedy sprawdzana jest tylko szerokość.
+ * Plakietka wiersza: węższa niż połowa wiersza. Od 640 px stoi PRZED tytułem, w tej
+ * samej linii (środek plakietki w pionie mieści się w pudełku tytułu). Poniżej 640 px
+ * tytuł jest w pierwszej linii, a plakietka w następnej, pod nim, z lewą krawędzią
+ * równą lewej krawędzi tytułu (±2 px).
  */
-async function sprawdzPlakietke(wiersz: Locator, tytul: Locator, tekst: string, wuskiEkran: boolean): Promise<void> {
-  const plakietka = wiersz.getByText(tekst, { exact: true });
+async function sprawdzPlakietke(wiersz: Locator, tytul: Locator, plakietka: Locator, wuskiEkran: boolean): Promise<void> {
   const pWiersza = (await wiersz.boundingBox())!;
   const pPlakietki = (await plakietka.boundingBox())!;
   const pTytulu = (await tytul.boundingBox())!;
-  expect(pPlakietki.width / pWiersza.width, `plakietka „${tekst}”: szerokość względem wiersza`).toBeLessThan(0.5);
-  if (wuskiEkran) return;
-  expect(pPlakietki.x, `plakietka „${tekst}” przed tytułem`).toBeLessThan(pTytulu.x);
+  expect(pPlakietki.width / pWiersza.width, "plakietka: szerokość względem wiersza").toBeLessThan(0.5);
+  if (wuskiEkran) {
+    expect(pPlakietki.y, "plakietka pod tytułem (top > bottom tytułu − 2 px)").toBeGreaterThan(pTytulu.y + pTytulu.height - 2);
+    expect(Math.abs(pPlakietki.x - pTytulu.x), "lewa krawędź plakietki == lewa krawędź tytułu").toBeLessThanOrEqual(2);
+    return;
+  }
+  expect(pPlakietki.x, "plakietka przed tytułem").toBeLessThan(pTytulu.x);
   const srodek = pPlakietki.y + pPlakietki.height / 2;
-  expect(srodek, `plakietka „${tekst}” w linii tytułu`).toBeGreaterThanOrEqual(pTytulu.y);
+  expect(srodek, "plakietka w linii tytułu").toBeGreaterThanOrEqual(pTytulu.y);
   expect(srodek).toBeLessThanOrEqual(pTytulu.y + pTytulu.height);
 }
 
@@ -295,8 +300,12 @@ for (const [nazwaWidoku, okno] of [
       const pudelkoWiersza = await wiersz.boundingBox();
       const pudelkoTytulu = await wiersz.getByText(FORMA_DLUGA.name, { exact: true }).boundingBox();
       expect(pudelkoTytulu!.width / pudelkoWiersza!.width).toBeGreaterThanOrEqual(0.4);
-      const pudelkoPlakietki = await wiersz.getByText("Aktywna", { exact: true }).boundingBox();
-      expect(pudelkoPlakietki!.width / pudelkoWiersza!.width).toBeLessThan(0.5);
+      await sprawdzPlakietke(
+        wiersz,
+        wiersz.getByText(FORMA_DLUGA.name, { exact: true }),
+        wiersz.getByText("aktywna", { exact: true }),
+        nazwaWidoku === "390",
+      );
       await bezPrzewijaniaPoziomego(page);
     });
   });
