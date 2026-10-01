@@ -101,7 +101,7 @@ describe("lekcja — dodanie w temacie", () => {
     expect(within(formularz).getByLabelText(/^Tytuł lekcji/)).toHaveFocus();
     await userEvent.type(within(formularz).getByLabelText(/^Tytuł lekcji/), "Lekcja D");
     await userEvent.type(within(formularz).getByLabelText(/^Krótki opis lekcji/), "Opis D");
-    await userEvent.type(within(formularz).getByLabelText(/^Czas trwania w sekundach/), "120");
+    await userEvent.type(within(formularz).getByLabelText(/^Czas trwania w minutach/), "2");
     await userEvent.click(within(formularz).getByRole("button", { name: "Dodaj lekcję" }));
 
     const nowa = await screen.findByRole("button", { name: "Edytuj lekcję „Lekcja D”" });
@@ -144,6 +144,7 @@ describe("lekcja — dodanie w temacie", () => {
     await userEvent.click(screen.getByTestId("ct-dodaj-7"));
     const formularz = within(container.querySelector<HTMLElement>("[data-pod-tematem='7']")!).getByRole("form");
     await userEvent.type(within(formularz).getByLabelText(/^Tytuł lekcji/), "X");
+    await userEvent.type(within(formularz).getByLabelText(/^Czas trwania w minutach/), "0");
     await userEvent.click(within(formularz).getByRole("button", { name: "Dodaj lekcję" }));
 
     expect(await within(formularz).findAllByText("Tytuł lekcji może mieć najwyżej 255 znaków.")).not.toHaveLength(0);
@@ -158,6 +159,7 @@ describe("lekcja — dodanie w temacie", () => {
 
     await userEvent.click(screen.getByTestId("ct-dodaj-8"));
     await userEvent.type(screen.getByLabelText(/^Tytuł lekcji/), "Lekcja D");
+    await userEvent.type(screen.getByLabelText(/^Czas trwania w minutach/), "0");
     await userEvent.click(screen.getByRole("button", { name: "Dodaj lekcję" }));
     await screen.findByRole("button", { name: "Edytuj lekcję „Lekcja D”" });
 

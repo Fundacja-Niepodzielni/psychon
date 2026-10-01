@@ -1,3 +1,4 @@
+import { minutyZSekund } from "@/nowy-front/wspolne/minuty";
 import type { AdminLesson } from "@/lib/h08/types";
 import type { Topic, UkladTematu } from "@/lib/api/h08-tematy";
 import type { TematCourseTree } from "@/design-system/organizmy/CourseTree/CourseTree";
@@ -112,7 +113,7 @@ export function tematyDrzewa(
     lekcje: temat.lekcje.map((lekcja) => ({
       id: String(lekcja),
       tytul: lokalny.tytulyLekcji[lekcja] ?? `Lekcja ${lekcja}`,
-      czasMin: Math.round((czasy.get(lekcja) ?? 0) / 60),
+      czasMin: minutyZSekund(czasy.get(lekcja) ?? 0),
       zmieniona: zmienione.has(lekcja),
     })),
   }));

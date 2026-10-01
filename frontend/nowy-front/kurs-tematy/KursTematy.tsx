@@ -1134,7 +1134,7 @@ function EdytorTematow({
                         },
                         {
                           id: `${baza}-nowa-czas`,
-                          etykieta: "Czas trwania w sekundach",
+                          etykieta: "Czas trwania w minutach",
                           rodzaj: "liczba",
                           wartosc: nowaLekcja.czas,
                           onZmiana: (czas) => setNowaLekcja({ ...nowaLekcja, czas }),

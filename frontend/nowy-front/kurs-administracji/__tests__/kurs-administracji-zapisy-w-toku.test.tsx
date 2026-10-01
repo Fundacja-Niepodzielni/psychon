@@ -144,7 +144,7 @@ describe("drugie zatwierdzenie przed odpowiedzią serwera", () => {
       name: "Nowa lekcja",
     });
     await userEvent.type(within(formularz).getByLabelText(/^Tytuł lekcji/), "Lekcja D");
-    await userEvent.type(within(formularz).getByLabelText(/^Czas trwania w sekundach/), "120");
+    await userEvent.type(within(formularz).getByLabelText(/^Czas trwania w minutach/), "2");
 
     await userEvent.dblClick(within(formularz).getByRole("button", { name: "Dodaj lekcję" }));
     expect(zapisy("POST", "/admin/courses/4/lessons")).toHaveLength(1);
@@ -160,7 +160,7 @@ describe("drugie zatwierdzenie przed odpowiedzią serwera", () => {
       name: "Nowa lekcja",
     });
     await userEvent.type(within(drugi).getByLabelText(/^Tytuł lekcji/), "Lekcja E");
-    await userEvent.type(within(drugi).getByLabelText(/^Czas trwania w sekundach/), "60");
+    await userEvent.type(within(drugi).getByLabelText(/^Czas trwania w minutach/), "1");
     await userEvent.click(within(drugi).getByRole("button", { name: "Dodaj lekcję" }));
     await waitFor(() => expect(zapisy("POST", "/admin/courses/4/lessons")).toHaveLength(2));
   });
