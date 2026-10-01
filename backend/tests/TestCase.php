@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Models\User;
 use App\Services\Auth\TokenRoles;
+use App\Support\AuditTablesLock;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -171,9 +172,15 @@ Następne testy zastaną odmienny stan i zaczerwienią się bez własnej winy. '
             return;
         }
 
-        DB::statement(
-            'truncate table "'.implode('", "', $tabele).'" restart identity cascade'
-        );
+        // Oba dzienniki są zablokowane w bazie; opróżnienie przechodzi tylko
+        // w transakcji, która otworzyła blokadę wspólnym pomocnikiem.
+        DB::transaction(static function () use ($tabele): void {
+            AuditTablesLock::allowPurgeInCurrentTransaction();
+
+            DB::statement(
+                'truncate table "'.implode('", "', $tabele).'" restart identity cascade'
+            );
+        });
     }
 
     /**
