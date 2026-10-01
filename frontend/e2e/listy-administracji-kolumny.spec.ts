@@ -574,6 +574,16 @@ for (const okno of [
           expect(plakietka.obrys, `obrys: ${opis}`).toBe(3.58);
         }
       }
+      if (lista.nazwa === "dyżury") {
+        // Otwarty wiersz dyżuru stoi na ciepłym tle — obrys plakietki neutralnej także wobec niego co najmniej 3,0.
+        await page.getByRole("button", { name: /^Otwórz dyżur: Filip Demo/ }).click();
+        const otwarta = async () => (await kontrastPlakietek(page, lista.lista)).find((plakietka) => plakietka.tekst === "czeka 2 dni");
+        await expect.poll(async () => (await otwarta())?.pod, { timeout: 5000 }).toBe("div rgb(245, 244, 239)");
+        const plakietka = (await otwarta())!;
+        console.log(`POMIAR-KONTRASTU-OTWARTY ${lista.nazwa} @${okno.width} ${JSON.stringify(plakietka)}`);
+        expect(plakietka.neutralna, "plakietka otwartego wiersza jest neutralna").toBe(true);
+        expect(plakietka.obrys, `obrys plakietki „${plakietka.tekst}” na ciepłym tle otwartego wiersza (${plakietka.pod})`).toBeGreaterThanOrEqual(3);
+      }
     });
   }
 }
