@@ -12,6 +12,7 @@ import {
   filtryZapytania,
   rodzajBledu,
   wierszeOsob,
+  KOLUMNY_OSOB,
 } from "../dane";
 
 /**
@@ -133,14 +134,24 @@ describe("Uczestnicy programu — klasyfikacja błędu", () => {
 });
 
 describe("Uczestnicy programu — wiersze", () => {
-  // Wiersz jak wiersz Spraw: pogrubione imię i nazwisko, meta po „·”, plakietka małą literą, akcja „Otwórz”.
-  it("wiersz niesie pogrubione nazwisko, rolę po polsku w meta, stan konta małą literą i „Otwórz” z pełną nazwą dla czytnika", () => {
+  it("kolumny w kolejności: Osoba, Rola, Stan, akcja", () => {
+    expect(KOLUMNY_OSOB.map((kolumna) => [kolumna.nazwa, kolumna.rodzaj])).toEqual([
+      ["Osoba", "tekst"],
+      ["Rola", "tekst"],
+      ["Stan", "stan"],
+      ["Akcja", "akcja"],
+    ]);
+  });
+
+  // Nazwa pierwsza, pod nią e-mail; rola po polsku we własnej kolumnie, plakietka małą literą, akcja „Otwórz”.
+  it("wiersz niesie nazwisko z e-mailem pod spodem, rolę po polsku w kolumnie, stan konta małą literą i „Otwórz” z pełną nazwą dla czytnika", () => {
     const [wiersz] = wierszeOsob([{ ...ATRAPA, role: "project_manager" }]);
     expect(wiersz.id).toBe("17");
     expect(wiersz.tytul).toBe("Marta Demo");
-    expect(wiersz.tytulPogrubiony).toBe(true);
-    expect(wiersz.tytulDodatek).toBe("marta@demo.pl · Opiekun Projektu");
-    expect(wiersz.podpowiedz).toBeUndefined();
+    expect(wiersz.podpowiedz).toBe("marta@demo.pl");
+    expect(wiersz.komorki).toEqual({ rola: { tekst: "Opiekun Projektu" } });
+    // Wiersza opisowego „e-mail · rola” już nie ma.
+    expect(wiersz.tytulDodatek).toBeUndefined();
     expect(wiersz.plakietka).toEqual({ wariant: "ok", tekst: "konto aktywne" });
     expect(wiersz.akcja).toEqual({
       etykieta: "Otwórz",
