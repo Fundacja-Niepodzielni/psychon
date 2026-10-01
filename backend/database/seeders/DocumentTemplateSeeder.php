@@ -9,24 +9,27 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 /**
- * Zasilenie poczatkowe edytora wzorow dokumentow: tresc kazdego wzoru to
- * dzisiejszy plik Blade skopiowany bajt w bajt z dysku. Generator
+ * Zasilenie poczatkowe edytora wzorow dokumentow: tresc kazdego wzoru to plik
+ * z `resources/document-templates/` skopiowany bajt w bajt - tekst z miejscami
+ * na pola (`{{ $nazwa }}`), bez skladni szablonu. Generator
  * (`App\Services\DocumentTemplates\DocumentTemplateRenderer`) siega po baze
- * tylko gdy wiersz dla danego rodzaju istnieje - do czasu tego seeda dalej
- * czyta plik, po nim czyta identyczna tresc z bazy, wiec wygenerowany
- * dokument sie nie zmienia.
+ * tylko gdy wiersz dla danego rodzaju istnieje; tresci z bazy nie kompiluje,
+ * tylko podstawia pola. Dokument z zasilonego wzoru jest taki sam jak z pliku
+ * widoku (pilnuje tego proba rownosci).
+ *
+ * Seeder tylko zaklada brakujace wiersze - istniejacych nie zmienia.
  */
 class DocumentTemplateSeeder extends Seeder
 {
     /**
-     * Rodzaj -> plik Blade, z ktorego kopiowana jest tresc poczatkowa.
+     * Rodzaj -> plik wzoru w zapisie pol, z ktorego kopiowana jest tresc poczatkowa.
      *
      * @var array<string, string>
      */
     private const array SOURCE_VIEWS = [
-        'agreement' => 'documents/volunteer-agreement.blade.php',
-        'attendance_certificate' => 'documents/internship-certificate.blade.php',
-        'certificate' => 'pdf/certificate.blade.php',
+        'agreement' => 'document-templates/agreement.html',
+        'attendance_certificate' => 'document-templates/attendance_certificate.html',
+        'certificate' => 'document-templates/certificate.html',
     ];
 
     public function run(): void
@@ -36,7 +39,7 @@ class DocumentTemplateSeeder extends Seeder
                 continue;
             }
 
-            $content = File::get(resource_path('views/'.$relativePath));
+            $content = File::get(resource_path($relativePath));
 
             // Wzor i jego pierwsza wersja powstaja razem albo wcale. Bez tego blad
             // miedzy nimi zostawilby wzor bez wersji, a kolejny bieg pominalby ten

@@ -20,6 +20,13 @@ use Illuminate\Support\Str;
  * wyłączona, a kod QR wchodzi do dokumentu jako SVG (php-svg-lib z dompdf).
  * Pobieranie zdalnych zasobów zostaje wyłączone: dokument ma się renderować
  * z własnej treści, nie z sieci.
+ *
+ * Silnik jest zamknięty w ramie dokumentu: jedynym katalogiem, z którego wolno
+ * mu czytać zasoby wskazane w treści, jest `resources/pdf-frame` (wzory nie
+ * biorą z dysku niczego, więc katalog jest pusty), jedynym dozwolonym
+ * protokołem zasobu — `data:` (kod QR certyfikatu). Wykonywanie PHP osadzonego
+ * w treści i skrypty PDF są wyłączone jawnie, niezależnie od ustawień
+ * domyślnych biblioteki.
  */
 final class PdfService
 {
@@ -48,19 +55,44 @@ final class PdfService
      */
     public static function renderBytes(string $view, array $data = []): string
     {
-        $html = DocumentTemplateRenderer::html($view, $data);
+        return self::bytesFromHtml(DocumentTemplateRenderer::html($view, $data));
+    }
 
-        $options = new Options;
-        $options->setIsRemoteEnabled(false);
-        $options->setIsHtml5ParserEnabled(true);
-        $options->setDefaultFont('DejaVu Sans'); // jedyna wbudowana rodzina z polskimi znakami
-        $options->setChroot(base_path());
-
-        $dompdf = new Dompdf($options);
+    /**
+     * Gotowy HTML dokumentu -> bajty PDF-a, zawsze z ustawieniami ramy.
+     */
+    public static function bytesFromHtml(string $html): string
+    {
+        $dompdf = new Dompdf(self::options());
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
 
         return (string) $dompdf->output();
+    }
+
+    /**
+     * Ustawienia silnika — jedno miejsce, czytane też przez próby.
+     */
+    public static function options(): Options
+    {
+        $options = new Options;
+        $options->setIsRemoteEnabled(false);
+        $options->setIsPhpEnabled(false);
+        $options->setIsJavascriptEnabled(false);
+        $options->setIsHtml5ParserEnabled(true);
+        $options->setDefaultFont('DejaVu Sans'); // jedyna wbudowana rodzina z polskimi znakami
+        $options->setChroot(self::frameDirectory());
+        $options->setAllowedProtocols(['data://']);
+
+        return $options;
+    }
+
+    /**
+     * Katalog ramy dokumentu: jedyny, z którego silnik może czytać zasoby treści.
+     */
+    public static function frameDirectory(): string
+    {
+        return resource_path('pdf-frame');
     }
 }
