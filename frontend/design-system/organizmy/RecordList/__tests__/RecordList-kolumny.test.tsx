@@ -21,7 +21,7 @@ const WIERSZE = [
     tytul: "Podstawy pomocy",
     podpowiedz: "Kurs · PsychON",
     plakietka: { wariant: "ok" as const, tekst: "Opublikowany" },
-    komorki: { miejsce: { liczba: 1, bezJednostki: true }, lekcje: { liczba: 3, jednostka: "lekcje" } },
+    komorki: { miejsce: { liczba: 1, bezJednostki: true as const }, lekcje: { liczba: 3, jednostka: "lekcje" } },
     akcja: { etykieta: "Otwórz", etykietaDostepna: "Otwórz kurs: Podstawy pomocy", href: "/admin/kursy/1" },
   },
   {
