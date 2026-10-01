@@ -63,7 +63,7 @@ function sprawdzSzablon(kontener: HTMLElement) {
 }
 
 function odnosnikiOtworz(): HTMLElement[] {
-  return screen.queryAllByRole("link", { name: "Otwórz kurs" });
+  return screen.queryAllByRole("link", { name: /^Otwórz kurs: / });
 }
 
 function przyciskiGlowne(kontener: HTMLElement): HTMLElement[] {
@@ -108,6 +108,12 @@ describe("Moje kursy — dane", () => {
     expect(screen.getByText("Kurs 2 w programie")).toBeInTheDocument();
     expect(screen.getByText("Poza kolejnością programu")).toBeInTheDocument();
     expect(odnosnikiOtworz().map((odnosnik) => odnosnik.getAttribute("href"))).toEqual(["/prowadzacy/kursy/3", "/prowadzacy/kursy/9"]);
+    // Widoczny napis akcji to samo „Otwórz”; pełna nazwa z tytułem tylko dla czytnika.
+    expect(odnosnikiOtworz().map((odnosnik) => odnosnik.textContent?.replace("›", "").trim())).toEqual(["Otwórz", "Otwórz"]);
+    expect(odnosnikiOtworz().map((odnosnik) => odnosnik.getAttribute("aria-label"))).toEqual([
+      `Otwórz kurs: ${KURS_W_PROGRAMIE.title}`,
+      `Otwórz kurs: ${KURS_POZA_PROGRAMEM.title}`,
+    ]);
     sprawdzSzablon(container);
     expect(przyciskiGlowne(container)).toHaveLength(0);
   });

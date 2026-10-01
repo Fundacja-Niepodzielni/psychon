@@ -27,12 +27,12 @@ export function opisPozycji(pozycja: number | null): string {
   return pozycja === null ? "Poza kolejnością programu" : `Kurs ${pozycja} w programie`;
 }
 
-/** Wiersze `RecordList`: tytuł kursu, pozycja w programie, akcja „Otwórz kurs” jako odnośnik. */
+/** Wiersze `RecordList`: tytuł kursu, pozycja w programie, akcja „Otwórz” jako odnośnik (nazwa dla czytnika: „Otwórz kurs: …”). */
 export function wierszeKursow(kursy: KursProwadzacego[]): WierszRecordList[] {
   return kursy.map((kurs) => ({
     id: String(kurs.id),
     tytul: kurs.title,
     podpowiedz: opisPozycji(kurs.sequence_order),
-    akcja: { etykieta: "Otwórz kurs", href: adresKursu(kurs.id) },
+    akcja: { etykieta: "Otwórz", etykietaDostepna: `Otwórz kurs: ${kurs.title}`, href: adresKursu(kurs.id) },
   }));
 }
