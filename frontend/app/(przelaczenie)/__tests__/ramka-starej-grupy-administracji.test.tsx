@@ -86,7 +86,7 @@ afterEach(() => {
 describe("układ starej grupy administracji — wszystkie grupy wyłączone", () => {
   it("drzewo stron jest niepuste i obejmuje strony A.2", () => {
     expect(STRONY_ADMIN.length).toBeGreaterThanOrEqual(15);
-    expect(STRONY_ADMIN).toEqual(expect.arrayContaining(["/admin", "/admin/profile/12", "/admin/wzory-dokumentow", "/admin/ekran-startowy"]));
+    expect(STRONY_ADMIN).toEqual(expect.arrayContaining(["/admin", "/admin/profile/12", "/admin/staz", "/admin/wzory-dokumentow", "/admin/ekran-startowy"]));
   });
 
   it.each(STRONY_ADMIN)("%s: dotychczasowy PanelShell, bez nowej ramki", async (adres) => {

@@ -15,9 +15,9 @@ import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import type { PaginationMeta } from "@/lib/api/klient";
+import { formatujDate } from "../wspolne/daty";
 import {
   czyBrakUprawnien,
-  dataPolska,
   etykietaFormy,
   nazwaOsoby,
   pobierzWpisyDoDecyzji,
@@ -248,7 +248,7 @@ export function StazKolejka() {
                 <Badge wariant="pending">czeka na decyzję</Badge>
                 <Text>{nazwaOsoby(wpis)}</Text>
                 <Hint>
-                  {`Dyżur z ${dataPolska(wpis.date)} · ${wpis.hours} h · ${etykietaFormy(wpis.form)} · konsultacje: ${wpis.consultations_count}`}
+                  {`Dyżur z ${formatujDate(wpis.date)} · ${wpis.hours} h · ${etykietaFormy(wpis.form)} · konsultacje: ${wpis.consultations_count}`}
                 </Hint>
                 <div className={style.opis}>
                   {wpis.description ? <Text>{wpis.description}</Text> : <Hint>Bez opisu.</Hint>}

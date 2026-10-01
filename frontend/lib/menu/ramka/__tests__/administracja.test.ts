@@ -37,6 +37,7 @@ const WLACZONE_DZIS: Partial<Record<KluczGrupy, boolean>> = {
   decyzjaProfilu: true,
   wzoryDokumentow: true,
   ekranStartowy: true,
+  kolejkaStazu: true,
   pulpitUczestnika: true,
   pulpitProwadzacego: true,
 };
