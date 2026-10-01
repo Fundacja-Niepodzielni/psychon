@@ -3,6 +3,7 @@ import { Text } from "../../atomy/Text/Text";
 import { Hint } from "../../atomy/Hint/Hint";
 import { Link } from "../../atomy/Link/Link";
 import { Button } from "../../atomy/Button/Button";
+import { Icon } from "../../atomy/Icon/Icon";
 import { Num } from "../../atomy/Num/Num";
 import style from "./ListRow.module.css";
 
@@ -24,6 +25,12 @@ interface AkcjaListRow {
   etykietaDostepna?: string;
   href?: string;
   onKliknij?: () => void;
+  /**
+   * Akcja nieaktywna (np. kurs zamknięty): przycisk z kłódką i
+   * `aria-disabled`, bez odnośnika i bez obsługi kliknięcia. Ma pierwszeństwo
+   * przed `href` i `onKliknij`.
+   */
+  nieaktywna?: boolean;
 }
 
 interface WlasciwosciListRow {
@@ -46,6 +53,9 @@ interface WlasciwosciListRow {
  * linii tytułu, PRZED nim, i ma szerokość własnej treści (nie kolumny).
  * Akcja z `href` wygląda od 640 px jak przycisk drugorzędny, a na węższym
  * ekranie jak „Otwórz ›”; `etykietaDostepna` daje czytnikowi pełną nazwę.
+ * Akcja `nieaktywna` to przycisk z kłódką (`aria-disabled`): od 640 px jak
+ * nieaktywny przycisk drugorzędny, na węższym ekranie bez ramki, jak
+ * „Otwórz ›”, żeby stała obok treści, a nie pod nią.
  */
 export function ListRow({
   wariant = "prosty",
@@ -73,7 +83,22 @@ export function ListRow({
       </div>
       <div className={style.akcje} onClick={(zdarzenie) => zdarzenie.stopPropagation()}>
         {licznik && <Num wartosc={licznik.wartosc} etykieta={licznik.etykieta} />}
-        {akcja.href ? (
+        {akcja.nieaktywna ? (
+          <span className={style.akcjaNieaktywna}>
+            <Button
+              poziom="outline"
+              rozmiar="sm"
+              aria-disabled="true"
+              aria-label={akcja.etykietaDostepna}
+              data-akcja="nieaktywna"
+            >
+              <span className={style.zamkniety}>
+                <Icon nazwa="lock" rozmiar={16} />
+                {akcja.etykieta}
+              </span>
+            </Button>
+          </span>
+        ) : akcja.href ? (
           <span className={style.akcjaOdnosnik}>
             <Link href={akcja.href} aria-label={akcja.etykietaDostepna}>
               {akcja.etykieta}{" "}

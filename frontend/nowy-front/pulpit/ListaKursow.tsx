@@ -1,11 +1,6 @@
-import { Badge } from "@/design-system/atomy/Badge/Badge";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
-import { Hint } from "@/design-system/atomy/Hint/Hint";
-import { Icon } from "@/design-system/atomy/Icon/Icon";
-import { Link } from "@/design-system/atomy/Link/Link";
-import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { ListRow } from "@/design-system/molekuly/ListRow/ListRow";
 import type { KursSciezki } from "./dane";
 import style from "./ListaKursow.module.css";
 
@@ -32,8 +27,9 @@ interface WlasciwosciListaKursow {
 
 /**
  * Lista kursów uczestnika i studenta: sekcja z nagłówkiem h2 (karta pochodzi
- * z szablonu pulpitu), wiersz jak `ListRow` (plakietka, tytuł, podlinia,
- * akcja), z jednym dodatkiem, którego `ListRow` nie ma — akcją nieaktywną.
+ * z szablonu pulpitu), każdy wiersz to `ListRow` (plakietka, tytuł, podlinia,
+ * akcja; kurs zamknięty — akcja nieaktywna z kłódką). Układ wiersza, także
+ * na wąskim ekranie (tytuł, pod nim plakietka), daje wyłącznie `ListRow`.
  */
 export function ListaKursow({ tytul, kursy, podpowiedz, pusty }: WlasciwosciListaKursow) {
   if (kursy.length === 0) {
@@ -49,41 +45,21 @@ export function ListaKursow({ tytul, kursy, podpowiedz, pusty }: WlasciwosciList
     <section aria-label={tytul} className={style.sekcja}>
       <Heading stopien={2}>{tytul}</Heading>
       <div className={style.lista}>
-        {kursy.map((kurs) => {
-          const plakietka = ETYKIETA_STANU_KURSU[kurs.status];
-          return (
-            <div key={kurs.id} className={style.wiersz} data-kurs-stan={kurs.status}>
-              <div className={style.tresc}>
-                <div className={style.naglowek}>
-                  <span className={style.plakietka}>
-                    <Badge wariant={plakietka.wariant}>{plakietka.tekst}</Badge>
-                  </span>
-                  <Text>{kurs.title}</Text>
-                </div>
-                <Hint>{podpowiedz(kurs)}</Hint>
-              </div>
-              <div className={style.akcje}>
-                {kurs.status === "locked" ? (
-                  <Button poziom="outline" rozmiar="sm" aria-disabled="true" data-akcja="zamkniety">
-                    <span className={style.zamkniety}>
-                      <Icon nazwa="lock" rozmiar={16} />
-                      Zamknięty
-                    </span>
-                  </Button>
-                ) : (
-                  <span className={style.akcjaOdnosnik}>
-                    <Link href={`/panel/kursy/${kurs.slug}`} aria-label={`Otwórz kurs: ${kurs.title}`}>
-                      Otwórz{" "}
-                      <span className={style.strzalka} aria-hidden="true">
-                        ›
-                      </span>
-                    </Link>
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {kursy.map((kurs) => (
+          <div key={kurs.id} data-kurs-stan={kurs.status}>
+            <ListRow
+              wariant="ze-stanem"
+              tytul={kurs.title}
+              plakietka={ETYKIETA_STANU_KURSU[kurs.status]}
+              podpowiedz={podpowiedz(kurs)}
+              akcja={
+                kurs.status === "locked"
+                  ? { etykieta: "Zamknięty", nieaktywna: true }
+                  : { etykieta: "Otwórz", etykietaDostepna: `Otwórz kurs: ${kurs.title}`, href: `/panel/kursy/${kurs.slug}` }
+              }
+            />
+          </div>
+        ))}
       </div>
     </section>
   );
