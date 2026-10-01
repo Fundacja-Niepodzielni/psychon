@@ -26,7 +26,9 @@ Route::middleware(['auth:keycloak', 'access.active', 'role:volunteer'])->group(f
     Route::get('/psychologist-profile', [PsychologistProfileController::class, 'index']);
     Route::patch('/psychologist-profile', [PsychologistProfileController::class, 'update']);
     Route::post('/psychologist-profile/submit', [PsychologistProfileController::class, 'submit']);
-    Route::post('/psychologist-profile/documents', [PsychologistProfileController::class, 'storeDocument']);
+    // Limit wgrań na osobę (przegląd ASVS, wiersz V8.1.4).
+    Route::post('/psychologist-profile/documents', [PsychologistProfileController::class, 'storeDocument'])
+        ->middleware('throttle:20,1');
     Route::post('/psychologist-profile/consent/withdraw', [PsychologistProfileController::class, 'withdrawConsent']);
 });
 

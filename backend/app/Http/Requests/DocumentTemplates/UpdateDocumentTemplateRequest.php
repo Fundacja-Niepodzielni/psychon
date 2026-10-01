@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\DocumentTemplates;
 
+use App\Rules\SafeDocumentTemplate;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -18,7 +19,7 @@ class UpdateDocumentTemplateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'content' => ['required', 'string', 'min:1'],
+            'content' => ['required', 'string', 'min:1', 'max:200000', new SafeDocumentTemplate],
         ];
     }
 }

@@ -28,7 +28,7 @@ final class Csv
 
             foreach ($rows as $row) {
                 fputcsv($out, array_map(
-                    static fn ($value): string => (string) $value,
+                    self::cell(...),
                     array_values((array) $row),
                 ), self::SEPARATOR, '"', '');
             }
@@ -37,5 +37,22 @@ final class Csv
         }, $name, [
             'Content-Type' => 'text/csv; charset=utf-8',
         ]);
+    }
+
+    /**
+     * Neutralizacja formuł (OWASP Cheat Sheet „CSV Injection”): tekst
+     * zaczynający się od `=`, `+`, `-`, `@`, tabulatora albo CR arkusz
+     * otworzyłby jako formułę, więc dostaje z przodu apostrof. Liczby
+     * (także ujemne) zostają bez zmian. Przegląd ASVS, wiersz V5.3.1.
+     */
+    private static function cell(mixed $value): string
+    {
+        $cell = (string) $value;
+
+        if ($cell !== '' && ! is_numeric($cell) && str_contains("=+-@\t\r", $cell[0])) {
+            return "'".$cell;
+        }
+
+        return $cell;
     }
 }

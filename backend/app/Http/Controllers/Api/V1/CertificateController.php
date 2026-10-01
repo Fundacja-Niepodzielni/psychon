@@ -52,6 +52,9 @@ class CertificateController extends Controller
         $certificate = Certificate::query()
             ->where('user_id', $request->user()->id)
             ->where('edition_id', Settings::activeEdition()->id)
+            // Unieważniony certyfikat nie jest już dokumentem do pobrania
+            // (przegląd ASVS, ustalenie D-1).
+            ->whereNull('revoked_at')
             ->latest('issued_at')
             ->first();
 

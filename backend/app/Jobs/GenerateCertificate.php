@@ -135,6 +135,9 @@ class GenerateCertificate implements ShouldQueue
                 'certificate' => $certificate,
                 'user' => $user,
                 'edition' => $edition,
+                // Wzór edytowany w panelu nie może mieć bloku @php
+                // (App\Rules\SafeDocumentTemplate), więc datę podaje generator.
+                'issued' => $certificate->issued_at->format('d.m.Y'),
                 'verify_url' => $verifyUrl = self::verifyUrl($certificate),
                 'qr_svg' => self::qrSvg($verifyUrl),
             ]),
