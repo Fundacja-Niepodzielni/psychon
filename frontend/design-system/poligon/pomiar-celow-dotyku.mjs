@@ -221,6 +221,7 @@ const CELE = [
   { nazwa: "TimeChart (rozwinięcie tabeli)", strona: "lekcja.html", selektor: '[data-style-id="o13-timechart-z-danymi"] button' },
   { nazwa: "CourseTree (strzałka przeniesienia)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-kolejnosc"] [aria-label="Przenieś „Zasady programu” niżej"]' },
   { nazwa: "CourseTree (zmiana nazwy)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-edytuj-l1"]' },
+  { nazwa: "CourseTree (edycja lekcji)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-edycja-lekcji"] [data-edytuj-lekcje="l1"]' },
   { nazwa: "CourseTree (dodanie lekcji)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-dodaj-temat-1"]' },
   { nazwa: "LessonPlayer (odtwarzanie)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] button[aria-label="Odtwórz"]' },
   { nazwa: "LessonPlayer (powiększenie)", strona: "lekcja.html", selektor: '[data-style-id="o6-lessonplayer-niespelniony"] button[aria-label="Powiększ"]' },

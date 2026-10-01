@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminCourse, AdminLesson } from "@/lib/h08/types";
 import { ApiError } from "@/lib/api/klient";
@@ -13,19 +13,21 @@ import {
   zmienTytulTematu as zmienTytulTematuApi,
   type GrupaTras,
 } from "@/lib/api/h08-tematy";
-import { updateInstructorCourse, updateInstructorLesson } from "@/lib/api/prowadzacy-kursy";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { CourseTree } from "@/design-system/organizmy/CourseTree/CourseTree";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
+import type { PozycjaChecklisty } from "@/design-system/organizmy/PublishChecklist/PublishChecklist";
 import type { StanDanych } from "@/design-system/organizmy/stanDanych";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
 import { checklistaPublikacji, type WynikDanychKursu } from "@/nowy-front/kurs-publikacja/dane";
+import { sklasyfikujBlad, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
 import {
   cialoUkladu,
   dopiszTemat,
@@ -40,21 +42,31 @@ import {
   type TematUkladu,
   type Uklad,
 } from "./uklad";
+import { tekstyDlaGrupy, zapisDlaGrupy } from "./zapis";
 import style from "./KursTematy.module.css";
 
-/**
- * Grupa tras tematów tego ekranu. Dane kursu czyta `pobierzDaneKursu`
- * (`nowy-front/kurs-publikacja/dane.ts`) tokenem prowadzącego z tras
- * `/instructor/…`, więc tematy i dane kursu zapisują się tą samą grupą —
- * token administracji dostałby tu 403 już przy odczycie kursu.
- */
-const GRUPA: GrupaTras = "instructor";
-
-const OKRUSZKI = [{ etykieta: "Kursy" }, { etykieta: "Tematy i lekcje" }];
+/** Kotwica drzewa tematów i lekcji — cel odnośników z panelu braków. */
+const KOTWICA_LEKCJI = "lekcje";
 
 interface WlasciwosciKursTematy {
   idKursu: string;
   wynik: WynikDanychKursu;
+  /**
+   * Grupa tras ekranu: tą samą grupą ekran czyta kurs, zapisuje tematy, dane
+   * kursu i tytuły lekcji. `instructor` — dane z tras `/instructor/…`
+   * (`pobierzDaneKursu`), publikacja zostaje przy administracji. `admin` —
+   * dane z tras `/admin/…` (`pobierzDaneKursuAdministracji`), a „Opublikuj
+   * kurs” naprawdę zmienia stan kursu.
+   */
+  grupa: GrupaTras;
+  /** Ponowienie odczytu kursu po błędzie; bez niej odświeżenie trasy. */
+  onPonow?: () => void;
+  /** Sekcje pod drzewem tematów, w kolumnie głównej — z bieżącym stanem kursu. */
+  podDrzewem?: (kurs: AdminCourse) => ReactNode;
+  /** Ostatni blok ekranu, na końcu kolumny wspierającej — z bieżącym stanem kursu. */
+  ostatniBlok?: (kurs: AdminCourse) => ReactNode;
+  /** Formularz edycji lekcji pod jej wierszem; bez niego wiersz ma „Zmień nazwę”. */
+  edycjaLekcji?: EdycjaLekcjiWiersza;
 }
 
 /**
@@ -64,23 +76,31 @@ interface WlasciwosciKursTematy {
  * wspierającej. Każdy stan (sukces, ładowanie, błąd, brak uprawnień, pusty)
  * renderuje się WEWNĄTRZ szablonu — korzeń szablonu jest jedynym `main`.
  */
-export function KursTematy({ idKursu, wynik }: WlasciwosciKursTematy) {
+export function KursTematy({
+  idKursu,
+  wynik,
+  grupa,
+  onPonow,
+  podDrzewem,
+  ostatniBlok,
+  edycjaLekcji,
+}: WlasciwosciKursTematy) {
   const router = useRouter();
   const wroc = () => router.back();
 
   if (wynik.status === "brak-sesji" || wynik.status === "brak-uprawnien") {
-    return <BrakUprawnien idKursu={idKursu} wroc={wroc} />;
+    return <BrakUprawnien idKursu={idKursu} grupa={grupa} wroc={wroc} />;
   }
   if (wynik.status === "blad") {
     return (
       <DetailTemplate
-        naglowek={{ okruszki: OKRUSZKI, tytul: `Kurs ${idKursu}`, onPowrot: wroc }}
+        naglowek={{ okruszki: tekstyDlaGrupy(grupa).okruszki, tytul: `Kurs ${idKursu}`, onPowrot: wroc }}
         glowna={
           <Notice
             wariant="error"
             tytul="Nie udało się wczytać kursu"
             akcja={
-              <Button poziom="outline" onClick={() => router.refresh()}>
+              <Button poziom="outline" onClick={onPonow ?? (() => router.refresh())}>
                 Spróbuj ponownie
               </Button>
             }
@@ -94,23 +114,28 @@ export function KursTematy({ idKursu, wynik }: WlasciwosciKursTematy) {
   }
   return (
     <EdytorTematow
+      grupa={grupa}
       kursPoczatkowy={wynik.dane.kurs}
       lekcje={wynik.dane.lekcje}
+      podDrzewem={podDrzewem}
+      ostatniBlok={ostatniBlok}
+      edycjaLekcji={edycjaLekcji}
       wroc={wroc}
       przejdz={(adres) => router.push(adres)}
     />
   );
 }
 
-function BrakUprawnien({ idKursu, wroc }: { idKursu: string; wroc: () => void }) {
+function BrakUprawnien({ idKursu, grupa, wroc }: { idKursu: string; grupa: GrupaTras; wroc: () => void }) {
+  const teksty = tekstyDlaGrupy(grupa);
   return (
     <DetailTemplate
-      naglowek={{ okruszki: OKRUSZKI, tytul: `Kurs ${idKursu}`, onPowrot: wroc }}
+      naglowek={{ okruszki: teksty.okruszki, tytul: `Kurs ${idKursu}`, onPowrot: wroc }}
       glowna={
         <EmptyState
           wariant="brak-uprawnien"
-          naglowek="Tematy kursu dla prowadzących"
-          rola="prowadzących"
+          naglowek={teksty.naglowekOdmowy}
+          rola={teksty.rolaOdmowy}
           przycisk={{ etykieta: "Wróć", onClick: wroc }}
         />
       }
@@ -132,15 +157,51 @@ type StanDialogu =
   | { rodzaj: "porzuc" }
   | { rodzaj: "wyjscie"; dokad: () => void };
 
+/** Lekcja po zapisie z formularza przy wierszu — tyle, ile pokazuje drzewo. */
+export interface LekcjaPoZapisie {
+  id: number;
+  title: string;
+  duration_seconds: number;
+}
+
+/**
+ * Formularz edycji lekcji rysowany pod jej wierszem. Podanie tej funkcji
+ * zamienia w wierszu „Zmień nazwę” na „Edytuj”: lekcja ma wtedy jedną drogę
+ * edycji i jeden zapis — ten z formularza.
+ */
+export type EdycjaLekcjiWiersza = (
+  idLekcji: number,
+  akcje: { zamknij: () => void; zapisano: (lekcja: LekcjaPoZapisie) => void },
+) => ReactNode;
+
 interface WlasciwosciEdytora {
+  grupa: GrupaTras;
   kursPoczatkowy: AdminCourse;
   lekcje: AdminLesson[];
+  podDrzewem?: (kurs: AdminCourse) => ReactNode;
+  ostatniBlok?: (kurs: AdminCourse) => ReactNode;
+  edycjaLekcji?: EdycjaLekcjiWiersza;
   wroc: () => void;
   przejdz: (adres: string) => void;
 }
 
-function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdytora) {
+function EdytorTematow({
+  grupa,
+  kursPoczatkowy,
+  lekcje,
+  podDrzewem,
+  ostatniBlok,
+  edycjaLekcji,
+  wroc,
+  przejdz,
+}: WlasciwosciEdytora) {
   const baza = useId();
+  const [edytowanaLekcja, setEdytowanaLekcja] = useState<number | null>(null);
+  // Nowy obiekt przy każdym zamknięciu — efekt fokusu rusza także dla tej samej lekcji drugi raz.
+  const [fokusNaEdytuj, setFokusNaEdytuj] = useState<{ lekcja: number } | null>(null);
+  const [czasyPoZapisie, setCzasyPoZapisie] = useState<Record<number, number>>({});
+  const teksty = tekstyDlaGrupy(grupa);
+  const zapis = zapisDlaGrupy(grupa);
   const idPrzyciskuPublikacji = `${baza}-opublikuj`;
   const [kurs, setKurs] = useState(kursPoczatkowy);
   const [stan, setStan] = useState<StanTematow>({ rodzaj: "ladowanie" });
@@ -154,10 +215,14 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
   const [bladDialogu, setBladDialogu] = useState<string | null>(null);
   const [formularz, setFormularz] = useState<{ tytul: string; opis: string } | null>(null);
   const [bledyFormularza, setBledyFormularza] = useState<{ tytul?: string; opis?: string; ogolny?: string }>({});
+  const [publikowanie, setPublikowanie] = useState(false);
+  const [brakiSerwera, setBrakiSerwera] = useState<PozycjaChecklisty[]>([]);
+  const [bladPublikacji, setBladPublikacji] = useState<{ tytul: string; tresc: string } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     let aktualne = true;
-    pobierzTematy(GRUPA, kursPoczatkowy.id)
+    pobierzTematy(grupa, kursPoczatkowy.id)
       .then((tematy) => {
         if (!aktualne) return;
         const serwer = ukladZSerwera(tematy, lekcje);
@@ -174,7 +239,7 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
     return () => {
       aktualne = false;
     };
-  }, [kursPoczatkowy.id, lekcje, proba]);
+  }, [grupa, kursPoczatkowy.id, lekcje, proba]);
 
   const liczbaZmian = stan.rodzaj === "gotowy" ? stan.historia.length : 0;
 
@@ -193,8 +258,21 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
     document.getElementById(idPrzyciskuPublikacji)?.focus();
   }, [idPrzyciskuPublikacji]);
 
+  const zamknijBrakiSerwera = useCallback(() => {
+    setBrakiSerwera([]);
+    document.getElementById(idPrzyciskuPublikacji)?.focus();
+  }, [idPrzyciskuPublikacji]);
+
+  const zamknijToast = useCallback(() => setToast(null), []);
+
+  // Zamknięcie formularza przy wierszu oddaje fokus przyciskowi „Edytuj” tej lekcji.
+  useEffect(() => {
+    if (fokusNaEdytuj === null) return;
+    document.querySelector<HTMLElement>(`[data-edytuj-lekcje="${fokusNaEdytuj.lekcja}"]`)?.focus();
+  }, [fokusNaEdytuj]);
+
   if (stan.rodzaj === "brak-uprawnien") {
-    return <BrakUprawnien idKursu={String(kursPoczatkowy.id)} wroc={wroc} />;
+    return <BrakUprawnien idKursu={String(kursPoczatkowy.id)} grupa={grupa} wroc={wroc} />;
   }
 
   const { braki, gotowe } = checklistaPublikacji({ kurs, lekcje });
@@ -207,7 +285,48 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
     dokad();
   }
 
+  /**
+   * Administracja: prawdziwa zmiana stanu kursu — ta sama funkcja
+   * `zmienPublikacje` (`PATCH /admin/courses/{course}` z `is_published`), którą
+   * woła ekran „Publikacja kursu”. Serwer odrzuca kurs z brakami
+   * (`422 conditions_not_met`, `reason.missing`) — kurs zostaje bez zmian,
+   * a braki pokazuje panel O7.
+   */
+  async function ustawPublikacje(opublikowany: boolean) {
+    if (publikowanie) return;
+    const idKursu = String(kurs.id);
+    setPublikowanie(true);
+    setBladPublikacji(null);
+    setBrakiSerwera([]);
+    try {
+      const po = await zmienPublikacje(idKursu, opublikowany);
+      setKurs(po);
+      setToast(opublikowany ? "Kurs został opublikowany." : "Publikacja kursu została cofnięta.");
+    } catch (wyjatek) {
+      const blad = sklasyfikujBlad(idKursu, wyjatek);
+      const tytul = opublikowany ? "Nie udało się opublikować kursu" : "Nie udało się cofnąć publikacji";
+      if (blad.rodzaj === "braki") {
+        // Braki uzupełnia się na tym ekranie, więc odnośnik prowadzi do drzewa lekcji.
+        setBrakiSerwera(blad.braki.map((brak) => ({ ...brak, href: `#${KOTWICA_LEKCJI}` })));
+      } else if (blad.rodzaj === "zakazane") {
+        setBladPublikacji({ tytul, tresc: zdanieOdmowyRoli(teksty.rolaOdmowy) });
+      } else if (blad.rodzaj === "nie-znaleziono") {
+        setBladPublikacji({ tytul, tresc: "Kurs nie istnieje albo został usunięty." });
+      } else if (blad.rodzaj === "siec") {
+        setBladPublikacji({ tytul, tresc: "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie." });
+      } else {
+        setBladPublikacji({ tytul, tresc: blad.komunikat });
+      }
+    } finally {
+      setPublikowanie(false);
+    }
+  }
+
   function opublikuj() {
+    if (grupa === "admin") {
+      void ustawPublikacje(true);
+      return;
+    }
     // Prowadzący nie publikuje kursu: `PATCH /instructor/courses/{course}`
     // zapisuje wyłącznie `title` i `description`
     // (`InstructorCourseController::EDITABLE_FIELDS`), publikacja zostaje
@@ -237,6 +356,30 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
     });
   }
 
+  /**
+   * Zapis lekcji z formularza przy wierszu jest już na serwerze, więc nowy
+   * tytuł wchodzi do stanu serwera, do stanu lokalnego i do każdego kroku
+   * historii — niezapisane zmiany kolejności i ich licznik zostają bez zmian.
+   */
+  function przyjmijZapisLekcji(lekcja: LekcjaPoZapisie) {
+    setCzasyPoZapisie((poprzednie) => ({ ...poprzednie, [lekcja.id]: lekcja.duration_seconds }));
+    setStan((poprzedni) =>
+      poprzedni.rodzaj === "gotowy"
+        ? {
+            ...poprzedni,
+            serwer: zmienTytulLekcji(poprzedni.serwer, lekcja.id, lekcja.title),
+            lokalny: zmienTytulLekcji(poprzedni.lokalny, lekcja.id, lekcja.title),
+            historia: poprzedni.historia.map((krok) => zmienTytulLekcji(krok, lekcja.id, lekcja.title)),
+          }
+        : poprzedni,
+    );
+  }
+
+  function zamknijEdycjeLekcji() {
+    if (edytowanaLekcja !== null) setFokusNaEdytuj({ lekcja: edytowanaLekcja });
+    setEdytowanaLekcja(null);
+  }
+
   function cofnij() {
     setStan((poprzedni) => {
       if (poprzedni.rodzaj !== "gotowy" || poprzedni.historia.length === 0) return poprzedni;
@@ -262,11 +405,11 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
     try {
       let potwierdzony = serwer;
       if (kolejnoscZmieniona(serwer, lokalny)) {
-        const tematy = await zapiszUkladTematow(GRUPA, kurs.id, cialoUkladu(lokalny));
+        const tematy = await zapiszUkladTematow(grupa, kurs.id, cialoUkladu(lokalny));
         potwierdzony = { ...ukladZSerwera(tematy, lekcje), tytulyLekcji: serwer.tytulyLekcji };
       }
       for (const { id, title } of tytulyDoZapisu(serwer, lokalny)) {
-        const lekcja = await updateInstructorLesson(id, { title });
+        const lekcja = await zapis.tytulLekcji(id, title);
         potwierdzony = zmienTytulLekcji(potwierdzony, id, lekcja.title);
       }
       setStan({ rodzaj: "gotowy", serwer: potwierdzony, lokalny: potwierdzony, historia: [], ostatniTytul: null });
@@ -300,7 +443,7 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
       const { temat } = dialog;
       setDialog(null);
       try {
-        await usunTemat(GRUPA, temat.id);
+        await usunTemat(grupa, temat.id);
         setStan((poprzedni) =>
           poprzedni.rodzaj === "gotowy"
             ? {
@@ -325,7 +468,7 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
     }
     try {
       if (dialog.rodzaj === "dodaj") {
-        const temat = await dodajTemat(GRUPA, kurs.id, tytul);
+        const temat = await dodajTemat(grupa, kurs.id, tytul);
         setStan((poprzedni) =>
           poprzedni.rodzaj === "gotowy"
             ? {
@@ -337,7 +480,7 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
             : poprzedni,
         );
       } else {
-        const temat = await zmienTytulTematuApi(GRUPA, dialog.temat.id, tytul);
+        const temat = await zmienTytulTematuApi(grupa, dialog.temat.id, tytul);
         setStan((poprzedni) =>
           poprzedni.rodzaj === "gotowy"
             ? {
@@ -363,7 +506,7 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
       return;
     }
     try {
-      const zapisany = await updateInstructorCourse(kurs.id, {
+      const zapisany = await zapis.daneKursu(kurs.id, {
         title: tytul,
         description: formularz.opis.trim() === "" ? null : formularz.opis,
       });
@@ -393,11 +536,19 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
           }
         : { rodzaj: "gotowy" };
 
-  const tematy = stan.rodzaj === "gotowy" ? tematyDrzewa(stan.serwer, stan.lokalny, lekcje) : [];
+  const lekcjeDrzewa = lekcje.map((lekcja) =>
+    lekcja.id in czasyPoZapisie ? { ...lekcja, duration_seconds: czasyPoZapisie[lekcja.id] } : lekcja,
+  );
+  const tematy = stan.rodzaj === "gotowy" ? tematyDrzewa(stan.serwer, stan.lokalny, lekcjeDrzewa) : [];
   const tematyUkladu = stan.rodzaj === "gotowy" ? stan.lokalny.tematy : [];
 
-  const glowna = (
-    <div id="lekcje" className={style.sekcja}>
+  const drzewo = (
+    <div id={KOTWICA_LEKCJI} className={style.sekcja}>
+      {bladPublikacji && (
+        <Notice wariant="error" tytul={bladPublikacji.tytul}>
+          {bladPublikacji.tresc}
+        </Notice>
+      )}
       {bladTresci && (
         <Notice wariant="error" tytul="Zmiana nie została zapisana">
           {bladTresci}
@@ -415,15 +566,33 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
         onPrzenies={(zTematu, lekcja, doTematu, indeks) =>
           zmien((lokalny) => przeniesLekcje(lokalny, Number(zTematu), Number(lekcja), Number(doTematu), indeks))
         }
-        // Lekcję zakłada istniejący edytor treści prowadzącego; bez `topic_id`
-        // trafia na koniec ostatniego tematu (aneks kontraktu, pkt 3).
-        onDodajLekcje={() => wyjdz(() => przejdz(`/prowadzacy/kursy/${kurs.id}`))}
+        // Lekcję zakłada istniejący edytor treści kursu (prowadzącego albo
+        // administracji); bez `topic_id` trafia na koniec ostatniego tematu
+        // (aneks kontraktu, pkt 3).
+        onDodajLekcje={() => wyjdz(() => przejdz(teksty.adresDodaniaLekcji(kurs.id)))}
         onZmienTytulLekcji={(_temat, lekcja, tytul) =>
           zmien((lokalny) => zmienTytulLekcji(lokalny, Number(lekcja), tytul), Number(lekcja))
         }
         onZapisz={() => void zapisz()}
         onCofnij={cofnij}
         onPorzucWszystko={() => otworzDialog({ rodzaj: "porzuc" })}
+        onEdytujLekcje={
+          edycjaLekcji
+            ? (_temat, lekcja) => {
+                const id = Number(lekcja);
+                if (edytowanaLekcja === id) zamknijEdycjeLekcji();
+                else setEdytowanaLekcja(id);
+              }
+            : undefined
+        }
+        rozwiniecie={
+          edycjaLekcji && edytowanaLekcja !== null
+            ? {
+                lekcjaId: String(edytowanaLekcja),
+                tresc: edycjaLekcji(edytowanaLekcja, { zamknij: zamknijEdycjeLekcji, zapisano: przyjmijZapisLekcji }),
+              }
+            : undefined
+        }
         pusty={{
           naglowek: "Kurs nie ma jeszcze tematów",
           tresc: "Tematy porządkują lekcje kursu. Zacznij od pierwszego tematu, potem dodasz do niego lekcje.",
@@ -431,6 +600,15 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
         }}
       />
     </div>
+  );
+
+  const glowna = podDrzewem ? (
+    <div className={style.kolumna}>
+      {drzewo}
+      {podDrzewem(kurs)}
+    </div>
+  ) : (
+    drzewo
   );
 
   const wspierajaca = (
@@ -524,14 +702,20 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
           </>
         )}
       </section>
+      {ostatniBlok?.(kurs)}
     </div>
   );
+
+  // Administracja: kurs opublikowany nie ma już czego publikować — w tym samym
+  // miejscu stoi drugorzędne „Cofnij publikację”. Prowadzący zawsze widzi
+  // „Opublikuj kurs”, bo jego przycisk tylko otwiera panel braków.
+  const cofniecie = grupa === "admin" && kurs.is_published;
 
   return (
     <>
       <DetailTemplate
         naglowek={{
-          okruszki: OKRUSZKI,
+          okruszki: teksty.okruszki,
           tytul: kurs.title,
           status: kurs.is_published
             ? { wariant: "ok", etykieta: "Opublikowany" }
@@ -539,16 +723,24 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
           onPowrot: () => wyjdz(wroc),
           dzieci: (
             <div>
-              <Button id={idPrzyciskuPublikacji} poziom="primary" onClick={opublikuj}>
-                Opublikuj kurs
-              </Button>
+              {cofniecie ? (
+                <Button id={idPrzyciskuPublikacji} poziom="outline" onClick={() => void ustawPublikacje(false)}>
+                  Cofnij publikację
+                </Button>
+              ) : (
+                <Button id={idPrzyciskuPublikacji} poziom="primary" onClick={opublikuj}>
+                  Opublikuj kurs
+                </Button>
+              )}
             </div>
           ),
         }}
         checklist={
-          checklistaOtwarta
-            ? { tytul: "Braki przed publikacją", braki, gotowe, onZamknij: zamknijChecklist }
-            : undefined
+          brakiSerwera.length > 0
+            ? { tytul: "Braki przed publikacją", braki: brakiSerwera, gotowe: [], onZamknij: zamknijBrakiSerwera }
+            : checklistaOtwarta
+              ? { tytul: "Braki przed publikacją", braki, gotowe, onZamknij: zamknijChecklist }
+              : undefined
         }
         glowna={glowna}
         wspierajaca={wspierajaca}
@@ -564,6 +756,7 @@ function EdytorTematow({ kursPoczatkowy, lekcje, wroc, przejdz }: WlasciwosciEdy
           onPotwierdz={() => void potwierdzDialog()}
         />
       )}
+      {toast && <Toast komunikat={toast} onZamknij={zamknijToast} />}
     </>
   );
 }

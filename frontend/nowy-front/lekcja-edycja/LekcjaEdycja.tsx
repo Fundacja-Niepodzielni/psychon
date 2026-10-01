@@ -225,6 +225,13 @@ interface WlasciwosciEdytora {
   rola: string | null;
   nagranieStart: StanNagrania | null;
   wroc: () => void;
+  /**
+   * `strona` — cały ekran w `FormTemplate` (trasa lekcji). `wiersz` — sam
+   * formularz pól lekcji, do osadzenia pod wierszem lekcji w drzewie kursu;
+   * materiały i nagranie zostają na ekranie lekcji.
+   */
+  uklad?: "strona" | "wiersz";
+  onZapisano?: (lekcja: LekcjaAdmin) => void;
 }
 
 /** Zastępuje wpis o tej samej nazwie albo dopisuje nowy (`FileRow` kluczuje po nazwie). */
@@ -234,7 +241,15 @@ function ustawPlik(lista: PlikFileDropZone[], plik: PlikFileDropZone): PlikFileD
     : [...lista, plik];
 }
 
-function EdytorLekcji({ lekcja, idKursu, rola, nagranieStart, wroc }: WlasciwosciEdytora) {
+function EdytorLekcji({
+  lekcja,
+  idKursu,
+  rola,
+  nagranieStart,
+  wroc,
+  uklad = "strona",
+  onZapisano,
+}: WlasciwosciEdytora) {
   const baza = useId();
   const [zapisana, setZapisana] = useState(lekcja);
   const [formularz, setFormularz] = useState<StanFormularza>(() => formularzZLekcji(lekcja));
@@ -261,6 +276,11 @@ function EdytorLekcji({ lekcja, idKursu, rola, nagranieStart, wroc }: Wlasciwosc
     window.addEventListener("beforeunload", naWyjscie);
     return () => window.removeEventListener("beforeunload", naWyjscie);
   }, [zmieniony]);
+
+  // Formularz otwarty przy wierszu zaczyna od pierwszego pola.
+  useEffect(() => {
+    if (uklad === "wiersz") document.getElementById(`${baza}-tytul`)?.focus();
+  }, [uklad, baza]);
 
   function zmien(pole: keyof StanFormularza, wartosc: string) {
     setFormularz((poprzedni) => ({ ...poprzedni, [pole]: wartosc }));
@@ -294,6 +314,7 @@ function EdytorLekcji({ lekcja, idKursu, rola, nagranieStart, wroc }: Wlasciwosc
       setFormularz(formularzZLekcji(wynik));
       setLiczbaMaterialow(wynik.materials_count);
       setZapisano(true);
+      onZapisano?.(wynik);
     } catch (blad) {
       const bledyPol = bledyZSerwera(blad);
       if (bledyPol) setBledy(bledyPol);
@@ -383,6 +404,51 @@ function EdytorLekcji({ lekcja, idKursu, rola, nagranieStart, wroc }: Wlasciwosc
     },
   ];
 
+  const okna = (
+    <>
+      {dialogPorzucenia && (
+        <Dialog
+          tytul="Porzucić niezapisane zmiany?"
+          etykietaWycofania="Wróć do edycji"
+          etykietaPotwierdzenia="Porzuć zmiany"
+          niebezpieczne
+          onWycofaj={() => setDialogPorzucenia(false)}
+          onPotwierdz={() => {
+            setDialogPorzucenia(false);
+            wroc();
+          }}
+        >
+          <Text>Zmiany wpisane w tej lekcji nie zostały zapisane i przepadną.</Text>
+        </Dialog>
+      )}
+      {zapisano && <Toast komunikat="Lekcja została zapisana." onZamknij={() => setZapisano(false)} />}
+    </>
+  );
+
+  if (uklad === "wiersz") {
+    return (
+      <>
+        <div className={style.kolumna}>
+          {bladOgolny && (
+            <Notice wariant="error" tytul="Lekcja nie została zapisana">
+              {bladOgolny}
+            </Notice>
+          )}
+          <FormSection
+            tytul="Edycja lekcji"
+            szerokosc="lekcja"
+            pola={pola}
+            etykietaAnuluj="Anuluj"
+            etykietaZapisz="Zapisz lekcję"
+            onAnuluj={anuluj}
+            onZapisz={() => void zapisz()}
+          />
+        </div>
+        {okna}
+      </>
+    );
+  }
+
   return (
     <>
       <FormTemplate
@@ -451,22 +517,81 @@ function EdytorLekcji({ lekcja, idKursu, rola, nagranieStart, wroc }: Wlasciwosc
           </div>
         }
       />
-      {dialogPorzucenia && (
-        <Dialog
-          tytul="Porzucić niezapisane zmiany?"
-          etykietaWycofania="Wróć do edycji"
-          etykietaPotwierdzenia="Porzuć zmiany"
-          niebezpieczne
-          onWycofaj={() => setDialogPorzucenia(false)}
-          onPotwierdz={() => {
-            setDialogPorzucenia(false);
-            wroc();
-          }}
-        >
-          <Text>Zmiany wpisane w tej lekcji nie zostały zapisane i przepadną.</Text>
-        </Dialog>
-      )}
-      {zapisano && <Toast komunikat="Lekcja została zapisana." onZamknij={() => setZapisano(false)} />}
+      {okna}
     </>
+  );
+}
+
+interface WlasciwosciEdycjiPrzyWierszu {
+  idLekcji: number;
+  idKursu: number;
+  /** „Anuluj”, Escape albo porzucenie zmian — formularz ma zniknąć. */
+  onZamknij: () => void;
+  /** Lekcja po udanym zapisie; formularz zostaje otwarty. */
+  onZapisano: (lekcja: LekcjaAdmin) => void;
+}
+
+/**
+ * Formularz edycji lekcji do osadzenia pod wierszem lekcji na ekranie kursu
+ * administracji. Ten sam edytor i ta sama funkcja zapisu (`zapiszLekcje`) co
+ * trasa lekcji; lekcję czyta świeżo z listy lekcji kursu przy każdym otwarciu.
+ */
+export function EdycjaLekcjiPrzyWierszu({ idLekcji, idKursu, onZamknij, onZapisano }: WlasciwosciEdycjiPrzyWierszu) {
+  const [stan, setStan] = useState<
+    { rodzaj: "ladowanie" } | { rodzaj: "blad"; tresc: string } | { rodzaj: "dane"; lekcja: LekcjaAdmin }
+  >({ rodzaj: "ladowanie" });
+
+  useEffect(() => {
+    let aktualne = true;
+    pobierzLekcjeKursu(idKursu)
+      .then((lekcje) => {
+        if (!aktualne) return;
+        const lekcja = lekcje.find((kandydat) => kandydat.id === idLekcji);
+        setStan(
+          lekcja
+            ? { rodzaj: "dane", lekcja }
+            : { rodzaj: "blad", tresc: "Lekcja nie istnieje albo została usunięta." },
+        );
+      })
+      .catch((blad: unknown) => {
+        if (aktualne) setStan({ rodzaj: "blad", tresc: zdanieBleduZapisu(blad) });
+      });
+    return () => {
+      aktualne = false;
+    };
+  }, [idKursu, idLekcji]);
+
+  if (stan.rodzaj === "ladowanie") {
+    return (
+      <div aria-busy="true">
+        <Skeleton wiersze={4} />
+      </div>
+    );
+  }
+  if (stan.rodzaj === "blad") {
+    return (
+      <Notice
+        wariant="error"
+        tytul="Nie udało się wczytać lekcji"
+        akcja={
+          <Button poziom="outline" onClick={onZamknij}>
+            Zamknij
+          </Button>
+        }
+      >
+        {stan.tresc}
+      </Notice>
+    );
+  }
+  return (
+    <EdytorLekcji
+      lekcja={stan.lekcja}
+      idKursu={idKursu}
+      rola={null}
+      nagranieStart={null}
+      wroc={onZamknij}
+      uklad="wiersz"
+      onZapisano={onZapisano}
+    />
   );
 }

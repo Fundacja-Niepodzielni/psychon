@@ -93,7 +93,15 @@ export function pobierzStanNagrania(idLekcji: number): Promise<StanNagrania> {
   return api<StanNagrania>(`/admin/lessons/${idLekcji}/video-status`);
 }
 
-export function zapiszLekcje(idLekcji: number, cialo: CialoLekcji): Promise<LekcjaAdmin> {
+/**
+ * Jedyne miejsce nowego frontu z adresem zapisu lekcji administracji. Pełne
+ * ciało wysyła formularz edycji lekcji; samo `title` — zmiana nazwy w drzewie
+ * tematów (każde pole trasy jest opcjonalne).
+ */
+export function zapiszLekcje(
+  idLekcji: number,
+  cialo: CialoLekcji | Pick<CialoLekcji, "title">,
+): Promise<LekcjaAdmin> {
   return api<LekcjaAdmin>(`/admin/lessons/${idLekcji}`, { method: "PATCH", body: cialo });
 }
 

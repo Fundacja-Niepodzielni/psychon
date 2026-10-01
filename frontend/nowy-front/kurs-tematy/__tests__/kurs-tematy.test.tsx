@@ -92,7 +92,7 @@ function temat(id: number, title: string, position: number, lesson_ids: number[]
 const TEMATY = [temat(7, "Wprowadzenie", 1, [21, 22]), temat(8, "Praktyka", 2, [23])];
 
 function renderOk() {
-  return render(<KursTematy idKursu="4" wynik={{ status: "ok", dane: { kurs: KURS, lekcje: LEKCJE } }} />);
+  return render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "ok", dane: { kurs: KURS, lekcje: LEKCJE } }} />);
 }
 
 async function renderGotowy() {
@@ -141,7 +141,7 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
   });
 
   it("błąd: komunikat z ponowieniem w kolumnie głównej", () => {
-    const { container } = render(<KursTematy idKursu="4" wynik={{ status: "blad" }} />);
+    const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "blad" }} />);
     sprawdzSzablon(container, screen.getByText("Nie udało się wczytać kursu"));
   });
 
@@ -152,12 +152,12 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
   });
 
   it("brak uprawnień: stan pusty z jedynym szablonem zdania w kolumnie głównej", () => {
-    const { container } = render(<KursTematy idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
+    const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
     sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
   });
 
   it("brak sesji: ten sam stan braku uprawnień w szablonie", () => {
-    const { container } = render(<KursTematy idKursu="4" wynik={{ status: "brak-sesji" }} />);
+    const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "brak-sesji" }} />);
     sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
   });
 
@@ -355,6 +355,7 @@ describe("A-12 — akcja główna „Opublikuj kurs”", () => {
     pobierzTematy.mockResolvedValue(TEMATY);
     render(
       <KursTematy
+        grupa="instructor"
         idKursu="4"
         wynik={{ status: "ok", dane: { kurs: { ...KURS, description: "Opis kursu." }, lekcje: LEKCJE } }}
       />,
