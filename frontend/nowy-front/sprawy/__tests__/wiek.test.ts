@@ -115,15 +115,23 @@ describe("dniOczekiwania — dni kalendarzowe czasu warszawskiego", () => {
 
 describe("dniOczekiwania — strefa jawna, nie strefa maszyny", () => {
   const zrodlo = readFileSync(join(__dirname, "..", "wiek.ts"), "utf8");
+  const zrodloDat = readFileSync(join(__dirname, "..", "..", "wspolne", "daty.ts"), "utf8");
 
-  it("plik podaje strefę Europe/Warsaw jawnie do Intl i nie czyta strefy maszyny", () => {
-    expect(zrodlo).toMatch(/const STREFA_DNIA = "Europe\/Warsaw";/);
-    expect(zrodlo).toMatch(/timeZone: STREFA_DNIA/);
+  it("numer dnia liczy wspolne/daty.ts: strefa Europe/Warsaw jawnie do Intl, bez strefy maszyny", () => {
+    expect(zrodloDat).toMatch(/const STREFA = "Europe\/Warsaw";/);
+    expect(zrodloDat).toMatch(/new Intl\.DateTimeFormat\("en-US", \{\s*timeZone: STREFA,/);
+    expect(zrodloDat).not.toMatch(/\.(getFullYear|getMonth|getDate|getDay|getHours|getTimezoneOffset)\(/);
+    expect(zrodloDat).not.toMatch(/\bnew Date\(\)|Date\.now\(/);
+  });
+
+  it("wiek.ts importuje numer dnia z wspolne/daty i nie składa własnego formatera ani strefy", () => {
+    expect(zrodlo).toMatch(/import \{ numerDniaKalendarzowego \} from "\.\.\/wspolne\/daty";/);
+    expect(zrodlo).not.toMatch(/Intl\s*\.\s*DateTimeFormat|timeZone|STREFA/);
     expect(zrodlo).not.toMatch(/\.(getFullYear|getMonth|getDate|getDay|getHours|getTimezoneOffset)\(/);
     expect(zrodlo).not.toMatch(/\bnew Date\(\)|Date\.now\(/);
   });
 
-  it("wiek liczy tylko ten plik: żadna inna część nowego frontu nie ma własnej doby w milisekundach", () => {
+  it("doba w milisekundach żyje tylko we wspolne/daty.ts: żadna inna część nowego frontu (w tym wiek.ts) nie ma własnej", () => {
     const korzen = join(__dirname, "..", "..");
     const pliki: string[] = [];
     const przejdz = (katalog: string) => {
@@ -140,7 +148,7 @@ describe("dniOczekiwania — strefa jawna, nie strefa maszyny", () => {
     expect(pliki.length).toBeGreaterThan(50);
     const winowajcy = pliki.filter(
       (plik) =>
-        plik !== join(korzen, "sprawy", "wiek.ts") &&
+        plik !== join(korzen, "wspolne", "daty.ts") &&
         /MS_NA_DOBE|24 \* 60 \* 60 \* 1000|86_?400_?000/.test(readFileSync(plik, "utf8")),
     );
     expect(winowajcy).toEqual([]);

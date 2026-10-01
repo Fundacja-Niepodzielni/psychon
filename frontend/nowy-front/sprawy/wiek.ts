@@ -7,34 +7,10 @@
  * liczą ten sam wiek tą samą funkcją.
  */
 
+import { numerDniaKalendarzowego } from "../wspolne/daty";
+
 /** Od ilu dni oczekiwania plakietka wiersza jest ostrzegawcza (niżej jest szara). */
 export const PROG_OSTRZEZENIA_DNI = 5;
-
-/** Strefa, w której liczy się „dzień”: jawna, nigdy strefa maszyny ani przeglądarki. */
-const STREFA_DNIA = "Europe/Warsaw";
-
-const MS_NA_DOBE = 24 * 60 * 60 * 1000;
-
-const formatDniaWarszawskiego = new Intl.DateTimeFormat("en-US", {
-  timeZone: STREFA_DNIA,
-  calendar: "gregory",
-  numberingSystem: "latn",
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-});
-
-/**
- * Numer dnia kalendarzowego (czasu warszawskiego), w którym wypada chwila `ms`:
- * liczba dób od 1970-01-01 dla daty rok-miesiąc-dzień. Różnica dwóch takich
- * numerów to liczba dni kalendarzowych — doba 23-godzinna (29.03) i 25-godzinna
- * (25.10) zmiany czasu liczy się jako jeden dzień.
- */
-function numerDniaWarszawskiego(ms: number): number {
-  const czesci = formatDniaWarszawskiego.formatToParts(new Date(ms));
-  const wartosc = (rodzaj: "year" | "month" | "day") => Number(czesci.find((czesc) => czesc.type === rodzaj)?.value);
-  return Date.UTC(wartosc("year"), wartosc("month") - 1, wartosc("day")) / MS_NA_DOBE;
-}
 
 /**
  * Dni kalendarzowe (Europe/Warsaw) od `czekaOd` do `teraz` (chwila w ms):
@@ -46,7 +22,7 @@ function numerDniaWarszawskiego(ms: number): number {
 export function dniOczekiwania(czekaOd: string, teraz: number): number | null {
   const poczatek = Date.parse(czekaOd);
   if (Number.isNaN(poczatek) || !Number.isFinite(teraz)) return null;
-  return Math.max(0, numerDniaWarszawskiego(teraz) - numerDniaWarszawskiego(poczatek));
+  return Math.max(0, numerDniaKalendarzowego(teraz) - numerDniaKalendarzowego(poczatek));
 }
 
 /** „dzień” przy 1, w pozostałych przypadkach „dni” (0, 2, 5, 22 …), jak w makiecie. */
