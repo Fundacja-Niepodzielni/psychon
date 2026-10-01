@@ -113,6 +113,27 @@ async function instalujAtrapyApi(page: Page, rola: RolaAtrapy): Promise<void> {
   await page.route(`${API}/admin/profiles/12`, (route) => route.fulfill(odpowiedz(WNIOSEK)));
   await page.route(`${API}/admin/applications/12`, (route) => route.fulfill(odpowiedz(ZGLOSZENIE_REKRUTACYJNE)));
   await page.route(`${API}/admin/internship/forms**`, (route) => route.fulfill(odpowiedz([FORMA])));
+  await page.route(`${API}/instructor/group`, (route) =>
+    route.fulfill(
+      odpowiedz({
+        members: [
+          {
+            id: 17,
+            first_name: "Marta",
+            last_name: "Demo",
+            progress: { courses_done: 2, courses_total: 10, hours_accepted: "41.5", supervision_present: 5, workshop_done: false },
+          },
+        ],
+        slots: [],
+      }),
+    ),
+  );
+  await page.route(`${API}/instructor/questions**`, (route) =>
+    route.fulfill(odpowiedz([], { ...META, total: 0, extra: { unanswered: 0 } })),
+  );
+  await page.route(`${API}/instructor/courses`, (route) =>
+    route.fulfill(odpowiedz([{ id: 2, slug: "wywiad-psychologiczny", title: "Wywiad psychologiczny", sequence_order: 2 }])),
+  );
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ATRAPA_SESJI) }),
   );
