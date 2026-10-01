@@ -6,6 +6,7 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -84,5 +85,44 @@ class DocumentTemplateSeederIdempotencyTest extends TestCase
         // Dwa brakujace rodzaje dochodza, istniejacy zostaje jeden.
         $this->assertSame(3, DocumentTemplate::query()->count());
         $this->assertSame(3, DocumentTemplateVersion::query()->count());
+    }
+
+    public function test_failure_while_creating_a_version_leaves_no_template_of_that_type(): void
+    {
+        $failing = 'attendance_certificate';
+        $fail = true;
+
+        DocumentTemplateVersion::creating(static function (DocumentTemplateVersion $version) use (&$fail, $failing): void {
+            if ($fail && $version->type === $failing) {
+                throw new RuntimeException('wymuszony blad przy tworzeniu wersji');
+            }
+        });
+
+        try {
+            $this->runPipelineStep();
+            $this->fail('Krok potoku mial zakonczyc sie bledem.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('wymuszony blad przy tworzeniu wersji', $exception->getMessage());
+        }
+
+        // Rodzaj, przy ktorym padl blad: ani wzoru, ani wersji.
+        $this->assertSame(0, DocumentTemplate::query()->where('type', $failing)->count(), 'wzor bez wersji nie moze zostac');
+        $this->assertSame(0, DocumentTemplateVersion::query()->where('type', $failing)->count());
+        // Zaden wzor w bazie nie jest bez wersji.
+        $this->assertSame(
+            DocumentTemplate::query()->count(),
+            DocumentTemplateVersion::query()->count(),
+        );
+
+        // Kolejny bieg (juz bez bledu) domyka komplet.
+        $fail = false;
+        $this->assertSame(0, $this->runPipelineStep());
+
+        $this->assertSame(3, DocumentTemplate::query()->count());
+        $this->assertSame(3, DocumentTemplateVersion::query()->count());
+        foreach (self::TYPES as $type) {
+            $this->assertSame(1, DocumentTemplate::query()->where('type', $type)->count());
+            $this->assertSame(1, DocumentTemplateVersion::query()->where('type', $type)->count());
+        }
     }
 }

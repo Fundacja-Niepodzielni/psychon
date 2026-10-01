@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -37,20 +38,25 @@ class DocumentTemplateSeeder extends Seeder
 
             $content = File::get(resource_path('views/'.$relativePath));
 
-            $template = DocumentTemplate::create([
-                'type' => $type,
-                'content' => $content,
-                'version' => 1,
-                'updated_by' => null,
-            ]);
+            // Wzor i jego pierwsza wersja powstaja razem albo wcale. Bez tego blad
+            // miedzy nimi zostawilby wzor bez wersji, a kolejny bieg pominalby ten
+            // rodzaj (wiersz juz istnieje) i niczego by nie naprawil.
+            DB::transaction(static function () use ($type, $content): void {
+                $template = DocumentTemplate::create([
+                    'type' => $type,
+                    'content' => $content,
+                    'version' => 1,
+                    'updated_by' => null,
+                ]);
 
-            DocumentTemplateVersion::create([
-                'document_template_id' => $template->id,
-                'type' => $type,
-                'content' => $content,
-                'version' => 1,
-                'updated_by' => null,
-            ]);
+                DocumentTemplateVersion::create([
+                    'document_template_id' => $template->id,
+                    'type' => $type,
+                    'content' => $content,
+                    'version' => 1,
+                    'updated_by' => null,
+                ]);
+            });
         }
     }
 }
