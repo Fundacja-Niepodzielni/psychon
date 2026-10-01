@@ -2,10 +2,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api/klient";
-import type { DocumentTemplate, DocumentTemplateVersion } from "@/lib/api/document-templates";
+import type { DocumentTemplateVersion } from "@/lib/api/document-templates";
 import {
   RODZAJE_WZORU,
+  ZDANIE_STAREGO_ZAPISU,
   bladTresci,
+  czyStaryZapis,
   czyZmieniona,
   etykietaRodzaju,
   formatujMomentZmiany,
@@ -14,6 +16,7 @@ import {
   stanZBleduWczytania,
   wierszeHistorii,
   wynikZBleduZapisu,
+  type WzorZeZnacznikiem,
 } from "../dane";
 
 /**
@@ -40,12 +43,13 @@ function kluczeZasobu(sciezka: string): string[] {
 
 const AUTOR = { id: 5, name: "Anna Testowa" };
 
-const WZOR: DocumentTemplate = {
+const WZOR: WzorZeZnacznikiem = {
   type: "agreement",
   content: "<p>x</p>",
   version: 2,
   updated_at: "2026-09-28T10:00:00Z",
   updated_by: AUTOR,
+  current_version_unused: false,
 };
 
 const WPIS: DocumentTemplateVersion = { version: 2, updated_at: "2026-09-28T10:00:00Z", updated_by: AUTOR };
@@ -102,6 +106,27 @@ describe("wzory dokumentów — zgodność z zapleczem", () => {
     expect(obsluga).toMatch(/NotFoundHttpException => self::envelope\(\s*404,\s*'not_found',\s*'Nie znaleziono zasobu\.'/);
     const kontroler = zaplecze("app/Http/Controllers/Api/V1/DocumentTemplateController.php");
     expect(kontroler.match(/throw new ApiException\(404, 'not_found', 'Nie znaleziono zasobu\.'\)/g)).toHaveLength(2);
+  });
+});
+
+describe("wzory dokumentów — znacznik starego zapisu", () => {
+  it("tylko jawne true włącza zdanie; false i brak pola go nie włączają", () => {
+    const { current_version_unused: _pominiete, ...bezPola } = WZOR;
+    expect(czyStaryZapis({ ...WZOR, current_version_unused: true })).toBe(true);
+    expect(czyStaryZapis({ ...WZOR, current_version_unused: false })).toBe(false);
+    expect(czyStaryZapis(bezPola)).toBe(false);
+    expect(_pominiete).toBe(false);
+  });
+
+  it("zdanie brzmi dosłownie tak", () => {
+    expect(ZDANIE_STAREGO_ZAPISU).toBe("Ten wzór ma stary zapis. Dokumenty powstają z wzoru domyślnego.");
+  });
+
+  it("znacznik liczy zaplecze tym samym warunkiem, którym generator wybiera plik", () => {
+    const zasob = zaplecze("app/Http/Resources/DocumentTemplateResource.php");
+    const generator = zaplecze("app/Services/DocumentTemplates/DocumentTemplateRenderer.php");
+    expect(zasob).toContain("'current_version_unused' => DocumentTemplateRenderer::ignoresStoredContent(");
+    expect(generator).toContain("|| self::ignoresStoredContent($type, $template->content)) {");
   });
 });
 

@@ -85,6 +85,20 @@ export function bladTresci(tresc: string, zapisana: string): string | undefined 
   return undefined;
 }
 
+/** Zdanie pokazywane przy wzorze, którego bieżąca wersja nie jest używana. */
+export const ZDANIE_STAREGO_ZAPISU = "Ten wzór ma stary zapis. Dokumenty powstają z wzoru domyślnego.";
+
+/**
+ * Czy bieżąca wersja wzoru ma stary zapis i nie jest używana — serwer mówi to
+ * polem `current_version_unused` w odczycie wzoru. Tylko jawne `true` włącza
+ * zdanie; brak pola (starsza odpowiedź) i `false` znaczą „wzór jest używany”.
+ */
+export type WzorZeZnacznikiem = DocumentTemplate & { current_version_unused?: boolean };
+
+export function czyStaryZapis(wzor: WzorZeZnacznikiem): boolean {
+  return wzor.current_version_unused === true;
+}
+
 export function czyZmieniona(tresc: string, zapisana: string): boolean {
   return tresc !== zapisana;
 }
