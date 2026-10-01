@@ -42,13 +42,18 @@ function dniTemu(dni: number): string {
 type Rodzaj = "applications" | "internship_entries" | "profiles";
 
 function pozycja(rodzaj: Rodzaj, id: number, osoba: string, czekaOd: string) {
-  const etykieta = { applications: "Zgłoszenie", internship_entries: "Dyżur", profiles: "Profil psychologa" }[rodzaj];
+  const etykieta = {
+    applications: "Zgłoszenie rekrutacyjne",
+    internship_entries: "Dyżur",
+    profiles: "Wniosek o profil psychologa",
+  }[rodzaj];
   return {
     id: `${rodzaj}-${id}`,
     idLiczbowe: id,
     rodzaj,
     tytul: `${etykieta} — ${osoba}`,
     osoba,
+    nazwisko: osoba.split(" ").slice(1).join(" "),
     podpowiedz: "Czeka od 26 września 2026",
     czekaOd,
     href: `/sprawa/${rodzaj}/${id}`,
@@ -143,6 +148,38 @@ describe("Sprawy — podtytuł z wiekiem najstarszej sprawy", () => {
     expect(container.textContent).toContain("w jednym miejscu. Najstarsza sprawa czeka 6 dni.");
   });
 
+  it("sprawa z dzisiaj: plakietka „czeka od dziś” (szara) i podtytuł „Najstarsza sprawa czeka od dziś.”", async () => {
+    pobierzKolejkeSpraw.mockResolvedValue([
+      zrodlo("applications", [pozycja("applications", 1, "Marta Demo", dniTemu(0))]),
+      zrodlo("internship_entries", []),
+      zrodlo("profiles", []),
+    ]);
+    const { container } = render(<Sprawy />);
+
+    const plakietka = await screen.findByText("czeka od dziś");
+    expect(plakietka.className).toMatch(/neutral/);
+    expect(screen.queryByText(/czeka 0 dni/)).toBeNull();
+    expect(container.textContent).toContain("Najstarsza sprawa czeka od dziś.");
+    expect(container.textContent).not.toContain("0 dni");
+  });
+
+  it.each<{ dni: number; plakietka: string; podtytul: string; wariant: RegExp }>([
+    { dni: 1, plakietka: "czeka 1 dzień", podtytul: "Najstarsza sprawa czeka 1 dzień.", wariant: /neutral/ },
+    { dni: 2, plakietka: "czeka 2 dni", podtytul: "Najstarsza sprawa czeka 2 dni.", wariant: /neutral/ },
+    { dni: 5, plakietka: "czeka 5 dni", podtytul: "Najstarsza sprawa czeka 5 dni.", wariant: /warn/ },
+    { dni: 22, plakietka: "czeka 22 dni", podtytul: "Najstarsza sprawa czeka 22 dni.", wariant: /warn/ },
+  ])("$dni dni: plakietka „$plakietka” i podtytuł „$podtytul” z jednej części wieku", async ({ dni, plakietka, podtytul, wariant }) => {
+    pobierzKolejkeSpraw.mockResolvedValue([
+      zrodlo("applications", [pozycja("applications", 1, "Marta Demo", dniTemu(dni))]),
+      zrodlo("internship_entries", []),
+      zrodlo("profiles", []),
+    ]);
+    const { container } = render(<Sprawy />);
+
+    expect((await screen.findByText(plakietka)).className).toMatch(wariant);
+    expect(container.textContent).toContain(podtytul);
+  });
+
   it("jedna doba: „1 dzień”", async () => {
     pobierzKolejkeSpraw.mockResolvedValue([
       zrodlo("applications", [pozycja("applications", 1, "Marta Demo", dniTemu(1))]),
@@ -159,13 +196,13 @@ describe("Sprawy — podtytuł z wiekiem najstarszej sprawy", () => {
     pobierzKolejkeSpraw.mockResolvedValue([
       zrodlo("applications", [pozycja("applications", 1, "Marta Demo", dniTemu(2))]),
       zrodlo("internship_entries", [pozycja("internship_entries", 9, "Filip Demo", dniTemu(6))]),
-      zrodlo("profiles", []),
+      zrodlo("profiles", [pozycja("profiles", 4, "Joanna Lis", dniTemu(3))]),
     ]);
     const { container } = render(<Sprawy />);
     await screen.findByText("Filip Demo");
 
     fireEvent.click(screen.getByRole("button", { name: /^Filtr:/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Rekrutacja (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wnioski o profil psychologa (1)" }));
 
     expect(screen.queryByText("Filip Demo")).toBeNull();
     expect(container.textContent).toContain("Najstarsza sprawa czeka 6 dni.");
@@ -188,15 +225,15 @@ describe("Sprawy — zwijany filtr z licznikami", () => {
       pozycja("internship_entries", 9, "Filip Demo", dniTemu(6)),
       pozycja("internship_entries", 10, "Ola Demo", dniTemu(1)),
     ]),
-    zrodlo("profiles", []),
+    zrodlo("profiles", [pozycja("profiles", 4, "Joanna Lis", dniTemu(3))]),
   ];
 
-  it("zwinięty: „Filtr: Wszystkie (3)” z aria-expanded=false i bez przycisków rodzajów", async () => {
+  it("zwinięty: „Filtr: Wszystkie (4)” z aria-expanded=false i bez przycisków rodzajów", async () => {
     pobierzKolejkeSpraw.mockResolvedValue(dane());
     render(<Sprawy />);
     await screen.findByText("Filip Demo");
 
-    const przelacznik = screen.getByRole("button", { name: "Filtr: Wszystkie (3)" });
+    const przelacznik = screen.getByRole("button", { name: "Filtr: Wszystkie (4)" });
     expect(przelacznik).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("group", { name: "Rodzaj sprawy" })).toBeNull();
   });
@@ -214,12 +251,13 @@ describe("Sprawy — zwijany filtr z licznikami", () => {
     expect(przelacznik).toHaveAttribute("aria-expanded", "true");
     const grupa = screen.getByRole("group", { name: "Rodzaj sprawy" });
     expect(przelacznik).toHaveAttribute("aria-controls", grupa.parentElement?.id);
-    expect(within(grupa).getAllByRole("button").map((przycisk) => przycisk.textContent)).toEqual([
-      "Wszystkie (3)",
-      "Rekrutacja (1)",
+    expect(Array.from(grupa.children).map((pozycjaFiltra) => pozycjaFiltra.textContent)).toEqual([
+      "Wszystkie (4)",
+      "Zgłoszenia rekrutacyjne (1)",
       "Dyżury (2)",
+      "Wnioski o profil psychologa (1)",
     ]);
-    expect(within(grupa).getByRole("button", { name: "Wszystkie (3)" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(grupa).getByRole("button", { name: "Wszystkie (4)" })).toHaveAttribute("aria-pressed", "true");
 
     await osoba.keyboard(" ");
     expect(przelacznik).toHaveAttribute("aria-expanded", "false");
@@ -231,13 +269,14 @@ describe("Sprawy — zwijany filtr z licznikami", () => {
     await screen.findByText("Filip Demo");
 
     fireEvent.click(screen.getByRole("button", { name: /^Filtr:/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Dyżury (2)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wnioski o profil psychologa (1)" }));
 
-    expect(screen.getByRole("button", { name: "Filtr: Dyżury (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filtr: Wnioski o profil psychologa (1)" })).toBeInTheDocument();
     expect(screen.queryByText("Marta Demo")).toBeNull();
-    expect(screen.getByText("Ola Demo")).toBeInTheDocument();
+    expect(screen.queryByText("Ola Demo")).toBeNull();
+    expect(screen.getByText("Joanna Lis")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Wszystkie (3)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wszystkie (4)" }));
     await waitFor(() => expect(screen.getByText("Marta Demo")).toBeInTheDocument());
   });
 });

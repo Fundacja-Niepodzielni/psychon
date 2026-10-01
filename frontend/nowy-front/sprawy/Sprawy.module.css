@@ -32,6 +32,20 @@
   font-weight: var(--fw-bold);
 }
 
+/* Pozycje filtra będące odnośnikami do własnych ekranów (dyżury, zgłoszenia
+   rekrutacyjne): ten sam rozmiar i ramka co przyciski, ale barwa odnośnika. */
+.opcjeFiltra a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-min);
+  margin: 0;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+}
+
 /* Tekst tylko dla czytnika ekranu (nagłówek listy „Sprawy”). */
 .dlaCzytnika {
   position: absolute;
