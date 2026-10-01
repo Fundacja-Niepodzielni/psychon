@@ -98,14 +98,9 @@ class LessonRecordingIndexTest extends TestCase
     public function test_a_deleted_lesson_cannot_be_restored_over_a_live_lesson_holding_its_id(): void
     {
         $course = $this->course('etap-1');
-        $deleted = Lesson::create([
-            'course_id' => $course->id,
-            'title' => 'Usunięta lekcja',
-            'sequence_order' => 1,
-            'duration_seconds' => 600,
-            'video_provider_id' => 'mock-nagranie',
-        ]);
-        $deleted->delete();
+        // Numery lekcji w kursie różne (wstawienie zwiększa licznik), żeby
+        // przywrócenie naruszało wyłącznie indeks nagrania, a nie indeks kolejności.
+        $deleted = Lesson::withTrashed()->findOrFail($this->insertLesson($course, 'mock-nagranie', deleted: true));
         $this->insertLesson($course, 'MOCK-NAGRANIE');
 
         $this->assertIndexRefuses(fn () => $deleted->restore());

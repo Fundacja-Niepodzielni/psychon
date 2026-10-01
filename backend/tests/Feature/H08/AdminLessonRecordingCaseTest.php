@@ -353,21 +353,28 @@ class AdminLessonRecordingCaseTest extends TestCase
         Http::assertSentCount(2);
     }
 
-    public function test_an_upload_whose_provider_id_is_the_lessons_own_is_not_an_error(): void
+    /** @return array<string, array{0: string}> */
+    public static function guidsOfTheLessonsOwnRecording(): array
+    {
+        return [
+            'the same letters' => [self::OWN_ID],
+            'another letter case' => ['MOCK-WLASNE-NAGRANIE'],
+        ];
+    }
+
+    #[DataProvider('guidsOfTheLessonsOwnRecording')]
+    public function test_an_upload_whose_provider_id_is_the_lessons_own_is_not_an_error(string $guid): void
     {
         $this->configureBunny();
+        Http::fake(['*' => Http::response(['guid' => $guid])]);
         $lesson = $this->lesson($this->course('etap-1'), 1, self::OWN_ID);
         $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
-        foreach ([self::OWN_ID, 'MOCK-WLASNE-NAGRANIE'] as $guid) {
-            Http::fake(['*' => Http::response(['guid' => $guid])]);
+        $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])
+            ->assertCreated()
+            ->assertJsonPath('data.video_id', $guid);
 
-            $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])
-                ->assertCreated()
-                ->assertJsonPath('data.video_id', $guid);
-
-            $this->assertSame(self::OWN_ID, $lesson->fresh()->video_provider_id);
-        }
+        $this->assertSame(self::OWN_ID, $lesson->fresh()->video_provider_id);
     }
 
     public function test_an_upload_stores_the_provider_id_in_lower_case_and_signs_the_id_as_returned(): void
