@@ -380,13 +380,13 @@ describe("Wniosek o profil — decyzja: załączniki", () => {
 });
 
 /**
- * Okruszki ekranu szczegółu: pierwszy to pozycja menu ramki administracji
- * („Profile psychologa” → `/admin/profile`), ostatni — bieżąca pozycja. W nowej
- * ramce to jedyna droga powrotu; w starej powłoce i bez dostawców zostaje
- * „Wstecz” i pełny ślad.
+ * Okruszki ekranu szczegółu: w nowej ramce reguła z `OkruszekRamki.ts` składa
+ * korzeń „Administracja” (`/admin`), pozycję menu ramki („Profile psychologa” →
+ * `/admin/profile`) i bieżącą pozycję na końcu. W nowej ramce to jedyna droga
+ * powrotu; w starej powłoce i bez dostawców zostaje „Wstecz” i pełny ślad.
  */
 describe("Wniosek o profil — decyzja: okruszki", () => {
-  it("w nowej ramce: bez „Wstecz”, pierwsze łącze = pozycja menu „Profile psychologa” → /admin/profile", async () => {
+  it("w nowej ramce: bez „Wstecz”, pierwsze łącze = korzeń „Administracja” → /admin, drugie = pozycja menu „Profile psychologa” → /admin/profile", async () => {
     trasy({ show: WNIOSEK });
     render(
       <DostawcaRamki

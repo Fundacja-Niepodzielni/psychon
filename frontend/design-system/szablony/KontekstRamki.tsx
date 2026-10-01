@@ -34,7 +34,7 @@ export function DostawcaRamki({ menu = BRAK_MENU, children }: { menu?: GrupaMenu
   return <KontekstRamki.Provider value={{ menu, sciezka }}>{children}</KontekstRamki.Provider>;
 }
 
-/** Hak: prawda, gdy ekran stoi w nowej ramce panelu. */
+/** Hak: prawda, gdy ekran stoi w nowej ramce panelu (obecnie nikt go nie woła — `PageHeader` czyta `useDaneRamki`). */
 export function useWRamce(): boolean {
   return useContext(KontekstRamki) !== null;
 }

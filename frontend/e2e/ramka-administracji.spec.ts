@@ -19,7 +19,8 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - jeden `main`, jeden `#tresc`, link skoku jako pierwszy cel klawiatury;
  * - brak przewijania w poziomie, treść co najmniej 16 px od krawędzi okna;
  * - axe: 0 naruszeń;
- * - bez „Wstecz”, okruszki tylko jako łącza;
+ * - bez „Wstecz”; okruszek (jeśli jest) to łącza i bieżąca pozycja na końcu,
+ *   a na szczególe zaczyna się od korzenia „Administracja” i pozycji menu;
  * - `--brand` niepusty na menu i pasku ramki (także w szufladzie 390 px),
  *   pusty na `documentElement` (tokeny tylko w poddrzewie z `data-theme`);
  * - nazwy pozycji menu w całości, bez wielokropka, najwyżej 2 wiersze;
@@ -360,7 +361,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         expect(uklad.odstepLewy, "odstęp lewy h1").toBeGreaterThanOrEqual(16);
         expect(uklad.odstepPrawy, "odstęp prawy h1").toBeGreaterThanOrEqual(16);
 
-        // Bez „Wstecz”; okruszki — jeśli są — tylko łącza i bieżąca pozycja na końcu.
+        // Bez „Wstecz”; okruszek — jeśli jest — to łącza i bieżąca pozycja (tekst) na końcu.
         await expect(page.getByRole("button", { name: "Wstecz" })).toHaveCount(0);
         const okruszki = page.getByRole("navigation", { name: "Okruszki" });
         if ((await okruszki.count()) > 0) {
