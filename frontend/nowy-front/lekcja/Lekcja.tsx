@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -11,6 +11,9 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { TrescLekcji } from "@/design-system/molekuly/TrescLekcji/TrescLekcji";
 import { LessonTemplate } from "@/design-system/szablony/LessonTemplate/LessonTemplate";
 import { LessonPlayer } from "@/design-system/organizmy/LessonPlayer/LessonPlayer";
+import { pobierzPlikiLekcji, type PlikKursu } from "@/nowy-front/pliki-kursu/dane";
+import { PlikiLekcji } from "@/nowy-front/pliki-kursu/PlikiLekcji";
+import { kursZAdresu } from "./adres";
 import {
   maTekst,
   okruszkiLekcji,
@@ -57,6 +60,14 @@ interface WlasciwosciLekcja {
  * threshold it is an outline button, disabled, with the reason next to it
  * (a primary button is never disabled in the design system).
  *
+ * Files to download: the course comes only from the `?kurs=<slug>` address
+ * parameter (the lesson resource carries none). With a valid parameter the
+ * screen reads `GET /courses/{slug}` once the lesson has loaded and shows a
+ * "Pliki do pobrania" card with this lesson's files in the supporting column;
+ * without the parameter, with a malformed one, or when the course read fails
+ * (locked, not found, network) or lacks the lesson, there is no card and no
+ * error sentence.
+ *
  * Progress heartbeat (`POST /lessons/{id}/progress`, contract "Postęp
  * lekcji"): while the recording is playing a one-second clock counts played
  * seconds (`watched_delta`) and played seconds with the tab visible
@@ -72,10 +83,14 @@ interface WlasciwosciLekcja {
  */
 export function Lekcja({ id }: WlasciwosciLekcja) {
   const router = useRouter();
+  const kurs = kursZAdresu(useSearchParams().get("kurs"));
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
   const [wysylanie, setWysylanie] = useState(false);
   const [bladUkonczenia, setBladUkonczenia] = useState<string | null>(null);
   const [bladZapisu, setBladZapisu] = useState(false);
+  // Wynik odczytu plików razem z kluczem (kurs, lekcja), dla którego powstał:
+  // wynik dla innej lekcji albo kursu nigdy nie trafia na ekran.
+  const [wynikPlikow, setWynikPlikow] = useState<{ klucz: string; pliki: PlikKursu[] | null } | null>(null);
   const odtwarzaneRef = useRef(false);
   const przyrostyRef = useRef<ZebranePrzyrosty>({ obejrzane: 0, aktywne: 0, odTyku: 0 });
   const wysylanieRef = useRef(false);
@@ -146,6 +161,28 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
       zamontowanaRef.current = false;
     };
   }, []);
+
+  // Pliki lekcji: tylko gdy lekcja jest wczytana, a adres niesie poprawny kurs
+  // (`?kurs=<slug>`). Brak kursu, kurs zablokowany albo lekcja spoza kursu =
+  // brak karty; ekran lekcji działa dalej, bez zdania o błędzie.
+  const lekcjaGotowa = stan.rodzaj === "ok";
+  const idLekcji = Number(id);
+  const kluczPlikow = `${kurs ?? ""}/${idLekcji}`;
+  const odswiezPliki = useCallback(
+    () => (kurs === null ? Promise.resolve(null) : pobierzPlikiLekcji(kurs, idLekcji)),
+    [kurs, idLekcji],
+  );
+  useEffect(() => {
+    if (!lekcjaGotowa || kurs === null) return undefined;
+    let anulowane = false;
+    void odswiezPliki().then((wynik) => {
+      if (!anulowane) setWynikPlikow({ klucz: kluczPlikow, pliki: wynik });
+    });
+    return () => {
+      anulowane = true;
+    };
+  }, [lekcjaGotowa, kurs, kluczPlikow, odswiezPliki]);
+  const pliki = lekcjaGotowa && wynikPlikow?.klucz === kluczPlikow ? wynikPlikow.pliki : null;
 
   useEffect(() => {
     if (stan.rodzaj !== "ok") return undefined;
@@ -342,9 +379,7 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
           )}
         </div>
       }
-      wspierajaca={
-        <Text wariant="pusty">Ta lekcja nie ma jeszcze materiałów do pobrania w tym widoku.</Text>
-      }
+      wspierajaca={pliki !== null && pliki.length > 0 ? <PlikiLekcji pliki={pliki} odswiez={odswiezPliki} /> : null}
     />
   );
 }

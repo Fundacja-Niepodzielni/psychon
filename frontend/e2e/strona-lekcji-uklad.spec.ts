@@ -4,15 +4,17 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
+import { MB, instalujDostawce } from "./_dostawca-nagran";
 import { GRUPY } from "../lib/przelaczenie/grupy";
 
 /**
  * Strona lekcji administracji w układzie dwóch kolumn, na zbudowanej aplikacji,
  * z atrapą API, atrapą sesji i atrapą dostawcy nagrań (żadne żądanie nie
- * wychodzi poza przeglądarkę). Cztery stany na 1280 i 390 px:
+ * wychodzi poza przeglądarkę). Pięć stanów na 1280 i 390 px:
  *  - niezapisany tekst i trwające wysyłanie nagrania;
  *  - wszystko zapisane, nagranie gotowe, plik o długiej nazwie bez spacji;
  *  - wysyłanie nagrania przerwane;
+ *  - przerwane wysyłanie i wybrany inny plik;
  *  - pusta lekcja.
  * W każdym: jeden `main`, dokładnie jeden widoczny zielony przycisk, brak
  * przewijania poziomego, cele dotyku co najmniej 44 px, kolejność fokusu
@@ -22,7 +24,6 @@ import { GRUPY } from "../lib/przelaczenie/grupy";
 
 const API = "http://localhost:8000/api/v1";
 const DOSTAWCA = "https://nagrania.atrapa.test";
-const MB = 1024 * 1024;
 const PROG_DWOCH_KOLUMN = 1100;
 
 const ATRAPA_SESJI = {
@@ -173,24 +174,8 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
     },
   );
 
-  // Dostawca nagrań: utworzenie wgrania, potem kawałki pliku; po wyczerpaniu
-  // przyjętych kawałków kolejny zostaje bez odpowiedzi (wysyłanie „trwa”).
-  const naglowkiDostawcy = {
-    "access-control-allow-origin": "*",
-    "access-control-expose-headers": "Location, Upload-Offset",
-  };
-  let przyjete = 0;
-  await page.route(`${DOSTAWCA}/**`, async (route) => {
-    const zadanie = route.request();
-    if (zadanie.method() === "POST") {
-      return route.fulfill({ status: 201, headers: { ...naglowkiDostawcy, Location: `${DOSTAWCA}/tusupload/1` } });
-    }
-    if (zadanie.method() === "PATCH" && przyjete < (opcje.przyjeteKawalki ?? 0)) {
-      przyjete += 1;
-      return route.fulfill({ status: 204, headers: { ...naglowkiDostawcy, "Upload-Offset": String(przyjete * 5 * MB) } });
-    }
-    // Bez odpowiedzi: żądanie wisi do przerwania przez osobę albo do końca próby.
-  });
+  // Dostawca nagrań: po wyczerpaniu przyjętych kawałków kolejny zostaje bez odpowiedzi (wysyłanie „trwa”).
+  await instalujDostawce(page, { przyjeteKawalki: opcje.przyjeteKawalki, potem: "wisi" });
 
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ATRAPA_SESJI) }),
@@ -345,9 +330,12 @@ async function zmierzStan(page: Page, testInfo: TestInfo, szerokosc: number, naz
   expect(fokus.length, "liczba elementów z fokusem").toBeGreaterThan(5);
   expect(fokus.filter((punkt) => !punkt.zaPoprzednim).map((punkt) => punkt.nazwa)).toEqual([]);
   const obszary = fokus.map((punkt) => punkt.obszar).filter((obszar, indeks, lista) => obszar !== lista[indeks - 1]);
-  expect(obszary).toEqual(
-    dwieKolumny ? ["naglowek", "glowna", "tylko-od-dwoch-kolumn", "boczna"] : ["naglowek", "pasek-waski", "glowna", "boczna"],
-  );
+  // Odnośnik w pasku wysyłania (gdy pasek go ma) stoi nad stroną lekcji, więc jest pierwszy.
+  const odnosnikWPasku = (await page.locator("[data-pasek-wysylania] a").count()) > 0;
+  expect(obszary).toEqual([
+    ...(odnosnikWPasku ? ["pasek-wysylania"] : []),
+    ...(dwieKolumny ? ["naglowek", "glowna", "tylko-od-dwoch-kolumn", "boczna"] : ["naglowek", "pasek-waski", "glowna", "boczna"]),
+  ]);
   const cofniecia = fokus
     .slice(1)
     .filter((punkt, indeks) => punkt.gora < fokus[indeks].gora - 8 && punkt.lewo < fokus[indeks].prawo - 8)
@@ -393,6 +381,29 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(karta.getByText("1. Wysyłanie (teraz)")).toHaveAttribute("aria-current", "step");
       await expect(karta.getByText(/Nie zamykaj karty przeglądarki do końca wysyłania/)).toBeVisible();
       await expect(page.getByText(/nagranie się wysyła \(76/)).toBeVisible();
+      await expect(karta.getByText(/Możesz przejść do kursu i innych lekcji/)).toBeVisible();
+
+      // Pasek u góry ramy: lekcja i procent; na stronie tej lekcji bez odnośnika.
+      const pasek = page.locator("[data-pasek-wysylania='wysylanie']");
+      await expect(pasek).toContainText("Pytania otwarte i zamknięte");
+      await expect(pasek).toContainText(/76.%/);
+      await expect(pasek.getByRole("link")).toHaveCount(0);
+
+      // Postęp nie jest w barwie przycisku głównego.
+      const barwy = await page.evaluate(() => {
+        const tlo = (wezel: Element | null) => (wezel ? getComputedStyle(wezel).backgroundColor : "");
+        const zielony = Array.from(document.querySelectorAll("main button")).find(
+          (przycisk) => /primary/.test(przycisk.className) && przycisk.getClientRects().length > 0,
+        );
+        return {
+          przycisk: tlo(zielony ?? null),
+          postepy: Array.from(document.querySelectorAll("[data-postep-wysylania] > span")).map(tlo),
+        };
+      });
+      expect(barwy.postepy).toHaveLength(2);
+      expect(new Set(barwy.postepy).size).toBe(1);
+      expect(barwy.postepy[0]).not.toBe(barwy.przycisk);
+      expect(barwy.postepy[0]).toBe("rgb(21, 0, 187)");
 
       await zmierzStan(page, testInfo, szerokosc, `d-lekcja-${szerokosc}`);
 
@@ -427,7 +438,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const lista = page.getByRole("list", { name: "Pliki dodane teraz" });
       await expect(lista.getByText(DLUGA_NAZWA_PLIKU, { exact: true })).toBeVisible();
       await expect(lista.getByText(/^PDF · 410.KB$/)).toBeVisible();
-      await expect(page.getByText("Ta lekcja ma 4 materiały.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja ma 4 pliki.")).toBeVisible();
 
       // Klik bez zmian nie wysyła żądania; po zmianie — jeden zapis i godzina w stanie zapisu.
       const zapisz = page.getByRole("button", { name: "Zapisz lekcję" });
@@ -442,7 +453,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await zmierzStan(page, testInfo, szerokosc, `d-lekcja-zapisane-${szerokosc}`);
     });
 
-    test("wysyłanie nagrania przerwane: zdanie, „Wyślij ponownie”, stan lekcji wymaga uwagi", async ({ page }, testInfo) => {
+    test("wysyłanie nagrania przerwane: gdzie stanęło, wybór tego samego pliku, pasek u góry, stan lekcji wymaga uwagi", async ({ page }, testInfo) => {
       await instalujAtrapy(page, { przyjeteKawalki: 1 });
       await otworzLekcje(page, 22, "Pytania otwarte i zamknięte");
 
@@ -451,12 +462,40 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(karta.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "45");
       await karta.getByRole("button", { name: "Przerwij wysyłanie" }).click();
 
-      await expect(karta.getByText("Wysyłanie zostało przerwane. Wyślij plik ponownie.")).toBeVisible();
-      await expect(karta.getByText("Wyślij ponownie", { exact: true })).toBeVisible();
-      await expect(karta.getByRole("progressbar")).toHaveCount(0);
-      await expect(page.getByText(/Wymaga uwagi:.*nagranie trzeba wysłać ponownie/)).toBeVisible();
+      await expect(karta.getByText(/Wysyłanie stanęło przy 45.%/)).toBeVisible();
+      await expect(karta.getByText("Wybierz plik, żeby dokończyć")).toBeVisible();
+      await expect(karta.getByRole("button", { name: "Wyślij inny plik od nowa" })).toBeVisible();
+      await expect(karta.getByRole("progressbar")).toHaveAttribute("data-postep-wysylania", "zatrzymany");
+      await expect(page.getByText(/Wymaga uwagi:.*wysyłanie nagrania przerwane/)).toBeVisible();
+
+      const pasek = page.locator("[data-pasek-wysylania='przerwane']");
+      await expect(pasek).toContainText("Wysyłanie przerwane: Pytania otwarte i zamknięte");
+      await expect(pasek.getByRole("link", { name: "Dokończ wysyłanie nagrania lekcji Pytania otwarte i zamknięte" })).toHaveAttribute(
+        "href",
+        "#nagranie",
+      );
+      await expect(pasek.getByRole("progressbar")).toHaveCount(0);
 
       await zmierzStan(page, testInfo, szerokosc, `d-lekcja-przerwane-${szerokosc}`);
+    });
+
+    test("przerwane wysyłanie i inny plik: „To nie jest ten sam plik”, bez nowego pozwolenia", async ({ page }, testInfo) => {
+      const { zapisy } = await instalujAtrapy(page, { przyjeteKawalki: 1 });
+      await otworzLekcje(page, 22, "Pytania otwarte i zamknięte");
+
+      await poleNagrania(page).setInputFiles({ name: "wywiad-nagranie.mp4", mimeType: "video/mp4", buffer: Buffer.alloc(11 * MB) });
+      const karta = kartaNagrania(page);
+      await expect(karta.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "45");
+      await karta.getByRole("button", { name: "Przerwij wysyłanie" }).click();
+      await expect(karta.getByText(/Wysyłanie stanęło przy 45.%/)).toBeVisible();
+
+      await poleNagrania(page).setInputFiles({ name: "inne-nagranie.mp4", mimeType: "video/mp4", buffer: Buffer.alloc(2 * MB) });
+      await expect(karta.getByText("To nie jest ten sam plik")).toBeVisible();
+      await expect(karta.getByRole("button", { name: "Wyślij inny plik od nowa" })).toBeVisible();
+      await expect(karta.getByText(/Wysyłanie stanęło przy 45.%/)).toBeVisible();
+      expect(zapisy.filter((zapis) => zapis.endsWith("/video-uploads"))).toHaveLength(1);
+
+      await zmierzStan(page, testInfo, szerokosc, `d-lekcja-inny-plik-${szerokosc}`);
     });
 
     test("pusta lekcja: pierwsza w kursie, bez treści, nagrania i plików", async ({ page }, testInfo) => {
@@ -471,7 +510,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
         "/admin/kursy/4/lekcje/22",
       );
       await expect(page.getByText("Ta lekcja nie ma jeszcze nagrania.")).toBeVisible();
-      await expect(page.getByText("Ta lekcja nie ma jeszcze materiałów.")).toBeVisible();
+      await expect(page.getByText("Ta lekcja nie ma jeszcze plików.")).toBeVisible();
       await expect(page.getByText(/Wymaga uwagi:.*lekcja nie ma treści ani nagrania/)).toBeVisible();
       await expect(page.getByRole("button", { name: "Usunięcie lekcji" })).toHaveAttribute("aria-expanded", "false");
       await expect(page.getByRole("button", { name: "Usuń lekcję" })).toHaveCount(0);

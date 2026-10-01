@@ -24,6 +24,7 @@ vi.mock("@/lib/api/klient", async (importOriginal) => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ back: vi.fn(), push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");

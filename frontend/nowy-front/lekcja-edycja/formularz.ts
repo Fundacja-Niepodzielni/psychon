@@ -139,32 +139,32 @@ export function zdanieBleduUsuniecia(blad: unknown): string {
 
 /** Forma rzeczownika przy liczbie: 1 materiał, 2–4 materiały (poza 12–14), w pozostałych przypadkach materiałów. */
 function formaMaterialow(liczba: number): string {
-  if (liczba === 1) return "materiał";
+  if (liczba === 1) return "plik";
   const jednosci = liczba % 10;
   const dziesiatki = liczba % 100;
-  if (jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14)) return "materiały";
-  return "materiałów";
+  if (jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14)) return "pliki";
+  return "plików";
 }
 
 /** Zdanie o liczbie materiałów lekcji; zero to stan pusty. */
 export function zdanieLiczbyMaterialow(liczba: number): string {
-  if (liczba <= 0) return "Ta lekcja nie ma jeszcze materiałów.";
+  if (liczba <= 0) return "Ta lekcja nie ma jeszcze plików.";
   return `Ta lekcja ma ${liczba} ${formaMaterialow(liczba)}.`;
 }
 
 /** Zdanie pokazywane, gdy lekcja ma materiały wgrane wcześniej — ekran nie ma jeszcze ich listy. */
 export const ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH =
-  "Lista wcześniej wgranych materiałów pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
+  "Lista wcześniej wgranych plików pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
 
 /** Odmowa usunięcia materiału lekcji — zdanie dla osoby, bez kodu i bez nazwy trasy. */
 export function zdanieBleduUsunieciaMaterialu(blad: unknown): string {
   if (blad instanceof ApiError) {
     if (blad.status === 401) return "Sesja wygasła. Zaloguj się ponownie.";
-    if (blad.status === 403) return "Usunięcie materiału nie jest dostępne dla Twojej roli.";
-    if (blad.status === 404) return "Tego materiału już nie ma. Odśwież stronę, żeby zobaczyć aktualną lekcję.";
+    if (blad.status === 403) return "Usunięcie pliku nie jest dostępne dla Twojej roli.";
+    if (blad.status === 404) return "Tego pliku już nie ma. Odśwież stronę, żeby zobaczyć aktualną lekcję.";
     if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
   }
-  return "Nie udało się usunąć materiału. Sprawdź połączenie i spróbuj ponownie.";
+  return "Nie udało się usunąć pliku. Sprawdź połączenie i spróbuj ponownie.";
 }
 
 export function zdanieBleduPliku(blad: unknown): string {

@@ -85,11 +85,11 @@ async function maNagranie(id: string): Promise<boolean> {
 }
 
 /**
- * Combines the lesson resource with recording presence. Materials
- * (`backend/routes/api/h05.php:28-30`) are not included here: the material
- * list is only exposed through `GET /courses/{slug}`, keyed by course, and
- * this route only carries a lesson id — there is no field connecting the
- * two without guessing a slug. Left out rather than faked.
+ * Combines the lesson resource with recording presence. Files to download
+ * are not included here: the file list is only exposed through
+ * `GET /courses/{slug}`, keyed by course, and the lesson resource carries no
+ * course. The screen takes the course from the `?kurs=<slug>` address
+ * parameter instead (`./adres.ts`, `../pliki-kursu/dane.ts`).
  */
 export async function pobierzDaneLekcji(id: string): Promise<WynikLekcji> {
   let dane: DaneLekcji;

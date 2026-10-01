@@ -11,6 +11,7 @@ import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKr
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
 import { rodzajBledu } from "./rodzaj-bledu";
+import { adresLekcji } from "../lekcja/adres";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzGodzinyStazu,
@@ -280,7 +281,7 @@ function przyciskNastepnegoKroku(
   }
   switch (krok.rodzaj) {
     case "lekcja":
-      return { etykieta: "Wróć do lekcji", onKliknij: () => naPrzejdz(`/panel/lekcje/${krok.lekcja.id}`) };
+      return { etykieta: "Wróć do lekcji", onKliknij: () => naPrzejdz(adresLekcji(krok.lekcja.id, krok.kurs.slug)) };
     case "test":
       return { etykieta: "Przejdź do testu", onKliknij: () => naPrzejdz(`/panel/kursy/${krok.kurs.slug}/test`) };
     case "certyfikat":

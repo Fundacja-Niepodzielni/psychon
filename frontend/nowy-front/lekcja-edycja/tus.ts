@@ -39,27 +39,23 @@ function naglowkiPozwolenia(zlecenie: ZlecenieWgrania): Record<string, string> {
 }
 
 /**
- * Wgrywa `plik` i rzuca `Error` z polskim zdaniem, gdy dostawca odmówi.
- * `sygnal` pozwala osobie przerwać wysyłanie: trwające żądanie zostaje
- * porzucone, a funkcja rzuca błąd przerwania z `fetch`.
+ * Zakłada wgranie u dostawcy i zwraca jego adres. Rzuca `Error` z polskim
+ * zdaniem, gdy plik jest pusty albo dostawca odmówi.
  */
-export async function wgrajNagranie(
+export async function utworzWgranie(
   plik: File,
   zlecenie: ZlecenieWgrania,
   tytul: string,
-  naPostep?: (postep: PostepWgrania) => void,
   sygnal?: AbortSignal,
-): Promise<void> {
+): Promise<string> {
   if (plik.size === 0) {
     throw new Error("Plik nagrania jest pusty.");
   }
-  const podstawa = naglowkiPozwolenia(zlecenie);
-
   const utworzenie = await fetch(zlecenie.upload_url, {
     method: "POST",
     signal: sygnal,
     headers: {
-      ...podstawa,
+      ...naglowkiPozwolenia(zlecenie),
       "Upload-Length": String(plik.size),
       "Upload-Metadata": `filetype ${naBase64(plik.type)},title ${naBase64(tytul)}`,
     },
@@ -68,10 +64,48 @@ export async function wgrajNagranie(
   if (utworzenie.status !== 201 || !adres) {
     throw new Error("Nie udało się rozpocząć wgrywania nagrania.");
   }
-  const adresWgrania = new URL(adres, zlecenie.upload_url).toString();
+  return new URL(adres, zlecenie.upload_url).toString();
+}
 
-  let przesuniecie = 0;
-  naPostep?.({ wyslano: 0, razem: plik.size });
+/**
+ * Pyta dostawcę, ile bajtów wgrania już ma (`HEAD` pod adres wgrania).
+ * `null`, gdy dostawca nie zna tego wgrania albo odpowiada liczbą spoza
+ * pliku — wtedy wysyłanie zaczyna się od zera. Błąd sieci jest rzucany.
+ */
+export async function odczytajPrzesuniecie(
+  adresWgrania: string,
+  zlecenie: ZlecenieWgrania,
+  rozmiarPliku: number,
+  sygnal?: AbortSignal,
+): Promise<number | null> {
+  const odpowiedz = await fetch(adresWgrania, {
+    method: "HEAD",
+    signal: sygnal,
+    headers: naglowkiPozwolenia(zlecenie),
+  });
+  if (odpowiedz.status !== 200 && odpowiedz.status !== 204) return null;
+  const zapis = odpowiedz.headers.get("Upload-Offset");
+  if (zapis === null || !/^\d+$/.test(zapis)) return null;
+  const przesuniecie = Number(zapis);
+  return przesuniecie <= rozmiarPliku ? przesuniecie : null;
+}
+
+/**
+ * Wysyła kawałki pliku od podanego przesunięcia do końca. Rzuca `Error` z
+ * polskim zdaniem, gdy dostawca odmówi; `sygnal` pozwala przerwać wysyłanie
+ * (trwające żądanie zostaje porzucone, funkcja rzuca błąd przerwania z `fetch`).
+ */
+export async function wyslijKawalki(
+  plik: File,
+  adresWgrania: string,
+  zlecenie: ZlecenieWgrania,
+  odPrzesuniecia: number,
+  naPostep?: (postep: PostepWgrania) => void,
+  sygnal?: AbortSignal,
+): Promise<void> {
+  const podstawa = naglowkiPozwolenia(zlecenie);
+  let przesuniecie = odPrzesuniecia;
+  naPostep?.({ wyslano: przesuniecie, razem: plik.size });
   while (przesuniecie < plik.size) {
     const kawalek = plik.slice(przesuniecie, przesuniecie + ROZMIAR_KAWALKA);
     const odpowiedz = await fetch(adresWgrania, {
@@ -91,4 +125,18 @@ export async function wgrajNagranie(
     przesuniecie = Number.isFinite(potwierdzone) && potwierdzone > przesuniecie ? potwierdzone : przesuniecie + kawalek.size;
     naPostep?.({ wyslano: Math.min(przesuniecie, plik.size), razem: plik.size });
   }
+}
+
+/**
+ * Wgrywa `plik` od zera: zakłada wgranie i wysyła wszystkie kawałki.
+ */
+export async function wgrajNagranie(
+  plik: File,
+  zlecenie: ZlecenieWgrania,
+  tytul: string,
+  naPostep?: (postep: PostepWgrania) => void,
+  sygnal?: AbortSignal,
+): Promise<void> {
+  const adresWgrania = await utworzWgranie(plik, zlecenie, tytul, sygnal);
+  await wyslijKawalki(plik, adresWgrania, zlecenie, 0, naPostep, sygnal);
 }

@@ -79,7 +79,7 @@ describe("PulpitStudenta — stany z danymi", () => {
     expect(screen.getByText(/Struktura wywiadu/)).toBeInTheDocument();
     expect(pobierzSzczegolKursu).toHaveBeenCalledWith("webinar-superwizja");
     fireEvent.click(screen.getByRole("button", { name: "Wznów lekcję" }));
-    expect(push).toHaveBeenCalledWith("/panel/lekcje/22");
+    expect(push).toHaveBeenCalledWith("/panel/lekcje/22?kurs=webinar-superwizja");
     expect(screen.getAllByText("z 2 kursów").length).toBeGreaterThan(0);
     cleanup();
 

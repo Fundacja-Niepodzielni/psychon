@@ -57,8 +57,31 @@
   font-weight: var(--fw-medium);
 }
 
+/* Przycisk zapisu na całą szerokość karty. */
 .przyciskKarty {
+  display: grid;
+}
+
+/* „Zapisuje się samo” stoi po prawej stronie nagłówka karty, w jednym wierszu z tytułem. */
+.kolumna > section > div:first-child:has(> h2 + p) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-12);
+}
+
+/* Postęp wysyłania nagrania: pasek i pod nim procent słowami. */
+.postep {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.procent {
+  margin: 0;
+  color: var(--ink);
+  font-weight: var(--fw-medium);
 }
 
 .stanLekcji {

@@ -185,7 +185,7 @@ describe("usunięcie pliku lekcji wgranego na ekranie", () => {
     const wejscie = container.querySelector<HTMLInputElement>('input[type="file"]')!;
     await uzytkownik.upload(wejscie, new File(["%PDF"], "karta.pdf", { type: "application/pdf" }));
     await screen.findByText("Wgrano plik „karta.pdf”.");
-    expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
     return { uzytkownik, container };
   }
 
@@ -200,7 +200,7 @@ describe("usunięcie pliku lekcji wgranego na ekranie", () => {
       within(screen.getByRole("dialog", { name: "Usunąć plik „karta.pdf”?" })).getByRole("button", { name: "Usuń plik" }),
     );
 
-    await waitFor(() => expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Ta lekcja ma 2 pliki.")).toBeInTheDocument());
     expect(sciezki().filter((wpis) => wpis === "DELETE /admin/materials/9")).toHaveLength(1);
     expect(screen.queryByRole("list", { name: "Pliki dodane teraz" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Usuń plik karta.pdf" })).toBeNull();
@@ -217,7 +217,7 @@ describe("usunięcie pliku lekcji wgranego na ekranie", () => {
 
     expect(sciezki()).not.toContain("DELETE /admin/materials/9");
     expect(screen.getByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
-    expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
   });
 
   it("odmowa serwera 403: komunikat po polsku, plik i licznik zostają", async () => {
@@ -230,9 +230,9 @@ describe("usunięcie pliku lekcji wgranego na ekranie", () => {
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
     await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń plik" }));
 
-    expect(await screen.findByText("Usunięcie materiału nie jest dostępne dla Twojej roli.")).toBeInTheDocument();
+    expect(await screen.findByText("Usunięcie pliku nie jest dostępne dla Twojej roli.")).toBeInTheDocument();
     expect(screen.queryByText(/unauthorized/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
-    expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
   });
 });
