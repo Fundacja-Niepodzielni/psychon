@@ -65,6 +65,17 @@ final class PdfLongWordWrapTest extends TestCase
         ];
     }
 
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function templateTypes(): array
+    {
+        return [
+            'porozumienie' => ['agreement'],
+            'zaświadczenie' => ['attendance_certificate'],
+        ];
+    }
+
     #[DataProvider('templatesFromFiles')]
     public function test_field_value_longer_than_a_line_is_broken_into_lines_in_the_template_from_the_file(string $type, int $lineWidth): void
     {
@@ -83,7 +94,7 @@ final class PdfLongWordWrapTest extends TestCase
      * Zwykłe dane: arkusz bazowy niczego nie zmienia — ta sama liczba stron i ten sam
      * tekst co w dokumencie wygenerowanym bez arkusza.
      */
-    #[DataProvider('templatesFromFiles')]
+    #[DataProvider('templateTypes')]
     public function test_ordinary_data_give_the_same_text_and_page_count_as_without_the_base_stylesheet(string $type): void
     {
         $case = (require base_path('tests/Fixtures/DocumentTemplates/golden-data.php'))[$type];
