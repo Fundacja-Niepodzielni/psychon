@@ -4,6 +4,7 @@ namespace App\Http\Requests\DocumentTemplates;
 
 use App\Models\DocumentTemplate;
 use App\Services\DocumentTemplates\DocumentTemplateFields;
+use App\Services\DocumentTemplates\DocumentTemplateTrial;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -43,6 +44,14 @@ class UpdateDocumentTemplateRequest extends FormRequest
 
                     if ($violation !== null) {
                         $fail($violation);
+
+                        return;
+                    }
+
+                    // Reguła pól przeszła - ostatnie słowo ma silnik: próbne
+                    // generowanie z danymi przykładowymi, zanim cokolwiek zostanie zapisane.
+                    if (! DocumentTemplateTrial::generates($type, (string) $value)) {
+                        $fail(DocumentTemplateTrial::FAILURE_MESSAGE);
                     }
                 },
             ],
