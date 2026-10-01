@@ -134,6 +134,9 @@ test.describe("jedno GET /me na pełne załadowanie strony", () => {
       await instalujAtrapy(page, trasa.rola, zadaniaMe);
 
       await page.goto(trasa.adres, { waitUntil: "networkidle" });
+      // Strażnik roli pokazuje „Wczytywanie…” bez `main`, dopóki `/me` nie odpowie —
+      // czekamy na `main`, żeby nie liczyć żądań przed hydracją strony.
+      await expect(page.locator("main").first()).toBeVisible();
 
       expect(zadaniaMe, `żądania GET /me: ${zadaniaMe.length}`).toHaveLength(1);
     });
@@ -146,6 +149,7 @@ test.describe("jedno GET /me na pełne załadowanie strony", () => {
     await instalujAtrapy(page, "project_manager", zadaniaMe);
 
     await page.goto("/admin", { waitUntil: "networkidle" });
+    await expect(page.locator("main").first()).toBeVisible();
     expect(zadaniaMe).toHaveLength(1);
 
     const pelneZaladowanie = await przejdzPrzezMenu(page, "/admin/formy-stazu");
@@ -164,6 +168,7 @@ test.describe("jedno GET /me na pełne załadowanie strony", () => {
     await instalujAtrapy(page, "volunteer", zadaniaMe);
 
     await page.goto("/panel/pulpit", { waitUntil: "networkidle" });
+    await expect(page.locator("main").first()).toBeVisible();
     expect(zadaniaMe).toHaveLength(1);
 
     const pelneZaladowanie = await przejdzPrzezMenu(page, "/panel/dalsza-wspolpraca");
