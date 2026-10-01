@@ -47,7 +47,7 @@ wynik jest dopisywany tutaj i ogłaszany.
 |---|---|---|
 | brak/nieważny token | **401** | `unauthenticated` |
 | rola nie ma dostępu do sekcji/akcji (matryca ról) | **403** | `forbidden` |
-| reguła domenowa blokuje dostęp/akcję (stan, nie własność) | **403** | `course_locked`, `attempts_exhausted`, `access_expired`, `not_your_supervisor`, `entry_locked`, `profile_not_eligible`, `program_not_completed`, `cooperation_request_closed` |
+| reguła domenowa blokuje dostęp/akcję (stan, nie własność) | **403** | `course_locked`, `attempts_exhausted`, `access_expired`, `not_your_supervisor`, `entry_locked`, `profile_not_eligible`, `program_not_completed`, `cooperation_request_closed`, `video_not_ready` |
 | zasób nie istnieje **lub należy do innego użytkownika** (pojedynczy rekord wskazywany identyfikatorem — nie ujawniamy istnienia) | **404** | `not_found` |
 | wyścig o ograniczony zasób (limit miejsc, duplikat unikalny) | **409** | `slot_full`, `email_already_registered`, `cooperation_request_open` |
 | błędne dane wejściowe / niespełnione warunki operacji | **422** | `validation_failed`, `not_enough_active_time`, `conditions_not_met`, `profile_incomplete` |
@@ -618,6 +618,9 @@ Po hackathonie: `access.expiring_30d/7d`, `supervision.reminder`.
 - `certificate.status`: `valid · revoked` · klucze warunków certyfikatu:
   `courses · internship · supervision · workshop`
 - `emails.status`: `queued · sent · failed · simulated`
+- `lesson.video_status` (H08): `none · uploading · processing · ready · error` ·
+  `publication_gap.code` (H08): `course_without_lessons · lesson_empty · recording_error ·
+  recording_in_progress`
 - `legal_document.type` (H22): `regulamin · polityka` · `legal_document_version.status`:
   `draft · published`
 
@@ -1340,3 +1343,161 @@ Kod: `Rules/RecordingAssignedByAdministration.php`, `Rules/RecordingIdNotTaken.p
 `Http/Requests/H08/StoreInstructorLessonRequest.php`,
 `Http/Requests/H08/UpdateInstructorLessonRequest.php`,
 `Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLessonRequest.php`.
+
+---
+
+## Aneks — stan nagrania lekcji (H08)
+
+Lekcja pamięta stan swojego nagrania w bazie, nowe nagranie zastępuje dotychczasowe dopiero
+po gotowości, a publikacja kursu i lista braków liczą się jedną regułą po stronie serwera.
+Bez nowych tras, slugów audytu i typów powiadomień. Wcześniejsze aneksy o nagraniu obowiązują;
+ten zmienia je tylko tam, gdzie mówi to wprost.
+
+### 1. Stan nagrania — pola
+
+Słownik zamknięty `lesson.video_status`: `none · uploading · processing · ready · error`
+(brak nagrania · plik w drodze do dostawcy · dostawca przetwarza · gotowe · błąd). Wartość
+`null` znaczy „stan jeszcze nieustalony”: lekcja ma nagranie sprzed tej zmiany, o którego
+stan nikt jeszcze nie zapytał. Takie nagranie jest traktowane jak grające.
+
+Lekcja ma nagranie **odtwarzane** (`video_provider_id`) i co najwyżej jedno nagranie
+**w drodze** — wysyłane albo przetwarzane obok odtwarzanego. Identyfikator nagrania w drodze
+nie jest polem żadnego zasobu.
+
+Zasób lekcji administracji i prowadzącego (te same trasy co w aneksie o treści lekcji)
+niesie dodatkowo, po `updated_at`:
+
+- `video_status` — stan **najnowszego** nagrania lekcji (nagrania w drodze, jeśli jest; w
+  przeciwnym razie odtwarzanego): wartość ze słownika albo `null`;
+- `video_status_at` — chwila ostatniej zmiany stanu, ISO 8601 UTC, albo `null`;
+- `video_ready` — wartość logiczna: lekcja ma nagranie, do którego uczestnik dostaje link;
+- `video_pending` — wartość logiczna: lekcja ma nagranie w drodze.
+
+`GET /lessons/{id}` (uczestnik) niesie dodatkowo `video_status` — zawsze wartość ze
+słownika, nigdy `null`: `ready` **dokładnie wtedy**, gdy `GET /lessons/{id}/video-link` wyda
+link (także w czasie wymiany nagrania i dla nagrania o stanie nieustalonym); `none`, gdy
+lekcja nie ma nagrania; w pozostałych przypadkach stan nagrania, na które lekcja czeka.
+Uczestnik nie dostaje `video_status_at` ani identyfikatorów.
+
+Ręczna zmiana `video_provider_id` przez administrację (`PATCH /admin/lessons/{lesson}`)
+ustawia stan z powrotem na nieustalony (`null`). Identyfikator, który inna żywa lekcja ma
+jako nagranie w drodze, jest odrzucany tym samym `422 validation_failed` i tym samym zdaniem
+co identyfikator zajęty jako odtwarzany.
+
+### 2. `GET /admin/lessons/{lesson}/video-status`
+
+Prawdą jest stan w bazie. Odpowiedź `200`:
+
+```json
+{ "data": { "status": "processing", "duration_seconds": 1800,
+  "preview_embed_url": "<podpisany, wygasa>",
+  "video_status": "processing", "video_status_at": "2026-10-01T12:00:00Z",
+  "video_ready": true, "video_pending": true } }
+```
+
+Lekcja bez nagrania: `{ "data": { "status": "no_video", "video_status": "none",
+"video_status_at": null, "video_ready": false, "video_pending": false } }`.
+
+- `status` zostaje dla dotychczasowych klientów: `no_video · processing · finished · error`,
+  wyliczane z `video_status` (`ready` → `finished`, `error` → `error`, reszta →
+  `processing`).
+- `preview_embed_url` dotyczy nagrania odtwarzanego; `null`, gdy lekcja go nie ma.
+- Serwer pyta dostawcę wyłącznie dla stanów `uploading`, `processing` i nieustalonego, i nie
+  częściej niż **raz na 30 sekund na lekcję** (`services.bunny.status_refresh_seconds`).
+  Stany `ready`, `error` i `none` nie pytają dostawcy nigdy — także na żądanie. Z dwóch
+  równoczesnych odczytów tej samej lekcji dostawcę pyta jeden.
+- Dostawca nie odpowiada albo odpowiada błędem → `200` ze stanem z bazy; stan i
+  `video_status_at` zostają bez zmian. (Dotąd: `502 bunny_error`.)
+- Stan dostawcy spoza znanej listy jest zapisywany jako `processing`, nigdy `ready`.
+- **Podmiana:** odczyt, który pierwszy zobaczy nagranie w drodze jako gotowe, w tej samej
+  transakcji robi z niego nagranie odtwarzane i zapisuje jego czas trwania w
+  `duration_seconds`. Nigdy wcześniej. Błąd nagrania w drodze nie rusza odtwarzanego.
+
+### 3. Link uczestnika — `GET /lessons/{id}/video-link`
+
+Link dotyczy wyłącznie nagrania odtwarzanego i jest wydawany, gdy jest ono gotowe albo ma
+stan nieustalony. W czasie wymiany uczestnik dostaje link do **dotychczasowego** nagrania.
+
+- Lekcja ma nagranie, ale żadnego gotowego (wysyłane, przetwarzane, z błędem) →
+  **403** `video_not_ready`, komunikat „Nagranie w przygotowaniu.”. Kod dochodzi do tabeli
+  §1.1 w wierszu „reguła domenowa blokuje dostęp/akcję”.
+- Lekcja bez nagrania → jak dotąd `404 video_missing`.
+
+Trasa nie pyta dostawcy.
+
+### 4. Wysyłka i jej wznowienie — `POST /admin/lessons/{lesson}/video-uploads`
+
+Ciało bez zmian (`{ "title" }`). Odpowiedź `201` niesie dodatkowo `resumed` (wartość
+logiczna):
+
+```json
+{ "data": { "video_id": "…", "upload_url": "https://video.bunnycdn.com/tusupload",
+  "library_id": "…", "expiration_time": 1790000000, "signature": "…", "resumed": false } }
+```
+
+- Rozpoczęcie wysyłki **nie zmienia** `video_provider_id`: nowe nagranie staje się
+  nagraniem w drodze w stanie `uploading`. Wyjątek: dotychczasowe nagranie, o którym
+  wiadomo, że nie gra (stan `error`, `processing` albo `uploading`), jest przy tym
+  odpinane.
+- **Wznowienie:** gdy lekcja ma nagranie w drodze w stanie `uploading`, założone mniej niż
+  **6 godzin** temu, odpowiedź niesie uprawnienie dla **tego samego** `video_id`
+  (`resumed: true`) i u dostawcy nie powstaje nowe nagranie. Nagranie starsze, w stanie
+  `error` albo już przetwarzane → nowe nagranie (`resumed: false`), które zastępuje
+  poprzednie nagranie w drodze.
+- Podpis jest liczony przy każdym wydaniu od nowa. Serwer nie zapisuje i nie zwraca niczego,
+  co pozwalałoby wysyłać bez ponownego uprawnienia.
+- Identyfikator od dostawcy, który inna żywa lekcja ma już jako odtwarzany albo w drodze →
+  `502 bunny_error`, lekcja bez zmian.
+
+### 5. Braki kursu i reguła publikacji
+
+Zasób kursu administracji i prowadzącego (`GET`/`POST`/`PATCH /admin/courses…`,
+`/instructor/courses…`, lista `GET /admin/courses`) niesie dodatkowo `publication_gaps`:
+
+```json
+"publication_gaps": {
+  "blocking": [ { "code": "lesson_empty", "lesson_id": 21 } ],
+  "waiting":  [ { "code": "recording_in_progress", "lesson_id": 22 } ] }
+```
+
+Słownik zamknięty `publication_gap.code`; `lesson_id` to liczba albo `null` (brak dotyczy
+całego kursu). Wpisy stoją w kolejności lekcji.
+
+| grupa | kod | kiedy |
+|---|---|---|
+| `blocking` | `course_without_lessons` | kurs nie ma żadnej lekcji (`lesson_id: null`) |
+| `blocking` | `lesson_empty` | lekcja bez nagrania i bez treści (`content` puste albo same białe znaki) |
+| `blocking` | `recording_error` | nagranie w stanie `error`, lekcja nie ma gotowego |
+| `waiting` | `recording_in_progress` | nagranie `uploading` albo `processing`, lekcja nie ma gotowego |
+
+Lekcja z samą treścią, bez nagrania, nie jest brakiem. Lekcja z gotowym nagraniem nie jest
+brakiem także wtedy, gdy jej nowe nagranie jest w drodze albo skończyło się błędem.
+
+**Publikacja** (`PATCH /admin/courses/{course}` z `is_published: true` dla kursu
+nieopublikowanego, `POST /admin/courses` z `is_published: true`) odmawia tą samą regułą:
+niepusta grupa `blocking` → `422 conditions_not_met`, a `reason.missing` jest **dokładnie**
+listą `blocking` z zasobu kursu:
+
+```json
+{ "error": { "status": 422, "code": "conditions_not_met",
+    "message": "Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.",
+    "reason": { "missing": [ { "code": "lesson_empty", "lesson_id": 21 } ] } } }
+```
+
+(Dotąd: `reason.missing: ["lessons"]` wyłącznie dla kursu bez lekcji.) Grupa `waiting` nie
+blokuje. Kurs już opublikowany nie jest cofany ani blokowany w edycji, gdy brak pojawi się
+później — pokazuje go `publication_gaps`. Wyliczenie braków czyta wyłącznie bazę.
+
+### 6. Dane
+
+Migracja addytywna `2026_10_01_213000_add_recording_state_to_lessons_table.php`: kolumny
+`lessons.video_status` (słownik pilnowany ograniczeniem tabeli), `lessons.video_status_at`,
+`lessons.video_pending_id` — wszystkie nullable, bez przepisywania istniejących wierszy —
+oraz indeks niepowtarzalności identyfikatora nagrania w drodze wśród żywych lekcji, bez
+rozróżniania wielkości liter. `down()` usuwa wyłącznie te obiekty.
+
+Kod: `Services/Video/RecordingStatus.php`, `Services/Video/LessonRecording.php`,
+`Services/Video/RecordingStateRefresher.php`, `Services/H08/CoursePublicationGaps.php`,
+`Services/H08/CourseWriter.php`, `Rules/RecordingIdNotOnItsWay.php`,
+`Http/Controllers/Api/V1/Admin/BunnyVideoAdminController.php`,
+`Http/Controllers/Api/V1/VideoTokenController.php`.

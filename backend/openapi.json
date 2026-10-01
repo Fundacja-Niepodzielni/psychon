@@ -97,6 +97,17 @@
                                                 },
                                                 "completable_at_percent": {
                                                     "type": "string"
+                                                },
+                                                "video_status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "none",
+                                                        "uploading",
+                                                        "processing",
+                                                        "ready",
+                                                        "error"
+                                                    ],
+                                                    "description": "Stan nagrania z punktu widzenia uczestnika: `ready` dok\u0142adnie wtedy, gdy link do nagrania zostanie wydany."
                                                 }
                                             },
                                             "required": [
@@ -111,7 +122,8 @@
                                                 "active_seconds",
                                                 "is_completed",
                                                 "completable",
-                                                "completable_at_percent"
+                                                "completable_at_percent",
+                                                "video_status"
                                             ]
                                         }
                                     },
@@ -4110,6 +4122,10 @@
                                                 },
                                                 "signature": {
                                                     "type": "string"
+                                                },
+                                                "resumed": {
+                                                    "type": "boolean",
+                                                    "description": "`true`, gdy uprawnienie dotyczy nagrania za\u0142o\u017conego wcze\u015bniej (wznowienie tej samej wysy\u0142ki); `false`, gdy za\u0142o\u017cono nowe nagranie."
                                                 }
                                             },
                                             "required": [
@@ -4117,7 +4133,8 @@
                                                 "upload_url",
                                                 "library_id",
                                                 "expiration_time",
-                                                "signature"
+                                                "signature",
+                                                "resumed"
                                             ]
                                         }
                                     },
@@ -4182,13 +4199,49 @@
                                                             "type": "integer"
                                                         },
                                                         "preview_embed_url": {
-                                                            "type": "string"
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "video_status": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "enum": [
+                                                                "uploading",
+                                                                "processing",
+                                                                "ready",
+                                                                "error",
+                                                                null
+                                                            ],
+                                                            "description": "Stan najnowszego nagrania lekcji; `null` = stan jeszcze nieustalony."
+                                                        },
+                                                        "video_status_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "video_ready": {
+                                                            "type": "boolean",
+                                                            "description": "Czy lekcja ma nagranie, do kt\u00f3rego uczestnik dostaje link."
+                                                        },
+                                                        "video_pending": {
+                                                            "type": "boolean",
+                                                            "description": "Czy lekcja ma nagranie wysy\u0142ane albo przetwarzane obok odtwarzanego."
                                                         }
                                                     },
                                                     "required": [
                                                         "status",
                                                         "duration_seconds",
-                                                        "preview_embed_url"
+                                                        "preview_embed_url",
+                                                        "video_status",
+                                                        "video_status_at",
+                                                        "video_ready",
+                                                        "video_pending"
                                                     ]
                                                 }
                                             },
@@ -4205,10 +4258,29 @@
                                                         "status": {
                                                             "type": "string",
                                                             "const": "no_video"
+                                                        },
+                                                        "video_status": {
+                                                            "type": "string",
+                                                            "const": "none"
+                                                        },
+                                                        "video_status_at": {
+                                                            "type": "null"
+                                                        },
+                                                        "video_ready": {
+                                                            "type": "boolean",
+                                                            "const": false
+                                                        },
+                                                        "video_pending": {
+                                                            "type": "boolean",
+                                                            "const": false
                                                         }
                                                     },
                                                     "required": [
-                                                        "status"
+                                                        "status",
+                                                        "video_status",
+                                                        "video_status_at",
+                                                        "video_ready",
+                                                        "video_pending"
                                                     ]
                                                 }
                                             },
@@ -11848,6 +11920,42 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Lekcja ma nagranie, ale \u017cadne nie jest gotowe (`video_not_ready`).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {
+                                                    "type": "integer",
+                                                    "const": 403
+                                                },
+                                                "code": {
+                                                    "type": "string",
+                                                    "const": "video_not_ready"
+                                                },
+                                                "message": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "status",
+                                                "code",
+                                                "message"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "error"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
