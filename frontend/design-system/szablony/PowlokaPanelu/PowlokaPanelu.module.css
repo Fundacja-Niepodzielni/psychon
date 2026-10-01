@@ -70,7 +70,8 @@
 
 /* Grupa „Konto” przyklejona do dołu menu: „Wyloguj” widoczne bez przewijania.
    Ujemne `bottom` i dolne wypełnienie o dolne wypełnienie menu: tło grupy
-   zakrywa pas pod nią, więc przewinięte pozycje nie prześwitują pod „Wyloguj”. */
+   zakrywa pas pod nią, więc przewinięte pozycje nie prześwitują pod „Wyloguj”.
+   Blok jest zwykłym wierszem menu: bez ramki i bez cienia, na tle menu. */
 .konto {
   position: sticky;
   bottom: calc(-1 * var(--space-20));
@@ -80,17 +81,17 @@
   flex-direction: column;
   gap: var(--space-4);
   background: var(--card);
-  /* Linia stale zajmuje 1 px (przezroczysta), więc jej pojawienie się nie przesuwa menu. */
-  border-top: 1px solid transparent;
+  /* Miejsce na linię (1 px) jest zajęte stale, więc jej pojawienie się nie przesuwa menu. */
+  padding-top: 1px;
 }
 
 /* Pod „Konto” jest treść menu (menu przewijane, nieprzewinięte do końca):
-   linia `--border` i miękki cień `--shadow`. Makieta nie przykleja „Konto”
-   (zwykły nagłówek grupy `.nav .grp`, bez linii), więc bez treści pod spodem
-   blok wygląda jak w makiecie — linia jest warunkowa, tak jak cień. */
+   jedna cienka linia `--border` oddziela blok od pozycji przewijanych pod nim.
+   Makieta nie przykleja „Konto” (zwykły nagłówek grupy `.nav .grp`, bez linii),
+   więc bez treści pod spodem blok nie ma żadnej krawędzi — jak w makiecie. */
 .kontoNadTrescia {
-  border-top-color: var(--border);
-  box-shadow: var(--shadow);
+  padding-top: 0;
+  border-top: 1px solid var(--border);
 }
 
 .kontoNaglowek {
@@ -103,6 +104,9 @@
   color: var(--subtle);
 }
 
+/* „Wyloguj” wygląda jak pozycja menu (to samo tło najechania, ten sam pierścień
+   fokusu z tokenów), bez obrysu i bez tła w spoczynku; ikona i napis w barwie
+   działań niebezpiecznych — ikona bierze barwę napisu. */
 .wyloguj {
   display: flex;
   align-items: center;
@@ -113,7 +117,7 @@
   border: 0;
   border-radius: var(--r-xs);
   background: transparent;
-  color: var(--text);
+  color: var(--error);
   font: inherit;
   font-size: var(--fs-9);
   text-align: left;
@@ -124,6 +128,7 @@
   background: var(--brand-tint);
 }
 
+/* W trakcie wylogowywania przycisk jest nieczynny: napis i ikona przygaszone. */
 .wyloguj:disabled {
   cursor: progress;
   color: var(--muted);
