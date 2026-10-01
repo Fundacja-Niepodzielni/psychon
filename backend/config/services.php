@@ -44,6 +44,9 @@ return [
         'library_id' => env('BUNNY_LIBRARY_ID'),
         'cdn_hostname' => env('BUNNY_CDN_HOSTNAME'),
         'token_security_key' => env('BUNNY_TOKEN_SECURITY_KEY'),
+        // Najmniejszy odstęp (sekundy) między dwoma pytaniami dostawcy o stan
+        // nagrania TEJ SAMEJ lekcji. Stała, nie zmienna środowiska.
+        'status_refresh_seconds' => 30,
     ],
 
 ];

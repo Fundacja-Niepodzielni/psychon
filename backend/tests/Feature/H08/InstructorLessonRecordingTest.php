@@ -366,14 +366,16 @@ class InstructorLessonRecordingTest extends TestCase
         $this->assertStringNotContainsString(self::STORED_ID, (string) $rows[0]->details);
     }
 
-    public function test_an_upload_still_sets_the_recording_and_the_instructor_can_keep_saving_other_fields(): void
+    public function test_an_uploaded_recording_becomes_played_once_ready_and_the_instructor_can_keep_saving_other_fields(): void
     {
         Config::set('services.bunny.api_key', 'test-api-key');
         Config::set('services.bunny.library_id', 'test-library');
         Config::set('services.bunny.cdn_hostname', 'cdn.example.test');
         Config::set('services.bunny.token_security_key', 'test-security-key');
         $guid = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
-        Http::fake(['*' => Http::response(['guid' => $guid])]);
+        // Jedna odpowiedź atrapy obsługuje oba żądania: założenie nagrania
+        // czyta `guid`, odczyt stanu czyta `status` (4 = gotowe).
+        Http::fake(['*' => Http::response(['guid' => $guid, 'status' => 4, 'length' => 90])]);
         $course = $this->course('etap-1');
         $lesson = $this->lesson($course, 1, null);
 
@@ -381,6 +383,11 @@ class InstructorLessonRecordingTest extends TestCase
         $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])
             ->assertCreated()
             ->assertJsonPath('data.video_id', $guid);
+        $this->assertNull($lesson->fresh()->video_provider_id, 'Do gotowości nagranie czeka jako „w drodze”.');
+
+        $this->getJson("/api/v1/admin/lessons/{$lesson->id}/video-status")
+            ->assertOk()
+            ->assertJsonPath('data.video_status', 'ready');
         $this->assertSame($guid, $lesson->fresh()->video_provider_id);
 
         $this->actingAs($this->assignedInstructor($course), 'keycloak');

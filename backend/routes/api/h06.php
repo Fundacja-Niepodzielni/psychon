@@ -4,6 +4,7 @@ use App\Exceptions\ApiException;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Services\Lessons\LessonAccess;
+use App\Services\Video\LessonRecording;
 use App\Support\Settings;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
@@ -153,6 +154,10 @@ if (config('features.h06')) {
                         'position' => $lesson->topic->position,
                     ],
                     'duration_seconds' => (int) $lesson->duration_seconds,
+                    // Stan nagrania z bazy: `ready` wtedy i tylko wtedy, gdy
+                    // link do nagrania zostanie wydany; inaczej klient pokazuje
+                    // zdanie zamiast odtwarzacza.
+                    'video_status' => LessonRecording::of($lesson)->participantStatus(),
                     // Pozycja wznowienia (★ H06.1): bez niej odtwarzacz nie ma
                     // skąd wiedzieć, gdzie uczestnik skończył oglądać.
                     'position_seconds' => (int) $progress->position_seconds,

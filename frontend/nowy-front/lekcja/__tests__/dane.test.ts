@@ -26,6 +26,7 @@ const LEKCJA_SUROWA = {
   is_completed: false,
   completable: false,
   completable_at_percent: 60,
+  video_status: "ready" as const,
 };
 
 beforeEach(() => {

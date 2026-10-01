@@ -169,9 +169,10 @@ describe("zgodność z zapleczem", () => {
     const polaZaplecza = [...zasob.matchAll(/^\s+'([a-z_]+)' =>/gm)].map((m) => m[1]).sort();
     const dane = tresc(join(KORZEN, "nowy-front/lekcja-edycja/dane.ts"));
     const typ = dane.slice(dane.indexOf("export interface LekcjaAdmin"), dane.indexOf("/** `AdminMaterialResource`"));
-    const polaTypu = [...typ.matchAll(/^\s+([a-z_]+):/gm)].map((m) => m[1]).sort();
+    const polaTypu = [...typ.matchAll(/^\s+([a-z_]+)\??:/gm)].map((m) => m[1]).sort();
     expect(polaTypu).toEqual(polaZaplecza);
     expect(polaZaplecza).toContain("content");
+    expect(polaZaplecza).toEqual(expect.arrayContaining(["video_pending", "video_ready", "video_status", "video_status_at"]));
   });
 
   it("pola zasobu materiału w zapleczu są polami typu MaterialAdmin", () => {
@@ -213,26 +214,48 @@ describe("zgodność z zapleczem", () => {
     it("klucze zlecenia wgrania z createUpload są kluczami typu ZlecenieWgrania", () => {
       const metoda = fragment("public function createUpload(", "public function status(");
       const polaZaplecza = kluczeDanych(metoda);
-      expect(polaZaplecza).toEqual(["expiration_time", "library_id", "signature", "upload_url", "video_id"]);
-      const typ = fragmentTypu("export interface ZlecenieWgrania", "/** Rola z");
-      const polaTypu = [...typ.matchAll(/^\s+([a-z_]+):/gm)].map((m) => m[1]).sort();
+      expect(polaZaplecza).toEqual(["expiration_time", "library_id", "resumed", "signature", "upload_url", "video_id"]);
+      const typ = fragmentTypu("export interface ZlecenieWgrania", "/** Słownik stanów nagrania lekcji");
+      const polaTypu = [...typ.matchAll(/^\s+([a-z_]+)\??:/gm)].map((m) => m[1]).sort();
       expect(polaTypu).toEqual(polaZaplecza);
     });
 
     it("klucze i stany odpowiedzi status są kluczami i stanami typu StanNagrania", () => {
       const metoda = fragment("public function status(", "private function assertNotMultipartUpload(");
-      const mapowanie = fragment("private function mapStatus(", "\n}");
+      const mapowanie = fragment("private function legacyStatus(", "\n}");
       const typ = fragmentTypu("export type StanNagrania", "/** `BunnyVideoAdminController::createUpload`");
 
-      expect(metoda).toMatch(/\['data' => \['status' => 'no_video'\]\]/);
-      const polaZaplecza = [...new Set(["status", ...kluczeDanych(metoda)])].sort();
-      expect(polaZaplecza).toEqual(["duration_seconds", "preview_embed_url", "status"]);
-      const polaTypu = [...new Set([...typ.matchAll(/\b([a-z_]+):/g)].map((m) => m[1]))].sort();
+      // Dwie odpowiedzi z danymi: lekcja bez nagrania (pierwszy blok) i lekcja z nagraniem (ostatni).
+      const bezNagrania = metoda.slice(metoda.indexOf("'data' => ["), metoda.lastIndexOf("'data' => ["));
+      expect(bezNagrania).toMatch(/'status' => 'no_video',/);
+      const polaBezNagrania = [...bezNagrania.matchAll(/^\s+'([a-z_]+)' =>/gm)].map((m) => m[1]).sort();
+      expect(polaBezNagrania).toEqual(["status", "video_pending", "video_ready", "video_status", "video_status_at"]);
+
+      const polaZaplecza = kluczeDanych(metoda);
+      expect(polaZaplecza).toEqual([
+        "duration_seconds",
+        "preview_embed_url",
+        "status",
+        "video_pending",
+        "video_ready",
+        "video_status",
+        "video_status_at",
+      ]);
+      const polaTypu = [...new Set([...typ.matchAll(/\b([a-z_]+)\??:/g)].map((m) => m[1]))].sort();
       expect(polaTypu).toEqual(polaZaplecza);
 
       const stanyZaplecza = [...new Set(["no_video", ...[...mapowanie.matchAll(/=> '([a-z_]+)'/g)].map((m) => m[1])])].sort();
       expect(stanyZaplecza).toEqual(["error", "finished", "no_video", "processing"]);
       const stanyTypu = [...new Set([...typ.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]))].sort();
+      expect(stanyTypu).toEqual(stanyZaplecza);
+    });
+
+    it("słownik stanów nagrania w zapleczu jest słownikiem typu KodStanuNagrania", () => {
+      const slownik = tresc(join(ZAPLECZE, "app/Services/Video/RecordingStatus.php"));
+      const stanyZaplecza = [...slownik.matchAll(/^\s+public const string [A-Z_]+ = '([a-z_]+)';/gm)].map((m) => m[1]).sort();
+      expect(stanyZaplecza).toEqual(["error", "none", "processing", "ready", "uploading"]);
+      const typ = fragmentTypu("export type KodStanuNagrania", "/** Rola z");
+      const stanyTypu = [...typ.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]).sort();
       expect(stanyTypu).toEqual(stanyZaplecza);
     });
   });
@@ -244,18 +267,29 @@ describe("zgodność z zapleczem", () => {
     const uploads = schemat.paths["/v1/admin/lessons/{lesson}/video-uploads"].post.responses["201"].content!["application/json"]
       .schema as { properties: { data: { properties: Record<string, unknown> } } };
     expect(Object.keys(uploads.properties.data.properties).sort()).toEqual(
-      ["expiration_time", "library_id", "signature", "upload_url", "video_id"],
+      ["expiration_time", "library_id", "resumed", "signature", "upload_url", "video_id"],
     );
     const dane = tresc(join(KORZEN, "nowy-front/lekcja-edycja/dane.ts"));
-    const zlecenie = dane.slice(dane.indexOf("export interface ZlecenieWgrania"), dane.indexOf("/** Rola z"));
-    expect([...zlecenie.matchAll(/^\s+([a-z_]+):/gm)].map((m) => m[1]).sort()).toEqual(
-      ["expiration_time", "library_id", "signature", "upload_url", "video_id"],
+    const zlecenie = dane.slice(
+      dane.indexOf("export interface ZlecenieWgrania"),
+      dane.indexOf("/** Słownik stanów nagrania lekcji"),
+    );
+    expect([...zlecenie.matchAll(/^\s+([a-z_]+)\??:/gm)].map((m) => m[1]).sort()).toEqual(
+      ["expiration_time", "library_id", "resumed", "signature", "upload_url", "video_id"],
     );
 
     const status = schemat.paths["/v1/admin/lessons/{lesson}/video-status"].get.responses["200"].content!["application/json"]
       .schema as { anyOf: { properties: { data: { properties: Record<string, unknown> } } }[] };
     const gotowy = status.anyOf.find((wariant) => "duration_seconds" in wariant.properties.data.properties)!;
-    expect(Object.keys(gotowy.properties.data.properties).sort()).toEqual(["duration_seconds", "preview_embed_url", "status"]);
+    expect(Object.keys(gotowy.properties.data.properties).sort()).toEqual([
+      "duration_seconds",
+      "preview_embed_url",
+      "status",
+      "video_pending",
+      "video_ready",
+      "video_status",
+      "video_status_at",
+    ]);
   });
 
   it("reguły zapisu lekcji w zapleczu: limit treści 20 000 i pola zakazane", () => {

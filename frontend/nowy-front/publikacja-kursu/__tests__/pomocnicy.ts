@@ -29,6 +29,7 @@ export function kursZeSchematu(nadpisania: Record<string, unknown> = {}) {
     materials_count: 1,
     created_at: "2026-09-01T10:00:00Z",
     updated_at: "2026-09-02T10:00:00Z",
+    publication_gaps: { blocking: [], waiting: [] },
   };
   return Object.fromEntries(
     kluczeZasobuKursu().map((klucz) => [klucz, klucz in nadpisania ? nadpisania[klucz] : wartosci[klucz]]),

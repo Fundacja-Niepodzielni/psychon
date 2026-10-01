@@ -34,6 +34,13 @@ export interface LekcjaAdmin {
   materials_count: number;
   created_at: string | null;
   updated_at: string | null;
+  /** Stan najnowszego nagrania lekcji; `null` — stan jeszcze nieustalony. */
+  video_status?: KodStanuNagrania | null;
+  video_status_at?: string | null;
+  /** Czy uczestnik dostanie link do nagrania. */
+  video_ready?: boolean;
+  /** Czy nowe nagranie jest wysyłane albo przetwarzane obok odtwarzanego. */
+  video_pending?: boolean;
 }
 
 /** `AdminMaterialResource` (w. 22-28). */
@@ -62,11 +69,21 @@ export interface CialoLekcji {
 
 /** `BunnyVideoAdminController::status` (w. 116-146). */
 export type StanNagrania =
-  | { status: "no_video" }
+  | {
+      status: "no_video";
+      video_status?: KodStanuNagrania;
+      video_status_at?: string | null;
+      video_ready?: boolean;
+      video_pending?: boolean;
+    }
   | {
       status: "processing" | "finished" | "error";
       duration_seconds: number;
       preview_embed_url: string | null;
+      video_status?: KodStanuNagrania | null;
+      video_status_at?: string | null;
+      video_ready?: boolean;
+      video_pending?: boolean;
     };
 
 /** `BunnyVideoAdminController::createUpload` (w. 47-112, dane w. 106-112): pozwolenie TUS. */
@@ -76,7 +93,12 @@ export interface ZlecenieWgrania {
   library_id: string;
   expiration_time: number;
   signature: string;
+  /** `true`, gdy pozwolenie dotyczy nagrania założonego wcześniej (wznowienie tej samej wysyłki). */
+  resumed?: boolean;
 }
+
+/** Słownik stanów nagrania lekcji (`RecordingStatus` w zapleczu). */
+export type KodStanuNagrania = "none" | "uploading" | "processing" | "ready" | "error";
 
 /** Rola z `GET /me` (`DaneJa.role`) — wyłącznie do decyzji o sekcji nagrania. */
 export async function pobierzRole(): Promise<string> {

@@ -11,16 +11,47 @@ import ErrorState from "@/components/molecules/ErrorState";
 import LoadingState from "@/components/molecules/LoadingState";
 import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 import { api, ApiError } from "@/lib/api";
+import {
+  czyNumerCertyfikatu,
+  czyTokenCertyfikatu,
+  sciezkaWeryfikacjiNumeru,
+  sciezkaWeryfikacjiTokenu,
+} from "@/lib/certyfikat/ksztalt";
+
+const KOMUNIKAT_NIE_ZNALEZIONO = "Nie znaleziono certyfikatu o podanym numerze.";
+
+type CelZAdresu =
+  | { rodzaj: "brak" }
+  | { rodzaj: "bledny" }
+  | { rodzaj: "sciezka"; sciezka: string };
+
+/**
+ * Wartość z adresu strony wchodzi do ścieżki żądania wyłącznie po sprawdzeniu
+ * kształtu (białe znaki z brzegów obcięte przed sprawdzeniem). Wartość spoza
+ * kształtu nie jest numerem ani tokenem żadnego certyfikatu — ekran nie pyta o
+ * nią serwera i pokazuje to samo co dla numeru nieznanego. Pierwszeństwo
+ * `token` przed `number` bez zmian.
+ */
+function celZAdresu(token: string | null, number: string | null): CelZAdresu {
+  if (token) {
+    const wartosc = token.trim();
+    return czyTokenCertyfikatu(wartosc)
+      ? { rodzaj: "sciezka", sciezka: sciezkaWeryfikacjiTokenu(wartosc) }
+      : { rodzaj: "bledny" };
+  }
+  if (number) {
+    const wartosc = number.trim();
+    return czyNumerCertyfikatu(wartosc)
+      ? { rodzaj: "sciezka", sciezka: sciezkaWeryfikacjiNumeru(wartosc) }
+      : { rodzaj: "bledny" };
+  }
+  return { rodzaj: "brak" };
+}
 
 function CertificateLanding() {
   const params = useSearchParams();
-  const token = params.get("token");
-  const number = params.get("number");
-  const path = token
-    ? `/verify/qr/${token}`
-    : number
-      ? `/verify/${number}`
-      : null;
+  const cel = celZAdresu(params.get("token"), params.get("number"));
+  const path = cel.rodzaj === "sciezka" ? cel.sciezka : null;
 
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -70,7 +101,7 @@ function CertificateLanding() {
         description: "Fundacja Niepodzielni — program PsychON",
       }}
     >
-      {path === null ? (
+      {cel.rodzaj === "brak" ? (
         <Alert variant="info">
           Brak numeru certyfikatu w adresie. Przejdź do{" "}
           <Link
@@ -81,15 +112,13 @@ function CertificateLanding() {
           </Link>
           .
         </Alert>
+      ) : cel.rodzaj === "bledny" ? (
+        <Alert variant="error">{KOMUNIKAT_NIE_ZNALEZIONO}</Alert>
       ) : (
         <>
           {loading && result === null && <LoadingState label="Sprawdzanie…" />}
           {result && <VerificationCard result={result} />}
-          {notFound && (
-            <Alert variant="error">
-              Nie znaleziono certyfikatu o podanym numerze.
-            </Alert>
-          )}
+          {notFound && <Alert variant="error">{KOMUNIKAT_NIE_ZNALEZIONO}</Alert>}
           {awaria && (
             <ErrorState
               message="Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę."

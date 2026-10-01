@@ -11,6 +11,7 @@ import ErrorState from "@/components/molecules/ErrorState";
 import Input from "@/components/ui/Input";
 import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
 import { api, ApiError } from "@/lib/api";
+import { czyNumerCertyfikatu, sciezkaWeryfikacjiNumeru } from "@/lib/certyfikat/ksztalt";
 
 export default function VerificationSearchPage() {
   const [number, setNumber] = useState("");
@@ -21,13 +22,23 @@ export default function VerificationSearchPage() {
   const [ostatnieZapytanie, setOstatnieZapytanie] = useState("");
 
   async function wyszukaj(query: string) {
+    // Tekst spoza kształtu numeru nie jest numerem żadnego certyfikatu: nie
+    // wchodzi do ścieżki żądania, a wynik jest ten sam co dla numeru nieznanego.
+    if (!czyNumerCertyfikatu(query)) {
+      setOstatnieZapytanie(query);
+      setAwaria(false);
+      setNotFound(true);
+      setResult(null);
+      return;
+    }
+
     setLoading(true);
     setNotFound(false);
     setAwaria(false);
     setOstatnieZapytanie(query);
 
     try {
-      const wynik = await api<VerifyResult>(`/verify/${query}`);
+      const wynik = await api<VerifyResult>(sciezkaWeryfikacjiNumeru(query));
       setResult(wynik);
     } catch (err) {
       // 404 (numer nieznany/w złym formacie) — to rozstrzygnięcie samo w
