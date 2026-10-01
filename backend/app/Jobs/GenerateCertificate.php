@@ -136,8 +136,9 @@ class GenerateCertificate implements ShouldQueue
                 'user' => $user,
                 'edition' => $edition,
                 'verify_url' => $verifyUrl = self::verifyUrl($certificate),
-                'qr_svg' => self::qrSvg($verifyUrl),
-            ]),
+                'qr_svg' => $qrSvg = self::qrSvg($verifyUrl),
+                // Jedyny adres `data:`, który silnik wczyta w tym dokumencie: kod QR zbudowany tutaj.
+            ], [$qrSvg]),
         ]);
 
         Notify::send(

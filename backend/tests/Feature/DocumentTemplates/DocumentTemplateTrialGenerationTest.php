@@ -6,6 +6,8 @@ use App\Models\Document;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use App\Models\User;
+use App\Services\DocumentTemplates\DocumentTemplateTrial;
+use App\Services\DocumentTemplates\DocumentTooCostly;
 use App\Services\H14\DocumentIssuer;
 use App\Support\PdfService;
 use Database\Seeders\DocumentTemplateSeeder;
@@ -25,21 +27,25 @@ use Tests\TestCase;
 use Throwable;
 
 /**
- * Wzór, na którym silnik PDF się wywraca, nie może ani zostać zapisany, ani
- * zatrzymać wydawania dokumentów.
+ * Wzór, na którym silnik PDF się wywraca albo który przekracza limit wejścia,
+ * nie może ani zostać zapisany, ani zatrzymać wydawania dokumentów.
  *
  * Dwie zapory, każda z własnymi próbami:
  *  - ZAPIS: po regule pól dokument jest próbnie generowany z danymi
- *    przykładowymi; błąd silnika to odmowa 422 z jednym zdaniem przy polu treści
- *    i nic nie jest zapisane;
+ *    przykładowymi; błąd silnika albo przekroczony limit to odmowa 422 z jednym
+ *    zdaniem przy polu treści i nic nie jest zapisane;
  *  - GENEROWANIE: treść, która mimo to leży w bazie (wstawiona z pominięciem
  *    edytora albo zapisana w innym środowisku), nie kończy się błędem serwera —
  *    dokument powstaje z pliku w repozytorium, a w dzienniku zostaje jeden wpis
  *    bez treści wzoru i bez danych osoby. Błąd w samym pliku repozytorium nie
  *    jest łapany.
  *
- * Przypadkiem wzorcowym jest tło wskazujące plik albo adres: silnik zamknięty w
- * ramie odnotowuje dla niego odmowę, po czym kończy błędem zamiast pominąć zasób.
+ * Przypadkiem wzorcowym błędu silnika jest tło wskazujące adres sieciowy: silnik
+ * odnotowuje dla niego odmowę, po czym kończy błędem zamiast pominąć zasób.
+ * Adres PLIKU dostaje zawsze czystą odmowę — odpowiedź zapisu nie może zależeć
+ * od tego, czy plik istnieje na serwerze. Adres `data:` z treści wzoru nie jest
+ * wczytywany (nie ma go na liście adresów generowania), więc zapis przechodzi,
+ * a zasobu w dokumencie nie ma.
  *
  * Pliki prób leżą we własnym katalogu tymczasowym testu, zakładanym i usuwanym tutaj.
  *
@@ -50,9 +56,16 @@ class DocumentTemplateTrialGenerationTest extends TestCase
     use ActsAsRole;
     use RefreshDatabase;
 
-    private const string REFUSAL = 'Z tego wzoru nie da się wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.';
+    private const string REFUSAL = 'Z tego wzoru nie da się wygenerować dokumentu. Wzór nie wczytuje obrazów ani plików — usuń odwołania do adresów. Jedyny obraz w dokumencie to kod QR, który wstawia system.';
+
+    private const string TOO_COSTLY = 'Wzór jest zbyt złożony, żeby wygenerować z niego dokument: ma za dużo elementów, zbyt głębokie zagnieżdżenie, zbyt duże scalenie komórek tabeli albo za dużo stron.';
+
+    /** Treść, na której silnik kończy błędem — niezależnie od tego, co leży na dysku serwera. */
+    private const string ENGINE_ERROR = '<div style="background:url(http://example.test/tlo.svg)">x</div>';
 
     private const string PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+    private const string JPEG = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
 
     private string $temporaryDirectory;
 
@@ -88,10 +101,9 @@ class DocumentTemplateTrialGenerationTest extends TestCase
     public static function backgroundContents(): array
     {
         return [
-            'tło w atrybucie style, ścieżka bezwzględna' => ['<p>Numer {{ $number }}</p><div style="background:url(__PLIK__)">x</div>'],
-            'tło w atrybucie style, ścieżka względna' => ['<p>Numer {{ $number }}</p><div style="background:url(__WZGLEDNA__)">x</div>'],
             'tło w atrybucie style, adres http' => ['<p>Numer {{ $number }}</p><div style="background:url(http://example.test/tlo.svg)">x</div>'],
-            'tło w bloku style' => ['<style>div { background:url("__PLIK__") }</style><p>Numer {{ $number }}</p><div>x</div>'],
+            'tło w bloku style, adres https' => ['<style>div { background:url("https://example.test/tlo.svg") }</style><p>Numer {{ $number }}</p><div>x</div>'],
+            'tło w atrybucie style, adres ftp' => ['<p>Numer {{ $number }}</p><div style="background:url(ftp://example.test/tlo.svg)">x</div>'],
         ];
     }
 
@@ -101,7 +113,6 @@ class DocumentTemplateTrialGenerationTest extends TestCase
         $this->seed(DocumentTemplateSeeder::class);
         $this->actingAsRole('super_admin');
 
-        $content = $this->withPaths($content);
         $seeded = DocumentTemplate::query()->where('type', 'agreement')->firstOrFail()->content;
         $auditBefore = DB::table('audit_log')->count();
         $logged = $this->captureLog();
@@ -116,47 +127,46 @@ class DocumentTemplateTrialGenerationTest extends TestCase
         $this->assertSame($seeded, DocumentTemplate::query()->where('type', 'agreement')->firstOrFail()->content);
         $this->assertSame(3, DocumentTemplateVersion::query()->count());
         $this->assertSame($auditBefore, DB::table('audit_log')->count());
-        $this->assertSame([], $this->linesWith($logged(), ['tlo-probne', 'background', 'example.test']));
+        $this->assertSame([], $this->linesWith($logged(), ['background', 'example.test']));
     }
 
     /**
-     * Schemat spoza listy protokołów: albo odmowa zapisu (tło — silnik kończy
-     * błędem), albo czysta odmowa silnika (obraz i arkusz — zasób pominięty,
-     * zapis przechodzi, dokument powstaje). Nigdy błąd serwera.
+     * Zasób, któremu silnik odmawia bez błędu: zapis przechodzi, dokument powstaje,
+     * zasobu w nim nie ma. Nigdy błąd serwera.
      *
-     * @return array<string, array{0: string, 1: int}>
+     * @return array<string, array{0: string}>
      */
-    public static function otherSchemes(): array
+    public static function cleanlyRefusedResources(): array
     {
         return [
-            'tło ftp' => ['<div style="background:url(ftp://example.test/tlo.svg)">x</div>', 422],
-            'tło phar' => ['<div style="background:url(phar://__ARCHIWUM__/tlo.svg)">x</div>', 422],
-            'obraz ftp' => ['<img src="ftp://example.test/obraz.svg" alt="">', 200],
-            'obraz phar' => ['<img src="phar://__ARCHIWUM__/obraz.svg" alt="">', 200],
-            'arkusz phar' => ['<link rel="stylesheet" href="phar://__ARCHIWUM__/arkusz.css"><p>x</p>', 200],
-            'obraz ze ścieżki pliku' => ['<img src="__PLIK__" alt="">', 200],
+            'tło z pliku' => ['<div style="background:url(__PLIK__)">x</div>'],
+            'tło z pliku, ścieżka względna' => ['<div style="background:url(__WZGLEDNA__)">x</div>'],
+            'tło z pliku w bloku style' => ['<style>div { background:url("__PLIK__") }</style><div>x</div>'],
+            'tło z archiwum' => ['<div style="background:url(phar://__ARCHIWUM__/tlo.svg)">x</div>'],
+            'obraz ftp' => ['<img src="ftp://example.test/obraz.svg" alt="">'],
+            'obraz z archiwum' => ['<img src="phar://__ARCHIWUM__/obraz.svg" alt="">'],
+            'arkusz z archiwum' => ['<link rel="stylesheet" href="phar://__ARCHIWUM__/arkusz.css"><p>x</p>'],
+            'obraz ze ścieżki pliku' => ['<img src="__PLIK__" alt="">'],
+            'obraz PNG osadzony w treści' => ['<img src="'.self::PNG.'" alt="">'],
+            'obraz JPEG osadzony w treści' => ['<img src="'.self::JPEG.'" alt="">'],
+            'obraz SVG osadzony w treści' => ['<img src="__SVG__" alt="">'],
+            'tło PNG osadzone w treści' => ['<div style="width:10px;height:10px;background:url('.self::PNG.')">x</div>'],
+            'tło SVG osadzone w treści' => ['<div style="width:10px;height:10px;background:url(__SVG__)">x</div>'],
         ];
     }
 
-    #[DataProvider('otherSchemes')]
-    public function test_address_outside_the_protocol_list_is_refused_at_save_or_skipped_by_the_engine_never_a_server_error(string $content, int $expected): void
+    #[DataProvider('cleanlyRefusedResources')]
+    public function test_resource_the_engine_refuses_cleanly_is_saved_and_left_out_of_the_document(string $content): void
     {
         $this->seed(DocumentTemplateSeeder::class);
         $this->actingAsRole('project_manager');
 
-        $response = $this->putJson('/api/v1/document-templates/agreement', ['content' => $this->withPaths($content)]);
+        $response = $this->putJson('/api/v1/document-templates/agreement', ['content' => '<p>Numer {{ $number }}</p>'.$this->withPaths($content)]);
 
         $this->assertNotSame(500, $response->status());
-        $response->assertStatus($expected);
+        $response->assertOk()->assertJsonPath('data.version', 2)->assertJsonPath('data.current_version_unused', false);
 
-        if ($expected === 422) {
-            $this->assertSame(self::REFUSAL, $response->json('error.errors.content.0'));
-            $this->assertSame(3, DocumentTemplateVersion::query()->count());
-
-            return;
-        }
-
-        // Zapis przeszedł: dokument z tego wzoru powstaje, a zasób jest pominięty z odmową silnika.
+        // Dokument z tego wzoru powstaje z TREŚCI Z BAZY, a zasób jest pominięty z odmową silnika.
         $logged = $this->captureLog();
         $GLOBALS['_dompdf_warnings'] = [];
 
@@ -164,15 +174,110 @@ class DocumentTemplateTrialGenerationTest extends TestCase
 
         $this->assertStringStartsWith('%PDF', $bytes);
         $this->assertCount(1, (array) $GLOBALS['_dompdf_warnings']);
-        $this->assertStringContainsString('Permission denied', (string) $GLOBALS['_dompdf_warnings'][0]);
+        $this->assertStringContainsString(PdfService::REFUSAL, (string) $GLOBALS['_dompdf_warnings'][0]);
         $this->assertSame([], $this->errors($logged()));
+    }
+
+    /**
+     * Odpowiedź zapisu (kod i treść) nie zależy od tego, czy plik wskazany we wzorze
+     * istnieje na serwerze — inaczej zapisem dałoby się sprawdzać, co leży na dysku.
+     *
+     * Ta sama treść jest zapisywana dwa razy: raz, gdy pliku nie ma, i raz, gdy jest.
+     * Między zapisami próba cofa wzór do stanu wyjściowego (w transakcji testu) i
+     * trzyma zegar w miejscu, żeby oba zapisy były tym samym zapisem.
+     *
+     * @return array<string, array{0: string}>
+     */
+    public static function fileReferences(): array
+    {
+        return [
+            'tło w atrybucie style' => ['<p>Numer {{ $number }}</p><div style="background:url(__MOZE__)">x</div>'],
+            'tło w bloku style' => ['<style>div { background:url("__MOZE__") }</style><p>Numer {{ $number }}</p><div>x</div>'],
+            'tło z adresu file://' => ['<p>Numer {{ $number }}</p><div style="background:url(file://__MOZE__)">x</div>'],
+            'tło z archiwum' => ['<p>Numer {{ $number }}</p><div style="background:url(phar://__MOZE__/tlo.svg)">x</div>'],
+            'obraz' => ['<p>Numer {{ $number }}</p><img src="__MOZE__" alt="">'],
+        ];
+    }
+
+    #[DataProvider('fileReferences')]
+    public function test_save_response_does_not_depend_on_the_file_existing_on_the_server(string $content): void
+    {
+        $this->seed(DocumentTemplateSeeder::class);
+        $this->actingAsRole('super_admin');
+        $this->freezeTime();
+
+        $maybe = $this->temporaryDirectory.'/moze-istniec.phar';
+        $content = str_replace('__MOZE__', $maybe, $content);
+        $seeded = DocumentTemplate::query()->where('type', 'agreement')->firstOrFail()->content;
+
+        $this->assertFileDoesNotExist($maybe);
+        $absent = $this->putJson('/api/v1/document-templates/agreement', ['content' => $content]);
+
+        // Stan wyjściowy: wersja 1 z zasilenia, bez wiersza historii z pierwszego zapisu.
+        DocumentTemplateVersion::query()->where('type', 'agreement')->where('version', '>', 1)->delete();
+        DocumentTemplate::query()->where('type', 'agreement')->update(['content' => $seeded, 'version' => 1]);
+
+        File::put($maybe, '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="#000"/></svg>');
+        $this->assertFileExists($maybe);
+        $present = $this->putJson('/api/v1/document-templates/agreement', ['content' => $content]);
+
+        $this->assertSame($absent->status(), $present->status());
+        $this->assertSame($absent->json(), $present->json());
+        $this->assertSame(200, $present->status());
+        $this->assertSame(2, $present->json('data.version'));
+    }
+
+    /**
+     * Wejście tanie w zapisie i drogie w generowaniu: odmowa z własnym zdaniem, nic nie zapisane.
+     *
+     * @return array<string, array{0: string}>
+     */
+    public static function costlyContents(): array
+    {
+        return [
+            'tysiąc zagnieżdżonych tabel' => [str_repeat('<table><tr><td>', 1000)],
+            'scalenie komórek ponad limit' => ['<table><tr><td colspan="51" rowspan="2">x</td></tr></table>'],
+            '450 wymuszonych stron' => [str_repeat('<div style="page-break-after:always"></div>', 450).'<div style="height:100000cm">x</div>'],
+        ];
+    }
+
+    #[DataProvider('costlyContents')]
+    public function test_saving_a_template_over_the_generation_limit_is_refused_within_two_seconds(string $content): void
+    {
+        $this->seed(DocumentTemplateSeeder::class);
+        $this->actingAsRole('super_admin');
+
+        $started = hrtime(true);
+        $response = $this->putJson('/api/v1/document-templates/agreement', ['content' => $content]);
+        $seconds = (hrtime(true) - $started) / 1e9;
+
+        $response->assertStatus(422)->assertJsonPath('error.code', 'validation_failed');
+        $this->assertSame(self::TOO_COSTLY, $response->json('error.errors.content.0'));
+        $this->assertSame(self::TOO_COSTLY, DocumentTemplateTrial::TOO_COSTLY_MESSAGE);
+        $this->assertLessThan(2.0, $seconds);
+        $this->assertDatabaseHas('document_templates', ['type' => 'agreement', 'version' => 1]);
+        $this->assertSame(3, DocumentTemplateVersion::query()->count());
     }
 
     /**
      * Treść wstawiona wprost do bazy, z pominięciem trasy zapisu: pobranie
      * dokumentu osoby dalej działa, dokument powstaje z pliku w repozytorium.
+     *
+     * @return array<string, array{0: string, 1: class-string<Throwable>}>
      */
-    public function test_template_in_the_database_the_engine_cannot_generate_gives_the_document_from_the_file_and_one_log_entry(): void
+    public static function storedContentsTheGeneratorGivesUpOn(): array
+    {
+        return [
+            'błąd silnika' => [self::ENGINE_ERROR, ErrorException::class],
+            'przekroczony limit wejścia' => [str_repeat('<table><tr><td>', 1000), DocumentTooCostly::class],
+        ];
+    }
+
+    /**
+     * @param  class-string<Throwable>  $exception
+     */
+    #[DataProvider('storedContentsTheGeneratorGivesUpOn')]
+    public function test_template_in_the_database_that_cannot_be_generated_gives_the_document_from_the_file_and_one_log_entry(string $content, string $exception): void
     {
         $this->seed();
 
@@ -185,8 +290,7 @@ class DocumentTemplateTrialGenerationTest extends TestCase
         $document->update(['data_snapshot' => $snapshot]);
 
         DocumentTemplate::query()->updateOrCreate(['type' => 'agreement'], [
-            'content' => '<style>p { font-family: "DejaVu Serif"; }</style><p>tajny-tekst-wzoru {{ $first_name }} {{ $pesel }}</p>'
-                .'<div style="background:url('.$this->file.')">x</div>',
+            'content' => '<style>p { font-family: "DejaVu Serif"; }</style><p>tajny-tekst-wzoru {{ $first_name }} {{ $pesel }}</p>'.$content,
             'version' => 7,
             'updated_by' => null,
         ]);
@@ -207,12 +311,12 @@ class DocumentTemplateTrialGenerationTest extends TestCase
         $errors = $this->errors($logged());
         $this->assertCount(1, $errors);
         $this->assertSame(
-            ['type' => 'agreement', 'version' => 7, 'exception' => ErrorException::class],
+            ['type' => 'agreement', 'version' => 7, 'exception' => $exception],
             $errors[0]['context'],
         );
 
         $line = $errors[0]['message'].' '.json_encode($errors[0]['context'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $forbidden = ['tajny-tekst-wzoru', 'tlo-probne', 'background', 'Undefined array key', 'storage'];
+        $forbidden = ['tajny-tekst-wzoru', 'example.test', 'background', '<table', 'Undefined array key', 'storage'];
 
         foreach ($snapshot as $value) {
             if (is_scalar($value) && mb_strlen((string) $value) >= 3) {
@@ -252,7 +356,7 @@ class DocumentTemplateTrialGenerationTest extends TestCase
         // Z wierszem, na którym silnik się wywraca: siatka przechodzi na plik — i błąd pliku też wychodzi.
         DocumentTemplate::create([
             'type' => 'agreement',
-            'content' => '<div style="background:url('.$this->file.')">x</div>',
+            'content' => self::ENGINE_ERROR,
             'version' => 2,
             'updated_by' => null,
         ]);
@@ -273,19 +377,17 @@ class DocumentTemplateTrialGenerationTest extends TestCase
         $this->seed(DocumentTemplateSeeder::class);
         $this->actingAsRole('super_admin');
 
-        $refused = '<div style="background:url('.$this->file.')">x</div>';
-
         // Dwadzieścia żądań mieści się w limicie. Jaką odpowiedź dostaje taka treść,
         // mierzą próby wyżej — tutaj liczy się wyłącznie to, że nie jest to jeszcze 429.
         for ($attempt = 1; $attempt <= 20; $attempt++) {
-            $status = $this->putJson('/api/v1/document-templates/agreement', ['content' => $refused])->status();
+            $status = $this->putJson('/api/v1/document-templates/agreement', ['content' => self::ENGINE_ERROR])->status();
             $this->assertNotSame(429, $status, 'Żądanie nr '.$attempt.' zmieściło się w limicie.');
             $this->assertNotSame(500, $status);
         }
 
         $versionsBefore = DocumentTemplateVersion::query()->count();
 
-        $this->putJson('/api/v1/document-templates/agreement', ['content' => $refused])
+        $this->putJson('/api/v1/document-templates/agreement', ['content' => self::ENGINE_ERROR])
             ->assertStatus(429)
             ->assertJsonPath('error.code', 'too_many_requests');
 
@@ -297,81 +399,6 @@ class DocumentTemplateTrialGenerationTest extends TestCase
 
         // Odczyt wzoru nie jest objęty tym limitem.
         $this->getJson('/api/v1/document-templates/agreement')->assertOk();
-    }
-
-    /**
-     * Obrazy osadzone w treści a środowisko bez rozszerzenia `gd` (takie jest
-     * środowisko uruchomieniowe aplikacji). Zmierzone bez `gd`: obraz PNG w `<img>`
-     * oraz KAŻDY obraz tła kończą się błędem silnika; obraz JPEG i SVG w `<img>`
-     * generują się.
-     *
-     * Próba nie może zależeć od tego, czy środowisko biegu ma `gd`, więc twarda
-     * jest tylko zasada „nigdy błąd serwera”: bez `gd` zapis jest odmową 422, a z
-     * `gd` wolno mu przejść (wtedy obraz jest osadzany) — rozstrzyga
-     * `extension_loaded('gd')`. Dla tła z `gd` wynik nie był mierzony, dlatego tam
-     * dopuszczone są oba kody.
-     *
-     * @return array<string, array{0: string, 1: bool}>
-     */
-    public static function inlineImages(): array
-    {
-        return [
-            'obraz PNG w img' => ['<img src="'.self::PNG.'" alt="">', true],
-            'obraz PNG w tle' => ['<div style="width:10px;height:10px;background:url('.self::PNG.')">x</div>', false],
-            'obraz SVG w tle' => ['<div style="width:10px;height:10px;background:url(__SVG__)">x</div>', false],
-        ];
-    }
-
-    #[DataProvider('inlineImages')]
-    public function test_inline_image_the_environment_cannot_draw_is_refused_at_save_and_never_a_server_error(string $content, bool $measuredWithGd): void
-    {
-        $this->seed(DocumentTemplateSeeder::class);
-        $this->actingAsRole('super_admin');
-
-        $content = '<p>Numer {{ $number }}</p>'.$this->withPaths($content);
-
-        $response = $this->putJson('/api/v1/document-templates/agreement', ['content' => $content]);
-
-        $this->assertNotSame(500, $response->status());
-
-        if (! extension_loaded('gd')) {
-            $response->assertStatus(422);
-            $this->assertSame(self::REFUSAL, $response->json('error.errors.content.0'));
-            $this->assertSame(3, DocumentTemplateVersion::query()->count());
-        } elseif ($measuredWithGd) {
-            $response->assertOk();
-        } else {
-            $this->assertContains($response->status(), [200, 422]);
-        }
-
-        // Ta sama treść już w bazie: dokument powstaje zawsze — z treści albo, przez siatkę, z pliku.
-        DocumentTemplate::query()->where('type', 'agreement')->update(['content' => $content, 'version' => 9]);
-
-        $this->assertStringStartsWith('%PDF', PdfService::renderBytes('documents.volunteer-agreement', $this->goldenData()));
-    }
-
-    /**
-     * Obraz JPEG i SVG w `<img>` generują się także bez `gd` — zapis przechodzi.
-     *
-     * @return array<string, array{0: string}>
-     */
-    public static function drawableInlineImages(): array
-    {
-        return [
-            'obraz JPEG w img' => ['data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA='],
-            'obraz SVG w img' => ['__SVG__'],
-        ];
-    }
-
-    #[DataProvider('drawableInlineImages')]
-    public function test_inline_image_the_engine_draws_without_extensions_is_saved(string $address): void
-    {
-        $this->seed(DocumentTemplateSeeder::class);
-        $this->actingAsRole('super_admin');
-
-        $this->putJson('/api/v1/document-templates/agreement', [
-            'content' => '<p>Numer {{ $number }}</p><img src="'.$this->withPaths($address).'" alt="">',
-        ])->assertOk()->assertJsonPath('data.version', 2)->assertJsonPath('data.current_version_unused', false);
     }
 
     private function withPaths(string $content): string

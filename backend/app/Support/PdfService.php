@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Services\DocumentTemplates\DocumentCostLimit;
 use App\Services\DocumentTemplates\DocumentTemplateRenderer;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -23,15 +24,36 @@ use Throwable;
  * Pobieranie zdalnych zasobów zostaje wyłączone: dokument ma się renderować
  * z własnej treści, nie z sieci.
  *
- * Silnik jest zamknięty w ramie dokumentu: jedynym katalogiem, z którego wolno
- * mu czytać zasoby wskazane w treści, jest `resources/pdf-frame` (wzory nie
- * biorą z dysku niczego, więc katalog jest pusty), jedynym dozwolonym
- * protokołem zasobu — `data:` (kod QR certyfikatu). Wykonywanie PHP osadzonego
- * w treści i skrypty PDF są wyłączone jawnie, niezależnie od ustawień
- * domyślnych biblioteki.
+ * Silnik jest zamknięty w ramie dokumentu:
+ *  - jedynym katalogiem ramy jest `resources/pdf-frame` (pusty), a adresy
+ *    plików (`file://`, `phar://`) dostają odmowę zawsze — odpowiedź silnika
+ *    nie zależy więc od tego, czy wskazany plik istnieje na serwerze;
+ *  - adres `data:` jest ładowany WYŁĄCZNIE wtedy, gdy jest równy (cały napis)
+ *    jednemu z adresów na liście przekazanej do TEGO generowania. Listę buduje
+ *    serwer w miejscu wywołania (dziś: kod QR certyfikatu); adres z treści wzoru
+ *    ani z żądania nigdy na nią nie trafia. Pusta lista = żaden adres `data:`;
+ *  - wykonywanie PHP osadzonego w treści i skrypty PDF są wyłączone jawnie,
+ *    niezależnie od ustawień domyślnych biblioteki.
+ *
+ * Każde generowanie ma limit wejścia (`DocumentCostLimit`): liczba elementów,
+ * głębokość, scalenia komórek tabel i liczba stron. Twardego limitu czasu nie
+ * ma — środowisko żądań nie daje go bez zatrzymania całego procesu.
  */
 final class PdfService
 {
+    /**
+     * Arkusz bazowy każdego dokumentu, dokładany PRZED stylami wzoru (wzór może go
+     * nadpisać). Stała w kodzie, bez żadnych adresów.
+     *
+     * Wyraz dłuższy niż wiersz (wartość pola bez spacji) jest łamany zamiast wychodzić
+     * poza stronę. Silnik dziedziczy tę własność z `body`; w komórce tabeli działa
+     * wartość `anywhere` (przy `break-word` kolumna rozciąga się do długości wyrazu).
+     */
+    public const string BASE_STYLESHEET = 'body { overflow-wrap: anywhere; }';
+
+    /** Początek komunikatu każdej odmowy reguły — taki sam jak w odmowach biblioteki. */
+    public const string REFUSAL = 'Permission denied';
+
     /**
      * Renderuje widok Blade do PDF i zapisuje go. Zwraca ścieżkę na dysku
      * `local` do zapisania w kolumnach `pdf_path`.
@@ -39,12 +61,15 @@ final class PdfService
      * Używane dziś tylko przez certyfikaty (`Certificate::$pdf_path`) —
      * dokumenty H14 mają trwały plik zastąpiony renderem na żądanie
      * (`renderBytes()`), więc dla nich ten wariant już nie wchodzi w grę.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<string>  $allowedDataUris  adresy `data:` zbudowane przez serwer dla tego dokumentu
      */
-    public static function render(string $view, array $data = []): string
+    public static function render(string $view, array $data = [], array $allowedDataUris = []): string
     {
         $path = 'pdf/'.now()->format('Y/m').'/'.Str::uuid().'.pdf';
 
-        Storage::disk('local')->put($path, self::renderBytes($view, $data));
+        Storage::disk('local')->put($path, self::renderBytes($view, $data, $allowedDataUris));
 
         return $path;
     }
@@ -54,19 +79,22 @@ final class PdfService
      * PDF-a. Dla migawek dokumentów (dane osobowe: PESEL, adres) to jedyna
      * droga: plik nigdy nie powstaje w magazynie, więc nie ma czego rotować
      * ani szyfrować obok bazy.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<string>  $allowedDataUris  adresy `data:` zbudowane przez serwer dla tego dokumentu
      */
-    public static function renderBytes(string $view, array $data = []): string
+    public static function renderBytes(string $view, array $data = [], array $allowedDataUris = []): string
     {
         $stored = DocumentTemplateRenderer::storedHtml($view, $data);
 
         if ($stored !== null) {
             // Siatka wyłącznie wokół renderu treści z bazy: wzór, na którym silnik
-            // się wywraca, nie może zatrzymać wydawania dokumentów. Dokument powstaje
-            // wtedy z pliku w repozytorium, a w dzienniku zostaje jeden wpis — bez
-            // treści wzoru, bez komunikatu wyjątku (bywa w nim ścieżka albo fragment
-            // treści) i bez danych osoby.
+            // się wywraca albo który przekracza limit wejścia, nie może zatrzymać
+            // wydawania dokumentów. Dokument powstaje wtedy z pliku w repozytorium,
+            // a w dzienniku zostaje jeden wpis — bez treści wzoru, bez komunikatu
+            // wyjątku (bywa w nim ścieżka albo fragment treści) i bez danych osoby.
             try {
-                return self::bytesFromHtml($stored['html']);
+                return self::bytesFromHtml($stored['html'], $allowedDataUris);
             } catch (Throwable $exception) {
                 Log::error('Wzór dokumentu z bazy nie dał się wygenerować; dokument powstał z wzoru domyślnego.', [
                     'type' => $stored['type'],
@@ -76,30 +104,77 @@ final class PdfService
             }
         }
 
-        // Render z pliku w repozytorium nie jest łapany: błąd w zaufanym pliku ma być widoczny.
-        return self::bytesFromHtml(DocumentTemplateRenderer::fileHtml($view, $data));
+        // Render z pliku w repozytorium nie jest łapany: błąd w zaufanym pliku ma być
+        // widoczny. Dostaje tę samą listę adresów co treść z bazy.
+        return self::bytesFromHtml(DocumentTemplateRenderer::fileHtml($view, $data), $allowedDataUris);
     }
 
     /**
      * Gotowy HTML dokumentu -> bajty PDF-a, zawsze z ustawieniami ramy.
+     *
+     * @param  list<string>  $allowedDataUris  adresy `data:` zbudowane przez serwer dla tego dokumentu
      */
-    public static function bytesFromHtml(string $html): string
+    public static function bytesFromHtml(string $html, array $allowedDataUris = []): string
     {
-        $dompdf = self::engine();
+        return (string) self::generated($html, $allowedDataUris)->output();
+    }
+
+    /**
+     * Pełna droga generowania: silnik z ramą, limit wejścia, render. Zwraca silnik
+     * po renderze — próby czytają z niego dokument bez kompresji, tą samą drogą,
+     * którą powstaje każdy dokument.
+     *
+     * @param  list<string>  $allowedDataUris  adresy `data:` zbudowane przez serwer dla tego dokumentu
+     */
+    public static function generated(string $html, array $allowedDataUris = []): Dompdf
+    {
+        $dompdf = self::engine($allowedDataUris);
         $dompdf->loadHtml($html, 'UTF-8');
+        self::prependBaseStylesheet($dompdf);
+
+        // Limit liczony na drzewie, które zbudował sam silnik — przed renderem.
+        DocumentCostLimit::guard($dompdf);
+
         $dompdf->render();
 
-        return (string) $dompdf->output();
+        return $dompdf;
+    }
+
+    /**
+     * Arkusz bazowy jako pierwszy element nagłówka dokumentu — przed stylami wzoru,
+     * tak samo dla wzoru z pliku i dla wzoru zapisanego w bazie.
+     */
+    private static function prependBaseStylesheet(Dompdf $dompdf): void
+    {
+        $dom = $dompdf->getDom();
+        $root = $dom->documentElement;
+
+        if ($root === null) {
+            return;
+        }
+
+        $head = $dom->getElementsByTagName('head')->item(0);
+
+        if ($head === null) {
+            $head = $dom->createElement('head');
+            $root->insertBefore($head, $root->firstChild);
+        }
+
+        $style = $dom->createElement('style');
+        $style->appendChild($dom->createTextNode(self::BASE_STYLESHEET));
+        $head->insertBefore($style, $head->firstChild);
     }
 
     /**
      * Silnik gotowy do generowania — jedyne miejsce, w którym powstaje. Próby
      * czytają ustawienia z obiektu zwróconego stąd, czyli takiego samego, jakim
      * generowany jest każdy dokument, a nie z kopii ustawień.
+     *
+     * @param  list<string>  $allowedDataUris  adresy `data:` zbudowane przez serwer dla tego dokumentu
      */
-    public static function engine(): Dompdf
+    public static function engine(array $allowedDataUris = []): Dompdf
     {
-        $dompdf = new Dompdf(self::options());
+        $dompdf = new Dompdf(self::options($allowedDataUris));
         $dompdf->setPaper('A4', 'portrait');
 
         return $dompdf;
@@ -107,8 +182,10 @@ final class PdfService
 
     /**
      * Ustawienia silnika — jedno miejsce.
+     *
+     * @param  list<string>  $allowedDataUris
      */
-    private static function options(): Options
+    private static function options(array $allowedDataUris): Options
     {
         $options = new Options;
         $options->setIsRemoteEnabled(false);
@@ -117,13 +194,43 @@ final class PdfService
         $options->setIsHtml5ParserEnabled(true);
         $options->setDefaultFont('DejaVu Sans'); // jedyna wbudowana rodzina z polskimi znakami
         $options->setChroot(self::frameDirectory());
-        $options->setAllowedProtocols(['data://']);
+        $options->setAllowedProtocols([
+            'data://' => ['rules' => [self::dataUriRule($allowedDataUris)]],
+            // Adresy plików są na liście po to, żeby miały REGUŁĘ, która zawsze odmawia:
+            // protokół spoza listy biblioteka w części miejsc kończy błędem tylko wtedy,
+            // gdy plik istnieje — a odpowiedź nie może zależeć od tego, co leży na dysku.
+            'file://' => ['rules' => [self::refuseFiles(...)]],
+            'phar://' => ['rules' => [self::refuseFiles(...)]],
+        ]);
 
         return $options;
     }
 
     /**
-     * Katalog ramy dokumentu: jedyny, z którego silnik może czytać zasoby treści.
+     * Reguła adresów `data:`: przechodzi wyłącznie adres równy jednemu z adresów
+     * listy tego generowania. Biblioteka podaje regule adres po zdekodowaniu encji
+     * HTML, bez żadnej innej zmiany (wielkość liter i białe znaki zostają).
+     *
+     * @param  list<string>  $allowedDataUris
+     * @return callable(string): array{0: bool, 1: string|null}
+     */
+    private static function dataUriRule(array $allowedDataUris): callable
+    {
+        return static fn (string $uri): array => in_array($uri, $allowedDataUris, true)
+            ? [true, null]
+            : [false, self::REFUSAL.': adres danych spoza listy tego dokumentu.'];
+    }
+
+    /**
+     * @return array{0: bool, 1: string}
+     */
+    private static function refuseFiles(string $uri): array
+    {
+        return [false, self::REFUSAL.': dokument nie czyta plików.'];
+    }
+
+    /**
+     * Katalog ramy dokumentu: jedyny, z którego silnik mógłby czytać zasoby treści.
      */
     public static function frameDirectory(): string
     {
