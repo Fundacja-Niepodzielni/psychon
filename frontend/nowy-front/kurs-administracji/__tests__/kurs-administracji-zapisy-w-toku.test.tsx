@@ -203,6 +203,81 @@ describe("drugie zatwierdzenie przed odpowiedzią serwera", () => {
   });
 });
 
+describe("wyjście z niezapisanymi danymi", () => {
+  it("„Wróć” z wypełnionym formularzem nowej lekcji pyta; „Zostań” zostawia wpisany tytuł", async () => {
+    const { container } = await renderEkranu();
+    expect(zamkniecieKartyZatrzymane()).toBe(false);
+    await userEvent.click(screen.getByTestId("ct-dodaj-8"));
+    const formularz = within(container.querySelector<HTMLElement>("[data-pod-tematem='8']")!).getByRole("form", {
+      name: "Nowa lekcja",
+    });
+    await userEvent.type(within(formularz).getByLabelText(/^Tytuł lekcji/), "Tytuł");
+
+    expect(zamkniecieKartyZatrzymane()).toBe(true);
+    await userEvent.click(powrot());
+
+    const okno = screen.getByRole("dialog", { name: "Porzucić niezapisane zmiany w lekcji?" });
+    expect(back).not.toHaveBeenCalled();
+    await userEvent.click(within(okno).getByRole("button", { name: "Zostań" }));
+    expect(back).not.toHaveBeenCalled();
+    expect(within(formularz).getByLabelText(/^Tytuł lekcji/)).toHaveValue("Tytuł");
+
+    await userEvent.click(powrot());
+    await userEvent.click(
+      within(screen.getByRole("dialog", { name: "Porzucić niezapisane zmiany w lekcji?" })).getByRole("button", {
+        name: "Porzuć zmiany",
+      }),
+    );
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it("„Wróć” ze zmienionymi danymi kursu pyta i nazywa dane kursu; zamknięcie karty też jest zatrzymane", async () => {
+    await renderEkranu();
+    await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
+    // Formularz otwarty, ale bez zmian — nie ma o co pytać.
+    expect(zamkniecieKartyZatrzymane()).toBe(false);
+    const formularz = screen.getByRole("form", { name: "Dane kursu" });
+    await userEvent.type(within(formularz).getByLabelText(/^Tytuł kursu/), " 2");
+
+    expect(zamkniecieKartyZatrzymane()).toBe(true);
+    await userEvent.click(powrot());
+
+    const okno = screen.getByRole("dialog", { name: "Wyjść bez zapisu?" });
+    expect(within(okno).getByText("Niezapisane zmiany w danych kursu zostaną utracone.")).toBeInTheDocument();
+    expect(back).not.toHaveBeenCalled();
+    await userEvent.click(within(okno).getByRole("button", { name: "Zostań" }));
+    expect(within(formularz).getByLabelText(/^Tytuł kursu/)).toHaveValue("Wywiad psychologiczny 2");
+
+    await userEvent.click(powrot());
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Wyjdź bez zapisu" }));
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it("zmiany w drzewie i w danych kursu naraz: jedno pytanie nazywa oba miejsca", async () => {
+    await renderEkranu();
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
+    await userEvent.type(
+      within(screen.getByRole("form", { name: "Dane kursu" })).getByLabelText(/^Tytuł kursu/),
+      " 2",
+    );
+    await userEvent.click(powrot());
+    expect(
+      within(screen.getByRole("dialog", { name: "Wyjść bez zapisu?" })).getByText(
+        "Niezapisane zmiany w drzewie kursu i w danych kursu zostaną utracone.",
+      ),
+    ).toBeInTheDocument();
+    expect(back).not.toHaveBeenCalled();
+  });
+
+  it("ekran bez zmian wychodzi od razu", async () => {
+    await renderEkranu();
+    await userEvent.click(powrot());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+});
+
 // Dane wspólne prób muszą zostać nietknięte przez ten plik.
 it("atrapa: trzy lekcje w dwóch tematach", () => {
   expect(LEKCJE.map((l) => l.id)).toEqual([21, 22, 23]);

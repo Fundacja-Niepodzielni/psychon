@@ -166,7 +166,7 @@ type StanDialogu =
   | { rodzaj: "usun"; temat: TematUkladu }
   | { rodzaj: "porzuc" }
   | { rodzaj: "porzuc-lekcje"; dokad: () => void }
-  | { rodzaj: "wyjscie"; dokad: () => void };
+  | { rodzaj: "wyjscie"; dokad: () => void; tresc: string };
 
 /** Dokąd ma wrócić fokus po zamknięciu formularza albo okna pytania. */
 type CelFokusu =
@@ -312,15 +312,29 @@ function EdytorTematow({
 
   const liczbaZmian = stan.rodzaj === "gotowy" ? stan.historia.length : 0;
 
-  // Wyjście z niezapisanymi zmianami pyta (M13) — także zamknięcie karty.
+  const nowaLekcjaZmieniona =
+    nowaLekcja !== null && (nowaLekcja.tytul !== "" || nowaLekcja.opis !== "" || nowaLekcja.czas !== "");
+  const niezapisanaLekcja = (edytowanaLekcja !== null && lekcjaZmieniona) || nowaLekcjaZmieniona;
+  // Otwarty formularz danych kursu bez żadnej zmiany nie jest niezapisaną pracą.
+  const daneKursuZmienione =
+    formularz !== null &&
+    (formularz.tytul !== kurs.title ||
+      formularz.opis !== (kurs.description ?? "") ||
+      formularz.identyfikator !== kurs.slug ||
+      formularz.typ !== kurs.type ||
+      formularz.grupaProduktowa !== kurs.product_group);
+  const saNiezapisaneDane = liczbaZmian > 0 || niezapisanaLekcja || daneKursuZmienione;
+
+  // Wyjście z niezapisanymi zmianami pyta (M13) — także zamknięcie karty; liczą
+  // się zmiany w drzewie, formularz lekcji i formularz danych kursu.
   useEffect(() => {
-    if (liczbaZmian === 0) return;
+    if (!saNiezapisaneDane) return;
     function naWyjscie(zdarzenie: BeforeUnloadEvent) {
       zdarzenie.preventDefault();
     }
     window.addEventListener("beforeunload", naWyjscie);
     return () => window.removeEventListener("beforeunload", naWyjscie);
-  }, [liczbaZmian]);
+  }, [saNiezapisaneDane]);
 
   const zamknijChecklist = useCallback(() => {
     setChecklistaOtwarta(false);
@@ -362,12 +376,25 @@ function EdytorTematow({
 
   const { braki, gotowe } = checklistaPublikacji({ kurs, lekcje });
 
+  /**
+   * Każde wyjście z ekranu idzie tędy. Najpierw formularz lekcji (to samo
+   * pytanie co na drogach wewnątrz drzewa), potem zmiany w drzewie i w danych
+   * kursu — jedno pytanie, które nazywa to, co przepadnie.
+   */
   function wyjdz(dokad: () => void) {
-    if (liczbaZmian > 0) {
-      setDialog({ rodzaj: "wyjscie", dokad });
-      return;
-    }
-    dokad();
+    zFormularzaLekcji(() => {
+      if (liczbaZmian > 0 || daneKursuZmienione) {
+        const tresc =
+          liczbaZmian > 0 && daneKursuZmienione
+            ? "Niezapisane zmiany w drzewie kursu i w danych kursu zostaną utracone."
+            : daneKursuZmienione
+              ? "Niezapisane zmiany w danych kursu zostaną utracone."
+              : "Niezapisane zmiany w drzewie kursu zostaną utracone.";
+        setDialog({ rodzaj: "wyjscie", dokad, tresc });
+        return;
+      }
+      dokad();
+    });
   }
 
   /**
@@ -465,10 +492,6 @@ function EdytorTematow({
     setEdytowanaLekcja(null);
     setLekcjaZmieniona(false);
   }
-
-  const nowaLekcjaZmieniona =
-    nowaLekcja !== null && (nowaLekcja.tytul !== "" || nowaLekcja.opis !== "" || nowaLekcja.czas !== "");
-  const niezapisanaLekcja = (edytowanaLekcja !== null && lekcjaZmieniona) || nowaLekcjaZmieniona;
 
   /**
    * Każda droga, która zamknęłaby formularz lekcji (inna lekcja, „Dodaj
@@ -919,7 +942,7 @@ function EdytorTematow({
                   zapisano: przyjmijZapisLekcji,
                   zmieniono: setLekcjaZmieniona,
                   usunieto: () => przyjmijUsuniecieLekcji(edytowanaLekcja),
-                  przejdz: (adres) => zFormularzaLekcji(() => wyjdz(() => przejdz(adres))),
+                  przejdz: (adres) => wyjdz(() => przejdz(adres)),
                   wstrzymany: dialog !== null,
                 }),
               }
@@ -1237,7 +1260,7 @@ function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPot
       onWycofaj={onWycofaj}
       onPotwierdz={onPotwierdz}
     >
-      <Text>Niezapisane zmiany w drzewie kursu zostaną utracone.</Text>
+      <Text>{dialog.tresc}</Text>
     </Dialog>
   );
 }
