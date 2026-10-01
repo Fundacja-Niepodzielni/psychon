@@ -52,7 +52,12 @@ interface WlasciwosciListRow {
   bezWciecia?: boolean;
   plakietka?: PlakietkaListRow;
   licznik?: LicznikListRow;
-  akcja: AkcjaListRow;
+  /**
+   * Akcja wiersza. Pomijana tylko wtedy, gdy wiersz jest już otwarty i jego
+   * treść (panel pod wierszem) niesie własne akcje — nagłówek otwartego
+   * wiersza nie dubluje „Otwórz”.
+   */
+  akcja?: AkcjaListRow;
   otwarty?: boolean;
   onKliknijWiersz?: () => void;
 }
@@ -120,38 +125,40 @@ export function ListRow({
             <Hint>{podpowiedz}</Hint>
           ))}
       </div>
-      <div className={style.akcje} onClick={(zdarzenie) => zdarzenie.stopPropagation()}>
-        {licznik && <Num wartosc={licznik.wartosc} etykieta={licznik.etykieta} />}
-        {akcja.nieaktywna ? (
-          <span className={style.akcjaNieaktywna}>
-            <Button
-              poziom="outline"
-              rozmiar="sm"
-              aria-disabled="true"
-              aria-label={akcja.etykietaDostepna}
-              data-akcja="nieaktywna"
-            >
-              <span className={style.zamkniety}>
-                <Icon nazwa="lock" rozmiar={16} />
-                {akcja.etykieta}
-              </span>
+      {(licznik || akcja) && (
+        <div className={style.akcje} onClick={(zdarzenie) => zdarzenie.stopPropagation()}>
+          {licznik && <Num wartosc={licznik.wartosc} etykieta={licznik.etykieta} />}
+          {!akcja ? null : akcja.nieaktywna ? (
+            <span className={style.akcjaNieaktywna}>
+              <Button
+                poziom="outline"
+                rozmiar="sm"
+                aria-disabled="true"
+                aria-label={akcja.etykietaDostepna}
+                data-akcja="nieaktywna"
+              >
+                <span className={style.zamkniety}>
+                  <Icon nazwa="lock" rozmiar={16} />
+                  {akcja.etykieta}
+                </span>
+              </Button>
+            </span>
+          ) : akcja.href ? (
+            <span className={style.akcjaOdnosnik}>
+              <Link href={akcja.href} aria-label={akcja.etykietaDostepna}>
+                {akcja.etykieta}{" "}
+                <span className={style.strzalka} aria-hidden="true">
+                  ›
+                </span>
+              </Link>
+            </span>
+          ) : (
+            <Button poziom="quiet" rozmiar="sm" onClick={akcja.onKliknij} aria-label={akcja.etykietaDostepna}>
+              {akcja.etykieta}
             </Button>
-          </span>
-        ) : akcja.href ? (
-          <span className={style.akcjaOdnosnik}>
-            <Link href={akcja.href} aria-label={akcja.etykietaDostepna}>
-              {akcja.etykieta}{" "}
-              <span className={style.strzalka} aria-hidden="true">
-                ›
-              </span>
-            </Link>
-          </span>
-        ) : (
-          <Button poziom="quiet" rozmiar="sm" onClick={akcja.onKliknij} aria-label={akcja.etykietaDostepna}>
-            {akcja.etykieta}
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

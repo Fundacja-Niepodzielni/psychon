@@ -149,3 +149,19 @@ describe("ListRow — wiersz kolejki decyzji (makieta A-02)", () => {
     expect(container.textContent).not.toContain("·");
   });
 });
+
+describe("ListRow — wiersz otwarty bez akcji", () => {
+  it("bez akcji i bez licznika nagłówek wiersza nie ma żadnego przycisku ani odnośnika", () => {
+    const { container } = render(<ListRow tytul="Dyżur" otwarty />);
+    expect(screen.getByText("Dyżur")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(container.querySelector("[class*='akcje']")).toBeNull();
+  });
+
+  it("kontrola: ten sam wiersz z akcją ma przycisk w polu akcji", () => {
+    const { container } = render(<ListRow tytul="Dyżur" akcja={{ etykieta: "Otwórz", onKliknij: () => undefined }} />);
+    expect(screen.getByRole("button", { name: "Otwórz" })).toBeInTheDocument();
+    expect(container.querySelector("[class*='akcje']")).not.toBeNull();
+  });
+});
