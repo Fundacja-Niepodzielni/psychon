@@ -12,6 +12,19 @@ export const NAZWY_SPRAW: Record<string, string> = {
 
 export const NAZWA_INNYCH_SPRAW = "Inne sprawy";
 
+/**
+ * Kolejka, której administracja nie otwiera: pytania czyta i odpowiada na nie
+ * prowadzący, a trasa `/prowadzacy/pytania` ma bramkę roli prowadzącego —
+ * administracja dostałaby tam odmowę. Wiersz tej kolejki zostaje z liczbą, bez
+ * akcji, z krótką adnotacją. Reguła idzie po kluczu kolejki, nie po treści
+ * adresu: adres z odpowiedzi serwera nadal przychodzi, ale ekran go dla tego
+ * klucza nie używa.
+ */
+export const KLUCZ_KOLEJKI_BEZ_AKCJI = "questions";
+
+/** Adnotacja pod tytułem wiersza kolejki bez akcji. */
+export const PODLINIA_KOLEJKI_BEZ_AKCJI = "odpowiada prowadzący";
+
 /** Tytuł listy spraw na pulpicie (nagłówek i nazwa regionu). */
 export const TYTUL_LISTY = "Co czeka na decyzję";
 
@@ -49,6 +62,10 @@ export interface WierszSprawy {
   liczba: number;
   /** Adres wewnętrzny z odpowiedzi serwera albo `null`, gdy adres nie jest ścieżką wewnątrz aplikacji. */
   link: string | null;
+  /** Prawda, gdy wiersz ma akcję „Otwórz”; fałsz dla kolejki, którą administracja tylko widzi (`KLUCZ_KOLEJKI_BEZ_AKCJI`). */
+  otwierany: boolean;
+  /** Adnotacja pod tytułem wiersza albo `null`. */
+  podlinia: string | null;
 }
 
 export interface CelSpraw {
@@ -146,6 +163,8 @@ export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
     nazwa: NAZWY_SPRAW[kolejka.key] ?? NAZWA_INNYCH_SPRAW,
     liczba: kolejka.count,
     link: adresWewnetrzny(kolejka.link),
+    otwierany: kolejka.key !== KLUCZ_KOLEJKI_BEZ_AKCJI,
+    podlinia: kolejka.key === KLUCZ_KOLEJKI_BEZ_AKCJI ? PODLINIA_KOLEJKI_BEZ_AKCJI : null,
   }));
 
   const razem = wiersze.reduce((suma, wiersz) => suma + wiersz.liczba, 0);

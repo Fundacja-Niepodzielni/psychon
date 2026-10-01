@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { grupa } from "./atrapy";
-import { formatujDziesietny } from "../formatuj-dziesietny";
+import { formatujDziesietny } from "../../wspolne/formatuj-dziesietny";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: vi.fn(), push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),

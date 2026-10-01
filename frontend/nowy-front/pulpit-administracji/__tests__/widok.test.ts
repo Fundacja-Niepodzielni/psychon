@@ -6,7 +6,9 @@ import {
   adresWewnetrzny,
   FORMY_SPRAW,
   jednostka,
+  KLUCZ_KOLEJKI_BEZ_AKCJI,
   NAZWY_SPRAW,
+  PODLINIA_KOLEJKI_BEZ_AKCJI,
   odczytajPulpit,
   rodzajBledu,
   zbudujWidok,
@@ -235,6 +237,25 @@ describe("zbudujWidok", () => {
     expect(widok.brakSpraw).toBe(true);
     expect(widok.cel).toBeNull();
     expect(widok.powodBrakuCelu).toMatch(/nie zawiera/);
+  });
+
+  it("kolejka questions nie ma akcji i niesie adnotację; pozostałe kolejki są otwierane, bez adnotacji", () => {
+    const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu())!);
+    const pytania = widok.wiersze.find((w) => w.id === KLUCZ_KOLEJKI_BEZ_AKCJI)!;
+    expect(pytania.otwierany).toBe(false);
+    expect(pytania.podlinia).toBe(PODLINIA_KOLEJKI_BEZ_AKCJI);
+    expect(PODLINIA_KOLEJKI_BEZ_AKCJI).toBe("odpowiada prowadzący");
+    expect(pytania.liczba).toBe(7);
+    const inne = widok.wiersze.filter((w) => w.id !== KLUCZ_KOLEJKI_BEZ_AKCJI);
+    expect(inne.length).toBeGreaterThan(0);
+    expect(inne.every((w) => w.otwierany && w.podlinia === null)).toBe(true);
+  });
+
+  it("nieznany kod kolejki z adresem pytań jest otwierany: reguła po kluczu, nie po treści adresu", () => {
+    const dane = odczytajPulpit(
+      odpowiedzPulpitu({ queues: [{ key: "nowy_rodzaj", count: 1, link: "/prowadzacy/pytania" }] }),
+    )!;
+    expect(zbudujWidok(dane).wiersze[0].otwierany).toBe(true);
   });
 
   it("nieznany kod kolejki dostaje nazwę ogólną, nie surowy kod", () => {

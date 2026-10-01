@@ -5,3 +5,121 @@
   flex-direction: column;
   gap: var(--space-16);
 }
+
+/* Lista „Co czeka na decyzję”: sekcja, lista i stopka jak w `RecordList`, a
+   wiersz kolejki bez akcji (`ListaSpraw.tsx`, `WierszBezAkcji`) z układem
+   wiersza `ListRow` — plakietka w linii tytułu, adnotacja pod tytułem, liczba
+   przy prawej krawędzi. Wartości tylko z tokenów. */
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.stopka {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--card-px);
+  font-weight: var(--fw-bold);
+  min-height: var(--hit-min);
+}
+
+.wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-12) var(--card-px);
+  border-bottom: 1px solid var(--border);
+  min-height: var(--hit-min);
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1 1 60%;
+  min-width: 0;
+}
+
+.naglowek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.plakietka {
+  display: inline-flex;
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+/* Tytuł to akapit `Text` (atom nie przyjmuje klasy) — stąd selektor potomka. */
+.naglowek > p {
+  flex: 1 1 70%;
+  min-width: 0;
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  max-width: 100%;
+}
+
+/* Miejsce po akcji „Otwórz” w wierszu bez akcji (od 640 px): pusty znacznik o
+   rozmiarze odnośnika-przycisku z `ListRow` (te same tokeny: wypełnienie,
+   ramka, krój, minimalna wysokość), z niewidocznym napisem tylko jako treścią
+   pseudoelementu — poza drzewem dostępności i poza tekstem wiersza. Liczba
+   stoi dzięki temu w kolumnie liczb sąsiednich wierszy. Poniżej 640 px
+   znacznika nie ma (liczba stoi pod treścią jak w sąsiednich wierszach). */
+.miejsceAkcji {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .miejsceAkcji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: var(--hit-min);
+    padding: var(--space-8) var(--space-16);
+    border: 1px solid transparent;
+    font-size: var(--fs-9);
+    font-weight: var(--fw-medium);
+    pointer-events: none;
+  }
+
+  .miejsceAkcji::before {
+    content: "Otwórz";
+    visibility: hidden;
+  }
+}
+
+/* Poniżej 640 px tytuł zajmuje pierwszą linię, a plakietka stoi pod nim; liczba
+   stoi w osobnej linii pod treścią, jak w pozostałych wierszach listy. */
+@media (max-width: 639px) {
+  .akcje {
+    flex-basis: 100%;
+  }
+
+  .naglowek > p {
+    flex-basis: 100%;
+    order: 0;
+  }
+
+  .plakietka {
+    order: 2;
+  }
+}

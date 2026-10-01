@@ -6,19 +6,10 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import { pobierzPulpitAdministracji, type PulpitAdministracji as DanePulpitu } from "./dane";
-import {
-  FORMY_SPRAW,
-  jednostka,
-  odczytajPulpit,
-  rodzajBledu,
-  TEKST_BRAK_SPRAW,
-  TYTUL_LISTY,
-  zbudujWidok,
-  type WidokPulpitu,
-} from "./widok";
+import { ListaSpraw } from "./ListaSpraw";
+import { odczytajPulpit, rodzajBledu, TEKST_BRAK_SPRAW, zbudujWidok } from "./widok";
 import style from "./PulpitAdministracji.module.css";
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Pulpit" }];
@@ -151,49 +142,6 @@ export function PulpitAdministracji() {
         </div>
       }
       wspierajaca={null}
-    />
-  );
-}
-
-function ListaSpraw({
-  widok,
-  naNieprawidlowyAdres,
-  naOdswiez,
-}: {
-  widok: WidokPulpitu;
-  naNieprawidlowyAdres: (tresc: string) => void;
-  naOdswiez: () => void;
-}) {
-  return (
-    <RecordList
-      tytul={TYTUL_LISTY}
-      stopienNaglowka={2}
-      jednostkaSumy={(liczba) => jednostka(liczba, FORMY_SPRAW)}
-      wiersze={
-        widok.brakSpraw
-          ? []
-          : widok.wiersze.map((wiersz) => ({
-              id: wiersz.id,
-              tytul: wiersz.nazwa,
-              wartosc: wiersz.liczba,
-              plakietka:
-                wiersz.liczba > 0
-                  ? { wariant: "warn" as const, tekst: "czeka na decyzję" }
-                  : { wariant: "neutral" as const, tekst: "brak spraw" },
-              akcja: {
-                etykieta: "Otwórz",
-                etykietaDostepna: `Otwórz: ${wiersz.nazwa}`,
-                ...(wiersz.link
-                  ? { href: wiersz.link }
-                  : { onKliknij: () => naNieprawidlowyAdres("Adres tych spraw z odpowiedzi serwera jest nieprawidłowy.") }),
-              },
-            }))
-      }
-      pusty={{
-        naglowek: TEKST_BRAK_SPRAW,
-        tresc: "Nic nie czeka na decyzję administracji. Nowe sprawy pojawią się tutaj.",
-        przycisk: { etykieta: "Odśwież", onClick: naOdswiez },
-      }}
     />
   );
 }

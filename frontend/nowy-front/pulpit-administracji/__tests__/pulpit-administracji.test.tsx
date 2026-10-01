@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import { odpowiedzPulpitu } from "./atrapa";
@@ -85,10 +85,9 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     const odnosnik = screen.getByRole("link", { name: "Otwórz: Zgłoszenia rekrutacyjne" });
     expect(odnosnik).toHaveAttribute("href", "/admin/uczestniczki");
-    expect(screen.getByRole("link", { name: "Otwórz: Pytania bez odpowiedzi" })).toHaveAttribute(
-      "href",
-      "/prowadzacy/pytania",
-    );
+    // Pytania odczytuje i odpowiada na nie prowadzący — wiersz zostaje z liczbą, bez akcji.
+    expect(screen.queryByRole("link", { name: "Otwórz: Pytania bez odpowiedzi" })).not.toBeInTheDocument();
+    expect(container.querySelector("a[href='/prowadzacy/pytania']")).toBeNull();
     // Dolna karta „Zgłoszenia rekrutacyjne” była dublem wiersza listy — jej już nie ma.
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
     expect(container.querySelector("#pulpit-zgloszenia")).toBeNull();
@@ -268,6 +267,153 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     await uzytkownik.click(screen.getByRole("button", { name: "Wstecz" }));
     expect(back).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do odmowy", () => {
+  /** Wiersz listy z tytułem `nazwa` (najbliższy przodek niosący wariant wiersza). */
+  function wiersz(nazwa: string): HTMLElement {
+    const w = screen.getByText(nazwa).closest("[data-wariant]");
+    if (!(w instanceof HTMLElement)) throw new Error(`brak wiersza „${nazwa}”`);
+    return w;
+  }
+
+  it("wiersz questions: liczba i adnotacja „odpowiada prowadzący”, zero odnośnika i zero przycisku", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    render(<PulpitAdministracji />);
+    await screen.findByText("Pytania bez odpowiedzi");
+
+    const pytania = wiersz("Pytania bez odpowiedzi");
+    expect(within(pytania).getByText("7")).toBeInTheDocument();
+    expect(within(pytania).getByText("spraw")).toBeInTheDocument();
+    expect(within(pytania).getByText("odpowiada prowadzący")).toBeInTheDocument();
+    expect(within(pytania).queryByRole("link")).toBeNull();
+    expect(within(pytania).queryByRole("button")).toBeNull();
+    expect(pytania.textContent).not.toMatch(/Otwórz/);
+  });
+
+  it("wiersz questions: nie fokusowalny, nie klikalny, bez roli i odnośnika; puste miejsce po akcji jest ukryte i bez treści", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    render(<PulpitAdministracji />);
+    await screen.findByText("Pytania bez odpowiedzi");
+
+    const pytania = wiersz("Pytania bez odpowiedzi");
+    // Trzy warunki: ani tabindex, ani role, ani href, ani obsługi kliknięcia na żadnym elemencie wiersza.
+    for (const element of [pytania, ...Array.from(pytania.querySelectorAll("*"))]) {
+      expect(element.hasAttribute("tabindex")).toBe(false);
+      expect(element.hasAttribute("href")).toBe(false);
+      expect(element.hasAttribute("onclick")).toBe(false);
+      expect(element.hasAttribute("role")).toBe(false);
+    }
+    expect(pytania.querySelectorAll("a, button, input, select, textarea, [contenteditable]")).toHaveLength(0);
+    // Puste miejsce po akcji: jedno, ukryte przed czytnikiem, bez dzieci i bez tekstu.
+    const miejsca = pytania.querySelectorAll('[aria-hidden="true"]');
+    expect(miejsca).toHaveLength(1);
+    expect(miejsca[0].textContent).toBe("");
+    expect(miejsca[0].children).toHaveLength(0);
+    // Sąsiednie wiersze nie mają takiego miejsca: ich ukryta jest tylko strzałka wewnątrz odnośnika „Otwórz”.
+    for (const ukryty of Array.from(wiersz("Zgłoszenia rekrutacyjne").querySelectorAll('[aria-hidden="true"]'))) {
+      expect(ukryty.closest("a")).not.toBeNull();
+    }
+  });
+
+  it("pozostałe wiersze mają „Otwórz” na swoje adresy z odpowiedzi serwera", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "applications", count: 4, link: "/admin/uczestniczki" },
+          { key: "internship_entries", count: 7, link: "/admin/staz" },
+          { key: "profiles", count: 2, link: "/admin/profile" },
+          { key: "questions", count: 7, link: "/prowadzacy/pytania" },
+        ],
+      }),
+    );
+    render(<PulpitAdministracji />);
+    await screen.findByText("Pytania bez odpowiedzi");
+
+    const adresy: [string, string][] = [
+      ["Zgłoszenia rekrutacyjne", "/admin/uczestniczki"],
+      ["Dyżury czekające na decyzję", "/admin/staz"],
+      ["Profile prowadzących do decyzji", "/admin/profile"],
+    ];
+    for (const [nazwa, adres] of adresy) {
+      const odnosnik = within(wiersz(nazwa)).getByRole("link", { name: `Otwórz: ${nazwa}` });
+      expect(odnosnik).toHaveAttribute("href", adres);
+      expect(within(wiersz(nazwa)).queryByText("odpowiada prowadzący")).toBeNull();
+    }
+    // Dokładnie trzy odnośniki akcji w całym ekranie: pytań wśród nich nie ma.
+    expect(screen.getAllByRole("link")).toHaveLength(3);
+  });
+
+  it("suma „Razem” obejmuje liczbę pytań", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    render(<PulpitAdministracji />);
+    await screen.findByText("Pytania bez odpowiedzi");
+    // 4 + 7 + 0 + 7 z atrapy.
+    expect(screen.getByText("Razem").parentElement).toHaveTextContent(/^Razem\s*18\s*spraw$/);
+  });
+
+  it("reguła idzie po kluczu kolejki: questions z adresem w aplikacji i z obcym nadal bez akcji", async () => {
+    for (const link of ["/admin/pytania", "https://obcy.example/x", "/prowadzacy/pytania"]) {
+      pobierzPulpitAdministracji.mockResolvedValue(
+        odpowiedzPulpitu({
+          queues: [
+            { key: "applications", count: 1, link: "/admin/uczestniczki" },
+            { key: "questions", count: 2, link },
+          ],
+        }),
+      );
+      const { unmount } = render(<PulpitAdministracji />);
+      await screen.findByText("Pytania bez odpowiedzi");
+      expect(within(wiersz("Pytania bez odpowiedzi")).queryByRole("link")).toBeNull();
+      expect(within(wiersz("Pytania bez odpowiedzi")).queryByRole("button")).toBeNull();
+      unmount();
+      pobierzPulpitAdministracji.mockReset();
+    }
+  });
+
+  it("kontrola: ten sam adres pod innym kluczem kolejki dalej daje „Otwórz”", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "applications", count: 1, link: "/admin/uczestniczki" },
+          { key: "profiles", count: 2, link: "/prowadzacy/pytania" },
+        ],
+      }),
+    );
+    render(<PulpitAdministracji />);
+    await screen.findByText("Profile prowadzących do decyzji");
+    expect(
+      within(wiersz("Profile prowadzących do decyzji")).getByRole("link", {
+        name: "Otwórz: Profile prowadzących do decyzji",
+      }),
+    ).toHaveAttribute("href", "/prowadzacy/pytania");
+  });
+
+  it("pytania z liczbą 0: nadal bez akcji, z plakietką „brak spraw”", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "applications", count: 3, link: "/admin/uczestniczki" },
+          { key: "questions", count: 0, link: "/prowadzacy/pytania" },
+        ],
+      }),
+    );
+    render(<PulpitAdministracji />);
+    await screen.findByText("Pytania bez odpowiedzi");
+    const pytania = wiersz("Pytania bez odpowiedzi");
+    expect(within(pytania).getByText("brak spraw")).toBeInTheDocument();
+    expect(within(pytania).getByText("odpowiada prowadzący")).toBeInTheDocument();
+    expect(within(pytania).queryByRole("link")).toBeNull();
+  });
+
+  it("przycisk „Otwórz sprawy” w nagłówku bez zmian: prowadzi pod link kolejki applications", async () => {
+    pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
+    const uzytkownik = userEvent.setup();
+    const { container } = render(<PulpitAdministracji />);
+    await waitFor(() => expect(przyciskiGlowne(container)).toHaveLength(1));
+    await uzytkownik.click(przyciskiGlowne(container)[0]);
+    expect(push).toHaveBeenCalledWith("/admin/uczestniczki");
   });
 });
 
