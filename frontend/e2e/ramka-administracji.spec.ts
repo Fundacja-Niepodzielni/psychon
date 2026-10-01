@@ -487,10 +487,10 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
     await expect(page.locator("main")).toHaveCount(1);
   });
 
-  test("kontrola dodatnia: /admin/kursy (grupa wyłączona) ma dotychczasową powłokę, bez nowej ramki", async ({ page }) => {
+  test("kontrola dodatnia: /admin/czas-nauki (grupa wyłączona) ma dotychczasową powłokę, bez nowej ramki", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await instalujAtrapyApi(page);
-    await page.goto("/admin/kursy");
+    await page.goto("/admin/czas-nauki");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await expect(page.getByRole("navigation", { name: "Menu — Administracja" }).first()).toBeVisible();

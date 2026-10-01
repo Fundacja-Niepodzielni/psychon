@@ -94,7 +94,7 @@ interface Trasa {
   rola: Rola;
 }
 
-/** Trasy nowej ramki ośmiu włączonych grup (`lib/przelaczenie/grupy.ts`). */
+/** Trasy nowej ramki włączonych grup (`lib/przelaczenie/grupy.ts`). */
 const TRASY_NOWEJ_RAMKI: Trasa[] = [
   { adres: "/panel/dalsza-wspolpraca", rola: "volunteer" },
   { adres: "/panel/pulpit", rola: "volunteer" },
@@ -104,13 +104,14 @@ const TRASY_NOWEJ_RAMKI: Trasa[] = [
   { adres: "/admin/profile/12", rola: "project_manager" },
   { adres: "/admin/wzory-dokumentow", rola: "project_manager" },
   { adres: "/admin/ekran-startowy", rola: "project_manager" },
+  { adres: "/admin/kursy", rola: "project_manager" },
   { adres: "/prowadzacy", rola: "instructor" },
 ];
 
 /** Trasy dotychczasowej ramki — bez regresji, dalej jedno żądanie. */
 const TRASY_STARE: Trasa[] = [
   { adres: "/panel/kursy", rola: "volunteer" },
-  { adres: "/admin/kursy", rola: "project_manager" },
+  { adres: "/admin/czas-nauki", rola: "project_manager" },
 ];
 
 test.use({ viewport: { width: 1280, height: 900 } });

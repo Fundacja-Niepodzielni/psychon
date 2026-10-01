@@ -38,6 +38,7 @@ const WLACZONE_DZIS: Partial<Record<KluczGrupy, boolean>> = {
   wzoryDokumentow: true,
   ekranStartowy: true,
   kolejkaStazu: true,
+  kursyAdministracji: true,
   // Włączony nabór dokłada pozycję „Zgłoszenia rekrutacyjne” (adres inny niż „Uczestnicy”), więc rzeczywiste
   // menu różni się od menu bez tej flagi — bez niej porównanie z rejestrem na dziś byłoby fałszywe.
   nabor: true,
