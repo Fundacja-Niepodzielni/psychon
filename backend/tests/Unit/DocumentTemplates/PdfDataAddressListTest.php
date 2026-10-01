@@ -141,11 +141,15 @@ final class PdfDataAddressListTest extends TestCase
         $this->generate('<p>Tekst</p>', []);
         $before = $this->listing($directory);
 
+        // Nazwa rodziny jest własna dla tego przebiegu: katalog czcionek silnika jest wspólny
+        // dla wszystkich przebiegów w tym samym katalogu zależności i pamięta rodziny
+        // zainstalowane wcześniej — nazwa stała mogłaby trafić na taką pozostałość.
+        $family = self::uniqueFamily();
         $font = 'data:font/ttf;base64,'.base64_encode((string) File::get($directory.'/DejaVuSerif.ttf'));
-        $head = '<style>@font-face { font-family: probna; src: url("'.$font.'") format("truetype"); }</style>';
+        $head = '<style>@font-face { font-family: '.$family.'; src: url("'.$font.'") format("truetype"); }</style>';
 
         try {
-            $result = $this->generate('<p style="font-family: probna">Tekst</p>', [], $head);
+            $result = $this->generate('<p style="font-family: '.$family.'">Tekst</p>', [], $head);
             $after = $this->listing($directory);
         } finally {
             foreach (array_diff($this->listing($directory), $before) as $created) {
@@ -227,8 +231,16 @@ final class PdfDataAddressListTest extends TestCase
         return [
             'znak ucieczki w nazwie reguły' => ['<style>@\\69mport url("__ARKUSZ__");</style>'],
             'litera przed znakiem @, import' => ['<style>x@import url("__ARKUSZ__");</style>'],
-            'litera przed znakiem @, czcionka' => ['<style>x@font-face { font-family: probna; src: url("__CZCIONKA__") format("truetype"); } p { font-family: probna; }</style>'],
+            'litera przed znakiem @, czcionka' => ['<style>x@font-face { font-family: __RODZINA__; src: url("__CZCIONKA__") format("truetype"); } p { font-family: __RODZINA__; }</style>'],
         ];
+    }
+
+    /**
+     * Nazwa rodziny czcionek, której nie ma w żadnym wcześniejszym przebiegu.
+     */
+    private static function uniqueFamily(): string
+    {
+        return 'rodzina'.bin2hex(random_bytes(6));
     }
 
     #[DataProvider('atRuleBypasses')]
@@ -243,6 +255,7 @@ final class PdfDataAddressListTest extends TestCase
         $head = strtr($head, [
             '__ARKUSZ__' => 'data:text/css;base64,'.base64_encode(self::STYLESHEET),
             '__CZCIONKA__' => 'data:font/ttf;base64,'.base64_encode((string) File::get($directory.'/DejaVuSerif.ttf')),
+            '__RODZINA__' => self::uniqueFamily(),
         ]);
 
         try {

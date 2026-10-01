@@ -470,8 +470,11 @@ class DocumentTemplateNoCompilationTest extends TestCase
         $this->seed(DocumentTemplateSeeder::class);
         $case = $this->goldenCase($type);
 
+        // Lista adresów danych tego generowania: kod QR certyfikatu; pozostałe dokumenty — pusta.
+        $allowedDataUris = isset($case['data']['qr_svg']) ? [(string) $case['data']['qr_svg']] : [];
+
         $GLOBALS['_dompdf_warnings'] = [];
-        $bytes = PdfService::renderBytes($case['view'], $case['data']);
+        $bytes = PdfService::renderBytes($case['view'], $case['data'], $allowedDataUris);
 
         $this->assertStringStartsWith('%PDF', $bytes);
         $this->assertSame([], $GLOBALS['_dompdf_warnings']);
