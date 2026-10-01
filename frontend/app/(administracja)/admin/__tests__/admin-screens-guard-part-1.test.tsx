@@ -125,8 +125,8 @@ const SCREENS: ScreenCase[] = [
   },
   {
     url: "/admin/kursy/[id]",
-    element: () => <CoursePage params={params("4")} />,
-    routes: { "/admin/courses/4": course, "/admin/courses/4/lessons": [] },
+    element: () => CoursePage({ params: params("4") }),
+    routes: { "/admin/courses/4": course, "/admin/courses/4/topics": [], "/admin/courses/4/lessons": [] },
     seen: "Praca z emocjami",
   },
   {
