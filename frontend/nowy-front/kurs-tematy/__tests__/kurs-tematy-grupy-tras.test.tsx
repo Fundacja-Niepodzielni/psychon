@@ -81,7 +81,7 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
 
   it("układ tematów: jedno żądanie z pełną permutacją, trasą swojej grupy", async () => {
     await renderGrupy(grupa);
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” na początek tematu „Praktyka”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     await userEvent.click(
       within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }),
     );

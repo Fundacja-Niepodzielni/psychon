@@ -384,7 +384,7 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
       await zabezpieczeniePrzedEkranemDostepu(page);
 
       await page.getByRole("button", { name: "Zmień kolejność ścieżki" }).click();
-      await page.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy psychologicznej" }).click();
+      await page.getByRole("button", { name: "Przenieś „Podstawy pomocy psychologicznej” niżej" }).click();
       await page.getByRole("button", { name: "Sprawdź wpływ zmiany" }).click();
       const okno = page.getByRole("dialog", { name: "Potwierdź zmianę kolejności" });
       await expect(okno).toBeVisible();
@@ -413,7 +413,7 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
       await zabezpieczeniePrzedEkranemDostepu(page);
 
       await page.getByRole("button", { name: "Zmień kolejność ścieżki" }).click();
-      await page.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy psychologicznej" }).click();
+      await page.getByRole("button", { name: "Przenieś „Podstawy pomocy psychologicznej” niżej" }).click();
       await page.getByRole("button", { name: "Sprawdź wpływ zmiany" }).click();
       const okno = page.getByRole("dialog", { name: "Potwierdź zmianę kolejności" });
       await expect(okno.getByText("Marta Demo")).toBeVisible();
@@ -443,7 +443,7 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
         await zabezpieczeniePrzedEkranemDostepu(page);
 
         await page.getByRole("button", { name: "Zmień kolejność ścieżki" }).click();
-        await page.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy psychologicznej" }).click();
+        await page.getByRole("button", { name: "Przenieś „Podstawy pomocy psychologicznej” niżej" }).click();
         await page.getByRole("button", { name: "Sprawdź wpływ zmiany" }).click();
         const okno = page.getByRole("dialog", { name: "Potwierdź zmianę kolejności" });
         const lista = okno.getByRole("list", { name: NAZWA_LISTY_PODGLADU });
@@ -623,8 +623,8 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await page.getByRole("button", { name: "Zmień kolejność ścieżki" }).click();
-    await page.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy psychologicznej" }).click();
-    await expect(page.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy psychologicznej" })).toBeFocused();
+    await page.getByRole("button", { name: "Przenieś „Podstawy pomocy psychologicznej” niżej" }).click();
+    await expect(page.getByRole("button", { name: "Przenieś „Podstawy pomocy psychologicznej” niżej" })).toBeFocused();
     await page.getByRole("button", { name: "Sprawdź wpływ zmiany" }).click();
 
     const okno = page.getByRole("dialog", { name: "Potwierdź zmianę kolejności" });

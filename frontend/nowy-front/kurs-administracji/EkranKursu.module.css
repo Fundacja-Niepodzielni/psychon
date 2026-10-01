@@ -104,47 +104,12 @@
   border-top: 1px solid var(--border);
 }
 
-.strzalki {
+/* Strzałki kolejności rysuje molekuła `StrzalkiKolejnosci`; tu tylko miejsce w siatce wiersza. */
+.ruch {
   grid-area: ruch;
   display: flex;
-  flex-direction: column;
-}
-
-.strzalka {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--hit-min);
-  height: var(--hit-min);
-  padding: 0;
-  border: 0;
-  border-radius: var(--r-xs);
-  background: transparent;
-  color: var(--control);
-  cursor: pointer;
-}
-
-.strzalka[aria-disabled="true"] {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.grotGora,
-.grotDol {
-  width: 9px;
-  height: 9px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-}
-
-.grotGora {
-  margin-top: 4px;
-  transform: rotate(-135deg);
-}
-
-.grotDol {
-  margin-top: -4px;
-  transform: rotate(45deg);
 }
 
 .numer {
@@ -435,11 +400,6 @@
       "ruch numer meta stan otworz";
     column-gap: var(--space-12);
     padding: var(--space-8) var(--space-20);
-  }
-
-  .strzalka {
-    width: 28px;
-    height: 24px;
   }
 
   .wierszDodawania,

@@ -171,11 +171,22 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
 });
 
 describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacją", () => {
+  it("czytnik: zdanie po ruchu między tematami niesie nazwę tematu, a przycisk „Kolejność” nie istnieje", async () => {
+    const { container } = await renderGotowy();
+    expect(screen.queryByRole("button", { name: "Kolejność" })).toBeNull();
+    expect(container.querySelectorAll("[draggable]")).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
+    expect(container.querySelector("[data-ogloszenia]")).toHaveTextContent(
+      "Przeniesiono „Lekcja B” do tematu „Praktyka”, miejsce 1 z 2.",
+    );
+  });
+
   it("klawiatura: strzałka przenosi lekcję do następnego tematu, zapis wysyła cały układ raz", async () => {
     await renderGotowy();
     zapiszUkladTematow.mockResolvedValue([temat(7, "Wprowadzenie", 1, [21]), temat(8, "Praktyka", 2, [22, 23])]);
 
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” na początek tematu „Praktyka”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     expect(lekcjeWTemacie("Praktyka")).toEqual(["22", "23"]);
     await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
 
@@ -188,9 +199,8 @@ describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacj
     expect(updateInstructorLesson).not.toHaveBeenCalled();
   });
 
-  it("przeciąganie: upuszczenie lekcji na wiersz innego tematu, zapis wysyła cały układ raz", async () => {
+  it("przeciąganie nie istnieje: upuszczenie lekcji na wiersz innego tematu niczego nie zmienia ani nie otwiera paska zapisu", async () => {
     const { container } = await renderGotowy();
-    zapiszUkladTematow.mockResolvedValue([temat(7, "Wprowadzenie", 1, [22]), temat(8, "Praktyka", 2, [21, 23])]);
     const zrodlo = container.querySelector<HTMLElement>("li[data-lekcja='21']")!;
     const cel = container.querySelector<HTMLElement>("li[data-lekcja='23']")!;
     const dataTransfer = { setData: vi.fn(), effectAllowed: "" };
@@ -199,14 +209,9 @@ describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacj
     fireEvent.dragOver(cel, { dataTransfer });
     fireEvent.drop(cel, { dataTransfer });
 
-    expect(lekcjeWTemacie("Praktyka")).toEqual(["21", "23"]);
-    await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
-
-    await waitFor(() => expect(zapiszUkladTematow).toHaveBeenCalledTimes(1));
-    expect(zapiszUkladTematow).toHaveBeenCalledWith("instructor", 4, [
-      { id: 7, lesson_ids: [22] },
-      { id: 8, lesson_ids: [21, 23] },
-    ]);
+    expect(lekcjeWTemacie("Praktyka")).toEqual(["23"]);
+    expect(screen.queryByRole("region", { name: "Niezapisane zmiany" })).toBeNull();
+    expect(zapiszUkladTematow).not.toHaveBeenCalled();
   });
 
   it("422 z serwera: zdanie w treści, układ lokalny i pasek zapisu zostają", async () => {
@@ -220,7 +225,7 @@ describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacj
       }),
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” na początek tematu „Praktyka”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
 
     expect(
@@ -236,8 +241,8 @@ describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacj
 
   it("Cofnij wraca o jedną zmianę, „Porzuć wszystko” pyta przed porzuceniem", async () => {
     await renderGotowy();
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” na początek tematu „Praktyka”" }));
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” na początek tematu „Praktyka”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
     expect(lekcjeWTemacie("Wprowadzenie")).toEqual([]);
 
     await userEvent.click(screen.getByRole("button", { name: "Cofnij" }));
@@ -258,7 +263,7 @@ describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacj
     await userEvent.click(screen.getByTestId("pageheader-powrot"));
     expect(back).toHaveBeenCalledTimes(1);
 
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” na początek tematu „Praktyka”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     await userEvent.click(screen.getByTestId("pageheader-powrot"));
     expect(back).toHaveBeenCalledTimes(1);
     const okno = screen.getByRole("dialog", { name: "Wyjść bez zapisu?" });
@@ -324,7 +329,7 @@ describe("A-12 — akcja główna „Opublikuj kurs”", () => {
     const glowne = przyciskiGlowne(container);
     expect(glowne.map((b) => b.textContent)).toEqual(["Opublikuj kurs"]);
 
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” na początek tematu „Praktyka”" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     const zPaskiem = przyciskiGlowne(container);
     expect(zPaskiem).toHaveLength(2);
     const pasek = screen.getByRole("region", { name: "Niezapisane zmiany" });

@@ -4,12 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { CourseTree, type TematCourseTree } from "../CourseTree";
 
 /**
- * Próby dwóch opcjonalnych właściwości drzewa kursu:
+ * Próby opcjonalnej właściwości drzewa kursu:
  *  1) `podTematem` — treść ekranu pod listą lekcji wskazanego tematu (np.
  *     formularz nowej lekcji), w sekcji tego tematu i tylko w niej;
- *  2) `onPrzedTrybemKolejnosci` — ekran decyduje, czy tryb kolejności wolno
- *     włączyć (np. najpierw pyta o niezapisany formularz); wyłączenie trybu
- *     nie pyta nikogo.
+ *  2) świadek: drzewo nie ma już trybu kolejności ani właściwości, która go
+ *     bramkowała — zmiana kolejności jest zawsze dostępna strzałkami.
  * Bez tych właściwości drzewo działa jak dotąd.
  */
 
@@ -29,10 +28,6 @@ function akcje() {
     liczbaZmian: 0,
     pusty: { naglowek: "Brak tematów", tresc: "Dodaj pierwszy temat.", przycisk: { etykieta: "Dodaj temat", onClick: vi.fn() } },
   };
-}
-
-function przelacznik() {
-  return screen.getByRole("button", { name: "Kolejność" });
 }
 
 describe("CourseTree — `podTematem`", () => {
@@ -64,37 +59,20 @@ describe("CourseTree — `podTematem`", () => {
   });
 });
 
-describe("CourseTree — `onPrzedTrybemKolejnosci`", () => {
-  it("bez właściwości przełącznik włącza tryb od razu", async () => {
-    render(<CourseTree tematy={TEMATY} {...akcje()} />);
-    await userEvent.click(przelacznik());
-    expect(przelacznik()).toHaveAttribute("aria-pressed", "true");
-  });
+describe("CourseTree — brak trybu kolejności", () => {
+  it("strzałki są dostępne od razu, bez przełącznika, także przy otwartej treści pod tematem", async () => {
+    const wlasciwosci = akcje();
+    render(
+      <CourseTree
+        tematy={TEMATY}
+        {...wlasciwosci}
+        podTematem={{ tematId: "t2", tresc: <p>Formularz nowej lekcji</p> }}
+      />,
+    );
 
-  it("z właściwością tryb włącza się dopiero, gdy ekran zawoła podaną funkcję", async () => {
-    let wlacz: (() => void) | null = null;
-    const przed = vi.fn((funkcja: () => void) => {
-      wlacz = funkcja;
-    });
-    render(<CourseTree tematy={TEMATY} {...akcje()} onPrzedTrybemKolejnosci={przed} />);
-
-    await userEvent.click(przelacznik());
-    expect(przed).toHaveBeenCalledTimes(1);
-    expect(przelacznik()).toHaveAttribute("aria-pressed", "false");
-
-    const { act } = await import("@testing-library/react");
-    act(() => wlacz?.());
-    expect(przelacznik()).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("wyłączenie trybu nie pyta ekranu", async () => {
-    const przed = vi.fn((funkcja: () => void) => funkcja());
-    render(<CourseTree tematy={TEMATY} {...akcje()} onPrzedTrybemKolejnosci={przed} />);
-
-    await userEvent.click(przelacznik());
-    expect(przelacznik()).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(przelacznik());
-    expect(przelacznik()).toHaveAttribute("aria-pressed", "false");
-    expect(przed).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Kolejność" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Powitanie” niżej" }));
+    expect(wlasciwosci.onPrzenies).toHaveBeenCalledWith("t1", "l1", "t2", 0);
+    expect(screen.getByText("Formularz nowej lekcji")).toBeInTheDocument();
   });
 });

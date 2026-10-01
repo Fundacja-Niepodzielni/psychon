@@ -17,6 +17,11 @@ import { Text } from "@/design-system/atomy/Text/Text";
 import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import {
+  zdanieRuchuGrupy,
+  zdanieRuchuMiedzyGrupami,
+  zdanieRuchuWiersza,
+} from "@/design-system/molekuly/StrzalkiKolejnosci/zdania";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { UkladEdycji } from "@/design-system/szablony/UkladEdycji/UkladEdycji";
 import {
@@ -274,11 +279,17 @@ export function EkranKursu({
   }
 
   function przesunLekcjeNaEkranie(idLekcji: number, kierunek: -1 | 1) {
-    const nastepny = przesunLekcje(biezaceUklady.current.lokalny, idLekcji, kierunek);
+    const przed = biezaceUklady.current.lokalny;
+    const nastepny = przesunLekcje(przed, idLekcji, kierunek);
     zmienKolejnosc(nastepny, () => {
-      const miejsce = nastepny.tematy.flatMap((temat) => temat.lekcje).indexOf(idLekcji) + 1;
+      const tytul = nastepny.tytulyLekcji[idLekcji] ?? "";
       const temat = nastepny.tematy.find((kandydat) => kandydat.lekcje.includes(idLekcji));
-      return `Lekcja „${nastepny.tytulyLekcji[idLekcji] ?? ""}” jest teraz na miejscu ${miejsce}, w temacie „${temat?.tytul ?? ""}”.`;
+      if (!temat) return "";
+      const miejsce = temat.lekcje.indexOf(idLekcji) + 1;
+      const dawnyTemat = przed.tematy.find((kandydat) => kandydat.lekcje.includes(idLekcji));
+      return dawnyTemat?.id === temat.id
+        ? zdanieRuchuWiersza(tytul, miejsce, temat.lekcje.length)
+        : zdanieRuchuMiedzyGrupami(tytul, temat.tytul, miejsce, temat.lekcje.length);
     });
   }
 
@@ -286,7 +297,7 @@ export function EkranKursu({
     const nastepny = przeniesTemat(biezaceUklady.current.lokalny, idTematu, kierunek);
     zmienKolejnosc(nastepny, () => {
       const miejsce = nastepny.tematy.findIndex((temat) => temat.id === idTematu) + 1;
-      return `Temat „${nastepny.tematy[miejsce - 1]?.tytul ?? ""}” jest teraz na miejscu ${miejsce} z ${nastepny.tematy.length}.`;
+      return zdanieRuchuGrupy(nastepny.tematy[miejsce - 1]?.tytul ?? "", miejsce, nastepny.tematy.length);
     });
   }
 

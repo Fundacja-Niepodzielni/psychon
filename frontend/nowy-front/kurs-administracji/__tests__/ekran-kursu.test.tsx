@@ -122,8 +122,8 @@ describe("ekran kursu — odczyt i układ", () => {
     // Strzałki stoją przed numerem: pierwsze elementy fokusowalne wiersza.
     const fokusowalne = Array.from(wiersz.querySelectorAll("button, a")).map((w) => w.getAttribute("aria-label"));
     expect(fokusowalne).toEqual([
-      "Przesuń lekcję „Lekcja B” w górę",
-      "Przesuń lekcję „Lekcja B” w dół",
+      "Przenieś „Lekcja B” wyżej",
+      "Przenieś „Lekcja B” niżej",
       "Otwórz lekcję 2: Lekcja B",
     ]);
   });
@@ -515,7 +515,7 @@ describe("ekran kursu — dodawanie lekcji", () => {
 describe("ekran kursu — kolejność zapisuje się sama", () => {
   it("strzałka przenosi wiersz od razu i wysyła cały układ tą samą trasą co dotąd", async () => {
     await renderEkranu();
-    const wDol = screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" });
+    const wDol = screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" });
     await userEvent.click(wDol);
 
     expect(kolejnoscLekcji()).toEqual(["22", "21", "23"]);
@@ -530,13 +530,13 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
         ],
       },
     });
-    expect(ogloszenie()).toBe("Lekcja „Lekcja A” jest teraz na miejscu 2, w temacie „Wprowadzenie”.");
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
+    expect(ogloszenie()).toBe("Przeniesiono „Lekcja A” na miejsce 2 z 2.");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
   });
 
   it("z końca tematu lekcja przechodzi na początek następnego, a fokus idzie za nią", async () => {
     await renderEkranu();
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja B” w dół" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     await waitFor(() => expect(zapisyUkladu()).toHaveLength(1));
     expect(zapisyUkladu()[0].cialo).toEqual({
       topics: [
@@ -544,18 +544,25 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
         { id: 8, lesson_ids: [22, 23] },
       ],
     });
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja B” w dół" }));
-    expect(ogloszenie()).toBe("Lekcja „Lekcja B” jest teraz na miejscu 2, w temacie „Praktyka”.");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
+    expect(ogloszenie()).toBe("Przeniesiono „Lekcja B” do tematu „Praktyka”, miejsce 1 z 2.");
+  });
+
+  it("świadek: kolejność zmieniają tylko strzałki po lewej — bez przeciągania i bez przełącznika „Kolejność”", async () => {
+    const { container } = await renderEkranu();
+    expect(container.querySelectorAll("[draggable]")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Kolejność" })).toBeNull();
+    const wiersz = screen.getByRole("button", { name: "Przenieś „Lekcja B” wyżej" }).closest("li")!;
+    const strzalki = wiersz.querySelectorAll("[data-strzalka]");
+    expect(strzalki).toHaveLength(2);
+    expect(wiersz.firstElementChild!.contains(strzalki[0])).toBe(true);
+    expect(wiersz.children[1].textContent).toBe("2");
   });
 
   it("pierwsza lekcja w górę i ostatnia w dół są niedostępne i nic nie wysyłają", async () => {
     await renderEkranu();
-    const wGore = screen.getByRole("button", {
-      name: "Przesuń lekcję „Lekcja A” w górę (niedostępne, to pierwsza lekcja)",
-    });
-    const wDol = screen.getByRole("button", {
-      name: "Przesuń lekcję „Lekcja C” w dół (niedostępne, to ostatnia lekcja)",
-    });
+    const wGore = screen.getByRole("button", { name: "Przenieś „Lekcja A” wyżej" });
+    const wDol = screen.getByRole("button", { name: "Przenieś „Lekcja C” niżej" });
     expect(wGore).toHaveAttribute("aria-disabled", "true");
     expect(wDol).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(wGore);
@@ -568,9 +575,9 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
     await renderEkranu();
     const oczekujace = odroczony();
 
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja C” w górę" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja C” wyżej" }));
 
     expect(kolejnoscLekcji()).toEqual(["22", "23", "21"]);
     expect(oczekujace).toHaveLength(1);
@@ -601,7 +608,7 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
       () => new ApiError({ status: 422, code: "validation_failed", message: "Układ kursu zmienił się na serwerze." }),
     );
     await renderEkranu();
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
 
     const karta = screen.getByRole("region", { name: "Tematy i lekcje" });
     expect(await within(karta).findByText("Kolejność nie została zapisana")).toBeInTheDocument();
@@ -613,8 +620,8 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
   it("odmowa po dwóch ruchach cofa oba: ekran wraca do układu potwierdzonego przez serwer", async () => {
     await renderEkranu();
     const oczekujace = odroczony();
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
     expect(kolejnoscLekcji()).toEqual(["22", "21", "23"]);
 
     oczekujace[0].odrzuc(new Error("sieć"));
@@ -629,10 +636,10 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
       return proby === 1 ? new Error("sieć") : TEMATY;
     });
     await renderEkranu();
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
     expect(await screen.findByText("Kolejność nie została zapisana")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń lekcję „Lekcja A” w dół" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
     expect(screen.queryByText("Kolejność nie została zapisana")).toBeNull();
     await waitFor(() => expect(zapisyUkladu()).toHaveLength(2));
     expect(kolejnoscLekcji()).toEqual(["22", "21", "23"]);
@@ -676,7 +683,7 @@ describe("ekran kursu — tematy", () => {
         { id: 7, lesson_ids: [21, 22] },
       ],
     });
-    expect(ogloszenie()).toBe("Temat „Wprowadzenie” jest teraz na miejscu 2 z 2.");
+    expect(ogloszenie()).toBe("Przeniesiono temat „Wprowadzenie” na miejsce 2 z 2.");
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Więcej działań tematu Wprowadzenie" }));
   });
 

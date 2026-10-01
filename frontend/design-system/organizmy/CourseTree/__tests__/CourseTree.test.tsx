@@ -12,7 +12,7 @@ import { CourseTree, type TematCourseTree } from "../CourseTree";
  *     z tytułem lekcji, `aria-expanded`, `aria-controls`;
  *  3) `rozwiniecie`: treść w TYM SAMYM elemencie listy, jako ostatnie dziecko
  *     (pod wierszem), kolejność w DOM równa kolejności na ekranie;
- *  4) tryb kolejności i przeciąganie przy rozwiniętej lekcji.
+ *  4) strzałki kolejności działają także przy rozwiniętej lekcji.
  * Organizm nie zna formularza ani zapisu — próby podają mu zwykły tekst.
  */
 
@@ -45,17 +45,14 @@ function wiersz(container: HTMLElement, id: string) {
 }
 
 describe("CourseTree bez nowych właściwości", () => {
-  it("wiersz ma „Zmień nazwę”, nie ma „Edytuj” ani rozwinięcia, każdy wiersz da się przeciągać", () => {
+  it("wiersz ma „Zmień nazwę”, nie ma „Edytuj” ani rozwinięcia, żaden wiersz nie jest przeciągany", () => {
     const { container } = render(<CourseTree {...akcje()} tematy={TEMATY} liczbaZmian={0} />);
 
     expect(screen.getAllByRole("button", { name: "Zmień nazwę" })).toHaveLength(3);
     expect(container.querySelector("[data-edytuj-lekcje]")).toBeNull();
     expect(container.querySelector("[data-rozwiniecie-lekcji]")).toBeNull();
-    expect(Array.from(container.querySelectorAll("li[data-lekcja]")).map((li) => li.getAttribute("draggable"))).toEqual([
-      "true",
-      "true",
-      "true",
-    ]);
+    expect(container.querySelectorAll("[draggable]")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Kolejność" })).toBeNull();
   });
 
   it("samo `rozwiniecie` bez `onEdytujLekcje` nie odbiera wierszowi „Zmień nazwę”", () => {
@@ -116,7 +113,7 @@ describe("CourseTree z `onEdytujLekcje`", () => {
     );
   });
 
-  it("rozwinięta lekcja nie daje się przeciągać, pozostałe — tak; strzałki przeniesienia działają dalej", async () => {
+  it("strzałki przeniesienia działają przy rozwiniętej lekcji, a wiersze nie mają uchwytu przeciągania", async () => {
     const wlasciwosci = akcje();
     const { container } = render(
       <CourseTree
@@ -128,14 +125,12 @@ describe("CourseTree z `onEdytujLekcje`", () => {
       />,
     );
 
-    expect(wiersz(container, "l2").getAttribute("draggable")).toBe("false");
-    expect(wiersz(container, "l1").getAttribute("draggable")).toBe("true");
-
-    await userEvent.click(screen.getByRole("button", { name: /Przenieś „Zasady programu” na początek tematu „Praktyka”/ }));
+    expect(container.querySelectorAll("[draggable]")).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Zasady programu” niżej" }));
     expect(wlasciwosci.onPrzenies).toHaveBeenCalledWith("t1", "l2", "t2", 0);
   });
 
-  it("tryb kolejności: „Edytuj” i otwarte rozwinięcie zostają w DOM", async () => {
+  it("otwarte rozwinięcie i „Edytuj” zostają w DOM po kliknięciu strzałki", async () => {
     const { container } = render(
       <CourseTree
         {...akcje()}
@@ -146,9 +141,51 @@ describe("CourseTree z `onEdytujLekcje`", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Kolejność" }));
-    expect(container.querySelector("[data-tryb-kolejnosci='tak']")).not.toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Powitanie” niżej" }));
     expect(screen.getByText("Formularz lekcji")).toBeInTheDocument();
     expect(container.querySelectorAll("[data-edytuj-lekcje]")).toHaveLength(3);
+  });
+});
+
+describe("CourseTree — kolejność tylko strzałkami (świadek strukturalny)", () => {
+  it("nie ma uchwytu przeciągania, przełącznika „Kolejność” ani znacznika trybu", () => {
+    const { container } = render(<CourseTree {...akcje()} tematy={TEMATY} liczbaZmian={0} />);
+    expect(container.querySelectorAll("[draggable]")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Kolejność" })).toBeNull();
+    expect(container.querySelector("[data-tryb-kolejnosci]")).toBeNull();
+  });
+
+  it("strzałki stoją w wierszu przed numerem, po dwie na lekcję, z nazwami niosącymi tytuł", () => {
+    const { container } = render(<CourseTree {...akcje()} tematy={TEMATY} liczbaZmian={0} />);
+    const li = wiersz(container, "l2");
+    const wyzej = within(li).getByRole("button", { name: "Przenieś „Zasady programu” wyżej" });
+    const nizej = within(li).getByRole("button", { name: "Przenieś „Zasady programu” niżej" });
+    expect(container.querySelectorAll("[data-strzalka]")).toHaveLength(6);
+    expect(wyzej.compareDocumentPosition(nizej) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(li.firstElementChild!.contains(wyzej)).toBe(true);
+    expect(li.firstElementChild!.contains(nizej)).toBe(true);
+    expect(li.children[1].textContent).toContain("2");
+  });
+
+  it("skrajne strzałki całego drzewa mają aria-disabled i zostają w kolejności fokusu", async () => {
+    const wlasciwosci = akcje();
+    render(<CourseTree {...wlasciwosci} tematy={TEMATY} liczbaZmian={0} />);
+    const pierwsza = screen.getByRole("button", { name: "Przenieś „Powitanie” wyżej" });
+    const ostatnia = screen.getByRole("button", { name: "Przenieś „Pierwsze zadanie” niżej" });
+    for (const strzalka of [pierwsza, ostatnia]) {
+      expect(strzalka).toHaveAttribute("aria-disabled", "true");
+      expect(strzalka).not.toBeDisabled();
+      strzalka.focus();
+      expect(strzalka).toHaveFocus();
+      await userEvent.click(strzalka);
+    }
+    expect(wlasciwosci.onPrzenies).not.toHaveBeenCalled();
+  });
+
+  it("strzałka na brzegu tematu przenosi lekcję do sąsiedniego tematu", async () => {
+    const wlasciwosci = akcje();
+    render(<CourseTree {...wlasciwosci} tematy={TEMATY} liczbaZmian={0} />);
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Pierwsze zadanie” wyżej" }));
+    expect(wlasciwosci.onPrzenies).toHaveBeenCalledWith("t2", "l3", "t1", 2);
   });
 });

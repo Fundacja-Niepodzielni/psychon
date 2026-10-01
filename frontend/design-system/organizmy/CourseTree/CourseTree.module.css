@@ -5,12 +5,6 @@
   gap: var(--space-16);
 }
 
-/* Przełącznik „Kolejność” istnieje tylko na wąskim ekranie (niżej), gdzie nie
-   ma uchwytu i strzałki są schowane, dopóki osoba ich nie włączy. */
-.pasekKolejnosci {
-  display: none;
-}
-
 .temat {
   display: flex;
   flex-direction: column;
@@ -39,17 +33,23 @@
   padding: 0;
 }
 
-/* Kolumna uchwytu ma szerokość progu dotyku, a nie 34 px z układu: uchwyt
-   jest celem dotyku, więc obowiązuje go ten sam próg co każdy inny cel.
-   Kolumna tytułu `minmax(0, 1fr)` zawija długi tytuł zamiast ściskać akcje. */
+/* Kolumna strzałek ma szerokość pola dotyku (44 px; od 1100 px — 28 px, jak
+   pole strzałki molekuły). Kolumna tytułu `minmax(0, 1fr)` zawija długi tytuł
+   zamiast ściskać akcje. */
 .wiersz {
   display: grid;
-  grid-template-columns: 44px var(--hit-min) minmax(0, 1fr) auto;
+  grid-template-columns: var(--hit-min) 2rem minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
+  padding: var(--space-4) var(--space-12);
   border-bottom: 1px solid var(--border);
   min-height: var(--hit-min);
+}
+
+.ruch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Rozwinięcie pod wierszem lekcji: osobny rząd siatki wiersza na całą jego
@@ -64,18 +64,6 @@
 .podTematem {
   min-width: 0;
   padding: var(--space-8) 0 var(--space-12);
-}
-
-.przeciagana {
-  opacity: 0.45;
-}
-
-.celPrzeciagania {
-  box-shadow: inset 0 3px 0 0 var(--primary);
-}
-
-.celNaKoncu {
-  box-shadow: inset 0 -3px 0 0 var(--primary);
 }
 
 .numer {
@@ -104,65 +92,21 @@
   white-space: nowrap;
 }
 
-.uchwyt {
-  cursor: grab;
-  color: var(--control);
-  min-height: var(--hit-min);
-  min-width: var(--hit-min);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .akcjeWiersza {
   display: flex;
   align-items: center;
   gap: var(--space-8);
 }
 
-.strzalki {
-  display: flex;
-  gap: var(--space-4);
-}
-
-.strzalka {
-  width: var(--hit-min);
-  height: var(--hit-min);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-2xs);
-  background: var(--card);
-  color: var(--ink);
-  cursor: pointer;
-}
-
-.strzalka:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .tytulLekcji {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--fs-9);
   color: var(--text);
 }
 
-@media (max-width: 639px) {
-  .pasekKolejnosci {
-    display: flex;
-    justify-content: flex-end;
-  }
+@media (min-width: 1100px) {
   .wiersz {
-    grid-template-columns: 26px minmax(0, 1fr) auto;
-  }
-  .uchwyt {
-    display: none;
-  }
-  .strzalki {
-    display: none;
-  }
-  .drzewo[data-tryb-kolejnosci="tak"] .strzalki {
-    display: flex;
-  }
-  .drzewo[data-tryb-kolejnosci="tak"] .akcjaNazwy {
-    display: none;
+    grid-template-columns: 28px 2rem minmax(0, 1fr) auto;
   }
 }

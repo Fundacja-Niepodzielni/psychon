@@ -9,6 +9,9 @@ import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
+import { StrzalkiKolejnosci } from "@/design-system/molekuly/StrzalkiKolejnosci/StrzalkiKolejnosci";
+import { useRuchWierszy } from "@/design-system/molekuly/StrzalkiKolejnosci/ruch";
+import { zdanieRuchuWiersza } from "@/design-system/molekuly/StrzalkiKolejnosci/zdania";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import type { WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
@@ -147,6 +150,9 @@ export function KursyAdministracji() {
 
   const [kolejnosc, setKolejnosc] = useState<KursAdministracji[] | null>(null);
   const [komunikatPrzesuniecia, setKomunikatPrzesuniecia] = useState("");
+  // Płynna zamiana wierszy i fokus na tej samej strzałce daje pomocnik molekuły strzałek.
+  const listaKolejnosci = useRef<HTMLOListElement>(null);
+  const ruch = useRuchWierszy(listaKolejnosci);
   const [bladKolejnosci, setBladKolejnosci] = useState<string | null>(null);
   const [liczyWplyw, setLiczyWplyw] = useState(false);
   const [podglad, setPodglad] = useState<ReorderImpactRow[] | null>(null);
@@ -280,10 +286,7 @@ export function KursyAdministracji() {
     const nowa = przesun(kolejnosc, indeks, kierunek);
     if (nowa === kolejnosc) return;
     setKolejnosc(nowa);
-    setKomunikatPrzesuniecia(`Kurs „${kurs.title}” jest teraz na pozycji ${indeks + kierunek + 1} z ${nowa.length}.`);
-    const ten = kierunek === -1 ? "gora" : "dol";
-    const drugi = kierunek === -1 ? "dol" : "gora";
-    zadajFokus(`[data-przesun="${ten}-${kurs.id}"]:not([disabled])`, `[data-przesun="${drugi}-${kurs.id}"]:not([disabled])`);
+    setKomunikatPrzesuniecia(zdanieRuchuWiersza(kurs.title, indeks + kierunek + 1, nowa.length));
   }
 
   async function sprawdzWplyw() {
@@ -471,40 +474,25 @@ export function KursyAdministracji() {
         {kolejnosc.length === 0 ? (
           <Text wariant="pusty">Żaden kurs nie ma jeszcze pozycji w ścieżce.</Text>
         ) : (
-          <ol className={style.kolejnosc}>
+          <ol className={style.kolejnosc} ref={listaKolejnosci} onClickCapture={ruch.onClickCapture}>
             {kolejnosc.map((kurs, indeks) => (
-              <li key={kurs.id} className={style.pozycja}>
+              <li key={kurs.id} className={style.pozycja} data-ruch-klucz={`kurs-${kurs.id}`}>
+                <StrzalkiKolejnosci
+                  tytul={kurs.title}
+                  mozeWyzej={indeks > 0}
+                  mozeNizej={indeks < kolejnosc.length - 1}
+                  onWyzej={() => przesunKurs(indeks, -1)}
+                  onNizej={() => przesunKurs(indeks, 1)}
+                />
                 <span className={style.nazwa}>
                   <span className={style.numer}>{indeks + 1}.</span>
                   <span>{kurs.title}</span>
-                </span>
-                <span className={style.przesuwanie}>
-                  <Button
-                    poziom="outline"
-                    rozmiar="sm"
-                    onClick={() => przesunKurs(indeks, -1)}
-                    disabled={indeks === 0}
-                    aria-label={`Przesuń w górę: ${kurs.title}`}
-                    data-przesun={`gora-${kurs.id}`}
-                  >
-                    W górę
-                  </Button>
-                  <Button
-                    poziom="outline"
-                    rozmiar="sm"
-                    onClick={() => przesunKurs(indeks, 1)}
-                    disabled={indeks === kolejnosc.length - 1}
-                    aria-label={`Przesuń w dół: ${kurs.title}`}
-                    data-przesun={`dol-${kurs.id}`}
-                  >
-                    W dół
-                  </Button>
                 </span>
               </li>
             ))}
           </ol>
         )}
-        <p role="status" className={style.tylkoCzytnika}>
+        <p role="status" aria-live="polite" className={style.tylkoCzytnika}>
           {komunikatPrzesuniecia}
         </p>
         <div className={style.przyciski}>
