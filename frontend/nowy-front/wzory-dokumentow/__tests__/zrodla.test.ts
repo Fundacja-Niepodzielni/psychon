@@ -95,7 +95,7 @@ describe("wzory dokumentów — źródła ekranu", () => {
     const stary = ["edytor wzorów jest wył", "ączony w tym środowisku"].join("");
     const trafienia = pliki("nowy-front").filter((sciezka) => readFileSync(sciezka, "utf-8").includes(stary));
     expect(trafienia.map((sciezka) => relative(KORZEN, sciezka))).toEqual([]);
-    expect(`Dla wybranego rodzaju nie ma jeszcze zapisanego wzoru albo ${stary}.`.includes(stary)).toBe(true);
+    expect(`początek zdania, ${stary}.`.includes(stary)).toBe(true);
   });
 
   it("logika danych jest w osobnym module, bez Reacta", () => {
