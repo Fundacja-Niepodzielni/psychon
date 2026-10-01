@@ -7,8 +7,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - `/admin/uczestniczki` pokazuje nową listę „Uczestnicy programu” w nowej
  *   ramce administracji, z jednym `main` i jednym `#tresc`;
  * - stara zakładka `/admin/uczestniczki?zakladka=zgloszenia` przekierowuje
- *   307 na `/admin/nabor` (zmierzone bez podążania za przekierowaniem), a w
- *   przeglądarce kończy na liście zgłoszeń, nie na 404;
+ *   na `/admin/nabor` (dyrektywa w strumieniu odpowiedzi, bez podążania za
+ *   przekierowaniem), a w przeglądarce kończy na liście zgłoszeń, nie na 404;
  * - odnośnik „Zgłoszenia rekrutacyjne” z nagłówka listy osób prowadzi na
  *   `/admin/nabor`, a „Otwórz zgłoszenie” na `/admin/nabor/{id}`;
  * - odmowa 403 z zaplecza daje stan „brak dostępu” bez rekordów na każdej
@@ -123,14 +123,14 @@ test.describe("grupy listaOsob i nabor — włączone razem na /admin/uczestnicz
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await expect(page.getByRole("heading", { level: 1, name: "Uczestnicy programu" })).toBeVisible();
-    await expect(page.getByText(OSOBA.last_name)).toBeVisible();
+    await expect(page.getByText(`${OSOBA.first_name} ${OSOBA.last_name}`, { exact: true })).toBeVisible();
     await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
     await jedenMain(page);
 
     await page.getByRole("link", { name: "Zgłoszenia rekrutacyjne" }).first().click();
     await expect(page).toHaveURL(/\/admin\/nabor$/);
     await expect(page.getByRole("heading", { level: 1, name: "Zgłoszenia rekrutacyjne" })).toBeVisible();
-    await expect(page.getByText(ZGLOSZENIE.last_name)).toBeVisible();
+    await expect(page.getByText(`${ZGLOSZENIE.first_name} ${ZGLOSZENIE.last_name}`, { exact: true })).toBeVisible();
     await jedenMain(page);
 
     await page.getByRole("link", { name: "Otwórz zgłoszenie" }).first().click();
@@ -142,22 +142,30 @@ test.describe("grupy listaOsob i nabor — włączone razem na /admin/uczestnicz
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
 
-  test("stara zakładka zgłoszeń: 307 na /admin/nabor, w przeglądarce lista zgłoszeń, nie 404", async ({ page }) => {
+  test("stara zakładka zgłoszeń: przekierowanie na /admin/nabor, w przeglądarce lista zgłoszeń, nie 404", async ({ page }) => {
     const kody404 = zbierz404(page);
     await instalujAtrapyApi(page, { rola: "project_manager", odczyt: "dane" });
 
+    // Strona czyta parametr zapytania, więc jest dynamiczna: przekierowanie wychodzi w strumieniu
+    // odpowiedzi (status 200, dyrektywa `NEXT_REDIRECT;replace;/admin/nabor;307;` w treści), nie jako
+    // nagłówek 307 — tak mierzy to zbudowana aplikacja. Test przyjmuje oba kształty, ale wymaga celu.
     const odpowiedz = await page.request.get("/admin/uczestniczki?zakladka=zgloszenia", { maxRedirects: 0 });
-    expect(odpowiedz.status()).toBe(307);
-    expect(odpowiedz.headers()["location"] ?? "").toMatch(/\/admin\/nabor$/);
+    if ([307, 308].includes(odpowiedz.status())) {
+      expect(odpowiedz.headers()["location"] ?? "").toMatch(/\/admin\/nabor$/);
+    } else {
+      expect(odpowiedz.status()).toBe(200);
+      expect(await odpowiedz.text()).toContain("NEXT_REDIRECT;replace;/admin/nabor;307;");
+    }
 
     const bezParametru = await page.request.get("/admin/uczestniczki", { maxRedirects: 0 });
     expect(bezParametru.status()).toBe(200);
+    expect(await bezParametru.text()).not.toContain("NEXT_REDIRECT");
 
     await page.goto("/admin/uczestniczki?zakladka=zgloszenia");
     await zabezpieczeniePrzedEkranemDostepu(page);
     await expect(page).toHaveURL(/\/admin\/nabor$/);
     await expect(page.getByRole("heading", { level: 1, name: "Zgłoszenia rekrutacyjne" })).toBeVisible();
-    await expect(page.getByText(ZGLOSZENIE.last_name)).toBeVisible();
+    await expect(page.getByText(`${ZGLOSZENIE.first_name} ${ZGLOSZENIE.last_name}`, { exact: true })).toBeVisible();
 
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
@@ -171,8 +179,8 @@ test.describe("grupy listaOsob i nabor — włączone razem na /admin/uczestnicz
       await zabezpieczeniePrzedEkranemDostepu(page);
 
       await expect(page.getByText("Ta funkcja jest dostępna tylko dla administracji.")).toBeVisible();
-      await expect(page.getByText(OSOBA.last_name)).toHaveCount(0);
-      await expect(page.getByText(ZGLOSZENIE.last_name)).toHaveCount(0);
+      await expect(page.getByText(`${OSOBA.first_name} ${OSOBA.last_name}`, { exact: true })).toHaveCount(0);
+      await expect(page.getByText(`${ZGLOSZENIE.first_name} ${ZGLOSZENIE.last_name}`, { exact: true })).toHaveCount(0);
       await jedenMain(page);
 
       expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
@@ -184,7 +192,7 @@ test.describe("grupy listaOsob i nabor — włączone razem na /admin/uczestnicz
 
     await page.goto("/admin/nabor");
 
-    await expect(page.getByText(ZGLOSZENIE.last_name)).toHaveCount(0);
+    await expect(page.getByText(`${ZGLOSZENIE.first_name} ${ZGLOSZENIE.last_name}`, { exact: true })).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Menu — Administracja" })).toHaveCount(0);
   });
 });
