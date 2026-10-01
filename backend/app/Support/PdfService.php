@@ -5,8 +5,10 @@ namespace App\Support;
 use App\Services\DocumentTemplates\DocumentTemplateRenderer;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Renderer dokumentów PDF. SYGNATURA ZAMROŻONA: widok Blade + dane na wejściu,
@@ -55,7 +57,27 @@ final class PdfService
      */
     public static function renderBytes(string $view, array $data = []): string
     {
-        return self::bytesFromHtml(DocumentTemplateRenderer::html($view, $data));
+        $stored = DocumentTemplateRenderer::storedHtml($view, $data);
+
+        if ($stored !== null) {
+            // Siatka wyłącznie wokół renderu treści z bazy: wzór, na którym silnik
+            // się wywraca, nie może zatrzymać wydawania dokumentów. Dokument powstaje
+            // wtedy z pliku w repozytorium, a w dzienniku zostaje jeden wpis — bez
+            // treści wzoru, bez komunikatu wyjątku (bywa w nim ścieżka albo fragment
+            // treści) i bez danych osoby.
+            try {
+                return self::bytesFromHtml($stored['html']);
+            } catch (Throwable $exception) {
+                Log::error('Wzór dokumentu z bazy nie dał się wygenerować; dokument powstał z wzoru domyślnego.', [
+                    'type' => $stored['type'],
+                    'version' => $stored['version'],
+                    'exception' => $exception::class,
+                ]);
+            }
+        }
+
+        // Render z pliku w repozytorium nie jest łapany: błąd w zaufanym pliku ma być widoczny.
+        return self::bytesFromHtml(DocumentTemplateRenderer::fileHtml($view, $data));
     }
 
     /**

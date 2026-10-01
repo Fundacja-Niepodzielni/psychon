@@ -36,6 +36,19 @@ final class DocumentTemplateRenderer
      */
     public static function html(string $view, array $data): string
     {
+        return self::storedHtml($view, $data)['html'] ?? self::fileHtml($view, $data);
+    }
+
+    /**
+     * HTML z tresci wzoru w bazie razem z tym, co wolno o nim zapisac w dzienniku
+     * (rodzaj i numer wersji) - albo `null`, gdy dokument ma powstac z pliku:
+     * wiersza nie ma albo jego tresc ma stary zapis.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{type: string, version: int, html: string}|null
+     */
+    public static function storedHtml(string $view, array $data): ?array
+    {
         $type = self::TYPES_BY_VIEW[$view] ?? null;
 
         if ($type === null) {
@@ -45,10 +58,14 @@ final class DocumentTemplateRenderer
         $template = DocumentTemplate::query()->where('type', $type)->first();
 
         if ($template === null || self::ignoresStoredContent($type, $template->content)) {
-            return self::fromFile($view, $data);
+            return null;
         }
 
-        return DocumentTemplateFields::render($type, $template->content, $data);
+        return [
+            'type' => $type,
+            'version' => (int) $template->version,
+            'html' => DocumentTemplateFields::render($type, $template->content, $data),
+        ];
     }
 
     /**
@@ -68,7 +85,7 @@ final class DocumentTemplateRenderer
      *
      * @param  array<string, mixed>  $data
      */
-    private static function fromFile(string $view, array $data): string
+    public static function fileHtml(string $view, array $data): string
     {
         return match ($view) {
             'documents.volunteer-agreement' => view('documents.volunteer-agreement', $data)->render(),
