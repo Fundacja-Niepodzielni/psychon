@@ -83,9 +83,10 @@ final class CourseWriter
 
     /**
      * Publikacja odmawia tą samą regułą, którą zasób kursu pokazuje braki
-     * (`CoursePublicationGaps`): lista `reason.missing` to dokładnie braki
+     * (`CoursePublicationGaps`): lista `reason.items` to dokładnie braki
      * blokujące z tej reguły. Braki „czekamy” (nagranie wysyłane albo
-     * przetwarzane) nie blokują.
+     * przetwarzane) nie blokują. `reason.missing` zostaje listą napisów
+     * (`legacyMissing`), bo czytają ją dotychczasowe ekrany publikacji.
      *
      * Opublikowany kurs bez lekcji blokuje całą ścieżkę za sobą:
      * `CourseAccess::allLessonsCompleted()` zwraca `false` dla kursu z zerem
@@ -107,8 +108,31 @@ final class CourseWriter
             $withoutLessons
                 ? 'Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.'
                 : 'Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.',
-            reason: ['missing' => $blocking],
+            reason: [
+                'missing' => self::legacyMissing($blocking),
+                'items' => $blocking,
+            ],
         );
+    }
+
+    /**
+     * Pole `reason.missing` w kształcie sprzed listy braków: lista napisów.
+     * Kurs bez lekcji daje jak dotąd `lessons`; pozostałe braki blokujące dają
+     * swoje kody — każdy raz, w kolejności pierwszego wystąpienia.
+     *
+     * @param  list<array{code: string, lesson_id: int|null}>  $blocking
+     * @return list<string>
+     */
+    private static function legacyMissing(array $blocking): array
+    {
+        $codes = array_map(
+            fn (array $gap): string => $gap['code'] === CoursePublicationGaps::COURSE_WITHOUT_LESSONS
+                ? 'lessons'
+                : $gap['code'],
+            $blocking,
+        );
+
+        return array_values(array_unique($codes));
     }
 
     /**

@@ -102,9 +102,10 @@ class CoursePublicationGapsTest extends TestCase
                 ->assertJsonPath('error.message', 'Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.');
             $this->assertSame(
                 $forAdmin['blocking'],
-                $publish->json('error.reason.missing'),
+                $publish->json('error.reason.items'),
                 'Odmowa publikacji niesie dokładnie braki blokujące z zasobu kursu.',
             );
+            $this->assertSame([$blockingCode], $publish->json('error.reason.missing'));
             $this->assertFalse($course->fresh()->is_published);
         }
 
@@ -127,7 +128,8 @@ class CoursePublicationGapsTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'conditions_not_met')
             ->assertJsonPath('error.message', 'Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.')
-            ->assertJsonPath('error.reason.missing', $gaps['blocking']);
+            ->assertJsonPath('error.reason.missing', ['lessons'])
+            ->assertJsonPath('error.reason.items', $gaps['blocking']);
     }
 
     public function test_a_course_lists_every_gap_in_lesson_order_and_publication_names_only_the_blocking_ones(): void
@@ -163,7 +165,8 @@ class CoursePublicationGapsTest extends TestCase
 
         $this->patchJson("/api/v1/admin/courses/{$course->id}", ['is_published' => true])
             ->assertStatus(422)
-            ->assertJsonPath('error.reason.missing', $expected['blocking']);
+            ->assertJsonPath('error.reason.missing', ['lesson_empty', 'recording_error'])
+            ->assertJsonPath('error.reason.items', $expected['blocking']);
 
         $this->assertNotContains($ready->id, array_column([...$expected['blocking'], ...$expected['waiting']], 'lesson_id'));
         Http::assertNothingSent();
@@ -196,7 +199,63 @@ class CoursePublicationGapsTest extends TestCase
         $this->patchJson("/api/v1/admin/courses/{$course->id}", ['is_published' => false])->assertOk();
         $this->patchJson("/api/v1/admin/courses/{$course->id}", ['is_published' => true])
             ->assertStatus(422)
-            ->assertJsonPath('error.reason.missing', [['code' => 'recording_error', 'lesson_id' => $lesson->id]]);
+            ->assertJsonPath('error.reason.missing', ['recording_error'])
+            ->assertJsonPath('error.reason.items', [['code' => 'recording_error', 'lesson_id' => $lesson->id]]);
+    }
+
+    /**
+     * Odmowa publikacji niesie DWA pola naraz. `reason.missing` zostaje tym,
+     * czym było przed listą braków — listą napisów, a kurs bez lekcji daje
+     * dokładnie `["lessons"]` — bo czytają je dotychczasowe ekrany publikacji.
+     * Lista obiektów z identyfikatorami lekcji stoi obok, w `reason.items`.
+     */
+    public function test_a_refused_publication_carries_the_old_list_of_strings_and_the_new_list_of_objects(): void
+    {
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
+
+        $withoutLessons = $this->draft();
+        $reason = $this->patchJson("/api/v1/admin/courses/{$withoutLessons->id}", ['is_published' => true])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'conditions_not_met')
+            ->json('error.reason');
+
+        $this->assertSame(['missing', 'items'], array_keys($reason));
+        $this->assertSame(['lessons'], $reason['missing'], 'Kurs bez lekcji: stare pole dokładnie jak dotąd.');
+        $this->assertSame([['code' => 'course_without_lessons', 'lesson_id' => null]], $reason['items']);
+
+        $course = $this->draft();
+        $first = $this->lesson($course, 1, null, null, null, null);
+        $broken = $this->lesson($course, 2, 'mock-zepsute', null, 'error', null);
+        $second = $this->lesson($course, 3, null, null, null, null);
+
+        $reason = $this->patchJson("/api/v1/admin/courses/{$course->id}", ['is_published' => true])
+            ->assertStatus(422)
+            ->json('error.reason');
+
+        $this->assertSame(['missing', 'items'], array_keys($reason));
+        $this->assertSame(
+            ['lesson_empty', 'recording_error'],
+            $reason['missing'],
+            'Stare pole: napisy, każdy kod raz, w kolejności pierwszego wystąpienia.',
+        );
+
+        foreach ($reason['missing'] as $entry) {
+            $this->assertIsString($entry, 'Stare pole nie niesie obiektów.');
+        }
+
+        $this->assertSame(
+            [
+                ['code' => 'lesson_empty', 'lesson_id' => $first->id],
+                ['code' => 'recording_error', 'lesson_id' => $broken->id],
+                ['code' => 'lesson_empty', 'lesson_id' => $second->id],
+            ],
+            $reason['items'],
+        );
+        $this->assertSame(
+            $this->getJson("/api/v1/admin/courses/{$course->id}")->json('data.publication_gaps.blocking'),
+            $reason['items'],
+            'Nowe pole to dokładnie braki blokujące z zasobu kursu.',
+        );
     }
 
     private function draft(): Course

@@ -47,7 +47,7 @@ wynik jest dopisywany tutaj i ogłaszany.
 |---|---|---|
 | brak/nieważny token | **401** | `unauthenticated` |
 | rola nie ma dostępu do sekcji/akcji (matryca ról) | **403** | `forbidden` |
-| reguła domenowa blokuje dostęp/akcję (stan, nie własność) | **403** | `course_locked`, `attempts_exhausted`, `access_expired`, `not_your_supervisor`, `entry_locked`, `profile_not_eligible`, `program_not_completed`, `cooperation_request_closed`, `video_not_ready` |
+| reguła domenowa blokuje dostęp/akcję (stan, nie własność) | **403** | `course_locked`, `attempts_exhausted`, `access_expired`, `not_your_supervisor`, `entry_locked`, `profile_not_eligible`, `program_not_completed`, `cooperation_request_closed` |
 | zasób nie istnieje **lub należy do innego użytkownika** (pojedynczy rekord wskazywany identyfikatorem — nie ujawniamy istnienia) | **404** | `not_found` |
 | wyścig o ograniczony zasób (limit miejsc, duplikat unikalny) | **409** | `slot_full`, `email_already_registered`, `cooperation_request_open` |
 | błędne dane wejściowe / niespełnione warunki operacji | **422** | `validation_failed`, `not_enough_active_time`, `conditions_not_met`, `profile_incomplete` |
@@ -1583,9 +1583,11 @@ Link dotyczy wyłącznie nagrania odtwarzanego i jest wydawany, gdy jest ono got
 stan nieustalony. W czasie wymiany uczestnik dostaje link do **dotychczasowego** nagrania.
 
 - Lekcja ma nagranie, ale żadnego gotowego (wysyłane, przetwarzane, z błędem) →
-  **403** `video_not_ready`, komunikat „Nagranie w przygotowaniu.”. Kod dochodzi do tabeli
-  §1.1 w wierszu „reguła domenowa blokuje dostęp/akcję”.
+  **404** `video_not_ready`, komunikat „Nagranie w przygotowaniu.”. Status jest ten sam co
+  przy istniejącym `video_missing` na tej trasie; oba przypadki rozróżnia wyłącznie `code`.
 - Lekcja bez nagrania → jak dotąd `404 video_missing`.
+- Lekcja z nagraniem sprzed tej zmiany (stan nieustalony, `video_status` puste w bazie)
+  dostaje link jak dotąd; wydanie linku niczego nie zapisuje.
 
 Trasa nie pyta dostawcy.
 
@@ -1653,16 +1655,36 @@ brakiem także wtedy, gdy jej nowe nagranie jest w drodze albo skończyło się 
 
 **Publikacja** (`PATCH /admin/courses/{course}` z `is_published: true` dla kursu
 nieopublikowanego, `POST /admin/courses` z `is_published: true`) odmawia tą samą regułą:
-niepusta grupa `blocking` → `422 conditions_not_met`, a `reason.missing` jest **dokładnie**
-listą `blocking` z zasobu kursu:
+niepusta grupa `blocking` → `422 conditions_not_met`. `reason` niesie dwa pola:
+
+- `reason.items` — nowe pole: **dokładnie** lista `blocking` z zasobu kursu (obiekty
+  `{ "code", "lesson_id" }`, słownik `publication_gap.code` z tabeli wyżej, kolejność lekcji);
+- `reason.missing` — pole dotychczasowe, bez zmiany kształtu: **lista napisów**. Kurs bez
+  lekcji daje dokładnie `["lessons"]`, jak dotąd. Pozostałe braki blokujące dają swoje kody
+  (`lesson_empty`, `recording_error`) — każdy kod raz, w kolejności pierwszego wystąpienia.
+  Pełny słownik wartości pola: `lessons · lesson_empty · recording_error`.
 
 ```json
 { "error": { "status": 422, "code": "conditions_not_met",
     "message": "Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.",
-    "reason": { "missing": [ { "code": "lesson_empty", "lesson_id": 21 } ] } } }
+    "reason": {
+      "missing": [ "lesson_empty", "recording_error" ],
+      "items": [ { "code": "lesson_empty", "lesson_id": 21 },
+                 { "code": "recording_error", "lesson_id": 24 },
+                 { "code": "lesson_empty", "lesson_id": 25 } ] } } }
 ```
 
-(Dotąd: `reason.missing: ["lessons"]` wyłącznie dla kursu bez lekcji.) Grupa `waiting` nie
+Kurs bez lekcji — komunikat i `reason.missing` bez zmian, obok nowe `reason.items`:
+
+```json
+{ "error": { "status": 422, "code": "conditions_not_met",
+    "message": "Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.",
+    "reason": { "missing": [ "lessons" ],
+                "items": [ { "code": "course_without_lessons", "lesson_id": null } ] } } }
+```
+
+Ekran, który zna tylko `reason.missing`, działa jak dotąd: dla `lessons` pokazuje własne
+zdanie, dla pozostałych wartości — `message` serwera. Grupa `waiting` nie
 blokuje. Kurs już opublikowany nie jest cofany ani blokowany w edycji, gdy brak pojawi się
 później — pokazuje go `publication_gaps`. Wyliczenie braków czyta wyłącznie bazę.
 

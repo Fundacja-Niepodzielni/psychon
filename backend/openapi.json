@@ -11963,42 +11963,6 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "403": {
-                        "description": "Lekcja ma nagranie, ale \u017cadne nie jest gotowe (`video_not_ready`).",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object",
-                                            "properties": {
-                                                "status": {
-                                                    "type": "integer",
-                                                    "const": 403
-                                                },
-                                                "code": {
-                                                    "type": "string",
-                                                    "const": "video_not_ready"
-                                                },
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "status",
-                                                "code",
-                                                "message"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "error"
-                                    ]
-                                }
-                            }
-                        }
                     }
                 }
             }

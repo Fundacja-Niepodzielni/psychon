@@ -174,7 +174,8 @@ class AdminCourseTest extends TestCase
         $this->patchJson("/api/v1/admin/courses/{$course->id}", ['is_published' => true])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'conditions_not_met')
-            ->assertJsonPath('error.reason.missing', [['code' => 'course_without_lessons', 'lesson_id' => null]]);
+            ->assertJsonPath('error.reason.missing', ['lessons'])
+            ->assertJsonPath('error.reason.items', [['code' => 'course_without_lessons', 'lesson_id' => null]]);
 
         $this->assertFalse($course->fresh()->is_published);
         $this->assertSame(0, AuditLogEntry::where('action', 'course.updated')->count());
@@ -208,7 +209,8 @@ class AdminCourseTest extends TestCase
             'is_published' => true,
         ])->assertStatus(422)
             ->assertJsonPath('error.code', 'conditions_not_met')
-            ->assertJsonPath('error.reason.missing', [['code' => 'course_without_lessons', 'lesson_id' => null]]);
+            ->assertJsonPath('error.reason.missing', ['lessons'])
+            ->assertJsonPath('error.reason.items', [['code' => 'course_without_lessons', 'lesson_id' => null]]);
 
         $this->assertFalse(Course::where('slug', 'od-razu')->exists());
         $this->assertSame(0, AuditLogEntry::where('action', 'course.created')->count());

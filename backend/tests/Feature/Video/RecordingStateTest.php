@@ -329,6 +329,21 @@ class RecordingStateTest extends TestCase
 
         $this->assertSame(0, $this->statusRequests + $this->createRequests);
         Http::assertNothingSent();
+
+        // Lekcja sprzed kolumny stanu: stan w bazie pusty („nieznany”), także po
+        // wydaniu linku — link niczego nie zapisuje.
+        $row = DB::table('lessons')->where('id', $lesson->id)->first();
+        $this->assertNull($row->video_status);
+        $this->assertNull($row->video_status_at);
+        $this->assertNull($row->video_pending_id);
+        $this->assertSame('mock-zastane', $row->video_provider_id);
+
+        $this->actingAsAdmin();
+        $this->getJson("/api/v1/admin/courses/{$lesson->course_id}/lessons")
+            ->assertOk()
+            ->assertJsonPath('data.0.video_status', null)
+            ->assertJsonPath('data.0.video_ready', true);
+        Http::assertNothingSent();
     }
 
     /** @return array<string, array{string|null, string|null, string|null}> */
@@ -350,7 +365,8 @@ class RecordingStateTest extends TestCase
         $this->actingAs($this->volunteer(), 'keycloak');
 
         $response = $this->getJson("/api/v1/lessons/{$lesson->id}/video-link")
-            ->assertStatus(403)
+            ->assertStatus(404)
+            ->assertJsonPath('error.status', 404)
             ->assertJsonPath('error.code', 'video_not_ready')
             ->assertJsonPath('error.message', 'Nagranie w przygotowaniu.');
 
@@ -531,7 +547,7 @@ class RecordingStateTest extends TestCase
 
         $this->actingAs($volunteer, 'keycloak');
         $this->getJson("/api/v1/lessons/{$lesson->id}/video-link")
-            ->assertStatus(403)
+            ->assertStatus(404)
             ->assertJsonPath('error.code', 'video_not_ready');
 
         $this->providerStatuses[self::NEW] = 4;
@@ -693,6 +709,86 @@ class RecordingStateTest extends TestCase
         $this->assertSame('ready', $fresh->video_status);
     }
 
+    public function test_the_id_on_its_way_is_stored_in_lower_case_and_stays_so_after_the_swap(): void
+    {
+        $lesson = $this->lessonWith(null, null, null, null);
+        $this->guidsToIssue = [strtoupper(self::NEW)];
+        $this->providerStatuses[self::NEW] = 4;
+        $this->actingAsAdmin();
+
+        $this->postJson($this->uploadUrl($lesson), ['title' => 'Nagranie'])
+            ->assertCreated()
+            ->assertJsonPath('data.video_id', strtoupper(self::NEW))
+            ->assertJsonPath('data.resumed', false);
+
+        $row = DB::table('lessons')->where('id', $lesson->id)->first();
+        $this->assertSame(self::NEW, $row->video_pending_id, 'Nagranie „w drodze” jest zapisywane małymi literami.');
+        $this->assertNull($row->video_provider_id);
+
+        $this->postJson($this->uploadUrl($lesson), ['title' => 'Nagranie'])
+            ->assertCreated()
+            ->assertJsonPath('data.video_id', self::NEW)
+            ->assertJsonPath('data.resumed', true);
+        $this->assertSame(1, $this->createRequests);
+
+        $this->getJson($this->statusUrl($lesson))->assertOk()->assertJsonPath('data.video_status', 'ready');
+
+        $row = DB::table('lessons')->where('id', $lesson->id)->first();
+        $this->assertSame(self::NEW, $row->video_provider_id, 'Po podmianie identyfikator odtwarzany też ma małe litery.');
+        $this->assertNull($row->video_pending_id);
+    }
+
+    public function test_an_upload_that_loses_the_race_for_the_id_on_its_way_is_a_provider_error(): void
+    {
+        $course = $this->course();
+        $lesson = $this->lessonWith(self::OLD, null, 'ready', now()->subDay(), $course, 1);
+        $this->guidsToIssue = [self::NEW];
+        $this->actingAsAdmin();
+        // Konkurent zajmuje identyfikator po sprawdzeniu wolności, tuż przed
+        // zapisem: odmawia już tylko indeks nagrania „w drodze”.
+        $this->competitorTakesTheIdOnce($course, 'video_pending_id', strtoupper(self::NEW));
+
+        $this->postJson($this->uploadUrl($lesson), ['title' => 'Nagranie'])
+            ->assertStatus(502)
+            ->assertJsonPath('error.code', 'bunny_error')
+            ->assertJsonPath('error.message', 'Bunny Stream zwrócił identyfikator nagrania, który jest już przypisany do innej lekcji.');
+
+        $fresh = $lesson->fresh();
+        $this->assertSame(self::OLD, $fresh->video_provider_id);
+        $this->assertNull($fresh->video_pending_id);
+        $this->assertSame('ready', $fresh->video_status);
+    }
+
+    public function test_a_swap_that_loses_the_race_for_the_played_id_changes_nothing(): void
+    {
+        $course = $this->course();
+        $statusAt = now()->subMinutes(5);
+        $lesson = $this->lessonWith(self::OLD, self::NEW, 'processing', $statusAt, $course, 1);
+        $this->providerStatuses[self::NEW] = 4;
+        $this->actingAsAdmin();
+        // Konkurent wpisuje ten sam identyfikator jako odtwarzany w innej lekcji
+        // po sprawdzeniu wolności, tuż przed zapisem podmiany: odmawia indeks
+        // nagrania odtwarzanego, a odczyt stanu odpowiada bez błędu serwera.
+        $this->competitorTakesTheIdOnce($course, 'video_provider_id', strtoupper(self::NEW));
+
+        $this->getJson($this->statusUrl($lesson))
+            ->assertOk()
+            ->assertJsonPath('data.video_status', 'processing')
+            ->assertJsonPath('data.video_ready', true)
+            ->assertJsonPath('data.video_pending', true);
+
+        $fresh = $lesson->fresh();
+        $this->assertSame(self::OLD, $fresh->video_provider_id, 'Dotychczasowe nagranie zostaje odtwarzane.');
+        $this->assertSame(self::NEW, $fresh->video_pending_id);
+        $this->assertSame('processing', $fresh->video_status);
+        $this->assertSame($statusAt->getTimestamp(), $fresh->video_status_at->getTimestamp());
+        $this->assertSame(
+            0,
+            DB::table('lessons')->whereRaw('lower(video_provider_id) = ?', [self::NEW])->count(),
+            'Przegrany zapis niczego nie zostawia.',
+        );
+    }
+
     public function test_administration_cannot_assign_by_hand_an_id_on_its_way_in_another_lesson(): void
     {
         $course = $this->course();
@@ -781,6 +877,33 @@ class RecordingStateTest extends TestCase
             }
 
             return Http::response([], 404);
+        });
+    }
+
+    /**
+     * Konkurent zapisuje ten sam identyfikator do INNEJ lekcji dokładnie raz,
+     * w chwili zapisu lekcji z żądania — czyli po wszystkich sprawdzeniach
+     * wolności identyfikatora.
+     */
+    private function competitorTakesTheIdOnce(Course $course, string $column, string $id): void
+    {
+        $fired = false;
+
+        Lesson::saving(function () use (&$fired, $course, $column, $id): void {
+            if ($fired) {
+                return;
+            }
+
+            $fired = true;
+
+            $competitor = Lesson::withoutEvents(fn () => Lesson::create([
+                'course_id' => $course->id,
+                'title' => 'Lekcja konkurenta',
+                'sequence_order' => 99,
+                'duration_seconds' => 600,
+            ]));
+
+            DB::table('lessons')->where('id', $competitor->id)->update([$column => $id]);
         });
     }
 

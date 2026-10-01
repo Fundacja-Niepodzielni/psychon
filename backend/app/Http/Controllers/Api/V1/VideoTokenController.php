@@ -22,8 +22,9 @@ use Illuminate\Http\Request;
  * odtworzyć (`LessonRecording::hasPlayable`): stan „gotowe” albo „nieznany”,
  * także w czasie wymiany nagrania — wtedy uczestnik dostaje dotychczasowe.
  * Lekcja, która ma nagranie, ale żadnego gotowego (wysyłane, przetwarzane,
- * z błędem), odpowiada `403 video_not_ready`; lekcja bez nagrania — jak dotąd
- * `404 video_missing`. Trasa nie pyta dostawcy: stan pochodzi z bazy.
+ * z błędem), odpowiada `404 video_not_ready`; lekcja bez nagrania — jak dotąd
+ * `404 video_missing`. Oba przypadki mają ten sam status i różnią się kodem.
+ * Trasa nie pyta dostawcy: stan pochodzi z bazy.
  */
 class VideoTokenController extends Controller
 {
@@ -52,7 +53,7 @@ class VideoTokenController extends Controller
         }
 
         if (! $recording->hasPlayable()) {
-            throw new ApiException(403, 'video_not_ready', 'Nagranie w przygotowaniu.');
+            throw new ApiException(404, 'video_not_ready', 'Nagranie w przygotowaniu.');
         }
 
         return response()->json(['data' => $this->tokenService->signedCdnUrl($lesson, $user)]);
