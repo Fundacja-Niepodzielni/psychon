@@ -377,7 +377,7 @@ describe("materiały", () => {
   it("wgranie pliku: multipart z polem file, licznik rośnie, wiersz pliku gotowy", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderujDane();
-    expect(screen.getByText("Materiały przy tej lekcji: 2.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument();
     const wgrany: MaterialAdmin = {
       id: 9,
       name: "karta.pdf",
@@ -394,12 +394,12 @@ describe("materiały", () => {
     const plik = new File(["%PDF"], "karta.pdf", { type: "application/pdf" });
     await uzytkownik.upload(wejsciaPlikow(container)[0], plik);
 
-    await screen.findByText("Wgrano materiał.");
+    await screen.findByText("Wgrano materiał „karta.pdf”.");
     const wywolanie = wywolania("POST", "/admin/lessons/21/materials")[0];
     const cialo = (wywolanie[1] as { body: FormData }).body;
     expect(cialo).toBeInstanceOf(FormData);
     expect((cialo.get("file") as File).name).toBe("karta.pdf");
-    expect(screen.getByText("Materiały przy tej lekcji: 3.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
   });
 
   it("422 na pliku: komunikat serwera w wierszu pliku, licznik bez zmian", async () => {
@@ -415,7 +415,7 @@ describe("materiały", () => {
     );
     await uzytkownik.upload(wejsciaPlikow(container)[0], new File(["x"], "duzy.pdf", { type: "application/pdf" }));
     expect(await screen.findByText("Plik może mieć najwyżej 10 MB.")).toBeInTheDocument();
-    expect(screen.getByText("Materiały przy tej lekcji: 2.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument();
   });
 });
 
