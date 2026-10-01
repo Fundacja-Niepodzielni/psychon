@@ -110,18 +110,62 @@ describe("wzory dokumentów — stany w szablonie widoku szczegółu, jeden main
     sprawdzSzablon(container, container.querySelector<HTMLElement>("[aria-busy='true']")!);
   });
 
-  it("brak wzoru (404): stan pusty z tekstem „Brak wzoru tego typu”", async () => {
+  /** Stany puste stoją na szablonie listy: jedna kolumna, karta na całą szerokość treści. */
+  function sprawdzListe(container: HTMLElement, znacznik: HTMLElement) {
+    expect(() => jedenMain(container)).not.toThrow();
+    expect(container.querySelector("main")?.getAttribute("data-style-id")).toBe("szablon-lista");
+    expect(container.querySelector("main")!.contains(znacznik)).toBe(true);
+    expect(container.querySelector("[data-obszar='wspierajaca']")).toBeNull();
+    expect(container.querySelector("[data-obszar='kolumny']")).toBeNull();
+  }
+
+  it("brak wzoru (404): stan pusty z tekstem „Brak wzoru tego typu” stoi w karcie stanu pustego", async () => {
     api.mockRejectedValue(blad(404, "not_found"));
     const { container } = render(<WzoryDokumentow />);
     const naglowek = await screen.findByRole("heading", { name: "Brak wzoru tego typu" });
-    sprawdzSzablon(container, naglowek);
+    sprawdzListe(container, naglowek);
+    const karta = screen.getByTestId("karta-stanu-pustego");
+    expect(container.querySelector("[data-testid='obszar-lista']")!.contains(karta)).toBe(true);
+    expect(within(karta).getByRole("heading", { level: 2, name: "Brak wzoru tego typu" })).toBeInTheDocument();
+    expect(within(karta).getAllByRole("button")).toHaveLength(1);
+    expect(within(karta).getByRole("button", { name: "Wróć" })).toBeInTheDocument();
+  });
+
+  it("brak wzoru (404): treść podaje prawdziwą przyczynę, bez zgadywania o środowisku", async () => {
+    api.mockRejectedValue(blad(404, "not_found"));
+    render(<WzoryDokumentow />);
+    await screen.findByRole("heading", { name: "Brak wzoru tego typu" });
+    const karta = screen.getByTestId("karta-stanu-pustego");
+    expect(karta).toHaveTextContent(
+      "Dla tego rodzaju dokumentu nie ma jeszcze zapisanego wzoru. Dokumenty tego rodzaju powstają z wbudowanego wzoru.",
+    );
+    expect(karta.textContent).not.toMatch(/wyłączony|w tym środowisku/);
+    fireEvent.click(within(karta).getByRole("button", { name: "Wróć" }));
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it("brak wzoru po zmianie rodzaju z klawiatury: fokus zostaje na wyborze rodzaju", async () => {
+    const uzytkownik = userEvent.setup();
+    api.mockImplementation(async (sciezka: string) => {
+      if (sciezka.startsWith("/document-templates/agreement")) return sciezka.endsWith("/versions") ? HISTORIA : WZOR;
+      throw blad(404, "not_found");
+    });
+    render(<WzoryDokumentow />);
+    await screen.findByRole("textbox", { name: /Treść wzoru/ });
+    screen.getByRole("combobox", { name: "Rodzaj wzoru" }).focus();
+    await uzytkownik.keyboard("{Enter}{ArrowDown}{Enter}");
+    await screen.findByRole("heading", { name: "Brak wzoru tego typu" });
+    expect(screen.getByRole("combobox", { name: "Rodzaj wzoru" })).toHaveFocus();
   });
 
   it.each([401, 403])("odmowa (%i): wariant odmowy z nazwą roli, zero danych w DOM, jedno wyjście", async (status) => {
     api.mockRejectedValue(blad(status, status === 401 ? "unauthenticated" : "forbidden"));
     const { container } = render(<WzoryDokumentow />);
     const zdanie = await screen.findByText(/administracji/, { selector: "p" });
-    sprawdzSzablon(container, zdanie);
+    sprawdzListe(container, zdanie);
+    const karta = screen.getByTestId("karta-stanu-pustego");
+    expect(within(karta).getByText(zdanieOdmowyRoli("administracji"))).toBeInTheDocument();
+    expect(within(karta).getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("table")).toBeNull();
     expect(container.textContent).not.toContain(WZOR.content);
