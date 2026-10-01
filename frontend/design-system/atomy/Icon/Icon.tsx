@@ -1,6 +1,6 @@
 import {
   Home, BookOpen, Clock, Users, File, Award, MessageSquare,
-  Inbox, BarChart, Settings, HelpCircle, User, LogOut,
+  Inbox, BarChart, Settings, HelpCircle, User, LogOut, Lock,
 } from "lucide-react";
 import type { SVGProps } from "react";
 
@@ -38,6 +38,7 @@ const MAPA_IKON = {
   help: HelpCircle,
   user: User,
   out: LogOut,
+  lock: Lock,
   menu: GlifMenu,
 } as const;
 

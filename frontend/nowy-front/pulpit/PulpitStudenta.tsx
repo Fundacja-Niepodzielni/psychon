@@ -7,12 +7,12 @@ import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import { odmien } from "../wspolne/odmiana";
 import { pobierzKursy, pobierzSzczegolKursu, type KursSciezki, type LekcjaKursu } from "./dane";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
+import { ListaKursow } from "./ListaKursow";
 import { rodzajBledu } from "./rodzaj-bledu";
 import { kursDoWznowienia, wyliczWznowienie } from "./wznow-lekcje";
 
@@ -28,12 +28,6 @@ export const ADRES_KONTAKTOWY = "kontakt@niepodzielni.com";
 export function mianownikKursow(liczba: number): string {
   return `z ${liczba} ${odmien(liczba, "kursu", "kursów", "kursów")}`;
 }
-
-const ETYKIETA_STATUSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok" | "pending"; tekst: string }> = {
-  locked: { wariant: "neutral", tekst: "zablokowany" },
-  in_progress: { wariant: "pending", tekst: "w toku" },
-  completed: { wariant: "ok", tekst: "ukończony" },
-};
 
 /**
  * Pulpit kursów studenta (U-02), wybierany przez `Pulpit` po roli z
@@ -119,14 +113,6 @@ export function PulpitStudenta() {
       ]
     : undefined;
 
-  const wiersze: WierszRecordList[] = kursy.map((kurs) => ({
-    id: String(kurs.id),
-    tytul: kurs.title,
-    podpowiedz: `${kurs.progress_percent}% ukończone`,
-    plakietka: ETYKIETA_STATUSU[kurs.status],
-    akcja: { etykieta: "Otwórz kurs", href: `/panel/kursy/${kurs.slug}` },
-  }));
-
   return (
     <DashboardTemplate
       naglowek={{
@@ -139,10 +125,10 @@ export function PulpitStudenta() {
       nastepnyKrok={maKursy ? <BlokWznowienia kursy={kursy} lekcje={lekcje} /> : undefined}
       kafle={kafle}
       glowna={
-        <RecordList
+        <ListaKursow
           tytul="Twoje kursy"
-          stopienNaglowka={2}
-          wiersze={wiersze}
+          kursy={kursy}
+          podpowiedz={(kurs) => `${kurs.progress_percent}% ukończone`}
           pusty={{
             naglowek: "Nie masz jeszcze żadnego kursu",
             tresc: `Kursy pojawią się tutaj, gdy zostaniesz na nie zaproszona lub zaproszony. Masz pytanie? Napisz do nas: ${ADRES_KONTAKTOWY}.`,

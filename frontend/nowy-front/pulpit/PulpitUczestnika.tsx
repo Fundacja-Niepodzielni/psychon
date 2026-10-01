@@ -25,6 +25,7 @@ import {
   type WarunkiCertyfikatu,
 } from "./dane";
 import { formatujDziesietny } from "./formatuj-dziesietny";
+import { ListaKursow } from "./ListaKursow";
 import { mianownikOdbytychSuperwizji, mianownikUkonczonychKursow } from "./odmiana-kafli";
 import { etapySciezki, wyliczNastepnyKrok, type NastepnyKrok } from "./nastepny-krok";
 
@@ -35,12 +36,6 @@ type StanEkranu = StanBezDanych | "ok";
  * NIEZALEŻNIE od reszty pulpitu (kryterium: „błąd jednej z tras → `Notice`
  * w tym obszarze, reszta pulpitu działa"). */
 type Pomocnicza<T> = { stan: "ladowanie" } | { stan: "blad" } | { stan: "ok"; dane: T };
-
-const ETYKIETA_STATUSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok" | "pending"; tekst: string }> = {
-  locked: { wariant: "neutral", tekst: "zablokowany" },
-  in_progress: { wariant: "pending", tekst: "w toku" },
-  completed: { wariant: "ok", tekst: "ukończony" },
-};
 
 interface WlasciwosciPulpitUczestnika {
   /** `GET /me` → `program_completed_at` różne od `null`. */
@@ -189,14 +184,6 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
     },
   ];
 
-  const wierszeSciezki: WierszRecordList[] = etapy.map((kurs) => ({
-    id: String(kurs.id),
-    tytul: kurs.title,
-    podpowiedz: `Kurs ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`,
-    plakietka: ETYKIETA_STATUSU[kurs.status],
-    akcja: { etykieta: "Otwórz kurs", href: `/panel/kursy/${kurs.slug}` },
-  }));
-
   const terminySuperwizji = superwizje.stan === "ok" ? nadchodzace(superwizje.dane) : [];
   const wierszeSuperwizji: WierszRecordList[] = terminySuperwizji.map((termin) => ({
     id: String(termin.id),
@@ -229,10 +216,10 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
               Nie udało się wczytać godzin stażu.
             </Notice>
           )}
-          <RecordList
+          <ListaKursow
             tytul="Twoja ścieżka"
-            stopienNaglowka={2}
-            wiersze={wierszeSciezki}
+            kursy={etapy}
+            podpowiedz={(kurs) => `Kurs ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`}
             pusty={{
               naglowek: "Ścieżka jest przygotowywana",
               tresc: "Gdy administracja doda pierwszy kurs, pojawi się tutaj.",
