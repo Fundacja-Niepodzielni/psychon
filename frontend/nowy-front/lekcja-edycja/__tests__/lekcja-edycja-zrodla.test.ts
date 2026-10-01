@@ -46,9 +46,13 @@ describe("źródła ekranu lekcji", () => {
     expect(nazwy(PLIKI)).toEqual(
       expect.arrayContaining([
         "app/nowy-front/admin/lekcje/[id]/page.tsx",
+        "nowy-front/lekcja-edycja/KartaNagrania.tsx",
         "nowy-front/lekcja-edycja/LekcjaEdycja.tsx",
+        "nowy-front/lekcja-edycja/StronaLekcji.tsx",
         "nowy-front/lekcja-edycja/dane.ts",
         "nowy-front/lekcja-edycja/formularz.ts",
+        "nowy-front/lekcja-edycja/nagranie.ts",
+        "nowy-front/lekcja-edycja/stan-zapisu.ts",
         "nowy-front/lekcja-edycja/tus.ts",
       ]),
     );
@@ -78,6 +82,17 @@ describe("źródła ekranu lekcji", () => {
     expect(nazwy(trafienia)).toEqual([]);
   });
 
+  it("karta nagrania mówi „karta przeglądarki”, nigdy „strona”", () => {
+    const karta = bezKomentarzy(tresc(join(KORZEN, "nowy-front/lekcja-edycja/KartaNagrania.tsx")));
+    expect(karta).toMatch(/karty przeglądarki/);
+    expect(karta.replace(/StronaLekcji/g, "")).not.toMatch(/stron[aąeęyi]/i);
+  });
+
+  it("strona lekcji nie ma dolnego paska zapisu ani powiadomienia o zapisie", () => {
+    const strona = bezKomentarzy(tresc(join(KORZEN, "nowy-front/lekcja-edycja/StronaLekcji.tsx")));
+    expect(strona).not.toMatch(/FormTemplate|Toast|akcje=/);
+  });
+
   it("zero wstrzykiwania HTML", () => {
     const trafienia = PLIKI.filter((plik) => /dangerouslySetInnerHTML|innerHTML/.test(bezKomentarzy(tresc(plik))));
     expect(nazwy(trafienia)).toEqual([]);
@@ -88,15 +103,20 @@ describe("źródła ekranu lekcji", () => {
     expect(nazwy(trafienia)).toEqual([]);
   });
 
-  it("szablon formularza wyłącznie z design-system, ekran bez własnego znacznika głównego", () => {
+  it("szablony wyłącznie z design-system, ekran bez własnego znacznika głównego", () => {
     const ekran = tresc(join(KORZEN, "nowy-front/lekcja-edycja/LekcjaEdycja.tsx"));
     expect(ekran).toMatch(/import \{ FormTemplate \} from "@\/design-system\/szablony\/FormTemplate\/FormTemplate";/);
+    const strona = tresc(join(KORZEN, "nowy-front/lekcja-edycja/StronaLekcji.tsx"));
+    expect(strona).toMatch(
+      /import \{ TylkoOdDwochKolumn, UkladEdycji \} from "@\/design-system\/szablony\/UkladEdycji\/UkladEdycji";/,
+    );
+    expect(strona).toMatch(/<UkladEdycji\b/);
     const znacznik = "<" + "main";
     expect(TSX.filter((plik) => tresc(plik).includes(znacznik))).toEqual([]);
   });
 
   it("treść lekcji renderuje molekuła TrescLekcji, bez własnego parsera Markdown", () => {
-    const ekran = tresc(join(KORZEN, "nowy-front/lekcja-edycja/LekcjaEdycja.tsx"));
+    const ekran = tresc(join(KORZEN, "nowy-front/lekcja-edycja/StronaLekcji.tsx"));
     expect(ekran).toMatch(/import \{ TrescLekcji \} from "@\/design-system\/molekuly\/TrescLekcji\/TrescLekcji";/);
     expect(ekran).toMatch(/<TrescLekcji\b/);
     const wlasnyParser = PLIKI.filter((plik) => /parsujTresc|marked|markdown-it|remark/.test(bezKomentarzy(tresc(plik))));

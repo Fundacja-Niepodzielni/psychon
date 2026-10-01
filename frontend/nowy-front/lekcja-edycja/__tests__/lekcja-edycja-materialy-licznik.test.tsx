@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { LekcjaAdmin, MaterialAdmin, StanNagrania } from "../dane";
 
 /**
- * Sekcja „Materiały” ekranu lekcji:
+ * Karta „Pliki do tej lekcji” strony lekcji:
  *  - licznik materiałów pochodzi z zaplecza (`materials_count` lekcji) i ma
  *    poprawną formę liczby;
  *  - lekcja z materiałami wgranymi wcześniej nie wygląda jak pusta: ekran mówi
@@ -89,7 +89,7 @@ async function renderEkranu(liczbaMaterialow: number, wgranie: Wgranie = () => W
 }
 
 function sekcja(): HTMLElement {
-  return screen.getByRole("heading", { level: 2, name: "Materiały" }).closest("section")!;
+  return screen.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" }).closest("section")!;
 }
 
 async function wgraj(container: HTMLElement, uzytkownik: ReturnType<typeof userEvent.setup>, nazwa = "karta.pdf") {
@@ -141,8 +141,8 @@ describe("licznik materiałów lekcji i zdanie o wcześniej wgranych", () => {
     expect(await within(sekcja()).findByText("Ta lekcja ma 4 materiały.")).toBeInTheDocument();
     expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
 
-    await uzytkownik.click(screen.getByRole("button", { name: "Usuń materiał „karta.pdf”" }));
-    await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń materiał" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
+    await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń plik" }));
     await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument());
     expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
   });
@@ -163,12 +163,12 @@ describe("wgrany plik widać raz", () => {
     const { container, uzytkownik } = await renderEkranu(3);
 
     await wgraj(container, uzytkownik);
-    await screen.findByRole("button", { name: "Usuń materiał „karta.pdf”" });
+    await screen.findByRole("button", { name: "Usuń plik karta.pdf" });
 
     expect(within(sekcja()).getAllByText("karta.pdf")).toHaveLength(1);
     expect(container.querySelector("[data-stan]")).toBeNull();
     const ogloszenie = within(sekcja()).getByRole("status");
-    expect(ogloszenie).toHaveTextContent("Wgrano materiał „karta.pdf”.");
+    expect(ogloszenie).toHaveTextContent("Wgrano plik „karta.pdf”.");
   });
 
   it("wgranie trwa: wiersz stanu „Wgrywanie…”, jeszcze bez wiersza „Usuń”", async () => {
@@ -179,10 +179,10 @@ describe("wgrany plik widać raz", () => {
 
     expect(await within(sekcja()).findByText("Wgrywanie…")).toBeInTheDocument();
     expect(container.querySelector("[data-stan='przetwarzanie']")).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Usuń materiał „karta.pdf”" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Usuń plik karta.pdf" })).toBeNull();
 
     dokoncz(WGRANY);
-    await screen.findByRole("button", { name: "Usuń materiał „karta.pdf”" });
+    await screen.findByRole("button", { name: "Usuń plik karta.pdf" });
     expect(within(sekcja()).getAllByText("karta.pdf")).toHaveLength(1);
   });
 
@@ -203,7 +203,7 @@ describe("wgrany plik widać raz", () => {
     expect(await within(sekcja()).findByText("Plik może mieć najwyżej 10 MB.")).toBeInTheDocument();
     expect(container.querySelector("[data-stan='blad']")).not.toBeNull();
     expect(within(sekcja()).getAllByText("duzy.pdf")).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: /^Usuń materiał/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Usuń plik/ })).toBeNull();
     expect(within(sekcja()).getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
   });
 });

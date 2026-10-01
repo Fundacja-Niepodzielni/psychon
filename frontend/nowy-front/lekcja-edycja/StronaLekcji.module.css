@@ -1,0 +1,216 @@
+/* Strona lekcji w układzie dwóch kolumn — barwy, odstępy i rozmiary pisma
+   wyłącznie z tokeny.css. Ramę kolumn i karty daje szablon układu edycji. */
+.kolumna {
+  display: grid;
+  gap: var(--space-20);
+  min-width: 0;
+}
+
+.trescKarty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* Góra strony: powrót do kursu i sąsiednie lekcje. */
+.nawigacja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-20);
+  min-height: var(--hit-min);
+  font-weight: var(--fw-medium);
+}
+
+.sasiednie {
+  display: flex;
+  gap: var(--space-20);
+  font-size: var(--fs-10);
+}
+
+/* Długi tytuł lekcji bez spacji łamie się w słowie, zamiast rozpychać stronę w poziomie
+   (właściwość dziedziczona: obejmuje tytuł, opis i ślad okruszków nagłówka tej strony). */
+:global([data-obszar="naglowek"]):has(.nawigacja) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.nieczynna a {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
+}
+
+/* Stan zapisu: w karcie „Zapis” i w wąskim pasie pod tytułem. */
+.stanZapisu {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-10);
+  line-height: var(--lh-heading);
+  overflow-wrap: anywhere;
+}
+
+.stanZapisu strong {
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+}
+
+.przyciskKarty {
+  display: flex;
+}
+
+.stanLekcji {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  color: var(--text);
+  font-size: var(--fs-8);
+  line-height: var(--lh-text);
+}
+
+.stanLekcji p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.stanLekcji strong {
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+}
+
+.stanLekcji .uwaga {
+  color: var(--error);
+}
+
+/* Nagranie. */
+.plikNagrania {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.drobne {
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+.etapy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-20);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+
+.etap,
+.etapBiezacy {
+  white-space: nowrap;
+}
+
+.etapBiezacy {
+  color: var(--ink);
+  font-weight: var(--fw-bold);
+}
+
+.zatrzymane,
+.mocne {
+  margin: 0;
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+
+/* Treść lekcji. */
+.podTrescia {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-20);
+}
+
+.podglad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+/* Pliki lekcji: nazwa najwyżej w dwóch wierszach, długie nazwy bez spacji łamią się w słowie. */
+.pliki {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plik {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-12);
+  align-items: center;
+  min-height: calc(var(--hit-min) + var(--space-12));
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.nazwaPliku {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--text);
+}
+
+.nazwaDwieLinie {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+
+/* Ogłoszenie o zakończonym wgraniu: tylko dla czytnika ekranu — widoczny jest wiersz pliku z „Usuń”. */
+.tylkoCzytnika,
+.slowoLekcjaUkryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  /* Telefon: same „Poprzednia” i „Następna”; pełną nazwę niesie nazwa dostępna odnośnika. */
+  .slowoLekcja {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .sasiednie {
+    gap: var(--space-16);
+  }
+
+  .stanZapisu span {
+    display: block;
+  }
+
+  .stanZapisu .kropka {
+    display: none;
+  }
+}

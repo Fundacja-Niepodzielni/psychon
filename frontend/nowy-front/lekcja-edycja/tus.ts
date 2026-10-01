@@ -38,12 +38,17 @@ function naglowkiPozwolenia(zlecenie: ZlecenieWgrania): Record<string, string> {
   };
 }
 
-/** Wgrywa `plik` i rzuca `Error` z polskim zdaniem, gdy dostawca odmówi. */
+/**
+ * Wgrywa `plik` i rzuca `Error` z polskim zdaniem, gdy dostawca odmówi.
+ * `sygnal` pozwala osobie przerwać wysyłanie: trwające żądanie zostaje
+ * porzucone, a funkcja rzuca błąd przerwania z `fetch`.
+ */
 export async function wgrajNagranie(
   plik: File,
   zlecenie: ZlecenieWgrania,
   tytul: string,
   naPostep?: (postep: PostepWgrania) => void,
+  sygnal?: AbortSignal,
 ): Promise<void> {
   if (plik.size === 0) {
     throw new Error("Plik nagrania jest pusty.");
@@ -52,6 +57,7 @@ export async function wgrajNagranie(
 
   const utworzenie = await fetch(zlecenie.upload_url, {
     method: "POST",
+    signal: sygnal,
     headers: {
       ...podstawa,
       "Upload-Length": String(plik.size),
@@ -70,6 +76,7 @@ export async function wgrajNagranie(
     const kawalek = plik.slice(przesuniecie, przesuniecie + ROZMIAR_KAWALKA);
     const odpowiedz = await fetch(adresWgrania, {
       method: "PATCH",
+      signal: sygnal,
       headers: {
         ...podstawa,
         "Content-Type": "application/offset+octet-stream",

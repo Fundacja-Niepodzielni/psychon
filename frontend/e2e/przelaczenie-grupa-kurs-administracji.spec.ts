@@ -652,7 +652,7 @@ for (const rola of ["project_manager", "super_admin"] as const) {
       const okruszki = page.getByRole("navigation", { name: "Okruszki" });
       await expect(okruszki.getByRole("link", { name: "Kursy" })).toHaveAttribute("href", "/admin/kursy");
       await expect(okruszki.getByRole("link", { name: KURS.title })).toHaveAttribute("href", ADRES);
-      await expect(page.getByRole("heading", { level: 2, name: "Materiały" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" })).toBeVisible();
       await expect(page.getByRole("heading", { level: 2, name: "Nagranie" })).toBeVisible();
       await expect(page.locator("main")).toHaveCount(1);
       await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
@@ -688,7 +688,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await bezPrzewijaniaPoziomego(page);
       await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-pusta`);
       await zrzut(page, `lekcja-${szerokosc}-stan-pusty-gora`);
-      await zrzut(page, `lekcja-${szerokosc}-stan-pusty-materialy-i-nagranie`, page.getByRole("heading", { level: 2, name: "Materiały" }));
+      await zrzut(page, `lekcja-${szerokosc}-stan-pusty-materialy-i-nagranie`, page.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" }));
     });
 
     test("nagranie gotowe i materiały: wgranie materiału, usunięcie z potwierdzeniem — po jednym żądaniu; axe", async ({
@@ -700,29 +700,29 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(page.getByText("Ta lekcja ma 3 materiały.")).toBeVisible();
       await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toBeVisible();
       await expect(page.getByText("Ta lekcja nie ma jeszcze materiałów.")).toHaveCount(0);
-      await zrzut(page, `lekcja-${szerokosc}-materialy-licznik-3`, page.getByRole("heading", { level: 2, name: "Materiały" }));
+      await zrzut(page, `lekcja-${szerokosc}-materialy-licznik-3`, page.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" }));
       await expect(page.getByText("Nagranie jest gotowe. Czas trwania:", { exact: false })).toBeVisible();
       await zrzut(page, `lekcja-${szerokosc}-nagranie-gotowe`, page.getByRole("heading", { level: 2, name: "Nagranie" }));
 
       await page
-        .locator("section", { has: page.getByRole("heading", { level: 2, name: "Materiały" }) })
+        .locator("section", { has: page.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" }) })
         .locator('input[type="file"]')
         .setInputFiles({ name: "karta-pracy.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-") });
-      await expect(page.getByRole("status").filter({ hasText: "Wgrano materiał „karta-pracy.pdf”." })).toHaveCount(1);
+      await expect(page.getByRole("status").filter({ hasText: "Wgrano plik „karta-pracy.pdf”." })).toHaveCount(1);
       await expect(page.getByText("Ta lekcja ma 4 materiały.")).toBeVisible();
       await expect(page.getByText(ZDANIE_O_LISCIE_MATERIALOW)).toBeVisible();
       await expect(page.getByText("karta-pracy.pdf", { exact: true })).toHaveCount(1);
-      const usun = page.getByRole("button", { name: "Usuń materiał „karta-pracy.pdf”" });
+      const usun = page.getByRole("button", { name: "Usuń plik karta-pracy.pdf" });
       await expect(usun).toBeVisible();
       await bezPrzewijaniaPoziomego(page);
       await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-materialy`);
-      await zrzut(page, `lekcja-${szerokosc}-materialy-wgrany-plik`, page.getByRole("heading", { level: 2, name: "Materiały" }));
+      await zrzut(page, `lekcja-${szerokosc}-materialy-wgrany-plik`, page.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" }));
 
       await usun.click();
-      const okno = page.getByRole("dialog", { name: "Usunąć materiał „karta-pracy.pdf”?" });
+      const okno = page.getByRole("dialog", { name: "Usunąć plik „karta-pracy.pdf”?" });
       await expect(okno).toBeVisible();
       await sprawdzAxe(page, testInfo, `axe-lekcja-${szerokosc}-okno-usuniecia-materialu`);
-      await okno.getByRole("button", { name: "Usuń materiał" }).click();
+      await okno.getByRole("button", { name: "Usuń plik" }).click();
 
       await expect(page.getByText("Ta lekcja ma 3 materiały.")).toBeVisible();
       await expect(usun).toHaveCount(0);

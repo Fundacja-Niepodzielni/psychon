@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { LekcjaAdmin, MaterialAdmin, StanNagrania } from "../dane";
 
@@ -13,9 +13,10 @@ import type { LekcjaAdmin, MaterialAdmin, StanNagrania } from "../dane";
 
 const api = vi.fn();
 const pobierzJa = vi.fn();
+const push = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ back: vi.fn(), refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ back: vi.fn(), refresh: vi.fn(), push, replace: vi.fn() }),
 }));
 
 vi.mock("@/lib/api/klient", async (importOriginal) => {
@@ -86,6 +87,7 @@ function okruszki(): HTMLElement {
 beforeEach(() => {
   api.mockReset();
   pobierzJa.mockReset();
+  push.mockReset();
 });
 
 describe("okruszki ekranu lekcji pod adresem z kursem w ścieżce", () => {
@@ -113,6 +115,41 @@ describe("okruszki ekranu lekcji pod adresem z kursem w ścieżce", () => {
     expect(within(okruszki()).getByRole("link", { name: "Tematy i lekcje" })).toHaveAttribute("href", "/admin/kursy/3");
   });
 
+  it("powrót i sąsiednia lekcja prowadzą pod adresy z kursem w ścieżce", async () => {
+    ustawApi((sciezka, metoda) =>
+      metoda === "GET" && sciezka === "/admin/courses/3/lessons"
+        ? [LEKCJA, { ...LEKCJA, id: 22, title: "Druga lekcja", sequence_order: 2 }]
+        : undefined,
+    );
+    render(<LekcjaEdycja idLekcji={21} idKursu={3} zNazwaKursu />);
+    await screen.findByLabelText(/^Tytuł lekcji/);
+
+    expect(screen.getByRole("link", { name: "← Wróć do kursu" })).toHaveAttribute("href", "/admin/kursy/3");
+    expect(screen.getByRole("link", { name: "Następna lekcja: Druga lekcja" })).toHaveAttribute(
+      "href",
+      "/admin/kursy/3/lekcje/22",
+    );
+  });
+
+  it("okruszek przy niezapisanym tekście pyta tym samym oknem; bez zmian przechodzi od razu", async () => {
+    ustawApi();
+    const uzytkownik = userEvent.setup();
+    render(<LekcjaEdycja idLekcji={21} idKursu={3} zNazwaKursu />);
+    await screen.findByLabelText(/^Tytuł lekcji/);
+
+    await uzytkownik.click(within(okruszki()).getByRole("link", { name: "Kursy" }));
+    expect(push).toHaveBeenCalledWith("/admin/kursy");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    push.mockReset();
+    fireEvent.change(screen.getByLabelText(/^Tytuł lekcji/), { target: { value: "Zmieniony tytuł" } });
+    await uzytkownik.click(within(okruszki()).getByRole("link", { name: "Kursy" }));
+    const okno = await screen.findByRole("dialog", { name: "Zapisać zmiany przed przejściem?" });
+    expect(push).not.toHaveBeenCalled();
+    await uzytkownik.click(within(okno).getByRole("button", { name: "Przejdź bez zapisu" }));
+    expect(push).toHaveBeenCalledWith("/admin/kursy");
+  });
+
   it("trasa podglądu (bez nazwy kursu) nie czyta kursu i zostawia okruszki jak dotąd", async () => {
     ustawApi(undefined, null);
     render(<LekcjaEdycja idLekcji={21} idKursu={3} />);
@@ -136,7 +173,7 @@ describe("lekcja spoza kursu z adresu", () => {
   });
 });
 
-describe("usunięcie materiału lekcji wgranego na ekranie", () => {
+describe("usunięcie pliku lekcji wgranego na ekranie", () => {
   async function wgrajMaterial(dodatkowe: Odpowiedz = () => undefined) {
     ustawApi((sciezka, metoda) => {
       if (metoda === "POST" && sciezka === "/admin/lessons/21/materials") return WGRANY;
@@ -147,7 +184,7 @@ describe("usunięcie materiału lekcji wgranego na ekranie", () => {
     await screen.findByLabelText(/^Tytuł lekcji/);
     const wejscie = container.querySelector<HTMLInputElement>('input[type="file"]')!;
     await uzytkownik.upload(wejscie, new File(["%PDF"], "karta.pdf", { type: "application/pdf" }));
-    await screen.findByText("Wgrano materiał „karta.pdf”.");
+    await screen.findByText("Wgrano plik „karta.pdf”.");
     expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
     return { uzytkownik, container };
   }
@@ -157,16 +194,16 @@ describe("usunięcie materiału lekcji wgranego na ekranie", () => {
       metoda === "DELETE" && sciezka === "/admin/materials/9" ? { id: 9, deleted: true } : undefined,
     );
 
-    await uzytkownik.click(screen.getByRole("button", { name: "Usuń materiał „karta.pdf”" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
     expect(sciezki()).not.toContain("DELETE /admin/materials/9");
     await uzytkownik.click(
-      within(screen.getByRole("dialog", { name: "Usunąć materiał „karta.pdf”?" })).getByRole("button", { name: "Usuń materiał" }),
+      within(screen.getByRole("dialog", { name: "Usunąć plik „karta.pdf”?" })).getByRole("button", { name: "Usuń plik" }),
     );
 
     await waitFor(() => expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument());
     expect(sciezki().filter((wpis) => wpis === "DELETE /admin/materials/9")).toHaveLength(1);
-    expect(screen.queryByRole("list", { name: "Materiały wgrane teraz" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Usuń materiał „karta.pdf”" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Pliki dodane teraz" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Usuń plik karta.pdf" })).toBeNull();
     expect(document.activeElement).not.toBe(document.body);
     expect(document.activeElement).toHaveAttribute("role", "button");
     expect(document.activeElement?.id).toMatch(/-plik-materialu-obszar$/);
@@ -175,11 +212,11 @@ describe("usunięcie materiału lekcji wgranego na ekranie", () => {
   it("„Anuluj” w oknie nie wysyła żądania i zostawia plik", async () => {
     const { uzytkownik } = await wgrajMaterial();
 
-    await uzytkownik.click(screen.getByRole("button", { name: "Usuń materiał „karta.pdf”" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
     await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Anuluj" }));
 
     expect(sciezki()).not.toContain("DELETE /admin/materials/9");
-    expect(screen.getByRole("button", { name: "Usuń materiał „karta.pdf”" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
     expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
   });
 
@@ -190,12 +227,12 @@ describe("usunięcie materiału lekcji wgranego na ekranie", () => {
         : undefined,
     );
 
-    await uzytkownik.click(screen.getByRole("button", { name: "Usuń materiał „karta.pdf”" }));
-    await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń materiał" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
+    await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń plik" }));
 
     expect(await screen.findByText("Usunięcie materiału nie jest dostępne dla Twojej roli.")).toBeInTheDocument();
     expect(screen.queryByText(/unauthorized/i)).toBeNull();
-    expect(screen.getByRole("button", { name: "Usuń materiał „karta.pdf”" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
     expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
   });
 });

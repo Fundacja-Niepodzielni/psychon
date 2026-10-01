@@ -97,6 +97,30 @@ describe("wgrywanie nagrania protokołem TUS", () => {
     );
   });
 
+  it("sygnał przerwania idzie na oba rodzaje żądań; przerwanie w trakcie kawałka odrzuca wysyłkę", async () => {
+    const kontroler = new AbortController();
+    const sygnaly: (AbortSignal | undefined)[] = [];
+    const atrapa = vi.fn(
+      (_adres: string, opcje: { method: string; signal?: AbortSignal }) =>
+        new Promise<Response>((ok, blad) => {
+          sygnaly.push(opcje.signal);
+          if (opcje.method === "POST") {
+            ok(UTWORZONO());
+            return;
+          }
+          opcje.signal?.addEventListener("abort", () => blad(new DOMException("Przerwano", "AbortError")));
+          kontroler.abort();
+        }),
+    );
+    vi.stubGlobal("fetch", atrapa);
+
+    await expect(
+      wgrajNagranie(new File(["12345"], "n.mp4", { type: "video/mp4" }), ZLECENIE, "T", undefined, kontroler.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(sygnaly).toEqual([kontroler.signal, kontroler.signal]);
+    expect(atrapa).toHaveBeenCalledTimes(2);
+  });
+
   it("pusty plik nie wywołuje dostawcy", async () => {
     const atrapa = atrapaDostawcy([]);
     await expect(wgrajNagranie(new File([], "pusty.mp4", { type: "video/mp4" }), ZLECENIE, "T")).rejects.toThrow(
