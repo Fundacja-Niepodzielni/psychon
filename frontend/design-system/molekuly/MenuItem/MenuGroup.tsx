@@ -6,7 +6,7 @@ interface PozycjaGrupy {
   ikona: NazwaIkony;
   etykieta: string;
   href: string;
-  biezaca?: boolean;
+  biezaca?: boolean | "sekcja";
   licznik?: { wartosc: number; etykieta: string };
 }
 

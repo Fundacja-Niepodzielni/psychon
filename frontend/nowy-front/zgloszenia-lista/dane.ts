@@ -43,16 +43,17 @@ export interface StronaZgloszen {
 type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
 
 export const PLAKIETKA_STATUSU: Record<ApplicationStatus, { wariant: WariantPlakietki; tekst: string }> = {
-  new: { wariant: "pending", tekst: "Czeka na decyzję" },
-  accepted: { wariant: "ok", tekst: "Zaakceptowane" },
-  rejected: { wariant: "error", tekst: "Odrzucone" },
+  new: { wariant: "pending", tekst: "czeka na decyzję" },
+  accepted: { wariant: "ok", tekst: "zaakceptowane" },
+  rejected: { wariant: "error", tekst: "odrzucone" },
 };
 
 export const OPCJE_STATUSU: { wartosc: string; etykieta: string }[] = [
   { wartosc: "", etykieta: "Wszystkie" },
-  { wartosc: "new", etykieta: PLAKIETKA_STATUSU.new.tekst },
-  { wartosc: "accepted", etykieta: PLAKIETKA_STATUSU.accepted.tekst },
-  { wartosc: "rejected", etykieta: PLAKIETKA_STATUSU.rejected.tekst },
+  // Opcje listy rozwijanej zaczynają się wielką literą; plakietka w wierszu (słownik 2.1) — małą.
+  { wartosc: "new", etykieta: "Czeka na decyzję" },
+  { wartosc: "accepted", etykieta: "Zaakceptowane" },
+  { wartosc: "rejected", etykieta: "Odrzucone" },
 ];
 
 export function filtrAktywny(filtr: FiltrZgloszen): boolean {
@@ -93,14 +94,28 @@ export function etykietaRoli(rola: string): string {
   return (ROLE_LABELS as Record<string, string>)[rola] ?? "Nieznana rola";
 }
 
+/**
+ * Wiersz zgłoszenia — ten sam wzór co wiersz osoby i kolejki spraw: pogrubione
+ * imię i nazwisko, po „·” meta (e-mail, proponowana rola, data zgłoszenia),
+ * plakietka stanu małą literą, akcja „Otwórz” (pełną nazwę „Otwórz zgłoszenie:
+ * …” słyszy tylko czytnik ekranu).
+ */
 export function wierszeZgloszen(zgloszenia: ApplicationItem[]): WierszRecordList[] {
-  return zgloszenia.map((zgloszenie) => ({
-    id: String(zgloszenie.id),
-    tytul: `${zgloszenie.first_name} ${zgloszenie.last_name}`,
-    podpowiedz: `${zgloszenie.email} · proponowana rola: ${etykietaRoli(zgloszenie.role)} · zgłoszono ${dataPl(zgloszenie.created_at)}`,
-    plakietka: PLAKIETKA_STATUSU[zgloszenie.status],
-    akcja: { etykieta: "Otwórz zgłoszenie", href: `${SCIEZKA_SZCZEGOLU}/${zgloszenie.id}` },
-  }));
+  return zgloszenia.map((zgloszenie) => {
+    const nazwa = `${zgloszenie.first_name} ${zgloszenie.last_name}`;
+    return {
+      id: String(zgloszenie.id),
+      tytul: nazwa,
+      tytulPogrubiony: true,
+      tytulDodatek: `${zgloszenie.email} · proponowana rola: ${etykietaRoli(zgloszenie.role)} · zgłoszono ${dataPl(zgloszenie.created_at)}`,
+      plakietka: PLAKIETKA_STATUSU[zgloszenie.status],
+      akcja: {
+        etykieta: "Otwórz",
+        etykietaDostepna: `Otwórz zgłoszenie: ${nazwa}`,
+        href: `${SCIEZKA_SZCZEGOLU}/${zgloszenie.id}`,
+      },
+    };
+  });
 }
 
 /* ------------------------------------------------------------------ */

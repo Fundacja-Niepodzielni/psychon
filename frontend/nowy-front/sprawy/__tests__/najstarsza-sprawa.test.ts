@@ -10,6 +10,7 @@ function pozycja(overrides: Partial<PozycjaKolejki> & Pick<PozycjaKolejki, "id" 
     idLiczbowe: domyslneIdLiczbowe,
     tytul: `Sprawa ${overrides.id}`,
     osoba: "Osoba Demo",
+    nazwisko: "Demo",
     podpowiedz: "Czeka od —",
     czekaOd: "",
     href: `/sprawa/${overrides.id}`,
@@ -66,8 +67,8 @@ describe("znajdzNajstarszaSprawe", () => {
       oczekiwaneId: "applications-1",
     },
     {
-      // Remis tej samej chwili I tego samego rodzaju: rozstrzyga `id` rosnąco.
-      nazwa: "remis tej samej chwili i rodzaju -> wygrywa niższe id",
+      // Remis tej samej chwili, rodzaju i nazwiska: rozstrzyga `idLiczbowe` rosnąco.
+      nazwa: "remis tej samej chwili, rodzaju i nazwiska -> wygrywa niższe id",
       pozycje: [
         pozycja({ id: "applications-20", rodzaj: "applications", czekaOd: "2026-03-01T00:00:00Z" }),
         pozycja({ id: "applications-5", rodzaj: "applications", czekaOd: "2026-03-01T00:00:00Z" }),

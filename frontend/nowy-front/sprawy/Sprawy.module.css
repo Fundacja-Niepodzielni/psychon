@@ -6,9 +6,10 @@
   gap: var(--space-16);
   max-width: 960px;
   margin: 0 auto;
-  /* Boczny margines treści daje ramka panelu (40 px, na wąskim ekranie 18 px);
-     ekran nie dokłada własnego, żeby nie wcinać się głębiej niż inne ekrany. */
-  padding: var(--space-24) 0;
+  /* Odstęp od górnego paska i od końca treści oraz boczny margines daje ramka
+     panelu (boczny 40 px, na wąskim ekranie 18 px); ekran nie dokłada własnego
+     odstępu, żeby nie wcinać się głębiej ani niżej niż inne ekrany. */
+  padding: 0;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -30,6 +31,20 @@
   border-color: var(--ink);
   background: var(--grey);
   font-weight: var(--fw-bold);
+}
+
+/* Pozycje filtra będące odnośnikami do własnych ekranów (dyżury, zgłoszenia
+   rekrutacyjne): ten sam rozmiar i ramka co przyciski, ale barwa odnośnika. */
+.opcjeFiltra a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-min);
+  margin: 0;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
 }
 
 /* Tekst tylko dla czytnika ekranu (nagłówek listy „Sprawy”). */

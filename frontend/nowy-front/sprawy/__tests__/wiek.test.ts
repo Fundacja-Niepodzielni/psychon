@@ -3,6 +3,7 @@ import {
   dniOczekiwania,
   slowoDni,
   tekstPlakietkiCzekania,
+  tekstWieku,
   wariantPlakietkiCzekania,
 } from "../wiek";
 
@@ -42,9 +43,21 @@ describe("odmiana i tekst plakietki", () => {
     expect([0, 1, 2, 5, 22].map(slowoDni)).toEqual(["dni", "dzień", "dni", "dni", "dni"]);
   });
 
-  it("tekst plakietki: „czeka N dni” albo „czeka 1 dzień”", () => {
+  it("tekst plakietki: „czeka od dziś” przy 0, „czeka 1 dzień”, „czeka N dni” dla pozostałych", () => {
     expect(tekstPlakietkiCzekania(5)).toBe("czeka 5 dni");
     expect(tekstPlakietkiCzekania(1)).toBe("czeka 1 dzień");
-    expect(tekstPlakietkiCzekania(0)).toBe("czeka 0 dni");
+    expect(tekstPlakietkiCzekania(0)).toBe("czeka od dziś");
+    expect(tekstPlakietkiCzekania(2)).toBe("czeka 2 dni");
+    expect(tekstPlakietkiCzekania(22)).toBe("czeka 22 dni");
+  });
+
+  it("część wieku z jednej funkcji: „od dziś”, „1 dzień”, „2 dni”, „5 dni”, „22 dni”", () => {
+    expect([0, 1, 2, 5, 22].map(tekstWieku)).toEqual(["od dziś", "1 dzień", "2 dni", "5 dni", "22 dni"]);
+  });
+
+  it("plakietka składa się z części wieku: „czeka ” + tekstWieku(N) dla każdego N", () => {
+    for (const dni of [0, 1, 2, 4, 5, 22]) {
+      expect(tekstPlakietkiCzekania(dni)).toBe(`czeka ${tekstWieku(dni)}`);
+    }
   });
 });

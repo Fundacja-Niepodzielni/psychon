@@ -13,17 +13,34 @@
  *    do `/admin`), uczestnik i prowadzący od sekcji, bez korzenia roli.
  * 4. Okruszek z jedną pozycją nie powstaje nigdy (dublowałby `h1`).
  * 5. Nazwy w okruszku to nazwy pozycji menu, nie nazwy z ekranu.
+ * 6. Ekran bez własnej pozycji w menu, który ma w rejestrze menu rodzica
+ *    (`podstrony` pozycji-rodzica), jest zwykłą podstroną z pkt 2: łańcuch
+ *    „korzeń › rodzic › bieżąca”, a jego szczegół „korzeń › rodzic › ekran ›
+ *    bieżąca”. Rodzic stoi w grupie „Codziennie”, ale podstrona okruszek ma
+ *    zawsze — pkt 1 dotyczy tylko ekranów z własną pozycją menu.
  *
  * Moduł jest czysty (bez Reacta i bez routera): ścieżkę i menu dostarcza
  * kontekst ramki (`KontekstRamki.tsx`).
  */
 
+/** Podstrona bez własnej pozycji w menu — jej rodzicem jest pozycja, która ją niesie w `podstrony`. */
+export interface PodstronaMenuOkruszka {
+  etykieta: string;
+  href: string;
+}
+
 /** Pozycja menu ramki — tyle, ile potrzeba do ułożenia okruszka. */
 export interface PozycjaMenuOkruszka {
   etykieta: string;
   href: string;
-  /** Pozycja bieżąca dla ścieżki (rozstrzyga rejestr menu: korzeń sekcji tylko dokładnie). */
-  biezaca?: boolean;
+  /**
+   * Pozycja bieżąca dla ścieżki (rozstrzyga rejestr menu: korzeń sekcji tylko
+   * dokładnie). `"sekcja"` — rodzic bieżącej podstrony; okruszek liczy wtedy
+   * z `podstrony`, nie z tej pozycji.
+   */
+  biezaca?: boolean | "sekcja";
+  /** Podstrony bez własnej pozycji w menu, które mają tę pozycję za rodzica (rejestr menu). */
+  podstrony?: PodstronaMenuOkruszka[];
 }
 
 /** Grupa menu ramki (np. „Codziennie”, „Program”, „Rozliczenie”). */
@@ -77,11 +94,46 @@ interface DaneOkruszka {
 export function okruszekRamki({ menu, sciezka, okruszki, tytul }: DaneOkruszka): PozycjaOkruszka[] {
   const s = bezKonca(sciezka);
 
+  const lancuch: PozycjaOkruszka[] = [];
+  // Łącze trafia do łańcucha raz: bez powtórzeń po nazwie i po adresie.
+  const dodajLacze = (etykieta: string, href: string) => {
+    const powtorzone = lancuch.some((w) => klucz(w.etykieta) === klucz(etykieta) || w.href === href);
+    if (!powtorzone) lancuch.push({ etykieta, href });
+  };
+  const ostatniaEkranu = okruszki.length > 0 ? okruszki[okruszki.length - 1].etykieta : tytul;
+  const korzen = korzenDlaSciezki(s);
+
+  // Podstrona z rodzicem w rejestrze menu (ekran bez własnej pozycji): przy kilku — najdłuższy adres.
+  let podstrona: { rodzic: PozycjaMenuOkruszka; ekran: PodstronaMenuOkruszka; adres: string } | null = null;
+  for (const grupa of menu) {
+    for (const rodzic of grupa.pozycje) {
+      for (const ekran of rodzic.podstrony ?? []) {
+        const adres = bezKonca(ekran.href);
+        if (s !== adres && !s.startsWith(`${adres}/`)) continue;
+        if (!podstrona || adres.length > podstrona.adres.length) podstrona = { rodzic, ekran, adres };
+      }
+    }
+  }
+  if (podstrona) {
+    if (korzen) dodajLacze(korzen.etykieta, korzen.href);
+    dodajLacze(podstrona.rodzic.etykieta, podstrona.rodzic.href);
+    if (s === podstrona.adres) {
+      lancuch.push({ etykieta: podstrona.ekran.etykieta });
+    } else {
+      dodajLacze(podstrona.ekran.etykieta, podstrona.ekran.href);
+      for (const pozycja of okruszki.slice(0, -1)) {
+        if (pozycja.href) dodajLacze(pozycja.etykieta, pozycja.href);
+      }
+      lancuch.push({ etykieta: ostatniaEkranu });
+    }
+    return lancuch.length > 1 ? lancuch : [];
+  }
+
   // Pozycja menu dopasowana do ścieżki: bieżąca wg rejestru, przy kilku — najdłuższy adres.
   let dopasowana: { pozycja: PozycjaMenuOkruszka; grupa: GrupaMenuOkruszka } | null = null;
   for (const grupa of menu) {
     for (const pozycja of grupa.pozycje) {
-      if (!pozycja.biezaca) continue;
+      if (pozycja.biezaca !== true) continue;
       if (!dopasowana || pozycja.href.length > dopasowana.pozycja.href.length) dopasowana = { pozycja, grupa };
     }
   }
@@ -91,17 +143,9 @@ export function okruszekRamki({ menu, sciezka, okruszki, tytul }: DaneOkruszka):
 
   if (dopasowana && !szczegol && dopasowana.grupa.naglowek === GRUPA_BEZ_OKRUSZKA) return [];
 
-  const ostatniaEkranu = okruszki.length > 0 ? okruszki[okruszki.length - 1].etykieta : tytul;
   // Lista bez łączy dalej: bieżąca to nazwa pozycji menu (rejestr), na szczególe — ostatnia pozycja ekranu.
   const biezaca = dopasowana && !szczegol ? dopasowana.pozycja.etykieta : ostatniaEkranu;
 
-  const lancuch: PozycjaOkruszka[] = [];
-  // Łącze trafia do łańcucha raz: bez powtórzeń po nazwie i po adresie.
-  const dodajLacze = (etykieta: string, href: string) => {
-    const powtorzone = lancuch.some((w) => klucz(w.etykieta) === klucz(etykieta) || w.href === href);
-    if (!powtorzone) lancuch.push({ etykieta, href });
-  };
-  const korzen = korzenDlaSciezki(s);
   if (korzen) dodajLacze(korzen.etykieta, korzen.href);
   if (dopasowana && szczegol && klucz(dopasowana.pozycja.etykieta) !== klucz(biezaca)) {
     dodajLacze(dopasowana.pozycja.etykieta, dopasowana.pozycja.href);

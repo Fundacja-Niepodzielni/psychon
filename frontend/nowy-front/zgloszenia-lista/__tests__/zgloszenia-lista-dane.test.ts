@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/klient";
 import {
   LICZBA_NA_STRONE,
   OPCJE_STATUSU,
+  PLAKIETKA_STATUSU,
   PUSTY_FILTR,
   dataPl,
   etykietaRoli,
@@ -124,15 +125,36 @@ describe("Zgłoszenia rekrutacyjne — klasyfikacja błędu", () => {
 });
 
 describe("Zgłoszenia rekrutacyjne — wiersze", () => {
-  it("wiersz niesie nazwisko, rolę po polsku, stan i odnośnik do szczegółu", () => {
+  // Wiersz jak wiersz Spraw: pogrubione imię i nazwisko, meta po „·”, plakietka małą literą, akcja „Otwórz”.
+  it("wiersz niesie pogrubione nazwisko, rolę po polsku w meta, stan małą literą i „Otwórz” z pełną nazwą dla czytnika", () => {
     const [wiersz] = wierszeZgloszen([{ ...ATRAPA, role: "instructor", status: "rejected" }]);
     expect(wiersz.id).toBe("11");
     expect(wiersz.tytul).toBe("Anna Kandydat");
-    expect(wiersz.podpowiedz).toBe(
+    expect(wiersz.tytulPogrubiony).toBe(true);
+    expect(wiersz.tytulDodatek).toBe(
       "kandydat@demo.pl · proponowana rola: Psycholog prowadzący · zgłoszono 20.09.2026",
     );
-    expect(wiersz.plakietka).toEqual({ wariant: "error", tekst: "Odrzucone" });
-    expect(wiersz.akcja).toEqual({ etykieta: "Otwórz zgłoszenie", href: "/admin/nabor/11" });
+    expect(wiersz.podpowiedz).toBeUndefined();
+    expect(wiersz.plakietka).toEqual({ wariant: "error", tekst: "odrzucone" });
+    expect(wiersz.akcja).toEqual({
+      etykieta: "Otwórz",
+      etykietaDostepna: "Otwórz zgłoszenie: Anna Kandydat",
+      href: "/admin/nabor/11",
+    });
+  });
+
+  it("plakietki trzech stanów zaczynają się małą literą, a opcje filtra stanu wielką", () => {
+    expect(Object.values(PLAKIETKA_STATUSU).map((p) => p.tekst)).toEqual([
+      "czeka na decyzję",
+      "zaakceptowane",
+      "odrzucone",
+    ]);
+    expect(OPCJE_STATUSU.map((o) => o.etykieta)).toEqual([
+      "Wszystkie",
+      "Czeka na decyzję",
+      "Zaakceptowane",
+      "Odrzucone",
+    ]);
   });
 
   it("nieznana rola nie wychodzi na ekran jako surowy kod", () => {

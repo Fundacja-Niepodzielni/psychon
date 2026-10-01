@@ -283,6 +283,36 @@ describe("PageHeader w nowej ramce i poza nią", () => {
     expect(within(okruszki).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/admin", "/admin/profile"]);
     expect(okruszki.textContent).toContain("Wniosek o profil");
   });
+
+  it("podstrona rodzica: menu oznacza rodzica aria-current=\"true\" (nie „page”), a okruszek idzie przez rodzica", () => {
+    sciezkaTestu.wartosc = "/admin/nabor";
+    const podstrony = [{ etykieta: "Zgłoszenia rekrutacyjne", href: "/admin/nabor" }];
+    const grupy = [
+      {
+        naglowek: "Codziennie",
+        pozycje: [
+          { ikona: "home" as const, etykieta: "Pulpit", href: "/admin" },
+          { ikona: "inbox" as const, etykieta: "Sprawy", href: "/admin/sprawy", biezaca: "sekcja" as const, podstrony },
+        ],
+      },
+    ];
+    render(
+      <PowlokaPanelu uzytkownik={{ imie: "Ewa", nazwisko: "Demo", rola: "administracja Fundacji" }} grupy={grupy} onWyloguj={() => {}}>
+        <PageHeader
+          okruszki={[{ etykieta: "Administracja" }, { etykieta: "Sprawy" }, { etykieta: "Zgłoszenia rekrutacyjne" }]}
+          tytul="Zgłoszenia rekrutacyjne"
+          onPowrot={() => {}}
+        />
+      </PowlokaPanelu>,
+    );
+    const menu = within(screen.getByRole("navigation", { name: "Menu główne" }));
+    expect(menu.getByRole("link", { name: "Sprawy" }).getAttribute("aria-current")).toBe("true");
+    expect(menu.getByRole("link", { name: "Pulpit" }).hasAttribute("aria-current")).toBe(false);
+    expect(menu.queryAllByRole("link", { name: "Zgłoszenia rekrutacyjne" })).toHaveLength(0);
+    const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
+    expect(within(okruszki).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/admin", "/admin/sprawy"]);
+    expect(okruszki.textContent).toContain("Zgłoszenia rekrutacyjne");
+  });
 });
 
 /**
@@ -469,6 +499,13 @@ describe("odslonBiezacaPozycje — przewija tylko kontener menu", () => {
     odslonBiezacaPozycje(kontener);
     expect(scrollTop()).toBeGreaterThan(0);
     expect(dolPozycji()).toBeLessThanOrEqual(697.95);
+  });
+
+  it("rodzic podstrony (aria-current=\"true\") też jest odsłaniany jak strona bieżąca", () => {
+    const { kontener, scrollTop } = zbuduj(994);
+    kontener.querySelector("a")!.setAttribute("aria-current", "true");
+    odslonBiezacaPozycje(kontener);
+    expect(scrollTop()).toBe(994 + 40 - 640);
   });
 
   it("pozycja już widoczna — scrollTop bez zmian", () => {

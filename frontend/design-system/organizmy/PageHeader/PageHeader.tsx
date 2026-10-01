@@ -36,12 +36,25 @@ interface PrzyciskGlownyPageHeader {
   niedostepny?: { powod: string };
 }
 
+interface AkcjaDrugorzednaPageHeader {
+  etykieta: string;
+  onKliknij: () => void;
+  /** Akcja chwilowo niedostępna (np. trwa pobieranie): przycisk z atrybutem `disabled`. */
+  wylaczona?: boolean;
+  /** Akcja otwiera panel na tym samym ekranie: stan panelu jako `aria-expanded`. */
+  rozwinieta?: boolean;
+}
+
 interface WlasciwosciPageHeader {
   okruszki: PozycjaOkruszkow[];
   /** Przekazane wprost do `Breadcrumbs` (M7) — "pełne" domyślnie. */
   wariantOkruszkow?: "pelne" | "skrocone";
   tytul: string;
-  opis?: string;
+  /**
+   * Podtytuł. Zwykły tekst (`string`) albo treść z wyróżnieniem (np. liczba
+   * dni w `<strong>`); string jest renderowany tak jak dotąd.
+   */
+  opis?: ReactNode;
   status?: StatusPageHeader;
   /** Wywołane przez przycisk powrotu (`Button`, pole dotyku z `--hit-min`
    * wbudowane w atom — patrz Button.module.css `.przycisk { min-height:
@@ -57,6 +70,16 @@ interface WlasciwosciPageHeader {
    * wynika z treści przycisku, jak w makiecie (`.head .acts`, bez stałej
    * szerokości; `max-width: 320px` z atomu), długa etykieta zawija się. */
   przyciskGlowny?: PrzyciskGlownyPageHeader;
+  /**
+   * Akcja drugorzędna nagłówka (`Button` outline), obok przycisku głównego
+   * (makieta 2.0.4, `.head .acts`): od 768 px po jego lewej stronie, w jednym
+   * wierszu przy prawej krawędzi; poniżej 768 px pod opisem, na pełną
+   * szerokość, pod przyciskiem głównym (jak w makiecie: główny pierwszy).
+   * Bez przycisku głównego stoi sama w tym samym miejscu. Jedna akcja
+   * drugorzędna na nagłówek — kolejne akcje to odnośnik poboczny (`akcja`)
+   * albo `dzieci`.
+   */
+  akcjaDrugorzedna?: AkcjaDrugorzednaPageHeader;
   dzieci?: ReactNode;
 }
 
@@ -92,6 +115,7 @@ export function PageHeader({
   etykietaPowrotu = "Wstecz",
   akcja,
   przyciskGlowny,
+  akcjaDrugorzedna,
   dzieci,
 }: WlasciwosciPageHeader) {
   const daneRamki = useDaneRamki();
@@ -148,18 +172,35 @@ export function PageHeader({
         </div>
       )}
 
-      {przyciskGlowny ? (
+      {przyciskGlowny || akcjaDrugorzedna ? (
         <div className={style.glowa} data-testid="pageheader-glowa">
           <div className={style.tekst}>{blokTekstu}</div>
-          <div className={style.akcje} data-testid="pageheader-przycisk-glowny">
-            <Button
-              poziom="primary"
-              onClick={przyciskGlowny.onKliknij}
-              aria-disabled={przyciskGlowny.niedostepny ? true : undefined}
-              aria-describedby={przyciskGlowny.niedostepny ? idPowodu : undefined}
-            >
-              {przyciskGlowny.etykieta}
-            </Button>
+          <div
+            className={akcjaDrugorzedna && przyciskGlowny ? `${style.akcje} ${style.akcjeDwie}` : style.akcje}
+            data-testid={przyciskGlowny ? "pageheader-przycisk-glowny" : "pageheader-akcje"}
+          >
+            {akcjaDrugorzedna && (
+              <Button
+                poziom="outline"
+                type="button"
+                onClick={akcjaDrugorzedna.onKliknij}
+                disabled={akcjaDrugorzedna.wylaczona}
+                aria-expanded={akcjaDrugorzedna.rozwinieta}
+                data-testid="pageheader-akcja-drugorzedna"
+              >
+                {akcjaDrugorzedna.etykieta}
+              </Button>
+            )}
+            {przyciskGlowny && (
+              <Button
+                poziom="primary"
+                onClick={przyciskGlowny.onKliknij}
+                aria-disabled={przyciskGlowny.niedostepny ? true : undefined}
+                aria-describedby={przyciskGlowny.niedostepny ? idPowodu : undefined}
+              >
+                {przyciskGlowny.etykieta}
+              </Button>
+            )}
           </div>
         </div>
       ) : (

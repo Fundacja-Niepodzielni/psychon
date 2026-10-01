@@ -650,6 +650,23 @@ function Poligon() {
           onPowrot={() => {}}
         />
       </div>
+      {/* O1 PageHeader — akcja drugorzędna obok przycisku głównego (każda raz,
+          obok siebie od 768 px; na telefonie główny pierwszy, pełna szerokość)
+          i podtytuł jako treść z wyróżnieniem. */}
+      <div data-style-id="o1-pageheader-akcja-drugorzedna">
+        <PageHeader
+          okruszki={[{ etykieta: "Administracja", href: "#" }, { etykieta: "Zgłoszenia rekrutacyjne" }]}
+          tytul="Zgłoszenia rekrutacyjne"
+          opis={
+            <>
+              Najstarsze zgłoszenie czeka <strong>6 dni</strong>.
+            </>
+          }
+          przyciskGlowny={{ etykieta: "Dodaj zgłoszenie", onKliknij: () => {} }}
+          akcjaDrugorzedna={{ etykieta: "Importuj z pliku CSV", onKliknij: () => {} }}
+          onPowrot={() => {}}
+        />
+      </div>
 
       {/* O2 PanelNav — 3 zestawy wg roli (64 ekrany, 3 zestawy). Treść
           zestawu (który grupy/pozycje) ustala wywołujący —

@@ -1,27 +1,81 @@
 /* Moduł CSS ekranu decyzji o dyżurach — wartości wyglądu wyłącznie z tokenów,
-   zero zapisów wprost. Szerokość, odstępy obszarów i kolumnę daje szablon. */
+   zero zapisów wprost. Szerokość, odstępy obszarów i kolumnę daje szablon.
+   Wiersze listy rysuje `ListRow`; tu stoi tylko układ sekcji, panel otwartego
+   dyżuru i jego akcje. */
+.sekcja {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
 .lista {
   display: flex;
   flex-direction: column;
   list-style: none;
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--border);
 }
 
 .wiersz {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  padding: var(--space-16) var(--card-px);
+  display: block;
+}
+
+/* Nagłówek listy tylko dla czytnika ekranu: zostaje w drzewie nagłówków. */
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Otwarty dyżur: wiersz i panel pod nim na jednym, ciepłym tle. */
+.otwarty {
+  padding-inline: var(--space-16);
+  background: var(--card-warm);
   border-bottom: 1px solid var(--border);
 }
 
-.tresc {
+.panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  align-items: flex-start;
-  min-width: 0;
+  gap: var(--space-16);
+  padding: var(--space-8) 0 var(--space-16);
+}
+
+/* Dane dyżuru i „Ile godzin ma teraz”: dwie kolumny od 640 px, jedna pod drugą niżej. */
+.kolumny {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+}
+
+@media (min-width: 640px) {
+  .kolumny {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: var(--space-24);
+  }
+}
+
+.dane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+}
+
+.para {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dane dt,
+.dane dd {
+  margin: 0;
 }
 
 .opis {
@@ -30,32 +84,34 @@
   overflow-wrap: anywhere;
 }
 
-.akcje {
+.godziny {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.akcjePanelu {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-8);
 }
 
+/* Odstęp przed „Wróć do listy”: od 640 px spycha ją do prawej krawędzi panelu. */
+.rozdzielacz {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .rozdzielacz {
+    display: block;
+    flex: 1 1 auto;
+  }
+}
+
 .decyzja {
   padding: var(--space-16);
   border-radius: var(--r-sm);
-  background: var(--card-warm);
-}
-
-/* Telefon (≤ 639 px): przyciski w treści zajmują pełną szerokość, jeden pod drugim. */
-@media (max-width: 639px) {
-  .wiersz {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  .akcje {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .akcje button {
-    width: 100%;
-  }
+  background: var(--card);
 }

@@ -24,7 +24,7 @@ import {
   type TerminSuperwizji,
   type WarunkiCertyfikatu,
 } from "./dane";
-import { formatujDziesietny } from "./formatuj-dziesietny";
+import { formatujDziesietny } from "../wspolne/formatuj-dziesietny";
 import { ListaKursow } from "./ListaKursow";
 import { mianownikOdbytychSuperwizji, mianownikUkonczonychKursow } from "./odmiana-kafli";
 import { etapySciezki, wyliczNastepnyKrok, type NastepnyKrok } from "./nastepny-krok";

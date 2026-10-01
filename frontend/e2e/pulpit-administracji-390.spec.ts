@@ -15,7 +15,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - plakietka wiersza: pigułka na szerokość treści; od 640 px w linii tytułu przed nim,
  *   poniżej 640 px w linii pod tytułem, z lewą krawędzią tytułu;
  * - akcja wiersza: rola `link`, pełna nazwa dla czytnika, widoczne „Otwórz”
- *   (1280) albo „Otwórz ›” (390);
+ *   (1280) albo „Otwórz ›” (390); wiersz „Pytania bez odpowiedzi” nie ma akcji
+ *   (ani odnośnika, ani przycisku) i niesie adnotację „odpowiada prowadzący”;
  * - brak dubla „Zgłoszenia rekrutacyjne” poza listą;
  * - ten sam wiersz listy na drugim ekranie (formy stażu) przy 390 i 1280 px.
  *
@@ -199,8 +200,20 @@ async function sprawdzPlakietke(wiersz: Locator, tytul: Locator, plakietka: Loca
   expect(srodek).toBeLessThanOrEqual(pTytulu.y + pTytulu.height);
 }
 
-/** Akcja wiersza: rola `link`, nazwa dostępna = pełna nazwa, widoczny krótki napis. */
+/** Nazwa wiersza kolejki pytań: administracja jej nie otwiera (trasa prowadzącego dałaby jej odmowę). */
+const NAZWA_PYTAN = "Pytania bez odpowiedzi";
+
+/**
+ * Akcja wiersza: rola `link`, nazwa dostępna = pełna nazwa, widoczny krótki napis.
+ * Wiersz pytań nie ma akcji (ani odnośnika, ani przycisku) i niesie adnotację „odpowiada prowadzący”.
+ */
 async function sprawdzAkcje(page: Page, wiersz: Locator, nazwa: string, wuskiEkran: boolean): Promise<void> {
+  if (nazwa === NAZWA_PYTAN) {
+    await expect(wiersz.getByRole("link"), `wiersz „${nazwa}”: odnośniki`).toHaveCount(0);
+    await expect(wiersz.getByRole("button"), `wiersz „${nazwa}”: przyciski`).toHaveCount(0);
+    await expect(wiersz.getByText("odpowiada prowadzący", { exact: true }), `wiersz „${nazwa}”: adnotacja`).toBeVisible();
+    return;
+  }
   const odnosnik = wiersz.getByRole("link", { name: `Otwórz: ${nazwa}`, exact: true });
   await expect(odnosnik, `akcja wiersza „${nazwa}”`).toHaveCount(1);
   const widoczny = await widocznyTekst(odnosnik);
@@ -237,8 +250,9 @@ for (const [nazwaWidoku, okno] of [
       await expect(licznikWiersza(page, NAZWY[2], "0", "spraw")).toBeVisible();
       await expect(listaSpraw(page).getByText(/^Razem\s*3\s*sprawy$/)).toBeVisible();
       // Dolna karta-dubel „Zgłoszenia rekrutacyjne / Stan / … zgłoszeń” nie istnieje:
-      // ten napis występuje tylko jako nazwa wiersza listy.
-      await expect(page.getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
+      // ten napis występuje tylko jako nazwa wiersza listy. Szukamy w treści strony (`main`):
+      // ten sam napis jest też pozycją menu panelu, która nie należy do treści pulpitu.
+      await expect(page.getByRole("main").getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
       await expect(listaSpraw(page).getByText("Zgłoszenia rekrutacyjne")).toHaveCount(1);
       await expect(page.getByRole("article")).toHaveCount(0);
 
@@ -286,6 +300,29 @@ for (const [nazwaWidoku, okno] of [
       await expect(listaSpraw(page).getByText(/^Razem\s*21\s*spraw$/)).toBeVisible();
       await expect(page.locator("#pulpit-uczestnicy")).toHaveText(/5\s*osób/);
       await expect(page.locator("#pulpit-certyfikaty")).toHaveText(/9\s*certyfikatów/);
+    });
+
+    test("liczba w wierszu pytań stoi w kolumnie liczb sąsiednich wierszy (lewa i prawa krawędź, tolerancja 1 px)", async ({
+      page,
+    }) => {
+      await instalujAtrapy(page, PIATKI);
+      await page.goto("/admin");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(listaSpraw(page)).toBeVisible();
+
+      const liczba = async (nazwa: string) => {
+        const wiersz = listaSpraw(page).locator('[data-wariant="z-licznikiem"]').filter({ hasText: nazwa });
+        const pudelko = await wiersz.getByText(/^\d+\s*spraw$/).boundingBox();
+        expect(pudelko, `liczba w wierszu „${nazwa}”`).not.toBeNull();
+        return { lewa: pudelko!.x, prawa: pudelko!.x + pudelko!.width };
+      };
+      const pytania = await liczba(NAZWA_PYTAN);
+      for (const nazwa of NAZWY.filter((n) => n !== NAZWA_PYTAN)) {
+        const sasiad = await liczba(nazwa);
+        expect(Math.abs(pytania.lewa - sasiad.lewa), `lewa krawędź liczby: „${NAZWA_PYTAN}” a „${nazwa}”`).toBeLessThanOrEqual(1);
+        expect(Math.abs(pytania.prawa - sasiad.prawa), `prawa krawędź liczby: „${NAZWA_PYTAN}” a „${nazwa}”`).toBeLessThanOrEqual(1);
+      }
+      await zrzut(page, `pulpit-${nazwaWidoku}-liczby-w-kolumnie`);
     });
 
     test("ten sam wiersz listy na innym ekranie (formy stażu): co najmniej 40% wiersza, bez przewijania poziomego", async ({

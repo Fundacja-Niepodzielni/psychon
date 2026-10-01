@@ -1,4 +1,10 @@
-import { GRUPA_DOTYCHCZASOWA, czyPozycjaBiezaca, type GrupaMenuRamki } from "./administracja";
+import {
+  GRUPA_DOTYCHCZASOWA,
+  czyPodstronaPozycji,
+  czyPozycjaBiezaca,
+  type GrupaMenuRamki,
+  type PodstronaMenuRamki,
+} from "./administracja";
 import type { NazwaIkony } from "@/design-system/atomy/Icon/Icon";
 
 /**
@@ -10,7 +16,9 @@ import type { NazwaIkony } from "@/design-system/atomy/Icon/Icon";
  * - linia „W przygotowaniu: …” nie wymienia funkcji, które są już pozycjami
  *   menu (także w „Dotychczasowym panelu”): zbiór linii = pozycje niegotowe
  *   minus pozycje obecne w menu. Porównanie nazw bez wielkości liter
- *   („dziennik stażu” w linii == „Dziennik stażu” w menu).
+ *   („dziennik stażu” w linii == „Dziennik stażu” w menu);
+ * - pozycja-rodzic bieżącej podstrony bez własnej pozycji w menu (rejestr
+ *   `podstrony`) jest bieżąca jako sekcja: `biezaca: "sekcja"`.
  */
 
 const SEPARATOR = " · ";
@@ -19,7 +27,9 @@ export interface PozycjaUkladu {
   ikona: NazwaIkony;
   etykieta: string;
   href: string;
-  biezaca: boolean;
+  /** `true` — bieżąca strona; `"sekcja"` — rodzic bieżącej podstrony bez własnej pozycji w menu. */
+  biezaca: boolean | "sekcja";
+  podstrony?: PodstronaMenuRamki[];
 }
 
 export interface GrupaUkladu {
@@ -56,7 +66,8 @@ export function ukladMenuRamki(
       ikona: p.ikona,
       etykieta: p.etykieta,
       href: p.href,
-      biezaca: czyPozycjaBiezaca(p, sciezka),
+      biezaca: czyPozycjaBiezaca(p, sciezka) ? true : czyPodstronaPozycji(p, sciezka) ? ("sekcja" as const) : false,
+      ...(p.podstrony ? { podstrony: p.podstrony } : {}),
     })),
   });
   const dotychczasowa = menu.find((grupa) => grupa.naglowek === GRUPA_DOTYCHCZASOWA);

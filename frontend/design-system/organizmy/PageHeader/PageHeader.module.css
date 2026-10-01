@@ -66,6 +66,18 @@
   text-align: center;
 }
 
+/* Dwie akcje nagłówka (drugorzędna i główna; makieta 2.0.4, `.head .acts`).
+   Poniżej 768 px jedna pod drugą, na pełną szerokość; od 768 px w jednym
+   wierszu, przy prawej krawędzi. Na każdej szerokości kolejność wizualna
+   jest kolejnością w DOM: drugorzędna, potem główna — bez `order`, żeby
+   kolejność fokusu była kolejnością widoczną (WCAG 2.4.3; makieta stawia
+   przycisk główny na górze, tu świadomie odstępstwo). */
+.akcjeDwie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
 @media (min-width: 768px) {
   .glowa {
     flex-direction: row;
@@ -87,5 +99,14 @@
   .akcje button {
     inline-size: auto;
     max-width: 320px;
+  }
+}
+
+@media (min-width: 768px) {
+  .akcjeDwie {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
   }
 }

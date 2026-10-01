@@ -36,14 +36,17 @@ export interface WynikAxe {
  * potrafił trwać kilkanaście-24,5 s na trasach ze stopką (limit testu to
  * 30 s), więc naprawa jednego wyścigu wprowadzałaby drugi, nowy, na granicy
  * timeoutu. Inne zapytania (w tym prawdziwe wywołania API aplikacji) idą
- * dalej bez zmian — przepuszczone przez `route.continue()`.
+ * dalej bez zmian — oddane wcześniejszym trasom testu przez `route.fallback()`.
  */
 async function zatrzymajPrefetchLinkow(page: Page): Promise<void> {
   await page.route("**/*", (route) => {
     if (route.request().headers()["next-router-prefetch"] !== undefined) {
       return route.abort();
     }
-    return route.continue();
+    // `fallback`, nie `continue`: zapytanie idzie do wcześniej zarejestrowanych
+    // tras testu (atrap API), a dopiero bez nich do sieci. `continue` omijał
+    // atrapy zarejestrowane przed pierwszym skanem axe.
+    return route.fallback();
   });
 }
 

@@ -13,7 +13,7 @@ type WlasciwosciNawigacji = ComponentProps<typeof PanelNav>;
 
 interface GrupaZwinieta {
   naglowek: string;
-  pozycje: { ikona: NazwaIkony; etykieta: string; href: string; biezaca?: boolean }[];
+  pozycje: { ikona: NazwaIkony; etykieta: string; href: string; biezaca?: boolean | "sekcja" }[];
   /** Linia „W przygotowaniu: …” pod pozycjami (bez przedrostka i kropki). */
   liniaWPrzygotowaniu?: string;
 }
@@ -60,6 +60,10 @@ interface WlasciwosciPowlokiPanelu {
  * lewej bez tła skrzynki. Poniżej 1024 px menu chowa się pod przyciskiem
  * „Menu” w górnym pasku i otwiera jako okno modalne z przyciskiem „Zamknij”
  * (jak `.side.open` w makiecie).
+ *
+ * Pozycja-rodzic bieżącej podstrony bez własnej pozycji w menu (`biezaca:
+ * "sekcja"`) niesie `aria-current="true"`, nie `"page"`: menu pokazuje sekcję,
+ * w której stoi ekran, a okruszek nagłówka mówi, który to ekran.
  *
  * Grupa „Konto” przykleja się do dołu menu (`position: sticky`), więc
  * „Wyloguj” jest widoczne bez przewijania menu także przy długim menu;
@@ -313,14 +317,15 @@ function GrupaZwijana({ grupa }: { grupa: GrupaZwinieta }) {
 
 /**
  * Przewija wyłącznie kontener menu (bok albo okno szuflady) tak, żeby pozycja
- * z `aria-current="page"` stała w całości między górną krawędzią kontenera
+ * z `aria-current="page"` (albo `"true"` — rodzic podstrony bez własnej pozycji
+ * w menu) stała w całości między górną krawędzią kontenera
  * a górną krawędzią przyklejonego bloku „Konto”. Bez animacji, bez ruchu
  * fokusu, bez przewijania okna; gdy pozycja już jest widoczna, `scrollTop`
  * zostaje bez zmian. Blok „Konto” jest przyklejony, więc po przewinięciu
  * jego położenie może się zmienić — stąd najwyżej trzy przybliżenia.
  */
 export function odslonBiezacaPozycje(kontener: HTMLElement): void {
-  const pozycja = kontener.querySelector<HTMLElement>('a[aria-current="page"]');
+  const pozycja = kontener.querySelector<HTMLElement>('a[aria-current="page"], a[aria-current="true"]');
   if (!pozycja) return;
   const konto = kontener.querySelector<HTMLElement>("[data-konto-menu]");
   for (let proba = 0; proba < 3; proba += 1) {

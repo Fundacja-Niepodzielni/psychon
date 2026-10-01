@@ -1,8 +1,9 @@
 /**
  * Wiek sprawy w kolejce: ile pełnych dni minęło od chwili, od której sprawa
  * czeka (`czekaOd` z `./dane.ts`, czyli `created_at` rekordu źródłowego).
- * Jedno miejsce na próg ostrzeżenia, na liczenie dni i na odmianę słowa
- * „dzień” — wiersz listy i podtytuł ekranu liczą ten sam wiek tą samą funkcją.
+ * Jedno miejsce na próg ostrzeżenia, na liczenie dni, na odmianę słowa
+ * „dzień” i na tekst wieku — wiersz listy i podtytuł ekranu liczą ten sam
+ * wiek tą samą funkcją.
  */
 
 /** Od ilu dni oczekiwania plakietka wiersza jest ostrzegawcza (niżej jest szara). */
@@ -26,10 +27,19 @@ export function slowoDni(dni: number): "dzień" | "dni" {
   return dni === 1 ? "dzień" : "dni";
 }
 
+/**
+ * Sama część wieku, bez słowa „czeka”: „od dziś” przy 0, „1 dzień”, „2 dni”,
+ * „22 dni”. Z niej składają się plakietka wiersza i podtytuł ekranu, więc
+ * oba zawsze mówią to samo.
+ */
+export function tekstWieku(dni: number): string {
+  return dni === 0 ? "od dziś" : `${dni} ${slowoDni(dni)}`;
+}
+
 export function wariantPlakietkiCzekania(dni: number): "warn" | "neutral" {
   return dni >= PROG_OSTRZEZENIA_DNI ? "warn" : "neutral";
 }
 
 export function tekstPlakietkiCzekania(dni: number): string {
-  return `czeka ${dni} ${slowoDni(dni)}`;
+  return `czeka ${tekstWieku(dni)}`;
 }

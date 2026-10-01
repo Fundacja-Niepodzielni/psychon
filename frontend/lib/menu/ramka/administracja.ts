@@ -32,15 +32,18 @@ import type { MenuEntry } from "../types";
  * - funkcje starego panelu bez miejsca w menu makiety — grupa na dole
  *   „Dotychczasowy panel” ze starymi wpisami (etykieta i adres wprost ze
  *   starego rejestru);
- * - kolejka stażu (`/admin/staz`) to pozycja „Dyżury do decyzji” w „Codziennie”
- *   zaraz po „Sprawy” (nazwa == `h1` ekranu); stary wpis „Akceptacja stażu”
- *   nie wchodzi wtedy do „Dotychczasowego panelu”;
- * - lista zgłoszeń rekrutacyjnych (`/admin/nabor`) to pozycja „Zgłoszenia rekrutacyjne”
- *   w „Codziennie” zaraz po „Uczestnicy” (nazwa == `h1` ekranu i okruszek szczegółu);
- *   pozycja jest w menu wyłącznie przy włączonej grupie `nabor`. Przy wyłączonej
- *   zgłoszenia są zakładką starej strony pod `/admin/uczestniczki` — adres, który
- *   już niesie „Uczestnicy” — więc osobnej pozycji nie ma (zero duplikatu adresu,
- *   zero utraty wejścia);
+ * - kolejka stażu (`/admin/staz`, „Dyżury do decyzji”) i lista zgłoszeń rekrutacyjnych
+ *   (`/admin/nabor`, „Zgłoszenia rekrutacyjne”) nie mają własnej pozycji w menu: w
+ *   rejestrze (`PODSTRONY_ADMINISTRACJI`) ich rodzicem jest „Sprawy”, skąd się do nich
+ *   wchodzi (filtr rodzaju), z pulpitu i z listy uczestników. Nazwa ekranu == `h1`.
+ *   W menu świeci wtedy „Sprawy” jako sekcja (`aria-current="true"`), a okruszek
+ *   składa się z rodzica („Administracja › Sprawy › Dyżury do decyzji”). Stary wpis
+ *   „Akceptacja stażu” nie wchodzi wtedy do „Dotychczasowego panelu”. Bez pozycji
+ *   „Sprawy” w menu (grupa wyłączona) ekran wraca na własną pozycję w „Codziennie”,
+ *   żeby wejście nie zginęło. „Zgłoszenia rekrutacyjne” są w rejestrze wyłącznie przy
+ *   włączonej grupie `nabor`; przy wyłączonej są zakładką starej strony pod
+ *   `/admin/uczestniczki` — adres, który już niesie „Uczestnicy” (zero duplikatu
+ *   adresu, zero utraty wejścia);
  * - linie „W przygotowaniu” z makiety, bez łączy i bez funkcji obecnych
  *   w menu: w „Programie” bez „staż i superwizja” (w menu „Dyżury do decyzji”
  *   i „Superwizje”); w „Rozliczeniu” bez
@@ -48,12 +51,20 @@ import type { MenuEntry } from "../types";
  *   tej grupy).
  */
 
+/** Ekran bez własnej pozycji w menu, podstrona pozycji-rodzica (okruszek, podświetlenie sekcji). */
+export interface PodstronaMenuRamki {
+  etykieta: string;
+  href: string;
+}
+
 export interface PozycjaMenuRamki {
   ikona: NazwaIkony;
   etykieta: string;
   href: string;
   /** Pozycja korzenia sekcji (`/admin`) — bieżąca tylko przy dokładnym adresie. */
   dokladna?: boolean;
+  /** Podstrony bez własnej pozycji w menu, które mają tę pozycję za rodzica (rejestr `PODSTRONY_ADMINISTRACJI`). */
+  podstrony?: PodstronaMenuRamki[];
 }
 
 export interface GrupaMenuRamki {
@@ -78,6 +89,20 @@ export const NAZWY_RAMKI_ADMINISTRACJI = {
   wzoryDokumentow: "Wzory dokumentów",
   ekranStartowy: "Treść ekranu „Zacznij tutaj”",
 } as const;
+
+/**
+ * Rejestr ekranów administracji bez własnej pozycji w menu: nazwa pozycji-rodzica
+ * w menu i klucz grupy przełączenia, od której zależy obecność ekranu w nowej ramce.
+ * Okruszek składa się z rodzica, a w menu świeci rodzic jako sekcja.
+ */
+export const PODSTRONY_ADMINISTRACJI = [
+  { grupa: "kolejkaStazu", etykieta: NAZWY_RAMKI_ADMINISTRACJI.kolejkaStazu, rodzic: NAZWY_RAMKI_ADMINISTRACJI.sprawy },
+  {
+    grupa: "nabor",
+    etykieta: NAZWY_RAMKI_ADMINISTRACJI.zgloszeniaRekrutacyjne,
+    rodzic: NAZWY_RAMKI_ADMINISTRACJI.sprawy,
+  },
+] as const;
 
 /** Nazwa grupy na dole menu ze starymi funkcjami panelu. */
 export const GRUPA_DOTYCHCZASOWA = "Dotychczasowy panel";
@@ -121,29 +146,36 @@ function dotychczasowa(wpis: MenuEntry): PozycjaMenuRamki {
  */
 export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
   const n = NAZWY_RAMKI_ADMINISTRACJI;
-  // „Dyżury do decyzji” (kolejka stażu, `/admin/staz`) stoi w „Codziennie”; stary wpis
-  // „Akceptacja stażu” znika z „Dotychczasowego panelu” dokładnie wtedy, gdy ta pozycja
-  // jest w menu — adres jest ten sam przy obu stanach flagi, więc wejście nie ginie
-  // i nie ma duplikatu.
-  const kolejkaStazu = pozycja(cel(grupy, "kolejkaStazu"), "inbox", n.kolejkaStazu);
+  const sprawy = pozycja(cel(grupy, "sprawy"), "inbox", n.sprawy);
+  // Ekrany z `PODSTRONY_ADMINISTRACJI` (kolejka stażu `/admin/staz`, nabór `/admin/nabor`) nie mają
+  // własnej pozycji, gdy w menu stoi ich rodzic „Sprawy”: wchodzą jako jego podstrony. Bez rodzica
+  // (grupa `sprawy` wyłączona) stoją jak dawniej w „Codziennie”, żeby wejście nie zginęło.
+  // „Zgłoszenia rekrutacyjne” liczą się wyłącznie przy włączonej grupie `nabor`: przy wyłączonej cel
+  // to stara trasa `/admin/uczestniczki` (adres pozycji „Uczestnicy”), a zgłoszenia są zakładką
+  // tej strony. Stary wpis „Akceptacja stażu” znika z „Dotychczasowego panelu” dokładnie wtedy, gdy
+  // kolejka stażu jest w menu albo pod rodzicem — adres jest ten sam przy obu stanach flagi.
+  const ekrany = PODSTRONY_ADMINISTRACJI.flatMap((wpis) => {
+    const adres = wpis.grupa === "nabor" && !grupy.nabor?.wlaczona ? null : cel(grupy, wpis.grupa);
+    return adres === null ? [] : [{ wpis, adres }];
+  });
+  const podstrony: PodstronaMenuRamki[] = sprawy.length > 0 ? ekrany.map(({ wpis, adres }) => ({ etykieta: wpis.etykieta, href: adres })) : [];
+  const wlasne = (grupa: (typeof PODSTRONY_ADMINISTRACJI)[number]["grupa"]): PozycjaMenuRamki[] =>
+    sprawy.length > 0
+      ? []
+      : ekrany.filter(({ wpis }) => wpis.grupa === grupa).map(({ wpis, adres }) => ({ ikona: "inbox", etykieta: wpis.etykieta, href: adres }));
+  const kolejkaStazuWRejestrze = ekrany.some(({ wpis }) => wpis.grupa === "kolejkaStazu");
   const dotychczasowe = [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails, h19Ustawienia].filter(
-    (wpis) => !(kolejkaStazu.length > 0 && wpis === h11Staz),
+    (wpis) => !(kolejkaStazuWRejestrze && wpis === h11Staz),
   );
-  // „Zgłoszenia rekrutacyjne” (`/admin/nabor`) stoją w „Codziennie” zaraz po „Uczestnicy”. Przy
-  // wyłączonej grupie cel to stara trasa `/admin/uczestniczki` (adres pozycji „Uczestnicy”), więc
-  // pozycji nie dokładamy — zgłoszenia są wtedy zakładką tej strony i wejście nie ginie.
-  const zgloszeniaRekrutacyjne = grupy.nabor?.wlaczona
-    ? pozycja(cel(grupy, "nabor"), "inbox", n.zgloszeniaRekrutacyjne)
-    : [];
   return [
     {
       naglowek: "Codziennie",
       pozycje: [
         ...pozycja(cel(grupy, "pulpitAdministracji"), "home", n.pulpit, true),
-        ...pozycja(cel(grupy, "sprawy"), "inbox", n.sprawy),
-        ...kolejkaStazu,
+        ...sprawy.map((p) => (podstrony.length > 0 ? { ...p, podstrony } : p)),
+        ...wlasne("kolejkaStazu"),
         ...pozycja(cel(grupy, "listaOsob"), "users", n.uczestnicy),
-        ...zgloszeniaRekrutacyjne,
+        ...wlasne("nabor"),
         ...pozycja(cel(grupy, "wspolpraca"), "chat", n.zgloszeniaWspolpracy),
       ],
     },
@@ -153,7 +185,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...pozycja(h08Kursy.href, "book", n.kursy),
         ...pozycja(cel(grupy, "formyStazu"), "clock", n.formyStazu),
       ],
-      // Bez „staż i superwizja”: „Dyżury do decyzji” (Codziennie) i „Superwizje” („Dotychczasowy panel”) są pozycjami menu.
+      // Bez „staż i superwizja”: „Dyżury do decyzji” (podstrona „Spraw”) i „Superwizje” („Dotychczasowy panel”) mają swoje wejścia.
       wPrzygotowaniu: "prowadzący",
     },
     {
@@ -178,4 +210,10 @@ export function czyPozycjaBiezaca(pozycja: PozycjaMenuRamki, sciezka: string): b
   const s = sciezka.length > 1 ? sciezka.replace(/\/+$/, "") : sciezka;
   if (pozycja.dokladna) return s === pozycja.href;
   return s === pozycja.href || s.startsWith(`${pozycja.href}/`);
+}
+
+/** Czy ścieżka należy do podstrony pozycji-rodzica (adres podstrony albo jego szczegół) — rodzic świeci jako sekcja. */
+export function czyPodstronaPozycji(pozycja: PozycjaMenuRamki, sciezka: string): boolean {
+  const s = sciezka.length > 1 ? sciezka.replace(/\/+$/, "") : sciezka;
+  return (pozycja.podstrony ?? []).some((ekran) => s === ekran.href || s.startsWith(`${ekran.href}/`));
 }

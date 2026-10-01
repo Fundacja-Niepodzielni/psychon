@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 
@@ -33,6 +33,7 @@ vi.mock("../dane-prowadzacych", async () => {
 });
 
 const { Sprawy } = await import("../Sprawy");
+const { tekstWieku } = await import("../wiek");
 
 const WYNIK_PUSTY = (rodzaj: "applications" | "internship_entries" | "profiles") => ({
   rodzaj,
@@ -77,7 +78,7 @@ describe("Sprawy — stan z danymi", () => {
           {
             id: "applications-1",
             rodzaj: "applications",
-            tytul: "Zgłoszenie — Marta Demo",
+            tytul: "Zgłoszenie rekrutacyjne — Marta Demo",
             osoba: "Marta Demo",
             podpowiedz: "Czeka od 1 stycznia 2026",
             czekaOd: "2026-01-01T00:00:00Z",
@@ -114,7 +115,7 @@ describe("Sprawy — stan z danymi", () => {
     // nazwa sprawy jest nazwą akcji dla czytnika.
     await waitFor(() => expect(screen.getByText("Marta Demo")).toBeInTheDocument());
     expect(screen.getByText("Filip Demo")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Otwórz sprawę: Zgłoszenie — Marta Demo" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Otwórz sprawę: Zgłoszenie rekrutacyjne — Marta Demo" })).toHaveAttribute(
       "href",
       "/admin/uczestniczki?zakladka=zgloszenia",
     );
@@ -157,7 +158,7 @@ describe("Sprawy — błąd jednego źródła", () => {
           {
             id: "profiles-6",
             rodzaj: "profiles",
-            tytul: "Profil psychologa — Joanna Demo",
+            tytul: "Wniosek o profil psychologa — Joanna Demo",
             osoba: "Joanna Demo",
             podpowiedz: "Czeka od 15 lipca 2026",
             czekaOd: "2026-07-15T09:00:00Z",
@@ -202,8 +203,9 @@ describe("Sprawy — główna akcja i filtr rodzaju", () => {
           id: "applications-1",
           idLiczbowe: 1,
           rodzaj: "applications" as const,
-          tytul: "Zgłoszenie — Marta Demo",
+          tytul: "Zgłoszenie rekrutacyjne — Marta Demo",
           osoba: "Marta Demo",
+          nazwisko: "Demo",
           podpowiedz: "Czeka od 1 marca 2026",
           czekaOd: "2026-03-01T00:00:00Z",
           href: "/admin/uczestniczki?zakladka=zgloszenia",
@@ -222,6 +224,7 @@ describe("Sprawy — główna akcja i filtr rodzaju", () => {
           rodzaj: "internship_entries" as const,
           tytul: "Dyżur — Filip Demo",
           osoba: "Filip Demo",
+          nazwisko: "Demo",
           podpowiedz: "Czeka od 1 lutego 2026",
           czekaOd: "2026-02-01T00:00:00Z",
           href: "/admin/staz",
@@ -234,6 +237,34 @@ describe("Sprawy — główna akcja i filtr rodzaju", () => {
     WYNIK_PUSTY("profiles"),
   ];
 
+  // Trzy rodzaje: dwa pierwsze to odnośniki do własnych ekranów, profile — przycisk zawężający listę.
+  const trzyRodzaje = () => {
+    const [zgloszenia, dyzury] = dwaRodzaje();
+    return [
+      zgloszenia,
+      dyzury,
+      {
+        rodzaj: "profiles" as const,
+        pozycje: [
+          {
+            id: "profiles-6",
+            idLiczbowe: 6,
+            rodzaj: "profiles" as const,
+            tytul: "Wniosek o profil psychologa — Joanna Lis",
+            osoba: "Joanna Lis",
+            nazwisko: "Lis",
+            podpowiedz: "Czeka od 1 kwietnia 2026",
+            czekaOd: "2026-04-01T00:00:00Z",
+            href: "/admin/profile/6",
+          },
+        ],
+        blad: null,
+        kodBledu: null,
+        liczbaCalkowita: 1,
+      },
+    ];
+  };
+
   // Filtr jest zwijany („Filtr: Wszystkie (N)”): rozwiń, potem wybierz rodzaj z liczbą.
   function wybierzRodzaj(etykieta: string) {
     const przelacznik = screen.getByRole("button", { name: /^Filtr:/ });
@@ -242,16 +273,17 @@ describe("Sprawy — główna akcja i filtr rodzaju", () => {
   }
 
   it("filtr rodzaju zawęża listę, ale najstarsza sprawa pochodzi z pełnej listy", async () => {
-    pobierzKolejkeSpraw.mockResolvedValue(dwaRodzaje());
+    pobierzKolejkeSpraw.mockResolvedValue(trzyRodzaje());
     render(<Sprawy />);
     await screen.findByText("Filip Demo");
 
-    wybierzRodzaj("Rekrutacja");
+    wybierzRodzaj("Wnioski o profil psychologa");
 
     expect(screen.queryByText("Filip Demo")).toBeNull();
-    expect(screen.getByText("Marta Demo")).toBeInTheDocument();
+    expect(screen.queryByText("Marta Demo")).toBeNull();
+    expect(screen.getByText("Joanna Lis")).toBeInTheDocument();
     screen.getByRole("button", { name: "Otwórz najstarszą sprawę" }).click();
-    // Najstarszy jest dyżur (luty), mimo że widoczne jest tylko zgłoszenie (marzec).
+    // Najstarszy jest dyżur (luty), mimo że widoczny jest tylko wniosek o profil (kwiecień).
     expect(push).toHaveBeenCalledWith("/admin/staz");
   });
 
@@ -261,14 +293,64 @@ describe("Sprawy — główna akcja i filtr rodzaju", () => {
     await screen.findByText("Filip Demo");
 
     // Filtr oferuje tylko rodzaje obecne w danych, każdy z liczbą; rodzaj bez spraw
-    // („Profile psychologów”) go nie ma, a wybór rodzaju nigdy nie mówi „Brak spraw do decyzji”.
+    // („Wnioski o profil psychologa”) go nie ma, a wybór rodzaju nigdy nie mówi „Brak spraw do decyzji”.
     fireEvent.click(screen.getByRole("button", { name: /^Filtr:/ }));
-    const opcje = within(screen.getByRole("group", { name: "Rodzaj sprawy" })).getAllByRole("button");
-    expect(opcje.map((opcja) => opcja.textContent)).toEqual(["Wszystkie (2)", "Rekrutacja (1)", "Dyżury (1)"]);
-    wybierzRodzaj("Dyżury");
-    expect(screen.getByText("Filip Demo")).toBeInTheDocument();
-    expect(screen.queryByText("Marta Demo")).toBeNull();
+    const grupa = within(screen.getByRole("group", { name: "Rodzaj sprawy" }));
+    expect(grupa.getAllByRole("button").map((opcja) => opcja.textContent)).toEqual(["Wszystkie (2)"]);
+    expect(grupa.getAllByRole("link").map((opcja) => opcja.textContent)).toEqual([
+      "Zgłoszenia rekrutacyjne (1)",
+      "Dyżury (1)",
+    ]);
+    expect(grupa.queryByText(/Wnioski o profil psychologa/)).toBeNull();
     expect(screen.queryByText("Brak spraw do decyzji")).toBeNull();
+  });
+
+  it("wybór wniosków o profil zostawia widoczne tylko je i nie mówi „Brak spraw do decyzji”", async () => {
+    pobierzKolejkeSpraw.mockResolvedValue(trzyRodzaje());
+    render(<Sprawy />);
+    await screen.findByText("Filip Demo");
+
+    wybierzRodzaj("Wnioski o profil psychologa");
+    expect(screen.getByText("Joanna Lis")).toBeInTheDocument();
+    expect(screen.queryByText("Marta Demo")).toBeNull();
+    expect(screen.queryByText("Filip Demo")).toBeNull();
+    expect(screen.queryByText("Brak spraw do decyzji")).toBeNull();
+  });
+
+  it("filtr: „Dyżury” i „Zgłoszenia rekrutacyjne” to odnośniki do swoich ekranów, pozostałe pozycje to przyciski filtra", async () => {
+    pobierzKolejkeSpraw.mockResolvedValue(trzyRodzaje());
+    render(<Sprawy />);
+    await screen.findByText("Filip Demo");
+    fireEvent.click(screen.getByRole("button", { name: /^Filtr:/ }));
+
+    const grupa = within(screen.getByRole("group", { name: "Rodzaj sprawy" }));
+    const dyzury = grupa.getByRole("link", { name: "Dyżury (1)" });
+    expect(dyzury).toHaveAttribute("href", "/admin/staz");
+    expect(dyzury.tagName).toBe("A");
+    const zgloszenia = grupa.getByRole("link", { name: "Zgłoszenia rekrutacyjne (1)" });
+    expect(zgloszenia).toHaveAttribute("href", "/admin/nabor");
+    expect(zgloszenia.tagName).toBe("A");
+    // Odnośnik nie jest przyciskiem filtra: bez `aria-pressed`, a w roli przycisku go nie ma.
+    expect(dyzury).not.toHaveAttribute("aria-pressed");
+    expect(zgloszenia).not.toHaveAttribute("aria-pressed");
+    expect(grupa.queryByRole("button", { name: /^Dyżury/ })).toBeNull();
+    expect(grupa.queryByRole("button", { name: /^Zgłoszenia rekrutacyjne/ })).toBeNull();
+
+    // Przyciski filtra: „Wszystkie” i „Wnioski o profil psychologa”, każdy z `aria-pressed`.
+    expect(grupa.getAllByRole("button").map((przycisk) => przycisk.textContent)).toEqual([
+      "Wszystkie (3)",
+      "Wnioski o profil psychologa (1)",
+    ]);
+    expect(grupa.getByRole("button", { name: "Wszystkie (3)" })).toHaveAttribute("aria-pressed", "true");
+    expect(grupa.getByRole("button", { name: "Wnioski o profil psychologa (1)" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    // Odnośnik nie zawęża listy (prowadzi na własny ekran): wszystkie trzy sprawy zostają.
+    expect(screen.getByText("Marta Demo")).toBeInTheDocument();
+    expect(screen.getByText("Filip Demo")).toBeInTheDocument();
+    expect(screen.getByText("Joanna Lis")).toBeInTheDocument();
   });
 
   it("dokładnie jeden przycisk główny (primary): „Otwórz najstarszą sprawę”", async () => {
@@ -308,7 +390,7 @@ describe("Sprawy — każdy stan w szablonie ListTemplate", () => {
       {
         id: "applications-1",
         rodzaj: "applications" as const,
-        tytul: "Zgłoszenie — Marta Demo",
+        tytul: "Zgłoszenie rekrutacyjne — Marta Demo",
         osoba: "Marta Demo",
         podpowiedz: "Czeka od 1 stycznia 2026",
         czekaOd: "2026-01-01T00:00:00Z",
@@ -451,5 +533,101 @@ describe("Sprawy — awaria źródeł nie udaje pustej listy", () => {
     const { container } = render(<Sprawy />);
     await screen.findByText(/Źródło „Dyżur” nieosiągalne/);
     expect(container.textContent).not.toMatch(/wpis(y|u)? stażu|kolejk/i);
+  });
+});
+
+describe("Sprawy — wiek najstarszej sprawy w podtytule jest wyróżniony tekstem z wiek.ts", () => {
+  const TERAZ = new Date("2026-10-01T12:00:00Z");
+  const DOBA = 24 * 60 * 60 * 1000;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(TERAZ);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function zPozycja(czekaOd: string) {
+    return [
+      {
+        rodzaj: "applications",
+        pozycje: [
+          {
+            id: "applications-1",
+            idLiczbowe: 1,
+            rodzaj: "applications",
+            tytul: "Zgłoszenie rekrutacyjne — Marta Demo",
+            osoba: "Marta Demo",
+            nazwisko: "Demo",
+            podpowiedz: "Czeka od 26 września 2026",
+            czekaOd,
+            href: "/sprawa/applications/1",
+          },
+        ],
+        blad: null,
+        kodBledu: null,
+        liczbaCalkowita: 1,
+      },
+      WYNIK_PUSTY("internship_entries"),
+      WYNIK_PUSTY("profiles"),
+    ];
+  }
+
+  /** Akapit podtytułu nagłówka (nie okruszki): ten, który niesie opis ekranu. */
+  function podtytul(): HTMLElement {
+    return screen.getByText(/w jednym miejscu\./).closest("p") as HTMLElement;
+  }
+
+  /** Tekst podtytułu bez wieku — ten sam ekran z pustą kolejką pokazuje wyłącznie opis. */
+  async function opisBezWieku(): Promise<string> {
+    pobierzKolejkeSpraw.mockResolvedValue([
+      WYNIK_PUSTY("applications"),
+      WYNIK_PUSTY("internship_entries"),
+      WYNIK_PUSTY("profiles"),
+    ]);
+    const { unmount } = render(<Sprawy />);
+    await screen.findByText("Brak spraw do decyzji");
+    const tekst = podtytul().textContent ?? "";
+    unmount();
+    return tekst;
+  }
+
+  it.each([0, 1, 2, 5, 22])(
+    "%i dni: <strong> niesie dokładnie tekstWieku(dni), a tekst podtytułu jest taki jak przy zwykłym tekście",
+    async (dni) => {
+      const opis = await opisBezWieku();
+      pobierzKolejkeSpraw.mockResolvedValue(zPozycja(new Date(TERAZ.getTime() - dni * DOBA).toISOString()));
+      render(<Sprawy />);
+
+      await screen.findByText("Marta Demo");
+      await waitFor(() => expect(podtytul().textContent, "podtytuł z wiekiem").toContain("Najstarsza sprawa czeka"));
+      const akapit = podtytul();
+      const wyrozniony = akapit.querySelectorAll("strong");
+      expect(wyrozniony).toHaveLength(1);
+      expect(wyrozniony[0].textContent).toBe(tekstWieku(dni));
+      expect(akapit.textContent).toBe(`${opis} Najstarsza sprawa czeka ${tekstWieku(dni)}.`);
+    },
+  );
+
+  it("pusta kolejka: podtytuł bez <strong>", async () => {
+    await opisBezWieku();
+    pobierzKolejkeSpraw.mockResolvedValue([
+      WYNIK_PUSTY("applications"),
+      WYNIK_PUSTY("internship_entries"),
+      WYNIK_PUSTY("profiles"),
+    ]);
+    render(<Sprawy />);
+    await screen.findByText("Brak spraw do decyzji");
+    expect(podtytul().querySelector("strong")).toBeNull();
+  });
+
+  it("sprawa bez daty źródłowej: podtytuł bez <strong> i bez zdania o wieku", async () => {
+    pobierzKolejkeSpraw.mockResolvedValue(zPozycja(""));
+    render(<Sprawy />);
+    await screen.findByText("Marta Demo");
+    expect(podtytul().querySelector("strong")).toBeNull();
+    expect(podtytul().textContent).not.toContain("Najstarsza sprawa");
   });
 });
