@@ -6,32 +6,41 @@ use App\Support\PdfService;
 use Throwable;
 
 /**
- * Próbne generowanie dokumentu z treści wzoru — sędzią jest silnik PDF, nie
- * reguła tekstowa.
+ * Próbne generowanie dokumentu z zapisywanej treści wzoru.
  *
- * Treść, która spełnia regułę pól, może nadal zawierać coś, na czym silnik się
- * wywraca (na przykład tło wskazujące plik albo adres). Zanim wzór zostanie
- * zapisany, dokument jest więc generowany tym samym silnikiem co prawdziwe
- * dokumenty, z danymi przykładowymi. Wynik próby nie jest nigdzie zapisywany.
+ * Reguła pól (`DocumentTemplateFields::violation`) mówi, czego w treści nie wolno
+ * napisać. O tym, czy z treści da się zrobić dokument, rozstrzyga silnik: ten
+ * sam, tą samą drogą i z tymi samymi ustawieniami, którymi powstaje każdy
+ * dokument — z danymi przykładowymi zamiast danych osoby.
  */
 final class DocumentTemplateTrial
 {
     public const string FAILURE_MESSAGE = 'Z tego wzoru nie da się wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.';
 
     /**
-     * Czy z treści da się wygenerować dokument. Każdy błąd silnika znaczy „nie”;
-     * jego treść nie jest ani zwracana, ani zapisywana w dzienniku.
+     * Czy z treści da się wygenerować dokument.
      */
     public static function generates(string $type, string $content): bool
+    {
+        return self::failure($type, $content) === null;
+    }
+
+    /**
+     * Powód odmowy do pokazania przy polu treści albo `null`, gdy dokument powstał.
+     * Każdy błąd silnika znaczy odmowę; jego treść nie jest ani zwracana, ani
+     * zapisywana w dzienniku.
+     */
+    public static function failure(string $type, string $content): ?string
     {
         try {
             PdfService::bytesFromHtml(
                 DocumentTemplateFields::render($type, $content, DocumentTemplateSampleData::for($type)),
+                DocumentTemplateSampleData::allowedDataUris($type),
             );
 
-            return true;
+            return null;
         } catch (Throwable) {
-            return false;
+            return self::FAILURE_MESSAGE;
         }
     }
 }

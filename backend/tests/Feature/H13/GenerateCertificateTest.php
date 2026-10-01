@@ -77,6 +77,39 @@ class GenerateCertificateTest extends CertificatePackageCase
         $this->getJson("/api/v1/verify/qr/{$certificate->verification_token}")->assertOk();
     }
 
+    /**
+     * Kod QR jest w zapisanym pliku certyfikatu.
+     *
+     * Kod jest obrazem z adresu danych zbudowanego przez serwer; silnik wczytuje go
+     * tylko wtedy, gdy generowanie dostało ten adres na liście. Miara: po rozpakowaniu
+     * strumieni PDF kod to tysiące odcinków (operator `l`), a certyfikat bez kodu ma
+     * ich kilka — oraz brak odmowy silnika dla tego generowania.
+     */
+    public function test_issued_certificate_file_contains_the_verification_code(): void
+    {
+        Storage::fake('local');
+        $grad = $this->makeEligibleVolunteer();
+        $this->actingAs($grad, 'keycloak');
+        $GLOBALS['_dompdf_warnings'] = [];
+
+        $this->postJson('/api/v1/certificate/generate')->assertStatus(202);
+
+        $certificate = Certificate::where('user_id', $grad->id)->firstOrFail();
+        $bytes = (string) Storage::disk('local')->get((string) $certificate->pdf_path);
+        $this->assertStringStartsWith('%PDF', $bytes);
+
+        preg_match_all('~stream\r?\n(.*?)\r?\nendstream~s', $bytes, $streams);
+        $content = '';
+
+        foreach ($streams[1] as $stream) {
+            $plain = @gzuncompress($stream);
+            $content .= $plain === false ? '' : $plain."\n";
+        }
+
+        $this->assertGreaterThan(1000, preg_match_all('~ l\b~', $content), 'W pliku certyfikatu nie ma kodu QR.');
+        $this->assertSame([], array_values((array) $GLOBALS['_dompdf_warnings']), 'Silnik odmówił wczytania zasobu certyfikatu.');
+    }
+
     public function test_generate_twice_does_not_create_a_second_certificate(): void
     {
         Storage::fake('local');

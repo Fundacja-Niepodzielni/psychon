@@ -390,7 +390,14 @@ class DocumentTemplateNoCompilationTest extends TestCase
         $this->assertFalse($options->isRemoteEnabled());
         $this->assertFalse($options->isPhpEnabled());
         $this->assertFalse($options->isJavascriptEnabled());
-        $this->assertSame(['data://'], array_keys($options->getAllowedProtocols()));
+        // Trzy protokoły, każdy z własną regułą: adres danych tylko z listy jednego
+        // generowania, pliki i archiwa — zawsze odmowa.
+        $protocols = $options->getAllowedProtocols();
+        $this->assertSame(['data://', 'file://', 'phar://'], array_keys($protocols));
+
+        foreach ($protocols as $protocol) {
+            $this->assertCount(1, $protocol['rules']);
+        }
     }
 
     /**
@@ -421,11 +428,20 @@ class DocumentTemplateNoCompilationTest extends TestCase
         $this->assertStringContainsString('znacznik-zasobu.svg', $warnings[0]);
     }
 
-    public function test_inline_data_image_is_still_embedded(): void
+    /**
+     * Obraz osadzony w treści jest wczytywany wyłącznie wtedy, gdy jego adres jest
+     * na liście przekazanej temu jednemu generowaniu; ten sam adres bez listy to odmowa.
+     */
+    public function test_inline_data_image_is_embedded_only_from_the_list_of_this_generation(): void
     {
         $svg = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="#000"/></svg>');
+        $html = '<html><body><img src="'.$svg.'" alt=""></body></html>';
 
-        $this->assertSame([], $this->engineWarnings('<html><body><img src="'.$svg.'" alt=""></body></html>'));
+        $this->assertSame([], $this->engineWarnings($html, [$svg]));
+
+        $refused = $this->engineWarnings($html);
+        $this->assertCount(1, $refused);
+        $this->assertStringContainsString('Permission denied: adres danych spoza listy tego dokumentu.', $refused[0]);
     }
 
     /**
@@ -468,13 +484,14 @@ class DocumentTemplateNoCompilationTest extends TestCase
     }
 
     /**
+     * @param  list<string>  $allowedDataUris
      * @return list<string>
      */
-    private function engineWarnings(string $html): array
+    private function engineWarnings(string $html, array $allowedDataUris = []): array
     {
         $GLOBALS['_dompdf_warnings'] = [];
 
-        $bytes = PdfService::bytesFromHtml($html);
+        $bytes = PdfService::bytesFromHtml($html, $allowedDataUris);
 
         $this->assertStringStartsWith('%PDF', $bytes);
 

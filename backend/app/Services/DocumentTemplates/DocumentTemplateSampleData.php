@@ -18,6 +18,17 @@ final class DocumentTemplateSampleData
     private const string SAMPLE_QR = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxIiBoZWlnaHQ9IjEiLz4=';
 
     /**
+     * Adresy `data:`, które serwer sam wstawia do danych przykładowych tego rodzaju
+     * dokumentu — lista dla silnika przy próbnym generowaniu i podglądzie.
+     *
+     * @return list<string>
+     */
+    public static function allowedDataUris(string $type): array
+    {
+        return $type === 'certificate' ? [self::SAMPLE_QR] : [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function for(string $type): array

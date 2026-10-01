@@ -21,10 +21,10 @@ use PHPUnit\Framework\TestCase;
  * każdy dokument. Zasób wskazany w treści ma dostać odmowę i nie trafić do
  * wyniku — w każdej postaci, w jakiej treść może go wskazać.
  *
- * Dwie warstwy odmowy są sprawdzane osobno: w jednej próbie test sam poszerza
- * listę protokołów (zostaje rama), w drugiej sam poszerza ramę (zostaje lista
- * protokołów). Dzięki temu zdjęcie jednej warstwy z produktu czerwieni jej próbę,
- * zamiast zostać zasłonięte przez drugą.
+ * Dwie warstwy odmowy są sprawdzane osobno: w jednej próbie test sam przywraca
+ * domyślne reguły protokołów (zostaje rama), w drugiej sam poszerza ramę (zostaje
+ * reguła, która adresom plików odmawia zawsze). Dzięki temu zdjęcie jednej
+ * warstwy z produktu czerwieni jej próbę, zamiast zostać zasłonięte przez drugą.
  *
  * Miary:
  *  - ostrzeżenie silnika o odmowie dla TEGO zasobu (`$_dompdf_warnings`);
@@ -121,9 +121,11 @@ final class PdfEngineFrameTest extends TestCase
         $this->assertTrue($open['embedded']);
     }
 
-    public function test_the_same_image_inlined_in_the_content_is_embedded(): void
+    public function test_the_same_image_inlined_in_the_content_is_embedded_when_its_address_is_on_the_list(): void
     {
-        $result = $this->render('<img src="data:image/svg+xml;base64,'.base64_encode(self::SVG).'" alt="">');
+        $address = 'data:image/svg+xml;base64,'.base64_encode(self::SVG);
+
+        $result = $this->render('<img src="'.$address.'" alt="">', null, [$address]);
 
         $this->assertSame([], $result['warnings']);
         $this->assertTrue($result['embedded']);
@@ -176,10 +178,10 @@ final class PdfEngineFrameTest extends TestCase
      * FAKT o silniku, przypięty próbą: własny katalog biblioteki silnik dopuszcza
      * ZAWSZE, niezależnie od ustawionej ramy (dokleja go do listy katalogów przy
      * każdym sprawdzeniu). Leżą w nim wyłącznie zasoby biblioteki. Przy końcowych
-     * opcjach plik z tego katalogu i tak dostaje odmowę — od listy protokołów;
+     * opcjach plik z tego katalogu i tak dostaje odmowę — od reguły plików;
      * sama rama by go nie zatrzymała.
      */
-    public function test_engine_library_directory_is_outside_the_frame_and_is_stopped_by_the_protocol_list(): void
+    public function test_engine_library_directory_is_outside_the_frame_and_is_stopped_by_the_file_rule(): void
     {
         $library = base_path('vendor/dompdf/dompdf/lib/res/sRGB2014.icc.LICENSE');
         $this->assertFileExists($library);
@@ -188,14 +190,14 @@ final class PdfEngineFrameTest extends TestCase
         $final = $this->render($html);
 
         $this->assertCount(1, $final['warnings']);
-        $this->assertStringContainsString('The communication protocol is not supported', $final['warnings'][0]);
+        $this->assertStringContainsString(PdfService::REFUSAL.': dokument nie czyta plików', $final['warnings'][0]);
         $this->assertStringContainsString('sRGB2014.icc.LICENSE', $final['warnings'][0]);
 
         $widened = $this->render($html, static function (Options $options): void {
             $options->setAllowedProtocols(self::defaultProtocols());
         });
 
-        // Bez listy protokołów plik biblioteki JEST czytany mimo ramy: nie ma odmowy,
+        // Bez reguły plików plik biblioteki JEST czytany mimo ramy: nie ma odmowy,
         // jest tylko uwaga parsera, że jego treść nie jest arkuszem stylów.
         $this->assertCount(1, $widened['warnings']);
         $this->assertStringContainsString('Unable to parse CSS', $widened['warnings'][0]);
@@ -203,17 +205,17 @@ final class PdfEngineFrameTest extends TestCase
     }
 
     /**
-     * Warstwa druga: sama LISTA PROTOKOŁÓW. Test ustawia ramę na katalog
-     * obejmujący plik, więc odmówić może już tylko lista protokołów.
+     * Warstwa druga: sama REGUŁA PLIKÓW. Test ustawia ramę na katalog
+     * obejmujący plik, więc odmówić może już tylko reguła, która plikom odmawia zawsze.
      */
-    public function test_protocol_list_alone_refuses_a_file_inside_the_allowed_directory(): void
+    public function test_file_rule_alone_refuses_a_file_inside_the_allowed_directory(): void
     {
         $result = $this->render('<img src="'.$this->image.'" alt="">', function (Options $options): void {
             $options->setChroot($this->temporaryDirectory);
         });
 
         $this->assertCount(1, $result['warnings']);
-        $this->assertStringContainsString('The communication protocol is not supported', $result['warnings'][0]);
+        $this->assertStringContainsString(PdfService::REFUSAL.': dokument nie czyta plików', $result['warnings'][0]);
         $this->assertStringContainsString('zasob-probny.svg', $result['warnings'][0]);
         $this->assertFalse($result['embedded']);
     }
@@ -244,13 +246,14 @@ final class PdfEngineFrameTest extends TestCase
 
     /**
      * @param  (Closure(Options): void)|null  $change  zmiana opcji robiona przez TEST na silniku produktu
+     * @param  list<string>  $allowedDataUris
      * @return array{warnings: list<string>, embedded: bool, fonts: list<string>}
      */
-    private function render(string $body, ?Closure $change = null): array
+    private function render(string $body, ?Closure $change = null, array $allowedDataUris = []): array
     {
         $GLOBALS['_dompdf_warnings'] = [];
 
-        $engine = PdfService::engine();
+        $engine = PdfService::engine($allowedDataUris);
 
         if ($change !== null) {
             $change($engine->getOptions());

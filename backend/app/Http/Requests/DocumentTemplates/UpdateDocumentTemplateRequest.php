@@ -50,8 +50,10 @@ class UpdateDocumentTemplateRequest extends FormRequest
 
                     // Reguła pól przeszła - ostatnie słowo ma silnik: próbne
                     // generowanie z danymi przykładowymi, zanim cokolwiek zostanie zapisane.
-                    if (! DocumentTemplateTrial::generates($type, (string) $value)) {
-                        $fail(DocumentTemplateTrial::FAILURE_MESSAGE);
+                    $failure = DocumentTemplateTrial::failure($type, (string) $value);
+
+                    if ($failure !== null) {
+                        $fail($failure);
                     }
                 },
             ],
