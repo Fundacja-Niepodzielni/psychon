@@ -18,6 +18,7 @@ import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { FormTemplate } from "@/design-system/szablony/FormTemplate/FormTemplate";
 import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
+import { pobierzKurs } from "@/nowy-front/publikacja-kursu/dane";
 import {
   czyBrakUprawnien,
   czyNieZnaleziono,
@@ -25,10 +26,12 @@ import {
   pobierzRole,
   pobierzStanNagrania,
   usunLekcje,
+  usunMaterial,
   wgrajMaterial,
   zapiszLekcje,
   zlecWgranieNagrania,
   type LekcjaAdmin,
+  type MaterialAdmin,
   type StanNagrania,
 } from "./dane";
 import {
@@ -43,6 +46,7 @@ import {
   walidujLokalnie,
   zdanieBleduPliku,
   zdanieBleduUsuniecia,
+  zdanieBleduUsunieciaMaterialu,
   zdanieBleduZapisu,
   type BledyFormularza,
   type StanFormularza,
@@ -56,7 +60,16 @@ interface WlasciwosciLekcjaEdycja {
   idLekcji: number | null;
   /** Kurs, z którego ekran tematów otwiera lekcję (`?kurs=`); `null` = brak. */
   idKursu: number | null;
+  /**
+   * Ekran pod adresem produktu z kursem w ścieżce: okruszki niosą nazwę kursu
+   * (odczyt `GET /admin/courses/{course}`) i łącze do listy kursów. Bez tej
+   * właściwości (trasa poligonu) okruszki zostają jak dotąd.
+   */
+  zNazwaKursu?: boolean;
 }
+
+/** Nazwa kursu do okruszków: `undefined` = ekran jej nie pokazuje, `null` = jeszcze nieznana albo odczyt się nie udał. */
+type NazwaKursu = string | null | undefined;
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
@@ -72,26 +85,29 @@ function adresKursu(idKursu: number): string {
   return wzorzec.replace("[id]", String(idKursu));
 }
 
-function okruszki(idKursu: number | null) {
+function okruszki(idKursu: number | null, nazwaKursu?: NazwaKursu) {
   return [
-    { etykieta: "Kursy" },
-    { etykieta: "Tematy i lekcje", href: idKursu === null ? undefined : adresKursu(idKursu) },
+    nazwaKursu === undefined ? { etykieta: "Kursy" } : { etykieta: "Kursy", href: ADRES_LISTY_KURSOW },
+    { etykieta: nazwaKursu || "Tematy i lekcje", href: idKursu === null ? undefined : adresKursu(idKursu) },
     { etykieta: "Lekcja" },
   ];
 }
 
+const ADRES_LISTY_KURSOW = "/admin/kursy";
+
 interface WlasciwosciSzablonuStanu {
   tytul: string;
   idKursu: number | null;
+  nazwaKursu?: NazwaKursu;
   wroc: () => void;
   tresc: ReactNode;
 }
 
 /** Każdy stan poza danymi renderuje się wewnątrz tego samego szablonu — jedyny `main` ekranu. */
-function SzablonStanu({ tytul, idKursu, wroc, tresc }: WlasciwosciSzablonuStanu) {
+function SzablonStanu({ tytul, idKursu, nazwaKursu, wroc, tresc }: WlasciwosciSzablonuStanu) {
   return (
     <FormTemplate
-      naglowek={<PageHeader okruszki={okruszki(idKursu)} tytul={tytul} onPowrot={wroc} />}
+      naglowek={<PageHeader okruszki={okruszki(idKursu, nazwaKursu)} tytul={tytul} onPowrot={wroc} />}
       tresc={tresc}
     />
   );
@@ -107,12 +123,28 @@ function SzablonStanu({ tytul, idKursu, wroc, tresc }: WlasciwosciSzablonuStanu)
  * lekcja spoza kursu), błąd połączenia. Zapis, błędy pól i wgrywanie plików
  * żyją w `EdytorLekcji`.
  */
-export function LekcjaEdycja({ idLekcji, idKursu }: WlasciwosciLekcjaEdycja) {
+export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: WlasciwosciLekcjaEdycja) {
   const router = useRouter();
   const wroc = () => router.back();
   const adresPoprawny = idLekcji !== null && idKursu !== null;
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
   const [proba, setProba] = useState(0);
+  const [tytulKursu, setTytulKursu] = useState<string | null>(null);
+  const nazwaKursu: NazwaKursu = zNazwaKursu ? tytulKursu : undefined;
+
+  // Nazwa kursu jest dodatkiem okruszków: jej błąd nie blokuje ekranu lekcji.
+  useEffect(() => {
+    if (!zNazwaKursu || idKursu === null) return;
+    let aktualne = true;
+    pobierzKurs(String(idKursu))
+      .then((kurs) => {
+        if (aktualne) setTytulKursu(kurs.title);
+      })
+      .catch(() => undefined);
+    return () => {
+      aktualne = false;
+    };
+  }, [zNazwaKursu, idKursu]);
 
   useEffect(() => {
     if (idLekcji === null || idKursu === null) return;
@@ -148,6 +180,7 @@ export function LekcjaEdycja({ idLekcji, idKursu }: WlasciwosciLekcjaEdycja) {
       <SzablonStanu
         tytul="Lekcja"
         idKursu={idKursu}
+        nazwaKursu={nazwaKursu}
         wroc={wroc}
         tresc={
           <EmptyState
@@ -164,6 +197,7 @@ export function LekcjaEdycja({ idLekcji, idKursu }: WlasciwosciLekcjaEdycja) {
       <SzablonStanu
         tytul="Lekcja"
         idKursu={idKursu}
+        nazwaKursu={nazwaKursu}
         wroc={wroc}
         tresc={
           <EmptyState
@@ -181,6 +215,7 @@ export function LekcjaEdycja({ idLekcji, idKursu }: WlasciwosciLekcjaEdycja) {
       <SzablonStanu
         tytul="Lekcja"
         idKursu={idKursu}
+        nazwaKursu={nazwaKursu}
         wroc={wroc}
         tresc={
           <Notice
@@ -209,6 +244,7 @@ export function LekcjaEdycja({ idLekcji, idKursu }: WlasciwosciLekcjaEdycja) {
       <SzablonStanu
         tytul="Lekcja"
         idKursu={idKursu}
+        nazwaKursu={nazwaKursu}
         wroc={wroc}
         tresc={
           <div className={style.szkielet}>
@@ -224,6 +260,7 @@ export function LekcjaEdycja({ idLekcji, idKursu }: WlasciwosciLekcjaEdycja) {
     <EdytorLekcji
       lekcja={stan.lekcja}
       idKursu={idKursu}
+      nazwaKursu={nazwaKursu}
       rola={stan.rola}
       nagranieStart={stan.nagranie}
       wroc={wroc}
@@ -234,6 +271,7 @@ export function LekcjaEdycja({ idLekcji, idKursu }: WlasciwosciLekcjaEdycja) {
 interface WlasciwosciEdytora {
   lekcja: LekcjaAdmin;
   idKursu: number | null;
+  nazwaKursu?: NazwaKursu;
   rola: string | null;
   nagranieStart: StanNagrania | null;
   wroc: () => void;
@@ -268,6 +306,7 @@ export interface DodatkiWiersza {
 function EdytorLekcji({
   lekcja,
   idKursu,
+  nazwaKursu,
   rola,
   nagranieStart,
   wroc,
@@ -291,6 +330,8 @@ function EdytorLekcji({
     (plik) => wgrajMaterial(zapisana.id, plik),
     () => setLiczbaMaterialow((poprzednia) => poprzednia + 1),
   );
+  const [materialDoUsuniecia, setMaterialDoUsuniecia] = useState<MaterialAdmin | null>(null);
+  const [bladMaterialu, setBladMaterialu] = useState<string | null>(null);
   const [plikiNagrania, setPlikiNagrania] = useState<PlikFileDropZone[]>([]);
   const [nagranie, setNagranie] = useState<StanNagrania | null>(nagranieStart);
 
@@ -372,6 +413,20 @@ function EdytorLekcji({
     } catch (blad) {
       setBladUsuniecia(zdanieBleduUsuniecia(blad));
       setUsuwanie(false);
+    }
+  }
+
+  async function usunWgranyMaterial(material: MaterialAdmin) {
+    setMaterialDoUsuniecia(null);
+    setBladMaterialu(null);
+    try {
+      await usunMaterial(material.id);
+      // Przycisk „Usuń” tego pliku znika razem z wierszem — fokus idzie na pole dodawania.
+      document.getElementById(`${baza}-plik-materialu`)?.focus();
+      materialy.zdejmij(material);
+      setLiczbaMaterialow((poprzednia) => Math.max(0, poprzednia - 1));
+    } catch (blad) {
+      setBladMaterialu(zdanieBleduUsunieciaMaterialu(blad));
     }
   }
 
@@ -463,6 +518,17 @@ function EdytorLekcji({
           <Text>Lekcja zniknie z kursu. Postęp historyczny uczestników zostaje zachowany.</Text>
         </Dialog>
       )}
+      {materialDoUsuniecia && (
+        <Dialog
+          tytul={`Usunąć materiał „${materialDoUsuniecia.name}”?`}
+          etykietaWycofania="Anuluj"
+          etykietaPotwierdzenia="Usuń materiał"
+          onWycofaj={() => setMaterialDoUsuniecia(null)}
+          onPotwierdz={() => void usunWgranyMaterial(materialDoUsuniecia)}
+        >
+          <Text>Pliku nie da się przywrócić.</Text>
+        </Dialog>
+      )}
       {zapisano && uklad === "strona" && (
         <Toast komunikat="Lekcja została zapisana." onZamknij={() => setZapisano(false)} />
       )}
@@ -533,7 +599,7 @@ function EdytorLekcji({
   return (
     <>
       <FormTemplate
-        naglowek={<PageHeader okruszki={okruszki(idKursu)} tytul={zapisana.title} onPowrot={anuluj} />}
+        naglowek={<PageHeader okruszki={okruszki(idKursu, nazwaKursu)} tytul={zapisana.title} onPowrot={anuluj} />}
         powiadomienie={
           bladOgolny ? (
             <Notice wariant="error" tytul="Lekcja nie została zapisana">
@@ -576,6 +642,28 @@ function EdytorLekcji({
                 pliki={materialy.pliki}
                 onWybierzPliki={(lista) => void materialy.dodaj(lista)}
               />
+              {bladMaterialu && (
+                <Notice wariant="error" tytul="Materiał nie został usunięty">
+                  {bladMaterialu}
+                </Notice>
+              )}
+              {materialy.wgrane.length > 0 && (
+                <ul className={style.wgrane} aria-label="Materiały wgrane teraz">
+                  {materialy.wgrane.map((material) => (
+                    <li key={material.id} className={style.wgrany}>
+                      <span className={style.nazwaPliku}>{material.name}</span>
+                      <Button
+                        poziom="quiet"
+                        niebezpieczny
+                        aria-label={`Usuń materiał „${material.name}”`}
+                        onClick={() => setMaterialDoUsuniecia(material)}
+                      >
+                        Usuń
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
             <section className={style.sekcja} aria-labelledby={`${baza}-nagranie`}>

@@ -136,6 +136,65 @@ describe("trasa /admin/nabor/[id] — szczegół zgłoszenia", () => {
   });
 });
 
+describe("trasa /admin/kursy/[id]/lekcje/[idLekcji] — ekran lekcji z kursem w ścieżce", () => {
+  const params = () => Promise.resolve({ id: "4", idLekcji: "22" });
+
+  it("grupa wyłączona: adres kończy się notFound()", async () => {
+    podmienRejestr({ kursAdministracji: true });
+    const { default: Strona } = await import("../admin/kursy/[id]/lekcje/[idLekcji]/page");
+
+    let rzucony: Blad | null = null;
+    try {
+      await Strona({ params: params() });
+    } catch (blad) {
+      rzucony = blad as Blad;
+    }
+
+    expect(rzucony?.digest).toBe("NEXT_HTTP_ERROR_FALLBACK;404");
+  });
+
+  it("grupa włączona: strona zwraca ekran lekcji z kursem i lekcją z adresu oraz z nazwą kursu w okruszkach", async () => {
+    podmienRejestr({ kursAdministracji: true, edycjaLekcji: true });
+    const { default: Strona } = await import("../admin/kursy/[id]/lekcje/[idLekcji]/page");
+    const { LekcjaEdycja } = await import("@/nowy-front/lekcja-edycja/LekcjaEdycja");
+
+    const element = (await Strona({ params: params() })) as {
+      type: unknown;
+      props: { idLekcji: number | null; idKursu: number | null; zNazwaKursu?: boolean };
+    };
+
+    expect(element.type).toBe(LekcjaEdycja);
+    expect(element.props).toEqual({ idLekcji: 22, idKursu: 4, zNazwaKursu: true });
+  });
+
+  it("identyfikator, który nie jest liczbą, trafia do ekranu jako brak — ekran pokaże „nie znaleziono”", async () => {
+    podmienRejestr({ edycjaLekcji: true });
+    const { default: Strona } = await import("../admin/kursy/[id]/lekcje/[idLekcji]/page");
+
+    const element = (await Strona({ params: Promise.resolve({ id: "4", idLekcji: "abc" }) })) as {
+      props: { idLekcji: number | null; idKursu: number | null };
+    };
+
+    expect(element.props.idLekcji).toBeNull();
+    expect(element.props.idKursu).toBe(4);
+  });
+
+  it("plik strony nie importuje niczego z warstwy components/, tytuł karty to „Lekcja”", async () => {
+    const zrodlo = readFileSync(
+      path.join(process.cwd(), "app", "(przelaczenie)", "admin/kursy/[id]/lekcje/[idLekcji]/page.tsx"),
+      "utf-8",
+    );
+    expect(importujeZComponents(zrodlo)).toBe(false);
+    podmienRejestr({ edycjaLekcji: true });
+    expect((await import("../admin/kursy/[id]/lekcje/[idLekcji]/page")).metadata).toEqual({ title: "Lekcja — Niepodzielni" });
+  });
+
+  it("adres strony jest nową trasą grupy w rejestrze", async () => {
+    const { GRUPY } = await import("@/lib/przelaczenie/grupy");
+    expect(GRUPY.edycjaLekcji.ekrany[0].nowaTrasa).toBe("/admin/kursy/[id]/lekcje/[idLekcji]");
+  });
+});
+
 describe("strona /admin/formy-stazu — tytuł i brak starej trasy", () => {
   it("niesie tytuł w tej samej formie co pozostałe strony administracji — nagłówek ekranu i pozycja menu nowej ramki", async () => {
     podmienRejestr({ formyStazu: true });

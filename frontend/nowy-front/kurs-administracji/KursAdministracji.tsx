@@ -30,7 +30,8 @@ const OKRUSZKI = [{ etykieta: "Kursy", href: ADRES_LISTY_KURSOW }, { etykieta: "
  */
 function adresEkranuLekcji(idLekcji: number, idKursu: string): string | null {
   if (!czyNowaTrasaDostepna(GRUPY.edycjaLekcji)) return null;
-  return `/admin/kursy/${idKursu}/lekcje/${idLekcji}`;
+  const [ekran] = GRUPY.edycjaLekcji.ekrany;
+  return ekran.nowaTrasa.replace("[id]", idKursu).replace("[idLekcji]", String(idLekcji));
 }
 
 interface WlasciwosciKursAdministracji {
