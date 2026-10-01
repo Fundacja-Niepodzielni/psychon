@@ -13,7 +13,8 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - obie szerokości: każda wartość ma nazwę swojej kolumny w drzewie
  *   dostępności, axe bez naruszeń;
  * - kolejka spraw stoi dokładnie tam, gdzie kolejka dyżurów (1280 i 1440 px);
- * - lista kursów stoi na białej karcie (kontrast tła plakietki do tła pod nią).
+ * - każda z sześciu list stoi na białej karcie (kontrast tła i obrysu plakietki
+ *   do tła pod nią); pięć z nich na karcie z organizmu listy.
  */
 
 const ATRAPA_SESJI = { accessToken: "atrapa-tokenu-testowego", expiresAt: Date.now() + 3_600_000 };
@@ -412,7 +413,11 @@ test("kolejka spraw @390: bez przewijania w poziomie", async ({ page }) => {
   expect(sprawy!.tlo).toBe("rgba(0, 0, 0, 0)");
 });
 
-/** Kontrast tła plakietki do pierwszego nieprzezroczystego tła pod nią (dwa miejsca po przecinku). */
+/**
+ * Plakietki listy wobec pierwszego nieprzezroczystego tła pod nimi: kontrast
+ * tła plakietki i kontrast jej obrysu (dwa miejsca po przecinku), wariant
+ * plakietki oraz to, czy tym tłem jest karta samej listy.
+ */
 async function kontrastPlakietek(page: Page, lista: string) {
   return page.locator(`main [role="table"][aria-label="${lista}"]`).evaluate((tabela) => {
     const skladowe = (zapis: string) => {
@@ -432,46 +437,82 @@ async function kontrastPlakietek(page: Page, lista: string) {
       };
       return 0.2126 * kanal(kolor.r) + 0.7152 * kanal(kolor.g) + 0.0722 * kanal(kolor.b);
     };
+    const kontrast = (a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }) => {
+      const [jasna, ciemna] = [jasnosc(a), jasnosc(b)].sort((x, y) => y - x);
+      return Math.round(((jasna + 0.05) / (ciemna + 0.05)) * 100) / 100;
+    };
+    const sekcja = tabela.closest("section");
     return Array.from(tabela.querySelectorAll('[role="cell"][data-rodzaj="stan"]'))
       .map((komorka) => komorka.lastElementChild?.firstElementChild ?? null)
       .filter((el): el is Element => el !== null)
       .map((plakietka) => {
-        const tlo = skladowe(getComputedStyle(plakietka).backgroundColor);
+        const styl = getComputedStyle(plakietka);
         let przodek = plakietka.parentElement;
         let pod = { r: 255, g: 255, b: 255, a: 1 };
         let opisPrzodka = "";
+        let podToKartaListy = false;
         while (przodek) {
           const kolor = skladowe(getComputedStyle(przodek).backgroundColor);
           if (kolor.a >= 1) {
             pod = kolor;
             opisPrzodka = `${przodek.tagName.toLowerCase()} ${getComputedStyle(przodek).backgroundColor}`;
+            podToKartaListy = przodek === sekcja;
             break;
           }
           przodek = przodek.parentElement;
         }
-        const [jasna, ciemna] = [jasnosc(tlo), jasnosc(pod)].sort((a, b) => b - a);
         return {
           tekst: (plakietka.textContent ?? "").trim(),
-          kontrast: Math.round(((jasna + 0.05) / (ciemna + 0.05)) * 100) / 100,
+          neutralna: /neutral|pending/.test(plakietka.className),
+          kontrast: kontrast(skladowe(styl.backgroundColor), pod),
+          obrys: kontrast(skladowe(styl.borderTopColor), pod),
+          gruboscObrysu: styl.borderTopWidth,
           pod: opisPrzodka,
+          podToKartaListy,
         };
       });
   });
 }
 
+/**
+ * Jedna reguła tła: każda z sześciu list stoi na białej karcie. Pięć list
+ * dostaje kartę z organizmu listy (tłem pod plakietką jest sekcja samej
+ * listy); lista pulpitu stoi na karcie szablonu pulpitu.
+ */
+const NA_KARCIE: { lista: OpisListy; plakietek: number; kartaOrganizmu: boolean }[] = [
+  { lista: LISTY[0], plakietek: 4, kartaOrganizmu: true },
+  { lista: LISTY[1], plakietek: 4, kartaOrganizmu: true },
+  { lista: LISTY[2], plakietek: 3, kartaOrganizmu: true },
+  { lista: LISTY[3], plakietek: 4, kartaOrganizmu: false },
+  { lista: LISTY[4], plakietek: 3, kartaOrganizmu: true },
+  { lista: LISTY[5], plakietek: 3, kartaOrganizmu: true },
+];
+
 for (const okno of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
 ]) {
-  test(`lista kursów @${okno.width}: lista na białej karcie — kontrast tła plakietki do tła pod nią 1,14`, async ({ page }) => {
-    await otworz(page, okno, LISTY[0]);
-    const plakietki = await kontrastPlakietek(page, "Lista kursów");
-    console.log(`POMIAR-KONTRASTU @${okno.width} ${JSON.stringify(plakietki)}`);
-    expect(plakietki).toHaveLength(4);
-    for (const plakietka of plakietki) {
-      expect(plakietka.kontrast, `plakietka „${plakietka.tekst}” na ${plakietka.pod}`).toBe(1.14);
-    }
-  });
+  for (const { lista, plakietek, kartaOrganizmu } of NA_KARCIE) {
+    test(`${lista.nazwa} @${okno.width}: lista na białej karcie — tło plakietki neutralnej 1,14, obrys plakietki neutralnej 3,58, każdy obrys co najmniej 3,0`, async ({ page }) => {
+      await otworz(page, okno, lista);
+      const plakietki = await kontrastPlakietek(page, lista.lista);
+      console.log(`POMIAR-KONTRASTU ${lista.nazwa} @${okno.width} ${JSON.stringify(plakietki)}`);
+      expect(plakietki).toHaveLength(plakietek);
+      expect(plakietki.filter((plakietka) => plakietka.neutralna).length, "co najmniej jedna plakietka neutralna w atrapie").toBeGreaterThanOrEqual(1);
+      for (const plakietka of plakietki) {
+        const opis = `plakietka „${plakietka.tekst}” na ${plakietka.pod}`;
+        // Pod plakietką jest biała karta, nie tło strony.
+        expect(plakietka.pod, opis).toMatch(/rgb\(255, 255, 255\)$/);
+        if (kartaOrganizmu) expect(plakietka.podToKartaListy, `${opis}: kartą jest sekcja samej listy`).toBe(true);
+        expect(plakietka.gruboscObrysu, opis).toBe("1px");
+        expect(plakietka.obrys, `obrys: ${opis}`).toBeGreaterThanOrEqual(3);
+        if (plakietka.neutralna) {
+          expect(plakietka.kontrast, `tło: ${opis}`).toBe(1.14);
+          expect(plakietka.obrys, `obrys: ${opis}`).toBe(3.58);
+        }
+      }
+    });
+  }
 }
 
 test("lista kursów @1280: stan pusty stoi na co najwyżej jednej karcie", async ({ page }) => {

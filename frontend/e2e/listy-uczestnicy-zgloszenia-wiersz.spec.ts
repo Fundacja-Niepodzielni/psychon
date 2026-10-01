@@ -11,7 +11,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - axe (WCAG 2.0/2.1 A i AA oraz `best-practice`) na trzech listach
  *   (uczestnicy, zgłoszenia, sprawy) przy 1280 i 390 px: 0 naruszeń;
  * - wiersz: pogrubione imię i nazwisko, plakietka małą literą, widoczne
- *   „Otwórz” z pełną nazwą w nazwie dostępnej, tekst równo z `h1`;
+ *   „Otwórz” z pełną nazwą w nazwie dostępnej; lista uczestników na karcie
+ *   równej z `h1`, tekst wiersza zgłoszeń równo z `h1`;
  * - nagłówek zgłoszeń: „Dodaj zgłoszenie” (kolor) i „Importuj z pliku CSV”
  *   obok siebie (1280) albo jeden pod drugim, każdy na pełną szerokość (390);
  *   nagłówek uczestników: eksport jako akcja drugorzędna, odnośnik pod `h1`;
@@ -175,11 +176,11 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       }
     });
 
-    test("wiersz jak w Sprawach: pogrubione imię, plakietka małą literą, „Otwórz” z pełną nazwą, tekst równo z h1", async ({ page }) => {
+    test("wiersz jak w Sprawach: pogrubione imię, plakietka małą literą, „Otwórz” z pełną nazwą; uczestnicy na karcie równej z h1, zgłoszenia tekstem równo z h1", async ({ page }) => {
       await instalujAtrapy(page, DANE);
       const KONTRAKT = [
-        { adres: "/admin/uczestniczki", imie: "Marta Osobowska", plakietka: "konto aktywne", nazwaAkcji: "Otwórz kartę: Marta Osobowska" },
-        { adres: "/admin/nabor", imie: "Anna Kandydacka", plakietka: "czeka na decyzję", nazwaAkcji: "Otwórz zgłoszenie: Anna Kandydacka" },
+        { adres: "/admin/uczestniczki", imie: "Marta Osobowska", plakietka: "konto aktywne", nazwaAkcji: "Otwórz kartę: Marta Osobowska", naKarcie: true },
+        { adres: "/admin/nabor", imie: "Anna Kandydacka", plakietka: "czeka na decyzję", nazwaAkcji: "Otwórz zgłoszenie: Anna Kandydacka", naKarcie: false },
       ];
       for (const wiersz of KONTRAKT) {
         await page.goto(wiersz.adres);
@@ -195,13 +196,23 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
             lewyWiersza: Math.round(kontener.getBoundingClientRect().left),
             lewyTekstu: Math.round(kontener.firstElementChild!.getBoundingClientRect().left),
             lewyH1: Math.round(h1.left),
+            lewyKarty: Math.round((kontener.closest("section") ?? kontener).getBoundingClientRect().left),
+            wciecieWiersza: Math.round(parseFloat(getComputedStyle(kontener).paddingLeft)),
           };
         });
         console.log(`POMIAR-WIERSZA ${wiersz.adres} @${szerokosc} ${JSON.stringify(pomiar)}`);
         // Waga „medium” z tokenu — ta sama, którą ma tytuł wiersza kolejki Spraw; cięższa od tekstu zwykłego.
         expect(pomiar.waga, "imię i nazwisko pogrubione").toBeGreaterThan(pomiar.wagaTekstuZwyklego);
-        expect(pomiar.lewyTekstu, "tekst wiersza równo z h1").toBe(pomiar.lewyH1);
-        expect(pomiar.lewyWiersza, "wiersz równo z h1").toBe(pomiar.lewyH1);
+        if (wiersz.naKarcie) {
+          // Lista na karcie: karta równo z h1, wiersz za ramką karty, tekst z wcięciem karty.
+          expect(pomiar.lewyKarty, "karta listy równo z h1").toBe(pomiar.lewyH1);
+          expect(pomiar.lewyWiersza, "wiersz za ramką karty").toBe(pomiar.lewyKarty + 1);
+          expect(pomiar.wciecieWiersza, "wcięcie wiersza na karcie").toBeGreaterThan(0);
+          expect(pomiar.lewyTekstu, "tekst wiersza z wcięciem karty").toBe(pomiar.lewyWiersza + pomiar.wciecieWiersza);
+        } else {
+          expect(pomiar.lewyTekstu, "tekst wiersza równo z h1").toBe(pomiar.lewyH1);
+          expect(pomiar.lewyWiersza, "wiersz równo z h1").toBe(pomiar.lewyH1);
+        }
         const rzad = page.locator('[data-wariant], [role="row"][data-wiersz]').first();
         await expect(rzad.getByText(wiersz.plakietka, { exact: true })).toBeVisible();
         const akcja = page.getByRole("link", { name: wiersz.nazwaAkcji });
