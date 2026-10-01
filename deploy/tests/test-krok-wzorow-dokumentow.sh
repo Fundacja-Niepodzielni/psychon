@@ -14,7 +14,7 @@
 #   3. opcje powloki i oslona (przypadek 3) oraz zachowanie (przypadki 4-6):
 #      blok potoku od komunikatu o migracjach do `optimize` jest wyciety
 #      z pliku i uruchomiony z atrapa `docker compose` (wywolania wypisywane
-#      na standardowe wyjscie, zadnych plikow tymczasowych) pod opcjami
+#      na standardowe wyjscie, bez plikow tymczasowych) pod opcjami
 #      powloki WYCIETYMI Z PLIKU: kazde rozpoznane polecenie `set` i
 #      `shopt -o` stojace w pliku przed blokiem jest odtwarzane w tej samej
 #      kolejnosci (nic nie jest tu wpisane na sztywno). Mierzona jest
@@ -27,6 +27,13 @@
 # nazwy opcji, przechodza przez ta sama funkcje wyciagajaca i ten sam warunek
 # co przypadek 3. Zapis nierozpoznany daje kod 1 z jego nazwa. Ma osobna linie
 # wyniku (`kontrola rozpoznawania: n/3`) i nie zmienia liczby przypadkow.
+# Przypadek 8 (stale, przy kazdym biegu) mierzy, ze proba nie wykonuje slow
+# z badanego pliku: w katalogu z `mktemp -d` powstaje wykonywalny plik o losowej
+# nazwie (jedyny plik tymczasowy proby, katalog pierwszy na PATH tylko na czas
+# tego przypadku), kopie badanego pliku dostaja przed blokiem wiersz
+# `set <nazwa>`, `set -e <nazwa>` albo `echo` z ta nazwa w tekscie, i kazda
+# kopia przechodzi cala probe; wymagane: plik-znacznik NIE powstaje. Katalog
+# i jego zawartosc proba sprzata sama (wylacznie wlasne pliki z tego katalogu).
 #
 # CO PROBA ROZPOZNAJE (lista zamknieta):
 #   a. Wylaczenie przerywania na bledzie (errexit) albo pipefail poleceniem
@@ -76,18 +83,20 @@
 #
 # CO PROBA WYKONUJE Z BADANEGO PLIKU. Pomiar poziomu skladniowego nie wykonuje
 # z niego niczego (definicja funkcji nie uruchamia jej tresci, a `bash -n`
-# tylko czyta). Przypadki 4-6
-# wykonuja w osobnej powloce wylacznie: rozpoznane polecenia `set`/`shopt -o`
-# (same flagi i slowa z liter, cyfr i `_` - dowolne nazwy opcji, bez znakow
-# powloki, wiec zadne slowo z pliku nie uruchomi tu polecenia ani podstawienia;
-# zapis, ktorego nie da sie odtworzyc bez bledu, daje czerwien) oraz wiersze
-# bloku, ale tylko gdy kazdy wiersz
-# bloku jest komentarzem, wierszem `echo "<tekst bez podstawien>"` albo
-# wywolaniem atrapy `"${compose[@]}" <slowa>` bez znakow powloki. Blok
-# z jakimkolwiek innym wierszem NIE jest uruchamiany, a przypadki 4-6 sa
-# wtedy niezaliczone.
+# tylko czyta). Przypadki 4-6 wykonuja w osobnej powloce wylacznie: rozpoznane
+# polecenia `set`/`shopt -o` w postaci bez golego slowa (flagi `-e`, `+u`,
+# `-euo`; nazwa opcji - litery, cyfry i `_` - tylko jako argument `-o`/`+o`,
+# a dla `shopt` jako slowa po flagach) oraz wiersze bloku, ale tylko gdy kazdy
+# wiersz bloku jest komentarzem, wierszem `echo "<tekst bez podstawien>"` albo
+# wywolaniem atrapy `"${compose[@]}" <slowa>` bez znakow powloki. `set`
+# z golym slowem nie jest odtwarzany (podmienilby parametry pozycyjne),
+# a blok i opcje przechodza do powloki potomnej zmiennymi srodowiska, nie
+# parametrami pozycyjnymi - zadne slowo z pliku nie zostaje poleceniem ani
+# podstawieniem. Zapis, ktorego nie da sie odtworzyc bez bledu (np.
+# `set -o <nieistniejaca nazwa>`), daje czerwien. Blok z jakimkolwiek innym
+# wierszem NIE jest uruchamiany, a przypadki 4-6 sa wtedy niezaliczone.
 #
-# Kody: 0 wszystkie zaliczone i kontrola rozpoznawania 3/3, 1 co najmniej
+# Kody: 0 wszystkie przypadki zaliczone i kontrola rozpoznawania 3/3, 1 co najmniej
 # jeden niezaliczony przypadek albo nierozpoznany zapis kontroli, 2 nie da sie
 # zmierzyc.
 set -uo pipefail
@@ -201,7 +210,25 @@ fi
 
 # Opcje powloki, ktore plik FAKTYCZNIE ma w miejscu bloku: wszystkie polecenia
 # `set` i `shopt -o` od poczatku pliku do pierwszego wiersza bloku, w kolejnosci.
-OPCJE_PLIKU="$(polecenia_opcji_z_pliku 1 "${W_BLOKU:-1}")"
+# Odtwarzane sa tylko te bez golego slowa:
+#   set:   flagi bez `o` (`-e`, `+u`) i flaga konczaca sie na `o` z nazwa opcji
+#          zaraz po niej (`-o nazwa`, `+o nazwa`, `-euo nazwa`);
+#   shopt: flagi (`-u`, `-o`), potem nazwy opcji.
+# `set` z golym slowem podmienilby parametry pozycyjne, wiec nie jest odtwarzany.
+LITERA_BEZ_O='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnpqrstuvwxyz'
+ODTWARZALNY_SET="^set([[:space:]]+([-+][$LITERA_BEZ_O]+|[-+][$LITERA_BEZ_O]*o[[:space:]]+[A-Za-z0-9_]+))+\$"
+ODTWARZALNY_SHOPT="^shopt([[:space:]]+-[A-Za-z]+)+([[:space:]]+[A-Za-z0-9_]+)*\$"
+SUROWE_OPCJE="$(polecenia_opcji_z_pliku 1 "${W_BLOKU:-1}")"
+OPCJE_PLIKU=""
+while IFS= read -r WIERSZ_OPCJI; do
+  [[ -n "$WIERSZ_OPCJI" ]] || continue
+  if [[ "$WIERSZ_OPCJI" =~ $ODTWARZALNY_SET || "$WIERSZ_OPCJI" =~ $ODTWARZALNY_SHOPT ]]; then
+    OPCJE_PLIKU+="$WIERSZ_OPCJI"$'\n'
+  else
+    echo "  nie odtwarzam (gole slowo albo nazwa poza -o/+o): $WIERSZ_OPCJI"
+  fi
+done <<< "$SUROWE_OPCJE"
+OPCJE_PLIKU="${OPCJE_PLIKU%$'\n'}"
 
 # Blok wolno uruchomic tylko wtedy, gdy kazdy jego wiersz jest pusty, jest
 # komentarzem, wierszem `echo "<tekst bez podstawien>"` albo wywolaniem atrapy.
@@ -215,17 +242,6 @@ while IFS= read -r WIERSZ_BLOKU; do
     echo "wiersz bloku spoza dozwolonych (bloku nie uruchamiam): $WIERSZ_BLOKU"
   fi
 done <<< "$BLOK"
-# Odtwarzane sa tylko wiersze zlozone z `set`/`shopt`, flag i slow z liter,
-# cyfr i `_` (ten sam wzorzec slowa co przy wycinaniu); inny wiersz = nie
-# uruchamiam.
-WIERSZ_OPCJI_DOZWOLONY="^(set|shopt)([[:space:]]+($SLOWO_OPCJI))+\$"
-while IFS= read -r WIERSZ_OPCJI; do
-  [[ -n "$WIERSZ_OPCJI" ]] || continue
-  if ! [[ "$WIERSZ_OPCJI" =~ $WIERSZ_OPCJI_DOZWOLONY ]]; then
-    BLOK_DOZWOLONY=0
-    echo "polecenie opcji spoza dozwolonych (bloku nie uruchamiam): $WIERSZ_OPCJI"
-  fi
-done <<< "$OPCJE_PLIKU"
 echo "opcje powloki wyciete z pliku przed blokiem: $(printf '%s' "$OPCJE_PLIKU" | paste -sd';' -)"
 
 # Uruchamia blok z atrapa compose pod opcjami wycietymi z pliku. $1 = fragment
@@ -238,7 +254,7 @@ uruchom_blok() {
     printf 'STAN=nieuruchomiony\n'
     return 0
   fi
-  wyjscie="$(ZAWODZI="$zawodzi" bash -c '
+  wyjscie="$(ZAWODZI="$zawodzi" NP_SWIADEK_BLOK="$BLOK" NP_SWIADEK_OPCJE="$OPCJE_PLIKU" bash -c '
     atrapa() {
       echo "WYWOLANIE: $*"
       if [[ -n "$ZAWODZI" && "$*" == *"$ZAWODZI"* ]]; then return 7; fi
@@ -248,9 +264,9 @@ uruchom_blok() {
     while IFS= read -r opcja; do
       [[ -n "$opcja" ]] || continue
       eval "$opcja" || exit 97
-    done <<< "$2"
-    eval "$1"
-  ' _ "$BLOK" "$OPCJE_PLIKU" 2>/dev/null)"
+    done <<< "$NP_SWIADEK_OPCJE"
+    eval "$NP_SWIADEK_BLOK"
+  ' _ 2>/dev/null)"
   kod=$?
   printf '%s\nSTAN=%s\n' "$wyjscie" "$kod"
 }
@@ -338,6 +354,51 @@ if [[ "$M_IGLA" -eq 1 && "$M_SZCZYT" -eq 1 && "$K_IGLA" -eq 1 && "$K_SZCZYT" -eq
   zaliczony
 else
   niezaliczony "migracja albo krok wzorow stoi w poleceniu zlozonym albo w liscie z ||, &&, !"
+fi
+
+# Przypadek 8: proba nie wykonuje slow z badanego pliku. Kopia pliku z wierszem
+# `set <nazwa>` (takze `set -e <nazwa>` i `echo` z nazwa w tekscie) przed
+# blokiem przechodzi cala probe, a <nazwa> jest wykonywalnym plikiem w katalogu
+# pierwszym na PATH; jego wywolanie zostawia znacznik. Znacznik nie moze
+# powstac. Kopie sa mierzone przez ta sama probe (wywolanie samej siebie;
+# zmienna NP_SWIADEK_ZNACZNIK wylacza w nim ten przypadek).
+if [[ -z "${NP_SWIADEK_ZNACZNIK:-}" ]]; then
+  naglowek "8 proba nie wykonuje slow z badanego pliku (znacznik nie powstaje)"
+  KAT_ZN="$(mktemp -d)"
+  if [[ -z "$KAT_ZN" || ! -d "$KAT_ZN" ]]; then
+    echo "BLAD: mktemp -d nie utworzyl katalogu - przypadku 8 nie da sie zmierzyc" >&2
+    exit 2
+  fi
+  NAZWA_ZN="znacznik_${RANDOM}${RANDOM}"
+  ZNACZNIK="$KAT_ZN/znacznik.txt"
+  printf '#!/usr/bin/env bash\n: > "%s"\n' "$ZNACZNIK" > "$KAT_ZN/$NAZWA_ZN"
+  chmod +x "$KAT_ZN/$NAZWA_ZN"
+  # uprzaz dziala: bezposrednie wywolanie nazwy z PATH zostawia znacznik
+  PATH="$KAT_ZN:$PATH" "$NAZWA_ZN" > /dev/null 2>&1
+  UPRZAZ=nie
+  if [[ -e "$ZNACZNIK" ]]; then UPRZAZ=tak; rm -f -- "$ZNACZNIK"; fi
+  ILE_ZNACZNIKOW=0
+  NR_KOPII=0
+  for LINIA_ZN in "set $NAZWA_ZN" "set -e $NAZWA_ZN" "echo \"teraz set $NAZWA_ZN dla opisu\""; do
+    NR_KOPII=$((NR_KOPII+1))
+    awk -v n="$W_BLOKU" -v t="$LINIA_ZN" 'NR == n { print t } { print }' "$PLIK_DEPLOY" > "$KAT_ZN/kopia$NR_KOPII.sh"
+    PATH="$KAT_ZN:$PATH" NP_SWIADEK_ZNACZNIK=1 bash "${BASH_SOURCE[0]}" "$KAT_ZN/kopia$NR_KOPII.sh" > /dev/null 2>&1
+    if [[ -e "$ZNACZNIK" ]]; then
+      ILE_ZNACZNIKOW=$((ILE_ZNACZNIKOW+1))
+      rm -f -- "$ZNACZNIK"
+    fi
+  done
+  # sprzatanie wylacznie wlasnych plikow z wlasnego katalogu
+  rm -f -- "$KAT_ZN"/kopia*.sh "$KAT_ZN/$NAZWA_ZN" "$ZNACZNIK"
+  rmdir -- "$KAT_ZN"
+  echo "  uprzaz (wywolanie nazwy z PATH zostawia znacznik): $UPRZAZ; kopii z wierszem ze slowem: $NR_KOPII; powstalych znacznikow: $ILE_ZNACZNIKOW"
+  if [[ "$UPRZAZ" == tak && "$ILE_ZNACZNIKOW" -eq 0 ]]; then
+    zaliczony
+  elif [[ "$UPRZAZ" != tak ]]; then
+    niezaliczony "uprzaz znacznika nie dziala - przypadku nie da sie zmierzyc"
+  else
+    niezaliczony "proba wykonala slowo z badanego pliku (znacznik powstal $ILE_ZNACZNIKOW raz(y))"
+  fi
 fi
 
 # Stala kontrola rozpoznawania: zapisy z inna nazwa opcji obok `errexit` musza
