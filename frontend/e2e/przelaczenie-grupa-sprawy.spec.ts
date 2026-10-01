@@ -374,7 +374,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await expect(page.getByTestId("sprawa-prowadzacego-7")).toBeVisible();
 
       const pomiar = await pomierzMetadane(page);
-      console.log(`POMIAR-C4 /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
+      console.log(`Pomiar układu metadanych spraw prowadzących /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
       for (const sprawa of pomiar) {
         expect(sprawa.elementy, "data, zgłaszający, osoba").toHaveLength(3);
         expect(sprawa.liniiPoczatkuLubKonca, "linia zaczynająca się albo kończąca na „·”").toEqual([]);
@@ -470,7 +470,7 @@ for (const { szerokosc, ukryte } of [
       await expect(page.getByTestId("sprawa-prowadzacego-7")).toBeVisible();
 
       const pomiar = await pomierzMetadane(page);
-      console.log(`POMIAR-C4 /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
+      console.log(`Pomiar układu metadanych spraw prowadzących /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
       for (const sprawa of pomiar) {
         expect(new Set(sprawa.elementy.map((e) => e.top)).size).toBe(ukryte ? 3 : 1);
         expect(sprawa.separatory.map((x) => x.display).includes("none")).toBe(ukryte);
