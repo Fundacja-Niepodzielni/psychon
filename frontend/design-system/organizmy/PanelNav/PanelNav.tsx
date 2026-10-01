@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Avatar } from "../../atomy/Avatar/Avatar";
 import { Text } from "../../atomy/Text/Text";
+import { GrupaZwijana } from "../../molekuly/MenuItem/GrupaZwijana";
 import { MenuGroup } from "../../molekuly/MenuItem/MenuGroup";
 import type { NazwaIkony } from "../../atomy/Icon/Icon";
 import style from "./PanelNav.module.css";
@@ -29,6 +30,13 @@ interface GrupaPanelNav {
    * 2.0.4. Zwykły tekst, bez łącza i bez roli odnośnika.
    */
   liniaWPrzygotowaniu?: string;
+  /**
+   * Grupa zwijana: zamiast nagłówka i listy — przycisk „{nagłówek} ({liczba pozycji})”
+   * (komponent `GrupaZwijana`, ten sam co „Dotychczasowy panel” w szablonie powłoki).
+   * Na wejściu zwinięta, rozwinięta, gdy niesie pozycję bieżącą; linia „W przygotowaniu”
+   * stoi wtedy wewnątrz części zwijanej, pod pozycjami. Bez pola grupa rysuje się wprost.
+   */
+  zwijana?: boolean;
 }
 
 interface UzytkownikPanelNav {
@@ -77,14 +85,21 @@ export function PanelNav({ uzytkownik, grupy, etykieta = "Nawigacja panelu", kon
       </div>
 
       <div className={style.grupy}>
-        {grupy.map(({ liniaWPrzygotowaniu, ...grupa }) => (
-          <div key={grupa.naglowek} className={style.grupa}>
-            <MenuGroup {...grupa} />
-            {liniaWPrzygotowaniu && (
-              <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${liniaWPrzygotowaniu}.`}</p>
-            )}
-          </div>
-        ))}
+        {grupy.map(({ liniaWPrzygotowaniu, zwijana, ...grupa }) =>
+          zwijana ? (
+            <GrupaZwijana
+              key={grupa.naglowek}
+              grupa={{ naglowek: grupa.naglowek, pozycje: grupa.pozycje, liniaWPrzygotowaniu }}
+            />
+          ) : (
+            <div key={grupa.naglowek} className={style.grupa}>
+              <MenuGroup {...grupa} />
+              {liniaWPrzygotowaniu && (
+                <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${liniaWPrzygotowaniu}.`}</p>
+              )}
+            </div>
+          ),
+        )}
         {konto}
       </div>
     </nav>

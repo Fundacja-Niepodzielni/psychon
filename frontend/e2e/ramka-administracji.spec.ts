@@ -12,8 +12,8 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  *
  * Dla każdego ekranu administracji z włączonej grupy, na 1280 i 390 px:
  * - menu jest listą z makiety (grupy, pozycje, linie „W przygotowaniu”,
- *   grupa „Konto”) uzupełnioną o ekrany włączonych grup i grupę
- *   „Dotychczasowy panel”;
+ *   grupa „Konto”) uzupełnioną o ekrany włączonych grup (zwijana grupa „Ustawienia”)
+ *   i grupę „Dotychczasowy panel”;
  * - nazwa w menu == `h1` == tytuł karty (dla pulpitu para ze słownika:
  *   „Pulpit” w menu, „Pulpit administracji” w nagłówku);
  * - jeden `main`, jeden `#tresc`, link skoku jako pierwszy cel klawiatury;
@@ -154,8 +154,8 @@ async function instalujAtrapyApi(page: Page): Promise<void> {
 
 /**
  * Menu oczekiwane — makieta 2.0.4, menu roli administracji (skrypt nawigacji,
- * w. 1105), plus ekrany włączonych grup i grupa „Dotychczasowy panel”
- * (`lib/menu/ramka/administracja.ts`).
+ * w. 1105), plus ekrany włączonych grup (zwijana grupa „Ustawienia”) i grupa
+ * „Dotychczasowy panel” (`lib/menu/ramka/administracja.ts`).
  */
 const MENU_OCZEKIWANE = [
   {
@@ -172,10 +172,7 @@ const MENU_OCZEKIWANE = [
   },
   {
     naglowek: "Program",
-    pozycje: [
-      ["Kursy", "/admin/kursy"],
-      ["Słownik form stażu", "/admin/formy-stazu"],
-    ],
+    pozycje: [["Kursy", "/admin/kursy"]],
     // Bez „staż i superwizja” — „Dyżury do decyzji” (podstrona „Spraw”) i „Superwizje” (Dotychczasowy panel) są w menu.
     linia: "W przygotowaniu: prowadzący.",
   },
@@ -184,21 +181,29 @@ const MENU_OCZEKIWANE = [
     pozycje: [
       ["Raport roku programu", "/admin/raport"],
       ["Dziennik działań", "/admin/dziennik"],
+    ],
+    // „certyfikaty” poza linią: „Certyfikaty” są pozycją menu („Dotychczasowy panel”) — linia znika.
+    linia: null,
+  },
+  {
+    // Grupa zwijana (ten sam komponent co „Dotychczasowy panel”); linia stoi wewnątrz części zwijanej.
+    naglowek: "Ustawienia (4)",
+    pozycje: [
+      ["Ustawienia edycji", "/admin/ustawienia"],
+      ["Słownik form stażu", "/admin/formy-stazu"],
       ["Wzory dokumentów", "/admin/wzory-dokumentow"],
       ["Treść ekranu „Zacznij tutaj”", "/admin/ekran-startowy"],
     ],
-    // „certyfikaty” poza linią: „Certyfikaty” są pozycją menu („Dotychczasowy panel”).
     linia: "W przygotowaniu: ustawienia roku programu.",
   },
   {
-    naglowek: "Dotychczasowy panel (6)",
+    naglowek: "Dotychczasowy panel (5)",
     pozycje: [
       ["Czas nauki", "/admin/czas-nauki"],
       ["Certyfikaty", "/admin/certyfikaty"],
       ["Profile psychologa", "/admin/profile"],
       ["Superwizje", "/admin/superwizje"],
       ["Skrzynka e-maili", "/admin/emails"],
-      ["Ustawienia", "/admin/ustawienia"],
     ],
     linia: null,
   },
@@ -427,7 +432,11 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         expect(tokeny.dokument, "--brand na documentElement").toBe("");
 
         // Długie nazwy pozycji: pełny tekst widoczny, bez wielokropka, najwyżej 2 wiersze.
-        // Pozycje widoczne (grupa zwinięta „Dotychczasowy panel” jest na wejściu ukryta).
+        // Pozycje widoczne: grupa „Ustawienia” (na ekranach spoza niej zwinięta) jest przed pomiarem rozwinięta,
+        // żeby objąć też najdłuższą nazwę („Treść ekranu „Zacznij tutaj””); „Dotychczasowy panel” jest na wejściu ukryty.
+        const przyciskUstawien = nav.getByRole("button", { name: "Ustawienia (4)", exact: true });
+        if ((await przyciskUstawien.getAttribute("aria-expanded")) === "false") await przyciskUstawien.click();
+        await expect(przyciskUstawien).toHaveAttribute("aria-expanded", "true");
         const nazwyPozycji = await nav.locator("a:visible").evaluateAll((linki) =>
           linki.map((a) => {
             const etykieta = a.querySelector("p") ?? a;
@@ -453,9 +462,9 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         const menu = await odczytajMenu(nav);
         expect(menu.grupy).toEqual(MENU_OCZEKIWANE);
         expect(menu.konto).toBe("Konto");
-        expect(menu.przyciski).toEqual(["Dotychczasowy panel (6)", "Wyloguj"]);
+        expect(menu.przyciski).toEqual(["Ustawienia (4)", "Dotychczasowy panel (5)", "Wyloguj"]);
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
-        // Bieżąca pozycja widoczna także wtedy, gdy stoi w grupie zwiniętej („Dotychczasowy panel”).
+        // Bieżąca pozycja widoczna także wtedy, gdy stoi w grupie zwijanej („Ustawienia”, „Dotychczasowy panel”).
         await expect(nav.locator('a[aria-current="page"]')).toBeVisible();
         expect((await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(ekran.menu);
         await expect.soft(page, "tytuł karty").toHaveTitle(ekran.tytul);
@@ -479,6 +488,8 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     const nav = page.getByRole("complementary", { name: "Menu i konto" }).getByRole("navigation", { name: "Menu — Administracja" });
+    // „Wzory dokumentów” stoją w zwijanej grupie „Ustawienia” (na /admin zwiniętej): rozwijamy ją przed wejściem w pozycję.
+    await nav.getByRole("button", { name: "Ustawienia (4)", exact: true }).click();
     await nav.getByRole("link", { name: "Wzory dokumentów", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/wzory-dokumentow$/);
     await expect(page.getByRole("heading", { level: 1, name: "Wzory dokumentów", exact: true })).toBeVisible();
@@ -501,7 +512,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
 /**
  * Menu na 1280×800 i pasek górny: „Wyloguj” w oknie bez przewijania menu
  * (dolna krawędź ≤ 800 przy `scrollTop` 0, nie zasłonięte), „Dotychczasowy
- * panel (n)” zwinięty na wejściu i rozwijany kliknięciem, linie „W
+ * panel (n)” i „Ustawienia (4)” zwinięte na wejściu i rozwijane kliknięciem, linie „W
  * przygotowaniu” rozłączne z nazwami pozycji menu, pasek „PsychON · rok programu 2026/27”; na 390
  * „Zamknij” okna menu ze znakiem „×”.
  */
@@ -578,6 +589,7 @@ test.describe("nowa ramka panelu administracji — menu 1280×800 i pasek", () =
     const zamknij = okno.getByRole("button", { name: "Zamknij", exact: true });
     await expect(zamknij.locator('[data-znak-zamknij][aria-hidden="true"]')).toHaveText("×");
     await expect(okno.getByRole("button", { name: /^Dotychczasowy panel \(\d+\)$/ })).toHaveAttribute("aria-expanded", "false");
+    await expect(okno.getByRole("button", { name: "Ustawienia (4)", exact: true })).toHaveAttribute("aria-expanded", "false");
     const katalog = katalogZrzutow();
     if (katalog) await page.screenshot({ path: path.join(katalog, `ramka-${EKRANY[0].nazwa}-390-menu-otwarte.png`) });
     await zamknij.click();
@@ -684,8 +696,8 @@ test.describe("nowa ramka panelu administracji — bieżąca pozycja menu widocz
     expect(teksty, opis).toContain("Dziennik działań");
     expect(teksty, opis).not.toContain("Dyżury do decyzji");
     expect(teksty, opis).not.toContain("Zgłoszenia rekrutacyjne");
-    // Dwie ostatnie pozycje „Rozliczenia” („Wzory dokumentów”, „Treść ekranu”) mieszczą się dopiero po przewinięciu menu —
-    // to zmierzone i zapisane w `POMIAR-MENU-1280x800`, nie jest tu ukrywane; test pilnuje pozycji do „Dziennika działań”.
+    // Pozycje „Ustawień” (zwinięta grupa) są poza pomiarem: ukryta lista nie jest pozycją widoczną; test pilnuje pozycji
+    // „Codziennie”, „Programu” i „Rozliczenia” do „Dziennika działań” — liczby w `POMIAR-MENU-1280x800`.
     const doDziennika = teksty.indexOf("Dziennik działań");
     for (const p of pomiar.pozycje.slice(0, doDziennika + 1)) {
       expect(p.dol, `${p.tekst} nad „Konto” ${opis}`).toBeLessThanOrEqual(pomiar.gora!);

@@ -37,7 +37,7 @@ class VideoTokenController extends Controller
         $user = $request->user();
         $this->lessonAccess->authorizeRecording($user, $lesson);
 
-        if ($lesson->video_provider_id === null) {
+        if (! $this->tokenService->hasRecording($lesson)) {
             throw new ApiException(404, 'video_missing', 'Ta lekcja nie ma jeszcze przypisanego nagrania.');
         }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
+use App\Services\Video\VideoProviderId;
 use App\Services\Video\VideoTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -89,7 +90,7 @@ class BunnyVideoAdminController extends Controller
 
         $videoId = $response->json('guid');
 
-        if (! is_string($videoId) || $videoId === '') {
+        if (! VideoProviderId::isValid($videoId)) {
             throw new ApiException(502, 'bunny_error', 'Bunny Stream nie zwrócił identyfikatora wideo.');
         }
 
@@ -123,16 +124,19 @@ class BunnyVideoAdminController extends Controller
             );
         }
 
-        if ($lesson->video_provider_id === null) {
+        // Identyfikator spoza wzorca (zapisany, zanim wzorzec obowiązywał, albo
+        // wstawiony poza API) nie wychodzi w zadaniu z kluczem usługi: lekcja
+        // wygląda jak lekcja bez nagrania, tak samo jak przy `null`.
+        if (! $this->tokenService->hasRecording($lesson)) {
             return response()->json(['data' => ['status' => 'no_video']]);
         }
 
         $libraryId = (string) config('services.bunny.library_id');
         $apiKey = (string) config('services.bunny.api_key');
-        $videoId = $lesson->video_provider_id;
+        $videoSegment = VideoProviderId::segment((string) $lesson->video_provider_id);
 
         $response = Http::withHeaders(['AccessKey' => $apiKey])
-            ->get("https://video.bunnycdn.com/library/{$libraryId}/videos/{$videoId}");
+            ->get("https://video.bunnycdn.com/library/{$libraryId}/videos/{$videoSegment}");
 
         if (! $response->successful()) {
             throw new ApiException(502, 'bunny_error', 'Nie udało się pobrać stanu przetwarzania wideo z Bunny.');

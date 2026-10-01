@@ -75,7 +75,7 @@ describe("opisPozycji i metaWiersza", () => {
   });
 
   it("meta: pozycja · typ · grupa · lekcje", () => {
-    expect(metaWiersza(kurs())).toBe([["Pozycja", 2, "w ścieżce"].join(" "), "Kurs", "Psychon", "3 lekcje"].join(" · "));
+    expect(metaWiersza(kurs())).toBe([["Pozycja", 2, "w ścieżce"].join(" "), "Kurs", "PsychON", "3 lekcje"].join(" · "));
   });
 
   it("meta webinaru poza ścieżką z jedną lekcją", () => {
