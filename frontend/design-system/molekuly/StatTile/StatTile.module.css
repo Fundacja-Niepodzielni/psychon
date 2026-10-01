@@ -7,6 +7,15 @@
   box-shadow: none;
 }
 
+/* Etykieta kafla jak w makiecie: mała, zwykła grubość, kolor wyciszony.
+   Atom `Label` zostaje bez zmian dla formularzy. */
+.kafel label {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-regular);
+}
+
 .wartosc {
   font-size: var(--fs-3);
   font-weight: var(--fw-bold);
