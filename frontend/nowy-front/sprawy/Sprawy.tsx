@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
+import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
@@ -12,9 +13,11 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import {
+  ETYKIETA_FILTRA,
   ETYKIETA_RODZAJU,
   KOLEJNOSC_RODZAJOW,
   pobierzKolejkeSpraw,
+  sortujSprawy,
   znajdzNajstarszaSprawe,
   type PozycjaKolejki,
   type RodzajSprawy,
@@ -24,22 +27,33 @@ import { pobierzSprawyProwadzacych, type SprawaProwadzacego } from "./dane-prowa
 import { SprawyProwadzacych, type StanSprawProwadzacych } from "./SprawyProwadzacych";
 import {
   dniOczekiwania,
-  slowoDni,
   tekstPlakietkiCzekania,
+  tekstWieku,
   wariantPlakietkiCzekania,
 } from "./wiek";
 import style from "./Sprawy.module.css";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 type FiltrRodzaju = RodzajSprawy | "";
-const OPIS_EKRANU = "Zgłoszenia, dyżury i profile psychologów czekające na Twoją decyzję — w jednym miejscu.";
+// Opis ekranu nazywa rodzaje tak samo jak filtr (jeden słownik w `./dane.ts`).
+const OPIS_EKRANU = `${ETYKIETA_FILTRA.applications}, ${ETYKIETA_FILTRA.internship_entries.toLocaleLowerCase("pl")} i ${ETYKIETA_FILTRA.profiles.toLocaleLowerCase("pl")} czekające na Twoją decyzję — w jednym miejscu.`;
 
-/** Nazwy rodzajów w filtrze (makieta A-02: zakładki Dyżury, Profile psychologów, Rekrutacja). */
-const ETYKIETA_FILTRA: Record<RodzajSprawy, string> = {
-  applications: "Rekrutacja",
-  internship_entries: "Dyżury",
-  profiles: "Profile psychologów",
+/**
+ * Rodzaje, które w filtrze są odnośnikami do własnych ekranów (lista dyżurów
+ * i lista zgłoszeń rekrutacyjnych), a nie przyciskami zawężającymi listę.
+ */
+const EKRAN_RODZAJU: Partial<Record<RodzajSprawy, string>> = {
+  applications: "/admin/nabor",
+  internship_entries: "/admin/staz",
 };
+
+interface OpcjaFiltra {
+  wartosc: FiltrRodzaju;
+  etykieta: string;
+  liczba: number;
+  /** Adres ekranu rodzaju; opcja z adresem jest odnośnikiem, bez niego — przyciskiem filtra. */
+  href?: string;
+}
 
 /**
  * Trasa `/nowy-front/admin/sprawy` (A-02) — jedna kolejka decyzji administracji,
@@ -48,15 +62,19 @@ const ETYKIETA_FILTRA: Record<RodzajSprawy, string> = {
  * `ListTemplate`: jego korzeń jest jedynym `main` (cel linku skoku `#tresc`),
  * a stan wybiera wyłącznie zawartość slotów. Slot `naglowek` — `PageHeader`
  * (podtytuł niesie wiek najstarszej sprawy); slot `filtry` — zwijany „Filtr:
- * rodzaj (N)” z przyciskami rodzajów obecnych w danych, każdy z liczbą (tylko
- * w stanie z danymi); slot `lista` — szkielet, komunikat błędu, stan braku
+ * rodzaj (N)” z pozycjami rodzajów obecnych w danych, każda z liczbą (tylko
+ * w stanie z danymi): „Dyżury” i „Zgłoszenia rekrutacyjne” są odnośnikami do
+ * swoich ekranów, „Wszystkie” i „Wnioski o profil psychologa” przyciskami
+ * zawężającymi listę; slot `lista` — szkielet, komunikat błędu, stan braku
  * dostępu albo komunikaty źródeł i `RecordList` (stan pusty „Brak spraw do
  * decyzji" niesie sam `RecordList`); slot `stronicowanie` pominięty — ekran
  * pobiera do 100 pozycji na źródło bez podziału na strony, patrz
- * `PER_PAGE_MAX` w `./dane.ts`. Wiersz `RecordList` (makieta A-02): plakietka
- * „czeka N dni” na początku (ostrzegawcza od `PROG_OSTRZEZENIA_DNI`, niżej
- * szara), rodzaj pogrubiony, po „·” osoba, akcja „Otwórz” z `href`; pełna
- * nazwa akcji i data „Czeka od …” tylko dla czytnika. Nagłówek `h2` kolejki
+ * `PER_PAGE_MAX` w `./dane.ts`. Wiersze stoją od najstarszej sprawy
+ * (`sortujSprawy`, to samo porównanie co „Otwórz najstarszą sprawę”). Wiersz
+ * `RecordList` (makieta A-02): plakietka „czeka od dziś” / „czeka N dni” na
+ * początku (ostrzegawcza od `PROG_OSTRZEZENIA_DNI`, niżej szara), rodzaj
+ * pogrubiony (nazwa ze słownika `NAZWY_RODZAJOW`), po „·” osoba, akcja „Otwórz”
+ * z `href`; pełna nazwa akcji i data „Czeka od …” tylko dla czytnika. Nagłówek `h2` kolejki
  * jest tylko dla czytnika — wzrokowo lista stoi bezpośrednio pod nagłówkiem
  * ekranu.
  *
@@ -154,17 +172,19 @@ export function Sprawy() {
   // sprawy prowadzących nie zostają w drzewie.
   const stanEkranu: StanEkranu = odmowaProwadzacych ? "brak-uprawnien" : stan;
 
-  const pozycje = useMemo(() => wyniki.flatMap((wynik) => wynik.pozycje), [wyniki]);
+  const pozycje = useMemo(() => sortujSprawy(wyniki.flatMap((wynik) => wynik.pozycje)), [wyniki]);
   // Rodzaje obecne w danych, każdy z liczbą spraw. Wybrany rodzaj zostaje w
   // filtrze także wtedy, gdy po ponownym odczycie nie ma już jego spraw —
   // wtedy lista mówi o tym wprost, a „Wszystkie” przywraca pełny widok.
   const opcjeFiltra = useMemo(() => {
-    const opcje: { wartosc: FiltrRodzaju; etykieta: string; liczba: number }[] = [
+    const opcje: OpcjaFiltra[] = [
       { wartosc: "", etykieta: "Wszystkie", liczba: pozycje.length },
     ];
     for (const rodzaj of KOLEJNOSC_RODZAJOW) {
       const liczba = pozycje.filter((pozycja) => pozycja.rodzaj === rodzaj).length;
-      if (liczba > 0 || rodzaj === filtr) opcje.push({ wartosc: rodzaj, etykieta: ETYKIETA_FILTRA[rodzaj], liczba });
+      if (liczba > 0 || rodzaj === filtr) {
+        opcje.push({ wartosc: rodzaj, etykieta: ETYKIETA_FILTRA[rodzaj], liczba, href: EKRAN_RODZAJU[rodzaj] });
+      }
     }
     return opcje;
   }, [pozycje, filtr]);
@@ -174,7 +194,9 @@ export function Sprawy() {
     [pozycje, filtr],
   );
   // „Najstarsza sprawa" liczy się zawsze z PEŁNEJ kolejki (bez filtra rodzaju)
-  // — filtr rodzaju zawęża tylko widoczną listę, nie główną akcję.
+  // — filtr rodzaju zawęża tylko widoczną listę, nie główną akcję. Lista jest
+  // posortowana tym samym porównaniem (`porownajSprawy`), więc to jest jej
+  // pierwszy wiersz.
   const najstarsza = useMemo(() => znajdzNajstarszaSprawe(pozycje), [pozycje]);
   const zrodlaZBledem = useMemo(() => wyniki.filter((wynik) => wynik.blad !== null), [wyniki]);
   const zrodlaPonad100 = useMemo(
@@ -212,7 +234,7 @@ export function Sprawy() {
       tytul="Sprawy do decyzji"
       opis={
         stanEkranu === "ok" && dniNajstarszej !== null
-          ? `${OPIS_EKRANU} Najstarsza sprawa czeka ${dniNajstarszej} ${slowoDni(dniNajstarszej)}.`
+          ? `${OPIS_EKRANU} Najstarsza sprawa czeka ${tekstWieku(dniNajstarszej)}.`
           : OPIS_EKRANU
       }
       onPowrot={() => router.back()}
@@ -297,16 +319,22 @@ export function Sprawy() {
           liczba={opcjaWybrana.liczba}
           dzieci={
             <div role="group" aria-label="Rodzaj sprawy" className={style.opcjeFiltra}>
-              {opcjeFiltra.map((opcja) => (
-                <Button
-                  key={opcja.wartosc || "wszystkie"}
-                  poziom="outline"
-                  aria-pressed={opcja.wartosc === filtr}
-                  onClick={() => setFiltr(opcja.wartosc)}
-                >
-                  {opcja.etykieta} ({opcja.liczba})
-                </Button>
-              ))}
+              {opcjeFiltra.map((opcja) =>
+                opcja.href ? (
+                  <Link key={opcja.wartosc} href={opcja.href}>
+                    {opcja.etykieta} ({opcja.liczba})
+                  </Link>
+                ) : (
+                  <Button
+                    key={opcja.wartosc || "wszystkie"}
+                    poziom="outline"
+                    aria-pressed={opcja.wartosc === filtr}
+                    onClick={() => setFiltr(opcja.wartosc)}
+                  >
+                    {opcja.etykieta} ({opcja.liczba})
+                  </Button>
+                ),
+              )}
             </div>
           }
         />

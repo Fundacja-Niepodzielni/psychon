@@ -29,22 +29,40 @@ import { formatujDate } from "../wspolne/daty";
 
 export type RodzajSprawy = "applications" | "internship_entries" | "profiles";
 
-/** Stała kolejność rodzajów — rozstrzyga remis w `znajdzNajstarszaSprawe`
+/** Stała kolejność rodzajów — rozstrzyga remis w `porownajSprawy`
  * i kolejność sekcji błędów źródeł. Ta sama kolejność co klucze
  * `queues` w `DashboardSummary::build()` (bez `questions`, patrz wyżej). */
 export const KOLEJNOSC_RODZAJOW: RodzajSprawy[] = ["applications", "internship_entries", "profiles"];
 
+/**
+ * Jedyny słownik nazw rodzajów spraw (makieta A-02): `wiersz` — nazwa w
+ * wierszu listy, w nazwie akcji dla czytnika i w komunikatach źródeł;
+ * `filtr` — ta sama nazwa w liczbie mnogiej, w filtrze i w opisie ekranu.
+ * Pozostałe stałe niżej są z niego wyprowadzone, nie osobnymi listami.
+ */
+export const NAZWY_RODZAJOW: Record<RodzajSprawy, { wiersz: string; filtr: string }> = {
+  applications: { wiersz: "Zgłoszenie rekrutacyjne", filtr: "Zgłoszenia rekrutacyjne" },
+  internship_entries: { wiersz: "Dyżur", filtr: "Dyżury" },
+  profiles: { wiersz: "Wniosek o profil psychologa", filtr: "Wnioski o profil psychologa" },
+};
+
 export const ETYKIETA_RODZAJU: Record<RodzajSprawy, string> = {
-  applications: "Zgłoszenie",
-  internship_entries: "Dyżur",
-  profiles: "Profil psychologa",
+  applications: NAZWY_RODZAJOW.applications.wiersz,
+  internship_entries: NAZWY_RODZAJOW.internship_entries.wiersz,
+  profiles: NAZWY_RODZAJOW.profiles.wiersz,
+};
+
+export const ETYKIETA_FILTRA: Record<RodzajSprawy, string> = {
+  applications: NAZWY_RODZAJOW.applications.filtr,
+  internship_entries: NAZWY_RODZAJOW.internship_entries.filtr,
+  profiles: NAZWY_RODZAJOW.profiles.filtr,
 };
 
 /** Jeden element jednolitej kolejki, niezależnie od źródła. */
 export interface PozycjaKolejki {
   id: string;
   /** Numeryczny identyfikator ŹRÓDŁOWEGO rekordu (bez przedrostka rodzaju) —
-   * jedyne pole używane do rozstrzygania remisu w `znajdzNajstarszaSprawe`.
+   * ostatnie pole rozstrzygające remis w `porownajSprawy`.
    * `id` (string) NIE nadaje się do tego porównania: porównanie leksykalne
    * `"applications-20" < "applications-5"` jest prawdziwe (znak '2' < '5'),
    * mimo że 20 > 5 — zmierzone przez test tabelaryczny
@@ -55,6 +73,9 @@ export interface PozycjaKolejki {
   tytul: string;
   /** Imię i nazwisko osoby sprawy — druga część wiersza po rodzaju. */
   osoba: string;
+  /** Samo nazwisko osoby (`last_name` źródła) — trzecie pole porządku w
+   * `porownajSprawy`, porównywane po polsku. */
+  nazwisko: string;
   podpowiedz: string;
   /** ISO 8601 albo pusty string (brak daty źródłowej — trafia na koniec
    * porządku w `znajdzNajstarszaSprawe`, nigdy nie wygrywa remisu). */
@@ -111,6 +132,7 @@ export function mapujZgloszenie(wiersz: WierszZgloszenia): PozycjaKolejki {
     rodzaj: "applications",
     tytul: `${ETYKIETA_RODZAJU.applications} — ${wiersz.first_name} ${wiersz.last_name}`,
     osoba: `${wiersz.first_name} ${wiersz.last_name}`,
+    nazwisko: wiersz.last_name,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
     // Brak trasy szczegółu zgłoszenia `new` (karta `/admin/uczestniczki/{id}`
@@ -128,6 +150,7 @@ export function mapujDyzur(wiersz: WierszDyzuru): PozycjaKolejki {
     rodzaj: "internship_entries",
     tytul: `${ETYKIETA_RODZAJU.internship_entries} — ${wiersz.user.first_name} ${wiersz.user.last_name}`,
     osoba: `${wiersz.user.first_name} ${wiersz.user.last_name}`,
+    nazwisko: wiersz.user.last_name,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
     // Brak trasy szczegółu pojedynczego dyżuru — tylko lista
@@ -144,6 +167,7 @@ export function mapujProfil(wiersz: WierszProfilu): PozycjaKolejki {
     rodzaj: "profiles",
     tytul: `${ETYKIETA_RODZAJU.profiles} — ${wiersz.user.first_name} ${wiersz.user.last_name}`,
     osoba: `${wiersz.user.first_name} ${wiersz.user.last_name}`,
+    nazwisko: wiersz.user.last_name,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
     href: `/admin/profile/${wiersz.id}`,
@@ -151,36 +175,42 @@ export function mapujProfil(wiersz: WierszProfilu): PozycjaKolejki {
 }
 
 /**
- * Najstarsza sprawa: najwcześniejsza `czekaOd` po wszystkich pozycjach.
- * Remis (ta sama chwila) rozstrzyga stała kolejność `KOLEJNOSC_RODZAJOW`,
- * dalszy remis (ten sam rodzaj) — rosnąco po `id`. Pozycja bez daty
- * (`czekaOd === ""`) nigdy nie wygrywa, dopóki istnieje choć jedna pozycja
- * z datą — czysta funkcja, bez efektów ubocznych, testowana tabelarycznie
- * w `__tests__/najstarsza-sprawa.test.ts`.
+ * Porządek kolejki — JEDNA funkcja porównania dla listy ekranu i dla akcji
+ * „Otwórz najstarszą sprawę”: od najstarszej `czekaOd`; pozycja bez daty
+ * (`czekaOd` pusty albo nieczytelny) stoi za wszystkimi z datą. Remis (ta
+ * sama chwila albo obie bez daty) rozstrzyga kolejno: rodzaj (stała kolejność
+ * `KOLEJNOSC_RODZAJOW`), nazwisko (porównanie po polsku — „Lis” < „Łukasik” <
+ * „Żak”), na końcu `idLiczbowe` rosnąco. Porównanie `idLiczbowe` jest
+ * liczbowe, nie leksykalne na `id` (string) — patrz komentarz przy polu.
+ * Czysta funkcja, testowana tabelarycznie w `__tests__/kolejnosc-spraw.test.ts`.
  */
-export function znajdzNajstarszaSprawe(pozycje: PozycjaKolejki[]): PozycjaKolejki | null {
-  if (pozycje.length === 0) return null;
-  return pozycje.reduce((najstarsza, kandydat) =>
-    jestWczesniejszaLubRownaZRemisem(kandydat, najstarsza) ? kandydat : najstarsza,
-  );
-}
-
-function jestWczesniejszaLubRownaZRemisem(a: PozycjaKolejki, b: PozycjaKolejki): boolean {
+export function porownajSprawy(a: PozycjaKolejki, b: PozycjaKolejki): number {
   const czasA = Date.parse(a.czekaOd);
   const czasB = Date.parse(b.czekaOd);
   const aMaDate = !Number.isNaN(czasA);
   const bMaDate = !Number.isNaN(czasB);
-  if (aMaDate && !bMaDate) return true;
-  if (!aMaDate && bMaDate) return false;
-  if (aMaDate && bMaDate && czasA !== czasB) return czasA < czasB;
-  // Remis (obie bez daty, albo ta sama chwila): stała kolejność rodzajów,
-  // potem `idLiczbowe` rosnąco — deterministyczne, niezależne od kolejności
-  // wejścia. Porównanie MUSI być liczbowe (`idLiczbowe`), nie leksykalne na
-  // `id` (string) — patrz komentarz przy polu `idLiczbowe` w `PozycjaKolejki`.
-  const indeksA = KOLEJNOSC_RODZAJOW.indexOf(a.rodzaj);
-  const indeksB = KOLEJNOSC_RODZAJOW.indexOf(b.rodzaj);
-  if (indeksA !== indeksB) return indeksA < indeksB;
-  return a.idLiczbowe < b.idLiczbowe;
+  if (aMaDate !== bMaDate) return aMaDate ? -1 : 1;
+  if (aMaDate && bMaDate && czasA !== czasB) return czasA < czasB ? -1 : 1;
+  const roznicaRodzaju = KOLEJNOSC_RODZAJOW.indexOf(a.rodzaj) - KOLEJNOSC_RODZAJOW.indexOf(b.rodzaj);
+  if (roznicaRodzaju !== 0) return roznicaRodzaju;
+  const roznicaNazwiska = a.nazwisko.localeCompare(b.nazwisko, "pl");
+  if (roznicaNazwiska !== 0) return roznicaNazwiska;
+  return a.idLiczbowe - b.idLiczbowe;
+}
+
+/** Kolejka od najstarszej sprawy wg `porownajSprawy` (nowa tablica, wejście bez zmian). */
+export function sortujSprawy(pozycje: PozycjaKolejki[]): PozycjaKolejki[] {
+  return [...pozycje].sort(porownajSprawy);
+}
+
+/**
+ * Najstarsza sprawa: pierwsza w porządku `porownajSprawy` (cel akcji „Otwórz
+ * najstarszą sprawę”), `null` dla pustej kolejki. Pierwszy wiersz pełnej
+ * listy jest zawsze tą pozycją.
+ */
+export function znajdzNajstarszaSprawe(pozycje: PozycjaKolejki[]): PozycjaKolejki | null {
+  if (pozycje.length === 0) return null;
+  return pozycje.reduce((najstarsza, kandydat) => (porownajSprawy(kandydat, najstarsza) < 0 ? kandydat : najstarsza));
 }
 
 const PER_PAGE_MAX = 100;

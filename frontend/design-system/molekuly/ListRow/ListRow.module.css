@@ -14,6 +14,18 @@
 .bezWciecia {
   padding-inline: 0;
 }
+/* Poniżej 640 px odnośnik „Otwórz ›” ma boczne wypełnienie z ujemnym
+   marginesem (atom `Link`), więc jego ramka wystaje za wiersz o tyle, ile
+   wynosi wypełnienie. Wiersz bez wcięcia stoi przy krawędzi treści, więc to
+   wystawanie poszerzało stronę (przewijanie poziome). Prawe wypełnienie i
+   prawy margines odnośnika znoszą się tu wzajemnie: napis stoi w tym samym
+   miejscu, ramka kończy się na krawędzi wiersza. */
+@media (max-width: 639px) {
+  .bezWciecia .akcjaOdnosnik a {
+    padding-inline-end: 0;
+    margin-inline-end: 0;
+  }
+}
 /* Treść nigdy nie dostaje mniej niż 60% szerokości wnętrza wiersza: gdy akcja
    (liczba + link) nie mieści się obok, zawija się POD treść, zamiast ściskać
    ją do jednej litery w wierszu. Gdy mieści się obok, treść rośnie do końca

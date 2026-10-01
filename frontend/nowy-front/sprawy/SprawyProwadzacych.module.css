@@ -25,17 +25,20 @@
   background: var(--card);
 }
 
+/* Metadane sprawy (data, zgłaszający, osoba): poniżej 640 px każdy element w
+   osobnej linii i bez separatora; od 640 px jedna linia z „·” między
+   elementami. Próg 640 px zapisany wprost w `@media`, jak w `ListRow` i
+   `Heading` (CSS nie odwoła się do stałej `ZALAMANIA.dziennikBezZawijania`). */
 .meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4) var(--space-12);
+  flex-direction: column;
+  gap: var(--space-4);
   margin: 0;
   color: var(--muted);
   font-size: var(--fs-10);
 }
 
-/* Element linii metadanych z własnym separatorem „·” na początku: razem się
-   zawijają, więc separator nie trafia na koniec linii. */
+/* Element linii metadanych z własnym separatorem „·” na początku. */
 .elementMeta {
   display: inline-flex;
   gap: var(--space-12);
@@ -43,7 +46,29 @@
 }
 
 .separator {
+  display: none;
   flex: none;
+}
+
+/* Od 640 px elementy stoją w jednym rzędzie i nie przechodzą do następnej
+   linii: za długi tekst zawija się wewnątrz swojego elementu, więc żadna
+   linia nie zaczyna się od „·” (przy zawijaniu elementów separator stałby
+   na początku linii). Data nie zawija się i nie kurczy. */
+@media (min-width: 640px) {
+  .meta {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: var(--space-12);
+  }
+
+  .data {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .separator {
+    display: inline;
+  }
 }
 
 .tresc {
