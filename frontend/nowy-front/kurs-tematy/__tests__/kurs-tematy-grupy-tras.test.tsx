@@ -119,7 +119,7 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
     expect(serwer.sciezkiGrupy(druga)).toEqual([]);
   });
 
-  it("dane kursu: PATCH kursu trasą swojej grupy, z tytułem i opisem", async () => {
+  it("dane kursu: PATCH kursu trasą swojej grupy — prowadzący z tytułem i opisem, administracja dodatkowo z typem, grupą i identyfikatorem, nigdy z pozycją w ścieżce", async () => {
     await renderGrupy(grupa);
     await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
     const opis = screen.getByLabelText(/Opis kursu/);
@@ -129,9 +129,18 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
       fireEvent.submit(screen.getByRole("form", { name: "Dane kursu" }));
     });
 
-    expect(serwer.zapisy()).toEqual([
-      { sciezka: `/${grupa}/courses/4`, metoda: "PATCH", cialo: { title: KURS.title, description: "Nowy opis." } },
-    ]);
+    const cialo =
+      grupa === "admin"
+        ? {
+            title: KURS.title,
+            description: "Nowy opis.",
+            slug: KURS.slug,
+            type: KURS.type,
+            product_group: KURS.product_group,
+          }
+        : { title: KURS.title, description: "Nowy opis." };
+    expect(serwer.zapisy()).toEqual([{ sciezka: `/${grupa}/courses/4`, metoda: "PATCH", cialo }]);
+    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("sequence_order");
     expect(await screen.findByText("Nowy opis.")).toBeInTheDocument();
     expect(serwer.sciezkiGrupy(druga)).toEqual([]);
   });
@@ -246,10 +255,11 @@ describe("A-12 — administracja: „Opublikuj kurs” naprawdę zmienia stan ku
     expect(screen.queryByText(/prowadzących/)).toBeNull();
   });
 
-  it("„Dodaj lekcję w tym temacie” prowadzi do ekranu kursu administracji, nie prowadzącego", async () => {
+  it("„Dodaj lekcję w tym temacie” otwiera formularz nowej lekcji na tym ekranie, bez przejścia na inny adres", async () => {
     await renderGrupy("admin");
     await userEvent.click(screen.getByTestId("ct-dodaj-7"));
-    expect(push).toHaveBeenCalledWith("/admin/kursy/4");
+    expect(screen.getByRole("form", { name: "Nowa lekcja" })).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 });
 

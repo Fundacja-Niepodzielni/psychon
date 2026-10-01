@@ -68,13 +68,16 @@ beforeEach(() => {
 });
 
 describe("ekran kursu administracji — dane wyłącznie z tras administracji", () => {
-  it("czyta kurs, lekcje i tematy trasami /admin, żadnej trasy prowadzącego", async () => {
+  it("czyta kurs, lekcje, tematy, przypisania i test trasami /admin, żadnej trasy prowadzącego", async () => {
     const { container } = await renderEkranu();
 
     expect(serwer.wywolania.map((w) => `${w.metoda} ${w.sciezka}`).sort()).toEqual([
       "GET /admin/courses/4",
+      "GET /admin/courses/4/assignments",
       "GET /admin/courses/4/lessons",
+      "GET /admin/courses/4/tests",
       "GET /admin/courses/4/topics",
+      "GET /instructors?per_page=100",
     ]);
     expect(serwer.sciezkiGrupy("instructor")).toEqual([]);
     expect(() => jedenMain(container)).not.toThrow();

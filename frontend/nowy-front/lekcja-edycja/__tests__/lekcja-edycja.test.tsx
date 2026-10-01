@@ -8,7 +8,10 @@ import type { CialoLekcji, LekcjaAdmin, MaterialAdmin, StanNagrania, ZlecenieWgr
  * Ekran „Lekcja: treść, nagranie, materiały” (administracja): każdy stan
  * w szablonie formularza z jednym `main`, zapis treści bez przycinania,
  * licznik znaków, 422 na polu treści, materiały, nagranie dla obu ról
- * administracji, odmowa z powodu roli (atrapa 401/403, 0 danych w DOM).
+ * administracji, odmowa z powodu roli (403, 0 danych w DOM). Odpowiedź 401
+ * w próbie jest błędem podanym wprost przez atrapę funkcji `api`: sprawdza,
+ * że ekran i wtedy nie pokazuje danych. W produkcie 401 bez sesji nie dochodzi
+ * do ekranu — wspólny klient przenosi wtedy na `/logowanie`.
  * Każda atrapa odpowiedzi serwera ma jawny typ z `../dane`, więc brak albo
  * obcy klucz w atrapie czerwieni `npm run sprawdz-typy`.
  */
@@ -134,7 +137,10 @@ describe("stany ekranu w szablonie formularza", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Wprowadzenie do wywiadu" })).toBeInTheDocument();
   });
 
-  it.each([401, 403])("odmowa %i: rola administracji w tekście, zero danych, szablon", async (status) => {
+  it.each([
+    [403, "odmowa roli"],
+    [401, "błąd 401 podany przez atrapę klienta (w produkcie 401 bez sesji przenosi na /logowanie)"],
+  ])("%i — %s: rola administracji w tekście, zero danych, szablon", async (status) => {
     ustawApi();
     api.mockRejectedValue(new ApiError({ status, code: status === 401 ? "unauthenticated" : "forbidden", message: "x" }));
     const { container } = render(<LekcjaEdycja idLekcji={21} idKursu={3} />);

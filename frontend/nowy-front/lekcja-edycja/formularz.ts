@@ -121,6 +121,15 @@ export function zdanieBleduZapisu(blad: unknown): string {
   return "Nie udało się zapisać lekcji. Sprawdź połączenie i spróbuj ponownie.";
 }
 
+export function zdanieBleduUsuniecia(blad: unknown): string {
+  if (blad instanceof ApiError) {
+    if (blad.status === 401 || blad.status === 403) return "Usunięcie lekcji nie jest dostępne dla Twojej roli.";
+    if (blad.status === 404) return "Tej lekcji już nie ma. Odśwież stronę, żeby zobaczyć aktualny kurs.";
+    if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
+  }
+  return "Nie udało się usunąć lekcji. Sprawdź połączenie i spróbuj ponownie.";
+}
+
 export function zdanieBleduPliku(blad: unknown): string {
   if (blad instanceof ApiError) {
     const komunikatPola = blad.errors?.file?.[0];
