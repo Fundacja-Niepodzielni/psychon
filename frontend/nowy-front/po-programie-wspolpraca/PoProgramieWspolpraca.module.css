@@ -11,6 +11,14 @@
   background: var(--card);
 }
 
+/* Stan „program jeszcze nieukończony”: karta, a pod nią historia zgłoszeń —
+   obie na całą szerokość treści; odstęp jak między obszarami szablonów. */
+.stanPusty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
 .odnosniki {
   display: flex;
   flex-direction: column;

@@ -9,7 +9,9 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
+import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
+import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import { zglosWspolprace, pobierzMojeZgloszenia } from "@/lib/api/h01-wspolpraca";
 import {
   LICZBA_ZNAKOW_MAX,
@@ -20,6 +22,7 @@ import {
 } from "./dane";
 import { HistoriaZgloszen } from "./HistoriaZgloszen";
 import { KartaProgramuUkonczonego } from "./KartaProgramuUkonczonego";
+import style from "./PoProgramieWspolpraca.module.css";
 
 const OKRUSZKI = [{ etykieta: "Po programie" }];
 
@@ -35,6 +38,12 @@ const OKRUSZKI = [{ etykieta: "Po programie" }];
  * (`backend/routes/api/h01.php:41-42`). Gdy osoba nie ma prawa do zgłoszenia
  * (inna rola albo program nieukończony), ekran nie pyta o historię i nie
  * obiecuje wysyłki; historia wraca tylko wtedy, gdy osoba już ma zgłoszenia.
+ *
+ * Stan „program jeszcze nieukończony” stoi na szablonie `ListTemplate` (jedna
+ * kolumna na każdej szerokości): biała karta ze stanem pustym zajmuje całą
+ * szerokość treści, a historia zgłoszeń, jeśli osoba ją ma, stoi pod nią.
+ * Na `DetailTemplate` (kolumny 7/5 od 1380 px) karta zajmowałaby tylko
+ * kolumnę główną i stan pusty leżałby na lewo od środka treści.
  *
  * Formularz znika, gdy na liście jest zgłoszenie `new`: nowe zgłoszenie
  * trafia na początek TEJ SAMEJ tablicy, z której liczy się „otwarte”, więc
@@ -198,16 +207,20 @@ export function PoProgramieWspolpraca() {
   if (program === "w-toku") {
     return (
       <>
-        <DetailTemplate
-          naglowek={naglowek}
-          glowna={
-            <EmptyState
-              naglowek="Ten ekran otworzy się po ukończeniu programu"
-              tresc="Zgłoszenie dalszej współpracy będzie można wysłać po ukończeniu programu."
-              przycisk={{ etykieta: "Przejdź do kursów", onClick: () => router.push("/panel/kursy") }}
-            />
+        <ListTemplate
+          naglowek={<PageHeader {...naglowek} />}
+          lista={
+            <div className={style.stanPusty}>
+              <div className={style.karta} data-testid="karta-stanu-pustego">
+                <EmptyState
+                  naglowek="Ten ekran otworzy się po ukończeniu programu"
+                  tresc="Zgłoszenie dalszej współpracy będzie można wysłać po ukończeniu programu."
+                  przycisk={{ etykieta: "Przejdź do kursów", onClick: () => router.push("/panel/kursy") }}
+                />
+              </div>
+              <HistoriaZgloszen zgloszenia={zgloszenia} stronicowanie={stronicowanie} />
+            </div>
           }
-          wspierajaca={<HistoriaZgloszen zgloszenia={zgloszenia} stronicowanie={stronicowanie} />}
         />
         {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
       </>
