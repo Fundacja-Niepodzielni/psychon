@@ -38,12 +38,18 @@ beforeEach(() => {
 });
 
 describe("Sprawy na odrzuconych odczytach transportu", () => {
-  it("trzy odczyty odrzucone błędem sieci: stan błędu, „Spróbuj ponownie”, bez „Brak spraw do decyzji”", async () => {
-    apiPaged.mockRejectedValue(new TypeError("Failed to fetch"));
+  it("trzy odczyty kolejki odrzucone błędem sieci: stan błędu, „Spróbuj ponownie”, bez „Brak spraw do decyzji”", async () => {
+    // Sprawy zgłoszone przez prowadzących (czwarty odczyt, osobna sekcja) odpowiadają pusto.
+    apiPaged.mockImplementation((sciezka: string) =>
+      sciezka.startsWith("/admin/supervision/cases")
+        ? Promise.resolve({ data: [] })
+        : Promise.reject(new TypeError("Failed to fetch")),
+    );
     const { container } = render(<Sprawy />);
 
     expect(await screen.findByText("Nie udało się wczytać spraw")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
+    expect(await screen.findByText("Brak spraw zgłoszonych przez prowadzących.")).toBeInTheDocument();
     expect(screen.queryByText("Brak spraw do decyzji")).toBeNull();
     expect(() => jedenMain(container)).not.toThrow();
     expect(container.querySelector("main")?.getAttribute("data-style-id")).toBe("szablon-lista");

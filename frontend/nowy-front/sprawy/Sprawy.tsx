@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
@@ -18,6 +19,8 @@ import {
   type RodzajSprawy,
   type WynikZrodla,
 } from "./dane";
+import { pobierzSprawyProwadzacych, type SprawaProwadzacego } from "./dane-prowadzacych";
+import { SprawyProwadzacych, type StanSprawProwadzacych } from "./SprawyProwadzacych";
 import style from "./Sprawy.module.css";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
@@ -52,6 +55,14 @@ const OPCJE_FILTRA: { wartosc: FiltrRodzaju; etykieta: string }[] = [
  * niesie dokładnie to, co ekran wymaga: rodzaj jako plakietka, kto i od kiedy
  * czeka w tekście wiersza, przejście do sprawy jako akcja wiersza z `href`.
  *
+ * Pod kolejką stoi sekcja „Sprawy zgłoszone przez prowadzących”
+ * (`./SprawyProwadzacych.tsx`, dane z `./dane-prowadzacych.ts`): ma własne
+ * stany i własne ponowienie, nie zasłania kolejki. Jedyny wspólny stan to
+ * odmowa 401/403 — z którejkolwiek części — która zamienia cały ekran na
+ * „brak uprawnień” bez żadnego rekordu. Układ nagłówków: `h1` ekranu, `h2`
+ * kolejki (`RecordList` ze `stopienNaglowka={2}`) i `h2` sekcji spraw
+ * prowadzących, a pod nimi `h3` (tytuły komunikatów i spraw) — bez przeskoku.
+ *
  * Kolejka pytań nie ma trasy dla administracji — ekran jej nie woła i nie
  * pokazuje (patrz `./dane.ts`).
  *
@@ -68,11 +79,38 @@ export function Sprawy() {
   const [wyniki, setWyniki] = useState<WynikZrodla[]>([]);
   const [filtr, setFiltr] = useState<FiltrRodzaju>("");
   const [proba, setProba] = useState(0);
+  const [stanProwadzacych, setStanProwadzacych] = useState<StanSprawProwadzacych>("ladowanie");
+  const [odmowaProwadzacych, setOdmowaProwadzacych] = useState(false);
+  const [sprawyProwadzacych, setSprawyProwadzacych] = useState<SprawaProwadzacego[]>([]);
+  const [bladProwadzacych, setBladProwadzacych] = useState<string | null>(null);
+  const [probaProwadzacych, setProbaProwadzacych] = useState(0);
 
   const ponow = () => {
     setStan("ladowanie");
     setProba((poprzednia) => poprzednia + 1);
   };
+
+  const ponowProwadzacych = () => {
+    setStanProwadzacych("ladowanie");
+    setProbaProwadzacych((poprzednia) => poprzednia + 1);
+  };
+
+  useEffect(() => {
+    let anulowane = false;
+    pobierzSprawyProwadzacych().then((wynik) => {
+      if (anulowane) return;
+      if (wynik.odmowa) {
+        setOdmowaProwadzacych(true);
+        return;
+      }
+      setSprawyProwadzacych(wynik.sprawy);
+      setBladProwadzacych(wynik.blad);
+      setStanProwadzacych(wynik.blad === null ? "ok" : "blad");
+    });
+    return () => {
+      anulowane = true;
+    };
+  }, [probaProwadzacych]);
 
   useEffect(() => {
     let anulowane = false;
@@ -103,6 +141,10 @@ export function Sprawy() {
       anulowane = true;
     };
   }, [proba]);
+
+  // Odmowa z którejkolwiek części to odmowa całego ekranu: ani kolejka, ani
+  // sprawy prowadzących nie zostają w drzewie.
+  const stanEkranu: StanEkranu = odmowaProwadzacych ? "brak-uprawnien" : stan;
 
   const pozycje = useMemo(() => wyniki.flatMap((wynik) => wynik.pozycje), [wyniki]);
   const pozycjeWidoczne = useMemo(
@@ -137,7 +179,7 @@ export function Sprawy() {
       opis="Zgłoszenia, dyżury i profile psychologów czekające na Twoją decyzję — w jednym miejscu."
       onPowrot={() => router.back()}
       przyciskGlowny={
-        stan === "ok" && najstarsza
+        stanEkranu === "ok" && najstarsza
           ? { etykieta: "Otwórz najstarszą sprawę", onKliknij: () => router.push(najstarsza.href) }
           : undefined
       }
@@ -165,22 +207,40 @@ export function Sprawy() {
   let filtry: ReactNode = null;
   let lista: ReactNode;
 
-  if (stan === "ladowanie") {
-    lista = <Skeleton wiersze={4} />;
-  } else if (stan === "blad") {
+  const sekcjaProwadzacych = (
+    <SprawyProwadzacych
+      stan={stanProwadzacych}
+      sprawy={sprawyProwadzacych}
+      blad={bladProwadzacych}
+      onPonow={ponowProwadzacych}
+    />
+  );
+
+  if (stanEkranu === "ladowanie") {
     lista = (
-      <div className={style.bledyZrodel}>
-        <Notice wariant="error" tytul="Nie udało się wczytać spraw">
-          Sprawy są chwilowo nieosiągalne. Sprawdź połączenie i spróbuj ponownie.
-        </Notice>
-        <div className={style.glownaAkcja}>
-          <Button poziom="outline" onClick={ponow}>
-            Spróbuj ponownie
-          </Button>
-        </div>
-      </div>
+      <>
+        <Skeleton wiersze={4} />
+        {sekcjaProwadzacych}
+      </>
     );
-  } else if (stan === "brak-uprawnien") {
+  } else if (stanEkranu === "blad") {
+    lista = (
+      <>
+        <Heading stopien={2}>Sprawy</Heading>
+        <div className={style.bledyZrodel}>
+          <Notice wariant="error" tytul="Nie udało się wczytać spraw">
+            Sprawy są chwilowo nieosiągalne. Sprawdź połączenie i spróbuj ponownie.
+          </Notice>
+          <div className={style.glownaAkcja}>
+            <Button poziom="outline" onClick={ponow}>
+              Spróbuj ponownie
+            </Button>
+          </div>
+        </div>
+        {sekcjaProwadzacych}
+      </>
+    );
+  } else if (stanEkranu === "brak-uprawnien") {
     lista = (
       <EmptyState
         wariant="brak-uprawnien"
@@ -202,8 +262,21 @@ export function Sprawy() {
         />
       </div>
     );
+    // Nagłówek `h2` kolejki idzie PRZED komunikatami źródeł (`Notice` ma tytuł
+    // `h3`), żeby pod `h1` nie wypadł `h3` bez `h2`.
     lista = (
       <>
+        {pokazListe ? (
+          <RecordList
+            tytul="Sprawy"
+            stopienNaglowka={2}
+            wiersze={wierszeListy}
+            pusty={pustyStanListy}
+          />
+        ) : (
+          <Heading stopien={2}>Sprawy</Heading>
+        )}
+
         {zrodlaZBledem.length > 0 && (
           <div className={style.bledyZrodel}>
             {zrodlaZBledem.map((wynik) => (
@@ -227,7 +300,7 @@ export function Sprawy() {
           </Notice>
         )}
 
-        {pokazListe && <RecordList tytul="Sprawy" wiersze={wierszeListy} pusty={pustyStanListy} />}
+        {sekcjaProwadzacych}
       </>
     );
   }
