@@ -3,7 +3,6 @@
 namespace Tests\Feature\H08;
 
 use App\Models\Course;
-use App\Models\CourseAssignment;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,12 +10,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Identyfikator nagrania lekcji (`video_provider_id`) przy zapisie: od 1 do 64
- * znaków z klasy `A-Z a-z 0-9 -`. Wartość trafia potem do adresu zadania
- * wychodzącego z kluczem usługi wideo, więc to, co nie jest identyfikatorem,
- * nie może zostać zapisane — ani przez administrację, ani przez prowadzącego
- * własnego kursu. Każdy przypadek sprawdza skutek w bazie, nie tylko kod
- * odpowiedzi.
+ * Identyfikator nagrania lekcji (`video_provider_id`) przy zapisie przez
+ * administrację: od 1 do 64 znaków z klasy `A-Z a-z 0-9 -`. Wartość trafia
+ * potem do adresu zadania wychodzącego z kluczem usługi wideo, więc to, co nie
+ * jest identyfikatorem, nie może zostać zapisane. Prowadzący własnego kursu
+ * nie przypisuje nagrania wcale — patrz `InstructorLessonRecordingTest`. Każdy
+ * przypadek sprawdza skutek w bazie, nie tylko kod odpowiedzi.
  */
 class LessonVideoProviderIdTest extends TestCase
 {
@@ -87,38 +86,6 @@ class LessonVideoProviderIdTest extends TestCase
         $this->assertSame(self::STORED_ID, $lesson->fresh()->video_provider_id);
     }
 
-    #[DataProvider('rejectedIds')]
-    public function test_instructor_cannot_create_a_lesson_with_a_rejected_id(string $id): void
-    {
-        $course = $this->course('etap-1');
-        $this->actingAs($this->assignedInstructor($course), 'keycloak');
-
-        $this->postJson("/api/v1/instructor/courses/{$course->id}/lessons", [
-            'title' => 'Nowa lekcja',
-            'video_provider_id' => $id,
-        ])
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'validation_failed')
-            ->assertJsonPath('error.errors.video_provider_id.0', self::REJECTION_MESSAGE);
-
-        $this->assertSame(0, Lesson::where('course_id', $course->id)->count());
-    }
-
-    #[DataProvider('rejectedIds')]
-    public function test_instructor_cannot_change_a_lesson_to_a_rejected_id(string $id): void
-    {
-        $course = $this->course('etap-1');
-        $lesson = $this->lesson($course);
-        $this->actingAs($this->assignedInstructor($course), 'keycloak');
-
-        $this->patchJson("/api/v1/instructor/lessons/{$lesson->id}", ['video_provider_id' => $id])
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'validation_failed')
-            ->assertJsonPath('error.errors.video_provider_id.0', self::REJECTION_MESSAGE);
-
-        $this->assertSame(self::STORED_ID, $lesson->fresh()->video_provider_id);
-    }
-
     #[DataProvider('acceptedIds')]
     public function test_administration_stores_a_conforming_id_unchanged(string $id): void
     {
@@ -135,27 +102,6 @@ class LessonVideoProviderIdTest extends TestCase
         $this->assertSame($id, Lesson::findOrFail($created->json('data.id'))->video_provider_id);
 
         $this->patchJson("/api/v1/admin/lessons/{$lesson->id}", ['video_provider_id' => $id])
-            ->assertOk()
-            ->assertJsonPath('data.video_provider_id', $id);
-
-        $this->assertSame($id, $lesson->fresh()->video_provider_id);
-    }
-
-    #[DataProvider('acceptedIds')]
-    public function test_instructor_stores_a_conforming_id_unchanged(string $id): void
-    {
-        $course = $this->course('etap-1');
-        $lesson = $this->lesson($course);
-        $this->actingAs($this->assignedInstructor($course), 'keycloak');
-
-        $created = $this->postJson("/api/v1/instructor/courses/{$course->id}/lessons", [
-            'title' => 'Nowa lekcja',
-            'video_provider_id' => $id,
-        ])->assertCreated();
-
-        $this->assertSame($id, Lesson::findOrFail($created->json('data.id'))->video_provider_id);
-
-        $this->patchJson("/api/v1/instructor/lessons/{$lesson->id}", ['video_provider_id' => $id])
             ->assertOk()
             ->assertJsonPath('data.video_provider_id', $id);
 
@@ -195,19 +141,5 @@ class LessonVideoProviderIdTest extends TestCase
             'duration_seconds' => 1800,
             'video_provider_id' => self::STORED_ID,
         ]);
-    }
-
-    private function assignedInstructor(Course $course): User
-    {
-        $instructor = User::factory()->role('instructor')->create();
-
-        CourseAssignment::create([
-            'course_id' => $course->id,
-            'lesson_id' => null,
-            'instructor_id' => $instructor->id,
-            'assigned_at' => now(),
-        ]);
-
-        return $instructor;
     }
 }
