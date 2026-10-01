@@ -12,6 +12,7 @@ import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { CaseCard } from "@/design-system/organizmy/CaseCard/CaseCard";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
 import { PanelDecyzji } from "./PanelDecyzji";
+import { wariantStanu, type WariantPlakietki } from "../profile-kolejka/dane";
 import { ETYKIETY_ZALACZNIKOW, dataPl, pobierzZalacznik, poprawneId, wczytajWniosek, type Wniosek } from "./dane";
 import style from "./ProfilDecyzja.module.css";
 
@@ -22,20 +23,21 @@ import style from "./ProfilDecyzja.module.css";
  */
 const OKRUSZKI = [{ etykieta: "Profile psychologa", href: "/admin/profile" }, { etykieta: "Wniosek o profil" }];
 
-type WariantStatusu = "neutral" | "ok" | "warn" | "error" | "pending";
+type WariantStatusu = WariantPlakietki;
 
-const STATUS_WNIOSKU: Record<string, { wariant: WariantStatusu; etykieta: string }> = {
-  draft: { wariant: "neutral", etykieta: "wersja robocza" },
-  submitted: { wariant: "pending", etykieta: "czeka na decyzję" },
-  returned: { wariant: "warn", etykieta: "do poprawy" },
-  accepted: { wariant: "ok", etykieta: "zatwierdzony" },
+/** Etykiety stanu wniosku (małą literą, jak w słowniku); wariant plakietki daje wspólne mapowanie z kolejki. */
+const ETYKIETY_STATUSU: Record<string, string> = {
+  draft: "wersja robocza",
+  submitted: "czeka na decyzję",
+  returned: "do poprawy",
+  accepted: "zatwierdzony",
   // Serwer zna też „published” (`AdminProfileController::VALID_STATUSES`), którego typ klienta nie wylicza.
-  published: { wariant: "ok", etykieta: "opublikowany" },
-  withdrawn: { wariant: "neutral", etykieta: "wycofany" },
+  published: "opublikowany",
+  withdrawn: "wycofany",
 };
 
 function statusWniosku(status: string): { wariant: WariantStatusu; etykieta: string } {
-  return STATUS_WNIOSKU[status] ?? { wariant: "neutral", etykieta: "stan nieznany" };
+  return { wariant: wariantStanu(status), etykieta: ETYKIETY_STATUSU[status] ?? "stan nieznany" };
 }
 
 type Stan =

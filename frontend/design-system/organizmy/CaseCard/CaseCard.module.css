@@ -13,3 +13,24 @@
   flex-direction: column;
   gap: var(--space-12);
 }
+
+/* Od 640 px pary stoją w jednej siatce o dwóch kolumnach: etykiety mają wspólną
+   szerokość (najszerszej etykiety, nie więcej niż 220 px — dłuższa łamie się
+   w swojej kolumnie), więc wartości wszystkich par zaczynają się w jednej linii
+   pionowej. Wiersz pary (`KeyValueRow`) przejmuje te kolumny przez `subgrid`;
+   w przeglądarce bez `subgrid` deklaracja jest ignorowana i para zostaje przy
+   własnych kolumnach. Poniżej 640 px układ jednokolumnowy: etykieta nad
+   wartością. */
+@media (min-width: 640px) {
+  .pary {
+    display: grid;
+    grid-template-columns: fit-content(220px) minmax(0, 1fr);
+    column-gap: var(--space-16);
+    row-gap: var(--space-12);
+  }
+  .pary > div {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
+}
