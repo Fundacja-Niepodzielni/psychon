@@ -14,8 +14,12 @@ describe("formatujDziesietny (jeden formater liczb dziesiętnych)", () => {
     expect(formatujDziesietny("3.5")).not.toContain(".");
   });
 
-  it("tysiące dostają wąską spację nierozdzielającą, jak w atomie Num", () => {
-    expect(formatujDziesietny("12345.5")).toBe("12 345,5");
+  it("tysiące dostają wąską spację nierozdzielającą (U+202F), jak w atomie Num", () => {
+    // Znak jest wąską spacją nierozdzielającą (U+202F), nie zwykłą (U+0020) ani twardą (U+00A0):
+    // tak zapisywały liczby obie dotychczasowe kopie formatera i atom Num, więc ekrany, które
+    // przeszły na wspólny formater, nie zmieniają ani wyglądu, ani łamania liczby w wierszu.
+    expect(formatujDziesietny("12345.5")).toBe("12 345,5");
+    expect(formatujDziesietny("12345.5")).not.toContain(" ");
   });
 
   it("napis, który nie jest liczbą, wraca bez zmian (kontrola dodatnia: liczba się zmienia, napis nie)", () => {
