@@ -189,6 +189,8 @@ async function otworz(page: Page, trasa: Trasa, szerokosc: number): Promise<void
   expect(odpowiedzStrony?.status()).toBe(200);
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
+  // Część ekranów pokazuje w stanie ładowania sam nagłówek bez `PageHeader`: okruszek czytamy po ustaniu ruchu sieciowego.
+  await page.waitForLoadState("networkidle");
 }
 
 const TAGI_WCAG = ["wcag2a", "wcag2aa", "wcag21aa"];
