@@ -11,8 +11,9 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  *
  * Rodzaj „podmiana treści”: adres `/admin/kursy` się nie zmienia (bez
  * przekierowania), pod nim stoi lista kursów administracji w nowej ramce panelu.
- * Szczegół kursu (`/admin/kursy/{id}`) zostaje dotychczasowym ekranem w
- * dotychczasowej powłoce. Sprawdzane na zbudowanej aplikacji, z atrapą API przez
+ * Szczegół kursu (`/admin/kursy/{id}`) należy do osobnej grupy `kursAdministracji`
+ * (`przelaczenie-grupa-kurs-administracji.spec.ts`) i stoi w tej samej nowej
+ * ramce. Sprawdzane na zbudowanej aplikacji, z atrapą API przez
  * `page.route` i atrapą sesji (jak w `przelaczenie-grupa-kolejka-stazu.spec.ts`):
  * - adres po wejściu ten sam, `h1`, tytuł karty, jedyny `main` i `#tresc`,
  *   jedyny link skoku, nowa ramka, pozycja menu „Kursy” na tym samym adresie,
@@ -624,13 +625,14 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
     ]);
   });
 
-  test("szczegół kursu /admin/kursy/5 zostaje dotychczasowym ekranem w dotychczasowej powłoce", async ({ page }) => {
+  test("szczegół kursu /admin/kursy/5 stoi w tej samej nowej ramce co lista kursów", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await instalujAtrapyApi(page);
     await page.goto("/admin/kursy/5");
     await zabezpieczeniePrzedEkranemDostepu(page);
     await expect(page.getByRole("navigation", { name: "Menu — Administracja" }).first()).toBeVisible();
-    await expect(page.locator("[data-powloka-panelu]")).toHaveCount(0);
+    await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
+    expect(await page.locator("main").count()).toBe(1);
   });
 
   test("trasa poligonu /nowy-front/admin/kursy odpowiada 200", async ({ page }) => {
