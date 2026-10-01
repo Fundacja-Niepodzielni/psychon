@@ -151,7 +151,7 @@ export function CourseTree({
 }: WlasciwosciCourseTree) {
   const baza = useId();
   const korzen = useRef<HTMLDivElement>(null);
-  const ruch = useRuchWierszy(korzen);
+  useRuchWierszy(korzen);
   const [zwiniete, setZwiniete] = useState<Set<string>>(() => new Set(poczatkowoZwiniete));
   const [edytowana, setEdytowana] = useState<string | null>(null);
 
@@ -207,7 +207,7 @@ export function CourseTree({
   }
 
   return (
-    <div ref={korzen} onClickCapture={ruch.onClickCapture} className={style.drzewo}>
+    <div ref={korzen} className={style.drzewo}>
       {tematy.map((temat, indeksTematu) => {
         const rozwiniety = !zwiniete.has(temat.id);
         const minuty = temat.lekcje.reduce((suma, l) => suma + l.czasMin, 0);

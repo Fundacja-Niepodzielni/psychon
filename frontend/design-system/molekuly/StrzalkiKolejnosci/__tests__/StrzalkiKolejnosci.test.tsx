@@ -31,7 +31,7 @@ function Lista({ zPrzyciskiemOdwrotu = false }: { zPrzyciskiemOdwrotu?: boolean 
   const [stan, ustaw] = useState<Grupa[]>(START);
   const [zdanie, ustawZdanie] = useState("");
   const korzen = useRef<HTMLDivElement>(null);
-  const ruch = useRuchWierszy(korzen);
+  useRuchWierszy(korzen);
 
   function przenies(indeksGrupy: number, indeks: number, kierunek: -1 | 1) {
     const kopia = stan.map((grupa) => ({ ...grupa, wiersze: [...grupa.wiersze] }));
@@ -51,7 +51,7 @@ function Lista({ zPrzyciskiemOdwrotu = false }: { zPrzyciskiemOdwrotu?: boolean 
   }
 
   return (
-    <div ref={korzen} onClickCapture={ruch.onClickCapture} data-testid="korzen">
+    <div ref={korzen} data-testid="korzen">
       {stan.map((grupa, ig) => (
         <section key={grupa.id} data-ruch-klucz={`grupa-${grupa.id}`}>
           <h3>{grupa.tytul}</h3>

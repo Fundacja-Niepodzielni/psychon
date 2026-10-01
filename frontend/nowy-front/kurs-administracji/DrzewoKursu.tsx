@@ -128,7 +128,7 @@ export function DrzewoKursu({
       kotwica={KOTWICA_DRZEWA}
       bezOdstepu
     >
-      <div ref={korzen} onClickCapture={ruch.onClickCapture}>
+      <div ref={korzen}>
         {komunikat && <div className={style.komunikatKarty}>{komunikat}</div>}
         {tematy.length === 0 && (
           <div className={style.pustaKarta}>

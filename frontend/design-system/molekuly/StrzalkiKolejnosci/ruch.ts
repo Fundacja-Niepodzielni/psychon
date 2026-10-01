@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type MouseEvent, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 
 /**
  * Pomocnik ruchu dla list ze strzałkami kolejności. Działa na dowolnej liście
@@ -135,9 +135,23 @@ function rozegraj(korzen: HTMLElement, przesuniecia: Przesuniecie[]) {
   }
 }
 
+function zapowiedzWiersza(
+  korzen: RefObject<HTMLElement | null>,
+  zapowiedzi: { current: Zapowiedz | null },
+  fokus: CelFokusu | null,
+) {
+  const element = korzen.current;
+  if (!element) return;
+  const biezaca: Zapowiedz = { pomiar: zmierz(element), fokus };
+  zapowiedzi.current = biezaca;
+  // Zapowiedź żyje do pierwszego rysowania po kliknięciu. Gdy nic się nie
+  // zmieniło (brak rysowania), wygasa, żeby nie ruszyć późniejszej zmiany.
+  window.setTimeout(() => {
+    if (zapowiedzi.current === biezaca) zapowiedzi.current = null;
+  }, 0);
+}
+
 export interface RuchWierszy {
-  /** Przechwytuje kliknięcie strzałki i zapowiada ruch wiersza. Podpinane do kontenera. */
-  onClickCapture: (zdarzenie: MouseEvent<HTMLElement>) => void;
   /**
    * Zapowiedź ruchu z innego sterowania niż strzałki (np. pozycja menu): przed
    * zmianą kolejności zapamiętuje położenia, po zmianie rozgrywa ruch. Bez
@@ -154,27 +168,28 @@ export function useRuchWierszy(korzen: RefObject<HTMLElement | null>): RuchWiers
   const zapowiedzi = useRef<Zapowiedz | null>(null);
 
   function zapowiedz(fokus: CelFokusu | null = null) {
-    const element = korzen.current;
-    if (!element) return;
-    const biezaca: Zapowiedz = { pomiar: zmierz(element), fokus };
-    zapowiedzi.current = biezaca;
-    // Zapowiedź żyje do pierwszego rysowania po kliknięciu. Gdy nic się nie
-    // zmieniło (brak rysowania), wygasa, żeby nie ruszyć późniejszej zmiany.
-    window.setTimeout(() => {
-      if (zapowiedzi.current === biezaca) zapowiedzi.current = null;
-    }, 0);
+    zapowiedzWiersza(korzen, zapowiedzi, fokus);
   }
 
-  function onClickCapture(zdarzenie: MouseEvent<HTMLElement>) {
-    const cel = zdarzenie.target instanceof Element ? zdarzenie.target : null;
-    const przycisk = cel?.closest<HTMLElement>(`[${ATRYBUT_STRZALKI}]`);
-    if (!przycisk || przycisk.getAttribute("aria-disabled") === "true") return;
-    const wiersz = przycisk.closest<HTMLElement>(`[${ATRYBUT_KLUCZA}]`);
-    const klucz = wiersz?.getAttribute(ATRYBUT_KLUCZA);
-    const strzalka = przycisk.getAttribute(ATRYBUT_STRZALKI);
-    if (!klucz || !strzalka) return;
-    zapowiedz({ klucz, strzalka });
-  }
+  // Kliknięcie strzałki jest przechwytywane na kontenerze zdarzeniem
+  // natywnym: pomiar „przed” musi zdążyć przed obsługą kliknięcia, która
+  // zmienia kolejność. Kontener nie dostaje przez to żadnej obsługi w JSX.
+  useEffect(() => {
+    const element = korzen.current;
+    if (!element) return;
+    function przechwyc(zdarzenie: MouseEvent) {
+      const cel = zdarzenie.target instanceof Element ? zdarzenie.target : null;
+      const przycisk = cel?.closest<HTMLElement>(`[${ATRYBUT_STRZALKI}]`);
+      if (!przycisk || przycisk.getAttribute("aria-disabled") === "true") return;
+      const wiersz = przycisk.closest<HTMLElement>(`[${ATRYBUT_KLUCZA}]`);
+      const klucz = wiersz?.getAttribute(ATRYBUT_KLUCZA);
+      const strzalka = przycisk.getAttribute(ATRYBUT_STRZALKI);
+      if (!klucz || !strzalka) return;
+      zapowiedzWiersza(korzen, zapowiedzi, { klucz, strzalka });
+    }
+    element.addEventListener("click", przechwyc, true);
+    return () => element.removeEventListener("click", przechwyc, true);
+  }, [korzen]);
 
   // Bez tablicy zależności: zapowiedź może zostać zrealizowana przy każdym rysowaniu.
   useLayoutEffect(() => {
@@ -198,5 +213,5 @@ export function useRuchWierszy(korzen: RefObject<HTMLElement | null>): RuchWiers
     }
   });
 
-  return { onClickCapture, zapowiedz };
+  return { zapowiedz };
 }

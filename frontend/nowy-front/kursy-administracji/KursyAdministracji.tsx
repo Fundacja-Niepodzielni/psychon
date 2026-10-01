@@ -152,7 +152,7 @@ export function KursyAdministracji() {
   const [komunikatPrzesuniecia, setKomunikatPrzesuniecia] = useState("");
   // Płynna zamiana wierszy i fokus na tej samej strzałce daje pomocnik molekuły strzałek.
   const listaKolejnosci = useRef<HTMLOListElement>(null);
-  const ruch = useRuchWierszy(listaKolejnosci);
+  useRuchWierszy(listaKolejnosci);
   const [bladKolejnosci, setBladKolejnosci] = useState<string | null>(null);
   const [liczyWplyw, setLiczyWplyw] = useState(false);
   const [podglad, setPodglad] = useState<ReorderImpactRow[] | null>(null);
@@ -474,7 +474,7 @@ export function KursyAdministracji() {
         {kolejnosc.length === 0 ? (
           <Text wariant="pusty">Żaden kurs nie ma jeszcze pozycji w ścieżce.</Text>
         ) : (
-          <ol className={style.kolejnosc} ref={listaKolejnosci} onClickCapture={ruch.onClickCapture}>
+          <ol className={style.kolejnosc} ref={listaKolejnosci}>
             {kolejnosc.map((kurs, indeks) => (
               <li key={kurs.id} className={style.pozycja} data-ruch-klucz={`kurs-${kurs.id}`}>
                 <StrzalkiKolejnosci
