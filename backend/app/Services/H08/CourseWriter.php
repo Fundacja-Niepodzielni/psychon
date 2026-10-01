@@ -24,7 +24,9 @@ final class CourseWriter
 
         // Świeży kurs nie ma lekcji, więc żądanie „utwórz i od razu opublikuj"
         // zawsze odbija się o regułę publikacji — cykl to szkic → lekcje → publikacja.
-        self::assertPublishableWithLessons(null, (bool) $attributes['is_published']);
+        if ((bool) $attributes['is_published']) {
+            self::assertPublishable(null);
+        }
 
         return DB::transaction(function () use ($attributes, $actor): Course {
             $course = Course::create($attributes);
@@ -48,7 +50,12 @@ final class CourseWriter
 
             // Reguła liczy stan PO złożeniu żądania: sprawdzona na stanie
             // sprzed edycji przepuściłaby PATCH {is_published: true, …}.
-            self::assertPublishableWithLessons($course, (bool) $course->is_published);
+            // Dotyczy samej publikacji (przejście szkic → opublikowany): kurs
+            // już opublikowany nie jest cofany ani blokowany w edycji przez
+            // późniejszą zmianę stanu nagrania — jego braki pokazuje zasób.
+            if ($course->is_published && $course->isDirty('is_published')) {
+                self::assertPublishable($course);
+            }
 
             $changed = array_keys($course->getDirty());
             $course->save();
@@ -75,26 +82,57 @@ final class CourseWriter
     }
 
     /**
+     * Publikacja odmawia tą samą regułą, którą zasób kursu pokazuje braki
+     * (`CoursePublicationGaps`): lista `reason.items` to dokładnie braki
+     * blokujące z tej reguły. Braki „czekamy” (nagranie wysyłane albo
+     * przetwarzane) nie blokują. `reason.missing` zostaje listą napisów
+     * (`legacyMissing`), bo czytają ją dotychczasowe ekrany publikacji.
+     *
      * Opublikowany kurs bez lekcji blokuje całą ścieżkę za sobą:
      * `CourseAccess::allLessonsCompleted()` zwraca `false` dla kursu z zerem
      * lekcji, więc nikt nigdy nie spełni warunku przejścia dalej.
      */
-    private static function assertPublishableWithLessons(?Course $course, bool $willBePublished): void
+    private static function assertPublishable(?Course $course): void
     {
-        if (! $willBePublished) {
+        $blocking = CoursePublicationGaps::for($course)['blocking'];
+
+        if ($blocking === []) {
             return;
         }
 
-        if ($course !== null && $course->lessons()->exists()) {
-            return;
-        }
+        $withoutLessons = $blocking[0]['code'] === CoursePublicationGaps::COURSE_WITHOUT_LESSONS;
 
         throw new ApiException(
             422,
             'conditions_not_met',
-            'Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.',
-            reason: ['missing' => ['lessons']],
+            $withoutLessons
+                ? 'Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.'
+                : 'Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.',
+            reason: [
+                'missing' => self::legacyMissing($blocking),
+                'items' => $blocking,
+            ],
         );
+    }
+
+    /**
+     * Pole `reason.missing` w kształcie sprzed listy braków: lista napisów.
+     * Kurs bez lekcji daje jak dotąd `lessons`; pozostałe braki blokujące dają
+     * swoje kody — każdy raz, w kolejności pierwszego wystąpienia.
+     *
+     * @param  list<array{code: string, lesson_id: int|null}>  $blocking
+     * @return list<string>
+     */
+    private static function legacyMissing(array $blocking): array
+    {
+        $codes = array_map(
+            fn (array $gap): string => $gap['code'] === CoursePublicationGaps::COURSE_WITHOUT_LESSONS
+                ? 'lessons'
+                : $gap['code'],
+            $blocking,
+        );
+
+        return array_values(array_unique($codes));
     }
 
     /**
