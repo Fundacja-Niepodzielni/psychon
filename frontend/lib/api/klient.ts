@@ -11,6 +11,7 @@
 
 import { signOut } from "next-auth/react";
 import { handleUnauthorized } from "./logowanie";
+import { czyOdczytKonta, czySciezkaMe, odczytajMe, wyczyscPamiecMe } from "./pamiec-me";
 
 export interface PaginationMeta {
   current_page: number;
@@ -70,6 +71,7 @@ async function fetchSession(): Promise<SessionState> {
       // dead. Ending it here, rather than waiting for the next API call to
       // answer 401, is the "drop the session" half of token refresh: the
       // app must not keep saying "signed in" while the token is gone.
+      wyczyscPamiecMe();
       void signOut({ redirect: false });
       return { token: null, expiresAt: 0 };
     }
@@ -105,6 +107,7 @@ export async function getToken(): Promise<string | null> {
 function invalidateSessionCache(): void {
   sessionCache = { token: null, expiresAt: 0 };
   sessionInFlight = null;
+  wyczyscPamiecMe();
 }
 
 /** Kończy sesję Auth.js i czyści podręczny cache — patrz `handleUnauthorized`
@@ -126,13 +129,43 @@ export function baseUrl(): string {
   return `${raw.replace(/\/+$/, "")}/api/v1`;
 }
 
+/**
+ * Jedno żądanie do API z kopertą i obsługą błędów. Odczyt `GET /me` idzie
+ * przez krótką pamięć (`./pamiec-me`) — strażnik roli, powłoka i ekran
+ * pytają o to samo konto jedno po drugim, a strona ma kosztować jedno
+ * żądanie. Reszta ścieżek jest bez pamięci.
+ */
 async function request(path: string, options: ApiOptions = {}): Promise<unknown> {
+  const metoda = (options.method ?? "GET").toUpperCase();
+
+  if (czySciezkaMe(path)) {
+    if (metoda !== "GET") {
+      // Zmiana konta (np. `PATCH /me`): pamięć czyścimy przed żądaniem i po
+      // nim — odczyt wystartowany w trakcie nie może wrócić ze starą treścią.
+      wyczyscPamiecMe();
+      try {
+        return await wyslij(path, options, await getToken());
+      } finally {
+        wyczyscPamiecMe();
+      }
+    }
+    // Żądanie z własnym `signal` nie bierze udziału we wspólnym zadaniu —
+    // jego przerwanie nie może unieważnić odpowiedzi innych wywołujących.
+    if (czyOdczytKonta(path, metoda) && !options.signal) {
+      const token = await getToken();
+      return odczytajMe(token, () => wyslij(path, options, token));
+    }
+  }
+
+  return wyslij(path, options, await getToken());
+}
+
+async function wyslij(path: string, options: ApiOptions, token: string | null): Promise<unknown> {
   const { body, headers: extraHeaders, ...init } = options;
 
   const headers = new Headers(extraHeaders);
   headers.set("Accept", "application/json");
 
-  const token = await getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   let payload: BodyInit | undefined;
@@ -152,6 +185,7 @@ async function request(path: string, options: ApiOptions = {}): Promise<unknown>
   // 401 → patrz `handleUnauthorized` w `./logowanie` (rozróżnienie
   // „niepowiązany" / „sesja wygasła").
   if (res.status === 401) {
+    wyczyscPamiecMe();
     void handleUnauthorized();
   }
 
