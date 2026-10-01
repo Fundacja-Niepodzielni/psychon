@@ -87,10 +87,9 @@ class LessonVideoProviderIdTest extends TestCase
     }
 
     #[DataProvider('acceptedIds')]
-    public function test_administration_stores_a_conforming_id_unchanged(string $id): void
+    public function test_administration_creates_a_lesson_with_a_conforming_id_unchanged(string $id): void
     {
         $course = $this->course('etap-1');
-        $lesson = $this->lesson($course);
         $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $created = $this->postJson("/api/v1/admin/courses/{$course->id}/lessons", [
@@ -100,6 +99,13 @@ class LessonVideoProviderIdTest extends TestCase
 
         $this->assertSame($id, $created->json('data.video_provider_id'));
         $this->assertSame($id, Lesson::findOrFail($created->json('data.id'))->video_provider_id);
+    }
+
+    #[DataProvider('acceptedIds')]
+    public function test_administration_changes_a_lesson_to_a_conforming_id_unchanged(string $id): void
+    {
+        $lesson = $this->lesson($this->course('etap-1'));
+        $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->patchJson("/api/v1/admin/lessons/{$lesson->id}", ['video_provider_id' => $id])
             ->assertOk()
