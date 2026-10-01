@@ -589,7 +589,32 @@ function EdytorTematow({
         const lekcja = await zapis.tytulLekcji(id, title);
         potwierdzony = zmienTytulLekcji(potwierdzony, id, lekcja.title);
       }
-      setStan({ rodzaj: "gotowy", serwer: potwierdzony, lokalny: potwierdzony, historia: [], ostatniTytul: null });
+      // Drzewo zostaje czynne w trakcie zapisu, więc stan po odpowiedzi liczy się
+      // od stanu bieżącego, nie od tego z chwili kliknięcia: zmiana zrobiona
+      // w trakcie zapisu zostaje na ekranie jako niezapisana.
+      const zapisany = potwierdzony;
+      setStan((poprzedni) => {
+        if (poprzedni.rodzaj !== "gotowy") return poprzedni;
+        if (poprzedni.lokalny === lokalny) {
+          return { rodzaj: "gotowy", serwer: zapisany, lokalny: zapisany, historia: [], ostatniTytul: null };
+        }
+        const zmienionyPoWyslaniu =
+          kolejnoscZmieniona(lokalny, poprzedni.lokalny) || tytulyDoZapisu(lokalny, poprzedni.lokalny).length > 0;
+        if (!zmienionyPoWyslaniu) {
+          // Ten sam układ w nowym obiekcie (np. nazwa tematu zmieniona w oknie):
+          // tematy z bieżącego stanu, tytuły lekcji z odpowiedzi serwera.
+          const biezacy = { tematy: poprzedni.lokalny.tematy, tytulyLekcji: zapisany.tytulyLekcji };
+          return { rodzaj: "gotowy", serwer: biezacy, lokalny: biezacy, historia: [], ostatniTytul: null };
+        }
+        const odWyslanego = poprzedni.historia.indexOf(lokalny);
+        return {
+          rodzaj: "gotowy",
+          serwer: zapisany,
+          lokalny: poprzedni.lokalny,
+          historia: odWyslanego >= 0 ? [zapisany, ...poprzedni.historia.slice(odWyslanego + 1)] : [zapisany],
+          ostatniTytul: poprzedni.ostatniTytul,
+        };
+      });
     } catch (blad) {
       // Stan lokalny zostaje nietknięty — osoba poprawia i zapisuje ponownie.
       setBladTresci(zdanieBleduTematow(blad));
