@@ -45,7 +45,7 @@ describe("FormyStazu — nagłówek i słownik", () => {
     expect(wszystkie[0]).toHaveTextContent("Dodaj formę");
 
     await uzytkownik.click(wszystkie[0]);
-    expect(screen.getByRole("heading", { level: 3, name: "Nowa forma" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Nowa forma" })).toBeInTheDocument();
     expect(kolorowe(naglowek)).toHaveLength(0);
     // Jedyny kolorowy przycisk panelu to „Zapisz”.
     expect(kolorowe(container)).toHaveLength(1);

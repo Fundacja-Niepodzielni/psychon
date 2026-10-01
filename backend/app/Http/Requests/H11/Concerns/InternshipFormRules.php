@@ -44,9 +44,9 @@ trait InternshipFormRules
             'description.string' => 'Opis formy musi być tekstem.',
             'description.max' => 'Opis formy może mieć najwyżej 2000 znaków.',
             'is_active.boolean' => 'Pole aktywności musi mieć wartość tak albo nie.',
-            'sort_order.integer' => 'Kolejność musi być liczbą całkowitą.',
-            'sort_order.min' => 'Kolejność nie może być ujemna.',
-            'sort_order.max' => 'Kolejność jest zbyt duża.',
+            'sort_order.integer' => 'Miejsce na liście musi być liczbą całkowitą.',
+            'sort_order.min' => 'Miejsce na liście nie może być ujemne.',
+            'sort_order.max' => 'Miejsce na liście jest zbyt duże.',
         ];
     }
 }

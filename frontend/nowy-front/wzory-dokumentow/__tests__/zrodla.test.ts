@@ -81,6 +81,23 @@ describe("wzory dokumentów — źródła ekranu", () => {
     expect(strona.split("\n").length).toBeLessThanOrEqual(60);
   });
 
+  it("oba stany puste (brak wzoru, brak uprawnień) stoją w karcie stanu pustego, nie w gołej molekule", () => {
+    const ekran = readFileSync(join(KORZEN, "nowy-front/wzory-dokumentow/WzoryDokumentow.tsx"), "utf-8");
+    expect(ekran).toMatch(
+      /import \{ EmptyStateCard \} from "@\/design-system\/organizmy\/EmptyStateCard\/EmptyStateCard";/,
+    );
+    expect(ekran.match(/<EmptyStateCard\b/g)).toHaveLength(2);
+    expect(ekran).not.toMatch(/<EmptyState\b(?!Card)/);
+    expect(ekran).not.toMatch(/molekuly\/EmptyState\//);
+  });
+
+  it("zgadujący tekst o wyłączonym edytorze nie występuje nigdzie w nowym froncie", () => {
+    const stary = ["edytor wzorów jest wył", "ączony w tym środowisku"].join("");
+    const trafienia = pliki("nowy-front").filter((sciezka) => readFileSync(sciezka, "utf-8").includes(stary));
+    expect(trafienia.map((sciezka) => relative(KORZEN, sciezka))).toEqual([]);
+    expect(`początek zdania, ${stary}.`.includes(stary)).toBe(true);
+  });
+
   it("logika danych jest w osobnym module, bez Reacta", () => {
     const dane = readFileSync(join(KORZEN, "nowy-front/wzory-dokumentow/dane.ts"), "utf-8");
     expect(dane).not.toMatch(/from "react"/);

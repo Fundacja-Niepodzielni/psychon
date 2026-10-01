@@ -80,6 +80,14 @@ describe("ekran „Po programie” (uczestnik) — źródła", () => {
     expect(ekran).not.toMatch(/organizmy\/Dialog\//);
   });
 
+  it("stan „program w toku” stoi w karcie stanu pustego, bez lokalnej karty i bez własnego znacznika testowego", () => {
+    const ekran = tresc(PLIKI.find((p) => wzgledna(p).endsWith("PoProgramieWspolpraca.tsx"))!);
+    expect(ekran).toMatch(/import \{ EmptyStateCard \} from "@\/design-system\/organizmy\/EmptyStateCard\/EmptyStateCard";/);
+    expect(ekran.match(/<EmptyStateCard\b/g)).toHaveLength(1);
+    expect(ekran).not.toMatch(/karta-stanu-pustego/);
+    expect(ekran).not.toMatch(/style\.karta\b/);
+  });
+
   it("zero zakazanych zwrotów odmowy w plikach ekranu, strony i testów", () => {
     const pliki = [...PLIKI, ...plikiEkranu("nowy-front/po-programie-wspolpraca/__tests__", [])];
     expect(pliki.flatMap((p) => zakazaneZwroty(tresc(p)).map((z) => `${wzgledna(p)}: ${z}`))).toEqual([]);

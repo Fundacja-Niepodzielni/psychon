@@ -1,0 +1,14 @@
+/* Karta stanu pustego — wartości wyłącznie z tokenów. Tło, ramka i promień
+   jak biała karta makiety (`.card`); odstęp wewnętrzny jak karty nowego
+   frontu (`--space-16`); wokół molekuły `EmptyState`, która sama niesie
+   odstęp `36px 20px` swojego bloku (makieta: `.empty`). Kolumna elastyczna
+   jak w dotychczasowej lokalnej karcie ekranu „Po programie”: wysokość
+   karty liczy się tak samo, więc zrzut ekranu nie zmienia się nawet o piksel. */
+.karta {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}

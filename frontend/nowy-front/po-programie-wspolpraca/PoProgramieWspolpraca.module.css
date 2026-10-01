@@ -11,8 +11,9 @@
   background: var(--card);
 }
 
-/* Stan „program jeszcze nieukończony”: karta, a pod nią historia zgłoszeń —
-   obie na całą szerokość treści; odstęp jak między obszarami szablonów. */
+/* Stan „program jeszcze nieukończony”: karta stanu pustego, a pod nią historia
+   zgłoszeń — obie na całą szerokość treści; odstęp jak między obszarami
+   szablonów. Wyglądu karty nie ma tu — niesie go sam organizm. */
 .stanPusty {
   display: flex;
   flex-direction: column;
