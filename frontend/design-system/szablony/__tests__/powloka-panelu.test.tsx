@@ -15,8 +15,10 @@ vi.mock("next/navigation", () => ({ usePathname: () => sciezkaTestu.wartosc }));
  * powłoce: jeden `main` pod `id="tresc"`, jeden link skoku, menu w `nav`
  * „Menu główne” z linią „W przygotowaniu”, grupa „Konto” z wylogowaniem,
  * rok programu tylko wtedy, gdy jest; nagłówek ekranu w nowej ramce
- * (`DostawcaRamki`, wstawiany przez powłokę) bez „Wstecz”, okruszki tylko
- * z łączami — w starej powłoce (sam `DostawcaPowloki`) i bez dostawców bez zmian.
+ * (`DostawcaRamki` z menu, wstawiany przez powłokę) bez „Wstecz”, z okruszkiem
+ * liczonym regułą z `OkruszekRamki.ts` z menu i ścieżki (korzeń „Administracja”,
+ * pozycja menu, bieżąca) — w starej powłoce (sam `DostawcaPowloki`) i bez
+ * dostawców bez zmian.
  */
 
 const GRUPY = [

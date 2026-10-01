@@ -144,6 +144,19 @@ describe("ListRow — wiersz kolejki decyzji (makieta A-02)", () => {
     expect((container.firstElementChild as HTMLElement).className).toMatch(/bezWciecia/);
   });
 
+  it("punkt odniesienia dla tekstu ukrytego (position) dostaje wyłącznie wiersz z ukrytą podpowiedzią", () => {
+    const akcja = { etykieta: "Otwórz", href: "/w" };
+    const klasaTresci = (kontener: HTMLElement) => (kontener.querySelector('[data-wariant] > div') as HTMLElement).className;
+    const { container, rerender } = render(<ListRow tytul="Wiersz" podpowiedz="Data" akcja={akcja} />);
+    expect(klasaTresci(container)).not.toMatch(/trescZUkrytym/);
+    rerender(<ListRow tytul="Wiersz" akcja={akcja} />);
+    expect(klasaTresci(container)).not.toMatch(/trescZUkrytym/);
+    rerender(<ListRow tytul="Wiersz" podpowiedzTylkoDlaCzytnika akcja={akcja} />);
+    expect(klasaTresci(container)).not.toMatch(/trescZUkrytym/);
+    rerender(<ListRow tytul="Wiersz" podpowiedz="Data" podpowiedzTylkoDlaCzytnika akcja={akcja} />);
+    expect(klasaTresci(container)).toMatch(/trescZUkrytym/);
+  });
+
   it("bez tytulDodatek nie ma separatora ani drugiej części (dotychczasowe wywołania)", () => {
     const { container } = render(<ListRow tytul="Wiersz" akcja={{ etykieta: "Otwórz", href: "/w" }} />);
     expect(container.textContent).not.toContain("·");

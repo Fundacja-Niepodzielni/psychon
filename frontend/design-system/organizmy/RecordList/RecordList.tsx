@@ -99,9 +99,11 @@ export function RecordList({
     <Heading stopien={stopienNaglowka}>{tytul}</Heading>
   );
 
+  const klasaSekcji = naglowekTylkoDlaCzytnika ? `${style.sekcja} ${style.sekcjaZUkrytym}` : style.sekcja;
+
   if (wiersze.length === 0) {
     return (
-      <section className={style.sekcja} aria-label={tytul}>
+      <section className={klasaSekcji} aria-label={tytul}>
         {naglowek}
         <EmptyState naglowek={pusty.naglowek} tresc={pusty.tresc} przycisk={pusty.przycisk} />
       </section>
@@ -114,7 +116,7 @@ export function RecordList({
   const suma = maSume ? wiersze.reduce((laczna, wiersz) => laczna + (wiersz.wartosc ?? 0), 0) : 0;
 
   return (
-    <section className={style.sekcja} aria-label={tytul}>
+    <section className={klasaSekcji} aria-label={tytul}>
       {naglowek}
       <div className={style.lista}>
         {wiersze.map((wiersz) => (

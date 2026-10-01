@@ -78,7 +78,11 @@ function korzenDlaSciezki(sciezka: string): Required<PozycjaOkruszka> | null {
 interface DaneOkruszka {
   menu: GrupaMenuOkruszka[];
   sciezka: string;
-  /** Okruszki podane przez ekran: łącza pośrednie i ostatnia pozycja (bieżąca). */
+  /**
+   * Okruszki podane przez ekran: łącza pośrednie i ostatnia pozycja. Ostatnia
+   * jest bieżąca na szczególe i na ekranie poza menu; na liście bieżącą nazywa
+   * pozycja menu.
+   */
   okruszki: PozycjaOkruszka[];
   tytul: string;
 }

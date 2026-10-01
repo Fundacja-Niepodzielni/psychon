@@ -101,9 +101,12 @@ function oknaDialogowe() {
   return document.querySelectorAll('[role="dialog"], [aria-modal]');
 }
 
-function sprawdzSzablon(container: HTMLElement) {
+/** Stan „program nieukończony” stoi na szablonie listy (jedna kolumna), pozostałe na szablonie szczegółu. */
+const SZABLON_STANU_PUSTEGO = "szablon-lista";
+
+function sprawdzSzablon(container: HTMLElement, znacznik = "szablon-szczegol") {
   expect(() => jedenMain(container)).not.toThrow();
-  expect(container.querySelector("main")!.getAttribute("data-style-id")).toBe("szablon-szczegol");
+  expect(container.querySelector("main")!.getAttribute("data-style-id")).toBe(znacznik);
   expect(container.querySelectorAll("#tresc")).toHaveLength(1);
 }
 
@@ -178,7 +181,7 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
 
   it("program nieukończony: tekst ekranu, jeden main, znacznik szablonu", async () => {
     const { container } = await renderPrzedUkonczeniem();
-    sprawdzSzablon(container);
+    sprawdzSzablon(container, SZABLON_STANU_PUSTEGO);
     expect(screen.queryByRole("form")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Program ukończony" })).toBeNull();
   });
@@ -291,7 +294,7 @@ describe("PoProgramieWspolpraca — osoba bez prawa do zgłoszenia nie widzi obi
     sprawdzBezObietnicy(container);
     expect(screen.queryByRole("heading", { name: "Moje zgłoszenia" })).toBeNull();
     expect(zapytaniaOMine()).toHaveLength(1);
-    sprawdzSzablon(container);
+    sprawdzSzablon(container, SZABLON_STANU_PUSTEGO);
   });
 
   it("403 program_not_completed przy wysyłce, osoba ma zgłoszenia: lista zostaje, bez zdania z obietnicą i bez „Odśwież”", async () => {
@@ -451,6 +454,59 @@ describe("PoProgramieWspolpraca — karta „Program ukończony”", () => {
   it("kontrola: bez wolontariusza w atrapie certyfikat znika (ten sam pomiar odróżnia role)", async () => {
     await renderUkonczony([], { role: "student" });
     expect(screen.queryAllByRole("link", { name: "Certyfikat" })).toHaveLength(0);
+  });
+});
+
+describe("PoProgramieWspolpraca — program nieukończony: biała karta na całą szerokość", () => {
+  const NAGLOWEK_KARTY = "Ten ekran otworzy się po ukończeniu programu";
+
+  it("stan pusty stoi w białej karcie w jedynej kolumnie szablonu, bez kolumny wspierającej", async () => {
+    const { container } = await renderPrzedUkonczeniem();
+    const karta = screen.getByTestId("karta-stanu-pustego");
+    expect(within(karta).getByRole("heading", { level: 2, name: NAGLOWEK_KARTY })).toBeInTheDocument();
+    expect(within(karta).getByText(/będzie można wysłać po ukończeniu programu/)).toBeInTheDocument();
+    expect(within(karta).getByRole("button", { name: "Przejdź do kursów" })).toBeInTheDocument();
+    const obszarListy = container.querySelector('[data-testid="obszar-lista"]');
+    expect(obszarListy).not.toBeNull();
+    expect(obszarListy!.contains(karta)).toBe(true);
+    expect(container.querySelector('[data-obszar="wspierajaca"]')).toBeNull();
+    expect(container.querySelector('[data-obszar="kolumny"]')).toBeNull();
+  });
+
+  it("pusta historia: pod kartą nie ma żadnej sekcji", async () => {
+    await renderPrzedUkonczeniem();
+    const karta = screen.getByTestId("karta-stanu-pustego");
+    expect(karta.nextElementSibling).toBeNull();
+    expect(screen.queryByRole("region", { name: "Moje zgłoszenia" })).toBeNull();
+  });
+
+  it("przycisk karty prowadzi do kursów", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderPrzedUkonczeniem();
+    await uzytkownik.click(within(screen.getByTestId("karta-stanu-pustego")).getByRole("button", { name: "Przejdź do kursów" }));
+    expect(push).toHaveBeenCalledWith("/panel/kursy");
+  });
+
+  it("historia po 403 przy wysyłce stoi pod kartą, poza nią, w tej samej kolumnie", async () => {
+    const uzytkownik = userEvent.setup();
+    const { container } = await renderUkonczony([Z_ODPOWIEDZIA]);
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), "Chcę kontynuować.");
+    api.mockRejectedValueOnce(blad(403, "program_not_completed", "Zgłoszenie współpracy jest niedostępne."));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await screen.findByRole("heading", { name: NAGLOWEK_KARTY });
+    const karta = screen.getByTestId("karta-stanu-pustego");
+    const historia = screen.getByRole("region", { name: "Moje zgłoszenia" });
+    expect(karta.contains(historia)).toBe(false);
+    expect(karta.compareDocumentPosition(historia) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(karta.parentElement).toBe(historia.parentElement);
+    expect(container.querySelector('[data-obszar="wspierajaca"]')).toBeNull();
+  });
+
+  it("stan ukończony zostaje na szablonie szczegółu z kolumną wspierającą", async () => {
+    const { container } = await renderUkonczony([Z_ODPOWIEDZIA]);
+    sprawdzSzablon(container);
+    expect(container.querySelector('[data-obszar="wspierajaca"]')).not.toBeNull();
+    expect(screen.queryByTestId("karta-stanu-pustego")).toBeNull();
   });
 });
 

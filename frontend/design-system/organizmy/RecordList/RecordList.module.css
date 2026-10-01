@@ -1,8 +1,14 @@
 .sekcja {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
+}
+
+/* Punkt odniesienia dla nagłówka tylko dla czytnika (`.ukryte` jest
+   pozycjonowane absolutnie). Tylko wtedy: bezwarunkowy `position: relative`
+   zmieniałby styl obliczony każdej listy. */
+.sekcjaZUkrytym {
+  position: relative;
 }
 
 .lista {

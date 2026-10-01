@@ -100,7 +100,8 @@ interface WlasciwosciPageHeader {
  * `szablony/OkruszekRamki.ts`) z menu ramki i bieżącej ścieżki: ekrany z
  * „Codziennie” bez okruszka, pozostałe „korzeń › [rodzic ›] bieżąca”, szczegół
  * zawsze z łańcuchem, jedna pozycja nigdy. Okruszki podane przez ekran
- * dostarczają tylko łącza pośrednie i bieżącą pozycję. Poza nową ramką (stara
+ * dostarczają łącza pośrednie i ostatnią pozycję (bieżącą na szczególe i na
+ * ekranie poza menu; na liście bieżącą nazywa pozycja menu). Poza nową ramką (stara
  * powłoka `PanelShell` z samym `DostawcaPowloki`, poligon) zachowanie bez
  * zmian: „Wstecz” i pełne okruszki.
  */
