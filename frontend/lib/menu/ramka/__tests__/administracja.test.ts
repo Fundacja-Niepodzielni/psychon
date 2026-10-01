@@ -19,7 +19,8 @@ import { GRUPY, type DefinicjaGrupy, type KluczGrupy } from "@/lib/przelaczenie/
  * staż jest podstroną „Spraw” („Dyżury do decyzji”), superwizja — „Superwizje”);
  * Rozliczenie: Raport roku programu · Dziennik działań + „W przygotowaniu:
  * certyfikaty” (w modelu; w menu linia znika, bo „Certyfikaty” są pozycją
- * „Dotychczasowego panelu”); Ustawienia (grupa zwijana): Słownik form stażu ·
+ * „Dotychczasowego panelu”); Ustawienia (grupa zwijana): Ustawienia edycji (dawne łącze
+ * „Ustawienia”, nazwane nagłówkiem swojego ekranu) · Słownik form stażu ·
  * Wzory dokumentów · Treść ekranu „Zacznij tutaj” + „W przygotowaniu:
  * ustawienia roku programu” (bez „treści i dokumenty” — wzory dokumentów i ekran
  * startowy są już pozycjami tej grupy); Konto: Wyloguj (w powłoce).
@@ -93,6 +94,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
       {
         naglowek: GRUPA_USTAWIENIA,
         pozycje: [
+          ["Ustawienia edycji", "/admin/ustawienia"],
           ["Słownik form stażu", "/admin/formy-stazu"],
           ["Wzory dokumentów", "/admin/wzory-dokumentow"],
           ["Treść ekranu „Zacznij tutaj”", "/admin/ekran-startowy"],
@@ -108,7 +110,6 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Profile psychologa", "/admin/profile"],
           ["Superwizje", "/admin/superwizje"],
           ["Skrzynka e-maili", "/admin/emails"],
-          ["Ustawienia", "/admin/ustawienia"],
         ],
         linia: undefined,
         zwijana: undefined,
@@ -150,11 +151,35 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
         .find((g) => g.naglowek === GRUPA_USTAWIENIA)
         ?.pozycje.map((p) => p.href) ?? [];
     expect(adresyUstawien({})).not.toContain("/admin/formy-stazu");
-    expect(adresyUstawien({ formyStazu: true })[0]).toBe("/admin/formy-stazu");
+    expect(adresyUstawien({ formyStazu: true }).slice(0, 2)).toEqual(["/admin/ustawienia", "/admin/formy-stazu"]);
     const menu = menuRamkiAdministracji(zFlagami({ formyStazu: true }));
     expect(menu.find((g) => g.naglowek === "Program")?.pozycje.map((p) => p.href)).toEqual(["/admin/kursy"]);
   });
 
+
+  it("dawne łącze „Ustawienia” stoi pierwsze w grupie „Ustawienia” pod nazwą nagłówka ekranu i znika z „Dotychczasowego panelu” (grupy włączone i wyłączone)", () => {
+    for (const flagi of [WLACZONE_DZIS, {}]) {
+      const menu = menuRamkiAdministracji(zFlagami(flagi));
+      const ustawienia = menu.find((g) => g.naglowek === GRUPA_USTAWIENIA);
+      expect(ustawienia?.pozycje[0]).toEqual({ ikona: "cog", etykieta: "Ustawienia edycji", href: "/admin/ustawienia" });
+      const dotychczasowy = menu.find((g) => g.naglowek === GRUPA_DOTYCHCZASOWA);
+      expect(dotychczasowy?.pozycje.map((p) => p.href)).not.toContain("/admin/ustawienia");
+      expect(menu.flatMap((g) => g.pozycje).filter((p) => p.href === "/admin/ustawienia")).toHaveLength(1);
+    }
+  });
+
+  it("nazwy dostępne wszystkich przycisków i łączy menu są różne: żadna pozycja nie nazywa się jak nagłówek grupy zwijanej ani jak inna pozycja", () => {
+    for (const flagi of [WLACZONE_DZIS, {}]) {
+      const menu = menuRamkiAdministracji(zFlagami(flagi));
+      // Przycisk grupy zwijanej ma nazwę „{nagłówek} ({liczba pozycji})”; łącza — etykiety pozycji i podstron.
+      const przyciski = menu.filter((g) => g.zwijana || g.naglowek === GRUPA_DOTYCHCZASOWA).map((g) => `${g.naglowek} (${g.pozycje.length})`);
+      const lacza = menu.flatMap((g) => g.pozycje.flatMap((p) => [p.etykieta, ...(p.podstrony ?? []).map((ekran) => ekran.etykieta)]));
+      const nazwy = [...przyciski, ...lacza, "Wyloguj"];
+      expect(nazwy.filter((nazwa, i) => nazwy.indexOf(nazwa) !== i)).toEqual([]);
+      // Nazwa łącza nie może też być nagłówkiem grupy (przycisk bez liczby czytany jako sam nagłówek).
+      for (const g of menu) expect(lacza, g.naglowek).not.toContain(g.naglowek);
+    }
+  });
 
   it("rejestr podstron: „Dyżury do decyzji” i „Zgłoszenia rekrutacyjne” mają rodzica „Sprawy”, a własnej pozycji w menu nie mają", () => {
     expect(PODSTRONY_ADMINISTRACJI.map((wpis) => [wpis.etykieta, wpis.rodzic])).toEqual([

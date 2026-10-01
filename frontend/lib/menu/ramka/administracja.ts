@@ -31,6 +31,10 @@ import type { MenuEntry } from "../types";
  *   stażu, wzory dokumentów i ekran startowy → „Ustawienia” (słowniki i treści
  *   ustawiane rzadko, nie codzienna praca). „Program” to Kursy, „Rozliczenie” —
  *   Raport roku programu i Dziennik działań;
+ * - dawne łącze „Ustawienia” (`/admin/ustawienia`) stoi jako pierwsza pozycja grupy „Ustawienia” pod nazwą
+ *   nagłówka ekranu, na który prowadzi („Ustawienia edycji” — grupa `ustawieniaProgramu` jest wyłączona, więc
+ *   otwiera się stary ekran z `h1` „Ustawienia edycji”); w „Dotychczasowym panelu” już go nie ma, żeby
+ *   w menu nie stały obok siebie dwa elementy o nazwie „Ustawienia”;
  * - „Ustawienia” to grupa zwijana (`zwijana: true`): szablon rysuje ją tym samym
  *   komponentem co „Dotychczasowy panel” — na wejściu zwiniętą, rozwiniętą, gdy
  *   bieżący ekran jest jej pozycją albo podstroną jej pozycji. Linia „W przygotowaniu:
@@ -97,6 +101,7 @@ export const NAZWY_RAMKI_ADMINISTRACJI = {
   dziennik: "Dziennik działań",
   wzoryDokumentow: "Wzory dokumentów",
   ekranStartowy: "Treść ekranu „Zacznij tutaj”",
+  ustawieniaEdycji: "Ustawienia edycji",
 } as const;
 
 /**
@@ -143,7 +148,6 @@ const IKONY_DOTYCHCZASOWE: Record<string, NazwaIkony> = {
   "/admin/staz": "inbox",
   "/admin/superwizje": "chat",
   "/admin/emails": "inbox",
-  "/admin/ustawienia": "cog",
 };
 
 /** Stary wpis rejestru → pozycja grupy „Dotychczasowy panel” (etykieta i adres bez zmian). */
@@ -176,7 +180,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
       ? []
       : ekrany.filter(({ wpis }) => wpis.grupa === grupa).map(({ wpis, adres }) => ({ ikona: "inbox", etykieta: wpis.etykieta, href: adres }));
   const kolejkaStazuWRejestrze = ekrany.some(({ wpis }) => wpis.grupa === "kolejkaStazu");
-  const dotychczasowe = [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails, h19Ustawienia].filter(
+  const dotychczasowe = [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails].filter(
     (wpis) => !(kolejkaStazuWRejestrze && wpis === h11Staz),
   );
   const grupyMenu: GrupaMenuRamki[] = [
@@ -207,6 +211,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
       naglowek: GRUPA_USTAWIENIA,
       zwijana: true,
       pozycje: [
+        ...pozycja(h19Ustawienia.href, "cog", n.ustawieniaEdycji),
         ...pozycja(cel(grupy, "formyStazu"), "clock", n.formyStazu),
         ...pozycja(cel(grupy, "wzoryDokumentow"), "file", n.wzoryDokumentow),
         ...pozycja(cel(grupy, "ekranStartowy"), "cog", n.ekranStartowy),

@@ -6,17 +6,17 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * Pomiary grupy zwijanej „Ustawienia” w menu administracji (nowa ramka) na zbudowanej
  * aplikacji, z atrapą API i atrapą sesji (jak w `ramka-administracji.spec.ts`).
  *
- * Grupa „Ustawienia (3)” (Słownik form stażu, Wzory dokumentów, Treść ekranu „Zacznij tutaj”)
+ * Grupa „Ustawienia (4)” (Ustawienia edycji, Słownik form stażu, Wzory dokumentów, Treść ekranu „Zacznij tutaj”)
  * jest rysowana tym samym komponentem co „Dotychczasowy panel (n)”:
  * 1. 1280×800, ekran spoza grupy: pozycje „Codziennie”, „Program”, „Rozliczenie” i przycisk
- *    „Ustawienia (3)” w całości między górą menu a górą bloku „Konto”, menu nieprzewinięte;
+ *    „Ustawienia (4)” w całości między górą menu a górą bloku „Konto”, menu nieprzewinięte;
  * 2. 1280×800, ekran w grupie: grupa rozwinięta, bieżąca pozycja w całości nad „Konto”;
  * 3. sygnał przewijania: w oknie, w którym menu się nie mieści, blok „Konto” niesie krawędź
  *    (klasa i cień), po przewinięciu do końca jej nie niesie; w oknie, w którym się mieści — nie;
  * 4. 390×844, okno menu: zwinięta na ekranie spoza grupy, rozwinięta na ekranie grupy,
  *    przełączanie klawiaturą, bez przewijania w poziomie;
  * 5. kolejność Tab przy grupie zwiniętej i rozwiniętej;
- * 6. styl przycisku „Ustawienia (3)” == styl przycisku „Dotychczasowy panel (n)” pole po polu;
+ * 6. styl przycisku „Ustawienia (4)” == styl przycisku „Dotychczasowy panel (n)” pole po polu;
  * 8. axe na `/admin` i `/admin/formy-stazu` przy 1280 i 390 (menu otwarte przy 390): 0 naruszeń.
  *
  * Liczby z DOM idą do wyjścia jako wiersze `POMIAR-USTAWIENIA-…`.
@@ -103,11 +103,11 @@ async function instalujAtrapyApi(page: Page): Promise<void> {
   await page.route("**/api/auth/end-session-url", (route) => route.fulfill(odpowiedz({ url: null })));
 }
 
-const POZYCJE_USTAWIEN = ["Słownik form stażu", "Wzory dokumentów", "Treść ekranu „Zacznij tutaj”"];
+const POZYCJE_USTAWIEN = ["Ustawienia edycji", "Słownik form stażu", "Wzory dokumentów", "Treść ekranu „Zacznij tutaj”"];
 const EKRANY_USTAWIEN = [
-  { adres: "/admin/formy-stazu", menu: POZYCJE_USTAWIEN[0] },
-  { adres: "/admin/wzory-dokumentow", menu: POZYCJE_USTAWIEN[1] },
-  { adres: "/admin/ekran-startowy", menu: POZYCJE_USTAWIEN[2] },
+  { adres: "/admin/formy-stazu", menu: POZYCJE_USTAWIEN[1] },
+  { adres: "/admin/wzory-dokumentow", menu: POZYCJE_USTAWIEN[2] },
+  { adres: "/admin/ekran-startowy", menu: POZYCJE_USTAWIEN[3] },
 ];
 const POZYCJE_BEZ_USTAWIEN = [
   "Pulpit",
@@ -118,7 +118,7 @@ const POZYCJE_BEZ_USTAWIEN = [
   "Raport roku programu",
   "Dziennik działań",
 ];
-const POZYCJE_DOTYCHCZASOWE = ["Czas nauki", "Certyfikaty", "Profile psychologa", "Superwizje", "Skrzynka e-maili", "Ustawienia"];
+const POZYCJE_DOTYCHCZASOWE = ["Czas nauki", "Certyfikaty", "Profile psychologa", "Superwizje", "Skrzynka e-maili"];
 
 function bok(page: Page): Locator {
   return page.getByRole("complementary", { name: "Menu i konto" });
@@ -188,10 +188,10 @@ async function krawedzKonta(kontener: Locator) {
 }
 
 test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
-  test("pomiar 1: /admin @1280x800 — pozycje do „Ustawień (3)” bez przewijania, w całości nad „Konto”, „Wyloguj” w oknie", async ({ page }) => {
+  test("pomiar 1: /admin @1280x800 — pozycje do „Ustawień (4)” bez przewijania, w całości nad „Konto”, „Wyloguj” w oknie", async ({ page }) => {
     await wejdz(page, "/admin", 1280, 800);
     const nawigacja = menuBoczne(page);
-    const przycisk = nawigacja.getByRole("button", { name: "Ustawienia (3)", exact: true });
+    const przycisk = nawigacja.getByRole("button", { name: "Ustawienia (4)", exact: true });
     await expect(przycisk).toHaveAttribute("aria-expanded", "false");
     await expect(nawigacja.locator('a[aria-current="page"]')).toHaveText("Pulpit");
 
@@ -205,8 +205,8 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
       expect(l.gora, `${l.tekst}: góra >= góra menu`).toBeGreaterThanOrEqual(g.goraKontenera);
       expect(l.dol, `${l.tekst}: dół <= góra „Konto”`).toBeLessThanOrEqual(g.goraKonta!);
     }
-    expect(g.ustawienia!.gora, "przycisk „Ustawienia (3)”: góra >= góra menu").toBeGreaterThanOrEqual(g.goraKontenera);
-    expect(g.ustawienia!.dol, "przycisk „Ustawienia (3)”: dół <= góra „Konto”").toBeLessThanOrEqual(g.goraKonta!);
+    expect(g.ustawienia!.gora, "przycisk „Ustawienia (4)”: góra >= góra menu").toBeGreaterThanOrEqual(g.goraKontenera);
+    expect(g.ustawienia!.dol, "przycisk „Ustawienia (4)”: dół <= góra „Konto”").toBeLessThanOrEqual(g.goraKonta!);
     expect(g.dolWyloguj!, "„Wyloguj” w oknie 800 px").toBeLessThanOrEqual(800);
     const ostatniaPozycja = g.linki[g.linki.length - 1];
     console.log(
@@ -218,8 +218,8 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
     test(`pomiar 2: ${ekran.adres} @1280x800 — grupa rozwinięta, „${ekran.menu}” w całości nad „Konto”`, async ({ page }) => {
       await wejdz(page, ekran.adres, 1280, 800);
       const nawigacja = menuBoczne(page);
-      await expect(nawigacja.getByRole("button", { name: "Ustawienia (3)", exact: true })).toHaveAttribute("aria-expanded", "true");
-      await expect(nawigacja.getByRole("button", { name: /^Dotychczasowy panel \(6\)$/ })).toHaveAttribute("aria-expanded", "false");
+      await expect(nawigacja.getByRole("button", { name: "Ustawienia (4)", exact: true })).toHaveAttribute("aria-expanded", "true");
+      await expect(nawigacja.getByRole("button", { name: /^Dotychczasowy panel \(5\)$/ })).toHaveAttribute("aria-expanded", "false");
       const biezaca = nawigacja.locator('a[aria-current="page"]');
       await expect(biezaca).toHaveCount(1);
       await expect(biezaca).toHaveText(ekran.menu);
@@ -282,8 +282,8 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
     // Rozwinięcie obu grup w oknie, które mieści zwinięte menu, a nie mieści rozwiniętego: sygnał wraca.
     await page.setViewportSize({ width: 1280, height: 800 });
     const nawigacja = menuBoczne(page);
-    await nawigacja.getByRole("button", { name: "Ustawienia (3)", exact: true }).click();
-    await nawigacja.getByRole("button", { name: "Dotychczasowy panel (6)", exact: true }).click();
+    await nawigacja.getByRole("button", { name: "Ustawienia (4)", exact: true }).click();
+    await nawigacja.getByRole("button", { name: "Dotychczasowy panel (5)", exact: true }).click();
     await expect.poll(async () => (await krawedzKonta(kontener)).klasaSygnalu, { timeout: 5000 }).toBe(true);
     const obie = await geometriaMenu(kontener);
     console.log(`POMIAR-USTAWIENIA-3 obie-rozwiniete 1280x800 scrollHeight=${obie.scrollHeight} clientHeight=${obie.clientHeight} klasa=true`);
@@ -295,7 +295,7 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
   }) => {
     await wejdz(page, "/admin", 390, 844);
     let okno = await otworzOknoMenu(page);
-    let przycisk = okno.getByRole("button", { name: "Ustawienia (3)", exact: true });
+    let przycisk = okno.getByRole("button", { name: "Ustawienia (4)", exact: true });
     await expect(przycisk).toHaveAttribute("aria-expanded", "false");
     await expect(page.locator(`[id="${await przycisk.getAttribute("aria-controls")}"]`)).toBeHidden();
     await przycisk.focus();
@@ -304,7 +304,7 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
     await expect(przycisk).toHaveAttribute("aria-expanded", "true");
     const lista = page.locator(`[id="${await przycisk.getAttribute("aria-controls")}"]`);
     await expect(lista).toBeVisible();
-    await expect(lista.getByRole("link")).toHaveCount(3);
+    await expect(lista.getByRole("link")).toHaveCount(4);
     await page.keyboard.press("Space");
     await expect(przycisk).toHaveAttribute("aria-expanded", "false");
     await page.keyboard.press("Enter");
@@ -320,7 +320,7 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
       await zabezpieczeniePrzedEkranemDostepu(page);
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
       okno = await otworzOknoMenu(page);
-      przycisk = okno.getByRole("button", { name: "Ustawienia (3)", exact: true });
+      przycisk = okno.getByRole("button", { name: "Ustawienia (4)", exact: true });
       await expect(przycisk).toHaveAttribute("aria-expanded", "true");
       const biezaca = okno.locator('a[aria-current="page"]');
       await expect(biezaca).toHaveText(ekran.menu);
@@ -350,8 +350,8 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
   }) => {
     await wejdz(page, "/admin", 1280, 900);
     const nawigacja = menuBoczne(page);
-    const przyciskUstawien = nawigacja.getByRole("button", { name: "Ustawienia (3)", exact: true });
-    const przyciskDotychczasowego = nawigacja.getByRole("button", { name: "Dotychczasowy panel (6)", exact: true });
+    const przyciskUstawien = nawigacja.getByRole("button", { name: "Ustawienia (4)", exact: true });
+    const przyciskDotychczasowego = nawigacja.getByRole("button", { name: "Dotychczasowy panel (5)", exact: true });
 
     /** Tab po kolei od pierwszej pozycji menu do „Wyloguj”; zwraca nazwy elementów z fokusem. */
     async function kolejnoscTab(): Promise<string[]> {
@@ -375,7 +375,7 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
       return nazwy;
     }
 
-    const oczekiwaneZwiniete = [...POZYCJE_BEZ_USTAWIEN, "Ustawienia (3)", "Dotychczasowy panel (6)", "Wyloguj"];
+    const oczekiwaneZwiniete = [...POZYCJE_BEZ_USTAWIEN, "Ustawienia (4)", "Dotychczasowy panel (5)", "Wyloguj"];
     const zwiniete = await kolejnoscTab();
     console.log(`POMIAR-USTAWIENIA-5 obie-zwiniete ${JSON.stringify(zwiniete)}`);
     expect(zwiniete).toEqual(oczekiwaneZwiniete);
@@ -386,9 +386,9 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
     console.log(`POMIAR-USTAWIENIA-5 ustawienia-rozwiniete ${JSON.stringify(ustawieniaRozwiniete)}`);
     expect(ustawieniaRozwiniete).toEqual([
       ...POZYCJE_BEZ_USTAWIEN,
-      "Ustawienia (3)",
+      "Ustawienia (4)",
       ...POZYCJE_USTAWIEN,
-      "Dotychczasowy panel (6)",
+      "Dotychczasowy panel (5)",
       "Wyloguj",
     ]);
 
@@ -398,16 +398,16 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
     console.log(`POMIAR-USTAWIENIA-5 obie-rozwiniete ${JSON.stringify(obieRozwiniete)}`);
     expect(obieRozwiniete).toEqual([
       ...POZYCJE_BEZ_USTAWIEN,
-      "Ustawienia (3)",
+      "Ustawienia (4)",
       ...POZYCJE_USTAWIEN,
-      "Dotychczasowy panel (6)",
+      "Dotychczasowy panel (5)",
       ...POZYCJE_DOTYCHCZASOWE,
       "Wyloguj",
     ]);
   });
 
   for (const szerokosc of [1280, 390] as const) {
-    test(`pomiar 6: @${szerokosc} styl przycisku „Ustawienia (3)” == styl przycisku „Dotychczasowy panel (6)” pole po polu`, async ({ page }) => {
+    test(`pomiar 6: @${szerokosc} styl przycisku „Ustawienia (4)” == styl przycisku „Dotychczasowy panel (5)” pole po polu`, async ({ page }) => {
       await wejdz(page, "/admin", szerokosc, szerokosc >= 1024 ? 900 : 844);
       const kontener = szerokosc >= 1024 ? bok(page) : await otworzOknoMenu(page);
       const przyciski = await kontener.evaluate(() => {
@@ -436,7 +436,7 @@ test.describe("menu administracji — grupa zwijana „Ustawienia”", () => {
       expect(przyciski, "oba przyciski widoczne").not.toBeNull();
       const p = przyciski!;
       // Jedyny wyjątek: cztery pola wymiaru spanu z tekstem napisu (jego szerokość wynika z długości napisu,
-      // „Ustawienia (3)” jest krótsze niż „Dotychczasowy panel (6)”, a nie ze stylu); przycisk i znak bez wyjątków.
+      // „Ustawienia (4)” jest krótsze niż „Dotychczasowy panel (5)”, a nie ze stylu); przycisk i znak bez wyjątków.
       const ZALEZNE_OD_TRESCI = new Set(["width", "inline-size", "perspective-origin", "transform-origin"]);
       const rozne: string[] = [];
       const pominiete: string[] = [];

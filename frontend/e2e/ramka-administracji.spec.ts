@@ -187,8 +187,9 @@ const MENU_OCZEKIWANE = [
   },
   {
     // Grupa zwijana (ten sam komponent co „Dotychczasowy panel”); linia stoi wewnątrz części zwijanej.
-    naglowek: "Ustawienia (3)",
+    naglowek: "Ustawienia (4)",
     pozycje: [
+      ["Ustawienia edycji", "/admin/ustawienia"],
       ["Słownik form stażu", "/admin/formy-stazu"],
       ["Wzory dokumentów", "/admin/wzory-dokumentow"],
       ["Treść ekranu „Zacznij tutaj”", "/admin/ekran-startowy"],
@@ -196,14 +197,13 @@ const MENU_OCZEKIWANE = [
     linia: "W przygotowaniu: ustawienia roku programu.",
   },
   {
-    naglowek: "Dotychczasowy panel (6)",
+    naglowek: "Dotychczasowy panel (5)",
     pozycje: [
       ["Czas nauki", "/admin/czas-nauki"],
       ["Certyfikaty", "/admin/certyfikaty"],
       ["Profile psychologa", "/admin/profile"],
       ["Superwizje", "/admin/superwizje"],
       ["Skrzynka e-maili", "/admin/emails"],
-      ["Ustawienia", "/admin/ustawienia"],
     ],
     linia: null,
   },
@@ -434,7 +434,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         // Długie nazwy pozycji: pełny tekst widoczny, bez wielokropka, najwyżej 2 wiersze.
         // Pozycje widoczne: grupa „Ustawienia” (na ekranach spoza niej zwinięta) jest przed pomiarem rozwinięta,
         // żeby objąć też najdłuższą nazwę („Treść ekranu „Zacznij tutaj””); „Dotychczasowy panel” jest na wejściu ukryty.
-        const przyciskUstawien = nav.getByRole("button", { name: "Ustawienia (3)", exact: true });
+        const przyciskUstawien = nav.getByRole("button", { name: "Ustawienia (4)", exact: true });
         if ((await przyciskUstawien.getAttribute("aria-expanded")) === "false") await przyciskUstawien.click();
         await expect(przyciskUstawien).toHaveAttribute("aria-expanded", "true");
         const nazwyPozycji = await nav.locator("a:visible").evaluateAll((linki) =>
@@ -462,7 +462,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
         const menu = await odczytajMenu(nav);
         expect(menu.grupy).toEqual(MENU_OCZEKIWANE);
         expect(menu.konto).toBe("Konto");
-        expect(menu.przyciski).toEqual(["Ustawienia (3)", "Dotychczasowy panel (6)", "Wyloguj"]);
+        expect(menu.przyciski).toEqual(["Ustawienia (4)", "Dotychczasowy panel (5)", "Wyloguj"]);
         await expect(nav.locator('a[aria-current="page"]')).toHaveCount(1);
         // Bieżąca pozycja widoczna także wtedy, gdy stoi w grupie zwijanej („Ustawienia”, „Dotychczasowy panel”).
         await expect(nav.locator('a[aria-current="page"]')).toBeVisible();
@@ -489,7 +489,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
 
     const nav = page.getByRole("complementary", { name: "Menu i konto" }).getByRole("navigation", { name: "Menu — Administracja" });
     // „Wzory dokumentów” stoją w zwijanej grupie „Ustawienia” (na /admin zwiniętej): rozwijamy ją przed wejściem w pozycję.
-    await nav.getByRole("button", { name: "Ustawienia (3)", exact: true }).click();
+    await nav.getByRole("button", { name: "Ustawienia (4)", exact: true }).click();
     await nav.getByRole("link", { name: "Wzory dokumentów", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/wzory-dokumentow$/);
     await expect(page.getByRole("heading", { level: 1, name: "Wzory dokumentów", exact: true })).toBeVisible();
@@ -512,7 +512,7 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
 /**
  * Menu na 1280×800 i pasek górny: „Wyloguj” w oknie bez przewijania menu
  * (dolna krawędź ≤ 800 przy `scrollTop` 0, nie zasłonięte), „Dotychczasowy
- * panel (n)” i „Ustawienia (3)” zwinięte na wejściu i rozwijane kliknięciem, linie „W
+ * panel (n)” i „Ustawienia (4)” zwinięte na wejściu i rozwijane kliknięciem, linie „W
  * przygotowaniu” rozłączne z nazwami pozycji menu, pasek „PsychON · rok programu 2026/27”; na 390
  * „Zamknij” okna menu ze znakiem „×”.
  */
@@ -589,7 +589,7 @@ test.describe("nowa ramka panelu administracji — menu 1280×800 i pasek", () =
     const zamknij = okno.getByRole("button", { name: "Zamknij", exact: true });
     await expect(zamknij.locator('[data-znak-zamknij][aria-hidden="true"]')).toHaveText("×");
     await expect(okno.getByRole("button", { name: /^Dotychczasowy panel \(\d+\)$/ })).toHaveAttribute("aria-expanded", "false");
-    await expect(okno.getByRole("button", { name: "Ustawienia (3)", exact: true })).toHaveAttribute("aria-expanded", "false");
+    await expect(okno.getByRole("button", { name: "Ustawienia (4)", exact: true })).toHaveAttribute("aria-expanded", "false");
     const katalog = katalogZrzutow();
     if (katalog) await page.screenshot({ path: path.join(katalog, `ramka-${EKRANY[0].nazwa}-390-menu-otwarte.png`) });
     await zamknij.click();

@@ -4,13 +4,14 @@ import { menuRamkiAdministracji } from "../administracja";
 import { ukladMenuRamki } from "../uklad";
 
 /**
- * Okruszek trzech ekranów „Słownik form stażu”, „Wzory dokumentów” i
+ * Okruszek czterech ekranów „Ustawienia edycji”, „Słownik form stażu”, „Wzory dokumentów” i
  * „Treść ekranu „Zacznij tutaj”” oraz ich podstron — liczony z menu tak, jak
  * robi to `DostawcaRamki` (grupy układu i grupa „Dotychczasowy panel”).
  * Nazwa grupy, w której ekran stoi w menu, nie wchodzi do okruszka.
  */
 
 const EKRANY = [
+  ["/admin/ustawienia", "Ustawienia edycji"],
   ["/admin/formy-stazu", "Słownik form stażu"],
   ["/admin/wzory-dokumentow", "Wzory dokumentów"],
   ["/admin/ekran-startowy", "Treść ekranu „Zacznij tutaj”"],

@@ -89,6 +89,7 @@ describe("administracja — grupa zwijana „Ustawienia” w układzie", () => {
   });
 
   it.each([
+    ["/admin/ustawienia", "Ustawienia edycji"],
     ["/admin/formy-stazu", "Słownik form stażu"],
     ["/admin/wzory-dokumentow", "Wzory dokumentów"],
     ["/admin/wzory-dokumentow/5", "Wzory dokumentów"],
