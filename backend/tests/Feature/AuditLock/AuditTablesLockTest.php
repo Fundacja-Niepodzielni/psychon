@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use LogicException;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -117,6 +118,32 @@ class AuditTablesLockTest extends TestCase
         // Dopisanie działa dalej.
         $this->journalRows(User::factory()->create());
         $this->assertSame(1, DB::table('audit_log')->count());
+    }
+
+    public function test_interrupted_purge_leaves_the_journal_as_it_was_and_the_lock_closed(): void
+    {
+        $this->journalRows(User::factory()->create());
+        $this->journalRows(User::factory()->create());
+        $before = $this->journalSnapshot();
+
+        try {
+            DB::transaction(function (): void {
+                AuditTablesLock::allowPurgeInCurrentTransaction();
+
+                $this->assertSame(2, DB::table('audit_log')->delete());
+                $this->assertSame(2, DB::table('sensitive_access_log')->delete());
+
+                throw new RuntimeException('czyszczenie przerwane w połowie');
+            });
+            $this->fail('Transakcja czyszczenia miała zostać przerwana.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('czyszczenie przerwane w połowie', $exception->getMessage());
+        }
+
+        // Wiersze wróciły, a blokada zamknęła się razem z wycofaną transakcją.
+        $this->assertSame($before, $this->journalSnapshot());
+        $this->assertRefusedByLock(fn () => DB::table('audit_log')->delete(), 'DELETE on audit_log');
+        $this->assertRefusedByLock(fn () => DB::statement('truncate table sensitive_access_log'), 'TRUNCATE on sensitive_access_log');
     }
 
     public function test_switch_cannot_be_set_outside_a_transaction(): void
