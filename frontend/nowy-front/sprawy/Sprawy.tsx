@@ -7,7 +7,11 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
-import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import {
+  RecordList,
+  type KolumnaRecordList,
+  type WierszRecordList,
+} from "@/design-system/organizmy/RecordList/RecordList";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
@@ -36,6 +40,13 @@ import style from "./Sprawy.module.css";
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 type FiltrRodzaju = RodzajSprawy | "";
 // Opis ekranu nazywa rodzaje tak samo jak filtr (jeden słownik w `./dane.ts`).
+/** Kolumny kolejki spraw: sprawa (rodzaj, pod nim osoba), stan oczekiwania, akcja na końcu. */
+export const KOLUMNY_SPRAW: KolumnaRecordList[] = [
+  { nazwa: "Sprawa", rodzaj: "tekst" },
+  { nazwa: "Stan", rodzaj: "stan" },
+  { nazwa: "Akcja", rodzaj: "akcja" },
+];
+
 const OPIS_EKRANU = `${ETYKIETA_FILTRA.applications}, ${ETYKIETA_FILTRA.internship_entries.toLocaleLowerCase("pl")} i ${ETYKIETA_FILTRA.profiles.toLocaleLowerCase("pl")} czekające na Twoją decyzję — w jednym miejscu.`;
 
 /**
@@ -71,10 +82,10 @@ interface OpcjaFiltra {
  * pobiera do 100 pozycji na źródło bez podziału na strony, patrz
  * `PER_PAGE_MAX` w `./dane.ts`. Wiersze stoją od najstarszej sprawy
  * (`sortujSprawy`, to samo porównanie co „Otwórz najstarszą sprawę”). Wiersz
- * `RecordList` (makieta A-02): plakietka „czeka od dziś” / „czeka N dni” na
- * początku (ostrzegawcza od `PROG_OSTRZEZENIA_DNI`, niżej szara), rodzaj
- * pogrubiony (nazwa ze słownika `NAZWY_RODZAJOW`), po „·” osoba, akcja „Otwórz”
- * z `href`; pełna nazwa akcji i data „Czeka od …” tylko dla czytnika. Nagłówek `h2` kolejki
+ * `RecordList` w kolumnach: „Sprawa” — rodzaj (nazwa ze słownika
+ * `NAZWY_RODZAJOW`), pod nim osoba; „Stan” — plakietka „czeka od dziś” /
+ * „czeka N dni” (ostrzegawcza od `PROG_OSTRZEZENIA_DNI`, niżej szara); akcja
+ * „Otwórz” z `href` na końcu; pełna nazwa akcji i data „Czeka od …” tylko dla czytnika. Nagłówek `h2` kolejki
  * jest tylko dla czytnika — wzrokowo lista stoi bezpośrednio pod nagłówkiem
  * ekranu.
  *
@@ -216,7 +227,6 @@ export function Sprawy() {
         return {
           id: pozycja.id,
           tytul: ETYKIETA_RODZAJU[pozycja.rodzaj],
-          tytulPogrubiony: true,
           tytulDodatek: pozycja.osoba,
           podpowiedz: pozycja.podpowiedz,
           podpowiedzTylkoDlaCzytnika: true,
@@ -354,6 +364,7 @@ export function Sprawy() {
             stopienNaglowka={2}
             naglowekTylkoDlaCzytnika
             wierszeBezWciecia
+            kolumny={KOLUMNY_SPRAW}
             wiersze={wierszeListy}
             pusty={pustyStanListy}
           />

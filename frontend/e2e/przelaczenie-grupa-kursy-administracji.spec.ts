@@ -255,7 +255,7 @@ async function sprawdzAxe(page: Page, testInfo: Parameters<typeof dolaczNaruszen
 }
 
 function wiersze(page: Page) {
-  return page.locator('section[aria-label="Lista kursów"] [data-wariant="z-licznikiem"]');
+  return page.locator('section[aria-label="Lista kursów"] [role="row"][data-wiersz]');
 }
 
 const SZEROKOSCI = [1280, 390] as const;
@@ -285,8 +285,15 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
 
       await expect(wiersze(page)).toHaveCount(4);
       await expect(wiersze(page).first()).toContainText("Podstawy pomocy psychologicznej");
-      await expect(wiersze(page).first()).toContainText(["Pozycja", 1, "w ścieżce"].join(" ") + " · Kurs · PsychON · 1 lekcja");
-      await expect(wiersze(page).nth(3)).toContainText("Poza ścieżką · Webinar · Obie grupy · 0 lekcji");
+      // Typ i grupa pod nazwą kursu; miejsce w ścieżce i liczba lekcji w swoich kolumnach.
+      const pierwszy = wiersze(page).first().getByRole("cell");
+      await expect(pierwszy.nth(0)).toContainText("Kurs · PsychON");
+      await expect(pierwszy.nth(2)).toHaveText(/^Miejsce w ścieżce\s*1\s*w ścieżce$/);
+      await expect(pierwszy.nth(3)).toHaveText(/^Lekcje\s*1\s*lekcja$/);
+      const ostatni = wiersze(page).nth(3).getByRole("cell");
+      await expect(ostatni.nth(0)).toContainText("Webinar · Obie grupy");
+      await expect(ostatni.nth(2)).toHaveText(/^Miejsce w ścieżce\s*poza ścieżką$/);
+      await expect(ostatni.nth(3)).toHaveText(/^Lekcje\s*0\s*lekcji$/);
       await expect(page.getByRole("link", { name: "Otwórz kurs: Wywiad psychologiczny" })).toHaveAttribute("href", "/admin/kursy/2");
 
       // Jeden przycisk główny w nagłówku, drugorzędna akcja obok.

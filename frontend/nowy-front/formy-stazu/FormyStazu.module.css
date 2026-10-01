@@ -37,37 +37,6 @@
   max-width: none;
 }
 
-/* Lista form stoi w białej karcie z nagłówkiem h2, jak sekcje list na pulpitach
-   (makieta: nagłówek z lewej, wiersze na całą szerokość karty). Wiersze
-   (`ListRow`) niosą własne wcięcie poziome, więc wcięcie dostaje tylko nagłówek. */
-.karta section {
-  padding: var(--space-20) 0 0;
-  overflow: hidden;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-}
-
-.karta section > h2 {
-  padding: 0 var(--card-px);
-  font-size: var(--fs-4);
-}
-
-/* Akcja wiersza „Edytuj” od 640 px wygląda jak przycisk drugorzędny (te same
-   tokeny co akcja z `href` w `ListRow`), a nie jak tekst. */
-@media (min-width: 640px) {
-  .karta [data-wariant="z-licznikiem"] button {
-    min-height: var(--hit-min);
-    padding: var(--space-8) var(--space-16);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--r-xs);
-    background: transparent;
-    color: var(--ink);
-    font-size: var(--fs-9);
-    font-weight: var(--fw-medium);
-  }
-}
-
 /* W ramce panelu z makiety (powłoka `PowlokaPanelu`, atrybut
    `data-powloka-panelu`) ekran nie dokłada własnego tła ani wyśrodkowanej
    szerokości — treść stoi od lewej w obszarze treści powłoki, który sam

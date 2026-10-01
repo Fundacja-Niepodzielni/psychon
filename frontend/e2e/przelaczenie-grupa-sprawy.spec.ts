@@ -248,7 +248,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       // z pełną nazwą dla czytnika; nagłówek listy tylko dla czytnika.
       await expect(page.getByText("Marta Demo", { exact: true })).toBeVisible();
       // Osoba z kolejki (to samo imię stoi też w sekcji spraw prowadzących — stąd zawężenie do wierszy kolejki).
-      await expect(page.locator("[data-wariant='z-licznikiem']").getByText("Ola Demo", { exact: true })).toBeVisible();
+      await expect(page.locator("[role='row'][data-wiersz]").getByText("Ola Demo", { exact: true })).toBeVisible();
       await expect(page.getByText(/^czeka \d+ (dni|dzień)$/)).toHaveCount(2);
       await expect(page.getByRole("link", { name: "Otwórz sprawę: Dyżur — Ola Demo" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Otwórz sprawę: Zgłoszenie rekrutacyjne — Marta Demo" })).toBeVisible();
@@ -308,7 +308,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await instalujAtrapy(page, "bogate");
       await page.goto("/admin/sprawy");
       await zabezpieczeniePrzedEkranemDostepu(page);
-      await expect(page.locator("[data-wariant='z-licznikiem']").first()).toBeVisible();
+      await expect(page.locator("[role='row'][data-wiersz]").first()).toBeVisible();
 
       // Od najstarszej; remis chwili: rodzaj, potem nazwisko po polsku (Demo < Łukasik < Żak); sprawa z dzisiaj na końcu.
       const nazwy = await page.getByRole("link", { name: /^Otwórz sprawę: / }).evaluateAll((el) =>
@@ -400,13 +400,13 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await instalujAtrapy(page, "dane");
       await page.goto("/admin/sprawy");
       await zabezpieczeniePrzedEkranemDostepu(page);
-      await expect(page.locator("[data-wariant='z-licznikiem']").first()).toBeVisible();
+      await expect(page.locator("[role='row'][data-wiersz]").first()).toBeVisible();
 
       const pomiar = await page.evaluate(() => {
         const szerokosc = document.documentElement.clientWidth;
         const h1 = document.querySelector("h1")!.getBoundingClientRect();
-        const wiersz = document.querySelector("[data-wariant='z-licznikiem']")!.getBoundingClientRect();
-        const tekst = document.querySelector("[data-wariant='z-licznikiem']")!.firstElementChild!.getBoundingClientRect();
+        const wiersz = document.querySelector("[role='row'][data-wiersz]")!.getBoundingClientRect();
+        const tekst = document.querySelector("[role='row'][data-wiersz]")!.firstElementChild!.getBoundingClientRect();
         return {
           h1Lewy: Math.round(h1.left),
           wierszPrawy: Math.round(szerokosc - wiersz.right),

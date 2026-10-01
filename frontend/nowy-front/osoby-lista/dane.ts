@@ -1,4 +1,4 @@
-import type { WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import type { KolumnaRecordList, WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ApiError, type PaginationMeta } from "@/lib/api/klient";
 import {
   downloadAdminUsersCsv,
@@ -90,10 +90,18 @@ export function etykietaRoli(rola: string): string {
   return (ROLE_LABELS as Record<string, string>)[rola] ?? "Nieznana rola";
 }
 
+/** Kolumny listy osób: osoba (pod nazwą e-mail), rola, stan konta, akcja na końcu. */
+export const KOLUMNY_OSOB: KolumnaRecordList[] = [
+  { nazwa: "Osoba", rodzaj: "tekst" },
+  { nazwa: "Rola", rodzaj: "tekst", klucz: "rola" },
+  { nazwa: "Stan", rodzaj: "stan" },
+  { nazwa: "Akcja", rodzaj: "akcja" },
+];
+
 /**
- * Wiersz osoby — wzór wiersza kolejki spraw: pogrubione imię i nazwisko, po „·”
- * meta (e-mail, rola), plakietka stanu małą literą (słownik 2.1), akcja
- * „Otwórz” (pełną nazwę „Otwórz kartę: …” słyszy tylko czytnik ekranu).
+ * Wiersz osoby: imię i nazwisko, pod nim e-mail; rola po polsku we własnej
+ * kolumnie, plakietka stanu małą literą (słownik 2.1), akcja „Otwórz” (pełną
+ * nazwę „Otwórz kartę: …” słyszy tylko czytnik ekranu).
  */
 export function wierszeOsob(osoby: AdminUserListItem[]): WierszRecordList[] {
   return osoby.map((osoba) => {
@@ -101,8 +109,8 @@ export function wierszeOsob(osoby: AdminUserListItem[]): WierszRecordList[] {
     return {
       id: String(osoba.id),
       tytul: nazwa,
-      tytulPogrubiony: true,
-      tytulDodatek: `${osoba.email} · ${etykietaRoli(osoba.role)}`,
+      podpowiedz: osoba.email,
+      komorki: { rola: { tekst: etykietaRoli(osoba.role) } },
       plakietka:
         osoba.status === "blocked"
           ? { wariant: "error", tekst: "konto zablokowane" }

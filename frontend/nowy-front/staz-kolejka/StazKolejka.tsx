@@ -3,14 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
-import { ListRow } from "@/design-system/molekuly/ListRow/ListRow";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
+import {
+  RecordList,
+  type KolumnaRecordList,
+  type KomorkaRecordList,
+} from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import type { PaginationMeta } from "@/lib/api/klient";
 import { formatujDate } from "../wspolne/daty";
@@ -25,7 +28,6 @@ import {
   type WpisDoDecyzji,
 } from "./dane";
 import { PanelDyzuru, TEKSTY_DECYZJI, type OtwartaDecyzja, type RodzajDecyzjiZKomentarzem } from "./PanelDyzuru";
-import style from "./StazKolejka.module.css";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
@@ -40,6 +42,20 @@ interface KomunikatBledu {
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Dyżury do decyzji" }];
 
+/** Kolumny listy dyżurów: dyżur (pod nazwą osoba), stan oczekiwania, godziny do prawej, akcja na końcu. */
+export const KOLUMNY_DYZUROW: KolumnaRecordList[] = [
+  { nazwa: "Dyżur", rodzaj: "tekst" },
+  { nazwa: "Stan", rodzaj: "stan" },
+  { nazwa: "Godziny", rodzaj: "liczba", klucz: "godziny" },
+  { nazwa: "Akcja", rodzaj: "akcja" },
+];
+
+/** Godziny dyżuru (dziesiętny string z API) jako liczba z jednostką; napis nieliczbowy wraca dosłownie. */
+export function komorkaGodzin(godziny: string): KomorkaRecordList {
+  const liczba = Number(godziny);
+  return godziny.trim() !== "" && Number.isFinite(liczba) ? { liczba, jednostka: "h" } : { tekst: godziny };
+}
+
 /**
  * Ekran decyzji o dyżurach na szablonie `ListTemplate` (makieta A-02, sprawa
  * „Dyżur”): nagłówek, lista dyżurów czekających na decyzję (serwer podaje
@@ -47,11 +63,11 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Dyżury do decyzji
  * ładowanie, dane, pusty, brak uprawnień, błąd sieci — stoi w obszarach
  * szablonu, więc jedyny `main` jest zawsze korzeniem szablonu.
  *
- * Lista jest domyślnie ZWINIĘTA: wiersz to `ListRow` jak we Sprawach —
- * plakietka „czeka N dni” (tekst, wariant i próg z `../sprawy/wiek.ts`, bez
- * kopii), pogrubione „Dyżur”, osoba i akcja „Otwórz” (pełna nazwa i data
- * tylko dla czytnika), wyglądem jak akcja wiersza Spraw (`wygladOdnosnika`: obrys
- * od 640 px, „Otwórz ›” poniżej), ale nadal przyciskiem. „Otwórz” rozwija pod wierszem panel dyżuru
+ * Lista jest domyślnie ZWINIĘTA: `RecordList` w kolumnach jak we Sprawach —
+ * „Dyżur” z osobą pod nazwą, stan „czeka N dni” (tekst, wariant i próg
+ * z `../sprawy/wiek.ts`, bez kopii), godziny dyżuru do prawej i akcja
+ * „Otwórz” (pełna nazwa i data tylko dla czytnika), wyglądem jak akcja wiersza
+ * Spraw (obrys od 640 px, „Otwórz ›” poniżej), ale nadal przyciskiem. „Otwórz” rozwija pod wierszem panel dyżuru
  * (`./PanelDyzuru.tsx`) — naraz jeden — z danymi wpisu, godzinami osoby i
  * decyzjami; otwarty wiersz nie ma już „Otwórz”. „Wróć do listy” zwija panel
  * i oddaje fokus „Otwórz” tego wiersza. Nagłówek `h2` listy jest tylko dla
@@ -75,7 +91,7 @@ export function StazKolejka() {
   const [zajete, setZajete] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [komunikat, setKomunikat] = useState<KomunikatBledu | null>(null);
-  const lista = useRef<HTMLUListElement>(null);
+  const lista = useRef<HTMLDivElement>(null);
   // Wiersz, któremu po najbliższym renderze oddajemy fokus (na jego akcję „Otwórz”).
   const fokusWiersza = useRef<number | null>(null);
 
@@ -242,55 +258,51 @@ export function StazKolejka() {
 
   const { wpisy, meta } = stan;
 
+  const pusty = {
+    naglowek: "Brak wpisów do decyzji",
+    tresc: "Nowe dyżury pojawią się tutaj, gdy wolontariusze je zgłoszą.",
+    przycisk: { etykieta: "Odśwież", onClick: ponow },
+  };
+
   const zawartosc =
     wpisy.length === 0 ? (
       <>
         {komunikat && <KomunikatDecyzji komunikat={komunikat} />}
-        <EmptyState
-          naglowek="Brak wpisów do decyzji"
-          tresc="Nowe dyżury pojawią się tutaj, gdy wolontariusze je zgłoszą."
-          przycisk={{ etykieta: "Odśwież", onClick: ponow }}
-        />
+        <EmptyState naglowek={pusty.naglowek} tresc={pusty.tresc} przycisk={pusty.przycisk} />
       </>
     ) : (
       <>
         {komunikat && <KomunikatDecyzji komunikat={komunikat} />}
-        <div className={style.sekcja}>
-          <div className={style.ukryte}>
-            <Heading stopien={2}>Dyżury do decyzji</Heading>
-          </div>
-          <ul className={style.lista} aria-label="Dyżury do decyzji" ref={lista}>
-            {wpisy.map((wpis) => {
+        {/* Kotwica fokusu: po decyzji i po „Wróć do listy” fokus wraca na „Otwórz” wiersza. */}
+        <div ref={lista}>
+          <RecordList
+            tytul="Dyżury do decyzji"
+            stopienNaglowka={2}
+            naglowekTylkoDlaCzytnika
+            wierszeBezWciecia
+            kolumny={KOLUMNY_DYZUROW}
+            pusty={pusty}
+            wiersze={wpisy.map((wpis) => {
               const osoba = nazwaOsoby(wpis);
               const dni = teraz === null ? null : dniOczekiwania(wpis.created_at ?? "", teraz);
-              const otwarty = otwartyId === wpis.id;
-              return (
-                <li key={wpis.id} className={otwarty ? style.otwarty : style.wiersz} data-wiersz={wpis.id}>
-                  <ListRow
-                    tytul="Dyżur"
-                    tytulPogrubiony
-                    tytulDodatek={osoba}
-                    podpowiedz={`Czeka od ${formatujDate(wpis.created_at)}`}
-                    podpowiedzTylkoDlaCzytnika
-                    bezWciecia
-                    otwarty={otwarty}
-                    plakietka={
-                      dni === null
-                        ? undefined
-                        : { wariant: wariantPlakietkiCzekania(dni), tekst: tekstPlakietkiCzekania(dni) }
-                    }
-                    akcja={
-                      otwarty
-                        ? undefined
-                        : {
-                            etykieta: "Otwórz",
-                            etykietaDostepna: `Otwórz dyżur: ${osoba}, z dnia ${formatujDate(wpis.date)}`,
-                            onKliknij: () => otworz(wpis),
-                            wygladOdnosnika: true,
-                          }
-                    }
-                  />
-                  {otwarty && (
+              return {
+                id: String(wpis.id),
+                tytul: "Dyżur",
+                tytulDodatek: osoba,
+                podpowiedz: `Czeka od ${formatujDate(wpis.created_at)}`,
+                podpowiedzTylkoDlaCzytnika: true,
+                plakietka:
+                  dni === null
+                    ? undefined
+                    : { wariant: wariantPlakietkiCzekania(dni), tekst: tekstPlakietkiCzekania(dni) },
+                komorki: { godziny: komorkaGodzin(wpis.hours) },
+                akcja: {
+                  etykieta: "Otwórz",
+                  etykietaDostepna: `Otwórz dyżur: ${osoba}, z dnia ${formatujDate(wpis.date)}`,
+                  onKliknij: () => otworz(wpis),
+                },
+                panel:
+                  otwartyId === wpis.id ? (
                     <PanelDyzuru
                       wpis={wpis}
                       zajete={zajete !== null}
@@ -303,11 +315,10 @@ export function StazKolejka() {
                       onZapiszFormularz={() => decyzja && void wykonaj(decyzja.rodzaj, wpis, decyzja.komentarz)}
                       onWroc={() => wrocDoListy(wpis)}
                     />
-                  )}
-                </li>
-              );
+                  ) : undefined,
+              };
             })}
-          </ul>
+          />
         </div>
       </>
     );
