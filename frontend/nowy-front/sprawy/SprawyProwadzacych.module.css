@@ -28,10 +28,22 @@
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-12);
+  gap: var(--space-4) var(--space-12);
   margin: 0;
   color: var(--muted);
   font-size: var(--fs-10);
+}
+
+/* Element linii metadanych z własnym separatorem „·” na początku: razem się
+   zawijają, więc separator nie trafia na koniec linii. */
+.elementMeta {
+  display: inline-flex;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.separator {
+  flex: none;
 }
 
 .tresc {
