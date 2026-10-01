@@ -440,6 +440,17 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
     expect(within(okno).queryByRole("table")).toBeNull();
   });
 
+  it("lista wpływu w oknie jest przewijanym obszarem dostępnym z klawiatury i ma nazwę", async () => {
+    await otworz();
+    api.mockResolvedValueOnce(PODGLAD);
+    await userEvent.click(screen.getByRole("button", { name: "Sprawdź wpływ zmiany" }));
+    const okno = await screen.findByRole("dialog");
+    const lista = within(okno).getByRole("list", { name: "Wpływ nowej kolejności na statusy kursów" });
+    expect(lista).toHaveAttribute("tabindex", "0");
+    lista.focus();
+    expect(lista).toHaveFocus();
+  });
+
   it("pusty podgląd: okno mówi, że żaden status się nie zmienia", async () => {
     await otworz();
     api.mockResolvedValueOnce([]);

@@ -95,7 +95,12 @@
   white-space: nowrap;
 }
 
-/* Podgląd wpływu zmiany w oknie 440 px: pozycja na osobę, pola pod sobą, łamanie tylko na spacjach. */
+/*
+ * Podgląd wpływu zmiany w oknie 440 px: pozycja na osobę, pola pod sobą, łamanie tylko na spacjach.
+ * Okno nie ma własnego limitu wysokości, więc przewija się sama lista: jej wysokość to widok pomniejszony
+ * o miejsce na tytuł, opis, oba przyciski, odstępy okna i ewentualny komunikat błędu (24rem). Tytuł i przyciski
+ * zostają w widoku przy dowolnej liczbie osób.
+ */
 .wplyw {
   display: flex;
   flex-direction: column;
@@ -103,6 +108,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: max(10rem, calc(100vh - 24rem));
+  max-height: max(10rem, calc(100dvh - 24rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .wplywPozycja {

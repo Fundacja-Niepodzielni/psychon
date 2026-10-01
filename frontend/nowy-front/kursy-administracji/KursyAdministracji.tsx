@@ -86,11 +86,12 @@ const POLA_WPLYWU = [
  * Podgląd wpływu zmiany kolejności w oknie potwierdzenia: jedna pozycja na osobę, pola pod sobą
  * (Osoba, Kurs, Było, Będzie). Okno ma stałą szerokość 440 px, więc czterokolumnowa tabela łamałaby
  * wyrazy w środku; w układzie pionowym każda wartość ma całą szerokość pozycji i łamie się tylko na spacjach.
+ * Lista przewija się w pionie (`.wplyw`), więc jest fokusowalna z nazwą: czytelnik klawiatury może ją przewijać.
  */
 function WplywZmiany({ wiersze }: { wiersze: WierszDataTable[] }) {
   if (wiersze.length === 0) return <Text wariant="pusty">Ta zmiana nie zmienia statusu żadnej osoby.</Text>;
   return (
-    <ul className={style.wplyw} aria-label="Wpływ nowej kolejności na statusy kursów">
+    <ul className={style.wplyw} aria-label="Wpływ nowej kolejności na statusy kursów" tabIndex={0}>
       {wiersze.map((wiersz) => (
         <li key={wiersz.id} className={style.wplywPozycja}>
           <dl className={style.wplywPola}>

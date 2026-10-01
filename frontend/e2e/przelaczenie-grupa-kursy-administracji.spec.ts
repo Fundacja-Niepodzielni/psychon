@@ -98,12 +98,29 @@ const PODGLAD = [
   { user_id: 17, first_name: "Marta", last_name: "Demo", course_id: 2, course_title: "Wywiad psychologiczny", from: "in_progress", to: "locked" },
 ];
 
+/** Podgląd wpływu zmiany dla `liczba` osób: „Osoba Nr 1”, „Osoba Nr 2” … — każda z jednym kursem do zablokowania. */
+function podgladDlaOsob(liczba: number) {
+  return Array.from({ length: liczba }, (_, i) => ({
+    user_id: 100 + i,
+    first_name: "Osoba",
+    last_name: `Nr ${i + 1}`,
+    course_id: 2,
+    course_title: "Wywiad psychologiczny",
+    from: "in_progress",
+    to: "locked",
+  }));
+}
+
 /**
  * Atrapy API roli administracji. Ogólna atrapa jest rejestrowana PIERWSZA —
  * Playwright wybiera trasę zarejestrowaną PÓŹNIEJ jako pierwszą.
  */
-async function instalujAtrapyApi(page: Page, opcje: { kursy?: ReturnType<typeof kurs>[]; odmowa?: boolean; blad?: boolean } = {}): Promise<Atrapy> {
+async function instalujAtrapyApi(
+  page: Page,
+  opcje: { kursy?: ReturnType<typeof kurs>[]; odmowa?: boolean; blad?: boolean; osoby?: number } = {},
+): Promise<Atrapy> {
   const stan: Atrapy = { zapytania: [] };
+  const podglad = opcje.osoby === undefined ? PODGLAD : podgladDlaOsob(opcje.osoby);
   const kursy = opcje.kursy ?? czteryKursy();
 
   await page.route(`${API}/**`, (route) => route.fulfill(koperta([], metaListy(0))));
@@ -144,7 +161,7 @@ async function instalujAtrapyApi(page: Page, opcje: { kursy?: ReturnType<typeof 
         await route.fulfill({ ...koperta(kurs(9, "Nowy kurs", { is_published: false, sequence_order: null, lessons_count: 0 })), status: 201 });
       } else if (sciezka === "/admin/courses/reorder/preview") {
         stan.zapytania.push({ adres: "POST /admin/courses/reorder/preview", cialo: zadanie.postDataJSON() });
-        await route.fulfill(koperta(PODGLAD));
+        await route.fulfill(koperta(podglad));
       } else if (sciezka === "/admin/courses/reorder") {
         stan.zapytania.push({ adres: "PATCH /admin/courses/reorder", cialo: zadanie.postDataJSON() });
         await route.fulfill(koperta(kursy));
@@ -241,6 +258,13 @@ function wiersze(page: Page) {
 }
 
 const SZEROKOSCI = [1280, 390] as const;
+const WIDOKI_OKNA = [
+  { szerokosc: 1280, wysokosc: 800 },
+  { szerokosc: 390, wysokosc: 844 },
+  { szerokosc: 390, wysokosc: 600 },
+] as const;
+const LICZBY_OSOB = [1, 4, 30] as const;
+const NAZWA_LISTY_PODGLADU = "Wpływ nowej kolejności na statusy kursów";
 
 test.describe("grupa przełączenia kursów administracji — lista pod adresem /admin/kursy", () => {
   for (const szerokosc of SZEROKOSCI) {
@@ -380,11 +404,121 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
       await expect(okno.getByText("Marta Demo")).toBeVisible();
       await expect(okno.getByText("Wywiad psychologiczny")).toBeVisible();
 
+      // Wyrazy liczone WEWNĄTRZ listy podglądu: pusta lista (zero pozycji) nie może przejść jako „nic nie łamie się”.
+      const lista = okno.getByRole("list", { name: NAZWA_LISTY_PODGLADU });
+      const pozycje = await lista.getByRole("listitem").count();
+      expect(pozycje).toBeGreaterThanOrEqual(1);
+      const wLiscie = await zmierzOkno(lista);
+      expect(wLiscie.wyrazy).toBeGreaterThanOrEqual(pozycje * 8);
+      expect(wLiscie.lamane).toEqual([]);
+
       const pomiar = await zmierzOkno(okno);
-      expect(pomiar.wyrazy).toBeGreaterThan(20);
+      expect(pomiar.wyrazy).toBeGreaterThanOrEqual(wLiscie.wyrazy);
       expect(pomiar.lamane).toEqual([]);
       expect(pomiar.przewiniecie).toBeLessThanOrEqual(0);
     });
+  }
+
+  for (const widok of WIDOKI_OKNA) {
+    for (const osoby of LICZBY_OSOB) {
+      test(`okno potwierdzenia @${widok.szerokosc}x${widok.wysokosc}, ${osoby} os.: mieści się w widoku, przyciski osiągalne, lista przewija się w pionie`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width: widok.szerokosc, height: widok.wysokosc });
+        await instalujAtrapyApi(page, { osoby });
+        await page.goto("/admin/kursy");
+        await zabezpieczeniePrzedEkranemDostepu(page);
+
+        await page.getByRole("button", { name: "Zmień kolejność ścieżki" }).click();
+        await page.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy psychologicznej" }).click();
+        await page.getByRole("button", { name: "Sprawdź wpływ zmiany" }).click();
+        const okno = page.getByRole("dialog", { name: "Potwierdź zmianę kolejności" });
+        const lista = okno.getByRole("list", { name: NAZWA_LISTY_PODGLADU });
+        await expect(lista.getByRole("listitem")).toHaveCount(osoby);
+        await expect(okno.getByRole("button", { name: "Anuluj" })).toBeFocused();
+        await page.waitForFunction(() =>
+          document.getAnimations().every((a) => a.constructor?.name !== "CSSTransition" || a.playState !== "running"),
+        );
+
+        const pomiar = await page.evaluate((nazwaListy) => {
+          const okienko = document.querySelector('[role="dialog"]') as HTMLElement;
+          const wykaz = okienko.querySelector(`ul[aria-label="${nazwaListy}"]`) as HTMLElement;
+          const ramka = okienko.getBoundingClientRect();
+          const trafienie = (tekst: string) => {
+            const przycisk = Array.from(okienko.querySelectorAll("button")).find((b) => b.textContent?.trim() === tekst);
+            if (!przycisk) return { znaleziony: false, trafiony: false, w_widoku: false };
+            const r = przycisk.getBoundingClientRect();
+            const trafiony = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return {
+              znaleziony: true,
+              trafiony: !!trafiony && przycisk.contains(trafiony),
+              w_widoku: r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth,
+            };
+          };
+          return {
+            gora: Math.round(ramka.top),
+            dol: Math.round(ramka.bottom),
+            wysokoscWidoku: window.innerHeight,
+            wysokoscListy: Math.round(wykaz.getBoundingClientRect().height),
+            przewijalna: wykaz.scrollHeight > wykaz.clientHeight,
+            przewinieciePoziomeStrony: document.documentElement.scrollWidth - window.innerWidth,
+            anuluj: trafienie("Anuluj"),
+            potwierdz: trafienie("Potwierdź zmianę kolejności"),
+          };
+        }, NAZWA_LISTY_PODGLADU);
+        console.log(`POMIAR587 ${JSON.stringify({ osoby, widok: `${widok.szerokosc}x${widok.wysokosc}`, ...pomiar })}`);
+        await testInfo.attach(`pomiar-okna-${widok.szerokosc}x${widok.wysokosc}-${osoby}`, {
+          body: JSON.stringify(pomiar, null, 2),
+          contentType: "application/json",
+        });
+
+        expect(pomiar.gora).toBeGreaterThanOrEqual(0);
+        expect(pomiar.dol).toBeLessThanOrEqual(pomiar.wysokoscWidoku);
+        expect(pomiar.anuluj).toEqual({ znaleziony: true, trafiony: true, w_widoku: true });
+        expect(pomiar.potwierdz).toEqual({ znaleziony: true, trafiony: true, w_widoku: true });
+        expect(pomiar.przewinieciePoziomeStrony).toBeLessThanOrEqual(0);
+        if (osoby === 30) expect(pomiar.przewijalna).toBe(true);
+
+        // Zrzut samego okna przeglądarki (widok, nie cała strona) — tylko trzy kadry z zakresu zlecenia.
+        const katalog = katalogZrzutow();
+        const nazwaZrzutu = `kursy-${widok.szerokosc}-okno-${osoby}`;
+        if (katalog && widok.wysokosc !== 600 && ["kursy-1280-okno-30", "kursy-390-okno-30", "kursy-390-okno-4"].includes(nazwaZrzutu)) {
+          await page.screenshot({ path: path.join(katalog, `${nazwaZrzutu}.png`) });
+        }
+
+        // Wyrazy w oknie i w liście, bez poziomego przewinięcia okna.
+        const wOknie = await zmierzOkno(okno);
+        expect(wOknie.lamane).toEqual([]);
+        expect(wOknie.przewiniecie).toBeLessThanOrEqual(0);
+        const wLiscie = await zmierzOkno(lista);
+        expect(wLiscie.wyrazy).toBeGreaterThanOrEqual(osoby * 8);
+        expect(wLiscie.lamane).toEqual([]);
+
+        // Klawiatura: lista przewijana ma nazwę i jest osiągalna (Shift+Tab z „Anuluj”), a przyciski nadal działają.
+        await okno.getByRole("button", { name: "Anuluj" }).focus();
+        await page.keyboard.press("Shift+Tab");
+        await expect(lista).toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(okno.getByRole("button", { name: "Anuluj" })).toBeFocused();
+
+        // Po przewinięciu listy do końca ostatnia osoba jest widoczna w obrębie listy i widoku.
+        await lista.evaluate((e) => {
+          e.scrollTop = e.scrollHeight;
+        });
+        await expect(lista.getByRole("listitem").last()).toContainText(`Nr ${osoby}`);
+        const wObrebie = await page.evaluate((nazwaListy) => {
+          const wykaz = document.querySelector(`[role="dialog"] ul[aria-label="${nazwaListy}"]`) as HTMLElement;
+          const r = wykaz.getBoundingClientRect();
+          const o = (wykaz.lastElementChild as HTMLElement).getBoundingClientRect();
+          return { wListie: o.bottom <= r.bottom + 1 && o.top >= r.top - 1, wWidoku: o.bottom <= window.innerHeight && o.top >= 0 };
+        }, NAZWA_LISTY_PODGLADU);
+        expect(wObrebie).toEqual({ wListie: true, wWidoku: true });
+
+        // Axe z best-practice (w tym scrollable-region-focusable) przy 30 osobach, listą w fokusie.
+        if (osoby === 30 && widok.wysokosc !== 600) {
+          await lista.focus();
+          expect(await naruszeniaZBestPractice(page)).toEqual([]);
+        }
+      });
+    }
   }
 
   test("odmowa 403: ekran „tylko dla administracji”, jeden main, bez przycisków akcji", async ({ page }, testInfo) => {
