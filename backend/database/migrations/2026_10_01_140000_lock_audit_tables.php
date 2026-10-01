@@ -23,11 +23,14 @@ return new class extends Migration
      *   - oba klucze obce do `users` odmawiają usunięcia konta, które ma wiersz
      *     dziennika (zamiast zerowania i kaskady).
      *
-     * Przełącznik jest ważny tylko w transakcji, która go ustawiła: jego wartością
-     * jest identyfikator tej transakcji, a wyzwalacz porównuje go z identyfikatorem
-     * transakcji, w której sam działa. Wartość ustawiona na poziomie sesji albo
-     * pozostała po innej transakcji niczego nie otwiera. Jedyne miejsce, które go
-     * ustawia, to wspólny pomocnik w `app/Support`.
+     * Wyzwalacz porównuje TEKST przełącznika z numerem transakcji, w której sam
+     * działa — nic więcej. Wartość stała i wartość pozostała po INNEJ transakcji
+     * niczego nie otwierają. Wyzwalacz nie odróżnia jednak ustawienia lokalnego od
+     * ustawienia na poziomie sesji: wartość sesyjna RÓWNA numerowi bieżącej
+     * transakcji (także ustawiona zawczasu na numer przewidziany) otwiera tak samo
+     * jak pomocnik. To znana granica, a nie droga dostępna z kodu aplikacji: jedyne
+     * miejsce, które ustawia przełącznik, to wspólny pomocnik w `app/Support`
+     * (ustawia go lokalnie, na jedną transakcję), a pilnuje tego test strażnika.
      *
      * Czym ta blokada NIE jest: barierą przed kimś, kto działa z uprawnieniami
      * właściciela tabel (taka osoba może zdjąć wyzwalacz). To zabezpieczenie przed

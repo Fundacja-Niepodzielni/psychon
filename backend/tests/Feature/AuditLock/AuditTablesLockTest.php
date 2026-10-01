@@ -179,21 +179,49 @@ class AuditTablesLockTest extends TestCase
         $this->assertRefusedOn($second, fn () => $second->table('audit_log')->delete(), 'DELETE on audit_log');
     }
 
-    public function test_session_level_value_of_the_switch_opens_nothing(): void
+    public function test_constant_value_and_number_left_after_a_finished_transaction_open_nothing(): void
     {
         $second = $this->secondConnection();
 
-        // Wartość „na oko" ustawiona na całą sesję.
+        // Wartość stała ustawiona na całą sesję.
         $second->select('select set_config(?, ?, false)', [AuditTablesLock::SWITCH, 'on']);
         $this->assertRefusedOn($second, fn () => $second->table('audit_log')->delete(), 'DELETE on audit_log');
 
-        // Identyfikator transakcji zapisany na całą sesję: ważny w tej jednej
-        // transakcji, w każdej następnej już nie.
+        // Numer transakcji zapisany na całą sesję i pozostały po jej zakończeniu:
+        // po zatwierdzeniu niczego nie otwiera. Co robi ta sama wartość W TRAKCIE
+        // swojej transakcji, mierzy następny test.
         $second->beginTransaction();
         $second->select('select set_config(?, pg_current_xact_id()::text, false)', [AuditTablesLock::SWITCH]);
         $second->commit();
         $this->assertRefusedOn($second, fn () => $second->table('audit_log')->delete(), 'DELETE on audit_log');
         $this->assertRefusedOn($second, fn () => $second->statement('truncate table sensitive_access_log'), 'TRUNCATE on sensitive_access_log');
+    }
+
+    /**
+     * ZNANA GRANICA, zapisana pomiarem: wyzwalacz porównuje sam tekst przełącznika
+     * z numerem bieżącej transakcji i nie odróżnia ustawienia lokalnego od
+     * ustawienia na poziomie sesji. Kod aplikacji tej drogi nie ma (przełącznik
+     * ustawia wyłącznie pomocnik, lokalnie). Jeśli ktoś utwardzi przełącznik, ten
+     * test zaczerwieni się — wtedy trzeba poprawić także komentarz migracji.
+     */
+    public function test_known_limit_session_level_value_equal_to_the_current_transaction_number_opens_delete(): void
+    {
+        $second = $this->secondConnection();
+
+        // Wartość poziomu sesji równa numerowi BIEŻĄCEJ transakcji: usunięcie
+        // przechodzi (połączenie nie widzi niezatwierdzonych wierszy testu,
+        // więc niczego faktycznie nie usuwa).
+        $second->beginTransaction();
+        $second->select('select set_config(?, pg_current_xact_id()::text, false)', [AuditTablesLock::SWITCH]);
+        $this->assertSame(0, $second->table('audit_log')->delete());
+        $second->commit();
+
+        // Ta sama wartość została w sesji, ale następna transakcja ma inny numer.
+        $left = $second->selectOne('select current_setting(?, true) as value', [AuditTablesLock::SWITCH])->value;
+        $second->beginTransaction();
+        $this->assertNotSame($left, $second->selectOne('select pg_current_xact_id()::text as value')->value);
+        $this->assertRefusedOn($second, fn () => $second->table('audit_log')->delete(), 'DELETE on audit_log');
+        $second->rollBack();
     }
 
     public function test_hard_delete_of_an_account_with_a_journal_row_is_refused_by_the_database(): void
