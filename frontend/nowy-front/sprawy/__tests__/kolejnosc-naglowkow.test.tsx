@@ -21,6 +21,16 @@ class ApiErrorAtrapa extends Error {
   }
 }
 
+// Ekran bierze odczyty i `ApiError` z beczki `@/lib/api`, a moduł danych z `@/lib/api/klient`,
+// więc podmieniamy oba moduły na te same atrapy (także funkcję dziedzinową spraw prowadzących).
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  apiPaged: (...args: unknown[]) => apiPaged(...args),
+  ApiError: ApiErrorAtrapa,
+  fetchAdminSupervisionCases: () =>
+    apiPaged("/admin/supervision/cases").then(({ data }: { data: unknown[] }) => ({ data })),
+}));
+
 vi.mock("@/lib/api/klient", () => ({
   apiPaged: (...args: unknown[]) => apiPaged(...args),
   ApiError: ApiErrorAtrapa,
