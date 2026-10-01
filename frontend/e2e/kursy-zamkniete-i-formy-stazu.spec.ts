@@ -125,6 +125,35 @@ for (const [nazwa, wymiary] of [
         expect(edytuj.ramka, JSON.stringify(edytuj)).toBe("1px");
         expect(edytuj.promien).toBeGreaterThan(0);
         expect(edytuj.wysokosc).toBeGreaterThanOrEqual(44);
+
+        // Odróżnienie przycisku drugorzędnego od cichego wariantu wiersza: ramka,
+        // rozmiar i grubość fontu „Edytuj” równe wzorcowi drugorzędnego, zmierzonemu
+        // na tej samej stronie na elemencie próbnym z tokenami poziomu `outline`
+        // (nie literały). Cichy wariant ma ramkę przezroczystą, więc ta asercja
+        // go odrzuca.
+        const porownanie = await karta.getByRole("button", { name: "Edytuj" }).first().evaluate((el) => {
+          const wzorzec = document.createElement("button");
+          wzorzec.style.cssText =
+            "border:1px solid var(--border-strong);font-size:var(--fs-9);font-weight:var(--fw-medium);position:absolute;visibility:hidden";
+          el.parentElement!.appendChild(wzorzec);
+          const w = getComputedStyle(wzorzec);
+          const e = getComputedStyle(el);
+          const wynik = {
+            kolorRamki: e.borderTopColor,
+            wzorzecKolorRamki: w.borderTopColor,
+            rozmiarFontu: e.fontSize,
+            wzorzecRozmiarFontu: w.fontSize,
+            grubosc: e.fontWeight,
+            wzorzecGrubosc: w.fontWeight,
+          };
+          wzorzec.remove();
+          return wynik;
+        });
+        const opis = JSON.stringify(porownanie);
+        expect(porownanie.wzorzecKolorRamki, opis).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+        expect(porownanie.kolorRamki, opis).toBe(porownanie.wzorzecKolorRamki);
+        expect(porownanie.rozmiarFontu, opis).toBe(porownanie.wzorzecRozmiarFontu);
+        expect(porownanie.grubosc, opis).toBe(porownanie.wzorzecGrubosc);
       }
 
       const naglowek = page.locator("header", { has: page.getByRole("heading", { level: 1 }) }).first();
