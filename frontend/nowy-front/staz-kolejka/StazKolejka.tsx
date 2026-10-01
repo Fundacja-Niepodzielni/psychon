@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/design-system/atomy/Badge/Badge";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Hint } from "@/design-system/atomy/Hint/Hint";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { ListRow } from "@/design-system/molekuly/ListRow/ListRow";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
-import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import type { PaginationMeta } from "@/lib/api/klient";
 import { formatujDate } from "../wspolne/daty";
+import { dniOczekiwania, tekstPlakietkiCzekania, wariantPlakietkiCzekania } from "../sprawy/wiek";
 import {
   czyBrakUprawnien,
-  etykietaFormy,
   nazwaOsoby,
   pobierzWpisyDoDecyzji,
   sklasyfikujBladDecyzji,
@@ -26,6 +24,7 @@ import {
   type RodzajDecyzji,
   type WpisDoDecyzji,
 } from "./dane";
+import { PanelDyzuru, TEKSTY_DECYZJI, type OtwartaDecyzja, type RodzajDecyzjiZKomentarzem } from "./PanelDyzuru";
 import style from "./StazKolejka.module.css";
 
 type StanListy =
@@ -34,13 +33,6 @@ type StanListy =
   | { rodzaj: "blad" }
   | { rodzaj: "gotowy"; wpisy: WpisDoDecyzji[]; meta: PaginationMeta | undefined };
 
-interface OtwartaDecyzja {
-  id: number;
-  rodzaj: Exclude<RodzajDecyzji, "zatwierdz">;
-  komentarz: string;
-  blad: string | undefined;
-}
-
 interface KomunikatBledu {
   tytul: string;
   tresc: string;
@@ -48,51 +40,43 @@ interface KomunikatBledu {
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Dyżury do decyzji" }];
 
-const TEKSTY_DECYZJI: Record<
-  Exclude<RodzajDecyzji, "zatwierdz">,
-  { tytul: string; etykieta: string; pole: string; toast: string }
-> = {
-  odeslij: {
-    tytul: "Poproś o poprawkę",
-    etykieta: "Poproś o poprawkę",
-    pole: "Co trzeba poprawić",
-    toast: "Dyżur odesłany do poprawy.",
-  },
-  odrzuc: {
-    tytul: "Odrzuć dyżur",
-    etykieta: "Odrzuć dyżur",
-    pole: "Powód odrzucenia",
-    toast: "Dyżur odrzucony.",
-  },
-};
-
 /**
- * Ekran decyzji o dyżurach na szablonie `ListTemplate`: nagłówek, lista
- * dyżurów czekających na decyzję (serwer podaje kolejność: od najstarszego
- * zgłoszenia) i stronicowanie. Każdy stan — ładowanie, dane, pusty, brak
- * uprawnień, błąd sieci — stoi w obszarach szablonu, więc jedyny `main`
- * jest zawsze korzeniem szablonu.
+ * Ekran decyzji o dyżurach na szablonie `ListTemplate` (makieta A-02, sprawa
+ * „Dyżur”): nagłówek, lista dyżurów czekających na decyzję (serwer podaje
+ * kolejność: od najstarszego zgłoszenia) i stronicowanie. Każdy stan —
+ * ładowanie, dane, pusty, brak uprawnień, błąd sieci — stoi w obszarach
+ * szablonu, więc jedyny `main` jest zawsze korzeniem szablonu.
  *
- * Wiersz to atomy (`Badge`/`Text`/`Hint`) i jeden rząd trzech przycisków:
- * „Zatwierdź” (bez ciała), „Poproś o poprawkę” i „Odrzuć dyżur”. Dwie
- * ostatnie otwierają `FormSection` z wymaganym komentarzem w treści, pod
- * wierszem — bez okna dialogowego. `RecordList` niesie dokładnie jedną akcję
- * na wiersz i nie pomieści formularza pod wierszem, dlatego wiersz jest
- * złożony tu, z tych samych atomów co `ListRow`.
+ * Lista jest domyślnie ZWINIĘTA: wiersz to `ListRow` jak we Sprawach —
+ * plakietka „czeka N dni” (tekst, wariant i próg z `../sprawy/wiek.ts`, bez
+ * kopii), pogrubione „Dyżur”, osoba i akcja „Otwórz” (pełna nazwa i data
+ * tylko dla czytnika). „Otwórz” rozwija pod wierszem panel dyżuru
+ * (`./PanelDyzuru.tsx`) — naraz jeden — z danymi wpisu, godzinami osoby i
+ * decyzjami; otwarty wiersz nie ma już „Otwórz”. „Wróć do listy” zwija panel
+ * i oddaje fokus „Otwórz” tego wiersza. Nagłówek `h2` listy jest tylko dla
+ * czytnika — wzrokowo lista stoi bezpośrednio pod nagłówkiem ekranu.
  *
- * Po decyzji wiersz znika z listy, a `Toast` potwierdza wynik. Dyżur już
- * rozstrzygnięty przez kogoś innego (403 `entry_locked`) pokazuje
- * komunikat z koperty i odświeża listę.
+ * Decyzje: „Zatwierdź” (bez ciała), „Poproś o poprawkę” i „Odrzuć dyżur”.
+ * Dwie ostatnie otwierają w panelu `FormSection` z wymaganym komentarzem —
+ * bez okna dialogowego. Po decyzji wiersz znika z listy, a `Toast` potwierdza
+ * wynik. Dyżur już rozstrzygnięty przez kogoś innego (403 `entry_locked`)
+ * pokazuje komunikat z koperty i odświeża listę.
  */
 export function StazKolejka() {
   const router = useRouter();
   const [stan, setStan] = useState<StanListy>({ rodzaj: "ladowanie" });
   const [strona, setStrona] = useState(1);
   const [proba, setProba] = useState(0);
-  const [otwarta, setOtwarta] = useState<OtwartaDecyzja | null>(null);
+  // Chwila odczytu listy: od niej liczy się wiek dyżurów (w renderze nie czytamy zegara).
+  const [teraz, setTeraz] = useState<number | null>(null);
+  const [otwartyId, setOtwartyId] = useState<number | null>(null);
+  const [decyzja, setDecyzja] = useState<OtwartaDecyzja | null>(null);
   const [zajete, setZajete] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [komunikat, setKomunikat] = useState<KomunikatBledu | null>(null);
+  const lista = useRef<HTMLUListElement>(null);
+  // Wiersz, któremu po najbliższym renderze oddajemy fokus (na jego akcję „Otwórz”).
+  const fokusWiersza = useRef<number | null>(null);
 
   useEffect(() => {
     let aktualne = true;
@@ -104,6 +88,7 @@ export function StazKolejka() {
           setStrona(strona - 1);
           return;
         }
+        setTeraz(Date.now());
         setStan({ rodzaj: "gotowy", wpisy, meta });
       })
       .catch((blad: unknown) => {
@@ -115,6 +100,13 @@ export function StazKolejka() {
     };
   }, [strona, proba]);
 
+  useEffect(() => {
+    const id = fokusWiersza.current;
+    if (id === null) return;
+    fokusWiersza.current = null;
+    lista.current?.querySelector<HTMLElement>(`[data-wiersz="${id}"] button`)?.focus();
+  });
+
   function ponow() {
     setStan({ rodzaj: "ladowanie" });
     setProba((p) => p + 1);
@@ -125,9 +117,14 @@ export function StazKolejka() {
   }
 
   function zmienStrone(nowa: number) {
-    setOtwarta(null);
+    zamknijPanel();
     setStan({ rodzaj: "ladowanie" });
     setStrona(nowa);
+  }
+
+  function zamknijPanel() {
+    setOtwartyId(null);
+    setDecyzja(null);
   }
 
   function usunZListy(id: number) {
@@ -145,8 +142,13 @@ export function StazKolejka() {
     setKomunikat(null);
     try {
       await zapiszDecyzje(rodzaj, wpis.id, komentarz);
+      // Fokus po decyzji: następny wiersz listy, a gdy go nie ma — poprzedni.
+      if (stan.rodzaj === "gotowy") {
+        const miejsce = stan.wpisy.findIndex((w) => w.id === wpis.id);
+        fokusWiersza.current = (stan.wpisy[miejsce + 1] ?? stan.wpisy[miejsce - 1])?.id ?? null;
+      }
       usunZListy(wpis.id);
-      setOtwarta(null);
+      zamknijPanel();
       setToast(
         rodzaj === "zatwierdz"
           ? `Dyżur zatwierdzony: ${nazwaOsoby(wpis)}.`
@@ -158,9 +160,9 @@ export function StazKolejka() {
       const opis = sklasyfikujBladDecyzji(blad);
       if (opis.rodzaj === "pola") {
         const bladKomentarza = opis.bledy.comment?.[0] ?? Object.values(opis.bledy)[0]?.[0];
-        setOtwarta((biezaca) => (biezaca ? { ...biezaca, blad: bladKomentarza } : biezaca));
+        setDecyzja((biezaca) => (biezaca ? { ...biezaca, blad: bladKomentarza } : biezaca));
       } else if (opis.rodzaj === "rozstrzygniety" || opis.rodzaj === "brak-wpisu") {
-        setOtwarta(null);
+        zamknijPanel();
         setKomunikat({ tytul: "Dyżur nie czeka już na decyzję", tresc: opis.komunikat });
         odswiez();
       } else {
@@ -171,9 +173,20 @@ export function StazKolejka() {
     }
   }
 
-  function otworz(wpis: WpisDoDecyzji, rodzaj: Exclude<RodzajDecyzji, "zatwierdz">) {
+  function otworz(wpis: WpisDoDecyzji) {
     setKomunikat(null);
-    setOtwarta({ id: wpis.id, rodzaj, komentarz: "", blad: undefined });
+    setDecyzja(null);
+    setOtwartyId(wpis.id);
+  }
+
+  function wrocDoListy(wpis: WpisDoDecyzji) {
+    fokusWiersza.current = wpis.id;
+    zamknijPanel();
+  }
+
+  function otworzFormularz(rodzaj: RodzajDecyzjiZKomentarzem) {
+    setKomunikat(null);
+    setDecyzja({ rodzaj, komentarz: "", blad: undefined });
   }
 
   const naglowek = (
@@ -228,7 +241,7 @@ export function StazKolejka() {
 
   const { wpisy, meta } = stan;
 
-  const lista =
+  const zawartosc =
     wpisy.length === 0 ? (
       <>
         {komunikat && <KomunikatDecyzji komunikat={komunikat} />}
@@ -241,61 +254,59 @@ export function StazKolejka() {
     ) : (
       <>
         {komunikat && <KomunikatDecyzji komunikat={komunikat} />}
-        <ul className={style.lista} aria-label="Dyżury do decyzji">
-          {wpisy.map((wpis) => (
-            <li key={wpis.id} className={style.wiersz}>
-              <div className={style.tresc}>
-                <Badge wariant="pending">czeka na decyzję</Badge>
-                <Text>{nazwaOsoby(wpis)}</Text>
-                <Hint>
-                  {`Dyżur z ${formatujDate(wpis.date)} · ${wpis.hours} h · ${etykietaFormy(wpis.form)} · konsultacje: ${wpis.consultations_count}`}
-                </Hint>
-                <div className={style.opis}>
-                  {wpis.description ? <Text>{wpis.description}</Text> : <Hint>Bez opisu.</Hint>}
-                </div>
-              </div>
-              <div className={style.akcje}>
-                <Button
-                  poziom="outline"
-                  disabled={zajete !== null}
-                  onClick={() => void wykonaj("zatwierdz", wpis, "")}
-                >
-                  Zatwierdź
-                </Button>
-                <Button poziom="quiet" disabled={zajete !== null} onClick={() => otworz(wpis, "odeslij")}>
-                  {TEKSTY_DECYZJI.odeslij.etykieta}
-                </Button>
-                <Button poziom="quiet" disabled={zajete !== null} onClick={() => otworz(wpis, "odrzuc")}>
-                  {TEKSTY_DECYZJI.odrzuc.etykieta}
-                </Button>
-              </div>
-              {otwarta?.id === wpis.id && (
-                <div className={style.decyzja}>
-                  <FormSection
-                    fokusPrzyOtwarciu
-                    tytul={`${TEKSTY_DECYZJI[otwarta.rodzaj].tytul}: ${nazwaOsoby(wpis)}`}
-                    pola={[
-                      {
-                        id: `komentarz-${wpis.id}`,
-                        etykieta: TEKSTY_DECYZJI[otwarta.rodzaj].pole,
-                        rodzaj: "wieloliniowy",
-                        wymagane: true,
-                        wartosc: otwarta.komentarz,
-                        onZmiana: (wartosc) =>
-                          setOtwarta((biezaca) => (biezaca ? { ...biezaca, komentarz: wartosc } : biezaca)),
-                        blad: otwarta.blad,
-                      },
-                    ]}
-                    etykietaAnuluj="Wróć do listy"
-                    etykietaZapisz={TEKSTY_DECYZJI[otwarta.rodzaj].etykieta}
-                    onAnuluj={() => setOtwarta(null)}
-                    onZapisz={() => void wykonaj(otwarta.rodzaj, wpis, otwarta.komentarz)}
+        <div className={style.sekcja}>
+          <div className={style.ukryte}>
+            <Heading stopien={2}>Dyżury do decyzji</Heading>
+          </div>
+          <ul className={style.lista} aria-label="Dyżury do decyzji" ref={lista}>
+            {wpisy.map((wpis) => {
+              const osoba = nazwaOsoby(wpis);
+              const dni = teraz === null ? null : dniOczekiwania(wpis.created_at ?? "", teraz);
+              const otwarty = otwartyId === wpis.id;
+              return (
+                <li key={wpis.id} className={otwarty ? style.otwarty : style.wiersz} data-wiersz={wpis.id}>
+                  <ListRow
+                    tytul="Dyżur"
+                    tytulPogrubiony
+                    tytulDodatek={osoba}
+                    podpowiedz={`Czeka od ${formatujDate(wpis.created_at)}`}
+                    podpowiedzTylkoDlaCzytnika
+                    bezWciecia
+                    otwarty={otwarty}
+                    plakietka={
+                      dni === null
+                        ? undefined
+                        : { wariant: wariantPlakietkiCzekania(dni), tekst: tekstPlakietkiCzekania(dni) }
+                    }
+                    akcja={
+                      otwarty
+                        ? undefined
+                        : {
+                            etykieta: "Otwórz",
+                            etykietaDostepna: `Otwórz dyżur: ${osoba}, z dnia ${formatujDate(wpis.date)}`,
+                            onKliknij: () => otworz(wpis),
+                          }
+                    }
                   />
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+                  {otwarty && (
+                    <PanelDyzuru
+                      wpis={wpis}
+                      zajete={zajete !== null}
+                      decyzja={decyzja}
+                      onZatwierdz={() => void wykonaj("zatwierdz", wpis, "")}
+                      onOtworzFormularz={otworzFormularz}
+                      onZmienKomentarz={(wartosc) =>
+                        setDecyzja((biezaca) => (biezaca ? { ...biezaca, komentarz: wartosc } : biezaca))
+                      }
+                      onZapiszFormularz={() => decyzja && void wykonaj(decyzja.rodzaj, wpis, decyzja.komentarz)}
+                      onWroc={() => wrocDoListy(wpis)}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </>
     );
 
@@ -303,7 +314,7 @@ export function StazKolejka() {
     <>
       <ListTemplate
         naglowek={naglowek}
-        lista={lista}
+        lista={zawartosc}
         stronicowanie={
           meta && meta.last_page > 1 ? (
             <Pagination
