@@ -346,7 +346,7 @@ function EdytorLekcji({
     setZapisywanie(true);
     setZapisano(false);
     try {
-      const wynik = await zapiszLekcje(zapisana.id, cialoZapisu(formularz));
+      const wynik = await zapiszLekcje(zapisana.id, cialoZapisu(formularz, zapisana));
       setZapisana(wynik);
       setFormularz(formularzZLekcji(wynik));
       setLiczbaMaterialow(wynik.materials_count);
@@ -427,7 +427,7 @@ function EdytorLekcji({
     },
     {
       id: `${baza}-czas`,
-      etykieta: "Czas trwania w sekundach",
+      etykieta: "Czas trwania w minutach",
       rodzaj: "liczba" as const,
       wartosc: formularz.duration,
       onZmiana: (wartosc: string) => zmien("duration", wartosc),

@@ -60,7 +60,8 @@ export function imieNazwisko(osoba: Prowadzacy): string {
 /** Jedno zdanie błędu sekcji — komunikat serwera, gdy jest czytelny dla osoby. */
 export function zdanieBledu(blad: unknown, zapasowe: string): string {
   if (blad instanceof ApiError) {
-    if (blad.status === 401 || blad.status === 403) return "Ta operacja nie jest dostępna dla Twojej roli.";
+    if (blad.status === 401) return "Sesja wygasła. Zaloguj się ponownie.";
+    if (blad.status === 403) return "Ta operacja nie jest dostępna dla Twojej roli.";
     if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
   }
   return zapasowe;

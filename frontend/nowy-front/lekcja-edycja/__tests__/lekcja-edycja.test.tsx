@@ -133,7 +133,7 @@ describe("stany ekranu w szablonie formularza", () => {
     szablon(container);
     expect(pole(/^Tytuł lekcji/).value).toBe("Wprowadzenie do wywiadu");
     expect(pole(/^Treść lekcji/).value).toBe("## Cel lekcji\n\nPierwszy akapit.");
-    expect(pole(/^Czas trwania/).value).toBe("1800");
+    expect(pole(/^Czas trwania w minutach/).value).toBe("30");
     expect(screen.getByRole("heading", { level: 1, name: "Wprowadzenie do wywiadu" })).toBeInTheDocument();
   });
 

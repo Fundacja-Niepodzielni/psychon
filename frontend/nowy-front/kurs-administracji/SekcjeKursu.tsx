@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AdminCourse } from "@/lib/h08/types";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -51,6 +51,8 @@ export function MaterialyKursu({ kurs }: { kurs: AdminCourse }) {
     setBlad(null);
     try {
       await usunMaterial(material.id);
+      // Przycisk „Usuń” tego pliku znika razem z wierszem — fokus idzie na pole dodawania.
+      document.getElementById(`${baza}-plik`)?.focus();
       materialy.zdejmij(material);
       setLiczba((poprzednia) => Math.max(0, poprzednia - 1));
     } catch (wyjatek) {
@@ -156,6 +158,11 @@ export function PrzypisaniaKursu({ kurs, lekcje }: WlasciwosciPrzypisan) {
   const [bladPola, setBladPola] = useState<string | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [doOdlaczenia, setDoOdlaczenia] = useState<{ przypisanie: PrzypisanieKursu; zakres: string } | null>(null);
+  // Przypisanie w toku: drugie kliknięcie przed odpowiedzią serwera nie wysyła
+  // drugiego żądania (ref — od razu), a przycisk jest na ten czas wyłączony (stan).
+  const przypisywanie = useRef(false);
+  const [przypisywanieTrwa, setPrzypisywanieTrwa] = useState(false);
+  const odlaczane = useRef(new Set<number>());
 
   useEffect(() => {
     let aktualne = true;
@@ -228,26 +235,44 @@ export function PrzypisaniaKursu({ kurs, lekcje }: WlasciwosciPrzypisan) {
       setBladPola("Wybierz prowadzącego do przypisania.");
       return;
     }
+    if (przypisywanie.current) return;
+    przypisywanie.current = true;
+    setPrzypisywanieTrwa(true);
     setBladPola(null);
     setBlad(null);
     try {
       const nowe = await przypiszProwadzacego(kurs.id, Number(wybrany), zakres === ZAKRES_KURSU ? null : Number(zakres));
-      setStan({ ...stan, przypisania: [...stan.przypisania, nowe] });
+      // Od stanu bieżącego, nie z chwili kliknięcia: odpowiedź nie zdejmuje
+      // skutku innej czynności, która skończyła się w międzyczasie.
+      setStan((poprzedni) =>
+        poprzedni.rodzaj === "dane" ? { ...poprzedni, przypisania: [...poprzedni.przypisania, nowe] } : poprzedni,
+      );
       setWybrany("");
     } catch (wyjatek) {
       setBlad(zdanieBledu(wyjatek, "Nie udało się przypisać prowadzącego. Spróbuj ponownie."));
+    } finally {
+      przypisywanie.current = false;
+      setPrzypisywanieTrwa(false);
     }
   }
 
   async function odlacz(przypisanie: PrzypisanieKursu) {
     if (stan.rodzaj !== "dane") return;
     setDoOdlaczenia(null);
+    if (odlaczane.current.has(przypisanie.id)) return;
+    odlaczane.current.add(przypisanie.id);
     setBlad(null);
     try {
       await odlaczProwadzacego(kurs.id, przypisanie.id);
-      setStan({ ...stan, przypisania: stan.przypisania.filter((wpis) => wpis.id !== przypisanie.id) });
+      setStan((poprzedni) =>
+        poprzedni.rodzaj === "dane"
+          ? { ...poprzedni, przypisania: poprzedni.przypisania.filter((wpis) => wpis.id !== przypisanie.id) }
+          : poprzedni,
+      );
     } catch (wyjatek) {
       setBlad(zdanieBledu(wyjatek, "Nie udało się odłączyć prowadzącego. Spróbuj ponownie."));
+    } finally {
+      odlaczane.current.delete(przypisanie.id);
     }
   }
 
@@ -314,7 +339,7 @@ export function PrzypisaniaKursu({ kurs, lekcje }: WlasciwosciPrzypisan) {
             onZmiana={setZakres}
           />
           <div>
-            <Button poziom="outline" onClick={() => void przypisz()}>
+            <Button poziom="outline" disabled={przypisywanieTrwa} onClick={() => void przypisz()}>
               Przypisz prowadzącego
             </Button>
           </div>

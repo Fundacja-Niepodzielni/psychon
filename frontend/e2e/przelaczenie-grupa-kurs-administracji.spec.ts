@@ -495,6 +495,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await zrzut(page, "kurs-1280-opublikowany");
 
     await page.getByRole("button", { name: "Cofnij publikację" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Cofnij publikację" }).click();
     await expect(page.getByRole("button", { name: "Opublikuj kurs" })).toHaveCount(1);
     await expect(page.getByText("Opublikowany", { exact: true })).toHaveCount(0);
 
@@ -522,7 +523,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await expect(nowa.getByLabel(/^Tytuł lekcji/)).toBeFocused();
     await zrzut(page, "kurs-1280-nowa-lekcja", page.getByRole("heading", { level: 3, name: "Praktyka" }));
     await nowa.getByLabel(/^Tytuł lekcji/).fill("Rozmowa próbna");
-    await nowa.getByLabel(/^Czas trwania w sekundach/).fill("600");
+    await nowa.getByLabel(/^Czas trwania w minutach/).fill("10");
     await nowa.getByRole("button", { name: "Dodaj lekcję" }).click();
     const edytujNowa = page.getByRole("button", { name: "Edytuj lekcję „Rozmowa próbna”" });
     await expect(edytujNowa).toBeFocused();

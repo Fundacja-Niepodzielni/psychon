@@ -301,18 +301,27 @@ export function CourseTree({
                 e.preventDefault();
                 setCel({ temat: temat.id, indeks: temat.lekcje.length });
               }}
-              onDrop={() => upusc(temat.id, temat.lekcje.length)}
+              onDrop={(e: DragEvent) => {
+                e.preventDefault();
+                upusc(temat.id, temat.lekcje.length);
+              }}
             >
               <Heading stopien={3}>{temat.tytul}</Heading>
               <Hint>
                 {odmienLekcje(temat.lekcje.length)}, {minuty} min
               </Hint>
               <div className={style.akcjePasma}>
-                <Button poziom="quiet" onClick={() => onDodajLekcje(temat.id)} data-testid={`ct-dodaj-${temat.id}`}>
+                <Button
+                  poziom="quiet"
+                  aria-label={`Dodaj lekcję w tym temacie „${temat.tytul}”`}
+                  onClick={() => onDodajLekcje(temat.id)}
+                  data-testid={`ct-dodaj-${temat.id}`}
+                >
                   Dodaj lekcję w tym temacie
                 </Button>
                 <Button
                   poziom="quiet"
+                  aria-label={`${rozwiniety ? "Zwiń" : "Rozwiń"} temat „${temat.tytul}”`}
                   aria-expanded={rozwiniety}
                   aria-controls={idListy}
                   onClick={() => przelacz(temat.id)}
@@ -351,7 +360,10 @@ export function CourseTree({
                       e.preventDefault();
                       setCel({ temat: temat.id, indeks });
                     }}
-                    onDrop={() => upusc(temat.id, indeks)}
+                    onDrop={(e: DragEvent) => {
+                      e.preventDefault();
+                      upusc(temat.id, indeks);
+                    }}
                     onDragEnd={zakonczPrzeciaganie}
                   >
                     <span className={style.numer}>
