@@ -196,7 +196,8 @@ describe("Sprawy — nazwy rodzajów z makiety", () => {
     render(<Sprawy />);
 
     const nazwaWiersza = await screen.findByText(wiersz, { selector: "p" });
-    expect(nazwaWiersza.parentElement?.className).toMatch(/pogrubiony/);
+    const wierszNazwy = nazwaWiersza.closest('[role="row"]') as HTMLElement;
+    expect(wierszNazwy.querySelector('[role="cell"]')).toContainElement(nazwaWiersza);
     const odnosnik = screen.getByRole("link", { name: `Otwórz sprawę: ${wiersz} — ${osoba}` });
     expect(odnosnik).toHaveAttribute("href", `/sprawa/${rodzaj}/${rodzaj === "applications" ? 1 : rodzaj === "profiles" ? 3 : 9}`);
     // Stare skrócone nazwy nie zostają w wierszach.
