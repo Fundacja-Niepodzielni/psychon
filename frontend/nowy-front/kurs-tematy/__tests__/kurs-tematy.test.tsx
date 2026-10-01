@@ -92,7 +92,7 @@ function temat(id: number, title: string, position: number, lesson_ids: number[]
 const TEMATY = [temat(7, "Wprowadzenie", 1, [21, 22]), temat(8, "Praktyka", 2, [23])];
 
 function renderOk() {
-  return render(<KursTematy idKursu="4" wynik={{ status: "ok", dane: { kurs: KURS, lekcje: LEKCJE } }} />);
+  return render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "ok", dane: { kurs: KURS, lekcje: LEKCJE } }} />);
 }
 
 async function renderGotowy() {
@@ -141,7 +141,7 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
   });
 
   it("błąd: komunikat z ponowieniem w kolumnie głównej", () => {
-    const { container } = render(<KursTematy idKursu="4" wynik={{ status: "blad" }} />);
+    const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "blad" }} />);
     sprawdzSzablon(container, screen.getByText("Nie udało się wczytać kursu"));
   });
 
@@ -152,13 +152,15 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
   });
 
   it("brak uprawnień: stan pusty z jedynym szablonem zdania w kolumnie głównej", () => {
-    const { container } = render(<KursTematy idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
+    const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
     sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
   });
 
-  it("brak sesji: ten sam stan braku uprawnień w szablonie", () => {
-    const { container } = render(<KursTematy idKursu="4" wynik={{ status: "brak-sesji" }} />);
-    sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
+  it("brak sesji: „Sesja wygasła” w szablonie, bez zdania o roli", () => {
+    const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "brak-sesji" }} />);
+    sprawdzSzablon(container, screen.getByText("Sesja wygasła"));
+    expect(screen.getByText("Zaloguj się ponownie, aby wrócić do kursu.")).toBeInTheDocument();
+    expect(screen.queryByText(/tylko dla prowadzących/)).toBeNull();
   });
 
   it("pusty: „Dodaj pierwszy temat” w kolumnie głównej", async () => {
@@ -221,7 +223,12 @@ describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacj
     await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” na początek tematu „Praktyka”" }));
     await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
 
-    expect(await screen.findByText("Układ musi obejmować wszystkie lekcje kursu.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Układ kursu na serwerze jest inny niż na tym ekranie. Wczytaj aktualny układ — niezapisane zmiany z tego ekranu przepadną.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Wczytaj aktualny układ" })).toBeInTheDocument();
     expect(lekcjeWTemacie("Praktyka")).toEqual(["22", "23"]);
     expect(lekcjeWTemacie("Wprowadzenie")).toEqual(["21"]);
     expect(screen.getByRole("region", { name: "Niezapisane zmiany" })).toBeInTheDocument();
@@ -261,28 +268,25 @@ describe("A-12 — układ tematów i lekcji: jedno żądanie z pełną permutacj
 });
 
 describe("A-12 — usunięcie tematu", () => {
-  it("Dialog potwierdzenia; 422 conditions_not_met → zdanie, drzewo bez zmian", async () => {
+  it("temat z lekcjami: bez Dialogu i bez żądania, zdanie mówi, co zrobić; drzewo bez zmian", async () => {
     await renderGotowy();
-    usunTemat.mockRejectedValue(
-      new ApiError({ status: 422, code: "conditions_not_met", message: "Temat ma lekcje." }),
-    );
 
     await userEvent.click(screen.getByRole("button", { name: "Usuń temat „Wprowadzenie”" }));
-    const okno = screen.getByRole("dialog", { name: "Usunąć temat „Wprowadzenie”?" });
-    expect(usunTemat).not.toHaveBeenCalled();
-    await userEvent.click(within(okno).getByRole("button", { name: "Usuń temat" }));
 
-    expect(usunTemat).toHaveBeenCalledWith("instructor", 7);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(usunTemat).not.toHaveBeenCalled();
     expect(
-      await screen.findByText("Tego tematu nie można usunąć, bo ma lekcje. Przenieś je najpierw do innego tematu."),
+      screen.getByText("Temat „Wprowadzenie” ma 2 lekcje. Przenieś je do innego tematu, a potem usuń temat."),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Wprowadzenie" })).toBeInTheDocument();
     expect(lekcjeWTemacie("Wprowadzenie")).toEqual(["21", "22"]);
   });
 
   it("wycofanie z Dialogu nie woła API", async () => {
-    await renderGotowy();
-    await userEvent.click(screen.getByRole("button", { name: "Usuń temat „Praktyka”" }));
+    pobierzTematy.mockResolvedValue([...TEMATY, temat(9, "Pusty temat", 3, [])]);
+    renderOk();
+    await screen.findByRole("heading", { level: 3, name: "Pusty temat" });
+    await userEvent.click(screen.getByRole("button", { name: "Usuń temat „Pusty temat”" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Anuluj" }));
     expect(usunTemat).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -355,6 +359,7 @@ describe("A-12 — akcja główna „Opublikuj kurs”", () => {
     pobierzTematy.mockResolvedValue(TEMATY);
     render(
       <KursTematy
+        grupa="instructor"
         idKursu="4"
         wynik={{ status: "ok", dane: { kurs: { ...KURS, description: "Opis kursu." }, lekcje: LEKCJE } }}
       />,

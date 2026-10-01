@@ -11,8 +11,9 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  *
  * Rodzaj „podmiana treści”: adres `/admin/kursy` się nie zmienia (bez
  * przekierowania), pod nim stoi lista kursów administracji w nowej ramce panelu.
- * Szczegół kursu (`/admin/kursy/{id}`) zostaje dotychczasowym ekranem w
- * dotychczasowej powłoce. Sprawdzane na zbudowanej aplikacji, z atrapą API przez
+ * Szczegół kursu (`/admin/kursy/{id}`) należy do osobnej grupy `kursAdministracji`
+ * (`przelaczenie-grupa-kurs-administracji.spec.ts`) i stoi w tej samej nowej
+ * ramce. Sprawdzane na zbudowanej aplikacji, z atrapą API przez
  * `page.route` i atrapą sesji (jak w `przelaczenie-grupa-kolejka-stazu.spec.ts`):
  * - adres po wejściu ten sam, `h1`, tytuł karty, jedyny `main` i `#tresc`,
  *   jedyny link skoku, nowa ramka, pozycja menu „Kursy” na tym samym adresie,
@@ -165,8 +166,15 @@ async function instalujAtrapyApi(
       } else if (sciezka === "/admin/courses/reorder") {
         stan.zapytania.push({ adres: "PATCH /admin/courses/reorder", cialo: zadanie.postDataJSON() });
         await route.fulfill(koperta(kursy));
+      } else if (/^\/admin\/courses\/\d+$/.test(sciezka)) {
+        // Jeden kurs — obiekt w kopercie.
+        await route.fulfill(koperta(kurs(Number(sciezka.split("/")[3]), "Nowy kurs", { is_published: false })));
+      } else if (/^\/admin\/courses\/\d+\/tests$/.test(sciezka)) {
+        // Kurs bez testu.
+        await route.fulfill(koperta(null));
       } else {
-        await route.fulfill(koperta(kurs(9, "Nowy kurs", { is_published: false })));
+        // Adresy pod kursem (lekcje, tematy, przypisania) to listy w kopercie.
+        await route.fulfill(koperta([], metaListy(0)));
       }
     },
   );
@@ -254,7 +262,7 @@ async function sprawdzAxe(page: Page, testInfo: Parameters<typeof dolaczNaruszen
 }
 
 function wiersze(page: Page) {
-  return page.locator('section[aria-label="Lista kursów"] [data-wariant="z-licznikiem"]');
+  return page.locator('section[aria-label="Lista kursów"] [role="row"][data-wiersz]');
 }
 
 const SZEROKOSCI = [1280, 390] as const;
@@ -284,8 +292,15 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
 
       await expect(wiersze(page)).toHaveCount(4);
       await expect(wiersze(page).first()).toContainText("Podstawy pomocy psychologicznej");
-      await expect(wiersze(page).first()).toContainText(["Pozycja", 1, "w ścieżce"].join(" ") + " · Kurs · Psychon · 1 lekcja");
-      await expect(wiersze(page).nth(3)).toContainText("Poza ścieżką · Webinar · Obie grupy · 0 lekcji");
+      // Typ i grupa pod nazwą kursu; miejsce w ścieżce i liczba lekcji w swoich kolumnach.
+      const pierwszy = wiersze(page).first().getByRole("cell");
+      await expect(pierwszy.nth(0)).toContainText("Kurs · PsychON");
+      await expect(pierwszy.nth(2)).toHaveText(/^Miejsce w ścieżce\s*1\s*w ścieżce$/);
+      await expect(pierwszy.nth(3)).toHaveText(/^Lekcje\s*1\s*lekcja$/);
+      const ostatni = wiersze(page).nth(3).getByRole("cell");
+      await expect(ostatni.nth(0)).toContainText("Webinar · Obie grupy");
+      await expect(ostatni.nth(2)).toHaveText(/^Miejsce w ścieżce\s*poza ścieżką$/);
+      await expect(ostatni.nth(3)).toHaveText(/^Lekcje\s*0\s*lekcji$/);
       await expect(page.getByRole("link", { name: "Otwórz kurs: Wywiad psychologiczny" })).toHaveAttribute("href", "/admin/kursy/2");
 
       // Jeden przycisk główny w nagłówku, drugorzędna akcja obok.
@@ -624,13 +639,14 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
     ]);
   });
 
-  test("szczegół kursu /admin/kursy/5 zostaje dotychczasowym ekranem w dotychczasowej powłoce", async ({ page }) => {
+  test("szczegół kursu /admin/kursy/5 stoi w tej samej nowej ramce co lista kursów", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await instalujAtrapyApi(page);
     await page.goto("/admin/kursy/5");
     await zabezpieczeniePrzedEkranemDostepu(page);
     await expect(page.getByRole("navigation", { name: "Menu — Administracja" }).first()).toBeVisible();
-    await expect(page.locator("[data-powloka-panelu]")).toHaveCount(0);
+    await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
+    expect(await page.locator("main").count()).toBe(1);
   });
 
   test("trasa poligonu /nowy-front/admin/kursy odpowiada 200", async ({ page }) => {

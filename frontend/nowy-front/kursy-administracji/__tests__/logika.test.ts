@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api/klient";
-import type { ReorderImpactRow } from "@/lib/h08/types";
+import { COURSE_TYPE_LABELS, PRODUCT_GROUP_LABELS, type ReorderImpactRow } from "@/lib/h08/types";
 import type { KursAdministracji } from "../dane";
 import {
+  KOLUMNY_KURSOW,
   adresKursu,
   czyBrakUprawnien,
   identyfikatorZTytulu,
+  jednostkaLekcji,
   komunikatKoperty,
   kursyWSciezce,
-  liczbaLekcji,
-  metaWiersza,
-  opisPozycji,
+  miejsceWSciezce,
+  opisKursu,
   pozycjaZPola,
   przesun,
   wierszeKursow,
@@ -52,36 +53,49 @@ describe("adresKursu", () => {
   });
 });
 
-describe("liczbaLekcji", () => {
+describe("jednostkaLekcji", () => {
   it.each([
-    [0, "0 lekcji"],
-    [1, "1 lekcja"],
-    [2, "2 lekcje"],
-    [4, "4 lekcje"],
-    [5, "5 lekcji"],
-    [12, "12 lekcji"],
-    [14, "14 lekcji"],
-    [22, "22 lekcje"],
-    [112, "112 lekcji"],
+    [0, "lekcji"],
+    [1, "lekcja"],
+    [2, "lekcje"],
+    [4, "lekcje"],
+    [5, "lekcji"],
+    [12, "lekcji"],
+    [14, "lekcji"],
+    [22, "lekcje"],
+    [112, "lekcji"],
   ])("%i → %s", (liczba, oczekiwane) => {
-    expect(liczbaLekcji(liczba)).toBe(oczekiwane);
+    expect(jednostkaLekcji(liczba)).toBe(oczekiwane);
   });
 });
 
-describe("opisPozycji i metaWiersza", () => {
-  it("kurs w ścieżce ma numer pozycji, kurs bez pozycji jest poza ścieżką", () => {
-    expect(opisPozycji(3)).toBe(["Pozycja", 3, "w ścieżce"].join(" "));
-    expect(opisPozycji(null)).toBe("Poza ścieżką");
+describe("miejsceWSciezce i opisKursu", () => {
+  it("kurs w ścieżce ma liczbę z mianownikiem, kurs bez miejsca jest poza ścieżką", () => {
+    expect(miejsceWSciezce(3)).toEqual({ liczba: 3, jednostka: "w ścieżce" });
+    expect(miejsceWSciezce(null)).toEqual({ tekst: "poza ścieżką" });
   });
 
-  it("meta: pozycja · typ · grupa · lekcje", () => {
-    expect(metaWiersza(kurs())).toBe([["Pozycja", 2, "w ścieżce"].join(" "), "Kurs", "Psychon", "3 lekcje"].join(" · "));
+  it("opis pod nazwą: typ · grupa, etykiety ze słowników — bez miejsca w ścieżce i bez liczby lekcji", () => {
+    expect(opisKursu(kurs())).toBe([COURSE_TYPE_LABELS.course, PRODUCT_GROUP_LABELS.psychon].join(" · "));
+    expect(opisKursu(kurs())).not.toMatch(/ścieżce|lekcj/);
   });
 
-  it("meta webinaru poza ścieżką z jedną lekcją", () => {
-    expect(metaWiersza(kurs({ type: "webinar", sequence_order: null, product_group: "both", lessons_count: 1 }))).toBe(
-      "Poza ścieżką · Webinar · Obie grupy · 1 lekcja",
+  it("opis webinaru dla obu grup", () => {
+    expect(opisKursu(kurs({ type: "webinar", sequence_order: null, product_group: "both", lessons_count: 1 }))).toBe(
+      [COURSE_TYPE_LABELS.webinar, PRODUCT_GROUP_LABELS.both].join(" · "),
     );
+  });
+});
+
+describe("KOLUMNY_KURSOW", () => {
+  it("skład i kolejność kolumn: Kurs, Stan, Miejsce w ścieżce, Lekcje, akcja", () => {
+    expect(KOLUMNY_KURSOW.map((kolumna) => [kolumna.nazwa, kolumna.rodzaj])).toEqual([
+      ["Kurs", "tekst"],
+      ["Stan", "stan"],
+      ["Miejsce w ścieżce", "liczba"],
+      ["Lekcje", "liczba"],
+      ["Akcja", "akcja"],
+    ]);
   });
 });
 
@@ -91,6 +105,11 @@ describe("wierszeKursow", () => {
     expect(wiersz.id).toBe("5");
     expect(wiersz.tytul).toBe("Wywiad psychologiczny");
     expect(wiersz.plakietka).toEqual({ wariant: "ok", tekst: "Opublikowany" });
+    expect(wiersz.podpowiedz).toBe(opisKursu(kurs()));
+    expect(wiersz.komorki).toEqual({
+      miejsce: { liczba: 2, jednostka: "w ścieżce" },
+      lekcje: { liczba: 3, jednostka: "lekcje" },
+    });
     expect(wiersz.akcja).toEqual({
       etykieta: "Otwórz",
       etykietaDostepna: "Otwórz kurs: Wywiad psychologiczny",

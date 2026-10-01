@@ -1,49 +1,12 @@
 /* Moduł CSS ekranu decyzji o dyżurach — wartości wyglądu wyłącznie z tokenów,
    zero zapisów wprost. Szerokość, odstępy obszarów i kolumnę daje szablon.
-   Wiersze listy rysuje `ListRow`; tu stoi tylko układ sekcji, panel otwartego
-   dyżuru i jego akcje. */
-.sekcja {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-}
-
-.lista {
-  display: flex;
-  flex-direction: column;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--border);
-}
-
-.wiersz {
-  display: block;
-}
-
-/* Nagłówek listy tylko dla czytnika ekranu: zostaje w drzewie nagłówków. */
-.ukryte {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* Otwarty dyżur: wiersz i panel pod nim na jednym, ciepłym tle. */
-.otwarty {
-  padding-inline: var(--space-16);
-  background: var(--card-warm);
-  border-bottom: 1px solid var(--border);
-}
-
+   Listę, jej wiersze i tło otwartego dyżuru rysuje organizm `RecordList`; tu
+   stoi tylko wnętrze panelu otwartego dyżuru i jego akcje. */
 .panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
-  padding: var(--space-8) 0 var(--space-16);
+  padding: var(--space-8) 0 0;
 }
 
 /* Dane dyżuru i „Ile godzin ma teraz”: dwie kolumny od 640 px, jedna pod drugą niżej. */

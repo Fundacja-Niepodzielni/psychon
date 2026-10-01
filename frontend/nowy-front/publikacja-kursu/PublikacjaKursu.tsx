@@ -7,11 +7,9 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice, type WariantNotice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
-import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import {
@@ -24,11 +22,11 @@ import {
   czyPoprawnyIdentyfikator,
   pobierzKurs,
   sklasyfikujBlad,
-  usunKurs,
   zmienPublikacje,
   type BladOperacji,
   type KursPublikacji,
 } from "./dane";
+import { UsuniecieKursu } from "./UsuniecieKursu";
 import style from "./PublikacjaKursu.module.css";
 
 type Stan = "ladowanie" | "blad" | "zakazane" | "nie-znaleziono" | "ok" | "usuniety";
@@ -81,7 +79,6 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
   const [braki, setBraki] = useState<PozycjaChecklisty[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [potwierdzenieUsuniecia, setPotwierdzenieUsuniecia] = useState(false);
-  const [bladUsuniecia, setBladUsuniecia] = useState<string | null>(null);
   const [proba, setProba] = useState(0);
 
   useEffect(() => {
@@ -133,33 +130,6 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
         setKomunikat(
           komunikatBledu(blad, opublikowany ? "Nie udało się opublikować kursu" : "Nie udało się cofnąć publikacji"),
         );
-      }
-    } finally {
-      setZapisywanie(false);
-    }
-  }
-
-  async function potwierdzUsuniecie() {
-    if (zapisywanie) return;
-    setZapisywanie(true);
-    setBladUsuniecia(null);
-    try {
-      await usunKurs(idKursu);
-      setPotwierdzenieUsuniecia(false);
-      setKomunikat(null);
-      setBraki([]);
-      setStan("usuniety");
-    } catch (wyjatek) {
-      const blad = sklasyfikujBlad(idKursu, wyjatek);
-      if (blad.rodzaj === "nie-znaleziono") {
-        setPotwierdzenieUsuniecia(false);
-        setStan("nie-znaleziono");
-      } else if (blad.rodzaj === "zakazane") {
-        setBladUsuniecia(zdanieOdmowyRoli("administracji"));
-      } else if (blad.rodzaj === "siec") {
-        setBladUsuniecia("Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.");
-      } else if (blad.rodzaj === "blad" || blad.rodzaj === "braki") {
-        setBladUsuniecia(blad.komunikat);
       }
     } finally {
       setZapisywanie(false);
@@ -295,44 +265,19 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
         </div>
       )}
 
-      <CollapsibleSection
-        tytul="Usunięcie kursu"
-        liczba={1}
-        dzieci={
-          <div className={style.rzadkie}>
-            <Button
-              poziom="outline"
-              niebezpieczny
-              onClick={() => {
-                setBladUsuniecia(null);
-                setPotwierdzenieUsuniecia(true);
-              }}
-            >
-              Usuń kurs
-            </Button>
-          </div>
-        }
+      <UsuniecieKursu
+        idKursu={idKursu}
+        tytulKursu={kurs.title}
+        onOkno={setPotwierdzenieUsuniecia}
+        onUsunieto={() => {
+          setKomunikat(null);
+          setBraki([]);
+          setStan("usuniety");
+        }}
+        onNieZnaleziono={() => setStan("nie-znaleziono")}
       />
 
       {toast && <Toast komunikat={toast} onZamknij={zamknijToast} />}
-
-      {potwierdzenieUsuniecia && (
-        <Dialog
-          tytul="Usunąć kurs?"
-          etykietaWycofania="Anuluj"
-          etykietaPotwierdzenia="Usuń kurs"
-          niebezpieczne
-          onWycofaj={() => setPotwierdzenieUsuniecia(false)}
-          onPotwierdz={() => void potwierdzUsuniecie()}
-        >
-          {bladUsuniecia && (
-            <Notice wariant="error" tytul="Nie udało się usunąć kursu">
-              {bladUsuniecia}
-            </Notice>
-          )}
-          <Text>{`Kurs „${kurs.title}” zniknie z listy. Postęp uczestników zostaje zachowany.`}</Text>
-        </Dialog>
-      )}
     </div>,
     {
       opis: kurs.is_published

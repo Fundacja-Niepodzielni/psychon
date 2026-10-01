@@ -27,8 +27,18 @@ import type { MenuEntry } from "../types";
  *   słownik wprost daje parę menu/nagłówek (Pulpit / Pulpit administracji,
  *   Sprawy / Sprawy do decyzji);
  * - ekrany nowego frontu, których makieta nie ma w menu, stoją w grupie
- *   najbliższej ich funkcji (Zgłoszenia współpracy → Codziennie, słownik
- *   form stażu → Program, wzory dokumentów i ekran startowy → Rozliczenie);
+ *   najbliższej ich funkcji: Zgłoszenia współpracy → Codziennie; słownik form
+ *   stażu, wzory dokumentów i ekran startowy → „Ustawienia” (słowniki i treści
+ *   ustawiane rzadko, nie codzienna praca). „Program” to Kursy, „Rozliczenie” —
+ *   Raport roku programu i Dziennik działań;
+ * - dawne łącze „Ustawienia” (`/admin/ustawienia`) stoi jako pierwsza pozycja grupy „Ustawienia” pod nazwą
+ *   nagłówka ekranu, na który prowadzi („Ustawienia edycji” — grupa `ustawieniaProgramu` jest wyłączona, więc
+ *   otwiera się stary ekran z `h1` „Ustawienia edycji”); w „Dotychczasowym panelu” już go nie ma, żeby
+ *   w menu nie stały obok siebie dwa elementy o nazwie „Ustawienia”;
+ * - „Ustawienia” to grupa zwijana (`zwijana: true`): szablon rysuje ją tym samym
+ *   komponentem co „Dotychczasowy panel” — na wejściu zwiniętą, rozwiniętą, gdy
+ *   bieżący ekran jest jej pozycją albo podstroną jej pozycji. Linia „W przygotowaniu:
+ *   ustawienia roku programu” stoi wewnątrz jej części zwijanej, pod pozycjami;
  * - funkcje starego panelu bez miejsca w menu makiety — grupa na dole
  *   „Dotychczasowy panel” ze starymi wpisami (etykieta i adres wprost ze
  *   starego rejestru);
@@ -46,9 +56,10 @@ import type { MenuEntry } from "../types";
  *   adresu, zero utraty wejścia);
  * - linie „W przygotowaniu” z makiety, bez łączy i bez funkcji obecnych
  *   w menu: w „Programie” bez „staż i superwizja” (w menu „Dyżury do decyzji”
- *   i „Superwizje”); w „Rozliczeniu” bez
- *   „treści i dokumenty” (wzory dokumentów i ekran startowy są już pozycjami
- *   tej grupy).
+ *   i „Superwizje”); w „Rozliczeniu” „certyfikaty” (model), a po odjęciu pozycji
+ *   menu (`liniaBezPozycjiMenu`) linia znika, bo „Certyfikaty” są pozycją
+ *   „Dotychczasowego panelu”; w „Ustawieniach” „ustawienia roku programu” bez „treści
+ *   i dokumenty” (wzory dokumentów i ekran startowy są już pozycjami tej grupy).
  */
 
 /** Ekran bez własnej pozycji w menu, podstrona pozycji-rodzica (okruszek, podświetlenie sekcji). */
@@ -72,6 +83,8 @@ export interface GrupaMenuRamki {
   pozycje: PozycjaMenuRamki[];
   /** Treść linii „W przygotowaniu: …” (bez przedrostka i kropki). */
   wPrzygotowaniu?: string;
+  /** Grupa zwijana przyciskiem „{nagłówek} ({liczba pozycji})” — szablon rysuje ją jak „Dotychczasowy panel”. */
+  zwijana?: true;
 }
 
 /** Nazwy pozycji ekranów z włączonych grup — ze słownika 2.1 albo z `h1` ekranu. */
@@ -88,6 +101,7 @@ export const NAZWY_RAMKI_ADMINISTRACJI = {
   dziennik: "Dziennik działań",
   wzoryDokumentow: "Wzory dokumentów",
   ekranStartowy: "Treść ekranu „Zacznij tutaj”",
+  ustawieniaEdycji: "Ustawienia edycji",
 } as const;
 
 /**
@@ -106,6 +120,9 @@ export const PODSTRONY_ADMINISTRACJI = [
 
 /** Nazwa grupy na dole menu ze starymi funkcjami panelu. */
 export const GRUPA_DOTYCHCZASOWA = "Dotychczasowy panel";
+
+/** Nazwa grupy zwijanej ze słownikami i treściami ustawianymi rzadko (słownik form stażu, wzory dokumentów, ekran startowy). */
+export const GRUPA_USTAWIENIA = "Ustawienia";
 
 type Grupy = Record<string, DefinicjaGrupy>;
 
@@ -131,7 +148,6 @@ const IKONY_DOTYCHCZASOWE: Record<string, NazwaIkony> = {
   "/admin/staz": "inbox",
   "/admin/superwizje": "chat",
   "/admin/emails": "inbox",
-  "/admin/ustawienia": "cog",
 };
 
 /** Stary wpis rejestru → pozycja grupy „Dotychczasowy panel” (etykieta i adres bez zmian). */
@@ -164,10 +180,10 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
       ? []
       : ekrany.filter(({ wpis }) => wpis.grupa === grupa).map(({ wpis, adres }) => ({ ikona: "inbox", etykieta: wpis.etykieta, href: adres }));
   const kolejkaStazuWRejestrze = ekrany.some(({ wpis }) => wpis.grupa === "kolejkaStazu");
-  const dotychczasowe = [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails, h19Ustawienia].filter(
+  const dotychczasowe = [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails].filter(
     (wpis) => !(kolejkaStazuWRejestrze && wpis === h11Staz),
   );
-  return [
+  const grupyMenu: GrupaMenuRamki[] = [
     {
       naglowek: "Codziennie",
       pozycje: [
@@ -181,28 +197,33 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
     },
     {
       naglowek: "Program",
-      pozycje: [
-        ...pozycja(h08Kursy.href, "book", n.kursy),
-        ...pozycja(cel(grupy, "formyStazu"), "clock", n.formyStazu),
-      ],
+      pozycje: pozycja(h08Kursy.href, "book", n.kursy),
       // Bez „staż i superwizja”: „Dyżury do decyzji” (podstrona „Spraw”) i „Superwizje” („Dotychczasowy panel”) mają swoje wejścia.
       wPrzygotowaniu: "prowadzący",
     },
     {
       naglowek: "Rozliczenie",
+      pozycje: [...pozycja(h20Raport.href, "chart", n.raport), ...pozycja(h20Dziennik.href, "file", n.dziennik)],
+      // Linia znika w menu: „Certyfikaty” są pozycją „Dotychczasowego panelu” (`liniaBezPozycjiMenu`).
+      wPrzygotowaniu: "certyfikaty",
+    },
+    {
+      naglowek: GRUPA_USTAWIENIA,
+      zwijana: true,
       pozycje: [
-        ...pozycja(h20Raport.href, "chart", n.raport),
-        ...pozycja(h20Dziennik.href, "file", n.dziennik),
+        ...pozycja(h19Ustawienia.href, "cog", n.ustawieniaEdycji),
+        ...pozycja(cel(grupy, "formyStazu"), "clock", n.formyStazu),
         ...pozycja(cel(grupy, "wzoryDokumentow"), "file", n.wzoryDokumentow),
         ...pozycja(cel(grupy, "ekranStartowy"), "cog", n.ekranStartowy),
       ],
-      wPrzygotowaniu: "certyfikaty · ustawienia roku programu",
+      wPrzygotowaniu: "ustawienia roku programu",
     },
     {
       naglowek: GRUPA_DOTYCHCZASOWA,
       pozycje: dotychczasowe.map(dotychczasowa),
     },
-  ].filter((grupa) => grupa.pozycje.length > 0);
+  ];
+  return grupyMenu.filter((grupa) => grupa.pozycje.length > 0);
 }
 
 /** Czy pozycja jest bieżąca dla ścieżki (korzeń sekcji tylko dokładnie, reszta z podstronami). */

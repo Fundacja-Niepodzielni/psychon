@@ -55,8 +55,11 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest trzynaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
- * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`, `nabor` i `listaOsob`
+ * Grupy dzisiejszego kanonu. Włączonych jest siedemnaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
+ * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
+ * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
+ * pod własnym adresem z kursem w ścieżce; wchodzi się na niego z ekranu kursu), `nabor` i `listaOsob`
  * (dwie ostatnie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem). Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
@@ -250,7 +253,7 @@ export const GRUPY = {
    */
   publikacjaKursu: {
     klucz: "publikacjaKursu",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -322,7 +325,7 @@ export const GRUPY = {
    */
   zaproszeniaNaKurs: {
     klucz: "zaproszeniaNaKurs",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -394,16 +397,37 @@ export const GRUPY = {
       },
     ],
   },
-  /** Edycja lekcji: treść, nagranie, materiały (H08) — dziś część strony szczegółu kursu, ten sam adres. */
+  /**
+   * Edycja lekcji: treść, nagranie, materiały (H08). Osobny ekran pod własnym
+   * adresem z kursem w ścieżce — bez starej trasy, bo w starym froncie lekcję
+   * edytowało się na stronie kursu. Wchodzi się na niego z ekranu kursu
+   * odnośnikiem „Materiały i nagranie” w formularzu przy wierszu lekcji.
+   */
   edycjaLekcji: {
     klucz: "edycjaLekcji",
-    wlaczona: false,
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: null,
+        nowaTrasa: "/admin/kursy/[id]/lekcje/[idLekcji]",
+        trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
+      },
+    ],
+  },
+  /**
+   * Kurs administracji: tematy i lekcje, publikacja, zaproszenia i usunięcie
+   * na jednym ekranie (H08) — ten sam adres co dzisiejszy szczegół kursu.
+   */
+  kursAdministracji: {
+    klucz: "kursAdministracji",
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
         staraTrasa: "/admin/kursy/[id]",
         nowaTrasa: "/admin/kursy/[id]",
-        trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
+        trasaPoligonu: "/nowy-front/admin/kursy/[id]",
       },
     ],
   },

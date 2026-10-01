@@ -133,6 +133,19 @@ function wiersz(nazwa: string) {
   return screen.getByText(nazwa).closest("[data-wiersz]") as HTMLElement;
 }
 
+/** Komórka wiersza pod nagłówkiem kolumny o podanej nazwie. */
+function komorka(wierszListy: HTMLElement, kolumna: string): HTMLElement {
+  const naglowki = within(screen.getByRole("table", { name: "Dyżury do decyzji" })).getAllByRole("columnheader");
+  const indeks = naglowki.findIndex((naglowek) => naglowek.textContent === kolumna);
+  expect(indeks, `kolumna „${kolumna}”`).toBeGreaterThanOrEqual(0);
+  return within(wierszListy).getAllByRole("cell")[indeks];
+}
+
+/** Wiersz panelu otwartego dyżuru: następny wiersz tabeli po wierszu osoby. */
+function wierszPanelu(nazwa: string) {
+  return wiersz(nazwa).nextElementSibling as HTMLElement;
+}
+
 function przyciskOtworz(nazwa: string) {
   return within(wiersz(nazwa)).getByRole("button", { name: new RegExp(`^Otwórz dyżur: ${nazwa}`) });
 }
@@ -216,21 +229,48 @@ describe("StazKolejka — stany w szablonie", () => {
     expect(container.querySelector("[data-testid='obszar-lista'] [aria-busy='true']")).not.toBeNull();
   });
 
-  it("dane: dwa wiersze zwinięte — „Dyżur”, osoba, plakietka wieku i „Otwórz”, bez danych wpisu", async () => {
+  it("dane: dwa wiersze zwinięte — „Dyżur”, osoba, plakietka wieku, godziny i „Otwórz”, bez pozostałych danych wpisu", async () => {
     const { container } = await renderZDanymi();
     sprawdzSzablon(container);
     expect(apiPaged).toHaveBeenCalledWith("/admin/internship/pending?page=1&per_page=25");
     expect(wierszeListy()).toHaveLength(2);
     const pierwszy = wiersz("Marta Demo");
     expect(pierwszy).toHaveTextContent("Dyżur");
-    expect(within(pierwszy).getByText("Dyżur").parentElement?.className).toMatch(/pogrubiony/);
+    // Nazwa stoi w pierwszej kolumnie, osoba pod nią; plakietka wieku dopiero w kolumnie stanu.
+    expect(within(pierwszy).getAllByRole("cell")[0]).toBe(komorka(pierwszy, "Dyżur"));
+    expect(komorka(pierwszy, "Dyżur")).toContainElement(within(pierwszy).getByText("Dyżur", { selector: "p" }));
+    expect(komorka(pierwszy, "Dyżur")).toContainElement(screen.getByText("Marta Demo"));
+    expect(komorka(pierwszy, "Dyżur")).not.toHaveTextContent(/czeka \d|czeka od dziś/);
+    expect(komorka(pierwszy, "Stan")).toHaveTextContent(
+      tekstPlakietkiCzekania(dniOczekiwania(dniTemu(4), TERAZ.getTime())!),
+    );
     expect(pierwszy).toHaveTextContent(tekstPlakietkiCzekania(dniOczekiwania(dniTemu(4), TERAZ.getTime())!));
     expect(wiersz("Filip Demo")).toHaveTextContent(tekstPlakietkiCzekania(dniOczekiwania(dniTemu(5), TERAZ.getTime())!));
-    // Zwinięta lista nie niesie ani godzin, ani formy, ani opisu — to jest w panelu.
+    // Godziny dyżuru (pole `hours` wpisu) stoją we własnej kolumnie, z przecinkiem i jednostką.
+    expect(komorka(pierwszy, "Godziny")).toHaveTextContent(/^Godziny\s*3,5\s*h$/);
+    // Zwinięta lista nie niesie ani formy, ani konsultacji, ani opisu — to jest w panelu.
     expect(container.textContent).not.toContain("Dyżur telefoniczny — bez danych osób.");
     expect(container.textContent).not.toMatch(/konsultacje/i);
-    expect(container.textContent).not.toMatch(/3[.,]5/);
     expect(screen.queryByRole("region", { name: /^Dyżur:/ })).toBeNull();
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it("kolumny w kolejności: Dyżur, Stan, Godziny, akcja — dane z jednego odczytu kolejki", async () => {
+    await renderZDanymi();
+    const tabela = screen.getByRole("table", { name: "Dyżury do decyzji" });
+    expect(within(tabela).getAllByRole("columnheader").map((naglowek) => naglowek.textContent)).toEqual([
+      "Dyżur",
+      "Stan",
+      "Godziny",
+      "Akcja",
+    ]);
+    for (const nazwa of ["Marta Demo", "Filip Demo"]) {
+      const komorki = within(wiersz(nazwa)).getAllByRole("cell");
+      expect(komorki).toHaveLength(4);
+      expect(komorki.at(-1)).toContainElement(przyciskOtworz(nazwa));
+    }
+    expect(apiPaged).toHaveBeenCalledTimes(1);
+    expect(apiPaged).toHaveBeenCalledWith("/admin/internship/pending?page=1&per_page=25");
     expect(api).not.toHaveBeenCalled();
   });
 
@@ -257,7 +297,7 @@ describe("StazKolejka — stany w szablonie", () => {
   it("akcja wiersza: widoczny napis „Otwórz”, pełna nazwa z osobą i datą dyżuru tylko dla czytnika", async () => {
     await renderZDanymi();
     const przycisk = przyciskOtworz("Marta Demo");
-    // Wygląd akcji wiersza Spraw (`wygladOdnosnika`), element nadal przycisk: „Otwórz ›”, strzałka ukryta przed czytnikiem.
+    // Wygląd akcji wiersza Spraw (akcja kolumny organizmu), element nadal przycisk: „Otwórz ›”, strzałka ukryta przed czytnikiem.
     expect(przycisk.tagName).toBe("BUTTON");
     expect(przycisk.textContent).toMatch(/^Otwórz\s*›$/);
     expect(przycisk.querySelector('[aria-hidden="true"]')?.textContent).toBe("›");
@@ -350,7 +390,10 @@ describe("StazKolejka — panel otwartego dyżuru (A-02)", () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
-    expect(wiersz("Marta Demo").contains(panel)).toBe(true);
+    // Panel stoi w następnym wierszu tabeli, zaraz pod wierszem osoby (jedna komórka na całą szerokość).
+    expect(wierszPanelu("Marta Demo").contains(panel)).toBe(true);
+    expect(wierszPanelu("Marta Demo")).toHaveAttribute("role", "row");
+    expect(wiersz("Marta Demo").contains(panel)).toBe(false);
     const dane = Array.from(panel.querySelectorAll("dt")).map((dt) => [dt.textContent, dt.nextElementSibling?.textContent]);
     expect(dane).toEqual([
       ["Data", "27 sierpnia 2026"],
@@ -484,7 +527,7 @@ describe("StazKolejka — decyzje", () => {
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     await uzytkownik.click(within(panel).getByRole("button", { name: "Poproś o poprawkę" }));
     const formularz = await screen.findByRole("form", { name: /Poproś o poprawkę: Marta Demo/ });
-    expect(wiersz("Marta Demo").contains(formularz)).toBe(true);
+    expect(wierszPanelu("Marta Demo").contains(formularz)).toBe(true);
     expect(panel.contains(formularz)).toBe(true);
     expect(oknaDialogowe()).toHaveLength(0);
     expect(przyciskiGlowne()).toHaveLength(1);

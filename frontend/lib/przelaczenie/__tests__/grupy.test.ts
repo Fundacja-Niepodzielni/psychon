@@ -13,10 +13,12 @@ import {
  * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
  * `pulpitAdministracji`), `pulpitUczestnika` i `pulpitProwadzacego`
  * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
- * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu` i `kursyAdministracji`.
+ * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`
+ * i `kursAdministracji` (z nim `publikacjaKursu` i `zaproszeniaNaKurs` — sekcje tego samego ekranu pod tym samym adresem),
+ * a także `edycjaLekcji` (ekran lekcji pod własnym, nowym adresem z kursem w ścieżce).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "kolejkaStazu", "kursyAdministracji", "listaOsob", "nabor", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow"];
+const WLACZONE = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kolejkaStazu", "kursAdministracji", "kursyAdministracji", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -32,7 +34,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, nabór i lista osób", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, edycja lekcji, nabór i lista osób", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -48,7 +50,7 @@ describe("rejestr GRUPY — stan flag", () => {
   });
 
   it("grupy z podmianą treści mają ten sam adres starej i nowej trasy", () => {
-    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy", "sprawy", "kursyAdministracji"] as const) {
+    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy", "sprawy", "kursyAdministracji", "kursAdministracji", "publikacjaKursu", "zaproszeniaNaKurs"] as const) {
       const [ekran] = GRUPY[klucz].ekrany;
       expect(ekran.panel, klucz).toBe("administracja");
       expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
@@ -161,7 +163,7 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna dwadzieścia siedem grup dzisiejszego kanonu", () => {
+  it("zna dwadzieścia osiem grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "decyzjaProfilu",
       "edycjaLekcji",
@@ -171,6 +173,7 @@ describe("rejestr GRUPY — zawartość", () => {
       "kolejkaProfili",
       "kolejkaStazu",
       "kurs",
+      "kursAdministracji",
       "kursyAdministracji",
       "kursyProwadzacego",
       "lekcja",
@@ -190,6 +193,17 @@ describe("rejestr GRUPY — zawartość", () => {
       "wspolpraca",
       "wzoryDokumentow",
       "zaproszeniaNaKurs",
+    ]);
+  });
+
+  it("edycja lekcji ma własny adres produktu z kursem w ścieżce i nie ma starej trasy", () => {
+    expect(GRUPY.edycjaLekcji.ekrany).toEqual([
+      {
+        panel: "administracja",
+        staraTrasa: null,
+        nowaTrasa: "/admin/kursy/[id]/lekcje/[idLekcji]",
+        trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
+      },
     ]);
   });
 

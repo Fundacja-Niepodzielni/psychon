@@ -203,23 +203,23 @@ export const OCZEKIWANE_ATOMY_STYL = [
     selektor: '[data-style-id="atom-badge"] > span',
     wlasciwosci: {
       "border-radius": "var(--r-pill)", "font-size": "var(--fs-11)", "font-weight": "var(--fw-medium)",
-      "background-color": "var(--grey)", color: "var(--muted)",
+      "background-color": "var(--grey)", color: "var(--muted)", "border-top-color": "var(--border-strong)",
     },
   },
   {
     nazwa: "A8 Badge — ok", grupa: "A8", pozycja: "ok",
     selektor: '[data-style-id="atom-badge-ok"] > span',
-    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--grey)", color: "var(--muted)" },
+    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--grey)", color: "var(--muted)", "border-top-color": "var(--border-strong)" },
   },
   {
     nazwa: "A8 Badge — warn", grupa: "A8", pozycja: "warn",
     selektor: '[data-style-id="atom-badge-warn"] > span',
-    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--warn-bg)", color: "var(--warn)" },
+    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--warn-bg)", color: "var(--warn)", "border-top-color": "var(--warn)" },
   },
   {
     nazwa: "A8 Badge — error", grupa: "A8", pozycja: "error",
     selektor: '[data-style-id="atom-badge-error"] > span',
-    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--error-bg)", color: "var(--error)" },
+    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--error-bg)", color: "var(--error)", "border-top-color": "var(--error)" },
   },
   {
     // Poprzednia wersja twierdziła tu, że
@@ -233,13 +233,13 @@ export const OCZEKIWANE_ATOMY_STYL = [
     selektor: '[data-style-id="atom-badge-pending"] > span',
     wlasciwosci: {
       "border-radius": "var(--r-pill)", "font-size": "var(--fs-11)", "font-weight": "var(--fw-medium)",
-      "background-color": "var(--grey)", color: "var(--muted)",
+      "background-color": "var(--grey)", color: "var(--muted)", "border-top-color": "var(--border-strong)",
     },
   },
   {
     nazwa: "A8 Badge — z licznikiem", grupa: "A8", pozycja: "z licznikiem",
     selektor: '[data-style-id="atom-badge-licznik"] > span',
-    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--grey)", color: "var(--muted)" },
+    wlasciwosci: { "border-radius": "var(--r-pill)", "background-color": "var(--grey)", color: "var(--muted)", "border-top-color": "var(--border-strong)" },
   },
 
   // --- A9 Label: 2 warianty ---

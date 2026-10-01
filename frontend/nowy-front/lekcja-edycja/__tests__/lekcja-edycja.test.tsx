@@ -8,7 +8,10 @@ import type { CialoLekcji, LekcjaAdmin, MaterialAdmin, StanNagrania, ZlecenieWgr
  * Ekran „Lekcja: treść, nagranie, materiały” (administracja): każdy stan
  * w szablonie formularza z jednym `main`, zapis treści bez przycinania,
  * licznik znaków, 422 na polu treści, materiały, nagranie dla obu ról
- * administracji, odmowa z powodu roli (atrapa 401/403, 0 danych w DOM).
+ * administracji, odmowa z powodu roli (403, 0 danych w DOM). Odpowiedź 401
+ * w próbie jest błędem podanym wprost przez atrapę funkcji `api`: sprawdza,
+ * że ekran i wtedy nie pokazuje danych. W produkcie 401 bez sesji nie dochodzi
+ * do ekranu — wspólny klient przenosi wtedy na `/logowanie`.
  * Każda atrapa odpowiedzi serwera ma jawny typ z `../dane`, więc brak albo
  * obcy klucz w atrapie czerwieni `npm run sprawdz-typy`.
  */
@@ -130,11 +133,14 @@ describe("stany ekranu w szablonie formularza", () => {
     szablon(container);
     expect(pole(/^Tytuł lekcji/).value).toBe("Wprowadzenie do wywiadu");
     expect(pole(/^Treść lekcji/).value).toBe("## Cel lekcji\n\nPierwszy akapit.");
-    expect(pole(/^Czas trwania/).value).toBe("1800");
+    expect(pole(/^Czas trwania w minutach/).value).toBe("30");
     expect(screen.getByRole("heading", { level: 1, name: "Wprowadzenie do wywiadu" })).toBeInTheDocument();
   });
 
-  it.each([401, 403])("odmowa %i: rola administracji w tekście, zero danych, szablon", async (status) => {
+  it.each([
+    [403, "odmowa roli"],
+    [401, "błąd 401 podany przez atrapę klienta (w produkcie 401 bez sesji przenosi na /logowanie)"],
+  ])("%i — %s: rola administracji w tekście, zero danych, szablon", async (status) => {
     ustawApi();
     api.mockRejectedValue(new ApiError({ status, code: status === 401 ? "unauthenticated" : "forbidden", message: "x" }));
     const { container } = render(<LekcjaEdycja idLekcji={21} idKursu={3} />);
@@ -371,7 +377,7 @@ describe("materiały", () => {
   it("wgranie pliku: multipart z polem file, licznik rośnie, wiersz pliku gotowy", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderujDane();
-    expect(screen.getByText("Materiały przy tej lekcji: 2.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument();
     const wgrany: MaterialAdmin = {
       id: 9,
       name: "karta.pdf",
@@ -388,12 +394,12 @@ describe("materiały", () => {
     const plik = new File(["%PDF"], "karta.pdf", { type: "application/pdf" });
     await uzytkownik.upload(wejsciaPlikow(container)[0], plik);
 
-    await screen.findByText("Wgrano materiał.");
+    await screen.findByText("Wgrano materiał „karta.pdf”.");
     const wywolanie = wywolania("POST", "/admin/lessons/21/materials")[0];
     const cialo = (wywolanie[1] as { body: FormData }).body;
     expect(cialo).toBeInstanceOf(FormData);
     expect((cialo.get("file") as File).name).toBe("karta.pdf");
-    expect(screen.getByText("Materiały przy tej lekcji: 3.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
   });
 
   it("422 na pliku: komunikat serwera w wierszu pliku, licznik bez zmian", async () => {
@@ -409,7 +415,7 @@ describe("materiały", () => {
     );
     await uzytkownik.upload(wejsciaPlikow(container)[0], new File(["x"], "duzy.pdf", { type: "application/pdf" }));
     expect(await screen.findByText("Plik może mieć najwyżej 10 MB.")).toBeInTheDocument();
-    expect(screen.getByText("Materiały przy tej lekcji: 2.")).toBeInTheDocument();
+    expect(screen.getByText("Ta lekcja ma 2 materiały.")).toBeInTheDocument();
   });
 });
 

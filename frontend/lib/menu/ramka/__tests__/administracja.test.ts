@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { adminMenu } from "@/lib/menu/admin";
 import {
   GRUPA_DOTYCHCZASOWA,
+  GRUPA_USTAWIENIA,
   PODSTRONY_ADMINISTRACJI,
   czyPodstronaPozycji,
   czyPozycjaBiezaca,
@@ -16,9 +17,12 @@ import { GRUPY, type DefinicjaGrupy, type KluczGrupy } from "@/lib/przelaczenie/
  * Codziennie: Pulpit · Sprawy · Uczestnicy; Program: Kursy + „W
  * przygotowaniu: prowadzący” (makieta: „prowadzący · staż i superwizja”;
  * staż jest podstroną „Spraw” („Dyżury do decyzji”), superwizja — „Superwizje”);
- * Rozliczenie: Raport roku
- * programu · Dziennik działań + „W przygotowaniu: certyfikaty · ustawienia
- * roku programu” (bez „treści i dokumenty” — wzory dokumentów i ekran
+ * Rozliczenie: Raport roku programu · Dziennik działań + „W przygotowaniu:
+ * certyfikaty” (w modelu; w menu linia znika, bo „Certyfikaty” są pozycją
+ * „Dotychczasowego panelu”); Ustawienia (grupa zwijana): Ustawienia edycji (dawne łącze
+ * „Ustawienia”, nazwane nagłówkiem swojego ekranu) · Słownik form stażu ·
+ * Wzory dokumentów · Treść ekranu „Zacznij tutaj” + „W przygotowaniu:
+ * ustawienia roku programu” (bez „treści i dokumenty” — wzory dokumentów i ekran
  * startowy są już pozycjami tej grupy); Konto: Wyloguj (w powłoce).
  */
 
@@ -29,7 +33,12 @@ function zFlagami(flagi: Partial<Record<KluczGrupy, boolean>>): Record<string, D
 }
 
 function uklad(grupy: GrupaMenuRamki[]) {
-  return grupy.map((g) => ({ naglowek: g.naglowek, pozycje: g.pozycje.map((p) => [p.etykieta, p.href]), linia: g.wPrzygotowaniu }));
+  return grupy.map((g) => ({
+    naglowek: g.naglowek,
+    pozycje: g.pozycje.map((p) => [p.etykieta, p.href]),
+    linia: g.wPrzygotowaniu,
+    zwijana: g.zwijana,
+  }));
 }
 
 /** Adresy wejść: pozycje menu i podstrony pozycji-rodziców (ekrany bez własnej pozycji w menu). */
@@ -65,24 +74,33 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
         ],
         linia: undefined,
+        zwijana: undefined,
       },
       {
         naglowek: "Program",
-        pozycje: [
-          ["Kursy", "/admin/kursy"],
-          ["Słownik form stażu", "/admin/formy-stazu"],
-        ],
+        pozycje: [["Kursy", "/admin/kursy"]],
         linia: "prowadzący",
+        zwijana: undefined,
       },
       {
         naglowek: "Rozliczenie",
         pozycje: [
           ["Raport roku programu", "/admin/raport"],
           ["Dziennik działań", "/admin/dziennik"],
+        ],
+        linia: "certyfikaty",
+        zwijana: undefined,
+      },
+      {
+        naglowek: GRUPA_USTAWIENIA,
+        pozycje: [
+          ["Ustawienia edycji", "/admin/ustawienia"],
+          ["Słownik form stażu", "/admin/formy-stazu"],
           ["Wzory dokumentów", "/admin/wzory-dokumentow"],
           ["Treść ekranu „Zacznij tutaj”", "/admin/ekran-startowy"],
         ],
-        linia: "certyfikaty · ustawienia roku programu",
+        linia: "ustawienia roku programu",
+        zwijana: true,
       },
       {
         naglowek: GRUPA_DOTYCHCZASOWA,
@@ -92,11 +110,19 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Profile psychologa", "/admin/profile"],
           ["Superwizje", "/admin/superwizje"],
           ["Skrzynka e-maili", "/admin/emails"],
-          ["Ustawienia", "/admin/ustawienia"],
         ],
         linia: undefined,
+        zwijana: undefined,
       },
     ]);
+  });
+
+  it("pięć grup w stałej kolejności, flaga zwijania tylko na „Ustawieniach”, nazwa grupy ze stałej", () => {
+    const menu = menuRamkiAdministracji();
+    expect(menu.map((g) => g.naglowek)).toEqual(["Codziennie", "Program", "Rozliczenie", "Ustawienia", "Dotychczasowy panel"]);
+    expect(GRUPA_USTAWIENIA).toBe("Ustawienia");
+    expect(menu.filter((g) => g.zwijana).map((g) => g.naglowek)).toEqual([GRUPA_USTAWIENIA]);
+    expect(menu.find((g) => g.naglowek === GRUPA_USTAWIENIA)?.zwijana).toBe(true);
   });
 
   it("menu rzeczywiste (rejestr na dziś) jest tym samym menu co przy grupach włączonych na dziś", () => {
@@ -119,9 +145,40 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
     for (const adres of adresy) expect(stareAdresy.has(adres), adres).toBe(true);
   });
 
-  it("kontrola dodatnia: włączenie grupy form stażu dokłada pozycję w grupie Program", () => {
-    const program = menuRamkiAdministracji(zFlagami({ formyStazu: true })).find((g) => g.naglowek === "Program");
-    expect(program?.pozycje.map((p) => p.href)).toEqual(["/admin/kursy", "/admin/formy-stazu"]);
+  it("kontrola dodatnia: włączenie grupy form stażu dokłada pozycję w grupie Ustawienia, a „Program” zostaje przy Kursach", () => {
+    const adresyUstawien = (flagi: Partial<Record<KluczGrupy, boolean>>) =>
+      menuRamkiAdministracji(zFlagami(flagi))
+        .find((g) => g.naglowek === GRUPA_USTAWIENIA)
+        ?.pozycje.map((p) => p.href) ?? [];
+    expect(adresyUstawien({})).not.toContain("/admin/formy-stazu");
+    expect(adresyUstawien({ formyStazu: true }).slice(0, 2)).toEqual(["/admin/ustawienia", "/admin/formy-stazu"]);
+    const menu = menuRamkiAdministracji(zFlagami({ formyStazu: true }));
+    expect(menu.find((g) => g.naglowek === "Program")?.pozycje.map((p) => p.href)).toEqual(["/admin/kursy"]);
+  });
+
+
+  it("dawne łącze „Ustawienia” stoi pierwsze w grupie „Ustawienia” pod nazwą nagłówka ekranu i znika z „Dotychczasowego panelu” (grupy włączone i wyłączone)", () => {
+    for (const flagi of [WLACZONE_DZIS, {}]) {
+      const menu = menuRamkiAdministracji(zFlagami(flagi));
+      const ustawienia = menu.find((g) => g.naglowek === GRUPA_USTAWIENIA);
+      expect(ustawienia?.pozycje[0]).toEqual({ ikona: "cog", etykieta: "Ustawienia edycji", href: "/admin/ustawienia" });
+      const dotychczasowy = menu.find((g) => g.naglowek === GRUPA_DOTYCHCZASOWA);
+      expect(dotychczasowy?.pozycje.map((p) => p.href)).not.toContain("/admin/ustawienia");
+      expect(menu.flatMap((g) => g.pozycje).filter((p) => p.href === "/admin/ustawienia")).toHaveLength(1);
+    }
+  });
+
+  it("nazwy dostępne wszystkich przycisków i łączy menu są różne: żadna pozycja nie nazywa się jak nagłówek grupy zwijanej ani jak inna pozycja", () => {
+    for (const flagi of [WLACZONE_DZIS, {}]) {
+      const menu = menuRamkiAdministracji(zFlagami(flagi));
+      // Przycisk grupy zwijanej ma nazwę „{nagłówek} ({liczba pozycji})”; łącza — etykiety pozycji i podstron.
+      const przyciski = menu.filter((g) => g.zwijana || g.naglowek === GRUPA_DOTYCHCZASOWA).map((g) => `${g.naglowek} (${g.pozycje.length})`);
+      const lacza = menu.flatMap((g) => g.pozycje.flatMap((p) => [p.etykieta, ...(p.podstrony ?? []).map((ekran) => ekran.etykieta)]));
+      const nazwy = [...przyciski, ...lacza, "Wyloguj"];
+      expect(nazwy.filter((nazwa, i) => nazwy.indexOf(nazwa) !== i)).toEqual([]);
+      // Nazwa łącza nie może też być nagłówkiem grupy (przycisk bez liczby czytany jako sam nagłówek).
+      for (const g of menu) expect(lacza, g.naglowek).not.toContain(g.naglowek);
+    }
   });
 
   it("rejestr podstron: „Dyżury do decyzji” i „Zgłoszenia rekrutacyjne” mają rodzica „Sprawy”, a własnej pozycji w menu nie mają", () => {

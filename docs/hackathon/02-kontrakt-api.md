@@ -1209,3 +1209,134 @@ Kod: `Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLesson
 (trasy prowadzącego dziedziczą reguły), `Http/Requests/Concerns/KeepsLessonContentVerbatim.php`,
 `Http/Resources/H08/AdminLessonResource.php`, `routes/api/h06.php`; front:
 `frontend/design-system/molekuly/TrescLekcji/`.
+
+---
+
+## Aneks — wzory dokumentów: edytor administracji
+
+Trzy trasy edytora wzorów dokumentów generowanych dla osoby (porozumienie, zaświadczenie o
+stażu, certyfikat). Aneks opisuje stan kodu; nie dodaje sluga audytu ani typu powiadomienia.
+
+### 1. Trasy
+
+Wszystkie w grupie `role:project_manager,super_admin` (brak tokenu → `401 unauthenticated`,
+inna rola → `403 forbidden`), pod flagą `features.document_templates`.
+
+- `GET /document-templates/{type}` → `200 {data: Wzor}`.
+- `PUT /document-templates/{type}` z ciałem `{ "content": "..." }` → `200 {data: Wzor}` po
+  zapisie nowej wersji. Limit: **20 żądań na minutę na osobę**.
+- `GET /document-templates/{type}/versions` → `200 {data: [Wersja]}`, od najnowszej, bez
+  stronicowania.
+
+`{type}` jest słownikiem zamkniętym: `agreement · attendance_certificate · certificate`.
+Rodzaj spoza słownika → `404 not_found` („Nie znaleziono zasobu.”) na każdej z trzech tras.
+
+### 2. Zasoby
+
+`Wzor` = `{ "type", "content", "version", "updated_at", "updated_by", "current_version_unused" }`.
+`Wersja` = `{ "version", "updated_at", "updated_by" }`. `updated_at` — ISO 8601 UTC;
+`updated_by` — `{ "id", "name" }` albo `null`.
+
+`current_version_unused` (wartość logiczna): `true` oznacza, że bieżąca treść ma stary zapis
+i **nie jest używana** — dokumenty tego rodzaju powstają z wzoru domyślnego z repozytorium.
+Ten sam warunek stosuje generator, więc pole i generowanie nie mogą się rozjechać.
+
+### 3. Zapis treści
+
+`content`: wymagany string, od 1 do **20 000 znaków**. Treść z bazy **nigdy nie jest
+kompilowana ani wykonywana** — serwer podstawia w niej wyłącznie pola zapisane dokładnie jako
+`{{ $nazwa }}`, z listy pól danego rodzaju dokumentu.
+
+Odmowa zapisu → `422 validation_failed` w standardowej kopercie, zdanie w `errors.content`,
+nic nie jest zapisywane:
+
+- pole spoza listy rodzaju: „Pole „…” nie istnieje w tym dokumencie.”;
+- zapis `{!! … !!}`;
+- podwójne nawiasy klamrowe otaczające cokolwiek poza nazwą pola (wyrażenie, wartość
+  domyślna, komentarz);
+- znaczniki `<?` albo `?>`;
+- słowo zaczynające się od znaku `@` (adres e-mail jest dozwolony).
+
+Każde z tych zdań kończy się dopiskiem z listą pól dostępnych w tym rodzaju dokumentu.
+
+Po regule pól serwer wykonuje **próbne generowanie** dokumentu z danych przykładowych. Gdy
+się nie powiedzie → `422 validation_failed`, `errors.content[0]` = „Z tego wzoru nie da się
+wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.”
+
+```json
+{ "error": { "status": 422, "code": "validation_failed",
+    "message": "Popraw zaznaczone pola.",
+    "errors": { "content": ["Treść nie może zawierać znaczników „<?” ani „?>”. …"] } } }
+```
+
+### 4. Limit żądań
+
+Przekroczenie limitu zapisu → **429** `too_many_requests`; odmowy `422` liczą się do limitu.
+`reason` ma dokładnie jeden klucz — liczbę sekund do następnej próby (liczba całkowita 1–60):
+
+```json
+{ "error": { "status": 429, "code": "too_many_requests",
+    "message": "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
+    "reason": { "retry_after_seconds": 42 } } }
+```
+
+Kod `429 too_many_requests` dochodzi do tabeli §1.1 jako „przekroczony limit żądań trasy”.
+
+### 5. Czego ten aneks nie wprowadza
+
+Zapis wzoru nie emituje dziś zdarzenia audytu ani powiadomienia — slug i ładunek dojdą
+osobnym aneksem razem ze zmianą kodu. Trasy „przywróć wzór domyślny” nie ma.
+
+Kod: `routes/api/document_templates.php`,
+`Http/Controllers/Api/V1/DocumentTemplateController.php`,
+`Http/Requests/DocumentTemplates/UpdateDocumentTemplateRequest.php`,
+`Http/Resources/DocumentTemplateResource.php`,
+`Services/DocumentTemplates/DocumentTemplateFields.php`,
+`Services/DocumentTemplates/DocumentTemplateTrial.php`.
+
+---
+
+## Aneks — nagranie lekcji tylko z wgrania (H08)
+
+Identyfikator nagrania lekcji (`video_provider_id`) nadaje serwer w ścieżce wgrania pliku.
+Trasy zapisu lekcji nie przyjmują go od prowadzącego, a u administracji pilnują, żeby jedno
+nagranie nie było przypisane do dwóch lekcji. Aneks opisuje stan kodu: bez nowych tras, kodów
+błędu, slugów audytu i typów powiadomień; zero zmian w danych.
+
+### 1. Prowadzący
+
+- `POST /instructor/courses/{course}/lessons`: każda niepusta wartość `video_provider_id` →
+  `422 validation_failed`, lekcja nie powstaje.
+- `PATCH /instructor/lessons/{lesson}`: pole nieobecne albo równe zapisanej wartości → `200`
+  bez zmiany nagrania. Każda inna wartość — także `null` albo pusty napis przy lekcji, która
+  ma nagranie — → `422 validation_failed`, kolumna bez zmian.
+
+Zdanie odmowy jest jedno dla wszystkich przypadków i nie ujawnia, czy podany identyfikator
+istnieje:
+
+```json
+{ "error": { "status": 422, "code": "validation_failed",
+    "message": "Popraw zaznaczone pola.",
+    "errors": { "video_provider_id": [
+      "Nagranie do lekcji przypisuje administracja. Tego pola nie można tutaj zmienić." ] } } }
+```
+
+### 2. Administracja
+
+`POST /admin/courses/{course}/lessons` i `PATCH /admin/lessons/{lesson}`: identyfikator
+przypisany już do innej żywej lekcji → `422 validation_failed` w tej samej kopercie, zdanie
+w `errors.video_provider_id`: „Ten identyfikator nagrania jest już przypisany do innej
+lekcji.” Wartość niezmieniona przechodzi zawsze; `null` odpina nagranie; identyfikator
+lekcji usuniętej jest wolny.
+
+### 3. Czego ten aneks nie wprowadza
+
+Niepowtarzalności nie pilnuje jeszcze indeks w bazie (dwa równoległe żądania administracji
+mogą ją ominąć), porównanie rozróżnia wielkość liter, a ścieżka wgrania nie sprawdza, czy
+identyfikator jest już przypisany — domknięcie przyjdzie osobnym aneksem razem ze zmianą
+kodu i danych.
+
+Kod: `Rules/RecordingAssignedByAdministration.php`, `Rules/RecordingIdNotTaken.php`,
+`Http/Requests/H08/StoreInstructorLessonRequest.php`,
+`Http/Requests/H08/UpdateInstructorLessonRequest.php`,
+`Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLessonRequest.php`.

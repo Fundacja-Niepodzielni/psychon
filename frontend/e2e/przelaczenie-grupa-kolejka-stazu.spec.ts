@@ -225,7 +225,7 @@ async function naruszeniaZBestPractice(page: Page): Promise<{ id: string; impact
 
 /** „Otwórz” w wierszu osoby (po imieniu) i panel otwartego dyżuru z fokusem. */
 async function otworzPanelOsoby(page: Page, imie: string) {
-  const wiersz = page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem").filter({ hasText: `${imie} Demo` });
+  const wiersz = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]').filter({ hasText: `${imie} Demo` });
   await wiersz.getByRole("button", { name: new RegExp(`^Otwórz dyżur: ${imie} Demo`) }).click();
   await expect(page.getByRole("region", { name: `Dyżur: ${imie} Demo` })).toBeFocused();
 }
@@ -251,7 +251,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
       await expect(page).toHaveTitle("Akceptacja stażu — Niepodzielni");
 
       // Dane z atrapy: trzy wiersze zwinięte — „Dyżur”, osoba i jedna akcja „Otwórz”.
-      const wiersze = page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem");
+      const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
       await expect(wiersze).toHaveCount(3);
       await expect(wiersze.first()).toContainText("Dyżur");
       await expect(wiersze.first()).toContainText("Marta Demo");
@@ -360,11 +360,11 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
 
     await page.goto("/nowy-front/admin/staz");
     await zabezpieczeniePrzedEkranemDostepu(page);
-    await expect(page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem")).toHaveCount(3);
+    await expect(page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]')).toHaveCount(3);
     const przed = await naruszeniaZBestPractice(page);
 
     await page.goto("/admin/staz");
-    await expect(page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem")).toHaveCount(3);
+    await expect(page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]')).toHaveCount(3);
     const po = await naruszeniaZBestPractice(page);
 
     await testInfo.attach("axe-best-practice-przed-poligon", { body: JSON.stringify(przed, null, 2), contentType: "application/json" });
@@ -385,7 +385,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     await instalujAtrapyApi(page);
     await page.goto("/admin/staz");
     await zabezpieczeniePrzedEkranemDostepu(page);
-    await expect(page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem")).toHaveCount(3);
+    await expect(page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]')).toHaveCount(3);
     expect((await naruszeniaZBestPractice(page)).map((n) => n.id)).not.toContain("heading-order");
 
     await page.evaluate(() => {
@@ -401,7 +401,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     await page.goto("/admin/staz");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    const wiersze = page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem");
+    const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
     await expect(wiersze).toHaveCount(3);
     await otworzPanelOsoby(page, "Marta");
     await page.getByRole("region", { name: "Dyżur: Marta Demo" }).getByRole("button", { name: "Zatwierdź" }).click();
@@ -417,7 +417,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     await page.goto("/admin/staz");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    const wiersze = page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem");
+    const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
     await otworzPanelOsoby(page, "Filip");
     await page.getByRole("region", { name: "Dyżur: Filip Demo" }).getByRole("button", { name: "Poproś o poprawkę" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -438,7 +438,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     await page.goto("/admin/staz");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    const wiersze = page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem");
+    const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
     await otworzPanelOsoby(page, "Ola");
     await page.getByRole("region", { name: "Dyżur: Ola Demo" }).getByRole("button", { name: "Odrzuć dyżur" }).click();
     const formularz = page.getByRole("form", { name: /Odrzuć dyżur: Ola Demo/ });
@@ -457,7 +457,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     await page.goto("/admin/staz");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    const wiersze = page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem");
+    const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
     for (const [przycisk, komunikat] of [
       ["Poproś o poprawkę", "Dodaj komentarz przed odesłaniem wpisu."],
       ["Odrzuć dyżur", "Dodaj powód przed odrzuceniem wpisu."],
@@ -485,7 +485,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     await page.goto("/admin/staz");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    const wiersze = page.getByRole("list", { name: "Dyżury do decyzji" }).getByRole("listitem");
+    const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
     await expect(wiersze).toHaveCount(3);
     await otworzPanelOsoby(page, "Marta");
     await page.getByRole("region", { name: "Dyżur: Marta Demo" }).getByRole("button", { name: "Zatwierdź" }).click();

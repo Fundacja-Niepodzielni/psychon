@@ -11,8 +11,8 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  *   liczbach o tej samej szerokości (jednocyfrowe, ta sama jednostka) także lewa;
  * - axe (WCAG 2.1 AA) na pulpicie przy 1280 i 390 px: bez naruszeń;
  * - poniżej 640 px (miara przy 390) stopka nie zmienia się: styl obliczony stopki i
- *   jej liczby oraz prostokąty są takie jak w stanie bazowym, a puste miejsce po akcji
- *   w stopce nie zajmuje miejsca.
+ *   jej liczby oraz prostokąty są takie jak w stanie bazowym; komórki stopki bez treści
+ *   nie zajmują miejsca.
  *
  * Atrapy API jak w `pulpit-administracji-390.spec.ts`. Zmienne środowiska (wszystkie
  * opcjonalne, bez nich spec tylko sprawdza krawędzie liczb):
@@ -126,7 +126,7 @@ test.describe("pulpit administracji 1280 px — liczba „Razem” w kolumnie li
       const liczbaRazem = await krawedzie(pasek.getByText(/^\d+\s*spraw$/), "liczba w stopce „Razem”");
       let sprawdzone = 0;
       for (const nazwa of NAZWY) {
-        const wiersz = listaSpraw(page).locator('[data-wariant="z-licznikiem"]').filter({ hasText: nazwa });
+        const wiersz = listaSpraw(page).locator('[role="row"][data-wiersz]').filter({ hasText: nazwa });
         const sasiad = await krawedzie(wiersz.getByText(/^\d+\s*spraw$/), `liczba w wierszu „${nazwa}”`);
         expect(
           Math.abs(liczbaRazem.prawa - sasiad.prawa),
@@ -142,20 +142,36 @@ test.describe("pulpit administracji 1280 px — liczba „Razem” w kolumnie li
       }
       expect(sprawdzone, "porównane wiersze").toBe(NAZWY.length);
 
-      // Puste miejsce po akcji nie podnosi stopki: jej wysokość to wysokość treści plus wypełnienie.
+      // Przyczyna: liczba stoi w komórce kolumny liczb, a komórka akcji w stopce jest pusta
+      // i nie ma wysokości (nie podnosi stopki).
+      const komorki = pasek.getByRole("cell");
+      expect(await komorki.count(), "komórki stopki: tyle, ile kolumn listy").toBe(4);
+      await expect(komorki.nth(2), "liczba „Razem” w kolumnie liczb").toHaveText(/^\d+\s*spraw$/);
+      for (const indeks of [1, 3]) {
+        const pusta = await komorki.nth(indeks).evaluate((el) => ({
+          tresc: el.textContent ?? "",
+          dzieci: el.childElementCount,
+          wysokosc: el.getBoundingClientRect().height,
+        }));
+        expect.soft(pusta, `komórka ${indeks} stopki bez treści i bez wysokości`).toEqual({ tresc: "", dzieci: 0, wysokosc: 0 });
+      }
+
+      // Skutek: wysokość stopki wyznacza jej własna treść (z wypełnieniem lub minimum), tolerancja 0,1 px
+      // — mniejsza niż 0,45 px, o które podnosiło ją puste miejsce z wysokością.
       const wysokosci = await pasek.evaluate((el) => {
         const styl = getComputedStyle(el);
         const wypelnienie = parseFloat(styl.paddingTop) + parseFloat(styl.paddingBottom);
-        const tresc = Array.from(el.querySelectorAll("span")).filter(
+        const tresc = Array.from(el.querySelectorAll('[role="cell"]')).filter(
           (n) => n.textContent === "Razem" || /^\d+\s*spraw$/.test(n.textContent ?? ""),
         );
         const najwyzsze = Math.max(...tresc.map((n) => n.getBoundingClientRect().height));
         return { stopka: el.getBoundingClientRect().height, wypelnienie, najwyzsze, minimum: parseFloat(styl.minHeight) || 0 };
       });
-      expect(
-        wysokosci.stopka,
-        `wysokość stopki ${wysokosci.stopka} px a treść ${wysokosci.najwyzsze} px + wypełnienie ${wysokosci.wypelnienie} px`,
-      ).toBeLessThanOrEqual(Math.max(wysokosci.najwyzsze + wysokosci.wypelnienie, wysokosci.minimum) + 0.5);
+      const oczekiwana = Math.max(wysokosci.najwyzsze + wysokosci.wypelnienie, wysokosci.minimum);
+      expect.soft(
+        Math.abs(wysokosci.stopka - oczekiwana),
+        `wysokość stopki ${wysokosci.stopka} px a oczekiwana ${oczekiwana} px (treść ${wysokosci.najwyzsze} px + wypełnienie ${wysokosci.wypelnienie} px, minimum ${wysokosci.minimum} px)`,
+      ).toBeLessThanOrEqual(0.1);
     });
   }
 });
@@ -167,11 +183,12 @@ test.describe("pulpit administracji 390 px — stopka „Razem” bez zmian", ()
     const pasek = await otworz(page, DWUCYFROWA_SUMA, 21);
     await zrzutOkna(page, 390);
 
-    // Puste miejsce po akcji (jeśli stopka je ma) nie zajmuje miejsca poniżej 640 px.
-    const miejsca = pasek.locator('[aria-hidden="true"]');
-    for (let i = 0; i < (await miejsca.count()); i += 1) {
-      const element = miejsca.nth(i);
-      expect(await element.evaluate((el) => getComputedStyle(el).display), "puste miejsce po akcji w stopce").toBe("none");
+    // Komórki stopki bez treści (stan, akcja) nie zajmują miejsca poniżej 640 px.
+    const puste = pasek.locator('[role="cell"]:empty');
+    expect(await puste.count(), "komórki stopki bez treści").toBe(2);
+    for (let i = 0; i < (await puste.count()); i += 1) {
+      const element = puste.nth(i);
+      expect(await element.evaluate((el) => getComputedStyle(el).display), "komórka stopki bez treści").toBe("none");
     }
 
     const pomiar = await pasek.evaluate((el) => {
@@ -188,7 +205,7 @@ test.describe("pulpit administracji 390 px — stopka „Razem” bez zmian", ()
         const p = cel.getBoundingClientRect();
         return { x: p.x + window.scrollX, y: p.y + window.scrollY, width: p.width, height: p.height };
       };
-      const napis = Array.from(el.querySelectorAll("span")).find((s) => s.textContent === "Razem");
+      const napis = Array.from(el.querySelectorAll('[role="cell"]')).find((s) => s.textContent === "Razem");
       const liczba = Array.from(el.querySelectorAll("span")).find((s) => /^\d+\s*spraw$/.test(s.textContent ?? ""));
       return {
         stopka: { styl: styl(el), prostokat: prostokat(el) },

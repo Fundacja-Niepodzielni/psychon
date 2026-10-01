@@ -22,6 +22,7 @@ import {
   pobierzTabele,
   rodzajBledu,
   wierszeOsob,
+  KOLUMNY_OSOB,
   type FiltrOsob,
 } from "./dane";
 import style from "./OsobyLista.module.css";
@@ -241,6 +242,7 @@ export function OsobyLista() {
         stopienNaglowka={2}
         naglowekTylkoDlaCzytnika
         wierszeBezWciecia
+        kolumny={KOLUMNY_OSOB}
         wiersze={wierszeOsob(stan.osoby)}
         pusty={{
           naglowek: "Brak osób",

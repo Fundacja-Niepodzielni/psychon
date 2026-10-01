@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/klient";
+import { minutyZSekund, sekundyZMinut } from "@/nowy-front/wspolne/minuty";
 import type { CialoLekcji, LekcjaAdmin, StanNagrania } from "./dane";
 
 /**
@@ -52,7 +53,7 @@ export function formularzZLekcji(lekcja: LekcjaAdmin): StanFormularza {
     title: lekcja.title,
     description: lekcja.description ?? "",
     content: lekcja.content ?? "",
-    duration: String(lekcja.duration_seconds),
+    duration: String(minutyZSekund(lekcja.duration_seconds)),
   };
 }
 
@@ -60,10 +61,9 @@ export function formularzeRowne(a: StanFormularza, b: StanFormularza): boolean {
   return a.title === b.title && a.description === b.description && a.content === b.content && a.duration === b.duration;
 }
 
-/** Czas trwania w pełnych sekundach (puste pole = 0, jak w starym formularzu). */
-function sekundy(tekst: string): number | null {
+/** Czas trwania w pełnych minutach, 0 albo więcej; puste pole, ułamek i liczba ujemna to błąd pola. */
+function minuty(tekst: string): number | null {
   const przyciety = tekst.trim();
-  if (przyciety === "") return 0;
   return /^\d+$/.test(przyciety) ? Number(przyciety) : null;
 }
 
@@ -71,7 +71,7 @@ function sekundy(tekst: string): number | null {
 export function walidujLokalnie(formularz: StanFormularza): BledyFormularza {
   const bledy: BledyFormularza = {};
   if (formularz.title.trim() === "") bledy.title = "Podaj tytuł lekcji.";
-  if (sekundy(formularz.duration) === null) bledy.duration = "Podaj czas trwania w pełnych sekundach.";
+  if (minuty(formularz.duration) === null) bledy.duration = "Podaj czas trwania w pełnych minutach, 0 albo więcej.";
   return bledy;
 }
 
@@ -80,13 +80,20 @@ export function walidujLokalnie(formularz: StanFormularza): BledyFormularza {
  * białych znaków (dwie spacje na końcu wiersza to twarde łamanie wiersza).
  * Brak `topic_id`, `topic_position` i `sequence_order`: te pola są po stronie
  * serwera zakazane albo należą do innej trasy.
+ *
+ * Czas: osoba wpisuje minuty, serwer dostaje sekundy (minuty × 60). Gdy podana
+ * jest lekcja `pierwotna`, a pole minut pokazuje to samo co przy jej odczycie,
+ * do serwera wracają jej pierwotne sekundy — zapis samego tytułu nie zmienia
+ * czasu lekcji (1530 s pokazane jako 26 min nie staje się 1560 s).
  */
-export function cialoZapisu(formularz: StanFormularza): CialoLekcji {
+export function cialoZapisu(formularz: StanFormularza, pierwotna?: Pick<LekcjaAdmin, "duration_seconds">): CialoLekcji {
+  const wpisane = minuty(formularz.duration) ?? 0;
+  const bezZmiany = pierwotna !== undefined && wpisane === minutyZSekund(pierwotna.duration_seconds);
   return {
     title: formularz.title,
     description: formularz.description.trim() === "" ? null : formularz.description,
     content: formularz.content,
-    duration_seconds: sekundy(formularz.duration) ?? 0,
+    duration_seconds: bezZmiany ? pierwotna.duration_seconds : sekundyZMinut(wpisane),
   };
 }
 
@@ -119,6 +126,45 @@ export function zdanieBleduZapisu(blad: unknown): string {
     if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
   }
   return "Nie udało się zapisać lekcji. Sprawdź połączenie i spróbuj ponownie.";
+}
+
+export function zdanieBleduUsuniecia(blad: unknown): string {
+  if (blad instanceof ApiError) {
+    if (blad.status === 401 || blad.status === 403) return "Usunięcie lekcji nie jest dostępne dla Twojej roli.";
+    if (blad.status === 404) return "Tej lekcji już nie ma. Odśwież stronę, żeby zobaczyć aktualny kurs.";
+    if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
+  }
+  return "Nie udało się usunąć lekcji. Sprawdź połączenie i spróbuj ponownie.";
+}
+
+/** Forma rzeczownika przy liczbie: 1 materiał, 2–4 materiały (poza 12–14), w pozostałych przypadkach materiałów. */
+function formaMaterialow(liczba: number): string {
+  if (liczba === 1) return "materiał";
+  const jednosci = liczba % 10;
+  const dziesiatki = liczba % 100;
+  if (jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14)) return "materiały";
+  return "materiałów";
+}
+
+/** Zdanie o liczbie materiałów lekcji; zero to stan pusty. */
+export function zdanieLiczbyMaterialow(liczba: number): string {
+  if (liczba <= 0) return "Ta lekcja nie ma jeszcze materiałów.";
+  return `Ta lekcja ma ${liczba} ${formaMaterialow(liczba)}.`;
+}
+
+/** Zdanie pokazywane, gdy lekcja ma materiały wgrane wcześniej — ekran nie ma jeszcze ich listy. */
+export const ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH =
+  "Lista wcześniej wgranych materiałów pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
+
+/** Odmowa usunięcia materiału lekcji — zdanie dla osoby, bez kodu i bez nazwy trasy. */
+export function zdanieBleduUsunieciaMaterialu(blad: unknown): string {
+  if (blad instanceof ApiError) {
+    if (blad.status === 401) return "Sesja wygasła. Zaloguj się ponownie.";
+    if (blad.status === 403) return "Usunięcie materiału nie jest dostępne dla Twojej roli.";
+    if (blad.status === 404) return "Tego materiału już nie ma. Odśwież stronę, żeby zobaczyć aktualną lekcję.";
+    if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
+  }
+  return "Nie udało się usunąć materiału. Sprawdź połączenie i spróbuj ponownie.";
 }
 
 export function zdanieBleduPliku(blad: unknown): string {

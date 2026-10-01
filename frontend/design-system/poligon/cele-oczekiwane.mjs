@@ -40,6 +40,10 @@
 // każdym w `WYKLUCZENIA` niżej: Avatar, Badge, Divider, ErrorText, Heading,
 // Hint, Icon, Num, ProgressBar, Skeleton, StepBar, Text, Label (atomy) oraz
 // FileRow, KartaNastepnegoKroku, Notice, QaBlock, StatTile (molekuły).
+// Dopisane przy grupie zwijanej menu: `molekuly/MenuItem/GrupaZwijana.tsx` ma WŁASNY `button`
+// zwijania (nie przekazany potomek), więc jest rozliczony MIERZONYM celem „GrupaZwijana (przycisk
+// zwijania)” (mount `molekula-grupazwijana` w main.tsx), nie wykluczeniem. Od tej zmiany celów
+// jest o jeden więcej, a plików z własnym celem 29 (liczby w komentarzach niżej opisują stan sprzed niej).
 export const OCZEKIWANE_CELE = [
   "Button primary",
   "Button outline",
@@ -61,6 +65,7 @@ export const OCZEKIWANE_CELE = [
   "KeyValueRow (pokaż/ukryj)",
   "ListRow (akcja wiersza)",
   "MenuItem/MenuGroup (pozycja menu)",
+  "GrupaZwijana (przycisk zwijania)",
   "Pagination (poprzednia)",
   "RichTextEditor (przycisk paska)",
   "SaveBar (cofnij)",
@@ -73,6 +78,7 @@ export const OCZEKIWANE_CELE = [
   "TimeChart (rozwinięcie tabeli)",
   "CourseTree (strzałka przeniesienia)",
   "CourseTree (zmiana nazwy)",
+  "CourseTree (edycja lekcji)",
   "CourseTree (dodanie lekcji)",
   "LessonPlayer (odtwarzanie)",
   "LessonPlayer (powiększenie)",
@@ -110,6 +116,7 @@ export const KOMPONENT_CELU = {
   "KeyValueRow (pokaż/ukryj)": "KeyValueRow",
   "ListRow (akcja wiersza)": "ListRow",
   "MenuItem/MenuGroup (pozycja menu)": "MenuItem/MenuGroup",
+  "GrupaZwijana (przycisk zwijania)": "GrupaZwijana", // własny `button` zwijania grupy menu; pozycje w środku to MenuItem (już rozliczony)
   "Pagination (poprzednia)": "Pagination",
   "RichTextEditor (przycisk paska)": "RichTextEditor",
   "SaveBar (cofnij)": "SaveBar",
@@ -120,6 +127,7 @@ export const KOMPONENT_CELU = {
   "TimeChart (rozwinięcie tabeli)": "TimeChart", // nagłówek CollapsibleSection osadzonej w organizmie
   "CourseTree (strzałka przeniesienia)": "CourseTree",
   "CourseTree (zmiana nazwy)": "CourseTree",
+  "CourseTree (edycja lekcji)": "CourseTree",
   "CourseTree (dodanie lekcji)": "CourseTree",
   "LessonPlayer (odtwarzanie)": "LessonPlayer",
   "LessonPlayer (powiększenie)": "LessonPlayer",
@@ -168,7 +176,7 @@ export const WYKLUCZENIA = [
   { komponent: "DataTable", plik: "organizmy/DataTable/DataTable.tsx", powod: "składa wyłącznie SearchBox (cel „SearchBox (pole wyszukiwania)”), Pagination (cel „Pagination (poprzednia)”), Num i Text (oba już wykluczone) — siatka `role=\"table\"` jest strukturą, nie kontrolką, bez własnego handlera." },
   { komponent: "PageHeader", plik: "organizmy/PageHeader/PageHeader.tsx", powod: "przycisk powrotu i odnośnik akcji idą przez Button (cel „Button outline”) i Link (cel „Link (pole klikalne)”), okruszki przez Breadcrumbs (już z celem) — Badge/Heading/Text bez własnej interakcji (już wykluczone) — organizm nie dodaje nic ponad te dzieci." },
   { komponent: "PanelNav", plik: "organizmy/PanelNav/PanelNav.tsx", powod: "składa wyłącznie Avatar i Text (oba już wykluczone) oraz MenuGroup (cel „MenuItem/MenuGroup (pozycja menu)”) — pozycje menu są jedynym uchwytem aktywacji i są już rozliczone przez dziecko." },
-  { komponent: "RecordList", plik: "organizmy/RecordList/RecordList.tsx", powod: "składa wyłącznie ListRow (cel „ListRow (akcja wiersza)”) i EmptyState (cel „EmptyState (przycisk)”) w wariancie z wierszami, Heading i Num (oba już wykluczone) — stopka „Razem” jest tekstem, bez uchwytu." },
+  { komponent: "RecordList", plik: "organizmy/RecordList/RecordList.tsx", powod: "składa wyłącznie ListRow (cel „ListRow (akcja wiersza)”) i EmptyState (cel „EmptyState (przycisk)”) w wariancie z wierszami, Heading i Num (oba już wykluczone) — stopka „Razem” jest tekstem, bez uchwytu; w trybie kolumn akcja wiersza idzie przez Link (cel „Link (pole klikalne)”) albo Button (cel „Button outline”), a role `table`/`row`/`columnheader`/`cell` są strukturą, nie kontrolką." },
   { komponent: "StatRow", plik: "organizmy/StatRow/StatRow.tsx", powod: "składa wyłącznie StatTile (już wykluczony) i — gdy podane `href` — Link (cel „Link (pole klikalne)”) opakowujący kafel; sam organizm nie dokłada własnego handlera poza tym opakowaniem." },
   // Dopisane z kartą stanu pustego: wykluczeń jest o jedno więcej niż w liczbach z komentarzy wyżej.
   { komponent: "EmptyStateCard", plik: "organizmy/EmptyStateCard/EmptyStateCard.tsx", powod: "div karty z jednym dzieckiem — molekułą EmptyState (cel „EmptyState (przycisk)”); sam plik nie ma własnego handlera, tabIndex, role aktywacyjnej ani przycisku, jedyny przycisk karty pochodzi z molekuły." },
@@ -214,6 +222,7 @@ export const PLIKI_ROZLICZONE = [
   "molekuly/FileDropZone/FileDropZone.tsx",
   "molekuly/KeyValueRow/KeyValueRow.tsx",
   "molekuly/ListRow/ListRow.tsx",
+  "molekuly/MenuItem/GrupaZwijana.tsx", // dopisany z grupą zwijaną menu: własny przycisk zwijania, cel „GrupaZwijana (przycisk zwijania)”
   "molekuly/MenuItem/MenuGroup.tsx",
   "molekuly/MenuItem/MenuItem.tsx",
   "molekuly/Pagination/Pagination.tsx",

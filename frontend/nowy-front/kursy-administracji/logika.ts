@@ -1,5 +1,9 @@
 import { ApiError } from "@/lib/api/klient";
-import type { WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import type {
+  KolumnaRecordList,
+  KomorkaRecordList,
+  WierszRecordList,
+} from "@/design-system/organizmy/RecordList/RecordList";
 import type { WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
 import { COURSE_STATE_LABELS, COURSE_TYPE_LABELS, PRODUCT_GROUP_LABELS, type ReorderImpactRow } from "@/lib/h08/types";
 import { odmien } from "../wspolne/odmiana";
@@ -16,34 +20,46 @@ export function adresKursu(id: number): string {
   return `/admin/kursy/${id}`;
 }
 
-/** „1 lekcja”, „2 lekcje”, „5 lekcji” — odmiana ze wspólnego pomocnika. */
-export function liczbaLekcji(liczba: number): string {
-  return `${liczba} ${odmien(liczba, "lekcja", "lekcje", "lekcji")}`;
+/** Kolumny listy kursów: nazwa pierwsza, stan, dwie liczby do prawej, akcja na końcu. */
+export const KOLUMNY_KURSOW: KolumnaRecordList[] = [
+  { nazwa: "Kurs", rodzaj: "tekst" },
+  { nazwa: "Stan", rodzaj: "stan" },
+  { nazwa: "Miejsce w ścieżce", rodzaj: "liczba", klucz: "miejsce" },
+  { nazwa: "Lekcje", rodzaj: "liczba", klucz: "lekcje" },
+  { nazwa: "Akcja", rodzaj: "akcja" },
+];
+
+/** Jednostka liczby lekcji: „lekcja”, „lekcje”, „lekcji” — odmiana ze wspólnego pomocnika. */
+export function jednostkaLekcji(liczba: number): string {
+  return odmien(liczba, "lekcja", "lekcje", "lekcji");
 }
 
-export function opisPozycji(pozycja: number | null): string {
-  return pozycja === null ? "Poza ścieżką" : `Pozycja ${pozycja} w ścieżce`;
+/** Kolumna „Miejsce w ścieżce”: liczba z mianownikiem albo napis kursu spoza ścieżki. */
+export function miejsceWSciezce(pozycja: number | null): KomorkaRecordList {
+  return pozycja === null ? { tekst: "poza ścieżką" } : { liczba: pozycja, jednostka: "w ścieżce" };
 }
 
-/** Podpowiedź wiersza: pozycja w ścieżce · typ · grupa produktowa · liczba lekcji. */
-export function metaWiersza(kurs: KursAdministracji): string {
+/** Opis pod nazwą kursu: typ · grupa produktowa (etykiety ze słowników). */
+export function opisKursu(kurs: KursAdministracji): string {
   return [
-    opisPozycji(kurs.sequence_order),
     COURSE_TYPE_LABELS[kurs.type] ?? kurs.type,
     PRODUCT_GROUP_LABELS[kurs.product_group] ?? kurs.product_group,
-    liczbaLekcji(kurs.lessons_count),
   ].join(" · ");
 }
 
-/** Wiersze `RecordList`: tytuł, meta, plakietka publikacji, akcja „Otwórz” (pełna nazwa z tytułem tylko dla czytnika). */
+/** Wiersze `RecordList`: nazwa z opisem, plakietka publikacji, miejsce w ścieżce, liczba lekcji, akcja „Otwórz” (pełna nazwa z tytułem tylko dla czytnika). */
 export function wierszeKursow(kursy: KursAdministracji[]): WierszRecordList[] {
   return kursy.map((kurs) => ({
     id: String(kurs.id),
     tytul: kurs.title,
-    podpowiedz: metaWiersza(kurs),
+    podpowiedz: opisKursu(kurs),
     plakietka: kurs.is_published
       ? { wariant: "ok" as const, tekst: "Opublikowany" }
       : { wariant: "neutral" as const, tekst: "Szkic" },
+    komorki: {
+      miejsce: miejsceWSciezce(kurs.sequence_order),
+      lekcje: { liczba: kurs.lessons_count, jednostka: jednostkaLekcji(kurs.lessons_count) },
+    },
     akcja: { etykieta: "Otwórz", etykietaDostepna: `Otwórz kurs: ${kurs.title}`, href: adresKursu(kurs.id) },
   }));
 }

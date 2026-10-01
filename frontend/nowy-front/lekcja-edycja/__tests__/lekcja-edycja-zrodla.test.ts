@@ -135,10 +135,12 @@ describe("zgodność z zapleczem", () => {
     const trasy = [...dane.matchAll(/`(\/admin\/[^`]+)`/g)].map((m) => m[1].replace(/\$\{[^}]+\}/g, "{id}"));
     expect([...new Set(trasy)].sort()).toEqual([
       "/admin/courses/{id}/lessons",
+      "/admin/courses/{id}/materials",
       "/admin/lessons/{id}",
       "/admin/lessons/{id}/materials",
       "/admin/lessons/{id}/video-status",
       "/admin/lessons/{id}/video-uploads",
+      "/admin/materials/{id}",
     ]);
   });
 

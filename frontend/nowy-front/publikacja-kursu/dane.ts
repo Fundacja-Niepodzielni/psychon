@@ -24,14 +24,34 @@ export function pobierzKurs(id: string): Promise<KursPublikacji> {
 }
 
 /**
- * `PATCH /admin/courses/{course}` z jednym polem `is_published`.
+ * Pola, które nowy front zapisuje w kursie (`UpdateCourseRequest::rules`).
+ * Każde jest opcjonalne. Pozycji kursu w ścieżce (`sequence_order`) tu nie ma
+ * celowo — ten zapis jej nie zmienia.
+ */
+export interface CialoKursu {
+  title?: string;
+  description?: string | null;
+  slug?: string;
+  type?: AdminCourse["type"];
+  product_group?: AdminCourse["product_group"];
+  is_published?: boolean;
+}
+
+/**
+ * Jedyne miejsce nowego frontu z adresem zapisu kursu administracji
+ * (`PATCH /admin/courses/{course}`). Wołają je publikacja i formularz
+ * „Dane kursu”.
+ */
+export function zapiszKurs(id: string | number, cialo: CialoKursu): Promise<KursPublikacji> {
+  return api<KursPublikacji>(`/admin/courses/${id}`, { method: "PATCH", body: cialo });
+}
+
+/**
+ * Zapis kursu z jednym polem `is_published`.
  * Kurs bez lekcji: `422 conditions_not_met` z `reason.missing`.
  */
 export function zmienPublikacje(id: string, opublikowany: boolean): Promise<KursPublikacji> {
-  return api<KursPublikacji>(`/admin/courses/${id}`, {
-    method: "PATCH",
-    body: { is_published: opublikowany },
-  });
+  return zapiszKurs(id, { is_published: opublikowany });
 }
 
 /** `DELETE /admin/courses/{course}` → 200 `{ id, deleted: true }`. */

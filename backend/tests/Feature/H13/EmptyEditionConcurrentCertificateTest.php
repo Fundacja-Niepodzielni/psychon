@@ -12,6 +12,7 @@ use App\Models\SupervisionSlot;
 use App\Models\TestAttempt;
 use App\Models\User;
 use App\Models\WorkshopCompletion;
+use App\Support\AuditTablesLock;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Group;
@@ -249,7 +250,13 @@ class EmptyEditionConcurrentCertificateTest extends TestCase
         $nazwy = array_map(static fn (object $t): string => '"'.$t->tablename.'"', $tabele);
 
         if ($nazwy !== []) {
-            DB::statement('truncate table '.implode(', ', $nazwy).' restart identity cascade');
+            // Oba dzienniki są zablokowane w bazie; opróżnienie przechodzi tylko
+            // w transakcji, która otworzyła blokadę wspólnym pomocnikiem.
+            DB::transaction(static function () use ($nazwy): void {
+                AuditTablesLock::allowPurgeInCurrentTransaction();
+
+                DB::statement('truncate table '.implode(', ', $nazwy).' restart identity cascade');
+            });
         }
     }
 

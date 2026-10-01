@@ -22,7 +22,12 @@ class UpdateOnboardingRequest extends FormRequest
         return [
             'video' => ['sometimes', 'array'],
             'video.title' => ['required_with:video', 'string', 'max:200'],
-            'video.url' => ['nullable', 'url', 'max:500'],
+            // Adres trafia do ramki na ekranie każdego uczestnika, więc przy zapisie przechodzi
+            // tylko schemat `https` (`url:https` zawęża regułę `url` do jednego schematu).
+            // Wzorzec frameworka nie rozróżnia wielkości liter, więc `HTTPS://` też przechodzi:
+            // nazwa schematu jest z definicji bez znaczenia wielkości, a przeglądarka
+            // sprowadza ją do `https`.
+            'video.url' => ['nullable', 'url:https', 'max:500'],
             'video.caption' => ['nullable', 'string', 'max:500'],
 
             'program' => ['sometimes', 'array'],
@@ -39,7 +44,7 @@ class UpdateOnboardingRequest extends FormRequest
     {
         return [
             'required_with' => 'To pole jest wymagane.',
-            'video.url' => 'Podaj poprawny adres URL filmu.',
+            'video.url' => 'Adres filmu w internecie musi być pełnym adresem zaczynającym się od https://.',
             'string' => 'To pole musi być tekstem.',
             'max' => 'Tekst jest za długi (maksymalnie :max znaków).',
         ];

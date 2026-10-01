@@ -1,22 +1,15 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { Button } from "../../atomy/Button/Button";
-import { Icon, type NazwaIkony } from "../../atomy/Icon/Icon";
-import { MenuItem } from "../../molekuly/MenuItem/MenuItem";
+import { Icon } from "../../atomy/Icon/Icon";
+import { GrupaZwijana, type GrupaZwijanaDane } from "../../molekuly/MenuItem/GrupaZwijana";
 import { PanelNav } from "../../organizmy/PanelNav/PanelNav";
 import { DostawcaPowloki } from "../KontekstPowloki";
 import { DostawcaRamki } from "../KontekstRamki";
 import style from "./PowlokaPanelu.module.css";
 
 type WlasciwosciNawigacji = ComponentProps<typeof PanelNav>;
-
-interface GrupaZwinieta {
-  naglowek: string;
-  pozycje: { ikona: NazwaIkony; etykieta: string; href: string; biezaca?: boolean | "sekcja" }[];
-  /** Linia „W przygotowaniu: …” pod pozycjami (bez przedrostka i kropki). */
-  liniaWPrzygotowaniu?: string;
-}
 
 interface WlasciwosciPowlokiPanelu {
   /** Znak na górze menu (dostarcza wywołujący — np. logo Fundacji). */
@@ -26,9 +19,10 @@ interface WlasciwosciPowlokiPanelu {
   /**
    * Grupa zwinięta przyciskiem „{nagłówek} ({liczba pozycji})” tuż przed
    * grupą „Konto” (np. „Dotychczasowy panel”); na wejściu zwinięta, chyba
-   * że niesie bieżącą pozycję.
+   * że niesie bieżącą pozycję. Rysuje ją ten sam komponent (`GrupaZwijana`)
+   * co grupy z flagą `zwijana` w `grupy` (np. „Ustawienia” administracji).
    */
-  grupaZwinieta?: GrupaZwinieta;
+  grupaZwinieta?: GrupaZwijanaDane;
   /** Nazwa punktu orientacyjnego menu (`nav`); domyślnie „Menu główne”. */
   etykietaMenu?: string;
   /** Linia „W przygotowaniu: …” pod wylogowaniem w grupie „Konto” (bez przedrostka i kropki). */
@@ -67,7 +61,11 @@ interface WlasciwosciPowlokiPanelu {
  *
  * Grupa „Konto” przykleja się do dołu menu (`position: sticky`), więc
  * „Wyloguj” jest widoczne bez przewijania menu także przy długim menu;
- * grupa zwinięta (`grupaZwinieta`) stoi tuż przed nią.
+ * grupa zwinięta (`grupaZwinieta`) stoi tuż przed nią. Grupy z flagą `zwijana` w `grupy`
+ * (administracja: „Ustawienia”) rysuje `PanelNav` tym samym komponentem zwijania
+ * (`GrupaZwijana`), więc „Ustawienia (3)” i „Dotychczasowy panel (n)” wyglądają i
+ * działają tak samo; po wejściu na ekran w rozwiniętej grupie bieżąca pozycja jest
+ * dosuwana nad blok „Konto” (`odslonBiezacaPozycje`).
  *
  * Powłoka niesie jedyny link skoku „Przejdź do treści” i jedyny `main` pod
  * `id="tresc"`; treść dostaje `DostawcaPowloki`, więc szablon ekranu
@@ -95,7 +93,6 @@ export function PowlokaPanelu({
   const [trescPodKontem, setTrescPodKontem] = useState(false);
   const oknoRef = useRef<HTMLDialogElement | null>(null);
   const bokRef = useRef<HTMLElement | null>(null);
-  const zawieraBiezaca = !!grupaZwinieta?.pozycje.some((pozycja) => pozycja.biezaca);
   const biezacyAdres = [...grupy.flatMap((grupa) => grupa.pozycje), ...(grupaZwinieta?.pozycje ?? [])].find(
     (pozycja) => pozycja.biezaca,
   )?.href;
@@ -167,10 +164,7 @@ export function PowlokaPanelu({
 
   const konto = (
     <>
-      {grupaZwinieta && grupaZwinieta.pozycje.length > 0 && (
-        // Klucz: grupa zaczyna od nowa (rozwinięta), gdy po zmianie trasy zaczyna nieść bieżącą pozycję.
-        <GrupaZwijana key={zawieraBiezaca ? "z-biezaca" : "bez-biezacej"} grupa={grupaZwinieta} />
-      )}
+      {grupaZwinieta && grupaZwinieta.pozycje.length > 0 && <GrupaZwijana grupa={grupaZwinieta} />}
       <div
         className={trescPodKontem ? `${style.konto} ${style.kontoNadTrescia}` : style.konto}
         data-konto-menu=""
@@ -270,46 +264,6 @@ export function PowlokaPanelu({
             <DostawcaRamki menu={[...grupy, ...(grupaZwinieta ? [grupaZwinieta] : [])]}>{children}</DostawcaRamki>
           </DostawcaPowloki>
         </main>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Grupa zwinięta przyciskiem (np. „Dotychczasowy panel (7)”): na wejściu
- * zwinięta — chyba że niesie bieżącą pozycję (ekran szczegółu pod jej
- * adresem), wtedy rozwinięta, żeby oznaczona pozycja była widoczna; przycisk niesie `aria-expanded` i `aria-controls` listy, lista
- * zwiniętej grupy jest w DOM z atrybutem `hidden`. Każde wystąpienie menu
- * (bok i okno) ma własny identyfikator listy i własny stan.
- */
-function GrupaZwijana({ grupa }: { grupa: GrupaZwinieta }) {
-  const [rozwinieta, setRozwinieta] = useState(() => grupa.pozycje.some((pozycja) => pozycja.biezaca));
-  const idListy = useId();
-  return (
-    <div className={style.zwijana}>
-      <button
-        type="button"
-        className={style.zwijanaPrzycisk}
-        aria-expanded={rozwinieta}
-        aria-controls={idListy}
-        onClick={() => setRozwinieta((stan) => !stan)}
-      >
-        <span>{`${grupa.naglowek} (${grupa.pozycje.length})`}</span>
-        <span aria-hidden="true" className={style.zwijanaZnak}>
-          {rozwinieta ? "−" : "+"}
-        </span>
-      </button>
-      <div id={idListy} hidden={!rozwinieta}>
-        <ul className={style.zwijanaLista}>
-          {grupa.pozycje.map((pozycja) => (
-            <li key={pozycja.href}>
-              <MenuItem {...pozycja} />
-            </li>
-          ))}
-        </ul>
-        {grupa.liniaWPrzygotowaniu && (
-          <p className={style.wPrzygotowaniu}>{`W przygotowaniu: ${grupa.liniaWPrzygotowaniu}.`}</p>
-        )}
       </div>
     </div>
   );

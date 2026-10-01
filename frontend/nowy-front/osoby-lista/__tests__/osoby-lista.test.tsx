@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
-import { naruszeniaSeparatora } from "@/design-system/molekuly/ListRow/__tests__/separator-linii";
 import { Button } from "@/design-system/atomy/Button/Button";
 
 /**
@@ -74,6 +73,14 @@ function przyciskiGlowne(container: HTMLElement): number {
 
 const ADRES_LISTY = "/admin/users?page=1&per_page=25";
 
+/** Komórka wiersza pod nagłówkiem kolumny o podanej nazwie. */
+function komorka(wiersz: HTMLElement, kolumna: string): HTMLElement {
+  const naglowki = within(screen.getByRole("table", { name: "Lista uczestników" })).getAllByRole("columnheader");
+  const indeks = naglowki.findIndex((naglowek) => naglowek.textContent === kolumna);
+  expect(indeks, `kolumna „${kolumna}”`).toBeGreaterThanOrEqual(0);
+  return within(wiersz).getAllByRole("cell")[indeks];
+}
+
 beforeEach(() => {
   apiPaged.mockReset();
   downloadFile.mockReset();
@@ -106,8 +113,23 @@ describe("Uczestnicy programu — stany", () => {
       "/admin/uczestniczki/17",
       "/admin/uczestniczki/18",
     ]);
-    expect(screen.getByText("osoba17@demo.pl · Wolontariusz")).toBeInTheDocument();
-    expect(screen.getByText("osoba18@demo.pl · Psycholog prowadzący")).toBeInTheDocument();
+    const tabela = screen.getByRole("table", { name: "Lista uczestników" });
+    expect(within(tabela).getAllByRole("columnheader").map((naglowek) => naglowek.textContent)).toEqual([
+      "Osoba",
+      "Rola",
+      "Stan",
+      "Akcja",
+    ]);
+    const [pierwszy, drugi] = Array.from(tabela.querySelectorAll<HTMLElement>('[role="row"][data-wiersz]'));
+    expect(komorka(pierwszy, "Osoba")).toHaveTextContent(/^Marta Demo17osoba17@demo\.pl$/);
+    expect(komorka(pierwszy, "Rola")).toHaveTextContent(/^Rola\s*Wolontariusz$/);
+    expect(komorka(pierwszy, "Stan")).toHaveTextContent(/^Stan\s*konto aktywne$/);
+    expect(komorka(drugi, "Osoba")).toHaveTextContent(/^Marta Demo18osoba18@demo\.pl$/);
+    expect(komorka(drugi, "Rola")).toHaveTextContent(/^Rola\s*Psycholog prowadzący$/);
+    expect(komorka(drugi, "Stan")).toHaveTextContent(/^Stan\s*konto zablokowane$/);
+    // Wiersza opisowego „e-mail · rola” już nie ma.
+    expect(screen.queryByText(/@demo\.pl · /)).toBeNull();
+    expect(apiPaged).toHaveBeenCalledTimes(1);
     expect(screen.getByText("konto aktywne")).toBeInTheDocument();
     expect(screen.getByText("konto zablokowane")).toBeInTheDocument();
     expect(screen.queryByText("Konto aktywne")).toBeNull();
@@ -118,18 +140,19 @@ describe("Uczestnicy programu — stany", () => {
     expect(przyciskiGlowne(container)).toBe(0);
   });
 
-  it("wiersz jak wiersz Spraw: pogrubione imię i nazwisko, meta po „·”, „Otwórz” z pełną nazwą dla czytnika, tekst równo z h1", async () => {
+  it("wiersz w kolumnach: nazwa pierwsza, „Otwórz” z pełną nazwą dla czytnika na końcu, tekst równo z h1", async () => {
     apiPaged.mockResolvedValue(odpowiedz([osoba(17)], { total: 1 }));
     render(<OsobyLista />);
 
     const tytul = await screen.findByText("Marta Demo17");
     expect(tytul.tagName).toBe("P");
-    expect(tytul.parentElement?.className).toMatch(/pogrubiony/);
     const odnosnik = screen.getByRole("link", { name: "Otwórz kartę: Marta Demo17" });
     expect(odnosnik.textContent).toMatch(/^Otwórz\s*›$/);
-    const wiersz = odnosnik.closest("[data-wariant]") as HTMLElement;
-    expect(wiersz.className).toMatch(/bezWciecia/);
-    expect(naruszeniaSeparatora(tytul.parentElement as HTMLElement)).toEqual([]);
+    const wiersz = odnosnik.closest('[role="row"]') as HTMLElement;
+    const komorki = within(wiersz).getAllByRole("cell");
+    expect(komorki[0]).toContainElement(tytul);
+    expect(komorki.at(-1)).toContainElement(odnosnik);
+    expect(screen.getByRole("table", { name: "Lista uczestników" }).className).toMatch(/bezWciecia/);
     // Plakietka stanu małą literą stoi w wierszu (stan dobry w atomie Badge wygląda jak „neutral”, bez barwy).
     expect(within(wiersz).getByText("konto aktywne").className).toMatch(/neutral/);
     // Nagłówek listy zostaje w drzewie nagłówków (h2 bezpośrednio pod h1), wzrokowo go nie ma.

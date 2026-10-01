@@ -6,8 +6,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 
 /**
  * Listy „Uczestnicy” (`/admin/uczestniczki`) i „Zgłoszenia rekrutacyjne”
- * (`/admin/nabor`) na wspólnym wierszu listy ze „Spraw”, z akcjami w
- * nagłówku ekranu. Zbudowana aplikacja, API i sesja to atrapy z `page.route`:
+ * (`/admin/nabor`) z akcjami w nagłówku ekranu; uczestnicy i „Sprawy” stoją w
+ * kolumnach (wiersz tabeli listy), zgłoszenia na wierszu listy bez kolumn. Zbudowana aplikacja, API i sesja to atrapy z `page.route`:
  * - axe (WCAG 2.0/2.1 A i AA oraz `best-practice`) na trzech listach
  *   (uczestnicy, zgłoszenia, sprawy) przy 1280 i 390 px: 0 naruszeń;
  * - wiersz: pogrubione imię i nazwisko, plakietka małą literą, widoczne
@@ -153,7 +153,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         await page.goto(adres);
         await zabezpieczeniePrzedEkranemDostepu(page);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        if (nazwa !== "sprawy") await expect(page.locator("[data-wariant]").first()).toBeVisible();
+        if (nazwa !== "sprawy") await expect(page.locator('[data-wariant], [role="row"][data-wiersz]').first()).toBeVisible();
         const naruszenia = await axeZBestPractice(page);
         expect(naruszenia, `${adres} @${szerokosc}`).toEqual([]);
         await zrzut(page, `${nazwa}-${szerokosc}-dane`);
@@ -168,7 +168,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         await page.goto(adres);
         await zabezpieczeniePrzedEkranemDostepu(page);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        await expect(page.locator("[data-wariant]")).toHaveCount(0);
+        await expect(page.locator('[data-wariant], [role="row"][data-wiersz]')).toHaveCount(0);
         const naruszenia = await axeZBestPractice(page);
         expect(naruszenia, `${adres} pusto @${szerokosc}`).toEqual([]);
         await zrzut(page, `${nazwa}-${szerokosc}-pusto`);
@@ -187,7 +187,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         const tytul = page.getByText(wiersz.imie, { exact: true });
         await expect(tytul).toBeVisible();
         const pomiar = await tytul.evaluate((el) => {
-          const kontener = el.closest("[data-wariant]") as HTMLElement;
+          const kontener = el.closest('[data-wariant], [role="row"][data-wiersz]') as HTMLElement;
           const h1 = document.querySelector("h1")!.getBoundingClientRect();
           return {
             waga: Number(getComputedStyle(el).fontWeight),
@@ -202,13 +202,16 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         expect(pomiar.waga, "imię i nazwisko pogrubione").toBeGreaterThan(pomiar.wagaTekstuZwyklego);
         expect(pomiar.lewyTekstu, "tekst wiersza równo z h1").toBe(pomiar.lewyH1);
         expect(pomiar.lewyWiersza, "wiersz równo z h1").toBe(pomiar.lewyH1);
-        const rzad = page.locator("[data-wariant]").first();
+        const rzad = page.locator('[data-wariant], [role="row"][data-wiersz]').first();
         await expect(rzad.getByText(wiersz.plakietka, { exact: true })).toBeVisible();
         const akcja = page.getByRole("link", { name: wiersz.nazwaAkcji });
         await expect(akcja).toBeVisible();
         expect((await akcja.textContent())?.replace(/\s+/g, " ").trim()).toMatch(/^Otwórz\s*›?$/);
         // Plakietki nie zaczynają się wielką literą.
-        const plakietki = await page.locator("[data-wariant] [class*='plakietka']").allTextContents();
+        const plakietki = await page
+          .locator(`[data-wariant] [class*='plakietka'], [role="row"][data-wiersz] [data-rodzaj="stan"] [class*='plakietka']`)
+          .allTextContents();
+        expect(plakietki.length, "plakietki wierszy").toBeGreaterThan(0);
         for (const t of plakietki) expect(t.trim()[0], `plakietka „${t}” małą literą`).toBe(t.trim()[0].toLocaleLowerCase("pl"));
       }
     });

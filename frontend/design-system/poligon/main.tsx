@@ -25,6 +25,7 @@ import { ListRow } from "../molekuly/ListRow/ListRow";
 import { KeyValueRow } from "../molekuly/KeyValueRow/KeyValueRow";
 import { Breadcrumbs } from "../molekuly/Breadcrumbs/Breadcrumbs";
 import { Tabs } from "../molekuly/Tabs/Tabs";
+import { GrupaZwijana } from "../molekuly/MenuItem/GrupaZwijana";
 import { MenuGroup } from "../molekuly/MenuItem/MenuGroup";
 import { Pagination } from "../molekuly/Pagination/Pagination";
 import { Toast } from "../molekuly/Toast/Toast";
@@ -410,6 +411,21 @@ function Poligon() {
         />
       </div>
 
+      {/* M9 GrupaZwijana — grupa menu zwijana przyciskiem „{nagłówek} ({liczba})” (zwinięta na wejściu);
+          mierzony jest jej przycisk zwijania, jedyny własny uchwyt aktywacji tego pliku. */}
+      <div data-style-id="molekula-grupazwijana">
+        <GrupaZwijana
+          grupa={{
+            naglowek: "Ustawienia",
+            pozycje: [
+              { ikona: "clock", etykieta: "Słownik form stażu", href: "#" },
+              { ikona: "file", etykieta: "Wzory dokumentów", href: "#" },
+            ],
+            liniaWPrzygotowaniu: "ustawienia roku programu",
+          }}
+        />
+      </div>
+
       {/* --- Warstwa 3, grupa C: M14-M19, wg kolumny "Z czego, warianty, stany"
           §3 06-ATOMY-MOLEKULY-ORGANIZMY.md. Dołączone do TEGO SAMEGO poligonu
           (grupa C) zamiast osobnego narzędzia — rozstrzygnięcie
@@ -781,6 +797,27 @@ function Poligon() {
             { id: "r3", tytul: "20.01.2026 — sesja grupowa", plakietka: { wariant: "pending", tekst: "Do weryfikacji" }, wartosc: 3, akcja: { etykieta: "Otwórz", href: "#" } },
           ]}
           pusty={{ naglowek: "Brak godzin", tresc: "Godziny pojawią się po pierwszym wpisie w dzienniku.", przycisk: { etykieta: "Dodaj wpis", onClick: () => {} } }}
+        />
+      </div>
+      {/* Tryb kolumn: nazwa pierwsza, stan w osobnej kolumnie, liczba do
+          prawej, akcja na końcu; suma „Razem” w kolumnie liczb; wiersz bez akcji. */}
+      <div data-style-id="organizm-o4-kolumny">
+        <RecordList
+          tytul="Co czeka na decyzję"
+          naKarcie
+          jednostkaSumy="spraw"
+          kolumny={[
+            { nazwa: "Kolejka", rodzaj: "tekst" },
+            { nazwa: "Stan", rodzaj: "stan" },
+            { nazwa: "Liczba", rodzaj: "liczba" },
+            { nazwa: "Akcja", rodzaj: "akcja" },
+          ]}
+          wiersze={[
+            { id: "k1", tytul: "Zgłoszenia rekrutacyjne", plakietka: { wariant: "warn", tekst: "czeka na decyzję" }, wartosc: 5, akcja: { etykieta: "Otwórz", href: "#" } },
+            { id: "k2", tytul: "Profile prowadzących", plakietka: { wariant: "neutral", tekst: "brak spraw" }, wartosc: 0, akcja: { etykieta: "Otwórz", href: "#" } },
+            { id: "k3", tytul: "Pytania bez odpowiedzi", podpowiedz: "odpowiada prowadzący", plakietka: { wariant: "warn", tekst: "czeka na decyzję" }, wartosc: 12 },
+          ]}
+          pusty={{ naglowek: "Brak spraw", tresc: "Nowe sprawy pojawią się tutaj.", przycisk: { etykieta: "Odśwież", onClick: () => {} } }}
         />
       </div>
       <div data-style-id="organizm-o4-pusty">

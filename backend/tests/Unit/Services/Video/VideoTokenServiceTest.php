@@ -134,6 +134,66 @@ class VideoTokenServiceTest extends TestCase
         return ['null' => [null], 'empty string' => ['']];
     }
 
+    public function test_cdn_url_keeps_the_documented_signature_for_a_conforming_id(): void
+    {
+        $signed = $this->service->signedCdnUrl($this->lesson('mock-etap-1-3'), $this->user(17));
+
+        $expires = self::NOW + VideoTokenService::CDN_TTL_SECONDS;
+        $viewer = substr(hash_hmac('sha256', 'video-viewer:17', 'test-security-key'), 0, 16);
+        $message = '/mock-etap-1-3/'.$expires.'token_path=/mock-etap-1-3/&viewer='.$viewer;
+        $digest = hash_hmac('sha256', $message, 'test-security-key', true);
+        $token = 'HS256-'.rtrim(strtr(base64_encode($digest), '+/', '-_'), '=');
+
+        $this->assertSame(
+            "https://cdn.example.test/bcdn_token={$token}&token_path=%2Fmock-etap-1-3%2F&viewer={$viewer}&expires={$expires}/mock-etap-1-3/playlist.m3u8",
+            $signed['url'],
+        );
+    }
+
+    #[DataProvider('idsOutsideThePattern')]
+    public function test_cdn_signing_refuses_an_id_outside_the_pattern(string $videoId): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Lesson has no Bunny video assigned.');
+
+        $this->service->signedCdnUrl($this->lesson($videoId), $this->user(17));
+    }
+
+    #[DataProvider('idsOutsideThePattern')]
+    public function test_embed_signing_refuses_an_id_outside_the_pattern(string $videoId): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Lesson has no Bunny video assigned.');
+
+        $this->service->signedEmbedUrl($this->lesson($videoId));
+    }
+
+    #[DataProvider('idsOutsideThePattern')]
+    public function test_a_lesson_with_an_id_outside_the_pattern_has_no_recording(string $videoId): void
+    {
+        $this->assertFalse($this->service->hasRecording($this->lesson($videoId)));
+    }
+
+    public function test_a_lesson_has_a_recording_only_for_a_conforming_id(): void
+    {
+        $this->assertTrue($this->service->hasRecording($this->lesson('mock-etap-1-3')));
+        $this->assertFalse($this->service->hasRecording($this->lesson(null)));
+        $this->assertFalse($this->service->hasRecording($this->lesson('')));
+    }
+
+    /** @return array<string, array{string}> */
+    public static function idsOutsideThePattern(): array
+    {
+        return [
+            'path into another library' => ['../../library/0/videos/x'],
+            'parent directory' => ['../x'],
+            'slash' => ['a/b'],
+            'question mark' => ['x?y=1'],
+            'percent-encoded dots' => ['%2e%2e'],
+            'sixty five characters' => [str_repeat('a', 65)],
+        ];
+    }
+
     private function lesson(?string $videoId): Lesson
     {
         return new Lesson(['video_provider_id' => $videoId]);
