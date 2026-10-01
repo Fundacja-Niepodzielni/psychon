@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/klient";
+import { minutyZSekund, sekundyZMinut } from "@/nowy-front/wspolne/minuty";
 import type { CialoLekcji, LekcjaAdmin, StanNagrania } from "./dane";
 
 /**
@@ -52,7 +53,7 @@ export function formularzZLekcji(lekcja: LekcjaAdmin): StanFormularza {
     title: lekcja.title,
     description: lekcja.description ?? "",
     content: lekcja.content ?? "",
-    duration: String(lekcja.duration_seconds),
+    duration: String(minutyZSekund(lekcja.duration_seconds)),
   };
 }
 
@@ -60,10 +61,9 @@ export function formularzeRowne(a: StanFormularza, b: StanFormularza): boolean {
   return a.title === b.title && a.description === b.description && a.content === b.content && a.duration === b.duration;
 }
 
-/** Czas trwania w pełnych sekundach (puste pole = 0, jak w starym formularzu). */
-function sekundy(tekst: string): number | null {
+/** Czas trwania w pełnych minutach, 0 albo więcej; puste pole, ułamek i liczba ujemna to błąd pola. */
+function minuty(tekst: string): number | null {
   const przyciety = tekst.trim();
-  if (przyciety === "") return 0;
   return /^\d+$/.test(przyciety) ? Number(przyciety) : null;
 }
 
@@ -71,7 +71,7 @@ function sekundy(tekst: string): number | null {
 export function walidujLokalnie(formularz: StanFormularza): BledyFormularza {
   const bledy: BledyFormularza = {};
   if (formularz.title.trim() === "") bledy.title = "Podaj tytuł lekcji.";
-  if (sekundy(formularz.duration) === null) bledy.duration = "Podaj czas trwania w pełnych sekundach.";
+  if (minuty(formularz.duration) === null) bledy.duration = "Podaj czas trwania w pełnych minutach, 0 albo więcej.";
   return bledy;
 }
 
@@ -80,13 +80,20 @@ export function walidujLokalnie(formularz: StanFormularza): BledyFormularza {
  * białych znaków (dwie spacje na końcu wiersza to twarde łamanie wiersza).
  * Brak `topic_id`, `topic_position` i `sequence_order`: te pola są po stronie
  * serwera zakazane albo należą do innej trasy.
+ *
+ * Czas: osoba wpisuje minuty, serwer dostaje sekundy (minuty × 60). Gdy podana
+ * jest lekcja `pierwotna`, a pole minut pokazuje to samo co przy jej odczycie,
+ * do serwera wracają jej pierwotne sekundy — zapis samego tytułu nie zmienia
+ * czasu lekcji (1530 s pokazane jako 26 min nie staje się 1560 s).
  */
-export function cialoZapisu(formularz: StanFormularza): CialoLekcji {
+export function cialoZapisu(formularz: StanFormularza, pierwotna?: Pick<LekcjaAdmin, "duration_seconds">): CialoLekcji {
+  const wpisane = minuty(formularz.duration) ?? 0;
+  const bezZmiany = pierwotna !== undefined && wpisane === minutyZSekund(pierwotna.duration_seconds);
   return {
     title: formularz.title,
     description: formularz.description.trim() === "" ? null : formularz.description,
     content: formularz.content,
-    duration_seconds: sekundy(formularz.duration) ?? 0,
+    duration_seconds: bezZmiany ? pierwotna.duration_seconds : sekundyZMinut(wpisane),
   };
 }
 

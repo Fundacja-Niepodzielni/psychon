@@ -11,10 +11,9 @@ import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
-import type { WynikDanychKursu } from "@/nowy-front/kurs-publikacja/dane";
 import { pobierzDaneKursuAdministracji } from "@/nowy-front/kurs-publikacja/dane-administracji";
 import { EdycjaLekcjiPrzyWierszu } from "@/nowy-front/lekcja-edycja/LekcjaEdycja";
-import { KursTematy } from "@/nowy-front/kurs-tematy/KursTematy";
+import { KursTematy, type WynikOdczytuKursu } from "@/nowy-front/kurs-tematy/KursTematy";
 import { UsuniecieKursu } from "@/nowy-front/publikacja-kursu/UsuniecieKursu";
 import { kursPozaKolejnoscia } from "@/nowy-front/zaproszenia-kursu/dane";
 import { SekcjaZaproszenKursu } from "@/nowy-front/zaproszenia-kursu/ZaproszeniaKursu";
@@ -55,7 +54,7 @@ interface WlasciwosciKursAdministracji {
  */
 export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
   const router = useRouter();
-  const [wynik, setWynik] = useState<WynikDanychKursu | null>(null);
+  const [wynik, setWynik] = useState<WynikOdczytuKursu | null>(null);
   const [proba, setProba] = useState(0);
   const [koniec, setKoniec] = useState<"usuniety" | "nie-znaleziono" | null>(null);
 

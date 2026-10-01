@@ -78,9 +78,9 @@ describe("ciało zapisu lekcji", () => {
   });
 
   it("pusty opis idzie jako null, czas jako liczba całkowita", () => {
-    const cialo = cialoZapisu({ title: "T", description: "  ", content: "", duration: "90" });
+    const cialo = cialoZapisu({ title: "T", description: "  ", content: "", duration: "2" });
     expect(cialo.description).toBeNull();
-    expect(cialo.duration_seconds).toBe(90);
+    expect(cialo.duration_seconds).toBe(120);
   });
 
   it("formularz z lekcji: pola puste zamiast null, czas jako tekst", () => {
@@ -103,11 +103,11 @@ describe("walidacja lokalna", () => {
   it("pusty tytuł i czas z ułamkiem dają błędy pól", () => {
     const bledy = walidujLokalnie({ title: "   ", description: "", content: "", duration: "1.5" });
     expect(bledy.title).toBe("Podaj tytuł lekcji.");
-    expect(bledy.duration).toBe("Podaj czas trwania w pełnych sekundach.");
+    expect(bledy.duration).toBe("Podaj czas trwania w pełnych minutach, 0 albo więcej.");
   });
 
-  it("poprawny formularz nie ma błędów, puste pole czasu to zero", () => {
-    expect(walidujLokalnie({ title: "T", description: "", content: "", duration: "" })).toEqual({});
+  it("poprawny formularz nie ma błędów", () => {
+    expect(walidujLokalnie({ title: "T", description: "", content: "", duration: "0" })).toEqual({});
   });
 });
 

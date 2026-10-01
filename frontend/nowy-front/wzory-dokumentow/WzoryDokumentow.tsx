@@ -24,7 +24,9 @@ import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTe
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import {
   RODZAJE_WZORU,
+  ZDANIE_STAREGO_ZAPISU,
   bladTresci,
+  czyStaryZapis,
   czyZmieniona,
   etykietaRodzaju,
   formatujMomentZmiany,
@@ -253,6 +255,11 @@ export function WzoryDokumentow() {
     const { wzor, historia } = stan;
     glowna = (
       <div className={style.kolumna}>
+        {czyStaryZapis(wzor) && (
+          <Notice wariant="warn" tytul="Stary zapis wzoru">
+            {ZDANIE_STAREGO_ZAPISU}
+          </Notice>
+        )}
         {bladOgolny && (
           <Notice wariant="error" tytul="Nie zapisano wzoru">
             {bladOgolny}

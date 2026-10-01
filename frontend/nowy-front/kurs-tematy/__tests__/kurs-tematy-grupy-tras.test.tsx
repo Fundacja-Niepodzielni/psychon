@@ -242,6 +242,7 @@ describe("A-12 — administracja: „Opublikuj kurs” naprawdę zmienia stan ku
     expect(screen.queryByRole("button", { name: "Opublikuj kurs" })).toBeNull();
 
     await userEvent.click(screen.getByRole("button", { name: "Cofnij publikację" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cofnij publikację" }));
 
     expect(await screen.findByText("Szkic")).toBeInTheDocument();
     expect(serwer.zapisy()).toEqual([{ sciezka: "/admin/courses/4", metoda: "PATCH", cialo: { is_published: false } }]);
