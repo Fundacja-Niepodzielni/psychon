@@ -1,6 +1,5 @@
-/* Wiersz listy kursów: układ jak `ListRow` (plakietka przed tytułem, akcja przy
-   prawej krawędzi), te same tokeny. Własny moduł istnieje tylko dlatego, że
-   `ListRow` nie ma akcji nieaktywnej („Zamknięty” z kłódką). */
+/* Lista kursów: sekcja z nagłówkiem i lista wierszy. Wiersz to `ListRow`
+   (układ, tokeny i reguła wąskiego ekranu pochodzą z molekuły). */
 .sekcja {
   display: flex;
   flex-direction: column;
@@ -11,88 +10,4 @@
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--border);
-}
-
-.wiersz {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-  align-items: center;
-  padding: var(--space-12) var(--card-px);
-  border-bottom: 1px solid var(--border);
-  min-height: var(--hit-min);
-}
-
-.tresc {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex: 1 1 60%;
-  min-width: 0;
-}
-
-.naglowek {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.plakietka {
-  display: inline-flex;
-  flex: 0 0 auto;
-  max-width: 100%;
-}
-
-.naglowek > p {
-  flex: 1 1 70%;
-  min-width: 0;
-}
-
-.akcje {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-12);
-  max-width: 100%;
-}
-
-.zamkniety {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-/* Akcja nieaktywna: nie reaguje na kliknięcie ani Enter (brak `onClick`),
-   wygląda jak przycisk nieaktywny z atomu (`Button`: półprzezroczysty). */
-.akcje button[aria-disabled="true"] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* „Otwórz ›” na wąskim ekranie, od 640 px przycisk drugorzędny — tak jak akcja
-   z `href` w `ListRow`. */
-@media (min-width: 640px) {
-  .strzalka {
-    display: none;
-  }
-  .akcjaOdnosnik a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-    min-height: var(--hit-min);
-    margin: 0;
-    padding: var(--space-8) var(--space-16);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--r-xs);
-    background: transparent;
-    color: var(--ink);
-    font-size: var(--fs-9);
-    font-weight: var(--fw-medium);
-    text-decoration: none;
-  }
-  .akcjaOdnosnik a:hover {
-    text-decoration: none;
-  }
 }

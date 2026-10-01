@@ -55,3 +55,29 @@ describe("ListRow — plakietka", () => {
     expect(screen.getByText("Sam tytuł")).toBeInTheDocument();
   });
 });
+
+describe("ListRow — akcja nieaktywna", () => {
+  it("przycisk z kłódką i aria-disabled, bez odnośnika i bez obsługi kliknięcia", () => {
+    const onKliknij = vi.fn();
+    const { container } = render(
+      <ListRow tytul="Kurs" akcja={{ etykieta: "Zamknięty", nieaktywna: true, href: "/k", onKliknij }} />,
+    );
+    const przycisk = screen.getByRole("button", { name: "Zamknięty" });
+    expect(przycisk).toHaveAttribute("aria-disabled", "true");
+    expect(przycisk.querySelector("svg")).not.toBeNull();
+    expect(container.querySelector("a")).toBeNull();
+    przycisk.click();
+    expect(onKliknij).not.toHaveBeenCalled();
+  });
+
+  it("z etykietaDostepna: pełna nazwa dla czytnika, widoczny krótki napis", () => {
+    render(<ListRow tytul="Kurs" akcja={{ etykieta: "Zamknięty", etykietaDostepna: "Zamknięty: Kurs", nieaktywna: true }} />);
+    expect(screen.getByRole("button", { name: "Zamknięty: Kurs" })).toHaveTextContent("Zamknięty");
+  });
+
+  it("bez `nieaktywna` akcja z href zostaje odnośnikiem (stare wywołania bez zmian)", () => {
+    render(<ListRow tytul="Kurs" akcja={{ etykieta: "Otwórz", href: "/k" }} />);
+    expect(screen.getByRole("link", { name: /^Otwórz/ })).toHaveAttribute("href", "/k");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+});

@@ -62,6 +62,27 @@
   gap: var(--space-12);
   max-width: 100%;
 }
+/* Akcja nieaktywna (kłódka + napis): nie reaguje na kliknięcie ani Enter
+   (brak `onClick`), wygląda jak przycisk nieaktywny z atomu
+   (półprzezroczysty). */
+.zamkniety {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.akcjaNieaktywna button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Poniżej 640 px akcja nieaktywna traci ramkę i boczne wypełnienie, jak
+   „Otwórz ›”: mieści się obok treści, w tym samym pasie, zamiast zawijać się
+   pod nią i podnosić wiersz. */
+@media (max-width: 639px) {
+  .akcjaNieaktywna button[aria-disabled="true"] {
+    border-color: transparent;
+    padding-inline: 0;
+  }
+}
 /* Akcja z `href`: na wąskim ekranie zwykły odnośnik z „›” („Otwórz ›”), od
    640 px wygląda jak przycisk drugorzędny (`Button` outline: te same tokeny). */
 @media (min-width: 640px) {
