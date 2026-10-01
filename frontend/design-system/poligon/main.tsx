@@ -37,6 +37,7 @@ import { PageHeader } from "../organizmy/PageHeader/PageHeader";
 import { PanelNav } from "../organizmy/PanelNav/PanelNav";
 import { StatRow } from "../organizmy/StatRow/StatRow";
 import { RecordList } from "../organizmy/RecordList/RecordList";
+import { EmptyStateCard } from "../organizmy/EmptyStateCard/EmptyStateCard";
 import { CaseCard } from "../organizmy/CaseCard/CaseCard";
 import { DataTable } from "../organizmy/DataTable/DataTable";
 import { FileDropZone } from "../molekuly/FileDropZone/FileDropZone";
@@ -788,6 +789,33 @@ function Poligon() {
           jednostkaSumy="godzin"
           wiersze={[]}
           pusty={{ naglowek: "Brak obecności", tresc: "Obecności pojawią się po pierwszej zarejestrowanej superwizji.", przycisk: { etykieta: "Zarejestruj", onClick: () => {} } }}
+        />
+      </div>
+
+      {/* Karta stanu pustego — biała karta z molekułą EmptyState w środku; trzy
+          warianty molekuły, ta sama karta. Bez celów pomiarowych: jedyny
+          przycisk jest przyciskiem molekuły (cel „EmptyState (przycisk)”). */}
+      <div data-style-id="organizm-karta-stanu-pustego-pusto">
+        <EmptyStateCard
+          naglowek="Brak danych"
+          tresc="Dane pojawią się po pierwszym zapisie."
+          przycisk={{ etykieta: "Dodaj", onClick: () => {} }}
+        />
+      </div>
+      <div data-style-id="organizm-karta-stanu-pustego-brak-uprawnien">
+        <EmptyStateCard
+          naglowek="Sekcja dla administracji"
+          wariant="brak-uprawnien"
+          rola="administracji"
+          przycisk={{ etykieta: "Wróć", onClick: () => {} }}
+        />
+      </div>
+      <div data-style-id="organizm-karta-stanu-pustego-brak-wynikow-filtra">
+        <EmptyStateCard
+          naglowek="Brak wyników"
+          wariant="brak-wynikow-filtra"
+          tresc="Żaden wynik nie pasuje do filtra."
+          przycisk={{ etykieta: "Wyczyść filtr", onClick: () => {} }}
         />
       </div>
 

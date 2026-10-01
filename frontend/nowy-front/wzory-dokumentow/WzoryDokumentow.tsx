@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   fetchDocumentTemplate,
@@ -11,15 +11,17 @@ import {
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { KeyValueRow } from "@/design-system/molekuly/KeyValueRow/KeyValueRow";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { DataTable } from "@/design-system/organizmy/DataTable/DataTable";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
+import { EmptyStateCard } from "@/design-system/organizmy/EmptyStateCard/EmptyStateCard";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
+import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
+import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import {
   RODZAJE_WZORU,
   bladTresci,
@@ -37,6 +39,7 @@ import style from "./WzoryDokumentow.module.css";
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Treści i dokumenty" }, { etykieta: "Wzory dokumentów" }];
 const OPCJE_RODZAJU = RODZAJE_WZORU.map((rodzaj) => ({ wartosc: rodzaj.typ, etykieta: rodzaj.etykieta }));
+const ID_WYBORU_RODZAJU = "rodzaj-wzoru";
 
 type StanDialogu = { rodzaj: "cofnij" } | { rodzaj: "zmien-rodzaj"; docelowy: DocumentTemplateType } | { rodzaj: "wroc" };
 
@@ -46,7 +49,10 @@ type StanDialogu = { rodzaj: "cofnij" } | { rodzaj: "zmien-rodzaj"; docelowy: Do
  * główna „Zapisz nową wersję”), w kolumnie wspierającej dane bieżącej wersji
  * i jej historia. Każdy stan (ładowanie, dane, brak wzoru, brak uprawnień,
  * błąd sieci) renderuje się wewnątrz szablonu — jego korzeń jest jedynym
- * `main`.
+ * `main`. Dwa stany puste (brak wzoru, brak uprawnień) stoją na szablonie
+ * `ListTemplate` w karcie stanu pustego: jedna kolumna na każdej szerokości,
+ * więc karta zajmuje całą szerokość treści, a nie kolumnę główną 7/12 od
+ * 1380 px (stan pusty leżałby wtedy na lewo od środka treści).
  *
  * Trasy: `GET`/`PUT /document-templates/{type}` i
  * `GET /document-templates/{type}/versions`. Zapis zawsze zakłada nową
@@ -63,6 +69,9 @@ export function WzoryDokumentow() {
   const [zapisywanie, setZapisywanie] = useState(false);
   const [komunikat, setKomunikat] = useState<string | null>(null);
   const [dialog, setDialog] = useState<StanDialogu | null>(null);
+  // Zmiana rodzaju z klawiatury: gdy stan pusty podmienia szablon, wybór
+  // rodzaju powstaje od nowa i traci fokus — wraca na niego po wczytaniu.
+  const przywrocFokusWyboru = useRef(false);
 
   useEffect(() => {
     let aktualne = true;
@@ -81,6 +90,14 @@ export function WzoryDokumentow() {
     };
   }, [typ, proba]);
 
+  useEffect(() => {
+    if (stan.rodzaj === "ladowanie" || !przywrocFokusWyboru.current) return;
+    przywrocFokusWyboru.current = false;
+    if (document.activeElement === null || document.activeElement === document.body) {
+      document.getElementById(ID_WYBORU_RODZAJU)?.focus();
+    }
+  }, [stan.rodzaj]);
+
   const zapisana = stan.rodzaj === "gotowy" ? stan.wzor.content : "";
   const zmieniona = stan.rodzaj === "gotowy" && czyZmieniona(tresc, zapisana);
 
@@ -95,6 +112,7 @@ export function WzoryDokumentow() {
   }, [zmieniona]);
 
   function przejdzNaRodzaj(docelowy: DocumentTemplateType) {
+    przywrocFokusWyboru.current = document.activeElement?.id === ID_WYBORU_RODZAJU;
     setStan({ rodzaj: "ladowanie" });
     setBladPola(undefined);
     setBladOgolny(null);
@@ -173,7 +191,7 @@ export function WzoryDokumentow() {
     onPowrot: wroc,
     dzieci: (
       <Field
-        id="rodzaj-wzoru"
+        id={ID_WYBORU_RODZAJU}
         etykieta="Rodzaj wzoru"
         rodzaj="wybor"
         opcje={OPCJE_RODZAJU}
@@ -185,6 +203,7 @@ export function WzoryDokumentow() {
 
   let glowna: ReactNode;
   let wspierajaca: ReactNode = null;
+  let stanPusty: ReactNode = null;
 
   if (stan.rodzaj === "ladowanie") {
     glowna = (
@@ -194,8 +213,8 @@ export function WzoryDokumentow() {
     );
     wspierajaca = <Skeleton wiersze={4} />;
   } else if (stan.rodzaj === "brak-uprawnien") {
-    glowna = (
-      <EmptyState
+    stanPusty = (
+      <EmptyStateCard
         wariant="brak-uprawnien"
         naglowek="Wzorami dokumentów zajmuje się administracja"
         rola="administracji"
@@ -203,10 +222,10 @@ export function WzoryDokumentow() {
       />
     );
   } else if (stan.rodzaj === "brak-wzoru") {
-    glowna = (
-      <EmptyState
+    stanPusty = (
+      <EmptyStateCard
         naglowek="Brak wzoru tego typu"
-        tresc="Dla wybranego rodzaju nie ma jeszcze zapisanego wzoru albo edytor wzorów jest wyłączony w tym środowisku. Dokumenty powstają wtedy z wbudowanego wzoru."
+        tresc="Dla tego rodzaju dokumentu nie ma jeszcze zapisanego wzoru. Dokumenty tego rodzaju powstają z wbudowanego wzoru."
         przycisk={{ etykieta: "Wróć", onClick: wroc }}
       />
     );
@@ -288,16 +307,20 @@ export function WzoryDokumentow() {
 
   return (
     <>
-      <DetailTemplate
-        naglowek={naglowek}
-        glowna={
-          <>
-            {glowna}
-            {komunikat && <Toast komunikat={komunikat} onZamknij={() => setKomunikat(null)} />}
-          </>
-        }
-        wspierajaca={wspierajaca}
-      />
+      {stanPusty ? (
+        <ListTemplate naglowek={<PageHeader {...naglowek} />} lista={stanPusty} />
+      ) : (
+        <DetailTemplate
+          naglowek={naglowek}
+          glowna={
+            <>
+              {glowna}
+              {komunikat && <Toast komunikat={komunikat} onZamknij={() => setKomunikat(null)} />}
+            </>
+          }
+          wspierajaca={wspierajaca}
+        />
+      )}
       {dialog && <OknoDialogu dialog={dialog} onWycofaj={() => setDialog(null)} onPotwierdz={potwierdzDialog} />}
     </>
   );

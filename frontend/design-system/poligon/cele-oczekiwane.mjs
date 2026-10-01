@@ -170,6 +170,8 @@ export const WYKLUCZENIA = [
   { komponent: "PanelNav", plik: "organizmy/PanelNav/PanelNav.tsx", powod: "składa wyłącznie Avatar i Text (oba już wykluczone) oraz MenuGroup (cel „MenuItem/MenuGroup (pozycja menu)”) — pozycje menu są jedynym uchwytem aktywacji i są już rozliczone przez dziecko." },
   { komponent: "RecordList", plik: "organizmy/RecordList/RecordList.tsx", powod: "składa wyłącznie ListRow (cel „ListRow (akcja wiersza)”) i EmptyState (cel „EmptyState (przycisk)”) w wariancie z wierszami, Heading i Num (oba już wykluczone) — stopka „Razem” jest tekstem, bez uchwytu." },
   { komponent: "StatRow", plik: "organizmy/StatRow/StatRow.tsx", powod: "składa wyłącznie StatTile (już wykluczony) i — gdy podane `href` — Link (cel „Link (pole klikalne)”) opakowujący kafel; sam organizm nie dokłada własnego handlera poza tym opakowaniem." },
+  // Dopisane z kartą stanu pustego: wykluczeń jest o jedno więcej niż w liczbach z komentarzy wyżej.
+  { komponent: "EmptyStateCard", plik: "organizmy/EmptyStateCard/EmptyStateCard.tsx", powod: "div karty z jednym dzieckiem — molekułą EmptyState (cel „EmptyState (przycisk)”); sam plik nie ma własnego handlera, tabIndex, role aktywacyjnej ani przycisku, jedyny przycisk karty pochodzi z molekuły." },
 ];
 
 // K3, noga trzecia: lista WSZYSTKICH plików `*.tsx`, które ten odbiór
