@@ -55,8 +55,9 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dziesięć: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
- * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy` i `kolejkaStazu`. Pozostałe mają tu jeszcze
+ * Grupy dzisiejszego kanonu. Włączonych jest dwanaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `nabor` i `listaOsob`
+ * (dwie ostatnie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem). Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -257,7 +258,7 @@ export const GRUPY = {
    */
   nabor: {
     klucz: "nabor",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -396,7 +397,7 @@ export const GRUPY = {
   /** Lista osób w administracji — ten sam adres co dzisiejsza strona osób (zakładka „Osoby”). */
   listaOsob: {
     klucz: "listaOsob",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",

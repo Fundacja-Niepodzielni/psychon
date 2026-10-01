@@ -12,12 +12,18 @@ import { ZGLOSZENIE, ZGLOSZENIE_ODRZUCONE, ZGLOSZENIE_ZAAKCEPTOWANE } from "./at
  */
 
 const back = vi.fn();
+const push = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ back, push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ back, push, refresh: vi.fn(), replace: vi.fn() }),
 }));
 vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 
 const api = vi.fn();
+// Ekran bierze klienta z `@/lib/api/klient`; beczkę `@/lib/api` podmieniamy zapobiegawczo, żeby przyszły import z beczki nie poszedł do prawdziwego transportu.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...a: unknown[]) => api(...a),
+}));
 vi.mock("@/lib/api/klient", async (importOriginal) => {
   const oryginal = await importOriginal<typeof import("@/lib/api/klient")>();
   return { ...oryginal, api: (...a: unknown[]) => api(...a) };
@@ -144,6 +150,19 @@ describe("Zgłoszenie — decyzja: stany w szablonie, jeden main", () => {
     const naglowek = await screen.findByRole("heading", { level: 2, name: "Nie znaleziono zgłoszenia" });
     sprawdzSzablon(container);
     expect(container.querySelector("[data-obszar='glowna']")!.contains(naglowek)).toBe(true);
+  });
+
+  it("powrót na listę: „Wróć do listy” i okruszek prowadzą na trasę produktu naboru, nie na poligon ani wstecz", async () => {
+    const uzytkownik = userEvent.setup();
+    trasy({ show: () => Promise.reject(bladApi(404, "not_found", "Nie znaleziono zgłoszenia.")) });
+    render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 2, name: "Nie znaleziono zgłoszenia" });
+
+    await uzytkownik.click(screen.getByRole("button", { name: "Wróć do listy" }));
+    expect(push).toHaveBeenCalledWith("/admin/nabor");
+    expect(back).not.toHaveBeenCalled();
+    const okruszek = screen.getByRole("link", { name: "Zgłoszenia rekrutacyjne" });
+    expect(okruszek.getAttribute("href")).toBe("/admin/nabor");
   });
 
   it("niepoprawny identyfikator w adresie: ten sam stan, bez żądania", () => {

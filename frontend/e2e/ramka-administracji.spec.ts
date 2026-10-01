@@ -164,6 +164,8 @@ const MENU_OCZEKIWANE = [
       ["Sprawy", "/admin/sprawy"],
       ["Dyżury do decyzji", "/admin/staz"],
       ["Uczestnicy", "/admin/uczestniczki"],
+      // Grupa `nabor` włączona: lista zgłoszeń rekrutacyjnych jest pozycją zaraz po „Uczestnicy” (nazwa == h1 ekranu).
+      ["Zgłoszenia rekrutacyjne", "/admin/nabor"],
       ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
     ],
     linia: null,

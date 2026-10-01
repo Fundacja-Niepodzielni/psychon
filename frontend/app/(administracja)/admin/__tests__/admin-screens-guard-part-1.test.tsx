@@ -48,7 +48,7 @@ const { ApiError } = await import("@/lib/api/klient");
 const { default: AdminLayout } = await import("@/app/(administracja)/admin/layout");
 const { default: CoursesPage } = await import("@/app/(administracja)/admin/kursy/page");
 const { default: CoursePage } = await import("@/app/(administracja)/admin/kursy/[id]/page");
-const { default: UsersPage } = await import("@/app/(administracja)/admin/uczestniczki/page");
+const { default: UsersPage } = await import("@/app/(administracja)/admin/uczestniczki/StaraTresc");
 const { default: UserPage } = await import("@/app/(administracja)/admin/uczestniczki/[id]/page");
 const { default: QuestionBankPage } = await import(
   "@/app/(administracja)/admin/testy/[id]/pytania/page"

@@ -1,38 +1,53 @@
+import "@/design-system/tokeny/tokeny.css";
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import ApplicationsTab from "@/components/h03/ApplicationsTab";
-import AdminUsersList from "@/components/h18/AdminUsersList";
-import LoadingState from "@/components/molecules/LoadingState";
-import Tabs from "@/components/ui/Tabs";
+import { redirect } from "next/navigation";
+import { GRUPY, celTrasyEkranu, czyStaraTrasaPrzekierowuje } from "@/lib/przelaczenie/grupy";
+import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
+import { OsobyLista } from "@/nowy-front/osoby-lista/OsobyLista";
+import AdminUsersStaraTresc from "./StaraTresc";
 
+/** Tytuł karty jak dotąd, także przy włączonej grupie. */
 export const metadata: Metadata = {
   title: "Uczestniczki i uczestnicy — Niepodzielni",
 };
 
+/** Wartość parametru `zakladka` z adresu starej strony (zakładka „Zgłoszenia”). */
+const ZAKLADKA_ZGLOSZEN = "zgloszenia";
+
+interface WlasciwosciStrony {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
 /**
- * Ekran osób w administracji — dwie zakładki na jednej trasie (wpięcie ekranu zgłoszeń, H03).
- *
- * `ApplicationsTab` (H03) był kompletny od hackathonu i **nieosiągalny z interfejsu**:
- * nikt go nie importował, więc kryteria ★ H03.1–2, które są kryteriami Z EKRANU,
- * nie miały jak zostać spełnione. Lista osób (H18) zostaje tam, gdzie była — wpięcie
- * zgłoszeń dokłada zakładkę, nie podmienia ekranu.
- *
- * Wybór zakładki siedzi w adresie (`?zakladka=zgloszenia`), bo licznik zgłoszeń
- * na pulpicie (H19) linkuje do kolejki, a nie do „ekranu z zakładkami".
- * Adres bez parametru pokazuje listę osób — dokładnie jak przed tą zmianą.
+ * Strona osób w administracji `/admin/uczestniczki` — trasa wspólna dwóch grup
+ * przełączenia (`lib/przelaczenie/grupy.ts`):
+ * - `nabor`: stara zakładka „Zgłoszenia” (`?zakladka=zgloszenia`, adres z pulpitu
+ *   i ze spraw) przy grupie włączonej przekierowuje (307) na `/admin/nabor` —
+ *   bez 404 i bez utraty zakładki. Reszta adresu `/admin/uczestniczki` nie
+ *   przekierowuje: to trasa grupy `listaOsob`;
+ * - `listaOsob`: adres się nie zmienia, zmienia się treść. Grupa wyłączona →
+ *   dokładnie stara treść z zakładkami (`StaraTresc.tsx`, przeniesiona bez zmiany);
+ *   grupa włączona → ekran „Uczestnicy programu” nowego frontu. Jedyny
+ *   `main#tresc` daje powłoka układu administracji; `DostawcaPowloki` mówi
+ *   szablonowi ekranu, że `main` niesie już powłoka. Zakładka „Osoby” i adres
+ *   bez parametru pokazują nową listę osób.
+ * Obie grupy włącza się razem: nowa lista osób nie niesie zakładki zgłoszeń,
+ * dojście do nich to odnośnik na ekranie i trasa `/admin/nabor`.
  */
-export default function AdminUsersPage() {
+export default async function AdminUsersPage({ searchParams }: WlasciwosciStrony) {
+  const { zakladka } = await searchParams;
+
+  if (zakladka === ZAKLADKA_ZGLOSZEN && czyStaraTrasaPrzekierowuje(GRUPY.nabor, "administracja")) {
+    redirect(celTrasyEkranu(GRUPY.nabor, "administracja")!);
+  }
+
+  if (!GRUPY.listaOsob.wlaczona) return <AdminUsersStaraTresc />;
+
   return (
-    // `Tabs` czyta parametr zapytania; bez `Suspense` Next każe renderować
-    // całą trasę dynamicznie (wymóg `useSearchParams` w App Routerze).
-    <Suspense fallback={<LoadingState />}>
-      <Tabs
-        ariaLabel="Sekcje ekranu uczestniczek"
-        tabs={[
-          { id: "osoby", label: "Osoby", panel: <AdminUsersList /> },
-          { id: "zgloszenia", label: "Zgłoszenia", panel: <ApplicationsTab /> },
-        ]}
-      />
-    </Suspense>
+    <div data-theme="light">
+      <DostawcaPowloki>
+        <OsobyLista />
+      </DostawcaPowloki>
+    </div>
   );
 }

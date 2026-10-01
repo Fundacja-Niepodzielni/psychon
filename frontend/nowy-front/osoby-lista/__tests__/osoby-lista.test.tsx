@@ -20,6 +20,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, back, refresh: vi.fn(), replace: vi.fn() }),
 }));
 
+// Ekran bierze klienta z `@/lib/api/klient`; beczkę `@/lib/api` podmieniamy zapobiegawczo, żeby przyszły import z beczki nie poszedł do prawdziwego transportu.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  apiPaged: (...args: unknown[]) => apiPaged(...args),
+}));
+
 vi.mock("@/lib/api/klient", async (importOriginal) => {
   const oryginal = await importOriginal<typeof import("@/lib/api/klient")>();
   return { ...oryginal, apiPaged: (...args: unknown[]) => apiPaged(...args) };
@@ -96,8 +102,8 @@ describe("Uczestnicy programu — stany", () => {
 
     const odnosniki = screen.getAllByRole("link", { name: "Otwórz kartę" });
     expect(odnosniki.map((a) => a.getAttribute("href"))).toEqual([
-      "/nowy-front/admin/uczestniczki/17",
-      "/nowy-front/admin/uczestniczki/18",
+      "/admin/uczestniczki/17",
+      "/admin/uczestniczki/18",
     ]);
     expect(screen.getByText("osoba17@demo.pl · Wolontariusz")).toBeInTheDocument();
     expect(screen.getByText("osoba18@demo.pl · Psycholog prowadzący")).toBeInTheDocument();
@@ -120,7 +126,7 @@ describe("Uczestnicy programu — stany", () => {
     expect(screen.queryByRole("button", { name: "Pobierz tabelę (Excel)" })).toBeNull();
 
     await uzytkownik.click(screen.getByRole("button", { name: "Przejdź do zgłoszeń" }));
-    expect(push).toHaveBeenCalledWith("/nowy-front/admin/zgloszenia");
+    expect(push).toHaveBeenCalledWith("/admin/nabor");
   });
 
   it("pusty z filtrem: osobny tekst, a „Wyczyść filtr” wraca do zapytania bez filtra", async () => {
@@ -154,6 +160,21 @@ describe("Uczestnicy programu — stany", () => {
     expect(screen.queryByRole("form")).toBeNull();
     expect(screen.queryByRole("button", { name: "Pobierz tabelę (Excel)" })).toBeNull();
     expect(container.textContent).not.toMatch(/Brak dostępu|Nie masz uprawnień/);
+  });
+
+  it("odnośnik do zgłoszeń rekrutacyjnych: w nagłówku po odczycie listy, nie w ładowaniu ani przy odmowie", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([osoba(17)]));
+    const zDanymi = render(<OsobyLista />);
+    expect(screen.queryByRole("link", { name: "Zgłoszenia rekrutacyjne" })).toBeNull();
+    const odnosnik = await screen.findByRole("link", { name: "Zgłoszenia rekrutacyjne" });
+    expect(odnosnik.getAttribute("href")).toBe("/admin/nabor");
+    expect(zDanymi.container.querySelector("header")).toContainElement(odnosnik);
+    zDanymi.unmount();
+
+    apiPaged.mockRejectedValue(odmowa(403));
+    render(<OsobyLista />);
+    await screen.findByText(/administracji/);
+    expect(screen.queryByRole("link", { name: "Zgłoszenia rekrutacyjne" })).toBeNull();
   });
 
   it("odmowa 401: ten sam wariant odmowy i zero rekordów", async () => {

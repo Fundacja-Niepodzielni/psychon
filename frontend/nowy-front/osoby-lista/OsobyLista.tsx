@@ -48,6 +48,10 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Uczestnicy" }];
  * (administracja). Trasy: `GET /admin/users` (lista) i
  * `GET /admin/users/export.csv` (akcja drugorzędna „Pobierz tabelę (Excel)”,
  * z bieżącym filtrem). Główna akcja to „Otwórz kartę” w każdym wierszu.
+ * Dawna zakładka „Zgłoszenia” tej trasy to dziś osobny ekran (`/admin/nabor`):
+ * dojście do niego to odnośnik w nagłówku (po potwierdzeniu roli odczytem
+ * listy) i przycisk pustego stanu; „Otwórz kartę” prowadzi na kartę osoby pod
+ * trasą produktu.
  * Stany: ładowanie, dane, dwa różne stany puste (z filtrem i bez), brak
  * uprawnień, błąd sieci — każdy w tym samym szablonie.
  */
@@ -116,6 +120,7 @@ export function OsobyLista() {
       tytul="Uczestnicy programu"
       opis={opis}
       onPowrot={() => router.back()}
+      akcja={stan.rodzaj === "dane" ? { etykieta: "Zgłoszenia rekrutacyjne", href: SCIEZKA_ZGLOSZEN } : undefined}
       dzieci={
         mozeEksportowac ? (
           <div>

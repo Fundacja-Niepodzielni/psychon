@@ -12,10 +12,27 @@ import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { CaseCard } from "@/design-system/organizmy/CaseCard/CaseCard";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
 import { PanelDecyzji } from "./PanelDecyzji";
-import { dataPl, etykietaRoli, pobierzSkanDyplomu, poprawneId, wczytajZgloszenie, type Zgloszenie } from "./dane";
+import {
+  SCIEZKA_LISTY,
+  dataPl,
+  etykietaRoli,
+  pobierzSkanDyplomu,
+  poprawneId,
+  wczytajZgloszenie,
+  type Zgloszenie,
+} from "./dane";
 import style from "./ZgloszenieDecyzja.module.css";
 
-const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Zgłoszenia rekrutacyjne" }];
+/**
+ * Okruszki z łączem do listy: w nowej ramce panelu nagłówek nie ma przycisku
+ * powrotu, więc łącze „Zgłoszenia rekrutacyjne” jest drogą z powrotem na listę
+ * (`/admin/nabor`); ostatnia pozycja to bieżący ekran.
+ */
+const OKRUSZKI = [
+  { etykieta: "Administracja" },
+  { etykieta: "Zgłoszenia rekrutacyjne", href: SCIEZKA_LISTY },
+  { etykieta: "Zgłoszenie" },
+];
 
 type WariantStatusu = "neutral" | "ok" | "warn" | "error" | "pending";
 
@@ -59,7 +76,7 @@ function Rama({ tytul, status, wroc, glowna, wspierajaca = null }: WlasciwosciRa
  */
 export function ZgloszenieDecyzja({ id }: { id: string }) {
   const router = useRouter();
-  const wroc = () => router.back();
+  const wroc = () => router.push(SCIEZKA_LISTY);
   const [stan, setStan] = useState<Stan>(() =>
     poprawneId(id) === null ? { rodzaj: "nie-znaleziono" } : { rodzaj: "ladowanie" },
   );

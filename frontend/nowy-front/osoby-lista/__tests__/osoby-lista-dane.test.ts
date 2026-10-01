@@ -139,7 +139,7 @@ describe("Uczestnicy programu — wiersze", () => {
     expect(wiersz.tytul).toBe("Marta Demo");
     expect(wiersz.podpowiedz).toBe("marta@demo.pl · Opiekun Projektu");
     expect(wiersz.plakietka).toEqual({ wariant: "ok", tekst: "Konto aktywne" });
-    expect(wiersz.akcja).toEqual({ etykieta: "Otwórz kartę", href: "/nowy-front/admin/uczestniczki/17" });
+    expect(wiersz.akcja).toEqual({ etykieta: "Otwórz kartę", href: "/admin/uczestniczki/17" });
   });
 
   it("konto zablokowane ma osobną plakietkę", () => {

@@ -16,7 +16,7 @@ import {
  * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy` i `kolejkaStazu`.
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "kolejkaStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow"];
+const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "kolejkaStazu", "listaOsob", "nabor", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -32,7 +32,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy i kolejka stażu", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, nabór i lista osób", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -208,7 +208,23 @@ describe("rejestr GRUPY — zawartość", () => {
     expect(GRUPY.nabor.ekrany.map((e) => e.nowaTrasa)).toEqual(["/admin/nabor", "/admin/nabor/[id]"]);
     expect(GRUPY.nabor.ekrany.map((e) => e.staraTrasa)).toEqual(["/admin/uczestniczki", null]);
     expect(celTrasyEkranu({ ...GRUPY.nabor, wlaczona: true }, "administracja")).toBe("/admin/nabor");
-    expect(celTrasyEkranu(GRUPY.nabor, "administracja")).toBe("/admin/uczestniczki");
+    expect(celTrasyEkranu({ ...GRUPY.nabor, wlaczona: false }, "administracja")).toBe("/admin/uczestniczki");
+  });
+
+  it("nabór i lista osób dzielą trasę /admin/uczestniczki i są włączone razem (jedna flaga bez drugiej zostawia martwy odnośnik)", () => {
+    expect(GRUPY.nabor.ekrany[0].staraTrasa).toBe(GRUPY.listaOsob.ekrany[0].staraTrasa);
+    expect(GRUPY.nabor.wlaczona).toBe(GRUPY.listaOsob.wlaczona);
+  });
+
+  it("adresy wpisane w ekranach pokrywają się z trasami rejestru", async () => {
+    const osoby = await import("@/nowy-front/osoby-lista/dane");
+    const lista = await import("@/nowy-front/zgloszenia-lista/dane");
+    const decyzja = await import("@/nowy-front/zgloszenie-decyzja/dane");
+    expect(osoby.SCIEZKA_ZGLOSZEN).toBe(GRUPY.nabor.ekrany[0].nowaTrasa);
+    expect(lista.SCIEZKA_SZCZEGOLU).toBe(GRUPY.nabor.ekrany[0].nowaTrasa);
+    expect(decyzja.SCIEZKA_LISTY).toBe(GRUPY.nabor.ekrany[0].nowaTrasa);
+    expect(GRUPY.nabor.ekrany[1].nowaTrasa).toBe(`${lista.SCIEZKA_SZCZEGOLU}/[id]`);
+    expect(osoby.SCIEZKA_KARTY).toBe(GRUPY.listaOsob.ekrany[0].nowaTrasa);
   });
 
   it("pięć grup kolejek i list zachowuje adres starej strony (podmiana treści)", () => {
@@ -218,7 +234,7 @@ describe("rejestr GRUPY — zawartość", () => {
       const [ekran] = GRUPY[klucz].ekrany;
       expect(ekran.panel, klucz).toBe(panele[i]);
       expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
-      expect(GRUPY[klucz].wlaczona, klucz).toBe(klucz === "kolejkaStazu");
+      expect(GRUPY[klucz].wlaczona, klucz).toBe(klucz === "kolejkaStazu" || klucz === "listaOsob");
     });
   });
 });

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 /**
  * Świadek WPIĘCIA ekranu H03 do interfejsu: `#/admin/uczestniczki`
- * (`app/(administracja)/admin/uczestniczki/page.tsx:29-34`) renderuje obie
+ * (`app/(administracja)/admin/uczestniczki/StaraTresc.tsx`, treść starej strony przeniesiona bez zmiany) renderuje obie
  * zakładki, `AdminUsersList` (H18) i `ApplicationsTab` (H03).
  *
  * Dlaczego świadek czyta ŹRÓDŁO strony, a nie renderuje jej w jsdom: to jest
@@ -19,7 +19,7 @@ import { join } from "node:path";
 
 // Ścieżka liczona od katalogu, w którym biegnie Vitest (`frontend`), a nie od
 // `import.meta.url` — ten w konfiguracji tego runnera nie jest adresem `file:`.
-const STRONA = join(process.cwd(), "app", "(administracja)", "admin", "uczestniczki", "page.tsx");
+const STRONA = join(process.cwd(), "app", "(administracja)", "admin", "uczestniczki", "StaraTresc.tsx");
 
 function zrodloStrony(): string {
   return readFileSync(STRONA, "utf8");
