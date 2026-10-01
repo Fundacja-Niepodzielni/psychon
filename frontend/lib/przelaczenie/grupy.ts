@@ -55,8 +55,8 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwanaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
- * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `nabor` i `listaOsob`
+ * Grupy dzisiejszego kanonu. Włączonych jest trzynaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`, `nabor` i `listaOsob`
  * (dwie ostatnie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem). Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
@@ -215,6 +215,19 @@ export const GRUPY = {
         staraTrasa: "/admin/sprawy",
         nowaTrasa: "/admin/sprawy",
         trasaPoligonu: "/nowy-front/admin/sprawy",
+      },
+    ],
+  },
+  /** Lista kursów administracji z kolejnością ścieżki — ten sam adres co dzisiejsza lista kursów. */
+  kursyAdministracji: {
+    klucz: "kursyAdministracji",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/kursy",
+        nowaTrasa: "/admin/kursy",
+        trasaPoligonu: "/nowy-front/admin/kursy",
       },
     ],
   },

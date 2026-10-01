@@ -56,7 +56,7 @@ describe("czyTrasaWNowejRamce — wszystkie grupy wyłączone", () => {
 });
 
 describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
-  it("nową ramkę dostaje dokładnie siedem stron A.2 administracji", () => {
+  it("nową ramkę dostaje dokładnie osiem stron A.2 administracji", () => {
     const wNowej = STRONY_ADMIN.filter((s) => czyTrasaWNowejRamce(s, "administracja")).sort();
     const oczekiwane = [
       GRUPY.pulpitAdministracji.wlaczona && "/admin",
@@ -66,6 +66,7 @@ describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
       GRUPY.sprawy.wlaczona && "/admin/sprawy",
       GRUPY.kolejkaStazu.wlaczona && "/admin/staz",
       GRUPY.listaOsob.wlaczona && "/admin/uczestniczki",
+      GRUPY.kursyAdministracji.wlaczona && "/admin/kursy",
     ].filter((s): s is string => typeof s === "string");
     expect(wNowej).toEqual(oczekiwane.sort());
   });

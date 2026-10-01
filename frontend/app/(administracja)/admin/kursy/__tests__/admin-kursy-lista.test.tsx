@@ -33,7 +33,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 const { default: AdminCoursesPage } = await import(
-  "@/app/(administracja)/admin/kursy/page"
+  "@/app/(administracja)/admin/kursy/StaraTresc"
 );
 
 const kurs = {

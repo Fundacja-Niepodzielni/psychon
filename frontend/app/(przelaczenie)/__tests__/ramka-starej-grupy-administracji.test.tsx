@@ -114,4 +114,14 @@ describe("układ starej grupy administracji — kontrola dodatnia", () => {
     const kursy = await wyrenderujUklad("/admin/kursy");
     expect(ramka(kursy)).toEqual({ stara: true, nowa: false, main: 1, cele: 1 });
   });
+
+  it("włączona grupa kursów administracji: lista kursów w nowej ramce, szczegół kursu nadal w PanelShell", async () => {
+    podmienRejestr({ kursyAdministracji: true });
+    const lista = await wyrenderujUklad("/admin/kursy");
+    expect(ramka(lista)).toEqual({ stara: false, nowa: true, main: 1, cele: 1 });
+    cleanup();
+
+    const szczegol = await wyrenderujUklad("/admin/kursy/12");
+    expect(ramka(szczegol)).toEqual({ stara: true, nowa: false, main: 1, cele: 1 });
+  });
 });
