@@ -16,6 +16,16 @@ use LogicException;
  * wraca sama — nie ma czego „włączyć z powrotem" i nie ma czego zapomnieć.
  * Zmiany wiersza (UPDATE) przełącznik nie otwiera nigdy.
  *
+ * Trzy znane granice. (a) Wyzwalacz porównuje sam tekst przełącznika z numerem
+ * bieżącej transakcji, więc wartość ustawiona poza tą klasą na poziomie SESJI
+ * i równa temu numerowi otwiera tak samo jak pomocnik. (b) Zagnieżdżenie:
+ * przełącznik ustawiony w zagnieżdżonym poziomie, który się nie wycofał, zostaje
+ * otwarty do końca transakcji ZEWNĘTRZNEJ, nie do końca tego poziomu. (c) Testy
+ * z `RefreshDatabase`: cały test jest jedną transakcją, więc raz ustawiony
+ * przełącznik jest otwarty do końca testu. Wniosek dla testów: świadek odmowy
+ * usunięcia nie może stać w teście, który wcześniej wołał pomocnika w transakcji
+ * albo poziomie nadal trwającym w chwili pomiaru.
+ *
  * Nazwa przełącznika występuje w dokładnie dwóch plikach: w migracji i tutaj.
  * Pilnuje tego `Tests\Unit\Przyrzad\AuditTablesLockGuardTest`, razem z listą
  * miejsc, którym wolno wołać tę klasę.
