@@ -583,7 +583,8 @@ test.describe("nowa ramka panelu administracji — menu 1280×800 i pasek", () =
 /**
  * Położenie bieżącej pozycji menu (`aria-current="page"`) w kontenerze menu
  * (bok albo okno szuflady) względem jego górnej krawędzi i górnej krawędzi
- * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna.
+ * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna. Wartości
+ * surowe z `getBoundingClientRect()` — bez zaokrąglania, tolerancja 0.
  */
 async function pomiarBiezacejPozycji(kontener: Locator) {
   return kontener.evaluate((el) => {
@@ -594,11 +595,11 @@ async function pomiarBiezacejPozycji(kontener: Locator) {
     const p = pozycja?.getBoundingClientRect();
     return {
       pozycja: (pozycja?.textContent ?? "").trim(),
-      goraPozycji: p ? Math.round(p.top) : null,
-      dolPozycji: p ? Math.round(p.bottom) : null,
-      goraKontenera: Math.round(k.top),
-      goraKonta: konto ? Math.round(konto.getBoundingClientRect().top) : null,
-      dolWyloguj: wyloguj ? Math.round(wyloguj.getBoundingClientRect().bottom) : null,
+      goraPozycji: p ? p.top : null,
+      dolPozycji: p ? p.bottom : null,
+      goraKontenera: k.top,
+      goraKonta: konto ? konto.getBoundingClientRect().top : null,
+      dolWyloguj: wyloguj ? wyloguj.getBoundingClientRect().bottom : null,
       scrollTop: el.scrollTop,
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,
@@ -742,5 +743,33 @@ test.describe("nowa ramka panelu administracji — krawędź „Konto” nad tre
     console.log(`POMIAR-KONTO admin /admin koniec ${opis}`);
     expect(m.scrollTop + m.clientHeight, `przewinięte do końca ${opis}`).toBeGreaterThanOrEqual(m.scrollHeight - 1);
     expect(k.linia, `linia przezroczysta ${opis}`).toBe("rgba(0, 0, 0, 0)");
+  });
+});
+
+test.describe("nowa ramka panelu administracji — krawędź „Konto” w szufladzie 390", () => {
+  test("/admin @390: szuflada z treścią pod „Konto” — cień, po przewinięciu do końca bez cienia", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    const okno = page.getByRole("dialog", { name: "Menu i konto" });
+    await expect(okno).toBeVisible();
+    await expect(okno.getByRole("button", { name: "Zamknij", exact: true })).toBeFocused();
+    await expect.poll(async () => (await krawedzKonta(okno)).cien, { timeout: 5000 }).not.toBe("none");
+    const katalog = katalogZrzutow();
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-390-szuflada-konto.png") });
+    const m = await pomiarBiezacejPozycji(okno);
+    const k = await krawedzKonta(okno);
+    const opis = JSON.stringify({ ...k, scrollTop: m.scrollTop, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
+    console.log(`POMIAR-KONTO admin @390 /admin szuflada ${opis}`);
+    expect(m.scrollHeight, `szuflada przewijana ${opis}`).toBeGreaterThan(m.clientHeight);
+    expect(k.linia, `linia widoczna ${opis}`).not.toBe("rgba(0, 0, 0, 0)");
+    await okno.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
+    await expect.poll(async () => (await krawedzKonta(okno)).cien, { timeout: 5000 }).toBe("none");
+    if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-390-szuflada-konto-koniec.png") });
+    await expect(okno.getByRole("button", { name: "Zamknij", exact: true })).toBeFocused();
+    await okno.getByRole("button", { name: "Zamknij", exact: true }).click();
+    await expect(okno).toHaveCount(0);
   });
 });

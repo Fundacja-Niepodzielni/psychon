@@ -409,13 +409,14 @@ describe("odslonBiezacaPozycje — przewija tylko kontener menu", () => {
     return { top, bottom: top + height, height, left: 0, right: 200, width: 200, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
   }
 
-  /** Kontener 0–800, „Konto” od 640; pozycja w treści na `yWTresci` (wysokość 40). */
-  function zbuduj(yWTresci: number) {
+  /** Kontener 0–800, „Konto” od `goraKonta`; pozycja w treści na `yWTresci` (wysokość 40). */
+  function zbuduj(yWTresci: number, goraKonta = 640) {
     const kontener = document.createElement("aside");
     kontener.innerHTML = '<a href="/x" aria-current="page">X</a><div data-konto-menu=""></div>';
     const pozycja = kontener.querySelector("a")!;
     const konto = kontener.querySelector("div")!;
     let przewiniecie = 0;
+    const zachowania: (ScrollBehavior | undefined)[] = [];
     Object.defineProperty(kontener, "scrollTop", {
       get: () => przewiniecie,
       set: (v: number) => {
@@ -423,18 +424,34 @@ describe("odslonBiezacaPozycje — przewija tylko kontener menu", () => {
       },
     });
     kontener.scrollTo = ((opcje: ScrollToOptions) => {
+      zachowania.push(opcje.behavior);
       przewiniecie = opcje.top ?? przewiniecie;
     }) as typeof kontener.scrollTo;
     kontener.getBoundingClientRect = () => prostokat(0, 800);
-    konto.getBoundingClientRect = () => prostokat(640, 160);
+    konto.getBoundingClientRect = () => prostokat(goraKonta, 800 - goraKonta);
     pozycja.getBoundingClientRect = () => prostokat(yWTresci - przewiniecie, 40);
-    return { kontener, scrollTop: () => przewiniecie };
+    return { kontener, scrollTop: () => przewiniecie, zachowania, dolPozycji: () => pozycja.getBoundingClientRect().bottom };
   }
 
   it("pozycja pod blokiem „Konto” — przewija, aż dół pozycji stanie nad „Konto”", () => {
     const { kontener, scrollTop } = zbuduj(994);
     odslonBiezacaPozycje(kontener);
     expect(scrollTop()).toBe(994 + 40 - 640);
+  });
+
+  it("przewinięcie bez animacji — każde wywołanie z `behavior: \"instant\"`", () => {
+    const { kontener, zachowania } = zbuduj(994);
+    odslonBiezacaPozycje(kontener);
+    expect(zachowania.length).toBeGreaterThan(0);
+    expect(zachowania.every((z) => z === "instant")).toBe(true);
+  });
+
+  it("pozycja wystaje o ułamek piksela — po przewinięciu dół pozycji <= góra „Konto” bez zaokrąglania", () => {
+    // Pozycja wystaje pod górę „Konto” o ułamek piksela.
+    const { kontener, scrollTop, dolPozycji } = zbuduj(658.17, 697.95);
+    odslonBiezacaPozycje(kontener);
+    expect(scrollTop()).toBeGreaterThan(0);
+    expect(dolPozycji()).toBeLessThanOrEqual(697.95);
   });
 
   it("pozycja już widoczna — scrollTop bez zmian", () => {

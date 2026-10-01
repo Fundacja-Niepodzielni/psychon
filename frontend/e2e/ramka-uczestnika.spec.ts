@@ -434,7 +434,8 @@ test.describe("nowa ramka panelu uczestnika — menu 1280×800 i pasek", () => {
 /**
  * Położenie bieżącej pozycji menu (`aria-current="page"`) w kontenerze menu
  * (bok albo okno szuflady) względem jego górnej krawędzi i górnej krawędzi
- * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna.
+ * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna. Wartości
+ * surowe z `getBoundingClientRect()` — bez zaokrąglania, tolerancja 0.
  */
 async function pomiarBiezacejPozycji(kontener: Locator) {
   return kontener.evaluate((el) => {
@@ -445,11 +446,11 @@ async function pomiarBiezacejPozycji(kontener: Locator) {
     const p = pozycja?.getBoundingClientRect();
     return {
       pozycja: (pozycja?.textContent ?? "").trim(),
-      goraPozycji: p ? Math.round(p.top) : null,
-      dolPozycji: p ? Math.round(p.bottom) : null,
-      goraKontenera: Math.round(k.top),
-      goraKonta: konto ? Math.round(konto.getBoundingClientRect().top) : null,
-      dolWyloguj: wyloguj ? Math.round(wyloguj.getBoundingClientRect().bottom) : null,
+      goraPozycji: p ? p.top : null,
+      dolPozycji: p ? p.bottom : null,
+      goraKontenera: k.top,
+      goraKonta: konto ? konto.getBoundingClientRect().top : null,
+      dolWyloguj: wyloguj ? wyloguj.getBoundingClientRect().bottom : null,
       scrollTop: el.scrollTop,
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,

@@ -103,8 +103,9 @@ export function PowlokaPanelu({
   // Krawędź „Konto” tylko wtedy, gdy pod przyklejonym blokiem jest treść menu
   // (menu przewijane i nieprzewinięte do końca). Stan odświeża przewinięcie
   // menu, zmiana rozmiaru okna i zmiana wysokości treści menu (np. rozwinięcie grupy).
+  // Mierzony jest kontener, który jest na ekranie: okno szuflady, gdy otwarte, inaczej bok.
   useEffect(() => {
-    const bok = bokRef.current;
+    const bok = menuOtwarte ? oknoRef.current : bokRef.current;
     if (!bok) return;
     const sprawdz = () => setTrescPodKontem(bok.scrollHeight - bok.clientHeight - bok.scrollTop > 1);
     sprawdz();
@@ -117,7 +118,7 @@ export function PowlokaPanelu({
       window.removeEventListener("resize", sprawdz);
       obserwator?.disconnect();
     };
-  }, []);
+  }, [menuOtwarte]);
 
   /** Okno menu istnieje tylko, gdy jest otwarte — otwiera się jako modalne. */
   function podepnijOkno(el: HTMLDialogElement | null) {
@@ -326,11 +327,12 @@ export function odslonBiezacaPozycje(kontener: HTMLElement): void {
     const p = pozycja.getBoundingClientRect();
     if (p.height === 0) return; // pozycja niewyrenderowana (np. zwinięta grupa)
     const dol = Math.min(ramy.bottom, konto ? konto.getBoundingClientRect().top : ramy.bottom);
-    let przesuniecie = 0;
-    if (p.top < ramy.top) przesuniecie = p.top - ramy.top;
-    else if (p.bottom > dol) przesuniecie = Math.min(p.bottom - dol, p.top - ramy.top);
-    if (Math.abs(przesuniecie) < 1) return;
-    const cel = kontener.scrollTop + przesuniecie;
+    // Cel zaokrąglony na zewnątrz do pełnego piksela: po przewinięciu pozycja
+    // nie wystaje ani o ułamek piksela (bez tolerancji podpikselowej).
+    let cel = kontener.scrollTop;
+    if (p.top < ramy.top) cel = Math.floor(kontener.scrollTop + (p.top - ramy.top));
+    else if (p.bottom > dol) cel = Math.ceil(kontener.scrollTop + Math.min(p.bottom - dol, p.top - ramy.top));
+    if (cel === kontener.scrollTop) return;
     if (typeof kontener.scrollTo === "function") kontener.scrollTo({ top: cel, behavior: "instant" });
     else kontener.scrollTop = cel;
   }
