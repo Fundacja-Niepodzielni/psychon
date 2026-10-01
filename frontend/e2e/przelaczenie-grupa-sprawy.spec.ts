@@ -414,7 +414,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
           tekstLewy: Math.round(tekst.left),
         };
       });
-      console.log(`POMIAR-MARGINESU /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
+      console.log(`Pomiar marginesu ekranu /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
       if (szerokosc < 1024) {
         expect(pomiar.h1Lewy, "odstęp lewy h1").toBeGreaterThanOrEqual(16);
         expect(pomiar.h1Lewy, "odstęp lewy h1").toBeLessThanOrEqual(18);
