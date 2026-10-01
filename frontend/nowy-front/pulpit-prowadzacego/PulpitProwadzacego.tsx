@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
+import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKroku/KartaNastepnegoKroku";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
@@ -22,6 +22,8 @@ import {
 } from "./dane";
 import { SekcjaGrupy, SekcjaKursow, SekcjaPytan, SekcjaSuperwizji } from "./sekcje";
 import style from "./PulpitProwadzacego.module.css";
+
+const ETYKIETA_KARTY = "Do zrobienia dziś";
 
 /**
  * Ekran „Pulpit prowadzącego” na szablonie `DashboardTemplate`.
@@ -122,22 +124,21 @@ export function PulpitProwadzacego() {
           onKliknij: () => router.push(ADRES_PYTAN),
         };
 
+  // Jedna karta „Do zrobienia dziś”: z pytaniami — liczba pytań w nagłówku,
+  // bez pytań — najbliższa superwizja. Bez jednego i drugiego karty nie ma.
+  const maPytania = liczbaPytan !== null && liczbaPytan > 0;
   const nastepnyKrok =
-    widok === "pusty" || (liczbaPytan === null && terminy.length === 0) ? undefined : (
-      <>
-        {liczbaPytan !== null && liczbaPytan > 0 && (
-          <section className={style.krok}>
-            <Heading stopien={2}>{`${liczbaPytan} ${odmien(liczbaPytan, "pytanie czeka", "pytania czekają", "pytań czeka")} na odpowiedź`}</Heading>
-            <Text>Uczestnik dostaje powiadomienie, gdy odpowiesz.</Text>
-          </section>
-        )}
-        {terminy.length > 0 && (
-          <section className={style.krok}>
-            <Heading stopien={2}>{`Najbliższa superwizja: ${formatujTermin(terminy[0].starts_at)}`}</Heading>
-            <Text>{`Zajęte miejsca: ${terminy[0].active_signups_count} z ${terminy[0].seats_limit}.`}</Text>
-          </section>
-        )}
-      </>
+    widok === "pusty" || (!maPytania && terminy.length === 0) ? undefined : maPytania ? (
+      <KartaNastepnegoKroku
+        etykieta={ETYKIETA_KARTY}
+        naglowek={`${liczbaPytan} ${odmien(liczbaPytan, "pytanie czeka", "pytania czekają", "pytań czeka")} na odpowiedź`}
+      >
+        <Text>Uczestnik dostaje powiadomienie, gdy odpowiesz.</Text>
+      </KartaNastepnegoKroku>
+    ) : (
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KARTY} naglowek={`Najbliższa superwizja: ${formatujTermin(terminy[0].starts_at)}`}>
+        <Text>{`Zajęte miejsca: ${terminy[0].active_signups_count} z ${terminy[0].seats_limit}.`}</Text>
+      </KartaNastepnegoKroku>
     );
 
   const glowna =

@@ -340,7 +340,7 @@ for (const rozmiar of ROZMIARY) {
       await page.goto("/prowadzacy");
       await zabezpieczeniePrzedEkranemDostepu(page);
       await expect(page.getByRole("heading", { level: 1, name: "Pulpit prowadzącego" })).toBeVisible();
-      await expect(page.getByText("Moja grupa: 1 osoba")).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3, name: "Moja grupa" })).toBeVisible();
       await zrzut(page, `prowadzacy-${rozmiar.nazwa}`);
 
       const tekst = await page.locator("main").innerText();

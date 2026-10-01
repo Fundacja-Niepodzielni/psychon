@@ -10,7 +10,6 @@ import {
   LIMIT_WIERSZY,
   formatujTermin,
   nadchodzaceTerminy,
-  odmien,
   pelneImie,
   skrocTresc,
   type KursProwadzacego,
@@ -74,15 +73,15 @@ export function SekcjaPytan({ sekcja, onOdswiez, stopien = 3 }: { sekcja: Sekcja
   const { liczba, wiersze } = sekcja.dane;
   const pokazane: WierszRecordList[] = wiersze.slice(0, LIMIT_WIERSZY).map((pytanie) => ({
     id: `pytanie-${pytanie.id}`,
-    tytul: `${pelneImie(pytanie.user)} — ${pytanie.lesson.title}`,
-    podpowiedz: `${pytanie.lesson.course.title}: ${skrocTresc(pytanie.question)}`,
+    tytul: skrocTresc(pytanie.question),
+    podpowiedz: `${pelneImie(pytanie.user)} · lekcja „${pytanie.lesson.title}”`,
     plakietka: { wariant: "pending", tekst: "czeka na odpowiedź" },
     akcja: { etykieta: "Odpowiedz", href: ADRES_PYTAN },
   }));
   return (
     <>
       <RecordList
-        tytul={`Pytania bez odpowiedzi: ${liczba}`}
+        tytul="Pytania bez odpowiedzi"
         stopienNaglowka={stopien}
         wiersze={pokazane}
         pusty={pusty("Brak pytań bez odpowiedzi", "Pytania z Twoich kursów pojawią się tu, gdy uczestnicy je zadadzą.", onOdswiez)}
@@ -105,7 +104,7 @@ export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez, stopien = 3 }: { se
   return (
     <>
       <RecordList
-        tytul={`Nadchodzące superwizje: ${terminy.length}`}
+        tytul="Nadchodzące superwizje"
         stopienNaglowka={stopien}
         wiersze={wiersze}
         pusty={pusty("Brak nadchodzących terminów", "Terminy superwizji wystawiasz w widoku grupy.", onOdswiez)}
@@ -127,7 +126,7 @@ export function SekcjaGrupy({ sekcja, onOdswiez }: { sekcja: Sekcja<InstructorGr
   return (
     <>
       <RecordList
-        tytul={`Moja grupa: ${members.length} ${odmien(members.length, "osoba", "osoby", "osób")}`}
+        tytul="Moja grupa"
         wiersze={wiersze}
         pusty={pusty("Nie masz jeszcze przypisanej grupy", "Osoby do grupy przypisuje administracja.", onOdswiez)}
       />
@@ -147,7 +146,7 @@ export function SekcjaKursow({ sekcja, onOdswiez }: { sekcja: Sekcja<KursProwadz
   return (
     <>
       <RecordList
-        tytul={`Moje kursy: ${kursy.length}`}
+        tytul="Moje kursy"
         wiersze={wiersze}
         pusty={pusty("Nie masz przypisanych kursów", "Kursy do prowadzenia przypisuje administracja.", onOdswiez)}
       />
