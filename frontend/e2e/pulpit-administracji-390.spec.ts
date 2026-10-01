@@ -15,7 +15,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - plakietka wiersza: pigułka na szerokość treści; od 640 px w linii tytułu przed nim,
  *   poniżej 640 px w linii pod tytułem, z lewą krawędzią tytułu;
  * - akcja wiersza: rola `link`, pełna nazwa dla czytnika, widoczne „Otwórz”
- *   (1280) albo „Otwórz ›” (390);
+ *   (1280) albo „Otwórz ›” (390); wiersz „Pytania bez odpowiedzi” nie ma akcji
+ *   (ani odnośnika, ani przycisku) i niesie adnotację „odpowiada prowadzący”;
  * - brak dubla „Zgłoszenia rekrutacyjne” poza listą;
  * - ten sam wiersz listy na drugim ekranie (formy stażu) przy 390 i 1280 px.
  *
@@ -199,8 +200,20 @@ async function sprawdzPlakietke(wiersz: Locator, tytul: Locator, plakietka: Loca
   expect(srodek).toBeLessThanOrEqual(pTytulu.y + pTytulu.height);
 }
 
-/** Akcja wiersza: rola `link`, nazwa dostępna = pełna nazwa, widoczny krótki napis. */
+/** Nazwa wiersza kolejki pytań: administracja jej nie otwiera (trasa prowadzącego dałaby jej odmowę). */
+const NAZWA_PYTAN = "Pytania bez odpowiedzi";
+
+/**
+ * Akcja wiersza: rola `link`, nazwa dostępna = pełna nazwa, widoczny krótki napis.
+ * Wiersz pytań nie ma akcji (ani odnośnika, ani przycisku) i niesie adnotację „odpowiada prowadzący”.
+ */
 async function sprawdzAkcje(page: Page, wiersz: Locator, nazwa: string, wuskiEkran: boolean): Promise<void> {
+  if (nazwa === NAZWA_PYTAN) {
+    await expect(wiersz.getByRole("link"), `wiersz „${nazwa}”: odnośniki`).toHaveCount(0);
+    await expect(wiersz.getByRole("button"), `wiersz „${nazwa}”: przyciski`).toHaveCount(0);
+    await expect(wiersz.getByText("odpowiada prowadzący", { exact: true }), `wiersz „${nazwa}”: adnotacja`).toBeVisible();
+    return;
+  }
   const odnosnik = wiersz.getByRole("link", { name: `Otwórz: ${nazwa}`, exact: true });
   await expect(odnosnik, `akcja wiersza „${nazwa}”`).toHaveCount(1);
   const widoczny = await widocznyTekst(odnosnik);

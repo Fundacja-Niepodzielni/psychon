@@ -5,3 +5,91 @@
   flex-direction: column;
   gap: var(--space-16);
 }
+
+/* Lista „Co czeka na decyzję”: sekcja, lista i stopka jak w `RecordList`, a
+   wiersz kolejki bez akcji (`ListaSpraw.tsx`, `WierszBezAkcji`) z układem
+   wiersza `ListRow` — plakietka w linii tytułu, adnotacja pod tytułem, liczba
+   przy prawej krawędzi. Wartości tylko z tokenów. */
+.sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.stopka {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--card-px);
+  font-weight: var(--fw-bold);
+  min-height: var(--hit-min);
+}
+
+.wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-12) var(--card-px);
+  border-bottom: 1px solid var(--border);
+  min-height: var(--hit-min);
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1 1 60%;
+  min-width: 0;
+}
+
+.naglowek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.plakietka {
+  display: inline-flex;
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+/* Tytuł to akapit `Text` (atom nie przyjmuje klasy) — stąd selektor potomka. */
+.naglowek > p {
+  flex: 1 1 70%;
+  min-width: 0;
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  max-width: 100%;
+}
+
+/* Poniżej 640 px tytuł zajmuje pierwszą linię, a plakietka stoi pod nim; liczba
+   stoi w osobnej linii pod treścią, jak w pozostałych wierszach listy. */
+@media (max-width: 639px) {
+  .akcje {
+    flex-basis: 100%;
+  }
+
+  .naglowek > p {
+    flex-basis: 100%;
+    order: 0;
+  }
+
+  .plakietka {
+    order: 2;
+  }
+}
