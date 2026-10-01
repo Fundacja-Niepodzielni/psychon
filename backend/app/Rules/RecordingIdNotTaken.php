@@ -27,8 +27,14 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * nie dostaje tablicy ani napisu spoza wzorca. Pusta wartość (`null`) nie zajmuje
  * niczego, więc reguła jej nie sprawdza (nie jest `implicit`).
  *
+ * Porównanie jest bez rozróżniania wielkości liter i bez białych znaków na
+ * brzegach (`VideoProviderId::normalize`): zapis zamienia identyfikator na małe
+ * litery, więc `MOCK-ABC` i `mock-abc` to to samo nagranie.
+ *
  * Sprawdzenie i zapis nie są jedną operacją bazy: dwa równoczesne zapisy tego
- * samego, wolnego jeszcze identyfikatora do dwóch lekcji mogą oba przejść.
+ * samego, wolnego jeszcze identyfikatora do dwóch lekcji mogą oba przejść. Wyścig
+ * rozstrzyga indeks `lessons_video_provider_id_unique`, a zapis tłumaczy jego
+ * naruszenie na tę samą odmowę (`RecordingIdIndex`).
  */
 class RecordingIdNotTaken implements ValidationRule
 {
@@ -41,11 +47,17 @@ class RecordingIdNotTaken implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! VideoProviderId::isValid($value) || $value === $this->stored) {
+        if (! VideoProviderId::isValid($value)) {
             return;
         }
 
-        if (Lesson::query()->where('video_provider_id', $value)->exists()) {
+        $normalized = VideoProviderId::normalize($value);
+
+        if ($normalized === VideoProviderId::normalize($this->stored)) {
+            return;
+        }
+
+        if (Lesson::query()->whereRaw('lower(video_provider_id) = ?', [$normalized])->exists()) {
             $fail(self::MESSAGE);
         }
     }

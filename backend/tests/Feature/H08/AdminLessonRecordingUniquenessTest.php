@@ -137,6 +137,11 @@ class AdminLessonRecordingUniquenessTest extends TestCase
 
     public function test_an_unchanged_id_passes_even_when_another_lesson_already_holds_it(): void
     {
+        // Zastane powtórzenie sprzed indeksu `lessons_video_provider_id_unique`:
+        // po jego założeniu baza takiego stanu nie przyjmie, więc ten stan
+        // odtwarza zdjęcie indeksu na czas próby (DDL cofa transakcja próby).
+        DB::statement('DROP INDEX lessons_video_provider_id_unique');
+
         $course = $this->course('etap-1');
         $first = $this->lesson($course, 1, self::HELD_ID);
         $second = $this->lesson($course, 2, self::HELD_ID);
