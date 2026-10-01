@@ -22,7 +22,6 @@ import {
   OPCJE_STATUSU,
   PUSTY_FILTR,
   PUSTY_FORMULARZ_ZGLOSZENIA,
-  SCIEZKA_WCZYTANIA_Z_PLIKU,
   dodajZgloszenie,
   filtrAktywny,
   importujZgloszenia,
@@ -144,6 +143,12 @@ export function ZgloszeniaLista() {
 
   function przelaczImport() {
     setImportOtwarty((otwarty) => !otwarty);
+    setImport({ rodzaj: "bezczynny" });
+  }
+
+  /** Pusty stan „Wczytaj zgłoszenia z pliku” otwiera panel importu na tym samym ekranie. */
+  function otworzImport() {
+    setImportOtwarty(true);
     setImport({ rodzaj: "bezczynny" });
   }
 
@@ -308,7 +313,7 @@ export function ZgloszeniaLista() {
       <EmptyState
         naglowek="Brak zgłoszeń w tym roku programu"
         tresc="Zgłoszenia pojawią się tu po zgłoszeniu się kandydatów. Możesz też wczytać je z pliku."
-        przycisk={{ etykieta: "Wczytaj zgłoszenia z pliku", onClick: () => router.push(SCIEZKA_WCZYTANIA_Z_PLIKU) }}
+        przycisk={{ etykieta: "Wczytaj zgłoszenia z pliku", onClick: otworzImport }}
       />
     );
   } else {

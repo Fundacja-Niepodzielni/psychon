@@ -132,7 +132,7 @@ describe("Zgłoszenia rekrutacyjne — wiersze", () => {
       "kandydat@demo.pl · proponowana rola: Psycholog prowadzący · zgłoszono 20.09.2026",
     );
     expect(wiersz.plakietka).toEqual({ wariant: "error", tekst: "Odrzucone" });
-    expect(wiersz.akcja).toEqual({ etykieta: "Otwórz zgłoszenie", href: "/nowy-front/admin/zgloszenia/11" });
+    expect(wiersz.akcja).toEqual({ etykieta: "Otwórz zgłoszenie", href: "/admin/nabor/11" });
   });
 
   it("nieznana rola nie wychodzi na ekran jako surowy kod", () => {

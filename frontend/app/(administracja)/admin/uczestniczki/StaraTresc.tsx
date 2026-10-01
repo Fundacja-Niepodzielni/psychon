@@ -1,0 +1,36 @@
+import { Suspense } from "react";
+import ApplicationsTab from "@/components/h03/ApplicationsTab";
+import AdminUsersList from "@/components/h18/AdminUsersList";
+import LoadingState from "@/components/molecules/LoadingState";
+import Tabs from "@/components/ui/Tabs";
+
+/**
+ * Ekran osób w administracji — dwie zakładki na jednej trasie (wpięcie ekranu zgłoszeń, H03).
+ *
+ * `ApplicationsTab` (H03) był kompletny od hackathonu i **nieosiągalny z interfejsu**:
+ * nikt go nie importował, więc kryteria ★ H03.1–2, które są kryteriami Z EKRANU,
+ * nie miały jak zostać spełnione. Lista osób (H18) zostaje tam, gdzie była — wpięcie
+ * zgłoszeń dokłada zakładkę, nie podmienia ekranu.
+ *
+ * Wybór zakładki siedzi w adresie (`?zakladka=zgloszenia`), bo licznik zgłoszeń
+ * na pulpicie (H19) linkuje do kolejki, a nie do „ekranu z zakładkami".
+ * Adres bez parametru pokazuje listę osób — dokładnie jak przed tą zmianą.
+ *
+ * Treść przeniesiona bez zmiany ze strony trasy: strona (`page.tsx`) czyta rejestr
+ * przełączenia (grupy `listaOsob` i `nabor`) i przy wyłączonych grupach zwraca tę treść.
+ */
+export default function AdminUsersStaraTresc() {
+  return (
+    // `Tabs` czyta parametr zapytania; bez `Suspense` Next każe renderować
+    // całą trasę dynamicznie (wymóg `useSearchParams` w App Routerze).
+    <Suspense fallback={<LoadingState />}>
+      <Tabs
+        ariaLabel="Sekcje ekranu uczestniczek"
+        tabs={[
+          { id: "osoby", label: "Osoby", panel: <AdminUsersList /> },
+          { id: "zgloszenia", label: "Zgłoszenia", panel: <ApplicationsTab /> },
+        ]}
+      />
+    </Suspense>
+  );
+}

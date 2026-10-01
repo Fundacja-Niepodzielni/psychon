@@ -110,11 +110,13 @@ describe("włączona grupa ma strony pod nowymi trasami", () => {
     expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.formyStazu, wlaczona: true }, wszystkieTrasy)).toEqual([]);
   });
 
-  it("przypadek odwrotny: grupa naboru po włączeniu nie ma jeszcze strony, więc zostaje wykryta", () => {
-    expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: true }, wszystkieTrasy)).toEqual([
+  it("grupa naboru po włączeniu ma obie strony, a bez nich brak zostaje wykryty", () => {
+    expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: true }, wszystkieTrasy)).toEqual([]);
+    const bezStronNaboru = wszystkieTrasy.filter((trasa) => !trasa.startsWith("/admin/nabor"));
+    expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: true }, bezStronNaboru)).toEqual([
       "/admin/nabor",
       "/admin/nabor/[id]",
     ]);
-    expect(brakujaceStronyWlaczonejGrupy(GRUPY.nabor, wszystkieTrasy)).toEqual([]);
+    expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: false }, bezStronNaboru)).toEqual([]);
   });
 });
