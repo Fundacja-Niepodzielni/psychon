@@ -74,9 +74,9 @@ describe("/admin/kursy/[id] w układzie administracji (grupa włączona)", () =>
     const { container } = await zlozKurs();
 
     await screen.findByRole("heading", { level: 1, name: "Wywiad psychologiczny" });
-    await screen.findByRole("link", { name: "Otwórz bank pytań" });
+    await screen.findByRole("link", { name: "Otwórz pytania" });
     expect(zmierz(container)).toEqual(JEDEN);
-    for (const id of ["lekcje", "opis", "materialy", "prowadzacy", "test"]) {
+    for (const id of ["tematy-i-lekcje", "publikacja", "ustawienia-dane", "ustawienia-prowadzacy"]) {
       expect(container.querySelectorAll(`#${id}`)).toHaveLength(1);
     }
   });

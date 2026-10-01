@@ -179,3 +179,35 @@ export function usunLekcjeZUkladu(uklad: Uklad, idLekcji: number): Uklad {
     tytulyLekcji,
   };
 }
+
+/**
+ * Przesunięcie tematu o jedno miejsce: `-1` wyżej, `1` niżej. Lekcje zostają
+ * w swoich tematach. Ruch poza listę (pierwszy temat wyżej, ostatni niżej)
+ * oddaje ten sam układ, bez kopii — wywołujący rozpoznaje po tym brak zmiany.
+ */
+export function przeniesTemat(uklad: Uklad, idTematu: number, kierunek: -1 | 1): Uklad {
+  const indeks = uklad.tematy.findIndex((temat) => temat.id === idTematu);
+  const cel = indeks + kierunek;
+  if (indeks === -1 || cel < 0 || cel >= uklad.tematy.length) return uklad;
+  const tematy = [...uklad.tematy];
+  [tematy[indeks], tematy[cel]] = [tematy[cel], tematy[indeks]];
+  return { ...uklad, tematy };
+}
+
+/**
+ * Przesunięcie lekcji strzałką o jedno miejsce w kolejności kursu: `-1` w
+ * górę, `1` w dół. Na brzegu tematu lekcja przechodzi na koniec poprzedniego
+ * albo na początek następnego tematu. Pierwsza lekcja kursu w górę i ostatnia
+ * w dół oddają ten sam układ, bez kopii.
+ */
+export function przesunLekcje(uklad: Uklad, idLekcji: number, kierunek: -1 | 1): Uklad {
+  const indeksTematu = uklad.tematy.findIndex((temat) => temat.lekcje.includes(idLekcji));
+  if (indeksTematu === -1) return uklad;
+  const temat = uklad.tematy[indeksTematu];
+  const miejsce = temat.lekcje.indexOf(idLekcji);
+  const cel = miejsce + kierunek;
+  if (cel >= 0 && cel < temat.lekcje.length) return przeniesLekcje(uklad, temat.id, idLekcji, temat.id, cel);
+  const sasiad = uklad.tematy[indeksTematu + kierunek];
+  if (!sasiad) return uklad;
+  return przeniesLekcje(uklad, temat.id, idLekcji, sasiad.id, kierunek === -1 ? sasiad.lekcje.length : 0);
+}

@@ -14,17 +14,15 @@ import { GRUPY } from "../lib/przelaczenie/grupy";
  * Rodzaj „podmiana treści”: adres `/admin/kursy/{id}` się nie zmienia, pod nim
  * stoi ekran kursu nowego frontu w nowej ramce panelu. Sprawdzane na zbudowanej
  * aplikacji, z atrapą API przez `page.route` i atrapą sesji:
- * - adres, `h1`, jedyny `main` i `#tresc`, nowa ramka, każda sekcja raz;
+ * - adres, `h1`, jedyny `main` i `#tresc`, nowa ramka, każda karta raz;
  * - publikacja z odmową 422 i z sukcesem, cofnięcie publikacji;
- * - temat; lekcja: dodanie, edycja przy wierszu, usunięcie;
- * - dane kursu (ciało zapisu bez pozycji w ścieżce), materiały, zaproszenie,
- *   przypisanie prowadzącego;
+ * - temat; lekcja dodawana samym tytułem (pole zostaje otwarte z fokusem);
+ * - dane kursu (ciało zapisu bez pozycji w ścieżce), zaproszenie,
+ *   przypisanie prowadzącego — w wierszach „Ustawień kursu”;
  * - bank pytań otwiera się obu rolom administracji (200, nagłówek ekranu);
- * - niezapisany formularz lekcji a tryb kolejności na 390 px — fokus nigdy na
- *   `body`;
  * - usunięcie kursu;
  * - axe (WCAG 2.1 AA i `best-practice`) na 1280 i 390 px w stanach: z tematami,
- *   pusty, z rozwiniętą lekcją, z oknami potwierdzeń.
+ *   pusty, z oknami potwierdzeń.
  * - ekran lekcji `/admin/kursy/{id}/lekcje/{idLekcji}` (grupa `edycjaLekcji`):
  *   próby czytają flagę grupy z rejestru — przy wyłączonej adres pokazuje
  *   „Nie znaleziono strony” (bez żądań o lekcję) i ekran kursu nie ma do niego
@@ -377,7 +375,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
   test.describe(`kurs administracji pod adresem /admin/kursy/{id} — ${szerokosc} px`, () => {
     test.use({ viewport: { width: szerokosc, height: wysokosc } });
 
-    test("kurs z tematami: adres bez zmian, nowa ramka, jeden main, każda sekcja raz, axe", async ({
+    test("kurs z tematami: adres bez zmian, nowa ramka, jeden main, każda karta raz, axe", async ({
       page,
     }, testInfo) => {
       const { sciezki } = await instalujAtrapy(page);
@@ -389,121 +387,58 @@ for (const { szerokosc, wysokosc } of OKNA) {
       expect(await page.locator("main").count()).toBe(1);
       expect(await page.locator("#tresc").count()).toBe(1);
       await expect(page.getByRole("heading", { level: 3, name: "Podstawy" })).toBeVisible();
-      for (const id of ["lekcje", "opis", "zaproszenia", "materialy", "prowadzacy", "test"]) {
+      for (const id of ["tematy-i-lekcje", "publikacja", "ustawienia-dane", "ustawienia-prowadzacy", "ustawienia-zaproszenia"]) {
         await expect(page.locator(`#${id}`)).toHaveCount(1);
       }
-      await expect(page.getByRole("link", { name: "Otwórz bank pytań" })).toHaveAttribute(
+      await expect(page.getByRole("link", { name: "Otwórz pytania" })).toHaveAttribute(
         "href",
         "/admin/testy/31/pytania",
       );
-      await expect(page.getByText("Cały kurs: brak prowadzącego")).toBeVisible();
 
       await bezPrzewijaniaPoziomego(page);
       await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-tematy`);
       await zrzut(page, `kurs-${szerokosc}-tematy-gora`);
-      await zrzut(page, `kurs-${szerokosc}-dane-kursu`, page.locator("#opis"));
-      await zrzut(page, `kurs-${szerokosc}-materialy`, page.locator("#materialy"));
-      await zrzut(page, `kurs-${szerokosc}-prowadzacy`, page.locator("#prowadzacy"));
-      await zrzut(page, `kurs-${szerokosc}-test`, page.locator("#test"));
 
       expect(sciezki.filter((sciezka) => sciezka.startsWith("/instructor/"))).toEqual([]);
     });
 
-    test("kurs bez tematów: „Dodaj pierwszy temat”, axe", async ({ page }, testInfo) => {
+    test("kurs bez tematów: zdanie i „+ Dodaj temat”, axe", async ({ page }, testInfo) => {
       await instalujAtrapy(page, { tryb: "pusty" });
       await otworzKurs(page);
 
-      await expect(page.getByRole("button", { name: "Dodaj pierwszy temat" })).toBeVisible();
+      await expect(page.getByText(/Kurs nie ma jeszcze tematów/)).toBeVisible();
+      await expect(page.getByRole("button", { name: "+ Dodaj temat" })).toBeVisible();
       expect(await page.locator("main").count()).toBe(1);
       await bezPrzewijaniaPoziomego(page);
       await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-pusty`);
       await zrzut(page, `kurs-${szerokosc}-pusty`);
     });
 
-    test("rozwinięta lekcja: formularz czterech pól, odnośnik do ekranu lekcji tylko przy włączonej grupie, powiadomienie o zapisie pod formularzem, axe", async ({
+    test("okna: nowy temat, usunięcie tematu z lekcjami, usunięcie kursu — axe, zero zapisów", async ({
       page,
     }, testInfo) => {
       const { zapisy } = await instalujAtrapy(page);
       await otworzKurs(page);
 
-      await page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" }).click();
-      const li = wiersz(page, 22);
-      const formularz = li.getByRole("form", { name: "Edycja lekcji" });
-      await expect(formularz).toBeVisible();
-      await expect(formularz.locator("input, textarea")).toHaveCount(4);
-      await expect(li.getByRole("link")).toHaveCount(GRUPA_LEKCJI ? 1 : 0);
-      if (GRUPA_LEKCJI) {
-        await expect(li.getByRole("link", { name: "Materiały i nagranie" })).toHaveAttribute("href", ADRES_LEKCJI);
-      }
-      await expect(li.getByRole("button", { name: "Usuń lekcję „Pytania otwarte i zamknięte”" })).toBeVisible();
-
-      await bezPrzewijaniaPoziomego(page);
-      await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-lekcja-rozwinieta`);
-      await zrzut(page, `kurs-${szerokosc}-lekcja-rozwinieta`, li);
-
-      await formularz.getByLabel(/^Tytuł lekcji/).fill("Pytania otwarte");
-      await formularz.getByRole("button", { name: "Zapisz lekcję" }).click();
-      const powiadomienie = li.getByRole("status").filter({ hasText: "Lekcja została zapisana." });
-      await expect(powiadomienie).toBeVisible();
-      expect(zapisy.map((zapis) => `${zapis.metoda} ${zapis.sciezka}`)).toEqual(["PATCH /admin/lessons/22"]);
-
-      // Powiadomienie stoi w rozwinięciu wiersza, pod formularzem — nie zasłania
-      // nagłówka następnego tematu ani żadnego wiersza lekcji.
-      const ramka = (await powiadomienie.boundingBox())!;
-      const rozwiniecie = (await li.locator("[data-rozwiniecie-lekcji]").boundingBox())!;
-      const formularzRamka = (await formularz.boundingBox())!;
-      const nastepnyTemat = (await page.getByRole("heading", { level: 3, name: "Praktyka" }).boundingBox())!;
-      expect(await powiadomienie.evaluate((wezel) => getComputedStyle(wezel).position)).toBe("static");
-      expect(ramka.y).toBeGreaterThanOrEqual(formularzRamka.y + formularzRamka.height - 1);
-      expect(ramka.y + ramka.height).toBeLessThanOrEqual(rozwiniecie.y + rozwiniecie.height + 1);
-      expect(ramka.y + ramka.height).toBeLessThanOrEqual(nastepnyTemat.y + 1);
-      await zrzut(page, `kurs-${szerokosc}-lekcja-zapisana-powiadomienie`, formularz.getByRole("button", { name: "Zapisz lekcję" }));
-    });
-
-    test("okna potwierdzeń: porzucenie zmian w lekcji, usunięcie lekcji, nowy temat, usunięcie kursu — axe", async ({
-      page,
-    }, testInfo) => {
-      const { zapisy } = await instalujAtrapy(page);
-      await otworzKurs(page);
-
-      await page.getByRole("button", { name: "Edytuj lekcję „Wprowadzenie do wywiadu”" }).click();
-      const formularz = wiersz(page, 21).getByRole("form", { name: "Edycja lekcji" });
-      const tytul = formularz.getByLabel(/^Tytuł lekcji/);
-      await tytul.fill("Niezapisany tytuł");
-      await page.getByRole("button", { name: "Edytuj lekcję „Ćwiczenie w parach”" }).click();
-      const pytanie = page.getByRole("dialog", { name: "Porzucić niezapisane zmiany w lekcji?" });
-      await expect(pytanie.getByRole("button", { name: "Zostań" })).toBeFocused();
-      await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-okno-porzucenia`);
-      await zrzut(page, `kurs-${szerokosc}-okno-porzucenia`, pytanie);
-      await pytanie.getByRole("button", { name: "Zostań" }).click();
-      await expect(page.getByRole("dialog")).toHaveCount(0);
-      await expect(tytul).toHaveValue("Niezapisany tytuł");
-      await expect(tytul).toBeFocused();
-      await expect(page.locator("[data-rozwiniecie-lekcji]")).toHaveCount(1);
-
-      await page.getByRole("button", { name: "Edytuj lekcję „Ćwiczenie w parach”" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Porzuć zmiany" }).click();
-      await expect(wiersz(page, 23).getByRole("form", { name: "Edycja lekcji" })).toBeVisible();
-      await expect(page.locator("[data-rozwiniecie-lekcji]")).toHaveCount(1);
-
-      await wiersz(page, 23).getByRole("button", { name: "Usuń lekcję „Ćwiczenie w parach”" }).click();
-      const usuniecie = page.getByRole("dialog", { name: "Usunąć lekcję „Ćwiczenie w parach”?" });
-      await expect(usuniecie).toBeVisible();
-      await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-okno-usuniecia-lekcji`);
-      await zrzut(page, `kurs-${szerokosc}-okno-usuniecia-lekcji`, usuniecie);
-      await usuniecie.getByRole("button", { name: "Anuluj" }).click();
-      await wiersz(page, 23).getByRole("form").getByRole("button", { name: "Anuluj" }).click();
-
-      await page.getByRole("button", { name: "Dodaj temat", exact: true }).click();
+      await page.getByRole("button", { name: "+ Dodaj temat" }).click();
       const nowyTemat = page.getByRole("dialog", { name: "Nowy temat" });
       await expect(nowyTemat).toBeVisible();
       await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-okno-nowego-tematu`);
       await zrzut(page, `kurs-${szerokosc}-okno-nowego-tematu`, nowyTemat);
       await nowyTemat.getByRole("button", { name: "Anuluj" }).click();
 
-      await page.getByRole("button", { name: "Usunięcie kursu (1)" }).click();
+      await page.getByRole("button", { name: "Więcej działań tematu Podstawy" }).click();
+      await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-wiecej-tematu`);
+      await page.getByRole("button", { name: "Usuń temat" }).click();
+      const usuniecieTematu = page.getByRole("dialog");
+      await expect(usuniecieTematu).toContainText("Temat ma 2 lekcje.");
+      await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-okno-usuniecia-tematu`);
+      await usuniecieTematu.getByRole("button", { name: "Rozumiem" }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+
+      await page.getByRole("button", { name: "Usunięcie kursu" }).click();
       await page.getByRole("button", { name: "Usuń kurs" }).click();
-      const usuniecieKursu = page.getByRole("dialog", { name: "Usunąć kurs?" });
+      const usuniecieKursu = page.getByRole("dialog");
       await expect(usuniecieKursu).toBeVisible();
       await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-okno-usuniecia-kursu`);
       await zrzut(page, `kurs-${szerokosc}-okno-usuniecia-kursu`, usuniecieKursu);
@@ -517,28 +452,31 @@ for (const { szerokosc, wysokosc } of OKNA) {
 test.describe("kurs administracji — operacje (1280 px)", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("publikacja: odmowa 422 pokazuje braki i nie zmienia stanu; druga próba publikuje; cofnięcie publikacji", async ({
+  test("publikacja: odmowa 422 pokazuje powody w karcie i nie zmienia stanu; druga próba publikuje; cofnięcie publikacji", async ({
     page,
   }) => {
     const { zapisy } = await instalujAtrapy(page, { odmowaPublikacji: true });
     await otworzKurs(page);
+    const karta = page.getByRole("region", { name: "Publikacja" });
+    const opublikuj = page.getByRole("button", { name: "Opublikuj kurs" }).locator("visible=true");
 
-    await page.getByRole("button", { name: "Opublikuj kurs" }).click();
-    await expect(page.getByText("Braki przed publikacją")).toBeVisible();
-    await expect(page.getByText("Dodaj co najmniej jedną lekcję")).toBeVisible();
-    await expect(page.getByText("Opublikowany", { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Cofnij publikację" })).toHaveCount(0);
+    await opublikuj.click();
+    await expect(karta.getByRole("heading", { level: 3, name: "Nie udało się opublikować (1)" })).toBeVisible();
+    await expect(karta.getByRole("link", { name: "Dodaj co najmniej jedną lekcję." })).toBeVisible();
+    await expect(page.locator("#publikacja-tytul")).toBeFocused();
+    await expect(karta.getByText("Kurs jest szkicem. Uczestnicy go nie widzą.")).toBeVisible();
     await zrzut(page, "kurs-1280-publikacja-odmowa");
 
-    await page.getByRole("button", { name: "Opublikuj kurs" }).first().click();
-    await expect(page.getByText("Opublikowany", { exact: true })).toBeVisible();
+    await opublikuj.click();
+    await expect(karta.getByText("Kurs jest opublikowany.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Opublikuj kurs" })).toHaveCount(0);
     await zrzut(page, "kurs-1280-opublikowany");
 
+    await page.getByRole("button", { name: "Cofnięcie publikacji i usunięcie kursu" }).click();
     await page.getByRole("button", { name: "Cofnij publikację" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Cofnij publikację" }).click();
-    await expect(page.getByRole("button", { name: "Opublikuj kurs" })).toHaveCount(1);
-    await expect(page.getByText("Opublikowany", { exact: true })).toHaveCount(0);
+    await expect(karta.getByText("Kurs jest szkicem. Uczestnicy go nie widzą.")).toBeVisible();
+    await expect(opublikuj).toHaveCount(1);
 
     expect(zapisy).toEqual([
       { metoda: "PATCH", sciezka: "/admin/courses/4", cialo: { is_published: true } },
@@ -547,103 +485,77 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     ]);
   });
 
-  test("temat i lekcja: nowy temat, dodanie lekcji w temacie, edycja przy wierszu, usunięcie z potwierdzeniem", async ({
-    page,
-  }) => {
+  test("temat i lekcja: nowy temat, dodanie lekcji samym tytułem, pole zostaje otwarte z fokusem", async ({ page }) => {
     const { zapisy } = await instalujAtrapy(page);
     await otworzKurs(page);
 
-    await page.getByRole("button", { name: "Dodaj temat", exact: true }).click();
+    await page.getByRole("button", { name: "+ Dodaj temat" }).click();
     const okno = page.getByRole("dialog", { name: "Nowy temat" });
     await okno.getByLabel(/^Nazwa tematu/).fill("Podsumowanie");
     await okno.getByRole("button", { name: "Dodaj temat" }).click();
     await expect(page.getByRole("heading", { level: 3, name: "Podsumowanie" })).toBeVisible();
 
-    await page.getByTestId("ct-dodaj-8").click();
-    const nowa = page.locator("[data-pod-tematem='8']").getByRole("form", { name: "Nowa lekcja" });
-    await expect(nowa.getByLabel(/^Tytuł lekcji/)).toBeFocused();
+    await page.getByRole("button", { name: "Dodaj lekcję w temacie Praktyka" }).click();
+    const pole = page.getByRole("textbox", { name: "Tytuł nowej lekcji w temacie Praktyka" });
+    await expect(pole).toBeFocused();
     await zrzut(page, "kurs-1280-nowa-lekcja", page.getByRole("heading", { level: 3, name: "Praktyka" }));
-    await nowa.getByLabel(/^Tytuł lekcji/).fill("Rozmowa próbna");
-    await nowa.getByLabel(/^Czas trwania w minutach/).fill("10");
-    await nowa.getByRole("button", { name: "Dodaj lekcję" }).click();
-    const edytujNowa = page.getByRole("button", { name: "Edytuj lekcję „Rozmowa próbna”" });
-    await expect(edytujNowa).toBeFocused();
-    await expect(page.locator("[data-pod-tematem]")).toHaveCount(0);
-
-    await edytujNowa.click();
-    const li = wiersz(page, 101);
-    const formularz = li.getByRole("form", { name: "Edycja lekcji" });
-    await formularz.getByLabel(/^Tytuł lekcji/).fill("Rozmowa próbna w parach");
-    await formularz.getByRole("button", { name: "Zapisz lekcję" }).click();
-    await expect(li.getByText("Rozmowa próbna w parach · 10 min")).toBeVisible();
-
-    await li.getByRole("button", { name: "Usuń lekcję „Rozmowa próbna w parach”" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Usuń lekcję" }).click();
-    await expect(wiersz(page, 101)).toHaveCount(0);
-    await expect(page.getByTestId("ct-dodaj-8")).toBeFocused();
-    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe("BODY");
+    await pole.fill("Rozmowa próbna");
+    await pole.press("Enter");
+    await expect(wiersz(page, 101)).toContainText("Rozmowa próbna");
+    await expect(pole).toHaveValue("");
+    await expect(pole).toBeFocused();
+    await expect(page.locator("[data-ogloszenia]")).toHaveText("Dodano lekcję 4: Rozmowa próbna");
+    await expect(wiersz(page, 101).getByRole("link", { name: "Otwórz lekcję 4: Rozmowa próbna" })).toHaveAttribute(
+      "href",
+      "/admin/kursy/4/lekcje/101",
+    );
 
     expect(zapisy).toEqual([
       { metoda: "POST", sciezka: "/admin/courses/4/topics", cialo: { title: "Podsumowanie" } },
       {
         metoda: "POST",
         sciezka: "/admin/courses/4/lessons",
-        cialo: { title: "Rozmowa próbna", description: null, duration_seconds: 600, topic_id: 8 },
+        cialo: { title: "Rozmowa próbna", description: null, duration_seconds: 0, topic_id: 8 },
       },
-      {
-        metoda: "PATCH",
-        sciezka: "/admin/lessons/101",
-        cialo: { title: "Rozmowa próbna w parach", description: null, content: "", duration_seconds: 600 },
-      },
-      { metoda: "DELETE", sciezka: "/admin/lessons/101", cialo: null },
     ]);
   });
 
-  test("dane kursu, materiały, zaproszenie, prowadzący: każda operacja jednym żądaniem; zapis danych bez pozycji w ścieżce", async ({
+  test("dane kursu, zaproszenie, prowadzący: każda operacja jednym żądaniem; zapis danych bez pozycji w ścieżce", async ({
     page,
   }) => {
     const { zapisy } = await instalujAtrapy(page);
     await otworzKurs(page);
 
-    await page.getByRole("button", { name: "Zmień dane kursu" }).click();
-    const dane = page.getByRole("form", { name: "Dane kursu" });
-    await expect(dane.getByLabel(/Pozycja/)).toHaveCount(0);
+    await page.locator("#ustawienia-dane").click();
+    const dane = page.locator("#ustawienia-dane-panel");
+    await expect(dane.getByLabel(/Pozycja|Miejsce/)).toHaveCount(0);
     await expect(dane).not.toContainText(/slug/i);
     await dane.getByLabel(/^Tytuł kursu/).fill("Wywiad psychologiczny — podstawy");
-    await dane.getByLabel(/^Identyfikator/).fill("wywiad-podstawy");
-    await wybierz(page, /^Typ/, "Kurs");
+    await dane.getByLabel(/^Nazwa w adresie strony/).fill("wywiad-podstawy");
+    await wybierz(page, /^Rodzaj/, "Kurs");
     await zrzut(page, "kurs-1280-dane-kursu-formularz", dane);
-    await dane.getByRole("button", { name: "Zapisz zmiany" }).click();
+    await dane.getByRole("button", { name: "Zapisz dane kursu" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Wywiad psychologiczny — podstawy" })).toBeVisible();
-    await expect(page.getByRole("form", { name: "Dane kursu" })).toHaveCount(0);
 
-    const materialy = page.locator("#materialy");
-    await materialy
-      .locator("input[type='file']")
-      .setInputFiles({ name: "karta-pracy.pdf", mimeType: "application/pdf", buffer: Buffer.from("tresc") });
-    await expect(materialy.getByText(/bez lekcji: 2\./)).toBeVisible();
-    await materialy.getByRole("button", { name: "Usuń materiał „karta-pracy.pdf”" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Usuń materiał" }).click();
-    await expect(materialy.getByText(/bez lekcji: 1\./)).toBeVisible();
-
-    const zaproszenia = page.locator("#zaproszenia");
-    await zaproszenia.getByRole("button", { name: "Zaproś osoby" }).click();
+    await page.locator("#ustawienia-zaproszenia").click();
+    await expect(page.locator("#ustawienia-dane")).toHaveAttribute("aria-expanded", "false");
+    const zaproszenia = page.locator("#ustawienia-zaproszenia-panel");
     await zaproszenia.getByLabel("Marta Demo · marta@demo.pl").check();
     await zaproszenia.getByRole("button", { name: "Wyślij zaproszenia" }).click();
     await expect(page.getByText("Zaproszono 1 osobę.")).toBeVisible();
 
-    const prowadzacy = page.locator("#prowadzacy");
+    await page.locator("#ustawienia-prowadzacy").click();
+    const prowadzacy = page.locator("#ustawienia-prowadzacy-panel");
     await wybierz(page, /^Prowadzący/, "Joanna Demo");
     await prowadzacy.getByRole("button", { name: "Przypisz prowadzącego" }).click();
-    await expect(prowadzacy.getByText("Cały kurs: Joanna Demo")).toBeVisible();
+    await expect(page.locator("#ustawienia-prowadzacy")).toContainText("Joanna Demo, cały kurs");
     await zrzut(page, "kurs-1280-prowadzacy-przypisany", prowadzacy);
     await prowadzacy.getByRole("button", { name: "Odłącz: Joanna Demo, Cały kurs" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Odłącz prowadzącego" }).click();
-    await expect(prowadzacy.getByText("Cały kurs: brak prowadzącego")).toBeVisible();
+    await expect(page.locator("#ustawienia-prowadzacy")).not.toContainText("Joanna Demo");
 
     const cialoDanych = zapisy[0].cialo as Record<string, unknown>;
     expect(Object.keys(cialoDanych).sort()).toEqual(["description", "product_group", "slug", "title", "type"]);
-    expect(Object.keys(cialoDanych)).not.toContain("sequence_order");
     expect(zapisy).toEqual([
       {
         metoda: "PATCH",
@@ -656,11 +568,9 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
           product_group: "psychon",
         },
       },
-      { metoda: "POST", sciezka: "/admin/courses/4/materials", cialo: "plik" },
-      { metoda: "DELETE", sciezka: "/admin/materials/100", cialo: null },
       { metoda: "POST", sciezka: "/admin/courses/4/invite", cialo: { user_ids: [17] } },
       { metoda: "POST", sciezka: "/admin/courses/4/assignments", cialo: { instructor_id: 5, lesson_id: null } },
-      { metoda: "DELETE", sciezka: "/admin/courses/4/assignments", cialo: { assignment_id: 101 } },
+      { metoda: "DELETE", sciezka: "/admin/courses/4/assignments", cialo: { assignment_id: 100 } },
     ]);
   });
 
@@ -668,11 +578,11 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     const { zapisy } = await instalujAtrapy(page);
     await otworzKurs(page);
 
-    await page.getByRole("button", { name: "Usunięcie kursu (1)" }).click();
+    await page.getByRole("button", { name: "Usunięcie kursu" }).click();
     await page.getByRole("button", { name: "Usuń kurs" }).click();
-    await page.getByRole("dialog", { name: "Usunąć kurs?" }).getByRole("button", { name: "Usuń kurs" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Usuń kurs" }).click();
 
-    await expect(page.getByText("Kurs został usunięty")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Kurs usunięty" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Wróć do listy kursów" })).toHaveAttribute("href", "/admin/kursy");
     expect(zapisy).toEqual([{ metoda: "DELETE", sciezka: "/admin/courses/4", cialo: null }]);
     await zrzut(page, "kurs-1280-usuniety");
@@ -683,11 +593,11 @@ for (const rola of ["project_manager", "super_admin"] as const) {
   test.describe(`bank pytań z ekranu kursu — rola ${rola}`, () => {
     test.use({ viewport: { width: 1280, height: 800 } });
 
-    test("„Otwórz bank pytań” prowadzi do ekranu banku pytań: 200 i nagłówek ekranu", async ({ page }) => {
+    test("„Otwórz pytania” prowadzi do ekranu banku pytań: 200 i nagłówek ekranu", async ({ page }) => {
       await instalujAtrapy(page, { rola });
       await otworzKurs(page);
 
-      const odnosnik = page.getByRole("link", { name: "Otwórz bank pytań" });
+      const odnosnik = page.getByRole("link", { name: "Otwórz pytania" });
       const adres = await odnosnik.getAttribute("href");
       expect(adres).toBe("/admin/testy/31/pytania");
       const odpowiedz = await page.goto(adres!);
@@ -698,63 +608,6 @@ for (const rola of ["project_manager", "super_admin"] as const) {
     });
   });
 }
-
-test.describe("formularz lekcji a tryb kolejności — 390 px", () => {
-  test.use({ viewport: { width: 390, height: 844 } });
-
-  async function aktywny(page: Page) {
-    return page.evaluate(() => ({
-      znacznik: document.activeElement?.tagName ?? null,
-      wcisniety: document.activeElement?.getAttribute("aria-pressed") ?? null,
-      tekst: document.activeElement?.textContent?.trim() ?? null,
-    }));
-  }
-
-  test("formularz bez zmian: wejście w tryb kolejności zamyka go, fokus stoi na przełączniku „Kolejność”", async ({
-    page,
-  }) => {
-    await instalujAtrapy(page);
-    await otworzKurs(page);
-
-    await page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" }).click();
-    await expect(wiersz(page, 22).getByRole("form", { name: "Edycja lekcji" })).toBeVisible();
-    await page.getByRole("button", { name: "Kolejność" }).click();
-
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.locator("[data-rozwiniecie-lekcji]")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Kolejność" })).toHaveAttribute("aria-pressed", "true");
-    expect(await aktywny(page)).toEqual({ znacznik: "BUTTON", wcisniety: "true", tekst: "Kolejność" });
-    await zrzut(page, "kurs-390-tryb-kolejnosci-po-zamknieciu", page.locator("#lekcje"));
-  });
-
-  test("formularz ze zmianami: tryb kolejności pyta; „Zostań” wraca do pola, „Porzuć zmiany” zamyka formularz i zostawia fokus na przełączniku", async ({
-    page,
-  }) => {
-    const { zapisy } = await instalujAtrapy(page);
-    await otworzKurs(page);
-
-    await page.getByRole("button", { name: "Edytuj lekcję „Wprowadzenie do wywiadu”" }).click();
-    const tytul = wiersz(page, 21).getByRole("form", { name: "Edycja lekcji" }).getByLabel(/^Tytuł lekcji/);
-    await tytul.fill("Niezapisany tytuł");
-
-    await page.getByRole("button", { name: "Kolejność" }).click();
-    const pytanie = page.getByRole("dialog", { name: "Porzucić niezapisane zmiany w lekcji?" });
-    await expect(pytanie.getByRole("button", { name: "Zostań" })).toBeFocused();
-    await zrzut(page, "kurs-390-tryb-kolejnosci-pytanie", pytanie);
-    await pytanie.getByRole("button", { name: "Zostań" }).click();
-    await expect(tytul).toBeFocused();
-    await expect(tytul).toHaveValue("Niezapisany tytuł");
-    await expect(page.getByRole("button", { name: "Kolejność" })).toHaveAttribute("aria-pressed", "false");
-    expect((await aktywny(page)).znacznik).toBe("INPUT");
-
-    await page.getByRole("button", { name: "Kolejność" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Porzuć zmiany" }).click();
-    await expect(page.locator("[data-rozwiniecie-lekcji]")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Kolejność" })).toHaveAttribute("aria-pressed", "true");
-    expect(await aktywny(page)).toEqual({ znacznik: "BUTTON", wcisniety: "true", tekst: "Kolejność" });
-    expect(zapisy).toEqual([]);
-  });
-});
 
 test.describe("ekran lekcji — grupa wyłączona", () => {
   test.skip(GRUPA_LEKCJI, "grupa ekranu lekcji jest włączona");
@@ -768,8 +621,7 @@ test.describe("ekran lekcji — grupa wyłączona", () => {
     expect(sciezki.filter((wpis) => wpis.includes("/lessons"))).toEqual([]);
 
     await otworzKurs(page);
-    await page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" }).click();
-    await expect(wiersz(page, 22).getByRole("form", { name: "Edycja lekcji" })).toBeVisible();
+    await expect(wiersz(page, 22)).toBeVisible();
     await expect(page.locator("a[href*='/lekcje/']")).toHaveCount(0);
   });
 });
@@ -785,14 +637,13 @@ for (const rola of ["project_manager", "super_admin"] as const) {
     test.skip(!GRUPA_LEKCJI, "grupa ekranu lekcji jest wyłączona");
     test.use({ viewport: { width: 1280, height: 800 } });
 
-    test("„Materiały i nagranie” prowadzi do ekranu lekcji: adres z kursem, nagłówek lekcji, okruszki z nazwą kursu, nowa ramka", async ({
+    test("„Otwórz” w wierszu lekcji prowadzi do ekranu lekcji: adres z kursem, nagłówek lekcji, okruszki z nazwą kursu, nowa ramka", async ({
       page,
     }) => {
       await instalujAtrapy(page, { rola });
       await otworzKurs(page);
 
-      await page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" }).click();
-      const odnosnik = wiersz(page, 22).getByRole("link", { name: "Materiały i nagranie" });
+      const odnosnik = wiersz(page, 22).getByRole("link", { name: "Otwórz lekcję 2: Pytania otwarte i zamknięte" });
       await expect(odnosnik).toHaveAttribute("href", ADRES_LEKCJI);
       await odnosnik.click();
 

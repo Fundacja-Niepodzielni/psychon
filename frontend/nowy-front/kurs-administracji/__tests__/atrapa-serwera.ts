@@ -96,6 +96,8 @@ interface StanSerwera {
   przypisania?: PrzypisanieAtrapy[];
   /** Identyfikator testu wiedzy kursu; `null` = kurs bez testu. */
   test?: number | null;
+  /** Stan nagrania lekcji z `…/video-status`; lekcja spoza mapy ma nagranie gotowe. */
+  nagrania?: Record<number, "processing" | "finished" | "error">;
 }
 
 type Nadpisanie = (cialo: unknown) => unknown;
@@ -198,6 +200,11 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
     }
     if (metoda === "GET" && sciezka === "/admin/courses/4/tests") {
       return test === null ? null : { id: test, course_id: 4, question_count: 10 };
+    }
+    const nagranie = dopasuj(/^\/admin\/lessons\/(\d+)\/video-status$/);
+    if (metoda === "GET" && nagranie) {
+      const status = poczatek.nagrania?.[Number(nagranie[1])] ?? "finished";
+      return { status, duration_seconds: 600, preview_embed_url: null };
     }
     if (metoda === "POST" && sciezka === "/admin/courses/4/invite") {
       return { invited: (cialo as { user_ids: number[] }).user_ids.length };

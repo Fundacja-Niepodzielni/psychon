@@ -1,0 +1,77 @@
+/* Szablon `UkladEdycji` — sama rama: nagłówek, wąski pas, dwie kolumny.
+   Próg 1100 px zapisany wprost (reguła `@media` nie umie odwołać się do stałej
+   `PROG_DWOCH_KOLUMN` z `UkladEdycji.tsx`); obie liczby zmieniają się razem.
+   Odstępy i barwy wyłącznie z tokenów. */
+.uklad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+/* Wąski pas: stan i główny przycisk. Przyklejony pod paskiem ramy panelu,
+   tak samo jak pasek zapisu (`SaveBar`: `top: var(--topbar-h)`). */
+.pasekWaski {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: var(--z-savebar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
+
+.pasekWaski > * {
+  min-width: 0;
+}
+
+.kolumny {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-20);
+}
+
+.glowna {
+  min-width: 0;
+}
+
+.boczna {
+  display: grid;
+  align-content: start;
+  gap: var(--space-20);
+  min-width: 0;
+}
+
+@media (max-width: 1099px) {
+  .tylkoOdDwochKolumn {
+    display: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .pasekWaski {
+    display: none;
+  }
+
+  .kolumny {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+  }
+
+  /* Kolumna boczna stoi w miejscu, gdy przewija się kolumna główna; wyższa
+     niż okno przewija się w sobie, więc jej pierwsza karta zostaje na
+     ekranie. Wypełnienie z ujemnym marginesem zostawia miejsce na obrys
+     fokusu przy krawędzi przewijanego obszaru. */
+  .boczna {
+    position: sticky;
+    top: calc(var(--topbar-h) + var(--space-16));
+    max-height: calc(100vh - var(--topbar-h) - 2 * var(--space-16));
+    overflow-y: auto;
+    scrollbar-width: thin;
+    margin: calc(-1 * var(--space-6));
+    padding: var(--space-6);
+  }
+}

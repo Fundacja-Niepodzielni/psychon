@@ -143,13 +143,20 @@ const ZAKRES_KURSU = "kurs";
 interface WlasciwosciPrzypisan {
   kurs: AdminCourse;
   lekcje: { id: number; title: string }[];
+  /**
+   * Sekcja jako wnętrze wiersza „Prowadzący” karty ustawień: bez własnego
+   * nagłówka — nazwę daje wiersz, sekcja dostaje ją jako etykietę.
+   */
+  wUstawieniach?: boolean;
+  /** Bieżąca lista przypisań po odczycie i po każdej zmianie. */
+  onPrzypisania?: (przypisania: PrzypisanieKursu[]) => void;
 }
 
 /**
  * Prowadzący kursu: kto prowadzi cały kurs i kto pojedyncze lekcje. Lekcja bez
  * własnego prowadzącego ma prowadzącego całego kursu — sekcja mówi to wprost.
  */
-export function PrzypisaniaKursu({ kurs, lekcje }: WlasciwosciPrzypisan) {
+export function PrzypisaniaKursu({ kurs, lekcje, wUstawieniach = false, onPrzypisania }: WlasciwosciPrzypisan) {
   const baza = useId();
   const [stan, setStan] = useState<StanPrzypisan>({ rodzaj: "ladowanie" });
   const [proba, setProba] = useState(0);
@@ -180,15 +187,27 @@ export function PrzypisaniaKursu({ kurs, lekcje }: WlasciwosciPrzypisan) {
     };
   }, [kurs.id, proba]);
 
-  const naglowek = (
+  const zglosPrzypisania = useRef(onPrzypisania);
+  useEffect(() => {
+    zglosPrzypisania.current = onPrzypisania;
+  });
+  useEffect(() => {
+    if (stan.rodzaj === "dane") zglosPrzypisania.current?.(stan.przypisania);
+  }, [stan]);
+
+  const naglowek = wUstawieniach ? null : (
     <Heading stopien={2} id={`${baza}-tytul`}>
       Prowadzący kursu
     </Heading>
   );
+  // Bez nagłówka sekcję nazywa etykieta, nie odwołanie do nieistniejącego elementu.
+  const nazwaSekcji = wUstawieniach
+    ? { "aria-label": "Prowadzący kursu" }
+    : { "aria-labelledby": `${baza}-tytul` };
 
   if (stan.rodzaj === "ladowanie") {
     return (
-      <section id="prowadzacy" className={style.blok} aria-labelledby={`${baza}-tytul`} aria-busy="true">
+      <section id="prowadzacy" className={style.blok} {...nazwaSekcji} aria-busy="true">
         {naglowek}
         <Skeleton wiersze={3} />
       </section>
@@ -196,7 +215,7 @@ export function PrzypisaniaKursu({ kurs, lekcje }: WlasciwosciPrzypisan) {
   }
   if (stan.rodzaj === "blad") {
     return (
-      <section id="prowadzacy" className={style.blok} aria-labelledby={`${baza}-tytul`}>
+      <section id="prowadzacy" className={style.blok} {...nazwaSekcji}>
         {naglowek}
         <Notice
           wariant="error"
@@ -277,7 +296,7 @@ export function PrzypisaniaKursu({ kurs, lekcje }: WlasciwosciPrzypisan) {
   }
 
   return (
-    <section id="prowadzacy" className={style.blok} aria-labelledby={`${baza}-tytul`}>
+    <section id="prowadzacy" className={style.blok} {...nazwaSekcji}>
       {naglowek}
       {blad && (
         <Notice wariant="error" tytul="Zmiana nie została zapisana">

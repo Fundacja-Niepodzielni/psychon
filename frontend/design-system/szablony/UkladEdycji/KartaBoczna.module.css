@@ -1,0 +1,93 @@
+/* Karta układu edycji. Barwy, promienie i odstępy wyłącznie z tokenów. */
+.karta {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  /* Kotwica karty nie chowa się pod przyklejonym pasem u góry okna. */
+  scroll-margin-top: calc(var(--topbar-h) + var(--space-64) + var(--space-16));
+}
+
+.naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-16) var(--space-20);
+}
+
+.naglowek h2 {
+  font-size: var(--fs-5);
+  overflow-wrap: anywhere;
+}
+
+.zLinia {
+  border-bottom: 1px solid var(--border);
+}
+
+.naglowekZwijany {
+  padding: 0;
+}
+
+.przelacznik {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--space-20);
+  align-items: center;
+  column-gap: var(--space-12);
+  width: 100%;
+  min-height: calc(var(--hit-min) + var(--space-8));
+  padding: var(--space-8) var(--space-20);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.niebezpieczna .przelacznik,
+.niebezpieczna .naglowek h2 {
+  color: var(--error);
+}
+
+.strzalka {
+  justify-self: center;
+  width: 9px;
+  height: 9px;
+  margin-top: -4px;
+  border-right: 2px solid var(--control);
+  border-bottom: 2px solid var(--control);
+  transform: rotate(45deg);
+  transition: transform var(--dur-fast);
+}
+
+.strzalkaRozwinieta {
+  margin-top: 4px;
+  transform: rotate(-135deg);
+}
+
+.tresc {
+  min-width: 0;
+}
+
+.zOdstepem {
+  padding: var(--space-16) var(--space-20) var(--space-20);
+}
+
+@media (max-width: 1099px) {
+  .naglowek {
+    padding: var(--space-14);
+  }
+
+  .naglowekZwijany {
+    padding: 0;
+  }
+
+  .przelacznik {
+    padding: var(--space-8) var(--space-14);
+  }
+
+  .zOdstepem {
+    padding: var(--space-14) var(--space-14) var(--space-16);
+  }
+}

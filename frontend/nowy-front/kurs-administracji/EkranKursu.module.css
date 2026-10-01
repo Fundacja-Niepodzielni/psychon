@@ -1,0 +1,450 @@
+/* Ekran kursu administracji w dwóch kolumnach. Ramę (kolumny, wąski pas,
+   karty) daje szablon `UkladEdycji`; tu jest wyłącznie wnętrze kart.
+   Barwy, odstępy i promienie tylko z tokeny.css. Próg 1100 px jest progiem
+   szablonu (`PROG_DWOCH_KOLUMN`). */
+
+.tylkoCzytnik {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.maly {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-10);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* ── Karta „Tematy i lekcje” ─────────────────────────────────────────── */
+
+.komunikatKarty,
+.pustaKarta {
+  padding: var(--space-16) var(--space-20);
+  border-bottom: 1px solid var(--border);
+}
+
+.temat {
+  border-bottom: 1px solid var(--border);
+}
+
+.pasTematu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+  padding: var(--space-12) var(--space-20);
+  background: var(--bg);
+}
+
+.nazwaTematu {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.nazwaTematu h3,
+.nazwaTestu h3 {
+  font-size: var(--fs-8);
+  overflow-wrap: anywhere;
+}
+
+.nazwaTematu .maly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
+}
+
+.akcjeTematu {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.menuTematu {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  right: 0;
+  left: 0;
+  z-index: var(--z-listbox);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
+
+.lekcje {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wiersz {
+  display: grid;
+  grid-template-columns: var(--hit-min) auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "ruch numer tytul otworz"
+    "ruch numer meta otworz"
+    "ruch numer stan otworz";
+  align-items: center;
+  column-gap: var(--space-8);
+  padding: var(--space-8) var(--space-14);
+  border-top: 1px solid var(--border);
+}
+
+.strzalki {
+  grid-area: ruch;
+  display: flex;
+  flex-direction: column;
+}
+
+.strzalka {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-min);
+  height: var(--hit-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--control);
+  cursor: pointer;
+}
+
+.strzalka[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.grotGora,
+.grotDol {
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.grotGora {
+  margin-top: 4px;
+  transform: rotate(-135deg);
+}
+
+.grotDol {
+  margin-top: -4px;
+  transform: rotate(45deg);
+}
+
+.numer {
+  grid-area: numer;
+  min-width: var(--space-20);
+  color: var(--muted);
+  font-size: var(--fs-10);
+  text-align: right;
+}
+
+.tytulLekcji {
+  grid-area: tytul;
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.meta {
+  grid-area: meta;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-11);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.stan {
+  grid-area: stan;
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--fs-10);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.stanBledu {
+  color: var(--error);
+  font-weight: var(--fw-medium);
+}
+
+.otworz {
+  grid-area: otworz;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hit-min);
+  padding: var(--space-6) var(--space-12);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  color: var(--ink);
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+  text-align: center;
+  text-decoration: none;
+}
+
+.wierszDodawania {
+  padding: var(--space-4) var(--space-14) var(--space-8);
+  border-top: 1px solid var(--border);
+}
+
+.dodajLekcje {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--hit-min);
+  padding: var(--space-6) var(--space-8);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.nowaLekcja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-14) var(--space-14);
+  border-top: 1px solid var(--border);
+}
+
+.etykieta {
+  color: var(--ink);
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+}
+
+.poleNowejLekcji {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+.stopkaDrzewa {
+  padding: var(--space-14) var(--space-20);
+  border-bottom: 1px solid var(--border);
+}
+
+.wierszTestu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-12);
+  padding: var(--space-12) var(--space-20);
+}
+
+.nazwaTestu {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+/* ── Prawa kolumna ───────────────────────────────────────────────────── */
+
+.trescKarty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.grupaPozycji {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.grupaPozycji h3 {
+  font-size: var(--fs-10);
+}
+
+.listaPozycji {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding: var(--space-8) 0;
+  list-style: none;
+  font-size: var(--fs-10);
+  overflow-wrap: anywhere;
+}
+
+.glownyWKarcie {
+  display: grid;
+}
+
+.glownyWKarcie > * {
+  width: 100%;
+  max-width: none;
+}
+
+.przyciskGlowny {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hit-min);
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--primary);
+  border-radius: var(--r-xs);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  text-align: center;
+  text-decoration: none;
+}
+
+.pasStan {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-10);
+  line-height: 1.3;
+}
+
+.pasStan b {
+  color: var(--ink);
+  font-weight: var(--fw-bold);
+}
+
+.wierszUstawien {
+  border-bottom: 1px solid var(--border);
+}
+
+.naglowekWiersza {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.przyciskWiersza {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--space-20);
+  align-items: center;
+  column-gap: var(--space-12);
+  width: 100%;
+  min-height: calc(var(--hit-min) + var(--space-8));
+  padding: var(--space-8) var(--space-20);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.opisWiersza {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.etykietaWiersza {
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+}
+
+.daszek {
+  justify-self: center;
+  width: 9px;
+  height: 9px;
+  margin-top: -4px;
+  border-right: 2px solid var(--control);
+  border-bottom: 2px solid var(--control);
+  transform: rotate(45deg);
+}
+
+.daszekRozwiniety {
+  margin-top: 4px;
+  transform: rotate(-135deg);
+}
+
+.panelUstawien {
+  min-width: 0;
+  padding: var(--space-8) var(--space-20) var(--space-20);
+}
+
+.notaUstawien {
+  padding: var(--space-12) var(--space-20) var(--space-14);
+}
+
+.formularz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.wierszPrzyciskow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+@media (min-width: 600px) {
+  .poleNowejLekcji {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (min-width: 1100px) {
+  .menuTematu {
+    left: auto;
+    width: 280px;
+  }
+
+  .wiersz {
+    grid-template-columns: 28px auto minmax(0, 1fr) 170px auto;
+    grid-template-areas:
+      "ruch numer tytul stan otworz"
+      "ruch numer meta stan otworz";
+    column-gap: var(--space-12);
+    padding: var(--space-8) var(--space-20);
+  }
+
+  .strzalka {
+    width: 28px;
+    height: 24px;
+  }
+
+  .wierszDodawania,
+  .nowaLekcja {
+    padding-right: var(--space-20);
+    padding-left: var(--space-20);
+  }
+}
