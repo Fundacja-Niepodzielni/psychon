@@ -19,6 +19,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, back, refresh: vi.fn(), replace: vi.fn() }),
 }));
 
+// Ekran bierze klienta z `@/lib/api/klient`; beczkę `@/lib/api` podmieniamy zapobiegawczo, żeby przyszły import z beczki nie poszedł do prawdziwego transportu.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  apiPaged: (...args: unknown[]) => apiPaged(...args),
+}));
+
 vi.mock("@/lib/api/klient", async (importOriginal) => {
   const oryginal = await importOriginal<typeof import("@/lib/api/klient")>();
   return { ...oryginal, apiPaged: (...args: unknown[]) => apiPaged(...args) };

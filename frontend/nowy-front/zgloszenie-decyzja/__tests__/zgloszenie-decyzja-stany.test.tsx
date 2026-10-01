@@ -19,6 +19,11 @@ vi.mock("next/navigation", () => ({
 vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 
 const api = vi.fn();
+// Ekran bierze klienta z `@/lib/api/klient`; beczkę `@/lib/api` podmieniamy zapobiegawczo, żeby przyszły import z beczki nie poszedł do prawdziwego transportu.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...a: unknown[]) => api(...a),
+}));
 vi.mock("@/lib/api/klient", async (importOriginal) => {
   const oryginal = await importOriginal<typeof import("@/lib/api/klient")>();
   return { ...oryginal, api: (...a: unknown[]) => api(...a) };
