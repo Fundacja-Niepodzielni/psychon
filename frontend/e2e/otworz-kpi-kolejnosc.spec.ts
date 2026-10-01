@@ -252,7 +252,8 @@ for (const rozmiar of [
       await expect(page.getByText("Bez opisu.", { exact: true })).toHaveCount(2);
       for (const [indeks, miejsce] of [1, 2, 3].entries()) {
         const komorki = wiersze.nth(indeks).getByRole("cell");
-        await expect(komorki.nth(2)).toHaveText(new RegExp(`^Miejsce na liście\\s*${miejsce}\\s*na liście$`));
+        // W kolumnie miejsca stoi sama liczba: znaczenie niesie nazwa kolumny.
+        await expect(komorki.nth(2)).toHaveText(new RegExp(`^Miejsce na liście\\s*${miejsce}$`));
       }
       await expect(wiersze.nth(0).getByRole("cell").nth(0)).toContainText("Rozmowa z osobą w kryzysie.");
       await expect(page.getByText(/Kolejność:? /)).toHaveCount(0);

@@ -34,9 +34,9 @@ export function jednostkaLekcji(liczba: number): string {
   return odmien(liczba, "lekcja", "lekcje", "lekcji");
 }
 
-/** Kolumna „Miejsce w ścieżce”: liczba z mianownikiem albo napis kursu spoza ścieżki. */
+/** Kolumna „Miejsce w ścieżce”: sama liczba (znaczenie niesie nazwa kolumny) albo napis kursu spoza ścieżki. */
 export function miejsceWSciezce(pozycja: number | null): KomorkaRecordList {
-  return pozycja === null ? { tekst: "poza ścieżką" } : { liczba: pozycja, jednostka: "w ścieżce" };
+  return pozycja === null ? { tekst: "poza ścieżką" } : { liczba: pozycja, bezJednostki: true };
 }
 
 /** Opis pod nazwą kursu: typ · grupa produktowa (etykiety ze słowników). */

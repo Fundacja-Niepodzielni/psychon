@@ -279,7 +279,7 @@ export function StazKolejka() {
             tytul="Dyżury do decyzji"
             stopienNaglowka={2}
             naglowekTylkoDlaCzytnika
-            wierszeBezWciecia
+            naKarcie
             kolumny={KOLUMNY_DYZUROW}
             pusty={pusty}
             wiersze={wpisy.map((wpis) => {

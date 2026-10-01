@@ -180,7 +180,8 @@ describe("KursyAdministracji — stany w szablonie", () => {
     expect(within(pierwszy).getAllByRole("cell")[0]).toBe(komorka(pierwszy, "Kurs"));
     expect(komorka(pierwszy, "Kurs")).toHaveTextContent(`Podstawy pomocy${opis("course", "psychon")}`);
     expect(komorka(pierwszy, "Stan")).toHaveTextContent(/^Stan\s*Opublikowany$/);
-    expect(komorka(pierwszy, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*1\s*w ścieżce$/);
+    // W kolumnie miejsca stoi sama liczba: znaczenie niesie nazwa kolumny.
+    expect(komorka(pierwszy, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*1$/);
     expect(komorka(pierwszy, "Lekcje")).toHaveTextContent(/^Lekcje\s*1\s*lekcja$/);
     expect(komorka(drugi, "Stan")).toHaveTextContent(/^Stan\s*Szkic$/);
     expect(komorka(trzeci, "Kurs")).toHaveTextContent(`Webinar otwarty${opis("webinar", "both")}`);

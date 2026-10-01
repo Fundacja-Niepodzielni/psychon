@@ -75,8 +75,9 @@ describe("FormyStazu — lista w karcie", () => {
     expect(komorka(drugi, "Forma")).toHaveTextContent(/^InnaBez opisu\.$/);
     expect(komorka(pierwszy, "Stan")).toHaveTextContent(/^Stan\s*aktywna$/);
     expect(komorka(drugi, "Stan")).toHaveTextContent(/^Stan\s*nieaktywna$/);
-    expect(komorka(pierwszy, "Miejsce na liście")).toHaveTextContent(/^Miejsce na liście\s*1\s*na liście$/);
-    expect(komorka(drugi, "Miejsce na liście")).toHaveTextContent(/^Miejsce na liście\s*2\s*na liście$/);
+    // W kolumnie miejsca stoi sama liczba: znaczenie niesie nazwa kolumny.
+    expect(komorka(pierwszy, "Miejsce na liście")).toHaveTextContent(/^Miejsce na liście\s*1$/);
+    expect(komorka(drugi, "Miejsce na liście")).toHaveTextContent(/^Miejsce na liście\s*2$/);
     // Wiersza opisowego „Miejsce na liście: N · opis” już nie ma.
     expect(screen.queryByText(/Miejsce na liście: \d+/)).toBeNull();
     expect(screen.queryByText(/ · /)).toBeNull();

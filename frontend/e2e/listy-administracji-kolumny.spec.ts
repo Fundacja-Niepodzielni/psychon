@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
@@ -13,7 +15,11 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - obie szerokości: każda wartość ma nazwę swojej kolumny w drzewie
  *   dostępności, axe bez naruszeń;
  * - kolejka spraw stoi dokładnie tam, gdzie kolejka dyżurów (1280 i 1440 px);
- * - lista kursów stoi na białej karcie (kontrast tła plakietki do tła pod nią).
+ * - każda z sześciu list stoi na białej karcie (kontrast tła i obrysu plakietki
+ *   do tła pod nią); pięć z nich na karcie z organizmu listy.
+ *
+ * Zrzuty ekranu powstają tylko przy ustawionej zmiennej `PW_ZRZUTY_LIST`
+ * (katalog poza repozytorium).
  */
 
 const ATRAPA_SESJI = { accessToken: "atrapa-tokenu-testowego", expiresAt: Date.now() + 3_600_000 };
@@ -233,6 +239,15 @@ async function zmierz(page: Page, lista: OpisListy): Promise<PomiarListy> {
   });
 }
 
+/** Zrzut całej strony do katalogu ze zmiennej środowiska; bez zmiennej nic nie robi. */
+async function zrzut(page: Page, lista: OpisListy, szerokosc: number): Promise<void> {
+  const katalog = process.env.PW_ZRZUTY_LIST;
+  if (!katalog) return;
+  mkdirSync(katalog, { recursive: true });
+  const nazwa = lista.adres.replace(/^\//, "").replace(/\//g, "-");
+  await page.screenshot({ path: join(katalog, `${nazwa}-${szerokosc}.png`), fullPage: true, animations: "disabled" });
+}
+
 function rozrzut(wartosci: number[]): number {
   return Math.max(...wartosci) - Math.min(...wartosci);
 }
@@ -242,6 +257,7 @@ for (const lista of LISTY) {
     await otworz(page, { width: 1280, height: 800 }, lista);
     const m = await zmierz(page, lista);
     console.log(`POMIAR-KOLUMN ${lista.nazwa} @1280 ${JSON.stringify(m)}`);
+    await zrzut(page, lista, 1280);
 
     // Nagłówki: skład i kolejność; kolumny treści widoczne, kolumna akcji ma nazwę tylko dla czytnika.
     expect(m.naglowki.map((naglowek) => naglowek.tekst)).toEqual(lista.kolumny);
@@ -315,6 +331,7 @@ for (const lista of LISTY) {
     await otworz(page, { width: 390, height: 844 }, lista);
     const m = await zmierz(page, lista);
     console.log(`POMIAR-KOLUMN ${lista.nazwa} @390 ${JSON.stringify(m)}`);
+    await zrzut(page, lista, 390);
 
     // Nagłówki kolumn zostają w drzewie dostępności (wzrokowo zastępuje je podpis przy wartości).
     expect(m.naglowki.map((naglowek) => naglowek.tekst)).toEqual(lista.kolumny);
@@ -349,6 +366,49 @@ for (const lista of LISTY) {
     await dolaczNaruszeniaDoRaportu(testInfo, `axe ${lista.nazwa}`, naruszenia);
     expect(naruszenia, JSON.stringify(naruszenia)).toEqual([]);
   });
+}
+
+/**
+ * Kolumny miejsca: w komórce stoi sama liczba — znaczenie niesie nagłówek
+ * kolumny (od 640 px) albo podpis kolumny przy wartości (poniżej). Kurs spoza
+ * ścieżki zostaje opisany słownie.
+ */
+const KOLUMNY_MIEJSCA = [
+  { lista: LISTY[0], kolumna: "Miejsce w ścieżce", wartosci: ["1", "2", "3", "poza ścieżką"], poLiczbie: /\d\s*w ścieżce/ },
+  { lista: LISTY[5], kolumna: "Miejsce na liście", wartosci: ["1", "2", "10"], poLiczbie: /\d\s*na liście/ },
+];
+
+for (const { lista, kolumna, wartosci, poLiczbie } of KOLUMNY_MIEJSCA) {
+  for (const okno of [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`${lista.nazwa} @${okno.width}: w kolumnie „${kolumna}” stoi sama liczba, bez dopisku po liczbie`, async ({ page }) => {
+      await otworz(page, okno, lista);
+      const tabela = page.locator(`main [role="table"][aria-label="${lista.lista}"]`);
+      const indeks = lista.kolumny.indexOf(kolumna);
+      const teksty = await tabela.locator('[role="row"][data-wiersz]').evaluateAll((wiersze, indeksKolumny) => {
+        const zwin = (napis: string) => napis.replace(/\s+/g, " ").trim();
+        return wiersze.map((wiersz) => {
+          const komorka = wiersz.querySelectorAll(':scope > [role="cell"]')[indeksKolumny] as HTMLElement;
+          return { rodzaj: komorka.getAttribute("data-rodzaj"), komorka: zwin(komorka.innerText), wiersz: zwin((wiersz as HTMLElement).innerText) };
+        });
+      }, indeks);
+      console.log(`POMIAR-MIEJSCA ${lista.nazwa} @${okno.width} ${JSON.stringify(teksty)}`);
+
+      expect(teksty.map((tekst) => tekst.rodzaj)).toEqual(wartosci.map(() => "liczba"));
+      if (okno.width >= 640) {
+        // Komórka to sama wartość; nazwę kolumny niesie widoczny nagłówek.
+        expect(teksty.map((tekst) => tekst.komorka)).toEqual(wartosci);
+        await expect(tabela.getByRole("columnheader", { name: kolumna })).toBeVisible();
+      } else {
+        // Wiersz zawiera podpis kolumny i zaraz po nim wartość.
+        expect(teksty.map((tekst) => tekst.komorka)).toEqual(wartosci.map((wartosc) => `${kolumna} ${wartosc}`));
+        for (const [numer, tekst] of teksty.entries()) expect(tekst.wiersz).toContain(`${kolumna} ${wartosci[numer]}`);
+      }
+      for (const tekst of teksty) expect(tekst.wiersz, "dopisek po liczbie").not.toMatch(poLiczbie);
+    });
+  }
 }
 
 /** Krawędzie kontenera ekranu i listy oraz tło kontenera. */
@@ -412,7 +472,11 @@ test("kolejka spraw @390: bez przewijania w poziomie", async ({ page }) => {
   expect(sprawy!.tlo).toBe("rgba(0, 0, 0, 0)");
 });
 
-/** Kontrast tła plakietki do pierwszego nieprzezroczystego tła pod nią (dwa miejsca po przecinku). */
+/**
+ * Plakietki listy wobec pierwszego nieprzezroczystego tła pod nimi: kontrast
+ * tła plakietki i kontrast jej obrysu (dwa miejsca po przecinku), wariant
+ * plakietki oraz to, czy tym tłem jest karta samej listy.
+ */
 async function kontrastPlakietek(page: Page, lista: string) {
   return page.locator(`main [role="table"][aria-label="${lista}"]`).evaluate((tabela) => {
     const skladowe = (zapis: string) => {
@@ -432,46 +496,86 @@ async function kontrastPlakietek(page: Page, lista: string) {
       };
       return 0.2126 * kanal(kolor.r) + 0.7152 * kanal(kolor.g) + 0.0722 * kanal(kolor.b);
     };
+    const kontrast = (a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }) => {
+      const [jasna, ciemna] = [jasnosc(a), jasnosc(b)].sort((x, y) => y - x);
+      return Math.round(((jasna + 0.05) / (ciemna + 0.05)) * 100) / 100;
+    };
+    const sekcja = tabela.closest("section");
     return Array.from(tabela.querySelectorAll('[role="cell"][data-rodzaj="stan"]'))
       .map((komorka) => komorka.lastElementChild?.firstElementChild ?? null)
       .filter((el): el is Element => el !== null)
       .map((plakietka) => {
-        const tlo = skladowe(getComputedStyle(plakietka).backgroundColor);
+        const styl = getComputedStyle(plakietka);
         let przodek = plakietka.parentElement;
         let pod = { r: 255, g: 255, b: 255, a: 1 };
         let opisPrzodka = "";
+        let podToKartaListy = false;
         while (przodek) {
           const kolor = skladowe(getComputedStyle(przodek).backgroundColor);
           if (kolor.a >= 1) {
             pod = kolor;
             opisPrzodka = `${przodek.tagName.toLowerCase()} ${getComputedStyle(przodek).backgroundColor}`;
+            podToKartaListy = przodek === sekcja;
             break;
           }
           przodek = przodek.parentElement;
         }
-        const [jasna, ciemna] = [jasnosc(tlo), jasnosc(pod)].sort((a, b) => b - a);
         return {
           tekst: (plakietka.textContent ?? "").trim(),
-          kontrast: Math.round(((jasna + 0.05) / (ciemna + 0.05)) * 100) / 100,
+          neutralna: /neutral|pending/.test(plakietka.className),
+          kontrast: kontrast(skladowe(styl.backgroundColor), pod),
+          obrys: kontrast(skladowe(styl.borderTopColor), pod),
+          gruboscObrysu: styl.borderTopWidth,
           pod: opisPrzodka,
+          podToKartaListy,
         };
       });
   });
 }
 
+/**
+ * Jedna reguła tła: każda z sześciu list stoi na białej karcie. Pięć list
+ * dostaje kartę z organizmu listy (tłem pod plakietką jest sekcja samej
+ * listy); lista pulpitu stoi na karcie szablonu pulpitu.
+ */
+const NA_KARCIE: { lista: OpisListy; plakietek: number; kartaOrganizmu: boolean }[] = [
+  { lista: LISTY[0], plakietek: 4, kartaOrganizmu: true },
+  { lista: LISTY[1], plakietek: 4, kartaOrganizmu: true },
+  { lista: LISTY[2], plakietek: 3, kartaOrganizmu: true },
+  { lista: LISTY[3], plakietek: 4, kartaOrganizmu: false },
+  { lista: LISTY[4], plakietek: 3, kartaOrganizmu: true },
+  { lista: LISTY[5], plakietek: 3, kartaOrganizmu: true },
+];
+
 for (const okno of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
 ]) {
-  test(`lista kursów @${okno.width}: lista na białej karcie — kontrast tła plakietki do tła pod nią 1,14`, async ({ page }) => {
-    await otworz(page, okno, LISTY[0]);
-    const plakietki = await kontrastPlakietek(page, "Lista kursów");
-    console.log(`POMIAR-KONTRASTU @${okno.width} ${JSON.stringify(plakietki)}`);
-    expect(plakietki).toHaveLength(4);
-    for (const plakietka of plakietki) {
-      expect(plakietka.kontrast, `plakietka „${plakietka.tekst}” na ${plakietka.pod}`).toBe(1.14);
-    }
-  });
+  for (const { lista, plakietek, kartaOrganizmu } of NA_KARCIE) {
+    test(`${lista.nazwa} @${okno.width}: lista na białej karcie — tło plakietki neutralnej 1,14, obrys plakietki neutralnej 3,58, każdy obrys co najmniej 3,0`, async ({ page }) => {
+      await otworz(page, okno, lista);
+      // Plakietka wieku pojawia się po odczytaniu bieżącej chwili — pomiar czeka na komplet.
+      await expect(
+        page.locator(`main [role="table"][aria-label="${lista.lista}"] [role="cell"][data-rodzaj="stan"] > span:not([aria-hidden])`),
+      ).toHaveCount(plakietek);
+      const plakietki = await kontrastPlakietek(page, lista.lista);
+      console.log(`POMIAR-KONTRASTU ${lista.nazwa} @${okno.width} ${JSON.stringify(plakietki)}`);
+      expect(plakietki).toHaveLength(plakietek);
+      expect(plakietki.filter((plakietka) => plakietka.neutralna).length, "co najmniej jedna plakietka neutralna w atrapie").toBeGreaterThanOrEqual(1);
+      for (const plakietka of plakietki) {
+        const opis = `plakietka „${plakietka.tekst}” na ${plakietka.pod}`;
+        // Pod plakietką jest biała karta, nie tło strony.
+        expect(plakietka.pod, opis).toMatch(/rgb\(255, 255, 255\)$/);
+        if (kartaOrganizmu) expect(plakietka.podToKartaListy, `${opis}: kartą jest sekcja samej listy`).toBe(true);
+        expect(plakietka.gruboscObrysu, opis).toBe("1px");
+        expect(plakietka.obrys, `obrys: ${opis}`).toBeGreaterThanOrEqual(3);
+        if (plakietka.neutralna) {
+          expect(plakietka.kontrast, `tło: ${opis}`).toBe(1.14);
+          expect(plakietka.obrys, `obrys: ${opis}`).toBe(3.58);
+        }
+      }
+    });
+  }
 }
 
 test("lista kursów @1280: stan pusty stoi na co najwyżej jednej karcie", async ({ page }) => {

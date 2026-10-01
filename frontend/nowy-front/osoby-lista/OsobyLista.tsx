@@ -241,7 +241,7 @@ export function OsobyLista() {
         tytul="Lista uczestników"
         stopienNaglowka={2}
         naglowekTylkoDlaCzytnika
-        wierszeBezWciecia
+        naKarcie
         kolumny={KOLUMNY_OSOB}
         wiersze={wierszeOsob(stan.osoby)}
         pusty={{

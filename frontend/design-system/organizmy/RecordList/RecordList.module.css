@@ -152,6 +152,11 @@
   font-size: var(--fs-11);
 }
 
+/* Sama liczba w kolumnie liczb: cyfry tabelaryczne, jak w atomie liczby. */
+.samaLiczba {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Otwarty wiersz i panel pod nim na jednym, ciepłym tle. */
 .otwarty {
   border-bottom: 0;

@@ -126,7 +126,7 @@ export function FormyStazu() {
           // Miejsce na liście stoi we własnej kolumnie (komórka), nie w polu
           // `wartosc` — ranga sortowania nie ma sensownej sumy zbiorczej, więc
           // `RecordList` jej nie liczy ani nie pokazuje w stopce.
-          komorki: { miejsce: { liczba: forma.sort_order, jednostka: "na liście" } },
+          komorki: { miejsce: { liczba: forma.sort_order, bezJednostki: true } },
           akcja: {
             etykieta: "Edytuj",
             onKliknij: () => otworzEdycje(forma),
