@@ -41,6 +41,16 @@ use Throwable;
  */
 final class PdfService
 {
+    /**
+     * Arkusz bazowy każdego dokumentu, dokładany PRZED stylami wzoru (wzór może go
+     * nadpisać). Stała w kodzie, bez żadnych adresów.
+     *
+     * Wyraz dłuższy niż wiersz (wartość pola bez spacji) jest łamany zamiast wychodzić
+     * poza stronę. Silnik dziedziczy tę własność z `body`; w komórce tabeli działa
+     * wartość `anywhere` (przy `break-word` kolumna rozciąga się do długości wyrazu).
+     */
+    public const string BASE_STYLESHEET = 'body { overflow-wrap: anywhere; }';
+
     /** Początek komunikatu każdej odmowy reguły — taki sam jak w odmowach biblioteki. */
     public const string REFUSAL = 'Permission denied';
 
@@ -120,6 +130,7 @@ final class PdfService
     {
         $dompdf = self::engine($allowedDataUris);
         $dompdf->loadHtml($html, 'UTF-8');
+        self::prependBaseStylesheet($dompdf);
 
         // Limit liczony na drzewie, które zbudował sam silnik — przed renderem.
         DocumentCostLimit::guard($dompdf);
@@ -127,6 +138,31 @@ final class PdfService
         $dompdf->render();
 
         return $dompdf;
+    }
+
+    /**
+     * Arkusz bazowy jako pierwszy element nagłówka dokumentu — przed stylami wzoru,
+     * tak samo dla wzoru z pliku i dla wzoru zapisanego w bazie.
+     */
+    private static function prependBaseStylesheet(Dompdf $dompdf): void
+    {
+        $dom = $dompdf->getDom();
+        $root = $dom->documentElement;
+
+        if ($root === null) {
+            return;
+        }
+
+        $head = $dom->getElementsByTagName('head')->item(0);
+
+        if ($head === null) {
+            $head = $dom->createElement('head');
+            $root->insertBefore($head, $root->firstChild);
+        }
+
+        $style = $dom->createElement('style');
+        $style->appendChild($dom->createTextNode(self::BASE_STYLESHEET));
+        $head->insertBefore($style, $head->firstChild);
     }
 
     /**
