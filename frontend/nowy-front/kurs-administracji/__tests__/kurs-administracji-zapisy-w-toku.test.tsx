@@ -203,6 +203,53 @@ describe("drugie zatwierdzenie przed odpowiedzią serwera", () => {
   });
 });
 
+describe("prowadzący kursu — żądania w toku", () => {
+  it("„Przypisz prowadzącego” kliknięte dwa razy wysyła jedno żądanie, a przycisk jest na ten czas wyłączony", async () => {
+    const odpowiedz = odroczona<unknown>();
+    serwer.nadpisz("POST", "/admin/courses/4/assignments", () => odpowiedz.obietnica);
+    await renderEkranu();
+    const sekcja = document.getElementById("prowadzacy")!;
+    await within(sekcja).findByText("Cały kurs: brak prowadzącego");
+    await wybierz(/^Prowadzący/, "Joanna Demo");
+
+    const przycisk = within(sekcja).getByRole("button", { name: "Przypisz prowadzącego" });
+    await userEvent.dblClick(przycisk);
+    expect(zapisy("POST", "/admin/courses/4/assignments")).toHaveLength(1);
+    expect(przycisk).toBeDisabled();
+
+    await act(async () => {
+      odpowiedz.zwolnij({ id: 100, course_id: 4, lesson_id: null, instructor: PROWADZACY[0] });
+    });
+    expect(await within(sekcja).findByText("Cały kurs: Joanna Demo")).toBeInTheDocument();
+    expect(within(sekcja).getByRole("button", { name: "Przypisz prowadzącego" })).toBeEnabled();
+  });
+
+  it("odłączenie w toku i przypisanie w tym czasie: po obu odpowiedziach lista ma oba skutki", async () => {
+    serwer = utworzSerwer({
+      przypisania: [{ id: 50, course_id: 4, lesson_id: null, instructor: PROWADZACY[0] }],
+    });
+    const odlaczenie = odroczona<unknown>();
+    serwer.nadpisz("DELETE", "/admin/courses/4/assignments", () => odlaczenie.obietnica);
+    await renderEkranu();
+    const sekcja = document.getElementById("prowadzacy")!;
+    await within(sekcja).findByText("Cały kurs: Joanna Demo");
+
+    await userEvent.click(within(sekcja).getByRole("button", { name: "Odłącz: Joanna Demo, Cały kurs" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Odłącz prowadzącego" }));
+    await wybierz(/^Prowadzący/, "Adam Demo");
+    await wybierz(/^Zakres/, "Lekcja C");
+    await userEvent.click(within(sekcja).getByRole("button", { name: "Przypisz prowadzącego" }));
+    expect(await within(sekcja).findByText("Lekcja C: Adam Demo")).toBeInTheDocument();
+
+    await act(async () => {
+      odlaczenie.zwolnij({ id: 50, deleted: true });
+    });
+
+    expect(await within(sekcja).findByText("Cały kurs: brak prowadzącego")).toBeInTheDocument();
+    expect(within(sekcja).getByText("Lekcja C: Adam Demo")).toBeInTheDocument();
+  });
+});
+
 describe("wyjście z niezapisanymi danymi", () => {
   it("„Wróć” z wypełnionym formularzem nowej lekcji pyta; „Zostań” zostawia wpisany tytuł", async () => {
     const { container } = await renderEkranu();
