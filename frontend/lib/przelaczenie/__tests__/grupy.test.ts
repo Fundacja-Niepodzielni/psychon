@@ -14,11 +14,10 @@ import {
  * `pulpitAdministracji`), `pulpitUczestnika` i `pulpitProwadzacego`
  * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
  * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`
- * i `kursAdministracji` (z nim `publikacjaKursu` i `zaproszeniaNaKurs` — sekcje tego samego ekranu pod tym samym adresem),
- * a także `edycjaLekcji` (ekran lekcji pod własnym, nowym adresem z kursem w ścieżce).
+ * i `kursAdministracji` (z nim `publikacjaKursu` i `zaproszeniaNaKurs` — sekcje tego samego ekranu pod tym samym adresem).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kolejkaStazu", "kursAdministracji", "kursyAdministracji", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "kolejkaStazu", "kursAdministracji", "kursyAdministracji", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -34,7 +33,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, edycja lekcji, nabór i lista osób", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, nabór i lista osób", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)

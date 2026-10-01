@@ -55,11 +55,10 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest siedemnaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest szesnaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
- * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
- * pod własnym adresem z kursem w ścieżce; wchodzi się na niego z ekranu kursu), `nabor` i `listaOsob`
+ * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `nabor` i `listaOsob`
  * (dwie ostatnie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem). Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
@@ -405,7 +404,7 @@ export const GRUPY = {
    */
   edycjaLekcji: {
     klucz: "edycjaLekcji",
-    wlaczona: true,
+    wlaczona: false,
     ekrany: [
       {
         panel: "administracja",
