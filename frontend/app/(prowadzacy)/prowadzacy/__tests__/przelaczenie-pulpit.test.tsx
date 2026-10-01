@@ -24,6 +24,13 @@ vi.setConfig({ testTimeout: 30_000 });
 const api = vi.fn();
 const apiPaged = vi.fn();
 
+// Układ i powłoka biorą `api` z beczki `@/lib/api`, a ekran z `@/lib/api/klient`, więc podmieniamy oba moduły na te same atrapy.
+vi.mock("@/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/api")>()),
+  api: (...args: unknown[]) => api(...args),
+  apiPaged: (...args: unknown[]) => apiPaged(...args),
+}));
+
 vi.mock("@/lib/api/klient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/klient")>()),
   api: (...args: unknown[]) => api(...args),
