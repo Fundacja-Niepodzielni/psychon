@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { extname, join, normalize } from "node:path";
 import { expect, test } from "@playwright/test";
 
@@ -10,11 +11,11 @@ import { expect, test } from "@playwright/test";
  * `font-size` równy obliczonemu `--fs-11` (13 px). Wzorzec mierzony na
  * elemencie próbnym obok etykiety, nie literały.
  *
- * Poligon (Vite) budowany jest synchronicznie do katalogu pod `test-results`
+ * Poligon (Vite) budowany jest synchronicznie do katalogu tymczasowego systemu (poza drzewem, żeby `lint` nie czytał zbudowanego kodu)
  * i podawany przez przechwycenie żądań strony — bez uruchamiania serwera.
  */
 
-const KATALOG = join(process.cwd(), "test-results", "poligon-kafel-etykieta");
+const KATALOG = join(tmpdir(), "poligon-kafel-etykieta");
 const TYPY: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
