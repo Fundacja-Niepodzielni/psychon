@@ -8,8 +8,8 @@ import { brakujaceKlucze, kluczeMetaZOpenApi, kluczeZasobu } from "../../staz-ko
  * Ekran „Kursy” (administracja) na szablonie `ListTemplate`:
  *  - każdy stan (ładowanie, dane, pusty, brak uprawnień, błąd) ma jeden `main`
  *    i znacznik szablonu;
- *  - lista: tytuł, pozycja, typ, grupa, lekcje, plakietka publikacji i akcja
- *    „Otwórz” z adresem kursu; stronicowanie woła kolejną stronę;
+ *  - lista w kolumnach: Kurs (pod nazwą typ · grupa), Stan, Miejsce w ścieżce,
+ *    Lekcje i akcja „Otwórz” z adresem kursu; stronicowanie woła kolejną stronę;
  *  - „Utwórz kurs”: identyfikator z tytułu, ciało żądania, przejście na ekran
  *    kursu, błędy pól z serwera, anulowanie z powrotem fokusu;
  *  - „Zmień kolejność ścieżki”: przesuwanie, podgląd skutków, potwierdzenie
@@ -41,6 +41,7 @@ vi.mock("@/lib/api/klient", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api/klient");
+const { COURSE_TYPE_LABELS, PRODUCT_GROUP_LABELS } = await import("@/lib/h08/types");
 const { KursyAdministracji } = await import("../KursyAdministracji");
 
 const ZASOB = "backend/app/Http/Resources/H08/AdminCourseResource.php";
@@ -88,7 +89,15 @@ function przyciskiGlowne() {
 }
 
 function wierszeListy() {
-  return Array.from(document.querySelectorAll('section[aria-label="Lista kursów"] [data-wariant="z-licznikiem"]'));
+  return Array.from(document.querySelectorAll('section[aria-label="Lista kursów"] [role="row"][data-wiersz]'));
+}
+
+/** Komórka wiersza pod nagłówkiem kolumny o podanej nazwie. */
+function komorka(wiersz: HTMLElement, kolumna: string): HTMLElement {
+  const naglowki = within(screen.getByRole("table", { name: "Lista kursów" })).getAllByRole("columnheader");
+  const indeks = naglowki.findIndex((naglowek) => naglowek.textContent === kolumna);
+  expect(indeks, `kolumna „${kolumna}”`).toBeGreaterThanOrEqual(0);
+  return within(wiersz).getAllByRole("cell")[indeks];
 }
 
 async function renderZDanymi(kursy = TRZY_KURSY, meta = { ...META, total: kursy.length }) {
@@ -148,13 +157,38 @@ describe("KursyAdministracji — stany w szablonie", () => {
     expect(screen.getAllByRole("button", { name: "Utwórz kurs" })).toHaveLength(1);
   });
 
-  it("wiersz: pozycja, typ, grupa, liczba lekcji, plakietka i odnośnik do kursu", async () => {
+  it("kolumny w kolejności: Kurs, Stan, Miejsce w ścieżce, Lekcje, akcja — te same dane z jednego żądania", async () => {
+    await renderZDanymi();
+    const tabela = screen.getByRole("table", { name: "Lista kursów" });
+    expect(within(tabela).getAllByRole("columnheader").map((naglowek) => naglowek.textContent)).toEqual([
+      "Kurs",
+      "Stan",
+      "Miejsce w ścieżce",
+      "Lekcje",
+      "Akcja",
+    ]);
+    expect(apiPaged).toHaveBeenCalledTimes(1);
+    expect(apiPaged).toHaveBeenCalledWith("/admin/courses?page=1&per_page=100&sort=sequence_order");
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it("wiersz: nazwa z typem i grupą, stan, miejsce w ścieżce, liczba lekcji i odnośnik do kursu", async () => {
     await renderZDanymi();
     const [pierwszy, drugi, trzeci] = wierszeListy() as HTMLElement[];
-    expect(pierwszy).toHaveTextContent([["Pozycja", 1, "w ścieżce"].join(" "), "Kurs", "Psychon", "1 lekcja"].join(" · "));
-    expect(within(pierwszy).getByText("Opublikowany")).toBeInTheDocument();
-    expect(within(drugi).getByText("Szkic")).toBeInTheDocument();
-    expect(trzeci).toHaveTextContent("Poza ścieżką · Webinar · Obie grupy · 0 lekcji");
+    const opis = (typ: "course" | "webinar", grupa: "psychon" | "both") =>
+      [COURSE_TYPE_LABELS[typ], PRODUCT_GROUP_LABELS[grupa]].join(" · ");
+    expect(within(pierwszy).getAllByRole("cell")[0]).toBe(komorka(pierwszy, "Kurs"));
+    expect(komorka(pierwszy, "Kurs")).toHaveTextContent(`Podstawy pomocy${opis("course", "psychon")}`);
+    expect(komorka(pierwszy, "Stan")).toHaveTextContent(/^Stan\s*Opublikowany$/);
+    expect(komorka(pierwszy, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*1\s*w ścieżce$/);
+    expect(komorka(pierwszy, "Lekcje")).toHaveTextContent(/^Lekcje\s*1\s*lekcja$/);
+    expect(komorka(drugi, "Stan")).toHaveTextContent(/^Stan\s*Szkic$/);
+    expect(komorka(trzeci, "Kurs")).toHaveTextContent(`Webinar otwarty${opis("webinar", "both")}`);
+    expect(komorka(trzeci, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*poza ścieżką$/);
+    expect(komorka(trzeci, "Lekcje")).toHaveTextContent(/^Lekcje\s*0\s*lekcji$/);
+    // Wiersza opisowego „miejsce · typ · grupa · lekcje” już nie ma: pod nazwą stoi tylko typ i grupa.
+    expect(komorka(pierwszy, "Kurs")).not.toHaveTextContent(/w ścieżce|lekcj/);
+    expect(komorka(trzeci, "Kurs")).not.toHaveTextContent(/ścieżk|lekcj/);
     expect(screen.getByRole("link", { name: "Otwórz kurs: Podstawy pomocy" })).toHaveAttribute("href", "/admin/kursy/1");
     expect(screen.getByRole("link", { name: "Otwórz kurs: Webinar otwarty" })).toHaveAttribute("href", "/admin/kursy/3");
   });
