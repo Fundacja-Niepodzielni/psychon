@@ -151,7 +151,7 @@ describe("KursyAdministracji — stany w szablonie", () => {
   it("wiersz: pozycja, typ, grupa, liczba lekcji, plakietka i odnośnik do kursu", async () => {
     await renderZDanymi();
     const [pierwszy, drugi, trzeci] = wierszeListy() as HTMLElement[];
-    expect(pierwszy).toHaveTextContent([["Pozycja", 1, "w ścieżce"].join(" "), "Kurs", "Psychon", "1 lekcja"].join(" · "));
+    expect(pierwszy).toHaveTextContent([["Pozycja", 1, "w ścieżce"].join(" "), "Kurs", "PsychON", "1 lekcja"].join(" · "));
     expect(within(pierwszy).getByText("Opublikowany")).toBeInTheDocument();
     expect(within(drugi).getByText("Szkic")).toBeInTheDocument();
     expect(trzeci).toHaveTextContent("Poza ścieżką · Webinar · Obie grupy · 0 lekcji");

@@ -81,7 +81,7 @@ export const COURSE_TYPE_LABELS: Record<CourseType, string> = {
 };
 
 export const PRODUCT_GROUP_LABELS: Record<ProductGroup, string> = {
-  psychon: "Psychon",
+  psychon: "PsychON",
   dobrostan: "Dobrostan",
   both: "Obie grupy",
 };
