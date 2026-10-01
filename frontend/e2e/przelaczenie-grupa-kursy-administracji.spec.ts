@@ -295,7 +295,7 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
       // Typ i grupa pod nazwą kursu; miejsce w ścieżce i liczba lekcji w swoich kolumnach.
       const pierwszy = wiersze(page).first().getByRole("cell");
       await expect(pierwszy.nth(0)).toContainText("Kurs · PsychON");
-      await expect(pierwszy.nth(2)).toHaveText(/^Miejsce w ścieżce\s*1\s*w ścieżce$/);
+      await expect(pierwszy.nth(2)).toHaveText(/^Miejsce w ścieżce\s*1$/);
       await expect(pierwszy.nth(3)).toHaveText(/^Lekcje\s*1\s*lekcja$/);
       const ostatni = wiersze(page).nth(3).getByRole("cell");
       await expect(ostatni.nth(0)).toContainText("Webinar · Obie grupy");
