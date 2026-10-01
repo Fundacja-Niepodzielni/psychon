@@ -51,7 +51,10 @@ export interface PozycjaKolejki {
    * `__tests__/najstarsza-sprawa.test.ts`, nie założone. */
   idLiczbowe: number;
   rodzaj: RodzajSprawy;
+  /** „Rodzaj — Imię Nazwisko”: pełna nazwa sprawy (nazwa akcji dla czytnika). */
   tytul: string;
+  /** Imię i nazwisko osoby sprawy — druga część wiersza po rodzaju. */
+  osoba: string;
   podpowiedz: string;
   /** ISO 8601 albo pusty string (brak daty źródłowej — trafia na koniec
    * porządku w `znajdzNajstarszaSprawe`, nigdy nie wygrywa remisu). */
@@ -107,6 +110,7 @@ export function mapujZgloszenie(wiersz: WierszZgloszenia): PozycjaKolejki {
     idLiczbowe: wiersz.id,
     rodzaj: "applications",
     tytul: `${ETYKIETA_RODZAJU.applications} — ${wiersz.first_name} ${wiersz.last_name}`,
+    osoba: `${wiersz.first_name} ${wiersz.last_name}`,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
     // Brak trasy szczegółu zgłoszenia `new` (karta `/admin/uczestniczki/{id}`
@@ -123,6 +127,7 @@ export function mapujDyzur(wiersz: WierszDyzuru): PozycjaKolejki {
     idLiczbowe: wiersz.id,
     rodzaj: "internship_entries",
     tytul: `${ETYKIETA_RODZAJU.internship_entries} — ${wiersz.user.first_name} ${wiersz.user.last_name}`,
+    osoba: `${wiersz.user.first_name} ${wiersz.user.last_name}`,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
     // Brak trasy szczegółu pojedynczego dyżuru — tylko lista
@@ -138,6 +143,7 @@ export function mapujProfil(wiersz: WierszProfilu): PozycjaKolejki {
     idLiczbowe: wiersz.id,
     rodzaj: "profiles",
     tytul: `${ETYKIETA_RODZAJU.profiles} — ${wiersz.user.first_name} ${wiersz.user.last_name}`,
+    osoba: `${wiersz.user.first_name} ${wiersz.user.last_name}`,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
     href: `/admin/profile/${wiersz.id}`,

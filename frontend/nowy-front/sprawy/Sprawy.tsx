@@ -9,10 +9,11 @@ import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { Field } from "@/design-system/molekuly/Field/Field";
+import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import {
   ETYKIETA_RODZAJU,
+  KOLEJNOSC_RODZAJOW,
   pobierzKolejkeSpraw,
   znajdzNajstarszaSprawe,
   type PozycjaKolejki,
@@ -21,39 +22,43 @@ import {
 } from "./dane";
 import { pobierzSprawyProwadzacych, type SprawaProwadzacego } from "./dane-prowadzacych";
 import { SprawyProwadzacych, type StanSprawProwadzacych } from "./SprawyProwadzacych";
+import {
+  dniOczekiwania,
+  slowoDni,
+  tekstPlakietkiCzekania,
+  wariantPlakietkiCzekania,
+} from "./wiek";
 import style from "./Sprawy.module.css";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 type FiltrRodzaju = RodzajSprawy | "";
-type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
+const OPIS_EKRANU = "Zgłoszenia, dyżury i profile psychologów czekające na Twoją decyzję — w jednym miejscu.";
 
-const PLAKIETKA_RODZAJU: Record<RodzajSprawy, { wariant: WariantPlakietki; tekst: string }> = {
-  applications: { wariant: "pending", tekst: ETYKIETA_RODZAJU.applications },
-  internship_entries: { wariant: "pending", tekst: ETYKIETA_RODZAJU.internship_entries },
-  profiles: { wariant: "pending", tekst: ETYKIETA_RODZAJU.profiles },
+/** Nazwy rodzajów w filtrze (makieta A-02: zakładki Dyżury, Profile psychologów, Rekrutacja). */
+const ETYKIETA_FILTRA: Record<RodzajSprawy, string> = {
+  applications: "Rekrutacja",
+  internship_entries: "Dyżury",
+  profiles: "Profile psychologów",
 };
-
-const OPCJE_FILTRA: { wartosc: FiltrRodzaju; etykieta: string }[] = [
-  { wartosc: "", etykieta: "Wszystkie rodzaje" },
-  { wartosc: "applications", etykieta: ETYKIETA_RODZAJU.applications },
-  { wartosc: "internship_entries", etykieta: ETYKIETA_RODZAJU.internship_entries },
-  { wartosc: "profiles", etykieta: ETYKIETA_RODZAJU.profiles },
-];
 
 /**
  * Trasa `/nowy-front/admin/sprawy` (A-02) — jedna kolejka decyzji administracji,
  * złożona z trzech źródeł opisanych w `./dane.ts`. Każdy stan ekranu
  * (ładowanie, dane, pusto, brak uprawnień, błąd) renderuje szablon
  * `ListTemplate`: jego korzeń jest jedynym `main` (cel linku skoku `#tresc`),
- * a stan wybiera wyłącznie zawartość slotów. Slot `naglowek` — `PageHeader`;
- * slot `filtry` — `Field` wyboru rodzaju (tylko w stanie z danymi); slot
- * `lista` — szkielet, komunikat błędu, stan braku dostępu albo komunikaty
- * źródeł, główna akcja „Otwórz najstarszą sprawę" i `RecordList` (stan
- * pusty „Brak spraw do decyzji" niesie sam `RecordList`); slot
- * `stronicowanie` pominięty — ekran pobiera do 100 pozycji na źródło bez
- * podziału na strony, patrz `PER_PAGE_MAX` w `./dane.ts`. Wiersz `RecordList`
- * niesie dokładnie to, co ekran wymaga: rodzaj jako plakietka, kto i od kiedy
- * czeka w tekście wiersza, przejście do sprawy jako akcja wiersza z `href`.
+ * a stan wybiera wyłącznie zawartość slotów. Slot `naglowek` — `PageHeader`
+ * (podtytuł niesie wiek najstarszej sprawy); slot `filtry` — zwijany „Filtr:
+ * rodzaj (N)” z przyciskami rodzajów obecnych w danych, każdy z liczbą (tylko
+ * w stanie z danymi); slot `lista` — szkielet, komunikat błędu, stan braku
+ * dostępu albo komunikaty źródeł i `RecordList` (stan pusty „Brak spraw do
+ * decyzji" niesie sam `RecordList`); slot `stronicowanie` pominięty — ekran
+ * pobiera do 100 pozycji na źródło bez podziału na strony, patrz
+ * `PER_PAGE_MAX` w `./dane.ts`. Wiersz `RecordList` (makieta A-02): plakietka
+ * „czeka N dni” na początku (ostrzegawcza od `PROG_OSTRZEZENIA_DNI`, niżej
+ * szara), rodzaj pogrubiony, po „·” osoba, akcja „Otwórz” z `href`; pełna
+ * nazwa akcji i data „Czeka od …” tylko dla czytnika. Nagłówek `h2` kolejki
+ * jest tylko dla czytnika — wzrokowo lista stoi bezpośrednio pod nagłówkiem
+ * ekranu.
  *
  * Pod kolejką stoi sekcja „Sprawy zgłoszone przez prowadzących”
  * (`./SprawyProwadzacych.tsx`, dane z `./dane-prowadzacych.ts`): ma własne
@@ -77,6 +82,8 @@ export function Sprawy() {
   const router = useRouter();
   const [stan, setStan] = useState<StanEkranu>("ladowanie");
   const [wyniki, setWyniki] = useState<WynikZrodla[]>([]);
+  // Chwila odczytu kolejki: od niej liczy się wiek spraw (w renderze nie czytamy zegara).
+  const [teraz, setTeraz] = useState<number | null>(null);
   const [filtr, setFiltr] = useState<FiltrRodzaju>("");
   const [proba, setProba] = useState(0);
   const [stanProwadzacych, setStanProwadzacych] = useState<StanSprawProwadzacych>("ladowanie");
@@ -131,6 +138,7 @@ export function Sprawy() {
           return;
         }
         setWyniki(wynikiZrodel);
+        setTeraz(Date.now());
         setStan("ok");
       })
       .catch(() => {
@@ -147,6 +155,20 @@ export function Sprawy() {
   const stanEkranu: StanEkranu = odmowaProwadzacych ? "brak-uprawnien" : stan;
 
   const pozycje = useMemo(() => wyniki.flatMap((wynik) => wynik.pozycje), [wyniki]);
+  // Rodzaje obecne w danych, każdy z liczbą spraw. Wybrany rodzaj zostaje w
+  // filtrze także wtedy, gdy po ponownym odczycie nie ma już jego spraw —
+  // wtedy lista mówi o tym wprost, a „Wszystkie” przywraca pełny widok.
+  const opcjeFiltra = useMemo(() => {
+    const opcje: { wartosc: FiltrRodzaju; etykieta: string; liczba: number }[] = [
+      { wartosc: "", etykieta: "Wszystkie", liczba: pozycje.length },
+    ];
+    for (const rodzaj of KOLEJNOSC_RODZAJOW) {
+      const liczba = pozycje.filter((pozycja) => pozycja.rodzaj === rodzaj).length;
+      if (liczba > 0 || rodzaj === filtr) opcje.push({ wartosc: rodzaj, etykieta: ETYKIETA_FILTRA[rodzaj], liczba });
+    }
+    return opcje;
+  }, [pozycje, filtr]);
+  const opcjaWybrana = opcjeFiltra.find((opcja) => opcja.wartosc === filtr) ?? opcjeFiltra[0];
   const pozycjeWidoczne = useMemo(
     () => (filtr === "" ? pozycje : pozycje.filter((pozycja) => pozycja.rodzaj === filtr)),
     [pozycje, filtr],
@@ -160,23 +182,39 @@ export function Sprawy() {
     [wyniki],
   );
 
+  // Wiek najstarszej sprawy: z tych samych danych, z których ekran wskazuje
+  // „Otwórz najstarszą sprawę” (każde źródło odpowiada rosnąco po `created_at`,
+  // więc najstarsza pozycja zawsze mieści się na pobranej stronie).
+  const dniNajstarszej = najstarsza && teraz !== null ? dniOczekiwania(najstarsza.czekaOd, teraz) : null;
+
   const wierszeListy: WierszRecordList[] = useMemo(
     () =>
-      pozycjeWidoczne.map((pozycja: PozycjaKolejki) => ({
-        id: pozycja.id,
-        tytul: pozycja.tytul,
-        podpowiedz: pozycja.podpowiedz,
-        plakietka: PLAKIETKA_RODZAJU[pozycja.rodzaj],
-        akcja: { etykieta: "Otwórz sprawę", href: pozycja.href },
-      })),
-    [pozycjeWidoczne],
+      pozycjeWidoczne.map((pozycja: PozycjaKolejki) => {
+        const dni = teraz === null ? null : dniOczekiwania(pozycja.czekaOd, teraz);
+        return {
+          id: pozycja.id,
+          tytul: ETYKIETA_RODZAJU[pozycja.rodzaj],
+          tytulPogrubiony: true,
+          tytulDodatek: pozycja.osoba,
+          podpowiedz: pozycja.podpowiedz,
+          podpowiedzTylkoDlaCzytnika: true,
+          plakietka:
+            dni === null ? undefined : { wariant: wariantPlakietkiCzekania(dni), tekst: tekstPlakietkiCzekania(dni) },
+          akcja: { etykieta: "Otwórz", etykietaDostepna: `Otwórz sprawę: ${pozycja.tytul}`, href: pozycja.href },
+        };
+      }),
+    [pozycjeWidoczne, teraz],
   );
 
   const naglowek = (
     <PageHeader
       okruszki={[{ etykieta: "Administracja" }, { etykieta: "Sprawy" }]}
       tytul="Sprawy do decyzji"
-      opis="Zgłoszenia, dyżury i profile psychologów czekające na Twoją decyzję — w jednym miejscu."
+      opis={
+        stanEkranu === "ok" && dniNajstarszej !== null
+          ? `${OPIS_EKRANU} Najstarsza sprawa czeka ${dniNajstarszej} ${slowoDni(dniNajstarszej)}.`
+          : OPIS_EKRANU
+      }
       onPowrot={() => router.back()}
       przyciskGlowny={
         stanEkranu === "ok" && najstarsza
@@ -226,7 +264,9 @@ export function Sprawy() {
   } else if (stanEkranu === "blad") {
     lista = (
       <>
-        <Heading stopien={2}>Sprawy</Heading>
+        <div className={style.dlaCzytnika}>
+          <Heading stopien={2}>Sprawy</Heading>
+        </div>
         <div className={style.bledyZrodel}>
           <Notice wariant="error" tytul="Nie udało się wczytać spraw">
             Sprawy są chwilowo nieosiągalne. Sprawdź połączenie i spróbuj ponownie.
@@ -252,29 +292,43 @@ export function Sprawy() {
   } else {
     filtry = (
       <div className={style.filtr}>
-        <Field
-          id="sprawy-filtr-rodzaj"
-          etykieta="Rodzaj sprawy"
-          rodzaj="wybor"
-          opcje={OPCJE_FILTRA.map((opcja) => ({ wartosc: opcja.wartosc, etykieta: opcja.etykieta }))}
-          wartosc={filtr}
-          onZmiana={(wartosc) => setFiltr(wartosc as FiltrRodzaju)}
+        <CollapsibleSection
+          tytul={`Filtr: ${opcjaWybrana.etykieta}`}
+          liczba={opcjaWybrana.liczba}
+          dzieci={
+            <div role="group" aria-label="Rodzaj sprawy" className={style.opcjeFiltra}>
+              {opcjeFiltra.map((opcja) => (
+                <Button
+                  key={opcja.wartosc || "wszystkie"}
+                  poziom="outline"
+                  aria-pressed={opcja.wartosc === filtr}
+                  onClick={() => setFiltr(opcja.wartosc)}
+                >
+                  {opcja.etykieta} ({opcja.liczba})
+                </Button>
+              ))}
+            </div>
+          }
         />
       </div>
     );
-    // Nagłówek `h2` kolejki idzie PRZED komunikatami źródeł (`Notice` ma tytuł
-    // `h3`), żeby pod `h1` nie wypadł `h3` bez `h2`.
+    // Nagłówek `h2` kolejki (tylko dla czytnika) idzie PRZED komunikatami
+    // źródeł (`Notice` ma tytuł `h3`), żeby pod `h1` nie wypadł `h3` bez `h2`.
     lista = (
       <>
         {pokazListe ? (
           <RecordList
             tytul="Sprawy"
             stopienNaglowka={2}
+            naglowekTylkoDlaCzytnika
+            wierszeBezWciecia
             wiersze={wierszeListy}
             pusty={pustyStanListy}
           />
         ) : (
-          <Heading stopien={2}>Sprawy</Heading>
+          <div className={style.dlaCzytnika}>
+            <Heading stopien={2}>Sprawy</Heading>
+          </div>
         )}
 
         {zrodlaZBledem.length > 0 && (

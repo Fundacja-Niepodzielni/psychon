@@ -9,6 +9,7 @@ function pozycja(overrides: Partial<PozycjaKolejki> & Pick<PozycjaKolejki, "id" 
   return {
     idLiczbowe: domyslneIdLiczbowe,
     tytul: `Sprawa ${overrides.id}`,
+    osoba: "Osoba Demo",
     podpowiedz: "Czeka od —",
     czekaOd: "",
     href: `/sprawa/${overrides.id}`,

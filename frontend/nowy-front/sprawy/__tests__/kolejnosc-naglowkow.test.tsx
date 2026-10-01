@@ -108,7 +108,7 @@ describe("Sprawy — kolejność nagłówków bez przeskoków", () => {
     const { container } = render(<Sprawy />);
 
     await screen.findByText("Nieobecność na dyżurze");
-    await screen.findByText("Zgłoszenie — Marta Demo");
+    await screen.findByText("Marta Demo");
     const stopnie = stopnieNaglowkow(container);
     expect(stopnie).toEqual([1, 2, 2, 3]);
     expect(przeskokNaglowkow(stopnie)).toBeNull();
