@@ -35,6 +35,12 @@ import type { MenuEntry } from "../types";
  * - kolejka stażu (`/admin/staz`) to pozycja „Dyżury do decyzji” w „Codziennie”
  *   zaraz po „Sprawy” (nazwa == `h1` ekranu); stary wpis „Akceptacja stażu”
  *   nie wchodzi wtedy do „Dotychczasowego panelu”;
+ * - lista zgłoszeń rekrutacyjnych (`/admin/nabor`) to pozycja „Zgłoszenia rekrutacyjne”
+ *   w „Codziennie” zaraz po „Uczestnicy” (nazwa == `h1` ekranu i okruszek szczegółu);
+ *   pozycja jest w menu wyłącznie przy włączonej grupie `nabor`. Przy wyłączonej
+ *   zgłoszenia są zakładką starej strony pod `/admin/uczestniczki` — adres, który
+ *   już niesie „Uczestnicy” — więc osobnej pozycji nie ma (zero duplikatu adresu,
+ *   zero utraty wejścia);
  * - linie „W przygotowaniu” z makiety, bez łączy i bez funkcji obecnych
  *   w menu: w „Programie” bez „staż i superwizja” (w menu „Dyżury do decyzji”
  *   i „Superwizje”); w „Rozliczeniu” bez
@@ -63,6 +69,7 @@ export const NAZWY_RAMKI_ADMINISTRACJI = {
   sprawy: "Sprawy",
   kolejkaStazu: "Dyżury do decyzji",
   uczestnicy: "Uczestnicy",
+  zgloszeniaRekrutacyjne: "Zgłoszenia rekrutacyjne",
   zgloszeniaWspolpracy: "Zgłoszenia współpracy",
   kursy: "Kursy",
   formyStazu: "Słownik form stażu",
@@ -122,6 +129,12 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
   const dotychczasowe = [h07CzasNauki, h13Certyfikaty, h15Profil, h11Staz, h12Superwizje, h16Emails, h19Ustawienia].filter(
     (wpis) => !(kolejkaStazu.length > 0 && wpis === h11Staz),
   );
+  // „Zgłoszenia rekrutacyjne” (`/admin/nabor`) stoją w „Codziennie” zaraz po „Uczestnicy”. Przy
+  // wyłączonej grupie cel to stara trasa `/admin/uczestniczki` (adres pozycji „Uczestnicy”), więc
+  // pozycji nie dokładamy — zgłoszenia są wtedy zakładką tej strony i wejście nie ginie.
+  const zgloszeniaRekrutacyjne = grupy.nabor?.wlaczona
+    ? pozycja(cel(grupy, "nabor"), "inbox", n.zgloszeniaRekrutacyjne)
+    : [];
   return [
     {
       naglowek: "Codziennie",
@@ -130,6 +143,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...pozycja(cel(grupy, "sprawy"), "inbox", n.sprawy),
         ...kolejkaStazu,
         ...pozycja(cel(grupy, "listaOsob"), "users", n.uczestnicy),
+        ...zgloszeniaRekrutacyjne,
         ...pozycja(cel(grupy, "wspolpraca"), "chat", n.zgloszeniaWspolpracy),
       ],
     },

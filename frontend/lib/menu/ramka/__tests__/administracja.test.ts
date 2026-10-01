@@ -38,6 +38,9 @@ const WLACZONE_DZIS: Partial<Record<KluczGrupy, boolean>> = {
   wzoryDokumentow: true,
   ekranStartowy: true,
   kolejkaStazu: true,
+  // Włączony nabór dokłada pozycję „Zgłoszenia rekrutacyjne” (adres inny niż „Uczestnicy”), więc rzeczywiste
+  // menu różni się od menu bez tej flagi — bez niej porównanie z rejestrem na dziś byłoby fałszywe.
+  nabor: true,
   pulpitUczestnika: true,
   pulpitProwadzacego: true,
 };
@@ -52,6 +55,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Sprawy", "/admin/sprawy"],
           ["Dyżury do decyzji", "/admin/staz"],
           ["Uczestnicy", "/admin/uczestniczki"],
+          ["Zgłoszenia rekrutacyjne", "/admin/nabor"],
           ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
         ],
         linia: undefined,
@@ -134,6 +138,34 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
       const wszystkie = menu.flatMap((g) => g.pozycje.map((p) => p.etykieta));
       expect(wszystkie, `flaga ${wlaczona}`).not.toContain("Akceptacja stażu");
     }
+  });
+
+  it("zgłoszenia rekrutacyjne: przy włączonej grupie stoją w „Codziennie” zaraz po „Uczestnicy” i prowadzą na /admin/nabor", () => {
+    const menu = menuRamkiAdministracji(zFlagami({ nabor: true, listaOsob: true }));
+    const codziennie = menu.find((g) => g.naglowek === "Codziennie");
+    const etykiety = codziennie?.pozycje.map((p) => p.etykieta);
+    expect(etykiety).toEqual(["Pulpit", "Sprawy", "Dyżury do decyzji", "Uczestnicy", "Zgłoszenia rekrutacyjne"]);
+    expect(etykiety?.indexOf("Zgłoszenia rekrutacyjne")).toBe((etykiety?.indexOf("Uczestnicy") ?? -2) + 1);
+    const wpis = codziennie?.pozycje.find((p) => p.etykieta === "Zgłoszenia rekrutacyjne");
+    expect(wpis?.href).toBe("/admin/nabor");
+    expect(wpis?.ikona).toBe("inbox");
+  });
+
+  it("zgłoszenia rekrutacyjne przy obu stanach flagi: adresy nie powtarzają się, a /admin/uczestniczki ma dokładnie jedno wejście", () => {
+    for (const wlaczona of [true, false]) {
+      const menu = menuRamkiAdministracji(zFlagami({ nabor: wlaczona }));
+      const adresy = menu.flatMap((g) => g.pozycje.map((p) => p.href));
+      expect(new Set(adresy).size, `flaga ${wlaczona}`).toBe(adresy.length);
+      expect(adresy.filter((a) => a === "/admin/uczestniczki"), `flaga ${wlaczona}`).toHaveLength(1);
+      expect(adresy.includes("/admin/nabor"), `flaga ${wlaczona}`).toBe(wlaczona);
+    }
+  });
+
+  it("zgłoszenia rekrutacyjne przy wyłączonej grupie nie ginią: wejście na listę zgłoszeń zostaje przez „Uczestnicy” (zakładka starej strony)", () => {
+    const menu = menuRamkiAdministracji(zFlagami({ nabor: false }));
+    const wszystkie = menu.flatMap((g) => g.pozycje.map((p) => [p.etykieta, p.href]));
+    expect(wszystkie).toContainEqual(["Uczestnicy", "/admin/uczestniczki"]);
+    expect(wszystkie.map(([etykieta]) => etykieta)).not.toContain("Zgłoszenia rekrutacyjne");
   });
 
   it("żaden adres nie wskazuje segmentu nowego frontu i nie powtarza się", () => {
