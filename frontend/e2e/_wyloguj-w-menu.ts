@@ -130,16 +130,22 @@ export async function sprawdzWylogujWMenu(page: Page, kontener: Locator, opis: s
   }, { timeout: 5000 }).toBe(true);
   const okno = page.viewportSize()!;
   const pozaMenu = async () => page.mouse.move(okno.width - 4, okno.height - 4);
+  // Kursor nad przyklejony przycisk bez przewijania menu: przycisk jest stale widoczny, a przewinięcie zmieniłoby stan bloku.
+  const najedzNaPrzycisk = async () => {
+    const pole = (await przycisk.boundingBox())!;
+    await page.mouse.move(pole.x + pole.width / 2, pole.y + pole.height / 2);
+  };
 
+  // Stan wejścia czytany przed zrzutami, żeby nic po drodze go nie zmieniło.
+  const wejscie = await odczyt(kontener);
   const katalog = katalogZrzutow();
   if (katalog) {
     await page.screenshot({ path: path.join(katalog, `wyloguj-${opis}.png`) });
-    await przycisk.hover();
+    await najedzNaPrzycisk();
     await page.screenshot({ path: path.join(katalog, `wyloguj-${opis}-najechany.png`) });
     await pozaMenu();
   }
 
-  const wejscie = await odczyt(kontener);
   if (wejscie.nadTrescia) {
     // Pod blokiem jest treść menu: jedna cienka linia u góry, nic po bokach i u dołu, bez cienia.
     expect(wejscie.blok.ramki, `${opis}: linia tylko u góry ${JSON.stringify(wejscie.blok)}`).toEqual(["1px", "0px", "0px", "0px"]);
@@ -170,7 +176,7 @@ export async function sprawdzWylogujWMenu(page: Page, kontener: Locator, opis: s
   await pozycja.hover();
   await expect.poll(async () => (await stylPozycji(pozycja)).tlo, { timeout: 5000 }).not.toBe("rgba(0, 0, 0, 0)");
   const pozycjaNajechana = await stylPozycji(pozycja);
-  await przycisk.hover();
+  await najedzNaPrzycisk();
   await expect.poll(async () => (await odczyt(kontener)).przycisk.tlo, { timeout: 5000 }).toBe(pozycjaNajechana.tlo);
   const najechany = await odczyt(kontener);
   expect(najechany.przycisk.barwa, `${opis}: najechany napis nadal w barwie działań niebezpiecznych`).toBe(najechany.wzorzec.blad);
