@@ -1411,6 +1411,9 @@ ten aneks go nie wprowadza i trasa `GET /instructor/lessons/{lesson}/materials` 
 Kod: `routes/api/h08.php`,
 `Http/Controllers/Api/V1/Admin/MaterialAdminController.php::indexForLesson`,
 `Http/Resources/H08/AdminMaterialResource.php` (bez zmian), `openapi.json`.
+
+---
+
 ## Aneks — stan nagrania lekcji (H08)
 
 Lekcja pamięta stan swojego nagrania w bazie, nowe nagranie zastępuje dotychczasowe dopiero
