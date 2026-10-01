@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
@@ -15,6 +17,9 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - kolejka spraw stoi dokładnie tam, gdzie kolejka dyżurów (1280 i 1440 px);
  * - każda z sześciu list stoi na białej karcie (kontrast tła i obrysu plakietki
  *   do tła pod nią); pięć z nich na karcie z organizmu listy.
+ *
+ * Zrzuty ekranu powstają tylko przy ustawionej zmiennej `PW_ZRZUTY_LIST`
+ * (katalog poza repozytorium).
  */
 
 const ATRAPA_SESJI = { accessToken: "atrapa-tokenu-testowego", expiresAt: Date.now() + 3_600_000 };
@@ -234,6 +239,15 @@ async function zmierz(page: Page, lista: OpisListy): Promise<PomiarListy> {
   });
 }
 
+/** Zrzut całej strony do katalogu ze zmiennej środowiska; bez zmiennej nic nie robi. */
+async function zrzut(page: Page, lista: OpisListy, szerokosc: number): Promise<void> {
+  const katalog = process.env.PW_ZRZUTY_LIST;
+  if (!katalog) return;
+  mkdirSync(katalog, { recursive: true });
+  const nazwa = lista.adres.replace(/^\//, "").replace(/\//g, "-");
+  await page.screenshot({ path: join(katalog, `${nazwa}-${szerokosc}.png`), fullPage: true, animations: "disabled" });
+}
+
 function rozrzut(wartosci: number[]): number {
   return Math.max(...wartosci) - Math.min(...wartosci);
 }
@@ -243,6 +257,7 @@ for (const lista of LISTY) {
     await otworz(page, { width: 1280, height: 800 }, lista);
     const m = await zmierz(page, lista);
     console.log(`POMIAR-KOLUMN ${lista.nazwa} @1280 ${JSON.stringify(m)}`);
+    await zrzut(page, lista, 1280);
 
     // Nagłówki: skład i kolejność; kolumny treści widoczne, kolumna akcji ma nazwę tylko dla czytnika.
     expect(m.naglowki.map((naglowek) => naglowek.tekst)).toEqual(lista.kolumny);
@@ -316,6 +331,7 @@ for (const lista of LISTY) {
     await otworz(page, { width: 390, height: 844 }, lista);
     const m = await zmierz(page, lista);
     console.log(`POMIAR-KOLUMN ${lista.nazwa} @390 ${JSON.stringify(m)}`);
+    await zrzut(page, lista, 390);
 
     // Nagłówki kolumn zostają w drzewie dostępności (wzrokowo zastępuje je podpis przy wartości).
     expect(m.naglowki.map((naglowek) => naglowek.tekst)).toEqual(lista.kolumny);
@@ -538,6 +554,10 @@ for (const okno of [
   for (const { lista, plakietek, kartaOrganizmu } of NA_KARCIE) {
     test(`${lista.nazwa} @${okno.width}: lista na białej karcie — tło plakietki neutralnej 1,14, obrys plakietki neutralnej 3,58, każdy obrys co najmniej 3,0`, async ({ page }) => {
       await otworz(page, okno, lista);
+      // Plakietka wieku pojawia się po odczytaniu bieżącej chwili — pomiar czeka na komplet.
+      await expect(
+        page.locator(`main [role="table"][aria-label="${lista.lista}"] [role="cell"][data-rodzaj="stan"] > span:not([aria-hidden])`),
+      ).toHaveCount(plakietek);
       const plakietki = await kontrastPlakietek(page, lista.lista);
       console.log(`POMIAR-KONTRASTU ${lista.nazwa} @${okno.width} ${JSON.stringify(plakietki)}`);
       expect(plakietki).toHaveLength(plakietek);
