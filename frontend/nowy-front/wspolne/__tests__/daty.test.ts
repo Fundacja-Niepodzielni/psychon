@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatujDate, formatujDateICzas } from "../daty";
+import { formatujDate, formatujDateICzas, numerDniaKalendarzowego } from "../daty";
 
 /**
  * Wspólny formater dat nowego frontu: dzień „30 września 2026”, dzień z godziną
@@ -77,5 +77,42 @@ describe("formatujDateICzas", () => {
 
   it("wynik nigdy nie zawiera znacznika ISO", () => {
     expect(formatujDateICzas("2026-09-30T18:50:00Z")).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
+  });
+});
+
+describe("numerDniaKalendarzowego", () => {
+  const dzien = (iso: string) => numerDniaKalendarzowego(Date.parse(iso));
+
+  it("początek epoki: 1970-01-01 01:00 w Warszawie to dzień 0", () => {
+    expect(numerDniaKalendarzowego(0)).toBe(0);
+  });
+
+  it("północ warszawska: 23:59 i 00:01 sąsiednich dni różnią się o 1, cała doba ma jeden numer", () => {
+    expect(dzien("2026-09-30T22:01:00Z") - dzien("2026-09-30T21:59:00Z")).toBe(1);
+    expect(dzien("2026-10-01T21:59:00Z")).toBe(dzien("2026-09-30T22:01:00Z"));
+  });
+
+  it("znacznik UTC, który w Warszawie jest już następnym dniem, ma numer tego następnego dnia", () => {
+    expect(dzien("2026-09-30T22:30:00Z")).toBe(dzien("2026-10-01T10:00:00Z"));
+    expect(dzien("2026-12-31T23:30:00Z")).toBe(dzien("2027-01-01T10:00:00Z"));
+  });
+
+  it("zmiana czasu jesienią (25.10.2026, doba 25 h): od 00:00 do 23:59 jeden numer, następna doba o 1 więcej", () => {
+    const poczatekDoby = dzien("2026-10-24T22:00:00Z"); // 25.10 00:00 czasu letniego
+    expect(dzien("2026-10-25T22:59:00Z")).toBe(poczatekDoby); // 25.10 23:59 czasu zimowego, 25 godzin później
+    expect(dzien("2026-10-25T23:00:00Z") - poczatekDoby).toBe(1); // 26.10 00:00
+    expect(poczatekDoby - dzien("2026-10-24T21:59:00Z")).toBe(1); // 24.10 23:59
+  });
+
+  it("zmiana czasu wiosną (29.03.2026, doba 23 h): od 00:00 do 23:59 jeden numer, następna doba o 1 więcej", () => {
+    const poczatekDoby = dzien("2026-03-28T23:00:00Z"); // 29.03 00:00 czasu zimowego
+    expect(dzien("2026-03-29T21:59:00Z")).toBe(poczatekDoby); // 29.03 23:59 czasu letniego, 23 godziny później
+    expect(dzien("2026-03-29T22:00:00Z") - poczatekDoby).toBe(1); // 30.03 00:00
+    expect(poczatekDoby - dzien("2026-03-28T22:59:00Z")).toBe(1); // 28.03 23:59
+  });
+
+  it("chwila nieskończona nie jest liczbą dnia: Intl rzuca (dniOczekiwania sprawdza to wcześniej i daje null)", () => {
+    expect(() => numerDniaKalendarzowego(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+    expect(() => numerDniaKalendarzowego(Number.NaN)).toThrow(RangeError);
   });
 });
