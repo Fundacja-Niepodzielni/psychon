@@ -69,6 +69,17 @@ class VideoTokenService
     }
 
     /**
+     * Czy lekcja ma nagranie, dla którego wolno wystawić adres lub podpis:
+     * identyfikator jest ustawiony i ma kształt z `VideoProviderId`. Wartość
+     * zapisana w bazie w innym kształcie jest traktowana jak brak nagrania,
+     * a nie wstawiana do adresu.
+     */
+    public function hasRecording(Lesson $lesson): bool
+    {
+        return VideoProviderId::isValid($lesson->video_provider_id);
+    }
+
+    /**
      * Podpisany bezpośredni URL HLS (playlist + segmenty) dla lekcji —
      * token katalogowy (`bcdn_token=`), ważny `CDN_TTL_SECONDS`, związany
      * z osobą, której go wydajemy (patrz nagłówek klasy).
@@ -78,9 +89,10 @@ class VideoTokenService
     public function signedCdnUrl(Lesson $lesson, User $user): array
     {
         $videoId = $this->videoId($lesson);
+        $segment = VideoProviderId::segment($videoId);
         $expires = now()->getTimestamp() + self::CDN_TTL_SECONDS;
-        $tokenPath = "/{$videoId}/";
-        $urlPath = "/{$videoId}/playlist.m3u8";
+        $tokenPath = "/{$segment}/";
+        $urlPath = "/{$segment}/playlist.m3u8";
         $viewer = $this->viewerToken($user);
 
         $signed = $this->signDirectoryPath($tokenPath, $urlPath, $expires, $viewer);
@@ -104,9 +116,10 @@ class VideoTokenService
         $expires = now()->getTimestamp() + self::EMBED_TTL_SECONDS;
         $token = hash('sha256', $this->securityKey().$videoId.$expires);
         $libraryId = (string) config('services.bunny.library_id');
+        $segment = VideoProviderId::segment($videoId);
 
         return [
-            'url' => "https://iframe.mediadelivery.net/embed/{$libraryId}/{$videoId}?token={$token}&expires={$expires}",
+            'url' => "https://iframe.mediadelivery.net/embed/{$libraryId}/{$segment}?token={$token}&expires={$expires}",
             'expires_at' => $expires,
             'video_id' => $videoId,
         ];
@@ -147,7 +160,7 @@ class VideoTokenService
     {
         $videoId = $lesson->video_provider_id;
 
-        if (! is_string($videoId) || $videoId === '') {
+        if (! VideoProviderId::isValid($videoId)) {
             throw new \RuntimeException('Lesson has no Bunny video assigned.');
         }
 
