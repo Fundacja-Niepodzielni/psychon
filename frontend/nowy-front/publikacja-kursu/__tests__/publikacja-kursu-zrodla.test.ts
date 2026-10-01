@@ -164,6 +164,7 @@ describe("źródła ekranu", () => {
         "title",
         "type",
         "updated_at",
+        "publication_gaps",
       ].sort(),
     );
   });

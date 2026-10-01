@@ -21,6 +21,11 @@ export interface DaneLekcji {
   is_completed: boolean;
   completable: boolean;
   completable_at_percent: number;
+  /**
+   * Stan nagrania z punktu widzenia uczestnika (kontrakt, „Stan nagrania
+   * lekcji”): `ready` dokładnie wtedy, gdy link do nagrania zostanie wydany.
+   */
+  video_status?: "none" | "uploading" | "processing" | "ready" | "error";
 }
 
 export type WynikLekcji =

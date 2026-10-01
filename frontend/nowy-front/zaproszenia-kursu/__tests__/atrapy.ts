@@ -6,7 +6,13 @@ import type { AdminUserListItem } from "@/lib/api/h18";
  * zaplecza (`AdminCourseResource`, `AdminUserListResource::FIELDS`); test
  * schematu czyta te pliki i porównuje je z kluczami poniżej.
  */
-export const KURS_SPOTKANIE: AdminCourse = {
+/** Wpis listy braków kursu (`AdminCourseResource`, pole `publication_gaps`). */
+type BrakKursu = { code: string; lesson_id: number | null };
+
+/** Kurs z zasobu zaplecza razem z polem `publication_gaps`, którego typ `AdminCourse` nie niesie. */
+type KursZBrakami = AdminCourse & { publication_gaps: { blocking: BrakKursu[]; waiting: BrakKursu[] } };
+
+export const KURS_SPOTKANIE: KursZBrakami = {
   id: 7,
   title: "Spotkanie o pracy z kryzysem",
   slug: "spotkanie-o-pracy-z-kryzysem",
@@ -20,6 +26,7 @@ export const KURS_SPOTKANIE: AdminCourse = {
   materials_count: 0,
   created_at: "2026-09-01T08:00:00Z",
   updated_at: "2026-09-01T08:00:00Z",
+  publication_gaps: { blocking: [], waiting: [] },
 };
 
 export const KURS_NA_SCIEZCE: AdminCourse = { ...KURS_SPOTKANIE, id: 8, type: "course", sequence_order: 3 };
