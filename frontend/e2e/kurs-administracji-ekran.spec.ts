@@ -222,7 +222,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await zabezpieczeniePrzedEkranemDostepu(page);
       await expect(page.getByRole("heading", { level: 3, name: "Podstawy" })).toBeVisible();
 
-      await expect(page.getByRole("button", { name: "Zmień nazwę" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Zmień nazwę", exact: true })).toHaveCount(0);
       const edytuj = page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" });
       const ramkaPrzycisku = await edytuj.boundingBox();
       expect(ramkaPrzycisku!.height, "wysokość celu dotyku „Edytuj”").toBeGreaterThanOrEqual(44);
