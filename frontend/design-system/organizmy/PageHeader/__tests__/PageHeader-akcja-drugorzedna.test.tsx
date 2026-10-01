@@ -139,7 +139,7 @@ describe("PageHeader — kolejność wizualna akcji = kolejność w DOM (WCAG 2.
     const reguly = [...css.matchAll(/([^{}]*\.akcjeDwie[^{}]*)\{([^{}]*)\}/g)];
     expect(reguly.length).toBeGreaterThan(0);
     for (const [, selektor, tresc] of reguly) {
-      expect(tresc, `reguła ${selektor.trim()}`).not.toMatch(/order\s*:/);
+      expect(tresc, `reguła ${selektor.trim()}`).not.toMatch(/(^|[;\s])order\s*:/);
       expect(tresc, `reguła ${selektor.trim()}`).not.toMatch(/-reverse/);
     }
   });
