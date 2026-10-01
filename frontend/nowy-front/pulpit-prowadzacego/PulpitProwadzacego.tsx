@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
-import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
@@ -24,17 +23,14 @@ import {
 import { SekcjaGrupy, SekcjaKursow, SekcjaPytan, SekcjaSuperwizji } from "./sekcje";
 import style from "./PulpitProwadzacego.module.css";
 
-const ID_POWODU_BRAKU_PYTAN = "pulpit-powod-brak-pytan";
-
 /**
  * Ekran „Pulpit prowadzącego” na szablonie `DashboardTemplate`.
  * Stany: ładowanie, dane (także częściowa awaria jednej z trzech tras —
  * sekcja z błędem to `Notice`, pozostałe zostają), pusty „Nie masz dziś nic do
  * zrobienia”, 403 i błąd sieci. Ekran niczego nie zapisuje.
- * Jedyny przycisk główny „Odpowiedz na pytania” prowadzi do istniejącej
- * skrzynki pytań (`/prowadzacy/pytania`); przy zerze pytań jest nieaktywny
- * i ma obok podany powód — atom `Button` nie pozwala wyłączyć poziomu
- * `primary`, więc w tym stanie to poziom `outline`.
+ * Jedyny przycisk główny stoi w nagłówku i prowadzi do istniejącej skrzynki
+ * pytań (`/prowadzacy/pytania`): „Odpowiedz na pytania” przy pytaniach,
+ * aktywny „Zobacz pytania” przy zerze (makieta).
  */
 export function PulpitProwadzacego() {
   const router = useRouter();
@@ -115,22 +111,16 @@ export function PulpitProwadzacego() {
   const liczbaPytan = dane.pytania.stan === "ok" ? dane.pytania.dane.liczba : null;
   const terminy = dane.grupa.stan === "ok" ? nadchodzaceTerminy(dane.grupa.dane.slots, teraz) : [];
 
-  // Przycisk główny stoi w nagłówku (makieta 2.0.4, `.head .acts`). Bez pytań
-  // zostaje pod nagłówkiem, jak dotąd: nieaktywny `outline` z powodem obok.
+  // Przycisk główny stoi w nagłówku (makieta 2.0.4, `.head .acts`, skrypt
+  // `goPytL`): z pytaniami „Odpowiedz na pytania”, bez pytań aktywny „Zobacz
+  // pytania” — oba do skrzynki pytań. Awaria trasy pytań: bez przycisku.
   const przyciskGlowny =
-    liczbaPytan !== null && liczbaPytan > 0
-      ? { etykieta: "Odpowiedz na pytania", onKliknij: () => router.push(ADRES_PYTAN) }
-      : undefined;
-
-  const akcjaGlowna: ReactNode =
-    liczbaPytan === null || liczbaPytan > 0 ? null : (
-      <div className={style.akcja}>
-        <Button poziom="outline" disabled aria-describedby={ID_POWODU_BRAKU_PYTAN}>
-          Odpowiedz na pytania
-        </Button>
-        <Hint id={ID_POWODU_BRAKU_PYTAN}>Nie ma pytań bez odpowiedzi.</Hint>
-      </div>
-    );
+    liczbaPytan === null
+      ? undefined
+      : {
+          etykieta: liczbaPytan > 0 ? "Odpowiedz na pytania" : "Zobacz pytania",
+          onKliknij: () => router.push(ADRES_PYTAN),
+        };
 
   const nastepnyKrok =
     widok === "pusty" || (liczbaPytan === null && terminy.length === 0) ? undefined : (
@@ -171,7 +161,6 @@ export function PulpitProwadzacego() {
         tytul: "Pulpit prowadzącego",
         onPowrot,
         przyciskGlowny,
-        dzieci: akcjaGlowna,
       }}
       nastepnyKrok={nastepnyKrok}
       kafle={zbudujKafle(dane)}

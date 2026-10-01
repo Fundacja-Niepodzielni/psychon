@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
@@ -126,16 +126,21 @@ describe("PulpitProwadzacego — stan dane, prowadzący z pytaniami", () => {
 });
 
 describe("PulpitProwadzacego — prowadzący bez pytań", () => {
-  it("z terminem przed nami: przycisk nieaktywny, powód podany, zero przycisków głównych", async () => {
+  it("z terminem przed nami: aktywny „Zobacz pytania” w nagłówku, jedyny przycisk główny, bez nieaktywnego obrysu", async () => {
     pobierzPulpit.mockResolvedValue(pulpitZTerminem({ pytania: { stan: "ok", dane: { liczba: 0, wiersze: [] } } }));
+    const uzytkownik = userEvent.setup();
     const { container } = render(<PulpitProwadzacego />);
 
-    const przycisk = await screen.findByRole("button", { name: "Odpowiedz na pytania" });
-    expect(przycisk).toBeDisabled();
-    const powod = screen.getByText("Nie ma pytań bez odpowiedzi.");
-    expect(przycisk.getAttribute("aria-describedby")).toBe(powod.id);
-    expect(przyciskiGlowne(container)).toHaveLength(0);
+    const przycisk = await screen.findByRole("button", { name: "Zobacz pytania" });
+    expect(przycisk).toBeEnabled();
+    expect(przycisk).not.toHaveAttribute("aria-disabled");
+    expect(przyciskiGlowne(container)).toEqual([przycisk]);
+    expect(container.querySelector("[data-testid='pageheader-glowa']")).toContainElement(przycisk);
+    expect(screen.queryByRole("button", { name: "Odpowiedz na pytania" })).toBeNull();
+    expect(screen.queryByText("Nie ma pytań bez odpowiedzi.")).toBeNull();
     sprawdzSzablon(container);
+    await uzytkownik.click(przycisk);
+    expect(push).toHaveBeenCalledWith("/prowadzacy/pytania");
     expect(screen.queryByText("Nie masz dziś nic do zrobienia")).toBeNull();
   });
 });
@@ -153,8 +158,8 @@ describe("PulpitProwadzacego — stan pusty", () => {
 
     expect(await screen.findByRole("heading", { name: "Nie masz dziś nic do zrobienia" })).toBeInTheDocument();
     sprawdzSzablon(container);
-    expect(przyciskiGlowne(container)).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Odpowiedz na pytania" })).toBeDisabled();
+    expect(przyciskiGlowne(container)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Zobacz pytania" })).toBeEnabled();
     expect(container.querySelector("table")).toBeNull();
   });
 });
@@ -252,12 +257,19 @@ describe("PulpitProwadzacego — przycisk główny w nagłówku (makieta 2.0.4, 
     expect(screen.getByRole("heading", { level: 2, name: /^Nadchodzące superwizje: / })).toBeInTheDocument();
   });
 
-  it("bez pytań: nieaktywny przycisk zostaje pod nagłówkiem, nie w obszarze przycisku głównego (kontrola dodatnia: z pytaniami jest w nagłówku)", async () => {
+  it("bez pytań: aktywny „Zobacz pytania” stoi w nagłówku przy tytule (kontrola dodatnia: z pytaniami w tym samym miejscu jest „Odpowiedz na pytania”)", async () => {
     pobierzPulpit.mockResolvedValue(pulpitZTerminem({ pytania: { stan: "ok", dane: { liczba: 0, wiersze: [] } } }));
     const { container } = render(<PulpitProwadzacego />);
 
-    const przycisk = await screen.findByRole("button", { name: "Odpowiedz na pytania" });
-    expect(container.querySelector("[data-testid='pageheader-glowa']")).toBeNull();
-    expect(container.querySelector("[data-obszar='naglowek']")).toContainElement(przycisk);
+    const przycisk = await screen.findByRole("button", { name: "Zobacz pytania" });
+    const glowa = container.querySelector("[data-testid='pageheader-glowa']")!;
+    expect(glowa).toContainElement(screen.getByRole("heading", { level: 1 }));
+    expect(glowa).toContainElement(przycisk);
+    cleanup();
+
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    const z = render(<PulpitProwadzacego />);
+    const odpowiedz = await screen.findByRole("button", { name: "Odpowiedz na pytania" });
+    expect(z.container.querySelector("[data-testid='pageheader-glowa']")).toContainElement(odpowiedz);
   });
 });

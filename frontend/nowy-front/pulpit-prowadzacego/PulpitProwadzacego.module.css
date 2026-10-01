@@ -12,9 +12,3 @@
   gap: var(--space-8);
 }
 
-.akcja {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-6);
-}
