@@ -449,6 +449,109 @@ describe("PowlokaPanelu — grupa zwinięta i zamknięcie okna", () => {
   });
 });
 
+/**
+ * Grupa z flagą `zwijana` w `grupy` („Ustawienia”) i grupa zwinięta („Dotychczasowy panel”)
+ * to jeden komponent zwijania: ten sam napis „{nagłówek} ({liczba})”, te same atrybuty, ten
+ * sam znak; kolejność Tab: pozycje Rozliczenia → „Ustawienia” → (gdy rozwinięta) jej pozycje
+ * → „Dotychczasowy panel” → „Wyloguj”.
+ */
+describe("PowlokaPanelu — grupa zwijana „Ustawienia” obok „Dotychczasowego panelu”", () => {
+  const USTAWIENIA = {
+    naglowek: "Ustawienia",
+    zwijana: true as const,
+    pozycje: [
+      { ikona: "clock" as const, etykieta: "Słownik form stażu", href: "/admin/formy-stazu", biezaca: false as boolean | "sekcja" },
+      { ikona: "file" as const, etykieta: "Wzory dokumentów", href: "/admin/wzory-dokumentow", biezaca: false as boolean | "sekcja" },
+    ],
+    liniaWPrzygotowaniu: "ustawienia roku programu",
+  };
+  const DOTYCHCZASOWA = {
+    naglowek: "Dotychczasowy panel",
+    pozycje: [{ ikona: "clock" as const, etykieta: "Czas nauki", href: "/admin/czas-nauki" }],
+  };
+  const grupyZUstawieniami = (biezaca: boolean) => [
+    ...GRUPY,
+    { ...USTAWIENIA, pozycje: [USTAWIENIA.pozycje[0], { ...USTAWIENIA.pozycje[1], biezaca }] },
+  ];
+
+  function zbuduj(grupy: ReturnType<typeof grupyZUstawieniami>) {
+    return (
+      <PowlokaPanelu
+        uzytkownik={{ imie: "Ewa", nazwisko: "Demo", rola: "administracja Fundacji" }}
+        grupy={grupy}
+        grupaZwinieta={DOTYCHCZASOWA}
+        onWyloguj={() => {}}
+      >
+        <p>Treść</p>
+      </PowlokaPanelu>
+    );
+  }
+
+  const bok = () => screen.getByRole("complementary", { name: "Menu i konto" });
+  const kolejnoscTab = () =>
+    Array.from(bok().querySelectorAll("a, button"))
+      .filter((el) => el.closest("[hidden]") === null)
+      .map((el) => (el.textContent ?? "").replace(/[+−]$/, "").trim());
+
+  it("kolejność Tab przy zwiniętych grupach i po rozwinięciu „Ustawień”", () => {
+    render(zbuduj(grupyZUstawieniami(false)));
+    expect(kolejnoscTab()).toEqual([
+      "Pulpit",
+      "Sprawy",
+      "Kursy",
+      "Ustawienia (2)",
+      "Dotychczasowy panel (1)",
+      "Wyloguj",
+    ]);
+    fireEvent.click(within(bok()).getByRole("button", { name: "Ustawienia (2)" }));
+    expect(kolejnoscTab()).toEqual([
+      "Pulpit",
+      "Sprawy",
+      "Kursy",
+      "Ustawienia (2)",
+      "Słownik form stażu",
+      "Wzory dokumentów",
+      "Dotychczasowy panel (1)",
+      "Wyloguj",
+    ]);
+  });
+
+  it("oba przyciski mają ten sam układ: klasa, atrybuty i znak (jeden komponent)", () => {
+    render(zbuduj(grupyZUstawieniami(false)));
+    const a = within(bok()).getByRole("button", { name: "Ustawienia (2)" });
+    const b = within(bok()).getByRole("button", { name: "Dotychczasowy panel (1)" });
+    expect(a.className).toBe(b.className);
+    expect(a.getAttribute("aria-expanded")).toBe("false");
+    expect(b.getAttribute("aria-expanded")).toBe("false");
+    expect(a.getAttribute("aria-controls")).not.toBe(b.getAttribute("aria-controls"));
+    expect(a.textContent?.endsWith("+")).toBe(true);
+    expect(b.textContent?.endsWith("+")).toBe(true);
+    expect(a.parentElement?.className).toBe(b.parentElement?.className);
+  });
+
+  it("zmiana trasy z ekranu spoza grupy na ekran w grupie rozwija „Ustawienia” bez kliknięcia", () => {
+    const { rerender } = render(zbuduj(grupyZUstawieniami(false)));
+    expect(within(bok()).getByRole("button", { name: "Ustawienia (2)" }).getAttribute("aria-expanded")).toBe("false");
+    rerender(zbuduj(grupyZUstawieniami(true)));
+    expect(within(bok()).getByRole("button", { name: "Ustawienia (2)" }).getAttribute("aria-expanded")).toBe("true");
+    expect(within(bok()).getByRole("link", { name: "Wzory dokumentów" }).getAttribute("aria-current")).toBe("page");
+    // „Dotychczasowy panel” zostaje zwinięty, bo nie niesie bieżącej pozycji.
+    expect(within(bok()).getByRole("button", { name: "Dotychczasowy panel (1)" }).getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("okno menu (poniżej 1024 px) ma własny stan i własny identyfikator listy „Ustawień”", () => {
+    render(zbuduj(grupyZUstawieniami(false)));
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+    const okno = document.querySelector("dialog#menu-panelu") as HTMLElement;
+    const wOknie = within(okno).getByRole("button", { name: "Ustawienia (2)" });
+    const wBoku = within(bok()).getByRole("button", { name: "Ustawienia (2)" });
+    expect(wOknie.getAttribute("aria-controls")).not.toBe(wBoku.getAttribute("aria-controls"));
+    fireEvent.click(wOknie);
+    expect(wOknie.getAttribute("aria-expanded")).toBe("true");
+    expect(wBoku.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
 describe("odslonBiezacaPozycje — przewija tylko kontener menu", () => {
   afterEach(cleanup);
 

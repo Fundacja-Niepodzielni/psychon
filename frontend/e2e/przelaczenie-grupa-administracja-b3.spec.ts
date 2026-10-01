@@ -181,6 +181,8 @@ test.describe("grupy przełączenia administracji (podmiana treści) — nowy ek
     await page.goto("/admin");
     await zabezpieczeniePrzedEkranemDostepu(page);
     const menu = page.getByRole("navigation", { name: "Menu — Administracja" }).first();
+    // „Wzory dokumentów” stoją w zwijanej grupie „Ustawienia” (na /admin zwiniętej): rozwijamy ją przed wejściem w pozycję.
+    await menu.getByRole("button", { name: "Ustawienia (3)" }).click();
     await menu.getByRole("link", { name: "Wzory dokumentów" }).click();
 
     await expect(page).toHaveURL(/\/admin\/wzory-dokumentow$/);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GRUPA_DOTYCHCZASOWA, menuRamkiAdministracji } from "../administracja";
+import { GRUPA_DOTYCHCZASOWA, GRUPA_USTAWIENIA, menuRamkiAdministracji } from "../administracja";
 import { menuRamkiProwadzacego, W_PRZYGOTOWANIU_KONTO_PROWADZACEGO } from "../prowadzacy";
 import { menuRamkiUczestnika, W_PRZYGOTOWANIU_KONTO_UCZESTNIKA } from "../uczestnik";
 import { liniaBezPozycjiMenu, ukladMenuRamki } from "../uklad";
@@ -45,9 +45,10 @@ describe("ukladMenuRamki — linie „W przygotowaniu” rozłączne z menu", ()
     expect(liniaKonta).toBe("pomoc");
   });
 
-  it("administracja: „certyfikaty” zdjęte z linii Rozliczenia (pozycja „Certyfikaty” jest w menu)", () => {
+  it("administracja: „certyfikaty” zdjęte z linii Rozliczenia (pozycja „Certyfikaty” jest w menu), „ustawienia roku programu” w Ustawieniach", () => {
     const { grupy } = ukladMenuRamki(menuRamkiAdministracji(), "/admin");
-    expect(grupy.find((g) => g.naglowek === "Rozliczenie")?.liniaWPrzygotowaniu).toBe("ustawienia roku programu");
+    expect(grupy.find((g) => g.naglowek === "Rozliczenie")?.liniaWPrzygotowaniu).toBeUndefined();
+    expect(grupy.find((g) => g.naglowek === GRUPA_USTAWIENIA)?.liniaWPrzygotowaniu).toBe("ustawienia roku programu");
   });
 
   it("prowadzący: „moja grupa” zdjęta z linii programu (pozycja „Moja grupa” jest w menu)", () => {
@@ -67,6 +68,52 @@ describe("liniaBezPozycjiMenu", () => {
   it("linia pusta po odjęciu i brak linii — undefined", () => {
     expect(liniaBezPozycjiMenu("dokumenty", menu)).toBeUndefined();
     expect(liniaBezPozycjiMenu(undefined, menu)).toBeUndefined();
+  });
+});
+
+describe("administracja — grupa zwijana „Ustawienia” w układzie", () => {
+  it("flaga zwijania tylko na „Ustawieniach”; „Dotychczasowy panel” osobno jako grupaZwinieta, bez flagi", () => {
+    const { grupy, grupaZwinieta } = ukladMenuRamki(menuRamkiAdministracji(), "/admin");
+    expect(grupy.map((g) => g.naglowek)).toEqual(["Codziennie", "Program", "Rozliczenie", GRUPA_USTAWIENIA]);
+    expect(grupy.filter((g) => g.zwijana).map((g) => g.naglowek)).toEqual([GRUPA_USTAWIENIA]);
+    expect(grupaZwinieta?.naglowek).toBe(GRUPA_DOTYCHCZASOWA);
+    expect(grupaZwinieta?.zwijana).toBeUndefined();
+  });
+
+  it("trzy linie „W przygotowaniu”: Program „prowadzący”, Rozliczenie bez linii (certyfikaty są pozycją menu), Ustawienia „ustawienia roku programu”", () => {
+    const { grupy } = ukladMenuRamki(menuRamkiAdministracji(), "/admin");
+    const linia = (naglowek: string) => grupy.find((g) => g.naglowek === naglowek)?.liniaWPrzygotowaniu;
+    expect(linia("Program")).toBe("prowadzący");
+    expect(linia("Rozliczenie")).toBeUndefined();
+    expect(linia(GRUPA_USTAWIENIA)).toBe("ustawienia roku programu");
+  });
+
+  it.each([
+    ["/admin/formy-stazu", "Słownik form stażu"],
+    ["/admin/wzory-dokumentow", "Wzory dokumentów"],
+    ["/admin/wzory-dokumentow/5", "Wzory dokumentów"],
+    ["/admin/ekran-startowy", "Treść ekranu „Zacznij tutaj”"],
+  ])("%s: pozycja „%s” w „Ustawieniach” jest bieżąca, poza grupą nic nie jest bieżące", (sciezka, etykieta) => {
+    const { grupy, grupaZwinieta } = ukladMenuRamki(menuRamkiAdministracji(), sciezka);
+    const wszystkie = [...grupy, ...(grupaZwinieta ? [grupaZwinieta] : [])];
+    expect(wszystkie.flatMap((g) => g.pozycje).filter((p) => p.biezaca === true).map((p) => p.etykieta)).toEqual([etykieta]);
+    expect(grupy.find((g) => g.naglowek === GRUPA_USTAWIENIA)?.pozycje.some((p) => p.biezaca === true)).toBe(true);
+  });
+
+  it("ekran spoza grupy: żadna pozycja „Ustawień” nie jest bieżąca", () => {
+    const { grupy } = ukladMenuRamki(menuRamkiAdministracji(), "/admin/kursy");
+    expect(grupy.find((g) => g.naglowek === GRUPA_USTAWIENIA)?.pozycje.some((p) => p.biezaca)).toBe(false);
+  });
+
+  it.each([
+    ["wolontariusz", () => menuRamkiUczestnika("volunteer")],
+    ["student", () => menuRamkiUczestnika("student")],
+    ["prowadzący", () => menuRamkiProwadzacego()],
+  ] as const)("%s: żadna grupa menu ani układu nie ma flagi zwijania", (_rola, menu) => {
+    const m = menu();
+    expect(m.filter((g) => "zwijana" in g)).toEqual([]);
+    const { grupy, grupaZwinieta } = ukladMenuRamki(m, "/panel/pulpit");
+    expect([...grupy, ...(grupaZwinieta ? [grupaZwinieta] : [])].filter((g) => "zwijana" in g)).toEqual([]);
   });
 });
 
