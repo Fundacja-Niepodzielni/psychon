@@ -333,4 +333,17 @@ test.describe("szczegół zgłoszenia, 1280 px", () => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
     await zrzut(page, "menu-1280x800", false);
   });
+
+  test("menu 1280×800 na /admin/nabor: „Sprawy” w stanie bieżącym (aria-current=\"true\"), zrzut", async ({ page }) => {
+    await instalujAtrapy(page, DANE);
+    await page.goto("/admin/nabor");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+    const nav = page.getByRole("complementary", { name: "Menu i konto" }).getByRole("navigation", { name: "Menu — Administracja" });
+    const sprawy = nav.getByRole("link", { name: "Sprawy", exact: true });
+    await expect(sprawy).toHaveAttribute("aria-current", "true");
+    await expect(nav.locator('a[aria-current="page"]')).toHaveCount(0);
+    await expect(sprawy).toBeInViewport();
+    await zrzut(page, "menu-nabor-1280x800", false);
+  });
 });
