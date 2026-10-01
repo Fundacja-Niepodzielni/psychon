@@ -174,7 +174,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
       await expect(page.getByRole("heading", { level: 1, name: KURS.title })).toBeVisible();
       await expect(page.getByRole("heading", { level: 3, name: "Podstawy" })).toBeVisible();
-      await expect(page.getByText("Pytania otwarte i zamknięte")).toBeVisible();
+      await expect(page.locator("#lekcje").getByText("Pytania otwarte i zamknięte")).toBeVisible();
       expect(await page.locator("main").count()).toBe(1);
       expect(await page.locator("#tresc").count()).toBe(1);
 

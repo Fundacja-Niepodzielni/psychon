@@ -742,6 +742,9 @@ function EdytorTematow({
 
   const drzewo = (
     <div id={KOTWICA_LEKCJI} className={style.sekcja}>
+      {/* Ekran z sekcjami pod drzewem (administracja): tematy są nagłówkami
+          trzeciego stopnia, więc drzewo dostaje własny nagłówek drugiego. */}
+      {podDrzewem && tematyUkladu.length > 0 && <Heading stopien={2}>Tematy i lekcje</Heading>}
       {bladPublikacji && (
         <Notice wariant="error" tytul={bladPublikacji.tytul}>
           {bladPublikacji.tresc}
