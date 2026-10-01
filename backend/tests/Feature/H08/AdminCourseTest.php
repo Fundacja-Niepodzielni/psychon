@@ -34,6 +34,7 @@ class AdminCourseTest extends TestCase
         'materials_count',
         'created_at',
         'updated_at',
+        'publication_gaps',
     ];
 
     public function test_volunteer_is_forbidden_on_the_admin_course_list(): void
@@ -173,7 +174,7 @@ class AdminCourseTest extends TestCase
         $this->patchJson("/api/v1/admin/courses/{$course->id}", ['is_published' => true])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'conditions_not_met')
-            ->assertJsonPath('error.reason.missing', ['lessons']);
+            ->assertJsonPath('error.reason.missing', [['code' => 'course_without_lessons', 'lesson_id' => null]]);
 
         $this->assertFalse($course->fresh()->is_published);
         $this->assertSame(0, AuditLogEntry::where('action', 'course.updated')->count());
@@ -207,7 +208,7 @@ class AdminCourseTest extends TestCase
             'is_published' => true,
         ])->assertStatus(422)
             ->assertJsonPath('error.code', 'conditions_not_met')
-            ->assertJsonPath('error.reason.missing', ['lessons']);
+            ->assertJsonPath('error.reason.missing', [['code' => 'course_without_lessons', 'lesson_id' => null]]);
 
         $this->assertFalse(Course::where('slug', 'od-razu')->exists());
         $this->assertSame(0, AuditLogEntry::where('action', 'course.created')->count());
@@ -216,7 +217,7 @@ class AdminCourseTest extends TestCase
     public function test_publishing_a_course_with_a_lesson_succeeds_and_is_audited(): void
     {
         $course = $this->course('etap-1', ['sequence_order' => 1, 'is_published' => false]);
-        Lesson::create(['course_id' => $course->id, 'title' => 'Lekcja 1', 'sequence_order' => 1]);
+        Lesson::create(['course_id' => $course->id, 'title' => 'Lekcja 1', 'content' => 'Treść lekcji.', 'sequence_order' => 1]);
 
         $admin = $this->actingAsAdmin();
 

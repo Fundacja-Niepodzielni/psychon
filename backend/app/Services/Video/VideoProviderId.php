@@ -32,6 +32,23 @@ final class VideoProviderId
     }
 
     /**
+     * Postać identyfikatora zapisywana w bazie i używana do porównań: bez
+     * białych znaków na brzegach, małymi literami. Pusta wartość znaczy „brak
+     * nagrania” i daje `null`. Wywołuje się ją po walidacji wzorca, więc
+     * `strtolower` (bajtowe) wystarcza.
+     */
+    public static function normalize(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return $normalized === '' ? null : $normalized;
+    }
+
+    /**
      * Identyfikator jako jeden segment ścieżki adresu. Dla poprawnego
      * identyfikatora kodowanie niczego nie zmienia; chroni przed wartością,
      * która ominęłaby bramkę.

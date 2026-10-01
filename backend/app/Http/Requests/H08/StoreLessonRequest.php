@@ -3,6 +3,7 @@
 namespace App\Http\Requests\H08;
 
 use App\Http\Requests\Concerns\KeepsLessonContentVerbatim;
+use App\Rules\RecordingIdNotOnItsWay;
 use App\Rules\RecordingIdNotTaken;
 use App\Services\Video\VideoProviderId;
 use Illuminate\Foundation\Http\FormRequest;
@@ -44,7 +45,7 @@ class StoreLessonRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string'],
             'content' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'sequence_order' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'video_provider_id' => ['sometimes', 'nullable', 'string', 'regex:'.VideoProviderId::PATTERN, new RecordingIdNotTaken(null)],
+            'video_provider_id' => ['sometimes', 'nullable', 'string', 'regex:'.VideoProviderId::PATTERN, new RecordingIdNotTaken(null), new RecordingIdNotOnItsWay(null)],
             'duration_seconds' => ['sometimes', 'integer', 'min:0'],
             'topic_id' => ['sometimes', 'nullable', 'integer'],
             'topic_position' => ['prohibited'],

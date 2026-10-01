@@ -36,6 +36,10 @@ class AdminLessonTest extends TestCase
         'materials_count',
         'created_at',
         'updated_at',
+        'video_status',
+        'video_status_at',
+        'video_ready',
+        'video_pending',
     ];
 
     public function test_volunteer_is_forbidden_on_the_lesson_list(): void

@@ -80,7 +80,13 @@ class RecordingIdInRequestsTest extends TestCase
 
         $this->getJson("/api/v1/admin/lessons/{$lesson->id}/video-status")
             ->assertOk()
-            ->assertExactJson(['data' => ['status' => 'no_video']]);
+            ->assertExactJson(['data' => [
+                'status' => 'no_video',
+                'video_status' => 'none',
+                'video_status_at' => null,
+                'video_ready' => false,
+                'video_pending' => false,
+            ]]);
 
         Http::assertNothingSent();
     }
@@ -94,7 +100,13 @@ class RecordingIdInRequestsTest extends TestCase
 
         $this->getJson("/api/v1/admin/lessons/{$lesson->id}/video-status")
             ->assertOk()
-            ->assertExactJson(['data' => ['status' => 'no_video']]);
+            ->assertExactJson(['data' => [
+                'status' => 'no_video',
+                'video_status' => 'none',
+                'video_status_at' => null,
+                'video_ready' => false,
+                'video_pending' => false,
+            ]]);
 
         Http::assertNothingSent();
     }
@@ -111,7 +123,8 @@ class RecordingIdInRequestsTest extends TestCase
             ->assertCreated();
 
         $this->assertSame($guid, $response->json('data.video_id'));
-        $this->assertSame($guid, $lesson->fresh()->video_provider_id);
+        $this->assertSame($guid, $lesson->fresh()->video_pending_id, 'Nowe nagranie czeka jako „w drodze”.');
+        $this->assertNull($lesson->fresh()->video_provider_id, 'Nagraniem odtwarzanym staje się dopiero po gotowości.');
         $this->assertSame(
             hash('sha256', self::LIBRARY.self::API_KEY.$response->json('data.expiration_time').$guid),
             $response->json('data.signature'),
@@ -135,6 +148,7 @@ class RecordingIdInRequestsTest extends TestCase
             ->assertJsonPath('error.code', 'bunny_error');
 
         $this->assertNull($lesson->fresh()->video_provider_id);
+        $this->assertNull($lesson->fresh()->video_pending_id);
     }
 
     /** @return array<string, array{string}> */
