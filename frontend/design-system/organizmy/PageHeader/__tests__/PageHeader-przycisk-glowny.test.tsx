@@ -58,3 +58,47 @@ describe("PageHeader — przycisk główny nagłówka", () => {
     expect(screen.getByRole("button", { name: "Dodaj formę" })).toBeInTheDocument();
   });
 });
+
+describe("PageHeader — przycisk główny w stanie niedostępnym", () => {
+  it("niedostępny: kolorowy, aria-disabled, powód pod nagłówkiem wskazany przez aria-describedby, klik woła akcję", async () => {
+    const naKlik = vi.fn();
+    const { container } = render(
+      <DostawcaRamki>
+        <PageHeader
+          okruszki={OKRUSZKI}
+          tytul="Pulpit administracji"
+          onPowrot={() => undefined}
+          przyciskGlowny={{ etykieta: "Otwórz sprawy", onKliknij: naKlik, niedostepny: { powod: "Brak spraw do decyzji." } }}
+        />
+      </DostawcaRamki>,
+    );
+
+    const przycisk = screen.getByRole("button", { name: "Otwórz sprawy" });
+    expect(przycisk).toHaveAttribute("aria-disabled", "true");
+    expect(przycisk).not.toBeDisabled();
+    expect(przycisk).toHaveAccessibleDescription("Brak spraw do decyzji.");
+    const powod = screen.getByText("Brak spraw do decyzji.");
+    expect(container.querySelector("header")).toContainElement(powod);
+    expect(container.querySelector("[data-testid='pageheader-glowa']")).not.toContainElement(powod);
+
+    await userEvent.setup().click(przycisk);
+    expect(naKlik).toHaveBeenCalledTimes(1);
+  });
+
+  it("dostępny: bez aria-disabled, aria-describedby i podpowiedzi", () => {
+    const { container } = render(
+      <DostawcaRamki>
+        <PageHeader
+          okruszki={OKRUSZKI}
+          tytul="Pulpit administracji"
+          onPowrot={() => undefined}
+          przyciskGlowny={{ etykieta: "Otwórz sprawy", onKliknij: () => undefined }}
+        />
+      </DostawcaRamki>,
+    );
+    const przycisk = screen.getByRole("button", { name: "Otwórz sprawy" });
+    expect(przycisk).not.toHaveAttribute("aria-disabled");
+    expect(przycisk).not.toHaveAttribute("aria-describedby");
+    expect(container.querySelector("p")).toBeNull();
+  });
+});

@@ -65,7 +65,7 @@ describe("PulpitStudenta — stany z danymi", () => {
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
 
     rozwiaz([KURS_STUDENTA_W_TOKU]);
-    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Wznów naukę" })).toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('[data-karta="nastepny-krok"] h2')).not.toBeNull());
     szablonPulpitu(container);
   });
 
@@ -118,6 +118,10 @@ describe("PulpitStudenta — stany z danymi", () => {
     await waitFor(() => expect(screen.getByText("Wszystkie Twoje kursy są ukończone. Dobra robota.")).toBeInTheDocument());
     szablonPulpitu(container);
     expect(liczPrzyciskiGlowne(container)).toBe(0);
+    const karta = container.querySelector('[data-karta="nastepny-krok"]') as HTMLElement;
+    expect(karta.textContent).toContain("Następny krok");
+    expect(karta.querySelectorAll("h2")).toHaveLength(1);
+    expect(karta.querySelector("button")).toBeNull();
     cleanup();
 
     pobierzKursy.mockResolvedValue([KURS_STUDENTA_UKONCZONY, KURS_STUDENTA_W_TOKU]);

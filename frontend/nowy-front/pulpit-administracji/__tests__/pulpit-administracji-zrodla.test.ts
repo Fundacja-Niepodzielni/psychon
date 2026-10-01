@@ -73,9 +73,11 @@ describe("pliki ekranu „Pulpit administracji”", () => {
     expect(strona).not.toMatch(/useState|fetch\(/);
   });
 
-  it("dokładnie jeden przycisk główny w komponencie ekranu", () => {
+  it("dokładnie jeden przycisk główny w komponencie ekranu, w nagłówku (przyciskGlowny), nie w dzieci", () => {
     const ekran = readFileSync(join(KORZEN, "nowy-front/pulpit-administracji/PulpitAdministracji.tsx"), "utf-8");
-    expect(ekran.match(/poziom="primary"/g)).toHaveLength(1);
+    expect(ekran.match(/przyciskGlowny:/g)).toHaveLength(1);
+    expect(ekran.match(/poziom="primary"/g)).toBeNull();
+    expect(ekran).not.toMatch(/dzieci:/);
   });
 
   it("jedyną trasą API ekranu jest GET /admin/dashboard", () => {

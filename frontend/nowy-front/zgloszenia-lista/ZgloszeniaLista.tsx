@@ -199,20 +199,21 @@ export function ZgloszeniaLista() {
         >
           Importuj z pliku CSV
         </Button>
-        {!formularzOtwarty && (
-          <Button
-            poziom="primary"
-            type="button"
-            onClick={() => {
-              setToast(null);
-              setFormularzOtwarty(true);
-            }}
-          >
-            Dodaj zgłoszenie
-          </Button>
-        )}
       </div>
     ) : undefined;
+
+  // Jedyny przycisk w kolorze stoi w nagłówku (`przyciskGlowny`); gdy
+  // formularz jest otwarty, kolor przejmuje jego przycisk zapisu.
+  const przyciskGlowny =
+    rolaPotwierdzona && stan.rodzaj !== "brak-uprawnien" && !formularzOtwarty
+      ? {
+          etykieta: "Dodaj zgłoszenie",
+          onKliknij: () => {
+            setToast(null);
+            setFormularzOtwarty(true);
+          },
+        }
+      : undefined;
 
   const naglowek = (
     <PageHeader
@@ -220,6 +221,7 @@ export function ZgloszeniaLista() {
       tytul="Zgłoszenia rekrutacyjne"
       opis={opis}
       onPowrot={() => router.back()}
+      przyciskGlowny={przyciskGlowny}
       dzieci={akcjeNaglowka}
     />
   );

@@ -224,15 +224,18 @@ export function FormyStazu() {
         przyciskGlowny={panelOtwarty ? undefined : { etykieta: "Dodaj formę", onKliknij: otworzDodawanie }}
       />
 
-      <RecordList
-        tytul="Formy stażu"
-        wiersze={wiersze}
-        pusty={{
-          naglowek: "Brak form stażu",
-          tresc: "Dodaj pierwszą formę, aby uczestnicy mogli wybrać ją w dzienniku.",
-          przycisk: { etykieta: "Dodaj formę", onClick: otworzDodawanie },
-        }}
-      />
+      <div className={style.karta} data-obszar="lista-form">
+        <RecordList
+          tytul="Formy stażu"
+          stopienNaglowka={2}
+          wiersze={wiersze}
+          pusty={{
+            naglowek: "Brak form stażu",
+            tresc: "Dodaj pierwszą formę, aby uczestnicy mogli wybrać ją w dzienniku.",
+            przycisk: { etykieta: "Dodaj formę", onClick: otworzDodawanie },
+          }}
+        />
+      </div>
 
       {panelOtwarty && (
         <div className={style.panel}>

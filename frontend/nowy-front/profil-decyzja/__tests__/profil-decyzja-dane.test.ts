@@ -99,7 +99,7 @@ describe("akceptacja", () => {
     api.mockRejectedValueOnce(bladApi(404, "not_found", "Nie znaleziono wniosku."));
     expect((await dane.zaakceptujWniosek(12)).rodzaj).toBe("nie-znaleziono");
     api.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-    expect(await dane.zaakceptujWniosek(12)).toEqual({ rodzaj: "blad", komunikat: "Nie udało się zaakceptować wniosku. Spróbuj ponownie." });
+    expect(await dane.zaakceptujWniosek(12)).toEqual({ rodzaj: "blad", komunikat: "Nie udało się zatwierdzić wniosku. Spróbuj ponownie." });
   });
 });
 

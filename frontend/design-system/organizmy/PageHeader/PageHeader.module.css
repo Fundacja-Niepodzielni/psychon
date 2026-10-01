@@ -26,9 +26,12 @@
 
 /* Przycisk główny nagłówka (makieta 2.0.4, `.head .acts`). Poniżej 768 px
    pełna szerokość pod opisem; od 768 px obok tytułu, przy prawej krawędzi,
-   u góry wiersza (na wysokości h1), w jednej szerokości dla wszystkich
-   ekranów. Szerokość atomu `Button` (`max-width: 320px`) jest tu nadpisana,
-   żeby nie wychodziła raz 320 px, raz „auto”. */
+   u góry wiersza (na wysokości h1). Od 768 px szerokość z treści przycisku,
+   jak w makiecie (`.head .acts` bez szerokości; `.btn` z `max-width: 320px`,
+   `.head .t` z `min-width: 240px`, wiersz z zawijaniem): żadnej stałej
+   szerokości ani `min-width` na przycisku — makieta ich nie ma. Długa
+   etykieta zawija się w przycisku (`white-space: normal`), nie wychodzi poza
+   nagłówek. */
 .glowa {
   display: flex;
   flex-direction: column;
@@ -56,16 +59,23 @@
 @media (min-width: 768px) {
   .glowa {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: var(--space-16);
   }
 
   .tekst {
-    flex: 1 1 0;
+    flex: 1 1 240px;
   }
 
   .akcje {
     flex: none;
-    inline-size: 240px;
+    inline-size: auto;
+    max-inline-size: 100%;
+  }
+
+  .akcje button {
+    inline-size: auto;
+    max-width: 320px;
   }
 }

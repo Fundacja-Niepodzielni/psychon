@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
@@ -101,10 +101,12 @@ describe("PulpitProwadzacego — stan dane, prowadzący z pytaniami", () => {
     render(<PulpitProwadzacego />);
     await screen.findByRole("button", { name: "Odpowiedz na pytania" });
 
-    expect(screen.getByRole("heading", { level: 3, name: "Pytania bez odpowiedzi: 2" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Moja grupa: 2 osoby" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Moje kursy: 2" })).toBeInTheDocument();
-    expect(screen.getAllByText(/Marta Demo — Wprowadzenie do wywiadu/)).toHaveLength(2);
+    expect(screen.getByRole("heading", { level: 2, name: "Pytania bez odpowiedzi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Moja grupa" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Moje kursy" })).toBeInTheDocument();
+    // Wiersz pytania: tytuł to treść pytania, pod spodem osoba i lekcja.
+    expect(screen.getAllByText("Jak zacząć rozmowę z osobą w kryzysie?")).toHaveLength(2);
+    expect(screen.getAllByText("Marta Demo · lekcja „Wprowadzenie do wywiadu”")).toHaveLength(2);
 
     const adresy = screen.getAllByRole("link").map((odnosnik) => odnosnik.getAttribute("href"));
     expect(adresy).toContain("/prowadzacy/pytania");
@@ -120,23 +122,59 @@ describe("PulpitProwadzacego — stan dane, prowadzący z pytaniami", () => {
     render(<PulpitProwadzacego />);
     await screen.findByRole("button", { name: "Odpowiedz na pytania" });
 
-    expect(screen.getAllByText(/Marta Demo — Wprowadzenie do wywiadu/)).toHaveLength(5);
+    expect(screen.getAllByText(/^Marta Demo · lekcja „Wprowadzenie do wywiadu”$/)).toHaveLength(5);
     expect(screen.getByText("Pokazano 5 z 12 (pytań).")).toBeInTheDocument();
   });
 });
 
 describe("PulpitProwadzacego — prowadzący bez pytań", () => {
-  it("z terminem przed nami: przycisk nieaktywny, powód podany, zero przycisków głównych", async () => {
+  it("z terminem przed nami: aktywny „Zobacz pytania” w nagłówku, jedyny przycisk główny, bez nieaktywnego obrysu", async () => {
     pobierzPulpit.mockResolvedValue(pulpitZTerminem({ pytania: { stan: "ok", dane: { liczba: 0, wiersze: [] } } }));
+    const uzytkownik = userEvent.setup();
     const { container } = render(<PulpitProwadzacego />);
 
-    const przycisk = await screen.findByRole("button", { name: "Odpowiedz na pytania" });
-    expect(przycisk).toBeDisabled();
-    const powod = screen.getByText("Nie ma pytań bez odpowiedzi.");
-    expect(przycisk.getAttribute("aria-describedby")).toBe(powod.id);
-    expect(przyciskiGlowne(container)).toHaveLength(0);
+    const przycisk = await screen.findByRole("button", { name: "Zobacz pytania" });
+    expect(przycisk).toBeEnabled();
+    expect(przycisk).not.toHaveAttribute("aria-disabled");
+    expect(przyciskiGlowne(container)).toEqual([przycisk]);
+    expect(container.querySelector("[data-testid='pageheader-glowa']")).toContainElement(przycisk);
+    expect(screen.queryByRole("button", { name: "Odpowiedz na pytania" })).toBeNull();
+    expect(screen.queryByText("Nie ma pytań bez odpowiedzi.")).toBeNull();
     sprawdzSzablon(container);
+    await uzytkownik.click(przycisk);
+    expect(push).toHaveBeenCalledWith("/prowadzacy/pytania");
     expect(screen.queryByText("Nie masz dziś nic do zrobienia")).toBeNull();
+  });
+});
+
+describe("PulpitProwadzacego — karta „Do zrobienia dziś”", () => {
+  it("z pytaniami: jedna karta, etykieta zdaniem, jeden h2 z liczbą pytań, bez przycisku i bez „: n” w nagłówkach kart", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    const { container } = render(<PulpitProwadzacego />);
+    await screen.findByRole("button", { name: "Odpowiedz na pytania" });
+
+    const obszar = container.querySelector("[data-obszar='nastepny-krok']") as HTMLElement;
+    expect(obszar.querySelectorAll("[data-karta='nastepny-krok']")).toHaveLength(1);
+    expect(obszar.textContent).toContain("Do zrobienia dziś");
+    const naglowki = obszar.querySelectorAll("h2");
+    expect(naglowki).toHaveLength(1);
+    expect(naglowki[0].textContent).toBe("2 pytania czekają na odpowiedź");
+    expect(obszar.querySelector("button")).toBeNull();
+    for (const naglowek of Array.from(container.querySelectorAll("h2, h3"))) {
+      expect(naglowek.textContent).not.toMatch(/: \d/);
+    }
+  });
+
+  it("bez pytań: ta sama karta niesie najbliższą superwizję (kontrola dodatnia: z pytaniami nagłówek mówi o pytaniach)", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem({ pytania: { stan: "ok", dane: { liczba: 0, wiersze: [] } } }));
+    const { container } = render(<PulpitProwadzacego />);
+    await screen.findByRole("button", { name: "Zobacz pytania" });
+
+    const obszar = container.querySelector("[data-obszar='nastepny-krok']") as HTMLElement;
+    expect(obszar.querySelectorAll("[data-karta='nastepny-krok']")).toHaveLength(1);
+    expect(obszar.querySelectorAll("h2")).toHaveLength(1);
+    expect(obszar.querySelector("h2")?.textContent).toMatch(/^Najbliższa superwizja: /);
+    expect(obszar.textContent).not.toMatch(/czek(a|ają) na odpowiedź/);
   });
 });
 
@@ -153,25 +191,25 @@ describe("PulpitProwadzacego — stan pusty", () => {
 
     expect(await screen.findByRole("heading", { name: "Nie masz dziś nic do zrobienia" })).toBeInTheDocument();
     sprawdzSzablon(container);
-    expect(przyciskiGlowne(container)).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Odpowiedz na pytania" })).toBeDisabled();
+    expect(przyciskiGlowne(container)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Zobacz pytania" })).toBeEnabled();
     expect(container.querySelector("table")).toBeNull();
   });
 });
 
 describe("PulpitProwadzacego — częściowa awaria jednej z trzech tras", () => {
   it.each([
-    ["kursy", "Nie udało się wczytać: moje kursy", "Pytania bez odpowiedzi: 2"],
-    ["grupa", "Nie udało się wczytać: moja grupa i terminy superwizji", "Moje kursy: 2"],
-    ["pytania", "Nie udało się wczytać: pytania bez odpowiedzi", "Moja grupa: 2 osoby"],
-  ] as const)("awaria trasy %s: sekcja jako Notice, pozostałe widoczne", async (klucz, komunikat, widoczna) => {
+    ["kursy", "Nie udało się wczytać: moje kursy", "Pytania bez odpowiedzi", 2],
+    ["grupa", "Nie udało się wczytać: moja grupa i terminy superwizji", "Moje kursy", 3],
+    ["pytania", "Nie udało się wczytać: pytania bez odpowiedzi", "Moja grupa", 3],
+  ] as const)("awaria trasy %s: sekcja jako Notice, pozostałe widoczne", async (klucz, komunikat, widoczna, stopien) => {
     pobierzPulpit.mockResolvedValue(pulpitZTerminem({ [klucz]: awaria("blad") }));
     const { container } = render(<PulpitProwadzacego />);
 
     const alert = await screen.findByRole("alert");
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(within(alert).getByRole("heading", { name: komunikat })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: widoczna })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: stopien, name: widoczna })).toBeInTheDocument();
     sprawdzSzablon(container);
   });
 
@@ -235,5 +273,36 @@ describe("PulpitProwadzacego — szablon w każdym stanie", () => {
       sprawdzSzablon(container);
       unmount();
     }
+  });
+});
+
+describe("PulpitProwadzacego — przycisk główny w nagłówku (makieta 2.0.4, `.head .acts`)", () => {
+  it("z pytaniami: „Odpowiedz na pytania” stoi w nagłówku przy tytule, a listy głównej kolumny mają h2", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    const { container } = render(<PulpitProwadzacego />);
+
+    const przycisk = await screen.findByRole("button", { name: "Odpowiedz na pytania" });
+    const glowa = container.querySelector("[data-testid='pageheader-glowa']")!;
+    expect(glowa).toContainElement(screen.getByRole("heading", { level: 1 }));
+    expect(glowa).toContainElement(przycisk);
+    expect(container.querySelector("[data-obszar='nastepny-krok'] button")).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Pytania bez odpowiedzi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Nadchodzące superwizje" })).toBeInTheDocument();
+  });
+
+  it("bez pytań: aktywny „Zobacz pytania” stoi w nagłówku przy tytule (kontrola dodatnia: z pytaniami w tym samym miejscu jest „Odpowiedz na pytania”)", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem({ pytania: { stan: "ok", dane: { liczba: 0, wiersze: [] } } }));
+    const { container } = render(<PulpitProwadzacego />);
+
+    const przycisk = await screen.findByRole("button", { name: "Zobacz pytania" });
+    const glowa = container.querySelector("[data-testid='pageheader-glowa']")!;
+    expect(glowa).toContainElement(screen.getByRole("heading", { level: 1 }));
+    expect(glowa).toContainElement(przycisk);
+    cleanup();
+
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    const z = render(<PulpitProwadzacego />);
+    const odpowiedz = await screen.findByRole("button", { name: "Odpowiedz na pytania" });
+    expect(z.container.querySelector("[data-testid='pageheader-glowa']")).toContainElement(odpowiedz);
   });
 });

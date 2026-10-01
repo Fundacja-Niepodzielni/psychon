@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
+import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKroku/KartaNastepnegoKroku";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
 import { rodzajBledu } from "./rodzaj-bledu";
@@ -26,6 +25,8 @@ import {
   type WarunkiCertyfikatu,
 } from "./dane";
 import { formatujDziesietny } from "./formatuj-dziesietny";
+import { ListaKursow } from "./ListaKursow";
+import { mianownikOdbytychSuperwizji, mianownikUkonczonychKursow } from "./odmiana-kafli";
 import { etapySciezki, wyliczNastepnyKrok, type NastepnyKrok } from "./nastepny-krok";
 
 type StanEkranu = StanBezDanych | "ok";
@@ -35,12 +36,6 @@ type StanEkranu = StanBezDanych | "ok";
  * NIEZALEŻNIE od reszty pulpitu (kryterium: „błąd jednej z tras → `Notice`
  * w tym obszarze, reszta pulpitu działa"). */
 type Pomocnicza<T> = { stan: "ladowanie" } | { stan: "blad" } | { stan: "ok"; dane: T };
-
-const ETYKIETA_STATUSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok" | "pending"; tekst: string }> = {
-  locked: { wariant: "neutral", tekst: "zablokowany" },
-  in_progress: { wariant: "pending", tekst: "w toku" },
-  completed: { wariant: "ok", tekst: "ukończony" },
-};
 
 interface WlasciwosciPulpitUczestnika {
   /** `GET /me` → `program_completed_at` różne od `null`. */
@@ -156,7 +151,7 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
       id: "pulpit-etapy",
       etykieta: "Kursy w programie",
       wartosc: etapy.length > 0 ? ukonczoneEtapy : undefined,
-      mianownik: `z ${etapy.length} ukończone`,
+      mianownik: mianownikUkonczonychKursow(ukonczoneEtapy, etapy.length),
       procent: etapy.length > 0 ? Math.round((ukonczoneEtapy / etapy.length) * 100) : undefined,
       dominujacy: true,
       ukladPulpitu: true,
@@ -181,19 +176,13 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
       id: "pulpit-superwizje",
       etykieta: "Superwizja",
       wartosc: typeof warunekSuperwizji?.done === "number" ? warunekSuperwizji.done : undefined,
-      mianownik:
-        warunekSuperwizji?.required !== undefined ? `z ${warunekSuperwizji.required} odbyta` : "odbyta",
+      mianownik: mianownikOdbytychSuperwizji(
+        typeof warunekSuperwizji?.done === "number" ? warunekSuperwizji.done : undefined,
+        warunekSuperwizji?.required,
+      ),
       ukladPulpitu: true,
     },
   ];
-
-  const wierszeSciezki: WierszRecordList[] = etapy.map((kurs) => ({
-    id: String(kurs.id),
-    tytul: kurs.title,
-    podpowiedz: `Kurs ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`,
-    plakietka: ETYKIETA_STATUSU[kurs.status],
-    akcja: { etykieta: "Otwórz kurs", href: `/panel/kursy/${kurs.slug}` },
-  }));
 
   const terminySuperwizji = superwizje.stan === "ok" ? nadchodzace(superwizje.dane) : [];
   const wierszeSuperwizji: WierszRecordList[] = terminySuperwizji.map((termin) => ({
@@ -210,15 +199,9 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
         tytul: "Pulpit",
         opis: "Twój następny krok i podgląd całej ścieżki.",
         onPowrot: () => router.back(),
+        przyciskGlowny: przyciskNastepnegoKroku(krok, lekcjeEtapu, wToku, (href) => router.push(href)),
       }}
-      nastepnyKrok={
-        <NastepnyKrokBlok
-          krok={krok}
-          lekcjeEtapu={lekcjeEtapu}
-          wToku={wToku}
-          naPrzejdz={(href) => router.push(href)}
-        />
-      }
+      nastepnyKrok={<NastepnyKrokBlok krok={krok} lekcjeEtapu={lekcjeEtapu} wToku={wToku} />}
       kafle={kafle}
       glowna={
         <>
@@ -233,9 +216,10 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
               Nie udało się wczytać godzin stażu.
             </Notice>
           )}
-          <RecordList
+          <ListaKursow
             tytul="Twoja ścieżka"
-            wiersze={wierszeSciezki}
+            kursy={etapy}
+            podpowiedz={(kurs) => `Kurs ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`}
             pusty={{
               naglowek: "Ścieżka jest przygotowywana",
               tresc: "Gdy administracja doda pierwszy kurs, pojawi się tutaj.",
@@ -275,38 +259,65 @@ function nadchodzace(terminy: TerminSuperwizji[]): TerminSuperwizji[] {
     .slice(0, 3);
 }
 
+/**
+ * Przycisk główny „następnego kroku” stoi w nagłówku strony (makieta 2.0.4,
+ * `.head .acts`: „Przycisk … jest u góry, przy tytule strony”), a blok
+ * „Twój następny krok” niesie tylko opis. Brak kroku (ładowanie, brak
+ * dostępnego etapu) = brak przycisku; błąd szczegółów kursu w toku zostawia
+ * przycisk „Otwórz kurs”, jak dotąd.
+ */
+function przyciskNastepnegoKroku(
+  krok: NastepnyKrok | null,
+  lekcjeEtapu: Pomocnicza<LekcjaKursu[]>,
+  wToku: KursSciezki | undefined,
+  naPrzejdz: (href: string) => void,
+): { etykieta: string; onKliknij: () => void } | undefined {
+  if (krok === null) {
+    if (lekcjeEtapu.stan === "blad" && wToku) {
+      return { etykieta: "Otwórz kurs", onKliknij: () => naPrzejdz(`/panel/kursy/${wToku.slug}`) };
+    }
+    return undefined;
+  }
+  switch (krok.rodzaj) {
+    case "lekcja":
+      return { etykieta: "Wróć do lekcji", onKliknij: () => naPrzejdz(`/panel/lekcje/${krok.lekcja.id}`) };
+    case "test":
+      return { etykieta: "Przejdź do testu", onKliknij: () => naPrzejdz(`/panel/kursy/${krok.kurs.slug}/test`) };
+    case "certyfikat":
+      return { etykieta: "Zobacz warunki certyfikatu", onKliknij: () => naPrzejdz("/panel/certyfikat") };
+    case "po-programie":
+      return { etykieta: "Przejdź do dalszej współpracy", onKliknij: () => naPrzejdz("/panel/po-programie") };
+    case "brak":
+      return undefined;
+  }
+}
+
+const ETYKIETA_KROKU = "Następny krok";
+
 function NastepnyKrokBlok({
   krok,
   lekcjeEtapu,
   wToku,
-  naPrzejdz,
 }: {
   krok: NastepnyKrok | null;
   lekcjeEtapu: Pomocnicza<LekcjaKursu[]>;
   wToku: KursSciezki | undefined;
-  naPrzejdz: (href: string) => void;
 }) {
   if (krok === null && lekcjeEtapu.stan !== "blad") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU}>
         <Skeleton wiersze={2} />
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok === null && wToku) {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={wToku.title}>
         <Notice wariant="warn" tytul="Szczegóły kursu niedostępne">
           Nie udało się ustalić dokładnej lekcji — możesz otworzyć bieżący kurs.
         </Notice>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${wToku.slug}`)}>
-          Otwórz kurs
-        </Button>
-        <Text>{wToku.title}</Text>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
@@ -316,58 +327,39 @@ function NastepnyKrokBlok({
 
   if (krok.rodzaj === "lekcja") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
-        <Text>
-          {krok.kurs.title} · {krok.lekcja.title}
-        </Text>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/lekcje/${krok.lekcja.id}`)}>
-          Wróć do lekcji
-        </Button>
-      </div>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={krok.lekcja.title}>
+        <Text>Kurs „{krok.kurs.title}”.</Text>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok.rodzaj === "test") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Test sprawdzający">
         <Text>Masz za sobą wszystkie lekcje kursu „{krok.kurs.title}”. Czas na test sprawdzający.</Text>
-        <Button poziom="primary" onClick={() => naPrzejdz(`/panel/kursy/${krok.kurs.slug}/test`)}>
-          Przejdź do testu
-        </Button>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok.rodzaj === "certyfikat") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Certyfikat">
         <Text>Masz wszystkie kursy za sobą. Dobra robota.</Text>
-        <Button poziom="primary" onClick={() => naPrzejdz("/panel/certyfikat")}>
-          Zobacz warunki certyfikatu
-        </Button>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   if (krok.rodzaj === "po-programie") {
     return (
-      <div>
-        <Heading stopien={2}>Twój następny krok</Heading>
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Dalsza współpraca">
         <Text>Program masz już za sobą. Możesz zgłosić chęć dalszej współpracy.</Text>
-        <Button poziom="primary" onClick={() => naPrzejdz("/panel/po-programie")}>
-          Przejdź do dalszej współpracy
-        </Button>
-      </div>
+      </KartaNastepnegoKroku>
     );
   }
 
   return (
-    <div>
-      <Heading stopien={2}>Twój następny krok</Heading>
+    <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Pierwszy krok wkrótce">
       <Text wariant="pusty">Gdy pierwszy kurs ścieżki stanie się dostępny, pojawi się tutaj Twój następny krok.</Text>
-    </div>
+    </KartaNastepnegoKroku>
   );
 }

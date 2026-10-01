@@ -250,6 +250,16 @@ describe("Sprawy — główna akcja i filtr rodzaju", () => {
     const glowne = screen.getAllByRole("button").filter((przycisk) => /primary/.test(przycisk.className));
     expect(glowne.map((przycisk) => przycisk.textContent)).toEqual(["Otwórz najstarszą sprawę"]);
   });
+
+  it("przycisk główny stoi w nagłówku przy tytule, nie w treści listy (makieta 2.0.4, `.head .acts`)", async () => {
+    pobierzKolejkeSpraw.mockResolvedValue(dwaRodzaje());
+    const { container } = render(<Sprawy />);
+    const przycisk = await screen.findByRole("button", { name: "Otwórz najstarszą sprawę" });
+
+    const glowa = container.querySelector("[data-testid='pageheader-glowa']")!;
+    expect(glowa).toContainElement(screen.getByRole("heading", { level: 1, name: "Sprawy do decyzji" }));
+    expect(glowa).toContainElement(przycisk);
+  });
 });
 
 describe("Sprawy — błąd sieci / wyjątek poza ApiError", () => {

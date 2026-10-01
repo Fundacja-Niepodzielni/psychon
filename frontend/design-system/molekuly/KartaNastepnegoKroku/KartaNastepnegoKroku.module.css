@@ -1,0 +1,49 @@
+/* Karta jak `.hero` z makiety 2.0.4: gradient z `--card` do `--card-warm`, cienka
+   ramka, zaokrąglenie `--r-md`, cień. W obszarze „następny krok” szablonu pulpitu
+   (siatka na dwie kolumny od 900 px) zajmuje cały wiersz. */
+.karta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-24);
+  background: linear-gradient(135deg, var(--card) 0%, var(--card-warm) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+}
+
+/* Etykieta zapisana w DOM zdaniem; wersaliki wyłącznie przez CSS. */
+.etykieta {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.karta h2 {
+  margin: var(--space-6) 0 var(--space-4);
+  font-size: var(--fs-3);
+}
+
+.tresc {
+  color: var(--muted);
+  font-size: var(--fs-9);
+}
+
+.tresc > p {
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Telefon: karta na całą szerokość obszaru treści, bez bocznych ramek i zaokrąglenia. */
+@media (max-width: 639px) {
+  .karta {
+    padding: var(--space-20) var(--space-16);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+}

@@ -313,7 +313,7 @@ for (const rozmiar of ROZMIARY) {
       expect(tekst).not.toMatch(/41\.5|72\.5/);
 
       // Plakietki statusu małą literą; wielka litera to regres.
-      for (const plakietka of ["ukończony", "w toku", "zablokowany"]) {
+      for (const plakietka of ["ukończony", "w toku", "zamknięty"]) {
         await expect(main.getByText(plakietka, { exact: true })).toHaveCount(1);
       }
       expect(tekst.match(/Ukończony|W toku|Zablokowany/g) ?? []).toEqual([]);
@@ -340,7 +340,7 @@ for (const rozmiar of ROZMIARY) {
       await page.goto("/prowadzacy");
       await zabezpieczeniePrzedEkranemDostepu(page);
       await expect(page.getByRole("heading", { level: 1, name: "Pulpit prowadzącego" })).toBeVisible();
-      await expect(page.getByText("Moja grupa: 1 osoba")).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3, name: "Moja grupa" })).toBeVisible();
       await zrzut(page, `prowadzacy-${rozmiar.nazwa}`);
 
       const tekst = await page.locator("main").innerText();

@@ -10,7 +10,6 @@ import {
   LIMIT_WIERSZY,
   formatujTermin,
   nadchodzaceTerminy,
-  odmien,
   pelneImie,
   skrocTresc,
   type KursProwadzacego,
@@ -23,6 +22,11 @@ import type { InstructorGroup } from "@/lib/h12/types";
 
 interface WspolneSekcji {
   onOdswiez: () => void;
+}
+
+/** Stopień nagłówka sekcji; główna kolumna pulpitu podaje 2 (pod `h1`). */
+interface StopienSekcji {
+  stopien?: 2 | 3;
 }
 
 function pusty(naglowek: string, tresc: string, onOdswiez: () => void) {
@@ -64,20 +68,21 @@ function ResztaListy({ pokazano, razem, nazwa, href, etykieta }: { pokazano: num
   );
 }
 
-export function SekcjaPytan({ sekcja, onOdswiez }: { sekcja: Sekcja<PytaniaPulpitu> } & WspolneSekcji) {
+export function SekcjaPytan({ sekcja, onOdswiez, stopien = 3 }: { sekcja: Sekcja<PytaniaPulpitu> } & WspolneSekcji & StopienSekcji) {
   if (sekcja.stan === "awaria") return <AwariaSekcji nazwa="pytania bez odpowiedzi" rodzaj={sekcja.rodzaj} onOdswiez={onOdswiez} />;
   const { liczba, wiersze } = sekcja.dane;
   const pokazane: WierszRecordList[] = wiersze.slice(0, LIMIT_WIERSZY).map((pytanie) => ({
     id: `pytanie-${pytanie.id}`,
-    tytul: `${pelneImie(pytanie.user)} — ${pytanie.lesson.title}`,
-    podpowiedz: `${pytanie.lesson.course.title}: ${skrocTresc(pytanie.question)}`,
+    tytul: skrocTresc(pytanie.question),
+    podpowiedz: `${pelneImie(pytanie.user)} · lekcja „${pytanie.lesson.title}”`,
     plakietka: { wariant: "pending", tekst: "czeka na odpowiedź" },
     akcja: { etykieta: "Odpowiedz", href: ADRES_PYTAN },
   }));
   return (
     <>
       <RecordList
-        tytul={`Pytania bez odpowiedzi: ${liczba}`}
+        tytul="Pytania bez odpowiedzi"
+        stopienNaglowka={stopien}
         wiersze={pokazane}
         pusty={pusty("Brak pytań bez odpowiedzi", "Pytania z Twoich kursów pojawią się tu, gdy uczestnicy je zadadzą.", onOdswiez)}
       />
@@ -86,7 +91,7 @@ export function SekcjaPytan({ sekcja, onOdswiez }: { sekcja: Sekcja<PytaniaPulpi
   );
 }
 
-export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez }: { sekcja: Sekcja<InstructorGroup>; teraz: Date } & WspolneSekcji) {
+export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez, stopien = 3 }: { sekcja: Sekcja<InstructorGroup>; teraz: Date } & WspolneSekcji & StopienSekcji) {
   // Ta sama trasa co grupa: jedna awaria to jeden komunikat, w sekcji grupy.
   if (sekcja.stan === "awaria") return null;
   const terminy = nadchodzaceTerminy(sekcja.dane.slots, teraz);
@@ -99,7 +104,8 @@ export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez }: { sekcja: Sekcja<
   return (
     <>
       <RecordList
-        tytul={`Nadchodzące superwizje: ${terminy.length}`}
+        tytul="Nadchodzące superwizje"
+        stopienNaglowka={stopien}
         wiersze={wiersze}
         pusty={pusty("Brak nadchodzących terminów", "Terminy superwizji wystawiasz w widoku grupy.", onOdswiez)}
       />
@@ -120,7 +126,7 @@ export function SekcjaGrupy({ sekcja, onOdswiez }: { sekcja: Sekcja<InstructorGr
   return (
     <>
       <RecordList
-        tytul={`Moja grupa: ${members.length} ${odmien(members.length, "osoba", "osoby", "osób")}`}
+        tytul="Moja grupa"
         wiersze={wiersze}
         pusty={pusty("Nie masz jeszcze przypisanej grupy", "Osoby do grupy przypisuje administracja.", onOdswiez)}
       />
@@ -140,7 +146,7 @@ export function SekcjaKursow({ sekcja, onOdswiez }: { sekcja: Sekcja<KursProwadz
   return (
     <>
       <RecordList
-        tytul={`Moje kursy: ${kursy.length}`}
+        tytul="Moje kursy"
         wiersze={wiersze}
         pusty={pusty("Nie masz przypisanych kursów", "Kursy do prowadzenia przypisuje administracja.", onOdswiez)}
       />

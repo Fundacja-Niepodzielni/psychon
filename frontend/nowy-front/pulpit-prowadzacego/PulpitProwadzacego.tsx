@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
-import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
+import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKroku/KartaNastepnegoKroku";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
@@ -24,17 +23,16 @@ import {
 import { SekcjaGrupy, SekcjaKursow, SekcjaPytan, SekcjaSuperwizji } from "./sekcje";
 import style from "./PulpitProwadzacego.module.css";
 
-const ID_POWODU_BRAKU_PYTAN = "pulpit-powod-brak-pytan";
+const ETYKIETA_KARTY = "Do zrobienia dziś";
 
 /**
  * Ekran „Pulpit prowadzącego” na szablonie `DashboardTemplate`.
  * Stany: ładowanie, dane (także częściowa awaria jednej z trzech tras —
  * sekcja z błędem to `Notice`, pozostałe zostają), pusty „Nie masz dziś nic do
  * zrobienia”, 403 i błąd sieci. Ekran niczego nie zapisuje.
- * Jedyny przycisk główny „Odpowiedz na pytania” prowadzi do istniejącej
- * skrzynki pytań (`/prowadzacy/pytania`); przy zerze pytań jest nieaktywny
- * i ma obok podany powód — atom `Button` nie pozwala wyłączyć poziomu
- * `primary`, więc w tym stanie to poziom `outline`.
+ * Jedyny przycisk główny stoi w nagłówku i prowadzi do istniejącej skrzynki
+ * pytań (`/prowadzacy/pytania`): „Odpowiedz na pytania” przy pytaniach,
+ * aktywny „Zobacz pytania” przy zerze (makieta).
  */
 export function PulpitProwadzacego() {
   const router = useRouter();
@@ -115,36 +113,32 @@ export function PulpitProwadzacego() {
   const liczbaPytan = dane.pytania.stan === "ok" ? dane.pytania.dane.liczba : null;
   const terminy = dane.grupa.stan === "ok" ? nadchodzaceTerminy(dane.grupa.dane.slots, teraz) : [];
 
-  const akcjaGlowna: ReactNode =
-    liczbaPytan === null ? null : liczbaPytan > 0 ? (
-      <Button poziom="primary" onClick={() => router.push(ADRES_PYTAN)}>
-        Odpowiedz na pytania
-      </Button>
-    ) : (
-      <div className={style.akcja}>
-        <Button poziom="outline" disabled aria-describedby={ID_POWODU_BRAKU_PYTAN}>
-          Odpowiedz na pytania
-        </Button>
-        <Hint id={ID_POWODU_BRAKU_PYTAN}>Nie ma pytań bez odpowiedzi.</Hint>
-      </div>
-    );
+  // Przycisk główny stoi w nagłówku (makieta 2.0.4, `.head .acts`, skrypt
+  // `goPytL`): z pytaniami „Odpowiedz na pytania”, bez pytań aktywny „Zobacz
+  // pytania” — oba do skrzynki pytań. Awaria trasy pytań: bez przycisku.
+  const przyciskGlowny =
+    liczbaPytan === null
+      ? undefined
+      : {
+          etykieta: liczbaPytan > 0 ? "Odpowiedz na pytania" : "Zobacz pytania",
+          onKliknij: () => router.push(ADRES_PYTAN),
+        };
 
+  // Jedna karta „Do zrobienia dziś”: z pytaniami — liczba pytań w nagłówku,
+  // bez pytań — najbliższa superwizja. Bez jednego i drugiego karty nie ma.
+  const maPytania = liczbaPytan !== null && liczbaPytan > 0;
   const nastepnyKrok =
-    widok === "pusty" || (liczbaPytan === null && terminy.length === 0) ? undefined : (
-      <>
-        {liczbaPytan !== null && liczbaPytan > 0 && (
-          <section className={style.krok}>
-            <Heading stopien={2}>{`${liczbaPytan} ${odmien(liczbaPytan, "pytanie czeka", "pytania czekają", "pytań czeka")} na odpowiedź`}</Heading>
-            <Text>Uczestnik dostaje powiadomienie, gdy odpowiesz.</Text>
-          </section>
-        )}
-        {terminy.length > 0 && (
-          <section className={style.krok}>
-            <Heading stopien={2}>{`Najbliższa superwizja: ${formatujTermin(terminy[0].starts_at)}`}</Heading>
-            <Text>{`Zajęte miejsca: ${terminy[0].active_signups_count} z ${terminy[0].seats_limit}.`}</Text>
-          </section>
-        )}
-      </>
+    widok === "pusty" || (!maPytania && terminy.length === 0) ? undefined : maPytania ? (
+      <KartaNastepnegoKroku
+        etykieta={ETYKIETA_KARTY}
+        naglowek={`${liczbaPytan} ${odmien(liczbaPytan, "pytanie czeka", "pytania czekają", "pytań czeka")} na odpowiedź`}
+      >
+        <Text>Uczestnik dostaje powiadomienie, gdy odpowiesz.</Text>
+      </KartaNastepnegoKroku>
+    ) : (
+      <KartaNastepnegoKroku etykieta={ETYKIETA_KARTY} naglowek={`Najbliższa superwizja: ${formatujTermin(terminy[0].starts_at)}`}>
+        <Text>{`Zajęte miejsca: ${terminy[0].active_signups_count} z ${terminy[0].seats_limit}.`}</Text>
+      </KartaNastepnegoKroku>
     );
 
   const glowna =
@@ -156,8 +150,8 @@ export function PulpitProwadzacego() {
       />
     ) : (
       <div className={style.sekcje}>
-        <SekcjaPytan sekcja={dane.pytania} onOdswiez={odswiez} />
-        <SekcjaSuperwizji sekcja={dane.grupa} teraz={teraz} onOdswiez={odswiez} />
+        <SekcjaPytan sekcja={dane.pytania} onOdswiez={odswiez} stopien={2} />
+        <SekcjaSuperwizji sekcja={dane.grupa} teraz={teraz} onOdswiez={odswiez} stopien={2} />
       </div>
     );
 
@@ -167,7 +161,7 @@ export function PulpitProwadzacego() {
         okruszki,
         tytul: "Pulpit prowadzącego",
         onPowrot,
-        dzieci: akcjaGlowna,
+        przyciskGlowny,
       }}
       nastepnyKrok={nastepnyKrok}
       kafle={zbudujKafle(dane)}

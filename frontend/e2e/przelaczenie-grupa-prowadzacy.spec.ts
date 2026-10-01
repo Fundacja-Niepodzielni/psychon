@@ -108,7 +108,7 @@ test.describe("panel prowadzącego — pulpit przełączony, kurs bez zmian", ()
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await expect(page.getByRole("heading", { level: 1, name: "Pulpit prowadzącego" })).toBeVisible();
-    await expect(page.getByText("Moja grupa: 1 osoba")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Moja grupa" })).toBeVisible();
     await expect(page).toHaveURL(/\/prowadzacy$/);
     await expect(page).toHaveTitle("Pulpit prowadzącego — Niepodzielni");
     expect(await zliczPunktyOrientacyjne(page)).toEqual({ main: 1, cele: 1, odnosniki: 1 });

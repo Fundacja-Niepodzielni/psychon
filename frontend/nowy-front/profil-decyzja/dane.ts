@@ -71,7 +71,7 @@ async function zapiszDecyzje(sciezka: string, cialo: { reason: string } | undefi
 
 /** `POST /admin/profiles/{id}/accept` — bez ciała, wniosek musi być w stanie „złożony”. */
 export function zaakceptujWniosek(id: number): Promise<WynikDecyzji> {
-  return zapiszDecyzje(`/admin/profiles/${id}/accept`, undefined, "Nie udało się zaakceptować wniosku. Spróbuj ponownie.");
+  return zapiszDecyzje(`/admin/profiles/${id}/accept`, undefined, "Nie udało się zatwierdzić wniosku. Spróbuj ponownie.");
 }
 
 /** `POST /admin/profiles/{id}/return` z wymaganym polem `reason` (`ReturnProfileRequest.php:14-17`). */

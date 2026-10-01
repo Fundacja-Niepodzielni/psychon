@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -35,13 +34,13 @@ type StanEkranu =
  * Ekran „Pulpit administracji” na szablonie `DashboardTemplate`
  * (`GET /admin/dashboard`, `backend/routes/api/h19.php:25`). Liczniki edycji
  * w `StatRow`, sprawy do decyzji w `RecordList` („Co czeka na decyzję”).
- * Akcja główna „Otwórz sprawy” prowadzi do adresu `link` tych
- * spraw, których czeka najwięcej. Każdy stan renderuje się wewnątrz szablonu,
+ * Akcja główna „Otwórz sprawy” stoi w nagłówku (`przyciskGlowny`, makieta
+ * 2.0.4 `.head .acts`) i prowadzi do adresu `link` tych spraw, których czeka
+ * najwięcej; bez celu jest niedostępna z powodem pod nagłówkiem. Każdy stan renderuje się wewnątrz szablonu,
  * więc jego korzeń jest jedynym `main`.
  */
 export function PulpitAdministracji() {
   const router = useRouter();
-  const idPowodu = useId();
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
   const [proba, setProba] = useState(0);
   const [ostrzezenie, setOstrzezenie] = useState<string | null>(null);
@@ -134,19 +133,11 @@ export function PulpitAdministracji() {
     <DashboardTemplate
       naglowek={{
         ...naglowek,
-        dzieci: (
-          <div className={style.akcjaGlowna}>
-            <Button
-              poziom="primary"
-              onClick={otworz}
-              aria-disabled={widok.cel ? undefined : true}
-              aria-describedby={widok.cel ? undefined : idPowodu}
-            >
-              Otwórz sprawy
-            </Button>
-            {!widok.cel && widok.powodBrakuCelu && <Hint id={idPowodu}>{widok.powodBrakuCelu}</Hint>}
-          </div>
-        ),
+        przyciskGlowny: {
+          etykieta: "Otwórz sprawy",
+          onKliknij: otworz,
+          niedostepny: widok.cel ? undefined : { powod: widok.powodBrakuCelu ?? TEKST_BRAK_SPRAW },
+        },
       }}
       kafle={widok.kafle}
       glowna={
@@ -176,6 +167,7 @@ function ListaSpraw({
   return (
     <RecordList
       tytul={TYTUL_LISTY}
+      stopienNaglowka={2}
       jednostkaSumy={(liczba) => jednostka(liczba, FORMY_SPRAW)}
       wiersze={
         widok.brakSpraw

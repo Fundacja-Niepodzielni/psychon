@@ -36,10 +36,10 @@
 // `MenuItem.tsx` dodatkowo łamie wzorzec `<a ` samym formatowaniem: `<a`
 // i `href=` stoją w źródle na osobnych liniach, nie `<a ` ze spacją).
 //
-// 17 plików BEZ własnego celu (własny osąd, nie wzorzec) — z powodem przy
+// 18 plików BEZ własnego celu (własny osąd, nie wzorzec) — z powodem przy
 // każdym w `WYKLUCZENIA` niżej: Avatar, Badge, Divider, ErrorText, Heading,
 // Hint, Icon, Num, ProgressBar, Skeleton, StepBar, Text, Label (atomy) oraz
-// FileRow, Notice, QaBlock, StatTile (molekuły).
+// FileRow, KartaNastepnegoKroku, Notice, QaBlock, StatTile (molekuły).
 export const OCZEKIWANE_CELE = [
   "Button primary",
   "Button outline",
@@ -146,6 +146,7 @@ export const WYKLUCZENIA = [
   { komponent: "Text", plik: "atomy/Text/Text.tsx", powod: "sam <p>, bez interakcji." },
   { komponent: "Label", plik: "atomy/Label/Label.tsx", powod: "<label htmlFor> wskazuje kontrolkę ZEWNĘTRZNĄ; system nadaje klasę dotyku (.dotyk) jawnie Checkbox, nie samemu Label — sporne (natywny klik na label-for przenosi aktywację), wykluczone za konwencją tego systemu." },
   { komponent: "FileRow", plik: "molekuly/FileRow/FileRow.tsx", powod: "Text + Hint w <li>, używany wyłącznie zagnieżdżony w FileDropZone, bez własnego handlera." },
+  { komponent: "KartaNastepnegoKroku", plik: "molekuly/KartaNastepnegoKroku/KartaNastepnegoKroku.tsx", powod: "sekcja z etykietą, nagłówkiem h2 i treścią; sama nie ma handlera ani roli aktywacji, ewentualna akcja pochodzi z przekazanych dzieci." },
   { komponent: "Notice", plik: "molekuly/Notice/Notice.tsx", powod: "div tabIndex={-1} to metka fokusu programowego (ogłoszenie błędu), nie cel dotyku; ewentualna akcja pochodzi z przekazanego z zewnątrz `akcja`, którego żaden z czterech montów w poligonie nie podaje." },
   { komponent: "QaBlock", plik: "molekuly/QaBlock/QaBlock.tsx", powod: "Text + Hint + <p>, bez handlera." },
   { komponent: "StatTile", plik: "molekuly/StatTile/StatTile.tsx", powod: "Label + Num + ProgressBar + Hint — żaden z tych czterech nie niesie własnego celu (patrz ich własne wykluczenia wyżej)." },

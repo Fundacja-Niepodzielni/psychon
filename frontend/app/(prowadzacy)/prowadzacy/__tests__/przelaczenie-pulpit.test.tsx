@@ -150,7 +150,7 @@ describe("/prowadzacy — strona a rejestr przełączenia", () => {
     const z = await zaladuj({ pulpitProwadzacego: true });
     ustawSerwer("dane", "instructor", z.ApiError);
     const nowa = trasa(z);
-    await screen.findByText(/^Moja grupa: 2/, {}, DLUGO);
+    await screen.findByRole("heading", { level: 3, name: "Moja grupa" }, DLUGO);
     const htmlNowej = bezIdentyfikatorow(nowa.container.innerHTML);
     nowa.unmount();
 
@@ -177,9 +177,9 @@ describe("/prowadzacy włączona — układ prowadzącego, jeden main w czterech
     ustawSerwer("dane", "instructor", z.ApiError);
     const { container } = trasa(z);
 
-    await screen.findByText("Moja grupa: 2 osoby", {}, DLUGO);
-    expect(screen.getByText("Pytania bez odpowiedzi: 1")).toBeInTheDocument();
-    expect(screen.getByText("Moje kursy: 2")).toBeInTheDocument();
+    await screen.findByRole("heading", { level: 3, name: "Moja grupa" }, DLUGO);
+    expect(screen.getByRole("heading", { level: 2, name: "Pytania bez odpowiedzi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Moje kursy" })).toBeInTheDocument();
     expect(screen.getByText("Osoba1 Demo")).toBeInTheDocument();
     expect(zmierz(container)).toEqual(JEDEN);
   });
@@ -201,9 +201,9 @@ describe("/prowadzacy włączona — układ prowadzącego, jeden main w czterech
 
     await screen.findByText(/tylko dla prowadzących/, {}, DLUGO);
     expect(screen.queryByText(/Demo/)).toBeNull();
-    expect(screen.queryByText(/^Moja grupa:/)).toBeNull();
-    expect(screen.queryByText(/^Pytania bez odpowiedzi:/)).toBeNull();
-    expect(screen.queryByText(/^Moje kursy:/)).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Moja grupa" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Pytania bez odpowiedzi" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Moje kursy" })).toBeNull();
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
@@ -258,7 +258,7 @@ describe("/prowadzacy włączona — odmowa roli (strażnik układu)", () => {
     ustawSerwer("dane", "instructor", z.ApiError);
     trasa(z);
 
-    await screen.findByText("Moja grupa: 2 osoby", {}, DLUGO);
+    await screen.findByRole("heading", { level: 3, name: "Moja grupa" }, DLUGO);
     expect(api.mock.calls.map(([url]) => url).sort()).toEqual(["/instructor/courses", "/instructor/group", "/me", "/me"]);
     expect(apiPaged.mock.calls.map(([url]) => url)).toContain("/instructor/questions?answered=false");
   });
