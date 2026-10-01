@@ -24,6 +24,11 @@
   gap: var(--space-2);
   flex: 1 1 60%;
   min-width: 0;
+}
+/* Punkt odniesienia dla tekstu tylko dla czytnika (`.ukryte` jest
+   pozycjonowane absolutnie). Tylko wtedy: bezwarunkowy `position: relative`
+   zmieniałby styl obliczony każdego wiersza listy. */
+.trescZUkrytym {
   position: relative;
 }
 /* Plakietka przed tytułem, w jednej linii z nim; ma szerokość własnej treści,

@@ -6,7 +6,8 @@ import { Hint } from "../../atomy/Hint/Hint";
 import { Link } from "../../atomy/Link/Link";
 import { Text } from "../../atomy/Text/Text";
 import { Breadcrumbs } from "../../molekuly/Breadcrumbs/Breadcrumbs";
-import { useWRamce } from "../../szablony/KontekstRamki";
+import { useDaneRamki } from "../../szablony/KontekstRamki";
+import { okruszekRamki } from "../../szablony/OkruszekRamki";
 import style from "./PageHeader.module.css";
 
 interface PozycjaOkruszkow {
@@ -71,11 +72,15 @@ interface WlasciwosciPageHeader {
  * Plakietka stanu stoi w linii pod tytułem, po kropce środkowej za opisem (makieta 2.0.4,
  * `.head .sub`); bez opisu stoi sama w tej linii.
  *
- * W nowej ramce panelu (`useWRamce()`, ramka z makiety 2.0.4) nagłówek nie ma
- * przycisku powrotu, a okruszki pokazuje tylko ekran, którego okruszki mają
- * łącza (ekran szczegółu): łącza w kolejności plus bieżąca pozycja na końcu.
- * Poza nową ramką (stara powłoka `PanelShell` z samym `DostawcaPowloki`,
- * poligon) zachowanie bez zmian: „Wstecz” i pełne okruszki.
+ * W nowej ramce panelu (`useDaneRamki()`, ramka z makiety 2.0.4) nagłówek nie
+ * ma przycisku powrotu, a okruszek składa jedna reguła (`okruszekRamki`,
+ * `szablony/OkruszekRamki.ts`) z menu ramki i bieżącej ścieżki: ekrany z
+ * „Codziennie” bez okruszka, pozostałe „korzeń › [rodzic ›] bieżąca”, szczegół
+ * zawsze z łańcuchem, jedna pozycja nigdy. Okruszki podane przez ekran
+ * dostarczają łącza pośrednie i ostatnią pozycję (bieżącą na szczególe i na
+ * ekranie poza menu; na liście bieżącą nazywa pozycja menu). Poza nową ramką (stara
+ * powłoka `PanelShell` z samym `DostawcaPowloki`, poligon) zachowanie bez
+ * zmian: „Wstecz” i pełne okruszki.
  */
 export function PageHeader({
   okruszki,
@@ -89,10 +94,11 @@ export function PageHeader({
   przyciskGlowny,
   dzieci,
 }: WlasciwosciPageHeader) {
-  const wPowloce = useWRamce();
+  const daneRamki = useDaneRamki();
+  const wPowloce = daneRamki !== null;
   const idPowodu = useId();
-  const okruszkiWPowloce = okruszki.some((pozycja) => pozycja.href)
-    ? okruszki.filter((pozycja, indeks) => pozycja.href || indeks === okruszki.length - 1)
+  const okruszkiWPowloce = daneRamki
+    ? okruszekRamki({ menu: daneRamki.menu, sciezka: daneRamki.sciezka, okruszki, tytul })
     : [];
 
   const blokTekstu = (
@@ -130,7 +136,7 @@ export function PageHeader({
       {wPowloce ? (
         okruszkiWPowloce.length > 0 && (
           <div className={style.gornyWiersz}>
-            <Breadcrumbs pozycje={okruszkiWPowloce} wariant={wariantOkruszkow} />
+            <Breadcrumbs pozycje={okruszkiWPowloce} wariant={wariantOkruszkow} oznaczBiezaca />
           </div>
         )
       ) : (

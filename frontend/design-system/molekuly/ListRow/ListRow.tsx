@@ -94,9 +94,10 @@ export function ListRow({
   const klasy = [style.wiersz, otwarty ? style.otwarty : "", bezWciecia ? style.bezWciecia : ""]
     .filter(Boolean)
     .join(" ");
+  const ukrytaPodpowiedz = Boolean(podpowiedz) && podpowiedzTylkoDlaCzytnika;
   return (
     <div className={klasy} data-wariant={wariant} onClick={onKliknijWiersz}>
-      <div className={style.tresc}>
+      <div className={ukrytaPodpowiedz ? `${style.tresc} ${style.trescZUkrytym}` : style.tresc}>
         <div className={tytulPogrubiony ? `${style.naglowek} ${style.pogrubiony}` : style.naglowek}>
           {plakietka && (
             <span className={style.plakietka}>
@@ -114,7 +115,7 @@ export function ListRow({
           )}
         </div>
         {podpowiedz &&
-          (podpowiedzTylkoDlaCzytnika ? (
+          (ukrytaPodpowiedz ? (
             <span className={style.ukryte}>{podpowiedz}</span>
           ) : (
             <Hint>{podpowiedz}</Hint>
