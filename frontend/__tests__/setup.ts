@@ -6,11 +6,23 @@
  */
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach } from "vitest";
 import { vi } from "vitest";
+import { wyczyscPamiecMe } from "@/lib/api/pamiec-me";
+
+/**
+ * Pamięć odpowiedzi `GET /me` (`lib/api/pamiec-me.ts`) jest stanem modułu —
+ * bez zerowania odpowiedź jednego testu trafiałaby do następnego, który
+ * woła `/me` z tym samym tokenem w oknie kilku sekund. Zerujemy przed każdym
+ * testem (czysty start) i po nim (żaden test nie zostawia śladu).
+ */
+beforeEach(() => {
+  wyczyscPamiecMe();
+});
 
 afterEach(() => {
   cleanup();
+  wyczyscPamiecMe();
 });
 
 /**
