@@ -1340,3 +1340,91 @@ Kod: `Rules/RecordingAssignedByAdministration.php`, `Rules/RecordingIdNotTaken.p
 `Http/Requests/H08/StoreInstructorLessonRequest.php`,
 `Http/Requests/H08/UpdateInstructorLessonRequest.php`,
 `Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLessonRequest.php`.
+
+---
+
+## Aneks — wzory dokumentów: obrazy i pliki we wzorze, wzór zbyt złożony
+
+Uzupełnia aneks „wzory dokumentów: edytor administracji”. Tamtego tekstu nie usuwam — zapis
+historyczny zostaje, ten blok jest wobec niego nadrzędny w dwóch miejscach: zdanie odmowy
+próbnego generowania (§3 tamtego aneksu) ma nowe brzmienie, a odwołanie do pliku albo obraz
+osadzony w treści wzoru nie jest już powodem odmowy zapisu. Bez nowych tras, kodów błędu,
+slugów audytu i typów powiadomień; zero zmian w danych.
+
+### 1. Zasada
+
+Dokument generowany z wzoru **nie wczytuje obrazów ani plików wskazanych we wzorze**. Jedyny
+obraz w dokumencie to kod QR certyfikatu, który wstawia system. Zapora stoi w generowaniu
+dokumentu, a nie w odpowiedzi zapisu: zapis wzoru z takim odwołaniem przechodzi, a zasób
+jest przy generowaniu pomijany — bez komunikatu dla osoby zapisującej.
+
+### 2. Zapis wzoru — `PUT /document-templates/{type}`
+
+| Treść wzoru | Odpowiedź | Dokument |
+|---|---|---|
+| tło (`url()` w atrybucie `style` albo w bloku `<style>`) wskazujące plik: ścieżka bezwzględna, ścieżka względna, `file://`, `phar://` | `200`, nowa wersja zapisana | powstaje z tej treści, zasób pominięty |
+| `<img>` wskazujący plik (ścieżka, `phar://`) albo adres `ftp://` | `200`, nowa wersja zapisana | powstaje z tej treści, zasób pominięty |
+| `<link rel="stylesheet">` wskazujący `phar://` | `200`, nowa wersja zapisana | powstaje z tej treści, zasób pominięty |
+| obraz osadzony w treści (`data:` — PNG, JPEG, SVG) w `<img>` albo jako tło | `200`, nowa wersja zapisana | powstaje z tej treści, zasób pominięty |
+| tło wskazujące adres sieciowy (`http://`, `https://`, `ftp://`) | `422 validation_failed`, nic nie jest zapisywane | — |
+| treść ponad limit złożoności (pkt 3) | `422 validation_failed`, nic nie jest zapisywane | — |
+
+Odpowiedź zapisu — kod i treść — **nie zależy od tego, czy wskazany plik istnieje na
+serwerze**: ta sama treść daje tę samą odpowiedź `200`, gdy pliku nie ma i gdy jest.
+
+Odmowa dla tła z adresem sieciowym ma zdanie w `errors.content[0]`:
+
+„Z tego wzoru nie da się wygenerować dokumentu. Wzór nie wczytuje obrazów ani plików — usuń
+odwołania do adresów. Jedyny obraz w dokumencie to kod QR, który wstawia system.”
+
+To samo zdanie dostaje każda inna treść, na której próbne generowanie kończy się błędem.
+Odmowa nie zapisuje wersji ani wpisu audytu.
+
+### 3. Wzór zbyt złożony
+
+W próbnym generowaniu serwer liczy złożoność treści. Przekroczenie dowolnego limitu →
+`422 validation_failed` (istniejący kod, standardowa koperta), nic nie jest zapisywane,
+`errors.content[0]` =
+
+„Wzór jest zbyt złożony, żeby wygenerować z niego dokument: ma za dużo elementów, zbyt
+głębokie zagnieżdżenie, zbyt duże scalenie komórek tabeli albo za dużo stron.”
+
+| Limit | Wartość |
+|---|---|
+| elementy dokumentu | 2000 |
+| głębokość zagnieżdżenia elementów | 40 |
+| `colspan` albo `rowspan` jednej komórki | 50 |
+| suma pól (`colspan` × `rowspan`) wszystkich scalonych komórek | 2000 |
+| strony dokumentu | 40 |
+
+Elementy, głębokość i scalenia są liczone przed ułożeniem stron; strony — w jego trakcie, na
+pierwszej stronie ponad limit.
+
+```json
+{ "error": { "status": 422, "code": "validation_failed",
+    "message": "Popraw zaznaczone pola.",
+    "errors": { "content": ["Wzór jest zbyt złożony, żeby wygenerować z niego dokument: …"] } } }
+```
+
+### 4. Generowanie dokumentu
+
+- `GET /documents/{document}/download` (adres podpisany) → `200` także wtedy, gdy treść wzoru w bazie nie daje się
+  wygenerować albo przekracza limit z pkt 3 (treść wstawiona z pominięciem trasy zapisu):
+  dokument powstaje wtedy z wzoru domyślnego z repozytorium, a w dzienniku błędów zostaje
+  jeden wpis z rodzajem wzoru, numerem wersji i klasą wyjątku — bez treści wzoru i bez danych
+  osoby.
+- Certyfikat: kod QR jest wstawiany przez system i jest jedynym obrazem, który generowanie
+  wczytuje. Lista dozwolonych obrazów jest ustalana osobno dla każdego generowania i niesie
+  wyłącznie kod QR tego certyfikatu.
+- Wartość pola dłuższa niż wiersz (ciąg bez spacji) jest w dokumencie łamana na kolejne
+  wiersze i strony — tak samo dla wzoru domyślnego i dla wzoru zapisanego w bazie.
+
+### 5. Czego ten aneks nie wprowadza
+
+Edytor nie mówi osobie zapisującej, że obraz albo plik z jej wzoru zostanie pominięty —
+komunikat o tym dojdzie osobnym aneksem razem ze zmianą kodu.
+
+Kod: `Support/PdfService.php`, `Services/DocumentTemplates/DocumentCostLimit.php`,
+`Services/DocumentTemplates/DocumentTemplateTrial.php`,
+`Services/DocumentTemplates/DocumentTemplateSampleData.php`, `Jobs/GenerateCertificate.php`,
+`routes/api/document_templates.php`, `routes/api/h14.php`.
