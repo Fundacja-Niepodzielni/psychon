@@ -257,7 +257,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
       await expect(wiersze.first()).toContainText("Marta Demo");
       await expect(wiersze.first()).toContainText("czeka");
       for (let i = 0; i < 3; i += 1) {
-        await expect(wiersze.nth(i).getByRole("button")).toHaveText(["Otwórz"]);
+        await expect(wiersze.nth(i).getByRole("button")).toHaveText([/^Otwórz/]);
       }
       await expect(page.getByRole("button", { name: "Zatwierdź" })).toHaveCount(0);
 

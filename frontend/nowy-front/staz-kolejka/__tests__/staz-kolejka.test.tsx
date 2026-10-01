@@ -257,7 +257,10 @@ describe("StazKolejka — stany w szablonie", () => {
   it("akcja wiersza: widoczny napis „Otwórz”, pełna nazwa z osobą i datą dyżuru tylko dla czytnika", async () => {
     await renderZDanymi();
     const przycisk = przyciskOtworz("Marta Demo");
-    expect(przycisk.textContent).toBe("Otwórz");
+    // Wygląd akcji wiersza Spraw (`wygladOdnosnika`), element nadal przycisk: „Otwórz ›”, strzałka ukryta przed czytnikiem.
+    expect(przycisk.tagName).toBe("BUTTON");
+    expect(przycisk.textContent).toMatch(/^Otwórz\s*›$/);
+    expect(przycisk.querySelector('[aria-hidden="true"]')?.textContent).toBe("›");
     expect(przycisk).toHaveAttribute("aria-label", "Otwórz dyżur: Marta Demo, z dnia 27 sierpnia 2026");
     // Data „Czeka od …” jest w drzewie dostępności, ale wzrokowo ukryta (klasa „ukryte” wiersza).
     const data = within(wiersz("Marta Demo")).getByText(/^Czeka od /);
@@ -275,7 +278,7 @@ describe("StazKolejka — stany w szablonie", () => {
     const { container } = await renderZDanymi();
     for (const nazwa of ["Marta Demo", "Filip Demo"]) {
       const przyciski = within(wiersz(nazwa)).getAllByRole("button").map((b) => b.textContent);
-      expect(przyciski).toEqual(["Otwórz"]);
+      expect(przyciski.map((t) => t?.replace(/\s*›$/, ""))).toEqual(["Otwórz"]);
     }
     expect(screen.queryByRole("button", { name: "Zatwierdź" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);

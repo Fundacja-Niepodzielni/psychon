@@ -50,7 +50,8 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Dyżury do decyzji
  * Lista jest domyślnie ZWINIĘTA: wiersz to `ListRow` jak we Sprawach —
  * plakietka „czeka N dni” (tekst, wariant i próg z `../sprawy/wiek.ts`, bez
  * kopii), pogrubione „Dyżur”, osoba i akcja „Otwórz” (pełna nazwa i data
- * tylko dla czytnika). „Otwórz” rozwija pod wierszem panel dyżuru
+ * tylko dla czytnika), wyglądem jak akcja wiersza Spraw (`wygladOdnosnika`: obrys
+ * od 640 px, „Otwórz ›” poniżej), ale nadal przyciskiem. „Otwórz” rozwija pod wierszem panel dyżuru
  * (`./PanelDyzuru.tsx`) — naraz jeden — z danymi wpisu, godzinami osoby i
  * decyzjami; otwarty wiersz nie ma już „Otwórz”. „Wróć do listy” zwija panel
  * i oddaje fokus „Otwórz” tego wiersza. Nagłówek `h2` listy jest tylko dla
@@ -285,6 +286,7 @@ export function StazKolejka() {
                             etykieta: "Otwórz",
                             etykietaDostepna: `Otwórz dyżur: ${osoba}, z dnia ${formatujDate(wpis.date)}`,
                             onKliknij: () => otworz(wpis),
+                            wygladOdnosnika: true,
                           }
                     }
                   />
