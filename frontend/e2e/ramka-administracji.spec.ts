@@ -368,13 +368,16 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
           await expect(okruszki.getByRole("link")).toHaveCount(elementy - 1);
         }
         // Ekran szczegółu (adres inny niż adres pozycji menu): okruszki są drogą powrotu —
-        // pierwsze łącze ma nazwę i adres oznaczonej pozycji menu.
+        // korzeń „Administracja” (łącze do /admin), potem łącze z nazwą i adresem oznaczonej pozycji menu.
         const adresMenu = MENU_OCZEKIWANE.flatMap((g) => g.pozycje).find(([nazwa]) => nazwa === ekran.menu)?.[1];
         expect(adresMenu, `pozycja menu „${ekran.menu}” w MENU_OCZEKIWANE`).toBeTruthy();
         if (adresMenu !== ekran.adres) {
-          const pierwszeLacze = okruszki.getByRole("link").first();
-          await expect(pierwszeLacze).toHaveText(ekran.menu);
-          await expect(pierwszeLacze).toHaveAttribute("href", adresMenu as string);
+          const korzen = okruszki.getByRole("link").first();
+          await expect(korzen).toHaveText("Administracja");
+          await expect(korzen).toHaveAttribute("href", "/admin");
+          const lacze = okruszki.getByRole("link").nth(1);
+          await expect(lacze).toHaveText(ekran.menu);
+          await expect(lacze).toHaveAttribute("href", adresMenu as string);
         }
 
         // Axe na stanie spoczynku (menu zamknięte).

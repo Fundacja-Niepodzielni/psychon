@@ -7,6 +7,9 @@ import { PanelNav } from "../../organizmy/PanelNav/PanelNav";
 import { DostawcaPowloki } from "../KontekstPowloki";
 import { DostawcaRamki } from "../KontekstRamki";
 
+const sciezkaTestu = vi.hoisted(() => ({ wartosc: "" }));
+vi.mock("next/navigation", () => ({ usePathname: () => sciezkaTestu.wartosc }));
+
 /**
  * Szablon powłoki panelu (ramka z makiety 2.0.4) i nagłówek ekranu w tej
  * powłoce: jeden `main` pod `id="tresc"`, jeden link skoku, menu w `nav`
@@ -50,7 +53,10 @@ function wyrenderuj(wlasciwosci: Partial<Parameters<typeof PowlokaPanelu>[0]> = 
   return { ...wynik, onWyloguj };
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  sciezkaTestu.wartosc = "";
+});
 
 describe("PowlokaPanelu", () => {
   it("jeden main pod #tresc, jeden link skoku na #tresc, szablon ekranu bez drugiego main", () => {
@@ -252,9 +258,17 @@ describe("PageHeader w nowej ramce i poza nią", () => {
     expect(screen.getByRole("navigation", { name: "Okruszki" }).textContent).toContain("Po programie");
   });
 
-  it("PowlokaPanelu wstawia dostawcę nowej ramki: nagłówek ekranu bez „Wstecz”, okruszki tylko z łączami", () => {
+  it("PowlokaPanelu wstawia dostawcę nowej ramki z menu: nagłówek ekranu bez „Wstecz”, okruszek korzeń › pozycja menu › bieżąca", () => {
+    sciezkaTestu.wartosc = "/admin/profile/12";
+    const grupy = [
+      ...GRUPY.map((grupa) => ({ ...grupa, pozycje: grupa.pozycje.map((pozycja) => ({ ikona: pozycja.ikona, etykieta: pozycja.etykieta, href: pozycja.href })) })),
+      {
+        naglowek: "Rozliczenie",
+        pozycje: [{ ikona: "user" as const, etykieta: "Profile psychologa", href: "/admin/profile", biezaca: true }],
+      },
+    ];
     render(
-      <PowlokaPanelu uzytkownik={{ imie: "Ewa", nazwisko: "Demo", rola: "administracja Fundacji" }} grupy={GRUPY} onWyloguj={() => {}}>
+      <PowlokaPanelu uzytkownik={{ imie: "Ewa", nazwisko: "Demo", rola: "administracja Fundacji" }} grupy={grupy} onWyloguj={() => {}}>
         <PageHeader
           okruszki={[{ etykieta: "Profile psychologa", href: "/admin/profile" }, { etykieta: "Wniosek o profil" }]}
           tytul="Wniosek o profil: Ola Demo"
@@ -264,7 +278,8 @@ describe("PageHeader w nowej ramce i poza nią", () => {
     );
     expect(screen.queryByTestId("pageheader-powrot")).toBeNull();
     const okruszki = screen.getByRole("navigation", { name: "Okruszki" });
-    expect(within(okruszki).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/admin/profile"]);
+    expect(within(okruszki).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/admin", "/admin/profile"]);
+    expect(okruszki.textContent).toContain("Wniosek o profil");
   });
 });
 
