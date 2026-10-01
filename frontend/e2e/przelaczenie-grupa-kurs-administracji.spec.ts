@@ -8,8 +8,8 @@ import { GRUPY } from "../lib/przelaczenie/grupy";
 
 /**
  * Miara dla tej gałęzi: grupy przełączenia `kursAdministracji`,
- * `publikacjaKursu` i `zaproszeniaNaKurs` (`lib/przelaczenie/grupy.ts`) mają
- * tu `wlaczona: true`.
+ * `publikacjaKursu`, `zaproszeniaNaKurs` i `edycjaLekcji`
+ * (`lib/przelaczenie/grupy.ts`) mają tu `wlaczona: true`.
  *
  * Rodzaj „podmiana treści”: adres `/admin/kursy/{id}` się nie zmienia, pod nim
  * stoi ekran kursu nowego frontu w nowej ramce panelu. Sprawdzane na zbudowanej
