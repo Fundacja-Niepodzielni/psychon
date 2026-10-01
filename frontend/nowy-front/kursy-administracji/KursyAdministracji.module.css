@@ -1,0 +1,139 @@
+/* Moduł CSS ekranu „Kursy” (administracja) — wartości wyglądu wyłącznie z tokeny.css. */
+.szkielet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.zawartosc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.drugorzedne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+}
+
+.formularz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.sekcja {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.kolejnosc {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.pozycja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-16);
+  padding: var(--space-12) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.nazwa {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.numer {
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+}
+
+.przesuwanie {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.przyciski {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.dialogTresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* Komunikat o przesunięciu tylko dla czytnika ekranu (obszar `role="status"`). */
+.tylkoCzytnika {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * Podgląd wpływu zmiany w oknie 440 px: pozycja na osobę, pola pod sobą, łamanie tylko na spacjach.
+ * Okno nie ma własnego limitu wysokości, więc przewija się sama lista: jej wysokość to widok pomniejszony
+ * o miejsce na tytuł, opis, oba przyciski, odstępy okna i ewentualny komunikat błędu (24rem). Tytuł i przyciski
+ * zostają w widoku przy dowolnej liczbie osób.
+ */
+.wplyw {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: max(10rem, calc(100vh - 24rem));
+  max-height: max(10rem, calc(100dvh - 24rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.wplywPozycja {
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.wplywPola {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-6) var(--space-12);
+  margin: 0;
+}
+
+.wplywEtykieta {
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.wplywWartosc {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
