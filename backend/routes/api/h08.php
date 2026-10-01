@@ -63,6 +63,7 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
 
     // H08b · materiały. Pobranie NIE jest tutaj: `GET /materials/{material}/download`
     // dowiózł H05 (podpisany link, re-sprawdzanie dostępu w chwili pobrania).
+    Route::get('/admin/lessons/{lesson}/materials', [MaterialAdminController::class, 'indexForLesson'])->whereNumber('lesson');
     Route::post('/admin/lessons/{lesson}/materials', [MaterialAdminController::class, 'storeForLesson'])->whereNumber('lesson');
     Route::post('/admin/courses/{course}/materials', [MaterialAdminController::class, 'storeForCourse'])->whereNumber('course');
     Route::delete('/admin/materials/{material}', [MaterialAdminController::class, 'destroy'])->whereNumber('material');

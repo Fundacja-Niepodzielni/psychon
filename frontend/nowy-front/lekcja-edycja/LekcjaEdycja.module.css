@@ -43,3 +43,39 @@
   position: static;
   transform: none;
 }
+
+/* Materiały wgrane na tym ekranie — lista z przyciskiem usunięcia przy pliku. */
+.wgrane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgrany {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.nazwaPliku {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-family: var(--font);
+  overflow-wrap: anywhere;
+}
+
+/* Ogłoszenie o zakończonym wgraniu: tylko dla czytnika ekranu — widoczny jest wiersz pliku z „Usuń”. */
+.tylkoCzytnika {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

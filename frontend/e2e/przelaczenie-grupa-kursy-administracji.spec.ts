@@ -166,8 +166,15 @@ async function instalujAtrapyApi(
       } else if (sciezka === "/admin/courses/reorder") {
         stan.zapytania.push({ adres: "PATCH /admin/courses/reorder", cialo: zadanie.postDataJSON() });
         await route.fulfill(koperta(kursy));
+      } else if (/^\/admin\/courses\/\d+$/.test(sciezka)) {
+        // Jeden kurs — obiekt w kopercie.
+        await route.fulfill(koperta(kurs(Number(sciezka.split("/")[3]), "Nowy kurs", { is_published: false })));
+      } else if (/^\/admin\/courses\/\d+\/tests$/.test(sciezka)) {
+        // Kurs bez testu.
+        await route.fulfill(koperta(null));
       } else {
-        await route.fulfill(koperta(kurs(9, "Nowy kurs", { is_published: false })));
+        // Adresy pod kursem (lekcje, tematy, przypisania) to listy w kopercie.
+        await route.fulfill(koperta([], metaListy(0)));
       }
     },
   );

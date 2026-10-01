@@ -1293,3 +1293,118 @@ Kod: `routes/api/document_templates.php`,
 `Http/Resources/DocumentTemplateResource.php`,
 `Services/DocumentTemplates/DocumentTemplateFields.php`,
 `Services/DocumentTemplates/DocumentTemplateTrial.php`.
+
+---
+
+## Aneks — nagranie lekcji tylko z wgrania (H08)
+
+Identyfikator nagrania lekcji (`video_provider_id`) nadaje serwer w ścieżce wgrania pliku.
+Trasy zapisu lekcji nie przyjmują go od prowadzącego, a u administracji pilnują, żeby jedno
+nagranie nie było przypisane do dwóch lekcji. Aneks opisuje stan kodu: bez nowych tras, kodów
+błędu, slugów audytu i typów powiadomień; zero zmian w danych.
+
+### 1. Prowadzący
+
+- `POST /instructor/courses/{course}/lessons`: każda niepusta wartość `video_provider_id` →
+  `422 validation_failed`, lekcja nie powstaje.
+- `PATCH /instructor/lessons/{lesson}`: pole nieobecne albo równe zapisanej wartości → `200`
+  bez zmiany nagrania. Każda inna wartość — także `null` albo pusty napis przy lekcji, która
+  ma nagranie — → `422 validation_failed`, kolumna bez zmian.
+
+Zdanie odmowy jest jedno dla wszystkich przypadków i nie ujawnia, czy podany identyfikator
+istnieje:
+
+```json
+{ "error": { "status": 422, "code": "validation_failed",
+    "message": "Popraw zaznaczone pola.",
+    "errors": { "video_provider_id": [
+      "Nagranie do lekcji przypisuje administracja. Tego pola nie można tutaj zmienić." ] } } }
+```
+
+### 2. Administracja
+
+`POST /admin/courses/{course}/lessons` i `PATCH /admin/lessons/{lesson}`: identyfikator
+przypisany już do innej żywej lekcji → `422 validation_failed` w tej samej kopercie, zdanie
+w `errors.video_provider_id`: „Ten identyfikator nagrania jest już przypisany do innej
+lekcji.” Wartość niezmieniona przechodzi zawsze; `null` odpina nagranie; identyfikator
+lekcji usuniętej jest wolny.
+
+### 3. Czego ten aneks nie wprowadza
+
+Niepowtarzalności nie pilnuje jeszcze indeks w bazie (dwa równoległe żądania administracji
+mogą ją ominąć), porównanie rozróżnia wielkość liter, a ścieżka wgrania nie sprawdza, czy
+identyfikator jest już przypisany — domknięcie przyjdzie osobnym aneksem razem ze zmianą
+kodu i danych.
+
+Kod: `Rules/RecordingAssignedByAdministration.php`, `Rules/RecordingIdNotTaken.php`,
+`Http/Requests/H08/StoreInstructorLessonRequest.php`,
+`Http/Requests/H08/UpdateInstructorLessonRequest.php`,
+`Http/Requests/H08/StoreLessonRequest.php`, `Http/Requests/H08/UpdateLessonRequest.php`.
+
+---
+
+## Aneks — lista materiałów lekcji (H08)
+
+Ekran edycji lekcji w panelu administracji dostaje listę materiałów lekcji, także tych
+wgranych wcześniej. Zmiana jest addytywna: jedna nowa trasa odczytu, dotychczasowe trasy,
+pola i kody zostają bez zmian. Bez nowego kodu błędu, sluga audytu ani typu powiadomienia.
+
+### 1. Trasa i role
+
+`GET /admin/lessons/{lesson}/materials` → `200 {"data": [AdminMaterial]}`.
+
+Trasa leży w grupie administracji H08, obok tras zapisu i usunięcia materiałów, i wymaga
+roli `project_manager` albo `super_admin`. `{lesson}` jest liczbą. Brak tokenu → `401
+unauthenticated`; każda inna rola (`volunteer`, `student`, `instructor`) → `403 forbidden`,
+zanim cokolwiek zostanie odczytane z bazy.
+
+### 2. Element listy
+
+`AdminMaterial` to ten sam zasób, który zwracają `POST /admin/lessons/{lesson}/materials` i
+`POST /admin/courses/{course}/materials` — dokładnie pola `id`, `name`, `mime`, `size`,
+`lesson_id`, `course_id`, `created_at`, bez żadnej zmiany. Element nie zawiera
+`download_url`, ścieżki ani nazwy dysku, ani treści pliku: panel nie pobiera plików, a
+podpisany link pobrania należy do ścieżki uczestnika (`GET /materials/{id}/download`, H05).
+
+```json
+{ "data": [
+  { "id": 12, "name": "Karta pracy.pdf", "mime": "application/pdf", "size": 245760,
+    "lesson_id": 21, "course_id": null, "created_at": "2026-10-01T10:00:00Z" },
+  { "id": 15, "name": "Slajdy.pdf", "mime": "application/pdf", "size": 1048576,
+    "lesson_id": 21, "course_id": null, "created_at": "2026-10-01T10:05:00Z" } ] }
+```
+
+### 3. Zakres, kolejność i ograniczenie
+
+- Lista obejmuje wyłącznie żywe materiały tej lekcji (`lesson_id` równe `{lesson}`).
+  Materiały innych lekcji i materiały wpięte wprost w kurs nie wchodzą. Materiał nie ma
+  miękkiego usuwania — usunięcie (`DELETE /admin/materials/{id}`) jest twarde, więc usunięty
+  materiał nie występuje na liście.
+- Kolejność: `created_at` rosnąco, przy remisie `id` rosnąco.
+- Bez stronicowania i bez `meta`. Odpowiedź ma twarde ograniczenie **200 pozycji**,
+  nakładane w zapytaniu do bazy (`limit 200`), nie przez obcięcie wczytanej kolekcji; przy
+  większej liczbie materiałów lekcji zwracane jest 200 najstarszych.
+- Parametry query są ignorowane, jak w pozostałych trasach H08: nie zmieniają wyniku i nie
+  dają `422`.
+- Pusta lekcja → `200 {"data": []}`.
+- Trasa nie sprawdza zgodności lekcji z kursem z adresu ekranu; robi to ekran istniejącym
+  stanem „nie znaleziono”.
+
+### 4. Kody
+
+`200` · `401 unauthenticated` · `403 forbidden` · `404 not_found` w standardowej kopercie
+(„Nie znaleziono zasobu.”) dla lekcji nieistniejącej, usuniętej miękko, a także dla
+identyfikatora nieliczbowego albo spoza zakresu liczb całkowitych. Trasa nie zwraca `422`.
+
+### 5. Odczyt bez skutków ubocznych
+
+Odczyt nie emituje audytu ani powiadomień i niczego nie zapisuje do bazy.
+
+### 6. Prowadzący
+
+Odpowiednik dla prowadzącego (`/instructor/…`) jest planowany razem z ekranem prowadzącego;
+ten aneks go nie wprowadza i trasa `GET /instructor/lessons/{lesson}/materials` nie istnieje.
+
+Kod: `routes/api/h08.php`,
+`Http/Controllers/Api/V1/Admin/MaterialAdminController.php::indexForLesson`,
+`Http/Resources/H08/AdminMaterialResource.php` (bez zmian), `openapi.json`.

@@ -5,11 +5,12 @@ namespace App\Services\Video;
 /**
  * Identyfikator nagrania lekcji w usłudze wideo (`lessons.video_provider_id`).
  *
- * Wartość pisze prowadzący własnego kursu i administracja, a serwer wstawia ją
- * do adresu zadania wychodzącego z kluczem usługi oraz do adresów i podpisów
- * odtwarzania. Dlatego ma jedno, wąskie znaczenie: od 1 do 64 znaków z klasy
- * `A-Z a-z 0-9 -`. Identyfikatory nadawane przez usługę wideo (GUID) oraz
- * identyfikatory z danych demonstracyjnych mieszczą się w tej klasie.
+ * Wartość przypisuje administracja (wgranie albo zapis lekcji w panelu);
+ * prowadzący własnego kursu może jedynie odesłać wartość już zapisaną. Serwer
+ * wstawia ją do adresu zadania wychodzącego z kluczem usługi oraz do adresów
+ * i podpisów odtwarzania. Dlatego ma jedno, wąskie znaczenie: od 1 do 64
+ * znaków z klasy `A-Z a-z 0-9 -`. Identyfikatory nadawane przez usługę wideo
+ * (GUID) oraz identyfikatory z danych demonstracyjnych mieszczą się w tej klasie.
  *
  * Wzorzec stoi tu, w jednym miejscu: walidacja zapisu lekcji i bramka przed
  * zadaniem wychodzącym czytają ten sam zapis, więc nie rozjadą się.

@@ -55,10 +55,11 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest szesnaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest siedemnaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
- * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `nabor` i `listaOsob`
+ * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
+ * pod własnym adresem z kursem w ścieżce; wchodzi się na niego z ekranu kursu), `nabor` i `listaOsob`
  * (dwie ostatnie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem). Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
@@ -396,15 +397,20 @@ export const GRUPY = {
       },
     ],
   },
-  /** Edycja lekcji: treść, nagranie, materiały (H08) — dziś część strony szczegółu kursu, ten sam adres. */
+  /**
+   * Edycja lekcji: treść, nagranie, materiały (H08). Osobny ekran pod własnym
+   * adresem z kursem w ścieżce — bez starej trasy, bo w starym froncie lekcję
+   * edytowało się na stronie kursu. Wchodzi się na niego z ekranu kursu
+   * odnośnikiem „Materiały i nagranie” w formularzu przy wierszu lekcji.
+   */
   edycjaLekcji: {
     klucz: "edycjaLekcji",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
-        staraTrasa: "/admin/kursy/[id]",
-        nowaTrasa: "/admin/kursy/[id]",
+        staraTrasa: null,
+        nowaTrasa: "/admin/kursy/[id]/lekcje/[idLekcji]",
         trasaPoligonu: "/nowy-front/admin/lekcje/[id]",
       },
     ],
