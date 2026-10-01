@@ -64,7 +64,7 @@ const WGRANY: MaterialAdmin = {
 };
 
 const ZDANIE_O_LISCIE =
-  "Lista wcześniej wgranych materiałów pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
+  "Lista wcześniej wgranych plików pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
 
 type Wgranie = () => unknown;
 
@@ -106,28 +106,28 @@ describe("licznik materiałów lekcji i zdanie o wcześniej wgranych", () => {
   it("licznik 3: zdanie z liczbą i zdanie o liście; nie ma stanu pustego", async () => {
     await renderEkranu(3);
 
-    expect(within(sekcja()).getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
+    expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
     expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
-    expect(within(sekcja()).queryByText("Ta lekcja nie ma jeszcze materiałów.")).toBeNull();
+    expect(within(sekcja()).queryByText("Ta lekcja nie ma jeszcze plików.")).toBeNull();
     expect(within(sekcja()).queryByText(/Brak materiałów/)).toBeNull();
   });
 
   it("licznik 0: stan pusty, bez zdania o liście", async () => {
     await renderEkranu(0);
 
-    expect(within(sekcja()).getByText("Ta lekcja nie ma jeszcze materiałów.")).toBeInTheDocument();
+    expect(within(sekcja()).getByText("Ta lekcja nie ma jeszcze plików.")).toBeInTheDocument();
     expect(within(sekcja()).queryByText(ZDANIE_O_LISCIE)).toBeNull();
     expect(within(sekcja()).queryByText(/^Ta lekcja ma /)).toBeNull();
   });
 
   it.each([
-    [1, "Ta lekcja ma 1 materiał."],
-    [2, "Ta lekcja ma 2 materiały."],
-    [4, "Ta lekcja ma 4 materiały."],
-    [5, "Ta lekcja ma 5 materiałów."],
-    [12, "Ta lekcja ma 12 materiałów."],
-    [22, "Ta lekcja ma 22 materiały."],
-    [25, "Ta lekcja ma 25 materiałów."],
+    [1, "Ta lekcja ma 1 plik."],
+    [2, "Ta lekcja ma 2 pliki."],
+    [4, "Ta lekcja ma 4 pliki."],
+    [5, "Ta lekcja ma 5 plików."],
+    [12, "Ta lekcja ma 12 plików."],
+    [22, "Ta lekcja ma 22 pliki."],
+    [25, "Ta lekcja ma 25 plików."],
   ])("licznik %i: forma liczby „%s”", async (liczba, zdanie) => {
     await renderEkranu(liczba);
 
@@ -138,12 +138,12 @@ describe("licznik materiałów lekcji i zdanie o wcześniej wgranych", () => {
     const { container, uzytkownik } = await renderEkranu(3);
 
     await wgraj(container, uzytkownik);
-    expect(await within(sekcja()).findByText("Ta lekcja ma 4 materiały.")).toBeInTheDocument();
+    expect(await within(sekcja()).findByText("Ta lekcja ma 4 pliki.")).toBeInTheDocument();
     expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
 
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
     await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń plik" }));
-    await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument());
+    await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument());
     expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
   });
 
@@ -152,9 +152,9 @@ describe("licznik materiałów lekcji i zdanie o wcześniej wgranych", () => {
 
     await wgraj(container, uzytkownik);
 
-    expect(await within(sekcja()).findByText("Ta lekcja ma 1 materiał.")).toBeInTheDocument();
+    expect(await within(sekcja()).findByText("Ta lekcja ma 1 plik.")).toBeInTheDocument();
     expect(within(sekcja()).queryByText(ZDANIE_O_LISCIE)).toBeNull();
-    expect(within(sekcja()).queryByText("Ta lekcja nie ma jeszcze materiałów.")).toBeNull();
+    expect(within(sekcja()).queryByText("Ta lekcja nie ma jeszcze plików.")).toBeNull();
   });
 });
 
@@ -204,6 +204,6 @@ describe("wgrany plik widać raz", () => {
     expect(container.querySelector("[data-stan='blad']")).not.toBeNull();
     expect(within(sekcja()).getAllByText("duzy.pdf")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /^Usuń plik/ })).toBeNull();
-    expect(within(sekcja()).getByText("Ta lekcja ma 3 materiały.")).toBeInTheDocument();
+    expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
   });
 });

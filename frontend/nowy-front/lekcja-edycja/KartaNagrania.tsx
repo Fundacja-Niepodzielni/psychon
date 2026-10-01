@@ -1,16 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
-import { ProgressBar } from "@/design-system/atomy/ProgressBar/ProgressBar";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { FileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
+import { PasekPostepu } from "@/nowy-front/wysylanie-nagrania/PasekPostepu";
 import { czasNagrania } from "./formularz";
 import {
   formatRozmiaru,
-  NBSP,
   procentWyslania,
   zdaniePostepu,
   zdaniePrzerwania,
@@ -24,7 +24,7 @@ import style from "./StronaLekcji.module.css";
  * - `podmienia-od-razu` — zaplecze odpina poprzednie nagranie w chwili
  *   rozpoczęcia wysyłania (tak działa dziś);
  * - `zachowuje-poprzednie` — uczestnicy oglądają poprzednie nagranie, dopóki
- *   nowe nie jest gotowe (stan pokazowy: ekran go nie ustawia).
+ *   nowe nie jest gotowe (ekran go dziś nie ustawia).
  */
 export type WymianaNagrania = "brak" | "podmienia-od-razu" | "zachowuje-poprzednie";
 
@@ -36,15 +36,13 @@ export interface WlasciwosciKartyNagrania {
   powodBrakuWysylania: string | null;
   /** Czy na stronie jest niezapisany tekst lekcji. */
   niezapisanyTekst: boolean;
-  /** Czy przerwane wysyłanie da się dokończyć tym samym plikiem. */
-  wznawia?: boolean;
   wymiana?: WymianaNagrania;
   /** Odmowa wyboru pliku (np. plik nie jest nagraniem) — pod polem wyboru. */
   bladWyboru?: string | null;
   onWybierzPlik: (pliki: FileList) => void;
   onPrzerwij?: () => void;
-  /** „Wyślij inny plik od nowa” w stanie przerwanym. */
-  onOdNowa?: () => void;
+  /** Plik wybrany po „Wyślij inny plik od nowa” w stanie przerwanym — wysyłanie od zera. */
+  onOdNowa?: (pliki: FileList) => void;
 }
 
 const ETAPY = ["Wysyłanie", "Przetwarzanie", "Gotowe"] as const;
@@ -82,7 +80,6 @@ export function KartaNagrania({
   stan,
   powodBrakuWysylania,
   niezapisanyTekst,
-  wznawia = false,
   wymiana = "brak",
   bladWyboru = null,
   onWybierzPlik,
@@ -90,12 +87,15 @@ export function KartaNagrania({
   onOdNowa,
 }: WlasciwosciKartyNagrania) {
   const mozeWysylac = powodBrakuWysylania === null;
+  // Stan przerwany: osoba zamiast dokończenia wybrała wysłanie innego pliku od zera.
+  const [odNowa, setOdNowa] = useState(false);
+  const wybieraOdNowa = odNowa && stan.rodzaj === "przerwane" && onOdNowa !== undefined;
 
-  function wybor(etykieta: string, podpowiedz: string) {
+  function wybor(etykieta: string, podpowiedz: string, naWybor: (pliki: FileList) => void = onWybierzPlik) {
     if (!mozeWysylac) return <Hint>{powodBrakuWysylania}</Hint>;
     return (
       <>
-        <FileDropZone id={`${id}-plik`} etykieta={etykieta} podpowiedz={podpowiedz} pliki={[]} onWybierzPliki={onWybierzPlik} />
+        <FileDropZone id={`${id}-plik`} etykieta={etykieta} podpowiedz={podpowiedz} pliki={[]} onWybierzPliki={naWybor} />
         {bladWyboru && <ErrorText id={`${id}-blad-wyboru`}>{bladWyboru}</ErrorText>}
       </>
     );
@@ -113,15 +113,14 @@ export function KartaNagrania({
         </p>
         <Etapy biezacy={1} />
         <Hint>Gdy wysyłanie dojdzie do 100 %, możesz wszystko zamknąć. Przetwarzanie trwa zwykle 10–30 minut.</Hint>
-        <ProgressBar procent={procent} etykieta={zdaniePostepu(procent, stan.zostaloSekund)} />
+        <div className={style.postep}>
+          <PasekPostepu procent={procent} nazwa="Wysyłanie nagrania" rozmiar="duzy" />
+          <p className={style.procent}>{zdaniePostepu(procent, stan.zostaloSekund)}</p>
+        </div>
+        <Text>Możesz przejść do kursu i innych lekcji – wysyłanie trwa dalej, a postęp widać na liście lekcji.</Text>
         <Text>
-          Zostań w tej lekcji do końca wysyłania. Po przejściu do kursu albo innej lekcji nie zobaczysz postępu, a wysyłanie
-          może się przerwać.
-        </Text>
-        <Text>
-          {wznawia
-            ? "Nie zamykaj karty przeglądarki do końca wysyłania. Jeśli się przerwie, wybierz ten sam plik – wysyłanie ruszy od miejsca, w którym stanęło."
-            : "Nie zamykaj karty przeglądarki do końca wysyłania. Jeśli się przerwie, trzeba będzie wysłać plik od nowa."}
+          Nie zamykaj karty przeglądarki do końca wysyłania. Jeśli się przerwie, wybierz ten sam plik – wysyłanie ruszy od
+          miejsca, w którym stanęło.
         </Text>
         {zdanieWymiany}
         {onPrzerwij && (
@@ -138,15 +137,17 @@ export function KartaNagrania({
     tresc = (
       <>
         <p className={style.zatrzymane}>{zdaniePrzerwania(stan.wyslano, stan.rozmiar)}</p>
-        <ProgressBar procent={procent} etykieta={`${procent}${NBSP}% · wysyłanie przerwane`} />
+        <PasekPostepu procent={procent} nazwa="Wysyłanie nagrania, przerwane" rozmiar="duzy" zatrzymany />
         <Text>
           Wybierz ten sam plik: <strong>{stan.nazwa}</strong>, {formatRozmiaru(stan.rozmiar)}, a wyślemy resztę.
         </Text>
-        {stan.innyPlik && <ErrorText id={`${id}-inny-plik`}>To nie jest ten sam plik</ErrorText>}
-        {wybor("Wybierz plik, żeby dokończyć", "Ten sam plik, który był wysyłany.")}
+        {stan.innyPlik && !wybieraOdNowa && <ErrorText id={`${id}-inny-plik`}>To nie jest ten sam plik</ErrorText>}
+        {wybieraOdNowa
+          ? wybor("Wybierz inny plik", "Wysyłanie zacznie się od początku. To, co wysłano dotąd, przepadnie.", onOdNowa)
+          : wybor("Wybierz plik, żeby dokończyć", "Ten sam plik, który był wysyłany.")}
         {mozeWysylac && onOdNowa && (
           <div>
-            <Button poziom="quiet" type="button" onClick={onOdNowa}>
+            <Button poziom="quiet" type="button" aria-pressed={wybieraOdNowa} onClick={() => setOdNowa((poprzednio) => !poprzednio)}>
               Wyślij inny plik od nowa
             </Button>
           </div>

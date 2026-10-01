@@ -1,0 +1,140 @@
+/* Wysyłanie nagrania: pasek u góry ramy, pasek postępu, stan w wierszu lekcji.
+   Barwy, odstępy i rozmiary pisma wyłącznie z tokeny.css. */
+
+/* Pasek stoi na samej górze treści ramy, od krawędzi do krawędzi: ujemne
+   marginesy równe wewnętrznym odstępom treści ramy. */
+.pasek {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: var(--hit-min);
+  margin: calc(-1 * var(--space-28)) calc(-1 * var(--space-40)) var(--space-16);
+  padding: 0 var(--space-40);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: var(--fs-10);
+}
+
+/* Barwa ostrzeżenia leży na pełnym tle karty, więc kontrast tekstu nie zależy od tła ekranu pod paskiem. */
+.pasekPrzerwany {
+  background: linear-gradient(var(--warn-bg), var(--warn-bg)), var(--card);
+  color: var(--ink);
+}
+
+.pasekPrzerwany .odnosnik > a {
+  color: var(--brand);
+}
+
+.zdanie {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.zdanie > span {
+  flex: none;
+}
+
+.zdanie > .tytul {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pasekPrzerwany .tytul {
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+}
+
+.pasek > .tor {
+  flex: none;
+  width: 120px;
+}
+
+.odnosnik {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-min);
+  margin-left: auto;
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.odnosnik > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-min);
+}
+
+.tor {
+  display: block;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--grey);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  overflow: hidden;
+}
+
+.torDuzy {
+  height: 10px;
+}
+
+.wypelnienie {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+}
+
+.wypelnienieZatrzymane {
+  background: var(--subtle);
+}
+
+/* Stan wysyłania w wierszu lekcji na ekranie kursu. */
+.wWierszu {
+  display: block;
+}
+
+.wWierszu .tor {
+  width: 120px;
+  max-width: 100%;
+  margin-top: var(--space-4);
+}
+
+.przerwaneWWierszu {
+  color: var(--error);
+  font-weight: var(--fw-medium);
+}
+
+@media (max-width: 1023px) {
+  .pasek {
+    margin: calc(-1 * var(--space-20)) calc(-1 * var(--space-18)) var(--space-12);
+    padding: 0 var(--space-18);
+    gap: var(--space-10);
+  }
+}
+
+@media (max-width: 599px) {
+  /* Telefon: tytuł lekcji, procent i pasek; początek zdania zostaje dla czytnika, czas znika. */
+  .zdanie > .poczatek {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .zdanie > .czas {
+    display: none;
+  }
+
+  .pasek > .tor {
+    flex: 1 1 40px;
+    min-width: 40px;
+    max-width: 120px;
+  }
+}

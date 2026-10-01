@@ -11,6 +11,7 @@ import { api, endSession } from "@/lib/api";
 import { LEGAL_DOCUMENT_LABELS, LEGAL_DOCUMENT_TYPES } from "@/lib/h22/legal-documents";
 import { menuRamkiAdministracji } from "@/lib/menu/ramka/administracja";
 import { ukladMenuRamki } from "@/lib/menu/ramka/uklad";
+import { PasekWysylania } from "@/nowy-front/wysylanie-nagrania/PasekWysylania";
 
 interface Ja {
   first_name?: string | null;
@@ -47,6 +48,8 @@ export function rokProgramuZEdycji(edycja: Edycja | null | undefined): string | 
  * Kliknięcie pozycji menu to przejście po stronie klienta (`router.push`),
  * bez przeładowania dokumentu; pełnym przejściem zostaje tylko wylogowanie
  * pod adres SSO. Strażnika ról nie niesie — stoi nad nią w układzie.
+ * Nad treścią ekranu stoi pasek wysyłania nagrania (`PasekWysylania`): bez
+ * wysyłania nie rysuje niczego.
  */
 export function PowlokaAdministracji({ children }: { children: ReactNode }) {
   const sciezka = usePathname() ?? "";
@@ -124,6 +127,7 @@ export function PowlokaAdministracji({ children }: { children: ReactNode }) {
         </>
       }
     >
+      <PasekWysylania />
       {children}
     </PowlokaPanelu>
   );
