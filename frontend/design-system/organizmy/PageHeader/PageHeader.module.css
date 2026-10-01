@@ -67,17 +67,15 @@
 }
 
 /* Dwie akcje nagłówka (drugorzędna i główna; makieta 2.0.4, `.head .acts`).
-   Poniżej 768 px jedna pod drugą, na pełną szerokość, główna pierwsza
-   (`order: -1`, jak `.head .acts .btn.p` w makiecie); od 768 px w jednym
-   wierszu: drugorzędna po lewej, główna przy prawej krawędzi. */
+   Poniżej 768 px jedna pod drugą, na pełną szerokość; od 768 px w jednym
+   wierszu, przy prawej krawędzi. Na każdej szerokości kolejność wizualna
+   jest kolejnością w DOM: drugorzędna, potem główna — bez `order`, żeby
+   kolejność fokusu była kolejnością widoczną (WCAG 2.4.3; makieta stawia
+   przycisk główny na górze, tu świadomie odstępstwo). */
 .akcjeDwie {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-}
-
-.akcjeDwie > button:last-child {
-  order: -1;
 }
 
 @media (min-width: 768px) {
@@ -110,9 +108,5 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-  }
-
-  .akcjeDwie > button:last-child {
-    order: 0;
   }
 }

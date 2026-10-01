@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -128,6 +130,34 @@ describe("PageHeader — akcja drugorzędna nagłówka", () => {
     );
     expect(container.querySelector("[data-testid='pageheader-glowa']")).toBeNull();
     expect(container.querySelector("[data-testid='pageheader-akcje']")).toBeNull();
+  });
+});
+
+describe("PageHeader — kolejność wizualna akcji = kolejność w DOM (WCAG 2.4.3)", () => {
+  it("style akcji nie przestawiają kolejności: brak właściwości order i odwróconego kierunku w regułach .akcjeDwie", () => {
+    const css = readFileSync(join(__dirname, "..", "PageHeader.module.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const reguly = [...css.matchAll(/([^{}]*\.akcjeDwie[^{}]*)\{([^{}]*)\}/g)];
+    expect(reguly.length).toBeGreaterThan(0);
+    for (const [, selektor, tresc] of reguly) {
+      expect(tresc, `reguła ${selektor.trim()}`).not.toMatch(/order\s*:/);
+      expect(tresc, `reguła ${selektor.trim()}`).not.toMatch(/-reverse/);
+    }
+  });
+
+  it("kolejność DOM: drugorzędna, potem główna", () => {
+    const { container } = render(
+      <DostawcaRamki>
+        <PageHeader
+          okruszki={OKRUSZKI}
+          tytul="Ekran"
+          onPowrot={() => undefined}
+          przyciskGlowny={{ etykieta: "Dodaj", onKliknij: () => undefined }}
+          akcjaDrugorzedna={{ etykieta: "Importuj", onKliknij: () => undefined }}
+        />
+      </DostawcaRamki>,
+    );
+    const akcje = container.querySelector("[data-testid='pageheader-przycisk-glowny']") as HTMLElement;
+    expect(Array.from(akcje.querySelectorAll("button")).map((p) => p.textContent)).toEqual(["Importuj", "Dodaj"]);
   });
 });
 

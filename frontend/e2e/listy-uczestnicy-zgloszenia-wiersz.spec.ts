@@ -234,10 +234,23 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         expect(Math.abs(a.y - b.y), "w jednym wierszu").toBeLessThanOrEqual(2);
         expect(b.x + b.width, "drugorzędna przed główną").toBeLessThanOrEqual(a.x);
       } else {
-        expect(a.y + a.height, "główny nad drugorzędnym").toBeLessThanOrEqual(b.y);
+        expect(b.y + b.height, "drugorzędny nad głównym").toBeLessThanOrEqual(a.y);
         expect(Math.abs(a.width - b.width), "równa szerokość").toBeLessThanOrEqual(1);
         expect(a.width, "pełna szerokość treści").toBeGreaterThanOrEqual(szerokoscTresci - 40);
       }
+      // Kolejność fokusu = kolejność wizualna: Tab z poprzedzającego elementu trafia najpierw w drugorzędną, potem w główną.
+      await page.getByRole("heading", { level: 1 }).evaluate((el) => {
+        el.setAttribute("tabindex", "-1");
+        (el as HTMLElement).focus();
+      });
+      const nazwy: string[] = [];
+      for (let i = 0; i < 6 && nazwy.length < 2; i++) {
+        await page.keyboard.press("Tab");
+        const nazwa = await page.evaluate(() => document.activeElement?.textContent?.trim() ?? "");
+        if (nazwa === "Dodaj zgłoszenie" || nazwa === "Importuj z pliku CSV") nazwy.push(nazwa);
+      }
+      console.log(`POMIAR-TAB-AKCJI /admin/nabor @${szerokosc} ${JSON.stringify(nazwy)}`);
+      expect(nazwy, "kolejność Tab = kolejność wizualna").toEqual(["Importuj z pliku CSV", "Dodaj zgłoszenie"]);
       // Kolor ma tylko przycisk główny.
       const tla = await glowa.getByRole("button").evaluateAll((p) => p.map((el) => getComputedStyle(el).backgroundColor));
       expect(new Set(tla).size, `tła przycisków ${tla.join(" | ")}`).toBe(2);
