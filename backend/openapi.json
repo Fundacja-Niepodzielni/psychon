@@ -8796,6 +8796,49 @@
             }
         },
         "/v1/admin/lessons/{lesson}/materials": {
+            "get": {
+                "operationId": "materialAdmin.indexForLesson",
+                "tags": [
+                    "MaterialAdmin"
+                ],
+                "parameters": [
+                    {
+                        "name": "lesson",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {}
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
             "post": {
                 "operationId": "materialAdmin.storeForLesson",
                 "tags": [
