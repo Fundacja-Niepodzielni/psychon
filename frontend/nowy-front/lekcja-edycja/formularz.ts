@@ -137,6 +137,25 @@ export function zdanieBleduUsuniecia(blad: unknown): string {
   return "Nie udało się usunąć lekcji. Sprawdź połączenie i spróbuj ponownie.";
 }
 
+/** Forma rzeczownika przy liczbie: 1 materiał, 2–4 materiały (poza 12–14), w pozostałych przypadkach materiałów. */
+function formaMaterialow(liczba: number): string {
+  if (liczba === 1) return "materiał";
+  const jednosci = liczba % 10;
+  const dziesiatki = liczba % 100;
+  if (jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14)) return "materiały";
+  return "materiałów";
+}
+
+/** Zdanie o liczbie materiałów lekcji; zero to stan pusty. */
+export function zdanieLiczbyMaterialow(liczba: number): string {
+  if (liczba <= 0) return "Ta lekcja nie ma jeszcze materiałów.";
+  return `Ta lekcja ma ${liczba} ${formaMaterialow(liczba)}.`;
+}
+
+/** Zdanie pokazywane, gdy lekcja ma materiały wgrane wcześniej — ekran nie ma jeszcze ich listy. */
+export const ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH =
+  "Lista wcześniej wgranych materiałów pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
+
 /** Odmowa usunięcia materiału lekcji — zdanie dla osoby, bez kodu i bez nazwy trasy. */
 export function zdanieBleduUsunieciaMaterialu(blad: unknown): string {
   if (blad instanceof ApiError) {

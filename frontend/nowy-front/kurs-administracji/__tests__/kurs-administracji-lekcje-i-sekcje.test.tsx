@@ -500,12 +500,15 @@ describe("niezapisane zmiany w formularzu lekcji", () => {
     expect(document.activeElement).not.toBe(document.body);
   });
 
-  it("odnośnika „Materiały i nagranie” nie ma w formularzu przy wierszu, dopóki ekran lekcji nie ma adresu w panelu", async () => {
+  it("formularz przy wierszu niesie odnośnik „Materiały i nagranie” do ekranu lekcji z kursem w adresie", async () => {
     const { container } = await renderEkranu();
     await otworz(container, 22, "Lekcja B");
 
-    expect(screen.queryByRole("link", { name: "Materiały i nagranie" })).toBeNull();
-    expect(container.querySelector("a[href*='/lekcje/']")).toBeNull();
+    expect(within(wiersz(container, 22)).getByRole("link", { name: "Materiały i nagranie" })).toHaveAttribute(
+      "href",
+      "/admin/kursy/4/lekcje/22",
+    );
+    expect(container.querySelectorAll("a[href*='/lekcje/']")).toHaveLength(1);
     expect(within(wiersz(container, 22)).getByRole("button", { name: "Usuń lekcję „Lekcja B”" })).toBeInTheDocument();
   });
 

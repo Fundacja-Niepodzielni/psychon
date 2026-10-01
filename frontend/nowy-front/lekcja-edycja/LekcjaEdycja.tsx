@@ -46,7 +46,9 @@ import {
   walidujLokalnie,
   zdanieBleduPliku,
   zdanieBleduUsuniecia,
+  ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH,
   zdanieBleduUsunieciaMaterialu,
+  zdanieLiczbyMaterialow,
   zdanieBleduZapisu,
   type BledyFormularza,
   type StanFormularza,
@@ -326,10 +328,20 @@ function EdytorLekcji({
   const [usuwanie, setUsuwanie] = useState(false);
   const [bladUsuniecia, setBladUsuniecia] = useState<string | null>(null);
   const [liczbaMaterialow, setLiczbaMaterialow] = useState(lekcja.materials_count);
+  const [ogloszenieMaterialu, setOgloszenieMaterialu] = useState("");
   const materialy = useWgrywanieMaterialow(
     (plik) => wgrajMaterial(zapisana.id, plik),
-    () => setLiczbaMaterialow((poprzednia) => poprzednia + 1),
+    (material) => {
+      setLiczbaMaterialow((poprzednia) => poprzednia + 1);
+      setOgloszenieMaterialu(`Wgrano materiał „${material.name}”.`);
+    },
   );
+  // Plik wgrany do końca stoi w jednym wierszu — na liście z „Usuń”. Wiersz stanu zostaje
+  // tylko dla pliku, który się jeszcze wgrywa albo którego wgranie się nie udało.
+  const plikiWToku = materialy.pliki.filter((plik) => plik.stan !== "gotowy");
+  // Licznik z zaplecza obejmuje też pliki dodane teraz; reszta to materiały wgrane wcześniej,
+  // których listy ekran jeszcze nie ma.
+  const wczesniejszeMaterialy = liczbaMaterialow - materialy.wgrane.length;
   const [materialDoUsuniecia, setMaterialDoUsuniecia] = useState<MaterialAdmin | null>(null);
   const [bladMaterialu, setBladMaterialu] = useState<string | null>(null);
   const [plikiNagrania, setPlikiNagrania] = useState<PlikFileDropZone[]>([]);
@@ -634,14 +646,18 @@ function EdytorLekcji({
               <Heading stopien={2} id={`${baza}-materialy`}>
                 Materiały
               </Heading>
-              <Text>{`Materiały przy tej lekcji: ${liczbaMaterialow}.`}</Text>
+              <Text>{zdanieLiczbyMaterialow(liczbaMaterialow)}</Text>
+              {wczesniejszeMaterialy > 0 && <Hint>{ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH}</Hint>}
               <FileDropZone
                 id={`${baza}-plik-materialu`}
                 etykieta="Upuść tutaj materiały albo wybierz je z dysku."
                 podpowiedz="Dozwolone formaty: PDF, DOC, DOCX, PPT, PPTX, PNG, JPG. Plik może mieć najwyżej 10 MB."
-                pliki={materialy.pliki}
+                pliki={plikiWToku}
                 onWybierzPliki={(lista) => void materialy.dodaj(lista)}
               />
+              <p role="status" className={style.tylkoCzytnika}>
+                {ogloszenieMaterialu}
+              </p>
               {bladMaterialu && (
                 <Notice wariant="error" tytul="Materiał nie został usunięty">
                   {bladMaterialu}
