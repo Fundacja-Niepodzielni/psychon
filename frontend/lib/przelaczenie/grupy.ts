@@ -394,6 +394,22 @@ export const GRUPY = {
       },
     ],
   },
+  /**
+   * Kurs administracji: tematy i lekcje, publikacja, zaproszenia i usunięcie
+   * na jednym ekranie (H08) — ten sam adres co dzisiejszy szczegół kursu.
+   */
+  kursAdministracji: {
+    klucz: "kursAdministracji",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/kursy/[id]",
+        nowaTrasa: "/admin/kursy/[id]",
+        trasaPoligonu: "/nowy-front/admin/kursy/[id]",
+      },
+    ],
+  },
   /** Lista osób w administracji — ten sam adres co dzisiejsza strona osób (zakładka „Osoby”). */
   listaOsob: {
     klucz: "listaOsob",
