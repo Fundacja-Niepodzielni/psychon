@@ -134,6 +134,75 @@ describe("zapis układu — zmiana zrobiona w trakcie zapisu", () => {
   });
 });
 
+describe("drugie zatwierdzenie przed odpowiedzią serwera", () => {
+  it("„Dodaj lekcję” kliknięte dwa razy zakłada jedną lekcję", async () => {
+    const odpowiedz = odroczona<unknown>();
+    serwer.nadpisz("POST", "/admin/courses/4/lessons", () => odpowiedz.obietnica);
+    const { container } = await renderEkranu();
+    await userEvent.click(screen.getByTestId("ct-dodaj-8"));
+    const formularz = within(container.querySelector<HTMLElement>("[data-pod-tematem='8']")!).getByRole("form", {
+      name: "Nowa lekcja",
+    });
+    await userEvent.type(within(formularz).getByLabelText(/^Tytuł lekcji/), "Lekcja D");
+    await userEvent.type(within(formularz).getByLabelText(/^Czas trwania w sekundach/), "120");
+
+    await userEvent.dblClick(within(formularz).getByRole("button", { name: "Dodaj lekcję" }));
+    expect(zapisy("POST", "/admin/courses/4/lessons")).toHaveLength(1);
+
+    await act(async () => {
+      odpowiedz.zwolnij({ ...lekcja(100, "Lekcja D"), topic_id: 8, duration_seconds: 120 });
+    });
+    expect(await screen.findAllByRole("button", { name: "Edytuj lekcję „Lekcja D”" })).toHaveLength(1);
+
+    // Flaga schodzi po odpowiedzi: następna lekcja daje się założyć.
+    await userEvent.click(screen.getByTestId("ct-dodaj-8"));
+    const drugi = within(container.querySelector<HTMLElement>("[data-pod-tematem='8']")!).getByRole("form", {
+      name: "Nowa lekcja",
+    });
+    await userEvent.type(within(drugi).getByLabelText(/^Tytuł lekcji/), "Lekcja E");
+    await userEvent.type(within(drugi).getByLabelText(/^Czas trwania w sekundach/), "60");
+    await userEvent.click(within(drugi).getByRole("button", { name: "Dodaj lekcję" }));
+    await waitFor(() => expect(zapisy("POST", "/admin/courses/4/lessons")).toHaveLength(2));
+  });
+
+  it("okno „Nowy temat”: dwa kliknięcia „Dodaj temat” dają jeden temat", async () => {
+    const odpowiedz = odroczona<unknown>();
+    serwer.nadpisz("POST", "/admin/courses/4/topics", () => odpowiedz.obietnica);
+    await renderEkranu();
+    await userEvent.click(screen.getByRole("button", { name: "Dodaj temat" }));
+    const okno = screen.getByRole("dialog", { name: "Nowy temat" });
+    await userEvent.type(within(okno).getByLabelText(/^Nazwa tematu/), "Podsumowanie");
+
+    await userEvent.dblClick(within(okno).getByRole("button", { name: "Dodaj temat" }));
+    expect(zapisy("POST", "/admin/courses/4/topics")).toHaveLength(1);
+
+    await act(async () => {
+      odpowiedz.zwolnij(temat(99, "Podsumowanie", 3, []));
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getAllByRole("heading", { level: 3, name: "Podsumowanie" })).toHaveLength(1);
+  });
+
+  it("okno „Zmień nazwę tematu”: Enter i kliknięcie dają jedno żądanie", async () => {
+    const odpowiedz = odroczona<unknown>();
+    serwer.nadpisz("PATCH", "/admin/topics/7", () => odpowiedz.obietnica);
+    await renderEkranu();
+    await userEvent.click(screen.getByRole("button", { name: "Zmień nazwę tematu „Wprowadzenie”" }));
+    const okno = screen.getByRole("dialog", { name: "Zmień nazwę tematu" });
+    const pole = within(okno).getByLabelText(/^Nazwa tematu/);
+    await userEvent.clear(pole);
+    await userEvent.type(pole, "Wstęp{Enter}");
+    await userEvent.click(within(okno).getByRole("button", { name: "Zapisz nazwę" }));
+    expect(zapisy("PATCH", "/admin/topics/7")).toHaveLength(1);
+
+    await act(async () => {
+      odpowiedz.zwolnij(temat(7, "Wstęp", 1, [21, 22]));
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("heading", { level: 3, name: "Wstęp" })).toBeInTheDocument();
+  });
+});
+
 // Dane wspólne prób muszą zostać nietknięte przez ten plik.
 it("atrapa: trzy lekcje w dwóch tematach", () => {
   expect(LEKCJE.map((l) => l.id)).toEqual([21, 22, 23]);

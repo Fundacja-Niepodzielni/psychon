@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   COURSE_TYPE_LABELS,
@@ -281,6 +281,11 @@ function EdytorTematow({
   const [brakiSerwera, setBrakiSerwera] = useState<PozycjaChecklisty[]>([]);
   const [bladPublikacji, setBladPublikacji] = useState<{ tytul: string; tresc: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Żądania, które już poszły: drugie zatwierdzenie tego samego formularza albo
+  // okna przed odpowiedzią serwera nie wysyła drugiego żądania. Flagi żyją tutaj,
+  // bo `FormSection` i `Dialog` nie mają stanu „w toku” dla swoich przycisków.
+  const dodawanieLekcji = useRef(false);
+  const wysylanieDialogu = useRef(false);
 
   useEffect(() => {
     let aktualne = true;
@@ -507,7 +512,7 @@ function EdytorTematow({
   }
 
   async function dodajNowaLekcje() {
-    if (!nowaLekcja || !zapis.nowaLekcja || zapisywanie) return;
+    if (!nowaLekcja || !zapis.nowaLekcja || zapisywanie || dodawanieLekcji.current) return;
     const pola = { title: nowaLekcja.tytul, description: nowaLekcja.opis, content: "", duration: nowaLekcja.czas };
     const lokalne = walidujLokalnie(pola);
     if (Object.keys(lokalne).length > 0) {
@@ -515,6 +520,7 @@ function EdytorTematow({
       return;
     }
     const { title, description, duration_seconds } = cialoZapisu(pola);
+    dodawanieLekcji.current = true;
     try {
       const lekcja = await zapis.nowaLekcja(kurs.id, {
         title,
@@ -554,6 +560,8 @@ function EdytorTematow({
     } catch (blad) {
       const bledyPol = bledyZSerwera(blad);
       setBledyNowejLekcji(bledyPol ?? { ogolny: zdanieBleduTematow(blad) });
+    } finally {
+      dodawanieLekcji.current = false;
     }
   }
 
@@ -674,6 +682,8 @@ function EdytorTematow({
       setBladDialogu("Podaj nazwę tematu.");
       return;
     }
+    if (wysylanieDialogu.current) return;
+    wysylanieDialogu.current = true;
     try {
       if (dialog.rodzaj === "dodaj") {
         const temat = await dodajTemat(grupa, kurs.id, tytul);
@@ -703,6 +713,8 @@ function EdytorTematow({
       setDialog(null);
     } catch (blad) {
       setBladDialogu(zdanieBleduTematow(blad));
+    } finally {
+      wysylanieDialogu.current = false;
     }
   }
 
