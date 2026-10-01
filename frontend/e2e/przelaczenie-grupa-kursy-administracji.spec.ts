@@ -284,7 +284,7 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
 
       await expect(wiersze(page)).toHaveCount(4);
       await expect(wiersze(page).first()).toContainText("Podstawy pomocy psychologicznej");
-      await expect(wiersze(page).first()).toContainText(["Pozycja", 1, "w ścieżce"].join(" ") + " · Kurs · Psychon · 1 lekcja");
+      await expect(wiersze(page).first()).toContainText(["Pozycja", 1, "w ścieżce"].join(" ") + " · Kurs · PsychON · 1 lekcja");
       await expect(wiersze(page).nth(3)).toContainText("Poza ścieżką · Webinar · Obie grupy · 0 lekcji");
       await expect(page.getByRole("link", { name: "Otwórz kurs: Wywiad psychologiczny" })).toHaveAttribute("href", "/admin/kursy/2");
 

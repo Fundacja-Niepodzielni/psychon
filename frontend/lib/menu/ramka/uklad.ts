@@ -13,6 +13,10 @@ import type { NazwaIkony } from "@/design-system/atomy/Icon/Icon";
  * - grupa „Dotychczasowy panel” idzie osobno (`grupaZwinieta`): szablon
  *   pokazuje ją zwiniętą przyciskiem przed grupą „Konto”, żeby
  *   „Wyloguj” było widoczne bez przewijania menu;
+ * - grupa z flagą `zwijana` (administracja: „Ustawienia”) zostaje w `grupy`, w swojej
+ *   kolejności, a flaga przechodzi do układu — `PanelNav` rysuje ją tym samym
+ *   komponentem zwijania co „Dotychczasowy panel”. Grupy bez flagi nie niosą
+ *   żadnego dodatkowego pola;
  * - linia „W przygotowaniu: …” nie wymienia funkcji, które są już pozycjami
  *   menu (także w „Dotychczasowym panelu”): zbiór linii = pozycje niegotowe
  *   minus pozycje obecne w menu. Porównanie nazw bez wielkości liter
@@ -36,6 +40,8 @@ export interface GrupaUkladu {
   naglowek: string;
   liniaWPrzygotowaniu?: string;
   pozycje: PozycjaUkladu[];
+  /** Grupa zwijana przyciskiem (flaga z menu roli); brak pola — grupa rysowana wprost. */
+  zwijana?: true;
 }
 
 function klucz(nazwa: string): string {
@@ -62,6 +68,7 @@ export function ukladMenuRamki(
   const naUklad = (grupa: GrupaMenuRamki): GrupaUkladu => ({
     naglowek: grupa.naglowek,
     liniaWPrzygotowaniu: liniaBezPozycjiMenu(grupa.wPrzygotowaniu, menu),
+    ...(grupa.zwijana ? { zwijana: true as const } : {}),
     pozycje: grupa.pozycje.map((p) => ({
       ikona: p.ikona,
       etykieta: p.etykieta,
