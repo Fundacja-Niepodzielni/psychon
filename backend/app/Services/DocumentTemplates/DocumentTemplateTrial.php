@@ -17,6 +17,8 @@ final class DocumentTemplateTrial
 {
     public const string FAILURE_MESSAGE = 'Z tego wzoru nie da się wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.';
 
+    public const string TOO_COSTLY_MESSAGE = 'Wzór jest zbyt złożony, żeby wygenerować z niego dokument: ma za dużo elementów, zbyt głębokie zagnieżdżenie, zbyt duże scalenie komórek tabeli albo za dużo stron.';
+
     /**
      * Czy z treści da się wygenerować dokument.
      */
@@ -39,6 +41,8 @@ final class DocumentTemplateTrial
             );
 
             return null;
+        } catch (DocumentTooCostly) {
+            return self::TOO_COSTLY_MESSAGE;
         } catch (Throwable) {
             return self::FAILURE_MESSAGE;
         }

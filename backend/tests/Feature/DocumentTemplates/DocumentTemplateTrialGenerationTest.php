@@ -6,6 +6,8 @@ use App\Models\Document;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use App\Models\User;
+use App\Services\DocumentTemplates\DocumentTemplateTrial;
+use App\Services\DocumentTemplates\DocumentTooCostly;
 use App\Services\H14\DocumentIssuer;
 use App\Support\PdfService;
 use Database\Seeders\DocumentTemplateSeeder;
@@ -25,12 +27,12 @@ use Tests\TestCase;
 use Throwable;
 
 /**
- * Wzór, na którym silnik PDF się wywraca,
+ * Wzór, na którym silnik PDF się wywraca albo który przekracza limit wejścia,
  * nie może ani zostać zapisany, ani zatrzymać wydawania dokumentów.
  *
  * Dwie zapory, każda z własnymi próbami:
  *  - ZAPIS: po regule pól dokument jest próbnie generowany z danymi
- *    przykładowymi; błąd silnika to odmowa 422 z jednym
+ *    przykładowymi; błąd silnika albo przekroczony limit to odmowa 422 z jednym
  *    zdaniem przy polu treści i nic nie jest zapisane;
  *  - GENEROWANIE: treść, która mimo to leży w bazie (wstawiona z pominięciem
  *    edytora albo zapisana w innym środowisku), nie kończy się błędem serwera —
@@ -55,6 +57,8 @@ class DocumentTemplateTrialGenerationTest extends TestCase
     use RefreshDatabase;
 
     private const string REFUSAL = 'Z tego wzoru nie da się wygenerować dokumentu. Usuń odwołania do plików i adresów; obrazy tylko osadzone w treści.';
+
+    private const string TOO_COSTLY = 'Wzór jest zbyt złożony, żeby wygenerować z niego dokument: ma za dużo elementów, zbyt głębokie zagnieżdżenie, zbyt duże scalenie komórek tabeli albo za dużo stron.';
 
     /** Treść, na której silnik kończy błędem — niezależnie od tego, co leży na dysku serwera. */
     private const string ENGINE_ERROR = '<div style="background:url(http://example.test/tlo.svg)">x</div>';
@@ -224,6 +228,38 @@ class DocumentTemplateTrialGenerationTest extends TestCase
     }
 
     /**
+     * Wejście tanie w zapisie i drogie w generowaniu: odmowa z własnym zdaniem, nic nie zapisane.
+     *
+     * @return array<string, array{0: string}>
+     */
+    public static function costlyContents(): array
+    {
+        return [
+            'tysiąc zagnieżdżonych tabel' => [str_repeat('<table><tr><td>', 1000)],
+            'scalenie komórek ponad limit' => ['<table><tr><td colspan="51" rowspan="2">x</td></tr></table>'],
+            '450 wymuszonych stron' => [str_repeat('<div style="page-break-after:always"></div>', 450).'<div style="height:100000cm">x</div>'],
+        ];
+    }
+
+    #[DataProvider('costlyContents')]
+    public function test_saving_a_template_over_the_generation_limit_is_refused_within_two_seconds(string $content): void
+    {
+        $this->seed(DocumentTemplateSeeder::class);
+        $this->actingAsRole('super_admin');
+
+        $started = hrtime(true);
+        $response = $this->putJson('/api/v1/document-templates/agreement', ['content' => $content]);
+        $seconds = (hrtime(true) - $started) / 1e9;
+
+        $response->assertStatus(422)->assertJsonPath('error.code', 'validation_failed');
+        $this->assertSame(self::TOO_COSTLY, $response->json('error.errors.content.0'));
+        $this->assertSame(self::TOO_COSTLY, DocumentTemplateTrial::TOO_COSTLY_MESSAGE);
+        $this->assertLessThan(2.0, $seconds);
+        $this->assertDatabaseHas('document_templates', ['type' => 'agreement', 'version' => 1]);
+        $this->assertSame(3, DocumentTemplateVersion::query()->count());
+    }
+
+    /**
      * Treść wstawiona wprost do bazy, z pominięciem trasy zapisu: pobranie
      * dokumentu osoby dalej działa, dokument powstaje z pliku w repozytorium.
      *
@@ -233,6 +269,7 @@ class DocumentTemplateTrialGenerationTest extends TestCase
     {
         return [
             'błąd silnika' => [self::ENGINE_ERROR, ErrorException::class],
+            'przekroczony limit wejścia' => [str_repeat('<table><tr><td>', 1000), DocumentTooCostly::class],
         ];
     }
 

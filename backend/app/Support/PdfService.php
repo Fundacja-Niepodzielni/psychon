@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Services\DocumentTemplates\DocumentCostLimit;
 use App\Services\DocumentTemplates\DocumentTemplateRenderer;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -33,6 +34,10 @@ use Throwable;
  *    ani z żądania nigdy na nią nie trafia. Pusta lista = żaden adres `data:`;
  *  - wykonywanie PHP osadzonego w treści i skrypty PDF są wyłączone jawnie,
  *    niezależnie od ustawień domyślnych biblioteki.
+ *
+ * Każde generowanie ma limit wejścia (`DocumentCostLimit`): liczba elementów,
+ * głębokość, scalenia komórek tabel i liczba stron. Twardego limitu czasu nie
+ * ma — środowisko żądań nie daje go bez zatrzymania całego procesu.
  */
 final class PdfService
 {
@@ -105,7 +110,7 @@ final class PdfService
     }
 
     /**
-     * Pełna droga generowania: silnik z ramą i render. Zwraca silnik
+     * Pełna droga generowania: silnik z ramą, limit wejścia, render. Zwraca silnik
      * po renderze — próby czytają z niego dokument bez kompresji, tą samą drogą,
      * którą powstaje każdy dokument.
      *
@@ -115,6 +120,9 @@ final class PdfService
     {
         $dompdf = self::engine($allowedDataUris);
         $dompdf->loadHtml($html, 'UTF-8');
+
+        // Limit liczony na drzewie, które zbudował sam silnik — przed renderem.
+        DocumentCostLimit::guard($dompdf);
 
         $dompdf->render();
 
