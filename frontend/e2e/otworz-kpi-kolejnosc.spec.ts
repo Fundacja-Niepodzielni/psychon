@@ -231,6 +231,16 @@ for (const rozmiar of [
       expect(widoczny).toBe("Otwórz");
     });
 
+    test("pulpit uczestnika: wiersz kursu w toku ma widoczne „Otwórz”, pełna nazwa z tytułem tylko dla czytnika", async ({ page }) => {
+      await atrapyUczestnika(page, "volunteer", "domyslny");
+      await page.goto("/panel/pulpit");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+
+      const odnosnik = page.locator('[data-kurs-stan="in_progress"]').getByRole("link", { name: "Otwórz kurs: Wywiad psychologiczny" });
+      await expect(odnosnik).toHaveCount(1);
+      expect((await odnosnik.innerText()).replace("›", "").trim()).toBe("Otwórz");
+    });
+
     test("słownik form stażu: podlinia „Kolejność N · opis”", async ({ page }) => {
       await atrapyFormStazu(page);
       await page.goto("/admin/formy-stazu");
