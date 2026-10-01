@@ -36,7 +36,20 @@ interface AkcjaListRow {
 interface WlasciwosciListRow {
   wariant?: WariantListRow;
   tytul: string;
+  /** Pogrubia tytuł (waga `--fw-medium`, jak rodzaj sprawy w makiecie). */
+  tytulPogrubiony?: boolean;
+  /**
+   * Druga część tytułu (np. osoba): stoi za tytułem po separatorze „·”, który
+   * należy do niej (nie do tytułu), więc przy zawinięciu linii nigdy nie
+   * zostaje na końcu linii. Poniżej 640 px stoi w drugiej linii obok
+   * plakietki, a separator znika.
+   */
+  tytulDodatek?: string;
   podpowiedz?: string;
+  /** Podpowiedź tylko dla czytnika ekranu (np. data); wzrokowo jej nie ma. */
+  podpowiedzTylkoDlaCzytnika?: boolean;
+  /** Wiersz bez wcięcia poziomego: tekst równo z krawędzią treści (z nagłówkiem ekranu). */
+  bezWciecia?: boolean;
   plakietka?: PlakietkaListRow;
   licznik?: LicznikListRow;
   akcja: AkcjaListRow;
@@ -56,30 +69,56 @@ interface WlasciwosciListRow {
  * Akcja `nieaktywna` to przycisk z kłódką (`aria-disabled`): od 640 px jak
  * nieaktywny przycisk drugorzędny, na węższym ekranie bez ramki, jak
  * „Otwórz ›”, żeby stała obok treści, a nie pod nią.
+ *
+ * Wiersz kolejki decyzji (makieta A-02): plakietka na początku, tytuł
+ * pogrubiony (`tytulPogrubiony`), za nim po „·” druga część tytułu
+ * (`tytulDodatek`); poniżej 640 px tytuł stoi w pierwszej linii, a druga
+ * część i plakietka w drugiej. `podpowiedzTylkoDlaCzytnika` zostawia
+ * podpowiedź (np. datę) wyłącznie czytnikowi ekranu, `bezWciecia` ustawia
+ * tekst równo z krawędzią treści ekranu.
  */
 export function ListRow({
   wariant = "prosty",
   tytul,
+  tytulPogrubiony = false,
+  tytulDodatek,
   podpowiedz,
+  podpowiedzTylkoDlaCzytnika = false,
+  bezWciecia = false,
   plakietka,
   licznik,
   akcja,
   otwarty = false,
   onKliknijWiersz,
 }: WlasciwosciListRow) {
-  const klasy = `${style.wiersz} ${otwarty ? style.otwarty : ""}`.trim();
+  const klasy = [style.wiersz, otwarty ? style.otwarty : "", bezWciecia ? style.bezWciecia : ""]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className={klasy} data-wariant={wariant} onClick={onKliknijWiersz}>
       <div className={style.tresc}>
-        <div className={style.naglowek}>
+        <div className={tytulPogrubiony ? `${style.naglowek} ${style.pogrubiony}` : style.naglowek}>
           {plakietka && (
             <span className={style.plakietka}>
               <Badge wariant={plakietka.wariant}>{plakietka.tekst}</Badge>
             </span>
           )}
           <Text>{tytul}</Text>
+          {tytulDodatek && (
+            <span className={style.dodatek}>
+              <span className={style.separator} aria-hidden="true">
+                ·
+              </span>
+              <span>{tytulDodatek}</span>
+            </span>
+          )}
         </div>
-        {podpowiedz && <Hint>{podpowiedz}</Hint>}
+        {podpowiedz &&
+          (podpowiedzTylkoDlaCzytnika ? (
+            <span className={style.ukryte}>{podpowiedz}</span>
+          ) : (
+            <Hint>{podpowiedz}</Hint>
+          ))}
       </div>
       <div className={style.akcje} onClick={(zdarzenie) => zdarzenie.stopPropagation()}>
         {licznik && <Num wartosc={licznik.wartosc} etykieta={licznik.etykieta} />}

@@ -90,3 +90,42 @@ describe("RecordList — stopień nagłówka sekcji", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Lista" })).toBeInTheDocument();
   });
 });
+
+describe("RecordList — nagłówek tylko dla czytnika i wiersze bez wcięcia", () => {
+  it("naglowekTylkoDlaCzytnika: nagłówek zostaje w drzewie nagłówków, ale w ukrytym kontenerze", () => {
+    render(<RecordList tytul="Sprawy" stopienNaglowka={2} naglowekTylkoDlaCzytnika wiersze={wiersze(1)} pusty={PUSTY} />);
+    const naglowek = screen.getByRole("heading", { level: 2, name: "Sprawy" });
+    expect(naglowek.parentElement?.className).toMatch(/ukryte/);
+  });
+
+  it("domyślnie nagłówek jest widoczny (bez ukrytego kontenera); ukryty także w stanie pustym", () => {
+    const { rerender } = render(<RecordList tytul="Sprawy" stopienNaglowka={2} wiersze={wiersze(1)} pusty={PUSTY} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Sprawy" }).parentElement?.className ?? "").not.toMatch(/ukryte/);
+    rerender(<RecordList tytul="Sprawy" stopienNaglowka={2} naglowekTylkoDlaCzytnika wiersze={[]} pusty={PUSTY} />);
+    expect(screen.getByRole("heading", { level: 2, name: "Sprawy" }).parentElement?.className).toMatch(/ukryte/);
+  });
+
+  it("wierszeBezWciecia przekazuje bezWciecia do każdego wiersza; pola wiersza docierają do ListRow", () => {
+    const { container } = render(
+      <RecordList
+        tytul="Sprawy"
+        wierszeBezWciecia
+        wiersze={[
+          {
+            id: "a",
+            tytul: "Dyżur",
+            tytulPogrubiony: true,
+            tytulDodatek: "Filip Demo",
+            podpowiedz: "Czeka od 1 stycznia 2026",
+            podpowiedzTylkoDlaCzytnika: true,
+            akcja: { etykieta: "Otwórz", href: "/w" },
+          },
+        ]}
+        pusty={PUSTY}
+      />,
+    );
+    expect(container.querySelector('[data-wariant="z-licznikiem"]')?.className).toMatch(/bezWciecia/);
+    expect(screen.getByText("Filip Demo")).toBeInTheDocument();
+    expect(screen.getByText("Czeka od 1 stycznia 2026").className).toMatch(/ukryte/);
+  });
+});
