@@ -475,7 +475,14 @@ function EdytorTematow({
     poprzedniaLiczbaZmian.current = liczbaZmianTeraz;
     if (bylo === 0 || liczbaZmianTeraz !== 0) return;
     const aktywny = document.activeElement;
-    if (aktywny === null || aktywny === document.body || !document.body.contains(aktywny)) setFokus({ cel: "kolejnosc" });
+    if (aktywny !== null && aktywny !== document.body && document.body.contains(aktywny)) return;
+    const cele = [`#${KOTWICA_LEKCJI} button[aria-pressed]`, `#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`, `#${KOTWICA_LEKCJI} button`];
+    for (const selektor of cele) {
+      const element = document.querySelector<HTMLElement>(selektor);
+      if (!element) continue;
+      element.focus();
+      if (document.activeElement === element) return;
+    }
   }, [liczbaZmianTeraz]);
 
   if (stan.rodzaj === "brak-sesji" || stan.rodzaj === "nie-znaleziono") {
