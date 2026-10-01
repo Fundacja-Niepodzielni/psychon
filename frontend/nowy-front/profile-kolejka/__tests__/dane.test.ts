@@ -28,9 +28,9 @@ describe("stany wniosku", () => {
     expect(dane.OPCJE_STANU.map((o) => o.wartosc)).toEqual(["submitted", "returned", "accepted", "published", "withdrawn", "draft"]);
   });
 
-  it("stan czekający na decyzję to domyślny filtr i plakietka „pending”", () => {
+  it("stan czekający na decyzję to domyślny filtr i plakietka „warn”", () => {
     expect(dane.STAN_DO_DECYZJI).toBe("submitted");
-    expect(dane.plakietkaStanu("submitted")).toEqual({ etykieta: "Czeka na decyzję", wariant: "pending" });
+    expect(dane.plakietkaStanu("submitted")).toEqual({ etykieta: "Czeka na decyzję", wariant: "warn" });
   });
 
   it("nieznany stan → „Stan nieznany”", () => {

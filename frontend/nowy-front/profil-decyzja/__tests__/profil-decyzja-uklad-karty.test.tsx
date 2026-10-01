@@ -55,8 +55,25 @@ describe("Wniosek o profil — karta i nagłówek", () => {
     const naglowek = h1.closest("header") as HTMLElement;
     const plakietka = within(naglowek).getByText("czeka na decyzję");
     expect(plakietka.className).toMatch(/plakietka/);
-    expect(plakietka.className).toMatch(/pending/);
+    expect(plakietka.className).toMatch(/warn/);
     // To samo, co w wierszu listy: `Badge` jest `span` z klasą wariantu, nie zwykły tekst.
     expect(plakietka.tagName).toBe("SPAN");
+  });
+
+  it("wariant plakietki bierze ze wspólnego mapowania z kolejki: „czeka na decyzję” to warn w obu miejscach", async () => {
+    const kolejka = await import("../../profile-kolejka/dane");
+    expect(kolejka.plakietkaStanu("submitted").wariant).toBe("warn");
+    expect(kolejka.wariantStanu("submitted")).toBe("warn");
+    // Pozostałe stany zachowują dotychczasowy wariant.
+    expect(
+      (["draft", "submitted", "returned", "accepted", "published", "withdrawn", "nieznany"] as const).map(
+        (stan) => kolejka.wariantStanu(stan),
+      ),
+    ).toEqual(["neutral", "warn", "warn", "ok", "ok", "neutral", "neutral"]);
+
+    render(<ProfilDecyzja id="12" />);
+    const h1 = await screen.findByRole("heading", { level: 1, name: /^Wniosek o profil: / });
+    const plakietka = within(h1.closest("header") as HTMLElement).getByText("czeka na decyzję");
+    expect(plakietka.className).toMatch(/warn/);
   });
 });

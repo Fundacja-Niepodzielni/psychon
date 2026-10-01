@@ -41,16 +41,34 @@ export const NA_STRONE = 25;
 /** Stan wniosku, który czeka na decyzję — domyślny filtr i domyślna wartość serwera. */
 export const STAN_DO_DECYZJI: StanWniosku = "submitted";
 
-type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
+export type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
+
+/**
+ * Jedyne mapowanie stan wniosku -> wariant plakietki: wiersze kolejki i ekran decyzji o wniosku
+ * biora wariant stad (etykiety zostaja przy ekranach). Stan czekajacy na decyzje jest
+ * bursztynowy (`warn`), jak `chip warn` makiety, zeby nie ginal na tle panelu.
+ */
+export const WARIANTY_STANOW: Record<StanWniosku, WariantPlakietki> = {
+  submitted: "warn",
+  returned: "warn",
+  accepted: "ok",
+  published: "ok",
+  withdrawn: "neutral",
+  draft: "neutral",
+};
+
+export function wariantStanu(status: string): WariantPlakietki {
+  return WARIANTY_STANOW[status as StanWniosku] ?? "neutral";
+}
 
 /** Etykiety stanów wniosku (kontrakt §3.4 `profile.status`) — nigdy surowy kod. */
 const STANY: Record<StanWniosku, { etykieta: string; wariant: WariantPlakietki }> = {
-  submitted: { etykieta: "Czeka na decyzję", wariant: "pending" },
-  returned: { etykieta: "Do poprawy", wariant: "warn" },
-  accepted: { etykieta: "Zatwierdzony", wariant: "ok" },
-  published: { etykieta: "Opublikowany", wariant: "ok" },
-  withdrawn: { etykieta: "Zgoda wycofana", wariant: "neutral" },
-  draft: { etykieta: "Wersja robocza", wariant: "neutral" },
+  submitted: { etykieta: "Czeka na decyzję", wariant: WARIANTY_STANOW.submitted },
+  returned: { etykieta: "Do poprawy", wariant: WARIANTY_STANOW.returned },
+  accepted: { etykieta: "Zatwierdzony", wariant: WARIANTY_STANOW.accepted },
+  published: { etykieta: "Opublikowany", wariant: WARIANTY_STANOW.published },
+  withdrawn: { etykieta: "Zgoda wycofana", wariant: WARIANTY_STANOW.withdrawn },
+  draft: { etykieta: "Wersja robocza", wariant: WARIANTY_STANOW.draft },
 };
 
 export const OPCJE_STANU: Array<{ wartosc: StanWniosku; etykieta: string }> = (

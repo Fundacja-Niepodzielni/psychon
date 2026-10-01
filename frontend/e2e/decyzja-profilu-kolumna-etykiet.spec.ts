@@ -101,12 +101,27 @@ interface WygladPlakietki {
   promien: string;
   wypelnienie: string;
   obrys: string;
+  kolor: string;
 }
 
 async function wyglad(plakietka: Locator): Promise<WygladPlakietki> {
   return plakietka.evaluate((el) => {
     const s = getComputedStyle(el);
-    return { tlo: s.backgroundColor, promien: s.borderRadius, wypelnienie: s.padding, obrys: s.boxShadow };
+    return { tlo: s.backgroundColor, promien: s.borderRadius, wypelnienie: s.padding, obrys: s.boxShadow, kolor: s.color };
+  });
+}
+
+/** Obliczone `--warn-bg` i `--warn` (token rozwiązany przez przeglądarkę na próbnym elemencie). */
+async function tokenyOstrzezenia(page: Page): Promise<{ tlo: string; kolor: string }> {
+  return page.evaluate(() => {
+    const probka = document.createElement("span");
+    probka.style.backgroundColor = "var(--warn-bg)";
+    probka.style.color = "var(--warn)";
+    document.querySelector("main")!.appendChild(probka);
+    const s = getComputedStyle(probka);
+    const wynik = { tlo: s.backgroundColor, kolor: s.color };
+    probka.remove();
+    return wynik;
   });
 }
 
@@ -255,9 +270,12 @@ for (const { nazwa, viewport } of SZEROKOSCI) {
       expect(naglowek.promien, "promień pigułki").toBe(wzorzec.promien);
       expect(parseFloat(naglowek.promien)).toBeGreaterThanOrEqual(100);
       expect(naglowek.wypelnienie, "wypełnienie").toBe(wzorzec.wypelnienie);
-      // Tło neutralnej plakietki jest prawie takie samo jak tło panelu: kształt pokazuje obrys.
-      expect(naglowek.obrys, "obrys pigułki przy h1 (cień wewnętrzny)").toMatch(/inset/);
-      expect(naglowek.obrys).not.toBe(naglowek.tlo);
+      // Stan „czeka na decyzję” to wariant ostrzegawczy: tło i tekst z tokenów `--warn-bg` i `--warn`, bez obrysu.
+      const token = await tokenyOstrzezenia(page);
+      expect(naglowek.tlo, "tło plakietki przy h1 == --warn-bg").toBe(token.tlo);
+      expect(naglowek.kolor, "tekst plakietki przy h1 == --warn").toBe(token.kolor);
+      expect(wzorzec.tlo, "tło plakietki w wierszu listy == --warn-bg").toBe(token.tlo);
+      expect(naglowek.obrys, "plakietka przy h1 bez obrysu").toBe("none");
     });
   });
 }
