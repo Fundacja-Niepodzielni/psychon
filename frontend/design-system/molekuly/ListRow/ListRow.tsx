@@ -26,6 +26,12 @@ interface AkcjaListRow {
   href?: string;
   onKliknij?: () => void;
   /**
+   * Przycisk (`onKliknij`, bez `href`) wygląda jak akcja z `href`: od 640 px
+   * obrys przycisku drugorzędnego, poniżej „Otwórz ›”. Element zostaje
+   * `<button>`. Domyślnie wyłączone — akcja bez tego pola wygląda jak dotąd.
+   */
+  wygladOdnosnika?: boolean;
+  /**
    * Akcja nieaktywna (np. kurs zamknięty): przycisk z kłódką i
    * `aria-disabled`, bez odnośnika i bez obsługi kliknięcia. Ma pierwszeństwo
    * przed `href` i `onKliknij`.
@@ -151,6 +157,15 @@ export function ListRow({
                   ›
                 </span>
               </Link>
+            </span>
+          ) : akcja.wygladOdnosnika ? (
+            <span className={style.akcjaWygladOdnosnika}>
+              <Button poziom="quiet" rozmiar="sm" onClick={akcja.onKliknij} aria-label={akcja.etykietaDostepna}>
+                {akcja.etykieta}{" "}
+                <span className={style.strzalka} aria-hidden="true">
+                  ›
+                </span>
+              </Button>
             </span>
           ) : (
             <Button poziom="quiet" rozmiar="sm" onClick={akcja.onKliknij} aria-label={akcja.etykietaDostepna}>

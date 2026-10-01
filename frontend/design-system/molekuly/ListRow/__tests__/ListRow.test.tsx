@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ListRow } from "../ListRow";
@@ -32,6 +34,69 @@ describe("ListRow — akcja", () => {
     unmount();
     render(<ListRow tytul="Wiersz" akcja={{ etykieta: "Edytuj", etykietaDostepna: "Edytuj: Wiersz", onKliknij }} />);
     expect(screen.getByRole("button", { name: "Edytuj: Wiersz" })).toHaveTextContent("Edytuj");
+  });
+});
+
+function bezHashy(html: string) {
+  return html.replace(/_([A-Za-z0-9]+)_[0-9a-f]{6}/g, "$1");
+}
+
+function polaAkcji(container: HTMLElement) {
+  return container.querySelector('[class*="akcje"]') as HTMLElement;
+}
+
+describe("ListRow — wygladOdnosnika (przycisk z wyglądem odnośnika)", () => {
+  it("bez pola przycisk wygląda jak dotąd: bez opakowania, bez strzałki, DOM bit w bit", () => {
+    const { container } = render(
+      <ListRow tytul="W" akcja={{ etykieta: "Otwórz", etykietaDostepna: "Otwórz: W", onKliknij: () => {} }} />,
+    );
+    expect(bezHashy(polaAkcji(container).outerHTML)).toBe(
+      '<div class="akcje"><button class="przycisk quiet mala" aria-label="Otwórz: W">Otwórz</button></div>',
+    );
+    expect(screen.queryByText("›")).toBeNull();
+  });
+
+  it("bez pola akcja z href zostaje odnośnikiem w opakowaniu akcjaOdnosnik, DOM bit w bit", () => {
+    const { container } = render(<ListRow tytul="W" akcja={{ etykieta: "Otwórz", href: "/w" }} />);
+    expect(bezHashy(polaAkcji(container).outerHTML)).toBe(
+      '<div class="akcje"><span class="akcjaOdnosnik"><a class="odnosnik" href="/w">Otwórz <span class="strzalka" aria-hidden="true">›</span></a></span></div>',
+    );
+  });
+
+  it("z polem: nadal <button> z aria-label, wywołuje onKliknij, strzałka „›” ukryta przed czytnikiem", async () => {
+    const onKliknij = vi.fn();
+    const { container } = render(
+      <ListRow
+        tytul="W"
+        akcja={{ etykieta: "Otwórz", etykietaDostepna: "Otwórz: W", onKliknij, wygladOdnosnika: true }}
+      />,
+    );
+    const przycisk = screen.getByRole("button", { name: "Otwórz: W" });
+    expect(przycisk.tagName).toBe("BUTTON");
+    expect(przycisk).toHaveAttribute("aria-label", "Otwórz: W");
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("›")).toHaveAttribute("aria-hidden", "true");
+    expect(przycisk.textContent).toMatch(/^Otwórz\s*›$/);
+    przycisk.click();
+    expect(onKliknij).toHaveBeenCalledTimes(1);
+    expect(bezHashy(polaAkcji(container).outerHTML)).toBe(
+      '<div class="akcje"><span class="akcjaWygladOdnosnika"><button class="przycisk quiet mala" aria-label="Otwórz: W">Otwórz <span class="strzalka" aria-hidden="true">›</span></button></span></div>',
+    );
+  });
+
+  it("z polem, ale z href: odnośnik jak dotąd (pole dotyczy tylko przycisku)", () => {
+    render(<ListRow tytul="W" akcja={{ etykieta: "Otwórz", href: "/w", wygladOdnosnika: true }} />);
+    expect(screen.getByRole("link", { name: /Otwórz/ })).toHaveAttribute("href", "/w");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("jedno źródło stylu: reguła odnośnika i przycisku to jeden blok, wartości obrysu nie są skopiowane", () => {
+    const css = readFileSync(join(__dirname, "..", "ListRow.module.css"), "utf-8");
+    expect(css).toMatch(/\.akcjaOdnosnik a,\s*\.akcjaWygladOdnosnika button \{/);
+    expect(css.match(/border: 1px solid var\(--border-strong\)/g)).toHaveLength(1);
+    const blok = css.match(/\.akcjaOdnosnik a,\s*\.akcjaWygladOdnosnika button \{([^}]*)\}/)?.[1] ?? "";
+    expect(blok).toContain("min-height: var(--hit-min)");
+    expect(blok).toContain("border: 1px solid var(--border-strong)");
   });
 });
 
