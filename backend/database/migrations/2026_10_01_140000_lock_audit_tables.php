@@ -36,6 +36,10 @@ return new class extends Migration
      * Wyzwalacze są poziomu polecenia, więc odmowa pada także wtedy, gdy polecenie
      * nie objęłoby żadnego wiersza. Sama migracja nie zmienia ani jednego wiersza
      * i przechodzi na bazie z istniejącymi wpisami obu dzienników.
+     *
+     * Funkcja jest zakładana przez `CREATE OR REPLACE`: `migrate:fresh` usuwa tabele
+     * (a z nimi wyzwalacze), ale funkcji nie rusza, więc zwykłe `CREATE FUNCTION`
+     * odmówiłoby przy drugim przebiegu na tej samej bazie.
      */
     public function up(): void
     {
@@ -50,7 +54,7 @@ return new class extends Migration
         });
 
         DB::unprepared(<<<'SQL'
-            CREATE FUNCTION audit_tables_lock_guard() RETURNS trigger
+            CREATE OR REPLACE FUNCTION audit_tables_lock_guard() RETURNS trigger
             LANGUAGE plpgsql AS $body$
             BEGIN
                 IF TG_OP = 'UPDATE' THEN
