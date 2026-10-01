@@ -7,23 +7,74 @@
 # potoku ZARAZ PO `migrate --force`, a jego blad ma przerwac wdrozenie tak samo
 # jak blad migracji.
 #
-# Trzy rzeczy mierzone osobno:
-#   1. krok jest w pliku dokladnie raz;
-#   2. stoi po migracji i jest pierwszym wywolaniem `exec` po niej;
-#   3. zachowanie: blok potoku od migracji do `optimize` jest wyciety z pliku
-#      i uruchomiony z atrapa `docker compose` (wywolania wypisywane na
-#      standardowe wyjscie, zadnych plikow tymczasowych) pod opcjami
-#      powloki WYCIETYMI Z PLIKU: kazde polecenie `set` z opcjami, ktore
-#      stoi w pliku przed blokiem, jest odtwarzane w tej samej kolejnosci
-#      (nic nie jest tu wpisane na sztywno). Mierzona jest kolejnosc wywolan
-#      i to, ze blad kroku zatrzymuje dalsze kroki z kodem bledu - tak samo
-#      jak blad migracji.
+# Cztery rzeczy mierzone osobno:
+#   1. wiersz kroku jest w pliku dokladnie raz (caly wiersz rowny krokowi);
+#   2. stoi po wierszu migracji i jest pierwszym po nim wierszem zaczynajacym
+#      sie od wywolania `exec` w kontenerze;
+#   3. opcje powloki i oslona (przypadek 3) oraz zachowanie (przypadki 4-6):
+#      blok potoku od komunikatu o migracjach do `optimize` jest wyciety
+#      z pliku i uruchomiony z atrapa `docker compose` (wywolania wypisywane
+#      na standardowe wyjscie, zadnych plikow tymczasowych) pod opcjami
+#      powloki WYCIETYMI Z PLIKU: kazde rozpoznane polecenie `set` i
+#      `shopt -o` stojace w pliku przed blokiem jest odtwarzane w tej samej
+#      kolejnosci (nic nie jest tu wpisane na sztywno). Mierzona jest
+#      kolejnosc wywolan i to, ze blad kroku zatrzymuje dalsze kroki z kodem
+#      bledu - tak samo jak blad migracji;
+#   4. poziom skladniowy (przypadek 7): wiersz migracji i wiersz kroku sa
+#      samodzielnymi poleceniami najwyzszego poziomu skryptu.
 #
-# Wylaczenie przerywania na bledzie jest rozpoznawane w kazdym zapisie:
-# `set +e`, `set +eu`, `set +o errexit`, zapis zlozony (`set -u +e`,
-# `set +o errexit +o pipefail`) i w wierszu z innym poleceniem (`cos; set +e`).
-# Polecenie `set` w ciele funkcji albo w galezi warunku tez sie liczy: proba
-# nie zgaduje, czy ta galaz sie wykona, tylko czerwienieje.
+# CO PROBA ROZPOZNAJE (lista zamknieta):
+#   a. Wylaczenie przerywania na bledzie (errexit) albo pipefail poleceniem
+#      `set`, zapisanym w jednym wierszu miedzy `set -euo pipefail` a krokiem:
+#      `set +e`, `set +eu`, `set +o errexit`, `set +o pipefail`, zapis zlozony
+#      (`set -u +e`, `set +o errexit +o pipefail`), takze w wierszu z innym
+#      poleceniem (`cos; set +e`).
+#   b. To samo poleceniem `shopt` z flagami `u` oraz `o` i nazwa `errexit`
+#      albo `pipefail`: `shopt -u -o errexit`, `shopt -uo errexit`,
+#      `shopt -o -u pipefail`, takze w wierszu z innym poleceniem.
+#      Szukanie z punktow a-b jest tekstowe, po wierszach niebedacych
+#      komentarzem: trafienie w ciele funkcji, w galezi warunku albo w tekscie
+#      dokumentu wbudowanego tez sie liczy, a pozniejsze ponowne wlaczenie
+#      opcji nie cofa trafienia - proba nie zgaduje, co sie wykona.
+#   c. Oslone w wierszu kroku: `|| true` albo `|| :` w wierszu z nazwa seedera.
+#   d. Krok albo migracje poza najwyzszym poziomem skryptu: w grupie
+#      w klamrach, w podpowloce, w `if`/`while`/`for`/`case`, w ciele funkcji
+#      albo w liscie z `||`, `&&`, `!` lub potokiem (takze rozbitej na
+#      wiersze). Pomiar robi parser powloki, nie wyrazenie na sasiednich
+#      wierszach, dwiema drogami, i obie musza sie zgodzic:
+#      - tresc pliku jest definiowana jako cialo funkcji (sama definicja,
+#        bez wywolania) i czytana jest postac wypisana przez `declare -f`:
+#        polecenie spoza grupy, warunku, petli, funkcji i listy stoi w niej
+#        samo w wierszu z pojedynczym wcieciem;
+#      - poczatek pliku do wiersza PRZED poleceniem i poczatek pliku do
+#        wiersza polecenia WLACZNIE musza byc dla `bash -n` (czytanie bez
+#        wykonania) kompletnym skryptem bez ostrzezen: otwarta wyzej
+#        podpowloka, grupa, warunek, funkcja, lista albo dokument wbudowany
+#        daja tu blad albo ostrzezenie parsera.
+#      Wczesniej caly plik przechodzi `bash -n`; plik niepoprawny skladniowo
+#      daje kod 2.
+#
+# CZEGO PROBA NIE ROZPOZNAJE (jawnie):
+#   - opcji zmienionych w pliku wczytanym przez `source` albo `.`;
+#   - `eval` z trescia ze zmiennej i polecenia `set`/`shopt` skladanego ze
+#     zmiennych albo rozbitego na wiersze znakiem kontynuacji;
+#   - aliasu i funkcji o nazwie `set` albo `shopt`;
+#   - `trap` (w tym pulapki na ERR i EXIT);
+#   - opcji narzuconych z zewnatrz: sposobu wywolania skryptu (`bash +e plik`,
+#     wywolanie calego skryptu w warunku albo z `|| true`), zmiennych
+#     srodowiska;
+#   - zmiany tablicy `compose` (np. podmiany na polecenie, ktore zawsze
+#     konczy sie zerem) i zachowania samego `docker compose`.
+#
+# CO PROBA WYKONUJE Z BADANEGO PLIKU. Pomiar poziomu skladniowego nie wykonuje
+# z niego niczego (definicja funkcji nie uruchamia jej tresci, a `bash -n`
+# tylko czyta). Przypadki 4-6
+# wykonuja w osobnej powloce wylacznie: rozpoznane polecenia `set`/`shopt -o`
+# (same opcje i nazwy opcji) oraz wiersze bloku, ale tylko gdy kazdy wiersz
+# bloku jest komentarzem, wierszem `echo "<tekst bez podstawien>"` albo
+# wywolaniem atrapy `"${compose[@]}" <slowa>` bez znakow powloki. Blok
+# z jakimkolwiek innym wierszem NIE jest uruchamiany, a przypadki 4-6 sa
+# wtedy niezaliczone.
 #
 # Kody: 0 wszystkie zaliczone, 1 co najmniej jeden niezaliczony,
 # 2 nie da sie zmierzyc.
@@ -34,6 +85,7 @@ KORZEN="$(cd -- "$TU/../.." && pwd)"
 PLIK_DEPLOY="${1:-$KORZEN/deploy/psychon-dev/deploy.sh}"
 
 [[ -f "$PLIK_DEPLOY" ]] || { echo "BLAD: brak pliku $PLIK_DEPLOY" >&2; exit 2; }
+bash -n -- "$PLIK_DEPLOY" 2>/dev/null || { echo "BLAD: $PLIK_DEPLOY nie przechodzi bash -n - nie mierze" >&2; exit 2; }
 
 KROK_MIGRACJI='"${compose[@]}" exec -T app php artisan migrate --force'
 KROK_WZOROW='"${compose[@]}" exec -T app php artisan db:seed --class=DocumentTemplateSeeder --force'
@@ -66,16 +118,28 @@ else
   niezaliczony "krok wzorow nie jest pierwszym wywolaniem po migracji"
 fi
 
-# Polecenia `set` z opcjami (nie `set --`) z wierszy niebedacych komentarzem,
-# po jednym na wiersz wyjscia, w kolejnosci z pliku. $1 = pierwszy wiersz
-# zakresu (wlacznie), $2 = ostatni wiersz zakresu (wylacznie).
-polecenia_set() {
+# Polecenia `set` z opcjami (nie `set --`) i polecenia `shopt` z flaga `o`
+# z wierszy niebedacych komentarzem, po jednym na wiersz wyjscia, w kolejnosci
+# z pliku. $1 = pierwszy wiersz zakresu (wlacznie), $2 = ostatni (wylacznie).
+flagi_polecenia() { grep -oE '(^|[[:space:]])-[A-Za-z]+' <<< "$1" | tr -d ' \n-'; }
+polecenia_opcji() {
+  local polecenie
   awk -v od="$1" -v do_="$2" 'NR >= od && NR < do_ && $0 !~ /^[[:space:]]*#/' "$PLIK_DEPLOY" \
-    | grep -oE '(^|[;&|({[:space:]])set([[:space:]]+([-+][A-Za-z]+|errexit|pipefail|nounset|errtrace|xtrace))+' \
-    | sed -E 's/^[;&|({[:space:]]+//'
+    | grep -oE '(^|[;&|({[:space:]])(set|shopt)([[:space:]]+([-+][A-Za-z]+|errexit|pipefail|nounset|errtrace|xtrace))+' \
+    | sed -E 's/^[;&|({[:space:]]+//' \
+    | while IFS= read -r polecenie; do
+        if [[ "$polecenie" == shopt* && "$(flagi_polecenia "$polecenie")" != *o* ]]; then continue; fi
+        printf '%s\n' "$polecenie"
+      done
 }
-# Czy polecenie `set` wylacza przerywanie na bledzie (errexit) albo pipefail.
+# Czy polecenie wylacza przerywanie na bledzie (errexit) albo pipefail.
 wylacza_przerywanie() {
+  local flagi
+  if [[ "$1" == shopt* ]]; then
+    flagi="$(flagi_polecenia "$1")"
+    [[ "$flagi" == *u* && "$flagi" == *o* ]] && grep -qE '[[:space:]](errexit|pipefail)([[:space:]]|$)' <<< "$1"
+    return
+  fi
   grep -qE '[[:space:]]\+[A-Za-z]*e[A-Za-z]*([[:space:]]|$)|[[:space:]]\+[A-Za-z]*o[[:space:]]+(errexit|pipefail)([[:space:]]|$)' <<< " $1"
 }
 
@@ -91,7 +155,7 @@ if [[ -n "$W_SET" && -n "$W_WZOROW" ]]; then
       ILE_WYLACZEN=$((ILE_WYLACZEN+1))
       echo "  wylaczenie przerywania: $POLECENIE"
     fi
-  done < <(polecenia_set "$((W_SET+1))" "$W_WZOROW")
+  done < <(polecenia_opcji "$((W_SET+1))" "$W_WZOROW")
 fi
 ILE_OSLON="$(grep -F -- 'DocumentTemplateSeeder' "$PLIK_DEPLOY" | grep -cE '\|\| *(true|:)')"
 echo "  wiersz 'set -euo pipefail': ${W_SET:-BRAK}, wylaczen przerywania miedzy nim a krokiem: $ILE_WYLACZEN, krok oslaniany '|| true': $ILE_OSLON"
@@ -109,8 +173,21 @@ if [[ -z "$BLOK" ]]; then
 fi
 
 # Opcje powloki, ktore plik FAKTYCZNIE ma w miejscu bloku: wszystkie polecenia
-# `set` z opcjami od poczatku pliku do pierwszego wiersza bloku, w kolejnosci.
-OPCJE_PLIKU="$(polecenia_set 1 "${W_BLOKU:-1}")"
+# `set` i `shopt -o` od poczatku pliku do pierwszego wiersza bloku, w kolejnosci.
+OPCJE_PLIKU="$(polecenia_opcji 1 "${W_BLOKU:-1}")"
+
+# Blok wolno uruchomic tylko wtedy, gdy kazdy jego wiersz jest pusty, jest
+# komentarzem, wierszem `echo "<tekst bez podstawien>"` albo wywolaniem atrapy.
+DOZWOLONE_ECHO='^echo "[^"$`\\]*"$'
+DOZWOLONE_ATRAPA='^"\$\{compose\[@\]\}"( [A-Za-z0-9:=_./-]+)+$'
+BLOK_DOZWOLONY=1
+while IFS= read -r WIERSZ_BLOKU; do
+  [[ -z "${WIERSZ_BLOKU//[[:space:]]/}" || "$WIERSZ_BLOKU" =~ ^[[:space:]]*# ]] && continue
+  if ! grep -qE -e "$DOZWOLONE_ECHO" -e "$DOZWOLONE_ATRAPA" <<< "$WIERSZ_BLOKU"; then
+    BLOK_DOZWOLONY=0
+    echo "wiersz bloku spoza dozwolonych (bloku nie uruchamiam): $WIERSZ_BLOKU"
+  fi
+done <<< "$BLOK"
 echo "opcje powloki wyciete z pliku przed blokiem: $(printf '%s' "$OPCJE_PLIKU" | paste -sd';' -)"
 
 # Uruchamia blok z atrapa compose pod opcjami wycietymi z pliku. $1 = fragment
@@ -119,6 +196,10 @@ echo "opcje powloki wyciete z pliku przed blokiem: $(printf '%s' "$OPCJE_PLIKU" 
 uruchom_blok() {
   local zawodzi="$1"
   local wyjscie kod
+  if [[ "$BLOK_DOZWOLONY" -ne 1 ]]; then
+    printf 'STAN=nieuruchomiony\n'
+    return 0
+  fi
   wyjscie="$(ZAWODZI="$zawodzi" bash -c '
     atrapa() {
       echo "WYWOLANIE: $*"
@@ -166,6 +247,56 @@ if [[ "$KOLEJNOSC" == "migrate" && "$STAN" == "7" ]]; then
   zaliczony
 else
   niezaliczony "oczekiwano zatrzymania po 'migrate' z kodem 7"
+fi
+
+# Postac pliku po przejsciu przez parser powloki: tresc zdefiniowana jako
+# cialo funkcji (definicja, bez wywolania) i wypisana przez `declare -f`.
+# Zadne polecenie z pliku nie jest przy tym wykonywane.
+postac_z_parsera() {
+  bash --norc --noprofile -c '
+    tresc="$(cat -- "$1")" || exit 2
+    eval "__plik_potoku() {
+$tresc
+}" 2>/dev/null || exit 2
+    declare -f __plik_potoku
+  ' _ "$PLIK_DEPLOY"
+}
+# $1 = postac z parsera, $2 = igla, $3 = pelne polecenie. Wypisuje:
+# "<wierszy z igla> <wierszy rownych poleceniu na najwyzszym poziomie>".
+policz_poziom() {
+  local z_igla na_szczycie
+  z_igla="$(grep -cF -- "$2" <<< "$1")"
+  na_szczycie="$(grep -cxF -e "    $3" -e "    $3;" <<< "$1")"
+  echo "$z_igla $na_szczycie"
+}
+
+# Czy pierwsze $1 wierszy pliku to dla parsera kompletny skrypt bez ostrzezen.
+# `bash -n` czyta tresc ze standardowego wejscia i niczego nie wykonuje.
+kompletny_poczatek() {
+  local uwagi
+  uwagi="$(head -n "$1" -- "$PLIK_DEPLOY" | bash --norc --noprofile -n 2>&1)" && [[ -z "$uwagi" ]]
+}
+# $1 = numer wiersza polecenia (pusty = brak). Wypisuje "tak" albo "nie".
+poczatki_kompletne() {
+  if [[ -n "$1" ]] && kompletny_poczatek "$(($1-1))" && kompletny_poczatek "$1"; then echo tak; else echo nie; fi
+}
+
+naglowek "7 migracja i krok wzorow sa samodzielnymi poleceniami najwyzszego poziomu skryptu"
+POSTAC="$(postac_z_parsera)"
+if [[ -z "$POSTAC" ]]; then
+  echo "BLAD: parser powloki nie zwrocil postaci pliku $PLIK_DEPLOY - poziomu nie da sie zmierzyc" >&2
+  exit 2
+fi
+read -r M_IGLA M_SZCZYT <<< "$(policz_poziom "$POSTAC" 'artisan migrate --force' "$KROK_MIGRACJI")"
+read -r K_IGLA K_SZCZYT <<< "$(policz_poziom "$POSTAC" 'DocumentTemplateSeeder' "$KROK_WZOROW")"
+echo "  migracja: wierszy z poleceniem $M_IGLA, z tego na najwyzszym poziomie $M_SZCZYT; krok wzorow: wierszy z poleceniem $K_IGLA, z tego na najwyzszym poziomie $K_SZCZYT"
+M_POCZATKI="$(poczatki_kompletne "$W_MIGRACJI")"
+K_POCZATKI="$(poczatki_kompletne "$W_WZOROW")"
+echo "  poczatek pliku kompletny przed poleceniem i z poleceniem: migracja $M_POCZATKI, krok wzorow $K_POCZATKI"
+if [[ "$M_IGLA" -eq 1 && "$M_SZCZYT" -eq 1 && "$K_IGLA" -eq 1 && "$K_SZCZYT" -eq 1 && "$M_POCZATKI" == tak && "$K_POCZATKI" == tak ]]; then
+  zaliczony
+else
+  niezaliczony "migracja albo krok wzorow stoi w poleceniu zlozonym albo w liscie z ||, &&, !"
 fi
 
 echo
