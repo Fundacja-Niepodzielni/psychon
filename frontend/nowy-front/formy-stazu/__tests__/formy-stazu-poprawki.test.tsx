@@ -9,7 +9,7 @@ import userEvent from "@testing-library/user-event";
  *     (nie tylko do ogólnego komunikatu).
  *  2. Okruszek „Administracja" nie jest odnośnikiem do nieistniejącej trasy —
  *     renderuje się jako sam tekst.
- *  3. Puste albo nieliczbowe pole „Kolejność" trafia w żądaniu dosłownie,
+ *  3. Puste albo nieliczbowe pole „Miejsce na liście" trafia w żądaniu dosłownie,
  *     bez cichej zamiany na `0`.
  */
 
@@ -88,7 +88,7 @@ describe("FormyStazu — poprawki", () => {
     expect(screen.queryByRole("link", { name: "Administracja" })).toBeNull();
   });
 
-  it("puste pole Kolejność trafia w żądaniu jako pusty string, nie jako 0", async () => {
+  it("puste pole Miejsce na liście trafia w żądaniu jako pusty string, nie jako 0", async () => {
     const uzytkownik = userEvent.setup();
     zaktualizujFormeStazu.mockResolvedValue({ ...FORMA, sort_order: 1 });
 
@@ -96,7 +96,7 @@ describe("FormyStazu — poprawki", () => {
     await waitFor(() => expect(screen.getByText("Dyżur telefoniczny")).toBeInTheDocument());
 
     await uzytkownik.click(screen.getByRole("button", { name: "Edytuj" }));
-    const poleKolejnosci = screen.getByLabelText("Kolejność");
+    const poleKolejnosci = screen.getByLabelText("Miejsce na liście");
     await uzytkownik.clear(poleKolejnosci);
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz" }));
 
@@ -106,7 +106,7 @@ describe("FormyStazu — poprawki", () => {
     expect(payload.sort_order).not.toBe(0);
   });
 
-  it("nieliczbowe (niecałkowite) pole Kolejność (\"1.5\") trafia w żądaniu dosłownie, nie jako 0", async () => {
+  it("nieliczbowe (niecałkowite) pole Miejsce na liście (\"1.5\") trafia w żądaniu dosłownie, nie jako 0", async () => {
     const uzytkownik = userEvent.setup();
     zaktualizujFormeStazu.mockResolvedValue({ ...FORMA });
 
@@ -114,7 +114,7 @@ describe("FormyStazu — poprawki", () => {
     await waitFor(() => expect(screen.getByText("Dyżur telefoniczny")).toBeInTheDocument());
 
     await uzytkownik.click(screen.getByRole("button", { name: "Edytuj" }));
-    const poleKolejnosci = screen.getByLabelText("Kolejność");
+    const poleKolejnosci = screen.getByLabelText("Miejsce na liście");
     await uzytkownik.clear(poleKolejnosci);
     await uzytkownik.type(poleKolejnosci, "1.5");
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz" }));

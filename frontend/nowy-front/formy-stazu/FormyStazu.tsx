@@ -8,8 +8,7 @@ import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
-import { Field } from "@/design-system/molekuly/Field/Field";
-import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActions";
+import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { ApiError } from "@/lib/api/klient";
 import { utworzFormeStazu, zaktualizujFormeStazu } from "@/lib/api/h11-formy";
@@ -40,8 +39,20 @@ const PUSTY_FORMULARZ: StanFormularza = {
   name: "",
   description: "",
   is_active: true,
-  sort_order: "0",
+  sort_order: "",
 };
+
+/** Pola API, które formularz pokazuje pod kontrolką (reszta błędów trafia do ogólnego komunikatu). */
+const POLA_FORMULARZA = ["name", "description", "sort_order", "is_active"] as const;
+
+/**
+ * Domyślne miejsce nowej formy na liście: następne wolne po największym
+ * wczytanym (`sort_order`), a dla pustej listy — pierwsze.
+ */
+function nastepneMiejsceNaLiscie(formy: readonly FormaStazu[]): number {
+  if (formy.length === 0) return 1;
+  return Math.max(...formy.map((forma) => forma.sort_order)) + 1;
+}
 
 /**
  * Trasa `/nowy-front/admin/formy-stazu` — słownik form stażu (H11), jedyny
@@ -95,11 +106,11 @@ export function FormyStazu() {
         .map((forma) => ({
           id: String(forma.id),
           tytul: forma.name,
-          // Kolejność stoi w tekście podpowiedzi, nie w polu `wartosc` —
+          // Miejsce na liście stoi w tekście podpowiedzi, nie w polu `wartosc` —
           // ranga sortowania nie ma sensownej sumy zbiorczej, więc `RecordList`
           // tu jej nie liczy ani nie pokazuje w stopce.
           // Opis pusty albo z samych białych znaków liczy się jak brak opisu.
-          podpowiedz: `Kolejność ${forma.sort_order} · ${forma.description?.trim() || "Bez opisu."}`,
+          podpowiedz: `Miejsce na liście: ${forma.sort_order} · ${forma.description?.trim() || "Bez opisu."}`,
           plakietka: forma.is_active
             ? { wariant: "ok" as const, tekst: "aktywna" }
             : { wariant: "neutral" as const, tekst: "nieaktywna" },
@@ -129,7 +140,7 @@ export function FormyStazu() {
     setBledyPol(undefined);
     setEdytowanaId(null);
     setDodajOtwarte(true);
-    setFormularz(PUSTY_FORMULARZ);
+    setFormularz({ ...PUSTY_FORMULARZ, sort_order: String(nastepneMiejsceNaLiscie(formy)) });
   }
 
   function zamknijPanel() {
@@ -144,9 +155,9 @@ export function FormyStazu() {
     setZapisywanie(true);
     setBlad(null);
     setBledyPol(undefined);
-    // Puste albo nieliczbowe pole kolejności trafia do serwera dosłownie —
-    // bez cichej zamiany na `0`, żeby walidacja serwera (`sort_order.integer`)
-    // naprawdę zobaczyła to, co wpisano.
+    // Puste albo nieliczbowe pole miejsca na liście trafia do serwera
+    // dosłownie — bez cichej zamiany na `0`, żeby walidacja serwera
+    // (`sort_order.integer`) naprawdę zobaczyła to, co wpisano.
     const wpisanaKolejnosc = formularz.sort_order.trim();
     const payload = {
       name: formularz.name.trim(),
@@ -214,6 +225,49 @@ export function FormyStazu() {
   }
 
   const panelOtwarty = dodajOtwarte || edytowanaId !== null;
+  // Błędy pól pokazuje podsumowanie `FormSection` i tekst pod kontrolką; ogólny
+  // komunikat serwera jest osobno tylko wtedy, gdy żadne pole formularza nie ma błędu.
+  const maBledyPol = POLA_FORMULARZA.some((pole) => Boolean(bledyPol?.[pole]?.[0]));
+  const pola: PoleFormSection[] = [
+    {
+      id: "forma-nazwa",
+      etykieta: "Nazwa",
+      rodzaj: "tekst",
+      wartosc: formularz.name,
+      onZmiana: (wartosc) => setFormularz((f) => ({ ...f, name: wartosc })),
+      blad: bledyPol?.name?.[0],
+      wymagane: true,
+    },
+    {
+      id: "forma-opis",
+      etykieta: "Opis",
+      rodzaj: "wieloliniowy",
+      wartosc: formularz.description,
+      onZmiana: (wartosc) => setFormularz((f) => ({ ...f, description: wartosc })),
+      blad: bledyPol?.description?.[0],
+    },
+    {
+      id: "forma-kolejnosc",
+      etykieta: "Miejsce na liście",
+      rodzaj: "liczba",
+      podpowiedz: "1 = na górze listy form",
+      wartosc: formularz.sort_order,
+      onZmiana: (wartosc) => setFormularz((f) => ({ ...f, sort_order: wartosc })),
+      blad: bledyPol?.sort_order?.[0],
+    },
+    {
+      id: "forma-aktywna",
+      etykieta: "Stan",
+      rodzaj: "wybor",
+      opcje: [
+        { wartosc: "tak", etykieta: "Aktywna" },
+        { wartosc: "nie", etykieta: "Nieaktywna" },
+      ],
+      wartosc: formularz.is_active ? "tak" : "nie",
+      onZmiana: (wartosc) => setFormularz((f) => ({ ...f, is_active: wartosc === "tak" })),
+      blad: bledyPol?.is_active?.[0],
+    },
+  ];
 
   return (
     <Korzen>
@@ -239,60 +293,21 @@ export function FormyStazu() {
       </div>
 
       {panelOtwarty && (
-        <div className={style.panel}>
-          <Heading stopien={3}>{edytowanaId !== null ? "Edytuj formę" : "Nowa forma"}</Heading>
-
-          {blad && (
+        <div className={style.formularz}>
+          {blad && !maBledyPol && (
             <Notice wariant="error" tytul="Nie udało się zapisać">
               {blad}
             </Notice>
           )}
-
-          <Field
-            id="forma-nazwa"
-            etykieta="Nazwa"
-            rodzaj="tekst"
-            wartosc={formularz.name}
-            onZmiana={(wartosc) => setFormularz((f) => ({ ...f, name: wartosc }))}
-            blad={bledyPol?.name?.[0]}
-            wymagane
-          />
-          <Field
-            id="forma-opis"
-            etykieta="Opis"
-            rodzaj="wieloliniowy"
-            wartosc={formularz.description}
-            onZmiana={(wartosc) => setFormularz((f) => ({ ...f, description: wartosc }))}
-            blad={bledyPol?.description?.[0]}
-          />
-          <div className={style.wiersz}>
-            <Field
-              id="forma-kolejnosc"
-              etykieta="Kolejność"
-              rodzaj="liczba"
-              wartosc={formularz.sort_order}
-              onZmiana={(wartosc) => setFormularz((f) => ({ ...f, sort_order: wartosc }))}
-              blad={bledyPol?.sort_order?.[0]}
-            />
-            <Field
-              id="forma-aktywna"
-              etykieta="Stan"
-              rodzaj="wybor"
-              opcje={[
-                { wartosc: "tak", etykieta: "Aktywna" },
-                { wartosc: "nie", etykieta: "Nieaktywna" },
-              ]}
-              wartosc={formularz.is_active ? "tak" : "nie"}
-              onZmiana={(wartosc) => setFormularz((f) => ({ ...f, is_active: wartosc === "tak" }))}
-              blad={bledyPol?.is_active?.[0]}
-            />
-          </div>
-
-          <DialogActions
-            etykietaWycofania="Anuluj"
-            etykietaPotwierdzenia={zapisywanie ? "Zapisywanie…" : "Zapisz"}
-            onWycofaj={zamknijPanel}
-            onPotwierdz={() => {
+          <FormSection
+            key={edytowanaId ?? "nowa"}
+            fokusPrzyOtwarciu
+            tytul={edytowanaId !== null ? "Edytuj formę" : "Nowa forma"}
+            pola={pola}
+            etykietaAnuluj="Anuluj"
+            etykietaZapisz={zapisywanie ? "Zapisywanie…" : "Zapisz"}
+            onAnuluj={zamknijPanel}
+            onZapisz={() => {
               if (!zapisywanie) void zapisz();
             }}
           />
