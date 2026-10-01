@@ -425,6 +425,13 @@ fi
 
 echo "Migracje i cache konfiguracji..."
 "${compose[@]}" exec -T app php artisan migrate --force
+# Wzory dokumentow: bez tego kroku tabela `document_templates` zostaje pusta
+# po samych migracjach i edytor wzorow odpowiada 404 dla kazdego rodzaju.
+# Seeder pomija rodzaj, ktory ma juz wiersz, wiec kolejne wdrozenie niczego
+# nie dubluje ani nie nadpisuje. Blad przerywa wdrozenie tak samo jak blad
+# migracji (`set -euo pipefail` wyzej, bez `|| true`).
+echo "Wzory dokumentow (tylko brakujace rodzaje)..."
+"${compose[@]}" exec -T app php artisan db:seed --class=DocumentTemplateSeeder --force
 echo "Szyfruje pozostale jawne migawki dokumentow..."
 "${compose[@]}" exec -T app php artisan documents:encrypt-snapshots
 "${compose[@]}" exec -T app php artisan optimize

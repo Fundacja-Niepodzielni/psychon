@@ -443,6 +443,24 @@ if [ "$KOD_LISTA_SKROTOW" -ne 0 ] && [ "$KOD_SWIADEK_LOGOWANIA" -eq 0 ]; then
     KOD_SWIADEK_LOGOWANIA=$KOD_LISTA_SKROTOW
 fi
 
+# Krok zasiewu wzorow dokumentow w skrypcie maszyny byl pilnowany proba, ktorej
+# nic nie wolalo: usuniety albo przesuniety za restart krok przeszedlby bramke
+# i wyszedl dopiero jako brak wzorow po wdrozeniu. Proba jest czysto tekstowa
+# i atrapowa (jeden plik z drzewa) - bez sieci, bez Dockera. Kod scala sie w
+# KOD_SWIADEK_LOGOWANIA tak samo jak sasiad wyzej.
+naglowek "3f-4 - krok wzorow dokumentow w skrypcie maszyny (proba)"
+
+T="$(date +%s)"
+bash deploy/tests/test-krok-wzorow-dokumentow.sh > "$KATALOG_BIEGU"/bramka-krok-wzorow.log 2>&1
+KOD_KROK_WZOROW=$?
+CZAS_KROK_WZOROW="$(czas_od "$T")"
+echo "krok wzorow (proba): EXIT=$KOD_KROK_WZOROW, $CZAS_KROK_WZOROW s, $(grep -aE '^przypadki: ' "$KATALOG_BIEGU"/bramka-krok-wzorow.log | tail -1)"
+[ "$KOD_KROK_WZOROW" -ne 0 ] && tail -20 "$KATALOG_BIEGU"/bramka-krok-wzorow.log | sed 's/^/  ! /'
+
+if [ "$KOD_KROK_WZOROW" -ne 0 ] && [ "$KOD_SWIADEK_LOGOWANIA" -eq 0 ]; then
+    KOD_SWIADEK_LOGOWANIA=$KOD_KROK_WZOROW
+fi
+
 # --- 3g - inwentarz skladnikow (SBOM) i skan podatnosci ---------------------
 # Generator (trivy, ~1s) biegnie BEZWARUNKOWO - jego koszt jest pomijalny i
 # liczba skladnikow w dzienniku jest tania do utrzymania na kazdym biegu.

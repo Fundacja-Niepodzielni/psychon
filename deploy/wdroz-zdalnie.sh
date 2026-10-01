@@ -231,6 +231,8 @@ ZNANE_DOBRE_SKROTY_DEPLOY=(
     "7824bdef4fddaab4fdeb8f238abbb7d615d8df8e2d131bb171158bf5dfa15537"
     # krok zrzutu obejmuje cala baze i liczy tabele w zrzucie oraz w bazie
     "6100df6efafea799f53764bad43c3ec11731b52b1e9c63215810aa59eaeffedd"
+    # krok wzorow dokumentow (seeder) zaraz po migracji
+    "8121d4373a1bb7f4422914763aef075a9110079bcfa1e115c30455043eb2487b"
 )
 # Powyzsza zasada stala dotad wylacznie w komentarzu - i dlatego zostala
 # pominieta przy pierwszej zmianie pliku: odmowa przyszla dopiero na maszynie,
