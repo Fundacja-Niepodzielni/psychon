@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  GRUPA_BEZ_OKRUSZKA,
   KORZEN_ADMINISTRACJI,
   okruszekRamki,
   type GrupaMenuOkruszka,
@@ -54,8 +53,8 @@ describe("okruszek ramki z rejestru menu", () => {
           tytul: "Tytuł ekranu",
         });
         const opis = `${grupa.naglowek} › ${pozycja.etykieta} (${pozycja.href})`;
-        if (grupa.naglowek === GRUPA_BEZ_OKRUSZKA || !administracja) {
-          // „Codziennie” bez okruszka; uczestnik i prowadzący bez korzenia roli: jedna pozycja nigdy.
+        if (grupa.naglowek === "Codziennie" || !administracja) {
+          // „Codziennie” (nazwa wpisana literalnie, nie ze stałej reguły) bez okruszka; uczestnik i prowadzący bez korzenia roli: jedna pozycja nigdy.
           expect(okruszek, opis).toEqual([]);
         } else {
           expect(etykiety(okruszek), opis).toEqual([KORZEN_ADMINISTRACJI.etykieta, pozycja.etykieta]);
