@@ -65,6 +65,18 @@ interface WlasciwosciCourseTree {
    * nagłówek rozwinięcia; na czas rozwinięcia nie da się go przeciągać.
    */
   rozwiniecie?: RozwiniecieCourseTree;
+  /**
+   * Pytanie przed WŁĄCZENIEM trybu kolejności: organizm oddaje wywołującemu
+   * funkcję, która tryb włącza, i sam go nie przełącza. Wywołujący woła ją od
+   * razu albo po potwierdzeniu (np. gdy pod wierszem jest otwarty formularz).
+   * Wyłączenie trybu nie pyta. Bez tej właściwości przycisk przełącza od razu.
+   */
+  onPrzedTrybemKolejnosci?: (wlacz: () => void) => void;
+  /**
+   * Treść rysowana na końcu wskazanego tematu, pod listą jego lekcji (np.
+   * formularz nowej lekcji otwarty przez „Dodaj lekcję w tym temacie”).
+   */
+  podTematem?: { tematId: string; tresc: ReactNode };
   /** Stan pusty: pokazywany, gdy kurs nie ma żadnego tematu. */
   pusty: PustyCourseTree;
   stan?: StanDanych;
@@ -143,9 +155,11 @@ function celPrzeniesienia(
  * Po przeniesieniu z klawiatury fokus wraca na tę samą strzałkę tej samej
  * lekcji, żeby dało się przenosić ją dalej bez szukania wiersza.
  *
- * Dwie właściwości opcjonalne — `onEdytujLekcje` i `rozwiniecie` — dają
- * edycję lekcji przy wierszu: przycisk „Edytuj” i treść pod wierszem w tym
- * samym elemencie listy. Bez nich organizm rysuje dokładnie to, co dotąd.
+ * Cztery właściwości opcjonalne — `onEdytujLekcje`, `rozwiniecie`,
+ * `onPrzedTrybemKolejnosci` i `podTematem` — dają edycję lekcji przy wierszu:
+ * przycisk „Edytuj”, treść pod wierszem w tym samym elemencie listy, pytanie
+ * przed włączeniem trybu kolejności i treść pod listą lekcji tematu. Bez nich
+ * organizm rysuje i działa jak dotąd.
  */
 export function CourseTree({
   tematy,
@@ -158,6 +172,8 @@ export function CourseTree({
   onPorzucWszystko,
   onEdytujLekcje,
   rozwiniecie,
+  onPrzedTrybemKolejnosci,
+  podTematem,
   pusty,
   stan = STAN_GOTOWY,
   poczatkowoZwiniete = [],
@@ -256,7 +272,17 @@ export function CourseTree({
   return (
     <div ref={korzen} className={style.drzewo} data-tryb-kolejnosci={trybKolejnosci ? "tak" : "nie"}>
       <div className={style.pasekKolejnosci}>
-        <Button poziom="quiet" aria-pressed={trybKolejnosci} onClick={() => setTrybKolejnosci((p) => !p)}>
+        <Button
+          poziom="quiet"
+          aria-pressed={trybKolejnosci}
+          onClick={() => {
+            if (!trybKolejnosci && onPrzedTrybemKolejnosci) {
+              onPrzedTrybemKolejnosci(() => setTrybKolejnosci(true));
+              return;
+            }
+            setTrybKolejnosci((p) => !p);
+          }}
+        >
           Kolejność
         </Button>
       </div>
@@ -406,6 +432,11 @@ export function CourseTree({
                 );
               })}
             </ol>
+            {podTematem?.tematId === temat.id && (
+              <div className={style.podTematem} data-pod-tematem={temat.id}>
+                {podTematem.tresc}
+              </div>
+            )}
           </section>
         );
       })}

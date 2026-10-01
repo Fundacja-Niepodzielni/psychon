@@ -313,7 +313,7 @@ describe("adres zapisu lekcji administracji", () => {
 
     expect(zAdresem).toEqual(["lekcja-edycja/dane.ts"]);
     const zapis = readFileSync(join(korzen, "kurs-tematy", "zapis.ts"), "utf8");
-    expect(zapis).toMatch(/import \{ zapiszLekcje \} from "@\/nowy-front\/lekcja-edycja\/dane";/);
-    expect(zapis.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/\/admin\/lessons\//);
+    expect(zapis).toMatch(/import \{[^}]*\bzapiszLekcje\b[^}]*\} from "@\/nowy-front\/lekcja-edycja\/dane";/);
+    expect(zapis.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/\/admin\/(lessons|courses)\//);
   });
 });

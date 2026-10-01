@@ -1,8 +1,8 @@
-import { api } from "@/lib/api/klient";
 import type { GrupaTras } from "@/lib/api/h08-tematy";
 import { updateInstructorCourse, updateInstructorLesson } from "@/lib/api/prowadzacy-kursy";
 import type { AdminCourse } from "@/lib/h08/types";
-import { zapiszLekcje } from "@/nowy-front/lekcja-edycja/dane";
+import { dodajLekcje, zapiszLekcje, type CialoNowejLekcji } from "@/nowy-front/lekcja-edycja/dane";
+import { zapiszKurs } from "@/nowy-front/publikacja-kursu/dane";
 
 /**
  * Zapis danych kursu i tytułu lekcji z ekranu „Kurs: tematy i lekcje” — po
@@ -12,11 +12,12 @@ import { zapiszLekcje } from "@/nowy-front/lekcja-edycja/dane";
  *
  *  - prowadzący: `PATCH /instructor/courses/{course}` i
  *    `PATCH /instructor/lessons/{lesson}` (`lib/api/prowadzacy-kursy.ts`);
- *  - administracja: `PATCH /admin/courses/{course}` (`backend/routes/api/h08.php:38`)
- *    oraz zapis lekcji funkcją `zapiszLekcje` z „Edycji lekcji” — adres trasy
- *    lekcji administracji stoi tylko tam.
+ *  - administracja: zapis kursu funkcją `zapiszKurs` z „Publikacji kursu”
+ *    i zapis lekcji funkcją `zapiszLekcje` z „Edycji lekcji” — adresy obu
+ *    tras administracji stoją tylko tam.
  *
- * Obie trasy kursu przyjmują `title` i `description`; obie trasy lekcji
+ * Obie trasy kursu przyjmują `title` i `description`; trasa administracji
+ * dodatkowo identyfikator, typ i grupę produktową. Obie trasy lekcji
  * przyjmują samo `title` (pola opcjonalne w `UpdateLessonRequest::rules`).
  */
 export interface DaneKursuDoZapisu {
@@ -24,20 +25,41 @@ export interface DaneKursuDoZapisu {
   description: string | null;
 }
 
+/** Pola, które zapisuje wyłącznie administracja. */
+export interface DaneKursuAdministracji extends DaneKursuDoZapisu {
+  slug: string;
+  type: AdminCourse["type"];
+  product_group: AdminCourse["product_group"];
+}
+
 export interface ZapisKursu {
-  daneKursu: (idKursu: number, dane: DaneKursuDoZapisu) => Promise<AdminCourse>;
+  daneKursu: (idKursu: number, dane: DaneKursuDoZapisu | DaneKursuAdministracji) => Promise<AdminCourse>;
   tytulLekcji: (idLekcji: number, title: string) => Promise<{ title: string }>;
+  /**
+   * Założenie lekcji w temacie, na tym ekranie. Bez tej funkcji „Dodaj lekcję”
+   * prowadzi do ekranu, na którym grupa zakłada lekcje (`adresDodaniaLekcji`).
+   */
+  nowaLekcja?: (idKursu: number, cialo: CialoNowejLekcji) => Promise<LekcjaPoDodaniu>;
+}
+
+/** Tyle z nowej lekcji, ile potrzebuje drzewo tematów. */
+export interface LekcjaPoDodaniu {
+  id: number;
+  title: string;
+  topic_id: number | null;
+  duration_seconds: number;
 }
 
 const ZAPIS: Record<GrupaTras, ZapisKursu> = {
   instructor: {
-    daneKursu: (idKursu, dane) => updateInstructorCourse(idKursu, dane),
+    daneKursu: (idKursu, dane) =>
+      updateInstructorCourse(idKursu, { title: dane.title, description: dane.description }),
     tytulLekcji: (idLekcji, title) => updateInstructorLesson(idLekcji, { title }),
   },
   admin: {
-    daneKursu: (idKursu, dane) =>
-      api<AdminCourse>(`/admin/courses/${idKursu}`, { method: "PATCH", body: dane }),
+    daneKursu: (idKursu, dane) => zapiszKurs(idKursu, dane),
     tytulLekcji: (idLekcji, title) => zapiszLekcje(idLekcji, { title }),
+    nowaLekcja: (idKursu, cialo) => dodajLekcje(idKursu, cialo),
   },
 };
 

@@ -153,6 +153,8 @@ test.describe("jedno GET /me na pełne załadowanie strony", () => {
     await expect(page.locator("main").first()).toBeVisible();
     expect(zadaniaMe).toHaveLength(1);
 
+    // „Słownik form stażu” stoi w zwijanej grupie „Ustawienia” (na /admin zwiniętej): rozwijamy ją przed kliknięciem pozycji.
+    await page.getByRole("button", { name: "Ustawienia (4)" }).click();
     const pelneZaladowanie = await przejdzPrzezMenu(page, "/admin/formy-stazu");
 
     // Menu może nawigować klientem (0 nowych żądań: pamięć jeszcze ważna) albo

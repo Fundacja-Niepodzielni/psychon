@@ -25,6 +25,7 @@ import { ListRow } from "../molekuly/ListRow/ListRow";
 import { KeyValueRow } from "../molekuly/KeyValueRow/KeyValueRow";
 import { Breadcrumbs } from "../molekuly/Breadcrumbs/Breadcrumbs";
 import { Tabs } from "../molekuly/Tabs/Tabs";
+import { GrupaZwijana } from "../molekuly/MenuItem/GrupaZwijana";
 import { MenuGroup } from "../molekuly/MenuItem/MenuGroup";
 import { Pagination } from "../molekuly/Pagination/Pagination";
 import { Toast } from "../molekuly/Toast/Toast";
@@ -407,6 +408,21 @@ function Poligon() {
             { ikona: "book", etykieta: "Kursy", href: "#" },
           ]}
           wPrzygotowaniu={["Eksport PDF"]}
+        />
+      </div>
+
+      {/* M9 GrupaZwijana — grupa menu zwijana przyciskiem „{nagłówek} ({liczba})” (zwinięta na wejściu);
+          mierzony jest jej przycisk zwijania, jedyny własny uchwyt aktywacji tego pliku. */}
+      <div data-style-id="molekula-grupazwijana">
+        <GrupaZwijana
+          grupa={{
+            naglowek: "Ustawienia",
+            pozycje: [
+              { ikona: "clock", etykieta: "Słownik form stażu", href: "#" },
+              { ikona: "file", etykieta: "Wzory dokumentów", href: "#" },
+            ],
+            liniaWPrzygotowaniu: "ustawienia roku programu",
+          }}
         />
       </div>
 

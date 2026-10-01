@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminCourse } from "@/lib/h08/types";
+import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
@@ -17,10 +18,21 @@ import { KursTematy } from "@/nowy-front/kurs-tematy/KursTematy";
 import { UsuniecieKursu } from "@/nowy-front/publikacja-kursu/UsuniecieKursu";
 import { kursPozaKolejnoscia } from "@/nowy-front/zaproszenia-kursu/dane";
 import { SekcjaZaproszenKursu } from "@/nowy-front/zaproszenia-kursu/ZaproszeniaKursu";
+import { BankPytanKursu, MaterialyKursu, PrzypisaniaKursu } from "./SekcjeKursu";
 import style from "./KursAdministracji.module.css";
 
 const ADRES_LISTY_KURSOW = "/admin/kursy";
 const OKRUSZKI = [{ etykieta: "Kursy", href: ADRES_LISTY_KURSOW }, { etykieta: "Tematy i lekcje" }];
+
+/**
+ * Adres ekranu lekcji (treść, nagranie, materiały) w panelu, z kursem
+ * w ścieżce. `null`, dopóki grupa ekranu lekcji jest wyłączona: odnośnika
+ * „Materiały i nagranie” nie ma wtedy w formularzu przy wierszu.
+ */
+function adresEkranuLekcji(idLekcji: number, idKursu: string): string | null {
+  if (!czyNowaTrasaDostepna(GRUPY.edycjaLekcji)) return null;
+  return `/admin/kursy/${idKursu}/lekcje/${idLekcji}`;
+}
 
 interface WlasciwosciKursAdministracji {
   idKursu: string;
@@ -32,7 +44,10 @@ interface WlasciwosciKursAdministracji {
  *  - nagłówek z jedną akcją główną „Opublikuj kurs” oraz tematy, lekcje i dane
  *    kursu — `KursTematy` z grupą tras administracji;
  *  - edycja lekcji — formularz „Edycji lekcji” pod wierszem lekcji (A-13),
- *    z tą samą funkcją zapisu co ekran lekcji;
+ *    z tą samą funkcją zapisu co ekran lekcji, usunięciem lekcji i odnośnikiem
+ *    „Materiały i nagranie” do ekranu lekcji;
+ *  - materiały kursu, prowadzący kursu i wejście do banku pytań — sekcje
+ *    z `SekcjeKursu.tsx`, pod zaproszeniami;
  *  - zaproszenia na kurs — rdzeń ekranu „Zaproszenia na kurs” jako sekcja
  *    pod drzewem tematów, otwierana przyciskiem drugorzędnym;
  *  - „Usuń kurs” — blok z ekranu „Publikacja kursu”, ostatni na stronie.
@@ -106,7 +121,14 @@ export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
         setWynik(null);
         setProba((poprzednia) => poprzednia + 1);
       }}
-      podDrzewem={(kurs) => <BlokZaproszen kurs={kurs} />}
+      podDrzewem={(kurs, lekcje) => (
+        <>
+          <BlokZaproszen kurs={kurs} />
+          <MaterialyKursu kurs={kurs} />
+          <PrzypisaniaKursu kurs={kurs} lekcje={lekcje} />
+          <BankPytanKursu kurs={kurs} />
+        </>
+      )}
       edycjaLekcji={(idLekcji, akcje) => (
         <EdycjaLekcjiPrzyWierszu
           key={idLekcji}
@@ -114,6 +136,13 @@ export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
           idKursu={Number(idKursu)}
           onZamknij={akcje.zamknij}
           onZapisano={akcje.zapisano}
+          wiersz={{
+            onZmieniono: akcje.zmieniono,
+            wstrzymany: akcje.wstrzymany,
+            adresMaterialow: adresEkranuLekcji(idLekcji, idKursu),
+            onPrzejdz: akcje.przejdz,
+            onUsunieto: akcje.usunieto,
+          }}
         />
       )}
       ostatniBlok={(kurs) => (

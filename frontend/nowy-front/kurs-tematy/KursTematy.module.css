@@ -34,3 +34,23 @@
   color: var(--text);
   font-family: var(--font);
 }
+
+/* Dane kursu do odczytu: pary nazwa–wartość, jedna pod drugą. */
+.daneKursu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.daneKursu dt {
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+.daneKursu dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

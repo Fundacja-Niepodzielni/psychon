@@ -89,7 +89,6 @@ export function UsuniecieKursu({ idKursu, tytulKursu, onUsunieto, onNieZnalezion
           tytul="Usunąć kurs?"
           etykietaWycofania="Anuluj"
           etykietaPotwierdzenia="Usuń kurs"
-          niebezpieczne
           onWycofaj={() => ustawOkno(false)}
           onPotwierdz={() => void potwierdz()}
         >
