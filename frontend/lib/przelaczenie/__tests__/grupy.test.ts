@@ -13,10 +13,10 @@ import {
  * nowymi trasami i wpisy menu (`wspolpraca`, `formyStazu`,
  * `pulpitAdministracji`), `pulpitUczestnika` i `pulpitProwadzacego`
  * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
- * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`.
+ * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy` i `kolejkaStazu`.
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca", "wzoryDokumentow"];
+const WLACZONE = ["decyzjaProfilu", "ekranStartowy", "formyStazu", "kolejkaStazu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "wspolpraca", "wzoryDokumentow"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -32,7 +32,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów i ekran startowy", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy i kolejka stażu", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -218,7 +218,7 @@ describe("rejestr GRUPY — zawartość", () => {
       const [ekran] = GRUPY[klucz].ekrany;
       expect(ekran.panel, klucz).toBe(panele[i]);
       expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
-      expect(GRUPY[klucz].wlaczona, klucz).toBe(false);
+      expect(GRUPY[klucz].wlaczona, klucz).toBe(klucz === "kolejkaStazu");
     });
   });
 });

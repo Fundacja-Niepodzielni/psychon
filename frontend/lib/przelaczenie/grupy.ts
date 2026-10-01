@@ -55,8 +55,8 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest osiem: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
- * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow` i `ekranStartowy`. Pozostałe mają tu jeszcze
+ * Grupy dzisiejszego kanonu. Włączonych jest dziewięć: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy` i `kolejkaStazu`. Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -422,7 +422,7 @@ export const GRUPY = {
   /** Kolejka wpisów stażu do akceptacji (H11) — ten sam adres co dzisiejsza kolejka. */
   kolejkaStazu: {
     klucz: "kolejkaStazu",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",

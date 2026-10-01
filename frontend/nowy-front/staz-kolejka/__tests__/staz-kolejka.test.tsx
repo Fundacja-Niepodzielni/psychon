@@ -135,7 +135,7 @@ describe("StazKolejka — stany w szablonie", () => {
     expect(wierszeListy()).toHaveLength(2);
     expect(screen.getAllByText("czeka na decyzję")).toHaveLength(2);
     const pierwszy = wiersz("Marta Demo");
-    expect(pierwszy).toHaveTextContent("Dyżur z 27.08.2026 · 3.5 h · dyżur telefoniczny · konsultacje: 4");
+    expect(pierwszy).toHaveTextContent("Dyżur z 27 sierpnia 2026 · 3.5 h · dyżur telefoniczny · konsultacje: 4");
     expect(pierwszy).toHaveTextContent("Dyżur telefoniczny — bez danych osób.");
     const drugi = wiersz("Filip Demo");
     expect(drugi).toHaveTextContent("2 h · czat · konsultacje: 0");

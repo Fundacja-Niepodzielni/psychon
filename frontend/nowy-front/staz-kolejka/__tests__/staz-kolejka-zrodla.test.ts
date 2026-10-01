@@ -58,6 +58,14 @@ describe("ekran decyzji o dyżurach — źródła", () => {
     expect(ekran).not.toMatch(/organizmy\/Dialog\//);
   });
 
+  it("data dyżuru przechodzi przez wspólny formater dat, ekran nie ma własnego", () => {
+    const ekran = tresc(PLIKI.find((p) => wzgledna(p).endsWith("StazKolejka.tsx"))!);
+    const dane = tresc(PLIKI.find((p) => wzgledna(p).endsWith("staz-kolejka/dane.ts"))!);
+    expect(ekran).toMatch(/import \{ formatujDate \} from "\.\.\/wspolne\/daty";/);
+    expect(ekran).toMatch(/formatujDate\(wpis\.date\)/);
+    expect(ekran + dane).not.toMatch(/dataPolska|Intl\.DateTimeFormat|toLocale/);
+  });
+
   it("strona montuje ekran i nic więcej", () => {
     const strona = tresc(PLIKI.find((p) => wzgledna(p).endsWith("admin/staz/page.tsx"))!);
     expect(strona).toMatch(/return <StazKolejka \/>;/);

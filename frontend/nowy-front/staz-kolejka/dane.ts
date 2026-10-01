@@ -52,13 +52,6 @@ export function etykietaFormy(forma: string): string {
   return ETYKIETY_FORM[forma as FormaDyzuru] ?? ETYKIETY_FORM.other;
 }
 
-/** `2026-08-27` → `27.08.2026`; wartość w innym kształcie wraca bez zmian. */
-export function dataPolska(data: string | null): string {
-  if (data === null) return "brak daty";
-  const dopasowanie = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
-  return dopasowanie ? `${dopasowanie[3]}.${dopasowanie[2]}.${dopasowanie[1]}` : data;
-}
-
 export function nazwaOsoby(wpis: WpisDoDecyzji): string {
   return `${wpis.user.first_name} ${wpis.user.last_name}`;
 }

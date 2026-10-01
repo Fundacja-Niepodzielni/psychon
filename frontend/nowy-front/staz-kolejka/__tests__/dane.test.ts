@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Moduł danych decyzji o dyżurach: adresy i ciała żądań trzech decyzji,
- * etykiety form z kontraktu, klasyfikacja błędów. Atrapy siedzą na
+ * etykiety form z kontraktu, klasyfikacja błędów (daty formatuje wspólny
+ * formater `wspolne/daty.ts`, nie ten moduł). Atrapy siedzą na
  * `api`/`apiPaged` klienta; `ApiError` zostaje prawdziwy.
  */
 
@@ -26,18 +27,12 @@ beforeEach(() => {
   apiPaged.mockReset();
 });
 
-describe("etykiety i daty", () => {
+describe("etykiety", () => {
   it("formy dyżuru mają etykiety z kontraktu, nieznana forma to „inna”", () => {
     expect(dane.etykietaFormy("phone_duty")).toBe("dyżur telefoniczny");
     expect(dane.etykietaFormy("chat_duty")).toBe("czat");
     expect(dane.etykietaFormy("other")).toBe("inna");
     expect(dane.etykietaFormy("cos_innego")).toBe("inna");
-  });
-
-  it("data kalendarzowa jest zapisywana po polsku, brak daty ma zdanie", () => {
-    expect(dane.dataPolska("2026-08-27")).toBe("27.08.2026");
-    expect(dane.dataPolska(null)).toBe("brak daty");
-    expect(dane.dataPolska("wczoraj")).toBe("wczoraj");
   });
 });
 
