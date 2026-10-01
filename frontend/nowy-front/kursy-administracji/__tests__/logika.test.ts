@@ -70,8 +70,8 @@ describe("jednostkaLekcji", () => {
 });
 
 describe("miejsceWSciezce i opisKursu", () => {
-  it("kurs w ścieżce ma liczbę z mianownikiem, kurs bez miejsca jest poza ścieżką", () => {
-    expect(miejsceWSciezce(3)).toEqual({ liczba: 3, jednostka: "w ścieżce" });
+  it("kurs w ścieżce ma samą liczbę (znaczenie niesie nazwa kolumny), kurs bez miejsca jest poza ścieżką", () => {
+    expect(miejsceWSciezce(3)).toEqual({ liczba: 3, bezJednostki: true });
     expect(miejsceWSciezce(null)).toEqual({ tekst: "poza ścieżką" });
   });
 
@@ -107,7 +107,7 @@ describe("wierszeKursow", () => {
     expect(wiersz.plakietka).toEqual({ wariant: "ok", tekst: "Opublikowany" });
     expect(wiersz.podpowiedz).toBe(opisKursu(kurs()));
     expect(wiersz.komorki).toEqual({
-      miejsce: { liczba: 2, jednostka: "w ścieżce" },
+      miejsce: { liczba: 2, bezJednostki: true },
       lekcje: { liczba: 3, jednostka: "lekcje" },
     });
     expect(wiersz.akcja).toEqual({

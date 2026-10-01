@@ -269,6 +269,9 @@ describe("StazKolejka — stany w szablonie", () => {
       expect(komorki).toHaveLength(4);
       expect(komorki.at(-1)).toContainElement(przyciskOtworz(nazwa));
     }
+    // Lista stoi na białej karcie organizmu; wiersze mają wcięcie karty.
+    expect(screen.getByRole("region", { name: "Dyżury do decyzji" }).className).toMatch(/kartaBezNaglowka/);
+    expect(tabela.className).not.toMatch(/bezWciecia/);
     expect(apiPaged).toHaveBeenCalledTimes(1);
     expect(apiPaged).toHaveBeenCalledWith("/admin/internship/pending?page=1&per_page=25");
     expect(api).not.toHaveBeenCalled();

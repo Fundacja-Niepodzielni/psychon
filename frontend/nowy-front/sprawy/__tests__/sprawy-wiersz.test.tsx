@@ -123,7 +123,7 @@ describe("Sprawy — wiersz kolejki jak w makiecie A-02", () => {
     expect(wiersz.textContent).not.toMatch(/Dyżur.*Dyżur/);
   });
 
-  it("wiersz: widoczne „Otwórz”, pełna nazwa akcji i data tylko dla czytnika, wiersz bez wcięcia", async () => {
+  it("wiersz: widoczne „Otwórz”, pełna nazwa akcji i data tylko dla czytnika, lista na karcie organizmu", async () => {
     pobierzKolejkeSpraw.mockResolvedValue([
       zrodlo("applications", []),
       zrodlo("internship_entries", [pozycja("internship_entries", 9, "Filip Demo", dniTemu(2))]),
@@ -137,7 +137,9 @@ describe("Sprawy — wiersz kolejki jak w makiecie A-02", () => {
     expect(screen.getByText("Czeka od 26 września 2026").className).toMatch(/ukryte/);
     const wiersz = odnosnik.closest('[role="row"]') as HTMLElement;
     expect(within(wiersz).getAllByRole("cell").at(-1)).toContainElement(odnosnik);
-    expect(screen.getByRole("table", { name: "Sprawy" }).className).toMatch(/bezWciecia/);
+    // Lista stoi na białej karcie organizmu; wiersze mają wcięcie karty.
+    expect(screen.getByRole("region", { name: "Sprawy" }).className).toMatch(/kartaBezNaglowka/);
+    expect(screen.getByRole("table", { name: "Sprawy" }).className).not.toMatch(/bezWciecia/);
     // Osoba stoi pod rodzajem we własnej linii — w wierszu nie ma już separatora „·”.
     expect(wiersz.textContent).not.toContain("·");
   });

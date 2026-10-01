@@ -396,7 +396,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await zrzut(page, `sprawy-${szerokosc}-prowadzacych`);
     });
 
-    test("margines boczny treści: odstęp h1 i wiersza od krawędzi jak na innych ekranach ramki", async ({ page }) => {
+    test("margines boczny treści: odstęp h1 i karty listy od krawędzi jak na innych ekranach ramki", async ({ page }) => {
       await instalujAtrapy(page, "dane");
       await page.goto("/admin/sprawy");
       await zabezpieczeniePrzedEkranemDostepu(page);
@@ -405,25 +405,31 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       const pomiar = await page.evaluate(() => {
         const szerokosc = document.documentElement.clientWidth;
         const h1 = document.querySelector("h1")!.getBoundingClientRect();
-        const wiersz = document.querySelector("[role='row'][data-wiersz]")!.getBoundingClientRect();
-        const tekst = document.querySelector("[role='row'][data-wiersz]")!.firstElementChild!.getBoundingClientRect();
+        const element = document.querySelector("[role='row'][data-wiersz]")!;
+        const karta = element.closest("section")!.getBoundingClientRect();
+        const wiersz = element.getBoundingClientRect();
+        const tekst = element.firstElementChild!.getBoundingClientRect();
         return {
           h1Lewy: Math.round(h1.left),
-          wierszPrawy: Math.round(szerokosc - wiersz.right),
+          kartaLewy: Math.round(karta.left),
+          kartaPrawy: Math.round(szerokosc - karta.right),
           wierszLewy: Math.round(wiersz.left),
           tekstLewy: Math.round(tekst.left),
+          wciecieWiersza: Math.round(parseFloat(getComputedStyle(element).paddingLeft)),
         };
       });
       console.log(`Pomiar marginesu ekranu /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
       if (szerokosc < 1024) {
         expect(pomiar.h1Lewy, "odstęp lewy h1").toBeGreaterThanOrEqual(16);
         expect(pomiar.h1Lewy, "odstęp lewy h1").toBeLessThanOrEqual(18);
-        expect(pomiar.wierszPrawy, "odstęp prawy wiersza").toBeGreaterThanOrEqual(16);
-        expect(pomiar.wierszPrawy, "odstęp prawy wiersza").toBeLessThanOrEqual(18);
+        expect(pomiar.kartaPrawy, "odstęp prawy karty listy").toBeGreaterThanOrEqual(16);
+        expect(pomiar.kartaPrawy, "odstęp prawy karty listy").toBeLessThanOrEqual(18);
       }
-      // Wiersz bez wcięcia: tekst wiersza równo z h1.
-      expect(pomiar.wierszLewy, "wiersz równo z h1").toBe(pomiar.h1Lewy);
-      expect(pomiar.tekstLewy, "treść wiersza równo z h1").toBe(pomiar.h1Lewy);
+      // Lista na karcie: karta równo z h1, wiersz za ramką karty, treść wiersza z wcięciem karty.
+      expect(pomiar.kartaLewy, "karta listy równo z h1").toBe(pomiar.h1Lewy);
+      expect(pomiar.wierszLewy, "wiersz za ramką karty").toBe(pomiar.kartaLewy + 1);
+      expect(pomiar.wciecieWiersza, "wcięcie wiersza na karcie").toBeGreaterThan(0);
+      expect(pomiar.tekstLewy, "treść wiersza z wcięciem karty").toBe(pomiar.wierszLewy + pomiar.wciecieWiersza);
     });
 
     test("błąd sekcji spraw prowadzących: kolejka działa, ponowienie, heading-order 0", async ({ page }) => {

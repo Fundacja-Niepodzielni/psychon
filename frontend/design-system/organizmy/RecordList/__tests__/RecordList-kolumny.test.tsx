@@ -21,7 +21,7 @@ const WIERSZE = [
     tytul: "Podstawy pomocy",
     podpowiedz: "Kurs · PsychON",
     plakietka: { wariant: "ok" as const, tekst: "Opublikowany" },
-    komorki: { miejsce: { liczba: 1, jednostka: "w ścieżce" }, lekcje: { liczba: 3, jednostka: "lekcje" } },
+    komorki: { miejsce: { liczba: 1, bezJednostki: true as const }, lekcje: { liczba: 3, jednostka: "lekcje" } },
     akcja: { etykieta: "Otwórz", etykietaDostepna: "Otwórz kurs: Podstawy pomocy", href: "/admin/kursy/1" },
   },
   {
@@ -73,10 +73,27 @@ describe("RecordList — tryb kolumn", () => {
     expect(komorkaKolumny(pierwszy, "Kurs")).toHaveTextContent("Podstawy pomocy");
     expect(komorkaKolumny(pierwszy, "Kurs")).toHaveTextContent("Kurs · PsychON");
     expect(komorkaKolumny(pierwszy, "Stan")).toHaveTextContent("Opublikowany");
-    expect(komorkaKolumny(pierwszy, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*1\s*w ścieżce$/);
+    expect(komorkaKolumny(pierwszy, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*1$/);
     expect(komorkaKolumny(pierwszy, "Lekcje")).toHaveTextContent(/^Lekcje\s*3\s*lekcje$/);
     expect(komorkaKolumny(drugi, "Miejsce w ścieżce")).toHaveTextContent("poza ścieżką");
     expect(komorkaKolumny(drugi, "Stan")).toHaveTextContent("Szkic");
+  });
+
+  it("komórka z samą liczbą: liczba bez jednostki, znaczenie niesie nazwa kolumny (nagłówek i podpis)", () => {
+    render(<RecordList tytul="Lista kursów" kolumny={KOLUMNY} wiersze={WIERSZE} pusty={PUSTY} />);
+    const komorka = komorkaKolumny(wierszeDanych()[0], "Miejsce w ścieżce");
+    expect(komorka).toHaveAttribute("data-rodzaj", "liczba");
+    // W komórce stoją dokładnie dwa elementy: podpis kolumny i sama liczba.
+    expect(komorka.children).toHaveLength(2);
+    expect(komorka.firstElementChild).toHaveTextContent(/^Miejsce w ścieżce$/);
+    expect(komorka.firstElementChild).toHaveAttribute("aria-hidden", "true");
+    const liczba = komorka.lastElementChild as HTMLElement;
+    expect(liczba.textContent).toBe("1");
+    expect(liczba.childElementCount).toBe(0);
+    expect(liczba.className).toMatch(/samaLiczba/);
+    // Napis w kolumnie liczb zostaje napisem.
+    const napis = komorkaKolumny(wierszeDanych()[1], "Miejsce w ścieżce");
+    expect(napis).toHaveTextContent(/^Miejsce w ścieżce\s*poza ścieżką$/);
   });
 
   it("podpis kolumny przy wartości jest poza drzewem dostępności (nazwę kolumny niesie nagłówek)", () => {

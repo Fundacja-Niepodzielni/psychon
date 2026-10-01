@@ -140,7 +140,7 @@ describe("Uczestnicy programu — stany", () => {
     expect(przyciskiGlowne(container)).toBe(0);
   });
 
-  it("wiersz w kolumnach: nazwa pierwsza, „Otwórz” z pełną nazwą dla czytnika na końcu, tekst równo z h1", async () => {
+  it("wiersz w kolumnach: nazwa pierwsza, „Otwórz” z pełną nazwą dla czytnika na końcu, lista na karcie organizmu", async () => {
     apiPaged.mockResolvedValue(odpowiedz([osoba(17)], { total: 1 }));
     render(<OsobyLista />);
 
@@ -152,7 +152,9 @@ describe("Uczestnicy programu — stany", () => {
     const komorki = within(wiersz).getAllByRole("cell");
     expect(komorki[0]).toContainElement(tytul);
     expect(komorki.at(-1)).toContainElement(odnosnik);
-    expect(screen.getByRole("table", { name: "Lista uczestników" }).className).toMatch(/bezWciecia/);
+    // Lista stoi na białej karcie organizmu; wiersze mają wcięcie karty.
+    expect(screen.getByRole("region", { name: "Lista uczestników" }).className).toMatch(/kartaBezNaglowka/);
+    expect(screen.getByRole("table", { name: "Lista uczestników" }).className).not.toMatch(/bezWciecia/);
     // Plakietka stanu małą literą stoi w wierszu (stan dobry w atomie Badge wygląda jak „neutral”, bez barwy).
     expect(within(wiersz).getByText("konto aktywne").className).toMatch(/neutral/);
     // Nagłówek listy zostaje w drzewie nagłówków (h2 bezpośrednio pod h1), wzrokowo go nie ma.
