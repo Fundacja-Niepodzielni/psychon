@@ -141,6 +141,21 @@ test.describe("pulpit administracji 1280 px — liczba „Razem” w kolumnie li
         sprawdzone += 1;
       }
       expect(sprawdzone, "porównane wiersze").toBe(NAZWY.length);
+
+      // Puste miejsce po akcji nie podnosi stopki: jej wysokość to wysokość treści plus wypełnienie.
+      const wysokosci = await pasek.evaluate((el) => {
+        const styl = getComputedStyle(el);
+        const wypelnienie = parseFloat(styl.paddingTop) + parseFloat(styl.paddingBottom);
+        const tresc = Array.from(el.querySelectorAll("span")).filter(
+          (n) => n.textContent === "Razem" || /^\d+\s*spraw$/.test(n.textContent ?? ""),
+        );
+        const najwyzsze = Math.max(...tresc.map((n) => n.getBoundingClientRect().height));
+        return { stopka: el.getBoundingClientRect().height, wypelnienie, najwyzsze, minimum: parseFloat(styl.minHeight) || 0 };
+      });
+      expect(
+        wysokosci.stopka,
+        `wysokość stopki ${wysokosci.stopka} px a treść ${wysokosci.najwyzsze} px + wypełnienie ${wysokosci.wypelnienie} px`,
+      ).toBeLessThanOrEqual(Math.max(wysokosci.najwyzsze + wysokosci.wypelnienie, wysokosci.minimum) + 0.5);
     });
   }
 });
