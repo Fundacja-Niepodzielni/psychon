@@ -430,3 +430,64 @@ test.describe("nowa ramka panelu uczestnika — menu 1280×800 i pasek", () => {
     await expect(okno).toHaveCount(0);
   });
 });
+
+/**
+ * Położenie bieżącej pozycji menu (`aria-current="page"`) w kontenerze menu
+ * (bok albo okno szuflady) względem jego górnej krawędzi i górnej krawędzi
+ * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna.
+ */
+async function pomiarBiezacejPozycji(kontener: Locator) {
+  return kontener.evaluate((el) => {
+    const pozycja = el.querySelector('a[aria-current="page"]');
+    const konto = el.querySelector("[data-konto-menu]");
+    const wyloguj = Array.from(el.querySelectorAll("button")).find((b) => (b.textContent ?? "").trim() === "Wyloguj");
+    const k = el.getBoundingClientRect();
+    const p = pozycja?.getBoundingClientRect();
+    return {
+      pozycja: (pozycja?.textContent ?? "").trim(),
+      goraPozycji: p ? Math.round(p.top) : null,
+      dolPozycji: p ? Math.round(p.bottom) : null,
+      goraKontenera: Math.round(k.top),
+      goraKonta: konto ? Math.round(konto.getBoundingClientRect().top) : null,
+      dolWyloguj: wyloguj ? Math.round(wyloguj.getBoundingClientRect().bottom) : null,
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      scrollY: window.scrollY,
+      fokus: document.activeElement?.tagName ?? null,
+    };
+  });
+}
+
+type PomiarBiezacej = Awaited<ReturnType<typeof pomiarBiezacejPozycji>>;
+
+function biezacaWidoczna(m: PomiarBiezacej): boolean {
+  return (
+    m.goraPozycji !== null &&
+    m.dolPozycji !== null &&
+    m.goraKonta !== null &&
+    m.goraPozycji >= m.goraKontenera &&
+    m.dolPozycji <= m.goraKonta
+  );
+}
+
+test.describe("nowa ramka panelu uczestnika — bieżąca pozycja menu widoczna", () => {
+  for (const ekran of EKRANY) {
+    test(`${ekran.adres} @1280x800: pozycja bieżąca nad „Konto”, okno nieprzewinięte`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await instalujAtrapyApi(page);
+      await page.goto(ekran.adres);
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      const bok = page.getByRole("complementary", { name: "Menu i konto" });
+      await expect(bok.locator('a[aria-current="page"]')).toHaveText(ekran.menu);
+      await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(bok)), { timeout: 5000 }).toBe(true);
+      const m = await pomiarBiezacejPozycji(bok);
+      const opisPomiaru = JSON.stringify(m);
+      console.log(`POMIAR-MENU uczestnik ${ekran.adres} ${opisPomiaru}`);
+      expect(m.scrollY, `okno nieprzewinięte ${opisPomiaru}`).toBe(0);
+      expect(m.dolWyloguj!, `„Wyloguj” przy 800 px ${opisPomiaru}`).toBeLessThanOrEqual(800);
+      // Menu, które się mieści, zostaje nieprzewinięte.
+      expect(m.scrollHeight > m.clientHeight || m.scrollTop === 0, `menu bez przewijania ma scrollTop 0 ${opisPomiaru}`).toBe(true);
+    });
+  }
+});

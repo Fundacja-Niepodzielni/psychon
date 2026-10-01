@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { Button } from "../../atomy/Button/Button";
 import { Icon, type NazwaIkony } from "../../atomy/Icon/Icon";
 import { MenuItem } from "../../molekuly/MenuItem/MenuItem";
@@ -88,6 +88,16 @@ export function PowlokaPanelu({
 }: WlasciwosciPowlokiPanelu) {
   const [menuOtwarte, setMenuOtwarte] = useState(false);
   const oknoRef = useRef<HTMLDialogElement | null>(null);
+  const bokRef = useRef<HTMLElement | null>(null);
+  const zawieraBiezaca = !!grupaZwinieta?.pozycje.some((pozycja) => pozycja.biezaca);
+  const biezacyAdres = [...grupy.flatMap((grupa) => grupa.pozycje), ...(grupaZwinieta?.pozycje ?? [])].find(
+    (pozycja) => pozycja.biezaca,
+  )?.href;
+
+  // Po wejściu i po zmianie trasy: bieżąca pozycja menu widoczna w menu bocznym (nad blokiem „Konto”).
+  useEffect(() => {
+    if (bokRef.current) odslonBiezacaPozycje(bokRef.current);
+  }, [biezacyAdres]);
 
   /** Okno menu istnieje tylko, gdy jest otwarte — otwiera się jako modalne. */
   function podepnijOkno(el: HTMLDialogElement | null) {
@@ -95,6 +105,8 @@ export function PowlokaPanelu({
     if (!el || el.open) return;
     if (typeof el.showModal === "function") el.showModal();
     else el.setAttribute("open", "");
+    // Szuflada: bieżąca pozycja widoczna od razu po otwarciu.
+    odslonBiezacaPozycje(el);
   }
 
   function zamknijMenu() {
@@ -129,8 +141,11 @@ export function PowlokaPanelu({
 
   const konto = (
     <>
-      {grupaZwinieta && grupaZwinieta.pozycje.length > 0 && <GrupaZwijana grupa={grupaZwinieta} />}
-      <div className={style.konto}>
+      {grupaZwinieta && grupaZwinieta.pozycje.length > 0 && (
+        // Klucz: grupa zaczyna od nowa (rozwinięta), gdy po zmianie trasy zaczyna nieść bieżącą pozycję.
+        <GrupaZwijana key={zawieraBiezaca ? "z-biezaca" : "bez-biezacej"} grupa={grupaZwinieta} />
+      )}
+      <div className={style.konto} data-konto-menu="">
         <p className={style.kontoNaglowek}>Konto</p>
         <button type="button" className={style.wyloguj} onClick={onWyloguj} disabled={wylogowywanie}>
           <Icon nazwa="out" />
@@ -157,7 +172,12 @@ export function PowlokaPanelu({
         Przejdź do treści
       </a>
 
-      <aside className={style.bok} aria-label="Menu i konto" onClick={onNawigacja ? klikniecieWMenu : undefined}>
+      <aside
+        ref={bokRef}
+        className={style.bok}
+        aria-label="Menu i konto"
+        onClick={onNawigacja ? klikniecieWMenu : undefined}
+      >
         {zawartoscMenu()}
       </aside>
 
@@ -264,4 +284,31 @@ function GrupaZwijana({ grupa }: { grupa: GrupaZwinieta }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Przewija wyłącznie kontener menu (bok albo okno szuflady) tak, żeby pozycja
+ * z `aria-current="page"` stała w całości między górną krawędzią kontenera
+ * a górną krawędzią przyklejonego bloku „Konto”. Bez animacji, bez ruchu
+ * fokusu, bez przewijania okna; gdy pozycja już jest widoczna, `scrollTop`
+ * zostaje bez zmian. Blok „Konto” jest przyklejony, więc po przewinięciu
+ * jego położenie może się zmienić — stąd najwyżej trzy przybliżenia.
+ */
+export function odslonBiezacaPozycje(kontener: HTMLElement): void {
+  const pozycja = kontener.querySelector<HTMLElement>('a[aria-current="page"]');
+  if (!pozycja) return;
+  const konto = kontener.querySelector<HTMLElement>("[data-konto-menu]");
+  for (let proba = 0; proba < 3; proba += 1) {
+    const ramy = kontener.getBoundingClientRect();
+    const p = pozycja.getBoundingClientRect();
+    if (p.height === 0) return; // pozycja niewyrenderowana (np. zwinięta grupa)
+    const dol = Math.min(ramy.bottom, konto ? konto.getBoundingClientRect().top : ramy.bottom);
+    let przesuniecie = 0;
+    if (p.top < ramy.top) przesuniecie = p.top - ramy.top;
+    else if (p.bottom > dol) przesuniecie = Math.min(p.bottom - dol, p.top - ramy.top);
+    if (Math.abs(przesuniecie) < 1) return;
+    const cel = kontener.scrollTop + przesuniecie;
+    if (typeof kontener.scrollTo === "function") kontener.scrollTo({ top: cel, behavior: "instant" });
+    else kontener.scrollTop = cel;
+  }
 }

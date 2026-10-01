@@ -579,3 +579,95 @@ test.describe("nowa ramka panelu administracji — menu 1280×800 i pasek", () =
     await expect(okno).toHaveCount(0);
   });
 });
+
+/**
+ * Położenie bieżącej pozycji menu (`aria-current="page"`) w kontenerze menu
+ * (bok albo okno szuflady) względem jego górnej krawędzi i górnej krawędzi
+ * przyklejonego bloku „Konto”, plus przewinięcie kontenera i okna.
+ */
+async function pomiarBiezacejPozycji(kontener: Locator) {
+  return kontener.evaluate((el) => {
+    const pozycja = el.querySelector('a[aria-current="page"]');
+    const konto = el.querySelector("[data-konto-menu]");
+    const wyloguj = Array.from(el.querySelectorAll("button")).find((b) => (b.textContent ?? "").trim() === "Wyloguj");
+    const k = el.getBoundingClientRect();
+    const p = pozycja?.getBoundingClientRect();
+    return {
+      pozycja: (pozycja?.textContent ?? "").trim(),
+      goraPozycji: p ? Math.round(p.top) : null,
+      dolPozycji: p ? Math.round(p.bottom) : null,
+      goraKontenera: Math.round(k.top),
+      goraKonta: konto ? Math.round(konto.getBoundingClientRect().top) : null,
+      dolWyloguj: wyloguj ? Math.round(wyloguj.getBoundingClientRect().bottom) : null,
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      scrollY: window.scrollY,
+      fokus: document.activeElement?.tagName ?? null,
+    };
+  });
+}
+
+type PomiarBiezacej = Awaited<ReturnType<typeof pomiarBiezacejPozycji>>;
+
+function biezacaWidoczna(m: PomiarBiezacej): boolean {
+  return (
+    m.goraPozycji !== null &&
+    m.dolPozycji !== null &&
+    m.goraKonta !== null &&
+    m.goraPozycji >= m.goraKontenera &&
+    m.dolPozycji <= m.goraKonta
+  );
+}
+
+test.describe("nowa ramka panelu administracji — bieżąca pozycja menu widoczna", () => {
+  test("/admin/profile/12 @1280x800: pozycja bieżąca nad „Konto”, przewija się tylko menu", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin/profile/12");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Profile psychologa");
+    await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(bok)), { timeout: 5000 }).toBe(true);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify(m);
+    console.log(`POMIAR-MENU admin /admin/profile/12 ${opis}`);
+    expect(m.dolPozycji!, `dół pozycji <= góra „Konto” ${opis}`).toBeLessThanOrEqual(m.goraKonta!);
+    expect(m.goraPozycji!, `góra pozycji >= góra menu ${opis}`).toBeGreaterThanOrEqual(m.goraKontenera);
+    expect(m.scrollTop, `menu przewinięte ${opis}`).toBeGreaterThan(0);
+    expect(m.scrollY, `okno nieprzewinięte ${opis}`).toBe(0);
+    expect(m.fokus, `fokus bez zmian ${opis}`).toBe("BODY");
+    expect(m.dolWyloguj!, `„Wyloguj” przy 800 px ${opis}`).toBeLessThanOrEqual(800);
+  });
+
+  test("/admin @1280x800: pozycja bieżąca widoczna, menu nieprzewinięte", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    const bok = page.getByRole("complementary", { name: "Menu i konto" });
+    await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    const m = await pomiarBiezacejPozycji(bok);
+    const opis = JSON.stringify(m);
+    console.log(`POMIAR-MENU admin /admin ${opis}`);
+    expect(biezacaWidoczna(m), `pozycja widoczna ${opis}`).toBe(true);
+    expect(m.scrollTop, `scrollTop menu ${opis}`).toBe(0);
+    expect(m.scrollY, `okno nieprzewinięte ${opis}`).toBe(0);
+  });
+
+  test("/admin/profile/12 @390: po otwarciu okna menu pozycja bieżąca nad „Konto”", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await instalujAtrapyApi(page);
+    await page.goto("/admin/profile/12");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    const okno = page.getByRole("dialog", { name: "Menu i konto" });
+    await expect(okno).toBeVisible();
+    await expect(okno.locator('a[aria-current="page"]')).toHaveText("Profile psychologa");
+    await expect.poll(async () => biezacaWidoczna(await pomiarBiezacejPozycji(okno)), { timeout: 5000 }).toBe(true);
+    const m = await pomiarBiezacejPozycji(okno);
+    console.log(`POMIAR-MENU admin @390 /admin/profile/12 ${JSON.stringify(m)}`);
+    expect(m.scrollY, JSON.stringify(m)).toBe(0);
+  });
+});
