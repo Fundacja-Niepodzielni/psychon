@@ -210,6 +210,7 @@ const CELE = [
   { nazwa: "KeyValueRow (pokaż/ukryj)", selektor: '[data-style-id="molekula-keyvaluerow-zamaskowana"] button' },
   { nazwa: "ListRow (akcja wiersza)", selektor: '[data-style-id="molekula-listrow-prosty"] a' },
   { nazwa: "MenuItem/MenuGroup (pozycja menu)", selektor: '[data-style-id="molekula-menugroup"] li:nth-of-type(1) a' },
+  { nazwa: "GrupaZwijana (przycisk zwijania)", selektor: '[data-style-id="molekula-grupazwijana"] button[aria-expanded]' },
   { nazwa: "Pagination (poprzednia)", selektor: '[data-style-id="m14-pagination"] button:nth-of-type(1)' },
   { nazwa: "RichTextEditor (przycisk paska)", selektor: '[data-style-id="m18-richtext"] [role="toolbar"] > span:nth-of-type(1) button' },
   { nazwa: "SaveBar (cofnij)", selektor: '[data-style-id="m13-savebar-widoczny"] button:nth-of-type(1)' },
