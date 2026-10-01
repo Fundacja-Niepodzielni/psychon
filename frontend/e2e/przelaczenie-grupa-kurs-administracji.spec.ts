@@ -26,8 +26,9 @@ import { GRUPY } from "../lib/przelaczenie/grupy";
  * - axe (WCAG 2.1 AA i `best-practice`) na 1280 i 390 px w stanach: z tematami,
  *   pusty, z rozwiniętą lekcją, z oknami potwierdzeń.
  * - ekran lekcji `/admin/kursy/{id}/lekcje/{idLekcji}` (grupa `edycjaLekcji`):
- *   próby czytają flagę grupy z rejestru — przy wyłączonej adres odpowiada 404
- *   i ekran kursu nie ma do niego odnośnika; przy włączonej obie role
+ *   próby czytają flagę grupy z rejestru — przy wyłączonej adres pokazuje
+ *   „Nie znaleziono strony” (bez żądań o lekcję) i ekran kursu nie ma do niego
+ *   odnośnika; przy włączonej obie role
  *   administracji dochodzą odnośnikiem z ekranu kursu do nagłówka lekcji,
  *   okruszki niosą nazwę kursu, lekcja spoza kursu to „nie znaleziono”,
  *   materiał lekcji da się wgrać i usunąć, odmowa serwera nie pokazuje danych;
@@ -757,10 +758,12 @@ test.describe("ekran lekcji — grupa wyłączona", () => {
   test.skip(GRUPA_LEKCJI, "grupa ekranu lekcji jest włączona");
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("adres ekranu lekcji odpowiada 404, a ekran kursu nie ma do niego odnośnika", async ({ page }) => {
-    await instalujAtrapy(page);
-    const odpowiedz = await page.goto(ADRES_LEKCJI);
-    expect(odpowiedz?.status()).toBe(404);
+  test("adres ekranu lekcji pokazuje „Nie znaleziono strony”, a ekran kursu nie ma do niego odnośnika", async ({ page }) => {
+    const { sciezki } = await instalujAtrapy(page);
+    await page.goto(ADRES_LEKCJI);
+    await expect(page.getByRole("heading", { level: 1, name: "Nie znaleziono strony" })).toBeVisible();
+    await expect(page.getByLabel(/^Tytuł lekcji/)).toHaveCount(0);
+    expect(sciezki.filter((wpis) => wpis.includes("/lessons"))).toEqual([]);
 
     await otworzKurs(page);
     await page.getByRole("button", { name: "Edytuj lekcję „Pytania otwarte i zamknięte”" }).click();
