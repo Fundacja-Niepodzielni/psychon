@@ -67,9 +67,10 @@ interface WlasciwosciPowlokiPanelu {
  *
  * Powłoka niesie jedyny link skoku „Przejdź do treści” i jedyny `main` pod
  * `id="tresc"`; treść dostaje `DostawcaPowloki`, więc szablon ekranu
- * renderuje zwykły `div` zamiast drugiego `main`, oraz `DostawcaRamki`, po
- * którym nagłówek ekranu poznaje nową ramkę (bez „Wstecz”, okruszki tylko
- * z łączami). Stara powłoka `PanelShell` wstawia tylko `DostawcaPowloki`.
+ * renderuje zwykły `div` zamiast drugiego `main`, oraz `DostawcaRamki` z menu
+ * ramki, po którym nagłówek ekranu poznaje nową ramkę (bez „Wstecz”, okruszek
+ * liczony z tego menu regułą z `OkruszekRamki.ts`). Stara powłoka `PanelShell`
+ * wstawia tylko `DostawcaPowloki`.
  */
 export function PowlokaPanelu({
   logo,
@@ -262,7 +263,7 @@ export function PowlokaPanelu({
 
         <main id="tresc" tabIndex={-1} className={style.tresc}>
           <DostawcaPowloki>
-            <DostawcaRamki>{children}</DostawcaRamki>
+            <DostawcaRamki menu={[...grupy, ...(grupaZwinieta ? [grupaZwinieta] : [])]}>{children}</DostawcaRamki>
           </DostawcaPowloki>
         </main>
       </div>
