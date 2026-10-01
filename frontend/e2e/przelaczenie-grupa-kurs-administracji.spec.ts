@@ -495,6 +495,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await zrzut(page, "kurs-1280-opublikowany");
 
     await page.getByRole("button", { name: "Cofnij publikację" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Cofnij publikację" }).click();
     await expect(page.getByRole("button", { name: "Opublikuj kurs" })).toHaveCount(1);
     await expect(page.getByText("Opublikowany", { exact: true })).toHaveCount(0);
 

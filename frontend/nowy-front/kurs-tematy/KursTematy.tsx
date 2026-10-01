@@ -166,6 +166,7 @@ type StanDialogu =
   | { rodzaj: "usun"; temat: TematUkladu }
   | { rodzaj: "porzuc" }
   | { rodzaj: "porzuc-lekcje"; dokad: () => void }
+  | { rodzaj: "cofnij-publikacje" }
   | { rodzaj: "wyjscie"; dokad: () => void; tresc: string };
 
 /** Dokąd ma wrócić fokus po zamknięciu formularza albo okna pytania. */
@@ -436,6 +437,17 @@ function EdytorTematow({
 
   function opublikuj() {
     if (grupa === "admin") {
+      // Serwer publikuje układ zapisany, nie ten z ekranu — z niezapisanymi
+      // zmianami w drzewie żądanie nie rusza, a ekran mówi, co zrobić najpierw.
+      if (liczbaZmian > 0) {
+        setBrakiSerwera([]);
+        setBladPublikacji({
+          tytul: "Kurs nie został opublikowany",
+          tresc:
+            "Najpierw zapisz albo porzuć zmiany w tematach i lekcjach. Publikacja obejmuje układ zapisany na serwerze, a nie ten z ekranu.",
+        });
+        return;
+      }
       void ustawPublikacje(true);
       return;
     }
@@ -676,6 +688,11 @@ function EdytorTematow({
       setDialog(null);
       zamknijFormularzeLekcji();
       dialog.dokad();
+      return;
+    }
+    if (dialog.rodzaj === "cofnij-publikacje") {
+      setDialog(null);
+      void ustawPublikacje(false);
       return;
     }
     if (dialog.rodzaj === "usun") {
@@ -1139,13 +1156,30 @@ function EdytorTematow({
           onPowrot: () => wyjdz(wroc),
           dzieci: (
             <div>
+              {/* W toku: przycisk zostaje w kolejce fokusu (`aria-disabled`, nie
+                  `disabled`), bo okno potwierdzenia oddaje mu fokus w tej samej
+                  chwili, w której rusza żądanie; drugi klik zatrzymuje `publikowanie`. */}
               {cofniecie ? (
-                <Button id={idPrzyciskuPublikacji} poziom="outline" onClick={() => void ustawPublikacje(false)}>
-                  Cofnij publikację
+                <Button
+                  id={idPrzyciskuPublikacji}
+                  poziom="outline"
+                  aria-busy={publikowanie}
+                  aria-disabled={publikowanie}
+                  onClick={() => {
+                    if (!publikowanie) otworzDialog({ rodzaj: "cofnij-publikacje" });
+                  }}
+                >
+                  {publikowanie ? "Cofanie publikacji…" : "Cofnij publikację"}
                 </Button>
               ) : (
-                <Button id={idPrzyciskuPublikacji} poziom="primary" onClick={opublikuj}>
-                  Opublikuj kurs
+                <Button
+                  id={idPrzyciskuPublikacji}
+                  poziom="primary"
+                  aria-busy={publikowanie}
+                  aria-disabled={publikowanie}
+                  onClick={opublikuj}
+                >
+                  {publikowanie ? "Publikowanie…" : "Opublikuj kurs"}
                 </Button>
               )}
             </div>
@@ -1249,6 +1283,19 @@ function OknoDialogu({ dialog, idPola, wartosc, blad, onZmiana, onWycofaj, onPot
         onPotwierdz={onPotwierdz}
       >
         <Text>To, co wpisano w formularzu lekcji, nie zostało zapisane i przepadnie.</Text>
+      </Dialog>
+    );
+  }
+  if (dialog.rodzaj === "cofnij-publikacje") {
+    return (
+      <Dialog
+        tytul="Cofnąć publikację kursu?"
+        etykietaWycofania="Anuluj"
+        etykietaPotwierdzenia="Cofnij publikację"
+        onWycofaj={onWycofaj}
+        onPotwierdz={onPotwierdz}
+      >
+        <Text>Kurs wróci do stanu „Szkic”.</Text>
       </Dialog>
     );
   }

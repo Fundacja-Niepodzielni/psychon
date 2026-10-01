@@ -278,6 +278,94 @@ describe("wyjście z niezapisanymi danymi", () => {
   });
 });
 
+describe("publikacja", () => {
+  it("„Cofnij publikację” najpierw pyta; „Anuluj” nie wysyła nic, potwierdzenie wysyła jedno PATCH", async () => {
+    serwer = utworzSerwer({ kurs: { ...KURS, is_published: true } });
+    await renderEkranu();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cofnij publikację" }));
+    const okno = screen.getByRole("dialog", { name: "Cofnąć publikację kursu?" });
+    expect(within(okno).getByText("Kurs wróci do stanu „Szkic”.")).toBeInTheDocument();
+    expect(serwer.zapisy()).toEqual([]);
+
+    await userEvent.click(within(okno).getByRole("button", { name: "Anuluj" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(serwer.zapisy()).toEqual([]);
+    expect(screen.getByText("Opublikowany")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cofnij publikację" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cofnij publikację" }));
+    expect(await screen.findByText("Szkic")).toBeInTheDocument();
+    expect(serwer.zapisy()).toEqual([{ sciezka: "/admin/courses/4", metoda: "PATCH", cialo: { is_published: false } }]);
+  });
+
+  it("publikacja w toku: przycisk mówi „Publikowanie…” i jest zajęty; drugi klik nie wysyła drugiego żądania", async () => {
+    const odpowiedz = odroczona<unknown>();
+    serwer.nadpisz("PATCH", "/admin/courses/4", () => odpowiedz.obietnica);
+    await renderEkranu();
+
+    await userEvent.click(screen.getByRole("button", { name: "Opublikuj kurs" }));
+    const wToku = screen.getByRole("button", { name: "Publikowanie…" });
+    expect(wToku).toHaveAttribute("aria-busy", "true");
+    await userEvent.click(wToku);
+    expect(zapisy("PATCH", "/admin/courses/4")).toHaveLength(1);
+
+    await act(async () => {
+      odpowiedz.zwolnij({ ...KURS, is_published: true });
+    });
+    expect(await screen.findByText("Opublikowany")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Publikowanie…" })).toBeNull();
+  });
+
+  it("cofanie publikacji w toku: przycisk mówi „Cofanie publikacji…”, jest zajęty i trzyma fokus", async () => {
+    serwer = utworzSerwer({ kurs: { ...KURS, is_published: true } });
+    const odpowiedz = odroczona<unknown>();
+    serwer.nadpisz("PATCH", "/admin/courses/4", () => odpowiedz.obietnica);
+    await renderEkranu();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cofnij publikację" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cofnij publikację" }));
+    const wToku = await screen.findByRole("button", { name: "Cofanie publikacji…" });
+    expect(wToku).toHaveAttribute("aria-disabled", "true");
+    expect(wToku).toHaveAttribute("aria-busy", "true");
+    expect(wToku).toHaveFocus();
+    await userEvent.click(wToku);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(zapisy("PATCH", "/admin/courses/4")).toHaveLength(1);
+
+    await act(async () => {
+      odpowiedz.zwolnij({ ...KURS, is_published: false });
+    });
+    expect(await screen.findByRole("button", { name: "Opublikuj kurs" })).toBeInTheDocument();
+  });
+
+  it("niezapisany układ: „Opublikuj kurs” nie wysyła żądania i mówi, co zrobić najpierw", async () => {
+    await renderEkranu();
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Opublikuj kurs" }));
+
+    expect(serwer.zapisy()).toEqual([]);
+    expect(screen.getByText("Kurs nie został opublikowany")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Najpierw zapisz albo porzuć zmiany w tematach i lekcjach. Publikacja obejmuje układ zapisany na serwerze, a nie ten z ekranu.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Szkic")).toBeInTheDocument();
+
+    // Po zapisie układu ten sam przycisk publikuje, a zdanie znika.
+    await userEvent.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Zapisz zmiany" })).toBeNull());
+    await userEvent.click(screen.getByRole("button", { name: "Opublikuj kurs" }));
+    expect(await screen.findByText("Opublikowany")).toBeInTheDocument();
+    expect(screen.queryByText("Kurs nie został opublikowany")).toBeNull();
+    expect(zapisy("PATCH", "/admin/courses/4")).toEqual([
+      { sciezka: "/admin/courses/4", metoda: "PATCH", cialo: { is_published: true } },
+    ]);
+  });
+});
+
 // Dane wspólne prób muszą zostać nietknięte przez ten plik.
 it("atrapa: trzy lekcje w dwóch tematach", () => {
   expect(LEKCJE.map((l) => l.id)).toEqual([21, 22, 23]);
