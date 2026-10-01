@@ -303,7 +303,7 @@ for (const [nazwaWidoku, okno] of [
       await sprawdzPlakietke(
         wiersz,
         wiersz.getByText(FORMA_DLUGA.name, { exact: true }),
-        wiersz.getByText("Aktywna", { exact: true }),
+        wiersz.getByText("aktywna", { exact: true }),
         nazwaWidoku === "390",
       );
       await bezPrzewijaniaPoziomego(page);
