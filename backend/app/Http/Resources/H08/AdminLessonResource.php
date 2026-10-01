@@ -3,6 +3,7 @@
 namespace App\Http\Resources\H08;
 
 use App\Models\Lesson;
+use App\Services\Video\LessonRecording;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,12 +15,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Zasób nie dubluje `is_completed` ani liczników postępu — to pojęcia ścieżki
  * uczestnika (H06), nie CMS-a.
  *
+ * Stan nagrania pochodzi z bazy — zasób nigdy nie pyta dostawcy nagrań:
+ * `video_status` to stan najnowszego nagrania lekcji (`null` = nieznany),
+ * `video_ready` — czy uczestnik dostanie link do nagrania, `video_pending` —
+ * czy nowe nagranie jest wysyłane albo przetwarzane.
+ *
  * @mixin Lesson
  */
 class AdminLessonResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $recording = LessonRecording::of($this->resource);
+
         return [
             'id' => $this->id,
             'course_id' => $this->course_id,
@@ -34,6 +42,10 @@ class AdminLessonResource extends JsonResource
             'materials_count' => (int) $this->materials_count,
             'created_at' => $this->created_at?->toIso8601ZuluString(),
             'updated_at' => $this->updated_at?->toIso8601ZuluString(),
+            'video_status' => $recording->status(),
+            'video_status_at' => $this->video_status_at?->toIso8601ZuluString(),
+            'video_ready' => $recording->hasPlayable(),
+            'video_pending' => $recording->hasPending(),
         ];
     }
 }

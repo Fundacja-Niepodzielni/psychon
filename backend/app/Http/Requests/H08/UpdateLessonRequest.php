@@ -4,6 +4,7 @@ namespace App\Http\Requests\H08;
 
 use App\Http\Requests\Concerns\KeepsLessonContentVerbatim;
 use App\Models\Lesson;
+use App\Rules\RecordingIdNotOnItsWay;
 use App\Rules\RecordingIdNotTaken;
 use App\Services\Video\VideoProviderId;
 use Illuminate\Foundation\Http\FormRequest;
@@ -47,6 +48,7 @@ class UpdateLessonRequest extends FormRequest
                 'string',
                 'regex:'.VideoProviderId::PATTERN,
                 new RecordingIdNotTaken($lesson instanceof Lesson ? $lesson->video_provider_id : null),
+                new RecordingIdNotOnItsWay($lesson instanceof Lesson ? (int) $lesson->getKey() : null),
             ],
             'duration_seconds' => ['sometimes', 'integer', 'min:0'],
             'topic_id' => ['prohibited'],

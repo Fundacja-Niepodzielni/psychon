@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
+import { sprawdzWylogujWMenu } from "./_wyloguj-w-menu";
 
 /**
  * Nowa ramka panelu administracji (makieta 2.0.4, `#s-panel .shell`) na
@@ -721,7 +722,7 @@ test.describe("nowa ramka panelu administracji — bieżąca pozycja menu widocz
   });
 });
 
-/** Obliczony cień i kolor górnej krawędzi bloku „Konto” w menu bocznym. */
+/** Obliczony cień oraz barwa i grubość górnej krawędzi bloku „Konto” w menu. */
 async function krawedzKonta(bok: Locator) {
   return bok.locator("[data-konto-menu]").evaluate((el) => {
     const s = getComputedStyle(el);
@@ -754,14 +755,14 @@ test.describe("nowa ramka panelu administracji — krawędź „Konto” nad tre
     });
   }
 
-  test("/admin @1280x800: na wejściu treść pod „Konto” — linia i cień", async ({ page }) => {
+  test("/admin @1280x800: na wejściu treść pod „Konto” — jedna linia, bez cienia", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await instalujAtrapyApi(page);
     await page.goto("/admin");
     await zabezpieczeniePrzedEkranemDostepu(page);
     const bok = page.getByRole("complementary", { name: "Menu i konto" });
     await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
-    await expect.poll(async () => (await krawedzKonta(bok)).cien, { timeout: 5000 }).not.toBe("none");
+    await expect.poll(async () => (await krawedzKonta(bok)).grubosc, { timeout: 5000 }).toBe("1px");
     const katalog = katalogZrzutow();
     if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-1280x800-konto.png") });
     const k = await krawedzKonta(bok);
@@ -771,6 +772,7 @@ test.describe("nowa ramka panelu administracji — krawędź „Konto” nad tre
     expect(m.scrollHeight, `menu przewijane ${opis}`).toBeGreaterThan(m.clientHeight);
     expect(k.grubosc, opis).toBe("1px");
     expect(k.linia, `linia widoczna ${opis}`).not.toBe("rgba(0, 0, 0, 0)");
+    expect(k.cien, `bez cienia ${opis}`).toBe("none");
   });
 
   test("/admin @1280x800: menu przewinięte do końca — bez cienia i bez linii", async ({ page }) => {
@@ -782,7 +784,7 @@ test.describe("nowa ramka panelu administracji — krawędź „Konto” nad tre
     await expect(bok.locator('a[aria-current="page"]')).toHaveText("Pulpit");
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     await bok.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
-    await expect.poll(async () => (await krawedzKonta(bok)).cien, { timeout: 5000 }).toBe("none");
+    await expect.poll(async () => (await krawedzKonta(bok)).grubosc, { timeout: 5000 }).toBe("0px");
     const katalog = katalogZrzutow();
     if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-1280x800-konto-koniec.png") });
     const k = await krawedzKonta(bok);
@@ -790,12 +792,13 @@ test.describe("nowa ramka panelu administracji — krawędź „Konto” nad tre
     const opis = JSON.stringify({ ...k, scrollTop: m.scrollTop, scrollHeight: m.scrollHeight, clientHeight: m.clientHeight });
     console.log(`POMIAR-KONTO admin /admin koniec ${opis}`);
     expect(m.scrollTop + m.clientHeight, `przewinięte do końca ${opis}`).toBeGreaterThanOrEqual(m.scrollHeight - 1);
-    expect(k.linia, `linia przezroczysta ${opis}`).toBe("rgba(0, 0, 0, 0)");
+    expect(k.grubosc, `bez linii ${opis}`).toBe("0px");
+    expect(k.cien, `bez cienia ${opis}`).toBe("none");
   });
 });
 
 test.describe("nowa ramka panelu administracji — krawędź „Konto” w szufladzie 390", () => {
-  test("/admin @390: szuflada z treścią pod „Konto” — cień, po przewinięciu do końca bez cienia", async ({ page }) => {
+  test("/admin @390: szuflada z treścią pod „Konto” — jedna linia bez cienia, po przewinięciu do końca bez linii", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await instalujAtrapyApi(page);
     await page.goto("/admin");
@@ -804,7 +807,7 @@ test.describe("nowa ramka panelu administracji — krawędź „Konto” w szufl
     const okno = page.getByRole("dialog", { name: "Menu i konto" });
     await expect(okno).toBeVisible();
     await expect(okno.getByRole("button", { name: "Zamknij", exact: true })).toBeFocused();
-    await expect.poll(async () => (await krawedzKonta(okno)).cien, { timeout: 5000 }).not.toBe("none");
+    await expect.poll(async () => (await krawedzKonta(okno)).grubosc, { timeout: 5000 }).toBe("1px");
     const katalog = katalogZrzutow();
     if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-390-szuflada-konto.png") });
     const m = await pomiarBiezacejPozycji(okno);
@@ -813,11 +816,32 @@ test.describe("nowa ramka panelu administracji — krawędź „Konto” w szufl
     console.log(`POMIAR-KONTO admin @390 /admin szuflada ${opis}`);
     expect(m.scrollHeight, `szuflada przewijana ${opis}`).toBeGreaterThan(m.clientHeight);
     expect(k.linia, `linia widoczna ${opis}`).not.toBe("rgba(0, 0, 0, 0)");
+    expect(k.cien, `bez cienia ${opis}`).toBe("none");
     await okno.evaluate((el) => el.scrollTo({ top: el.scrollHeight, behavior: "instant" }));
-    await expect.poll(async () => (await krawedzKonta(okno)).cien, { timeout: 5000 }).toBe("none");
+    await expect.poll(async () => (await krawedzKonta(okno)).grubosc, { timeout: 5000 }).toBe("0px");
+    expect((await krawedzKonta(okno)).cien, "po przewinięciu do końca bez cienia").toBe("none");
     if (katalog) await page.screenshot({ path: path.join(katalog, "ramka-pulpit-390-szuflada-konto-koniec.png") });
     await expect(okno.getByRole("button", { name: "Zamknij", exact: true })).toBeFocused();
     await okno.getByRole("button", { name: "Zamknij", exact: true }).click();
     await expect(okno).toHaveCount(0);
   });
+});
+
+test.describe("nowa ramka panelu administracji — „Wyloguj” jak pozycja menu, w barwie działań niebezpiecznych", () => {
+  for (const szerokosc of [1280, 390]) {
+    test(`/admin @${szerokosc}: blok „Konto” bez ramki i cienia, napis i ikona „Wyloguj” czerwone`, async ({ page }) => {
+      await page.setViewportSize({ width: szerokosc, height: szerokosc >= 1024 ? 800 : 844 });
+      await instalujAtrapyApi(page);
+      await page.goto("/admin");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      let kontener = page.getByRole("complementary", { name: "Menu i konto" });
+      if (szerokosc < 1024) {
+        await page.getByRole("button", { name: "Menu", exact: true }).click();
+        kontener = page.getByRole("dialog", { name: "Menu i konto" });
+        await expect(kontener).toBeVisible();
+      }
+      await sprawdzWylogujWMenu(page, kontener, `administracja-${szerokosc}`);
+    });
+  }
 });

@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
+import { sprawdzWylogujWMenu } from "./_wyloguj-w-menu";
 
 /**
  * Nowa ramka panelu uczestnika (makieta 2.0.4, menu roli `u`, w. 1102) na
@@ -493,7 +494,7 @@ test.describe("nowa ramka panelu uczestnika — bieżąca pozycja menu widoczna"
   }
 });
 
-/** Obliczony cień i kolor górnej krawędzi bloku „Konto” w menu bocznym. */
+/** Obliczony cień oraz barwa i grubość górnej krawędzi bloku „Konto” w menu. */
 async function krawedzKonta(bok: Locator) {
   return bok.locator("[data-konto-menu]").evaluate((el) => {
     const s = getComputedStyle(el);
@@ -502,7 +503,7 @@ async function krawedzKonta(bok: Locator) {
 }
 
 test.describe("nowa ramka panelu uczestnika — krawędź „Konto” bez treści pod spodem", () => {
-  test(`${EKRANY[0].adres} @1280x800: menu się nie przewija — „Konto” bez cienia`, async ({ page }) => {
+  test(`${EKRANY[0].adres} @1280x800: menu się nie przewija — „Konto” bez cienia i bez linii`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await instalujAtrapyApi(page);
     await page.goto(EKRANY[0].adres);
@@ -516,6 +517,25 @@ test.describe("nowa ramka panelu uczestnika — krawędź „Konto” bez treśc
     console.log(`POMIAR-KONTO uczestnik ${EKRANY[0].adres} ${opisPomiaru}`);
     expect(m.scrollHeight, `menu się nie przewija ${opisPomiaru}`).toBeLessThanOrEqual(m.clientHeight);
     expect(k.cien, opisPomiaru).toBe("none");
-    expect(k.linia, opisPomiaru).toBe("rgba(0, 0, 0, 0)");
+    expect(k.grubosc, opisPomiaru).toBe("0px");
   });
+});
+
+test.describe("nowa ramka panelu uczestnika — „Wyloguj” jak pozycja menu, w barwie działań niebezpiecznych", () => {
+  for (const szerokosc of [1280, 390]) {
+    test(`/panel/pulpit @${szerokosc}: blok „Konto” bez ramki i cienia, napis i ikona „Wyloguj” czerwone`, async ({ page }) => {
+      await page.setViewportSize({ width: szerokosc, height: szerokosc >= 1024 ? 800 : 844 });
+      await instalujAtrapyApi(page);
+      await page.goto("/panel/pulpit");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      let kontener = page.getByRole("complementary", { name: "Menu i konto" });
+      if (szerokosc < 1024) {
+        await page.getByRole("button", { name: "Menu", exact: true }).click();
+        kontener = page.getByRole("dialog", { name: "Menu i konto" });
+        await expect(kontener).toBeVisible();
+      }
+      await sprawdzWylogujWMenu(page, kontener, `uczestnik-${szerokosc}`);
+    });
+  }
 });

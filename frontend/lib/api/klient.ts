@@ -11,6 +11,7 @@
 
 import { signOut } from "next-auth/react";
 import { handleUnauthorized } from "./logowanie";
+import { adresWBazie, zgodnaZLiteralem } from "./adres-straznik";
 import { czyOdczytKonta, czySciezkaMe, odczytajMe, wyczyscPamiecMe } from "./pamiec-me";
 
 export interface PaginationMeta {
@@ -42,6 +43,19 @@ export class ApiError extends Error {
     this.code = body.code;
     this.errors = body.errors;
     this.reason = body.reason;
+  }
+}
+
+/**
+ * Ścieżka żądania nie przeszła kontroli (`adresApi`) — żądania nie wysłano i
+ * tokenu nie odczytano. To wyjątek KLIENTA, nie odpowiedź serwera: nie ma kodu
+ * HTTP, a komunikat celowo nie niesie odrzuconej ścieżki (wartość mogła przyjść
+ * z adresu strony — nie trafia do konsoli ani dziennika).
+ */
+export class NieprawidlowaSciezkaApi extends Error {
+  constructor() {
+    super("Odrzucono żądanie do API: niedozwolona ścieżka.");
+    this.name = "NieprawidlowaSciezkaApi";
   }
 }
 
@@ -129,13 +143,111 @@ export function baseUrl(): string {
   return `${raw.replace(/\/+$/, "")}/api/v1`;
 }
 
+/** Ile razy wolno zdekodować ścieżkę, szukając pod kodowaniem zakazanych znaków. */
+const MAKS_DEKODOWAN_SCIEZKI = 3;
+
+/** Znaki sterujące: C0 (z tabulacją i końcami wierszy), DEL i C1. */
+const ZNAKI_STEROWANIE = /[\u0000-\u001F\u007F-\u009F]/;
+
+export { adresWBazie, zgodnaZLiteralem };
+
 /**
- * Jedno żądanie do API z kopertą i obsługą błędów. Odczyt `GET /me` idzie
+ * Pełny adres żądania albo wyjątek {@link NieprawidlowaSciezkaApi}. Do ścieżki
+ * wchodzą wartości z adresu strony, parametrów trasy i pól formularzy, a
+ * `fetch` (i serwer za nim) zwija `..`, `%2e%2e` i `\`, więc taka wartość
+ * mogłaby skierować żądanie z tokenem osoby pod całkiem inną ścieżkę niż
+ * zamierzona. Ścieżka jest przyjmowana, gdy:
+ * - zaczyna się od dokładnie jednego `/` i nie zawiera `#`;
+ * - cały napis nie zawiera znaków sterujących wprost (parser `URL` usuwa
+ *   tabulator i końce wierszy po cichu, więc adres wyglądałby inaczej, niż go
+ *   napisano); znak sterujący zakodowany w ZAPYTANIU (`%09` z `URLSearchParams`)
+ *   jest zwykłą wartością i nie jest odrzucany;
+ * - część przed `?`, zdekodowana procentowo (najwyżej 3 razy, błąd dekodowania
+ *   odrzuca), nie zawiera znaków sterujących, `%`, `\`, `//` ani segmentu `.` /
+ *   `..`; zapytanie musi się poprawnie dekodować, ale jego treść nie jest
+ *   oceniana;
+ * - nie zawiera zakodowanego ukośnika (`%2f` w dowolnej wielkości liter, także
+ *   kodowanego wielokrotnie) — wartość z ukośnikiem wstawia się segment po
+ *   segmencie;
+ * - po sklejeniu z bazą zgadzają się origin i przedrostek `pathname` bazy;
+ * - ścieżka po normalizacji parsera `URL` ma tę samą liczbę i treść segmentów
+ *   co napisana ({@link zgodnaZLiteralem}) — to jest ocena PO normalizacji, bo
+ *   końcowa spacja przy `..` zmienia go w segment kropkowy dopiero w parserze.
+ * Część po `?` nie podlega kontroli segmentów. Zwracany jest ten sam napis co
+ * zawsze (`${baza}${ścieżka}`); komunikat wyjątku nie niesie ścieżki.
+ *
+ * Adres powstaje przez sklejenie napisów, nigdy przez `new URL(ścieżka, baza)`:
+ * to drugie zamienia `//host` i `https://host` w adres innego hosta i gubi
+ * przedrostek bazy, więc `URL` służy tu wyłącznie do oceny adresu.
+ */
+export function adresApi(path: string, base: string): string {
+  const odrzuc = (): never => {
+    throw new NieprawidlowaSciezkaApi();
+  };
+
+  if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//") || path.includes("#")) {
+    return odrzuc();
+  }
+
+  const znakZapytania = path.indexOf("?");
+  const literal = znakZapytania === -1 ? path : path.slice(0, znakZapytania);
+  const zapytanie = znakZapytania === -1 ? "" : path.slice(znakZapytania);
+  // Bez zapytania parser przycina końcowe spacje całego adresu przed zwinięciem
+  // segmentów, więc segmenty ocenia się na ścieżce już przyciętej (także po
+  // zdekodowaniu: `%252e%252e ` to dla parsera `%252e%252e`, a po dekodowaniu `..`).
+  let sciezka = znakZapytania === -1 ? literal.replace(/ +$/, "") : literal;
+  let zakodowanyUkosnik = false;
+  try {
+    for (let dekodowan = 0; dekodowan < MAKS_DEKODOWAN_SCIEZKI && /%[0-9a-f]{2}/i.test(sciezka); dekodowan += 1) {
+      if (/%2f/i.test(sciezka)) zakodowanyUkosnik = true;
+      sciezka = decodeURIComponent(sciezka);
+    }
+    // Zapytanie tylko sprawdzamy pod kątem poprawnego kodowania procentowego;
+    // zdekodowana wartość jest daną, nie ścieżką.
+    decodeURIComponent(zapytanie);
+  } catch {
+    return odrzuc();
+  }
+
+  if (
+    zakodowanyUkosnik ||
+    ZNAKI_STEROWANIE.test(path) ||
+    ZNAKI_STEROWANIE.test(sciezka) ||
+    sciezka.includes("%") ||
+    sciezka.includes("\\") ||
+    sciezka.includes("//") ||
+    /(^|\/)\.{1,2}(\/|$)/.test(sciezka)
+  ) {
+    return odrzuc();
+  }
+
+  const czysta = base.replace(/\/+$/, "");
+  const wzglednyOrigin = "http://wzgledny.invalid";
+  const bazaUrl = new URL(`${czysta}/`, wzglednyOrigin);
+  const adresUrl = new URL(`${czysta}${path}`, wzglednyOrigin);
+  if (!adresWBazie(adresUrl, bazaUrl)) {
+    return odrzuc();
+  }
+  if (!zgodnaZLiteralem(czysta, literal, zapytanie, adresUrl, wzglednyOrigin)) {
+    return odrzuc();
+  }
+  return `${czysta}${path}`;
+}
+
+/**
+ * Jedno żądanie do API z kopertą i obsługą błędów. Każde żądanie klienta
+ * (`api`, `apiPaged`) przechodzi tędy i najpierw przez kontrolę ścieżki
+ * (`adresApi`) — przed pamięcią konta, przed odczytem tokenu i przed `fetch`.
+ * Odczyt `GET /me` idzie
  * przez krótką pamięć (`./pamiec-me`) — strażnik roli, powłoka i ekran
  * pytają o to samo konto jedno po drugim, a strona ma kosztować jedno
  * żądanie. Reszta ścieżek jest bez pamięci.
  */
 async function request(path: string, options: ApiOptions = {}): Promise<unknown> {
+  // Pierwsza instrukcja: ścieżka z `..` pod przedrostkiem `/me` nie może trafić
+  // do pamięci konta, a odrzucone żądanie nie czyta tokenu.
+  adresApi(path, baseUrl());
+
   const metoda = (options.method ?? "GET").toUpperCase();
 
   if (czySciezkaMe(path)) {
@@ -176,10 +288,13 @@ async function wyslij(path: string, options: ApiOptions, token: string | null): 
     payload = JSON.stringify(body);
   }
 
-  const res = await fetch(`${baseUrl()}${path}`, {
+  const res = await fetch(adresApi(path, baseUrl()), {
     ...init,
     headers,
     body: payload,
+    // API odpowiada kopertą JSON i niczego nie przekierowuje; żądanie z tokenem
+    // nie idzie za przekierowaniem pod inny adres.
+    redirect: "error",
   });
 
   // 401 → patrz `handleUnauthorized` w `./logowanie` (rozróżnienie

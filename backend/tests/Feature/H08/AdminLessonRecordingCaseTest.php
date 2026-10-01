@@ -388,7 +388,10 @@ class AdminLessonRecordingCaseTest extends TestCase
         $response = $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])
             ->assertCreated();
 
-        $this->assertSame(strtolower($guid), $lesson->fresh()->video_provider_id);
+        // Wgranie zapisuje identyfikator jako nagranie „w drodze”; odtwarzanym
+        // staje się dopiero po gotowości — w tej samej postaci, małymi literami.
+        $this->assertSame(strtolower($guid), $lesson->fresh()->video_pending_id);
+        $this->assertNull($lesson->fresh()->video_provider_id);
         $this->assertSame($guid, $response->json('data.video_id'));
         $this->assertSame(
             hash('sha256', self::LIBRARY.self::API_KEY.$response->json('data.expiration_time').$guid),
@@ -408,7 +411,7 @@ class AdminLessonRecordingCaseTest extends TestCase
         $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])
             ->assertCreated();
 
-        $this->assertSame(self::HELD_ID, $lesson->fresh()->video_provider_id);
+        $this->assertSame(self::HELD_ID, $lesson->fresh()->video_pending_id);
     }
 
     /**
@@ -447,7 +450,8 @@ class AdminLessonRecordingCaseTest extends TestCase
 
         Http::fake(['*' => Http::response(['guid' => '3FA85F64-5717-4562-B3FC-2C963F66AFA6'])]);
         $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])->assertCreated();
-        $this->assertSame('3fa85f64-5717-4562-b3fc-2c963f66afa6', $lesson->fresh()->video_provider_id);
+        $this->assertSame('3fa85f64-5717-4562-b3fc-2c963f66afa6', $lesson->fresh()->video_pending_id);
+        $this->assertSame('mock-inne-nagranie', $lesson->fresh()->video_provider_id);
         $this->assertSame(self::HELD_ID, $holder->fresh()->video_provider_id);
     }
 

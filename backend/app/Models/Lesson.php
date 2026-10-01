@@ -30,7 +30,32 @@ class Lesson extends Model
             'duration_seconds' => 'integer',
             'topic_id' => 'integer',
             'topic_position' => 'integer',
+            'video_status_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Stan nagrania (`video_status`) opisuje konkretne nagranie. Gdy
+     * identyfikator odtwarzany zmienia się zapisem lekcji (ręcznie, poza
+     * ścieżką wgrania), a lekcja nie ma nagrania „w drodze”, dotychczasowy
+     * stan przestaje być prawdą o nowym identyfikatorze: wraca do „nieznany”
+     * i ustali go pierwszy odczyt stanu. Ścieżka wgrania i odczyt stanu
+     * zapisują stan jawnie, więc ta reguła ich nie dotyczy.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Lesson $lesson): void {
+            if (
+                $lesson->isDirty('video_provider_id')
+                && ! $lesson->isDirty('video_status')
+                && ! $lesson->isDirty('video_pending_id')
+                && $lesson->video_pending_id === null
+                && $lesson->video_status !== null
+            ) {
+                $lesson->video_status = null;
+                $lesson->video_status_at = null;
+            }
+        });
     }
 
     /**
