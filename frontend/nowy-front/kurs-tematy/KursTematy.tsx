@@ -723,12 +723,14 @@ function EdytorTematow({
         : poprzedni,
     );
     setBladTresci(null);
+    setToast(null);
   }
 
   async function zapisz() {
     if (stan.rodzaj !== "gotowy" || zapisywanie) return;
     const { serwer, lokalny } = stan;
     setZapisywanie(true);
+    setToast(null);
     setBladTresci(null);
     setUkladNieaktualny(false);
     let wysylanyUklad = false;
@@ -770,7 +772,9 @@ function EdytorTematow({
           ostatniTytul: poprzedni.ostatniTytul,
         };
       });
-      setOgloszenie("Zmiany w kursie zostały zapisane.");
+      // `Toast` ma rolę „status”, więc czytnik czyta zdanie raz — z obszaru ogłoszeń je pomijam.
+      setOgloszenie("");
+      setToast("Zmiany w kursie zostały zapisane.");
     } catch (blad) {
       // Stan lokalny zostaje nietknięty — osoba poprawia i zapisuje ponownie.
       setOgloszenie("");

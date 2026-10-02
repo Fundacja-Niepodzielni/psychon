@@ -17,6 +17,7 @@ import { Field } from "@/design-system/molekuly/Field/Field";
 import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActions";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { ApiError } from "@/lib/api/klient";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
@@ -109,6 +110,7 @@ export function SuperwizjeTerminy() {
   const [zapisywanie, setZapisywanie] = useState(false);
   const [odwolywanyId, setOdwolywanyId] = useState<number | null>(null);
   const [potwierdzOdwolanie, setPotwierdzOdwolanie] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   // Otwarty formularz bez żadnej zmiany nie jest niezapisaną pracą.
   const edytowanyTermin = edytowanyId === null ? undefined : terminy.find((termin) => termin.id === edytowanyId);
   useZgloszenieNiezapisanychZmian(
@@ -169,6 +171,7 @@ export function SuperwizjeTerminy() {
   );
 
   function otworzEdycje(termin: AdminSupervisionSlot) {
+    setToast(null);
     setBlad(null);
     setBledyPol(undefined);
     setPotwierdzOdwolanie(false);
@@ -187,6 +190,7 @@ export function SuperwizjeTerminy() {
   async function zapisz() {
     if (edytowanyId === null || formularz === null) return;
     setZapisywanie(true);
+    setToast(null);
     setBlad(null);
     setBledyPol(undefined);
     // Puste albo nieliczbowe pole trafia do serwera dosłownie — bez cichej
@@ -206,6 +210,7 @@ export function SuperwizjeTerminy() {
         poprzednie.map((termin) => (termin.id === zaktualizowany.id ? zaktualizowany : termin)),
       );
       zamknijPanel();
+      setToast("Zapisano zmiany terminu superwizji.");
     } catch (wyjatek) {
       if (wyjatek instanceof ApiError && wyjatek.errors) {
         setBledyPol(wyjatek.errors);
@@ -225,11 +230,13 @@ export function SuperwizjeTerminy() {
 
   async function odwolaj(id: number) {
     setOdwolywanyId(id);
+    setToast(null);
     setBlad(null);
     try {
       await cancelAdminSupervisionSlot(id);
       setTerminy((poprzednie) => poprzednie.filter((termin) => termin.id !== id));
       if (edytowanyId === id) zamknijPanel();
+      setToast("Termin superwizji został odwołany.");
     } catch (wyjatek) {
       setPotwierdzOdwolanie(false);
       setBlad(
@@ -280,6 +287,8 @@ export function SuperwizjeTerminy() {
         opis="Edycja i odwołanie terminów wszystkich prowadzących (H12). Zapisy pozostają widoczne wyłącznie do odczytu."
         onPowrot={() => router.back()}
       />
+
+      {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
 
       <RecordList
         tytul="Terminy"
