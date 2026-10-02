@@ -57,16 +57,18 @@ interface KursAtrapy {
   /** Lekcja (1-based) z czasem aktywnym 12 z 16 potrzebnych minut; wymaga `nowePola`. */
   wTrakcieNr?: number;
   testZaliczony?: boolean;
+  /** Kurs bez testu: `has_test: false`, test nie jest zamknięty ani zaliczony; z `nowePola`. */
+  bezTestu?: boolean;
 }
 
-function kurs({ ukonczone, zamknieteOd, tytul, tytulLekcji, nowePola, wTrakcieNr, testZaliczony }: KursAtrapy) {
+function kurs({ ukonczone, zamknieteOd, tytul, tytulLekcji, nowePola, wTrakcieNr, testZaliczony, bezTestu }: KursAtrapy) {
   return {
     id: 2,
     slug: SLUG,
     title: tytul ?? "Pierwsza pomoc psychologiczna",
     sequence_order: 1,
     product_group: "psychon",
-    status: "in_progress",
+    status: bezTestu && ukonczone >= TYTULY.length ? "completed" : "in_progress",
     progress_percent: Math.round((ukonczone / TYTULY.length) * 100),
     instructor: null,
     topics: [
@@ -89,7 +91,11 @@ function kurs({ ukonczone, zamknieteOd, tytul, tytulLekcji, nowePola, wTrakcieNr
           }
         : {}),
     })),
-    ...(nowePola ? { has_test: true, test_locked: ukonczone < TYTULY.length, test_passed: testZaliczony ?? false } : {}),
+    ...(nowePola
+      ? bezTestu
+        ? { has_test: false, test_locked: false, test_passed: false }
+        : { has_test: true, test_locked: ukonczone < TYTULY.length, test_passed: testZaliczony ?? false }
+      : {}),
     ...(!nowePola && testZaliczony !== undefined ? { test_passed: testZaliczony } : {}),
     materials: [],
   };
@@ -553,6 +559,49 @@ for (const { szerokosc, wysokosc } of OKNA) {
       ]);
       await expect(page.locator('[data-lekcja="26"]')).toContainText("do czytania");
       await expect(page.locator('[data-lekcja="26"]')).not.toContainText("min nagrania");
+    });
+
+    test("kurs bez testu w trakcie: bez karty testu i bez „na końcu test”, przycisk główny prowadzi do lekcji, bez odnośnika „Wróć do kursów”", async ({ page }, testInfo) => {
+      await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 2, zamknieteOd: null, nowePola: true, wTrakcieNr: 3, bezTestu: true }) }));
+      await otworz(page, `/panel/kursy/${SLUG}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Pierwsza pomoc psychologiczna" })).toBeVisible();
+      await expect(page.locator("[data-karta-testu]")).toHaveCount(0);
+      await expect(page.getByText("Test końcowy")).toHaveCount(0);
+      await expect(page.getByText("7 lekcji · około 2 godziny", { exact: true })).toBeVisible();
+      await expect(page.getByText(/na końcu test/)).toHaveCount(0);
+      expect((await przyciskiGlowne(page)).map(({ tekst }) => tekst)).toEqual(["Kontynuuj lekcję 3"]);
+      await expect(page.getByRole("link", { name: "Wróć do kursów" })).toHaveCount(0);
+      await sprawdzPrzewijanie(page);
+      await sprawdzAxe(page, testInfo, `kurs bez testu w trakcie ${szerokosc}`);
+    });
+
+    test("kurs bez testu po ukończeniu wszystkich lekcji: „Kurs ukończony” i „Wróć do kursów” zamiast „Przejdź do testu”, bez karty testu, miary i axe", async ({ page }, testInfo) => {
+      await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 7, zamknieteOd: null, nowePola: true, bezTestu: true }) }));
+      await otworz(page, `/panel/kursy/${SLUG}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Pierwsza pomoc psychologiczna" })).toBeVisible();
+      await expect(page.locator("[data-karta-testu]")).toHaveCount(0);
+      await expect(page.getByText(/Przejdź do testu/)).toHaveCount(0);
+      await expect(page.getByText(/na końcu test/)).toHaveCount(0);
+      await expect(page.getByText("Kurs ukończony", { exact: true })).toBeVisible();
+      expect(await przyciskiGlowne(page)).toHaveLength(0);
+      const odnosnik = page.getByRole("link", { name: "Wróć do kursów" });
+      await expect(odnosnik).toBeVisible();
+      await expect(odnosnik).toHaveAttribute("href", "/panel/kursy");
+      const miary = await odnosnik.boundingBox();
+      expect(miary?.height ?? 0).toBeGreaterThanOrEqual(44);
+      await sprawdzPrzewijanie(page);
+      await sprawdzAxe(page, testInfo, `kurs bez testu ukończony ${szerokosc}`);
+      await zrzut(page, `uczestnik--kurs-bez-testu--ukonczony--${szerokosc}`);
+      if (telefon) await zrzutPierwszegoEkranu(page, "uczestnik--kurs-bez-testu--ukonczony--telefon-pierwszy-ekran");
+    });
+
+    test("kurs bez testu w podglądzie: te same reguły i pas „Nic się nie zapisuje”", async ({ page }) => {
+      await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 7, zamknieteOd: null, nowePola: true, bezTestu: true }) }), "project_manager");
+      await otworz(page, `/panel/kursy/${SLUG}?podglad=1`);
+      await expect(page.getByRole("heading", { level: 1, name: "Pierwsza pomoc psychologiczna" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Tryb podglądu" })).toContainText("Nic się nie zapisuje.");
+      await expect(page.locator("[data-karta-testu]")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
     });
 
     test("test_passed: karta testu „Test zaliczony.”, bez przycisku głównego", async ({ page }) => {
