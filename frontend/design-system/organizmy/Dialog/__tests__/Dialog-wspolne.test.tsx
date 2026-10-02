@@ -49,6 +49,11 @@ describe("natywne okno modalne i blokada przewijania", () => {
     }
   });
 
+  it("okno ma też jawny atrybut roli — dotychczasowe selektory `[role=\"dialog\"]` je znajdują", () => {
+    render(<Potwierdzenie />);
+    expect(document.querySelector('[role="dialog"]')).toBe(screen.getByRole("dialog"));
+  });
+
   it("bez showModal() okno dostaje atrybut `open` i ten sam układ", () => {
     render(<Potwierdzenie />);
     expect(screen.getByRole("dialog")).toHaveAttribute("open");

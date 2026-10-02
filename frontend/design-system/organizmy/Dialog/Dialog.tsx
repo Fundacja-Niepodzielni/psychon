@@ -542,6 +542,9 @@ export function Dialog({
     <dialog
       ref={podepnijOkno}
       className={style.okno}
+      // Rola jawnie, choć `<dialog>` ma ją niejawnie: dotychczasowe próby
+      // i style szukają okna selektorem `[role="dialog"]`.
+      role="dialog"
       data-wariant={wariant}
       data-przewijany={przewijanySrodek || undefined}
       aria-modal="true"
