@@ -165,6 +165,10 @@ describe("Karta osoby — okno „Zmień datę dostępu”", () => {
     expect(powod).toHaveAccessibleDescription("Pisz rzeczowo, bez informacji o zdrowiu.");
     expect(within(okno).getByRole("button", { name: "Anuluj" })).toBeInTheDocument();
     expect(within(okno).getByRole("button", { name: "Zapisz datę" })).toHaveAttribute("type", "submit");
+    const glowne = within(okno)
+      .getAllByRole("button")
+      .filter((przycisk) => przycisk.className.split(/\s+/).some((klasa) => /(^|_)primary(_|$)/.test(klasa)));
+    expect(glowne.map((przycisk) => przycisk.textContent)).toEqual(["Zapisz datę"]);
   });
 
   it("okno nie ma naruszeń dostępności", async () => {

@@ -99,6 +99,14 @@ describe("zmiana daty dostępu — zgodność z zapleczem", () => {
     );
   });
 
+  it("karta osoby niesie pola używane przez okno: imię, nazwisko i data końca dostępu", () => {
+    const klucze = kluczeZasobu("app/Http/Resources/ProfileResource.php");
+    for (const klucz of ["first_name", "last_name", "access_expires_at"]) {
+      expect(klucze).toContain(klucz);
+    }
+    expect(kluczeZasobu("app/Http/Resources/AdminUserCardResource.php")).toContain("profile");
+  });
+
   it("serwer sam zapisuje zdarzenie zmiany daty — okno nie wysyła nic do dziennika", () => {
     expect(zaplecze("app/Http/Controllers/Api/V1/Admin/AccessController.php")).toContain("'access.extended'");
     for (const plik of ["nowy-front/karta-osoby/daneDostepu.ts", "nowy-front/karta-osoby/ZmianaDatyDostepu.tsx"]) {
