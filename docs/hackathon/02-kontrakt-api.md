@@ -1989,8 +1989,8 @@ Kod: `routes/api/h06.php`, `Services/Lessons/LessonCompletionRule.php`,
 Uczestnik przechodzi lekcje kursu po kolei, a test kursu otwiera się dopiero po ukończeniu
 wszystkich lekcji. Zmiana jest addytywna: nowy kod `lesson_locked`, nowe pola odczytu kursu
 (`locked`, `test_locked`, `active_seconds`, `required_active_seconds`, `has_recording`,
-`test_passed`), materiały lekcji zamkniętych poza odczytem kursu i nowa odmowa startu testu. Bez nowych tras, slugów audytu i typów powiadomień;
-zero zmian w danych.
+`test_passed`), materiały lekcji zamkniętych poza odczytem kursu i nowa odmowa startu testu.
+Bez nowych tras, slugów audytu i typów powiadomień; zero zmian w danych.
 
 ### 1. Reguła otwarcia lekcji
 
@@ -2037,11 +2037,11 @@ ukończenia, ani pytania; odczyt zamkniętej lekcji nie podbija `open_count`.
 
 Pobranie pliku materiału (`GET /materials/{id}/download`) tą regułą bezpośrednio **nie jest
 objęte**: trasa jest podpisana i nie czyta roli z tokena. Zamiast tego odczyt kursu nie wydaje
-uczestnikowi linków do materiałów lekcji zamkniętej (punkt 4); kształt pola `download_url` i
+uczestnikowi linków do materiałów lekcji zamkniętej (punkt 6); kształt pola `download_url` i
 trasa pobrania bez zmian. Znane ograniczenie: link wydany, zanim lekcja się zamknęła (np. po
 zmianie kolejności lekcji), działa do końca swojej ważności (domyślnie 300 s).
 
-### 4. Odczyt kursu — `GET /courses/{slug}`
+### 4. Odczyt kursu — `GET /courses/{slug}`: zamknięcie lekcji i testu
 
 Addytywnie: każdy element `lessons` niesie `locked` (wartość logiczna — ta sama reguła co
 odmowa `lesson_locked` na trasach lekcji), a kurs niesie `test_locked`:
@@ -2058,6 +2058,8 @@ odmowa `lesson_locked` na trasach lekcji), a kurs niesie `test_locked`:
 ukończone; kurs bez testu, kurs bez lekcji oraz personel mają `false`. Liczba zapytań do bazy
 przy odczycie kursu nie zależy od liczby lekcji.
 
+### 5. Odczyt kursu — czas aktywny, nagranie i zaliczenie testu
+
 Addytywnie także cztery pola, zwracane zawsze, także dla lekcji zamkniętej (bez postępu — zera)
 i dla personelu (te same wartości liczone tak samo):
 
@@ -2070,7 +2072,9 @@ i dla personelu (te same wartości liczone tak samo):
 - `test_passed` — wartość logiczna na poziomie kursu: test kursu zaliczony, to samo źródło,
   którym `CourseAccess` rozstrzyga zaliczenie testu; kurs bez testu: `false`.
 
-**Materiały.** `materials` nie zawiera materiałów lekcji zamkniętej dla wywołującego
+### 6. Odczyt kursu — materiały lekcji zamkniętych
+
+`materials` nie zawiera materiałów lekcji zamkniętej dla wywołującego
 (materiału z `lesson_id` lekcji, której `locked` jest `true`); materiały wpięte w kurs
 (`lesson_id: null`) i materiały lekcji otwartych zostają bez zmian. Decyduje ta sama reguła
 i te same policzone blokady co `lessons[].locked`, więc dla uczestnika materiał lekcji jest
@@ -2078,7 +2082,7 @@ obecny wtedy i tylko wtedy, gdy lekcja nie jest zamknięta; personel i prowadzą
 komplet (dla nich `locked` jest `false`). Po ukończeniu poprzedniej lekcji materiał pojawia się
 w następnym odczycie. Kształt elementu `materials` i pola `download_url` bez zmian.
 
-### 5. Start testu przed ukończeniem lekcji
+### 7. Start testu przed ukończeniem lekcji
 
 `GET /courses/{slug}/test` i `POST /tests/{id}/attempts` dla kursu, który ma nieukończone
 lekcje, odpowiadają `422 conditions_not_met` z `reason.missing: ["lessons"]` (kody i
