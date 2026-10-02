@@ -1,0 +1,231 @@
+/* Moduł CSS ekranu „Dziennik działań” — wartości wyglądu wyłącznie z tokenów,
+   zero zapisów wprost. Szerokość, odstępy obszarów i kolumnę daje szablon
+   listy. Nic na ekranie nie przewija się w bok: od 640 px wpisy stoją
+   w czterech kolumnach, poniżej każdy wpis jest blokiem
+   „Co” / „Kogo dotyczy: …” / „Kto · kiedy”. */
+
+/* ---------- filtry ---------- */
+.filtry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.pola {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* Pole filtra: od 180 px w górę, na wąskim ekranie cała szerokość. */
+.pole {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.zakresy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.zakresy legend {
+  width: 100%;
+  margin-bottom: var(--space-4);
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+}
+
+.znaczniki {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* Znacznik „Dotyczy: …” z przyciskiem usunięcia; długie nazwisko łamie się. */
+.znacznik {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 100%;
+  padding-left: var(--space-12);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- licznik i komunikat dla czytnika ---------- */
+.licznik {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Komunikat stanu bez wpisów (błąd, brak połączenia): tło błędu jak `Notice`. */
+.komunikat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--r-sm);
+  background: var(--error-bg);
+  color: var(--ink);
+}
+
+.lista {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+/* ---------- wpisy ---------- */
+.tabela {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
+
+/* Poniżej 640 px nagłówki kolumn są tylko dla czytnika (wzrokowo ukryte, ale
+   w drzewie dostępności), żeby każda komórka zachowała nazwę swojej kolumny. */
+.naglowki {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.wiersz {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "co co"
+    "kogo kogo"
+    "kto kiedy";
+  column-gap: var(--space-4);
+  row-gap: var(--space-4);
+  padding: var(--space-12) var(--space-16);
+  border-top: 1px solid var(--border);
+}
+
+/* Pierwszy wpis stoi pod nagłówkami (na wąskim ekranie niewidocznymi): bez linii nad sobą. */
+.naglowki + .wiersz {
+  border-top: 0;
+}
+
+.komorka {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kiedy {
+  grid-area: kiedy;
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+/* „Kto · kiedy” w jednym wierszu bloku: kropka przed datą tylko wzrokowo. */
+.kiedy::before {
+  content: "· ";
+}
+
+.co {
+  grid-area: co;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.zdanie {
+  margin: 0;
+  color: var(--ink);
+  font-weight: var(--fw-bold);
+}
+
+.rzecz {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+.kogo {
+  grid-area: kogo;
+}
+
+.kto {
+  grid-area: kto;
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+/* Podpis „Kogo dotyczy:” przed wartością — tylko w bloku poniżej 640 px. */
+.podpis {
+  color: var(--muted);
+}
+
+@media (min-width: 640px) {
+  .naglowki,
+  .wiersz {
+    display: grid;
+    grid-template-columns: minmax(0, 10rem) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-areas: "kiedy co kogo kto";
+    column-gap: var(--space-16);
+    padding: var(--space-12) var(--space-16);
+  }
+
+  .naglowki {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    padding-block: var(--space-8);
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: var(--fs-11);
+    font-weight: var(--fw-medium);
+  }
+
+  .kiedy::before {
+    content: none;
+  }
+
+  .kiedy,
+  .kto {
+    color: var(--ink);
+    font-size: inherit;
+  }
+
+  .podpis {
+    display: none;
+  }
+}
