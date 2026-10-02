@@ -11,6 +11,7 @@ import { pobierzPulpitAdministracji, type PulpitAdministracji as DanePulpitu } f
 import { ListaSpraw } from "./ListaSpraw";
 import { odczytajPulpit, rodzajBledu, TEKST_BRAK_SPRAW, zbudujWidok } from "./widok";
 import style from "./PulpitAdministracji.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Pulpit" }];
 const OPIS = "Ile spraw czeka na decyzję i jak idzie program.";
@@ -98,7 +99,7 @@ export function PulpitAdministracji() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Liczby nie są zmyślane bez danych.
+            {KOMUNIKAT_SERWER} Liczby nie są pokazywane bez danych.
           </Notice>
         }
         wspierajaca={null}

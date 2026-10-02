@@ -192,7 +192,7 @@ describe("zbudujWidok", () => {
     const widok = zbudujWidok(dane);
     expect(widok.brakSpraw).toBe(false);
     expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toBe("Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.");
+    expect(widok.powodBrakuCelu).toBe("Nie udało się ustalić, które zgłoszenia rekrutacyjne otworzyć. Odśwież stronę i spróbuj ponownie.");
   });
 
   it("kolejka applications z liczbą 0 przy innych kolejkach ze sprawami: brak celu z powodem", () => {
@@ -214,7 +214,7 @@ describe("zbudujWidok", () => {
     const dane = odczytajPulpit(odpowiedzPulpitu({ queues: [{ key: "applications", count: 2, link: "//obcy" }] }))!;
     const widok = zbudujWidok(dane);
     expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toMatch(/nieprawidłowy/);
+    expect(widok.powodBrakuCelu).toMatch(/Nie udało się otworzyć zgłoszeń rekrutacyjnych/);
   });
 
   it("wszystkie liczby zerowe: brak spraw, brak celu, powód o zgłoszeniach rekrutacyjnych", () => {
@@ -236,7 +236,7 @@ describe("zbudujWidok", () => {
     const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu({ queues: [] }))!);
     expect(widok.brakSpraw).toBe(true);
     expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toMatch(/nie zawiera/);
+    expect(widok.powodBrakuCelu).toMatch(/Nie udało się ustalić, które zgłoszenia/);
   });
 
   it("kolejka questions nie ma akcji i niesie adnotację; pozostałe kolejki są otwierane, bez adnotacji", () => {

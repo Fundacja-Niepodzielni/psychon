@@ -174,11 +174,11 @@ export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
   let cel: CelSpraw | null = null;
   let powodBrakuCelu: string | null = null;
   if (!kolejkaCelu) {
-    powodBrakuCelu = "Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.";
+    powodBrakuCelu = "Nie udało się ustalić, które zgłoszenia rekrutacyjne otworzyć. Odśwież stronę i spróbuj ponownie.";
   } else if (kolejkaCelu.liczba === 0) {
     powodBrakuCelu = "Brak zgłoszeń rekrutacyjnych do decyzji.";
   } else if (kolejkaCelu.link === null) {
-    powodBrakuCelu = "Adres zgłoszeń rekrutacyjnych z odpowiedzi serwera jest nieprawidłowy.";
+    powodBrakuCelu = "Nie udało się otworzyć zgłoszeń rekrutacyjnych. Odśwież stronę i spróbuj ponownie.";
   } else {
     cel = { nazwa: kolejkaCelu.nazwa, liczba: kolejkaCelu.liczba, link: kolejkaCelu.link };
   }

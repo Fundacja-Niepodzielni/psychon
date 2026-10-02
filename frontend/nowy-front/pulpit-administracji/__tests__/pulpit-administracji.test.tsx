@@ -167,7 +167,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     );
     const glowny = przyciskiGlowne(container)[0];
     expect(glowny).toHaveAttribute("aria-disabled", "true");
-    expect(glowny).toHaveAccessibleDescription("Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.");
+    expect(glowny).toHaveAccessibleDescription("Nie udało się ustalić, które zgłoszenia rekrutacyjne otworzyć. Odśwież stronę i spróbuj ponownie.");
     await uzytkownik.click(glowny);
     expect(push).not.toHaveBeenCalled();
   });
@@ -196,7 +196,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     await waitFor(() => expect(screen.getByText("Zgłoszenia rekrutacyjne")).toBeInTheDocument());
     expect(container.querySelector("a[href^='http']")).toBeNull();
     await uzytkownik.click(screen.getByRole("button", { name: "Otwórz: Zgłoszenia rekrutacyjne" }));
-    expect(screen.getByText("Adres tych spraw z odpowiedzi serwera jest nieprawidłowy.")).toBeInTheDocument();
+    expect(screen.getByText("Nie udało się otworzyć tych spraw. Odśwież stronę i spróbuj ponownie.")).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 

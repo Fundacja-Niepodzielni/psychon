@@ -56,7 +56,7 @@ export function ListaSpraw({ widok, naNieprawidlowyAdres, naOdswiez }: Wlasciwos
                     ? { href: wiersz.link }
                     : {
                         onKliknij: () =>
-                          naNieprawidlowyAdres("Adres tych spraw z odpowiedzi serwera jest nieprawidłowy."),
+                          naNieprawidlowyAdres("Nie udało się otworzyć tych spraw. Odśwież stronę i spróbuj ponownie."),
                       }),
                 },
               };
