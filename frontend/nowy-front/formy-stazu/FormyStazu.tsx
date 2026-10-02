@@ -152,6 +152,8 @@ export function FormyStazu() {
             onKliknij: () => otworzEdycje(forma),
           },
         })),
+    // Wiersze zależą od danych listy; otwarcie edycji używa tylko ustawiaczy stanu i stabilnego `ukryj` paska.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [formy],
   );
 
