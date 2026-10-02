@@ -3,6 +3,7 @@
 namespace Tests\Feature\H03;
 
 use App\Models\Application;
+use App\Models\Edition;
 use App\Models\EmailMessage;
 use App\Models\Notification;
 use App\Models\User;
@@ -247,6 +248,7 @@ class ApplicationRejectionMailTest extends TestCase
     public function test_unknown_application_is_404_and_no_mail(): void
     {
         Mail::shouldReceive('raw')->never();
+        Edition::factory()->create(['status' => 'active']);
         $this->actingAsAdmin();
 
         $this->reject(999999)

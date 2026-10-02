@@ -241,9 +241,10 @@ class ApplicationApiTest extends TestCase
 
     public function test_decisions_are_one_shot(): void
     {
-        Edition::factory()->create(['status' => 'active']);
-        $accepted = Application::factory()->create();
-        $rejected = Application::factory()->create();
+        // Oba zgłoszenia w aktywnej edycji: decyzje dotyczą wyłącznie jej.
+        $edition = Edition::factory()->create(['status' => 'active']);
+        $accepted = Application::factory()->create(['edition_id' => $edition->id]);
+        $rejected = Application::factory()->create(['edition_id' => $edition->id]);
         $this->actingAs(User::factory()->role('super_admin')->create(), 'keycloak');
 
         $this->postJson('/api/v1/admin/applications/'.$accepted->id.'/accept', ['role' => 'volunteer'])->assertCreated();

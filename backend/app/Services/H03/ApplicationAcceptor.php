@@ -8,6 +8,7 @@ use App\Models\Consent;
 use App\Models\User;
 use App\Support\AuditLog;
 use App\Support\Notify;
+use App\Support\Settings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -30,7 +31,14 @@ final class ApplicationAcceptor
     {
         [$locked, $user, $expiresAt, $activationUrl] = DB::transaction(function () use ($application, $actor, $input): array {
             $applicationId = $application instanceof Application ? $application->getKey() : $application;
-            $locked = Application::query()->whereKey($applicationId)->lockForUpdate()->first();
+            // Decyzje dotyczą wyłącznie aktywnej edycji: zgłoszenie innej edycji
+            // daje to samo 404 co nieistniejące i co podgląd (`show`) — zanim
+            // cokolwiek się zapisze i zanim wyjdzie wiadomość.
+            $locked = Application::query()
+                ->forEdition(Settings::activeEdition())
+                ->whereKey($applicationId)
+                ->lockForUpdate()
+                ->first();
 
             if ($locked === null) {
                 throw new ApiException(404, 'not_found', 'Nie znaleziono zgłoszenia.');
