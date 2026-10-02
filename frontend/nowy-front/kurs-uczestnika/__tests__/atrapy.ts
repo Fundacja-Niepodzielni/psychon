@@ -5,6 +5,11 @@ import type { KursUczestnika, LekcjaKursu } from "../dane";
  * siedem lekcji w dwóch tematach („Kryzys i jego przebieg” — 4, „Rozmowa
  * wspierająca” — 3), razem około dwóch godzin. Dane przykładowe, bez prawdziwych
  * osób.
+ *
+ * Dwa rodzaje atrap: `odpowiedzSerwera` niesie komplet pól tak, jak je zwraca
+ * zaplecze („lekcje po kolei”), a `kursSzkicu` składa odpowiedź po kawałku —
+ * także taką, w której pól nie ma (starsze zaplecze), dlatego jej wynik jest
+ * typowany jak pełna odpowiedź przez rzutowanie.
  */
 
 export const TYTULY_LEKCJI = [
@@ -47,7 +52,7 @@ export function lekcjeSzkicu(ukonczone: number, zamknieteOd: number | null = nul
     topic_id: indeks < 4 ? 7 : 8,
     ...(zamknieteOd !== null ? { locked: indeks + 1 >= zamknieteOd } : {}),
     ...(nowePola ? polaPostepu(indeks, ukonczone, wTrakcieNr) : {}),
-  }));
+  })) as LekcjaKursu[];
 }
 
 export interface OpcjeKursu {
@@ -78,7 +83,67 @@ export function kursSzkicu({ ukonczone, zamknieteOd = null, testZamkniety, statu
     lessons: lekcjeSzkicu(ukonczone, zamknieteOd, nowePola, wTrakcieNr),
     ...(testZamkniety !== undefined ? { test_locked: testZamkniety } : {}),
     ...(testZaliczony !== undefined ? { test_passed: testZaliczony } : {}),
+  } as KursUczestnika;
+}
+
+export interface OpcjeOdpowiedziSerwera {
+  /** Ile pierwszych lekcji jest ukończonych. */
+  ukonczone: number;
+  /** Lekcja (1-based) z czasem aktywnym 12 z 16 potrzebnych minut; domyślnie pierwsza nieukończona lekcja nie ma postępu. */
+  wTrakcieNr?: number | null;
+  /** Reguła „lekcje po kolei”: lekcje za pierwszą nieukończoną są zamknięte (dla personelu — `false`). */
+  zamykajZaNastepna?: boolean;
+  /** Nadpisanie pól kursu, które serwer rozstrzyga sam. */
+  kurs?: Partial<Pick<KursUczestnika, "test_locked" | "test_passed" | "has_test" | "status">>;
+}
+
+/**
+ * Odpowiedź w kształcie `CourseDetailResource` z kompletem pól „lekcje po kolei”:
+ * `locked`, `active_seconds`, `required_active_seconds`, `has_recording` przy każdej
+ * lekcji oraz `test_locked`, `test_passed`, `has_test` przy kursie. Wartości liczy
+ * tu atrapa tak, jak zaplecze (zamknięta jest lekcja za pierwszą nieukończoną;
+ * test zamknięty, dopóki nie wszystkie lekcje ukończone).
+ */
+export function odpowiedzSerwera({ ukonczone, wTrakcieNr = null, zamykajZaNastepna = true, kurs }: OpcjeOdpowiedziSerwera): KursUczestnika {
+  const razem = TYTULY_LEKCJI.length;
+  const lekcje: LekcjaKursu[] = TYTULY_LEKCJI.map((tytul, indeks) => ({
+    id: 21 + indeks,
+    title: tytul,
+    sequence_order: indeks + 1,
+    duration_seconds: CZASY[indeks],
+    is_completed: indeks < ukonczone,
+    topic_id: indeks < 4 ? 7 : 8,
+    locked: zamykajZaNastepna && indeks > ukonczone,
+    ...polaPostepu(indeks, ukonczone, wTrakcieNr),
+  }));
+  return {
+    id: 2,
+    slug: "pierwsza-pomoc-psychologiczna",
+    title: "Pierwsza pomoc psychologiczna",
+    status: ukonczone >= razem && kurs?.test_passed === true ? "completed" : "in_progress",
+    progress_percent: Math.round((ukonczone / razem) * 100),
+    has_test: true,
+    test_locked: ukonczone < razem,
+    test_passed: false,
+    topics: [
+      { id: 7, title: "Kryzys i jego przebieg", position: 1 },
+      { id: 8, title: "Rozmowa wspierająca", position: 2 },
+    ],
+    lessons: lekcje,
+    ...kurs,
   };
+}
+
+/**
+ * Odpowiedź dla kursu bez testu (`has_test: false`): test nie istnieje, więc
+ * zaplecze nie zamyka go i nie zalicza; kurs jest ukończony z ostatnią lekcją.
+ */
+export function odpowiedzBezTestu(ukonczone: number, wTrakcieNr: number | null = null, status?: KursUczestnika["status"]): KursUczestnika {
+  return odpowiedzSerwera({
+    ukonczone,
+    wTrakcieNr,
+    kurs: { has_test: false, test_locked: false, test_passed: false, status: status ?? (ukonczone >= TYTULY_LEKCJI.length ? "completed" : "in_progress") },
+  });
 }
 
 /** Cztery stany szkicu: dane wejściowe i to, co `pomiar.json` zapisał jako przycisk główny i zdanie obok. */

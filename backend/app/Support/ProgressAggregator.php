@@ -3,10 +3,12 @@
 namespace App\Support;
 
 use App\Models\Course;
+use App\Models\Lesson;
 use App\Models\SupervisionSignup;
 use App\Models\TestAttempt;
 use App\Models\User;
 use App\Models\WorkshopCompletion;
+use App\Services\Lessons\LessonCompletionRule;
 
 /**
  * The single source of progress numbers (person card, dashboard, report,
@@ -14,6 +16,11 @@ use App\Models\WorkshopCompletion;
  */
 final class ProgressAggregator
 {
+    /** Kolumny lekcji, z których `LessonCompletionRule` rozpoznaje nagranie i czas trwania. */
+    public const array MEASURABLE_LESSON_COLUMNS = [
+        'duration_seconds', 'video_provider_id', 'video_pending_id', 'video_status', 'video_status_at',
+    ];
+
     /**
      * @return array{
      *     courses_done: int,
@@ -98,7 +105,9 @@ final class ProgressAggregator
     /**
      * Total active time divided by total duration across the measurable lessons
      * the user has completed (H07 rule) — long lessons weigh more than short ones.
-     * Lessons still in progress and lessons with duration_seconds = 0 are excluded.
+     * Measurable = has a recording and duration_seconds > 0 (`LessonCompletionRule::isMeasurable`).
+     * Lessons still in progress, lessons without a recording and lessons with
+     * duration_seconds = 0 are excluded.
      * Null when the user has no measurable completed lesson.
      */
     public static function reliabilityPercent(User $user): ?int
@@ -109,8 +118,9 @@ final class ProgressAggregator
             ->where('lessons.duration_seconds', '>', 0)
             ->get([
                 'lesson_progress.active_seconds',
-                'lessons.duration_seconds',
-            ]);
+                ...array_map(fn (string $column): string => 'lessons.'.$column, self::MEASURABLE_LESSON_COLUMNS),
+            ])
+            ->filter(fn ($row): bool => LessonCompletionRule::isMeasurable((new Lesson)->forceFill($row->getAttributes())));
 
         if ($rows->isEmpty()) {
             return null;

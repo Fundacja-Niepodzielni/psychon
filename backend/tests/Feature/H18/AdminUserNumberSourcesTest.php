@@ -365,6 +365,7 @@ class AdminUserNumberSourcesTest extends TestCase
             'course_id' => $course->id,
             'title' => 'Lekcja pomiarowa',
             'duration_seconds' => 100,
+            'video_provider_id' => 'mock-pomiarowa-'.uniqid(),
             'sequence_order' => 1,
         ]);
 

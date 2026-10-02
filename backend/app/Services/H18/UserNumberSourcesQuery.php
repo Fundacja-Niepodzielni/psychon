@@ -9,6 +9,7 @@ use App\Models\SupervisionSignup;
 use App\Models\TestAttempt;
 use App\Models\User;
 use App\Models\WorkshopCompletion;
+use App\Services\Lessons\LessonCompletionRule;
 use App\Support\CourseAccess;
 use App\Support\ProgressAggregator;
 
@@ -193,7 +194,8 @@ final class UserNumberSourcesQuery
      * (`active_seconds` dzielone przez `duration_seconds` per lekcja,
      * zsumowane, potem procent) — naciąganie `sum` do sumy kolumny `value`
      * dałoby liczbę sekund, nie procent, i rozjechałoby się z kartą. Ten sam
-     * filtr lekcji co `ProgressAggregator::reliabilityPercent()`.
+     * filtr lekcji (z nagraniem, dodatni czas trwania) co
+     * `ProgressAggregator::reliabilityPercent()`.
      *
      * @return array{rows: list<array<string, mixed>>, sum: string|null}
      */
@@ -202,9 +204,10 @@ final class UserNumberSourcesQuery
         $lessons = $user->lessonProgress()
             ->where('is_completed', true)
             ->whereHas('lesson', fn ($query) => $query->where('duration_seconds', '>', 0))
-            ->with('lesson:id,title,duration_seconds')
+            ->with('lesson:'.implode(',', ['id', 'title', ...ProgressAggregator::MEASURABLE_LESSON_COLUMNS]))
             ->orderBy('last_activity_at')
-            ->get();
+            ->get()
+            ->filter(fn (LessonProgress $progress): bool => LessonCompletionRule::isMeasurable($progress->lesson));
 
         $rows = $lessons
             ->map(fn (LessonProgress $progress): array => [
