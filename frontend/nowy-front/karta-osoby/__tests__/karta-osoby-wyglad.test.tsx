@@ -146,3 +146,43 @@ describe("Karta osoby — dane osoby na wąskim ekranie (390 px)", () => {
     expect(arkusz.replace(wasko, "")).not.toMatch(/\.daneOsoby/);
   });
 });
+
+describe("Karta osoby — kafle z paskiem postępu", () => {
+  function kafel(etykieta: string): HTMLElement {
+    const znalezione = screen.getByText(etykieta).closest('[role="listitem"]');
+    if (!(znalezione instanceof HTMLElement)) throw new Error(`brak kafla ${etykieta}`);
+    return znalezione;
+  }
+
+  it("kafle Kursy i Rzetelność nauki mają układ pulpitu, kafle bez paska go nie mają", async () => {
+    await otworzKarte();
+
+    expect(kafel("Kursy")).toHaveAttribute("data-uklad", "pulpit");
+    expect(kafel("Rzetelność nauki")).toHaveAttribute("data-uklad", "pulpit");
+    for (const etykieta of ["Godziny stażu", "Obecności na superwizjach", "Warsztat stacjonarny"]) {
+      expect(kafel(etykieta)).not.toHaveAttribute("data-uklad");
+    }
+  });
+
+  it("liczba stoi raz: „z 10” i „%” zostają przy liczbie, a pasek niesie je tylko jako nazwę dostępną", async () => {
+    await otworzKarte();
+
+    expect(within(kafel("Kursy")).getByRole("progressbar", { name: "z 10" })).toBeInTheDocument();
+    expect(within(kafel("Rzetelność nauki")).getByRole("progressbar", { name: "%" })).toBeInTheDocument();
+    expect(kafel("Kursy").querySelector("#filar-kursy")).toHaveTextContent("1z 10");
+    expect(kafel("Rzetelność nauki").querySelector("#filar-rzetelnosc")).toHaveTextContent("73%");
+  });
+
+  it("drugi napis obok paska to dokładnie ten, który reguła układu pulpitu chowa: po jednym na kafel", async () => {
+    await otworzKarte();
+
+    const poPasku = [...document.querySelectorAll('[data-uklad="pulpit"] [role="progressbar"] + span')];
+    expect(poPasku.map((napis) => napis.textContent)).toEqual(["z 10", "%"]);
+
+    const arkusz = readFileSync(
+      resolve(__dirname, "../../../design-system/organizmy/StatRow/StatRow.module.css"),
+      "utf8",
+    );
+    expect(arkusz).toMatch(/\[data-uklad="pulpit"\] \[role="progressbar"\] \+ span\s*\{[^}]*display:\s*none/);
+  });
+});

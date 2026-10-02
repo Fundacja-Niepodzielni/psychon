@@ -70,6 +70,12 @@ describe("filaryKartyOsoby — tabelaryczny", () => {
     expect(warsztat?.mianownik).toBe("ukończony");
   });
 
+  it("układ pulpitu mają tylko kafle z paskiem: Kursy i Rzetelność nauki", () => {
+    const kafle = filaryKartyOsoby(POSTEP_Z_DANYMI, RZETELNOSC_LICZBA);
+    expect(kafle.filter((k) => k.ukladPulpitu).map((k) => k.id)).toEqual(["filar-kursy", "filar-rzetelnosc"]);
+    expect(kafle.filter((k) => k.procent !== undefined).map((k) => k.id)).toEqual(["filar-kursy", "filar-rzetelnosc"]);
+  });
+
   it("below_threshold=true dopisuje podpowiedź o progu rzetelności", () => {
     const kafle = filaryKartyOsoby(POSTEP_Z_DANYMI, RZETELNOSC_LICZBA);
     expect(kafle.find((k) => k.id === "filar-rzetelnosc")?.podpowiedz).toMatch(/progu/);

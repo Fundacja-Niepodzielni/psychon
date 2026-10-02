@@ -238,6 +238,8 @@ export function filaryKartyOsoby(
   const procentRzetelnosci =
     rzetelnosc?.reliability_percent != null ? Number(rzetelnosc.reliability_percent) : undefined;
 
+  // Kafle z paskiem mają układ pulpitu: mianownik stoi raz, przy liczbie („1 z 10”,
+  // „73 %”), a pasek niesie go tylko jako nazwę dostępną — bez drugiego napisu obok.
   return [
     {
       id: "filar-kursy",
@@ -245,6 +247,7 @@ export function filaryKartyOsoby(
       wartosc: progress.courses_done,
       mianownik: `z ${progress.courses_total}`,
       procent: procentKursow,
+      ukladPulpitu: true,
     },
     {
       id: "filar-staz",
@@ -270,6 +273,7 @@ export function filaryKartyOsoby(
       wartosc: procentRzetelnosci,
       mianownik: "%",
       procent: procentRzetelnosci,
+      ukladPulpitu: true,
       podpowiedz: rzetelnosc?.below_threshold ? "Poniżej progu rzetelności." : undefined,
     },
   ];
