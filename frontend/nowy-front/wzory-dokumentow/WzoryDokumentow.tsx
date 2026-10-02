@@ -39,6 +39,7 @@ import {
   type StanWczytania,
 } from "./dane";
 import style from "./WzoryDokumentow.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Treści i dokumenty" }, { etykieta: "Wzory dokumentów" }];
 const OPCJE_RODZAJU = RODZAJE_WZORU.map((rodzaj) => ({ wartosc: rodzaj.typ, etykieta: rodzaj.etykieta }));
@@ -242,7 +243,7 @@ export function WzoryDokumentow() {
           </Button>
         }
       >
-        Serwer nie odpowiedział albo zwrócił błąd. Treść wzoru nie jest pokazywana bez danych.
+        {KOMUNIKAT_SERWER} Treść wzoru nie jest pokazywana bez danych.
       </Notice>
     );
   } else {
