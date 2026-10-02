@@ -3,7 +3,7 @@ import type { AdminCertificate, CertificateStatus } from "@/lib/h13/types";
 
 /**
  * Dane ekranu „Certyfikaty” — `GET /admin/certificates`
- * (`backend/routes/api/h13.php`, `AdminCertificateController::index`) i
+ * (`AdminCertificateController::index`) i
  * `POST /admin/certificates/{id}/revoke` (`AdminCertificateController::revoke`).
  * Żadnej innej trasy ekran nie woła. Lista przyjmuje `page`, `per_page`
  * (domyślnie 25, najwyżej 100) oraz dwa filtry płaskie: `number` (dokładny

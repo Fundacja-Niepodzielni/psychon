@@ -27,7 +27,7 @@ Co trasa listy przyjmuje po stronie serwera (odczytane z kontrolera): `page`, `p
 domyślnie 25), filtr `number` (dokładny numer) i filtr `person` (imię, nazwisko albo e-mail osoby).
 Kolejność jest stała: od najnowszego wydania. Stary ekran z filtrów nie korzysta.
 
-Dostęp: rola sprawdzana na trasie (opiekun projektu i administrator). Stary ekran nie sprawdza
+Dostęp: rola sprawdzana na trasie (tylko osoby z uprawnieniami administracyjnymi). Stary ekran nie sprawdza
 roli sam — robi to strażnik układu administracji; odmowa serwera (403) pokazuje komunikat o braku
 uprawnień.
 
@@ -104,7 +104,7 @@ stary ekran bierze je z listy, ze szczegółów czyta tylko `lessons`.
 
 Kolejność jest ustalana przez serwer i nie da się jej zmienić: od najniższej rzetelności, osoby
 bez wyniku na końcu, remisy po nazwisku, imieniu i identyfikatorze. Lista obejmuje aktywnych
-wolontariuszy i studentów aktywnego roku programu. Dostęp: opiekun projektu i administrator
+wolontariuszy i studentów aktywnego roku programu. Dostęp: osoby z uprawnieniami administracyjnymi
 (rola sprawdzana na trasie, jak wyżej). Nieznana osoba lub osoba spoza zakresu → 404 „Nie
 znaleziono osoby.”.
 
