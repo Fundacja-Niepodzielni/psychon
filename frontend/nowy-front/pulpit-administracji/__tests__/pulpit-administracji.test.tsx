@@ -372,7 +372,7 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     const adresy: [string, string][] = [
       ["Zgłoszenia rekrutacyjne", "/admin/uczestniczki"],
       ["Dyżury czekające na decyzję", "/admin/staz"],
-      ["Profile prowadzących do decyzji", "/admin/profile"],
+      ["Wnioski o profil psychologa", "/admin/profile"],
     ];
     for (const [nazwa, adres] of adresy) {
       const odnosnik = within(wiersz(nazwa)).getByRole("link", { name: `Otwórz: ${nazwa}` });
@@ -424,10 +424,10 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
       }),
     );
     render(<PulpitAdministracji />);
-    await screen.findByText("Profile prowadzących do decyzji");
+    await screen.findByText("Wnioski o profil psychologa");
     expect(
-      within(wiersz("Profile prowadzących do decyzji")).getByRole("link", {
-        name: "Otwórz: Profile prowadzących do decyzji",
+      within(wiersz("Wnioski o profil psychologa")).getByRole("link", {
+        name: "Otwórz: Wnioski o profil psychologa",
       }),
     ).toHaveAttribute("href", "/prowadzacy/pytania");
   });

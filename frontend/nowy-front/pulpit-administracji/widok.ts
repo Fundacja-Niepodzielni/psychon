@@ -6,7 +6,7 @@ import type { KolejkaPulpitu, LicznikiPulpitu, PulpitAdministracji } from "./dan
 export const NAZWY_SPRAW: Record<string, string> = {
   applications: "Zgłoszenia rekrutacyjne",
   internship_entries: "Dyżury czekające na decyzję",
-  profiles: "Profile prowadzących do decyzji",
+  profiles: "Wnioski o profil psychologa",
   questions: "Pytania bez odpowiedzi",
 };
 

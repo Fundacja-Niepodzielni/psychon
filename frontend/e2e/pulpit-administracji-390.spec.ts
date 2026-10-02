@@ -71,7 +71,7 @@ const PIATKI: DanePulpitu = {
 const NAZWY = [
   "Zgłoszenia rekrutacyjne",
   "Dyżury czekające na decyzję",
-  "Profile prowadzących do decyzji",
+  "Wnioski o profil psychologa",
   "Pytania bez odpowiedzi",
 ];
 

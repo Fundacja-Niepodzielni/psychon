@@ -66,6 +66,11 @@ describe("odpowiedź pulpitu a schemat backend/openapi.json", () => {
     expect(kodyKolejek.length).toBeGreaterThan(0);
     expect(Object.keys(NAZWY_SPRAW).sort()).toEqual([...kodyKolejek].sort());
   });
+
+  it("kolejka profiles nazywa się „Wnioski o profil psychologa” (jak na ekranie „Sprawy”), nie „Profile prowadzących do decyzji”", () => {
+    expect(NAZWY_SPRAW.profiles).toBe("Wnioski o profil psychologa");
+    expect(Object.values(NAZWY_SPRAW)).not.toContain("Profile prowadzących do decyzji");
+  });
 });
 
 describe("odczytajPulpit", () => {
