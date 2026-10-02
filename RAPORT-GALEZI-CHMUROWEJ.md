@@ -4,16 +4,16 @@ Data: 2026-10-02. Gałąź odchodzi od końca `sprint-2`. Plik zniknie przy prze
 
 ## Co zrobiono
 
-Ekrany „Moja grupa” i „Wątek grupowy” w panelu prowadzącego odtworzono z klocków nowego wyglądu. Stare strony
+Ekrany „Moja grupa” i „Wątek grupowy” w panelu pracy z grupą odtworzono z klocków nowego wyglądu. Stare strony
 (`/prowadzacy/grupa`, `/prowadzacy/watek-grupowy`) i ich komponenty zostały nietknięte.
 
 1. **Pomiar starych ekranów** — `frontend/nowy-front/grupa-prowadzacego/POMIAR-STAREGO-EKRANU.md` (oba ekrany w
    jednym pliku): każde żądanie (metoda, ścieżka, wysyłane i czytane pola), każdy stan, każde pole z regułą i
    komunikatem oraz lista rzeczy, których stary ekran nie ma.
 2. **Ekran „Moja grupa”** (`frontend/nowy-front/grupa-prowadzacego/`) na szablonie listy z tym samym nagłówkiem
-   strony co inne ekrany prowadzącego.
+   strony co inne ekrany tego panelu.
    - Osoby grupy z licznikiem („3 osoby w grupie”), polem „Szukaj osoby” i listą, która na wąskim ekranie
-     składa się w blok linii (bez przewijania w bok). Słowa o postępie są te same co na pulpicie prowadzącego:
+     składa się w blok linii (bez przewijania w bok). Słowa o postępie są te same co na pulpicie tego panelu:
      kursy „2 z 5”, staż „12,5 godz.”, superwizje liczbą, warsztat „Ukończony” / „Nieukończony”.
    - Terminy superwizji z obecnościami (wybór przy osobie, zapis przy terminie), sekcja „Rzetelność nauki”
      z własnym wczytywaniem i własnym błędem.
@@ -73,7 +73,7 @@ Trzy niezaliczone przypadki w dwóch plikach; żadnego nie ruszałem ani nie os�
    `"nowy-front/watek-grupowy/WatekGrupowy.tsx",` (po `nowy-front/ustawienia-edycji/UstawieniaEdycji.tsx`).
 2. `frontend/lib/przelaczenie/__tests__/pokrycie-ekranow.test.ts` — dwa przypadki: „każdy ekran nowego frontu
    należy do jakiejś grupy rejestru” i „przypadek odwrotny: ekran spoza rejestru albo wpis bez strony zostaje
-   wykryty”. Zespół musi dopisać w `frontend/lib/przelaczenie/grupy.ts` dwa ekrany panelu prowadzącego: z
+   wykryty”. Zespół musi dopisać w `frontend/lib/przelaczenie/grupy.ts` dwa ekrany tego panelu: z
    `trasaPoligonu: "/nowy-front/prowadzacy/grupa"` (stara trasa `/prowadzacy/grupa`) i z
    `trasaPoligonu: "/nowy-front/prowadzacy/watek-grupowy"` (stara trasa `/prowadzacy/watek-grupowy`), każdy w
    postaci `{ panel: "prowadzacy", staraTrasa: <stara trasa>, nowaTrasa: <trasa produktu wybrana przez zespół>,
@@ -121,11 +121,11 @@ warsztat, rzetelność nauki); w terminach — imię, nazwisko i obecność. Dan
 nie pokazuje, więc nowy ekran też ich nie pokazuje i niczego nie trzeba było pomijać.
 
 1. Czy do „postępu w nauce” wolno zaliczać godziny stażu, obecności na superwizjach, stan warsztatu i wynik
-   rzetelności (stary ekran i pulpit prowadzącego je pokazują), czy zawęzić widok do kursów?
+   rzetelności (stary ekran i pulpit tego panelu je pokazują), czy zawęzić widok do kursów?
 2. Czy dodać stan „wątek zamknięty”? Wymaga to nowego pola i tras po stronie serwera (zmiana kontraktu).
-3. Czy usunięcie osoby ze składu wątku ma pytać „Na pewno?”. Usunięcie zdejmuje osobę z grupy prowadzącego
-   (zamyka jej przypisanie), a stary ekran robi to jednym kliknięciem.
-4. Prowadzący wpisuje numer osoby ręcznie, a nigdzie na ekranach nie widzi tych numerów. Czy zastąpić pole listą
+3. Czy usunięcie osoby ze składu wątku ma pytać „Na pewno?”. Usunięcie zdejmuje osobę z grupy osoby, która
+   to robi (zamyka jej przypisanie), a stary ekran robi to jednym kliknięciem.
+4. Numer osoby wpisuje się ręcznie, a nigdzie na ekranach nie widzi tych numerów. Czy zastąpić pole listą
    osób? Wymaga to innego źródła niż dotychczasowe żądania ekranu wątku.
 5. Czy stronicowanie wiadomości w wątku ma zostać (dodatek względem starego ekranu)?
 
