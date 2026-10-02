@@ -6,7 +6,7 @@ import { join, relative } from "node:path";
  * Pomiar tekstu plików ekranów „Certyfikaty” i „Czas nauki” (nie renderu):
  * surowe elementy, twarde kolory, importy starych komponentów, niebezpieczny
  * HTML, własny znacznik `main`, przewijanie poziome, słowo „edycja” w tekstach
- * dla osoby i przycisk główny poza oknem unieważnienia. Każdy licznik ma
+ * dla osoby i przycisk główny. Każdy licznik ma
  * kontrolę dodatnią na próbce z naruszeniem.
  */
 
@@ -100,9 +100,9 @@ describe("Certyfikaty i Czas nauki — źródła ekranów", () => {
     }
   });
 
-  it("przycisk główny (poziom primary) tylko w oknie unieważnienia", () => {
+  it("ekrany nie mają przycisku głównego (poziom primary), a wariant „niebezpieczny” nie łączy się z głównym", () => {
     const trafienia = PLIKI_EKRANOW.filter((p) => /poziom=["']primary["']/.test(tresc(p)));
-    expect(wzgledna(trafienia)).toEqual(["nowy-front/certyfikaty-lista/OknoUniewaznienia.tsx"]);
+    expect(wzgledna(trafienia)).toEqual([]);
   });
 
   it("zero przewijania poziomego w arkuszach stylów, a lista wierszy ma układ poniżej 640 px", () => {

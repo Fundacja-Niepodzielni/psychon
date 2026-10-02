@@ -37,9 +37,12 @@ function imieNazwisko(certyfikat: AdminCertificate): string | null {
  *
  * Fokus po otwarciu idzie na nagłówek okna (nigdy na przycisk potwierdzenia),
  * Tab krąży po elementach okna (też wstecz od nagłówka), Escape rezygnuje.
- * W czasie zapisu przycisk potwierdzenia zostaje kolorowy, ale jest oznaczony
- * jako niedostępny (`aria-disabled`) i nie wysyła drugiego żądania, a rezygnacja
- * jest zablokowana. Fokus po zamknięciu oddaje ekran, który okno otworzył.
+ * Potwierdzenie to przycisk obrysowany z czerwonym napisem (przycisk główny
+ * z wariantem „niebezpieczny” daje czerwony napis na zielonym tle — kontrast
+ * 1,2:1 zmierzony w przeglądarce). W czasie zapisu jest oznaczony jako
+ * niedostępny (`aria-disabled`, zamiast `disabled`, żeby nie tracić fokusu),
+ * nie wysyła drugiego żądania, a rezygnacja jest zablokowana. Fokus po
+ * zamknięciu oddaje ekran, który okno otworzył.
  */
 export function OknoUniewaznienia({ certyfikat, onZamknij, onUniewazniono }: WlasciwosciOknaUniewaznienia) {
   const idNaglowka = useId();
@@ -142,7 +145,7 @@ export function OknoUniewaznienia({ certyfikat, onZamknij, onUniewazniono }: Wla
           <Button poziom="quiet" disabled={wysylanie} onClick={onZamknij}>
             Anuluj
           </Button>
-          <Button poziom="primary" niebezpieczny aria-disabled={wysylanie ? true : undefined} onClick={() => void potwierdz()}>
+          <Button poziom="outline" niebezpieczny aria-disabled={wysylanie ? true : undefined} onClick={() => void potwierdz()}>
             {wysylanie ? "Zapisywanie…" : "Unieważnij certyfikat"}
           </Button>
         </div>

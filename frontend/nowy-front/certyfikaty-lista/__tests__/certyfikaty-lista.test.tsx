@@ -403,10 +403,9 @@ describe("Certyfikaty — unieważnienie", () => {
     expect(pole).toHaveAccessibleDescription("Pisz rzeczowo, bez informacji o zdrowiu.");
     expect(within(okno).getAllByRole("button").map(nazwa)).toEqual(["Anuluj", "Unieważnij certyfikat"]);
     expect(within(okno).getByRole("button", { name: "Anuluj" })).toBeEnabled();
-    const glowne = przyciskiGlowne(container);
-    expect(glowne).toHaveLength(1);
-    expect(glowne[0]).toHaveTextContent("Unieważnij certyfikat");
-    expect(glowne[0]).not.toHaveAttribute("aria-disabled");
+    // Potwierdzenie to przycisk obrysowany (nie główny): czerwony napis na zielonym tle nie ma kontrastu.
+    expect(przyciskiGlowne(container)).toHaveLength(0);
+    expect(within(okno).getByRole("button", { name: "Unieważnij certyfikat" })).not.toHaveAttribute("aria-disabled");
     expect(api).not.toHaveBeenCalledWith(expect.stringContaining("/revoke"), expect.anything());
   });
 
@@ -488,7 +487,7 @@ describe("Certyfikaty — unieważnienie", () => {
 
     const potwierdzenie = within(okno).getByRole("button", { name: "Zapisywanie…" });
     expect(potwierdzenie).toHaveAttribute("aria-disabled", "true");
-    expect(przyciskiGlowne(container)).toEqual([potwierdzenie]);
+    expect(przyciskiGlowne(container)).toHaveLength(0);
     expect(within(okno).getByRole("button", { name: "Anuluj" })).toBeDisabled();
     expect(within(okno).getByRole("status")).toHaveTextContent("Trwa zapisywanie.");
 
