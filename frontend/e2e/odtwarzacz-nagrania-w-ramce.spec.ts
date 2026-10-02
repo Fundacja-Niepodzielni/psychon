@@ -409,6 +409,34 @@ test("dyrektywa ramek: własne, odtwarzacz i film powitalny działają; obce, da
   expect(zadania.filter((adres) => adres.startsWith(OBCY) || adres.startsWith("https://vimeo.com"))).toEqual([]);
 });
 
+test("dyrektywa ramek nie rusza pobierania pliku z adresu blob (tak aplikacja oddaje pliki do pobrania)", async ({ page }) => {
+  const strona = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Pobieranie</title></head><body>
+<button id="pobierz" type="button">Pobierz</button>
+<script>
+  window.naruszenia = [];
+  document.addEventListener("securitypolicyviolation", (z) => window.naruszenia.push(z.effectiveDirective));
+  document.getElementById("pobierz").addEventListener("click", () => {
+    const adres = URL.createObjectURL(new Blob(["tresc pliku"], { type: "text/plain" }));
+    const odnosnik = document.createElement("a");
+    odnosnik.href = adres;
+    odnosnik.download = "plik.txt";
+    document.body.appendChild(odnosnik);
+    odnosnik.click();
+    odnosnik.remove();
+    URL.revokeObjectURL(adres);
+  });
+</script></body></html>`;
+  await podlacz(page, {
+    [`${BAZA}/pobieranie.html`]: { tresc: strona, naglowki: { "Content-Security-Policy": dyrektywaRamek(ODTWARZACZ) } },
+  });
+  await page.goto(`${BAZA}/pobieranie.html`);
+  const pobranie = page.waitForEvent("download");
+  await page.locator("#pobierz").click();
+
+  expect((await pobranie).suggestedFilename()).toBe("plik.txt");
+  expect(await page.evaluate(() => (window as unknown as { naruszenia: string[] }).naruszenia)).toEqual([]);
+});
+
 test("ta sama strona bez nagłówka wczytuje wszystkie ramki — blokada pochodzi z dyrektywy, nie z próby", async ({ page }) => {
   const strona = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Bez dyrektywy</title></head><body>
 <script>
