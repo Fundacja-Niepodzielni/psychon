@@ -80,6 +80,7 @@ export const LEKCJA_DO_ZROBIENIA = {
 export const SZCZEGOL_W_TOKU = {
   ...KURS_W_TOKU,
   instructor: null,
+  has_test: true,
   topics: [{ id: 5, title: "Lekcje kursu", position: 1 }],
   lessons: [LEKCJA_UKONCZONA, LEKCJA_DO_ZROBIENIA],
   materials: [],
