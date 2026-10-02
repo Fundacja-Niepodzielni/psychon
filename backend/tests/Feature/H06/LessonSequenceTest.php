@@ -437,6 +437,25 @@ class LessonSequenceTest extends TestCase
         $this->assertSame([true, true], array_column($read, 'has_recording'));
     }
 
+    public function test_the_course_read_without_any_measurable_lesson_does_not_need_an_active_edition(): void
+    {
+        $course = Course::create([
+            'title' => 'Kurs bez nagrań',
+            'slug' => 'kurs-bez-nagran',
+            'type' => 'course',
+            'product_group' => 'psychon',
+            'sequence_order' => 1,
+            'is_published' => true,
+        ]);
+        Lesson::create(['course_id' => $course->id, 'title' => 'Sama treść', 'sequence_order' => 1, 'duration_seconds' => 0]);
+        $this->actingAs(User::factory()->create(['role' => 'project_manager', 'product_group' => 'psychon']), 'keycloak');
+
+        $read = $this->getJson('/api/v1/courses/kurs-bez-nagran')->assertOk()->json('data.lessons');
+
+        $this->assertSame([0], array_column($read, 'required_active_seconds'));
+        $this->assertSame([false], array_column($read, 'has_recording'));
+    }
+
     public function test_test_passed_in_three_legs_matches_the_course_access_rule(): void
     {
         $user = $this->volunteer();

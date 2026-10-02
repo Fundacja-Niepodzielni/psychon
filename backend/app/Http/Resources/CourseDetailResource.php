@@ -37,7 +37,11 @@ class CourseDetailResource extends CourseListResource
             : [];
         // Ta sama reguła co odmowy tras lekcji; dla personelu nic nie jest zamknięte.
         $blockers = $appliesToCaller ? LessonSequence::blockers($lessons, $completedLessonIds) : [];
-        $percent = LessonCompletionRule::completionPercent();
+        // Próg edycji czytany raz i tylko wtedy, gdy jakaś lekcja ma co mierzyć
+        // (kurs z samymi lekcjami bez nagrania nie wymaga aktywnej edycji).
+        $percent = $lessons->contains(fn (Lesson $lesson): bool => LessonCompletionRule::isMeasurable($lesson))
+            ? LessonCompletionRule::completionPercent()
+            : null;
 
         return [
             ...parent::toArray($request),
