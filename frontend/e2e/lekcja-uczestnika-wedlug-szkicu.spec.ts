@@ -277,7 +277,7 @@ async function zrzut(page: Page, numer: number | string, nazwa: string, szerokos
   mkdirSync(katalog, { recursive: true });
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
-    path: join(katalog, `uczestnik--lekcja-szkic--${[numer, nazwa].filter((czesc) => czesc !== "").join("-")}--${szerokosc}.png`),
+    path: join(katalog, `uczestnik--lekcja-ramka--${[numer, nazwa].filter((czesc) => czesc !== "").join("-")}--${szerokosc}.png`),
     fullPage: true,
     animations: "disabled",
   });
@@ -290,7 +290,7 @@ async function zrzutPierwszegoEkranu(page: Page, numer: number, nazwa: string): 
   mkdirSync(katalog, { recursive: true });
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
-    path: join(katalog, `uczestnik--lekcja-szkic--${numer}-${nazwa}--telefon-pierwszy-ekran.png`),
+    path: join(katalog, `uczestnik--lekcja-ramka--${numer}-${nazwa}--telefon-pierwszy-ekran.png`),
     fullPage: false,
     animations: "disabled",
   });
@@ -507,6 +507,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(page.getByRole("button", { name: PRZYCISK })).toHaveAttribute("aria-disabled", "true");
       await zmierzUklad(page, szerokosc, { nagranie: true, pasekTematu: true });
       await zmierzStan(page, testInfo, 6, "nagranie-nie-dziala", szerokosc);
+      if (szerokosc === 390) await zrzutPierwszegoEkranu(page, 6, "nagranie-nie-dziala");
     });
 
     test("7 powrót do lekcji: wznowienie od miejsca przerwania", async ({ page }, testInfo) => {
