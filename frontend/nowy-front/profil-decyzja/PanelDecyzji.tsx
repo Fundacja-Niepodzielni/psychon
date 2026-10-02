@@ -150,7 +150,7 @@ function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
             },
           ]}
           etykietaAnuluj="Wróć do decyzji"
-          etykietaZapisz={wysylanie ? "Zapisywanie…" : "Wyślij prośbę o poprawkę"}
+          etykietaZapisz={wysylanie ? "Zapisywanie…" : "Poproś o poprawkę"}
           onAnuluj={() => {
             setTryb("decyzja");
             setBladKomentarza(undefined);

@@ -15,6 +15,7 @@ import { PanelDecyzji } from "./PanelDecyzji";
 import { wariantStanu, type WariantPlakietki } from "../profile-kolejka/dane";
 import { ETYKIETY_ZALACZNIKOW, dataPl, pobierzZalacznik, poprawneId, wczytajWniosek, type Wniosek } from "./dane";
 import style from "./ProfilDecyzja.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Ekran szczegółu: pierwszy okruszek to pozycja menu, pod którą stoi ekran
@@ -129,7 +130,7 @@ export function ProfilDecyzja({ id }: { id: string }) {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Dane wniosku nie są zmyślane bez odpowiedzi.
+            {KOMUNIKAT_SERWER}
           </Notice>
         }
       />
