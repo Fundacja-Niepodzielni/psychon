@@ -158,6 +158,13 @@
   font-weight: var(--fw-medium);
 }
 
+/* Cichy dopisek pod stanem lekcji gotowej: nowe nagranie w drodze albo z błędem. */
+.dopisekStanu {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-11);
+}
+
 .otworz {
   grid-area: otworz;
   display: inline-flex;

@@ -53,6 +53,27 @@ export function lekcja(id: number, title: string): LekcjaAdmin {
   };
 }
 
+/** Lekcja z polami stanu nagrania, które podaje serwer; domyślnie nagranie gotowe. */
+export function lekcjaZeStanem(id: number, title: string, stan: Partial<LekcjaAdmin> = {}): LekcjaAdmin {
+  return {
+    ...lekcja(id, title),
+    video_status: "ready",
+    video_status_at: "2026-10-01T12:00:00Z",
+    video_ready: true,
+    video_pending: false,
+    ...stan,
+  };
+}
+
+/** Lekcja bez nagrania i bez treści, w kształcie serwera ze stanem nagrania. */
+export const BEZ_NAGRANIA: Partial<LekcjaAdmin> = {
+  video_provider_id: null,
+  video_status: "none",
+  video_status_at: null,
+  video_ready: false,
+  video_pending: false,
+};
+
 export const LEKCJE = [lekcja(21, "Lekcja A"), lekcja(22, "Lekcja B"), lekcja(23, "Lekcja C")];
 
 export function temat(id: number, title: string, position: number, lesson_ids: number[]): Topic {
@@ -96,8 +117,12 @@ interface StanSerwera {
   przypisania?: PrzypisanieAtrapy[];
   /** Identyfikator testu wiedzy kursu; `null` = kurs bez testu. */
   test?: number | null;
-  /** Stan nagrania lekcji z `…/video-status`; lekcja spoza mapy ma nagranie gotowe. */
-  nagrania?: Record<number, "processing" | "finished" | "error">;
+  /**
+   * Stan nagrania lekcji z `…/video-status`; lekcja spoza mapy ma nagranie gotowe.
+   * Sam napis to odpowiedź starszego serwera (`status`); obiekt — pełna odpowiedź
+   * z polami stanu (`video_status`, `video_ready`, `video_pending`).
+   */
+  nagrania?: Record<number, "processing" | "finished" | "error" | Record<string, unknown>>;
 }
 
 type Nadpisanie = (cialo: unknown) => unknown;
@@ -204,6 +229,7 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
     const nagranie = dopasuj(/^\/admin\/lessons\/(\d+)\/video-status$/);
     if (metoda === "GET" && nagranie) {
       const status = poczatek.nagrania?.[Number(nagranie[1])] ?? "finished";
+      if (typeof status !== "string") return { duration_seconds: 600, preview_embed_url: null, ...status };
       return { status, duration_seconds: 600, preview_embed_url: null };
     }
     if (metoda === "POST" && sciezka === "/admin/courses/4/invite") {

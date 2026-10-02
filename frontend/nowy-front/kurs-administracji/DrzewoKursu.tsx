@@ -24,6 +24,8 @@ export interface LekcjaDrzewa {
   /** Drobne dane wiersza („25 min”, prowadzący, „2 pliki”) — tylko te, które są. */
   meta: string[];
   stan: StanLekcji;
+  /** Cichy dopisek pod stanem: lekcja gotowa, a jej nowe nagranie jest w drodze albo z błędem. */
+  dopisek?: string | null;
   /** Adres strony lekcji; bez niego wiersz nie ma „Otwórz”. */
   adres: string | null;
 }
@@ -351,8 +353,16 @@ function WierszLekcji({
           <StanWysylaniaWWierszu stan={wysylanie} />
         </span>
       ) : (
-        <span className={lekcja.stan === "blad-nagrania" ? `${style.stan} ${style.stanBledu}` : style.stan}>
+        <span
+          className={lekcja.stan === "blad-nagrania" ? `${style.stan} ${style.stanBledu}` : style.stan}
+          data-stan-lekcji={lekcja.stan}
+        >
           {ETYKIETY_STANU_LEKCJI[lekcja.stan]}
+          {lekcja.dopisek && (
+            <span className={style.dopisekStanu} data-dopisek-stanu>
+              {lekcja.dopisek}
+            </span>
+          )}
         </span>
       )}
       {lekcja.adres && (

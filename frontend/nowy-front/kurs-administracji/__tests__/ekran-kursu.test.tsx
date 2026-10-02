@@ -20,6 +20,7 @@ vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 // Stan wysyłania nagrania podaje próba; `null` = żadna lekcja nie ma wysyłania.
 const wysylanie = vi.hoisted(() => ({ stan: null as null | { rodzaj: string; lekcja: { id: number; tytul: string; adres: string } } }));
 vi.mock("@/nowy-front/wysylanie-nagrania/useWysylanie", () => ({
+  useWysylanie: () => wysylanie.stan ?? { rodzaj: "brak" },
   useWysylanieLekcji: (idLekcji: number) => (wysylanie.stan !== null && wysylanie.stan.lekcja.id === idLekcji ? wysylanie.stan : null),
 }));
 
@@ -305,7 +306,7 @@ describe("ekran kursu — publikacja", () => {
     await waitFor(() => expect(document.activeElement?.id).toBe("publikacja-tytul"));
   });
 
-  it("odmowa serwera: powody stają w miejscu listy, fokus idzie na nagłówek karty, czytnik słyszy powód", async () => {
+  it("odmowa serwera bez powodów z lekcjami: powody stają w miejscu listy, fokus idzie na komunikat, czytnik słyszy powód", async () => {
     serwer = utworzSerwer({ kurs: { ...KURS, description: null } });
     serwer.nadpisz(
       "PATCH",
@@ -330,7 +331,7 @@ describe("ekran kursu — publikacja", () => {
     expect(within(karta).queryByText(/^Gotowe:/)).toBeNull();
     expect(within(karta).getByText("Kurs jest szkicem. Uczestnicy go nie widzą.")).toBeInTheDocument();
     expect(ogloszenie()).toBe("Kurs nie został opublikowany. Dodaj co najmniej jedną lekcję.");
-    await waitFor(() => expect(document.activeElement?.id).toBe("publikacja-tytul"));
+    await waitFor(() => expect(document.activeElement?.id).toBe("publikacja-odmowa"));
   });
 
   it("odmowa bez listy braków: zdanie serwera w karcie", async () => {

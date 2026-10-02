@@ -31,6 +31,8 @@ import { PrzypisaniaKursu } from "./SekcjeKursu";
 import style from "./EkranKursu.module.css";
 
 export const KOTWICA_PUBLIKACJI = "publikacja";
+/** Komunikat odmowy publikacji — po odmowie serwera fokus staje na nim. */
+export const ID_ODMOWY_PUBLIKACJI = "publikacja-odmowa";
 
 /** Adres kursu w panelu uczestnika. Serwer pokazuje tam wyłącznie kurs opublikowany. */
 export function adresPodgladu(kurs: Pick<AdminCourse, "slug">): string {
@@ -97,14 +99,16 @@ interface WlasciwosciKartyPublikacji extends WlasciwosciPrzyciskuGlownego {
 }
 
 function ListaPozycji({
+  id,
   pozycje,
   onPozycja,
 }: {
+  id?: string;
   pozycje: PozycjaPublikacji[];
   onPozycja: WlasciwosciKartyPublikacji["onPozycja"];
 }) {
   return (
-    <ul className={style.listaPozycji}>
+    <ul id={id} className={style.listaPozycji}>
       {pozycje.map((pozycja) => (
         <li key={pozycja.id}>
           {pozycja.href ? (
@@ -135,13 +139,29 @@ export function KartaPublikacji({ kurs, stan, odmowa, onOpublikuj, onPozycja }: 
           <Text>Kurs jest szkicem. Uczestnicy go nie widzą.</Text>
         )}
         {pozycje.length > 0 && (
-          <div className={style.grupaPozycji} data-lista={odmowa ? "odmowa" : "braki"}>
-            <Heading stopien={3}>
+          <div
+            className={style.grupaPozycji}
+            data-lista={odmowa ? "odmowa" : "braki"}
+            {...(odmowa
+              ? {
+                  id: ID_ODMOWY_PUBLIKACJI,
+                  role: "group",
+                  tabIndex: -1,
+                  "aria-labelledby": `${ID_ODMOWY_PUBLIKACJI}-tytul`,
+                  "aria-describedby": `${ID_ODMOWY_PUBLIKACJI}-powody`,
+                }
+              : {})}
+          >
+            <Heading stopien={3} id={odmowa ? `${ID_ODMOWY_PUBLIKACJI}-tytul` : undefined}>
               {odmowa
                 ? `Nie udało się opublikować (${pozycje.length})`
                 : `${kurs.is_published ? "Wymaga uwagi" : "Do zrobienia"} (${pozycje.length})`}
             </Heading>
-            <ListaPozycji pozycje={pozycje} onPozycja={onPozycja} />
+            <ListaPozycji
+              id={odmowa ? `${ID_ODMOWY_PUBLIKACJI}-powody` : undefined}
+              pozycje={pozycje}
+              onPozycja={onPozycja}
+            />
           </div>
         )}
         {!odmowa && stan.czekamy.length > 0 && (

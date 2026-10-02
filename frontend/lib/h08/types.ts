@@ -33,6 +33,26 @@ export interface AdminCourse {
   materials_count: number;
   created_at: string | null;
   updated_at: string | null;
+  /**
+   * Braki kursu wyliczone przez serwer: `blocking` zatrzymuje publikację,
+   * `waiting` nie. Pole opcjonalne — starszy serwer go nie podaje.
+   */
+  publication_gaps?: PublicationGaps;
+}
+
+/**
+ * Jeden brak kursu. `code` ze słownika `publication_gap.code`
+ * (`course_without_lessons`, `lesson_empty`, `recording_error`,
+ * `recording_in_progress`); `lesson_id: null` — brak dotyczy całego kursu.
+ */
+export interface PublicationGap {
+  code: string;
+  lesson_id: number | null;
+}
+
+export interface PublicationGaps {
+  blocking: PublicationGap[];
+  waiting: PublicationGap[];
 }
 
 export interface AdminLesson {

@@ -36,21 +36,37 @@ import {
   type TematUkladu,
   type Uklad,
 } from "@/nowy-front/kurs-tematy/uklad";
-import { dodajLekcje, pobierzStanNagrania, type LekcjaAdmin } from "@/nowy-front/lekcja-edycja/dane";
-import { sklasyfikujBlad, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
+import {
+  dodajLekcje,
+  pobierzStanNagrania,
+  type LekcjaAdmin,
+  type StanNagrania,
+} from "@/nowy-front/lekcja-edycja/dane";
+import { procentWyslania } from "@/nowy-front/lekcja-edycja/nagranie";
+import { pobierzKurs, sklasyfikujBlad, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
+import { useWysylanie } from "@/nowy-front/wysylanie-nagrania/useWysylanie";
 import { minutyZSekund } from "@/nowy-front/wspolne/minuty";
 import { odmien } from "@/nowy-front/wspolne/odmiana";
 import {
   KOTWICA_DANYCH_KURSU,
   KOTWICA_DRZEWA,
-  stanLekcji,
+  DOPISKI_NOWEGO_NAGRANIA,
+  brakiZSerwera,
+  kodStanuZOdpowiedzi,
+  maStanZSerwera,
+  nagranieWDrodze,
+  noweNagranie,
+  powodyOdmowy,
   stanPublikacji,
+  stanWiersza,
   type PozycjaPublikacji,
   type StanyNagran,
+  type WysylanieNaEkranie,
 } from "./braki";
 import { imieNazwisko, pobierzPrzypisania, pobierzTestKursu, zdanieBledu, type PrzypisanieKursu } from "./dane";
 import { DrzewoKursu, type TematDrzewa, type TestDrzewa } from "./DrzewoKursu";
 import {
+  ID_ODMOWY_PUBLIKACJI,
   KOTWICA_PUBLIKACJI,
   KartaKoncowa,
   KartaPublikacji,
@@ -62,6 +78,7 @@ import {
   type WierszUstawien,
 } from "./KolumnaBoczna";
 import { utworzKolejkeZapisu, type KolejkaZapisu } from "./kolejka-zapisu";
+import { useOdswiezanieNagran } from "./odswiezanie-nagran";
 import style from "./EkranKursu.module.css";
 
 const ADRES_LISTY_KURSOW = "/admin/kursy";
@@ -74,6 +91,11 @@ export function adresStronyLekcji(idLekcji: number, idKursu: string): string | n
   if (!czyNowaTrasaDostepna(GRUPY.edycjaLekcji)) return null;
   const [ekran] = GRUPY.edycjaLekcji.ekrany;
   return ekran.nowaTrasa.replace("[id]", idKursu).replace("[idLekcji]", String(idLekcji));
+}
+
+function dopisekNowegoNagrania(lekcja: LekcjaAdmin): string | null {
+  const nowe = noweNagranie(lekcja);
+  return nowe === null ? null : DOPISKI_NOWEGO_NAGRANIA[nowe];
 }
 
 type OknoTematu =
@@ -136,6 +158,55 @@ export function EkranKursu({
   const wysylanieOkna = useRef(false);
   // Dokąd ma trafić fokus, gdy element, który otworzył okno, już nie istnieje.
   const fokusPoOknie = useRef<string | null>(null);
+  const zamontowany = useRef(true);
+  const stanWysylania = useWysylanie();
+
+  useEffect(() => {
+    zamontowany.current = true;
+    return () => {
+      zamontowany.current = false;
+    };
+  }, []);
+
+  // Odmowa publikacji: fokus staje na komunikacie z powodami, gdy ten jest już na ekranie.
+  useEffect(() => {
+    if (odmowaPublikacji !== null) document.getElementById(ID_ODMOWY_PUBLIKACJI)?.focus();
+  }, [odmowaPublikacji]);
+
+  /** Braki kursu liczy serwer: po zmianie, która je rusza, ekran czyta kurs od nowa. */
+  function odswiezKurs() {
+    pobierzKurs(idKursu)
+      .then((pobrany) => {
+        if (zamontowany.current) setKurs(pobrany);
+      })
+      // Bez odpowiedzi karta zostaje przy ostatnich brakach z serwera.
+      .catch(() => {});
+  }
+
+  /** Odpowiedź o stanie nagrania w drodze: pola lekcji, a po zakończeniu — braki kursu. */
+  function przyjmijStanNagrania(idLekcji: number, stan: StanNagrania) {
+    const kod = kodStanuZOdpowiedzi(stan);
+    setLekcje((poprzednie) =>
+      poprzednie.map((lekcja) =>
+        lekcja.id === idLekcji
+          ? {
+              ...lekcja,
+              video_status: kod,
+              video_status_at: stan.video_status_at ?? lekcja.video_status_at,
+              video_ready: stan.video_ready ?? lekcja.video_ready,
+              video_pending: stan.video_pending ?? lekcja.video_pending,
+            }
+          : lekcja,
+      ),
+    );
+    if (!nagranieWDrodze({ video_status: kod })) odswiezKurs();
+  }
+
+  // Pytania o stan wyłącznie dla nagrań wysyłanych albo przetwarzanych.
+  useOdswiezanieNagran(
+    lekcje.filter(nagranieWDrodze).map((lekcja) => lekcja.id),
+    przyjmijStanNagrania,
+  );
 
   function ustawUklady(nastepne: Uklady) {
     biezaceUklady.current = nastepne;
@@ -192,7 +263,8 @@ export function EkranKursu({
       })
       .catch(() => {});
     for (const lekcja of lekcjePoczatkowe) {
-      if (!lekcja.video_provider_id) continue;
+      // Lekcja ze stanem nagrania z serwera nie wymaga pytania; pyta tylko odpowiedź starszego serwera.
+      if (!lekcja.video_provider_id || maStanZSerwera(lekcja)) continue;
       pobierzStanNagrania(lekcja.id)
         .then((stan) => {
           if (aktualne) setNagrania((poprzednie) => ({ ...poprzednie, [lekcja.id]: stan.status }));
@@ -223,7 +295,19 @@ export function EkranKursu({
     [uklady.lokalny, lekcjePoId],
   );
   const adresLekcji = (idLekcji: number) => adresStronyLekcji(idLekcji, idKursu);
-  const publikacja = stanPublikacji({ kurs, lekcje: lekcjeWKolejnosci, nagrania, adresLekcji });
+  let wysylanie: WysylanieNaEkranie | null = null;
+  if (stanWysylania.rodzaj === "wysylanie") {
+    wysylanie = {
+      idLekcji: stanWysylania.lekcja.id,
+      rodzaj: "wysylanie",
+      procent: procentWyslania(stanWysylania.wyslano, stanWysylania.rozmiar),
+    };
+  } else if (stanWysylania.rodzaj === "przerwane") {
+    wysylanie = { idLekcji: stanWysylania.lekcja.id, rodzaj: "przerwane" };
+  }
+  const miejscaLekcji = { lekcje: lekcjeWKolejnosci, adresLekcji, wysylanie };
+  const publikacja = stanPublikacji({ kurs, nagrania, ...miejscaLekcji });
+  const brakiKursu = brakiZSerwera(kurs);
 
   function prowadzacyLekcji(idLekcji: number): string | null {
     if (przypisania === null) return null;
@@ -250,7 +334,8 @@ export function EkranKursu({
           tytul: uklady.lokalny.tytulyLekcji[id] ?? lekcja.title,
           numer: numery.get(id) ?? 0,
           meta,
-          stan: stanLekcji(lekcja, nagrania[id]),
+          stan: stanWiersza(lekcja, nagrania[id], brakiKursu),
+          dopisek: dopisekNowegoNagrania(lekcja),
           adres: adresLekcji(id),
         },
       ];
@@ -313,6 +398,8 @@ export function EkranKursu({
       setKurs((poprzedni) => ({ ...poprzedni, lessons_count: poprzedni.lessons_count + 1 }));
       setOdmowaPublikacji(null);
       wObuUkladach((uklad) => dopiszLekcje(uklad, nowa));
+      // Nowa lekcja zmienia braki kursu; serwer, który je podaje, liczy je od nowa.
+      if (brakiZSerwera(kurs) !== null) odswiezKurs();
       const miejsce = biezaceUklady.current.lokalny.tematy.flatMap((temat) => temat.lekcje).indexOf(nowa.id) + 1;
       oglos(`Dodano lekcję ${miejsce}: ${nowa.title}`);
       return null;
@@ -378,8 +465,13 @@ export function EkranKursu({
   }
 
   function fokusNaKartePublikacji() {
-    // Po zmianie stanu karty — nagłówek istnieje w obu stanach kursu.
-    window.setTimeout(() => document.getElementById(`${KOTWICA_PUBLIKACJI}-tytul`)?.focus(), 0);
+    // Po odmowie fokus staje na komunikacie z powodami; bez odmowy — na nagłówku
+    // karty, który istnieje w obu stanach kursu.
+    window.setTimeout(() => {
+      const cel =
+        document.getElementById(ID_ODMOWY_PUBLIKACJI) ?? document.getElementById(`${KOTWICA_PUBLIKACJI}-tytul`);
+      cel?.focus();
+    }, 0);
   }
 
   async function opublikuj() {
@@ -396,9 +488,16 @@ export function EkranKursu({
         onKoniec("nie-znaleziono");
         return;
       }
+      // Powody z serwera (`reason.items`): te same zdania i odnośniki co lista braków.
+      const zSerwera =
+        wyjatek instanceof ApiError && wyjatek.status === 422 && wyjatek.code === "conditions_not_met"
+          ? powodyOdmowy(wyjatek, miejscaLekcji)
+          : null;
       let powody: PozycjaPublikacji[];
       if (wyjatek instanceof ApiError && wyjatek.status === 401) {
         powody = [{ id: "sesja", tekst: "Sesja wygasła. Zaloguj się ponownie." }];
+      } else if (zSerwera !== null) {
+        powody = zSerwera;
       } else if (klasa.rodzaj === "braki") {
         powody = klasa.braki.map((brak) => ({ id: brak.id, tekst: `${brak.tekst}.`, href: `#${KOTWICA_DRZEWA}` }));
       } else if (klasa.rodzaj === "zakazane") {
@@ -516,6 +615,7 @@ export function EkranKursu({
           onZamknij={() => setOknoKursu(null)}
           onKurs={(po) => {
             setKurs(po);
+            setOdmowaPublikacji(null);
             fokusNaKartePublikacji();
           }}
           onUsunieto={() => onKoniec("usuniety")}
