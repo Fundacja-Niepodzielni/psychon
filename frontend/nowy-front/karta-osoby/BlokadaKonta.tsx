@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
+import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { blockAdminUser } from "@/lib/api/h18";
 import { zdanieBleduCzynnosci } from "./dane";
 import style from "./KartaOsoby.module.css";
@@ -55,41 +55,40 @@ export function BlokadaKonta({ userId, imieNazwisko, rolaOsoby, onOdswiez }: Wla
   }
 
   return (
-    <section className={style.czynnosc} aria-labelledby="czynnosc-blokada-naglowek">
-      <Heading stopien={2} id="czynnosc-blokada-naglowek">
-        Blokada konta
-      </Heading>
-      {rolaOsoby === "super_admin" && <Text>Kontami Super Admina zarządza wyłącznie Super Admin.</Text>}
-      {blad !== null && (
-        <Notice wariant="error" tytul="Konto nie zostało zablokowane">
-          {blad}
-        </Notice>
-      )}
-      <Field
-        id="czynnosc-blokada-powod"
-        etykieta="Powód blokady"
-        rodzaj="tekst"
-        wartosc={powod}
-        onZmiana={setPowod}
-        podpowiedz="Powód trafia do Dziennika działań. Zablokowana osoba przy logowaniu zobaczy komunikat o blokadzie, nie o wygaśnięciu dostępu."
-      />
-      <div className={style.przyciskCzynnosci}>
-        <Button poziom="outline" disabled={!powodPoprawny || wysylanie} onClick={() => setPytanie(true)}>
-          Zablokuj konto
-        </Button>
+    <KartaBoczna tytul="Blokada konta" kotwica="czynnosc-blokada" niebezpieczna>
+      <div className={style.czynnosc}>
+        {rolaOsoby === "super_admin" && <Text>Kontami Super Admina zarządza wyłącznie Super Admin.</Text>}
+        {blad !== null && (
+          <Notice wariant="error" tytul="Konto nie zostało zablokowane">
+            {blad}
+          </Notice>
+        )}
+        <Field
+          id="czynnosc-blokada-powod"
+          etykieta="Powód blokady"
+          rodzaj="tekst"
+          wartosc={powod}
+          onZmiana={setPowod}
+          podpowiedz="Powód trafia do Dziennika działań. Zablokowana osoba przy logowaniu zobaczy komunikat o blokadzie, nie o wygaśnięciu dostępu."
+        />
+        <div className={style.przyciskCzynnosci}>
+          <Button poziom="outline" niebezpieczny disabled={!powodPoprawny || wysylanie} onClick={() => setPytanie(true)}>
+            Zablokuj konto
+          </Button>
+        </div>
+        {pytanie && (
+          <Dialog
+            tytul="Zablokować konto?"
+            etykietaWycofania="Anuluj"
+            etykietaPotwierdzenia="Zablokuj konto"
+            onWycofaj={() => setPytanie(false)}
+            onPotwierdz={() => void zablokuj()}
+          >
+            <Text>Osoba: {imieNazwisko}. Po zablokowaniu nie zaloguje się do platformy.</Text>
+          </Dialog>
+        )}
+        {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
       </div>
-      {pytanie && (
-        <Dialog
-          tytul="Zablokować konto?"
-          etykietaWycofania="Anuluj"
-          etykietaPotwierdzenia="Zablokuj konto"
-          onWycofaj={() => setPytanie(false)}
-          onPotwierdz={() => void zablokuj()}
-        >
-          <Text>Osoba: {imieNazwisko}. Po zablokowaniu nie zaloguje się do platformy.</Text>
-        </Dialog>
-      )}
-      {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
-    </section>
+    </KartaBoczna>
   );
 }

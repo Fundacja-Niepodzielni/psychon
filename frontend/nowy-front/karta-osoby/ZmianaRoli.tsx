@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { updateAdminUser, type UserRole } from "@/lib/api/h18";
 import { ROLE_LABELS } from "@/lib/h18/labels";
 import { zdanieBleduCzynnosci } from "./dane";
@@ -53,30 +53,29 @@ export function ZmianaRoli({ userId, rolaOsoby, onOdswiez }: WlasciwosciZmianyRo
   }
 
   return (
-    <section className={style.czynnosc} aria-labelledby="czynnosc-rola-naglowek">
-      <Heading stopien={2} id="czynnosc-rola-naglowek">
-        Rola konta
-      </Heading>
-      <Text>Rola decyduje o tym, które sekcje platformy widzi osoba.</Text>
-      {blad !== null && (
-        <Notice wariant="error" tytul="Rola nie została zmieniona">
-          {blad}
-        </Notice>
-      )}
-      <Field
-        id="czynnosc-rola-wybor"
-        etykieta="Rola"
-        rodzaj="wybor"
-        wartosc={wartosc}
-        onZmiana={setWybrana}
-        opcje={Object.entries(ROLE_LABELS).map(([klucz, etykieta]) => ({ wartosc: klucz, etykieta }))}
-      />
-      <div className={style.przyciskCzynnosci}>
-        <Button poziom="outline" disabled={!zmieniona || zapisywanie} onClick={() => void zapisz()}>
-          Zapisz rolę
-        </Button>
+    <KartaBoczna tytul="Rola konta" kotwica="czynnosc-rola">
+      <div className={style.czynnosc}>
+        <Text>Rola decyduje o tym, które sekcje platformy widzi osoba.</Text>
+        {blad !== null && (
+          <Notice wariant="error" tytul="Rola nie została zmieniona">
+            {blad}
+          </Notice>
+        )}
+        <Field
+          id="czynnosc-rola-wybor"
+          etykieta="Rola"
+          rodzaj="wybor"
+          wartosc={wartosc}
+          onZmiana={setWybrana}
+          opcje={Object.entries(ROLE_LABELS).map(([klucz, etykieta]) => ({ wartosc: klucz, etykieta }))}
+        />
+        <div className={style.przyciskCzynnosci}>
+          <Button poziom="outline" disabled={!zmieniona || zapisywanie} onClick={() => void zapisz()}>
+            Zapisz rolę
+          </Button>
+        </div>
+        {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
       </div>
-      {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
-    </section>
+    </KartaBoczna>
   );
 }

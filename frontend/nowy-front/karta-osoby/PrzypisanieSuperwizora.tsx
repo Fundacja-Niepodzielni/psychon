@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { assignSupervisor, fetchAdminUsers, type AdminUserListItem } from "@/lib/api/h18";
 import { formatujDateICzas } from "../wspolne/daty";
 import { zdanieBleduCzynnosci } from "./dane";
@@ -67,47 +67,46 @@ export function PrzypisanieSuperwizora({ userId }: WlasciwosciPrzypisaniaSuperwi
   }
 
   return (
-    <section className={style.czynnosc} aria-labelledby="czynnosc-prowadzacy-naglowek">
-      <Heading stopien={2} id="czynnosc-prowadzacy-naglowek">
-        Prowadzący superwizje
-      </Heading>
-      <Text>Wskazana osoba przejmuje superwizję tej osoby — poprzednie przypisanie kończy się samo.</Text>
-      {bladListy !== null && (
-        <Notice wariant="error" tytul="Lista prowadzących niedostępna">
-          {bladListy}
-        </Notice>
-      )}
-      {blad !== null && (
-        <Notice wariant="error" tytul="Nie nadano prowadzącego">
-          {blad}
-        </Notice>
-      )}
-      {przypisany !== null && (
-        <Text>
-          Prowadzącym jest teraz {przypisany.nazwa}
-          {przypisany.od ? ` (od ${formatujDateICzas(przypisany.od)})` : ""}.
-        </Text>
-      )}
-      <Field
-        id="czynnosc-prowadzacy-wybor"
-        etykieta="Prowadzący"
-        rodzaj="wybor"
-        wartosc={wybrany}
-        onZmiana={setWybrany}
-        opcje={[
-          { wartosc: "", etykieta: "Wybierz osobę" },
-          ...prowadzacy.map((wiersz) => ({
-            wartosc: String(wiersz.id),
-            etykieta: `${wiersz.first_name} ${wiersz.last_name} (${wiersz.email})`,
-          })),
-        ]}
-      />
-      <div className={style.przyciskCzynnosci}>
-        <Button poziom="outline" disabled={wybrany === "" || zapisywanie} onClick={() => void zapisz()}>
-          Nadaj prowadzącego
-        </Button>
+    <KartaBoczna tytul="Prowadzący superwizje" kotwica="czynnosc-prowadzacy">
+      <div className={style.czynnosc}>
+        <Text>Wskazana osoba przejmuje superwizję tej osoby — poprzednie przypisanie kończy się samo.</Text>
+        {bladListy !== null && (
+          <Notice wariant="error" tytul="Lista prowadzących niedostępna">
+            {bladListy}
+          </Notice>
+        )}
+        {blad !== null && (
+          <Notice wariant="error" tytul="Nie nadano prowadzącego">
+            {blad}
+          </Notice>
+        )}
+        {przypisany !== null && (
+          <Text>
+            Prowadzącym jest teraz {przypisany.nazwa}
+            {przypisany.od ? ` (od ${formatujDateICzas(przypisany.od)})` : ""}.
+          </Text>
+        )}
+        <Field
+          id="czynnosc-prowadzacy-wybor"
+          etykieta="Prowadzący"
+          rodzaj="wybor"
+          wartosc={wybrany}
+          onZmiana={setWybrany}
+          opcje={[
+            { wartosc: "", etykieta: "Wybierz osobę" },
+            ...prowadzacy.map((wiersz) => ({
+              wartosc: String(wiersz.id),
+              etykieta: `${wiersz.first_name} ${wiersz.last_name} (${wiersz.email})`,
+            })),
+          ]}
+        />
+        <div className={style.przyciskCzynnosci}>
+          <Button poziom="outline" disabled={wybrany === "" || zapisywanie} onClick={() => void zapisz()}>
+            Nadaj prowadzącego
+          </Button>
+        </div>
+        {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
       </div>
-      {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
-    </section>
+    </KartaBoczna>
   );
 }

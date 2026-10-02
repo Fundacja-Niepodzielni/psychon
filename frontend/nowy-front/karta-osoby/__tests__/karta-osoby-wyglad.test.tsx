@@ -186,3 +186,87 @@ describe("Karta osoby — kafle z paskiem postępu", () => {
     expect(arkusz).toMatch(/\[data-uklad="pulpit"\] \[role="progressbar"\] \+ span\s*\{[^}]*display:\s*none/);
   });
 });
+
+const NAZWY_KART_CZYNNOSCI = ["Prowadzący superwizje", "Rola konta", "Reset limitu podejść", "Blokada konta"];
+
+function przyciskiKolorowe(korzen: ParentNode): HTMLButtonElement[] {
+  return Array.from(korzen.querySelectorAll("button")).filter((b) =>
+    b.className.split(/\s+/).some((klasa) => /(^|_)primary(_|$)/.test(klasa)),
+  );
+}
+
+describe("Karta osoby — czynności administracji w osobnych kartach", () => {
+  it("każda z czterech czynności to osobna biała karta z własnym nagłówkiem, w stałej kolejności", async () => {
+    await otworzKarte();
+
+    const karty = NAZWY_KART_CZYNNOSCI.map((nazwa) => screen.getByRole("region", { name: nazwa }));
+    for (const karta of karty) {
+      expect(karta).toHaveAttribute("data-karta", "stala");
+      expect(karta.className).toMatch(/karta/);
+    }
+    for (let i = 1; i < karty.length; i += 1) {
+      expect(karty[i - 1].compareDocumentPosition(karty[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(karty[i - 1].contains(karty[i])).toBe(false);
+    }
+  });
+
+  it("karty stoją w jednym bloku czynności, a przycisk każdej czynności jest w jej własnej karcie", async () => {
+    await otworzKarte();
+
+    const blok = document.querySelector('[data-obszar="czynnosci-administracji"]');
+    expect(blok).not.toBeNull();
+    const przyciski: Record<string, string> = {
+      "Prowadzący superwizje": "Nadaj prowadzącego",
+      "Rola konta": "Zapisz rolę",
+      "Reset limitu podejść": "Zresetuj limit podejść",
+      "Blokada konta": "Zablokuj konto",
+    };
+    for (const [nazwa, przycisk] of Object.entries(przyciski)) {
+      const karta = screen.getByRole("region", { name: nazwa });
+      expect(blok).toContainElement(karta);
+      expect(within(karta).getByRole("button", { name: przycisk })).toBeInTheDocument();
+    }
+  });
+
+  it("blokada konta jest ostatnia i jako jedyna ma wygląd działania niebezpiecznego: czerwony nagłówek karty i przycisk", async () => {
+    await otworzKarte();
+
+    const blokada = screen.getByRole("region", { name: "Blokada konta" });
+    expect(blokada.className).toMatch(/niebezpieczna/);
+    expect(within(blokada).getByRole("button", { name: "Zablokuj konto" }).className).toMatch(/niebezpieczny/);
+
+    for (const nazwa of NAZWY_KART_CZYNNOSCI.slice(0, 3)) {
+      const karta = screen.getByRole("region", { name: nazwa });
+      expect(karta.className).not.toMatch(/niebezpieczna/);
+      for (const przycisk of within(karta).getAllByRole("button")) {
+        expect(przycisk.className).not.toMatch(/niebezpieczny/);
+      }
+    }
+
+    const wszystkieKarty = Array.from(
+      document.querySelectorAll('[data-obszar="czynnosci-administracji"] > section'),
+    );
+    expect(wszystkieKarty[wszystkieKarty.length - 1]).toBe(blokada);
+  });
+
+  it("na ekranie jest dokładnie jeden przycisk kolorowy — „Zmień dane”; przyciski czynności mają sam obrys", async () => {
+    await otworzKarte();
+
+    const kolorowe = przyciskiKolorowe(document.body);
+    expect(kolorowe.map((b) => b.textContent)).toEqual(["Zmień dane"]);
+
+    for (const nazwa of NAZWY_KART_CZYNNOSCI) {
+      const karta = screen.getByRole("region", { name: nazwa });
+      for (const przycisk of within(karta).getAllByRole("button")) {
+        expect(przycisk.className).toMatch(/(^|_)outline(_|$)/);
+      }
+    }
+  });
+
+  it("karty czynności mają ten sam odstęp co kolumna boczna układu edycji, a treść karty — odstęp jak karty ekranu kursu", () => {
+    const arkusz = odczytajArkusz();
+
+    expect(arkusz).toMatch(/\.czynnosci\s*\{[^}]*gap:\s*var\(--space-20\)/);
+    expect(arkusz).toMatch(/\.czynnosc\s*\{[^}]*gap:\s*var\(--space-12\)[^}]*min-width:\s*0/);
+  });
+});

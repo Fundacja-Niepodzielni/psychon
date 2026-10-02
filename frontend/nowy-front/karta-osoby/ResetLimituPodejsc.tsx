@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
+import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { resetTestAttempts } from "@/lib/api/h10";
 import { ApiError } from "@/lib/api/klient";
 import { odmien } from "../wspolne/odmiana";
@@ -65,64 +65,63 @@ export function ResetLimituPodejsc({ userId, imieNazwisko }: WlasciwosciResetuLi
   }
 
   return (
-    <section className={style.czynnosc} aria-labelledby="czynnosc-reset-naglowek">
-      <Heading stopien={2} id="czynnosc-reset-naglowek">
-        Reset limitu podejść
-      </Heading>
-      <Text>
-        Czyści dotychczasowe podejścia tej osoby do wskazanego testu — nowe podejście zaczyna numerację od 1. Powód trafia
-        do Dziennika działań.
-      </Text>
-      {blad !== null && (
-        <Notice wariant="error" tytul="Limit nie został zresetowany">
-          {blad}
-        </Notice>
-      )}
-      {nieznany && (
-        <Notice wariant="warn" tytul="Nie wiadomo, czy reset się wykonał">
-          Odpowiedź serwera nie dotarła. Odśwież kartę osoby i sprawdź stan podejść, zanim spróbujesz ponownie.
-        </Notice>
-      )}
-      <Field
-        id="czynnosc-reset-test"
-        etykieta="Identyfikator testu"
-        rodzaj="liczba"
-        wartosc={idTestu}
-        onZmiana={setIdTestu}
-        podpowiedz="Ten sam numer, co w adresie banku pytań tego testu."
-      />
-      <Field
-        id="czynnosc-reset-powod"
-        etykieta="Powód resetu"
-        rodzaj="tekst"
-        wartosc={powod}
-        onZmiana={setPowod}
-        podpowiedz="Trafia do Dziennika działań."
-      />
-      <div className={style.przyciskCzynnosci}>
-        <Button
-          poziom="outline"
-          disabled={!idPoprawne || !powodPoprawny || wysylanie}
-          onClick={() => setPytanie(true)}
-        >
-          Zresetuj limit podejść
-        </Button>
+    <KartaBoczna tytul="Reset limitu podejść" kotwica="czynnosc-reset">
+      <div className={style.czynnosc}>
+        <Text>
+          Czyści dotychczasowe podejścia tej osoby do wskazanego testu — nowe podejście zaczyna numerację od 1. Powód trafia
+          do Dziennika działań.
+        </Text>
+        {blad !== null && (
+          <Notice wariant="error" tytul="Limit nie został zresetowany">
+            {blad}
+          </Notice>
+        )}
+        {nieznany && (
+          <Notice wariant="warn" tytul="Nie wiadomo, czy reset się wykonał">
+            Odpowiedź serwera nie dotarła. Odśwież kartę osoby i sprawdź stan podejść, zanim spróbujesz ponownie.
+          </Notice>
+        )}
+        <Field
+          id="czynnosc-reset-test"
+          etykieta="Identyfikator testu"
+          rodzaj="liczba"
+          wartosc={idTestu}
+          onZmiana={setIdTestu}
+          podpowiedz="Ten sam numer, co w adresie banku pytań tego testu."
+        />
+        <Field
+          id="czynnosc-reset-powod"
+          etykieta="Powód resetu"
+          rodzaj="tekst"
+          wartosc={powod}
+          onZmiana={setPowod}
+          podpowiedz="Trafia do Dziennika działań."
+        />
+        <div className={style.przyciskCzynnosci}>
+          <Button
+            poziom="outline"
+            disabled={!idPoprawne || !powodPoprawny || wysylanie}
+            onClick={() => setPytanie(true)}
+          >
+            Zresetuj limit podejść
+          </Button>
+        </div>
+        {pytanie && (
+          <Dialog
+            tytul="Zresetować limit podejść?"
+            etykietaWycofania="Anuluj"
+            etykietaPotwierdzenia="Zresetuj limit"
+            onWycofaj={() => setPytanie(false)}
+            onPotwierdz={() => void zresetuj()}
+          >
+            <Text>
+              Osoba: {imieNazwisko}. Test nr {liczbaTestu}.
+            </Text>
+            <Text>Dotychczasowe podejścia tej osoby do tego testu zostaną wyczyszczone.</Text>
+          </Dialog>
+        )}
+        {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
       </div>
-      {pytanie && (
-        <Dialog
-          tytul="Zresetować limit podejść?"
-          etykietaWycofania="Anuluj"
-          etykietaPotwierdzenia="Zresetuj limit"
-          onWycofaj={() => setPytanie(false)}
-          onPotwierdz={() => void zresetuj()}
-        >
-          <Text>
-            Osoba: {imieNazwisko}. Test nr {liczbaTestu}.
-          </Text>
-          <Text>Dotychczasowe podejścia tej osoby do tego testu zostaną wyczyszczone.</Text>
-        </Dialog>
-      )}
-      {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
-    </section>
+    </KartaBoczna>
   );
 }
