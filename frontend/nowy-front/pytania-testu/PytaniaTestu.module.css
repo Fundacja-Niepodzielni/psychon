@@ -1,0 +1,241 @@
+/* Ekran „Pytania testu” — wyłącznie tokeny, bez twardych kolorów. */
+.blok {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-24);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow-wrap: anywhere;
+}
+
+.zdanie {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-9);
+}
+
+/* ---------- lista pytań ---------- */
+.lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wiersz {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-6) var(--space-14);
+  padding: var(--space-12) 0;
+  border-top: 1px solid var(--border);
+}
+
+.lista > li:first-child {
+  border-top: 0;
+}
+
+.numer {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-round);
+  background: var(--grey);
+  color: var(--ink);
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.opis {
+  min-width: 0;
+}
+
+.tytulWiersza {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-bold);
+  border-radius: var(--r-2xs);
+}
+
+.tytulWiersza:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.tresc {
+  margin: var(--space-2) 0 0;
+  color: var(--text);
+  font-size: var(--fs-9);
+}
+
+.meta {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  justify-content: flex-end;
+}
+
+.wierszOtwarty {
+  padding: var(--space-12) 0;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- formularz pytania ---------- */
+.formularz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  min-width: 0;
+  padding: var(--space-18);
+  border-radius: var(--r-sm);
+  background: var(--card-warm);
+}
+
+.pole {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.odpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.odpowiedzi legend {
+  margin-bottom: var(--space-6);
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+}
+
+.listaOdpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.odpowiedz {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-8) var(--space-12);
+}
+
+.poprawna {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: var(--hit-min);
+  padding: 0 var(--space-8);
+  border-radius: var(--r-xs);
+  color: var(--text);
+  font-size: var(--fs-10);
+  cursor: pointer;
+}
+
+.poprawna input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.poprawna:focus-within {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.poleOdpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.usunOdpowiedz {
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min);
+}
+
+.akcjeFormularza {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-12);
+  align-items: center;
+}
+
+/* ---------- telefon: jedna kolumna, przyciski pod treścią ---------- */
+@media (max-width: 639px) {
+  .karta {
+    padding: var(--space-18) var(--space-16);
+  }
+
+  .wiersz {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .akcje {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .formularz {
+    padding: var(--space-14) var(--space-12);
+  }
+
+  .odpowiedz {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .poleOdpowiedzi {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .poprawna {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .usunOdpowiedz {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .akcjeFormularza > * {
+    flex: 1 1 100%;
+  }
+}
