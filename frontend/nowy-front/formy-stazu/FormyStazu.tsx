@@ -22,6 +22,7 @@ import { utworzFormeStazu, zaktualizujFormeStazu } from "@/lib/api/h11-formy";
 import { useWPowloce } from "@/design-system/szablony/KontekstPowloki";
 import { pobierzFormyStazu, type FormaStazu } from "./dane";
 import style from "./FormyStazu.module.css";
+import { KOMUNIKAT_SERWER, KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Korzeń ekranu. Poza powłoką panelu: `main` pod `id="tresc"` jak dotąd.
@@ -224,7 +225,7 @@ export function FormyStazu() {
         setBlad(
           wyjatek instanceof ApiError
             ? wyjatek.message
-            : "Nie udało się zapisać formy stażu. Spróbuj ponownie.",
+            : KOMUNIKAT_ZAPIS,
         );
       }
     } finally {
@@ -252,7 +253,7 @@ export function FormyStazu() {
     return (
       <Korzen>
         <Heading stopien={1}>Słownik form stażu</Heading>
-        <Text>Serwer jest nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
+        <Text>{KOMUNIKAT_SERWER}</Text>
       </Korzen>
     );
   }
