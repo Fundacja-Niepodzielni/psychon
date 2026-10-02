@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -16,9 +17,11 @@ interface WlasciwosciWynikuPrzypisania {
  * dziennik działań” i — gdy coś się nie udało — lista osób z prostym powodem
  * (te osoby zostają zaznaczone). Po zamknięciu okna fokus przechodzi tutaj:
  * przycisk, z którego okno otwarto, mógł zniknąć razem z zaznaczeniem.
+ * Sekcja ma nagłówek `h2` tylko dla czytnika, żeby tytuł komunikatu (`h3`)
+ * nie przeskakiwał stopnia pod `h1` ekranu.
  */
 export function WynikPrzypisania({ wynik }: WlasciwosciWynikuPrzypisania) {
-  const wezel = useRef<HTMLDivElement>(null);
+  const wezel = useRef<HTMLElement>(null);
 
   useEffect(() => {
     wezel.current?.focus();
@@ -33,7 +36,12 @@ export function WynikPrzypisania({ wynik }: WlasciwosciWynikuPrzypisania) {
   ].filter((zdanie): zdanie is string => zdanie !== null);
 
   return (
-    <div ref={wezel} className={style.wynik} tabIndex={-1} aria-label="Wynik przypisania" role="group">
+    <section ref={wezel} className={style.wynik} tabIndex={-1} aria-labelledby="osoby-wynik-przypisania">
+      <div className={style.ukryte}>
+        <Heading stopien={2} id="osoby-wynik-przypisania">
+          Wynik przypisania
+        </Heading>
+      </div>
       <Notice
         wariant={nieudane ? "warn" : "ok"}
         tytul={zdanieWyniku(wynik)}
@@ -53,6 +61,6 @@ export function WynikPrzypisania({ wynik }: WlasciwosciWynikuPrzypisania) {
           </ul>
         </div>
       )}
-    </div>
+    </section>
   );
 }
