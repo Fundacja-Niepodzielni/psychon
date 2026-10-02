@@ -24,6 +24,7 @@ import {
   type StanWniosku,
   type WniosekOProfil,
 } from "./dane";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
@@ -136,7 +137,7 @@ export function ProfileKolejka() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Żadne dane nie zostały zmienione.
+            {KOMUNIKAT_SERWER}
           </Notice>
         }
       />
