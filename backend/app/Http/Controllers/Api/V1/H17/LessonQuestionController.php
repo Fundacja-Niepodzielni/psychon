@@ -80,7 +80,7 @@ class LessonQuestionController extends Controller
         $lesson = Lesson::query()->with('course')->find($id);
 
         if ($lesson === null) {
-            throw new ApiException(404, 'not_found', 'Nie znaleziono lekcji.');
+            throw new ApiException(404, 'not_found', 'Nie znaleziono zasobu.');
         }
 
         $this->lessonAccess->authorize($request->user(), $lesson);

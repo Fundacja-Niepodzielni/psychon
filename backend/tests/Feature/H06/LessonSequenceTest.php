@@ -77,7 +77,7 @@ class LessonSequenceTest extends TestCase
 
     /** @param  array<string, mixed>  $body */
     #[DataProvider('participantRoutes')]
-    public function test_a_closed_lesson_is_refused_on_every_route_and_writes_nothing(string $method, string $url, array $body): void
+    public function test_a_closed_lesson_is_refused_on_every_route_and_writes_nothing(string $method, string $url, array $body, int $openStatus): void
     {
         [$course, $lessons] = $this->courseWithLessons(3);
         $user = $this->volunteer();
@@ -91,6 +91,7 @@ class LessonSequenceTest extends TestCase
             ->assertJsonPath('error.code', 'lesson_locked')
             ->assertJsonPath('error.reason.required_lesson_id', $lessons[1]->id);
 
+        $this->assertNotSame($openStatus, $response->status(), 'Odmowa różni się od odpowiedzi trasy dla lekcji otwartej.');
         $this->assertSame('Najpierw ukończ lekcję 2: Lekcja 2.', $response->json('error.message'));
         $this->assertNull($response->json('data'));
         $this->assertSame($before, $this->writes($user), 'Odmowa niczego nie zapisuje: postęp, open_count, ukończenie, pytania.');
