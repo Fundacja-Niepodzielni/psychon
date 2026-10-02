@@ -385,8 +385,11 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   if (stan.rodzaj === "nie-znaleziono") {
     return (
       <StanStrony>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Text>Nie znaleziono lekcji.</Text>
+        <EkranOdmowy
+          rodzaj="nie-znaleziono"
+          coDalej="Sprawdź adres albo wróć do listy kursów."
+          przycisk={{ etykieta: "Wróć do kursów", onClick: () => router.push(adres("/panel/kursy")) }}
+        />
       </StanStrony>
     );
   }
@@ -394,10 +397,11 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   if (stan.rodzaj === "zablokowany") {
     return (
       <StanStrony>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Notice wariant="warn" tytul="Dostęp zablokowany">
-          {stan.komunikat}
-        </Notice>
+        <EkranOdmowy
+          rodzaj="brak-dostepu"
+          coDalej={stan.komunikat}
+          przycisk={{ etykieta: "Wróć do kursów", onClick: () => router.push(adres("/panel/kursy")) }}
+        />
       </StanStrony>
     );
   }

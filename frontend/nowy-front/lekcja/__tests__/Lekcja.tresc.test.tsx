@@ -226,7 +226,7 @@ describe("Lekcja — szablon i jeden main w każdym stanie", () => {
     pobierzDaneLekcji.mockResolvedValue({ status: "nie-znaleziono" });
 
     const { container } = render(<Lekcja id="999" />);
-    await screen.findByText("Nie znaleziono lekcji.");
+    await screen.findByText("Nie znaleźliśmy tej strony.");
 
     expect(() => jedenMain(container)).not.toThrow();
     expect(container.querySelector(ZNACZNIK_SZABLONU)).toBe(container.querySelector("main"));

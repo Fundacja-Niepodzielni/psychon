@@ -127,18 +127,21 @@ describe("Lekcja — dostęp i istnienie", () => {
 
     render(<Lekcja id="21" />);
 
-    expect(await screen.findByText("Ukończ najpierw etap 2.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Nie masz dostępu do tej strony." })).toHaveFocus();
+    expect(screen.getByText("Ukończ najpierw etap 2.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByText(LEKCJA.title)).toBeNull();
     expect(screen.queryByText("Opis lekcji")).toBeNull();
     expect(pobierzOdczytKursu).not.toHaveBeenCalled();
   });
 
-  it("404 → „Nie znaleziono lekcji”, bez treści", async () => {
+  it("404 → „Nie znaleźliśmy tej strony”, jeden przycisk powrotu, bez treści", async () => {
     pobierzDaneLekcji.mockResolvedValue({ status: "nie-znaleziono" });
 
     render(<Lekcja id="999" />);
 
-    expect(await screen.findByText("Nie znaleziono lekcji.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Nie znaleźliśmy tej strony." })).toHaveFocus();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByText("Opis lekcji")).toBeNull();
   });
 
