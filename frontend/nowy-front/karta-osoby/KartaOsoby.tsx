@@ -2,7 +2,7 @@
 
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -16,12 +16,14 @@ import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
-import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
+import { Dialog, oglosWPanelu } from "@/design-system/organizmy/Dialog/Dialog";
 import { ApiError } from "@/lib/api/klient";
 import { markWorkshopComplete } from "@/lib/api/h10";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/h18/labels";
 import { CzynnosciAdministracji } from "./CzynnosciAdministracji";
-import { formatujDateICzas } from "../wspolne/daty";
+import { OknoZmianyDatyDostepu } from "./ZmianaDatyDostepu";
+import { czyMozeZmienicDateDostepu, zdanieOZmianieDaty, type OsobaPoZmianieDaty } from "./daneDostepu";
+import { formatujDate, formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzKarteOsoby,
   pobierzRzetelnoscOsoby,
@@ -49,10 +51,10 @@ type StanRzetelnosci = "ladowanie" | "ok" | "brak-danych" | "blad";
 interface WlasciwosciKartyOsoby {
   id: number;
   /**
-   * Adres ekranu przedłużenia dostępu tej osoby. Podaje go strona, pod którą
-   * ten ekran naprawdę stoi; bez adresu karta nie pokazuje wejścia, żeby
-   * przycisk nigdy nie prowadził donikąd. Ekran przedłużenia i karta mają
-   * ten sam próg roli, więc kto widzi kartę, ten ma też ekran przedłużenia.
+   * @deprecated Karta nie prowadzi już na osobny ekran: datę dostępu zmienia
+   * okno „Zmień datę” w nagłówku karty. Właściwość zostaje tylko po to, żeby
+   * strona, która ją jeszcze podaje, kompilowała się bez zmian; karta jej
+   * nie czyta.
    */
   adresPrzedluzenia?: string;
 }
@@ -77,8 +79,14 @@ interface WlasciwosciKartyOsoby {
  * `FormSection` zamiast `DataTable` (bez `Dialog`), więc na ekranie jest jeden
  * rząd przycisków „Anuluj” / „Zapisz zmiany”, a przycisk główny „Zmień dane”
  * znika z nagłówka na czas edycji.
+ *
+ * Data dostępu stoi w nagłówku karty, a obok niej — dla ról, które trasa
+ * `POST /admin/users/{id}/extend-access` dopuszcza — przycisk „Zmień datę”.
+ * Otwiera on okno formularza nad kartą (`OknoZmianyDatyDostepu`); po zapisie
+ * osoba zostaje na karcie, nagłówek pokazuje nową datę, a stały obszar
+ * ogłoszeń panelu mówi, na jaką datę ją zmieniono.
  */
-export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
+export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
   const router = useRouter();
   const [stan, setStan] = useState<StanEkranu>("ladowanie");
   const [karta, setKarta] = useState<KartaOsobyDane | null>(null);
@@ -97,10 +105,23 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
   const [zaznaczanieWarsztatu, setZaznaczanieWarsztatu] = useState(false);
   const [bladWarsztatu, setBladWarsztatu] = useState<string | null>(null);
   const [toastWarsztatu, setToastWarsztatu] = useState(false);
+  const [oknoDatyOtwarte, setOknoDatyOtwarte] = useState(false);
+  const [niezapisaneWOknieDaty, setNiezapisaneWOknieDaty] = useState(false);
   useZgloszenieNiezapisanychZmian(
-    formularzOtwarty && formularz !== null && karta !== null && !rowneWartosci(formularz, formularzZProfilu(karta.profile)),
+    (formularzOtwarty && formularz !== null && karta !== null && !rowneWartosci(formularz, formularzZProfilu(karta.profile))) ||
+      (oknoDatyOtwarte && niezapisaneWOknieDaty),
     "Karta osoby",
   );
+
+  const zamknijOknoDaty = useCallback(() => setOknoDatyOtwarte(false), []);
+
+  function poZmianieDaty(osoba: OsobaPoZmianieDaty) {
+    setKarta((poprzednia) =>
+      poprzednia ? { ...poprzednia, profile: { ...poprzednia.profile, access_expires_at: osoba.access_expires_at } } : poprzednia,
+    );
+    setOknoDatyOtwarte(false);
+    oglosWPanelu(zdanieOZmianieDaty(osoba.access_expires_at));
+  }
 
   function wczytajRzetelnosc(straz?: { anulowane: boolean }) {
     pobierzRzetelnoscOsoby(id)
@@ -311,6 +332,8 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
 
   const edycja = formularzOtwarty && formularz !== null;
   const mozeZaznaczycWarsztat = !karta.progress.workshop_done && czyMozeZaliczycWarsztat(rolaZalogowanej);
+  const imieNazwisko = `${karta.profile.first_name} ${karta.profile.last_name}`;
+  const dataDostepu = karta.profile.access_expires_at;
 
   return (
     <>
@@ -322,6 +345,18 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
             opis={opisRoliOsoby(karta.profile.role)}
             onPowrot={wroc}
             przyciskGlowny={edycja ? undefined : { etykieta: "Zmień dane", onKliknij: otworzFormularz }}
+            dzieci={
+              <div className={style.wierszDostepu} data-obszar="data-dostepu">
+                <Text>
+                  {dataDostepu ? `Dostęp do materiałów do ${formatujDate(dataDostepu)}` : "Dostęp do materiałów: bezterminowo"}
+                </Text>
+                {!edycja && czyMozeZmienicDateDostepu(rolaZalogowanej) && (
+                  <Button poziom="outline" type="button" onClick={() => setOknoDatyOtwarte(true)}>
+                    Zmień datę
+                  </Button>
+                )}
+              </div>
+            }
           />
         }
         statystyki={
@@ -383,14 +418,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
           ) : (
             <>
               <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
-              {adresPrzedluzenia !== undefined && (
-                <div className={style.akcjaDostepu}>
-                  <Button poziom="outline" onClick={() => router.push(adresPrzedluzenia)}>
-                    Przedłuż dostęp
-                  </Button>
-                </div>
-              )}
-              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} imieNazwisko={`${karta.profile.first_name} ${karta.profile.last_name}`} rolaOsoby={karta.profile.role} onOdswiez={() => wczytajKarte()} />}
+              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} imieNazwisko={imieNazwisko} rolaOsoby={karta.profile.role} onOdswiez={() => wczytajKarte()} />}
             </>
           )
         }
@@ -476,6 +504,16 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
         </Dialog>
       )}
       {toastWarsztatu && <Toast komunikat="Zaznaczono warsztat jako zaliczony." onZamknij={() => setToastWarsztatu(false)} />}
+      {oknoDatyOtwarte && (
+        <OknoZmianyDatyDostepu
+          idOsoby={id}
+          imieNazwisko={imieNazwisko}
+          obecnaData={dataDostepu}
+          onZapisano={poZmianieDaty}
+          onWycofaj={zamknijOknoDaty}
+          onNiezapisaneZmiany={setNiezapisaneWOknieDaty}
+        />
+      )}
     </>
   );
 }
