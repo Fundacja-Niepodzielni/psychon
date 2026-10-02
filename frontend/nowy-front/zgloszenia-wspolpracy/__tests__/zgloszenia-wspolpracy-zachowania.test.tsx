@@ -91,7 +91,7 @@ describe("ZgloszeniaWspolpracy — odpowiedź na zgłoszenie", () => {
     render(<ZgloszeniaWspolpracy />);
     await waitFor(() => expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument());
 
-    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na prośbę" }));
     const poleOdpowiedzi = await screen.findByRole("textbox", { name: /^Odpowiedź/ });
     await uzytkownik.type(poleOdpowiedzi, zaktualizowany.response);
     await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz" }));
@@ -114,15 +114,15 @@ describe("ZgloszeniaWspolpracy — odpowiedź na zgłoszenie", () => {
     });
     render(<ZgloszeniaWspolpracy />);
     await waitFor(() => expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na prośbę" }));
 
-    const formularz = screen.getByRole("form", { name: /^Odpowiedź na zgłoszenie/ });
+    const formularz = screen.getByRole("form", { name: /^Odpowiedź na prośbę/ });
     const pierwsze = formularz.querySelector<HTMLElement>("input, textarea, button, [role='combobox']");
     expect(pierwsze).not.toBeNull();
     expect(pierwsze).toHaveFocus();
   });
 
-  it("wiersz closed nie ma przycisku „Odpowiedz na zgłoszenie”", async () => {
+  it("wiersz closed nie ma przycisku „Odpowiedz na prośbę”", async () => {
     pobierzZgloszeniaAdministracji.mockResolvedValue({
       data: [ZGLOSZENIE_ZAMKNIETE],
       meta: { current_page: 1, per_page: 25, total: 1, last_page: 1 },
@@ -130,7 +130,7 @@ describe("ZgloszeniaWspolpracy — odpowiedź na zgłoszenie", () => {
 
     render(<ZgloszeniaWspolpracy />);
     await waitFor(() => expect(screen.getByText(ZGLOSZENIE_ZAMKNIETE.body)).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "Odpowiedz na zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Odpowiedz na prośbę" })).toBeNull();
   });
 });
 
@@ -152,7 +152,7 @@ describe("ZgloszeniaWspolpracy — błędy zapisu odpowiedzi", () => {
 
     render(<ZgloszeniaWspolpracy />);
     await waitFor(() => expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na prośbę" }));
     await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz" }));
 
     expect(await screen.findByText("Wpisz odpowiedź dla osoby zgłaszającej.")).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe("ZgloszeniaWspolpracy — błędy zapisu odpowiedzi", () => {
 
     render(<ZgloszeniaWspolpracy />);
     await waitFor(() => expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na prośbę" }));
     const poleOdpowiedzi = await screen.findByRole("textbox", { name: /^Odpowiedź/ });
     await uzytkownik.type(poleOdpowiedzi, "x");
     await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz" }));
@@ -179,7 +179,7 @@ describe("ZgloszeniaWspolpracy — błędy zapisu odpowiedzi", () => {
     await waitFor(() => expect(pobierzZgloszeniaAdministracji).toHaveBeenCalledTimes(2));
   });
 
-  it("404 → Notice „Zgłoszenie nie istnieje.” i odświeżenie listy", async () => {
+  it("404 → Notice „Nie znaleziono prośby.” i odświeżenie listy", async () => {
     const uzytkownik = userEvent.setup();
     pobierzZgloszeniaAdministracji.mockResolvedValue({
       data: [ZGLOSZENIE_NOWE],
@@ -191,12 +191,12 @@ describe("ZgloszeniaWspolpracy — błędy zapisu odpowiedzi", () => {
 
     render(<ZgloszeniaWspolpracy />);
     await waitFor(() => expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz na prośbę" }));
     const poleOdpowiedzi = await screen.findByRole("textbox", { name: /^Odpowiedź/ });
     await uzytkownik.type(poleOdpowiedzi, "x");
     await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz" }));
 
-    expect(await screen.findByText("Zgłoszenie nie istnieje.")).toBeInTheDocument();
+    expect(await screen.findByText("Nie znaleziono prośby.")).toBeInTheDocument();
     await waitFor(() => expect(pobierzZgloszeniaAdministracji).toHaveBeenCalledTimes(2));
   });
 });
@@ -210,7 +210,7 @@ describe("ZgloszeniaWspolpracy — odmowa przy odczycie", () => {
     const { container } = render(<ZgloszeniaWspolpracy />);
 
     await waitFor(() => expect(container.textContent).toContain("administracji"));
-    expect(screen.queryByRole("list", { name: "Zgłoszenia współpracy" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Odpowiedz na zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Dalsza współpraca" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Odpowiedz na prośbę" })).toBeNull();
   });
 });

@@ -142,7 +142,7 @@ describe("sklasyfikujBladWysylki", () => {
     expect(sklasyfikujBladWysylki(blad(403, "forbidden", "Odmowa."))).toEqual({ rodzaj: "inny", komunikat: "Odmowa." });
     expect(sklasyfikujBladWysylki(new TypeError("x"))).toEqual({
       rodzaj: "inny",
-      komunikat: "Nie udało się wysłać zgłoszenia. Spróbuj ponownie.",
+      komunikat: "Nie udało się wysłać prośby. Spróbuj ponownie.",
     });
   });
 });

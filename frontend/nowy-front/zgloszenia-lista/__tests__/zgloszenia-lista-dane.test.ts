@@ -146,13 +146,13 @@ describe("Zgłoszenia rekrutacyjne — wiersze", () => {
   it("plakietki trzech stanów zaczynają się małą literą, a opcje filtra stanu wielką", () => {
     expect(Object.values(PLAKIETKA_STATUSU).map((p) => p.tekst)).toEqual([
       "czeka na decyzję",
-      "zaakceptowane",
+      "zatwierdzone",
       "odrzucone",
     ]);
     expect(OPCJE_STATUSU.map((o) => o.etykieta)).toEqual([
       "Wszystkie",
       "Czeka na decyzję",
-      "Zaakceptowane",
+      "Zatwierdzone",
       "Odrzucone",
     ]);
   });

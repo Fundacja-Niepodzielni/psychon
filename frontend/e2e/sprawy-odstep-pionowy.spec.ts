@@ -7,7 +7,7 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - dół górnego paska → góra pierwszego elementu nagłówka ekranu (na „Dyżurach”
  *   to okruszek, na „Sprawach” `h1`): `/admin/sprawy` = `/admin/staz`;
  * - dół górnego paska → góra `h1`: `/admin/sprawy` = pulpit administracji =
- *   „Uczestnicy programu” (ekrany tego samego poziomu, bez okruszka podstrony;
+ *   „Osoby” (ekrany tego samego poziomu, bez okruszka podstrony;
  *   „Dyżury” są podstroną „Spraw” i mają nad `h1` okruszek, więc ich odstęp do
  *   `h1` jest większy o jego wysokość i nie jest tu porównywany);
  * - dół obszaru treści opakowania ekranu (pierwszego elementu łańcucha jedynych dzieci `main`, który ma kilka
@@ -148,7 +148,7 @@ test.describe("odstęp pionowy opakowania ekranu Spraw", () => {
 
       await page.goto("/admin/uczestniczki");
       await zabezpieczeniePrzedEkranemDostepu(page);
-      await expect(page.getByRole("heading", { level: 1, name: "Uczestnicy programu" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Osoby" })).toBeVisible();
       const uczestniczki = await zmierz(page);
 
       await page.goto("/admin/sprawy");

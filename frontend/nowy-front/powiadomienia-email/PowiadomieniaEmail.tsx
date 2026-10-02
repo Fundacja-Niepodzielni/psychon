@@ -43,7 +43,7 @@ const ETYKIETY_STATUSU: Record<WiadomoscEmail["status"], string> = {
  * jest błędem — pokazuje się jego surowy kod, patrz `etykietaTypu` niżej.
  */
 const ETYKIETY_TYPOW: Record<string, string> = {
-  "application.accepted": "Zgłoszenie przyjęte",
+  "application.accepted": "Zgłoszenie zatwierdzone",
   "application.rejected": "Zgłoszenie odrzucone",
   "assignment.created": "Przypisanie prowadzącego",
   "assignment.removed": "Usunięcie przypisania prowadzącego",
@@ -51,17 +51,17 @@ const ETYKIETY_TYPOW: Record<string, string> = {
   "course.unlocked": "Odblokowanie etapu",
   "question.asked": "Nowe pytanie",
   "question.answered": "Odpowiedź na pytanie",
-  "internship.accepted": "Wpis stażu zaakceptowany",
-  "internship.returned": "Wpis stażu zwrócony do poprawy",
+  "internship.accepted": "Wpis stażu zatwierdzony",
+  "internship.returned": "Wpis stażu do poprawki",
   "internship.rejected": "Wpis stażu odrzucony",
   "attempt.failed_final": "Ostatnie niezaliczone podejście do testu",
   "certificate.ready": "Certyfikat gotowy",
   "document.ready": "Dokument gotowy",
-  "profile.accepted": "Profil psychologa zaakceptowany",
-  "profile.returned": "Profil psychologa zwrócony",
+  "profile.accepted": "Profil psychologa zatwierdzony",
+  "profile.returned": "Profil psychologa do poprawki",
   "profile.withdrawn": "Profil psychologa wycofany",
   "export.ready": "Eksport danych gotowy",
-  "cooperation_request.answered": "Odpowiedź na zgłoszenie współpracy",
+  "cooperation_request.answered": "Odpowiedź na prośbę o dalszą współpracę",
   "supervision.slot_cancelled": "Termin superwizji odwołany",
 };
 

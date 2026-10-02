@@ -42,10 +42,10 @@ interface Zapytanie {
   proba: number;
 }
 
-const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Uczestnicy" }];
+const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Osoby" }];
 
 /**
- * Ekran A-06 „Uczestnicy programu” — lista osób na szablonie `ListTemplate`
+ * Ekran A-06 „Osoby” — lista osób na szablonie `ListTemplate`
  * (administracja). Trasy: `GET /admin/users` (lista) i
  * `GET /admin/users/export.csv` (akcja drugorzędna nagłówka „Pobierz tabelę
  * (Excel)”, z bieżącym filtrem; `PageHeader.akcjaDrugorzedna`). Wiersz osoby to
@@ -131,7 +131,7 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
   const naglowek = (
     <PageHeader
       okruszki={OKRUSZKI}
-      tytul="Uczestnicy programu"
+      tytul="Osoby"
       opis={opis}
       onPowrot={() => router.back()}
       akcja={stan.rodzaj === "dane" ? { etykieta: "Zgłoszenia rekrutacyjne", href: SCIEZKA_ZGLOSZEN } : undefined}
@@ -159,7 +159,7 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
         lista={
           <EmptyState
             wariant="brak-uprawnien"
-            naglowek="Lista uczestników jest niedostępna"
+            naglowek="Lista osób jest niedostępna"
             rola="administracji"
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
@@ -182,7 +182,7 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
           Plik zawiera osoby spełniające bieżący filtr.
         </Notice>
       )}
-      <form className={style.filtry} onSubmit={zastosujFiltr} aria-label="Filtr uczestników">
+      <form className={style.filtry} onSubmit={zastosujFiltr} aria-label="Filtr osób">
         <div className={style.rola}>
           <Field
             id="osoby-rola"
@@ -222,7 +222,7 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
     lista = (
       <Notice
         wariant="error"
-        tytul="Nie udało się wczytać listy uczestników"
+        tytul="Nie udało się wczytać listy osób"
         akcja={
           <Button poziom="outline" onClick={() => przejdz(zapytanie.filtr, zapytanie.strona)}>
             Spróbuj ponownie
@@ -245,14 +245,14 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
     lista = (
       <EmptyState
         naglowek="Brak osób w programie"
-        tresc="Osoby pojawią się tu po przyjęciu zgłoszenia rekrutacyjnego."
+        tresc="Osoby pojawią się tu po zatwierdzeniu zgłoszenia rekrutacyjnego."
         przycisk={{ etykieta: "Przejdź do zgłoszeń", onClick: () => router.push(SCIEZKA_ZGLOSZEN) }}
       />
     );
   } else {
     lista = (
       <RecordList
-        tytul="Lista uczestników"
+        tytul="Lista osób"
         stopienNaglowka={2}
         naglowekTylkoDlaCzytnika
         naKarcie

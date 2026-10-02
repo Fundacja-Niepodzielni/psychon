@@ -44,7 +44,7 @@ type WariantPlakietki = "neutral" | "ok" | "warn" | "error" | "pending";
 
 export const PLAKIETKA_STATUSU: Record<ApplicationStatus, { wariant: WariantPlakietki; tekst: string }> = {
   new: { wariant: "pending", tekst: "czeka na decyzję" },
-  accepted: { wariant: "ok", tekst: "zaakceptowane" },
+  accepted: { wariant: "ok", tekst: "zatwierdzone" },
   rejected: { wariant: "error", tekst: "odrzucone" },
 };
 
@@ -52,7 +52,7 @@ export const OPCJE_STATUSU: { wartosc: string; etykieta: string }[] = [
   { wartosc: "", etykieta: "Wszystkie" },
   // Opcje listy rozwijanej zaczynają się wielką literą; plakietka w wierszu (słownik 2.1) — małą.
   { wartosc: "new", etykieta: "Czeka na decyzję" },
-  { wartosc: "accepted", etykieta: "Zaakceptowane" },
+  { wartosc: "accepted", etykieta: "Zatwierdzone" },
   { wartosc: "rejected", etykieta: "Odrzucone" },
 ];
 

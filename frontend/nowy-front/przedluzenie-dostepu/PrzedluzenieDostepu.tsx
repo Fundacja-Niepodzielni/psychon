@@ -33,7 +33,7 @@ import {
 } from "./dane";
 import style from "./PrzedluzenieDostepu.module.css";
 
-const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Uczestnicy" }, { etykieta: "Przedłużenie dostępu" }];
+const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Osoby" }, { etykieta: "Przedłużenie dostępu" }];
 const OPCJE_TRYBU = [
   { wartosc: "months", etykieta: "O liczbę miesięcy" },
   { wartosc: "until", etykieta: "Do wybranej daty" },
@@ -150,7 +150,7 @@ export function PrzedluzenieDostepu({ idOsoby }: WlasciwosciPrzedluzenieDostepu)
         tresc={
           <EmptyState
             naglowek="Nie znaleziono osoby"
-            tresc="Adres wskazuje osobę, której nie ma w systemie. Wróć do listy uczestników i otwórz kartę osoby jeszcze raz."
+            tresc="Adres wskazuje osobę, której nie ma w systemie. Wróć do listy osób i otwórz kartę osoby jeszcze raz."
             przycisk={{ etykieta: "Wróć", onClick: wroc }}
           />
         }

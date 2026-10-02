@@ -64,7 +64,7 @@ export function wariantStanu(status: string): WariantPlakietki {
 /** Etykiety stanów wniosku (kontrakt §3.4 `profile.status`) — nigdy surowy kod. */
 const STANY: Record<StanWniosku, { etykieta: string; wariant: WariantPlakietki }> = {
   submitted: { etykieta: "Czeka na decyzję", wariant: WARIANTY_STANOW.submitted },
-  returned: { etykieta: "Do poprawy", wariant: WARIANTY_STANOW.returned },
+  returned: { etykieta: "Do poprawki", wariant: WARIANTY_STANOW.returned },
   accepted: { etykieta: "Zatwierdzony", wariant: WARIANTY_STANOW.accepted },
   published: { etykieta: "Opublikowany", wariant: WARIANTY_STANOW.published },
   withdrawn: { etykieta: "Zgoda wycofana", wariant: WARIANTY_STANOW.withdrawn },

@@ -64,17 +64,17 @@ describe("PoProgramieWspolpraca — wysyłka zgłoszenia", () => {
 
     render(<PoProgramieWspolpraca />);
 
-    const pole = await screen.findByLabelText(/^Treść zgłoszenia/);
+    const pole = await screen.findByLabelText(/^Treść prośby/);
     await uzytkownik.type(pole, ZGLOSZENIE_NOWE.body);
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
 
     await waitFor(() => expect(zglosWspolprace).toHaveBeenCalledTimes(1));
     expect(zglosWspolprace).toHaveBeenCalledWith(ZGLOSZENIE_NOWE.body);
 
     await waitFor(() => expect(screen.getByText("nowe")).toBeInTheDocument());
     expect(screen.getByText(ZGLOSZENIE_NOWE.body)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
-    expect(screen.getByText("Masz otwarte zgłoszenie. Poczekaj na odpowiedź.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
+    expect(screen.getByText("Masz otwartą prośbę. Poczekaj na odpowiedź.")).toBeInTheDocument();
   });
 });
 
@@ -88,7 +88,7 @@ describe("PoProgramieWspolpraca — program nieukończony", () => {
     expect(
       await screen.findByRole("heading", { name: "Ten ekran otworzy się po ukończeniu programu" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
     expect(zglosWspolprace).not.toHaveBeenCalled();
   });
 });
@@ -108,9 +108,9 @@ describe("PoProgramieWspolpraca — błędy wysyłki", () => {
     );
 
     render(<PoProgramieWspolpraca />);
-    const pole = await screen.findByLabelText(/^Treść zgłoszenia/);
+    const pole = await screen.findByLabelText(/^Treść prośby/);
     await uzytkownik.type(pole, "x");
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
 
     expect(await screen.findByText("Treść zgłoszenia może mieć najwyżej 2000 znaków.")).toBeInTheDocument();
   });
@@ -128,9 +128,9 @@ describe("PoProgramieWspolpraca — błędy wysyłki", () => {
     );
 
     render(<PoProgramieWspolpraca />);
-    const pole = await screen.findByLabelText(/^Treść zgłoszenia/);
+    const pole = await screen.findByLabelText(/^Treść prośby/);
     await uzytkownik.type(pole, "x");
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
 
     expect(
       await screen.findByText("Masz już otwarte zgłoszenie współpracy. Poczekaj na odpowiedź."),
@@ -150,14 +150,14 @@ describe("PoProgramieWspolpraca — błędy wysyłki", () => {
     );
 
     render(<PoProgramieWspolpraca />);
-    const pole = await screen.findByLabelText(/^Treść zgłoszenia/);
+    const pole = await screen.findByLabelText(/^Treść prośby/);
     await uzytkownik.type(pole, "x");
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
 
     expect(
       await screen.findByRole("heading", { name: "Ten ekran otworzy się po ukończeniu programu" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
   });
 });
 
@@ -185,7 +185,7 @@ describe("PoProgramieWspolpraca — odmowa roli", () => {
     const { container } = render(<PoProgramieWspolpraca />);
 
     await waitFor(() => expect(container.textContent).toContain("uczestników"));
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Moje zgłoszenia" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Moje prośby" })).toBeNull();
   });
 });

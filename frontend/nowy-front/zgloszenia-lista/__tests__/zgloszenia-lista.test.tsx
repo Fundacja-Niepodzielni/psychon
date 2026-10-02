@@ -115,7 +115,7 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     expect(screen.getByText(/kandydat11@demo\.pl · proponowana rola: Wolontariusz · zgłoszono 20\.09\.2026/)).toBeInTheDocument();
     expect(screen.getByText(/proponowana rola: Student/)).toBeInTheDocument();
     expect(screen.getByText("czeka na decyzję")).toBeInTheDocument();
-    expect(screen.getByText("zaakceptowane")).toBeInTheDocument();
+    expect(screen.getByText("zatwierdzone")).toBeInTheDocument();
     expect(screen.queryByText("Czeka na decyzję")).toBeNull();
     expect(container.textContent).not.toMatch(/\b(volunteer|student|instructor)\b/);
     expect(screen.getByText(/Razem zgłoszeń: 2/)).toBeInTheDocument();

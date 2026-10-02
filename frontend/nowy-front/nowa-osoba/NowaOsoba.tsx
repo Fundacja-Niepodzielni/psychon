@@ -28,7 +28,7 @@ import {
   type Uprawnienia,
 } from "./dane";
 
-const OKRUSZKI = [{ etykieta: "Uczestnicy" }, { etykieta: "Nowa osoba" }];
+const OKRUSZKI = [{ etykieta: "Osoby" }, { etykieta: "Nowa osoba" }];
 
 type Wczytanie =
   | { rodzaj: "ladowanie" }

@@ -150,10 +150,10 @@ describe.each([
   {
     nazwa: "/admin/uczestniczki",
     trasa: trasaOsob,
-    h1: "Uczestnicy programu",
+    h1: "Osoby",
     rekord: OSOBA.last_name,
-    odmowa: "Lista uczestników jest niedostępna",
-    siec: "Nie udało się wczytać listy uczestników",
+    odmowa: "Lista osób jest niedostępna",
+    siec: "Nie udało się wczytać listy osób",
     ustaw: ustawListe,
     dane: () => Promise.resolve(strona(OSOBA)),
   },

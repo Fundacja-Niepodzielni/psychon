@@ -166,8 +166,8 @@ const MENU_OCZEKIWANE = [
       // „Dyżury do decyzji” i „Zgłoszenia rekrutacyjne” nie mają własnej pozycji: są podstronami „Spraw”
       // (rejestr menu ramki), a „Sprawy” prowadzą do nich filtrami na liście.
       ["Sprawy", "/admin/sprawy"],
-      ["Uczestnicy", "/admin/uczestniczki"],
-      ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
+      ["Osoby", "/admin/uczestniczki"],
+      ["Dalsza współpraca", "/admin/zgloszenia-wspolpracy"],
     ],
     linia: null,
   },
@@ -226,9 +226,9 @@ const EKRANY: Ekran[] = [
   {
     nazwa: "zgloszenia-wspolpracy",
     adres: "/admin/zgloszenia-wspolpracy",
-    menu: "Zgłoszenia współpracy",
-    h1: "Zgłoszenia współpracy",
-    tytul: "Zgłoszenia współpracy — Niepodzielni",
+    menu: "Dalsza współpraca",
+    h1: "Dalsza współpraca",
+    tytul: "Dalsza współpraca — Niepodzielni",
   },
   {
     nazwa: "formy-stazu",

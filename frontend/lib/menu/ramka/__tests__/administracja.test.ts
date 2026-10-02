@@ -14,7 +14,7 @@ import { GRUPY, type DefinicjaGrupy, type KluczGrupy } from "@/lib/przelaczenie/
 /**
  * Menu administracji nowej ramki wobec makiety 2.0.4 (menu roli
  * administracji, skrypt `#nav`, w. 1105):
- * Codziennie: Pulpit · Sprawy · Uczestnicy; Program: Kursy + „W
+ * Codziennie: Pulpit · Sprawy · Osoby; Program: Kursy + „W
  * przygotowaniu: prowadzący” (makieta: „prowadzący · staż i superwizja”;
  * staż jest podstroną „Spraw” („Dyżury do decyzji”), superwizja — „Superwizje”);
  * Rozliczenie: Raport roku programu · Dziennik działań + „W przygotowaniu:
@@ -55,7 +55,7 @@ const WLACZONE_DZIS: Partial<Record<KluczGrupy, boolean>> = {
   ekranStartowy: true,
   kolejkaStazu: true,
   kursyAdministracji: true,
-  // Włączony nabór dokłada podstronę „Zgłoszenia rekrutacyjne” pod „Sprawy” (adres inny niż „Uczestnicy”), więc
+  // Włączony nabór dokłada podstronę „Zgłoszenia rekrutacyjne” pod „Sprawy” (adres inny niż „Osoby”), więc
   // rzeczywiste menu różni się od menu bez tej flagi — bez niej porównanie z rejestrem na dziś byłoby fałszywe.
   nabor: true,
   pulpitUczestnika: true,
@@ -70,8 +70,8 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
         pozycje: [
           ["Pulpit", "/admin"],
           ["Sprawy", "/admin/sprawy"],
-          ["Uczestnicy", "/admin/uczestniczki"],
-          ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
+          ["Osoby", "/admin/uczestniczki"],
+          ["Dalsza współpraca", "/admin/zgloszenia-wspolpracy"],
         ],
         linia: undefined,
         zwijana: undefined,
@@ -204,8 +204,8 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
     expect(menu.find((g) => g.naglowek === "Codziennie")?.pozycje.map((p) => p.etykieta)).toEqual([
       "Pulpit",
       "Sprawy",
-      "Uczestnicy",
-      "Zgłoszenia współpracy",
+      "Osoby",
+      "Dalsza współpraca",
     ]);
   });
 
@@ -222,10 +222,10 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
     }
   });
 
-  it("zgłoszenia rekrutacyjne przy włączonej grupie: podstrona „Spraw” z adresem /admin/nabor, a „Uczestnicy” zostają pozycją", () => {
+  it("zgłoszenia rekrutacyjne przy włączonej grupie: podstrona „Spraw” z adresem /admin/nabor, a „Osoby” zostają pozycją", () => {
     const menu = menuRamkiAdministracji(zFlagami({ nabor: true, listaOsob: true, sprawy: true }));
     const codziennie = menu.find((g) => g.naglowek === "Codziennie");
-    expect(codziennie?.pozycje.map((p) => p.etykieta)).toEqual(["Pulpit", "Sprawy", "Uczestnicy"]);
+    expect(codziennie?.pozycje.map((p) => p.etykieta)).toEqual(["Pulpit", "Sprawy", "Osoby"]);
     expect(codziennie?.pozycje.find((p) => p.etykieta === "Sprawy")?.podstrony).toContainEqual({
       etykieta: "Zgłoszenia rekrutacyjne",
       href: "/admin/nabor",
@@ -242,10 +242,10 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
     }
   });
 
-  it("zgłoszenia rekrutacyjne przy wyłączonej grupie nie ginią: wejście na listę zgłoszeń zostaje przez „Uczestnicy” (zakładka starej strony)", () => {
+  it("zgłoszenia rekrutacyjne przy wyłączonej grupie nie ginią: wejście na listę zgłoszeń zostaje przez „Osoby” (zakładka starej strony)", () => {
     const menu = menuRamkiAdministracji(zFlagami({ nabor: false }));
     const wszystkie = menu.flatMap((g) => g.pozycje.map((p) => [p.etykieta, p.href]));
-    expect(wszystkie).toContainEqual(["Uczestnicy", "/admin/uczestniczki"]);
+    expect(wszystkie).toContainEqual(["Osoby", "/admin/uczestniczki"]);
     expect(wszystkie.map(([etykieta]) => etykieta)).not.toContain("Zgłoszenia rekrutacyjne");
   });
 
@@ -259,7 +259,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
     expect(codziennie?.pozycje.map((p) => [p.etykieta, p.href])).toEqual([
       ["Pulpit", "/admin"],
       ["Dyżury do decyzji", "/admin/staz"],
-      ["Uczestnicy", "/admin/uczestniczki"],
+      ["Osoby", "/admin/uczestniczki"],
       ["Zgłoszenia rekrutacyjne", "/admin/nabor"],
     ]);
     expect(menu.flatMap((g) => g.pozycje).some((p) => p.podstrony !== undefined)).toBe(false);

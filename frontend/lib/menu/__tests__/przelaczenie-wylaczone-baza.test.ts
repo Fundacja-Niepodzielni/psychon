@@ -194,22 +194,22 @@ describe("menu przy włączonej grupie współpracy — wpisy prowadzą na nowe 
     }
   });
 
-  it("administracja: powstaje wpis „Zgłoszenia współpracy” z nową trasą, tylko dla obu ról administracji", async () => {
+  it("administracja: powstaje wpis „Dalsza współpraca” z nową trasą, tylko dla obu ról administracji", async () => {
     const zestaw = await zaladujMenuZFlagami({ wspolpraca: true });
     const wylaczony = await zaladujMenuZFlagami({});
     expect(zestaw.admin).toHaveLength(wylaczony.admin.length + 1);
     for (const rola of ["project_manager", "super_admin"] as Role[]) {
-      const wpis = wpisyRoli(zestaw, rola).find((w) => w.label === "Zgłoszenia współpracy");
+      const wpis = wpisyRoli(zestaw, rola).find((w) => w.label === "Dalsza współpraca");
       expect(wpis?.href, rola).toBe("/admin/zgloszenia-wspolpracy");
     }
     for (const rola of ["instructor", "volunteer", "student"] as Role[]) {
-      expect(wpisyRoli(zestaw, rola).find((w) => w.label === "Zgłoszenia współpracy"), rola).toBeUndefined();
+      expect(wpisyRoli(zestaw, rola).find((w) => w.label === "Dalsza współpraca"), rola).toBeUndefined();
     }
   });
 
   it("przypadek odwrotny: przy wyłączonej grupie wpis administracji nie istnieje, a wpis uczestnika wskazuje starą trasę", async () => {
     const zestaw = await zaladujMenuZFlagami({});
-    expect(zestaw.admin.find((w) => w.label === "Zgłoszenia współpracy")).toBeUndefined();
+    expect(zestaw.admin.find((w) => w.label === "Dalsza współpraca")).toBeUndefined();
     expect(zestaw.uczestnik.find((w) => w.label === "Po programie")?.href).toBe("/panel/po-programie");
   });
 });

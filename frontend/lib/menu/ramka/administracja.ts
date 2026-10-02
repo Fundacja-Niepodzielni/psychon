@@ -27,7 +27,7 @@ import type { MenuEntry } from "../types";
  *   słownik wprost daje parę menu/nagłówek (Pulpit / Pulpit administracji,
  *   Sprawy / Sprawy do decyzji);
  * - ekrany nowego frontu, których makieta nie ma w menu, stoją w grupie
- *   najbliższej ich funkcji: Zgłoszenia współpracy → Codziennie; słownik form
+ *   najbliższej ich funkcji: Dalsza współpraca → Codziennie; słownik form
  *   stażu, wzory dokumentów i ekran startowy → „Ustawienia” (słowniki i treści
  *   ustawiane rzadko, nie codzienna praca). „Program” to Kursy, „Rozliczenie” —
  *   Raport roku programu i Dziennik działań;
@@ -45,14 +45,14 @@ import type { MenuEntry } from "../types";
  * - kolejka stażu (`/admin/staz`, „Dyżury do decyzji”) i lista zgłoszeń rekrutacyjnych
  *   (`/admin/nabor`, „Zgłoszenia rekrutacyjne”) nie mają własnej pozycji w menu: w
  *   rejestrze (`PODSTRONY_ADMINISTRACJI`) ich rodzicem jest „Sprawy”, skąd się do nich
- *   wchodzi (filtr rodzaju), z pulpitu i z listy uczestników. Nazwa ekranu == `h1`.
+ *   wchodzi (filtr rodzaju), z pulpitu i z listy osób. Nazwa ekranu == `h1`.
  *   W menu świeci wtedy „Sprawy” jako sekcja (`aria-current="true"`), a okruszek
  *   składa się z rodzica („Administracja › Sprawy › Dyżury do decyzji”). Stary wpis
  *   „Akceptacja stażu” nie wchodzi wtedy do „Dotychczasowego panelu”. Bez pozycji
  *   „Sprawy” w menu (grupa wyłączona) ekran wraca na własną pozycję w „Codziennie”,
  *   żeby wejście nie zginęło. „Zgłoszenia rekrutacyjne” są w rejestrze wyłącznie przy
  *   włączonej grupie `nabor`; przy wyłączonej są zakładką starej strony pod
- *   `/admin/uczestniczki` — adres, który już niesie „Uczestnicy” (zero duplikatu
+ *   `/admin/uczestniczki` — adres, który już niesie „Osoby” (zero duplikatu
  *   adresu, zero utraty wejścia);
  * - linie „W przygotowaniu” z makiety, bez łączy i bez funkcji obecnych
  *   w menu: w „Programie” bez „staż i superwizja” (w menu „Dyżury do decyzji”
@@ -92,9 +92,9 @@ export const NAZWY_RAMKI_ADMINISTRACJI = {
   pulpit: "Pulpit",
   sprawy: "Sprawy",
   kolejkaStazu: "Dyżury do decyzji",
-  uczestnicy: "Uczestnicy",
+  osoby: "Osoby",
   zgloszeniaRekrutacyjne: "Zgłoszenia rekrutacyjne",
-  zgloszeniaWspolpracy: "Zgłoszenia współpracy",
+  dalszaWspolpraca: "Dalsza współpraca",
   kursy: "Kursy",
   formyStazu: "Słownik form stażu",
   raport: "Raport roku programu",
@@ -167,7 +167,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
   // własnej pozycji, gdy w menu stoi ich rodzic „Sprawy”: wchodzą jako jego podstrony. Bez rodzica
   // (grupa `sprawy` wyłączona) stoją jak dawniej w „Codziennie”, żeby wejście nie zginęło.
   // „Zgłoszenia rekrutacyjne” liczą się wyłącznie przy włączonej grupie `nabor`: przy wyłączonej cel
-  // to stara trasa `/admin/uczestniczki` (adres pozycji „Uczestnicy”), a zgłoszenia są zakładką
+  // to stara trasa `/admin/uczestniczki` (adres pozycji „Osoby”), a zgłoszenia są zakładką
   // tej strony. Stary wpis „Akceptacja stażu” znika z „Dotychczasowego panelu” dokładnie wtedy, gdy
   // kolejka stażu jest w menu albo pod rodzicem — adres jest ten sam przy obu stanach flagi.
   const ekrany = PODSTRONY_ADMINISTRACJI.flatMap((wpis) => {
@@ -190,9 +190,9 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...pozycja(cel(grupy, "pulpitAdministracji"), "home", n.pulpit, true),
         ...sprawy.map((p) => (podstrony.length > 0 ? { ...p, podstrony } : p)),
         ...wlasne("kolejkaStazu"),
-        ...pozycja(cel(grupy, "listaOsob"), "users", n.uczestnicy),
+        ...pozycja(cel(grupy, "listaOsob"), "users", n.osoby),
         ...wlasne("nabor"),
-        ...pozycja(cel(grupy, "wspolpraca"), "chat", n.zgloszeniaWspolpracy),
+        ...pozycja(cel(grupy, "wspolpraca"), "chat", n.dalszaWspolpraca),
       ],
     },
     {

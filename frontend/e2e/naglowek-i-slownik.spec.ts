@@ -165,7 +165,7 @@ for (const { nazwa, viewport } of SZEROKOSCI) {
       await page.goto("/admin/zgloszenia-wspolpracy");
       await zabezpieczeniePrzedEkranemDostepu(page);
 
-      await expect(page.getByRole("heading", { level: 1, name: "Zgłoszenia współpracy" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Dalsza współpraca" })).toBeVisible();
       await expect(page.getByText("Ola Demo")).toBeVisible();
       await expect(page.getByText("Stan", { exact: true })).toBeVisible();
       for (const plakietka of ["nowe", "z odpowiedzią", "zamknięte"]) {

@@ -158,7 +158,7 @@ describe("okruszek ramki: ekrany bez własnej pozycji w menu (podstrony „Spraw
     ]);
   });
 
-  it("lista Spraw nie ma okruszka, a „Uczestnicy” (pozycja Codziennie) też nie", () => {
+  it("lista Spraw nie ma okruszka, a „Osoby” (pozycja Codziennie) też nie", () => {
     for (const sciezka of ["/admin/sprawy", "/admin/uczestniczki"]) {
       expect(
         okruszekRamki({ menu: menuDlaSciezki(menu, sciezka), sciezka, okruszki: [], tytul: "Tytuł" }),

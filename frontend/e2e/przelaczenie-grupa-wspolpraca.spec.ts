@@ -157,7 +157,7 @@ test.describe("grupa przełączenia wspolpraca — nowa trasa osiągalna z menu,
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
 
-  test("administracja (opiekun projektu): wpis „Zgłoszenia współpracy” prowadzi na nową trasę; 0 odpowiedzi 404", async ({
+  test("administracja (opiekun projektu): wpis „Dalsza współpraca” prowadzi na nową trasę; 0 odpowiedzi 404", async ({
     page,
   }) => {
     const kody404: string[] = [];
@@ -171,12 +171,12 @@ test.describe("grupa przełączenia wspolpraca — nowa trasa osiągalna z menu,
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     const nav = page.getByRole("navigation", { name: "Menu — Administracja" }).first();
-    const link = nav.getByRole("link", { name: "Zgłoszenia współpracy" });
+    const link = nav.getByRole("link", { name: "Dalsza współpraca" });
     await expect(link).toHaveAttribute("href", "/admin/zgloszenia-wspolpracy");
 
     await link.click();
     await expect(page).toHaveURL(/\/admin\/zgloszenia-wspolpracy$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Zgłoszenia współpracy" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Dalsza współpraca" })).toBeVisible();
 
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });

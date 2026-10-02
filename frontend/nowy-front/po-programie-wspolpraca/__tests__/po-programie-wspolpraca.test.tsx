@@ -114,8 +114,8 @@ async function renderUkonczony(zgloszenia: unknown[] = [], nadpiszJa: Record<str
   api.mockResolvedValueOnce(ja(nadpiszJa));
   apiPaged.mockResolvedValueOnce({ data: zgloszenia, meta: { ...META, total: zgloszenia.length } });
   const wynik = render(<PoProgramieWspolpraca />);
-  await screen.findByRole("form", { name: /Zgłoszenie dalszej współpracy/ }).catch(() => undefined);
-  await screen.findByRole("heading", { name: "Moje zgłoszenia" });
+  await screen.findByRole("form", { name: /Prośba o dalszą współpracę/ }).catch(() => undefined);
+  await screen.findByRole("heading", { name: "Moje prośby" });
   return wynik;
 }
 
@@ -169,7 +169,7 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
     expect(api).toHaveBeenCalledWith("/me");
     expect(apiPaged).toHaveBeenCalledWith("/cooperation-requests/mine?page=1");
     expect(screen.getByRole("heading", { name: "Program ukończony" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Treść prośby/ })).toBeInTheDocument();
     expect(screen.getByText(Z_ODPOWIEDZIA.body)).toBeInTheDocument();
   });
 
@@ -192,7 +192,7 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
     await waitFor(() => expect(container.textContent).toContain("uczestników"));
     sprawdzSzablon(container);
     expect(screen.queryByRole("form")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Moje zgłoszenia" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Moje prośby" })).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(zapytaniaOMine()).toHaveLength(0);
   });
@@ -204,7 +204,7 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
     await waitFor(() => expect(container.textContent).toContain("uczestników"));
     sprawdzSzablon(container);
     expect(screen.queryByRole("form")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Moje zgłoszenia" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Moje prośby" })).toBeNull();
   });
 
   it("inna rola w profilu: odmowa z nazwą roli, zero zapytań o własne zgłoszenia", async () => {
@@ -214,7 +214,7 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
     sprawdzSzablon(container);
     expect(zapytaniaOMine()).toHaveLength(0);
     expect(screen.queryByRole("form")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
   });
 
   it("błąd sieci: komunikat z „Spróbuj ponownie”, ponowienie wczytuje ekran", async () => {
@@ -244,11 +244,11 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
   it("po zapisie: Toast potwierdza wysłanie, zgłoszenie na górze historii, jeden main", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderUkonczony([]);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), NOWE.body);
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), NOWE.body);
     api.mockResolvedValueOnce(NOWE);
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Zgłoszenie zostało wysłane."));
-    expect(screen.getByText("Masz otwarte zgłoszenie. Poczekaj na odpowiedź.")).toBeInTheDocument();
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Prośba została wysłana."));
+    expect(screen.getByText("Masz otwartą prośbę. Poczekaj na odpowiedź.")).toBeInTheDocument();
     sprawdzSzablon(container);
   });
 
@@ -269,7 +269,7 @@ describe("PoProgramieWspolpraca — osoba bez prawa do zgłoszenia nie widzi obi
     expect(screen.queryByRole("button", { name: /Odśwież/ })).toBeNull();
     expect(container.textContent).not.toMatch(/Odśwież/);
     expect(screen.queryByRole("form")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
   }
 
   it("program nieukończony w profilu: zero tekstu „po wysłaniu”, zero „Odśwież”, zero zapytań o własne zgłoszenia, historia ukryta", async () => {
@@ -277,22 +277,22 @@ describe("PoProgramieWspolpraca — osoba bez prawa do zgłoszenia nie widzi obi
     sprawdzBezObietnicy(container);
     expect(zapytaniaOMine()).toHaveLength(0);
     expect(apiPaged).not.toHaveBeenCalled();
-    expect(screen.queryByRole("heading", { name: "Moje zgłoszenia" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Moje zgłoszenia" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Moje prośby" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Moje prośby" })).toBeNull();
   });
 
   it("403 program_not_completed przy wysyłce, pusta historia: zero obietnicy, zero „Odśwież”, historia ukryta, zero nowych zapytań o własne zgłoszenia", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderUkonczony([]);
     expect(zapytaniaOMine()).toHaveLength(1);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), "Chcę kontynuować.");
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), "Chcę kontynuować.");
     api.mockRejectedValueOnce(
       blad(403, "program_not_completed", "Zgłoszenie współpracy jest dostępne po zakończeniu programu."),
     );
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
     await screen.findByRole("heading", { name: "Ten ekran otworzy się po ukończeniu programu" });
     sprawdzBezObietnicy(container);
-    expect(screen.queryByRole("heading", { name: "Moje zgłoszenia" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Moje prośby" })).toBeNull();
     expect(zapytaniaOMine()).toHaveLength(1);
     sprawdzSzablon(container, SZABLON_STANU_PUSTEGO);
   });
@@ -300,12 +300,12 @@ describe("PoProgramieWspolpraca — osoba bez prawa do zgłoszenia nie widzi obi
   it("403 program_not_completed przy wysyłce, osoba ma zgłoszenia: lista zostaje, bez zdania z obietnicą i bez „Odśwież”", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderUkonczony([Z_ODPOWIEDZIA]);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), "Chcę kontynuować.");
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), "Chcę kontynuować.");
     api.mockRejectedValueOnce(blad(403, "program_not_completed", "Zgłoszenie współpracy jest niedostępne."));
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
     await screen.findByRole("heading", { name: "Ten ekran otworzy się po ukończeniu programu" });
     sprawdzBezObietnicy(container);
-    expect(screen.getByRole("heading", { name: "Moje zgłoszenia" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Moje prośby" })).toBeInTheDocument();
     expect(screen.getByText(Z_ODPOWIEDZIA.body)).toBeInTheDocument();
     expect(zapytaniaOMine()).toHaveLength(1);
   });
@@ -323,27 +323,27 @@ describe("PoProgramieWspolpraca — osoba bez prawa do zgłoszenia nie widzi obi
 });
 
 describe("PoProgramieWspolpraca — wysyłka zgłoszenia", () => {
-  it("„Wyślij zgłoszenie” jest jedynym przyciskiem głównym; formularz w treści, bez okna dialogowego", async () => {
+  it("„Wyślij prośbę” jest jedynym przyciskiem głównym; formularz w treści, bez okna dialogowego", async () => {
     await renderUkonczony([]);
     const glowne = przyciskiGlowne();
     expect(glowne).toHaveLength(1);
-    expect(glowne[0].textContent).toBe("Wyślij zgłoszenie");
+    expect(glowne[0].textContent).toBe("Wyślij prośbę");
     expect(oknaDialogowe()).toHaveLength(0);
   });
 
   it("wysyłka: POST z ciałem {body}, po 201 wiersz „Nowe” na górze, formularz zastąpiony informacją", async () => {
     const uzytkownik = userEvent.setup();
     await renderUkonczony([Z_ODPOWIEDZIA]);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), `  ${NOWE.body}  `);
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), `  ${NOWE.body}  `);
     api.mockResolvedValueOnce(NOWE);
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
-    await waitFor(() => expect(screen.getByText("Masz otwarte zgłoszenie. Poczekaj na odpowiedź.")).toBeInTheDocument());
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
+    await waitFor(() => expect(screen.getByText("Masz otwartą prośbę. Poczekaj na odpowiedź.")).toBeInTheDocument());
     expect(api).toHaveBeenCalledWith("/cooperation-requests", { method: "POST", body: { body: NOWE.body } });
-    const pozycje = Array.from(document.querySelectorAll("section[aria-label='Moje zgłoszenia'] ul > li"));
+    const pozycje = Array.from(document.querySelectorAll("section[aria-label='Moje prośby'] ul > li"));
     expect(pozycje).toHaveLength(2);
     expect(pozycje[0]).toHaveTextContent("nowe");
     expect(pozycje[0]).toHaveTextContent(NOWE.body);
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 
@@ -353,54 +353,54 @@ describe("PoProgramieWspolpraca — wysyłka zgłoszenia", () => {
     api.mockRejectedValueOnce(
       blad(422, "validation_failed", "Popraw zaznaczone pola.", { body: ["Napisz, jakiej współpracy dotyczy zgłoszenie."] }),
     );
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
     await waitFor(() =>
       expect(screen.getAllByText("Napisz, jakiej współpracy dotyczy zgłoszenie.").length).toBeGreaterThan(0),
     );
     expect(api).toHaveBeenCalledWith("/cooperation-requests", { method: "POST", body: { body: "" } });
-    expect(document.querySelectorAll("section[aria-label='Moje zgłoszenia'] ul > li")).toHaveLength(0);
+    expect(document.querySelectorAll("section[aria-label='Moje prośby'] ul > li")).toHaveLength(0);
   });
 
   it("409 cooperation_request_open: komunikat z koperty, historia wczytana ponownie, formularz zastąpiony informacją", async () => {
     const uzytkownik = userEvent.setup();
     await renderUkonczony([]);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), "Jeszcze jedno.");
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), "Jeszcze jedno.");
     api.mockRejectedValueOnce(
       blad(409, "cooperation_request_open", "Masz już otwarte zgłoszenie współpracy. Poczekaj na odpowiedź."),
     );
     apiPaged.mockResolvedValueOnce({ data: [NOWE], meta: { ...META, total: 1 } });
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
     expect(
       await screen.findByText("Masz już otwarte zgłoszenie współpracy. Poczekaj na odpowiedź."),
     ).toBeInTheDocument();
     await screen.findByText(NOWE.body);
     expect(zapytaniaOMine()).toHaveLength(2);
-    expect(screen.getByText("Masz otwarte zgłoszenie. Poczekaj na odpowiedź.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Wyślij zgłoszenie" })).toBeNull();
+    expect(screen.getByText("Masz otwartą prośbę. Poczekaj na odpowiedź.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
   });
 
   it("inny błąd serwera: komunikat, treść w polu zostaje", async () => {
     const uzytkownik = userEvent.setup();
     await renderUkonczony([]);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), "Treść.");
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), "Treść.");
     api.mockRejectedValueOnce(blad(500, "server_error", "Serwer nie odpowiada."));
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
     expect(await screen.findByText("Serwer nie odpowiada.")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ })).toHaveValue("Treść.");
+    expect(screen.getByRole("textbox", { name: /^Treść prośby/ })).toHaveValue("Treść.");
   });
 
   it("błąd sieci przy wysyłce: komunikat ogólny", async () => {
     const uzytkownik = userEvent.setup();
     await renderUkonczony([]);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), "Treść.");
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), "Treść.");
     api.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
-    expect(await screen.findByText("Nie udało się wysłać zgłoszenia. Spróbuj ponownie.")).toBeInTheDocument();
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
+    expect(await screen.findByText("Nie udało się wysłać prośby. Spróbuj ponownie.")).toBeInTheDocument();
   });
 
   it("otwarte zgłoszenie na liście od razu: informacja zamiast formularza, zero przycisków głównych", async () => {
     await renderUkonczony([NOWE]);
-    expect(screen.getByText("Masz otwarte zgłoszenie. Poczekaj na odpowiedź.")).toBeInTheDocument();
+    expect(screen.getByText("Masz otwartą prośbę. Poczekaj na odpowiedź.")).toBeInTheDocument();
     expect(screen.queryByRole("form")).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);
   });
@@ -477,7 +477,7 @@ describe("PoProgramieWspolpraca — program nieukończony: biała karta na cał�
     await renderPrzedUkonczeniem();
     const karta = screen.getByTestId("karta-stanu-pustego");
     expect(karta.nextElementSibling).toBeNull();
-    expect(screen.queryByRole("region", { name: "Moje zgłoszenia" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Moje prośby" })).toBeNull();
   });
 
   it("przycisk karty prowadzi do kursów", async () => {
@@ -490,12 +490,12 @@ describe("PoProgramieWspolpraca — program nieukończony: biała karta na cał�
   it("historia po 403 przy wysyłce stoi pod kartą, poza nią, w tej samej kolumnie", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderUkonczony([Z_ODPOWIEDZIA]);
-    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść zgłoszenia/ }), "Chcę kontynuować.");
+    await uzytkownik.type(screen.getByRole("textbox", { name: /^Treść prośby/ }), "Chcę kontynuować.");
     api.mockRejectedValueOnce(blad(403, "program_not_completed", "Zgłoszenie współpracy jest niedostępne."));
-    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij zgłoszenie" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę" }));
     await screen.findByRole("heading", { name: NAGLOWEK_KARTY });
     const karta = screen.getByTestId("karta-stanu-pustego");
-    const historia = screen.getByRole("region", { name: "Moje zgłoszenia" });
+    const historia = screen.getByRole("region", { name: "Moje prośby" });
     expect(karta.contains(historia)).toBe(false);
     expect(karta.compareDocumentPosition(historia) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(karta.parentElement).toBe(historia.parentElement);
@@ -513,7 +513,7 @@ describe("PoProgramieWspolpraca — program nieukończony: biała karta na cał�
 describe("PoProgramieWspolpraca — historia zgłoszeń", () => {
   it("status po polsku, bez kodów wewnętrznych", async () => {
     await renderUkonczony([NOWE, Z_ODPOWIEDZIA, ZAMKNIETE]);
-    const lista = document.querySelector("section[aria-label='Moje zgłoszenia'] ul") as HTMLElement;
+    const lista = document.querySelector("section[aria-label='Moje prośby'] ul") as HTMLElement;
     const pozycje = Array.from(lista.querySelectorAll(":scope > li"));
     expect(pozycje[0]).toHaveTextContent("nowe");
     expect(pozycje[1]).toHaveTextContent("z odpowiedzią");
@@ -549,7 +549,7 @@ describe("PoProgramieWspolpraca — historia zgłoszeń", () => {
 
   it("plakietka statusu stoi we własnym kontenerze o klasie wyrównania, nie rozciąga się na cały wiersz", async () => {
     await renderUkonczony([NOWE, Z_ODPOWIEDZIA]);
-    const pozycje = Array.from(document.querySelectorAll("section[aria-label='Moje zgłoszenia'] ul > li"));
+    const pozycje = Array.from(document.querySelectorAll("section[aria-label='Moje prośby'] ul > li"));
     for (const pozycja of pozycje) {
       const kontener = pozycja.firstElementChild as HTMLElement;
       expect(kontener.className).toMatch(/plakietka/);

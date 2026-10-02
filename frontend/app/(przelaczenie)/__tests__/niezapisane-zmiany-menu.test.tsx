@@ -168,10 +168,10 @@ describe("uczestnik — „Dalsza współpraca”", () => {
         <PoProgramieWspolpraca />
       </PowlokaUczestnika>,
     );
-    await screen.findByLabelText(/^Treść zgłoszenia/);
+    await screen.findByLabelText(/^Treść prośby/);
     await przebiegPrzezMenu(
       "Menu — Panel uczestnika",
-      () => screen.getByLabelText(/^Treść zgłoszenia/),
+      () => screen.getByLabelText(/^Treść prośby/),
       "Chcę kontynuować współpracę.",
       "Chcę kontynuować współpracę.",
     );

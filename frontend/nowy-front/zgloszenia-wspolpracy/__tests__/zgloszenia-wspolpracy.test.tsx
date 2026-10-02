@@ -104,7 +104,7 @@ function wiersz(nazwa: string) {
 }
 
 function wierszeListy() {
-  return Array.from(document.querySelectorAll("ul[aria-label='Zgłoszenia współpracy'] > li"));
+  return Array.from(document.querySelectorAll("ul[aria-label='Dalsza współpraca'] > li"));
 }
 
 function sprawdzSzablon(container: HTMLElement) {
@@ -150,7 +150,7 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
     const { container } = render(<ZgloszeniaWspolpracy />);
     sprawdzSzablon(container);
     expect(container.querySelector("[data-testid='obszar-lista'] [aria-busy='true']")).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 1, name: "Zgłoszenia współpracy" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Dalsza współpraca" })).toBeInTheDocument();
   });
 
   it("dane: trzy wiersze, jeden main, zapytanie o pierwszą stronę", async () => {
@@ -162,10 +162,10 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
     expect(wiersz("Marta Demo")).toHaveTextContent(NOWE.body);
   });
 
-  it("pusty: nagłówek „Brak zgłoszeń współpracy”, jeden main, zero wierszy", async () => {
+  it("pusty: nagłówek „Brak próśb o dalszą współpracę”, jeden main, zero wierszy", async () => {
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
     const { container } = render(<ZgloszeniaWspolpracy />);
-    await screen.findByRole("heading", { name: "Brak zgłoszeń współpracy" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     sprawdzSzablon(container);
     expect(wierszeListy()).toHaveLength(0);
   });
@@ -176,7 +176,7 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
     await uzytkownik.click(screen.getByRole("combobox", { name: /^Stan/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Zamknięte" }));
-    await screen.findByRole("heading", { name: "Brak zgłoszeń współpracy" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     expect(apiPaged).toHaveBeenLastCalledWith("/admin/cooperation-requests?status=closed&page=1");
 
     apiPaged.mockResolvedValueOnce({ data: TRZY, meta: META });
@@ -215,8 +215,8 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
   it("po zapisie: Toast potwierdza odpowiedź, stan nadal w szablonie listy", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie: Marta Demo/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę: Marta Demo/ });
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "Zapraszamy.");
     api.mockResolvedValueOnce(zgloszenie(11, { status: "answered", response: "Zapraszamy.", responded_at: "2026-09-22T10:00:00Z" }));
     await uzytkownik.click(within(formularz).getByRole("button", { name: "Odpowiedz" }));
@@ -256,18 +256,18 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
     expect(oknaDialogowe()).toHaveLength(0);
   });
 
-  it("wiersze nowe i z odpowiedzią mają „Odpowiedz na zgłoszenie”, zamknięty nie ma żadnego przycisku", async () => {
+  it("wiersze nowe i z odpowiedzią mają „Odpowiedz na prośbę”, zamknięty nie ma żadnego przycisku", async () => {
     await renderZDanymi();
-    expect(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" })).toBeInTheDocument();
-    expect(within(wiersz("Filip Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" })).toBeInTheDocument();
+    expect(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" })).toBeInTheDocument();
+    expect(within(wiersz("Filip Demo")).getByRole("button", { name: "Odpowiedz na prośbę" })).toBeInTheDocument();
     expect(within(wiersz("Ewa Demo")).queryAllByRole("button")).toHaveLength(0);
   });
 
   it("otwarta sekcja: jeden rząd przycisków, „Odpowiedz” jest jedynym głównym, w wierszu, bez okna dialogowego", async () => {
     const uzytkownik = userEvent.setup();
     const { container } = await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie: Marta Demo/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę: Marta Demo/ });
     expect(wiersz("Marta Demo").contains(formularz)).toBe(true);
     expect(oknaDialogowe()).toHaveLength(0);
     const glowne = przyciskiGlowne();
@@ -296,8 +296,8 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
   it("„Odpowiedz” wysyła PATCH z odpowiedzią i statusem „answered”, wiersz dostaje status i odpowiedź", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie: Marta Demo/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę: Marta Demo/ });
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "  Zapraszamy do współpracy.  ");
     api.mockResolvedValueOnce(
       zgloszenie(11, { status: "answered", response: "Zapraszamy do współpracy.", responded_at: "2026-09-22T10:00:00Z", responded_by: 3 }),
@@ -317,8 +317,8 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
   it("pusta odpowiedź: serwer zwraca 422, błąd stoi przy polu, ciało PATCH ma pustą odpowiedź, wiersz zostaje", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie: Marta Demo/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę: Marta Demo/ });
     api.mockRejectedValueOnce(
       blad(422, "validation_failed", "Popraw zaznaczone pola.", { response: ["Wpisz odpowiedź dla osoby zgłaszającej."] }),
     );
@@ -337,8 +337,8 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
   it("zamknięcie: wybrany status „Zamknięte” idzie w ciele PATCH, wiersz traci przycisk odpowiedzi", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie: Marta Demo/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę: Marta Demo/ });
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "Dziękujemy.");
     await uzytkownik.click(within(formularz).getByRole("combobox", { name: /^Stan po odpowiedzi/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Zamknięte" }));
@@ -353,7 +353,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
     });
     expect(wiersz("Marta Demo")).toHaveTextContent("zamknięte");
     expect(within(wiersz("Marta Demo")).queryAllByRole("button")).toHaveLength(0);
-    expect(screen.getByRole("status")).toHaveTextContent("Zgłoszenie zamknięte: Marta Demo.");
+    expect(screen.getByRole("status")).toHaveTextContent("Prośba zamknięta: Marta Demo.");
   });
 
   it("zamknięcie przy aktywnym filtrze „Nowe”: wiersz znika z listy bez dodatkowego zapytania", async () => {
@@ -365,20 +365,20 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
     await uzytkownik.click(screen.getByRole("combobox", { name: /^Stan/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Nowe" }));
     await screen.findByText("Marta Demo");
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę/ });
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "Dziękujemy.");
     api.mockResolvedValueOnce(zgloszenie(11, { status: "answered", response: "Dziękujemy.", responded_at: "2026-09-22T10:00:00Z" }));
     await uzytkownik.click(within(formularz).getByRole("button", { name: "Odpowiedz" }));
-    await screen.findByRole("heading", { name: "Brak zgłoszeń współpracy" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     expect(apiPaged).toHaveBeenCalledTimes(2);
   });
 
   it("Wróć do listy zamyka sekcję bez żądania", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę/ });
     await uzytkownik.click(within(formularz).getByRole("button", { name: "Wróć do listy" }));
     expect(screen.queryByRole("form")).toBeNull();
     expect(api).not.toHaveBeenCalled();
@@ -387,8 +387,8 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
   it("zgłoszenie zamknięte w międzyczasie (403): komunikat z koperty, sekcja zamknięta, lista wczytana ponownie", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę/ });
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "x");
     api.mockRejectedValueOnce(blad(403, "cooperation_request_closed", "To zgłoszenie jest już zamknięte."));
     apiPaged.mockResolvedValueOnce({ data: [ZAMKNIETE], meta: { ...META, total: 1 } });
@@ -402,8 +402,8 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
   it("błąd sieci przy zapisie: komunikat, sekcja zostaje otwarta z wpisaną treścią", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
-    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na zgłoszenie" }));
-    const formularz = await screen.findByRole("form", { name: /Odpowiedź na zgłoszenie/ });
+    await uzytkownik.click(within(wiersz("Marta Demo")).getByRole("button", { name: "Odpowiedz na prośbę" }));
+    const formularz = await screen.findByRole("form", { name: /Odpowiedź na prośbę/ });
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "Zapraszamy.");
     api.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     await uzytkownik.click(within(formularz).getByRole("button", { name: "Odpowiedz" }));
@@ -416,7 +416,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
 describe("ZgloszeniaWspolpracy — zapis słownikowy", () => {
   it("statusy mają etykiety polskie, kody wewnętrzne nie trafiają na listę", async () => {
     await renderZDanymi();
-    const lista = document.querySelector("ul[aria-label='Zgłoszenia współpracy']") as HTMLElement;
+    const lista = document.querySelector("ul[aria-label='Dalsza współpraca']") as HTMLElement;
     expect(wiersz("Marta Demo")).toHaveTextContent("nowe");
     expect(wiersz("Filip Demo")).toHaveTextContent("z odpowiedzią");
     expect(wiersz("Ewa Demo")).toHaveTextContent("zamknięte");
@@ -476,7 +476,7 @@ describe("ZgloszeniaWspolpracy — zapis słownikowy", () => {
 
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
     const c = render(<ZgloszeniaWspolpracy />);
-    await screen.findByRole("heading", { name: "Brak zgłoszeń współpracy" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     zbierz(c.container);
     c.unmount();
 
@@ -509,7 +509,7 @@ describe("ZgloszeniaWspolpracy — nagłówek ekranu pierwszego poziomu", () => 
   function sprawdzNaglowekPierwszegoPoziomu(container: HTMLElement) {
     const naglowki = screen.getAllByRole("heading", { level: 1 });
     expect(naglowki).toHaveLength(1);
-    expect(naglowki[0]).toHaveTextContent(/^Zgłoszenia współpracy$/);
+    expect(naglowki[0]).toHaveTextContent(/^Dalsza współpraca$/);
     expect(container.querySelector('nav[aria-label*="Okruszki"]')).toBeNull();
     expect(container.querySelector('[data-testid="pageheader-powrot"]')).toBeNull();
     expect(screen.queryByRole("button", { name: /^(Wstecz|Wróć)$/ })).toBeNull();
@@ -539,7 +539,7 @@ describe("ZgloszeniaWspolpracy — nagłówek ekranu pierwszego poziomu", () => 
     await waitFor(() => expect(container.textContent).toContain("administracji"));
     const naglowki = screen.getAllByRole("heading", { level: 1 });
     expect(naglowki).toHaveLength(1);
-    expect(naglowki[0]).toHaveTextContent(/^Zgłoszenia współpracy$/);
+    expect(naglowki[0]).toHaveTextContent(/^Dalsza współpraca$/);
     expect(container.querySelector('nav[aria-label*="Okruszki"]')).toBeNull();
     expect(container.querySelector('[data-testid="pageheader-powrot"]')).toBeNull();
   });

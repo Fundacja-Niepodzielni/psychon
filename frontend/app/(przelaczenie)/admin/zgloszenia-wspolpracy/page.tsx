@@ -5,7 +5,7 @@ import { ZgloszeniaWspolpracy } from "@/nowy-front/zgloszenia-wspolpracy/Zglosze
 
 /** Tytuł karty = nazwa pozycji menu = nagłówek ekranu. */
 export const metadata: Metadata = {
-  title: "Zgłoszenia współpracy — Niepodzielni",
+  title: "Dalsza współpraca — Niepodzielni",
 };
 
 /**

@@ -26,8 +26,8 @@ export function HistoriaZgloszen({ zgloszenia, pusty, stronicowanie }: Wlasciwos
   if (zgloszenia.length === 0 && pusty === undefined) return null;
 
   return (
-    <section className={style.historia} aria-label="Moje zgłoszenia">
-      <Heading stopien={2}>Moje zgłoszenia</Heading>
+    <section className={style.historia} aria-label="Moje prośby">
+      <Heading stopien={2}>Moje prośby</Heading>
       {zgloszenia.length === 0 ? (
         <Hint>{pusty}</Hint>
       ) : (

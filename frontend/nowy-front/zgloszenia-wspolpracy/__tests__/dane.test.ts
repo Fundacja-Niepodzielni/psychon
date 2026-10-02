@@ -87,7 +87,7 @@ describe("klasyfikacja błędów", () => {
   it("404 → brak zgłoszenia, inny błąd serwera → komunikat serwera, błąd sieci → komunikat ogólny", () => {
     expect(sklasyfikujBladOdpowiedzi(blad(404, "not_found", "x"))).toEqual({
       rodzaj: "brak-zgloszenia",
-      komunikat: "Zgłoszenie nie istnieje.",
+      komunikat: "Nie znaleziono prośby.",
     });
     expect(sklasyfikujBladOdpowiedzi(blad(500, "server_error", "Błąd serwera."))).toEqual({
       rodzaj: "inny",

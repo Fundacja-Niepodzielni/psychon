@@ -99,7 +99,7 @@ export function PoProgramieWspolpraca() {
           poprzedni.rodzaj === "gotowy" ? { ...poprzedni, zgloszenia: data, meta } : poprzedni,
         );
       })
-      .catch(() => setKomunikat("Nie udało się wczytać zgłoszeń. Spróbuj ponownie."));
+      .catch(() => setKomunikat("Nie udało się wczytać próśb. Spróbuj ponownie."));
   }
 
   async function wyslij() {
@@ -119,7 +119,7 @@ export function PoProgramieWspolpraca() {
           : poprzedni,
       );
       setTresc("");
-      setToast("Zgłoszenie zostało wysłane.");
+      setToast("Prośba została wysłana.");
     } catch (blad: unknown) {
       const opis = sklasyfikujBladWysylki(blad);
       if (opis.rodzaj === "pola") {
@@ -141,7 +141,7 @@ export function PoProgramieWspolpraca() {
   const naglowek = {
     okruszki: OKRUSZKI,
     tytul: "Po programie",
-    opis: "Zgłoszenie dalszej współpracy po zakończeniu programu i historia dotychczasowych zgłoszeń.",
+    opis: "Prośba o dalszą współpracę po zakończeniu programu i historia Twoich próśb.",
     onPowrot: () => router.back(),
   };
 
@@ -202,7 +202,7 @@ export function PoProgramieWspolpraca() {
     ) : undefined;
 
   const blokKomunikatu = komunikat ? (
-    <Notice wariant="error" tytul="Nie udało się wysłać zgłoszenia">
+    <Notice wariant="error" tytul="Nie udało się wysłać prośby">
       {komunikat}
     </Notice>
   ) : null;
@@ -216,7 +216,7 @@ export function PoProgramieWspolpraca() {
             <div className={style.stanPusty}>
               <EmptyStateCard
                 naglowek="Ten ekran otworzy się po ukończeniu programu"
-                tresc="Zgłoszenie dalszej współpracy będzie można wysłać po ukończeniu programu."
+                tresc="Prośbę o dalszą współpracę będzie można wysłać po ukończeniu programu."
                 przycisk={{ etykieta: "Przejdź do kursów", onClick: () => router.push("/panel/kursy") }}
               />
               <HistoriaZgloszen zgloszenia={zgloszenia} stronicowanie={stronicowanie} />
@@ -237,16 +237,16 @@ export function PoProgramieWspolpraca() {
             <KartaProgramuUkonczonego zakonczonoO={zakonczonoO} rola={rola} />
             {blokKomunikatu}
             {maOtwarte ? (
-              <Notice wariant="info" tytul="Zgłoszenie w toku">
-                Masz otwarte zgłoszenie. Poczekaj na odpowiedź.
+              <Notice wariant="info" tytul="Prośba w toku">
+                Masz otwartą prośbę. Poczekaj na odpowiedź.
               </Notice>
             ) : (
               <FormSection
-                tytul="Zgłoszenie dalszej współpracy"
+                tytul="Prośba o dalszą współpracę"
                 pola={[
                   {
                     id: "wspolpraca-tresc",
-                    etykieta: "Treść zgłoszenia",
+                    etykieta: "Treść prośby",
                     rodzaj: "wieloliniowy",
                     wartosc: tresc,
                     onZmiana: (wartosc: string) => setTresc(wartosc.slice(0, LICZBA_ZNAKOW_MAX)),
@@ -255,7 +255,7 @@ export function PoProgramieWspolpraca() {
                     wymagane: true,
                   },
                 ]}
-                etykietaZapisz={wysylanie ? "Wysyłanie…" : "Wyślij zgłoszenie"}
+                etykietaZapisz={wysylanie ? "Wysyłanie…" : "Wyślij prośbę"}
                 etykietaAnuluj="Wyczyść"
                 onAnuluj={() => {
                   setTresc("");
@@ -270,7 +270,7 @@ export function PoProgramieWspolpraca() {
         wspierajaca={
           <HistoriaZgloszen
             zgloszenia={zgloszenia}
-            pusty="Nie masz jeszcze zgłoszeń. Zgłoszenia dalszej współpracy pojawią się tu po wysłaniu."
+            pusty="Nie masz jeszcze próśb. Prośby o dalszą współpracę pojawią się tu po wysłaniu."
             stronicowanie={stronicowanie}
           />
         }

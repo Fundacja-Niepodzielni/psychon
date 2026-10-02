@@ -58,7 +58,7 @@ const ATRAPA: AdminUserListItem & Record<string, unknown> = {
   created_at: "2026-09-20T10:00:00Z",
 };
 
-describe("Uczestnicy programu — zapytanie", () => {
+describe("Osoby — zapytanie", () => {
   it("bez filtra: nic poza stroną i rozmiarem strony", () => {
     expect(filtryZapytania(PUSTY_FILTR, 1)).toEqual({
       role: undefined,
@@ -123,7 +123,7 @@ describe("Uczestnicy programu — zapytanie", () => {
   });
 });
 
-describe("Uczestnicy programu — klasyfikacja błędu", () => {
+describe("Osoby — klasyfikacja błędu", () => {
   it("401 i 403 to odmowa roli, reszta to błąd do ponowienia", () => {
     const blad = (status: number) => new ApiError({ status, code: "x", message: "m" });
     expect(rodzajBledu(blad(401))).toBe("brak-uprawnien");
@@ -133,7 +133,7 @@ describe("Uczestnicy programu — klasyfikacja błędu", () => {
   });
 });
 
-describe("Uczestnicy programu — wiersze", () => {
+describe("Osoby — wiersze", () => {
   it("kolumny w kolejności: Osoba, Rola, Stan, akcja", () => {
     expect(KOLUMNY_OSOB.map((kolumna) => [kolumna.nazwa, kolumna.rodzaj])).toEqual([
       ["Osoba", "tekst"],
@@ -171,7 +171,7 @@ describe("Uczestnicy programu — wiersze", () => {
   });
 });
 
-describe("Uczestnicy programu — atrapa zgodna z zapleczem", () => {
+describe("Osoby — atrapa zgodna z zapleczem", () => {
   it("pliki zaplecza istnieją (pomiar nie jest pusty)", () => {
     expect(existsSync(ZASOB_PHP)).toBe(true);
     expect(existsSync(ZAPYTANIE_PHP)).toBe(true);

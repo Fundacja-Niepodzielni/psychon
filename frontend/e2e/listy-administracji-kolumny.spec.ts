@@ -124,7 +124,7 @@ const LISTY: OpisListy[] = [
   { nazwa: "sprawy", adres: "/admin/sprawy", lista: "Sprawy", kolumny: ["Sprawa", "Stan", "Akcja"], liczbowe: [], akcja: "Otwórz", wierszy: 4 },
   { nazwa: "dyżury", adres: "/admin/staz", lista: "Dyżury do decyzji", kolumny: ["Dyżur", "Stan", "Godziny", "Akcja"], liczbowe: [2], akcja: "Otwórz", wierszy: 3 },
   { nazwa: "pulpit administracji", adres: "/admin", lista: "Co czeka na decyzję", kolumny: ["Kolejka", "Stan", "Liczba", "Akcja"], liczbowe: [2], akcja: "Otwórz", wierszy: 4, suma: true },
-  { nazwa: "uczestnicy", adres: "/admin/uczestniczki", lista: "Lista uczestników", kolumny: ["Osoba", "Rola", "Stan", "Akcja"], liczbowe: [], akcja: "Otwórz", wierszy: 3 },
+  { nazwa: "uczestnicy", adres: "/admin/uczestniczki", lista: "Lista osób", kolumny: ["Osoba", "Rola", "Stan", "Akcja"], liczbowe: [], akcja: "Otwórz", wierszy: 3 },
   { nazwa: "formy stażu", adres: "/admin/formy-stazu", lista: "Formy stażu", kolumny: ["Forma", "Stan", "Miejsce na liście", "Akcja"], liczbowe: [2], akcja: "Edytuj", wierszy: 3 },
 ];
 

@@ -100,7 +100,7 @@ describe("/panel/dalsza-wspolpraca w układach grupy", () => {
     pobierzMojeZgloszenia.mockResolvedValue(PUSTA);
     const { container } = trasaPanelu();
 
-    await screen.findByLabelText(/^Treść zgłoszenia/);
+    await screen.findByLabelText(/^Treść prośby/);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
@@ -120,7 +120,7 @@ describe("/panel/dalsza-wspolpraca w układach grupy", () => {
 
     await waitFor(() => expect(screen.queryByText(/nieosiągalny/)).toBeNull());
     await waitFor(() => expect(screen.getAllByRole("heading", { level: 1 }).length).toBeGreaterThan(0));
-    expect(screen.queryByLabelText(/^Treść zgłoszenia/)).toBeNull();
+    expect(screen.queryByLabelText(/^Treść prośby/)).toBeNull();
     expect(zmierz(container)).toEqual(JEDEN);
   });
 });
@@ -134,7 +134,7 @@ describe("/admin/zgloszenia-wspolpracy w układach grupy (rola administracji z a
     pobierzZgloszeniaAdministracji.mockReturnValue(new Promise(() => {}));
     const { container } = trasaAdministracji();
 
-    await screen.findByRole("heading", { level: 1, name: "Zgłoszenia współpracy" });
+    await screen.findByRole("heading", { level: 1, name: "Dalsza współpraca" });
     expect(zmierz(container)).toEqual(JEDEN);
   });
 

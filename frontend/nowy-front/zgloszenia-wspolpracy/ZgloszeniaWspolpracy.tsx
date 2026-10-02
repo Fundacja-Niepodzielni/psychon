@@ -61,7 +61,7 @@ interface OtwartaOdpowiedz {
  *
  * Wiersz to atomy (`Badge`/`Text`/`Hint`), nie `RecordList`: zgłoszenie
  * zamknięte nie ma żadnego przycisku, a organizm wymaga akcji w każdym
- * wierszu. „Odpowiedz na zgłoszenie” otwiera pod wierszem `FormSection`
+ * wierszu. „Odpowiedz na prośbę” otwiera pod wierszem `FormSection`
  * z odpowiedzią i statusem po odpowiedzi — bez okna dialogowego. Przycisk
  * „Odpowiedz” w tej sekcji jest jedynym przyciskiem głównym ekranu.
  * Zgłoszenia z odpowiedzią (`answered`, `closed`) pokazują jej treść i datę.
@@ -79,7 +79,7 @@ export function ZgloszeniaWspolpracy() {
   const [wczytanoRaz, setWczytanoRaz] = useState(false);
   useZgloszenieNiezapisanychZmian(
     otwarta !== null && (otwarta.response.trim() !== "" || otwarta.status !== "answered"),
-    "Zgłoszenia współpracy",
+    "Dalsza współpraca",
   );
 
   useEffect(() => {
@@ -153,7 +153,7 @@ export function ZgloszeniaWspolpracy() {
       setOtwarta(null);
       setToast(
         zaktualizowany.status === "closed"
-          ? `Zgłoszenie zamknięte: ${nazwaOsoby(zaktualizowany)}.`
+          ? `Prośba zamknięta: ${nazwaOsoby(zaktualizowany)}.`
           : `Odpowiedź zapisana: ${nazwaOsoby(zaktualizowany)}.`,
       );
     } catch (blad: unknown) {
@@ -174,8 +174,8 @@ export function ZgloszeniaWspolpracy() {
 
   const naglowek = (
     <header className={style.naglowekEkranu}>
-      <Heading stopien={1}>Zgłoszenia współpracy</Heading>
-      <Text>Zgłoszenia uczestników po zakończeniu programu. Odpowiedz na zgłoszenie albo je zamknij.</Text>
+      <Heading stopien={1}>Dalsza współpraca</Heading>
+      <Text>Prośby uczestników po zakończeniu programu. Odpowiedz na prośbę albo ją zamknij.</Text>
     </header>
   );
 
@@ -186,7 +186,7 @@ export function ZgloszeniaWspolpracy() {
         lista={
           <EmptyState
             wariant="brak-uprawnien"
-            naglowek="Zgłoszenia współpracy"
+            naglowek="Dalsza współpraca"
             rola="administracji"
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
@@ -220,7 +220,7 @@ export function ZgloszeniaWspolpracy() {
         lista={
           <Notice
             wariant="error"
-            tytul="Nie udało się wczytać zgłoszeń"
+            tytul="Nie udało się wczytać próśb"
             akcja={
               <Button poziom="outline" onClick={ponow}>
                 Spróbuj ponownie
@@ -242,15 +242,15 @@ export function ZgloszeniaWspolpracy() {
         {komunikat && <KomunikatBledu tresc={komunikat} />}
         {filtr === "" ? (
           <EmptyState
-            naglowek="Brak zgłoszeń współpracy"
-            tresc="Zgłoszenia pojawią się tutaj, gdy uczestnicy wyślą je po zakończeniu programu."
+            naglowek="Brak próśb o dalszą współpracę"
+            tresc="Prośby pojawią się tutaj, gdy uczestnicy wyślą je po zakończeniu programu."
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
         ) : (
           <EmptyState
             wariant="brak-wynikow-filtra"
-            naglowek="Brak zgłoszeń współpracy"
-            tresc="Żadne zgłoszenie nie ma wybranego statusu."
+            naglowek="Brak próśb o dalszą współpracę"
+            tresc="Żadna prośba nie ma wybranego stanu."
             przycisk={{ etykieta: "Pokaż wszystkie", onClick: () => naZmianeFiltra("") }}
           />
         )}
@@ -258,7 +258,7 @@ export function ZgloszeniaWspolpracy() {
     ) : (
       <>
         {komunikat && <KomunikatBledu tresc={komunikat} />}
-        <ul className={style.lista} aria-label="Zgłoszenia współpracy">
+        <ul className={style.lista} aria-label="Dalsza współpraca">
           {zgloszenia.map((zgloszenie) => (
             <li key={zgloszenie.id} className={style.wiersz}>
               <div className={style.naglowekWiersza}>
@@ -284,7 +284,7 @@ export function ZgloszeniaWspolpracy() {
               {moznaOdpowiedziec(zgloszenie) && (
                 <div className={style.akcje}>
                   <Button poziom="outline" disabled={zapisywanie} onClick={() => otworz(zgloszenie)}>
-                    Odpowiedz na zgłoszenie
+                    Odpowiedz na prośbę
                   </Button>
                 </div>
               )}
@@ -292,7 +292,7 @@ export function ZgloszeniaWspolpracy() {
                 <div className={style.formularz}>
                   <FormSection
                     fokusPrzyOtwarciu
-                    tytul={`Odpowiedź na zgłoszenie: ${nazwaOsoby(zgloszenie)}`}
+                    tytul={`Odpowiedź na prośbę: ${nazwaOsoby(zgloszenie)}`}
                     pola={[
                       {
                         id: `odpowiedz-tresc-${zgloszenie.id}`,
