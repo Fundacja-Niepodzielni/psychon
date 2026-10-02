@@ -6,6 +6,7 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { ProgressBar } from "@/design-system/atomy/ProgressBar/ProgressBar";
 import { Text } from "@/design-system/atomy/Text/Text";
+import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { formatujDate } from "../wspolne/daty";
 import { formatujDziesietny } from "../wspolne/formatuj-dziesietny";
@@ -76,11 +77,16 @@ interface WlasciwosciPanelu {
  *
  * Fokus ląduje na samym panelu (obszar z nazwą, `tabIndex={-1}`), nie na
  * żadnej decyzji — przypadkowy Enter nie zatwierdza dyżuru. Akcje, od lewej:
- * „Zatwierdź” (jedyny przycisk główny), „Poproś o poprawkę”, „Odrzuć dyżur”
- * (mniej widoczny, ale w kontrakcie) i „Wróć do listy”. „Poproś o poprawkę”
- * i „Odrzuć dyżur” otwierają `FormSection` z wymaganym komentarzem w miejscu
- * rzędu akcji — wtedy jedynym przyciskiem głównym panelu jest zapis
- * formularza, a jego „Wróć do listy” zamyka cały panel, tak jak w rzędzie.
+ * „Zatwierdź dyżur” (jedyny przycisk główny), „Poproś o poprawkę” i „Wróć do
+ * listy”; „Odrzuć dyżur” stoi osobno, za odstępem (przy prawej krawędzi, a na
+ * wąskim ekranie w osobnym wierszu), bo odrzucenia nie da się cofnąć.
+ * „Poproś o poprawkę” i „Odrzuć dyżur” otwierają `FormSection` z wymaganym
+ * komentarzem w miejscu rzędu akcji — wtedy jedynym przyciskiem głównym
+ * panelu jest zapis formularza, a jego „Wróć do listy” zamyka cały panel.
+ *
+ * Odrzucenie z wpisanym powodem nie wychodzi od razu: zapis formularza
+ * otwiera pytanie potwierdzające i dopiero jego potwierdzenie wysyła decyzję.
+ * Pusty powód idzie dotychczasową drogą (błąd przy polu), bez pytania.
  */
 export function PanelDyzuru({
   wpis,
@@ -96,6 +102,15 @@ export function PanelDyzuru({
   const [godziny, setGodziny] = useState<StanGodzin>({ rodzaj: "ladowanie" });
   const osoba = nazwaOsoby(wpis);
   const osobaId = wpis.user.id;
+  const [pytanieOdrzucenia, setPytanieOdrzucenia] = useState(false);
+
+  function zapiszFormularz() {
+    if (decyzja?.rodzaj === "odrzuc" && decyzja.komentarz.trim() !== "") {
+      setPytanieOdrzucenia(true);
+      return;
+    }
+    onZapiszFormularz();
+  }
 
   useEffect(() => {
     panel.current?.focus();
@@ -178,17 +193,17 @@ export function PanelDyzuru({
       {decyzja === null ? (
         <div className={style.akcjePanelu}>
           <Button poziom="primary" onClick={onZatwierdz}>
-            Zatwierdź
+            Zatwierdź dyżur
           </Button>
           <Button poziom="outline" disabled={zajete} onClick={() => onOtworzFormularz("odeslij")}>
             {TEKSTY_DECYZJI.odeslij.etykieta}
           </Button>
-          <Button poziom="quiet" disabled={zajete} onClick={() => onOtworzFormularz("odrzuc")}>
-            {TEKSTY_DECYZJI.odrzuc.etykieta}
-          </Button>
-          <span className={style.rozdzielacz} aria-hidden="true" />
           <Button poziom="quiet" disabled={zajete} onClick={onWroc}>
             Wróć do listy
+          </Button>
+          <span className={style.rozdzielacz} aria-hidden="true" />
+          <Button poziom="outline" niebezpieczny disabled={zajete} onClick={() => onOtworzFormularz("odrzuc")}>
+            {TEKSTY_DECYZJI.odrzuc.etykieta}
           </Button>
         </div>
       ) : (
@@ -210,9 +225,24 @@ export function PanelDyzuru({
             etykietaAnuluj="Wróć do listy"
             etykietaZapisz={TEKSTY_DECYZJI[decyzja.rodzaj].etykieta}
             onAnuluj={onWroc}
-            onZapisz={onZapiszFormularz}
+            onZapisz={zapiszFormularz}
           />
         </div>
+      )}
+      {pytanieOdrzucenia && (
+        <Dialog
+          tytul="Odrzucić dyżur?"
+          etykietaWycofania="Wróć"
+          etykietaPotwierdzenia="Odrzuć dyżur"
+          niebezpieczne
+          onWycofaj={() => setPytanieOdrzucenia(false)}
+          onPotwierdz={() => {
+            setPytanieOdrzucenia(false);
+            onZapiszFormularz();
+          }}
+        >
+          <Text>{`Dyżur osoby ${osoba} zostanie odrzucony. Tej decyzji nie da się cofnąć.`}</Text>
+        </Dialog>
       )}
     </div>
   );

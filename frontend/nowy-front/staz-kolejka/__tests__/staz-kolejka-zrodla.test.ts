@@ -52,12 +52,15 @@ describe("ekran decyzji o dyżurach — źródła", () => {
     expect(PLIKI_KODU.filter((p) => znacznikiMain(tresc(p)).length > 0).map(wzgledna)).toEqual([]);
   });
 
-  it("szablon ListTemplate wyłącznie z design-system, formularz decyzji z FormSection w panelu", () => {
+  it("szablon ListTemplate wyłącznie z design-system, formularz decyzji z FormSection w panelu, okno tylko jako pytanie przed odrzuceniem", () => {
     const ekran = tresc(PLIKI.find((p) => wzgledna(p).endsWith("StazKolejka.tsx"))!);
     const panel = tresc(PLIKI.find((p) => wzgledna(p).endsWith("PanelDyzuru.tsx"))!);
     expect(ekran).toMatch(/import \{ ListTemplate \} from "@\/design-system\/szablony\/ListTemplate\/ListTemplate";/);
     expect(panel).toMatch(/import \{ FormSection \} from "@\/design-system\/organizmy\/FormSection\/FormSection";/);
-    expect(ekran + panel).not.toMatch(/organizmy\/Dialog\//);
+    // Ekran listy nie otwiera okien; panel ma jedno — pytanie potwierdzające odrzucenie dyżuru.
+    expect(ekran).not.toMatch(/organizmy\/Dialog\//);
+    expect(panel).toMatch(/import \{ Dialog \} from "@\/design-system\/organizmy\/Dialog\/Dialog";/);
+    expect(panel.match(/<Dialog\b/g)).toHaveLength(1);
   });
 
   it("lista to RecordList z design-system, wiek z sprawy/wiek.ts bez kopii progu i tekstu", () => {

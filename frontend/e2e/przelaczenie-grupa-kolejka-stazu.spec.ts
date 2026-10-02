@@ -250,16 +250,15 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
       await expect(page.getByRole("heading", { level: 1, name: "Dyżury do decyzji" })).toBeVisible();
       await expect(page).toHaveTitle("Akceptacja stażu — Niepodzielni");
 
-      // Dane z atrapy: trzy wiersze zwinięte — „Dyżur”, osoba i jedna akcja „Otwórz”.
+      // Dane z atrapy: trzy wiersze zwinięte — osoba jako nazwa wiersza i jedna akcja „Otwórz”.
       const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
       await expect(wiersze).toHaveCount(3);
-      await expect(wiersze.first()).toContainText("Dyżur");
-      await expect(wiersze.first()).toContainText("Marta Demo");
+      await expect(wiersze.first()).toContainText(/^\s*Marta Demo/);
       await expect(wiersze.first()).toContainText("czeka");
       for (let i = 0; i < 3; i += 1) {
         await expect(wiersze.nth(i).getByRole("button")).toHaveText([/^Otwórz/]);
       }
-      await expect(page.getByRole("button", { name: "Zatwierdź" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Zatwierdź dyżur" })).toHaveCount(0);
 
       // Jeden main i jeden #tresc (powłoka panelu), jeden link skoku.
       expect(await licznikiTresci(page)).toEqual({ main: 1, cele: 1 });
@@ -321,7 +320,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
       await expect(panel.getByRole("heading", { level: 3, name: "Ile godzin ma teraz" })).toBeVisible();
       await expect(panel.getByRole("progressbar", { name: "18 z 72 h" })).toBeVisible();
       await expect(panel.getByText("Po zatwierdzeniu tego dyżuru: 21,5 h.")).toBeVisible();
-      await expect(panel.getByRole("button")).toHaveText(["Zatwierdź", "Poproś o poprawkę", "Odrzuć dyżur", "Wróć do listy"]);
+      await expect(panel.getByRole("button")).toHaveText(["Zatwierdź dyżur", "Poproś o poprawkę", "Wróć do listy", "Odrzuć dyżur"]);
       expect(await licznikiTresci(page)).toEqual({ main: 1, cele: 1 });
       const przewijaniePanelu = await page.evaluate(
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -404,7 +403,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
     await expect(wiersze).toHaveCount(3);
     await otworzPanelOsoby(page, "Marta");
-    await page.getByRole("region", { name: "Dyżur: Marta Demo" }).getByRole("button", { name: "Zatwierdź" }).click();
+    await page.getByRole("region", { name: "Dyżur: Marta Demo" }).getByRole("button", { name: "Zatwierdź dyżur" }).click();
 
     await expect(page.getByRole("status")).toContainText("Dyżur zatwierdzony: Marta Demo.");
     await expect(wiersze).toHaveCount(2);
@@ -444,6 +443,11 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     const formularz = page.getByRole("form", { name: /Odrzuć dyżur: Ola Demo/ });
     await formularz.getByRole("textbox", { name: /Powód odrzucenia/ }).fill("Dyżur nie odbył się.");
     await formularz.getByRole("button", { name: "Odrzuć dyżur" }).click();
+    // Odrzucenie wychodzi dopiero po potwierdzeniu pytania.
+    const okno = page.getByRole("dialog", { name: "Odrzucić dyżur?" });
+    await expect(okno).toBeVisible();
+    expect(atrapy.zapytania).toEqual([]);
+    await okno.getByRole("button", { name: "Odrzuć dyżur" }).click();
 
     await expect(page.getByRole("status")).toContainText("Dyżur odrzucony. Ola Demo.");
     await expect(wiersze).toHaveCount(2);
@@ -488,7 +492,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     const wiersze = page.getByRole("table", { name: "Dyżury do decyzji" }).locator('[role="row"][data-wiersz]');
     await expect(wiersze).toHaveCount(3);
     await otworzPanelOsoby(page, "Marta");
-    await page.getByRole("region", { name: "Dyżur: Marta Demo" }).getByRole("button", { name: "Zatwierdź" }).click();
+    await page.getByRole("region", { name: "Dyżur: Marta Demo" }).getByRole("button", { name: "Zatwierdź dyżur" }).click();
 
     await expect(page.getByText("Ten wpis został już rozstrzygnięty.")).toBeVisible();
     await expect(wiersze).toHaveCount(2);

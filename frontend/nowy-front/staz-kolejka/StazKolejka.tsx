@@ -74,7 +74,7 @@ export function komorkaGodzin(godziny: string): KomorkaRecordList {
  * i oddaje fokus „Otwórz” tego wiersza. Nagłówek `h2` listy jest tylko dla
  * czytnika — wzrokowo lista stoi bezpośrednio pod nagłówkiem ekranu.
  *
- * Decyzje: „Zatwierdź” (bez ciała), „Poproś o poprawkę” i „Odrzuć dyżur”.
+ * Decyzje: „Zatwierdź dyżur” (bez ciała), „Poproś o poprawkę” i „Odrzuć dyżur”.
  * Dwie ostatnie otwierają w panelu `FormSection` z wymaganym komentarzem —
  * bez okna dialogowego. Po decyzji wiersz znika z listy, a `Toast` potwierdza
  * wynik. Dyżur już rozstrzygnięty przez kogoś innego (403 `entry_locked`)
@@ -289,8 +289,7 @@ export function StazKolejka() {
               const dni = teraz === null ? null : dniOczekiwania(wpis.created_at ?? "", teraz);
               return {
                 id: String(wpis.id),
-                tytul: "Dyżur",
-                tytulDodatek: osoba,
+                tytul: osoba,
                 podpowiedz: `Czeka od ${formatujDate(wpis.created_at)}`,
                 podpowiedzTylkoDlaCzytnika: true,
                 plakietka:
