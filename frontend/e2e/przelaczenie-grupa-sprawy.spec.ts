@@ -169,6 +169,19 @@ interface PomiarMetadanych {
   liniiPoczatkuLubKonca: string[];
 }
 
+/**
+ * Rozwija każdą sprawę prowadzącego jej przyciskiem „Otwórz”: temat, linia
+ * „data · zgłaszający · osoba” i treść stoją dopiero w sprawie rozwiniętej.
+ */
+async function otworzSprawyProwadzacych(page: Page, liczba: number) {
+  const otworz = page.getByRole("button", { name: /^Otwórz sprawę od prowadzącego: / });
+  await expect(otworz).toHaveCount(liczba);
+  for (let i = 0; i < liczba; i++) {
+    await otworz.first().click();
+    await expect(otworz).toHaveCount(liczba - i - 1);
+  }
+}
+
 /** Pomiar linii „data · zgłaszający · osoba” każdej sprawy prowadzącego, z `getBoundingClientRect` i `getClientRects`. */
 async function pomierzMetadane(page: Page): Promise<PomiarMetadanych[]> {
   return page.evaluate(() => {
@@ -249,7 +262,8 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await expect(page.getByText("Marta Demo", { exact: true })).toBeVisible();
       // Osoba z kolejki (to samo imię stoi też w sekcji spraw prowadzących — stąd zawężenie do wierszy kolejki).
       await expect(page.locator("[role='row'][data-wiersz]").getByText("Ola Demo", { exact: true })).toBeVisible();
-      await expect(page.getByText(/^czeka \d+ (dni|dzień)$/)).toHaveCount(2);
+      // Plakietki wierszy kolejki (sprawy prowadzących mają własne, sprawdzane niżej).
+      await expect(page.locator("[role='row'][data-wiersz]").getByText(/^czeka \d+ (dni|dzień)$/)).toHaveCount(2);
       await expect(page.getByRole("link", { name: "Otwórz sprawę: Dyżur — Ola Demo" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Otwórz sprawę: Zgłoszenie rekrutacyjne — Marta Demo" })).toBeVisible();
       await expect(page.getByRole("button", { name: "Otwórz najstarszą sprawę" })).toBeVisible();
@@ -279,12 +293,20 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await page.keyboard.press("Enter");
       await expect(filtr).toHaveAttribute("aria-expanded", "false");
 
-      // Sprawy zgłoszone przez prowadzących.
+      // Sprawy zgłoszone przez prowadzących: zwinięty wiersz to rodzaj, osoba i czas
+      // czekania; temat i treść dopiero po „Otwórz”.
       await expect(page.getByRole("heading", { level: 2, name: "Sprawy zgłoszone przez prowadzących" })).toBeVisible();
+      await expect(page.getByText("Sprawa od prowadzącego", { exact: true })).toHaveCount(2);
+      await expect(
+        page.locator("[data-testid^='sprawa-prowadzacego-']").getByText(/^czeka \d+ (dni|dzień)$/),
+      ).toHaveCount(2);
+      await expect(page.getByRole("heading", { level: 3, name: "Nieobecność na dyżurze" })).toHaveCount(0);
+      await otworzSprawyProwadzacych(page, 2);
       await expect(page.getByRole("heading", { level: 3, name: "Nieobecność na dyżurze" })).toBeVisible();
       await expect(page.getByText("Zgłosił/a: Joanna Demo")).toBeVisible();
       await expect(page.getByText("Zgłaszający/a nieznany/a")).toBeVisible();
-      await expect(page.getByText("Sprawa ogólna — bez wskazania osoby")).toBeVisible();
+      // Osoba stoi w zwiniętym wierszu i w linii metadanych rozwiniętej sprawy.
+      await expect(page.getByText("Sprawa ogólna — bez wskazania osoby")).toHaveCount(2);
       // Treść ze znacznikiem jest tekstem; podział wierszy zostaje.
       await expect(page.getByText("<script>window.__zlamane = true</script>", { exact: false })).toBeVisible();
       expect(await page.evaluate(() => (window as unknown as { __zlamane?: boolean }).__zlamane)).toBeUndefined();
@@ -374,8 +396,10 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await page.goto("/admin/sprawy");
       await zabezpieczeniePrzedEkranemDostepu(page);
       await expect(page.getByTestId("sprawa-prowadzacego-7")).toBeVisible();
+      await otworzSprawyProwadzacych(page, 2);
 
       const pomiar = await pomierzMetadane(page);
+      expect(pomiar, "linia metadanych każdej rozwiniętej sprawy").toHaveLength(2);
       console.log(`Pomiar układu metadanych spraw prowadzących /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
       for (const sprawa of pomiar) {
         expect(sprawa.elementy, "data, zgłaszający, osoba").toHaveLength(3);
@@ -476,8 +500,10 @@ for (const { szerokosc, ukryte } of [
       await page.goto("/admin/sprawy");
       await zabezpieczeniePrzedEkranemDostepu(page);
       await expect(page.getByTestId("sprawa-prowadzacego-7")).toBeVisible();
+      await otworzSprawyProwadzacych(page, 2);
 
       const pomiar = await pomierzMetadane(page);
+      expect(pomiar, "linia metadanych każdej rozwiniętej sprawy").toHaveLength(2);
       console.log(`Pomiar układu metadanych spraw prowadzących /admin/sprawy @${szerokosc} ${JSON.stringify(pomiar)}`);
       for (const sprawa of pomiar) {
         expect(new Set(sprawa.elementy.map((e) => e.top)).size).toBe(ukryte ? 3 : 1);

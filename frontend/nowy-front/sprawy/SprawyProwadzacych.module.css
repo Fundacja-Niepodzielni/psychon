@@ -25,6 +25,49 @@
   background: var(--card);
 }
 
+/* Zwinięty wiersz sprawy: rodzaj i osoba po lewej, plakietka czekania i
+   „Otwórz” po prawej; na wąskim ekranie akcje przechodzą pod opis. */
+.wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.opisWiersza {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.rodzaj {
+  color: var(--text);
+  font-weight: var(--fw-medium);
+}
+
+.osoba {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.akcjeWiersza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* Sprawa rozwinięta po „Otwórz”: temat, metadane i treść pod wierszem. */
+.otwarta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border);
+}
+
 /* Metadane sprawy (data, zgłaszający, osoba): poniżej 640 px każdy element w
    osobnej linii i bez separatora; od 640 px jedna linia z „·” między
    elementami. Próg 640 px zapisany wprost w `@media`, jak w `ListRow` i

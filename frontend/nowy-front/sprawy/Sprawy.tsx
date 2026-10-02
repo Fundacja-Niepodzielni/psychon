@@ -120,6 +120,8 @@ export function Sprawy() {
   const [sprawyProwadzacych, setSprawyProwadzacych] = useState<SprawaProwadzacego[]>([]);
   const [bladProwadzacych, setBladProwadzacych] = useState<string | null>(null);
   const [probaProwadzacych, setProbaProwadzacych] = useState(0);
+  // Chwila odczytu spraw prowadzących: od niej liczy się wiek tych spraw.
+  const [terazProwadzacych, setTerazProwadzacych] = useState<number | null>(null);
 
   const ponow = () => {
     setStan("ladowanie");
@@ -140,6 +142,7 @@ export function Sprawy() {
         return;
       }
       setSprawyProwadzacych(wynik.sprawy);
+      setTerazProwadzacych(Date.now());
       setBladProwadzacych(wynik.blad);
       setStanProwadzacych(wynik.blad === null ? "ok" : "blad");
     });
@@ -285,6 +288,7 @@ export function Sprawy() {
     <SprawyProwadzacych
       stan={stanProwadzacych}
       sprawy={sprawyProwadzacych}
+      teraz={terazProwadzacych}
       blad={bladProwadzacych}
       onPonow={ponowProwadzacych}
     />

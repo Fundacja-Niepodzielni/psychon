@@ -26,6 +26,8 @@ export interface SprawaProwadzacego {
   id: number;
   temat: string;
   data: string;
+  /** `created_at` sprawy (ISO 8601) — od niej liczy się wiek sprawy w wierszu. */
+  czekaOd: string;
   /** „Zgłosił/a: Imię Nazwisko” albo tekst zastępczy. */
   zglaszajacy: string;
   /** Imię i nazwisko osoby albo tekst sprawy ogólnej. */
@@ -48,6 +50,7 @@ export function mapujSprawe(sprawa: SupervisionCase): SprawaProwadzacego {
     id: sprawa.id,
     temat: sprawa.subject,
     data: formatujDate(sprawa.created_at),
+    czekaOd: sprawa.created_at,
     // `reporter` gubi się z koperty, gdy relacja nie jest dociągnięta po
     // stronie API (`whenLoaded`); `volunteer` zostaje jako `null`.
     zglaszajacy: `Zgłosił/a: ${sprawa.reporter ? imieNazwisko(sprawa.reporter) : TEKST_BRAK_ZGLASZAJACEGO}`,
