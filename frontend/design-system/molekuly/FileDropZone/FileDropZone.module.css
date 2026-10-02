@@ -41,6 +41,25 @@
   white-space: nowrap;
 }
 
+/* Zdanie o odrzuconym upuszczeniu. Pusty element zostaje w drzewie (żeby
+   czytnik ogłosił pojawiający się tekst), ale nie zajmuje miejsca. */
+.komunikat {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-8);
+  line-height: var(--lh-text);
+  overflow-wrap: break-word;
+}
+
+.komunikat:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .lista {
   display: flex;
   flex-direction: column;

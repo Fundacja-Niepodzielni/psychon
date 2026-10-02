@@ -18,6 +18,31 @@ interface WlasciwosciFileDropZone {
   /** Lista już dodanych plików — po dodaniu obszar pokazuje nazwę pliku (KO-3). */
   pliki: PlikFileDropZone[];
   onWybierzPliki: (pliki: FileList) => void;
+  /**
+   * Czy wolno wybrać albo upuścić kilka plików naraz. Domyślnie `true`.
+   * Przy `false` pole wyboru nie ma atrybutu `multiple`, a upuszczenie więcej
+   * niż jednego pliku NIE wywołuje `onWybierzPliki` — obszar pokazuje wtedy
+   * zdanie „Upuść jeden plik.” (`role="status"`).
+   */
+  wiele?: boolean;
+  /**
+   * Wartość atrybutu `accept` pola wyboru (np. `"image/*"`) — podpowiedź dla
+   * okna systemu. Komponent NIE filtruje upuszczonych plików: kontrola typu
+   * należy do ekranu i serwera.
+   */
+  akceptuj?: string;
+}
+
+/** Kopia listy plików, która zostaje nienaruszona po wyzerowaniu pola wyboru. */
+function skopiujListe(pliki: FileList): FileList {
+  if (typeof DataTransfer === "undefined") {
+    return pliki;
+  }
+  const kopia = new DataTransfer();
+  for (const plik of Array.from(pliki)) {
+    kopia.items.add(plik);
+  }
+  return kopia.files;
 }
 
 /**
@@ -29,9 +54,21 @@ interface WlasciwosciFileDropZone {
  * Jedynym elementem obsługi jest przycisk obszaru (`{id}-obszar`). Ukryte pole
  * wyboru pliku (`{id}`) stoi obok przycisku, nie w nim, nie jest przystankiem
  * tabulatora i nie jest ogłaszane — służy wyłącznie do otwarcia okna systemu.
+ * Po każdym odczycie pole jest zerowane, więc ten sam plik wybrany drugi raz z
+ * rzędu wywołuje `onWybierzPliki` ponownie (przeglądarka nie zgłasza zmiany,
+ * gdy wartość pola się nie zmieniła).
  */
-export function FileDropZone({ id, etykieta, podpowiedz, pliki, onWybierzPliki }: WlasciwosciFileDropZone) {
+export function FileDropZone({
+  id,
+  etykieta,
+  podpowiedz,
+  pliki,
+  onWybierzPliki,
+  wiele = true,
+  akceptuj,
+}: WlasciwosciFileDropZone) {
   const [nadObszarem, setNadObszarem] = useState(false);
+  const [komunikat, setKomunikat] = useState("");
   const wejscie = useRef<HTMLInputElement>(null);
   const podpowiedzId = `${id}-podpowiedz`;
 
@@ -46,17 +83,32 @@ export function FileDropZone({ id, etykieta, podpowiedz, pliki, onWybierzPliki }
     }
   }
 
+  function przyjmij(wybrane: FileList) {
+    if (wybrane.length === 0) {
+      return;
+    }
+    if (!wiele && wybrane.length > 1) {
+      setKomunikat("Upuść jeden plik.");
+      return;
+    }
+    setKomunikat("");
+    onWybierzPliki(wybrane);
+  }
+
   function naUpuszczenie(zdarzenie: DragEvent<HTMLDivElement>) {
     zdarzenie.preventDefault();
     setNadObszarem(false);
-    if (zdarzenie.dataTransfer.files.length > 0) {
-      onWybierzPliki(zdarzenie.dataTransfer.files);
-    }
+    przyjmij(zdarzenie.dataTransfer.files);
   }
 
   function naZmianeWejscia(zdarzenie: ChangeEvent<HTMLInputElement>) {
-    if (zdarzenie.target.files && zdarzenie.target.files.length > 0) {
-      onWybierzPliki(zdarzenie.target.files);
+    const pole = zdarzenie.target;
+    try {
+      if (pole.files) {
+        przyjmij(skopiujListe(pole.files));
+      }
+    } finally {
+      pole.value = "";
     }
   }
 
@@ -80,11 +132,17 @@ export function FileDropZone({ id, etykieta, podpowiedz, pliki, onWybierzPliki }
         <Text>{etykieta}</Text>
         <Hint id={podpowiedzId}>{podpowiedz}</Hint>
       </div>
+      {!wiele && (
+        <p id={`${id}-komunikat`} role="status" className={style.komunikat}>
+          {komunikat}
+        </p>
+      )}
       <input
         ref={wejscie}
         id={id}
         type="file"
-        multiple
+        multiple={wiele}
+        accept={akceptuj}
         tabIndex={-1}
         aria-hidden="true"
         className={style.wejscieUkryte}
