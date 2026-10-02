@@ -2,7 +2,6 @@
 
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   COURSE_TYPE_LABELS,
@@ -25,9 +24,10 @@ import {
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { zdanieRuchuMiedzyGrupami, zdanieRuchuWiersza } from "@/design-system/molekuly/StrzalkiKolejnosci/zdania";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { CourseTree } from "@/design-system/organizmy/CourseTree/CourseTree";
@@ -160,10 +160,10 @@ function BrakUprawnien({ idKursu, grupa, wroc }: { idKursu: string; grupa: Grupa
     <DetailTemplate
       naglowek={{ okruszki: teksty.okruszki, tytul: `Kurs ${idKursu}`, onPowrot: wroc }}
       glowna={
-        <EmptyState
-          wariant="brak-uprawnien"
-          naglowek={teksty.naglowekOdmowy}
-          rola={teksty.rolaOdmowy}
+        <EkranOdmowy
+          rodzaj="brak-dostepu"
+          stopien={2}
+          coDalej={zdanieOdmowyRoli(teksty.rolaOdmowy)}
           przycisk={{ etykieta: "Wróć", onClick: wroc }}
         />
       }
@@ -188,6 +188,7 @@ function BezKursu({
   grupa: GrupaTras;
   wroc: () => void;
 }) {
+  const router = useRouter();
   const teksty = tekstyDlaGrupy(grupa);
   const adresListy = teksty.okruszki[0]?.href;
   return (
@@ -200,16 +201,16 @@ function BezKursu({
               Zaloguj się ponownie, aby wrócić do kursu.
             </Notice>
           ) : (
-            <>
-              <Notice wariant="warn" tytul="Nie znaleziono kursu">
-                Kurs nie istnieje albo został usunięty.
-              </Notice>
-              {adresListy && (
-                <Text>
-                  <Link href={adresListy}>Wróć do listy kursów</Link>
-                </Text>
-              )}
-            </>
+            <EkranOdmowy
+              rodzaj="nie-znaleziono"
+              stopien={2}
+              coDalej="Sprawdź adres albo wróć do listy kursów."
+              przycisk={
+                adresListy
+                  ? { etykieta: "Wróć do listy kursów", onClick: () => router.push(adresListy) }
+                  : { etykieta: "Wróć", onClick: wroc }
+              }
+            />
           )}
         </div>
       }

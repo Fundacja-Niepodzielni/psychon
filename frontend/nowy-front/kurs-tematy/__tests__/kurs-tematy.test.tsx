@@ -153,7 +153,18 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
 
   it("brak uprawnień: stan pusty z jedynym szablonem zdania w kolumnie głównej", () => {
     const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
-    sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
+    sprawdzSzablon(container, screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tej strony." }));
+    expect(screen.getByText(/tylko dla prowadzących/)).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Nie masz dostępu do tej strony." })).getAllByRole("button")).toHaveLength(1);
+  });
+
+  it("brak kursu: zdanie odmowy, wskazówka i jeden przycisk powrotu do listy kursów, w szablonie", () => {
+    const { container } = render(<KursTematy grupa="admin" idKursu="4" wynik={{ status: "nie-znaleziono" }} />);
+    sprawdzSzablon(container, screen.getByRole("heading", { level: 2, name: "Nie znaleźliśmy tej strony." }));
+    expect(screen.getByText("Sprawdź adres albo wróć do listy kursów.")).toBeInTheDocument();
+    expect(screen.queryAllByRole("link", { name: "Wróć do listy kursów" })).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Wróć do listy kursów" }));
+    expect(push).toHaveBeenCalledWith("/admin/kursy");
   });
 
   it("brak sesji: „Sesja wygasła” w szablonie, bez zdania o roli", () => {
