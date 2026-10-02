@@ -89,7 +89,7 @@ python3 /tmp/drift.py /tmp/routes.json docs/hackathon/02-kontrakt-api.md
 | `PATCH` | `/admin/lessons/{lesson}` | `api,auth:keycloak,role:project_manager,super_admin` |
 | `POST` | `/admin/lessons/{lesson}/materials` | `api,auth:keycloak,role:project_manager,super_admin` |
 | `GET` | `/admin/lessons/{lesson}/video-status` | `api,auth:keycloak,role:project_manager,super_admin` |
-| `POST` | `/admin/lessons/{lesson}/video-uploads` | `api,auth:keycloak,role:super_admin` |
+| `POST` | `/admin/lessons/{lesson}/video-uploads` | `api,auth:keycloak,role:project_manager,super_admin` |
 | `DELETE` | `/admin/materials/{material}` | `api,auth:keycloak,role:project_manager,super_admin` |
 | `PATCH` | `/admin/onboarding` | `api,auth:keycloak,role:super_admin,project_manager` |
 | `GET` | `/admin/profiles` | `api,auth:keycloak,role:project_manager,super_admin` |

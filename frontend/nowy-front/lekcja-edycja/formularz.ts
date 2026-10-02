@@ -192,14 +192,14 @@ export function opisNagrania(stan: StanNagrania | null): string {
   return `Nagranie jest gotowe. Czas trwania: ${czasNagrania(stan.duration_seconds)}.`;
 }
 
-/** Role, które mogą zlecić wgranie nagrania (`video.php:22`, `role:super_admin`). */
+/** Role, które mogą zlecić wgranie nagrania (`video.php:22`, `role:project_manager,super_admin`). */
 export function mozeWgrywacNagranie(rola: string | null): boolean {
-  return rola === "super_admin";
+  return rola === "project_manager" || rola === "super_admin";
 }
 
 /** Powód, dla którego sekcja nagrania jest nieaktywna — `null`, gdy aktywna. */
 export function powodNieaktywnegoNagrania(rola: string | null): string | null {
   if (mozeWgrywacNagranie(rola)) return null;
-  if (rola === "project_manager") return "Nagranie może wgrać tylko Super Admin. Stan nagrania widzisz, ale go nie zmienisz.";
-  return "Nie udało się ustalić, czy możesz wgrywać nagrania.";
+  if (rola === null) return "Nie udało się ustalić, czy możesz wgrywać nagrania.";
+  return "Nagranie może wgrać opiekun projektu albo Super Admin.";
 }

@@ -182,7 +182,7 @@ describe("usunięcie pliku lekcji wgranego na ekranie", () => {
     const uzytkownik = userEvent.setup();
     const { container } = render(<LekcjaEdycja idLekcji={21} idKursu={3} zNazwaKursu />);
     await screen.findByLabelText(/^Tytuł lekcji/);
-    const wejscie = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const wejscie = container.querySelector<HTMLInputElement>('input[type="file"][id$="-plik-materialu"]')!;
     await uzytkownik.upload(wejscie, new File(["%PDF"], "karta.pdf", { type: "application/pdf" }));
     await screen.findByText("Wgrano plik „karta.pdf”.");
     expect(screen.getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();

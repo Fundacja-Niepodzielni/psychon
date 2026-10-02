@@ -658,11 +658,11 @@ for (const rola of ["project_manager", "super_admin"] as const) {
       await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
       await expect(page.getByText(/Brak dostępu|Nie masz uprawnień/)).toHaveCount(0);
 
-      // Sekcja nagrania: wgrywa tylko Super Admin, opiekun projektu widzi stan i powód.
+      // Sekcja nagrania: wgrywać może opiekun projektu i Super Admin — obszar wgrania jest czynny, zdania o powodzie nie ma.
       const wgrywanie = page.getByText("Upuść tutaj nagranie albo wybierz je z dysku.");
-      const powod = page.getByText("Nagranie może wgrać tylko Super Admin. Stan nagrania widzisz, ale go nie zmienisz.");
-      await expect(wgrywanie).toHaveCount(rola === "super_admin" ? 1 : 0);
-      await expect(powod).toHaveCount(rola === "super_admin" ? 0 : 1);
+      const powod = page.getByText("Nagranie może wgrać opiekun projektu albo Super Admin.");
+      await expect(wgrywanie).toHaveCount(1);
+      await expect(powod).toHaveCount(0);
     });
   });
 }
