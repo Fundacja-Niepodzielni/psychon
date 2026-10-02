@@ -8,9 +8,9 @@ import { GRUPY, type DefinicjaGrupy, type NazwaPanelu } from "./grupy";
  * rozpoznać, który ekran niesie strona. Nowe trasy z innym adresem mają
  * własny układ w grupie `(przelaczenie)` i tej funkcji nie potrzebują.
  *
- * Prawda dokładnie wtedy, gdy istnieje WŁĄCZONA grupa z ekranem tego panelu,
- * którego stara i nowa trasa są tym samym adresem pasującym do ścieżki
- * (`[id]` pasuje do jednego segmentu). Grupa wyłączona nie zmienia niczego:
+ * Prawda dokładnie wtedy, gdy WŁĄCZONA grupa z ekranem tego panelu, którego stara i
+ * nowa trasa są tym samym adresem pasującym do ścieżki (`[id]` pasuje do jednego
+ * segmentu), jest najdokładniejszym dopasowaniem (najmniej parametrów). Grupa wyłączona nie zmienia niczego:
  * przy wszystkich grupach wyłączonych wynik jest zawsze fałszem.
  */
 export function czyTrasaWNowejRamce(
@@ -19,17 +19,27 @@ export function czyTrasaWNowejRamce(
   grupy: Record<string, DefinicjaGrupy> = GRUPY,
 ): boolean {
   const znormalizowana = normalizuj(sciezka);
-  return Object.values(grupy).some(
-    (grupa) =>
-      grupa.wlaczona &&
-      grupa.ekrany.some(
+  const pasujace = Object.values(grupy).flatMap((grupa) =>
+    grupa.ekrany
+      .filter(
         (ekran) =>
           ekran.panel === panel &&
           ekran.staraTrasa !== null &&
           ekran.staraTrasa === ekran.nowaTrasa &&
           pasujeDoWzorca(znormalizowana, ekran.nowaTrasa),
-      ),
+      )
+      .map((ekran) => ({ wlaczona: grupa.wlaczona, parametry: liczbaParametrow(ekran.nowaTrasa) })),
   );
+  if (pasujace.length === 0) return false;
+  // Adres, który pasuje do kilku wzorców (`/admin/uczestniczki/nowa` do własnej trasy i do
+  // `/admin/uczestniczki/[id]`), należy do wzorca bez parametru: tak wybiera trasę router.
+  // Włączona grupa z parametrem nie zabiera ekranu grupie wyłączonej o dokładniejszym adresie.
+  const najmniej = Math.min(...pasujace.map((p) => p.parametry));
+  return pasujace.some((p) => p.parametry === najmniej && p.wlaczona);
+}
+
+function liczbaParametrow(wzorzec: string): number {
+  return wzorzec.split("/").filter((czesc) => /^\[[^\]/]+\]$/.test(czesc)).length;
 }
 
 function normalizuj(sciezka: string): string {

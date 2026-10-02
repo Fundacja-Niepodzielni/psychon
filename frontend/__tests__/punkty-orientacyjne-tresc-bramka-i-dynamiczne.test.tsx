@@ -445,7 +445,7 @@ describe("/admin/profile/[id] — h1 dla każdego wysterowanego stanu", () => {
 
 describe("/admin/uczestniczki/[id] — h1 dla każdego wysterowanego stanu", () => {
   const importPage = () =>
-    import("@/app/(administracja)/admin/uczestniczki/[id]/page");
+    import("@/app/(administracja)/admin/uczestniczki/[id]/StaraTresc");
 
   it("stan ładowania ma jeden h1 „Karta osoby”", async () => {
     api.mockImplementation(() => new Promise(() => {}));

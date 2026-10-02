@@ -25,9 +25,9 @@ export const LICZBA_NA_STRONE = 25;
 export const LIMIT_SZUKANEJ_FRAZY = 255;
 
 /**
- * Ścieżka karty osoby: trasa produktu `/admin/uczestniczki/[id]` (dziś stara
- * karta — grupa `kartaOsoby` jest wyłączona; po jej włączeniu ten sam adres
- * niesie ekran A-07), nie trasa poligonu.
+ * Ścieżka karty osoby: trasa produktu `/admin/uczestniczki/[id]` (przy włączonej
+ * grupie `kartaOsoby` niesie ekran A-07, przy wyłączonej starą kartę), nie trasa
+ * poligonu.
  */
 export const SCIEZKA_KARTY = "/admin/uczestniczki";
 
