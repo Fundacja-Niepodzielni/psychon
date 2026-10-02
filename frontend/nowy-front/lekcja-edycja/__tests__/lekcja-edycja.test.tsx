@@ -1,13 +1,15 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import type { CialoLekcji, LekcjaAdmin, MaterialAdmin, StanNagrania, ZlecenieWgrania } from "../dane";
+import { dopiszWBloku, edytorTresci, przygotujUkladDlaEdytora, usunZPoczatkuBloku, wpiszTresc } from "./pomoc-edytora";
 
 /**
  * Ekran „Lekcja: treść, nagranie, pliki” (administracja): stany bez danych
  * w szablonie formularza, dane w układzie dwóch kolumn — zawsze z jednym
- * `main`; stan zapisu zamiast powiadomienia, zapis treści bez przycinania,
+ * `main`; stan zapisu zamiast powiadomienia, treść w edytorze z paskiem (napis
+ * zastany wraca do zapisu bajt w bajt, zapis spoza podzbioru nie ginie),
  * licznik znaków, 422 na polu treści, materiały, nagranie dla obu ról
  * administracji, odmowa z powodu roli (403, 0 danych w DOM). Odpowiedź 401
  * w próbie jest błędem podanym wprost przez atrapę funkcji `api`: sprawdza,
@@ -104,7 +106,7 @@ function przyciskiGlowne(kontener: HTMLElement): HTMLElement[] {
 }
 
 function pole(etykieta: RegExp): HTMLInputElement | HTMLTextAreaElement {
-  // Karta „Treść lekcji” i pole treści mają tę samą nazwę (nagłówek karty) — tu chodzi o pole.
+  // Pola tekstowe formularza; treść lekcji ma własny edytor (`edytorTresci()`).
   const pola = screen.getAllByLabelText(etykieta).filter((element) => element.matches("input, textarea"));
   expect(pola).toHaveLength(1);
   return pola[0] as HTMLInputElement | HTMLTextAreaElement;
@@ -134,6 +136,8 @@ function stanZapisu(): HTMLElement {
   return document.querySelector<HTMLElement>('[data-obszar="pasek-waski"] [role="status"]')!;
 }
 
+beforeAll(przygotujUkladDlaEdytora);
+
 beforeEach(() => {
   api.mockReset();
   pobierzJa.mockReset();
@@ -161,7 +165,9 @@ describe("stany ekranu: jeden main, dane w układzie dwóch kolumn", () => {
     const { container } = await renderujDane();
     szablon(container, "szablon-edycja");
     expect(pole(/^Tytuł lekcji/).value).toBe("Wprowadzenie do wywiadu");
-    expect(pole(/^Treść lekcji/).value).toBe("## Cel lekcji\n\nPierwszy akapit.");
+    const { obszar } = await edytorTresci();
+    expect(within(obszar).getByRole("heading", { level: 2, name: "Cel lekcji" })).toBeInTheDocument();
+    expect(within(obszar).getByText("Pierwszy akapit.")).toBeInTheDocument();
     expect(pole(/^Czas trwania w minutach/).value).toBe("30");
     expect(screen.getByRole("heading", { level: 1, name: "Wprowadzenie do wywiadu" })).toBeInTheDocument();
   });
@@ -290,11 +296,11 @@ describe("stan zapisu", () => {
   it("wymienia zmienione pola w kolejności ekranu; po cofnięciu zmiany wraca „Wszystko zapisane”", async () => {
     await renderujDane();
     expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane$/);
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: "inna treść" } });
+    await dopiszWBloku(1, "inna treść ");
     fireEvent.change(pole(/^Tytuł lekcji/), { target: { value: "Inny tytuł" } });
     expect(stanZapisu()).toHaveTextContent(/^Niezapisane: tytuł, treść$/);
     fireEvent.change(pole(/^Tytuł lekcji/), { target: { value: LEKCJA.title } });
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: LEKCJA.content } });
+    await usunZPoczatkuBloku(1, "inna treść ".length);
     expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane$/);
   });
 
@@ -362,11 +368,11 @@ describe("kolejność kart i karta stanu lekcji", () => {
 });
 
 describe("zapis treści lekcji", () => {
-  it("PATCH z dokładnie czterema polami; treść bez przycinania; bez pól tematu", async () => {
+  it("PATCH z dokładnie czterema polami; treść tak, jak oddał ją edytor; bez pól tematu", async () => {
     const uzytkownik = userEvent.setup();
     await renderujDane();
-    const tresc = "  Akapit z twardym łamaniem  \n\n<script>alert(1)</script>  ";
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: tresc } });
+    const tresc = "Akapit wpisany w edytorze <script>alert(1)</script>";
+    await wpiszTresc(tresc);
     fireEvent.change(pole(/^Krótki opis/), { target: { value: "" } });
     await uzytkownik.click(przyciskZapisu());
 
@@ -384,7 +390,7 @@ describe("zapis treści lekcji", () => {
     await waitFor(() => expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane · /));
   });
 
-  it("zapis zwraca treść z serwera do formularza i do podglądu", async () => {
+  it("zapis zwraca dane z serwera do formularza", async () => {
     const uzytkownik = userEvent.setup();
     await renderujDane({ patch: (cialo) => ({ ...LEKCJA, ...cialo, title: "Tytuł z serwera" }) });
     fireEvent.change(pole(/^Krótki opis/), { target: { value: "Inny opis" } });
@@ -403,7 +409,7 @@ describe("zapis treści lekcji", () => {
     expect(wywolania("PATCH", "/admin/lessons/21")).toHaveLength(0);
   });
 
-  it("422 na treści: komunikat pod polem, treść w formularzu zostaje, brak komunikatu o zapisie", async () => {
+  it("422 na treści: komunikat przy edytorze i z nim powiązany, treść zostaje, fokus w edytorze", async () => {
     const uzytkownik = userEvent.setup();
     await renderujDane({
       patch: () => {
@@ -415,15 +421,18 @@ describe("zapis treści lekcji", () => {
         });
       },
     });
-    const za_dluga = "a".repeat(20001);
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: za_dluga } });
+    await wpiszTresc("treść odrzucona przez serwer");
     await uzytkownik.click(przyciskZapisu());
 
-    const komunikaty = await screen.findAllByText("Treść lekcji może mieć najwyżej 20 000 znaków.");
-    expect(komunikaty.length).toBeGreaterThan(0);
-    expect(pole(/^Treść lekcji/).value).toBe(za_dluga);
+    const komunikat = await screen.findByText("Treść lekcji może mieć najwyżej 20 000 znaków.");
+    const { obszar } = await edytorTresci();
+    expect(obszar).toHaveTextContent(/^treść odrzucona przez serwer$/);
     expect(stanZapisu()).toHaveTextContent(/^Niezapisane: treść$/);
-    expect(pole(/^Treść lekcji/)).toHaveAttribute("aria-invalid", "true");
+    // Błąd z zaplecza stoi przy edytorze i jest z nim powiązany dla czytnika ekranu.
+    await waitFor(() => expect(obszar).toHaveAttribute("aria-invalid", "true"));
+    expect(obszar.getAttribute("aria-describedby")?.split(" ")).toContain(komunikat.id);
+    expect(komunikat.closest("section")).toBe(obszar.closest("section"));
+    await waitFor(() => expect(obszar).toHaveFocus());
   });
 
   it("błąd połączenia przy zapisie: Notice, wpisane zmiany zostają", async () => {
@@ -457,46 +466,182 @@ describe("zapis treści lekcji", () => {
 describe("licznik znaków treści", () => {
   it("20 000 znaków wielobajtowych mieści się w limicie (40 000 bajtów)", async () => {
     await renderujDane();
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: "ż".repeat(20000) } });
-    expect(screen.getByText(/20 000 z 20 000 znaków$/)).toBeInTheDocument();
+    await wpiszTresc("ż".repeat(20000));
+    expect(screen.getByText(/^20 000 z 20 000 znaków$/)).toBeInTheDocument();
     expect(screen.queryByText(/Przekroczono limit/)).toBeNull();
+    expect((await edytorTresci()).obszar).not.toHaveAttribute("aria-invalid");
   });
 
-  it("20 001 znaków pokazuje przekroczenie limitu o jeden znak", async () => {
+  it("20 001 znaków: zdanie o przekroczeniu o jeden znak stoi przy edytorze i jest z nim powiązane", async () => {
     await renderujDane();
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: "ż".repeat(20001) } });
-    expect(screen.getByText(/Przekroczono limit o 1 znak \(limit: 20 000\)\./)).toBeInTheDocument();
+    await wpiszTresc("ż".repeat(20001));
+    const zdanie = screen.getByText("Przekroczono limit o 1 znak (limit: 20 000). Skróć treść, żeby ją zapisać.");
+    const { obszar } = await edytorTresci();
+    expect(obszar).toHaveAttribute("aria-invalid", "true");
+    expect(obszar.getAttribute("aria-describedby")?.split(" ")).toContain(zdanie.id);
+    expect(zdanie.closest("section")).toBe(obszar.closest("section"));
+    expect(screen.getByText(/^20 001 z 20 000 znaków$/)).toBeInTheDocument();
   });
 
-  it("licznik rośnie razem z wpisywanym tekstem", async () => {
+  it("ponad limit: zapis zatrzymuje odmowa zaplecza, jak dotąd — treść zostaje niezapisana, zdanie o limicie przy edytorze", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderujDane({
+      patch: () => {
+        throw new ApiError({
+          status: 422,
+          code: "validation_failed",
+          message: "Popraw zaznaczone pola.",
+          errors: { content: ["Treść lekcji może mieć najwyżej 20 000 znaków."] },
+        });
+      },
+    });
+    const zaDluga = "ż".repeat(20001);
+    await wpiszTresc(zaDluga);
+    await uzytkownik.click(przyciskZapisu());
+
+    await waitFor(() => expect(wywolania("PATCH", "/admin/lessons/21")).toHaveLength(1));
+    const cialo = (wywolania("PATCH", "/admin/lessons/21")[0][1] as { body: CialoLekcji }).body;
+    expect(cialo.content).toBe(zaDluga);
+    const { obszar } = await edytorTresci();
+    await waitFor(() => expect(obszar).toHaveFocus());
+    expect(stanZapisu()).toHaveTextContent(/^Niezapisane: treść$/);
+    expect(screen.getByText(/^Przekroczono limit o 1 znak \(limit: 20 000\)\./)).toBeInTheDocument();
+    expect(obszar).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("licznik rośnie razem z wpisywanym tekstem i stoi na stronie raz", async () => {
     await renderujDane({ lekcje: [{ ...LEKCJA, content: null }] });
-    expect(screen.getByText(/^0 z 20 000 znaków$/)).toBeInTheDocument();
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: "abcde" } });
-    expect(screen.getByText(/^5 z 20 000 znaków$/)).toBeInTheDocument();
+    expect(screen.getAllByText(/^0 z 20 000 znaków$/)).toHaveLength(1);
+    await wpiszTresc("abcde");
+    expect(screen.getAllByText(/^5 z 20 000 znaków$/)).toHaveLength(1);
+    expect(screen.getAllByText(/ z 20 000 znaków$/)).toHaveLength(1);
   });
 });
 
-describe("podgląd treści", () => {
-  it("podgląd renderuje Markdown jako nagłówek i akapit", async () => {
-    await renderujDane();
-    const podglad = screen.getByRole("region", { name: "Podgląd treści" });
-    expect(within(podglad).getByRole("heading", { name: "Cel lekcji" })).toBeInTheDocument();
-    expect(within(podglad).getByText("Pierwszy akapit.")).toBeInTheDocument();
+/**
+ * Treść zastana: końce wiersza CRLF, odstępy na końcach wierszy, nadmiarowe
+ * puste wiersze i zapis spoza podzbioru (tabela, obraz, surowy HTML, blok kodu,
+ * cytat, lista w liście, nagłówek pierwszego poziomu).
+ */
+const SPOZA_PODZBIORU = [
+  "| A | B |\r\n|---|---|\r\n| 1 | 2 |",
+  "![Opis](/obraz.png)",
+  '<div class="x"><b>pogrubione</b></div>',
+  "```\r\nconst a = 1;\r\n```",
+  "> cytat w treści",
+  "- punkt\r\n    - wcięty punkt",
+  "# Tytuł pierwszego poziomu",
+];
+
+const TRESC_ZASTANA = [
+  "  Akapit do edycji   ",
+  "z drugim wierszem.  ",
+  "",
+  "",
+  ...SPOZA_PODZBIORU.flatMap((fragment) => [fragment, ""]),
+  "*  to nie lista",
+  "",
+  "Ostatni akapit.   ",
+  "",
+  "",
+].join("\r\n");
+
+const LEKCJA_Z_TRESCIA_ZASTANA: LekcjaAdmin = { ...LEKCJA, content: TRESC_ZASTANA };
+
+function trescWyslana(): unknown {
+  const zapisy = wywolania("PATCH", "/admin/lessons/21");
+  expect(zapisy).toHaveLength(1);
+  return (zapisy[0][1] as { body: CialoLekcji }).body.content;
+}
+
+describe("treść lekcji w edytorze", () => {
+  it("jeden edytor z paskiem w karcie „Treść lekcji”; bez pola ze znacznikami i bez osobnego podglądu", async () => {
+    const { container } = await renderujDane();
+    const { obszar } = await edytorTresci();
+    const karta = obszar.closest("section")!;
+    expect(within(karta).getByRole("heading", { name: "Treść lekcji" })).toBeInTheDocument();
+    expect(within(karta).getAllByRole("toolbar", { name: "Formatowanie treści" })).toHaveLength(1);
+    expect(screen.getAllByRole("textbox", { name: "Treść lekcji" })).toHaveLength(1);
+    expect(karta.querySelector("textarea")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Podgląd treści" })).toBeNull();
+    expect(screen.queryByText("Podgląd treści")).toBeNull();
+    expect(container.textContent).not.toMatch(/\*\*pogrubienie\*\*/);
+    expect(screen.getAllByText("Uczestnik zobaczy treść w tych samych stylach.")).toHaveLength(1);
+    // Pasek stoi w dokumencie przed obszarem edycji: kolejność fokusu pasek → treść.
+    const pasek = within(karta).getByRole("toolbar");
+    expect(pasek.compareDocumentPosition(obszar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("HTML w treści jest tekstem, nie elementem", async () => {
-    await renderujDane();
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: '<img src=x onerror="alert(1)"> <script>x</script>' } });
-    const podglad = screen.getByRole("region", { name: "Podgląd treści" });
-    expect(podglad.querySelector("img")).toBeNull();
-    expect(podglad.querySelector("script")).toBeNull();
-    expect(podglad.textContent).toContain("<script>x</script>");
+    await renderujDane({ lekcje: [{ ...LEKCJA, content: '<img src=x onerror="alert(1)"> <script>x</script>' }] });
+    const { obszar } = await edytorTresci();
+    expect(obszar.querySelector("img:not(.ProseMirror-separator)")).toBeNull();
+    expect(obszar.querySelector("script")).toBeNull();
+    expect(obszar.textContent).toContain('<img src=x onerror="alert(1)"> <script>x</script>');
   });
 
-  it("pusta treść: zdanie zamiast podglądu", async () => {
-    await renderujDane({ lekcje: [{ ...LEKCJA, content: null }] });
-    const podglad = screen.getByRole("region", { name: "Podgląd treści" });
-    expect(within(podglad).getByText(/Treść lekcji jest pusta/)).toBeInTheDocument();
+  it("otwarcie strony z treścią zastaną niczego nie oznacza jako niezapisane", async () => {
+    await renderujDane({ lekcje: [LEKCJA_Z_TRESCIA_ZASTANA] });
+    const { obszar } = await edytorTresci();
+    fireEvent.focus(obszar);
+    fireEvent.blur(obszar);
+    expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane$/);
+  });
+
+  it("treść otwarta i nietknięta idzie do zapisu bajt w bajt, razem z odstępami i końcami wiersza", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderujDane({ lekcje: [LEKCJA_Z_TRESCIA_ZASTANA] });
+    await edytorTresci();
+    fireEvent.change(pole(/^Tytuł lekcji/), { target: { value: "Inny tytuł" } });
+    expect(stanZapisu()).toHaveTextContent(/^Niezapisane: tytuł$/);
+    await uzytkownik.click(przyciskZapisu());
+    await waitFor(() => expect(wywolania("PATCH", "/admin/lessons/21")).toHaveLength(1));
+
+    const wyslana = trescWyslana();
+    expect(typeof wyslana).toBe("string");
+    expect(wyslana).toBe(TRESC_ZASTANA);
+    expect((wyslana as string).length).toBe(TRESC_ZASTANA.length);
+  });
+
+  it("po edycji jednego akapitu każdy fragment spoza podzbioru zostaje w wysyłanym napisie dosłownie", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderujDane({ lekcje: [LEKCJA_Z_TRESCIA_ZASTANA] });
+    const { edytor } = await edytorTresci();
+    await dopiszWBloku(edytor.state.doc.childCount - 1, "Dopisane. ");
+    expect(stanZapisu()).toHaveTextContent(/^Niezapisane: treść$/);
+    await uzytkownik.click(przyciskZapisu());
+    await waitFor(() => expect(wywolania("PATCH", "/admin/lessons/21")).toHaveLength(1));
+
+    const wyslana = trescWyslana() as string;
+    for (const fragment of SPOZA_PODZBIORU) {
+      expect(wyslana).toContain(fragment);
+    }
+    expect(wyslana).toContain("Dopisane. Ostatni akapit.");
+    // Wszystko przed edytowanym akapitem wraca bez zmiany jednego znaku.
+    const doEdycji = TRESC_ZASTANA.slice(0, TRESC_ZASTANA.indexOf("Ostatni akapit."));
+    expect(wyslana.startsWith(doEdycji)).toBe(true);
+  });
+
+  it("„Niezapisane: treść” pojawia się po edycji i znika po zapisie", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderujDane();
+    expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane$/);
+    await dopiszWBloku(1, "Nowe zdanie. ");
+    expect(stanZapisu()).toHaveTextContent(/^Niezapisane: treść$/);
+    await uzytkownik.click(przyciskZapisu());
+    await waitFor(() => expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane · /));
+    expect(trescWyslana()).toBe("## Cel lekcji\n\nNowe zdanie. Pierwszy akapit.");
+    expect((await edytorTresci()).obszar).toHaveTextContent("Nowe zdanie. Pierwszy akapit.");
+  });
+
+  it("pusty edytor to pusta treść w zapisie", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderujDane();
+    await wpiszTresc("");
+    expect(stanZapisu()).toHaveTextContent(/^Niezapisane: treść$/);
+    await uzytkownik.click(przyciskZapisu());
+    await waitFor(() => expect(wywolania("PATCH", "/admin/lessons/21")).toHaveLength(1));
+    expect(trescWyslana()).toBe("");
   });
 });
 
@@ -830,7 +975,7 @@ describe("wyjście z niezapisanym tekstem", () => {
   async function otworzPytanie(nazwaOdnosnika: string, ustawienia: Ustawienia = {}) {
     const uzytkownik = userEvent.setup();
     await renderujDane(ustawienia);
-    fireEvent.change(pole(/^Treść lekcji/), { target: { value: "coś innego" } });
+    await wpiszTresc("coś innego");
     const odnosnik = screen.getByRole("link", { name: nazwaOdnosnika });
     await uzytkownik.click(odnosnik);
     const okno = await screen.findByRole("dialog", { name: "Zapisać zmiany przed przejściem?" });
@@ -863,7 +1008,7 @@ describe("wyjście z niezapisanym tekstem", () => {
     expect(push).not.toHaveBeenCalled();
     expect(wywolania("PATCH", "/admin/lessons/21")).toHaveLength(0);
     expect(odnosnik).toHaveFocus();
-    expect(pole(/^Treść lekcji/).value).toBe("coś innego");
+    expect((await edytorTresci()).obszar).toHaveTextContent(/^coś innego$/);
   });
 
   it("klawisz Escape działa jak „Zostań”", async () => {
@@ -902,7 +1047,7 @@ describe("wyjście z niezapisanym tekstem", () => {
     await screen.findByText("Lekcja nie została zapisana");
     expect(push).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(pole(/^Treść lekcji/).value).toBe("coś innego");
+    expect((await edytorTresci()).obszar).toHaveTextContent(/^coś innego$/);
     expect(stanZapisu()).toHaveTextContent(/^Niezapisane: treść$/);
   });
 
@@ -920,7 +1065,8 @@ describe("wyjście z niezapisanym tekstem", () => {
     await uzytkownik.click(within(okno).getByRole("button", { name: "Zapisz i przejdź" }));
     await screen.findAllByText("Treść lekcji może mieć najwyżej 20 000 znaków.");
     expect(push).not.toHaveBeenCalled();
-    await waitFor(() => expect(pole(/^Treść lekcji/)).toHaveFocus());
+    const { obszar } = await edytorTresci();
+    await waitFor(() => expect(obszar).toHaveFocus());
   });
 
   it("zamknięcie karty przeglądarki: pyta tylko przy niezapisanym tekście", async () => {

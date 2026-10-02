@@ -371,7 +371,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await otworzLekcje(page, 22, "Pytania otwarte i zamknięte");
 
       await page.getByLabel(/^Tytuł lekcji/).fill("Pytania otwarte, zamknięte i pogłębiające");
-      await page.getByRole("textbox", { name: "Treść lekcji" }).fill("## Cel lekcji\n\nNowy akapit, jeszcze niezapisany.");
+      // Treść ma edytor z paskiem: osoba klika w tekst i dopisuje do niego.
+      await page.getByRole("textbox", { name: "Treść lekcji" }).getByText("przykład drugi").click();
+      await page.keyboard.press("End");
+      await page.keyboard.type(", jeszcze niezapisany");
       await expect(page.getByRole("status").filter({ hasText: "Niezapisane: tytuł, treść" })).toHaveCount(1);
 
       await poleNagrania(page).setInputFiles({ name: DLUGA_NAZWA_NAGRANIA, mimeType: "video/mp4", buffer: Buffer.alloc(13 * MB) });
