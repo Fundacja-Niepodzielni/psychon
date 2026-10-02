@@ -33,8 +33,11 @@ export type WynikAkceptacji =
   | { rodzaj: "nie-znaleziono"; komunikat: string }
   | { rodzaj: "blad"; komunikat: string };
 
+/** Stan wiadomości z powodem do kandydata (`rejection_mail` z odpowiedzi odrzucenia); `null` — serwer go nie podał. */
+export type WiadomoscOdrzucenia = "sent" | "failed" | null;
+
 export type WynikOdrzucenia =
-  | { rodzaj: "odrzucono"; zgloszenie: Zgloszenie }
+  | { rodzaj: "odrzucono"; zgloszenie: Zgloszenie; wiadomosc: WiadomoscOdrzucenia }
   | { rodzaj: "bledy-pol"; komunikat: string; bledy: Record<string, string[]> }
   | { rodzaj: "rozstrzygniete"; komunikat: string }
   | { rodzaj: "brak-uprawnien"; komunikat: string }
@@ -42,6 +45,9 @@ export type WynikOdrzucenia =
   | { rodzaj: "blad"; komunikat: string };
 
 export type WynikSkanu = { rodzaj: "pobrano" } | { rodzaj: "blad"; komunikat: string };
+
+/** Odpowiedź `POST /admin/applications/{id}/reject`: zasób zgłoszenia i stan wiadomości do kandydata. */
+type OdpowiedzOdrzucenia = Zgloszenie & { rejection_mail?: unknown };
 
 interface OdpowiedzAkceptacji {
   user_id: number;
@@ -129,8 +135,11 @@ export async function zaakceptujZgloszenie(id: number, rola: ApplicationRole, wy
 
 export async function odrzucZgloszenie(id: number, powod: string): Promise<WynikOdrzucenia> {
   try {
-    const zgloszenie = await api<Zgloszenie>(`/admin/applications/${id}/reject`, { method: "POST", body: { reason: powod } });
-    return { rodzaj: "odrzucono", zgloszenie };
+    const { rejection_mail: wiadomosc, ...zgloszenie } = await api<OdpowiedzOdrzucenia>(`/admin/applications/${id}/reject`, {
+      method: "POST",
+      body: { reason: powod },
+    });
+    return { rodzaj: "odrzucono", zgloszenie, wiadomosc: wiadomosc === "sent" || wiadomosc === "failed" ? wiadomosc : null };
   } catch (blad) {
     if (!(blad instanceof ApiError)) {
       return { rodzaj: "blad", komunikat: "Nie udało się odrzucić zgłoszenia. Spróbuj ponownie." };
