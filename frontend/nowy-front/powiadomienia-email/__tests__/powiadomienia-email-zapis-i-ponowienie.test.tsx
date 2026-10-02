@@ -81,7 +81,7 @@ describe("PowiadomieniaEmail — potwierdzenie zapisu", () => {
 
     await zmienIZapisz(uzytkownik);
 
-    expect(await screen.findByText("Nie udało się zapisać ustawień powiadomień. Spróbuj ponownie.")).toBeInTheDocument();
+    expect(await screen.findByText("Nie udało się zapisać. Spróbuj ponownie.")).toBeInTheDocument();
     expect(screen.queryByText(POTWIERDZENIE)).toBeNull();
   });
 });

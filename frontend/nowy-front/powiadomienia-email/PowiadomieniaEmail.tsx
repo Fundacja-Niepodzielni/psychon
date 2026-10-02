@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/h16-ustawienia";
 import type { MetaSkrzynki, WiadomoscEmail } from "./dane";
 import style from "./PowiadomieniaEmail.module.css";
+import { KOMUNIKAT_SERWER, KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 
@@ -262,7 +263,7 @@ export function PowiadomieniaEmail() {
         setUstBledyTypow(bledyTypow);
         setUstBledyPrzypomnienia(bledyPrzypomnienia);
       } else {
-        setUstBladSieci("Nie udało się zapisać ustawień powiadomień. Spróbuj ponownie.");
+        setUstBladSieci(KOMUNIKAT_ZAPIS);
       }
     } finally {
       setUstZapisywanie(false);
@@ -354,7 +355,7 @@ export function PowiadomieniaEmail() {
             </Button>
           }
         >
-          Sprawdź połączenie i spróbuj ponownie.
+          {KOMUNIKAT_SERWER}
         </Notice>
       </main>
     );
