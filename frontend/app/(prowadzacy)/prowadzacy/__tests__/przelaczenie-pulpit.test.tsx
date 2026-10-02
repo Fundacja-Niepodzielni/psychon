@@ -206,7 +206,7 @@ describe("/prowadzacy włączona — układ prowadzącego, jeden main w czterech
     ustawSerwer("zakaz", "instructor", z.ApiError);
     const { container } = trasa(z);
 
-    await screen.findByText(/tylko dla prowadzących/, {}, DLUGO);
+    await screen.findByText(/Ten ekran jest dla prowadzących/, {}, DLUGO);
     expect(screen.queryByText(/Demo/)).toBeNull();
     expect(screen.queryByRole("heading", { name: "Moja grupa" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Pytania bez odpowiedzi" })).toBeNull();

@@ -7,6 +7,7 @@ import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { KartaNastepnegoKroku } from "@/design-system/molekuly/KartaNastepnegoKroku/KartaNastepnegoKroku";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import {
@@ -74,12 +75,7 @@ export function PulpitProwadzacego() {
       <DashboardTemplate
         naglowek={{ okruszki, tytul: "Pulpit prowadzącego", onPowrot }}
         glowna={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Pulpit dla prowadzących"
-            rola="prowadzących"
-            przycisk={{ etykieta: "Wróć", onClick: onPowrot }}
-          />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="prowadzących" przycisk={{ etykieta: "Wróć", onClick: onPowrot }} />
         }
         wspierajaca={null}
       />

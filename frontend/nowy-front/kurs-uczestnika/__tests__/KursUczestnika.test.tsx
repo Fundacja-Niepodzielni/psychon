@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ApiError } from "@/lib/api/klient";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import { kursSzkicu, odpowiedzBezTestu, odpowiedzSerwera, STANY_SZKICU, TYTULY_LEKCJI, type OpcjeKursu } from "./atrapy";
@@ -594,7 +594,7 @@ describe("stany spoza szkicu", () => {
     const zdanie = "Ukończ najpierw etap 2: Wywiad psychologiczny.";
     await pokazBlad(new ApiError({ status: 403, code: "course_locked", message: zdanie }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toHaveFocus());
     expect(screen.getByText(zdanie)).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryAllByRole("link", { name: "Wróć do listy kursów" })).toHaveLength(0);
@@ -606,7 +606,7 @@ describe("stany spoza szkicu", () => {
   it("404: „Nie znaleziono kursu” i jeden przycisk powrotu do listy", async () => {
     await pokazBlad(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toHaveFocus());
     expect(screen.getAllByRole("button")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Wróć do listy" }));
     expect(push).toHaveBeenCalledWith("/panel/kursy");
@@ -615,7 +615,7 @@ describe("stany spoza szkicu", () => {
   it("dostęp wygasł (403 access_expired): zdanie na czas przekierowania", async () => {
     await pokazBlad(new ApiError({ status: 403, code: "access_expired", message: "Dostęp wygasł." }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Twój dostęp wygasł." })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Twój dostęp wygasł." })).toHaveFocus());
     expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.getByText("Za chwilę przeniesiemy Cię na stronę z informacją o wygaśnięciu dostępu.")).toBeInTheDocument();
   });

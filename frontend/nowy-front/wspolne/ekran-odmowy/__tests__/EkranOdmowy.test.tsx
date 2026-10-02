@@ -61,10 +61,10 @@ describe("EkranOdmowy — wspólny wzór odmowy, „nie znaleziono” i wygasłe
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it("fokus po wejściu stoi na nagłówku", () => {
+  it("fokus po wejściu stoi na nagłówku", async () => {
     ekran("dostep-wygasl");
 
-    expect(screen.getByRole("heading", { level: 1, name: "Twój dostęp wygasł." })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Twój dostęp wygasł." })).toHaveFocus());
   });
 
   it("poziom nagłówka według ekranu", () => {

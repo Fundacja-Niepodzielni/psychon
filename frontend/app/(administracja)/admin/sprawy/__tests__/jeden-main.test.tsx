@@ -107,7 +107,7 @@ describe("/admin/sprawy w układzie administracji (grupa włączona)", () => {
     apiPaged.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Zabronione" }));
     const { container } = await zloz();
 
-    await screen.findByText("Sekcja dla administracji");
+    await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" });
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Sprawy zgłoszone przez prowadzących" })).toBeNull());
     expect(container.querySelectorAll('[data-testid^="sprawa-prowadzacego-"]')).toHaveLength(0);
     expect(zmierz(container)).toEqual(JEDEN);

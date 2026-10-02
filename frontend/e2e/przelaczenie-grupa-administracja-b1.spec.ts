@@ -156,7 +156,7 @@ test.describe("partia przełączenia administracji — pulpit i formy stażu wł
     await page.goto("/admin/formy-stazu");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    await expect(page.getByText("Ta funkcja jest dostępna tylko dla administracji.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeVisible();
     await expect(page.getByText(FORMA.name)).toHaveCount(0);
     await expect(page.locator("main")).toHaveCount(1);
     await expect(page.locator("#tresc")).toHaveCount(1);

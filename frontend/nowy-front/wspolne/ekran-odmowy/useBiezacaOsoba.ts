@@ -25,9 +25,10 @@ export function useBiezacaOsoba(): BiezacaOsoba | null {
 
   useEffect(() => {
     let aktywny = true;
-    api<{ first_name?: unknown; role?: unknown }>("/me")
+    // Odczyt konta nie może zepsuć ekranu odmowy: wyjątek w samym wywołaniu też kończy się „bez zdania o osobie”.
+    new Promise<{ first_name?: unknown; role?: unknown }>((rozwiaz) => rozwiaz(api<{ first_name?: unknown; role?: unknown }>("/me")))
       .then((konto) => {
-        if (!aktywny) return;
+        if (!aktywny || konto === null || typeof konto !== "object") return;
         const rola = tekst(konto.role);
         setOsoba({
           imie: tekst(konto.first_name),

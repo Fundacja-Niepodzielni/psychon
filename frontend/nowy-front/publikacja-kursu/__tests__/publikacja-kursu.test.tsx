@@ -133,7 +133,7 @@ describe("stany ekranu w szablonie formularza", () => {
   it("403: komunikat o braku dostępu, jeden main, znacznik szablonu", async () => {
     serwer({ GET: blad(403, "forbidden", "Nie masz dostępu do tego zasobu.") });
     const { container } = wyrenderuj();
-    expect(await screen.findByText(/tylko dla administracji/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ten ekran jest dla administracji/)).toBeInTheDocument();
     expect(() => jedenMain(container)).not.toThrow();
     expect(znacznikSzablonu(container)).toBe("szablon-formularz");
     expect(screen.queryByRole("button", { name: "Opublikuj kurs" })).toBeNull();
@@ -151,7 +151,7 @@ describe("stany ekranu w szablonie formularza", () => {
     const s = serwer({ GET: kurs() });
     const { container } = wyrenderuj("abc");
     expect(await screen.findByText("Nie znaleziono kursu")).toBeInTheDocument();
-    expect(s.dziennik).toHaveLength(0);
+    expect(s.dziennik.filter((wpis) => !wpis.adres.endsWith("/me"))).toHaveLength(0);
     expect(znacznikSzablonu(container)).toBe("szablon-formularz");
   });
 

@@ -12,7 +12,7 @@ import {
   type KolumnaRecordList,
   type WierszRecordList,
 } from "@/design-system/organizmy/RecordList/RecordList";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
@@ -318,12 +318,7 @@ export function Sprawy() {
     );
   } else if (stanEkranu === "brak-uprawnien") {
     lista = (
-      <EmptyState
-        wariant="brak-uprawnien"
-        naglowek="Sekcja dla administracji"
-        rola="administracji"
-        przycisk={{ etykieta: "Wstecz", onClick: () => router.back() }}
-      />
+      <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wstecz", onClick: () => router.back() }} />
     );
   } else {
     filtry = (

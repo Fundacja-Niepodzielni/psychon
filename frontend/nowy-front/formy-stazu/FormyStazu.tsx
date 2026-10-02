@@ -13,7 +13,7 @@ import {
   type KolumnaRecordList,
   type WierszRecordList,
 } from "@/design-system/organizmy/RecordList/RecordList";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
@@ -244,12 +244,7 @@ export function FormyStazu() {
     return (
       <Korzen>
         <Heading stopien={1}>Słownik form stażu</Heading>
-        <EmptyState
-          wariant="brak-uprawnien"
-          naglowek="Słownik form stażu dla administracji"
-          rola="administracji"
-          przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
-        />
+        <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: () => router.back() }} />
       </Korzen>
     );
   }
