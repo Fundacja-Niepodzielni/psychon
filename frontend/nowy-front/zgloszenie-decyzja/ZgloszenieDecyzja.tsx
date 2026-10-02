@@ -19,6 +19,7 @@ import {
   pobierzSkanDyplomu,
   poprawneId,
   wczytajZgloszenie,
+  type WiadomoscOdrzucenia,
   type Zgloszenie,
 } from "./dane";
 import style from "./ZgloszenieDecyzja.module.css";
@@ -193,6 +194,7 @@ interface WlasciwosciWidoku {
 function Widok({ poczatkowe, wroc, odswiez }: WlasciwosciWidoku) {
   const [zgloszenie, setZgloszenie] = useState(poczatkowe);
   const [zaproszenie, setZaproszenie] = useState<"sent" | "failed" | null>(null);
+  const [wiadomoscOdrzucenia, setWiadomoscOdrzucenia] = useState<WiadomoscOdrzucenia>(null);
   const [komunikat, setKomunikat] = useState<string | null>(null);
   const [bladSkanu, setBladSkanu] = useState<string | null>(null);
   const zamknijToast = useCallback(() => setKomunikat(null), []);
@@ -257,14 +259,16 @@ function Widok({ poczatkowe, wroc, odswiez }: WlasciwosciWidoku) {
         <PanelDecyzji
           zgloszenie={zgloszenie}
           zaproszenie={zaproszenie}
+          wiadomoscOdrzucenia={wiadomoscOdrzucenia}
           odswiez={odswiez}
           onZaakceptowano={(userId, wynikZaproszenia) => {
             setZgloszenie({ ...zgloszenie, status: "accepted", user_id: userId, decided_at: new Date().toISOString() });
             setZaproszenie(wynikZaproszenia);
             setKomunikat("Zgłoszenie zaakceptowane. Konto zostało utworzone.");
           }}
-          onOdrzucono={(odrzucone) => {
+          onOdrzucono={(odrzucone, wiadomosc) => {
             setZgloszenie(odrzucone);
+            setWiadomoscOdrzucenia(wiadomosc);
             setKomunikat("Zgłoszenie odrzucone.");
           }}
         />

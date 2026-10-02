@@ -129,6 +129,9 @@ describe("Zgłoszenie — decyzja: stany w szablonie, jeden main", () => {
     sprawdzSzablon(container);
     expect(screen.getByText(/Brak dyplomu ukończonych studiów psychologicznych\./)).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(0);
+    // Stan wiadomości do kandydata zna tylko odpowiedź odrzucenia — po ponownym wczytaniu ekran go nie zgaduje.
+    expect(screen.queryByText("Wiadomość z powodem została wysłana do kandydata.")).toBeNull();
+    expect(screen.queryByText("Wiadomość do kandydata nie została wysłana")).toBeNull();
   });
 
   it.each([401, 403])("brak uprawnień (%i): wariant odmowy z rolą w kolumnie głównej, zero danych zgłoszenia", async (status) => {
@@ -400,7 +403,7 @@ describe("Zgłoszenie — decyzja: odrzucenie z powodem", () => {
   });
 
   it("powód z odpowiedzią 200: ciało {reason}, powiadomienie, stan po decyzji bez przycisku głównego", async () => {
-    trasy({ show: ZGLOSZENIE, reject: ZGLOSZENIE_ODRZUCONE });
+    trasy({ show: ZGLOSZENIE, reject: { ...ZGLOSZENIE_ODRZUCONE, rejection_mail: "sent" } });
     const { container } = render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
     const uzytkownik = await otworzOdrzucenie();
@@ -410,7 +413,29 @@ describe("Zgłoszenie — decyzja: odrzucenie z powodem", () => {
     await screen.findByText("Zgłoszenie odrzucone.");
     expect(api).toHaveBeenLastCalledWith("/admin/applications/31/reject", { method: "POST", body: { reason: "Brak dyplomu." } });
     expect(screen.getByText(/Powód: Brak dyplomu ukończonych studiów psychologicznych\./)).toBeInTheDocument();
+    expect(screen.getByText("Wiadomość z powodem została wysłana do kandydata.")).toBeInTheDocument();
+    expect(screen.queryByText("Wiadomość do kandydata nie została wysłana")).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);
+    sprawdzSzablon(container);
+  });
+
+  it("wiadomość z powodem, która nie wyszła: ostrzeżenie obok decyzji, zgłoszenie zostaje odrzucone", async () => {
+    trasy({ show: ZGLOSZENIE, reject: { ...ZGLOSZENIE_ODRZUCONE, rejection_mail: "failed" } });
+    const { container } = render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+    const uzytkownik = await otworzOdrzucenie();
+    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Powód odrzucenia/ }), "Brak dyplomu.");
+    await uzytkownik.click(screen.getByRole("button", { name: "Odrzuć zgłoszenie" }));
+
+    expect(await screen.findByText("Wiadomość do kandydata nie została wysłana")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Zgłoszenie jest odrzucone, ale e-mail z powodem nie wyszedł. Sprawdź skrzynkę e-maili i skontaktuj się z kandydatem inną drogą.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Powód: Brak dyplomu ukończonych studiów psychologicznych\./)).toBeInTheDocument();
+    expect(screen.queryByText("Wiadomość z powodem została wysłana do kandydata.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Odrzuć zgłoszenie" })).toBeNull();
     sprawdzSzablon(container);
   });
 
@@ -500,7 +525,7 @@ describe("Zgłoszenie — decyzja: przycisk odrzucenia w stałym miejscu", () =>
     expect(rzadOdrzucenia().contains(screen.getByRole("button", { name: "Wróć do decyzji" }))).toBe(false);
   });
 
-  it("samo otwarcie pola powodu niczego nie wysyła, a przy polu stoi zdanie, że kandydat powodu nie dostaje", async () => {
+  it("samo otwarcie pola powodu niczego nie wysyła, a przy polu stoi zdanie, że kandydat zobaczy powód w e-mailu", async () => {
     ustawZgloszenie();
     render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
@@ -508,6 +533,7 @@ describe("Zgłoszenie — decyzja: przycisk odrzucenia w stałym miejscu", () =>
     await screen.findByRole("textbox", { name: /^Powód odrzucenia/ });
 
     expect(api.mock.calls.filter((wywolanie) => wywolanie[1]?.method === "POST")).toHaveLength(0);
-    expect(screen.getByText("Powód zostaje zapisany przy zgłoszeniu. Kandydat nie dostaje go w wiadomości.")).toBeInTheDocument();
+    expect(screen.getByText("Ten tekst zobaczy kandydat. Wyślemy go e-mailem na adres ze zgłoszenia.")).toBeInTheDocument();
+    expect(screen.queryByText(/Kandydat nie dostaje go w wiadomości/)).toBeNull();
   });
 });

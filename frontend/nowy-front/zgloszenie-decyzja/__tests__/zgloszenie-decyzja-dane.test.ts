@@ -39,6 +39,18 @@ describe("zgodność atrapy ze źródłem kształtu", () => {
     expect(Object.keys(ZGLOSZENIE).sort()).toEqual(klucze);
   });
 
+  it("odpowiedź odrzucenia niesie rejection_mail sent|failed obok zasobu zgłoszenia (ApplicationController::reject)", () => {
+    const kontroler = readFileSync(
+      join(process.cwd(), "..", "backend/app/Http/Controllers/Api/V1/Admin/ApplicationController.php"),
+      "utf-8",
+    );
+    const poczatek = kontroler.indexOf("public function reject(");
+    const cialo = kontroler.slice(poczatek, kontroler.indexOf("public function import(", poczatek));
+    expect(poczatek).toBeGreaterThan(-1);
+    expect(cialo).toMatch(/\.\.\.ApplicationResource::make\(\$application\)->resolve\(\$request\)/);
+    expect(cialo).toMatch(/'rejection_mail' => \$sent \? 'sent' : 'failed'/);
+  });
+
   it("odpowiedź akceptacji ma klucze schematu openapi.json", () => {
     const schemat = JSON.parse(readFileSync(join(process.cwd(), "..", "backend/openapi.json"), "utf-8"));
     const odpowiedz =
@@ -138,11 +150,23 @@ describe("akceptacja", () => {
 });
 
 describe("odrzucenie", () => {
-  it("POST reject z polem reason → zgłoszenie po zmianie", async () => {
+  it("POST reject z polem reason → zgłoszenie po zmianie i stan wiadomości do kandydata osobno", async () => {
     const odrzucone = { ...ZGLOSZENIE, status: "rejected" as const, rejection_reason: "Brak dyplomu." };
-    api.mockResolvedValue(odrzucone);
-    expect(await dane.odrzucZgloszenie(31, "Brak dyplomu.")).toEqual({ rodzaj: "odrzucono", zgloszenie: odrzucone });
+    api.mockResolvedValue({ ...odrzucone, rejection_mail: "sent" });
+    expect(await dane.odrzucZgloszenie(31, "Brak dyplomu.")).toEqual({ rodzaj: "odrzucono", zgloszenie: odrzucone, wiadomosc: "sent" });
     expect(api).toHaveBeenCalledWith("/admin/applications/31/reject", { method: "POST", body: { reason: "Brak dyplomu." } });
+  });
+
+  it.each([
+    ["failed", "failed"],
+    [undefined, null],
+    ["queued", null],
+  ])("rejection_mail %s → wiadomosc %s; zasób zgłoszenia bez tego pola", async (pole, oczekiwane) => {
+    const odrzucone = { ...ZGLOSZENIE, status: "rejected" as const, rejection_reason: "Brak dyplomu." };
+    api.mockResolvedValue(pole === undefined ? odrzucone : { ...odrzucone, rejection_mail: pole });
+    const wynik = await dane.odrzucZgloszenie(31, "Brak dyplomu.");
+    expect(wynik).toEqual({ rodzaj: "odrzucono", zgloszenie: odrzucone, wiadomosc: oczekiwane });
+    expect(wynik.rodzaj === "odrzucono" && "rejection_mail" in wynik.zgloszenie).toBe(false);
   });
 
   it("422 z polami, 409 rozstrzygnięte, 403, 404", async () => {

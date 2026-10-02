@@ -16,6 +16,7 @@ import {
   odrzucZgloszenie,
   rolaDomyslna,
   zaakceptujZgloszenie,
+  type WiadomoscOdrzucenia,
   type WynikAkceptacji,
   type WynikOdrzucenia,
   type Zgloszenie,
@@ -27,8 +28,10 @@ type Uwaga = Exclude<WynikAkceptacji | WynikOdrzucenia, { rodzaj: "zaakceptowano
 interface WlasciwosciPanelu {
   zgloszenie: Zgloszenie;
   zaproszenie: "sent" | "failed" | null;
+  /** Stan wiadomości z powodem do kandydata — znany tylko zaraz po odrzuceniu na tym ekranie. */
+  wiadomoscOdrzucenia: WiadomoscOdrzucenia;
   onZaakceptowano: (userId: number, zaproszenie: "sent" | "failed") => void;
-  onOdrzucono: (zgloszenie: Zgloszenie) => void;
+  onOdrzucono: (zgloszenie: Zgloszenie, wiadomosc: WiadomoscOdrzucenia) => void;
   odswiez: () => void;
 }
 
@@ -41,10 +44,20 @@ interface WlasciwosciPanelu {
  */
 export function PanelDecyzji(wlasciwosci: WlasciwosciPanelu) {
   if (wlasciwosci.zgloszenie.status === "new") return <Decyzja {...wlasciwosci} />;
-  return <PoDecyzji zgloszenie={wlasciwosci.zgloszenie} zaproszenie={wlasciwosci.zaproszenie} />;
+  return (
+    <PoDecyzji
+      zgloszenie={wlasciwosci.zgloszenie}
+      zaproszenie={wlasciwosci.zaproszenie}
+      wiadomoscOdrzucenia={wlasciwosci.wiadomoscOdrzucenia}
+    />
+  );
 }
 
-function PoDecyzji({ zgloszenie, zaproszenie }: Pick<WlasciwosciPanelu, "zgloszenie" | "zaproszenie">) {
+function PoDecyzji({
+  zgloszenie,
+  zaproszenie,
+  wiadomoscOdrzucenia,
+}: Pick<WlasciwosciPanelu, "zgloszenie" | "zaproszenie" | "wiadomoscOdrzucenia">) {
   if (zgloszenie.status === "accepted") {
     return (
       <section className={style.sekcja}>
@@ -74,6 +87,13 @@ function PoDecyzji({ zgloszenie, zaproszenie }: Pick<WlasciwosciPanelu, "zglosze
       <Notice wariant="ok" tytul="Zgłoszenie odrzucone">
         {`Decyzja z ${dataPl(zgloszenie.decided_at)}. Powód: ${zgloszenie.rejection_reason ?? "—"}`}
       </Notice>
+      {wiadomoscOdrzucenia === "sent" && <Text>Wiadomość z powodem została wysłana do kandydata.</Text>}
+      {wiadomoscOdrzucenia === "failed" && (
+        <Notice wariant="warn" tytul="Wiadomość do kandydata nie została wysłana">
+          Zgłoszenie jest odrzucone, ale e-mail z powodem nie wyszedł. Sprawdź skrzynkę e-maili i skontaktuj się z
+          kandydatem inną drogą.
+        </Notice>
+      )}
     </section>
   );
 }
@@ -184,7 +204,7 @@ function Decyzja({ zgloszenie, onZaakceptowano, onOdrzucono, odswiez }: Wlasciwo
     const wynik = await odrzucZgloszenie(zgloszenie.id, tekst);
     setWysylanie(false);
     if (wynik.rodzaj === "odrzucono") {
-      onOdrzucono(wynik.zgloszenie);
+      onOdrzucono(wynik.zgloszenie, wynik.wiadomosc);
     } else if (wynik.rodzaj === "bledy-pol") {
       setUwaga(null);
       setBledy({ powod: wynik.bledy.reason?.[0] ?? wynik.komunikat });
@@ -209,7 +229,7 @@ function Decyzja({ zgloszenie, onZaakceptowano, onOdrzucono, odswiez }: Wlasciwo
             wartosc={powod}
             onZmiana={setPowod}
             blad={bledy.powod}
-            podpowiedz="Powód zostaje zapisany przy zgłoszeniu. Kandydat nie dostaje go w wiadomości."
+            podpowiedz="Ten tekst zobaczy kandydat. Wyślemy go e-mailem na adres ze zgłoszenia."
           />
           <div className={style.rzad}>
             <Button
