@@ -30,6 +30,21 @@ const ATRAPA_SESJI = {
 
 const META = { current_page: 1, per_page: 100, total: 0, last_page: 1 };
 
+const TRESC_LEKCJI = [
+  "## Cel lekcji",
+  "",
+  "Po tej lekcji rozróżniasz pytania otwarte i zamknięte.",
+  "",
+  "- pytanie otwarte zaprasza do opowiadania",
+  "- pytanie zamknięte prowadzi do krótkiej odpowiedzi",
+  "",
+  "1. Zadaj pytanie otwarte.",
+  "2. Posłuchaj odpowiedzi.",
+  "3. Podsumuj własnymi słowami.",
+  "",
+  "Więcej: [materiały pomocnicze](https://przyklad.test/materialy)",
+].join("\n");
+
 const DLUGA_NAZWA_PLIKU = `karta_pracy_do_lekcji_o_pytaniach_otwartych_i_zamknietych_${"wersja_poprawiona_".repeat(5)}2026.pdf`;
 
 interface Material {
@@ -59,7 +74,7 @@ function lekcja(id: number, title: string, materialsCount: number) {
     course_id: 4,
     title,
     description: "Kiedy pytać otwarcie, a kiedy zamknąć pytanie.",
-    content: null,
+    content: id === 22 ? TRESC_LEKCJI : null,
     sequence_order: id - 20,
     topic_id: 7,
     topic_position: id - 20,
@@ -196,6 +211,8 @@ async function zmierzStan(page: Page): Promise<void> {
       ),
     )
       .filter((element) => element.getClientRects().length > 0)
+      // Odnośnik w samym tekście treści jest wyjęty z miary (reguła 2.5.8: odnośnik w zdaniu).
+      .filter((element) => !(element.tagName === "A" && element.closest("[contenteditable]")))
       .map((element) => {
         const ramka = element.getBoundingClientRect();
         return {
