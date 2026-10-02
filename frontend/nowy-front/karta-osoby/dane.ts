@@ -76,9 +76,17 @@ export interface WpisDziennikaKarty {
   created_at: string | null;
 }
 
+/** `AdminUserCardResource` — dokument osoby: rodzaj ze słownika zamkniętego i numer. */
+export interface DokumentOsobyKarty {
+  id: number;
+  type: string;
+  number: string;
+}
+
 export interface KartaOsobyDane {
   profile: ProfilOsobyKarty;
   progress: PostepOsobyKarty;
+  documents?: DokumentOsobyKarty[];
   recent_notifications: PowiadomienieKarty[];
   audit_entries: WpisDziennikaKarty[];
 }

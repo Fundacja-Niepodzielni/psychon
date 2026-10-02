@@ -19,6 +19,7 @@ import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { ApiError } from "@/lib/api/klient";
 import { markWorkshopComplete } from "@/lib/api/h10";
+import { DOCUMENT_TYPE_LABELS } from "@/lib/h18/labels";
 import { CzynnosciAdministracji } from "./CzynnosciAdministracji";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
@@ -395,6 +396,25 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
         }
         wsparcie={
           <div className={style.sekcjeRzadkie}>
+            <CollapsibleSection
+              tytul="Dokumenty"
+              liczba={(karta.documents ?? []).length}
+              dzieci={
+                (karta.documents ?? []).length === 0 ? (
+                  <Text wariant="pusty">Brak dokumentów.</Text>
+                ) : (
+                  <ul className={style.listaPowiadomien} data-testid="dokumenty-lista">
+                    {(karta.documents ?? []).map((dokument) => (
+                      <li key={dokument.id}>
+                        <Text>{DOCUMENT_TYPE_LABELS[dokument.type] ?? dokument.type}</Text>
+                        <Text wariant="pusty">{dokument.number}</Text>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              }
+            />
+
             <CollapsibleSection
               tytul="Powiadomienia"
               liczba={karta.recent_notifications.length}
