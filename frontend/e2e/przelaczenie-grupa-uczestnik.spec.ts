@@ -2,16 +2,16 @@ import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 
 /**
- * Miara dla grup przełączenia `pulpitUczestnika` (`wlaczona: true`), `lekcja` i
- * `kursUczestnika` (obie `wlaczona: false`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
+ * Miara dla grup przełączenia `pulpitUczestnika` i `lekcja` (obie `wlaczona: true`) oraz
+ * `kursUczestnika` (`wlaczona: false`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
  * zmienia — zmienia się treść strony — więc sprawdzane jest to, co widzi
  * osoba w przeglądarce:
  * - wpis „Pulpit” w menu uczestnika prowadzi na `/panel/pulpit`, a tam stoi
  *   ekran nowego frontu (lista „Twoja ścieżka”), nie stary „Mapa rozwoju”;
- * - `/panel/lekcje/[id]` pokazuje STARĄ stronę lekcji (grupa `lekcja` jest
- *   wyłączona): `h1` „Lekcja”, odnośnik „Wróć do listy kursów” i „Aktywny
- *   czas:” — a nie ekran lekcji nowego frontu (`h1` z tytułem lekcji, przycisk
- *   „Oznacz lekcję jako ukończoną”);
+ * - `/panel/lekcje/[id]` pokazuje ekran lekcji nowego frontu (grupa `lekcja` jest
+ *   włączona): `h1` z tytułem lekcji i przycisk „Oznacz lekcję jako ukończoną” —
+ *   a nie dotychczasową stronę (`h1` „Lekcja”, odnośnik „Wróć do listy kursów”,
+ *   „Aktywny czas:”);
  * - `/panel/kursy/[slug]` pokazuje STARĄ stronę kursu (grupa `kursUczestnika`
  *   jest wyłączona): bez opisu „na końcu test”, bez karty „Test końcowy” i bez
  *   przycisku głównego nowego ekranu;
@@ -127,7 +127,7 @@ function zbierz404(page: Page): string[] {
   return kody404;
 }
 
-test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego frontu), lekcja wyłączona (stara strona) — ten sam adres", () => {
+test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego frontu), lekcja włączona (nowy ekran), kurs wyłączony (stara strona) — ten sam adres", () => {
   test("pulpit: wpis „Pulpit” w menu prowadzi na /panel/pulpit, tam stoi ekran nowego frontu, jeden main; 0 odpowiedzi 404", async ({
     page,
   }) => {
@@ -153,7 +153,7 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
 
-  test("lekcja: /panel/lekcje/21 pokazuje starą stronę lekcji (grupa wyłączona), bez elementów nowego ekranu, jeden main; 0 odpowiedzi 404", async ({
+  test("lekcja: /panel/lekcje/21 pokazuje ekran lekcji nowego frontu (grupa włączona), bez elementów dotychczasowej strony, jeden main; 0 odpowiedzi 404", async ({
     page,
   }) => {
     const kody404 = zbierz404(page);
@@ -162,16 +162,16 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     await page.goto("/panel/lekcje/21");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    // Stara strona: `h1` „Lekcja” i odnośnik powrotu (`StaraTresc.tsx`),
-    // „Aktywny czas:” (`components/lesson/LessonPlayer.tsx`).
-    await expect(page.getByRole("heading", { level: 1, name: "Lekcja", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Wróć do listy kursów" })).toBeVisible();
-    await expect(page.getByText("Aktywny czas:")).toBeVisible();
-
     // Nowy ekran: `h1` z tytułem lekcji i przycisk „Oznacz lekcję jako ukończoną”
-    // (`nowy-front/lekcja/Lekcja.tsx`) — przy wyłączonej grupie ich nie ma.
-    await expect(page.getByRole("heading", { level: 1, name: LEKCJA.title })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).toHaveCount(0);
+    // (`nowy-front/lekcja/Lekcja.tsx`).
+    await expect(page.getByRole("heading", { level: 1, name: LEKCJA.title })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Oznacz lekcję jako ukończoną" }).first()).toBeVisible();
+
+    // Dotychczasowa strona: `h1` „Lekcja”, odnośnik „Wróć do listy kursów”,
+    // „Aktywny czas:” — przy włączonej grupie ich nie ma.
+    await expect(page.getByRole("heading", { level: 1, name: "Lekcja", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Wróć do listy kursów" })).toHaveCount(0);
+    await expect(page.getByText("Aktywny czas:")).toHaveCount(0);
 
     await expect(page.locator("main")).toHaveCount(1);
     await expect(page.locator("#tresc")).toHaveCount(1);

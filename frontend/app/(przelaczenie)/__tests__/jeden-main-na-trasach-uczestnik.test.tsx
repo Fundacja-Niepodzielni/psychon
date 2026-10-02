@@ -105,10 +105,9 @@ function trasaPulpitu() {
 }
 
 /**
- * Grupa `lekcja` jest wyłączona, więc strona pod `/panel/lekcje/[id]` zwraca starą
- * treść. Ekran lekcji nowego frontu jest nadal mierzony w układzie panelu wprost
- * (ten sam element, który strona zwraca po włączeniu grupy), żeby jeden `main`
- * był pilnowany, zanim grupa wróci.
+ * Grupa `lekcja` jest włączona, więc strona pod `/panel/lekcje/[id]` zwraca
+ * ekran lekcji nowego frontu. Test renderuje ten ekran w układzie panelu wprost
+ * (ten sam element, który strona zwraca), żeby pilnować jednego `main`.
  */
 async function trasaLekcji() {
   return render(
