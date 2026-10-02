@@ -30,6 +30,7 @@ import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { zdanieRuchuMiedzyGrupami, zdanieRuchuWiersza } from "@/design-system/molekuly/StrzalkiKolejnosci/zdania";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { PasekPotwierdzenia, usePasekPotwierdzenia } from "@/nowy-front/wspolne/pasek-potwierdzenia";
 import { CourseTree } from "@/design-system/organizmy/CourseTree/CourseTree";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
@@ -330,6 +331,7 @@ function EdytorTematow({
   // przeniesiona lekcja i że zmiany zostały zapisane. Zdarzenia, które mają już
   // `Toast` albo `Notice`, tu nie trafiają — nie byłyby czytane dwa razy.
   const [ogloszenie, setOgloszenie] = useState("");
+  const pasek = usePasekPotwierdzenia();
   const [nowaLekcja, setNowaLekcja] = useState<FormularzNowejLekcji | null>(null);
   const [bledyNowejLekcji, setBledyNowejLekcji] = useState<BledyFormularza & { ogolny?: string }>({});
   // Lekcje założone i usunięte na tym ekranie — drzewo zmienia się bez ponownego
@@ -723,12 +725,14 @@ function EdytorTematow({
         : poprzedni,
     );
     setBladTresci(null);
+    pasek.ukryj();
   }
 
   async function zapisz() {
     if (stan.rodzaj !== "gotowy" || zapisywanie) return;
     const { serwer, lokalny } = stan;
     setZapisywanie(true);
+    pasek.ukryj();
     setBladTresci(null);
     setUkladNieaktualny(false);
     let wysylanyUklad = false;
@@ -770,7 +774,9 @@ function EdytorTematow({
           ostatniTytul: poprzedni.ostatniTytul,
         };
       });
-      setOgloszenie("Zmiany w kursie zostały zapisane.");
+      // Pasek ma rolę „status”, więc czytnik czyta zdanie raz — z obszaru ogłoszeń je pomijam.
+      setOgloszenie("");
+      pasek.powodzenie("Zmiany w kursie zostały zapisane.");
     } catch (blad) {
       // Stan lokalny zostaje nietknięty — osoba poprawia i zapisuje ponownie.
       setOgloszenie("");
@@ -999,6 +1005,7 @@ function EdytorTematow({
       {/* Ekran z sekcjami pod drzewem (administracja): tematy są nagłówkami
           trzeciego stopnia, więc drzewo dostaje własny nagłówek drugiego. */}
       {podDrzewem && tematyUkladu.length > 0 && <Heading stopien={2}>Tematy i lekcje</Heading>}
+      <PasekPotwierdzenia komunikat={pasek.komunikat} onZamknij={pasek.ukryj} />
       {bladPublikacji && (
         <Notice wariant="error" tytul={bladPublikacji.tytul}>
           {bladPublikacji.tresc}

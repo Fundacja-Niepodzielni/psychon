@@ -401,3 +401,49 @@ describe("A-12 — akcja główna „Opublikuj kurs”", () => {
     expect(await screen.findByText("Nowy opis.")).toBeInTheDocument();
   });
 });
+
+describe("A-12 — potwierdzenie zapisu układu", () => {
+  async function zapiszPoRuchu() {
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
+    await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
+  }
+
+  it("przed zapisem nie ma paska, po zapisie widać jedno zdanie w roli „status” i obszar ogłoszeń go nie dubluje", async () => {
+    const { container } = await renderGotowy();
+    expect(screen.queryByRole("status")).toBeNull();
+    zapiszUkladTematow.mockResolvedValue([temat(7, "Wprowadzenie", 1, [21]), temat(8, "Praktyka", 2, [22, 23])]);
+
+    await zapiszPoRuchu();
+
+    const pasek = await screen.findByRole("status");
+    expect(pasek).toHaveTextContent("Zmiany w kursie zostały zapisane.");
+    expect(container.querySelector("[data-ogloszenia]")).toBeEmptyDOMElement();
+  });
+
+  it("odmowa serwera nie pokazuje paska potwierdzenia", async () => {
+    await renderGotowy();
+    zapiszUkladTematow.mockRejectedValue(
+      new ApiError({ status: 422, code: "validation_failed", message: "Popraw zaznaczone pola.", errors: { topics: ["x"] } }),
+    );
+
+    await zapiszPoRuchu();
+
+    await screen.findByRole("button", { name: "Wczytaj aktualny układ" });
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("następny ruch i następny zapis zastępują pasek, zamknięcie oddaje fokus nagłówkowi", async () => {
+    await renderGotowy();
+    zapiszUkladTematow.mockResolvedValue([temat(7, "Wprowadzenie", 1, [21]), temat(8, "Praktyka", 2, [22, 23])]);
+    await zapiszPoRuchu();
+    await screen.findByRole("status");
+
+    await userEvent.click(screen.getByRole("button", { name: "Zamknij komunikat" }));
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(document.activeElement?.tagName).toBe("H1");
+
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” wyżej" }));
+    await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Zmiany w kursie zostały zapisane.");
+  });
+});
