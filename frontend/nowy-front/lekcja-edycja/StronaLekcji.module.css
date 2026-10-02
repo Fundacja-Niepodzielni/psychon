@@ -219,3 +219,8 @@
     display: none;
   }
 }
+
+/* Zdanie licznika plików przyjmuje fokus programowy po usunięciu ostatniego pliku z listy. */
+.zdanieLicznika {
+  min-width: 0;
+}

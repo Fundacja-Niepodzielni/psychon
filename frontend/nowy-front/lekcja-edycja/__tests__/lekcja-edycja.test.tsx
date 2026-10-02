@@ -70,6 +70,18 @@ interface Ustawienia {
   patch?: (cialo: CialoLekcji) => LekcjaAdmin;
 }
 
+function plikiLekcji(liczba: number): MaterialAdmin[] {
+  return Array.from({ length: liczba }, (_, i) => ({
+    id: i + 1,
+    name: `plik-${i + 1}.pdf`,
+    mime: "application/pdf",
+    size: 1024,
+    lesson_id: 21,
+    course_id: null,
+    created_at: null,
+  }));
+}
+
 /** Atrapa API: odpowiada na każdą z tras ekranu; reszta tras nie istnieje. */
 function ustawApi({ rola = "super_admin", lekcje = [LEKCJA, INNA_LEKCJA], nagranie = BRAK_NAGRANIA, patch }: Ustawienia = {}) {
   pobierzJa.mockResolvedValue({ program_completed_at: null, role: rola });
@@ -77,6 +89,9 @@ function ustawApi({ rola = "super_admin", lekcje = [LEKCJA, INNA_LEKCJA], nagran
     const metoda = opcje?.method ?? "GET";
     if (metoda === "GET" && sciezka === "/admin/courses/3/lessons") return lekcje;
     if (metoda === "GET" && sciezka === "/admin/lessons/21/video-status") return nagranie;
+    if (metoda === "GET" && sciezka === "/admin/lessons/21/materials") {
+      return plikiLekcji(lekcje.find((kandydat) => kandydat.id === 21)?.materials_count ?? 0);
+    }
     if (metoda === "PATCH" && sciezka === "/admin/lessons/21") {
       const cialo = opcje?.body;
       if (!cialo) throw new Error("Zapis bez ciała");
@@ -672,7 +687,7 @@ describe("pliki lekcji", () => {
     expect(cialo).toBeInstanceOf(FormData);
     expect((cialo.get("file") as File).name).toBe("karta.pdf");
     expect(screen.getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
-    const lista = screen.getByRole("list", { name: "Pliki dodane teraz" });
+    const lista = screen.getByRole("list", { name: "Pliki lekcji" });
     expect(within(lista).getByText("PDF · 4 B")).toBeInTheDocument();
     expect(within(lista).getByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
     expect(
@@ -1083,10 +1098,15 @@ describe("wyjście z niezapisanym tekstem", () => {
 });
 
 describe("trasy ekranu", () => {
-  it("odczyt tylko listy lekcji kursu, roli i stanu nagrania; bez tras tematów", async () => {
+  it("odczyt tylko listy lekcji kursu, roli, stanu nagrania i listy plików lekcji; bez tras tematów", async () => {
     await renderujDane();
+    await screen.findByRole("list", { name: "Pliki lekcji" });
     const adresy = api.mock.calls.map(([adres, opcje]) => `${(opcje as { method?: string } | undefined)?.method ?? "GET"} ${adres}`);
-    expect(adresy.sort()).toEqual(["GET /admin/courses/3/lessons", "GET /admin/lessons/21/video-status"]);
+    expect(adresy.sort()).toEqual([
+      "GET /admin/courses/3/lessons",
+      "GET /admin/lessons/21/materials",
+      "GET /admin/lessons/21/video-status",
+    ]);
     expect(pobierzJa).toHaveBeenCalledTimes(1);
   });
 });

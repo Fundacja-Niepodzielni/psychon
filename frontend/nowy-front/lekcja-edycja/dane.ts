@@ -8,7 +8,7 @@ import { pobierzJa } from "@/lib/api/h01-wspolpraca";
  *    lekcji kursu; trasy „jedna lekcja po identyfikatorze” dla administracji
  *    nie ma, więc lekcję wybiera się z listy kursu;
  *  - zapis: `PATCH /admin/lessons/{lesson}` (`h08.php:45`);
- *  - materiał: `POST /admin/lessons/{lesson}/materials` (`h08.php:66`);
+ *  - materiały: `GET` i `POST /admin/lessons/{lesson}/materials` (`h08.php:66-67`);
  *  - nagranie: `POST /admin/lessons/{lesson}/video-uploads` (`video.php:23`) i
  *    `GET /admin/lessons/{lesson}/video-status` (`video.php:27`) — obie dla
  *    `project_manager` i `super_admin`;
@@ -153,6 +153,18 @@ function cialoPliku(plik: File): FormData {
   const cialo = new FormData();
   cialo.append("file", plik);
   return cialo;
+}
+
+/** Najwięcej pozycji odczytu listy plików lekcji (`MaterialAdminController::LESSON_LIST_LIMIT`). */
+export const LIMIT_LISTY_MATERIALOW = 200;
+
+/**
+ * `GET /admin/lessons/{lesson}/materials` → lista `AdminMaterial` w kolejności
+ * serwera (`created_at`, potem `id`), bez stronicowania i bez parametrów;
+ * serwer zwraca najwyżej `LIMIT_LISTY_MATERIALOW` pozycji.
+ */
+export function pobierzMaterialyLekcji(idLekcji: number): Promise<MaterialAdmin[]> {
+  return api<MaterialAdmin[]>(`/admin/lessons/${idLekcji}/materials`);
 }
 
 /** Multipart z polem `file` (`StoreMaterialRequest::rules`, w. 31). */

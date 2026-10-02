@@ -145,6 +145,25 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
           ),
         );
       }
+      const odczytPlikow = /^\/admin\/lessons\/(\d+)\/materials$/.exec(sciezka);
+      if (odczytPlikow && metoda === "GET") {
+        // Odczyt listy plików lekcji: tyle plików, ile mówi `materials_count` lekcji.
+        const idLekcji = Number(odczytPlikow[1]);
+        const liczba = lekcje.find((wpis) => wpis.id === idLekcji)?.materials_count ?? 0;
+        return route.fulfill(
+          json(
+            Array.from({ length: liczba }, (_, i) => ({
+              id: 900 + i,
+              name: `plik-wczesniej-${i + 1}.pdf`,
+              mime: "application/pdf",
+              size: 120 * 1024,
+              lesson_id: idLekcji,
+              course_id: null,
+              created_at: null,
+            })),
+          ),
+        );
+      }
       if (/^\/admin\/lessons\/\d+\/materials$/.test(sciezka) && metoda === "POST") {
         // Serwer liczy pliki lekcji sam: po wgraniu kolejny odczyt lekcji niesie liczbę o jeden większą.
         lekcje = lekcje.map((wpis) => (wpis.id === 22 ? { ...wpis, materials_count: wpis.materials_count + 1 } : wpis));
@@ -438,7 +457,8 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await page
         .locator("input[type='file'][id$='-plik-materialu']")
         .setInputFiles({ name: DLUGA_NAZWA_PLIKU, mimeType: "application/pdf", buffer: Buffer.from("%PDF-") });
-      const lista = page.getByRole("list", { name: "Pliki dodane teraz" });
+      const lista = page.getByRole("list", { name: "Pliki lekcji" });
+      await expect(lista.getByRole("listitem")).toHaveCount(4);
       await expect(lista.getByText(DLUGA_NAZWA_PLIKU, { exact: true })).toBeVisible();
       await expect(lista.getByText(/^PDF · 410.KB$/)).toBeVisible();
       await expect(page.getByText("Ta lekcja ma 4 pliki.")).toBeVisible();

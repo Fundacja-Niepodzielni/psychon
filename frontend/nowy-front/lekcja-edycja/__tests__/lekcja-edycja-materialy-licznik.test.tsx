@@ -1,15 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { LekcjaAdmin, MaterialAdmin, StanNagrania } from "../dane";
 
 /**
  * Karta „Pliki do tej lekcji” strony lekcji:
- *  - licznik materiałów pochodzi z zaplecza (`materials_count` lekcji) i ma
- *    poprawną formę liczby;
- *  - lekcja z materiałami wgranymi wcześniej nie wygląda jak pusta: ekran mówi
- *    jednym zdaniem, że ich lista pojawi się w kolejnym kroku;
- *  - licznik 0 to stan pusty, bez tego zdania;
+ *  - po wejściu pokazuje WSZYSTKIE pliki lekcji z odczytu serwera
+ *    (`GET /admin/lessons/{id}/materials`), w kolejności serwera, w jednym
+ *    wspólnym wyglądzie wiersza (nazwa, typ i rozmiar, „Usuń”);
+ *  - licznik jest długością tej listy; `materials_count` zasobu lekcji służy
+ *    tylko do czasu pierwszej odpowiedzi odczytu;
+ *  - dodanie i usunięcie odświeżają listę i licznik bez przeładowania;
+ *  - stany: wczytywanie, pusty, błąd odczytu (zdanie + „Spróbuj ponownie”),
+ *    odmowa roli, odpowiedź z 200 pozycjami;
  *  - wgrany plik widać raz: jeden wiersz z nazwą i „Usuń”; wiersz stanu jest
  *    tylko w trakcie wgrywania albo przy błędzie.
  */
@@ -53,33 +56,62 @@ function lekcja(liczbaMaterialow: number): LekcjaAdmin {
 
 const BRAK_NAGRANIA: StanNagrania = { status: "no_video" };
 
-const WGRANY: MaterialAdmin = {
-  id: 9,
-  name: "karta.pdf",
-  mime: "application/pdf",
-  size: 4,
-  lesson_id: 21,
-  course_id: null,
-  created_at: null,
-};
+function material(id: number, nazwa: string, rozmiar: number | null = 4096): MaterialAdmin {
+  return {
+    id,
+    name: nazwa,
+    mime: "application/pdf",
+    size: rozmiar,
+    lesson_id: 21,
+    course_id: null,
+    created_at: null,
+  };
+}
 
-const ZDANIE_O_LISCIE =
-  "Lista wcześniej wgranych plików pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
+const WGRANY = material(9, "karta.pdf", 4);
+const WCZESNIEJSZE = [material(1, "porady.pdf", 2048), material(2, "slajdy.pptx", 1048576), material(3, "mapa.png", 512)];
 
+type Wynik = unknown;
+type Odczyt = () => Wynik | Promise<Wynik>;
 type Wgranie = () => unknown;
 
-async function renderEkranu(liczbaMaterialow: number, wgranie: Wgranie = () => WGRANY) {
+interface Ustawienia {
+  /** Pole `materials_count` zasobu lekcji. */
+  licznikLekcji?: number;
+  odczyt?: Odczyt;
+  wgranie?: Wgranie;
+  usuniecie?: (id: number) => Wynik;
+}
+
+function odczytyListy(): unknown[][] {
+  return api.mock.calls.filter(([sciezka, opcje]) => sciezka === "/admin/lessons/21/materials" && !opcje?.method);
+}
+
+async function renderEkranu(ustawienia: Ustawienia = {}) {
+  const odczyt = ustawienia.odczyt ?? (() => WCZESNIEJSZE);
+  const licznikLekcji = ustawienia.licznikLekcji ?? 3;
   pobierzJa.mockResolvedValue({ program_completed_at: null, role: "project_manager" });
   api.mockImplementation(async (sciezka: string, opcje?: { method?: string }) => {
     const metoda = opcje?.method ?? "GET";
-    if (metoda === "GET" && sciezka === "/admin/courses/3/lessons") return [lekcja(liczbaMaterialow)];
+    if (metoda === "GET" && sciezka === "/admin/courses/3/lessons") return [lekcja(licznikLekcji)];
     if (metoda === "GET" && sciezka === "/admin/lessons/21/video-status") return BRAK_NAGRANIA;
-    if (metoda === "POST" && sciezka === "/admin/lessons/21/materials") {
-      const wynik = wgranie();
+    if (metoda === "GET" && sciezka === "/admin/lessons/21/materials") {
+      const wynik = await odczyt();
       if (wynik instanceof Error) throw wynik;
       return wynik;
     }
-    if (metoda === "DELETE" && sciezka === "/admin/materials/9") return { id: 9, deleted: true };
+    if (metoda === "POST" && sciezka === "/admin/lessons/21/materials") {
+      const wynik = (ustawienia.wgranie ?? (() => WGRANY))();
+      if (wynik instanceof Error) throw wynik;
+      return wynik;
+    }
+    const usuwany = /^\/admin\/materials\/(\d+)$/.exec(sciezka);
+    if (metoda === "DELETE" && usuwany) {
+      const id = Number(usuwany[1]);
+      const wynik = ustawienia.usuniecie ? ustawienia.usuniecie(id) : { id, deleted: true };
+      if (wynik instanceof Error) throw wynik;
+      return wynik;
+    }
     throw new Error(`Nieoczekiwana trasa: ${metoda} ${sciezka}`);
   });
   const uzytkownik = userEvent.setup();
@@ -92,9 +124,24 @@ function sekcja(): HTMLElement {
   return screen.getByRole("heading", { level: 2, name: "Pliki do tej lekcji" }).closest("section")!;
 }
 
+function lista(): HTMLElement {
+  return within(sekcja()).getByRole("list", { name: "Pliki lekcji" });
+}
+
+function nazwyNaLiscie(): string[] {
+  return within(lista())
+    .getAllByRole("listitem")
+    .map((wiersz) => wiersz.querySelector("strong")?.textContent ?? "");
+}
+
 async function wgraj(container: HTMLElement, uzytkownik: ReturnType<typeof userEvent.setup>, nazwa = "karta.pdf") {
   const wejscie = container.querySelector<HTMLInputElement>('input[type="file"][id$="-plik-materialu"]')!;
   await uzytkownik.upload(wejscie, new File(["%PDF"], nazwa, { type: "application/pdf" }));
+}
+
+async function usunPlik(uzytkownik: ReturnType<typeof userEvent.setup>, nazwa: string) {
+  await uzytkownik.click(screen.getByRole("button", { name: `Usuń plik ${nazwa}` }));
+  await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń plik" }));
 }
 
 beforeEach(() => {
@@ -102,22 +149,63 @@ beforeEach(() => {
   pobierzJa.mockReset();
 });
 
-describe("licznik materiałów lekcji i zdanie o wcześniej wgranych", () => {
-  it("licznik 3: zdanie z liczbą i zdanie o liście; nie ma stanu pustego", async () => {
-    await renderEkranu(3);
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
-    expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
-    expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
-    expect(within(sekcja()).queryByText("Ta lekcja nie ma jeszcze plików.")).toBeNull();
-    expect(within(sekcja()).queryByText(/Brak materiałów/)).toBeNull();
+describe("lista plików wgranych wcześniej (S1, S7)", () => {
+  it("lekcja z plikami z odczytu pokazuje je wszystkie po wejściu: nazwa, typ i rozmiar, „Usuń”; kolejność z serwera", async () => {
+    await renderEkranu();
+
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    expect(nazwyNaLiscie()).toEqual(["porady.pdf", "slajdy.pptx", "mapa.png"]);
+    const wiersze = within(lista()).getAllByRole("listitem");
+    expect(wiersze[0]).toHaveTextContent("PDF · 2 KB");
+    expect(wiersze[1]).toHaveTextContent("PPTX · 1,0 MB");
+    expect(wiersze[2]).toHaveTextContent("PNG · 512 B");
+    for (const nazwa of ["porady.pdf", "slajdy.pptx", "mapa.png"]) {
+      expect(within(sekcja()).getByRole("button", { name: `Usuń plik ${nazwa}` })).toHaveTextContent("Usuń");
+    }
   });
 
-  it("licznik 0: stan pusty, bez zdania o liście", async () => {
-    await renderEkranu(0);
+  it("odczyt idzie dokładnie pod GET /admin/lessons/{id}/materials, bez parametrów, raz", async () => {
+    await renderEkranu();
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
 
-    expect(within(sekcja()).getByText("Ta lekcja nie ma jeszcze plików.")).toBeInTheDocument();
-    expect(within(sekcja()).queryByText(ZDANIE_O_LISCIE)).toBeNull();
-    expect(within(sekcja()).queryByText(/^Ta lekcja ma /)).toBeNull();
+    expect(api).toHaveBeenCalledWith("/admin/lessons/21/materials");
+    expect(odczytyListy()).toEqual([["/admin/lessons/21/materials"]]);
+    expect(api.mock.calls.filter(([sciezka]) => String(sciezka).includes("materials?"))).toEqual([]);
+  });
+
+  it("zdania roboczego o liście nie ma na ekranie", async () => {
+    await renderEkranu();
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+
+    expect(within(sekcja()).queryByText(/wcześniej wgranych plików pojawi/)).toBeNull();
+    expect(within(sekcja()).queryByText(/na razie widać tylko/)).toBeNull();
+  });
+});
+
+describe("licznik = długość listy (S2)", () => {
+  it("do czasu odpowiedzi odczytu liczy `materials_count` i mówi, że lista się wczytuje", async () => {
+    let odpowiedz: (pliki: MaterialAdmin[]) => void = () => undefined;
+    await renderEkranu({ licznikLekcji: 5, odczyt: () => new Promise<MaterialAdmin[]>((ok) => (odpowiedz = ok)) });
+
+    expect(within(sekcja()).getByText("Ta lekcja ma 5 plików.")).toBeInTheDocument();
+    expect(within(sekcja()).getByText("Wczytywanie listy plików…")).toBeInTheDocument();
+    expect(within(sekcja()).queryByRole("list", { name: "Pliki lekcji" })).toBeNull();
+
+    odpowiedz(WCZESNIEJSZE);
+    expect(await within(sekcja()).findByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
+    expect(within(sekcja()).queryByText("Wczytywanie listy plików…")).toBeNull();
+  });
+
+  it("po odpowiedzi licznik to długość listy, także gdy `materials_count` mówił co innego", async () => {
+    await renderEkranu({ licznikLekcji: 7, odczyt: () => [material(1, "jedyny.pdf")] });
+
+    expect(await within(sekcja()).findByText("Ta lekcja ma 1 plik.")).toBeInTheDocument();
+    expect(within(sekcja()).queryByText("Ta lekcja ma 7 plików.")).toBeNull();
+    expect(nazwyNaLiscie()).toEqual(["jedyny.pdf"]);
   });
 
   it.each([
@@ -128,39 +216,214 @@ describe("licznik materiałów lekcji i zdanie o wcześniej wgranych", () => {
     [12, "Ta lekcja ma 12 plików."],
     [22, "Ta lekcja ma 22 pliki."],
     [25, "Ta lekcja ma 25 plików."],
-  ])("licznik %i: forma liczby „%s”", async (liczba, zdanie) => {
-    await renderEkranu(liczba);
+  ])("lista %i plików: forma liczby „%s”", async (liczba, zdanie) => {
+    const pliki = Array.from({ length: liczba }, (_, i) => material(i + 1, `plik-${i + 1}.pdf`));
+    await renderEkranu({ licznikLekcji: liczba, odczyt: () => pliki });
 
-    expect(within(sekcja()).getByText(zdanie)).toBeInTheDocument();
+    expect(await within(sekcja()).findByText(zdanie)).toBeInTheDocument();
+    expect(within(lista()).getAllByRole("listitem")).toHaveLength(liczba);
   });
+});
 
-  it("wgranie pliku przy liczniku 3 daje 4, a usunięcie go wraca do 3; zdanie o liście zostaje", async () => {
-    const { container, uzytkownik } = await renderEkranu(3);
+describe("dodanie i usunięcie odświeżają listę i licznik bez przeładowania (S3)", () => {
+  it("wgranie pliku dopisuje wiersz na końcu listy (3 → 4), bez drugiego odczytu", async () => {
+    const { container, uzytkownik } = await renderEkranu();
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
 
     await wgraj(container, uzytkownik);
+
     expect(await within(sekcja()).findByText("Ta lekcja ma 4 pliki.")).toBeInTheDocument();
-    expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
-
-    await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
-    await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń plik" }));
-    await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument());
-    expect(within(sekcja()).getByText(ZDANIE_O_LISCIE)).toBeInTheDocument();
+    expect(nazwyNaLiscie()).toEqual(["porady.pdf", "slajdy.pptx", "mapa.png", "karta.pdf"]);
+    expect(odczytyListy()).toHaveLength(1);
   });
 
-  it("wgranie pierwszego pliku przy liczniku 0: „1 materiał”, bez zdania o wcześniejszych — cała lista jest na ekranie", async () => {
-    const { container, uzytkownik } = await renderEkranu(0);
+  it("usunięcie pliku z listy: jedno DELETE, wiersz znika, licznik 3 → 2, bez drugiego odczytu", async () => {
+    const { uzytkownik } = await renderEkranu();
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+
+    await usunPlik(uzytkownik, "slajdy.pptx");
+
+    await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja ma 2 pliki.")).toBeInTheDocument());
+    expect(nazwyNaLiscie()).toEqual(["porady.pdf", "mapa.png"]);
+    expect(api.mock.calls.filter(([sciezka, opcje]) => opcje?.method === "DELETE" && sciezka === "/admin/materials/2")).toHaveLength(1);
+    expect(odczytyListy()).toHaveLength(1);
+  });
+
+  it("usunięcie pliku dodanego teraz i wcześniejszego razem: licznik schodzi do zera i stoi stan pusty", async () => {
+    const { container, uzytkownik } = await renderEkranu({ licznikLekcji: 1, odczyt: () => [material(1, "porady.pdf")] });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await wgraj(container, uzytkownik);
+    await screen.findByRole("button", { name: "Usuń plik karta.pdf" });
+
+    await usunPlik(uzytkownik, "karta.pdf");
+    await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja ma 1 plik.")).toBeInTheDocument());
+    await usunPlik(uzytkownik, "porady.pdf");
+
+    await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja nie ma jeszcze plików.")).toBeInTheDocument());
+    expect(within(sekcja()).queryByRole("list", { name: "Pliki lekcji" })).toBeNull();
+  });
+
+  it("po usunięciu fokus idzie na „Usuń” następnego wiersza; po usunięciu ostatniego — na zdanie licznika", async () => {
+    const { uzytkownik } = await renderEkranu();
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+
+    await usunPlik(uzytkownik, "porady.pdf");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Usuń plik slajdy.pptx" })));
+
+    await usunPlik(uzytkownik, "mapa.png");
+    await waitFor(() => expect(within(sekcja()).getByText("Ta lekcja ma 1 plik.")).toBeInTheDocument());
+    const zdanie = within(sekcja()).getByText("Ta lekcja ma 1 plik.").parentElement!;
+    expect(document.activeElement).toBe(zdanie);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("odmowa usunięcia: zdanie z nazwą pliku, plik i licznik zostają", async () => {
+    const { uzytkownik } = await renderEkranu({
+      usuniecie: () => new ApiError({ status: 403, code: "forbidden", message: "This action is unauthorized." }),
+    });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+
+    await usunPlik(uzytkownik, "mapa.png");
+
+    expect(
+      await within(sekcja()).findByText("Nie usunięto pliku „mapa.png”. Usunięcie pliku nie jest dostępne dla Twojej roli."),
+    ).toBeInTheDocument();
+    expect(within(sekcja()).queryByText(/unauthorized/i)).toBeNull();
+    expect(nazwyNaLiscie()).toEqual(["porady.pdf", "slajdy.pptx", "mapa.png"]);
+    expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
+  });
+
+  it("błąd połączenia przy usuwaniu mówi, którego pliku dotyczy", async () => {
+    const { uzytkownik } = await renderEkranu({ usuniecie: () => new Error("Failed to fetch") });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+
+    await usunPlik(uzytkownik, "porady.pdf");
+
+    expect(
+      await within(sekcja()).findByText("Nie usunięto pliku „porady.pdf”. Sprawdź połączenie i spróbuj ponownie."),
+    ).toBeInTheDocument();
+    expect(nazwyNaLiscie()).toHaveLength(3);
+  });
+
+  it("plik wgrany, zanim odczyt odpowiedział, nie ginie i nie dubluje się, gdy odczyt już go zawiera", async () => {
+    let odpowiedz: (pliki: MaterialAdmin[]) => void = () => undefined;
+    const { container, uzytkownik } = await renderEkranu({
+      licznikLekcji: 3,
+      odczyt: () => new Promise<MaterialAdmin[]>((ok) => (odpowiedz = ok)),
+    });
+
+    await wgraj(container, uzytkownik);
+    await screen.findByRole("button", { name: "Usuń plik karta.pdf" });
+    expect(within(sekcja()).getByText("Ta lekcja ma 4 pliki.")).toBeInTheDocument();
+
+    odpowiedz([...WCZESNIEJSZE, WGRANY]);
+    await waitFor(() => expect(nazwyNaLiscie()).toEqual(["porady.pdf", "slajdy.pptx", "mapa.png", "karta.pdf"]));
+    expect(within(sekcja()).getByText("Ta lekcja ma 4 pliki.")).toBeInTheDocument();
+  });
+});
+
+describe("stany ze zdaniem (S4)", () => {
+  it("pusta lekcja: „Ta lekcja nie ma jeszcze plików.”, bez listy i bez zdania o wczytywaniu", async () => {
+    await renderEkranu({ licznikLekcji: 0, odczyt: () => [] });
+
+    await waitFor(() => expect(within(sekcja()).queryByText("Wczytywanie listy plików…")).toBeNull());
+    expect(within(sekcja()).getByText("Ta lekcja nie ma jeszcze plików.")).toBeInTheDocument();
+    expect(within(sekcja()).queryByRole("list", { name: "Pliki lekcji" })).toBeNull();
+    expect(within(sekcja()).queryByRole("alert")).toBeNull();
+  });
+
+  it("błąd odczytu: zdanie bez kodu i trasy, „Spróbuj ponownie” wczytuje listę; licznik z zasobu lekcji", async () => {
+    let proby = 0;
+    const { uzytkownik } = await renderEkranu({
+      odczyt: () => (++proby === 1 ? new ApiError({ status: 500, code: "server_error", message: "SQLSTATE[08006]" }) : WCZESNIEJSZE),
+    });
+
+    const alarm = await within(sekcja()).findByRole("alert");
+    expect(alarm).toHaveTextContent("Nie wczytano listy plików");
+    expect(alarm).toHaveTextContent(
+      "Nie udało się wczytać listy plików. Sprawdź połączenie i spróbuj ponownie. Dodawanie plików działa mimo to.",
+    );
+    expect(alarm.textContent).not.toMatch(/SQLSTATE|server_error|\/admin|materials|500/);
+    expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
+    expect(within(sekcja()).queryByRole("list", { name: "Pliki lekcji" })).toBeNull();
+
+    await uzytkownik.click(within(alarm).getByRole("button", { name: "Spróbuj ponownie" }));
+
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    expect(nazwyNaLiscie()).toEqual(["porady.pdf", "slajdy.pptx", "mapa.png"]);
+    expect(within(sekcja()).queryByRole("alert")).toBeNull();
+    expect(odczytyListy()).toHaveLength(2);
+  });
+
+  it("błąd odczytu nie blokuje dodawania: plik wgrany mimo błędu stoi na liście, licznik rośnie", async () => {
+    const { container, uzytkownik } = await renderEkranu({ odczyt: () => new Error("Failed to fetch") });
+    await within(sekcja()).findByRole("alert");
 
     await wgraj(container, uzytkownik);
 
-    expect(await within(sekcja()).findByText("Ta lekcja ma 1 plik.")).toBeInTheDocument();
-    expect(within(sekcja()).queryByText(ZDANIE_O_LISCIE)).toBeNull();
-    expect(within(sekcja()).queryByText("Ta lekcja nie ma jeszcze plików.")).toBeNull();
+    expect(await within(sekcja()).findByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
+    expect(within(sekcja()).getByText("Ta lekcja ma 4 pliki.")).toBeInTheDocument();
+    expect(nazwyNaLiscie()).toEqual(["karta.pdf"]);
+    expect(within(sekcja()).getByRole("alert")).toBeInTheDocument();
+  });
+
+  it("odpowiedź bez listy (zły kształt) to ten sam stan błędu, nie wyjątek", async () => {
+    await renderEkranu({ odczyt: () => undefined });
+
+    expect(await within(sekcja()).findByRole("alert")).toHaveTextContent("Nie wczytano listy plików");
+  });
+
+  it("odpowiedź z 200 pozycjami: zdanie, że widać pierwsze 200 plików; z 199 — bez zdania", async () => {
+    const plik = (i: number) => material(i, `plik-${i}.pdf`);
+    const { unmount } = await renderEkranu({ licznikLekcji: 230, odczyt: () => Array.from({ length: 200 }, (_, i) => plik(i + 1)) });
+
+    expect(await within(sekcja()).findByText("Widać pierwsze 200 plików tej lekcji.")).toBeInTheDocument();
+    expect(within(lista()).getAllByRole("listitem")).toHaveLength(200);
+    unmount();
+
+    await renderEkranu({ licznikLekcji: 199, odczyt: () => Array.from({ length: 199 }, (_, i) => plik(i + 1)) });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    expect(within(sekcja()).queryByText(/Widać pierwsze/)).toBeNull();
+  });
+});
+
+describe("rola bez dostępu do odczytu (S5)", () => {
+  it("403 na odczycie: zdanie o roli bez „Spróbuj ponownie”, bez wyjątku w konsoli i bez pustego ekranu; dodawanie działa jak dotąd", async () => {
+    const konsola = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { container, uzytkownik } = await renderEkranu({
+      odczyt: () => new ApiError({ status: 403, code: "forbidden", message: "This action is unauthorized." }),
+    });
+
+    const alarm = await within(sekcja()).findByRole("alert");
+    expect(alarm).toHaveTextContent("Lista plików tej lekcji nie jest dostępna dla Twojej roli.");
+    expect(within(alarm).queryByRole("button")).toBeNull();
+    expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
+    expect(container.querySelector('input[type="file"][id$="-plik-materialu"]')).not.toBeNull();
+
+    await wgraj(container, uzytkownik);
+    expect(await within(sekcja()).findByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
+    expect(konsola).not.toHaveBeenCalled();
+  });
+
+  it("403 także przy dodawaniu: odmowa zdaniem w wierszu pliku, jak dotąd", async () => {
+    const { container, uzytkownik } = await renderEkranu({
+      odczyt: () => new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu do tej akcji." }),
+      wgranie: () => new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu do tej akcji." }),
+    });
+    await within(sekcja()).findByRole("alert");
+
+    await wgraj(container, uzytkownik);
+
+    expect(await within(sekcja()).findByText("Brak dostępu do tej akcji.", { selector: "[data-stan] *" })).toBeInTheDocument();
+    expect(container.querySelector("[data-stan='blad']")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: /^Usuń plik karta/ })).toBeNull();
   });
 });
 
 describe("wgrany plik widać raz", () => {
   it("po udanym wgraniu dokładnie jeden element z nazwą pliku — wiersz z „Usuń”; ogłoszenie o wgraniu zostaje", async () => {
-    const { container, uzytkownik } = await renderEkranu(3);
+    const { container, uzytkownik } = await renderEkranu();
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
 
     await wgraj(container, uzytkownik);
     await screen.findByRole("button", { name: "Usuń plik karta.pdf" });
@@ -173,7 +436,8 @@ describe("wgrany plik widać raz", () => {
 
   it("wgranie trwa: wiersz stanu „Wgrywanie…”, jeszcze bez wiersza „Usuń”", async () => {
     let dokoncz: (material: MaterialAdmin) => void = () => undefined;
-    const { container, uzytkownik } = await renderEkranu(3, () => new Promise<MaterialAdmin>((ok) => (dokoncz = ok)));
+    const { container, uzytkownik } = await renderEkranu({ wgranie: () => new Promise<MaterialAdmin>((ok) => (dokoncz = ok)) });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
 
     await wgraj(container, uzytkownik);
 
@@ -187,23 +451,23 @@ describe("wgrany plik widać raz", () => {
   });
 
   it("błąd wgrania: wiersz stanu z komunikatem, brak wiersza „Usuń”, licznik bez zmian", async () => {
-    const { container, uzytkownik } = await renderEkranu(
-      3,
-      () =>
+    const { container, uzytkownik } = await renderEkranu({
+      wgranie: () =>
         new ApiError({
           status: 422,
           code: "validation_failed",
           message: "Popraw zaznaczone pola.",
           errors: { file: ["Plik może mieć najwyżej 10 MB."] },
         }),
-    );
+    });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
 
     await wgraj(container, uzytkownik, "duzy.pdf");
 
     expect(await within(sekcja()).findByText("Plik może mieć najwyżej 10 MB.")).toBeInTheDocument();
     expect(container.querySelector("[data-stan='blad']")).not.toBeNull();
     expect(within(sekcja()).getAllByText("duzy.pdf")).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: /^Usuń plik/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Usuń plik duzy/ })).toBeNull();
     expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
   });
 });
