@@ -25,6 +25,7 @@ import {
 import { HistoriaZgloszen } from "./HistoriaZgloszen";
 import { KartaProgramuUkonczonego } from "./KartaProgramuUkonczonego";
 import style from "./PoProgramieWspolpraca.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 const OKRUSZKI = [{ etykieta: "Po programie" }];
 
@@ -180,7 +181,7 @@ export function PoProgramieWspolpraca() {
               </Button>
             }
           >
-            Serwer jest nieosiągalny albo zwrócił błąd. Żadne dane nie zostały zmienione.
+            {KOMUNIKAT_SERWER} Żadne dane nie zostały zmienione.
           </Notice>
         }
         wspierajaca={null}

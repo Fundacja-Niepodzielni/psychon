@@ -109,7 +109,7 @@ describe("/panel/dalsza-wspolpraca w układach grupy", () => {
     pobierzMojeZgloszenia.mockRejectedValue(BLAD());
     const { container } = trasaPanelu();
 
-    await screen.findByText(/nieosiągalny albo zwrócił błąd/);
+    await screen.findByText(/Nie udało się połączyć z serwerem/);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
@@ -118,7 +118,7 @@ describe("/panel/dalsza-wspolpraca w układach grupy", () => {
     pobierzMojeZgloszenia.mockRejectedValue(ZAKAZ());
     const { container } = trasaPanelu();
 
-    await waitFor(() => expect(screen.queryByText(/nieosiągalny/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Nie udało się połączyć z serwerem/)).toBeNull());
     await waitFor(() => expect(screen.getAllByRole("heading", { level: 1 }).length).toBeGreaterThan(0));
     expect(screen.queryByLabelText(/^Treść prośby/)).toBeNull();
     expect(zmierz(container)).toEqual(JEDEN);
