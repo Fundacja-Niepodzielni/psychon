@@ -69,3 +69,21 @@ describe("Karta osoby — zdanie o prowadzącym superwizje", () => {
     expect(screen.queryByText(/serwer zamyka/)).toBeNull();
   });
 });
+
+describe("Karta osoby — nazwa dziennika", () => {
+  it("podpowiedzi przy powodzie resetu i blokady nazywają dziennik tak jak menu: Dziennik działań", async () => {
+    await otworzKarte();
+
+    expect(screen.getByText("Trafia do Dziennika działań.")).toBeInTheDocument();
+    expect(screen.getByText(/^Powód trafia do Dziennika działań\. Zablokowana osoba przy logowaniu/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/nowe podejście zaczyna numerację od 1\. Powód trafia do Dziennika działań\.$/),
+    ).toBeInTheDocument();
+  });
+
+  it("na całym ekranie nie ma słowa „audytu” ani „audyt”", async () => {
+    await otworzKarte();
+
+    expect(document.body.textContent ?? "").not.toMatch(/audyt/i);
+  });
+});

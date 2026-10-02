@@ -71,7 +71,7 @@ export function ResetLimituPodejsc({ userId, imieNazwisko }: WlasciwosciResetuLi
       </Heading>
       <Text>
         Czyści dotychczasowe podejścia tej osoby do wskazanego testu — nowe podejście zaczyna numerację od 1. Powód trafia
-        do dziennika audytu.
+        do Dziennika działań.
       </Text>
       {blad !== null && (
         <Notice wariant="error" tytul="Limit nie został zresetowany">
@@ -97,7 +97,7 @@ export function ResetLimituPodejsc({ userId, imieNazwisko }: WlasciwosciResetuLi
         rodzaj="tekst"
         wartosc={powod}
         onZmiana={setPowod}
-        podpowiedz="Trafia do dziennika audytu."
+        podpowiedz="Trafia do Dziennika działań."
       />
       <div className={style.przyciskCzynnosci}>
         <Button

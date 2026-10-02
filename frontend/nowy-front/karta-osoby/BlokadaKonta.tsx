@@ -24,7 +24,7 @@ interface WlasciwosciBlokadyKonta {
 /**
  * Zablokowanie konta z karty osoby — `POST /admin/users/{id}/block` z ciałem
  * `{ reason }` (opiekun projektu i administrator). Powód jest obowiązkowy i trafia
- * do dziennika audytu. Blokada kończy się pytaniem z imieniem i nazwiskiem osoby;
+ * do Dziennika działań. Blokada kończy się pytaniem z imieniem i nazwiskiem osoby;
  * po sukcesie karta jest wczytywana ponownie. O tym, kto może zablokować konto
  * Super Admina, rozstrzyga serwer — jego odmowę pokazujemy zdaniem z koperty błędu.
  */
@@ -71,7 +71,7 @@ export function BlokadaKonta({ userId, imieNazwisko, rolaOsoby, onOdswiez }: Wla
         rodzaj="tekst"
         wartosc={powod}
         onZmiana={setPowod}
-        podpowiedz="Powód trafia do dziennika audytu. Zablokowana osoba przy logowaniu zobaczy komunikat o blokadzie, nie o wygaśnięciu dostępu."
+        podpowiedz="Powód trafia do Dziennika działań. Zablokowana osoba przy logowaniu zobaczy komunikat o blokadzie, nie o wygaśnięciu dostępu."
       />
       <div className={style.przyciskCzynnosci}>
         <Button poziom="outline" disabled={!powodPoprawny || wysylanie} onClick={() => setPytanie(true)}>
