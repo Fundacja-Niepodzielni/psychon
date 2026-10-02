@@ -201,6 +201,15 @@ async function zrzut(page: Page, nazwa: string): Promise<void> {
   await page.screenshot({ path: join(katalog, `${nazwa}.png`), fullPage: true, animations: "disabled" });
 }
 
+/** Zrzut samego widocznego obszaru okna (pierwszy ekran telefonu), bez przewijania strony. */
+async function zrzutPierwszegoEkranu(page: Page, nazwa: string): Promise<void> {
+  const katalog = process.env.PW_ZRZUTY;
+  if (!katalog) return;
+  mkdirSync(katalog, { recursive: true });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: join(katalog, `${nazwa}.png`), fullPage: false, animations: "disabled" });
+}
+
 async function sprawdzAxe(page: Page, testInfo: TestInfo, nazwa: string): Promise<void> {
   const naruszenia = await uruchomAxe(page);
   await dolaczNaruszeniaDoRaportu(testInfo, nazwa, naruszenia);
@@ -413,6 +422,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
         await page.evaluate(() => window.scrollTo(0, 0));
         await sprawdzAxe(page, testInfo, `axe-kurs-${stan.n}-${szerokosc}`);
         await zrzut(page, `uczestnik--kurs-szkic--${stan.n}-${stan.nazwa}--${szerokosc}`);
+        if (szerokosc === 390 && stan.n === 2) await zrzutPierwszegoEkranu(page, "uczestnik--kurs-szkic--2-w-toku--telefon-pierwszy-ekran");
       });
     }
 
