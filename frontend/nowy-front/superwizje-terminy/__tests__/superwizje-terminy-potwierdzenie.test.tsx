@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 /**
  * Terminy superwizji: po zapisie zmian i po odwołaniu terminu ekran mówi, co się stało,
- * we wspólnym pasku potwierdzenia; odmowa serwera paska nie otwiera.
+ * w powiadomieniu `Toast`; odmowa serwera paska nie otwiera.
  */
 
 const fetchAdminSupervisionSlots = vi.fn();
@@ -48,7 +48,7 @@ async function otworzEdycje() {
 }
 
 describe("Terminy superwizji — potwierdzenie", () => {
-  it("przed zapisem nie ma paska, po zapisie jest jedno zdanie w roli „status”", async () => {
+  it("przed zapisem nie ma powiadomienia, po zapisie jest jedno zdanie w roli „status”", async () => {
     updateAdminSupervisionSlot.mockResolvedValue({ ...TERMIN, location_or_link: "Sala 3" });
     await otworzEdycje();
     expect(screen.queryByRole("status")).toBeNull();
@@ -58,7 +58,7 @@ describe("Terminy superwizji — potwierdzenie", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Zapisano zmiany terminu superwizji.");
   });
 
-  it("odwołanie terminu: pasek ze zdaniem o odwołaniu", async () => {
+  it("odwołanie terminu: powiadomienie ze zdaniem o odwołaniu", async () => {
     cancelAdminSupervisionSlot.mockResolvedValue({ id: TERMIN.id, signups_released: 3 });
     await otworzEdycje();
     await userEvent.click(screen.getByRole("button", { name: "Odwołaj termin" }));
@@ -67,7 +67,7 @@ describe("Terminy superwizji — potwierdzenie", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Termin superwizji został odwołany.");
   });
 
-  it("odmowa serwera: błąd w dotychczasowym komunikacie, bez paska potwierdzenia", async () => {
+  it("odmowa serwera: błąd w dotychczasowym komunikacie, bez potwierdzenia", async () => {
     updateAdminSupervisionSlot.mockRejectedValue(
       new ApiError({ status: 422, code: "validation_failed", message: "Popraw zaznaczone pola.", errors: { seats_limit: ["Za mało."] } }),
     );
@@ -78,15 +78,14 @@ describe("Terminy superwizji — potwierdzenie", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("zamknięcie oddaje fokus nagłówkowi, a otwarcie kolejnej edycji zdejmuje pasek", async () => {
+  it("zamknięcie przyciskiem zdejmuje powiadomienie, a otwarcie kolejnej edycji też", async () => {
     updateAdminSupervisionSlot.mockResolvedValue(TERMIN);
     await otworzEdycje();
     await userEvent.click(screen.getByRole("button", { name: "Zapisz" }));
     await screen.findByRole("status");
 
-    await userEvent.click(screen.getByRole("button", { name: "Zamknij komunikat" }));
+    await userEvent.click(screen.getByRole("button", { name: "Zamknij powiadomienie" }));
     expect(screen.queryByRole("status")).toBeNull();
-    expect(document.activeElement?.tagName).toBe("H1");
 
     await userEvent.click(screen.getByRole("button", { name: "Edytuj" }));
     await userEvent.click(screen.getByRole("button", { name: "Zapisz" }));

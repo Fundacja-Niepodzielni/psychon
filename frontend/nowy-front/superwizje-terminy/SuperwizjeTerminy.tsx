@@ -17,7 +17,7 @@ import { Field } from "@/design-system/molekuly/Field/Field";
 import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActions";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { PasekPotwierdzenia, usePasekPotwierdzenia } from "@/nowy-front/wspolne/pasek-potwierdzenia";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { ApiError } from "@/lib/api/klient";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
@@ -110,7 +110,7 @@ export function SuperwizjeTerminy() {
   const [zapisywanie, setZapisywanie] = useState(false);
   const [odwolywanyId, setOdwolywanyId] = useState<number | null>(null);
   const [potwierdzOdwolanie, setPotwierdzOdwolanie] = useState(false);
-  const pasek = usePasekPotwierdzenia();
+  const [toast, setToast] = useState<string | null>(null);
   // Otwarty formularz bez żadnej zmiany nie jest niezapisaną pracą.
   const edytowanyTermin = edytowanyId === null ? undefined : terminy.find((termin) => termin.id === edytowanyId);
   useZgloszenieNiezapisanychZmian(
@@ -167,13 +167,11 @@ export function SuperwizjeTerminy() {
             },
           };
         }),
-    // Wiersze zależą od danych listy; otwarcie edycji używa tylko ustawiaczy stanu i stabilnego `ukryj` paska.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [terminy],
   );
 
   function otworzEdycje(termin: AdminSupervisionSlot) {
-    pasek.ukryj();
+    setToast(null);
     setBlad(null);
     setBledyPol(undefined);
     setPotwierdzOdwolanie(false);
@@ -192,7 +190,7 @@ export function SuperwizjeTerminy() {
   async function zapisz() {
     if (edytowanyId === null || formularz === null) return;
     setZapisywanie(true);
-    pasek.ukryj();
+    setToast(null);
     setBlad(null);
     setBledyPol(undefined);
     // Puste albo nieliczbowe pole trafia do serwera dosłownie — bez cichej
@@ -212,7 +210,7 @@ export function SuperwizjeTerminy() {
         poprzednie.map((termin) => (termin.id === zaktualizowany.id ? zaktualizowany : termin)),
       );
       zamknijPanel();
-      pasek.powodzenie("Zapisano zmiany terminu superwizji.");
+      setToast("Zapisano zmiany terminu superwizji.");
     } catch (wyjatek) {
       if (wyjatek instanceof ApiError && wyjatek.errors) {
         setBledyPol(wyjatek.errors);
@@ -232,13 +230,13 @@ export function SuperwizjeTerminy() {
 
   async function odwolaj(id: number) {
     setOdwolywanyId(id);
-    pasek.ukryj();
+    setToast(null);
     setBlad(null);
     try {
       await cancelAdminSupervisionSlot(id);
       setTerminy((poprzednie) => poprzednie.filter((termin) => termin.id !== id));
       if (edytowanyId === id) zamknijPanel();
-      pasek.powodzenie("Termin superwizji został odwołany.");
+      setToast("Termin superwizji został odwołany.");
     } catch (wyjatek) {
       setPotwierdzOdwolanie(false);
       setBlad(
@@ -290,7 +288,7 @@ export function SuperwizjeTerminy() {
         onPowrot={() => router.back()}
       />
 
-      <PasekPotwierdzenia komunikat={pasek.komunikat} onZamknij={pasek.ukryj} />
+      {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
 
       <RecordList
         tytul="Terminy"
