@@ -17,6 +17,11 @@ import type { LekcjaAdmin, MaterialAdmin, StanNagrania } from "../dane";
  *    tylko w trakcie wgrywania albo przy błędzie.
  */
 
+// Pierwsze odszukanie elementu po renderze ekranu (lista plików, jej stany, pole tytułu) bywa pod obciążeniem wolniejsze niż domyślny limit 1 s:
+// dostaje 5 s, a próba 15 s. Pozostałe oczekiwania i asercje zostają bez zmian.
+const PIERWSZE_ODSZUKANIE = { timeout: 5000 };
+vi.setConfig({ testTimeout: 15000 });
+
 const api = vi.fn();
 const pobierzJa = vi.fn();
 
@@ -116,7 +121,7 @@ async function renderEkranu(ustawienia: Ustawienia = {}) {
   });
   const uzytkownik = userEvent.setup();
   const wynik = render(<LekcjaEdycja idLekcji={21} idKursu={3} />);
-  await screen.findByLabelText(/^Tytuł lekcji/);
+  await screen.findByLabelText(/^Tytuł lekcji/, undefined, PIERWSZE_ODSZUKANIE);
   return { ...wynik, uzytkownik };
 }
 
@@ -157,7 +162,7 @@ describe("lista plików wgranych wcześniej (S1, S7)", () => {
   it("lekcja z plikami z odczytu pokazuje je wszystkie po wejściu: nazwa, typ i rozmiar, „Usuń”; kolejność z serwera", async () => {
     await renderEkranu();
 
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
     expect(nazwyNaLiscie()).toEqual(["porady.pdf", "slajdy.pptx", "mapa.png"]);
     const wiersze = within(lista()).getAllByRole("listitem");
     expect(wiersze[0]).toHaveTextContent("PDF · 2 KB");
@@ -170,7 +175,7 @@ describe("lista plików wgranych wcześniej (S1, S7)", () => {
 
   it("odczyt idzie dokładnie pod GET /admin/lessons/{id}/materials, bez parametrów, raz", async () => {
     await renderEkranu();
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     expect(api).toHaveBeenCalledWith("/admin/lessons/21/materials");
     expect(odczytyListy()).toEqual([["/admin/lessons/21/materials"]]);
@@ -179,7 +184,7 @@ describe("lista plików wgranych wcześniej (S1, S7)", () => {
 
   it("zdania roboczego o liście nie ma na ekranie", async () => {
     await renderEkranu();
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     expect(within(sekcja()).queryByText(/wcześniej wgranych plików pojawi/)).toBeNull();
     expect(within(sekcja()).queryByText(/na razie widać tylko/)).toBeNull();
@@ -196,14 +201,14 @@ describe("licznik = długość listy (S2)", () => {
     expect(within(sekcja()).queryByRole("list", { name: "Pliki lekcji" })).toBeNull();
 
     odpowiedz(WCZESNIEJSZE);
-    expect(await within(sekcja()).findByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
+    expect(await within(sekcja()).findByText("Ta lekcja ma 3 pliki.", undefined, PIERWSZE_ODSZUKANIE)).toBeInTheDocument();
     expect(within(sekcja()).queryByText("Wczytywanie listy plików…")).toBeNull();
   });
 
   it("po odpowiedzi licznik to długość listy, także gdy `materials_count` mówił co innego", async () => {
     await renderEkranu({ licznikLekcji: 7, odczyt: () => [material(1, "jedyny.pdf")] });
 
-    expect(await within(sekcja()).findByText("Ta lekcja ma 1 plik.")).toBeInTheDocument();
+    expect(await within(sekcja()).findByText("Ta lekcja ma 1 plik.", undefined, PIERWSZE_ODSZUKANIE)).toBeInTheDocument();
     expect(within(sekcja()).queryByText("Ta lekcja ma 7 plików.")).toBeNull();
     expect(nazwyNaLiscie()).toEqual(["jedyny.pdf"]);
   });
@@ -220,7 +225,9 @@ describe("licznik = długość listy (S2)", () => {
     const pliki = Array.from({ length: liczba }, (_, i) => material(i + 1, `plik-${i + 1}.pdf`));
     await renderEkranu({ licznikLekcji: liczba, odczyt: () => pliki });
 
-    expect(await within(sekcja()).findByText(zdanie)).toBeInTheDocument();
+    // Zdanie z `materials_count` stoi jeszcze przed odpowiedzią odczytu, więc na listę trzeba poczekać osobno.
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
+    expect(await within(sekcja()).findByText(zdanie, undefined, PIERWSZE_ODSZUKANIE)).toBeInTheDocument();
     expect(within(lista()).getAllByRole("listitem")).toHaveLength(liczba);
   });
 });
@@ -228,7 +235,7 @@ describe("licznik = długość listy (S2)", () => {
 describe("dodanie i usunięcie odświeżają listę i licznik bez przeładowania (S3)", () => {
   it("wgranie pliku dopisuje wiersz na końcu listy (3 → 4), bez drugiego odczytu", async () => {
     const { container, uzytkownik } = await renderEkranu();
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await wgraj(container, uzytkownik);
 
@@ -239,7 +246,7 @@ describe("dodanie i usunięcie odświeżają listę i licznik bez przeładowania
 
   it("usunięcie pliku z listy: jedno DELETE, wiersz znika, licznik 3 → 2, bez drugiego odczytu", async () => {
     const { uzytkownik } = await renderEkranu();
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await usunPlik(uzytkownik, "slajdy.pptx");
 
@@ -251,7 +258,7 @@ describe("dodanie i usunięcie odświeżają listę i licznik bez przeładowania
 
   it("usunięcie pliku dodanego teraz i wcześniejszego razem: licznik schodzi do zera i stoi stan pusty", async () => {
     const { container, uzytkownik } = await renderEkranu({ licznikLekcji: 1, odczyt: () => [material(1, "porady.pdf")] });
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
     await wgraj(container, uzytkownik);
     await screen.findByRole("button", { name: "Usuń plik karta.pdf" });
 
@@ -265,7 +272,7 @@ describe("dodanie i usunięcie odświeżają listę i licznik bez przeładowania
 
   it("po usunięciu fokus idzie na „Usuń” następnego wiersza; po usunięciu ostatniego — na zdanie licznika", async () => {
     const { uzytkownik } = await renderEkranu();
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await usunPlik(uzytkownik, "porady.pdf");
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Usuń plik slajdy.pptx" })));
@@ -281,7 +288,7 @@ describe("dodanie i usunięcie odświeżają listę i licznik bez przeładowania
     const { uzytkownik } = await renderEkranu({
       usuniecie: () => new ApiError({ status: 403, code: "forbidden", message: "This action is unauthorized." }),
     });
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await usunPlik(uzytkownik, "mapa.png");
 
@@ -295,7 +302,7 @@ describe("dodanie i usunięcie odświeżają listę i licznik bez przeładowania
 
   it("błąd połączenia przy usuwaniu mówi, którego pliku dotyczy", async () => {
     const { uzytkownik } = await renderEkranu({ usuniecie: () => new Error("Failed to fetch") });
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await usunPlik(uzytkownik, "porady.pdf");
 
@@ -338,7 +345,7 @@ describe("stany ze zdaniem (S4)", () => {
       odczyt: () => (++proby === 1 ? new ApiError({ status: 500, code: "server_error", message: "SQLSTATE[08006]" }) : WCZESNIEJSZE),
     });
 
-    const alarm = await within(sekcja()).findByRole("alert");
+    const alarm = await within(sekcja()).findByRole("alert", undefined, PIERWSZE_ODSZUKANIE);
     expect(alarm).toHaveTextContent("Nie wczytano listy plików");
     expect(alarm).toHaveTextContent(
       "Nie udało się wczytać listy plików. Sprawdź połączenie i spróbuj ponownie. Dodawanie plików działa mimo to.",
@@ -349,7 +356,7 @@ describe("stany ze zdaniem (S4)", () => {
 
     await uzytkownik.click(within(alarm).getByRole("button", { name: "Spróbuj ponownie" }));
 
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
     expect(nazwyNaLiscie()).toEqual(["porady.pdf", "slajdy.pptx", "mapa.png"]);
     expect(within(sekcja()).queryByRole("alert")).toBeNull();
     expect(odczytyListy()).toHaveLength(2);
@@ -357,7 +364,7 @@ describe("stany ze zdaniem (S4)", () => {
 
   it("błąd odczytu nie blokuje dodawania: plik wgrany mimo błędu stoi na liście, licznik rośnie", async () => {
     const { container, uzytkownik } = await renderEkranu({ odczyt: () => new Error("Failed to fetch") });
-    await within(sekcja()).findByRole("alert");
+    await within(sekcja()).findByRole("alert", undefined, PIERWSZE_ODSZUKANIE);
 
     await wgraj(container, uzytkownik);
 
@@ -370,19 +377,19 @@ describe("stany ze zdaniem (S4)", () => {
   it("odpowiedź bez listy (zły kształt) to ten sam stan błędu, nie wyjątek", async () => {
     await renderEkranu({ odczyt: () => undefined });
 
-    expect(await within(sekcja()).findByRole("alert")).toHaveTextContent("Nie wczytano listy plików");
+    expect(await within(sekcja()).findByRole("alert", undefined, PIERWSZE_ODSZUKANIE)).toHaveTextContent("Nie wczytano listy plików");
   });
 
   it("odpowiedź z 200 pozycjami: zdanie, że widać pierwsze 200 plików; z 199 — bez zdania", async () => {
     const plik = (i: number) => material(i, `plik-${i}.pdf`);
     const { unmount } = await renderEkranu({ licznikLekcji: 230, odczyt: () => Array.from({ length: 200 }, (_, i) => plik(i + 1)) });
 
-    expect(await within(sekcja()).findByText("Widać pierwsze 200 plików tej lekcji.")).toBeInTheDocument();
+    expect(await within(sekcja()).findByText("Widać pierwsze 200 plików tej lekcji.", undefined, PIERWSZE_ODSZUKANIE)).toBeInTheDocument();
     expect(within(lista()).getAllByRole("listitem")).toHaveLength(200);
     unmount();
 
     await renderEkranu({ licznikLekcji: 199, odczyt: () => Array.from({ length: 199 }, (_, i) => plik(i + 1)) });
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
     expect(within(sekcja()).queryByText(/Widać pierwsze/)).toBeNull();
   });
 });
@@ -394,7 +401,7 @@ describe("rola bez dostępu do odczytu (S5)", () => {
       odczyt: () => new ApiError({ status: 403, code: "forbidden", message: "This action is unauthorized." }),
     });
 
-    const alarm = await within(sekcja()).findByRole("alert");
+    const alarm = await within(sekcja()).findByRole("alert", undefined, PIERWSZE_ODSZUKANIE);
     expect(alarm).toHaveTextContent("Lista plików tej lekcji nie jest dostępna dla Twojej roli.");
     expect(within(alarm).queryByRole("button")).toBeNull();
     expect(within(sekcja()).getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
@@ -410,7 +417,7 @@ describe("rola bez dostępu do odczytu (S5)", () => {
       odczyt: () => new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu do tej akcji." }),
       wgranie: () => new ApiError({ status: 403, code: "forbidden", message: "Brak dostępu do tej akcji." }),
     });
-    await within(sekcja()).findByRole("alert");
+    await within(sekcja()).findByRole("alert", undefined, PIERWSZE_ODSZUKANIE);
 
     await wgraj(container, uzytkownik);
 
@@ -423,7 +430,7 @@ describe("rola bez dostępu do odczytu (S5)", () => {
 describe("wgrany plik widać raz", () => {
   it("po udanym wgraniu dokładnie jeden element z nazwą pliku — wiersz z „Usuń”; ogłoszenie o wgraniu zostaje", async () => {
     const { container, uzytkownik } = await renderEkranu();
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await wgraj(container, uzytkownik);
     await screen.findByRole("button", { name: "Usuń plik karta.pdf" });
@@ -437,7 +444,7 @@ describe("wgrany plik widać raz", () => {
   it("wgranie trwa: wiersz stanu „Wgrywanie…”, jeszcze bez wiersza „Usuń”", async () => {
     let dokoncz: (material: MaterialAdmin) => void = () => undefined;
     const { container, uzytkownik } = await renderEkranu({ wgranie: () => new Promise<MaterialAdmin>((ok) => (dokoncz = ok)) });
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await wgraj(container, uzytkownik);
 
@@ -460,7 +467,7 @@ describe("wgrany plik widać raz", () => {
           errors: { file: ["Plik może mieć najwyżej 10 MB."] },
         }),
     });
-    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" });
+    await within(sekcja()).findByRole("list", { name: "Pliki lekcji" }, PIERWSZE_ODSZUKANIE);
 
     await wgraj(container, uzytkownik, "duzy.pdf");
 
