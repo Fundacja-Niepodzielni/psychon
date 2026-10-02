@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KURS, LEKCJA, kursZ } from "./pomoce";
+import { KURS, LEKCJA, kursZ, ramkaOdtwarzacza, zrodloRamki } from "./pomoce";
 
 /**
  * Siedem stanów ekranu lekcji z zatwierdzonego układu — każdy z literalnymi
@@ -36,7 +36,7 @@ vi.mock("../kurs", async (importOriginal) => {
 
 const { Lekcja } = await import("../Lekcja");
 
-const ZRODLO = { adres: "https://nagrania.atrapa.test/lista.m3u8" };
+const ZRODLO = zrodloRamki();
 
 function zNagraniem(nadpisz: Record<string, unknown> = {}) {
   return { status: "ok", dane: { ...LEKCJA, ...nadpisz }, bezNagrania: false, zrodloNagrania: ZRODLO };
@@ -104,9 +104,7 @@ describe("stan 1 — brakuje czasu", () => {
     expect(
       screen.getByText("Obejrzane: 12 z 16 potrzebnych minut. Liczy się czas oglądania, nie przewijanie."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Odtwórz nagranie" })).toBeInTheDocument();
-    expect(screen.getByRole("slider", { name: "Miejsce w nagraniu" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pełny ekran" })).toBeInTheDocument();
+    expect(ramkaOdtwarzacza()).toHaveAttribute("title", `Nagranie lekcji: ${LEKCJA.title}`);
     expect(screen.getByRole("heading", { level: 2, name: "Treść lekcji" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Materiały do pobrania" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Zapytaj prowadzącego" })).toBeInTheDocument();
@@ -192,7 +190,7 @@ describe("stan 4 — lekcja bez nagrania", () => {
     expect(screen.getByText("około 1 min czytania")).toBeInTheDocument();
     expect(screen.queryByText(/min nagrania/)).toBeNull();
     expect(screen.queryByRole("heading", { name: "Nagranie" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Odtwórz nagranie" })).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
     const przycisk = przyciskGlowny();
     expect(przycisk).toHaveTextContent("Oznacz lekcję jako ukończoną");
     expect(przycisk).not.toHaveAttribute("aria-disabled");
@@ -221,7 +219,7 @@ describe("stan 5 — nagranie w przygotowaniu", () => {
     const przycisk = przyciskGlowny();
     expect(przycisk).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Nagranie nie jest jeszcze gotowe. Lekcję ukończysz po jego obejrzeniu.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Odtwórz nagranie" })).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Treść lekcji" })).toBeInTheDocument();
   });
 });
@@ -262,24 +260,22 @@ describe("stan 6 — nagranie nie działa", () => {
 });
 
 describe("stan 7 — powrót do przerwanej lekcji", () => {
-  it("duży przycisk „Odtwórz od 12. minuty”, zdanie o miejscu i „Odtwórz od początku”", async () => {
+  it("zdanie o miejscu przerwania, „Odtwórz od początku” i ramka nagrania", async () => {
     await otworz(zNagraniem({ position_seconds: 720 }));
 
-    expect(screen.getByRole("button", { name: "Odtwórz od 12. minuty" })).toBeInTheDocument();
-    expect(screen.getByText("Ostatnio zatrzymano w 12. minucie.")).toBeInTheDocument();
+    expect(screen.getByText(/Ostatnio zatrzymano w 12\. minucie\./)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Odtwórz od początku" })).toBeInTheDocument();
-    expect(screen.getByText("12:00 / 20:00")).toBeInTheDocument();
-    expect(screen.getByRole("slider", { name: "Miejsce w nagraniu" })).toHaveAttribute("aria-valuetext", "12. minuta z 20");
+    expect(ramkaOdtwarzacza()).not.toBeNull();
   });
 
-  it("„Odtwórz od początku” cofa pozycję do 0 i zdejmuje zdanie o wznowieniu", async () => {
+  it("„Odtwórz od początku” zdejmuje zdanie o wznowieniu i zostawia ramkę", async () => {
     const uzytkownik = userEvent.setup();
     await otworz(zNagraniem({ position_seconds: 720 }));
 
     await uzytkownik.click(screen.getByRole("button", { name: "Odtwórz od początku" }));
 
-    expect(screen.queryByText("Ostatnio zatrzymano w 12. minucie.")).toBeNull();
-    expect(screen.getByText(/^00:0\d \/ 20:00$/)).toBeInTheDocument();
+    expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
+    expect(ramkaOdtwarzacza()).not.toBeNull();
   });
 });
 

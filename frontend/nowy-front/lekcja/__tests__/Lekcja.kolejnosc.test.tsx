@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { KURS, LEKCJA } from "./pomoce";
+import { KURS, LEKCJA, graRamka, ramkaOdtwarzacza, zrodloRamki } from "./pomoce";
 
 /** Lekcja zamknięta kolejnością: odmowa `403 lesson_locked` z dowolnego żądania ekranu. */
 
@@ -99,7 +99,7 @@ describe("lekcja zamknięta kolejnością — odczyt lekcji", () => {
     kursZAdresu = "pierwsza-pomoc-psychologiczna";
     await otworzZamknieta(21);
 
-    expect(screen.queryByRole("button", { name: /^Odtwórz/ })).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
     expect(screen.queryByRole("button", { name: "Oznacz lekcję jako ukończoną" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Zapytaj prowadzącego" })).toBeNull();
     expect(pobierzPytania).not.toHaveBeenCalled();
@@ -155,7 +155,7 @@ describe("lekcja zamknięta kolejnością — odczyt lekcji", () => {
 
 describe("lekcja zamknięta kolejnością — odmowa w trakcie pracy", () => {
   async function otworzOtwarta() {
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
     kursZAdresu = "pierwsza-pomoc-psychologiczna";
     render(<Lekcja id="21" />);
     await przeczekaj();
@@ -165,16 +165,12 @@ describe("lekcja zamknięta kolejnością — odmowa w trakcie pracy", () => {
     vi.useFakeTimers();
     wyslijPostep.mockResolvedValue(odmowa(20));
     await otworzOtwarta();
-    fireEvent.click(screen.getByRole("button", { name: /^(Odtwórz|Zatrzymaj)$/ }));
-
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
     await przeczekaj();
 
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("heading", { level: 1, name: "Najpierw ukończ lekcję 2" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^(Odtwórz|Zatrzymaj)/ })).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
     expect(zielone()).toEqual(["Przejdź do lekcji 2"]);
 
     await act(async () => {

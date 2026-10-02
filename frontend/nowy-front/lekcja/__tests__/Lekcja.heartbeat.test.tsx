@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, cleanup, fireEvent } from "@testing-library/react";
-import { KURS, LEKCJA } from "./pomoce";
+import { act, render, screen, cleanup } from "@testing-library/react";
+import { KURS, LEKCJA, dalejRamka, graRamka, zdarzenieRamki, zrodloRamki } from "./pomoce";
 
 const pobierzDaneLekcji = vi.fn();
 const wyslijPostep = vi.fn();
@@ -44,7 +44,7 @@ function ustawUkryta(ukryta: boolean) {
 }
 
 async function wyswietlLekcje() {
-  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
+  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
   const wynik = render(<Lekcja id="21" />);
   await act(async () => {
     for (let i = 0; i < 6; i += 1) await Promise.resolve();
@@ -52,8 +52,11 @@ async function wyswietlLekcje() {
   return wynik;
 }
 
-function kliknijOdtwarzanie() {
-  fireEvent.click(screen.getByRole("button", { name: /^(Odtwórz|Zatrzymaj)$/ }));
+/** Po zgłoszeniu ramki zapis postępu (obietnica) ma się rozstrzygnąć, zanim ekran coś pokaże. */
+async function rozstrzygnij() {
+  await act(async () => {
+    await Promise.resolve();
+  });
 }
 
 beforeEach(() => {
@@ -75,11 +78,8 @@ afterEach(() => {
 describe("Lekcja — heartbeat, cadence i przyrosty", () => {
   it("odtwarzanie: wysyłka co 30 s, przyrosty nieujemne, nazwy pól z kontraktu", async () => {
     await wyswietlLekcje();
-    kliknijOdtwarzanie(); // Odtwórz
-
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
     expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30, position_seconds: 30 });
     const [, przyrosty] = wyslijPostep.mock.calls[0] as [string, { watched_delta: number; active_delta: number; position_seconds: number }];
@@ -88,9 +88,8 @@ describe("Lekcja — heartbeat, cadence i przyrosty", () => {
     expect(Number.isInteger(przyrosty.watched_delta)).toBe(true);
     expect(Number.isInteger(przyrosty.active_delta)).toBe(true);
 
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    dalejRamka(30, 30);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(2);
   });
 });
@@ -98,11 +97,8 @@ describe("Lekcja — heartbeat, cadence i przyrosty", () => {
 describe("Lekcja — heartbeat, brak wysyłki na pauzie", () => {
   it("zatrzymanie przed tykiem → zero wysyłek", async () => {
     await wyswietlLekcje();
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(15000);
-    });
-    kliknijOdtwarzanie(); // Zatrzymaj
+    graRamka(15);
+    zdarzenieRamki("pause");
     await act(async () => {
       vi.advanceTimersByTime(30000);
     });
@@ -113,26 +109,24 @@ describe("Lekcja — heartbeat, brak wysyłki na pauzie", () => {
 describe("Lekcja — heartbeat, brak wysyłki przy ukrytej karcie", () => {
   it("karta ukryta w chwili tyku → zero wysyłek; po powrocie widoczności wysyłka wraca", async () => {
     await wyswietlLekcje();
-    kliknijOdtwarzanie(); // Odtwórz
     ustawUkryta(true);
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
+    await rozstrzygnij();
     expect(wyslijPostep).not.toHaveBeenCalled();
 
     ustawUkryta(false);
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    dalejRamka(30, 30);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("Lekcja — heartbeat, brak wysyłki po odmontowaniu", () => {
-  it("odmontowanie zatrzymuje interwał — brak wysyłek po tym momencie", async () => {
+  it("po odmontowaniu komunikaty ramki nie dają żadnej wysyłki", async () => {
     const { unmount } = await wyswietlLekcje();
-    kliknijOdtwarzanie(); // Odtwórz
+    graRamka(10);
     unmount();
+    zdarzenieRamki("timeupdate", { seconds: 400 });
     await act(async () => {
       vi.advanceTimersByTime(60000);
     });
@@ -143,34 +137,27 @@ describe("Lekcja — heartbeat, brak wysyłki po odmontowaniu", () => {
 describe("Lekcja — heartbeat, przyrosty liczone z realnego czasu odtwarzania", () => {
   it("pauza nie wlicza się do przyrostów: 20 s gry + 5 s pauzy + 10 s gry → jedna wysyłka po 30 s gry", async () => {
     await wyswietlLekcje();
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(20000);
-    });
-    kliknijOdtwarzanie(); // Zatrzymaj
+    graRamka(20);
+    zdarzenieRamki("pause");
     await act(async () => {
       vi.advanceTimersByTime(5000);
     });
     expect(wyslijPostep).not.toHaveBeenCalled();
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(10000);
-    });
+    zdarzenieRamki("play");
+    zdarzenieRamki("timeupdate", { seconds: 20 });
+    dalejRamka(10, 20);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
     expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30, position_seconds: 30 });
   });
 
   it("karta ukryta: sekundy gry liczą się jako obejrzane, nie jako aktywne", async () => {
     await wyswietlLekcje();
-    kliknijOdtwarzanie(); // Odtwórz
     ustawUkryta(true);
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
     ustawUkryta(false);
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    dalejRamka(30, 30);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
     expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 60, active_delta: 30, position_seconds: 60 });
   });
@@ -188,10 +175,8 @@ describe("Lekcja — odpowiedź heartbeatu odświeża ekran", () => {
     await wyswietlLekcje();
     const przycisk = screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" });
     expect(przycisk).toHaveAttribute("aria-disabled", "true");
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
+    await rozstrzygnij();
     expect(screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).not.toHaveAttribute("aria-disabled");
     expect(screen.getByText("Możesz już ukończyć tę lekcję.")).toBeInTheDocument();
   });
@@ -206,25 +191,20 @@ describe("Lekcja — odpowiedź heartbeatu odświeża ekran", () => {
     });
     await wyswietlLekcje();
     expect(screen.getByText("Zostały 4 minuty nagrania.")).toBeInTheDocument();
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
+    await rozstrzygnij();
     expect(screen.getByText("Zostało 5 minut nagrania.")).toBeInTheDocument();
   });
 
   it("brak internetu: zdanie z ostatnim zapisem, a przyrosty nie przepadają — następna wysyłka niesie sumę", async () => {
     wyslijPostep.mockResolvedValueOnce(null);
     await wyswietlLekcje();
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
+    await rozstrzygnij();
     expect(screen.getByText("Brak internetu. Ostatnio zapisane: 12 z 16 minut.")).toBeInTheDocument();
 
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    dalejRamka(30, 30);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(2);
     expect(wyslijPostep).toHaveBeenLastCalledWith("21", { watched_delta: 60, active_delta: 60, position_seconds: 60 });
     expect(screen.queryByText(/^Brak internetu/)).not.toBeInTheDocument();

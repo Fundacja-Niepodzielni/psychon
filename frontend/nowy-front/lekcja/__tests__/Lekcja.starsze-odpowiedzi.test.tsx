@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { ADRES_RAMKI, ramkaOdtwarzacza } from "./pomoce";
 
 /**
  * Odpowiedź zaplecza sprzed dodania pól `course`, `question_addressee`,
@@ -59,7 +60,7 @@ beforeEach(() => {
 function odpowiedzi(lekcja: Record<string, unknown>, kurs: unknown) {
   api.mockImplementation(async (sciezka: string) => {
     if (sciezka === "/lessons/21") return lekcja;
-    if (sciezka === "/lessons/21/video-link") return { url: "https://nagrania.atrapa.test/a.m3u8", expires_at: 1, video_id: "w" };
+    if (sciezka === "/lessons/21/video-link") return { url: "https://nagrania.atrapa.test/a.m3u8", expires_at: 1, video_id: "w", embed_url: ADRES_RAMKI, embed_expires_at: Math.floor(Date.now() / 1000) + 3600 };
     if (sciezka === "/courses/pierwsza-pomoc-psychologiczna") return kurs;
     throw new Error(`nieoczekiwane żądanie: ${sciezka}`);
   });
@@ -100,13 +101,13 @@ describe("odpowiedź bez nowych pól", () => {
     expect(screen.queryByText(/lekcji ukończone/)).toBeNull();
   });
 
-  it("odpowiedź bez wymaganego czasu i bez position_seconds: odtwarzacz startuje od 0", async () => {
+  it("odpowiedź bez wymaganego czasu i bez position_seconds: nagranie startuje od początku", async () => {
     odpowiedzi(LEKCJA_STARA, KURS_STARY);
 
-    const { container } = render(<Lekcja id="21" />);
+    render(<Lekcja id="21" />);
     await screen.findByRole("heading", { level: 1, name: LEKCJA_STARA.title });
 
-    expect(container.querySelector("[data-pozycja-startowa]")).toHaveAttribute("data-pozycja-startowa", "0");
-    expect(screen.getByRole("button", { name: "Odtwórz nagranie" })).toBeInTheDocument();
+    expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
+    expect(ramkaOdtwarzacza()).toHaveAttribute("src", ADRES_RAMKI);
   });
 });

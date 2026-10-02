@@ -1,25 +1,61 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { POCHODZENIE_ODTWARZACZA } from "../../../lib/konfiguracja/odtwarzacz-nagran";
+import type { PostepNagrania } from "@/design-system/organizmy/RecordingPlayer/RecordingPlayer";
+import type { ZrodloNagrania } from "../dane";
 import { OdtwarzaczNagrania } from "../odtwarzacz/OdtwarzaczNagrania";
+import { ADRES_RAMKI, dalejRamka, graRamka, komunikatRamki, ramkaOdtwarzacza, zdarzenieRamki, zrodloRamki } from "./pomoce";
 
-/** Jeden punkt odtwarzacza: ten sam zestaw właściwości, które dostanie ramka dostawcy. */
+/**
+ * Punkt odtwarzacza ekranu lekcji: obudowa organizmu ramki. Ramka to atrapa — jsdom nie wczytuje
+ * adresu, a komunikaty ramki są wysyłane z testu z pochodzeniem i oknem ramki.
+ */
 
-function zloz(nadpisz: { czasTrwaniaSekund?: number; pozycjaStartowaSekundy?: number } = {}) {
+const TERAZ = Date.parse("2026-10-02T08:00:00Z");
+
+interface Zloz {
+  zrodlo?: ZrodloNagrania;
+  pozycjaStartowaSekundy?: number;
+  odswiezLink?: () => Promise<ZrodloNagrania | null>;
+}
+
+function zloz({ zrodlo = zrodloRamki(), pozycjaStartowaSekundy = 0, odswiezLink }: Zloz = {}) {
   const wlasciwosci = {
+    tytul: "Rozpoznawanie kryzysu psychicznego",
+    zrodlo,
     czasTrwaniaSekund: 1200,
-    pozycjaStartowaSekundy: 0,
+    pozycjaStartowaSekundy,
+    odswiezLink: odswiezLink ?? vi.fn<() => Promise<ZrodloNagrania | null>>(async () => null),
+    onPostep: vi.fn<(postep: PostepNagrania) => void>(),
     onZmianaOdtwarzania: vi.fn<(odtwarza: boolean) => void>(),
-    onSekunda: vi.fn<(pozycjaSekund: number) => void>(),
     onZmianaPozycji: vi.fn<(pozycjaSekund: number) => void>(),
-    onKoniec: vi.fn<() => void>(),
-    ...nadpisz,
+    onBlad: vi.fn<() => void>(),
   };
   const wynik = render(<OdtwarzaczNagrania {...wlasciwosci} />);
   return { ...wynik, wlasciwosci };
 }
 
+/** Źródło wygasające za `sekundy` od chwili zegara sztucznego. */
+function wygasaZa(sekundy: number, adres: string = ADRES_RAMKI): ZrodloNagrania {
+  return zrodloRamki({ adresOsadzenia: adres, osadzenieWygasaO: Math.floor(TERAZ / 1000) + sekundy });
+}
+
+function uplyw(ms: number) {
+  act(() => {
+    vi.advanceTimersByTime(ms);
+  });
+}
+
+async function rozstrzygnij() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 beforeEach(() => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date", "performance"] });
+  vi.setSystemTime(TERAZ);
 });
 
 afterEach(() => {
@@ -27,126 +63,250 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("OdtwarzaczNagrania — start i sterowanie", () => {
-  it("od początku: duży przycisk „Odtwórz nagranie”, czas 00:00 / 20:00, bez zdania o wznowieniu", () => {
+describe("obudowa odtwarzacza — ramka i wznowienie", () => {
+  it("ramka z adresem osadzenia i tytułem lekcji; bez zdania o wznowieniu od początku nagrania", () => {
     zloz();
 
-    expect(screen.getByRole("button", { name: "Odtwórz nagranie" })).toBeInTheDocument();
-    expect(screen.getByText("00:00 / 20:00")).toBeInTheDocument();
+    const ramka = ramkaOdtwarzacza();
+    expect(ramka).not.toBeNull();
+    expect(ramka).toHaveAttribute("src", ADRES_RAMKI);
+    expect(ramka).toHaveAttribute("title", "Nagranie lekcji: Rozpoznawanie kryzysu psychicznego");
     expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
   });
 
-  it("z pozycją startową: szeroki przycisk, zdanie o miejscu i czas od tej pozycji", () => {
-    const { container } = zloz({ pozycjaStartowaSekundy: 720 });
+  it("z pozycją startową: zdanie o miejscu przerwania i „Odtwórz od początku”; zdanie znika po starcie", () => {
+    zloz({ pozycjaStartowaSekundy: 720 });
 
-    expect(screen.getByRole("button", { name: "Odtwórz od 12. minuty" })).toBeInTheDocument();
-    expect(screen.getByText("Ostatnio zatrzymano w 12. minucie.")).toBeInTheDocument();
-    expect(screen.getByText("12:00 / 20:00")).toBeInTheDocument();
-    expect(container.querySelector("[data-pozycja-startowa]")).toHaveAttribute("data-pozycja-startowa", "720");
+    expect(screen.getByText(/Ostatnio zatrzymano w 12\. minucie\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Odtwórz od początku" })).toBeInTheDocument();
+    zdarzenieRamki("ready");
+    zdarzenieRamki("play");
+    expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
   });
 
-  it("odtwarzanie zgłasza jedną sekundę na sekundę z pozycją bezwzględną i jedno zdarzenie gry", () => {
-    const { wlasciwosci } = zloz({ pozycjaStartowaSekundy: 100 });
-
-    fireEvent.click(screen.getByRole("button", { name: "Odtwórz od 1. minuty" }));
-    expect(wlasciwosci.onZmianaOdtwarzania).toHaveBeenCalledTimes(1);
-    expect(wlasciwosci.onZmianaOdtwarzania).toHaveBeenLastCalledWith(true);
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    expect(wlasciwosci.onSekunda.mock.calls.map(([pozycja]) => pozycja)).toEqual([101, 102, 103]);
-    expect(screen.getByText("01:43 / 20:00")).toBeInTheDocument();
-  });
-
-  it("pauza zatrzymuje zegar i zgłasza koniec gry raz", () => {
-    const { wlasciwosci } = zloz();
-
-    fireEvent.click(screen.getByRole("button", { name: "Odtwórz" }));
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Zatrzymaj" }));
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
-
-    expect(wlasciwosci.onSekunda).toHaveBeenCalledTimes(2);
-    expect(wlasciwosci.onZmianaOdtwarzania.mock.calls.map(([gra]) => gra)).toEqual([true, false]);
-  });
-
-  it("„Odtwórz od początku” zeruje pozycję, zgłasza skok, zaczyna grać i oddaje fokus małemu przyciskowi", () => {
+  it("„Odtwórz od początku”: zgłasza powrót na początek, wymienia ramkę i nie ustawia miejsca w nowej", () => {
     const { wlasciwosci } = zloz({ pozycjaStartowaSekundy: 720 });
+    const pierwsza = ramkaOdtwarzacza();
 
     fireEvent.click(screen.getByRole("button", { name: "Odtwórz od początku" }));
 
     expect(wlasciwosci.onZmianaPozycji).toHaveBeenCalledWith(0);
+    expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
+    const druga = ramkaOdtwarzacza();
+    expect(druga).not.toBeNull();
+    expect(druga).not.toBe(pierwsza);
+    const wyslane = vi.spyOn(druga!.contentWindow as Window, "postMessage");
+    zdarzenieRamki("ready");
+    const polecenia = wyslane.mock.calls.map(([tresc]) => String(tresc));
+    expect(polecenia.some((tresc) => tresc.includes("setCurrentTime"))).toBe(false);
+  });
+});
+
+describe("obudowa odtwarzacza — czas i koniec nagrania z komunikatów ramki", () => {
+  it("postęp i zmiany odtwarzania pochodzą z komunikatów ramki: sekunda na sekundę, jedno zdarzenie gry", () => {
+    const { wlasciwosci } = zloz({ pozycjaStartowaSekundy: 100 });
+
+    graRamka(3, 100);
+
+    expect(wlasciwosci.onZmianaOdtwarzania).toHaveBeenCalledTimes(1);
     expect(wlasciwosci.onZmianaOdtwarzania).toHaveBeenLastCalledWith(true);
-    expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
-    expect(screen.getByRole("button", { name: "Zatrzymaj" })).toHaveFocus();
+    expect(wlasciwosci.onPostep.mock.calls.map(([postep]) => postep)).toEqual([
+      { pozycjaSekund: 101, przyrostObejrzane: 1, przyrostAktywne: 1 },
+      { pozycjaSekund: 102, przyrostObejrzane: 1, przyrostAktywne: 1 },
+      { pozycjaSekund: 103, przyrostObejrzane: 1, przyrostAktywne: 1 },
+    ]);
   });
 
-  it("dojście do końca zatrzymuje grę i woła onKoniec", () => {
-    const { wlasciwosci } = zloz({ czasTrwaniaSekund: 3, pozycjaStartowaSekundy: 1 });
+  it("bez komunikatów ramki czas nie płynie: sam upływ zegara niczego nie zgłasza", () => {
+    const { wlasciwosci } = zloz();
 
-    fireEvent.click(screen.getByRole("button", { name: "Odtwórz od 1. minuty" }));
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
+    uplyw(120_000);
 
-    expect(wlasciwosci.onKoniec).toHaveBeenCalledTimes(1);
-    expect(wlasciwosci.onSekunda).toHaveBeenCalledTimes(2);
+    expect(wlasciwosci.onPostep).not.toHaveBeenCalled();
+    expect(wlasciwosci.onZmianaOdtwarzania).not.toHaveBeenCalled();
+  });
+
+  it("pauza w ramce zatrzymuje liczenie: zgłasza koniec gry raz, a czas nie rośnie", () => {
+    const { wlasciwosci } = zloz();
+    graRamka(5);
+    zdarzenieRamki("pause");
+    const przedPauza = wlasciwosci.onPostep.mock.calls.length;
+
+    uplyw(30_000);
+    zdarzenieRamki("timeupdate", { seconds: 400 });
+
     expect(wlasciwosci.onZmianaOdtwarzania.mock.calls.map(([gra]) => gra)).toEqual([true, false]);
+    expect(wlasciwosci.onPostep).toHaveBeenCalledTimes(przedPauza);
+  });
+
+  it("koniec nagrania zatrzymuje liczenie, ale niczego poza zmianą gry nie zgłasza w górę", () => {
+    const { wlasciwosci } = zloz();
+    graRamka(5);
+
+    zdarzenieRamki("ended");
+    uplyw(10_000);
+    zdarzenieRamki("timeupdate", { seconds: 1200 });
+
+    expect(wlasciwosci.onZmianaOdtwarzania.mock.calls.map(([gra]) => gra)).toEqual([true, false]);
+    expect(wlasciwosci.onPostep).toHaveBeenCalledTimes(5);
+    expect(wlasciwosci.onBlad).not.toHaveBeenCalled();
+    expect(Object.keys(wlasciwosci).some((nazwa) => /koniec/i.test(nazwa))).toBe(false);
+  });
+
+  it("karta ukryta: sekundy liczą się jako obejrzane, nie jako aktywne", () => {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+    try {
+      const { wlasciwosci } = zloz();
+      graRamka(2);
+      expect(wlasciwosci.onPostep.mock.calls.map(([postep]) => [postep.przyrostObejrzane, postep.przyrostAktywne])).toEqual([
+        [1, 0],
+        [1, 0],
+      ]);
+    } finally {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+    }
+  });
+
+  it("komunikaty od obcego pochodzenia i spoza okna ramki są pomijane", () => {
+    const { wlasciwosci } = zloz();
+    zdarzenieRamki("ready");
+    zdarzenieRamki("play");
+    const tresc = JSON.stringify({ context: "player.js", event: "timeupdate", value: { seconds: 5 } });
+
+    komunikatRamki(tresc, "https://obcy.example");
+    komunikatRamki(tresc, POCHODZENIE_ODTWARZACZA, window);
+    komunikatRamki(tresc, POCHODZENIE_ODTWARZACZA, null);
+
+    expect(wlasciwosci.onPostep).not.toHaveBeenCalled();
   });
 });
 
-describe("OdtwarzaczNagrania — przewijanie", () => {
-  it("suwak ma wartość i opis w minutach; strzałki przewijają o 15 s, Home i End skaczą", () => {
-    const { wlasciwosci } = zloz({ pozycjaStartowaSekundy: 720 });
-    const suwak = screen.getByRole("slider", { name: "Miejsce w nagraniu" });
+describe("obudowa odtwarzacza — adres ramki spoza dozwolonego pochodzenia", () => {
+  it.each([
+    ["http: ten sam host", ADRES_RAMKI.replace("https:", "http:")],
+    ["javascript:", "javascript:alert(1)"],
+    ["data:", "data:text/html,<p>x</p>"],
+    ["obcy host", "https://obcy.example/embed/1/lekcja-21?token=aaa"],
+    ["host z dopiskiem", `${POCHODZENIE_ODTWARZACZA}.example/embed/1/lekcja-21?token=aaa`],
+    ["dane logowania w adresie", POCHODZENIE_ODTWARZACZA.replace("https://", "https://ktos:haslo@") + "/embed/1"],
+    ["pusty adres", ""],
+  ])("%s: ramki nie ma, jest zgłoszenie błędu", (_nazwa, adres) => {
+    const { wlasciwosci, container } = zloz({ zrodlo: zrodloRamki({ adresOsadzenia: adres === "" ? undefined : adres }) });
 
-    expect(suwak).toHaveAttribute("aria-valuenow", "720");
-    expect(suwak).toHaveAttribute("aria-valuemax", "1200");
-    expect(suwak).toHaveAttribute("aria-valuetext", "12. minuta z 20");
-
-    fireEvent.keyDown(suwak, { key: "ArrowRight" });
-    expect(wlasciwosci.onZmianaPozycji).toHaveBeenLastCalledWith(735);
-    fireEvent.keyDown(suwak, { key: "ArrowLeft" });
-    expect(wlasciwosci.onZmianaPozycji).toHaveBeenLastCalledWith(720);
-    fireEvent.keyDown(suwak, { key: "Home" });
-    expect(wlasciwosci.onZmianaPozycji).toHaveBeenLastCalledWith(0);
-    fireEvent.keyDown(suwak, { key: "End" });
-    expect(wlasciwosci.onZmianaPozycji).toHaveBeenLastCalledWith(1200);
-    fireEvent.keyDown(suwak, { key: "a" });
-    expect(wlasciwosci.onZmianaPozycji).toHaveBeenCalledTimes(4);
-  });
-
-  it("przewinięcie zdejmuje zdanie o wznowieniu", () => {
-    zloz({ pozycjaStartowaSekundy: 720 });
-
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Miejsce w nagraniu" }), { key: "ArrowRight" });
-
-    expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(wlasciwosci.onBlad).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("OdtwarzaczNagrania — dźwięk i pełny ekran", () => {
-  it("przycisk dźwięku przełącza nazwę, pełny ekran jest przyciskiem z nazwą", () => {
-    zloz();
+describe("obudowa odtwarzacza — wygasły adres: jedno odświeżenie, nie pętla", () => {
+  it("adres wygasa w trakcie: jedno zapytanie o nowy link, dopiero przy terminie", () => {
+    const odswiezLink = vi.fn(async () => null);
+    zloz({ zrodlo: wygasaZa(60), odswiezLink });
 
-    fireEvent.click(screen.getByRole("button", { name: "Wycisz dźwięk" }));
-    expect(screen.getByRole("button", { name: "Włącz dźwięk" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pełny ekran" })).toBeInTheDocument();
+    uplyw(59_000);
+    expect(odswiezLink).not.toHaveBeenCalled();
+    uplyw(1_000);
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
+    uplyw(600_000);
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
   });
 
-  it("odmowa pełnego ekranu przez przeglądarkę nie wywraca ramki", () => {
-    const { container } = zloz();
-    const ramka = container.firstElementChild as HTMLElement;
-    ramka.requestFullscreen = vi.fn().mockRejectedValue(new Error("odmowa"));
+  it("adres już wygasły przy starcie: dokładnie jedno zapytanie, a po nowym linku ramka z nowym adresem", async () => {
+    const nowy = `${POCHODZENIE_ODTWARZACZA}/embed/1/lekcja-21?token=bbb`;
+    const odswiezLink = vi.fn(async () => wygasaZa(3600, nowy));
+    const { wlasciwosci } = zloz({ zrodlo: wygasaZa(-30), odswiezLink });
 
-    fireEvent.click(screen.getByRole("button", { name: "Pełny ekran" }));
+    expect(ramkaOdtwarzacza()).toBeNull();
+    uplyw(0);
+    await rozstrzygnij();
 
-    expect(ramka.requestFullscreen).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Odtwórz nagranie" })).toBeInTheDocument();
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
+    expect(ramkaOdtwarzacza()).toHaveAttribute("src", nowy);
+    expect(wlasciwosci.onBlad).not.toHaveBeenCalled();
+  });
+
+  it("odświeżenie bez adresu osadzenia: błąd raz, bez drugiego zapytania", async () => {
+    const odswiezLink = vi.fn(async () => zrodloRamki({ adresOsadzenia: undefined }));
+    const { wlasciwosci } = zloz({ zrodlo: wygasaZa(-30), odswiezLink });
+
+    uplyw(0);
+    await rozstrzygnij();
+    uplyw(300_000);
+    await rozstrzygnij();
+
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
+    expect(wlasciwosci.onBlad).toHaveBeenCalledTimes(1);
+  });
+
+  it("odświeżenie nieudane (null): błąd raz, bez drugiego zapytania", async () => {
+    const odswiezLink = vi.fn(async () => null);
+    const { wlasciwosci } = zloz({ zrodlo: wygasaZa(-30), odswiezLink });
+
+    uplyw(0);
+    await rozstrzygnij();
+    uplyw(300_000);
+    await rozstrzygnij();
+
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
+    expect(wlasciwosci.onBlad).toHaveBeenCalledTimes(1);
+  });
+
+  it("nowy link już po terminie nie wchodzi do ramki i nie wywołuje kolejnego zapytania", async () => {
+    const odswiezLink = vi.fn(async () => wygasaZa(-5, `${POCHODZENIE_ODTWARZACZA}/embed/1/lekcja-21?token=ccc`));
+    const { wlasciwosci } = zloz({ zrodlo: wygasaZa(-30), odswiezLink });
+
+    uplyw(0);
+    await rozstrzygnij();
+    uplyw(300_000);
+    await rozstrzygnij();
+
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
+    expect(ramkaOdtwarzacza()).toBeNull();
+    expect(wlasciwosci.onBlad).toHaveBeenCalledTimes(1);
+  });
+
+  it("odświeżenie nieudane w czasie gry nie przerywa nagrania; błąd dopiero, gdy odtwarzanie stanie", async () => {
+    const odswiezLink = vi.fn(async () => null);
+    const { wlasciwosci } = zloz({ zrodlo: wygasaZa(10), odswiezLink });
+    graRamka(3);
+
+    uplyw(10_000);
+    await rozstrzygnij();
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
+    expect(wlasciwosci.onBlad).not.toHaveBeenCalled();
+    expect(ramkaOdtwarzacza()).not.toBeNull();
+
+    zdarzenieRamki("pause");
+    expect(wlasciwosci.onBlad).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("obudowa odtwarzacza — nasłuch w czasie czekania na nowy adres", () => {
+  it("zdarzenie z ramki w trakcie odświeżania linku jest obsłużone dokładnie raz, a po odświeżeniu nasłuch się nie dubluje", async () => {
+    const nowy = `${POCHODZENIE_ODTWARZACZA}/embed/1/lekcja-21?token=ddd`;
+    let rozwiaz: (zrodlo: ZrodloNagrania | null) => void = () => {};
+    const odswiezLink = vi.fn(() => new Promise<ZrodloNagrania | null>((resolve) => (rozwiaz = resolve)));
+    const { wlasciwosci } = zloz({ zrodlo: wygasaZa(20), odswiezLink });
+    graRamka(2); // ramka gra, doliczono 2 s
+    expect(wlasciwosci.onPostep).toHaveBeenCalledTimes(2);
+
+    uplyw(18_000); // termin: zapytanie o nowy link wisi
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
+
+    zdarzenieRamki("timeupdate", { seconds: 20 }); // pierwszy po przerwie: nowy odcinek, bez przyrostu
+    dalejRamka(1, 20);
+    expect(wlasciwosci.onPostep).toHaveBeenCalledTimes(3);
+    expect(wlasciwosci.onPostep).toHaveBeenLastCalledWith({ pozycjaSekund: 21, przyrostObejrzane: 1, przyrostAktywne: 1 });
+
+    const ramkaPrzed = ramkaOdtwarzacza();
+    rozwiaz(wygasaZa(3600, nowy));
+    await rozstrzygnij();
+
+    expect(ramkaOdtwarzacza()).toBe(ramkaPrzed);
+    dalejRamka(1, 21);
+    expect(wlasciwosci.onPostep).toHaveBeenCalledTimes(4);
+    expect(wlasciwosci.onPostep).toHaveBeenLastCalledWith({ pozycjaSekund: 22, przyrostObejrzane: 1, przyrostAktywne: 1 });
+    expect(odswiezLink).toHaveBeenCalledTimes(1);
   });
 });

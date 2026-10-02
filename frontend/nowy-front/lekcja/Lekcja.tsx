@@ -25,6 +25,7 @@ import {
   maTekst,
   pobierzDaneLekcji,
   pozycjaStartowa,
+  odswiezLinkNagrania,
   ukonczLekcje,
   wyslijPostep,
   type DaneLekcji,
@@ -34,6 +35,7 @@ import {
 } from "./dane";
 import { kontekstKursu, numerLekcjiWKursie, plikiLekcji, pobierzOdczytKursu, type OdczytKursu } from "./kurs";
 import { MaterialyLekcji } from "./MaterialyLekcji";
+import type { PostepNagrania } from "@/design-system/organizmy/RecordingPlayer/RecordingPlayer";
 import { OdtwarzaczNagrania } from "./odtwarzacz/OdtwarzaczNagrania";
 import { ID_KARTY_PYTAN, ID_POLA_PYTANIA, PytaniaLekcji, ZDANIE_PODGLADU } from "./PytaniaLekcji";
 import {
@@ -115,10 +117,11 @@ function StanStrony({ children }: { children: ReactNode }) {
  * działa dalej bez elementów, które z niego wynikają. Po ukończeniu ekran nie
  * czyta lekcji ponownie (każdy odczyt zwiększa licznik otwarć).
  *
- * Postęp (`POST /lessons/{id}/progress`): odtwarzacz zgłasza każdą odegraną
- * sekundę z pozycją bezwzględną; ekran zbiera przyrosty oglądania i czasu
- * aktywnego (karta ukryta liczy się jako oglądana, nie jako aktywna) i co 30 s
- * wysyła je razem z `position_seconds`. Nieudany zapis zostawia przyrosty do
+ * Postęp (`POST /lessons/{id}/progress`): ramka odtwarzacza zgłasza pozycję
+ * i pełne sekundy oglądania oraz czasu aktywnego (karta ukryta liczy się jako
+ * oglądana, nie jako aktywna); ekran zbiera te przyrosty i co 30 s oglądania
+ * wysyła je razem z `position_seconds`. Czas rośnie tylko z komunikatów ramki;
+ * koniec nagrania nie kończy lekcji. Nieudany zapis zostawia przyrosty do
  * następnego razu i pod nagraniem pojawia się zdanie o braku internetu.
  */
 export function Lekcja({ id }: WlasciwosciLekcja) {
@@ -136,6 +139,8 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   const [wysylanie, setWysylanie] = useState(false);
   const [bladUkonczenia, setBladUkonczenia] = useState<string | null>(null);
   const [bladZapisu, setBladZapisu] = useState(false);
+  /** Lekcja, której ramka zgłosiła błąd (adres niedozwolony, brak gotowości, błąd odtwarzania, nieudane odświeżenie). */
+  const [bladOdtwarzacza, setBladOdtwarzacza] = useState<string | null>(null);
   const [odczytKursu, setOdczytKursu] = useState<{ klucz: string; kurs: OdczytKursu | null } | null>(null);
   const pozycjaRef = useRef(0);
   const przyrostyRef = useRef<ZebranePrzyrosty>({ obejrzane: 0, aktywne: 0, odTyku: 0 });
@@ -284,15 +289,20 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
     pozycjaRef.current = pozycjaStartowaLekcji;
   }, [lekcjaGotowa, id, pozycjaStartowaLekcji]);
 
-  /** Jedna odegrana sekunda nagrania, z pozycją bezwzględną. */
-  const naSekunde = useCallback(
-    (pozycja: number) => {
-      pozycjaRef.current = pozycja;
+  /**
+   * Postęp zgłoszony przez ramkę: pozycja bezwzględna i pełne sekundy oglądania
+   * oraz czasu aktywnego od poprzedniego zgłoszenia. Czas rośnie wyłącznie z
+   * komunikatów ramki (organizm liczy go przy odtwarzaniu i widocznej karcie,
+   * ekran nie ma własnego zegara); koniec nagrania niczego tu nie zmienia.
+   */
+  const naPostep = useCallback(
+    (postep: PostepNagrania) => {
+      pozycjaRef.current = postep.pozycjaSekund;
       const ukryta = typeof document !== "undefined" && document.hidden;
       const zebrane = przyrostyRef.current;
-      zebrane.obejrzane += 1;
-      if (!ukryta) zebrane.aktywne += 1;
-      zebrane.odTyku += 1;
+      zebrane.obejrzane += postep.przyrostObejrzane;
+      zebrane.aktywne += postep.przyrostAktywne;
+      zebrane.odTyku += postep.przyrostObejrzane;
       if (zebrane.odTyku < HEARTBEAT_INTERWAL_SEKUND) return;
       zebrane.odTyku = 0;
       if (ukryta) return;
@@ -304,6 +314,11 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
     pozycjaRef.current = pozycja;
   }, []);
   const naZmianeOdtwarzania = useCallback(() => {}, []);
+  /** Nowy link do nagrania, gdy adres ramki wygasł: jedyna droga odtwarzacza do zaplecza. */
+  const odswiezLink = useCallback(() => odswiezLinkNagrania(id), [id]);
+  const naBladOdtwarzacza = useCallback(() => {
+    if (zamontowanaRef.current) setBladOdtwarzacza(id);
+  }, [id]);
 
   // Wysokość dolnego paska na telefonie: strona zostawia pod treścią tyle miejsca, ile on zajmuje.
   useEffect(() => {
@@ -442,7 +457,12 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   }
 
   const { dane, bezNagrania } = stan;
-  const nagranie: RodzajNagrania = bezNagrania ? (stan.nagranie ?? "brak") : "jest";
+  // Nagranie bez adresu osadzenia albo z błędem ramki to „nie działa”; ukończenie lekcji zostaje wtedy bez nagrania.
+  const nagranie: RodzajNagrania = bezNagrania
+    ? (stan.nagranie ?? "brak")
+    : bladOdtwarzacza === id || stan.zrodlo?.adresOsadzenia === undefined
+      ? "nie-dziala"
+      : "jest";
   const ukonczona = dane.is_completed;
   const wymagane = wymaganeSekundy(dane);
   const kontekst = kurs === null ? null : kontekstKursu(kurs, idLekcji, ukonczona);
@@ -585,15 +605,20 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
             </h2>
             {nagranie === "jest" && (
               <>
-                <OdtwarzaczNagrania
-                  key={`${id}-${pozycjaStartowaLekcji}`}
-                  zrodlo={stan.zrodlo}
-                  czasTrwaniaSekund={dane.duration_seconds}
-                  pozycjaStartowaSekundy={pozycjaStartowaLekcji}
-                  onZmianaOdtwarzania={naZmianeOdtwarzania}
-                  onSekunda={naSekunde}
-                  onZmianaPozycji={naZmianePozycji}
-                />
+                {stan.zrodlo !== undefined && (
+                  <OdtwarzaczNagrania
+                    key={`${id}-${pozycjaStartowaLekcji}`}
+                    tytul={dane.title}
+                    zrodlo={stan.zrodlo}
+                    czasTrwaniaSekund={dane.duration_seconds}
+                    pozycjaStartowaSekundy={pozycjaStartowaLekcji}
+                    odswiezLink={odswiezLink}
+                    onPostep={naPostep}
+                    onZmianaOdtwarzania={naZmianeOdtwarzania}
+                    onZmianaPozycji={naZmianePozycji}
+                    onBlad={naBladOdtwarzacza}
+                  />
+                )}
                 <p className={style.obejrzane}>
                   {zdanieObejrzane({ ukonczona, mozna: dane.completable, aktywneSekundy: dane.active_seconds, wymagane })}
                 </p>
@@ -638,7 +663,11 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
                 <Text>{dane.description ?? ""}</Text>
               </div>
             )}
-            {maTekst(dane.content) && <TrescLekcji tresc={dane.content} />}
+            {maTekst(dane.content) && (
+              <div className={style.tresc}>
+                <TrescLekcji tresc={dane.content} />
+              </div>
+            )}
           </section>
         )}
 

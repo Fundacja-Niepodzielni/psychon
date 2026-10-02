@@ -114,6 +114,31 @@ interface LinkNagrania {
   embed_expires_at?: number;
 }
 
+/** Jeden odczyt `GET /lessons/{id}/video-link`; błąd żądania leci dalej do wołającego. */
+async function odczytajLink(id: string): Promise<ZrodloNagrania> {
+  const link = await api<LinkNagrania | null>(`/lessons/${id}/video-link`);
+  const tekst = (wartosc: unknown) => (typeof wartosc === "string" && wartosc !== "" ? wartosc : undefined);
+  return {
+    adres: tekst(link?.url),
+    adresOsadzenia: tekst(link?.embed_url),
+    osadzenieWygasaO: typeof link?.embed_expires_at === "number" ? link.embed_expires_at : undefined,
+  };
+}
+
+/**
+ * Nowy link do nagrania, gdy adres osadzenia wygasł. Jedyna droga odtwarzacza do
+ * zaplecza: komponent ramki niczego nie pobiera sam, ekran woła tę funkcję.
+ * Każda odmowa i każdy błąd daje `null` (bez wyjątku): odtwarzacz nie ponawia,
+ * tylko pokazuje stan „nie działa”.
+ */
+export async function odswiezLinkNagrania(id: string): Promise<ZrodloNagrania | null> {
+  try {
+    return await odczytajLink(id);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Recording state for the participant. `video_status` from the lesson
  * resource decides first: `none` is a lesson without a recording, `uploading`
@@ -135,16 +160,7 @@ async function nagranieLekcji(id: string, kod: DaneLekcji["video_status"]): Prom
   if (kod === "uploading" || kod === "processing") return { rodzaj: "w-przygotowaniu" };
   if (kod === "error") return { rodzaj: "nie-dziala" };
   try {
-    const link = await api<LinkNagrania | null>(`/lessons/${id}/video-link`);
-    const tekst = (wartosc: unknown) => (typeof wartosc === "string" && wartosc !== "" ? wartosc : undefined);
-    return {
-      rodzaj: "jest",
-      zrodlo: {
-        adres: tekst(link?.url),
-        adresOsadzenia: tekst(link?.embed_url),
-        osadzenieWygasaO: typeof link?.embed_expires_at === "number" ? link.embed_expires_at : undefined,
-      },
-    };
+    return { rodzaj: "jest", zrodlo: await odczytajLink(id) };
   } catch (wyjatek) {
     const odmowa = odmowaKolejnosci(wyjatek);
     if (odmowa !== null) return { rodzaj: "zamknieta", odmowa };

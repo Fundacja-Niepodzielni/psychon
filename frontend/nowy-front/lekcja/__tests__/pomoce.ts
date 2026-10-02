@@ -1,5 +1,70 @@
-import type { DaneLekcji } from "../dane";
+import { act } from "@testing-library/react";
+import { vi } from "vitest";
+import { POCHODZENIE_ODTWARZACZA } from "../../../lib/konfiguracja/odtwarzacz-nagran";
+import type { DaneLekcji, ZrodloNagrania } from "../dane";
 import type { OdczytKursu } from "../kurs";
+
+/**
+ * Atrapa ramki odtwarzacza: adres z dozwolonego pochodzenia (jsdom nie wczytuje ramek,
+ * żadne żądanie do dostawcy nie wychodzi), a komunikaty ramki to `MessageEvent` z
+ * pochodzeniem i oknem ramki — tak, jak dostarcza je przeglądarka.
+ */
+export const ADRES_RAMKI = `${POCHODZENIE_ODTWARZACZA}/embed/1/lekcja-21?token=aaa`;
+
+/** Źródło nagrania z adresem osadzenia i terminem odległym o dobę (liczone od chwili wywołania). */
+export function zrodloRamki(nadpisz: Partial<ZrodloNagrania> = {}): ZrodloNagrania {
+  return {
+    adres: "https://nagrania.atrapa.test/lista.m3u8",
+    adresOsadzenia: ADRES_RAMKI,
+    osadzenieWygasaO: Math.floor(Date.now() / 1000) + 86_400,
+    ...nadpisz,
+  };
+}
+
+export function ramkaOdtwarzacza(): HTMLIFrameElement | null {
+  return document.querySelector("iframe");
+}
+
+/** Komunikat ramki z podanym pochodzeniem i nadawcą (domyślnie: dozwolone pochodzenie, okno ramki). */
+export function komunikatRamki(
+  dane: unknown,
+  origin: string = POCHODZENIE_ODTWARZACZA,
+  source: MessageEventSource | null = ramkaOdtwarzacza()?.contentWindow ?? null,
+) {
+  act(() => {
+    window.dispatchEvent(new MessageEvent("message", { data: dane, origin, source }));
+  });
+}
+
+export function zdarzenieRamki(nazwa: string, wartosc?: unknown) {
+  komunikatRamki(JSON.stringify({ context: "player.js", version: "0.0.11", event: nazwa, value: wartosc }));
+}
+
+/**
+ * Ramka zgłasza gotowość i odtwarzanie, a potem co sekundę zegara pozycję: `sekundy` pełnych
+ * sekund oglądania od pozycji `od`. Wymaga zegara sztucznego (z `performance`).
+ */
+export function graRamka(sekundy: number, od = 0) {
+  zdarzenieRamki("ready");
+  zdarzenieRamki("play");
+  zdarzenieRamki("timeupdate", { seconds: od });
+  for (let i = 1; i <= sekundy; i += 1) {
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    zdarzenieRamki("timeupdate", { seconds: od + i });
+  }
+}
+
+/** Kolejne sekundy tego samego odtwarzania (ramka już gra). */
+export function dalejRamka(sekundy: number, od: number) {
+  for (let i = 1; i <= sekundy; i += 1) {
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    zdarzenieRamki("timeupdate", { seconds: od + i });
+  }
+}
 
 /** Dane przykładowe lekcji w układzie ekranu: 20 min nagrania, 16 min wymaganych, 12. minuta przerwania. */
 export const TRESC_LEKCJI =
