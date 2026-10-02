@@ -13,6 +13,8 @@ use App\Services\Auth\TokenRoles;
 use App\Services\Lessons\LessonAccess;
 use App\Services\Lessons\LessonSequence;
 use App\Support\AuditLog;
+use App\Support\CourseAccess;
+use App\Support\H10\PassedTestGuard;
 use App\Support\H10\TestGrader;
 use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
@@ -50,6 +52,9 @@ class TestController extends Controller
             'pass_threshold' => TestGrader::passThreshold($test),
             'attempts_used' => $attemptsUsed,
             'attempts_limit' => TestGrader::attemptsLimit($test),
+            // To samo źródło zaliczenia co ścieżka kursów: ekran ukrywa „Rozpocznij”,
+            // a zaplecze i tak odmawia nowego podejścia (`test_already_passed`).
+            'passed' => CourseAccess::testPassed($request->user(), $course),
             'questions' => $test->questions->map(fn ($question): array => [
                 'id' => $question->id,
                 'body' => $question->body,
@@ -100,6 +105,12 @@ class TestController extends Controller
             if ($duplicate !== null) {
                 return $duplicate;
             }
+
+            // Zaliczony test jest zamknięty. Odmowa stoi PO rozpoznaniu powtórzenia
+            // (dwuklik na zaliczającym podejściu dostaje ten sam wynik, nie 403) i PRZED
+            // limitem (zaliczony z wyczerpanym limitem słyszy, że test jest zaliczony).
+            // Pod tą samą blokadą: dwa równoległe nowe podejścia po zaliczeniu dostają 403.
+            PassedTestGuard::assertNotPassed($user, $test);
 
             // Limit też liczymy pod blokadą — inaczej kilka równoczesnych żądań
             // widziałoby ten sam stan sprzed zapisu i limit dałoby się przekroczyć.
