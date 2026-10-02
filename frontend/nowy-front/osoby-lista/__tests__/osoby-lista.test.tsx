@@ -50,6 +50,7 @@ function osoba(id: number, nadpisania: Record<string, unknown> = {}) {
     access_expires_at: "2027-02-01T00:00:00Z",
     program_completed_at: null,
     created_at: "2026-09-20T10:00:00Z",
+    supervisor: null,
     ...nadpisania,
   };
 }
@@ -101,7 +102,13 @@ describe("Osoby — stany", () => {
 
   it("dane: wiersze z rolą po polsku, stanem konta i odnośnikiem do karty", async () => {
     apiPaged.mockResolvedValue(
-      odpowiedz([osoba(17), osoba(18, { role: "instructor", status: "blocked" })], { total: 2 }),
+      odpowiedz(
+        [
+          osoba(17, { supervisor: { id: 5, name: "Joanna Demo" } }),
+          osoba(18, { role: "instructor", status: "blocked" }),
+        ],
+        { total: 2 },
+      ),
     );
     const { container } = render(<OsobyLista />);
 
@@ -117,15 +124,18 @@ describe("Osoby — stany", () => {
     expect(within(tabela).getAllByRole("columnheader").map((naglowek) => naglowek.textContent)).toEqual([
       "Osoba",
       "Rola",
+      "Prowadzący",
       "Stan",
       "Akcja",
     ]);
     const [pierwszy, drugi] = Array.from(tabela.querySelectorAll<HTMLElement>('[role="row"][data-wiersz]'));
     expect(komorka(pierwszy, "Osoba")).toHaveTextContent(/^Marta Demo17osoba17@demo\.pl$/);
     expect(komorka(pierwszy, "Rola")).toHaveTextContent(/^Rola\s*Wolontariusz$/);
+    expect(komorka(pierwszy, "Prowadzący")).toHaveTextContent(/^Prowadzący\s*Joanna Demo$/);
     expect(komorka(pierwszy, "Stan")).toHaveTextContent(/^Stan\s*konto aktywne$/);
     expect(komorka(drugi, "Osoba")).toHaveTextContent(/^Marta Demo18osoba18@demo\.pl$/);
     expect(komorka(drugi, "Rola")).toHaveTextContent(/^Rola\s*Psycholog prowadzący$/);
+    expect(komorka(drugi, "Prowadzący")).toHaveTextContent(/^Prowadzący\s*brak$/);
     expect(komorka(drugi, "Stan")).toHaveTextContent(/^Stan\s*konto zablokowane$/);
     // Wiersza opisowego „e-mail · rola” już nie ma.
     expect(screen.queryByText(/@demo\.pl · /)).toBeNull();
@@ -140,21 +150,24 @@ describe("Osoby — stany", () => {
     expect(przyciskiGlowne(container)).toBe(0);
   });
 
-  it("wiersz w kolumnach: nazwa pierwsza, „Otwórz” z pełną nazwą dla czytnika na końcu, lista na karcie organizmu", async () => {
-    apiPaged.mockResolvedValue(odpowiedz([osoba(17)], { total: 1 }));
+  it("wiersz w kolumnach: nazwa pierwsza (przy wolontariuszu jako etykieta pola wyboru), „Otwórz” z pełną nazwą dla czytnika na końcu, lista na karcie", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([osoba(17), osoba(18, { role: "student" })], { total: 2 }));
     render(<OsobyLista />);
 
-    const tytul = await screen.findByText("Marta Demo17");
-    expect(tytul.tagName).toBe("P");
+    // Wolontariusz: imię i nazwisko jest etykietą pola wyboru w pierwszej komórce.
+    const pole = await screen.findByRole("checkbox", { name: "Marta Demo17" });
     const odnosnik = screen.getByRole("link", { name: "Otwórz kartę: Marta Demo17" });
     expect(odnosnik.textContent).toMatch(/^Otwórz\s*›$/);
     const wiersz = odnosnik.closest('[role="row"]') as HTMLElement;
     const komorki = within(wiersz).getAllByRole("cell");
-    expect(komorki[0]).toContainElement(tytul);
+    expect(komorki[0]).toContainElement(pole);
     expect(komorki.at(-1)).toContainElement(odnosnik);
-    // Lista stoi na białej karcie organizmu; wiersze mają wcięcie karty.
-    expect(screen.getByRole("region", { name: "Lista osób" }).className).toMatch(/kartaBezNaglowka/);
-    expect(screen.getByRole("table", { name: "Lista osób" }).className).not.toMatch(/bezWciecia/);
+    // Osoba spoza przypisania: nazwa to zwykły akapit, bez pola wyboru.
+    const tytul = screen.getByText("Marta Demo18");
+    expect(tytul.tagName).toBe("P");
+    expect(screen.queryByRole("checkbox", { name: "Marta Demo18" })).toBeNull();
+    // Lista stoi na białej karcie; wiersze mają wcięcie karty.
+    expect(screen.getByRole("region", { name: "Lista osób" }).className).toMatch(/karta/);
     // Plakietka stanu małą literą stoi w wierszu (stan dobry w atomie Badge wygląda jak „neutral”, bez barwy).
     expect(within(wiersz).getByText("konto aktywne").className).toMatch(/neutral/);
     // Nagłówek listy zostaje w drzewie nagłówków (h2 bezpośrednio pod h1), wzrokowo go nie ma.

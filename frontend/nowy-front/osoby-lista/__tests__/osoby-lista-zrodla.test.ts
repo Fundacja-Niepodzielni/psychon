@@ -89,9 +89,11 @@ describe("Lista osób — źródła ekranu", () => {
     );
   });
 
-  it("ekran nie ma przycisku głównego (poziom primary)", () => {
-    const trafienia = PLIKI_EKRANU.filter((p) => /poziom=["']primary["']/.test(tresc(p)));
-    expect(trafienia).toEqual([]);
+  it("przycisk główny (poziom primary) stoi wyłącznie w pasku zaznaczenia — dokładnie jeden", () => {
+    const wystapienia = PLIKI_EKRANU.flatMap((p) =>
+      (tresc(p).match(/poziom=["']primary["']/g) ?? []).map(() => relative(KORZEN, p)),
+    );
+    expect(wystapienia).toEqual(["nowy-front/osoby-lista/PasekWyboru.tsx"]);
   });
 });
 

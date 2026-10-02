@@ -15,3 +15,12 @@
   flex: 1 1 280px;
   min-width: 200px;
 }
+
+/* Obszar listy: potwierdzenie przypisania, pasek zaznaczenia i lista. Pasek
+   przykleja się w obrębie tego obszaru, więc zostaje w zasięgu przy
+   przewijaniu całej listy. */
+.obszarListy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}

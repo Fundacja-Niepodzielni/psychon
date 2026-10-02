@@ -9,10 +9,13 @@ import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
-import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import { ApiError, type PaginationMeta } from "@/lib/api/klient";
-import type { AdminUserListItem, UserRole } from "@/lib/api/h18";
+import type { UserRole } from "@/lib/api/h18";
+import type {
+  AdminUserListItemWithSupervisor,
+  SupervisorAssignmentToManyResponse,
+} from "@/lib/api/przypisanie-prowadzacego";
 import {
   OPCJE_ROLI,
   PUSTY_FILTR,
@@ -22,14 +25,28 @@ import {
   pobierzTabele,
   rodzajBledu,
   wierszeOsob,
-  KOLUMNY_OSOB,
   type FiltrOsob,
 } from "./dane";
+import { OknoPrzypisania } from "./OknoPrzypisania";
+import { PasekWyboru } from "./PasekWyboru";
+import { TabelaOsob } from "./TabelaOsob";
+import { WynikPrzypisania } from "./WynikPrzypisania";
+import {
+  PUSTY_WYBOR,
+  ponadLimit,
+  przelacz,
+  wyborPoPrzypisaniu,
+  wynikPrzypisania,
+  zaznaczStrone,
+  zdanieLimitu,
+  type Wybor,
+  type WynikPrzypisania as Wynik,
+} from "./wybor";
 import style from "./OsobyLista.module.css";
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
-  | { rodzaj: "dane"; osoby: AdminUserListItem[]; meta: PaginationMeta | undefined }
+  | { rodzaj: "dane"; osoby: AdminUserListItemWithSupervisor[]; meta: PaginationMeta | undefined }
   | { rodzaj: "brak-uprawnien" }
   | { rodzaj: "siec" };
 
@@ -59,6 +76,13 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Osoby" }];
  * trasą produktu.
  * Stany: ładowanie, dane, dwa różne stany puste (z filtrem i bez), brak
  * uprawnień, błąd sieci — każdy w tym samym szablonie.
+ *
+ * Przypisanie prowadzącego wielu osobom: wiersz osoby z rolą „Wolontariusz”
+ * ma pole wyboru (tylko taką osobę serwer przypisze), zaznaczenie przetrwa
+ * zmianę filtra i strony, a pasek „Wybrano: N” otwiera wspólne okno
+ * `Dialog` (`POST /admin/supervisor-assignments`). Po przypisaniu lista
+ * wczytuje się ponownie, a w zaznaczeniu zostają osoby, których nie udało
+ * się przypisać. Pomiar trasy pojedynczej: `POMIAR-PRZYPISANIA.md`.
  */
 interface WlasciwosciOsobyLista {
   /**
@@ -75,6 +99,9 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
   const [zapytanie, setZapytanie] = useState<Zapytanie>({ filtr: PUSTY_FILTR, strona: 1, proba: 0 });
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
   const [pobranie, setPobranie] = useState<StanPobrania>({ rodzaj: "spoczynek" });
+  const [wybor, setWybor] = useState<Wybor>(PUSTY_WYBOR);
+  const [okno, setOkno] = useState(false);
+  const [wynik, setWynik] = useState<Wynik | null>(null);
 
   useEffect(() => {
     let anulowane = false;
@@ -106,6 +133,30 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
   function wyczyscFiltr() {
     setFormularz(PUSTY_FILTR);
     przejdz(PUSTY_FILTR, 1);
+  }
+
+  function otworzOkno() {
+    if (ponadLimit(wybor) > 0) return;
+    setWynik(null);
+    setOkno(true);
+  }
+
+  function wyczyscWybor() {
+    setWybor(PUSTY_WYBOR);
+    setWynik(null);
+  }
+
+  function poPrzypisaniu(odpowiedz: SupervisorAssignmentToManyResponse) {
+    const podsumowanie = wynikPrzypisania(odpowiedz, wybor);
+    setWybor(wyborPoPrzypisaniu(wybor, podsumowanie));
+    setOkno(false);
+    setWynik(podsumowanie);
+    przejdz(zapytanie.filtr, zapytanie.strona);
+  }
+
+  function zamknijOkno(poBledzie: boolean) {
+    setOkno(false);
+    if (poBledzie) przejdz(zapytanie.filtr, zapytanie.strona);
   }
 
   async function pobierzTabeleOsob() {
@@ -250,22 +301,30 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
       />
     );
   } else {
+    const wiersze = wierszeOsob(stan.osoby);
     lista = (
-      <RecordList
-        tytul="Lista osób"
-        stopienNaglowka={2}
-        naglowekTylkoDlaCzytnika
-        naKarcie
-        kolumny={KOLUMNY_OSOB}
-        wiersze={wierszeOsob(stan.osoby)}
-        pusty={{
-          naglowek: "Brak osób",
-          tresc: "Nie ma osób do pokazania.",
-          przycisk: { etykieta: "Wyczyść filtr", onClick: wyczyscFiltr },
-        }}
+      <TabelaOsob
+        wiersze={wiersze}
+        wybor={wybor}
+        onPrzelacz={(osoba, zaznaczona) => setWybor((obecny) => przelacz(obecny, osoba, zaznaczona))}
+        onZaznaczStrone={(zaznaczona) => setWybor((obecny) => zaznaczStrone(obecny, wiersze, zaznaczona))}
       />
     );
   }
+
+  const obszarListy = (
+    <div className={style.obszarListy}>
+      {wynik !== null && <WynikPrzypisania wynik={wynik} />}
+      <PasekWyboru
+        liczba={wybor.size}
+        zdanieLimitu={zdanieLimitu(wybor)}
+        onPrzypisz={otworzOkno}
+        onWyczysc={wyczyscWybor}
+      />
+      {lista}
+      {okno && <OknoPrzypisania wybor={wybor} onAnuluj={zamknijOkno} onPrzypisano={poPrzypisaniu} />}
+    </div>
+  );
 
   const stronicowanie =
     meta !== undefined && meta.last_page > 1 ? (
@@ -277,5 +336,5 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
       />
     ) : undefined;
 
-  return <ListTemplate naglowek={naglowek} filtry={filtry} lista={lista} stronicowanie={stronicowanie} />;
+  return <ListTemplate naglowek={naglowek} filtry={filtry} lista={obszarListy} stronicowanie={stronicowanie} />;
 }

@@ -1,0 +1,43 @@
+/* Pasek zaznaczenia — przyklejony pod górną belką, jak pasek zapisu; wartości
+   wyglądu wyłącznie z tokenów. */
+.pasek {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: var(--z-savebar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-12) var(--space-16);
+  padding: var(--space-10) var(--space-14);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
+
+.opis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.opis p:first-child {
+  font-weight: var(--fw-bold);
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* Poniżej 640 px przyciski zajmują całą szerokość paska, jeden pod drugim —
+   bez przewijania w poziomie przy 320 px. */
+@media (max-width: 639px) {
+  .akcje {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+}

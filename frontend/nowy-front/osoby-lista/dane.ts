@@ -1,17 +1,16 @@
-import type { KolumnaRecordList, WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ApiError, type PaginationMeta } from "@/lib/api/klient";
+import { downloadAdminUsersCsv, type AdminUserFilters, type UserRole } from "@/lib/api/h18";
 import {
-  downloadAdminUsersCsv,
-  fetchAdminUsers,
-  type AdminUserFilters,
-  type AdminUserListItem,
-  type UserRole,
-} from "@/lib/api/h18";
+  fetchAdminUsersWithSupervisor,
+  type AdminUserListItemWithSupervisor,
+  type CurrentSupervisor,
+} from "@/lib/api/przypisanie-prowadzacego";
 import { ROLE_LABELS } from "@/lib/h18/labels";
 
 /**
  * Dane ekranu „Osoby” — `GET /admin/users`
- * (`backend/routes/api/h18.php:26`, `AdminUserController::index`) i eksport
+ * (`backend/routes/api/h18.php:26`, `AdminUserController::index`, wiersz z
+ * polem tylko do odczytu `supervisor`) i eksport
  * `GET /admin/users/export.csv` (`h18.php:25`, `AdminUserController::export`).
  * Oba czytają te same filtry z `AdminUserQuery`: `role`, `search`, `status`,
  * `sort`; ekran używa `role` i `search` (kontrakt, „Panel — osoby”), kolejność
@@ -45,7 +44,7 @@ export interface FiltrOsob {
 export const PUSTY_FILTR: FiltrOsob = { role: "", search: "" };
 
 export interface StronaOsob {
-  data: AdminUserListItem[];
+  data: AdminUserListItemWithSupervisor[];
   meta?: PaginationMeta;
 }
 
@@ -70,7 +69,7 @@ export function filtryZapytania(filtr: FiltrOsob, strona?: number): AdminUserFil
 }
 
 export function pobierzOsoby(filtr: FiltrOsob, strona: number): Promise<StronaOsob> {
-  return fetchAdminUsers(filtryZapytania(filtr, strona));
+  return fetchAdminUsersWithSupervisor(filtryZapytania(filtr, strona));
 }
 
 /** Pobranie tabeli dla bieżącego filtra — bez stronicowania (kontroler zwraca całość). */
@@ -90,32 +89,80 @@ export function etykietaRoli(rola: string): string {
   return (ROLE_LABELS as Record<string, string>)[rola] ?? "Nieznana rola";
 }
 
-/** Kolumny listy osób: osoba (pod nazwą e-mail), rola, stan konta, akcja na końcu. */
-export const KOLUMNY_OSOB: KolumnaRecordList[] = [
-  { nazwa: "Osoba", rodzaj: "tekst" },
-  { nazwa: "Rola", rodzaj: "tekst", klucz: "rola" },
+/**
+ * Rola osoby, którą można przypisać do prowadzącego. Serwer przypisuje
+ * wyłącznie konto z rolą wolontariusza (`SupervisorAssignmentService::assign`,
+ * pomiar w `POMIAR-PRZYPISANIA.md`), więc tylko taki wiersz ma pole wyboru.
+ */
+export const ROLA_DO_PRZYPISANIA: UserRole = "volunteer";
+
+/** Tekst w kolumnie „Prowadzący”, gdy osoba nie ma bieżącego prowadzącego. */
+export const BRAK_PROWADZACEGO = "brak";
+
+export type RodzajKolumnyOsob = "osoba" | "tekst" | "stan" | "akcja";
+
+export interface KolumnaOsob {
+  /** Nazwa kolumny: nagłówek od 640 px, podpis wartości poniżej 640 px. */
+  nazwa: string;
+  rodzaj: RodzajKolumnyOsob;
+}
+
+/** Kolumny listy osób: osoba (pod nazwą e-mail), rola, prowadzący, stan konta, akcja na końcu. */
+export const KOLUMNY_OSOB: KolumnaOsob[] = [
+  { nazwa: "Osoba", rodzaj: "osoba" },
+  { nazwa: "Rola", rodzaj: "tekst" },
+  { nazwa: "Prowadzący", rodzaj: "tekst" },
   { nazwa: "Stan", rodzaj: "stan" },
   { nazwa: "Akcja", rodzaj: "akcja" },
 ];
 
+/** Osoba w zaznaczeniu — tyle, ile trzeba poza stroną, na której ją zaznaczono. */
+export interface WybranaOsoba {
+  id: number;
+  nazwa: string;
+  prowadzacy: CurrentSupervisor | null;
+}
+
+export interface WierszOsoby {
+  id: number;
+  nazwa: string;
+  email: string;
+  rola: string;
+  prowadzacy: string;
+  plakietka: { wariant: "ok" | "error"; tekst: string };
+  akcja: { etykieta: string; etykietaDostepna: string; href: string };
+  /** Osoba do przypisania — wiersz ma pole wyboru. */
+  doWyboru: boolean;
+  wybor: WybranaOsoba;
+}
+
+export function nazwaOsoby(osoba: { first_name: string; last_name: string }): string {
+  return `${osoba.first_name} ${osoba.last_name}`;
+}
+
 /**
- * Wiersz osoby: imię i nazwisko, pod nim e-mail; rola po polsku we własnej
- * kolumnie, plakietka stanu małą literą (słownik 2.1), akcja „Otwórz” (pełną
- * nazwę „Otwórz kartę: …” słyszy tylko czytnik ekranu).
+ * Wiersz osoby: imię i nazwisko, pod nim e-mail; rola po polsku, prowadzący
+ * (albo „brak”), plakietka stanu małą literą (słownik 2.1), akcja „Otwórz”
+ * (pełną nazwę „Otwórz kartę: …” słyszy tylko czytnik ekranu). Pole wyboru ma
+ * wyłącznie wiersz osoby, którą serwer przypisze.
  */
-export function wierszeOsob(osoby: AdminUserListItem[]): WierszRecordList[] {
+export function wierszeOsob(osoby: AdminUserListItemWithSupervisor[]): WierszOsoby[] {
   return osoby.map((osoba) => {
-    const nazwa = `${osoba.first_name} ${osoba.last_name}`;
+    const nazwa = nazwaOsoby(osoba);
+    const prowadzacy = osoba.supervisor ?? null;
     return {
-      id: String(osoba.id),
-      tytul: nazwa,
-      podpowiedz: osoba.email,
-      komorki: { rola: { tekst: etykietaRoli(osoba.role) } },
+      id: osoba.id,
+      nazwa,
+      email: osoba.email,
+      rola: etykietaRoli(osoba.role),
+      prowadzacy: prowadzacy?.name ?? BRAK_PROWADZACEGO,
       plakietka:
         osoba.status === "blocked"
           ? { wariant: "error", tekst: "konto zablokowane" }
           : { wariant: "ok", tekst: "konto aktywne" },
       akcja: { etykieta: "Otwórz", etykietaDostepna: `Otwórz kartę: ${nazwa}`, href: `${SCIEZKA_KARTY}/${osoba.id}` },
+      doWyboru: osoba.role === ROLA_DO_PRZYPISANIA,
+      wybor: { id: osoba.id, nazwa, prowadzacy },
     };
   });
 }

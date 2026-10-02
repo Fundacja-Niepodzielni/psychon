@@ -3,10 +3,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ApiError } from "@/lib/api/klient";
 import type { AdminUserListItem } from "@/lib/api/h18";
+import type { AdminUserListItemWithSupervisor } from "@/lib/api/przypisanie-prowadzacego";
 import {
+  BRAK_PROWADZACEGO,
   LICZBA_NA_STRONE,
   OPCJE_ROLI,
   PUSTY_FILTR,
+  ROLA_DO_PRZYPISANIA,
   etykietaRoli,
   filtrAktywny,
   filtryZapytania,
@@ -26,10 +29,11 @@ const KATALOG_FRONTU = process.cwd();
 const ZASOB_PHP = join(KATALOG_FRONTU, "..", "backend", "app", "Http", "Resources", "AdminUserListResource.php");
 const ZAPYTANIE_PHP = join(KATALOG_FRONTU, "..", "backend", "app", "Queries", "AdminUserQuery.php");
 const OPENAPI = join(KATALOG_FRONTU, "..", "backend", "openapi.json");
+const USLUGA_PHP = join(KATALOG_FRONTU, "..", "backend", "app", "Services", "H12", "SupervisorAssignmentService.php");
 
-/** Klucze ze stałej `FIELDS` zasobu. */
-function kluczeZasobu(zrodlo: string): string[] {
-  const poczatek = zrodlo.indexOf("FIELDS = [");
+/** Klucze ze stałej `FIELDS` zasobu (albo innej stałej tablicy o podanej nazwie). */
+function kluczeZasobu(zrodlo: string, stala = "FIELDS"): string[] {
+  const poczatek = zrodlo.indexOf(`const array ${stala} = [`);
   const koniec = zrodlo.indexOf("];", poczatek);
   return [...zrodlo.slice(poczatek, koniec).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 }
@@ -56,6 +60,12 @@ const ATRAPA: AdminUserListItem & Record<string, unknown> = {
   access_expires_at: "2027-02-01T00:00:00Z",
   program_completed_at: null,
   created_at: "2026-09-20T10:00:00Z",
+};
+
+/** Wiersz listy z polem tylko do odczytu `supervisor` (spoza pliku CSV). */
+const ATRAPA_Z_PROWADZACYM: AdminUserListItemWithSupervisor & Record<string, unknown> = {
+  ...ATRAPA,
+  supervisor: { id: 5, name: "Joanna Demo" },
 };
 
 describe("Osoby — zapytanie", () => {
@@ -134,35 +144,59 @@ describe("Osoby — klasyfikacja błędu", () => {
 });
 
 describe("Osoby — wiersze", () => {
-  it("kolumny w kolejności: Osoba, Rola, Stan, akcja", () => {
+  it("kolumny w kolejności: Osoba, Rola, Prowadzący, Stan, akcja", () => {
     expect(KOLUMNY_OSOB.map((kolumna) => [kolumna.nazwa, kolumna.rodzaj])).toEqual([
-      ["Osoba", "tekst"],
+      ["Osoba", "osoba"],
       ["Rola", "tekst"],
+      ["Prowadzący", "tekst"],
       ["Stan", "stan"],
       ["Akcja", "akcja"],
     ]);
   });
 
-  // Nazwa pierwsza, pod nią e-mail; rola po polsku we własnej kolumnie, plakietka małą literą, akcja „Otwórz”.
-  it("wiersz niesie nazwisko z e-mailem pod spodem, rolę po polsku w kolumnie, stan konta małą literą i „Otwórz” z pełną nazwą dla czytnika", () => {
-    const [wiersz] = wierszeOsob([{ ...ATRAPA, role: "project_manager" }]);
-    expect(wiersz.id).toBe("17");
-    expect(wiersz.tytul).toBe("Marta Demo");
-    expect(wiersz.podpowiedz).toBe("marta@demo.pl");
-    expect(wiersz.komorki).toEqual({ rola: { tekst: "Opiekun Projektu" } });
-    // Wiersza opisowego „e-mail · rola” już nie ma.
-    expect(wiersz.tytulDodatek).toBeUndefined();
-    expect(wiersz.plakietka).toEqual({ wariant: "ok", tekst: "konto aktywne" });
-    expect(wiersz.akcja).toEqual({
-      etykieta: "Otwórz",
-      etykietaDostepna: "Otwórz kartę: Marta Demo",
-      href: "/admin/uczestniczki/17",
+  // Nazwa pierwsza, pod nią e-mail; rola po polsku we własnej kolumnie, prowadzący, plakietka małą literą, akcja „Otwórz”.
+  it("wiersz niesie nazwisko z e-mailem, rolę po polsku, prowadzącego, stan konta małą literą i „Otwórz” z pełną nazwą dla czytnika", () => {
+    const [wiersz] = wierszeOsob([{ ...ATRAPA_Z_PROWADZACYM, role: "project_manager", supervisor: null }]);
+    expect(wiersz).toEqual({
+      id: 17,
+      nazwa: "Marta Demo",
+      email: "marta@demo.pl",
+      rola: "Opiekun Projektu",
+      prowadzacy: "brak",
+      plakietka: { wariant: "ok", tekst: "konto aktywne" },
+      akcja: {
+        etykieta: "Otwórz",
+        etykietaDostepna: "Otwórz kartę: Marta Demo",
+        href: "/admin/uczestniczki/17",
+      },
+      doWyboru: false,
+      wybor: { id: 17, nazwa: "Marta Demo", prowadzacy: null },
     });
   });
 
   it("konto zablokowane ma osobną plakietkę, małą literą", () => {
-    const [wiersz] = wierszeOsob([{ ...ATRAPA, status: "blocked" }]);
+    const [wiersz] = wierszeOsob([{ ...ATRAPA_Z_PROWADZACYM, status: "blocked" }]);
     expect(wiersz.plakietka).toEqual({ wariant: "error", tekst: "konto zablokowane" });
+  });
+
+  it("prowadzący z odpowiedzi trafia do kolumny i do zaznaczenia; bez prowadzącego kolumna mówi „brak”", () => {
+    const [z, bez] = wierszeOsob([ATRAPA_Z_PROWADZACYM, { ...ATRAPA_Z_PROWADZACYM, id: 18, supervisor: null }]);
+    expect(z.prowadzacy).toBe("Joanna Demo");
+    expect(z.wybor.prowadzacy).toEqual({ id: 5, name: "Joanna Demo" });
+    expect(bez.prowadzacy).toBe(BRAK_PROWADZACEGO);
+    expect(BRAK_PROWADZACEGO).toBe("brak");
+  });
+
+  it("pole wyboru ma wyłącznie wiersz wolontariusza — tylko taką osobę serwer przypisze", () => {
+    expect(ROLA_DO_PRZYPISANIA).toBe("volunteer");
+    const role = ["volunteer", "student", "instructor", "project_manager", "super_admin"] as const;
+    const wiersze = wierszeOsob(role.map((rola, indeks) => ({ ...ATRAPA_Z_PROWADZACYM, id: indeks + 1, role: rola })));
+    expect(wiersze.map((wiersz) => wiersz.doWyboru)).toEqual([true, false, false, false, false]);
+  });
+
+  it("rola do przypisania jest tą samą, którą sprawdza usługa zaplecza", () => {
+    const usluga = readFileSync(USLUGA_PHP, "utf-8");
+    expect(usluga).toContain(`$volunteer->role !== '${ROLA_DO_PRZYPISANIA}'`);
   });
 
   it("nieznana rola nie wychodzi na ekran jako surowy kod", () => {
@@ -180,6 +214,13 @@ describe("Osoby — atrapa zgodna z zapleczem", () => {
 
   it("atrapa ma dokładnie klucze zasobu", () => {
     expect(roznicaKluczy(Object.keys(ATRAPA), kluczeZasobu(readFileSync(ZASOB_PHP, "utf-8")))).toEqual([]);
+  });
+
+  it("wiersz z prowadzącym ma dokładnie klucze zasobu i pola tylko do odczytu", () => {
+    const zrodlo = readFileSync(ZASOB_PHP, "utf-8");
+    const tylkoDoOdczytu = kluczeZasobu(zrodlo, "READ_ONLY_FIELDS");
+    expect(tylkoDoOdczytu).toEqual(["supervisor"]);
+    expect(roznicaKluczy(Object.keys(ATRAPA_Z_PROWADZACYM), [...kluczeZasobu(zrodlo), ...tylkoDoOdczytu])).toEqual([]);
   });
 
   it("kontrola dodatnia: usunięty albo dodany klucz daje różnicę", () => {
