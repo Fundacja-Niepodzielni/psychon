@@ -1,20 +1,18 @@
 /**
- * Dane wątku grupowego prowadzącego („prowadzący
- * prowadzi wątek grupowy, on też zarządza składem"). Ten moduł woła
- * `GET /threads`, `GET /threads/{thread}`, `POST /threads/{thread}/messages`
- * (odczyt/wysyłka — istniejące od dawna) oraz `POST /threads`,
- * `POST /threads/{thread}/members/{user}` i `DELETE` tej samej (założenie
- * wątku i skład — wyłącznie rola `instructor`, i wyłącznie właściciel TEGO
- * wątku dla składu; patrz komentarz w `routes/api/chat.php`).
+ * Dane wątku grupowego prowadzącego („prowadzący prowadzi wątek
+ * grupowy"). Ten moduł woła `GET /threads`, `GET /threads/{thread}`,
+ * `POST /threads/{thread}/messages` (odczyt/wysyłka) oraz `POST /threads`
+ * (założenie wątku — wyłącznie rola `instructor`; patrz komentarz w
+ * `routes/api/chat.php`). Skład grupy przypisuje i kończy wyłącznie
+ * administracja — z tego ekranu nie ma ani dodawania, ani usuwania osób.
  *
  * Autoryzacja per-wątek przy ODCZYCIE (wiadomości) NIE jest rolą — 404,
  * nigdy 403, dla wątku spoza własnej grupy. `GET /threads` samo zwraca tylko
  * wątki widoczne wywołującemu (wg roli z tokena), więc front nie filtruje
  * niczego pod kątem uprawnień — filtruje wyłącznie `type === "group"`, żeby
  * ten konkretny ekran pokazywał wątek grupowy, a nie też wątki indywidualne
- * z wolontariuszkami (inny ekran, poza tą pozycją). Założenie wątku i
- * zarządzanie składem WOLNO ROLĄ (`role:instructor`) — nieuprawnione
- * wywołanie dostaje 403, nie 404 (patrz `ThreadMemberController`).
+ * z wolontariuszkami (inny ekran, poza tą pozycją). Założenie wątku WOLNO
+ * ROLĄ (`role:instructor`) — inna rola dostaje 403.
  */
 import { api, apiPaged, type PaginationMeta } from "@/lib/api";
 
@@ -40,14 +38,6 @@ export interface ChatMessage {
   created_at: string | null;
 }
 
-/** Odpowiada `SupervisorAssignmentResource` (zaplecze: `backend/app/Http/Resources/H12/SupervisorAssignmentResource.php`). */
-export interface SupervisorAssignment {
-  volunteer_id: number;
-  supervisor_id: number;
-  assigned_at: string | null;
-  unassigned_at: string | null;
-}
-
 /** Wątki grupowe widoczne prowadzącemu — w praktyce dokładnie jeden (własna grupa). */
 export async function fetchInstructorGroupThreads(): Promise<ChatThread[]> {
   const { data } = await apiPaged<ChatThread>("/threads");
@@ -62,25 +52,6 @@ export async function fetchInstructorGroupThreads(): Promise<ChatThread[]> {
  */
 export function createInstructorGroupThread(): Promise<ChatThread> {
   return api<ChatThread>("/threads", { method: "POST" });
-}
-
-/**
- * Dodanie osoby do składu wątku grupowego — wyłącznie prowadzący będący
- * właścicielem tego wątku (`POST /threads/{id}/members/{user}`); inna rola
- * albo inny prowadzący dostaje 403.
- */
-export function addThreadMember(threadId: number, userId: number): Promise<SupervisorAssignment> {
-  return api<SupervisorAssignment>(`/threads/${threadId}/members/${userId}`, { method: "POST" });
-}
-
-/**
- * Usunięcie osoby ze składu wątku grupowego — te same reguły dostępu co
- * dodanie (`DELETE /threads/{id}/members/{user}`). Zaplecze zwraca kopertę
- * `{data: null}` (`ThreadMemberController::destroy`) — `api<T>()` zdejmuje
- * kopertę i oddaje samo `null`.
- */
-export function removeThreadMember(threadId: number, userId: number): Promise<null> {
-  return api<null>(`/threads/${threadId}/members/${userId}`, { method: "DELETE" });
 }
 
 /** Wiadomości jednego wątku, stronicowane (kontroler: `routes/api/chat.php:29`). */

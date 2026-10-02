@@ -19,7 +19,7 @@ class StoreSupervisionCaseRequest extends FormRequest
         return [
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:5000'],
-            'volunteer_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'volunteer_id' => ['sometimes', 'nullable', 'integer'],
         ];
     }
 
@@ -33,10 +33,13 @@ class StoreSupervisionCaseRequest extends FormRequest
             'body.string' => 'Treść musi być tekstem.',
             'body.max' => 'Treść jest zbyt długa.',
             'volunteer_id.integer' => 'Identyfikator osoby musi być liczbą.',
-            'volunteer_id.exists' => 'Wskazana osoba nie istnieje.',
         ];
     }
 
+    /**
+     * Osoba spoza własnej grupy i osoba nieistniejąca dostają to samo zdanie —
+     * odpowiedź nie mówi, czy wskazany identyfikator istnieje.
+     */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
