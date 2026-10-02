@@ -470,7 +470,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await opublikuj.click();
     await expect(karta.getByRole("heading", { level: 3, name: "Nie udało się opublikować (1)" })).toBeVisible();
     await expect(karta.getByRole("link", { name: "Dodaj co najmniej jedną lekcję." })).toBeVisible();
-    await expect(page.locator("#publikacja-tytul")).toBeFocused();
+    await expect(karta.getByRole("group", { name: "Nie udało się opublikować (1)" })).toBeFocused();
     await expect(karta.getByText("Kurs jest szkicem. Uczestnicy go nie widzą.")).toBeVisible();
     await zrzut(page, "kurs-1280-publikacja-odmowa");
 
