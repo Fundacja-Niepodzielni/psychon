@@ -188,6 +188,8 @@ export const WYKLUCZENIA = [
   { komponent: "StatRow", plik: "organizmy/StatRow/StatRow.tsx", powod: "składa wyłącznie StatTile (już wykluczony) i — gdy podane `href` — Link (cel „Link (pole klikalne)”) opakowujący kafel; sam organizm nie dokłada własnego handlera poza tym opakowaniem." },
   // Dopisane z kartą stanu pustego: wykluczeń jest o jedno więcej niż w liczbach z komentarzy wyżej.
   { komponent: "EmptyStateCard", plik: "organizmy/EmptyStateCard/EmptyStateCard.tsx", powod: "div karty z jednym dzieckiem — molekułą EmptyState (cel „EmptyState (przycisk)”); sam plik nie ma własnego handlera, tabIndex, role aktywacyjnej ani przycisku, jedyny przycisk karty pochodzi z molekuły." },
+  // Dopisane z odtwarzaczem nagrania w ramce dostawcy: wykluczeń jest o jedno więcej niż w liczbach z komentarzy wyżej.
+  { komponent: "RecordingPlayer", plik: "organizmy/RecordingPlayer/RecordingPlayer.tsx", powod: "div ramy z <iframe> odtwarzacza dostawcy i akapitem <p role=\"status\"> stanu wczytywania; sam plik nie ma przycisku, odnośnika, handlera kliknięcia, tabIndex ani roli aktywacyjnej — kontrolki odtwarzania należą do dokumentu ramki z innego pochodzenia, którego ten pomiar nie widzi i którego ten system nie styluje, a błąd i prośbę o nowy adres organizm zgłasza w górę właściwościami, bez własnego przycisku ponowienia." },
 ];
 
 // K3, noga trzecia: lista WSZYSTKICH plików `*.tsx`, które ten odbiór
