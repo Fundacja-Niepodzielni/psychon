@@ -273,6 +273,7 @@
 
 .glownyWKarcie {
   display: grid;
+  gap: var(--space-8);
 }
 
 .glownyWKarcie > * {
@@ -309,6 +310,16 @@
 .pasStan b {
   color: var(--ink);
   font-weight: var(--fw-bold);
+}
+
+/* Przyciski publikacji w wąskim pasie: obok siebie, a gdy brakuje miejsca — jeden pod drugim. */
+.pasDzialania {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  min-width: 0;
 }
 
 .wierszUstawien {
@@ -414,4 +425,11 @@
     padding-right: var(--space-20);
     padding-left: var(--space-20);
   }
+}
+
+/* Komunikaty całego ekranu pod nagłówkiem: jeden pod drugim, ten sam odstęp co między blokami. */
+.komunikatyEkranu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
 }

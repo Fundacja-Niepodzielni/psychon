@@ -93,7 +93,14 @@ interface Zapytanie {
 
 interface Atrapy {
   zapytania: Zapytanie[];
+  /** Adresy odczytów listy prowadzących (`GET /admin/users…`), osobno od zapisów. */
+  odczytyProwadzacych: string[];
 }
+
+const PROWADZACY = [
+  { id: 7, first_name: "Ewa", last_name: "Brzeska" },
+  { id: 8, first_name: "Jan", last_name: `Kowalski-Wiśniewski${"-Zakrzewski-Nowogrodzki".repeat(2)}` },
+];
 
 const PODGLAD = [
   { user_id: 17, first_name: "Marta", last_name: "Demo", course_id: 2, course_title: "Wywiad psychologiczny", from: "in_progress", to: "locked" },
@@ -118,9 +125,16 @@ function podgladDlaOsob(liczba: number) {
  */
 async function instalujAtrapyApi(
   page: Page,
-  opcje: { kursy?: ReturnType<typeof kurs>[]; odmowa?: boolean; blad?: boolean; osoby?: number } = {},
+  opcje: {
+    kursy?: ReturnType<typeof kurs>[];
+    odmowa?: boolean;
+    blad?: boolean;
+    osoby?: number;
+    /** Odpowiedź na przypisanie prowadzącego do nowego kursu; domyślnie powodzenie. */
+    przypisanie?: "ok" | 422 | 500;
+  } = {},
 ): Promise<Atrapy> {
-  const stan: Atrapy = { zapytania: [] };
+  const stan: Atrapy = { zapytania: [], odczytyProwadzacych: [] };
   const podglad = opcje.osoby === undefined ? PODGLAD : podgladDlaOsob(opcje.osoby);
   const kursy = opcje.kursy ?? czteryKursy();
 
@@ -133,6 +147,14 @@ async function instalujAtrapyApi(
     route.fulfill(koperta({ counters: { participants: 3, completed: 1, certificates: 1 }, queues: [] })),
   );
   await page.route(`${API}/admin/edition`, (route) => route.fulfill(koperta(EDYCJA)));
+  await page.route(
+    (adres) => adres.pathname === "/api/v1/admin/users",
+    (route) => {
+      const adres = new URL(route.request().url());
+      stan.odczytyProwadzacych.push(`${adres.pathname.replace("/api/v1", "")}${adres.search}`);
+      return route.fulfill(koperta(PROWADZACY, metaListy(PROWADZACY.length)));
+    },
+  );
   await page.route(
     (adres) => adres.pathname.startsWith("/api/v1/admin/courses"),
     async (route) => {
@@ -160,6 +182,22 @@ async function instalujAtrapyApi(
       } else if (sciezka === "/admin/courses" && metoda === "POST") {
         stan.zapytania.push({ adres: "POST /admin/courses", cialo: zadanie.postDataJSON() });
         await route.fulfill({ ...koperta(kurs(9, "Nowy kurs", { is_published: false, sequence_order: null, lessons_count: 0 })), status: 201 });
+      } else if (/^\/admin\/courses\/\d+\/assignments$/.test(sciezka) && metoda === "POST") {
+        stan.zapytania.push({ adres: `POST ${sciezka}`, cialo: zadanie.postDataJSON() });
+        const przypisanie = opcje.przypisanie ?? "ok";
+        if (przypisanie === "ok") {
+          const { instructor_id: idProwadzacego } = zadanie.postDataJSON() as { instructor_id: number };
+          await route.fulfill({
+            ...koperta({ id: 1, course_id: 9, lesson_id: null, instructor: PROWADZACY.find((osoba) => osoba.id === idProwadzacego) }),
+            status: 201,
+          });
+        } else {
+          await route.fulfill({
+            status: przypisanie,
+            contentType: "application/json",
+            body: JSON.stringify({ error: { status: przypisanie, code: przypisanie === 422 ? "validation_failed" : "server_error", message: "Odmowa serwera." } }),
+          });
+        }
       } else if (sciezka === "/admin/courses/reorder/preview") {
         stan.zapytania.push({ adres: "POST /admin/courses/reorder/preview", cialo: zadanie.postDataJSON() });
         await route.fulfill(koperta(podglad));
@@ -605,6 +643,132 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
       },
     ]);
   });
+
+  const CIALO_NOWEGO_KURSU = {
+    title: "Z prowadzącym",
+    slug: "z-prowadzacym",
+    type: "course",
+    product_group: "psychon",
+    sequence_order: null,
+    description: null,
+  };
+
+  async function wybierzProwadzacego(page: Page, nazwa: string | RegExp) {
+    await page.getByRole("combobox", { name: /^Prowadzący/ }).click();
+    await page.getByRole("option", { name: nazwa }).click();
+  }
+
+  test("utworzenie kursu bez prowadzącego: jedno żądanie zapisu, lista prowadzących z jednego adresu", async ({ page }) => {
+    const atrapy = await instalujAtrapyApi(page);
+    await page.goto("/admin/kursy");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await page.getByRole("button", { name: "Utwórz kurs" }).click();
+    await page.getByLabel(/^Tytuł/).fill("Z prowadzącym");
+    await expect(page.getByRole("combobox", { name: /^Prowadzący/ })).toBeVisible();
+    await page.getByRole("button", { name: "Utwórz kurs" }).click();
+    await expect(page).toHaveURL(/\/admin\/kursy\/9$/);
+    expect(atrapy.zapytania).toEqual([{ adres: "POST /admin/courses", cialo: CIALO_NOWEGO_KURSU }]);
+    expect(atrapy.odczytyProwadzacych).toEqual(["/admin/users?role=instructor&status=active&per_page=100&sort=last_name"]);
+  });
+
+  test("utworzenie kursu z prowadzącym: kurs, potem przypisanie do całego kursu; ekran kursu bez zdania o braku", async ({ page }) => {
+    const atrapy = await instalujAtrapyApi(page);
+    await page.goto("/admin/kursy");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+    await page.getByRole("button", { name: "Utwórz kurs" }).click();
+    await page.getByLabel(/^Tytuł/).fill("Z prowadzącym");
+    await wybierzProwadzacego(page, "Ewa Brzeska");
+    await page.getByRole("button", { name: "Utwórz kurs" }).click();
+
+    await expect(page).toHaveURL(/\/admin\/kursy\/9$/);
+    await expect(page.getByRole("heading", { level: 2, name: "Tematy i lekcje" })).toBeVisible();
+    expect(atrapy.zapytania).toEqual([
+      { adres: "POST /admin/courses", cialo: CIALO_NOWEGO_KURSU },
+      { adres: "POST /admin/courses/9/assignments", cialo: { instructor_id: 7, lesson_id: null } },
+    ]);
+    await expect(page.getByText("Prowadzący nie został przypisany")).toHaveCount(0);
+  });
+
+  for (const kod of [422, 500] as const) {
+    test(`utworzenie kursu z prowadzącym, przypisanie odrzucone (${kod}): ekran kursu ze zdaniem, utworzenie bez ponowienia`, async ({ page }) => {
+      const atrapy = await instalujAtrapyApi(page, { przypisanie: kod });
+      await page.goto("/admin/kursy");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await page.getByRole("button", { name: "Utwórz kurs" }).click();
+      await page.getByLabel(/^Tytuł/).fill("Z prowadzącym");
+      await wybierzProwadzacego(page, "Ewa Brzeska");
+      await page.getByRole("button", { name: "Utwórz kurs" }).click();
+
+      await expect(page).toHaveURL(/\/admin\/kursy\/9$/);
+      await expect(page.getByRole("heading", { level: 3, name: "Prowadzący nie został przypisany" })).toBeVisible();
+      await expect(page.locator("[data-obszar='komunikaty']").getByText(/^Kurs został utworzony jako szkic, ale nie udało się/)).toBeVisible();
+      await expect(page.locator("[data-ogloszenia]")).toContainText("nie udało się przypisać do niego prowadzącego");
+      await expect(page.getByText("Szkic — zapisany")).toHaveCount(1);
+      expect(atrapy.zapytania.map((wpis) => wpis.adres)).toEqual(["POST /admin/courses", "POST /admin/courses/9/assignments"]);
+      // Zdanie wyświetla się raz: po przeładowaniu ekranu go nie ma.
+      await page.reload();
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await expect(page.getByRole("heading", { level: 2, name: "Tematy i lekcje" })).toBeVisible();
+      await expect(page.getByText("Prowadzący nie został przypisany")).toHaveCount(0);
+    });
+  }
+
+  for (const szerokosc of SZEROKOSCI) {
+    test(`formularz „Utwórz kurs” z polem „Prowadzący” @${szerokosc}: długie nazwisko, bez przewijania w poziomie, cele dotyku, kolejność fokusu, axe`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: szerokosc, height: szerokosc >= 1024 ? 900 : 844 });
+      await instalujAtrapyApi(page);
+      await page.goto("/admin/kursy");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await page.getByRole("button", { name: "Utwórz kurs" }).click();
+      await page.getByLabel(/^Tytuł/).fill(`Wywiad${"PsychologicznyZPacjentemWKryzysie".repeat(3)}`);
+      await wybierzProwadzacego(page, `Jan ${PROWADZACY[1].last_name}`);
+      await expect(page.getByRole("combobox", { name: /^Prowadzący/ })).toContainText("Jan Kowalski");
+
+      const przewiniecie = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(przewiniecie, "przewijanie poziome").toBeLessThanOrEqual(0);
+
+      // Cele dotyku formularza i ich kolejność: w dokumencie, na ekranie i w Tab.
+      const cele = await page.evaluate(() => {
+        const formularz = document.querySelector<HTMLElement>('form[aria-label="Nowy kurs"]')!;
+        const wezly = Array.from(
+          formularz.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), input:not([type='hidden']), textarea, [role='combobox']"),
+        ).filter((wezel) => {
+          const ramka = wezel.getBoundingClientRect();
+          return ramka.width > 0 && ramka.height > 0 && wezel.tabIndex >= 0;
+        });
+        return wezly.map((wezel, indeks) => {
+          wezel.dataset.celFormularza = String(indeks);
+          const ramka = wezel.getBoundingClientRect();
+          return {
+            opis: (wezel.getAttribute("aria-label") ?? wezel.textContent ?? wezel.id).trim().slice(0, 50),
+            y: ramka.top + window.scrollY,
+            szerokosc: ramka.width,
+            wysokosc: ramka.height,
+          };
+        });
+      });
+      expect(cele.length).toBeGreaterThanOrEqual(7);
+      expect(
+        cele.filter((cel) => cel.wysokosc < 43.5).map((cel) => `${cel.opis}: ${Math.round(cel.szerokosc)}×${Math.round(cel.wysokosc)}`),
+        "cele dotyku formularza poniżej 44 px",
+      ).toEqual([]);
+      expect(cele.slice(1).filter((cel, i) => cel.y < cele[i].y - 1).map((cel) => cel.opis), "elementy nad poprzednikiem").toEqual([]);
+      await page.locator("[data-cel-formularza='0']").focus();
+      const przejscie: (string | null)[] = [];
+      for (let krok = 0; krok < cele.length; krok += 1) {
+        przejscie.push(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.celFormularza ?? null));
+        await page.keyboard.press("Tab");
+      }
+      expect(przejscie).toEqual(cele.map((_, indeks) => String(indeks)));
+
+      await sprawdzAxe(page, testInfo, `axe-kursy-formularz-prowadzacy-${szerokosc}`);
+      const odbior = process.env.PW_ZRZUTY_ODBIOR;
+      if (odbior) {
+        mkdirSync(odbior, { recursive: true });
+        await page.screenshot({ path: path.join(odbior, `administracja--nowy-kurs--prowadzacy--${szerokosc}.png`), fullPage: true, animations: "disabled" });
+      }
+    });
+  }
 
   test("anulowanie formularza oddaje fokus przyciskowi „Utwórz kurs” w nagłówku", async ({ page }) => {
     await instalujAtrapyApi(page);

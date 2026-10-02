@@ -22,8 +22,9 @@ import {
  */
 
 const back = vi.fn();
+const push = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ back, push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ back, push, refresh: vi.fn(), replace: vi.fn() }),
 }));
 vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 
@@ -93,7 +94,15 @@ function odroczony() {
 beforeEach(() => {
   serwer = utworzSerwer();
   wysylanie.stan = null;
+  push.mockReset();
+  window.sessionStorage.clear();
 });
+
+function przyciskiGlowne(korzen: ParentNode = document) {
+  return Array.from(korzen.querySelectorAll("button")).filter((przycisk) =>
+    przycisk.className.split(/\s+/).some((klasa) => /(^|_)primary(_|$)/.test(klasa)),
+  );
+}
 
 describe("ekran kursu — odczyt i układ", () => {
   it("czyta wyłącznie trasy administracji i stoi w jednym main", async () => {
@@ -292,8 +301,8 @@ describe("ekran kursu — publikacja", () => {
 
     const wPasie = container.querySelectorAll('[data-obszar="pasek-waski"] button');
     const wKarcie = container.querySelectorAll('[data-obszar="tylko-od-dwoch-kolumn"] button');
-    expect(Array.from(wPasie).map((p) => p.textContent)).toEqual(["Opublikuj kurs"]);
-    expect(Array.from(wKarcie).map((p) => p.textContent)).toEqual(["Opublikuj kurs"]);
+    expect(Array.from(wPasie).map((p) => p.textContent)).toEqual(["Opublikuj kurs", "Zapisz szkic i wyjdź"]);
+    expect(Array.from(wKarcie).map((p) => p.textContent)).toEqual(["Opublikuj kurs", "Zapisz szkic i wyjdź"]);
     // Poza tymi dwoma miejscami (arkusz pokazuje zawsze jedno) przycisku nie ma.
     expect(screen.getAllByRole("button", { name: "Opublikuj kurs" })).toHaveLength(2);
     expect(screen.queryByRole("link", { name: "Podgląd jako uczestnik" })).toBeNull();
@@ -879,5 +888,103 @@ describe("ekran kursu — tematy", () => {
     expect(screen.getByRole("button", { name: "+ Dodaj temat" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Kurs nie ma jeszcze lekcji." })).toBeInTheDocument();
     expect(LEKCJE).toHaveLength(3);
+  });
+});
+
+describe("ekran kursu — szkic zapisany i wyjście", () => {
+  const ADRES_LISTY = "/admin/kursy";
+
+  it("szkic: stała plakietka „Szkic — zapisany” w nagłówku i jedno zdanie o samoczynnym zapisie", async () => {
+    await renderEkranu();
+    const naglowek = document.querySelector("[data-obszar='naglowek'] header") as HTMLElement;
+    expect(within(naglowek).getAllByText("Szkic — zapisany")).toHaveLength(1);
+    expect(screen.getAllByText("Zmiany zapisują się same.")).toHaveLength(1);
+    expect(within(naglowek).getByText("Zmiany zapisują się same.")).toBeInTheDocument();
+    // Plakietka jest jedyną w nagłówku: dawne „Szkic” zniknęło, nie doszło drugie.
+    expect(within(naglowek).queryByText("Szkic", { exact: true })).toBeNull();
+  });
+
+  it("kurs opublikowany: ani plakietki szkicu, ani zdania, ani przycisku wyjścia", async () => {
+    serwer = utworzSerwer({ kurs: { ...KURS, is_published: true } });
+    await renderEkranu();
+    expect(screen.queryByText("Szkic — zapisany")).toBeNull();
+    expect(screen.queryByText("Zmiany zapisują się same.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Zapisz szkic i wyjdź" })).toBeNull();
+    expect(screen.getAllByText("Opublikowany").length).toBeGreaterThan(0);
+  });
+
+  it("w pasie i w karcie stoi po jednym przycisku głównym i po jednym z obrysem, a ten z obrysem nie jest głównym", async () => {
+    const { container } = await renderEkranu();
+    for (const obszar of ["pasek-waski", "tylko-od-dwoch-kolumn"]) {
+      const miejsce = container.querySelector(`[data-obszar="${obszar}"]`) as HTMLElement;
+      const glowne = przyciskiGlowne(miejsce);
+      expect(glowne.map((przycisk) => przycisk.textContent)).toEqual(["Opublikuj kurs"]);
+      const wyjscie = within(miejsce).getByRole("button", { name: "Zapisz szkic i wyjdź" });
+      expect(glowne).not.toContain(wyjscie);
+      expect(wyjscie.className).toMatch(/outline/);
+    }
+    // Poza pasem i kartą zielonego przycisku nie ma: dwa w drzewie, bo arkusz pokazuje zawsze jeden.
+    expect(przyciskiGlowne(container)).toHaveLength(2);
+  });
+
+  it("bez zapisu w toku: jedno przejście na listę kursów, żadne żądanie zapisu nie wychodzi", async () => {
+    await renderEkranu();
+    await userEvent.click(screen.getAllByRole("button", { name: "Zapisz szkic i wyjdź" })[0]);
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    expect(push).toHaveBeenCalledWith(ADRES_LISTY);
+    expect(serwer.zapisy()).toEqual([]);
+  });
+
+  it("zapis w toku: wyjście czeka na jego koniec i dopiero wtedy prowadzi na listę", async () => {
+    await renderEkranu();
+    const oczekujace = odroczony();
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
+    expect(oczekujace).toHaveLength(1);
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Zapisz szkic i wyjdź" })[0]);
+    // Kolejne kliknięcie w trakcie czekania niczego nie dubluje.
+    await userEvent.click(screen.getAllByRole("button", { name: "Zapisz szkic i wyjdź" })[0]);
+    expect(push).not.toHaveBeenCalled();
+
+    oczekujace[0].przyjmij(TEMATY);
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    expect(push).toHaveBeenCalledWith(ADRES_LISTY);
+    expect(zapisyUkladu()).toHaveLength(1);
+  });
+
+  it("odmowa zapisu w toku: ekran zostaje, jest zdanie, na listę nie wychodzi nic", async () => {
+    await renderEkranu();
+    const oczekujace = odroczony();
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja A” niżej" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Zapisz szkic i wyjdź" })[0]);
+    expect(push).not.toHaveBeenCalled();
+
+    oczekujace[0].odrzuc(new Error("sieć"));
+    expect(await screen.findByText("Szkic nie został zapisany")).toBeInTheDocument();
+    // Zdanie stoi w komunikacie i jest ogłaszane czytnikowi: dwa miejsca, jedno zdanie.
+    expect(screen.getAllByText(/ostatnia zmiana kolejności nie została zapisana/)).toHaveLength(2);
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { level: 2, name: "Tematy i lekcje" })).toBeInTheDocument();
+    expect(ogloszenie()).toMatch(/ostatnia zmiana kolejności nie została zapisana/);
+
+    // Po poprawce (ruch zdejmuje komunikat) wyjście znów jest możliwe.
+    await userEvent.click(screen.getAllByRole("button", { name: "Zapisz szkic i wyjdź" })[0]);
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+  });
+
+  it("zdanie z listy kursów (prowadzącego nie przypisano) stoi pod nagłówkiem i jest zdejmowane z pamięci karty", async () => {
+    window.sessionStorage.setItem("kurs-ostrzezenie-po-utworzeniu-4", "Kurs został utworzony jako szkic, ale nie udało się przypisać do niego prowadzącego.");
+    await renderEkranu();
+    expect(screen.getByText("Prowadzący nie został przypisany")).toBeInTheDocument();
+    // Zdanie stoi w komunikacie i jest ogłaszane czytnikowi.
+    expect(screen.getAllByText(/nie udało się przypisać do niego prowadzącego/)).toHaveLength(2);
+    expect(ogloszenie()).toMatch(/nie udało się przypisać do niego prowadzącego/);
+    await waitFor(() => expect(window.sessionStorage.getItem("kurs-ostrzezenie-po-utworzeniu-4")).toBeNull());
+  });
+
+  it("bez zdania z listy kursów nie ma żadnego komunikatu pod nagłówkiem", async () => {
+    await renderEkranu();
+    expect(screen.queryByText("Prowadzący nie został przypisany")).toBeNull();
+    expect(document.querySelector("[data-obszar='komunikaty']")).toBeNull();
   });
 });
