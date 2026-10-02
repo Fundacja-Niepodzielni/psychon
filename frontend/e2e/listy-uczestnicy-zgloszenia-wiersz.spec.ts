@@ -16,6 +16,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - nagłówek zgłoszeń: „Dodaj zgłoszenie” (kolor) i „Importuj z pliku CSV”
  *   obok siebie (1280) albo jeden pod drugim, każdy na pełną szerokość (390);
  *   nagłówek uczestników: eksport jako akcja drugorzędna, odnośnik pod `h1`;
+ * - panel importu zgłoszeń: obszar upuszczania pliku bez naruszeń axe (w tym `label` i
+ *   `nested-interactive`), z jednym przystankiem tabulatora; kliknięcie otwiera wybór pliku raz;
  * - menu: na obu ekranach i na szczególe zgłoszenia „Sprawy” mają
  *   `aria-current="true"`, a własnych pozycji ekranów w menu nie ma.
  * Zrzuty ekranu powstają tylko przy ustawionej zmiennej `PW_ZRZUTY_W26`
@@ -174,6 +176,35 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         expect(naruszenia, `${adres} pusto @${szerokosc}`).toEqual([]);
         await zrzut(page, `${nazwa}-${szerokosc}-pusto`);
       }
+    });
+
+    test("panel importu: obszar upuszczania pliku bez naruszeń axe, z jednym przystankiem tabulatora, a kliknięcie otwiera wybór pliku raz", async ({ page }) => {
+      await instalujAtrapy(page, DANE);
+      await page.goto("/admin/nabor");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      await page.getByRole("button", { name: "Importuj z pliku CSV" }).click();
+      const obszar = page.locator("#zgloszenia-import-plik-obszar");
+      await expect(obszar).toBeVisible();
+
+      const naruszenia = await axeZBestPractice(page);
+      expect(naruszenia, `/admin/nabor z panelem importu @${szerokosc}`).toEqual([]);
+      await zrzut(page, `nabor-${szerokosc}-import`);
+
+      const przystanki = await obszar.evaluate((el) => {
+        const oprawa = el.parentElement!;
+        return [...oprawa.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, [tabindex]")]
+          .filter((e) => e.tabIndex >= 0 && !(e as HTMLInputElement).disabled)
+          .map((e) => e.id);
+      });
+      expect(przystanki, "jeden przystanek tabulatora w obszarze").toEqual(["zgloszenia-import-plik-obszar"]);
+
+      let otwarcia = 0;
+      page.on("filechooser", () => {
+        otwarcia += 1;
+      });
+      await obszar.click();
+      await page.waitForTimeout(400);
+      expect(otwarcia, "kliknięcie obszaru otwiera wybór pliku raz").toBe(1);
     });
 
     test("wiersz jak w Sprawach: pogrubione imię, plakietka małą literą, „Otwórz” z pełną nazwą; uczestnicy na karcie równej z h1, zgłoszenia tekstem równo z h1", async ({ page }) => {
