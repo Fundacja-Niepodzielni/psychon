@@ -123,7 +123,7 @@ describe("superwizja — tekst i liczby", () => {
   it("odnośnik do spotkania tylko z adresów http i https; reszta zostaje tekstem", () => {
     expect(adresSpotkania("https://przyklad.test/superwizja-1")).toBe("https://przyklad.test/superwizja-1");
     expect(adresSpotkania(" http://przyklad.test/s ")).toBe("http://przyklad.test/s");
-    expect(adresSpotkania("javascript:alert(1)")).toBeNull();
+    expect(adresSpotkania("ftp://przyklad.test/plik")).toBeNull();
     expect(adresSpotkania("Sala szkoleniowa, piętro 1")).toBeNull();
     expect(adresSpotkania("https://przyklad.test/a b")).toBeNull();
     expect(adresSpotkania(null)).toBeNull();
