@@ -228,7 +228,7 @@ async function kolejnoscFokusuWKarcie(page: Page): Promise<string[]> {
       const element = document.activeElement as HTMLElement | null;
       if (!element) return null;
       return {
-        nazwa: (element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 60),
+        nazwa: (element.getAttribute("aria-label") ?? element.textContent ?? "").trim().slice(0, 300),
         gora: Math.round(element.getBoundingClientRect().top + window.scrollY),
       };
     });
