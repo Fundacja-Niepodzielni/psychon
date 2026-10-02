@@ -152,6 +152,23 @@ for (const [nazwa, wymiary] of [
       expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("");
     });
 
+    test("przycisk „Wstecz” przeglądarki zamyka samo okno, karta zostaje pod tym samym adresem", async ({ page }) => {
+      const stan = await atrapy(page);
+      await page.goto("/admin/uczestniczki/17");
+      await zabezpieczeniePrzedEkranemDostepu(page);
+      const adres = page.url();
+      await page.locator("[data-obszar='data-dostepu']").getByRole("button", { name: "Zmień datę" }).click();
+      const okno = page.getByRole("dialog", { name: "Zmień datę dostępu: Marta Demo" });
+      await expect(okno).toBeVisible();
+      await expect.poll(() => page.evaluate(() => (history.state as Record<string, unknown> | null)?.oknoFormularza)).toBeTruthy();
+
+      await page.goBack();
+      await expect(okno).toHaveCount(0);
+      expect(page.url()).toBe(adres);
+      await expect(page.getByRole("heading", { level: 1, name: "Marta Demo" })).toBeVisible();
+      expect(stan.zapisy).toEqual([]);
+    });
+
     test("po zaliczeniu warsztatu fokus stoi na nagłówku bloku warsztatu", async ({ page }) => {
       await atrapy(page);
       await page.goto("/admin/uczestniczki/17");
