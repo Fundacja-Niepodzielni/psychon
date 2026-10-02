@@ -15,6 +15,7 @@ use Illuminate\Testing\TestResponse;
  * (403 `test_already_passed`), a `GET /courses/{slug}/test` mówi, czy test
  * jest zaliczony (`passed`). Niezaliczony test działa jak dotąd.
  *
+ * Reset podejść zaliczonego testu mierzy `PassedTestResetTest` obok.
  * Wyścig dwóch nowych podejść po zaliczeniu mierzy `PassedTestRaceTest` obok.
  */
 class PassedTestClosedTest extends TestPackageCase

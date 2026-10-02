@@ -11,7 +11,8 @@ use App\Support\CourseAccess;
 /**
  * Pakiet H10 · zaliczony test jest zamknięty.
  *
- * Osoba z zaliczonym podejściem nie zaczyna nowego — 403 `test_already_passed`. Zaliczenie
+ * Osoba z zaliczonym podejściem nie zaczyna nowego, a administracja nie kasuje
+ * jej podejść resetem — w obu miejscach 403 `test_already_passed`. Zaliczenie
  * rozstrzyga wyłącznie `CourseAccess::testPassed` (to samo źródło co ścieżka
  * kursów, certyfikat i liczniki); kurs ma najwyżej jeden test (unikat
  * `tests.course_id`), więc zaliczenie kursu jest zaliczeniem tego testu.

@@ -8,6 +8,7 @@ use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
 use App\Support\AuditLog;
+use App\Support\H10\PassedTestGuard;
 use App\Support\H10\TestGrader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,9 @@ use Illuminate\Support\Facades\DB;
  * Reset czyści dotychczasowe podejścia użytkownika do tego testu, więc
  * numeracja startuje od nowa (1). Powód i wykonawca trafiają do dziennika
  * działań (`attempts.reset`).
+ *
+ * Zaliczony test → 403 `test_already_passed`, nic nie skasowane, bez audytu.
+ * Odmowa stoi po dostępie (rola, 404) i po walidacji powodu (422).
  */
 class AdminTestResetController extends Controller
 {
@@ -29,6 +33,16 @@ class AdminTestResetController extends Controller
         $reason = $request->validated('reason');
 
         $cleared = DB::transaction(function () use ($test, $user, $request, $reason): int {
+            // Ta sama blokada wiersza osoby co przy zapisie podejścia: podejście
+            // zaliczające wysłane w tej samej chwili nie minie sprawdzenia niżej.
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            // Reset kasował wszystkie podejścia, także zaliczone, więc otwierał
+            // zaliczony test i cofał zaliczenie (ścieżka, certyfikat, liczniki).
+            // Zaliczony test jest zamknięty: nic nie kasujemy, bez audytu.
+            $test->loadMissing('course');
+            PassedTestGuard::assertNotPassed($user, $test);
+
             $cleared = TestAttempt::where('user_id', $user->id)
                 ->where('test_id', $test->id)
                 ->delete();
