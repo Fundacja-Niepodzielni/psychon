@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -10,7 +10,7 @@ import userEvent from "@testing-library/user-event";
  *     no-opem.
  *  4. `starts_at`: wpis w czasie lokalnym przeglądarki trafia do żądania jako
  *     ISO 8601 UTC.
- *  5. Odwołanie terminu wymaga potwierdzenia (`DialogActions`) przed
+ *  5. Odwołanie terminu wymaga potwierdzenia (okno `Dialog`) przed
  *     wywołaniem trasy.
  *  6. Puste/nieliczbowe „Czas trwania"/„Limit miejsc" trafiają w żądaniu
  *     dosłownie, bez cichej zamiany na `undefined`.
@@ -137,20 +137,18 @@ describe("SuperwizjeTerminy — poprawki", () => {
     expect(payload.starts_at).toBe("2026-09-10T08:00:00.000Z");
   });
 
-  it("odwołanie terminu wymaga potwierdzenia przez DialogActions przed wywołaniem trasy", async () => {
+  it("odwołanie terminu wymaga potwierdzenia w oknie Dialog przed wywołaniem trasy", async () => {
     const uzytkownik = userEvent.setup();
-    cancelAdminSupervisionSlot.mockResolvedValue({ id: TERMIN.id, signups_released: 3 });
+    cancelAdminSupervisionSlot.mockResolvedValue({ id: TERMIN.id, signups_released: 3, cancelled_at: "2026-10-02T15:00:00Z" });
 
     render(<SuperwizjeTerminy />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Edytuj" })).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("button", { name: "Edytuj" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Odwołaj termin" })).toBeInTheDocument());
 
     await uzytkownik.click(screen.getByRole("button", { name: "Odwołaj termin" }));
     expect(cancelAdminSupervisionSlot).not.toHaveBeenCalled();
 
-    expect(screen.getByText("Potwierdź odwołanie terminu")).toBeInTheDocument();
-
-    await uzytkownik.click(screen.getAllByRole("button", { name: "Odwołaj termin" })[0]);
+    const okno = screen.getByRole("dialog");
+    await uzytkownik.click(within(okno).getByRole("button", { name: "Odwołaj termin" }));
 
     await waitFor(() => expect(cancelAdminSupervisionSlot).toHaveBeenCalledTimes(1));
     expect(cancelAdminSupervisionSlot).toHaveBeenCalledWith(TERMIN.id);

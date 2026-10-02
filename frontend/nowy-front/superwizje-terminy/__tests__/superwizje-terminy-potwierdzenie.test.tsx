@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -58,13 +58,14 @@ describe("Terminy superwizji — potwierdzenie", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Zapisano zmiany terminu superwizji.");
   });
 
-  it("odwołanie terminu: powiadomienie ze zdaniem o odwołaniu", async () => {
-    cancelAdminSupervisionSlot.mockResolvedValue({ id: TERMIN.id, signups_released: 3 });
-    await otworzEdycje();
-    await userEvent.click(screen.getByRole("button", { name: "Odwołaj termin" }));
-    await userEvent.click(screen.getAllByRole("button", { name: "Odwołaj termin" })[0]);
+  it("odwołanie terminu: powiadomienie ze zdaniem o odwołaniu i liczbą osób", async () => {
+    cancelAdminSupervisionSlot.mockResolvedValue({ id: TERMIN.id, signups_released: 3, cancelled_at: "2026-10-02T15:00:00Z" });
+    render(<SuperwizjeTerminy />);
+    await userEvent.click(await screen.findByRole("button", { name: "Odwołaj termin" }));
+    const okno = screen.getByRole("dialog");
+    await userEvent.click(within(okno).getByRole("button", { name: "Odwołaj termin" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Termin superwizji został odwołany.");
+    expect(await screen.findByRole("status")).toHaveTextContent("Termin odwołany. Powiadomiono 3 osoby.");
   });
 
   it("odmowa serwera: błąd w dotychczasowym komunikacie, bez potwierdzenia", async () => {

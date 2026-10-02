@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
-/** Tytuł wiersza terminu pokazuje datę z godziną wg słownika; w DOM nie stoi znacznik ISO. */
+/** Komórka „Termin” pokazuje datę z godziną wg słownika; w DOM nie stoi znacznik ISO. */
 
 const fetchAdminSupervisionSlots = vi.fn();
 
@@ -33,11 +33,12 @@ beforeEach(() => {
 });
 
 describe("SuperwizjeTerminy — daty wg słownika", () => {
-  it("tytuł wiersza: data z godziną, bez znacznika ISO", async () => {
+  it("komórka terminu: data z godziną, bez znacznika ISO", async () => {
     const { container } = render(<SuperwizjeTerminy />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Edytuj" })).toBeInTheDocument());
 
-    expect(screen.getByText("25 września 2026, 17:05 — Joanna Demo")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "25 września 2026, 17:05" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Joanna Demo" })).toBeInTheDocument();
     expect(container.textContent ?? "").not.toMatch(/\d{4}-\d{2}-\d{2}T/);
   });
 });
