@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { GRUPY, type DefinicjaGrupy } from "@/lib/przelaczenie/grupy";
@@ -12,6 +12,17 @@ import { GRUPY, type DefinicjaGrupy } from "@/lib/przelaczenie/grupy";
 
 const KATALOG_APP = path.join(process.cwd(), "app");
 const PREFIKS_POLIGONU = "/" + ["nowy", "front"].join("-");
+
+/**
+ * Adresy wycofanych ekranów nowego frontu, które zostają w drzewie wyłącznie
+ * jako przekierowanie (bez ekranu i bez grupy w rejestrze) — adres i powód.
+ * Lista czerwieni się w obie strony: adres z listy musi istnieć i jego strona
+ * musi tylko przekierowywać.
+ */
+const PRZEKIEROWANIA_WYCOFANYCH_EKRANOW: Record<string, string> = {
+  [`${PREFIKS_POLIGONU}/admin/uczestniczki/[id]/przedluzenie`]:
+    "osobny ekran przedłużenia dostępu wycofany: datę zmienia okno „Zmień datę” na karcie osoby, stary adres przekierowuje na kartę",
+};
 
 function trasyStron(katalog: string, segmenty: string[] = []): string[] {
   const wynik: string[] = [];
@@ -51,7 +62,9 @@ function brakujaceStronyWlaczonejGrupy(grupa: DefinicjaGrupy, trasyProduktu: str
 }
 
 const wszystkieTrasy = trasyStron(KATALOG_APP);
-const trasyPoligonu = wszystkieTrasy.filter((trasa) => trasa.startsWith(PREFIKS_POLIGONU + "/"));
+const trasyPoligonu = wszystkieTrasy.filter(
+  (trasa) => trasa.startsWith(PREFIKS_POLIGONU + "/") && !Object.hasOwn(PRZEKIEROWANIA_WYCOFANYCH_EKRANOW, trasa),
+);
 
 describe("rejestr grup a ekrany nowego frontu w drzewie app/", () => {
   it("drzewo ma ekrany nowego frontu, a wyprowadzanie tras rozpoznaje grupy tras i segmenty dynamiczne", () => {
@@ -79,6 +92,17 @@ describe("rejestr grup a ekrany nowego frontu w drzewie app/", () => {
     expect(ekranyBezStronyPoligonu(trasyPoligonu.filter((trasa) => trasa !== "/nowy-front/po-programie"), GRUPY)).toEqual([
       "/nowy-front/po-programie",
     ]);
+  });
+
+  it("adres wycofanego ekranu z listy przekierowań istnieje, tylko przekierowuje i nie należy do żadnej grupy", () => {
+    const znane = new Set(ekranyGrup(GRUPY).map(({ ekran }) => ekran.trasaPoligonu));
+    for (const trasa of Object.keys(PRZEKIEROWANIA_WYCOFANYCH_EKRANOW)) {
+      expect(wszystkieTrasy, trasa).toContain(trasa);
+      expect(znane.has(trasa), trasa).toBe(false);
+      const zrodlo = readFileSync(path.join(KATALOG_APP, ...trasa.split("/").filter(Boolean), "page.tsx"), "utf-8");
+      expect(zrodlo, trasa).toMatch(/\bredirect\(/);
+      expect(zrodlo, trasa).not.toMatch(/from "@\/nowy-front\//);
+    }
   });
 
   it("stara trasa każdego ekranu istnieje w drzewie", () => {

@@ -163,7 +163,7 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna dwadzieścia dziewięć grup dzisiejszego kanonu", () => {
+  it("zna dwadzieścia osiem grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "decyzjaProfilu",
       "edycjaLekcji",
@@ -182,7 +182,6 @@ describe("rejestr GRUPY — zawartość", () => {
       "nabor",
       "noweKonto",
       "powiadomienia",
-      "przedluzenieDostepu",
       "publikacjaKursu",
       "pulpitAdministracji",
       "pulpitProwadzacego",
