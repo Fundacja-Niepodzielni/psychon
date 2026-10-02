@@ -3,11 +3,14 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Pola „Od"/„Do" na ekranie raportu (H20): zestawienie za wskazany okres,
- * bez zmiany domyślnego zachowania (brak zakresu).
+ * Ekran raportu (H20, nowy kontrakt `GET /admin/reports`): etap każdej
+ * osoby, zaliczone testy jako osobna liczba i zakres dat. Eksport CSV
+ * zostaje na starej trasie H20 (`lib/api/h20.ts` przez barrel `@/lib/api`)
+ * — patrz komentarz w `ReportView.tsx`. Zgodność kafelków z kopertą
+ * zaplecza i brak odnośników udających filtr: `ReportView-zaplecze.test.tsx`.
  */
 
-const fetchReport = vi.fn();
+const fetchReports = vi.fn();
 const downloadReportCsv = vi.fn();
 
 class ApiError extends Error {
@@ -21,120 +24,153 @@ class ApiError extends Error {
 }
 
 vi.mock("@/lib/api", () => ({
-  fetchReport: (...args: unknown[]) => fetchReport(...args),
   downloadReportCsv: (...args: unknown[]) => downloadReportCsv(...args),
   ApiError,
 }));
 
+vi.mock("@/lib/api/raport", () => ({
+  fetchReports: (...args: unknown[]) => fetchReports(...args),
+}));
+
 const { default: ReportView } = await import("@/components/h20/ReportView");
+
+/** Wartość kafelka podsumowania o danym tytule (akapit tuż pod tytułem). */
+async function wartoscKafelka(tytul: string): Promise<string> {
+  const naglowek = await screen.findByText(tytul, { selector: "p" });
+  return naglowek.nextElementSibling?.textContent ?? "";
+}
+
+const osoba = (over: Partial<Record<string, unknown>>) => ({
+  id: 1,
+  first_name: "Marta",
+  last_name: "Demo",
+  role: "volunteer",
+  status: "active",
+  stage: "kurs",
+  stage_label: "Kursy i testy",
+  tests_passed: 0,
+  hours_accepted: "0",
+  consultations: 0,
+  certificate_issued: false,
+  ...over,
+});
 
 const raport = {
   summary: {
     admitted: 5,
     active: 3,
     completed: 1,
-    hours_accepted_total: "113.5",
-    hours_accepted_average: "37.8",
-    consultations_total: 101,
     certificates_issued: 1,
+    people_with_passed_test: 2,
+    hours_accepted_total: "113.5",
+    consultations_total: 101,
   },
   people: [],
 };
 
 beforeEach(() => {
-  fetchReport.mockReset();
+  fetchReports.mockReset();
   downloadReportCsv.mockReset();
 });
 
 describe("ReportView — zakres dat", () => {
-  it("domyślnie (bez wpisanego zakresu) fetchReport wywoływany bez from/to", async () => {
-    fetchReport.mockResolvedValue(raport);
+  it("domyślnie (bez wpisanego zakresu) fetchReports wywoływany bez from/to", async () => {
+    fetchReports.mockResolvedValue(raport);
     render(<ReportView />);
 
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
-    expect(fetchReport).toHaveBeenLastCalledWith({});
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(1));
+    expect(fetchReports).toHaveBeenLastCalledWith({});
   });
 
-  it("filtr: wysłanie formularza z wypełnionymi polami przekazuje from/to do fetchReport", async () => {
-    fetchReport.mockResolvedValue(raport);
+  it("filtr: wysłanie formularza z wypełnionymi polami przekazuje from/to do fetchReports i zmienia liczby", async () => {
+    fetchReports.mockResolvedValueOnce(raport).mockResolvedValueOnce({
+      ...raport,
+      summary: { ...raport.summary, admitted: 9, active: 7 },
+    });
     render(<ReportView />);
 
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(1));
+    await waitFor(async () => expect(await wartoscKafelka("Osoby przyjęte")).toBe("5"));
 
     await userEvent.type(screen.getByLabelText("Od"), "2026-01-01");
     await userEvent.type(screen.getByLabelText("Do"), "2026-01-31");
     await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
 
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(2));
-    expect(fetchReport).toHaveBeenLastCalledWith({ from: "2026-01-01", to: "2026-01-31" });
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(2));
+    expect(fetchReports).toHaveBeenLastCalledWith({ from: "2026-01-01", to: "2026-01-31" });
+    await waitFor(async () => expect(await wartoscKafelka("Osoby przyjęte")).toBe("9"));
   });
 
   it("filtr: wysłanie pustego formularza po wcześniejszym zakresie znów nie przekazuje from/to", async () => {
-    fetchReport.mockResolvedValue(raport);
+    fetchReports.mockResolvedValue(raport);
     render(<ReportView />);
 
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(1));
 
     await userEvent.type(screen.getByLabelText("Od"), "2026-01-01");
     await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(2));
 
     await userEvent.clear(screen.getByLabelText("Od"));
     await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
 
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(3));
-    expect(fetchReport).toHaveBeenLastCalledWith({ from: undefined, to: undefined });
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(3));
+    expect(fetchReports).toHaveBeenLastCalledWith({ from: undefined, to: undefined });
   });
 
   it("eksport CSV przekazuje zastosowany zakres do downloadReportCsv", async () => {
-    fetchReport.mockResolvedValue(raport);
+    fetchReports.mockResolvedValue(raport);
     downloadReportCsv.mockResolvedValue(undefined);
     render(<ReportView />);
 
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(1));
 
     await userEvent.type(screen.getByLabelText("Od"), "2026-02-01");
     await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
-    await waitFor(() => expect(fetchReport).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchReports).toHaveBeenCalledTimes(2));
 
     await userEvent.click(screen.getByRole("button", { name: "Eksport CSV" }));
 
     await waitFor(() => expect(downloadReportCsv).toHaveBeenCalledTimes(1));
     expect(downloadReportCsv).toHaveBeenLastCalledWith({ from: "2026-02-01", to: undefined });
   });
+
+  // Kontrola negatywna (ręczna, opisana w PR): zamiana `applied` na stały `{}`
+  // w wywołaniu `fetchReports` w `ReportView.tsx` psuje test drugi ("zmienia
+  // liczby") i test czwarty (CSV) — oba oczekują innego argumentu niż `{}`.
 });
 
 /**
- * Raport pokazuje etap każdej osoby. Etykiety pochodzą wyłącznie z backendu
- * (`stage_label`), front ich nie tłumaczy.
+ * Raport pokazuje etap każdej osoby ORAZ osobno zaliczone testy — dwie
+ * różne liczby dla tej samej osoby, nie zwinięte w jedną (★ kryterium).
  */
-describe("ReportView — etap każdej osoby", () => {
-  it("tabela pokazuje etap każdej osoby z etykietą przekazaną przez backend", async () => {
-    fetchReport.mockResolvedValue({
+describe("ReportView — etap i zaliczone testy jako osobna liczba", () => {
+  it("tabela pokazuje etap i osobno liczbę zaliczonych testów dla każdej osoby", async () => {
+    fetchReports.mockResolvedValue({
       ...raport,
       people: [
-        {
+        osoba({
           id: 1,
           first_name: "Marta",
           last_name: "Demo",
-          role: "volunteer",
           hours_accepted: "41.5",
           consultations: 37,
           certificate_issued: false,
           stage: "kurs",
           stage_label: "Kursy i testy",
-        },
-        {
+          tests_passed: 2,
+        }),
+        osoba({
           id: 2,
           first_name: "Ola",
           last_name: "Demo",
-          role: "volunteer",
           hours_accepted: "72",
           consultations: 64,
           certificate_issued: true,
           stage: "certyfikat",
           stage_label: "Certyfikat",
-        },
+          tests_passed: 6,
+        }),
       ],
     });
     render(<ReportView />);
@@ -148,37 +184,26 @@ describe("ReportView — etap każdej osoby", () => {
     // kolumny „Certyfikat" (stan wydania) — stąd zapytanie zawężone do wiersza.
     expect(within(wierszMarty as HTMLElement).getByText("Kursy i testy")).toBeInTheDocument();
     expect(within(wierszOli as HTMLElement).getByText("Certyfikat")).toBeInTheDocument();
+
+    // Etap i liczba zaliczonych testów to DWIE różne komórki tego samego wiersza.
+    expect(within(wierszMarty as HTMLElement).getByText("2")).toBeInTheDocument();
+    expect(within(wierszOli as HTMLElement).getByText("6")).toBeInTheDocument();
   });
 
-  it("osoba gotowa do certyfikatu (bez wydanego dokumentu) pokazuje odrębną etykietę etapu obok kolumny Certyfikat = Brak", async () => {
-    fetchReport.mockResolvedValue({
+  it("kafelek Zaliczone testy pokazuje liczbę osób z backendu, niezależną od kafelka etapów", async () => {
+    fetchReports.mockResolvedValue({
       ...raport,
-      people: [
-        {
-          id: 3,
-          first_name: "Kasia",
-          last_name: "Demo",
-          role: "volunteer",
-          hours_accepted: "72",
-          consultations: 60,
-          certificate_issued: false,
-          stage: "gotowa",
-          stage_label: "Gotowa do certyfikatu",
-        },
-      ],
+      summary: { ...raport.summary, completed: 1, people_with_passed_test: 4 },
+      people: [],
     });
     render(<ReportView />);
 
-    const wierszKasi = (await screen.findByText("Kasia Demo")).closest("tr");
-    expect(wierszKasi).not.toBeNull();
-
-    const wKasi = within(wierszKasi as HTMLElement);
-    expect(wKasi.getByText("Gotowa do certyfikatu")).toBeInTheDocument();
-    expect(wKasi.getByText("Brak")).toBeInTheDocument();
+    expect(await wartoscKafelka("Programy ukończone")).toBe("1");
+    expect(await wartoscKafelka("Zaliczone testy")).toBe("4");
   });
 
-  it("pusta lista osób pokazuje istniejący stan pusty tabeli (bez etapu do wyświetlenia)", async () => {
-    fetchReport.mockResolvedValue(raport); // people: []
+  it("pusta lista osób pokazuje istniejący stan pusty tabeli (bez etapu i testów do wyświetlenia)", async () => {
+    fetchReports.mockResolvedValue(raport); // people: []
     render(<ReportView />);
 
     expect(
@@ -187,4 +212,9 @@ describe("ReportView — etap każdej osoby", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  // Kontrola negatywna (ręczna, opisana w PR): scalenie kolumny „Zaliczone
+  // testy" z kolumną „Etap" (usunięcie osobnej kolumny w `ReportView.tsx`)
+  // psuje pierwszy test tego bloku — „2" i „6" przestają być odnajdywalne
+  // jako osobne komórki wiersza.
 });
