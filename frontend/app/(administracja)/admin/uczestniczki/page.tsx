@@ -17,6 +17,9 @@ export const metadata: Metadata = {
 /** Wartość parametru `zakladka` z adresu starej strony (zakładka „Zgłoszenia”). */
 const ZAKLADKA_ZGLOSZEN = "zgloszenia";
 
+/** Adres ekranu zakładania konta; przycisk na liście pojawia się dopiero przy włączonej grupie `noweKonto`. */
+const ADRES_NOWEJ_OSOBY = "/admin/uczestniczki/nowa";
+
 interface WlasciwosciStrony {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
@@ -49,7 +52,7 @@ export default async function AdminUsersPage({ searchParams }: WlasciwosciStrony
   return (
     <div data-theme="light">
       <DostawcaPowloki>
-        <OsobyLista />
+        <OsobyLista adresNowejOsoby={GRUPY.noweKonto.wlaczona ? ADRES_NOWEJ_OSOBY : undefined} />
       </DostawcaPowloki>
     </div>
   );
