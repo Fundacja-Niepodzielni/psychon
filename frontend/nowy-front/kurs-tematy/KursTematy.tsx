@@ -57,6 +57,7 @@ import {
 } from "./uklad";
 import { tekstyDlaGrupy, zapisDlaGrupy } from "./zapis";
 import style from "./KursTematy.module.css";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 /** Kotwica drzewa tematów i lekcji — cel odnośników z panelu braków. */
 const KOTWICA_LEKCJI = "lekcje";
@@ -132,7 +133,7 @@ export function KursTematy({
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Treść kursu nie jest zmyślana bez danych.
+            {KOMUNIKAT_SERWER} Treść kursu nie jest pokazywana bez danych.
           </Notice>
         }
         wspierajaca={null}
@@ -534,7 +535,7 @@ function EdytorTematow({
       } else if (blad.rodzaj === "nie-znaleziono") {
         setBladPublikacji({ tytul, tresc: "Kurs nie istnieje albo został usunięty." });
       } else if (blad.rodzaj === "siec") {
-        setBladPublikacji({ tytul, tresc: "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie." });
+        setBladPublikacji({ tytul, tresc: KOMUNIKAT_INTERNET });
       } else {
         setBladPublikacji({ tytul, tresc: blad.komunikat });
       }
