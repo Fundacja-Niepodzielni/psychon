@@ -3,6 +3,7 @@
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
@@ -14,6 +15,7 @@ import { Field } from "@/design-system/molekuly/Field/Field";
 import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { SaveBar } from "@/design-system/molekuly/SaveBar/SaveBar";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { ApiError } from "@/lib/api/klient";
 import { fetchAdminEmailsPage } from "@/lib/api/h16-emails";
 import { formatujDateICzas } from "../wspolne/daty";
@@ -139,6 +141,9 @@ export function PowiadomieniaEmail() {
   const [meta, setMeta] = useState<MetaSkrzynki | undefined>(undefined);
   const [blad, setBlad] = useState<string | null>(null);
   const [wczytywanie, setWczytywanie] = useState(false);
+  /** Numer próby wczytania skrzynki — „Spróbuj ponownie” podbija go i odczyt rusza od nowa. */
+  const [proba, setProba] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
 
   const [ustStan, setUstStan] = useState<StanUstawien>("ladowanie");
   const [ustOstatniOdczyt, setUstOstatniOdczyt] = useState<UstawieniaPowiadomien | null>(null);
@@ -226,6 +231,7 @@ export function PowiadomieniaEmail() {
     if (liczbaZmian(patch) === 0) return;
 
     setUstZapisywanie(true);
+    setToast(null);
     setUstBladSieci(null);
     setUstBledyTypow({});
     setUstBledyPrzypomnienia({});
@@ -233,6 +239,7 @@ export function PowiadomieniaEmail() {
       const odpowiedz = await updateNotificationSettings(patch);
       setUstOstatniOdczyt(odpowiedz);
       setUstRoboczy(odpowiedz);
+      setToast("Ustawienia powiadomień zapisane.");
     } catch (wyjatek) {
       if (wyjatek instanceof ApiError && wyjatek.status === 403) {
         setUstNoticeUprawnien(true);
@@ -279,7 +286,12 @@ export function PowiadomieniaEmail() {
     return () => {
       anulowane = true;
     };
-  }, []);
+  }, [proba]);
+
+  function ponowWczytanie() {
+    setStan("ladowanie");
+    setProba((numer) => numer + 1);
+  }
 
   const wierszeTabeli: WierszDataTable[] = useMemo(
     () =>
@@ -334,7 +346,17 @@ export function PowiadomieniaEmail() {
     return (
       <main id="tresc" className={style.uklad}>
         <Heading stopien={1}>Powiadomienia e-mail</Heading>
-        <Text>Nie udało się wczytać wiadomości. Spróbuj ponownie później.</Text>
+        <Notice
+          wariant="error"
+          tytul="Nie udało się wczytać wiadomości"
+          akcja={
+            <Button poziom="outline" onClick={ponowWczytanie}>
+              Spróbuj ponownie
+            </Button>
+          }
+        >
+          Sprawdź połączenie i spróbuj ponownie.
+        </Notice>
       </main>
     );
   }
@@ -468,6 +490,7 @@ export function PowiadomieniaEmail() {
         }
         komunikatPusty="Brak wiadomości."
       />
+      {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
     </main>
   );
 }
