@@ -59,16 +59,18 @@ interface KursAtrapy {
   testZaliczony?: boolean;
   /** Kurs bez testu: `has_test: false`, test nie jest zamknięty ani zaliczony; z `nowePola`. */
   bezTestu?: boolean;
+  /** Status kursu oddawany przez zaplecze (kurs bez testu); domyślnie `completed` po ostatniej lekcji. */
+  statusKursu?: string;
 }
 
-function kurs({ ukonczone, zamknieteOd, tytul, tytulLekcji, nowePola, wTrakcieNr, testZaliczony, bezTestu }: KursAtrapy) {
+function kurs({ ukonczone, zamknieteOd, tytul, tytulLekcji, nowePola, wTrakcieNr, testZaliczony, bezTestu, statusKursu }: KursAtrapy) {
   return {
     id: 2,
     slug: SLUG,
     title: tytul ?? "Pierwsza pomoc psychologiczna",
     sequence_order: 1,
     product_group: "psychon",
-    status: bezTestu && ukonczone >= TYTULY.length ? "completed" : "in_progress",
+    status: statusKursu ?? (bezTestu && ukonczone >= TYTULY.length ? "completed" : "in_progress"),
     progress_percent: Math.round((ukonczone / TYTULY.length) * 100),
     instructor: null,
     topics: [
@@ -583,6 +585,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(page.getByText(/Przejdź do testu/)).toHaveCount(0);
       await expect(page.getByText(/na końcu test/)).toHaveCount(0);
       await expect(page.getByText("Kurs ukończony", { exact: true })).toBeVisible();
+      await expect(page.getByText("Wszystkie lekcje ukończone")).toHaveCount(0);
       expect(await przyciskiGlowne(page)).toHaveLength(0);
       const odnosnik = page.getByRole("link", { name: "Wróć do kursów" });
       await expect(odnosnik).toBeVisible();
@@ -593,6 +596,21 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await sprawdzAxe(page, testInfo, `kurs bez testu ukończony ${szerokosc}`);
       await zrzut(page, `uczestnik--kurs-bez-testu--ukonczony--${szerokosc}`);
       if (telefon) await zrzutPierwszegoEkranu(page, "uczestnik--kurs-bez-testu--ukonczony--telefon-pierwszy-ekran");
+    });
+
+    test("kurs bez testu, wszystkie lekcje ukończone, zaplecze nie oddaje statusu completed: „Wszystkie lekcje ukończone” zamiast „Kurs ukończony”, odnośnik „Wróć do kursów” zostaje, miary i axe", async ({ page }, testInfo) => {
+      await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 7, zamknieteOd: null, nowePola: true, bezTestu: true, statusKursu: "in_progress" }) }));
+      await otworz(page, `/panel/kursy/${SLUG}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Pierwsza pomoc psychologiczna" })).toBeVisible();
+      await expect(page.getByText("Wszystkie lekcje ukończone", { exact: true })).toBeVisible();
+      await expect(page.getByText("Kurs ukończony")).toHaveCount(0);
+      await expect(page.locator("[data-karta-testu]")).toHaveCount(0);
+      await expect(page.getByText(/Przejdź do testu|na końcu test/)).toHaveCount(0);
+      expect(await przyciskiGlowne(page)).toHaveLength(0);
+      await expect(page.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
+      await sprawdzPrzewijanie(page);
+      await sprawdzAxe(page, testInfo, `kurs bez testu, lekcje ukończone ${szerokosc}`);
+      if (!telefon) await zrzut(page, "uczestnik--kurs-bez-testu--lekcje-ukonczone--1280");
     });
 
     test("kurs bez testu w podglądzie: te same reguły i pas „Nic się nie zapisuje”", async ({ page }) => {
