@@ -19,3 +19,9 @@
   justify-content: flex-start;
   margin-top: var(--space-12);
 }
+
+.wierszWarsztatu {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--space-12);
+}

@@ -16,11 +16,16 @@ import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { ApiError } from "@/lib/api/klient";
+import { markWorkshopComplete } from "@/lib/api/h10";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzKarteOsoby,
   pobierzRzetelnoscOsoby,
+  pobierzRoleZalogowanej,
+  czyMozeZaliczycWarsztat,
+  zdanieBleduWarsztatu,
   zapiszKarteOsoby,
   formularzZProfilu,
   filaryKartyOsoby,
@@ -83,6 +88,12 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
   const [zapisywanie, setZapisywanie] = useState(false);
   const [bladZapisu, setBladZapisu] = useState(false);
   const [pokazToast, setPokazToast] = useState(false);
+  // Rola osoby zalogowanej (nie osoby z karty): rozstrzyga, czy przycisk warsztatu istnieje.
+  const [rolaZalogowanej, setRolaZalogowanej] = useState<string | null>(null);
+  const [pytanieWarsztatu, setPytanieWarsztatu] = useState(false);
+  const [zaznaczanieWarsztatu, setZaznaczanieWarsztatu] = useState(false);
+  const [bladWarsztatu, setBladWarsztatu] = useState<string | null>(null);
+  const [toastWarsztatu, setToastWarsztatu] = useState(false);
   useZgloszenieNiezapisanychZmian(
     formularzOtwarty && formularz !== null && karta !== null && !rowneWartosci(formularz, formularzZProfilu(karta.profile)),
     "Karta osoby",
@@ -138,6 +149,37 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
     // zapisie woła `wczytajKarte` wprost.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    let anulowane = false;
+    pobierzRoleZalogowanej()
+      .then((rola) => {
+        if (!anulowane) setRolaZalogowanej(rola);
+      })
+      .catch(() => {
+        // Bez znanej roli przycisk po prostu nie istnieje — karta działa dalej.
+        if (!anulowane) setRolaZalogowanej(null);
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, []);
+
+  async function zaznaczWarsztat() {
+    if (zaznaczanieWarsztatu) return;
+    setPytanieWarsztatu(false);
+    setZaznaczanieWarsztatu(true);
+    setBladWarsztatu(null);
+    try {
+      await markWorkshopComplete(id);
+      setToastWarsztatu(true);
+      wczytajKarte();
+    } catch (wyjatek) {
+      setBladWarsztatu(zdanieBleduWarsztatu(wyjatek));
+    } finally {
+      setZaznaczanieWarsztatu(false);
+    }
+  }
 
   function otworzFormularz() {
     if (!karta) return;
@@ -265,6 +307,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
     : [];
 
   const edycja = formularzOtwarty && formularz !== null;
+  const mozeZaznaczycWarsztat = !karta.progress.workshop_done && czyMozeZaliczycWarsztat(rolaZalogowanej);
 
   return (
     <>
@@ -281,6 +324,18 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
         statystyki={
           <>
             <StatRow kafle={kafle} />
+            {mozeZaznaczycWarsztat && (
+              <div className={style.wierszWarsztatu} role="group" aria-label="Warsztat stacjonarny">
+                <Button poziom="outline" disabled={zaznaczanieWarsztatu} onClick={() => setPytanieWarsztatu(true)}>
+                  Zaznacz warsztat jako zaliczony
+                </Button>
+              </div>
+            )}
+            {bladWarsztatu !== null && (
+              <Notice wariant="error" tytul="Nie udało się zaznaczyć warsztatu">
+                {bladWarsztatu}
+              </Notice>
+            )}
             {stanRzetelnosci === "blad" && (
               <Notice wariant="warn" tytul="Rzetelność niedostępna">
                 Nie udało się pobrać rzetelności nauki tej osoby — reszta karty działa.
@@ -383,6 +438,21 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
       />
 
       {pokazToast && <Toast komunikat="Zapisano zmiany." onZamknij={() => setPokazToast(false)} />}
+      {pytanieWarsztatu && (
+        <Dialog
+          tytul="Zaznaczyć warsztat jako zaliczony?"
+          etykietaWycofania="Anuluj"
+          etykietaPotwierdzenia="Zaznacz jako zaliczony"
+          onWycofaj={() => setPytanieWarsztatu(false)}
+          onPotwierdz={() => void zaznaczWarsztat()}
+        >
+          <Text>
+            Osoba: {karta.profile.first_name} {karta.profile.last_name}.
+          </Text>
+          <Text>Tego nie da się cofnąć z ekranu.</Text>
+        </Dialog>
+      )}
+      {toastWarsztatu && <Toast komunikat="Zaznaczono warsztat jako zaliczony." onZamknij={() => setToastWarsztatu(false)} />}
     </>
   );
 }

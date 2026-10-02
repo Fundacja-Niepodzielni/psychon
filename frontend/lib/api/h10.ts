@@ -27,3 +27,19 @@ export function resetTestAttempts(
     { method: "POST", body: { reason } },
   );
 }
+
+export interface WorkshopCompletion {
+  user_id: number;
+  edition_id: number;
+  completed_at: string | null;
+  workshop_done: boolean;
+}
+
+/**
+ * Zaliczenie warsztatu stacjonarnego (H10 · POST /admin/workshop/{user}/complete).
+ * Trasa nie przyjmuje ciała: osoba pochodzi z adresu, edycja z aktywnej edycji
+ * na serwerze. Powtórzone wywołanie niczego nie zmienia (200, ten sam stan).
+ */
+export function markWorkshopComplete(userId: number): Promise<WorkshopCompletion> {
+  return api<WorkshopCompletion>(`/admin/workshop/${userId}/complete`, { method: "POST" });
+}
