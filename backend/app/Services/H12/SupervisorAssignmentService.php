@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 final class SupervisorAssignmentService
 {
+    /** Najwięcej osób w jednym przypisaniu wielu osób naraz (`assignToMany`). */
+    public const int MAX_PEOPLE_AT_ONCE = 100;
+
     /**
      * @param  bool  $requireNoConflict  Gdy true: wolontariusz z aktywnym przypisaniem do
      *                                   INNEGO prowadzącego nie zostaje przejęty — rzucany jest wyjątek 409 zamiast
@@ -73,6 +76,76 @@ final class SupervisorAssignmentService
 
             return $assignment;
         });
+    }
+
+    /**
+     * Przypisanie jednego prowadzącego wielu osobom naraz
+     * (`AdminSupervisionController::assignSupervisorToMany`). Dla każdej osoby
+     * woła `assign()` — tę samą ścieżkę co pojedyncze przypisanie, każdą we
+     * własnej transakcji — więc skutki (zamknięcie poprzedniego przypisania,
+     * wpis `supervisor.assigned`, zmiana składu rozmów) są dokładnie te same.
+     * Odmowa przy jednej osobie nie cofa pozostałych. Wynik w kolejności
+     * żądania: `assigned`, `unchanged` (ten sam prowadzący już był, bez wpisu
+     * w dzienniku), `refused` z kodem powodu albo `not_found`.
+     *
+     * @param  list<int>  $volunteerIds
+     * @return list<array{user_id: int, result: string, reason: string|null}>
+     */
+    public function assignToMany(User $actor, int $supervisorId, array $volunteerIds): array
+    {
+        $results = [];
+
+        foreach ($volunteerIds as $volunteerId) {
+            try {
+                $assignment = $this->assign($actor, $volunteerId, $supervisorId);
+                $result = $assignment->wasRecentlyCreated ? 'assigned' : 'unchanged';
+                $reason = null;
+            } catch (ApiException $exception) {
+                [$result, $reason] = match (true) {
+                    $exception->status === 404 => ['not_found', null],
+                    $exception->errorCode === 'validation_failed' => ['refused', 'role_not_assignable'],
+                    default => ['refused', $exception->errorCode],
+                };
+            }
+
+            $results[] = ['user_id' => $volunteerId, 'result' => $result, 'reason' => $reason];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Bieżący prowadzący osoby (aktywne przypisanie) albo `null` — pole tylko
+     * do odczytu na liście osób i na karcie osoby. Gdy wołający wczytał już
+     * relację `supervisorAssignments` z prowadzącym, nie ma dodatkowego
+     * zapytania; inaczej jedno zapytanie na osobę.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    public static function currentSupervisorOf(User $person): ?array
+    {
+        if ($person->relationLoaded('supervisorAssignments')) {
+            /** @var SupervisorAssignment|null $active */
+            $active = $person->supervisorAssignments
+                ->whereNull('unassigned_at')
+                ->sortByDesc('id')
+                ->first();
+            /** @var User|null $supervisor */
+            $supervisor = $active?->supervisor;
+        } else {
+            $supervisor = User::query()
+                ->select('users.*')
+                ->join('supervisor_assignments', 'supervisor_assignments.supervisor_id', '=', 'users.id')
+                ->where('supervisor_assignments.volunteer_id', $person->getKey())
+                ->whereNull('supervisor_assignments.unassigned_at')
+                ->orderByDesc('supervisor_assignments.id')
+                ->first();
+        }
+
+        return $supervisor === null ? null : [
+            'id' => (int) $supervisor->id,
+            'name' => $supervisor->fullName(),
+        ];
     }
 
     /**

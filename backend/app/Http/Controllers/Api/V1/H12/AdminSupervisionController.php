@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\H12;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H12\AssignSupervisorRequest;
+use App\Http\Requests\H12\AssignSupervisorToManyRequest;
 use App\Http\Requests\H12\CancelSupervisionSlotRequest;
 use App\Http\Requests\H12\UpdateSupervisionSlotRequest;
 use App\Http\Resources\H12\InstructorSlotResource;
@@ -100,6 +101,36 @@ class AdminSupervisionController extends Controller
 
         return response()->json([
             'data' => SupervisorAssignmentResource::make($assignment)->resolve($request),
+        ]);
+    }
+
+    /**
+     * Jeden prowadzący dla wielu osób naraz — ta sama usługa co
+     * `assignSupervisor`, osobno dla każdej osoby. Częściowy sukces jest
+     * dozwolony, więc odpowiedź to zawsze `200` z wynikiem każdej osoby.
+     */
+    public function assignSupervisorToMany(
+        AssignSupervisorToManyRequest $request,
+        SupervisorAssignmentService $service,
+    ): JsonResponse {
+        $supervisorId = (int) $request->validated('supervisor_id');
+        $results = $service->assignToMany(
+            $request->user(),
+            $supervisorId,
+            array_map('intval', $request->validated('user_ids')),
+        );
+
+        $summary = ['requested' => count($results), 'assigned' => 0, 'unchanged' => 0, 'refused' => 0, 'not_found' => 0];
+        foreach ($results as $result) {
+            $summary[$result['result']]++;
+        }
+
+        return response()->json([
+            'data' => [
+                'supervisor_id' => $supervisorId,
+                'results' => $results,
+                'summary' => $summary,
+            ],
         ]);
     }
 }
