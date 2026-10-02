@@ -13,17 +13,27 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use ReflectionNamedType;
 use Tests\TestCase;
 
 /**
  * Uczestnik nie może po odpowiedzi odróżnić lekcji istniejącej, ale dla niego
  * niewidocznej (szkic; kurs jawny cudzej grupy produktowej), od lekcji
- * nieistniejącej. Dotyczy KAŻDEJ trasy uczestnika z parametrem lekcji.
+ * nieistniejącej. Dotyczy KAŻDEJ trasy dostępnej dla roli uczestnika, która
+ * przyjmuje parametr w adresie — niezależnie od prefiksu adresu i nazwy
+ * parametru.
  *
  * Listę tras czyta się z rejestru tras aplikacji w chwili próby, a nie z listy
- * wpisanej ręcznie: nowa trasa pod `/lessons/{…}` wchodzi do próby sama.
- * Trasa zapisująca (POST, PUT, PATCH, DELETE) musi mieć w tabeli ciał własny
- * wpis — brak wpisu czerwieni próbę czytelnym komunikatem, trasy się nie pomija.
+ * wpisanej ręcznie. Trasę pomija się wyłącznie wtedy, gdy jej pośrednik roli
+ * nie wpuszcza roli osoby z próby. Każda trasa jest wołana z trzema ciałami
+ * (poprawnym, pustym i błędnym) oraz z ustawionym i z nieustawionym podpisem
+ * nagrań. Trasa zapisująca (POST, PUT, PATCH, DELETE) musi mieć w tabeli ciał
+ * własny wpis z ciałem poprawnym — brak wpisu czerwieni próbę czytelnym
+ * komunikatem, trasy się nie pomija.
+ *
+ * Trasa lekcji (adres pod `/lessons/{…}` albo `/lesson/{…}`, parametr z
+ * „lesson” w nazwie albo parametr akcji typu `Lesson`) musi dodatkowo
+ * odpowiadać w obu przypadkach `404 not_found`.
  */
 class InvisibleLessonIsIndistinguishableTest extends TestCase
 {
@@ -40,7 +50,16 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
     private const WRITING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
     /**
-     * Ciała żądań tras zapisujących: klucz `METODA uri-z-rejestru`.
+     * Identyfikator lekcji ukrytej: dużo wyżej niż jakikolwiek wiersz próby,
+     * żeby wstawiony w parametr trasy innej niż lekcja nie trafił przypadkiem
+     * w istniejący rekord innej tabeli.
+     */
+    private const HIDDEN_LESSON_ID = 7_000_001;
+
+    private const MISSING_LESSON_ID = 7_001_001;
+
+    /**
+     * Ciała poprawne tras zapisujących: klucz `METODA uri-z-rejestru`.
      *
      * @var array<string, array<string, mixed>>
      */
@@ -48,6 +67,15 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
         'POST api/v1/lessons/{id}/progress' => ['watched_delta' => 5, 'active_delta' => 5],
         'POST api/v1/lessons/{id}/complete' => [],
         'POST api/v1/lessons/{id}/questions' => ['question' => 'Czy to jest jasne?'],
+        'PATCH api/v1/internship/entries/{id}' => ['hours' => '2.5', 'description' => 'Dyżur bez danych osób.'],
+        'POST api/v1/legal-documents/{type}/accept' => ['version' => 'v1'],
+        'DELETE api/v1/notifications/{id}' => [],
+        'POST api/v1/notifications/{id}/read' => [],
+        'POST api/v1/notifications/{id}/unread' => [],
+        'POST api/v1/supervision/slots/{id}/signup' => [],
+        'DELETE api/v1/supervision/slots/{id}/signup' => [],
+        'POST api/v1/tests/{test}/attempts' => ['answers' => ['1' => 1]],
+        'POST api/v1/threads/{thread}/messages' => ['body' => 'Dzień dobry.'],
     ];
 
     protected function setUp(): void
@@ -55,10 +83,7 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
         parent::setUp();
 
         Http::fake();
-        Config::set('services.bunny.api_key', 'test-api-key');
-        Config::set('services.bunny.library_id', 'test-library');
-        Config::set('services.bunny.cdn_hostname', 'cdn.example.test');
-        Config::set('services.bunny.token_security_key', 'test-security-key');
+        $this->configureSigning(true);
     }
 
     /** @return array<string, array{string, string}> */
@@ -78,68 +103,87 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
     #[DataProvider('rolesAndHiddenKinds')]
     public function test_an_invisible_lesson_is_answered_byte_for_byte_like_a_missing_one_on_every_participant_route(string $role, string $kind): void
     {
+        $this->assertSame([], $this->disabledRouteFlags(), 'Flaga funkcji wyłączona w procesie próby — trasy pod nią nie są w rejestrze i nie zostałyby sprawdzone.');
+
         $participant = User::factory()->create(['role' => $role, 'product_group' => 'psychon']);
         $hidden = $this->hiddenLesson($kind);
-        $missingId = (int) Lesson::query()->withTrashed()->max('id') + 1000;
+        $this->assertNull(Lesson::query()->withTrashed()->find(self::MISSING_LESSON_ID));
         $this->actingAs($participant, 'keycloak');
 
-        $routes = $this->participantLessonRoutes();
-        $this->assertNotEmpty($routes, 'Rejestr tras nie niesie żadnej trasy uczestnika z parametrem lekcji.');
+        $routes = $this->participantRoutesWithParameters($role);
+        $lessonRoutes = array_filter($routes, fn (array $route): bool => $route['lesson']);
+        $this->assertNotEmpty($lessonRoutes, 'Rejestr tras nie niesie żadnej trasy uczestnika z parametrem lekcji.');
 
-        $tables = ['instructor_questions', 'lesson_progress'];
-        $before = array_map(fn (string $table): int => DB::table($table)->count(), $tables);
-
+        $before = $this->rowCounts();
         $problems = [];
+        $compared = 0;
 
         foreach ($routes as $route) {
             $label = "{$route['method']} /{$route['uri']}";
-            $body = $this->bodyFor($route['method'], $route['uri']);
+            $valid = $this->bodyFor($route['method'], $route['uri']);
 
-            if ($body === null) {
+            if ($valid === null) {
                 $problems[] = "{$label}: trasa zapisująca nie ma wpisu z ciałem w tabeli prób (BODIES) — dopisz wpis, trasy się nie pomija.";
 
                 continue;
             }
 
-            $invisible = $this->json($route['method'], '/'.$this->fill($route['uri'], $hidden->id), $body);
-            $missing = $this->json($route['method'], '/'.$this->fill($route['uri'], $missingId), $body);
+            // Trasa, dla której ciałem poprawnym jest ciało puste, nie jest wołana dwa razy tym samym ciałem.
+            $bodies = $valid === []
+                ? ['ciało poprawne i puste' => [], 'ciało błędne' => $this->brokenBody($valid)]
+                : ['ciało poprawne' => $valid, 'ciało puste' => [], 'ciało błędne' => $this->brokenBody($valid)];
 
-            foreach ([['lekcja niewidoczna', $invisible], ['lekcja nieistniejąca', $missing]] as [$name, $response]) {
-                if ($response->status() !== 404 || $response->json('error.code') !== 'not_found') {
-                    $problems[] = "{$label}: {$name} → status {$response->status()}, kod ".var_export($response->json('error.code'), true).', oczekiwano 404 not_found.';
+            foreach (['podpis nagrań ustawiony' => true, 'bez podpisu nagrań' => false] as $configName => $signing) {
+                $this->configureSigning($signing);
+
+                foreach ($bodies as $bodyName => $body) {
+                    foreach ($this->fillings($route['uri'], $hidden) as $fillName => [$invisibleUri, $missingUri]) {
+                        $where = "{$label} [{$bodyName}; {$configName}; {$fillName}]";
+                        $invisible = $this->json($route['method'], '/'.$invisibleUri, $body);
+                        $missing = $this->json($route['method'], '/'.$missingUri, $body);
+                        $compared++;
+
+                        if ($route['lesson']) {
+                            foreach ([['lekcja niewidoczna', $invisible], ['lekcja nieistniejąca', $missing]] as [$name, $response]) {
+                                if ($response->status() !== 404 || $response->json('error.code') !== 'not_found') {
+                                    $problems[] = "{$where}: {$name} → status {$response->status()}, kod ".var_export($response->json('error.code'), true).', oczekiwano 404 not_found.';
+                                }
+                            }
+                        }
+
+                        if ($invisible->status() !== $missing->status()) {
+                            $problems[] = "{$where}: status różny ({$invisible->status()} wobec {$missing->status()}).";
+                        }
+
+                        if ($invisible->getContent() !== $missing->getContent()) {
+                            $problems[] = "{$where}: ciało różne — niewidoczna: {$invisible->getContent()} · nieistniejąca: {$missing->getContent()}";
+                        }
+
+                        if ($this->comparableHeaders($invisible) !== $this->comparableHeaders($missing)) {
+                            $problems[] = "{$where}: nagłówki różne — niewidoczna: ".json_encode($this->comparableHeaders($invisible)).' · nieistniejąca: '.json_encode($this->comparableHeaders($missing));
+                        }
+                    }
                 }
-            }
-
-            if ($invisible->status() !== $missing->status()) {
-                $problems[] = "{$label}: status różny ({$invisible->status()} wobec {$missing->status()}).";
-            }
-
-            if ($invisible->getContent() !== $missing->getContent()) {
-                $problems[] = "{$label}: ciało różne — niewidoczna: {$invisible->getContent()} · nieistniejąca: {$missing->getContent()}";
-            }
-
-            if ($this->comparableHeaders($invisible) !== $this->comparableHeaders($missing)) {
-                $problems[] = "{$label}: nagłówki różne — niewidoczna: ".json_encode($this->comparableHeaders($invisible)).' · nieistniejąca: '.json_encode($this->comparableHeaders($missing));
             }
         }
 
         $this->assertSame([], $problems, "Odpowiedzi różnią się dla {$role} ({$kind}):\n".implode("\n", $problems));
+        $this->assertGreaterThanOrEqual(count($routes) * 4, $compared);
 
         // Odmowy niczego nie zapisują i nie sięgają do dostawcy nagrań.
-        $this->assertSame($before, array_map(fn (string $table): int => DB::table($table)->count(), $tables), 'Odmowa zostawiła zapis.');
+        $this->assertSame($before, $this->rowCounts(), 'Odmowa zostawiła zapis.');
         Http::assertNothingSent();
     }
 
     // ------------------------------------------------------------------
 
     /**
-     * Trasy uczestnika z parametrem lekcji, odczytane z rejestru: wszystko pod
-     * `/lessons/{…}` oraz każda inna trasa z parametrem `lesson` poza grupami
-     * administracji i prowadzącego.
+     * Trasy z co najmniej jednym parametrem w adresie, odczytane z rejestru,
+     * bez tras, których pośrednik roli nie wpuszcza roli z próby.
      *
-     * @return list<array{method: string, uri: string}>
+     * @return list<array{method: string, uri: string, lesson: bool}>
      */
-    private function participantLessonRoutes(): array
+    private function participantRoutesWithParameters(string $role): array
     {
         $found = [];
 
@@ -147,18 +191,13 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
         foreach (app('router')->getRoutes()->getRoutes() as $route) {
             $uri = $route->uri();
 
-            $underLessons = (bool) preg_match('#^api/v1/lessons/\{[^}]+\}(/|$)#', $uri);
-            $lessonParameter = in_array('lesson', $route->parameterNames(), true)
-                && ! str_starts_with($uri, 'api/v1/admin/')
-                && ! str_starts_with($uri, 'api/v1/instructor/');
-
-            if (! $underLessons && ! $lessonParameter) {
+            if (! str_starts_with($uri, 'api/') || $route->parameterNames() === [] || ! $this->roleMayEnter($route, $role)) {
                 continue;
             }
 
             foreach ($route->methods() as $method) {
                 if ($method !== 'HEAD') {
-                    $found[] = ['method' => $method, 'uri' => $uri];
+                    $found[] = ['method' => $method, 'uri' => $uri, 'lesson' => $this->isLessonRoute($route)];
                 }
             }
         }
@@ -166,6 +205,78 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
         usort($found, fn (array $a, array $b): int => [$a['uri'], $a['method']] <=> [$b['uri'], $b['method']]);
 
         return $found;
+    }
+
+    private function roleMayEnter(RegisteredRoute $route, string $role): bool
+    {
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && str_starts_with($middleware, 'role:')) {
+                $allowed = explode(',', substr($middleware, strlen('role:')));
+
+                if (! in_array($role, $allowed, true)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function isLessonRoute(RegisteredRoute $route): bool
+    {
+        if (preg_match('#(^|/)lessons?/\{[^}]+\}#', $route->uri())) {
+            return true;
+        }
+
+        foreach ($route->parameterNames() as $name) {
+            if (stripos($name, 'lesson') !== false) {
+                return true;
+            }
+        }
+
+        foreach ($route->signatureParameters() as $parameter) {
+            $type = $parameter->getType();
+
+            if ($type instanceof ReflectionNamedType && is_a($type->getName(), Lesson::class, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Wypełnienia adresu: każdy parametr identyfikatorem lekcji; przy kilku
+     * parametrach dodatkowo każdy parametr osobno identyfikatorem lekcji, a
+     * pozostałe — kursem lekcji ukrytej (slug dla parametru z „slug” w nazwie,
+     * inaczej identyfikator kursu).
+     *
+     * @return array<string, array{string, string}>
+     */
+    private function fillings(string $uri, Lesson $hidden): array
+    {
+        preg_match_all('#\{([^}?:]+)[^}]*\}#', $uri, $matches);
+        $names = $matches[1];
+
+        $fill = function (?string $target, int $lessonId) use ($uri, $hidden): string {
+            return (string) preg_replace_callback('#\{([^}?:]+)[^}]*\}#', function (array $m) use ($target, $lessonId, $hidden): string {
+                if ($target === null || $m[1] === $target) {
+                    return (string) $lessonId;
+                }
+
+                return stripos($m[1], 'slug') !== false ? (string) $hidden->course->slug : (string) $hidden->course_id;
+            }, $uri);
+        };
+
+        $fillings = ['każdy parametr = lekcja' => [$fill(null, self::HIDDEN_LESSON_ID), $fill(null, self::MISSING_LESSON_ID)]];
+
+        if (count($names) > 1) {
+            foreach ($names as $name) {
+                $fillings["{{$name}} = lekcja, reszta = kurs"] = [$fill($name, self::HIDDEN_LESSON_ID), $fill($name, self::MISSING_LESSON_ID)];
+            }
+        }
+
+        return $fillings;
     }
 
     /** @return array<string, mixed>|null null = trasa zapisująca bez wpisu w tabeli ciał */
@@ -178,9 +289,75 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
         return in_array($method, self::WRITING_METHODS, true) ? null : [];
     }
 
-    private function fill(string $uri, int $lessonId): string
+    /**
+     * Ciało niespełniające reguł: każde pole poprawnego ciała dostaje tablicę
+     * w miejscu wartości prostej.
+     *
+     * @param  array<string, mixed>  $valid
+     * @return array<string, mixed>
+     */
+    private function brokenBody(array $valid): array
     {
-        return (string) preg_replace('#\{[^}]+\}#', (string) $lessonId, $uri);
+        if ($valid === []) {
+            return ['nieznane_pole' => ['niepoprawne']];
+        }
+
+        return array_map(fn (): array => ['niepoprawne'], $valid);
+    }
+
+    private function configureSigning(bool $signing): void
+    {
+        Config::set('services.bunny.api_key', 'test-api-key');
+        Config::set('services.bunny.library_id', 'test-library');
+        Config::set('services.bunny.cdn_hostname', 'cdn.example.test');
+        Config::set('services.bunny.token_security_key', $signing ? 'test-security-key' : '');
+    }
+
+    /**
+     * Flagi funkcji, od których zależy rejestracja tras, wyłączone w procesie
+     * próby: każda pozycja `config/features.php` i każde odwołanie
+     * `config('features.…')` w plikach tras (z wartością domyślną, jeśli ją ma).
+     *
+     * @return list<string>
+     */
+    private function disabledRouteFlags(): array
+    {
+        $disabled = [];
+
+        foreach ((array) config('features') as $name => $enabled) {
+            if (! $enabled) {
+                $disabled[] = "features.{$name}";
+            }
+        }
+
+        $files = array_merge(glob(base_path('routes/*.php')) ?: [], glob(base_path('routes/*/*.php')) ?: []);
+        $this->assertNotEmpty($files, 'Nie znaleziono plików tras.');
+
+        foreach ($files as $file) {
+            preg_match_all("#config\\('features\\.([A-Za-z0-9_]+)'(?:\\s*,\\s*(true|false))?\\)#", (string) file_get_contents($file), $matches, PREG_SET_ORDER);
+
+            foreach ($matches as $match) {
+                $default = ($match[2] ?? '') === 'true';
+
+                if (! config("features.{$match[1]}", $default)) {
+                    $disabled[] = "features.{$match[1]} (".basename($file).')';
+                }
+            }
+        }
+
+        return array_values(array_unique($disabled));
+    }
+
+    /** @return array<string, int> */
+    private function rowCounts(): array
+    {
+        $counts = [];
+
+        foreach (DB::select("select tablename from pg_tables where schemaname = 'public' order by tablename") as $row) {
+            $counts[$row->tablename] = DB::table($row->tablename)->count();
+        }
+
+        return $counts;
     }
 
     /** @return array<string, list<string|null>> */
@@ -220,11 +397,23 @@ class InvisibleLessonIsIndistinguishableTest extends TestCase
             'is_published' => ! $draft,
         ]);
 
-        return Lesson::create([
+        // Lekcja ukryta ma gotowe nagranie: link do nagrania lekcji widocznej
+        // byłby wydany, więc odmowa musi wynikać z widoczności, nie z braku nagrania.
+        $lesson = new Lesson([
             'course_id' => $course->id,
             'title' => 'Lekcja ukryta przed osobą',
             'sequence_order' => 1,
             'duration_seconds' => 600,
         ]);
+        $lesson->id = self::HIDDEN_LESSON_ID;
+        $lesson->save();
+
+        DB::table('lessons')->where('id', $lesson->id)->update([
+            'video_provider_id' => 'mock-nagranie-ukryte',
+            'video_status' => 'ready',
+            'video_status_at' => now(),
+        ]);
+
+        return $lesson->fresh(['course']);
     }
 }

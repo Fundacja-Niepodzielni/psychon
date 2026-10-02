@@ -53,14 +53,18 @@ class LessonQuestionController extends Controller
         ]);
     }
 
-    public function store(StoreLessonQuestionRequest $request, int $id): JsonResponse
+    public function store(Request $request, int $id): JsonResponse
     {
         $lesson = $this->authorizedLesson($request, $id);
+
+        // Ciało jest sprawdzane dopiero po rozstrzygnięciu dostępu do lekcji —
+        // ta sama kolejność co na pozostałych trasach lekcji uczestnika.
+        $text = app(StoreLessonQuestionRequest::class)->validated('question');
 
         $question = InstructorQuestion::create([
             'user_id' => $request->user()->id,
             'lesson_id' => $lesson->id,
-            'question' => $request->validated('question'),
+            'question' => $text,
         ]);
 
         $this->notifyInstructor($lesson, $question);
