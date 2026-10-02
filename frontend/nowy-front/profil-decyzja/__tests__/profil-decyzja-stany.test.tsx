@@ -294,7 +294,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     const uzytkownik = await otworzPoprawke();
     await uzytkownik.type(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ }), "   ");
     await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }));
-    expect((await screen.findAllByText("Dodaj komentarz przed odesłaniem wniosku.")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Dodaj komentarz przed prośbą o poprawkę.")).length).toBeGreaterThan(0);
     expect(api.mock.calls.filter((wywolanie) => wywolanie[1]?.method === "POST")).toHaveLength(0);
   });
 
@@ -306,7 +306,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     await uzytkownik.type(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ }), "Uzupełnij opis podejścia.");
     await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }));
 
-    await screen.findByText("Wniosek odesłany do poprawy.");
+    await screen.findByText("Wniosek do poprawki.");
     expect(api).toHaveBeenLastCalledWith("/admin/profiles/12/return", { method: "POST", body: { reason: "Uzupełnij opis podejścia." } });
     expect(screen.getByText(/Komentarz: Uzupełnij opis podejścia\./)).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(0);

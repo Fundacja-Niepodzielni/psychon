@@ -29,7 +29,7 @@ type WariantStatusu = WariantPlakietki;
 const ETYKIETY_STATUSU: Record<string, string> = {
   draft: "wersja robocza",
   submitted: "czeka na decyzję",
-  returned: "do poprawy",
+  returned: "do poprawki",
   accepted: "zatwierdzony",
   // Serwer zna też „published” (`AdminProfileController::VALID_STATUSES`), którego typ klienta nie wylicza.
   published: "opublikowany",
@@ -261,7 +261,7 @@ function Widok({ poczatkowy, wroc, odswiez }: WlasciwosciWidoku) {
           onRozstrzygniety={(rozstrzygniety) => {
             setWniosek(rozstrzygniety);
             setKomunikat(
-              rozstrzygniety.status === "accepted" ? "Wniosek zatwierdzony." : "Wniosek odesłany do poprawy.",
+              rozstrzygniety.status === "accepted" ? "Wniosek zatwierdzony." : "Wniosek do poprawki.",
             );
           }}
         />

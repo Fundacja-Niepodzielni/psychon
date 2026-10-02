@@ -173,7 +173,7 @@ describe("ProfileKolejka — stany w szablonie", () => {
 });
 
 describe("ProfileKolejka — filtr i stronicowanie", () => {
-  it("filtr „Do poprawy” → zapytanie z status=returned i page=1, etykieta stanu w wierszu", async () => {
+  it("filtr „Do poprawki” → zapytanie z status=returned i page=1, etykieta stanu w wierszu", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
     apiPaged.mockResolvedValueOnce({
@@ -181,9 +181,9 @@ describe("ProfileKolejka — filtr i stronicowanie", () => {
       meta: { ...META, total: 1 },
     });
     await uzytkownik.click(screen.getByRole("combobox", { name: /Stan wniosku/ }));
-    await uzytkownik.click(screen.getByRole("option", { name: "Do poprawy" }));
+    await uzytkownik.click(screen.getByRole("option", { name: "Do poprawki" }));
     await waitFor(() => expect(apiPaged).toHaveBeenLastCalledWith("/admin/profiles?status=returned&page=1&per_page=25"));
-    await screen.findByText("Do poprawy", { selector: "span" });
+    await screen.findByText("Do poprawki", { selector: "span" });
   });
 
   it("pusty wynik dla innego stanu ma własny nagłówek", async () => {

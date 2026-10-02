@@ -76,7 +76,7 @@ export function zaakceptujWniosek(id: number): Promise<WynikDecyzji> {
 
 /** `POST /admin/profiles/{id}/return` z wymaganym polem `reason` (`ReturnProfileRequest.php:14-17`). */
 export function odeslijWniosek(id: number, komentarz: string): Promise<WynikDecyzji> {
-  return zapiszDecyzje(`/admin/profiles/${id}/return`, { reason: komentarz }, "Nie udało się odesłać wniosku. Spróbuj ponownie.");
+  return zapiszDecyzje(`/admin/profiles/${id}/return`, { reason: komentarz }, "Nie udało się wysłać prośby o poprawkę. Spróbuj ponownie.");
 }
 
 /**
