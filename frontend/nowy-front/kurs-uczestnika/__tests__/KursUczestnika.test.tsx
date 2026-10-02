@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ApiError } from "@/lib/api/klient";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
-import { kursSzkicu, odpowiedzSerwera, STANY_SZKICU, TYTULY_LEKCJI, type OpcjeKursu } from "./atrapy";
+import { kursSzkicu, odpowiedzBezTestu, odpowiedzSerwera, STANY_SZKICU, TYTULY_LEKCJI, type OpcjeKursu } from "./atrapy";
 import type { KursUczestnika as DaneKursu } from "../dane";
 
 /**
@@ -485,6 +485,70 @@ describe("stany ze szkicu biorą się z pól odpowiedzi serwera", () => {
     expect(pomiar()).toMatchObject({ liczbaGlownych: 1, tekst: ["Kontynuuj lekcję 3"] });
     expect(blad).not.toHaveBeenCalled();
     blad.mockRestore();
+  });
+});
+
+describe("kurs bez testu", () => {
+  it("w trakcie: bez karty testu, wiersz pod tytułem bez „na końcu test”, przycisk główny prowadzi do lekcji", async () => {
+    await pokaz(odpowiedzBezTestu(2, 3));
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText("Test końcowy")).toBeNull();
+    expect(screen.getByText("7 lekcji · około 2 godziny")).toBeInTheDocument();
+    expect(screen.queryByText(/na końcu test/)).toBeNull();
+    expect(pomiar()).toMatchObject({ tekst: ["Kontynuuj lekcję 3"] });
+    expect(screen.queryByText("Kurs ukończony")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Wróć do kursów" })).toBeNull();
+  });
+
+  it("po ukończeniu wszystkich lekcji: znacznik „Kurs ukończony” i zwykły odnośnik „Wróć do kursów” do listy kursów, bez „Przejdź do testu”", async () => {
+    await pokaz(odpowiedzBezTestu(7));
+    expect(screen.getByText("Kurs ukończony")).toBeInTheDocument();
+    expect(screen.queryByText("Lekcje ukończone")).toBeNull();
+    const odnosnik = screen.getByRole("link", { name: "Wróć do kursów" });
+    expect(odnosnik).toHaveAttribute("href", "/panel/kursy");
+    expect(odnosnik.hasAttribute("data-przycisk-glowny")).toBe(false);
+    expect(przyciskiGlowne()).toHaveLength(0);
+    expect(screen.queryByText(/Przejdź do testu/)).toBeNull();
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText(/na końcu test/)).toBeNull();
+  });
+
+  it("odpowiedź, w której zaplecze nie oznaczyło jeszcze kursu jako ukończonego, też kończy się znacznikiem i odnośnikiem", async () => {
+    const kurs = odpowiedzBezTestu(7);
+    kurs.status = "in_progress";
+    await pokaz(kurs);
+    expect(screen.getByText("Kurs ukończony")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
+    expect(przyciskiGlowne()).toHaveLength(0);
+  });
+
+  it("kontrola dodatnia: has_test true przy tych samych lekcjach — karta testu, „na końcu test”, „Przejdź do testu”, bez odnośnika „Wróć do kursów”", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 7 }));
+    expect(document.querySelector("[data-karta-testu]")).not.toBeNull();
+    expect(screen.getByText("7 lekcji · około 2 godziny · na końcu test")).toBeInTheDocument();
+    expect(pomiar()).toMatchObject({ tekst: ["Przejdź do testu"] });
+    expect(screen.queryByRole("link", { name: "Wróć do kursów" })).toBeNull();
+    expect(screen.queryByText("Kurs ukończony")).toBeNull();
+  });
+
+  it("odpowiedź bez pola has_test (starsze zaplecze): jak dotąd — karta jest; rozstrzyga wyłącznie jawne false", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 7 }));
+    expect(document.querySelector("[data-karta-testu]")).not.toBeNull();
+    expect(screen.getByText(/na końcu test/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Wróć do kursów" })).toBeNull();
+  });
+
+  it("tryb podglądu: te same reguły, pas „Nic się nie zapisuje”, odnośnik do listy kursów bez parametru podglądu", async () => {
+    await pokaz(odpowiedzBezTestu(7), true, "project_manager");
+    expect(screen.getByRole("region", { name: "Tryb podglądu" }).textContent).toContain("Nic się nie zapisuje.");
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
+    expect(screen.queryByText(/Przejdź do testu/)).toBeNull();
+    cleanup();
+    await pokaz(odpowiedzBezTestu(2, 3), true, "instructor");
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText(/na końcu test/)).toBeNull();
+    expect(pomiar().zamkniete).toBe(0);
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { czasKursu, czasLekcji, lekcjeWKolejnosci, licznikLekcji, opisKursu, TYTUL_TEMATU_DOMYSLNEGO, zbudujWidok, zdaniePostepu } from "../logika";
-import { kursSzkicu, lekcjeSzkicu } from "./atrapy";
+import { kursSzkicu, lekcjeSzkicu, odpowiedzBezTestu, odpowiedzSerwera } from "./atrapy";
 
 describe("opis kursu pod tytułem", () => {
   it("siedem lekcji, około dwóch godzin i test na końcu — jak w szkicu", () => {
@@ -166,5 +166,29 @@ describe("karta testu", () => {
     expect(zbudujWidok(kursSzkicu({ ukonczone: 7, testZamkniety: true })).test.czynny).toBe(false);
     expect(zbudujWidok(kursSzkicu({ ukonczone: 2, testZamkniety: false })).test.czynny).toBe(true);
     expect(zbudujWidok(kursSzkicu({ ukonczone: 2, testZamkniety: true })).test.czynny).toBe(false);
+  });
+});
+
+describe("kurs bez testu w logice", () => {
+  it("wiersz pod tytułem bez „na końcu test”; z jawnym false tak samo, bez argumentu jak dotąd", () => {
+    expect(opisKursu(lekcjeSzkicu(0), true)).toBe("7 lekcji · około 2 godziny");
+    expect(opisKursu(lekcjeSzkicu(0), false)).toBe("7 lekcji · około 2 godziny · na końcu test");
+    expect(opisKursu(lekcjeSzkicu(0))).toBe("7 lekcji · około 2 godziny · na końcu test");
+  });
+
+  it("rozstrzyga wyłącznie jawne false: true i brak pola to kurs z testem", () => {
+    expect(zbudujWidok(odpowiedzBezTestu(7)).bezTestu).toBe(true);
+    expect(zbudujWidok(odpowiedzSerwera({ ukonczone: 7 })).bezTestu).toBe(false);
+    expect(zbudujWidok(kursSzkicu({ ukonczone: 7 })).bezTestu).toBe(false);
+  });
+
+  it("po ukończeniu wszystkich lekcji kurs jest ukończony i nie ma przycisku głównego; w trakcie — lekcja", () => {
+    const koniec = zbudujWidok(odpowiedzBezTestu(7));
+    expect(koniec.kursUkonczony).toBe(true);
+    expect(koniec.akcja).toEqual({ rodzaj: "brak" });
+    const wTrakcie = zbudujWidok(odpowiedzBezTestu(6));
+    expect(wTrakcie.kursUkonczony).toBe(false);
+    expect(wTrakcie.akcja).toMatchObject({ rodzaj: "lekcja", etykieta: "Kontynuuj lekcję 7" });
+    expect(zbudujWidok(odpowiedzSerwera({ ukonczone: 7 })).akcja).toMatchObject({ rodzaj: "test", etykieta: "Przejdź do testu" });
   });
 });
