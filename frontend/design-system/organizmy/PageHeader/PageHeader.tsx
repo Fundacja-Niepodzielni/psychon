@@ -56,6 +56,12 @@ interface WlasciwosciPageHeader {
    */
   opis?: ReactNode;
   status?: StatusPageHeader;
+  /**
+   * Znacznik stanu w wierszu tytułu (obok niego), nie w linii pod nim; na
+   * wąskim ekranie schodzi pod tytuł. Domyślnie wyłączone: znacznik stoi
+   * w linii opisu jak dotąd.
+   */
+  statusObokTytulu?: boolean;
   /** Wywołane przez przycisk powrotu (`Button`, pole dotyku z `--hit-min`
    * wbudowane w atom — patrz Button.module.css `.przycisk { min-height:
    * var(--hit-min) }`). Właściciel nawigacji to wywołujący
@@ -111,6 +117,7 @@ export function PageHeader({
   tytul,
   opis,
   status,
+  statusObokTytulu = false,
   onPowrot,
   etykietaPowrotu = "Wstecz",
   akcja,
@@ -125,23 +132,31 @@ export function PageHeader({
     ? okruszekRamki({ menu: daneRamki.menu, sciezka: daneRamki.sciezka, okruszki, tytul })
     : [];
 
+  const statusPrzyTytule = statusObokTytulu && status !== undefined;
+  const statusWOpisie = statusPrzyTytule ? undefined : status;
+
   const blokTekstu = (
     <>
       <div className={style.tytulWiersz}>
         <Heading stopien={1}>{tytul}</Heading>
+        {statusPrzyTytule && (
+          <span className={style.status}>
+            <Badge wariant={status.wariant}>{status.etykieta}</Badge>
+          </span>
+        )}
       </div>
 
-      {(opis || status) && (
+      {(opis || statusWOpisie) && (
         <Text>
           {opis && <span>{opis}</span>}
-          {opis && status && (
+          {opis && statusWOpisie && (
             <span aria-hidden="true" className={style.separator}>
               {" · "}
             </span>
           )}
-          {status && (
+          {statusWOpisie && (
             <span className={style.status}>
-              <Badge wariant={status.wariant}>{status.etykieta}</Badge>
+              <Badge wariant={statusWOpisie.wariant}>{statusWOpisie.etykieta}</Badge>
             </span>
           )}
         </Text>

@@ -305,6 +305,50 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(obszar.locator("strong")).toHaveText("ważne");
     });
 
+    test("pasek edytora: przy 1280 w jednym wierszu, lista stylu ze strzałką, cele 44 px; przy 390 łamie się bez przewijania w poziomie", async ({ page }) => {
+      await instalujAdministracje(page, null);
+      await otworzStroneLekcji(page);
+      const pasek = kartaTresci(page).getByRole("toolbar", { name: "Formatowanie treści" });
+      await expect(pasek.getByRole("button", { name: "Ponów" })).toBeVisible();
+
+      const miary = await pasek.evaluate((korzen) => {
+        const kontrolki = Array.from(korzen.querySelectorAll<HTMLElement>("button")).map((element) => {
+          const ramka = element.getBoundingClientRect();
+          return { nazwa: element.getAttribute("aria-label") ?? "", gora: Math.round(ramka.top), wysokosc: ramka.height, szerokosc: ramka.width };
+        });
+        const styl = korzen.querySelector<HTMLElement>("[title='Styl tekstu']");
+        const strzalka = styl === null ? null : getComputedStyle(styl, "::after");
+        const pole = korzen.querySelector<HTMLElement>("button[role='combobox']");
+        return {
+          kontrolki,
+          wysokoscPaska: korzen.getBoundingClientRect().height,
+          strzalka: strzalka === null ? null : { tresc: strzalka.content, szerokosc: parseFloat(strzalka.width), pozycja: strzalka.position },
+          szerokoscPola: pole?.getBoundingClientRect().width ?? 0,
+        };
+      });
+      expect(miary.kontrolki.map((kontrolka) => kontrolka.nazwa)).toEqual([
+        "Styl tekstu", "Pogrubienie", "Kursywa", "Lista punktowana", "Lista numerowana", "Link", "Cofnij", "Ponów",
+      ]);
+      for (const kontrolka of miary.kontrolki) {
+        expect(kontrolka.wysokosc, kontrolka.nazwa).toBeGreaterThanOrEqual(44);
+        expect(kontrolka.szerokosc, kontrolka.nazwa).toBeGreaterThanOrEqual(44);
+      }
+      // Lista stylu ma widoczną strzałkę rozwijania (sam znak po prawej, bez zdarzeń).
+      expect(miary.strzalka).not.toBeNull();
+      expect(miary.strzalka?.tresc).not.toBe("none");
+      expect(miary.strzalka?.pozycja).toBe("absolute");
+      expect(miary.strzalka?.szerokosc).toBeGreaterThan(0);
+
+      const gory = new Set(miary.kontrolki.map((kontrolka) => kontrolka.gora));
+      if (szerokosc >= 1280) {
+        expect([...gory], "wszystkie kontrolki paska w jednym wierszu").toHaveLength(1);
+        expect(miary.wysokoscPaska).toBeLessThan(44 + 24);
+      } else {
+        expect(gory.size, "przy 390 pasek łamie się do kolejnych wierszy").toBeGreaterThan(1);
+        await bezPrzewijaniaPoziomego(page);
+      }
+    });
+
     test("treść zastana: otwarcie i ruch kursora niczego nie zmieniają, zapis niesie ją bajt w bajt; po edycji akapitu nic nie ginie", async ({ page }) => {
       const { zapisy } = await instalujAdministracje(page, TRESC_ZASTANA);
       const obszar = await otworzStroneLekcji(page);

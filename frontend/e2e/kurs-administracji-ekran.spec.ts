@@ -421,6 +421,28 @@ for (const { szerokosc, wysokosc } of OKNA) {
           await expect(page.locator(`#${id}`)).toHaveAttribute("aria-expanded", "false");
         }
 
+        // Znacznik stanu w wierszu tytułu: od dwóch kolumn w tym samym wierszu co tytuł, poniżej może zejść pod niego,
+        // ale zawsze mieści się w ekranie.
+        const znacznik = page.locator("[data-obszar='naglowek'] header").getByText(stan.kurs.is_published ? "Opublikowany" : "Szkic", { exact: true });
+        await expect(znacznik).toHaveCount(1);
+        const polozenie = await page.evaluate(() => {
+          const naglowek = document.querySelector("[data-obszar='naglowek'] h1");
+          const wiersz = naglowek?.parentElement ?? null;
+          const plakietka = wiersz?.querySelector("span") ?? null;
+          if (naglowek === null || wiersz === null || plakietka === null) return null;
+          const tytul = naglowek.getBoundingClientRect();
+          const znak = plakietka.getBoundingClientRect();
+          return {
+            wTymSamymWierszu: znak.top >= tytul.top - 1 && znak.bottom <= tytul.bottom + 1,
+            prawaKrawedz: znak.right,
+            szerokoscOkna: document.documentElement.clientWidth,
+            tytulPrzedZnacznikiem: znak.left >= tytul.left,
+          };
+        });
+        expect(polozenie, "znacznik stanu jest w wierszu tytułu").not.toBeNull();
+        expect(polozenie?.prawaKrawedz).toBeLessThanOrEqual((polozenie?.szerokoscOkna ?? 0) + 0.5);
+        if (dwieKolumny) expect(polozenie?.wTymSamymWierszu, "znacznik w tym samym wierszu co tytuł").toBe(true);
+
         // Pas pod nagłówkiem tylko poniżej dwóch kolumn; stan i liczba z tych samych danych co karta.
         const pas = page.locator("[data-obszar='pasek-waski']");
         if (dwieKolumny) {

@@ -537,6 +537,7 @@ export function EkranKursu({
           status: kurs.is_published
             ? { wariant: "ok", etykieta: "Opublikowany" }
             : { wariant: "neutral", etykieta: "Szkic" },
+          statusObokTytulu: true,
           onPowrot: () => router.back(),
         }}
         pasekWaski={<PasPublikacji {...przyciskGlowny} stan={publikacja} />}
