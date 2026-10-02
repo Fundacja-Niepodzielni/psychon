@@ -1,0 +1,147 @@
+.pojemnik {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.ramka {
+  border: 1px solid var(--control);
+  border-radius: var(--r-xs);
+  background: var(--card);
+}
+.ramka[data-niepoprawny="true"] {
+  border-color: var(--error);
+}
+
+/* Pasek: jeden rząd na szerokim ekranie; na wąskim kontrolki same przechodzą
+   do drugiego rzędu, bez zmniejszania celów dotyku. */
+.pasek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-8);
+  border-bottom: 1px solid var(--border);
+  border-radius: calc(var(--r-xs) - 1px) calc(var(--r-xs) - 1px) 0 0;
+  background: var(--bg);
+}
+
+.styl {
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: 200px;
+  margin-right: var(--space-6);
+}
+.styl :global(button[role="combobox"]) {
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+}
+
+.przycisk {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-min);
+  height: var(--hit-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-2xs);
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: var(--fs-7);
+  line-height: 1;
+  cursor: pointer;
+}
+.przycisk[aria-pressed="true"],
+.przycisk[aria-expanded="true"] {
+  background: var(--brand-tint);
+  box-shadow: inset 0 0 0 1px var(--brand);
+  color: var(--brand);
+}
+.przycisk:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kursywa {
+  font-family: Georgia, serif;
+  font-style: italic;
+}
+
+.separator {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  margin: 0 var(--space-6);
+  background: var(--border);
+}
+
+.grupa {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.panelLinku {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-8) var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--border);
+}
+.poleAdresu {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.poleAdresu :global(input) {
+  width: 100%;
+}
+.akcjePanelu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.zastepczy {
+  min-height: 200px;
+  padding: var(--space-16);
+}
+
+/* Reguły, których silnik wymaga od obszaru edycji (inaczej wstrzyknąłby je
+   własnym znacznikiem stylu): zawijanie i zachowanie odstępów. */
+.obszar :global(.ProseMirror) {
+  position: relative;
+  min-height: 200px;
+  padding: var(--space-16);
+  border-radius: 0 0 calc(var(--r-xs) - 1px) calc(var(--r-xs) - 1px);
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  font-variant-ligatures: none;
+}
+/* Obrys fokusu do środka ramki: na zewnątrz zasłoniłby pasek i licznik. */
+.ramka .obszar :global(.ProseMirror):focus-visible {
+  outline-offset: calc(var(--focus-width) * -1);
+}
+
+/* W treści uczestnika odnośnik ma powiększone pole klikalne; w edytorze w link
+   się nie klika, więc zostaje sama barwa — bez pola, które łapałoby kursor
+   z sąsiednich wierszy. */
+.odnosnik {
+  color: var(--link);
+  cursor: text;
+}
+
+.stopka {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-20);
+}

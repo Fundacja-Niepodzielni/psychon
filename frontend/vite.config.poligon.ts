@@ -27,6 +27,8 @@ export default defineConfig({
         lekcja: fileURLToPath(new URL("./design-system/poligon/lekcja.html", import.meta.url)),
         formularze: fileURLToPath(new URL("./design-system/poligon/formularze.html", import.meta.url)),
         "szablony-kolumna": fileURLToPath(new URL("./design-system/poligon/szablony-kolumna.html", import.meta.url)),
+        // Edytor treści lekcji: osobne wejście, bo tylko ono wciąga silnik edycji.
+        edytor: fileURLToPath(new URL("./design-system/poligon/edytor.html", import.meta.url)),
       },
     },
   },

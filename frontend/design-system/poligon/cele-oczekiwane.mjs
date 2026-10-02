@@ -89,6 +89,11 @@ export const OCZEKIWANE_CELE = [
   // i `JournalTable` mają po jednym.
   "FormSection (zapisz)",
   "JournalTable (odnośnik pobrania)",
+  // Edytor treści lekcji z `edytor.html` (czwarta strona wejścia poligonu):
+  // lista stylu, przełącznik paska i przycisk, który na starcie jest nieaktywny.
+  "EdytorTresci (styl tekstu)",
+  "EdytorTresci (przycisk paska)",
+  "EdytorTresci (cofnij)",
 ];
 
 // Mapa cel -> komponent źródłowy. Osobna od nazw celów, bo jeden komponent
@@ -119,6 +124,9 @@ export const KOMPONENT_CELU = {
   "GrupaZwijana (przycisk zwijania)": "GrupaZwijana", // własny `button` zwijania grupy menu; pozycje w środku to MenuItem (już rozliczony)
   "Pagination (poprzednia)": "Pagination",
   "RichTextEditor (przycisk paska)": "RichTextEditor",
+  "EdytorTresci (styl tekstu)": "EdytorTresci",
+  "EdytorTresci (przycisk paska)": "EdytorTresci",
+  "EdytorTresci (cofnij)": "EdytorTresci",
   "SaveBar (cofnij)": "SaveBar",
   "SearchBox (pole wyszukiwania)": "SearchBox",
   "Tabs (zakładka)": "Tabs",
@@ -227,6 +235,7 @@ export const PLIKI_ROZLICZONE = [
   "molekuly/MenuItem/MenuItem.tsx",
   "molekuly/Pagination/Pagination.tsx",
   "molekuly/RichTextEditor/RichTextEditor.tsx",
+  "molekuly/EdytorTresci/EdytorTresci.tsx", // edytor treści lekcji: trzy cele z `edytor.html`
   "molekuly/SaveBar/SaveBar.tsx",
   "molekuly/SearchBox/SearchBox.tsx",
   "molekuly/StrzalkiKolejnosci/StrzalkiKolejnosci.tsx", // dopisany z molekułą strzałek kolejności: dwa przyciski, cel „StrzalkiKolejnosci (strzałka)”
