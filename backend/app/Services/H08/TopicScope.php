@@ -5,11 +5,13 @@ namespace App\Services\H08;
 use App\Exceptions\ApiException;
 use App\Models\Course;
 use App\Models\CourseTopic;
+use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Pakiet H08 · zasięg tras tematów kursu. Administracja widzi każdy żywy
+ * Pakiet H08 · zasięg tras tematów kursu i tras nagrań lekcji prowadzącego
+ * (`lesson()`). Administracja widzi każdy żywy
  * kurs; prowadzący — wyłącznie kursy z aktywnym przypisaniem na poziomie
  * kursu (ta sama definicja co `CoursePolicy`).
  *
@@ -57,6 +59,24 @@ final class TopicScope
             ->first();
 
         return $topic ?? throw new ApiException(404, 'not_found', self::NOT_FOUND);
+    }
+
+    /**
+     * Żywa lekcja żywego kursu w zasięgu — dla tras nagrań prowadzącego
+     * (`InstructorVideoController`). Ten sam warunek przypisania co kurs
+     * i temat, w jednym zapytaniu: lekcja kursu obcego, lekcja usunięta
+     * i lekcja nieistniejąca dają ten sam wyjątek.
+     *
+     * @throws ApiException
+     */
+    public function lesson(mixed $lessonId): Lesson
+    {
+        $lesson = Lesson::query()
+            ->whereKey(self::id($lessonId))
+            ->whereHas('course', fn (Builder $courses): Builder => $this->courses($courses))
+            ->first();
+
+        return $lesson ?? throw new ApiException(404, 'not_found', self::NOT_FOUND);
     }
 
     /**

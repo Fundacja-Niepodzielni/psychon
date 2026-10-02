@@ -4,12 +4,19 @@ namespace App\Providers;
 
 use App\Http\Middleware\AuthenticateKeycloakToken;
 use App\Services\Keycloak\KeycloakGuardResolver;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /** Nazwa limitu w `throttle:` na trasach zlecenia wgrania nagrania lekcji. */
+    public const string RECORDING_UPLOADS_LIMITER = 'recording-uploads';
+
+    public const int RECORDING_UPLOADS_PER_MINUTE = 10;
+
     /**
      * Register any application services.
      */
@@ -38,6 +45,20 @@ class AppServiceProvider extends ServiceProvider
         // null → 401).
         Auth::viaRequest('keycloak', function (Request $request) {
             return $this->app->make(KeycloakGuardResolver::class)->resolve($request);
+        });
+
+        // Zlecenie wgrania nagrania lekcji (`POST …/video-uploads`, trasa administracji
+        // i trasa prowadzącego) wysyła żądanie do dostawcy nagrań, więc ma limit żądań:
+        // 10 na minutę na osobę, jedna definicja dla obu tras. Limit jest NAZWANY
+        // i ma własny klucz — nienazwany `throttle:N,M` liczy po samej osobie, więc
+        // dzieliłby licznik z każdym innym nienazwanym limitem tej samej osoby.
+        // Przekroczenie = 429 `too_many_requests` ze wspólnej koperty błędu
+        // (`ApiExceptionRenderer`, `reason.retry_after_seconds`).
+        RateLimiter::for(self::RECORDING_UPLOADS_LIMITER, static function (Request $request): Limit {
+            $person = $request->user()?->getAuthIdentifier() ?? $request->ip();
+
+            return Limit::perMinute(self::RECORDING_UPLOADS_PER_MINUTE)
+                ->by(self::RECORDING_UPLOADS_LIMITER.':'.$person);
         });
     }
 }
