@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest siedemnaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dziewiętnaście: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -165,14 +165,14 @@ export const GRUPY = {
   },
   /**
    * Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu.
-   * Zostaje wyłączona: gdy nagranie lekcji jest niedostępne (`video-link` odpowiada 503 albo 404 — lekcja bez
-   * nagrania albo bez usługi wideo), nowy ekran nie ma przycisku „Odtwórz”, nie wysyła zapisu postępu, a „Oznacz
-   * jako ukończoną” zostaje nieaktywne, podczas gdy stara strona w tych samych warunkach działa. Strona
-   * `panel/lekcje/[id]/page.tsx` jest już podpięta pod tę flagę.
+   * Włączona: `panel/lekcje/[id]/page.tsx` rysuje ekran lekcji nowego frontu w ramce uczestnika, a nagranie gra
+   * w prawdziwym odtwarzaczu (`RecordingPlayer`), który liczy czas aktywny z komunikatów odtwarzacza dostawcy.
+   * Zielony przycisk ukończenia jest zawsze widoczny; gdy nagranie jest niedostępne albo w przygotowaniu, ekran
+   * mówi o tym jednym zdaniem, a lekcja bez nagrania da się ukończyć tak jak dotąd.
    */
   lekcja: {
     klucz: "lekcja",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",
@@ -184,8 +184,9 @@ export const GRUPY = {
   },
   /**
    * Strona kursu uczestnika — ten sam adres co dzisiejsza strona kursu, treść strony zamienia się na ekran
-   * nowego frontu. Wyłączona do czasu włączenia razem z grupą `lekcja`: oba ekrany prowadzą do siebie
-   * nawzajem. Strona `panel/kursy/[slug]/page.tsx` jest podpięta pod tę flagę.
+   * nowego frontu. Włączona razem z grupą `lekcja`: oba ekrany prowadzą do siebie nawzajem (z kursu do lekcji
+   * i z lekcji z powrotem do kursu). Strona `panel/kursy/[slug]/page.tsx` jest podpięta pod tę flagę, a dawna
+   * treść strony zostaje w `StaraTresc.tsx`.
    */
   kursUczestnika: {
     klucz: "kursUczestnika",
