@@ -7,10 +7,13 @@ use App\Models\CourseAssignment;
 use App\Models\Edition;
 use App\Models\Lesson;
 use App\Models\User;
+use App\Providers\AppServiceProvider;
+use Database\Seeders\DocumentTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -151,6 +154,11 @@ class RecordingUploadRateLimitTest extends TestCase
             $this->assertCount(1, $throttle, "Trasa {$uri} ma dokładnie jeden limit.");
         }
         $this->assertCount(1, array_unique(array_map(static fn (array $throttle): string => $throttle[0], $uploads)));
+        // Limit jest nazwany (nie literał `throttle:10,1`, który dzieliłby licznik z innymi limitami osoby).
+        foreach ($uploads as $throttle) {
+            $this->assertSame('throttle:'.AppServiceProvider::RECORDING_UPLOADS_LIMITER, $throttle[0]);
+        }
+        $this->assertNotNull(RateLimiter::limiter(AppServiceProvider::RECORDING_UPLOADS_LIMITER));
         foreach ($statuses as $uri => $throttle) {
             $this->assertSame([], $throttle, "Odczyt stanu {$uri} nie ma limitu.");
         }
@@ -234,6 +242,85 @@ class RecordingUploadRateLimitTest extends TestCase
         $this->upload($this->url('instructor', $this->lessonFor('instructor', $instructor)), ['title' => 'Nagranie'])
             ->assertStatus(429);
         $this->assertSame([], $this->providerRequests());
+    }
+
+    // --- osobny licznik: limit wgrania nie dzieli się z innym limitem osoby -----
+
+    /**
+     * Nienazwany `throttle:N,M` liczy po samej osobie, więc dzieliłby licznik z
+     * każdym innym nienazwanym limitem tej samej osoby (np. zapisem wzoru
+     * dokumentu, 20 na minutę). Limit wgrania ma własną nazwę i własny klucz.
+     */
+    public function test_another_limit_of_the_same_person_does_not_use_the_upload_limit(): void
+    {
+        $this->seed(DocumentTemplateSeeder::class);
+        $this->configureBunny();
+        $this->fakeProvider(['guid' => 'kazde-wideo-ma-swoj-identyfikator']);
+        $person = $this->user('project_manager');
+        $this->bearerFor($person, 'project_manager');
+
+        // Dziesięć zapisów wzoru (inny limit tej samej osoby): trasa jest osiągnięta (422), nie 429.
+        for ($n = 1; $n <= self::LIMIT; $n++) {
+            $this->saveTemplate()->assertStatus(422);
+        }
+
+        // Limit wgrania jest nietknięty: wszystkie dziesięć wgrań przechodzi, dopiero 11. dostaje 429.
+        for ($n = 1; $n <= self::LIMIT; $n++) {
+            $this->upload($this->url('admin', $this->lessonFor('project_manager', $person)), ['title' => 'Nagranie'])
+                ->assertCreated();
+        }
+        $this->upload($this->url('admin', $this->lessonFor('project_manager', $person)), ['title' => 'Nagranie'])
+            ->assertStatus(429);
+    }
+
+    public function test_the_upload_limit_does_not_use_another_limit_of_the_same_person(): void
+    {
+        $this->seed(DocumentTemplateSeeder::class);
+        $this->configureBunny();
+        $this->fakeProvider(['guid' => 'kazde-wideo-ma-swoj-identyfikator']);
+        $person = $this->user('project_manager');
+        $this->bearerFor($person, 'project_manager');
+
+        // Limit wgrania wyczerpany do zera…
+        for ($n = 1; $n <= self::LIMIT; $n++) {
+            $this->upload($this->url('admin', $this->lessonFor('project_manager', $person)), ['title' => 'Nagranie'])
+                ->assertCreated();
+        }
+        $this->upload($this->url('admin', $this->lessonFor('project_manager', $person)), ['title' => 'Nagranie'])
+            ->assertStatus(429);
+
+        // …a limit zapisu wzoru (20 na minutę) ma pełną pulę: dwadzieścia zapisów, 21. dopiero 429.
+        for ($n = 1; $n <= 20; $n++) {
+            $this->saveTemplate()->assertStatus(422);
+        }
+        $this->saveTemplate()->assertStatus(429);
+    }
+
+    /**
+     * Obie trasy wgrania biorą z jednego licznika osoby: osoba z tokenem obu ról
+     * (prowadzący i opiekun projektu) po pięciu wgraniach na jednej trasie i
+     * pięciu na drugiej dostaje 429 na jedenastym — na każdej z nich.
+     */
+    public function test_both_upload_routes_draw_on_one_counter_of_the_person(): void
+    {
+        $this->configureBunny();
+        $this->fakeProvider(['guid' => 'kazde-wideo-ma-swoj-identyfikator']);
+        $person = $this->user('instructor');
+        $this->bearerForRoles($person, ['instructor', 'project_manager']);
+
+        for ($n = 1; $n <= 5; $n++) {
+            $this->upload($this->url('admin', $this->lessonFor('project_manager', $person)), ['title' => 'Nagranie'])
+                ->assertCreated();
+            $this->upload($this->url('instructor', $this->lessonFor('instructor', $person)), ['title' => 'Nagranie'])
+                ->assertCreated();
+        }
+        $this->assertCount(self::LIMIT, $this->providerRequests());
+
+        $this->upload($this->url('admin', $this->lessonFor('project_manager', $person)), ['title' => 'Nagranie'])
+            ->assertStatus(429);
+        $this->upload($this->url('instructor', $this->lessonFor('instructor', $person)), ['title' => 'Nagranie'])
+            ->assertStatus(429);
+        $this->assertCount(self::LIMIT, $this->providerRequests());
     }
 
     // --- kurs opublikowany: wgranie nie rusza odtwarzanego nagrania ------------
@@ -384,12 +471,32 @@ class RecordingUploadRateLimitTest extends TestCase
 
     private function bearerFor(User $user, string $role): void
     {
+        $this->bearerForRoles($user, [$role]);
+    }
+
+    /** @param  list<string>  $roles role z tokena (rolę rozstrzyga token, nie `users.role`) */
+    private function bearerForRoles(User $user, array $roles): void
+    {
         $realm = $this->realm();
         $this->app['auth']->forgetGuards();
         $this->withHeader('Authorization', 'Bearer '.$realm->mint([
             'sub' => $user->keycloak_sub,
-            'realm_access' => ['roles' => [config("keycloak.roles.{$role}")]],
+            'realm_access' => ['roles' => array_map(
+                static fn (string $role): string => (string) config("keycloak.roles.{$role}"),
+                $roles,
+            )],
         ]));
+    }
+
+    /**
+     * Zapis wzoru dokumentu odrzucany regułą pól (`{!! … !!}`) przed próbnym
+     * generowaniem — tani, a liczy się do limitu tej trasy (20 na minutę na osobę).
+     */
+    private function saveTemplate(): TestResponse
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->putJson('/api/v1/document-templates/agreement', ['content' => '<p>{!! $number !!}</p>']);
     }
 
     /** @return list<Request> żądania do atrapy dostawcy nagrań (bez dostawcy tożsamości) */
