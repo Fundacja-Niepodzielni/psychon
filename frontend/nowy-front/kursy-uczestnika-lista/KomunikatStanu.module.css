@@ -1,0 +1,23 @@
+/* Komunikat stanu bez danych: tło w kolorze statusu, ikona po lewej, tytuł i zdanie.
+   Wartości wyglądu wyłącznie z tokenów. */
+.komunikat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-10);
+  color: var(--ink);
+  background: var(--error-bg);
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.akcja {
+  margin-top: var(--space-6);
+}

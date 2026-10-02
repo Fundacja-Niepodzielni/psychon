@@ -1,0 +1,83 @@
+/* Moduł CSS ekranu „Mój profil” — wartości wyglądu wyłącznie z tokenów. Szerokość,
+   odstępy obszarów i kolumny daje szablon. */
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  min-width: 0;
+}
+
+.formularz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.pole {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* Imię i nazwisko (oraz miejscowość i kod) obok siebie, gdy jest miejsce; na wąskim
+   ekranie jedno pod drugim. */
+.dwiePola {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-16);
+}
+
+.adres {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.adres legend {
+  padding: 0;
+  margin-bottom: var(--space-4);
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.akcjaZPowodem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.stanEksportu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.ladowanie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}

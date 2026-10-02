@@ -1,0 +1,6 @@
+/* Stan ładowania listy kursów: podpis dla czytnika i szkielet wierszy. */
+.ladowanie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
