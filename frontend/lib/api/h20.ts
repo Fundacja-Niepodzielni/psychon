@@ -76,6 +76,7 @@ export const AUDIT_ACTIONS = [
   "internship.returned",
   "internship.rejected",
   "supervisor.assigned",
+  "supervisor.unassigned",
   "certificate.issued",
   "document.generated",
   "profile.accepted",

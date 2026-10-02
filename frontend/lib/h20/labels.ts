@@ -17,6 +17,7 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   "internship.returned": "Wpis stażu zwrócony",
   "internship.rejected": "Wpis stażu odrzucony",
   "supervisor.assigned": "Przypisano superwizora",
+  "supervisor.unassigned": "Zakończono przypisanie superwizora",
   "certificate.issued": "Certyfikat wydany",
   "document.generated": "Dokument wygenerowany",
   "profile.accepted": "Profil psychologa zaakceptowany",

@@ -33,6 +33,5 @@ final class NotificationTypes
         'question.asked',
         'supervision.reminder',
         'supervision.slot_cancelled',
-        'thread.member_added',
     ];
 }

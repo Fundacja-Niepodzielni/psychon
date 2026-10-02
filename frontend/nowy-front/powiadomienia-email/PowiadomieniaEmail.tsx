@@ -45,7 +45,7 @@ const ETYKIETY_STATUSU: Record<WiadomoscEmail["status"], string> = {
  */
 const ETYKIETY_TYPOW: Record<string, string> = {
   "application.accepted": "Zgłoszenie zatwierdzone",
-  "application.rejected": "Zgłoszenie odrzucone",
+  "application.rejected": "Zgłoszenie odrzucone — notatka dla osoby decydującej (e-mail z powodem do kandydata wychodzi zawsze)",
   "assignment.created": "Przypisanie prowadzącego",
   "assignment.removed": "Usunięcie przypisania prowadzącego",
   "course.invited": "Zaproszenie na kurs",
