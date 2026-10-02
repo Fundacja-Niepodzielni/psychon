@@ -884,6 +884,21 @@ for (const { szerokosc, wysokosc } of OKNA) {
           await page.mouse.wheel(0, 400);
           await page.waitForTimeout(50);
         }
+        const poRozwinieciu = await boczna.evaluate((kolumna) => {
+          const przycisk = Array.from(kolumna.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Usuń kurs");
+          const p = przycisk?.getBoundingClientRect();
+          const k = kolumna.getBoundingClientRect();
+          return {
+            przycisk: p ? { gora: Math.round(p.top), dol: Math.round(p.bottom) } : null,
+            kolumna: { gora: Math.round(k.top), dol: Math.round(k.bottom) },
+            przewiniecieKolumny: kolumna.scrollTop,
+            wysokoscKolumny: kolumna.scrollHeight,
+            widocznaWysokosc: kolumna.clientHeight,
+            przewiniecieStrony: Math.round(window.scrollY),
+            wysokoscStrony: document.documentElement.scrollHeight,
+          };
+        });
+        console.log(`POMIAR-USUN-KURS ${JSON.stringify({ okno: `${szerokosc}x${wysokosc}`, stan: stan.nazwa, ...poRozwinieciu })}`);
         await expect(usun).toBeInViewport({ ratio: 1 });
 
         if (zrzuty) await page.screenshot({ path: `${zrzuty}-kurs-administracji-usuniecie-${stan.nazwa}-${szerokosc}.png` });
@@ -895,8 +910,21 @@ for (const { szerokosc, wysokosc } of OKNA) {
   });
 }
 
-/** Element w całości w oknie przeglądarki (bez przewijania programowego). */
+/**
+ * Element w całości widoczny: w oknie przeglądarki i w każdym przodku, który
+ * przycina treść (`overflow-y` inne niż `visible`) — przycisk pod dolną
+ * krawędzią przewijanej kolumny bocznej, choć w oknie, nie jest widoczny.
+ */
 function czyCaloscWOknie(element: Element): boolean {
   const prostokat = element.getBoundingClientRect();
-  return prostokat.top >= 0 && prostokat.bottom <= window.innerHeight && prostokat.height > 0;
+  if (prostokat.height <= 0) return false;
+  let gora = 0;
+  let dol = window.innerHeight;
+  for (let przodek = element.parentElement; przodek; przodek = przodek.parentElement) {
+    if (getComputedStyle(przodek).overflowY === "visible") continue;
+    const ramka = przodek.getBoundingClientRect();
+    gora = Math.max(gora, ramka.top);
+    dol = Math.min(dol, ramka.bottom);
+  }
+  return prostokat.top >= gora && prostokat.bottom <= dol;
 }
