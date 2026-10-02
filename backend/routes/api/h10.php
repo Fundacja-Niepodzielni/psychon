@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AdminTestQuestionController;
 use App\Http\Controllers\Api\V1\AdminTestResetController;
 use App\Http\Controllers\Api\V1\AdminWorkshopController;
 use App\Http\Controllers\Api\V1\H10\InstructorTestController;
+use App\Http\Controllers\Api\V1\H10\InstructorTestQuestionController;
 use App\Http\Controllers\Api\V1\TestController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,10 +46,17 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     Route::post('/admin/tests/{test}/users/{user}/reset-attempts', [AdminTestResetController::class, 'store']);
 });
 
-// Prowadzący: test wiedzy wyłącznie kursu, do którego jest przypisany
-// (`CoursePolicy`). Bez banku pytań — ten zostaje w panelu administracji.
+// Prowadzący: test wiedzy i jego bank pytań wyłącznie kursu, do którego jest
+// przypisany. Test kursu (`InstructorTestController`) pilnuje `CoursePolicy`
+// (cudzy kurs → 403); bank pytań (`InstructorTestQuestionController`) ma zasięg
+// jak tematy kursu — test albo pytanie obce wygląda jak nieistniejące (404).
 Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void {
     Route::get('/instructor/courses/{course}/tests', [InstructorTestController::class, 'index'])->whereNumber('course');
     Route::post('/instructor/courses/{course}/tests', [InstructorTestController::class, 'store'])->whereNumber('course');
     Route::patch('/instructor/tests/{test}', [InstructorTestController::class, 'update'])->whereNumber('test');
+
+    Route::get('/instructor/tests/{test}/questions', [InstructorTestQuestionController::class, 'index'])->whereNumber('test');
+    Route::post('/instructor/tests/{test}/questions', [InstructorTestQuestionController::class, 'store'])->whereNumber('test');
+    Route::patch('/instructor/questions/{question}', [InstructorTestQuestionController::class, 'update'])->whereNumber('question');
+    Route::delete('/instructor/questions/{question}', [InstructorTestQuestionController::class, 'destroy'])->whereNumber('question');
 });
