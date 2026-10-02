@@ -2134,3 +2134,37 @@ trwania, także te bez nagrania; wartość zbiorcza nie jest z niej liczona.
 
 Kod: `Services/Lessons/LessonCompletionRule.php` (`isMeasurable`), `Support/ProgressAggregator.php`,
 `Services/H18/UserNumberSourcesQuery.php`.
+
+---
+
+## Aneks — podgląd kursu nieopublikowanego (H05, H06, H08)
+
+Personel i prowadzący związany z kursem czytają kurs nieopublikowany (szkic) tymi samymi
+trasami co uczestnik, żeby sprawdzić go przed publikacją. Zmiana dotyczy wyłącznie widoczności;
+bez nowych tras, parametrów, pól, kodów błędu, slugów audytu i typów powiadomień; zero zmian w
+danych.
+
+### 1. Kto i czym
+
+- **Trasy:** `GET /courses/{slug}`, `GET /lessons/{id}`, `GET /lessons/{id}/video-link`.
+- **Dopuszczeni do szkicu:** `project_manager` i `super_admin` (rola z tokena) — w granicach
+  filtra grupy produktowej osoby, tak jak przy kursie opublikowanym — oraz prowadzący związany
+  z kursem według tej samej reguły co pozostałe trasy lekcji prowadzącego: ta sama grupa
+  produktowa kursu albo aktywne przypisanie.
+- **Pozostali bez zmian:** uczestnik (także zapisany na kurs, także ze śladem postępu) i
+  prowadzący bez związku z kursem dostają `404 not_found`, identyczne bajt w bajt jak dla zasobu
+  nieistniejącego: `Nie znaleziono kursu.` na trasie kursu, `Nie znaleziono zasobu.` na trasach
+  lekcji i linku (dotąd odczyt lekcji niewidocznej mówił `Nie znaleziono lekcji.`, czym różnił
+  się od lekcji nieistniejącej — teraz oba mówią to samo).
+- **Lista kursów** (`GET /courses`) szkicu nie pokazuje nikomu, także personelowi i
+  prowadzącemu: podgląd wchodzi wyłącznie adresem kursu.
+- Reguła stoi w jednym miejscu (`LessonAccess::canPreviewDraft`), a odczyt kursu i link do
+  nagrania pytają właśnie tam. Kurs opublikowany czytany jest dokładnie jak dotąd.
+
+### 2. Link do nagrania szkicu
+
+Link do nagrania szkicu powstaje tak samo jak dla kursu opublikowanego: serwer niczego nie
+wysyła do dostawcy nagrań przy wydaniu linku (podpisuje adres lokalnie), a bez skonfigurowanego
+klucza podpisu odpowiada `503 video_not_configured`.
+
+Kod: `Services/Lessons/LessonAccess.php`, `Http/Controllers/Api/V1/CourseController.php`.
