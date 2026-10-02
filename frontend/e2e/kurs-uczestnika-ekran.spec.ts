@@ -340,7 +340,8 @@ for (const { szerokosc, wysokosc } of OKNA) {
         if (stan.podglad) {
           // Podgląd: każdy odnośnik do lekcji i do testu niesie parametr podglądu.
           const doLekcji = await page.locator('a[href^="/panel/lekcje/"]').evaluateAll((el) => el.map((a) => a.getAttribute("href")));
-          expect(doLekcji).toHaveLength(7);
+          // siedem wierszy lekcji i odnośnik przycisku głównego do następnej lekcji.
+          expect(doLekcji).toHaveLength(8);
           for (const href of doLekcji) expect(href).toMatch(/[?&]podglad=1(&|$)/);
         }
 
@@ -531,6 +532,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
     test("czas aktywny przy lekcji 3, wcześniejsza nieukończona bez postępu: „Kontynuuj lekcję 3”; lekcja do czytania bez minut", async ({ page }) => {
       await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 0, zamknieteOd: null, nowePola: true, wTrakcieNr: 3 }) }));
       await otworz(page, `/panel/kursy/${SLUG}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Pierwsza pomoc psychologiczna" })).toBeVisible();
       expect((await przyciskiGlowne(page)).map(({ tekst, powod }) => ({ tekst, powod }))).toEqual([
         { tekst: "Kontynuuj lekcję 3", powod: "„Rozpoznawanie kryzysu psychicznego”" },
       ]);
@@ -541,6 +543,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
     test("test_passed: karta testu „Test zaliczony.”, bez przycisku głównego", async ({ page }) => {
       await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 7, zamknieteOd: null, nowePola: true, testZaliczony: true }) }));
       await otworz(page, `/panel/kursy/${SLUG}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Pierwsza pomoc psychologiczna" })).toBeVisible();
       await expect(page.locator("[data-karta-testu]")).toContainText("Test zaliczony.");
       expect(await przyciskiGlowne(page)).toHaveLength(0);
     });
