@@ -101,7 +101,13 @@ async function zdarzenieRamki(ramka: Frame, nazwa: string, sekundy: number | nul
 }
 
 async function polecenia(ramka: Frame): Promise<{ method: string; value: unknown }[]> {
-  return ramka.evaluate(() => (window as unknown as { __polecenia: { method: string; value: unknown }[] }).__polecenia);
+  // Ramka, która dopiero się wczytuje (albo właśnie jest wymieniana), nie ma jeszcze zapisu poleceń: pusta lista.
+  try {
+    const zapis = await ramka.evaluate(() => (window as unknown as { __polecenia?: { method: string; value: unknown }[] }).__polecenia);
+    return zapis ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** Odtwarzanie przez `sekundy` sekund zegara strony (`page.clock`): `play`, potem co sekundę `timeupdate`. */
