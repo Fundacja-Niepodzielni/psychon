@@ -27,7 +27,7 @@ const ETYKIETY_PROFILU: Record<string, string> = {
   email: "adres e-mail",
   phone: "telefon",
   pesel: "PESEL",
-  address_street: "ulica i numer",
+  address_street: "ulica z numerem",
   address_city: "miejscowość",
   address_zip: "kod pocztowy",
 };
@@ -117,12 +117,10 @@ export interface StanRodzaju {
   wystawiony: boolean;
 }
 
-/** „Uzupełnij w profilu: imię, nazwisko i PESEL.” */
+/** „Uzupełnij w profilu: imię, nazwisko, PESEL.” */
 function zdanieOBrakachProfilu(pola: string[]): string {
-  const nazwy = pola.map((pole) => ETYKIETY_PROFILU[pole] ?? pole);
-  if (nazwy.length === 0) return "Uzupełnij dane w profilu.";
-  if (nazwy.length === 1) return `Uzupełnij w profilu: ${nazwy[0]}.`;
-  return `Uzupełnij w profilu: ${nazwy.slice(0, -1).join(", ")} i ${nazwy[nazwy.length - 1]}.`;
+  if (pola.length === 0) return "Uzupełnij dane w profilu.";
+  return `Uzupełnij w profilu: ${pola.map((pole) => ETYKIETY_PROFILU[pole] ?? pole).join(", ")}.`;
 }
 
 export function stanyRodzajow(dokumenty: DocumentDto[], dostepne: DocumentAvailableTypes | null): StanRodzaju[] {
