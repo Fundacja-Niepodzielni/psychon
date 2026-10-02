@@ -75,7 +75,7 @@ export function EkranOdmowy({ rodzaj, czego, rolaDocelowa, coDalej, przycisk, st
       </Znacznik>
       {zdanie !== null && <p className={style.osoba}>{zdanie}</p>}
       {coDalej !== undefined && <p className={style.dalej}>{coDalej}</p>}
-      <Button poziom="primary" onClick={przycisk.onClick}>
+      <Button poziom="outline" onClick={przycisk.onClick}>
         {przycisk.etykieta ?? PRZYCISK_ODMOWY}
       </Button>
     </section>
