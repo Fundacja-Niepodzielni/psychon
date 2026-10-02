@@ -19,7 +19,7 @@ class UpdateInternshipEntryRequest extends FormRequest
             'hours' => ['sometimes', 'numeric', 'min:0.5', 'max:24', 'multiple_of:0.5'],
             'form' => ['sometimes', 'string', 'in:phone_duty,chat_duty,other'],
             'consultations_count' => ['sometimes', 'integer', 'min:0'],
-            'description' => ['sometimes', 'nullable', 'string'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -35,6 +35,7 @@ class UpdateInternshipEntryRequest extends FormRequest
             'form.in' => 'Wybierz dozwoloną formę dyżuru.',
             'consultations_count.integer' => 'Liczba konsultacji musi być całkowita.',
             'consultations_count.min' => 'Liczba konsultacji nie może być ujemna.',
+            'description.max' => 'Opis może mieć najwyżej 2000 znaków.',
         ];
     }
 }

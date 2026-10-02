@@ -57,8 +57,11 @@ class CertificateController extends Controller
 
         $disk = Storage::disk('local');
 
+        // Plik wydawany jest wyłącznie dla ważnego najnowszego certyfikatu;
+        // każdy inny stan daje tę samą odpowiedź co brak certyfikatu.
         abort_unless(
             $certificate !== null
+                && $certificate->revoked_at === null
                 && $certificate->pdf_path !== null
                 && $disk->exists($certificate->pdf_path),
             404,

@@ -20,7 +20,7 @@ class StoreInternshipEntryRequest extends FormRequest
             'hours' => ['required', 'numeric', 'min:0.5', 'max:24', 'multiple_of:0.5'],
             'form' => ['required', 'string', 'in:phone_duty,chat_duty,other'],
             'consultations_count' => ['required', 'integer', 'min:0'],
-            'description' => ['sometimes', 'nullable', 'string'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             // Active dictionary forms only; inactive and unknown ids fail the same rule.
             'internship_form_id' => [
                 'sometimes',
@@ -49,6 +49,7 @@ class StoreInternshipEntryRequest extends FormRequest
             'consultations_count.min' => 'Liczba konsultacji nie może być ujemna.',
             'internship_form_id.integer' => 'Wybierz formę stażu z listy.',
             'internship_form_id.exists' => 'Wybierz aktywną formę stażu z listy.',
+            'description.max' => 'Opis może mieć najwyżej 2000 znaków.',
         ];
     }
 }
