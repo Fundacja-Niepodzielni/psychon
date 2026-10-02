@@ -12,9 +12,15 @@ use Illuminate\Foundation\Http\FormRequest;
  * `certificates_issued`) pozostają bez zmian, bo pochodzą z osobnego
  * `DashboardSummary` (H19) i nie mają własnej daty zdarzenia w tym raporcie.
  * Nazewnictwo `from`/`to` zgodne z `AuditIndexRequest` (ten sam pakiet H20).
+ *
+ * `uklad` dotyczy wyłącznie `export.csv`: `zestawienie` daje pełne
+ * zestawienie imienne roku programu (polskie nagłówki, staż i superwizje
+ * „ile z ilu”, warsztat). Bez parametru plik jest taki jak dotąd.
  */
 class ReportIndexRequest extends FormRequest
 {
+    public const string UKLAD_ZESTAWIENIA = 'zestawienie';
+
     public function authorize(): bool
     {
         return true; // rola egzekwowana przez middleware `role:project_manager,super_admin`
@@ -25,6 +31,7 @@ class ReportIndexRequest extends FormRequest
         return [
             'from' => ['sometimes', 'nullable', 'date'],
             'to' => ['sometimes', 'nullable', 'date', 'after_or_equal:from'],
+            'uklad' => ['sometimes', 'nullable', 'in:'.self::UKLAD_ZESTAWIENIA],
         ];
     }
 
@@ -33,7 +40,8 @@ class ReportIndexRequest extends FormRequest
         return [
             'from.date' => 'Podaj poprawną datę początkową.',
             'to.date' => 'Podaj poprawną datę końcową.',
-            'to.after_or_equal' => 'Data końcowa nie może być wcześniejsza niż data początkowa.',
+            'to.after_or_equal' => 'Data końca nie może być wcześniejsza niż data początku.',
+            'uklad.in' => 'Nieznany układ pliku.',
         ];
     }
 }

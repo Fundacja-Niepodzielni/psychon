@@ -3,13 +3,16 @@
 namespace App\Services\H20;
 
 use App\Models\Application;
+use App\Models\Certificate;
 use App\Models\Edition;
 use App\Models\InternshipEntry;
 use App\Models\User;
+use App\Models\WorkshopCompletion;
 use App\Services\H19\DashboardSummary;
 use App\Support\ProgressAggregator;
 use App\Support\Settings;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,6 +38,15 @@ use Illuminate\Support\Collection;
  * podlicza tę samą listę zamiast wołać osobne zapytania — koperta odpowiedzi
  * węższa niż `build()`, dopasowana do kontraktu pary frontowej (patrz
  * docblock `closing()` niżej).
+ *
+ * Raport roku programu (ekran administracji w nowym wyglądzie) czyta z tej
+ * samej odpowiedzi cztery DOPISANE bloki obok `summary`: `edition` (który rok
+ * programu), `period` (zastosowany zakres dat), `program` i `students`.
+ * `program` liczy WYŁĄCZNIE wolontariuszy, a `students` to jeden zbiorczy
+ * wiersz studentów (decyzja Fundacji). `summary` zostaje bez zmian, bo czyta go
+ * dotychczasowy ekran i próby zgodności z pulpitem (`ReportTest`,
+ * `SeedIntegrityTest`). Daty zawężają w `program` dokładnie to samo co
+ * w `summary`: godziny i konsultacje z wpisów stażu; reszta to stan dziś.
  */
 final class ReportSummary
 {
@@ -67,11 +79,22 @@ final class ReportSummary
      *         hours_accepted_total: string, hours_accepted_average: string,
      *         consultations_total: int, certificates_issued: int, people_with_passed_test: int,
      *     },
+     *     edition: array{id: int, name: string, starts_at: string|null, ends_at: string|null},
+     *     period: array{from: string|null, to: string|null},
+     *     program: array{
+     *         admitted: int, active: int, completed: int, with_passed_test: int,
+     *         certificates_valid: int, hours_accepted_total: string,
+     *         hours_accepted_average: string, consultations_total: int,
+     *     },
+     *     students: array{active: int, completed: int},
      *     people: list<array{
      *         id: int, first_name: string, last_name: string, role: string,
      *         status: string, hours_accepted: string, consultations: int,
-     *         certificate_issued: bool, stage: string, stage_label: string,
-     *         tests_passed: int,
+     *         certificate_issued: bool, certificate_valid: bool, stage: string, stage_label: string,
+     *         tests_passed: int, courses_done: int, courses_total: int,
+     *         internship: array{done: string, required: string}|null,
+     *         supervision: array{attended: int, required: int}|null,
+     *         workshop_completed_at: string|null,
      *     }>,
      * }
      */
@@ -112,7 +135,89 @@ final class ReportSummary
                 'certificates_issued' => $dashboard['counters']['certificates'],
                 'people_with_passed_test' => count(array_filter($people, static fn (array $row): bool => $row['tests_passed'] > 0)),
             ],
+            'edition' => self::edition(),
+            'period' => ['from' => $from, 'to' => $to],
+            'program' => self::program($from, $to, $people),
+            'students' => [
+                'active' => User::where('role', 'student')->where('status', 'active')->count(),
+                'completed' => User::where('role', 'student')->whereNotNull('program_completed_at')->count(),
+            ],
             'people' => $people,
+        ];
+    }
+
+    /**
+     * Rok programu, którego dotyczy raport — aktywna edycja (MVP prowadzi
+     * jedną naraz, `Settings::activeEdition()`). Ekran pokazuje go raz
+     * w nagłówku; wyboru roku nie ma.
+     *
+     * @return array{id: int, name: string, starts_at: string|null, ends_at: string|null}
+     */
+    private static function edition(): array
+    {
+        $edition = Settings::activeEdition();
+
+        return [
+            'id' => $edition->id,
+            'name' => $edition->name,
+            'starts_at' => $edition->starts_at?->toDateString(),
+            'ends_at' => $edition->ends_at?->toDateString(),
+        ];
+    }
+
+    /**
+     * Liczby programu — wyłącznie konta wolontariuszy (decyzja Fundacji).
+     * Te same definicje co `summary`, zawężone do roli `volunteer`:
+     *
+     *  - `active` — konta w stanie „aktywne” (jak `DashboardSummary`, bez
+     *    śledzenia aktywności);
+     *  - `completed` — konta z datą ukończenia programu;
+     *  - `admitted` — przyjęte zgłoszenia, z których powstało konto
+     *    wolontariusza; zgłoszenie bez konta liczy się po roli ze zgłoszenia;
+     *  - `with_passed_test` — aktywni wolontariusze z co najmniej jednym
+     *    zaliczonym testem, podliczeni z TEJ SAMEJ listy `people` co odpowiedź;
+     *    mianownikiem na ekranie jest `active` (ten sam zbiór osób);
+     *  - `certificates_valid` — certyfikaty wolontariuszy BEZ unieważnionych
+     *    (`revoked_at` puste); stare `summary.certificates_issued` liczy dalej
+     *    wszystkie, bo jest równe licznikowi pulpitu;
+     *  - `hours_accepted_total`, `consultations_total` — zaakceptowane wpisy
+     *    stażu wolontariuszy, zawężone datą wpisu jak w `summary`;
+     *  - `hours_accepted_average` — `hours_accepted_total` / `active`, ten sam
+     *    wzór co `summary.hours_accepted_average`.
+     *
+     * @param  list<array{role: string, status: string, tests_passed: int}>  $people
+     * @return array{
+     *     admitted: int, active: int, completed: int, with_passed_test: int,
+     *     certificates_valid: int, hours_accepted_total: string,
+     *     hours_accepted_average: string, consultations_total: int,
+     * }
+     */
+    private static function program(?string $from, ?string $to, array $people): array
+    {
+        $volunteer = static fn (Builder $query): Builder => $query->where('role', 'volunteer');
+
+        $active = User::where('role', 'volunteer')->where('status', 'active')->count();
+        $hoursTotal = (float) self::acceptedEntries($from, $to)->whereHas('user', $volunteer)->sum('hours');
+
+        $admitted = Application::accepted()
+            ->where(function (Builder $query) use ($volunteer): void {
+                $query->whereHas('user', $volunteer)
+                    ->orWhere(fn (Builder $withoutAccount): Builder => $withoutAccount->whereNull('user_id')->where('role', 'volunteer'));
+            })
+            ->count();
+
+        return [
+            'admitted' => $admitted,
+            'active' => $active,
+            'completed' => User::where('role', 'volunteer')->whereNotNull('program_completed_at')->count(),
+            'with_passed_test' => count(array_filter(
+                $people,
+                static fn (array $row): bool => $row['role'] === 'volunteer' && $row['status'] === 'active' && $row['tests_passed'] > 0,
+            )),
+            'certificates_valid' => Certificate::whereNull('revoked_at')->whereHas('user', $volunteer)->count(),
+            'hours_accepted_total' => ProgressAggregator::formatDecimal($hoursTotal),
+            'hours_accepted_average' => ProgressAggregator::formatDecimal($active > 0 ? $hoursTotal / $active : 0.0),
+            'consultations_total' => (int) self::acceptedEntries($from, $to)->whereHas('user', $volunteer)->sum('consultations_count'),
         ];
     }
 
@@ -189,11 +294,24 @@ final class ReportSummary
      * to, co `->map()` faktycznie zwraca, i tak nie przechodzi PHPStan,
      * więc ma sens tylko dokładny opis rzeczywistego kształtu wiersza.
      *
+     * Pola dopisane dla raportu roku programu (stan dziś, bez zależności od
+     * dat — liczone z `ProgressAggregator::for()`, jak karta osoby):
+     * `courses_done`/`courses_total`, `internship` (godziny zaakceptowane
+     * z wymaganymi — program liczy staż w godzinach), `supervision`
+     * (obecności z wymaganymi), `workshop_completed_at` (pierwsze zaliczenie
+     * warsztatu, ISO 8601 UTC albo `null`) i `certificate_valid` (certyfikat
+     * bez unieważnienia; `certificate_issued` liczy dalej każdy). Studentów
+     * staż i superwizje nie dotyczą: `internship` i `supervision` mają dla
+     * nich `null`.
+     *
      * @return Collection<int, array{
      *     id: int, first_name: string, last_name: string, role: string,
      *     status: string, hours_accepted: string, consultations: int,
-     *     certificate_issued: bool, stage: string, stage_label: string,
-     *     tests_passed: int,
+     *     certificate_issued: bool, certificate_valid: bool, stage: string, stage_label: string,
+     *     tests_passed: int, courses_done: int, courses_total: int,
+     *     internship: array{done: string, required: string}|null,
+     *     supervision: array{attended: int, required: int}|null,
+     *     workshop_completed_at: string|null,
      * }>
      */
     public static function people(?string $from = null, ?string $to = null, ?int $editionId = null): Collection
@@ -202,6 +320,18 @@ final class ReportSummary
             ->whereHas('certificates')
             ->pluck('id')
             ->flip();
+
+        $validCertificateUserIds = Certificate::query()
+            ->whereNull('revoked_at')
+            ->pluck('user_id')
+            ->flip();
+
+        // Pierwsze zaliczenie warsztatu każdej osoby — jedno zapytanie przed
+        // pętlą, nie jedno na wiersz.
+        $workshopDates = WorkshopCompletion::query()
+            ->selectRaw('user_id, min(completed_at) as first_completed_at')
+            ->groupBy('user_id')
+            ->pluck('first_completed_at', 'user_id');
 
         // Progi z aktywnej edycji pobrane RAZ przed pętlą (nie przez
         // `CertificateConditions::for()` per osoba — ten wołałby
@@ -224,8 +354,11 @@ final class ReportSummary
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
-            ->map(function (User $user) use ($from, $to, $certifiedUserIds, $hoursRequired, $supervisionRequired): array {
+            ->map(function (User $user) use ($from, $to, $certifiedUserIds, $validCertificateUserIds, $workshopDates, $hoursRequired, $supervisionRequired): array {
                 $certificateIssued = $certifiedUserIds->has($user->id);
+                $progress = ProgressAggregator::for($user);
+                $volunteer = $user->role === 'volunteer';
+                $workshopAt = $workshopDates->get($user->id);
 
                 // PHPStan infers the six `stage()` return statements as a
                 // literal-string union (narrower than the declared `string`)
@@ -237,7 +370,7 @@ final class ReportSummary
                 // the check. Widened here, once, to what the return type
                 // already documents.
                 /** @var string $stage */
-                $stage = self::stage(ProgressAggregator::for($user), $hoursRequired, $supervisionRequired, $certificateIssued);
+                $stage = self::stage($progress, $hoursRequired, $supervisionRequired, $certificateIssued);
                 /** @var string $stageLabel */
                 $stageLabel = self::STAGE_LABELS[$stage];
 
@@ -269,6 +402,18 @@ final class ReportSummary
                     // `build()` — patrz opis PR, sekcja o polach bez
                     // odpowiednika po stronie frontu).
                     'tests_passed' => ProgressAggregator::passedTestsCount($user),
+                    'certificate_valid' => $validCertificateUserIds->has($user->id),
+                    'courses_done' => $progress['courses_done'],
+                    'courses_total' => $progress['courses_total'],
+                    'internship' => $volunteer
+                        ? ['done' => $progress['hours_accepted'], 'required' => ProgressAggregator::formatDecimal($hoursRequired)]
+                        : null,
+                    'supervision' => $volunteer
+                        ? ['attended' => $progress['supervision_present'], 'required' => $supervisionRequired]
+                        : null,
+                    'workshop_completed_at' => is_string($workshopAt) && $workshopAt !== ''
+                        ? Carbon::parse($workshopAt)->toIso8601ZuluString()
+                        : null,
                 ];
             })
             ->values();
