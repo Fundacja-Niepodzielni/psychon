@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
@@ -339,6 +339,31 @@ describe("stan zapisu", () => {
     await waitFor(() => expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane · \d\d:\d\d$/));
     fireEvent.change(pole(/^Krótki opis/), { target: { value: "Inny opis" } });
     expect(stanZapisu()).toHaveTextContent(/^Niezapisane: opis · ostatni zapis \d\d:\d\d$/);
+  });
+});
+
+describe("godzina ostatniego zapisu w karcie „Zapis”", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("bez zapisu w tej sesji: sam tekst „Niezapisane: …”, bez dopisku", async () => {
+    await renderujDane();
+    fireEvent.change(pole(/^Tytuł lekcji/), { target: { value: "Nowy tytuł" } });
+    expect(stanZapisu()).toHaveTextContent(/^Niezapisane: tytuł$/);
+  });
+
+  it("po udanym zapisie o podstawionej godzinie: „Niezapisane: opis · ostatni zapis 10:42”", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderujDane();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 2, 10, 42, 5));
+    fireEvent.change(pole(/^Tytuł lekcji/), { target: { value: "Nowy tytuł" } });
+    await uzytkownik.click(przyciskZapisu());
+    await waitFor(() => expect(stanZapisu()).toHaveTextContent(/^Wszystko zapisane · 10:42$/));
+    vi.setSystemTime(new Date(2026, 9, 2, 11, 5, 0));
+    fireEvent.change(pole(/^Krótki opis/), { target: { value: "Inny opis" } });
+    expect(stanZapisu()).toHaveTextContent(/^Niezapisane: opis · ostatni zapis 10:42$/);
   });
 });
 

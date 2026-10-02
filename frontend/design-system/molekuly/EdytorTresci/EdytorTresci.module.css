@@ -28,14 +28,30 @@
 }
 
 .styl {
-  flex: 1 1 150px;
+  position: relative;
+  flex: 1 1 108px;
   min-width: 0;
   max-width: 200px;
-  margin-right: var(--space-6);
+  margin-right: var(--space-2);
 }
 .styl :global(button[role="combobox"]) {
+  padding-right: calc(var(--space-12) + 14px);
+  padding-left: var(--space-8);
   font-size: var(--fs-10);
   font-weight: var(--fw-medium);
+}
+/* Strzałka rozwijania listy stylu (sam znak, bez zdarzeń; lista ma rolę combobox). */
+.styl::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: var(--space-12);
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  transform: translateY(-75%) rotate(45deg);
+  pointer-events: none;
 }
 
 .przycisk {
@@ -75,7 +91,7 @@
   flex: none;
   width: 1px;
   height: 22px;
-  margin: 0 var(--space-6);
+  margin: 0 var(--space-4);
   background: var(--border);
 }
 
