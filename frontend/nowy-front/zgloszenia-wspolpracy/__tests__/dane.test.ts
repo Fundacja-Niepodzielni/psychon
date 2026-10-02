@@ -95,7 +95,7 @@ describe("klasyfikacja błędów", () => {
     });
     expect(sklasyfikujBladOdpowiedzi(new TypeError("Failed to fetch"))).toEqual({
       rodzaj: "inny",
-      komunikat: "Nie udało się zapisać odpowiedzi. Spróbuj ponownie.",
+      komunikat: "Nie udało się zapisać. Spróbuj ponownie.",
     });
   });
 

@@ -407,7 +407,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "Zapraszamy.");
     api.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     await uzytkownik.click(within(formularz).getByRole("button", { name: "Odpowiedz" }));
-    expect(await screen.findByText("Nie udało się zapisać odpowiedzi. Spróbuj ponownie.")).toBeInTheDocument();
+    expect(await screen.findByText("Nie udało się zapisać. Spróbuj ponownie.")).toBeInTheDocument();
     expect(within(screen.getByRole("form")).getByRole("textbox", { name: /^Odpowiedź/ })).toHaveValue("Zapraszamy.");
     expect(apiPaged).toHaveBeenCalledTimes(1);
   });

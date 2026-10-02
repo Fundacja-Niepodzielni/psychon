@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api/klient";
 import type { AdminCooperationRequest, CooperationRequestStatus } from "@/lib/api/h01-wspolpraca";
+import { KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Logika danych ekranu zgłoszeń dalszej współpracy (administracja):
@@ -50,8 +51,6 @@ export type BladOdpowiedzi =
   | { rodzaj: "brak-zgloszenia"; komunikat: string }
   | { rodzaj: "inny"; komunikat: string };
 
-const KOMUNIKAT_SIECI = "Nie udało się zapisać odpowiedzi. Spróbuj ponownie.";
-
 export function sklasyfikujBladOdpowiedzi(blad: unknown): BladOdpowiedzi {
   if (blad instanceof ApiError) {
     if (blad.errors) return { rodzaj: "pola", bledy: blad.errors };
@@ -61,7 +60,7 @@ export function sklasyfikujBladOdpowiedzi(blad: unknown): BladOdpowiedzi {
     if (blad.status === 404) return { rodzaj: "brak-zgloszenia", komunikat: "Nie znaleziono prośby." };
     return { rodzaj: "inny", komunikat: blad.message };
   }
-  return { rodzaj: "inny", komunikat: KOMUNIKAT_SIECI };
+  return { rodzaj: "inny", komunikat: KOMUNIKAT_ZAPIS };
 }
 
 /** Po odpowiedzi zgłoszenie może wypaść spod aktywnego filtra statusu. */

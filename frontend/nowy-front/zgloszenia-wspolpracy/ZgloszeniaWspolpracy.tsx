@@ -36,6 +36,7 @@ import {
   type FiltrStatusu,
 } from "./dane";
 import style from "./ZgloszeniaWspolpracy.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
@@ -227,7 +228,7 @@ export function ZgloszeniaWspolpracy() {
               </Button>
             }
           >
-            Serwer jest nieosiągalny albo zwrócił błąd. Żadne dane nie zostały zmienione.
+            {KOMUNIKAT_SERWER} Żadne dane nie zostały zmienione.
           </Notice>
         }
       />

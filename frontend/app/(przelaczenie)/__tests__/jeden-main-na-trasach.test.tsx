@@ -150,7 +150,7 @@ describe("/admin/zgloszenia-wspolpracy w układach grupy (rola administracji z a
     pobierzZgloszeniaAdministracji.mockRejectedValue(BLAD());
     const { container } = trasaAdministracji();
 
-    await screen.findByText(/nieosiągalny albo zwrócił błąd/);
+    await screen.findByText(/Nie udało się połączyć z serwerem/);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
