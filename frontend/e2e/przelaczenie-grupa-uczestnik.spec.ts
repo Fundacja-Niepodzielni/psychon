@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 
 /**
- * Miara dla grup przełączenia `pulpitUczestnika` (`wlaczona: true`), `lekcja` i
- * `kursUczestnika` (obie `wlaczona: false`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
+ * Miara dla grup przełączenia `pulpitUczestnika` i `kursUczestnika` (obie
+ * `wlaczona: true`) oraz `lekcja` (`wlaczona: false`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
  * zmienia — zmienia się treść strony — więc sprawdzane jest to, co widzi
  * osoba w przeglądarce:
  * - wpis „Pulpit” w menu uczestnika prowadzi na `/panel/pulpit`, a tam stoi
@@ -12,9 +12,9 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  *   wyłączona): `h1` „Lekcja”, odnośnik „Wróć do listy kursów” i „Aktywny
  *   czas:” — a nie ekran lekcji nowego frontu (`h1` z tytułem lekcji, przycisk
  *   „Oznacz lekcję jako ukończoną”);
- * - `/panel/kursy/[slug]` pokazuje STARĄ stronę kursu (grupa `kursUczestnika`
- *   jest wyłączona): bez opisu „na końcu test”, bez karty „Test końcowy” i bez
- *   przycisku głównego nowego ekranu;
+ * - `/panel/kursy/[slug]` pokazuje ekran nowego frontu (grupa `kursUczestnika`
+ *   jest włączona): opis „na końcu test”, kartę „Test końcowy” i jeden przycisk
+ *   główny;
  * - obie trasy odpowiadają 200 (bez przekierowania), a w całym przebiegu nie
  *   ma odpowiedzi 404 poza celowym niepoprawnym identyfikatorem lekcji;
  * - na każdej trasie dokładnie jeden `main` i jeden `#tresc`.
@@ -127,7 +127,7 @@ function zbierz404(page: Page): string[] {
   return kody404;
 }
 
-test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego frontu), lekcja wyłączona (stara strona) — ten sam adres", () => {
+test.describe("grupy przełączenia: pulpitUczestnika i kursUczestnika włączone (treść nowego frontu), lekcja wyłączona (stara strona) — ten sam adres", () => {
   test("pulpit: wpis „Pulpit” w menu prowadzi na /panel/pulpit, tam stoi ekran nowego frontu, jeden main; 0 odpowiedzi 404", async ({
     page,
   }) => {
@@ -179,7 +179,7 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
 
-  test("kurs: /panel/kursy/wywiad-psychologiczny pokazuje starą stronę kursu (grupa wyłączona), bez elementów nowego ekranu, jeden main; 0 odpowiedzi 404", async ({
+  test("kurs: /panel/kursy/wywiad-psychologiczny pokazuje ekran nowego frontu (grupa włączona), z opisem, kartą testu i jednym przyciskiem głównym, jeden main; 0 odpowiedzi 404", async ({
     page,
   }) => {
     const kody404 = zbierz404(page);
@@ -189,9 +189,9 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByText(/na końcu test/)).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 2, name: "Test końcowy" })).toHaveCount(0);
-    await expect(page.locator("[data-przycisk-glowny]")).toHaveCount(0);
+    await expect(page.getByText(/na końcu test/)).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Test końcowy" })).toBeVisible();
+    await expect(page.locator("[data-przycisk-glowny]")).toHaveCount(1);
 
     await expect(page.locator("main")).toHaveCount(1);
     await expect(page.locator("#tresc")).toHaveCount(1);
