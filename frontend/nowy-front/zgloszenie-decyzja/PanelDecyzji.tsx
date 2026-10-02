@@ -51,7 +51,7 @@ function PoDecyzji({ zgloszenie, zaproszenie }: Pick<WlasciwosciPanelu, "zglosze
         <Heading stopien={2}>Decyzja o zgłoszeniu</Heading>
         <Notice
           wariant="ok"
-          tytul="Zgłoszenie zaakceptowane"
+          tytul="Zgłoszenie zatwierdzone"
           akcja={
             zgloszenie.user_id !== null ? (
               <Link href={adresKartyOsoby(zgloszenie.user_id)}>Otwórz kartę osoby</Link>
@@ -100,7 +100,7 @@ function Uwagi({ uwaga, odswiez }: { uwaga: Uwaga | null; odswiez: () => void })
         <Notice wariant="warn" tytul="Brak wolnych miejsc w roku programu">
           {`${uwaga.komunikat}${
             uwaga.limit !== null && uwaga.zajete !== null ? ` Limit: ${uwaga.limit}, zajęte: ${uwaga.zajete}.` : ""
-          } Kolejne kliknięcie zaakceptuje zgłoszenie mimo limitu.`}
+          } Kolejne kliknięcie zatwierdzi zgłoszenie mimo limitu.`}
         </Notice>
       );
     case "rozstrzygniete":

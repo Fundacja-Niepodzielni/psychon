@@ -22,6 +22,7 @@ import {
   type Zgloszenie,
 } from "./dane";
 import style from "./ZgloszenieDecyzja.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Okruszki z łączem do listy: w nowej ramce panelu nagłówek nie ma przycisku
@@ -44,7 +45,7 @@ type WariantStatusu = "neutral" | "ok" | "warn" | "error" | "pending";
 
 const STATUS_ZGLOSZENIA: Record<Zgloszenie["status"], { wariant: WariantStatusu; etykieta: string }> = {
   new: { wariant: "pending", etykieta: "Czeka na decyzję" },
-  accepted: { wariant: "ok", etykieta: "Zaakceptowane" },
+  accepted: { wariant: "ok", etykieta: "Zatwierdzone" },
   rejected: { wariant: "error", etykieta: "Odrzucone" },
 };
 
@@ -140,7 +141,7 @@ export function ZgloszenieDecyzja({ id }: { id: string }) {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Dane zgłoszenia nie są zmyślane bez odpowiedzi.
+            {KOMUNIKAT_SERWER}
           </Notice>
         }
       />
@@ -261,7 +262,7 @@ function Widok({ poczatkowe, wroc, odswiez }: WlasciwosciWidoku) {
           onZaakceptowano={(userId, wynikZaproszenia) => {
             setZgloszenie({ ...zgloszenie, status: "accepted", user_id: userId, decided_at: new Date().toISOString() });
             setZaproszenie(wynikZaproszenia);
-            setKomunikat("Zgłoszenie zaakceptowane. Konto zostało utworzone.");
+            setKomunikat("Zgłoszenie zatwierdzone. Konto zostało utworzone.");
           }}
           onOdrzucono={(odrzucone) => {
             setZgloszenie(odrzucone);

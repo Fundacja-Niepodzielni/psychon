@@ -104,7 +104,7 @@ export async function zaakceptujZgloszenie(id: number, rola: ApplicationRole, wy
     return { rodzaj: "zaakceptowano", userId: dane.user_id, zaproszenie: dane.invitation_mail };
   } catch (blad) {
     if (!(blad instanceof ApiError)) {
-      return { rodzaj: "blad", komunikat: "Nie udało się zaakceptować zgłoszenia. Spróbuj ponownie." };
+      return { rodzaj: "blad", komunikat: "Nie udało się zatwierdzić zgłoszenia. Spróbuj ponownie." };
     }
     if (blad.status === 409 && blad.code === "email_already_registered") {
       return { rodzaj: "istnieje-konto", komunikat: blad.message, istniejacaOsoba: liczbaZReason(blad.reason, "existing_user_id") };

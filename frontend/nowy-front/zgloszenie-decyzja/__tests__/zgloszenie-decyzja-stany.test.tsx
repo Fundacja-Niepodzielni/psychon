@@ -118,7 +118,7 @@ describe("Zgłoszenie — decyzja: stany w szablonie, jeden main", () => {
   it("po decyzji zapisanej na serwerze (zaakceptowane): informacja i odnośnik do karty osoby, bez przycisku głównego", async () => {
     const { container } = await renderGotowy(ZGLOSZENIE_ZAAKCEPTOWANE);
     sprawdzSzablon(container);
-    expect(screen.getByText("Zgłoszenie zaakceptowane")).toBeInTheDocument();
+    expect(screen.getByText("Zgłoszenie zatwierdzone")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Otwórz kartę osoby" })).toHaveAttribute("href", "/admin/uczestniczki/44");
     expect(przyciskiGlowne()).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Odrzuć zgłoszenie" })).toBeNull();
@@ -214,9 +214,9 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
 
     await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
 
-    await screen.findByText("Zgłoszenie zaakceptowane");
+    await screen.findByText("Zgłoszenie zatwierdzone");
     expect(api).toHaveBeenCalledWith("/admin/applications/31/accept", { method: "POST", body: { role: "volunteer" } });
-    expect(screen.getByRole("status")).toHaveTextContent("Zgłoszenie zaakceptowane. Konto zostało utworzone.");
+    expect(screen.getByRole("status")).toHaveTextContent("Zgłoszenie zatwierdzone. Konto zostało utworzone.");
     expect(screen.getByRole("link", { name: "Otwórz kartę osoby" })).toHaveAttribute("href", "/admin/uczestniczki/44");
     expect(przyciskiGlowne()).toHaveLength(0);
     sprawdzSzablon(container);
@@ -230,7 +230,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     await uzytkownik.click(screen.getByRole("combobox", { name: /^Rola konta/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Student" }));
     await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
-    await screen.findByText("Zgłoszenie zaakceptowane");
+    await screen.findByText("Zgłoszenie zatwierdzone");
     expect(api).toHaveBeenCalledWith("/admin/applications/31/accept", { method: "POST", body: { role: "student" } });
   });
 
@@ -299,7 +299,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     expect(glowne[0]).toHaveTextContent("Zatwierdź mimo limitu miejsc");
 
     await uzytkownik.click(glowne[0]);
-    await screen.findByText("Zgłoszenie zaakceptowane");
+    await screen.findByText("Zgłoszenie zatwierdzone");
     expect(api).toHaveBeenLastCalledWith("/admin/applications/31/accept", { method: "POST", body: { role: "volunteer", force: true } });
   });
 
@@ -316,7 +316,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     await screen.findByText("Zgłoszenie jest już rozstrzygnięte");
     await uzytkownik.click(screen.getByRole("button", { name: "Wczytaj zgłoszenie ponownie" }));
-    await waitFor(() => expect(screen.getByText("Zgłoszenie zaakceptowane")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Zgłoszenie zatwierdzone")).toBeInTheDocument());
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 
@@ -336,7 +336,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
     await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
-    expect(await screen.findByText("Nie udało się zaakceptować zgłoszenia. Spróbuj ponownie.")).toBeInTheDocument();
+    expect(await screen.findByText("Nie udało się zatwierdzić zgłoszenia. Spróbuj ponownie.")).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(1);
   });
 });
