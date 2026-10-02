@@ -12,6 +12,7 @@ import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
+import { ApiError } from "@/lib/api/klient";
 import { rodzajBledu } from "../pulpit/rodzaj-bledu";
 import {
   DOMYSLNY_TERMIN,
@@ -72,6 +73,7 @@ export function GrupaProwadzacego() {
   const dziala = useRef(false);
 
   const [stan, setStan] = useState<StanEkranu>("ladowanie");
+  const [komunikatListy, setKomunikatListy] = useState<string | undefined>(undefined);
   const [grupa, setGrupa] = useState<InstructorGroup | null>(null);
   const [rzetelnosc, setRzetelnosc] = useState<StanRzetelnosci>({ rodzaj: "ladowanie" });
   const [tryb, setTryb] = useState<Tryb>("przeglad");
@@ -101,6 +103,7 @@ export function GrupaProwadzacego() {
       },
       (wyjatek: unknown) => {
         if (straz?.anulowane) return;
+        setKomunikatListy(wyjatek instanceof ApiError ? wyjatek.message : undefined);
         setStan(rodzajBledu(wyjatek));
       },
     );
@@ -235,6 +238,7 @@ export function GrupaProwadzacego() {
         czego="grupy"
         tytulBledu="Nie udało się wczytać grupy"
         czegoNieZnaleziono="grupy"
+        komunikat={komunikatListy}
         onPonow={ponow}
       />
     );

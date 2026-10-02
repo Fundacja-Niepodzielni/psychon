@@ -24,6 +24,8 @@ interface WlasciwosciEkranStanu {
   tytulBledu: string;
   /** Dopełniacz do „Nie znaleziono …”. */
   czegoNieZnaleziono: string;
+  /** Komunikat z odpowiedzi serwera dla „innego błędu”; bez niego — zdanie zastępcze. */
+  komunikat?: string;
   onPonow: () => void;
 }
 
@@ -33,7 +35,7 @@ interface WlasciwosciEkranStanu {
  * korzenia (`main#tresc`) ani nagłówka. Odmowę i „nie znaleziono” pokazuje wspólny ekran z
  * `wspolne/ekran-odmowy`. Wspólne dla „Mojej grupy” i „Wątku grupowego”.
  */
-export function EkranStanu({ stan, tytul, opis, czego, tytulBledu, czegoNieZnaleziono, onPonow }: WlasciwosciEkranStanu) {
+export function EkranStanu({ stan, tytul, opis, czego, tytulBledu, czegoNieZnaleziono, komunikat, onPonow }: WlasciwosciEkranStanu) {
   const router = useRouter();
   const ponow = (
     <Button poziom="outline" onClick={onPonow}>
@@ -63,7 +65,7 @@ export function EkranStanu({ stan, tytul, opis, czego, tytulBledu, czegoNieZnale
     case "blad":
       tresc = (
         <Komunikat wariant="error" tytul={tytulBledu} akcja={ponow}>
-          Coś poszło nie tak po naszej stronie. Spróbuj ponownie za chwilę.
+          {komunikat ?? "Coś poszło nie tak po naszej stronie. Spróbuj ponownie za chwilę."}
         </Komunikat>
       );
       break;
