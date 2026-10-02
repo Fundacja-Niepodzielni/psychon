@@ -3,12 +3,15 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { GRUPY, celTrasyEkranu, czyStaraTrasaPrzekierowuje } from "@/lib/przelaczenie/grupy";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
+import { NAZWY_RAMKI_ADMINISTRACJI } from "@/lib/menu/ramka/administracja";
 import { OsobyLista } from "@/nowy-front/osoby-lista/OsobyLista";
 import AdminUsersStaraTresc from "./StaraTresc";
 
-/** Tytuł karty jak dotąd, także przy włączonej grupie. */
+/** Tytuł karty: przy włączonej liście osób nazwa ekranu, przy wyłączonej jak dotąd. */
 export const metadata: Metadata = {
-  title: "Uczestniczki i uczestnicy — Niepodzielni",
+  title: GRUPY.listaOsob.wlaczona
+    ? `${NAZWY_RAMKI_ADMINISTRACJI.osoby} — Niepodzielni`
+    : "Uczestniczki i uczestnicy — Niepodzielni",
 };
 
 /** Wartość parametru `zakladka` z adresu starej strony (zakładka „Zgłoszenia”). */
@@ -27,7 +30,7 @@ interface WlasciwosciStrony {
  *   przekierowuje: to trasa grupy `listaOsob`;
  * - `listaOsob`: adres się nie zmienia, zmienia się treść. Grupa wyłączona →
  *   dokładnie stara treść z zakładkami (`StaraTresc.tsx`, przeniesiona bez zmiany);
- *   grupa włączona → ekran „Uczestnicy programu” nowego frontu. Jedyny
+ *   grupa włączona → ekran „Osoby” nowego frontu. Jedyny
  *   `main#tresc` daje powłoka układu administracji; `DostawcaPowloki` mówi
  *   szablonowi ekranu, że `main` niesie już powłoka. Zakładka „Osoby” i adres
  *   bez parametru pokazują nową listę osób.

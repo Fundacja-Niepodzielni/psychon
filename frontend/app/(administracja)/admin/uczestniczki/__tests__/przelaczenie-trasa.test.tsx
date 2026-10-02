@@ -83,9 +83,13 @@ describe("strona /admin/uczestniczki a rejestr przełączenia", () => {
     expect(((await StronaBezListy(parametry())) as { type: unknown }).type).toBe(StaraTresc);
   });
 
-  it("tytuł karty zostaje taki jak dotąd", async () => {
+  it("tytuł karty: przy włączonej liście osób „Osoby”, przy wyłączonej jak dotąd", async () => {
     podmienRejestr({ listaOsob: true, nabor: true });
     const modul = await import("../page");
-    expect(modul.metadata).toEqual({ title: "Uczestniczki i uczestnicy — Niepodzielni" });
+    expect(modul.metadata).toEqual({ title: "Osoby — Niepodzielni" });
+
+    podmienRejestr({ nabor: true });
+    const bezListy = await import("../page");
+    expect(bezListy.metadata).toEqual({ title: "Uczestniczki i uczestnicy — Niepodzielni" });
   });
 });

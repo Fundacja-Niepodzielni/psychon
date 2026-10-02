@@ -45,7 +45,7 @@ import type { MenuEntry } from "../types";
  * - kolejka stażu (`/admin/staz`, „Dyżury do decyzji”) i lista zgłoszeń rekrutacyjnych
  *   (`/admin/nabor`, „Zgłoszenia rekrutacyjne”) nie mają własnej pozycji w menu: w
  *   rejestrze (`PODSTRONY_ADMINISTRACJI`) ich rodzicem jest „Sprawy”, skąd się do nich
- *   wchodzi (filtr rodzaju), z pulpitu i z listy uczestników. Nazwa ekranu == `h1`.
+ *   wchodzi (filtr rodzaju), z pulpitu i z listy osób. Nazwa ekranu == `h1`.
  *   W menu świeci wtedy „Sprawy” jako sekcja (`aria-current="true"`), a okruszek
  *   składa się z rodzica („Administracja › Sprawy › Dyżury do decyzji”). Stary wpis
  *   „Akceptacja stażu” nie wchodzi wtedy do „Dotychczasowego panelu”. Bez pozycji
