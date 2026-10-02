@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
-import { KURS, LEKCJA, wiszace } from "./pomoce";
+import { KURS, LEKCJA, ramkaOdtwarzacza, wiszace, zrodloRamki } from "./pomoce";
 
 const pobierzDaneLekcji = vi.fn();
 const ukonczLekcje = vi.fn();
@@ -47,7 +47,7 @@ function obszarTresci() {
 }
 
 function zNagraniem(nadpisz: Record<string, unknown> = {}) {
-  return { status: "ok", dane: { ...LEKCJA, ...nadpisz }, bezNagrania: false, zrodloNagrania: {} };
+  return { status: "ok", dane: { ...LEKCJA, ...nadpisz }, bezNagrania: false, zrodloNagrania: zrodloRamki() };
 }
 
 function bezNagrania(nadpisz: Record<string, unknown> = {}) {
@@ -68,7 +68,7 @@ describe("Lekcja — treść lekcji", () => {
     await otworz(zNagraniem());
 
     const tresc = await screen.findByRole("region", { name: "Treść lekcji" });
-    expect(screen.getByRole("button", { name: "Odtwórz" })).toBeInTheDocument();
+    expect(ramkaOdtwarzacza()).not.toBeNull();
     expect(within(tresc).getByRole("heading", { name: "Po co ta lekcja" })).toBeInTheDocument();
     expect(within(tresc).getByText("uważnie").tagName).toBe("STRONG");
     expect(within(tresc).getAllByRole("listitem")).toHaveLength(2);
@@ -80,7 +80,7 @@ describe("Lekcja — treść lekcji", () => {
 
     const tresc = await screen.findByRole("region", { name: "Treść lekcji" });
     expect(within(tresc).getByText(/Kryzys psychiczny nie zawsze/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Odtwórz" })).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
     expect(screen.queryByText("Lekcja bez treści")).toBeNull();
   });
 
@@ -91,14 +91,15 @@ describe("Lekcja — treść lekcji", () => {
     expect(within(tresc).getByText(/Kryzys psychiczny nie zawsze/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: LEKCJA.title })).toBeInTheDocument();
     expect(screen.queryByText("Lekcja bez treści")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Odtwórz" })).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
     expect(container.querySelector(ZNACZNIK_SZABLONU)).not.toBeNull();
   });
 
   it("z nagraniem, ale bez treści (content: null) i bez opisu: żaden obszar treści nie udaje jej", async () => {
     await otworz(zNagraniem({ content: null, description: null }));
 
-    expect(await screen.findByRole("button", { name: "Odtwórz" })).toBeInTheDocument();
+    await screen.findByRole("heading", { level: 1, name: LEKCJA.title });
+    expect(ramkaOdtwarzacza()).not.toBeNull();
     expect(obszarTresci()).toBeNull();
   });
 

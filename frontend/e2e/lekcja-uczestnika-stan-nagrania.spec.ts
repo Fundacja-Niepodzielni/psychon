@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
+import { POCHODZENIE_ODTWARZACZA } from "../lib/konfiguracja/odtwarzacz-nagran";
 
 /**
  * Stan nagrania na ekranie lekcji uczestnika (`/nowy-front/lekcja/[id]`), na
@@ -26,6 +27,20 @@ const ATRAPA_SESJI = {
   accessToken: ["atrapa", "tokenu", "testowego"].join("-"),
   expiresAt: Date.now() + 3_600_000,
 };
+
+/** Atrapa strony odtwarzacza w ramce: odpowiada „gotowe” na prośbę o nasłuch i nic więcej nie robi. */
+const ATRAPA_RAMKI = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Atrapa odtwarzacza</title></head>
+<body><p>Atrapa odtwarzacza</p>
+<script>
+addEventListener("message", (z) => {
+  let t; try { t = JSON.parse(z.data); } catch { return; }
+  if (t.method === "addEventListener" && t.value === "ready")
+    parent.postMessage(JSON.stringify({ context: "player.js", version: "0.0.11", event: "ready" }), "*");
+});
+</script></body></html>`;
+
+// Przeglądarka nie rozwiązuje żadnej nazwy poza lokalną: ramka z hosta odtwarzacza dostaje wyłącznie atrapę.
+test.use({ launchOptions: { args: ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1"] } });
 
 const ZDANIE = "Nagranie jest w przygotowaniu.";
 const ZDANIE_BLEDU = "Tego nagrania nie da się teraz obejrzeć.";
@@ -62,6 +77,7 @@ interface Opcje {
 
 interface Atrapa {
   pytaniaOLink: () => number;
+  ramki: () => number;
 }
 
 function json(dane: unknown, status = 200, meta?: unknown) {
@@ -78,6 +94,7 @@ function odmowa(status: number, code: string, message: string) {
 
 async function instalujAtrapy(page: Page, opcje: Opcje): Promise<Atrapa> {
   let pytania = 0;
+  let ramki = 0;
   const kolejka = [...(opcje.link ?? ["wydany"])];
 
   await page.route(`${API}/**`, (route) => route.fulfill(json([], 200, META)));
@@ -116,17 +133,26 @@ async function instalujAtrapy(page: Page, opcje: Opcje): Promise<Atrapa> {
   await page.route(`${API}/lessons/21/video-link`, (route) => {
     pytania += 1;
     const odpowiedz = kolejka.length > 1 ? kolejka.shift() : kolejka[0];
-    if (odpowiedz === "wydany") return route.fulfill(json({ url: "https://nagrania.atrapa.test/lista.m3u8" }));
+    if (odpowiedz === "wydany") {
+      return route.fulfill(
+        json({ url: "https://nagrania.atrapa.test/lista.m3u8", embed_url: `${POCHODZENIE_ODTWARZACZA}/embed/1/lekcja-21?token=atrapa`, embed_expires_at: 4_070_908_800 }),
+      );
+    }
     if (odpowiedz === "video_not_ready") return route.fulfill(odmowa(404, "video_not_ready", "Nagranie w przygotowaniu."));
     if (odpowiedz === "video_missing") return route.fulfill(odmowa(404, "video_missing", "Brak nagrania."));
     return route.fulfill(odmowa(503, "video_not_configured", "Nagrania chwilowo niedostępne."));
   });
   await page.route("https://nagrania.atrapa.test/**", (route) => route.abort());
+  // Adres ramki ma dozwolony host, ale odpowiada mu atrapa strony: nic nie wychodzi poza przeglądarkę.
+  await page.route(`${POCHODZENIE_ODTWARZACZA}/**`, (route) => {
+    ramki += 1;
+    return route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: ATRAPA_RAMKI });
+  });
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ATRAPA_SESJI) }),
   );
   await page.route("**/api/auth/end-session-url", (route) => route.fulfill(json({ url: null })));
-  return { pytaniaOLink: () => pytania };
+  return { pytaniaOLink: () => pytania, ramki: () => ramki };
 }
 
 async function otworzLekcje(page: Page, tytul = LEKCJA.title): Promise<void> {
@@ -215,12 +241,15 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const atrapa = await instalujAtrapy(page, { video_status: "ready" });
       await otworzLekcje(page);
 
-      await expect(page.getByRole("button", { name: "Odtwórz nagranie" })).toBeVisible();
+      await expect(page.locator("main iframe")).toHaveCount(1);
+      await expect(page.locator("main iframe")).toHaveAttribute("src", `${POCHODZENIE_ODTWARZACZA}/embed/1/lekcja-21?token=atrapa`);
+      await expect(page.getByRole("button", { name: "Odtwórz nagranie" })).toHaveCount(0);
       await expect(page.getByText(ZDANIE)).toHaveCount(0);
       await expect(page.getByText(ZDANIE_BLEDU)).toHaveCount(0);
       await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
       await oczekujNieczynnegoPrzycisku(page);
       expect(atrapa.pytaniaOLink()).toBe(1);
+      expect(atrapa.ramki(), "ramka dostała atrapę strony, nie prawdziwy odtwarzacz").toBeGreaterThan(0);
 
       await zmierzStan(page, testInfo, `uczestnik-gotowe-${szerokosc}`);
     });

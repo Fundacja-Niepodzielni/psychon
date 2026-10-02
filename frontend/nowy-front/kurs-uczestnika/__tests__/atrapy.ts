@@ -134,6 +134,18 @@ export function odpowiedzSerwera({ ukonczone, wTrakcieNr = null, zamykajZaNastep
   };
 }
 
+/**
+ * Odpowiedź dla kursu bez testu (`has_test: false`): test nie istnieje, więc
+ * zaplecze nie zamyka go i nie zalicza; kurs jest ukończony z ostatnią lekcją.
+ */
+export function odpowiedzBezTestu(ukonczone: number, wTrakcieNr: number | null = null): KursUczestnika {
+  return odpowiedzSerwera({
+    ukonczone,
+    wTrakcieNr,
+    kurs: { has_test: false, test_locked: false, test_passed: false, status: ukonczone >= TYTULY_LEKCJI.length ? "completed" : "in_progress" },
+  });
+}
+
 /** Cztery stany szkicu: dane wejściowe i to, co `pomiar.json` zapisał jako przycisk główny i zdanie obok. */
 export const STANY_SZKICU = [
   { n: 1, nazwa: "nierozpoczety", opcje: { ukonczone: 0, zamknieteOd: 2 }, primaryText: "Rozpocznij lekcję 1", powod: "„Czym jest kryzys psychiczny”", podglad: false },

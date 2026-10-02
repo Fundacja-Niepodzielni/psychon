@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, cleanup, fireEvent } from "@testing-library/react";
-import { KURS, LEKCJA as LEKCJA_PRZYKLADOWA } from "./pomoce";
+import { act, render, screen, cleanup } from "@testing-library/react";
+import { KURS, LEKCJA as LEKCJA_PRZYKLADOWA, dalejRamka, graRamka, ramkaOdtwarzacza, zdarzenieRamki, zrodloRamki } from "./pomoce";
 
 const pobierzDaneLekcji = vi.fn();
 const wyslijPostep = vi.fn();
@@ -43,7 +43,7 @@ async function wyswietl(nadpisz: Record<string, unknown>) {
   const dane = { ...LEKCJA, ...nadpisz };
   // „Brak pola” = klucz usunięty z odpowiedzi, nie `undefined` ustawione wprost.
   if (nadpisz.position_seconds === "BRAK") delete (dane as Record<string, unknown>).position_seconds;
-  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane, bezNagrania: false, zrodloNagrania: {} });
+  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane, bezNagrania: false, zrodloNagrania: zrodloRamki() });
   const wynik = render(<Lekcja id="21" />);
   await act(async () => {
     for (let i = 0; i < 6; i += 1) await Promise.resolve();
@@ -51,14 +51,27 @@ async function wyswietl(nadpisz: Record<string, unknown>) {
   return wynik;
 }
 
-/** Pozycja startowa przekazana odtwarzaczowi: ramka nagrania nosi ją w `data-pozycja-startowa`. */
-function pozycjaStartowaRamki(kontener: HTMLElement): string | null {
-  const ramka = kontener.querySelector("[data-pozycja-startowa]");
-  return ramka === null ? null : ramka.getAttribute("data-pozycja-startowa");
+/**
+ * Pozycja startowa przekazana ramce: polecenie `setCurrentTime`, które odtwarzacz wysyła po
+ * zgłoszeniu gotowości (`null` = polecenia nie było, nagranie rusza od początku).
+ */
+function pozycjaStartowaRamki(): number | null {
+  const okno = ramkaOdtwarzacza()?.contentWindow;
+  if (!okno) throw new Error("brak okna ramki");
+  const wyslane = vi.spyOn(okno, "postMessage");
+  zdarzenieRamki("ready");
+  const pozycje = wyslane.mock.calls
+    .map(([tresc]) => JSON.parse(String(tresc)) as { method: string; value: unknown })
+    .filter((polecenie) => polecenie.method === "setCurrentTime")
+    .map((polecenie) => polecenie.value as number);
+  wyslane.mockRestore();
+  return pozycje.length === 0 ? null : pozycje[0];
 }
 
-function kliknijOdtwarzanie() {
-  fireEvent.click(screen.getByRole("button", { name: /^(Odtwórz|Zatrzymaj)$/ }));
+async function rozstrzygnij() {
+  await act(async () => {
+    await Promise.resolve();
+  });
 }
 
 beforeEach(() => {
@@ -76,15 +89,15 @@ afterEach(() => {
 });
 
 describe("Lekcja — wznowienie od miejsca przerwania", () => {
-  it("odtwarzacz startuje od pozycji z odczytu: zdanie o miejscu i czas w minutach", async () => {
+  it("nagranie startuje od pozycji z odczytu: zdanie o miejscu i ramka dostają ją raz", async () => {
     await wyswietl({ position_seconds: 754 });
-    expect(screen.getByText("Ostatnio zatrzymano w 12. minucie.")).toBeInTheDocument();
-    expect(screen.getByText("12:34 / 30:00")).toBeInTheDocument();
+    expect(screen.getByText(/Ostatnio zatrzymano w 12\. minucie\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Odtwórz od początku" })).toBeInTheDocument();
   });
 
-  it("odczyt z position_seconds = 754: odtwarzacz dostaje pozycję startową 754", async () => {
-    const { container } = await wyswietl({ position_seconds: 754 });
-    expect(pozycjaStartowaRamki(container)).toBe("754");
+  it("odczyt z position_seconds = 754: ramka dostaje polecenie ustawienia miejsca w nagraniu na 754 s", async () => {
+    await wyswietl({ position_seconds: 754 });
+    expect(pozycjaStartowaRamki()).toBe(754);
   });
 
   it.each([
@@ -93,28 +106,24 @@ describe("Lekcja — wznowienie od miejsca przerwania", () => {
     ["0", 0],
     ["równa długości nagrania", 1800],
     ["większa od długości nagrania", 2400],
-  ])("odczyt z position_seconds: %s → start od 0", async (_nazwa, wartosc) => {
-    const { container } = await wyswietl({ position_seconds: wartosc });
-    expect(pozycjaStartowaRamki(container)).toBe("0");
+  ])("odczyt z position_seconds: %s → start od 0, bez polecenia ustawienia pozycji i bez zdania o wznowieniu", async (_nazwa, wartosc) => {
+    await wyswietl({ position_seconds: wartosc });
+    expect(pozycjaStartowaRamki()).toBeNull();
+    expect(screen.queryByText(/Ostatnio zatrzymano/)).toBeNull();
   });
 
   it("zapis postępu niesie position_seconds startujące od odczytu i rosnące z odtwarzaniem; interwał 30 s bez zmiany", async () => {
     await wyswietl({ position_seconds: 754 });
-    kliknijOdtwarzanie(); // Odtwórz
-
-    await act(async () => {
-      vi.advanceTimersByTime(29000);
-    });
+    graRamka(29, 754);
+    await rozstrzygnij();
     expect(wyslijPostep).not.toHaveBeenCalled();
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
-    });
+    dalejRamka(1, 783);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
     expect(wyslijPostep).toHaveBeenNthCalledWith(1, "21", { watched_delta: 30, active_delta: 30, position_seconds: 784 });
 
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    dalejRamka(30, 784);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(2);
     expect(wyslijPostep).toHaveBeenNthCalledWith(2, "21", { watched_delta: 30, active_delta: 30, position_seconds: 814 });
     const pozycje = wyslijPostep.mock.calls.map(([, cialo]) => (cialo as { position_seconds: number }).position_seconds);
@@ -123,28 +132,23 @@ describe("Lekcja — wznowienie od miejsca przerwania", () => {
 
   it("pozycja stoi na pauzie: przerwa nie przesuwa position_seconds", async () => {
     await wyswietl({ position_seconds: 100 });
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(20000);
-    });
-    kliknijOdtwarzanie(); // Zatrzymaj
+    graRamka(20, 100);
+    zdarzenieRamki("pause");
     await act(async () => {
       vi.advanceTimersByTime(40000);
     });
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(10000);
-    });
+    zdarzenieRamki("play");
+    zdarzenieRamki("timeupdate", { seconds: 120 });
+    dalejRamka(10, 120);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
     expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30, position_seconds: 130 });
   });
 
   it("bez pozycji w odczycie zapis startuje od 0", async () => {
     await wyswietl({ position_seconds: "BRAK" });
-    kliknijOdtwarzanie(); // Odtwórz
-    await act(async () => {
-      vi.advanceTimersByTime(30000);
-    });
+    graRamka(30);
+    await rozstrzygnij();
     expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30, position_seconds: 30 });
   });
 });

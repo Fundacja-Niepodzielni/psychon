@@ -126,3 +126,28 @@ describe("jedno miejsce z hostem odtwarzacza", () => {
     expect(komponent).toContain("zdarzenie.origin !== POCHODZENIE_ODTWARZACZA");
   });
 });
+
+describe("host ramki odtwarzacza zgadza się w trzech miejscach", () => {
+  const PLIK_ZAPLECZA = join(__dirname, "..", "..", "..", "..", "backend", "app", "Services", "Video", "VideoTokenService.php");
+
+  /** Host z adresu ramki, który wydaje zaplecze: stała klasy czytana jako tekst. */
+  function hostZaplecza(): string {
+    const trafienia = [...readFileSync(PLIK_ZAPLECZA, "utf8").matchAll(/const\s+string\s+EMBED_HOST\s*=\s*'([^']+)'\s*;/g)];
+    expect(trafienia, "jedna stała EMBED_HOST w usłudze adresów nagrań").toHaveLength(1);
+    return trafienia[0][1];
+  }
+
+  it("stała zaplecza, stała frontu i wpis frame-src w konfiguracji budowy wskazują ten sam host", async () => {
+    const { konfiguracja, naglowki } = await wczytaj();
+    const hostFrontu = new URL(konfiguracja.POCHODZENIE_ODTWARZACZA).host;
+    const wartosc = naglowki[0].headers[0].value;
+    const wpisy = wartosc.replace(/^frame-src\s+/, "").split(/\s+/);
+
+    expect(hostZaplecza()).toBe(hostFrontu);
+    expect(wpisy).toContain(`https://${hostZaplecza()}`);
+  });
+
+  it("host zaplecza jest samym hostem, bez schematu, portu i ścieżki", () => {
+    expect(hostZaplecza()).toMatch(/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/);
+  });
+});
