@@ -15,10 +15,10 @@ import {
  * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
  * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`
  * i `kursAdministracji` (z nim `publikacjaKursu` i `zaproszeniaNaKurs` — sekcje tego samego ekranu pod tym samym adresem),
- * a także `edycjaLekcji` (ekran lekcji pod własnym, nowym adresem z kursem w ścieżce) i `lekcja` (lekcja uczestnika pod tym samym adresem).
+ * `kartaOsoby` (karta osoby pod tym samym adresem `/admin/uczestniczki/[id]`), a także `edycjaLekcji` (ekran lekcji pod własnym, nowym adresem z kursem w ścieżce) i `lekcja` (lekcja uczestnika pod tym samym adresem).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
