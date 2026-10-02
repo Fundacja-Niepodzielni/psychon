@@ -4383,6 +4383,245 @@
                 }
             }
         },
+        "/v1/instructor/lessons/{lesson}/video-uploads": {
+            "post": {
+                "operationId": "instructorVideo.createInstructorUpload",
+                "tags": [
+                    "InstructorVideo"
+                ],
+                "parameters": [
+                    {
+                        "name": "lesson",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "video_id": {},
+                                                "upload_url": {
+                                                    "type": "string",
+                                                    "const": "https://video.bunnycdn.com/tusupload"
+                                                },
+                                                "library_id": {
+                                                    "type": "string"
+                                                },
+                                                "expiration_time": {
+                                                    "type": "string"
+                                                },
+                                                "signature": {
+                                                    "type": "string"
+                                                },
+                                                "resumed": {
+                                                    "type": "boolean",
+                                                    "description": "`true`, gdy uprawnienie dotyczy nagrania za\u0142o\u017conego wcze\u015bniej (wznowienie tej samej wysy\u0142ki); `false`, gdy za\u0142o\u017cono nowe nagranie."
+                                                }
+                                            },
+                                            "required": [
+                                                "video_id",
+                                                "upload_url",
+                                                "library_id",
+                                                "expiration_time",
+                                                "signature",
+                                                "resumed"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "description": "Lekcja nieistniej\u0105ca, usuni\u0119ta albo w kursie bez aktywnego przypisania wo\u0142aj\u0105cego prowadz\u0105cego na poziomie kursu \u2014 identyczne `not_found` (\u201eNie znaleziono zasobu.\u201d), przed cia\u0142em \u017c\u0105dania i przed konfiguracj\u0105 dostawcy nagra\u0144. Koperta b\u0142\u0119du."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Rola spoza `instructor` \u2014 `forbidden`, tak samo dla lekcji istniej\u0105cej i nieistniej\u0105cej. Koperta b\u0142\u0119du."
+                    },
+                    "503": {
+                        "description": "Brak konfiguracji dostawcy nagra\u0144 \u2014 `video_not_configured` (tylko dla lekcji w zasi\u0119gu). Koperta b\u0142\u0119du."
+                    },
+                    "413": {
+                        "description": "Cia\u0142o ponad limit \u2014 `payload_too_large`. Koperta b\u0142\u0119du."
+                    },
+                    "502": {
+                        "description": "B\u0142\u0105d dostawcy nagra\u0144 albo identyfikator zaj\u0119ty przez inn\u0105 lekcj\u0119 \u2014 `bunny_error`. Koperta b\u0142\u0119du."
+                    }
+                },
+                "summary": "Zlecenie wgrania nagrania lekcji przez prowadz\u0105cego przypisanego do kursu \u2014 ten sam kszta\u0142t i te same odmowy tre\u015bci co trasa administracji."
+            }
+        },
+        "/v1/instructor/lessons/{lesson}/video-status": {
+            "get": {
+                "operationId": "instructorVideo.instructorStatus",
+                "tags": [
+                    "InstructorVideo"
+                ],
+                "parameters": [
+                    {
+                        "name": "lesson",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "status": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "finished",
+                                                                "error",
+                                                                "processing"
+                                                            ]
+                                                        },
+                                                        "duration_seconds": {
+                                                            "type": "integer"
+                                                        },
+                                                        "preview_embed_url": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "video_status": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "enum": [
+                                                                "uploading",
+                                                                "processing",
+                                                                "ready",
+                                                                "error",
+                                                                null
+                                                            ],
+                                                            "description": "Stan najnowszego nagrania lekcji; `null` = stan jeszcze nieustalony."
+                                                        },
+                                                        "video_status_at": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "format": "date-time"
+                                                        },
+                                                        "video_ready": {
+                                                            "type": "boolean",
+                                                            "description": "Czy lekcja ma nagranie, do kt\u00f3rego uczestnik dostaje link."
+                                                        },
+                                                        "video_pending": {
+                                                            "type": "boolean",
+                                                            "description": "Czy lekcja ma nagranie wysy\u0142ane albo przetwarzane obok odtwarzanego."
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "status",
+                                                        "duration_seconds",
+                                                        "preview_embed_url",
+                                                        "video_status",
+                                                        "video_status_at",
+                                                        "video_ready",
+                                                        "video_pending"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "status": {
+                                                            "type": "string",
+                                                            "const": "no_video"
+                                                        },
+                                                        "video_status": {
+                                                            "type": "string",
+                                                            "const": "none"
+                                                        },
+                                                        "video_status_at": {
+                                                            "type": "null"
+                                                        },
+                                                        "video_ready": {
+                                                            "type": "boolean",
+                                                            "const": false
+                                                        },
+                                                        "video_pending": {
+                                                            "type": "boolean",
+                                                            "const": false
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "status",
+                                                        "video_status",
+                                                        "video_status_at",
+                                                        "video_ready",
+                                                        "video_pending"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Lekcja nieistniej\u0105ca, usuni\u0119ta albo w kursie bez aktywnego przypisania wo\u0142aj\u0105cego prowadz\u0105cego na poziomie kursu \u2014 identyczne `not_found` (\u201eNie znaleziono zasobu.\u201d), przed cia\u0142em \u017c\u0105dania i przed konfiguracj\u0105 dostawcy nagra\u0144. Koperta b\u0142\u0119du."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Rola spoza `instructor` \u2014 `forbidden`, tak samo dla lekcji istniej\u0105cej i nieistniej\u0105cej. Koperta b\u0142\u0119du."
+                    },
+                    "503": {
+                        "description": "Brak konfiguracji dostawcy nagra\u0144 \u2014 `video_not_configured` (tylko dla lekcji w zasi\u0119gu). Koperta b\u0142\u0119du."
+                    }
+                },
+                "summary": "Stan nagrania lekcji dla prowadz\u0105cego przypisanego do kursu \u2014 ten sam kszta\u0142t co trasa administracji."
+            }
+        },
         "/v1/certificate/conditions": {
             "get": {
                 "operationId": "certificate.conditions",
