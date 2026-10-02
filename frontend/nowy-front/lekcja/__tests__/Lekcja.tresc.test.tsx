@@ -216,7 +216,7 @@ describe("Lekcja — szablon i jeden main w każdym stanie", () => {
     pobierzDaneLekcji.mockResolvedValue({ status: "wygasl", komunikat: "Twój dostęp do platformy wygasł." });
 
     const { container } = render(<Lekcja id="21" />);
-    await screen.findByText("Twój dostęp do platformy wygasł.");
+    await screen.findByText("Twój dostęp wygasł.");
 
     expect(() => jedenMain(container)).not.toThrow();
     expect(container.querySelector(ZNACZNIK_SZABLONU)).toBe(container.querySelector("main"));

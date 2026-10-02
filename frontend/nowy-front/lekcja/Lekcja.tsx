@@ -36,6 +36,7 @@ import {
 import { kontekstKursu, numerLekcjiWKursie, plikiLekcji, pobierzOdczytKursu, type OdczytKursu } from "./kurs";
 import { MaterialyLekcji } from "./MaterialyLekcji";
 import type { PostepNagrania } from "@/design-system/organizmy/RecordingPlayer/RecordingPlayer";
+import { EkranOdmowy } from "../wspolne/ekran-odmowy";
 import { OdtwarzaczNagrania } from "./odtwarzacz/OdtwarzaczNagrania";
 import { ID_KARTY_PYTAN, ID_POLA_PYTANIA, PytaniaLekcji, ZDANIE_PODGLADU } from "./PytaniaLekcji";
 import {
@@ -426,13 +427,11 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   if (stan.rodzaj === "wygasl") {
     return (
       <StanStrony>
-        <section className={`${style.karta} ${style.biala}`} aria-labelledby="naglowek-wygaslego">
-          <Heading stopien={1} id="naglowek-wygaslego">
-            Dostęp wygasł
-          </Heading>
-          <Text>{stan.komunikat}</Text>
-          <Link href={adres("/panel/kursy")}>Wróć do kursów</Link>
-        </section>
+        <EkranOdmowy
+          rodzaj="dostep-wygasl"
+          coDalej="Skontaktuj się z zespołem programu, żeby przedłużyć dostęp."
+          przycisk={{ etykieta: "Wróć do kursów", onClick: () => router.push(adres("/panel/kursy")) }}
+        />
       </StanStrony>
     );
   }

@@ -7,9 +7,10 @@ const pobierzDaneLekcji = vi.fn();
 const ukonczLekcje = vi.fn();
 const pobierzOdczytKursu = vi.fn();
 const back = vi.fn();
+const push = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ back, refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ back, refresh: vi.fn(), push, replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -38,6 +39,7 @@ beforeEach(() => {
   pobierzOdczytKursu.mockReset();
   pobierzOdczytKursu.mockResolvedValue(KURS);
   back.mockReset();
+  push.mockReset();
 });
 
 describe("Lekcja — stan ładowania i danych", () => {
@@ -155,15 +157,20 @@ describe("Lekcja — dostęp i istnienie", () => {
     await waitFor(() => expect(pobierzDaneLekcji).toHaveBeenCalledTimes(2));
   });
 
-  it("dostęp wygasł (access_expired) → karta z komunikatem koperty i powrotem do kursów, bez treści lekcji", async () => {
+  it("dostęp wygasł (access_expired) → karta na wspólnym wzorze: zdanie, co dalej i jeden przycisk powrotu do kursów, bez treści lekcji", async () => {
     pobierzDaneLekcji.mockResolvedValue({ status: "wygasl", komunikat: "Twój dostęp do platformy wygasł." });
 
     render(<Lekcja id="21" />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Dostęp wygasł" })).toBeInTheDocument();
-    expect(screen.getByText("Twój dostęp do platformy wygasł.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
+    const naglowek = await screen.findByRole("heading", { level: 1, name: "Twój dostęp wygasł." });
+    expect(naglowek).toHaveFocus();
+    expect(screen.getByText("Skontaktuj się z zespołem programu, żeby przedłużyć dostęp.")).toBeInTheDocument();
+    expect(screen.queryByText("Twój dostęp do platformy wygasł.")).toBeNull();
+    expect(screen.queryAllByRole("link", { name: "Wróć do kursów" })).toHaveLength(0);
+    const przyciski = screen.getAllByRole("button");
+    expect(przyciski).toHaveLength(1);
+    await userEvent.click(przyciski[0]);
+    expect(push).toHaveBeenCalledWith("/panel/kursy");
     expect(screen.queryByText(LEKCJA.title)).toBeNull();
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 });

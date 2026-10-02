@@ -246,7 +246,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
         });
       });
       await page.goto("/panel/lekcje/21");
-      await expect(page.getByRole("heading", { level: 1, name: "Dostęp wygasł" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Twój dostęp wygasł." })).toBeVisible();
       expect(await biezace()).toEqual(["Kursy"]);
     });
   });
