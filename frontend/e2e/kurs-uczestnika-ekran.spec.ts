@@ -48,7 +48,11 @@ interface KursAtrapy {
   zamknieteOd: number | null;
   tytul?: string;
   tytulLekcji?: string;
-  /** Pola postępu lekcji i `has_recording` w odczycie (dochodzą w zapleczu). */
+  /**
+   * Komplet pól zaplecza „lekcje po kolei” w odczycie (`locked`, `active_seconds`,
+   * `required_active_seconds`, `has_recording` przy lekcji; `has_test`, `test_locked`,
+   * `test_passed` przy kursie). Bez tej opcji odpowiedź jest taka jak ze starszego zaplecza.
+   */
   nowePola?: boolean;
   /** Lekcja (1-based) z czasem aktywnym 12 z 16 potrzebnych minut; wymaga `nowePola`. */
   wTrakcieNr?: number;
@@ -76,7 +80,7 @@ function kurs({ ukonczone, zamknieteOd, tytul, tytulLekcji, nowePola, wTrakcieNr
       duration_seconds: CZASY[indeks],
       is_completed: indeks < ukonczone,
       topic_id: indeks < 4 ? 7 : 8,
-      ...(zamknieteOd !== null ? { locked: indeks + 1 >= zamknieteOd } : {}),
+      ...(zamknieteOd !== null ? { locked: indeks + 1 >= zamknieteOd } : nowePola ? { locked: false } : {}),
       ...(nowePola
         ? {
             has_recording: CZASY[indeks] !== null,
@@ -85,7 +89,8 @@ function kurs({ ukonczone, zamknieteOd, tytul, tytulLekcji, nowePola, wTrakcieNr
           }
         : {}),
     })),
-    ...(testZaliczony !== undefined ? { test_passed: testZaliczony } : {}),
+    ...(nowePola ? { has_test: true, test_locked: ukonczone < TYTULY.length, test_passed: testZaliczony ?? false } : {}),
+    ...(!nowePola && testZaliczony !== undefined ? { test_passed: testZaliczony } : {}),
     materials: [],
   };
 }
@@ -106,7 +111,7 @@ const STANY: Stan[] = [
   {
     n: 1,
     nazwa: "nierozpoczety",
-    dane: { ukonczone: 0, zamknieteOd: 2 },
+    dane: { ukonczone: 0, zamknieteOd: 2, nowePola: true },
     primaryText: "Rozpocznij lekcję 1",
     powod: "„Czym jest kryzys psychiczny”",
     podglad: false,
@@ -128,7 +133,7 @@ const STANY: Stan[] = [
   {
     n: 3,
     nazwa: "zostal-test",
-    dane: { ukonczone: 7, zamknieteOd: null },
+    dane: { ukonczone: 7, zamknieteOd: null, nowePola: true },
     primaryText: "Przejdź do testu",
     powod: "Wszystkie lekcje ukończone. Został test.",
     podglad: false,
@@ -344,8 +349,8 @@ for (const { szerokosc, wysokosc } of OKNA) {
         }
 
         // Pola postępu obecne: linia „W trakcie…” tylko przy lekcji w toku (stany 2 i 4).
-        await expect(page.getByText(/W trakcie · obejrzane/)).toHaveCount(stan.dane.nowePola ? 1 : 0);
-        if (stan.dane.nowePola) await expect(page.getByText("W trakcie · obejrzane 12 z 16 potrzebnych minut")).toBeVisible();
+        await expect(page.getByText(/W trakcie · obejrzane/)).toHaveCount(stan.dane.wTrakcieNr ? 1 : 0);
+        if (stan.dane.wTrakcieNr) await expect(page.getByText("W trakcie · obejrzane 12 z 16 potrzebnych minut")).toBeVisible();
         if (stan.podglad) {
           // Podgląd: każdy odnośnik do lekcji i do testu niesie parametr podglądu.
           const doLekcji = await page.locator('a[href^="/panel/lekcje/"]').evaluateAll((el) => el.map((a) => a.getAttribute("href")));
