@@ -99,7 +99,7 @@ export function SekcjaSuperwizji({ sekcja, teraz, onOdswiez, stopien = 3 }: { se
     id: `termin-${termin.id}`,
     tytul: formatujTermin(termin.starts_at),
     podpowiedz: `Zajęte miejsca: ${termin.active_signups_count} z ${termin.seats_limit}.`,
-    akcja: { etykieta: "Otwórz grupę", href: ADRES_GRUPY },
+    akcja: { etykieta: "Zobacz terminy superwizji", href: ADRES_GRUPY },
   }));
   return (
     <>
@@ -121,7 +121,7 @@ export function SekcjaGrupy({ sekcja, onOdswiez }: { sekcja: Sekcja<InstructorGr
     id: `osoba-${osoba.id}`,
     tytul: pelneImie(osoba),
     podpowiedz: `Kursy: ${osoba.progress.courses_done} z ${osoba.progress.courses_total} · staż: ${formatujDziesietny(osoba.progress.hours_accepted)} godz. · superwizje: ${osoba.progress.supervision_present}`,
-    akcja: { etykieta: "Otwórz grupę", href: ADRES_GRUPY },
+    akcja: { etykieta: "Zobacz swoją grupę", href: ADRES_GRUPY },
   }));
   return (
     <>
