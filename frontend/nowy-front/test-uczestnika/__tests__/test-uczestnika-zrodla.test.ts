@@ -4,11 +4,14 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const katalog = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** Pliki ekranu (bez testów). */
+const strona = resolve(katalog, "../../app/nowy-front/kurs-uczestnika/[slug]/test/page.tsx");
+
+/** Pliki ekranu (bez testów) i strona podglądu. */
 const pliki = [
   ...readdirSync(katalog, { withFileTypes: true })
     .filter((wpis) => wpis.isFile() && /\.(tsx?|css)$/.test(wpis.name))
     .map((wpis) => resolve(katalog, wpis.name)),
+  strona,
 ].map((nazwa) => ({ nazwa, tresc: readFileSync(nazwa, "utf-8") }));
 
 const TWARDY_KOLOR = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/;
@@ -16,9 +19,9 @@ const IMPORT_Z_COMPONENTS = /from\s+["'](@\/components|\.\.?\/(\.\.\/)*component
 const WSTRZYKNIETY_HTML = /dangerouslySetInnerHTML/;
 
 describe("pliki ekranu testu końcowego", () => {
-  it("obejmują ekran, logikę, dane i style", () => {
+  it("obejmują ekran, logikę, dane, style i stronę podglądu", () => {
     const nazwy = pliki.map((plik) => plik.nazwa.replaceAll("\\", "/"));
-    for (const koniec of ["TestUczestnika.tsx", "TestUczestnika.module.css", "TestUczestnikaZAdresu.tsx", "logika.ts", "dane.ts"]) {
+    for (const koniec of ["TestUczestnika.tsx", "TestUczestnika.module.css", "TestUczestnikaZAdresu.tsx", "logika.ts", "dane.ts", "[slug]/test/page.tsx"]) {
       expect(nazwy.some((nazwa) => nazwa.endsWith(koniec)), koniec).toBe(true);
     }
   });
