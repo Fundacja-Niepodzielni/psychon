@@ -30,6 +30,9 @@ const LEKCJA_SUROWA = {
   required_active_seconds: 1080,
   question_addressee: null,
   video_status: "ready" as const,
+  course: { id: 3, slug: "wywiad-psychologiczny", title: "Wywiad psychologiczny" },
+  question_addressee: null,
+  required_active_seconds: 1080,
 };
 
 beforeEach(() => {
