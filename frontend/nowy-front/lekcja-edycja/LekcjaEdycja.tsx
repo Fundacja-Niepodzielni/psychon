@@ -42,6 +42,7 @@ import {
 } from "./formularz";
 import { StronaLekcji } from "./StronaLekcji";
 import style from "./LekcjaEdycja.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 interface WlasciwosciLekcjaEdycja {
   /** `null` = identyfikator z adresu nie jest liczbą. */
@@ -232,7 +233,7 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Treść lekcji nie jest pokazywana bez danych.
+            {KOMUNIKAT_SERWER} Treść lekcji nie jest pokazywana bez danych.
           </Notice>
         }
       />

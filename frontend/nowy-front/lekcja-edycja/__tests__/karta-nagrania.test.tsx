@@ -68,8 +68,8 @@ describe("stan: brak nagrania", () => {
   });
 
   it("rola bez prawa wysyłania: zdanie z powodem zamiast pola wyboru", () => {
-    const { sekcja, container } = karta({ rodzaj: "brak" }, { powodBrakuWysylania: "Nagranie może wgrać opiekun projektu albo Super Admin." });
-    expect(within(sekcja).getByText("Nagranie może wgrać opiekun projektu albo Super Admin.")).toBeInTheDocument();
+    const { sekcja, container } = karta({ rodzaj: "brak" }, { powodBrakuWysylania: "Nagranie może wgrać Opiekun Projektu albo Super Admin." });
+    expect(within(sekcja).getByText("Nagranie może wgrać Opiekun Projektu albo Super Admin.")).toBeInTheDocument();
     expect(wejsciePliku(container)).toBeNull();
   });
 

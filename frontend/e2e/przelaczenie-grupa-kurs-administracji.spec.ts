@@ -717,7 +717,7 @@ for (const rola of ["project_manager", "super_admin"] as const) {
 
       // Sekcja nagrania: wgrywać może opiekun projektu i Super Admin — obszar wgrania jest czynny, zdania o powodzie nie ma.
       const wgrywanie = page.getByText("Upuść tutaj nagranie albo wybierz je z dysku.");
-      const powod = page.getByText("Nagranie może wgrać opiekun projektu albo Super Admin.");
+      const powod = page.getByText("Nagranie może wgrać Opiekun Projektu albo Super Admin.");
       await expect(wgrywanie).toHaveCount(1);
       await expect(powod).toHaveCount(0);
     });

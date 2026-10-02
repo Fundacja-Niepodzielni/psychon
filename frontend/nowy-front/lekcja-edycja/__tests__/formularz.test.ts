@@ -173,7 +173,7 @@ describe("sekcja nagrania", () => {
     expect(powodNieaktywnegoNagrania("project_manager")).toBeNull();
     expect(powodNieaktywnegoNagrania("super_admin")).toBeNull();
     for (const rola of ["instructor", "volunteer", "student", "nieznana-rola"]) {
-      expect(powodNieaktywnegoNagrania(rola), `rola: ${rola}`).toBe("Nagranie może wgrać opiekun projektu albo Super Admin.");
+      expect(powodNieaktywnegoNagrania(rola), `rola: ${rola}`).toBe("Nagranie może wgrać Opiekun Projektu albo Super Admin.");
     }
     expect(powodNieaktywnegoNagrania(null)).toBe("Nie udało się ustalić, czy możesz wgrywać nagrania.");
   });

@@ -755,7 +755,7 @@ describe("nagranie", () => {
       const { container } = await renderujDane({ rola });
       expect(wejsciaPlikow(container)).toHaveLength(1);
       expect(screen.queryByText("Upuść tutaj nagranie albo wybierz je z dysku.")).toBeNull();
-      expect(screen.getByText("Nagranie może wgrać opiekun projektu albo Super Admin.")).toBeInTheDocument();
+      expect(screen.getByText("Nagranie może wgrać Opiekun Projektu albo Super Admin.")).toBeInTheDocument();
       expect(wywolania("POST", "/admin/lessons/21/video-uploads")).toHaveLength(0);
     },
   );

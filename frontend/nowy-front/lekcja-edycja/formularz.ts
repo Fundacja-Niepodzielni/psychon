@@ -221,5 +221,5 @@ export function mozeWgrywacNagranie(rola: string | null): boolean {
 export function powodNieaktywnegoNagrania(rola: string | null): string | null {
   if (mozeWgrywacNagranie(rola)) return null;
   if (rola === null) return "Nie udało się ustalić, czy możesz wgrywać nagrania.";
-  return "Nagranie może wgrać opiekun projektu albo Super Admin.";
+  return "Nagranie może wgrać Opiekun Projektu albo Super Admin.";
 }
