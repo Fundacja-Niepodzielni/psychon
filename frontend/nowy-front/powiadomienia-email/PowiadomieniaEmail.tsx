@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
-import { Text } from "@/design-system/atomy/Text/Text";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Checkbox } from "@/design-system/atomy/Checkbox/Checkbox";
 import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
