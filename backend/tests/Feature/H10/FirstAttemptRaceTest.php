@@ -195,20 +195,35 @@ class FirstAttemptRaceTest extends TestCase
      * Zestaw odpowiedzi podejścia nr $nr — RÓŻNY dla każdego numeru.
      *
      * Numer zapisujemy pozycyjnie na pytaniach (każde ma cztery odpowiedzi), więc
-     * przy trzech pytaniach mamy 64 różne zestawy. Wynik punktowy nie ma tu znaczenia:
-     * ten świadek pyta o numerację i o to, czy żadne zgłoszenie nie ginie.
+     * przy trzech pytaniach mamy 64 różne zestawy. Żaden zestaw nie zalicza testu —
+     * zaliczony test jest zamknięty (403 `test_already_passed`); poza tym wynik punktowy
+     * nie ma tu znaczenia: ten świadek pyta o numerację i o to, czy żadne zgłoszenie nie ginie.
      *
      * @return array<string, int>
      */
     private function zestawOdpowiedzi(int $nr): array
     {
-        $reszta = $nr - 1;
+        // Zestaw 0 (same poprawne odpowiedzi) jest przy trzech pytaniach i progu 80 %
+        // jedynym zaliczającym. Pomijamy go: po zaliczeniu każde kolejne podejście
+        // dostałoby 403 `test_already_passed` i świadek nie mierzyłby numeracji.
+        $reszta = $nr;
         $answers = [];
+        $wszystkiePoprawne = true;
 
         foreach ($this->test->questions()->with('answers')->get() as $question) {
             $opcje = $question->answers->sortBy('id')->values();
-            $answers[(string) $question->id] = $opcje[$reszta % $opcje->count()]->id;
+            $wybrana = $opcje[$reszta % $opcje->count()];
+            $answers[(string) $question->id] = $wybrana->id;
+            $wszystkiePoprawne = $wszystkiePoprawne && (bool) $wybrana->is_correct;
             $reszta = intdiv($reszta, $opcje->count());
+        }
+
+        if ($wszystkiePoprawne) {
+            throw new \LogicException(sprintf(
+                'Zestaw nr %d zalicza test, a zaliczony test jest zamknięty: kolejne podejścia '
+                .'dostałyby 403 zamiast numeru i świadek nie mierzyłby numeracji.',
+                $nr,
+            ));
         }
 
         return $answers;
