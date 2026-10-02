@@ -165,14 +165,14 @@ export const GRUPY = {
   },
   /**
    * Lekcja uczestnika — ten sam adres co dzisiejsza lekcja, treść strony zamienia się na ekran nowego frontu.
-   * Zostaje wyłączona: gdy nagranie lekcji jest niedostępne (`video-link` odpowiada 503 albo 404 — lekcja bez
-   * nagrania albo bez usługi wideo), nowy ekran nie ma przycisku „Odtwórz”, nie wysyła zapisu postępu, a „Oznacz
-   * jako ukończoną” zostaje nieaktywne, podczas gdy stara strona w tych samych warunkach działa. Strona
-   * `panel/lekcje/[id]/page.tsx` jest już podpięta pod tę flagę.
+   * Włączona: `panel/lekcje/[id]/page.tsx` rysuje ekran lekcji nowego frontu w ramce uczestnika, a nagranie gra
+   * w prawdziwym odtwarzaczu (`RecordingPlayer`), który liczy czas aktywny z komunikatów odtwarzacza dostawcy.
+   * Zielony przycisk ukończenia jest zawsze widoczny; gdy nagranie jest niedostępne albo w przygotowaniu, ekran
+   * mówi o tym jednym zdaniem, a lekcja bez nagrania da się ukończyć tak jak dotąd.
    */
   lekcja: {
     klucz: "lekcja",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",
