@@ -425,7 +425,7 @@ test.describe("grupa przełączenia kolejki stażu — ekran decyzji pod adresem
     await formularz.getByRole("textbox", { name: /Co trzeba poprawić/ }).fill("Uzupełnij opis dyżuru.");
     await formularz.getByRole("button", { name: "Poproś o poprawkę" }).click();
 
-    await expect(page.getByRole("status")).toContainText("Dyżur odesłany do poprawy. Filip Demo.");
+    await expect(page.getByRole("status")).toContainText("Poproszono o poprawkę dyżuru. Filip Demo.");
     await expect(wiersze).toHaveCount(2);
     expect(atrapy.zapytania).toEqual([
       { adres: "POST /admin/internship/92/return", cialo: { comment: "Uzupełnij opis dyżuru." } },

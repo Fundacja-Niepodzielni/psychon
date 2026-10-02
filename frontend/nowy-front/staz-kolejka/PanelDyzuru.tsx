@@ -39,7 +39,7 @@ export const TEKSTY_DECYZJI: Record<
     tytul: "Poproś o poprawkę",
     etykieta: "Poproś o poprawkę",
     pole: "Co trzeba poprawić",
-    toast: "Dyżur odesłany do poprawy.",
+    toast: "Poproszono o poprawkę dyżuru.",
   },
   odrzuc: {
     tytul: "Odrzuć dyżur",

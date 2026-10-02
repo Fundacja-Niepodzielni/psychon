@@ -29,6 +29,7 @@ import {
   type WpisDoDecyzji,
 } from "./dane";
 import { PanelDyzuru, TEKSTY_DECYZJI, type OtwartaDecyzja, type RodzajDecyzjiZKomentarzem } from "./PanelDyzuru";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
@@ -251,7 +252,7 @@ export function StazKolejka() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Żadne dane nie zostały zmienione.
+            {KOMUNIKAT_SERWER}
           </Notice>
         }
       />

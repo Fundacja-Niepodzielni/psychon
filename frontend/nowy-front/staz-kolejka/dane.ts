@@ -1,4 +1,5 @@
 import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api/klient";
+import { KOMUNIKAT_INTERNET } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Dane ekranu decyzji o dyżurach (dziennik stażu, administracja). Trasy
@@ -108,10 +109,8 @@ export type BladDecyzji =
   | { rodzaj: "brak-wpisu"; komunikat: string }
   | { rodzaj: "inny"; komunikat: string };
 
-const KOMUNIKAT_SIECI = "Nie udało się zapisać decyzji. Sprawdź połączenie i spróbuj ponownie.";
-
 export function sklasyfikujBladDecyzji(blad: unknown): BladDecyzji {
-  if (!(blad instanceof ApiError)) return { rodzaj: "inny", komunikat: KOMUNIKAT_SIECI };
+  if (!(blad instanceof ApiError)) return { rodzaj: "inny", komunikat: KOMUNIKAT_INTERNET };
   if (blad.status === 422 && blad.errors) return { rodzaj: "pola", bledy: blad.errors };
   if (blad.status === 403 && blad.code === "entry_locked") {
     return { rodzaj: "rozstrzygniety", komunikat: blad.message };

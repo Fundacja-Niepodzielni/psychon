@@ -608,7 +608,7 @@ describe("StazKolejka — decyzje", () => {
       body: { comment: "Uzupełnij opis dyżuru." },
     });
     expect(screen.queryByText("Marta Demo")).toBeNull();
-    expect(screen.getByRole("status")).toHaveTextContent("Dyżur odesłany do poprawy. Marta Demo.");
+    expect(screen.getByRole("status")).toHaveTextContent("Poproszono o poprawkę dyżuru. Marta Demo.");
   });
 
   it("Odrzuć dyżur z powodem: żądanie nie wychodzi przed potwierdzeniem pytania; wycofanie zostawia formularz z powodem", async () => {
@@ -699,7 +699,7 @@ describe("StazKolejka — decyzje", () => {
     dopiszDecyzje(new TypeError("Failed to fetch"));
     await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź dyżur" }));
     await screen.findByText("Decyzja nie została zapisana");
-    expect(screen.getByText("Nie udało się zapisać decyzji. Sprawdź połączenie i spróbuj ponownie.")).toBeInTheDocument();
+    expect(screen.getByText("Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.")).toBeInTheDocument();
     expect(wiersz("Marta Demo")).toBeInTheDocument();
     expect(apiPaged).toHaveBeenCalledTimes(1);
   });
