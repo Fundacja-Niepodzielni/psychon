@@ -1,34 +1,60 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
-import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
+import { Icon } from "@/design-system/atomy/Icon/Icon";
+import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
+import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { TrescLekcji } from "@/design-system/molekuly/TrescLekcji/TrescLekcji";
-import { LessonTemplate } from "@/design-system/szablony/LessonTemplate/LessonTemplate";
-import { LessonPlayer } from "@/design-system/organizmy/LessonPlayer/LessonPlayer";
-import { pobierzPlikiLekcji, type PlikKursu } from "@/nowy-front/pliki-kursu/dane";
-import { PlikiLekcji } from "@/nowy-front/pliki-kursu/PlikiLekcji";
-import { kursZAdresu } from "./adres";
+import { KorzenSzablonu } from "@/design-system/szablony/KontekstPowloki";
+import {
+  adresPowrotuZPodgladu,
+  PARAMETR_PODGLADU,
+  PasTrybuPodgladu,
+  useTrybPodgladu,
+  zParametremPodgladu,
+} from "@/nowy-front/wspolne/tryb-podgladu";
+import { adresLekcji, kursZAdresu } from "./adres";
 import {
   maTekst,
-  okruszkiLekcji,
   pobierzDaneLekcji,
-  procentAktywnegoCzasu,
-  ukladGlownej,
+  pozycjaStartowa,
   ukonczLekcje,
   wyslijPostep,
   type DaneLekcji,
+  type OdmowaKolejnosci,
   type PowodBrakuOdtwarzacza,
+  type ZrodloNagrania,
 } from "./dane";
+import { kontekstKursu, numerLekcjiWKursie, plikiLekcji, pobierzOdczytKursu, type OdczytKursu } from "./kurs";
+import { MaterialyLekcji } from "./MaterialyLekcji";
+import { OdtwarzaczNagrania } from "./odtwarzacz/OdtwarzaczNagrania";
+import { ID_KARTY_PYTAN, ID_POLA_PYTANIA, PytaniaLekcji, ZDANIE_PODGLADU } from "./PytaniaLekcji";
+import {
+  minutyObejrzane,
+  podtytul,
+  stanPrzycisku,
+  wymaganeSekundy,
+  zdanieObejrzane,
+  zdaniePostepuTematu,
+  type CelPrzycisku,
+  type RodzajNagrania,
+} from "./stan";
 import style from "./Lekcja.module.css";
 
 /** Heartbeat cadence — the upper bound the contract allows ("co <= 30 s"). */
 const HEARTBEAT_INTERWAL_SEKUND = 30;
+
+/** Lista kursów właściwa dla roli: dokąd wraca podgląd, gdy odczyt lekcji nie niesie identyfikatora kursu. */
+function listaKursowDlaRoli(rola: string | null): string {
+  return rola === "instructor" ? "/prowadzacy/kursy" : "/admin/kursy";
+}
 
 /** Seconds counted locally since the last send: played, played with the tab
  * visible, and played since the last cadence tick. */
@@ -42,80 +68,114 @@ type StanEkranu =
   | { rodzaj: "ladowanie" }
   | { rodzaj: "blad" }
   | { rodzaj: "zablokowany"; komunikat: string }
+  | { rodzaj: "wygasl"; komunikat: string }
+  | { rodzaj: "lekcja-zamknieta"; komunikat: string; wymaganaLekcjaId: number | null }
   | { rodzaj: "nie-znaleziono" }
-  | { rodzaj: "ok"; dane: DaneLekcji; bezNagrania: boolean; nagranie?: PowodBrakuOdtwarzacza };
+  | {
+      rodzaj: "ok";
+      dane: DaneLekcji;
+      bezNagrania: boolean;
+      nagranie?: PowodBrakuOdtwarzacza;
+      zrodlo?: ZrodloNagrania;
+    };
 
 interface WlasciwosciLekcja {
   id: string;
 }
 
+const ZDANIE_BLEDU_UKONCZENIA = "Nie udało się ukończyć lekcji. Sprawdź internet i naciśnij jeszcze raz.";
+const ZDANIE_ODMOWY_UKONCZENIA = "Serwer nie pozwala jeszcze ukończyć tej lekcji.";
+
+/** Układ strony bez danych lekcji: nagłówek stanu i treść stanu, w tym samym korzeniu co ekran. */
+function StanStrony({ children }: { children: ReactNode }) {
+  return (
+    <KorzenSzablonu className={style.korzen} styleId="ekran-lekcji-uczestnika">
+      <div className={style.strona}>{children}</div>
+    </KorzenSzablonu>
+  );
+}
+
 /**
- * Route `/nowy-front/lekcja/[id]`. Five states: loading, error, blocked
- * (course locked, message straight from the response envelope), not found,
- * and the lesson itself. Every state renders INSIDE `LessonTemplate`, whose
- * root is the only `main` of the page. In the lesson state `LessonPlayer`
- * carries the recording frame and the short description, `TrescLekcji` the
- * lesson body (`content`, Markdown subset, never raw HTML); the completion
- * button lives at this level because `LessonPlayer` has no callback for it.
- * The button is the one primary action while it can act; below the
- * threshold it is an outline button, disabled, with the reason next to it
- * (a primary button is never disabled in the design system).
+ * Route `/nowy-front/lekcja/[id]`. Układ ze zatwierdzonego szkicu: okruszki (na
+ * telefonie jeden odnośnik powrotu do tematu), nagłówek z tytułem, podtytułem
+ * i JEDNYM zielonym przyciskiem (na szerokim ekranie przyklejony pod górnym
+ * paskiem, na telefonie w stałym pasku u dołu), postęp w temacie, nagranie,
+ * treść, materiały do pobrania i pytania do prowadzącego.
  *
- * Files to download: the course comes only from the `?kurs=<slug>` address
- * parameter (the lesson resource carries none). With a valid parameter the
- * screen reads `GET /courses/{slug}` once the lesson has loaded and shows a
- * "Pliki do pobrania" card with this lesson's files in the supporting column;
- * without the parameter, with a malformed one, or when the course read fails
- * (locked, not found, network) or lacks the lesson, there is no card and no
- * error sentence.
+ * Zielony przycisk jest zawsze widoczny. Dopóki warunek ukończenia nie jest
+ * spełniony, wygląda na nieczynny (jasny, z kłódką, `aria-disabled`), ale zostaje
+ * w kolejności fokusu, a powód stoi stale w zdaniu obok. Po ukończeniu ten sam
+ * przycisk prowadzi dalej (następna lekcja, następny temat, test albo kurs), a
+ * fokus przechodzi na ogłaszany znacznik „Ukończona”.
  *
- * Progress heartbeat (`POST /lessons/{id}/progress`, contract "Postęp
- * lekcji"): while the recording is playing a one-second clock counts played
- * seconds (`watched_delta`) and played seconds with the tab visible
- * (`active_delta`); every 30 s of playing the collected increments are sent,
- * unless the tab is hidden at that moment. "Playing" comes from
- * `LessonPlayer`'s `onZmianaOdtwarzania` callback
- * (`design-system/organizmy/LessonPlayer/LessonPlayer.tsx`, play/pause
- * button handler) into a ref; "visible" is read off `document.hidden` each
- * second. The response carries the server counters, which refresh the screen
- * (progress bar, active-time sentence, the completion button unlocking when
- * `completable` turns true). A failed send keeps the increments for the next
- * tick and shows a notice with a retry button.
+ * Dane: `GET /lessons/{id}` (lekcja, kurs, adresat pytań, wymagany czas),
+ * `GET /lessons/{id}/video-link` (źródło nagrania), `GET /courses/{slug}`
+ * (postęp w temacie, następna lekcja, pliki, test), `GET`/`POST
+ * /lessons/{id}/questions`. Odczyt kursu zawodzi albo nie niesie lekcji: ekran
+ * działa dalej bez elementów, które z niego wynikają. Po ukończeniu ekran nie
+ * czyta lekcji ponownie (każdy odczyt zwiększa licznik otwarć).
  *
- * Recording not playable yet (`nagranie: "w-przygotowaniu"` — being sent,
- * processed or failed at the provider, or the link refused with
- * `video_not_ready`): no player frame, one sentence "Nagranie w
- * przygotowaniu." and the rest of the lesson as usual; never the empty state
- * that says the lesson has no recording. A recording link that failed for
- * another reason shows an error notice with a retry button.
+ * Postęp (`POST /lessons/{id}/progress`): odtwarzacz zgłasza każdą odegraną
+ * sekundę z pozycją bezwzględną; ekran zbiera przyrosty oglądania i czasu
+ * aktywnego (karta ukryta liczy się jako oglądana, nie jako aktywna) i co 30 s
+ * wysyła je razem z `position_seconds`. Nieudany zapis zostawia przyrosty do
+ * następnego razu i pod nagraniem pojawia się zdanie o braku internetu.
  */
 export function Lekcja({ id }: WlasciwosciLekcja) {
   const router = useRouter();
-  const kurs = kursZAdresu(useSearchParams().get("kurs"));
+  const parametry = useSearchParams();
+  const kursZParametru = kursZAdresu(parametry.get("kurs"));
+  // Podgląd: parametr adresu i rola personelu albo prowadzącego. Dopóki rola się nie rozstrzygnie, a w adresie
+  // jest parametr podglądu, nic nie jest zapisywane (osoba z taką rolą nie może zapisać niczego przez pomyłkę).
+  const { podglad, rola } = useTrybPodgladu();
+  const zapisZablokowany = podglad || (parametry.get(PARAMETR_PODGLADU) !== null && rola === null);
+  const adres = (cel: string) => zParametremPodgladu(cel, podglad);
+  const idPowodu = useId();
+  const idBleduUkonczenia = useId();
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
   const [wysylanie, setWysylanie] = useState(false);
   const [bladUkonczenia, setBladUkonczenia] = useState<string | null>(null);
   const [bladZapisu, setBladZapisu] = useState(false);
-  // Wynik odczytu plików razem z kluczem (kurs, lekcja), dla którego powstał:
-  // wynik dla innej lekcji albo kursu nigdy nie trafia na ekran.
-  const [wynikPlikow, setWynikPlikow] = useState<{ klucz: string; pliki: PlikKursu[] | null } | null>(null);
-  const odtwarzaneRef = useRef(false);
+  const [odczytKursu, setOdczytKursu] = useState<{ klucz: string; kurs: OdczytKursu | null } | null>(null);
+  const pozycjaRef = useRef(0);
   const przyrostyRef = useRef<ZebranePrzyrosty>({ obejrzane: 0, aktywne: 0, odTyku: 0 });
   const wysylanieRef = useRef(false);
   const zamontowanaRef = useRef(true);
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const dokRef = useRef<HTMLDivElement>(null);
+  const korzenRef = useRef<HTMLDivElement>(null);
+  const fokusNaStatusRef = useRef(false);
+  const zapisZablokowanyRef = useRef(zapisZablokowany);
+
+  /** Odmowa kolejności z dowolnego żądania ekranu: ten sam stan, nic już nie jest wysyłane. */
+  const naOdmoweKolejnosci = useCallback((odmowa: OdmowaKolejnosci) => {
+    if (!zamontowanaRef.current) return;
+    setStan({ rodzaj: "lekcja-zamknieta", komunikat: odmowa.komunikat, wymaganaLekcjaId: odmowa.wymaganaLekcjaId });
+  }, []);
 
   const wyslijZebrane = useCallback(async () => {
+    if (zapisZablokowanyRef.current) return;
     const zebrane = przyrostyRef.current;
     if (wysylanieRef.current || (zebrane.obejrzane === 0 && zebrane.aktywne === 0)) return;
     wysylanieRef.current = true;
-    const przyrosty = { watched_delta: zebrane.obejrzane, active_delta: zebrane.aktywne };
+    const przyrosty = {
+      watched_delta: zebrane.obejrzane,
+      active_delta: zebrane.aktywne,
+      position_seconds: pozycjaRef.current,
+    };
     zebrane.obejrzane = 0;
     zebrane.aktywne = 0;
     const postep = await wyslijPostep(id, przyrosty);
     wysylanieRef.current = false;
     if (!zamontowanaRef.current) return;
+    if (postep !== null && "odmowaKolejnosci" in postep) {
+      // Lekcja zamknięta kolejnością: osobny stan, bez ponawiania wysyłki.
+      naOdmoweKolejnosci(postep);
+      return;
+    }
     if (!postep) {
       // Not saved: keep the increments, the next tick sends them together.
+      // (Pozycja jest bezwzględna, nie przyrostem: następna wysyłka niesie nową.)
       zebrane.obejrzane += przyrosty.watched_delta;
       zebrane.aktywne += przyrosty.active_delta;
       setBladZapisu(true);
@@ -132,19 +192,28 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
               active_seconds: postep.active_seconds,
               completable: postep.completable,
               completable_at_percent: postep.completable_at_percent,
+              required_active_seconds: postep.required_active_seconds ?? poprzedni.dane.required_active_seconds,
             },
           }
         : poprzedni,
     );
-  }, [id]);
+  }, [id, naOdmoweKolejnosci]);
 
   function wczytaj(straz?: { anulowane: boolean }) {
     return pobierzDaneLekcji(id).then((wynik) => {
       if (straz?.anulowane) return;
       if (wynik.status === "ok") {
-        setStan({ rodzaj: "ok", dane: wynik.dane, bezNagrania: wynik.bezNagrania, nagranie: wynik.nagranie });
-      } else if (wynik.status === "zablokowany") {
-        setStan({ rodzaj: "zablokowany", komunikat: wynik.komunikat });
+        setStan({
+          rodzaj: "ok",
+          dane: wynik.dane,
+          bezNagrania: wynik.bezNagrania,
+          nagranie: wynik.nagranie,
+          zrodlo: wynik.zrodloNagrania,
+        });
+      } else if (wynik.status === "lekcja-zamknieta") {
+        setStan({ rodzaj: "lekcja-zamknieta", komunikat: wynik.komunikat, wymaganaLekcjaId: wynik.wymaganaLekcjaId });
+      } else if (wynik.status === "zablokowany" || wynik.status === "wygasl") {
+        setStan({ rodzaj: wynik.status, komunikat: wynik.komunikat });
       } else if (wynik.status === "nie-znaleziono") {
         setStan({ rodzaj: "nie-znaleziono" });
       } else {
@@ -164,42 +233,61 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   }, [id]);
 
   useEffect(() => {
+    zapisZablokowanyRef.current = zapisZablokowany;
+  }, [zapisZablokowany]);
+
+  useEffect(() => {
     zamontowanaRef.current = true;
     return () => {
       zamontowanaRef.current = false;
     };
   }, []);
 
-  // Pliki lekcji: tylko gdy lekcja jest wczytana, a adres niesie poprawny kurs
-  // (`?kurs=<slug>`). Brak kursu, kurs zablokowany albo lekcja spoza kursu =
-  // brak karty; ekran lekcji działa dalej, bez zdania o błędzie.
   const lekcjaGotowa = stan.rodzaj === "ok";
+  const lekcjaZamknieta = stan.rodzaj === "lekcja-zamknieta";
   const idLekcji = Number(id);
-  const kluczPlikow = `${kurs ?? ""}/${idLekcji}`;
-  const odswiezPliki = useCallback(
-    () => (kurs === null ? Promise.resolve(null) : pobierzPlikiLekcji(kurs, idLekcji)),
-    [kurs, idLekcji],
-  );
+  // Kurs z odczytu lekcji; parametr adresu tylko dla odpowiedzi sprzed zmiany zaplecza.
+  const slugKursu = (stan.rodzaj === "ok" ? stan.dane.course?.slug : null) ?? kursZParametru;
+  const kluczKursu = `${slugKursu ?? ""}/${idLekcji}`;
+  const odswiezKurs = useCallback(async () => {
+    if (slugKursu === null) return null;
+    const kurs = await pobierzOdczytKursu(slugKursu);
+    // Nieudany ponowny odczyt nie zabiera ekranowi tego, co już wie o kursie.
+    if (zamontowanaRef.current && kurs !== null) setOdczytKursu({ klucz: kluczKursu, kurs });
+    return kurs;
+  }, [slugKursu, kluczKursu]);
+  const odswiezPliki = useCallback(async () => {
+    const kurs = await odswiezKurs();
+    return kurs === null ? null : plikiLekcji(kurs, idLekcji);
+  }, [odswiezKurs, idLekcji]);
+
+  // Kurs czytamy dla lekcji gotowej (kontekst, pliki) i dla lekcji zamkniętej kolejnością (numer wymaganej lekcji).
+  const potrzebujeKursu = lekcjaGotowa || lekcjaZamknieta;
   useEffect(() => {
-    if (!lekcjaGotowa || kurs === null) return undefined;
+    if (!potrzebujeKursu || slugKursu === null) return undefined;
     let anulowane = false;
-    void odswiezPliki().then((wynik) => {
-      if (!anulowane) setWynikPlikow({ klucz: kluczPlikow, pliki: wynik });
+    void pobierzOdczytKursu(slugKursu).then((kurs) => {
+      if (!anulowane) setOdczytKursu({ klucz: kluczKursu, kurs });
     });
     return () => {
       anulowane = true;
     };
-  }, [lekcjaGotowa, kurs, kluczPlikow, odswiezPliki]);
-  const pliki = lekcjaGotowa && wynikPlikow?.klucz === kluczPlikow ? wynikPlikow.pliki : null;
+  }, [potrzebujeKursu, slugKursu, kluczKursu]);
+  const kurs = potrzebujeKursu && odczytKursu?.klucz === kluczKursu ? odczytKursu.kurs : null;
 
+
+  // Pozycja startowa z odczytu lekcji; liczba, więc efekt niżej nie odpala się od samej zmiany obiektu stanu.
+  const pozycjaStartowaLekcji = stan.rodzaj === "ok" ? pozycjaStartowa(stan.dane) : 0;
   useEffect(() => {
-    if (stan.rodzaj !== "ok") return undefined;
-    // `LessonPlayer` always mounts with its internal `odtwarzane` at `false`.
-    odtwarzaneRef.current = false;
+    if (!lekcjaGotowa) return;
     przyrostyRef.current = { obejrzane: 0, aktywne: 0, odTyku: 0 };
+    pozycjaRef.current = pozycjaStartowaLekcji;
+  }, [lekcjaGotowa, id, pozycjaStartowaLekcji]);
 
-    function tyk() {
-      if (!odtwarzaneRef.current) return;
+  /** Jedna odegrana sekunda nagrania, z pozycją bezwzględną. */
+  const naSekunde = useCallback(
+    (pozycja: number) => {
+      pozycjaRef.current = pozycja;
       const ukryta = typeof document !== "undefined" && document.hidden;
       const zebrane = przyrostyRef.current;
       zebrane.obejrzane += 1;
@@ -209,203 +297,369 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
       zebrane.odTyku = 0;
       if (ukryta) return;
       void wyslijZebrane();
-    }
+    },
+    [wyslijZebrane],
+  );
+  const naZmianePozycji = useCallback((pozycja: number) => {
+    pozycjaRef.current = pozycja;
+  }, []);
+  const naZmianeOdtwarzania = useCallback(() => {}, []);
 
-    const idInterwalu = setInterval(tyk, 1000);
-    return () => clearInterval(idInterwalu);
-  }, [stan.rodzaj, id, wyslijZebrane]);
+  // Wysokość dolnego paska na telefonie: strona zostawia pod treścią tyle miejsca, ile on zajmuje.
+  useEffect(() => {
+    const dok = dokRef.current;
+    const korzen = korzenRef.current;
+    if (dok === null || korzen === null || typeof ResizeObserver === "undefined") return undefined;
+    const zmierz = () => korzen.style.setProperty("--dock-h", `${Math.ceil(dok.getBoundingClientRect().height)}px`);
+    zmierz();
+    const obserwator = new ResizeObserver(zmierz);
+    obserwator.observe(dok);
+    return () => obserwator.disconnect();
+  }, [lekcjaGotowa]);
+
+  // Po ukończeniu fokus idzie na ogłaszany znacznik, nie zostaje na przycisku, który zmienił nazwę.
+  useEffect(() => {
+    if (!fokusNaStatusRef.current) return;
+    fokusNaStatusRef.current = false;
+    statusRef.current?.focus();
+  });
 
   function ponow() {
     setStan({ rodzaj: "ladowanie" });
     void wczytaj();
   }
 
+  const wracaj = () => router.back();
+
+  function przejdz(cel: CelPrzycisku) {
+    if (cel.rodzaj === "lekcja") router.push(adres(adresLekcji(cel.id, slugKursu)));
+    else if (cel.rodzaj === "test" && slugKursu !== null) router.push(adres(`/panel/kursy/${slugKursu}/test`));
+    else router.push(adres(slugKursu !== null ? `/panel/kursy/${slugKursu}` : "/panel/kursy"));
+  }
+
   async function oznaczUkonczona() {
-    if (wysylanie) return;
+    if (wysylanie || zapisZablokowanyRef.current) return;
     setWysylanie(true);
     setBladUkonczenia(null);
     const wynik = await ukonczLekcje(id);
     setWysylanie(false);
+    if (!zamontowanaRef.current) return;
     if (wynik.status === "ok") {
+      fokusNaStatusRef.current = true;
       setStan((poprzedni) =>
-        poprzedni.rodzaj === "ok"
-          ? { ...poprzedni, dane: { ...poprzedni.dane, is_completed: true } }
-          : poprzedni,
+        poprzedni.rodzaj === "ok" ? { ...poprzedni, dane: { ...poprzedni.dane, is_completed: true } } : poprzedni,
       );
+    } else if (wynik.status === "zamknieta") {
+      naOdmoweKolejnosci(wynik.odmowa);
     } else if (wynik.status === "za-malo-czasu") {
-      setBladUkonczenia("Obejrzyj więcej materiału, aby ukończyć lekcję.");
+      setBladUkonczenia(ZDANIE_ODMOWY_UKONCZENIA);
     } else {
-      setBladUkonczenia("Nie udało się ukończyć lekcji. Spróbuj ponownie.");
+      setBladUkonczenia(ZDANIE_BLEDU_UKONCZENIA);
     }
   }
 
-  const naglowekStanu = {
-    okruszki: [{ etykieta: "Kursy" }, { etykieta: "Lekcja" }],
-    tytul: "Lekcja",
-    onPowrot: () => router.back(),
-  };
-
   if (stan.rodzaj === "ladowanie") {
-    return <LessonTemplate naglowek={naglowekStanu} glowna={<Skeleton wiersze={6} />} wspierajaca={null} />;
+    return (
+      <StanStrony>
+        <Skeleton wiersze={6} />
+      </StanStrony>
+    );
   }
 
   if (stan.rodzaj === "nie-znaleziono") {
-    return <LessonTemplate naglowek={naglowekStanu} glowna={<Text>Nie znaleziono lekcji.</Text>} wspierajaca={null} />;
+    return (
+      <StanStrony>
+        <Heading stopien={1}>Lekcja</Heading>
+        <Text>Nie znaleziono lekcji.</Text>
+      </StanStrony>
+    );
   }
 
   if (stan.rodzaj === "zablokowany") {
     return (
-      <LessonTemplate
-        naglowek={naglowekStanu}
-        glowna={
-          <Notice wariant="warn" tytul="Dostęp zablokowany">
-            {stan.komunikat}
-          </Notice>
-        }
-        wspierajaca={null}
-      />
+      <StanStrony>
+        <Heading stopien={1}>Lekcja</Heading>
+        <Notice wariant="warn" tytul="Dostęp zablokowany">
+          {stan.komunikat}
+        </Notice>
+      </StanStrony>
+    );
+  }
+
+  if (stan.rodzaj === "lekcja-zamknieta") {
+    const wymagana = stan.wymaganaLekcjaId;
+    const numer = wymagana !== null && kurs !== null ? numerLekcjiWKursie(kurs, wymagana) : null;
+    const adresKursuZamknietej = slugKursu === null ? "/panel/kursy" : `/panel/kursy/${slugKursu}`;
+    const cel = adres(wymagana !== null ? adresLekcji(wymagana, slugKursu) : adresKursuZamknietej);
+    const etykieta = wymagana === null ? "Wróć do kursu" : numer !== null ? `Przejdź do lekcji ${numer}` : "Przejdź do wymaganej lekcji";
+    return (
+      <StanStrony>
+        {podglad && <PasTrybuPodgladu powrot={listaKursowDlaRoli(rola)} />}
+        <section className={`${style.karta} ${style.biala}`} aria-labelledby="naglowek-zamknietej">
+          <Heading stopien={1} id="naglowek-zamknietej">
+            {numer !== null ? `Najpierw ukończ lekcję ${numer}` : "Ta lekcja jest jeszcze zamknięta"}
+          </Heading>
+          <Text>{numer !== null ? "Lekcje w tym kursie przechodzisz po kolei." : stan.komunikat}</Text>
+          <Button poziom="primary" onClick={() => router.push(cel)}>
+            {etykieta}
+          </Button>
+        </section>
+      </StanStrony>
+    );
+  }
+
+  if (stan.rodzaj === "wygasl") {
+    return (
+      <StanStrony>
+        <section className={`${style.karta} ${style.biala}`} aria-labelledby="naglowek-wygaslego">
+          <Heading stopien={1} id="naglowek-wygaslego">
+            Dostęp wygasł
+          </Heading>
+          <Text>{stan.komunikat}</Text>
+          <Link href={adres("/panel/kursy")}>Wróć do kursów</Link>
+        </section>
+      </StanStrony>
     );
   }
 
   if (stan.rodzaj === "blad") {
     return (
-      <LessonTemplate
-        naglowek={naglowekStanu}
-        glowna={
-          <Notice
-            wariant="error"
-            tytul="Nie udało się wczytać lekcji"
-            akcja={
-              <Button poziom="outline" onClick={ponow}>
-                Spróbuj ponownie
-              </Button>
-            }
-          >
-            Backend nie odpowiedział poprawnie — spróbuj ponownie później.
-          </Notice>
-        }
-        wspierajaca={null}
-      />
+      <StanStrony>
+        <Heading stopien={1}>Lekcja</Heading>
+        <Notice
+          wariant="error"
+          tytul="Nie udało się wczytać lekcji"
+          akcja={
+            <Button poziom="outline" onClick={ponow}>
+              Spróbuj ponownie
+            </Button>
+          }
+        >
+          Backend nie odpowiedział poprawnie — spróbuj ponownie później.
+        </Notice>
+      </StanStrony>
     );
   }
 
-  const { dane, bezNagrania, nagranie } = stan;
-  const procent = procentAktywnegoCzasu(dane);
-  const mozeUkonczyc = dane.completable && !dane.is_completed;
-  const brakujacyProcent = Math.max(0, dane.completable_at_percent - procent);
-  const uklad = ukladGlownej(dane, bezNagrania);
+  const { dane, bezNagrania } = stan;
+  const nagranie: RodzajNagrania = bezNagrania ? (stan.nagranie ?? "brak") : "jest";
+  const ukonczona = dane.is_completed;
+  const wymagane = wymaganeSekundy(dane);
+  const kontekst = kurs === null ? null : kontekstKursu(kurs, idLekcji, ukonczona);
+  const przyciskBazowy = stanPrzycisku({
+    ukonczona,
+    nagranie,
+    mozna: dane.completable,
+    aktywneSekundy: dane.active_seconds,
+    wymagane,
+    kontekst,
+    maTest: kurs?.has_test === true && slugKursu !== null,
+  });
+  // W podglądzie ukończenia nie ma: przycisk wygląda na nieczynny, powód stoi obok.
+  const przycisk =
+    podglad && przyciskBazowy.cel.rodzaj === "ukoncz"
+      ? { ...przyciskBazowy, czynny: false, zdanie: ZDANIE_PODGLADU }
+      : przyciskBazowy;
+  const pliki = kurs === null ? null : plikiLekcji(kurs, idLekcji);
+  const temat = kontekst?.temat ?? dane.topic ?? null;
+  const nazwaTematu = temat === null ? null : "tytul" in temat ? temat.tytul : temat.title;
+  const nazwaKursu = dane.course?.title ?? null;
+  const adresKursu = adres(slugKursu === null ? "/panel/kursy" : `/panel/kursy/${slugKursu}`);
+  const adresPowrotu =
+    (dane.course?.id !== undefined ? adresPowrotuZPodgladu(rola, dane.course.id) : null) ?? listaKursowDlaRoli(rola);
+  const adresat = dane.question_addressee?.name ?? null;
+  const czyPodtytul = podtytul(dane.duration_seconds, nagranie, dane.content);
+  const maTresc = maTekst(dane.content) || maTekst(dane.description);
+  const pusta = nagranie === "brak" && !maTresc && (pliki === null || pliki.length === 0);
+  const { obejrzane: obejrzaneMinuty, potrzebne } = minutyObejrzane(dane.active_seconds, wymagane);
+
+  function nacisnietoPrzycisk() {
+    if (!przycisk.czynny || wysylanie) return;
+    if (przycisk.cel.rodzaj === "ukoncz") void oznaczUkonczona();
+    else przejdz(przycisk.cel);
+  }
+
+  function napiszDoProwadzacego() {
+    document.getElementById(ID_KARTY_PYTAN)?.scrollIntoView({ block: "start" });
+    document.getElementById(ID_POLA_PYTANIA)?.focus({ preventScroll: true });
+  }
 
   return (
-    <div className={style.strona}>
-      <LessonTemplate
-        naglowek={{
-          okruszki: okruszkiLekcji(dane),
-          tytul: dane.title,
-          onPowrot: () => router.back(),
-        }}
-        glowna={
-          <div className={style.glowna}>
-            {uklad === "odtwarzacz" && (
-              <LessonPlayer
-                tytul={dane.title}
-                tresc={dane.description ?? ""}
-                krokiZrobione={dane.is_completed ? 1 : 0}
-                krokiRazem={1}
-                materialy={[]}
-                pytania={[]}
-                onZadajPytanie={() => {}}
-                onZmianaOdtwarzania={(odtwarzane) => {
-                  odtwarzaneRef.current = odtwarzane;
-                }}
-                czasTrwaniaSekund={dane.duration_seconds}
-                obejrzaneSekundy={dane.watched_seconds}
-                procentAktywnegoCzasu={procent}
-                progUkonczenia={dane.completable_at_percent}
-                braki={[]}
-                bezNagrania={bezNagrania}
-                pusty={{
-                  naglowek: "Lekcja bez treści",
-                  tresc: "Ta lekcja nie ma jeszcze nagrania ani treści.",
-                  przycisk: { etykieta: "Wróć do kursu", onClick: () => router.back() },
-                }}
-              />
-            )}
-            {(uklad === "sama-tresc" || (uklad === "pusta" && nagranie !== undefined)) && (
-              <Heading stopien={2}>{dane.title}</Heading>
-            )}
-            {nagranie === "w-przygotowaniu" && <Text>Nagranie w przygotowaniu.</Text>}
-            {nagranie === "blad" && (
-              <Notice
-                wariant="error"
-                tytul="Nie udało się wczytać nagrania"
-                akcja={
-                  <Button poziom="outline" onClick={ponow}>
-                    Spróbuj ponownie
-                  </Button>
-                }
-              >
-                Sprawdź połączenie i spróbuj ponownie. Pozostała część lekcji jest dostępna poniżej.
-              </Notice>
-            )}
-            {uklad === "pusta" && nagranie === undefined && (
-              <EmptyState
-                naglowek="Lekcja bez treści"
-                tresc="Ta lekcja nie ma jeszcze nagrania ani treści."
-                przycisk={{ etykieta: "Wróć do kursu", onClick: () => router.back() }}
-              />
-            )}
-
-            {bladZapisu && (
-              <Notice
-                wariant="error"
-                tytul="Postęp nie został zapisany"
-                akcja={
-                  <Button poziom="outline" onClick={() => void wyslijZebrane()}>
-                    Spróbuj ponownie
-                  </Button>
-                }
-              >
-                Sprawdź połączenie i spróbuj ponownie. Czas oglądania zostanie dopisany przy następnym zapisie.
-              </Notice>
-            )}
-
-            <div className={style.ukonczenie} role="group" aria-label="Ukończenie lekcji">
-              {dane.is_completed ? (
-                <Notice wariant="ok" tytul="Lekcja ukończona">
-                  Ta lekcja jest już ukończona.
-                </Notice>
-              ) : (
-                <>
-                  {bladUkonczenia && (
-                    <Notice wariant="error" tytul="Nie udało się ukończyć lekcji">
-                      {bladUkonczenia}
-                    </Notice>
-                  )}
-                  <Button
-                    poziom={mozeUkonczyc ? "primary" : "outline"}
-                    disabled={!mozeUkonczyc || wysylanie}
-                    onClick={() => void oznaczUkonczona()}
-                  >
-                    {wysylanie ? "Zapisywanie…" : "Oznacz jako ukończoną"}
-                  </Button>
-                  {!dane.completable && (
-                    <Text wariant="pusty">
-                      Brakuje {brakujacyProcent}% aktywnego czasu do progu {dane.completable_at_percent}%.
-                    </Text>
-                  )}
-                </>
+    <KorzenSzablonu className={style.korzen} styleId="ekran-lekcji-uczestnika">
+      <div ref={korzenRef} className={style.strona}>
+        {podglad && <PasTrybuPodgladu powrot={adresPowrotu} />}
+        <div className={style.pasek}>
+          <nav className={style.okruszki} aria-label="Gdzie jesteś">
+            <ol>
+              <li>
+                <Link wariant="okruszek" href={adres("/panel/kursy")}>
+                  Kursy
+                </Link>
+              </li>
+              {nazwaKursu !== null && (
+                <li>
+                  <Link wariant="okruszek" href={adresKursu}>
+                    {nazwaKursu}
+                  </Link>
+                </li>
               )}
-            </div>
+              {nazwaTematu !== null && nazwaTematu !== "" && (
+                <li>
+                  {slugKursu === null ? (
+                    <span>{nazwaTematu}</span>
+                  ) : (
+                    <Link wariant="okruszek" href={adresKursu}>
+                      {nazwaTematu}
+                    </Link>
+                  )}
+                </li>
+              )}
+            </ol>
+          </nav>
+          <span className={style.powrot}>
+            <Link
+              href={adresKursu}
+              aria-label={
+                nazwaTematu ? `Wróć do tematu: ${nazwaTematu}` : nazwaKursu ? `Wróć do kursu: ${nazwaKursu}` : "Wróć do kursów"
+              }
+            >
+              <span aria-hidden="true">‹ </span>
+              {nazwaTematu || nazwaKursu || "Kursy"}
+            </Link>
+          </span>
+        </div>
 
-            {maTekst(dane.content) && (
-              <div role="region" aria-label="Treść lekcji">
-                <TrescLekcji tresc={dane.content} />
+        <header className={style.glowa}>
+          <div className={style.tytul}>
+            <Heading stopien={1}>{dane.title}</Heading>
+            <div className={style.podtytul}>
+              {czyPodtytul !== "" && <p>{czyPodtytul}</p>}
+              <span ref={statusRef} className={style.status} role="status" tabIndex={-1}>
+                {ukonczona && (
+                  <span className={style.znacznik}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                    Ukończona
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+          <div ref={dokRef} className={style.dok}>
+            <div className={style.akcje}>
+              <span className={style.przycisk} data-nieczynny={przycisk.czynny ? undefined : "true"}>
+                <Button
+                  poziom="primary"
+                  aria-disabled={przycisk.czynny ? undefined : true}
+                  aria-describedby={bladUkonczenia === null ? idPowodu : `${idPowodu} ${idBleduUkonczenia}`}
+                  onClick={nacisnietoPrzycisk}
+                >
+                  {!przycisk.czynny && <Icon nazwa="lock" rozmiar={16} />}
+                  {wysylanie ? "Zapisywanie…" : przycisk.etykieta}
+                </Button>
+              </span>
+              <p id={idPowodu} className={style.powod} aria-live="polite">
+                {przycisk.zdanie}
+              </p>
+              <ErrorText id={idBleduUkonczenia}>{bladUkonczenia ?? undefined}</ErrorText>
+            </div>
+          </div>
+        </header>
+
+        {kontekst?.temat && (
+          <div className={style.postep}>
+            <div className={style.odcinki} aria-hidden="true">
+              {kontekst.temat.segmenty.map((segment) => (
+                <i key={segment.id} data-stan={segment.ukonczona ? "gotowy" : segment.biezaca ? "biezacy" : "pusty"} />
+              ))}
+            </div>
+            <p>{zdaniePostepuTematu(kontekst.temat, ukonczona)}</p>
+          </div>
+        )}
+
+        {nagranie !== "brak" && (
+          <section className={style.nagranie} aria-labelledby="naglowek-nagrania">
+            <h2 id="naglowek-nagrania" className={style.dlaCzytnika}>
+              Nagranie
+            </h2>
+            {nagranie === "jest" && (
+              <>
+                <OdtwarzaczNagrania
+                  key={`${id}-${pozycjaStartowaLekcji}`}
+                  zrodlo={stan.zrodlo}
+                  czasTrwaniaSekund={dane.duration_seconds}
+                  pozycjaStartowaSekundy={pozycjaStartowaLekcji}
+                  onZmianaOdtwarzania={naZmianeOdtwarzania}
+                  onSekunda={naSekunde}
+                  onZmianaPozycji={naZmianePozycji}
+                />
+                <p className={style.obejrzane}>
+                  {zdanieObejrzane({ ukonczona, mozna: dane.completable, aktywneSekundy: dane.active_seconds, wymagane })}
+                </p>
+                {bladZapisu && (
+                  <p className={style.obejrzane} role="status">
+                    {`Brak internetu. Ostatnio zapisane: ${obejrzaneMinuty} z ${potrzebne} minut.`}
+                  </p>
+                )}
+              </>
+            )}
+            {nagranie === "w-przygotowaniu" && (
+              <div className={style.oczekiwanie}>
+                <p>
+                  <b>Nagranie jest w przygotowaniu.</b>
+                  Zwykle trwa to do 30 minut. Tekst i materiały możesz czytać już teraz.
+                </p>
               </div>
             )}
-          </div>
-        }
-        wspierajaca={pliki !== null && pliki.length > 0 ? <PlikiLekcji pliki={pliki} odswiez={odswiezPliki} /> : null}
-      />
-    </div>
+            {nagranie === "nie-dziala" && (
+              <div className={style.oczekiwanie} data-blad="true">
+                <div>
+                  <p>
+                    <b>Tego nagrania nie da się teraz obejrzeć.</b>
+                    Tekst i materiały możesz czytać już teraz. Jeśli to potrwa, napisz do prowadzącego.
+                  </p>
+                  <Button poziom="outline" onClick={napiszDoProwadzacego}>
+                    Napisz do prowadzącego
+                  </Button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {maTresc && (
+          <section className={style.karta} aria-labelledby="naglowek-tresci">
+            <Heading stopien={2} id="naglowek-tresci">
+              Treść lekcji
+            </Heading>
+            {maTekst(dane.description) && (
+              <div className={style.opis}>
+                <Text>{dane.description ?? ""}</Text>
+              </div>
+            )}
+            {maTekst(dane.content) && <TrescLekcji tresc={dane.content} />}
+          </section>
+        )}
+
+        {pusta && (
+          <EmptyState
+            naglowek="Lekcja bez treści"
+            tresc="Ta lekcja nie ma jeszcze nagrania ani treści."
+            przycisk={{ etykieta: "Wróć do kursu", onClick: wracaj }}
+          />
+        )}
+
+        {pliki !== null && pliki.length > 0 && <MaterialyLekcji pliki={pliki} odswiez={odswiezPliki} />}
+
+        <PytaniaLekcji
+          idLekcji={id}
+          adresat={adresat}
+          naOdmoweKolejnosci={naOdmoweKolejnosci}
+          podglad={podglad}
+          zapisWstrzymany={zapisZablokowany}
+        />
+      </div>
+    </KorzenSzablonu>
   );
 }

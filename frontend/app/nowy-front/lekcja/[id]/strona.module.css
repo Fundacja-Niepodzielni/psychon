@@ -1,0 +1,13 @@
+/* Ekran lekcji pod adresem próbnym `/nowy-front/lekcja/[id]` nie leży w powłoce
+ * panelu, która daje treści poziomy odstęp. Ekran na telefonie rozciąga nagranie
+ * i karty do krawędzi okna ujemnym marginesem równym temu odstępowi, więc tutaj
+ * ten sam odstęp daje ta strona — bez niego ekran wystawałby poza okno. */
+.pole {
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .pole {
+    padding-inline: var(--space-16);
+  }
+}

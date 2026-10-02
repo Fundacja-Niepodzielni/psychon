@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { KURS, LEKCJA } from "./pomoce";
 
 const pobierzDaneLekcji = vi.fn();
-const api = vi.fn();
+const pobierzOdczytKursu = vi.fn();
+const downloadFile = vi.fn();
 let adresKursu: string | null = null;
 
 vi.mock("next/navigation", () => ({
@@ -12,90 +15,98 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../dane", async (importOriginal) => {
   const original = await importOriginal<typeof import("../dane")>();
-  return { ...original, pobierzDaneLekcji: (...args: unknown[]) => pobierzDaneLekcji(...args) };
+  return { ...original, pobierzDaneLekcji: (...args: unknown[]) => pobierzDaneLekcji(...args), pobierzPytania: async () => [] };
 });
 
-vi.mock("@/lib/api/klient", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api/klient")>()),
-  api: (...args: unknown[]) => api(...args),
-}));
+vi.mock("../kurs", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../kurs")>();
+  return { ...original, pobierzOdczytKursu: (...args: unknown[]) => pobierzOdczytKursu(...args) };
+});
+
+vi.mock("@/lib/api/pliki", () => ({ downloadFile: (...args: unknown[]) => downloadFile(...args) }));
 
 const { ApiError } = await import("@/lib/api/klient");
 const { Lekcja } = await import("../Lekcja");
 
-const LEKCJA = {
-  id: 21,
-  title: "Wprowadzenie do wywiadu",
-  description: "Opis lekcji",
-  content: null,
-  topic: null,
-  duration_seconds: 1800,
-  position_seconds: 0,
-  watched_seconds: 812,
-  active_seconds: 700,
-  is_completed: false,
-  completable: false,
-  completable_at_percent: 60,
-};
+const NBSP = " ";
+const ZDANIE_BLEDU = "Nie udało się pobrać pliku. Spróbuj ponownie za chwilę.";
+const BEZ_KURSU = { ...LEKCJA, course: undefined };
 
-const KURS = {
-  lessons: [
-    { id: 21, title: "Wprowadzenie do wywiadu", sequence_order: 1 },
-    { id: 22, title: "Pytania otwarte", sequence_order: 2 },
-  ],
-  materials: [
-    { id: 1, name: "Karta pracy.pdf", size: 245760, lesson_id: 21, download_url: "https://api.test/1" },
-    { id: 2, name: "Slajdy drugiej lekcji.pdf", size: 1000, lesson_id: 22, download_url: "https://api.test/2" },
-    { id: 3, name: "Regulamin kursu.pdf", size: 1000, lesson_id: null, download_url: "https://api.test/3" },
-    { id: 4, name: "Scenariusz.docx", size: 5000, lesson_id: 21, download_url: "https://api.test/4" },
-  ],
-};
+function karta() {
+  return screen.getByRole("region", { name: "Materiały do pobrania" });
+}
+
+async function otworz(dane: object = LEKCJA) {
+  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane, bezNagrania: true });
+  render(<Lekcja id="21" />);
+  await screen.findByRole("heading", { level: 1, name: LEKCJA.title });
+}
 
 beforeEach(() => {
   pobierzDaneLekcji.mockReset();
-  api.mockReset();
+  pobierzOdczytKursu.mockReset();
+  downloadFile.mockReset();
+  downloadFile.mockResolvedValue(undefined);
+  pobierzOdczytKursu.mockResolvedValue(KURS);
   adresKursu = null;
-  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: true });
 });
 
-describe("Lekcja — karta „Pliki do pobrania” z kursem z adresu", () => {
-  it("z ?kurs= pobiera kurs i pokazuje TYLKO pliki tej lekcji", async () => {
-    adresKursu = "wywiad-psychologiczny";
-    api.mockResolvedValue(KURS);
+describe("Lekcja — karta „Materiały do pobrania”", () => {
+  it("pokazuje TYLKO pliki tej lekcji, z rodzajem i rozmiarem, a przycisk „Pobierz” ma pełną nazwę", async () => {
+    await otworz();
 
-    render(<Lekcja id="21" />);
+    expect(await screen.findByRole("heading", { level: 2, name: "Materiały do pobrania" })).toBeInTheDocument();
+    const pozycje = within(karta()).getAllByRole("listitem");
+    expect(pozycje).toHaveLength(2);
+    expect(within(pozycje[0]).getByText("Schemat decyzji w kryzysie.pdf")).toBeInTheDocument();
+    expect(within(pozycje[0]).getByText(`PDF · 241${NBSP}KB`)).toBeInTheDocument();
+    expect(within(pozycje[1]).getByText("Numery pomocowe w Polsce.pdf")).toBeInTheDocument();
+    expect(within(pozycje[1]).getByText(`PDF · 96${NBSP}KB`)).toBeInTheDocument();
+    expect(within(pozycje[0]).getByRole("button", { name: "Pobierz: Schemat decyzji w kryzysie.pdf, PDF, 241 KB" })).toHaveTextContent(
+      "Pobierz",
+    );
+    expect(screen.queryByText("Cudzy plik.pdf")).toBeNull();
+  });
 
-    expect(await screen.findByRole("heading", { level: 2, name: "Pliki do pobrania" })).toBeInTheDocument();
-    const pozycje = within(screen.getByRole("region", { name: "Pliki do pobrania" })).getAllByRole("listitem");
-    expect(pozycje.map((pozycja) => within(pozycja).getByRole("button").getAttribute("aria-label"))).toEqual([
-      "Pobierz plik: Karta pracy.pdf",
-      "Pobierz plik: Scenariusz.docx",
-    ]);
-    expect(screen.queryByText("Slajdy drugiej lekcji.pdf")).toBeNull();
-    expect(screen.queryByText("Regulamin kursu.pdf")).toBeNull();
-    expect(api).toHaveBeenCalledWith("/courses/wywiad-psychologiczny");
+  it("rodzaj pliku z mime; bez mime z rozszerzenia nazwy (odpowiedź sprzed zmiany zaplecza)", async () => {
+    pobierzOdczytKursu.mockResolvedValue({
+      ...KURS,
+      materials: [
+        { id: 4, name: "Scenariusz.docx", size: 5000, lesson_id: 21, download_url: "https://api.test/4" },
+        { id: 5, name: "Bez-rozszerzenia", size: 700, mime: "application/pdf", lesson_id: 21, download_url: "https://api.test/5" },
+      ],
+    });
+    await otworz();
+
+    const pozycje = within(await screen.findByRole("region", { name: "Materiały do pobrania" })).getAllByRole("listitem");
+    expect(within(pozycje[0]).getByText(`DOCX · 5${NBSP}KB`)).toBeInTheDocument();
+    expect(within(pozycje[1]).getByText(`PDF · 700${NBSP}B`)).toBeInTheDocument();
   });
 
   it("lekcja bez plików: karty nie ma, nie ma też zdania zastępczego", async () => {
-    adresKursu = "wywiad-psychologiczny";
-    api.mockResolvedValue({ ...KURS, materials: [KURS.materials[1]] });
+    pobierzOdczytKursu.mockResolvedValue({ ...KURS, materials: [KURS.materials[2]] });
 
-    render(<Lekcja id="21" />);
+    await otworz();
+    await waitFor(() => expect(pobierzOdczytKursu).toHaveBeenCalled());
 
-    await screen.findByRole("heading", { level: 1, name: LEKCJA.title });
-    await waitFor(() => expect(api).toHaveBeenCalled());
-    expect(screen.queryByRole("heading", { name: "Pliki do pobrania" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Materiały do pobrania" })).toBeNull();
     expect(screen.queryByText(/materiałów do pobrania/)).toBeNull();
-    expect(screen.queryByText(/widoku/)).toBeNull();
   });
 
-  it("bez parametru kursu nie pyta o kurs i nie pokazuje karty", async () => {
-    render(<Lekcja id="21" />);
+  it("odpowiedź lekcji bez kursu i bez parametru adresu: nie pyta o kurs i nie pokazuje karty", async () => {
+    await otworz(BEZ_KURSU);
 
-    await screen.findByRole("heading", { level: 1, name: LEKCJA.title });
-    expect(api).not.toHaveBeenCalled();
-    expect(screen.queryByRole("heading", { name: "Pliki do pobrania" })).toBeNull();
-    expect(screen.queryByText(/materiałów do pobrania/)).toBeNull();
+    expect(pobierzOdczytKursu).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Materiały do pobrania" })).toBeNull();
+  });
+
+  it("odpowiedź lekcji bez kursu, ale z ?kurs= w adresie: kurs z adresu", async () => {
+    adresKursu = "pierwsza-pomoc-psychologiczna";
+
+    await otworz(BEZ_KURSU);
+
+    expect(await screen.findByRole("heading", { level: 2, name: "Materiały do pobrania" })).toBeInTheDocument();
+    expect(pobierzOdczytKursu).toHaveBeenCalledWith("pierwsza-pomoc-psychologiczna");
   });
 
   it.each(["Wywiad-Psychologiczny", "kurs/../me", "kurs?x=1", "kurs jeden", "wywiąd", ""])(
@@ -103,50 +114,104 @@ describe("Lekcja — karta „Pliki do pobrania” z kursem z adresu", () => {
     async (zly) => {
       adresKursu = zly;
 
-      render(<Lekcja id="21" />);
+      await otworz(BEZ_KURSU);
 
-      await screen.findByRole("heading", { level: 1, name: LEKCJA.title });
-      expect(api).not.toHaveBeenCalled();
-      expect(screen.queryByRole("heading", { name: "Pliki do pobrania" })).toBeNull();
+      expect(pobierzOdczytKursu).not.toHaveBeenCalled();
+      expect(screen.queryByRole("heading", { name: "Materiały do pobrania" })).toBeNull();
     },
   );
 
-  it("lekcji nie ma w kursie z adresu: karta nie zajmuje miejsca, ekran lekcji działa", async () => {
-    adresKursu = "inny-kurs";
-    api.mockResolvedValue({ lessons: [{ id: 99, title: "Cudza", sequence_order: 1 }], materials: KURS.materials });
+  it("lekcji nie ma w odczycie kursu: karta nie zajmuje miejsca, ekran lekcji działa", async () => {
+    pobierzOdczytKursu.mockResolvedValue({ ...KURS, lessons: [{ ...KURS.lessons[0], id: 99 }] });
 
-    render(<Lekcja id="21" />);
+    await otworz();
+    await waitFor(() => expect(pobierzOdczytKursu).toHaveBeenCalled());
 
-    expect(await screen.findByRole("heading", { level: 1, name: LEKCJA.title })).toBeInTheDocument();
-    await waitFor(() => expect(api).toHaveBeenCalled());
-    expect(screen.queryByRole("heading", { name: "Pliki do pobrania" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Materiały do pobrania" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it.each([
-    ["403 course_locked", new ApiError({ status: 403, code: "course_locked", message: "Ukończ najpierw etap 2." })],
-    ["404 not_found", new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono." })],
-    ["błąd sieci", new TypeError("Failed to fetch")],
-  ])("odczyt kursu kończy się: %s → bez karty, bez zdania o błędzie, ekran lekcji cały", async (_opis, blad) => {
-    adresKursu = "wywiad-psychologiczny";
-    api.mockRejectedValue(blad);
+  it("odczyt kursu się nie udał (null): bez karty, bez zdania o błędzie, ekran lekcji cały", async () => {
+    pobierzOdczytKursu.mockResolvedValue(null);
 
-    render(<Lekcja id="21" />);
+    await otworz();
+    await waitFor(() => expect(pobierzOdczytKursu).toHaveBeenCalled());
 
-    expect(await screen.findByRole("heading", { level: 1, name: LEKCJA.title })).toBeInTheDocument();
-    await waitFor(() => expect(api).toHaveBeenCalled());
-    expect(screen.queryByRole("heading", { name: "Pliki do pobrania" })).toBeNull();
-    expect(screen.queryByText(/plik/i)).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Materiały do pobrania" })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Zapytaj prowadzącego" })).toBeInTheDocument();
   });
 
   it("lekcja zablokowana (403 course_locked): plików nie pokazuje i o kurs nie pyta", async () => {
-    adresKursu = "wywiad-psychologiczny";
     pobierzDaneLekcji.mockResolvedValue({ status: "zablokowany", komunikat: "Ukończ najpierw etap 2." });
 
     render(<Lekcja id="21" />);
 
     expect(await screen.findByText("Ukończ najpierw etap 2.")).toBeInTheDocument();
-    expect(api).not.toHaveBeenCalled();
-    expect(screen.queryByRole("heading", { name: "Pliki do pobrania" })).toBeNull();
+    expect(pobierzOdczytKursu).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Materiały do pobrania" })).toBeNull();
+  });
+});
+
+describe("Lekcja — pobranie pliku", () => {
+  it("naciśnięcie „Pobierz” pobiera plik pod jego adresem i nazwą", async () => {
+    const uzytkownik = userEvent.setup();
+    await otworz();
+    await screen.findByRole("region", { name: "Materiały do pobrania" });
+
+    await uzytkownik.click(within(karta()).getAllByRole("button", { name: /^Pobierz:/ })[0]);
+
+    await waitFor(() => expect(downloadFile).toHaveBeenCalledTimes(1));
+    expect(downloadFile).toHaveBeenCalledWith("https://api.test/materials/1", "Schemat decyzji w kryzysie.pdf");
+    expect(screen.queryByText(ZDANIE_BLEDU)).toBeNull();
+  });
+
+  it("pobranie się nie udało: zdanie przy tym pliku, drugi plik bez zdania, ekran bez zmian", async () => {
+    const uzytkownik = userEvent.setup();
+    downloadFile.mockRejectedValue(new Error("sieć"));
+    await otworz();
+    await screen.findByRole("region", { name: "Materiały do pobrania" });
+
+    await uzytkownik.click(within(karta()).getAllByRole("button", { name: /^Pobierz:/ })[0]);
+
+    const pozycje = within(karta()).getAllByRole("listitem");
+    expect(await within(pozycje[0]).findByText(ZDANIE_BLEDU)).toBeInTheDocument();
+    expect(within(pozycje[1]).queryByText(ZDANIE_BLEDU)).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: LEKCJA.title })).toBeInTheDocument();
+  });
+
+  it("adres pobrania wygasł (403): kurs jest czytany ponownie, a plik pobierany pod świeżym adresem", async () => {
+    const uzytkownik = userEvent.setup();
+    downloadFile
+      .mockRejectedValueOnce(new ApiError({ status: 403, code: "forbidden", message: "Link wygasł." }))
+      .mockResolvedValue(undefined);
+    await otworz();
+    await screen.findByRole("region", { name: "Materiały do pobrania" });
+    pobierzOdczytKursu.mockResolvedValue({
+      ...KURS,
+      materials: KURS.materials.map((plik) => ({ ...plik, download_url: `${plik.download_url}?swiezy=1` })),
+    });
+    const odczytyPrzed = pobierzOdczytKursu.mock.calls.length;
+
+    await uzytkownik.click(within(karta()).getAllByRole("button", { name: /^Pobierz:/ })[0]);
+
+    await waitFor(() => expect(downloadFile).toHaveBeenCalledTimes(2));
+    expect(downloadFile).toHaveBeenNthCalledWith(1, "https://api.test/materials/1", "Schemat decyzji w kryzysie.pdf");
+    expect(downloadFile).toHaveBeenNthCalledWith(2, "https://api.test/materials/1?swiezy=1", "Schemat decyzji w kryzysie.pdf");
+    expect(pobierzOdczytKursu.mock.calls.length).toBe(odczytyPrzed + 1);
+    expect(screen.queryByText(ZDANIE_BLEDU)).toBeNull();
+  });
+
+  it("adres wygasł i ponowny odczyt kursu zawodzi: zdanie o błędzie przy pliku", async () => {
+    const uzytkownik = userEvent.setup();
+    downloadFile.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Link wygasł." }));
+    await otworz();
+    await screen.findByRole("region", { name: "Materiały do pobrania" });
+    pobierzOdczytKursu.mockResolvedValue(null);
+
+    await uzytkownik.click(within(karta()).getAllByRole("button", { name: /^Pobierz:/ })[0]);
+
+    expect(await within(karta()).findByText(ZDANIE_BLEDU)).toBeInTheDocument();
+    expect(downloadFile).toHaveBeenCalledTimes(1);
   });
 });

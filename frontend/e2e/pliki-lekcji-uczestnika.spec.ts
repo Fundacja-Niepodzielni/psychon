@@ -6,7 +6,7 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
 
 /**
- * Pliki do pobrania na ekranie lekcji uczestnika (`/nowy-front/lekcja/[id]`),
+ * Materiały do pobrania na ekranie lekcji uczestnika (`/nowy-front/lekcja/[id]`),
  * na zbudowanej aplikacji, z atrapą API i atrapą sesji (żadne żądanie nie
  * wychodzi poza przeglądarkę). Kurs lekcji pochodzi wyłącznie z parametru
  * adresu `?kurs=<slug>`. Cztery stany na 1280 i 390 px:
@@ -48,6 +48,7 @@ function material(id: number, name: string, lesson_id: number | null, wersjaLink
   return {
     id,
     name,
+    mime: "application/pdf",
     size: 245760 + id * 1000,
     lesson_id,
     download_url: `${API}/materials/${id}/download?signature=${wersjaLinku}`,
@@ -152,7 +153,7 @@ async function otworzLekcje(page: Page, zapytanie: string): Promise<void> {
 }
 
 function karta(page: Page) {
-  return page.getByRole("region", { name: "Pliki do pobrania" });
+  return page.getByRole("region", { name: "Materiały do pobrania" });
 }
 
 async function zrzut(page: Page, nazwa: string): Promise<void> {
@@ -220,11 +221,11 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await otworzLekcje(page, `?kurs=${SLUG}`);
 
       await expect(karta(page)).toBeVisible();
-      await expect(karta(page).getByRole("heading", { level: 2, name: "Pliki do pobrania" })).toBeVisible();
+      await expect(karta(page).getByRole("heading", { level: 2, name: "Materiały do pobrania" })).toBeVisible();
       await expect(karta(page).getByRole("listitem")).toHaveCount(2);
       await expect(karta(page).getByText(DLUGA_NAZWA, { exact: true })).toBeVisible();
-      await expect(karta(page).getByRole("button", { name: `Pobierz plik: ${DLUGA_NAZWA}` })).toBeVisible();
-      await expect(karta(page).getByRole("button", { name: "Pobierz plik: Karta pracy.pdf" })).toBeVisible();
+      await expect(karta(page).getByRole("button", { name: /^Pobierz: karta_pracy_do_lekcji.*2026\.pdf/ })).toBeVisible();
+      await expect(karta(page).getByRole("button", { name: /^Pobierz: Karta pracy\.pdf/ })).toBeVisible();
       await expect(page.getByText("Slajdy drugiej lekcji.pdf")).toHaveCount(0);
       await expect(page.getByText("Regulamin kursu.pdf")).toHaveCount(0);
       await expect(page.getByText(/materiałów do pobrania/)).toHaveCount(0);
@@ -243,7 +244,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
       await expect.poll(() => atrapa.zapytaniaOKurs.length).toBe(1);
       await expect(karta(page)).toHaveCount(0);
-      await expect(page.getByRole("heading", { name: "Pliki do pobrania" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Materiały do pobrania" })).toHaveCount(0);
       await expect(page.getByText(/materiałów do pobrania/)).toHaveCount(0);
       await expect(page.getByText(/widoku/)).toHaveCount(0);
 
@@ -256,11 +257,11 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const atrapa = await instalujAtrapy(page);
 
       await otworzLekcje(page, "");
-      await expect(page.getByRole("heading", { name: "Pliki do pobrania" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Materiały do pobrania" })).toHaveCount(0);
       await zmierzUklad(page);
 
       await otworzLekcje(page, "?kurs=Zly%20Kurs%2F..%2Fme");
-      await expect(page.getByRole("heading", { name: "Pliki do pobrania" })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Materiały do pobrania" })).toHaveCount(0);
       await zmierzUklad(page);
 
       expect(atrapa.zapytaniaOKurs).toEqual([]);
@@ -273,7 +274,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(karta(page)).toBeVisible();
 
       const pobranie = page.waitForEvent("download");
-      await karta(page).getByRole("button", { name: "Pobierz plik: Karta pracy.pdf" }).click();
+      await karta(page).getByRole("button", { name: /^Pobierz: Karta pracy\.pdf/ }).click();
       expect((await pobranie).suggestedFilename()).toBe("Karta pracy.pdf");
 
       expect(atrapa.zapytaniaOKurs).toEqual([`/courses/${SLUG}`, `/courses/${SLUG}`]);
@@ -286,7 +287,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await otworzLekcje(page, `?kurs=${SLUG}`);
       await expect(karta(page)).toBeVisible();
 
-      await karta(page).getByRole("button", { name: "Pobierz plik: Karta pracy.pdf" }).click();
+      await karta(page).getByRole("button", { name: /^Pobierz: Karta pracy\.pdf/ }).click();
 
       const zdanie = karta(page).getByRole("alert");
       await expect(zdanie).toHaveText(/Nie udało się pobrać pliku\. Spróbuj ponownie za chwilę\./);

@@ -1,6 +1,6 @@
 /**
  * Tryb podglądu: personel i prowadzący oglądają kurs tak, jak go widzi
- * uczestnik. Sygnałem jest parametr adresu `podglad=1` ORAZ rola konta —
+ * uczestnik. Sygnałem jest parametr adresu `podglad` o wartości 1 ORAZ rola konta —
  * sam parametr uczestnikowi niczego nie włącza. Moduł jest czysty (bez
  * odczytów i zapisów); rolę ekran bierze z odczytu konta, który ramka ma już
  * na stronie.
@@ -25,7 +25,7 @@ export const ROLE_PODGLADU: readonly string[] = [...ROLE_PERSONELU, ROLA_PROWADZ
 export type WartoscParametru = string | readonly string[] | null | undefined;
 
 /**
- * Czy ekran ma pokazać tryb podglądu: parametr `podglad=1` (dokładnie `1`;
+ * Czy ekran ma pokazać tryb podglądu: parametr `podglad` (dokładnie wartość `1`;
  * przy powtórzonym parametrze liczy się pierwszy) i rola personelu albo
  * prowadzącego. Rola nieznana (jeszcze nieodczytana) albo uczestnika daje
  * `false` — pas się nie pokazuje, ekran jest zwykły.

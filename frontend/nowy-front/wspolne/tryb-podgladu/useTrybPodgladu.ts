@@ -6,7 +6,7 @@ import { api } from "@/lib/api/klient";
 import { czyTrybPodgladu, PARAMETR_PODGLADU } from "./tryb-podgladu";
 
 export interface StanTrybuPodgladu {
-  /** Parametr `podglad=1` w adresie ORAZ rola personelu albo prowadzącego. */
+  /** Parametr `podglad` o wartości 1 w adresie ORAZ rola personelu albo prowadzącego. */
   podglad: boolean;
   /** Rola konta; `null`, dopóki odczyt konta trwa albo się nie udał. */
   rola: string | null;

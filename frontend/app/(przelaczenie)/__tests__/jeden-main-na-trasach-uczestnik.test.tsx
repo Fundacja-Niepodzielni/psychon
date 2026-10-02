@@ -180,7 +180,7 @@ describe("/panel/lekcje/[id] w układzie panelu uczestnika", () => {
     api.mockImplementation(NIGDY);
     const { container } = await trasaLekcji();
 
-    await screen.findByRole("heading", { level: 1, name: "Lekcja" });
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
     expect(zmierz(container)).toEqual(JEDEN);
   });
 

@@ -10,13 +10,14 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * zbudowanej aplikacji, z atrapą API i atrapą sesji (żadne żądanie nie
  * wychodzi poza przeglądarkę). Stany na 1280 i 390 px:
  *  - nagranie gotowe: odtwarzacz;
- *  - nagranie w przygotowaniu (stan z zasobu lekcji): jedno zdanie, bez pytania o link;
- *  - odmowa linku `video_not_ready`: to samo zdanie;
- *  - lekcja bez nagrania: jak dotąd;
- *  - inny błąd linku: komunikat błędu z ponowieniem, nie cichy brak nagrania.
+ *  - nagranie w przygotowaniu (stan z zasobu lekcji albo `video_not_ready`):
+ *    jedno zdanie, bez pytania o link;
+ *  - nagranie z błędem albo link odmówiony (503): „Tego nagrania nie da się
+ *    teraz obejrzeć”, „Napisz do prowadzącego”, lekcji nie da się ukończyć;
+ *  - lekcja bez nagrania (stan `none` albo `video_missing`): bez sekcji nagrania.
  * W każdym: jeden `main`, brak przewijania poziomego, cele dotyku co najmniej
- * 44 px, axe (WCAG 2.1 AA i `best-practice`) = 0. Zrzuty całej strony powstają
- * tylko przy ustawionej zmiennej `PW_ZRZUTY`.
+ * 44 px, dokładnie jeden zielony przycisk, axe (WCAG 2.1 AA i `best-practice`)
+ * = 0. Zrzuty całej strony powstają tylko przy ustawionej zmiennej `PW_ZRZUTY`.
  */
 
 const API = "http://localhost:8000/api/v1";
@@ -26,7 +27,9 @@ const ATRAPA_SESJI = {
   expiresAt: Date.now() + 3_600_000,
 };
 
-const ZDANIE = "Nagranie w przygotowaniu.";
+const ZDANIE = "Nagranie jest w przygotowaniu.";
+const ZDANIE_BLEDU = "Tego nagrania nie da się teraz obejrzeć.";
+const SLUG = "wywiad-psychologiczny";
 const DLUGIE_SLOWO = "Psychologicznodiagnostycznoterapeutycznointerwencyjnokryzysowe";
 const DLUGI_TYTUL = `Wprowadzenie do wywiadu ${DLUGIE_SLOWO} — część druga, rozszerzona`;
 
@@ -36,6 +39,9 @@ const LEKCJA = {
   description: "Kiedy pytać otwarcie, a kiedy zamknąć pytanie.",
   content: "## Cel lekcji\n\nPo tej lekcji rozróżniasz pytania otwarte i zamknięte.",
   topic: { id: 7, title: "Rozmowa", position: 1 },
+  course: { id: 2, slug: SLUG, title: "Wywiad psychologiczny" },
+  question_addressee: { name: "Marta Zielińska" },
+  required_active_seconds: 1080,
   duration_seconds: 1800,
   position_seconds: 0,
   watched_seconds: 812,
@@ -45,7 +51,7 @@ const LEKCJA = {
   completable_at_percent: 60,
 };
 
-type Link = "wydany" | "video_not_ready" | "video_missing" | "blad-serwera";
+type Link = "wydany" | "video_not_ready" | "video_missing" | "niedostepny";
 
 interface Opcje {
   video_status: "none" | "uploading" | "processing" | "ready" | "error";
@@ -85,7 +91,27 @@ async function instalujAtrapy(page: Page, opcje: Opcje): Promise<Atrapa> {
     route.fulfill(json({ ...LEKCJA, title: opcje.tytul ?? LEKCJA.title, video_status: opcje.video_status })),
   );
   await page.route(`${API}/lessons/21/progress`, (route) =>
-    route.fulfill(json({ watched_seconds: 812, active_seconds: 700, completable: false, completable_at_percent: 60 })),
+    route.fulfill(
+      json({ watched_seconds: 812, active_seconds: 700, completable: false, completable_at_percent: 60, required_active_seconds: 1080 }),
+    ),
+  );
+  await page.route(`${API}/courses/**`, (route) =>
+    route.fulfill(
+      json({
+        id: 2,
+        slug: SLUG,
+        title: "Wywiad psychologiczny",
+        status: "in_progress",
+        progress_percent: 40,
+        has_test: true,
+        topics: [{ id: 7, title: "Rozmowa", position: 1 }],
+        lessons: [
+          { id: 21, title: LEKCJA.title, sequence_order: 1, duration_seconds: 1800, is_completed: false, topic_id: 7 },
+          { id: 22, title: "Pytania otwarte i zamknięte", sequence_order: 2, duration_seconds: 1500, is_completed: false, topic_id: 7 },
+        ],
+        materials: [],
+      }),
+    ),
   );
   await page.route(`${API}/lessons/21/video-link`, (route) => {
     pytania += 1;
@@ -93,7 +119,7 @@ async function instalujAtrapy(page: Page, opcje: Opcje): Promise<Atrapa> {
     if (odpowiedz === "wydany") return route.fulfill(json({ url: "https://nagrania.atrapa.test/lista.m3u8" }));
     if (odpowiedz === "video_not_ready") return route.fulfill(odmowa(404, "video_not_ready", "Nagranie w przygotowaniu."));
     if (odpowiedz === "video_missing") return route.fulfill(odmowa(404, "video_missing", "Brak nagrania."));
-    return route.fulfill(odmowa(500, "server_error", "Błąd serwera."));
+    return route.fulfill(odmowa(503, "video_not_configured", "Nagrania chwilowo niedostępne."));
   });
   await page.route("https://nagrania.atrapa.test/**", (route) => route.abort());
   await page.route("**/api/auth/session", (route) =>
@@ -154,7 +180,7 @@ async function zmierzStan(page: Page, testInfo: TestInfo, nazwa: string): Promis
       .map((przycisk) => (przycisk.textContent ?? "").trim()),
   );
   await testInfo.attach(`zielone-${nazwa}`, { body: JSON.stringify(zielone), contentType: "application/json" });
-  expect(zielone.length, `zielone przyciski: ${zielone.join(", ")}`).toBeLessThanOrEqual(1);
+  expect(zielone.length, `zielone przyciski: ${zielone.join(", ")}`).toBe(1);
 
   const naruszenia = await uruchomAxe(page);
   await dolaczNaruszeniaDoRaportu(testInfo, `axe-${nazwa}`, naruszenia);
@@ -172,6 +198,15 @@ const OKNA = [
   { szerokosc: 390, wysokosc: 844 },
 ];
 
+const BRAK_ODTWARZACZA = /^Odtwórz/;
+const OZNACZ = "Oznacz lekcję jako ukończoną";
+
+/** Przycisk ukończenia wygląda na nieczynny (`aria-disabled`), ale zostaje w kolejności fokusu. */
+async function oczekujNieczynnegoPrzycisku(page: Page): Promise<void> {
+  const przyciski = page.getByRole("button", { name: OZNACZ });
+  await expect(przyciski.first()).toHaveAttribute("aria-disabled", "true");
+}
+
 for (const { szerokosc, wysokosc } of OKNA) {
   test.describe(`lekcja uczestnika: stan nagrania — ${szerokosc} px`, () => {
     test.use({ viewport: { width: szerokosc, height: wysokosc } });
@@ -180,9 +215,11 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const atrapa = await instalujAtrapy(page, { video_status: "ready" });
       await otworzLekcje(page);
 
-      await expect(page.getByRole("button", { name: "Odtwórz" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Odtwórz nagranie" })).toBeVisible();
       await expect(page.getByText(ZDANIE)).toHaveCount(0);
+      await expect(page.getByText(ZDANIE_BLEDU)).toHaveCount(0);
       await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
+      await oczekujNieczynnegoPrzycisku(page);
       expect(atrapa.pytaniaOLink()).toBe(1);
 
       await zmierzStan(page, testInfo, `uczestnik-gotowe-${szerokosc}`);
@@ -193,44 +230,66 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await otworzLekcje(page, DLUGI_TYTUL);
 
       await expect(page.getByText(ZDANIE, { exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Odtwórz" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: BRAK_ODTWARZACZA })).toHaveCount(0);
       await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
       await expect(page.getByText("Po tej lekcji rozróżniasz pytania otwarte i zamknięte.")).toBeVisible();
-      await expect(page.locator("main")).not.toContainText(/przetwarza|wysyła|dostawc|błąd/i);
+      await expect(page.locator("main")).not.toContainText(/przetwarza|wysyła|dostawc/i);
       expect(atrapa.pytaniaOLink()).toBe(0);
 
       await zmierzStan(page, testInfo, `uczestnik-w-przygotowaniu-${szerokosc}`);
     });
 
-    for (const kod of ["uploading", "error"] as const) {
-      test(`stan \`${kod}\`: to samo zdanie, bez wzmianki o błędzie`, async ({ page }) => {
-        const atrapa = await instalujAtrapy(page, { video_status: kod });
-        await otworzLekcje(page);
+    test("stan `uploading`: to samo zdanie co przy przetwarzaniu", async ({ page }) => {
+      const atrapa = await instalujAtrapy(page, { video_status: "uploading" });
+      await otworzLekcje(page);
 
-        await expect(page.getByText(ZDANIE, { exact: true })).toBeVisible();
-        await expect(page.getByRole("button", { name: "Odtwórz" })).toHaveCount(0);
-        await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
-        await expect(page.locator("main")).not.toContainText(/przetwarza|wysyła|dostawc|błąd/i);
-        expect(atrapa.pytaniaOLink()).toBe(0);
-      });
-    }
+      await expect(page.getByText(ZDANIE, { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: BRAK_ODTWARZACZA })).toHaveCount(0);
+      await expect(page.locator("main")).not.toContainText(/przetwarza|wysyła|dostawc/i);
+      expect(atrapa.pytaniaOLink()).toBe(0);
+    });
+
+    test("stan `error`: komunikat, „Napisz do prowadzącego”, lekcji nie da się ukończyć", async ({ page }, testInfo) => {
+      const atrapa = await instalujAtrapy(page, { video_status: "error" });
+      await otworzLekcje(page);
+
+      await expect(page.getByText(ZDANIE_BLEDU, { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Napisz do prowadzącego" })).toBeVisible();
+      await expect(page.getByRole("button", { name: BRAK_ODTWARZACZA })).toHaveCount(0);
+      await expect(page.getByText(ZDANIE)).toHaveCount(0);
+      await oczekujNieczynnegoPrzycisku(page);
+      expect(atrapa.pytaniaOLink()).toBe(0);
+
+      await zmierzStan(page, testInfo, `uczestnik-nagranie-nie-dziala-${szerokosc}`);
+    });
 
     test("odmowa linku `video_not_ready`: to samo zdanie", async ({ page }) => {
       await instalujAtrapy(page, { video_status: "ready", link: ["video_not_ready"] });
       await otworzLekcje(page);
 
       await expect(page.getByText(ZDANIE, { exact: true })).toBeVisible();
-      await expect(page.getByRole("button", { name: "Odtwórz" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: BRAK_ODTWARZACZA })).toHaveCount(0);
       await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
     });
 
-    test("lekcja bez nagrania: bez odtwarzacza i bez zdania o przygotowaniu", async ({ page }, testInfo) => {
+    test("link niedostępny (503): nagranie nie działa, bez cichego braku nagrania", async ({ page }) => {
+      await instalujAtrapy(page, { video_status: "ready", link: ["niedostepny"] });
+      await otworzLekcje(page);
+
+      await expect(page.getByText(ZDANIE_BLEDU, { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Napisz do prowadzącego" })).toBeVisible();
+      await expect(page.getByText(ZDANIE)).toHaveCount(0);
+      await oczekujNieczynnegoPrzycisku(page);
+    });
+
+    test("lekcja bez nagrania: bez odtwarzacza, bez zdań o nagraniu", async ({ page }, testInfo) => {
       const atrapa = await instalujAtrapy(page, { video_status: "none" });
       await otworzLekcje(page);
 
       await expect(page.getByText("Po tej lekcji rozróżniasz pytania otwarte i zamknięte.")).toBeVisible();
       await expect(page.getByText(ZDANIE)).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Odtwórz" })).toHaveCount(0);
+      await expect(page.getByText(ZDANIE_BLEDU)).toHaveCount(0);
+      await expect(page.getByRole("button", { name: BRAK_ODTWARZACZA })).toHaveCount(0);
       await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
       expect(atrapa.pytaniaOLink()).toBe(0);
 
@@ -243,23 +302,8 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
       await expect(page.getByText("Po tej lekcji rozróżniasz pytania otwarte i zamknięte.")).toBeVisible();
       await expect(page.getByText(ZDANIE)).toHaveCount(0);
+      await expect(page.getByText(ZDANIE_BLEDU)).toHaveCount(0);
       await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
-    });
-
-    test("inny błąd linku: komunikat błędu z ponowieniem, po ponowieniu odtwarzacz", async ({ page }, testInfo) => {
-      await instalujAtrapy(page, { video_status: "ready", link: ["blad-serwera", "wydany"] });
-      await otworzLekcje(page);
-
-      const komunikat = page.locator("main").getByRole("alert").filter({ hasText: "Nie udało się wczytać nagrania" });
-      await expect(komunikat).toBeVisible();
-      await expect(komunikat).toContainText("Sprawdź połączenie i spróbuj ponownie. Pozostała część lekcji jest dostępna poniżej.");
-      await expect(page.getByText(ZDANIE)).toHaveCount(0);
-      await expect(page.getByText("Po tej lekcji rozróżniasz pytania otwarte i zamknięte.")).toBeVisible();
-      await zmierzStan(page, testInfo, `uczestnik-blad-nagrania-${szerokosc}`);
-
-      await komunikat.getByRole("button", { name: "Spróbuj ponownie" }).click();
-      await expect(page.getByRole("button", { name: "Odtwórz" })).toBeVisible();
-      await expect(komunikat).toHaveCount(0);
     });
   });
 }

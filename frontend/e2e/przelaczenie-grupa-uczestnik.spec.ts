@@ -11,7 +11,7 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - `/panel/lekcje/[id]` pokazuje STARĄ stronę lekcji (grupa `lekcja` jest
  *   wyłączona): `h1` „Lekcja”, odnośnik „Wróć do listy kursów” i „Aktywny
  *   czas:” — a nie ekran lekcji nowego frontu (`h1` z tytułem lekcji, przycisk
- *   „Oznacz jako ukończoną”);
+ *   „Oznacz lekcję jako ukończoną”);
  * - `/panel/kursy/[slug]` pokazuje STARĄ stronę kursu (grupa `kursUczestnika`
  *   jest wyłączona): bez opisu „na końcu test”, bez karty „Test końcowy” i bez
  *   przycisku głównego nowego ekranu;
@@ -152,10 +152,10 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     await expect(page.getByRole("link", { name: "Wróć do listy kursów" })).toBeVisible();
     await expect(page.getByText("Aktywny czas:")).toBeVisible();
 
-    // Nowy ekran: `h1` z tytułem lekcji i przycisk „Oznacz jako ukończoną”
+    // Nowy ekran: `h1` z tytułem lekcji i przycisk „Oznacz lekcję jako ukończoną”
     // (`nowy-front/lekcja/Lekcja.tsx`) — przy wyłączonej grupie ich nie ma.
     await expect(page.getByRole("heading", { level: 1, name: LEKCJA.title })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Oznacz jako ukończoną" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).toHaveCount(0);
 
     await expect(page.locator("main")).toHaveCount(1);
     await expect(page.locator("#tresc")).toHaveCount(1);

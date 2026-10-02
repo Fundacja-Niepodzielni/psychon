@@ -1,4 +1,5 @@
 import { Lekcja } from "@/nowy-front/lekcja/Lekcja";
+import style from "./strona.module.css";
 
 /**
  * Route `/nowy-front/lekcja/[id]` — lesson screen (H06). Read and
@@ -11,5 +12,9 @@ export default async function StronaLekcji({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <Lekcja id={id} />;
+  return (
+    <div className={style.pole}>
+      <Lekcja id={id} />
+    </div>
+  );
 }

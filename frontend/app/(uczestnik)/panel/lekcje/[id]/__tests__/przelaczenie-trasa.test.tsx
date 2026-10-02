@@ -127,7 +127,7 @@ describe("/panel/lekcje/[id] a rejestr przełączenia", () => {
     const { default: Strona } = await import("../page");
     atrapaZLekcja();
 
-    const html = await wyrenderuj(await Strona(parametry("21")), (ekran) => ekran.findByText("Oznacz jako ukończoną"));
+    const html = await wyrenderuj(await Strona(parametry("21")), (ekran) => ekran.findByText("Oznacz lekcję jako ukończoną"));
     expect(html).not.toContain("Wróć do listy kursów");
     expect(html).not.toContain("Aktywny czas:");
   });

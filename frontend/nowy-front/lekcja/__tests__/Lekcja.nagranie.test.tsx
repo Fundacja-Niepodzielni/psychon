@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { KURS, LEKCJA } from "./pomoce";
 
 /**
- * Lekcja uczestnika odróżnia nagranie w przygotowaniu od braku nagrania i od
- * błędu odczytu nagrania. Zdanie dla osoby nie zawiera słów technicznych ani
- * wzmianki o błędzie dostawcy.
+ * Ekran odróżnia nagranie w przygotowaniu, nagranie, które nie działa, i lekcję
+ * bez nagrania. Zdania dla osoby nie zawierają słów technicznych ani wzmianki o
+ * dostawcy; treść i materiały lekcji zostają we wszystkich trzech.
  */
 
 const pobierzDaneLekcji = vi.fn();
+const pobierzOdczytKursu = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: vi.fn(), refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
@@ -17,98 +18,94 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../dane", async (importOriginal) => {
   const original = await importOriginal<typeof import("../dane")>();
-  return { ...original, pobierzDaneLekcji: (...args: unknown[]) => pobierzDaneLekcji(...args) };
+  return { ...original, pobierzDaneLekcji: (...args: unknown[]) => pobierzDaneLekcji(...args), pobierzPytania: async () => [] };
+});
+
+vi.mock("../kurs", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../kurs")>();
+  return { ...original, pobierzOdczytKursu: (...args: unknown[]) => pobierzOdczytKursu(...args) };
 });
 
 const { Lekcja } = await import("../Lekcja");
 
-const LEKCJA = {
-  id: 21,
-  title: "Wprowadzenie do wywiadu",
-  description: "Opis lekcji",
-  content: "Pierwszy akapit treści.",
-  topic: null,
-  duration_seconds: 1800,
-  position_seconds: 0,
-  watched_seconds: 0,
-  active_seconds: 0,
-  is_completed: false,
-  completable: false,
-  completable_at_percent: 60,
-};
-
-const ZDANIE = "Nagranie w przygotowaniu.";
-const SLOWA_TECHNICZNE = /błąd|dostawc|przetwarza|wysyła|serwer|video|status/i;
+const SLOWA_TECHNICZNE = /błąd|dostawc|przetwarza|wysyła|serwer|video|status|503/i;
 
 beforeEach(() => {
   pobierzDaneLekcji.mockReset();
+  pobierzOdczytKursu.mockReset();
+  pobierzOdczytKursu.mockResolvedValue(KURS);
 });
 
 async function otworz(wynik: unknown) {
   pobierzDaneLekcji.mockResolvedValue(wynik);
-  render(<Lekcja id="21" />);
+  const rezultat = render(<Lekcja id="21" />);
   await screen.findByRole("heading", { level: 1, name: LEKCJA.title });
+  await screen.findByText(/lekcji ukończone/);
+  return rezultat;
+}
+
+function blokNagrania(kontener: HTMLElement) {
+  return kontener.querySelector('section[aria-labelledby="naglowek-nagrania"]') as HTMLElement;
 }
 
 describe("nagranie w przygotowaniu", () => {
-  it("jedno zdanie bez słów technicznych, bez ramki odtwarzacza; opis i treść lekcji zostają", async () => {
-    await otworz({ status: "ok", dane: LEKCJA, bezNagrania: true, nagranie: "w-przygotowaniu" });
-    const zdanie = screen.getByText(ZDANIE);
-    expect(zdanie).toBeInTheDocument();
-    expect(zdanie.textContent).not.toMatch(SLOWA_TECHNICZNE);
-    expect(screen.queryByRole("button", { name: "Odtwórz" })).toBeNull();
-    expect(screen.getByText(LEKCJA.description)).toBeInTheDocument();
-    expect(screen.getByText("Pierwszy akapit treści.")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).toBeNull();
+  it("zdanie bez słów technicznych, bez ramki odtwarzacza; opis, treść i pliki zostają", async () => {
+    const { container } = await otworz({ status: "ok", dane: LEKCJA, bezNagrania: true, nagranie: "w-przygotowaniu" });
+
+    expect(blokNagrania(container).textContent).not.toMatch(SLOWA_TECHNICZNE);
+    expect(screen.queryByRole("button", { name: /Odtwórz/ })).toBeNull();
+    expect(screen.getByText("Opis lekcji")).toBeInTheDocument();
+    expect(screen.getByText(/Kryzys psychiczny nie zawsze wygląda jak kryzys\./)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Materiały do pobrania" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Napisz do prowadzącego" })).toBeNull();
   });
 
-  it("lekcja bez opisu i treści: zdanie zamiast stanu pustego o braku nagrania", async () => {
+  it("lekcja bez opisu i treści: zdanie o przygotowaniu zamiast stanu pustego o braku nagrania", async () => {
     await otworz({
       status: "ok",
       dane: { ...LEKCJA, description: null, content: null },
       bezNagrania: true,
       nagranie: "w-przygotowaniu",
     });
-    expect(screen.getByText(ZDANIE)).toBeInTheDocument();
+
+    expect(screen.getByText("Nagranie jest w przygotowaniu.")).toBeInTheDocument();
     expect(screen.queryByText("Ta lekcja nie ma jeszcze nagrania ani treści.")).toBeNull();
-    expect(screen.queryByText("Lekcja bez treści")).toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: LEKCJA.title })).toBeInTheDocument();
   });
 });
 
-describe("gotowe nagranie i brak nagrania — jak dotąd", () => {
-  it("nagranie gotowe: odtwarzacz, bez zdania o przygotowaniu", async () => {
-    await otworz({ status: "ok", dane: LEKCJA, bezNagrania: false });
-    expect(screen.getByRole("button", { name: "Odtwórz" })).toBeInTheDocument();
-    expect(screen.queryByText(ZDANIE)).toBeNull();
+describe("nagranie, które nie działa", () => {
+  it("zdanie bez słów technicznych, „Napisz do prowadzącego”, nigdy „brak nagrania”", async () => {
+    const { container } = await otworz({ status: "ok", dane: LEKCJA, bezNagrania: true, nagranie: "nie-dziala" });
+
+    expect(blokNagrania(container).textContent).not.toMatch(SLOWA_TECHNICZNE);
+    expect(screen.getByRole("button", { name: "Napisz do prowadzącego" })).toBeInTheDocument();
+    expect(screen.queryByText("Ta lekcja nie ma jeszcze nagrania ani treści.")).toBeNull();
+    expect(screen.queryByText("Nagranie jest w przygotowaniu.")).toBeNull();
+    expect(screen.getByText(/Kryzys psychiczny nie zawsze wygląda jak kryzys\./)).toBeInTheDocument();
+  });
+});
+
+describe("gotowe nagranie i brak nagrania", () => {
+  it("nagranie gotowe: odtwarzacz, bez zdań o przygotowaniu i błędzie", async () => {
+    await otworz({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
+
+    expect(screen.getByRole("button", { name: "Odtwórz nagranie" })).toBeInTheDocument();
+    expect(screen.queryByText("Nagranie jest w przygotowaniu.")).toBeNull();
+    expect(screen.queryByText("Tego nagrania nie da się teraz obejrzeć.")).toBeNull();
   });
 
-  it("lekcja bez nagrania: bez odtwarzacza i bez zdania o przygotowaniu", async () => {
-    await otworz({ status: "ok", dane: LEKCJA, bezNagrania: true });
-    expect(screen.queryByRole("button", { name: "Odtwórz" })).toBeNull();
-    expect(screen.queryByText(ZDANIE)).toBeNull();
-    expect(screen.getByText(LEKCJA.description)).toBeInTheDocument();
+  it("lekcja bez nagrania: bez sekcji nagrania i bez zdań o nagraniu; treść zostaje", async () => {
+    const { container } = await otworz({ status: "ok", dane: { ...LEKCJA, video_status: "none" }, bezNagrania: true });
+
+    expect(blokNagrania(container)).toBeNull();
+    expect(screen.queryByText("Nagranie jest w przygotowaniu.")).toBeNull();
+    expect(screen.getByText("Opis lekcji")).toBeInTheDocument();
   });
 
-  it("lekcja bez nagrania, opisu i treści: stan pusty jak dotąd", async () => {
+  it("lekcja bez nagrania, opisu, treści i plików: stan pusty", async () => {
+    pobierzOdczytKursu.mockResolvedValue({ ...KURS, materials: [] });
     await otworz({ status: "ok", dane: { ...LEKCJA, description: null, content: null }, bezNagrania: true });
+
     expect(screen.getByText("Ta lekcja nie ma jeszcze nagrania ani treści.")).toBeInTheDocument();
-    expect(screen.queryByText(ZDANIE)).toBeNull();
-  });
-});
-
-describe("błąd odczytu nagrania", () => {
-  it("komunikat błędu z ponowieniem, a nie cichy brak nagrania; treść lekcji zostaje", async () => {
-    await otworz({ status: "ok", dane: LEKCJA, bezNagrania: true, nagranie: "blad" });
-    const komunikat = screen.getByRole("alert");
-    expect(komunikat).toHaveTextContent("Nie udało się wczytać nagrania");
-    expect(komunikat).toHaveTextContent("Sprawdź połączenie i spróbuj ponownie. Pozostała część lekcji jest dostępna poniżej.");
-    expect(screen.queryByText(ZDANIE)).toBeNull();
-    expect(screen.getByText("Pierwszy akapit treści.")).toBeInTheDocument();
-
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false });
-    await userEvent.setup().click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
-    expect(await screen.findByRole("button", { name: "Odtwórz" })).toBeInTheDocument();
-    expect(pobierzDaneLekcji).toHaveBeenCalledTimes(2);
   });
 });

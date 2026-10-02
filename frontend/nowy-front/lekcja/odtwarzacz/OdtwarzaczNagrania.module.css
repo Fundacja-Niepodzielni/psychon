@@ -1,0 +1,233 @@
+/* Ramka odtwarzacza nagrania — wyłącznie tokeny. Jedyny plik stylów punktu odtwarzacza. */
+.ramka {
+  display: flex;
+  flex-direction: column;
+  background: var(--invert-bg);
+  color: var(--invert-ink);
+  border-radius: var(--r-md);
+  aspect-ratio: 16 / 9;
+  min-width: 0;
+}
+
+/* Fokus w ramce jest jasny: obrys `--brand` na ciemnym tle ma za mały kontrast. */
+.ramka :focus-visible {
+  outline: 3px solid var(--invert-ink);
+  outline-offset: 2px;
+}
+
+.ekran {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-14);
+  padding: var(--space-16);
+  min-height: 96px;
+}
+
+.duzy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-10);
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  flex: none;
+  border-radius: var(--r-round);
+  border: 2px solid color-mix(in srgb, var(--invert-ink) 60%, transparent);
+  background: color-mix(in srgb, var(--invert-ink) 15%, transparent);
+  color: var(--invert-ink);
+  cursor: pointer;
+}
+
+.duzy:hover {
+  background: color-mix(in srgb, var(--invert-ink) 25%, transparent);
+}
+
+.duzy .znak {
+  width: 26px;
+  height: 26px;
+}
+
+.szeroki {
+  width: auto;
+  height: auto;
+  min-height: 56px;
+  padding: 0 var(--space-24) 0 var(--space-16);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-8);
+  font-weight: var(--fw-medium);
+}
+
+.szeroki .znak {
+  width: 22px;
+  height: 22px;
+}
+
+.wznowienie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8) var(--space-14);
+  max-width: 100%;
+  padding: var(--space-8) var(--space-8) var(--space-8) var(--space-16);
+  border: 1px solid color-mix(in srgb, var(--invert-ink) 35%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--invert-ink) 8%, transparent);
+  font-size: var(--fs-9);
+}
+
+.drugi {
+  min-height: var(--hit-min);
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--r-xs);
+  border: 1px solid color-mix(in srgb, var(--invert-ink) 80%, transparent);
+  background: transparent;
+  color: var(--invert-ink);
+  font: inherit;
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.drugi:hover {
+  background: color-mix(in srgb, var(--invert-ink) 15%, transparent);
+}
+
+.znak {
+  fill: currentColor;
+  stroke: none;
+  flex: none;
+  margin-left: var(--space-2);
+}
+
+.znakLinia {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.sterowanie {
+  padding: 0 var(--space-14) var(--space-6);
+  border-top: 1px solid color-mix(in srgb, var(--invert-ink) 14%, transparent);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: color-mix(in srgb, var(--invert-ink) 5%, transparent);
+}
+
+.przewijanie {
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min);
+  cursor: pointer;
+  border-radius: var(--r-2xs);
+  touch-action: none;
+}
+
+.tor {
+  position: relative;
+  flex: 1;
+  height: var(--space-6);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--invert-ink) 32%, transparent);
+}
+
+.tor i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--r-pill);
+  background: var(--invert-ink);
+}
+
+.tor b {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: var(--r-round);
+  background: var(--invert-ink);
+  box-shadow: 0 0 0 2px var(--invert-bg);
+}
+
+.wiersz {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--fs-10);
+}
+
+.czas {
+  white-space: nowrap;
+  padding: 0 var(--space-6);
+  font-variant-numeric: tabular-nums;
+}
+
+.rozpychacz {
+  flex: 1;
+}
+
+.ikona {
+  display: grid;
+  place-items: center;
+  width: var(--hit-min);
+  height: var(--hit-min);
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--invert-ink);
+  cursor: pointer;
+}
+
+.ikona .znak {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+.pelny {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex: none;
+  min-height: var(--hit-min);
+  padding: 0 var(--space-10);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--invert-ink);
+  font: inherit;
+  font-size: var(--fs-10);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pelny .znakLinia {
+  width: 18px;
+  height: 18px;
+}
+
+.ikona:hover,
+.pelny:hover {
+  background: color-mix(in srgb, var(--invert-ink) 15%, transparent);
+}
+
+@media (max-width: 639px) {
+  .ramka {
+    border-radius: 0;
+  }
+
+  .sterowanie {
+    border-radius: 0;
+    padding: 0 var(--space-8) var(--space-4);
+  }
+}

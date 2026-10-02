@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { maTekst, okruszkiLekcji, ukladGlownej } from "../dane";
+import { maTekst } from "../dane";
 
 const katalog = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -67,44 +67,47 @@ describe("pliki ekranu lekcji — struktura", () => {
   });
 });
 
-describe("ukladGlownej", () => {
-  const OPIS = "Opis lekcji";
-  const TRESC = "Treść lekcji";
-
-  it("z nagraniem zawsze odtwarzacz", () => {
-    expect(ukladGlownej({ description: null, content: null }, false)).toBe("odtwarzacz");
-    expect(ukladGlownej({ description: OPIS, content: TRESC }, false)).toBe("odtwarzacz");
-  });
-
-  it("bez nagrania, z opisem: odtwarzacz (sam pokazuje opis bez ramki)", () => {
-    expect(ukladGlownej({ description: OPIS, content: null }, true)).toBe("odtwarzacz");
-  });
-
-  it("bez nagrania i bez opisu, z treścią: sama treść", () => {
-    expect(ukladGlownej({ description: null, content: TRESC }, true)).toBe("sama-tresc");
-    expect(ukladGlownej({ description: "  ", content: TRESC }, true)).toBe("sama-tresc");
-  });
-
-  it("bez nagrania, opisu i treści: stan pusty", () => {
-    expect(ukladGlownej({ description: null, content: null }, true)).toBe("pusta");
-    expect(ukladGlownej({ description: "", content: "  \n" }, true)).toBe("pusta");
-  });
-});
-
-describe("maTekst i okruszkiLekcji", () => {
+describe("maTekst", () => {
   it("maTekst: tylko niepusty tekst po przycięciu", () => {
     expect(maTekst(null)).toBe(false);
     expect(maTekst("")).toBe(false);
-    expect(maTekst(" \n\t")).toBe(false);
+    expect(maTekst("   ")).toBe(false);
+    expect(maTekst("\n\t")).toBe(false);
     expect(maTekst("a")).toBe(true);
   });
+});
 
-  it("okruszki: temat tylko gdy lekcja go ma", () => {
-    expect(okruszkiLekcji({ title: "L", topic: null })).toEqual([{ etykieta: "Kursy" }, { etykieta: "L" }]);
-    expect(okruszkiLekcji({ title: "L", topic: { id: 1, title: "T", position: 1 } })).toEqual([
-      { etykieta: "Kursy" },
-      { etykieta: "T" },
-      { etykieta: "L" },
-    ]);
+/**
+ * Odtwarzacz nagrania stoi w jednym wąskim punkcie (`odtwarzacz/`): tylko tam
+ * wolno mieć surowe elementy sterujące ramki. Reszta reguł (kolory, importy,
+ * HTML) obowiązuje także tam; ekran poza tym katalogiem nie sięga do ramki.
+ */
+describe("punkt odtwarzacza", () => {
+  const katalogOdtwarzacza = resolve(katalog, "odtwarzacz");
+  const pliki = readdirSync(katalogOdtwarzacza)
+    .filter((nazwa) => /\.(tsx|css)$/.test(nazwa))
+    .map((nazwa) => ({ nazwa, tresc: readFileSync(resolve(katalogOdtwarzacza, nazwa), "utf-8") }));
+
+  it("jest jeden komponent i jeden plik stylów", () => {
+    expect(pliki.map((p) => p.nazwa).sort()).toEqual(["OdtwarzaczNagrania.module.css", "OdtwarzaczNagrania.tsx"]);
+  });
+
+  it("bez twardych kolorów, importów z components i wstrzykiwania HTML", () => {
+    for (const plik of pliki) {
+      expect(twardyKolor(plik.tresc), plik.nazwa).toEqual([]);
+      expect(importZKomponentow(plik.tresc), plik.nazwa).toEqual([]);
+      expect(plik.tresc, plik.nazwa).not.toContain("dangerouslySetInnerHTML");
+    }
+  });
+
+  it("bez żądań sieciowych: ani fetch, ani adresów dostawcy nagrań", () => {
+    const komponent = pliki.find((p) => p.nazwa.endsWith(".tsx"))!.tresc;
+    expect(komponent).not.toMatch(/fetch\(|XMLHttpRequest|<iframe|<video|new Audio|https?:\/\//);
+  });
+
+  it("ekran importuje odtwarzacz wyłącznie przez ten jeden komponent", () => {
+    const ekran = readFileSync(resolve(katalog, "Lekcja.tsx"), "utf-8");
+    const importy = ekran.match(/from\s+["']\.\/odtwarzacz\/[^"']+["']/g) ?? [];
+    expect(importy).toEqual(['from "./odtwarzacz/OdtwarzaczNagrania"']);
   });
 });

@@ -1,9 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { KURS, LEKCJA, wiszace } from "./pomoce";
 
 const pobierzDaneLekcji = vi.fn();
 const ukonczLekcje = vi.fn();
+const pobierzOdczytKursu = vi.fn();
 const back = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -17,125 +19,103 @@ vi.mock("../dane", async (importOriginal) => {
     ...original,
     pobierzDaneLekcji: (...args: unknown[]) => pobierzDaneLekcji(...args),
     ukonczLekcje: (...args: unknown[]) => ukonczLekcje(...args),
+    pobierzPytania: async () => [],
   };
+});
+
+vi.mock("../kurs", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../kurs")>();
+  return { ...original, pobierzOdczytKursu: (...args: unknown[]) => pobierzOdczytKursu(...args) };
 });
 
 const { Lekcja } = await import("../Lekcja");
 
-const LEKCJA_PODSTAWOWA = {
-  id: 21,
-  title: "Wprowadzenie do wywiadu",
-  description: "Opis lekcji",
-  content: null,
-  topic: null,
-  duration_seconds: 1800,
-  position_seconds: 0,
-  watched_seconds: 812,
-  active_seconds: 700,
-  is_completed: false,
-  completable: false,
-  completable_at_percent: 60,
-};
+const MOZNA = { ...LEKCJA, active_seconds: 960, completable: true };
 
 beforeEach(() => {
   pobierzDaneLekcji.mockReset();
   ukonczLekcje.mockReset();
+  pobierzOdczytKursu.mockReset();
+  pobierzOdczytKursu.mockResolvedValue(KURS);
   back.mockReset();
 });
 
 describe("Lekcja — stan ładowania i danych", () => {
   it("przed odpowiedzią pokazuje szkielet, nie treść lekcji", () => {
-    pobierzDaneLekcji.mockReturnValue(new Promise(() => {}));
+    pobierzDaneLekcji.mockReturnValue(wiszace());
 
     render(<Lekcja id="21" />);
 
-    expect(screen.queryByText(LEKCJA_PODSTAWOWA.title)).toBeNull();
+    expect(screen.queryByText(LEKCJA.title)).toBeNull();
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 
-  it("dane gotowe → tytuł, treść i pasek postępu widoczne", async () => {
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA_PODSTAWOWA, bezNagrania: false });
+  it("dane gotowe → tytuł, opis i okruszki z kursem i tematem", async () => {
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
 
     render(<Lekcja id="21" />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: LEKCJA_PODSTAWOWA.title })).toBeInTheDocument();
-    expect(screen.getByText(LEKCJA_PODSTAWOWA.description)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: LEKCJA.title })).toBeInTheDocument();
+    expect(screen.getByText("Opis lekcji")).toBeInTheDocument();
+    const okruszki = screen.getByRole("navigation", { name: "Gdzie jesteś" });
+    expect(okruszki).toHaveTextContent("KursyPierwsza pomoc psychologicznaKryzys i jego przebieg");
+  });
+
+  it("odczyt kursu pyta o kurs z odczytu lekcji", async () => {
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
+
+    render(<Lekcja id="21" />);
+    await screen.findByText(/lekcji ukończone/);
+
+    expect(pobierzOdczytKursu).toHaveBeenCalledWith("pierwsza-pomoc-psychologiczna");
   });
 });
 
-describe("Lekcja — bez nagrania", () => {
-  it("bezNagrania: true renderuje samą treść, bez ramki odtwarzacza", async () => {
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA_PODSTAWOWA, bezNagrania: true });
-
-    render(<Lekcja id="21" />);
-
-    expect(await screen.findByText(LEKCJA_PODSTAWOWA.description)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Odtwórz" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Zatrzymaj" })).toBeNull();
-  });
-});
-
-describe("Lekcja — próg ukończenia", () => {
-  it("completable: false → przycisk nieaktywny, widoczny powód", async () => {
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA_PODSTAWOWA, bezNagrania: true });
-
-    render(<Lekcja id="21" />);
-
-    const przycisk = await screen.findByRole("button", { name: "Oznacz jako ukończoną" });
-    expect(przycisk).toBeDisabled();
-    expect(screen.getByText("Brakuje 21% aktywnego czasu do progu 60%.")).toBeInTheDocument();
-    expect(ukonczLekcje).not.toHaveBeenCalled();
-  });
-
-  it("completable: true → przycisk aktywny, bez tekstu braku", async () => {
-    pobierzDaneLekcji.mockResolvedValue({
-      status: "ok",
-      dane: { ...LEKCJA_PODSTAWOWA, active_seconds: 1800, completable: true },
-      bezNagrania: true,
-    });
-
-    render(<Lekcja id="21" />);
-
-    const przycisk = await screen.findByRole("button", { name: "Oznacz jako ukończoną" });
-    expect(przycisk).not.toBeDisabled();
-    expect(screen.queryByText(/^Brakuje/)).toBeNull();
-  });
-});
-
-describe("Lekcja — kliknięcie „Oznacz jako ukończoną”", () => {
-  it("422 not_enough_active_time → komunikat, stan bez zmian", async () => {
+describe("Lekcja — ukończenie", () => {
+  it("serwer odmawia (not_enough_active_time): zdanie przy przycisku, lekcja nieukończona", async () => {
     const uzytkownik = userEvent.setup();
-    pobierzDaneLekcji.mockResolvedValue({
-      status: "ok",
-      dane: { ...LEKCJA_PODSTAWOWA, active_seconds: 1800, completable: true },
-      bezNagrania: true,
-    });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: {} });
     ukonczLekcje.mockResolvedValue({ status: "za-malo-czasu" });
 
     render(<Lekcja id="21" />);
-    const przycisk = await screen.findByRole("button", { name: "Oznacz jako ukończoną" });
-    await uzytkownik.click(przycisk);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Oznacz lekcję jako ukończoną" }));
 
-    expect(await screen.findByText("Obejrzyj więcej materiału, aby ukończyć lekcję.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Oznacz jako ukończoną" })).not.toBeDisabled();
-    expect(screen.queryByText("Lekcja ukończona")).toBeNull();
+    expect(await screen.findByText("Serwer nie pozwala jeszcze ukończyć tej lekcji.")).toBeInTheDocument();
+    expect(screen.queryByText("Ukończona")).toBeNull();
+    expect(screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).toBeInTheDocument();
   });
 
-  it("200 → stan ukończony, przycisk znika, widoczne potwierdzenie", async () => {
+  it("błąd sieci przy ukończeniu: zdanie z prośbą o ponowienie, przycisk zostaje, ponowienie kończy lekcję", async () => {
     const uzytkownik = userEvent.setup();
-    pobierzDaneLekcji.mockResolvedValue({
-      status: "ok",
-      dane: { ...LEKCJA_PODSTAWOWA, active_seconds: 1800, completable: true },
-      bezNagrania: true,
-    });
-    ukonczLekcje.mockResolvedValue({ status: "ok", completed_at: "2026-10-03T12:30:00Z" });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: {} });
+    ukonczLekcje.mockResolvedValue({ status: "blad" });
 
     render(<Lekcja id="21" />);
-    const przycisk = await screen.findByRole("button", { name: "Oznacz jako ukończoną" });
-    await uzytkownik.click(przycisk);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Oznacz lekcję jako ukończoną" }));
 
-    expect(await screen.findByText("Lekcja ukończona")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Oznacz jako ukończoną" })).toBeNull();
+    expect(
+      await screen.findByText("Nie udało się ukończyć lekcji. Sprawdź internet i naciśnij jeszcze raz."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).not.toHaveAttribute("aria-disabled");
+
+    ukonczLekcje.mockResolvedValue({ status: "ok", completed_at: "2026-10-03T12:30:00Z" });
+    await uzytkownik.click(screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" }));
+    expect(await screen.findByText("Ukończona")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Nie udało się ukończyć lekcji. Sprawdź internet i naciśnij jeszcze raz."),
+    ).toBeNull();
+  });
+
+  it("podwójne kliknięcie wysyła jedno żądanie", async () => {
+    const uzytkownik = userEvent.setup();
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: {} });
+    ukonczLekcje.mockReturnValue(wiszace());
+
+    render(<Lekcja id="21" />);
+    const przycisk = await screen.findByRole("button", { name: "Oznacz lekcję jako ukończoną" });
+    await uzytkownik.dblClick(przycisk);
+
+    await waitFor(() => expect(ukonczLekcje).toHaveBeenCalledTimes(1));
   });
 });
 
@@ -146,8 +126,9 @@ describe("Lekcja — dostęp i istnienie", () => {
     render(<Lekcja id="21" />);
 
     expect(await screen.findByText("Ukończ najpierw etap 2.")).toBeInTheDocument();
-    expect(screen.queryByText(LEKCJA_PODSTAWOWA.title)).toBeNull();
-    expect(screen.queryByText(LEKCJA_PODSTAWOWA.description)).toBeNull();
+    expect(screen.queryByText(LEKCJA.title)).toBeNull();
+    expect(screen.queryByText("Opis lekcji")).toBeNull();
+    expect(pobierzOdczytKursu).not.toHaveBeenCalled();
   });
 
   it("404 → „Nie znaleziono lekcji”, bez treści", async () => {
@@ -156,7 +137,7 @@ describe("Lekcja — dostęp i istnienie", () => {
     render(<Lekcja id="999" />);
 
     expect(await screen.findByText("Nie znaleziono lekcji.")).toBeInTheDocument();
-    expect(screen.queryByText(LEKCJA_PODSTAWOWA.description)).toBeNull();
+    expect(screen.queryByText("Opis lekcji")).toBeNull();
   });
 
   it("błąd sieci → Notice z akcją ponowienia", async () => {
@@ -167,10 +148,22 @@ describe("Lekcja — dostęp i istnienie", () => {
     expect(await screen.findByText("Nie udało się wczytać lekcji")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
 
-    pobierzDaneLekcji.mockResolvedValueOnce({ status: "ok", dane: LEKCJA_PODSTAWOWA, bezNagrania: true });
+    pobierzDaneLekcji.mockResolvedValueOnce({ status: "ok", dane: LEKCJA, bezNagrania: true });
     const uzytkownik = userEvent.setup();
     await uzytkownik.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
 
     await waitFor(() => expect(pobierzDaneLekcji).toHaveBeenCalledTimes(2));
+  });
+
+  it("dostęp wygasł (access_expired) → karta z komunikatem koperty i powrotem do kursów, bez treści lekcji", async () => {
+    pobierzDaneLekcji.mockResolvedValue({ status: "wygasl", komunikat: "Twój dostęp do platformy wygasł." });
+
+    render(<Lekcja id="21" />);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Dostęp wygasł" })).toBeInTheDocument();
+    expect(screen.getByText("Twój dostęp do platformy wygasł.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
+    expect(screen.queryByText(LEKCJA.title)).toBeNull();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 });

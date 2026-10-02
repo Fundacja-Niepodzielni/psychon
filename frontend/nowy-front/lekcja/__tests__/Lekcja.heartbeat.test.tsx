@@ -1,8 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { KURS, LEKCJA } from "./pomoce";
 
 const pobierzDaneLekcji = vi.fn();
 const wyslijPostep = vi.fn();
+const pobierzOdczytKursu = vi.fn();
 const back = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -16,32 +18,24 @@ vi.mock("../dane", async (importOriginal) => {
     ...original,
     pobierzDaneLekcji: (...args: unknown[]) => pobierzDaneLekcji(...args),
     wyslijPostep: (...args: unknown[]) => wyslijPostep(...args),
+    pobierzPytania: async () => [],
   };
+});
+
+vi.mock("../kurs", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../kurs")>();
+  return { ...original, pobierzOdczytKursu: (...args: unknown[]) => pobierzOdczytKursu(...args) };
 });
 
 const { Lekcja } = await import("../Lekcja");
 
-const LEKCJA = {
-  id: 21,
-  title: "Wprowadzenie do wywiadu",
-  description: "Opis lekcji",
-  content: null,
-  topic: null,
-  duration_seconds: 1800,
-  position_seconds: 0,
-  watched_seconds: 0,
-  active_seconds: 0,
-  is_completed: false,
-  completable: false,
-  completable_at_percent: 60,
-};
-
 /** Server counters returned by a successful heartbeat tick. */
 const POSTEP_PO_TYKU = {
-  watched_seconds: 30,
-  active_seconds: 30,
+  watched_seconds: 750,
+  active_seconds: 750,
   completable: false,
-  completable_at_percent: 60,
+  completable_at_percent: 80,
+  required_active_seconds: 960,
 };
 
 /** Own `document.hidden` stub — jsdom's own getter is read-only. */
@@ -50,11 +44,10 @@ function ustawUkryta(ukryta: boolean) {
 }
 
 async function wyswietlLekcje() {
-  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false });
+  pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
   const wynik = render(<Lekcja id="21" />);
   await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 6; i += 1) await Promise.resolve();
   });
   return wynik;
 }
@@ -66,6 +59,8 @@ function kliknijOdtwarzanie() {
 beforeEach(() => {
   vi.useFakeTimers();
   pobierzDaneLekcji.mockReset();
+  pobierzOdczytKursu.mockReset();
+  pobierzOdczytKursu.mockResolvedValue(KURS);
   wyslijPostep.mockReset();
   wyslijPostep.mockResolvedValue(POSTEP_PO_TYKU);
   back.mockReset();
@@ -86,8 +81,8 @@ describe("Lekcja — heartbeat, cadence i przyrosty", () => {
       vi.advanceTimersByTime(30000);
     });
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
-    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30 });
-    const [, przyrosty] = wyslijPostep.mock.calls[0] as [string, { watched_delta: number; active_delta: number }];
+    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30, position_seconds: 30 });
+    const [, przyrosty] = wyslijPostep.mock.calls[0] as [string, { watched_delta: number; active_delta: number; position_seconds: number }];
     expect(przyrosty.watched_delta).toBeGreaterThanOrEqual(0);
     expect(przyrosty.active_delta).toBeGreaterThanOrEqual(0);
     expect(Number.isInteger(przyrosty.watched_delta)).toBe(true);
@@ -162,7 +157,7 @@ describe("Lekcja — heartbeat, przyrosty liczone z realnego czasu odtwarzania",
       vi.advanceTimersByTime(10000);
     });
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
-    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30 });
+    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 30, active_delta: 30, position_seconds: 30 });
   });
 
   it("karta ukryta: sekundy gry liczą się jako obejrzane, nie jako aktywne", async () => {
@@ -177,41 +172,61 @@ describe("Lekcja — heartbeat, przyrosty liczone z realnego czasu odtwarzania",
       vi.advanceTimersByTime(30000);
     });
     expect(wyslijPostep).toHaveBeenCalledTimes(1);
-    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 60, active_delta: 30 });
+    expect(wyslijPostep).toHaveBeenCalledWith("21", { watched_delta: 60, active_delta: 30, position_seconds: 60 });
   });
 });
 
 describe("Lekcja — odpowiedź heartbeatu odświeża ekran", () => {
-  it("po tyku z completable=true przycisk ukończenia staje się dostępny bez przeładowania", async () => {
+  it("po tyku z completable=true przycisk staje się czynny, a zdanie mówi, że można ukończyć", async () => {
     wyslijPostep.mockResolvedValue({
       watched_seconds: 1100,
       active_seconds: 1100,
       completable: true,
-      completable_at_percent: 60,
+      completable_at_percent: 80,
+      required_active_seconds: 960,
     });
     await wyswietlLekcje();
-    expect(screen.getByRole("button", { name: "Oznacz jako ukończoną" })).toBeDisabled();
+    const przycisk = screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" });
+    expect(przycisk).toHaveAttribute("aria-disabled", "true");
     kliknijOdtwarzanie(); // Odtwórz
     await act(async () => {
       vi.advanceTimersByTime(30000);
     });
-    expect(screen.getByRole("button", { name: "Oznacz jako ukończoną" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByText("Możesz już ukończyć tę lekcję.")).toBeInTheDocument();
   });
 
-  it("nieudany zapis: widać komunikat, a przyrosty nie przepadają — następna wysyłka niesie sumę", async () => {
+  it("odpowiedź niesie nowy wymagany czas: zdanie z brakującymi minutami liczy się od niego", async () => {
+    wyslijPostep.mockResolvedValue({
+      watched_seconds: 900,
+      active_seconds: 900,
+      completable: false,
+      completable_at_percent: 80,
+      required_active_seconds: 1200,
+    });
+    await wyswietlLekcje();
+    expect(screen.getByText("Zostały 4 minuty nagrania.")).toBeInTheDocument();
+    kliknijOdtwarzanie(); // Odtwórz
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByText("Zostało 5 minut nagrania.")).toBeInTheDocument();
+  });
+
+  it("brak internetu: zdanie z ostatnim zapisem, a przyrosty nie przepadają — następna wysyłka niesie sumę", async () => {
     wyslijPostep.mockResolvedValueOnce(null);
     await wyswietlLekcje();
     kliknijOdtwarzanie(); // Odtwórz
     await act(async () => {
       vi.advanceTimersByTime(30000);
     });
-    expect(screen.getByRole("alert")).toHaveTextContent("Postęp nie został zapisany");
+    expect(screen.getByText("Brak internetu. Ostatnio zapisane: 12 z 16 minut.")).toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(30000);
     });
     expect(wyslijPostep).toHaveBeenCalledTimes(2);
-    expect(wyslijPostep).toHaveBeenLastCalledWith("21", { watched_delta: 60, active_delta: 60 });
-    expect(screen.queryByText("Postęp nie został zapisany")).not.toBeInTheDocument();
+    expect(wyslijPostep).toHaveBeenLastCalledWith("21", { watched_delta: 60, active_delta: 60, position_seconds: 60 });
+    expect(screen.queryByText(/^Brak internetu/)).not.toBeInTheDocument();
   });
 });

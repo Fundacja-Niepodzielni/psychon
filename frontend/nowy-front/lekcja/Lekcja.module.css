@@ -1,25 +1,533 @@
-/* Route module `/nowy-front/lekcja/[id]` — appearance values from tokens
-   only, no literal colors or sizes. */
-.glowna {
+/* Ekran lekcji uczestnika `/nowy-front/lekcja/[id]` — wyłącznie tokeny, bez twardych kolorów i rozmiarów. */
+.korzen {
+  min-width: 0;
+}
+
+.dlaCzytnika {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.strona {
+  --dock-h: 150px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-24);
+  /* Długi tytuł albo nazwa pliku bez spacji łamie się zamiast poszerzać stronę. */
+  overflow-wrap: anywhere;
 }
 
-.ukonczenie {
+.pasek {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---------- okruszki i powrót ---------- */
+.okruszki ol {
+  list-style: none;
+  margin: 0 0 0 calc(-1 * var(--space-8));
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.okruszki li {
+  display: flex;
+  align-items: center;
+}
+
+.okruszki li + li::before {
+  content: "›";
+  color: var(--muted);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-10);
+  line-height: 1;
+}
+
+.okruszki li > a,
+.okruszki li > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-min);
+  padding: 0 var(--space-8);
+  font-size: var(--fs-10);
+}
+
+.okruszki li > span {
+  color: var(--muted);
+}
+
+.powrot {
+  display: none;
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+}
+
+/* ---------- nagłówek lekcji: przykleja się pod górnym paskiem ---------- */
+.glowa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-12) var(--space-16);
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: var(--z-savebar);
+  background: var(--bg);
+  /* Pasy tła po bokach nie poszerzają strony (cień nie liczy się do przewijania). */
+  box-shadow:
+    calc(-1 * var(--space-40)) 0 0 0 var(--bg),
+    var(--space-40) 0 0 0 var(--bg);
+  padding: var(--space-6) 0 var(--space-14);
+}
+
+.tytul {
+  flex: 1;
+  min-width: 240px;
+}
+
+.tytul h1 {
+  overflow-wrap: anywhere;
+}
+
+.podtytul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6) var(--space-12);
+  margin-top: var(--space-4);
+  color: var(--muted);
+  font-size: var(--fs-9);
+}
+
+.podtytul p {
+  margin: 0;
+}
+
+.status {
+  display: inline-flex;
+  border-radius: var(--r-pill);
+}
+
+.status:focus {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.znacznik {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-10);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.znacznik svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dok {
+  display: contents;
+}
+
+.akcje {
+  flex: 0 1 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-6);
+  text-align: right;
+}
+
+.powod {
+  margin: 0;
+  font-size: var(--fs-8);
+  line-height: 1.4;
+  color: var(--text);
+}
+
+/* Przycisk główny: nieczynny wygląda na nieczynny (jasny, z kłódką), ale zostaje w kolejności fokusu. */
+.przycisk button {
+  max-width: none;
+  white-space: nowrap;
+}
+
+.przycisk[data-nieczynny="true"] button {
+  background: var(--grey);
+  border-color: var(--border-strong);
+  color: var(--ink);
+  cursor: default;
+}
+
+.przycisk svg {
+  flex: none;
+}
+
+/* ---------- postęp w temacie ---------- */
+.postep {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  font-size: var(--fs-9);
+}
+
+.odcinki {
+  display: flex;
+  align-items: center;
   gap: var(--space-8);
+  flex: 0 0 280px;
+  max-width: 100%;
+  padding: var(--space-2);
 }
 
-/* A long lesson title without spaces wraps instead of widening the page. */
-.strona {
+.odcinki i {
+  flex: 1;
+  height: var(--space-10);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.odcinki i[data-stan="gotowy"] {
+  background: var(--primary);
+  box-shadow: none;
+}
+
+.odcinki i[data-stan="biezacy"] {
+  background: var(--card);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.postep p {
+  margin: 0;
+}
+
+/* ---------- nagranie ---------- */
+.nagranie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
   min-width: 0;
+}
+
+.obejrzane {
+  margin: 0;
+  font-size: var(--fs-8);
+  color: var(--text);
+}
+
+.oczekiwanie {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  padding: var(--space-20) var(--space-24);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--card-warm);
+  color: var(--text);
+  text-align: center;
+}
+
+.oczekiwanie[data-blad="true"] {
+  border-left: 4px solid var(--warn);
+}
+
+.oczekiwanie p {
+  margin: 0;
+  max-width: 60ch;
+}
+
+.oczekiwanie b {
+  display: block;
+  color: var(--ink);
+  font-weight: var(--fw-bold);
+  margin-bottom: var(--space-4);
+}
+
+.oczekiwanie > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* ---------- karty: treść, materiały, pytania ---------- */
+.karta {
+  --karta-px: var(--space-24);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--space-24) var(--karta-px);
+  box-shadow: var(--shadow);
+  min-width: 0;
+  scroll-margin-top: calc(var(--topbar-h) + var(--space-64));
+}
+
+.karta > h2 {
+  margin-bottom: var(--space-14);
+}
+
+.opis {
+  margin-bottom: var(--space-12);
+}
+
+.wstep {
+  margin: 0 0 var(--space-14);
+  font-size: var(--fs-9);
+  color: var(--muted);
+}
+
+.pliki {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plik {
+  padding: var(--space-10) 0;
+  border-top: 1px solid var(--border);
+}
+
+.plik:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.plik:last-child {
+  padding-bottom: 0;
+}
+
+.plikWiersz {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.plikOpis {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  /* Długa nazwa pliku bez spacji łamie się w swoim polu i nie ściska przycisku „Pobierz”. */
   overflow-wrap: anywhere;
 }
 
-/* The last breadcrumb repeats the lesson title; its text atom sets its own
-   wrapping, so the rule is repeated for it. */
-.strona nav p {
-  overflow-wrap: anywhere;
+.plikWiersz > button {
+  flex: 0 0 auto;
+}
+
+.plikOpis b {
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+  font-size: var(--fs-9);
+}
+
+.plikOpis span {
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+.plikStan {
+  margin: var(--space-6) 0 0;
+  font-size: var(--fs-10);
+  color: var(--muted);
+}
+
+.wyslij {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+  margin-top: var(--space-12);
+}
+
+.potwierdzenie {
+  font-size: var(--fs-10);
+  color: var(--muted);
+}
+
+.pytania {
+  margin-top: var(--space-20);
+  padding-top: var(--space-18);
+  border-top: 1px solid var(--border);
+}
+
+.listaPytan {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+}
+
+.pytanie {
+  padding: var(--space-10) 0;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-9);
+}
+
+.pytanie:first-child {
+  border-top: 0;
+}
+
+.pytanie b {
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+}
+
+.odpowiedz {
+  margin-top: var(--space-6);
+  padding: var(--space-8) var(--space-12);
+  background: var(--card-warm);
+  border-radius: var(--r-xs);
+}
+
+.odpowiedz small {
+  display: block;
+  color: var(--muted);
+  margin-bottom: var(--space-4);
+  font-size: var(--fs-11);
+}
+
+/* ---------- stany całego ekranu (dostęp wygasł) ---------- */
+.biala {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  align-items: flex-start;
+}
+
+/* ---------- tablet i telefon ---------- */
+@media (max-width: 1023px) {
+  .karta {
+    --karta-px: var(--space-18);
+    padding: var(--space-20) var(--space-18);
+  }
+
+  .glowa {
+    box-shadow:
+      calc(-1 * var(--space-18)) 0 0 0 var(--bg),
+      var(--space-18) 0 0 0 var(--bg);
+  }
+}
+
+@media (max-width: 639px) {
+  .strona {
+    gap: var(--space-10);
+    padding-bottom: calc(var(--dock-h) + var(--space-16));
+  }
+
+  .okruszki {
+    display: none;
+  }
+
+  .powrot {
+    display: inline-flex;
+  }
+
+  .glowa {
+    position: static;
+    display: block;
+    padding: var(--space-2) 0 0;
+    box-shadow: none;
+  }
+
+  .tytul {
+    min-width: 0;
+  }
+
+  /* Zielony przycisk i jego powód: stały pasek u dołu ekranu. */
+  .dok {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-listbox);
+    background: var(--card);
+    border-top: 1px solid var(--border-strong);
+    box-shadow: 0 -6px 16px var(--border);
+    padding: var(--space-10) var(--space-16) var(--space-12);
+    max-height: calc(100dvh - 72px);
+    overflow: auto;
+  }
+
+  .akcje {
+    flex: none;
+    align-items: stretch;
+    text-align: left;
+    gap: var(--space-8);
+  }
+
+  .akcje .powod {
+    order: -1;
+  }
+
+  .przycisk,
+  .przycisk button {
+    width: 100%;
+  }
+
+  .przycisk button {
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+    min-height: 48px;
+    font-size: var(--fs-8);
+  }
+
+  .postep {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-6);
+    margin: var(--space-6) 0 var(--space-8);
+  }
+
+  .odcinki {
+    flex: none;
+  }
+
+  .nagranie {
+    margin-inline: calc(-1 * var(--space-16));
+  }
+
+  .nagranie > p,
+  .nagranie > div[role="status"] {
+    margin-inline: var(--space-16);
+  }
+
+  .karta {
+    --karta-px: var(--space-16);
+    margin-inline: calc(-1 * var(--space-16));
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: var(--space-18) var(--space-16) var(--space-20);
+  }
+
+  .karta button:not([aria-label^="Pobierz"]) {
+    width: 100%;
+    max-width: none;
+  }
 }

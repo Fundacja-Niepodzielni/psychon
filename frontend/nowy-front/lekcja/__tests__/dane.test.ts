@@ -46,7 +46,12 @@ describe("pobierzDaneLekcji", () => {
 
     const wynik = await pobierzDaneLekcji("21");
 
-    expect(wynik).toEqual({ status: "ok", dane: LEKCJA_SUROWA, bezNagrania: false });
+    expect(wynik).toEqual({
+      status: "ok",
+      dane: LEKCJA_SUROWA,
+      bezNagrania: false,
+      zrodloNagrania: { adres: "https://cdn.example/playlist.m3u8" },
+    });
   });
 
   it("nagranie 404 video_missing → status ok, bezNagrania: true (kontrola dodatnia: sam błąd nie blokuje treści)", async () => {
@@ -83,6 +88,18 @@ describe("pobierzDaneLekcji", () => {
     const wynik = await pobierzDaneLekcji("21");
 
     expect(wynik).toEqual({ status: "blad" });
+  });
+});
+
+describe("pobierzDaneLekcji — dostęp wygasł", () => {
+  it("403 access_expired → status wygasl z treścią message koperty", async () => {
+    apiMock.mockRejectedValueOnce(
+      new ApiError({ status: 403, code: "access_expired", message: "Twój dostęp do platformy wygasł." }),
+    );
+
+    const wynik = await pobierzDaneLekcji("21");
+
+    expect(wynik).toEqual({ status: "wygasl", komunikat: "Twój dostęp do platformy wygasł." });
   });
 });
 
