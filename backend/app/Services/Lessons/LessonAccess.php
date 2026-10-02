@@ -44,6 +44,9 @@ use App\Support\CourseAccess;
  *    tu celowo zachowany (`assignedAsInstructor`).
  * 2. Kolejność kursów w ścieżce — wyłącznie `CourseAccess::state`; widoczny,
  *    ale zablokowany kurs daje dotychczasowe 403 `course_locked`.
+ * 3. Kolejność lekcji w kursie — wyłącznie `LessonSequence`; dla uczestnika
+ *    lekcja po nieukończonej poprzedniej daje 403 `lesson_locked`. Personel
+ *    i prowadzący tej reguły nie podlegają.
  */
 final class LessonAccess
 {
@@ -54,13 +57,13 @@ final class LessonAccess
 
     /**
      * Zwraca kurs lekcji, gdy osoba ma do niej dostęp; w przeciwnym razie
-     * rzuca 404 `not_found` albo 403 `course_locked`.
+     * rzuca 404 `not_found`, 403 `course_locked` albo (uczestnik) 403 `lesson_locked`.
      *
      * @throws ApiException
      */
     public function authorize(User $user, Lesson $lesson): Course
     {
-        return $this->authorizeLesson($user, $lesson, 'Nie znaleziono lekcji.', staffExempt: true);
+        return $this->authorizeLesson($user, $lesson, 'Nie znaleziono zasobu.', staffExempt: true);
     }
 
     /**
@@ -121,6 +124,29 @@ final class LessonAccess
     }
 
     /**
+     * Podgląd kursu nieopublikowanego: personel (kierownik projektu,
+     * administrator) i prowadzący związany z kursem (grupa produktowa albo
+     * przypisanie — ta sama reguła co na trasach lekcji) czytają szkic tymi
+     * samymi trasami co uczestnik: odczyt kursu, odczyt lekcji, link do
+     * nagrania. Uczestnik i prowadzący bez związku z kursem szkicu nie widzą
+     * (404 jak dla kursu nieistniejącego). Lista kursów szkicu nie pokazuje
+     * nikomu — podgląd wchodzi wyłącznie adresem kursu. To jedyne miejsce tej
+     * reguły; odczyt kursu i link do nagrania pytają właśnie tu.
+     */
+    public function canPreviewDraft(User $user, Course $course): bool
+    {
+        if ($course->is_published) {
+            return false;
+        }
+
+        if ($this->tokenRoles->has(...self::ADMIN_ROLES)) {
+            return self::assignedByProductGroup($user, $course);
+        }
+
+        return $this->tokenRoles->has('instructor') && self::assignedAsInstructor($user, $course);
+    }
+
+    /**
      * @see assertVisible dla wyjaśnienia, dlaczego katalog sam nie wystarcza
      * jako reguła dostępu dla uczestników (wolontariusz, student).
      */
@@ -129,6 +155,10 @@ final class LessonAccess
         $roles = $this->tokenRoles->current();
 
         if (CourseCatalogQuery::visibleTo($user, $roles)->whereKey($course->id)->exists()) {
+            return true;
+        }
+
+        if ($this->canPreviewDraft($user, $course)) {
             return true;
         }
 
@@ -182,6 +212,10 @@ final class LessonAccess
 
         $this->assertVisible($user, $course, $notFoundMessage, $staffExempt);
         $this->assertUnlocked($user, $course, 'Ten kurs jest jeszcze zablokowany.');
+
+        if (LessonSequence::appliesTo($this->tokenRoles->current())) {
+            LessonSequence::assertOpen($user, $lesson);
+        }
 
         return $course;
     }

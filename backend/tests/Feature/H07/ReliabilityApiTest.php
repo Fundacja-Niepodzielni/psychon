@@ -299,6 +299,7 @@ class ReliabilityApiTest extends TestCase
             'title' => $title,
             'duration_seconds' => $duration,
             'sequence_order' => $order,
+            'video_provider_id' => 'mock-rzetelnosc-'.uniqid(),
         ]);
     }
 

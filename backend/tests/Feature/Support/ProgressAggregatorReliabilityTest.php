@@ -95,6 +95,7 @@ class ProgressAggregatorReliabilityTest extends TestCase
             'title' => "Lekcja {$sequenceOrder}",
             'sequence_order' => $sequenceOrder,
             'duration_seconds' => $durationSeconds,
+            'video_provider_id' => 'mock-rzetelnosc-'.uniqid(),
         ]);
 
         LessonProgress::create([

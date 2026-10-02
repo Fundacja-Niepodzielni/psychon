@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 
 /**
- * Miara dla grup przełączenia `pulpitUczestnika` i `lekcja` (obie `wlaczona: true`) oraz
- * `kursUczestnika` (`wlaczona: false`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
+ * Miara dla grup przełączenia `pulpitUczestnika`, `kursUczestnika` i `lekcja` (wszystkie
+ * `wlaczona: true`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
  * zmienia — zmienia się treść strony — więc sprawdzane jest to, co widzi
  * osoba w przeglądarce:
  * - wpis „Pulpit” w menu uczestnika prowadzi na `/panel/pulpit`, a tam stoi
@@ -12,9 +12,9 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  *   włączona): `h1` z tytułem lekcji i przycisk „Oznacz lekcję jako ukończoną” —
  *   a nie dotychczasową stronę (`h1` „Lekcja”, odnośnik „Wróć do listy kursów”,
  *   „Aktywny czas:”);
- * - `/panel/kursy/[slug]` pokazuje STARĄ stronę kursu (grupa `kursUczestnika`
- *   jest wyłączona): bez opisu „na końcu test”, bez karty „Test końcowy” i bez
- *   przycisku głównego nowego ekranu;
+ * - `/panel/kursy/[slug]` pokazuje ekran nowego frontu (grupa `kursUczestnika`
+ *   jest włączona): opis „na końcu test”, kartę „Test końcowy” i jeden przycisk
+ *   główny;
  * - obie trasy odpowiadają 200 (bez przekierowania), a w całym przebiegu nie
  *   ma odpowiedzi 404 poza celowym niepoprawnym identyfikatorem lekcji;
  * - na każdej trasie dokładnie jeden `main` i jeden `#tresc`.
@@ -77,8 +77,24 @@ async function instalujAtrapyApi(page: Page): Promise<void> {
     data: {
       ...KURS,
       instructor: null,
+      has_test: true,
+      test_locked: true,
+      test_passed: false,
       topics: [],
-      lessons: [{ id: 21, title: LEKCJA.title, sequence_order: 1, duration_seconds: 1800, is_completed: false, topic_id: null }],
+      lessons: [
+        {
+          id: 21,
+          title: LEKCJA.title,
+          sequence_order: 1,
+          duration_seconds: 1800,
+          is_completed: false,
+          topic_id: null,
+          locked: false,
+          active_seconds: 0,
+          required_active_seconds: 1440,
+          has_recording: true,
+        },
+      ],
       materials: [],
     },
   });
@@ -111,7 +127,7 @@ function zbierz404(page: Page): string[] {
   return kody404;
 }
 
-test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego frontu), lekcja włączona (nowy ekran), kurs wyłączony (stara strona) — ten sam adres", () => {
+test.describe("grupy przełączenia: pulpitUczestnika, kursUczestnika i lekcja włączone (treść nowego frontu) — ten sam adres", () => {
   test("pulpit: wpis „Pulpit” w menu prowadzi na /panel/pulpit, tam stoi ekran nowego frontu, jeden main; 0 odpowiedzi 404", async ({
     page,
   }) => {
@@ -163,7 +179,7 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
 
-  test("kurs: /panel/kursy/wywiad-psychologiczny pokazuje starą stronę kursu (grupa wyłączona), bez elementów nowego ekranu, jeden main; 0 odpowiedzi 404", async ({
+  test("kurs: /panel/kursy/wywiad-psychologiczny pokazuje ekran nowego frontu (grupa włączona), z opisem, kartą testu i jednym przyciskiem głównym, jeden main; 0 odpowiedzi 404", async ({
     page,
   }) => {
     const kody404 = zbierz404(page);
@@ -173,9 +189,9 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByText(/na końcu test/)).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 2, name: "Test końcowy" })).toHaveCount(0);
-    await expect(page.locator("[data-przycisk-glowny]")).toHaveCount(0);
+    await expect(page.getByText(/na końcu test/)).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Test końcowy" })).toBeVisible();
+    await expect(page.locator("[data-przycisk-glowny]")).toHaveCount(1);
 
     await expect(page.locator("main")).toHaveCount(1);
     await expect(page.locator("#tresc")).toHaveCount(1);

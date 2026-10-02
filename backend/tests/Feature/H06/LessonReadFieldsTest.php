@@ -109,12 +109,15 @@ class LessonReadFieldsTest extends TestCase
         $other = $this->lesson($course, 2);
         $this->assign($course, null, $this->instructor('Marta', 'Zielińska'));
         $this->assign($course, $lesson, $this->instructor('Jan', 'Wiśniewski'));
-        $this->actingAs($this->volunteer(), 'keycloak');
+        $user = $this->volunteer();
+        $this->actingAs($user, 'keycloak');
 
         $this->getJson("/api/v1/lessons/{$lesson->id}")
             ->assertOk()
             ->assertJsonPath('data.question_addressee.name', 'Jan Wiśniewski');
-        // Lekcja bez własnego przypisania dziedziczy po kursie.
+        // Lekcja bez własnego przypisania dziedziczy po kursie (druga lekcja
+        // otwiera się po ukończeniu pierwszej).
+        $this->completeLesson($user, $lesson);
         $this->getJson("/api/v1/lessons/{$other->id}")
             ->assertOk()
             ->assertJsonPath('data.question_addressee.name', 'Marta Zielińska');
@@ -336,6 +339,18 @@ class LessonReadFieldsTest extends TestCase
     // ------------------------------------------------------------------
     // pomocnicze
     // ------------------------------------------------------------------
+
+    private function completeLesson(User $user, Lesson $lesson): void
+    {
+        DB::table('lesson_progress')->updateOrInsert(
+            ['user_id' => $user->id, 'lesson_id' => $lesson->id],
+            [
+                'position_seconds' => 0, 'watched_seconds' => 600, 'active_seconds' => 600,
+                'open_count' => 1, 'last_activity_at' => null, 'is_completed' => true, 'completed_at' => now(),
+                'created_at' => now(), 'updated_at' => now(),
+            ],
+        );
+    }
 
     private function setActive(User $user, Lesson $lesson, int $active): void
     {

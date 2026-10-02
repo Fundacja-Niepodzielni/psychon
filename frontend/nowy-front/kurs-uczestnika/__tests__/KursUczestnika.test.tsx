@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ApiError } from "@/lib/api/klient";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
-import { kursSzkicu, STANY_SZKICU, TYTULY_LEKCJI, type OpcjeKursu } from "./atrapy";
+import { kursSzkicu, odpowiedzBezTestu, odpowiedzSerwera, STANY_SZKICU, TYTULY_LEKCJI, type OpcjeKursu } from "./atrapy";
 import type { KursUczestnika as DaneKursu } from "../dane";
 
 /**
@@ -86,7 +86,7 @@ function pomiar() {
   };
 }
 
-describe("cztery stany szkicu (K1)", () => {
+describe("cztery stany szkicu", () => {
   it.each(STANY_SZKICU)("stan $n ($nazwa): przycisk główny i zdanie obok jak w pomiarze szkicu, dokładnie jeden przycisk główny", async (stan) => {
     await pokaz(kursSzkicu(stan.opcje), stan.podglad);
 
@@ -144,7 +144,7 @@ describe("cztery stany szkicu (K1)", () => {
   });
 });
 
-describe("lekcja zamknięta i karta testu (K3)", () => {
+describe("lekcja zamknięta i karta testu", () => {
   it("lekcja z locked: true — kłódka, zdanie „Po ukończeniu lekcji N”, 0 przycisków i odnośników w wierszu", async () => {
     await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }));
     const wiersz = wierszLekcji(24);
@@ -227,7 +227,7 @@ describe("lekcja zamknięta i karta testu (K3)", () => {
   });
 });
 
-describe("czego na stronie nie ma (K4)", () => {
+describe("czego na stronie nie ma", () => {
   const MATERIALY = [{ id: 7, name: "Karta pracy.pdf", size: 2048, lesson_id: null, download_url: "/pliki/7" }];
 
   it.each(STANY_SZKICU)("stan $n: brak „Zadaj pytanie prowadzącemu” i sekcji materiałów, także gdy odczyt niesie materiały", async (stan) => {
@@ -248,7 +248,7 @@ describe("czego na stronie nie ma (K4)", () => {
   });
 });
 
-describe("kolejność fokusu = kolejność ekranu (K5)", () => {
+describe("kolejność fokusu = kolejność ekranu", () => {
   it("stan 2: okruszek, powrót, przycisk główny, wiersze lekcji po kolei, na końcu karta testu", async () => {
     await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }));
     const etykiety = kolejnoscFokusu().map((element) => (element.getAttribute("aria-label") ?? element.textContent ?? "").trim());
@@ -349,7 +349,7 @@ describe("tryb podglądu", () => {
   });
 });
 
-describe("pola odczytu, które dojdą w zapleczu", () => {
+describe("pola odczytu bez kompletu (starsze zaplecze)", () => {
   it("pola postępu obecne — linia „W trakcie · obejrzane 12 z 16 potrzebnych minut” przy lekcji w toku, tylko tam", async () => {
     await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4, nowePola: true, wTrakcieNr: 3 }));
     expect(screen.getAllByText(/W trakcie · obejrzane/)).toHaveLength(1);
@@ -407,7 +407,156 @@ describe("pola odczytu, które dojdą w zapleczu", () => {
   });
 });
 
-describe("stany spoza szkicu (K6)", () => {
+describe("stany ze szkicu biorą się z pól odpowiedzi serwera", () => {
+  it("lekcje zamknięte kolejnością — z pola locked każdej lekcji: kłódka i „Po ukończeniu lekcji N”, bez przycisków", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 2, wTrakcieNr: 3 }));
+    for (const id of [21, 22, 23]) expect(wierszLekcji(id).hasAttribute("data-zamknieta")).toBe(false);
+    for (const [id, po] of [[24, 3], [25, 4], [26, 5], [27, 6]] as const) {
+      const wiersz = wierszLekcji(id);
+      expect(wiersz.hasAttribute("data-zamknieta")).toBe(true);
+      expect(within(wiersz).getByText(`Po ukończeniu lekcji ${po}`)).toBeInTheDocument();
+      expect(wiersz.querySelectorAll("a, button")).toHaveLength(0);
+    }
+  });
+
+  it("serwer rozstrzyga: lekcja bez locked, choć poprzednia nieukończona (personel) — żadnej kłódki; kontrola dodatnia: ta sama odpowiedź z locked zamyka cztery", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 2, wTrakcieNr: 3, zamykajZaNastepna: false }));
+    expect(pomiar().zamkniete).toBe(0);
+    cleanup();
+    await pokaz(odpowiedzSerwera({ ukonczone: 2, wTrakcieNr: 3 }));
+    expect(pomiar().zamkniete).toBe(4);
+  });
+
+  it("linia „obejrzane X z Y potrzebnych minut” — z active_seconds i required_active_seconds, tylko przy lekcji w toku", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 2, wTrakcieNr: 3 }));
+    expect(screen.getAllByText(/W trakcie · obejrzane/)).toHaveLength(1);
+    expect(within(wierszLekcji(23)).getByText("W trakcie · obejrzane 12 z 16 potrzebnych minut")).toBeInTheDocument();
+    expect(pomiar()).toMatchObject({ tekst: ["Kontynuuj lekcję 3"] });
+  });
+
+  it("lekcja bez nagrania — „do czytania” z has_recording: false, także gdy zamknięta; required_active_seconds nie rysuje linii postępu", async () => {
+    const kurs = odpowiedzSerwera({ ukonczone: 2, wTrakcieNr: 3 });
+    kurs.lessons[5] = { ...kurs.lessons[5], has_recording: false, required_active_seconds: 0, active_seconds: 0 };
+    await pokaz(kurs);
+    expect(within(wierszLekcji(26)).getByText("do czytania")).toBeInTheDocument();
+    expect(within(wierszLekcji(26)).queryByText(/min/)).toBeNull();
+    expect(within(wierszLekcji(26)).queryByText(/obejrzane/)).toBeNull();
+  });
+
+  it("test zamknięty — z test_locked: true: karta nieczynna z kłódką, jeden przycisk główny prowadzi do lekcji", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 2, wTrakcieNr: 3 }));
+    expect(kartaTestu().querySelector("[aria-disabled='true']")).not.toBeNull();
+    expect(within(kartaTestu()).queryByRole("link")).toBeNull();
+    expect(pomiar().liczbaGlownych).toBe(1);
+  });
+
+  it("test czynny — z test_locked: false przy wszystkich lekcjach ukończonych: odnośnik do testu i przycisk „Przejdź do testu”", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 7 }));
+    expect(within(kartaTestu()).getByRole("link")).toHaveAttribute("href", "/panel/kursy/pierwsza-pomoc-psychologiczna/test");
+    expect(pomiar()).toMatchObject({ tekst: ["Przejdź do testu"] });
+  });
+
+  it("test zaliczony — z test_passed: true: „Test zaliczony.”, bez przycisku głównego; test_passed: false w tej samej odpowiedzi — przycisk testu wraca", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 7, kurs: { test_passed: true, test_locked: false } }));
+    expect(within(kartaTestu()).getByText("Test zaliczony.")).toBeInTheDocument();
+    expect(przyciskiGlowne()).toHaveLength(0);
+    cleanup();
+    await pokaz(odpowiedzSerwera({ ukonczone: 7, kurs: { test_passed: false, test_locked: false, status: "in_progress" } }));
+    expect(within(kartaTestu()).queryByText("Test zaliczony.")).toBeNull();
+    expect(pomiar()).toMatchObject({ tekst: ["Przejdź do testu"] });
+  });
+
+  it("pole test_passed ma pierwszeństwo przed stanem kursu: kurs „completed”, a test_passed: false — bez „Test zaliczony.”", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 7, kurs: { status: "completed", test_passed: false, test_locked: false } }));
+    expect(within(kartaTestu()).queryByText("Test zaliczony.")).toBeNull();
+  });
+
+  it("brak pól w odpowiedzi starszego zaplecza: ekran działa bez błędów w konsoli (lekcje otwarte, bez linii postępu)", async () => {
+    const blad = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const kurs = odpowiedzSerwera({ ukonczone: 2, wTrakcieNr: 3 }) as unknown as Record<string, unknown>;
+    delete kurs.test_locked;
+    delete kurs.test_passed;
+    delete kurs.has_test;
+    const nowePola = ["locked", "active_seconds", "required_active_seconds", "has_recording"];
+    kurs.lessons = (kurs.lessons as Record<string, unknown>[]).map((lekcja) => Object.fromEntries(Object.entries(lekcja).filter(([klucz]) => !nowePola.includes(klucz))));
+    await pokaz(kurs as unknown as DaneKursu);
+    expect(pomiar().zamkniete).toBe(0);
+    expect(screen.queryByText(/W trakcie/)).toBeNull();
+    expect(pomiar()).toMatchObject({ liczbaGlownych: 1, tekst: ["Kontynuuj lekcję 3"] });
+    expect(blad).not.toHaveBeenCalled();
+    blad.mockRestore();
+  });
+});
+
+describe("kurs bez testu", () => {
+  it("w trakcie: bez karty testu, wiersz pod tytułem bez „na końcu test”, przycisk główny prowadzi do lekcji", async () => {
+    await pokaz(odpowiedzBezTestu(2, 3));
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText("Test końcowy")).toBeNull();
+    expect(screen.getByText("7 lekcji · około 2 godziny")).toBeInTheDocument();
+    expect(screen.queryByText(/na końcu test/)).toBeNull();
+    expect(pomiar()).toMatchObject({ tekst: ["Kontynuuj lekcję 3"] });
+    expect(screen.queryByText("Kurs ukończony")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Wróć do kursów" })).toBeNull();
+  });
+
+  it("po ukończeniu wszystkich lekcji: znacznik „Kurs ukończony” i zwykły odnośnik „Wróć do kursów” do listy kursów, bez „Przejdź do testu”", async () => {
+    await pokaz(odpowiedzBezTestu(7));
+    expect(screen.getByText("Kurs ukończony")).toBeInTheDocument();
+    expect(screen.queryByText("Lekcje ukończone")).toBeNull();
+    const odnosnik = screen.getByRole("link", { name: "Wróć do kursów" });
+    expect(odnosnik).toHaveAttribute("href", "/panel/kursy");
+    expect(odnosnik.hasAttribute("data-przycisk-glowny")).toBe(false);
+    expect(przyciskiGlowne()).toHaveLength(0);
+    expect(screen.queryByText(/Przejdź do testu/)).toBeNull();
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText(/na końcu test/)).toBeNull();
+  });
+
+  it.each([
+    ["completed", "Kurs ukończony", "Wszystkie lekcje ukończone"],
+    ["in_progress", "Wszystkie lekcje ukończone", "Kurs ukończony"],
+  ] as const)("wszystkie lekcje ukończone i status %s od zaplecza: znacznik „%s”, bez tekstu „%s”, odnośnik „Wróć do kursów” w obu wariantach", async (status, znacznik, nieobecny) => {
+    await pokaz(odpowiedzBezTestu(7, null, status));
+    expect(screen.getByText(znacznik, { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText(nieobecny, { exact: true })).toBeNull();
+    expect(screen.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
+    expect(przyciskiGlowne()).toHaveLength(0);
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText(/Przejdź do testu/)).toBeNull();
+  });
+
+  it("kontrola dodatnia: has_test true przy tych samych lekcjach — karta testu, „na końcu test”, „Przejdź do testu”, bez odnośnika „Wróć do kursów”", async () => {
+    await pokaz(odpowiedzSerwera({ ukonczone: 7 }));
+    expect(document.querySelector("[data-karta-testu]")).not.toBeNull();
+    expect(screen.getByText("7 lekcji · około 2 godziny · na końcu test")).toBeInTheDocument();
+    expect(pomiar()).toMatchObject({ tekst: ["Przejdź do testu"] });
+    expect(screen.queryByRole("link", { name: "Wróć do kursów" })).toBeNull();
+    expect(screen.queryByText("Kurs ukończony")).toBeNull();
+  });
+
+  it("odpowiedź bez pola has_test (starsze zaplecze): jak dotąd — karta jest; rozstrzyga wyłącznie jawne false", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 7 }));
+    expect(document.querySelector("[data-karta-testu]")).not.toBeNull();
+    expect(screen.getByText(/na końcu test/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Wróć do kursów" })).toBeNull();
+  });
+
+  it("tryb podglądu: te same reguły, pas „Nic się nie zapisuje”, odnośnik do listy kursów bez parametru podglądu", async () => {
+    await pokaz(odpowiedzBezTestu(7), true, "project_manager");
+    expect(screen.getByRole("region", { name: "Tryb podglądu" }).textContent).toContain("Nic się nie zapisuje.");
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
+    expect(screen.queryByText(/Przejdź do testu/)).toBeNull();
+    cleanup();
+    await pokaz(odpowiedzBezTestu(2, 3), true, "instructor");
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText(/na końcu test/)).toBeNull();
+    expect(pomiar().zamkniete).toBe(0);
+  });
+});
+
+describe("stany spoza szkicu", () => {
   it("ładowanie: nagłówek „Kurs”, komunikat o ładowaniu i szkielet", async () => {
     api.mockImplementation(() => new Promise(() => {}));
     await act(async () => {

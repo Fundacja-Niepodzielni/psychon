@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Queries\CourseCatalogQuery;
 use App\Services\Auth\TokenRoles;
 use App\Services\CourseUnlockNotifier;
+use App\Services\Lessons\LessonAccess;
 use App\Support\CourseAccess;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -67,7 +68,7 @@ class CourseController extends Controller
         );
     }
 
-    public function show(Request $request, string $slug, TokenRoles $tokenRoles): CourseDetailResource
+    public function show(Request $request, string $slug, TokenRoles $tokenRoles, LessonAccess $access): CourseDetailResource
     {
         $user = $request->user();
         $roles = $tokenRoles->current();
@@ -76,6 +77,20 @@ class CourseController extends Controller
             ->where('slug', $slug)
             ->with(['lessons', 'test'])
             ->first();
+
+        // Podgląd szkicu — wyłącznie wtedy, gdy katalog kursu nie widzi, a reguła
+        // podglądu (jedno miejsce) go dopuszcza; reszta odpowiada jak dotąd.
+        if ($course === null) {
+            $draft = Course::query()
+                ->where('slug', $slug)
+                ->where('is_published', false)
+                ->with(['lessons', 'test'])
+                ->first();
+
+            if ($draft !== null && $access->canPreviewDraft($user, $draft)) {
+                $course = $draft;
+            }
+        }
 
         // Out of the caller's scope answers exactly like "does not exist"
         // — existence is not revealed (contract §1.1).

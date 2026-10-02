@@ -9,7 +9,9 @@ use App\Models\Course;
 use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
+use App\Services\Auth\TokenRoles;
 use App\Services\Lessons\LessonAccess;
+use App\Services\Lessons\LessonSequence;
 use App\Support\AuditLog;
 use App\Support\H10\TestGrader;
 use App\Support\Notify;
@@ -251,11 +253,18 @@ class TestController extends Controller
     /**
      * Dostęp do testu = ta sama reguła co do lekcji (`LessonAccess`): kurs
      * niewidoczny dla osoby odpowiada 404 jak nieistniejący, kurs widoczny,
-     * ale zablokowany kolejnością w ścieżce, odpowiada 403 `course_locked`.
+     * ale zablokowany kolejnością w ścieżce, odpowiada 403 `course_locked`;
+     * kurs z nieukończonymi lekcjami — 422 `conditions_not_met`.
      */
     private function assertUnlocked(User $user, Course $course): void
     {
         $this->lessonAccess->authorizeCourse($user, $course, 'Najpierw ukończ poprzedni etap ścieżki.');
+
+        // Test otwiera się po ukończeniu wszystkich lekcji kursu (uczestnik);
+        // odmowa nie zapisuje niczego i nie zużywa podejścia.
+        if (LessonSequence::appliesTo(app(TokenRoles::class)->current())) {
+            LessonSequence::assertTestOpen($user, $course);
+        }
     }
 
     /**

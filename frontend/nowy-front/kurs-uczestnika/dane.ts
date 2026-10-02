@@ -3,11 +3,12 @@ import { api, ApiError, NieprawidlowaSciezkaApi } from "@/lib/api/klient";
 /**
  * Odczyt strony kursu uczestnika — wyłącznie `GET /courses/{slug}`
  * (`backend/routes/api/h05.php`, kształt `CourseDetailResource` i
- * `LessonSummaryResource`). Pola `locked` (lekcja) i `test_locked` (kurs) są
- * opcjonalne: zaplecze doda je osobną zmianą, a ekran nie zależy od ich
- * obecności — brak pola znaczy „otwarta”. Tak samo opcjonalne są pola postępu
- * lekcji (`active_seconds`, `required_active_seconds`), `has_recording` i
- * `test_passed`: gdy ich nie ma, ekran pomija odpowiednią linię i nie zgłasza błędu.
+ * `LessonSummaryResource`). Zaplecze niesie w każdej odpowiedzi: przy lekcji
+ * `locked`, `active_seconds`, `required_active_seconds` i `has_recording`, przy
+ * kursie `test_locked` i `test_passed` (wszystkie w `required` schematów w
+ * `backend/openapi.json`); stany ekranu biorą się z tych pól. Odpowiedź starszego
+ * zaplecza może ich nie mieć — wtedy ekran nie zgłasza błędu: brak `locked` znaczy
+ * „otwarta”, brak pól postępu — bez linii postępu, brak `test_passed` — jak dotąd.
  */
 
 export type StatusKursu = "locked" | "in_progress" | "completed";
@@ -19,14 +20,14 @@ export interface LekcjaKursu {
   duration_seconds: number | null;
   is_completed: boolean;
   topic_id: number | null;
-  /** Lekcja zamknięta kolejnością; brak pola = otwarta. */
-  locked?: boolean;
-  /** Czas aktywny uczestnika w tej lekcji, w sekundach; brak pola = ekran nie pokazuje postępu lekcji. */
-  active_seconds?: number;
-  /** Czas aktywny potrzebny do ukończenia lekcji, w sekundach; brak pola = ekran nie pokazuje postępu lekcji. */
-  required_active_seconds?: number;
-  /** `false` — lekcja do czytania, bez nagrania; `true` albo brak pola — opis czasu nagrania jak dotąd. */
-  has_recording?: boolean;
+  /** Lekcja zamknięta kolejnością „lekcje po kolei” (zawsze `false` dla personelu i prowadzącego). */
+  locked: boolean;
+  /** Czas aktywny uczestnika w tej lekcji, w sekundach (`0` bez postępu; także dla lekcji zamkniętej). */
+  active_seconds: number;
+  /** Czas aktywny potrzebny do ukończenia lekcji, w sekundach (lekcja bez nagrania: `0`). */
+  required_active_seconds: number;
+  /** `false` — lekcja do czytania, bez nagrania; `true` — opis czasu nagrania. */
+  has_recording: boolean;
 }
 
 export interface TematKursu {
@@ -43,10 +44,12 @@ export interface KursUczestnika {
   progress_percent: number;
   topics?: TematKursu[];
   lessons: LekcjaKursu[];
-  /** Test zamknięty (zaplecze rozstrzyga); brak pola = ekran liczy ze stanu lekcji. */
-  test_locked?: boolean;
-  /** Test zaliczony; brak pola = karta testu liczy jak dotąd. */
-  test_passed?: boolean;
+  /** Czy kurs ma test; kurs bez testu ma warunek testu spełniony z definicji. */
+  has_test: boolean;
+  /** Test zamknięty — rozstrzyga zaplecze (`false` dla kursu bez testu, bez lekcji i dla personelu). */
+  test_locked: boolean;
+  /** Test zaliczony — rozstrzyga zaplecze (`false` dla kursu bez testu). */
+  test_passed: boolean;
 }
 
 /** Adres listy kursów uczestnika. */
