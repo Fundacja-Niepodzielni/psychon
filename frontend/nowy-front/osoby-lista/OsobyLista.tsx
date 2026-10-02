@@ -26,6 +26,7 @@ import {
   type FiltrOsob,
 } from "./dane";
 import style from "./OsobyLista.module.css";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
@@ -116,7 +117,7 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
     } catch (wyjatek) {
       setPobranie({
         rodzaj: "blad",
-        komunikat: wyjatek instanceof ApiError ? wyjatek.message : "Sprawdź połączenie z internetem i spróbuj jeszcze raz.",
+        komunikat: wyjatek instanceof ApiError ? wyjatek.message : KOMUNIKAT_INTERNET,
       });
     }
   }
@@ -229,7 +230,7 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
           </Button>
         }
       >
-        Sprawdź połączenie z internetem i spróbuj jeszcze raz.
+        {KOMUNIKAT_SERWER}
       </Notice>
     );
   } else if (stan.osoby.length === 0 && aktywny) {
