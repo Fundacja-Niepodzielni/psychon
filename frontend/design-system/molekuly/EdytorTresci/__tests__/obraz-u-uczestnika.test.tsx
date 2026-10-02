@@ -120,10 +120,10 @@ describe("zapis edytowanego bloku a obraz u uczestnika", () => {
 describe("który ekran rysuje treść lekcji uczestnikowi", () => {
   const KORZEN = join(__dirname, "../../../..");
 
-  it("dotychczasowy ekran lekcji nie rysuje treści lekcji wcale — jedynym miejscem, które ją rysuje, jest TrescLekcji", () => {
-    // Adres lekcji uczestnika oddaje dziś dotychczasowy ekran (grupa przełączenia wyłączona).
-    // Gdy ta próba zczerwienieje po włączeniu grupy, obraz treści dalej pilnują próby wyżej.
-    expect(GRUPY.lekcja.wlaczona).toBe(false);
+  it("adres lekcji uczestnika oddaje nowy ekran, a dotychczasowy nie rysuje treści lekcji wcale — jedynym miejscem, które ją rysuje, jest TrescLekcji", () => {
+    // Adres lekcji uczestnika oddaje dziś nowy ekran (grupa przełączenia włączona); dotychczasowy ekran zostaje
+    // w kodzie i nadal nie rysuje treści, więc obraz treści pilnują próby wyżej.
+    expect(GRUPY.lekcja.wlaczona).toBe(true);
     const strona = readFileSync(join(KORZEN, "app/(uczestnik)/panel/lekcje/[id]/page.tsx"), "utf8");
     expect(strona).toMatch(/GRUPY\.lekcja\.wlaczona \? <LekcjaNowyEkran .*\/> : <LekcjaStaraTresc /);
     const odtwarzacz = readFileSync(join(KORZEN, "components/lesson/LessonPlayer.tsx"), "utf8");

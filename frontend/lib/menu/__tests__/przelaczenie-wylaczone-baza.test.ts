@@ -143,7 +143,7 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
   });
 });
 
-const WLACZONE_DZIS: KluczGrupy[] = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kolejkaStazu", "kursAdministracji", "kursyAdministracji", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE_DZIS: KluczGrupy[] = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kolejkaStazu", "kursAdministracji", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 const FLAGI_DZIS: Partial<Record<KluczGrupy, boolean>> = Object.fromEntries(
   WLACZONE_DZIS.map((klucz) => [klucz, true]),
 );
