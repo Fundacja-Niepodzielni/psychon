@@ -474,6 +474,8 @@ describe("SuperwizjaUczestnika — wypis z potwierdzeniem", () => {
     const wycofaj = within(okno).getByRole("button", { name: "Nie wypisuj" });
     await waitFor(() => expect(wycofaj).toHaveFocus());
     expect(przyciskiGlowne(okno)).toEqual([within(okno).getByRole("button", { name: "Wypisz się" })]);
+    // Zielony przycisk bez czerwonego napisu wariantu „niebezpieczne” (czerwień na zieleni jest nieczytelna).
+    expect(within(okno).getByRole("button", { name: "Wypisz się" }).className).not.toMatch(/niebezpieczny/);
 
     await uzytkownik.click(wycofaj);
     expect(screen.queryByRole("dialog")).toBeNull();

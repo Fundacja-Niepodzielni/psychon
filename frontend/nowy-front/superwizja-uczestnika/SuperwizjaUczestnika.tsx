@@ -59,7 +59,9 @@ const OPIS = "Zapisz się na termin u swojego superwizora i sprawdź, czy Twoja 
  *
  * Jeden przycisk główny na stan: zielony jest wyłącznie „Zapisz się” przy
  * najbliższym terminie, na który można się teraz zapisać; pozostałe przyciski
- * są obrysowane, a każdy wyłączony ma zdanie z powodem.
+ * są obrysowane, a każdy wyłączony ma zdanie z powodem. Okno wypisu nie
+ * używa wariantu „niebezpieczne”: we wspólnym przycisku daje on czerwony
+ * napis na zielonym tle, nieczytelny (wypis da się cofnąć ponownym zapisem).
  */
 export function SuperwizjaUczestnika() {
   const router = useRouter();
@@ -263,7 +265,6 @@ export function SuperwizjaUczestnika() {
           tytul="Wypisać Cię z terminu?"
           etykietaWycofania="Nie wypisuj"
           etykietaPotwierdzenia="Wypisz się"
-          niebezpieczne
           onWycofaj={() => setPytanieWypisu(null)}
           onPotwierdz={() => {
             const termin = pytanieWypisu;
