@@ -17,29 +17,10 @@ export const ETYKIETA_STANU_KURSU: Record<KursSciezki["status"], { wariant: "neu
   completed: { wariant: "ok", tekst: "ukończony" },
 };
 
-/**
- * Zdanie w wierszu kursu zamkniętego: który kurs trzeba ukończyć, żeby ten się
- * otworzył. Poprzedni kurs to ten z listy, którego numer w ścieżce jest
- * najbliższym niższym; lista nie pyta o nic ponad to, co pulpit już wczytał.
- * Gdy kurs nie ma numeru w ścieżce albo poprzedniego nie ma na liście —
- * zdanie bez tytułu.
- */
-export function zdanieZamknietegoKursu(kurs: KursSciezki, kursy: KursSciezki[]): string {
-  const numer = kurs.sequence_order;
-  const poprzedni =
-    typeof numer === "number"
-      ? kursy
-          .filter((inny) => typeof inny.sequence_order === "number" && inny.sequence_order < numer)
-          .sort((a, b) => (b.sequence_order ?? 0) - (a.sequence_order ?? 0))[0]
-      : undefined;
-  const tytul = poprzedni?.title.trim() ?? "";
-  return tytul === "" ? "Otworzy się po ukończeniu poprzedniego kursu." : `Otworzy się po ukończeniu kursu „${tytul}”.`;
-}
-
 interface WlasciwosciListaKursow {
   tytul: string;
   kursy: KursSciezki[];
-  /** Podlinia wiersza kursu otwartego (np. „Kurs 2 · 40% ukończone”); kurs zamknięty ma w jej miejscu zdanie, co go otworzy. */
+  /** Podlinia wiersza (np. „Kurs 2 · 40% ukończone”). */
   podpowiedz: (kurs: KursSciezki) => string;
   pusty: { naglowek: string; tresc: string; przycisk: { etykieta: string; onClick: () => void } };
 }
@@ -70,7 +51,7 @@ export function ListaKursow({ tytul, kursy, podpowiedz, pusty }: WlasciwosciList
               wariant="ze-stanem"
               tytul={kurs.title}
               plakietka={ETYKIETA_STANU_KURSU[kurs.status]}
-              podpowiedz={kurs.status === "locked" ? zdanieZamknietegoKursu(kurs, kursy) : podpowiedz(kurs)}
+              podpowiedz={podpowiedz(kurs)}
               akcja={
                 kurs.status === "locked"
                   ? { etykieta: "Zamknięty", nieaktywna: true }
