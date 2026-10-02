@@ -537,7 +537,7 @@ describe("/prowadzacy/grupa — h1 dla każdego wysterowanego stanu", () => {
 });
 
 describe("/panel/kursy/[slug] — h1 dla każdego wysterowanego stanu", () => {
-  const importPage = () => import("@/app/(uczestnik)/panel/kursy/[slug]/page");
+  const importPage = () => import("@/app/(uczestnik)/panel/kursy/[slug]/StaraTresc");
 
   /** Katalog (`GET /courses`) leci równolegle ze szczegółami kursu; ekran
    * blokady potrzebuje go, żeby zamienić `required_course_id` na slug. */

@@ -22,7 +22,7 @@ vi.mock("@/lib/courses", async (importActual) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const { default: CoursePage } = await import("@/app/(uczestnik)/panel/kursy/[slug]/page");
+const { default: CoursePage } = await import("@/app/(uczestnik)/panel/kursy/[slug]/StaraTresc");
 
 const COURSE = {
   id: 2,

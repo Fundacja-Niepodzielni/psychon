@@ -189,7 +189,7 @@ export const GRUPY = {
    */
   kursUczestnika: {
     klucz: "kursUczestnika",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",
