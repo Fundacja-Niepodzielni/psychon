@@ -88,7 +88,7 @@ describe("Sprawy na odrzuconych odczytach transportu", () => {
     apiPaged.mockRejectedValue(new ApiErrorAtrapa(403, "forbidden", "Brak uprawnień."));
     const { container } = render(<Sprawy />);
 
-    await screen.findByText("Sekcja dla administracji");
+    await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" });
     const opisy = Array.from(container.querySelectorAll("p")).map((akapit) => akapit.textContent ?? "");
     expect(opisy.some((tekst) => tekst.includes("administracji"))).toBe(true);
     expect(screen.queryAllByRole("link", { name: "Otwórz sprawę" })).toHaveLength(0);

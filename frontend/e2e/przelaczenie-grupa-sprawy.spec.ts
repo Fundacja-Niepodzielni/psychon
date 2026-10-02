@@ -453,7 +453,7 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await page.goto("/admin/sprawy");
       await zabezpieczeniePrzedEkranemDostepu(page);
 
-      await expect(page.getByText("Ta funkcja jest dostępna tylko dla administracji.")).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeVisible();
       await expect(page.getByText("Marta Demo", { exact: true })).toHaveCount(0);
       await expect(page.getByText("Nieobecność na dyżurze")).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "Sprawy zgłoszone przez prowadzących" })).toHaveCount(0);

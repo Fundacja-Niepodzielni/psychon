@@ -189,7 +189,7 @@ describe("Sprawy — brak uprawnień (403 forbidden na wszystkich źródłach)",
 
     render(<Sprawy />);
 
-    expect(await screen.findByText("Sekcja dla administracji")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
     expect(screen.queryByText(/Źródło „/)).toBeNull();
   });
 });
@@ -459,7 +459,7 @@ describe("Sprawy — każdy stan w szablonie ListTemplate", () => {
       WYNIK_ZAKAZANY("profiles"),
     ]);
     const { container } = render(<Sprawy />);
-    await screen.findByText("Sekcja dla administracji");
+    await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" });
     oczekujJednegoMainZSzablonem(container);
     expect(screen.getByRole("heading", { name: "Sprawy do decyzji", level: 1 })).toBeInTheDocument();
   });
