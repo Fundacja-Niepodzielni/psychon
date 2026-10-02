@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ApiError } from "@/lib/api/klient";
 import {
+  ADRES_SPRAW,
   adresWewnetrzny,
   FORMY_SPRAW,
   jednostka,
@@ -146,41 +147,31 @@ describe("zbudujWidok", () => {
     expect(jednostka(liczba, FORMY_SPRAW)).toBe(sprawy);
   });
 
-  it("cel to link kolejki applications, także gdy inna kolejka ma więcej spraw", () => {
+  it("cel przycisku „Otwórz sprawy” to ekran „Sprawy” ze wszystkimi rodzajami, nie adres kolejki zgłoszeń", () => {
     const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu())!);
-    expect(widok.cel).toEqual({ nazwa: NAZWY_SPRAW.applications, liczba: 4, link: "/admin/uczestniczki" });
+    expect(ADRES_SPRAW).toBe("/admin/sprawy");
+    expect(widok.cel).toEqual({ nazwa: "Sprawy", liczba: 11, link: "/admin/sprawy" });
+    expect(widok.cel?.link).not.toBe("/admin/uczestniczki");
     expect(widok.razem).toBe(18);
     expect(widok.brakSpraw).toBe(false);
     expect(widok.powodBrakuCelu).toBeNull();
   });
 
-  it("kolejka applications ustawiona nie na pierwszym miejscu nadal jest celem", () => {
-    const dane = odczytajPulpit(
-      odpowiedzPulpitu({
-        queues: [
-          { key: "internship_entries", count: 9, link: "/admin/staz" },
-          { key: "applications", count: 2, link: "/admin/uczestniczki" },
-        ],
-      }),
-    )!;
-    expect(zbudujWidok(dane).cel?.link).toBe("/admin/uczestniczki");
-  });
-
-  it("inna kolejka z nieprawidłowym adresem nie wpływa na cel", () => {
+  it("cel nie zależy od kolejności kolejek ani od ich adresów w odpowiedzi", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
           { key: "internship_entries", count: 9, link: "https://obcy.example" },
-          { key: "applications", count: 2, link: "/admin/uczestniczki" },
+          { key: "applications", count: 2, link: "//obcy" },
         ],
       }),
     )!;
     const widok = zbudujWidok(dane);
-    expect(widok.cel?.link).toBe("/admin/uczestniczki");
+    expect(widok.cel?.link).toBe("/admin/sprawy");
     expect(widok.wiersze[0].link).toBeNull();
   });
 
-  it("brak kolejki applications przy innych kolejkach ze sprawami: brak celu z powodem", () => {
+  it("bez kolejki zgłoszeń, ale z innymi sprawami: przycisk nadal prowadzi do „Spraw”", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
@@ -191,11 +182,11 @@ describe("zbudujWidok", () => {
     )!;
     const widok = zbudujWidok(dane);
     expect(widok.brakSpraw).toBe(false);
-    expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toBe("Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.");
+    expect(widok.cel).toEqual({ nazwa: "Sprawy", liczba: 7, link: "/admin/sprawy" });
+    expect(widok.powodBrakuCelu).toBeNull();
   });
 
-  it("kolejka applications z liczbą 0 przy innych kolejkach ze sprawami: brak celu z powodem", () => {
+  it("zgłoszenia z liczbą 0 przy innych sprawach: przycisk prowadzi do „Spraw”", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
@@ -204,20 +195,25 @@ describe("zbudujWidok", () => {
         ],
       }),
     )!;
+    expect(zbudujWidok(dane).cel?.link).toBe("/admin/sprawy");
+  });
+
+  it("same pytania bez odpowiedzi (których „Sprawy” nie pokazują): brak celu z powodem", () => {
+    const dane = odczytajPulpit(
+      odpowiedzPulpitu({
+        queues: [
+          { key: "applications", count: 0, link: "/admin/uczestniczki" },
+          { key: "questions", count: 3, link: "/prowadzacy/pytania" },
+        ],
+      }),
+    )!;
     const widok = zbudujWidok(dane);
     expect(widok.brakSpraw).toBe(false);
     expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toBe("Brak zgłoszeń rekrutacyjnych do decyzji.");
+    expect(widok.powodBrakuCelu).toBe("Żadna sprawa nie czeka na decyzję.");
   });
 
-  it("kolejka applications z nieprawidłowym adresem: brak celu z powodem", () => {
-    const dane = odczytajPulpit(odpowiedzPulpitu({ queues: [{ key: "applications", count: 2, link: "//obcy" }] }))!;
-    const widok = zbudujWidok(dane);
-    expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toMatch(/nieprawidłowy/);
-  });
-
-  it("wszystkie liczby zerowe: brak spraw, brak celu, powód o zgłoszeniach rekrutacyjnych", () => {
+  it("wszystkie liczby zerowe: brak spraw, brak celu, powód „Brak spraw do decyzji”", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
@@ -229,14 +225,14 @@ describe("zbudujWidok", () => {
     const widok = zbudujWidok(dane);
     expect(widok.brakSpraw).toBe(true);
     expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toBe("Brak zgłoszeń rekrutacyjnych do decyzji.");
+    expect(widok.powodBrakuCelu).toBe("Żadna sprawa nie czeka na decyzję.");
   });
 
-  it("odpowiedź bez kolejek: brak spraw i osobny powód", () => {
+  it("odpowiedź bez kolejek: brak spraw, brak celu, ten sam powód", () => {
     const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu({ queues: [] }))!);
     expect(widok.brakSpraw).toBe(true);
     expect(widok.cel).toBeNull();
-    expect(widok.powodBrakuCelu).toMatch(/nie zawiera/);
+    expect(widok.powodBrakuCelu).toBe("Żadna sprawa nie czeka na decyzję.");
   });
 
   it("kolejka questions nie ma akcji i niesie adnotację; pozostałe kolejki są otwierane, bez adnotacji", () => {

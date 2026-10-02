@@ -30,6 +30,9 @@ export const TYTUL_LISTY = "Co czeka na decyzję";
 
 export const TEKST_BRAK_SPRAW = "Brak spraw do decyzji";
 
+/** Powód niedostępności przycisku „Otwórz sprawy” (pod nagłówkiem, opisuje przycisk). */
+export const POWOD_BRAKU_SPRAW = "Żadna sprawa nie czeka na decyzję.";
+
 /** Formy jednostki przy liczbie: 1 · 2-4 (poza 12-14) · pozostałe (w tym 0). */
 type FormyJednostki = readonly [jeden: string, kilka: string, wiele: string];
 
@@ -141,14 +144,19 @@ export function odczytajPulpit(surowe: unknown): PulpitAdministracji | null {
   };
 }
 
-/** Kod kolejki, do której prowadzi przycisk „Otwórz sprawy”. */
-export const KLUCZ_KOLEJKI_CELU = "applications";
+/**
+ * Adres ekranu „Sprawy” (wszystkie rodzaje spraw w jednej kolejce). Ten sam
+ * adres ma pozycja „Sprawy” w menu administracji — przed przełączeniem
+ * i po nim (`lib/przelaczenie/grupy.ts`, grupa `sprawy`).
+ */
+export const ADRES_SPRAW = "/admin/sprawy";
 
 /**
- * Cel przycisku „Otwórz sprawy”: `link` kolejki `applications` z odpowiedzi
- * serwera, o ile jej liczba jest większa od zera, a adres jest ścieżką
- * wewnętrzną. Adresu nie budujemy. Bez takiej kolejki przycisk nie ma celu i
- * ekran pokazuje powód.
+ * Cel przycisku „Otwórz sprawy”: zawsze ekran „Sprawy” ze wszystkimi
+ * rodzajami spraw, nigdy adres jednej kolejki z odpowiedzi serwera (adres
+ * kolejki zgłoszeń prowadzi do listy osób). Przycisk jest niedostępny tylko
+ * wtedy, gdy żadna sprawa otwierana przez administrację nie czeka — kolejka
+ * pytań (`KLUCZ_KOLEJKI_BEZ_AKCJI`) się nie liczy, bo „Sprawy” jej nie pokazują.
  */
 export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
   const kafle = KAFLE.map(({ klucz, id, etykieta, formy }) => ({
@@ -170,17 +178,15 @@ export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
   const razem = wiersze.reduce((suma, wiersz) => suma + wiersz.liczba, 0);
   const brakSpraw = razem === 0;
 
-  const kolejkaCelu = wiersze.find((wiersz) => wiersz.id === KLUCZ_KOLEJKI_CELU);
+  const doOtwarcia = wiersze
+    .filter((wiersz) => wiersz.otwierany)
+    .reduce((suma, wiersz) => suma + wiersz.liczba, 0);
   let cel: CelSpraw | null = null;
   let powodBrakuCelu: string | null = null;
-  if (!kolejkaCelu) {
-    powodBrakuCelu = "Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.";
-  } else if (kolejkaCelu.liczba === 0) {
-    powodBrakuCelu = "Brak zgłoszeń rekrutacyjnych do decyzji.";
-  } else if (kolejkaCelu.link === null) {
-    powodBrakuCelu = "Adres zgłoszeń rekrutacyjnych z odpowiedzi serwera jest nieprawidłowy.";
+  if (doOtwarcia === 0) {
+    powodBrakuCelu = POWOD_BRAKU_SPRAW;
   } else {
-    cel = { nazwa: kolejkaCelu.nazwa, liczba: kolejkaCelu.liczba, link: kolejkaCelu.link };
+    cel = { nazwa: "Sprawy", liczba: doOtwarcia, link: ADRES_SPRAW };
   }
 
   return { kafle, wiersze, razem, brakSpraw: wiersze.length === 0 || brakSpraw, cel, powodBrakuCelu };

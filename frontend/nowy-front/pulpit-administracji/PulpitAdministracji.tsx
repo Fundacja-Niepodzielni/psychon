@@ -26,8 +26,8 @@ type StanEkranu =
  * (`GET /admin/dashboard`, `backend/routes/api/h19.php:25`). Liczniki edycji
  * w `StatRow`, sprawy do decyzji w `RecordList` („Co czeka na decyzję”).
  * Akcja główna „Otwórz sprawy” stoi w nagłówku (`przyciskGlowny`, makieta
- * 2.0.4 `.head .acts`) i prowadzi do adresu `link` tych spraw, których czeka
- * najwięcej; bez celu jest niedostępna z powodem pod nagłówkiem. Każdy stan renderuje się wewnątrz szablonu,
+ * 2.0.4 `.head .acts`) i prowadzi do ekranu „Sprawy” ze wszystkimi rodzajami
+ * spraw (`ADRES_SPRAW`); bez spraw jest niedostępna z powodem pod nagłówkiem. Każdy stan renderuje się wewnątrz szablonu,
  * więc jego korzeń jest jedynym `main`.
  */
 export function PulpitAdministracji() {
