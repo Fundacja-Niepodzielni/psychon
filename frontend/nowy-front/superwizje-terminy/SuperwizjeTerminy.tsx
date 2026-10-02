@@ -27,6 +27,7 @@ import {
   type AdminSupervisionSlot,
 } from "@/lib/api/h12";
 import style from "./SuperwizjeTerminy.module.css";
+import { KOMUNIKAT_SERWER, KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 
@@ -220,7 +221,7 @@ export function SuperwizjeTerminy() {
         setBlad(
           wyjatek instanceof ApiError
             ? wyjatek.message
-            : "Nie udało się zapisać terminu. Spróbuj ponownie.",
+            : KOMUNIKAT_ZAPIS,
         );
       }
     } finally {
@@ -274,7 +275,7 @@ export function SuperwizjeTerminy() {
     return (
       <main id="tresc" className={style.uklad}>
         <Heading stopien={1}>Terminy superwizji</Heading>
-        <Text>Backend H12 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
+        <Text>{KOMUNIKAT_SERWER}</Text>
       </main>
     );
   }
@@ -284,7 +285,7 @@ export function SuperwizjeTerminy() {
       <PageHeader
         okruszki={[{ etykieta: "Administracja" }, { etykieta: "Terminy superwizji" }]}
         tytul="Terminy superwizji"
-        opis="Edycja i odwołanie terminów wszystkich prowadzących (H12). Zapisy pozostają widoczne wyłącznie do odczytu."
+        opis="Edycja i odwołanie terminów wszystkich prowadzących. Zapisy pozostają widoczne wyłącznie do odczytu."
         onPowrot={() => router.back()}
       />
 
@@ -326,7 +327,7 @@ export function SuperwizjeTerminy() {
               required
             />
             <Hint id="termin-starts-at-podpowiedz">
-              Czas lokalny Twojej przeglądarki — do zapisu trafia jako UTC.
+              Czas lokalny Twojej przeglądarki.
             </Hint>
             <ErrorText id="termin-starts-at-blad">{bledyPol?.starts_at?.[0]}</ErrorText>
           </div>
