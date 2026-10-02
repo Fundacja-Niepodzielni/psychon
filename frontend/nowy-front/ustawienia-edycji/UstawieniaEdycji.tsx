@@ -25,6 +25,7 @@ import {
   type FormularzUstawien,
   type RokProgramu,
 } from "./dane";
+import { KOMUNIKAT_SERWER, KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
@@ -107,10 +108,10 @@ export function UstawieniaEdycji() {
         const odczytane = bledyZOdpowiedzi(blad.errors);
         setBledy(odczytane);
         if (Object.keys(odczytane.pola).length === 0 && odczytane.pozostale.length === 0) {
-          setBladZapisu("Serwer odrzucił ustawienia. Popraw wartości i spróbuj ponownie.");
+          setBladZapisu("Ustawienia nie zostały zapisane. Popraw wartości i spróbuj ponownie.");
         }
       } else {
-        setBladZapisu("Nie udało się zapisać ustawień. Spróbuj ponownie.");
+        setBladZapisu(KOMUNIKAT_ZAPIS);
       }
     } finally {
       setZapisywanie(false);
@@ -145,7 +146,7 @@ export function UstawieniaEdycji() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Ustawienia nie są zmyślane bez danych.
+            {KOMUNIKAT_SERWER} Ustawienia nie są pokazywane bez danych.
           </Notice>
         }
         tresc={null}
@@ -176,7 +177,7 @@ export function UstawieniaEdycji() {
         tresc={
           <EmptyState
             naglowek="Nie ma aktywnego roku programu"
-            tresc="Serwer nie zwrócił aktywnego roku programu, więc nie ma czego ustawiać."
+            tresc="Bez aktywnego roku programu nie ma czego ustawiać."
             przycisk={{ etykieta: "Wróć", onClick: wroc }}
           />
         }
