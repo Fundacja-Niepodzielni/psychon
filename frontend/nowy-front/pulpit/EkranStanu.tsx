@@ -7,6 +7,7 @@ import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import type { RodzajBledu } from "./rodzaj-bledu";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 export type StanBezDanych = "ladowanie" | RodzajBledu;
 
@@ -58,7 +59,7 @@ function TrescStanu({
             </Button>
           }
         >
-          Nie udało się połączyć z serwerem. Sprawdź połączenie z internetem i spróbuj ponownie.
+          {KOMUNIKAT_INTERNET}
         </Notice>
       );
     case "blad":
@@ -72,7 +73,7 @@ function TrescStanu({
             </Button>
           }
         >
-          Coś poszło nie tak po naszej stronie. Spróbuj ponownie za chwilę.
+          {KOMUNIKAT_SERWER}
         </Notice>
       );
     case "zakazane":
