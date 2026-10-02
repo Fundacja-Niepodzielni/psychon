@@ -12,16 +12,14 @@
 | trasach: kto NIE jest stroną wątku dostaje 404 z ChatThreadQuery::visibleTo,
 | niezależnie od roli tokena.
 |
-| Założenie wątku grupowego i usunięcie osoby ze składu należą wyłącznie do
-| prowadzącego, więc TU jest bramka `role:instructor`; własność KONKRETNEGO
-| wątku (czy wywołujący jest jego `supervisor_id`) sprawdza kontroler.
+| Założenie wątku grupowego należy wyłącznie do prowadzącego, więc TU jest
+| bramka `role:instructor`.
 |
-| Skład grupy wyznacza przypisanie superwizora, które nadaje wyłącznie
-| administracja (`PUT /admin/users/{id}/supervisor`). Dodawanie osoby do
-| wątku nie istnieje: `POST /threads/{thread}/members/{user}` odpowiada
-| każdemu zalogowanemu tym samym 404 co nieznana trasa, zanim cokolwiek
-| odczyta. Trasa zostaje zarejestrowana tylko dlatego, że `DELETE` pod tym
-| samym adresem dałoby inaczej 405 zamiast 404.
+| Skład grupy wyznacza przypisanie superwizora, które nadaje i kończy
+| wyłącznie administracja (`PUT /admin/users/{id}/supervisor`). Pod adresem
+| składu wątku (`/threads/{thread}/members/{user}`) nie ma żadnej trasy:
+| każda metoda dostaje od każdego, z tokenem i bez, tę samą odpowiedź co
+| nieznany adres.
 |
 | Kontrakt: docs/hackathon/02-kontrakt-api.md — endpointy czatu i typy
 | powiadomień `message.received`/`thread.member_added` jeszcze nienotowane
@@ -30,7 +28,6 @@
 
 use App\Http\Controllers\Api\V1\Chat\MessageController;
 use App\Http\Controllers\Api\V1\Chat\ThreadController;
-use App\Http\Controllers\Api\V1\Chat\ThreadMemberController;
 use Illuminate\Support\Facades\Route;
 
 if (! config('features.chat', true)) {
@@ -43,15 +40,6 @@ Route::middleware(['auth:keycloak', 'access.active'])->group(function (): void {
     Route::post('/threads/{thread}/messages', [MessageController::class, 'store'])->whereNumber('thread');
 });
 
-Route::middleware(['auth:keycloak'])->group(function (): void {
-    Route::post('/threads/{thread}/members/{user}', [ThreadMemberController::class, 'store'])
-        ->whereNumber('thread')
-        ->whereNumber('user');
-});
-
 Route::middleware(['auth:keycloak', 'access.active', 'role:instructor'])->group(function (): void {
     Route::post('/threads', [ThreadController::class, 'store']);
-    Route::delete('/threads/{thread}/members/{user}', [ThreadMemberController::class, 'destroy'])
-        ->whereNumber('thread')
-        ->whereNumber('user');
 });

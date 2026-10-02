@@ -11,13 +11,15 @@ use Illuminate\Support\Facades\DB;
 final class SupervisorAssignmentService
 {
     /**
+     * Przypisanie nadaje wyłącznie administracja
+     * (`AdminSupervisionController::assignSupervisor`). Każde zamknięte przy tym
+     * dotychczasowe przypisanie zapisuje w dzienniku `supervisor.unassigned`,
+     * nowe — `supervisor.assigned`; ładunek obu to wyłącznie identyfikatory.
+     *
      * @param  bool  $requireNoConflict  Gdy true: wolontariusz z aktywnym przypisaniem do
      *                                   INNEGO prowadzącego nie zostaje przejęty — rzucany jest wyjątek 409 zamiast
-     *                                   cichego zamknięcia cudzego przypisania. Domyślnie false, bo administracja
-     *                                   (`AdminSupervisionController::assignSupervisor`) ma prawo świadomie
-     *                                   przepisać wolontariusza do innego prowadzącego. Prowadzący dodający osobę
-     *                                   do własnego wątku grupowego (`ThreadMemberController::store`) tego prawa
-     *                                   nie ma — woła z `true`.
+     *                                   zamknięcia dotychczasowego przypisania. Domyślnie false, bo administracja
+     *                                   ma prawo świadomie przepisać wolontariusza do innego prowadzącego.
      */
     public function assign(User $actor, int $volunteerId, int $supervisorId, bool $requireNoConflict = false): SupervisorAssignment
     {
@@ -56,8 +58,13 @@ final class SupervisorAssignmentService
             }
 
             $timestamp = now();
-            foreach ($active as $assignment) {
-                $assignment->forceFill(['unassigned_at' => $timestamp])->save();
+            foreach ($active as $closed) {
+                $closed->forceFill(['unassigned_at' => $timestamp])->save();
+
+                AuditLog::record($actor, 'supervisor.unassigned', $closed, [
+                    'volunteer_id' => (int) $closed->volunteer_id,
+                    'supervisor_id' => (int) $closed->supervisor_id,
+                ]);
             }
 
             $assignment = SupervisorAssignment::query()->create([
@@ -70,32 +77,6 @@ final class SupervisorAssignmentService
                 'volunteer_id' => $volunteer->id,
                 'supervisor_id' => $supervisor->id,
             ]);
-
-            return $assignment;
-        });
-    }
-
-    /**
-     * Zamyka aktywne przypisanie wolontariusza do tego prowadzącego — użyte
-     * przez `ThreadMemberController::destroy` (usunięcie osoby ze składu
-     * wątku grupowego). Brak aktywnego przypisania tej pary = 404: ta osoba
-     * nie jest (już) w składzie.
-     */
-    public function unassign(int $volunteerId, int $supervisorId): SupervisorAssignment
-    {
-        return DB::transaction(function () use ($volunteerId, $supervisorId): SupervisorAssignment {
-            $assignment = SupervisorAssignment::query()
-                ->where('volunteer_id', $volunteerId)
-                ->where('supervisor_id', $supervisorId)
-                ->whereNull('unassigned_at')
-                ->lockForUpdate()
-                ->first();
-
-            if ($assignment === null) {
-                throw new ApiException(404, 'not_found', 'Ta osoba nie jest w składzie tego wątku.');
-            }
-
-            $assignment->forceFill(['unassigned_at' => now()])->save();
 
             return $assignment;
         });

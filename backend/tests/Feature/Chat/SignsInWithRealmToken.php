@@ -42,8 +42,13 @@ trait SignsInWithRealmToken
      */
     protected function postMalformedJson(string $uri): TestResponse
     {
+        return $this->sendMalformedJson('POST', $uri);
+    }
+
+    protected function sendMalformedJson(string $method, string $uri): TestResponse
+    {
         return $this->call(
-            'POST',
+            $method,
             $uri,
             [],
             [],

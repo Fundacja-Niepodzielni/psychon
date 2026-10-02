@@ -14,10 +14,11 @@ use Tests\TestCase;
 
 /**
  * Skład grupy prowadzącego wyznacza wyłącznie administracja
- * (`PUT /admin/users/{id}/supervisor`). Adres
- * `POST /threads/{thread}/members/{user}` odpowiada każdemu zalogowanemu
- * tym samym 404 co nieznana trasa — dla każdego identyfikatora i każdego
- * ciała — i niczego nie zapisuje.
+ * (`PUT /admin/users/{id}/supervisor`) — ona przypisuje i ona kończy
+ * przypisanie. Adres `/threads/{thread}/members/{user}` odpowiada na
+ * `POST` i `DELETE` każdemu — z tokenem dowolnej roli i bez tokenu — tym
+ * samym 404 co nieznany adres, dla każdego identyfikatora i każdego ciała,
+ * i niczego nie zapisuje.
  */
 class GroupMembershipIsAssignedByAdministrationTest extends TestCase
 {
@@ -46,13 +47,25 @@ class GroupMembershipIsAssignedByAdministrationTest extends TestCase
 
     /**
      * Odpowiedź na adres, którego aplikacja nie zna — wzorzec, z którym
-     * porównujemy odpowiedzi trasy dodawania.
+     * porównujemy odpowiedzi pod adresem składu wątku.
      */
-    private function unknownRouteResponse(User $caller): TestResponse
+    private function unknownRouteResponse(?User $caller, string $method = 'POST'): TestResponse
     {
-        return $this->signedInAs($caller)
-            ->postJson('/api/v1/threads/1/nieznany-adres/1')
+        return $this->callerOrGuest($caller)
+            ->json($method, '/api/v1/threads/1/nieznany-adres/1')
             ->assertNotFound();
+    }
+
+    private function callerOrGuest(?User $caller): static
+    {
+        if ($caller !== null) {
+            return $this->signedInAs($caller);
+        }
+
+        $this->flushHeaders();
+        $this->app['auth']->forgetGuards();
+
+        return $this;
     }
 
     public function test_instructor_does_not_gain_any_volunteer_through_the_group_thread(): void
@@ -99,10 +112,14 @@ class GroupMembershipIsAssignedByAdministrationTest extends TestCase
         $student = $this->account('student');
         $manager = $this->account('project_manager');
         $taken = $this->account('volunteer');
+        $member = $this->account('volunteer');
         $free = $this->account('volunteer');
 
         SupervisorAssignment::query()->create([
             'volunteer_id' => $taken->id, 'supervisor_id' => $otherInstructor->id, 'assigned_at' => now(),
+        ]);
+        SupervisorAssignment::query()->create([
+            'volunteer_id' => $member->id, 'supervisor_id' => $instructor->id, 'assigned_at' => now(),
         ]);
 
         $ownThread = $this->ownGroupThread($instructor);
@@ -113,7 +130,6 @@ class GroupMembershipIsAssignedByAdministrationTest extends TestCase
         $missingThread = (int) MessageThread::query()->max('id') + 1000;
         $missingUser = (int) User::query()->max('id') + 1000;
 
-        $reference = $this->unknownRouteResponse($instructor)->getContent();
         $bodies = [
             'bez ciała' => [],
             'puste pole' => ['volunteer_id' => ''],
@@ -122,51 +138,75 @@ class GroupMembershipIsAssignedByAdministrationTest extends TestCase
         ];
 
         $checked = 0;
-        foreach ([$ownThread, $foreignThread, $individual, $missingThread] as $thread) {
-            foreach ([$missingUser, $student->id, $manager->id, $taken->id, $free->id] as $user) {
-                $uri = "/api/v1/threads/{$thread}/members/{$user}";
+        foreach (['POST', 'DELETE'] as $method) {
+            $reference = $this->unknownRouteResponse($instructor, $method)->getContent();
 
-                foreach ($bodies as $label => $body) {
-                    $response = $this->signedInAs($instructor)->postJson($uri, $body);
-                    $this->assertSame(404, $response->getStatusCode(), "{$uri} ({$label})");
-                    $this->assertSame($reference, $response->getContent(), "{$uri} ({$label})");
+            foreach ([$ownThread, $foreignThread, $individual, $missingThread] as $thread) {
+                foreach ([$missingUser, $student->id, $manager->id, $taken->id, $member->id, $free->id] as $user) {
+                    $uri = "/api/v1/threads/{$thread}/members/{$user}";
+
+                    foreach ($bodies as $label => $body) {
+                        $response = $this->signedInAs($instructor)->json($method, $uri, $body);
+                        $this->assertSame(404, $response->getStatusCode(), "{$method} {$uri} ({$label})");
+                        $this->assertSame($reference, $response->getContent(), "{$method} {$uri} ({$label})");
+                        $checked++;
+                    }
+
+                    $malformed = $this->signedInAs($instructor)->sendMalformedJson($method, $uri);
+                    $this->assertSame(404, $malformed->getStatusCode(), "{$method} {$uri} (zły JSON)");
+                    $this->assertSame($reference, $malformed->getContent(), "{$method} {$uri} (zły JSON)");
                     $checked++;
                 }
-
-                $malformed = $this->signedInAs($instructor)->postMalformedJson($uri);
-                $this->assertSame(404, $malformed->getStatusCode(), "{$uri} (zły JSON)");
-                $this->assertSame($reference, $malformed->getContent(), "{$uri} (zły JSON)");
-                $checked++;
             }
         }
-        $this->assertSame(100, $checked);
+        $this->assertSame(240, $checked);
 
-        // Nic się nie zmieniło: zajęta osoba nadal u swojego prowadzącego, wolna bez opiekuna.
+        // Nic się nie zmieniło: każda osoba nadal u swojego prowadzącego, wolna bez opiekuna.
         $this->assertSame([$otherInstructor->id], SupervisorAssignment::query()
             ->where('volunteer_id', $taken->id)->whereNull('unassigned_at')->pluck('supervisor_id')->all());
-        $this->assertSame(1, SupervisorAssignment::query()->count());
-        $this->assertSame(0, AuditLogEntry::query()->where('action', 'supervisor.assigned')->count());
+        $this->assertSame([$instructor->id], SupervisorAssignment::query()
+            ->where('volunteer_id', $member->id)->whereNull('unassigned_at')->pluck('supervisor_id')->all());
+        $this->assertSame(2, SupervisorAssignment::query()->count());
+        $this->assertSame(0, SupervisorAssignment::query()->whereNotNull('unassigned_at')->count());
+        $this->assertSame(0, AuditLogEntry::query()->count());
         $this->assertSame(0, Notification::query()->where('type', 'thread.member_added')->count());
     }
 
-    public function test_every_signed_in_role_gets_the_same_refusal(): void
+    public function test_every_role_and_a_caller_without_a_token_get_the_same_refusal(): void
     {
         $instructor = $this->account('instructor');
-        $free = $this->account('volunteer');
+        $member = $this->account('volunteer');
         $thread = $this->ownGroupThread($instructor);
+        SupervisorAssignment::query()->create([
+            'volunteer_id' => $member->id, 'supervisor_id' => $instructor->id, 'assigned_at' => now(),
+        ]);
 
-        foreach (['volunteer', 'student', 'project_manager', 'super_admin'] as $role) {
-            $caller = $role === 'volunteer' ? $free : $this->account($role);
-            $reference = $this->unknownRouteResponse($caller)->getContent();
+        $callers = [
+            'prowadzący właściciel wątku' => $instructor,
+            'inny prowadzący' => $this->account('instructor'),
+            'osoba ze składu' => $member,
+            'student' => $this->account('student'),
+            'project_manager' => $this->account('project_manager'),
+            'super_admin' => $this->account('super_admin'),
+            'bez tokenu' => null,
+        ];
 
-            $response = $this->signedInAs($caller)
-                ->postJson("/api/v1/threads/{$thread}/members/{$free->id}", ['volunteer_id' => $free->id]);
+        foreach (['POST', 'DELETE'] as $method) {
+            foreach ($callers as $label => $caller) {
+                $reference = $this->unknownRouteResponse($caller, $method)->getContent();
 
-            $this->assertSame(404, $response->getStatusCode(), $role);
-            $this->assertSame($reference, $response->getContent(), $role);
+                $response = $this->callerOrGuest($caller)
+                    ->json($method, "/api/v1/threads/{$thread}/members/{$member->id}", ['volunteer_id' => $member->id]);
+
+                $this->assertSame(404, $response->getStatusCode(), "{$method} {$label}");
+                $this->assertSame($reference, $response->getContent(), "{$method} {$label}");
+            }
         }
 
-        $this->assertSame(0, SupervisorAssignment::query()->count());
+        $this->assertSame([$instructor->id], SupervisorAssignment::query()
+            ->where('volunteer_id', $member->id)->whereNull('unassigned_at')->pluck('supervisor_id')->all());
+        $this->assertSame(1, SupervisorAssignment::query()->count());
+        $this->assertSame(0, AuditLogEntry::query()->count());
     }
 
     public function test_administration_assigns_and_the_instructor_sees_the_person_in_the_group(): void
@@ -194,5 +234,44 @@ class GroupMembershipIsAssignedByAdministrationTest extends TestCase
 
         $threads = collect($this->signedInAs($instructor)->getJson('/api/v1/threads')->assertOk()->json('data'));
         $this->assertSame([$volunteer->id], $threads->where('type', 'individual')->pluck('volunteer.id')->values()->all());
+    }
+
+    public function test_reassignment_by_administration_records_the_end_of_the_previous_assignment_once(): void
+    {
+        $manager = $this->account('project_manager');
+        $first = $this->account('instructor');
+        $second = $this->account('instructor');
+        $volunteer = $this->account('volunteer');
+
+        $this->signedInAs($manager)
+            ->putJson("/api/v1/admin/users/{$volunteer->id}/supervisor", ['supervisor_id' => $first->id])
+            ->assertOk();
+        $this->assertSame(0, AuditLogEntry::query()->where('action', 'supervisor.unassigned')->count());
+
+        $this->signedInAs($manager)
+            ->putJson("/api/v1/admin/users/{$volunteer->id}/supervisor", ['supervisor_id' => $second->id])
+            ->assertOk();
+
+        $closed = SupervisorAssignment::query()
+            ->where('volunteer_id', $volunteer->id)->where('supervisor_id', $first->id)->sole();
+        $this->assertNotNull($closed->unassigned_at);
+
+        $ended = AuditLogEntry::query()->where('action', 'supervisor.unassigned')->get();
+        $this->assertCount(1, $ended);
+        $entry = $ended->sole();
+        $this->assertSame($manager->id, (int) $entry->actor_id);
+        $this->assertSame($closed->getMorphClass(), $entry->subject_type);
+        $this->assertSame($closed->id, (int) $entry->subject_id);
+        // Ładunek to wyłącznie identyfikatory — bez żadnego pola tekstowego.
+        $details = collect($entry->details)->sortKeys()->all();
+        $this->assertSame(['supervisor_id' => $first->id, 'volunteer_id' => $volunteer->id], $details);
+        $this->assertSame(2, AuditLogEntry::query()->where('action', 'supervisor.assigned')->count());
+
+        // Ponowne przypisanie do tego samego prowadzącego niczego nie kończy i niczego nie zapisuje.
+        $this->signedInAs($manager)
+            ->putJson("/api/v1/admin/users/{$volunteer->id}/supervisor", ['supervisor_id' => $second->id])
+            ->assertOk();
+        $this->assertSame(1, AuditLogEntry::query()->where('action', 'supervisor.unassigned')->count());
+        $this->assertSame(2, AuditLogEntry::query()->where('action', 'supervisor.assigned')->count());
     }
 }
