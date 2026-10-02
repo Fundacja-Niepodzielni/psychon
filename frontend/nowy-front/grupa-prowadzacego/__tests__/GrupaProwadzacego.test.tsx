@@ -296,8 +296,8 @@ describe("Moja grupa — obecności na terminach", () => {
     await pokazZDanymi({ ...GRUPA, slots: [TERMIN_ZAKONCZONY] });
     expect(screen.getByText("0 wolnych miejsc")).toBeInTheDocument();
     expect(screen.getByText("Zajęte miejsca: 2 z 2 · 60 min · sala 4")).toBeInTheDocument();
-    expect(screen.getByText("Obecność: Obecność")).toBeInTheDocument();
-    expect(screen.getByText("Obecność: Nieoznaczona")).toBeInTheDocument();
+    expect(screen.getByText("Oznaczono: obecność.")).toBeInTheDocument();
+    expect(screen.getByText("Obecność jeszcze nieoznaczona.")).toBeInTheDocument();
     expect(saPowodyPytania()).toBe(false);
 
     await userEvent.click(screen.getByRole("combobox", { name: "Obecność: Filip Demo" }));
@@ -310,7 +310,7 @@ describe("Moja grupa — obecności na terminach", () => {
     expect(zapiszObecnosci).toHaveBeenCalledTimes(1);
     expect(zapiszObecnosci).toHaveBeenCalledWith(30, { "17": "present", "18": "absent" });
     expect(screen.getByText("Obecności zostały zapisane.")).toBeInTheDocument();
-    expect(screen.getByText("Obecność: Nieobecność")).toBeInTheDocument();
+    expect(screen.getByText("Oznaczono: nieobecność.")).toBeInTheDocument();
     expect(saPowodyPytania()).toBe(false);
   });
 

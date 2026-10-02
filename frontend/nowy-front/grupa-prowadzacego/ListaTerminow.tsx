@@ -9,12 +9,12 @@ import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import type { Attendance, InstructorSlot } from "./dane";
 import {
-  etykietaObecnosci,
   ETYKIETY_OBECNOSCI,
   obecnoscOsoby,
   opisTerminu,
   pelneImie,
   tytulTerminu,
+  zdanieOObecnosci,
   zdanieOWolnychMiejscach,
 } from "./logika";
 import style from "./GrupaProwadzacego.module.css";
@@ -87,7 +87,7 @@ function Termin({
               return (
                 <li key={zapis.user.id} className={style.zapis}>
                   <Text>{pelneImie(zapis.user)}</Text>
-                  <Hint>Obecność: {etykietaObecnosci(wartosc)}</Hint>
+                  <Hint>{zdanieOObecnosci(wartosc)}</Hint>
                   <Field
                     id={`grupa-obecnosc-${termin.id}-${zapis.user.id}`}
                     etykieta={`Obecność: ${pelneImie(zapis.user)}`}

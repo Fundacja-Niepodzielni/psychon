@@ -94,8 +94,9 @@ export const ETYKIETY_OBECNOSCI: Record<Attendance, string> = {
   absent: "Nieobecność",
 };
 
-export function etykietaObecnosci(wartosc: Attendance | null): string {
-  return wartosc === null ? "Nieoznaczona" : ETYKIETY_OBECNOSCI[wartosc];
+/** „Oznaczono: obecność.” / „Obecność jeszcze nieoznaczona.” — pod imieniem i nazwiskiem osoby zapisanej na termin. */
+export function zdanieOObecnosci(wartosc: Attendance | null): string {
+  return wartosc === null ? "Obecność jeszcze nieoznaczona." : `Oznaczono: ${ETYKIETY_OBECNOSCI[wartosc].toLowerCase()}.`;
 }
 
 export function tytulTerminu(termin: InstructorSlot): string {

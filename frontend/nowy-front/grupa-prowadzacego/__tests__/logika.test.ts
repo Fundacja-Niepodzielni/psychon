@@ -4,7 +4,6 @@ import { DOMYSLNY_TERMIN, PUSTA_SPRAWA } from "../dane";
 import {
   bladPola,
   bledyPolZOdpowiedzi,
-  etykietaObecnosci,
   filtrujOsoby,
   komunikatBledu,
   licznikZnakow,
@@ -19,6 +18,7 @@ import {
   wartosciObecnosci,
   wierszeOsob,
   wierszeRzetelnosci,
+  zdanieOObecnosci,
   zdanieOLiczbieOsob,
   zdanieOWolnychMiejscach,
   zdanieOWynikachFiltru,
@@ -118,10 +118,10 @@ describe("terminy i obecności", () => {
     expect(posortujTerminy([remis, TERMIN_PRZYSZLY]).map((t) => t.id)).toEqual([99, 31]);
   });
 
-  it("etykiety obecności", () => {
-    expect(etykietaObecnosci(null)).toBe("Nieoznaczona");
-    expect(etykietaObecnosci("present")).toBe("Obecność");
-    expect(etykietaObecnosci("absent")).toBe("Nieobecność");
+  it("zdanie o obecności osoby", () => {
+    expect(zdanieOObecnosci(null)).toBe("Obecność jeszcze nieoznaczona.");
+    expect(zdanieOObecnosci("present")).toBe("Oznaczono: obecność.");
+    expect(zdanieOObecnosci("absent")).toBe("Oznaczono: nieobecność.");
   });
 
   it("obecność: wybrana teraz wygrywa z zapisaną; ciało zapisu niesie tylko osoby z wartością", () => {
