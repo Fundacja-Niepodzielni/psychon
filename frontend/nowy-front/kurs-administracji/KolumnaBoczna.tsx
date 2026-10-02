@@ -223,6 +223,13 @@ export function KartaPublikacji({
 
 export type WierszUstawien = "dane" | "prowadzacy" | "zaproszenia";
 
+/**
+ * Wiersz „Zaproszenia” w karcie ustawień nie jest pokazywany, dopóki zaproszenia
+ * na kurs nie wrócą po MVP. Kod wiersza i sekcji zostaje; powrót panelu to
+ * zmiana tej jednej wartości.
+ */
+const ZAPROSZENIA_W_USTAWIENIACH: boolean = false;
+
 interface WlasciwosciUstawien {
   kurs: AdminCourse;
   lekcje: { id: number; title: string }[];
@@ -280,15 +287,17 @@ export function UstawieniaKursu({
       >
         <PrzypisaniaKursu kurs={kurs} lekcje={lekcje} wUstawieniach onPrzypisania={onPrzypisania} />
       </Wiersz>
-      <Wiersz
-        id="zaproszenia"
-        etykieta="Zaproszenia"
-        stan={kursPozaKolejnoscia(kurs) ? "Kurs poza kolejnością ścieżki" : "Kurs w ścieżce programu"}
-        otwarty={otwarty}
-        onPrzelacz={przelacz}
-      >
-        <SekcjaZaproszenKursu kurs={kurs} onZamknij={() => zamknij("zaproszenia")} />
-      </Wiersz>
+      {ZAPROSZENIA_W_USTAWIENIACH && (
+        <Wiersz
+          id="zaproszenia"
+          etykieta="Zaproszenia"
+          stan={kursPozaKolejnoscia(kurs) ? "Kurs poza kolejnością ścieżki" : "Kurs w ścieżce programu"}
+          otwarty={otwarty}
+          onPrzelacz={przelacz}
+        >
+          <SekcjaZaproszenKursu kurs={kurs} onZamknij={() => zamknij("zaproszenia")} />
+        </Wiersz>
+      )}
       <div className={style.notaUstawien}>
         <Hint>Pliki do pobrania dodajesz w lekcjach.</Hint>
       </div>

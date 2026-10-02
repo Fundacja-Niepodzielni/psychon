@@ -435,8 +435,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
           ...(stan.kurs.materials_count > 0 ? ["Starsze pliki kursu"] : []),
           stan.kurs.is_published ? "Cofnięcie publikacji i usunięcie kursu" : "Usunięcie kursu",
         ]);
-        await expect(page.locator("#ustawienia-dane, #ustawienia-prowadzacy, #ustawienia-zaproszenia")).toHaveCount(3);
-        for (const id of ["ustawienia-dane", "ustawienia-prowadzacy", "ustawienia-zaproszenia"]) {
+        // Panel „Zaproszenia” nie jest pokazywany do czasu zaproszeń po MVP — w karcie są dwa wiersze.
+        await expect(page.locator("#ustawienia-dane, #ustawienia-prowadzacy")).toHaveCount(2);
+        await expect(page.locator("#ustawienia-zaproszenia, [data-wiersz='zaproszenia']")).toHaveCount(0);
+        for (const id of ["ustawienia-dane", "ustawienia-prowadzacy"]) {
           await expect(page.locator(`#${id}`)).toHaveAttribute("aria-expanded", "false");
         }
 
@@ -619,10 +621,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await dolaczNaruszeniaDoRaportu(testInfo, `axe-kurs-ustawienia-${szerokosc}`, naruszenia);
       expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
       await zrzut(page, `kurs-gotowy-ustawienia-${szerokosc}`);
-      await page.locator("#ustawienia-zaproszenia").click();
+      await page.locator("#ustawienia-prowadzacy").click();
       await expect(page.locator("#ustawienia-dane")).toHaveAttribute("aria-expanded", "false");
-      await expect(page.locator("#ustawienia-zaproszenia")).toHaveAttribute("aria-expanded", "true");
-      await page.locator("#ustawienia-zaproszenia").click();
+      await expect(page.locator("#ustawienia-prowadzacy")).toHaveAttribute("aria-expanded", "true");
+      await page.locator("#ustawienia-prowadzacy").click();
 
       await page.getByRole("button", { name: "Opublikuj kurs" }).locator("visible=true").click();
       await expect(page.getByRole("region", { name: "Publikacja" }).getByText("Kurs jest opublikowany.")).toBeVisible();
