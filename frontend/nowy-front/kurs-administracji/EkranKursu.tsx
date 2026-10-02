@@ -82,6 +82,7 @@ import { utworzKolejkeZapisu, type KolejkaZapisu } from "./kolejka-zapisu";
 import { odczytajOstrzezeniePoUtworzeniu, zapomnijOstrzezeniePoUtworzeniu } from "./ostrzezenie-po-utworzeniu";
 import { useOdswiezanieNagran } from "./odswiezanie-nagran";
 import style from "./EkranKursu.module.css";
+import { KOMUNIKAT_INTERNET } from "@/nowy-front/wspolne/komunikaty";
 
 const ADRES_LISTY_KURSOW = "/admin/kursy";
 
@@ -517,7 +518,7 @@ export function EkranKursu({
       } else if (klasa.rodzaj === "zakazane") {
         powody = [{ id: "rola", tekst: zdanieOdmowyRoli("administracji") }];
       } else if (klasa.rodzaj === "siec") {
-        powody = [{ id: "siec", tekst: "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie." }];
+        powody = [{ id: "siec", tekst: KOMUNIKAT_INTERNET }];
       } else {
         powody = [{ id: "serwer", tekst: klasa.komunikat }];
       }

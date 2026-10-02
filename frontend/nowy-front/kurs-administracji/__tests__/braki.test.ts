@@ -424,7 +424,7 @@ describe("powodyOdmowy", () => {
 
   it("kod spoza słownika przy pustym zdaniu serwera: zdanie zapasowe, nigdy pusta pozycja", () => {
     expect(powodyOdmowy({ message: " ", reason: { items: [{ code: "nowy_kod", lesson_id: 21 }] } }, miejsca)).toEqual([
-      { id: "serwer", tekst: "Serwer odmówił publikacji kursu." },
+      { id: "serwer", tekst: "Nie udało się opublikować kursu." },
     ]);
   });
 

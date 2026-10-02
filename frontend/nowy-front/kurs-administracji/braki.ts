@@ -330,7 +330,7 @@ export function powodyOdmowy(odmowa: OdmowaSerwera, miejsca: MiejscaLekcji): Poz
       powody.push(pozycja);
     } else if (!zdanieSerwera) {
       zdanieSerwera = true;
-      const tekst = odmowa.message.trim() !== "" ? odmowa.message : "Serwer odmówił publikacji kursu.";
+      const tekst = odmowa.message.trim() !== "" ? odmowa.message : "Nie udało się opublikować kursu.";
       powody.push({ id: "serwer", tekst });
     }
   }

@@ -30,6 +30,7 @@ import { zdanieDoZrobienia, type PozycjaPublikacji, type StanPublikacji } from "
 import { imieNazwisko, type PrzypisanieKursu } from "./dane";
 import { PrzypisaniaKursu } from "./SekcjeKursu";
 import style from "./EkranKursu.module.css";
+import { KOMUNIKAT_INTERNET } from "@/nowy-front/wspolne/komunikaty";
 
 export const KOTWICA_PUBLIKACJI = "publikacja";
 /** Komunikat odmowy publikacji — po odmowie serwera fokus staje na nim. */
@@ -589,7 +590,7 @@ export function OknoKursu({
       } else if (klasa.rodzaj === "zakazane") {
         setBlad(zdanieOdmowyRoli("administracji"));
       } else if (klasa.rodzaj === "siec") {
-        setBlad("Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.");
+        setBlad(KOMUNIKAT_INTERNET);
       } else {
         setBlad(klasa.komunikat);
       }
