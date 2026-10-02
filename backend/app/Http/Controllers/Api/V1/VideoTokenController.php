@@ -39,6 +39,11 @@ class VideoTokenController extends Controller
 
     public function show(Request $request, Lesson $lesson): JsonResponse
     {
+        $user = $request->user();
+        $this->lessonAccess->authorizeRecording($user, $lesson);
+
+        // Konfiguracja podpisu jest sprawdzana dopiero po rozstrzygnięciu
+        // dostępu: lekcja niewidoczna dla osoby odpowiada tak jak nieistniejąca.
         if (! $this->tokenService->isConfigured()) {
             throw new ApiException(
                 503,
@@ -46,9 +51,6 @@ class VideoTokenController extends Controller
                 'Odtwarzanie wideo jest chwilowo niedostępne. Spróbuj ponownie później.',
             );
         }
-
-        $user = $request->user();
-        $this->lessonAccess->authorizeRecording($user, $lesson);
 
         $recording = LessonRecording::of($lesson);
 

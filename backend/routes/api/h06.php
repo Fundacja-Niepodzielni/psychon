@@ -177,7 +177,7 @@ if (config('features.h06')) {
             ]);
         });
 
-        Route::post('/lessons/{id}/progress', function (H06ProgressRequest $request, Lesson $id) use (
+        Route::post('/lessons/{id}/progress', function (Request $request, Lesson $id) use (
             $authorizeLesson,
             $ensureProgress,
             $completion,
@@ -185,7 +185,10 @@ if (config('features.h06')) {
             $lesson = $id;
             $authorizeLesson($request, $lesson);
 
-            $values = $request->validated();
+            // Ciało jest sprawdzane dopiero po rozstrzygnięciu dostępu: lekcja
+            // niewidoczna dla osoby odpowiada tak jak nieistniejąca także przy
+            // błędnym ciele.
+            $values = app(H06ProgressRequest::class)->validated();
 
             /** @var LessonProgress $progress */
             $progress = DB::transaction(function () use ($request, $lesson, $ensureProgress, $values): LessonProgress {
