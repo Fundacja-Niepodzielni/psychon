@@ -11,6 +11,7 @@ use App\Models\Material;
 use App\Models\User;
 use App\Queries\CourseCatalogQuery;
 use App\Services\Auth\TokenRoles;
+use App\Services\Lessons\LessonSequence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -28,6 +29,9 @@ class CourseDetailResource extends CourseListResource
         $user = $request->user();
         $lessons = $this->lessons;
         $completedLessonIds = $this->completedLessonIds($user, $lessons);
+        $appliesToCaller = LessonSequence::appliesTo(app(TokenRoles::class)->current());
+        // Ta sama reguła co odmowy tras lekcji; dla personelu nic nie jest zamknięte.
+        $blockers = $appliesToCaller ? LessonSequence::blockers($lessons, $completedLessonIds) : [];
 
         return [
             ...parent::toArray($request),
@@ -35,10 +39,14 @@ class CourseDetailResource extends CourseListResource
             // Czy kurs ma test (relacja jest już wczytana przez kontroler);
             // kurs bez testu ma warunek testu spełniony z definicji.
             'has_test' => $this->test !== null,
+            // Test kursu zamknięty do ukończenia wszystkich lekcji (kurs bez testu
+            // albo bez lekcji: `false`; personel: `false`).
+            'test_locked' => $appliesToCaller && LessonSequence::testLocked($this->test !== null, $lessons, $completedLessonIds),
             'topics' => $this->topics(),
             'lessons' => $lessons->map(fn (Lesson $lesson): LessonSummaryResource => new LessonSummaryResource(
                 $lesson,
                 in_array($lesson->id, $completedLessonIds, true),
+                isset($blockers[$lesson->id]),
             )),
             'materials' => MaterialResource::collection($this->materials($lessons)),
         ];

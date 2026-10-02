@@ -44,6 +44,9 @@ use App\Support\CourseAccess;
  *    tu celowo zachowany (`assignedAsInstructor`).
  * 2. Kolejność kursów w ścieżce — wyłącznie `CourseAccess::state`; widoczny,
  *    ale zablokowany kurs daje dotychczasowe 403 `course_locked`.
+ * 3. Kolejność lekcji w kursie — wyłącznie `LessonSequence`; dla uczestnika
+ *    lekcja po nieukończonej poprzedniej daje 403 `lesson_locked`. Personel
+ *    i prowadzący tej reguły nie podlegają.
  */
 final class LessonAccess
 {
@@ -54,7 +57,7 @@ final class LessonAccess
 
     /**
      * Zwraca kurs lekcji, gdy osoba ma do niej dostęp; w przeciwnym razie
-     * rzuca 404 `not_found` albo 403 `course_locked`.
+     * rzuca 404 `not_found`, 403 `course_locked` albo (uczestnik) 403 `lesson_locked`.
      *
      * @throws ApiException
      */
@@ -182,6 +185,10 @@ final class LessonAccess
 
         $this->assertVisible($user, $course, $notFoundMessage, $staffExempt);
         $this->assertUnlocked($user, $course, 'Ten kurs jest jeszcze zablokowany.');
+
+        if (LessonSequence::appliesTo($this->tokenRoles->current())) {
+            LessonSequence::assertOpen($user, $lesson);
+        }
 
         return $course;
     }

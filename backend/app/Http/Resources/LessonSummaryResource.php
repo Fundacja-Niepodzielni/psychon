@@ -14,7 +14,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class LessonSummaryResource extends JsonResource
 {
-    public function __construct(Lesson $lesson, private readonly bool $isCompleted)
+    public function __construct(Lesson $lesson, private readonly bool $isCompleted, private readonly bool $locked = false)
     {
         parent::__construct($lesson);
     }
@@ -28,6 +28,9 @@ class LessonSummaryResource extends JsonResource
             'duration_seconds' => $this->duration_seconds,
             'is_completed' => $this->isCompleted,
             'topic_id' => $this->topic_id,
+            // Zamknięta dla osoby regułą „lekcje po kolei” (`LessonSequence`);
+            // zawsze `false` dla personelu i prowadzącego.
+            'locked' => $this->locked,
         ];
     }
 }

@@ -182,6 +182,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (`lesson_locked`, `reason.required_lesson_id`) \u2014 dla uczestnika, po 404 i po `course_locked`; albo kurs zablokowany kolejno\u015bci\u0105 kurs\u00f3w (`course_locked`). Koperta b\u0142\u0119du."
                     }
                 }
             }
@@ -262,6 +265,9 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (`lesson_locked`, `reason.required_lesson_id`) \u2014 dla uczestnika, po 404 i po `course_locked`; albo kurs zablokowany kolejno\u015bci\u0105 kurs\u00f3w (`course_locked`). Koperta b\u0142\u0119du."
                     }
                 }
             }
@@ -321,6 +327,9 @@
                     },
                     "422": {
                         "description": "B\u0142\u0105d domenowy `not_enough_active_time` (koperta b\u0142\u0119du): lekcja z gotowym nagraniem poni\u017cej progu czasu aktywnego albo o czasie trwania 0, albo lekcja z nagraniem w przygotowaniu lub z b\u0142\u0119dem. Lekcja bez nagrania nie daje tego b\u0142\u0119du."
+                    },
+                    "403": {
+                        "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (`lesson_locked`, `reason.required_lesson_id`) \u2014 dla uczestnika, po 404 i po `course_locked`; albo kurs zablokowany kolejno\u015bci\u0105 kurs\u00f3w (`course_locked`). Koperta b\u0142\u0119du."
                     }
                 }
             }
@@ -8849,7 +8858,7 @@
                         "$ref": "#/components/responses/ValidationException"
                     },
                     "403": {
-                        "$ref": "#/components/responses/AuthorizationException"
+                        "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (`lesson_locked`, `reason.required_lesson_id`) \u2014 dla uczestnika, po 404 i po `course_locked`; albo kurs zablokowany kolejno\u015bci\u0105 kurs\u00f3w (`course_locked`). Koperta b\u0142\u0119du."
                     }
                 }
             },
@@ -8971,6 +8980,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (`lesson_locked`, `reason.required_lesson_id`) \u2014 dla uczestnika, po 404 i po `course_locked`; albo kurs zablokowany kolejno\u015bci\u0105 kurs\u00f3w (`course_locked`). Koperta b\u0142\u0119du."
                     }
                 },
                 "description": "W\u0142asne pytania osoby do tej lekcji, od najnowszego (`created_at`, potem `id` malej\u0105co); `per_page` domy\u015blnie 25, najwy\u017cej 100. Dost\u0119p: wolontariusz i student."
@@ -11527,6 +11539,12 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Kurs zablokowany kolejno\u015bci\u0105 kurs\u00f3w (`course_locked`). Koperta b\u0142\u0119du."
+                    },
+                    "422": {
+                        "description": "Test kursu zamkni\u0119ty do uko\u0144czenia wszystkich lekcji kursu: `conditions_not_met`, `reason.missing: [\"lessons\"]`."
                     }
                 }
             }
@@ -11607,7 +11625,7 @@
                         "$ref": "#/components/responses/AuthenticationException"
                     },
                     "422": {
-                        "$ref": "#/components/responses/ValidationException"
+                        "description": "Walidacja odpowiedzi (`validation_failed`) albo test kursu zamkni\u0119ty do uko\u0144czenia wszystkich lekcji kursu: `conditions_not_met`, `reason.missing: [\"lessons\"]`."
                     },
                     "403": {
                         "$ref": "#/components/responses/AuthorizationException"
@@ -12155,7 +12173,7 @@
                         "$ref": "#/components/responses/AuthenticationException"
                     },
                     "403": {
-                        "description": "Kurs zablokowany kolejno\u015bci\u0105 (`course_locked`) albo brak dost\u0119pu do lekcji (koperta b\u0142\u0119du)."
+                        "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (`lesson_locked`, `reason.required_lesson_id`) \u2014 dla uczestnika, po 404 i po `course_locked`; albo kurs zablokowany kolejno\u015bci\u0105 kurs\u00f3w (`course_locked`). Koperta b\u0142\u0119du."
                     },
                     "404": {
                         "description": "Lekcja nieistniej\u0105ca albo spoza zasi\u0119gu osoby (`not_found`); lekcja bez nagrania (`video_missing`); nagranie w przygotowaniu albo z b\u0142\u0119dem, bez gotowego (`video_not_ready`). Koperta b\u0142\u0119du."
@@ -12295,6 +12313,10 @@
                         "type": "boolean",
                         "description": "Czy kurs ma test; kurs bez testu ma warunek testu spe\u0142niony z definicji."
                     },
+                    "test_locked": {
+                        "type": "boolean",
+                        "description": "Test kursu zamkni\u0119ty: kurs ma test i lekcje, a nie wszystkie lekcje s\u0105 uko\u0144czone; `false` dla kursu bez testu, bez lekcji i dla personelu."
+                    },
                     "topics": {
                         "type": "array",
                         "items": {
@@ -12340,6 +12362,7 @@
                     "progress_percent",
                     "instructor",
                     "has_test",
+                    "test_locked",
                     "topics",
                     "lessons",
                     "materials"
@@ -12725,6 +12748,10 @@
                             "integer",
                             "null"
                         ]
+                    },
+                    "locked": {
+                        "type": "boolean",
+                        "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (ta sama co odmowa `lesson_locked` tras lekcji); zawsze `false` dla personelu i prowadz\u0105cego."
                     }
                 },
                 "required": [
@@ -12733,7 +12760,8 @@
                     "sequence_order",
                     "duration_seconds",
                     "is_completed",
-                    "topic_id"
+                    "topic_id",
+                    "locked"
                 ],
                 "title": "LessonSummaryResource"
             },

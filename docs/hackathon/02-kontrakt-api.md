@@ -1981,3 +1981,89 @@ Kod: `routes/api/h06.php`, `Services/Lessons/LessonCompletionRule.php`,
 `routes/api/h17.php`, `Http/Controllers/Api/V1/H17/LessonQuestionController.php`,
 `Http/Resources/H17/ParticipantQuestionResource.php`, `Http/Resources/CourseDetailResource.php`,
 `Http/Resources/MaterialResource.php`, `Services/H17/QuestionRouting.php`, `openapi.json`.
+
+---
+
+## Aneks — lekcje po kolei (H05, H06, H10, H17)
+
+Uczestnik przechodzi lekcje kursu po kolei, a test kursu otwiera się dopiero po ukończeniu
+wszystkich lekcji. Zmiana jest addytywna: nowy kod `lesson_locked`, dwa nowe pola odczytu
+kursu i nowa odmowa startu testu. Bez nowych tras, slugów audytu i typów powiadomień;
+zero zmian w danych.
+
+### 1. Reguła otwarcia lekcji
+
+Kolejność lekcji jest ta sama co w odczycie kursu (`GET /courses/{slug}`, `lessons`):
+płaska lista w kolejności `sequence_order` (tematy rosnąco, w nich lekcje). Lekcja jest
+**otwarta** dla uczestnika, gdy:
+
+1. jest pierwszą lekcją kursu, **albo**
+2. poprzednia lekcja w tej kolejności jest ukończona, **albo**
+3. sama jest ukończona — ukończona lekcja zostaje otwarta zawsze, także po zmianie
+   kolejności lekcji po publikacji kursu.
+
+W przeciwnym razie lekcja jest **zamknięta**. Sam postęp (czas, pozycja) bez ukończenia
+lekcji nie otwiera. Zmiana kolejności lekcji nie cofa ukończenia: lekcja ukończona
+przesunięta za nieukończoną zostaje otwarta, a lekcja nieukończona przesunięta na początek
+kursu jest otwarta jako pierwsza.
+
+Reguła dotyczy wyłącznie **uczestnika** — osoby, której token niesie rolę wolontariusza
+albo studenta (ta sama miara co `is_completed` w odczycie kursu). Personel
+(`project_manager`, `super_admin`) i prowadzący są poza regułą: na wszystkich trasach
+dostają dotychczasowe odpowiedzi, a w odczycie kursu `locked` i `test_locked` mają `false`.
+
+### 2. Kod i kolejność odmów
+
+`403 lesson_locked` (domenowy, stan — jak `course_locked`), dopisek do tabeli §1.1:
+
+```json
+{ "error": { "status": 403, "code": "lesson_locked",
+    "message": "Najpierw ukończ lekcję 2: Wprowadzenie do wywiadu.",
+    "reason": { "required_lesson_id": 21 } } }
+```
+
+`N` w komunikacie to numer poprzedniej lekcji w kolejności kursu (od 1), a po dwukropku stoi
+jej tytuł; `reason.required_lesson_id` to identyfikator tej lekcji — tej, którą trzeba
+ukończyć. Kolejność odmów: `401 unauthenticated` → `404 not_found` (kurs albo lekcja
+niewidoczne) → `403 course_locked` (kolejność kursów w ścieżce) → `403 lesson_locked`.
+
+### 3. Trasy uczestnika objęte regułą
+
+`GET /lessons/{id}`, `POST /lessons/{id}/progress`, `POST /lessons/{id}/complete`,
+`GET /lessons/{id}/video-link`, `GET /lessons/{id}/questions` i `POST /lessons/{id}/questions`
+(zapis pytania). Odmowa niczego nie zapisuje: ani postępu, ani `open_count`, ani
+ukończenia, ani pytania; odczyt zamkniętej lekcji nie podbija `open_count`.
+
+Pobranie pliku materiału (`GET /materials/{id}/download`) tą regułą **nie jest objęte**: trasa
+jest podpisana i nie czyta roli z tokena, więc nie rozstrzyga, czy osoba jest uczestnikiem
+(wariant opisany osobno; kształt pola `download_url` bez zmian).
+
+### 4. Odczyt kursu — `GET /courses/{slug}`
+
+Addytywnie: każdy element `lessons` niesie `locked` (wartość logiczna — ta sama reguła co
+odmowa `lesson_locked` na trasach lekcji), a kurs niesie `test_locked`:
+
+```json
+{ "data": { "…pola bez zmian…": "…",
+  "has_test": true, "test_locked": true,
+  "lessons": [ { "id": 21, "…": "…", "is_completed": true, "topic_id": 7, "locked": false },
+               { "id": 22, "…": "…", "is_completed": false, "topic_id": 7, "locked": false },
+               { "id": 23, "…": "…", "is_completed": false, "topic_id": 7, "locked": true } ] } }
+```
+
+`test_locked` jest prawdziwe, gdy kurs ma test, ma lekcje i nie wszystkie lekcje są
+ukończone; kurs bez testu, kurs bez lekcji oraz personel mają `false`. Liczba zapytań do bazy
+przy odczycie kursu nie zależy od liczby lekcji.
+
+### 5. Start testu przed ukończeniem lekcji
+
+`GET /courses/{slug}/test` i `POST /tests/{id}/attempts` dla kursu, który ma nieukończone
+lekcje, odpowiadają `422 conditions_not_met` z `reason.missing: ["lessons"]` (kody i
+koperta jak w §1.1). Odmowa stoi po `404` i po `403 course_locked`, niczego nie zapisuje i
+nie zużywa podejścia. Kurs bez lekcji nie zamyka testu. Po ukończeniu wszystkich lekcji
+obie trasy działają jak dotąd. Trasa historii podejść (`GET /tests/{id}/attempts`) bez zmian.
+
+Kod: `Services/Lessons/LessonSequence.php` (jedyna implementacja reguły),
+`Services/Lessons/LessonAccess.php`, `Http/Controllers/Api/V1/TestController.php`,
+`Http/Resources/CourseDetailResource.php`, `Http/Resources/LessonSummaryResource.php`,
+`openapi.json`.

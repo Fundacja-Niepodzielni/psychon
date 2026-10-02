@@ -31,7 +31,7 @@ class CourseDetailTest extends TestCase
 
         $this->assertSame(
             ['id', 'slug', 'title', 'sequence_order', 'product_group', 'status', 'progress_percent',
-                'instructor', 'has_test', 'topics', 'lessons', 'materials'],
+                'instructor', 'has_test', 'test_locked', 'topics', 'lessons', 'materials'],
             array_keys($data),
         );
 
@@ -47,7 +47,7 @@ class CourseDetailTest extends TestCase
         $this->assertSame([1, 2, 3, 4, 5], array_column($data['lessons'], 'sequence_order'));
         $this->assertSame([true, true, false, false, false], array_column($data['lessons'], 'is_completed'));
         $this->assertSame(
-            ['id', 'title', 'sequence_order', 'duration_seconds', 'is_completed', 'topic_id'],
+            ['id', 'title', 'sequence_order', 'duration_seconds', 'is_completed', 'topic_id', 'locked'],
             array_keys($data['lessons'][0]),
         );
 
