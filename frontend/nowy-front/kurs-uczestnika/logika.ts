@@ -143,7 +143,8 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
   const ukonczone = lekcje.filter((lekcja) => lekcja.is_completed).length;
   const wszystkieUkonczone = razem > 0 && ukonczone === razem;
   const kursUkonczony = kurs.status === "completed";
-  const testZaliczony = kursUkonczony || kurs.test_passed === true;
+  // Test zaliczony rozstrzyga zaplecze (`test_passed`); ukończony kurs wnioskujemy tylko przy odpowiedzi bez tego pola.
+  const testZaliczony = typeof kurs.test_passed === "boolean" ? kurs.test_passed : kursUkonczony;
 
   // Lekcja, na którą prowadzi przycisk główny: pierwsza nieukończona i otwarta z postępem
   // (czas aktywny większy od zera); bez takiej albo bez pól postępu — pierwsza nieukończona i otwarta.
