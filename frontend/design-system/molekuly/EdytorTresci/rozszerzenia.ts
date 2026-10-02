@@ -238,7 +238,15 @@ export function rozszerzeniaEdytora(): Extensions {
       },
     }).configure({ HTMLAttributes: { class: stylTresci.lista } }),
     // Pozycja listy to jeden akapit: lista w liście nie należy do podzbioru.
-    ListItem.extend({ content: "paragraph" }),
+    // Tab i Shift+Tab nie zmieniają poziomu pozycji (poziom jest jeden) — zostają
+    // klawiszami przejścia fokusu, więc z listy da się wyjść klawiaturą na pasek
+    // i dalej, a pozycja nie wypada przy tym z listy.
+    ListItem.extend({
+      content: "paragraph",
+      addKeyboardShortcuts() {
+        return { Enter: () => this.editor.commands.splitListItem(this.name) };
+      },
+    }),
     Odnosnik,
     UndoRedo,
     Zrodlo,

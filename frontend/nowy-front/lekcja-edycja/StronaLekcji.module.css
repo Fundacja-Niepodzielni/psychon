@@ -147,24 +147,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Treść lekcji. */
-.podTrescia {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-20);
-}
-
-.podglad {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  min-width: 0;
-  padding-top: var(--space-12);
-  border-top: 1px solid var(--border);
-  overflow-wrap: anywhere;
-}
-
 /* Pliki lekcji: nazwa najwyżej w dwóch wierszach, długie nazwy bez spacji łamią się w słowie. */
 .pliki {
   display: flex;

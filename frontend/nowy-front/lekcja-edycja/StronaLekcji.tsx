@@ -3,16 +3,13 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
-import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
-import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { Textarea } from "@/design-system/atomy/Textarea/Textarea";
+import { EdytorTresci } from "@/design-system/molekuly/EdytorTresci/EdytorTresci";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { FileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { TrescLekcji } from "@/design-system/molekuly/TrescLekcji/TrescLekcji";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { TylkoOdDwochKolumn, UkladEdycji } from "@/design-system/szablony/UkladEdycji/UkladEdycji";
@@ -30,8 +27,6 @@ import {
   bledyZSerwera,
   cialoZapisu,
   formularzZLekcji,
-  liczZnaki,
-  opisLicznika,
   powodNieaktywnegoNagrania,
   walidujLokalnie,
   zdanieBleduPliku,
@@ -82,12 +77,15 @@ interface Wyjscie {
 }
 
 const SELEKTOR_STRONY = '[data-style-id="szablon-edycja"]';
-/** Kolejność pól na ekranie — fokus idzie na pierwsze z błędem. */
+/**
+ * Kolejność pól na ekranie — fokus idzie na pierwsze z błędem. Treść edytuje się
+ * w obszarze edytora, który nosi identyfikator edytora z dopiskiem `-obszar`.
+ */
 const KOLEJNOSC_POL: ReadonlyArray<[PolaFormularza, string]> = [
   ["title", "tytul"],
   ["description", "opis"],
   ["duration", "czas"],
-  ["content", "tresc"],
+  ["content", "tresc-obszar"],
 ];
 
 function StanZapisu({ opis, zapisywanie }: { opis: OpisStanuZapisu; zapisywanie: boolean }) {
@@ -235,7 +233,6 @@ export function StronaLekcji({
   const zmieniony = zmienione.length > 0;
   const opisZapisu = opisStanuZapisu(zmienione, ostatniZapis);
   const wysylanieTrwa = nagranie.rodzaj === "wysylanie";
-  const liczbaZnakow = liczZnaki(formularz.content);
   const miejsce = miejsceWKursie(lekcjeKursu, zapisana.id);
   const stan = stanLekcji(
     { ...zapisanyFormularz, duration_seconds: zapisana.duration_seconds },
@@ -523,11 +520,6 @@ export function StronaLekcji({
     </Button>
   );
 
-  const idTresci = `${baza}-tresc`;
-  const opisyTresci = [`${idTresci}-licznik`, `${idTresci}-podpowiedz`, bledy.content ? `${idTresci}-blad` : null]
-    .filter(Boolean)
-    .join(" ");
-
   return (
     <>
       <UkladEdycji
@@ -610,34 +602,13 @@ export function StronaLekcji({
 
             <KartaBoczna tytul="Treść lekcji" kotwica={`${baza}-karta-tresci`}>
               <div className={style.trescKarty}>
-                {/* Pole treści: wymiana na edytor z paskiem to podmiana tego jednego elementu (wartość i zmiana). */}
-                <Textarea
-                  id={idTresci}
-                  rows={12}
-                  value={formularz.content}
-                  onChange={(zdarzenie) => zmien("content", zdarzenie.target.value)}
-                  niepoprawny={Boolean(bledy.content)}
-                  aria-labelledby={`${baza}-karta-tresci-tytul`}
-                  aria-describedby={opisyTresci}
+                {/* Edytor oddaje ten sam tekst ze znacznikami, który idzie do zapisu; samo otwarcie niczego nie zgłasza. */}
+                <EdytorTresci
+                  id={`${baza}-tresc`}
+                  wartosc={formularz.content}
+                  onZmiana={(tekst) => zmien("content", tekst)}
+                  blad={bledy.content}
                 />
-                {bledy.content && <ErrorText id={`${idTresci}-blad`}>{bledy.content}</ErrorText>}
-                <div className={style.podTrescia}>
-                  <Hint id={`${idTresci}-licznik`}>{opisLicznika(liczbaZnakow).replace(/znaków\.$/, "znaków")}</Hint>
-                  <Hint>Uczestnik zobaczy treść w tych samych stylach.</Hint>
-                </div>
-                <Hint id={`${idTresci}-podpowiedz`}>
-                  Akapity rozdziel pustym wierszem, nagłówki zapisz jako ## i ###, listy jako „- punkt”.
-                </Hint>
-                <section className={style.podglad} aria-labelledby={`${idTresci}-podglad`}>
-                  <Heading stopien={3} id={`${idTresci}-podglad`}>
-                    Podgląd treści
-                  </Heading>
-                  {formularz.content.trim() === "" ? (
-                    <Text wariant="pusty">Treść lekcji jest pusta. Uczestnik zobaczy tylko tytuł i krótki opis.</Text>
-                  ) : (
-                    <TrescLekcji tresc={formularz.content} />
-                  )}
-                </section>
               </div>
             </KartaBoczna>
 
