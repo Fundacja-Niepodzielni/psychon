@@ -319,7 +319,8 @@ describe("ekran kursu — publikacja", () => {
     expect(screen.queryByRole("button", { name: "Opublikuj kurs" })).toBeNull();
     const podglady = screen.getAllByRole("link", { name: "Podgląd jako uczestnik" });
     expect(podglady).toHaveLength(2);
-    expect(podglady[0]).toHaveAttribute("href", "/panel/kursy/wywiad-psychologiczny");
+    expect(podglady[0]).toHaveAttribute("href", "/panel/kursy/wywiad-psychologiczny?podglad=1");
+    expect(podglady[1]).toHaveAttribute("href", "/panel/kursy/wywiad-psychologiczny?podglad=1");
     expect(screen.getByRole("heading", { level: 2, name: "Cofnięcie publikacji i usunięcie kursu" })).toBeInTheDocument();
     expect(ogloszenie()).toBe("Kurs został opublikowany.");
     await waitFor(() => expect(document.activeElement?.id).toBe("publikacja-tytul"));
