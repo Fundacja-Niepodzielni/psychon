@@ -543,6 +543,7 @@ export function Dialog({
       ref={podepnijOkno}
       className={style.okno}
       data-wariant={wariant}
+      data-przewijany={przewijanySrodek || undefined}
       aria-modal="true"
       aria-labelledby={idNaglowka}
       aria-describedby={pytanieOPorzucenie ? idPytania : formularz ? (opis ? idOpisu : undefined) : idOpisu}

@@ -8,6 +8,7 @@ import { Dialog, oglosWPanelu } from "../Dialog";
 import { ATRYBUT_OBSZARU, OPOZNIENIE_OGLOSZENIA_MS } from "../obszarOgloszen";
 import { OSTRZEZENIE_ZAGNIEZDZENIA, liczbaOtwartychOkien } from "../stosOkien";
 import { Field } from "../../../molekuly/Field/Field";
+import { wywolajResizeObserver } from "../../../../__tests__/setup";
 
 /**
  * Wzmocnienia wspólne dla obu wariantów okna: natywny `<dialog>` otwierany
@@ -116,7 +117,8 @@ describe("układ: środek przewijany, przyciski zawsze widoczne", () => {
 
   it("zmiana widocznej części ekranu (klawiatura telefonu) ustawia wysokość okna i dosuwa pole z fokusem", () => {
     const widok = Object.assign(new EventTarget(), { height: 640, offsetTop: 0 });
-    vi.stubGlobal("visualViewport", widok);
+    const poprzedniWidok = Object.getOwnPropertyDescriptor(window, "visualViewport");
+    Object.defineProperty(window, "visualViewport", { value: widok, configurable: true });
     const dosun = vi.fn();
     const prototyp = HTMLElement.prototype as unknown as { scrollIntoView?: () => void };
     const poprzednie = prototyp.scrollIntoView;
@@ -141,8 +143,27 @@ describe("układ: środek przewijany, przyciski zawsze widoczne", () => {
       expect(dosun.mock.contexts.at(-1)).toBe(screen.getByRole("textbox", { name: "Powód" }));
     } finally {
       prototyp.scrollIntoView = poprzednie;
-      vi.unstubAllGlobals();
+      if (poprzedniWidok) Object.defineProperty(window, "visualViewport", poprzedniWidok);
+      else delete (window as { visualViewport?: unknown }).visualViewport;
     }
+  });
+
+  it("środek, który się przewija, jest osiągalny klawiaturą i oddzielony kreską od przycisków", () => {
+    const wysokosc = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(900);
+    const widoczna = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(300);
+    render(<Potwierdzenie />);
+    const okno = screen.getByRole("dialog");
+    const srodek = screen.getByRole("region", { name: "Usunąć wpis?" });
+    expect(srodek).toHaveAttribute("tabindex", "0");
+    expect(okno).toHaveAttribute("data-przewijany");
+    expect(regula(".okno[data-przewijany] .stopka")).toBeDefined();
+    expect(css).toMatch(/\.okno\[data-przewijany\] \.stopka \{\s*border-top/);
+
+    wysokosc.mockReturnValue(300);
+    wywolajResizeObserver(srodek);
+    expect(okno).not.toHaveAttribute("data-przewijany");
+    expect(screen.queryByRole("region")).toBeNull();
+    widoczna.mockRestore();
   });
 
   it("fokus na polu w środku dosuwa to pole do widoku", async () => {

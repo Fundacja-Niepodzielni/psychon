@@ -93,8 +93,14 @@
 .stopka {
   flex: none;
   padding: var(--space-12) var(--space-20) var(--space-20);
-  border-top: 1px solid var(--border);
   background: var(--card);
+}
+
+/* Kreska nad przyciskami tylko tam, gdzie środek się przewija albo okno jest
+   formularzem — krótkie pytanie wygląda jak dotąd. */
+.okno[data-wariant="formularz"] .stopka,
+.okno[data-przewijany] .stopka {
+  border-top: 1px solid var(--border);
 }
 
 .bledy {
