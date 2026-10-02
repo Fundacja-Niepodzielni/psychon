@@ -305,7 +305,13 @@ describe("ekran kursu — publikacja", () => {
     expect(Array.from(wKarcie).map((p) => p.textContent)).toEqual(["Opublikuj kurs", "Zapisz szkic i wyjdź"]);
     // Poza tymi dwoma miejscami (arkusz pokazuje zawsze jedno) przycisku nie ma.
     expect(screen.getAllByRole("button", { name: "Opublikuj kurs" })).toHaveLength(2);
-    expect(screen.queryByRole("link", { name: "Podgląd jako uczestnik" })).toBeNull();
+    // Podgląd szkicu stoi w tych samych dwóch miejscach, pod zielonym, z obrysem.
+    const podglady = screen.getAllByRole("link", { name: "Podgląd jako uczestnik" });
+    expect(podglady).toHaveLength(2);
+    for (const podglad of podglady) {
+      expect(podglad).toHaveAttribute("href", "/panel/kursy/wywiad-psychologiczny?podglad=1");
+      expect(podglad.className).toMatch(/przyciskPodgladu/);
+    }
   });
 
   it("„Opublikuj kurs” wysyła jedno żądanie i karta przechodzi w stan opublikowany", async () => {

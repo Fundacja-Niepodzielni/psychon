@@ -36,9 +36,9 @@ export const KOTWICA_PUBLIKACJI = "publikacja";
 export const ID_ODMOWY_PUBLIKACJI = "publikacja-odmowa";
 
 /**
- * Adres kursu w panelu uczestnika w trybie podglądu (`?podglad=1`). Serwer
- * pokazuje tam wyłącznie kurs opublikowany. Jedyne miejsce, które składa ten
- * adres — każdy odnośnik podglądu bierze go stąd.
+ * Adres kursu w panelu uczestnika w trybie podglądu (`?podglad=1`). Personel
+ * czyta tam także szkic (kontrakt, aneks „podgląd kursu nieopublikowanego”).
+ * Jedyne miejsce, które składa ten adres — każdy odnośnik podglądu bierze go stąd.
  */
 export function adresPodgladu(kurs: Pick<AdminCourse, "slug">): string {
   return `/panel/kursy/${kurs.slug}?podglad=1`;
@@ -72,13 +72,19 @@ export function PrzyciskGlowny({ kurs, onOpublikuj }: WlasciwosciPrzyciskuGlowne
 }
 
 /**
- * Przyciski publikacji: główny (zielony) i — tylko w szkicu — „Zapisz szkic i
- * wyjdź” z obrysem, bez tła. Zielony zostaje jeden; drugi nie jest głównym.
+ * Przyciski publikacji: główny (zielony) i — tylko w szkicu — pod nim
+ * „Podgląd jako uczestnik” oraz „Zapisz szkic i wyjdź”, oba z obrysem, bez
+ * tła. Zielony zostaje jeden; pozostałe nie są głównymi.
  */
 export function PrzyciskiPublikacji({ kurs, onOpublikuj, onZapiszIWyjdz }: WlasciwosciPrzyciskuGlownego) {
   return (
     <>
       <PrzyciskGlowny kurs={kurs} onOpublikuj={onOpublikuj} />
+      {!kurs.is_published && (
+        <a className={style.przyciskPodgladu} href={adresPodgladu(kurs)}>
+          Podgląd jako uczestnik
+        </a>
+      )}
       {!kurs.is_published && onZapiszIWyjdz && (
         <Button poziom="outline" onClick={onZapiszIWyjdz}>
           Zapisz szkic i wyjdź
