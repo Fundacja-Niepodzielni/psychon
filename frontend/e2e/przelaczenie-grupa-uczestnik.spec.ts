@@ -77,8 +77,24 @@ async function instalujAtrapyApi(page: Page): Promise<void> {
     data: {
       ...KURS,
       instructor: null,
+      has_test: true,
+      test_locked: true,
+      test_passed: false,
       topics: [],
-      lessons: [{ id: 21, title: LEKCJA.title, sequence_order: 1, duration_seconds: 1800, is_completed: false, topic_id: null }],
+      lessons: [
+        {
+          id: 21,
+          title: LEKCJA.title,
+          sequence_order: 1,
+          duration_seconds: 1800,
+          is_completed: false,
+          topic_id: null,
+          locked: false,
+          active_seconds: 0,
+          required_active_seconds: 1440,
+          has_recording: true,
+        },
+      ],
       materials: [],
     },
   });
