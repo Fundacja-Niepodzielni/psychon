@@ -125,8 +125,8 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
   const meta = stan.rodzaj === "dane" ? stan.meta : undefined;
   const opis =
     meta !== undefined
-      ? `Wolontariusze, studenci, prowadzący i administracja. Razem osób: ${meta.total}.`
-      : "Wolontariusze, studenci, prowadzący i administracja.";
+      ? `Wolontariusze, Studenci, Psycholodzy prowadzący i administracja. Razem osób: ${meta.total}.`
+      : "Wolontariusze, Studenci, Psycholodzy prowadzący i administracja.";
   const mozeEksportowac = stan.rodzaj === "dane" && stan.osoby.length > 0;
 
   const naglowek = (
