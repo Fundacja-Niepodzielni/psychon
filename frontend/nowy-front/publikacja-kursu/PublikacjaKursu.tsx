@@ -7,7 +7,7 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice, type WariantNotice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
@@ -26,6 +26,7 @@ import {
   type BladOperacji,
   type KursPublikacji,
 } from "./dane";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { UsuniecieKursu } from "./UsuniecieKursu";
 import style from "./PublikacjaKursu.module.css";
 
@@ -180,19 +181,17 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
   if (stan === "nie-znaleziono") {
     return szablon(
       "Publikacja kursu",
-      <Notice wariant="warn" tytul="Nie znaleziono kursu">
-        Kurs nie istnieje albo został usunięty.
-      </Notice>,
+      <EkranOdmowy rodzaj="nie-znaleziono" czego="kursu" stopien={2} przycisk={{ etykieta: "Wróć", onClick: () => router.back() }} />,
     );
   }
 
   if (stan === "zakazane") {
     return szablon(
       "Publikacja kursu",
-      <EmptyState
-        wariant="brak-uprawnien"
-        naglowek="Publikacja kursu dla administracji"
-        rola="administracji"
+      <EkranOdmowy
+        rodzaj="brak-dostepu"
+        stopien={2}
+        rolaDocelowa="administracji"
         przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
       />,
     );
