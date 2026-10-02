@@ -34,6 +34,7 @@ import {
   type ZaproszonaOsoba,
 } from "./dane";
 import style from "./ZaproszeniaKursu.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 /** Opóźnienie wyszukiwania po ostatnim znaku — jedno zapytanie na krótką serię wpisów. */
 const OPOZNIENIE_SZUKANIA_MS = 300;
@@ -175,7 +176,7 @@ export function ZaproszeniaKursu({ idKursu }: WlasciwosciZaproszeniaKursu) {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Bez danych kursu nie można wysłać zaproszeń.
+            {KOMUNIKAT_SERWER} Bez danych kursu nie można wysłać zaproszeń.
           </Notice>
         }
         tresc={null}
@@ -391,7 +392,7 @@ function RdzenZaproszen({ kurs, etykietaAnuluj, onAnuluj, uloz }: WlasciwosciRdz
           </Button>
         }
       >
-        Serwer nie odpowiedział albo zwrócił błąd. Zaznaczone osoby zostają zaznaczone.
+        {KOMUNIKAT_SERWER} Zaznaczone osoby zostają zaznaczone.
       </Notice>
     );
   }
@@ -430,7 +431,7 @@ function RdzenZaproszen({ kurs, etykietaAnuluj, onAnuluj, uloz }: WlasciwosciRdz
                   </Button>
                 }
               >
-                Serwer nie odpowiedział albo zwrócił błąd.
+                {KOMUNIKAT_SERWER}
               </Notice>
             )}
             {osoby.rodzaj === "gotowy" && osoby.wynik.osoby.length === 0 && (
