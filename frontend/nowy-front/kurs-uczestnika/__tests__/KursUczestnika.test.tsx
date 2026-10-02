@@ -16,7 +16,9 @@ import type { KursUczestnika as DaneKursu } from "../dane";
  */
 
 const api = vi.fn();
+const push = vi.fn();
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("@/lib/api/klient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/klient")>()),
   api: (...args: unknown[]) => api(...args),
@@ -27,6 +29,7 @@ const { KursUczestnika } = await import("../KursUczestnika");
 const SLUG = "pierwsza-pomoc-psychologiczna";
 
 beforeEach(() => {
+  push.mockReset();
   api.mockReset();
 });
 
@@ -587,27 +590,33 @@ describe("stany spoza szkicu", () => {
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
   });
 
-  it("403 course_locked: zdanie z message serwera i odnośnik do listy kursów", async () => {
+  it("403 course_locked: nagłówek odmowy, zdanie z message serwera i jeden przycisk powrotu do pulpitu", async () => {
     const zdanie = "Ukończ najpierw etap 2: Wywiad psychologiczny.";
     await pokazBlad(new ApiError({ status: 403, code: "course_locked", message: zdanie }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Ten kurs jest jeszcze zamknięty" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toHaveFocus();
     expect(screen.getByText(zdanie)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Wróć do listy kursów" })).toHaveAttribute("href", "/panel/kursy");
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.queryAllByRole("link", { name: "Wróć do listy kursów" })).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Wróć do pulpitu" }));
+    expect(push).toHaveBeenCalledWith("/panel/pulpit");
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 
-  it("404: „Nie znaleziono kursu” i odnośnik do listy kursów", async () => {
+  it("404: „Nie znaleziono kursu” i jeden przycisk powrotu do listy", async () => {
     await pokazBlad(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Wróć do listy kursów" })).toHaveAttribute("href", "/panel/kursy");
+    expect(screen.getByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toHaveFocus();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Wróć do listy" }));
+    expect(push).toHaveBeenCalledWith("/panel/kursy");
   });
 
   it("dostęp wygasł (403 access_expired): zdanie na czas przekierowania", async () => {
     await pokazBlad(new ApiError({ status: 403, code: "access_expired", message: "Dostęp wygasł." }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Dostęp do kursów wygasł" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Twój dostęp wygasł." })).toHaveFocus();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.getByText("Za chwilę przeniesiemy Cię na stronę z informacją o wygaśnięciu dostępu.")).toBeInTheDocument();
   });
 

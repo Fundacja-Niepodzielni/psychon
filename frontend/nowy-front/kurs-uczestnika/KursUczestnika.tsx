@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -11,6 +12,7 @@ import { KorzenSzablonu } from "@/design-system/szablony/KontekstPowloki";
 import { useDaneRamki } from "@/design-system/szablony/KontekstRamki";
 import { okruszekRamki } from "@/design-system/szablony/OkruszekRamki";
 import { adresLekcji } from "@/nowy-front/lekcja/adres";
+import { ADRES_PULPITU, EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { adresPowrotuZPodgladu, PasTrybuPodgladu, zParametremPodgladu } from "@/nowy-front/wspolne/tryb-podgladu";
 import {
   ADRES_LISTY_KURSOW,
@@ -142,38 +144,31 @@ function KomunikatStanu({
   );
 }
 
-function OdnosnikDoListy() {
-  return (
-    <a className={style.przycisk} href={ADRES_LISTY_KURSOW}>
-      Wróć do listy kursów
-    </a>
-  );
-}
-
 function StanBezDanych({ blad, onPonow }: { blad: BladKursu; onPonow: () => void }) {
+  const router = useRouter();
+  const doListy = (etykieta: string) => ({ etykieta, onClick: () => router.push(ADRES_LISTY_KURSOW) });
   switch (blad.rodzaj) {
     case "zamkniety":
       return (
         <PowlokaStanu tytul="Kurs">
-          <KomunikatStanu wariant="warn" tytul="Ten kurs jest jeszcze zamknięty" akcja={<OdnosnikDoListy />}>
-            {blad.komunikat}
-          </KomunikatStanu>
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} coDalej={blad.komunikat} przycisk={{ onClick: () => router.push(ADRES_PULPITU) }} />
         </PowlokaStanu>
       );
     case "dostep-wygasl":
       return (
         <PowlokaStanu tytul="Kurs">
-          <KomunikatStanu wariant="warn" tytul="Dostęp do kursów wygasł" akcja={<OdnosnikDoListy />}>
-            Za chwilę przeniesiemy Cię na stronę z informacją o wygaśnięciu dostępu.
-          </KomunikatStanu>
+          <EkranOdmowy
+            rodzaj="dostep-wygasl"
+            stopien={2}
+            coDalej="Za chwilę przeniesiemy Cię na stronę z informacją o wygaśnięciu dostępu."
+            przycisk={doListy("Wróć do kursów")}
+          />
         </PowlokaStanu>
       );
     case "nie-znaleziono":
       return (
         <PowlokaStanu tytul="Kurs">
-          <KomunikatStanu wariant="warn" tytul="Nie znaleziono kursu" akcja={<OdnosnikDoListy />}>
-            Ten kurs nie istnieje albo nie należy do Twojej ścieżki.
-          </KomunikatStanu>
+          <EkranOdmowy rodzaj="nie-znaleziono" czego="kursu" stopien={2} przycisk={doListy("Wróć do listy")} />
         </PowlokaStanu>
       );
     case "siec":

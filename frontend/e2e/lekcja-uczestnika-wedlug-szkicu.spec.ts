@@ -566,7 +566,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await zmierzStan(page, testInfo, 9, "blad-pobrania", szerokosc);
     });
 
-    test("10 wygasły dostęp: karta „Dostęp wygasł” z powrotem do kursów", async ({ page }) => {
+    test("10 wygasły dostęp: karta na wspólnym wzorze z jednym przyciskiem powrotu do kursów", async ({ page }) => {
       await instalujAtrapy(page, { odpowiedzLekcji: { status: 403, code: "access_expired", message: "Twój dostęp do platformy wygasł." } });
       // Klient API przy `access_expired` przekierowuje na wspólny ekran startera; przekierowanie jest tu wstrzymane,
       // żeby pomierzyć kartę samego ekranu lekcji.
@@ -580,10 +580,16 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const odpowiedz = await page.goto("/panel/lekcje/21");
       expect(odpowiedz?.status()).toBe(200);
       await zabezpieczeniePrzedEkranemDostepu(page);
-      await expect(page.getByRole("heading", { level: 1, name: "Dostęp wygasł" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Wróć do kursów" })).toBeVisible();
+      const naglowek = page.getByRole("heading", { level: 1, name: "Twój dostęp wygasł." });
+      await expect(naglowek).toBeVisible();
+      await expect(naglowek).toBeFocused();
+      await expect(page.getByText("Jesteś zalogowany jako Wolontariusz.")).toBeVisible();
+      await expect(page.getByText("Skontaktuj się z zespołem programu, żeby przedłużyć dostęp.")).toBeVisible();
+      await expect(page.locator("main button")).toHaveCount(1);
+      await expect(page.getByRole("button", { name: "Wróć do kursów" })).toBeVisible();
       await expect(page.locator("main")).toHaveCount(1);
       await zrzut(page, 10, "dostep-wygasl", szerokosc);
+      if (szerokosc === 390) await zrzutPierwszegoEkranu(page, 10, "dostep-wygasl");
     });
 
     test("11 ostatnia lekcja tematu: przycisk „Przejdź do następnego tematu”", async ({ page }, testInfo) => {

@@ -36,6 +36,7 @@ import {
 import { kontekstKursu, numerLekcjiWKursie, plikiLekcji, pobierzOdczytKursu, type OdczytKursu } from "./kurs";
 import { MaterialyLekcji } from "./MaterialyLekcji";
 import type { PostepNagrania } from "@/design-system/organizmy/RecordingPlayer/RecordingPlayer";
+import { ADRES_PULPITU, EkranOdmowy } from "../wspolne/ekran-odmowy";
 import { OdtwarzaczNagrania } from "./odtwarzacz/OdtwarzaczNagrania";
 import { ID_KARTY_PYTAN, ID_POLA_PYTANIA, PytaniaLekcji, ZDANIE_PODGLADU } from "./PytaniaLekcji";
 import {
@@ -384,8 +385,14 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   if (stan.rodzaj === "nie-znaleziono") {
     return (
       <StanStrony>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Text>Nie znaleziono lekcji.</Text>
+        <EkranOdmowy
+          rodzaj="nie-znaleziono"
+          czego="lekcji"
+          przycisk={{
+            etykieta: slugKursu === null ? "Wróć do kursów" : "Wróć do kursu",
+            onClick: () => router.push(adres(slugKursu === null ? "/panel/kursy" : `/panel/kursy/${slugKursu}`)),
+          }}
+        />
       </StanStrony>
     );
   }
@@ -393,10 +400,7 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   if (stan.rodzaj === "zablokowany") {
     return (
       <StanStrony>
-        <Heading stopien={1}>Lekcja</Heading>
-        <Notice wariant="warn" tytul="Dostęp zablokowany">
-          {stan.komunikat}
-        </Notice>
+        <EkranOdmowy rodzaj="brak-dostepu" coDalej={stan.komunikat} przycisk={{ onClick: () => router.push(adres(ADRES_PULPITU)) }} />
       </StanStrony>
     );
   }
@@ -426,13 +430,11 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   if (stan.rodzaj === "wygasl") {
     return (
       <StanStrony>
-        <section className={`${style.karta} ${style.biala}`} aria-labelledby="naglowek-wygaslego">
-          <Heading stopien={1} id="naglowek-wygaslego">
-            Dostęp wygasł
-          </Heading>
-          <Text>{stan.komunikat}</Text>
-          <Link href={adres("/panel/kursy")}>Wróć do kursów</Link>
-        </section>
+        <EkranOdmowy
+          rodzaj="dostep-wygasl"
+          coDalej="Skontaktuj się z zespołem programu, żeby przedłużyć dostęp."
+          przycisk={{ etykieta: "Wróć do kursów", onClick: () => router.push(adres("/panel/kursy")) }}
+        />
       </StanStrony>
     );
   }
