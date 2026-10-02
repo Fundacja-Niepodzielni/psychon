@@ -32,6 +32,9 @@ class CourseDetailResource extends CourseListResource
         return [
             ...parent::toArray($request),
             'instructor' => $this->instructor(),
+            // Czy kurs ma test (relacja jest już wczytana przez kontroler);
+            // kurs bez testu ma warunek testu spełniony z definicji.
+            'has_test' => $this->test !== null,
             'topics' => $this->topics(),
             'lessons' => $lessons->map(fn (Lesson $lesson): LessonSummaryResource => new LessonSummaryResource(
                 $lesson,

@@ -60,6 +60,14 @@ class VideoTokenService
      */
     public const EMBED_TTL_SECONDS = 900;
 
+    /**
+     * Host ramki odtwarzacza (sam host, bez schematu) — jedyne miejsce, w którym
+     * stoi. Używają go oba podpisy ramki (podgląd w panelu i link uczestnika);
+     * ekran uczestnika ma tę samą wartość w dyrektywie ramek i w sprawdzeniu
+     * pochodzenia, więc zmiana hosta zmienia się tu i tam razem.
+     */
+    public const string EMBED_HOST = 'iframe.mediadelivery.net';
+
     public function isConfigured(): bool
     {
         return (string) config('services.bunny.api_key') !== ''
@@ -88,9 +96,52 @@ class VideoTokenService
      */
     public function signedCdnUrl(Lesson $lesson, User $user): array
     {
+        return $this->cdnUrl($lesson, $user, now()->getTimestamp() + self::CDN_TTL_SECONDS);
+    }
+
+    /**
+     * Link do odtwarzania dla uczestnika: adres listy HLS (`url`) oraz
+     * podpisany adres ramki odtwarzacza (`embed_url`), oba ważne do tej samej
+     * chwili (`CDN_TTL_SECONDS`) — czas ważności liczony raz, więc
+     * `embed_expires_at` jest zawsze równy `expires_at`. Czas ważności podglądu
+     * w panelu (`EMBED_TTL_SECONDS`) tego linku nie dotyczy.
+     *
+     * @return array{url: string, expires_at: int, video_id: string, embed_url: string, embed_expires_at: int}
+     */
+    public function signedPlayback(Lesson $lesson, User $user): array
+    {
+        $expires = now()->getTimestamp() + self::CDN_TTL_SECONDS;
+        $cdn = $this->cdnUrl($lesson, $user, $expires);
+        $embed = $this->embedUrl($lesson, $expires);
+
+        return [
+            'url' => $cdn['url'],
+            'expires_at' => $cdn['expires_at'],
+            'video_id' => $cdn['video_id'],
+            'embed_url' => $embed['url'],
+            'embed_expires_at' => $embed['expires_at'],
+        ];
+    }
+
+    /**
+     * Podpisany URL iframe (embed view token authentication) — do podglądu
+     * wideo w panelu admina, zanim front dostanie własny odtwarzacz. Ważny
+     * `EMBED_TTL_SECONDS`.
+     *
+     * @return array{url: string, expires_at: int, video_id: string}
+     */
+    public function signedEmbedUrl(Lesson $lesson): array
+    {
+        return $this->embedUrl($lesson, now()->getTimestamp() + self::EMBED_TTL_SECONDS);
+    }
+
+    /**
+     * @return array{url: string, expires_at: int, video_id: string}
+     */
+    private function cdnUrl(Lesson $lesson, User $user, int $expires): array
+    {
         $videoId = $this->videoId($lesson);
         $segment = VideoProviderId::segment($videoId);
-        $expires = now()->getTimestamp() + self::CDN_TTL_SECONDS;
         $tokenPath = "/{$segment}/";
         $urlPath = "/{$segment}/playlist.m3u8";
         $viewer = $this->viewerToken($user);
@@ -105,21 +156,17 @@ class VideoTokenService
     }
 
     /**
-     * Podpisany URL iframe (embed view token authentication) — do podglądu
-     * wideo w panelu admina, zanim front dostanie własny odtwarzacz.
-     *
      * @return array{url: string, expires_at: int, video_id: string}
      */
-    public function signedEmbedUrl(Lesson $lesson): array
+    private function embedUrl(Lesson $lesson, int $expires): array
     {
         $videoId = $this->videoId($lesson);
-        $expires = now()->getTimestamp() + self::EMBED_TTL_SECONDS;
         $token = hash('sha256', $this->securityKey().$videoId.$expires);
         $libraryId = (string) config('services.bunny.library_id');
         $segment = VideoProviderId::segment($videoId);
 
         return [
-            'url' => "https://iframe.mediadelivery.net/embed/{$libraryId}/{$segment}?token={$token}&expires={$expires}",
+            'url' => 'https://'.self::EMBED_HOST."/embed/{$libraryId}/{$segment}?token={$token}&expires={$expires}",
             'expires_at' => $expires,
             'video_id' => $videoId,
         ];

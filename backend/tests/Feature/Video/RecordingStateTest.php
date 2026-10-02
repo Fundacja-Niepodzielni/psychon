@@ -7,6 +7,7 @@ use App\Models\Edition;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Services\Video\RecordingStateRefresher;
+use App\Services\Video\VideoTokenService;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -389,6 +390,66 @@ class RecordingStateTest extends TestCase
             ->assertJsonPath('error.code', 'video_missing');
 
         $this->getJson("/api/v1/lessons/{$lesson->id}")->assertOk()->assertJsonPath('data.video_status', 'none');
+    }
+
+    /** @return array<string, array{?string}> */
+    public static function playableStates(): array
+    {
+        return ['ready' => ['ready'], 'unknown state of an existing recording' => [null]];
+    }
+
+    #[DataProvider('playableStates')]
+    public function test_link_carries_the_list_address_and_a_signed_embed_address_with_one_lifetime(?string $status): void
+    {
+        $lesson = $this->lessonWith(self::OLD, null, $status, $status === null ? null : now()->subMinutes(3));
+        $this->actingAs($this->volunteer(), 'keycloak');
+
+        $data = $this->getJson("/api/v1/lessons/{$lesson->id}/video-link")->assertOk()->json('data');
+
+        $this->assertEqualsCanonicalizing(
+            ['url', 'expires_at', 'video_id', 'embed_url', 'embed_expires_at'],
+            array_keys($data),
+        );
+        $this->assertSame(self::OLD, $data['video_id']);
+        $this->assertStringStartsWith('https://cdn.example.test/', $data['url']);
+        $this->assertIsInt($data['expires_at']);
+        $this->assertIsInt($data['embed_expires_at']);
+        $this->assertSame(now()->getTimestamp() + VideoTokenService::CDN_TTL_SECONDS, $data['expires_at']);
+        $this->assertSame($data['expires_at'], $data['embed_expires_at']);
+
+        $this->assertStringStartsWith(
+            'https://'.VideoTokenService::EMBED_HOST.'/embed/'.self::LIBRARY.'/'.self::OLD.'?token=',
+            $data['embed_url'],
+        );
+        $query = [];
+        parse_str((string) parse_url($data['embed_url'], PHP_URL_QUERY), $query);
+        $this->assertSame((string) $data['embed_expires_at'], $query['expires']);
+        $this->assertSame(hash('sha256', 'test-security-key'.self::OLD.$data['embed_expires_at']), $query['token']);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_link_embed_follows_the_played_recording_during_a_replacement(): void
+    {
+        $lesson = $this->lessonWith(self::OLD, self::NEW, 'uploading', now()->subMinutes(3));
+        $this->actingAs($this->volunteer(), 'keycloak');
+
+        $data = $this->getJson("/api/v1/lessons/{$lesson->id}/video-link")->assertOk()->json('data');
+
+        $this->assertStringContainsString('/'.self::OLD.'?token=', $data['embed_url']);
+        $this->assertStringNotContainsString(self::NEW, $data['embed_url']);
+    }
+
+    public function test_link_without_the_signing_key_is_refused_without_any_address(): void
+    {
+        $lesson = $this->lessonWith(self::OLD, null, 'ready', now()->subMinutes(3));
+        Config::set('services.bunny.token_security_key', '');
+        $this->actingAs($this->volunteer(), 'keycloak');
+
+        $response = $this->getJson("/api/v1/lessons/{$lesson->id}/video-link")->assertStatus(503);
+
+        $this->assertNull($response->json('data'));
+        $this->assertStringNotContainsString(self::OLD, $response->getContent());
     }
 
     // ------------------------------------------------------------------
