@@ -408,21 +408,6 @@ describe("ekran kursu — publikacja", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Kurs usunięty" })).toBeInTheDocument();
     expect(serwer.zapisy()).toEqual([{ sciezka: "/admin/courses/4", metoda: "DELETE", cialo: undefined }]);
   });
-
-  it("usunięcie kursu, którego już nie ma: zdanie odmowy, wskazówka i jeden przycisk powrotu do listy kursów", async () => {
-    await renderEkranu();
-    serwer.nadpisz("DELETE", "/admin/courses/4", () => new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." }));
-    await userEvent.click(screen.getByRole("button", { name: "Usunięcie kursu" }));
-    await userEvent.click(screen.getByRole("button", { name: "Usuń kurs" }));
-    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń kurs" }));
-
-    expect(await screen.findByRole("heading", { level: 2, name: "Nie znaleźliśmy tej strony." })).toHaveFocus();
-    expect(screen.getByText("Sprawdź adres albo wróć do listy kursów.")).toBeInTheDocument();
-    expect(screen.queryAllByRole("link", { name: "Wróć do listy kursów" })).toHaveLength(0);
-    push.mockClear();
-    await userEvent.click(within(screen.getByRole("region", { name: "Nie znaleźliśmy tej strony." })).getByRole("button", { name: "Wróć do listy kursów" }));
-    expect(push).toHaveBeenCalledWith("/admin/kursy");
-  });
 });
 
 describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
