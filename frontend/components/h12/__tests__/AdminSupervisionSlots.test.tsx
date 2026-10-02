@@ -59,6 +59,28 @@ describe("AdminSupervisionSlots — zawartość", () => {
   });
 });
 
+describe("AdminSupervisionSlots — termin odwołany", () => {
+  it("odwołany termin ma etykietę „Odwołany” zamiast liczby miejsc; zaplanowany jej nie ma", async () => {
+    const odpowiedz = dwaTerminyPrawdziwyKsztalt(null);
+    const [zaplanowany, odwolany] = odpowiedz.data;
+    odpowiedz.data = [
+      { ...zaplanowany, status: "scheduled", cancelled_at: null },
+      { ...odwolany, status: "cancelled", cancelled_at: "2026-09-11T08:00:00Z", active_signups_count: 0, available_seats: 6, signups: [] },
+    ] as unknown as typeof odpowiedz.data;
+    fetchAdminSupervisionSlots.mockResolvedValue(odpowiedz);
+    render(<AdminSupervisionSlots />);
+
+    const kartaOdwolanego = await screen.findByTestId("admin-slot-2");
+    expect(kartaOdwolanego).toHaveTextContent("Odwołany");
+    expect(kartaOdwolanego).toHaveTextContent("Termin odwołany. Zapisy zostały zwolnione.");
+    expect(kartaOdwolanego).not.toHaveTextContent("0 / 6");
+
+    const kartaZaplanowanego = screen.getByTestId("admin-slot-1");
+    expect(kartaZaplanowanego).not.toHaveTextContent("Odwołany");
+    expect(kartaZaplanowanego).toHaveTextContent("1 / 6");
+  });
+});
+
 describe("AdminSupervisionSlots — pusto", () => {
   it("pokazuje komunikat po polsku, nie pustą stronę ani tabelę bez wierszy", async () => {
     // Prawdziwa koperta: kontroler zwraca wyłącznie `data` (bez `meta`).

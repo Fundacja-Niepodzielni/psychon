@@ -12,7 +12,8 @@ import { Label } from "@/design-system/atomy/Label/Label";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
-import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
+import { TableTemplate } from "@/design-system/szablony/TableTemplate/TableTemplate";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { DialogActions } from "@/design-system/molekuly/DialogActions/DialogActions";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
@@ -20,12 +21,14 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { ApiError } from "@/lib/api/klient";
 import { formatujDateICzas } from "../wspolne/daty";
+import { odmien } from "../wspolne/odmiana";
 import {
   cancelAdminSupervisionSlot,
   fetchAdminSupervisionSlots,
   updateAdminSupervisionSlot,
   type AdminSupervisionSlot,
 } from "@/lib/api/h12";
+import { TabelaTerminow } from "./TabelaTerminow";
 import style from "./SuperwizjeTerminy.module.css";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
@@ -38,6 +41,12 @@ interface StanFormularza {
   duration_minutes: string;
   seats_limit: string;
   location_or_link: string;
+}
+
+interface BladListy {
+  tekst: string;
+  /** Odmowa stanu terminu — obok zdania serwera stoi „Wczytaj terminy ponownie”. */
+  przeladuj: boolean;
 }
 
 /**
@@ -79,13 +88,36 @@ function formularzZTerminu(slot: AdminSupervisionSlot): StanFormularza {
   };
 }
 
+/** Treść okna potwierdzenia odwołania — liczba osób z `active_signups_count`. */
+export function trescPotwierdzeniaOdwolania(zapisane: number): string {
+  if (zapisane === 0) return "Nikt nie jest zapisany na ten termin.";
+  return `Zapisane osoby: ${zapisane}. Każda dostanie powiadomienie. Termin zostanie na liście ze stanem „Odwołany”.`;
+}
+
+/** Zdanie po odwołaniu — liczba z odpowiedzi serwera (`signups_released`). */
+export function zdaniePoOdwolaniu(powiadomione: number): string {
+  if (powiadomione === 0) return "Termin odwołany. Nikt nie był zapisany.";
+  return `Termin odwołany. Powiadomiono ${powiadomione} ${odmien(powiadomione, "osobę", "osoby", "osób")}.`;
+}
+
+/** Odmowa stanu terminu (409 odwołany, 422 rozpoczęty): lista na ekranie jest
+ * nieaktualna, więc obok zdania serwera stoi „Wczytaj terminy ponownie”. */
+function odmowaStanuTerminu(wyjatek: unknown): boolean {
+  return wyjatek instanceof ApiError && (wyjatek.status === 409 || wyjatek.status === 422);
+}
+
 /**
  * Trasa `/nowy-front/admin/superwizje` — edycja i odwołanie terminów
  * superwizji (H12), `AdminSupervisionController::updateSlot`/`cancelSlot`
  * (`backend/routes/api/h12.php:47-49`). Dotychczasowy ekran administracji
  * (`components/h12`, `lib/api/h12.ts:fetchAdminSupervisionSlots`) jest
- * TYLKO DO ODCZYTU — ta trasa dodaje zapis wobec ISTNIEJĄCYCH tras, bez
- * dotykania starego frontu.
+ * TYLKO DO ODCZYTU — ta trasa dodaje zapis wobec ISTNIEJĄCYCH tras.
+ *
+ * Układ: `TableTemplate` — nagłówek, informacja zwrotna (powiadomienie,
+ * odmowa), tabela terminów z kolumną akcji (`TabelaTerminow`: „Edytuj” i
+ * „Odwołaj termin” w wierszu), pod tabelą panel edycji. Odwołany termin
+ * zostaje w tabeli z plakietką „Odwołany” i bez akcji. Odwołanie zawsze
+ * przechodzi przez okno `Dialog` z liczbą zapisanych osób.
  *
  * `starts_at` edytuje się przez natywny `<input type="datetime-local">` w
  * czasie lokalnym przeglądarki — konwersja do/z UTC żyje w
@@ -106,10 +138,12 @@ export function SuperwizjeTerminy() {
   const [edytowanyId, setEdytowanyId] = useState<number | null>(null);
   const [formularz, setFormularz] = useState<StanFormularza | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
+  const [bladStanuEdycji, setBladStanuEdycji] = useState(false);
   const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
   const [zapisywanie, setZapisywanie] = useState(false);
-  const [odwolywanyId, setOdwolywanyId] = useState<number | null>(null);
-  const [potwierdzOdwolanie, setPotwierdzOdwolanie] = useState(false);
+  const [doOdwolania, setDoOdwolania] = useState<AdminSupervisionSlot | null>(null);
+  const [odwolywanie, setOdwolywanie] = useState(false);
+  const [bladListy, setBladListy] = useState<BladListy | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   // Otwarty formularz bez żadnej zmiany nie jest niezapisaną pracą.
   const edytowanyTermin = edytowanyId === null ? undefined : terminy.find((termin) => termin.id === edytowanyId);
@@ -118,10 +152,11 @@ export function SuperwizjeTerminy() {
     "Terminy superwizji",
   );
 
-  /** Wspólny rdzeń wczytania listy — wywoływany przy montowaniu I przez
-   * przycisk „Odśwież" w pustym stanie (patrz `pusty.przycisk` niżej). Bez
-   * wspólnej funkcji przycisk wywoływałby `router.refresh()`, który tu nic
-   * nie robi: dane płyną z efektu klienckiego, nie z serwerowego renderu. */
+  /** Wspólny rdzeń wczytania listy — wywoływany przy montowaniu, przez
+   * przycisk „Odśwież" w pustym stanie, „Spróbuj ponownie” po błędzie
+   * i „Wczytaj terminy ponownie” po odmowie stanu terminu. Bez wspólnej
+   * funkcji przycisk wywoływałby `router.refresh()`, który tu nic nie robi:
+   * dane płyną z efektu klienckiego, nie z serwerowego renderu. */
   function wczytajTerminy(strazAnulowania?: { anulowane: boolean }) {
     return fetchAdminSupervisionSlots()
       .then(({ data }) => {
@@ -143,48 +178,39 @@ export function SuperwizjeTerminy() {
     };
   }, []);
 
-  const wiersze: WierszRecordList[] = useMemo(
-    () =>
-      terminy
-        .slice()
-        .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-        .map((termin) => {
-          const pelny = termin.available_seats === 0;
-          const superwizor = termin.supervisor
-            ? `${termin.supervisor.first_name} ${termin.supervisor.last_name}`
-            : "Bez przypisanego prowadzącego";
-          return {
-            id: String(termin.id),
-            tytul: `${formatujDateICzas(termin.starts_at)} — ${superwizor}`,
-            podpowiedz: termin.location_or_link ?? "Bez podanej lokalizacji.",
-            plakietka: pelny
-              ? { wariant: "warn" as const, tekst: "Brak wolnych miejsc" }
-              : { wariant: "neutral" as const, tekst: "Wolne miejsca" },
-            wartosc: termin.active_signups_count,
-            akcja: {
-              etykieta: "Edytuj",
-              onKliknij: () => otworzEdycje(termin),
-            },
-          };
-        }),
+  const posortowane = useMemo(
+    () => terminy.slice().sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
     [terminy],
   );
-
-  function otworzEdycje(termin: AdminSupervisionSlot) {
-    setToast(null);
-    setBlad(null);
-    setBledyPol(undefined);
-    setPotwierdzOdwolanie(false);
-    setEdytowanyId(termin.id);
-    setFormularz(formularzZTerminu(termin));
-  }
 
   function zamknijPanel() {
     setEdytowanyId(null);
     setFormularz(null);
     setBlad(null);
+    setBladStanuEdycji(false);
     setBledyPol(undefined);
-    setPotwierdzOdwolanie(false);
+  }
+
+  function wczytajPonownie() {
+    setBladListy(null);
+    zamknijPanel();
+    void wczytajTerminy();
+  }
+
+  function otworzEdycje(termin: AdminSupervisionSlot) {
+    setToast(null);
+    setBladListy(null);
+    setBlad(null);
+    setBladStanuEdycji(false);
+    setBledyPol(undefined);
+    setEdytowanyId(termin.id);
+    setFormularz(formularzZTerminu(termin));
+  }
+
+  function otworzOdwolanie(termin: AdminSupervisionSlot) {
+    setToast(null);
+    setBladListy(null);
+    setDoOdwolania(termin);
   }
 
   async function zapisz() {
@@ -192,6 +218,7 @@ export function SuperwizjeTerminy() {
     setZapisywanie(true);
     setToast(null);
     setBlad(null);
+    setBladStanuEdycji(false);
     setBledyPol(undefined);
     // Puste albo nieliczbowe pole trafia do serwera dosłownie — bez cichej
     // zamiany na „brak zmiany" (`undefined`), żeby walidacja serwera
@@ -217,6 +244,7 @@ export function SuperwizjeTerminy() {
         setBlad(wyjatek.message);
       } else {
         setBledyPol(undefined);
+        setBladStanuEdycji(odmowaStanuTerminu(wyjatek));
         setBlad(
           wyjatek instanceof ApiError
             ? wyjatek.message
@@ -228,24 +256,40 @@ export function SuperwizjeTerminy() {
     }
   }
 
-  async function odwolaj(id: number) {
-    setOdwolywanyId(id);
+  async function odwolaj(termin: AdminSupervisionSlot) {
+    setOdwolywanie(true);
     setToast(null);
-    setBlad(null);
+    setBladListy(null);
     try {
-      await cancelAdminSupervisionSlot(id);
-      setTerminy((poprzednie) => poprzednie.filter((termin) => termin.id !== id));
-      if (edytowanyId === id) zamknijPanel();
-      setToast("Termin superwizji został odwołany.");
-    } catch (wyjatek) {
-      setPotwierdzOdwolanie(false);
-      setBlad(
-        wyjatek instanceof ApiError
-          ? wyjatek.message
-          : "Nie udało się odwołać terminu. Spróbuj ponownie.",
+      const wynik = await cancelAdminSupervisionSlot(termin.id);
+      // Wiersz zostaje — ze stanem „Odwołany”, bez aktywnych zapisów.
+      setTerminy((poprzednie) =>
+        poprzednie.map((t) =>
+          t.id === termin.id
+            ? {
+                ...t,
+                status: "cancelled" as const,
+                cancelled_at: wynik.cancelled_at,
+                active_signups_count: 0,
+                available_seats: t.seats_limit,
+                signups: [],
+              }
+            : t,
+        ),
       );
+      if (edytowanyId === termin.id) zamknijPanel();
+      setToast(zdaniePoOdwolaniu(wynik.signups_released));
+    } catch (wyjatek) {
+      setBladListy({
+        tekst:
+          wyjatek instanceof ApiError
+            ? wyjatek.message
+            : "Nie udało się odwołać terminu. Spróbuj ponownie.",
+        przeladuj: odmowaStanuTerminu(wyjatek),
+      });
     } finally {
-      setOdwolywanyId(null);
+      setOdwolywanie(false);
+      setDoOdwolania(null);
     }
   }
 
@@ -274,128 +318,167 @@ export function SuperwizjeTerminy() {
     return (
       <main id="tresc" className={style.uklad}>
         <Heading stopien={1}>Terminy superwizji</Heading>
-        <Text>Backend H12 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
+        <Text>Nie udało się wczytać terminów.</Text>
+        <div>
+          <Button
+            poziom="outline"
+            onClick={() => {
+              setStan("ladowanie");
+              void wczytajTerminy();
+            }}
+          >
+            Spróbuj ponownie
+          </Button>
+        </div>
       </main>
     );
   }
 
-  return (
-    <main id="tresc" className={style.uklad}>
-      <PageHeader
-        okruszki={[{ etykieta: "Administracja" }, { etykieta: "Terminy superwizji" }]}
-        tytul="Terminy superwizji"
-        opis="Edycja i odwołanie terminów wszystkich prowadzących (H12). Zapisy pozostają widoczne wyłącznie do odczytu."
-        onPowrot={() => router.back()}
-      />
+  const informacjaZwrotna =
+    toast || bladListy ? (
+      <>
+        {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
+        {bladListy && (
+          <Notice
+            wariant="error"
+            tytul="Nie udało się odwołać terminu"
+            akcja={
+              bladListy.przeladuj ? (
+                <Button poziom="outline" onClick={wczytajPonownie}>
+                  Wczytaj terminy ponownie
+                </Button>
+              ) : undefined
+            }
+          >
+            {bladListy.tekst}
+          </Notice>
+        )}
+      </>
+    ) : undefined;
 
-      {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
+  const panelEdycji =
+    edytowanyId !== null && formularz !== null ? (
+      <div className={style.panel}>
+        <Heading stopien={3}>Edytuj termin</Heading>
 
-      <RecordList
-        tytul="Terminy"
-        jednostkaSumy="zapisów"
-        wiersze={wiersze}
-        pusty={{
-          naglowek: "Brak terminów",
-          tresc: "Terminy pojawią się tu, gdy prowadzący je utworzą.",
-          przycisk: { etykieta: "Odśwież", onClick: () => void wczytajTerminy() },
-        }}
-      />
+        {blad && (
+          <Notice
+            wariant="error"
+            tytul="Nie udało się zapisać"
+            akcja={
+              bladStanuEdycji ? (
+                <Button poziom="outline" onClick={wczytajPonownie}>
+                  Wczytaj terminy ponownie
+                </Button>
+              ) : undefined
+            }
+          >
+            {blad}
+          </Notice>
+        )}
 
-      {edytowanyId !== null && formularz !== null && (
-        <div className={style.panel}>
-          <Heading stopien={3}>Edytuj termin</Heading>
-
-          {blad && (
-            <Notice wariant="error" tytul="Nie udało się zapisać">
-              {blad}
-            </Notice>
-          )}
-
-          <div className={style.pole}>
-            <Label htmlFor="termin-starts-at" dzieci="Data i godzina spotkania" wymagane />
-            <input
-              id="termin-starts-at"
-              type="datetime-local"
-              className={style.inputNatywny}
-              value={formularz.starts_at_lokalnie}
-              onChange={(zdarzenie) =>
-                setFormularz((f) => (f ? { ...f, starts_at_lokalnie: zdarzenie.target.value } : f))
-              }
-              aria-invalid={Boolean(bledyPol?.starts_at?.[0]) || undefined}
-              aria-describedby="termin-starts-at-podpowiedz termin-starts-at-blad"
-              required
-            />
-            <Hint id="termin-starts-at-podpowiedz">
-              Czas lokalny Twojej przeglądarki — do zapisu trafia jako UTC.
-            </Hint>
-            <ErrorText id="termin-starts-at-blad">{bledyPol?.starts_at?.[0]}</ErrorText>
-          </div>
-          <div className={style.wiersz}>
-            <Field
-              id="termin-czas-trwania"
-              etykieta="Czas trwania (minuty)"
-              rodzaj="liczba"
-              wartosc={formularz.duration_minutes}
-              onZmiana={(wartosc) => setFormularz((f) => (f ? { ...f, duration_minutes: wartosc } : f))}
-              blad={bledyPol?.duration_minutes?.[0]}
-            />
-            <Field
-              id="termin-limit-miejsc"
-              etykieta="Limit miejsc"
-              rodzaj="liczba"
-              wartosc={formularz.seats_limit}
-              onZmiana={(wartosc) => setFormularz((f) => (f ? { ...f, seats_limit: wartosc } : f))}
-              blad={bledyPol?.seats_limit?.[0]}
-            />
-          </div>
-          <Field
-            id="termin-lokalizacja"
-            etykieta="Lokalizacja albo odnośnik"
-            rodzaj="tekst"
-            wartosc={formularz.location_or_link}
-            onZmiana={(wartosc) => setFormularz((f) => (f ? { ...f, location_or_link: wartosc } : f))}
-            blad={bledyPol?.location_or_link?.[0]}
+        <div className={style.pole}>
+          <Label htmlFor="termin-starts-at" dzieci="Data i godzina spotkania" wymagane />
+          <input
+            id="termin-starts-at"
+            type="datetime-local"
+            className={style.inputNatywny}
+            value={formularz.starts_at_lokalnie}
+            onChange={(zdarzenie) =>
+              setFormularz((f) => (f ? { ...f, starts_at_lokalnie: zdarzenie.target.value } : f))
+            }
+            aria-invalid={Boolean(bledyPol?.starts_at?.[0]) || undefined}
+            aria-describedby="termin-starts-at-podpowiedz termin-starts-at-blad"
+            required
           />
-
-          <DialogActions
-            etykietaWycofania="Anuluj"
-            etykietaPotwierdzenia={zapisywanie ? "Zapisywanie…" : "Zapisz"}
-            onWycofaj={zamknijPanel}
-            onPotwierdz={() => {
-              if (!zapisywanie) void zapisz();
-            }}
-          />
-
-          {!potwierdzOdwolanie && (
-            <Button
-              poziom="outline"
-              niebezpieczny
-              disabled={odwolywanyId !== null}
-              onClick={() => setPotwierdzOdwolanie(true)}
-            >
-              Odwołaj termin
-            </Button>
-          )}
-
-          {potwierdzOdwolanie && (
-            <div className={style.potwierdzenie}>
-              <Notice wariant="warn" tytul="Potwierdź odwołanie terminu">
-                Odwołanie zwolni wszystkie zapisy uczestników i wyśle im powiadomienie. Tej operacji
-                nie da się cofnąć.
-              </Notice>
-              <DialogActions
-                etykietaWycofania="Nie odwołuj"
-                etykietaPotwierdzenia={odwolywanyId !== null ? "Odwoływanie…" : "Odwołaj termin"}
-                niebezpieczne
-                onWycofaj={() => setPotwierdzOdwolanie(false)}
-                onPotwierdz={() => {
-                  if (odwolywanyId === null) void odwolaj(edytowanyId);
-                }}
-              />
-            </div>
-          )}
+          <Hint id="termin-starts-at-podpowiedz">Czas lokalny Twojej przeglądarki.</Hint>
+          <ErrorText id="termin-starts-at-blad">{bledyPol?.starts_at?.[0]}</ErrorText>
         </div>
+        <div className={style.wiersz}>
+          <Field
+            id="termin-czas-trwania"
+            etykieta="Czas trwania (minuty)"
+            rodzaj="liczba"
+            wartosc={formularz.duration_minutes}
+            onZmiana={(wartosc) => setFormularz((f) => (f ? { ...f, duration_minutes: wartosc } : f))}
+            blad={bledyPol?.duration_minutes?.[0]}
+          />
+          <Field
+            id="termin-limit-miejsc"
+            etykieta="Limit miejsc"
+            rodzaj="liczba"
+            wartosc={formularz.seats_limit}
+            onZmiana={(wartosc) => setFormularz((f) => (f ? { ...f, seats_limit: wartosc } : f))}
+            blad={bledyPol?.seats_limit?.[0]}
+          />
+        </div>
+        <Field
+          id="termin-lokalizacja"
+          etykieta="Lokalizacja albo odnośnik"
+          rodzaj="tekst"
+          wartosc={formularz.location_or_link}
+          onZmiana={(wartosc) => setFormularz((f) => (f ? { ...f, location_or_link: wartosc } : f))}
+          blad={bledyPol?.location_or_link?.[0]}
+        />
+
+        <DialogActions
+          etykietaWycofania="Anuluj"
+          etykietaPotwierdzenia={zapisywanie ? "Zapisywanie…" : "Zapisz"}
+          onWycofaj={zamknijPanel}
+          onPotwierdz={() => {
+            if (!zapisywanie) void zapisz();
+          }}
+        />
+      </div>
+    ) : undefined;
+
+  return (
+    <>
+      <TableTemplate
+        naglowek={
+          <PageHeader
+            okruszki={[{ etykieta: "Administracja" }, { etykieta: "Terminy superwizji" }]}
+            tytul="Terminy superwizji"
+            opis="Edycja i odwołanie terminów wszystkich prowadzących. Zapisy są tylko do odczytu."
+            onPowrot={() => router.back()}
+          />
+        }
+        zdanie={informacjaZwrotna}
+        tabela={
+          posortowane.length === 0 ? (
+            <EmptyState
+              naglowek="Brak terminów"
+              tresc="Terminy pojawią się tu, gdy prowadzący je utworzą."
+              przycisk={{ etykieta: "Odśwież", onClick: () => void wczytajTerminy() }}
+            />
+          ) : (
+            <TabelaTerminow
+              terminy={posortowane}
+              onEdytuj={otworzEdycje}
+              onOdwolaj={otworzOdwolanie}
+              akcjeZablokowane={odwolywanie}
+            />
+          )
+        }
+        wsparcie={panelEdycji}
+      />
+
+      {doOdwolania && (
+        <Dialog
+          tytul={`Odwołać termin ${formatujDateICzas(doOdwolania.starts_at)}?`}
+          etykietaWycofania="Nie odwołuj"
+          etykietaPotwierdzenia={odwolywanie ? "Odwoływanie…" : "Odwołaj termin"}
+          niebezpieczne
+          onWycofaj={() => {
+            if (!odwolywanie) setDoOdwolania(null);
+          }}
+          onPotwierdz={() => {
+            if (!odwolywanie) void odwolaj(doOdwolania);
+          }}
+        >
+          <Text>{trescPotwierdzeniaOdwolania(doOdwolania.active_signups_count)}</Text>
+        </Dialog>
       )}
-    </main>
+    </>
   );
 }

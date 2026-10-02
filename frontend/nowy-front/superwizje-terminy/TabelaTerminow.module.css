@@ -1,0 +1,89 @@
+/* Tabela terminów superwizji z kolumną akcji — lokalna dla ekranu
+   `/nowy-front/admin/superwizje`. Układ powtarza `DataTable.module.css`
+   (siatka `role="table"`, poniżej 639 px pary etykieta–wartość), bo wspólne
+   organizmy zostają bez zmian. Wartości wyłącznie z tokeny.css (KO-1). */
+.siatka {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.wierszNaglowka,
+.wiersz {
+  display: grid;
+  grid-template-columns: 1.3fr 1.1fr 1.1fr 0.8fr 1fr 1.6fr;
+  gap: var(--space-12);
+}
+
+.wierszNaglowka {
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+  padding: var(--space-8) var(--card-px);
+  border-bottom: 1px solid var(--border);
+}
+
+.wiersz {
+  padding: var(--space-12) var(--card-px);
+  border-bottom: 1px solid var(--border);
+  min-height: var(--hit-min);
+  align-items: center;
+}
+
+/* Termin odwołany zostaje na liście, ale jego treść jest wyciszona — stan
+   niesie słowo na plakietce, nie sama barwa. */
+.odwolany {
+  color: var(--muted);
+}
+
+.komorka {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+@media (max-width: 639px) {
+  .wierszNaglowka {
+    display: none;
+  }
+
+  .wiersz {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-6);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    margin-bottom: var(--space-12);
+  }
+
+  .wiersz .komorka {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-8);
+  }
+
+  .wiersz .komorka::before {
+    content: attr(data-etykieta);
+    font-weight: var(--fw-medium);
+    color: var(--muted);
+  }
+
+  /* Akcje pod wierszem, bez etykiety kolumny; odwołany termin nie ma akcji,
+     więc pusta komórka znika. */
+  .wiersz .akcje {
+    justify-content: flex-start;
+  }
+
+  .wiersz .akcje::before {
+    content: none;
+  }
+
+  .wiersz .akcje:empty {
+    display: none;
+  }
+}

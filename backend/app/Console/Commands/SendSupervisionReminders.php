@@ -60,7 +60,9 @@ class SendSupervisionReminders extends Command
         $candidateIds = SupervisionSignup::query()
             ->whereNull('cancelled_at')
             ->whereNull('reminder_sent_at')
-            ->whereHas('slot', fn ($query) => $query->whereBetween('starts_at', [$from, $to]))
+            ->whereHas('slot', fn ($query) => $query
+                ->whereNull('cancelled_at')
+                ->whereBetween('starts_at', [$from, $to]))
             ->orderBy('id')
             ->pluck('id');
 
@@ -72,6 +74,7 @@ class SendSupervisionReminders extends Command
                     ->whereKey($signupId)
                     ->whereNull('cancelled_at')
                     ->whereNull('reminder_sent_at')
+                    ->whereHas('slot', fn ($query) => $query->whereNull('cancelled_at'))
                     ->lockForUpdate()
                     ->with(['slot', 'user'])
                     ->first();

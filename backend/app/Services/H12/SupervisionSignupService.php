@@ -23,7 +23,8 @@ final class SupervisionSignupService
                 ->first();
             $slot = SupervisionSlot::query()->whereKey($slotId)->lockForUpdate()->first();
 
-            if ($slot === null) {
+            // Odwołany termin odpowiada tym samym 404 co nieistniejący.
+            if ($slot === null || $slot->isCancelled()) {
                 throw new ApiException(404, 'not_found', 'Nie znaleziono terminu.');
             }
 
@@ -93,6 +94,7 @@ final class SupervisionSignupService
 
             if (
                 $slot === null
+                || $slot->isCancelled()
                 || $assignment === null
                 || (int) $assignment->supervisor_id !== (int) $slot->supervisor_id
             ) {

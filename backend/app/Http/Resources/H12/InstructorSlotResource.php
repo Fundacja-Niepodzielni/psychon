@@ -29,7 +29,10 @@ class InstructorSlotResource extends JsonResource
             'duration_minutes' => (int) $this->duration_minutes,
             'seats_limit' => (int) $this->seats_limit,
             'location_or_link' => $this->location_or_link,
-            'can_mark_attendance' => SupervisionTiming::canMarkAttendance($this->resource),
+            'status' => $this->resource->status(),
+            'cancelled_at' => $this->cancelled_at?->toIso8601ZuluString(),
+            'can_mark_attendance' => ! $this->resource->isCancelled()
+                && SupervisionTiming::canMarkAttendance($this->resource),
             'supervisor' => $this->whenLoaded('supervisor', fn (): array => [
                 'id' => $this->supervisor->id,
                 'first_name' => $this->supervisor->first_name,

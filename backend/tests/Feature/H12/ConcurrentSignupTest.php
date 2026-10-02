@@ -3,10 +3,12 @@
 namespace Tests\Feature\H12;
 
 use App\Exceptions\ApiException;
+use App\Models\Notification;
 use App\Models\SupervisionSlot;
 use App\Models\SupervisorAssignment;
 use App\Models\User;
 use App\Services\H12\SupervisionSignupService;
+use App\Services\H12\SupervisionSlotService;
 use App\Services\H12\SupervisorAssignmentService;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Carbon;
@@ -233,6 +235,134 @@ class ConcurrentSignupTest extends TestCase
                 'cancelled_at' => null,
             ]);
         } else {
+            $this->assertDatabaseMissing('supervision_signups', [
+                'slot_id' => $slot->id,
+                'user_id' => $volunteer->id,
+            ]);
+        }
+
+        foreach (glob($directory.'/*') as $file) {
+            @unlink($file);
+        }
+        @rmdir($directory);
+    }
+
+    /**
+     * Zapis i odwołanie tego samego terminu naraz. Obie operacje blokują
+     * wiersz terminu (`lockForUpdate`), więc jedna czeka na drugą:
+     *  - zapis pierwszy → odwołanie zwalnia także ten zapis i powiadamia osobę;
+     *  - odwołanie pierwsze → zapis dostaje 404 i nie zostawia wiersza.
+     * W obu kolejnościach termin kończy odwołany i bez aktywnego zapisu.
+     */
+    public function test_signup_racing_a_cancellation_never_leaves_an_active_signup_on_a_cancelled_slot(): void
+    {
+        $this->requireProcessConcurrency();
+
+        $supervisor = User::factory()->role('instructor')->create();
+        $admin = User::factory()->role('project_manager')->create();
+        $volunteer = User::factory()->create(['role' => 'volunteer']);
+        SupervisorAssignment::create([
+            'volunteer_id' => $volunteer->id,
+            'supervisor_id' => $supervisor->id,
+            'assigned_at' => now(),
+        ]);
+        $slot = SupervisionSlot::create([
+            'supervisor_id' => $supervisor->id,
+            'starts_at' => Carbon::now()->addDay(),
+            'duration_minutes' => 90,
+            'seats_limit' => 3,
+            'location_or_link' => 'Sala testowa',
+        ]);
+
+        $directory = sys_get_temp_dir().'/h12-cancel-race-'.uniqid('', true);
+        mkdir($directory);
+        $go = $directory.'/go';
+        $children = [];
+
+        $operations = [
+            'signup' => static function () use ($volunteer, $slot): string {
+                try {
+                    app(SupervisionSignupService::class)->signup(
+                        User::query()->findOrFail($volunteer->id),
+                        $slot->id,
+                    );
+
+                    return '201';
+                } catch (ApiException $exception) {
+                    return (string) $exception->status;
+                }
+            },
+            'cancel' => static function () use ($admin, $slot): string {
+                try {
+                    $result = app(SupervisionSlotService::class)->cancel(
+                        User::query()->findOrFail($admin->id),
+                        $slot->id,
+                    );
+
+                    return '200:'.$result['released'];
+                } catch (ApiException $exception) {
+                    return (string) $exception->status;
+                }
+            },
+        ];
+
+        foreach ($operations as $name => $operation) {
+            $pid = pcntl_fork();
+            if ($pid === -1) {
+                $this->fail('Nie udało się uruchomić procesu testu wyścigu odwołania.');
+            }
+
+            if ($pid === 0) {
+                DB::purge();
+                file_put_contents($directory.'/ready-'.$name, 'ready');
+
+                while (! file_exists($go)) {
+                    usleep(1000);
+                }
+
+                try {
+                    file_put_contents($directory.'/result-'.$name, $operation());
+                } catch (\Throwable) {
+                    file_put_contents($directory.'/result-'.$name, '500');
+                }
+
+                exit(0);
+            }
+
+            $children[] = $pid;
+        }
+
+        for ($attempt = 0; $attempt < 5000; $attempt++) {
+            if (count(glob($directory.'/ready-*')) === 2) {
+                break;
+            }
+            usleep(1000);
+        }
+        $this->assertCount(2, glob($directory.'/ready-*'));
+        file_put_contents($go, 'go');
+
+        foreach ($children as $pid) {
+            pcntl_waitpid($pid, $status);
+        }
+
+        $results = [];
+        foreach (['signup', 'cancel'] as $name) {
+            $results[$name] = trim((string) file_get_contents($directory.'/result-'.$name));
+        }
+
+        $this->assertNotNull(SupervisionSlot::query()->findOrFail($slot->id)->cancelled_at);
+        $this->assertSame(0, SupervisionSlot::query()->findOrFail($slot->id)
+            ->signups()->whereNull('cancelled_at')->count());
+
+        if ($results['signup'] === '201') {
+            $this->assertSame('200:1', $results['cancel']);
+            $this->assertSame(1, Notification::query()
+                ->where('user_id', $volunteer->id)
+                ->where('type', 'supervision.slot_cancelled')
+                ->count());
+        } else {
+            $this->assertSame('404', $results['signup']);
+            $this->assertSame('200:0', $results['cancel']);
             $this->assertDatabaseMissing('supervision_signups', [
                 'slot_id' => $slot->id,
                 'user_id' => $volunteer->id,
