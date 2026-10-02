@@ -289,14 +289,19 @@ function KursZDanymi({ kurs, podglad, rola }: { kurs: DaneKursu; podglad: boolea
           <div className={style.tytul}>
             <Heading stopien={1}>{kurs.title}</Heading>
             <div className={style.podtytulWiersz}>
-              <p className={style.podtytul}>{opisKursu(widok.lekcje)}</p>
-              {(widok.kursUkonczony || widok.wszystkieUkonczone) && (
+              <p className={style.podtytul}>{opisKursu(widok.lekcje, widok.bezTestu)}</p>
+              {widok.znacznikUkonczenia !== null && (
                 <span className={style.znacznik}>
                   {ZNACZNIK_UKONCZONA}
-                  {widok.kursUkonczony ? "Kurs ukończony" : "Lekcje ukończone"}
+                  {widok.znacznikUkonczenia}
                 </span>
               )}
             </div>
+            {widok.powrotDoKursow && (
+              <a className={`${style.przycisk} ${style.powrotDoKursow}`} href={ADRES_LISTY_KURSOW} data-powrot-do-kursow="">
+                Wróć do kursów
+              </a>
+            )}
           </div>
           {widok.akcja.rodzaj !== "brak" && (
             <div className={style.dok} ref={dok}>
@@ -333,7 +338,7 @@ function KursZDanymi({ kurs, podglad, rola }: { kurs: DaneKursu; podglad: boolea
               {widok.tematy.map((temat) => (
                 <KartaTematu key={temat.klucz} temat={temat} slug={kurs.slug} podglad={trybPodgladu} />
               ))}
-              <KartaTestu widok={widok} slug={kurs.slug} idPowodu={idPowodu} podglad={trybPodgladu} />
+              {!widok.bezTestu && <KartaTestu widok={widok} slug={kurs.slug} idPowodu={idPowodu} podglad={trybPodgladu} />}
             </>
           )}
         </div>

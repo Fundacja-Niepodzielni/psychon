@@ -446,7 +446,10 @@ class RecordingStateTest extends TestCase
         Config::set('services.bunny.token_security_key', '');
         $this->actingAs($this->volunteer(), 'keycloak');
 
-        $response = $this->getJson("/api/v1/lessons/{$lesson->id}/video-link")->assertStatus(503);
+        $response = $this->getJson("/api/v1/lessons/{$lesson->id}/video-link")
+            ->assertStatus(503)
+            ->assertJsonPath('error.status', 503)
+            ->assertJsonPath('error.code', 'video_not_configured');
 
         $this->assertNull($response->json('data'));
         $this->assertStringNotContainsString(self::OLD, $response->getContent());

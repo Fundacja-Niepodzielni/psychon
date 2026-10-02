@@ -66,7 +66,18 @@ export const LEKCJA_UKONCZONA = {
   duration_seconds: 1800,
   is_completed: true,
   topic_id: 5,
-} satisfies LekcjaKursu & { duration_seconds: number; topic_id: number | null };
+  locked: false,
+  active_seconds: 1100,
+  required_active_seconds: 1080,
+  has_recording: true,
+} satisfies LekcjaKursu & {
+  duration_seconds: number;
+  topic_id: number | null;
+  locked: boolean;
+  active_seconds: number;
+  required_active_seconds: number;
+  has_recording: boolean;
+};
 
 export const LEKCJA_DO_ZROBIENIA = {
   id: 22,
@@ -75,12 +86,25 @@ export const LEKCJA_DO_ZROBIENIA = {
   duration_seconds: 1200,
   is_completed: false,
   topic_id: 5,
-} satisfies LekcjaKursu & { duration_seconds: number; topic_id: number | null };
+  locked: false,
+  active_seconds: 0,
+  required_active_seconds: 720,
+  has_recording: true,
+} satisfies LekcjaKursu & {
+  duration_seconds: number;
+  topic_id: number | null;
+  locked: boolean;
+  active_seconds: number;
+  required_active_seconds: number;
+  has_recording: boolean;
+};
 
 export const SZCZEGOL_W_TOKU = {
   ...KURS_W_TOKU,
   instructor: null,
   has_test: true,
+  test_locked: false,
+  test_passed: false,
   topics: [{ id: 5, title: "Lekcje kursu", position: 1 }],
   lessons: [LEKCJA_UKONCZONA, LEKCJA_DO_ZROBIENIA],
   materials: [],
