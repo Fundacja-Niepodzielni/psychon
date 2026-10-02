@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { kartaPrzykladowa } from "./karta-fixtura";
 
 /**
@@ -50,6 +52,24 @@ async function otworzKarte() {
   await screen.findByRole("heading", { name: "Blokada konta" });
 }
 
+function odczytajArkusz(): string {
+  return readFileSync(resolve(__dirname, "../KartaOsoby.module.css"), "utf8");
+}
+
+/** Treść bloku `@media (max-width: 639px) { … }` — z zagnieżdżonymi nawiasami klamrowymi. */
+function blokWaskiegoEkranu(arkusz: string): string {
+  const poczatek = arkusz.indexOf("@media (max-width: 639px)");
+  if (poczatek < 0) throw new Error("brak bloku @media (max-width: 639px)");
+  const otwarcie = arkusz.indexOf("{", poczatek);
+  let glebokosc = 0;
+  for (let i = otwarcie; i < arkusz.length; i += 1) {
+    if (arkusz[i] === "{") glebokosc += 1;
+    if (arkusz[i] === "}") glebokosc -= 1;
+    if (glebokosc === 0) return arkusz.slice(otwarcie + 1, i);
+  }
+  throw new Error("niedomknięty blok @media");
+}
+
 describe("Karta osoby — zdanie pod liczbami", () => {
   it("mówi, że te same liczby widzi osoba na pulpicie i w raporcie, bez nazwy wewnętrznego składnika", async () => {
     await otworzKarte();
@@ -85,5 +105,44 @@ describe("Karta osoby — nazwa dziennika", () => {
     await otworzKarte();
 
     expect(document.body.textContent ?? "").not.toMatch(/audyt/i);
+  });
+});
+
+describe("Karta osoby — dane osoby na wąskim ekranie (390 px)", () => {
+  it("tabela danych stoi w obudowie, a każdy wiersz ma nazwę pola i wartość jako dwie komórki", async () => {
+    await otworzKarte();
+
+    const tabela = screen.getByRole("table", { name: "Dane osoby" });
+    const obudowa = tabela.closest('[class*="daneOsoby"]');
+    expect(obudowa).not.toBeNull();
+
+    const wiersze = within(tabela).getAllByRole("row").filter((w) => within(w).queryAllByRole("cell").length > 0);
+    expect(wiersze.length).toBeGreaterThan(0);
+    const pierwszy = within(wiersze[0]).getAllByRole("cell");
+    expect(pierwszy.map((k) => k.textContent)).toEqual(["Imię i nazwisko", "Marta Demo"]);
+  });
+
+  it("na komputerze nagłówek „Pole / Wartość” zostaje w tabeli", async () => {
+    await otworzKarte();
+
+    const tabela = screen.getByRole("table", { name: "Dane osoby" });
+    expect(within(tabela).getByRole("columnheader", { name: "Pole" })).toBeInTheDocument();
+    expect(within(tabela).getByRole("columnheader", { name: "Wartość" })).toBeInTheDocument();
+  });
+
+  it("poniżej 640 px zdejmuje powtarzane słowa „Pole” i „Wartość”, wyrównuje do lewej i robi z nazwy pola małą etykietę nad wartością", () => {
+    const wasko = blokWaskiegoEkranu(odczytajArkusz());
+
+    expect(wasko).toMatch(/\.daneOsoby \[role="row"\] \[role="cell"\]::before\s*\{[^}]*content:\s*none/);
+    expect(wasko).toMatch(/\.daneOsoby \[role="row"\] \[role="cell"\]\s*\{[^}]*display:\s*block[^}]*text-align:\s*left/);
+    expect(wasko).toMatch(/\.daneOsoby \[role="row"\]\s*\{[^}]*align-items:\s*stretch[^}]*text-align:\s*left/);
+    expect(wasko).toMatch(/\[role="cell"\]:first-child\s*\{[^}]*color:\s*var\(--muted\)[^}]*font-size:\s*var\(--fs-10\)/);
+  });
+
+  it("układ wąski nie rusza tabeli na komputerze: reguły obudowy są tylko w bloku poniżej 640 px", () => {
+    const arkusz = odczytajArkusz();
+    const wasko = blokWaskiegoEkranu(arkusz);
+
+    expect(arkusz.replace(wasko, "")).not.toMatch(/\.daneOsoby/);
   });
 });

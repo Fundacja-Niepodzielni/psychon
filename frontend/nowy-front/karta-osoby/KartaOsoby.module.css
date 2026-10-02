@@ -43,3 +43,32 @@
   display: flex;
   justify-content: flex-start;
 }
+
+/* Dane osoby na telefonie. `DataTable` poniżej 640 px zamienia wiersze w karty
+   i dopisuje przed każdą wartością słowa „Pole” i „Wartość”, a komórki
+   wyśrodkowuje. Tu: nazwa pola jako mała etykieta nad wartością, oba teksty
+   od lewej, bez tych słów. Na komputerze tabela zostaje bez zmian. Próg jest
+   ten sam co w `DataTable`; selektory idą po rolach tabeli, bo klasy
+   `DataTable` należą do niej, a wyższa specyficzność nie zależy od kolejności
+   arkuszy. */
+@media (max-width: 639px) {
+  .daneOsoby [role="row"] {
+    align-items: stretch;
+    gap: var(--space-4);
+    text-align: left;
+  }
+
+  .daneOsoby [role="row"] [role="cell"] {
+    display: block;
+    text-align: left;
+  }
+
+  .daneOsoby [role="row"] [role="cell"]::before {
+    content: none;
+  }
+
+  .daneOsoby [role="row"] [role="cell"]:first-child {
+    color: var(--muted);
+    font-size: var(--fs-10);
+  }
+}

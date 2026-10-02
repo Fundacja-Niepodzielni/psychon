@@ -382,7 +382,9 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
             </>
           ) : (
             <>
-              <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
+              <div className={style.daneOsoby}>
+                <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
+              </div>
               {adresPrzedluzenia !== undefined && (
                 <div className={style.akcjaDostepu}>
                   <Button poziom="outline" onClick={() => router.push(adresPrzedluzenia)}>
