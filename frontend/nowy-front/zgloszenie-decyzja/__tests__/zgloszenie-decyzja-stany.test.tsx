@@ -102,7 +102,7 @@ describe("Zgłoszenie — decyzja: stany w szablonie, jeden main", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Wczytywanie zgłoszenia" })).toBeInTheDocument();
   });
 
-  it("dane: karta kandydata i jeden przycisk główny „Zaakceptuj i utwórz konto”", async () => {
+  it("dane: karta kandydata i jeden przycisk główny „Zatwierdź i utwórz konto”", async () => {
     const { container } = await renderGotowy();
     sprawdzSzablon(container);
     expect(screen.getByText("marta.demo@example.test")).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("Zgłoszenie — decyzja: stany w szablonie, jeden main", () => {
     expect(screen.getByText("Czeka na decyzję")).toBeInTheDocument();
     const glowne = przyciskiGlowne();
     expect(glowne).toHaveLength(1);
-    expect(glowne[0]).toHaveTextContent("Zaakceptuj i utwórz konto");
+    expect(glowne[0]).toHaveTextContent("Zatwierdź i utwórz konto");
     expect(screen.getByRole("button", { name: "Odrzuć zgłoszenie" })).toBeInTheDocument();
     expect(within(container.querySelector("[data-obszar='wspierajaca']")!).getByRole("heading", { level: 2, name: "Decyzja o zgłoszeniu" })).toBeInTheDocument();
   });
@@ -212,7 +212,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
     expect(screen.getByRole("combobox", { name: /^Rola konta/ })).toHaveTextContent("Wolontariusz");
 
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
 
     await screen.findByText("Zgłoszenie zaakceptowane");
     expect(api).toHaveBeenCalledWith("/admin/applications/31/accept", { method: "POST", body: { role: "volunteer" } });
@@ -229,7 +229,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
     await uzytkownik.click(screen.getByRole("combobox", { name: /^Rola konta/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Student" }));
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     await screen.findByText("Zgłoszenie zaakceptowane");
     expect(api).toHaveBeenCalledWith("/admin/applications/31/accept", { method: "POST", body: { role: "student" } });
   });
@@ -239,7 +239,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     trasy({ show: ZGLOSZENIE, accept: { user_id: 44, access_expires_at: "2027-03-30T09:00:00Z", invitation_mail: "failed" } });
     render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     expect(await screen.findByText("Zaproszenie nie zostało wysłane")).toBeInTheDocument();
   });
 
@@ -251,7 +251,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     });
     const { container } = render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     expect(await screen.findByText("Nieznana rola.")).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(1);
     sprawdzSzablon(container);
@@ -266,7 +266,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     });
     const { container } = render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     expect(await screen.findByText("Na ten adres jest już zarejestrowane konto.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Otwórz kartę osoby" })).toHaveAttribute("href", "/admin/uczestniczki/17");
     expect(przyciskiGlowne()).toHaveLength(1);
@@ -290,13 +290,13 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     });
     const { container } = render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
 
     expect(await screen.findByText(/Limit: 20, zajęte: 20\./)).toBeInTheDocument();
     sprawdzSzablon(container);
     const glowne = przyciskiGlowne();
     expect(glowne).toHaveLength(1);
-    expect(glowne[0]).toHaveTextContent("Zaakceptuj mimo limitu miejsc");
+    expect(glowne[0]).toHaveTextContent("Zatwierdź mimo limitu miejsc");
 
     await uzytkownik.click(glowne[0]);
     await screen.findByText("Zgłoszenie zaakceptowane");
@@ -313,7 +313,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     });
     render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     await screen.findByText("Zgłoszenie jest już rozstrzygnięte");
     await uzytkownik.click(screen.getByRole("button", { name: "Wczytaj zgłoszenie ponownie" }));
     await waitFor(() => expect(screen.getByText("Zgłoszenie zaakceptowane")).toBeInTheDocument());
@@ -325,7 +325,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     trasy({ show: ZGLOSZENIE, accept: () => Promise.reject(bladApi(403, "forbidden", "Nie masz dostępu do tej akcji.")) });
     const { container } = render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     expect(await screen.findByText("Nie masz dostępu do tej akcji.")).toBeInTheDocument();
     sprawdzSzablon(container);
   });
@@ -335,7 +335,7 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     trasy({ show: ZGLOSZENIE, accept: () => Promise.reject(new TypeError("Failed to fetch")) });
     render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
-    await uzytkownik.click(screen.getByRole("button", { name: "Zaakceptuj i utwórz konto" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }));
     expect(await screen.findByText("Nie udało się zaakceptować zgłoszenia. Spróbuj ponownie.")).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(1);
   });
@@ -348,7 +348,7 @@ describe("Zgłoszenie — decyzja: odrzucenie z powodem", () => {
     return uzytkownik;
   }
 
-  it("sekcja powodu zastępuje rząd decyzji: jeden rząd przycisków, jeden przycisk główny", async () => {
+  it("pole powodu zastępuje wybór roli: zatwierdzenie znika, odrzucenie zostaje jednym przyciskiem bez wypełnienia", async () => {
     ustawZgloszenie();
     const { container } = render(<ZgloszenieDecyzja id="31" />);
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
@@ -357,8 +357,8 @@ describe("Zgłoszenie — decyzja: odrzucenie z powodem", () => {
     expect(await screen.findByRole("textbox", { name: /^Powód odrzucenia/ })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Odrzuć zgłoszenie" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Wróć do decyzji" })).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: "Zaakceptuj i utwórz konto" })).toBeNull();
-    expect(przyciskiGlowne()).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Zatwierdź i utwórz konto" })).toBeNull();
+    expect(przyciskiGlowne()).toHaveLength(0);
     sprawdzSzablon(container);
   });
 
@@ -433,7 +433,7 @@ describe("Zgłoszenie — decyzja: odrzucenie z powodem", () => {
     await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
     const uzytkownik = await otworzOdrzucenie();
     await uzytkownik.click(await screen.findByRole("button", { name: "Wróć do decyzji" }));
-    expect(await screen.findByRole("button", { name: "Zaakceptuj i utwórz konto" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Zatwierdź i utwórz konto" })).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(1);
   });
 });
@@ -461,5 +461,53 @@ describe("Zgłoszenie — decyzja: skan dyplomu", () => {
     await renderGotowy({ ...ZGLOSZENIE, has_diploma_scan: false, diploma_scan_url: null });
     expect(screen.getByText("Do zgłoszenia nie dołączono skanu dyplomu.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pobierz skan dyplomu" })).toBeNull();
+  });
+});
+
+describe("Zgłoszenie — decyzja: przycisk odrzucenia w stałym miejscu", () => {
+  function rzadOdrzucenia() {
+    return screen.getByTestId("rzad-odrzucenia");
+  }
+
+  function sprawdzPrzyciskOdrzucenia(container: HTMLElement) {
+    const przycisk = within(rzadOdrzucenia()).getByRole("button", { name: "Odrzuć zgłoszenie" });
+    const klasy = przycisk.className.split(/\s+/);
+    expect(klasy.some((klasa) => /(^|_)outline(_|$)/.test(klasa))).toBe(true);
+    expect(klasy.some((klasa) => /(^|_)niebezpieczny(_|$)/.test(klasa))).toBe(true);
+    expect(klasy.some((klasa) => /(^|_)primary(_|$)/.test(klasa))).toBe(false);
+    const panel = container.querySelector("[data-obszar='wspierajaca'] section")!;
+    expect(panel.lastElementChild).toBe(rzadOdrzucenia());
+    expect(within(rzadOdrzucenia()).getAllByRole("button")).toHaveLength(1);
+  }
+
+  it("przed otwarciem pola powodu: ostatni rząd panelu, osobno od zatwierdzenia, obrys z czerwonym napisem", async () => {
+    ustawZgloszenie();
+    const { container } = render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+
+    sprawdzPrzyciskOdrzucenia(container);
+    expect(rzadOdrzucenia().contains(screen.getByRole("button", { name: "Zatwierdź i utwórz konto" }))).toBe(false);
+  });
+
+  it("po otwarciu pola powodu: ten sam rząd i ten sam wygląd, „Wróć do decyzji” stoi poza nim", async () => {
+    ustawZgloszenie();
+    const { container } = render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+    await userEvent.click(screen.getByRole("button", { name: "Odrzuć zgłoszenie" }));
+    await screen.findByRole("textbox", { name: /^Powód odrzucenia/ });
+
+    sprawdzPrzyciskOdrzucenia(container);
+    expect(rzadOdrzucenia().contains(screen.getByRole("button", { name: "Wróć do decyzji" }))).toBe(false);
+  });
+
+  it("samo otwarcie pola powodu niczego nie wysyła, a przy polu stoi zdanie, że kandydat powodu nie dostaje", async () => {
+    ustawZgloszenie();
+    render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+    await userEvent.click(screen.getByRole("button", { name: "Odrzuć zgłoszenie" }));
+    await screen.findByRole("textbox", { name: /^Powód odrzucenia/ });
+
+    expect(api.mock.calls.filter((wywolanie) => wywolanie[1]?.method === "POST")).toHaveLength(0);
+    expect(screen.getByText("Powód zostaje zapisany przy zgłoszeniu. Kandydat nie dostaje go w wiadomości.")).toBeInTheDocument();
   });
 });
