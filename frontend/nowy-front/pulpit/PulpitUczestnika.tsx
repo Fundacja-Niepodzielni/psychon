@@ -353,7 +353,7 @@ function NastepnyKrokBlok({
   if (krok.rodzaj === "po-programie") {
     return (
       <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek="Dalsza współpraca">
-        <Text>Program masz już za sobą. Możesz zgłosić chęć dalszej współpracy.</Text>
+        <Text>Program masz już za sobą. Możesz wysłać prośbę o dalszą współpracę.</Text>
       </KartaNastepnegoKroku>
     );
   }
