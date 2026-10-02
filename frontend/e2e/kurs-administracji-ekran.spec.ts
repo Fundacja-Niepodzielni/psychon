@@ -14,6 +14,7 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  *   w przetwarzaniu, gotowa lekcja z nowym nagraniem w drodze, długie tytuły
  *   bez spacji);
  * - `kurs-gotowy` — szkic bez braków;
+ * - `kurs-dlugi-tytul` — szkic bez braków z tytułem jednym długim słowem;
  * - `kurs-opublikowany` — kurs opublikowany bez uwag;
  * - `kurs-opublikowany-uwaga` — kurs opublikowany z lekcją wymagającą uwagi;
  * - `kurs-odmowa` — serwer odmawia publikacji i podaje powody.
@@ -151,6 +152,16 @@ const STANY: Stan[] = [
     pas: null,
   },
   {
+    nazwa: "kurs-dlugi-tytul",
+    kurs: { ...KURS, title: "WywiadPsychologicznyZPacjentemWKryzysie", publication_gaps: BEZ_BRAKOW },
+    lekcje: LEKCJE_GOTOWE,
+    tematy: TEMATY,
+    wDrodze: [],
+    naglowekListy: null,
+    glowny: { rola: "button", nazwa: "Opublikuj kurs" },
+    pas: null,
+  },
+  {
     nazwa: "kurs-opublikowany",
     kurs: { ...KURS, is_published: true, publication_gaps: BEZ_BRAKOW },
     lekcje: LEKCJE_GOTOWE,
@@ -198,6 +209,7 @@ async function instalujAtrapy(
   page: Page,
   stan: Stan,
   odmowaPublikacji?: { message: string; reason: Record<string, unknown> },
+  zapisUkladu?: { opoznij?: Promise<void>; odrzuc?: boolean },
 ): Promise<{ zapisy: Zapis[]; sciezki: string[] }> {
   const zapisy: Zapis[] = [];
   const sciezki: string[] = [];
@@ -217,7 +229,7 @@ async function instalujAtrapy(
   );
   await page.route(
     (adres) => adres.pathname.startsWith("/api/v1/admin/"),
-    (route) => {
+    async (route) => {
       const zadanie = route.request();
       const sciezka = new URL(zadanie.url()).pathname.replace("/api/v1", "");
       const metoda = zadanie.method();
@@ -241,6 +253,14 @@ async function instalujAtrapy(
       if (sciezka === "/admin/courses/4/topics/reorder") {
         const cialo = zadanie.postDataJSON() as { topics: { id: number; lesson_ids: number[] }[] };
         zapisy.push({ metoda, sciezka, cialo });
+        if (zapisUkladu?.opoznij) await zapisUkladu.opoznij;
+        if (zapisUkladu?.odrzuc) {
+          return route.fulfill({
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({ error: { status: 500, code: "server_error", message: "Serwer się potknął." } }),
+          });
+        }
         tematy = cialo.topics.map((wpis, indeks) => ({
           ...tematy.find((kandydat) => kandydat.id === wpis.id)!,
           position: indeks + 1,
@@ -314,8 +334,7 @@ function celeZaMale(cele: Cel[], dwieKolumny: boolean): string[] {
     .map((cel) => `${cel.opis}: ${Math.round(cel.szerokosc)}×${Math.round(cel.wysokosc)}`);
 }
 
-async function zrzut(page: Page, nazwa: string): Promise<void> {
-  const katalog = process.env.PW_ZRZUTY;
+async function zrzut(page: Page, nazwa: string, katalog = process.env.PW_ZRZUTY): Promise<void> {
   if (!katalog) return;
   mkdirSync(katalog, { recursive: true });
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -423,7 +442,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
         // Znacznik stanu w wierszu tytułu: od dwóch kolumn w tym samym wierszu co tytuł, poniżej może zejść pod niego,
         // ale zawsze mieści się w ekranie.
-        const znacznik = page.locator("[data-obszar='naglowek'] header").getByText(stan.kurs.is_published ? "Opublikowany" : "Szkic", { exact: true });
+        const znacznik = page.locator("[data-obszar='naglowek'] header").getByText(stan.kurs.is_published ? "Opublikowany" : "Szkic — zapisany", { exact: true });
         await expect(znacznik).toHaveCount(1);
         const polozenie = await page.evaluate(() => {
           const naglowek = document.querySelector("[data-obszar='naglowek'] h1");
@@ -451,6 +470,20 @@ for (const { szerokosc, wysokosc } of OKNA) {
           await expect(pas).toBeVisible();
           await expect(pas).toContainText(stan.kurs.is_published ? "Opublikowany" : "Szkic");
           if (stan.pas) await expect(pas.getByRole("link", { name: stan.pas })).toHaveAttribute("href", "#publikacja");
+        }
+
+        // Szkic niesie stałą plakietkę, zdanie o samoczynnym zapisie i przycisk wyjścia z obrysem; kurs opublikowany żadnego z nich.
+        const wyjscie = page.getByRole("button", { name: "Zapisz szkic i wyjdź" });
+        if (stan.kurs.is_published) {
+          await expect(page.getByText("Szkic — zapisany")).toHaveCount(0);
+          await expect(page.getByText("Zmiany zapisują się same.")).toHaveCount(0);
+          await expect(wyjscie).toHaveCount(0);
+        } else {
+          await expect(page.getByText("Szkic — zapisany")).toHaveCount(1);
+          await expect(page.getByText("Zmiany zapisują się same.")).toHaveCount(1);
+          await expect(wyjscie).toHaveCount(1);
+          await expect(wyjscie).toBeVisible();
+          await expect(page.locator("[data-obszar='naglowek'] header").getByText("Zmiany zapisują się same.")).toBeVisible();
         }
 
         // Dokładnie jeden widoczny przycisk główny: w karcie od dwóch kolumn, w pasie poniżej.
@@ -645,6 +678,70 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await dolaczNaruszeniaDoRaportu(testInfo, `axe-kurs-odmowa-${szerokosc}`, naruszenia);
       expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
       await zrzut(page, `kurs-odmowa-${szerokosc}`);
+    });
+
+    test("szkic zapisany: bez zapisu w toku „Zapisz szkic i wyjdź” prowadzi na listę kursów bez żadnego zapisu", async ({
+      page,
+    }) => {
+      const stan = STANY[1];
+      const { zapisy } = await instalujAtrapy(page, stan);
+      await otworz(page, stan);
+      await zrzut(page, `administracja--kurs--szkic-zapisany--${szerokosc}`, process.env.PW_ZRZUTY_ODBIOR);
+
+      await page.getByRole("button", { name: "Zapisz szkic i wyjdź" }).click();
+      await expect(page).toHaveURL(/\/admin\/kursy$/);
+      expect(zapisy).toEqual([]);
+    });
+
+    test("szkic zapisany: zapis w toku — wyjście czeka na jego koniec i dopiero potem prowadzi na listę", async ({ page }) => {
+      const stan = STANY[1];
+      let zakoncz: () => void = () => undefined;
+      const koniec = new Promise<void>((dalej) => {
+        zakoncz = dalej;
+      });
+      const { zapisy } = await instalujAtrapy(page, stan, undefined, { opoznij: koniec });
+      await otworz(page, stan);
+
+      await page.getByRole("button", { name: "Przenieś „Wprowadzenie do wywiadu” niżej" }).click();
+      await expect.poll(() => zapisy.length).toBe(1);
+      await page.getByRole("button", { name: "Zapisz szkic i wyjdź" }).click();
+      await page.waitForTimeout(600);
+      await expect(page).toHaveURL(/\/admin\/kursy\/4$/);
+
+      zakoncz();
+      await expect(page).toHaveURL(/\/admin\/kursy$/);
+      expect(zapisy).toHaveLength(1);
+    });
+
+    test("szkic zapisany: odmowa zapisu w toku — ekran zostaje, jest zdanie, bez naruszeń, bez przewijania w poziomie", async ({
+      page,
+    }, testInfo) => {
+      const stan = STANY[1];
+      let zakoncz: () => void = () => undefined;
+      const koniec = new Promise<void>((dalej) => {
+        zakoncz = dalej;
+      });
+      const { zapisy } = await instalujAtrapy(page, stan, undefined, { opoznij: koniec, odrzuc: true });
+      await otworz(page, stan);
+
+      await page.getByRole("button", { name: "Przenieś „Wprowadzenie do wywiadu” niżej" }).click();
+      await expect.poll(() => zapisy.length).toBe(1);
+      await page.getByRole("button", { name: "Zapisz szkic i wyjdź" }).click();
+      zakoncz();
+
+      const komunikat = page.getByRole("alert").filter({ hasText: "Szkic nie został zapisany" });
+      await expect(komunikat).toBeVisible();
+      await expect(komunikat).toContainText("Zostajesz na ekranie kursu");
+      await page.waitForTimeout(400);
+      await expect(page).toHaveURL(/\/admin\/kursy\/4$/);
+      await expect(page.getByRole("heading", { level: 2, name: "Tematy i lekcje" })).toBeVisible();
+
+      await bezPrzewijaniaPoziomego(page);
+      const cele = await celeEkranu(page);
+      expect(celeZaMale(cele, dwieKolumny), "cele dotyku poniżej progu").toEqual([]);
+      const naruszenia = await uruchomAxe(page);
+      await dolaczNaruszeniaDoRaportu(testInfo, `axe-szkic-odmowa-zapisu-${szerokosc}`, naruszenia);
+      expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
     });
 
     test("kurs-odmowa, wiele lekcji: komunikat z fokusem jest w widoku bez ręcznego przewijania, poza kolejnością Tab, pierwszy powód jest następnym przystankiem", async ({

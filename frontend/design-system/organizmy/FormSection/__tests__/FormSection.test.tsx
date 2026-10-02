@@ -31,6 +31,22 @@ describe("FormSection", () => {
     expect(screen.getByRole("button", { name: "Więcej danych (2)" })).toBeInTheDocument();
   });
 
+  it("polaPierwszegoPoziomu podnosi liczbę pól od razu widocznych, reszta zostaje pod rozwinięciem", () => {
+    const pola = Array.from({ length: 7 }, (_, indeks) => pole({ id: `pole-${indeks}`, etykieta: `Pole ${indeks}` }));
+    render(
+      <FormSection
+        tytul="Dane osoby"
+        pola={pola}
+        polaPierwszegoPoziomu={6}
+        tytulDodatkowych="Więcej danych"
+        onAnuluj={() => {}}
+        onZapisz={() => {}}
+      />,
+    );
+    expect(screen.getAllByRole("textbox")).toHaveLength(6);
+    expect(screen.getByRole("button", { name: "Więcej danych (1)" })).toBeInTheDocument();
+  });
+
   it("podsumowanie błędów pokazuje wyłącznie pola z błędem, z odnośnikiem do każdego", () => {
     const pola = [
       pole({ id: "imie", etykieta: "Imię", blad: "Podaj imię" }),

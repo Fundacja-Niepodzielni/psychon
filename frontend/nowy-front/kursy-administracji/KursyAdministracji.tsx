@@ -29,6 +29,16 @@ import {
   type ProductGroup,
   type ReorderImpactRow,
 } from "@/lib/h08/types";
+import {
+  imieNazwisko,
+  pobierzProwadzacych,
+  przypiszProwadzacego,
+  type Prowadzacy,
+} from "@/nowy-front/kurs-administracji/dane";
+import {
+  ZDANIE_BRAKU_PROWADZACEGO,
+  zapamietajOstrzezeniePoUtworzeniu,
+} from "@/nowy-front/kurs-administracji/ostrzezenie-po-utworzeniu";
 import { pobierzKursy, podgladKolejnosci, utworzKurs, zapiszKolejnosc, type KursAdministracji } from "./dane";
 import {
   KOMUNIKAT_SIECI,
@@ -58,7 +68,12 @@ interface PolaFormularza {
   grupa: ProductGroup;
   pozycja: string;
   opis: string;
+  /** Identyfikator wybranego prowadzącego albo pusty napis — pole nie jest obowiązkowe. */
+  prowadzacy: string;
 }
+
+/** Lista prowadzących do pola „Prowadzący”: czytana przy otwarciu formularza, z tego samego źródła co karta na ekranie kursu. */
+type StanProwadzacych = { rodzaj: "ladowanie" } | { rodzaj: "blad" } | { rodzaj: "gotowe"; osoby: Prowadzacy[] };
 
 const PUSTE_POLA: PolaFormularza = {
   tytul: "",
@@ -67,6 +82,7 @@ const PUSTE_POLA: PolaFormularza = {
   grupa: "psychon",
   pozycja: "",
   opis: "",
+  prowadzacy: "",
 };
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Kursy" }];
@@ -149,6 +165,7 @@ export function KursyAdministracji() {
   const [bledyPol, setBledyPol] = useState<Record<string, string[]>>({});
   const [bladFormularza, setBladFormularza] = useState<string | null>(null);
   const [zapisuje, setZapisuje] = useState(false);
+  const [prowadzacy, setProwadzacy] = useState<StanProwadzacych>({ rodzaj: "ladowanie" });
 
   const [kolejnosc, setKolejnosc] = useState<KursAdministracji[] | null>(null);
   const [komunikatPrzesuniecia, setKomunikatPrzesuniecia] = useState("");
@@ -240,6 +257,10 @@ export function KursyAdministracji() {
     setBladFormularza(null);
     setKluczFormularza((n) => n + 1);
     setFormularzOtwarty(true);
+    setProwadzacy({ rodzaj: "ladowanie" });
+    pobierzProwadzacych()
+      .then((osoby) => setProwadzacy({ rodzaj: "gotowe", osoby }))
+      .catch(() => setProwadzacy({ rodzaj: "blad" }));
   }
 
   function anulujFormularz() {
@@ -264,6 +285,15 @@ export function KursyAdministracji() {
         sequence_order: pozycjaZPola(pola.pozycja),
         description: pola.opis.trim() === "" ? null : pola.opis.trim(),
       });
+      if (pola.prowadzacy !== "") {
+        // Kurs już istnieje: odmowa przypisania nie wraca do formularza (ponowny zapis utworzyłby drugi kurs),
+        // tylko zostaje zdaniem na ekranie kursu, gdzie prowadzącego przypisuje karta „Prowadzący”.
+        try {
+          await przypiszProwadzacego(utworzony.id, Number(pola.prowadzacy), null);
+        } catch {
+          zapamietajOstrzezeniePoUtworzeniu(utworzony.id, ZDANIE_BRAKU_PROWADZACEGO);
+        }
+      }
       router.push(adresKursu(utworzony.id));
     } catch (blad) {
       if (blad instanceof ApiError && blad.errors) {
@@ -442,6 +472,23 @@ export function KursyAdministracji() {
       blad: bledyPol.description?.[0],
     },
     {
+      id: "kurs-prowadzacy",
+      etykieta: "Prowadzący",
+      rodzaj: "wybor",
+      opcje: [
+        { wartosc: "", etykieta: "Bez prowadzącego" },
+        ...(prowadzacy.rodzaj === "gotowe"
+          ? prowadzacy.osoby.map((osoba) => ({ wartosc: String(osoba.id), etykieta: imieNazwisko(osoba) }))
+          : []),
+      ],
+      wartosc: pola.prowadzacy,
+      onZmiana: (wartosc) => zmienPole("prowadzacy", wartosc),
+      podpowiedz:
+        prowadzacy.rodzaj === "blad"
+          ? "Nie udało się wczytać prowadzących. Kurs możesz utworzyć bez nich i przypisać prowadzącego na ekranie kursu."
+          : "Nieobowiązkowo. Zostanie przypisany do całego kursu; zmienisz to później na ekranie kursu.",
+    },
+    {
       id: "kurs-pozycja",
       etykieta: "Pozycja w ścieżce",
       rodzaj: "liczba",
@@ -464,6 +511,7 @@ export function KursyAdministracji() {
         key={kluczFormularza}
         tytul="Nowy kurs"
         pola={polaFormularza}
+        polaPierwszegoPoziomu={6}
         tytulDodatkowych="Miejsce w ścieżce"
         etykietaAnuluj="Anuluj"
         etykietaZapisz={zapisuje ? "Zapisywanie…" : "Utwórz kurs"}

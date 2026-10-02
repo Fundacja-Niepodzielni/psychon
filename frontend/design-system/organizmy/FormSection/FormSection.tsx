@@ -17,10 +17,14 @@ export type PoleFormSection = ComponentProps<typeof Field>;
 
 interface WlasciwosciFormSection {
   tytul: string;
-  /** Wszystkie pola sekcji. Pierwsze PIĘĆ renderuje się od razu; reszta
-   * wchodzi do `CollapsibleSection` — wymaga `tytulDodatkowych`, gdy
-   * `pola.length` przekracza 5. */
+  /** Wszystkie pola sekcji. Pierwsze PIĘĆ renderuje się od razu (albo tyle,
+   * ile wskazuje `polaPierwszegoPoziomu`); reszta wchodzi do
+   * `CollapsibleSection` — wymaga `tytulDodatkowych`, gdy pól jest więcej niż
+   * na pierwszym poziomie. */
   pola: PoleFormSection[];
+  /** Ile pól stoi od razu na pierwszym poziomie. Domyślnie 5; ekran, którego
+   * szóste pole jest potrzebne od razu (nie „dodatkowe”), podaje więcej. */
+  polaPierwszegoPoziomu?: number;
   /** Tytuł `CollapsibleSection` dla pól poza pierwszym poziomem — domenowy,
    * więc podaje go wywołujący (np. „Dane adresowe”); ta sekcja sama nie
    * zgaduje nazwy dla cudzej treści. */
@@ -93,9 +97,10 @@ export function FormSection({
   onZapisz,
   szerokosc = "domyslna",
   fokusPrzyOtwarciu = false,
+  polaPierwszegoPoziomu = 5,
 }: WlasciwosciFormSection) {
-  const pierwszyPoziom = pola.slice(0, 5);
-  const dodatkowe = pola.slice(5);
+  const pierwszyPoziom = pola.slice(0, polaPierwszegoPoziomu);
+  const dodatkowe = pola.slice(polaPierwszegoPoziomu);
   const bledy = pola.filter((pole) => pole.blad);
   const bledyWDodatkowych = dodatkowe.some((pole) => pole.blad);
 

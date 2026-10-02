@@ -16,6 +16,11 @@ export interface KolejkaZapisu<T> {
   zlec: (stan: T) => void;
   /** Czy trwa zapis albo coś na niego czeka. */
   zajeta: () => boolean;
+  /**
+   * Czeka, aż kolejka się opróżni: `true`, gdy ostatni zapis serwer potwierdził
+   * (albo nic nie trwało), `false`, gdy odmówił. Niczego nie wysyła.
+   */
+  poczekaj: () => Promise<boolean>;
 }
 
 export function utworzKolejkeZapisu<T>(
@@ -24,6 +29,13 @@ export function utworzKolejkeZapisu<T>(
 ): KolejkaZapisu<T> {
   let trwa = false;
   let oczekujacy: { stan: T } | null = null;
+  let czekajacy: Array<(powodzenie: boolean) => void> = [];
+
+  function obudz(powodzenie: boolean) {
+    const doObudzenia = czekajacy;
+    czekajacy = [];
+    for (const obudzenie of doObudzenia) obudzenie(powodzenie);
+  }
 
   function wezOczekujacy(): { stan: T } | null {
     const wziety = oczekujacy;
@@ -41,6 +53,7 @@ export function utworzKolejkeZapisu<T>(
         oczekujacy = null;
         trwa = false;
         zdarzenia.odmowa(blad, stan);
+        obudz(false);
         return;
       }
       zdarzenia.zapisano(stan);
@@ -49,6 +62,7 @@ export function utworzKolejkeZapisu<T>(
       stan = nastepny.stan;
     }
     trwa = false;
+    obudz(true);
   }
 
   return {
@@ -60,5 +74,6 @@ export function utworzKolejkeZapisu<T>(
       void biegnij(stan);
     },
     zajeta: () => trwa,
+    poczekaj: () => (trwa ? new Promise<boolean>((obudzenie) => czekajacy.push(obudzenie)) : Promise.resolve(true)),
   };
 }
