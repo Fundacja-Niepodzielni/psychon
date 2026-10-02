@@ -346,7 +346,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
             )}
           </>
         }
-        zdanie={<Text>Liczby pochodzą z jednego źródła (ProgressAggregator) — to samo, co pulpit i raport.</Text>}
+        zdanie={<Text>Te same liczby widzi osoba na swoim pulpicie i w raporcie.</Text>}
         tabela={
           edycja ? (
             <>
