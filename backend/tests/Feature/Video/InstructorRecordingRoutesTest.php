@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Route as RoutingRoute;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -233,12 +234,14 @@ class InstructorRecordingRoutesTest extends TestCase
             $configured ? $this->configureBunny() : $this->unconfigureBunny();
 
             foreach ($this->requestVariants() as $variant => $send) {
+                $this->resetRequestLimit();
                 $expected = $send($missing);
                 $this->assertSame(404, $expected->status(), "{$variant}: lekcja nieistniejąca");
                 $this->assertSame('not_found', $expected->json('error.code'));
                 $this->assertSame('Nie znaleziono zasobu.', $expected->json('error.message'));
 
                 foreach ($foreign as $label => $id) {
+                    $this->resetRequestLimit();
                     $actual = $send($id);
                     $this->assertSame(404, $actual->status(), "{$variant}: {$label}");
                     $this->assertSame($expected->json(), $actual->json(), "{$variant}: {$label}");
@@ -422,6 +425,16 @@ class InstructorRecordingRoutesTest extends TestCase
             'sub' => $user->keycloak_sub,
             'realm_access' => ['roles' => [config("keycloak.roles.{$role}")]],
         ]));
+    }
+
+    /**
+     * Zlecenie wgrania ma limit 10 żądań na minutę na osobę (`RecordingUploadRateLimitTest`);
+     * próba, która wysyła kilkadziesiąt żądań jednej osoby, zaczyna każde od czystego licznika,
+     * żeby mierzyć odmowę zasięgu, a nie limit.
+     */
+    private function resetRequestLimit(): void
+    {
+        Cache::flush();
     }
 
     private function user(string $role): User
