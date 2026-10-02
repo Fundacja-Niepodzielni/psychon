@@ -2,8 +2,9 @@ import { api, apiPaged, ApiError } from "@/lib/api/klient";
 
 /**
  * Dane sekcji ekranu kursu administracji, których nie niosą inne ekrany:
- * przypisania prowadzących (`backend/routes/api/h09.php:42-46`), katalog
- * prowadzących (`h09.php:28`) i test wiedzy kursu (`h10.php:35`).
+ * przypisania prowadzących (`backend/routes/api/h09.php:42-46`), lista osób
+ * z rolą prowadzącego (`GET /admin/users`, `backend/routes/api/h18.php:26`)
+ * i test wiedzy kursu (`h10.php:35`).
  */
 
 export interface Prowadzacy {
@@ -24,10 +25,16 @@ export function pobierzPrzypisania(idKursu: number): Promise<PrzypisanieKursu[]>
   return api<PrzypisanieKursu[]>(`/admin/courses/${idKursu}/assignments`);
 }
 
-/** Wszyscy prowadzący do wyboru — jedna strona katalogu, najwyżej 100 osób. */
+/**
+ * Wszyscy prowadzący do wyboru: aktywne osoby z rolą prowadzącego, jedna
+ * strona listy osób (najwyżej 100), po nazwisku. Lista osób, nie katalog
+ * wizytówek — osoba z rolą prowadzącego bez zapisanej wizytówki też jest do
+ * wyboru. Ze strony zostaje tylko to, co ekran pokazuje: identyfikator, imię
+ * i nazwisko (adresu e-mail ani innych pól osoby ekran nie przechowuje).
+ */
 export async function pobierzProwadzacych(): Promise<Prowadzacy[]> {
-  const strona = await apiPaged<Prowadzacy>("/instructors?per_page=100");
-  return strona.data;
+  const strona = await apiPaged<Prowadzacy>("/admin/users?role=instructor&status=active&per_page=100&sort=last_name");
+  return strona.data.map(({ id, first_name, last_name }) => ({ id, first_name, last_name }));
 }
 
 export function przypiszProwadzacego(

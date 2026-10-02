@@ -265,10 +265,10 @@ export function SekcjaZaproszenKursu({ kurs, onZamknij }: WlasciwosciSekcjiZapro
             {zdanieOdmowyRoli("administracji")}
           </Notice>
         ) : (
-          <>
+          <div className={style.rdzen}>
             {powiadomienie}
             {tresc}
-          </>
+          </div>
         )
       }
     />
@@ -400,7 +400,7 @@ function RdzenZaproszen({ kurs, etykietaAnuluj, onAnuluj, uloz }: WlasciwosciRdz
     odmowa: false,
     powiadomienie,
     tresc: (
-        <>
+        <div className={style.rdzen}>
           <section className={style.sekcja} aria-label="Wybór osób">
             <Heading stopien={2}>Kogo zapraszasz</Heading>
             <Text>
@@ -484,7 +484,7 @@ function RdzenZaproszen({ kurs, etykietaAnuluj, onAnuluj, uloz }: WlasciwosciRdz
           </section>
 
           {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
-        </>
+        </div>
     ),
   });
 }

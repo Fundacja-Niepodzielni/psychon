@@ -102,6 +102,31 @@ export const PROWADZACY = [
   { id: 6, first_name: "Adam", last_name: "Demo" },
 ];
 
+/** Osoby z rolą prowadzącego, które nie mają zapisanej wizytówki — dane zmyślone. */
+export const PROWADZACY_BEZ_WIZYTOWKI = [
+  { id: 7, first_name: "Ewa", last_name: "Brzeska" },
+  { id: 8, first_name: "Piotr", last_name: "Cichy" },
+];
+
+function osobaProwadzaca(osoba: { id: number; first_name: string; last_name: string }): AdminUserListItem {
+  return {
+    ...osoba,
+    email: `prowadzacy-${osoba.id}@demo.pl`,
+    role: "instructor",
+    status: "active",
+    product_group: "psychon",
+    access_expires_at: null,
+    program_completed_at: null,
+    created_at: "2026-08-01T08:00:00Z",
+  };
+}
+
+/** Lista osób serwera: uczestniczka oraz wszystkie aktywne osoby z rolą prowadzącego. */
+export const OSOBY_Z_PROWADZACYMI: AdminUserListItem[] = [
+  ...OSOBY,
+  ...[...PROWADZACY, ...PROWADZACY_BEZ_WIZYTOWKI].map(osobaProwadzaca),
+];
+
 export interface PrzypisanieAtrapy {
   id: number;
   course_id: number;
@@ -131,7 +156,7 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
   let kurs = poczatek.kurs ?? KURS;
   let lekcje = poczatek.lekcje ?? LEKCJE;
   let tematy = poczatek.tematy ?? TEMATY;
-  const osoby = poczatek.osoby ?? OSOBY;
+  const osoby = poczatek.osoby ?? OSOBY_Z_PROWADZACYMI;
   let przypisania = poczatek.przypisania ?? [];
   const test = poczatek.test === undefined ? 31 : poczatek.test;
   let nastepnyId = 100;
@@ -212,7 +237,7 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
           id: nastepnyId++,
           course_id: 4,
           lesson_id: dane.lesson_id,
-          instructor: PROWADZACY.find((osoba) => osoba.id === dane.instructor_id)!,
+          instructor: [...PROWADZACY, ...PROWADZACY_BEZ_WIZYTOWKI].find((osoba) => osoba.id === dane.instructor_id)!,
         };
         przypisania = [...przypisania, nowe];
         return nowe;
@@ -249,14 +274,14 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
 
   async function apiPaged(sciezka: string): Promise<unknown> {
     wywolania.push({ sciezka, metoda: "GET", cialo: undefined });
-    if (sciezka.startsWith("/instructors")) {
-      return { data: PROWADZACY, meta: { current_page: 1, per_page: 100, total: PROWADZACY.length, last_page: 1 } };
-    }
     if (!sciezka.startsWith("/admin/users")) {
       throw new Error(`atrapa serwera: nieoczekiwane żądanie listy ${sciezka}`);
     }
     const rola = /[?&]role=([a-z_]+)/.exec(sciezka)?.[1];
-    const dane = rola ? osoby.filter((osoba) => osoba.role === rola) : osoby;
+    const status = /[?&]status=([a-z_]+)/.exec(sciezka)?.[1];
+    const dane = osoby
+      .filter((osoba) => (rola ? osoba.role === rola : true))
+      .filter((osoba) => (status ? osoba.status === status : true));
     return { data: dane, meta: { current_page: 1, per_page: 100, total: dane.length, last_page: 1 } };
   }
 

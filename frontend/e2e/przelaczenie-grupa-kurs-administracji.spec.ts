@@ -103,6 +103,12 @@ const PROWADZACY = [
   { id: 6, first_name: "Adam", last_name: "Demo" },
 ];
 
+/** Osoby z rolą prowadzącego bez zapisanej wizytówki — dane zmyślone. */
+const PROWADZACY_BEZ_WIZYTOWKI = [
+  { id: 7, first_name: "Ewa", last_name: "Brzeska" },
+  { id: 8, first_name: "Piotr", last_name: "Cichy" },
+];
+
 const OSOBA = {
   id: 17,
   first_name: "Marta",
@@ -177,8 +183,20 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
   await page.route(`${API}/notifications**`, (route) =>
     route.fulfill(json([], { current_page: 1, per_page: 25, total: 0, last_page: 1, extra: { unread: 0 } })),
   );
-  await page.route(`${API}/admin/users**`, (route) => route.fulfill(json([OSOBA], { ...META_PUSTA, total: 1 })));
-  await page.route(`${API}/instructors**`, (route) => route.fulfill(json(PROWADZACY, { ...META_PUSTA, total: 2 })));
+  // Lista osób serwera: uczestniczka albo — dla `role=instructor` — wszystkie aktywne osoby z rolą prowadzącego.
+  await page.route(`${API}/admin/users**`, (route) => {
+    const rola = new URL(route.request().url()).searchParams.get("role");
+    const osoby =
+      rola === "instructor"
+        ? [...PROWADZACY, ...PROWADZACY_BEZ_WIZYTOWKI].map((prowadzacy) => ({
+            ...OSOBA,
+            ...prowadzacy,
+            email: `prowadzacy-${prowadzacy.id}@demo.pl`,
+            role: "instructor",
+          }))
+        : [OSOBA];
+    return route.fulfill(json(osoby, { ...META_PUSTA, total: osoby.length }));
+  });
   await page.route(
     (adres) => adres.pathname.startsWith("/api/v1/admin/"),
     async (route) => {
@@ -296,7 +314,7 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
             id: nastepnyId++,
             course_id: 4,
             lesson_id: (cialo.lesson_id as number | null) ?? null,
-            instructor: PROWADZACY.find((osoba) => osoba.id === cialo.instructor_id)!,
+            instructor: [...PROWADZACY, ...PROWADZACY_BEZ_WIZYTOWKI].find((osoba) => osoba.id === cialo.instructor_id)!,
           };
           przypisania = [...przypisania, nowe];
           return route.fulfill(json(nowe, undefined, 201));
@@ -578,6 +596,38 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
       { metoda: "POST", sciezka: "/admin/courses/4/invite", cialo: { user_ids: [17] } },
       { metoda: "POST", sciezka: "/admin/courses/4/assignments", cialo: { instructor_id: 5, lesson_id: null } },
       { metoda: "DELETE", sciezka: "/admin/courses/4/assignments", cialo: { assignment_id: 100 } },
+    ]);
+  });
+
+  test("lista prowadzących z listy osób: jedno żądanie z filtrami, zero żądań na katalog wizytówek, osoba bez wizytówki do przypisania", async ({
+    page,
+  }) => {
+    const { zapisy, sciezki } = await instalujAtrapy(page);
+    await otworzKurs(page);
+
+    await page.locator("#ustawienia-prowadzacy").click();
+    const prowadzacy = page.locator("#ustawienia-prowadzacy-panel");
+    await page.getByRole("combobox", { name: /^Prowadzący/ }).click();
+    const opcje = await page.getByRole("option").allTextContents();
+    for (const osoba of [...PROWADZACY, ...PROWADZACY_BEZ_WIZYTOWKI]) {
+      expect(opcje).toContain(`${osoba.first_name} ${osoba.last_name}`);
+    }
+    await expect(page.locator("main")).not.toContainText(/prowadzacy-\d+@/);
+    await page.getByRole("option", { name: "Ewa Brzeska", exact: true }).click();
+    await prowadzacy.getByRole("button", { name: "Przypisz prowadzącego" }).click();
+    await expect(page.locator("#ustawienia-prowadzacy")).toContainText("Ewa Brzeska, cały kurs");
+
+    const listy = sciezki.filter((sciezka) => sciezka.startsWith("/admin/users?") && sciezka.includes("role=instructor"));
+    expect(listy).toHaveLength(1);
+    expect(Object.fromEntries(new URL(listy[0], "http://atrapa.test").searchParams)).toEqual({
+      role: "instructor",
+      status: "active",
+      per_page: "100",
+      sort: "last_name",
+    });
+    expect(sciezki.filter((sciezka) => sciezka.startsWith("/instructors"))).toEqual([]);
+    expect(zapisy).toEqual([
+      { metoda: "POST", sciezka: "/admin/courses/4/assignments", cialo: { instructor_id: 7, lesson_id: null } },
     ]);
   });
 
