@@ -32,6 +32,7 @@ import {
   type TrybPrzedluzenia,
 } from "./dane";
 import style from "./PrzedluzenieDostepu.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Osoby" }, { etykieta: "Przedłużenie dostępu" }];
 const OPCJE_TRYBU = [
@@ -178,7 +179,7 @@ export function PrzedluzenieDostepu({ idOsoby }: WlasciwosciPrzedluzenieDostepu)
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Dostęp nie został zmieniony.
+            {KOMUNIKAT_SERWER} Dostęp nie został zmieniony.
           </Notice>
         }
       />
@@ -223,8 +224,8 @@ export function PrzedluzenieDostepu({ idOsoby }: WlasciwosciPrzedluzenieDostepu)
         <KeyValueRow etykieta="Po przedłużeniu do" wartosc={nowa === null ? "—" : formatujDate(nowa)} />
         <Hint>
           {czySkraca(obecna, nowa)
-            ? "Wybrana data jest wcześniejsza niż obecna — dostęp zostanie skrócony. Dokładną datę potwierdza serwer po zapisie."
-            : "Dokładną datę potwierdza serwer po zapisie."}
+            ? "Wybrana data jest wcześniejsza niż obecna — dostęp zostanie skrócony. Dokładną datę zobaczysz po zapisie."
+            : "Dokładną datę zobaczysz po zapisie."}
         </Hint>
       </div>
       <FormSection
