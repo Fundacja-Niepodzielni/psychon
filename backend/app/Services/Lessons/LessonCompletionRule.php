@@ -61,9 +61,10 @@ final class LessonCompletionRule
      * Czas aktywny (w sekundach), od którego `completable` zmienia się na
      * `true`. Dla lekcji bez nagrania — 0. Dla lekcji z nagraniem o czasie
      * trwania 0 — także 0, ale lekcja nigdy nie jest do ukończenia (o tym
-     * rozstrzyga `completable`, nie ta liczba).
+     * rozstrzyga `completable`, nie ta liczba). `$percent` pozwala podać próg
+     * już odczytany z edycji (domyślnie czytany tu).
      */
-    public static function requiredActiveSeconds(Lesson $lesson): int
+    public static function requiredActiveSeconds(Lesson $lesson, ?int $percent = null): int
     {
         if (self::hasNoRecording($lesson)) {
             return 0;
@@ -72,8 +73,18 @@ final class LessonCompletionRule
         $duration = (int) $lesson->duration_seconds;
 
         return $duration > 0
-            ? (int) ceil($duration * self::percent() / 100)
+            ? (int) ceil($duration * ($percent ?? self::percent()) / 100)
             : 0;
+    }
+
+    /**
+     * Próg edycji (`lesson_completion_percent`). Lista lekcji odczytu kursu
+     * czyta go raz i przekazuje do `requiredActiveSeconds()` dla każdej lekcji,
+     * żeby liczba zapytań nie zależała od liczby lekcji — wzór jest ten sam.
+     */
+    public static function completionPercent(): int
+    {
+        return self::percent();
     }
 
     /**

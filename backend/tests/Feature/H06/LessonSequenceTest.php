@@ -8,9 +8,11 @@ use App\Models\Edition;
 use App\Models\InstructorQuestion;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Models\Material;
 use App\Models\Test;
 use App\Models\TestAttempt;
 use App\Models\User;
+use App\Support\CourseAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -380,6 +382,169 @@ class LessonSequenceTest extends TestCase
         $this->actingAs($this->volunteer(), 'keycloak');
 
         $this->getJson("/api/v1/courses/{$second->slug}/test")->assertStatus(403)->assertJsonPath('error.code', 'course_locked');
+    }
+
+    // ------------------------------------------------------------------
+    // odczyt kursu: czas aktywny, nagranie, zaliczenie testu
+    // ------------------------------------------------------------------
+
+    public function test_the_course_read_time_fields_equal_the_lesson_read_for_every_lesson(): void
+    {
+        [$course, $lessons] = $this->courseWithLessons(4, withTest: true);
+        // Druga lekcja bez nagrania.
+        DB::table('lessons')->where('id', $lessons[1]->id)->update(['video_provider_id' => null, 'video_status' => null, 'video_status_at' => null]);
+        $user = $this->volunteer();
+        $this->actingAs($user, 'keycloak');
+        $this->completeLesson($user, $lessons[0]);
+
+        $read = $this->getJson("/api/v1/courses/{$course->slug}")->assertOk()->json('data.lessons');
+
+        $this->assertSame([true, false, true, true], array_column($read, 'has_recording'));
+        $this->assertSame([false, false, true, true], array_column($read, 'locked'));
+
+        foreach ($read as $entry) {
+            $this->assertIsInt($entry['active_seconds']);
+            $this->assertIsInt($entry['required_active_seconds']);
+
+            if ($entry['locked']) {
+                // Lekcja zamknięta: pola obecne, bez postępu — zero czasu aktywnego.
+                $this->assertSame(0, $entry['active_seconds']);
+                $this->assertSame($entry['has_recording'] ? 360 : 0, $entry['required_active_seconds']);
+
+                continue;
+            }
+
+            $lesson = $this->getJson("/api/v1/lessons/{$entry['id']}")->assertOk();
+            $this->assertSame($lesson->json('data.active_seconds'), $entry['active_seconds'], "Lekcja {$entry['id']}: czas aktywny.");
+            $this->assertSame($lesson->json('data.required_active_seconds'), $entry['required_active_seconds'], "Lekcja {$entry['id']}: wymagany czas.");
+            $this->assertSame($lesson->json('data.video_status') !== 'none', $entry['has_recording'], "Lekcja {$entry['id']}: nagranie.");
+        }
+
+        $this->assertSame(600, $read[0]['active_seconds']);
+        $this->assertSame(360, $read[0]['required_active_seconds']);
+        $this->assertSame(0, $read[1]['required_active_seconds']);
+    }
+
+    public function test_the_course_read_time_fields_for_staff_without_progress_are_zero(): void
+    {
+        [$course] = $this->courseWithLessons(2);
+        $this->actingAs(User::factory()->create(['role' => 'project_manager', 'product_group' => 'psychon']), 'keycloak');
+
+        $read = $this->getJson("/api/v1/courses/{$course->slug}")->assertOk()->json('data.lessons');
+
+        $this->assertSame([0, 0], array_column($read, 'active_seconds'));
+        $this->assertSame([360, 360], array_column($read, 'required_active_seconds'));
+        $this->assertSame([true, true], array_column($read, 'has_recording'));
+    }
+
+    public function test_test_passed_in_three_legs_matches_the_course_access_rule(): void
+    {
+        $user = $this->volunteer();
+        $this->actingAs($user, 'keycloak');
+
+        $this->courseWithLessons(1, slug: 'bez-testu-zaliczenie');
+        $this->assertFalse($this->getJson('/api/v1/courses/bez-testu-zaliczenie')->assertOk()->json('data.test_passed'));
+
+        [$course, , $test] = $this->courseWithLessons(1, withTest: true, slug: 'z-testem-zaliczenie');
+        $this->assertFalse($this->getJson('/api/v1/courses/z-testem-zaliczenie')->assertOk()->json('data.test_passed'));
+        $this->assertFalse(CourseAccess::testPassed($user, $course->fresh('test')));
+
+        TestAttempt::create([
+            'user_id' => $user->id, 'test_id' => $test->id, 'attempt_number' => 1,
+            'answers' => [], 'questions_snapshot' => [], 'score_percent' => 20, 'passed' => false,
+        ]);
+        $this->assertFalse($this->getJson('/api/v1/courses/z-testem-zaliczenie')->assertOk()->json('data.test_passed'));
+
+        TestAttempt::create([
+            'user_id' => $user->id, 'test_id' => $test->id, 'attempt_number' => 2,
+            'answers' => [], 'questions_snapshot' => [], 'score_percent' => 100, 'passed' => true,
+        ]);
+        $this->assertTrue($this->getJson('/api/v1/courses/z-testem-zaliczenie')->assertOk()->json('data.test_passed'));
+        $this->assertTrue(CourseAccess::testPassed($user, $course->fresh('test')));
+    }
+
+    // ------------------------------------------------------------------
+    // odczyt kursu: materiały lekcji zamkniętych nie są zwracane
+    // ------------------------------------------------------------------
+
+    /**
+     * @param  list<Lesson>  $lessons
+     * @return array<int, int> id lekcji → id jej materiału; klucz 0 = materiał kursu
+     */
+    private function materialsFor(Course $course, array $lessons): array
+    {
+        $ids = [0 => Material::create(['course_id' => $course->id, 'name' => 'Kurs', 'file_path' => 'm/k', 'mime' => 'application/pdf', 'size' => 10])->id];
+
+        foreach ($lessons as $lesson) {
+            $ids[$lesson->id] = Material::create(['lesson_id' => $lesson->id, 'name' => 'L'.$lesson->id, 'file_path' => 'm/'.$lesson->id, 'mime' => 'application/pdf', 'size' => 10])->id;
+        }
+
+        return $ids;
+    }
+
+    public function test_materials_are_present_exactly_when_the_lesson_is_not_locked(): void
+    {
+        [$course, $lessons] = $this->courseWithLessons(5);
+        $ids = $this->materialsFor($course, $lessons);
+        $user = $this->volunteer();
+        $this->actingAs($user, 'keycloak');
+        $this->completeLesson($user, $lessons[0]);
+        $this->completeLesson($user, $lessons[3]);
+
+        $read = $this->getJson("/api/v1/courses/{$course->slug}")->assertOk();
+        $present = array_column($read->json('data.materials'), 'id');
+
+        // 1 ukończona, 2 otwarta, 3 zamknięta, 4 ukończona, 5 otwarta (poprzednia ukończona).
+        $this->assertSame([false, false, true, false, false], array_column($read->json('data.lessons'), 'locked'));
+        $this->assertContains($ids[0], $present, 'Materiał kursu jest obecny.');
+
+        foreach ($read->json('data.lessons') as $entry) {
+            $this->assertSame(
+                ! $entry['locked'],
+                in_array($ids[$entry['id']], $present, true),
+                "Lekcja {$entry['id']}: materiał obecny wtedy i tylko wtedy, gdy lekcja nie jest zamknięta.",
+            );
+        }
+
+        // Po ukończeniu poprzedniej lekcji materiał pojawia się w następnym odczycie.
+        $this->assertNotContains($ids[$lessons[2]->id], $present);
+        $this->completeLesson($user, $lessons[1]);
+        $after = array_column($this->getJson("/api/v1/courses/{$course->slug}")->assertOk()->json('data.materials'), 'id');
+        $this->assertContains($ids[$lessons[2]->id], $after);
+    }
+
+    #[DataProvider('staffRoles')]
+    public function test_staff_and_an_assigned_instructor_get_every_material(string $role): void
+    {
+        [$course, $lessons] = $this->courseWithLessons(4);
+        $ids = $this->materialsFor($course, $lessons);
+        $staff = User::factory()->create(['role' => $role, 'product_group' => 'psychon']);
+        CourseAssignment::create(['course_id' => $course->id, 'lesson_id' => null, 'instructor_id' => $staff->id, 'assigned_by' => $staff->id, 'assigned_at' => now()]);
+        $this->actingAs($staff, 'keycloak');
+
+        $present = array_column($this->getJson("/api/v1/courses/{$course->slug}")->assertOk()->json('data.materials'), 'id');
+
+        $this->assertEqualsCanonicalizing(array_values($ids), $present);
+    }
+
+    public function test_the_course_read_query_count_with_materials_does_not_grow_with_the_number_of_lessons(): void
+    {
+        $user = $this->volunteer();
+        $this->actingAs($user, 'keycloak');
+        $counts = [];
+
+        foreach ([3, 30] as $n) {
+            [$course, $lessons] = $this->courseWithLessons($n, withTest: true, slug: 'kurs-zapytan-pliki-'.$n);
+            $this->materialsFor($course, $lessons);
+            $this->getJson("/api/v1/courses/{$course->slug}")->assertOk();
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->getJson("/api/v1/courses/{$course->slug}")->assertOk();
+            $counts[$n] = count(DB::getQueryLog());
+            DB::disableQueryLog();
+        }
+
+        $this->assertSame($counts[3], $counts[30], 'Odczyt kursu z materiałami: liczba zapytań nie zależy od liczby lekcji.');
     }
 
     // ------------------------------------------------------------------

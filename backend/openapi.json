@@ -12317,6 +12317,10 @@
                         "type": "boolean",
                         "description": "Test kursu zamkni\u0119ty: kurs ma test i lekcje, a nie wszystkie lekcje s\u0105 uko\u0144czone; `false` dla kursu bez testu, bez lekcji i dla personelu."
                     },
+                    "test_passed": {
+                        "type": "boolean",
+                        "description": "Test kursu zaliczony \u2014 to samo \u017ar\u00f3d\u0142o co rozstrzygni\u0119cie `CourseAccess`; `false` dla kursu bez testu."
+                    },
                     "topics": {
                         "type": "array",
                         "items": {
@@ -12349,7 +12353,8 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/MaterialResource"
-                        }
+                        },
+                        "description": "Materia\u0142y kursu i lekcji otwartych dla wywo\u0142uj\u0105cego; materia\u0142y lekcji zamkni\u0119tej regu\u0142\u0105 \u201elekcje po kolei\u201d nie s\u0105 zwracane."
                     }
                 },
                 "required": [
@@ -12363,6 +12368,7 @@
                     "instructor",
                     "has_test",
                     "test_locked",
+                    "test_passed",
                     "topics",
                     "lessons",
                     "materials"
@@ -12752,6 +12758,18 @@
                     "locked": {
                         "type": "boolean",
                         "description": "Lekcja zamkni\u0119ta regu\u0142\u0105 \u201elekcje po kolei\u201d (ta sama co odmowa `lesson_locked` tras lekcji); zawsze `false` dla personelu i prowadz\u0105cego."
+                    },
+                    "active_seconds": {
+                        "type": "integer",
+                        "description": "Czas aktywny zalogowanej osoby w lekcji (ta sama warto\u015b\u0107 co w odczycie lekcji); brak post\u0119pu: `0`. Zwracane tak\u017ce dla lekcji zamkni\u0119tej."
+                    },
+                    "required_active_seconds": {
+                        "type": "integer",
+                        "description": "Wymagany czas aktywny do uko\u0144czenia \u2014 ta sama definicja i to samo \u017ar\u00f3d\u0142o co pole odczytu lekcji (lekcja bez nagrania: `0`)."
+                    },
+                    "has_recording": {
+                        "type": "boolean",
+                        "description": "Lekcja ma nagranie (ten sam predykat co regu\u0142a uko\u0144czenia lekcji)."
                     }
                 },
                 "required": [
@@ -12761,7 +12779,10 @@
                     "duration_seconds",
                     "is_completed",
                     "topic_id",
-                    "locked"
+                    "locked",
+                    "active_seconds",
+                    "required_active_seconds",
+                    "has_recording"
                 ],
                 "title": "LessonSummaryResource"
             },
