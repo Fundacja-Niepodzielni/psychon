@@ -96,6 +96,17 @@ describe("A-29 — stany w szablonie FormTemplate", () => {
     expect(glowne[0]).toHaveTextContent("Zapisz ustawienia");
   });
 
+  it("nad progami stoi jedno zdanie o tym, od kiedy działa zmiana; etykiety pól nie mają zakresów w nawiasach", async () => {
+    api.mockResolvedValue(ROK);
+    const { container } = render(<UstawieniaEdycji />);
+    const naglowekSekcji = await poczekajNaFormularz();
+    const zdanie = screen.getByText("Zmiana obowiązuje od zapisania.");
+    expect(zdanie.compareDocumentPosition(naglowekSekcji) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const etykieta of Array.from(container.querySelectorAll("label"))) {
+      expect(etykieta.textContent).not.toMatch(/\(\d+–\d+\)/);
+    }
+  });
+
   it("błąd sieci przy odczycie: Notice z „Spróbuj ponownie”, ponowienie wczytuje dane", async () => {
     const uzytkownik = userEvent.setup();
     api.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce(ROK);

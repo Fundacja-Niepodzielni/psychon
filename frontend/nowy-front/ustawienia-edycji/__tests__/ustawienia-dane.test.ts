@@ -90,11 +90,13 @@ describe("A-29 — kształt i zakresy z openapi.json", () => {
     expect(roznicaZakresow({ ...ZAKRESY, test_pass_threshold: [0, 99] })).toEqual(["test_pass_threshold"]);
   });
 
-  it("etykieta każdego progu niesie jego zakres", () => {
+  it("etykieta i zdanie progu nie niosą zakresu liczb ani nazwy pola z kontraktu", () => {
     for (const pole of POLA) {
-      const [min, max] = ZAKRESY[pole.klucz];
-      expect(pole.etykieta).toContain(`${min}`);
-      expect(pole.etykieta).toContain(`${max}`);
+      for (const tekst of [pole.etykieta, pole.zdanie]) {
+        expect(tekst).not.toMatch(/[0-9]/);
+        expect(tekst).not.toContain("_");
+        expect(tekst).not.toContain(pole.klucz);
+      }
     }
   });
 
