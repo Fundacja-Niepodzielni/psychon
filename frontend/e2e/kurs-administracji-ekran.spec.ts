@@ -855,7 +855,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
           widocznaWysokosc: kolumna.clientHeight,
           przewijaSieWSobie: getComputedStyle(kolumna).overflowY,
           przyklejona: getComputedStyle(kolumna).position,
-          okno: window.innerHeight,
+          wysokoscOkna: window.innerHeight,
         }));
         console.log(`POMIAR-USUNIECIE ${JSON.stringify({ okno: `${szerokosc}x${wysokosc}`, stan: stan.nazwa, ...pomiar })}`);
         const zrzuty = process.env.ZRZUTY_DROBNE;
