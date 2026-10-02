@@ -624,5 +624,87 @@ for (const { szerokosc, wysokosc } of OKNA) {
       expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
       await zrzut(page, `kurs-odmowa-${szerokosc}`);
     });
+
+    test("kurs-odmowa, wiele lekcji: komunikat z fokusem jest w widoku bez ręcznego przewijania, poza kolejnością Tab, pierwszy powód jest następnym przystankiem", async ({
+      page,
+    }) => {
+      const stan = stanZWielomaLekcjami();
+      await instalujAtrapy(page, stan, {
+        message: "Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.",
+        reason: {
+          missing: ["recording_error", "lesson_empty"],
+          items: [
+            { code: "recording_error", lesson_id: 23 },
+            { code: "lesson_empty", lesson_id: 22 },
+          ],
+        },
+      });
+      await otworz(page, stan);
+      const karta = page.getByRole("region", { name: "Publikacja" });
+      const komunikat = karta.getByRole("group", { name: "Nie udało się opublikować (2)" });
+      await expect(komunikat).toHaveCount(0);
+
+      const przed = await page.evaluate(() => ({
+        przewiniecie: window.scrollY,
+        gornaKrawedzKarty: document.getElementById("publikacja")!.getBoundingClientRect().top,
+        wysokoscOkna: window.innerHeight,
+      }));
+      // Przy jednej kolumnie karta „Publikacja” leży poniżej pierwszego ekranu.
+      if (!dwieKolumny) expect(przed.gornaKrawedzKarty).toBeGreaterThan(przed.wysokoscOkna);
+
+      await page.getByRole("button", { name: "Opublikuj kurs" }).locator("visible=true").click();
+
+      // (a) grupa z nazwą i liczbą powodów, fokus programowy, poza kolejnością Tab.
+      await expect(komunikat).toBeVisible();
+      await expect(komunikat).toBeFocused();
+      await expect(komunikat).toHaveAttribute("tabindex", "-1");
+
+      // (c) bez ręcznego przewijania: komunikat i pierwszy powód są w widoku.
+      const pierwszyPowod = komunikat.getByRole("link").first();
+      await expect(komunikat).toBeInViewport();
+      await expect(pierwszyPowod).toBeInViewport();
+      const po = await page.evaluate(() => {
+        const pasek = document.querySelector<HTMLElement>('[data-obszar="pasek-waski"]');
+        const grupa = document.getElementById("publikacja-odmowa")!.getBoundingClientRect();
+        return {
+          przewiniecie: window.scrollY,
+          gornaKrawedzKomunikatu: grupa.top,
+          dolnaKrawedzKomunikatu: grupa.bottom,
+          dolnaKrawedzPasa: pasek && getComputedStyle(pasek).display !== "none" ? pasek.getBoundingClientRect().bottom : 0,
+          wysokoscOkna: window.innerHeight,
+        };
+      });
+      // Przy jednej kolumnie widok sam przesunął się razem z fokusem; przy dwóch karta stała w oknie od początku.
+      if (!dwieKolumny) expect(po.przewiniecie).toBeGreaterThan(przed.przewiniecie);
+      else expect(po.przewiniecie).toBe(przed.przewiniecie);
+      // Komunikat nie chowa się pod przyklejonym pasem u góry ani poza dolną krawędzią okna.
+      expect(po.gornaKrawedzKomunikatu).toBeGreaterThanOrEqual(po.dolnaKrawedzPasa);
+      expect(po.dolnaKrawedzKomunikatu).toBeLessThanOrEqual(po.wysokoscOkna);
+
+      // (b) powody są odnośnikami; jeden Tab z komunikatu = pierwszy powód.
+      await expect(komunikat.getByRole("link")).toHaveCount(2);
+      await page.keyboard.press("Tab");
+      await expect(pierwszyPowod).toBeFocused();
+    });
   });
+}
+
+/** Kurs z dwunastoma lekcjami w dwóch tematach: karta „Publikacja” poniżej pierwszego ekranu. */
+function stanZWielomaLekcjami(): Stan {
+  const lekcje = Array.from({ length: 12 }, (_, indeks) =>
+    lekcja(21 + indeks, `Lekcja ćwiczeniowa ${indeks + 1}`, indeks < 6 ? 7 : 8, (indeks % 6) + 1),
+  );
+  return {
+    nazwa: "kurs-wiele-lekcji",
+    kurs: { ...KURS, lessons_count: lekcje.length, publication_gaps: BEZ_BRAKOW },
+    lekcje,
+    tematy: [
+      temat(7, "Podstawy", 1, [21, 22, 23, 24, 25, 26]),
+      temat(8, "Praktyka", 2, [27, 28, 29, 30, 31, 32]),
+    ],
+    wDrodze: [],
+    naglowekListy: null,
+    glowny: { rola: "button", nazwa: "Opublikuj kurs" },
+    pas: null,
+  };
 }
