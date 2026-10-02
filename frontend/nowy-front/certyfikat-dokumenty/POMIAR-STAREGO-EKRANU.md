@@ -50,7 +50,7 @@ ekranie ma końcówkę `.html` — patrz raport, sekcja pytań otwartych.)
    - inny błąd pobrania — „Nie udało się pobrać pliku. Spróbuj ponownie za chwilę.”.
 
 Stary ekran nie ma osobnych stanów „brak połączenia”, „brak dostępu” ani „nie
-znaleziono”: dostęp ogranicza otoczka z rolą wolontariusza w `layout.tsx` strony, a
+znaleziono”: dostęp ogranicza otoczka z kontrolą roli w `layout.tsx` strony, a
 każdy błąd odczytu pokazuje jedno wspólne ostrzeżenie.
 
 ### Odnośniki
@@ -61,7 +61,7 @@ Z liczników trzech warunków prowadzą odnośniki do ekranów źródłowych:
 - „Godziny stażu” → `/panel/staz` („… — przejdź do dziennika stażu”),
 - „Obecności na superwizjach” → `/panel/superwizja` („… — przejdź do terminów superwizji”).
 
-Warsztat stacjonarny nie ma odnośnika ani licznika (odhacza go wyłącznie administracja).
+Warsztat stacjonarny nie ma odnośnika ani licznika (zaliczenie warsztatu wpisuje się poza ekranem uczestnika).
 
 ## Dokumenty
 
