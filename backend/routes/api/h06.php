@@ -4,8 +4,8 @@ use App\Exceptions\ApiException;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Services\Lessons\LessonAccess;
+use App\Services\Lessons\LessonCompletionRule;
 use App\Services\Video\LessonRecording;
-use App\Support\Settings;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,20 +92,11 @@ if (config('features.h06')) {
         ]);
     };
 
-    $completion = static function (Lesson $lesson, LessonProgress $progress): array {
-        $percent = (int) Settings::edition('lesson_completion_percent');
-        $duration = (int) $lesson->duration_seconds;
-        $requiredActiveSeconds = $duration > 0
-            ? (int) ceil($duration * $percent / 100)
-            : 0;
-
-        return [
-            'watched_seconds' => (int) $progress->watched_seconds,
-            'active_seconds' => (int) $progress->active_seconds,
-            'completable' => $duration > 0 && $progress->active_seconds >= $requiredActiveSeconds,
-            'completable_at_percent' => $percent,
-        ];
-    };
+    /**
+     * Reguła ukończenia lekcji jest w jednym miejscu (`LessonCompletionRule`):
+     * odczyt, zapis postępu i `complete` czytają ten sam wynik.
+     */
+    $completion = static fn (Lesson $lesson, LessonProgress $progress): array => LessonCompletionRule::snapshot($lesson, $progress);
 
     Route::middleware(['auth:keycloak', 'access.active'])->group(function () use (
         $authorizeLesson,
@@ -238,7 +229,9 @@ if (config('features.h06')) {
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if ($lesson->duration_seconds <= 0) {
+                // Lekcja z nagraniem, której czas trwania wynosi 0, nigdy nie jest do
+                // ukończenia; lekcja bez nagrania jest do ukończenia od razu.
+                if (! LessonCompletionRule::canEverBeCompleted($lesson)) {
                     throw new ApiException(
                         422,
                         'not_enough_active_time',

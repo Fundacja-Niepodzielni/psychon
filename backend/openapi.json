@@ -93,10 +93,11 @@
                                                     "type": "boolean"
                                                 },
                                                 "completable": {
-                                                    "type": "string"
+                                                    "type": "boolean",
+                                                    "description": "Czy lekcj\u0119 wolno teraz uko\u0144czy\u0107. Lekcja bez nagrania (`video_status: none`) jest do uko\u0144czenia od razu; z nagraniem w przygotowaniu albo z b\u0142\u0119dem \u2014 nie; z gotowym (tak\u017ce nieustalonym) \u2014 gdy czas trwania jest dodatni, a czas aktywny dosi\u0119gn\u0105\u0142 progu `completable_at_percent`."
                                                 },
                                                 "completable_at_percent": {
-                                                    "type": "string"
+                                                    "type": "integer"
                                                 },
                                                 "video_status": {
                                                     "type": "string",
@@ -175,7 +176,28 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "type": "object",
+                                            "properties": {
+                                                "watched_seconds": {
+                                                    "type": "integer"
+                                                },
+                                                "active_seconds": {
+                                                    "type": "integer"
+                                                },
+                                                "completable": {
+                                                    "type": "boolean",
+                                                    "description": "Ta sama regu\u0142a co `completable` w odczycie lekcji."
+                                                },
+                                                "completable_at_percent": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "watched_seconds",
+                                                "active_seconds",
+                                                "completable",
+                                                "completable_at_percent"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -249,6 +271,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "description": "B\u0142\u0105d domenowy `not_enough_active_time` (koperta b\u0142\u0119du): lekcja z gotowym nagraniem poni\u017cej progu czasu aktywnego albo o czasie trwania 0, albo lekcja z nagraniem w przygotowaniu lub z b\u0142\u0119dem. Lekcja bez nagrania nie daje tego b\u0142\u0119du."
                     }
                 }
             }
@@ -8705,8 +8730,62 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {}
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "lesson_id": {
+                                                    "type": "integer"
+                                                },
+                                                "question": {
+                                                    "type": "string"
+                                                },
+                                                "answer": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "answered_by_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Imi\u0119 i nazwisko odpowiadaj\u0105cego; bez identyfikatora i adresu e-mail."
+                                                },
+                                                "answered_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "ISO 8601 UTC."
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "ISO 8601 UTC."
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "ISO 8601 UTC."
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "lesson_id",
+                                                "question",
+                                                "answer",
+                                                "answered_by_name",
+                                                "answered_at",
+                                                "created_at",
+                                                "updated_at"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -8753,8 +8832,62 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "type": "array",
-                                                "items": {}
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "lesson_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "question": {
+                                                        "type": "string"
+                                                    },
+                                                    "answer": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "answered_by_name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "Imi\u0119 i nazwisko odpowiadaj\u0105cego; bez identyfikatora i adresu e-mail."
+                                                    },
+                                                    "answered_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "ISO 8601 UTC."
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "ISO 8601 UTC."
+                                                    },
+                                                    "updated_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "ISO 8601 UTC."
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "lesson_id",
+                                                    "question",
+                                                    "answer",
+                                                    "answered_by_name",
+                                                    "answered_at",
+                                                    "created_at",
+                                                    "updated_at"
+                                                ]
                                             }
                                         },
                                         "meta": {
@@ -8792,7 +8925,8 @@
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
                     }
-                }
+                },
+                "description": "W\u0142asne pytania osoby do tej lekcji, od najnowszego (`created_at`, potem `id` malej\u0105co); `per_page` domy\u015blnie 25, najwy\u017cej 100. Dost\u0119p: wolontariusz i student."
             }
         },
         "/v1/admin/lessons/{lesson}/materials": {

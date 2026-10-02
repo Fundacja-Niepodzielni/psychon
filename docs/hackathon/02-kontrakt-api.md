@@ -1838,3 +1838,77 @@ załącznikiem → `422 no_direct_upload`, ciało ponad limit → `413 payload_t
 pole → `422 invalid_payload`. Klucz dostawcy nie wraca w odpowiedzi.
 
 Kod: `routes/api/video.php`, `Http/Controllers/Api/V1/Admin/BunnyVideoAdminController.php`.
+
+---
+
+## Aneks — ukończenie lekcji, pozycja odtwarzania i pytania do lekcji (H06, H17)
+
+Aneks opisuje stan kodu. Zmiana jest addytywna wobec trasy i kształtu: bez nowych tras,
+kodów błędu, slugów audytu i typów powiadomień; zero zmian w danych. Zdanie z §2 „Postęp
+lekcji (H06)” — „Lekcja z `duration_seconds = 0` nigdy nie jest `completable`; próba
+ukończenia również zwraca 422 `not_enough_active_time`” — zostaje w mocy dla każdej lekcji
+**z nagraniem**; dla lekcji **bez nagrania** uchyla je punkt 1.
+
+### 1. Reguła ukończenia lekcji zależy od stanu nagrania
+
+Stan nagrania lekcji dla uczestnika to `video_status` z odczytu `GET /lessons/{id}`
+(aneks „stan nagrania lekcji”): jedna reguła, ta sama dla odczytu, zapisu postępu i
+ukończenia. Pole `completable` w `GET /lessons/{id}` i w odpowiedzi
+`POST /lessons/{id}/progress` oraz wynik `POST /lessons/{id}/complete` rozstrzyga wyłącznie
+ona:
+
+| `video_status` | `completable` | `POST /lessons/{id}/complete` |
+|---|---|---|
+| `none` (lekcja bez nagrania) | `true` od razu, niezależnie od `duration_seconds` i czasu aktywnego | `200` |
+| `uploading`, `processing` (nagranie w przygotowaniu, lekcja nie ma gotowego) | `false` | `422 not_enough_active_time` |
+| `error` (nagranie z błędem, lekcja nie ma gotowego) | `false` | `422 not_enough_active_time` |
+| `ready` (także nagranie zastane o stanie nieustalonym, traktowane jak grające) | `true`, gdy `duration_seconds > 0` i `active_seconds` ≥ `ceil(duration_seconds × completable_at_percent / 100)`; w przeciwnym razie `false` | od progu `200`; poniżej progu albo przy `duration_seconds = 0` `422 not_enough_active_time` |
+
+Szczegóły:
+
+- Ukończenie lekcji bez nagrania niczego nie dopisuje do czasu aktywnego: `active_seconds`
+  i `watched_seconds` zostają, jakie były; zapisuje się wyłącznie ukończenie
+  (`is_completed`, `completed_at`). Powtórne ukończenie jest idempotentne (`200`, ten sam
+  `completed_at`).
+- Lekcja, która dostaje nagranie (wysyłka w drodze), przestaje być do ukończenia bez
+  czasu aktywnego od chwili, gdy jej `video_status` przestaje być `none`. Lekcja już
+  ukończona zostaje ukończona.
+- Postęp kursu, kolejność etapów w ścieżce (`CourseAccess::state`) i warunki certyfikatu
+  liczą lekcję ukończoną bez nagrania tak samo jak każdą inną ukończoną lekcję. Reguła
+  rzetelności (`ProgressAggregator::reliabilityPercent`, H07) tym aneksem się nie zmienia.
+- Kody błędu bez zmian: do ukończenia, które się nie powiodło, służy dotychczasowy
+  `422 not_enough_active_time`.
+
+### 2. `position_seconds`
+
+- `POST /lessons/{id}/progress` przyjmuje opcjonalne `position_seconds` — liczbę całkowitą
+  ≥ 0, bezwzględną pozycję odtwarzacza w sekundach. Pozycja jest **nadpisywana**, nie
+  sumowana, i wolno jej maleć (przewinięcie wstecz); liczniki `watched_delta` i
+  `active_delta` działają jak dotąd. Pole nieobecne zostawia pozycję bez zmiany. Wartość
+  nie będąca liczbą całkowitą albo ujemna → `422 validation_failed`.
+- `GET /lessons/{id}` niesie `position_seconds` (liczba całkowita, `0` bez postępu) obok
+  `watched_seconds` i `active_seconds`. Odpowiedź zapisu postępu pozycji nie niesie.
+
+### 3. `GET /lessons/{id}/questions`
+
+Własne pytania osoby do jednej lekcji → `200 { "data": [Pytanie], "meta": { …paginacja… } }`.
+
+- Role: `volunteer`, `student` (inna rola → `403 forbidden`); brak tokenu → `401
+  unauthenticated`; wygasły dostęp → `403 access_expired`. Dostęp do lekcji — ta sama reguła
+  co treść lekcji: lekcja nieistniejąca albo spoza zasięgu osoby → `404 not_found`, kurs
+  zablokowany kolejnością → `403 course_locked`.
+- Lista obejmuje wyłącznie pytania zalogowanej osoby do tej lekcji, od najnowszego
+  (`created_at` malejąco, przy remisie `id` malejąco). `?per_page` domyślnie 25; wartość
+  poza zakresem 1–100 jest przycinana do zakresu, bez `422`. Pusta lista → `data: []`.
+- `Pytanie` = `{ "id", "lesson_id", "question", "answer", "answered_by_name",
+  "answered_at", "created_at", "updated_at" }`. `answer`, `answered_by_name` i
+  `answered_at` są `null` do chwili odpowiedzi; pola czasu to ISO 8601 UTC.
+  `answered_by_name` to imię i nazwisko odpowiadającego — bez jego identyfikatora i adresu
+  e-mail.
+- `POST /lessons/{id}/questions` z `{ "question" }` (wymagany napis, 1–2000 znaków po
+  przycięciu białych znaków; naruszenie → `422 validation_failed`) → `201` z jednym
+  `Pytanie` w tym samym kształcie.
+
+Kod: `routes/api/h06.php`, `Services/Lessons/LessonCompletionRule.php`,
+`routes/api/h17.php`, `Http/Controllers/Api/V1/H17/LessonQuestionController.php`,
+`Http/Resources/H17/ParticipantQuestionResource.php`, `openapi.json`.
