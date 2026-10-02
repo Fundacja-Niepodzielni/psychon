@@ -345,9 +345,9 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
         "Otwórz sprawę: Wniosek o profil psychologa — Joanna Lis",
         "Otwórz sprawę: Zgłoszenie rekrutacyjne — Dziś Nowak",
       ]);
-      // Główna akcja prowadzi do pierwszego wiersza.
+      // Pierwszy wiersz (zgłoszenie Marty Demo, id 3) prowadzi na ekran tego jednego zgłoszenia.
       const pierwszy = await page.getByRole("link", { name: /^Otwórz sprawę: / }).first().getAttribute("href");
-      expect(pierwszy).toBe("/admin/uczestniczki?zakladka=zgloszenia");
+      expect(pierwszy).toBe("/admin/nabor/3");
 
       // Sprawa z dzisiaj: „czeka od dziś”, nigdy „czeka 0 dni”.
       await expect(page.getByText("czeka od dziś", { exact: true })).toHaveCount(1);
