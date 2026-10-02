@@ -3,7 +3,17 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import { uchwytWysylania } from "@/nowy-front/wysylanie-nagrania/uchwyt";
-import { KURS, LEKCJE, PROWADZACY, TEMATY, lekcja, temat, utworzSerwer, type AtrapaSerwera } from "./atrapa-serwera";
+import {
+  KURS,
+  LEKCJE,
+  PROWADZACY,
+  PROWADZACY_BEZ_WIZYTOWKI,
+  TEMATY,
+  lekcja,
+  temat,
+  utworzSerwer,
+  type AtrapaSerwera,
+} from "./atrapa-serwera";
 
 /**
  * Próby ekranu kursu administracji w dwóch kolumnach. Atrapa stoi na
@@ -430,6 +440,44 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
     serwer = utworzSerwer({ przypisania: [{ id: 1, course_id: 4, lesson_id: null, instructor: PROWADZACY[0] }] });
     await renderEkranu();
     await waitFor(() => expect(wiersze()[1]).toHaveTextContent("Joanna Demo, cały kurs"));
+  });
+
+  it("lista prowadzących: jedno żądanie listy osób z rolą prowadzącego, zero żądań na katalog wizytówek", async () => {
+    await renderEkranu();
+    await userEvent.click(wiersze()[1]);
+    expect(await screen.findByRole("button", { name: "Przypisz prowadzącego" })).toBeInTheDocument();
+
+    const listy = serwer.wywolania.filter((w) => w.metoda === "GET" && w.sciezka.startsWith("/admin/users?role=instructor"));
+    expect(listy).toHaveLength(1);
+    const parametry = new URL(listy[0].sciezka, "http://atrapa.test").searchParams;
+    expect(Object.fromEntries(parametry)).toEqual({
+      role: "instructor",
+      status: "active",
+      per_page: "100",
+      sort: "last_name",
+    });
+    expect(serwer.wywolania.filter((w) => w.sciezka.startsWith("/instructors"))).toEqual([]);
+  });
+
+  it("osoba z rolą prowadzącego bez wizytówki jest na liście wyboru i daje się przypisać; adres e-mail nie trafia na ekran", async () => {
+    await renderEkranu();
+    await userEvent.click(wiersze()[1]);
+    await userEvent.click(await screen.findByRole("combobox", { name: /^Prowadzący/ }));
+    const opcje = screen.getAllByRole("option").map((opcja) => opcja.textContent);
+    for (const osoba of [...PROWADZACY, ...PROWADZACY_BEZ_WIZYTOWKI]) {
+      expect(opcje).toContain(`${osoba.first_name} ${osoba.last_name}`);
+    }
+    expect(document.body.textContent).not.toMatch(/prowadzacy-\d+@/);
+
+    await userEvent.click(screen.getByRole("option", { name: "Ewa Brzeska" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przypisz prowadzącego" }));
+    await waitFor(() => expect(serwer.zapisy()).toHaveLength(1));
+    expect(serwer.zapisy()[0]).toEqual({
+      sciezka: "/admin/courses/4/assignments",
+      metoda: "POST",
+      cialo: { instructor_id: PROWADZACY_BEZ_WIZYTOWKI[0].id, lesson_id: null },
+    });
+    await waitFor(() => expect(wiersze()[1]).toHaveTextContent("Ewa Brzeska, cały kurs"));
   });
 
   it("„Zapisz dane kursu” wysyła te same pola co dotąd i jest przyciskiem zwykłym", async () => {
