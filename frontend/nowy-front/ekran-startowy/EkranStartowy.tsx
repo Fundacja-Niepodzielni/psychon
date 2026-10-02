@@ -29,6 +29,7 @@ import {
   type PoleEkranu,
 } from "./dane";
 import { PodgladEkranuStartowego } from "./PodgladEkranuStartowego";
+import { KOMUNIKAT_SERWER, KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
@@ -153,10 +154,10 @@ export function EkranStartowy() {
         const odczytane = bledyZOdpowiedzi(blad.errors);
         setBledy(odczytane);
         if (Object.keys(odczytane.pola).length === 0 && odczytane.pozostale.length === 0) {
-          setBladZapisu("Serwer odrzucił treść. Popraw wpisane teksty i spróbuj ponownie.");
+          setBladZapisu("Treść nie została zapisana. Popraw wpisane teksty i spróbuj ponownie.");
         }
       } else {
-        setBladZapisu("Nie udało się zapisać treści. Spróbuj ponownie.");
+        setBladZapisu(KOMUNIKAT_ZAPIS);
       }
     } finally {
       setZapisywanie(false);
@@ -192,7 +193,7 @@ export function EkranStartowy() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Treść nie jest zmyślana bez danych.
+            {KOMUNIKAT_SERWER}
           </Notice>
         }
         tresc={null}
@@ -223,7 +224,7 @@ export function EkranStartowy() {
         tresc={
           <EmptyState
             naglowek="Nie znaleziono ekranu"
-            tresc="Serwer nie zwrócił treści ekranu „Zacznij tutaj”, więc nie ma czego redagować."
+            tresc="Nie ma treści ekranu „Zacznij tutaj”, więc nie ma czego redagować."
             przycisk={{ etykieta: "Wróć", onClick: wroc }}
           />
         }
