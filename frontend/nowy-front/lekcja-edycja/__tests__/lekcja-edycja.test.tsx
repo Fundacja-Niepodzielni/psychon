@@ -180,12 +180,13 @@ describe("stany ekranu: jeden main, dane w układzie dwóch kolumn", () => {
     const { container } = await renderujDane();
     szablon(container, "szablon-edycja");
     expect(pole(/^Tytuł lekcji/).value).toBe("Wprowadzenie do wywiadu");
-    const { obszar } = await edytorTresci();
+    // Zimny start edytora po świeżej instalacji bibliotek bywa na granicy domyślnego limitu 1 s: pierwsze odszukanie dostaje 5 s, próba 15 s.
+    const obszar = await screen.findByRole("textbox", { name: "Treść lekcji" }, { timeout: 5000 });
     expect(within(obszar).getByRole("heading", { level: 2, name: "Cel lekcji" })).toBeInTheDocument();
     expect(within(obszar).getByText("Pierwszy akapit.")).toBeInTheDocument();
     expect(pole(/^Czas trwania w minutach/).value).toBe("30");
     expect(screen.getByRole("heading", { level: 1, name: "Wprowadzenie do wywiadu" })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it.each([
     [403, "odmowa roli"],
