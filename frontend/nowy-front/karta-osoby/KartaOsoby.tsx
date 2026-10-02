@@ -40,6 +40,13 @@ type StanRzetelnosci = "ladowanie" | "ok" | "brak-danych" | "blad";
 
 interface WlasciwosciKartyOsoby {
   id: number;
+  /**
+   * Adres ekranu przedłużenia dostępu tej osoby. Podaje go strona, pod którą
+   * ten ekran naprawdę stoi; bez adresu karta nie pokazuje wejścia, żeby
+   * przycisk nigdy nie prowadził donikąd. Ekran przedłużenia i karta mają
+   * ten sam próg roli, więc kto widzi kartę, ten ma też ekran przedłużenia.
+   */
+  adresPrzedluzenia?: string;
 }
 
 /**
@@ -63,7 +70,7 @@ interface WlasciwosciKartyOsoby {
  * rząd przycisków „Anuluj” / „Zapisz zmiany”, a przycisk główny „Zmień dane”
  * znika z nagłówka na czas edycji.
  */
-export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
+export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
   const router = useRouter();
   const [stan, setStan] = useState<StanEkranu>("ladowanie");
   const [karta, setKarta] = useState<KartaOsobyDane | null>(null);
@@ -316,7 +323,16 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
               )}
             </>
           ) : (
-            <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
+            <>
+              <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
+              {adresPrzedluzenia !== undefined && (
+                <div className={style.akcjaDostepu}>
+                  <Button poziom="outline" onClick={() => router.push(adresPrzedluzenia)}>
+                    Przedłuż dostęp
+                  </Button>
+                </div>
+              )}
+            </>
           )
         }
         wsparcie={
