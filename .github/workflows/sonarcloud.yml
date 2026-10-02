@@ -17,13 +17,29 @@ name: SonarCloud
 
 # `sprint-*` jest tu od chwili, gdy sekret zostal zmierzony - wczesniej przebieg na galezi
 # sprintu bylby zielony bez zmierzenia czegokolwiek.
+# Filtry sciezek sa DOKLADNIE takie same jak w `ci.yml`. Kiedy byly rozne,
+# push z sama dokumentacja nie tworzyl przebiegu prob (`ci.yml` pomijal
+# `docs/**` i `*.md`), a skan startowal i czekal na nieistniejacy przebieg
+# pelne 15 minut, po czym czerwienil sie za nic. Zmiana filtra w jednym pliku
+# bez drugiego wraca do tego samego stanu - pilnuje tego proba spojnosci.
 on:
   push:
     branches: [main, dev, "sprint-*"]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
 
 permissions:
   contents: read
+  # `gh run list` (ponizej) i `actions/download-artifact` czytaja przebiegi i
+  # artefakty INNEGO workflow (`ci.yml`) w tym samym repo - bez tego zawezenie
+  # `contents: read` odcina rowniez odczyt Actions, bo jawna lista uprawnien
+  # zastepuje domyslna, nie dodaje sie do niej.
+  actions: read
 
 concurrency:
   group: sonarcloud-${{ github.ref }}
@@ -33,7 +49,10 @@ jobs:
   sonarcloud:
     name: SonarCloud (skan tylko przy ustawionym sekrecie)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15 -> 30: krok ponizej czeka az `ci.yml` dla TEGO SAME sha sie zakonczy
+    # (do 15 minut oczekiwania), zanim skan w ogole ruszy - patrz uzasadnienie
+    # przy sciezkach raportow w `sonar-project.properties`.
+    timeout-minutes: 30
     env:
       # `secrets` wolno uzyc w `env` joba. Nieustawiony sekret daje pusty napis,
       # a nie blad — i to jest caly przelacznik tego workflow.
@@ -44,8 +63,77 @@ jobs:
           # Sonar liczy "nowy kod" z historii; plytki klon zawyza go do calego repo.
           fetch-depth: 0
 
-      - name: Skan SonarCloud
+      # Raporty pokrycia POWSTAJA w `ci.yml` (ten sam commit, ta sama usluga
+      # Postgres/Redis, ten sam `composer install`/`npm ci`) i trafiaja tu jako
+      # artefakty zamiast bycia liczonymi drugi raz w tym zadaniu - uzasadnienie
+      # wyboru stoi w `sonar-project.properties`. Krok gasnie razem ze skanem:
+      # bez sekretu czekanie na cudzy przebieg byloby czasem straconym na nic.
+      - name: Poczekaj na przebieg CI dla tego commita
         if: env.SONAR_TOKEN != ''
+        id: ci-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # W przebiegu wyzwolonym przez zgloszenie `github.sha` to skrot PROBNEGO
+          # SCALENIA, a nie czubka galezi - i dla tego skrotu nie ma zadnego
+          # przebiegu prob. Zmierzone na zgloszeniu 44: `gh run list --commit`
+          # dla skrotu scalenia zwraca 0 przebiegow, wiec petla czekala pelne
+          # 15 minut i konczyla sie kodem 1, zamiast czegokolwiek zmierzyc.
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          for i in $(seq 1 60); do
+            RUN_JSON=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$SHA" \
+              --json databaseId,status,conclusion --jq '.[0] // empty')
+            if [ -n "$RUN_JSON" ]; then
+              STATUS=$(echo "$RUN_JSON" | jq -r '.status')
+              if [ "$STATUS" = "completed" ]; then
+                echo "id=$(echo "$RUN_JSON" | jq -r '.databaseId')" >> "$GITHUB_OUTPUT"
+                echo "conclusion=$(echo "$RUN_JSON" | jq -r '.conclusion')" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+            sleep 15
+          done
+          echo "Przebieg ci.yml dla ${SHA} nie zakonczyl sie w limicie oczekiwania (15 min)." >&2
+          exit 1
+
+      # Bez tego kroku brak pokrycia bylby CICHY: wszystkie kroki mierzace
+      # wypadaja na warunku, job konczy sie zielono i nikt nie wie, ze skanu
+      # nie bylo. Brak pomiaru ma byc czerwony tak samo jak zly pomiar.
+      - name: Bez raportow pokrycia nie ma skanu
+        if: env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion != 'success'
+        env:
+          WNIOSEK: ${{ steps.ci-run.outputs.conclusion }}
+        run: |
+          echo "Przebieg ci.yml dla tego commita zakonczyl sie jako: $WNIOSEK" >&2
+          echo "Raportow pokrycia nie ma, wiec skan nie zostal uruchomiony." >&2
+          echo "To nie jest pokrycie 0,0 % - to brak pomiaru." >&2
+          exit 1
+
+      - name: Pobierz raport pokrycia zaplecza
+        if: env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pokrycie-backend
+          path: backend/coverage
+          run-id: ${{ steps.ci-run.outputs.id }}
+          github-token: ${{ github.token }}
+
+      - name: Pobierz raport pokrycia frontu
+        if: env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pokrycie-frontend
+          path: frontend/coverage
+          run-id: ${{ steps.ci-run.outputs.id }}
+          github-token: ${{ github.token }}
+
+      # Warunek jest ten sam, co przy obu pobraniach raportow - i to jest cala
+      # poprawka: wczesniej skan ruszal takze wtedy, gdy `ci.yml` skonczyl sie
+      # niepowodzeniem i zadnego raportu nie bylo. Sonar liczyl wtedy pokrycie
+      # nowego kodu jako 0,0 % i konczyl na zielono, a w logu nie bylo wiersza,
+      # ktory odroznialby "zmierzone zero" od "nie zmierzono nic".
+      - name: Skan SonarCloud
+        if: env.SONAR_TOKEN != '' && steps.ci-run.outputs.conclusion == 'success'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
