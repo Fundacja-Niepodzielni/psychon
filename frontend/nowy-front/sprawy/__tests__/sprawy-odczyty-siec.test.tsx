@@ -73,7 +73,7 @@ describe("Sprawy na odrzuconych odczytach transportu", () => {
     );
     render(<Sprawy />);
 
-    expect(await screen.findByText(/Źródło „Dyżur” nieosiągalne/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nie udało się wczytać: „Dyżur”/)).toBeInTheDocument();
     expect(screen.queryByText("Brak spraw do decyzji")).toBeNull();
   });
 

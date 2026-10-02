@@ -173,7 +173,7 @@ describe("Sprawy — błąd jednego źródła", () => {
 
     render(<Sprawy />);
 
-    expect(await screen.findByText(/Źródło „Dyżur” nieosiągalne/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nie udało się wczytać: „Dyżur”/)).toBeInTheDocument();
     expect(screen.getByText("Joanna Demo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Otwórz najstarszą sprawę" })).toBeInTheDocument();
   });
@@ -190,7 +190,7 @@ describe("Sprawy — brak uprawnień (403 forbidden na wszystkich źródłach)",
     render(<Sprawy />);
 
     expect(await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
-    expect(screen.queryByText(/Źródło „/)).toBeNull();
+    expect(screen.queryByText(/Nie udało się wczytać: „/)).toBeNull();
   });
 });
 
@@ -379,7 +379,7 @@ describe("Sprawy — błąd sieci / wyjątek poza ApiError", () => {
 
     render(<Sprawy />);
 
-    expect(await screen.findByText(/Sprawy są chwilowo nieosiągalne/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nie udało się połączyć z serwerem/)).toBeInTheDocument();
   });
 });
 
@@ -448,7 +448,7 @@ describe("Sprawy — każdy stan w szablonie ListTemplate", () => {
       WYNIK_PUSTY("profiles"),
     ]);
     const { container } = render(<Sprawy />);
-    await screen.findByText(/Źródło „Dyżur” nieosiągalne/);
+    await screen.findByText(/Nie udało się wczytać: „Dyżur”/);
     oczekujJednegoMainZSzablonem(container);
   });
 
@@ -467,7 +467,7 @@ describe("Sprawy — każdy stan w szablonie ListTemplate", () => {
   it("błąd sieci: jeden main z szablonu, komunikat w slocie listy", async () => {
     pobierzKolejkeSpraw.mockRejectedValue(new Error("sieć nieosiągalna"));
     const { container } = render(<Sprawy />);
-    await screen.findByText(/Sprawy są chwilowo nieosiągalne/);
+    await screen.findByText(/Nie udało się połączyć z serwerem/);
     oczekujJednegoMainZSzablonem(container);
   });
 
@@ -487,7 +487,7 @@ describe("Sprawy — awaria źródeł nie udaje pustej listy", () => {
   const BLAD = (rodzaj: "applications" | "internship_entries" | "profiles") => ({
     rodzaj,
     pozycje: [],
-    blad: "Nie udało się pobrać danych źródła.",
+    blad: "Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.",
     kodBledu: null,
     liczbaCalkowita: 0,
   });
@@ -498,7 +498,7 @@ describe("Sprawy — awaria źródeł nie udaje pustej listy", () => {
 
     await screen.findByText("Nie udało się wczytać spraw");
     expect(screen.queryByText("Brak spraw do decyzji")).toBeNull();
-    expect(screen.queryByText(/Źródło „/)).toBeNull();
+    expect(screen.queryByText(/Nie udało się wczytać: „/)).toBeNull();
     expect(() => jedenMain(container)).not.toThrow();
 
     pobierzKolejkeSpraw.mockResolvedValue([
@@ -519,7 +519,7 @@ describe("Sprawy — awaria źródeł nie udaje pustej listy", () => {
     ]);
     render(<Sprawy />);
 
-    await screen.findByText(/Źródło „Dyżur” nieosiągalne/);
+    await screen.findByText(/Nie udało się wczytać: „Dyżur”/);
     expect(screen.queryByText("Brak spraw do decyzji")).toBeNull();
     expect(screen.queryByRole("button", { name: "Otwórz najstarszą sprawę" })).toBeNull();
   });
@@ -531,7 +531,7 @@ describe("Sprawy — awaria źródeł nie udaje pustej listy", () => {
       WYNIK_PUSTY("profiles"),
     ]);
     const { container } = render(<Sprawy />);
-    await screen.findByText(/Źródło „Dyżur” nieosiągalne/);
+    await screen.findByText(/Nie udało się wczytać: „Dyżur”/);
     expect(container.textContent).not.toMatch(/wpis(y|u)? stażu|kolejk/i);
   });
 });

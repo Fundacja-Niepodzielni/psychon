@@ -1,5 +1,6 @@
 import { apiPaged, ApiError } from "@/lib/api/klient";
 import { formatujDate } from "../wspolne/daty";
+import { KOMUNIKAT_INTERNET } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Ekran A-02 „Sprawy" — jedna kolejka decyzji administracji, złożona z trzech
@@ -254,7 +255,7 @@ export async function pobierzKolejkeSpraw(): Promise<WynikZrodla[]> {
         return { rodzaj, pozycje, blad: null, kodBledu: null, liczbaCalkowita: total };
       } catch (wyjatek) {
         const komunikat =
-          wyjatek instanceof ApiError ? wyjatek.message : "Nie udało się pobrać danych źródła.";
+          wyjatek instanceof ApiError ? wyjatek.message : KOMUNIKAT_INTERNET;
         const kod = wyjatek instanceof ApiError ? wyjatek.code : null;
         return { rodzaj, pozycje: [], blad: komunikat, kodBledu: kod, liczbaCalkowita: 0 };
       }

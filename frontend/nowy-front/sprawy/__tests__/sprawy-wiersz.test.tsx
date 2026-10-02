@@ -328,13 +328,13 @@ describe("Sprawy — nagłówek listy tylko dla czytnika", () => {
       zrodlo("profiles", []),
     ]);
     const { unmount } = render(<Sprawy />);
-    await screen.findByText(/Źródło „Dyżur” nieosiągalne/);
+    await screen.findByText(/Nie udało się wczytać: „Dyżur”/);
     expect(screen.getByRole("heading", { level: 2, name: "Sprawy" }).parentElement?.className).toMatch(/dlaCzytnika/);
     unmount();
 
     pobierzKolejkeSpraw.mockRejectedValue(new Error("sieć nieosiągalna"));
     render(<Sprawy />);
-    await screen.findByText(/Sprawy są chwilowo nieosiągalne/);
+    await screen.findByText(/Nie udało się połączyć z serwerem/);
     expect(screen.getByRole("heading", { level: 2, name: "Sprawy" }).parentElement?.className).toMatch(/dlaCzytnika/);
   });
 });

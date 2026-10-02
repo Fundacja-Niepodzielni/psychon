@@ -161,7 +161,7 @@ describe("Sprawy — kolejność nagłówków bez przeskoków", () => {
     );
     const { container } = render(<Sprawy />);
 
-    await screen.findByText(/Źródło „Dyżur” nieosiągalne/);
+    await screen.findByText(/Nie udało się wczytać: „Dyżur”/);
     await screen.findByText("Brak spraw zgłoszonych przez prowadzących.");
     const stopnie = stopnieNaglowkow(container);
     expect(stopnie).toContain(3);

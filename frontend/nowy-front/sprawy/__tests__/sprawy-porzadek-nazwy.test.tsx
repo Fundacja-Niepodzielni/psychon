@@ -239,6 +239,6 @@ describe("Sprawy — nazwy rodzajów z makiety", () => {
     ]);
     render(<Sprawy />);
 
-    expect(await screen.findByText(/Źródło „Zgłoszenie rekrutacyjne” nieosiągalne/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nie udało się wczytać: „Zgłoszenie rekrutacyjne”/)).toBeInTheDocument();
   });
 });

@@ -36,6 +36,7 @@ import {
   wariantPlakietkiCzekania,
 } from "./wiek";
 import style from "./Sprawy.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 type FiltrRodzaju = RodzajSprawy | "";
@@ -305,7 +306,7 @@ export function Sprawy() {
         </div>
         <div className={style.bledyZrodel}>
           <Notice wariant="error" tytul="Nie udało się wczytać spraw">
-            Sprawy są chwilowo nieosiągalne. Sprawdź połączenie i spróbuj ponownie.
+            {KOMUNIKAT_SERWER}
           </Notice>
           <div className={style.glownaAkcja}>
             <Button poziom="outline" onClick={ponow}>
@@ -375,7 +376,7 @@ export function Sprawy() {
               <Notice
                 key={wynik.rodzaj}
                 wariant="warn"
-                tytul={`Źródło „${ETYKIETA_RODZAJU[wynik.rodzaj]}” nieosiągalne`}
+                tytul={`Nie udało się wczytać: „${ETYKIETA_RODZAJU[wynik.rodzaj]}”`}
               >
                 {wynik.blad} Pozostałe rodzaje spraw działają dalej; „najstarsza sprawa” jest liczona z
                 pozostałych.
