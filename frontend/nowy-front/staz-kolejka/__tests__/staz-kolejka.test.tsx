@@ -229,16 +229,16 @@ describe("StazKolejka — stany w szablonie", () => {
     expect(container.querySelector("[data-testid='obszar-lista'] [aria-busy='true']")).not.toBeNull();
   });
 
-  it("dane: dwa wiersze zwinięte — „Dyżur”, osoba, plakietka wieku, godziny i „Otwórz”, bez pozostałych danych wpisu", async () => {
+  it("dane: dwa wiersze zwinięte — osoba jako pierwsza informacja, plakietka wieku, godziny i „Otwórz”, bez pozostałych danych wpisu", async () => {
     const { container } = await renderZDanymi();
     sprawdzSzablon(container);
     expect(apiPaged).toHaveBeenCalledWith("/admin/internship/pending?page=1&per_page=25");
     expect(wierszeListy()).toHaveLength(2);
     const pierwszy = wiersz("Marta Demo");
-    expect(pierwszy).toHaveTextContent("Dyżur");
-    // Nazwa stoi w pierwszej kolumnie, osoba pod nią; plakietka wieku dopiero w kolumnie stanu.
+    expect(pierwszy.textContent?.startsWith("Marta Demo")).toBe(true);
+    // Imię i nazwisko jest nazwą wiersza w pierwszej kolumnie; plakietka wieku dopiero w kolumnie stanu.
     expect(within(pierwszy).getAllByRole("cell")[0]).toBe(komorka(pierwszy, "Dyżur"));
-    expect(komorka(pierwszy, "Dyżur")).toContainElement(within(pierwszy).getByText("Dyżur", { selector: "p" }));
+    expect(komorka(pierwszy, "Dyżur")).toContainElement(within(pierwszy).getByText("Marta Demo", { selector: "p" }));
     expect(komorka(pierwszy, "Dyżur")).toContainElement(screen.getByText("Marta Demo"));
     expect(komorka(pierwszy, "Dyżur")).not.toHaveTextContent(/czeka \d|czeka od dziś/);
     expect(komorka(pierwszy, "Stan")).toHaveTextContent(
@@ -323,7 +323,7 @@ describe("StazKolejka — stany w szablonie", () => {
       const przyciski = within(wiersz(nazwa)).getAllByRole("button").map((b) => b.textContent);
       expect(przyciski.map((t) => t?.replace(/\s*›$/, ""))).toEqual(["Otwórz"]);
     }
-    expect(screen.queryByRole("button", { name: "Zatwierdź" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Zatwierdź dyżur" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);
     // Nagłówek listy tylko dla czytnika stoi pod h1 bez przeskoku: h1 → h2.
     expect(container.querySelector("h1")).not.toBeNull();
@@ -427,16 +427,20 @@ describe("StazKolejka — panel otwartego dyżuru (A-02)", () => {
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     expect(panel).toHaveFocus();
-    expect(screen.getByRole("button", { name: "Zatwierdź" })).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: "Zatwierdź dyżur" })).not.toHaveFocus();
   });
 
-  it("akcje panelu w kolejności: Zatwierdź (główny), Poproś o poprawkę, Odrzuć dyżur, Wróć do listy", async () => {
+  it("akcje panelu w kolejności: Zatwierdź dyżur (główny), Poproś o poprawkę, Wróć do listy i na końcu, osobno, Odrzuć dyżur", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     const przyciski = within(panel).getAllByRole("button").map((b) => b.textContent);
-    expect(przyciski).toEqual(["Zatwierdź", "Poproś o poprawkę", "Odrzuć dyżur", "Wróć do listy"]);
-    expect(przyciskiGlowne().map((b) => b.textContent)).toEqual(["Zatwierdź"]);
+    expect(przyciski).toEqual(["Zatwierdź dyżur", "Poproś o poprawkę", "Wróć do listy", "Odrzuć dyżur"]);
+    expect(przyciskiGlowne().map((b) => b.textContent)).toEqual(["Zatwierdź dyżur"]);
+    // Odrzucenie stoi za odstępem: między nim a pozostałymi akcjami jest rozdzielacz.
+    const odrzuc = within(panel).getByRole("button", { name: "Odrzuć dyżur" });
+    expect(odrzuc.previousElementSibling).toHaveAttribute("aria-hidden", "true");
+    expect(odrzuc.previousElementSibling?.tagName).toBe("SPAN");
   });
 
   it("„Ile godzin ma teraz”: zatwierdzone z karty osoby, wymagane z edycji, stan po zatwierdzeniu — wszystko przez jeden formater", async () => {
@@ -474,7 +478,7 @@ describe("StazKolejka — panel otwartego dyżuru (A-02)", () => {
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     await within(panel).findByText("Nie udało się wczytać godzin tej osoby. Decyzję możesz podjąć bez nich.");
     expect(within(panel).queryByRole("progressbar")).toBeNull();
-    expect(within(panel).getByRole("button", { name: "Zatwierdź" })).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Zatwierdź dyżur" })).toBeInTheDocument();
   });
 
   it("karta osoby woła się dopiero przy otwarciu panelu, osobno dla każdej osoby", async () => {
@@ -513,7 +517,7 @@ describe("StazKolejka — decyzje", () => {
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     dopiszDecyzje(wpis(91, { status: "accepted" }));
-    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź" }));
+    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź dyżur" }));
     await waitFor(() => expect(screen.queryByText("Marta Demo")).toBeNull());
     expect(wywolaniaDecyzji()).toHaveLength(1);
     expect(api).toHaveBeenCalledWith("/admin/internship/91/accept", { method: "POST" });
@@ -536,7 +540,7 @@ describe("StazKolejka — decyzje", () => {
     expect(przyciskiGlowne()).toHaveLength(1);
     expect(within(formularz).getByRole("button", { name: "Wróć do listy" })).toBeInTheDocument();
     // Rząd akcji panelu ustępuje formularzowi: „Zatwierdź” nie stoi obok drugiego przycisku głównego.
-    expect(screen.queryByRole("button", { name: "Zatwierdź" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Zatwierdź dyżur" })).toBeNull();
     sprawdzSzablon(container);
   });
 
@@ -607,7 +611,25 @@ describe("StazKolejka — decyzje", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Dyżur odesłany do poprawy. Marta Demo.");
   });
 
-  it("Odrzuć dyżur z powodem: POST na reject, wiersz znika, Toast", async () => {
+  it("Odrzuć dyżur z powodem: żądanie nie wychodzi przed potwierdzeniem pytania; wycofanie zostawia formularz z powodem", async () => {
+    const uzytkownik = userEvent.setup();
+    await renderZDanymi();
+    const panel = await otworzPanel(uzytkownik, "Filip Demo");
+    await uzytkownik.click(within(panel).getByRole("button", { name: "Odrzuć dyżur" }));
+    const formularz = await screen.findByRole("form", { name: /Odrzuć dyżur: Filip Demo/ });
+    await uzytkownik.type(within(formularz).getByRole("textbox", { name: /Powód odrzucenia/ }), "Dyżur nie odbył się.");
+    await uzytkownik.click(within(formularz).getByRole("button", { name: "Odrzuć dyżur" }));
+    const okno = await screen.findByRole("dialog", { name: "Odrzucić dyżur?" });
+    expect(okno).toHaveTextContent("Dyżur osoby Filip Demo zostanie odrzucony. Tej decyzji nie da się cofnąć.");
+    expect(wywolaniaDecyzji()).toHaveLength(0);
+    await uzytkownik.click(within(okno).getByRole("button", { name: "Wróć" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(wywolaniaDecyzji()).toHaveLength(0);
+    expect(within(formularz).getByRole("textbox", { name: /Powód odrzucenia/ })).toHaveValue("Dyżur nie odbył się.");
+    expect(screen.getByText("Filip Demo")).toBeInTheDocument();
+  });
+
+  it("Odrzuć dyżur z powodem i potwierdzeniem: POST na reject, wiersz znika, Toast", async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Filip Demo");
@@ -617,6 +639,9 @@ describe("StazKolejka — decyzje", () => {
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /Powód odrzucenia/ }), "Dyżur nie odbył się.");
     dopiszDecyzje(wpis(92, { status: "rejected" }));
     await uzytkownik.click(within(formularz).getByRole("button", { name: "Odrzuć dyżur" }));
+    const okno = await screen.findByRole("dialog", { name: "Odrzucić dyżur?" });
+    expect(wywolaniaDecyzji()).toHaveLength(0);
+    await uzytkownik.click(within(okno).getByRole("button", { name: "Odrzuć dyżur" }));
     await waitFor(() => expect(screen.queryByText("Filip Demo")).toBeNull());
     expect(api).toHaveBeenCalledWith("/admin/internship/92/reject", {
       method: "POST",
@@ -645,7 +670,7 @@ describe("StazKolejka — decyzje", () => {
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     dopiszDecyzje(blad(403, "entry_locked", "Ten wpis został już rozstrzygnięty."));
     apiPaged.mockResolvedValueOnce({ data: [DWA_WPISY[1]], meta: { ...META, total: 1 } });
-    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź" }));
+    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź dyżur" }));
     await screen.findByText("Ten wpis został już rozstrzygnięty.");
     await waitFor(() => expect(screen.queryByText("Marta Demo")).toBeNull());
     expect(apiPaged).toHaveBeenCalledTimes(2);
@@ -672,7 +697,7 @@ describe("StazKolejka — decyzje", () => {
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     dopiszDecyzje(new TypeError("Failed to fetch"));
-    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź" }));
+    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź dyżur" }));
     await screen.findByText("Decyzja nie została zapisana");
     expect(screen.getByText("Nie udało się zapisać decyzji. Sprawdź połączenie i spróbuj ponownie.")).toBeInTheDocument();
     expect(wiersz("Marta Demo")).toBeInTheDocument();
@@ -685,7 +710,7 @@ describe("StazKolejka — decyzje", () => {
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
     dopiszDecyzje(wpis(91, { status: "accepted" }));
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
-    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź" }));
+    await uzytkownik.click(within(panel).getByRole("button", { name: "Zatwierdź dyżur" }));
     await screen.findByRole("heading", { name: "Brak wpisów do decyzji" });
     expect(screen.getByRole("status")).toHaveTextContent("Dyżur zatwierdzony");
   });

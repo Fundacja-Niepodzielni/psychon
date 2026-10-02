@@ -64,33 +64,33 @@ export interface DefinicjaPola {
 export const POLA: readonly DefinicjaPola[] = [
   {
     klucz: "test_pass_threshold",
-    etykieta: "Próg zaliczenia testu, w procentach (0–100)",
+    etykieta: "Próg zaliczenia testu, w procentach",
     zdanie: "Tyle procent poprawnych odpowiedzi trzeba mieć, żeby zaliczyć test na koniec kursu.",
   },
   {
     klucz: "test_attempts_limit",
-    etykieta: "Liczba podejść do testu (1–255)",
+    etykieta: "Liczba podejść do testu",
     zdanie: "Tyle razy uczestnik może podejść do testu na koniec kursu, zanim administracja przywróci mu limit.",
   },
   {
     klucz: "internship_hours_required",
-    etykieta: "Wymagana liczba godzin praktyki (1–32767)",
+    etykieta: "Wymagana liczba godzin praktyki",
     zdanie: "Tyle godzin zatwierdzonych dyżurów uczestnik musi mieć, żeby dostać certyfikat.",
   },
   {
     klucz: "supervision_required_count",
-    etykieta: "Wymagana liczba obecności na superwizji (1–255)",
+    etykieta: "Wymagana liczba obecności na superwizji",
     zdanie: "Tyle obecności na superwizji uczestnik musi mieć, żeby dostać certyfikat.",
   },
   {
     klucz: "lesson_completion_percent",
-    etykieta: "Próg ukończenia lekcji, w procentach (0–100)",
+    etykieta: "Próg ukończenia lekcji, w procentach",
     zdanie:
       "Tyle procent czasu lekcji uczestnik musi spędzić na nauce, żeby oznaczyć lekcję jako ukończoną; to inny próg niż próg czasu nauki poniżej.",
   },
   {
     klucz: "reliability_threshold",
-    etykieta: "Próg czasu nauki, w procentach (0–100)",
+    etykieta: "Próg czasu nauki, w procentach",
     zdanie:
       "Uczestnicy poniżej tego progu są zaznaczani na liście czasu nauki; ten próg nie wpływa na ukończenie lekcji.",
   },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ApplicationRole } from "@/lib/h03/types";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -9,7 +9,6 @@ import { Link } from "@/design-system/atomy/Link/Link";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import {
   OPCJE_ROL,
   adresKartyOsoby,
@@ -35,9 +34,10 @@ interface WlasciwosciPanelu {
 
 /**
  * Panel decyzji w kolumnie wspierającej. Zgłoszenie po decyzji pokazuje jej skutek
- * bez przycisku głównego; zgłoszenie czekające pokazuje albo wybór roli z „Zaakceptuj
- * i utwórz konto”, albo (po „Odrzuć zgłoszenie”) sekcję z powodem — nigdy oba naraz,
- * więc na ekranie jest jeden przycisk główny i jeden rząd przycisków.
+ * bez przycisku głównego; zgłoszenie czekające pokazuje albo wybór roli z „Zatwierdź
+ * i utwórz konto”, albo (po „Odrzuć zgłoszenie”) pole powodu — nigdy oba naraz.
+ * „Odrzuć zgłoszenie” (obrys, czerwony napis) stoi zawsze w ostatnim rzędzie panelu,
+ * pod kreską, osobno od zatwierdzenia; przycisk główny jest najwyżej jeden.
  */
 export function PanelDecyzji(wlasciwosci: WlasciwosciPanelu) {
   if (wlasciwosci.zgloszenie.status === "new") return <Decyzja {...wlasciwosci} />;
@@ -151,6 +151,11 @@ function Decyzja({ zgloszenie, onZaakceptowano, onOdrzucono, odswiez }: Wlasciwo
   );
   const mimoLimitu = uwaga?.rodzaj === "limit-miejsc";
 
+  // Pole powodu otwiera się działaniem osoby, więc fokus idzie na nie.
+  useEffect(() => {
+    if (tryb === "odrzucenie") document.getElementById("powod-odrzucenia")?.focus();
+  }, [tryb]);
+
   async function akceptuj() {
     if (wysylanie) return;
     setWysylanie(true);
@@ -188,70 +193,79 @@ function Decyzja({ zgloszenie, onZaakceptowano, onOdrzucono, odswiez }: Wlasciwo
     }
   }
 
-  if (tryb === "odrzucenie") {
-    return (
-      <div className={style.sekcja}>
-        <Uwagi uwaga={uwaga} odswiez={odswiez} />
-        <FormSection
-          fokusPrzyOtwarciu
-          tytul="Odrzuć zgłoszenie"
-          pola={[
-            {
-              id: "powod-odrzucenia",
-              etykieta: "Powód odrzucenia",
-              rodzaj: "wieloliniowy",
-              wymagane: true,
-              wartosc: powod,
-              onZmiana: setPowod,
-              blad: bledy.powod,
-              podpowiedz: "Powód zostaje zapisany przy zgłoszeniu.",
-            },
-          ]}
-          etykietaAnuluj="Wróć do decyzji"
-          etykietaZapisz={wysylanie ? "Zapisywanie…" : "Odrzuć zgłoszenie"}
-          onAnuluj={() => {
-            setTryb("decyzja");
-            setBledy({});
-            setUwaga(null);
-          }}
-          onZapisz={() => void odrzuc()}
-        />
-      </div>
-    );
-  }
+  const odrzucenie = tryb === "odrzucenie";
 
   return (
     <section className={style.sekcja}>
       <Heading stopien={2}>Decyzja o zgłoszeniu</Heading>
-      <Text>
-        Akceptacja tworzy konto w roku programu i wysyła zaproszenie z linkiem aktywacyjnym. Dostęp do materiałów
-        trwa 6 miesięcy od decyzji.
-      </Text>
       <Uwagi uwaga={uwaga} odswiez={odswiez} />
-      <Field
-        id="rola-konta"
-        etykieta="Rola konta"
-        rodzaj="wybor"
-        wymagane
-        opcje={OPCJE_ROL}
-        wartosc={rola}
-        onZmiana={setRola}
-        blad={bledy.rola}
-        podpowiedz="Domyślnie rola wskazana w zgłoszeniu."
-      />
-      <div className={style.rzad}>
-        <Button poziom="primary" onClick={() => void akceptuj()}>
-          {wysylanie ? "Zapisywanie…" : mimoLimitu ? "Zaakceptuj mimo limitu miejsc" : "Zaakceptuj i utwórz konto"}
-        </Button>
+      {odrzucenie ? (
+        <>
+          <Field
+            id="powod-odrzucenia"
+            etykieta="Powód odrzucenia"
+            rodzaj="wieloliniowy"
+            wymagane
+            wartosc={powod}
+            onZmiana={setPowod}
+            blad={bledy.powod}
+            podpowiedz="Powód zostaje zapisany przy zgłoszeniu. Kandydat nie dostaje go w wiadomości."
+          />
+          <div className={style.rzad}>
+            <Button
+              poziom="outline"
+              onClick={() => {
+                setTryb("decyzja");
+                setBledy({});
+                setUwaga(null);
+              }}
+            >
+              Wróć do decyzji
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <Text>
+            Zatwierdzenie tworzy konto w roku programu i wysyła zaproszenie z linkiem aktywacyjnym. Dostęp do materiałów
+            trwa 6 miesięcy od decyzji.
+          </Text>
+          <Field
+            id="rola-konta"
+            etykieta="Rola konta"
+            rodzaj="wybor"
+            wymagane
+            opcje={OPCJE_ROL}
+            wartosc={rola}
+            onZmiana={setRola}
+            blad={bledy.rola}
+            podpowiedz="Domyślnie rola wskazana w zgłoszeniu."
+          />
+          <div className={style.rzad}>
+            <Button poziom="primary" onClick={() => void akceptuj()}>
+              {wysylanie ? "Zapisywanie…" : mimoLimitu ? "Zatwierdź mimo limitu miejsc" : "Zatwierdź i utwórz konto"}
+            </Button>
+          </div>
+        </>
+      )}
+      {/* Odrzucenie zawsze w tym samym miejscu: ostatni rząd panelu, pod kreską,
+          osobno od zatwierdzenia. Pierwsze kliknięcie otwiera pole powodu,
+          kolejne — z wpisanym powodem — wysyła decyzję. */}
+      <div className={style.rzadOdrzucenia} data-testid="rzad-odrzucenia">
         <Button
           poziom="outline"
+          niebezpieczny
           onClick={() => {
+            if (odrzucenie) {
+              void odrzuc();
+              return;
+            }
             setTryb("odrzucenie");
             setBledy({});
             setUwaga(null);
           }}
         >
-          Odrzuć zgłoszenie
+          {odrzucenie && wysylanie ? "Zapisywanie…" : "Odrzuć zgłoszenie"}
         </Button>
       </div>
     </section>

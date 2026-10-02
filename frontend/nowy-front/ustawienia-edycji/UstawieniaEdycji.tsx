@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/klient";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Text } from "@/design-system/atomy/Text/Text";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -222,6 +223,7 @@ export function UstawieniaEdycji() {
       }
       tresc={
         <>
+          <Text>Zmiana obowiązuje od zapisania.</Text>
           <FormSection
             tytul="Progi i limity"
             pola={pola}

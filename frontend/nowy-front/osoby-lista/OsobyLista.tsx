@@ -60,7 +60,16 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Uczestnicy" }];
  * Stany: ładowanie, dane, dwa różne stany puste (z filtrem i bez), brak
  * uprawnień, błąd sieci — każdy w tym samym szablonie.
  */
-export function OsobyLista() {
+interface WlasciwosciOsobyLista {
+  /**
+   * Adres ekranu zakładania konta. Podaje go strona, pod którą ten ekran
+   * naprawdę stoi; bez adresu lista nie pokazuje przycisku „Dodaj osobę”,
+   * żeby przycisk główny nigdy nie prowadził donikąd.
+   */
+  adresNowejOsoby?: string;
+}
+
+export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
   const router = useRouter();
   const [formularz, setFormularz] = useState<FiltrOsob>(PUSTY_FILTR);
   const [zapytanie, setZapytanie] = useState<Zapytanie>({ filtr: PUSTY_FILTR, strona: 1, proba: 0 });
@@ -126,6 +135,11 @@ export function OsobyLista() {
       opis={opis}
       onPowrot={() => router.back()}
       akcja={stan.rodzaj === "dane" ? { etykieta: "Zgłoszenia rekrutacyjne", href: SCIEZKA_ZGLOSZEN } : undefined}
+      przyciskGlowny={
+        adresNowejOsoby !== undefined && stan.rodzaj !== "brak-uprawnien"
+          ? { etykieta: "Dodaj osobę", onKliknij: () => router.push(adresNowejOsoby) }
+          : undefined
+      }
       akcjaDrugorzedna={
         mozeEksportowac
           ? {

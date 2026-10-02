@@ -15,7 +15,7 @@ import userEvent from "@testing-library/user-event";
  *  c) zmiana samej godziny → ciało PATCH ma WYŁĄCZNIE `supervision_reminder.send_at`.
  *  d) 422 z `errors` → tekst błędu pod właściwym wierszem/polem.
  *  e) 403 → `Notice` i brak aktywnego zapisu (formularz tylko do odczytu).
- *  f) typ nieznany mapie etykiet → widoczny kod, zero wyjątków.
+ *  f) typ nieznany mapie etykiet → nazwa ogólna zamiast kodu, zero wyjątków.
  */
 
 const fetchAdminEmailsPage = vi.fn();
@@ -174,13 +174,14 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     expect(screen.queryByRole("region", { name: "Niezapisane zmiany" })).toBeNull();
   });
 
-  it("f) typ nieznany mapie etykiet pokazuje surowy kod bez wyjątku", async () => {
+  it("f) typ nieznany mapie etykiet pokazuje nazwę ogólną zamiast kodu, bez wyjątku", async () => {
     fetchNotificationSettings.mockResolvedValue({
       types: [{ type: "future.unmapped_type", enabled: true }],
       supervision_reminder: { enabled: true, send_at: "08:00" },
     });
     render(<PowiadomieniaEmail />);
 
-    await waitFor(() => expect(screen.getByText("future.unmapped_type")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Inne powiadomienie")).toBeInTheDocument());
+    expect(document.body.textContent).not.toContain("future.unmapped_type");
   });
 });

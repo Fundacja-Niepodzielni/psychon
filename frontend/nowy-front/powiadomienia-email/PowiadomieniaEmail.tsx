@@ -66,7 +66,7 @@ const ETYKIETY_TYPOW: Record<string, string> = {
 };
 
 function etykietaTypu(kod: string): string {
-  return ETYKIETY_TYPOW[kod] ?? kod;
+  return ETYKIETY_TYPOW[kod] ?? "Inne powiadomienie";
 }
 
 /** 24 opcje `00:00`…`23:00` — wartość zawsze pełna godzina, bez minut. */
@@ -334,7 +334,7 @@ export function PowiadomieniaEmail() {
     return (
       <main id="tresc" className={style.uklad}>
         <Heading stopien={1}>Powiadomienia e-mail</Heading>
-        <Text>Backend H16 nieosiągalny albo zwrócił błąd — spróbuj ponownie później.</Text>
+        <Text>Nie udało się wczytać wiadomości. Spróbuj ponownie później.</Text>
       </main>
     );
   }
@@ -346,7 +346,7 @@ export function PowiadomieniaEmail() {
       <PageHeader
         okruszki={[{ etykieta: "Administracja" }, { etykieta: "Powiadomienia e-mail" }]}
         tytul="Powiadomienia e-mail"
-        opis="Skrzynka symulowanych e-maili (H16) — nic stąd nie wychodzi w świat, status wiadomości jest zawsze «symulowany»."
+        opis="Tryb próbny — e-maile nie wychodzą poza system."
         onPowrot={() => router.back()}
       />
 
@@ -433,7 +433,7 @@ export function PowiadomieniaEmail() {
         {nadawca
           ? `Skonfigurowany nadawca: ${nadawca.name ? `${nadawca.name} <${nadawca.address}>` : nadawca.address}.`
           : "Brak skonfigurowanego nadawcy w tym środowisku."}{" "}
-        Kontrakt H16 nie ma dziś trasy do edycji ani ponownej wysyłki wiadomości — ekran pokazuje wyłącznie odczyt.
+        Wiadomości są tu wyłącznie do odczytu — nie można ich edytować ani wysłać ponownie.
       </Notice>
 
       {blad && (

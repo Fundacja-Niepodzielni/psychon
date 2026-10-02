@@ -61,14 +61,16 @@
   gap: var(--space-8);
 }
 
-/* Odstęp przed „Wróć do listy”: od 640 px spycha ją do prawej krawędzi panelu. */
+/* Odstęp przed „Odrzuć dyżur”: na wąskim ekranie przenosi go do osobnego
+   wiersza, od 640 px spycha do prawej krawędzi panelu. */
 .rozdzielacz {
-  display: none;
+  display: block;
+  flex: 1 0 100%;
+  height: 0;
 }
 
 @media (min-width: 640px) {
   .rozdzielacz {
-    display: block;
     flex: 1 1 auto;
   }
 }

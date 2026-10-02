@@ -39,7 +39,7 @@ describe("ListaKursow — wiersz na ListRow", () => {
   it.each([
     ["completed", "ukończony", "Podstawy pomocy", "Kurs 1 · 100% ukończone"],
     ["in_progress", "w toku", "Wywiad psychologiczny", "Kurs 2 · 40% ukończone"],
-    ["locked", "zamknięty", "Interwencja kryzysowa", "Kurs 3 · 0% ukończone"],
+    ["locked", "zamknięty", "Interwencja kryzysowa", "Otworzy się po ukończeniu kursu „Wywiad psychologiczny”."],
   ])("%s: plakietka „%s” przed tytułem w jednym nagłówku, podlinia", (stan, plakietka, tytul, podlinia) => {
     const { container } = renderuj();
     const w = wiersz(container, stan);
