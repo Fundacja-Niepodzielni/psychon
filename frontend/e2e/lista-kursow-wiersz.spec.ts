@@ -7,7 +7,10 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * Lista kursów uczestnika (wolontariusz) i studenta na regule `ListRow`:
  * - 390 px: tytuł w pierwszej linii, plakietka pod nim; akcja („Otwórz ›” albo
  *   „Zamknięty” z kłódką) z prawej, w tym samym pasie co tekst, nie pod nim;
- *   wiersz zamknięty tej samej wysokości co wiersz w toku (±4 px);
+ *   zdanie w wierszu zamkniętego kursu zawija się do kolejnych linii, więc wiersze
+ *   nie muszą mieć tej samej wysokości: nic nie jest ucięte, zdanie nie wychodzi poza
+ *   wiersz i kartę, a strona nie przewija się w bok;
+ * - 768 px i szerzej: wiersz zamknięty tej samej wysokości co wiersz w toku (±4 px);
  * - 1280 px: plakietka przed tytułem w jednej linii, akcja z prawej.
  */
 
@@ -69,6 +72,41 @@ async function zmierzWiersz(page: Page, stan: string, tytul: string, plakietka: 
   );
 }
 
+/**
+ * Zdanie w wierszu zamkniętego kursu: mieści się w wierszu i w karcie listy, nie jest
+ * ucięte (ani własnym, ani żadnego przodka z ukrytym przepełnieniem), strona nie ma
+ * przewijania w bok.
+ */
+async function zmierzZdanieZamknietego(page: Page) {
+  return page.locator('[data-kurs-stan="locked"]').evaluate((el) => {
+    const wiersz = el.querySelector("[data-wariant]") as HTMLElement;
+    const zdanie = Array.from(wiersz.querySelectorAll<HTMLElement>("p, span")).find((e) =>
+      (e.textContent ?? "").trim().startsWith("Otworzy się po ukończeniu"),
+    );
+    if (!zdanie) return null;
+    const karta = el.closest("section") as HTMLElement;
+    const z = zdanie.getBoundingClientRect();
+    const w = wiersz.getBoundingClientRect();
+    const k = karta.getBoundingClientRect();
+    const przodkowie: HTMLElement[] = [];
+    for (let e: HTMLElement | null = zdanie; e && e !== el.parentElement; e = e.parentElement) przodkowie.push(e);
+    const uciete = przodkowie
+      .filter((e) => getComputedStyle(e).overflow !== "visible" || getComputedStyle(e).textOverflow === "ellipsis")
+      .filter((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1)
+      .map((e) => e.tagName);
+    const zdanieSwobodne = zdanie.scrollWidth > zdanie.clientWidth + 1 || zdanie.scrollHeight > zdanie.clientHeight + 1;
+    return {
+      tekst: (zdanie.textContent ?? "").trim(),
+      zdanie: { left: z.left, right: z.right, top: z.top, bottom: z.bottom },
+      wiersz: { left: w.left, right: w.right, top: w.top, bottom: w.bottom },
+      karta: { left: k.left, right: k.right },
+      uciete,
+      zdanieSwobodne,
+      przewijanieWBok: document.documentElement.scrollWidth > window.innerWidth,
+    };
+  });
+}
+
 function katalogZrzutow(): string | null {
   const katalog = process.env.PW_ZRZUTY_LISTY_KURSOW;
   if (!katalog) return null;
@@ -81,7 +119,7 @@ for (const rola of ["volunteer", "student"] as const) {
     ["390", { width: 390, height: 844 }],
     ["1280", { width: 1280, height: 800 }],
   ] as const) {
-    test(`lista kursów (${rola}) @${nazwa}: wiersz na regule ListRow, akcja z prawej, wysokości ±4 px`, async ({ page }) => {
+    test(`lista kursów (${rola}) @${nazwa}: wiersz na regule ListRow, akcja z prawej, zdanie zamkniętego kursu w całości`, async ({ page }) => {
       await page.setViewportSize(wymiary);
       await atrapy(page, rola);
       await page.goto("/panel/pulpit");
@@ -118,8 +156,23 @@ for (const rola of ["volunteer", "student"] as const) {
           expect(m.tytul!.top, `jedna linia ${opis}`).toBeLessThan(m.plakietka!.bottom);
         }
       }
-      const roznica = Math.abs(pomiary.locked.wiersz!.height - pomiary.in_progress.wiersz!.height);
-      expect(roznica, `wysokość zamkniętego ${pomiary.locked.wiersz!.height} vs w toku ${pomiary.in_progress.wiersz!.height}`).toBeLessThanOrEqual(4);
+      const zdanie = await zmierzZdanieZamknietego(page);
+      expect(zdanie, "zdanie w wierszu zamkniętego kursu jest widoczne").not.toBeNull();
+      const z = zdanie!;
+      console.log(`POMIAR-ZDANIA ${rola} @${nazwa} ${JSON.stringify(z)}`);
+      expect(z.tekst, "pełne zdanie z tytułem poprzedniego kursu").toBe("Otworzy się po ukończeniu kursu „Wywiad psychologiczny”.");
+      expect(z.zdanie.left, "zdanie nie wychodzi w lewo poza wiersz").toBeGreaterThanOrEqual(z.wiersz.left - 1);
+      expect(z.zdanie.right, "zdanie nie wychodzi w prawo poza wiersz").toBeLessThanOrEqual(z.wiersz.right + 1);
+      expect(z.zdanie.bottom, "zdanie nie wychodzi poza dół wiersza").toBeLessThanOrEqual(z.wiersz.bottom + 1);
+      expect(z.wiersz.right, "wiersz nie wychodzi poza kartę").toBeLessThanOrEqual(z.karta.right + 1);
+      expect(z.zdanieSwobodne, "zdanie nie jest ucięte własnym przepełnieniem").toBe(false);
+      expect(z.uciete, "żaden przodek zdania nie ucina go ukrytym przepełnieniem").toEqual([]);
+      expect(z.przewijanieWBok, "strona nie przewija się w bok").toBe(false);
+      if (wymiary.width >= 768) {
+        // Reguła równej wysokości wierszy obowiązuje od 768 px wzwyż; poniżej zdanie może zająć dwie linie.
+        const roznica = Math.abs(pomiary.locked.wiersz!.height - pomiary.in_progress.wiersz!.height);
+        expect(roznica, `wysokość zamkniętego ${pomiary.locked.wiersz!.height} vs w toku ${pomiary.in_progress.wiersz!.height}`).toBeLessThanOrEqual(4);
+      }
     });
   }
 }
