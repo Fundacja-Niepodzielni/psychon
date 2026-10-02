@@ -54,9 +54,12 @@ describe("Dialog", () => {
         Pytanie.
       </Dialog>,
     );
-    await userEvent.click(screen.getByRole("dialog"));
+    // Natywne okno: klik w przesłonę trafia w sam element `<dialog>`, klik
+    // w treść — w jego potomka (ramka wypełnia okno w całości).
+    await userEvent.click(screen.getByText("Pytanie."));
+    await userEvent.click(screen.getByRole("heading", { name: "Potwierdź" }));
     expect(onWycofaj).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("dialog").parentElement as HTMLElement);
+    await userEvent.click(screen.getByRole("dialog"));
     expect(onWycofaj).toHaveBeenCalledTimes(1);
   });
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import { Button } from "../../atomy/Button/Button";
 import style from "./DialogActions.module.css";
 
@@ -6,9 +6,25 @@ interface WlasciwosciDialogActions {
   etykietaWycofania: string;
   etykietaPotwierdzenia: string;
   onWycofaj: () => void;
-  onPotwierdz: () => void;
+  /** Przy `typPotwierdzenia="submit"` może zostać pominięte — zapis idzie zdarzeniem formularza. */
+  onPotwierdz?: () => void;
   /** Potwierdzenie destrukcyjne (np. usunięcie) — nadal `primary`, nigdy taki sam jak wycofanie. */
   niebezpieczne?: boolean;
+  /**
+   * `submit` — potwierdzenie wysyła formularz, w którym stoi rząd (Enter w polu
+   * działa jak na stronie), a wycofanie dostaje `type="button"`, żeby go nie
+   * wysyłało. Bez tej właściwości oba przyciski renderują się jak dotąd.
+   */
+  typPotwierdzenia?: "button" | "submit";
+  /**
+   * Trwa zapis: potwierdzenie mówi `etykietaZapisywania` i jest niedostępne
+   * (`aria-disabled`, nie `disabled` — przycisk z fokusem go nie gubi),
+   * a kliknięcie w nie niczego nie wysyła.
+   */
+  zapisywanie?: boolean;
+  etykietaZapisywania?: string;
+  /** Fokus na wycofaniu po zamontowaniu. Domyślnie tak; okno formularza ustawia fokus samo. */
+  fokusPrzyOtwarciu?: boolean;
 }
 
 /**
@@ -23,6 +39,10 @@ export function DialogActions({
   onWycofaj,
   onPotwierdz,
   niebezpieczne = false,
+  typPotwierdzenia,
+  zapisywanie = false,
+  etykietaZapisywania = "Zapisywanie…",
+  fokusPrzyOtwarciu = true,
 }: WlasciwosciDialogActions) {
   const rzad = useRef<HTMLDivElement>(null);
 
@@ -30,16 +50,34 @@ export function DialogActions({
   // sposobem co FocusDemo w katalog-komponentow/b (querySelector po
   // zamontowaniu), nie forwardRef na atomie.
   useEffect(() => {
+    if (!fokusPrzyOtwarciu) return;
     rzad.current?.querySelector<HTMLButtonElement>("button:not([disabled])")?.focus();
+    // Wyłącznie przy zamontowaniu — zmiana propu później nie przenosi fokusu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function naPotwierdzenie(zdarzenie: MouseEvent<HTMLButtonElement>) {
+    if (zapisywanie) {
+      // Drugie wysłanie w trakcie zapisu nie wychodzi — także przez submit formularza.
+      zdarzenie.preventDefault();
+      return;
+    }
+    onPotwierdz?.();
+  }
 
   return (
     <div ref={rzad} className={style.rzad}>
-      <Button poziom="quiet" onClick={onWycofaj}>
+      <Button poziom="quiet" type={typPotwierdzenia === "submit" ? "button" : undefined} onClick={onWycofaj}>
         {etykietaWycofania}
       </Button>
-      <Button poziom="primary" niebezpieczny={niebezpieczne} onClick={onPotwierdz}>
-        {etykietaPotwierdzenia}
+      <Button
+        poziom="primary"
+        type={typPotwierdzenia}
+        niebezpieczny={niebezpieczne}
+        aria-disabled={zapisywanie ? true : undefined}
+        onClick={naPotwierdzenie}
+      >
+        {zapisywanie ? etykietaZapisywania : etykietaPotwierdzenia}
       </Button>
     </div>
   );
