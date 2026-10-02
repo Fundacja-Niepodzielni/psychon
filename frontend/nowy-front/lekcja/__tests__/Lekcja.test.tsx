@@ -127,7 +127,8 @@ describe("Lekcja — dostęp i istnienie", () => {
 
     render(<Lekcja id="21" />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Nie masz dostępu do tego ekranu" })).toHaveFocus();
+    const naglowekOdmowy = await screen.findByRole("heading", { level: 1, name: "Nie masz dostępu do tego ekranu" });
+    await waitFor(() => expect(naglowekOdmowy).toHaveFocus());
     expect(screen.getByText("Ukończ najpierw etap 2.")).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Wróć do pulpitu" }));
@@ -142,7 +143,8 @@ describe("Lekcja — dostęp i istnienie", () => {
 
     render(<Lekcja id="999" />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Nie znaleziono lekcji" })).toHaveFocus();
+    const naglowekBraku = await screen.findByRole("heading", { level: 1, name: "Nie znaleziono lekcji" });
+    await waitFor(() => expect(naglowekBraku).toHaveFocus());
     expect(screen.getAllByRole("button")).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Wróć do kursów" }));
     expect(push).toHaveBeenCalledWith("/panel/kursy");
@@ -170,7 +172,7 @@ describe("Lekcja — dostęp i istnienie", () => {
     render(<Lekcja id="21" />);
 
     const naglowek = await screen.findByRole("heading", { level: 1, name: "Twój dostęp wygasł." });
-    expect(naglowek).toHaveFocus();
+    await waitFor(() => expect(naglowek).toHaveFocus());
     expect(screen.getByText("Skontaktuj się z zespołem programu, żeby przedłużyć dostęp.")).toBeInTheDocument();
     expect(screen.queryByText("Twój dostęp do platformy wygasł.")).toBeNull();
     expect(screen.queryAllByRole("link", { name: "Wróć do kursów" })).toHaveLength(0);
