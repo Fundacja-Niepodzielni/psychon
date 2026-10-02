@@ -7,20 +7,31 @@ use App\Services\H12\SupervisionAttendanceService;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * `PATCH /instructor/slots/{id}/attendance`. Rola rozstrzyga pierwsza (403),
- * potem zasięg terminu — nieznany, odwołany i cudzy dają jedno 404 — i
+ * `PATCH /instructor/slots/{id}/attendance`. Rola rozstrzyga pierwsza (403,
+ * `authorize()` — czysta funkcja ról tokenu), potem zasięg terminu —
+ * nieznany, odwołany i cudzy dają jedno 404 (`passesAuthorization()`) — i
  * dopiero wtedy walidacja ciała, więc odpowiedź dla terminu spoza zasięgu
  * nie zależy od treści żądania.
  */
 class UpdateAttendanceRequest extends FormRequest
 {
-    public function authorize(TokenRoles $roles, SupervisionAttendanceService $attendance): bool
+    public function authorize(TokenRoles $roles): bool
     {
-        if (! $roles->has('instructor')) {
+        return $roles->has('instructor');
+    }
+
+    /**
+     * Po roli, przed walidacją ciała (`validateResolved()`: autoryzacja →
+     * walidator): termin spoza zasięgu prowadzącego kończy żądanie 404.
+     */
+    protected function passesAuthorization()
+    {
+        if (! parent::passesAuthorization()) {
             return false;
         }
 
-        $attendance->scopedSlot($this->user(), (int) $this->route('id'));
+        $this->container->make(SupervisionAttendanceService::class)
+            ->scopedSlot($this->user(), (int) $this->route('id'));
 
         return true;
     }
