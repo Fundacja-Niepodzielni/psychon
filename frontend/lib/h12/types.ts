@@ -33,6 +33,9 @@ export interface InstructorSlot {
   location_or_link: string | null;
   active_signups_count: number;
   available_seats: number;
+  /** Stan terminu z serwera; termin odwołany ma też `cancelled_at`. */
+  status: "scheduled" | "cancelled";
+  cancelled_at: string | null;
   /** Liczone po stronie serwera, dokładnie tym samym warunkiem co zapis obecności. */
   can_mark_attendance: boolean;
   signups: InstructorSignup[];

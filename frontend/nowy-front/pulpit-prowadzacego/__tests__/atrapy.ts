@@ -31,6 +31,8 @@ export function termin(id: number, startsAt: string): InstructorSlot {
     location_or_link: "https://example.org/spotkanie",
     active_signups_count: 3,
     available_seats: 5,
+    status: "scheduled",
+    cancelled_at: null,
     can_mark_attendance: false,
     signups: [],
   };
