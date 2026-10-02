@@ -58,3 +58,14 @@ describe("Karta osoby — zdanie pod liczbami", () => {
     expect(screen.queryByText(/ProgressAggregator/)).toBeNull();
   });
 });
+
+describe("Karta osoby — zdanie o prowadzącym superwizje", () => {
+  it("mówi zwykłym językiem, że poprzednie przypisanie kończy się samo", async () => {
+    await otworzKarte();
+
+    expect(
+      screen.getByText("Wskazana osoba przejmuje superwizję tej osoby — poprzednie przypisanie kończy się samo."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/serwer zamyka/)).toBeNull();
+  });
+});
