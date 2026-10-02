@@ -14,6 +14,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Pakiet H20 · GET /admin/audit (+ /export.csv) — dziennik działań,
  * wyłącznie do odczytu. Kontrakt §2: trasy modyfikacji audytu nie istnieją
  * (żadna nie jest tu rejestrowana — próba PATCH/DELETE zwraca 404).
+ *
+ * „Kogo dotyczy” jest liczone paczką dla całej strony (lista) albo całego
+ * wyniku (eksport) w `AdminAuditQuery::subjects`, nie wiersz po wierszu.
  */
 class AuditController extends Controller
 {
@@ -22,9 +25,13 @@ class AuditController extends Controller
         $paginator = AdminAuditQuery::fromRequest($request)
             ->paginate(AdminAuditQuery::perPage($request));
 
+        $subjects = AdminAuditQuery::subjects($paginator->items());
+
         return response()->json([
             'data' => collect($paginator->items())
-                ->map(fn ($entry) => AuditLogEntryResource::make($entry)->resolve($request))
+                ->map(fn ($entry) => AuditLogEntryResource::make($entry)
+                    ->withSubject($subjects[$entry->id])
+                    ->resolve($request))
                 ->values()
                 ->all(),
             'meta' => [
@@ -37,16 +44,20 @@ class AuditController extends Controller
     }
 
     /**
-     * Eksport dziennika — te same filtry co lista, wspólny helper `Csv`.
+     * Eksport dziennika — te same filtry co lista, wspólny helper `Csv`;
+     * kolumny i nagłówek jak na ekranie (`AuditLogEntryResource::FIELDS`).
      */
     public function export(AuditIndexRequest $request): StreamedResponse
     {
         $entries = AdminAuditQuery::fromRequest($request)->get();
+        $subjects = AdminAuditQuery::subjects($entries);
 
         $rows = [AuditLogEntryResource::FIELDS];
 
         foreach ($entries as $entry) {
-            $rows[] = AuditLogEntryResource::make($entry)->toCsvRow($request);
+            $rows[] = AuditLogEntryResource::make($entry)
+                ->withSubject($subjects[$entry->id])
+                ->toCsvRow($request);
         }
 
         return Csv::download('dziennik.csv', $rows);

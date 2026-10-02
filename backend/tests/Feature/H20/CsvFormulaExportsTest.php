@@ -99,8 +99,9 @@ class CsvFormulaExportsTest extends TestCase
             ->assertOk()
             ->streamedContent();
 
+        // Osoba zmienia własne dane: jest i wykonawcą („Kto”), i osobą, której wpis dotyczy.
         $this->assertStringContainsString(
-            ';user.updated;'.$person->id.';"\'=HYPERLINK(""x"") @SUM(1)";',
+            ';"Zmieniono dane konta";"\'=HYPERLINK(""x"") @SUM(1)";"\'=HYPERLINK(""x"") @SUM(1)"'."\n",
             $body,
             'Sprawca zdarzenia z formułą w nazwie wyszedł z dziennika bez apostrofu.',
         );

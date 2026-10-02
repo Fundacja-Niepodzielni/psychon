@@ -158,7 +158,9 @@ class AuditTest extends TestCase
 
         $body = $response->streamedContent();
         $this->assertStringStartsWith("\xEF\xBB\xBF", $body);
-        $this->assertStringContainsString('id;action;actor_id', $body);
-        $this->assertStringContainsString('user.created', $body);
+        // Nagłówek to kolumny ekranu „Dziennik działań”, nie nazwy techniczne.
+        $this->assertStringStartsWith("\xEF\xBB\xBFKiedy;Rodzaj;Co;\"Kogo dotyczy\";Kto\n", $body);
+        $this->assertStringContainsString('"Utworzono konto"', $body);
+        $this->assertStringNotContainsString('user.created', $body);
     }
 }
