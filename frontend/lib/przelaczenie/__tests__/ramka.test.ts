@@ -56,7 +56,7 @@ describe("czyTrasaWNowejRamce — wszystkie grupy wyłączone", () => {
 });
 
 describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
-  it("nową ramkę dostaje dokładnie dziewięć stron A.2 administracji", () => {
+  it("nową ramkę dostaje dokładnie dziesięć stron A.2 administracji", () => {
     const wNowej = STRONY_ADMIN.filter((s) => czyTrasaWNowejRamce(s, "administracja")).sort();
     const oczekiwane = [
       GRUPY.pulpitAdministracji.wlaczona && "/admin",
@@ -66,10 +66,23 @@ describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
       GRUPY.sprawy.wlaczona && "/admin/sprawy",
       GRUPY.kolejkaStazu.wlaczona && "/admin/staz",
       GRUPY.listaOsob.wlaczona && "/admin/uczestniczki",
+      GRUPY.kartaOsoby.wlaczona && "/admin/uczestniczki/12",
       GRUPY.kursyAdministracji.wlaczona && "/admin/kursy",
       GRUPY.kursAdministracji.wlaczona && "/admin/kursy/12",
     ].filter((s): s is string => typeof s === "string");
     expect(wNowej).toEqual(oczekiwane.sort());
+  });
+
+  it("adres pasujący do dwóch wzorców należy do dokładniejszego: /admin/uczestniczki/nowa nie wpada w ramkę karty osoby", () => {
+    const grupy = zFlagami({ kartaOsoby: true });
+    expect(czyTrasaWNowejRamce("/admin/uczestniczki/12", "administracja", grupy)).toBe(true);
+    expect(czyTrasaWNowejRamce("/admin/uczestniczki/nowa", "administracja", grupy)).toBe(false);
+  });
+
+  it("włączone konto zakładane ręcznie bierze własny adres, a karta osoby pozostałe", () => {
+    const grupy = zFlagami({ noweKonto: true });
+    expect(czyTrasaWNowejRamce("/admin/uczestniczki/nowa", "administracja", grupy)).toBe(true);
+    expect(czyTrasaWNowejRamce("/admin/uczestniczki/12", "administracja", grupy)).toBe(false);
   });
 
   it("nowe trasy z innym adresem niż stara (grupa tras przełączenia) nie są tu rozpoznawane", () => {
