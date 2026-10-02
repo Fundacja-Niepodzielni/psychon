@@ -1,19 +1,25 @@
 import { defineConfig, devices } from "@playwright/test";
+import { rozwiazCelPrzegladarki } from "./e2e/_cel";
 
 /**
  * Szkielet testów przeglądarkowych: axe-core wymaga
  * prawdziwej przeglądarki, żeby zmierzyć kontrast — w jsdom (vitest) nie da
- * się tego zmierzyć w ogóle. Domyślny cel to dev, ale `PW_BASE_URL` pozwala
- * odpalić to samo przeciwko innemu środowisku bez zmiany kodu.
+ * się tego zmierzyć w ogóle.
  *
+ * Cel testów rozstrzyga `rozwiazCelPrzegladarki` (`e2e/_cel.ts`): wyłącznie
+ * aplikacja na tej maszynie, bez domyślnego środowiska zdalnego.
  * `PW_WEB_SERVER=1` uruchamia zbudowaną aplikację lokalnie (`npm run start`)
- * na porcie `PW_PORT` i kieruje testy na nią — używane w CI, gdzie nie ma
- * żadnego stanowiska z aplikacją już postawioną. Bez tej zmiennej zachowanie
- * jest jak wcześniej: `PW_BASE_URL` albo domyślne stanowisko dev.
+ * na porcie `PW_PORT` i kieruje testy na `http://127.0.0.1:<PW_PORT>` — tak
+ * w CI i przy każdym biegu ręcznym. `PW_BASE_URL` przyjmuje tylko adres
+ * lokalny (używa go `e2e/logowanie/uruchom.sh`). Bez żadnej z tych zmiennych
+ * konfiguracja kończy się błędem przed pierwszym testem. Proces główny
+ * wypisuje rozwiązany adres na początku biegu, więc log każdego biegu
+ * pokazuje, dokąd szły testy.
  */
-const PORT = process.env.PW_PORT ?? "3100";
-const LOKALNY_ADRES = `http://127.0.0.1:${PORT}`;
-const UZYJ_LOKALNEGO_SERWERA = process.env.PW_WEB_SERVER === "1";
+const CEL = rozwiazCelPrzegladarki(process.env);
+if (process.env.TEST_WORKER_INDEX === undefined) {
+  console.log(`[cel testów przeglądarkowych] baseURL=${CEL.baseURL}`);
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -29,15 +35,13 @@ export default defineConfig({
   timeout: 60_000,
   retries: 0,
   use: {
-    baseURL: UZYJ_LOKALNEGO_SERWERA
-      ? LOKALNY_ADRES
-      : (process.env.PW_BASE_URL ?? "https://psychon-dev.niepodzielni.com"),
+    baseURL: CEL.baseURL,
     trace: "off",
   },
-  webServer: UZYJ_LOKALNEGO_SERWERA
+  webServer: CEL.lokalnySerwer
     ? {
-        command: `npm run start -- -p ${PORT}`,
-        url: LOKALNY_ADRES,
+        command: `npm run start -- -p ${CEL.port}`,
+        url: CEL.baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       }

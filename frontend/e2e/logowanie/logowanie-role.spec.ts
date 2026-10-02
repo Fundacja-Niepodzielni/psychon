@@ -19,10 +19,11 @@ import { zaloguj, type RolaPsychon } from "../_logowanie";
  *                                      testu-swiadka (wywolanie backendu
  *                                      wprost tokenem, z pominieciem
  *                                      klienta `lib/api.ts`),
- * `baseURL` (front) idzie przez `PW_BASE_URL` (patrz `playwright.config.ts`)
- * - `uruchom.sh` ustawia go na wlasny, efemeryczny adres frontu, NIGDY na
- * `https://psychon-dev.niepodzielni.com` (domyslna wartosc konfiguracji
- * bez tej zmiennej) - logowanie do prawdziwego panelu jest zakazem stalym.
+ * `baseURL` (front) idzie przez `PW_BASE_URL` (patrz `playwright.config.ts`
+ * i `e2e/_cel.ts`) - `uruchom.sh` ustawia go na wlasny, efemeryczny adres
+ * frontu na `localhost`. Konfiguracja nie ma celu domyslnego i odrzuca kazdy
+ * adres spoza `127.0.0.1`/`localhost` - logowanie do prawdziwego panelu jest
+ * zakazem stalym.
  *
  * IdP efemeryczny niesie WLASNY certyfikat TLS (Caddy/Keycloak self-signed,
  * `uruchom-idp.sh`) - kazdy kontekst przegladarki w tym pliku ma

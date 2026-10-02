@@ -532,9 +532,10 @@ fi
 # 10) Proba wlasciwa: `logowanie-role.spec.ts` (piec nog + swiadek K2).
 #     Reporter `list` (domyslny z playwright.config.ts), wynik do
 #     `.stan/<bieg>/pomiar.log` (poza gitem). `PW_BASE_URL` wskazuje WYLACZNIE
-#     na wlasny, efemeryczny front tego biegu - NIGDY na
-#     `https://psychon-dev.niepodzielni.com` (domyslna wartosc konfiguracji
-#     bez tej zmiennej) - logowanie do prawdziwego panelu jest zakazem stalym.
+#     na wlasny, efemeryczny front tego biegu (`http://localhost:<port>`).
+#     Konfiguracja nie ma celu domyslnego i odrzuca kazdy adres spoza
+#     `127.0.0.1`/`localhost` (`e2e/_cel.ts`) - logowanie do prawdziwego
+#     panelu jest zakazem stalym.
 # ---------------------------------------------------------------------------
 # Odczyt bez node/require: sciezka absolutna w stylu MSYS (/d/...) przekazana
 # jako CZESC literalu `-e` NIE jest tlumaczona przez konwerter argumentow MSYS
