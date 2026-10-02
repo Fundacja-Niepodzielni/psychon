@@ -295,14 +295,14 @@ function KursZDanymi({ kurs, podglad, rola }: { kurs: DaneKursu; podglad: boolea
             <Heading stopien={1}>{kurs.title}</Heading>
             <div className={style.podtytulWiersz}>
               <p className={style.podtytul}>{opisKursu(widok.lekcje, widok.bezTestu)}</p>
-              {(widok.kursUkonczony || widok.wszystkieUkonczone) && (
+              {widok.znacznikUkonczenia !== null && (
                 <span className={style.znacznik}>
                   {ZNACZNIK_UKONCZONA}
-                  {widok.kursUkonczony ? "Kurs ukończony" : "Lekcje ukończone"}
+                  {widok.znacznikUkonczenia}
                 </span>
               )}
             </div>
-            {widok.bezTestu && widok.kursUkonczony && (
+            {widok.powrotDoKursow && (
               <a className={`${style.przycisk} ${style.powrotDoKursow}`} href={ADRES_LISTY_KURSOW} data-powrot-do-kursow="">
                 Wróć do kursów
               </a>

@@ -48,8 +48,12 @@ export interface WidokKursu {
   tematy: TematEkranu[];
   akcja: AkcjaGlowna;
   test: { czynny: boolean; zdanie: string };
-  /** Kurs ukończony w całości (lekcje i test), według `status` odczytu; kurs bez testu — także po ukończeniu wszystkich lekcji. */
+  /** Kurs ukończony w całości, według `status` odczytu — ekran nie ogłasza ukończenia, którego zaplecze nie uznało. */
   kursUkonczony: boolean;
+  /** Napis znacznika ukończenia przy tytule; `null`, gdy nie ma czego ogłaszać. */
+  znacznikUkonczenia: "Kurs ukończony" | "Wszystkie lekcje ukończone" | "Lekcje ukończone" | null;
+  /** Kurs bez testu z ukończonymi wszystkimi lekcjami: zamiast przycisku głównego odnośnik „Wróć do kursów”. */
+  powrotDoKursow: boolean;
   /** Kurs bez testu: odczyt niesie jawne `has_test: false`. Brak pola (starsze zaplecze) to nie jest „bez testu”. */
   bezTestu: boolean;
   /** Test zaliczony: pole `test_passed` odczytu albo kurs ukończony w całości. */
@@ -145,8 +149,16 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
   const ukonczone = lekcje.filter((lekcja) => lekcja.is_completed).length;
   const wszystkieUkonczone = razem > 0 && ukonczone === razem;
   const bezTestu = kurs.has_test === false;
-  // Kurs bez testu kończy się z ostatnią lekcją: nie ma czego zaliczać.
-  const kursUkonczony = kurs.status === "completed" || (bezTestu && wszystkieUkonczone);
+  const kursUkonczony = kurs.status === "completed";
+  // Kurs bez testu z ukończonymi lekcjami nie ma już dokąd prowadzić przyciskiem głównym.
+  const powrotDoKursow = bezTestu && wszystkieUkonczone;
+  const znacznikUkonczenia = kursUkonczony
+    ? "Kurs ukończony"
+    : wszystkieUkonczone
+      ? bezTestu
+        ? "Wszystkie lekcje ukończone"
+        : "Lekcje ukończone"
+      : null;
   // Test zaliczony rozstrzyga zaplecze (`test_passed`); ukończony kurs wnioskujemy tylko przy odpowiedzi bez tego pola.
   const testZaliczony = typeof kurs.test_passed === "boolean" ? kurs.test_passed : kursUkonczony;
 
@@ -169,7 +181,7 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
         : "Test jest jeszcze zamknięty.";
 
   let akcja: AkcjaGlowna = { rodzaj: "brak" };
-  if (kursUkonczony || (wszystkieUkonczone && testZaliczony)) {
+  if (kursUkonczony || powrotDoKursow || (wszystkieUkonczone && testZaliczony)) {
     akcja = { rodzaj: "brak" };
   } else if (wszystkieUkonczone) {
     akcja = testCzynny
@@ -223,6 +235,8 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
     akcja,
     test: { czynny: testCzynny, zdanie: zdanieTestu },
     kursUkonczony,
+    znacznikUkonczenia,
+    powrotDoKursow,
     bezTestu,
     testZaliczony,
     indeksNastepnej: nastepna === null ? -1 : lekcje.indexOf(nastepna),
