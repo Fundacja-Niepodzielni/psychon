@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -10,6 +9,7 @@ import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { blockAdminUser } from "@/lib/api/h18";
 import { zdanieBleduCzynnosci } from "./dane";
+import { POWOD_TRWA_ZAPIS, PrzyciskCzynnosci } from "./PrzyciskCzynnosci";
 import style from "./KartaOsoby.module.css";
 
 interface WlasciwosciBlokadyKonta {
@@ -54,6 +54,8 @@ export function BlokadaKonta({ userId, imieNazwisko, rolaOsoby, onOdswiez }: Wla
     }
   }
 
+  const powodBraku = wysylanie ? POWOD_TRWA_ZAPIS : !powodPoprawny ? "Wpisz powód blokady, żeby zablokować konto." : null;
+
   return (
     <KartaBoczna tytul="Blokada konta" kotwica="czynnosc-blokada" niebezpieczna>
       <div className={style.czynnosc}>
@@ -71,11 +73,9 @@ export function BlokadaKonta({ userId, imieNazwisko, rolaOsoby, onOdswiez }: Wla
           onZmiana={setPowod}
           podpowiedz="Powód trafia do Dziennika działań. Zablokowana osoba przy logowaniu zobaczy komunikat o blokadzie, nie o wygaśnięciu dostępu."
         />
-        <div className={style.przyciskCzynnosci}>
-          <Button poziom="outline" niebezpieczny disabled={!powodPoprawny || wysylanie} onClick={() => setPytanie(true)}>
-            Zablokuj konto
-          </Button>
-        </div>
+        <PrzyciskCzynnosci idPowodu="czynnosc-blokada-powod-braku" powodBraku={powodBraku} niebezpieczny onKliknij={() => setPytanie(true)}>
+          Zablokuj konto
+        </PrzyciskCzynnosci>
         {pytanie && (
           <Dialog
             tytul="Zablokować konto?"

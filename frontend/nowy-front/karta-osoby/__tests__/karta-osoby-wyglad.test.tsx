@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { kartaPrzykladowa } from "./karta-fixtura";
 
 /**
@@ -15,6 +16,7 @@ const pobierzKarteOsoby = vi.fn();
 const pobierzRzetelnoscOsoby = vi.fn();
 const pobierzRoleZalogowanej = vi.fn();
 const fetchAdminUsers = vi.fn();
+const blockAdminUser = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: vi.fn(), refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
@@ -35,6 +37,7 @@ vi.mock("@/lib/api/h18", async () => {
   return {
     ...rzeczywiste,
     fetchAdminUsers: (...args: unknown[]) => fetchAdminUsers(...args),
+    blockAdminUser: (...args: unknown[]) => blockAdminUser(...args),
   };
 });
 
@@ -45,6 +48,7 @@ beforeEach(() => {
   pobierzRzetelnoscOsoby.mockReset().mockResolvedValue({ reliability_percent: "73", below_threshold: false });
   pobierzRoleZalogowanej.mockReset().mockResolvedValue("project_manager");
   fetchAdminUsers.mockReset().mockResolvedValue({ data: [] });
+  blockAdminUser.mockReset();
 });
 
 async function otworzKarte() {
@@ -268,5 +272,122 @@ describe("Karta osoby — czynności administracji w osobnych kartach", () => {
 
     expect(arkusz).toMatch(/\.czynnosci\s*\{[^}]*gap:\s*var\(--space-20\)/);
     expect(arkusz).toMatch(/\.czynnosc\s*\{[^}]*gap:\s*var\(--space-12\)[^}]*min-width:\s*0/);
+  });
+});
+
+describe("Karta osoby — nieaktywny przycisk mówi, dlaczego", () => {
+  const PROWADZACY = { id: 5, first_name: "Joanna", last_name: "Prowadząca", email: "joanna@demo.pl", role: "instructor" };
+
+  function przycisk(nazwa: string): HTMLElement {
+    return screen.getByRole("button", { name: nazwa });
+  }
+
+  it("na początku cztery przyciski czynności są nieaktywne, a pod każdym stoi widoczne zdanie z powodem, wskazane jako jego opis", async () => {
+    await otworzKarte();
+
+    const oczekiwane: Record<string, string> = {
+      "Nadaj prowadzącego": "Wybierz osobę z listy, żeby nadać prowadzącego.",
+      "Zapisz rolę": "Wybierz inną rolę niż obecna, żeby ją zapisać.",
+      "Zresetuj limit podejść": "Podaj identyfikator testu i wpisz powód, żeby zresetować limit.",
+      "Zablokuj konto": "Wpisz powód blokady, żeby zablokować konto.",
+    };
+    for (const [nazwa, powod] of Object.entries(oczekiwane)) {
+      expect(przycisk(nazwa)).toBeDisabled();
+      expect(przycisk(nazwa)).toHaveAccessibleDescription(powod);
+      expect(screen.getByText(powod)).toBeVisible();
+    }
+  });
+
+  it("blokada: same spacje nie wystarczają, a po wpisaniu powodu zdanie znika i przycisk działa", async () => {
+    await otworzKarte();
+
+    await userEvent.type(screen.getByLabelText(/Powód blokady/), "   ");
+    expect(przycisk("Zablokuj konto")).toBeDisabled();
+    expect(screen.getByText("Wpisz powód blokady, żeby zablokować konto.")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/Powód blokady/), "Konto używane przez inną osobę");
+    expect(przycisk("Zablokuj konto")).toBeEnabled();
+    expect(przycisk("Zablokuj konto")).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByText("Wpisz powód blokady, żeby zablokować konto.")).toBeNull();
+  });
+
+  it("reset: zdanie mówi, którego pola brakuje, i znika dopiero, gdy oba są wypełnione", async () => {
+    await otworzKarte();
+
+    await userEvent.type(screen.getByLabelText(/Powód resetu/), "Awaria platformy podczas testu");
+    expect(przycisk("Zresetuj limit podejść")).toHaveAccessibleDescription("Podaj identyfikator testu, żeby zresetować limit.");
+
+    await userEvent.clear(screen.getByLabelText(/Powód resetu/));
+    await userEvent.type(screen.getByLabelText(/Identyfikator testu/), "4");
+    expect(przycisk("Zresetuj limit podejść")).toHaveAccessibleDescription("Wpisz powód, żeby zresetować limit.");
+
+    await userEvent.type(screen.getByLabelText(/Powód resetu/), "Awaria platformy podczas testu");
+    expect(przycisk("Zresetuj limit podejść")).toBeEnabled();
+    expect(przycisk("Zresetuj limit podejść")).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("rola: po wyborze innej roli zdanie znika, po powrocie do obecnej wraca", async () => {
+    await otworzKarte();
+
+    await userEvent.click(screen.getByRole("combobox", { name: /^Rola/ }));
+    await userEvent.click(screen.getByRole("option", { name: "Student" }));
+    expect(przycisk("Zapisz rolę")).toBeEnabled();
+    expect(screen.queryByText("Wybierz inną rolę niż obecna, żeby ją zapisać.")).toBeNull();
+
+    await userEvent.click(screen.getByRole("combobox", { name: /^Rola/ }));
+    await userEvent.click(screen.getByRole("option", { name: "Wolontariusz" }));
+    expect(przycisk("Zapisz rolę")).toHaveAccessibleDescription("Wybierz inną rolę niż obecna, żeby ją zapisać.");
+  });
+
+  it("prowadzący: po wskazaniu osoby zdanie znika i przycisk działa", async () => {
+    fetchAdminUsers.mockResolvedValue({ data: [PROWADZACY] });
+    await otworzKarte();
+
+    await userEvent.click(await screen.findByRole("combobox", { name: /^Prowadzący/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /Joanna Prowadząca/ }));
+
+    expect(przycisk("Nadaj prowadzącego")).toBeEnabled();
+    expect(screen.queryByText("Wybierz osobę z listy, żeby nadać prowadzącego.")).toBeNull();
+  });
+
+  it("w trakcie zapisu przycisk jest nieaktywny i mówi „Trwa zapisywanie.”", async () => {
+    let zakoncz: (wartosc: unknown) => void = () => undefined;
+    blockAdminUser.mockReturnValue(new Promise((resolve) => (zakoncz = resolve)));
+    await otworzKarte();
+    await userEvent.type(screen.getByLabelText(/Powód blokady/), "Konto używane przez inną osobę");
+
+    await userEvent.click(przycisk("Zablokuj konto"));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Zablokuj konto" }));
+
+    await waitFor(() => expect(przycisk("Zablokuj konto")).toBeDisabled());
+    expect(przycisk("Zablokuj konto")).toHaveAccessibleDescription("Trwa zapisywanie.");
+    expect(blockAdminUser).toHaveBeenCalledTimes(1);
+
+    zakoncz({});
+    await waitFor(() => expect(przycisk("Zablokuj konto")).toHaveAccessibleDescription("Wpisz powód blokady, żeby zablokować konto."));
+  });
+});
+
+describe("Karta osoby — pola dotykowe i brak przewijania w poziomie na 390 px", () => {
+  function arkuszDesignSystemu(sciezka: string): string {
+    return readFileSync(resolve(__dirname, "../../../design-system", sciezka), "utf8");
+  }
+
+  it("przycisk ma co najmniej 44 px wysokości: min-height z tokenu pola dotykowego, a token to 44 px", () => {
+    expect(arkuszDesignSystemu("atomy/Button/Button.module.css")).toMatch(/\.przycisk\s*\{[^}]*min-height:\s*var\(--hit-min\)/);
+    expect(arkuszDesignSystemu("tokeny/tokeny.css")).toMatch(/--hit-min:\s*44px/);
+  });
+
+  it("wiersze danych na telefonie mają co najmniej 44 px, a przełączniki sekcji zwijanych i kart — więcej niż pole dotykowe", () => {
+    expect(arkuszDesignSystemu("organizmy/DataTable/DataTable.module.css")).toMatch(/\.wiersz\s*\{[^}]*min-height:\s*var\(--hit-min\)/);
+    expect(arkuszDesignSystemu("szablony/UkladEdycji/KartaBoczna.module.css")).toMatch(
+      /\.przelacznik\s*\{[^}]*min-height:\s*calc\(var\(--hit-min\) \+ var\(--space-8\)\)/,
+    );
+  });
+
+  it("przycisk i zdanie z powodem stoją jedno pod drugim i mogą się zwężać, więc nie wypychają karty poza ekran", () => {
+    expect(odczytajArkusz()).toMatch(
+      /\.przyciskCzynnosci\s*\{[^}]*flex-direction:\s*column[^}]*align-items:\s*flex-start[^}]*min-width:\s*0/,
+    );
   });
 });

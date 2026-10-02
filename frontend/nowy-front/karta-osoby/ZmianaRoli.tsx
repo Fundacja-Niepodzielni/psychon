@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -10,6 +9,7 @@ import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { updateAdminUser, type UserRole } from "@/lib/api/h18";
 import { ROLE_LABELS } from "@/lib/h18/labels";
 import { zdanieBleduCzynnosci } from "./dane";
+import { POWOD_TRWA_ZAPIS, PrzyciskCzynnosci } from "./PrzyciskCzynnosci";
 import style from "./KartaOsoby.module.css";
 
 interface WlasciwosciZmianyRoli {
@@ -52,6 +52,8 @@ export function ZmianaRoli({ userId, rolaOsoby, onOdswiez }: WlasciwosciZmianyRo
     }
   }
 
+  const powodBraku = zapisywanie ? POWOD_TRWA_ZAPIS : !zmieniona ? "Wybierz inną rolę niż obecna, żeby ją zapisać." : null;
+
   return (
     <KartaBoczna tytul="Rola konta" kotwica="czynnosc-rola">
       <div className={style.czynnosc}>
@@ -69,11 +71,9 @@ export function ZmianaRoli({ userId, rolaOsoby, onOdswiez }: WlasciwosciZmianyRo
           onZmiana={setWybrana}
           opcje={Object.entries(ROLE_LABELS).map(([klucz, etykieta]) => ({ wartosc: klucz, etykieta }))}
         />
-        <div className={style.przyciskCzynnosci}>
-          <Button poziom="outline" disabled={!zmieniona || zapisywanie} onClick={() => void zapisz()}>
-            Zapisz rolę
-          </Button>
-        </div>
+        <PrzyciskCzynnosci idPowodu="czynnosc-rola-powod" powodBraku={powodBraku} onKliknij={() => void zapisz()}>
+          Zapisz rolę
+        </PrzyciskCzynnosci>
         {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
       </div>
     </KartaBoczna>

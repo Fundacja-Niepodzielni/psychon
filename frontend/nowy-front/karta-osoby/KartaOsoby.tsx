@@ -21,6 +21,7 @@ import { ApiError } from "@/lib/api/klient";
 import { markWorkshopComplete } from "@/lib/api/h10";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/h18/labels";
 import { CzynnosciAdministracji } from "./CzynnosciAdministracji";
+import { POWOD_TRWA_ZAPIS, PrzyciskCzynnosci } from "./PrzyciskCzynnosci";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzKarteOsoby,
@@ -329,9 +330,13 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
             <StatRow kafle={kafle} />
             {mozeZaznaczycWarsztat && (
               <div className={style.wierszWarsztatu} role="group" aria-label="Warsztat stacjonarny">
-                <Button poziom="outline" disabled={zaznaczanieWarsztatu} onClick={() => setPytanieWarsztatu(true)}>
+                <PrzyciskCzynnosci
+                  idPowodu="warsztat-powod"
+                  powodBraku={zaznaczanieWarsztatu ? POWOD_TRWA_ZAPIS : null}
+                  onKliknij={() => setPytanieWarsztatu(true)}
+                >
                   Zaznacz warsztat jako zaliczony
-                </Button>
+                </PrzyciskCzynnosci>
               </div>
             )}
             {bladWarsztatu !== null && (

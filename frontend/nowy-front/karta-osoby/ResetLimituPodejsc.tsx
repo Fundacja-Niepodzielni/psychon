@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -12,11 +11,20 @@ import { resetTestAttempts } from "@/lib/api/h10";
 import { ApiError } from "@/lib/api/klient";
 import { odmien } from "../wspolne/odmiana";
 import { zdanieBleduCzynnosci } from "./dane";
+import { POWOD_TRWA_ZAPIS, PrzyciskCzynnosci } from "./PrzyciskCzynnosci";
 import style from "./KartaOsoby.module.css";
 
 interface WlasciwosciResetuLimitu {
   userId: number;
   imieNazwisko: string;
+}
+
+/** Dlaczego przycisk resetu jeszcze nie działa; `null`, gdy oba pola są wypełnione. */
+function zdanieBrakuResetu(idPoprawne: boolean, powodPoprawny: boolean): string | null {
+  if (!idPoprawne && !powodPoprawny) return "Podaj identyfikator testu i wpisz powód, żeby zresetować limit.";
+  if (!idPoprawne) return "Podaj identyfikator testu, żeby zresetować limit.";
+  if (!powodPoprawny) return "Wpisz powód, żeby zresetować limit.";
+  return null;
 }
 
 /**
@@ -64,6 +72,8 @@ export function ResetLimituPodejsc({ userId, imieNazwisko }: WlasciwosciResetuLi
     }
   }
 
+  const powodBraku = wysylanie ? POWOD_TRWA_ZAPIS : zdanieBrakuResetu(idPoprawne, powodPoprawny);
+
   return (
     <KartaBoczna tytul="Reset limitu podejść" kotwica="czynnosc-reset">
       <div className={style.czynnosc}>
@@ -97,15 +107,9 @@ export function ResetLimituPodejsc({ userId, imieNazwisko }: WlasciwosciResetuLi
           onZmiana={setPowod}
           podpowiedz="Trafia do Dziennika działań."
         />
-        <div className={style.przyciskCzynnosci}>
-          <Button
-            poziom="outline"
-            disabled={!idPoprawne || !powodPoprawny || wysylanie}
-            onClick={() => setPytanie(true)}
-          >
-            Zresetuj limit podejść
-          </Button>
-        </div>
+        <PrzyciskCzynnosci idPowodu="czynnosc-reset-powod-braku" powodBraku={powodBraku} onKliknij={() => setPytanie(true)}>
+          Zresetuj limit podejść
+        </PrzyciskCzynnosci>
         {pytanie && (
           <Dialog
             tytul="Zresetować limit podejść?"

@@ -165,6 +165,7 @@ describe("Karta osoby — zaznaczenie warsztatu", () => {
     await userEvent.click(within(okno).getByRole("button", { name: "Zaznacz jako zaliczony" }));
 
     expect(screen.getByRole("button", { name: PRZYCISK })).toBeDisabled();
+    expect(screen.getByRole("button", { name: PRZYCISK })).toHaveAccessibleDescription("Trwa zapisywanie.");
     expect(markWorkshopComplete).toHaveBeenCalledTimes(1);
     zakoncz({ user_id: 17, edition_id: 1, completed_at: null, workshop_done: true });
     await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument());

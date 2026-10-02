@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/design-system/atomy/Button/Button";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -10,6 +9,7 @@ import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { assignSupervisor, fetchAdminUsers, type AdminUserListItem } from "@/lib/api/h18";
 import { formatujDateICzas } from "../wspolne/daty";
 import { zdanieBleduCzynnosci } from "./dane";
+import { POWOD_TRWA_ZAPIS, PrzyciskCzynnosci } from "./PrzyciskCzynnosci";
 import style from "./KartaOsoby.module.css";
 
 interface WlasciwosciPrzypisaniaSuperwizora {
@@ -66,6 +66,8 @@ export function PrzypisanieSuperwizora({ userId }: WlasciwosciPrzypisaniaSuperwi
     }
   }
 
+  const powodBraku = zapisywanie ? POWOD_TRWA_ZAPIS : wybrany === "" ? "Wybierz osobę z listy, żeby nadać prowadzącego." : null;
+
   return (
     <KartaBoczna tytul="Prowadzący superwizje" kotwica="czynnosc-prowadzacy">
       <div className={style.czynnosc}>
@@ -100,11 +102,9 @@ export function PrzypisanieSuperwizora({ userId }: WlasciwosciPrzypisaniaSuperwi
             })),
           ]}
         />
-        <div className={style.przyciskCzynnosci}>
-          <Button poziom="outline" disabled={wybrany === "" || zapisywanie} onClick={() => void zapisz()}>
-            Nadaj prowadzącego
-          </Button>
-        </div>
+        <PrzyciskCzynnosci idPowodu="czynnosc-prowadzacy-powod" powodBraku={powodBraku} onKliknij={() => void zapisz()}>
+          Nadaj prowadzącego
+        </PrzyciskCzynnosci>
         {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
       </div>
     </KartaBoczna>
