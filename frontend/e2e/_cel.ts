@@ -12,10 +12,13 @@
  */
 export const DOZWOLONE_HOSTY: readonly string[] = ["127.0.0.1", "localhost"];
 
+// Sygnatura indeksu pozwala podać wprost `process.env` (typ `ProcessEnv`),
+// a nazwane pola zostają opisem zmiennych, które funkcja czyta.
 export type ZmienneCelu = {
   PW_WEB_SERVER?: string;
   PW_BASE_URL?: string;
   PW_PORT?: string;
+  readonly [zmienna: string]: string | undefined;
 };
 
 export type CelPrzegladarki = {
