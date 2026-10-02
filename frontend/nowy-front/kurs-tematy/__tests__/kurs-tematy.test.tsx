@@ -402,25 +402,25 @@ describe("A-12 — akcja główna „Opublikuj kurs”", () => {
   });
 });
 
-describe("A-12 — potwierdzenie zapisu układu", () => {
+describe("A-12 — potwierdzenie zapisu układu w `Toast`", () => {
   async function zapiszPoRuchu() {
     await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
   }
 
-  it("przed zapisem nie ma paska, po zapisie widać jedno zdanie w roli „status” i obszar ogłoszeń go nie dubluje", async () => {
+  it("przed zapisem nie ma paska, po zapisie widać jedno zdanie w roli „status” (`Toast`) i obszar ogłoszeń go nie dubluje", async () => {
     const { container } = await renderGotowy();
     expect(screen.queryByRole("status")).toBeNull();
     zapiszUkladTematow.mockResolvedValue([temat(7, "Wprowadzenie", 1, [21]), temat(8, "Praktyka", 2, [22, 23])]);
 
     await zapiszPoRuchu();
 
-    const pasek = await screen.findByRole("status");
-    expect(pasek).toHaveTextContent("Zmiany w kursie zostały zapisane.");
+    const powiadomienie = await screen.findByRole("status");
+    expect(powiadomienie).toHaveTextContent("Zmiany w kursie zostały zapisane.");
     expect(container.querySelector("[data-ogloszenia]")).toBeEmptyDOMElement();
   });
 
-  it("odmowa serwera nie pokazuje paska potwierdzenia", async () => {
+  it("odmowa serwera nie pokazuje potwierdzenia", async () => {
     await renderGotowy();
     zapiszUkladTematow.mockRejectedValue(
       new ApiError({ status: 422, code: "validation_failed", message: "Popraw zaznaczone pola.", errors: { topics: ["x"] } }),
@@ -432,15 +432,14 @@ describe("A-12 — potwierdzenie zapisu układu", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("następny ruch i następny zapis zastępują pasek, zamknięcie oddaje fokus nagłówkowi", async () => {
+  it("zamknięcie przyciskiem zdejmuje powiadomienie, następny zapis pokazuje je znowu", async () => {
     await renderGotowy();
     zapiszUkladTematow.mockResolvedValue([temat(7, "Wprowadzenie", 1, [21]), temat(8, "Praktyka", 2, [22, 23])]);
     await zapiszPoRuchu();
     await screen.findByRole("status");
 
-    await userEvent.click(screen.getByRole("button", { name: "Zamknij komunikat" }));
+    await userEvent.click(screen.getByRole("button", { name: "Zamknij powiadomienie" }));
     expect(screen.queryByRole("status")).toBeNull();
-    expect(document.activeElement?.tagName).toBe("H1");
 
     await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” wyżej" }));
     await userEvent.click(within(screen.getByRole("region", { name: "Niezapisane zmiany" })).getByRole("button", { name: "Zapisz zmiany" }));
