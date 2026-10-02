@@ -3,6 +3,7 @@
 import { BlokadaKonta } from "./BlokadaKonta";
 import { PrzypisanieSuperwizora } from "./PrzypisanieSuperwizora";
 import { ResetLimituPodejsc } from "./ResetLimituPodejsc";
+import { ZmianaRoli } from "./ZmianaRoli";
 import style from "./KartaOsoby.module.css";
 
 interface WlasciwosciCzynnosciAdministracji {
@@ -21,6 +22,7 @@ export function CzynnosciAdministracji({ userId, imieNazwisko, rolaOsoby, onOdsw
   return (
     <div className={style.czynnosci} data-obszar="czynnosci-administracji">
       <PrzypisanieSuperwizora userId={userId} />
+      <ZmianaRoli userId={userId} rolaOsoby={rolaOsoby} onOdswiez={onOdswiez} />
       <ResetLimituPodejsc userId={userId} imieNazwisko={imieNazwisko} />
       <BlokadaKonta userId={userId} imieNazwisko={imieNazwisko} rolaOsoby={rolaOsoby} onOdswiez={onOdswiez} />
     </div>
