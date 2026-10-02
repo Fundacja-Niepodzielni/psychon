@@ -1981,3 +1981,156 @@ Kod: `routes/api/h06.php`, `Services/Lessons/LessonCompletionRule.php`,
 `routes/api/h17.php`, `Http/Controllers/Api/V1/H17/LessonQuestionController.php`,
 `Http/Resources/H17/ParticipantQuestionResource.php`, `Http/Resources/CourseDetailResource.php`,
 `Http/Resources/MaterialResource.php`, `Services/H17/QuestionRouting.php`, `openapi.json`.
+
+---
+
+## Aneks — lekcje po kolei (H05, H06, H10, H17)
+
+Uczestnik przechodzi lekcje kursu po kolei, a test kursu otwiera się dopiero po ukończeniu
+wszystkich lekcji. Zmiana jest addytywna: nowy kod `lesson_locked`, nowe pola odczytu kursu
+(`locked`, `test_locked`, `active_seconds`, `required_active_seconds`, `has_recording`,
+`test_passed`), materiały lekcji zamkniętych poza odczytem kursu i nowa odmowa startu testu.
+Bez nowych tras, slugów audytu i typów powiadomień; zero zmian w danych.
+
+### 1. Reguła otwarcia lekcji
+
+Kolejność lekcji jest ta sama co w odczycie kursu (`GET /courses/{slug}`, `lessons`):
+płaska lista w kolejności `sequence_order` (tematy rosnąco, w nich lekcje). Lekcja jest
+**otwarta** dla uczestnika, gdy:
+
+1. jest pierwszą lekcją kursu, **albo**
+2. poprzednia lekcja w tej kolejności jest ukończona, **albo**
+3. sama jest ukończona — ukończona lekcja zostaje otwarta zawsze, także po zmianie
+   kolejności lekcji po publikacji kursu.
+
+W przeciwnym razie lekcja jest **zamknięta**. Sam postęp (czas, pozycja) bez ukończenia
+lekcji nie otwiera. Zmiana kolejności lekcji nie cofa ukończenia: lekcja ukończona
+przesunięta za nieukończoną zostaje otwarta, a lekcja nieukończona przesunięta na początek
+kursu jest otwarta jako pierwsza.
+
+Reguła dotyczy wyłącznie **uczestnika** — osoby, której token niesie rolę wolontariusza
+albo studenta (ta sama miara co `is_completed` w odczycie kursu). Personel
+(`project_manager`, `super_admin`) i prowadzący są poza regułą: na wszystkich trasach
+dostają dotychczasowe odpowiedzi, a w odczycie kursu `locked` i `test_locked` mają `false`.
+
+### 2. Kod i kolejność odmów
+
+`403 lesson_locked` (domenowy, stan — jak `course_locked`), dopisek do tabeli §1.1:
+
+```json
+{ "error": { "status": 403, "code": "lesson_locked",
+    "message": "Najpierw ukończ lekcję 2: Wprowadzenie do wywiadu.",
+    "reason": { "required_lesson_id": 21 } } }
+```
+
+`N` w komunikacie to numer poprzedniej lekcji w kolejności kursu (od 1), a po dwukropku stoi
+jej tytuł; `reason.required_lesson_id` to identyfikator tej lekcji — tej, którą trzeba
+ukończyć. Kolejność odmów: `401 unauthenticated` → `404 not_found` (kurs albo lekcja
+niewidoczne) → `403 course_locked` (kolejność kursów w ścieżce) → `403 lesson_locked`.
+
+### 3. Trasy uczestnika objęte regułą
+
+`GET /lessons/{id}`, `POST /lessons/{id}/progress`, `POST /lessons/{id}/complete`,
+`GET /lessons/{id}/video-link`, `GET /lessons/{id}/questions` i `POST /lessons/{id}/questions`
+(zapis pytania). Odmowa niczego nie zapisuje: ani postępu, ani `open_count`, ani
+ukończenia, ani pytania; odczyt zamkniętej lekcji nie podbija `open_count`.
+
+Pobranie pliku materiału (`GET /materials/{id}/download`) tą regułą bezpośrednio **nie jest
+objęte**: trasa jest podpisana i nie czyta roli z tokena. Zamiast tego odczyt kursu nie wydaje
+uczestnikowi linków do materiałów lekcji zamkniętej (punkt 6); kształt pola `download_url` i
+trasa pobrania bez zmian. Znane ograniczenie: link wydany, zanim lekcja się zamknęła (np. po
+zmianie kolejności lekcji), działa do końca swojej ważności (domyślnie 300 s).
+
+### 4. Odczyt kursu — `GET /courses/{slug}`: zamknięcie lekcji i testu
+
+Addytywnie: każdy element `lessons` niesie `locked` (wartość logiczna — ta sama reguła co
+odmowa `lesson_locked` na trasach lekcji), a kurs niesie `test_locked`:
+
+```json
+{ "data": { "…pola bez zmian…": "…",
+  "has_test": true, "test_locked": true,
+  "lessons": [ { "id": 21, "…": "…", "is_completed": true, "topic_id": 7, "locked": false },
+               { "id": 22, "…": "…", "is_completed": false, "topic_id": 7, "locked": false },
+               { "id": 23, "…": "…", "is_completed": false, "topic_id": 7, "locked": true } ] } }
+```
+
+`test_locked` jest prawdziwe, gdy kurs ma test, ma lekcje i nie wszystkie lekcje są
+ukończone; kurs bez testu, kurs bez lekcji oraz personel mają `false`. Liczba zapytań do bazy
+przy odczycie kursu nie zależy od liczby lekcji.
+
+### 5. Odczyt kursu — czas aktywny, nagranie i zaliczenie testu
+
+Addytywnie także cztery pola, zwracane zawsze, także dla lekcji zamkniętej (bez postępu — zera)
+i dla personelu (te same wartości liczone tak samo):
+
+- `lessons[].active_seconds` — liczba całkowita, czas aktywny zalogowanej osoby w lekcji
+  (ta sama wartość co `active_seconds` w `GET /lessons/{id}`; brak postępu: `0`);
+- `lessons[].required_active_seconds` — liczba całkowita, ta sama definicja i to samo źródło
+  co pole o tej nazwie w `GET /lessons/{id}` (lekcja bez nagrania: `0`);
+- `lessons[].has_recording` — wartość logiczna; lekcja ma nagranie (ten sam predykat „bez
+  nagrania”, którego używa reguła ukończenia lekcji i rzetelność);
+- `test_passed` — wartość logiczna na poziomie kursu: test kursu zaliczony, to samo źródło,
+  którym `CourseAccess` rozstrzyga zaliczenie testu; kurs bez testu: `false`.
+
+### 6. Odczyt kursu — materiały lekcji zamkniętych
+
+`materials` nie zawiera materiałów lekcji zamkniętej dla wywołującego
+(materiału z `lesson_id` lekcji, której `locked` jest `true`); materiały wpięte w kurs
+(`lesson_id: null`) i materiały lekcji otwartych zostają bez zmian. Decyduje ta sama reguła
+i te same policzone blokady co `lessons[].locked`, więc dla uczestnika materiał lekcji jest
+obecny wtedy i tylko wtedy, gdy lekcja nie jest zamknięta; personel i prowadzący dostają
+komplet (dla nich `locked` jest `false`). Po ukończeniu poprzedniej lekcji materiał pojawia się
+w następnym odczycie. Kształt elementu `materials` i pola `download_url` bez zmian.
+
+### 7. Start testu przed ukończeniem lekcji
+
+`GET /courses/{slug}/test` i `POST /tests/{id}/attempts` dla kursu, który ma nieukończone
+lekcje, odpowiadają `422 conditions_not_met` z `reason.missing: ["lessons"]` (kody i
+koperta jak w §1.1). Odmowa stoi po `404` i po `403 course_locked`, niczego nie zapisuje i
+nie zużywa podejścia. Kurs bez lekcji nie zamyka testu. Po ukończeniu wszystkich lekcji
+obie trasy działają jak dotąd. Trasa historii podejść (`GET /tests/{id}/attempts`) bez zmian.
+
+Kod: `Services/Lessons/LessonSequence.php` (jedyna implementacja reguły),
+`Services/Lessons/LessonAccess.php`, `Http/Controllers/Api/V1/TestController.php`,
+`Http/Resources/CourseDetailResource.php`, `Http/Resources/LessonSummaryResource.php`,
+`Services/Lessons/LessonCompletionRule.php`, `openapi.json`.
+
+---
+
+## Aneks — rzetelność nauki: lekcja bez nagrania (H07, H18)
+
+Domyka definicję rzetelności z §2 „Rzetelność nauki (H07)”. Tamtego tekstu nie usuwam —
+ten blok jest wobec niego nadrzędny w jednym miejscu: co znaczy „mierzalna ukończona
+lekcja”. Bez nowych tras, pól, kodów, slugów audytu i typów powiadomień; zero zmian w danych.
+
+### 1. Definicja
+
+Ukończona lekcja jest **mierzalna**, gdy ma nagranie **i** dodatni `duration_seconds`.
+Lekcja bez nagrania nie ma czasu do odrobienia, więc nie ma czego mierzyć: nie wchodzi ani
+do sumy `active_seconds`, ani do sumy `duration_seconds`. „Bez nagrania” to ten sam stan,
+który reguła ukończenia lekcji odczytuje jako `video_status: none` (lekcja bez nagrania
+odtwarzanego i bez nagrania w drodze) — jedna implementacja predykatu
+(`LessonCompletionRule`), bez drugiej kopii warunku. Lekcja z nagraniem w przygotowaniu albo
+z błędem nagrania ma nagranie i podlega dotychczasowej regule.
+
+### 2. Skutek
+
+- Osoba, której ukończone lekcje z dodatnim czasem trwania są wyłącznie lekcjami bez nagrania,
+  nie ma mierzalnej ukończonej lekcji: `reliability_percent: null`, `below_threshold: false`.
+- Osoba z nagraniami we wszystkich ukończonych lekcjach ma dokładnie tę samą liczbę co
+  dotąd; ukończenie lekcji bez nagrania jej nie zmienia.
+- Liczba pochodzi z `ProgressAggregator` i jest ta sama w trzech miejscach: karta osoby
+  (`reliability_percent`), `sum` sekcji `reliability` w `GET /admin/users/{id}/number-sources`
+  i `reliability_percent` w `GET /admin/reliability/{userId}`. Wiersze sekcji `reliability`
+  nie zawierają lekcji bez nagrania.
+
+### 3. Czego ten aneks nie wprowadza
+
+Stan nagrania jest czytany w chwili obliczenia, nie w chwili ukończenia: lekcja ukończona bez
+nagrania, do której nagranie dodano później, wchodzi do ilorazu z czasem aktywnym zapisanym
+w chwili ukończenia (zwykle `0 s`). Lista lekcji w szczegółach
+`GET /admin/reliability/{userId}` (`lessons`) nadal wymienia ukończone lekcje z dodatnim czasem
+trwania, także te bez nagrania; wartość zbiorcza nie jest z niej liczona.
+
+Kod: `Services/Lessons/LessonCompletionRule.php` (`isMeasurable`), `Support/ProgressAggregator.php`,
+`Services/H18/UserNumberSourcesQuery.php`.

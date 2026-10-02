@@ -48,8 +48,14 @@ export interface WidokKursu {
   tematy: TematEkranu[];
   akcja: AkcjaGlowna;
   test: { czynny: boolean; zdanie: string };
-  /** Kurs ukończony w całości (lekcje i test), według `status` odczytu. */
+  /** Kurs ukończony w całości, według `status` odczytu — ekran nie ogłasza ukończenia, którego zaplecze nie uznało. */
   kursUkonczony: boolean;
+  /** Napis znacznika ukończenia przy tytule; `null`, gdy nie ma czego ogłaszać. */
+  znacznikUkonczenia: "Kurs ukończony" | "Wszystkie lekcje ukończone" | "Lekcje ukończone" | null;
+  /** Kurs bez testu z ukończonymi wszystkimi lekcjami: zamiast przycisku głównego odnośnik „Wróć do kursów”. */
+  powrotDoKursow: boolean;
+  /** Kurs bez testu: odczyt niesie jawne `has_test: false`. Brak pola (starsze zaplecze) to nie jest „bez testu”. */
+  bezTestu: boolean;
   /** Test zaliczony: pole `test_passed` odczytu albo kurs ukończony w całości. */
   testZaliczony: boolean;
   /** Indeks (od 0, w kolejności lekcji) lekcji, na którą prowadzi przycisk główny; `-1`, gdy żadna. */
@@ -76,10 +82,10 @@ export function czasKursu(lekcje: LekcjaKursu[]): string | null {
   return `około ${godziny} ${odmien(godziny, "godziny", "godziny", "godzin")}`;
 }
 
-/** Wiersz opisu pod tytułem: „7 lekcji · około 2 godziny · na końcu test”. */
-export function opisKursu(lekcje: LekcjaKursu[]): string {
+/** Wiersz opisu pod tytułem: „7 lekcji · około 2 godziny · na końcu test”; kurs bez testu — bez ostatniej części. */
+export function opisKursu(lekcje: LekcjaKursu[], bezTestu = false): string {
   const liczba = `${lekcje.length} ${odmien(lekcje.length, "lekcja", "lekcje", "lekcji")}`;
-  return [liczba, czasKursu(lekcje), "na końcu test"].filter((czesc): czesc is string => czesc !== null).join(" · ");
+  return [liczba, czasKursu(lekcje), bezTestu ? null : "na końcu test"].filter((czesc): czesc is string => czesc !== null).join(" · ");
 }
 
 /** Czas lekcji w wierszu: „14 min nagrania”, dla lekcji bez nagrania „do czytania”; bez czasu — `null`. */
@@ -142,8 +148,19 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
   const razem = lekcje.length;
   const ukonczone = lekcje.filter((lekcja) => lekcja.is_completed).length;
   const wszystkieUkonczone = razem > 0 && ukonczone === razem;
+  const bezTestu = kurs.has_test === false;
   const kursUkonczony = kurs.status === "completed";
-  const testZaliczony = kursUkonczony || kurs.test_passed === true;
+  // Kurs bez testu z ukończonymi lekcjami nie ma już dokąd prowadzić przyciskiem głównym.
+  const powrotDoKursow = bezTestu && wszystkieUkonczone;
+  const znacznikUkonczenia = kursUkonczony
+    ? "Kurs ukończony"
+    : wszystkieUkonczone
+      ? bezTestu
+        ? "Wszystkie lekcje ukończone"
+        : "Lekcje ukończone"
+      : null;
+  // Test zaliczony rozstrzyga zaplecze (`test_passed`); ukończony kurs wnioskujemy tylko przy odpowiedzi bez tego pola.
+  const testZaliczony = typeof kurs.test_passed === "boolean" ? kurs.test_passed : kursUkonczony;
 
   // Lekcja, na którą prowadzi przycisk główny: pierwsza nieukończona i otwarta z postępem
   // (czas aktywny większy od zera); bez takiej albo bez pól postępu — pierwsza nieukończona i otwarta.
@@ -164,7 +181,7 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
         : "Test jest jeszcze zamknięty.";
 
   let akcja: AkcjaGlowna = { rodzaj: "brak" };
-  if (kursUkonczony || (wszystkieUkonczone && testZaliczony)) {
+  if (kursUkonczony || powrotDoKursow || (wszystkieUkonczone && testZaliczony)) {
     akcja = { rodzaj: "brak" };
   } else if (wszystkieUkonczone) {
     akcja = testCzynny
@@ -218,6 +235,9 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
     akcja,
     test: { czynny: testCzynny, zdanie: zdanieTestu },
     kursUkonczony,
+    znacznikUkonczenia,
+    powrotDoKursow,
+    bezTestu,
     testZaliczony,
     indeksNastepnej: nastepna === null ? -1 : lekcje.indexOf(nastepna),
   };

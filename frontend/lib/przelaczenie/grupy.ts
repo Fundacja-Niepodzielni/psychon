@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest siedemnaście: `wspolpraca`, `pulpitUczestnika`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dziewiętnaście: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -184,12 +184,13 @@ export const GRUPY = {
   },
   /**
    * Strona kursu uczestnika — ten sam adres co dzisiejsza strona kursu, treść strony zamienia się na ekran
-   * nowego frontu. Wyłączona do czasu włączenia razem z grupą `lekcja`: oba ekrany prowadzą do siebie
-   * nawzajem. Strona `panel/kursy/[slug]/page.tsx` jest podpięta pod tę flagę.
+   * nowego frontu. Włączona razem z grupą `lekcja`: oba ekrany prowadzą do siebie nawzajem (z kursu do lekcji
+   * i z lekcji z powrotem do kursu). Strona `panel/kursy/[slug]/page.tsx` jest podpięta pod tę flagę, a dawna
+   * treść strony zostaje w `StaraTresc.tsx`.
    */
   kursUczestnika: {
     klucz: "kursUczestnika",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "uczestnik",
