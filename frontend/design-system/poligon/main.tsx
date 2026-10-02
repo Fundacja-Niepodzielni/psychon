@@ -564,6 +564,18 @@ function Poligon() {
           onWybierzPliki={() => {}}
         />
       </div>
+      {/* M5 FileDropZone — pole na jeden plik (`wiele={false}`): bez atrybutu
+          multiple, a upuszczenie kilku plików nie wywołuje wyboru. */}
+      <div data-style-id="m5-filedropzone-jeden-plik">
+        <FileDropZone
+          id="m5-plik-jeden"
+          etykieta="Przeciągnij jeden plik albo wybierz z dysku"
+          podpowiedz="PDF, JPG, PNG do 10 MB"
+          pliki={[]}
+          wiele={false}
+          onWybierzPliki={() => {}}
+        />
+      </div>
 
       {/* M6 FileRow — warianty: przetwarzanie, gotowy, błąd */}
       <ul data-style-id="m6-filerow-przetwarzanie">
