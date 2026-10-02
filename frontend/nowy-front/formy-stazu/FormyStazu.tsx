@@ -16,6 +16,7 @@ import {
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { FormSection, type PoleFormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import { PasekPotwierdzenia, usePasekPotwierdzenia } from "@/nowy-front/wspolne/pasek-potwierdzenia";
 import { ApiError } from "@/lib/api/klient";
 import { utworzFormeStazu, zaktualizujFormeStazu } from "@/lib/api/h11-formy";
 import { useWPowloce } from "@/design-system/szablony/KontekstPowloki";
@@ -92,6 +93,7 @@ export function FormyStazu() {
   const [blad, setBlad] = useState<string | null>(null);
   const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
   const [zapisywanie, setZapisywanie] = useState(false);
+  const pasek = usePasekPotwierdzenia();
   // Otwarty formularz bez żadnej zmiany nie jest niezapisaną pracą.
   const edytowanaForma = edytowanaId === null ? undefined : formy.find((forma) => forma.id === edytowanaId);
   const formularzWyjsciowy: StanFormularza | null = edytowanaForma
@@ -154,6 +156,7 @@ export function FormyStazu() {
   );
 
   function otworzEdycje(forma: FormaStazu) {
+    pasek.ukryj();
     setBlad(null);
     setBledyPol(undefined);
     setDodajOtwarte(false);
@@ -167,6 +170,7 @@ export function FormyStazu() {
   }
 
   function otworzDodawanie() {
+    pasek.ukryj();
     setBlad(null);
     setBledyPol(undefined);
     setEdytowanaId(null);
@@ -183,6 +187,7 @@ export function FormyStazu() {
   }
 
   async function zapisz() {
+    pasek.ukryj();
     setZapisywanie(true);
     setBlad(null);
     setBledyPol(undefined);
@@ -202,9 +207,11 @@ export function FormyStazu() {
         setFormy((poprzednie) =>
           poprzednie.map((forma) => (forma.id === zaktualizowana.id ? zaktualizowana : forma)),
         );
+        pasek.powodzenie(`Zapisano zmiany formy stażu „${zaktualizowana.name}”.`);
       } else {
         const nowa = await utworzFormeStazu(payload);
         setFormy((poprzednie) => [...poprzednie, nowa]);
+        pasek.powodzenie(`Dodano formę stażu „${nowa.name}”.`);
       }
       zamknijPanel();
       router.refresh();
@@ -309,6 +316,8 @@ export function FormyStazu() {
         onPowrot={() => router.back()}
         przyciskGlowny={panelOtwarty ? undefined : { etykieta: "Dodaj formę", onKliknij: otworzDodawanie }}
       />
+
+      <PasekPotwierdzenia komunikat={pasek.komunikat} onZamknij={pasek.ukryj} />
 
       <div data-obszar="lista-form">
         <RecordList
