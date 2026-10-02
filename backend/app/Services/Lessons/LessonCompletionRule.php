@@ -10,8 +10,8 @@ use App\Support\Settings;
 
 /**
  * Jedyna reguła „czy lekcję wolno już ukończyć” — czytają ją odczyt lekcji,
- * zapis postępu i ukończenie, więc `completable` i odpowiedź `complete`
- * nie mogą się rozjechać.
+ * zapis postępu i ukończenie, więc `completable`, `required_active_seconds`
+ * i odpowiedź `complete` nie mogą się rozjechać.
  *
  *  - Lekcja BEZ nagrania (stan nagrania dla uczestnika `none`, ta sama reguła,
  *    którą odczyt lekcji liczy `video_status`) jest do ukończenia od razu:
@@ -72,6 +72,7 @@ final class LessonCompletionRule
      *     active_seconds: int,
      *     completable: bool,
      *     completable_at_percent: int,
+     *     required_active_seconds: int,
      * }
      */
     public static function snapshot(Lesson $lesson, LessonProgress $progress): array
@@ -81,6 +82,7 @@ final class LessonCompletionRule
             'active_seconds' => (int) $progress->active_seconds,
             'completable' => self::isCompletable($lesson, $progress),
             'completable_at_percent' => self::percent(),
+            'required_active_seconds' => self::requiredActiveSeconds($lesson),
         ];
     }
 

@@ -1931,7 +1931,53 @@ Role: osoby z dostępem do lekcji (ta sama reguła co `GET /lessons/{id}`). `200
   `503 video_not_configured` (brak konfiguracji podpisu).
 - Trasa nie pyta dostawcy; stan nagrania pochodzi z bazy.
 
+### 8. Pola odczytu lekcji — `GET /lessons/{id}` i `POST /lessons/{id}/progress`
+
+Zmiana addytywna: dotychczasowe pola, kody i reguła dostępu bez zmian.
+
+`GET /lessons/{id}` niesie dodatkowo:
+
+```json
+{ "data": { "…pola bez zmian…": "…",
+  "course": { "id": 2, "slug": "wywiad-psychologiczny", "title": "Wywiad psychologiczny" },
+  "required_active_seconds": 360,
+  "question_addressee": { "name": "Marta Zielińska" } } }
+```
+
+- `course` — `{ id, slug, title }` kursu lekcji (okruszki, powrót do kursu, adres testu). Pole
+  niczego nie otwiera: dostęp do lekcji rozstrzyga ta sama reguła co dotąd — kurs
+  zablokowany kolejnością nadal daje `403 course_locked`, kurs spoza zasięgu `404 not_found`,
+  a odpowiedź odmowy nie niesie żadnych danych kursu.
+- `question_addressee` — `{ "name" }` albo `null`. To adresat pytania zadanego z tego ekranu,
+  wyznaczony tą samą regułą dziedziczenia co zapis pytania (`POST /lessons/{id}/questions`):
+  aktywne przypisanie do lekcji wygrywa z aktywnym przypisaniem do kursu; bez żadnego
+  aktywnego przypisania `null` (pytanie i tak się zapisuje). Tylko imię i nazwisko — bez
+  identyfikatora i adresu e-mail. Nazwisko prowadzącego z `GET /courses/{slug}`
+  (`instructor.name`) dotyczy wyłącznie przypisania kursowego i może się różnić.
+- `required_active_seconds` — liczba całkowita: czas aktywny w sekundach, od którego
+  `completable` zmienia się na `true`. Jedna formuła z `completable`, liczona na serwerze
+  w `LessonCompletionRule`: `ceil(duration_seconds × completable_at_percent / 100)` dla lekcji
+  z nagraniem. Lekcja **bez nagrania** (`video_status: none`) ma `0` — jest do ukończenia od
+  razu. Lekcja z nagraniem o `duration_seconds = 0` też ma `0`, ale nigdy nie jest do
+  ukończenia (rozstrzyga `completable`, nie ta liczba). Lekcja z nagraniem w przygotowaniu
+  albo z błędem niesie wartość ze wzoru, a `completable` pozostaje `false`.
+
+`POST /lessons/{id}/progress` → `200` niesie w `data` dodatkowo `required_active_seconds` —
+tę samą wartość, tą samą formułą co odczyt lekcji.
+
+### 9. Pola odczytu kursu — `GET /courses/{slug}`
+
+- `has_test` — wartość logiczna: czy kurs ma test. Kurs bez testu ma warunek testu spełniony
+  z definicji. Pole jest tylko w odczycie kursu; element listy `GET /courses` go nie niesie.
+- `materials[].mime` — typ pliku (np. `application/pdf`) albo `null`, gdy kolumna jest
+  pusta; ta sama nazwa i wartość co w zasobie administracji (`AdminMaterial`).
+
+Odczyty niczego nie zapisują i nie emitują audytu ani powiadomień (poza istniejącym
+zwiększeniem `open_count` przy odczycie lekcji). Liczba zapytań do bazy przy odczycie kursu
+nie rośnie z liczbą lekcji i materiałów; odczyt lekcji ma stałą liczbę zapytań.
+
 Kod: `routes/api/h06.php`, `Services/Lessons/LessonCompletionRule.php`,
 `Http/Controllers/Api/V1/VideoTokenController.php`, `Services/Video/VideoTokenService.php`,
 `routes/api/h17.php`, `Http/Controllers/Api/V1/H17/LessonQuestionController.php`,
-`Http/Resources/H17/ParticipantQuestionResource.php`, `openapi.json`.
+`Http/Resources/H17/ParticipantQuestionResource.php`, `Http/Resources/CourseDetailResource.php`,
+`Http/Resources/MaterialResource.php`, `Services/H17/QuestionRouting.php`, `openapi.json`.

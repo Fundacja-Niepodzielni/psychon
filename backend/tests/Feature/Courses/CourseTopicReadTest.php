@@ -85,7 +85,7 @@ class CourseTopicReadTest extends TestCase
         $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $materials = $this->getJson('/api/v1/courses/wywiad-psychologiczny')->assertOk()->json('data.materials');
 
-        $this->assertSame(['id', 'name', 'size', 'lesson_id', 'download_url'], array_keys($materials[0]));
+        $this->assertSame(['id', 'name', 'size', 'mime', 'lesson_id', 'download_url'], array_keys($materials[0]));
         $this->assertSame(
             [
                 ['Karta pracy — Wywiad psychologiczny.pdf', null],

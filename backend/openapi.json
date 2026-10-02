@@ -53,6 +53,26 @@
                                                     ],
                                                     "description": "Tre\u015b\u0107 lekcji (podzbi\u00f3r Markdown) albo `null`; HTML w tre\u015bci\njest tekstem \u2014 klient go nie interpretuje."
                                                 },
+                                                "course": {
+                                                    "type": "object",
+                                                    "description": "Kurs lekcji. Samo pole niczego nie otwiera: dost\u0119p do lekcji rozstrzyga ta sama regu\u0142a co dot\u0105d (kurs zablokowany \u2192 403 `course_locked` bez tego pola).",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "slug": {
+                                                            "type": "string"
+                                                        },
+                                                        "title": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "slug",
+                                                        "title"
+                                                    ]
+                                                },
                                                 "topic": {
                                                     "type": [
                                                         "object",
@@ -99,6 +119,25 @@
                                                 "completable_at_percent": {
                                                     "type": "integer"
                                                 },
+                                                "required_active_seconds": {
+                                                    "type": "integer",
+                                                    "description": "Czas aktywny w sekundach, od kt\u00f3rego `completable` zmienia si\u0119 na `true` (`ceil(duration_seconds * completable_at_percent / 100)`); 0 dla lekcji bez nagrania i dla lekcji z nagraniem o czasie trwania 0 (ta ostatnia nigdy nie jest do uko\u0144czenia). Ta sama formu\u0142a co `completable`."
+                                                },
+                                                "question_addressee": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "description": "Do kogo trafi pytanie zadane z tego ekranu (regu\u0142a dziedziczenia przypisa\u0144: lekcja wygrywa z kursem); `null` bez aktywnego przypisania. Tylko imi\u0119 i nazwisko \u2014 bez identyfikatora i adresu e-mail.",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name"
+                                                    ]
+                                                },
                                                 "video_status": {
                                                     "type": "string",
                                                     "enum": [
@@ -116,6 +155,7 @@
                                                 "title",
                                                 "description",
                                                 "content",
+                                                "course",
                                                 "topic",
                                                 "duration_seconds",
                                                 "position_seconds",
@@ -124,6 +164,8 @@
                                                 "is_completed",
                                                 "completable",
                                                 "completable_at_percent",
+                                                "required_active_seconds",
+                                                "question_addressee",
                                                 "video_status"
                                             ]
                                         }
@@ -190,13 +232,18 @@
                                                 },
                                                 "completable_at_percent": {
                                                     "type": "integer"
+                                                },
+                                                "required_active_seconds": {
+                                                    "type": "integer",
+                                                    "description": "Ta sama warto\u015b\u0107 i formu\u0142a co w odczycie lekcji."
                                                 }
                                             },
                                             "required": [
                                                 "watched_seconds",
                                                 "active_seconds",
                                                 "completable",
-                                                "completable_at_percent"
+                                                "completable_at_percent",
+                                                "required_active_seconds"
                                             ]
                                         }
                                     },
@@ -12244,6 +12291,10 @@
                             "name"
                         ]
                     },
+                    "has_test": {
+                        "type": "boolean",
+                        "description": "Czy kurs ma test; kurs bez testu ma warunek testu spe\u0142niony z definicji."
+                    },
                     "topics": {
                         "type": "array",
                         "items": {
@@ -12288,6 +12339,7 @@
                     "status",
                     "progress_percent",
                     "instructor",
+                    "has_test",
                     "topics",
                     "lessons",
                     "materials"
@@ -12701,6 +12753,13 @@
                         ],
                         "description": "Widening of contract \u00a72, which lists a material as exactly\n{id, name, download_url}. The plan asked the UI to show a\nhuman-readable size and the column already carries it, so the\nfield is shipped ahead of the guardian's ruling and flagged as\ndeviation (7) in DEMO/H05.md. Bytes, integer \u2014 the front formats."
                     },
+                    "mime": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Typ pliku (np. `application/pdf`); ta sama nazwa i warto\u015b\u0107 co w zasobie administracji."
+                    },
                     "lesson_id": {
                         "type": [
                             "integer",
@@ -12716,6 +12775,7 @@
                     "id",
                     "name",
                     "size",
+                    "mime",
                     "lesson_id",
                     "download_url"
                 ],
