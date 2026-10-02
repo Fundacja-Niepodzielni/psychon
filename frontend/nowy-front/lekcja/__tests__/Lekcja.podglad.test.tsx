@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { KURS, LEKCJA, kursZ } from "./pomoce";
+import { KURS, LEKCJA, graRamka, kursZ, ramkaOdtwarzacza, zrodloRamki } from "./pomoce";
 
 /** Tryb podglądu: parametr adresu ORAZ rola personelu albo prowadzącego. Pas, zero zapisów, parametr w odnośnikach. */
 
@@ -61,7 +61,7 @@ async function otworz(opcje: { rola: string; podglad: boolean; dane?: Record<str
     status: "ok",
     dane: { ...LEKCJA, ...MOZNA, ...(opcje.dane ?? {}) },
     bezNagrania: opcje.bezNagrania ?? false,
-    zrodloNagrania: {},
+    zrodloNagrania: zrodloRamki(),
   });
   pobierzOdczytKursu.mockResolvedValue(opcje.kurs ?? KURS);
   const wynik = render(<Lekcja id="21" />);
@@ -139,12 +139,11 @@ describe("cztery nogi sygnału podglądu", () => {
   });
 });
 
-/** Ta sama sekwencja w obu wariantach: odtwarzanie, upływ czasu, kliknięcie przycisku, wysłanie pytania. */
+/** Ta sama sekwencja w obu wariantach: odtwarzanie w ramce, upływ czasu, kliknięcie przycisku, wysłanie pytania. */
 async function sekwencja() {
-  fireEvent.click(screen.getByRole("button", { name: /^(Odtwórz|Zatrzymaj)$/ }));
-  await act(async () => {
-    vi.advanceTimersByTime(125000);
-  });
+  // Ramka jest widoczna także w podglądzie; gra przez 125 s, a komunikaty ramki dochodzą do ekranu.
+  expect(ramkaOdtwarzacza()).not.toBeNull();
+  graRamka(125);
   await przeczekaj();
   fireEvent.click(screen.getByRole("button", { name: PRZYCISK }));
   await przeczekaj();
@@ -191,7 +190,7 @@ describe("zero żądań zapisu w podglądzie", () => {
     vi.useFakeTimers();
     apiMe.mockReturnValue(new Promise(() => {}));
     parametryAdresu = "kurs=pierwsza-pomoc-psychologiczna&podglad=1";
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: { ...LEKCJA, ...MOZNA }, bezNagrania: false, zrodloNagrania: {} });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: { ...LEKCJA, ...MOZNA }, bezNagrania: false, zrodloNagrania: zrodloRamki() });
     pobierzOdczytKursu.mockResolvedValue(KURS);
     render(<Lekcja id="21" />);
     await przeczekaj();

@@ -9,7 +9,7 @@ import h14Dokumenty from "../participant/h14-dokumenty";
 import h15ProfilPsychologa from "../participant/h15-profil-psychologa";
 import h21Start from "../participant/h21-start";
 import { filterMenuByRole, type MenuEntry } from "../types";
-import { GRUPA_DOTYCHCZASOWA, type GrupaMenuRamki, type PozycjaMenuRamki } from "./administracja";
+import { GRUPA_DOTYCHCZASOWA, type GrupaMenuRamki, type PodstronaMenuRamki, type PozycjaMenuRamki } from "./administracja";
 import type { NazwaIkony } from "@/design-system/atomy/Icon/Icon";
 
 /**
@@ -44,6 +44,12 @@ export const W_PRZYGOTOWANIU_PROGRAM_UCZESTNIKA =
 /** Linia „W przygotowaniu” grupy „Konto” (makieta 2.0.4, rola `u`). */
 export const W_PRZYGOTOWANIU_KONTO_UCZESTNIKA = "profil · pomoc";
 
+/**
+ * Ekran lekcji (zwykły, „lekcja zamknięta”, „dostęp wygasł”) nie ma własnej pozycji w menu:
+ * należy do „Kursów” jako podstrona — tak samo jak strona kursu, tylko pod własnym adresem.
+ */
+export const PODSTRONY_KURSOW: PodstronaMenuRamki[] = [{ etykieta: "Lekcja", href: "/panel/lekcje" }];
+
 type Grupy = Record<string, DefinicjaGrupy>;
 
 function cel(grupy: Grupy, klucz: keyof typeof GRUPY): string | null {
@@ -51,9 +57,16 @@ function cel(grupy: Grupy, klucz: keyof typeof GRUPY): string | null {
   return grupa ? celTrasyEkranu(grupa, "uczestnik") : null;
 }
 
-function pozycja(href: string | null, ikona: NazwaIkony, etykieta: string, dokladna?: boolean): PozycjaMenuRamki[] {
+function pozycja(
+  href: string | null,
+  ikona: NazwaIkony,
+  etykieta: string,
+  dokladna?: boolean,
+  podstrony?: PodstronaMenuRamki[],
+): PozycjaMenuRamki[] {
   if (href === null) return [];
-  return [dokladna ? { ikona, etykieta, href, dokladna } : { ikona, etykieta, href }];
+  const wpis: PozycjaMenuRamki = dokladna ? { ikona, etykieta, href, dokladna } : { ikona, etykieta, href };
+  return [podstrony ? { ...wpis, podstrony } : wpis];
 }
 
 const IKONY_DOTYCHCZASOWE: Record<string, NazwaIkony> = {
@@ -92,7 +105,7 @@ export function menuRamkiUczestnika(rola: Role | undefined, grupy: Grupy = GRUPY
       naglowek: "Program",
       pozycje: [
         ...pozycja(cel(grupy, "pulpitUczestnika"), "home", n.pulpit, true),
-        ...pozycja(h05Kursy.href, "book", n.kursy),
+        ...pozycja(h05Kursy.href, "book", n.kursy, false, PODSTRONY_KURSOW),
         ...pozycja(cel(grupy, "wspolpraca"), "chat", n.poProgramie),
       ],
       wPrzygotowaniu: W_PRZYGOTOWANIU_PROGRAM_UCZESTNIKA,

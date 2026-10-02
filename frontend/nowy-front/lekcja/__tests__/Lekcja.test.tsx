@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KURS, LEKCJA, wiszace } from "./pomoce";
+import { KURS, LEKCJA, wiszace, zrodloRamki } from "./pomoce";
 
 const pobierzDaneLekcji = vi.fn();
 const ukonczLekcje = vi.fn();
@@ -51,7 +51,7 @@ describe("Lekcja — stan ładowania i danych", () => {
   });
 
   it("dane gotowe → tytuł, opis i okruszki z kursem i tematem", async () => {
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
 
     render(<Lekcja id="21" />);
 
@@ -62,7 +62,7 @@ describe("Lekcja — stan ładowania i danych", () => {
   });
 
   it("odczyt kursu pyta o kurs z odczytu lekcji", async () => {
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
 
     render(<Lekcja id="21" />);
     await screen.findByText(/lekcji ukończone/);
@@ -74,7 +74,7 @@ describe("Lekcja — stan ładowania i danych", () => {
 describe("Lekcja — ukończenie", () => {
   it("serwer odmawia (not_enough_active_time): zdanie przy przycisku, lekcja nieukończona", async () => {
     const uzytkownik = userEvent.setup();
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: {} });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
     ukonczLekcje.mockResolvedValue({ status: "za-malo-czasu" });
 
     render(<Lekcja id="21" />);
@@ -87,7 +87,7 @@ describe("Lekcja — ukończenie", () => {
 
   it("błąd sieci przy ukończeniu: zdanie z prośbą o ponowienie, przycisk zostaje, ponowienie kończy lekcję", async () => {
     const uzytkownik = userEvent.setup();
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: {} });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
     ukonczLekcje.mockResolvedValue({ status: "blad" });
 
     render(<Lekcja id="21" />);
@@ -108,7 +108,7 @@ describe("Lekcja — ukończenie", () => {
 
   it("podwójne kliknięcie wysyła jedno żądanie", async () => {
     const uzytkownik = userEvent.setup();
-    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: {} });
+    pobierzDaneLekcji.mockResolvedValue({ status: "ok", dane: MOZNA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
     ukonczLekcje.mockReturnValue(wiszace());
 
     render(<Lekcja id="21" />);

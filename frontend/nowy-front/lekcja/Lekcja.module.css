@@ -291,6 +291,21 @@
   margin-bottom: var(--space-12);
 }
 
+/* Podtytuły z treści lekcji (nagłówki h2 i h3 zapisane w treści): o stopień mniejsze niż tytuł karty —
+   pogrubiony tekst wielkości akapitu z odstępem nad. Poziomy nagłówków w kodzie zostają bez zmiany. */
+.tresc h2,
+.tresc h3 {
+  margin-top: var(--space-12);
+  font-size: var(--fs-8);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-lesson);
+}
+
+.tresc h2:first-child,
+.tresc h3:first-child {
+  margin-top: 0;
+}
+
 .wstep {
   margin: 0 0 var(--space-14);
   font-size: var(--fs-9);

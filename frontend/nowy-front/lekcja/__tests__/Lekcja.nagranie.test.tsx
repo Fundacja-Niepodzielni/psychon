@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { KURS, LEKCJA } from "./pomoce";
+import { KURS, LEKCJA, ramkaOdtwarzacza, zrodloRamki } from "./pomoce";
 
 /**
  * Ekran odróżnia nagranie w przygotowaniu, nagranie, które nie działa, i lekcję
@@ -53,7 +53,7 @@ describe("nagranie w przygotowaniu", () => {
     const { container } = await otworz({ status: "ok", dane: LEKCJA, bezNagrania: true, nagranie: "w-przygotowaniu" });
 
     expect(blokNagrania(container).textContent).not.toMatch(SLOWA_TECHNICZNE);
-    expect(screen.queryByRole("button", { name: /Odtwórz/ })).toBeNull();
+    expect(ramkaOdtwarzacza()).toBeNull();
     expect(screen.getByText("Opis lekcji")).toBeInTheDocument();
     expect(screen.getByText(/Kryzys psychiczny nie zawsze wygląda jak kryzys\./)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Materiały do pobrania" })).toBeInTheDocument();
@@ -87,9 +87,9 @@ describe("nagranie, które nie działa", () => {
 
 describe("gotowe nagranie i brak nagrania", () => {
   it("nagranie gotowe: odtwarzacz, bez zdań o przygotowaniu i błędzie", async () => {
-    await otworz({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: {} });
+    await otworz({ status: "ok", dane: LEKCJA, bezNagrania: false, zrodloNagrania: zrodloRamki() });
 
-    expect(screen.getByRole("button", { name: "Odtwórz nagranie" })).toBeInTheDocument();
+    expect(ramkaOdtwarzacza()).not.toBeNull();
     expect(screen.queryByText("Nagranie jest w przygotowaniu.")).toBeNull();
     expect(screen.queryByText("Tego nagrania nie da się teraz obejrzeć.")).toBeNull();
   });
