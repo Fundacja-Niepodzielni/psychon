@@ -455,3 +455,34 @@ describe("EdytorTresci: pasek", () => {
     expect(przycisk(pasek, "Kursywa")).toHaveAttribute("aria-pressed", "false");
   });
 });
+
+describe("EdytorTresci: Tab w liście jest klawiszem przejścia, nie edycji", () => {
+  it.each([
+    ["lista punktowana", "- pierwszy punkt\n- drugi punkt\n- trzeci punkt"],
+    ["lista numerowana", "1. pierwszy punkt\n2. drugi punkt\n3. trzeci punkt"],
+  ])("%s: Tab i Shift+Tab w pozycji listy nie zmieniają treści i zostają dla przeglądarki", async (_nazwa, tekst) => {
+    const { obszar, silnik, onZmiana } = await otworzEdytor(tekst);
+    zaznacz(silnik, "drugi");
+    const przed = silnik.edytor.state.doc;
+    for (const shiftKey of [true, false]) {
+      let nieprzejety = false;
+      act(() => {
+        nieprzejety = fireEvent.keyDown(obszar, { key: "Tab", code: "Tab", shiftKey });
+      });
+      expect(nieprzejety, shiftKey ? "Shift+Tab" : "Tab").toBe(true);
+    }
+    expect(silnik.edytor.state.doc.eq(przed)).toBe(true);
+    expect(onZmiana).not.toHaveBeenCalled();
+    expect(within(obszar).getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("Enter w pozycji listy nadal zakłada kolejną pozycję", async () => {
+    const { obszar, silnik, onZmiana } = await otworzEdytor("- pierwszy punkt\n- drugi punkt");
+    zaznacz(silnik, "drugi");
+    act(() => {
+      silnik.edytor.commands.setTextSelection(silnik.edytor.state.selection.to);
+      fireEvent.keyDown(obszar, { key: "Enter", code: "Enter" });
+    });
+    expect(ostatni(onZmiana)).toBe("- pierwszy punkt\n- drugi\n- punkt");
+  });
+});

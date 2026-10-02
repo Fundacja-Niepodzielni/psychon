@@ -116,10 +116,11 @@ describe("źródła ekranu lekcji", () => {
     expect(TSX.filter((plik) => tresc(plik).includes(znacznik))).toEqual([]);
   });
 
-  it("treść lekcji renderuje molekuła TrescLekcji, bez własnego parsera Markdown", () => {
+  it("treść lekcji edytuje molekuła EdytorTresci: bez pola ze znacznikami, bez osobnego podglądu i bez własnego parsera Markdown", () => {
     const ekran = tresc(join(KORZEN, "nowy-front/lekcja-edycja/StronaLekcji.tsx"));
-    expect(ekran).toMatch(/import \{ TrescLekcji \} from "@\/design-system\/molekuly\/TrescLekcji\/TrescLekcji";/);
-    expect(ekran).toMatch(/<TrescLekcji\b/);
+    expect(ekran).toMatch(/import \{ EdytorTresci \} from "@\/design-system\/molekuly\/EdytorTresci\/EdytorTresci";/);
+    expect(bezKomentarzy(ekran).match(/<EdytorTresci\b/g)).toHaveLength(1);
+    expect(bezKomentarzy(ekran)).not.toMatch(/<Textarea\b|<TrescLekcji\b|Podgląd treści/);
     const wlasnyParser = PLIKI.filter((plik) => /parsujTresc|marked|markdown-it|remark/.test(bezKomentarzy(tresc(plik))));
     expect(nazwy(wlasnyParser)).toEqual([]);
   });
