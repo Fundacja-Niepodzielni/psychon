@@ -41,6 +41,7 @@ import {
   zdejmijPytanie,
 } from "./logika";
 import style from "./SkrzynkaPytan.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
@@ -290,7 +291,7 @@ export function SkrzynkaPytan() {
               </Button>
             }
           >
-            {stan.komunikat ?? "Serwer nie odpowiedział albo zwrócił błąd. Pytania nie są pokazywane bez danych."}
+            {stan.komunikat ?? `${KOMUNIKAT_SERWER} Pytania nie są pokazywane bez danych.`}
           </Notice>
         }
       />

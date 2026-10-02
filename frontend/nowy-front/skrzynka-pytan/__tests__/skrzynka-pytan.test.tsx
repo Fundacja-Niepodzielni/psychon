@@ -705,14 +705,14 @@ describe("Skrzynka pytań — komunikat z koperty błędu", () => {
     const alarm = await screen.findByRole("alert");
     expect(alarm).toHaveTextContent("Nie udało się wczytać pytań");
     expect(alarm).toHaveTextContent("Skrzynka pytań jest chwilowo niedostępna.");
-    expect(alarm).not.toHaveTextContent("Serwer nie odpowiedział");
+    expect(alarm).not.toHaveTextContent("Nie udało się połączyć z serwerem");
   });
 
   it("błąd odczytu bez koperty (brak połączenia): tekst ogólny", async () => {
     apiPaged.mockRejectedValue(new TypeError("Failed to fetch"));
     render(<SkrzynkaPytan />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Serwer nie odpowiedział albo zwrócił błąd.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.");
   });
 
   it("błąd odpowiedzi inny niż 422, 404 i 403 (tu 500 z kopertą): komunikat serwera w Notice, formularz zostaje", async () => {
