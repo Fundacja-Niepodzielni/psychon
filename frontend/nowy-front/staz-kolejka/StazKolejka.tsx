@@ -263,7 +263,7 @@ export function StazKolejka() {
 
   const pusty = {
     naglowek: "Brak wpisów do decyzji",
-    tresc: "Nowe dyżury pojawią się tutaj, gdy wolontariusze je zgłoszą.",
+    tresc: "Nowe dyżury pojawią się tutaj, gdy Wolontariusze je dodadzą.",
     przycisk: { etykieta: "Odśwież", onClick: ponow },
   };
 
