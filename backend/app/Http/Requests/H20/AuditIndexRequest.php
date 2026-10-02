@@ -22,7 +22,7 @@ class AuditIndexRequest extends FormRequest
         'assignment.created', 'assignment.removed',
         'attempt.finished', 'attempts.reset', 'workshop.completed',
         'internship.accepted', 'internship.returned', 'internship.rejected',
-        'supervisor.assigned',
+        'supervisor.assigned', 'supervisor.unassigned',
         'certificate.issued',
         'document.generated',
         'profile.accepted', 'profile.returned', 'profile.withdrawn',
