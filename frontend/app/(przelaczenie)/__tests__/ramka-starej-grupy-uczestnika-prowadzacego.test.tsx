@@ -47,11 +47,28 @@ const KORZEN_PROWADZACEGO = path.join(process.cwd(), "app", "(prowadzacy)");
 const STRONY_UCZESTNIKA = sciezkiStron(KORZEN_UCZESTNIKA, path.join(KORZEN_UCZESTNIKA, "panel"));
 const STRONY_PROWADZACEGO = sciezkiStron(KORZEN_PROWADZACEGO, path.join(KORZEN_PROWADZACEGO, "prowadzacy"));
 
+/**
+ * Numer bieżącego przypadku. `afterEach` podbija go przed `cleanup()`, więc
+ * przypadek przerwany limitem czasu, którego import skończy się dopiero po
+ * sprzątaniu, nie wyrenderuje niczego do dokumentu następnego przypadku
+ * (bramka: „Found multiple elements with the text: Treść strony próbnej”
+ * w przypadku po przerwanym).
+ */
+let przypadek = 0;
+
+function przypadekTrwa(numer: number, adres: string) {
+  if (numer !== przypadek) {
+    throw new Error(`Przypadek ${adres} skończył się przed renderem — bez renderu do dokumentu następnego przypadku.`);
+  }
+}
+
 type Uklad = ComponentType<{ children: ReactNode }>;
 
 async function wyrenderuj(adres: string, zaladuj: () => Promise<{ default: Uklad }>) {
+  const numer = przypadek;
   sciezka = adres;
   const { default: Layout } = await zaladuj();
+  przypadekTrwa(numer, adres);
   const wynik = render(
     <Layout>
       <p>Treść strony próbnej</p>
@@ -63,6 +80,17 @@ async function wyrenderuj(adres: string, zaladuj: () => Promise<{ default: Uklad
 
 const ukladUczestnika = () => import("@/app/(uczestnik)/panel/layout");
 const ukladProwadzacego = () => import("@/app/(prowadzacy)/prowadzacy/layout");
+
+/**
+ * Pierwszy import układu przekształca cały graf jego modułów i w tym pliku
+ * płacił za to pierwszy przypadek renderu (`/panel/certyfikat`) — pod
+ * obciążeniem ponad limit 5000 ms, jak w `ramka-starej-grupy-administracji`.
+ * Graf obu układów przekształcamy raz przy zbieraniu pliku, poza limitem czasu
+ * przypadków. Każdy przypadek i tak ocenia moduły od nowa (`podmienRejestr`
+ * woła `vi.resetModules()`), z podmienionym rejestrem.
+ */
+await ukladUczestnika();
+await ukladProwadzacego();
 
 /** Obie ramki nazywają menu tak samo; nową odróżnia znacznik `data-powloka-panelu`. */
 function ramka(container: HTMLElement, etykietaMenu: string) {
@@ -88,6 +116,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  przypadek += 1;
   cleanup();
   przywrocRejestr();
 });
