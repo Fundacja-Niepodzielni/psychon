@@ -9,9 +9,9 @@ import { pobierzJa } from "@/lib/api/h01-wspolpraca";
  *    nie ma, więc lekcję wybiera się z listy kursu;
  *  - zapis: `PATCH /admin/lessons/{lesson}` (`h08.php:45`);
  *  - materiał: `POST /admin/lessons/{lesson}/materials` (`h08.php:66`);
- *  - nagranie: `POST /admin/lessons/{lesson}/video-uploads` (`video.php:23`,
- *    wyłącznie `super_admin`) i `GET /admin/lessons/{lesson}/video-status`
- *    (`video.php:27`, `project_manager` i `super_admin`);
+ *  - nagranie: `POST /admin/lessons/{lesson}/video-uploads` (`video.php:23`) i
+ *    `GET /admin/lessons/{lesson}/video-status` (`video.php:27`) — obie dla
+ *    `project_manager` i `super_admin`;
  *  - rola osoby: `GET /me` (`h01.php:27`).
  *
  * Kształt lekcji to `AdminLessonResource::toArray`

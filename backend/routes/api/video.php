@@ -19,7 +19,7 @@ Route::middleware(['auth:keycloak', 'access.active'])
     ->get('/lessons/{lesson}/video-link', [VideoTokenController::class, 'show'])
     ->whereNumber('lesson');
 
-Route::middleware(['auth:keycloak', 'role:super_admin'])
+Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])
     ->post('/admin/lessons/{lesson}/video-uploads', [BunnyVideoAdminController::class, 'createUpload'])
     ->whereNumber('lesson');
 

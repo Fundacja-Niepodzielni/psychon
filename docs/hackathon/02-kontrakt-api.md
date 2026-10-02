@@ -1799,3 +1799,42 @@ Kod: `Support/PdfService.php`, `Services/DocumentTemplates/DocumentCostLimit.php
 `Services/DocumentTemplates/DocumentTemplateTrial.php`,
 `Services/DocumentTemplates/DocumentTemplateSampleData.php`, `Jobs/GenerateCertificate.php`,
 `routes/api/document_templates.php`, `routes/api/h14.php`.
+
+---
+
+## Aneks — wgranie nagrania lekcji także przez opiekuna projektu (H08)
+
+Zlecenie wgrania nagrania lekcji, dotąd dostępne wyłącznie dla `super_admin`, dostępne jest
+teraz dla obu ról administracji. Zmienia się wyłącznie próg roli trasy; limity treści i
+odmowy treści zostają bez zmian. Bez nowych kodów błędu, slugów audytu i typów powiadomień;
+zero zmian w danych.
+
+### 1. Trasa i role
+
+`POST /admin/lessons/{lesson}/video-uploads` — role `project_manager` i `super_admin`, ten
+sam próg co reszta tras zarządzania kursami (`role:project_manager,super_admin`). Odczyt
+stanu `GET /admin/lessons/{lesson}/video-status` ma ten sam próg i nie zmienia się. Rolę rozstrzyga wyłącznie pośrednik trasy: w kontrolerze ani w usłudze nagrań nie ma
+drugiego sprawdzenia roli.
+
+### 2. Kody
+
+| Sytuacja | Kod | `code` |
+|---|---|---|
+| brak albo nieważny token (także konto zablokowane) | **401** | `unauthenticated` |
+| rola spoza `project_manager` i `super_admin` | **403** | `forbidden` |
+| nieznana albo usunięta lekcja (rola administracji) | **404** | `not_found` |
+
+Rola spoza grupy dostaje odmowę bez żadnego żądania do dostawcy nagrań i bez zmiany lekcji.
+Rozwiązanie parametru `{lesson}` poprzedza pośrednika roli (tak jest na wszystkich trasach
+administracji), więc dla lekcji nieistniejącej osoba spoza grupy może dostać `404 not_found`
+zamiast `403 forbidden` — w obu przypadkach żądanie do dostawcy nagrań nie wychodzi.
+
+### 3. Kształt i zachowanie wobec dostawcy
+
+Ten aneks zmienia wyłącznie próg roli trasy. Kształt żądania i odpowiedzi, zasady wysyłki
+i jej wznowienia oraz stan nagrania opisuje aneks „stan nagrania lekcji” powyżej; ten aneks
+mu nie przeczy i go nie powtarza. Odmowy treści działają u obu ról tak samo: multipart z
+załącznikiem → `422 no_direct_upload`, ciało ponad limit → `413 payload_too_large`, nieznane
+pole → `422 invalid_payload`. Klucz dostawcy nie wraca w odpowiedzi.
+
+Kod: `routes/api/video.php`, `Http/Controllers/Api/V1/Admin/BunnyVideoAdminController.php`.

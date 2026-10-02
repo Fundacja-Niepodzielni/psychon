@@ -93,7 +93,7 @@ function sekcja(): HTMLElement {
 }
 
 async function wgraj(container: HTMLElement, uzytkownik: ReturnType<typeof userEvent.setup>, nazwa = "karta.pdf") {
-  const wejscie = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+  const wejscie = container.querySelector<HTMLInputElement>('input[type="file"][id$="-plik-materialu"]')!;
   await uzytkownik.upload(wejscie, new File(["%PDF"], nazwa, { type: "application/pdf" }));
 }
 

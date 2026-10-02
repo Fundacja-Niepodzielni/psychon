@@ -158,16 +158,24 @@ describe("błędy serwera", () => {
 });
 
 describe("sekcja nagrania", () => {
-  it("wgrywać nagranie może tylko Super Admin", () => {
+  it("wgrywać nagranie może opiekun projektu i Super Admin", () => {
+    expect(mozeWgrywacNagranie("project_manager")).toBe(true);
     expect(mozeWgrywacNagranie("super_admin")).toBe(true);
-    expect(mozeWgrywacNagranie("project_manager")).toBe(false);
-    expect(mozeWgrywacNagranie(null)).toBe(false);
   });
 
-  it("powód nieaktywnej sekcji istnieje dla opiekuna projektu i dla nieznanej roli, nie dla Super Admina", () => {
+  it("żadna inna rola, brak roli ani napis spoza słownika nie może wgrywać nagrania", () => {
+    for (const rola of ["instructor", "volunteer", "student", null, "", "Super_Admin", "admin", "project_manager "]) {
+      expect(mozeWgrywacNagranie(rola), `rola: ${JSON.stringify(rola)}`).toBe(false);
+    }
+  });
+
+  it("powód nieaktywnej sekcji: brak dla obu ról administracji, zdanie dla pozostałych", () => {
+    expect(powodNieaktywnegoNagrania("project_manager")).toBeNull();
     expect(powodNieaktywnegoNagrania("super_admin")).toBeNull();
-    expect(powodNieaktywnegoNagrania("project_manager")).toMatch(/tylko Super Admin/);
-    expect(powodNieaktywnegoNagrania(null)).toMatch(/Nie udało się ustalić/);
+    for (const rola of ["instructor", "volunteer", "student", "nieznana-rola"]) {
+      expect(powodNieaktywnegoNagrania(rola), `rola: ${rola}`).toBe("Nagranie może wgrać opiekun projektu albo Super Admin.");
+    }
+    expect(powodNieaktywnegoNagrania(null)).toBe("Nie udało się ustalić, czy możesz wgrywać nagrania.");
   });
 
   it("opis stanu nagrania dla każdego stanu serwera i dla braku odpowiedzi", () => {

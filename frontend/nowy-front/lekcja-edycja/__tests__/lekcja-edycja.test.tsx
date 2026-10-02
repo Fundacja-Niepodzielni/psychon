@@ -553,18 +553,28 @@ describe("pliki lekcji", () => {
 });
 
 describe("nagranie", () => {
-  it("Super Admin: obszar upuszczania nagrania jest aktywny, opiekun projektu widzi powód", async () => {
-    const administrator = await renderujDane({ rola: "super_admin" });
-    expect(wejsciaPlikow(administrator.container)).toHaveLength(2);
-    expect(screen.queryByText(/tylko Super Admin/)).toBeNull();
-    administrator.unmount();
+  it.each(["project_manager", "super_admin"])(
+    "%s: obszar upuszczania nagrania jest aktywny i nie ma zdania o braku uprawnień",
+    async (rola) => {
+      const { container } = await renderujDane({ rola });
+      expect(wejsciaPlikow(container)).toHaveLength(2);
+      expect(screen.getByText("Upuść tutaj nagranie albo wybierz je z dysku.")).toBeInTheDocument();
+      expect(screen.queryByText(/Nagranie może wgrać/)).toBeNull();
+    },
+  );
 
-    const opiekun = await renderujDane({ rola: "project_manager" });
-    expect(wejsciaPlikow(opiekun.container)).toHaveLength(1);
-    expect(screen.getByText(/Nagranie może wgrać tylko Super Admin/)).toBeInTheDocument();
-  });
+  it.each(["instructor", "volunteer", "student"])(
+    "%s: obszaru wgrania nagrania nie ma, jest zdanie powodu, a trasa wgrania nie jest wołana",
+    async (rola) => {
+      const { container } = await renderujDane({ rola });
+      expect(wejsciaPlikow(container)).toHaveLength(1);
+      expect(screen.queryByText("Upuść tutaj nagranie albo wybierz je z dysku.")).toBeNull();
+      expect(screen.getByText("Nagranie może wgrać opiekun projektu albo Super Admin.")).toBeInTheDocument();
+      expect(wywolania("POST", "/admin/lessons/21/video-uploads")).toHaveLength(0);
+    },
+  );
 
-  it("opiekun projektu: stan nagrania z serwera widoczny, wgrywania brak", async () => {
+  it("opiekun projektu: stan nagrania z serwera widoczny", async () => {
     await renderujDane({
       rola: "project_manager",
       nagranie: GOTOWE_NAGRANIE,
@@ -572,40 +582,43 @@ describe("nagranie", () => {
     expect(screen.getByText("Nagranie jest gotowe. Czas trwania: 2 min 5 s.")).toBeInTheDocument();
   });
 
-  it("Super Admin: zlecenie wgrania z samym tytułem, potem wysyłka do dostawcy", async () => {
-    const uzytkownik = userEvent.setup();
-    const { container } = await renderujDane({ rola: "super_admin" });
-    const zlecenie: ZlecenieWgrania = {
-      video_id: "vid-1",
-      upload_url: "https://video.test/tusupload",
-      library_id: "77",
-      expiration_time: 1790000000,
-      signature: "sig",
-    };
-    const ponowny: StanNagrania = { status: "processing", duration_seconds: 0, preview_embed_url: "https://x.test/e" };
-    api.mockImplementation(async (sciezka: string, opcje?: { method?: string }) => {
-      if (sciezka === "/admin/lessons/21/video-uploads" && opcje?.method === "POST") return zlecenie;
-      if (sciezka === "/admin/lessons/21/video-status") return ponowny;
-      throw new Error(`Nieoczekiwana trasa: ${sciezka}`);
-    });
-    const dostawca = vi.fn(async (_adres: string, opcje: { method: string }) =>
-      opcje.method === "POST"
-        ? new Response(null, { status: 201, headers: { Location: "https://video.test/tusupload/abc" } })
-        : new Response(null, { status: 204, headers: { "Upload-Offset": "5" } }),
-    );
-    vi.stubGlobal("fetch", dostawca);
+  it.each(["project_manager", "super_admin"])(
+    "%s: zlecenie wgrania z samym tytułem, potem wysyłka do dostawcy",
+    async (rola) => {
+      const uzytkownik = userEvent.setup();
+      const { container } = await renderujDane({ rola });
+      const zlecenie: ZlecenieWgrania = {
+        video_id: "vid-1",
+        upload_url: "https://video.test/tusupload",
+        library_id: "77",
+        expiration_time: 1790000000,
+        signature: "sig",
+      };
+      const ponowny: StanNagrania = { status: "processing", duration_seconds: 0, preview_embed_url: "https://x.test/e" };
+      api.mockImplementation(async (sciezka: string, opcje?: { method?: string }) => {
+        if (sciezka === "/admin/lessons/21/video-uploads" && opcje?.method === "POST") return zlecenie;
+        if (sciezka === "/admin/lessons/21/video-status") return ponowny;
+        throw new Error(`Nieoczekiwana trasa: ${sciezka}`);
+      });
+      const dostawca = vi.fn(async (_adres: string, opcje: { method: string }) =>
+        opcje.method === "POST"
+          ? new Response(null, { status: 201, headers: { Location: "https://video.test/tusupload/abc" } })
+          : new Response(null, { status: 204, headers: { "Upload-Offset": "5" } }),
+      );
+      vi.stubGlobal("fetch", dostawca);
 
-    await uzytkownik.upload(wejscieNagrania(container), new File(["12345"], "nagranie.mp4", { type: "video/mp4" }));
+      await uzytkownik.upload(wejscieNagrania(container), new File(["12345"], "nagranie.mp4", { type: "video/mp4" }));
 
-    await waitFor(() => expect(container.querySelector('[data-stan-nagrania="przetwarzanie"]')).not.toBeNull());
-    const wywolanie = wywolania("POST", "/admin/lessons/21/video-uploads")[0];
-    expect((wywolanie[1] as { body: unknown }).body).toEqual({ title: "Wprowadzenie do wywiadu" });
-    expect(dostawca).toHaveBeenCalledTimes(2);
-    const karta = screen.getByRole("heading", { level: 2, name: "Nagranie" }).closest("section")!;
-    expect(within(karta).getByText("Możesz wszystko zamknąć – nagranie przetworzy się samo.")).toBeInTheDocument();
-    expect(within(karta).queryByRole("progressbar")).toBeNull();
-    expect(screen.getByText(/nagranie się przetwarza/)).toBeInTheDocument();
-  });
+      await waitFor(() => expect(container.querySelector('[data-stan-nagrania="przetwarzanie"]')).not.toBeNull());
+      const wywolanie = wywolania("POST", "/admin/lessons/21/video-uploads")[0];
+      expect((wywolanie[1] as { body: unknown }).body).toEqual({ title: "Wprowadzenie do wywiadu" });
+      expect(dostawca).toHaveBeenCalledTimes(2);
+      const karta = screen.getByRole("heading", { level: 2, name: "Nagranie" }).closest("section")!;
+      expect(within(karta).getByText("Możesz wszystko zamknąć – nagranie przetworzy się samo.")).toBeInTheDocument();
+      expect(within(karta).queryByRole("progressbar")).toBeNull();
+      expect(screen.getByText(/nagranie się przetwarza/)).toBeInTheDocument();
+    },
+  );
 
   it("plik, który nie jest wideo: błąd w wierszu, zero zapytań o wgranie", async () => {
     const uzytkownik = userEvent.setup();
@@ -639,7 +652,7 @@ describe("nagranie", () => {
   });
 });
 
-describe("nagranie: wysyłanie i przerwanie", () => {
+describe.each(["project_manager", "super_admin"])("nagranie: wysyłanie i przerwanie, rola %s", (rola) => {
   const ZLECENIE: ZlecenieWgrania = {
     video_id: "vid-1",
     upload_url: "https://video.test/tusupload",
@@ -648,9 +661,12 @@ describe("nagranie: wysyłanie i przerwanie", () => {
     signature: ["pod", "pis"].join(""),
   };
 
+  // Ta sama nazwa, rozmiar i data modyfikacji: dla wysyłania to ten sam plik.
+  const plikNagrania = () => new File(["12345"], "nagranie.mp4", { type: "video/mp4", lastModified: 1_700_000_000_000 });
+
   async function zacznijWysylanie() {
     const uzytkownik = userEvent.setup();
-    const { container, unmount } = await renderujDane({ rola: "super_admin" });
+    const { container, unmount } = await renderujDane({ rola });
     const dawne = api.getMockImplementation()!;
     api.mockImplementation(async (sciezka: string, opcje?: { method?: string; body?: CialoLekcji }) => {
       if (sciezka === "/admin/lessons/21/video-uploads" && opcje?.method === "POST") return ZLECENIE;
@@ -668,7 +684,7 @@ describe("nagranie: wysyłanie i przerwanie", () => {
         }),
     );
     vi.stubGlobal("fetch", dostawca);
-    await uzytkownik.upload(wejscieNagrania(container), new File(["12345"], "nagranie.mp4", { type: "video/mp4" }));
+    await uzytkownik.upload(wejscieNagrania(container), plikNagrania());
     await waitFor(() => expect(dostawca).toHaveBeenCalledTimes(2));
     return { uzytkownik, container, unmount };
   }
@@ -731,6 +747,43 @@ describe("nagranie: wysyłanie i przerwanie", () => {
     await uzytkownik.upload(wejscieNagrania(container), new File(["inna treść"], "inne.mp4", { type: "video/mp4" }));
     expect(await screen.findByText("To nie jest ten sam plik")).toBeInTheDocument();
     expect(wywolania("POST", "/admin/lessons/21/video-uploads")).toHaveLength(zlecen);
+  });
+
+  it("rola decyduje o rozpoczęciu: wysyłanie ruszyło z karty, stan wspólny dla paska w ramie i wiersza lekcji", async () => {
+    await zacznijWysylanie();
+    const stan = uchwytWysylania.stan();
+    expect(stan.rodzaj).toBe("wysylanie");
+    if (stan.rodzaj === "wysylanie") expect(stan.lekcja.id).toBe(21);
+    expect(wywolania("POST", "/admin/lessons/21/video-uploads")).toHaveLength(1);
+  });
+
+  it("wznowienie po przerwaniu: ten sam plik, nowe pozwolenie na to samo nagranie, dalej od miejsca przerwania", async () => {
+    const { uzytkownik, container } = await zacznijWysylanie();
+    await uzytkownik.click(screen.getByRole("button", { name: "Przerwij wysyłanie" }));
+    await waitFor(() => expect(uchwytWysylania.stan().rodzaj).toBe("przerwane"));
+    const zlecen = wywolania("POST", "/admin/lessons/21/video-uploads").length;
+
+    const dawne = api.getMockImplementation()!;
+    api.mockImplementation(async (sciezka: string, opcje?: { method?: string; body?: CialoLekcji }) => {
+      if (sciezka === "/admin/lessons/21/video-uploads" && opcje?.method === "POST") return { ...ZLECENIE, resumed: true };
+      return dawne(sciezka, opcje);
+    });
+    const dostawca = vi.fn(async (_adres: string, opcje: { method: string }) =>
+      opcje.method === "HEAD"
+        ? new Response(null, { status: 200, headers: { "Upload-Offset": "2" } })
+        : new Response(null, { status: 204, headers: { "Upload-Offset": "5" } }),
+    );
+    vi.stubGlobal("fetch", dostawca);
+
+    await uzytkownik.upload(wejscieNagrania(container), plikNagrania());
+
+    // HEAD o przesunięcie, potem kawałek od miejsca, w którym dostawca ma już plik.
+    await waitFor(() => expect(dostawca).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("To nie jest ten sam plik")).toBeNull();
+    expect(wywolania("POST", "/admin/lessons/21/video-uploads")).toHaveLength(zlecen + 1);
+    const metody = dostawca.mock.calls.map(([adres, opcje]) => `${opcje.method} ${adres}`);
+    expect(metody[0]).toBe("HEAD https://video.test/tusupload/abc");
+    expect(metody.some((wpis) => wpis === "POST https://video.test/tusupload")).toBe(false);
   });
 });
 

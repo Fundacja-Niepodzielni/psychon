@@ -193,9 +193,13 @@ final class PdfLongWordWrapTest extends TestCase
 
         $this->assertSame(1, $with->getCanvas()->get_page_count());
         $this->assertSame($without->getCanvas()->get_page_count(), $with->getCanvas()->get_page_count());
+        // Dwa wydruki powstają w różnych chwilach, a silnik wpisuje do nagłówka dokumentu
+        // datę utworzenia z zegara systemowego — przejście granicy sekundy między nimi
+        // zmieniałoby wynik, choć treść jest ta sama. Wyrównane są wyłącznie te dwa pola
+        // daty; cała reszta dokumentu jest porównywana bez zmian.
         $this->assertSame(
-            self::strings((string) $without->output(['compress' => 0])),
-            self::strings((string) $with->output(['compress' => 0])),
+            self::strings(self::withoutDocumentDates((string) $without->output(['compress' => 0]))),
+            self::strings(self::withoutDocumentDates((string) $with->output(['compress' => 0]))),
         );
     }
 
@@ -209,6 +213,32 @@ final class PdfLongWordWrapTest extends TestCase
         $this->assertSame(500, array_sum($default));
         $this->assertLessThanOrEqual(44, max($default), 'Arkusz bazowy nie połamał wyrazu.');
         $this->assertSame([500], $overridden, 'Styl wzoru nie nadpisał arkusza bazowego.');
+    }
+
+    /**
+     * Dokument bez dat nagłówka: pola `/CreationDate` i `/ModDate` dostają stałą wartość.
+     *
+     * Silnik bierze datę z zegara systemowego (`date()` w adapterze płótna), którego
+     * próba nie może zamrozić — dwa wydruki tego samego wzoru różnią się więc datą, gdy
+     * drugi powstaje w następnej sekundzie. Dokument jest tu zapisany bez kompresji;
+     * dokładnie dwa pola daty muszą zostać znalezione, inaczej próba czerwienieje,
+     * zamiast po cichu niczego nie wyrównać.
+     */
+    private static function withoutDocumentDates(string $bytes): string
+    {
+        $aligned = preg_replace(
+            '~/(CreationDate|ModDate) \(D:\d{14}[+-]\d{2}\'\d{2}\'\)~',
+            '/$1 (D:20000101000000+00\'00\')',
+            $bytes,
+            -1,
+            $count,
+        );
+
+        if ($aligned === null || $count !== 2) {
+            throw new RuntimeException('W nagłówku dokumentu nie ma dokładnie dwóch pól daty (znaleziono: '.$count.').');
+        }
+
+        return $aligned;
     }
 
     /**

@@ -41,10 +41,14 @@ use Illuminate\Support\Facades\Validator;
  * limitu treści JSON, a walidacja niżej odrzuca zarówno nieznane pole, jak
  * i pole, które nie jest krótkim tekstem.
  *
- * Trasa `createUpload` stoi za `role:super_admin` (jedyna rola z
- * pozwoleniem na wgranie). `status` stoi za tym samym progiem co reszta
- * CMS kursów (`role:project_manager,super_admin`), bo to odczyt, nie
- * zmiana.
+ * Obie trasy stoją za tym samym progiem co reszta CMS kursów
+ * (`role:project_manager,super_admin`, `routes/api/video.php`): wgranie
+ * (`createUpload`) może zlecić opiekun projektu i super admin, odczyt stanu
+ * (`status`) — ci sami. Samego sprawdzenia roli nie ma w kontrolerze ani w
+ * usłudze: rolę rozstrzyga wyłącznie pośrednik trasy, przed jakimkolwiek
+ * żądaniem do dostawcy nagrań. Lekcję z adresu rozwiązuje wcześniej
+ * `SubstituteBindings` (tak jest na wszystkich trasach administracji), więc
+ * rola obca przy lekcji nieistniejącej dostaje 404, a nie 403.
  */
 class BunnyVideoAdminController extends Controller
 {
