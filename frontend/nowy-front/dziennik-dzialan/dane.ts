@@ -26,7 +26,6 @@ import { nazwaGrupy, zdanie } from "./slownik";
 export const LICZBA_NA_STRONE = 25;
 export const LIMIT_SZUKANEJ_FRAZY = 255;
 
-const MS_NA_DOBE = 24 * 60 * 60 * 1000;
 const MS_NA_GODZINE = 60 * 60 * 1000;
 const DATA_KALENDARZOWA = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -49,7 +48,8 @@ export function filtrAktywny(filtr: FiltrDziennika): boolean {
 
 /** Dzień kalendarzowy w Polsce (`RRRR-MM-DD`) dla chwili `ms`. */
 export function dzienWPolsce(ms: number): string {
-  return new Date(numerDniaKalendarzowego(ms) * MS_NA_DOBE).toISOString().slice(0, 10);
+  // Numer dnia liczy wspólny moduł dat; `Date.UTC` zamienia go z powrotem na datę.
+  return new Date(Date.UTC(1970, 0, 1 + numerDniaKalendarzowego(ms))).toISOString().slice(0, 10);
 }
 
 /** Dzień przesunięty o `dni` (dzień kalendarzowy, bez godzin). */
@@ -68,8 +68,10 @@ export function polnocWPolsce(dzien: string): number | null {
   if (dopasowanie === null) return null;
   const utc = Date.UTC(Number(dopasowanie[1]), Number(dopasowanie[2]) - 1, Number(dopasowanie[3]));
   if (Number.isNaN(utc)) return null;
+  // Południe UTC tego dnia wypada w Polsce tego samego dnia — to numer dnia docelowego.
+  const docelowy = numerDniaKalendarzowego(utc + 12 * MS_NA_GODZINE);
   const latem = utc - 2 * MS_NA_GODZINE;
-  return numerDniaKalendarzowego(latem) === utc / MS_NA_DOBE ? latem : utc - MS_NA_GODZINE;
+  return numerDniaKalendarzowego(latem) === docelowy ? latem : utc - MS_NA_GODZINE;
 }
 
 /** Gotowe zakresy dat — „Cały rok programu” bierze daty edycji, więc nie stoi tutaj. */
