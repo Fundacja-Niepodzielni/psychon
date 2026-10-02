@@ -80,3 +80,46 @@ poza `in_program`, każdą liczbę po dacie jej własnego zdarzenia.
 - Średnia godzin dzieli przez wolontariuszy i studentów razem.
 - Raport nie pokazuje, którego roku programu dotyczy. Odpowiedź nie niesie edycji, a lista
   nie jest zawężona do edycji. Przy jednej edycji naraz wynik jest ten sam.
+
+## Po zmianie na tej gałęzi — liczby dopisane do `GET /admin/report`
+
+Stare pola (`summary`, dotychczasowe pola `people[]`, domyślny `export.csv`) zostały bez zmian,
+bo czyta je dotychczasowy ekran i próby zgodności z pulpitem. Nowe bloki stoją obok nich.
+Numery wierszy dotyczą `app/Services/H20/ReportSummary.php` po zmianie.
+
+| Pole | Jak jest liczone | Zależy od dat? |
+|---|---|---|
+| `edition` | aktywna edycja (`Settings::activeEdition()`): `id`, `name`, `starts_at`, `ends_at` — `:138` | nie |
+| `period` | zakres dat z zapytania, bez zmian — `:139` | — |
+| `program.active` | konta **wolontariuszy** w stanie „aktywne” — `:199` | nie, stan dziś |
+| `program.completed` | wolontariusze z datą ukończenia programu — `:212` | nie, stan dziś |
+| `program.admitted` | przyjęte zgłoszenia z kontem wolontariusza; zgłoszenie bez konta po roli ze zgłoszenia — `:202` | nie, stan dziś |
+| `program.with_passed_test` | aktywni wolontariusze z co najmniej jednym zaliczonym testem, z tej samej listy `people` — `:213`; ekran pokazuje „N z `program.active`” | nie, stan dziś |
+| `program.certificates_valid` | certyfikaty wolontariuszy **bez unieważnionych** (`revoked_at` puste) — `:217` | nie, stan dziś |
+| `program.hours_accepted_total` | godziny zaakceptowanych wpisów stażu wolontariuszy — `:200` | **tak**, po dacie wpisu |
+| `program.hours_accepted_average` | `hours_accepted_total` / `program.active` — `:219` | **tak** (licznik) |
+| `program.consultations_total` | konsultacje z zaakceptowanych wpisów wolontariuszy — `:220` | **tak**, po dacie wpisu |
+| `students.active`, `students.completed` | konta studentów w stanie „aktywne” i studenci z datą ukończenia — `:142-143` | nie, stan dziś |
+
+Nowe pola wiersza `people[]` (stan dziś, bez zależności od dat; z `ProgressAggregator::for()`):
+
+| Pole | Jak jest liczone |
+|---|---|
+| `courses_done`, `courses_total` | kursy ścieżki ukończone i wszystkie — `:406` |
+| `internship` | `{done, required}`: godziny zaakceptowane (wszystkie) i `internship_hours_required`; dla studenta `null` — `:408` |
+| `supervision` | `{attended, required}`: obecności bez odwołanych i `supervision_required_count`; dla studenta `null` — `:411` |
+| `workshop_completed_at` | pierwsze zaliczenie warsztatu (ISO 8601 UTC) albo `null` — `:331, :414` |
+| `certificate_valid` | czy osoba ma certyfikat bez unieważnienia — `:324, :405` |
+
+Nowy plik: `GET /admin/report/export.csv?uklad=zestawienie`
+(`app/Http/Controllers/Api/V1/Admin/ReportController.php:89-125`, plik
+`zestawienie-roku-programu.csv`). Zawiera BOM, separator `;`, polskie nagłówki, rolę i stan konta
+słowem, kursy, staż i superwizje „ile z ilu” („nie dotyczy” u studenta), datę warsztatu albo „nie”,
+godziny dyżurów i konsultacje **w okresie**, certyfikat bez unieważnionych („tak”/„nie”).
+Liczby dziesiętne mają przecinek. Plik jest **z nazwiskami**, do użytku w Fundacji. Nie ma
+miejsca na uwagi, więc zdania o datach w nim nie ma.
+
+Plik dla grantodawcy (`report/grantor/export.csv`) i jego liczby **nie zmieniły się**. Ekran
+pobiera go z tym samym okresem co liczby na ekranie, ale ten plik liczy po swojemu (patrz
+tabela grantodawcy wyżej): zawęża datami każdą liczbę poza `in_program`, wlicza studentów
+i unieważnione certyfikaty.
