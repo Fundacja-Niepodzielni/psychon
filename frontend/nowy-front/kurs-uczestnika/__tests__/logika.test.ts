@@ -185,7 +185,15 @@ describe("kurs bez testu w logice", () => {
   it("po ukończeniu wszystkich lekcji kurs jest ukończony i nie ma przycisku głównego; w trakcie — lekcja", () => {
     const koniec = zbudujWidok(odpowiedzBezTestu(7));
     expect(koniec.kursUkonczony).toBe(true);
+    expect(koniec.znacznikUkonczenia).toBe("Kurs ukończony");
+    expect(koniec.powrotDoKursow).toBe(true);
     expect(koniec.akcja).toEqual({ rodzaj: "brak" });
+    const bezUznania = zbudujWidok(odpowiedzBezTestu(7, null, "in_progress"));
+    expect(bezUznania.kursUkonczony).toBe(false);
+    expect(bezUznania.znacznikUkonczenia).toBe("Wszystkie lekcje ukończone");
+    expect(bezUznania.powrotDoKursow).toBe(true);
+    expect(bezUznania.akcja).toEqual({ rodzaj: "brak" });
+    expect(zbudujWidok(odpowiedzSerwera({ ukonczone: 7 })).znacznikUkonczenia).toBe("Lekcje ukończone");
     const wTrakcie = zbudujWidok(odpowiedzBezTestu(6));
     expect(wTrakcie.kursUkonczony).toBe(false);
     expect(wTrakcie.akcja).toMatchObject({ rodzaj: "lekcja", etykieta: "Kontynuuj lekcję 7" });

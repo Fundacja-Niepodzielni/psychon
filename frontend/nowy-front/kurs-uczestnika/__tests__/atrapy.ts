@@ -138,11 +138,11 @@ export function odpowiedzSerwera({ ukonczone, wTrakcieNr = null, zamykajZaNastep
  * Odpowiedź dla kursu bez testu (`has_test: false`): test nie istnieje, więc
  * zaplecze nie zamyka go i nie zalicza; kurs jest ukończony z ostatnią lekcją.
  */
-export function odpowiedzBezTestu(ukonczone: number, wTrakcieNr: number | null = null): KursUczestnika {
+export function odpowiedzBezTestu(ukonczone: number, wTrakcieNr: number | null = null, status?: KursUczestnika["status"]): KursUczestnika {
   return odpowiedzSerwera({
     ukonczone,
     wTrakcieNr,
-    kurs: { has_test: false, test_locked: false, test_passed: false, status: ukonczone >= TYTULY_LEKCJI.length ? "completed" : "in_progress" },
+    kurs: { has_test: false, test_locked: false, test_passed: false, status: status ?? (ukonczone >= TYTULY_LEKCJI.length ? "completed" : "in_progress") },
   });
 }
 

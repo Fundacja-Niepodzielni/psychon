@@ -513,13 +513,17 @@ describe("kurs bez testu", () => {
     expect(screen.queryByText(/na końcu test/)).toBeNull();
   });
 
-  it("odpowiedź, w której zaplecze nie oznaczyło jeszcze kursu jako ukończonego, też kończy się znacznikiem i odnośnikiem", async () => {
-    const kurs = odpowiedzBezTestu(7);
-    kurs.status = "in_progress";
-    await pokaz(kurs);
-    expect(screen.getByText("Kurs ukończony")).toBeInTheDocument();
+  it.each([
+    ["completed", "Kurs ukończony", "Wszystkie lekcje ukończone"],
+    ["in_progress", "Wszystkie lekcje ukończone", "Kurs ukończony"],
+  ] as const)("wszystkie lekcje ukończone i status %s od zaplecza: znacznik „%s”, bez tekstu „%s”, odnośnik „Wróć do kursów” w obu wariantach", async (status, znacznik, nieobecny) => {
+    await pokaz(odpowiedzBezTestu(7, null, status));
+    expect(screen.getByText(znacznik, { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText(nieobecny, { exact: true })).toBeNull();
     expect(screen.getByRole("link", { name: "Wróć do kursów" })).toHaveAttribute("href", "/panel/kursy");
     expect(przyciskiGlowne()).toHaveLength(0);
+    expect(document.querySelector("[data-karta-testu]")).toBeNull();
+    expect(screen.queryByText(/Przejdź do testu/)).toBeNull();
   });
 
   it("kontrola dodatnia: has_test true przy tych samych lekcjach — karta testu, „na końcu test”, „Przejdź do testu”, bez odnośnika „Wróć do kursów”", async () => {
