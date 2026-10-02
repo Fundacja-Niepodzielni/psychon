@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
+import { uchwytWysylania } from "@/nowy-front/wysylanie-nagrania/uchwyt";
 import { KURS, LEKCJE, PROWADZACY, TEMATY, lekcja, temat, utworzSerwer, type AtrapaSerwera } from "./atrapa-serwera";
 
 /**
@@ -585,6 +586,52 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
     });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
     expect(ogloszenie()).toBe("Przeniesiono „Lekcja B” do tematu „Praktyka”, miejsce 1 z 2.");
+  });
+
+  it("świadek współistnienia: wiersz z trwającym wysyłaniem nagrania ma strzałki i stan wysyłania, a zamiana miejsc nie przerywa wysyłania ani nie gubi stanu wiersza", async () => {
+    wysylanie.stan = {
+      rodzaj: "wysylanie",
+      lekcja: { id: 22, tytul: "Lekcja B", adres: "/admin/kursy/4/lekcje/22" },
+      ...{ nazwa: "b.mp4", rozmiar: 1000, wyslano: 620, zostaloSekund: 240, zastepuje: null },
+    };
+    const przerwij = vi.spyOn(uchwytWysylania, "przerwij");
+    const porzuc = vi.spyOn(uchwytWysylania, "porzuc");
+    await renderEkranu();
+
+    function wierszB() {
+      return document.querySelector('li[data-lekcja="22"]') as HTMLElement;
+    }
+    function sprawdzWiersz() {
+      const wiersz = wierszB();
+      expect(wiersz.querySelectorAll("[data-strzalka]")).toHaveLength(2);
+      const miejsce = wiersz.querySelector<HTMLElement>('[data-wysylanie-w-wierszu="wysylanie"]')!;
+      expect(miejsce.textContent!.replace(/ /g, " ")).toBe("Wysyłanie 62 %");
+      expect(within(miejsce).getByRole("progressbar", { name: "Wysyłanie nagrania lekcji Lekcja B" })).toHaveAttribute("aria-valuenow", "62");
+      expect(document.querySelectorAll("[data-wysylanie-w-wierszu]")).toHaveLength(1);
+    }
+    sprawdzWiersz();
+
+    // Zamiana w obrębie tematu: wiersz B jedzie w górę, stan wysyłania zostaje w nim.
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” wyżej" }));
+    await waitFor(() => expect(zapisyUkladu()).toHaveLength(1));
+    expect(kolejnoscLekcji()).toEqual(["22", "21", "23"]);
+    sprawdzWiersz();
+
+    // Przejście do następnego tematu przemontowuje wiersz — stan wysyłania wraca z uchwytu.
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
+    await waitFor(() => expect(zapisyUkladu()).toHaveLength(2));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Lekcja B” niżej" }));
+    await waitFor(() => expect(zapisyUkladu()).toHaveLength(3));
+    expect(zapisyUkladu()[2].cialo).toEqual({
+      topics: [
+        { id: 7, lesson_ids: [21] },
+        { id: 8, lesson_ids: [22, 23] },
+      ],
+    });
+    sprawdzWiersz();
+
+    expect(przerwij).not.toHaveBeenCalled();
+    expect(porzuc).not.toHaveBeenCalled();
   });
 
   it("świadek: kolejność zmieniają tylko strzałki po lewej — bez przeciągania i bez przełącznika „Kolejność”", async () => {
