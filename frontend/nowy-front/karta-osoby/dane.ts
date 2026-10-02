@@ -1,4 +1,4 @@
-import { api } from "@/lib/api/klient";
+import { api, ApiError } from "@/lib/api/klient";
 import { ROLE_LABELS } from "@/lib/h18/labels";
 import { formatujDate } from "../wspolne/daty";
 import type { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
@@ -312,4 +312,27 @@ export function opisRoliOsoby(rola: string): string | undefined {
   if (typeof rola !== "string" || !Object.hasOwn(ROLE_LABELS, rola)) return undefined;
   const etykieta = (ROLE_LABELS as Record<string, string | undefined>)[rola];
   return typeof etykieta === "string" && etykieta !== "" ? `Rola: ${etykieta}` : undefined;
+}
+
+/** Role, które zaplecze dopuszcza na trasie zaliczenia warsztatu
+ * (`backend/routes/api/h10.php`, grupa `role:project_manager,super_admin`). */
+const ROLE_ZALICZAJACE_WARSZTAT: readonly string[] = ["project_manager", "super_admin"];
+
+export function czyMozeZaliczycWarsztat(rola: string | null): boolean {
+  return rola !== null && ROLE_ZALICZAJACE_WARSZTAT.includes(rola);
+}
+
+/** Rola osoby zalogowanej — `GET /me` (jedno żądanie dzięki wspólnej pamięci konta w kliencie). */
+export function pobierzRoleZalogowanej(): Promise<string> {
+  return api<{ role: string }>("/me").then((konto) => konto.role);
+}
+
+/** Zdanie dla osoby po nieudanym zaliczeniu warsztatu: odmowa roli ma własne,
+ * pozostałe niosą komunikat z koperty błędu zaplecza, a bez niego zdanie ogólne. */
+export function zdanieBleduWarsztatu(blad: unknown): string {
+  if (blad instanceof ApiError) {
+    if (blad.status === 403) return "Nie masz uprawnień do tej czynności.";
+    if (blad.message.trim() !== "") return blad.message;
+  }
+  return "Nie udało się zapisać. Spróbuj ponownie.";
 }
