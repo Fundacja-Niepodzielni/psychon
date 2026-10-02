@@ -12,7 +12,7 @@ import { KorzenSzablonu } from "@/design-system/szablony/KontekstPowloki";
 import { useDaneRamki } from "@/design-system/szablony/KontekstRamki";
 import { okruszekRamki } from "@/design-system/szablony/OkruszekRamki";
 import { adresLekcji } from "@/nowy-front/lekcja/adres";
-import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
+import { ADRES_PULPITU, EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { adresPowrotuZPodgladu, PasTrybuPodgladu, zParametremPodgladu } from "@/nowy-front/wspolne/tryb-podgladu";
 import {
   ADRES_LISTY_KURSOW,
@@ -146,12 +146,12 @@ function KomunikatStanu({
 
 function StanBezDanych({ blad, onPonow }: { blad: BladKursu; onPonow: () => void }) {
   const router = useRouter();
-  const powrot = { etykieta: "Wróć do kursów", onClick: () => router.push(ADRES_LISTY_KURSOW) };
+  const doListy = (etykieta: string) => ({ etykieta, onClick: () => router.push(ADRES_LISTY_KURSOW) });
   switch (blad.rodzaj) {
     case "zamkniety":
       return (
         <PowlokaStanu tytul="Kurs">
-          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} coDalej={blad.komunikat} przycisk={powrot} />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} coDalej={blad.komunikat} przycisk={{ onClick: () => router.push(ADRES_PULPITU) }} />
         </PowlokaStanu>
       );
     case "dostep-wygasl":
@@ -161,14 +161,14 @@ function StanBezDanych({ blad, onPonow }: { blad: BladKursu; onPonow: () => void
             rodzaj="dostep-wygasl"
             stopien={2}
             coDalej="Za chwilę przeniesiemy Cię na stronę z informacją o wygaśnięciu dostępu."
-            przycisk={powrot}
+            przycisk={doListy("Wróć do kursów")}
           />
         </PowlokaStanu>
       );
     case "nie-znaleziono":
       return (
         <PowlokaStanu tytul="Kurs">
-          <EkranOdmowy rodzaj="nie-znaleziono" stopien={2} coDalej="Sprawdź adres albo wróć do listy kursów." przycisk={powrot} />
+          <EkranOdmowy rodzaj="nie-znaleziono" czego="kursu" stopien={2} przycisk={doListy("Wróć do listy")} />
         </PowlokaStanu>
       );
     case "siec":

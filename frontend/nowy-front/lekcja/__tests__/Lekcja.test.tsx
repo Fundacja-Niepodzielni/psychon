@@ -127,21 +127,25 @@ describe("Lekcja — dostęp i istnienie", () => {
 
     render(<Lekcja id="21" />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Nie masz dostępu do tej strony." })).toHaveFocus();
+    expect(await screen.findByRole("heading", { level: 1, name: "Nie masz dostępu do tego ekranu" })).toHaveFocus();
     expect(screen.getByText("Ukończ najpierw etap 2.")).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: "Wróć do pulpitu" }));
+    expect(push).toHaveBeenCalledWith("/panel/pulpit");
     expect(screen.queryByText(LEKCJA.title)).toBeNull();
     expect(screen.queryByText("Opis lekcji")).toBeNull();
     expect(pobierzOdczytKursu).not.toHaveBeenCalled();
   });
 
-  it("404 → „Nie znaleźliśmy tej strony”, jeden przycisk powrotu, bez treści", async () => {
+  it("404 → „Nie znaleziono lekcji”, jeden przycisk powrotu do kursów, bez treści", async () => {
     pobierzDaneLekcji.mockResolvedValue({ status: "nie-znaleziono" });
 
     render(<Lekcja id="999" />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Nie znaleźliśmy tej strony." })).toHaveFocus();
+    expect(await screen.findByRole("heading", { level: 1, name: "Nie znaleziono lekcji" })).toHaveFocus();
     expect(screen.getAllByRole("button")).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: "Wróć do kursów" }));
+    expect(push).toHaveBeenCalledWith("/panel/kursy");
     expect(screen.queryByText("Opis lekcji")).toBeNull();
   });
 

@@ -213,7 +213,7 @@ describe("/panel/lekcje/[id] w układzie panelu uczestnika", () => {
     );
     const { container } = await trasaLekcji();
 
-    await screen.findByRole("heading", { name: "Nie masz dostępu do tej strony." });
+    await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" });
     expect(screen.queryByText(LEKCJA.title)).toBeNull();
     expect(screen.queryByText("Opis lekcji")).toBeNull();
     expect(zapytane()).not.toContain("/lessons/21/video-link");

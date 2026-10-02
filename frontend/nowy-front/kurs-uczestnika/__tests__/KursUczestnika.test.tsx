@@ -590,25 +590,25 @@ describe("stany spoza szkicu", () => {
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeInTheDocument();
   });
 
-  it("403 course_locked: zdanie odmowy, zdanie z message serwera i jeden przycisk powrotu do kursów", async () => {
+  it("403 course_locked: nagłówek odmowy, zdanie z message serwera i jeden przycisk powrotu do pulpitu", async () => {
     const zdanie = "Ukończ najpierw etap 2: Wywiad psychologiczny.";
     await pokazBlad(new ApiError({ status: 403, code: "course_locked", message: zdanie }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tej strony." })).toHaveFocus();
+    expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toHaveFocus();
     expect(screen.getByText(zdanie)).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryAllByRole("link", { name: "Wróć do listy kursów" })).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "Wróć do kursów" }));
-    expect(push).toHaveBeenCalledWith("/panel/kursy");
+    fireEvent.click(screen.getByRole("button", { name: "Wróć do pulpitu" }));
+    expect(push).toHaveBeenCalledWith("/panel/pulpit");
     expect(przyciskiGlowne()).toHaveLength(0);
   });
 
-  it("404: „Nie znaleźliśmy tej strony” i jeden przycisk powrotu do kursów", async () => {
+  it("404: „Nie znaleziono kursu” i jeden przycisk powrotu do listy", async () => {
     await pokazBlad(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." }));
     expect(screen.getByRole("heading", { level: 1, name: "Kurs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Nie znaleźliśmy tej strony." })).toHaveFocus();
+    expect(screen.getByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toHaveFocus();
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Wróć do kursów" }));
+    fireEvent.click(screen.getByRole("button", { name: "Wróć do listy" }));
     expect(push).toHaveBeenCalledWith("/panel/kursy");
   });
 

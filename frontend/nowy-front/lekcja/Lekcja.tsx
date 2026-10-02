@@ -36,7 +36,7 @@ import {
 import { kontekstKursu, numerLekcjiWKursie, plikiLekcji, pobierzOdczytKursu, type OdczytKursu } from "./kurs";
 import { MaterialyLekcji } from "./MaterialyLekcji";
 import type { PostepNagrania } from "@/design-system/organizmy/RecordingPlayer/RecordingPlayer";
-import { EkranOdmowy } from "../wspolne/ekran-odmowy";
+import { ADRES_PULPITU, EkranOdmowy } from "../wspolne/ekran-odmowy";
 import { OdtwarzaczNagrania } from "./odtwarzacz/OdtwarzaczNagrania";
 import { ID_KARTY_PYTAN, ID_POLA_PYTANIA, PytaniaLekcji, ZDANIE_PODGLADU } from "./PytaniaLekcji";
 import {
@@ -387,8 +387,11 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
       <StanStrony>
         <EkranOdmowy
           rodzaj="nie-znaleziono"
-          coDalej="Sprawdź adres albo wróć do listy kursów."
-          przycisk={{ etykieta: "Wróć do kursów", onClick: () => router.push(adres("/panel/kursy")) }}
+          czego="lekcji"
+          przycisk={{
+            etykieta: slugKursu === null ? "Wróć do kursów" : "Wróć do kursu",
+            onClick: () => router.push(adres(slugKursu === null ? "/panel/kursy" : `/panel/kursy/${slugKursu}`)),
+          }}
         />
       </StanStrony>
     );
@@ -397,11 +400,7 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
   if (stan.rodzaj === "zablokowany") {
     return (
       <StanStrony>
-        <EkranOdmowy
-          rodzaj="brak-dostepu"
-          coDalej={stan.komunikat}
-          przycisk={{ etykieta: "Wróć do kursów", onClick: () => router.push(adres("/panel/kursy")) }}
-        />
+        <EkranOdmowy rodzaj="brak-dostepu" coDalej={stan.komunikat} przycisk={{ onClick: () => router.push(adres(ADRES_PULPITU)) }} />
       </StanStrony>
     );
   }
