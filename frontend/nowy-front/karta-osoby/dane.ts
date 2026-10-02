@@ -76,9 +76,17 @@ export interface WpisDziennikaKarty {
   created_at: string | null;
 }
 
+/** `AdminUserCardResource` — dokument osoby: rodzaj ze słownika zamkniętego i numer. */
+export interface DokumentOsobyKarty {
+  id: number;
+  type: string;
+  number: string;
+}
+
 export interface KartaOsobyDane {
   profile: ProfilOsobyKarty;
   progress: PostepOsobyKarty;
+  documents?: DokumentOsobyKarty[];
   recent_notifications: PowiadomienieKarty[];
   audit_entries: WpisDziennikaKarty[];
 }
@@ -320,6 +328,18 @@ const ROLE_ZALICZAJACE_WARSZTAT: readonly string[] = ["project_manager", "super_
 
 export function czyMozeZaliczycWarsztat(rola: string | null): boolean {
   return rola !== null && ROLE_ZALICZAJACE_WARSZTAT.includes(rola);
+}
+
+/** Czynności administracji na karcie (prowadzący, reset prób, blokada, rola) mają ten sam próg
+ * co zaliczenie warsztatu: zaplecze dopuszcza je wyłącznie dla opiekuna projektu i administratora. */
+export function czyRolaAdministracji(rola: string | null): boolean {
+  return czyMozeZaliczycWarsztat(rola);
+}
+
+/** Zdanie dla osoby po nieudanej czynności: komunikat z koperty błędu zaplecza, a bez niego zdanie zapasowe. */
+export function zdanieBleduCzynnosci(blad: unknown, zapasowe: string): string {
+  if (blad instanceof ApiError && blad.message.trim() !== "") return blad.message;
+  return zapasowe;
 }
 
 /** Rola osoby zalogowanej — `GET /me` (jedno żądanie dzięki wspólnej pamięci konta w kliencie). */
