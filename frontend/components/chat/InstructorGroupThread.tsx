@@ -15,7 +15,6 @@ import {
   fetchInstructorGroupThreads,
   fetchThreadMessages,
   formatThreadDate,
-  removeThreadMember,
   sendThreadMessage,
   type ChatMessage,
   type ChatThread,
@@ -44,11 +43,6 @@ export default function InstructorGroupThread() {
 
   const [creatingThread, setCreatingThread] = useState(false);
   const [createThreadError, setCreateThreadError] = useState<string | null>(null);
-
-  const [memberIdInput, setMemberIdInput] = useState("");
-  const [memberActionPending, setMemberActionPending] = useState(false);
-  const [memberActionError, setMemberActionError] = useState<string | null>(null);
-  const [memberActionMessage, setMemberActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,44 +140,6 @@ export default function InstructorGroupThread() {
         );
       })
       .finally(() => setCreatingThread(false));
-  }
-
-  function parseMemberId(): number | null {
-    const value = Number(memberIdInput);
-    return Number.isInteger(value) && value > 0 ? value : null;
-  }
-
-  /**
-   * Formularz składu nie wysyła się klawiszem Enter — jedyną akcją jest
-   * usunięcie osoby przyciskiem. Osoby do grupy przypisuje administracja.
-   */
-  function preventMemberSubmit(event: FormEvent) {
-    event.preventDefault();
-  }
-
-  function removeMember() {
-    if (selectedThreadId === null) return;
-
-    const userId = parseMemberId();
-    if (userId === null) return;
-
-    setMemberActionPending(true);
-    setMemberActionError(null);
-    setMemberActionMessage(null);
-
-    removeThreadMember(selectedThreadId, userId)
-      .then(() => {
-        setMemberActionMessage("Osoba usunięta ze składu wątku.");
-        setMemberIdInput("");
-      })
-      .catch((error: unknown) => {
-        setMemberActionError(
-          error instanceof ApiError
-            ? error.message
-            : "Nie udało się usunąć osoby z wątku. Spróbuj ponownie.",
-        );
-      })
-      .finally(() => setMemberActionPending(false));
   }
 
   const loadingThreads = threads === null;
@@ -327,38 +283,9 @@ export default function InstructorGroupThread() {
         !messagesForbidden &&
         !messagesError && (
           <Card title="Skład wątku">
-            <p className="mb-3 text-body text-muted">
-              Osoby do grupy przypisuje administracja. Tutaj możesz usunąć osobę ze składu wątku.
+            <p className="text-body text-muted">
+              Osoby do grupy przypisuje i usuwa administracja.
             </p>
-            <form className="flex flex-col gap-2" onSubmit={preventMemberSubmit}>
-              <label
-                className="text-caption font-bold tracking-wide text-subtle"
-                htmlFor="grupa-watek-osoba-id"
-              >
-                Identyfikator osoby
-              </label>
-              <input
-                id="grupa-watek-osoba-id"
-                type="number"
-                min={1}
-                className="min-h-control w-full max-w-xs rounded-control border border-control bg-card px-4 py-2 text-body text-ink focus-visible:focus-ring"
-                value={memberIdInput}
-                onChange={(event) => setMemberIdInput(event.target.value)}
-              />
-              {memberActionError && <Alert variant="error">{memberActionError}</Alert>}
-              {memberActionMessage && <Alert variant="success">{memberActionMessage}</Alert>}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  loading={memberActionPending}
-                  disabled={parseMemberId() === null}
-                  onClick={removeMember}
-                >
-                  Usuń z wątku
-                </Button>
-              </div>
-            </form>
           </Card>
         )}
     </PageTemplate>

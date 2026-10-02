@@ -180,7 +180,7 @@ describe("InstructorGroupThread", () => {
     expect(screen.queryByRole("button", { name: "Otwórz wątek" })).not.toBeInTheDocument();
   });
 
-  it("skład bez dodawania: brak przycisku dodania, Enter w polu niczego nie wysyła, zdanie o przypisaniu przez administrację", async () => {
+  it("skład bez zmian z ekranu: brak pola osoby i przycisków dodania/usunięcia, zdanie o administracji, żadnego wywołania zapisu", async () => {
     apiPaged.mockImplementation((path: string) => {
       if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });
       if (path === "/threads/41") return Promise.resolve({ data: [] });
@@ -191,42 +191,14 @@ describe("InstructorGroupThread", () => {
     render(<InstructorGroupThread />);
 
     await userEvent.click(await screen.findByRole("button", { name: "Otwórz wątek" }));
-    await waitFor(() => expect(screen.getByLabelText("Identyfikator osoby")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Osoby do grupy przypisuje i usuwa administracja.")).toBeInTheDocument(),
+    );
 
+    expect(screen.queryByLabelText("Identyfikator osoby")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Dodaj do wątku" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Usuń z wątku" })).toBeInTheDocument();
-    expect(
-      screen.getByText("Osoby do grupy przypisuje administracja. Tutaj możesz usunąć osobę ze składu wątku."),
-    ).toBeInTheDocument();
-
-    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12{Enter}");
-
+    expect(screen.queryByRole("button", { name: "Usuń z wątku" })).not.toBeInTheDocument();
     expect(api).not.toHaveBeenCalled();
-    expect(screen.queryByText("Osoba usunięta ze składu wątku.")).not.toBeInTheDocument();
-  });
-
-  it("noga pozytywna: usunięcie osoby ze składu woła DELETE /threads/{id}/members/{user} i pokazuje potwierdzenie", async () => {
-    apiPaged.mockImplementation((path: string) => {
-      if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });
-      if (path === "/threads/41") return Promise.resolve({ data: [] });
-      throw new Error("nieoczekiwana ścieżka: " + path);
-    });
-    api.mockResolvedValue(undefined);
-
-    render(<InstructorGroupThread />);
-
-    await userEvent.click(await screen.findByRole("button", { name: "Otwórz wątek" }));
-    await waitFor(() => expect(screen.getByLabelText("Identyfikator osoby")).toBeInTheDocument());
-
-    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12");
-    await userEvent.click(screen.getByRole("button", { name: "Usuń z wątku" }));
-
-    await waitFor(() =>
-      expect(api).toHaveBeenCalledWith("/threads/41/members/12", { method: "DELETE" }),
-    );
-    await waitFor(() =>
-      expect(screen.getByText("Osoba usunięta ze składu wątku.")).toBeInTheDocument(),
-    );
   });
 
   it("noga negatywna: błąd wysyłki pokazuje komunikat i nie czyści treści szkicu", async () => {
