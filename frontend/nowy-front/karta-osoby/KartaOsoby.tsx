@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { TableTemplate } from "@/design-system/szablony/TableTemplate/TableTemplate";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
@@ -58,6 +59,9 @@ interface WlasciwosciKartyOsoby {
    */
   adresPrzedluzenia?: string;
 }
+
+/** Nagłówek bloku warsztatu — cel fokusu, gdy po zaliczeniu znika przycisk, który otworzył pytanie. */
+const ID_NAGLOWKA_WARSZTATU = "karta-osoby-warsztat-naglowek";
 
 /**
  * Ekran A-07 „Karta osoby" (administracja) —
@@ -362,12 +366,21 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
         statystyki={
           <>
             <StatRow kafle={kafle} />
-            {mozeZaznaczycWarsztat && (
-              <div className={style.wierszWarsztatu} role="group" aria-label="Warsztat stacjonarny">
-                <Button poziom="outline" disabled={zaznaczanieWarsztatu} onClick={() => setPytanieWarsztatu(true)}>
-                  Zaznacz warsztat jako zaliczony
-                </Button>
-              </div>
+            {czyMozeZaliczycWarsztat(rolaZalogowanej) && (
+              <section className={style.wierszWarsztatu} aria-labelledby={ID_NAGLOWKA_WARSZTATU}>
+                <Heading stopien={2} id={ID_NAGLOWKA_WARSZTATU}>
+                  Warsztat stacjonarny
+                </Heading>
+                {mozeZaznaczycWarsztat ? (
+                  <div>
+                    <Button poziom="outline" disabled={zaznaczanieWarsztatu} onClick={() => setPytanieWarsztatu(true)}>
+                      Zaznacz warsztat jako zaliczony
+                    </Button>
+                  </div>
+                ) : (
+                  <Text>Warsztat zaliczony.</Text>
+                )}
+              </section>
             )}
             {bladWarsztatu !== null && (
               <Notice wariant="error" tytul="Nie udało się zaznaczyć warsztatu">
@@ -496,6 +509,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
           etykietaPotwierdzenia="Zaznacz jako zaliczony"
           onWycofaj={() => setPytanieWarsztatu(false)}
           onPotwierdz={() => void zaznaczWarsztat()}
+          fokusPoZamknieciu={ID_NAGLOWKA_WARSZTATU}
         >
           <Text>
             Osoba: {karta.profile.first_name} {karta.profile.last_name}.
