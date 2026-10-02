@@ -13,6 +13,7 @@ import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { ApiError } from "@/lib/api/klient";
 import { EkranStanu, type StanBezDanych } from "../grupa-prowadzacego/EkranStanu";
 import { useFokusNaNaglowku } from "../grupa-prowadzacego/fokus";
@@ -89,6 +90,8 @@ export function WatekGrupowy() {
   const [dzialanieSkladu, setDzialanieSkladu] = useState<"dodawanie" | "usuwanie" | null>(null);
   const [bladSkladu, setBladSkladu] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Wpisana, a niewysłana wiadomość to praca, którą wyjście z ekranu by utraciło.
+  useZgloszenieNiezapisanychZmian(szkic.trim() !== "", TYTUL);
 
   const wczytaj = useCallback((straz?: { anulowane: boolean }) => {
     return pobierzWatki().then(

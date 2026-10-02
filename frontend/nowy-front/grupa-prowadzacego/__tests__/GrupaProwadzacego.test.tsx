@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError } from "@/lib/api/klient";
 import { saPowodyPytania } from "@/design-system/szablony/NiezapisaneZmiany";
@@ -222,7 +222,7 @@ describe("Moja grupa — grupa z osobami na różnym etapie", () => {
 
 describe("Moja grupa — rzetelność nauki", () => {
   it("lista od najniższego wyniku z plakietkami „Poniżej progu”, „W normie” i „Brak danych”", async () => {
-    const { container } = await pokazZDanymi();
+    await pokazZDanymi();
     await screen.findByText("Poniżej progu");
 
     expect(screen.getByRole("heading", { level: 2, name: "Rzetelność nauki" })).toBeInTheDocument();
