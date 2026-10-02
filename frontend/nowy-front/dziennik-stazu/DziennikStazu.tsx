@@ -417,7 +417,8 @@ function KartaGodzin({ id, godziny, liczbaWpisow }: { id: string; godziny: Godzi
       )}
       <Hint>
         {maWymagane && Number(brakuje) > 0
-          ? `Brakuje jeszcze ${tekstGodzin(brakuje ?? "0")}. Liczą się tylko zatwierdzone wpisy.`
+          ? // „godz.” kończy zdanie: kropka skrótu jest zarazem kropką zdania.
+            `Brakuje jeszcze ${tekstGodzin(brakuje ?? "0")} Liczą się tylko zatwierdzone wpisy.`
           : maWymagane
             ? "Masz już wszystkie wymagane godziny stażu."
             : "Liczą się tylko zatwierdzone wpisy."}
