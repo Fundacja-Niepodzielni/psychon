@@ -1,0 +1,11 @@
+/* Treść karty „Masz pytanie?”. Szablon pulpitu wcina w karcie tylko nagłówek
+   (wiersze list niosą własne wcięcie), więc zdanie i adres stoją w jednym
+   bloku z tym samym wcięciem poziomym co nagłówek i wiersze innych kart
+   (`--card-px`); pionowe odstępy jak w wierszu listy i u góry karty. */
+.trescKontaktu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--card-px) var(--space-20);
+}

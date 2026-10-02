@@ -13,6 +13,7 @@ import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/Da
 import { adresLekcji } from "../lekcja/adres";
 import { odmien } from "../wspolne/odmiana";
 import { pobierzKursy, pobierzSzczegolKursu, type KursSciezki, type LekcjaKursu } from "./dane";
+import style from "./PulpitStudenta.module.css";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
 import { ListaKursow } from "./ListaKursow";
 import { rodzajBledu } from "./rodzaj-bledu";
@@ -141,8 +142,10 @@ export function PulpitStudenta() {
       wspierajaca={
         <section aria-label="Kontakt">
           <Heading stopien={3}>Masz pytanie?</Heading>
-          <Text>Jeśli czegoś brakuje albo coś nie działa, napisz do nas.</Text>
-          <Link href={`mailto:${ADRES_KONTAKTOWY}`}>{ADRES_KONTAKTOWY}</Link>
+          <div className={style.trescKontaktu}>
+            <Text>Jeśli czegoś brakuje albo coś nie działa, napisz do nas.</Text>
+            <Link href={`mailto:${ADRES_KONTAKTOWY}`}>{ADRES_KONTAKTOWY}</Link>
+          </div>
         </section>
       }
     />
