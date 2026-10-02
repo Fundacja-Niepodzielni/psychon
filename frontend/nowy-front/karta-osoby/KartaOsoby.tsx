@@ -389,7 +389,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
                   </Button>
                 </div>
               )}
-              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} />}
+              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} imieNazwisko={`${karta.profile.first_name} ${karta.profile.last_name}`} />}
             </>
           )
         }
