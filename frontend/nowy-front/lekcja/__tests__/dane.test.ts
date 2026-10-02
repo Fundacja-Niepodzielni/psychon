@@ -27,6 +27,9 @@ const LEKCJA_SUROWA = {
   completable: false,
   completable_at_percent: 60,
   video_status: "ready" as const,
+  course: { id: 3, slug: "wywiad-psychologiczny", title: "Wywiad psychologiczny" },
+  question_addressee: null,
+  required_active_seconds: 1080,
 };
 
 beforeEach(() => {
