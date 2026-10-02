@@ -240,7 +240,7 @@ describe("KursyAdministracji — stany w szablonie", () => {
     apiPaged.mockRejectedValueOnce(new Error("sieć"));
     render(<KursyAdministracji />);
     await screen.findByText("Nie udało się wczytać listy kursów");
-    expect(screen.getByText(/Serwer nie odpowiedział/)).toBeInTheDocument();
+    expect(screen.getByText(/Nie udało się połączyć z serwerem/)).toBeInTheDocument();
   });
 
   it("stronicowanie: „Następna” pobiera drugą stronę, przy jednej stronie nie ma stronicowania", async () => {

@@ -42,7 +42,6 @@ import {
 } from "@/nowy-front/kurs-administracji/ostrzezenie-po-utworzeniu";
 import { pobierzKursy, podgladKolejnosci, utworzKurs, zapiszKolejnosc, type KursAdministracji } from "./dane";
 import {
-  KOMUNIKAT_SIECI,
   adresKursu,
   czyBrakUprawnien,
   identyfikatorZTytulu,
@@ -55,6 +54,7 @@ import {
   KOLUMNY_KURSOW,
 } from "./logika";
 import style from "./KursyAdministracji.module.css";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER, KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
@@ -140,7 +140,7 @@ function komunikatOperacji(blad: unknown, ogolny: string): string {
     if (blad.status === 403) return zdanieOdmowyRoli("administracji");
     return komunikatKoperty(blad) ?? ogolny;
   }
-  return KOMUNIKAT_SIECI;
+  return KOMUNIKAT_INTERNET;
 }
 
 /**
@@ -361,7 +361,7 @@ export function KursyAdministracji() {
       wczytaj(zapytanie.strona, false);
       zadajFokus(SELEKTOR_PRZYCISKU_KOLEJNOSCI);
     } catch (blad) {
-      setBladOkna(komunikatOperacji(blad, "Nie udało się zapisać nowej kolejności."));
+      setBladOkna(komunikatOperacji(blad, KOMUNIKAT_ZAPIS));
     } finally {
       setZapisujeKolejnosc(false);
     }
@@ -584,7 +584,7 @@ export function KursyAdministracji() {
             </Button>
           }
         >
-          {stan.komunikat ?? "Serwer nie odpowiedział albo zwrócił błąd. Lista kursów nie jest pokazywana bez danych."}
+          {stan.komunikat ?? KOMUNIKAT_SERWER}
         </Notice>
       </div>
     );

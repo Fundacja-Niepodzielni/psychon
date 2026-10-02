@@ -137,5 +137,3 @@ export function czyBrakUprawnien(blad: unknown): boolean {
 export function komunikatKoperty(blad: unknown): string | undefined {
   return blad instanceof ApiError && blad.message.trim() !== "" ? blad.message : undefined;
 }
-
-export const KOMUNIKAT_SIECI = "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.";
