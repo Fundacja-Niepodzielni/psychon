@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -13,6 +13,7 @@ import {
   type WierszRecordList,
 } from "@/design-system/organizmy/RecordList/RecordList";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
+import { zapowiedzFokusSprawy } from "@/nowy-front/wspolne/fokus-otwartej-sprawy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
@@ -103,6 +104,11 @@ interface OpcjaFiltra {
  * `CaseCard` (pary klucz–wartość + statystyka/pasek) nie ma pola akcji/odnośnika
  * i nie pasuje do „przejścia do sprawy" — brakuje pola akcji/odnośnika, więc
  * `RecordList` sam realizuje wzorzec „zbiór z akcjami wiersza".
+ *
+ * „Otwórz” w wierszu i „Otwórz najstarszą sprawę” prowadzą na ekran jednej
+ * sprawy (zgłoszenie, dyżur w kolejce, wniosek o profil — adresy w
+ * `./dane.ts`) i zapowiadają mu fokus (`fokus-otwartej-sprawy.ts`): po
+ * wczytaniu fokus staje na nagłówku tej sprawy, nie na przycisku decyzji.
  *
  * Odczyt startowy biegnie z przeglądarki — ten sam powód co
  * `nowy-front/formy-stazu/dane.ts` i `nowy-front/zgloszenia-wspolpracy`.
@@ -257,7 +263,13 @@ export function Sprawy() {
       onPowrot={() => router.back()}
       przyciskGlowny={
         stanEkranu === "ok" && najstarsza
-          ? { etykieta: "Otwórz najstarszą sprawę", onKliknij: () => router.push(najstarsza.href) }
+          ? {
+              etykieta: "Otwórz najstarszą sprawę",
+              onKliknij: () => {
+                zapowiedzFokusSprawy(najstarsza.href);
+                router.push(najstarsza.href);
+              },
+            }
           : undefined
       }
     />
@@ -280,6 +292,14 @@ export function Sprawy() {
           tresc: "Nowe zgłoszenia, dyżury i profile pojawią się tutaj automatycznie.",
           przycisk: { etykieta: "Odśwież", onClick: ponow },
         };
+
+  // „Otwórz” wiersza jest odnośnikiem organizmu `RecordList`; zapowiedź fokusu
+  // dostaje wyłącznie odnośnik prowadzący do sprawy z listy.
+  function zapowiedzFokusPoOtwarciu(zdarzenie: MouseEvent<HTMLDivElement>) {
+    const odnosnik = (zdarzenie.target as Element).closest("a[href]");
+    const adres = odnosnik?.getAttribute("href");
+    if (adres && pozycjeWidoczne.some((pozycja) => pozycja.href === adres)) zapowiedzFokusSprawy(adres);
+  }
 
   let filtry: ReactNode = null;
   let lista: ReactNode;
@@ -358,15 +378,18 @@ export function Sprawy() {
     lista = (
       <>
         {pokazListe ? (
-          <RecordList
-            tytul="Sprawy"
-            stopienNaglowka={2}
-            naglowekTylkoDlaCzytnika
-            naKarcie
-            kolumny={KOLUMNY_SPRAW}
-            wiersze={wierszeListy}
-            pusty={pustyStanListy}
-          />
+          // Kliknięcie (także Enter) w „Otwórz” wiersza zapowiada fokus ekranowi sprawy.
+          <div onClick={zapowiedzFokusPoOtwarciu}>
+            <RecordList
+              tytul="Sprawy"
+              stopienNaglowka={2}
+              naglowekTylkoDlaCzytnika
+              naKarcie
+              kolumny={KOLUMNY_SPRAW}
+              wiersze={wierszeListy}
+              pusty={pustyStanListy}
+            />
+          </div>
         ) : (
           <div className={style.dlaCzytnika}>
             <Heading stopien={2}>Sprawy</Heading>

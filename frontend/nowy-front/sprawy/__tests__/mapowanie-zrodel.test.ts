@@ -25,7 +25,7 @@ describe("mapowanie źródeł na jednolity element kolejki", () => {
         osoba: "Marta Demo",
         nazwisko: "Demo",
         czekaOd: "2026-08-01T10:00:00Z",
-        href: "/admin/uczestniczki?zakladka=zgloszenia",
+        href: "/admin/nabor/44",
       },
     },
     {
@@ -43,7 +43,7 @@ describe("mapowanie źródeł na jednolity element kolejki", () => {
         osoba: "Filip Demo",
         nazwisko: "Demo",
         czekaOd: "2026-08-27T18:00:00Z",
-        href: "/admin/staz",
+        href: "/admin/staz?dyzur=91",
       },
     },
     {
