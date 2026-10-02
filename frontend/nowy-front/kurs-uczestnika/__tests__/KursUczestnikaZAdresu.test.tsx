@@ -16,7 +16,7 @@ vi.mock("@/lib/api/klient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/klient")>()),
   api: (...args: unknown[]) => api(...args),
 }));
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(adres) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(adres), useRouter: () => ({ push: vi.fn() }) }));
 
 const { KursUczestnikaZAdresu } = await import("../KursUczestnikaZAdresu");
 
