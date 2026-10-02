@@ -9,6 +9,7 @@ import {
   fetchAdminSupervisionSlots,
   type AdminSupervisionSlot,
 } from "@/lib/api";
+import { czyTerminOdwolany } from "@/lib/h12/stanTerminu";
 
 const dateFormatter = new Intl.DateTimeFormat("pl-PL", {
   dateStyle: "full",
@@ -113,18 +114,26 @@ export default function AdminSupervisionSlots() {
                   <span className="font-medium text-ink">
                     {supervisorLabel(slot.supervisor)}
                   </span>
-                  <Badge
-                    variant={
-                      slot.active_signups_count >= slot.seats_limit
-                        ? "danger"
-                        : "info"
-                    }
-                  >
-                    {slot.active_signups_count} / {slot.seats_limit}
-                  </Badge>
+                  {czyTerminOdwolany(slot) ? (
+                    <Badge variant="neutral">Odwołany</Badge>
+                  ) : (
+                    <Badge
+                      variant={
+                        slot.active_signups_count >= slot.seats_limit
+                          ? "danger"
+                          : "info"
+                      }
+                    >
+                      {slot.active_signups_count} / {slot.seats_limit}
+                    </Badge>
+                  )}
                 </div>
 
-                {slot.signups.length === 0 ? (
+                {czyTerminOdwolany(slot) ? (
+                  <p className="mt-4 text-small text-muted">
+                    Termin odwołany. Zapisy zostały zwolnione.
+                  </p>
+                ) : slot.signups.length === 0 ? (
                   <p className="mt-4 text-small text-muted">
                     Nikt jeszcze się nie zapisał.
                   </p>

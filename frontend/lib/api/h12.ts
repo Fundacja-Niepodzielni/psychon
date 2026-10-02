@@ -20,6 +20,12 @@ export interface AdminSupervisionSlot {
   seats_limit: number;
   // Zmierzone na żywej odpowiedzi: 1 termin na 10 miał `null`.
   location_or_link: string | null;
+  /** `cancelled` — termin odwołany przez administrację; zostaje na liście
+   * administracji, znika z list uczestnika i prowadzącego. Pole opcjonalne:
+   * zaplecze sprzed stanu odwołania go nie wysyła, brak = `scheduled`. */
+  status?: "scheduled" | "cancelled";
+  /** Chwila odwołania (ISO 8601 UTC) albo `null` dla terminu zaplanowanego. */
+  cancelled_at?: string | null;
   // Znika z koperty, gdy relacja `supervisor` nie jest wczytana po stronie
   // API — pole opcjonalne, nie zawsze obecne.
   supervisor?: { id: number; first_name: string; last_name: string };
@@ -126,12 +132,15 @@ export function updateAdminSupervisionSlot(
 export interface CancelAdminSupervisionSlotResult {
   id: number;
   signups_released: number;
+  cancelled_at: string;
 }
 
 /**
  * `DELETE /admin/supervision/slots/{id}` (`AdminSupervisionController::cancelSlot`,
- * `backend/routes/api/h12.php:49`) — odwołanie terminu; zwraca liczbę
- * zwolnionych zapisów.
+ * `backend/routes/api/h12.php:49`) — odwołanie terminu. Termin NIE znika:
+ * zostaje na liście administracji ze stanem `cancelled`. Odpowiedź niesie
+ * liczbę zwolnionych zapisów i chwilę odwołania. Termin już odwołany → 409
+ * `slot_cancelled`, rozpoczęty → 422 `validation_failed`.
  */
 export function cancelAdminSupervisionSlot(
   id: number,
