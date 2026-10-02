@@ -80,6 +80,16 @@ describe("menu nowej ramki uczestnika", () => {
     expect(dotychczasowa?.pozycje.map((p) => p.href)).toEqual(["/panel/start", "/panel/profil", "/panel/dokumenty"]);
   });
 
+  it("linia „W przygotowaniu” programu nie wymienia funkcji, których rola nie ma (student, przed /me)", () => {
+    const linia = (rola: "volunteer" | "student" | undefined) =>
+      menuRamkiUczestnika(rola, zFlagami(WLACZONE_DZIS)).find((g) => g.naglowek === "Program")?.wPrzygotowaniu;
+    expect(linia("volunteer")).toBe(W_PRZYGOTOWANIU_PROGRAM_UCZESTNIKA);
+    for (const rola of ["student", undefined] as const) {
+      expect(linia(rola)).not.toMatch(/dziennik stażu|superwizja/);
+      expect(linia(rola)).toContain("pytania i odpowiedzi");
+    }
+  });
+
   it("przed odpowiedzią /me grupa dotychczasowa jest ukryta (fail closed)", () => {
     expect(menuRamkiUczestnika(undefined, zFlagami(WLACZONE_DZIS)).map((g) => g.naglowek)).toEqual(["Program"]);
   });
