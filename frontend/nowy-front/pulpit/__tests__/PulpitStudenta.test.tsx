@@ -145,7 +145,7 @@ describe("PulpitStudenta — stany z danymi", () => {
 
 describe("PulpitStudenta — stany bez danych", () => {
   const przypadki = [
-    { nazwa: "403", wyjatek: blad(403, "forbidden"), tekst: /tylko dla uczestników/ },
+    { nazwa: "403", wyjatek: blad(403, "forbidden"), tekst: /Ten ekran jest dla uczestników/ },
     { nazwa: "404", wyjatek: blad(404, "not_found"), tekst: "Nie znaleziono danych pulpitu" },
     { nazwa: "błąd sieci", wyjatek: new TypeError("Failed to fetch"), tekst: "Brak połączenia" },
     { nazwa: "błąd serwera", wyjatek: blad(500, "server_error"), tekst: "Nie udało się wczytać pulpitu" },

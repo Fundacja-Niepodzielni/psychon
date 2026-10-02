@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import type { RodzajBledu } from "./rodzaj-bledu";
@@ -77,18 +77,15 @@ function TrescStanu({
       );
     case "zakazane":
       return (
-        <EmptyState
-          wariant="brak-uprawnien"
-          naglowek="Pulpit dla uczestników"
-          rola="uczestników"
-          przycisk={{ etykieta: "Wróć", onClick: onWstecz }}
-        />
+        <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="uczestników" przycisk={{ etykieta: "Wróć", onClick: onWstecz }} />
       );
     case "nie-znaleziono":
       return (
-        <EmptyState
-          naglowek="Nie znaleziono danych pulpitu"
-          tresc="Nie mamy dla Ciebie danych do wyświetlenia. Odśwież stronę albo wróć za chwilę."
+        <EkranOdmowy
+          rodzaj="nie-znaleziono"
+          czego="danych pulpitu"
+          stopien={2}
+          coDalej="Nie mamy dla Ciebie danych do wyświetlenia. Odśwież stronę albo wróć za chwilę."
           przycisk={{ etykieta: "Odśwież", onClick: onPonow }}
         />
       );
