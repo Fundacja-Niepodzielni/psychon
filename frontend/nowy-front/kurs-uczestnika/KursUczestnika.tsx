@@ -33,6 +33,7 @@ import {
   type WidokKursu,
 } from "./logika";
 import style from "./KursUczestnika.module.css";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 interface WlasciwosciKursUczestnika {
   slug: string;
@@ -183,7 +184,7 @@ function StanBezDanych({ blad, onPonow }: { blad: BladKursu; onPonow: () => void
               </Button>
             }
           >
-            Nie udało się połączyć z serwerem. Sprawdź połączenie z internetem i spróbuj ponownie.
+            {KOMUNIKAT_INTERNET}
           </KomunikatStanu>
         </PowlokaStanu>
       );
@@ -199,7 +200,7 @@ function StanBezDanych({ blad, onPonow }: { blad: BladKursu; onPonow: () => void
               </Button>
             }
           >
-            Coś poszło nie tak po naszej stronie. Spróbuj ponownie za chwilę.
+            {KOMUNIKAT_SERWER}
           </KomunikatStanu>
         </PowlokaStanu>
       );
