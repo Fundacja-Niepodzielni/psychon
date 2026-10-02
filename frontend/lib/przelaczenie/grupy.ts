@@ -55,12 +55,12 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dziewiętnaście: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
  * pod własnym adresem z kursem w ścieżce; wchodzi się na niego z ekranu kursu), `nabor` i `listaOsob`
- * (dwie ostatnie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem). Pozostałe mają tu jeszcze
+ * (te dwie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem) oraz `kartaOsoby`. Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -255,7 +255,7 @@ export const GRUPY = {
   /** Karta osoby w administracji — ten sam adres co dzisiejsza karta uczestnika. */
   kartaOsoby: {
     klucz: "kartaOsoby",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",
@@ -322,8 +322,8 @@ export const GRUPY = {
     ],
   },
   /**
-   * Nowe konto poza rekrutacją (H18) — funkcji w starym froncie nie ma; ekran
-   * powstaje przy karcie osoby administracji.
+   * Nowe konto poza rekrutacją (H18) — funkcji w starym froncie nie ma; ekran ma
+   * własny adres przy liście osób (dotąd ten adres trafiał do karty osoby).
    */
   noweKonto: {
     klucz: "noweKonto",
@@ -331,8 +331,8 @@ export const GRUPY = {
     ekrany: [
       {
         panel: "administracja",
-        staraTrasa: null,
-        nowaTrasa: "/admin/uczestniczki/[id]",
+        staraTrasa: "/admin/uczestniczki/nowa",
+        nowaTrasa: "/admin/uczestniczki/nowa",
         trasaPoligonu: "/nowy-front/admin/osoby/nowa",
       },
     ],
@@ -368,7 +368,7 @@ export const GRUPY = {
   },
   /**
    * Przedłużenie dostępu osoby (H04) — funkcji w starym froncie nie ma (karta osoby
-   * tylko pokazuje datę ważności); ekran powstaje przy karcie osoby administracji.
+   * tylko pokazuje datę ważności); ekran ma własny adres pod kartą osoby administracji.
    */
   przedluzenieDostepu: {
     klucz: "przedluzenieDostepu",
@@ -377,7 +377,7 @@ export const GRUPY = {
       {
         panel: "administracja",
         staraTrasa: null,
-        nowaTrasa: "/admin/uczestniczki/[id]",
+        nowaTrasa: "/admin/uczestniczki/[id]/przedluzenie",
         trasaPoligonu: "/nowy-front/admin/uczestniczki/[id]/przedluzenie",
       },
     ],
