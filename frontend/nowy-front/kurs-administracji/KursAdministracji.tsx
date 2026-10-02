@@ -10,6 +10,7 @@ import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { pobierzDaneKursuAdministracji } from "@/nowy-front/kurs-publikacja/dane-administracji";
 import { KursTematy, type WynikOdczytuKursu } from "@/nowy-front/kurs-tematy/KursTematy";
 import type { LekcjaAdmin } from "@/nowy-front/lekcja-edycja/dane";
@@ -75,20 +76,23 @@ export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
           onPowrot: () => router.back(),
         }}
         glowna={
-          <div className={style.blok}>
-            {koniec === "usuniety" ? (
+          koniec === "usuniety" ? (
+            <div className={style.blok}>
               <Notice wariant="ok" tytul="Kurs został usunięty">
                 Postęp uczestników zostaje zachowany.
               </Notice>
-            ) : (
-              <Notice wariant="warn" tytul="Nie znaleziono kursu">
-                Kurs nie istnieje albo został usunięty.
-              </Notice>
-            )}
-            <Text>
-              <Link href={ADRES_LISTY_KURSOW}>Wróć do listy kursów</Link>
-            </Text>
-          </div>
+              <Text>
+                <Link href={ADRES_LISTY_KURSOW}>Wróć do listy kursów</Link>
+              </Text>
+            </div>
+          ) : (
+            <EkranOdmowy
+              rodzaj="nie-znaleziono"
+              stopien={2}
+              coDalej="Sprawdź adres albo wróć do listy kursów."
+              przycisk={{ etykieta: "Wróć do listy kursów", onClick: () => router.push(ADRES_LISTY_KURSOW) }}
+            />
+          )
         }
         wspierajaca={null}
       />
