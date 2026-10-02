@@ -1,0 +1,34 @@
+/* Układ ekranu certyfikatów — wartości wyglądu wyłącznie z tokenów. */
+.filtry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-12);
+}
+
+.pole {
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+
+/* Punkt odniesienia dla nagłówka listy tylko dla czytnika ekranu. */
+.lista {
+  position: relative;
+}
+
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Szczegóły certyfikatu pod wierszem: pary „nazwa — wartość” jedna pod drugą. */
+.szczegoly {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-4);
+}
