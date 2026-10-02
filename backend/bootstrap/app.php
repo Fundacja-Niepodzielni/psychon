@@ -21,6 +21,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'access.active' => EnsureAccessActive::class, // blocks after access_expires_at
         ]);
 
+        // Za pośrednikiem TLS (Caddy, Traefik) aplikacja dostaje żądania zwykłym
+        // HTTP. Schemat pierwotnego żądania przyjmujemy z `X-Forwarded-Proto`
+        // wyłącznie od pośrednika z sieci prywatnej, żeby adresy budowane przez
+        // aplikację (podpisane linki pobrania) miały schemat, którym przyszło
+        // żądanie. Pozostałe nagłówki `X-Forwarded-*` nie są brane pod uwagę.
+        $middleware->trustProxies(
+            at: ['127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '::1', 'fc00::/7'],
+            headers: Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         // API nie ma strony logowania — goście dostają JSON 401 zamiast
         // przekierowania do nieistniejącej trasy "login" (500 przy żądaniach bez Accept).
         $middleware->redirectGuestsTo(

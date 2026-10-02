@@ -67,6 +67,39 @@ describe("downloadFile — adres tego samego API", () => {
   });
 });
 
+describe("downloadFile — link z odpowiedzi zaplecza za pośrednikiem TLS", () => {
+  // Kształt linku, który zaplecze podpisuje za pośrednikiem TLS
+  // (backend/tests/Feature/ProxiedRequestSchemeTest.php, ten sam host).
+  const HOST_PLATFORMY = "platforma.psychon.test";
+  const SCIEZKA = "/api/v1/documents/3d03e2f3-1d81-455b-aa32-d7bd6b1405bf/download?expires=1790957972&signature=abc";
+
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", `https://${HOST_PLATFORMY}`);
+  });
+
+  it("link `https://` z tym samym hostem: jedno żądanie z nagłówkiem Bearer", async () => {
+    const { downloadFile } = await swiezyPomocnik();
+    const adres = `https://${HOST_PLATFORMY}${SCIEZKA}`;
+
+    await downloadFile(adres, "dokument.pdf");
+
+    const pliki = wywolaniaPliku();
+    expect(pliki).toHaveLength(1);
+    expect(String(pliki[0][0])).toBe(adres);
+    expect(new Headers((pliki[0][1] as RequestInit | undefined)?.headers).get("Authorization")).toBe(`Bearer ${TOKEN_PROBNY}`);
+  });
+
+  it("link `http://` z tym samym hostem: błąd, bez odczytu tokenu i bez żądania", async () => {
+    const { downloadFile, NieprawidlowyAdresPliku } = await swiezyPomocnik();
+
+    await expect(downloadFile(`http://${HOST_PLATFORMY}${SCIEZKA}`, "dokument.pdf")).rejects.toBeInstanceOf(
+      NieprawidlowyAdresPliku,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("downloadFile — adres spoza API", () => {
   const przypadki: Array<[string, string]> = [
     ["obcy host", "https://pliki.przyklad.test/api/v1/documents/7/download"],
