@@ -4,74 +4,33 @@ namespace App\Http\Controllers\Api\V1\Chat;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\H12\SupervisorAssignmentResource;
 use App\Models\MessageThread;
-use App\Models\User;
 use App\Services\H12\SupervisorAssignmentService;
-use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Skład wątku grupowego — dodanie i usunięcie osoby, wyłącznie przez
- * prowadzącego, który jest właścicielem TEGO KONKRETNEGO wątku — tylko
- * prowadzący dodaje i usuwa osoby.
+ * Skład wątku grupowego.
  *
  * Wątek grupowy nie ma osobnej tabeli członkostwa — `MessageThread` i
  * `ChatThreadQuery` czytają skład NA ŻYWO z `SupervisorAssignment`
- * (`unassigned_at IS NULL`). „Dodanie do wątku" to więc przypisanie
- * wolontariusza do tego prowadzącego (ten sam mechanizm co
- * `SupervisorAssignmentService`, dotąd wołany tylko przez administrację pod
- * `/admin/users/{id}/supervisor`); „usunięcie" to zamknięcie aktywnego
- * przypisania.
+ * (`unassigned_at IS NULL`). Przypisanie osoby do prowadzącego nadaje
+ * wyłącznie administracja (`PUT /admin/users/{id}/supervisor`), więc
+ * dodawania osoby do wątku tu nie ma: `store` odpowiada tym samym 404 co
+ * nieznana trasa, dla każdego identyfikatora i każdego ciała, zanim
+ * cokolwiek odczyta z bazy.
  *
- * Rola `instructor` jest odsiewana trasą (`role:instructor` w
- * `routes/api/chat.php`) — administracja i uczestnik (wolontariusz) dostają
- * 403 zanim dotrą tutaj. Własność TEGO wątku (czy wywołujący jest jego
- * `supervisor_id`) jest sprawdzana tutaj — inny prowadzący, spoza tej
- * konkretnej grupy, też dostaje 403.
- *
- * Dodanie osoby (`store`) woła `SupervisorAssignmentService::assign()` z
- * `requireNoConflict: true` — wolontariusz z aktywnym przypisaniem do
- * INNEGO prowadzącego nie zostaje cicho przejęty (skład tamtego
- * prowadzącego by się skurczył bez jego wiedzy); zamiast tego zwracana
- * jest odmowa 409. Wolontariusz bez przypisania albo już przypisany do
- * TEGO prowadzącego przechodzi normalnie.
+ * Usunięcie osoby (`destroy`) zamyka aktywne przypisanie tej pary. Rola
+ * `instructor` jest odsiewana trasą (`role:instructor` w
+ * `routes/api/chat.php`). Wątek, który nie jest własnym wątkiem grupowym
+ * wywołującego, wygląda jak nieistniejący — to samo 404 (kontrakt §1.1).
  */
 class ThreadMemberController extends Controller
 {
-    public function store(
-        Request $request,
-        int $thread,
-        int $user,
-        SupervisorAssignmentService $service,
-    ): JsonResponse {
-        $threadModel = $this->ownGroupThread($request, $thread);
-
-        $assignment = $service->assign(
-            $request->user(),
-            $user,
-            (int) $threadModel->supervisor_id,
-            requireNoConflict: true,
-        );
-
-        $volunteer = User::query()->find($user);
-        if ($volunteer !== null) {
-            // `thread.member_added` NIE figuruje jeszcze w rejestrze §3.1 —
-            // ten sam stan, w którym jest już `message.received`
-            // (ChatMessageService) — czat jest tu nowym modułem.
-            Notify::send(
-                $volunteer,
-                'thread.member_added',
-                'Dołączenie do wątku grupowego',
-                'Prowadzący dodał(a) Cię do wątku grupowego.',
-                '/panel/superwizja',
-            );
-        }
-
-        return response()->json([
-            'data' => SupervisorAssignmentResource::make($assignment)->resolve($request),
-        ], 201);
+    public function store(): never
+    {
+        throw new NotFoundHttpException;
     }
 
     public function destroy(
@@ -89,14 +48,14 @@ class ThreadMemberController extends Controller
 
     private function ownGroupThread(Request $request, int $thread): MessageThread
     {
-        $threadModel = MessageThread::query()->whereKey($thread)->first();
+        $threadModel = MessageThread::query()
+            ->whereKey($thread)
+            ->where('type', 'group')
+            ->where('supervisor_id', $request->user()->id)
+            ->first();
 
         if ($threadModel === null) {
             throw new ApiException(404, 'not_found', 'Nie znaleziono wątku.');
-        }
-
-        if (! $threadModel->isGroup() || (int) $threadModel->supervisor_id !== (int) $request->user()->id) {
-            throw new ApiException(403, 'forbidden', 'Nie zarządzasz składem tego wątku.');
         }
 
         return $threadModel;
