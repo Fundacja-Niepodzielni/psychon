@@ -10,6 +10,7 @@ use App\Models\SensitiveAccessLogEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\Support\Sso\KeycloakTokenFactory;
@@ -214,6 +215,8 @@ class ApplicationApiTest extends TestCase
 
     public function test_reject_requires_reason_and_emits_audited_notification(): void
     {
+        // Atrapa wysyłki: dokładnie jedna wiadomość do kandydata, tylko po udanej decyzji.
+        Mail::shouldReceive('raw')->once();
         Edition::factory()->create(['status' => 'active']);
         $application = Application::factory()->create();
         $actor = User::factory()->role('project_manager')->create();
@@ -227,7 +230,8 @@ class ApplicationApiTest extends TestCase
         $this->postJson('/api/v1/admin/applications/'.$application->id.'/reject', ['reason' => 'Brak dokumentów.'])
             ->assertOk()
             ->assertJsonPath('data.status', 'rejected')
-            ->assertJsonPath('data.rejection_reason', 'Brak dokumentów.');
+            ->assertJsonPath('data.rejection_reason', 'Brak dokumentów.')
+            ->assertJsonPath('data.rejection_mail', 'sent');
 
         $this->assertDatabaseHas('audit_log', ['action' => 'application.rejected', 'subject_id' => $application->id]);
         $this->assertDatabaseHas('notifications', ['user_id' => $actor->id, 'type' => 'application.rejected']);

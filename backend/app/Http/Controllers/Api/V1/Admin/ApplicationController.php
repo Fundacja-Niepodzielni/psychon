@@ -16,6 +16,7 @@ use App\Models\Application;
 use App\Services\H03\ApplicationAcceptor;
 use App\Services\H03\ApplicationCsvImporter;
 use App\Services\H03\ApplicationEmailNormalizer;
+use App\Services\H03\ApplicationRejectionMailer;
 use App\Services\H03\ApplicationRejector;
 use App\Services\H03\DiplomaScanAccess;
 use App\Support\Settings;
@@ -121,13 +122,17 @@ class ApplicationController extends Controller
 
     public function reject(RejectApplicationRequest $request, int $id): JsonResponse
     {
-        $application = ApplicationRejector::reject(
-            $id,
-            $request->user(),
-            trim((string) $request->validated('reason')),
-        );
+        $reason = trim((string) $request->validated('reason'));
+        $application = ApplicationRejector::reject($id, $request->user(), $reason);
 
-        return response()->json(['data' => ApplicationResource::make($application)->resolve($request)]);
+        // Po zatwierdzeniu transakcji: wycofana albo powtórzona decyzja
+        // (409 z `reject`) nie dochodzi do wysyłki.
+        $sent = ApplicationRejectionMailer::send($application, $reason);
+
+        return response()->json(['data' => [
+            ...ApplicationResource::make($application)->resolve($request),
+            'rejection_mail' => $sent ? 'sent' : 'failed',
+        ]]);
     }
 
     public function import(ImportApplicationsRequest $request): JsonResponse
