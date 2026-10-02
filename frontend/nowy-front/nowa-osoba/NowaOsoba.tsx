@@ -27,6 +27,7 @@ import {
   type FormularzOsoby,
   type Uprawnienia,
 } from "./dane";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 const OKRUSZKI = [{ etykieta: "Osoby" }, { etykieta: "Nowa osoba" }];
 
@@ -167,7 +168,7 @@ export function NowaOsoba() {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Formularz nie jest pokazywany bez sprawdzenia Twojej roli.
+            {KOMUNIKAT_SERWER} Formularz nie jest pokazywany bez sprawdzenia Twojej roli.
           </Notice>
         }
         tresc={null}

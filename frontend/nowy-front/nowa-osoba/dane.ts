@@ -1,6 +1,7 @@
 import { api, ApiError } from "@/lib/api/klient";
 import { createAdminUser, updateAdminUser, type UserRole } from "@/lib/api/h18";
 import { ROLE_LABELS } from "@/lib/h18/labels";
+import { KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Logika ekranu „Nowa osoba / zmiana roli” — bez JSX, z własnym testem.
@@ -116,15 +117,13 @@ export type BladZapisu =
   | { rodzaj: "nie-znaleziono"; komunikat: string }
   | { rodzaj: "blad"; komunikat: string };
 
-const KOMUNIKAT_OGOLNY = "Nie udało się zapisać. Spróbuj ponownie.";
-
 /**
  * Jedno miejsce, które zamienia wyjątek na stan ekranu (kontrakt §1.1):
  * 422 → pola, 409 `email_already_registered` → duplikat z `reason.existing_user_id`,
  * 403 → odmowa akcji, 401 → brak sesji, 404 → brak osoby, reszta (także sieć) → błąd.
  */
 export function klasyfikujBlad(wyjatek: unknown): BladZapisu {
-  if (!(wyjatek instanceof ApiError)) return { rodzaj: "blad", komunikat: KOMUNIKAT_OGOLNY };
+  if (!(wyjatek instanceof ApiError)) return { rodzaj: "blad", komunikat: KOMUNIKAT_ZAPIS };
   if (wyjatek.status === 422 && wyjatek.errors) return { rodzaj: "walidacja", pola: wyjatek.errors };
   if (wyjatek.status === 409 && wyjatek.code === "email_already_registered") {
     const id = wyjatek.reason?.existing_user_id;
@@ -137,7 +136,7 @@ export function klasyfikujBlad(wyjatek: unknown): BladZapisu {
   if (wyjatek.status === 403) return { rodzaj: "zakazane", komunikat: wyjatek.message };
   if (wyjatek.status === 401) return { rodzaj: "brak-sesji" };
   if (wyjatek.status === 404) return { rodzaj: "nie-znaleziono", komunikat: wyjatek.message };
-  return { rodzaj: "blad", komunikat: KOMUNIKAT_OGOLNY };
+  return { rodzaj: "blad", komunikat: KOMUNIKAT_ZAPIS };
 }
 
 /** Pierwszy komunikat pola z odpowiedzi 422 (klucze jak w `StoreUserRequest`). */
