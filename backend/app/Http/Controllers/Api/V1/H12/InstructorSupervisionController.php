@@ -45,6 +45,7 @@ class InstructorSupervisionController extends Controller
             ->all();
 
         $slots = $request->user()->supervisionSlots()
+            ->scheduled()
             ->with([
                 'signups' => fn ($query) => $query
                     ->with('user')

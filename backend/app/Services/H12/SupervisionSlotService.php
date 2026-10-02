@@ -27,6 +27,12 @@ final class SupervisionSlotService
 
     public const string CANCELLED_AUDIT_ACTION = 'supervision.slot_cancelled';
 
+    public const string NOT_FOUND_MESSAGE = 'Nie znaleziono terminu.';
+
+    public const string ALREADY_CANCELLED_MESSAGE = 'Ten termin jest już odwołany.';
+
+    public const string CANCELLED_EDIT_MESSAGE = 'Odwołanego terminu nie można zmienić.';
+
     /**
      * @param  array{starts_at: string, duration_minutes?: int, seats_limit?: int, location_or_link?: string|null}  $data
      */
@@ -47,7 +53,11 @@ final class SupervisionSlotService
     public function update(int $slotId, array $data): SupervisionSlot
     {
         return DB::transaction(function () use ($slotId, $data): SupervisionSlot {
-            $slot = self::lockUpcoming($slotId, 'Rozpoczętego terminu nie można zmienić.');
+            $slot = self::lockUpcoming(
+                $slotId,
+                'Rozpoczętego terminu nie można zmienić.',
+                self::CANCELLED_EDIT_MESSAGE,
+            );
 
             $changes = [];
 
@@ -79,14 +89,20 @@ final class SupervisionSlotService
 
     /**
      * Cancels an upcoming slot: every active signup is notified and released,
-     * the cancellation is recorded in the audit log, and the slot is removed.
+     * the supervisor is notified, the cancellation is recorded in the audit
+     * log, and the slot row stays with `cancelled_at`/`cancelled_by` set —
+     * signups (including past ones) are never deleted.
      *
-     * @return int number of signups that were released
+     * @return array{released: int, cancelled_at: Carbon}
      */
-    public function cancel(User $actor, int $slotId): int
+    public function cancel(User $actor, int $slotId): array
     {
-        return DB::transaction(function () use ($actor, $slotId): int {
-            $slot = self::lockUpcoming($slotId, 'Rozpoczętego terminu nie można odwołać.');
+        return DB::transaction(function () use ($actor, $slotId): array {
+            $slot = self::lockUpcoming(
+                $slotId,
+                'Rozpoczętego terminu nie można odwołać.',
+                self::ALREADY_CANCELLED_MESSAGE,
+            );
 
             $signups = $slot->signups()
                 ->with('user')
@@ -110,24 +126,65 @@ final class SupervisionSlotService
 
             $released = $slot->signups()->whereNull('cancelled_at')->update(['cancelled_at' => now()]);
 
+            $supervisor = $slot->supervisor;
+
+            if ($supervisor !== null) {
+                Notify::send(
+                    $supervisor,
+                    self::CANCELLED_NOTIFICATION_TYPE,
+                    'Termin superwizji odwołany',
+                    "Administracja odwołała Twój termin superwizji {$when}. Zapisane osoby: {$released}.",
+                    '/prowadzacy/grupa',
+                );
+            }
+
+            $cancelledAt = now();
+
+            $slot->forceFill([
+                'cancelled_at' => $cancelledAt,
+                'cancelled_by' => $actor->id,
+            ])->save();
+
             AuditLog::record($actor, self::CANCELLED_AUDIT_ACTION, $slot, [
                 'slot_id' => (int) $slot->id,
                 'supervisor_id' => (int) $slot->supervisor_id,
                 'signups_released' => $released,
             ]);
 
-            $slot->delete();
-
-            return $released;
+            return ['released' => $released, 'cancelled_at' => $cancelledAt];
         });
     }
 
-    private static function lockUpcoming(int $slotId, string $startedMessage): SupervisionSlot
+    /**
+     * Pre-check for the administration's edit and cancel requests, run from
+     * `FormRequest::authorize()` — i.e. BEFORE the request body is
+     * validated — so an unknown or cancelled slot gets the same answer
+     * whatever the body holds. The service repeats the check under a row
+     * lock (`lockUpcoming`), which is what decides a race.
+     */
+    public static function assertManageable(int $slotId, string $cancelledMessage): void
+    {
+        $slot = SupervisionSlot::query()->whereKey($slotId)->first();
+
+        if ($slot === null) {
+            throw new ApiException(404, 'not_found', self::NOT_FOUND_MESSAGE);
+        }
+
+        if ($slot->isCancelled()) {
+            throw new ApiException(409, 'slot_cancelled', $cancelledMessage);
+        }
+    }
+
+    private static function lockUpcoming(int $slotId, string $startedMessage, string $cancelledMessage): SupervisionSlot
     {
         $slot = SupervisionSlot::query()->whereKey($slotId)->lockForUpdate()->first();
 
         if ($slot === null) {
-            throw new ApiException(404, 'not_found', 'Nie znaleziono terminu.');
+            throw new ApiException(404, 'not_found', self::NOT_FOUND_MESSAGE);
+        }
+
+        if ($slot->isCancelled()) {
+            throw new ApiException(409, 'slot_cancelled', $cancelledMessage);
         }
 
         if (! SupervisionTiming::canSignUp($slot)) {

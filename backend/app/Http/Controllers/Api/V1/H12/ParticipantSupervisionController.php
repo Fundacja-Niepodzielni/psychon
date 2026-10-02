@@ -34,6 +34,7 @@ class ParticipantSupervisionController extends Controller
         }
 
         $paginator = SupervisionSlot::query()
+            ->scheduled()
             ->where('supervisor_id', $assignment->supervisor_id)
             ->with([
                 'signups' => fn ($query) => $query

@@ -62,12 +62,13 @@ class AdminSupervisionController extends Controller
         int $id,
         SupervisionSlotService $service,
     ): JsonResponse {
-        $released = $service->cancel($request->user(), $id);
+        $result = $service->cancel($request->user(), $id);
 
         return response()->json([
             'data' => [
                 'id' => $id,
-                'signups_released' => $released,
+                'signups_released' => $result['released'],
+                'cancelled_at' => $result['cancelled_at']->toIso8601ZuluString(),
             ],
         ]);
     }

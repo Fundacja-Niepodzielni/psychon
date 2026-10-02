@@ -3,13 +3,26 @@
 namespace App\Http\Requests\H12;
 
 use App\Services\Auth\TokenRoles;
+use App\Services\H12\SupervisionAttendanceService;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * `PATCH /instructor/slots/{id}/attendance`. Rola rozstrzyga pierwsza (403),
+ * potem zasięg terminu — nieznany, odwołany i cudzy dają jedno 404 — i
+ * dopiero wtedy walidacja ciała, więc odpowiedź dla terminu spoza zasięgu
+ * nie zależy od treści żądania.
+ */
 class UpdateAttendanceRequest extends FormRequest
 {
-    public function authorize(TokenRoles $roles): bool
+    public function authorize(TokenRoles $roles, SupervisionAttendanceService $attendance): bool
     {
-        return $roles->has('instructor');
+        if (! $roles->has('instructor')) {
+            return false;
+        }
+
+        $attendance->scopedSlot($this->user(), (int) $this->route('id'));
+
+        return true;
     }
 
     public function rules(): array

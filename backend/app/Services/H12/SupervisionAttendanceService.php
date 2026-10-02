@@ -17,15 +17,7 @@ final class SupervisionAttendanceService
     public function update(User $actor, int $slotId, array $attendance): SupervisionSlot
     {
         return DB::transaction(function () use ($actor, $slotId, $attendance): SupervisionSlot {
-            $slot = SupervisionSlot::query()->whereKey($slotId)->lockForUpdate()->first();
-
-            // R2 (sprint-2 §1): this is a scoping rule on top of the route's
-            // `role:instructor` gate — an instructor may only mark attendance
-            // for their OWN slot — so it has to ask the same access-token
-            // question the gate already answered, never the local row.
-            if ($slot === null || ($this->tokenRoles->has('instructor') && (int) $slot->supervisor_id !== (int) $actor->id)) {
-                throw new ApiException(404, 'not_found', 'Nie znaleziono terminu.');
-            }
+            $slot = $this->scopedSlot($actor, $slotId, lock: true);
 
             if (! SupervisionTiming::canMarkAttendance($slot)) {
                 throw new ApiException(
@@ -89,5 +81,37 @@ final class SupervisionAttendanceService
 
             return $slot;
         });
+    }
+
+    /**
+     * The slot the actor may mark attendance on, or one 404 for everything
+     * else: unknown slot, cancelled slot and (for an instructor) somebody
+     * else's slot are indistinguishable. `UpdateAttendanceRequest::authorize()`
+     * calls this without a lock BEFORE the body is validated; `update()`
+     * calls it again under the row lock.
+     */
+    public function scopedSlot(User $actor, int $slotId, bool $lock = false): SupervisionSlot
+    {
+        $query = SupervisionSlot::query()->whereKey($slotId);
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        $slot = $query->first();
+
+        // R2 (sprint-2 §1): this is a scoping rule on top of the route's
+        // `role:instructor` gate — an instructor may only mark attendance
+        // for their OWN slot — so it has to ask the same access-token
+        // question the gate already answered, never the local row.
+        if (
+            $slot === null
+            || $slot->isCancelled()
+            || ($this->tokenRoles->has('instructor') && (int) $slot->supervisor_id !== (int) $actor->id)
+        ) {
+            throw new ApiException(404, 'not_found', 'Nie znaleziono terminu.');
+        }
+
+        return $slot;
     }
 }
