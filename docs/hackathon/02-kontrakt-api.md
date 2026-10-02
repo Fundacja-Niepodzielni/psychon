@@ -2067,3 +2067,43 @@ Kod: `Services/Lessons/LessonSequence.php` (jedyna implementacja reguły),
 `Services/Lessons/LessonAccess.php`, `Http/Controllers/Api/V1/TestController.php`,
 `Http/Resources/CourseDetailResource.php`, `Http/Resources/LessonSummaryResource.php`,
 `openapi.json`.
+
+---
+
+## Aneks — rzetelność nauki: lekcja bez nagrania (H07, H18)
+
+Domyka definicję rzetelności z §2 „Rzetelność nauki (H07)”. Tamtego tekstu nie usuwam —
+ten blok jest wobec niego nadrzędny w jednym miejscu: co znaczy „mierzalna ukończona
+lekcja”. Bez nowych tras, pól, kodów, slugów audytu i typów powiadomień; zero zmian w danych.
+
+### 1. Definicja
+
+Ukończona lekcja jest **mierzalna**, gdy ma nagranie **i** dodatni `duration_seconds`.
+Lekcja bez nagrania nie ma czasu do odrobienia, więc nie ma czego mierzyć: nie wchodzi ani
+do sumy `active_seconds`, ani do sumy `duration_seconds`. „Bez nagrania” to ten sam stan,
+który reguła ukończenia lekcji odczytuje jako `video_status: none` (lekcja bez nagrania
+odtwarzanego i bez nagrania w drodze) — jedna implementacja predykatu
+(`LessonCompletionRule`), bez drugiej kopii warunku. Lekcja z nagraniem w przygotowaniu albo
+z błędem nagrania ma nagranie i podlega dotychczasowej regule.
+
+### 2. Skutek
+
+- Osoba, której ukończone lekcje z dodatnim czasem trwania są wyłącznie lekcjami bez nagrania,
+  nie ma mierzalnej ukończonej lekcji: `reliability_percent: null`, `below_threshold: false`.
+- Osoba z nagraniami we wszystkich ukończonych lekcjach ma dokładnie tę samą liczbę co
+  dotąd; ukończenie lekcji bez nagrania jej nie zmienia.
+- Liczba pochodzi z `ProgressAggregator` i jest ta sama w trzech miejscach: karta osoby
+  (`reliability_percent`), `sum` sekcji `reliability` w `GET /admin/users/{id}/number-sources`
+  i `reliability_percent` w `GET /admin/reliability/{userId}`. Wiersze sekcji `reliability`
+  nie zawierają lekcji bez nagrania.
+
+### 3. Czego ten aneks nie wprowadza
+
+Stan nagrania jest czytany w chwili obliczenia, nie w chwili ukończenia: lekcja ukończona bez
+nagrania, do której nagranie dodano później, wchodzi do ilorazu z czasem aktywnym zapisanym
+w chwili ukończenia (zwykle `0 s`). Lista lekcji w szczegółach
+`GET /admin/reliability/{userId}` (`lessons`) nadal wymienia ukończone lekcje z dodatnim czasem
+trwania, także te bez nagrania; wartość zbiorcza nie jest z niej liczona.
+
+Kod: `Services/Lessons/LessonCompletionRule.php` (`isMeasurable`), `Support/ProgressAggregator.php`,
+`Services/H18/UserNumberSourcesQuery.php`.

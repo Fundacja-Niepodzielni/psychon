@@ -39,6 +39,16 @@ final class LessonCompletionRule
     }
 
     /**
+     * Czy lekcja wchodzi do rzetelności nauki: ma nagranie i dodatni czas
+     * trwania. Lekcja bez nagrania nie ma czego oglądać, więc nie ma
+     * mierzalnego czasu — ten sam stan „bez nagrania” co w regule ukończenia.
+     */
+    public static function isMeasurable(Lesson $lesson): bool
+    {
+        return ! self::hasNoRecording($lesson) && (int) $lesson->duration_seconds > 0;
+    }
+
+    /**
      * Czy lekcja może w ogóle zostać ukończona czasem: bez nagrania — zawsze,
      * z nagraniem — tylko przy dodatnim czasie trwania.
      */
