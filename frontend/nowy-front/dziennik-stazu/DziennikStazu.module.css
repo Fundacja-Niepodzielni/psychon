@@ -1,0 +1,67 @@
+/* Moduł CSS dziennika stażu — wartości wyglądu wyłącznie z tokenów, zero
+   zapisów wprost. Szerokość, odstępy obszarów i kolumnę daje szablon. Listę,
+   jej wiersze i tło otwartego wpisu rysuje organizm `RecordList`; tu stoi
+   karta godzin, układ bloków nad listą i wnętrze panelu otwartego wpisu. */
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+}
+
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-8) 0 0;
+  min-width: 0;
+}
+
+.dane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+}
+
+.para {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dane dt,
+.dane dd {
+  margin: 0;
+}
+
+/* Opis i uwagi to tekst wpisany ręcznie: zachowane łamanie wierszy, długie
+   słowa łamane, żeby nic nie wychodziło poza ekran 390 px. */
+.opis {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.formularz {
+  padding: var(--space-16);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
