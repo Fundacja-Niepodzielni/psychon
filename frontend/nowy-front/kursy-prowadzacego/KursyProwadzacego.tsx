@@ -12,6 +12,7 @@ import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate
 import { pobierzKursyProwadzacego, type KursProwadzacego } from "./dane";
 import { czyBrakUprawnien, komunikatKoperty, wierszeKursow } from "./logika";
 import style from "./KursyProwadzacego.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanListy =
   | { rodzaj: "ladowanie" }
@@ -117,7 +118,7 @@ export function KursyProwadzacego() {
               </Button>
             }
           >
-            {stan.komunikat ?? "Serwer nie odpowiedział albo zwrócił błąd. Kursy nie są pokazywane bez danych."}
+            {stan.komunikat ?? KOMUNIKAT_SERWER}
           </Notice>
         }
       />
