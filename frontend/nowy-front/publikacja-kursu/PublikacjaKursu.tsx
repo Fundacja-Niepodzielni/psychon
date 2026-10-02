@@ -29,6 +29,7 @@ import {
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { UsuniecieKursu } from "./UsuniecieKursu";
 import style from "./PublikacjaKursu.module.css";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type Stan = "ladowanie" | "blad" | "zakazane" | "nie-znaleziono" | "ok" | "usuniety";
 
@@ -53,7 +54,7 @@ function komunikatBledu(blad: BladOperacji, tytul: string): Komunikat | null {
     return {
       wariant: "error",
       tytul,
-      tresc: "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.",
+      tresc: KOMUNIKAT_INTERNET,
     };
   }
   return null;
@@ -215,7 +216,7 @@ export function PublikacjaKursu({ idKursu }: WlasciwosciPublikacjaKursu) {
           </Button>
         }
       >
-        Brak odpowiedzi serwera. Sprawdź internet i spróbuj ponownie.
+        {KOMUNIKAT_SERWER}
       </Notice>,
     );
   }

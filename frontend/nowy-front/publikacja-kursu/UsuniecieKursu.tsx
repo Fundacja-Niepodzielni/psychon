@@ -9,6 +9,7 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { sklasyfikujBlad, usunKurs } from "./dane";
 import style from "./PublikacjaKursu.module.css";
+import { KOMUNIKAT_INTERNET } from "@/nowy-front/wspolne/komunikaty";
 
 interface WlasciwosciUsuniecieKursu {
   idKursu: string;
@@ -54,7 +55,7 @@ export function UsuniecieKursu({ idKursu, tytulKursu, onUsunieto, onNieZnalezion
       } else if (klasa.rodzaj === "zakazane") {
         setBlad(zdanieOdmowyRoli("administracji"));
       } else if (klasa.rodzaj === "siec") {
-        setBlad("Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.");
+        setBlad(KOMUNIKAT_INTERNET);
       } else if (klasa.rodzaj === "blad" || klasa.rodzaj === "braki") {
         setBlad(klasa.komunikat);
       }

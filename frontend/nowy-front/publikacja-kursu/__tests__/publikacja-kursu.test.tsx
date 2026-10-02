@@ -293,7 +293,7 @@ describe("odmowa publikacji", () => {
     const { container } = wyrenderuj();
     await uzytkownik.click(await screen.findByRole("button", { name: "Opublikuj kurs" }));
     expect(await screen.findByText("Nie udało się opublikować kursu")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Brak połączenia z serwerem");
+    expect(screen.getByRole("alert")).toHaveTextContent("Brak połączenia z internetem");
     expect(stanPublikacji(container)).toBe("szkic");
     expect(s.zapisy()).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Opublikuj kurs" })).toBeInTheDocument();
