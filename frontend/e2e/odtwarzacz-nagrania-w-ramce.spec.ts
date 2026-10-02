@@ -117,6 +117,16 @@ const WROGA_RAMKA = `<!doctype html>
 </script>
 </body></html>`;
 
+/** Ramka odtwarzacza, która po zgłoszeniu gotowości sama przechodzi pod obcy adres — w tym samym oknie. */
+const UCIEKAJACA_RAMKA = `<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><title>Uciekająca ramka</title></head>
+<body><p>Ramka odtwarzacza przed ucieczką</p>
+<script>
+  parent.postMessage(JSON.stringify({ context: "player.js", version: "0.0.11", event: "ready" }), "*");
+  setTimeout(() => { location.href = "https://obcy.atrapa.test/ramka.html"; }, 300);
+</script>
+</body></html>`;
+
 /** Ramka zgłaszająca stronie, że się wczytała. */
 const RAMKA_ZGLASZAJACA = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Ramka</title></head>
 <body><script>parent.postMessage("wczytana:" + location.origin, "*");</script></body></html>`;
@@ -146,7 +156,11 @@ async function podlacz(page: Page, dodatkowe: Record<string, { tresc: string; na
       });
     }
     if (adres.origin === ODTWARZACZ && adres.pathname.startsWith("/embed/")) {
-      const tresc = adres.pathname.startsWith("/embed/wroga") ? WROGA_RAMKA : ATRAPA_ODTWARZACZA;
+      const tresc = adres.pathname.startsWith("/embed/wroga")
+        ? WROGA_RAMKA
+        : adres.pathname.startsWith("/embed/ucieczka")
+          ? UCIEKAJACA_RAMKA
+          : ATRAPA_ODTWARZACZA;
       return route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: tresc });
     }
     if (adres.origin === OBCY) {
@@ -260,6 +274,20 @@ for (const [opis, adres] of [
     tylkoAdresyProb(zadania);
   });
 }
+
+test("okno ramki odtwarzacza przeszło pod obcy adres: to samo okno, obce pochodzenie — komunikaty odrzucane", async ({ page }) => {
+  const { zadania } = await podlacz(page);
+  await page.goto(`${BAZA}/odtwarzacz.html?adres=${encodeURIComponent(`${ODTWARZACZ}/embed/ucieczka`)}`);
+  await expect.poll(async () => (await zgloszenia(page)).gotowa).toBe(1);
+  // Okno tej samej ramki niesie teraz obcą stronę, która zasypuje aplikację zdarzeniami odtwarzania.
+  await expect.poll(async () => (await oknoOdtwarzacza(page)).url()).toBe(`${OBCY}/ramka.html`);
+  const okno = await oknoOdtwarzacza(page);
+  await expect.poll(() => okno.evaluate(() => (window as unknown as { wyslane: number }).wyslane)).toBeGreaterThan(60);
+
+  const stan = await zgloszenia(page);
+  expect(stan).toEqual({ gotowa: 1, obejrzane: 0, aktywne: 0, pozycja: null, zmiany: [], konce: 0, bledy: [], prosbyOAdres: 0 });
+  tylkoAdresyProb(zadania);
+});
 
 test("adres ramki spoza dozwolonego pochodzenia: ramka nie powstaje, błąd zgłoszony", async ({ page }) => {
   const { zadania } = await podlacz(page);
