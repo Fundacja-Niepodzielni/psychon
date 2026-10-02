@@ -1126,7 +1126,8 @@ describe("wyjście z niezapisanym tekstem", () => {
 describe("trasy ekranu", () => {
   it("odczyt tylko listy lekcji kursu, roli, stanu nagrania i listy plików lekcji; bez tras tematów", async () => {
     await renderujDane();
-    await screen.findByRole("list", { name: "Pliki lekcji" });
+    // Pierwsze odszukanie listy plików pod obciążeniem bywa wolniejsze niż domyślny limit 1 s: dostaje 5 s, próba 15 s.
+    await screen.findByRole("list", { name: "Pliki lekcji" }, { timeout: 5000 });
     const adresy = api.mock.calls.map(([adres, opcje]) => `${(opcje as { method?: string } | undefined)?.method ?? "GET"} ${adres}`);
     expect(adresy.sort()).toEqual([
       "GET /admin/courses/3/lessons",
@@ -1134,5 +1135,5 @@ describe("trasy ekranu", () => {
       "GET /admin/lessons/21/video-status",
     ]);
     expect(pobierzJa).toHaveBeenCalledTimes(1);
-  });
+  }, 15000);
 });

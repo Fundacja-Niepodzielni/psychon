@@ -40,6 +40,8 @@ export interface KontoPulpitu {
 }
 
 export interface SzczegolKursu extends KursSciezki {
+  /** Czy kurs ma test; kurs bez testu ma warunek testu spełniony z definicji. */
+  has_test: boolean;
   lessons: LekcjaKursu[];
 }
 

@@ -1,11 +1,13 @@
 <?php
 
 use App\Exceptions\ApiException;
+use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Services\H17\QuestionRouting;
 use App\Services\Lessons\LessonAccess;
+use App\Services\Lessons\LessonCompletionRule;
 use App\Services\Video\LessonRecording;
-use App\Support\Settings;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,8 +68,8 @@ if (config('features.h06')) {
      * Dostęp do lekcji rozstrzyga `LessonAccess`: najpierw widoczność kursu
      * (404), potem kolejność kursów w ścieżce (403 `course_locked`).
      */
-    $authorizeLesson = static function (Request $request, Lesson $lesson): void {
-        app(LessonAccess::class)->authorize($request->user(), $lesson);
+    $authorizeLesson = static function (Request $request, Lesson $lesson): Course {
+        return app(LessonAccess::class)->authorize($request->user(), $lesson);
     };
 
     /**
@@ -92,20 +94,11 @@ if (config('features.h06')) {
         ]);
     };
 
-    $completion = static function (Lesson $lesson, LessonProgress $progress): array {
-        $percent = (int) Settings::edition('lesson_completion_percent');
-        $duration = (int) $lesson->duration_seconds;
-        $requiredActiveSeconds = $duration > 0
-            ? (int) ceil($duration * $percent / 100)
-            : 0;
-
-        return [
-            'watched_seconds' => (int) $progress->watched_seconds,
-            'active_seconds' => (int) $progress->active_seconds,
-            'completable' => $duration > 0 && $progress->active_seconds >= $requiredActiveSeconds,
-            'completable_at_percent' => $percent,
-        ];
-    };
+    /**
+     * Reguła ukończenia lekcji jest w jednym miejscu (`LessonCompletionRule`):
+     * odczyt, zapis postępu i `complete` czytają ten sam wynik.
+     */
+    $completion = static fn (Lesson $lesson, LessonProgress $progress): array => LessonCompletionRule::snapshot($lesson, $progress);
 
     Route::middleware(['auth:keycloak', 'access.active'])->group(function () use (
         $authorizeLesson,
@@ -118,7 +111,7 @@ if (config('features.h06')) {
             $completion,
         ) {
             $lesson = $id;
-            $authorizeLesson($request, $lesson);
+            $course = $authorizeLesson($request, $lesson);
 
             /** @var LessonProgress $progress */
             $progress = DB::transaction(function () use ($request, $lesson, $ensureProgress): LessonProgress {
@@ -147,6 +140,13 @@ if (config('features.h06')) {
                     // Treść lekcji (podzbiór Markdown) albo `null`; HTML w treści
                     // jest tekstem — klient go nie interpretuje.
                     'content' => $lesson->content,
+                    // Kurs lekcji (okruszki, powrót do kursu, adres testu). Samo pole
+                    // niczego nie otwiera: dostęp rozstrzygnął `LessonAccess` wyżej.
+                    'course' => [
+                        'id' => (int) $course->id,
+                        'slug' => $course->slug,
+                        'title' => $course->title,
+                    ],
                     // Temat lekcji w kursie (okruszki ekranu lekcji) albo `null`.
                     'topic' => $lesson->topic === null ? null : [
                         'id' => $lesson->topic->id,
@@ -166,6 +166,13 @@ if (config('features.h06')) {
                     'is_completed' => (bool) $progress->is_completed,
                     'completable' => $snapshot['completable'],
                     'completable_at_percent' => $snapshot['completable_at_percent'],
+                    'required_active_seconds' => $snapshot['required_active_seconds'],
+                    // Do kogo trafi pytanie zadane z tego ekranu: ta sama reguła
+                    // dziedziczenia co przy zapisie pytania (przypisanie do lekcji
+                    // wygrywa z przypisaniem do kursu). Tylko imię i nazwisko.
+                    'question_addressee' => ($addressee = QuestionRouting::forLesson($lesson)) === null
+                        ? null
+                        : ['name' => $addressee->fullName()],
                 ],
             ]);
         });
@@ -238,7 +245,9 @@ if (config('features.h06')) {
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if ($lesson->duration_seconds <= 0) {
+                // Lekcja z nagraniem, której czas trwania wynosi 0, nigdy nie jest do
+                // ukończenia; lekcja bez nagrania jest do ukończenia od razu.
+                if (! LessonCompletionRule::canEverBeCompleted($lesson)) {
                     throw new ApiException(
                         422,
                         'not_enough_active_time',

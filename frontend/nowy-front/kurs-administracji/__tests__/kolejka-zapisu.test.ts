@@ -87,4 +87,36 @@ describe("kolejka zapisu", () => {
     await tik();
     expect(zapisane).toEqual(["B"]);
   });
+
+  it("poczekaj przy pustej kolejce kończy się od razu potwierdzeniem", async () => {
+    const { kolejka } = stanowisko();
+    await expect(kolejka.poczekaj()).resolves.toBe(true);
+  });
+
+  it("poczekaj czeka na cały łańcuch zapisów i kończy się dopiero po ostatnim", async () => {
+    const { kolejka, wyslane } = stanowisko();
+    kolejka.zlec("A");
+    kolejka.zlec("B");
+    let skonczone = false;
+    const czekanie = kolejka.poczekaj().then((wynik) => {
+      skonczone = true;
+      return wynik;
+    });
+
+    wyslane[0].przyjmij();
+    await tik();
+    expect(skonczone).toBe(false);
+
+    wyslane[1].przyjmij();
+    await expect(czekanie).resolves.toBe(true);
+    expect(kolejka.zajeta()).toBe(false);
+  });
+
+  it("poczekaj po odmowie serwera zwraca false", async () => {
+    const { kolejka, wyslane } = stanowisko();
+    kolejka.zlec("A");
+    const czekanie = kolejka.poczekaj();
+    wyslane[0].odrzuc(new Error("odmowa"));
+    await expect(czekanie).resolves.toBe(false);
+  });
 });

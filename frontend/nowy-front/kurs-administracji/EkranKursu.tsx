@@ -23,6 +23,7 @@ import {
   zdanieRuchuWiersza,
 } from "@/design-system/molekuly/StrzalkiKolejnosci/zdania";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
+import { useNawigacjaZPytaniem } from "@/design-system/szablony/NiezapisaneZmiany";
 import { UkladEdycji } from "@/design-system/szablony/UkladEdycji/UkladEdycji";
 import {
   cialoUkladu,
@@ -78,6 +79,7 @@ import {
   type WierszUstawien,
 } from "./KolumnaBoczna";
 import { utworzKolejkeZapisu, type KolejkaZapisu } from "./kolejka-zapisu";
+import { odczytajOstrzezeniePoUtworzeniu, zapomnijOstrzezeniePoUtworzeniu } from "./ostrzezenie-po-utworzeniu";
 import { useOdswiezanieNagran } from "./odswiezanie-nagran";
 import style from "./EkranKursu.module.css";
 
@@ -132,6 +134,7 @@ export function EkranKursu({
   onKoniec,
 }: WlasciwosciEkranuKursu) {
   const router = useRouter();
+  const nawigacja = useNawigacjaZPytaniem();
   const idLiczbowy = kursPoczatkowy.id;
   const [kurs, setKurs] = useState(kursPoczatkowy);
   const [lekcje, setLekcje] = useState(lekcjePoczatkowe);
@@ -148,13 +151,18 @@ export function EkranKursu({
   const [otwartyWiersz, setOtwartyWiersz] = useState<WierszUstawien | null>(null);
   const [odmowaPublikacji, setOdmowaPublikacji] = useState<PozycjaPublikacji[] | null>(null);
   const [bladKolejnosci, setBladKolejnosci] = useState<string | null>(null);
-  const [ogloszenie, setOgloszenie] = useState({ tresc: "", numer: 0 });
+  const [bladWyjscia, setBladWyjscia] = useState<string | null>(null);
+  // Zdanie z listy kursów (kurs utworzony, prowadzącego nie przypisano): czytane raz, zdejmowane po zamontowaniu.
+  const [ostrzezeniePoUtworzeniu] = useState(() => odczytajOstrzezeniePoUtworzeniu(kursPoczatkowy.id));
+  // Zdanie z listy kursów jest od początku w ogłoszeniach, więc czytnik słyszy je razem z komunikatem na ekranie.
+  const [ogloszenie, setOgloszenie] = useState({ tresc: ostrzezeniePoUtworzeniu ?? "", numer: 0 });
   const [oknoTematu, setOknoTematu] = useState<OknoTematu | null>(null);
   const [nazwaTematu, setNazwaTematu] = useState("");
   const [bladPola, setBladPola] = useState<string | null>(null);
   const [bladOkna, setBladOkna] = useState<string | null>(null);
   const [oknoKursu, setOknoKursu] = useState<RodzajOknaKursu | null>(null);
   const publikowanie = useRef(false);
+  const wychodzenie = useRef(false);
   const wysylanieOkna = useRef(false);
   // Dokąd ma trafić fokus, gdy element, który otworzył okno, już nie istnieje.
   const fokusPoOknie = useRef<string | null>(null);
@@ -167,6 +175,11 @@ export function EkranKursu({
       zamontowany.current = false;
     };
   }, []);
+
+  // Zdanie z listy kursów jest czytane raz: pamięć karty zdejmuje je po zamontowaniu ekranu.
+  useEffect(() => {
+    zapomnijOstrzezeniePoUtworzeniu(kursPoczatkowy.id);
+  }, [kursPoczatkowy.id]);
 
   // Odmowa publikacji: fokus staje na komunikacie z powodami, gdy ten jest już na ekranie.
   useEffect(() => {
@@ -348,6 +361,7 @@ export function EkranKursu({
   function zmienKolejnosc(nastepny: Uklad, zdanie: () => string) {
     if (nastepny === biezaceUklady.current.lokalny) return;
     setBladKolejnosci(null);
+    setBladWyjscia(null);
     ustawUklady({ ...biezaceUklady.current, lokalny: nastepny });
     wezKolejke().zlec(nastepny);
     oglos(zdanie());
@@ -526,7 +540,30 @@ export function EkranKursu({
     }
   }
 
-  const przyciskGlowny = { kurs, onOpublikuj: () => void opublikuj() };
+  /**
+   * „Zapisz szkic i wyjdź”: układ kursu zapisuje się sam, więc przycisk czeka tylko na zapis w toku
+   * i dopiero potem prowadzi na listę kursów. Odmowa serwera zostawia na ekranie, ze zdaniem.
+   */
+  async function zapiszSzkicIWyjdz() {
+    if (wychodzenie.current) return;
+    wychodzenie.current = true;
+    setBladWyjscia(null);
+    try {
+      const zapisano = (await kolejkaZapisu.current?.poczekaj()) ?? true;
+      if (!zamontowany.current) return;
+      if (!zapisano) {
+        const zdanie = "Zostajesz na ekranie kursu: ostatnia zmiana kolejności nie została zapisana. Sprawdź kolejność lekcji i spróbuj ponownie.";
+        setBladWyjscia(zdanie);
+        oglos(zdanie);
+        return;
+      }
+      nawigacja.przejdz(ADRES_LISTY_KURSOW);
+    } finally {
+      wychodzenie.current = false;
+    }
+  }
+
+  const przyciskGlowny = { kurs, onOpublikuj: () => void opublikuj(), onZapiszIWyjdz: () => void zapiszSzkicIWyjdz() };
 
   return (
     <>
@@ -536,11 +573,28 @@ export function EkranKursu({
           tytul: kurs.title,
           status: kurs.is_published
             ? { wariant: "ok", etykieta: "Opublikowany" }
-            : { wariant: "neutral", etykieta: "Szkic" },
+            : { wariant: "neutral", etykieta: "Szkic — zapisany" },
+          opis: kurs.is_published ? undefined : "Zmiany zapisują się same.",
           statusObokTytulu: true,
           onPowrot: () => router.back(),
         }}
         pasekWaski={<PasPublikacji {...przyciskGlowny} stan={publikacja} />}
+        komunikaty={
+          (ostrzezeniePoUtworzeniu !== null || bladWyjscia !== null) && (
+            <div className={style.komunikatyEkranu}>
+              {ostrzezeniePoUtworzeniu !== null && (
+                <Notice wariant="warn" tytul="Prowadzący nie został przypisany">
+                  {ostrzezeniePoUtworzeniu}
+                </Notice>
+              )}
+              {bladWyjscia !== null && (
+                <Notice wariant="error" tytul="Szkic nie został zapisany">
+                  {bladWyjscia}
+                </Notice>
+              )}
+            </div>
+          )
+        }
         glowna={
           <>
             <DrzewoKursu
