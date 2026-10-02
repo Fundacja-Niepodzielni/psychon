@@ -13,6 +13,7 @@ import { Field } from "@/design-system/molekuly/Field/Field";
 import { KeyValueRow } from "@/design-system/molekuly/KeyValueRow/KeyValueRow";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
+import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import type { PaginationMeta } from "@/lib/api/klient";
@@ -106,8 +107,9 @@ function SzczegolyCertyfikatu({ certyfikat }: { certyfikat: AdminCertificate }) 
  * dodatkowego żądania).
  * Stany: ładowanie, dane, dwa różne stany puste (z filtrem i bez), brak
  * uprawnień (wspólny ekran odmowy), błąd odpowiedzi serwera i brak połączenia.
- * Po unieważnieniu lista wczytuje się od nowa bez szkieletu, żeby fokus nie
- * zniknął; fokus wraca na przycisk szczegółów tego certyfikatu.
+ * Po unieważnieniu pokazuje się pasek potwierdzenia (`Toast`), lista wczytuje się
+ * od nowa bez szkieletu, żeby fokus nie zniknął, a fokus wraca na przycisk
+ * szczegółów tego certyfikatu.
  */
 export function CertyfikatyLista() {
   const router = useRouter();
@@ -209,13 +211,7 @@ export function CertyfikatyLista() {
 
   const filtry = (
     <>
-      {sukces !== null && (
-        <div role="status">
-          <Notice wariant="ok" tytul="Certyfikat unieważniony">
-            {sukces}
-          </Notice>
-        </div>
-      )}
+      {sukces !== null && <Toast komunikat={sukces} onZamknij={() => setSukces(null)} />}
       <form className={style.filtry} onSubmit={zastosujFiltr} aria-label="Filtr certyfikatów">
         <div className={style.pole}>
           <Field
@@ -254,19 +250,24 @@ export function CertyfikatyLista() {
     lista = <Skeleton wiersze={5} />;
   } else if (stan.rodzaj === "siec" || stan.rodzaj === "blad") {
     lista = (
-      <Notice
-        wariant="error"
-        tytul={stan.rodzaj === "siec" ? "Brak połączenia z serwerem" : "Nie udało się wczytać listy certyfikatów"}
-        akcja={
-          <Button poziom="outline" onClick={() => przejdz(zapytanie.filtr, zapytanie.strona)}>
-            Spróbuj ponownie
-          </Button>
-        }
-      >
-        {stan.rodzaj === "siec"
-          ? "Sprawdź połączenie z internetem i spróbuj jeszcze raz."
-          : "Serwer nie odpowiedział poprawnie. Spróbuj ponownie za chwilę."}
-      </Notice>
+      <div className={style.lista}>
+        <div className={style.ukryte}>
+          <Heading stopien={2}>Lista certyfikatów</Heading>
+        </div>
+        <Notice
+          wariant="error"
+          tytul={stan.rodzaj === "siec" ? "Brak połączenia z serwerem" : "Nie udało się wczytać listy certyfikatów"}
+          akcja={
+            <Button poziom="outline" onClick={() => przejdz(zapytanie.filtr, zapytanie.strona)}>
+              Spróbuj ponownie
+            </Button>
+          }
+        >
+          {stan.rodzaj === "siec"
+            ? "Sprawdź połączenie z internetem i spróbuj jeszcze raz."
+            : "Serwer nie odpowiedział poprawnie. Spróbuj ponownie za chwilę."}
+        </Notice>
+      </div>
     );
   } else if (stan.certyfikaty.length === 0 && aktywny) {
     lista = (

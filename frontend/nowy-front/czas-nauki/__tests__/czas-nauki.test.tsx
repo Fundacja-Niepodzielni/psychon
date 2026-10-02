@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
+import { axeViolations } from "@/components/__tests__/axe-helper";
 
 /**
  * Ekran „Czas nauki” (`GET /admin/reliability`, szczegóły
@@ -489,5 +490,30 @@ describe("Czas nauki — widok osoby", () => {
     expect(screen.getAllByRole("button", { name: "Wróć do listy" })).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Wróć do listy" }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/Czas nauki/);
+  });
+});
+
+describe("Czas nauki — automatyczna kontrola dostępności", () => {
+  it("lista i widok osoby z lekcjami nie mają naruszeń axe", async () => {
+    ustawApi(() => Promise.resolve(szczegoly(17, [lekcja(21), lekcja(22, { last_activity_at: null, below_threshold: false })])));
+    apiPaged.mockResolvedValue(odpowiedz([osoba(17), osoba(18, { reliability_percent: null })], { total: 2, last_page: 2 }));
+    const { container } = render(<CzasNauki />);
+    await screen.findByText("Marta Demo17");
+    expect((await axeViolations(container)).map((naruszenie) => naruszenie.id)).toEqual([]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Szczegóły czasu nauki: Marta Demo17" }));
+    await screen.findByText("Wprowadzenie do wywiadu 21");
+    expect((await axeViolations(container)).map((naruszenie) => naruszenie.id)).toEqual([]);
+  });
+
+  it("widok osoby bez znalezienia osoby nie ma naruszeń axe", async () => {
+    ustawApi(() => Promise.reject(nieznanaOsoba()));
+    apiPaged.mockResolvedValue(odpowiedz([osoba(17)]));
+    const { container } = render(<CzasNauki />);
+    await screen.findByText("Marta Demo17");
+    await userEvent.click(screen.getByRole("button", { name: "Szczegóły czasu nauki: Marta Demo17" }));
+    await screen.findByRole("heading", { level: 2, name: "Nie znaleziono osoby" });
+
+    expect((await axeViolations(container)).map((naruszenie) => naruszenie.id)).toEqual([]);
   });
 });

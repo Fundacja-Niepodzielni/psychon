@@ -186,3 +186,10 @@ Zmiany świadome (nie są nowym zachowaniem serwera):
 10. **Daty i godziny** przechodzą przez wspólny formater dat (zapis „30 września 2026, 20:50”),
     nie przez własny format przeglądarki.
 11. **Liczba z odmianą** („Razem: 3 certyfikaty”) zamiast plakietki „{n} łącznie”.
+12. **Potwierdzenie po unieważnieniu** to wspólny pasek potwierdzenia (znika po kilku sekundach albo po
+    zamknięciu), a nie stały zielony komunikat nad listą. Fokus po zapisie idzie na przycisk „Szczegóły”
+    tego certyfikatu, bo przycisk „Unieważnij” znika razem ze stanem „ważny”. Lista po zapisie wczytuje
+    się od nowa (to samo żądanie co dotąd), ale bez szkieletu, żeby nie zgubić fokusu.
+13. **Okno unieważnienia w czasie zapisu**: przycisk potwierdzenia zostaje kolorowy, ma napis
+    „Zapisywanie…” i oznaczenie „niedostępny”; przyciski w innych wierszach nie są blokowane (okno
+    zasłania stronę, więc nie da się ich kliknąć).

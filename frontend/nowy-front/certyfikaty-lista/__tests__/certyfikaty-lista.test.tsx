@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
+import { axeViolations } from "@/components/__tests__/axe-helper";
 
 /**
  * Ekran „Certyfikaty” (`GET /admin/certificates`, unieważnienie
@@ -513,8 +514,8 @@ describe("Certyfikaty — unieważnienie", () => {
     expect(api.mock.calls.filter(([sciezka]) => String(sciezka).endsWith("/revoke"))).toHaveLength(1);
 
     const komunikat = screen.getByRole("status");
-    expect(within(komunikat).getByRole("heading", { level: 3, name: "Certyfikat unieważniony" })).toBeInTheDocument();
     expect(komunikat).toHaveTextContent("Certyfikat NP/2026/017 jest teraz unieważniony.");
+    expect(within(komunikat).getByRole("button", { name: "Zamknij powiadomienie" })).toBeEnabled();
 
     await waitFor(() => expect(apiPaged).toHaveBeenCalledTimes(2));
     expect(apiPaged).toHaveBeenLastCalledWith(ADRES_LISTY);
@@ -523,6 +524,7 @@ describe("Certyfikaty — unieważnienie", () => {
     // Po odświeżeniu stan jest słowami, a powód nadal tylko w szczegółach.
     expect(container.querySelector('[data-wiersz="17"]')).toHaveTextContent("unieważniony");
     expect(container.textContent).not.toContain(POWOD);
+    expect((await axeViolations(container)).map((naruszenie) => naruszenie.id)).toEqual([]);
   });
 
   it("błąd serwera: zdanie serwera w oknie, okno zostaje, przycisk znów działa, lista bez odświeżenia", async () => {
@@ -540,7 +542,7 @@ describe("Certyfikaty — unieważnienie", () => {
     expect(within(okno).getByRole("button", { name: "Anuluj" })).toBeEnabled();
     expect(within(okno).getByRole("textbox")).toHaveValue(POWOD);
     expect(apiPaged).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText("Certyfikat unieważniony")).toBeNull();
+    expect(screen.queryByText(/jest teraz unieważniony/)).toBeNull();
   });
 
   it("błąd bez odpowiedzi serwera: zdanie o połączeniu w oknie", async () => {
@@ -569,7 +571,7 @@ describe("Certyfikaty — unieważnienie", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(wywolujacy);
     expect(api).not.toHaveBeenCalledWith(expect.stringContaining("/revoke"), expect.anything());
-    expect(screen.queryByText("Certyfikat unieważniony")).toBeNull();
+    expect(screen.queryByText(/jest teraz unieważniony/)).toBeNull();
   });
 
   it("ponowne otwarcie okna czyści powód i poprzedni komunikat o sukcesie", async () => {
@@ -582,10 +584,46 @@ describe("Certyfikaty — unieważnienie", () => {
     await userEvent.type(screen.getByRole("textbox", { name: /Powód unieważnienia/ }), POWOD);
     apiPaged.mockResolvedValue(odpowiedz([uniewazniony(17), certyfikat(18)], { total: 2 }));
     await userEvent.click(screen.getByRole("button", { name: "Unieważnij certyfikat" }));
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("NP/2026/017"));
+    await waitFor(() => expect(screen.getAllByRole("status").some((status) => status.textContent?.includes("NP/2026/017 jest teraz"))).toBe(true));
 
     await userEvent.click(await screen.findByRole("button", { name: "Unieważnij certyfikat NP/2026/018" }));
     expect(screen.getByRole("textbox", { name: /Powód unieważnienia/ })).toHaveValue("");
-    expect(screen.queryByText("Certyfikat unieważniony")).toBeNull();
+    expect(screen.queryByText(/jest teraz unieważniony/)).toBeNull();
+  });
+});
+
+describe("Certyfikaty — automatyczna kontrola dostępności", () => {
+  it("lista ze szczegółami otwartego, unieważnionego certyfikatu nie ma naruszeń axe", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([certyfikat(17), uniewazniony(18)], { total: 2, last_page: 2 }));
+    const { container } = render(<CertyfikatyLista />);
+    await screen.findByText("NP/2026/017");
+    await userEvent.click(screen.getByRole("button", { name: "Szczegóły: certyfikat NP/2026/018" }));
+
+    expect((await axeViolations(container)).map((naruszenie) => naruszenie.id)).toEqual([]);
+  });
+
+  it("otwarte okno unieważnienia z błędem pola nie ma naruszeń axe", async () => {
+    apiPaged.mockResolvedValue(odpowiedz([certyfikat(17)]));
+    const { container } = render(<CertyfikatyLista />);
+    await screen.findByText("NP/2026/017");
+    await userEvent.click(screen.getByRole("button", { name: "Unieważnij certyfikat NP/2026/017" }));
+    await userEvent.click(screen.getByRole("button", { name: "Unieważnij certyfikat" }));
+
+    expect((await axeViolations(container)).map((naruszenie) => naruszenie.id)).toEqual([]);
+  });
+
+  it.each(["brak dostępu", "filtr bez wyników", "błąd"])("stan „%s” nie ma naruszeń axe", async (stanEkranu) => {
+    if (stanEkranu === "brak dostępu") apiPaged.mockRejectedValue(odmowa(403));
+    if (stanEkranu === "błąd") apiPaged.mockRejectedValue(bladSerwera());
+    if (stanEkranu === "filtr bez wyników") apiPaged.mockResolvedValueOnce(odpowiedz([certyfikat(17)])).mockResolvedValue(odpowiedz([]));
+    const { container } = render(<CertyfikatyLista />);
+    if (stanEkranu === "filtr bez wyników") {
+      await screen.findByText("NP/2026/017");
+      await userEvent.type(screen.getByRole("textbox", { name: "Osoba" }), "nikt");
+      await userEvent.click(screen.getByRole("button", { name: "Filtruj" }));
+    }
+    await screen.findByRole("heading", { level: stanEkranu === "błąd" ? 3 : 2 });
+
+    expect((await axeViolations(container)).map((naruszenie) => naruszenie.id)).toEqual([]);
   });
 });

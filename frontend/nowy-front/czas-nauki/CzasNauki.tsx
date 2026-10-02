@@ -236,19 +236,24 @@ export function CzasNauki() {
     lista = <Skeleton wiersze={5} />;
   } else if (stan.rodzaj === "siec" || stan.rodzaj === "blad") {
     lista = (
-      <Notice
-        wariant="error"
-        tytul={stan.rodzaj === "siec" ? "Brak połączenia z serwerem" : "Nie udało się wczytać listy"}
-        akcja={
-          <Button poziom="outline" onClick={() => przejdz(zapytanie.strona)}>
-            Spróbuj ponownie
-          </Button>
-        }
-      >
-        {stan.rodzaj === "siec"
-          ? "Sprawdź połączenie z internetem i spróbuj jeszcze raz."
-          : "Serwer nie odpowiedział poprawnie. Spróbuj ponownie za chwilę."}
-      </Notice>
+      <div className={style.lista}>
+        <div className={style.ukryte}>
+          <Heading stopien={2}>Lista osób</Heading>
+        </div>
+        <Notice
+          wariant="error"
+          tytul={stan.rodzaj === "siec" ? "Brak połączenia z serwerem" : "Nie udało się wczytać listy"}
+          akcja={
+            <Button poziom="outline" onClick={() => przejdz(zapytanie.strona)}>
+              Spróbuj ponownie
+            </Button>
+          }
+        >
+          {stan.rodzaj === "siec"
+            ? "Sprawdź połączenie z internetem i spróbuj jeszcze raz."
+            : "Serwer nie odpowiedział poprawnie. Spróbuj ponownie za chwilę."}
+        </Notice>
+      </div>
     );
   } else if (stan.osoby.length === 0) {
     lista = (
@@ -375,17 +380,22 @@ function WidokOsoby({ osoba, stan, wRamce, onWroc, onPonow }: WlasciwosciWidokuO
     lista = <Skeleton wiersze={3} />;
   } else if (stan.rodzaj === "siec" || stan.rodzaj === "blad") {
     lista = (
-      <Notice
-        wariant="error"
-        tytul={stan.rodzaj === "siec" ? "Brak połączenia z serwerem" : "Nie udało się wczytać szczegółów osoby"}
-        akcja={
-          <Button poziom="outline" onClick={onPonow}>
-            Spróbuj ponownie
-          </Button>
-        }
-      >
-        {stan.rodzaj === "siec" ? "Sprawdź połączenie z internetem i spróbuj jeszcze raz." : stan.komunikat}
-      </Notice>
+      <div className={style.lista}>
+        <div className={style.ukryte}>
+          <Heading stopien={2}>Ukończone lekcje</Heading>
+        </div>
+        <Notice
+          wariant="error"
+          tytul={stan.rodzaj === "siec" ? "Brak połączenia z serwerem" : "Nie udało się wczytać szczegółów osoby"}
+          akcja={
+            <Button poziom="outline" onClick={onPonow}>
+              Spróbuj ponownie
+            </Button>
+          }
+        >
+          {stan.rodzaj === "siec" ? "Sprawdź połączenie z internetem i spróbuj jeszcze raz." : stan.komunikat}
+        </Notice>
+      </div>
     );
   } else if (stan.szczegoly.lessons.length === 0) {
     lista = (
