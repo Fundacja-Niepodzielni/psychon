@@ -13,6 +13,14 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   root: "design-system/poligon",
   plugins: [react()],
+  // Strona pokazowa nigdy nie osadza prawdziwego odtwarzacza nagrań: bez
+  // zmiennej budowy dozwolonym pochodzeniem jest adres z domeny zastrzeżonej
+  // dla prób, pod którym nic nie istnieje (ramkę podaje atrapa w próbie).
+  define: {
+    "process.env.NEXT_PUBLIC_VIDEO_PLAYER_ORIGIN": JSON.stringify(
+      process.env.NEXT_PUBLIC_VIDEO_PLAYER_ORIGIN ?? "https://odtwarzacz.atrapa.test",
+    ),
+  },
   build: {
     outDir: "../../dist-poligon",
     emptyOutDir: true,
@@ -27,6 +35,8 @@ export default defineConfig({
         lekcja: fileURLToPath(new URL("./design-system/poligon/lekcja.html", import.meta.url)),
         formularze: fileURLToPath(new URL("./design-system/poligon/formularze.html", import.meta.url)),
         "szablony-kolumna": fileURLToPath(new URL("./design-system/poligon/szablony-kolumna.html", import.meta.url)),
+        // Odtwarzacz nagrania w ramce: osobne wejście z atrapą ramki w próbie.
+        odtwarzacz: fileURLToPath(new URL("./design-system/poligon/odtwarzacz.html", import.meta.url)),
         // Edytor treści lekcji: osobne wejście, bo tylko ono wciąga silnik edycji.
         edytor: fileURLToPath(new URL("./design-system/poligon/edytor.html", import.meta.url)),
       },
