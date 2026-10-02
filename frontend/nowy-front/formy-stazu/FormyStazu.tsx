@@ -308,7 +308,7 @@ export function FormyStazu() {
       <PageHeader
         okruszki={[{ etykieta: "Administracja" }, { etykieta: "Słownik form stażu" }]}
         tytul="Słownik form stażu"
-        opis="Formy dyżuru dostępne przy zgłaszaniu wpisu w dzienniku stażu. Pozycji nie da się usunąć — wygasza ją przełącznik aktywności."
+        opis="Formy dyżuru dostępne przy dodawaniu wpisu w dzienniku stażu. Pozycji nie da się usunąć — wygasza ją przełącznik aktywności."
         onPowrot={() => router.back()}
         przyciskGlowny={panelOtwarty ? undefined : { etykieta: "Dodaj formę", onKliknij: otworzDodawanie }}
       />
