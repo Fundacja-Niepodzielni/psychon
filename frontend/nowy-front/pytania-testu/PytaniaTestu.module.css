@@ -147,7 +147,7 @@
 
 .odpowiedz {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 8.5rem minmax(0, 1fr) auto;
   align-items: end;
   gap: var(--space-8) var(--space-12);
 }

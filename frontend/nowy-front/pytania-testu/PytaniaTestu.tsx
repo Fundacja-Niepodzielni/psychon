@@ -395,7 +395,6 @@ export function PytaniaTestu({ idTestu, panel, idKursu = null }: WlasciwosciPyta
               tytul={`Usunąć pytanie ${doUsuniecia.sequence_order}?`}
               etykietaWycofania="Zostaw pytanie"
               etykietaPotwierdzenia="Usuń pytanie"
-              niebezpieczne
               onWycofaj={() => setDoUsuniecia(null)}
               onPotwierdz={() => void usun(doUsuniecia)}
             >

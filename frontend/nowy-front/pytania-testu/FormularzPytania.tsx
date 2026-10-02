@@ -149,7 +149,7 @@ export function FormularzPytania({
                     disabled={zapisywanie}
                     aria-label={`Odpowiedź poprawna: odpowiedź ${numer}`}
                   />
-                  <span aria-hidden="true">{odpowiedz.is_correct ? "Poprawna" : "Oznacz"}</span>
+                  <span aria-hidden="true">Poprawna</span>
                 </label>
                 <div className={style.poleOdpowiedzi}>
                   <Label htmlFor={idPola} dzieci={`Odpowiedź ${numer}`} wymagane />
