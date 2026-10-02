@@ -43,7 +43,7 @@ const ETYKIETY_STATUSU: Record<WiadomoscEmail["status"], string> = {
  * jest błędem — pokazuje się jego surowy kod, patrz `etykietaTypu` niżej.
  */
 const ETYKIETY_TYPOW: Record<string, string> = {
-  "application.accepted": "Zgłoszenie przyjęte",
+  "application.accepted": "Zgłoszenie zatwierdzone",
   "application.rejected": "Zgłoszenie odrzucone",
   "assignment.created": "Przypisanie prowadzącego",
   "assignment.removed": "Usunięcie przypisania prowadzącego",
@@ -61,7 +61,7 @@ const ETYKIETY_TYPOW: Record<string, string> = {
   "profile.returned": "Profil psychologa do poprawki",
   "profile.withdrawn": "Profil psychologa wycofany",
   "export.ready": "Eksport danych gotowy",
-  "cooperation_request.answered": "Odpowiedź na prośbę o współpracę",
+  "cooperation_request.answered": "Odpowiedź na prośbę o dalszą współpracę",
   "supervision.slot_cancelled": "Termin superwizji odwołany",
 };
 

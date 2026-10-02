@@ -88,7 +88,7 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     await waitFor(() => expect(screen.getByText("Zaproszenie na kurs")).toBeInTheDocument());
 
     expect(screen.getByText("Wpis stażu odrzucony")).toBeInTheDocument();
-    expect(screen.getByText("Odpowiedź na prośbę o współpracę")).toBeInTheDocument();
+    expect(screen.getByText("Odpowiedź na prośbę o dalszą współpracę")).toBeInTheDocument();
     expect(screen.getByText("Termin superwizji odwołany")).toBeInTheDocument();
 
     const grupa = screen.getByRole("group", { name: "Typy powiadomień" });

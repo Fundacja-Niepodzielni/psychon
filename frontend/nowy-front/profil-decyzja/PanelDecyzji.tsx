@@ -39,7 +39,7 @@ function PoDecyzji({ wniosek }: { wniosek: Wniosek }) {
         </Notice>
       )}
       {wniosek.status === "returned" && (
-        <Notice wariant="ok" tytul="Wniosek do poprawki">
+        <Notice wariant="ok" tytul="Poproszono o poprawkę wniosku">
           {`Decyzja z ${dataPl(wniosek.decided_at)}. Komentarz: ${wniosek.return_reason ?? "—"}`}
         </Notice>
       )}
@@ -113,7 +113,7 @@ function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
     if (wysylanie) return;
     const tekst = komentarz.trim();
     if (tekst === "") {
-      setBladKomentarza("Dodaj komentarz przed prośbą o poprawkę.");
+      setBladKomentarza("Napisz, co trzeba poprawić.");
       return;
     }
     setWysylanie(true);
@@ -140,7 +140,7 @@ function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
           pola={[
             {
               id: "komentarz-poprawki",
-              etykieta: "Komentarz do poprawki",
+              etykieta: "Co trzeba poprawić",
               rodzaj: "wieloliniowy",
               wymagane: true,
               wartosc: komentarz,

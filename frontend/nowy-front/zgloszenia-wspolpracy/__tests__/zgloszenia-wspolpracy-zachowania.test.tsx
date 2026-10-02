@@ -179,7 +179,7 @@ describe("ZgloszeniaWspolpracy — błędy zapisu odpowiedzi", () => {
     await waitFor(() => expect(pobierzZgloszeniaAdministracji).toHaveBeenCalledTimes(2));
   });
 
-  it("404 → Notice „Prośba nie istnieje.” i odświeżenie listy", async () => {
+  it("404 → Notice „Nie znaleziono prośby.” i odświeżenie listy", async () => {
     const uzytkownik = userEvent.setup();
     pobierzZgloszeniaAdministracji.mockResolvedValue({
       data: [ZGLOSZENIE_NOWE],
@@ -196,7 +196,7 @@ describe("ZgloszeniaWspolpracy — błędy zapisu odpowiedzi", () => {
     await uzytkownik.type(poleOdpowiedzi, "x");
     await uzytkownik.click(screen.getByRole("button", { name: "Odpowiedz" }));
 
-    expect(await screen.findByText("Prośba nie istnieje.")).toBeInTheDocument();
+    expect(await screen.findByText("Nie znaleziono prośby.")).toBeInTheDocument();
     await waitFor(() => expect(pobierzZgloszeniaAdministracji).toHaveBeenCalledTimes(2));
   });
 });

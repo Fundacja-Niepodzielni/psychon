@@ -162,10 +162,10 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
     expect(wiersz("Marta Demo")).toHaveTextContent(NOWE.body);
   });
 
-  it("pusty: nagłówek „Brak próśb o współpracę”, jeden main, zero wierszy", async () => {
+  it("pusty: nagłówek „Brak próśb o dalszą współpracę”, jeden main, zero wierszy", async () => {
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
     const { container } = render(<ZgloszeniaWspolpracy />);
-    await screen.findByRole("heading", { name: "Brak próśb o współpracę" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     sprawdzSzablon(container);
     expect(wierszeListy()).toHaveLength(0);
   });
@@ -176,7 +176,7 @@ describe("ZgloszeniaWspolpracy — stany w szablonie listy", () => {
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
     await uzytkownik.click(screen.getByRole("combobox", { name: /^Stan/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Zamknięte" }));
-    await screen.findByRole("heading", { name: "Brak próśb o współpracę" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     expect(apiPaged).toHaveBeenLastCalledWith("/admin/cooperation-requests?status=closed&page=1");
 
     apiPaged.mockResolvedValueOnce({ data: TRZY, meta: META });
@@ -370,7 +370,7 @@ describe("ZgloszeniaWspolpracy — główna akcja „Odpowiedz”", () => {
     await uzytkownik.type(within(formularz).getByRole("textbox", { name: /^Odpowiedź/ }), "Dziękujemy.");
     api.mockResolvedValueOnce(zgloszenie(11, { status: "answered", response: "Dziękujemy.", responded_at: "2026-09-22T10:00:00Z" }));
     await uzytkownik.click(within(formularz).getByRole("button", { name: "Odpowiedz" }));
-    await screen.findByRole("heading", { name: "Brak próśb o współpracę" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     expect(apiPaged).toHaveBeenCalledTimes(2);
   });
 
@@ -476,7 +476,7 @@ describe("ZgloszeniaWspolpracy — zapis słownikowy", () => {
 
     apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
     const c = render(<ZgloszeniaWspolpracy />);
-    await screen.findByRole("heading", { name: "Brak próśb o współpracę" });
+    await screen.findByRole("heading", { name: "Brak próśb o dalszą współpracę" });
     zbierz(c.container);
     c.unmount();
 

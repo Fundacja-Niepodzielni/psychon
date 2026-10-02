@@ -110,7 +110,7 @@ async function przebieg(wersja: Wersja, scenariusz: Scenariusz): Promise<Zapytan
       await uzytkownik.click(screen.getByRole("button", { name: "Odeślij do poprawy" }));
     } else {
       await uzytkownik.click(screen.getByRole("button", { name: "Poproś o poprawkę" }));
-      await uzytkownik.type(screen.getByLabelText(/^Komentarz do poprawki/), KOMENTARZ);
+      await uzytkownik.type(screen.getByLabelText(/^Co trzeba poprawić/), KOMENTARZ);
       await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }));
     }
     await waitFor(() => expect(zapytania.some((z) => z.adres.endsWith("/return"))).toBe(true));

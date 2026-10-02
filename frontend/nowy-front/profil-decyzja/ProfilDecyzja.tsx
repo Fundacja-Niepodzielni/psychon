@@ -261,7 +261,7 @@ function Widok({ poczatkowy, wroc, odswiez }: WlasciwosciWidoku) {
           onRozstrzygniety={(rozstrzygniety) => {
             setWniosek(rozstrzygniety);
             setKomunikat(
-              rozstrzygniety.status === "accepted" ? "Wniosek zatwierdzony." : "Wniosek do poprawki.",
+              rozstrzygniety.status === "accepted" ? "Wniosek zatwierdzony." : "Poproszono o poprawkę wniosku.",
             );
           }}
         />

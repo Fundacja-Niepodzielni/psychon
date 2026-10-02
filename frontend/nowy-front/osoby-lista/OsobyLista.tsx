@@ -231,7 +231,7 @@ export function OsobyLista() {
     lista = (
       <EmptyState
         naglowek="Brak osób w programie"
-        tresc="Osoby pojawią się tu po przyjęciu zgłoszenia rekrutacyjnego."
+        tresc="Osoby pojawią się tu po zatwierdzeniu zgłoszenia rekrutacyjnego."
         przycisk={{ etykieta: "Przejdź do zgłoszeń", onClick: () => router.push(SCIEZKA_ZGLOSZEN) }}
       />
     );

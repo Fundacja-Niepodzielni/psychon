@@ -242,15 +242,15 @@ export function ZgloszeniaWspolpracy() {
         {komunikat && <KomunikatBledu tresc={komunikat} />}
         {filtr === "" ? (
           <EmptyState
-            naglowek="Brak próśb o współpracę"
+            naglowek="Brak próśb o dalszą współpracę"
             tresc="Prośby pojawią się tutaj, gdy uczestnicy wyślą je po zakończeniu programu."
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
         ) : (
           <EmptyState
             wariant="brak-wynikow-filtra"
-            naglowek="Brak próśb o współpracę"
-            tresc="Żadna prośba nie ma wybranego statusu."
+            naglowek="Brak próśb o dalszą współpracę"
+            tresc="Żadna prośba nie ma wybranego stanu."
             przycisk={{ etykieta: "Pokaż wszystkie", onClick: () => naZmianeFiltra("") }}
           />
         )}

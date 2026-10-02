@@ -141,7 +141,7 @@ export function PoProgramieWspolpraca() {
   const naglowek = {
     okruszki: OKRUSZKI,
     tytul: "Po programie",
-    opis: "Prośba o dalszą współpracę po zakończeniu programu i historia dotychczasowych próśb.",
+    opis: "Prośba o dalszą współpracę po zakończeniu programu i historia Twoich próśb.",
     onPowrot: () => router.back(),
   };
 

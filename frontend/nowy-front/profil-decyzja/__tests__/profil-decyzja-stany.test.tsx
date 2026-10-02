@@ -260,7 +260,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     const { container } = await renderGotowy();
     await otworzPoprawke();
 
-    expect(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ })).toBeInTheDocument();
+    expect(await screen.findByRole("textbox", { name: /^Co trzeba poprawić/ })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Wyślij prośbę o poprawkę" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Wróć do decyzji" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Zatwierdź" })).toBeNull();
@@ -272,7 +272,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     await renderGotowy();
     await otworzPoprawke();
 
-    expect(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ })).toHaveFocus();
+    expect(await screen.findByRole("textbox", { name: /^Co trzeba poprawić/ })).toHaveFocus();
   });
 
   it("sekcja prośby o poprawkę nie jest oknem: brak dialogu i aria-modal, formularz w głównej treści", async () => {
@@ -280,7 +280,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     sprawdzBezOkna();
     await otworzPoprawke();
 
-    const pole = await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ });
+    const pole = await screen.findByRole("textbox", { name: /^Co trzeba poprawić/ });
     sprawdzBezOkna();
     const main = container.querySelector("main")!;
     expect(main.contains(pole)).toBe(true);
@@ -292,9 +292,9 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
   it("pusty komentarz: błąd przy polu, żadnego żądania odesłania", async () => {
     await renderGotowy();
     const uzytkownik = await otworzPoprawke();
-    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ }), "   ");
+    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Co trzeba poprawić/ }), "   ");
     await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }));
-    expect((await screen.findAllByText("Dodaj komentarz przed prośbą o poprawkę.")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Napisz, co trzeba poprawić.")).length).toBeGreaterThan(0);
     expect(api.mock.calls.filter((wywolanie) => wywolanie[1]?.method === "POST")).toHaveLength(0);
   });
 
@@ -303,10 +303,10 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     const { container } = render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
     const uzytkownik = await otworzPoprawke();
-    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ }), "Uzupełnij opis podejścia.");
+    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Co trzeba poprawić/ }), "Uzupełnij opis podejścia.");
     await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }));
 
-    await screen.findByText("Wniosek do poprawki.");
+    await screen.findByText("Poproszono o poprawkę wniosku.");
     expect(api).toHaveBeenLastCalledWith("/admin/profiles/12/return", { method: "POST", body: { reason: "Uzupełnij opis podejścia." } });
     expect(screen.getByText(/Komentarz: Uzupełnij opis podejścia\./)).toBeInTheDocument();
     expect(przyciskiGlowne()).toHaveLength(0);
@@ -321,7 +321,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
     const uzytkownik = await otworzPoprawke();
-    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ }), "x");
+    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Co trzeba poprawić/ }), "x");
     await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }));
     expect((await screen.findAllByText("Podaj powód odesłania.")).length).toBeGreaterThan(0);
   });
@@ -331,7 +331,7 @@ describe("Wniosek o profil — decyzja: odesłanie z komentarzem", () => {
     const { container } = render(<ProfilDecyzja id="12" />);
     await screen.findByRole("heading", { level: 1, name: NAGLOWEK });
     const uzytkownik = await otworzPoprawke();
-    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Komentarz do poprawki/ }), "x");
+    await uzytkownik.type(await screen.findByRole("textbox", { name: /^Co trzeba poprawić/ }), "x");
     await uzytkownik.click(screen.getByRole("button", { name: "Wyślij prośbę o poprawkę" }));
     expect(await screen.findByText("Wniosek jest już rozstrzygnięty")).toBeInTheDocument();
     sprawdzSzablon(container);
