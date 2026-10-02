@@ -19,12 +19,14 @@ import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { ApiError } from "@/lib/api/klient";
 import { markWorkshopComplete } from "@/lib/api/h10";
+import { CzynnosciAdministracji } from "./CzynnosciAdministracji";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzKarteOsoby,
   pobierzRzetelnoscOsoby,
   pobierzRoleZalogowanej,
   czyMozeZaliczycWarsztat,
+  czyRolaAdministracji,
   zdanieBleduWarsztatu,
   zapiszKarteOsoby,
   formularzZProfilu,
@@ -387,6 +389,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
                   </Button>
                 </div>
               )}
+              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} />}
             </>
           )
         }
