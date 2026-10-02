@@ -68,8 +68,8 @@ describe("downloadFile — adres tego samego API", () => {
 });
 
 describe("downloadFile — link z odpowiedzi zaplecza za pośrednikiem TLS", () => {
-  // Kształt linku, który zaplecze podpisuje za pośrednikiem TLS
-  // (backend/tests/Feature/ProxiedRequestSchemeTest.php, ten sam host).
+  // Kształt linku, który zaplecze podpisuje za pośrednikiem TLS: schemat z
+  // `APP_URL` (backend/tests/Feature/ConfiguredRequestSchemeTest.php, ten sam host).
   const HOST_PLATFORMY = "platforma.psychon.test";
   const SCIEZKA = "/api/v1/documents/3d03e2f3-1d81-455b-aa32-d7bd6b1405bf/download?expires=1790957972&signature=abc";
 
