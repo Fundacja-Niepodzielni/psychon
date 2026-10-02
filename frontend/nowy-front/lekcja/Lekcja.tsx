@@ -50,6 +50,7 @@ import {
   type RodzajNagrania,
 } from "./stan";
 import style from "./Lekcja.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 /** Heartbeat cadence — the upper bound the contract allows ("co <= 30 s"). */
 const HEARTBEAT_INTERWAL_SEKUND = 30;
@@ -87,7 +88,7 @@ interface WlasciwosciLekcja {
 }
 
 const ZDANIE_BLEDU_UKONCZENIA = "Nie udało się ukończyć lekcji. Sprawdź internet i naciśnij jeszcze raz.";
-const ZDANIE_ODMOWY_UKONCZENIA = "Serwer nie pozwala jeszcze ukończyć tej lekcji.";
+const ZDANIE_ODMOWY_UKONCZENIA = "Tej lekcji nie można jeszcze ukończyć.";
 
 /** Układ strony bez danych lekcji: nagłówek stanu i treść stanu, w tym samym korzeniu co ekran. */
 function StanStrony({ children }: { children: ReactNode }) {
@@ -452,7 +453,7 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
             </Button>
           }
         >
-          Backend nie odpowiedział poprawnie — spróbuj ponownie później.
+          {KOMUNIKAT_SERWER}
         </Notice>
       </StanStrony>
     );

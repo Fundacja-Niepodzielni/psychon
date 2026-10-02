@@ -206,7 +206,7 @@ describe("stan 4 — lekcja bez nagrania", () => {
     await uzytkownik.click(przyciskGlowny());
 
     expect(ukonczLekcje).toHaveBeenCalledWith("21");
-    expect(await screen.findByText("Serwer nie pozwala jeszcze ukończyć tej lekcji.")).toBeInTheDocument();
+    expect(await screen.findByText("Tej lekcji nie można jeszcze ukończyć.")).toBeInTheDocument();
   });
 });
 

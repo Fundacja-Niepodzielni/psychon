@@ -82,7 +82,7 @@ describe("Lekcja — ukończenie", () => {
     render(<Lekcja id="21" />);
     await uzytkownik.click(await screen.findByRole("button", { name: "Oznacz lekcję jako ukończoną" }));
 
-    expect(await screen.findByText("Serwer nie pozwala jeszcze ukończyć tej lekcji.")).toBeInTheDocument();
+    expect(await screen.findByText("Tej lekcji nie można jeszcze ukończyć.")).toBeInTheDocument();
     expect(screen.queryByText("Ukończona")).toBeNull();
     expect(screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).toBeInTheDocument();
   });
