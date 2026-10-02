@@ -75,7 +75,7 @@ const ADRES_LISTY = "/admin/users?page=1&per_page=25";
 
 /** Komórka wiersza pod nagłówkiem kolumny o podanej nazwie. */
 function komorka(wiersz: HTMLElement, kolumna: string): HTMLElement {
-  const naglowki = within(screen.getByRole("table", { name: "Lista uczestników" })).getAllByRole("columnheader");
+  const naglowki = within(screen.getByRole("table", { name: "Lista osób" })).getAllByRole("columnheader");
   const indeks = naglowki.findIndex((naglowek) => naglowek.textContent === kolumna);
   expect(indeks, `kolumna „${kolumna}”`).toBeGreaterThanOrEqual(0);
   return within(wiersz).getAllByRole("cell")[indeks];
@@ -88,7 +88,7 @@ beforeEach(() => {
   back.mockReset();
 });
 
-describe("Uczestnicy programu — stany", () => {
+describe("Osoby — stany", () => {
   it("ładowanie: szkielet w szablonie, zero wierszy i brak przycisku tabeli", () => {
     apiPaged.mockReturnValue(new Promise(() => {}));
     const { container } = render(<OsobyLista />);
@@ -113,7 +113,7 @@ describe("Uczestnicy programu — stany", () => {
       "/admin/uczestniczki/17",
       "/admin/uczestniczki/18",
     ]);
-    const tabela = screen.getByRole("table", { name: "Lista uczestników" });
+    const tabela = screen.getByRole("table", { name: "Lista osób" });
     expect(within(tabela).getAllByRole("columnheader").map((naglowek) => naglowek.textContent)).toEqual([
       "Osoba",
       "Rola",
@@ -153,12 +153,12 @@ describe("Uczestnicy programu — stany", () => {
     expect(komorki[0]).toContainElement(tytul);
     expect(komorki.at(-1)).toContainElement(odnosnik);
     // Lista stoi na białej karcie organizmu; wiersze mają wcięcie karty.
-    expect(screen.getByRole("region", { name: "Lista uczestników" }).className).toMatch(/kartaBezNaglowka/);
-    expect(screen.getByRole("table", { name: "Lista uczestników" }).className).not.toMatch(/bezWciecia/);
+    expect(screen.getByRole("region", { name: "Lista osób" }).className).toMatch(/kartaBezNaglowka/);
+    expect(screen.getByRole("table", { name: "Lista osób" }).className).not.toMatch(/bezWciecia/);
     // Plakietka stanu małą literą stoi w wierszu (stan dobry w atomie Badge wygląda jak „neutral”, bez barwy).
     expect(within(wiersz).getByText("konto aktywne").className).toMatch(/neutral/);
     // Nagłówek listy zostaje w drzewie nagłówków (h2 bezpośrednio pod h1), wzrokowo go nie ma.
-    const naglowekListy = screen.getByRole("heading", { level: 2, name: "Lista uczestników" });
+    const naglowekListy = screen.getByRole("heading", { level: 2, name: "Lista osób" });
     expect(naglowekListy.parentElement?.className).toMatch(/ukryte/);
     expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
   });
@@ -260,7 +260,7 @@ describe("Uczestnicy programu — stany", () => {
     const { container } = render(<OsobyLista />);
 
     const komunikat = await screen.findByRole("alert");
-    expect(within(komunikat).getByText("Nie udało się wczytać listy uczestników")).toBeInTheDocument();
+    expect(within(komunikat).getByText("Nie udało się wczytać listy osób")).toBeInTheDocument();
     sprawdzSzablon(container);
     expect(screen.queryByRole("link", { name: /^Otwórz kartę: / })).toBeNull();
 
@@ -279,7 +279,7 @@ describe("Uczestnicy programu — stany", () => {
   });
 });
 
-describe("Uczestnicy programu — filtr i stronicowanie", () => {
+describe("Osoby — filtr i stronicowanie", () => {
   it("rola i przycięta fraza trafiają do zapytania, strona wraca na pierwszą", async () => {
     const uzytkownik = userEvent.setup();
     apiPaged.mockResolvedValue(odpowiedz([osoba(17)]));
@@ -340,7 +340,7 @@ describe("Uczestnicy programu — filtr i stronicowanie", () => {
   });
 });
 
-describe("Uczestnicy programu — pobranie tabeli", () => {
+describe("Osoby — pobranie tabeli", () => {
   it("bez filtra: pobiera export.csv jako osoby.csv, potem pokazuje potwierdzenie", async () => {
     const uzytkownik = userEvent.setup();
     apiPaged.mockResolvedValue(odpowiedz([osoba(17)]));
@@ -406,7 +406,7 @@ describe("Uczestnicy programu — pobranie tabeli", () => {
   });
 });
 
-describe("Uczestnicy programu — kontrola dodatnia pomiaru przycisków głównych", () => {
+describe("Osoby — kontrola dodatnia pomiaru przycisków głównych", () => {
   it("licznik widzi przycisk główny, gdy taki jest w drzewie", () => {
     const { container } = render(<Button poziom="primary">Główny</Button>);
     expect(przyciskiGlowne(container)).toBe(1);

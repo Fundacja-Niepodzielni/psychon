@@ -166,7 +166,7 @@ const MENU_OCZEKIWANE = [
       // „Dyżury do decyzji” i „Zgłoszenia rekrutacyjne” nie mają własnej pozycji: są podstronami „Spraw”
       // (rejestr menu ramki), a „Sprawy” prowadzą do nich filtrami na liście.
       ["Sprawy", "/admin/sprawy"],
-      ["Uczestnicy", "/admin/uczestniczki"],
+      ["Osoby", "/admin/uczestniczki"],
       ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
     ],
     linia: null,

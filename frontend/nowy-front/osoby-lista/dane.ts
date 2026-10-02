@@ -10,7 +10,7 @@ import {
 import { ROLE_LABELS } from "@/lib/h18/labels";
 
 /**
- * Dane ekranu „Uczestnicy programu” — `GET /admin/users`
+ * Dane ekranu „Osoby” — `GET /admin/users`
  * (`backend/routes/api/h18.php:26`, `AdminUserController::index`) i eksport
  * `GET /admin/users/export.csv` (`h18.php:25`, `AdminUserController::export`).
  * Oba czytają te same filtry z `AdminUserQuery`: `role`, `search`, `status`,

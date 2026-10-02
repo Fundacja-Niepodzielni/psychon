@@ -4,7 +4,7 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 /**
  * Miara dla grup `listaOsob` i `nabor`, włączonych razem na wspólnej trasie
  * `/admin/uczestniczki` (`lib/przelaczenie/grupy.ts`, obie `wlaczona: true`):
- * - `/admin/uczestniczki` pokazuje nową listę „Uczestnicy programu” w nowej
+ * - `/admin/uczestniczki` pokazuje nową listę „Osoby” w nowej
  *   ramce administracji, z jednym `main` i jednym `#tresc`;
  * - stara zakładka `/admin/uczestniczki?zakladka=zgloszenia` przekierowuje
  *   na `/admin/nabor` (dyrektywa w strumieniu odpowiedzi, bez podążania za
@@ -122,7 +122,7 @@ test.describe("grupy listaOsob i nabor — włączone razem na /admin/uczestnicz
     await page.goto("/admin/uczestniczki");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
-    await expect(page.getByRole("heading", { level: 1, name: "Uczestnicy programu" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Osoby" })).toBeVisible();
     await expect(page.getByText(`${OSOBA.first_name} ${OSOBA.last_name}`, { exact: true })).toBeVisible();
     await expect(page.locator("[data-powloka-panelu]")).toHaveCount(1);
     await jedenMain(page);

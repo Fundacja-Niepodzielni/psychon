@@ -112,7 +112,7 @@ const EKRANY_USTAWIEN = [
 const POZYCJE_BEZ_USTAWIEN = [
   "Pulpit",
   "Sprawy",
-  "Uczestnicy",
+  "Osoby",
   "Zgłoszenia współpracy",
   "Kursy",
   "Raport roku programu",

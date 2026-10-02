@@ -52,7 +52,7 @@ import type { MenuEntry } from "../types";
  *   „Sprawy” w menu (grupa wyłączona) ekran wraca na własną pozycję w „Codziennie”,
  *   żeby wejście nie zginęło. „Zgłoszenia rekrutacyjne” są w rejestrze wyłącznie przy
  *   włączonej grupie `nabor`; przy wyłączonej są zakładką starej strony pod
- *   `/admin/uczestniczki` — adres, który już niesie „Uczestnicy” (zero duplikatu
+ *   `/admin/uczestniczki` — adres, który już niesie „Osoby” (zero duplikatu
  *   adresu, zero utraty wejścia);
  * - linie „W przygotowaniu” z makiety, bez łączy i bez funkcji obecnych
  *   w menu: w „Programie” bez „staż i superwizja” (w menu „Dyżury do decyzji”
@@ -92,7 +92,7 @@ export const NAZWY_RAMKI_ADMINISTRACJI = {
   pulpit: "Pulpit",
   sprawy: "Sprawy",
   kolejkaStazu: "Dyżury do decyzji",
-  uczestnicy: "Uczestnicy",
+  osoby: "Osoby",
   zgloszeniaRekrutacyjne: "Zgłoszenia rekrutacyjne",
   zgloszeniaWspolpracy: "Zgłoszenia współpracy",
   kursy: "Kursy",
@@ -167,7 +167,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
   // własnej pozycji, gdy w menu stoi ich rodzic „Sprawy”: wchodzą jako jego podstrony. Bez rodzica
   // (grupa `sprawy` wyłączona) stoją jak dawniej w „Codziennie”, żeby wejście nie zginęło.
   // „Zgłoszenia rekrutacyjne” liczą się wyłącznie przy włączonej grupie `nabor`: przy wyłączonej cel
-  // to stara trasa `/admin/uczestniczki` (adres pozycji „Uczestnicy”), a zgłoszenia są zakładką
+  // to stara trasa `/admin/uczestniczki` (adres pozycji „Osoby”), a zgłoszenia są zakładką
   // tej strony. Stary wpis „Akceptacja stażu” znika z „Dotychczasowego panelu” dokładnie wtedy, gdy
   // kolejka stażu jest w menu albo pod rodzicem — adres jest ten sam przy obu stanach flagi.
   const ekrany = PODSTRONY_ADMINISTRACJI.flatMap((wpis) => {
@@ -190,7 +190,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...pozycja(cel(grupy, "pulpitAdministracji"), "home", n.pulpit, true),
         ...sprawy.map((p) => (podstrony.length > 0 ? { ...p, podstrony } : p)),
         ...wlasne("kolejkaStazu"),
-        ...pozycja(cel(grupy, "listaOsob"), "users", n.uczestnicy),
+        ...pozycja(cel(grupy, "listaOsob"), "users", n.osoby),
         ...wlasne("nabor"),
         ...pozycja(cel(grupy, "wspolpraca"), "chat", n.zgloszeniaWspolpracy),
       ],
