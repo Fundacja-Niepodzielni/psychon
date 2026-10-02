@@ -53,6 +53,26 @@
                                                     ],
                                                     "description": "Tre\u015b\u0107 lekcji (podzbi\u00f3r Markdown) albo `null`; HTML w tre\u015bci\njest tekstem \u2014 klient go nie interpretuje."
                                                 },
+                                                "course": {
+                                                    "type": "object",
+                                                    "description": "Kurs lekcji. Samo pole niczego nie otwiera: dost\u0119p do lekcji rozstrzyga ta sama regu\u0142a co dot\u0105d (kurs zablokowany \u2192 403 `course_locked` bez tego pola).",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "slug": {
+                                                            "type": "string"
+                                                        },
+                                                        "title": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        "slug",
+                                                        "title"
+                                                    ]
+                                                },
                                                 "topic": {
                                                     "type": [
                                                         "object",
@@ -93,10 +113,30 @@
                                                     "type": "boolean"
                                                 },
                                                 "completable": {
-                                                    "type": "string"
+                                                    "type": "boolean",
+                                                    "description": "Czy lekcj\u0119 wolno teraz uko\u0144czy\u0107. Lekcja bez nagrania (`video_status: none`) jest do uko\u0144czenia od razu; z nagraniem w przygotowaniu albo z b\u0142\u0119dem \u2014 nie; z gotowym (tak\u017ce nieustalonym) \u2014 gdy czas trwania jest dodatni, a czas aktywny dosi\u0119gn\u0105\u0142 progu `completable_at_percent`."
                                                 },
                                                 "completable_at_percent": {
-                                                    "type": "string"
+                                                    "type": "integer"
+                                                },
+                                                "required_active_seconds": {
+                                                    "type": "integer",
+                                                    "description": "Czas aktywny w sekundach, od kt\u00f3rego `completable` zmienia si\u0119 na `true` (`ceil(duration_seconds * completable_at_percent / 100)`); 0 dla lekcji bez nagrania i dla lekcji z nagraniem o czasie trwania 0 (ta ostatnia nigdy nie jest do uko\u0144czenia). Ta sama formu\u0142a co `completable`."
+                                                },
+                                                "question_addressee": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "description": "Do kogo trafi pytanie zadane z tego ekranu (regu\u0142a dziedziczenia przypisa\u0144: lekcja wygrywa z kursem); `null` bez aktywnego przypisania. Tylko imi\u0119 i nazwisko \u2014 bez identyfikatora i adresu e-mail.",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name"
+                                                    ]
                                                 },
                                                 "video_status": {
                                                     "type": "string",
@@ -115,6 +155,7 @@
                                                 "title",
                                                 "description",
                                                 "content",
+                                                "course",
                                                 "topic",
                                                 "duration_seconds",
                                                 "position_seconds",
@@ -123,6 +164,8 @@
                                                 "is_completed",
                                                 "completable",
                                                 "completable_at_percent",
+                                                "required_active_seconds",
+                                                "question_addressee",
                                                 "video_status"
                                             ]
                                         }
@@ -175,7 +218,33 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "string"
+                                            "type": "object",
+                                            "properties": {
+                                                "watched_seconds": {
+                                                    "type": "integer"
+                                                },
+                                                "active_seconds": {
+                                                    "type": "integer"
+                                                },
+                                                "completable": {
+                                                    "type": "boolean",
+                                                    "description": "Ta sama regu\u0142a co `completable` w odczycie lekcji."
+                                                },
+                                                "completable_at_percent": {
+                                                    "type": "integer"
+                                                },
+                                                "required_active_seconds": {
+                                                    "type": "integer",
+                                                    "description": "Ta sama warto\u015b\u0107 i formu\u0142a co w odczycie lekcji."
+                                                }
+                                            },
+                                            "required": [
+                                                "watched_seconds",
+                                                "active_seconds",
+                                                "completable",
+                                                "completable_at_percent",
+                                                "required_active_seconds"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -249,6 +318,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "description": "B\u0142\u0105d domenowy `not_enough_active_time` (koperta b\u0142\u0119du): lekcja z gotowym nagraniem poni\u017cej progu czasu aktywnego albo o czasie trwania 0, albo lekcja z nagraniem w przygotowaniu lub z b\u0142\u0119dem. Lekcja bez nagrania nie daje tego b\u0142\u0119du."
                     }
                 }
             }
@@ -8705,8 +8777,62 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {}
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "lesson_id": {
+                                                    "type": "integer"
+                                                },
+                                                "question": {
+                                                    "type": "string"
+                                                },
+                                                "answer": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "answered_by_name": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Imi\u0119 i nazwisko odpowiadaj\u0105cego; bez identyfikatora i adresu e-mail."
+                                                },
+                                                "answered_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "ISO 8601 UTC."
+                                                },
+                                                "created_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "ISO 8601 UTC."
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "ISO 8601 UTC."
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "lesson_id",
+                                                "question",
+                                                "answer",
+                                                "answered_by_name",
+                                                "answered_at",
+                                                "created_at",
+                                                "updated_at"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -8753,8 +8879,62 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "type": "array",
-                                                "items": {}
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "lesson_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "question": {
+                                                        "type": "string"
+                                                    },
+                                                    "answer": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "answered_by_name": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "Imi\u0119 i nazwisko odpowiadaj\u0105cego; bez identyfikatora i adresu e-mail."
+                                                    },
+                                                    "answered_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "ISO 8601 UTC."
+                                                    },
+                                                    "created_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "ISO 8601 UTC."
+                                                    },
+                                                    "updated_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "ISO 8601 UTC."
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "lesson_id",
+                                                    "question",
+                                                    "answer",
+                                                    "answered_by_name",
+                                                    "answered_at",
+                                                    "created_at",
+                                                    "updated_at"
+                                                ]
                                             }
                                         },
                                         "meta": {
@@ -8792,7 +8972,8 @@
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
                     }
-                }
+                },
+                "description": "W\u0142asne pytania osoby do tej lekcji, od najnowszego (`created_at`, potem `id` malej\u0105co); `per_page` domy\u015blnie 25, najwy\u017cej 100. Dost\u0119p: wolontariusz i student."
             }
         },
         "/v1/admin/lessons/{lesson}/materials": {
@@ -11935,19 +12116,31 @@
                                             "type": "object",
                                             "properties": {
                                                 "url": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "description": "Podpisany adres listy odtwarzania nagrania."
                                                 },
                                                 "expires_at": {
-                                                    "type": "number"
+                                                    "type": "integer",
+                                                    "description": "Czas uniksowy wyga\u015bni\u0119cia adresu listy."
                                                 },
                                                 "video_id": {
                                                     "type": "string"
+                                                },
+                                                "embed_url": {
+                                                    "type": "string",
+                                                    "description": "Podpisany adres ramki odtwarzacza dostawcy (`https://iframe.mediadelivery.net/embed/{biblioteka}/{nagranie}?token=\u2026&expires=\u2026`) dla nagrania odtwarzanego."
+                                                },
+                                                "embed_expires_at": {
+                                                    "type": "integer",
+                                                    "description": "Czas uniksowy wyga\u015bni\u0119cia adresu ramki; ta sama chwila co `expires_at`."
                                                 }
                                             },
                                             "required": [
                                                 "url",
                                                 "expires_at",
-                                                "video_id"
+                                                "video_id",
+                                                "embed_url",
+                                                "embed_expires_at"
                                             ]
                                         }
                                     },
@@ -11958,11 +12151,17 @@
                             }
                         }
                     },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Kurs zablokowany kolejno\u015bci\u0105 (`course_locked`) albo brak dost\u0119pu do lekcji (koperta b\u0142\u0119du)."
+                    },
+                    "404": {
+                        "description": "Lekcja nieistniej\u0105ca albo spoza zasi\u0119gu osoby (`not_found`); lekcja bez nagrania (`video_missing`); nagranie w przygotowaniu albo z b\u0142\u0119dem, bez gotowego (`video_not_ready`). Koperta b\u0142\u0119du."
+                    },
+                    "503": {
+                        "description": "Odtwarzanie niedost\u0119pne: brak konfiguracji podpisu (`video_not_configured`). Koperta b\u0142\u0119du."
                     }
                 }
             }
@@ -12092,6 +12291,10 @@
                             "name"
                         ]
                     },
+                    "has_test": {
+                        "type": "boolean",
+                        "description": "Czy kurs ma test; kurs bez testu ma warunek testu spe\u0142niony z definicji."
+                    },
                     "topics": {
                         "type": "array",
                         "items": {
@@ -12136,6 +12339,7 @@
                     "status",
                     "progress_percent",
                     "instructor",
+                    "has_test",
                     "topics",
                     "lessons",
                     "materials"
@@ -12549,6 +12753,13 @@
                         ],
                         "description": "Widening of contract \u00a72, which lists a material as exactly\n{id, name, download_url}. The plan asked the UI to show a\nhuman-readable size and the column already carries it, so the\nfield is shipped ahead of the guardian's ruling and flagged as\ndeviation (7) in DEMO/H05.md. Bytes, integer \u2014 the front formats."
                     },
+                    "mime": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Typ pliku (np. `application/pdf`); ta sama nazwa i warto\u015b\u0107 co w zasobie administracji."
+                    },
                     "lesson_id": {
                         "type": [
                             "integer",
@@ -12564,6 +12775,7 @@
                     "id",
                     "name",
                     "size",
+                    "mime",
                     "lesson_id",
                     "download_url"
                 ],

@@ -19,6 +19,31 @@
   background: var(--card);
 }
 
+/*
+ * Wiersz osoby: pole wyboru stoi na lewej krawędzi w jednej linii, etykieta
+ * zaczyna się od lewej i łamie się w obrębie wiersza (długi adres nie
+ * poszerza listy). Atom `Checkbox` centruje wiersz, więc tu — lokalnie, bez
+ * zmiany atomu używanego gdzie indziej — wiersz startuje od lewej, a pole
+ * trzyma się pierwszego wiersza etykiety. Wiersze się nie ściskają (`flex: none`):
+ * przy długiej liście przewija się lista, a wiersz z kilkoma wierszami tekstu
+ * nie nachodzi na następny. Pierwszy wiersz tekstu stoi
+ * pośrodku pola dotyku (`--hit-min`), jak przy etykiecie w jednym wierszu;
+ * pole (20 px, `--space-20`) jest wyśrodkowane na pierwszym wierszu.
+ */
+.wybor > label {
+  flex: none;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-width: 0;
+  padding-block: calc((var(--hit-min) - 1lh) / 2);
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.wybor > label > span {
+  margin-block-start: calc((1lh - var(--space-20)) / 2);
+}
+
 .legenda {
   padding: 0 var(--space-4);
 }
@@ -30,4 +55,20 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/*
+ * Sekcje panelu jedna pod drugą w odstępie kart prawej kolumny ekranu kursu
+ * (`--space-16`, jak `.blok` i `.formularz`). Pusty blok pól formularza
+ * „Zaproszenie na kurs” (bez pól) nie dokłada drugiego odstępu pod nagłówkiem.
+ */
+.rdzen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.rdzen > form > div:empty {
+  display: none;
 }

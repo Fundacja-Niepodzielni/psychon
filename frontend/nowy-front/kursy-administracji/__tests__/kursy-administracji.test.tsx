@@ -113,6 +113,7 @@ beforeEach(() => {
   apiPaged.mockReset();
   back.mockReset();
   push.mockReset();
+  window.sessionStorage.clear();
 });
 
 describe("KursyAdministracji — schemat atrap", () => {
@@ -258,9 +259,18 @@ describe("KursyAdministracji — stany w szablonie", () => {
   });
 });
 
+const ADRES_PROWADZACYCH = "/admin/users?role=instructor&status=active&per_page=100&sort=last_name";
+
+const PROWADZACY_DO_WYBORU = [
+  { id: 7, first_name: "Ewa", last_name: "Brzeska" },
+  { id: 8, first_name: "Jan", last_name: "Kowalski-Wiśniewski-Zakrzewski-Nowogrodzki" },
+];
+
 describe("KursyAdministracji — Utwórz kurs", () => {
-  async function otworz() {
+  async function otworz(prowadzacy: unknown = { data: PROWADZACY_DO_WYBORU, meta: META }) {
     const wynik = await renderZDanymi();
+    if (prowadzacy instanceof Error) apiPaged.mockRejectedValueOnce(prowadzacy);
+    else apiPaged.mockResolvedValueOnce(prowadzacy);
     await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
     await screen.findByRole("heading", { name: "Nowy kurs" });
     return wynik;
@@ -363,6 +373,124 @@ describe("KursyAdministracji — Utwórz kurs", () => {
     await userEvent.type(screen.getByLabelText(/^Tytuł/), "Zabronione");
     await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
     await screen.findByText(/tylko dla administracji/);
+  });
+
+  const CIALO_KURSU = {
+    title: "Z prowadzącym",
+    slug: "z-prowadzacym",
+    type: "course",
+    product_group: "psychon",
+    sequence_order: null,
+    description: null,
+  };
+
+  async function wybierzProwadzacego(nazwa: string) {
+    await userEvent.click(await screen.findByRole("combobox", { name: /^Prowadzący/ }));
+    await userEvent.click(await screen.findByRole("option", { name: nazwa }));
+  }
+
+  it("pole „Prowadzący” stoi na pierwszym poziomie, czyta listę z tego samego adresu co karta kursu i ma pustą opcję", async () => {
+    await otworz();
+    expect(apiPaged).toHaveBeenCalledTimes(2);
+    expect(apiPaged).toHaveBeenLastCalledWith(ADRES_PROWADZACYCH);
+    const pole = screen.getByRole("combobox", { name: /^Prowadzący/ });
+    expect(pole).toBeVisible();
+    // Opis i prowadzący są od razu; w zwiniętej sekcji zostaje tylko miejsce w ścieżce.
+    expect(screen.getByLabelText(/^Opis/)).toBeVisible();
+    await userEvent.click(pole);
+    expect(screen.getAllByRole("option").map((opcja) => opcja.textContent)).toEqual([
+      "Bez prowadzącego",
+      "Ewa Brzeska",
+      "Jan Kowalski-Wiśniewski-Zakrzewski-Nowogrodzki",
+    ]);
+  });
+
+  it("bez prowadzącego: jedno żądanie — utworzenie kursu — i przejście na ekran kursu", async () => {
+    await otworz();
+    api.mockResolvedValueOnce(kurs(9));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Z prowadzącym");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+    expect(api).toHaveBeenCalledTimes(1);
+    expect(api).toHaveBeenNthCalledWith(1, "/admin/courses", { method: "POST", body: CIALO_KURSU });
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("z prowadzącym: dwa żądania po kolei — kurs, potem przypisanie do całego kursu; ciało kursu to samo co bez prowadzącego", async () => {
+    await otworz();
+    api.mockResolvedValueOnce(kurs(9));
+    api.mockResolvedValueOnce({ id: 1, course_id: 9, lesson_id: null, instructor: PROWADZACY_DO_WYBORU[0] });
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Z prowadzącym");
+    await wybierzProwadzacego("Ewa Brzeska");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+    expect(api).toHaveBeenCalledTimes(2);
+    expect(api).toHaveBeenNthCalledWith(1, "/admin/courses", { method: "POST", body: CIALO_KURSU });
+    expect(api).toHaveBeenNthCalledWith(2, "/admin/courses/9/assignments", {
+      method: "POST",
+      body: { instructor_id: 7, lesson_id: null },
+    });
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it.each([
+    ["422", () => blad(422, "validation_failed", "Ten prowadzący jest już przypisany.")],
+    ["500", () => blad(500, "server_error", "Serwer się potknął.")],
+    ["brak sieci", () => new Error("sieć")],
+  ])("odmowa przypisania (%s): kurs zostaje szkicem, zdanie czeka na ekranie kursu, utworzenia nie ponawia, nic nie jest usuwane", async (_nazwa, wyjatek) => {
+    await otworz();
+    api.mockResolvedValueOnce(kurs(9));
+    api.mockRejectedValueOnce(wyjatek());
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Z prowadzącym");
+    await wybierzProwadzacego("Jan Kowalski-Wiśniewski-Zakrzewski-Nowogrodzki");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(api.mock.calls.map(([adres, opcje]) => `${opcje?.method} ${adres}`)).toEqual([
+      "POST /admin/courses",
+      "POST /admin/courses/9/assignments",
+    ]);
+    expect(window.sessionStorage.getItem("kurs-ostrzezenie-po-utworzeniu-9")).toMatch(
+      /^Kurs został utworzony jako szkic, ale nie udało się przypisać do niego prowadzącego\./,
+    );
+    // Formularz nie pokazuje błędu tworzenia: kurs powstał.
+    expect(screen.queryByText("Nie udało się utworzyć kursu")).toBeNull();
+  });
+
+  it("błąd tworzenia kursu z wybranym prowadzącym: przypisanie nie wychodzi, formularz zostaje", async () => {
+    await otworz();
+    api.mockRejectedValueOnce(blad(500, "server_error", "Serwer się potknął."));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Z prowadzącym");
+    await wybierzProwadzacego("Ewa Brzeska");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+    await screen.findByText("Serwer się potknął.");
+    expect(api).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("lista prowadzących nie wczytała się: podpowiedź w polu, a kurs da się utworzyć bez prowadzącego", async () => {
+    await otworz(new Error("sieć"));
+    expect(await screen.findByText(/Nie udało się wczytać prowadzących/)).toBeInTheDocument();
+    api.mockResolvedValueOnce(kurs(9));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Z prowadzącym");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+    expect(api).toHaveBeenCalledTimes(1);
+  });
+
+  it("wybór prowadzącego liczy się jako wpisana praca: ponowne otwarcie formularza jest puste", async () => {
+    await otworz();
+    await wybierzProwadzacego("Ewa Brzeska");
+    await userEvent.click(screen.getByRole("button", { name: "Anuluj" }));
+    apiPaged.mockResolvedValueOnce({ data: PROWADZACY_DO_WYBORU, meta: META });
+    await userEvent.click(await screen.findByRole("button", { name: "Utwórz kurs" }));
+    await screen.findByRole("heading", { name: "Nowy kurs" });
+    expect(screen.getByRole("combobox", { name: /^Prowadzący/ })).toHaveTextContent("Bez prowadzącego");
   });
 
   it("anulowanie: formularz znika, fokus wraca na przycisk główny nagłówka, żadne żądanie nie wychodzi", async () => {

@@ -31,7 +31,7 @@ class CourseDetailTest extends TestCase
 
         $this->assertSame(
             ['id', 'slug', 'title', 'sequence_order', 'product_group', 'status', 'progress_percent',
-                'instructor', 'topics', 'lessons', 'materials'],
+                'instructor', 'has_test', 'topics', 'lessons', 'materials'],
             array_keys($data),
         );
 
@@ -55,7 +55,7 @@ class CourseDetailTest extends TestCase
         // deliberate widening shipped ahead of the guardian's ruling — deviation
         // (7) in DEMO/H05.md. Pinned here so the extra field stays intentional:
         // if the guardian refuses it, this assertion is what fails first.
-        $this->assertSame(['id', 'name', 'size', 'lesson_id', 'download_url'], array_keys($data['materials'][0]));
+        $this->assertSame(['id', 'name', 'size', 'mime', 'lesson_id', 'download_url'], array_keys($data['materials'][0]));
         $this->assertSame('Karta pracy — Wywiad psychologiczny.pdf', $data['materials'][0]['name']);
         $this->assertIsInt($data['materials'][0]['size']);
 

@@ -35,14 +35,20 @@ export const KOTWICA_PUBLIKACJI = "publikacja";
 /** Komunikat odmowy publikacji — po odmowie serwera fokus staje na nim. */
 export const ID_ODMOWY_PUBLIKACJI = "publikacja-odmowa";
 
-/** Adres kursu w panelu uczestnika. Serwer pokazuje tam wyłącznie kurs opublikowany. */
+/**
+ * Adres kursu w panelu uczestnika w trybie podglądu (`?podglad=1`). Serwer
+ * pokazuje tam wyłącznie kurs opublikowany. Jedyne miejsce, które składa ten
+ * adres — każdy odnośnik podglądu bierze go stąd.
+ */
 export function adresPodgladu(kurs: Pick<AdminCourse, "slug">): string {
-  return `/panel/kursy/${kurs.slug}`;
+  return `/panel/kursy/${kurs.slug}?podglad=1`;
 }
 
 interface WlasciwosciPrzyciskuGlownego {
   kurs: AdminCourse;
   onOpublikuj: () => void;
+  /** Wyjście z ekranu po zapisie szkicu; tylko w szkicu stoi obok przycisku głównego. */
+  onZapiszIWyjdz?: () => void;
 }
 
 /**
@@ -65,11 +71,29 @@ export function PrzyciskGlowny({ kurs, onOpublikuj }: WlasciwosciPrzyciskuGlowne
   );
 }
 
-/** Treść wąskiego pasa: stan słowem, skrót braków i przycisk główny. */
+/**
+ * Przyciski publikacji: główny (zielony) i — tylko w szkicu — „Zapisz szkic i
+ * wyjdź” z obrysem, bez tła. Zielony zostaje jeden; drugi nie jest głównym.
+ */
+export function PrzyciskiPublikacji({ kurs, onOpublikuj, onZapiszIWyjdz }: WlasciwosciPrzyciskuGlownego) {
+  return (
+    <>
+      <PrzyciskGlowny kurs={kurs} onOpublikuj={onOpublikuj} />
+      {!kurs.is_published && onZapiszIWyjdz && (
+        <Button poziom="outline" onClick={onZapiszIWyjdz}>
+          Zapisz szkic i wyjdź
+        </Button>
+      )}
+    </>
+  );
+}
+
+/** Treść wąskiego pasa: stan słowem, skrót braków i przyciski publikacji. */
 export function PasPublikacji({
   kurs,
   stan,
   onOpublikuj,
+  onZapiszIWyjdz,
 }: WlasciwosciPrzyciskuGlownego & { stan: StanPublikacji }) {
   const liczba = stan.doZrobienia.length;
   return (
@@ -86,7 +110,9 @@ export function PasPublikacji({
           </span>
         )}
       </p>
-      <PrzyciskGlowny kurs={kurs} onOpublikuj={onOpublikuj} />
+      <div className={style.pasDzialania}>
+        <PrzyciskiPublikacji kurs={kurs} onOpublikuj={onOpublikuj} onZapiszIWyjdz={onZapiszIWyjdz} />
+      </div>
     </>
   );
 }
@@ -126,7 +152,14 @@ function ListaPozycji({
 }
 
 /** Karta „Publikacja” — pierwsza w prawej kolumnie. */
-export function KartaPublikacji({ kurs, stan, odmowa, onOpublikuj, onPozycja }: WlasciwosciKartyPublikacji) {
+export function KartaPublikacji({
+  kurs,
+  stan,
+  odmowa,
+  onOpublikuj,
+  onZapiszIWyjdz,
+  onPozycja,
+}: WlasciwosciKartyPublikacji) {
   const pozycje = odmowa ?? stan.doZrobienia;
   return (
     <KartaBoczna tytul="Publikacja" kotwica={KOTWICA_PUBLIKACJI}>
@@ -174,7 +207,7 @@ export function KartaPublikacji({ kurs, stan, odmowa, onOpublikuj, onPozycja }: 
         {!odmowa && !kurs.is_published && stan.gotowe.length > 0 && <Hint>{`Gotowe: ${stan.gotowe.join(", ")}.`}</Hint>}
         <TylkoOdDwochKolumn>
           <div className={style.glownyWKarcie}>
-            <PrzyciskGlowny kurs={kurs} onOpublikuj={onOpublikuj} />
+            <PrzyciskiPublikacji kurs={kurs} onOpublikuj={onOpublikuj} onZapiszIWyjdz={onZapiszIWyjdz} />
           </div>
         </TylkoOdDwochKolumn>
       </div>

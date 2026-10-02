@@ -12,6 +12,8 @@ export interface DaneLekcji {
   description: string | null;
   /** Treść w podzbiorze Markdown (kontrakt, „Treść lekcji”) albo `null`. */
   content: string | null;
+  /** Kurs lekcji (kontrakt, odczyt lekcji); samo pole niczego nie otwiera. */
+  course: { id: number; slug: string; title: string };
   /** Temat lekcji w kursie (okruszki) albo `null`. */
   topic: { id: number; title: string; position: number } | null;
   duration_seconds: number;
@@ -21,6 +23,10 @@ export interface DaneLekcji {
   is_completed: boolean;
   completable: boolean;
   completable_at_percent: number;
+  /** Czas aktywny w sekundach, od którego `completable` zmienia się na `true`. */
+  required_active_seconds: number;
+  /** Do kogo trafi pytanie zadane z ekranu lekcji (tylko imię i nazwisko) albo `null`. */
+  question_addressee: { name: string } | null;
   /**
    * Stan nagrania z punktu widzenia uczestnika (kontrakt, „Stan nagrania
    * lekcji”): `ready` dokładnie wtedy, gdy link do nagrania zostanie wydany.

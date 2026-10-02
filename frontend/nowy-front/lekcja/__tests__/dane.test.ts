@@ -18,6 +18,7 @@ const LEKCJA_SUROWA = {
   title: "Wprowadzenie do wywiadu",
   description: "Opis lekcji",
   content: null,
+  course: { id: 3, slug: "wywiad-psychologiczny", title: "Wywiad psychologiczny" },
   topic: null,
   duration_seconds: 1800,
   position_seconds: 0,
@@ -26,6 +27,8 @@ const LEKCJA_SUROWA = {
   is_completed: false,
   completable: false,
   completable_at_percent: 60,
+  required_active_seconds: 1080,
+  question_addressee: null,
   video_status: "ready" as const,
 };
 

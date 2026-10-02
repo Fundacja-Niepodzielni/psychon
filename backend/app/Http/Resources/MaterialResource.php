@@ -25,6 +25,9 @@ class MaterialResource extends JsonResource
             // field is shipped ahead of the guardian's ruling and flagged as
             // deviation (7) in DEMO/H05.md. Bytes, integer — the front formats.
             'size' => $this->size,
+            // Typ pliku (np. `application/pdf`) — ta sama nazwa i wartość co
+            // w zasobie administracji; `null`, gdy kolumna jest pusta.
+            'mime' => $this->mime,
             // Lekcja, do której należy materiał, albo `null` dla materiału
             // całego kursu — lista łączy oba rodzaje w jednej tablicy.
             'lesson_id' => $this->lesson_id,
