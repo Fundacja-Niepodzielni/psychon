@@ -574,12 +574,12 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
     }
   }
 
-  test("odmowa 403: ekran „tylko dla administracji”, jeden main, bez przycisków akcji", async ({ page }, testInfo) => {
+  test("odmowa 403: ekran odmowy „Ten ekran jest dla administracji”, jeden main, bez przycisków akcji", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await instalujAtrapyApi(page, { odmowa: true });
     await page.goto("/admin/kursy");
     await zabezpieczeniePrzedEkranemDostepu(page);
-    await expect(page.getByText(/tylko dla administracji/)).toBeVisible();
+    await expect(page.getByText(/Ten ekran jest dla administracji/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Utwórz kurs" })).toHaveCount(0);
     expect(await licznikiTresci(page)).toEqual({ main: 1, cele: 1 });
     await sprawdzAxe(page, testInfo, "axe-kursy-odmowa-1280");

@@ -208,7 +208,7 @@ describe("KursyAdministracji — stany w szablonie", () => {
   it.each([401, 403])("odpowiedź %i: odmowa z powodu roli, zero rekordów i zero przycisków akcji", async (status) => {
     apiPaged.mockRejectedValueOnce(blad(status, "forbidden", "Zabronione."));
     const { container } = render(<KursyAdministracji />);
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji/);
     sprawdzSzablon(container);
     expect(screen.queryByRole("alert")).toBeNull();
     expect(wierszeListy()).toHaveLength(0);
@@ -222,7 +222,7 @@ describe("KursyAdministracji — stany w szablonie", () => {
     await screen.findByText("Nie udało się wczytać listy kursów");
     sprawdzSzablon(container);
     expect(screen.getByText("Lista kursów niedostępna.")).toBeInTheDocument();
-    expect(screen.queryByText(/tylko dla administracji/)).toBeNull();
+    expect(screen.queryByText(/Ten ekran jest dla administracji/)).toBeNull();
     // Nagłówki w kolejności: h1 „Kursy”, h2 „Lista kursów”, dopiero potem h3 tytułu komunikatu.
     expect(screen.getAllByRole("heading").map((h) => `${h.tagName}:${h.textContent}`)).toEqual([
       "H1:Kursy",

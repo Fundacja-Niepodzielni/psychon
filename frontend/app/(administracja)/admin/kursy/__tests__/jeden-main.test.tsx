@@ -102,7 +102,7 @@ describe("/admin/kursy w układzie administracji (grupa włączona)", () => {
     const { ApiError } = await import("@/lib/api/klient");
     apiPaged.mockRejectedValue(new ApiError({ status: 403, code: "forbidden", message: "Zabronione" }));
     const { container } = await zloz();
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji/);
     expect(screen.queryByText("Wywiad psychologiczny")).toBeNull();
     expect(zmierz(container)).toEqual(JEDEN);
   });

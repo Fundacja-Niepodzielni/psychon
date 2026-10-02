@@ -8,7 +8,8 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { StrzalkiKolejnosci } from "@/design-system/molekuly/StrzalkiKolejnosci/StrzalkiKolejnosci";
@@ -414,12 +415,7 @@ export function KursyAdministracji() {
       <ListTemplate
         naglowek={naglowek}
         lista={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Kursy administracji"
-            rola="administracji"
-            przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
-          />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: () => router.back() }} />
         }
       />
     );
