@@ -629,7 +629,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(page.getByRole("button", { name: "Opublikuj kurs" })).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Podgląd jako uczestnik" }).locator("visible=true")).toHaveAttribute(
         "href",
-        "/panel/kursy/wywiad-psychologiczny",
+        "/panel/kursy/wywiad-psychologiczny?podglad=1",
       );
       expect(zapisy[1]).toEqual({ metoda: "PATCH", sciezka: "/admin/courses/4", cialo: { is_published: true } });
       expect(zapisy).toHaveLength(2);

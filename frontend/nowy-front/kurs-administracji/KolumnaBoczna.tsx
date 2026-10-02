@@ -35,9 +35,13 @@ export const KOTWICA_PUBLIKACJI = "publikacja";
 /** Komunikat odmowy publikacji — po odmowie serwera fokus staje na nim. */
 export const ID_ODMOWY_PUBLIKACJI = "publikacja-odmowa";
 
-/** Adres kursu w panelu uczestnika. Serwer pokazuje tam wyłącznie kurs opublikowany. */
+/**
+ * Adres kursu w panelu uczestnika w trybie podglądu (`?podglad=1`). Serwer
+ * pokazuje tam wyłącznie kurs opublikowany. Jedyne miejsce, które składa ten
+ * adres — każdy odnośnik podglądu bierze go stąd.
+ */
 export function adresPodgladu(kurs: Pick<AdminCourse, "slug">): string {
-  return `/panel/kursy/${kurs.slug}`;
+  return `/panel/kursy/${kurs.slug}?podglad=1`;
 }
 
 interface WlasciwosciPrzyciskuGlownego {
