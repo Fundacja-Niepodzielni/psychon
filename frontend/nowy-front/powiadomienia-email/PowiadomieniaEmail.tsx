@@ -61,7 +61,7 @@ const ETYKIETY_TYPOW: Record<string, string> = {
   "profile.returned": "Profil psychologa zwrócony",
   "profile.withdrawn": "Profil psychologa wycofany",
   "export.ready": "Eksport danych gotowy",
-  "cooperation_request.answered": "Odpowiedź na zgłoszenie współpracy",
+  "cooperation_request.answered": "Odpowiedź na prośbę o współpracę",
   "supervision.slot_cancelled": "Termin superwizji odwołany",
 };
 

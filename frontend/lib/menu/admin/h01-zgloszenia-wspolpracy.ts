@@ -20,7 +20,7 @@ const wpisy: MenuEntry[] = href === null
   ? []
   : [
       {
-        label: "Zgłoszenia współpracy",
+        label: "Dalsza współpraca",
         href,
         order: 81,
         icon: "messages",

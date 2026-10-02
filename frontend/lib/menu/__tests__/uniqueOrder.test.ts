@@ -71,7 +71,7 @@ describe("rejestry menu — sekcje", () => {
       ["Nauka", ["Kursy", "Czas nauki"]],
       ["Osoby", ["Uczestniczki", "Certyfikaty", "Profile psychologa"]],
       ["Praktyka", ["Akceptacja stażu", "Formy stażu", "Superwizje"]],
-      ["Obsługa", ["Sprawy", "Zgłoszenia współpracy", "Skrzynka e-maili"]],
+      ["Obsługa", ["Sprawy", "Dalsza współpraca", "Skrzynka e-maili"]],
       ["Raporty", ["Raport", "Dziennik działań"]],
       ["Konfiguracja", ["Ekran startowy", "Ustawienia", "Wzory dokumentów"]],
     ]);

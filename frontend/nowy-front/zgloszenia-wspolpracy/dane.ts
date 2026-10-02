@@ -58,7 +58,7 @@ export function sklasyfikujBladOdpowiedzi(blad: unknown): BladOdpowiedzi {
     if (blad.status === 403 && blad.code === "cooperation_request_closed") {
       return { rodzaj: "zamkniete", komunikat: blad.message };
     }
-    if (blad.status === 404) return { rodzaj: "brak-zgloszenia", komunikat: "Zgłoszenie nie istnieje." };
+    if (blad.status === 404) return { rodzaj: "brak-zgloszenia", komunikat: "Prośba nie istnieje." };
     return { rodzaj: "inny", komunikat: blad.message };
   }
   return { rodzaj: "inny", komunikat: KOMUNIKAT_SIECI };

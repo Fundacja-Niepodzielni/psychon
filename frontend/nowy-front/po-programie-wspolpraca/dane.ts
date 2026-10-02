@@ -102,7 +102,7 @@ export type BladWysylki =
   | { rodzaj: "otwarte"; komunikat: string }
   | { rodzaj: "inny"; komunikat: string };
 
-const KOMUNIKAT_SIECI = "Nie udało się wysłać zgłoszenia. Spróbuj ponownie.";
+const KOMUNIKAT_SIECI = "Nie udało się wysłać prośby. Spróbuj ponownie.";
 
 export function sklasyfikujBladWysylki(blad: unknown): BladWysylki {
   if (blad instanceof ApiError) {

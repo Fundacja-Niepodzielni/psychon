@@ -27,7 +27,7 @@ import type { MenuEntry } from "../types";
  *   słownik wprost daje parę menu/nagłówek (Pulpit / Pulpit administracji,
  *   Sprawy / Sprawy do decyzji);
  * - ekrany nowego frontu, których makieta nie ma w menu, stoją w grupie
- *   najbliższej ich funkcji: Zgłoszenia współpracy → Codziennie; słownik form
+ *   najbliższej ich funkcji: Dalsza współpraca → Codziennie; słownik form
  *   stażu, wzory dokumentów i ekran startowy → „Ustawienia” (słowniki i treści
  *   ustawiane rzadko, nie codzienna praca). „Program” to Kursy, „Rozliczenie” —
  *   Raport roku programu i Dziennik działań;
@@ -94,7 +94,7 @@ export const NAZWY_RAMKI_ADMINISTRACJI = {
   kolejkaStazu: "Dyżury do decyzji",
   osoby: "Osoby",
   zgloszeniaRekrutacyjne: "Zgłoszenia rekrutacyjne",
-  zgloszeniaWspolpracy: "Zgłoszenia współpracy",
+  dalszaWspolpraca: "Dalsza współpraca",
   kursy: "Kursy",
   formyStazu: "Słownik form stażu",
   raport: "Raport roku programu",
@@ -192,7 +192,7 @@ export function menuRamkiAdministracji(grupy: Grupy = GRUPY): GrupaMenuRamki[] {
         ...wlasne("kolejkaStazu"),
         ...pozycja(cel(grupy, "listaOsob"), "users", n.osoby),
         ...wlasne("nabor"),
-        ...pozycja(cel(grupy, "wspolpraca"), "chat", n.zgloszeniaWspolpracy),
+        ...pozycja(cel(grupy, "wspolpraca"), "chat", n.dalszaWspolpraca),
       ],
     },
     {

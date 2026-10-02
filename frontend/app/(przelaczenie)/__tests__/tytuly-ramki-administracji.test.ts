@@ -22,7 +22,7 @@ describe("tytuły stron nowej ramki administracji", () => {
 
     expect(pulpit.metadata).toEqual({ title: `Pulpit administracji${PRZYROSTEK}` });
     expect(start.metadata).toEqual({ title: `${NAZWY_RAMKI_ADMINISTRACJI.ekranStartowy}${PRZYROSTEK}` });
-    expect(zgloszenia.metadata).toEqual({ title: `${NAZWY_RAMKI_ADMINISTRACJI.zgloszeniaWspolpracy}${PRZYROSTEK}` });
+    expect(zgloszenia.metadata).toEqual({ title: `${NAZWY_RAMKI_ADMINISTRACJI.dalszaWspolpraca}${PRZYROSTEK}` });
   });
 
   it("grupy wyłączone: /admin i /admin/ekran-startowy bez własnego tytułu (jak dotąd)", async () => {

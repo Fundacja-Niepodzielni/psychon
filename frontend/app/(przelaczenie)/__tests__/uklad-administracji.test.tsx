@@ -27,7 +27,7 @@ const { default: UkladPrzelaczenia } = await import("../layout");
 const { default: UkladAdministracji } = await import("../admin/layout");
 
 function StronaProbna() {
-  return <ListTemplate naglowek={<h1>Zgłoszenia współpracy</h1>} lista={<p>Treść strony próbnej</p>} />;
+  return <ListTemplate naglowek={<h1>Dalsza współpraca</h1>} lista={<p>Treść strony próbnej</p>} />;
 }
 
 function zlozUklad() {

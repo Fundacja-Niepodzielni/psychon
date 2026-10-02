@@ -71,7 +71,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Pulpit", "/admin"],
           ["Sprawy", "/admin/sprawy"],
           ["Osoby", "/admin/uczestniczki"],
-          ["Zgłoszenia współpracy", "/admin/zgloszenia-wspolpracy"],
+          ["Dalsza współpraca", "/admin/zgloszenia-wspolpracy"],
         ],
         linia: undefined,
         zwijana: undefined,
@@ -205,7 +205,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
       "Pulpit",
       "Sprawy",
       "Osoby",
-      "Zgłoszenia współpracy",
+      "Dalsza współpraca",
     ]);
   });
 

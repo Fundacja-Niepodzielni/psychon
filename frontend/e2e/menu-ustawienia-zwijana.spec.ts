@@ -113,7 +113,7 @@ const POZYCJE_BEZ_USTAWIEN = [
   "Pulpit",
   "Sprawy",
   "Osoby",
-  "Zgłoszenia współpracy",
+  "Dalsza współpraca",
   "Kursy",
   "Raport roku programu",
   "Dziennik działań",
