@@ -4234,6 +4234,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "429": {
+                        "description": "Przekroczony limit 10 zlece\u0144 wgrania na minut\u0119 na osob\u0119 (ten sam limit na trasie administracji i prowadz\u0105cego) \u2014 `too_many_requests`, `reason.retry_after_seconds`. Koperta b\u0142\u0119du. \u017b\u0105danie odrzucone limitem nie si\u0119ga do dostawcy nagra\u0144."
                     }
                 }
             }
@@ -4466,6 +4469,9 @@
                     },
                     "502": {
                         "description": "B\u0142\u0105d dostawcy nagra\u0144 albo identyfikator zaj\u0119ty przez inn\u0105 lekcj\u0119 \u2014 `bunny_error`. Koperta b\u0142\u0119du."
+                    },
+                    "429": {
+                        "description": "Przekroczony limit 10 zlece\u0144 wgrania na minut\u0119 na osob\u0119 (ten sam limit na trasie administracji i prowadz\u0105cego) \u2014 `too_many_requests`, `reason.retry_after_seconds`. Koperta b\u0142\u0119du. \u017b\u0105danie odrzucone limitem nie si\u0119ga do dostawcy nagra\u0144."
                     }
                 },
                 "summary": "Zlecenie wgrania nagrania lekcji przez prowadz\u0105cego przypisanego do kursu \u2014 ten sam kszta\u0142t i te same odmowy tre\u015bci co trasa administracji."
