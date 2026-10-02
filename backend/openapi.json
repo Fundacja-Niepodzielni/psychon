@@ -12069,19 +12069,31 @@
                                             "type": "object",
                                             "properties": {
                                                 "url": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "description": "Podpisany adres listy odtwarzania nagrania."
                                                 },
                                                 "expires_at": {
-                                                    "type": "number"
+                                                    "type": "integer",
+                                                    "description": "Czas uniksowy wyga\u015bni\u0119cia adresu listy."
                                                 },
                                                 "video_id": {
                                                     "type": "string"
+                                                },
+                                                "embed_url": {
+                                                    "type": "string",
+                                                    "description": "Podpisany adres ramki odtwarzacza dostawcy (`https://iframe.mediadelivery.net/embed/{biblioteka}/{nagranie}?token=\u2026&expires=\u2026`) dla nagrania odtwarzanego."
+                                                },
+                                                "embed_expires_at": {
+                                                    "type": "integer",
+                                                    "description": "Czas uniksowy wyga\u015bni\u0119cia adresu ramki; ta sama chwila co `expires_at`."
                                                 }
                                             },
                                             "required": [
                                                 "url",
                                                 "expires_at",
-                                                "video_id"
+                                                "video_id",
+                                                "embed_url",
+                                                "embed_expires_at"
                                             ]
                                         }
                                     },
@@ -12092,11 +12104,17 @@
                             }
                         }
                     },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "description": "Kurs zablokowany kolejno\u015bci\u0105 (`course_locked`) albo brak dost\u0119pu do lekcji (koperta b\u0142\u0119du)."
+                    },
+                    "404": {
+                        "description": "Lekcja nieistniej\u0105ca albo spoza zasi\u0119gu osoby (`not_found`); lekcja bez nagrania (`video_missing`); nagranie w przygotowaniu albo z b\u0142\u0119dem, bez gotowego (`video_not_ready`). Koperta b\u0142\u0119du."
+                    },
+                    "503": {
+                        "description": "Odtwarzanie niedost\u0119pne: brak konfiguracji podpisu (`video_not_configured`). Koperta b\u0142\u0119du."
                     }
                 }
             }

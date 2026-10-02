@@ -25,6 +25,10 @@ use Illuminate\Http\Request;
  * z błędem), odpowiada `404 video_not_ready`; lekcja bez nagrania — jak dotąd
  * `404 video_missing`. Oba przypadki mają ten sam status i różnią się kodem.
  * Trasa nie pyta dostawcy: stan pochodzi z bazy.
+ *
+ * Odpowiedź niesie pięć pól: `url` (lista odtwarzania), `expires_at`,
+ * `video_id` oraz `embed_url` (podpisany adres ramki odtwarzacza) i
+ * `embed_expires_at` — oba adresy wygasają o tej samej chwili (czas uniksowy).
  */
 class VideoTokenController extends Controller
 {
@@ -56,6 +60,6 @@ class VideoTokenController extends Controller
             throw new ApiException(404, 'video_not_ready', 'Nagranie w przygotowaniu.');
         }
 
-        return response()->json(['data' => $this->tokenService->signedCdnUrl($lesson, $user)]);
+        return response()->json(['data' => $this->tokenService->signedPlayback($lesson, $user)]);
     }
 }

@@ -1909,6 +1909,29 @@ Własne pytania osoby do jednej lekcji → `200 { "data": [Pytanie], "meta": { �
   przycięciu białych znaków; naruszenie → `422 validation_failed`) → `201` z jednym
   `Pytanie` w tym samym kształcie.
 
+### 7. `GET /lessons/{id}/video-link` — link do nagrania
+
+Role: osoby z dostępem do lekcji (ta sama reguła co `GET /lessons/{id}`). `200`:
+
+```json
+{ "data": { "url": "<podpisany adres listy odtwarzania>", "expires_at": 1790007200,
+  "video_id": "mock-nagranie", "embed_url": "https://iframe.mediadelivery.net/embed/<biblioteka>/<nagranie>?token=<podpis>&expires=1790007200",
+  "embed_expires_at": 1790007200 } }
+```
+
+- `url`, `expires_at` i `video_id` bez zmian. `embed_url` jest podpisanym adresem ramki
+  odtwarzacza dostawcy dla tego samego nagrania (odtwarzanego — w czasie wymiany nagrania
+  nadal dotychczasowego); host ramki jest stały po stronie serwera, nie z konfiguracji.
+- `embed_expires_at` jest czasem uniksowym (liczba całkowita) w tym samym formacie co
+  `expires_at` i wskazuje **tę samą chwilę** — oba adresy wydawane są jednym podpisem czasu.
+  Podgląd administracji (`preview_embed_url`) ma własny, krótszy czas życia i nie zmienia się.
+- Odmowy bez zmian i bez żadnego adresu w odpowiedzi: `401 unauthenticated`, `403
+  course_locked`, `404 not_found` (lekcja spoza zasięgu), `404 video_missing` (lekcja bez
+  nagrania), `404 video_not_ready` (nagranie w przygotowaniu albo z błędem, bez gotowego),
+  `503 video_not_configured` (brak konfiguracji podpisu).
+- Trasa nie pyta dostawcy; stan nagrania pochodzi z bazy.
+
 Kod: `routes/api/h06.php`, `Services/Lessons/LessonCompletionRule.php`,
+`Http/Controllers/Api/V1/VideoTokenController.php`, `Services/Video/VideoTokenService.php`,
 `routes/api/h17.php`, `Http/Controllers/Api/V1/H17/LessonQuestionController.php`,
 `Http/Resources/H17/ParticipantQuestionResource.php`, `openapi.json`.

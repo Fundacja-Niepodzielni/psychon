@@ -111,6 +111,43 @@ class VideoTokenServiceTest extends TestCase
         $this->assertSame('vid-2', $signed['video_id']);
     }
 
+    public function test_playback_carries_the_list_url_and_a_signed_embed_url_valid_to_the_same_moment(): void
+    {
+        $user = $this->user(17);
+        $playback = $this->service->signedPlayback($this->lesson('vid-3'), $user);
+        $expires = self::NOW + VideoTokenService::CDN_TTL_SECONDS;
+        $token = hash('sha256', 'test-security-key'.'vid-3'.$expires);
+
+        $this->assertSame(['url', 'expires_at', 'video_id', 'embed_url', 'embed_expires_at'], array_keys($playback));
+        $this->assertSame($this->service->signedCdnUrl($this->lesson('vid-3'), $user)['url'], $playback['url']);
+        $this->assertSame($expires, $playback['expires_at']);
+        $this->assertSame($expires, $playback['embed_expires_at'], 'Adres ramki wygasa o tej samej chwili co adres listy.');
+        $this->assertSame('vid-3', $playback['video_id']);
+        $this->assertSame(
+            'https://'.VideoTokenService::EMBED_HOST."/embed/4242/vid-3?token={$token}&expires={$expires}",
+            $playback['embed_url'],
+        );
+    }
+
+    public function test_playback_embed_does_not_use_the_preview_lifetime_and_the_preview_keeps_its_own(): void
+    {
+        $playback = $this->service->signedPlayback($this->lesson('vid-3'), $this->user(17));
+        $preview = $this->service->signedEmbedUrl($this->lesson('vid-3'));
+
+        $this->assertSame(self::NOW + VideoTokenService::CDN_TTL_SECONDS, $playback['embed_expires_at']);
+        $this->assertSame(self::NOW + VideoTokenService::EMBED_TTL_SECONDS, $preview['expires_at']);
+        $this->assertNotSame($playback['embed_expires_at'], $preview['expires_at']);
+        $this->assertStringStartsWith('https://'.VideoTokenService::EMBED_HOST.'/embed/', $preview['url']);
+    }
+
+    #[DataProvider('missingVideoIds')]
+    public function test_playback_refuses_a_lesson_without_a_video(?string $videoId): void
+    {
+        $this->expectException(RuntimeException::class);
+
+        $this->service->signedPlayback($this->lesson($videoId), $this->user(17));
+    }
+
     #[DataProvider('missingVideoIds')]
     public function test_signing_refuses_a_lesson_without_a_video(?string $videoId): void
     {
