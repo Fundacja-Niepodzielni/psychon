@@ -50,7 +50,7 @@ const WYGASA_RAMKA = 4_070_908_800;
  */
 const ATRAPA_RAMKI = `<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Atrapa odtwarzacza</title>
 <style>html,body{margin:0;height:100%;background:#1f2937;color:#e5e7eb;font:16px/1.4 system-ui,sans-serif;display:flex;align-items:center;justify-content:center}</style></head>
-<body><main><p>Atrapa odtwarzacza w ramce (żadne nagranie nie jest pobierane)</p></main>
+<body><section aria-label="Atrapa odtwarzacza"><p>Atrapa odtwarzacza w ramce (żadne nagranie nie jest pobierane)</p></section>
 <script>
 window.__polecenia = [];
 window.__zdarzenie = (nazwa, sekundy) =>
