@@ -7,6 +7,7 @@ import type {
   DocumentTemplateType,
   DocumentTemplateVersion,
 } from "@/lib/api/document-templates";
+import { KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Logika danych ekranu „Wzory dokumentów”: rodzaje wzorów, stan wczytania,
@@ -75,7 +76,7 @@ export function wynikZBleduZapisu(blad: unknown): WynikZapisu {
       };
     }
   }
-  return { rodzaj: "ogolny", tresc: "Nie udało się zapisać wzoru. Twoja treść została w polu — spróbuj ponownie." };
+  return { rodzaj: "ogolny", tresc: `${KOMUNIKAT_ZAPIS} Twoja treść została w polu.` };
 }
 
 /** Kontrola przed wysłaniem — te same warunki, które sprawdza serwer, plus brak zmian. */

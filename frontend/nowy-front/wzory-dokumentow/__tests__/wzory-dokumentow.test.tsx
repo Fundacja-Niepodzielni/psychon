@@ -366,7 +366,7 @@ describe("wzory dokumentów — zapis nowej wersji", () => {
     wpisz("<p>x</p>");
     fireEvent.click(screen.getByRole("button", { name: "Zapisz nową wersję" }));
     const komunikat = await screen.findByRole("alert");
-    expect(komunikat.textContent).toContain("Nie udało się zapisać wzoru");
+    expect(komunikat.textContent).toContain("Nie udało się zapisać. Spróbuj ponownie.");
     expect(poleTresci().value).toBe("<p>x</p>");
     fireEvent.click(screen.getByRole("button", { name: "Zapisz nową wersję" }));
     await screen.findByRole("status");
