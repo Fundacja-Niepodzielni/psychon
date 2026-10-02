@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 
 /**
- * Miara dla grup przełączenia `pulpitUczestnika` (`wlaczona: true`) i `lekcja`
- * (`wlaczona: false`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
+ * Miara dla grup przełączenia `pulpitUczestnika` (`wlaczona: true`), `lekcja` i
+ * `kursUczestnika` (obie `wlaczona: false`) z `lib/przelaczenie/grupy.ts`. Adres obu tras się nie
  * zmienia — zmienia się treść strony — więc sprawdzane jest to, co widzi
  * osoba w przeglądarce:
  * - wpis „Pulpit” w menu uczestnika prowadzi na `/panel/pulpit`, a tam stoi
@@ -12,6 +12,9 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  *   wyłączona): `h1` „Lekcja”, odnośnik „Wróć do listy kursów” i „Aktywny
  *   czas:” — a nie ekran lekcji nowego frontu (`h1` z tytułem lekcji, przycisk
  *   „Oznacz jako ukończoną”);
+ * - `/panel/kursy/[slug]` pokazuje STARĄ stronę kursu (grupa `kursUczestnika`
+ *   jest wyłączona): bez opisu „na końcu test”, bez karty „Test końcowy” i bez
+ *   przycisku głównego nowego ekranu;
  * - obie trasy odpowiadają 200 (bez przekierowania), a w całym przebiegu nie
  *   ma odpowiedzi 404 poza celowym niepoprawnym identyfikatorem lekcji;
  * - na każdej trasie dokładnie jeden `main` i jeden `#tresc`.
@@ -71,7 +74,13 @@ async function instalujAtrapyApi(page: Page): Promise<void> {
   });
   await odpowiedz(page, `${api}/courses`, { data: [KURS] });
   await odpowiedz(page, `${api}/courses/${KURS.slug}`, {
-    data: { ...KURS, lessons: [{ id: 21, title: LEKCJA.title, sequence_order: 1, is_completed: false }] },
+    data: {
+      ...KURS,
+      instructor: null,
+      topics: [],
+      lessons: [{ id: 21, title: LEKCJA.title, sequence_order: 1, duration_seconds: 1800, is_completed: false, topic_id: null }],
+      materials: [],
+    },
   });
   await odpowiedz(page, `${api}/certificate/conditions`, { data: { eligible: false, conditions: [] } });
   await odpowiedz(page, `${api}/internship/entries**`, {
@@ -154,6 +163,26 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
     expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
   });
 
+  test("kurs: /panel/kursy/wywiad-psychologiczny pokazuje starą stronę kursu (grupa wyłączona), bez elementów nowego ekranu, jeden main; 0 odpowiedzi 404", async ({
+    page,
+  }) => {
+    const kody404 = zbierz404(page);
+    await instalujAtrapyApi(page);
+
+    await page.goto("/panel/kursy/wywiad-psychologiczny");
+    await zabezpieczeniePrzedEkranemDostepu(page);
+
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByText(/na końcu test/)).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: "Test końcowy" })).toHaveCount(0);
+    await expect(page.locator("[data-przycisk-glowny]")).toHaveCount(0);
+
+    await expect(page.locator("main")).toHaveCount(1);
+    await expect(page.locator("#tresc")).toHaveCount(1);
+
+    expect(kody404, `odpowiedzi 404: ${kody404.join(", ")}`).toEqual([]);
+  });
+
   test("adres się nie zmienia: obie trasy odpowiadają 200 bez przekierowania, niepoprawny identyfikator lekcji daje 404", async ({
     page,
   }) => {
@@ -162,6 +191,9 @@ test.describe("grupy przełączenia: pulpitUczestnika włączona (treść nowego
 
     const lekcja = await page.request.get("/panel/lekcje/21", { maxRedirects: 0 });
     expect(lekcja.status()).toBe(200);
+
+    const kurs = await page.request.get("/panel/kursy/wywiad-psychologiczny", { maxRedirects: 0 });
+    expect(kurs.status()).toBe(200);
 
     const niepoprawna = await page.request.get("/panel/lekcje/abc", { maxRedirects: 0 });
     expect(niepoprawna.status()).toBe(404);

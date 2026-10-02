@@ -182,6 +182,23 @@ export const GRUPY = {
       },
     ],
   },
+  /**
+   * Strona kursu uczestnika — ten sam adres co dzisiejsza strona kursu, treść strony zamienia się na ekran
+   * nowego frontu. Wyłączona do czasu włączenia razem z grupą `lekcja`: oba ekrany prowadzą do siebie
+   * nawzajem. Strona `panel/kursy/[slug]/page.tsx` jest podpięta pod tę flagę.
+   */
+  kursUczestnika: {
+    klucz: "kursUczestnika",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/kursy/[slug]",
+        nowaTrasa: "/panel/kursy/[slug]",
+        trasaPoligonu: "/nowy-front/kurs-uczestnika/[slug]",
+      },
+    ],
+  },
   /** Pulpit prowadzącego — ten sam adres co dzisiejsza strona startowa prowadzącego. */
   pulpitProwadzacego: {
     klucz: "pulpitProwadzacego",
