@@ -50,11 +50,13 @@ export const PODPOWIEDZ_POWODU = "Pisz rzeczowo, bez informacji o zdrowiu.";
 export const PODPOWIEDZ_DATY = "Dostęp do materiałów będzie otwarty do tego dnia.";
 export const PODPOWIEDZ_SKROCENIA = "Wybrana data jest wcześniejsza niż obecna — dostęp zostanie skrócony.";
 
-const MS_NA_DOBE = 24 * 60 * 60 * 1000;
-
-/** Dzisiejszy dzień kalendarzowy w Warszawie jako `YYYY-MM-DD`. */
+/**
+ * Dzisiejszy dzień kalendarzowy w Warszawie jako `YYYY-MM-DD`: numer dnia ze
+ * wspólnego liczenia (`numerDniaKalendarzowego`) przeliczony z powrotem na datę
+ * jako przesunięcie od 1 stycznia 1970 r.
+ */
 export function dzisiajWWarszawie(teraz: Date): string {
-  return new Date(numerDniaKalendarzowego(teraz.getTime()) * MS_NA_DOBE).toISOString().slice(0, 10);
+  return new Date(Date.UTC(1970, 0, 1 + numerDniaKalendarzowego(teraz.getTime()))).toISOString().slice(0, 10);
 }
 
 /** `YYYY-MM-DD`, który naprawdę istnieje w kalendarzu; inaczej `null`. */
