@@ -10,7 +10,6 @@ import { Link } from "@/design-system/atomy/Link/Link";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Textarea } from "@/design-system/atomy/Textarea/Textarea";
 import { Field } from "@/design-system/molekuly/Field/Field";
-import { FileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { TrescLekcji } from "@/design-system/molekuly/TrescLekcji/TrescLekcji";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
@@ -19,11 +18,8 @@ import { TylkoOdDwochKolumn, UkladEdycji } from "@/design-system/szablony/UkladE
 import {
   pobierzStanNagrania,
   usunLekcje,
-  usunMaterial,
-  wgrajMaterial,
   zapiszLekcje,
   type LekcjaAdmin,
-  type MaterialAdmin,
   type StanNagrania,
 } from "./dane";
 import {
@@ -36,21 +32,17 @@ import {
   walidujLokalnie,
   zdanieBleduPliku,
   zdanieBleduUsuniecia,
-  ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH,
-  zdanieBleduUsunieciaMaterialu,
-  zdanieLiczbyMaterialow,
   zdanieBleduZapisu,
   type BledyFormularza,
   type PolaFormularza,
   type StanFormularza,
 } from "./formularz";
 import { KartaNagrania } from "./KartaNagrania";
-import { useWgrywanieMaterialow } from "./materialy";
+import { PlikiLekcji } from "./PlikiLekcji";
 import {
   czasDoPytaniaOStan,
   miejsceWKursie,
   nagranieZSerwera,
-  opisPliku,
   poWyslaniuCalegoPliku,
   stanLekcji,
   type NagranieZSerwera,
@@ -179,22 +171,7 @@ export function StronaLekcji({
   const [bladUsuniecia, setBladUsuniecia] = useState<string | null>(null);
 
   const [liczbaMaterialow, setLiczbaMaterialow] = useState(lekcja.materials_count);
-  const [ogloszenieMaterialu, setOgloszenieMaterialu] = useState("");
-  const [materialDoUsuniecia, setMaterialDoUsuniecia] = useState<MaterialAdmin | null>(null);
-  const [bladMaterialu, setBladMaterialu] = useState<string | null>(null);
-  const materialy = useWgrywanieMaterialow(
-    (plik) => wgrajMaterial(zapisana.id, plik),
-    (material) => {
-      setLiczbaMaterialow((poprzednia) => poprzednia + 1);
-      setOgloszenieMaterialu(`Wgrano plik „${material.name}”.`);
-    },
-  );
-  // Plik wgrany do końca stoi w jednym wierszu — na liście z „Usuń”. Wiersz stanu zostaje
-  // tylko dla pliku, który się jeszcze wgrywa albo którego wgranie się nie udało.
-  const plikiWToku = materialy.pliki.filter((plik) => plik.stan !== "gotowy");
-  // Licznik z zaplecza obejmuje też pliki dodane teraz; reszta to pliki wgrane wcześniej,
-  // których listy ekran jeszcze nie ma.
-  const wczesniejszeMaterialy = liczbaMaterialow - materialy.wgrane.length;
+  // Liczbę plików prowadzi karta „Pliki do tej lekcji” (`PlikiLekcji`): to długość listy z serwera.
 
   // Stan nagrania z serwera; trwające albo przerwane wysyłanie tej lekcji (z uchwytu ponad ekranami) go zasłania.
   // Trasa stanu nie odpowiedziała przy otwarciu: stan z pól zasobu lekcji, o ile je niesie.
@@ -396,7 +373,6 @@ export function StronaLekcji({
       const wynik = await zapiszLekcje(zapisana.id, cialoZapisu(formularz, zapisana));
       setZapisana(wynik);
       setFormularz(formularzZLekcji(wynik));
-      setLiczbaMaterialow(wynik.materials_count);
       setOstatniZapis(godzinaZapisu(new Date()));
       return true;
     } catch (blad) {
@@ -447,20 +423,6 @@ export function StronaLekcji({
     } catch (blad) {
       setBladUsuniecia(zdanieBleduUsuniecia(blad));
       setUsuwanie(false);
-    }
-  }
-
-  async function usunWgranyMaterial(material: MaterialAdmin) {
-    setMaterialDoUsuniecia(null);
-    setBladMaterialu(null);
-    try {
-      await usunMaterial(material.id);
-      // Przycisk „Usuń” tego pliku znika razem z wierszem — fokus idzie na pole dodawania.
-      document.getElementById(`${baza}-plik-materialu-obszar`)?.focus();
-      materialy.zdejmij(material);
-      setLiczbaMaterialow((poprzednia) => Math.max(0, poprzednia - 1));
-    } catch (blad) {
-      setBladMaterialu(zdanieBleduUsunieciaMaterialu(blad));
     }
   }
 
@@ -646,47 +608,12 @@ export function StronaLekcji({
                 <p className={style.mocne}>
                   Uczestnik zobaczy te pliki w tej lekcji, pod treścią, oraz na stronie kursu.
                 </p>
-                <Text>{zdanieLiczbyMaterialow(liczbaMaterialow)}</Text>
-                {wczesniejszeMaterialy > 0 && <Hint>{ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH}</Hint>}
-                {materialy.wgrane.length > 0 && (
-                  <ul className={style.pliki} aria-label="Pliki dodane teraz">
-                    {materialy.wgrane.map((material) => (
-                      <li key={material.id} className={style.plik}>
-                        <span className={style.nazwaPliku}>
-                          <strong className={style.nazwaDwieLinie} title={material.name}>
-                            {material.name}
-                          </strong>
-                          {opisPliku(material.name, material.size) !== "" && (
-                            <span className={style.drobne}>{opisPliku(material.name, material.size)}</span>
-                          )}
-                        </span>
-                        <Button
-                          poziom="quiet"
-                          type="button"
-                          aria-label={`Usuń plik ${material.name}`}
-                          onClick={() => setMaterialDoUsuniecia(material)}
-                        >
-                          Usuń
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {bladMaterialu && (
-                  <Notice wariant="error" tytul="Plik nie został usunięty">
-                    {bladMaterialu}
-                  </Notice>
-                )}
-                <FileDropZone
-                  id={`${baza}-plik-materialu`}
-                  etykieta="Dodaj plik"
-                  podpowiedz="Dozwolone formaty: PDF, DOC, DOCX, PPT, PPTX, PNG, JPG. Plik może mieć najwyżej 10 MB."
-                  pliki={plikiWToku}
-                  onWybierzPliki={(lista) => void materialy.dodaj(lista)}
+                <PlikiLekcji
+                  idLekcji={zapisana.id}
+                  baza={baza}
+                  liczbaStart={lekcja.materials_count}
+                  onLiczba={setLiczbaMaterialow}
                 />
-                <p role="status" className={style.tylkoCzytnika}>
-                  {ogloszenieMaterialu}
-                </p>
               </div>
             </KartaBoczna>
           </div>
@@ -770,17 +697,6 @@ export function StronaLekcji({
           onPotwierdz={() => void usun()}
         >
           <Text>Lekcja zniknie z kursu. Postęp historyczny uczestników zostaje zachowany.</Text>
-        </Dialog>
-      )}
-      {materialDoUsuniecia && (
-        <Dialog
-          tytul={`Usunąć plik „${materialDoUsuniecia.name}”?`}
-          etykietaWycofania="Anuluj"
-          etykietaPotwierdzenia="Usuń plik"
-          onWycofaj={() => setMaterialDoUsuniecia(null)}
-          onPotwierdz={() => void usunWgranyMaterial(materialDoUsuniecia)}
-        >
-          <Text>Pliku nie da się przywrócić.</Text>
         </Dialog>
       )}
     </>

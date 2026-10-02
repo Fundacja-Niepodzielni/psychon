@@ -51,6 +51,7 @@ describe("źródła ekranu lekcji", () => {
         "nowy-front/lekcja-edycja/StronaLekcji.tsx",
         "nowy-front/lekcja-edycja/dane.ts",
         "nowy-front/lekcja-edycja/formularz.ts",
+        "nowy-front/lekcja-edycja/PlikiLekcji.tsx",
         "nowy-front/lekcja-edycja/nagranie.ts",
         "nowy-front/lekcja-edycja/stan-zapisu.ts",
         "nowy-front/lekcja-edycja/tus.ts",
@@ -144,6 +145,7 @@ describe("zgodność z zapleczem", () => {
   it("wszystkie trasy ekranu istnieją w plikach tras zaplecza", () => {
     expect(h08).toContain("Route::get('/admin/courses/{course}/lessons'");
     expect(h08).toContain("Route::patch('/admin/lessons/{lesson}'");
+    expect(h08).toContain("Route::get('/admin/lessons/{lesson}/materials'");
     expect(h08).toContain("Route::post('/admin/lessons/{lesson}/materials'");
     expect(video).toContain("->post('/admin/lessons/{lesson}/video-uploads'");
     expect(video).toContain("->get('/admin/lessons/{lesson}/video-status'");
@@ -162,6 +164,22 @@ describe("zgodność z zapleczem", () => {
       "/admin/lessons/{id}/video-uploads",
       "/admin/materials/{id}",
     ]);
+  });
+
+  it("odczyt listy plików lekcji idzie pod GET /admin/lessons/{id}/materials, bez parametrów", () => {
+    const dane = bezKomentarzy(tresc(join(KORZEN, "nowy-front/lekcja-edycja/dane.ts")));
+    const funkcja = /export function pobierzMaterialyLekcji[\s\S]*?\n\}/.exec(dane)?.[0] ?? "";
+    expect(funkcja).not.toBe("");
+    expect(funkcja).toContain("return api<MaterialAdmin[]>(`/admin/lessons/${idLekcji}/materials`);");
+    expect(funkcja).not.toMatch(/\?|method|body/);
+    const kontroler = tresc(join(ZAPLECZE, "app/Http/Controllers/Api/V1/Admin/MaterialAdminController.php"));
+    expect(kontroler).toContain("function indexForLesson(");
+    expect(kontroler).toMatch(/LESSON_LIST_LIMIT = 200;/);
+  });
+
+  it("karta plików nie zawiera zdania roboczego o liście o dalszym kroku", () => {
+    const trafienia = PLIKI.filter((plik) => /kolejnym\s+kro|ZDANIE_O_WCZESNIEJSZYCH/.test(tresc(plik)));
+    expect(nazwy(trafienia)).toEqual([]);
   });
 
   it("pola zasobu lekcji w zapleczu są polami typu LekcjaAdmin", () => {

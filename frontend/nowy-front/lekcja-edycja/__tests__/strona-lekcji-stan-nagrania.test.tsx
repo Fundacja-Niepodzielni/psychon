@@ -70,6 +70,7 @@ function ustawApi(lekcja: LekcjaAdmin = LEKCJA) {
   pobierzJa.mockResolvedValue({ program_completed_at: null, role: "super_admin" });
   api.mockImplementation(async (sciezka: string) => {
     if (sciezka === "/admin/courses/3/lessons") return [lekcja];
+    if (sciezka === "/admin/lessons/21/materials") return [];
     if (sciezka === "/admin/lessons/21/video-status") {
       const odpowiedz = odpowiedzi.length > 1 ? odpowiedzi.shift()! : odpowiedzi[0];
       if (odpowiedz === null) throw new Error("Trasa stanu nie odpowiada");

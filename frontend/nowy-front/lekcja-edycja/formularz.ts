@@ -152,19 +152,39 @@ export function zdanieLiczbyMaterialow(liczba: number): string {
   return `Ta lekcja ma ${liczba} ${formaMaterialow(liczba)}.`;
 }
 
-/** Zdanie pokazywane, gdy lekcja ma materiały wgrane wcześniej — ekran nie ma jeszcze ich listy. */
-export const ZDANIE_O_WCZESNIEJSZYCH_MATERIALACH =
-  "Lista wcześniej wgranych plików pojawi się tu w kolejnym kroku — na razie widać tylko pliki dodane teraz.";
+/** Zdanie pod licznikiem do czasu odpowiedzi odczytu listy plików lekcji. */
+export const ZDANIE_WCZYTYWANIA_PLIKOW = "Wczytywanie listy plików…";
 
-/** Odmowa usunięcia materiału lekcji — zdanie dla osoby, bez kodu i bez nazwy trasy. */
-export function zdanieBleduUsunieciaMaterialu(blad: unknown): string {
+/** Zdanie przy odpowiedzi z pełną liczbą pozycji — serwer zwraca najwyżej tyle plików. */
+export function zdanieObcietejListyPlikow(limit: number): string {
+  return `Widać pierwsze ${limit} plików tej lekcji.`;
+}
+
+/** Odmowa odczytu listy plików — zdanie dla osoby, bez kodu i bez nazwy trasy. */
+export function zdanieBleduOdczytuPlikow(blad: unknown): string {
   if (blad instanceof ApiError) {
     if (blad.status === 401) return "Sesja wygasła. Zaloguj się ponownie.";
-    if (blad.status === 403) return "Usunięcie pliku nie jest dostępne dla Twojej roli.";
-    if (blad.status === 404) return "Tego pliku już nie ma. Odśwież stronę, żeby zobaczyć aktualną lekcję.";
-    if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
+    if (blad.status === 403) return "Lista plików tej lekcji nie jest dostępna dla Twojej roli.";
+    if (blad.status === 404) return "Tej lekcji już nie ma. Odśwież stronę, żeby zobaczyć aktualny kurs.";
   }
-  return "Nie udało się usunąć pliku. Sprawdź połączenie i spróbuj ponownie.";
+  return "Nie udało się wczytać listy plików. Sprawdź połączenie i spróbuj ponownie. Dodawanie plików działa mimo to.";
+}
+
+/** Ponowienie ma sens tylko wtedy, gdy przyczyna może minąć sama — nie przy braku uprawnień ani lekcji. */
+export function czyPonowicOdczytPlikow(blad: unknown): boolean {
+  return !(blad instanceof ApiError && [401, 403, 404].includes(blad.status));
+}
+
+/** Odmowa usunięcia materiału lekcji — zdanie dla osoby, bez kodu i bez nazwy trasy; mówi, którego pliku dotyczy. */
+export function zdanieBleduUsunieciaMaterialu(blad: unknown, nazwa: string): string {
+  const poczatek = `Nie usunięto pliku „${nazwa}”.`;
+  if (blad instanceof ApiError) {
+    if (blad.status === 401) return `${poczatek} Sesja wygasła. Zaloguj się ponownie.`;
+    if (blad.status === 403) return `${poczatek} Usunięcie pliku nie jest dostępne dla Twojej roli.`;
+    if (blad.status === 404) return `${poczatek} Tego pliku już nie ma. Odśwież stronę, żeby zobaczyć aktualną lekcję.`;
+    if (blad.status < 500 && blad.message.trim() !== "") return `${poczatek} ${blad.message}`;
+  }
+  return `${poczatek} Sprawdź połączenie i spróbuj ponownie.`;
 }
 
 export function zdanieBleduPliku(blad: unknown): string {

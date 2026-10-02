@@ -59,6 +59,10 @@ const WGRANY: MaterialAdmin = {
   created_at: null,
 };
 
+/** Pliki lekcji z odczytu — dwa, tyle ile `materials_count` lekcji. */
+const PLIK_A: MaterialAdmin = { ...WGRANY, id: 1, name: "porady.pdf", size: 2048 };
+const PLIK_B: MaterialAdmin = { ...WGRANY, id: 2, name: "slajdy.pdf", size: 4096 };
+
 type Odpowiedz = (sciezka: string, metoda: string) => unknown;
 
 /** Atrapa API: trasy odczytu ekranu; `dodatkowe` odpowiada pierwsze (wartość `undefined` = nie ta trasa). */
@@ -72,6 +76,7 @@ function ustawApi(dodatkowe: Odpowiedz = () => undefined, kurs: (() => unknown) 
     if (metoda === "GET" && sciezka === "/admin/courses/3" && kurs) return kurs();
     if (metoda === "GET" && sciezka === "/admin/courses/3/lessons") return [LEKCJA];
     if (metoda === "GET" && sciezka === "/admin/lessons/21/video-status") return BRAK_NAGRANIA;
+    if (metoda === "GET" && sciezka === "/admin/lessons/21/materials") return [PLIK_A, PLIK_B];
     throw new Error(`Nieoczekiwana trasa: ${metoda} ${sciezka}`);
   });
 }
@@ -202,11 +207,11 @@ describe("usunięcie pliku lekcji wgranego na ekranie", () => {
 
     await waitFor(() => expect(screen.getByText("Ta lekcja ma 2 pliki.")).toBeInTheDocument());
     expect(sciezki().filter((wpis) => wpis === "DELETE /admin/materials/9")).toHaveLength(1);
-    expect(screen.queryByRole("list", { name: "Pliki dodane teraz" })).toBeNull();
+    expect(within(screen.getByRole("list", { name: "Pliki lekcji" })).getAllByRole("listitem")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "Usuń plik karta.pdf" })).toBeNull();
+    // Usunięto ostatni wiersz listy: fokus idzie na zdanie licznika, nie ginie.
     expect(document.activeElement).not.toBe(document.body);
-    expect(document.activeElement).toHaveAttribute("role", "button");
-    expect(document.activeElement?.id).toMatch(/-plik-materialu-obszar$/);
+    expect(document.activeElement).toBe(screen.getByText("Ta lekcja ma 2 pliki.").parentElement);
   });
 
   it("„Anuluj” w oknie nie wysyła żądania i zostawia plik", async () => {
@@ -230,7 +235,9 @@ describe("usunięcie pliku lekcji wgranego na ekranie", () => {
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń plik karta.pdf" }));
     await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń plik" }));
 
-    expect(await screen.findByText("Usunięcie pliku nie jest dostępne dla Twojej roli.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nie usunięto pliku „karta.pdf”. Usunięcie pliku nie jest dostępne dla Twojej roli."),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/unauthorized/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Usuń plik karta.pdf" })).toBeInTheDocument();
     expect(screen.getByText("Ta lekcja ma 3 pliki.")).toBeInTheDocument();
