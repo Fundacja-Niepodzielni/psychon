@@ -28,8 +28,17 @@ export interface DaneLekcji {
   video_status?: "none" | "uploading" | "processing" | "ready" | "error";
 }
 
+/**
+ * Why a lesson shows no player although it is not simply a lesson without a
+ * recording: `w-przygotowaniu` — the recording exists but is not ready yet
+ * (being sent, processed, or failed at the provider; the participant is told
+ * one thing only: it is being prepared); `blad` — the recording link could
+ * not be read for a reason other than a missing or unready recording.
+ */
+export type PowodBrakuOdtwarzacza = "w-przygotowaniu" | "blad";
+
 export type WynikLekcji =
-  | { status: "ok"; dane: DaneLekcji; bezNagrania: boolean }
+  | { status: "ok"; dane: DaneLekcji; bezNagrania: boolean; nagranie?: PowodBrakuOdtwarzacza }
   | { status: "zablokowany"; komunikat: string }
   | { status: "nie-znaleziono" }
   | { status: "blad" };
@@ -68,19 +77,33 @@ export function okruszkiLekcji(dane: Pick<DaneLekcji, "title" | "topic">): { ety
   ];
 }
 
+/** What the screen knows about the recording: playable, absent, or one of the reasons above. */
+type NagranieLekcji = "jest" | "brak" | PowodBrakuOdtwarzacza;
+
 /**
- * Whether a signed recording link can be issued for this lesson
- * (`GET /lessons/{id}/video-link`, `backend/routes/api/video.php:18`). A
- * missing recording answers `404 video_missing`; any other failure falls
- * back to "no recording" as well, so a network hiccup never blocks reading
- * the lesson content underneath.
+ * Recording state for the participant. `video_status` from the lesson
+ * resource decides first: `none` is a lesson without a recording, `uploading`,
+ * `processing` and `error` are a recording being prepared — in neither case is
+ * the link asked for. For `ready` the signed link is requested
+ * (`GET /lessons/{id}/video-link`, `backend/routes/api/video.php:18`): refusal
+ * `404 video_not_ready` means "being prepared", `404 video_missing` means no
+ * recording, any other failure is an error the screen names.
+ *
+ * A lesson resource without `video_status` (backend before recording state)
+ * keeps the previous behavior: the link is always asked for and a failure
+ * other than `video_not_ready` falls back to "no recording", so a network
+ * hiccup never blocks reading the lesson content underneath.
  */
-async function maNagranie(id: string): Promise<boolean> {
+async function nagranieLekcji(id: string, kod: DaneLekcji["video_status"]): Promise<NagranieLekcji> {
+  if (kod === "none") return "brak";
+  if (kod === "uploading" || kod === "processing" || kod === "error") return "w-przygotowaniu";
   try {
     await api(`/lessons/${id}/video-link`);
-    return true;
-  } catch {
-    return false;
+    return "jest";
+  } catch (wyjatek) {
+    if (wyjatek instanceof ApiError && wyjatek.code === "video_not_ready") return "w-przygotowaniu";
+    if (wyjatek instanceof ApiError && wyjatek.code === "video_missing") return "brak";
+    return kod === undefined ? "brak" : "blad";
   }
 }
 
@@ -105,8 +128,10 @@ export async function pobierzDaneLekcji(id: string): Promise<WynikLekcji> {
     return { status: "blad" };
   }
 
-  const bezNagrania = !(await maNagranie(id));
-  return { status: "ok", dane, bezNagrania };
+  const nagranie = await nagranieLekcji(id, dane.video_status);
+  if (nagranie === "jest") return { status: "ok", dane, bezNagrania: false };
+  if (nagranie === "brak") return { status: "ok", dane, bezNagrania: true };
+  return { status: "ok", dane, bezNagrania: true, nagranie };
 }
 
 /**

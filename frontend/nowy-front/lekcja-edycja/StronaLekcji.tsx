@@ -47,10 +47,13 @@ import {
 import { KartaNagrania } from "./KartaNagrania";
 import { useWgrywanieMaterialow } from "./materialy";
 import {
+  czasDoPytaniaOStan,
   miejsceWKursie,
+  nagranieZSerwera,
   opisPliku,
-  stanKartyZSerwera,
+  poWyslaniuCalegoPliku,
   stanLekcji,
+  type NagranieZSerwera,
   type StanKartyNagrania,
 } from "./nagranie";
 import { godzinaZapisu, opisStanuZapisu, zmienionePola, type OpisStanuZapisu } from "./stan-zapisu";
@@ -194,12 +197,17 @@ export function StronaLekcji({
   const wczesniejszeMaterialy = liczbaMaterialow - materialy.wgrane.length;
 
   // Stan nagrania z serwera; trwające albo przerwane wysyłanie tej lekcji (z uchwytu ponad ekranami) go zasłania.
-  const [nagranieZSerwera, setNagranieZSerwera] = useState<StanKartyNagrania>(() => stanKartyZSerwera(nagranieStart));
+  // Trasa stanu nie odpowiedziała przy otwarciu: stan z pól zasobu lekcji, o ile je niesie.
+  const [serwer, setSerwer] = useState<NagranieZSerwera>(() => nagranieZSerwera(nagranieStart, lekcja));
   const [bladWyboruNagrania, setBladWyboruNagrania] = useState<string | null>(null);
   const wysylanie = useWysylanieLekcji(lekcja.id);
+  // Uczestnicy mają nagranie i serwer trzyma je do gotowości nowego: wysyłanie stąd to wymiana.
+  const dotychczasoweGra = serwer.serwerZnaStan && serwer.karta.rodzaj === "gotowe";
+  /** Chwila ostatniego pytania o stan nagrania; `null` do pierwszego efektu po otwarciu. */
+  const ostatniePytanieOStan = useRef<number | null>(null);
   const nagranie: StanKartyNagrania =
     wysylanie === null
-      ? nagranieZSerwera
+      ? serwer.karta
       : wysylanie.rodzaj === "wysylanie"
         ? {
             rodzaj: "wysylanie",
@@ -216,7 +224,7 @@ export function StronaLekcji({
               wyslano: wysylanie.wyslano,
               innyPlik: wysylanie.innyPlik,
             }
-          : { rodzaj: "przetwarzanie" };
+          : poWyslaniuCalegoPliku(serwer).karta;
   // Lekcja miała nagranie, zanim osoba zaczęła wysyłać nowe — karta mówi wtedy, co widzą uczestnicy.
   const zastapionoNagranie = wysylanie?.zastepuje === true;
   const wyslanoCalyPlik = wysylanie?.rodzaj === "wyslane";
@@ -233,28 +241,92 @@ export function StronaLekcji({
     { ...zapisanyFormularz, duration_seconds: zapisana.duration_seconds },
     liczbaMaterialow,
     nagranie,
+    dotychczasoweGra,
   );
+
+  /** Odpowiedź trasy stanu: stan karty, a po gotowości nagrania także czas trwania lekcji. */
+  function przyjmijStanNagrania(stanNagrania: StanNagrania) {
+    const nowy = nagranieZSerwera(stanNagrania);
+    setSerwer(nowy);
+    const gotowe = nowy.karta.rodzaj === "gotowe" && nowy.karta.nowe === undefined;
+    if (!nowy.serwerZnaStan || !gotowe || stanNagrania.status === "no_video") return;
+    const czas = stanNagrania.duration_seconds;
+    if (typeof czas !== "number" || czas <= 0 || czas === zapisana.duration_seconds) return;
+    // Serwer zapisał czas trwania gotowego nagrania w lekcji: pole czasu idzie za nim tylko
+    // wtedy, gdy osoba go nie zmieniła — wpisanej wartości nic nie nadpisuje.
+    const poprzedniCzas = formularzZLekcji(zapisana).duration;
+    const nastepna = { ...zapisana, duration_seconds: czas };
+    setZapisana(nastepna);
+    setFormularz((pola) =>
+      pola.duration === poprzedniCzas ? { ...pola, duration: formularzZLekcji(nastepna).duration } : pola,
+    );
+  }
+
+  // Efekty wołają zawsze bieżącą wersję: czyta ona ostatnio zapisaną lekcję.
+  const przyjmijStanRef = useRef(przyjmijStanNagrania);
+  useEffect(() => {
+    przyjmijStanRef.current = przyjmijStanNagrania;
+  });
 
   // Plik jest u dostawcy w całości: stan nagrania mówi odtąd serwer, uchwyt nie ma nic więcej do pokazania.
   useEffect(() => {
     if (!wyslanoCalyPlik) return;
     let aktualne = true;
+    ostatniePytanieOStan.current = Date.now();
     pobierzStanNagrania(lekcja.id)
       .catch(() => null)
       .then((stanNagrania) => {
         if (!aktualne) return;
         // Bez odpowiedzi trasy stanu wiadomo tyle, że nagranie czeka na przetworzenie.
-        setNagranieZSerwera(
-          stanNagrania === null || stanNagrania.status === "no_video"
-            ? { rodzaj: "przetwarzanie" }
-            : stanKartyZSerwera(stanNagrania),
-        );
+        if (stanNagrania === null || stanNagrania.status === "no_video") setSerwer(poWyslaniuCalegoPliku);
+        else przyjmijStanRef.current(stanNagrania);
         uchwytWysylania.zamknijWyslane(lekcja.id);
       });
     return () => {
       aktualne = false;
     };
   }, [wyslanoCalyPlik, lekcja.id]);
+
+  // Nagranie w drodze (wysyłane skądinąd albo przetwarzane): pytanie o stan idzie ponownie, nie
+  // częściej niż co 30 s i tylko gdy karta przeglądarki jest widoczna. Stan końcowy (gotowe,
+  // błąd, brak) kończy pytania. Wysyłanie z tej karty przeglądarki pokazuje uchwyt — bez pytań.
+  const odswiezajStan = serwer.wDrodze && wysylanie === null;
+  useEffect(() => {
+    if (!odswiezajStan) return;
+    let aktualne = true;
+    let zegar: ReturnType<typeof setTimeout> | undefined;
+    // Pierwszy odczyt stanu poszedł tuż przed otwarciem tego ekranu.
+    if (ostatniePytanieOStan.current === null) ostatniePytanieOStan.current = Date.now();
+
+    function zaplanuj() {
+      if (zegar !== undefined) clearTimeout(zegar);
+      zegar = undefined;
+      if (!aktualne || document.hidden) return;
+      zegar = setTimeout(zapytaj, czasDoPytaniaOStan(ostatniePytanieOStan.current ?? Date.now(), Date.now()));
+    }
+
+    function zapytaj() {
+      zegar = undefined;
+      if (!aktualne || document.hidden) return;
+      ostatniePytanieOStan.current = Date.now();
+      pobierzStanNagrania(lekcja.id)
+        .catch(() => null)
+        .then((stanNagrania) => {
+          if (!aktualne) return;
+          // Nieudany odczyt niczego nie zmienia: stan zostaje, następne pytanie za 30 s.
+          if (stanNagrania !== null) przyjmijStanRef.current(stanNagrania);
+          zaplanuj();
+        });
+    }
+
+    zaplanuj();
+    document.addEventListener("visibilitychange", zaplanuj);
+    return () => {
+      aktualne = false;
+      if (zegar !== undefined) clearTimeout(zegar);
+      document.removeEventListener("visibilitychange", zaplanuj);
+    };
+  }, [odswiezajStan, lekcja.id]);
 
   // Zamknięcie karty przeglądarki pyta, gdy jest niezapisany tekst albo trwa wysyłanie nagrania.
   useEffect(() => {
@@ -406,7 +478,7 @@ export function StronaLekcji({
       { id: zapisana.id, tytul: zapisana.title, adres: adresLekcji(zapisana.id) },
       tryb,
       // Zaplecze przypina nowe nagranie do lekcji już przy zleceniu — poprzednie przestaje być widoczne.
-      nagranieZSerwera.rodzaj === "gotowe" ? { zastepuje: true } : {},
+      serwer.karta.rodzaj === "gotowe" ? { zastepuje: true } : {},
     );
     if (wynik.rodzaj === "odmowa") setBladWyboruNagrania(zdanieBleduPliku(wynik.blad));
     if (wynik.rodzaj === "zajete") {
@@ -520,7 +592,16 @@ export function StronaLekcji({
               stan={nagranie}
               powodBrakuWysylania={powodNieaktywnegoNagrania(rola)}
               niezapisanyTekst={zmieniony}
-              wymiana={zastapionoNagranie ? "podmienia-od-razu" : "brak"}
+              wymiana={
+                wysylanie === null
+                  ? "brak"
+                  : dotychczasoweGra
+                    ? "zachowuje-poprzednie"
+                    : zastapionoNagranie && !serwer.serwerZnaStan
+                      ? "podmienia-od-razu"
+                      : "brak"
+              }
+              serwerZnaStan={serwer.serwerZnaStan}
               bladWyboru={bladWyboruNagrania}
               onWybierzPlik={(lista) => void wyslijNagranie(lista, nagranie.rodzaj === "przerwane" ? "dokoncz" : "nowe")}
               onPrzerwij={() => uchwytWysylania.przerwij()}

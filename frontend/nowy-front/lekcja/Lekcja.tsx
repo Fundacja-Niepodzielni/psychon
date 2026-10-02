@@ -23,6 +23,7 @@ import {
   ukonczLekcje,
   wyslijPostep,
   type DaneLekcji,
+  type PowodBrakuOdtwarzacza,
 } from "./dane";
 import style from "./Lekcja.module.css";
 
@@ -42,7 +43,7 @@ type StanEkranu =
   | { rodzaj: "blad" }
   | { rodzaj: "zablokowany"; komunikat: string }
   | { rodzaj: "nie-znaleziono" }
-  | { rodzaj: "ok"; dane: DaneLekcji; bezNagrania: boolean };
+  | { rodzaj: "ok"; dane: DaneLekcji; bezNagrania: boolean; nagranie?: PowodBrakuOdtwarzacza };
 
 interface WlasciwosciLekcja {
   id: string;
@@ -80,6 +81,13 @@ interface WlasciwosciLekcja {
  * (progress bar, active-time sentence, the completion button unlocking when
  * `completable` turns true). A failed send keeps the increments for the next
  * tick and shows a notice with a retry button.
+ *
+ * Recording not playable yet (`nagranie: "w-przygotowaniu"` — being sent,
+ * processed or failed at the provider, or the link refused with
+ * `video_not_ready`): no player frame, one sentence "Nagranie w
+ * przygotowaniu." and the rest of the lesson as usual; never the empty state
+ * that says the lesson has no recording. A recording link that failed for
+ * another reason shows an error notice with a retry button.
  */
 export function Lekcja({ id }: WlasciwosciLekcja) {
   const router = useRouter();
@@ -134,7 +142,7 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
     return pobierzDaneLekcji(id).then((wynik) => {
       if (straz?.anulowane) return;
       if (wynik.status === "ok") {
-        setStan({ rodzaj: "ok", dane: wynik.dane, bezNagrania: wynik.bezNagrania });
+        setStan({ rodzaj: "ok", dane: wynik.dane, bezNagrania: wynik.bezNagrania, nagranie: wynik.nagranie });
       } else if (wynik.status === "zablokowany") {
         setStan({ rodzaj: "zablokowany", komunikat: wynik.komunikat });
       } else if (wynik.status === "nie-znaleziono") {
@@ -281,105 +289,123 @@ export function Lekcja({ id }: WlasciwosciLekcja) {
     );
   }
 
-  const { dane, bezNagrania } = stan;
+  const { dane, bezNagrania, nagranie } = stan;
   const procent = procentAktywnegoCzasu(dane);
   const mozeUkonczyc = dane.completable && !dane.is_completed;
   const brakujacyProcent = Math.max(0, dane.completable_at_percent - procent);
   const uklad = ukladGlownej(dane, bezNagrania);
 
   return (
-    <LessonTemplate
-      naglowek={{
-        okruszki: okruszkiLekcji(dane),
-        tytul: dane.title,
-        onPowrot: () => router.back(),
-      }}
-      glowna={
-        <div className={style.glowna}>
-          {uklad === "odtwarzacz" && (
-            <LessonPlayer
-              tytul={dane.title}
-              tresc={dane.description ?? ""}
-              krokiZrobione={dane.is_completed ? 1 : 0}
-              krokiRazem={1}
-              materialy={[]}
-              pytania={[]}
-              onZadajPytanie={() => {}}
-              onZmianaOdtwarzania={(odtwarzane) => {
-                odtwarzaneRef.current = odtwarzane;
-              }}
-              czasTrwaniaSekund={dane.duration_seconds}
-              obejrzaneSekundy={dane.watched_seconds}
-              procentAktywnegoCzasu={procent}
-              progUkonczenia={dane.completable_at_percent}
-              braki={[]}
-              bezNagrania={bezNagrania}
-              pusty={{
-                naglowek: "Lekcja bez treści",
-                tresc: "Ta lekcja nie ma jeszcze nagrania ani treści.",
-                przycisk: { etykieta: "Wróć do kursu", onClick: () => router.back() },
-              }}
-            />
-          )}
-          {uklad === "sama-tresc" && <Heading stopien={2}>{dane.title}</Heading>}
-          {uklad === "pusta" && (
-            <EmptyState
-              naglowek="Lekcja bez treści"
-              tresc="Ta lekcja nie ma jeszcze nagrania ani treści."
-              przycisk={{ etykieta: "Wróć do kursu", onClick: () => router.back() }}
-            />
-          )}
-
-          {bladZapisu && (
-            <Notice
-              wariant="error"
-              tytul="Postęp nie został zapisany"
-              akcja={
-                <Button poziom="outline" onClick={() => void wyslijZebrane()}>
-                  Spróbuj ponownie
-                </Button>
-              }
-            >
-              Sprawdź połączenie i spróbuj ponownie. Czas oglądania zostanie dopisany przy następnym zapisie.
-            </Notice>
-          )}
-
-          <div className={style.ukonczenie} role="group" aria-label="Ukończenie lekcji">
-            {dane.is_completed ? (
-              <Notice wariant="ok" tytul="Lekcja ukończona">
-                Ta lekcja jest już ukończona.
+    <div className={style.strona}>
+      <LessonTemplate
+        naglowek={{
+          okruszki: okruszkiLekcji(dane),
+          tytul: dane.title,
+          onPowrot: () => router.back(),
+        }}
+        glowna={
+          <div className={style.glowna}>
+            {uklad === "odtwarzacz" && (
+              <LessonPlayer
+                tytul={dane.title}
+                tresc={dane.description ?? ""}
+                krokiZrobione={dane.is_completed ? 1 : 0}
+                krokiRazem={1}
+                materialy={[]}
+                pytania={[]}
+                onZadajPytanie={() => {}}
+                onZmianaOdtwarzania={(odtwarzane) => {
+                  odtwarzaneRef.current = odtwarzane;
+                }}
+                czasTrwaniaSekund={dane.duration_seconds}
+                obejrzaneSekundy={dane.watched_seconds}
+                procentAktywnegoCzasu={procent}
+                progUkonczenia={dane.completable_at_percent}
+                braki={[]}
+                bezNagrania={bezNagrania}
+                pusty={{
+                  naglowek: "Lekcja bez treści",
+                  tresc: "Ta lekcja nie ma jeszcze nagrania ani treści.",
+                  przycisk: { etykieta: "Wróć do kursu", onClick: () => router.back() },
+                }}
+              />
+            )}
+            {(uklad === "sama-tresc" || (uklad === "pusta" && nagranie !== undefined)) && (
+              <Heading stopien={2}>{dane.title}</Heading>
+            )}
+            {nagranie === "w-przygotowaniu" && <Text>Nagranie w przygotowaniu.</Text>}
+            {nagranie === "blad" && (
+              <Notice
+                wariant="error"
+                tytul="Nie udało się wczytać nagrania"
+                akcja={
+                  <Button poziom="outline" onClick={ponow}>
+                    Spróbuj ponownie
+                  </Button>
+                }
+              >
+                Sprawdź połączenie i spróbuj ponownie. Pozostała część lekcji jest dostępna poniżej.
               </Notice>
-            ) : (
-              <>
-                {bladUkonczenia && (
-                  <Notice wariant="error" tytul="Nie udało się ukończyć lekcji">
-                    {bladUkonczenia}
-                  </Notice>
-                )}
-                <Button
-                  poziom={mozeUkonczyc ? "primary" : "outline"}
-                  disabled={!mozeUkonczyc || wysylanie}
-                  onClick={() => void oznaczUkonczona()}
-                >
-                  {wysylanie ? "Zapisywanie…" : "Oznacz jako ukończoną"}
-                </Button>
-                {!dane.completable && (
-                  <Text wariant="pusty">
-                    Brakuje {brakujacyProcent}% aktywnego czasu do progu {dane.completable_at_percent}%.
-                  </Text>
-                )}
-              </>
+            )}
+            {uklad === "pusta" && nagranie === undefined && (
+              <EmptyState
+                naglowek="Lekcja bez treści"
+                tresc="Ta lekcja nie ma jeszcze nagrania ani treści."
+                przycisk={{ etykieta: "Wróć do kursu", onClick: () => router.back() }}
+              />
+            )}
+
+            {bladZapisu && (
+              <Notice
+                wariant="error"
+                tytul="Postęp nie został zapisany"
+                akcja={
+                  <Button poziom="outline" onClick={() => void wyslijZebrane()}>
+                    Spróbuj ponownie
+                  </Button>
+                }
+              >
+                Sprawdź połączenie i spróbuj ponownie. Czas oglądania zostanie dopisany przy następnym zapisie.
+              </Notice>
+            )}
+
+            <div className={style.ukonczenie} role="group" aria-label="Ukończenie lekcji">
+              {dane.is_completed ? (
+                <Notice wariant="ok" tytul="Lekcja ukończona">
+                  Ta lekcja jest już ukończona.
+                </Notice>
+              ) : (
+                <>
+                  {bladUkonczenia && (
+                    <Notice wariant="error" tytul="Nie udało się ukończyć lekcji">
+                      {bladUkonczenia}
+                    </Notice>
+                  )}
+                  <Button
+                    poziom={mozeUkonczyc ? "primary" : "outline"}
+                    disabled={!mozeUkonczyc || wysylanie}
+                    onClick={() => void oznaczUkonczona()}
+                  >
+                    {wysylanie ? "Zapisywanie…" : "Oznacz jako ukończoną"}
+                  </Button>
+                  {!dane.completable && (
+                    <Text wariant="pusty">
+                      Brakuje {brakujacyProcent}% aktywnego czasu do progu {dane.completable_at_percent}%.
+                    </Text>
+                  )}
+                </>
+              )}
+            </div>
+
+            {maTekst(dane.content) && (
+              <div role="region" aria-label="Treść lekcji">
+                <TrescLekcji tresc={dane.content} />
+              </div>
             )}
           </div>
-
-          {maTekst(dane.content) && (
-            <div role="region" aria-label="Treść lekcji">
-              <TrescLekcji tresc={dane.content} />
-            </div>
-          )}
-        </div>
-      }
-      wspierajaca={pliki !== null && pliki.length > 0 ? <PlikiLekcji pliki={pliki} odswiez={odswiezPliki} /> : null}
-    />
+        }
+        wspierajaca={pliki !== null && pliki.length > 0 ? <PlikiLekcji pliki={pliki} odswiez={odswiezPliki} /> : null}
+      />
+    </div>
   );
 }

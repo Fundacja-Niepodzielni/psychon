@@ -248,7 +248,7 @@ describe("wymiana nagrania", () => {
       const { sekcja, unmount } = karta(stan, { wymiana: "zachowuje-poprzednie" });
       expect(
         within(sekcja).getByText(
-          "Uczestnicy oglądają poprzednie nagranie. Nowe zastąpi je samo, gdy będzie gotowe. Jeśli się nie uda, zostanie poprzednie.",
+          "Uczestnicy oglądają dotychczasowe nagranie. Nowe zastąpi je samo, gdy będzie gotowe. Jeśli się nie uda, zostanie dotychczasowe.",
         ),
       ).toBeInTheDocument();
       unmount();

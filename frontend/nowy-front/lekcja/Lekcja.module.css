@@ -11,3 +11,15 @@
   flex-direction: column;
   gap: var(--space-8);
 }
+
+/* A long lesson title without spaces wraps instead of widening the page. */
+.strona {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The last breadcrumb repeats the lesson title; its text atom sets its own
+   wrapping, so the rule is repeated for it. */
+.strona nav p {
+  overflow-wrap: anywhere;
+}

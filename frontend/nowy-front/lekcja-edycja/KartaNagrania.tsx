@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
+import { Link } from "@/design-system/atomy/Link/Link";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { FileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
@@ -23,8 +24,8 @@ import style from "./StronaLekcji.module.css";
  * - `brak` — lekcja nie miała nagrania, karta o wymianie milczy;
  * - `podmienia-od-razu` — zaplecze odpina poprzednie nagranie w chwili
  *   rozpoczęcia wysyłania (tak działa dziś);
- * - `zachowuje-poprzednie` — uczestnicy oglądają poprzednie nagranie, dopóki
- *   nowe nie jest gotowe (ekran go dziś nie ustawia).
+ * - `zachowuje-poprzednie` — uczestnicy oglądają dotychczasowe nagranie, dopóki
+ *   nowe nie jest gotowe (serwer podaje stan nagrania w polach).
  */
 export type WymianaNagrania = "brak" | "podmienia-od-razu" | "zachowuje-poprzednie";
 
@@ -37,6 +38,11 @@ export interface WlasciwosciKartyNagrania {
   /** Czy na stronie jest niezapisany tekst lekcji. */
   niezapisanyTekst: boolean;
   wymiana?: WymianaNagrania;
+  /**
+   * Serwer podaje stan nagrania w polach: stan nagrania w drodze odświeża się
+   * sam, a nowe nagranie zastępuje dotychczasowe dopiero po gotowości.
+   */
+  serwerZnaStan?: boolean;
   /** Odmowa wyboru pliku (np. plik nie jest nagraniem) — pod polem wyboru. */
   bladWyboru?: string | null;
   onWybierzPlik: (pliki: FileList) => void;
@@ -67,13 +73,20 @@ function Etapy({ biezacy }: { biezacy: 1 | 2 }) {
 const ZDANIA_WYMIANY: Record<Exclude<WymianaNagrania, "brak">, string> = {
   "podmienia-od-razu": "Uczestnicy nie widzą już poprzedniego nagrania. Nowe zobaczą, gdy będzie gotowe.",
   "zachowuje-poprzednie":
-    "Uczestnicy oglądają poprzednie nagranie. Nowe zastąpi je samo, gdy będzie gotowe. Jeśli się nie uda, zostanie poprzednie.",
+    "Uczestnicy oglądają dotychczasowe nagranie. Nowe zastąpi je samo, gdy będzie gotowe. Jeśli się nie uda, zostanie dotychczasowe.",
 };
+
+const ZDANIE_ODSWIEZANIA = "Stan nagrania odświeża się tutaj sam, dopóki ta karta przeglądarki jest otwarta.";
+const ETYKIETA_WYSLANIA_STAD = "Wyślij nagranie stąd";
+const PODPOWIEDZ_WYSLANIA_STAD =
+  "Jeśli tamto wysyłanie zostało przerwane, wybierz plik tutaj – wysyłanie zacznie się od początku.";
 
 /**
  * Karta „Nagranie” strony lekcji — jeden komponent o jawnych stanach: brak,
- * wysyłanie, przerwane, przetwarzanie, gotowe, błąd; do tego zdanie o wymianie
- * poprzedniego nagrania. Karta nie zna sieci: stan i zdarzenia dostaje z ekranu.
+ * wysyłanie (stąd albo skądinąd), przerwane, przetwarzanie, gotowe, błąd; do
+ * tego wymiana: uczestnicy oglądają dotychczasowe nagranie, a nowe jest w
+ * drodze albo skończyło się błędem. Karta nie zna sieci: stan i zdarzenia
+ * dostaje z ekranu.
  */
 export function KartaNagrania({
   id,
@@ -81,6 +94,7 @@ export function KartaNagrania({
   powodBrakuWysylania,
   niezapisanyTekst,
   wymiana = "brak",
+  serwerZnaStan = false,
   bladWyboru = null,
   onWybierzPlik,
   onPrzerwij,
@@ -165,17 +179,64 @@ export function KartaNagrania({
             ? "Zapisz tekst lekcji, zanim zamkniesz kartę przeglądarki. Nagranie przetworzy się samo."
             : "Możesz wszystko zamknąć – nagranie przetworzy się samo."}
         </Text>
-        <Hint>Gotowe nagranie zobaczysz tutaj po ponownym otwarciu lekcji.</Hint>
+        <Hint>{serwerZnaStan ? ZDANIE_ODSWIEZANIA : "Gotowe nagranie zobaczysz tutaj po ponownym otwarciu lekcji."}</Hint>
         {zdanieWymiany}
       </>
     );
+  } else if (stan.rodzaj === "wysylane") {
+    tresc = (
+      <>
+        <Etapy biezacy={1} />
+        <Text>Nagranie jest wysyłane z innej karty przeglądarki albo z innego urządzenia.</Text>
+        <Hint>{ZDANIE_ODSWIEZANIA}</Hint>
+        {wybor(ETYKIETA_WYSLANIA_STAD, PODPOWIEDZ_WYSLANIA_STAD)}
+      </>
+    );
   } else if (stan.rodzaj === "gotowe") {
+    const podglad = stan.podglad ? (
+      <div>
+        <Link href={stan.podglad} target="_blank" rel="noopener noreferrer">
+          Otwórz podgląd nagrania w nowej karcie przeglądarki
+        </Link>
+      </div>
+    ) : null;
     tresc = (
       <>
         <Text>Nagranie jest gotowe. Czas trwania: {czasNagrania(stan.czasSekundy)}.</Text>
-        {wybor(
-          "Wyślij inne nagranie",
-          "Po wybraniu pliku uczestnicy od razu przestaną widzieć obecne nagranie. Nowe zobaczą, gdy będzie gotowe.",
+        {podglad}
+        {stan.nowe === undefined &&
+          wybor(
+            "Wyślij inne nagranie",
+            serwerZnaStan
+              ? "Uczestnicy będą oglądać obecne nagranie, dopóki nowe nie będzie gotowe."
+              : "Po wybraniu pliku uczestnicy od razu przestaną widzieć obecne nagranie. Nowe zobaczą, gdy będzie gotowe.",
+          )}
+        {stan.nowe === "wysylanie" && (
+          <>
+            <p className={style.mocne}>
+              Uczestnicy oglądają dotychczasowe nagranie. Nowe nagranie jest wysyłane i zastąpi dotychczasowe samo, gdy
+              będzie gotowe.
+            </p>
+            <Hint>{ZDANIE_ODSWIEZANIA}</Hint>
+            {wybor(ETYKIETA_WYSLANIA_STAD, PODPOWIEDZ_WYSLANIA_STAD)}
+          </>
+        )}
+        {stan.nowe === "przetwarzanie" && (
+          <>
+            <p className={style.mocne}>
+              Uczestnicy oglądają dotychczasowe nagranie. Nowe nagranie się przetwarza – zwykle 10–30 minut – i zastąpi
+              dotychczasowe samo, gdy będzie gotowe.
+            </p>
+            <Hint>{ZDANIE_ODSWIEZANIA}</Hint>
+          </>
+        )}
+        {stan.nowe === "blad" && (
+          <>
+            <ErrorText id={`${id}-blad-nowego`}>
+              Nowe nagranie nie zostało przetworzone. Uczestnicy nadal oglądają dotychczasowe nagranie.
+            </ErrorText>
+            {wybor("Wyślij nowe nagranie ponownie", "Dotychczasowe nagranie zostaje, dopóki nowe nie będzie gotowe.")}
+          </>
         )}
       </>
     );
@@ -200,7 +261,11 @@ export function KartaNagrania({
 
   return (
     <KartaBoczna tytul="Nagranie" opis="Zapisuje się samo" kotwica="nagranie">
-      <div className={style.trescKarty} data-stan-nagrania={stan.rodzaj}>
+      <div
+        className={style.trescKarty}
+        data-stan-nagrania={stan.rodzaj}
+        data-nowe-nagranie={stan.rodzaj === "gotowe" ? stan.nowe : undefined}
+      >
         {tresc}
       </div>
     </KartaBoczna>
