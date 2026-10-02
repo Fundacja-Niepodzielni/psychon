@@ -27,6 +27,7 @@ import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
+import { zdanieRuchuMiedzyGrupami, zdanieRuchuWiersza } from "@/design-system/molekuly/StrzalkiKolejnosci/zdania";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { CourseTree } from "@/design-system/organizmy/CourseTree/CourseTree";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
@@ -239,7 +240,7 @@ type CelFokusu =
   | { cel: "dodaj"; temat: number }
   | { cel: "formularz" }
   | { cel: "tematy" }
-  | { cel: "kolejnosc" };
+  | { cel: "drzewo" };
 
 interface FormularzNowejLekcji {
   temat: number;
@@ -439,9 +440,8 @@ function EdytorTematow({
 
   // Zamknięcie formularza albo okna pytania oddaje fokus przyciskowi, który
   // istnieje i jest widoczny: „Edytuj” tej lekcji, „Dodaj lekcję” tematu albo
-  // pierwsze pole formularza, a gdy go nie ma („Edytuj” ukryte w trybie
-  // kolejności na wąskim oknie) — przełącznik „Kolejność”. Fokus nigdy nie
-  // zostaje na `body`.
+  // pierwsze pole formularza, a gdy go nie ma — pierwszy przycisk „Dodaj lekcję”
+  // drzewa. Fokus nigdy nie zostaje na `body`.
   useEffect(() => {
     if (fokus === null) return;
     const selektory: string[] = [];
@@ -449,14 +449,9 @@ function EdytorTematow({
     if (fokus.cel === "dodaj") selektory.push(`[data-testid="ct-dodaj-${fokus.temat}"]`);
     if (fokus.cel === "formularz") selektory.push("[data-rozwiniecie-lekcji] input", "[data-pod-tematem] input");
     if (fokus.cel === "tematy") selektory.push("[data-dodaj-temat]");
-    // Przełącznik „Kolejność” istnieje tylko na wąskim oknie; na szerokim
-    // ostatnim celem jest pierwszy przycisk „Dodaj lekcję” drzewa.
+    // Ostatnim celem jest pierwszy przycisk „Dodaj lekcję” drzewa.
     // Kurs bez tematów ma w tym miejscu tylko przycisk stanu pustego.
-    selektory.push(
-      `#${KOTWICA_LEKCJI} button[aria-pressed]`,
-      `#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`,
-      `#${KOTWICA_LEKCJI} button`,
-    );
+    selektory.push(`#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`, `#${KOTWICA_LEKCJI} button`);
     for (const selektor of selektory) {
       const element = document.querySelector<HTMLElement>(selektor);
       if (!element) continue;
@@ -476,7 +471,7 @@ function EdytorTematow({
     if (bylo === 0 || liczbaZmianTeraz !== 0) return;
     const aktywny = document.activeElement;
     if (aktywny !== null && aktywny !== document.body && document.body.contains(aktywny)) return;
-    const cele = [`#${KOTWICA_LEKCJI} button[aria-pressed]`, `#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`, `#${KOTWICA_LEKCJI} button`];
+    const cele = [`#${KOTWICA_LEKCJI} [data-testid^="ct-dodaj-"]`, `#${KOTWICA_LEKCJI} button`];
     for (const selektor of cele) {
       const element = document.querySelector<HTMLElement>(selektor);
       if (!element) continue;
@@ -661,7 +656,7 @@ function EdytorTematow({
     zamknijFormularzeLekcji();
     // Wiersza już nie ma: fokus dostaje „Dodaj lekcję” tematu, w którym stała.
     const temat = stan.rodzaj === "gotowy" ? stan.lokalny.tematy.find((wpis) => wpis.lekcje.includes(idLekcji)) : null;
-    setFokus(temat ? { cel: "dodaj", temat: temat.id } : { cel: "kolejnosc" });
+    setFokus(temat ? { cel: "dodaj", temat: temat.id } : { cel: "drzewo" });
     setToast("Lekcja została usunięta.");
   }
 
@@ -1051,7 +1046,9 @@ function EdytorTematow({
             if (!cel || miejsce === 0) return;
             const tytul = stan.lokalny.tytulyLekcji[Number(lekcja)] ?? "";
             setOgloszenie(
-              `Lekcja „${tytul}” przeniesiona do tematu „${cel.tytul}”, miejsce ${miejsce} z ${cel.lekcje.length}.`,
+              zTematu === doTematu
+                ? zdanieRuchuWiersza(tytul, miejsce, cel.lekcje.length)
+                : zdanieRuchuMiedzyGrupami(tytul, cel.tytul, miejsce, cel.lekcje.length),
             );
           };
           // Wiersz z otwartym formularzem, przenoszony do innego tematu, zmienia
@@ -1101,18 +1098,6 @@ function EdytorTematow({
                   setEdytowanaLekcja(id);
                 });
               }
-            : undefined
-        }
-        // Tryb kolejności przy otwartym formularzu lekcji: pytanie, gdy są
-        // zmiany, a bez zmian formularz się zamyka. Fokus zostaje na przełączniku.
-        onPrzedTrybemKolejnosci={
-          edycjaLekcji
-            ? (wlacz) =>
-                zFormularzaLekcji(() => {
-                  zamknijFormularzeLekcji();
-                  wlacz();
-                  setFokus({ cel: "kolejnosc" });
-                })
             : undefined
         }
         podTematem={

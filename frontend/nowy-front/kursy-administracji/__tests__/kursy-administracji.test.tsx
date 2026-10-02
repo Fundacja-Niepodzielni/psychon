@@ -408,12 +408,26 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
       .map((li) => li.querySelector("span > span:nth-child(2)")?.textContent);
   }
 
-  it("lista kolejności zawiera tylko kursy ze ścieżki; pierwszy „W górę” i ostatni „W dół” są wyłączone", async () => {
+  it("lista kolejności zawiera tylko kursy ze ścieżki; pierwszy „wyżej” i ostatni „niżej” są wyłączone, ale zostają w kolejności fokusu", async () => {
     await otworz();
     expect(kolejnosc()).toEqual(["Podstawy pomocy", "Wywiad psychologiczny", "Interwencja"]);
-    expect(screen.getByRole("button", { name: "Przesuń w górę: Podstawy pomocy" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Przesuń w dół: Interwencja" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy" })).toBeEnabled();
+    const wGore = screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” wyżej" });
+    const wDol = screen.getByRole("button", { name: "Przenieś „Interwencja” niżej" });
+    expect(wGore).toHaveAttribute("aria-disabled", "true");
+    expect(wDol).toHaveAttribute("aria-disabled", "true");
+    expect(wGore).not.toBeDisabled();
+    expect(wDol).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" })).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("strzałki stoją po lewej, przed numerem, a wiersz nie ma przycisków z tekstem „W górę” i „W dół”", async () => {
+    await otworz();
+    const wiersz = within(screen.getByRole("region", { name: "Kolejność ścieżki" })).getAllByRole("listitem")[0];
+    const dzieci = Array.from(wiersz.children);
+    expect(dzieci[0].querySelectorAll("button")).toHaveLength(2);
+    expect(dzieci[1].textContent).toBe("1.Podstawy pomocy");
+    expect(screen.queryByRole("button", { name: "W górę" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "W dół" })).toBeNull();
   });
 
   it("w trakcie zmiany „Utwórz kurs” jest niedostępny z powodem, a kliknięcie nie otwiera formularza", async () => {
@@ -427,23 +441,50 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
 
   it("przesunięcie: zmienia kolejność, ogłasza pozycję i zostawia fokus na przycisku przeniesionego kursu", async () => {
     await otworz();
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
     expect(kolejnosc()).toEqual(["Wywiad psychologiczny", "Podstawy pomocy", "Interwencja"]);
-    expect(screen.getByText(["Kurs „Podstawy pomocy” jest teraz na", "pozycji", 2, "z 3."].join(" "))).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy" })).toHaveFocus();
+    expect(screen.getByText("Przeniesiono „Podstawy pomocy” na miejsce 2 z 3.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" })).toHaveFocus();
   });
 
-  it("kurs dociera na brzeg: fokus przechodzi na przeciwny przycisk tego samego kursu", async () => {
+  it("kurs dociera na brzeg: strzałka robi się wyłączona, ale fokus zostaje na niej", async () => {
     await otworz();
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń w dół: Wywiad psychologiczny" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Wywiad psychologiczny” niżej" }));
     expect(kolejnosc()).toEqual(["Podstawy pomocy", "Interwencja", "Wywiad psychologiczny"]);
-    expect(screen.getByRole("button", { name: "Przesuń w dół: Wywiad psychologiczny" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Przesuń w górę: Wywiad psychologiczny" })).toHaveFocus();
+    const wDol = screen.getByRole("button", { name: "Przenieś „Wywiad psychologiczny” niżej" });
+    expect(wDol).toHaveAttribute("aria-disabled", "true");
+    expect(wDol).toHaveFocus();
+  });
+
+  it("cofnięcie ruchu jest przeciwną strzałką tego samego wiersza, bez osobnego „Cofnij”", async () => {
+    await otworz();
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” wyżej" }));
+    expect(kolejnosc()).toEqual(["Podstawy pomocy", "Wywiad psychologiczny", "Interwencja"]);
+    expect(screen.queryByRole("button", { name: /Cofnij/ })).toBeNull();
+  });
+
+  it("ta sama sekwencja kliknięć daje te same dwa żądania co przed zmianą wyglądu (treść bajt w bajt)", async () => {
+    await otworz();
+    api.mockResolvedValueOnce(PODGLAD).mockResolvedValueOnce([]);
+    apiPaged.mockResolvedValueOnce({ data: [], meta: { ...META, total: 0 } });
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Interwencja” wyżej" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sprawdź wpływ zmiany" }));
+    const okno = await screen.findByRole("dialog");
+    await userEvent.click(within(okno).getByRole("button", { name: "Potwierdź zmianę kolejności" }));
+    await screen.findByText("Zapisano nową kolejność ścieżki.");
+    const zapisane = api.mock.calls.map(([sciezka, opcje]) => [sciezka, opcje.method, JSON.stringify(opcje.body)]);
+    expect(zapisane).toEqual([
+      ["/admin/courses/reorder/preview", "POST", '{"course_ids":[3,2,1]}'],
+      ["/admin/courses/reorder", "PATCH", '{"course_ids":[3,2,1]}'],
+    ]);
   });
 
   it("anulowanie: wraca lista, nic nie jest wysłane, fokus na „Zmień kolejność ścieżki”", async () => {
     await otworz();
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
     await userEvent.click(screen.getByRole("button", { name: "Anuluj" }));
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Kolejność ścieżki" })).toBeNull());
     expect(wierszeListy()).toHaveLength(4);
@@ -454,7 +495,7 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
   it("sprawdzenie wpływu: POST podglądu z nową kolejnością, okno z tabelą osób", async () => {
     await otworz();
     api.mockResolvedValueOnce(PODGLAD);
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
     await userEvent.click(screen.getByRole("button", { name: "Sprawdź wpływ zmiany" }));
 
     const okno = await screen.findByRole("dialog");
@@ -498,7 +539,7 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
   it("wycofanie z okna: okno znika, kolejność zostaje do dalszej pracy, zapis nie wychodzi", async () => {
     await otworz();
     api.mockResolvedValueOnce(PODGLAD);
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
     await userEvent.click(screen.getByRole("button", { name: "Sprawdź wpływ zmiany" }));
     const okno = await screen.findByRole("dialog");
     await userEvent.click(within(okno).getByRole("button", { name: "Anuluj" }));
@@ -514,7 +555,7 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
       data: [kurs(2, { title: "Wywiad psychologiczny", sequence_order: 1 }), kurs(1, { title: "Podstawy pomocy", sequence_order: 2 })],
       meta: { ...META, total: 2 },
     });
-    await userEvent.click(screen.getByRole("button", { name: "Przesuń w dół: Podstawy pomocy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" }));
     await userEvent.click(screen.getByRole("button", { name: "Sprawdź wpływ zmiany" }));
     const okno = await screen.findByRole("dialog");
     await userEvent.click(within(okno).getByRole("button", { name: "Potwierdź zmianę kolejności" }));

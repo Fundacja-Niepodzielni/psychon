@@ -4,9 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { CourseTree, type TematCourseTree } from "../CourseTree";
 
 /**
- * Próby drzewa kursu dla upuszczenia i nazw przycisków pasma tematu:
- *  1) upuszczenie lekcji na pasmo tematu i na wiersz lekcji zatrzymuje domyślną
- *     czynność przeglądarki (np. otwarcie przeciąganego adresu);
+ * Próby drzewa kursu dla braku przeciągania i nazw przycisków pasma tematu:
+ *  1) świadek: przeciąganie wierszy nie istnieje — upuszczenie niczego nie
+ *     przenosi (kolejność zmieniają wyłącznie strzałki);
  *  2) przyciski pasma niosą nazwę tematu w nazwie dostępnej, a widoczny tekst
  *     stoi na jej początku.
  */
@@ -29,20 +29,18 @@ function akcje() {
   };
 }
 
-describe("CourseTree — upuszczenie", () => {
-  it("upuszczenie na pasmo tematu zatrzymuje domyślną czynność przeglądarki", () => {
-    render(<CourseTree tematy={TEMATY} {...akcje()} />);
+describe("CourseTree — brak przeciągania", () => {
+  it("upuszczenie na pasmo tematu ani na wiersz lekcji nie przenosi lekcji i nie jest przechwytywane", () => {
+    const wlasciwosci = akcje();
+    const { container } = render(<CourseTree tematy={TEMATY} {...wlasciwosci} />);
     const pasmo = screen.getByRole("heading", { name: "Praktyka" }).parentElement!;
-
-    // `fireEvent` zwraca `false`, gdy obsługa zawołała `preventDefault()`.
-    expect(fireEvent.drop(pasmo)).toBe(false);
-  });
-
-  it("upuszczenie na wiersz lekcji zatrzymuje domyślną czynność przeglądarki", () => {
-    const { container } = render(<CourseTree tematy={TEMATY} {...akcje()} />);
     const wiersz = container.querySelector<HTMLElement>('[data-lekcja="l3"]')!;
 
-    expect(fireEvent.drop(wiersz)).toBe(false);
+    // `fireEvent` zwraca `true`, gdy nikt nie zawołał `preventDefault()`.
+    expect(fireEvent.drop(pasmo)).toBe(true);
+    expect(fireEvent.drop(wiersz)).toBe(true);
+    expect(wlasciwosci.onPrzenies).not.toHaveBeenCalled();
+    expect(container.querySelectorAll("[draggable]")).toHaveLength(0);
   });
 });
 

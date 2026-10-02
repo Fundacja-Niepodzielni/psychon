@@ -154,7 +154,7 @@ function Poligon() {
       </div>
 
       {/* O12 CourseTree — rozwinięty z działającym przenoszeniem, zwinięty temat,
-          niezapisane zmiany, tryb kolejności, przeciągany z celem, lekcja
+          niezapisane zmiany, lekcja
           rozwinięta do edycji (przycisk „Edytuj” i treść pod wierszem), pusty,
           ładowanie, błąd */}
       <div data-style-id="o12-coursetree-rozwiniete">
@@ -165,17 +165,6 @@ function Poligon() {
       </div>
       <div data-style-id="o12-coursetree-zmieniony">
         <CourseTree {...AKCJE_CT} tematy={TEMATY_ZMIENIONE} liczbaZmian={2} />
-      </div>
-      <div data-style-id="o12-coursetree-kolejnosc">
-        <CourseTree {...AKCJE_CT} tematy={TEMATY_CT} liczbaZmian={0} poczatkowoTrybKolejnosci />
-      </div>
-      <div data-style-id="o12-coursetree-przeciagany">
-        <CourseTree
-          {...AKCJE_CT}
-          tematy={TEMATY_CT}
-          liczbaZmian={0}
-          poczatkowePrzeciaganie={{ lekcja: "l4", celTemat: "temat-1", celIndeks: 1 }}
-        />
       </div>
       <div data-style-id="o12-coursetree-edycja-lekcji">
         <CourseTree

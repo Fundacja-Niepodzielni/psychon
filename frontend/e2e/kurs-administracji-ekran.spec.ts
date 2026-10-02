@@ -305,7 +305,7 @@ async function celeEkranu(page: Page): Promise<Cel[]> {
         indeks,
         opis: (wezel.getAttribute("aria-label") ?? wezel.textContent ?? "").trim().slice(0, 70),
         obszar: wezel.closest<HTMLElement>("[data-obszar]:not([data-obszar='tylko-od-dwoch-kolumn'])")?.dataset.obszar ?? "",
-        strzalka: (wezel.dataset.fokus ?? "").startsWith("lekcja-"),
+        strzalka: wezel.hasAttribute("data-strzalka"),
         wOkruszkach: wezel.closest("nav") !== null,
         tlo: styl.backgroundColor,
         x: ramka.left + window.scrollX,
@@ -457,12 +457,12 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const { zapisy } = await instalujAtrapy(page, stan);
       await otworz(page, stan);
 
-      const wDol = page.getByRole("button", { name: "Przesuń lekcję „Wprowadzenie do wywiadu” w dół" });
+      const wDol = page.getByRole("button", { name: "Przenieś „Wprowadzenie do wywiadu” niżej" });
       await wDol.click();
       await expect(page.locator("li[data-lekcja]").first()).toHaveAttribute("data-lekcja", "22");
       await expect(wDol).toBeFocused();
       await expect(page.locator("[data-ogloszenia]")).toHaveText(
-        "Lekcja „Wprowadzenie do wywiadu” jest teraz na miejscu 2, w temacie „Podstawy”.",
+        "Przeniesiono „Wprowadzenie do wywiadu” na miejsce 2 z 2.",
       );
       await expect.poll(() => zapisy.length).toBe(1);
       expect(zapisy[0]).toEqual({

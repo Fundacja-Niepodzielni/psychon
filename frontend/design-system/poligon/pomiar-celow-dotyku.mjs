@@ -220,7 +220,7 @@ const CELE = [
   { nazwa: "PublishChecklist (odnośnik braku)", selektor: '[data-style-id="organizm-o7-z-brakami"] li:nth-of-type(1) a' },
   // Organizmy kursu, wykresu i lekcji — montowane w `lekcja.html`, nie w main.tsx.
   { nazwa: "TimeChart (rozwinięcie tabeli)", strona: "lekcja.html", selektor: '[data-style-id="o13-timechart-z-danymi"] button' },
-  { nazwa: "CourseTree (strzałka przeniesienia)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-kolejnosc"] [aria-label="Przenieś „Zasady programu” niżej"]' },
+  { nazwa: "StrzalkiKolejnosci (strzałka)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [aria-label="Przenieś „Zasady programu” niżej"]' },
   { nazwa: "CourseTree (zmiana nazwy)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-edytuj-l1"]' },
   { nazwa: "CourseTree (edycja lekcji)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-edycja-lekcji"] [data-edytuj-lekcje="l1"]' },
   { nazwa: "CourseTree (dodanie lekcji)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-dodaj-temat-1"]' },
@@ -346,10 +346,21 @@ function progDlaCelu(nazwaElementu) {
 // 20px szerokości) przy poprawnej wysokości jest tak samo niedotykalny jak
 // cel niski. Wcześniej skrypt zbierał `szerokosc`, drukował ją w JSON i nigdy
 // z niczym nie porównywał — 20px szerokości przy 44px wysokości dawało exit 0.
-const ponizejProgu = wyniki.filter((w) => {
+// Wyjątek zamierzony: strzałki kolejności na szerokim oknie (od 1100 px) mają pole
+// 28 × 24 px — decyzja właściciela (dwie strzałki jedna pod drugą w wierszu
+// obsługiwanym wskaźnikiem). To NIE jest zwolnienie z pomiaru: na szerokim
+// oknie wymiar musi wynosić dokładnie tyle, a każda inna wartość (większa,
+// mniejsza) jest naruszeniem. Na wąskim oknie (412 px) obowiązuje próg 44 px jak wszędzie.
+const POLE_NA_SZEROKIM_OKNIE = new Map([["StrzalkiKolejnosci (strzałka)", { viewport: "1440", szerokosc: 28, wysokosc: 24 }]]);
+function naruszaProg(w) {
+  const wyjatek = POLE_NA_SZEROKIM_OKNIE.get(w.element);
+  if (wyjatek && w.viewport === wyjatek.viewport) {
+    return w.szerokosc !== null && w.wysokosc !== null && (w.szerokosc !== wyjatek.szerokosc || w.wysokosc !== wyjatek.wysokosc);
+  }
   const prog = progDlaCelu(w.element);
   return (w.wysokosc !== null && w.wysokosc < prog) || (w.szerokosc !== null && w.szerokosc < prog);
-});
+}
+const ponizejProgu = wyniki.filter(naruszaProg);
 
 // Naruszenia zastałe nie mogą
 // same z siebie zapalić kodu 4 na całym zespole na każdym biegu — ale

@@ -7,6 +7,8 @@ import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Input } from "@/design-system/atomy/Input/Input";
+import { StrzalkiKolejnosci } from "@/design-system/molekuly/StrzalkiKolejnosci/StrzalkiKolejnosci";
+import { useRuchWierszy } from "@/design-system/molekuly/StrzalkiKolejnosci/ruch";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { odmien } from "@/nowy-front/wspolne/odmiana";
 import { StanWysylaniaWWierszu } from "@/nowy-front/wysylanie-nagrania/StanWysylaniaWWierszu";
@@ -81,8 +83,10 @@ export function DrzewoKursu({
   const [zwiniete, setZwiniete] = useState<ReadonlySet<number>>(new Set());
   const [formularz, setFormularz] = useState<number | null>(null);
   const [menu, setMenu] = useState<number | null>(null);
+  // Ruch wierszy (płynna zamiana, fokus na tej samej strzałce) daje pomocnik molekuły strzałek.
   const korzen = useRef<HTMLDivElement>(null);
-  // Po ruchu fokus wraca na strzałkę przeniesionego wiersza albo tematu.
+  const ruch = useRuchWierszy(korzen);
+  // Po zamknięciu menu, anulowaniu formularza i ruchu tematu fokus wraca na wskazany przycisk.
   const fokusPoRuchu = useRef<string | null>(null);
   const liczbaLekcji = tematy.reduce((suma, temat) => suma + temat.lekcje.length, 0);
 
@@ -116,8 +120,6 @@ export function DrzewoKursu({
   function przesunLekcje(lekcja: LekcjaDrzewa, kierunek: -1 | 1) {
     const naBrzegu = kierunek === -1 ? lekcja.numer === 1 : lekcja.numer === liczbaLekcji;
     if (naBrzegu) return;
-    // Po ruchu na brzeg kursu ta strzałka staje się niedostępna — fokus zostaje na niej.
-    fokusPoRuchu.current = `lekcja-${lekcja.id}-${kierunek}`;
     onPrzesunLekcje(lekcja.id, kierunek);
   }
 
@@ -140,7 +142,13 @@ export function DrzewoKursu({
           const uwaga = temat.lekcje.filter((lekcja) => wymagaUwagi(lekcja.stan)).length;
           const pusty = temat.lekcje.length === 0;
           return (
-            <section key={temat.id} className={style.temat} aria-label={`Temat ${temat.tytul}`} data-temat={temat.id}>
+            <section
+              key={temat.id}
+              className={style.temat}
+              aria-label={`Temat ${temat.tytul}`}
+              data-temat={temat.id}
+              data-ruch-klucz={`temat-${temat.id}`}
+            >
               <div className={style.pasTematu}>
                 <div className={style.nazwaTematu}>
                   <Heading stopien={3}>{temat.tytul}</Heading>
@@ -195,6 +203,7 @@ export function DrzewoKursu({
                             onClick={() => {
                               setMenu(null);
                               fokusPoRuchu.current = `wiecej-${temat.id}`;
+                              ruch.zapowiedz();
                               onPrzesunTemat(temat.id, -1);
                             }}
                           >
@@ -207,6 +216,7 @@ export function DrzewoKursu({
                             onClick={() => {
                               setMenu(null);
                               fokusPoRuchu.current = `wiecej-${temat.id}`;
+                              ruch.zapowiedz();
                               onPrzesunTemat(temat.id, 1);
                             }}
                           >
@@ -321,28 +331,15 @@ function WierszLekcji({
   // Trwające albo przerwane wysyłanie nagrania tej lekcji zastępuje w wierszu stan z serwera.
   const wysylanie = useWysylanieLekcji(lekcja.id);
   return (
-    <li className={style.wiersz} data-lekcja={lekcja.id}>
-      <span className={style.strzalki}>
-        <button
-          type="button"
-          className={style.strzalka}
-          data-fokus={`lekcja-${lekcja.id}--1`}
-          aria-disabled={pierwsza || undefined}
-          aria-label={`Przesuń lekcję „${lekcja.tytul}” w górę${pierwsza ? " (niedostępne, to pierwsza lekcja)" : ""}`}
-          onClick={() => onPrzesun(-1)}
-        >
-          <span className={style.grotGora} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className={style.strzalka}
-          data-fokus={`lekcja-${lekcja.id}-1`}
-          aria-disabled={ostatnia || undefined}
-          aria-label={`Przesuń lekcję „${lekcja.tytul}” w dół${ostatnia ? " (niedostępne, to ostatnia lekcja)" : ""}`}
-          onClick={() => onPrzesun(1)}
-        >
-          <span className={style.grotDol} aria-hidden="true" />
-        </button>
+    <li className={style.wiersz} data-lekcja={lekcja.id} data-ruch-klucz={`lekcja-${lekcja.id}`}>
+      <span className={style.ruch}>
+        <StrzalkiKolejnosci
+          tytul={lekcja.tytul}
+          mozeWyzej={!pierwsza}
+          mozeNizej={!ostatnia}
+          onWyzej={() => onPrzesun(-1)}
+          onNizej={() => onPrzesun(1)}
+        />
       </span>
       <span className={style.numer}>{lekcja.numer}</span>
       <span className={style.tytulLekcji} title={lekcja.tytul}>

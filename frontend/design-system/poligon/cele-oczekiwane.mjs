@@ -76,7 +76,7 @@ export const OCZEKIWANE_CELE = [
   // Organizmy z `lekcja.html` (osobna strona wejścia poligonu, pole `strona`
   // w `CELE`): każdy z trzech plików ma co najmniej jeden własny cel.
   "TimeChart (rozwinięcie tabeli)",
-  "CourseTree (strzałka przeniesienia)",
+  "StrzalkiKolejnosci (strzałka)",
   "CourseTree (zmiana nazwy)",
   "CourseTree (edycja lekcji)",
   "CourseTree (dodanie lekcji)",
@@ -125,7 +125,7 @@ export const KOMPONENT_CELU = {
   "Toast (zamknij)": "Toast",
   "PublishChecklist (odnośnik braku)": "PublishChecklist",
   "TimeChart (rozwinięcie tabeli)": "TimeChart", // nagłówek CollapsibleSection osadzonej w organizmie
-  "CourseTree (strzałka przeniesienia)": "CourseTree",
+  "StrzalkiKolejnosci (strzałka)": "StrzalkiKolejnosci", // strzałki kolejności stoją w wierszu CourseTree; poniżej 1100 px 44 × 44, od 1100 px 28 × 24
   "CourseTree (zmiana nazwy)": "CourseTree",
   "CourseTree (edycja lekcji)": "CourseTree",
   "CourseTree (dodanie lekcji)": "CourseTree",
@@ -229,6 +229,7 @@ export const PLIKI_ROZLICZONE = [
   "molekuly/RichTextEditor/RichTextEditor.tsx",
   "molekuly/SaveBar/SaveBar.tsx",
   "molekuly/SearchBox/SearchBox.tsx",
+  "molekuly/StrzalkiKolejnosci/StrzalkiKolejnosci.tsx", // dopisany z molekułą strzałek kolejności: dwa przyciski, cel „StrzalkiKolejnosci (strzałka)”
   "molekuly/Tabs/Tabs.tsx",
   "molekuly/Toast/Toast.tsx",
   "organizmy/PublishChecklist/PublishChecklist.tsx",

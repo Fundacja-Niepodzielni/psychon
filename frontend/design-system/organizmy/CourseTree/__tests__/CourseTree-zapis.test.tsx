@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
@@ -9,10 +9,14 @@ import { CourseTree, type TematCourseTree } from "../CourseTree";
 /**
  * Drzewo kursu BEZ właściwości `onEdytujLekcje` i `rozwiniecie` ma dawać ten
  * sam DOM co przed ich dodaniem. Plik `zapis-bez-nowych-wlasciwosci.json` to
- * `innerHTML` siedmiu scen zapisany na wersji organizmu sprzed zmiany — tymi
+ * `innerHTML` pięciu scen zapisany na wersji organizmu sprzed zmiany — tymi
  * samymi scenami i tą samą funkcją co niżej. Próba rysuje sceny na bieżącym
  * kodzie i porównuje znak w znak (nazwy klas bez skrótu pliku stylów).
- * Zapis odświeża się wyłącznie świadomie, razem ze zmianą wyglądu organizmu.
+ * Zapis odświeża się wyłącznie świadomie, razem ze zmianą wyglądu organizmu
+ * (uruchomienie z `ODSWIEZ_ZAPIS_COURSETREE=1` zapisuje go na nowo). Ostatnie
+ * odświeżenie: zmiana kolejności strzałkami po lewej stronie wiersza, bez
+ * uchwytu przeciągania i przełącznika „Kolejność” — z zapisu wypadły dwie sceny
+ * tamtego trybu.
  */
 
 const TEMATY: TematCourseTree[] = [
@@ -67,16 +71,6 @@ async function sceny(): Promise<Record<string, string>> {
   zapisz("rozwiniete", <CourseTree {...AKCJE} tematy={TEMATY} liczbaZmian={0} />);
   zapisz("zmienione", <CourseTree {...AKCJE} tematy={ZMIENIONE} liczbaZmian={2} />);
   zapisz("zwiniety", <CourseTree {...AKCJE} tematy={TEMATY} liczbaZmian={0} poczatkowoZwiniete={["t1"]} />);
-  zapisz("kolejnosc", <CourseTree {...AKCJE} tematy={TEMATY} liczbaZmian={0} poczatkowoTrybKolejnosci />);
-  zapisz(
-    "przeciagany",
-    <CourseTree
-      {...AKCJE}
-      tematy={TEMATY}
-      liczbaZmian={0}
-      poczatkowePrzeciaganie={{ lekcja: "l2", celTemat: "t2", celIndeks: 1 }}
-    />,
-  );
   zapisz("pusty", <CourseTree {...AKCJE} tematy={[]} liczbaZmian={0} />);
 
   const { container, unmount } = render(<CourseTree {...AKCJE} tematy={TEMATY} liczbaZmian={0} />);
@@ -86,12 +80,18 @@ async function sceny(): Promise<Record<string, string>> {
   return wynik;
 }
 
-const ZAPIS = JSON.parse(
-  readFileSync(join(process.cwd(), "design-system/organizmy/CourseTree/__tests__/zapis-bez-nowych-wlasciwosci.json"), "utf8"),
-) as Record<string, string>;
+const PLIK_ZAPISU = join(process.cwd(), "design-system/organizmy/CourseTree/__tests__/zapis-bez-nowych-wlasciwosci.json");
+
+describe("odświeżenie zapisu", () => {
+  it.skipIf(process.env.ODSWIEZ_ZAPIS_COURSETREE !== "1")("zapisuje sceny na nowo", async () => {
+    writeFileSync(PLIK_ZAPISU, JSON.stringify(await sceny(), null, 2) + "\n", "utf8");
+  });
+});
+
+const ZAPIS = JSON.parse(readFileSync(PLIK_ZAPISU, "utf8")) as Record<string, string>;
 
 describe("CourseTree bez nowych właściwości — DOM jak przed zmianą", () => {
-  it("siedem scen daje znak w znak zapisany DOM", async () => {
+  it("pięć scen daje znak w znak zapisany DOM", async () => {
     const teraz = await sceny();
     expect(Object.keys(teraz).sort()).toEqual(Object.keys(ZAPIS).sort());
     for (const nazwa of Object.keys(ZAPIS)) {
@@ -100,7 +100,7 @@ describe("CourseTree bez nowych właściwości — DOM jak przed zmianą", () =>
   });
 
   it("zapis nie jest pusty i nie zna nowych znaczników", () => {
-    expect(Object.keys(ZAPIS)).toHaveLength(7);
+    expect(Object.keys(ZAPIS)).toHaveLength(5);
     for (const html of Object.values(ZAPIS)) {
       expect(html.length).toBeGreaterThan(100);
       expect(html).not.toMatch(/data-edytuj-lekcje|data-rozwiniecie-lekcji/);
