@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/api/klient";
 import { minutyZSekund, sekundyZMinut } from "@/nowy-front/wspolne/minuty";
 import type { CialoLekcji, LekcjaAdmin, StanNagrania } from "./dane";
+import { KOMUNIKAT_ZAPIS } from "@/nowy-front/wspolne/komunikaty";
 
 /**
  * Logika formularza lekcji — bez Reacta, bez sieci. Limit treści to 20 000
@@ -125,7 +126,7 @@ export function zdanieBleduZapisu(blad: unknown): string {
     }
     if (blad.status < 500 && blad.message.trim() !== "") return blad.message;
   }
-  return "Nie udało się zapisać lekcji. Sprawdź połączenie i spróbuj ponownie.";
+  return KOMUNIKAT_ZAPIS;
 }
 
 export function zdanieBleduUsuniecia(blad: unknown): string {

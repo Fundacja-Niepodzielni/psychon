@@ -143,7 +143,7 @@ describe("błędy serwera", () => {
   it("zdania błędu zapisu: rola, usunięta lekcja, sieć", () => {
     expect(zdanieBleduZapisu(new ApiError({ status: 403, code: "forbidden", message: "x" }))).toMatch(/Twojej roli/);
     expect(zdanieBleduZapisu(new ApiError({ status: 404, code: "not_found", message: "x" }))).toMatch(/usunięta/);
-    expect(zdanieBleduZapisu(new TypeError("Failed to fetch"))).toMatch(/Sprawdź połączenie/);
+    expect(zdanieBleduZapisu(new TypeError("Failed to fetch"))).toBe("Nie udało się zapisać. Spróbuj ponownie.");
   });
 
   it("błąd pliku: komunikat pola file ma pierwszeństwo", () => {

@@ -486,7 +486,7 @@ describe("zapis treści lekcji", () => {
     fireEvent.change(pole(/^Tytuł lekcji/), { target: { value: "Nowy tytuł" } });
     await uzytkownik.click(przyciskZapisu());
     await screen.findByText("Lekcja nie została zapisana");
-    expect(screen.getByText(/Sprawdź połączenie/)).toBeInTheDocument();
+    expect(screen.getByText("Nie udało się zapisać. Spróbuj ponownie.")).toBeInTheDocument();
     expect(pole(/^Tytuł lekcji/).value).toBe("Nowy tytuł");
   });
 
