@@ -50,7 +50,7 @@ export function Zestawienie({ tytul, wiersze }: WlasciwosciZestawienia) {
           ))}
           <div role="cell" className={`${style.komorka} ${style.akcja}`}>
             <Link href={wiersz.href}>
-              Otwórz kartę<span className={style.dlaCzytnika}>: {wiersz.nazwa}</span>
+              Otwórz kartę<span className={style.dlaCzytnika}> osoby: {wiersz.nazwa}</span>
             </Link>
           </div>
         </div>
