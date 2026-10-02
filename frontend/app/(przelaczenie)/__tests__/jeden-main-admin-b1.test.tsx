@@ -134,7 +134,7 @@ describe("/admin/formy-stazu w układach grupy", () => {
     pobierzFormyStazu.mockRejectedValue(BLAD());
     const { container } = trasaFormyStazu();
 
-    await screen.findByText(/nieosiągalny albo zwrócił błąd/);
+    await screen.findByText(/Nie udało się połączyć z serwerem/);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
@@ -148,7 +148,7 @@ describe("/admin/formy-stazu w układach grupy", () => {
     await screen.findByText(/Ten ekran jest dla administracji/);
     expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
     expect(screen.queryByText(FORMA.name)).toBeNull();
-    expect(screen.queryByText(/nieosiągalny/)).toBeNull();
+    expect(screen.queryByText(/Nie udało się połączyć z serwerem/)).toBeNull();
     expect(container.querySelector("#tresc")?.querySelectorAll("li").length).toBe(0);
     expect(zmierz(container)).toEqual(JEDEN);
   });
