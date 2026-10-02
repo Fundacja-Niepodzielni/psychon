@@ -183,7 +183,7 @@ describe("Zgłoszenia rekrutacyjne — import z pliku", () => {
     await uzytkownik.upload(await otworzImport(uzytkownik, container), plik);
 
     const alarm = await screen.findByRole("alert");
-    expect(within(alarm).getByText("Serwer zwrócił błąd. Spróbuj ponownie za chwilę.")).toBeInTheDocument();
+    expect(within(alarm).getByText("Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/Komunikat serwera/);
     expect(screen.getByText("Anna Kandydat11")).toBeInTheDocument();
 
@@ -202,7 +202,7 @@ describe("Zgłoszenia rekrutacyjne — import z pliku", () => {
     await uzytkownik.upload(await otworzImport(uzytkownik, container), PLIK());
 
     const alarm = await screen.findByRole("alert");
-    expect(within(alarm).getByText("Sprawdź połączenie z internetem i spróbuj jeszcze raz.")).toBeInTheDocument();
+    expect(within(alarm).getByText("Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.")).toBeInTheDocument();
     expect(screen.getByText("Anna Kandydat11")).toBeInTheDocument();
     expect(screen.getByRole("form", { name: "Filtr zgłoszeń" })).toBeInTheDocument();
   });
@@ -377,10 +377,10 @@ describe("Zgłoszenia rekrutacyjne — dodanie zgłoszenia", () => {
     await otworzFormularz(uzytkownik);
     await wypelnij(uzytkownik, { imie: "Ewa", nazwisko: "Nowicka", email: "ewa@demo.pl" });
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zgłoszenie" }));
-    await screen.findByText(/Serwer zwrócił błąd\. Dane w formularzu zostały/);
+    await screen.findByText(/Nie udało się połączyć z serwerem\. Spróbuj ponownie za chwilę\. Dane w formularzu zostały/);
 
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zgłoszenie" }));
-    await screen.findByText(/Sprawdź połączenie z internetem\. Dane w formularzu zostały/);
+    await screen.findByText(/Brak połączenia z internetem\. Sprawdź połączenie i spróbuj ponownie\. Dane w formularzu zostały/);
     expect(screen.getByRole("textbox", { name: /^E-mail/ })).toHaveValue("ewa@demo.pl");
   });
 

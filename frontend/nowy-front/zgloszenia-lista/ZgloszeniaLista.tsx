@@ -40,6 +40,7 @@ import {
   type RaportImportu,
 } from "./dane";
 import style from "./ZgloszeniaLista.module.css";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 type StanEkranu =
   | { rodzaj: "ladowanie" }
@@ -301,7 +302,7 @@ export function ZgloszeniaLista() {
           </Button>
         }
       >
-        Sprawdź połączenie z internetem i spróbuj jeszcze raz.
+        {KOMUNIKAT_SERWER}
       </Notice>
     );
   } else if (stan.zgloszenia.length === 0 && aktywny) {
@@ -493,8 +494,8 @@ function BladImportuNotice({
   return (
     <Notice wariant="error" tytul="Nie udało się wczytać pliku" akcja={akcja}>
       {blad.rodzaj === "serwer"
-        ? "Serwer zwrócił błąd. Spróbuj ponownie za chwilę."
-        : "Sprawdź połączenie z internetem i spróbuj jeszcze raz."}
+        ? KOMUNIKAT_SERWER
+        : KOMUNIKAT_INTERNET}
     </Notice>
   );
 }
@@ -518,8 +519,8 @@ function BladDodaniaNotice({ blad, adres }: { blad: BladDodania; adres: string }
   return (
     <Notice wariant="error" tytul="Nie udało się dodać zgłoszenia">
       {blad.rodzaj === "serwer"
-        ? "Serwer zwrócił błąd. Dane w formularzu zostały — spróbuj ponownie za chwilę."
-        : "Sprawdź połączenie z internetem. Dane w formularzu zostały — spróbuj jeszcze raz."}
+        ? `${KOMUNIKAT_SERWER} Dane w formularzu zostały.`
+        : `${KOMUNIKAT_INTERNET} Dane w formularzu zostały.`}
     </Notice>
   );
 }
