@@ -23,6 +23,7 @@ import {
 } from "./dane";
 import { SekcjaGrupy, SekcjaKursow, SekcjaPytan, SekcjaSuperwizji } from "./sekcje";
 import style from "./PulpitProwadzacego.module.css";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 const ETYKIETA_KARTY = "Do zrobienia dziś";
 
@@ -97,8 +98,8 @@ export function PulpitProwadzacego() {
             }
           >
             {awariaSieciowa(dane)
-              ? "Brak połączenia z serwerem. Sprawdź połączenie z internetem i spróbuj ponownie."
-              : "Serwer nie odpowiedział poprawnie. Spróbuj ponownie za chwilę."}
+              ? KOMUNIKAT_INTERNET
+              : KOMUNIKAT_SERWER}
           </Notice>
         }
         wspierajaca={null}

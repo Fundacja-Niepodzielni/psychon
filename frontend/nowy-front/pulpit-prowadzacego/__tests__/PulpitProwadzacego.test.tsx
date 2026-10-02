@@ -261,7 +261,7 @@ describe("PulpitProwadzacego — błąd sieci", () => {
     const { container } = render(<PulpitProwadzacego />);
 
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getByText(/Brak połączenia z serwerem/)).toBeInTheDocument();
+    expect(within(alert).getByText(/Brak połączenia z internetem/)).toBeInTheDocument();
     sprawdzSzablon(container);
     expect(przyciskiGlowne(container)).toHaveLength(0);
 

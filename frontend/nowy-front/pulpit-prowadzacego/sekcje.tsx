@@ -19,6 +19,7 @@ import {
 } from "./dane";
 import { formatujDziesietny } from "../wspolne/formatuj-dziesietny";
 import type { InstructorGroup } from "@/lib/h12/types";
+import { KOMUNIKAT_INTERNET, KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 interface WspolneSekcji {
   onOdswiez: () => void;
@@ -35,8 +36,8 @@ function pusty(naglowek: string, tresc: string, onOdswiez: () => void) {
 
 const OPIS_AWARII: Record<RodzajAwarii, string> = {
   zakazane: "Ta sekcja nie jest dostępna dla Twojego konta. Pozostałe sekcje działają.",
-  siec: "Brak połączenia z serwerem. Pozostałe sekcje działają — spróbuj ponownie za chwilę.",
-  blad: "Serwer nie odpowiedział poprawnie. Pozostałe sekcje działają — spróbuj ponownie za chwilę.",
+  siec: `${KOMUNIKAT_INTERNET} Pozostałe sekcje działają.`,
+  blad: `${KOMUNIKAT_SERWER} Pozostałe sekcje działają.`,
 };
 
 /** Sekcja, której odczyt się nie udał — reszta pulpitu zostaje na ekranie. */
