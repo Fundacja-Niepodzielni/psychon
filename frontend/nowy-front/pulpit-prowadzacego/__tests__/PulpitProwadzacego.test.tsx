@@ -244,9 +244,9 @@ describe("PulpitProwadzacego — 403", () => {
     const uzytkownik = userEvent.setup();
     const { container } = render(<PulpitProwadzacego />);
 
-    expect(await screen.findByText(/tylko dla prowadzących/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ten ekran jest dla prowadzących/)).toBeInTheDocument();
     sprawdzSzablon(container);
-    expect(przyciskiGlowne(container)).toHaveLength(0);
+    expect(przyciskiGlowne(container).map((przycisk) => przycisk.textContent)).toEqual(["Wróć"]);
     await uzytkownik.click(screen.getByRole("button", { name: "Wróć" }));
     expect(back).toHaveBeenCalled();
   });
