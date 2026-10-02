@@ -10,6 +10,7 @@ import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { PublishChecklist } from "@/design-system/organizmy/PublishChecklist/PublishChecklist";
 import { checklistaPublikacji, type WynikDanychKursu } from "./dane";
 import style from "./KursPublikacja.module.css";
+import { KOMUNIKAT_SERWER } from "@/nowy-front/wspolne/komunikaty";
 
 interface WlasciwosciKursPublikacja {
   idKursu: string;
@@ -40,8 +41,8 @@ export function KursPublikacja({ idKursu, wynik }: WlasciwosciKursPublikacja) {
       <div className={style.uklad}>
         <Heading stopien={1}>Kurs {idKursu}</Heading>
         <Text>
-          Brak sesji prowadzącego — zaloguj się, aby zobaczyć checklistę
-          publikacji. Trasa nie podstawia zmyślonej treści bez ważnego tokenu.
+          Nie ma aktywnej sesji. Zaloguj się ponownie, aby zobaczyć checklistę
+          publikacji.
         </Text>
       </div>
     );
@@ -63,10 +64,7 @@ export function KursPublikacja({ idKursu, wynik }: WlasciwosciKursPublikacja) {
     return (
       <div className={style.uklad}>
         <Heading stopien={1}>Kurs {idKursu}</Heading>
-        <Text>
-          Backend H08 nieosiągalny albo zwrócił błąd — spróbuj ponownie
-          później. Bez danych z API trasa nie zmyśla treści kursu.
-        </Text>
+        <Text>{KOMUNIKAT_SERWER}</Text>
       </div>
     );
   }
