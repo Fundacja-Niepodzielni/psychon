@@ -46,11 +46,11 @@ export function KartaTerminu({ termin, glowny, trwa, blad, onZapis, onWypis }: W
   const nazwa = nazwaTerminu(termin);
   const plakietka = plakietkaTerminu(termin);
   const powod = powodBlokady(termin);
-  const zapisany = termin.signup !== null;
+  const maZapis = termin.signup !== null;
   const adres = adresSpotkania(termin.location_or_link);
 
-  const etykieta = zapisany ? (trwa === "wypis" ? "Wypisywanie…" : "Wypisz się") : trwa === "zapis" ? "Zapisywanie…" : "Zapisz się";
-  const nazwaDostepna = zapisany ? `${etykieta.replace("…", "")} z terminu ${nazwa}` : `${etykieta.replace("…", "")} na termin ${nazwa}`;
+  const etykieta = maZapis ? (trwa === "wypis" ? "Wypisywanie…" : "Wypisz się") : trwa === "zapis" ? "Zapisywanie…" : "Zapisz się";
+  const nazwaDostepna = maZapis ? `${etykieta.replace("…", "")} z terminu ${nazwa}` : `${etykieta.replace("…", "")} na termin ${nazwa}`;
 
   return (
     <li data-termin={termin.id}>
@@ -74,7 +74,7 @@ export function KartaTerminu({ termin, glowny, trwa, blad, onZapis, onWypis }: W
               <Text>{termin.location_or_link?.trim() ? termin.location_or_link : "Bez podanej lokalizacji."}</Text>
             )}
           </Para>
-          {zapisany ? (
+          {maZapis ? (
             <Para nazwa="Obecność">
               <Text>{OBECNOSC[termin.signup?.attendance ?? "brak"].tekst}</Text>
             </Para>
@@ -93,14 +93,14 @@ export function KartaTerminu({ termin, glowny, trwa, blad, onZapis, onWypis }: W
         </dl>
         <div className={style.akcje}>
           <Button
-            poziom={glowny && !zapisany ? "primary" : "outline"}
-            niebezpieczny={zapisany}
+            poziom={glowny && !maZapis ? "primary" : "outline"}
+            niebezpieczny={maZapis}
             disabled={powod !== null}
             aria-label={nazwaDostepna}
             aria-describedby={powod !== null ? idPowodu : undefined}
             onClick={() => {
               if (trwa !== null) return;
-              if (zapisany) onWypis();
+              if (maZapis) onWypis();
               else onZapis();
             }}
           >
