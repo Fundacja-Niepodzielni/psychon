@@ -451,13 +451,14 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await sprawdzAxe(page, testInfo, `axe-kurs-dlugie-${szerokosc}`);
     });
 
-    test("kurs zamknięty kolejnością (403 course_locked): zdanie z serwera i odnośnik do listy kursów", async ({ page }, testInfo) => {
+    test("kurs zamknięty kolejnością (403 course_locked): odmowa, zdanie z serwera i jeden przycisk powrotu do pulpitu", async ({ page }, testInfo) => {
       const zdanie = "Ukończ najpierw etap 2: Wywiad psychologiczny.";
       await instalujAtrapy(page, () => ({ status: 403, cialo: { status: 403, code: "course_locked", message: zdanie } }));
       await otworz(page, `/panel/kursy/${SLUG}`);
-      await expect(page.getByRole("heading", { level: 2, name: "Ten kurs jest jeszcze zamknięty" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeVisible();
       await expect(page.getByText(zdanie)).toBeVisible();
-      await expect(page.getByRole("link", { name: "Wróć do listy kursów" }).first()).toHaveAttribute("href", "/panel/kursy");
+      await expect(page.getByRole("button", { name: "Wróć do pulpitu" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Wróć do listy kursów" })).toHaveCount(0);
       await expect(page.locator("main")).toHaveCount(1);
       await sprawdzPrzewijanie(page);
       expect((await celeDotyku(page)).zaMale).toEqual([]);
@@ -465,11 +466,12 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await zrzut(page, `uczestnik--kurs-szkic--zamkniety-kolejnoscia--${szerokosc}`);
     });
 
-    test("404: „Nie znaleziono kursu” z odnośnikiem do listy kursów", async ({ page }, testInfo) => {
+    test("404: „Nie znaleziono kursu” z jednym przyciskiem powrotu do listy", async ({ page }, testInfo) => {
       await instalujAtrapy(page, () => ({ status: 404, cialo: { status: 404, code: "not_found", message: "Nie znaleziono zasobu." } }));
       await otworz(page, `/panel/kursy/${SLUG}`);
       await expect(page.getByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Wróć do listy kursów" }).first()).toHaveAttribute("href", "/panel/kursy");
+      await expect(page.getByRole("button", { name: "Wróć do listy" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Wróć do listy kursów" })).toHaveCount(0);
       await sprawdzPrzewijanie(page);
       await sprawdzAxe(page, testInfo, `axe-kurs-404-${szerokosc}`);
     });
