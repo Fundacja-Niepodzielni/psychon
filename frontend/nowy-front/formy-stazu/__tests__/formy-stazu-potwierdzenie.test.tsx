@@ -3,8 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
- * Po zapisie formy stażu ekran potwierdza wynik paskiem nad listą: powodzenie
- * jako status, niepowodzenie nie zostawia paska powodzenia.
+ * Po zapisie formy stażu ekran potwierdza wynik powiadomieniem `Toast`: powodzenie
+ * jako status, niepowodzenie nie zostawia potwierdzenia.
  */
 
 const pobierzFormyStazu = vi.fn();
@@ -54,7 +54,7 @@ describe("FormyStazu — potwierdzenie zapisu", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("zapis zmian formy: pasek ze statusem „Zapisano zmiany formy stażu …”", async () => {
+  it("zapis zmian formy: powiadomienie ze statusem „Zapisano zmiany formy stażu …”", async () => {
     const uzytkownik = userEvent.setup();
     zaktualizujFormeStazu.mockResolvedValue({ ...FORMA, name: "Dyżur telefoniczny 2" });
     await otworzEkran();
@@ -66,7 +66,7 @@ describe("FormyStazu — potwierdzenie zapisu", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("dodanie formy: pasek ze statusem „Dodano formę stażu …”", async () => {
+  it("dodanie formy: powiadomienie ze statusem „Dodano formę stażu …”", async () => {
     const uzytkownik = userEvent.setup();
     utworzFormeStazu.mockResolvedValue({ ...FORMA, id: 2, name: "Czat" });
     await otworzEkran();
@@ -92,7 +92,7 @@ describe("FormyStazu — potwierdzenie zapisu", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("pasek zostaje po zapisie, zamyka go przycisk, a fokus wraca na nagłówek ekranu", async () => {
+  it("powiadomienie zostaje po zapisie i zamyka je przycisk", async () => {
     const uzytkownik = userEvent.setup();
     zaktualizujFormeStazu.mockResolvedValue({ ...FORMA });
     await otworzEkran();
@@ -100,10 +100,9 @@ describe("FormyStazu — potwierdzenie zapisu", () => {
     await uzytkownik.click(screen.getByRole("button", { name: "Edytuj" }));
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz" }));
     await screen.findByRole("status");
-    await uzytkownik.click(screen.getByRole("button", { name: "Zamknij komunikat" }));
+    await uzytkownik.click(screen.getByRole("button", { name: "Zamknij powiadomienie" }));
 
     expect(screen.queryByRole("status")).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
   });
 
   it("następna akcja formularza (otwarcie edycji) zdejmuje poprzedni komunikat", async () => {
