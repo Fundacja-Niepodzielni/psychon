@@ -11,7 +11,6 @@ import LoadingState from "@/components/molecules/LoadingState";
 import PageTemplate from "@/components/templates/PageTemplate";
 import { ApiError } from "@/lib/api";
 import {
-  addThreadMember,
   createInstructorGroupThread,
   fetchInstructorGroupThreads,
   fetchThreadMessages,
@@ -154,30 +153,12 @@ export default function InstructorGroupThread() {
     return Number.isInteger(value) && value > 0 ? value : null;
   }
 
-  function addMember(event: FormEvent) {
+  /**
+   * Formularz składu nie wysyła się klawiszem Enter — jedyną akcją jest
+   * usunięcie osoby przyciskiem. Osoby do grupy przypisuje administracja.
+   */
+  function preventMemberSubmit(event: FormEvent) {
     event.preventDefault();
-    if (selectedThreadId === null) return;
-
-    const userId = parseMemberId();
-    if (userId === null) return;
-
-    setMemberActionPending(true);
-    setMemberActionError(null);
-    setMemberActionMessage(null);
-
-    addThreadMember(selectedThreadId, userId)
-      .then(() => {
-        setMemberActionMessage("Osoba dodana do składu wątku.");
-        setMemberIdInput("");
-      })
-      .catch((error: unknown) => {
-        setMemberActionError(
-          error instanceof ApiError
-            ? error.message
-            : "Nie udało się dodać osoby do wątku. Spróbuj ponownie.",
-        );
-      })
-      .finally(() => setMemberActionPending(false));
   }
 
   function removeMember() {
@@ -346,7 +327,10 @@ export default function InstructorGroupThread() {
         !messagesForbidden &&
         !messagesError && (
           <Card title="Skład wątku">
-            <form className="flex flex-col gap-2" onSubmit={addMember}>
+            <p className="mb-3 text-body text-muted">
+              Osoby do grupy przypisuje administracja. Tutaj możesz usunąć osobę ze składu wątku.
+            </p>
+            <form className="flex flex-col gap-2" onSubmit={preventMemberSubmit}>
               <label
                 className="text-caption font-bold tracking-wide text-subtle"
                 htmlFor="grupa-watek-osoba-id"
@@ -364,13 +348,6 @@ export default function InstructorGroupThread() {
               {memberActionError && <Alert variant="error">{memberActionError}</Alert>}
               {memberActionMessage && <Alert variant="success">{memberActionMessage}</Alert>}
               <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  loading={memberActionPending}
-                  disabled={parseMemberId() === null}
-                >
-                  Dodaj do wątku
-                </Button>
                 <Button
                   type="button"
                   variant="secondary"

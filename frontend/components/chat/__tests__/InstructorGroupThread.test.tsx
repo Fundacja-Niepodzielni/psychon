@@ -180,7 +180,7 @@ describe("InstructorGroupThread", () => {
     expect(screen.queryByRole("button", { name: "Otwórz wątek" })).not.toBeInTheDocument();
   });
 
-  it("noga pozytywna: dodanie osoby do składu woła POST /threads/{id}/members/{user} i pokazuje potwierdzenie", async () => {
+  it("skład bez dodawania: brak przycisku dodania, Enter w polu niczego nie wysyła, zdanie o przypisaniu przez administrację", async () => {
     apiPaged.mockImplementation((path: string) => {
       if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });
       if (path === "/threads/41") return Promise.resolve({ data: [] });
@@ -193,37 +193,16 @@ describe("InstructorGroupThread", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Otwórz wątek" }));
     await waitFor(() => expect(screen.getByLabelText("Identyfikator osoby")).toBeInTheDocument());
 
-    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12");
-    await userEvent.click(screen.getByRole("button", { name: "Dodaj do wątku" }));
+    expect(screen.queryByRole("button", { name: "Dodaj do wątku" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Usuń z wątku" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Osoby do grupy przypisuje administracja. Tutaj możesz usunąć osobę ze składu wątku."),
+    ).toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(api).toHaveBeenCalledWith("/threads/41/members/12", { method: "POST" }),
-    );
-    await waitFor(() =>
-      expect(screen.getByText("Osoba dodana do składu wątku.")).toBeInTheDocument(),
-    );
-  });
+    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12{Enter}");
 
-  it("noga negatywna: 403 przy dodaniu osoby (np. osoba spoza grupy) pokazuje błąd, bez potwierdzenia (kontrola: potwierdzenie na ścieżce pozytywnej / błąd tutaj)", async () => {
-    apiPaged.mockImplementation((path: string) => {
-      if (path === "/threads") return Promise.resolve({ data: [grupowyWatek] });
-      if (path === "/threads/41") return Promise.resolve({ data: [] });
-      throw new Error("nieoczekiwana ścieżka: " + path);
-    });
-    api.mockRejectedValue(new ApiError(403, "forbidden", "Nie zarządzasz składem tego wątku."));
-
-    render(<InstructorGroupThread />);
-
-    await userEvent.click(await screen.findByRole("button", { name: "Otwórz wątek" }));
-    await waitFor(() => expect(screen.getByLabelText("Identyfikator osoby")).toBeInTheDocument());
-
-    await userEvent.type(screen.getByLabelText("Identyfikator osoby"), "12");
-    await userEvent.click(screen.getByRole("button", { name: "Dodaj do wątku" }));
-
-    await waitFor(() =>
-      expect(screen.getByText("Nie zarządzasz składem tego wątku.")).toBeInTheDocument(),
-    );
-    expect(screen.queryByText("Osoba dodana do składu wątku.")).not.toBeInTheDocument();
+    expect(api).not.toHaveBeenCalled();
+    expect(screen.queryByText("Osoba usunięta ze składu wątku.")).not.toBeInTheDocument();
   });
 
   it("noga pozytywna: usunięcie osoby ze składu woła DELETE /threads/{id}/members/{user} i pokazuje potwierdzenie", async () => {

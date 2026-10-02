@@ -2,10 +2,11 @@
  * Dane wątku grupowego prowadzącego („prowadzący
  * prowadzi wątek grupowy, on też zarządza składem"). Ten moduł woła
  * `GET /threads`, `GET /threads/{thread}`, `POST /threads/{thread}/messages`
- * (odczyt/wysyłka — istniejące od dawna) oraz `POST /threads`,
- * `POST /threads/{thread}/members/{user}` i `DELETE` tej samej (założenie
- * wątku i skład — wyłącznie rola `instructor`, i wyłącznie właściciel TEGO
- * wątku dla składu; patrz komentarz w `routes/api/chat.php`).
+ * (odczyt/wysyłka — istniejące od dawna) oraz `POST /threads` i
+ * `DELETE /threads/{thread}/members/{user}` (założenie wątku i usunięcie
+ * osoby ze składu — wyłącznie rola `instructor`, i wyłącznie właściciel TEGO
+ * wątku dla składu; patrz komentarz w `routes/api/chat.php`). Osoby do
+ * grupy przypisuje wyłącznie administracja — dodawania z tego ekranu nie ma.
  *
  * Autoryzacja per-wątek przy ODCZYCIE (wiadomości) NIE jest rolą — 404,
  * nigdy 403, dla wątku spoza własnej grupy. `GET /threads` samo zwraca tylko
@@ -13,8 +14,8 @@
  * niczego pod kątem uprawnień — filtruje wyłącznie `type === "group"`, żeby
  * ten konkretny ekran pokazywał wątek grupowy, a nie też wątki indywidualne
  * z wolontariuszkami (inny ekran, poza tą pozycją). Założenie wątku i
- * zarządzanie składem WOLNO ROLĄ (`role:instructor`) — nieuprawnione
- * wywołanie dostaje 403, nie 404 (patrz `ThreadMemberController`).
+ * usunięcie osoby ze składu WOLNO ROLĄ (`role:instructor`) — inna rola
+ * dostaje 403; cudzy wątek wygląda jak nieistniejący (404).
  */
 import { api, apiPaged, type PaginationMeta } from "@/lib/api";
 
@@ -65,17 +66,9 @@ export function createInstructorGroupThread(): Promise<ChatThread> {
 }
 
 /**
- * Dodanie osoby do składu wątku grupowego — wyłącznie prowadzący będący
- * właścicielem tego wątku (`POST /threads/{id}/members/{user}`); inna rola
- * albo inny prowadzący dostaje 403.
- */
-export function addThreadMember(threadId: number, userId: number): Promise<SupervisorAssignment> {
-  return api<SupervisorAssignment>(`/threads/${threadId}/members/${userId}`, { method: "POST" });
-}
-
-/**
- * Usunięcie osoby ze składu wątku grupowego — te same reguły dostępu co
- * dodanie (`DELETE /threads/{id}/members/{user}`). Zaplecze zwraca kopertę
+ * Usunięcie osoby ze składu wątku grupowego — wyłącznie prowadzący będący
+ * właścicielem tego wątku (`DELETE /threads/{id}/members/{user}`); inna rola
+ * dostaje 403, cudzy wątek 404. Zaplecze zwraca kopertę
  * `{data: null}` (`ThreadMemberController::destroy`) — `api<T>()` zdejmuje
  * kopertę i oddaje samo `null`.
  */
