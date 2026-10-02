@@ -8220,6 +8220,290 @@
                 }
             }
         },
+        "/v1/instructor/tests/{test}/questions": {
+            "get": {
+                "operationId": "instructorTestQuestion.index",
+                "tags": [
+                    "InstructorTestQuestion"
+                ],
+                "parameters": [
+                    {
+                        "name": "test",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "instructorTestQuestion.store",
+                "tags": [
+                    "InstructorTestQuestion"
+                ],
+                "parameters": [
+                    {
+                        "name": "test",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreInstructorTestQuestionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "body": {
+                                                    "type": "string"
+                                                },
+                                                "sequence_order": {
+                                                    "type": "integer"
+                                                },
+                                                "answers": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "body": {
+                                                                "type": "string"
+                                                            },
+                                                            "is_correct": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "body",
+                                                            "is_correct"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "body",
+                                                "sequence_order",
+                                                "answers"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/v1/instructor/questions/{question}": {
+            "patch": {
+                "operationId": "instructorTestQuestion.update",
+                "tags": [
+                    "InstructorTestQuestion"
+                ],
+                "parameters": [
+                    {
+                        "name": "question",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateInstructorTestQuestionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "body": {
+                                                    "type": "string"
+                                                },
+                                                "sequence_order": {
+                                                    "type": "integer"
+                                                },
+                                                "answers": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "body": {
+                                                                "type": "string"
+                                                            },
+                                                            "is_correct": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "body",
+                                                            "is_correct"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "body",
+                                                "sequence_order",
+                                                "answers"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "instructorTestQuestion.destroy",
+                "tags": [
+                    "InstructorTestQuestion"
+                ],
+                "parameters": [
+                    {
+                        "name": "question",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "deleted": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "deleted"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/v1/internship/entries": {
             "get": {
                 "operationId": "internshipEntry.index",
@@ -13547,6 +13831,41 @@
                 ],
                 "title": "StoreInstructorMaterialRequest"
             },
+            "StoreInstructorTestQuestionRequest": {
+                "type": "object",
+                "description": "POST /instructor/tests/{test}/questions \u2014 regu\u0142y `StoreTestQuestionRequest`\n(panel administracji), ale `authorize()` sprawdza zasi\u0119g prowadz\u0105cego\nPRZED walidacj\u0105 cia\u0142a \u2014 patrz opis cechy.",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "maxLength": 2000
+                    },
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "body": {
+                                    "type": "string",
+                                    "maxLength": 1000
+                                },
+                                "is_correct": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "body",
+                                "is_correct"
+                            ]
+                        },
+                        "minItems": 2
+                    }
+                },
+                "required": [
+                    "body",
+                    "answers"
+                ],
+                "title": "StoreInstructorTestQuestionRequest"
+            },
             "StoreInstructorTestRequest": {
                 "type": "object",
                 "description": "POST /instructor/courses/{course}/tests \u2014 sama walidacja co\n`StoreTestRequest` (panel administracji), ale `authorize()`\n(`AuthorizesAgainstAssignedCourse`) sprawdza przypisanie prowadz\u0105cego do\nkursu przez `CoursePolicy` PRZED walidacj\u0105 cia\u0142a \u2014 patrz opis cechy.",
@@ -14274,6 +14593,44 @@
                     }
                 },
                 "title": "UpdateInstructorLessonRequest"
+            },
+            "UpdateInstructorTestQuestionRequest": {
+                "type": "object",
+                "description": "PATCH /instructor/questions/{question} \u2014 regu\u0142y `UpdateTestQuestionRequest`\n(panel administracji), ale `authorize()` sprawdza zasi\u0119g prowadz\u0105cego\nPRZED walidacj\u0105 cia\u0142a \u2014 patrz opis cechy.",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "maxLength": 2000
+                    },
+                    "sequence_order": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "body": {
+                                    "type": "string",
+                                    "maxLength": 1000
+                                },
+                                "is_correct": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "body",
+                                "is_correct"
+                            ]
+                        },
+                        "minItems": 2
+                    }
+                },
+                "title": "UpdateInstructorTestQuestionRequest"
             },
             "UpdateInstructorTestRequest": {
                 "type": "object",
