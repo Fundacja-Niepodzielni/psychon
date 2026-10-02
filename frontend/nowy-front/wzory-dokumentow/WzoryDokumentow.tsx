@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -103,15 +104,8 @@ export function WzoryDokumentow() {
   const zapisana = stan.rodzaj === "gotowy" ? stan.wzor.content : "";
   const zmieniona = stan.rodzaj === "gotowy" && czyZmieniona(tresc, zapisana);
 
-  // Zamknięcie karty z niezapisaną treścią pyta o potwierdzenie.
-  useEffect(() => {
-    if (!zmieniona) return;
-    function naWyjscie(zdarzenie: BeforeUnloadEvent) {
-      zdarzenie.preventDefault();
-    }
-    window.addEventListener("beforeunload", naWyjscie);
-    return () => window.removeEventListener("beforeunload", naWyjscie);
-  }, [zmieniona]);
+  // Niezapisana treść: rama pyta przed wyjściem z ekranu, przeglądarka — przed zamknięciem karty.
+  useZgloszenieNiezapisanychZmian(zmieniona, "Wzory dokumentów");
 
   function przejdzNaRodzaj(docelowy: DocumentTemplateType) {
     przywrocFokusWyboru.current = document.activeElement?.id === ID_WYBORU_RODZAJU;

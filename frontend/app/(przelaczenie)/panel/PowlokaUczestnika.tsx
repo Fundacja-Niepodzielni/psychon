@@ -1,8 +1,9 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import Logo from "@/components/ui/Logo";
+import { useNawigacjaZPytaniem } from "@/design-system/szablony/NiezapisaneZmiany";
 import { PowlokaPanelu } from "@/design-system/szablony/PowlokaPanelu/PowlokaPanelu";
 import { api, ApiError } from "@/lib/api";
 import type { Role } from "@/lib/home-by-role";
@@ -31,7 +32,7 @@ export const PODPISY_ROLI_UCZESTNIKA: Partial<Record<Role, string>> = {
  */
 export function PowlokaUczestnika({ children }: { children: ReactNode }) {
   const sciezka = usePathname() ?? "";
-  const router = useRouter();
+  const { przejdz } = useNawigacjaZPytaniem();
   const [ja, setJa] = useState<Ja | null>(null);
   const { wyloguj, wylogowywanie } = useWylogowanieRamki();
 
@@ -68,7 +69,7 @@ export function PowlokaUczestnika({ children }: { children: ReactNode }) {
       grupaZwinieta={grupaZwinieta}
       etykietaMenu="Menu — Panel uczestnika"
       liniaKonta={liniaKonta}
-      onNawigacja={(href) => router.push(href)}
+      onNawigacja={przejdz}
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}
       narzedziaPaska={<NarzedziaPaskaRamki />}

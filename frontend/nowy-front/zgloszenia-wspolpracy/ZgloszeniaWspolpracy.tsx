@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/design-system/atomy/Badge/Badge";
@@ -76,6 +77,10 @@ export function ZgloszeniaWspolpracy() {
   const [komunikat, setKomunikat] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [wczytanoRaz, setWczytanoRaz] = useState(false);
+  useZgloszenieNiezapisanychZmian(
+    otwarta !== null && (otwarta.response.trim() !== "" || otwarta.status !== "answered"),
+    "Zgłoszenia współpracy",
+  );
 
   useEffect(() => {
     let aktualne = true;

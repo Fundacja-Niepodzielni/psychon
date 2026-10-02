@@ -7,6 +7,7 @@ import { GrupaZwijana, type GrupaZwijanaDane } from "../../molekuly/MenuItem/Gru
 import { PanelNav } from "../../organizmy/PanelNav/PanelNav";
 import { DostawcaPowloki } from "../KontekstPowloki";
 import { DostawcaRamki } from "../KontekstRamki";
+import { ekranPytaWTresci, OknoPytaniaOWyjscie, saPowodyPytania, zapytajPrzedWyjsciem } from "../NiezapisaneZmiany";
 import style from "./PowlokaPanelu.module.css";
 
 type WlasciwosciNawigacji = ComponentProps<typeof PanelNav>;
@@ -28,10 +29,12 @@ interface WlasciwosciPowlokiPanelu {
   /** Linia „W przygotowaniu: …” pod wylogowaniem w grupie „Konto” (bez przedrostka i kropki). */
   liniaKonta?: string;
   /**
-   * Nawigacja kliencka po kliknięciu pozycji menu (np. `router.push`). Bez
-   * propu pozycje menu są zwykłymi łączami (pełne przejście strony).
+   * Nawigacja kliencka po kliknięciu pozycji menu — `przejdz` z
+   * `useNawigacjaZPytaniem` (pyta, gdy ekran zgłosił niezapisane zmiany);
+   * drugi argument to kliknięty odnośnik. Bez propu pozycje menu są zwykłymi
+   * łączami (pełne przejście strony).
    */
-  onNawigacja?: (href: string) => void;
+  onNawigacja?: (href: string, wywolujacy?: HTMLElement | null) => void;
   /** Wylogowanie — ostatnia pozycja grupy „Konto”. */
   onWyloguj: () => void;
   wylogowywanie?: boolean;
@@ -73,6 +76,10 @@ interface WlasciwosciPowlokiPanelu {
  * ramki, po którym nagłówek ekranu poznaje nową ramkę (bez „Wstecz”, okruszek
  * liczony z tego menu regułą z `OkruszekRamki.ts`). Stara powłoka `PanelShell`
  * wstawia tylko `DostawcaPowloki`.
+ *
+ * Powłoka rysuje też jedyne okno pytania o niezapisane zmiany
+ * (`OknoPytaniaOWyjscie` z `NiezapisaneZmiany.tsx`): pyta przed przejściem
+ * z menu, z odnośnika w treści i przed wylogowaniem, gdy ekran zgłosił zmiany.
  */
 export function PowlokaPanelu({
   logo,
@@ -151,7 +158,35 @@ export function PowlokaPanelu({
     const href = lacze?.getAttribute("href");
     if (!lacze || !href || !href.startsWith("/") || href.startsWith("//") || lacze.getAttribute("target")) return;
     e.preventDefault();
-    onNawigacja(href);
+    onNawigacja(href, lacze);
+  }
+
+  /**
+   * Odnośnik poza pozycjami menu (treść ekranu, okruszek, pasek, stopka menu)
+   * przy zgłoszonych niezapisanych zmianach: rama pyta, zanim obsłuży go
+   * ktokolwiek inny. Po „Wyjdź bez zapisywania” to samo kliknięcie idzie
+   * jeszcze raz — już bez pytania, zwykłą drogą tego odnośnika. Pozycje menu
+   * pytają w `onNawigacja`; kliknięcie z modyfikatorem i odnośnik z `target`
+   * zostają bez zmian. Bez zgłoszenia ta obsługa nie robi nic.
+   */
+  function przechwycWyjscie(e: MouseEvent<HTMLElement>) {
+    if (!saPowodyPytania() || e.button !== 0) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const lacze = e.target instanceof Element ? e.target.closest("a") : null;
+    const href = lacze?.getAttribute("href");
+    if (!lacze || !href || !href.startsWith("/") || href.startsWith("//") || lacze.getAttribute("target")) return;
+    if (lacze.hasAttribute("download")) return;
+    if (onNawigacja && lacze.closest("nav")) return;
+    if (lacze.closest("main") && ekranPytaWTresci()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
+    if (oknoRef.current?.contains(lacze)) zamknijMenu();
+    zapytajPrzedWyjsciem(() => {
+      if (lacze.isConnected) lacze.click();
+      else if (onNawigacja) onNawigacja(href);
+      else window.location.assign(href);
+    }, lacze);
   }
 
   function kliknieciePoOknie(e: MouseEvent<HTMLDialogElement>) {
@@ -162,6 +197,12 @@ export function PowlokaPanelu({
     }
   }
 
+  /** Wylogowanie jest wyjściem jak każde inne: przy niezapisanych zmianach rama pyta. */
+  function wylogujPrzezPytanie() {
+    if (oknoRef.current?.open) zamknijMenu();
+    zapytajPrzedWyjsciem(onWyloguj);
+  }
+
   const konto = (
     <>
       {grupaZwinieta && grupaZwinieta.pozycje.length > 0 && <GrupaZwijana grupa={grupaZwinieta} />}
@@ -170,7 +211,7 @@ export function PowlokaPanelu({
         data-konto-menu=""
       >
         <p className={style.kontoNaglowek}>Konto</p>
-        <button type="button" className={style.wyloguj} onClick={onWyloguj} disabled={wylogowywanie}>
+        <button type="button" className={style.wyloguj} onClick={wylogujPrzezPytanie} disabled={wylogowywanie}>
           <Icon nazwa="out" />
           <span>{wylogowywanie ? "Wylogowywanie…" : "Wyloguj"}</span>
         </button>
@@ -190,7 +231,7 @@ export function PowlokaPanelu({
   }
 
   return (
-    <div data-theme="light" data-powloka-panelu="" className={style.powloka}>
+    <div data-theme="light" data-powloka-panelu="" className={style.powloka} onClickCapture={przechwycWyjscie}>
       <a href="#tresc" className={style.skok}>
         Przejdź do treści
       </a>
@@ -265,6 +306,8 @@ export function PowlokaPanelu({
           </DostawcaPowloki>
         </main>
       </div>
+
+      <OknoPytaniaOWyjscie />
     </div>
   );
 }

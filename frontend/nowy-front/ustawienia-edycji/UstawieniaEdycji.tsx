@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/klient";
@@ -54,6 +55,10 @@ export function UstawieniaEdycji() {
   const [bladZapisu, setBladZapisu] = useState<string | null>(null);
   const [zapisywanie, setZapisywanie] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  useZgloszenieNiezapisanychZmian(
+    stan.rodzaj === "gotowy" && formularz !== null && Object.keys(zmianyDoZapisu(stan.rok, formularz)).length > 0,
+    "Ustawienia roku programu",
+  );
 
   useEffect(() => {
     let aktualne = true;

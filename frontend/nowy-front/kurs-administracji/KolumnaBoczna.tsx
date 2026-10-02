@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { ApiError } from "@/lib/api/klient";
 import { zdanieBleduTematow } from "@/lib/api/h08-tematy";
@@ -336,6 +337,15 @@ function FormularzDanych({
   const [bledy, setBledy] = useState<BledyDanych>({});
   const [zapisano, setZapisano] = useState(false);
   const [trwa, setTrwa] = useState(false);
+  // Te same przycięcia co w żądaniu zapisu: po zapisie formularz nie różni się od kursu.
+  useZgloszenieNiezapisanychZmian(
+    tytul.trim() !== kurs.title ||
+      (opis.trim() === "" ? "" : opis) !== (kurs.description ?? "") ||
+      adres.trim() !== kurs.slug ||
+      typ !== kurs.type ||
+      grupa !== kurs.product_group,
+    "Dane kursu",
+  );
 
   async function zapisz() {
     if (trwa) return;

@@ -1,8 +1,9 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import Logo from "@/components/ui/Logo";
+import { useNawigacjaZPytaniem } from "@/design-system/szablony/NiezapisaneZmiany";
 import { PowlokaPanelu } from "@/design-system/szablony/PowlokaPanelu/PowlokaPanelu";
 import { api } from "@/lib/api";
 import { menuRamkiProwadzacego, W_PRZYGOTOWANIU_KONTO_PROWADZACEGO } from "@/lib/menu/ramka/prowadzacy";
@@ -27,7 +28,7 @@ export const PODPIS_ROLI_PROWADZACEGO = "prowadzący";
  */
 export function PowlokaProwadzacego({ children }: { children: ReactNode }) {
   const sciezka = usePathname() ?? "";
-  const router = useRouter();
+  const { przejdz } = useNawigacjaZPytaniem();
   const [ja, setJa] = useState<Ja | null>(null);
   const { wyloguj, wylogowywanie } = useWylogowanieRamki();
 
@@ -62,7 +63,7 @@ export function PowlokaProwadzacego({ children }: { children: ReactNode }) {
       grupaZwinieta={grupaZwinieta}
       etykietaMenu="Menu — Panel prowadzącego"
       liniaKonta={liniaKonta}
-      onNawigacja={(href) => router.push(href)}
+      onNawigacja={przejdz}
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}
       narzedziaPaska={<NarzedziaPaskaRamki />}

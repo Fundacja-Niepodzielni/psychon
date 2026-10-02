@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminCourse } from "@/lib/h08/types";
@@ -299,6 +300,7 @@ function RdzenZaproszen({ kurs, etykietaAnuluj, onAnuluj, uloz }: WlasciwosciRdz
   const [wysyla, setWysyla] = useState(false);
   const [blad, setBlad] = useState<BladZaproszen | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  useZgloszenieNiezapisanychZmian(Object.keys(zaznaczone).length > 0, "Zaproszenia do kursu");
 
   useEffect(() => {
     const straz = { anulowane: false };

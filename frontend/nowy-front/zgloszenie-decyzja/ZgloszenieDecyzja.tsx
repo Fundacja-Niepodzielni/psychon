@@ -1,7 +1,7 @@
 "use client";
 
+import { useNawigacjaZPytaniem } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
@@ -83,8 +83,8 @@ function Rama({ tytul, okruszekBiezacy = "Zgłoszenie", status, wroc, glowna, ws
  * Odczyt i zapis biegną z przeglądarki tokenem osoby (`dane.ts`).
  */
 export function ZgloszenieDecyzja({ id }: { id: string }) {
-  const router = useRouter();
-  const wroc = () => router.push(SCIEZKA_LISTY);
+  const { przejdz } = useNawigacjaZPytaniem();
+  const wroc = () => przejdz(SCIEZKA_LISTY);
   const [stan, setStan] = useState<Stan>(() =>
     poprawneId(id) === null ? { rodzaj: "nie-znaleziono" } : { rodzaj: "ladowanie" },
   );

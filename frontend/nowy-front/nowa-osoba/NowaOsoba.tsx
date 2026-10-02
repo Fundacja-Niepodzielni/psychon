@@ -1,5 +1,7 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
+import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -59,6 +61,7 @@ export function NowaOsoba() {
   const [blad, setBlad] = useState<BladZapisu | null>(null);
   const [ostatniaProba, setOstatniaProba] = useState<Proba | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  useZgloszenieNiezapisanychZmian(!rowneWartosci(formularz, PUSTY_FORMULARZ), "Nowa osoba");
 
   const wczytaj = useCallback((straz?: { anulowane: boolean }) => {
     return pobierzUprawnienia()

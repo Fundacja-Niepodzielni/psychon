@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useState } from "react";
 import type { ApplicationRole } from "@/lib/h03/types";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -144,6 +145,10 @@ function Decyzja({ zgloszenie, onZaakceptowano, onOdrzucono, odswiez }: Wlasciwo
   const [bledy, setBledy] = useState<{ rola?: string; powod?: string }>({});
   const [uwaga, setUwaga] = useState<Uwaga | null>(null);
   const [wysylanie, setWysylanie] = useState(false);
+  useZgloszenieNiezapisanychZmian(
+    (tryb === "odrzucenie" && powod.trim() !== "") || rola !== rolaDomyslna(zgloszenie.role),
+    "Decyzja o zgłoszeniu",
+  );
   const mimoLimitu = uwaga?.rodzaj === "limit-miejsc";
 
   async function akceptuj() {

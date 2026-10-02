@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import HelpWidget from "@/components/layout/HelpWidget";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import Logo from "@/components/ui/Logo";
+import { useNawigacjaZPytaniem } from "@/design-system/szablony/NiezapisaneZmiany";
 import { PowlokaPanelu } from "@/design-system/szablony/PowlokaPanelu/PowlokaPanelu";
 import { api, endSession } from "@/lib/api";
 import { LEGAL_DOCUMENT_LABELS, LEGAL_DOCUMENT_TYPES } from "@/lib/h22/legal-documents";
@@ -45,7 +46,7 @@ export function rokProgramuZEdycji(edycja: Edycja | null | undefined): string | 
  * osoby z `/me`, rokiem programu z `/admin/edition` i tym samym
  * wylogowaniem co dotychczasowa powłoka. Narzędzia paska (pomoc,
  * powiadomienia) i łącza stopki są te same co w dotychczasowej powłoce.
- * Kliknięcie pozycji menu to przejście po stronie klienta (`router.push`),
+ * Kliknięcie pozycji menu to przejście po stronie klienta (`useNawigacjaZPytaniem`),
  * bez przeładowania dokumentu; pełnym przejściem zostaje tylko wylogowanie
  * pod adres SSO. Strażnika ról nie niesie — stoi nad nią w układzie.
  * Nad treścią ekranu stoi pasek wysyłania nagrania (`PasekWysylania`): bez
@@ -54,6 +55,7 @@ export function rokProgramuZEdycji(edycja: Edycja | null | undefined): string | 
 export function PowlokaAdministracji({ children }: { children: ReactNode }) {
   const sciezka = usePathname() ?? "";
   const router = useRouter();
+  const { przejdz } = useNawigacjaZPytaniem();
   const [ja, setJa] = useState<Ja | null>(null);
   const [rok, setRok] = useState<string | null>(null);
   const [wylogowywanie, setWylogowywanie] = useState(false);
@@ -106,7 +108,7 @@ export function PowlokaAdministracji({ children }: { children: ReactNode }) {
       grupy={grupy}
       grupaZwinieta={grupaZwinieta}
       etykietaMenu="Menu — Administracja"
-      onNawigacja={(href) => router.push(href)}
+      onNawigacja={przejdz}
       onWyloguj={wyloguj}
       wylogowywanie={wylogowywanie}
       rokProgramu={rok}

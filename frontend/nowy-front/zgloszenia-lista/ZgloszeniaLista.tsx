@@ -1,5 +1,7 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
+import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -89,6 +91,10 @@ export function ZgloszeniaLista() {
   const [zapisuje, setZapisuje] = useState(false);
   const [bladDodania, setBladDodania] = useState<BladDodania | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  useZgloszenieNiezapisanychZmian(
+    formularzOtwarty && !rowneWartosci(dane, PUSTY_FORMULARZ_ZGLOSZENIA),
+    "Zgłoszenia",
+  );
 
   const [importOtwarty, setImportOtwarty] = useState(false);
   const [stanImportu, setImport] = useState<StanImportu>({ rodzaj: "bezczynny" });

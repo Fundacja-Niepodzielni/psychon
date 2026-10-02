@@ -1,5 +1,7 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
+import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -107,6 +109,12 @@ export function SuperwizjeTerminy() {
   const [zapisywanie, setZapisywanie] = useState(false);
   const [odwolywanyId, setOdwolywanyId] = useState<number | null>(null);
   const [potwierdzOdwolanie, setPotwierdzOdwolanie] = useState(false);
+  // Otwarty formularz bez żadnej zmiany nie jest niezapisaną pracą.
+  const edytowanyTermin = edytowanyId === null ? undefined : terminy.find((termin) => termin.id === edytowanyId);
+  useZgloszenieNiezapisanychZmian(
+    formularz !== null && edytowanyTermin !== undefined && !rowneWartosci(formularz, formularzZTerminu(edytowanyTermin)),
+    "Terminy superwizji",
+  );
 
   /** Wspólny rdzeń wczytania listy — wywoływany przy montowaniu I przez
    * przycisk „Odśwież" w pustym stanie (patrz `pusty.przycisk` niżej). Bez

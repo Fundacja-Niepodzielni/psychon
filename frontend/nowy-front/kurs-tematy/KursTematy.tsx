@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -415,16 +416,9 @@ function EdytorTematow({
       formularz.grupaProduktowa !== kurs.product_group);
   const saNiezapisaneDane = liczbaZmian > 0 || niezapisanaLekcja || daneKursuZmienione;
 
-  // Wyjście z niezapisanymi zmianami pyta (M13) — także zamknięcie karty; liczą
+  // Wyjście z niezapisanymi zmianami pyta (M13) — menu ramy i zamknięcie karty; liczą
   // się zmiany w drzewie, formularz lekcji i formularz danych kursu.
-  useEffect(() => {
-    if (!saNiezapisaneDane) return;
-    function naWyjscie(zdarzenie: BeforeUnloadEvent) {
-      zdarzenie.preventDefault();
-    }
-    window.addEventListener("beforeunload", naWyjscie);
-    return () => window.removeEventListener("beforeunload", naWyjscie);
-  }, [saNiezapisaneDane]);
+  useZgloszenieNiezapisanychZmian(saNiezapisaneDane, "Kurs");
 
   const zamknijChecklist = useCallback(() => {
     setChecklistaOtwarta(false);

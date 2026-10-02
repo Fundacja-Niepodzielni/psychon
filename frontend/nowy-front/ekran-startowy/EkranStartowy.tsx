@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/klient";
@@ -101,6 +102,10 @@ export function EkranStartowy() {
   const [bladZapisu, setBladZapisu] = useState<string | null>(null);
   const [zapisywanie, setZapisywanie] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  useZgloszenieNiezapisanychZmian(
+    stan.rodzaj === "gotowy" && formularz !== null && Object.keys(cialoZapisu(stan.ekran, formularz)).length > 0,
+    "Treść ekranu startowego",
+  );
 
   useEffect(() => {
     let aktualne = true;

@@ -1,5 +1,7 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
+import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -90,6 +92,22 @@ export function FormyStazu() {
   const [blad, setBlad] = useState<string | null>(null);
   const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
   const [zapisywanie, setZapisywanie] = useState(false);
+  // Otwarty formularz bez żadnej zmiany nie jest niezapisaną pracą.
+  const edytowanaForma = edytowanaId === null ? undefined : formy.find((forma) => forma.id === edytowanaId);
+  const formularzWyjsciowy: StanFormularza | null = edytowanaForma
+    ? {
+        name: edytowanaForma.name,
+        description: edytowanaForma.description ?? "",
+        is_active: edytowanaForma.is_active,
+        sort_order: String(edytowanaForma.sort_order),
+      }
+    : dodajOtwarte
+      ? { ...PUSTY_FORMULARZ, sort_order: String(nastepneMiejsceNaLiscie(formy)) }
+      : null;
+  useZgloszenieNiezapisanychZmian(
+    formularzWyjsciowy !== null && !rowneWartosci(formularz, formularzWyjsciowy),
+    "Słownik form stażu",
+  );
 
   useEffect(() => {
     let anulowane = false;

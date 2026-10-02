@@ -1,5 +1,7 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
+import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -159,6 +161,17 @@ export function KursyAdministracji() {
   const [zapisujeKolejnosc, setZapisujeKolejnosc] = useState(false);
   const [bladOkna, setBladOkna] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Otwarty formularz bez wpisu i tryb kolejności bez przesunięcia nie są niezapisaną pracą.
+  useZgloszenieNiezapisanychZmian(
+    (formularzOtwarty && !rowneWartosci(pola, PUSTE_POLA)) ||
+      (kolejnosc !== null &&
+        stan.rodzaj === "dane" &&
+        !rowneWartosci(
+          kolejnosc.map((kurs) => kurs.id),
+          kursyWSciezce(stan.kursy).map((kurs) => kurs.id),
+        )),
+    "Kursy",
+  );
 
   // Fokus po zmianie ekranu: selektory sprawdzane po zatwierdzeniu zmiany w DOM, pierwszy znaleziony dostaje fokus.
   const celeFokusu = useRef<string[]>([]);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -59,6 +60,7 @@ export function PoProgramieWspolpraca() {
   const [bledyPol, setBledyPol] = useState<Record<string, string[]> | undefined>(undefined);
   const [komunikat, setKomunikat] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  useZgloszenieNiezapisanychZmian(tresc.trim() !== "", "Dalsza współpraca");
 
   useEffect(() => {
     let aktualne = true;

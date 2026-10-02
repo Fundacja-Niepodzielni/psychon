@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -302,15 +303,19 @@ export function StronaLekcji({
     };
   }, [odswiezajStan, lekcja.id]);
 
-  // Zamknięcie karty przeglądarki pyta, gdy jest niezapisany tekst albo trwa wysyłanie nagrania.
+  // Niezapisany tekst: menu ramy i zamknięcie karty pytają wspólnym mechanizmem;
+  // odnośniki strony pyta ona sama (niżej), własnym oknem z zapisem.
+  useZgloszenieNiezapisanychZmian(zmieniony, "Strona lekcji", "ekran");
+
+  // Zamknięcie karty przeglądarki pyta także wtedy, gdy trwa wysyłanie nagrania.
   useEffect(() => {
-    if (!zmieniony && !wysylanieTrwa) return;
+    if (!wysylanieTrwa) return;
     function naWyjscie(zdarzenie: BeforeUnloadEvent) {
       zdarzenie.preventDefault();
     }
     window.addEventListener("beforeunload", naWyjscie);
     return () => window.removeEventListener("beforeunload", naWyjscie);
-  }, [zmieniony, wysylanieTrwa]);
+  }, [wysylanieTrwa]);
 
   // Każdy odnośnik strony (wróć, sąsiednia lekcja, okruszek) wychodzi tą samą drogą:
   // przy niezapisanym tekście pyta, bez zmian przechodzi od razu.

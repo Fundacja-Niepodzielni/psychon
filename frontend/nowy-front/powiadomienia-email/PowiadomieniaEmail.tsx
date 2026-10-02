@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -148,6 +149,14 @@ export function PowiadomieniaEmail() {
   const [ustBledyTypow, setUstBledyTypow] = useState<Record<string, string>>({});
   const [ustBledyPrzypomnienia, setUstBledyPrzypomnienia] = useState<{ enabled?: string; send_at?: string }>({});
   const [ustZapisywanie, setUstZapisywanie] = useState(false);
+  useZgloszenieNiezapisanychZmian(
+    ustStan === "ok" &&
+      ustOstatniOdczyt !== null &&
+      ustRoboczy !== null &&
+      !ustTylkoOdczyt &&
+      liczbaZmian(obliczRoznice(ustOstatniOdczyt, ustRoboczy)) > 0,
+    "Ustawienia powiadomień",
+  );
 
   useEffect(() => {
     let anulowane = false;

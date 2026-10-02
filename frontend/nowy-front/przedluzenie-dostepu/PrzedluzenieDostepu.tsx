@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ROLE_LABELS } from "@/lib/h18/labels";
@@ -66,6 +67,10 @@ export function PrzedluzenieDostepu({ idOsoby }: WlasciwosciPrzedluzenieDostepu)
   const [bladOgolny, setBladOgolny] = useState<string | null>(null);
   const [zapisywanie, setZapisywanie] = useState(false);
   const [komunikat, setKomunikat] = useState<string | null>(null);
+  useZgloszenieNiezapisanychZmian(
+    stan.rodzaj === "gotowy" && (tryb !== "months" || miesiace !== MIESIACE_DOMYSLNE || data !== ""),
+    "Przedłużenie dostępu",
+  );
 
   useEffect(() => {
     if (id === null) return;

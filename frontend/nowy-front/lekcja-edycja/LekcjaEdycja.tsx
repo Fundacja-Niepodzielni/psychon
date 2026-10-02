@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -313,15 +314,8 @@ function EdytorLekcji({ lekcja, wroc, onZapisano, wiersz }: WlasciwosciEdytora) 
   const zmieniony = !formularzeRowne(formularz, formularzZLekcji(zapisana));
   const liczbaZnakow = liczZnaki(formularz.content);
 
-  // Wyjście z niezapisanymi zmianami pyta — także zamknięcie karty.
-  useEffect(() => {
-    if (!zmieniony) return;
-    function naWyjscie(zdarzenie: BeforeUnloadEvent) {
-      zdarzenie.preventDefault();
-    }
-    window.addEventListener("beforeunload", naWyjscie);
-    return () => window.removeEventListener("beforeunload", naWyjscie);
-  }, [zmieniony]);
+  // Wyjście z niezapisanymi zmianami pyta — menu ramy i zamknięcie karty.
+  useZgloszenieNiezapisanychZmian(zmieniony, "Lekcja");
 
   // Ekran kursu pyta przed porzuceniem zmian — musi wiedzieć, czy są.
   const zglosZmiane = wiersz.onZmieniono;

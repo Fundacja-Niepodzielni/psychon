@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -91,6 +92,7 @@ export function StazKolejka() {
   const [zajete, setZajete] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [komunikat, setKomunikat] = useState<KomunikatBledu | null>(null);
+  useZgloszenieNiezapisanychZmian(decyzja !== null && decyzja.komentarz.trim() !== "", "Kolejka stażu");
   const lista = useRef<HTMLDivElement>(null);
   // Wiersz, któremu po najbliższym renderze oddajemy fokus (na jego akcję „Otwórz”).
   const fokusWiersza = useRef<number | null>(null);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
@@ -143,6 +144,7 @@ export function SkrzynkaPytan() {
   const [komunikat, setKomunikat] = useState<string | null>(null);
   const wysylanie = useRef(false);
   const [wysyla, setWysyla] = useState(false);
+  useZgloszenieNiezapisanychZmian(otwarte !== null && tekst.trim() !== "", "Skrzynka pytań");
 
   useEffect(() => {
     let aktualne = true;

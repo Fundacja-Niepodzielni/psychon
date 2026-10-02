@@ -1,7 +1,7 @@
 "use client";
 
+import { useNawigacjaZPytaniem, useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -91,12 +91,13 @@ function Uwagi({ uwaga, odswiez }: { uwaga: Uwaga | null; odswiez: () => void })
 }
 
 function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
-  const router = useRouter();
+  const { przejdz } = useNawigacjaZPytaniem();
   const [tryb, setTryb] = useState<"decyzja" | "poprawka">("decyzja");
   const [komentarz, setKomentarz] = useState("");
   const [bladKomentarza, setBladKomentarza] = useState<string | undefined>(undefined);
   const [uwaga, setUwaga] = useState<Uwaga | null>(null);
   const [wysylanie, setWysylanie] = useState(false);
+  useZgloszenieNiezapisanychZmian(tryb === "poprawka" && komentarz.trim() !== "", "Decyzja o wniosku");
 
   async function akceptuj() {
     if (wysylanie) return;
@@ -180,7 +181,7 @@ function Decyzja({ wniosek, onRozstrzygniety, odswiez }: WlasciwosciPanelu) {
           Poproś o poprawkę
         </Button>
         <span className={style.odsuniety}>
-          <Button poziom="quiet" onClick={() => router.push("/admin/profile")}>
+          <Button poziom="quiet" onClick={() => przejdz("/admin/profile")}>
             Wróć do listy
           </Button>
         </span>

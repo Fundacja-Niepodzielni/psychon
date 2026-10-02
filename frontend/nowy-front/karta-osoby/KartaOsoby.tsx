@@ -1,5 +1,7 @@
 "use client";
 
+import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
+import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -74,6 +76,10 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
   const [zapisywanie, setZapisywanie] = useState(false);
   const [bladZapisu, setBladZapisu] = useState(false);
   const [pokazToast, setPokazToast] = useState(false);
+  useZgloszenieNiezapisanychZmian(
+    formularzOtwarty && formularz !== null && karta !== null && !rowneWartosci(formularz, formularzZProfilu(karta.profile)),
+    "Karta osoby",
+  );
 
   function wczytajRzetelnosc(straz?: { anulowane: boolean }) {
     pobierzRzetelnoscOsoby(id)

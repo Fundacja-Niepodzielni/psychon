@@ -332,12 +332,13 @@ describe("PowlokaPanelu — nawigacja kliencka menu", () => {
     return within(screen.getByRole("complementary", { name: "Menu i konto" }));
   }
 
-  it("zwykły klik pozycji wewnętrznej: onNawigacja(href) i zatrzymana domyślna akcja", () => {
+  it("zwykły klik pozycji wewnętrznej: onNawigacja(href, kliknięty odnośnik) i zatrzymana domyślna akcja", () => {
     const onNawigacja = vi.fn();
     wyrenderuj({ onNawigacja });
-    const domyslna = fireEvent.click(menuBoczne().getByRole("link", { name: "Sprawy" }));
+    const lacze = menuBoczne().getByRole("link", { name: "Sprawy" });
+    const domyslna = fireEvent.click(lacze);
     expect(onNawigacja).toHaveBeenCalledTimes(1);
-    expect(onNawigacja).toHaveBeenCalledWith("/admin/sprawy");
+    expect(onNawigacja).toHaveBeenCalledWith("/admin/sprawy", lacze);
     expect(domyslna).toBe(false);
   });
 
