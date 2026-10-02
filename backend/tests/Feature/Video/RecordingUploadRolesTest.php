@@ -51,6 +51,16 @@ class RecordingUploadRolesTest extends TestCase
 
     private const string STATUS_ROUTE = 'api/v1/admin/lessons/{lesson}/video-status';
 
+    /**
+     * Wiek tokena w chwili wybicia. Walidator odrzuca token, którego `iat` jest
+     * późniejsze niż `time()` (luz 0), a zegar ścienny hosta bramki (WSL) cofa się
+     * co ~30 s o kilkanaście milisekund (zmierzone). Krok wstecz między wybiciem a
+     * sprawdzeniem, który przetnie granicę sekundy, dawał 401 w przypadku, który
+     * akurat na niego trafił — niezależnie od roli. Token wydany minutę wcześniej
+     * nie zależy od kroku zegara, a jego `exp` zostaje taki, jaki nadaje fabryka.
+     */
+    private const int TOKEN_AGE_SECONDS = 60;
+
     /** Dokładnie te klucze niesie dziś odpowiedź wgrania — u obu ról. */
     private const array UPLOAD_DATA_KEYS = ['expiration_time', 'library_id', 'resumed', 'signature', 'upload_url', 'video_id'];
 
@@ -509,6 +519,7 @@ class RecordingUploadRolesTest extends TestCase
         return $realm->mint([
             'sub' => $sub,
             'realm_access' => ['roles' => [config("keycloak.roles.{$role}")]],
+            'iat' => time() - self::TOKEN_AGE_SECONDS,
         ]);
     }
 

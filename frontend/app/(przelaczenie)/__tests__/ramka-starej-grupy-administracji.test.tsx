@@ -53,9 +53,36 @@ function sciezkiStron(katalog: string): string[] {
 
 const STRONY_ADMIN = sciezkiStron(path.join(KORZEN, "admin"));
 
+/**
+ * Pierwszy import układu przekształca cały graf jego modułów. Zmierzone bez
+ * obciążenia: pierwszy przypadek renderu 4452 ms przy limicie 5000 ms, każdy
+ * następny ~136 ms (mediana) — więc pod obciążeniem limit przekraczał
+ * pierwszy przypadek, a nie render. Graf przekształcamy raz przy zbieraniu
+ * pliku, poza limitem czasu przypadków. Każdy przypadek i tak ocenia moduły od
+ * nowa (`podmienRejestr` woła `vi.resetModules()`), z podmienionym rejestrem.
+ */
+await import("@/app/(administracja)/admin/layout");
+
+/**
+ * Numer bieżącego przypadku. `afterEach` podbija go przed `cleanup()`, więc
+ * przypadek przerwany limitem czasu, którego import skończy się dopiero po
+ * sprzątaniu, nie wyrenderuje niczego do dokumentu następnego przypadku
+ * (bramka: „Found multiple elements with the text: Treść strony próbnej”
+ * w przypadku po przerwanym).
+ */
+let przypadek = 0;
+
+function przypadekTrwa(numer: number, adres: string) {
+  if (numer !== przypadek) {
+    throw new Error(`Przypadek ${adres} skończył się przed renderem — bez renderu do dokumentu następnego przypadku.`);
+  }
+}
+
 async function wyrenderujUklad(adres: string) {
+  const numer = przypadek;
   sciezka = adres;
   const { default: AdminLayout } = await import("@/app/(administracja)/admin/layout");
+  przypadekTrwa(numer, adres);
   const wynik = render(
     <AdminLayout>
       <p>Treść strony próbnej</p>
@@ -87,6 +114,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  przypadek += 1;
   cleanup();
   przywrocRejestr();
 });
