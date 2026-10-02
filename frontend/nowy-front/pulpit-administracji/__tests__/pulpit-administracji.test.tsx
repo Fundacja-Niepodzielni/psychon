@@ -206,7 +206,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     );
     const { container } = render(<PulpitAdministracji />);
 
-    await waitFor(() => expect(screen.getByText(/tylko dla administracji/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Ten ekran jest dla administracji/)).toBeInTheDocument());
     sprawdzSzablon(container);
     expect(przyciskiGlowne(container)).toHaveLength(0);
     expect(screen.queryByText("Uczestnicy w programie")).not.toBeInTheDocument();
@@ -218,7 +218,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     );
     const { container } = render(<PulpitAdministracji />);
 
-    await waitFor(() => expect(screen.getByText(/tylko dla administracji/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Ten ekran jest dla administracji/)).toBeInTheDocument());
     sprawdzSzablon(container);
   });
 

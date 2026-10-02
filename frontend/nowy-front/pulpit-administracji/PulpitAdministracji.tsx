@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DashboardTemplate } from "@/design-system/szablony/DashboardTemplate/DashboardTemplate";
 import { pobierzPulpitAdministracji, type PulpitAdministracji as DanePulpitu } from "./dane";
@@ -77,12 +77,7 @@ export function PulpitAdministracji() {
       <DashboardTemplate
         naglowek={naglowek}
         glowna={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Pulpit dla administracji"
-            rola="administracji"
-            przycisk={{ etykieta: "Wróć", onClick: wroc }}
-          />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: wroc }} />
         }
         wspierajaca={null}
       />

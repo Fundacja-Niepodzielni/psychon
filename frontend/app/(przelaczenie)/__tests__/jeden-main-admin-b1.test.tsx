@@ -186,8 +186,8 @@ describe("/admin (pulpit) w układzie administracji", () => {
     atrapaApi(() => Promise.reject(blad()));
     const { container } = trasaStartowa();
 
-    await screen.findByText(/tylko dla administracji/);
-    expect(screen.getByRole("heading", { level: 2, name: "Pulpit dla administracji" })).toBeInTheDocument();
+    await screen.findByText(/Ten ekran jest dla administracji/);
+    expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
     expect(screen.queryByText("137")).toBeNull();
     expect(screen.queryByText("Zgłoszenia rekrutacyjne")).toBeNull();
     // Okruszki nagłówka to lista w `nav` — rekordem jest wyłącznie `li` poza nią.
