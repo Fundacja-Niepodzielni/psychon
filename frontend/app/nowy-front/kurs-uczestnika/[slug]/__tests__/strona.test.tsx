@@ -1,26 +1,20 @@
 import { describe, expect, it } from "vitest";
 import Strona from "../page";
-import { KursUczestnika } from "@/nowy-front/kurs-uczestnika/KursUczestnika";
+import { KursUczestnikaZAdresu } from "@/nowy-front/kurs-uczestnika/KursUczestnikaZAdresu";
 
-/** Poligon `/nowy-front/kurs-uczestnika/[slug]`: slug z adresu, pas podglądu tylko przy `?podglad=1`. */
+/** Poligon `/nowy-front/kurs-uczestnika/[slug]`: slug z adresu; tryb podglądu rozstrzyga ekran z adresu i roli. */
 
-async function wezel(parametry: { podglad?: string | string[] }) {
-  return (await Strona({
-    params: Promise.resolve({ slug: "wywiad-psychologiczny" }),
-    searchParams: Promise.resolve(parametry),
-  })) as { type: unknown; props: { slug: string; podglad: boolean } };
+async function wezel() {
+  return (await Strona({ params: Promise.resolve({ slug: "wywiad-psychologiczny" }) })) as {
+    type: unknown;
+    props: Record<string, unknown>;
+  };
 }
 
 describe("poligon strony kursu uczestnika", () => {
-  it("renderuje ekran ze slugiem z adresu, bez pasa podglądu", async () => {
-    const element = await wezel({});
-    expect(element.type).toBe(KursUczestnika);
-    expect(element.props).toEqual({ slug: "wywiad-psychologiczny", podglad: false });
-  });
-
-  it("?podglad=1 włącza pas podglądu; inna wartość go nie włącza", async () => {
-    expect((await wezel({ podglad: "1" })).props.podglad).toBe(true);
-    expect((await wezel({ podglad: "0" })).props.podglad).toBe(false);
-    expect((await wezel({ podglad: ["1", "1"] })).props.podglad).toBe(false);
+  it("renderuje ekran z adresu ze slugiem z adresu i niczym więcej", async () => {
+    const element = await wezel();
+    expect(element.type).toBe(KursUczestnikaZAdresu);
+    expect(element.props).toEqual({ slug: "wywiad-psychologiczny" });
   });
 });

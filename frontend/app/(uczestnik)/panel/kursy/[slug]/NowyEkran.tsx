@@ -3,7 +3,7 @@
 import "@/design-system/tokeny/tokeny.css";
 import { use } from "react";
 import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
-import { KursUczestnika } from "@/nowy-front/kurs-uczestnika/KursUczestnika";
+import { KursUczestnikaZAdresu } from "@/nowy-front/kurs-uczestnika/KursUczestnikaZAdresu";
 
 /**
  * Ekran kursu uczestnika nowego frontu pod trasą produktu `/panel/kursy/[slug]`.
@@ -17,7 +17,7 @@ export default function KursNowyEkran({ params }: { params: Promise<{ slug: stri
   return (
     <div data-theme="light">
       <DostawcaPowloki>
-        <KursUczestnika slug={slug} />
+        <KursUczestnikaZAdresu slug={slug} />
       </DostawcaPowloki>
     </div>
   );

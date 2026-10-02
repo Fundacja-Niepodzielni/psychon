@@ -22,6 +22,8 @@ export interface LekcjaWiersza {
   etykieta: "Rozpocznij lekcję" | "Kontynuuj" | "Otwórz ponownie";
   /** Czy to lekcja, na którą prowadzi przycisk główny. */
   nastepna: boolean;
+  /** „W trakcie · obejrzane X z Y potrzebnych minut” — gdy odczyt niesie postęp lekcji; inaczej `null`. */
+  postep: string | null;
 }
 
 export interface TematEkranu {
@@ -48,6 +50,15 @@ export interface WidokKursu {
   test: { czynny: boolean; zdanie: string };
   /** Kurs ukończony w całości (lekcje i test), według `status` odczytu. */
   kursUkonczony: boolean;
+  /** Test zaliczony: pole `test_passed` odczytu albo kurs ukończony w całości. */
+  testZaliczony: boolean;
+  /** Indeks (od 0, w kolejności lekcji) lekcji, na którą prowadzi przycisk główny; `-1`, gdy żadna. */
+  indeksNastepnej: number;
+}
+
+export interface OpcjeWidoku {
+  /** Tryb podglądu: wszystkie lekcje otwarte, pole `locked` z odczytu jest ignorowane. */
+  podglad?: boolean;
 }
 
 /** Lekcje w kolejności `sequence_order` (przy remisie — `id`). */
@@ -71,11 +82,35 @@ export function opisKursu(lekcje: LekcjaKursu[]): string {
   return [liczba, czasKursu(lekcje), "na końcu test"].filter((czesc): czesc is string => czesc !== null).join(" · ");
 }
 
-/** Czas lekcji w wierszu: „14 min nagrania”; bez czasu — `null`. */
+/** Czas lekcji w wierszu: „14 min nagrania”, dla lekcji bez nagrania „do czytania”; bez czasu — `null`. */
 export function czasLekcji(lekcja: LekcjaKursu): string | null {
+  if (lekcja.has_recording === false) return "do czytania";
   const sekundy = lekcja.duration_seconds ?? 0;
   if (sekundy <= 0) return null;
   return `${Math.max(1, Math.round(sekundy / 60))} min nagrania`;
+}
+
+/** Czy odczyt niesie postęp lekcji nieukończonej: czas aktywny większy od zera i potrzebny czas większy od zera. */
+function maPostepLekcji(lekcja: LekcjaKursu): lekcja is LekcjaKursu & { active_seconds: number; required_active_seconds: number } {
+  return (
+    !lekcja.is_completed &&
+    typeof lekcja.active_seconds === "number" &&
+    typeof lekcja.required_active_seconds === "number" &&
+    lekcja.active_seconds > 0 &&
+    lekcja.required_active_seconds > 0
+  );
+}
+
+/**
+ * Linia postępu lekcji: „W trakcie · obejrzane 12 z 16 potrzebnych minut”.
+ * Minuty zaokrąglane do najbliższej całej, najmniej 1; obejrzane nie
+ * przekraczają potrzebnych. Bez pól postępu albo dla lekcji ukończonej — `null`.
+ */
+export function liniaPostepuLekcji(lekcja: LekcjaKursu): string | null {
+  if (!maPostepLekcji(lekcja)) return null;
+  const potrzebne = Math.max(1, Math.round(lekcja.required_active_seconds / 60));
+  const obejrzane = Math.min(potrzebne, Math.max(1, Math.round(lekcja.active_seconds / 60)));
+  return `W trakcie · obejrzane ${obejrzane} z ${potrzebne} potrzebnych minut`;
 }
 
 export function licznikLekcji(ukonczone: number, razem: number): string {
@@ -100,20 +135,27 @@ function pogrupuj(tematy: TematKursu[], lekcje: LekcjaKursu[]): { klucz: string;
 }
 
 /** Liczy cały widok strony z odczytu kursu. */
-export function zbudujWidok(kurs: KursUczestnika): WidokKursu {
+export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): WidokKursu {
+  const podglad = opcje.podglad === true;
+  const zamknietaOdczytem = (lekcja: LekcjaKursu) => !podglad && lekcja.locked === true;
   const lekcje = lekcjeWKolejnosci(kurs.lessons);
   const razem = lekcje.length;
   const ukonczone = lekcje.filter((lekcja) => lekcja.is_completed).length;
   const wszystkieUkonczone = razem > 0 && ukonczone === razem;
   const kursUkonczony = kurs.status === "completed";
+  const testZaliczony = kursUkonczony || kurs.test_passed === true;
 
-  // Lekcja, na którą prowadzi przycisk główny: pierwsza nieukończona i otwarta.
-  const nastepna = lekcje.find((lekcja) => !lekcja.is_completed && lekcja.locked !== true) ?? null;
+  // Lekcja, na którą prowadzi przycisk główny: pierwsza nieukończona i otwarta z postępem
+  // (czas aktywny większy od zera); bez takiej albo bez pól postępu — pierwsza nieukończona i otwarta.
+  const otwarteNieukonczone = lekcje.filter((lekcja) => !lekcja.is_completed && !zamknietaOdczytem(lekcja));
+  const rozpoczeta = otwarteNieukonczone.find((lekcja) => (lekcja.active_seconds ?? 0) > 0) ?? null;
+  const nastepna = rozpoczeta ?? otwarteNieukonczone[0] ?? null;
   const numerNastepnej = nastepna === null ? null : lekcje.indexOf(nastepna) + 1;
+  const kontynuacja = ukonczone > 0 || rozpoczeta !== null;
 
   const testCzynny = typeof kurs.test_locked === "boolean" ? !kurs.test_locked : wszystkieUkonczone;
   const zostalo = razem - ukonczone;
-  const zdanieTestu = kursUkonczony
+  const zdanieTestu = testZaliczony
     ? "Test zaliczony."
     : testCzynny
       ? "Możesz już podejść do testu. Po zaliczeniu dostaniesz zaświadczenie."
@@ -122,7 +164,7 @@ export function zbudujWidok(kurs: KursUczestnika): WidokKursu {
         : "Test jest jeszcze zamknięty.";
 
   let akcja: AkcjaGlowna = { rodzaj: "brak" };
-  if (kursUkonczony) {
+  if (kursUkonczony || (wszystkieUkonczone && testZaliczony)) {
     akcja = { rodzaj: "brak" };
   } else if (wszystkieUkonczone) {
     akcja = testCzynny
@@ -136,7 +178,7 @@ export function zbudujWidok(kurs: KursUczestnika): WidokKursu {
   } else if (nastepna !== null && numerNastepnej !== null) {
     akcja = {
       rodzaj: "lekcja",
-      etykieta: `${ukonczone === 0 ? "Rozpocznij lekcję" : "Kontynuuj lekcję"} ${numerNastepnej}`,
+      etykieta: `${kontynuacja ? "Kontynuuj lekcję" : "Rozpocznij lekcję"} ${numerNastepnej}`,
       powod: `„${nastepna.title}”`,
       href: adresLekcji(nastepna.id, kurs.slug),
     };
@@ -150,13 +192,19 @@ export function zbudujWidok(kurs: KursUczestnika): WidokKursu {
     wiersze: grupa.lekcje.map((lekcja): LekcjaWiersza => {
       const numer = lekcje.indexOf(lekcja) + 1;
       const jestNastepna = nastepna !== null && lekcja.id === nastepna.id;
+      const zPostepem = (lekcja.active_seconds ?? 0) > 0;
       return {
         lekcja,
         numer,
-        zamknieta: lekcja.locked === true && !lekcja.is_completed,
+        zamknieta: zamknietaOdczytem(lekcja) && !lekcja.is_completed,
         poLekcji: numer > 1 ? numer - 1 : null,
-        etykieta: lekcja.is_completed ? "Otwórz ponownie" : jestNastepna && ukonczone > 0 ? "Kontynuuj" : "Rozpocznij lekcję",
+        etykieta: lekcja.is_completed
+          ? "Otwórz ponownie"
+          : (jestNastepna && kontynuacja) || (zPostepem && !zamknietaOdczytem(lekcja))
+            ? "Kontynuuj"
+            : "Rozpocznij lekcję",
         nastepna: jestNastepna,
+        postep: liniaPostepuLekcji(lekcja),
       };
     }),
   }));
@@ -170,5 +218,7 @@ export function zbudujWidok(kurs: KursUczestnika): WidokKursu {
     akcja,
     test: { czynny: testCzynny, zdanie: zdanieTestu },
     kursUkonczony,
+    testZaliczony,
+    indeksNastepnej: nastepna === null ? -1 : lekcje.indexOf(nastepna),
   };
 }

@@ -34,11 +34,11 @@ afterEach(() => {
   cleanup();
 });
 
-async function pokaz(kurs: DaneKursu | Promise<DaneKursu>, podglad = false) {
+async function pokaz(kurs: DaneKursu | Promise<DaneKursu>, podglad = false, rola: string | null = "project_manager") {
   api.mockImplementation(() => Promise.resolve(kurs));
   let wynik: ReturnType<typeof render> | undefined;
   await act(async () => {
-    wynik = render(<KursUczestnika slug={SLUG} podglad={podglad} />);
+    wynik = render(<KursUczestnika slug={SLUG} podglad={podglad} rola={rola} />);
   });
   await screen.findByRole("heading", { level: 1 });
   return wynik!;
@@ -277,22 +277,133 @@ describe("kolejność fokusu = kolejność ekranu (K5)", () => {
 });
 
 describe("tryb podglądu", () => {
-  it("jedna właściwość włącza pas: zdanie, odnośnik do edycji kursu i nic więcej", async () => {
-    await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }), true);
+  it("podgląd z rolą personelu: pas, zdanie, odnośnik do edycji kursu administracji i nic więcej", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }), true, "project_manager");
     const pas = screen.getByRole("region", { name: "Tryb podglądu" });
     expect(pas.textContent).toBe("Tryb podglądu. Widzisz kurs tak, jak uczestnik. Nic się nie zapisuje.Wróć do edycji kursu");
     expect(within(pas).getByRole("link", { name: "Wróć do edycji kursu" })).toHaveAttribute("href", "/admin/kursy/2");
   });
 
-  it("bez właściwości pasa nie ma, a reszta ekranu jest ta sama (kontrola dodatnia)", async () => {
+  it.each([
+    ["project_manager", "/admin/kursy/2"],
+    ["super_admin", "/admin/kursy/2"],
+    ["instructor", "/prowadzacy/kursy/2"],
+  ])("adres powrotu z pasa dla roli %s: %s", async (rola, adres) => {
+    await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }), true, rola);
+    expect(within(screen.getByRole("region", { name: "Tryb podglądu" })).getByRole("link", { name: "Wróć do edycji kursu" })).toHaveAttribute("href", adres);
+  });
+
+  it("podgląd bez roli, która ma dokąd wrócić (uczestnik, brak roli): pasa nie ma, blokady zostają", async () => {
+    for (const rola of ["volunteer", "student", null]) {
+      await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }), true, rola);
+      expect(screen.queryByRole("region", { name: "Tryb podglądu" }), String(rola)).toBeNull();
+      expect(pomiar().zamkniete, String(rola)).toBe(4);
+      cleanup();
+    }
+  });
+
+  it("bez właściwości pasa nie ma, a lekcje zamknięte odczytem są zamknięte (kontrola dodatnia dla pomiaru poniżej)", async () => {
     await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }), false);
-    const bezPodgladu = pomiar();
     expect(screen.queryByRole("region", { name: "Tryb podglądu" })).toBeNull();
     expect(screen.queryByText("Wróć do edycji kursu")).toBeNull();
-    cleanup();
+    expect(pomiar().zamkniete).toBe(4);
+    expect(screen.getAllByText(/Po ukończeniu lekcji/)).toHaveLength(4);
+  });
+
+  it("przy locked z odczytu 0 kłódek, każdy wiersz z przyciskiem, przycisk główny i karta testu jak w stanie 4 szkicu", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }), true, "instructor");
+    expect(pomiar()).toMatchObject({ zamkniete: 0, liczbaGlownych: 1, tekst: ["Kontynuuj lekcję 3"] });
+    expect(screen.queryByText(/Po ukończeniu lekcji/)).toBeNull();
+    expect(document.querySelectorAll("[data-zamknieta]")).toHaveLength(0);
+    for (const id of [21, 22, 23, 24, 25, 26, 27]) {
+      expect(within(wierszLekcji(id)).getAllByRole("link"), `lekcja ${id}`).toHaveLength(1);
+    }
+    expect(wierszLekcji(27).textContent).not.toMatch(/Po ukończeniu|zamknięta/i);
+    expect(within(kartaTestu()).getByRole("button", { name: "Przejdź do testu" })).toHaveAttribute("aria-disabled", "true");
+    expect(within(kartaTestu()).getByText("Test odblokuje się, gdy ukończysz wszystkie lekcje. Zostało: 5.")).toBeInTheDocument();
+  });
+
+  it("każdy odnośnik do lekcji i do testu niesie parametr podglądu; odnośnik wyjścia z kursu go nie niesie", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 7 }), true, "super_admin");
+    const doLekcji = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/panel/lekcje/"]')];
+    expect(doLekcji).toHaveLength(7);
+    for (const odnosnik of doLekcji) expect(odnosnik.getAttribute("href")).toMatch(/[?&]podglad=1(&|$)/);
+    expect(doLekcji[0].getAttribute("href")).toBe(`/panel/lekcje/21?kurs=${SLUG}&podglad=1`);
+    const doTestu = [...document.querySelectorAll<HTMLAnchorElement>(`a[href^="/panel/kursy/${SLUG}/test"]`)];
+    expect(doTestu.length).toBeGreaterThanOrEqual(2);
+    for (const odnosnik of doTestu) expect(odnosnik.getAttribute("href")).toBe(`/panel/kursy/${SLUG}/test?podglad=1`);
+    expect(document.querySelector('a[href="/panel/kursy"]')?.getAttribute("href")).toBe("/panel/kursy");
+  });
+
+  it("kontrola dodatnia: bez podglądu odnośniki do lekcji i testu nie mają parametru", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 7 }), false);
+    const odnosniki = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="/panel/lekcje/"], a[href$="/test"]')];
+    expect(odnosniki.length).toBeGreaterThanOrEqual(8);
+    for (const odnosnik of odnosniki) expect(odnosnik.getAttribute("href")).not.toMatch(/podglad/);
+  });
+
+  it("pas nie wnosi nagłówka: dalej jeden h1", async () => {
     await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }), true);
-    expect(screen.getByRole("region", { name: "Tryb podglądu" })).toBeInTheDocument();
-    expect(pomiar()).toEqual(bezPodgladu);
+    expect(document.querySelectorAll("h1")).toHaveLength(1);
+    expect(screen.getByRole("region", { name: "Tryb podglądu" }).querySelectorAll("h1,h2,h3")).toHaveLength(0);
+  });
+});
+
+describe("pola odczytu, które dojdą w zapleczu", () => {
+  it("pola postępu obecne — linia „W trakcie · obejrzane 12 z 16 potrzebnych minut” przy lekcji w toku, tylko tam", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4, nowePola: true, wTrakcieNr: 3 }));
+    expect(screen.getAllByText(/W trakcie · obejrzane/)).toHaveLength(1);
+    expect(within(wierszLekcji(23)).getByText("W trakcie · obejrzane 12 z 16 potrzebnych minut")).toBeInTheDocument();
+    expect(within(wierszLekcji(21)).queryByText(/W trakcie/)).toBeNull();
+    expect(within(wierszLekcji(24)).queryByText(/W trakcie/)).toBeNull();
+  });
+
+  it("pól brak — ekran jak przed dodaniem pól: bez linii, z minutami nagrania, bez błędów w konsoli", async () => {
+    const blad = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const ostrzezenie = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await pokaz(kursSzkicu({ ukonczone: 2, zamknieteOd: 4 }));
+    expect(screen.queryByText(/W trakcie/)).toBeNull();
+    expect(within(wierszLekcji(26)).queryByText("do czytania")).toBeNull();
+    expect(screen.getByText("14 min nagrania")).toBeInTheDocument();
+    expect(pomiar()).toMatchObject({ tekst: ["Kontynuuj lekcję 3"], zamkniete: 4 });
+    expect(blad).not.toHaveBeenCalled();
+    expect(ostrzezenie).not.toHaveBeenCalled();
+    blad.mockRestore();
+    ostrzezenie.mockRestore();
+  });
+
+  it("lekcja bez nagrania (has_recording: false) ma opis „do czytania” bez minut; has_recording: true — minuty", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 0, nowePola: true }));
+    expect(within(wierszLekcji(26)).getByText("do czytania")).toBeInTheDocument();
+    expect(within(wierszLekcji(26)).queryByText(/min/)).toBeNull();
+    expect(within(wierszLekcji(21)).getByText("14 min nagrania")).toBeInTheDocument();
+    cleanup();
+    const kurs = kursSzkicu({ ukonczone: 0 });
+    kurs.lessons[5] = { ...kurs.lessons[5], has_recording: true, duration_seconds: 480 };
+    await pokaz(kurs);
+    expect(within(wierszLekcji(26)).getByText("8 min nagrania")).toBeInTheDocument();
+  });
+
+  it("test_passed — karta testu pokazuje „Test zaliczony.”, brak przycisku głównego; brak pola — zdanie jak dotąd", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 7, testZaliczony: true }));
+    expect(within(kartaTestu()).getByText("Test zaliczony.")).toBeInTheDocument();
+    expect(przyciskiGlowne()).toHaveLength(0);
+    cleanup();
+    await pokaz(kursSzkicu({ ukonczone: 7 }));
+    expect(within(kartaTestu()).queryByText("Test zaliczony.")).toBeNull();
+    expect(przyciskiGlowne()).toHaveLength(1);
+  });
+
+  it("„Kontynuuj” wskazuje lekcję z czasem aktywnym także wtedy, gdy wcześniejsza lekcja jest nieukończona bez postępu", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 0, nowePola: true, wTrakcieNr: 3 }));
+    expect(pomiar()).toMatchObject({ tekst: ["Kontynuuj lekcję 3"], powod: ["„Rozpoznawanie kryzysu psychicznego”"] });
+    expect(within(wierszLekcji(23)).getByRole("link")).toHaveTextContent("Kontynuuj");
+    expect(within(wierszLekcji(21)).getByRole("link")).toHaveTextContent("Rozpocznij lekcję");
+  });
+
+  it("bez pól postępu wraca reguła zastępcza — pierwsza nieukończona lekcja", async () => {
+    await pokaz(kursSzkicu({ ukonczone: 0 }));
+    expect(pomiar()).toMatchObject({ tekst: ["Rozpocznij lekcję 1"] });
   });
 });
 

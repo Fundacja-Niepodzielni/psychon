@@ -11,6 +11,7 @@ import { KorzenSzablonu } from "@/design-system/szablony/KontekstPowloki";
 import { useDaneRamki } from "@/design-system/szablony/KontekstRamki";
 import { okruszekRamki } from "@/design-system/szablony/OkruszekRamki";
 import { adresLekcji } from "@/nowy-front/lekcja/adres";
+import { adresPowrotuZPodgladu, PasTrybuPodgladu, zParametremPodgladu } from "@/nowy-front/wspolne/tryb-podgladu";
 import {
   ADRES_LISTY_KURSOW,
   adresTestu,
@@ -34,11 +35,15 @@ import style from "./KursUczestnika.module.css";
 interface WlasciwosciKursUczestnika {
   slug: string;
   /**
-   * Tryb podglądu: ciemny pas „Tryb podglądu…” nad ekranem i odnośnik
-   * „Wróć do edycji kursu”. Jedna właściwość steruje całym pasem; ekran
-   * kursu administracji i ekran lekcji spinają ją osobno.
+   * Tryb podglądu (rozstrzyga go wyżej parametr adresu i rola konta —
+   * `KursUczestnikaZAdresu`): pas „Tryb podglądu…” nad ekranem, wszystkie
+   * lekcje otwarte bez kłódek (pole `locked` z odczytu jest ignorowane),
+   * odnośniki do lekcji i testu niosą parametr podglądu. Jedna właściwość
+   * steruje całością.
    */
   podglad?: boolean;
+  /** Rola konta; razem z `podglad` wyznacza adres powrotu „Wróć do edycji kursu”. Bez roli pasa nie ma. */
+  rola?: string | null;
 }
 
 type Wynik = { rodzaj: "ok"; kurs: DaneKursu } | { rodzaj: "blad"; blad: BladKursu };
@@ -58,7 +63,7 @@ const ZNACZNIK_UKONCZONA = (
  * ponowieniem, kurs zamknięty kolejnością (zdanie z `message` serwera), brak
  * kursu, dostęp wygasły.
  */
-export function KursUczestnika({ slug, podglad = false }: WlasciwosciKursUczestnika) {
+export function KursUczestnika({ slug, podglad = false, rola = null }: WlasciwosciKursUczestnika) {
   const [proba, setProba] = useState(0);
   const [wczytane, setWczytane] = useState<{ klucz: string; wynik: Wynik } | null>(null);
   const klucz = `${slug}#${proba}`;
@@ -94,7 +99,7 @@ export function KursUczestnika({ slug, podglad = false }: WlasciwosciKursUczestn
 
   if (wynik.rodzaj === "blad") return <StanBezDanych blad={wynik.blad} onPonow={ponow} />;
 
-  return <KursZDanymi kurs={wynik.kurs} podglad={podglad} />;
+  return <KursZDanymi kurs={wynik.kurs} podglad={podglad} rola={rola} />;
 }
 
 /** Wspólna ramka stanów bez danych: ten sam korzeń i ten sam powrót co ekran z danymi. */
@@ -206,8 +211,11 @@ function StanBezDanych({ blad, onPonow }: { blad: BladKursu; onPonow: () => void
   }
 }
 
-function KursZDanymi({ kurs, podglad }: { kurs: DaneKursu; podglad: boolean }) {
-  const widok = zbudujWidok(kurs);
+function KursZDanymi({ kurs, podglad, rola }: { kurs: DaneKursu; podglad: boolean; rola: string | null }) {
+  // Podgląd bez roli, która ma dokąd wrócić, nie powstaje: ekran jest wtedy zwykły.
+  const powrot = podglad ? adresPowrotuZPodgladu(rola, kurs.id) : null;
+  const trybPodgladu = powrot !== null;
+  const widok = zbudujWidok(kurs, { podglad: trybPodgladu });
   const daneRamki = useDaneRamki();
   const wRamce = daneRamki !== null;
   const idPowodu = useId();
@@ -264,14 +272,9 @@ function KursZDanymi({ kurs, podglad }: { kurs: DaneKursu; podglad: boolean }) {
         data-w-ramce={wRamce ? "" : undefined}
         data-z-paskiem={maAkcje ? "" : undefined}
       >
-        {podglad && (
-          <div className={style.podglad} role="region" aria-label="Tryb podglądu">
-            <p>
-              <b>Tryb podglądu.</b> Widzisz kurs tak, jak uczestnik. Nic się nie zapisuje.
-            </p>
-            <a className={style.przycisk} href={`/admin/kursy/${kurs.id}`}>
-              Wróć do edycji kursu
-            </a>
+        {trybPodgladu && (
+          <div className={style.podgladMiejsce}>
+            <PasTrybuPodgladu powrot={powrot} />
           </div>
         )}
 
@@ -305,7 +308,7 @@ function KursZDanymi({ kurs, podglad }: { kurs: DaneKursu; podglad: boolean }) {
               <div className={style.akcje}>
                 <a
                   className={`${style.przycisk} ${style.przyciskGlowny}`}
-                  href={widok.akcja.href}
+                  href={zParametremPodgladu(widok.akcja.href, trybPodgladu)}
                   aria-describedby={idPowodu}
                   data-przycisk-glowny=""
                 >
@@ -333,9 +336,9 @@ function KursZDanymi({ kurs, podglad }: { kurs: DaneKursu; podglad: boolean }) {
             <>
               <Postep widok={widok} />
               {widok.tematy.map((temat) => (
-                <KartaTematu key={temat.klucz} temat={temat} slug={kurs.slug} />
+                <KartaTematu key={temat.klucz} temat={temat} slug={kurs.slug} podglad={trybPodgladu} />
               ))}
-              <KartaTestu widok={widok} slug={kurs.slug} idPowodu={idPowodu} />
+              <KartaTestu widok={widok} slug={kurs.slug} idPowodu={idPowodu} podglad={trybPodgladu} />
             </>
           )}
         </div>
@@ -345,7 +348,7 @@ function KursZDanymi({ kurs, podglad }: { kurs: DaneKursu; podglad: boolean }) {
 }
 
 function Postep({ widok }: { widok: WidokKursu }) {
-  const pierwszaNieukonczona = widok.lekcje.findIndex((lekcja) => !lekcja.is_completed);
+  const pierwszaNieukonczona = widok.indeksNastepnej;
   return (
     <div className={style.postep}>
       <div className={style.kroki} aria-hidden="true">
@@ -361,7 +364,7 @@ function Postep({ widok }: { widok: WidokKursu }) {
   );
 }
 
-function KartaTematu({ temat, slug }: { temat: TematEkranu; slug: string }) {
+function KartaTematu({ temat, slug, podglad }: { temat: TematEkranu; slug: string; podglad: boolean }) {
   const id = useId();
   return (
     <section className={style.karta} aria-labelledby={id} data-temat={temat.klucz}>
@@ -373,15 +376,15 @@ function KartaTematu({ temat, slug }: { temat: TematEkranu; slug: string }) {
       </div>
       <ol className={style.lista}>
         {temat.wiersze.map((wiersz) => (
-          <WierszLekcji key={wiersz.lekcja.id} wiersz={wiersz} slug={slug} />
+          <WierszLekcji key={wiersz.lekcja.id} wiersz={wiersz} slug={slug} podglad={podglad} />
         ))}
       </ol>
     </section>
   );
 }
 
-function WierszLekcji({ wiersz, slug }: { wiersz: LekcjaWiersza; slug: string }) {
-  const { lekcja, numer, zamknieta, poLekcji, etykieta } = wiersz;
+function WierszLekcji({ wiersz, slug, podglad }: { wiersz: LekcjaWiersza; slug: string; podglad: boolean }) {
+  const { lekcja, numer, zamknieta, poLekcji, etykieta, postep } = wiersz;
   const czas = czasLekcji(lekcja);
   return (
     <li className={`${style.wiersz} ${zamknieta ? style.zamknieta : ""}`.trim()} data-lekcja={lekcja.id} data-zamknieta={zamknieta ? "" : undefined}>
@@ -397,6 +400,7 @@ function WierszLekcji({ wiersz, slug }: { wiersz: LekcjaWiersza; slug: string })
             Ukończona
           </span>
         )}
+        {postep !== null && <span className={style.lekcjaPostep}>{postep}</span>}
       </div>
       {zamknieta ? (
         <span className={style.zamkniecie}>
@@ -408,7 +412,7 @@ function WierszLekcji({ wiersz, slug }: { wiersz: LekcjaWiersza; slug: string })
       ) : (
         <a
           className={style.przycisk}
-          href={adresLekcji(lekcja.id, slug)}
+          href={zParametremPodgladu(adresLekcji(lekcja.id, slug), podglad)}
           aria-label={`${etykieta}: lekcja ${numer}, ${lekcja.title}`}
         >
           {etykieta}
@@ -418,7 +422,7 @@ function WierszLekcji({ wiersz, slug }: { wiersz: LekcjaWiersza; slug: string })
   );
 }
 
-function KartaTestu({ widok, slug, idPowodu }: { widok: WidokKursu; slug: string; idPowodu: string }) {
+function KartaTestu({ widok, slug, idPowodu, podglad }: { widok: WidokKursu; slug: string; idPowodu: string; podglad: boolean }) {
   const idNaglowka = `${idPowodu}-test`;
   const idZdania = `${idPowodu}-test-zdanie`;
   return (
@@ -432,7 +436,7 @@ function KartaTestu({ widok, slug, idPowodu }: { widok: WidokKursu; slug: string
         {widok.test.zdanie}
       </p>
       {widok.test.czynny ? (
-        <a className={style.przycisk} href={adresTestu(slug)} aria-describedby={idZdania}>
+        <a className={style.przycisk} href={zParametremPodgladu(adresTestu(slug), podglad)} aria-describedby={idZdania}>
           Przejdź do testu
         </a>
       ) : (

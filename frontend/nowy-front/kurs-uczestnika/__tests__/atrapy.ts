@@ -20,8 +20,24 @@ export const TYTULY_LEKCJI = [
 /** Czasy w sekundach; szósta lekcja jest do czytania, więc bez czasu nagrania. */
 const CZASY = [840, 1080, 1200, 960, 720, null, 600];
 
-/** Lekcje szkicu; pierwsze `ukonczone` mają `is_completed`. `zamknieteOd` dodaje `locked` lekcjom od tej pozycji (1-based). */
-export function lekcjeSzkicu(ukonczone: number, zamknieteOd: number | null = null): LekcjaKursu[] {
+/**
+ * Pola postępu lekcji dodawane przez zaplecze osobną zmianą. Czas potrzebny to
+ * 80% nagrania (lekcja do czytania: 8 min). `wTrakcieNr` (1-based) to lekcja
+ * z czasem aktywnym 12 z 16 potrzebnych minut — jak w szkicu.
+ */
+function polaPostepu(indeks: number, ukonczone: number, wTrakcieNr: number | null): Pick<LekcjaKursu, "active_seconds" | "required_active_seconds" | "has_recording"> {
+  const wymagane = CZASY[indeks] === null ? 480 : Math.round((CZASY[indeks] as number) * 0.8);
+  const aktywne = indeks < ukonczone ? wymagane : wTrakcieNr === indeks + 1 ? 720 : 0;
+  return { active_seconds: aktywne, required_active_seconds: wymagane, has_recording: CZASY[indeks] !== null };
+}
+
+/**
+ * Lekcje szkicu; pierwsze `ukonczone` mają `is_completed`. `zamknieteOd` dodaje
+ * `locked` lekcjom od tej pozycji (1-based). `nowePola` dodaje pola postępu
+ * (`active_seconds`, `required_active_seconds`, `has_recording`); `wTrakcieNr`
+ * wskazuje lekcję z czasem aktywnym (tylko z `nowePola`).
+ */
+export function lekcjeSzkicu(ukonczone: number, zamknieteOd: number | null = null, nowePola = false, wTrakcieNr: number | null = null): LekcjaKursu[] {
   return TYTULY_LEKCJI.map((tytul, indeks) => ({
     id: 21 + indeks,
     title: tytul,
@@ -30,6 +46,7 @@ export function lekcjeSzkicu(ukonczone: number, zamknieteOd: number | null = nul
     is_completed: indeks < ukonczone,
     topic_id: indeks < 4 ? 7 : 8,
     ...(zamknieteOd !== null ? { locked: indeks + 1 >= zamknieteOd } : {}),
+    ...(nowePola ? polaPostepu(indeks, ukonczone, wTrakcieNr) : {}),
   }));
 }
 
@@ -39,9 +56,15 @@ export interface OpcjeKursu {
   zamknieteOd?: number | null;
   testZamkniety?: boolean;
   status?: KursUczestnika["status"];
+  /** Pola postępu lekcji w odczycie (patrz `lekcjeSzkicu`). */
+  nowePola?: boolean;
+  /** Lekcja (1-based) z czasem aktywnym; wymaga `nowePola`. */
+  wTrakcieNr?: number | null;
+  /** Pole `test_passed` w odczycie. */
+  testZaliczony?: boolean;
 }
 
-export function kursSzkicu({ ukonczone, zamknieteOd = null, testZamkniety, status }: OpcjeKursu): KursUczestnika {
+export function kursSzkicu({ ukonczone, zamknieteOd = null, testZamkniety, status, nowePola = false, wTrakcieNr = null, testZaliczony }: OpcjeKursu): KursUczestnika {
   return {
     id: 2,
     slug: "pierwsza-pomoc-psychologiczna",
@@ -52,8 +75,9 @@ export function kursSzkicu({ ukonczone, zamknieteOd = null, testZamkniety, statu
       { id: 7, title: "Kryzys i jego przebieg", position: 1 },
       { id: 8, title: "Rozmowa wspierająca", position: 2 },
     ],
-    lessons: lekcjeSzkicu(ukonczone, zamknieteOd),
+    lessons: lekcjeSzkicu(ukonczone, zamknieteOd, nowePola, wTrakcieNr),
     ...(testZamkniety !== undefined ? { test_locked: testZamkniety } : {}),
+    ...(testZaliczony !== undefined ? { test_passed: testZaliczony } : {}),
   };
 }
 

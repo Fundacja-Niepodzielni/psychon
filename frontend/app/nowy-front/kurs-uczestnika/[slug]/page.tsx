@@ -1,20 +1,13 @@
-import { KursUczestnika } from "@/nowy-front/kurs-uczestnika/KursUczestnika";
+import { KursUczestnikaZAdresu } from "@/nowy-front/kurs-uczestnika/KursUczestnikaZAdresu";
 
 /**
  * Trasa `/nowy-front/kurs-uczestnika/[slug]` — strona kursu uczestnika. Odczyt
  * kursu biegnie z przeglądarki (`KursUczestnika.tsx`), tak samo jak na
- * `/nowy-front/lekcja/[id]`. Parametr `?podglad=1` włącza na poligonie pas
- * trybu podglądu, żeby dało się go obejrzeć i zmierzyć; trasa produktu
- * (`/panel/kursy/[slug]`) go nie czyta.
+ * `/nowy-front/lekcja/[id]`. Tryb podglądu (`?podglad=1` i rola personelu albo
+ * prowadzącego) rozstrzyga `KursUczestnikaZAdresu`, tak samo jak na trasie
+ * produktu `/panel/kursy/[slug]`.
  */
-export default async function StronaKursuUczestnika({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ podglad?: string | string[] }>;
-}) {
+export default async function StronaKursuUczestnika({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { podglad } = await searchParams;
-  return <KursUczestnika slug={slug} podglad={podglad === "1"} />;
+  return <KursUczestnikaZAdresu slug={slug} />;
 }

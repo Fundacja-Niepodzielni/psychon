@@ -5,7 +5,9 @@ import { api, ApiError, NieprawidlowaSciezkaApi } from "@/lib/api/klient";
  * (`backend/routes/api/h05.php`, kształt `CourseDetailResource` i
  * `LessonSummaryResource`). Pola `locked` (lekcja) i `test_locked` (kurs) są
  * opcjonalne: zaplecze doda je osobną zmianą, a ekran nie zależy od ich
- * obecności — brak pola znaczy „otwarta”.
+ * obecności — brak pola znaczy „otwarta”. Tak samo opcjonalne są pola postępu
+ * lekcji (`active_seconds`, `required_active_seconds`), `has_recording` i
+ * `test_passed`: gdy ich nie ma, ekran pomija odpowiednią linię i nie zgłasza błędu.
  */
 
 export type StatusKursu = "locked" | "in_progress" | "completed";
@@ -19,6 +21,12 @@ export interface LekcjaKursu {
   topic_id: number | null;
   /** Lekcja zamknięta kolejnością; brak pola = otwarta. */
   locked?: boolean;
+  /** Czas aktywny uczestnika w tej lekcji, w sekundach; brak pola = ekran nie pokazuje postępu lekcji. */
+  active_seconds?: number;
+  /** Czas aktywny potrzebny do ukończenia lekcji, w sekundach; brak pola = ekran nie pokazuje postępu lekcji. */
+  required_active_seconds?: number;
+  /** `false` — lekcja do czytania, bez nagrania; `true` albo brak pola — opis czasu nagrania jak dotąd. */
+  has_recording?: boolean;
 }
 
 export interface TematKursu {
@@ -37,6 +45,8 @@ export interface KursUczestnika {
   lessons: LekcjaKursu[];
   /** Test zamknięty (zaplecze rozstrzyga); brak pola = ekran liczy ze stanu lekcji. */
   test_locked?: boolean;
+  /** Test zaliczony; brak pola = karta testu liczy jak dotąd. */
+  test_passed?: boolean;
 }
 
 /** Adres listy kursów uczestnika. */
