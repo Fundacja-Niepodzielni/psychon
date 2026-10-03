@@ -1,0 +1,146 @@
+/* Lista wierszy z nazwą jako odnośnikiem — wartości wyglądu wyłącznie z tokenów.
+   Od 640 px siatka z nagłówkami kolumn, poniżej blok linii: nazwa, pod nią
+   wartości z podpisem, na końcu akcje. Nigdzie nie ma przewijania poziomego. */
+.tabela {
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.naglowki,
+.wiersz {
+  padding: var(--space-12) var(--card-px);
+  border-bottom: 1px solid var(--border);
+}
+
+.naglowki {
+  padding-block: var(--space-8);
+  color: var(--muted);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+}
+
+.wiersz {
+  min-height: var(--hit-min);
+  box-sizing: border-box;
+}
+
+.tabela > :last-child {
+  border-bottom: 0;
+}
+
+.komorka {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-9);
+  color: var(--text);
+}
+
+/* Nazwa wiersza: pogrubiona, pierwsza; odnośnik w niej ma własny wygląd atomu. */
+.nazwa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+}
+
+.podpis {
+  color: var(--muted);
+  font-size: var(--fs-11);
+}
+
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Akcje (przyciski) w jednej linii, zawijane, gdy brakuje miejsca. */
+.komorka[data-rodzaj="akcje"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* Otwarty wiersz i panel pod nim na jednym, ciepłym tle. */
+.otwarty {
+  border-bottom: 0;
+  background: var(--card-warm);
+}
+
+.wierszPanelu {
+  padding: 0 var(--card-px) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  background: var(--card-warm);
+}
+
+.panel {
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .tabela {
+    display: grid;
+    column-gap: var(--space-16);
+    grid-template-columns: var(--siatka);
+  }
+
+  .naglowki,
+  .wiersz {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+    align-items: center;
+  }
+
+  .wierszPanelu {
+    grid-column: 1 / -1;
+  }
+
+  .podpis {
+    display: none;
+  }
+
+  .komorka[data-rodzaj="akcje"] {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Nagłówki kolumn zostają w drzewie dostępności (każda wartość ma nazwę
+     swojej kolumny), wzrokowo zastępuje je podpis przy wartości. */
+  .naglowki {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .wiersz {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .wiersz > .komorka:not(.nazwa):not([data-rodzaj="akcje"]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-8);
+  }
+
+  .wiersz > .komorka[data-rodzaj="akcje"] {
+    margin-top: var(--space-4);
+  }
+}

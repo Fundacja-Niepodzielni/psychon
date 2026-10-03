@@ -1,0 +1,21 @@
+/* Układ ekranu czasu nauki — wartości wyglądu wyłącznie z tokenów. */
+.lista {
+  position: relative;
+}
+
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Powrót do listy i odnośnik do karty osoby w jednym rzędzie, zawijane na wąskim ekranie. */
+.odnosniki {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12) var(--space-16);
+}
