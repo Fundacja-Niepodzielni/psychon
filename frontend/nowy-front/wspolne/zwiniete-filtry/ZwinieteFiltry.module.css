@@ -1,0 +1,116 @@
+/* Zwinięte filtry listy (`.fzw`) — wartości wyglądu wyłącznie z tokenów.
+   Od 600 px wiersz jest ukryty, a opakowanie i panel nie tworzą własnych
+   ramek (`display: contents`): kontrolki filtrów stoją w układzie rodzica
+   dokładnie tak, jak przed wzorcem. Poniżej 600 px zostaje jeden wiersz,
+   a panel otwiera się pod nim. */
+.fzw {
+  display: contents;
+}
+
+.wiersz {
+  display: none;
+}
+
+.panel {
+  display: contents;
+}
+
+@media (max-width: 599px) {
+  .fzw {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .wiersz {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    min-height: var(--hit-min);
+    padding: var(--space-12) var(--space-16);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--fs-9);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .wiersz:focus-visible {
+    outline: var(--focus-width) solid var(--brand);
+    outline-offset: var(--focus-offset);
+  }
+
+  .opis {
+    display: flex;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .etykieta {
+    flex: none;
+    color: var(--muted);
+  }
+
+  .wybrane {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--fw-bold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .licznik {
+    flex: none;
+    color: var(--muted);
+  }
+
+  .akcja {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-4);
+    color: var(--link);
+    font-weight: var(--fw-medium);
+  }
+
+  .strzalka {
+    width: var(--space-16);
+    height: var(--space-16);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform var(--dur-fast);
+  }
+
+  .rozwiniete .strzalka {
+    transform: rotate(180deg);
+  }
+
+  .panel {
+    display: none;
+  }
+
+  /* Rozwinięty panel jest dokończeniem wiersza: wspólna ramka, bez przerwy. */
+  .rozwiniete .wiersz {
+    border-bottom-color: transparent;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .rozwiniete .panel {
+    display: grid;
+    gap: var(--space-12);
+    padding: var(--space-4) var(--space-16) var(--space-16);
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--r-sm) var(--r-sm);
+    background: var(--card);
+  }
+}
