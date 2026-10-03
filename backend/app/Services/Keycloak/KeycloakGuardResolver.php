@@ -2,6 +2,7 @@
 
 namespace App\Services\Keycloak;
 
+use App\Exceptions\AccountBlockedException;
 use App\Exceptions\AccountNotLinkedException;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -73,10 +74,19 @@ class KeycloakGuardResolver
             // wyłącznie do posiadacza tokena, któremu ta aplikacja ufa.
             // Pozostałe `return null` w tej metodzie znaczą co innego (brak
             // nagłówka, token nieważny, sesja wylogowana back-channel, konto
-            // zablokowane/anonimizowane) i zostają nierozróżnialne.
+            // usunięte/anonimizowane) i zostają nierozróżnialne; konto
+            // zablokowane mówi o sobie osobno, niżej (`AccountBlockedException`).
             // `sub` nie idzie przy tym do żadnego dziennika — patrz
             // `AccountNotLinkedException` (nie jest raportowany).
             throw new AccountNotLinkedException($principal->sub);
+        }
+
+        // Konto zablokowane (nie zanonimizowane): 401 `konto_zablokowane`, ta sama
+        // koperta co `konto_niepowiazane`, ale bez `reason` — żeby ekran logowania
+        // odróżnił je od konta niepowiązanego. Konto usunięte i zanonimizowane
+        // zostaje przy zwykłej, nieodróżnialnej odmowie (patrz niżej).
+        if ($user->status === 'blocked' && $user->anonymized_at === null) {
+            throw new AccountBlockedException;
         }
 
         if (in_array($user->status, ['blocked', 'deleted'], true)) {

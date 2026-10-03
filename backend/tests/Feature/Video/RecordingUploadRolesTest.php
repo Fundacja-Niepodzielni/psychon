@@ -262,7 +262,7 @@ class RecordingUploadRolesTest extends TestCase
 
     /**
      * Konto zablokowane nie dociera do progu roli: strażnik `keycloak` odrzuca je
-     * jako niezalogowane (401), zanim `role` zapyta o cokolwiek. Obie role
+     * własnym kodem `konto_zablokowane` (401), zanim `role` zapyta o cokolwiek. Obie role
      * administracji muszą zachować się tak samo.
      */
     #[DataProvider('administrationRoles')]
@@ -273,10 +273,12 @@ class RecordingUploadRolesTest extends TestCase
         Http::fake(['*' => Http::response(['guid' => self::GUID])]);
         $lesson = $this->lesson(self::STORED_ID);
 
-        $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])
+        $response = $this->postJson("/api/v1/admin/lessons/{$lesson->id}/video-uploads", ['title' => 'Nagranie'])
             ->assertStatus(401)
-            ->assertJsonPath('error.code', 'unauthenticated');
+            ->assertJsonPath('error.code', 'konto_zablokowane');
 
+        // Koperta tej odmowy: wyłącznie `status`, `code` i `message` — bez `reason` i bez `sub`.
+        $this->assertSame(['status', 'code', 'message'], array_keys($response->json('error')));
         $this->assertSame([], $this->providerRequests());
         $this->assertSame(self::STORED_ID, $lesson->fresh()->video_provider_id);
     }

@@ -2223,3 +2223,53 @@ zachowanie blokady bez zmian.
 
 Kod: `routes/api/h18.php`, `Http/Controllers/Api/V1/Admin/AdminUserController.php`,
 `Http/Requests/H18/UnblockUserRequest.php`, `Http/Resources/AdminUserCardResource.php`.
+
+---
+
+## Aneks — odmowa dla konta zablokowanego (H18)
+
+Konto zablokowane (`POST /admin/users/{id}/block`) dostaje od strażnika uwierzytelnienia własny
+kod, żeby ekran logowania nie mówił mu „Konto nie jest jeszcze połączone”. Zmiana dotyczy
+wartości istniejącego pola `code` — kształt koperty błędu i status HTTP zostają bez zmian. Bez
+nowych tras, pól, slugów audytu i typów powiadomień; zero zmian w danych. Wobec zdania
+„także konto zablokowane” w aneksie z 2026-10-02 (tabela odblokowania, wiersz 401) ten aneks jest
+nadrzędny w jednym miejscu: kod tej odmowy.
+
+### 1. Odmowy 401 strażnika
+
+Dotyczy każdej trasy za strażnikiem (`/me`, `/courses`, `/notifications` itd.):
+
+| Sytuacja | Kod | `code` |
+|---|---|---|
+| brak, nieważny albo wygasły token; sesja zakończona; konto usunięte lub zanonimizowane | **401** | `unauthenticated` |
+| ważny token, konto jeszcze niepowiązane (bez zmian) | **401** | `konto_niepowiazane` (`reason.sub`) |
+| ważny token, konto zablokowane | **401** | `konto_zablokowane` |
+
+```json
+{ "error": { "status": 401, "code": "konto_zablokowane",
+    "message": "To konto jest zablokowane." } }
+```
+
+### 2. Koperta
+
+Odpowiedź dla `konto_zablokowane` niesie wyłącznie `status`, `code` i `message`: bez `reason`,
+bez `sub`, bez powodu blokady, bez dat i bez danych osoby. Powód blokady żyje w rekordzie i w
+dzienniku administracji. Stan konta wraca wyłącznie posiadaczowi ważnego, w pełni
+zwalidowanego tokena; konto usunięte i zanonimizowane zostaje przy `unauthenticated`.
+
+### 3. Po odblokowaniu
+
+Po `POST /admin/users/{id}/unblock` ten sam token przechodzi strażnika bez ponownego logowania —
+odmowa znika, bez zmian po stronie klienta poza ponownym wejściem na ekran logowania.
+
+### 4. Klient
+
+Klient API czyta `error.code` przed rozstrzygnięciem 401. `konto_zablokowane` kieruje na ekran
+„Konto jest zablokowane” (`/logowanie/zablokowane`) bez pytania `GET /sso/whoami` i bez kończenia
+sesji; sesję kończy dopiero przycisk „Wyloguj się” na tym ekranie. Kod nieznany klientowi idzie
+dotychczasową ścieżką.
+
+Kod: `Exceptions/AccountBlockedException.php`, `Services/Keycloak/KeycloakGuardResolver.php`,
+`openapi.json` (opis odpowiedzi `AuthenticationException`); front:
+`frontend/lib/api/klient.ts`, `frontend/lib/api/logowanie.ts`,
+`frontend/app/logowanie/zablokowane/page.tsx`.

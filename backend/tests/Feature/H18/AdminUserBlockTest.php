@@ -68,10 +68,11 @@ class AdminUserBlockTest extends TestCase
      * SSO only: there is no password login left to carry a "blocked" vs
      * "access expired" message — the guarantee moves to the `keycloak`
      * guard itself. A BLOCKED account's bearer token never resolves a user
-     * at all (401 `unauthenticated`, indistinguishable from "no such
-     * account" — the guard never explains itself), while an account with
-     * merely EXPIRED access resolves fine and is refused later, by
-     * `access.active`, with the distinct `access_expired` reason (kryterium 4).
+     * at all: 401 `konto_zablokowane` (status, code and message only)
+     * (so the sign-in screen can say "blocked" rather than "not linked yet"),
+     * while an account with merely EXPIRED access resolves fine and is refused
+     * later, by `access.active`, with the distinct `access_expired` reason
+     * (kryterium 4).
      */
     public function test_blocked_gets_401_from_the_guard_expired_access_gets_403_later(): void
     {
@@ -100,7 +101,7 @@ class AdminUserBlockTest extends TestCase
             ->getJson('/api/v1/me')
             ->assertStatus(401);
 
-        $this->assertSame('unauthenticated', $blockedResponse->json('error.code'));
+        $this->assertSame('konto_zablokowane', $blockedResponse->json('error.code'));
 
         // Expired access — the guard resolves the user fine; `/me` itself is
         // exempt (kryterium 4), but programme content is not.

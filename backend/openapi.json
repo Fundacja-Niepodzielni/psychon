@@ -15546,7 +15546,7 @@
                 }
             },
             "AuthenticationException": {
-                "description": "Unauthenticated",
+                "description": "Unauthenticated. Koperta błędu (`error.status`, `error.code`, `error.message`) z jednym z kodów: `unauthenticated` (brak albo nieważny token), `konto_niepowiazane` (ważny token bez konta w PsychON; `error.reason.sub`) albo `konto_zablokowane` (ważny token zablokowanego konta; bez `error.reason`, bez powodu blokady i bez danych osoby).",
                 "content": {
                     "application/json": {
                         "schema": {

@@ -16,12 +16,12 @@ use Tests\TestCase;
  * pass it to an administrator, instead of an indistinguishable "log in to
  * continue".
  *
- * The other refusals must stay indistinguishable, and that is the point of
+ * The other refusals must not carry an identifier, and that is the point of
  * the negative halves below: an untrusted token (bad signature, expired,
  * foreign issuer) and a trusted token whose session ended or whose account
- * is blocked never carry an identifier back — the first because nothing in
- * it is trustworthy, the second because the answer would tell a caller
- * something about somebody else's account.
+ * is blocked never carry one back — the first because nothing in it is
+ * trustworthy, the second because the identifier is of no use to a person
+ * whose account exists and only needs unblocking.
  *
  * The identifier goes to the holder of that same token and nowhere else:
  * never to a log, in full or hashed.
@@ -98,9 +98,10 @@ class UnboundSubIdentifierTest extends TestCase
     }
 
     /**
-     * Negative control for an account that exists but is blocked: the
-     * refusal stays exactly as indistinguishable as it was, because the
-     * caller is not to learn from the answer that this account is there.
+     * Negative control for an account that exists but is blocked: the answer
+     * never carries the identifier back. (It does say, in the `konto_zablokowane` code,
+     * that the account is blocked, with no `reason` — see `BlockedAccountRefusalTest`; that is a
+     * status, not an identifier.)
      */
     public function test_a_blocked_account_never_carries_the_sub_back(): void
     {
@@ -109,7 +110,13 @@ class UnboundSubIdentifierTest extends TestCase
         User::factory()->create(['keycloak_sub' => $sub, 'status' => 'blocked']);
         $token = $realm->mint(['sub' => $sub]);
 
-        $this->assertRefusedWithoutIdentifier($token, $sub);
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(self::ME_ROUTE)
+            ->assertStatus(401)
+            ->assertJsonPath('error.code', 'konto_zablokowane');
+
+        $this->assertNull($response->json('error.reason.sub'));
+        $this->assertStringNotContainsString($sub, (string) $response->getContent());
     }
 
     /**

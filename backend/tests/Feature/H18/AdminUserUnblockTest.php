@@ -113,7 +113,7 @@ class AdminUserUnblockTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$personToken)
             ->getJson('/api/v1/me')
             ->assertStatus(401)
-            ->assertJsonPath('error.code', 'unauthenticated');
+            ->assertJsonPath('error.code', 'konto_zablokowane');
 
         // Każde żądanie rozstrzyga strażnik od nowa — jak dwa osobne żądania w produkcji.
         $this->app['auth']->forgetGuards();

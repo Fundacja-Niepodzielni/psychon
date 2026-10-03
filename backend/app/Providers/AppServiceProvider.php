@@ -40,9 +40,9 @@ class AppServiceProvider extends ServiceProvider
         // Named guard `keycloak` (SSO-only): resolves a LOCAL `User` from a
         // Keycloak bearer token via `keycloak_sub`, so `auth:keycloak` on a
         // business route accepts a Konta Niepodzielni token. See
-        // `KeycloakGuardResolver` for the actual rules (blocked / deleted /
-        // anonymised / unbound / back-channel-invalidated all resolve to
-        // null → 401).
+        // `KeycloakGuardResolver` for the actual rules (deleted / anonymised /
+        // back-channel-invalidated resolve to null → 401; unbound and blocked
+        // throw their own 401 with their own `code`).
         Auth::viaRequest('keycloak', function (Request $request) {
             return $this->app->make(KeycloakGuardResolver::class)->resolve($request);
         });
