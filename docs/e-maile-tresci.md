@@ -102,3 +102,744 @@ W treściach niżej `{powód}` jest wpisany wprost przy każdym e-mailu.
 | E-39 | Nowe zgłoszenie dalszej współpracy | osoba po programie składa zgłoszenie | Opiekun Projektu i Super Admin | brakuje |
 | E-40 | Konto zablokowane | administracja blokuje konto | osoba, której konto zablokowano | brakuje |
 | E-41 | Pytanie do lekcji bez prowadzącego | osoba zadaje pytanie przy lekcji, która nie ma przypisanego prowadzącego | Opiekun Projektu | brakuje |
+
+## Jak czytać wpisy
+
+Każdy wpis ma te same pola: kiedy wychodzi, do kogo, czy można go wyłączyć, temat, pełną treść,
+przycisk, stan i — gdy e-mail istnieje — dzisiejszy tekst do porównania. W treściach nawiasy
+klamrowe oznaczają miejsce, w które platforma wstawi właściwą wartość, np. `{tytuł kursu}`.
+
+„Czy można wyłączyć” mówi, kto może zatrzymać e-mail:
+
+- **administracja** — wyłącza cały rodzaj powiadomienia w ustawieniach powiadomień (wtedy nie ma
+  ani powiadomienia w panelu, ani e-maila);
+- **osoba** — wyłącza dla siebie tylko e-mail; powiadomienie w panelu zostaje;
+- **nie** — e-mail wychodzi zawsze.
+
+## E-maile, które platforma wysyła dziś
+
+### E-01. Zaproszenie do programu
+
+- **Kiedy wychodzi:** administracja zatwierdza zgłoszenie do programu i platforma zakłada konto.
+  Wychodzi też ponownie, gdy administracja zmieni adres e-mail takiego konta, zanim osoba je
+  aktywuje.
+- **Do kogo:** nowa osoba w programie (rola ze zgłoszenia, zwykle Wolontariusz).
+- **Czy można wyłączyć:** nie.
+- **Stan:** jest — wychodzi naprawdę.
+- **Temat:** PsychON: zaproszenie do programu
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twoje zgłoszenie do programu PsychON zostało zatwierdzone. Możesz już zacząć.
+
+Otwórz odnośnik poniżej i zaloguj się przez Konta Niepodzielni. Jeśli nie masz jeszcze konta w Kontach Niepodzielni, załóż je na ten sam adres e-mail, na który przyszła ta wiadomość, i potwierdź adres odnośnikiem, który przyśle Konta Niepodzielni.
+
+[Aktywuj dostęp] {odnośnik aktywacyjny}
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo ten adres e-mail podano w zgłoszeniu do programu PsychON.
+```
+
+- **Przycisk:** „Aktywuj dostęp” → strona aktywacji konta (z niej osoba przechodzi do logowania
+  w Kontach Niepodzielni).
+- **Dziś (do porównania):** temat „Zaproszenie do programu PsychON”; treść: „Dzień dobry, /
+  Twoje zgłoszenie do programu PsychON zostało przyjęte. / Aby rozpocząć, otwórz poniższy
+  odnośnik i zaloguj się przez Konta Niepodzielni. Jeśli nie masz jeszcze konta, załóż je na ten
+  sam adres e-mail, na który przyszła ta wiadomość, i potwierdź adres linkiem z Kont
+  Niepodzielni. / {odnośnik aktywacyjny} / Zespół Fundacji Niepodzielni”.
+- **Różnica:** temat z „PsychON: ”, odnośnik jako przycisk, „przyjęte” → „zatwierdzone”,
+  wspólna stopka zamiast podpisu.
+
+### E-02. Decyzja: zgłoszenie odrzucone
+
+- **Kiedy wychodzi:** administracja odrzuca zgłoszenie do programu (powód jest obowiązkowy).
+- **Do kogo:** kandydat — osoba bez konta na platformie, na adres ze zgłoszenia.
+- **Czy można wyłączyć:** nie.
+- **Stan:** jest — wychodzi naprawdę i zostaje ślad w skrzynce e-maili administracji.
+- **Temat:** PsychON: decyzja w sprawie zgłoszenia
+- **Treść:**
+
+```text
+Dzień dobry,
+
+dziękujemy za zgłoszenie do programu PsychON. Po rozpatrzeniu zgłoszenia nie możemy zaproponować udziału w programie.
+
+Powód: {powód odrzucenia}
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo ten adres e-mail podano w zgłoszeniu do programu PsychON.
+```
+
+- **Przycisk:** brak — kandydat nie ma konta.
+- **Dziś (do porównania):** temat „Decyzja w sprawie zgłoszenia do programu PsychON”; treść:
+  „Dzień dobry, / Dziękujemy za zgłoszenie do programu PsychON. Po rozpatrzeniu zgłoszenia nie
+  możemy zaproponować udziału w programie. / Powód: {powód odrzucenia} / Zespół Fundacji
+  Niepodzielni”.
+- **Uwaga:** powód zostaje, bo platforma wysyła go już dziś. Powód wpisuje administracja
+  ręcznie — w e-mailu trafi dokładnie to, co wpisze.
+
+### E-03. Zaproszenie do konta założonego przez administrację
+
+- **Kiedy wychodzi:** administracja zakłada konto ręcznie (bez zgłoszenia). Wychodzi też
+  ponownie, gdy administracja zmieni adres e-mail konta, które czeka na aktywację.
+- **Do kogo:** nowa osoba (dowolna rola nadana przez administrację).
+- **Czy można wyłączyć:** nie.
+- **Stan:** jest, ale **dziś nie wychodzi naprawdę** — zapisuje się tylko w skrzynce e-maili jako
+  „symulowany”. Osoba założona ręcznie nie dostaje dziś żadnego zaproszenia.
+- **Temat:** PsychON: zaproszenie na platformę
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Fundacja Niepodzielni założyła dla Ciebie konto na platformie PsychON. Możesz już zacząć.
+
+Otwórz odnośnik poniżej i zaloguj się przez Konta Niepodzielni. Jeśli nie masz jeszcze konta w Kontach Niepodzielni, załóż je na ten sam adres e-mail, na który przyszła ta wiadomość, i potwierdź adres odnośnikiem, który przyśle Konta Niepodzielni.
+
+[Aktywuj dostęp] {odnośnik aktywacyjny}
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo Fundacja Niepodzielni założyła konto na ten adres e-mail.
+```
+
+- **Przycisk:** „Aktywuj dostęp” → strona aktywacji konta.
+- **Dziś (do porównania):** temat „Zaproszenie do platformy Fundacji Niepodzielni”; treść:
+  „Twoje konto zostało utworzone. Połącz je z kontem Niepodzielni, korzystając z linku: Połącz
+  z kontem Niepodzielni.” (bez powitania i bez stopki).
+- **Uwaga:** gdy administracja zmienia adres konta założonego ze zgłoszenia, dziś powstają dwie
+  wiadomości naraz: ta (symulowana) i E-01 (prawdziwa). Po wdrożeniu powinna wyjść jedna:
+  E-01 dla konta ze zgłoszenia, E-03 dla konta założonego ręcznie.
+
+### E-04. Potwierdzenie zgłoszenia pomocy
+
+- **Kiedy wychodzi:** osoba wysyła zgłoszenie z okna „Potrzebujesz pomocy?” w panelu.
+- **Do kogo:** osoba, która wysłała zgłoszenie (każda rola).
+- **Czy można wyłączyć:** nie.
+- **Stan:** jest — wychodzi naprawdę.
+- **Temat:** PsychON: przyjęliśmy zgłoszenie {numer zgłoszenia}
+- **Treść:**
+
+```text
+Dzień dobry,
+
+dziękujemy za zgłoszenie. Ma numer {numer zgłoszenia}. Odpowiemy najszybciej, jak to możliwe.
+
+Treść zgłoszenia:
+{treść zgłoszenia}
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo z Twojego konta wysłano zgłoszenie z okna pomocy w panelu PsychON.
+```
+
+- **Przycisk:** brak.
+- **Dziś (do porównania):** temat „Otrzymalismy Twoje zgloszenie {numer zgłoszenia}”; treść:
+  „Dziekujemy za zgloszenie. Numer zgloszenia: {numer zgłoszenia}. / Odezwiemy sie najszybciej,
+  jak to mozliwe. / Tresc zgloszenia: / {treść zgłoszenia}”.
+- **Różnica:** dziś temat i treść są **bez polskich znaków** („Otrzymalismy”, „Dziekujemy”).
+  Brakuje powitania i stopki.
+
+### E-05. Zgłoszenie pomocy — kopia dla zespołu
+
+- **Kiedy wychodzi:** osoba wysyła zgłoszenie z okna pomocy (razem z E-04).
+- **Do kogo:** skrzynka zespołu pomocy (adres ustawiony na serwerze).
+- **Czy można wyłączyć:** nie.
+- **Stan:** jest — wychodzi naprawdę.
+- **Temat:** PsychON: zgłoszenie pomocy {numer zgłoszenia}
+- **Treść:**
+
+```text
+Dzień dobry,
+
+w oknie pomocy w panelu PsychON wpłynęło nowe zgłoszenie.
+
+Numer zgłoszenia: {numer zgłoszenia}
+Rola osoby zgłaszającej: {rola — nazwa ze słownika, np. Wolontariusz}
+Ekran, z którego wysłano zgłoszenie: {ekran}
+
+Treść zgłoszenia:
+{treść zgłoszenia}
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo ten adres jest skrzynką zespołu pomocy PsychON.
+```
+
+- **Przycisk:** brak.
+- **Dziś (do porównania):** temat „Zgloszenie pomocy {numer zgłoszenia}”; treść: „Nowe
+  zgloszenie z okna pomocy.” oraz tabela: Numer zgloszenia, Rola nadawcy, Ekran; „Tresc
+  zgloszenia: {treść zgłoszenia}”.
+- **Różnica:** dziś bez polskich znaków, a rola jest pokazywana kodem technicznym zamiast nazwy
+  ze słownika. Kopia nie mówi, kto napisał, więc zespół nie ma jak odpowiedzieć (pytanie 7).
+
+### E-06. Zgłoszenie zatwierdzone (kopia powiadomienia)
+
+- **Kiedy wychodzi:** administracja zatwierdza zgłoszenie — razem z zaproszeniem E-01.
+- **Do kogo:** nowa osoba w programie.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** do usunięcia — propozycja, do decyzji (pytanie 3). Osoba dostaje w tej samej chwili
+  dwa e-maile o tym samym; zaproszenie E-01 wystarcza. Powiadomienie w panelu może zostać.
+- **Temat, gdyby e-mail zostawał:** PsychON: zgłoszenie zatwierdzone
+- **Treść, gdyby e-mail zostawał:**
+
+```text
+Dzień dobry,
+
+Twoje zgłoszenie do programu PsychON zostało zatwierdzone. Instrukcję aktywacji konta wysłaliśmy w osobnej wiadomości.
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo ten adres e-mail podano w zgłoszeniu do programu PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** brak (konto nie jest jeszcze aktywne).
+- **Dziś (do porównania):** temat „Zgłoszenie zaakceptowane”; treść: „Twoje zgłoszenie zostało
+  zaakceptowane. Połącz konto z kontem Niepodzielni, aby je aktywować. Link: {odnośnik
+  aktywacyjny}”.
+
+### E-07. Zgłoszenie odrzucone (kopia dla osoby decydującej)
+
+- **Kiedy wychodzi:** administracja odrzuca zgłoszenie. Kandydat nie ma konta, więc kopię
+  powiadomienia dostaje osoba, która podjęła decyzję.
+- **Do kogo:** Opiekun Projektu albo Super Admin, który odrzucił zgłoszenie.
+- **Czy można wyłączyć:** administracja tak (przełącznik dotyczy tylko tej kopii — e-mail E-02
+  do kandydata wychodzi zawsze); osoba tak (dziś bez ekranu).
+- **Stan:** do usunięcia — propozycja, do decyzji (pytanie 4). Osoba decydująca wie o decyzji,
+  bo przed chwilą ją podjęła, a dzisiejsza kopia niesie imię i nazwisko kandydata oraz powód.
+- **Temat, gdyby e-mail zostawał:** PsychON: zgłoszenie odrzucone
+- **Treść, gdyby e-mail zostawał:**
+
+```text
+Dzień dobry,
+
+zgłoszenie do programu zostało odrzucone. Kandydat dostał wiadomość z decyzją.
+
+[Otwórz zgłoszenia]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo w PsychON odrzucono zgłoszenie z Twojego konta.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz zgłoszenia” → Uczestniczki, zakładka zgłoszeń.
+- **Dziś (do porównania):** temat „Zgłoszenie odrzucone”; treść: „Zgłoszenie {imię}
+  {nazwisko} zostało odrzucone. Powód: {powód odrzucenia}”.
+
+### E-08. Nowy kurs do prowadzenia
+
+- **Kiedy wychodzi:** administracja przypisuje prowadzącego do kursu albo do jednej lekcji
+  kursu. Dziś wychodzi też wtedy, gdy prowadzący sam zakłada kurs (platforma przypisuje go wtedy
+  do tego kursu) — pytanie 10.
+- **Do kogo:** Psycholog prowadzący.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: nowy kurs do prowadzenia
+- **Treść:**
+
+```text
+Dzień dobry,
+
+masz nowe przypisanie: kurs „{tytuł kursu}” (albo lekcja w tym kursie). Pytania uczestników do tego kursu trafią teraz do Ciebie.
+
+[Otwórz kursy]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto Psychologa prowadzącego na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz kursy” → Kursy w panelu prowadzącego.
+- **Dziś (do porównania):** temat „Przypisano Cię jako prowadzącego”; treść: „Zostałeś
+  przypisany jako prowadzący kursu „{tytuł kursu}”.” albo „…lekcji w kursie „{tytuł
+  kursu}”.”.
+- **Różnica:** dziś forma męska („Zostałeś przypisany”), a przycisk z powiadomienia prowadzi
+  pod adres, którego w panelu nie ma.
+
+### E-09. Koniec prowadzenia kursu
+
+- **Kiedy wychodzi:** administracja zdejmuje przypisanie prowadzącego z kursu albo lekcji.
+- **Do kogo:** Psycholog prowadzący.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: koniec prowadzenia kursu
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twoje przypisanie do kursu „{tytuł kursu}” (albo lekcji w tym kursie) zostało zdjęte. Nowe pytania do tego kursu nie będą już trafiać do Ciebie.
+
+[Otwórz kursy]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto Psychologa prowadzącego na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz kursy” → Kursy w panelu prowadzącego.
+- **Dziś (do porównania):** temat „Zdjęto przypisanie prowadzącego”; treść: „Twoje
+  przypisanie jako prowadzącego kursu „{tytuł kursu}” zostało zdjęte.” (albo „…lekcji
+  w kursie…”).
+- **Uwaga:** zdanie o pytaniach opiera się na regule ze specyfikacji: po zmianie prowadzącego
+  nowe pytania trafiają do nowej osoby, a stare zostają u odpowiadającego.
+
+### E-10. Zaproszenie na kurs
+
+- **Kiedy wychodzi:** administracja zaprasza wybrane osoby na kurs spoza głównej ścieżki
+  programu (np. webinar).
+- **Do kogo:** zaproszone osoby (uczestnicy).
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: zaproszenie na kurs
+- **Treść:**
+
+```text
+Dzień dobry,
+
+zapraszamy Cię na kurs „{tytuł kursu}”. Szczegóły i materiały są na stronie kursu.
+
+[Otwórz kurs]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz kurs” → strona tego kursu w Kursach.
+- **Dziś (do porównania):** temat „Zaproszenie na: {tytuł kursu}”; treść: „Zapraszamy do
+  udziału. Szczegóły i materiały znajdziesz na stronie kursu.”.
+- **Różnica:** dziś tytuł kursu stoi w temacie — długi tytuł przekroczy 60 znaków, więc
+  przenosimy go do treści.
+
+### E-11. Nowy etap dostępny
+
+- **Kiedy wychodzi:** po ukończeniu etapu ścieżki, gdy osoba następnym razem otworzy listę
+  kursów. Każdy etap ogłaszany jest raz.
+- **Do kogo:** Wolontariusz.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: nowy etap dostępny
+- **Treść:**
+
+```text
+Dzień dobry,
+
+poprzedni etap jest ukończony. Możesz już zacząć etap {numer etapu}: „{tytuł etapu}”.
+
+[Otwórz etap]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz etap” → strona tego etapu w Kursach.
+- **Dziś (do porównania):** temat „Odblokowano etap {numer etapu}: {tytuł etapu}”; treść:
+  „Poprzedni etap ścieżki jest ukończony — możesz przejść dalej.”.
+- **Uwaga:** dziś e-mail powstaje dopiero przy otwarciu listy kursów, a więc wtedy, gdy osoba
+  i tak jest w panelu. Po wdrożeniu lepiej, żeby wychodził w chwili zaliczenia testu.
+
+### E-12. Nowe pytanie do lekcji
+
+- **Kiedy wychodzi:** uczestnik zadaje pytanie przy lekcji.
+- **Do kogo:** Psycholog prowadzący przypisany do tej lekcji albo do jej kursu. Gdy lekcja nie
+  ma prowadzącego, nikt nie dostaje wiadomości (E-41).
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: nowe pytanie do lekcji
+- **Treść:**
+
+```text
+Dzień dobry,
+
+pojawiło się nowe pytanie do lekcji „{tytuł lekcji}”. Treść pytania przeczytasz w panelu.
+
+[Otwórz pytania]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto Psychologa prowadzącego na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz pytania” → Pytania w panelu prowadzącego.
+- **Dziś (do porównania):** temat „Nowe pytanie do lekcji”; treść: „Pytanie do lekcji
+  „{tytuł lekcji}”: {treść pytania}”.
+- **Różnica:** dziś e-mail niesie całą treść pytania.
+
+### E-13. Odpowiedź na pytanie
+
+- **Kiedy wychodzi:** prowadzący odpowiada na pytanie zadane przy lekcji.
+- **Do kogo:** osoba, która zadała pytanie.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: odpowiedź na Twoje pytanie
+- **Treść:**
+
+```text
+Dzień dobry,
+
+na Twoje pytanie do lekcji „{tytuł lekcji}” jest już odpowiedź. Przeczytasz ją w panelu, przy lekcji.
+
+[Otwórz kurs]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz kurs” → strona kursu, do którego należy lekcja.
+- **Dziś (do porównania):** temat „Odpowiedź na Twoje pytanie”; treść: „Odpowiedź do lekcji
+  „{tytuł lekcji}”: {treść odpowiedzi}”.
+- **Różnica:** dziś e-mail niesie całą treść odpowiedzi.
+
+### E-14. Wpis stażu zatwierdzony
+
+- **Kiedy wychodzi:** administracja zatwierdza wpis w dzienniku stażu.
+- **Do kogo:** Wolontariusz, autor wpisu.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: wpis stażu zatwierdzony
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twój wpis stażu został zatwierdzony. Jego godziny liczą się już do stażu.
+
+[Otwórz dziennik stażu]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz dziennik stażu” → Dziennik stażu.
+- **Dziś (do porównania):** temat „Wpis stażu zaakceptowany”; treść: „Twój wpis stażu został
+  zaakceptowany.”.
+
+### E-15. Prośba o poprawkę wpisu stażu
+
+- **Kiedy wychodzi:** administracja prosi o poprawkę wpisu w dzienniku stażu (z komentarzem).
+- **Do kogo:** Wolontariusz, autor wpisu.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: prośba o poprawkę wpisu stażu
+- **Treść:**
+
+```text
+Dzień dobry,
+
+administracja prosi o poprawkę Twojego wpisu stażu. Komentarz i wpis znajdziesz w dzienniku stażu.
+
+[Otwórz dziennik stażu]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz dziennik stażu” → Dziennik stażu.
+- **Dziś (do porównania):** temat „Wpis stażu wymaga poprawy”; treść: „Twój wpis stażu został
+  odesłany do poprawy.”.
+
+### E-16. Wpis stażu odrzucony
+
+- **Kiedy wychodzi:** administracja odrzuca wpis w dzienniku stażu. Odrzucenie jest ostateczne.
+- **Do kogo:** Wolontariusz, autor wpisu.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: wpis stażu odrzucony
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twój wpis stażu został odrzucony. Szczegóły znajdziesz w dzienniku stażu.
+
+[Otwórz dziennik stażu]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz dziennik stażu” → Dziennik stażu.
+- **Dziś (do porównania):** temat „Wpis stażu odrzucony”; treść: „Twój wpis stażu został
+  odrzucony.”.
+
+### E-17. Wyczerpane podejścia do testu
+
+- **Kiedy wychodzi:** osoba nie zalicza testu etapu w ostatnim dostępnym podejściu.
+- **Do kogo:** każdy Opiekun Projektu (osobno). Super Admin dziś nie dostaje (pytanie 8).
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: wyczerpane podejścia do testu
+- **Treść:**
+
+```text
+Dzień dobry,
+
+osoba uczestnicząca w programie wykorzystała wszystkie podejścia do testu etapu „{tytuł etapu}” bez zaliczenia. Na karcie osoby możesz odnowić limit podejść.
+
+[Otwórz kartę osoby]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz w PsychON rolę Opiekun Projektu.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz kartę osoby” → karta tej osoby w Uczestniczkach.
+- **Dziś (do porównania):** temat „Wyczerpane podejścia do testu”; treść: „{imię i nazwisko}
+  nie zaliczył(a) testu „{tytuł kursu}” w ostatnim dostępnym podejściu. Rozważ reset limitu.”.
+- **Różnica:** bez imienia i nazwiska osoby i bez formy „nie zaliczył(a)” — kto to jest, widać
+  po kliknięciu.
+
+### E-18. Certyfikat gotowy
+
+- **Kiedy wychodzi:** certyfikat ukończenia programu zostaje wydany (plik jest gotowy).
+- **Do kogo:** Wolontariusz, absolwent.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: certyfikat gotowy
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twój certyfikat ukończenia programu PsychON jest gotowy. Możesz go pobrać w panelu.
+
+[Otwórz certyfikat]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz certyfikat” → Certyfikat.
+- **Dziś (do porównania):** temat „Certyfikat ukończenia programu jest gotowy”; treść: „Twój
+  certyfikat {numer certyfikatu} został wydany. Pobierz go w zakładce Certyfikat.”.
+- **Różnica:** bez numeru certyfikatu.
+
+### E-19. Dokument gotowy
+
+- **Kiedy wychodzi:** powstaje porozumienie wolontariackie albo zaświadczenie o stażu.
+- **Do kogo:** Wolontariusz, którego dotyczy dokument.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: dokument gotowy do pobrania
+- **Treść:**
+
+```text
+Dzień dobry,
+
+{rodzaj dokumentu: porozumienie wolontariackie / zaświadczenie o stażu} jest gotowe do pobrania w panelu.
+
+[Otwórz dokumenty]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz dokumenty” → Dokumenty.
+- **Dziś (do porównania):** temat „Dokument gotowy”; treść: „{Porozumienie wolontariackie /
+  Zaświadczenie o stażu} o numerze {numer dokumentu} zostało wygenerowane i jest gotowe do
+  pobrania.”.
+- **Różnica:** bez numeru dokumentu.
+
+### E-20. Wniosek o profil psychologa zatwierdzony
+
+- **Kiedy wychodzi:** administracja zatwierdza wniosek o profil psychologa.
+- **Do kogo:** Wolontariusz, autor wniosku.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: wniosek o profil psychologa zatwierdzony
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twój wniosek o profil psychologa został zatwierdzony.
+
+[Otwórz profil psychologa]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz profil psychologa” → Profil psychologa.
+- **Dziś (do porównania):** temat „Wniosek zaakceptowany”; treść: „Twój wniosek o wpis do bazy
+  psychologów Fundacji został zaakceptowany.”.
+
+### E-21. Prośba o poprawkę wniosku o profil psychologa
+
+- **Kiedy wychodzi:** administracja prosi o poprawkę wniosku o profil psychologa (z powodem).
+- **Do kogo:** Wolontariusz, autor wniosku.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: prośba o poprawkę wniosku o profil
+- **Treść:**
+
+```text
+Dzień dobry,
+
+administracja prosi o poprawkę Twojego wniosku o profil psychologa. Szczegóły znajdziesz w panelu.
+
+[Otwórz profil psychologa]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz profil psychologa” → Profil psychologa.
+- **Dziś (do porównania):** temat „Wniosek wymaga poprawy”; treść: „Twój wniosek o wpis do bazy
+  psychologów Fundacji został odesłany do poprawy.”.
+
+### E-22. Wycofana zgoda na publikację profilu
+
+- **Kiedy wychodzi:** osoba wycofuje zgodę na publikację swojego profilu psychologa.
+- **Do kogo:** każdy aktywny Opiekun Projektu i Super Admin (osobno).
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: wycofana zgoda na publikację profilu
+- **Treść:**
+
+```text
+Dzień dobry,
+
+osoba z bazy psychologów wycofała zgodę na publikację swojego profilu psychologa. Profil trzeba zdjąć ze strony Fundacji.
+
+[Otwórz profile psychologa]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz w PsychON rolę, która prowadzi bazę psychologów.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz profile psychologa” → Profile psychologa w panelu administracji.
+- **Dziś (do porównania):** temat „Wycofano zgodę na publikację profilu”; treść: „{imię}
+  {nazwisko} wycofał(a) zgodę na publikację profilu psychologa. Wniosek ma status „wycofany”
+  i zniknął z bazy publicznej.”.
+- **Różnica:** bez imienia i nazwiska. Zdanie „trzeba zdjąć ze strony Fundacji” wynika ze
+  specyfikacji: publikacja na stronie Fundacji jest dziś ręczna.
+
+### E-23. Eksport danych gotowy
+
+- **Kiedy wychodzi:** plik z danymi osobowymi, o który osoba poprosiła w profilu, jest gotowy.
+- **Do kogo:** osoba, która poprosiła o eksport (każda rola).
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: eksport Twoich danych jest gotowy
+- **Treść:**
+
+```text
+Dzień dobry,
+
+plik z Twoimi danymi osobowymi jest gotowy do pobrania. Plik jest dostępny przez ograniczony czas.
+
+[Otwórz profil]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo z Twojego konta poproszono o eksport danych.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz profil” → Profil.
+- **Dziś (do porównania):** temat „Eksport danych osobowych jest gotowy”; treść: „Twój eksport
+  danych (RODO) został przygotowany. Pobierz go w zakładce Profil.”.
+- **Uwaga:** zdanie o ograniczonym czasie wynika z tego, że plik po kilkudziesięciu godzinach
+  jest usuwany (czas ustawia serwer).
+
+### E-24. Odpowiedź na zgłoszenie dalszej współpracy
+
+- **Kiedy wychodzi:** administracja odpowiada na zgłoszenie dalszej współpracy (po programie).
+- **Do kogo:** osoba po programie, autor zgłoszenia.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: odpowiedź na zgłoszenie współpracy
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Fundacja odpowiedziała na Twoje zgłoszenie dalszej współpracy. Odpowiedź przeczytasz w panelu.
+
+[Otwórz Po programie]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz Po programie” → Po programie.
+- **Dziś (do porównania):** temat „Odpowiedź na zgłoszenie współpracy”; treść: „Administracja
+  odpowiedziała na Twoje zgłoszenie dalszej współpracy.”.
+
+### E-25. Przypomnienie: jutro superwizja
+
+- **Kiedy wychodzi:** dzień przed terminem superwizji, o godzinie ustawionej przez
+  administrację (domyślnie 8:00). Raz na każdy zapis.
+- **Do kogo:** osoby zapisane na termin.
+- **Czy można wyłączyć:** administracja tak (osobny przełącznik przypomnień, razem z godziną
+  wysyłki); osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: jutro superwizja
+- **Treść:**
+
+```text
+Dzień dobry,
+
+przypominamy: jutro, {data} o {godzina}, masz superwizję. Szczegóły terminu znajdziesz w panelu.
+
+[Otwórz superwizję]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON i zapis na ten termin.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz superwizję” → Superwizja.
+- **Dziś (do porównania):** temat „Jutro superwizja”; treść: „Przypominamy o superwizji {data},
+  {godzina}. Miejsce: {miejsce albo odnośnik do spotkania}.” (zdanie o miejscu tylko wtedy, gdy
+  je wpisano).
+- **Różnica:** bez miejsca i bez odnośnika do spotkania (pytanie 5).
+
+### E-26. Termin superwizji odwołany
+
+- **Kiedy wychodzi:** administracja odwołuje termin superwizji, na który osoba była zapisana.
+- **Do kogo:** osoby zapisane na odwołany termin.
+- **Czy można wyłączyć:** administracja tak; osoba tak (dziś bez ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: termin superwizji odwołany
+- **Treść:**
+
+```text
+Dzień dobry,
+
+termin superwizji {data}, {godzina} został odwołany. Możesz zapisać się na inny termin.
+
+[Otwórz superwizję]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON i zapis na ten termin.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz superwizję” → Superwizja.
+- **Dziś (do porównania):** temat „Termin superwizji odwołany”; treść: „Termin superwizji
+  {data}, {godzina} został odwołany. Zapisz się na inny termin.”.
+
+### E-27. Termin superwizji odwołany — dla prowadzącego
+
+- **Kiedy wychodzi:** administracja odwołuje termin superwizji.
+- **Do kogo:** Psycholog prowadzący ten termin.
+- **Czy można wyłączyć:** administracja tak (ten sam przełącznik co E-26); osoba tak (dziś bez
+  ekranu).
+- **Stan:** jest (dziś tylko w skrzynce jako symulowany).
+- **Temat:** PsychON: Twój termin superwizji odwołany
+- **Treść:**
+
+```text
+Dzień dobry,
+
+administracja odwołała Twój termin superwizji {data}, {godzina}. Osoby zapisane na ten termin dostały wiadomość.
+
+[Otwórz moją grupę]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto Psychologa prowadzącego na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz moją grupę” → Moja grupa w panelu prowadzącego.
+- **Dziś (do porównania):** temat „Termin superwizji odwołany”; treść: „Administracja odwołała
+  Twój termin superwizji {data}, {godzina}. Zapisane osoby: {liczba}.”.
+
+### E-28. Nowa wiadomość na czacie
+
+- **Kiedy wychodzi:** ktoś pisze wiadomość w wątku czatu (wątek grupy superwizyjnej albo
+  rozmowa prowadzącego z jedną osobą).
+- **Do kogo:** pozostałe osoby wątku (prowadzący i osoby z grupy).
+- **Czy można wyłączyć:** administracja dziś nie (tego rodzaju nie ma w ustawieniach
+  powiadomień); osoba tak (dziś bez ekranu).
+- **Stan:** do usunięcia — decyzja właściciela: wiadomości czatu powiadamiają tylko dzwonkiem
+  w panelu, nigdy e-mailem.
+- **Temat i treść:** brak — e-mail ma przestać powstawać. Powiadomienie w panelu zostaje.
+- **Przycisk:** brak.
+- **Dziś (do porównania):** temat „Nowa wiadomość”; treść: pierwsze 140 znaków wiadomości
+  z czatu.
