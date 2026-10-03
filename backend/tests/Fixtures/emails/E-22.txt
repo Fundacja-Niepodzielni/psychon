@@ -1,0 +1,14 @@
+Temat: PsychON: wycofana zgoda na publikację profilu
+
+Fundacja Niepodzielni · PsychON
+
+Dzień dobry,
+
+osoba z bazy psychologów wycofała zgodę na publikację swojego profilu psychologa. Profil trzeba zdjąć ze strony Fundacji.
+
+Otwórz profile psychologa: https://psychon.example.org/admin/profile
+
+----------
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz w PsychON rolę, która prowadzi bazę psychologów.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+Fundacja Niepodzielni

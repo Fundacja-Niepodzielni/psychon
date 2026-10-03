@@ -1,0 +1,4 @@
+{{-- Molecule „nagłówek”: the Foundation's mark and PsychON over a dividing line. --}}
+@php($style = \App\Support\Emails\EmailStyle::class)
+@php([$size, $lineHeight, $weight] = $style::TYPE['brand'])
+@if (\App\Support\Emails\EmailContext::current()->isText()){{ \App\Support\Emails\EmailContext::current()->textBlock('header', 'Fundacja Niepodzielni · PsychON') }}@else{!! $style::rowStart(24) !!}<table {!! $style::TABLE !!}><tr><td valign="bottom" style="font-family:{!! $style::FONT !!};font-size:{{ $size }}px;line-height:{{ $lineHeight }}px;font-weight:{{ $weight }};letter-spacing:0.01em;color:{{ $style::COLOR['brand'] }};">FUNDACJA<br>NIEPODZIELNI</td><td valign="bottom" align="right" style="{!! $style::text('title', $style::COLOR['ink']) !!}">PsychON</td></tr><tr><td colspan="2" style="padding-top:16px;"><x-email.divider /></td></tr></table>{!! $style::ROW_END !!}@endif
