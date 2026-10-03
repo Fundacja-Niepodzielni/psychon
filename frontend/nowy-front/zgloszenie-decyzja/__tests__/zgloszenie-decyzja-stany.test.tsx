@@ -239,6 +239,21 @@ describe("Zgłoszenie — decyzja: akceptacja", () => {
     expect(api).toHaveBeenCalledWith("/admin/applications/31/accept", { method: "POST", body: { role: "student" } });
   });
 
+  it("pole „Rola konta” oferuje tylko role nadawane w PsychON; zgłoszenie z rolą administracji zaczyna od wolontariusza", async () => {
+    const uzytkownik = userEvent.setup();
+    trasy({ show: { ...ZGLOSZENIE, role: "project_manager" } });
+    render(<ZgloszenieDecyzja id="31" />);
+    await screen.findByRole("heading", { level: 1, name: /^Zgłoszenie: Marta Demo/ });
+    const pole = screen.getByRole("combobox", { name: /^Rola konta/ });
+    expect(pole).toHaveTextContent("Wolontariusz");
+    await uzytkownik.click(pole);
+    expect(screen.getAllByRole("option").map((opcja) => opcja.textContent)).toEqual([
+      "Wolontariusz",
+      "Student",
+      "Psycholog prowadzący",
+    ]);
+  });
+
   it("zaproszenie, które nie wyszło, jest nazwane osobnym komunikatem", async () => {
     const uzytkownik = userEvent.setup();
     trasy({ show: ZGLOSZENIE, accept: { user_id: 44, access_expires_at: "2027-03-30T09:00:00Z", invitation_mail: "failed" } });

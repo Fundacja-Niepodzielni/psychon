@@ -35,19 +35,18 @@ describe("uprawnieniaZProfilu", () => {
 });
 
 describe("opcjeRol i etykiety", () => {
-  it("opcje mają etykiety polskie, a Super Admin tylko dla Super Admina", () => {
-    expect(opcjeRol(false).map((opcja) => opcja.wartosc)).toEqual([
-      "volunteer",
-      "student",
-      "instructor",
-      "project_manager",
+  it("opcje to tylko role nadawane w PsychON, z polskimi etykietami; bez ról administracji", () => {
+    expect(opcjeRol()).toEqual([
+      { wartosc: "volunteer", etykieta: "Wolontariusz" },
+      { wartosc: "student", etykieta: "Student" },
+      { wartosc: "instructor", etykieta: "Psycholog prowadzący" },
     ]);
-    expect(opcjeRol(true).map((opcja) => opcja.etykieta)).toContain("Super Admin");
-    expect(opcjeRol(false).map((opcja) => opcja.etykieta)).toContain("Psycholog prowadzący");
+    expect(opcjeRol().map((opcja) => opcja.wartosc)).not.toContain("super_admin");
+    expect(opcjeRol().map((opcja) => opcja.wartosc)).not.toContain("project_manager");
   });
 
   it("każda rola ma zdanie o skutku, rola spoza słownika nie ma", () => {
-    for (const opcja of opcjeRol(true)) expect(skutekRoli(opcja.wartosc)).toBeTruthy();
+    for (const opcja of opcjeRol()) expect(skutekRoli(opcja.wartosc)).toBeTruthy();
     expect(skutekRoli("")).toBeUndefined();
     expect(etykietaRoli("student")).toBe("Student");
   });

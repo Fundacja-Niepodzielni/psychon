@@ -48,11 +48,6 @@ describe("Nowa osoba — klucze odpowiedzi i ciała żądania zgodne z zapleczem
     expect(brakujace(wymagane, cialo)).toEqual([]);
   });
 
-  it("ciało PATCH /admin/users/{id}: klucz role istnieje w regułach UpdateUserRequest", () => {
-    const reguly = odczyt("app/Http/Requests/H18/UpdateUserRequest.php");
-    expect(brakujace(["role"], kluczePhp(reguly))).toEqual([]);
-  });
-
   it("kontrola dodatnia: usunięty klucz schematu jest wykrywany", () => {
     const profil = kluczePhp(odczyt("app/Http/Resources/ProfileResource.php")).filter((klucz) => klucz !== "roles");
     expect(brakujace(["role", "roles"], profil)).toEqual(["roles"]);

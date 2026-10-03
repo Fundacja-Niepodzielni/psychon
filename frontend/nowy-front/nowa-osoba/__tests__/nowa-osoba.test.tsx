@@ -4,11 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 
 /**
- * Ekran „Nowa osoba / zmiana roli” (`/nowy-front/admin/osoby/nowa`): każdy stan
- * ma jeden `main` szablonu formularza z jego znacznikiem stylu, a zapis i
- * odpowiedzi 201/200/401/403/404/409/422/sieć są sprawdzane po ciele i ścieżce
- * żądania wysłanego do klienta API.
+ * Ekran „Nowa osoba” (`/nowy-front/admin/osoby/nowa`): każdy stan ma jeden
+ * `main` szablonu formularza z jego znacznikiem stylu, a zapis i odpowiedzi
+ * 201/401/403/409/422/sieć są sprawdzane po ciele i ścieżce żądania wysłanego
+ * do klienta API.
  */
+
+const ZDANIE_O_KONTACH = "Rolę zmienia się w Kontach Niepodzielni.";
 
 const api = vi.fn();
 const back = vi.fn();
@@ -148,21 +150,18 @@ describe("Nowa osoba — stany ekranu na szablonie formularza", () => {
 });
 
 describe("Nowa osoba — role do wyboru i skutek nadania roli", () => {
-  it("Opiekun Projektu nie ma opcji Super Admin", async () => {
+  it.each([
+    ["Opiekun Projektu", PROFIL_OPIEKUNA],
+    ["Super Admin", PROFIL_SUPER_ADMINA],
+  ])("%s widzi tylko role nadawane w PsychON: bez Opiekuna Projektu i bez Super Admina", async (_nazwa, profil) => {
     const uzytkownik = userEvent.setup();
-    ustawApi(PROFIL_OPIEKUNA);
+    ustawApi(profil);
     render(<NowaOsoba />);
     await uzytkownik.click(await screen.findByRole("combobox", { name: /^Rola/ }));
     const opcje = screen.getAllByRole("option").map((opcja) => opcja.textContent);
-    expect(opcje).toEqual(["Wybierz rolę", "Wolontariusz", "Student", "Psycholog prowadzący", "Opiekun Projektu"]);
-  });
-
-  it("Super Admin widzi opcję Super Admin", async () => {
-    const uzytkownik = userEvent.setup();
-    ustawApi(PROFIL_SUPER_ADMINA);
-    render(<NowaOsoba />);
-    await uzytkownik.click(await screen.findByRole("combobox", { name: /^Rola/ }));
-    expect(screen.getByRole("option", { name: "Super Admin" })).toBeInTheDocument();
+    expect(opcje).toEqual(["Wybierz rolę", "Wolontariusz", "Student", "Psycholog prowadzący"]);
+    expect(screen.queryByRole("option", { name: "Super Admin" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Opiekun Projektu" })).toBeNull();
   });
 
   it("wybór roli pokazuje zdanie o skutku tej roli", async () => {
@@ -213,29 +212,26 @@ describe("Nowa osoba — zapis", () => {
   });
 
   // zmierzone na cichym hoście: maks. 0,9 s z 10; limit 3× i co najmniej 15 s
-  it("409: duplikat adresu → „Zmień rolę tego konta” wysyła PATCH z samą rolą na wskazane konto", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
+  it("409: duplikat adresu → zdanie, że rolę zmienia się w Kontach Niepodzielni, bez przycisku zmiany roli i bez PATCH", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
-    ustawApi(PROFIL_OPIEKUNA, (sciezka, opcje) => {
-      if (opcje?.method === "PATCH") return KARTA_NOWEJ_OSOBY;
-      return bladApi(409, "email_already_registered", "Konto z tym adresem e-mail już istnieje.", {
+    ustawApi(PROFIL_OPIEKUNA, () =>
+      bladApi(409, "email_already_registered", "Konto z tym adresem e-mail już istnieje.", {
         reason: { existing_user_id: 44 },
-      });
-    });
+      }),
+    );
     render(<NowaOsoba />);
     await wypelnij(uzytkownik, "Student");
     await uzytkownik.click(screen.getByRole("button", { name: "Utwórz konto" }));
 
     expect(await screen.findByText("Konto z tym adresem już istnieje")).toBeInTheDocument();
+    expect(screen.getByText(`Konto z tym adresem e-mail już istnieje. ${ZDANIE_O_KONTACH}`)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Zmień rolę tego konta" })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Zmień rolę tego konta" })).not.toBe(przyciskiGlowne()[0]);
-    await uzytkownik.click(screen.getByRole("button", { name: "Zmień rolę tego konta" }));
-
-    await waitFor(() => expect(wywolaniaZapisu()).toHaveLength(2));
-    expect(wywolaniaZapisu()[1]).toEqual(["/admin/users/44", { method: "PATCH", body: { role: "student" } }]);
-    expect(await screen.findByRole("status")).toHaveTextContent("Rola konta została zmieniona na: Student.");
+    expect(wywolaniaZapisu()).toHaveLength(1);
+    expect(wywolaniaZapisu().filter(([, opcje]) => (opcje as { method?: string } | undefined)?.method === "PATCH")).toEqual([]);
   });
 
-  it("409 bez wybranej roli: brak przycisku zmiany roli, jest prośba o wybór", async () => {
+  it("409 bez wybranej roli: to samo zdanie i brak przycisku zmiany roli", async () => {
     const uzytkownik = userEvent.setup();
     ustawApi(PROFIL_OPIEKUNA, () =>
       bladApi(409, "email_already_registered", "Konto z tym adresem e-mail już istnieje.", {
@@ -246,6 +242,7 @@ describe("Nowa osoba — zapis", () => {
     await uzytkownik.type(await screen.findByLabelText(/^Imię/), "Marta");
     await uzytkownik.click(screen.getByRole("button", { name: "Utwórz konto" }));
     expect(await screen.findByText("Konto z tym adresem już istnieje")).toBeInTheDocument();
+    expect(screen.getByText(`Konto z tym adresem e-mail już istnieje. ${ZDANIE_O_KONTACH}`)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Zmień rolę tego konta" })).toBeNull();
   });
 
@@ -273,25 +270,6 @@ describe("Nowa osoba — zapis", () => {
     await screen.findByText(/administracji/);
     expect(container.querySelectorAll("input, textarea")).toHaveLength(0);
     expect(() => jedenMain(container)).not.toThrow();
-  });
-
-  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
-  it("404 przy zmianie roli: komunikat o braku osoby", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
-    const uzytkownik = userEvent.setup();
-    ustawApi(PROFIL_OPIEKUNA, (_sciezka, opcje) =>
-      opcje?.method === "PATCH"
-        ? bladApi(404, "not_found", "Nie znaleziono osoby.")
-        : bladApi(409, "email_already_registered", "Konto z tym adresem e-mail już istnieje.", {
-            reason: { existing_user_id: 44 },
-          }),
-    );
-    render(<NowaOsoba />);
-    await wypelnij(uzytkownik);
-    await uzytkownik.click(screen.getByRole("button", { name: "Utwórz konto" }));
-    await uzytkownik.click(await screen.findByRole("button", { name: "Zmień rolę tego konta" }));
-
-    expect(await screen.findByText("Nie znaleziono osoby")).toBeInTheDocument();
-    expect(screen.getByText("Nie znaleziono osoby.")).toBeInTheDocument();
   });
 
   // zmierzone na cichym hoście: maks. 0,9 s z 10; limit 3× i co najmniej 15 s

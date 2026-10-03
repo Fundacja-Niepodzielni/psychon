@@ -55,12 +55,15 @@ interface OdpowiedzAkceptacji {
   invitation_mail: "sent" | "failed";
 }
 
-/** Role wybierane przy akceptacji. Rola `super_admin` nie jest oferowana: nadaje ją wyłącznie Super Admin (`AcceptApplicationRequest.php:14-17`). */
-export const ROLE_PRZY_AKCEPTACJI: ApplicationRole[] = ["volunteer", "student", "instructor", "project_manager"];
+/**
+ * Role wybierane przy akceptacji: tylko role nadawane w PsychON. Role Opiekun Projektu
+ * i Super Admin nadaje się wyłącznie w Kontach Niepodzielni, więc nie są oferowane.
+ */
+export const ROLE_PRZY_AKCEPTACJI: ApplicationRole[] = ["volunteer", "student", "instructor"];
 
 export const OPCJE_ROL = ROLE_PRZY_AKCEPTACJI.map((rola) => ({ wartosc: rola, etykieta: ROLE_LABELS[rola] }));
 
-/** Rola z formularza zgłoszenia jest wartością domyślną wyboru; Super Admin z wniosku nie jest przenoszony. */
+/** Rola z formularza zgłoszenia jest wartością domyślną wyboru; rola administracji z wniosku nie jest przenoszona. */
 export function rolaDomyslna(rolaZeZgloszenia: ApplicationRole): ApplicationRole {
   return ROLE_PRZY_AKCEPTACJI.includes(rolaZeZgloszenia) ? rolaZeZgloszenia : "volunteer";
 }

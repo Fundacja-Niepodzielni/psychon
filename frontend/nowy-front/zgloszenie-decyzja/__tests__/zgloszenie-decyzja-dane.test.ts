@@ -200,9 +200,18 @@ describe("pomocnicze", () => {
     for (const zle of ["0", "-1", "abc", "3.5", "", "07"]) expect(dane.poprawneId(zle)).toBeNull();
   });
 
-  it("rola domyślna: rola ze zgłoszenia, Super Admin zamieniony na wolontariusza", () => {
+  it("rola domyślna: rola ze zgłoszenia, rola administracji zamieniona na wolontariusza", () => {
     expect(dane.rolaDomyslna("instructor")).toBe("instructor");
     expect(dane.rolaDomyslna("super_admin")).toBe("volunteer");
+    expect(dane.rolaDomyslna("project_manager")).toBe("volunteer");
+  });
+
+  it("opcje roli przy akceptacji to tylko role nadawane w PsychON, bez ról administracji", () => {
+    expect(dane.OPCJE_ROL).toEqual([
+      { wartosc: "volunteer", etykieta: "Wolontariusz" },
+      { wartosc: "student", etykieta: "Student" },
+      { wartosc: "instructor", etykieta: "Psycholog prowadzący" },
+    ]);
   });
 
   it("adres karty osoby to istniejąca trasa uczestników", () => {

@@ -16,13 +16,11 @@ import {
   PUSTY_FORMULARZ,
   bladPola,
   bledyPozostale,
-  etykietaRoli,
   klasyfikujBlad,
   opcjeRol,
   pobierzUprawnienia,
   skutekRoli,
   zalozKonto,
-  zmienRole,
   type BladZapisu,
   type FormularzOsoby,
   type Uprawnienia,
@@ -36,20 +34,19 @@ type Wczytanie =
   | { rodzaj: "brak-uprawnien" }
   | { rodzaj: "gotowy"; uprawnienia: Uprawnienia };
 
-/** Ostatnia próba zapisu — „Spróbuj ponownie” powtarza dokładnie ją. */
-type Proba = { rodzaj: "zalozenie" } | { rodzaj: "zmiana-roli"; idOsoby: number };
+/** Zdanie o miejscu zmiany roli — to samo co na karcie osoby. */
+const ZDANIE_O_ZMIANIE_ROLI = "Rolę zmienia się w Kontach Niepodzielni.";
 
 /**
- * Ekran „Nowa osoba / zmiana roli” na szablonie `FormTemplate`: nagłówek,
- * powiadomienie o wyniku, jedna sekcja formularza z jednym rzędem przycisków
- * („Wróć do listy” + główna akcja „Utwórz konto”). Każdy stan — ładowanie,
- * odmowa z powodu roli, błąd odczytu, formularz — renderuje się WEWNĄTRZ
- * szablonu, więc jego korzeń jest jedynym `main`.
+ * Ekran „Nowa osoba” na szablonie `FormTemplate`: nagłówek, powiadomienie
+ * o wyniku, jedna sekcja formularza z jednym rzędem przycisków („Wróć do
+ * listy” + główna akcja „Utwórz konto”). Każdy stan — ładowanie, odmowa
+ * z powodu roli, błąd odczytu, formularz — renderuje się WEWNĄTRZ szablonu,
+ * więc jego korzeń jest jedynym `main`.
  *
- * Zmiana roli istniejącego konta jest jedyną drogą po odpowiedzi 409
- * `email_already_registered`: serwer oddaje `reason.existing_user_id`, a
- * przycisk „Zmień rolę tego konta” wywołuje `PATCH /admin/users/{id}` z samą
- * rolą (adres e-mail konta zostaje bez zmian).
+ * Pole „Rola” oferuje tylko role nadawane w PsychON. Po odpowiedzi 409
+ * `email_already_registered` ekran mówi, że konto już istnieje i że rolę
+ * zmienia się w Kontach Niepodzielni — sam roli nie zmienia.
  */
 export function NowaOsoba() {
   const router = useRouter();
@@ -59,7 +56,8 @@ export function NowaOsoba() {
   const [formularz, setFormularz] = useState<FormularzOsoby>(PUSTY_FORMULARZ);
   const [zapisuje, setZapisuje] = useState(false);
   const [blad, setBlad] = useState<BladZapisu | null>(null);
-  const [ostatniaProba, setOstatniaProba] = useState<Proba | null>(null);
+  // Ostatnia nieudana próba założenia konta — „Spróbuj ponownie” powtarza dokładnie ją.
+  const [ostatniaProba, setOstatniaProba] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   useZgloszenieNiezapisanychZmian(!rowneWartosci(formularz, PUSTY_FORMULARZ), "Nowa osoba");
 
@@ -88,24 +86,17 @@ export function NowaOsoba() {
     };
   }, [wczytaj]);
 
-  async function wykonaj(proba: Proba) {
+  async function zaloz() {
     if (zapisuje) return;
     setZapisuje(true);
     setBlad(null);
     setToast(null);
-    setOstatniaProba(proba);
+    setOstatniaProba(true);
     try {
-      if (proba.rodzaj === "zalozenie") {
-        const wynik = await zalozKonto(formularz);
-        setFormularz(PUSTY_FORMULARZ);
-        setOstatniaProba(null);
-        setToast(`Konto zostało założone. Zaproszenie wysłano na adres ${wynik.email}.`);
-      } else {
-        await zmienRole(proba.idOsoby, formularz.role);
-        setFormularz(PUSTY_FORMULARZ);
-        setOstatniaProba(null);
-        setToast(`Rola konta została zmieniona na: ${etykietaRoli(formularz.role)}.`);
-      }
+      const wynik = await zalozKonto(formularz);
+      setFormularz(PUSTY_FORMULARZ);
+      setOstatniaProba(false);
+      setToast(`Konto zostało założone. Zaproszenie wysłano na adres ${wynik.email}.`);
     } catch (wyjatek) {
       const klasa = klasyfikujBlad(wyjatek);
       if (klasa.rodzaj === "brak-sesji") {
@@ -175,7 +166,6 @@ export function NowaOsoba() {
     );
   }
 
-  const { uprawnienia } = wczytanie;
   const dopisz = (pole: keyof FormularzOsoby) => (wartosc: string) =>
     setFormularz((poprzedni) => ({ ...poprzedni, [pole]: wartosc }));
 
@@ -214,7 +204,7 @@ export function NowaOsoba() {
       rodzaj: "wybor",
       wartosc: formularz.role,
       onZmiana: dopisz("role"),
-      opcje: [{ wartosc: "", etykieta: "Wybierz rolę" }, ...opcjeRol(uprawnienia.superAdmin)],
+      opcje: [{ wartosc: "", etykieta: "Wybierz rolę" }, ...opcjeRol()],
       blad: bladPola(blad, "role"),
       podpowiedz: skutekRoli(formularz.role) ?? "Rola decyduje o tym, co osoba zobaczy po wejściu do systemu.",
       wymagane: true,
@@ -225,25 +215,9 @@ export function NowaOsoba() {
 
   let powiadomienie = null;
   if (blad?.rodzaj === "duplikat") {
-    const idIstniejacej = blad.istniejacaOsoba;
     powiadomienie = (
-      <Notice
-        wariant="warn"
-        tytul="Konto z tym adresem już istnieje"
-        akcja={
-          idIstniejacej !== null && formularz.role !== "" ? (
-            <Button
-              poziom="outline"
-              onClick={() => void wykonaj({ rodzaj: "zmiana-roli", idOsoby: idIstniejacej })}
-            >
-              Zmień rolę tego konta
-            </Button>
-          ) : undefined
-        }
-      >
-        {idIstniejacej !== null && formularz.role !== ""
-          ? `${blad.komunikat} Możesz zmienić rolę tego konta na: ${etykietaRoli(formularz.role)}.`
-          : `${blad.komunikat} Wybierz rolę, żeby zmienić rolę tego konta.`}
+      <Notice wariant="warn" tytul="Konto z tym adresem już istnieje">
+        {`${blad.komunikat} ${ZDANIE_O_ZMIANIE_ROLI}`}
       </Notice>
     );
   } else if (blad?.rodzaj === "zakazane") {
@@ -265,7 +239,7 @@ export function NowaOsoba() {
         tytul="Nie udało się zapisać"
         akcja={
           ostatniaProba ? (
-            <Button poziom="outline" onClick={() => void wykonaj(ostatniaProba)}>
+            <Button poziom="outline" onClick={() => void zaloz()}>
               Spróbuj ponownie
             </Button>
           ) : undefined
@@ -294,7 +268,7 @@ export function NowaOsoba() {
             etykietaAnuluj="Wróć do listy"
             etykietaZapisz={zapisuje ? "Zapisywanie…" : "Utwórz konto"}
             onAnuluj={wroc}
-            onZapisz={() => void wykonaj({ rodzaj: "zalozenie" })}
+            onZapisz={() => void zaloz()}
           />
           {toast !== null && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
         </>

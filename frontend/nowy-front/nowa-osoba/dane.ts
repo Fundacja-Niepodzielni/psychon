@@ -1,18 +1,19 @@
 import { api, ApiError } from "@/lib/api/klient";
-import { createAdminUser, updateAdminUser, type UserRole } from "@/lib/api/h18";
+import { createAdminUser, type UserRole } from "@/lib/api/h18";
 import { ROLE_LABELS } from "@/lib/h18/labels";
 
 /**
- * Logika ekranu „Nowa osoba / zmiana roli” — bez JSX, z własnym testem.
+ * Logika ekranu „Nowa osoba” — bez JSX, z własnym testem.
  *
- * Trasy (kontrakt §2 „Panel — osoby”, `backend/routes/api/h18.php:27,30`):
+ * Trasy (kontrakt §2 „Panel — osoby”, `backend/routes/api/h18.php:27`):
  *  - `POST /admin/users` — konto + zaproszenie, 201 z kartą osoby;
- *  - `PATCH /admin/users/{id}` — zmiana roli istniejącego konta, 200 z kartą;
  *  - `GET /me` (`backend/routes/api/h01.php:27`) — wyłącznie do odczytu ról
- *    z tokenu (`ProfileResource::toArray`, klucz `roles`), żeby ukryć opcję
- *    Super Admin przed Opiekunem Projektu. O nadaniu roli i tak rozstrzyga
- *    serwer: `AdminUserController::assertMayAssignRole`
- *    (`backend/app/Http/Controllers/Api/V1/Admin/AdminUserController.php:274`).
+ *    z tokenu (`ProfileResource::toArray`, klucz `roles`), żeby ekran wiedział,
+ *    czy osoba należy do administracji.
+ *
+ * Rolę istniejącego konta zmienia się w Kontach Niepodzielni (PsychON bierze ją
+ * stamtąd przy każdym logowaniu), więc ekran nie ma zmiany roli. Role Opiekun
+ * Projektu i Super Admin nadaje się wyłącznie w Kontach — formularz ich nie oferuje.
  */
 
 /** Wycinek `GET /me` potrzebny temu ekranowi (`ProfileResource`). */
@@ -37,33 +38,30 @@ export async function pobierzUprawnienia(): Promise<Uprawnienia> {
   return uprawnieniaZProfilu(await api<ProfilRol>("/me"));
 }
 
-/** Kolejność opcji: role uczestników najpierw, administracja na końcu. */
-const KOLEJNOSC_ROL: UserRole[] = ["volunteer", "student", "instructor", "project_manager", "super_admin"];
+/** Role nadawane w PsychON, w kolejności opcji pola „Rola”. */
+export const ROLE_NADAWANE_W_PSYCHON = ["volunteer", "student", "instructor"] as const satisfies readonly UserRole[];
+
+type RolaNadawanaWPsychON = (typeof ROLE_NADAWANE_W_PSYCHON)[number];
 
 export interface OpcjaRoli {
   wartosc: string;
   etykieta: string;
 }
 
-/** Rola Super Admin tylko dla Super Admina (serwer i tak odrzuca — 403). */
-export function opcjeRol(superAdmin: boolean): OpcjaRoli[] {
-  return KOLEJNOSC_ROL.filter((rola) => superAdmin || rola !== "super_admin").map((rola) => ({
-    wartosc: rola,
-    etykieta: ROLE_LABELS[rola],
-  }));
+/** Opcje pola „Rola”: tylko role nadawane w PsychON, dla każdej osoby z administracji takie same. */
+export function opcjeRol(): OpcjaRoli[] {
+  return ROLE_NADAWANE_W_PSYCHON.map((rola) => ({ wartosc: rola, etykieta: ROLE_LABELS[rola] }));
 }
 
 /** Zdanie o skutku nadania roli — pod polem „Rola”. */
-export const SKUTEK_ROLI: Record<UserRole, string> = {
+export const SKUTEK_ROLI: Record<RolaNadawanaWPsychON, string> = {
   volunteer: "Wolontariusz przechodzi pełny program: kursy, dyżury, superwizje i certyfikat.",
   student: "Student ma dostęp do kursów i materiałów.",
   instructor: "Psycholog prowadzący widzi przypisane kursy, pytania uczestników i swoją grupę w zakładce Moja grupa.",
-  project_manager: "Opiekun Projektu pracuje w panelu administracji, poza kontami Super Adminów.",
-  super_admin: "Super Admin ma pełny dostęp do administracji, także do kont Super Adminów.",
 };
 
 export function skutekRoli(rola: string): string | undefined {
-  return rola in SKUTEK_ROLI ? SKUTEK_ROLI[rola as UserRole] : undefined;
+  return Object.hasOwn(SKUTEK_ROLI, rola) ? SKUTEK_ROLI[rola as RolaNadawanaWPsychON] : undefined;
 }
 
 export function etykietaRoli(rola: string): string {
@@ -102,10 +100,6 @@ export interface WynikZalozenia {
 export async function zalozKonto(formularz: FormularzOsoby): Promise<WynikZalozenia> {
   const karta = await createAdminUser(cialoZalozenia(formularz));
   return { id: karta.profile.id, email: karta.profile.email };
-}
-
-export async function zmienRole(idOsoby: number, rola: string): Promise<void> {
-  await updateAdminUser(idOsoby, { role: rola });
 }
 
 export type BladZapisu =
