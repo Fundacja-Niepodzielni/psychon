@@ -86,7 +86,7 @@ class CourseAssignmentController extends Controller
                 'assignment.created',
                 'Przypisano Cię jako prowadzącego',
                 $this->notificationBody($courseModel, $lessonId, created: true),
-                '/panel/prowadzacy',
+                $this->notificationLink($courseModel, $lessonId, created: true),
                 email: ['courseTitle' => $courseModel->title],
             );
 
@@ -128,7 +128,7 @@ class CourseAssignmentController extends Controller
                 'assignment.removed',
                 'Zdjęto przypisanie prowadzącego',
                 $this->notificationBody($courseModel, $assignment->lesson_id, created: false),
-                '/panel/prowadzacy',
+                $this->notificationLink($courseModel, $assignment->lesson_id, created: false),
                 email: ['courseTitle' => $courseModel->title],
             );
 
@@ -151,14 +151,39 @@ class CourseAssignmentController extends Controller
         return $course;
     }
 
+    /**
+     * Treść bez rodzaju gramatycznego. Przypisanie do jednej lekcji mówi
+     * o lekcji, bo ekranu kursu taka osoba nie otworzy (`CoursePolicy`
+     * wymaga przypisania do całego kursu).
+     */
     private function notificationBody(Course $course, ?int $lessonId, bool $created): string
     {
-        $scope = $lessonId !== null
-            ? "lekcji w kursie „{$course->title}”"
-            : "kursu „{$course->title}”";
+        if ($lessonId !== null) {
+            return $created
+                ? "Masz nową lekcję do prowadzenia w kursie „{$course->title}”."
+                : "Lekcja w kursie „{$course->title}” nie jest już przypisana do Ciebie.";
+        }
 
         return $created
-            ? "Zostałeś przypisany jako prowadzący {$scope}."
-            : "Twoje przypisanie jako prowadzącego {$scope} zostało zdjęte.";
+            ? "Masz nowy kurs do uzupełnienia: „{$course->title}”."
+            : "Kurs „{$course->title}” nie jest już przypisany do Ciebie.";
+    }
+
+    /**
+     * Adresy panelu prowadzącego, które w starym i w nowym wyglądzie mają tę
+     * samą ścieżkę (`frontend/lib/przelaczenie/grupy.ts`: `/prowadzacy/kursy/[id]`,
+     * `/prowadzacy/kursy`, `/prowadzacy/pytania`). Przypisanie do całego kursu
+     * otwiera ten kurs. Po odebraniu kurs już się nie otworzy, więc odnośnik
+     * prowadzi do listy kursów. Przypisanie do lekcji daje pytania uczestników.
+     */
+    private function notificationLink(Course $course, ?int $lessonId, bool $created): string
+    {
+        if (! $created) {
+            return '/prowadzacy/kursy';
+        }
+
+        return $lessonId !== null
+            ? '/prowadzacy/pytania'
+            : "/prowadzacy/kursy/{$course->id}";
     }
 }
