@@ -459,7 +459,7 @@ Wgląd w skan dyplomu → wpis w `sensitive_access_log`.
 `PATCH /admin/edition` — klucze z §3.3, walidacja zakresów [audyt `edition.updated`].
 `GET /admin/dashboard` → `{ "data": { "counters": { "participants": …,
 "completed": …, "certificates": … }, "queues": [ { "key": "applications",
-"count": 3, "link": "/admin/uczestniczki" }, … ] } }`.
+"count": 3, "link": "/admin/uczestniczki?zakladka=zgloszenia" }, … ] } }`.
 
 ### Raporty i dziennik (H20)
 
