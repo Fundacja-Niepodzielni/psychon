@@ -2,7 +2,6 @@
 
 namespace App\Support\Emails;
 
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -97,10 +96,9 @@ final class EmailContext
         $value = EmailContact::value() ?? '';
 
         if (! $this->isText() && EmailContact::isPlaceholder($value)) {
-            return new HtmlString(trim(Blade::render(
-                '<x-email.placeholder>{{ $value }}</x-email.placeholder>',
-                ['value' => $value],
-            )));
+            return new HtmlString(trim(view('components.email.placeholder', [
+                'slot' => new HtmlString(e($value)),
+            ])->render()));
         }
 
         return new HtmlString(e($value));

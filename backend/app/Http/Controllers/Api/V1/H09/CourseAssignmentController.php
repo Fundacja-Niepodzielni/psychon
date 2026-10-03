@@ -87,6 +87,7 @@ class CourseAssignmentController extends Controller
                 'Przypisano Cię jako prowadzącego',
                 $this->notificationBody($courseModel, $lessonId, created: true),
                 '/panel/prowadzacy',
+                email: ['courseTitle' => $courseModel->title],
             );
 
             return $assignment;
@@ -128,6 +129,7 @@ class CourseAssignmentController extends Controller
                 'Zdjęto przypisanie prowadzącego',
                 $this->notificationBody($courseModel, $assignment->lesson_id, created: false),
                 '/panel/prowadzacy',
+                email: ['courseTitle' => $courseModel->title],
             );
 
             return $assignment;

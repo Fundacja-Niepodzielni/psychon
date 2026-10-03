@@ -44,6 +44,7 @@ final class CourseInviter
                     "Zaproszenie na: {$course->title}",
                     'Zapraszamy do udziału. Szczegóły i materiały znajdziesz na stronie kursu.',
                     link: "/panel/kursy/{$course->slug}",
+                    email: ['courseTitle' => $course->title, 'path' => "/panel/kursy/{$course->slug}"],
                 );
             }
 

@@ -87,6 +87,7 @@ final class CourseUnlockNotifier
                     "Odblokowano etap {$course->sequence_order}: {$course->title}",
                     'Poprzedni etap ścieżki jest ukończony — możesz przejść dalej.',
                     link: $link,
+                    email: ['stageNumber' => $course->sequence_order, 'stageTitle' => $course->title, 'path' => $link],
                 );
             }
         });

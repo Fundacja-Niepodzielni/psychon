@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\SupervisionSignup;
+use App\Support\Emails\EmailValues;
 use App\Support\NotificationSettings;
 use App\Support\Notify;
 use Illuminate\Console\Command;
@@ -94,6 +95,10 @@ class SendSupervisionReminders extends Command
                         ? "Przypominamy o superwizji {$when}. Miejsce: {$where}."
                         : "Przypominamy o superwizji {$when}.",
                     '/panel/superwizja',
+                    email: [
+                        'date' => EmailValues::date($signup->slot->starts_at),
+                        'time' => EmailValues::time($signup->slot->starts_at),
+                    ],
                 );
 
                 $signup->forceFill(['reminder_sent_at' => now()])->save();

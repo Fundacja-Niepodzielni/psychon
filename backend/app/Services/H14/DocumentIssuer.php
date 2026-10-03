@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\Edition;
 use App\Models\User;
 use App\Support\AuditLog;
+use App\Support\Emails\EmailValues;
 use App\Support\Notify;
 use App\Support\ProgressAggregator;
 use App\Support\Settings;
@@ -85,6 +86,7 @@ final class DocumentIssuer
                 'Dokument gotowy',
                 self::notificationBody($type, $number),
                 '/panel/dokumenty',
+                email: ['documentKind' => EmailValues::documentKind($type)],
             );
 
             AuditLog::record($user, 'document.generated', $document, [

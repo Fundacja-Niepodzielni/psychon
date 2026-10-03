@@ -7,6 +7,7 @@ use App\Models\SupervisionSignup;
 use App\Models\SupervisionSlot;
 use App\Models\User;
 use App\Support\AuditLog;
+use App\Support\Emails\EmailValues;
 use App\Support\Notify;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -121,6 +122,7 @@ final class SupervisionSlotService
                     'Termin superwizji odwołany',
                     "Termin superwizji {$when} został odwołany. Zapisz się na inny termin.",
                     '/panel/superwizja',
+                    email: ['date' => EmailValues::date($slot->starts_at), 'time' => EmailValues::time($slot->starts_at)],
                 );
             }
 
@@ -135,6 +137,11 @@ final class SupervisionSlotService
                     'Termin superwizji odwołany',
                     "Administracja odwołała Twój termin superwizji {$when}. Zapisane osoby: {$released}.",
                     '/prowadzacy/grupa',
+                    email: [
+                        'template' => 'E-27',
+                        'date' => EmailValues::date($slot->starts_at),
+                        'time' => EmailValues::time($slot->starts_at),
+                    ],
                 );
             }
 

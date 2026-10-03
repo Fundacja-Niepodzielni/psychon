@@ -10,6 +10,8 @@ use App\Models\SensitiveAccessLogEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -136,11 +138,19 @@ class ApplicationApiTest extends TestCase
         ]);
         $actor = User::factory()->role('project_manager')->create();
         $this->actingAs($actor, 'keycloak');
+        // Próby nie mają adresu nadawcy z konfiguracji — bez niego mailer
+        // odrzuca wiadomość, zanim powstanie.
+        config(['mail.from.address' => 'psychon@example.test']);
+        $invitations = [];
+        Event::listen(MessageSent::class, function (MessageSent $event) use (&$invitations): void {
+            $invitations[] = (string) $event->message->getTextBody();
+        });
 
         $response = $this->postJson('/api/v1/admin/applications/'.$application->id.'/accept', [
             'role' => 'volunteer',
         ])->assertCreated()
-            ->assertJsonStructure(['data' => ['user_id', 'access_expires_at']]);
+            ->assertJsonStructure(['data' => ['user_id', 'access_expires_at']])
+            ->assertJsonPath('data.invitation_mail', 'sent');
 
         $user = User::findOrFail($response->json('data.user_id'));
         $this->assertSame('candidate@example.test', $user->email);
@@ -150,14 +160,13 @@ class ApplicationApiTest extends TestCase
         $this->assertSame('accepted', $application->fresh()->status);
         $this->assertDatabaseHas('audit_log', ['action' => 'application.accepted', 'subject_id' => $application->id]);
         $this->assertDatabaseHas('notifications', ['user_id' => $user->id, 'type' => 'application.accepted']);
-        $this->assertDatabaseHas('emails', ['to_user_id' => $user->id, 'status' => 'simulated']);
+        // E-06 (kopia powiadomienia o zatwierdzeniu) usunięta z treści: osoba
+        // dostaje w tej samej chwili zaproszenie E-01 z odnośnikiem aktywacyjnym.
+        $this->assertSame(0, EmailMessage::where('to_user_id', $user->id)->count());
+        $this->assertCount(1, $invitations);
         $this->assertStringContainsString(
-            $user->activation_token,
-            (string) EmailMessage::where('to_user_id', $user->id)->latest('id')->value('body_html'),
-        );
-        $this->assertStringContainsString(
-            rtrim(config('app.frontend_url'), '/').'/aktywacja?token=',
-            (string) EmailMessage::where('to_user_id', $user->id)->latest('id')->value('body_html'),
+            rtrim(config('app.frontend_url'), '/').'/aktywacja?token='.$user->activation_token,
+            $invitations[0],
         );
 
         // SSO only: the invitation link leads to BINDING, not activation by
@@ -235,7 +244,10 @@ class ApplicationApiTest extends TestCase
 
         $this->assertDatabaseHas('audit_log', ['action' => 'application.rejected', 'subject_id' => $application->id]);
         $this->assertDatabaseHas('notifications', ['user_id' => $actor->id, 'type' => 'application.rejected']);
-        $this->assertDatabaseHas('emails', ['to_user_id' => $actor->id, 'status' => 'simulated']);
+        // E-07 (kopia dla osoby decydującej) usunięta z treści; ślad wysyłki E-02
+        // do kandydata zostaje w skrzynce.
+        $this->assertSame(0, EmailMessage::where('to_user_id', $actor->id)->count());
+        $this->assertDatabaseHas('emails', ['to_email' => $application->email, 'to_user_id' => null, 'status' => 'sent']);
         $this->assertSame(0, User::where('email', $application->email)->count());
     }
 
