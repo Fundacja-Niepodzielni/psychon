@@ -1,0 +1,85 @@
+/* Karta najbliższego webinaru na pulpicie — wartości wyglądu wyłącznie z tokenów. */
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  /* Wcięcie i odstęp jak u sąsiednich kart pulpitu (szablon: `--card-px`, odstęp kart `--space-24`). */
+  margin: 0 0 var(--space-24);
+  padding: var(--space-24) var(--card-px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow-wrap: anywhere;
+}
+
+.karta > * {
+  margin: 0;
+  min-width: 0;
+}
+
+/* Nagłówki w rozmiarze nagłówków sąsiednich kart pulpitu. */
+.karta > :is(h2, h3) {
+  font-size: var(--fs-4);
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-16);
+}
+
+/* „Dołącz do transmisji” wygląda jak na ekranie webinaru (przycisk-odnośnik z ramką, te same
+   deklaracje co `.przycisk` ekranu kursu); atom `Link` nie przyjmuje klasy — stąd otoczka,
+   jak w `ListRow`. Fokus obrysowuje całe pole, jak przy przycisku. */
+.przyciskOdnosnik {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.przyciskOdnosnik a {
+  --link-obrys: var(--focus-width) solid var(--brand);
+  --link-obrys-tekstu: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  box-sizing: border-box;
+  min-height: var(--hit-min);
+  max-width: 320px;
+  margin: 0;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+}
+
+.przyciskOdnosnik a:hover {
+  background: var(--grey);
+}
+
+.komunikaty {
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .karta {
+    padding: var(--space-18) var(--card-px) var(--space-20);
+  }
+
+  .akcje {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .przyciskOdnosnik a {
+    width: 100%;
+    max-width: none;
+  }
+}

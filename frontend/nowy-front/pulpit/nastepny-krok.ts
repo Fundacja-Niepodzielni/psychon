@@ -20,6 +20,7 @@
  *     przed wszystkimi powyższymi — ukończony program nie wraca do lekcji;
  *  5. inaczej (ścieżka pusta albo pierwszy etap jeszcze niedostępny) → `brak`.
  */
+import type { CourseType } from "@/lib/courses";
 import { minutyZSekund } from "../lekcja/stan";
 
 export type StatusKursu = "locked" | "in_progress" | "completed";
@@ -32,6 +33,8 @@ export interface KursSciezki {
   sequence_order: number | null;
   status: StatusKursu;
   progress_percent: number;
+  /** Rodzaj pozycji; brak pola (zaplecze bez webinarów) znaczy „kurs”. */
+  type?: CourseType;
 }
 
 /** `LessonSummaryResource` — lekcja etapu w toku. */
@@ -55,17 +58,37 @@ export type NastepnyKrok =
   | { rodzaj: "po-programie" }
   | { rodzaj: "brak" };
 
+/** Czy pozycja listy to webinar; brak pola `type` (zaplecze bez webinarów) znaczy „kurs”. */
+export function jestWebinarem(kurs: { type?: string | null }): boolean {
+  return kurs.type === "webinar";
+}
+
 /**
- * Etapy ścieżki wolontariusza — kursy z `sequence_order`, posortowane
- * rosnąco. Webinary/zaproszenia (`sequence_order: null`, rola `student`,
- * `CourseCatalogQuery::visibleTo`) nie należą do tej ścieżki i tu się nie
- * liczą — U-01 jest ekranem wolontariusza (U-02 studenta ma inny widok).
+ * Etapy ścieżki wolontariusza — KURSY z `sequence_order`, posortowane
+ * rosnąco. Webinar nie jest etapem kursu: nie ma lekcji ani testu, nie blokuje
+ * następnego kursu i nie bywa „w toku” w rozumieniu następnego kroku, więc tu
+ * się nie liczy (zajmuje się nim karta webinaru i warunek certyfikatu).
+ * Zaproszenia (`sequence_order: null`, rola `student`,
+ * `CourseCatalogQuery::visibleTo`) też nie należą do tej ścieżki — U-01 jest
+ * ekranem wolontariusza (U-02 studenta ma inny widok).
  */
 export function etapySciezki(kursy: KursSciezki[]): KursSciezki[] {
   return kursy
-    .filter((kurs) => kurs.sequence_order !== null)
+    .filter((kurs) => kurs.sequence_order !== null && !jestWebinarem(kurs))
     .slice()
     .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+}
+
+/**
+ * Pozycje listy „Twoja ścieżka”: kursy ze ścieżki i wszystkie webinary razem,
+ * według numeru w ścieżce (bez numeru na końcu, remis po identyfikatorze).
+ * Kurs bez numeru i bez typu to zaproszenie poza ścieżką — nie wchodzi.
+ */
+export function pozycjeSciezki(kursy: KursSciezki[]): KursSciezki[] {
+  return kursy
+    .filter((kurs) => jestWebinarem(kurs) || kurs.sequence_order !== null)
+    .slice()
+    .sort((a, b) => (a.sequence_order ?? Number.POSITIVE_INFINITY) - (b.sequence_order ?? Number.POSITIVE_INFINITY) || a.id - b.id);
 }
 
 function pierwszaNieukonczonaLekcja(lekcje: LekcjaKursu[]): LekcjaKursu | undefined {

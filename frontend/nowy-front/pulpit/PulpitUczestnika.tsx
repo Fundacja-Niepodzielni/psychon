@@ -12,6 +12,7 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { EkranStanu, type StanBezDanych } from "./EkranStanu";
 import { rodzajBledu } from "./rodzaj-bledu";
 import { adresLekcji } from "../lekcja/adres";
+import { pobierzKurs, type KursUczestnika } from "../kurs-uczestnika/dane";
 import { formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzGodzinyStazu,
@@ -28,7 +29,9 @@ import {
 import { formatujDziesietny } from "../wspolne/formatuj-dziesietny";
 import { ListaKursow } from "./ListaKursow";
 import { mianownikOdbytychSuperwizji, mianownikUkonczonychKursow } from "./odmiana-kafli";
-import { etapySciezki, wyliczNastepnyKrok, zdanieObejrzanychMinut, type NastepnyKrok } from "./nastepny-krok";
+import { KartaWebinaru } from "./KartaWebinaru";
+import { etapySciezki, pozycjeSciezki, wyliczNastepnyKrok, zdanieObejrzanychMinut, type NastepnyKrok } from "./nastepny-krok";
+import { webinaryDoWykonania, wybierzNajblizszyWebinar } from "./webinar-karta";
 
 type StanEkranu = StanBezDanych | "ok";
 
@@ -63,6 +66,8 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
   const [warunki, setWarunki] = useState<Pomocnicza<WarunkiCertyfikatu>>({ stan: "ladowanie" });
   const [godziny, setGodziny] = useState<Pomocnicza<GodzinyStazu>>({ stan: "ladowanie" });
   const [superwizje, setSuperwizje] = useState<Pomocnicza<TerminSuperwizji[]>>({ stan: "ladowanie" });
+  /** Najbliższy nieukończony webinar ścieżki (`null` — nie ma żadnego). */
+  const [webinar, setWebinar] = useState<Pomocnicza<KursUczestnika | null>>({ stan: "ladowanie" });
 
   const wczytajPomocnicze = useCallback((listaKursow: KursSciezki[], straz?: { anulowane: boolean }) => {
     const wToku = etapySciezki(listaKursow).find((kurs) => kurs.status === "in_progress");
@@ -80,6 +85,19 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
         });
     } else {
       setLekcjeEtapu({ stan: "ok", dane: [] });
+    }
+
+    // Szczegóły czytamy tylko dla nieukończonych webinarów; zaplecze bez webinarów nie dokłada żadnego żądania.
+    const doWykonania = webinaryDoWykonania(listaKursow);
+    if (doWykonania.length === 0) {
+      setWebinar({ stan: "ok", dane: null });
+    } else {
+      setWebinar({ stan: "ladowanie" });
+      Promise.allSettled(doWykonania.map((pozycja) => pobierzKurs(pozycja.slug))).then((wyniki) => {
+        if (straz?.anulowane) return;
+        const odczytane = wyniki.flatMap((wynik) => (wynik.status === "fulfilled" ? [wynik.value] : []));
+        setWebinar(odczytane.length === 0 ? { stan: "blad" } : { stan: "ok", dane: wybierzNajblizszyWebinar(odczytane, Date.now()) });
+      });
     }
 
     setWarunki({ stan: "ladowanie" });
@@ -218,10 +236,18 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
               Nie udało się wczytać godzin stażu.
             </Notice>
           )}
+          {webinar.stan === "blad" && (
+            <Notice wariant="warn" tytul="Webinar niedostępny">
+              Nie udało się wczytać najbliższego webinaru.
+            </Notice>
+          )}
+          {webinar.stan === "ok" && webinar.dane !== null && <KartaWebinaru webinar={webinar.dane} />}
           <ListaKursow
             tytul="Twoja ścieżka"
-            kursy={etapy}
-            podpowiedz={(kurs) => `Kurs ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`}
+            kursy={pozycjeSciezki(kursy)}
+            podpowiedz={(kurs) =>
+              kurs.type === "webinar" ? "Webinar" : `Kurs ${kurs.sequence_order ?? "—"} · ${kurs.progress_percent}% ukończone`
+            }
             pusty={{
               naglowek: "Ścieżka jest przygotowywana",
               tresc: "Gdy administracja doda pierwszy kurs, pojawi się tutaj.",

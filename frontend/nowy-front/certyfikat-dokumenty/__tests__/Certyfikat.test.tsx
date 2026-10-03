@@ -244,6 +244,48 @@ describe("Certyfikat — jeszcze niedostępny", () => {
   });
 });
 
+describe("Certyfikat — warunek „Webinary”", () => {
+  const WARUNKI_Z_WEBINARAMI = {
+    ...WARUNKI_NIESPELNIONE,
+    conditions: [
+      WARUNKI_NIESPELNIONE.conditions[0],
+      { key: "webinars" as const, label: "Webinary", done: 1, required: 2, met: false },
+      ...WARUNKI_NIESPELNIONE.conditions.slice(1),
+    ],
+  };
+
+  it("lista braków ma wiersz „Webinary” z licznikiem i odnośnikiem „Otwórz webinary”", async () => {
+    const { container } = await pokazZDanymi(WARUNKI_Z_WEBINARAMI);
+    expect(screen.getByText("Webinary")).toBeInTheDocument();
+    expect(screen.getByText("Masz 1 z 2.")).toBeInTheDocument();
+    expect(odnosnik(container, "Otwórz webinary: Webinary. Masz 1 z 2.")).toHaveAttribute("href", "/panel/kursy");
+    expect(screen.getByText("Spełniasz 0 warunków z 5.")).toBeInTheDocument();
+  });
+
+  it("zero webinarów w ścieżce: warunek spełniony ze zdaniem o braku webinarów", async () => {
+    await pokazZDanymi({
+      ...WARUNKI_Z_WEBINARAMI,
+      conditions: WARUNKI_Z_WEBINARAMI.conditions.map((w) => (w.key === "webinars" ? { ...w, done: 0, required: 0, met: true } : w)),
+    });
+    expect(screen.getByText("W Twojej ścieżce nie ma webinarów.")).toBeInTheDocument();
+    expect(screen.getByText("Spełniasz 1 warunek z 5.")).toBeInTheDocument();
+  });
+
+  it("odmowa wydania z brakiem webinarów (422, `reason.missing`): ogólny komunikat i ponowny odczyt warunków", async () => {
+    pobierzWarunki.mockResolvedValue(WARUNKI_SPELNIONE);
+    zlecCertyfikat.mockRejectedValue(
+      new ApiError({ status: 422, code: "conditions_not_met", message: "Warunki nie są spełnione.", reason: { missing: ["webinars"] } }),
+    );
+    await pokaz();
+    await screen.findByRole("heading", { level: 2, name: "Warunki ukończenia programu" });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Wygeneruj certyfikat/ }));
+    });
+    expect(await screen.findByText("Nie wszystkie warunki są spełnione — odśwież listę poniżej.")).toBeInTheDocument();
+    expect(pobierzWarunki).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("Certyfikat — warunki spełnione", () => {
   it("jeden zielony, aktywny przycisk „Wygeneruj certyfikat” i zdanie o spełnionych warunkach", async () => {
     const { container } = await pokazZDanymi(WARUNKI_SPELNIONE);

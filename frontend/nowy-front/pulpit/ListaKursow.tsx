@@ -2,6 +2,7 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { ListRow } from "@/design-system/molekuly/ListRow/ListRow";
 import type { KursSciezki } from "./dane";
+import { jestWebinarem } from "./nastepny-krok";
 import style from "./ListaKursow.module.css";
 
 /**
@@ -9,7 +10,8 @@ import style from "./ListaKursow.module.css";
  * plakietka małą literą — ukończony · w toku · zamknięty. Kurs zamknięty
  * (`locked`) nie ma odnośnika: ma nieaktywny przycisk „Zamknięty” z kłódką
  * (`aria-disabled`, nie link). Kurs ukończony i w toku ma „Otwórz”; nigdy
- * „Otwórz” przy kursie zamkniętym.
+ * „Otwórz” przy kursie zamkniętym. Webinar jest zawsze otwarty: stan „zamknięty”
+ * z serwera pokazujemy jako „w toku”, a nie jako kłódkę.
  */
 export const ETYKIETA_STANU_KURSU: Record<KursSciezki["status"], { wariant: "neutral" | "ok" | "pending"; tekst: string }> = {
   locked: { wariant: "neutral", tekst: "zamknięty" },
@@ -22,14 +24,14 @@ export const ETYKIETA_STANU_KURSU: Record<KursSciezki["status"], { wariant: "neu
  * otworzył. Poprzedni kurs to ten z listy, którego numer w ścieżce jest
  * najbliższym niższym; lista nie pyta o nic ponad to, co pulpit już wczytał.
  * Gdy kurs nie ma numeru w ścieżce albo poprzedniego nie ma na liście —
- * zdanie bez tytułu.
+ * zdanie bez tytułu. Webinar nie bywa „poprzednim kursem” — nie blokuje następnego.
  */
 export function zdanieZamknietegoKursu(kurs: KursSciezki, kursy: KursSciezki[]): string {
   const numer = kurs.sequence_order;
   const poprzedni =
     typeof numer === "number"
       ? kursy
-          .filter((inny) => typeof inny.sequence_order === "number" && inny.sequence_order < numer)
+          .filter((inny) => !jestWebinarem(inny) && typeof inny.sequence_order === "number" && inny.sequence_order < numer)
           .sort((a, b) => (b.sequence_order ?? 0) - (a.sequence_order ?? 0))[0]
       : undefined;
   const tytul = poprzedni?.title.trim() ?? "";
@@ -64,21 +66,29 @@ export function ListaKursow({ tytul, kursy, podpowiedz, pusty }: WlasciwosciList
     <section aria-label={tytul} className={style.sekcja}>
       <Heading stopien={2}>{tytul}</Heading>
       <div className={style.lista}>
-        {kursy.map((kurs) => (
-          <div key={kurs.id} data-kurs-stan={kurs.status}>
-            <ListRow
-              wariant="ze-stanem"
-              tytul={kurs.title}
-              plakietka={ETYKIETA_STANU_KURSU[kurs.status]}
-              podpowiedz={kurs.status === "locked" ? zdanieZamknietegoKursu(kurs, kursy) : podpowiedz(kurs)}
-              akcja={
-                kurs.status === "locked"
-                  ? { etykieta: "Zamknięty", nieaktywna: true }
-                  : { etykieta: "Otwórz", etykietaDostepna: `Otwórz kurs: ${kurs.title}`, href: `/panel/kursy/${kurs.slug}` }
-              }
-            />
-          </div>
-        ))}
+        {kursy.map((kurs) => {
+          const webinar = jestWebinarem(kurs);
+          const status = webinar && kurs.status === "locked" ? "in_progress" : kurs.status;
+          return (
+            <div key={kurs.id} data-kurs-stan={status}>
+              <ListRow
+                wariant="ze-stanem"
+                tytul={kurs.title}
+                plakietka={ETYKIETA_STANU_KURSU[status]}
+                podpowiedz={status === "locked" ? zdanieZamknietegoKursu(kurs, kursy) : podpowiedz(kurs)}
+                akcja={
+                  status === "locked"
+                    ? { etykieta: "Zamknięty", nieaktywna: true }
+                    : {
+                        etykieta: "Otwórz",
+                        etykietaDostepna: `${webinar ? "Otwórz webinar" : "Otwórz kurs"}: ${kurs.title}`,
+                        href: `/panel/kursy/${kurs.slug}`,
+                      }
+                }
+              />
+            </div>
+          );
+        })}
       </div>
     </section>
   );

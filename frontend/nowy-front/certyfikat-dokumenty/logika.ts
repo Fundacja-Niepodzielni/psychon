@@ -39,6 +39,7 @@ const ETYKIETY_PROFILU: Record<string, string> = {
 /** Ekran, z którego pochodzi licznik warunku. Warsztat stacjonarny nie ma własnego ekranu. */
 const EKRAN_ZRODLOWY: Partial<Record<WarunekCertyfikatu["key"], { href: string; napis: string }>> = {
   courses: { href: "/panel/kursy", napis: "Otwórz kursy" },
+  webinars: { href: "/panel/kursy", napis: "Otwórz webinary" },
   internship: { href: "/panel/staz", napis: "Otwórz dziennik stażu" },
   supervision: { href: "/panel/superwizja", napis: "Otwórz superwizje" },
 };
@@ -60,12 +61,17 @@ function liczba(wartosc: number | string): string {
   return formatujDziesietny(String(wartosc));
 }
 
-/** „Masz 5 z 6.”; godziny stażu dostają jednostkę. Brak liczników to „brak danych”, nigdy zero. */
+/**
+ * „Masz 5 z 6.”; godziny stażu dostają jednostkę. Brak liczników to „brak danych”, nigdy zero.
+ * Webinary liczą się jak kursy; ścieżka bez webinarów (wymagane 0) ma warunek spełniony z definicji,
+ * więc zamiast „Masz 0 z 0.” mówimy, że webinarów nie ma.
+ */
 export function opisWarunku(warunek: WarunekCertyfikatu): string {
   if (warunek.key === "workshop") {
     return warunek.met ? "Warsztat zaliczony." : "Warsztat jeszcze niezaliczony.";
   }
   if (!maLiczniki(warunek)) return "Brak danych o postępie.";
+  if (warunek.key === "webinars" && Number(warunek.required) === 0) return "W Twojej ścieżce nie ma webinarów.";
   const jednostka = warunek.key === "internship" ? " godz" : "";
   return `Masz ${liczba(warunek.done)} z ${liczba(warunek.required)}${jednostka}.`;
 }
