@@ -68,6 +68,15 @@ class ThreadController extends Controller
                 $threads->push($provisioner->ensureIndividual($user, $supervisor));
                 $threads->push($provisioner->ensureGroup($supervisor));
             }
+
+            // Rozmowy indywidualne z poprzednimi prowadzącymi zostają na liście
+            // osoby — do odczytu (`GET /threads/{id}`), bez możliwości pisania
+            // (`POST /threads/{id}/messages` → 403 `thread_closed`).
+            MessageThread::query()
+                ->where('type', 'individual')
+                ->where('volunteer_id', $user->id)
+                ->get()
+                ->each(fn (MessageThread $thread) => $threads->push($thread));
         }
 
         if (in_array('instructor', $roles, true)) {

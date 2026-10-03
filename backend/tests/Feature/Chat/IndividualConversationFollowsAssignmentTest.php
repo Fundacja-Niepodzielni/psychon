@@ -127,6 +127,13 @@ class IndividualConversationFollowsAssignmentTest extends TestCase
     {
         $this->assign($this->next);
 
+        $list = collect($this->signedInAs($this->volunteer)->getJson('/api/v1/threads')->assertOk()->json('data'));
+        $this->assertContains($this->conversation->id, $list->pluck('id')->map(fn ($id) => (int) $id)->all());
+        $this->assertSame(
+            $this->previous->id,
+            $list->firstWhere('id', $this->conversation->id)['supervisor']['id'],
+        );
+
         $this->signedInAs($this->volunteer)->getJson("/api/v1/threads/{$this->conversation->id}")
             ->assertOk()
             ->assertJsonPath('meta.total', 2)
@@ -154,12 +161,16 @@ class IndividualConversationFollowsAssignmentTest extends TestCase
     {
         $this->assign($this->next);
 
+        // Lista osoby: nowa rozmowa z nowym opiekunem i, obok, stara rozmowa
+        // z poprzednim opiekunem (do odczytu) — razem dwie rozmowy indywidualne.
         $list = collect($this->signedInAs($this->volunteer)->getJson('/api/v1/threads')->assertOk()->json('data'));
         $individual = $list->where('type', 'individual')->values();
-        $this->assertCount(1, $individual);
-        $this->assertSame($this->next->id, $individual[0]['supervisor']['id']);
-        $newId = (int) $individual[0]['id'];
+        $this->assertCount(2, $individual);
+        $current = $individual->firstWhere('supervisor.id', $this->next->id);
+        $this->assertNotNull($current);
+        $newId = (int) $current['id'];
         $this->assertNotSame($this->conversation->id, $newId);
+        $this->assertContains($this->conversation->id, $individual->pluck('id')->map(fn ($id) => (int) $id)->all());
 
         $this->signedInAs($this->next)->getJson("/api/v1/threads/{$newId}")
             ->assertOk()->assertJsonPath('meta.total', 0);
@@ -174,6 +185,26 @@ class IndividualConversationFollowsAssignmentTest extends TestCase
         $foreign = $this->signedInAs($this->next)->getJson("/api/v1/threads/{$this->conversation->id}")->assertNotFound();
         $missing = $this->signedInAs($this->next)->getJson('/api/v1/threads/'.$this->missingThreadId())->assertNotFound();
         $this->assertSame($missing->getContent(), $foreign->getContent());
+    }
+
+    public function test_volunteer_without_an_active_assignment_still_lists_the_conversation_for_reading(): void
+    {
+        SupervisorAssignment::query()
+            ->where('volunteer_id', $this->volunteer->id)
+            ->whereNull('unassigned_at')
+            ->update(['unassigned_at' => now()]);
+        $this->assertSame(0, SupervisorAssignment::query()
+            ->where('volunteer_id', $this->volunteer->id)->whereNull('unassigned_at')->count());
+
+        $list = collect($this->signedInAs($this->volunteer)->getJson('/api/v1/threads')->assertOk()->json('data'));
+        $this->assertSame([$this->conversation->id], $list->pluck('id')->map(fn ($id) => (int) $id)->all());
+
+        $this->signedInAs($this->volunteer)->getJson("/api/v1/threads/{$this->conversation->id}")
+            ->assertOk()->assertJsonPath('meta.total', 2);
+        $this->signedInAs($this->volunteer)
+            ->postJson("/api/v1/threads/{$this->conversation->id}/messages", ['body' => 'Piszę bez opiekuna.'])
+            ->assertForbidden()->assertJsonPath('error.code', 'thread_closed');
+        $this->assertSame(2, Message::query()->where('thread_id', $this->conversation->id)->count());
     }
 
     public function test_assigning_back_reopens_the_same_conversation(): void
