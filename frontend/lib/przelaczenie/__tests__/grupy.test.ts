@@ -22,9 +22,11 @@ import {
  * Także `testUczestnika` (test końcowy kursu uczestnika pod tym samym adresem).
  * Także `powiadomienia` (adres `/admin/emails`, ekran „Powiadomienia”).
  * Także `pytaniaTestu` (pytania testu w panelu administracji i prowadzącego pod tymi samymi adresami).
+ * Także `certyfikaty` i `czasNauki` (lista certyfikatów i czas nauki administracji pod adresami `/admin/certyfikaty`
+ * i `/admin/czas-nauki`).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["certyfikat", "certyfikaty", "czasNauki", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -40,7 +42,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika, powiadomienia i pytania testu", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika, powiadomienia, pytania testu, certyfikaty i czas nauki administracji", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -56,7 +58,7 @@ describe("rejestr GRUPY — stan flag", () => {
   });
 
   it("grupy z podmianą treści mają ten sam adres starej i nowej trasy", () => {
-    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy", "sprawy", "kursyAdministracji", "kursAdministracji", "publikacjaKursu", "zaproszeniaNaKurs", "powiadomienia"] as const) {
+    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy", "sprawy", "kursyAdministracji", "kursAdministracji", "publikacjaKursu", "zaproszeniaNaKurs", "powiadomienia", "certyfikaty", "czasNauki"] as const) {
       const [ekran] = GRUPY[klucz].ekrany;
       expect(ekran.panel, klucz).toBe("administracja");
       expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
@@ -169,9 +171,11 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna trzydzieści pięć grup dzisiejszego kanonu", () => {
+  it("zna trzydzieści siedem grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "certyfikat",
+      "certyfikaty",
+      "czasNauki",
       "decyzjaProfilu",
       "dokumentyUczestnika",
       "dziennikStazu",

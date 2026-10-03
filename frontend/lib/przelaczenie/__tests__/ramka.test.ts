@@ -71,6 +71,8 @@ describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
       GRUPY.kursAdministracji.wlaczona && "/admin/kursy/12",
       GRUPY.powiadomienia.wlaczona && "/admin/emails",
       GRUPY.pytaniaTestu.wlaczona && "/admin/testy/12/pytania",
+      GRUPY.certyfikaty.wlaczona && "/admin/certyfikaty",
+      GRUPY.czasNauki.wlaczona && "/admin/czas-nauki",
     ].filter((s): s is string => typeof s === "string");
     expect(wNowej).toEqual(oczekiwane.sort());
   });

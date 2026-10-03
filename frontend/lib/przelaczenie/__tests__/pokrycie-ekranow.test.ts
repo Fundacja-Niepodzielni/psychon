@@ -142,6 +142,18 @@ describe("włączona grupa ma strony pod nowymi trasami", () => {
     expect(brakujaceStronyWlaczonejGrupy(GRUPY.dokumentyUczestnika, bezStron)).toEqual(["/panel/dokumenty"]);
   });
 
+  it("grupy certyfikatów i czasu nauki administracji: ekrany poligonu należą do nich, strony stoją pod dotychczasowymi adresami, a bez nich brak zostaje wykryty", () => {
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.certyfikaty, wszystkieTrasy)).toEqual([]);
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.czasNauki, wszystkieTrasy)).toEqual([]);
+    const { certyfikaty: _certyfikaty, czasNauki: _czasNauki, ...bezNich } = GRUPY;
+    void _certyfikaty;
+    void _czasNauki;
+    expect(trasyPoligonuBezGrupy(trasyPoligonu, bezNich).sort()).toEqual(["/nowy-front/admin/certyfikaty", "/nowy-front/admin/czas-nauki"]);
+    const bezStron = wszystkieTrasy.filter((trasa) => trasa !== "/admin/certyfikaty" && trasa !== "/admin/czas-nauki");
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.certyfikaty, bezStron)).toEqual(["/admin/certyfikaty"]);
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.czasNauki, bezStron)).toEqual(["/admin/czas-nauki"]);
+  });
+
   it("grupa naboru po włączeniu ma obie strony, a bez nich brak zostaje wykryty", () => {
     expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: true }, wszystkieTrasy)).toEqual([]);
     const bezStronNaboru = wszystkieTrasy.filter((trasa) => !trasa.startsWith("/admin/nabor"));

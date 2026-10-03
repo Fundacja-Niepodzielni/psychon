@@ -53,7 +53,7 @@ const { default: UserPage } = await import("@/app/(administracja)/admin/uczestni
 const { default: QuestionBankPage } = await import(
   "@/app/(administracja)/admin/testy/[id]/pytania/page"
 );
-const { default: CertificatesPage } = await import("@/app/(administracja)/admin/certyfikaty/page");
+const { default: CertificatesPage } = await import("@/app/(administracja)/admin/certyfikaty/StaraTresc");
 const { default: InternshipPage } = await import("@/app/(administracja)/admin/staz/StaraTresc");
 const { default: SupervisionPage } = await import("@/app/(administracja)/admin/superwizje/page");
 const { default: CasesPage } = await import("@/app/(administracja)/admin/sprawy/page");

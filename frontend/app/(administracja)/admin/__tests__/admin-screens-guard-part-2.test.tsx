@@ -39,7 +39,7 @@ const { ApiError } = await import("@/lib/api/klient");
 const { default: AdminLayout } = await import("@/app/(administracja)/admin/layout");
 const { default: AuditLogPage } = await import("@/app/(administracja)/admin/dziennik/page");
 const { default: ReportPage } = await import("@/app/(administracja)/admin/raport/page");
-const { default: LearningTimePage } = await import("@/app/(administracja)/admin/czas-nauki/page");
+const { default: LearningTimePage } = await import("@/app/(administracja)/admin/czas-nauki/StaraTresc");
 const { default: OnboardingPage } = await import(
   "@/app/(administracja)/admin/ekran-startowy/StaraTresc"
 );

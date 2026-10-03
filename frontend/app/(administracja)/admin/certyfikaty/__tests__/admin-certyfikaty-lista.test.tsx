@@ -34,7 +34,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 const { default: AdminCertificatesPage } = await import(
-  "@/app/(administracja)/admin/certyfikaty/page"
+  "@/app/(administracja)/admin/certyfikaty/StaraTresc"
 );
 const { default: RequireRole } = await import("@/components/permissions/RequireRole");
 

@@ -26,7 +26,7 @@ import { sprawdzWylogujWMenu } from "./_wyloguj-w-menu";
  *   pusty na `documentElement` (tokeny tylko w poddrzewie z `data-theme`);
  * - nazwy pozycji menu w całości, bez wielokropka, najwyżej 2 wiersze;
  * - przycisk „Menu” (390 px) z ikoną menu z makiety i napisem „Menu”.
- * Kontrola dodatnia: strona grupy wyłączonej (`/admin/kursy`) ma dalej
+ * Kontrola dodatnia: strona grupy wyłączonej (`/admin/superwizje`) ma dalej
  * dotychczasową powłokę.
  *
  * Zrzuty ekranu powstają tylko przy ustawionej zmiennej `PW_ZRZUTY_RAMKI`
@@ -258,6 +258,8 @@ const EKRANY: Ekran[] = [
     h1: "Treść ekranu „Zacznij tutaj”",
     tytul: "Treść ekranu „Zacznij tutaj” — Niepodzielni",
   },
+  { nazwa: "certyfikaty", adres: "/admin/certyfikaty", menu: "Certyfikaty", h1: "Certyfikaty", tytul: "Certyfikaty — Niepodzielni" },
+  { nazwa: "czas-nauki", adres: "/admin/czas-nauki", menu: "Czas nauki", h1: "Czas nauki", tytul: "Czas nauki — Niepodzielni" },
 ];
 
 const SZEROKOSCI = [1280, 390] as const;
@@ -498,10 +500,10 @@ test.describe("nowa ramka panelu administracji — ekrany włączonych grup", ()
     await expect(page.locator("main")).toHaveCount(1);
   });
 
-  test("kontrola dodatnia: /admin/czas-nauki (grupa wyłączona) ma dotychczasową powłokę, bez nowej ramki", async ({ page }) => {
+  test("kontrola dodatnia: /admin/superwizje (grupa wyłączona) ma dotychczasową powłokę, bez nowej ramki", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await instalujAtrapyApi(page);
-    await page.goto("/admin/czas-nauki");
+    await page.goto("/admin/superwizje");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await expect(page.getByRole("navigation", { name: "Menu — Administracja" }).first()).toBeVisible();

@@ -105,13 +105,15 @@ const TRASY_NOWEJ_RAMKI: Trasa[] = [
   { adres: "/admin/wzory-dokumentow", rola: "project_manager" },
   { adres: "/admin/ekran-startowy", rola: "project_manager" },
   { adres: "/admin/kursy", rola: "project_manager" },
+  { adres: "/admin/certyfikaty", rola: "project_manager" },
+  { adres: "/admin/czas-nauki", rola: "project_manager" },
   { adres: "/prowadzacy", rola: "instructor" },
 ];
 
 /** Trasy dotychczasowej ramki — bez regresji, dalej jedno żądanie. */
 const TRASY_STARE: Trasa[] = [
   { adres: "/panel/kursy", rola: "volunteer" },
-  { adres: "/admin/czas-nauki", rola: "project_manager" },
+  { adres: "/admin/superwizje", rola: "project_manager" },
 ];
 
 test.use({ viewport: { width: 1280, height: 900 } });

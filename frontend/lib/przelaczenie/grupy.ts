@@ -55,12 +55,14 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia osiem: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `pytaniaTestu`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest trzydzieści: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `pytaniaTestu`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
  * pod własnym adresem z kursem w ścieżce; wchodzi się na niego z ekranu kursu), `nabor` i `listaOsob`
- * (te dwie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem), `kartaOsoby` oraz `powiadomienia` (ten sam adres `/admin/emails`: treść strony zamienia się na ekran „Powiadomienia”). Pozostałe mają tu jeszcze
+ * (te dwie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem), `kartaOsoby`, `powiadomienia` (ten sam adres `/admin/emails`: treść strony zamienia się na ekran „Powiadomienia”)
+ * oraz `certyfikaty` i `czasNauki` (lista certyfikatów i czas nauki administracji pod dotychczasowymi adresami;
+ * `certyfikaty` to inna grupa niż `certyfikat` uczestnika). Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -606,6 +608,35 @@ export const GRUPY = {
         staraTrasa: "/admin/staz",
         nowaTrasa: "/admin/staz",
         trasaPoligonu: "/nowy-front/admin/staz",
+      },
+    ],
+  },
+  /** Lista wydanych certyfikatów z unieważnianiem (H13, administracja) — ten sam adres co dzisiejsza lista. */
+  certyfikaty: {
+    klucz: "certyfikaty",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/certyfikaty",
+        nowaTrasa: "/admin/certyfikaty",
+        trasaPoligonu: "/nowy-front/admin/certyfikaty",
+      },
+    ],
+  },
+  /**
+   * Czas nauki i rzetelność osób (H07) — ten sam adres co dzisiejszy ekran. Widok
+   * jednej osoby to parametr `?osoba=<numer>` na tej samej stronie, bez osobnej trasy.
+   */
+  czasNauki: {
+    klucz: "czasNauki",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/czas-nauki",
+        nowaTrasa: "/admin/czas-nauki",
+        trasaPoligonu: "/nowy-front/admin/czas-nauki",
       },
     ],
   },
