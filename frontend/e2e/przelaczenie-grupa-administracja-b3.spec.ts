@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
+import { ucieknijWyrazenie } from "./_wyrazenie";
 
 /**
  * Miara dla tej gałęzi: grupy przełączenia `decyzjaProfilu`,
@@ -159,7 +160,7 @@ test.describe("grupy przełączenia administracji (podmiana treści) — nowy ek
       await zabezpieczeniePrzedEkranemDostepu(page);
 
       expect(odpowiedzStrony?.status()).toBe(200);
-      await expect(page).toHaveURL(new RegExp(`${trasa.adres.replace(/\//g, "\\/")}$`));
+      await expect(page).toHaveURL(new RegExp(`${ucieknijWyrazenie(trasa.adres)}$`));
       await expect(page.getByRole("heading", { level: 1, name: trasa.naglowek })).toBeVisible();
 
       expect(await licznikiTresci(page)).toEqual({ main: 1, cele: 1 });

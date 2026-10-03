@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
+import { ucieknijWyrazenie } from "./_wyrazenie";
 
 /**
  * Miara arkusza tokenów wyglądu na sześciu przełączonych trasach „podmiany
@@ -188,7 +189,7 @@ test.describe("tokeny wyglądu na trasach podmiany treści — wejście adresem,
 
       await page.goto(adres);
       await zabezpieczeniePrzedEkranemDostepu(page);
-      await expect(page).toHaveURL(new RegExp(`${adres.replace(/[/]/g, "\\/")}$`));
+      await expect(page).toHaveURL(new RegExp(`${ucieknijWyrazenie(adres)}$`));
 
       // Ekran ma się wyrenderować (a nie zastąpić granicą błędu), zanim zmierzymy styl.
       await expect(page.getByText(naglowek).first()).toBeVisible();

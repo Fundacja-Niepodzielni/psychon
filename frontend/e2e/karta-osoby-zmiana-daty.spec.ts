@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { asercjaBrakPowaznychNaruszen, uruchomAxe } from "./_axe";
 import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
+import { ucieknijWyrazenie } from "./_wyrazenie";
 
 /**
  * „Zmień datę” na karcie osoby pod zwykłym adresem `/admin/uczestniczki/<id>`
@@ -197,7 +198,7 @@ test.describe("dawne adresy ekranu przedłużenia dostępu", () => {
       await atrapy(page);
       const odpowiedzStrony = await page.goto(stary);
       expect(odpowiedzStrony?.status()).not.toBe(404);
-      await expect(page).toHaveURL(new RegExp(`${nowy.replace(/\//g, "\\/")}$`));
+      await expect(page).toHaveURL(new RegExp(`${ucieknijWyrazenie(nowy)}$`));
     });
   }
 });
