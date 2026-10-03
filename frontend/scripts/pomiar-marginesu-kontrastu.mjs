@@ -961,12 +961,42 @@ const PARY_DODATKOWE_NOWY_FRONT = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Pary atomu Przelacznik (design-system/atomy/Przelacznik/Przelacznik.module.css),
+// oba motywy. Elementy graficzne kontrolki (tor, obrys, kciuk, pierścień
+// fokusu) mierzone progiem 3,0 (WCAG 1.4.11); znacznik „✓” w kciuku jest
+// małym glifem niosącym stan, więc dostaje próg tekstu 4,5. Tokeny czytane z
+// tokeny.css (jak wszystkie pary wyżej) — barwy nie są tu wpisane na sztywno.
+// Tło „bloku” to --card-warm (blok przypomnienia o superwizji na ekranie
+// Powiadomienia). Etykieta zawiera słowo „przełącznik” — po nim próba
+// __tests__/pomiar-marginesu-kontrastu-przelacznik.test.ts znajduje pary.
+// ---------------------------------------------------------------------------
+const PARY_PRZELACZNIKA = [
+  { stan: "tor włączony na karcie", tekst: "primary", powierzchnia: "card", prog: 3.0 },
+  { stan: "tor włączony na tle bloku", tekst: "primary", powierzchnia: "card-warm", prog: 3.0 },
+  { stan: "kciuk włączony na torze", tekst: "on-primary", powierzchnia: "primary", prog: 3.0 },
+  { stan: "znacznik ✓ w kciuku", tekst: "primary", powierzchnia: "on-primary", prog: PROG_TEKSTU_TRESCI },
+  { stan: "obrys wyłączonego na karcie", tekst: "border-strong", powierzchnia: "card", prog: 3.0 },
+  { stan: "obrys wyłączonego na tle bloku", tekst: "border-strong", powierzchnia: "card-warm", prog: 3.0 },
+  { stan: "kciuk wyłączonego na karcie", tekst: "control", powierzchnia: "card", prog: 3.0 },
+  { stan: "pierścień fokusu na karcie", tekst: "brand", powierzchnia: "card", prog: 3.0 },
+  { stan: "pierścień fokusu na tle bloku", tekst: "brand", powierzchnia: "card-warm", prog: 3.0 },
+].flatMap((para) =>
+  ["jasny", "ciemny"].map((motyw) => ({
+    tekst: para.tekst,
+    powierzchnia: para.powierzchnia,
+    motyw,
+    prog: para.prog,
+    opis: `przełącznik: ${para.stan}`,
+  })),
+);
+
 /** Mierzy `PARY_DODATKOWE_NOWY_FRONT` z tokenów faktycznie wczytanych z
  * tokeny.css (`tokenyMotywow`, ten sam obiekt co iloczyn tekst×powierzchnia
  * wyżej) — rzuca (kod 2 w main()) gdy któryś z dwóch tokenów pary nie
  * istnieje w danym motywie. */
 export function zbudujParyDodatkoweNowegoFrontu(tokenyMotywow) {
-  return PARY_DODATKOWE_NOWY_FRONT.map(({ tekst, powierzchnia, motyw, prog: progPary, opis }) => {
+  return [...PARY_DODATKOWE_NOWY_FRONT, ...PARY_PRZELACZNIKA].map(({ tekst, powierzchnia, motyw, prog: progPary, opis }) => {
     const tokeny = motyw === "jasny" ? tokenyMotywow.jasny : tokenyMotywow.ciemny;
     const tekstHex = tokeny[tekst];
     const powierzchniaHex = tokeny[powierzchnia];

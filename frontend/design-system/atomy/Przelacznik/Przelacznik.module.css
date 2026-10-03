@@ -1,0 +1,86 @@
+.wiersz {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+.tekst {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-10);
+}
+.nazwa {
+  font-size: var(--fs-8);
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+  line-height: var(--lh-text);
+  cursor: pointer;
+}
+.opis {
+  font-size: var(--fs-10);
+  color: var(--muted);
+  line-height: var(--lh-text);
+}
+
+/* Pole dotyku: min. --hit-min x --hit-min; widoczny tor 44 x 24 w środku. */
+.dotyk {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--hit-min);
+  min-height: var(--hit-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.dotyk:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Wyłączony: tło karty, obrys i kciuk w barwach kontrolki (kontrast >= 3:1). */
+.tor {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  transition: background var(--dur-fast);
+}
+.kciuk {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-round);
+  background: var(--control);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-12);
+  line-height: 1;
+  transition: transform var(--dur-fast);
+}
+/* Włączony: tor w barwie przycisku głównego, kciuk w barwie tekstu na nim. */
+.wlaczony {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.wlaczony .kciuk {
+  transform: translateX(20px);
+  background: var(--on-primary);
+  color: var(--primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tor,
+  .kciuk {
+    transition: none;
+  }
+}

@@ -53,6 +53,7 @@ export const OCZEKIWANE_CELE = [
   "Link (pole klikalne)",
   "Link wariant okruszek",
   "Checkbox (etykieta = pole dotyku)",
+  "Przelacznik (przycisk)",
   "Input",
   "Textarea",
   "Select (przycisk combobox)",
@@ -112,6 +113,7 @@ export const KOMPONENT_CELU = {
   "Link (pole klikalne)": "Link",
   "Link wariant okruszek": "Link",
   "Checkbox (etykieta = pole dotyku)": "Checkbox",
+  "Przelacznik (przycisk)": "Przelacznik",
   Input: "Input",
   Textarea: "Textarea",
   "Select (przycisk combobox)": "Select",
@@ -228,6 +230,7 @@ export const PLIKI_ROZLICZONE = [
   // 28 plików z własnym celem (patrz OCZEKIWANE_CELE/KOMPONENT_CELU wyżej):
   "atomy/Button/Button.tsx",
   "atomy/Checkbox/Checkbox.tsx",
+  "atomy/Przelacznik/Przelacznik.tsx",
   "atomy/Input/Input.tsx",
   "atomy/Link/Link.tsx",
   "atomy/Select/Select.tsx",

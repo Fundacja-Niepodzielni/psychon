@@ -194,6 +194,7 @@ const CELE = [
   { nazwa: "Link (pole klikalne)", selektor: '[data-testid="link"]' },
   { nazwa: "Link wariant okruszek", selektor: '[data-testid="link-okruszek"]' },
   { nazwa: "Checkbox (etykieta = pole dotyku)", selektor: 'label[for="pol-zgoda"]' },
+  { nazwa: "Przelacznik (przycisk)", selektor: '[data-testid="przelacznik"]' },
   { nazwa: "Input", selektor: '[data-testid="input"]' },
   { nazwa: "Textarea", selektor: '[data-testid="textarea"]' },
   // Poniżej: 17 celów dopisanych przy odbiorze K1 (rejestr rozszerzony na

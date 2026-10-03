@@ -3,6 +3,7 @@ import "../tokeny/tokeny.css";
 import { Button } from "../atomy/Button/Button";
 import { Link } from "../atomy/Link/Link";
 import { Checkbox } from "../atomy/Checkbox/Checkbox";
+import { Przelacznik } from "../atomy/Przelacznik/Przelacznik";
 import { Input } from "../atomy/Input/Input";
 import { Textarea } from "../atomy/Textarea/Textarea";
 import { Icon } from "../atomy/Icon/Icon";
@@ -104,6 +105,9 @@ function Poligon() {
 
       {/* A6 Checkbox — wariant/stan: zaznaczony (mount checked=true); stany: kursor (statyczny), fokus (akcja na #pol-zgoda) */}
       <Checkbox id="pol-zgoda" zaznaczony onZmiana={() => {}} etykieta="Zgadzam się" />
+
+      {/* Przełącznik — stan: włączony (mount); pole dotyku to przycisk role=switch (cel „Przelacznik (przycisk)”) */}
+      <Przelacznik id="pol-przelacznik" wlaczony onZmiana={() => {}} etykieta="Powiadomienia" opis="Opis przełącznika." data-testid="przelacznik" />
 
       {/* A3 Input — warianty: tekst, liczba, data; stany: fokus (akcja), niepoprawny (mount), tylko do odczytu (mount) */}
       <Input rodzaj="tekst" aria-label="Imię" data-testid="input" />
