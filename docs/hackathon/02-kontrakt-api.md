@@ -2537,3 +2537,92 @@ Kod: `routes/api/h12.php`,
 `Http/Requests/H12/AssignSupervisorToManyRequest.php`,
 `Services/H12/SupervisorAssignmentService.php` (`assignToMany`),
 `Http/Resources/AdminUserListResource.php`, `Http/Resources/AdminUserCardResource.php`.
+
+---
+
+## Aneks — powód wpisany ręcznie żyje w rekordzie, nie w dzienniku (H10, H13, H18, H20)
+
+Domyka zasadę ogólną z erraty 2026-09-18 dla trzech zdarzeń z tabeli tamtej erraty.
+Tamtego tekstu nie usuwam; w tych trzech miejscach ten blok jest wobec niego nadrzędny.
+Bez nowych tras, kodów błędu, slugów audytu i typów powiadomień. W ładunkach rejestru
+zdarzeń nie ma tekstu wpisanego ręcznie.
+
+### 1. Ładunki trzech zdarzeń (§3.2)
+
+| slug | pola ładunku (`details`) | gdzie żyje powód |
+|---|---|---|
+| `certificate.revoked` (H13) | `number` | `certificates.revoked_reason` |
+| `user.blocked` (H18) | `previous_status` | `users.blocked_reason` |
+| `attempts.reset` (H10) | `test_id`, `cleared` | `test_attempt_resets.reason` |
+
+Pole `reason` nie występuje w ładunku żadnego z tych zdarzeń. Rejestr przyjmuje
+identyfikatory, kody ze słowników zamkniętych i flagi. Powód unieważnienia jest w rekordzie
+certyfikatu, nie w rejestrze zdarzeń.
+
+Lista dozwolonych pól ładunku dla każdego sluga jest jawna w kodzie
+(`tests/Unit/H20/AuditPayloadAllowListTest.php`) i pilnowana próbą po wszystkich wywołaniach
+`AuditLog::record` w `app/`: nowy klucz spoza listy sluga, nowe wywołanie bez wpisu na liście
+i wpis listy, którego kod już nie zapisuje, czerwienią próbę. Żadna nazwa z listy nie może być
+nazwą pola z tekstem wpisanym ręcznie (zbiór z punktu 2). Zapis z pustym ładunkiem jest
+zapisem bez ładunku (`details = null`).
+
+### 2. Lista dziennika i eksport — `GET /admin/audit`, `GET /admin/audit/export.csv`
+
+`details` wiersza listy i kolumna `details` pliku CSV niosą wyłącznie identyfikatory, kody
+i flagi. Pola z treścią wpisaną ręcznie są pomijane przy odczycie na dowolnej głębokości
+ładunku; zbiór nazw jest zamknięty: `reason`, `comment`, `note`, `notes`, `response`,
+`description`, `message`. Ładunek, który po pominięciu jest pusty, ma `details: null`
+(w CSV: pusta kolumna). Kształt wiersza i kolejność kolumn bez zmian. To samo dotyczy
+`audit_entries[].details` na karcie osoby (`GET /admin/users/{id}`).
+
+Stare wiersze rejestru nie są czyszczone ani przepisywane: rejestr jest zablokowany na
+poziomie bazy, produkcja startuje bez danych, a środowisko deweloperskie zawiera wyłącznie
+dane demonstracyjne. Odczyt pomija w nich pola tekstowe, więc nie wracają listą ani plikiem.
+
+### 3. Certyfikaty — `GET /admin/certificates`
+
+Element listy i odpowiedź `POST /admin/certificates/{certificate}/revoke` niosą
+`revoked_reason` jak dotąd, wyłącznie dla `project_manager` i `super_admin` (inna rola →
+`403 forbidden`, bez treści powodu w odpowiedzi). Powód jest w rekordzie certyfikatu, a po
+anonimizacji konta właściciela ma wartość `null`; numer, data wydania i fakt unieważnienia
+zostają.
+
+### 4. Konto — blokada i odblokowanie (H18)
+
+Powód z `POST /admin/users/{id}/block` jest zapisywany w `users.blocked_reason`
+(`text`, nullable). `POST /admin/users/{id}/unblock` i anonimizacja zerują tę kolumnę.
+Karta osoby (`GET /admin/users/{id}` i odpowiedzi tras blokady i odblokowania) niesie
+`account.blocked_reason` — napis przy koncie zablokowanym, w pozostałych stanach `null` —
+obok istniejącego `account.status`. Pole widzi wyłącznie administracja (`project_manager`,
+`super_admin`): karta jest trasą administracyjną, inna rola dostaje `403 forbidden`, a własny
+profil osoby (`GET /me`) powodu nie niesie. Poprzedni sposób odczytu powodu z
+`audit_entries[].details` przestaje działać.
+
+### 5. Zerowanie podejść do testu (H10)
+
+Powód z `POST /admin/tests/{testId}/users/{userId}/reset-attempts` jest zapisywany w nowej
+tabeli `test_attempt_resets` (`test_id`, `user_id`, `reset_by`, `reason`, `cleared`,
+`created_at`); wiersz powstaje razem ze skasowaniem podejść, w tej samej transakcji.
+Odpowiedź trasy i jej kształt bez zmian; powodu nie zwraca żadna trasa odczytu. Anonimizacja
+osoby zeruje `reason` wierszy tej osoby, a sam wiersz (test, liczba skasowanych podejść,
+data) zostaje.
+
+### 6. Anonimizacja konta
+
+`POST /admin/users/{id}/anonymize` zeruje `certificates.revoked_reason` certyfikatów osoby,
+`users.blocked_reason` i `test_attempt_resets.reason` wierszy osoby. Tak samo robi domknięcie
+stanu zastanego pod `409 already_anonymized`.
+Po anonimizacji powód w rekordzie zmiany daty dostępu (`access_date_changes.reason`) jest pustym
+napisem (kolumna jest NOT NULL), nie `null`.
+
+### 7. Dane
+
+Migracja addytywna `2026_10_03_130000_add_blocked_reason_and_test_attempt_resets.php`:
+kolumna `users.blocked_reason` i tabela `test_attempt_resets`; `down()` usuwa wyłącznie te dwa
+obiekty. Migracja nie zmienia istniejących wierszy.
+
+Kod: `Support/AuditDetailsView.php`, `Http/Resources/AuditLogEntryResource.php`,
+`Http/Resources/AdminUserCardResource.php`, `Http/Controllers/Api/V1/Admin/AdminUserController.php`,
+`Http/Controllers/Api/V1/AdminTestResetController.php`, `Services/H13/CertificateRevoker.php`,
+`Services/H18/UserAnonymizer.php`, `Models/TestAttemptReset.php`, `openapi.json`; front:
+`frontend/components/h18/AdminUserCard.tsx`, `frontend/lib/api/h18.ts`.
