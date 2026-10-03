@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia jeden: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `superwizjaUczestnika`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -206,6 +206,24 @@ export const GRUPY = {
         staraTrasa: "/panel/kursy/[slug]",
         nowaTrasa: "/panel/kursy/[slug]",
         trasaPoligonu: "/nowy-front/kurs-uczestnika/[slug]",
+      },
+    ],
+  },
+  /**
+   * Superwizja osoby wolontariackiej (H12): zapisy na terminy i obecność — ten sam adres co dzisiejsza
+   * strona `/panel/superwizja`, treść strony zamienia się na ekran nowego frontu (`StaraTresc.tsx` niesie
+   * dawną treść). Bramka roli `volunteer` zostaje w układzie trasy. To nie jest grupa `superwizje`
+   * (terminy superwizji w administracji).
+   */
+  superwizjaUczestnika: {
+    klucz: "superwizjaUczestnika",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/superwizja",
+        nowaTrasa: "/panel/superwizja",
+        trasaPoligonu: "/nowy-front/superwizja",
       },
     ],
   },

@@ -2,8 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
 /**
- * Świadek ekranu `/panel/superwizja` po przepięciu na `ListTemplate` — sama
- * trasa (`page.tsx` → `SupervisionSlots`), nie logika zapisów na terminy (ma
+ * Świadek dotychczasowej treści `/panel/superwizja` po przepięciu na `ListTemplate` —
+ * sama treść (`StaraTresc.tsx` → `SupervisionSlots`), nie logika zapisów na terminy (ma
  * własne testy w `components/h12/__tests__/SupervisionSlots.test.tsx`).
  */
 
@@ -34,8 +34,10 @@ vi.mock("@/components/molecules/PageHeader", async (importOriginal) => {
 });
 
 const { default: PageHeader } = await import("@/components/molecules/PageHeader");
+// Dotychczasowa treść żyje w `StaraTresc.tsx` (strona `page.tsx` zwraca ją przy wyłączonej grupie
+// `superwizjaUczestnika`); ten test mierzy starą treść, więc importuje ją wprost.
 const { default: SuperwizjaPage } = await import(
-  "@/app/(uczestnik)/panel/superwizja/page"
+  "@/app/(uczestnik)/panel/superwizja/StaraTresc"
 );
 
 beforeEach(() => {
