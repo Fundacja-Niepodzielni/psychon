@@ -4,6 +4,7 @@ import "../tokeny/tokeny.css";
 import { Heading } from "../atomy/Heading/Heading";
 import { Button } from "../atomy/Button/Button";
 import { POCHODZENIE_ODTWARZACZA } from "../../lib/konfiguracja/odtwarzacz-nagran";
+import { adresObcejRamki } from "./adres-obcej-ramki";
 import { RecordingPlayer, type PowodBleduNagrania } from "../organizmy/RecordingPlayer/RecordingPlayer";
 
 // Poligon odtwarzacza nagrania w ramce. Adres ramki wskazuje dozwolone
@@ -11,12 +12,12 @@ import { RecordingPlayer, type PowodBleduNagrania } from "../organizmy/Recording
 // podaje atrapa (`e2e/odtwarzacz-nagrania-w-ramce.spec.ts`). Parametry:
 // `?start=<sekundy>` — pozycja startowa; `?adres=<adres>` — inny adres ramki;
 // `?obca=<adres>` — dodatkowa, obca ramka obok odtwarzacza (próba odrzucania
-// jej komunikatów). Motyw jak na pozostałych stronach: `?theme=dark|light`.
+// jej komunikatów); przyjmowany jest wyłącznie adres https w domenie atrapy prób. Motyw jak na pozostałych stronach: `?theme=dark|light`.
 const parametry = new URLSearchParams(window.location.search);
 document.documentElement.setAttribute("data-theme", parametry.get("theme") === "dark" ? "dark" : "light");
 const start = parametry.get("start");
 const adres = parametry.get("adres") ?? `${POCHODZENIE_ODTWARZACZA}/embed/nagranie-pokazowe?token=pokaz&expires=0`;
-const obca = parametry.get("obca");
+const obca = adresObcejRamki(parametry.get("obca"));
 
 interface Stan {
   gotowa: number;
