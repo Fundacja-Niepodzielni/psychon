@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
 
 /**
@@ -17,6 +17,14 @@ function przechwycRzucony(funkcja: () => unknown): Blad | null {
     return blad as Blad;
   }
 }
+
+// Pierwszy import strony i obu treści to zimna transformacja całego drzewa
+// komponentów; pod obciążeniem maszyny trwa dłużej niż limit pierwszego testu.
+// Rozgrzewamy ją raz, we wstępie z własnym limitem, zamiast w testach.
+beforeAll(async () => {
+  await import("../page");
+  await import("../StaraTresc");
+}, 30_000);
 
 afterEach(() => {
   przywrocRejestr();

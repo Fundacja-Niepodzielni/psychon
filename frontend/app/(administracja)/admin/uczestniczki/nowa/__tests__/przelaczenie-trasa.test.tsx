@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
 
@@ -29,6 +29,14 @@ vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: vi.fn(), push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
+
+// Pierwszy import strony i obu treści to zimna transformacja całego drzewa
+// komponentów; pod obciążeniem maszyny trwa dłużej niż limit pierwszego testu.
+// Rozgrzewamy ją raz, we wstępie z własnym limitem, zamiast w testach.
+beforeAll(async () => {
+  await import("../page");
+  await import("@/components/h18/AdminUserCard");
+}, 30_000);
 
 afterEach(() => {
   cleanup();

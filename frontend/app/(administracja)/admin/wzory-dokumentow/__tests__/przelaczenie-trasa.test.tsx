@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { opiszPodmianeTresci } from "@/lib/przelaczenie/__tests__/podmiana-tresci";
+
+// Pierwszy import strony i obu treści to zimna transformacja całego drzewa
+// komponentów; pod obciążeniem maszyny trwa dłużej niż limit pierwszego testu.
+// Rozgrzewamy ją raz, we wstępie z własnym limitem, zamiast w testach.
+beforeAll(async () => {
+  await import("../page");
+  await import("../StaraTresc");
+  await import("@/nowy-front/wzory-dokumentow/WzoryDokumentow");
+}, 30_000);
 
 opiszPodmianeTresci({
   nazwa: "/admin/wzory-dokumentow",

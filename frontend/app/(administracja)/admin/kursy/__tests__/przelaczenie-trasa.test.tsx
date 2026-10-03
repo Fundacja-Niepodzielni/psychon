@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { opiszPodmianeTresci } from "@/lib/przelaczenie/__tests__/podmiana-tresci";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
@@ -43,6 +43,15 @@ const KURS = {
   created_at: "2026-09-01T10:00:00Z",
   updated_at: "2026-09-01T10:00:00Z",
 };
+
+// Pierwszy import strony i obu treści to zimna transformacja całego drzewa
+// komponentów; pod obciążeniem maszyny trwa dłużej niż limit pierwszego testu.
+// Rozgrzewamy ją raz, we wstępie z własnym limitem, zamiast w testach.
+beforeAll(async () => {
+  await import("../page");
+  await import("../StaraTresc");
+  await import("@/nowy-front/kursy-administracji/KursyAdministracji");
+}, 30_000);
 
 afterEach(() => {
   apiPaged.mockReset();

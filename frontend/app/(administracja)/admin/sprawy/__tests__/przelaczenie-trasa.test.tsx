@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { opiszPodmianeTresci } from "@/lib/przelaczenie/__tests__/podmiana-tresci";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
@@ -41,6 +41,15 @@ function odpowiedzNaTrase(sciezka: string) {
   if (sciezka.startsWith("/admin/supervision/cases")) return { data: [SPRAWA], meta: undefined };
   return { data: [], meta: { current_page: 1, per_page: 100, total: 0, last_page: 1 } };
 }
+
+// Pierwszy import strony i obu treści to zimna transformacja całego drzewa
+// komponentów; pod obciążeniem maszyny trwa dłużej niż limit pierwszego testu.
+// Rozgrzewamy ją raz, we wstępie z własnym limitem, zamiast w testach.
+beforeAll(async () => {
+  await import("../page");
+  await import("../StaraTresc");
+  await import("@/nowy-front/sprawy/Sprawy");
+}, 30_000);
 
 afterEach(() => {
   apiPaged.mockReset();

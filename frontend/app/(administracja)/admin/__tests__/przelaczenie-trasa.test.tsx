@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
 
@@ -31,6 +31,16 @@ const PULPIT = {
 };
 
 type Korzen = { type: unknown; props: { children: { type: unknown; props: { children: { type: unknown } } } } };
+
+// Pierwszy import strony i obu treści to zimna transformacja całego drzewa
+// komponentów; pod obciążeniem maszyny trwa dłużej niż limit pierwszego testu.
+// Rozgrzewamy ją raz, we wstępie z własnym limitem, zamiast w testach.
+beforeAll(async () => {
+  await import("../page");
+  await import("../StaraTresc");
+  await import("@/design-system/szablony/KontekstPowloki");
+  await import("@/nowy-front/pulpit-administracji/PulpitAdministracji");
+}, 30_000);
 
 afterEach(() => {
   api.mockReset();

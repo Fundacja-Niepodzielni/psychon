@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { opiszPodmianeTresci } from "@/lib/przelaczenie/__tests__/podmiana-tresci";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
@@ -36,6 +36,16 @@ vi.mock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: vi.fn(), push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
+
+// Pierwszy import strony i obu treści to zimna transformacja całego drzewa
+// komponentów; pod obciążeniem maszyny trwa dłużej niż limit pierwszego testu.
+// Rozgrzewamy ją raz, we wstępie z własnym limitem, zamiast w testach.
+beforeAll(async () => {
+  await import("../page");
+  await import("../StaraTresc");
+  await import("@/nowy-front/staz-kolejka/StazKolejka");
+  await import("@/components/h11/AdminInternshipQueue");
+}, 30_000);
 
 opiszPodmianeTresci({
   nazwa: "/admin/staz",
