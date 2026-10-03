@@ -204,7 +204,7 @@ describe("Osoby — wiersze", () => {
 
   it("rola do przypisania jest tą samą, którą sprawdza usługa zaplecza", () => {
     const usluga = readFileSync(USLUGA_PHP, "utf-8");
-    expect(usluga).toContain(`$volunteer->role !== '${ROLA_DO_PRZYPISANIA}'`);
+    expect(usluga).toContain(`$person->role === '${ROLA_DO_PRZYPISANIA}'`);
   });
 
   it("nieznana rola nie wychodzi na ekran jako surowy kod", () => {
