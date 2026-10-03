@@ -81,12 +81,13 @@ describe("wzory dokumentów — źródła ekranu", () => {
     expect(strona.split("\n").length).toBeLessThanOrEqual(60);
   });
 
-  it("oba stany puste (brak wzoru, brak uprawnień) stoją w karcie stanu pustego, nie w gołej molekule", () => {
+  it("brak wzoru stoi w karcie stanu pustego, brak uprawnień na wspólnym wzorze odmowy, żaden w gołej molekule", () => {
     const ekran = readFileSync(join(KORZEN, "nowy-front/wzory-dokumentow/WzoryDokumentow.tsx"), "utf-8");
     expect(ekran).toMatch(
       /import \{ EmptyStateCard \} from "@\/design-system\/organizmy\/EmptyStateCard\/EmptyStateCard";/,
     );
-    expect(ekran.match(/<EmptyStateCard\b/g)).toHaveLength(2);
+    expect(ekran.match(/<EmptyStateCard\b/g)).toHaveLength(1);
+    expect(ekran.match(/<EkranOdmowy rodzaj="brak-dostepu"/g)).toHaveLength(1);
     expect(ekran).not.toMatch(/<EmptyState\b(?!Card)/);
     expect(ekran).not.toMatch(/molekuly\/EmptyState\//);
   });

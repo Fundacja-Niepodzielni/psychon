@@ -164,7 +164,7 @@ describe("/admin/profile/[id] w układzie administracji", () => {
   it("odmowa 403: jeden main, jeden #tresc, jeden odnośnik", async () => {
     transport("project_manager", dane(ZAKAZ()));
     const { container } = await zloz(await trasaProfilu());
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 });
@@ -199,7 +199,7 @@ describe("/admin/wzory-dokumentow w układzie administracji", () => {
   it("odmowa 401: jeden main, jeden #tresc, jeden odnośnik", async () => {
     transport("project_manager", dane(ZAKAZ(401)));
     const { container } = await zloz(<StronaWzorow />);
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 });
@@ -263,7 +263,7 @@ describe("/admin/staz w układzie administracji", () => {
   it("odmowa 403: jeden main, jeden #tresc, jeden odnośnik", async () => {
     transport("project_manager", dane(ZAKAZ()));
     const { container } = await zloz(<StronaStazu />);
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 });
@@ -330,7 +330,7 @@ describe("odmowa roli — rola spoza administracji i odmowa serwera", () => {
       transport("project_manager", { "/admin/profiles/12": ZAKAZ(status) });
       const { container } = await zloz(await trasaProfilu());
 
-      await screen.findByText(/tylko dla administracji/);
+      await screen.findByText(/Ten ekran jest dla administracji\./);
       expect(container.textContent ?? "").not.toContain("Ewa Przykładowa");
       expect(container.textContent ?? "").not.toContain("Gdańsk");
       expect(container.textContent ?? "").not.toContain("interwencja kryzysowa");
@@ -348,7 +348,8 @@ describe("odmowa roli — rola spoza administracji i odmowa serwera", () => {
       });
       const { container } = await zloz(<StronaWzorow />);
 
-      await screen.findByText(/tylko dla administracji/);
+      await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+      await screen.findByText(/Ten ekran jest dla administracji\./);
       expect(container.querySelectorAll("textarea")).toHaveLength(0);
       expect(container.textContent ?? "").not.toContain("Treść wzoru testowego");
     },
@@ -360,7 +361,7 @@ describe("odmowa roli — rola spoza administracji i odmowa serwera", () => {
       transport("project_manager", { "/admin/internship/pending": ZAKAZ(status) });
       const { container } = await zloz(<StronaStazu />);
 
-      await screen.findByText(/tylko dla administracji/);
+      await screen.findByText(/Ten ekran jest dla administracji\./);
       expect(container.textContent ?? "").not.toContain("Marta Demo");
       expect(container.textContent ?? "").not.toContain("Dyżur z");
       expect(container.querySelectorAll("ul[aria-label='Dyżury do decyzji']")).toHaveLength(0);

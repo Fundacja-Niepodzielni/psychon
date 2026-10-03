@@ -17,11 +17,9 @@ import { type Column } from "@/components/ui/Table";
 import { api, ApiError } from "@/lib/api";
 import {
   COURSE_TYPE_LABELS,
-  PRODUCT_GROUP_LABELS,
   type AdminCourse,
   type AdminLesson,
   type CourseType,
-  type ProductGroup,
 } from "@/lib/h08/types";
 import { slotsForRegion } from "@/lib/slots/admin-courses";
 
@@ -29,7 +27,6 @@ interface CourseForm {
   title: string;
   slug: string;
   type: CourseType;
-  product_group: ProductGroup;
   sequence_order: string;
   description: string;
 }
@@ -55,7 +52,6 @@ function toCourseForm(course: AdminCourse): CourseForm {
     title: course.title,
     slug: course.slug,
     type: course.type,
-    product_group: course.product_group,
     sequence_order: course.sequence_order?.toString() ?? "",
     description: course.description ?? "",
   };
@@ -213,7 +209,6 @@ export default function EdytorTresciKursu({
           title: courseForm.title,
           slug: courseForm.slug,
           type: courseForm.type,
-          product_group: courseForm.product_group,
           sequence_order: courseForm.sequence_order
             ? Number(courseForm.sequence_order)
             : null,
@@ -482,20 +477,6 @@ export default function EdytorTresciKursu({
                 error={courseErr("type")}
               >
                 {Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                label="Grupa produktowa"
-                value={courseForm.product_group}
-                onChange={(e) =>
-                  updateCourse("product_group", e.target.value as ProductGroup)
-                }
-                error={courseErr("product_group")}
-              >
-                {Object.entries(PRODUCT_GROUP_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>

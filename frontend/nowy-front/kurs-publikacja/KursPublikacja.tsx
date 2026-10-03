@@ -6,8 +6,8 @@ import { Badge } from "@/design-system/atomy/Badge/Badge";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { PublishChecklist } from "@/design-system/organizmy/PublishChecklist/PublishChecklist";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { checklistaPublikacji, type WynikDanychKursu } from "./dane";
 import style from "./KursPublikacja.module.css";
 
@@ -50,10 +50,10 @@ export function KursPublikacja({ idKursu, wynik }: WlasciwosciKursPublikacja) {
     return (
       <div className={style.uklad}>
         <Heading stopien={1}>Kurs {idKursu}</Heading>
-        <EmptyState
-          wariant="brak-uprawnien"
-          naglowek="Publikacja kursu dla prowadzących"
-          rola="prowadzących"
+        <EkranOdmowy
+          rodzaj="brak-dostepu"
+          stopien={2}
+          rolaDocelowa="prowadzących"
           przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
         />
       </div>

@@ -7,13 +7,8 @@ import { Text } from "@/design-system/atomy/Text/Text";
 import { FileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
-import {
-  LIMIT_LISTY_MATERIALOW,
-  pobierzMaterialyLekcji,
-  usunMaterial,
-  wgrajMaterial,
-  type MaterialAdmin,
-} from "./dane";
+import { useRolaKursu } from "@/nowy-front/rola-kursu/kontekst";
+import { LIMIT_LISTY_MATERIALOW, type MaterialAdmin } from "./dane";
 import {
   czyPonowicOdczytPlikow,
   zdanieBleduOdczytuPlikow,
@@ -51,6 +46,7 @@ type Odczyt =
  * i daje „Spróbuj ponownie”.
  */
 export function PlikiLekcji({ idLekcji, baza, liczbaStart, onLiczba }: WlasciwosciPlikowLekcji) {
+  const { dane } = useRolaKursu();
   const [odczyt, setOdczyt] = useState<Odczyt>({ rodzaj: "ladowanie" });
   const [proba, setProba] = useState(0);
   const [usuniete, setUsuniete] = useState<number[]>([]);
@@ -63,7 +59,7 @@ export function PlikiLekcji({ idLekcji, baza, liczbaStart, onLiczba }: Wlasciwos
   const miejsceFokusu = useRef<number | null>(null);
 
   const materialy = useWgrywanieMaterialow(
-    (plik) => wgrajMaterial(idLekcji, plik),
+    (plik) => dane.wgrajMaterial(idLekcji, plik),
     (material) => setOgloszenie(`Wgrano plik „${material.name}”.`),
   );
   // Plik wgrany do końca stoi w jednym wierszu — na liście z „Usuń”. Wiersz stanu zostaje
@@ -72,7 +68,7 @@ export function PlikiLekcji({ idLekcji, baza, liczbaStart, onLiczba }: Wlasciwos
 
   useEffect(() => {
     let aktualne = true;
-    pobierzMaterialyLekcji(idLekcji).then(
+    dane.pobierzMaterialyLekcji(idLekcji).then(
       (pliki) => {
         if (!aktualne) return;
         if (!Array.isArray(pliki)) {
@@ -88,7 +84,7 @@ export function PlikiLekcji({ idLekcji, baza, liczbaStart, onLiczba }: Wlasciwos
     return () => {
       aktualne = false;
     };
-  }, [idLekcji, proba]);
+  }, [idLekcji, proba, dane]);
 
   // Odczyt z serwera, a za nim pliki dodane na tym ekranie, których odczyt jeszcze nie zna;
   // plik usunięty na tym ekranie nie wraca z odpowiedzi odczytu, która wyszła przed usunięciem.
@@ -116,7 +112,7 @@ export function PlikiLekcji({ idLekcji, baza, liczbaStart, onLiczba }: Wlasciwos
     setBladUsuniecia(null);
     const miejsce = widoczne.findIndex((plik) => plik.id === material.id);
     try {
-      await usunMaterial(material.id);
+      await dane.usunMaterial(material.id);
       if (materialy.wgrane.some((wgrany) => wgrany.id === material.id)) materialy.zdejmij(material);
       miejsceFokusu.current = Math.max(0, miejsce);
       setUsuniete((poprzednie) => [...poprzednie, material.id]);

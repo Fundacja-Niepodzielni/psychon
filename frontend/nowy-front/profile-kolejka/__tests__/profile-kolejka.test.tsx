@@ -141,7 +141,8 @@ describe("ProfileKolejka — stany w szablonie", () => {
       new ApiError({ status, code: status === 401 ? "unauthenticated" : "forbidden", message: "Odmowa." }),
     );
     const { container } = render(<ProfileKolejka />);
-    await waitFor(() => expect(container.textContent).toContain("administracji"));
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    expect(container.textContent).toMatch(/Ten ekran jest dla administracji\./);
     sprawdzSzablon(container);
     expect(screen.queryAllByRole("link", { name: "Otwórz wniosek" })).toHaveLength(0);
     expect(container.textContent).not.toContain("Anna");

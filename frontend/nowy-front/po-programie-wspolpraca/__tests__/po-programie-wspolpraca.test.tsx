@@ -189,7 +189,8 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
   it.each([401, 403])("odmowa %i przy /me: nazwa roli, zero danych, jeden main", async (status) => {
     api.mockRejectedValueOnce(blad(status, status === 401 ? "unauthenticated" : "forbidden", "Odmowa."));
     const { container } = render(<PoProgramieWspolpraca />);
-    await waitFor(() => expect(container.textContent).toContain("uczestników"));
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    expect(container.textContent).toMatch(/Ten ekran jest dla uczestników\./);
     sprawdzSzablon(container);
     expect(screen.queryByRole("form")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Moje prośby" })).toBeNull();
@@ -201,7 +202,8 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
     api.mockResolvedValueOnce(ja());
     apiPaged.mockRejectedValueOnce(blad(403, "forbidden", "Odmowa."));
     const { container } = render(<PoProgramieWspolpraca />);
-    await waitFor(() => expect(container.textContent).toContain("uczestników"));
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    expect(container.textContent).toMatch(/Ten ekran jest dla uczestników\./);
     sprawdzSzablon(container);
     expect(screen.queryByRole("form")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Moje prośby" })).toBeNull();
@@ -210,7 +212,8 @@ describe("PoProgramieWspolpraca — stany w szablonie szczegółu", () => {
   it("inna rola w profilu: odmowa z nazwą roli, zero zapytań o własne zgłoszenia", async () => {
     api.mockResolvedValueOnce(ja({ role: "instructor" }));
     const { container } = render(<PoProgramieWspolpraca />);
-    await waitFor(() => expect(container.textContent).toContain("uczestników"));
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    expect(container.textContent).toMatch(/Ten ekran jest dla uczestników\./);
     sprawdzSzablon(container);
     expect(zapytaniaOMine()).toHaveLength(0);
     expect(screen.queryByRole("form")).toBeNull();

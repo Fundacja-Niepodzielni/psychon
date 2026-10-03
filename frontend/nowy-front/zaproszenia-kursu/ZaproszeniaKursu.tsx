@@ -11,7 +11,8 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { SearchBox } from "@/design-system/molekuly/SearchBox/SearchBox";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
@@ -129,12 +130,7 @@ export function ZaproszeniaKursu({ idKursu }: WlasciwosciZaproszeniaKursu) {
       <FormTemplate
         naglowek={naglowek}
         tresc={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Zaproszenia na kurs"
-            rola="administracji"
-            przycisk={{ etykieta: "Wróć", onClick: wroc }}
-          />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: wroc }} />
         }
       />
     );
@@ -145,11 +141,7 @@ export function ZaproszeniaKursu({ idKursu }: WlasciwosciZaproszeniaKursu) {
       <FormTemplate
         naglowek={naglowek}
         tresc={
-          <EmptyState
-            naglowek="Nie znaleziono kursu"
-            tresc="Kurs o tym adresie nie istnieje albo został usunięty. Wróć do listy kursów i wybierz inny."
-            przycisk={{ etykieta: "Wróć do listy", onClick: wroc }}
-          />
+          <EkranOdmowy rodzaj="nie-znaleziono" czego="kursu" stopien={2} przycisk={{ etykieta: "Wróć do listy", onClick: wroc }} />
         }
       />
     );
@@ -217,12 +209,7 @@ function FormularzZaproszen({ kurs, naglowek, wroc }: WlasciwosciFormularza) {
           <FormTemplate
             naglowek={naglowek}
             tresc={
-              <EmptyState
-                wariant="brak-uprawnien"
-                naglowek="Zaproszenia na kurs"
-                rola="administracji"
-                przycisk={{ etykieta: "Wróć", onClick: wroc }}
-              />
+              <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: wroc }} />
             }
           />
         ) : (

@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
@@ -14,6 +13,7 @@ import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { zglosWspolprace, pobierzMojeZgloszenia } from "@/lib/api/h01-wspolpraca";
 import {
   LICZBA_ZNAKOW_MAX,
@@ -154,10 +154,10 @@ export function PoProgramieWspolpraca() {
       <DetailTemplate
         naglowek={naglowek}
         glowna={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Po programie"
-            rola="uczestników"
+          <EkranOdmowy
+            rodzaj="brak-dostepu"
+            stopien={2}
+            rolaDocelowa="uczestników"
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
         }

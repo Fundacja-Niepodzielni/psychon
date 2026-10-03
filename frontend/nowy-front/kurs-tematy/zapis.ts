@@ -17,7 +17,7 @@ import { zapiszKurs } from "@/nowy-front/publikacja-kursu/dane";
  *    tras administracji stoją tylko tam.
  *
  * Obie trasy kursu przyjmują `title` i `description`; trasa administracji
- * dodatkowo identyfikator, typ i grupę produktową. Obie trasy lekcji
+ * dodatkowo identyfikator i typ (grupy produktowej front nie wysyła). Obie trasy lekcji
  * przyjmują samo `title` (pola opcjonalne w `UpdateLessonRequest::rules`).
  */
 export interface DaneKursuDoZapisu {
@@ -29,7 +29,6 @@ export interface DaneKursuDoZapisu {
 export interface DaneKursuAdministracji extends DaneKursuDoZapisu {
   slug: string;
   type: AdminCourse["type"];
-  product_group: AdminCourse["product_group"];
 }
 
 export interface ZapisKursu {
@@ -70,7 +69,6 @@ export function zapisDlaGrupy(grupa: GrupaTras): ZapisKursu {
 /** Teksty ekranu, które zależą od tego, czyj to ekran. */
 export interface TekstyGrupy {
   okruszki: { etykieta: string; href?: string }[];
-  naglowekOdmowy: string;
   rolaOdmowy: string;
   /** Adres ekranu, na którym dziś zakłada się lekcję. */
   adresDodaniaLekcji: (idKursu: number) => string;
@@ -79,13 +77,11 @@ export interface TekstyGrupy {
 const TEKSTY: Record<GrupaTras, TekstyGrupy> = {
   instructor: {
     okruszki: [{ etykieta: "Kursy" }, { etykieta: "Tematy i lekcje" }],
-    naglowekOdmowy: "Tematy kursu dla prowadzących",
     rolaOdmowy: "prowadzących",
     adresDodaniaLekcji: (idKursu) => `/prowadzacy/kursy/${idKursu}`,
   },
   admin: {
     okruszki: [{ etykieta: "Kursy", href: "/admin/kursy" }, { etykieta: "Tematy i lekcje" }],
-    naglowekOdmowy: "Tematy kursu dla administracji",
     rolaOdmowy: "administracji",
     adresDodaniaLekcji: (idKursu) => `/admin/kursy/${idKursu}`,
   },

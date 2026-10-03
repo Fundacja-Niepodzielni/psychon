@@ -209,10 +209,6 @@ export default function AdminUserCard({ id }: { id: number }) {
             <dd className="text-body text-ink">{profile.pesel ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-subtle">Grupa produktowa</dt>
-            <dd className="text-body text-ink">{profile.product_group}</dd>
-          </div>
-          <div>
             <dt className="text-subtle">Adres</dt>
             <dd className="text-body text-ink">
               {[profile.address.street, profile.address.zip, profile.address.city]

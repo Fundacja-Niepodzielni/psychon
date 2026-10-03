@@ -209,7 +209,8 @@ describe("ZgloszeniaWspolpracy — odmowa przy odczycie", () => {
 
     const { container } = render(<ZgloszeniaWspolpracy />);
 
-    await waitFor(() => expect(container.textContent).toContain("administracji"));
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    expect(container.textContent).toMatch(/Ten ekran jest dla administracji\./);
     expect(screen.queryByRole("list", { name: "Dalsza współpraca" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Odpowiedz na prośbę" })).toBeNull();
   });

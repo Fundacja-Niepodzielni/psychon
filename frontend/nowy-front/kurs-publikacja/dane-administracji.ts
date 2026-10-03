@@ -3,6 +3,14 @@ import { pobierzLekcjeKursu } from "@/nowy-front/lekcja-edycja/dane";
 import { czyPoprawnyIdentyfikator, pobierzKurs } from "@/nowy-front/publikacja-kursu/dane";
 import type { DaneKursu, WynikDanychKursu } from "./dane";
 
+/** Odczyt kursu i jego lekcji z jednej grupy tras. */
+export interface ZrodlaDanychKursu {
+  pobierzKurs: (idKursu: string) => Promise<DaneKursu["kurs"]>;
+  pobierzLekcjeKursu: (idKursu: number) => Promise<DaneKursu["lekcje"]>;
+}
+
+const ZRODLA_ADMINISTRACJI: ZrodlaDanychKursu = { pobierzKurs, pobierzLekcjeKursu };
+
 /**
  * Dane kursu dla ekranu administracji — ten sam kształt wyniku co
  * `pobierzDaneKursu` (`./dane.ts`), ale z tras administracji:
@@ -18,14 +26,18 @@ import type { DaneKursu, WynikDanychKursu } from "./dane";
  * Różnica wobec prowadzącego, celowa: błąd odczytu lekcji daje `blad`, a nie
  * pustą listę — ekran administracji zapisuje układ kursu i nie może udawać,
  * że kurs nie ma lekcji.
+ *
+ * `zrodla` podaje ten sam odczyt z innej grupy tras (ekran kursu w roli
+ * prowadzącego, `/instructor/…`); bez nich — trasy administracji jak dotąd.
  */
 export async function pobierzDaneKursuAdministracji(
   idKursu: string,
+  zrodla: ZrodlaDanychKursu = ZRODLA_ADMINISTRACJI,
 ): Promise<WynikDanychKursu | { status: "nie-znaleziono" }> {
   if (!czyPoprawnyIdentyfikator(idKursu)) return { status: "blad" };
 
   try {
-    const [kurs, lekcje] = await Promise.all([pobierzKurs(idKursu), pobierzLekcjeKursu(Number(idKursu))]);
+    const [kurs, lekcje] = await Promise.all([zrodla.pobierzKurs(idKursu), zrodla.pobierzLekcjeKursu(Number(idKursu))]);
     const dane: DaneKursu = { kurs, lekcje };
     if (lekcje.length === 0 && kurs.materials_count === 0) return { status: "pusty", dane };
     return { status: "ok", dane };

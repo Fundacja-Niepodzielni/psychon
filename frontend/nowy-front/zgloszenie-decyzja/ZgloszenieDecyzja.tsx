@@ -6,11 +6,11 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { CaseCard } from "@/design-system/organizmy/CaseCard/CaseCard";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { PanelDecyzji } from "./PanelDecyzji";
 import {
   SCIEZKA_LISTY,
@@ -153,10 +153,10 @@ export function ZgloszenieDecyzja({ id }: { id: string }) {
         tytul="Zgłoszenie rekrutacyjne"
         wroc={wroc}
         glowna={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Zgłoszenie jest niedostępne"
-            rola="administracji"
+          <EkranOdmowy
+            rodzaj="brak-dostepu"
+            stopien={2}
+            rolaDocelowa="administracji"
             przycisk={{ etykieta: "Wróć do listy", onClick: wroc }}
           />
         }
@@ -169,9 +169,10 @@ export function ZgloszenieDecyzja({ id }: { id: string }) {
         tytul="Zgłoszenie rekrutacyjne"
         wroc={wroc}
         glowna={
-          <EmptyState
-            naglowek="Nie znaleziono zgłoszenia"
-            tresc="Zgłoszenia o tym numerze nie ma w bieżącym roku programu albo zostało usunięte."
+          <EkranOdmowy
+            rodzaj="nie-znaleziono"
+            czego="zgłoszenia"
+            stopien={2}
             przycisk={{ etykieta: "Wróć do listy", onClick: wroc }}
           />
         }

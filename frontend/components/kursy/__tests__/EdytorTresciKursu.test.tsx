@@ -105,13 +105,37 @@ describe("EdytorTresciKursu", () => {
           // U-11: slug wciąż idzie za tytułem — nikt go tu nie dotknął ręcznie.
           slug: "praca-z-emocjami-v2",
           type: kurs.type,
-          product_group: kurs.product_group,
           sequence_order: kurs.sequence_order,
           description: kurs.description,
         },
       }),
     );
     await waitFor(() => expect(onCourseUpdated).toHaveBeenCalled());
+  });
+
+  it("grupa produktowa schowana: formularz nie ma pola, a zapis kursu z grupą „obie” nie niesie product_group", async () => {
+    const api_ = api.mockResolvedValue({ ...kurs, product_group: "both" as const });
+    render(
+      <EdytorTresciKursu
+        course={{ ...kurs, product_group: "both" as const }}
+        lessons={[lekcja]}
+        onCourseUpdated={vi.fn()}
+        onLessonsReload={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Grupa produktowa")).not.toBeInTheDocument();
+    expect(screen.queryByText(/grup[aąy] produktow/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Obie grupy")).not.toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Tytuł"));
+    await userEvent.type(screen.getByLabelText("Tytuł"), "Inny tytuł");
+    await userEvent.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
+
+    await waitFor(() => expect(api_).toHaveBeenCalledWith(`/admin/courses/${kurs.id}`, expect.anything()));
+    const [, opcje] = api_.mock.calls[0] as [string, { method: string; body: Record<string, unknown> }];
+    expect(opcje.method).toBe("PATCH");
+    expect(Object.keys(opcje.body)).not.toContain("product_group");
   });
 
   it("pozytyw (U-11): slug wypełnia się sam z tytułu, dopóki nikt go nie zmieni ręcznie", async () => {

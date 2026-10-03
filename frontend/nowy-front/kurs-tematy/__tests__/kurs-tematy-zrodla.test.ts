@@ -69,9 +69,12 @@ describe("A-12 — źródła ekranu", () => {
     expect(tresc(join(KATALOG_APLIKACJI, "nowy-front/kurs-tematy/KursTematy.tsx"))).toMatch(
       /import \{ checklistaPublikacji[^}]*\} from "@\/nowy-front\/kurs-publikacja\/dane";/,
     );
-    expect(tresc(join(KATALOG_APLIKACJI, "app/nowy-front/kurs/[id]/page.tsx"))).toMatch(
-      /import \{ pobierzDaneKursu \} from "@\/nowy-front\/kurs-publikacja\/dane";/,
+    // Trasa robocza prowadzącego pokazuje wspólny ekran kursu administracji w roli prowadzącego.
+    const trasaRobocza = tresc(join(KATALOG_APLIKACJI, "app/nowy-front/kurs/[id]/page.tsx"));
+    expect(trasaRobocza).toMatch(
+      /import \{ KursAdministracji \} from "@\/nowy-front\/kurs-administracji\/KursAdministracji";/,
     );
+    expect(trasaRobocza).toMatch(/<KursAdministracji idKursu=\{id\} rola="instructor" \/>/);
   });
 
   it("KursPublikacja: zero importów w app/, plik zostaje", () => {

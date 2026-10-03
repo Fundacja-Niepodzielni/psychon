@@ -119,7 +119,7 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
     expect(serwer.sciezkiGrupy(druga)).toEqual([]);
   });
 
-  it("dane kursu: PATCH kursu trasą swojej grupy — prowadzący z tytułem i opisem, administracja dodatkowo z typem, grupą i identyfikatorem, nigdy z pozycją w ścieżce", async () => {
+  it("dane kursu: PATCH kursu trasą swojej grupy — prowadzący z tytułem i opisem, administracja dodatkowo z typem i identyfikatorem (grupy produktowej nie wysyła), nigdy z pozycją w ścieżce", async () => {
     await renderGrupy(grupa);
     await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
     const opis = screen.getByLabelText(/Opis kursu/);
@@ -136,7 +136,6 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
             description: "Nowy opis.",
             slug: KURS.slug,
             type: KURS.type,
-            product_group: KURS.product_group,
           }
         : { title: KURS.title, description: "Nowy opis." };
     expect(serwer.zapisy()).toEqual([{ sciezka: `/${grupa}/courses/4`, metoda: "PATCH", cialo }]);
@@ -252,7 +251,8 @@ describe("A-12 — administracja: „Opublikuj kurs” naprawdę zmienia stan ku
 
   it("brak uprawnień do kursu: odmowa nazywa administrację, nie prowadzących", () => {
     render(<KursTematy grupa="admin" idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
-    expect(screen.getByText("Ta funkcja jest dostępna tylko dla administracji.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
+    expect(screen.getByText(/Ten ekran jest dla administracji\./)).toBeInTheDocument();
     expect(screen.queryByText(/prowadzących/)).toBeNull();
   });
 
@@ -299,5 +299,35 @@ describe("A-12 — prowadzący: „Opublikuj kurs” nie zmienia stanu kursu", (
     await renderGrupy("instructor");
     await userEvent.click(screen.getByTestId("ct-dodaj-7"));
     expect(push).toHaveBeenCalledWith("/prowadzacy/kursy/4");
+  });
+});
+
+describe("A-12 — grupa produktowa schowana", () => {
+  it("administracja: dane kursu z grupą „obie” nie pokazują grupy, formularz nie ma pola, zapis nie wysyła product_group", async () => {
+    render(
+      <KursTematy
+        grupa="admin"
+        idKursu="4"
+        wynik={{ status: "ok", dane: { kurs: { ...KURS, product_group: "both" }, lekcje: LEKCJE } }}
+      />,
+    );
+    await screen.findByRole("heading", { level: 3, name: "Wprowadzenie" });
+
+    expect(screen.getByText("Typ")).toBeInTheDocument();
+    expect(screen.queryByText("Grupa produktowa")).toBeNull();
+    expect(screen.queryByText("Obie grupy")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
+    expect(screen.getByRole("form", { name: "Dane kursu" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Grupa produktowa/)).toBeNull();
+    expect(screen.queryByText("Grupa produktowa")).toBeNull();
+
+    const opis = screen.getByLabelText(/Opis kursu/);
+    await userEvent.type(opis, " Dopisek.");
+    await act(async () => {
+      fireEvent.submit(screen.getByRole("form", { name: "Dane kursu" }));
+    });
+    await waitFor(() => expect(serwer.zapisy()).toHaveLength(1));
+    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("product_group");
   });
 });

@@ -25,9 +25,7 @@ import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate
 import { ApiError, type PaginationMeta } from "@/lib/api/klient";
 import {
   COURSE_TYPE_LABELS,
-  PRODUCT_GROUP_LABELS,
   type CourseType,
-  type ProductGroup,
   type ReorderImpactRow,
 } from "@/lib/h08/types";
 import {
@@ -66,7 +64,6 @@ interface PolaFormularza {
   tytul: string;
   identyfikator: string;
   typ: CourseType;
-  grupa: ProductGroup;
   pozycja: string;
   opis: string;
   /** Identyfikator wybranego prowadzącego albo pusty napis — pole nie jest obowiązkowe. */
@@ -80,7 +77,6 @@ const PUSTE_POLA: PolaFormularza = {
   tytul: "",
   identyfikator: "",
   typ: "course",
-  grupa: "psychon",
   pozycja: "",
   opis: "",
   prowadzacy: "",
@@ -91,11 +87,6 @@ const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Kursy" }];
 const OPCJE_TYPU = (Object.keys(COURSE_TYPE_LABELS) as CourseType[]).map((wartosc) => ({
   wartosc,
   etykieta: COURSE_TYPE_LABELS[wartosc],
-}));
-
-const OPCJE_GRUPY = (Object.keys(PRODUCT_GROUP_LABELS) as ProductGroup[]).map((wartosc) => ({
-  wartosc,
-  etykieta: PRODUCT_GROUP_LABELS[wartosc],
 }));
 
 const POLA_WPLYWU = [
@@ -282,7 +273,6 @@ export function KursyAdministracji() {
         title: pola.tytul.trim(),
         slug: pola.identyfikator.trim(),
         type: pola.typ,
-        product_group: pola.grupa,
         sequence_order: pozycjaZPola(pola.pozycja),
         description: pola.opis.trim() === "" ? null : pola.opis.trim(),
       });
@@ -451,15 +441,6 @@ export function KursyAdministracji() {
       blad: bledyPol.type?.[0],
     },
     {
-      id: "kurs-grupa",
-      etykieta: "Grupa produktowa",
-      rodzaj: "wybor",
-      opcje: OPCJE_GRUPY,
-      wartosc: pola.grupa,
-      onZmiana: (wartosc) => zmienPole("grupa", wartosc as ProductGroup),
-      blad: bledyPol.product_group?.[0],
-    },
-    {
       id: "kurs-opis",
       etykieta: "Opis",
       rodzaj: "wieloliniowy",
@@ -507,7 +488,7 @@ export function KursyAdministracji() {
         key={kluczFormularza}
         tytul="Nowy kurs"
         pola={polaFormularza}
-        polaPierwszegoPoziomu={6}
+        polaPierwszegoPoziomu={5}
         tytulDodatkowych="Miejsce w ścieżce"
         etykietaAnuluj="Anuluj"
         etykietaZapisz={zapisuje ? "Zapisywanie…" : "Utwórz kurs"}

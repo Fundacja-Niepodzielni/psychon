@@ -554,6 +554,8 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await page.locator("#ustawienia-dane").click();
     const dane = page.locator("#ustawienia-dane-panel");
     await expect(dane.getByLabel(/Pozycja|Miejsce/)).toHaveCount(0);
+    // Grupa produktowa jest schowana: w formularzu nie ma pola, a zapis jej nie wysyła.
+    await expect(dane.getByLabel(/^Grupa/)).toHaveCount(0);
     await expect(dane).not.toContainText(/slug/i);
     await dane.getByLabel(/^Tytuł kursu/).fill("Wywiad psychologiczny — podstawy");
     await dane.getByLabel(/^Nazwa w adresie strony/).fill("wywiad-podstawy");
@@ -580,7 +582,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await expect(page.locator("#ustawienia-prowadzacy")).not.toContainText("Joanna Demo");
 
     const cialoDanych = zapisy[0].cialo as Record<string, unknown>;
-    expect(Object.keys(cialoDanych).sort()).toEqual(["description", "product_group", "slug", "title", "type"]);
+    expect(Object.keys(cialoDanych).sort()).toEqual(["description", "slug", "title", "type"]);
     expect(zapisy).toEqual([
       {
         metoda: "PATCH",
@@ -590,7 +592,6 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
           description: KURS.description,
           slug: "wywiad-podstawy",
           type: "course",
-          product_group: "psychon",
         },
       },
       { metoda: "POST", sciezka: "/admin/courses/4/invite", cialo: { user_ids: [17] } },

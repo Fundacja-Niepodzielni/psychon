@@ -195,12 +195,15 @@ describe("stany ekranu: jeden main, dane w układzie dwóch kolumn", () => {
     ustawApi();
     api.mockRejectedValue(new ApiError({ status, code: status === 401 ? "unauthenticated" : "forbidden", message: "x" }));
     const { container } = render(<LekcjaEdycja idLekcji={21} idKursu={3} />);
-    await screen.findByText(/administracji/);
+    expect(await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
+    expect(screen.getByText(/Ten ekran jest dla administracji\./)).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Nie masz dostępu do tego ekranu" })).getAllByRole("button")).toHaveLength(1);
     szablon(container);
     expect(screen.queryByLabelText(/^Tytuł lekcji/)).toBeNull();
     expect(screen.queryByText("Wprowadzenie do wywiadu")).toBeNull();
     expect(container.querySelectorAll("textarea, input").length).toBe(0);
-    expect(api).toHaveBeenCalledTimes(1);
+    // Jedno żądanie o dane lekcji; odczyt konta (`/me`) należy do ekranu odmowy.
+    expect(api.mock.calls.filter(([sciezka]) => sciezka !== "/me")).toHaveLength(1);
     expect(container.textContent).not.toMatch(/Brak dostępu|Nie masz uprawnień/);
   });
 
@@ -208,7 +211,8 @@ describe("stany ekranu: jeden main, dane w układzie dwóch kolumn", () => {
     ustawApi();
     api.mockRejectedValue(new ApiError({ status: 404, code: "not_found", message: "x" }));
     const { container } = render(<LekcjaEdycja idLekcji={21} idKursu={3} />);
-    await screen.findByText("Nie znaleziono lekcji");
+    expect(await screen.findByRole("heading", { level: 2, name: "Nie znaleziono lekcji" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Nie znaleziono lekcji" })).getAllByRole("button")).toHaveLength(1);
     szablon(container);
     expect(container.querySelectorAll("textarea, input").length).toBe(0);
   });
@@ -223,9 +227,10 @@ describe("stany ekranu: jeden main, dane w układzie dwóch kolumn", () => {
   it("adres bez kursu: nie znaleziono bez żadnego wywołania API", () => {
     ustawApi();
     const { container } = render(<LekcjaEdycja idLekcji={21} idKursu={null} />);
-    expect(screen.getByText("Nie znaleziono lekcji")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Nie znaleziono lekcji" })).toBeInTheDocument();
     szablon(container);
-    expect(api).not.toHaveBeenCalled();
+    // Jedyny odczyt to konto osoby zalogowanej (`/me`) dla ekranu odmowy — żadnego żądania o kurs ani lekcję.
+    expect(api.mock.calls.filter(([sciezka]) => sciezka !== "/me")).toEqual([]);
   });
 
   it("błąd połączenia: Notice z „Spróbuj ponownie”, ponowienie wczytuje dane", async () => {

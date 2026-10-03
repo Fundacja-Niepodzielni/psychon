@@ -12,7 +12,6 @@ import {
   type Topic,
 } from "@/lib/api/h08-tematy";
 import type { AdminCourse } from "@/lib/h08/types";
-import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
@@ -37,14 +36,10 @@ import {
   type TematUkladu,
   type Uklad,
 } from "@/nowy-front/kurs-tematy/uklad";
-import {
-  dodajLekcje,
-  pobierzStanNagrania,
-  type LekcjaAdmin,
-  type StanNagrania,
-} from "@/nowy-front/lekcja-edycja/dane";
+import type { LekcjaAdmin, StanNagrania } from "@/nowy-front/lekcja-edycja/dane";
 import { procentWyslania } from "@/nowy-front/lekcja-edycja/nagranie";
-import { pobierzKurs, sklasyfikujBlad, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
+import { sklasyfikujBlad, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
+import { useRolaKursu } from "@/nowy-front/rola-kursu/kontekst";
 import { useWysylanie } from "@/nowy-front/wysylanie-nagrania/useWysylanie";
 import { minutyZSekund } from "@/nowy-front/wspolne/minuty";
 import { odmien } from "@/nowy-front/wspolne/odmiana";
@@ -64,7 +59,7 @@ import {
   type StanyNagran,
   type WysylanieNaEkranie,
 } from "./braki";
-import { imieNazwisko, pobierzPrzypisania, pobierzTestKursu, zdanieBledu, type PrzypisanieKursu } from "./dane";
+import { imieNazwisko, pobierzPrzypisania, zdanieBledu, type PrzypisanieKursu } from "./dane";
 import { DrzewoKursu, type TematDrzewa, type TestDrzewa } from "./DrzewoKursu";
 import {
   ID_ODMOWY_PUBLIKACJI,
@@ -82,18 +77,6 @@ import { utworzKolejkeZapisu, type KolejkaZapisu } from "./kolejka-zapisu";
 import { odczytajOstrzezeniePoUtworzeniu, zapomnijOstrzezeniePoUtworzeniu } from "./ostrzezenie-po-utworzeniu";
 import { useOdswiezanieNagran } from "./odswiezanie-nagran";
 import style from "./EkranKursu.module.css";
-
-const ADRES_LISTY_KURSOW = "/admin/kursy";
-
-/**
- * Adres strony lekcji (treść, nagranie, pliki) w panelu, z kursem w ścieżce.
- * `null`, dopóki grupa strony lekcji jest wyłączona — wiersz nie ma wtedy „Otwórz”.
- */
-export function adresStronyLekcji(idLekcji: number, idKursu: string): string | null {
-  if (!czyNowaTrasaDostepna(GRUPY.edycjaLekcji)) return null;
-  const [ekran] = GRUPY.edycjaLekcji.ekrany;
-  return ekran.nowaTrasa.replace("[id]", idKursu).replace("[idLekcji]", String(idLekcji));
-}
 
 function dopisekNowegoNagrania(lekcja: LekcjaAdmin): string | null {
   const nowe = noweNagranie(lekcja);
@@ -125,6 +108,10 @@ interface WlasciwosciEkranuKursu {
  * lekcje”, po prawej „Publikacja”, „Ustawienia kursu” i działania rzadkie.
  * Kolejność lekcji i tematów zapisuje się sama po każdym ruchu — jednym
  * żądaniem z całym układem, przez kolejkę, która nie wysyła dwóch naraz.
+ *
+ * Ten sam ekran w roli prowadzącego (`useRolaKursu`): trasy `/instructor/…`,
+ * bez prowadzącego kursu, zaproszeń, usunięcia i cofnięcia publikacji;
+ * „Opublikuj kurs” nieczynny z powodem — kurs publikuje administracja.
  */
 export function EkranKursu({
   idKursu,
@@ -135,6 +122,8 @@ export function EkranKursu({
 }: WlasciwosciEkranuKursu) {
   const router = useRouter();
   const nawigacja = useNawigacjaZPytaniem();
+  const rola = useRolaKursu();
+  const { dane } = rola;
   const idLiczbowy = kursPoczatkowy.id;
   const [kurs, setKurs] = useState(kursPoczatkowy);
   const [lekcje, setLekcje] = useState(lekcjePoczatkowe);
@@ -188,7 +177,7 @@ export function EkranKursu({
 
   /** Braki kursu liczy serwer: po zmianie, która je rusza, ekran czyta kurs od nowa. */
   function odswiezKurs() {
-    pobierzKurs(idKursu)
+    dane.pobierzKurs(idKursu)
       .then((pobrany) => {
         if (zamontowany.current) setKurs(pobrany);
       })
@@ -215,10 +204,11 @@ export function EkranKursu({
     if (!nagranieWDrodze({ video_status: kod })) odswiezKurs();
   }
 
-  // Pytania o stan wyłącznie dla nagrań wysyłanych albo przetwarzanych.
+  // Pytania o stan wyłącznie dla nagrań wysyłanych albo przetwarzanych — i tylko w roli, która ma nagrania.
   useOdswiezanieNagran(
-    lekcje.filter(nagranieWDrodze).map((lekcja) => lekcja.id),
+    rola.nagranie ? lekcje.filter(nagranieWDrodze).map((lekcja) => lekcja.id) : [],
     przyjmijStanNagrania,
+    dane.pobierzStanNagrania,
   );
 
   function ustawUklady(nastepne: Uklady) {
@@ -233,7 +223,7 @@ export function EkranKursu({
   // Kolejka powstaje przy pierwszym ruchu — w obsłudze zdarzenia, nie przy rysowaniu.
   const kolejkaZapisu = useRef<KolejkaZapisu<Uklad> | null>(null);
   function wezKolejke(): KolejkaZapisu<Uklad> {
-    kolejkaZapisu.current ??= utworzKolejkeZapisu<Uklad>((uklad) => zapiszUkladTematow("admin", idLiczbowy, cialoUkladu(uklad)), {
+    kolejkaZapisu.current ??= utworzKolejkeZapisu<Uklad>((uklad) => zapiszUkladTematow(rola.rola, idLiczbowy, cialoUkladu(uklad)), {
       zapisano(uklad) {
         const { lokalny } = biezaceUklady.current;
         // Kolejność z wysłanego układu, nazwy z ekranu (zmiana nazwy ma własny zapis).
@@ -260,25 +250,31 @@ export function EkranKursu({
   useEffect(() => {
     let aktualne = true;
     // Dane dodatkowe: gdy serwer ich nie poda, ekran pomija element, zamiast zgadywać.
-    pobierzPrzypisania(idLiczbowy)
-      .then((pobrane) => {
-        if (aktualne) setPrzypisania(pobrane);
-      })
-      .catch(() => {});
-    pobierzTestKursu(idLiczbowy)
-      .then((pobrany) => {
-        if (!aktualne) return;
-        setTest(
-          typeof pobrany?.id === "number"
-            ? { rodzaj: "jest", adres: `/admin/testy/${pobrany.id}/pytania` }
-            : { rodzaj: "brak" },
-        );
-      })
-      .catch(() => {});
-    for (const lekcja of lekcjePoczatkowe) {
+    // Przypisania prowadzących czyta wyłącznie administracja.
+    if (rola.zarzadzanieKursem) {
+      pobierzPrzypisania(idLiczbowy)
+        .then((pobrane) => {
+          if (aktualne) setPrzypisania(pobrane);
+        })
+        .catch(() => {});
+    }
+    // Wiersz testu tylko w roli, która ma odczyt pytań testu; bez niego drzewo pomija wiersz.
+    if (rola.testKursu) {
+      dane.pobierzTestKursu(idLiczbowy)
+        .then((pobrany) => {
+          if (!aktualne) return;
+          setTest(
+            typeof pobrany?.id === "number"
+              ? { rodzaj: "jest", adres: rola.adresTestu(pobrany.id) }
+              : { rodzaj: "brak" },
+          );
+        })
+        .catch(() => {});
+    }
+    for (const lekcja of rola.nagranie ? lekcjePoczatkowe : []) {
       // Lekcja ze stanem nagrania z serwera nie wymaga pytania; pyta tylko odpowiedź starszego serwera.
       if (!lekcja.video_provider_id || maStanZSerwera(lekcja)) continue;
-      pobierzStanNagrania(lekcja.id)
+      dane.pobierzStanNagrania(lekcja.id)
         .then((stan) => {
           if (aktualne) setNagrania((poprzednie) => ({ ...poprzednie, [lekcja.id]: stan.status }));
         })
@@ -287,7 +283,7 @@ export function EkranKursu({
     return () => {
       aktualne = false;
     };
-  }, [idLiczbowy, lekcjePoczatkowe]);
+  }, [idLiczbowy, lekcjePoczatkowe, rola, dane]);
 
   useEffect(() => {
     if (oknoTematu !== null || fokusPoOknie.current === null) return;
@@ -307,7 +303,7 @@ export function EkranKursu({
         .filter((lekcja): lekcja is LekcjaAdmin => lekcja !== undefined),
     [uklady.lokalny, lekcjePoId],
   );
-  const adresLekcji = (idLekcji: number) => adresStronyLekcji(idLekcji, idKursu);
+  const adresLekcji = (idLekcji: number) => rola.adresStronyLekcjiZKursu(idLekcji, idKursu);
   let wysylanie: WysylanieNaEkranie | null = null;
   if (stanWysylania.rodzaj === "wysylanie") {
     wysylanie = {
@@ -402,7 +398,7 @@ export function EkranKursu({
 
   async function dodajLekcjeWTemacie(idTematu: number, tytul: string): Promise<string | null> {
     try {
-      const nowa = await dodajLekcje(idLiczbowy, {
+      const nowa = await dane.dodajLekcje(idLiczbowy, {
         title: tytul,
         description: null,
         duration_seconds: 0,
@@ -456,15 +452,15 @@ export function EkranKursu({
     setBladOkna(null);
     try {
       if (okno.rodzaj === "dodaj") {
-        const nowy = await dodajTemat("admin", idLiczbowy, nazwa);
+        const nowy = await dodajTemat(rola.rola, idLiczbowy, nazwa);
         wObuUkladach((uklad) => dopiszTemat(uklad, nowy));
         oglos(`Dodano temat „${nowy.title}”.`);
       } else if (okno.rodzaj === "zmien") {
-        const zapisany = await zmienTytulTematuNaSerwerze("admin", okno.temat.id, nazwa);
+        const zapisany = await zmienTytulTematuNaSerwerze(rola.rola, okno.temat.id, nazwa);
         wObuUkladach((uklad) => zmienTytulTematu(uklad, zapisany.id, zapisany.title));
         oglos(`Zmieniono nazwę tematu na „${zapisany.title}”.`);
       } else {
-        await usunTemat("admin", okno.temat.id);
+        await usunTemat(rola.rola, okno.temat.id);
         wObuUkladach((uklad) => usunTematZUkladu(uklad, okno.temat.id));
         oglos(`Usunięto temat „${okno.temat.tytul}”.`);
       }
@@ -489,7 +485,8 @@ export function EkranKursu({
   }
 
   async function opublikuj() {
-    if (publikowanie.current) return;
+    // Kurs publikuje administracja: w roli prowadzącego przycisk jest nieczynny i nic nie wysyła.
+    if (publikowanie.current || !rola.zarzadzanieKursem) return;
     publikowanie.current = true;
     try {
       const po = await zmienPublikacje(idKursu, true);
@@ -515,7 +512,7 @@ export function EkranKursu({
       } else if (klasa.rodzaj === "braki") {
         powody = klasa.braki.map((brak) => ({ id: brak.id, tekst: `${brak.tekst}.`, href: `#${KOTWICA_DRZEWA}` }));
       } else if (klasa.rodzaj === "zakazane") {
-        powody = [{ id: "rola", tekst: zdanieOdmowyRoli("administracji") }];
+        powody = [{ id: "rola", tekst: zdanieOdmowyRoli(rola.rolaOdmowy) }];
       } else if (klasa.rodzaj === "siec") {
         powody = [{ id: "siec", tekst: "Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie." }];
       } else {
@@ -557,7 +554,7 @@ export function EkranKursu({
         oglos(zdanie);
         return;
       }
-      nawigacja.przejdz(ADRES_LISTY_KURSOW);
+      nawigacja.przejdz(rola.adresListyKursow);
     } finally {
       wychodzenie.current = false;
     }
@@ -569,7 +566,7 @@ export function EkranKursu({
     <>
       <UkladEdycji
         naglowek={{
-          okruszki: [{ etykieta: "Kursy", href: ADRES_LISTY_KURSOW }, { etykieta: kurs.title }],
+          okruszki: [{ etykieta: "Kursy", href: rola.adresListyKursow }, { etykieta: kurs.title }],
           tytul: kurs.title,
           status: kurs.is_published
             ? { wariant: "ok", etykieta: "Opublikowany" }
@@ -647,7 +644,7 @@ export function EkranKursu({
               onOgloszenie={oglos}
             />
             <StarszePlikiKursu kurs={kurs} />
-            <KartaKoncowa kurs={kurs} onOkno={setOknoKursu} />
+            {rola.zarzadzanieKursem && <KartaKoncowa kurs={kurs} onOkno={setOknoKursu} />}
           </>
         }
       />

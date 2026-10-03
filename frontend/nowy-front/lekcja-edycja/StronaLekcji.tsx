@@ -13,13 +13,8 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { TylkoOdDwochKolumn, UkladEdycji } from "@/design-system/szablony/UkladEdycji/UkladEdycji";
-import {
-  pobierzStanNagrania,
-  usunLekcje,
-  zapiszLekcje,
-  type LekcjaAdmin,
-  type StanNagrania,
-} from "./dane";
+import { useRolaKursu } from "@/nowy-front/rola-kursu/kontekst";
+import type { LekcjaAdmin, StanNagrania } from "./dane";
 import {
   bledyZSerwera,
   cialoZapisu,
@@ -146,6 +141,9 @@ function Sasiednia({
  * Tekst (tytuł, opis, czas, treść) zapisuje przycisk; nagranie i pliki zapisują
  * się same. Każde wyjście odnośnikiem ze strony przy niezapisanym tekście pyta
  * jednym oknem: zapisać i przejść, przejść bez zapisu albo zostać.
+ *
+ * Ta sama strona w roli prowadzącego (`useRolaKursu`): trasy `/instructor/…`;
+ * karta „Nagranie” i pytania o stan nagrania tylko wtedy, gdy rola ma nagrania.
  */
 export function StronaLekcji({
   lekcja,
@@ -158,6 +156,8 @@ export function StronaLekcji({
 }: WlasciwosciStronyLekcji) {
   const router = useRouter();
   const baza = useId();
+  const konfiguracja = useRolaKursu();
+  const { dane } = konfiguracja;
   const [zapisana, setZapisana] = useState(lekcja);
   const [formularz, setFormularz] = useState<StanFormularza>(() => formularzZLekcji(lekcja));
   const [bledy, setBledy] = useState<BledyFormularza>({});
@@ -248,7 +248,7 @@ export function StronaLekcji({
     if (!wyslanoCalyPlik) return;
     let aktualne = true;
     ostatniePytanieOStan.current = Date.now();
-    pobierzStanNagrania(lekcja.id)
+    dane.pobierzStanNagrania(lekcja.id)
       .catch(() => null)
       .then((stanNagrania) => {
         if (!aktualne) return;
@@ -260,12 +260,12 @@ export function StronaLekcji({
     return () => {
       aktualne = false;
     };
-  }, [wyslanoCalyPlik, lekcja.id]);
+  }, [wyslanoCalyPlik, lekcja.id, dane]);
 
   // Nagranie w drodze (wysyłane skądinąd albo przetwarzane): pytanie o stan idzie ponownie, nie
   // częściej niż co 30 s i tylko gdy karta przeglądarki jest widoczna. Stan końcowy (gotowe,
   // błąd, brak) kończy pytania. Wysyłanie z tej karty przeglądarki pokazuje uchwyt — bez pytań.
-  const odswiezajStan = serwer.wDrodze && wysylanie === null;
+  const odswiezajStan = konfiguracja.nagranie && serwer.wDrodze && wysylanie === null;
   useEffect(() => {
     if (!odswiezajStan) return;
     let aktualne = true;
@@ -284,7 +284,7 @@ export function StronaLekcji({
       zegar = undefined;
       if (!aktualne || document.hidden) return;
       ostatniePytanieOStan.current = Date.now();
-      pobierzStanNagrania(lekcja.id)
+      dane.pobierzStanNagrania(lekcja.id)
         .catch(() => null)
         .then((stanNagrania) => {
           if (!aktualne) return;
@@ -301,7 +301,7 @@ export function StronaLekcji({
       if (zegar !== undefined) clearTimeout(zegar);
       document.removeEventListener("visibilitychange", zaplanuj);
     };
-  }, [odswiezajStan, lekcja.id]);
+  }, [odswiezajStan, lekcja.id, dane]);
 
   // Niezapisany tekst: menu ramy i zamknięcie karty pytają wspólnym mechanizmem;
   // odnośniki strony pyta ona sama (niżej), własnym oknem z zapisem.
@@ -372,7 +372,7 @@ export function StronaLekcji({
     setBledy({});
     setZapisywanie(true);
     try {
-      const wynik = await zapiszLekcje(zapisana.id, cialoZapisu(formularz, zapisana));
+      const wynik = await dane.zapiszLekcje(zapisana.id, cialoZapisu(formularz, zapisana));
       setZapisana(wynik);
       setFormularz(formularzZLekcji(wynik));
       setOstatniZapis(godzinaZapisu(new Date()));
@@ -417,7 +417,7 @@ export function StronaLekcji({
     setUsuwanie(true);
     setBladUsuniecia(null);
     try {
-      await usunLekcje(zapisana.id);
+      await dane.usunLekcje(zapisana.id);
       // Nagranie usuniętej lekcji nie ma dokąd trafić: wysyłanie kończy się razem z lekcją.
       uchwytWysylania.porzuc(zapisana.id);
       if (adresKursu !== null) router.push(adresKursu);
@@ -439,7 +439,13 @@ export function StronaLekcji({
     // Wysyłanie prowadzi uchwyt ponad ekranami: trwa dalej po przejściu do kursu albo innej lekcji.
     const wynik = await uchwytWysylania.wyslij(
       plik,
-      { id: zapisana.id, tytul: zapisana.title, adres: adresLekcji(zapisana.id) },
+      {
+        id: zapisana.id,
+        tytul: zapisana.title,
+        adres: adresLekcji(zapisana.id),
+        // Lekcja prowadzącego zleca wgranie trasą `/instructor/…`; administracja — jak dotąd.
+        ...(konfiguracja.rola === "instructor" ? { grupa: konfiguracja.rola } : {}),
+      },
       tryb,
       // Zaplecze przypina nowe nagranie do lekcji już przy zleceniu — poprzednie przestaje być widoczne.
       serwer.karta.rodzaj === "gotowe" ? { zastepuje: true } : {},
@@ -546,26 +552,29 @@ export function StronaLekcji({
               </div>
             </KartaBoczna>
 
-            <KartaNagrania
-              id={`${baza}-nagranie`}
-              stan={nagranie}
-              powodBrakuWysylania={powodNieaktywnegoNagrania(rola)}
-              niezapisanyTekst={zmieniony}
-              wymiana={
-                wysylanie === null
-                  ? "brak"
-                  : dotychczasoweGra
-                    ? "zachowuje-poprzednie"
-                    : zastapionoNagranie && !serwer.serwerZnaStan
-                      ? "podmienia-od-razu"
-                      : "brak"
-              }
-              serwerZnaStan={serwer.serwerZnaStan}
-              bladWyboru={bladWyboruNagrania}
-              onWybierzPlik={(lista) => void wyslijNagranie(lista, nagranie.rodzaj === "przerwane" ? "dokoncz" : "nowe")}
-              onPrzerwij={() => uchwytWysylania.przerwij()}
-              onOdNowa={(lista) => void wyslijNagranie(lista, "od-nowa")}
-            />
+            {/* Nagranie wgrywa rola, która ma trasy nagrań; prowadzący — po włączeniu stałej `NAGRANIE_PROWADZACEGO`. */}
+            {konfiguracja.nagranie && (
+              <KartaNagrania
+                id={`${baza}-nagranie`}
+                stan={nagranie}
+                powodBrakuWysylania={konfiguracja.rola === "admin" ? powodNieaktywnegoNagrania(rola) : null}
+                niezapisanyTekst={zmieniony}
+                wymiana={
+                  wysylanie === null
+                    ? "brak"
+                    : dotychczasoweGra
+                      ? "zachowuje-poprzednie"
+                      : zastapionoNagranie && !serwer.serwerZnaStan
+                        ? "podmienia-od-razu"
+                        : "brak"
+                }
+                serwerZnaStan={serwer.serwerZnaStan}
+                bladWyboru={bladWyboruNagrania}
+                onWybierzPlik={(lista) => void wyslijNagranie(lista, nagranie.rodzaj === "przerwane" ? "dokoncz" : "nowe")}
+                onPrzerwij={() => uchwytWysylania.przerwij()}
+                onOdNowa={(lista) => void wyslijNagranie(lista, "od-nowa")}
+              />
+            )}
 
             <KartaBoczna tytul="Treść lekcji" kotwica={`${baza}-karta-tresci`}>
               <div className={style.trescKarty}>
@@ -579,19 +588,22 @@ export function StronaLekcji({
               </div>
             </KartaBoczna>
 
-            <KartaBoczna tytul="Pliki do tej lekcji" opis="Zapisuje się samo">
-              <div className={style.trescKarty}>
-                <p className={style.mocne}>
-                  Uczestnik zobaczy te pliki w tej lekcji, pod treścią, oraz na stronie kursu.
-                </p>
-                <PlikiLekcji
-                  idLekcji={zapisana.id}
-                  baza={baza}
-                  liczbaStart={lekcja.materials_count}
-                  onLiczba={setLiczbaMaterialow}
-                />
-              </div>
-            </KartaBoczna>
+            {/* Karta plików wymaga listy plików lekcji z serwera — w roli bez tej trasy jej nie ma. */}
+            {konfiguracja.plikiLekcji && (
+              <KartaBoczna tytul="Pliki do tej lekcji" opis="Zapisuje się samo">
+                <div className={style.trescKarty}>
+                  <p className={style.mocne}>
+                    Uczestnik zobaczy te pliki w tej lekcji, pod treścią, oraz na stronie kursu.
+                  </p>
+                  <PlikiLekcji
+                    idLekcji={zapisana.id}
+                    baza={baza}
+                    liczbaStart={lekcja.materials_count}
+                    onLiczba={setLiczbaMaterialow}
+                  />
+                </div>
+              </KartaBoczna>
+            )}
           </div>
         }
         boczna={
@@ -601,7 +613,7 @@ export function StronaLekcji({
                 <div className={style.trescKarty}>
                   <StanZapisu opis={opisZapisu} zapisywanie={zapisywanie} />
                   <div className={style.przyciskKarty}>{przyciskZapisu}</div>
-                  <Hint>Nagranie i pliki zapisują się same.</Hint>
+                  {(konfiguracja.nagranie || konfiguracja.plikiLekcji) && <Hint>Nagranie i pliki zapisują się same.</Hint>}
                 </div>
               </KartaBoczna>
             </TylkoOdDwochKolumn>

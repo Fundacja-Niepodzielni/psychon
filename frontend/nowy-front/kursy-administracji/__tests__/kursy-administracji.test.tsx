@@ -41,7 +41,7 @@ vi.mock("@/lib/api/klient", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api/klient");
-const { COURSE_TYPE_LABELS, PRODUCT_GROUP_LABELS } = await import("@/lib/h08/types");
+const { COURSE_TYPE_LABELS } = await import("@/lib/h08/types");
 const { KursyAdministracji } = await import("../KursyAdministracji");
 
 const ZASOB = "backend/app/Http/Resources/H08/AdminCourseResource.php";
@@ -174,22 +174,21 @@ describe("KursyAdministracji — stany w szablonie", () => {
     expect(api).not.toHaveBeenCalled();
   });
 
-  it("wiersz: nazwa z typem i grupą, stan, miejsce w ścieżce, liczba lekcji i odnośnik do kursu", async () => {
+  it("wiersz: nazwa z typem, stan, miejsce w ścieżce, liczba lekcji i odnośnik do kursu", async () => {
     await renderZDanymi();
     const [pierwszy, drugi, trzeci] = wierszeListy() as HTMLElement[];
-    const opis = (typ: "course" | "webinar", grupa: "psychon" | "both") =>
-      [COURSE_TYPE_LABELS[typ], PRODUCT_GROUP_LABELS[grupa]].join(" · ");
+    const opis = (typ: "course" | "webinar") => COURSE_TYPE_LABELS[typ];
     expect(within(pierwszy).getAllByRole("cell")[0]).toBe(komorka(pierwszy, "Kurs"));
-    expect(komorka(pierwszy, "Kurs")).toHaveTextContent(`Podstawy pomocy${opis("course", "psychon")}`);
+    expect(komorka(pierwszy, "Kurs")).toHaveTextContent(`Podstawy pomocy${opis("course")}`);
     expect(komorka(pierwszy, "Stan")).toHaveTextContent(/^Stan\s*Opublikowany$/);
     // W kolumnie miejsca stoi sama liczba: znaczenie niesie nazwa kolumny.
     expect(komorka(pierwszy, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*1$/);
     expect(komorka(pierwszy, "Lekcje")).toHaveTextContent(/^Lekcje\s*1\s*lekcja$/);
     expect(komorka(drugi, "Stan")).toHaveTextContent(/^Stan\s*Szkic$/);
-    expect(komorka(trzeci, "Kurs")).toHaveTextContent(`Webinar otwarty${opis("webinar", "both")}`);
+    expect(komorka(trzeci, "Kurs")).toHaveTextContent(`Webinar otwarty${opis("webinar")}`);
     expect(komorka(trzeci, "Miejsce w ścieżce")).toHaveTextContent(/^Miejsce w ścieżce\s*poza ścieżką$/);
     expect(komorka(trzeci, "Lekcje")).toHaveTextContent(/^Lekcje\s*0\s*lekcji$/);
-    // Wiersza opisowego „miejsce · typ · grupa · lekcje” już nie ma: pod nazwą stoi tylko typ i grupa.
+    // Wiersza opisowego „miejsce · typ · grupa · lekcje” już nie ma: pod nazwą stoi tylko typ (grupy produktowej nie ma).
     expect(komorka(pierwszy, "Kurs")).not.toHaveTextContent(/w ścieżce|lekcj/);
     expect(komorka(trzeci, "Kurs")).not.toHaveTextContent(/ścieżk|lekcj/);
     expect(screen.getByRole("link", { name: "Otwórz kurs: Podstawy pomocy" })).toHaveAttribute("href", "/admin/kursy/1");
@@ -305,7 +304,7 @@ describe("KursyAdministracji — Utwórz kurs", () => {
     expect(screen.queryByText(/Puste pole =/)).toBeNull();
   });
 
-  it("zapis: POST z przyciętym tytułem, domyślnym typem i grupą, pozycją jako liczbą; przejście na ekran kursu", async () => {
+  it("zapis: POST z przyciętym tytułem, domyślnym typem (bez grupy produktowej), pozycją jako liczbą; przejście na ekran kursu", async () => {
     await otworz();
     api.mockResolvedValueOnce(kurs(9, { title: "Nowy" }));
     await userEvent.type(screen.getByLabelText(/^Tytuł/), "  Nowy kurs  ");
@@ -321,11 +320,22 @@ describe("KursyAdministracji — Utwórz kurs", () => {
         title: "Nowy kurs",
         slug: "nowy-kurs",
         type: "course",
-        product_group: "psychon",
         sequence_order: 4,
         description: "Krótki opis",
       },
     });
+  });
+
+  it("grupa produktowa schowana: lista nie pokazuje grupy kursu, formularz nie ma pola, a POST nie niesie product_group", async () => {
+    await otworz();
+    expect(screen.queryByText(/Obie grupy|Dobrostan|PsychON/)).toBeNull();
+    expect(screen.queryByText(/grup[aąy] produktow/i)).toBeNull();
+    expect(screen.queryByLabelText(/Grupa produktowa/)).toBeNull();
+    api.mockResolvedValueOnce(kurs(11));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Bez grupy");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/11"));
+    expect(Object.keys(api.mock.calls[0][1].body)).not.toContain("product_group");
   });
 
   it("zapis bez pozycji i opisu: sequence_order i description to null", async () => {
@@ -379,7 +389,6 @@ describe("KursyAdministracji — Utwórz kurs", () => {
     title: "Z prowadzącym",
     slug: "z-prowadzacym",
     type: "course",
-    product_group: "psychon",
     sequence_order: null,
     description: null,
   };

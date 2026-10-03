@@ -1,18 +1,17 @@
 "use client";
 
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useId, useState, type MouseEvent, type ReactNode } from "react";
 import { ApiError } from "@/lib/api/klient";
 import { zdanieBleduTematow } from "@/lib/api/h08-tematy";
 import {
   COURSE_TYPE_LABELS,
-  PRODUCT_GROUP_LABELS,
   type AdminCourse,
   type CourseType,
-  type ProductGroup,
 } from "@/lib/h08/types";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
+import { Icon } from "@/design-system/atomy/Icon/Icon";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Text } from "@/design-system/atomy/Text/Text";
@@ -22,7 +21,8 @@ import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
 import { TylkoOdDwochKolumn } from "@/design-system/szablony/UkladEdycji/UkladEdycji";
-import { sklasyfikujBlad, usunKurs, zapiszKurs, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
+import { sklasyfikujBlad, usunKurs, zmienPublikacje } from "@/nowy-front/publikacja-kursu/dane";
+import { useRolaKursu } from "@/nowy-front/rola-kursu/kontekst";
 import { odmien } from "@/nowy-front/wspolne/odmiana";
 import { SekcjaZaproszenKursu } from "@/nowy-front/zaproszenia-kursu/ZaproszeniaKursu";
 import { kursPozaKolejnoscia } from "@/nowy-front/zaproszenia-kursu/dane";
@@ -51,17 +51,37 @@ interface WlasciwosciPrzyciskuGlownego {
   onZapiszIWyjdz?: () => void;
 }
 
+/** Powód przy nieczynnej publikacji w roli prowadzącego. */
+export const ZDANIE_PUBLIKACJI_ADMINISTRACJI = "Kurs publikuje administracja.";
+
 /**
  * Jedyny zielony przycisk ekranu: „Opublikuj kurs” w szkicu, „Podgląd jako
  * uczestnik” po publikacji. Ten sam stoi w karcie „Publikacja” (od dwóch
  * kolumn) i w wąskim pasie (poniżej) — arkusz szablonu pokazuje zawsze jeden.
+ * W roli prowadzącego „Opublikuj kurs” jest nieczynny z wyglądu (kłódka,
+ * `aria-disabled`), z powodem obok: kurs publikuje administracja.
  */
 export function PrzyciskGlowny({ kurs, onOpublikuj }: WlasciwosciPrzyciskuGlownego) {
+  const { zarzadzanieKursem } = useRolaKursu();
+  const idPowodu = useId();
   if (kurs.is_published) {
     return (
       <a className={style.przyciskGlowny} href={adresPodgladu(kurs)}>
         Podgląd jako uczestnik
       </a>
+    );
+  }
+  if (!zarzadzanieKursem) {
+    return (
+      <span className={style.publikacjaNieczynna} data-nieczynny="true">
+        <Button poziom="primary" aria-disabled="true" aria-describedby={idPowodu}>
+          <Icon nazwa="lock" rozmiar={16} />
+          Opublikuj kurs
+        </Button>
+        <span id={idPowodu} className={style.maly} data-powod-publikacji>
+          {ZDANIE_PUBLIKACJI_ADMINISTRACJI}
+        </span>
+      </span>
     );
   }
   return (
@@ -232,7 +252,7 @@ interface WlasciwosciUstawien {
 
 function stanDanych(kurs: AdminCourse): string {
   const miejsce = kurs.sequence_order === null ? "poza ścieżką" : `${kurs.sequence_order}. miejsce w ścieżce`;
-  return `${COURSE_TYPE_LABELS[kurs.type]} · grupa ${PRODUCT_GROUP_LABELS[kurs.product_group]} · ${miejsce}`;
+  return `${COURSE_TYPE_LABELS[kurs.type]} · ${miejsce}`;
 }
 
 function stanProwadzacych(przypisania: PrzypisanieKursu[] | null): string | null {
@@ -255,6 +275,7 @@ export function UstawieniaKursu({
   onPrzypisania,
   onOgloszenie,
 }: WlasciwosciUstawien) {
+  const { zarzadzanieKursem } = useRolaKursu();
   const przelacz = (wiersz: WierszUstawien) => onOtwarty(otwarty === wiersz ? null : wiersz);
   const zamknij = (wiersz: WierszUstawien) => {
     onOtwarty(null);
@@ -262,27 +283,38 @@ export function UstawieniaKursu({
   };
   return (
     <KartaBoczna tytul="Ustawienia kursu" bezOdstepu>
-      <Wiersz id="dane" etykieta="Opis i dane kursu" stan={stanDanych(kurs)} otwarty={otwarty} onPrzelacz={przelacz}>
+      <Wiersz
+        id="dane"
+        etykieta="Opis i dane kursu"
+        stan={zarzadzanieKursem ? stanDanych(kurs) : null}
+        otwarty={otwarty}
+        onPrzelacz={przelacz}
+      >
         <FormularzDanych kurs={kurs} onKurs={onKurs} onOgloszenie={onOgloszenie} />
       </Wiersz>
-      <Wiersz
-        id="prowadzacy"
-        etykieta="Prowadzący"
-        stan={stanProwadzacych(przypisania)}
-        otwarty={otwarty}
-        onPrzelacz={przelacz}
-      >
-        <PrzypisaniaKursu kurs={kurs} lekcje={lekcje} wUstawieniach onPrzypisania={onPrzypisania} />
-      </Wiersz>
-      <Wiersz
-        id="zaproszenia"
-        etykieta="Zaproszenia"
-        stan={kursPozaKolejnoscia(kurs) ? "Kurs poza kolejnością ścieżki" : "Kurs w ścieżce programu"}
-        otwarty={otwarty}
-        onPrzelacz={przelacz}
-      >
-        <SekcjaZaproszenKursu kurs={kurs} onZamknij={() => zamknij("zaproszenia")} />
-      </Wiersz>
+      {/* Prowadzący kursu i zaproszenia ustawia wyłącznie administracja. */}
+      {zarzadzanieKursem && (
+        <>
+          <Wiersz
+            id="prowadzacy"
+            etykieta="Prowadzący"
+            stan={stanProwadzacych(przypisania)}
+            otwarty={otwarty}
+            onPrzelacz={przelacz}
+          >
+            <PrzypisaniaKursu kurs={kurs} lekcje={lekcje} wUstawieniach onPrzypisania={onPrzypisania} />
+          </Wiersz>
+          <Wiersz
+            id="zaproszenia"
+            etykieta="Zaproszenia"
+            stan={kursPozaKolejnoscia(kurs) ? "Kurs poza kolejnością ścieżki" : "Kurs w ścieżce programu"}
+            otwarty={otwarty}
+            onPrzelacz={przelacz}
+          >
+            <SekcjaZaproszenKursu kurs={kurs} onZamknij={() => zamknij("zaproszenia")} />
+          </Wiersz>
+        </>
+      )}
       <div className={style.notaUstawien}>
         <Hint>Pliki do pobrania dodajesz w lekcjach.</Hint>
       </div>
@@ -341,17 +373,13 @@ const OPCJE_TYPU = (Object.keys(COURSE_TYPE_LABELS) as CourseType[]).map((wartos
   etykieta: COURSE_TYPE_LABELS[wartosc],
 }));
 
-const OPCJE_GRUPY = (Object.keys(PRODUCT_GROUP_LABELS) as ProductGroup[]).map((wartosc) => ({
-  wartosc,
-  etykieta: PRODUCT_GROUP_LABELS[wartosc],
-}));
-
-type BledyDanych = Partial<Record<"tytul" | "opis" | "adres" | "typ" | "grupa" | "ogolny", string>>;
+type BledyDanych = Partial<Record<"tytul" | "opis" | "adres" | "typ" | "ogolny", string>>;
 
 /**
  * Formularz danych kursu — te same pola i to samo żądanie co dotąd
- * (`zapiszKurs`: tytuł, opis, nazwa w adresie, rodzaj, grupa). Miejsca kursu
- * w ścieżce ten zapis nie zmienia; pokazuje je stan wiersza.
+ * (`zapiszKurs`: tytuł, opis, nazwa w adresie, rodzaj; grupy produktowej nie wysyła). Miejsca kursu
+ * w ścieżce ten zapis nie zmienia; pokazuje je stan wiersza. W roli
+ * prowadzącego formularz ma tylko tytuł i opis — resztę ustawia administracja.
  */
 function FormularzDanych({
   kurs,
@@ -362,11 +390,11 @@ function FormularzDanych({
   onKurs: (kurs: AdminCourse) => void;
   onOgloszenie: (tresc: string) => void;
 }) {
+  const { dane, zarzadzanieKursem } = useRolaKursu();
   const [tytul, setTytul] = useState(kurs.title);
   const [opis, setOpis] = useState(kurs.description ?? "");
   const [adres, setAdres] = useState(kurs.slug);
   const [typ, setTyp] = useState<CourseType>(kurs.type);
-  const [grupa, setGrupa] = useState<ProductGroup>(kurs.product_group);
   const [bledy, setBledy] = useState<BledyDanych>({});
   const [zapisano, setZapisano] = useState(false);
   const [trwa, setTrwa] = useState(false);
@@ -375,8 +403,7 @@ function FormularzDanych({
     tytul.trim() !== kurs.title ||
       (opis.trim() === "" ? "" : opis) !== (kurs.description ?? "") ||
       adres.trim() !== kurs.slug ||
-      typ !== kurs.type ||
-      grupa !== kurs.product_group,
+      typ !== kurs.type,
     "Dane kursu",
   );
 
@@ -387,18 +414,17 @@ function FormularzDanych({
       setBledy({ tytul: "Podaj tytuł kursu." });
       return;
     }
-    if (adres.trim() === "") {
+    if (zarzadzanieKursem && adres.trim() === "") {
       setBledy({ adres: "Podaj nazwę w adresie strony." });
       return;
     }
     setTrwa(true);
     try {
-      const zapisany = await zapiszKurs(kurs.id, {
+      const zapisany = await dane.zapiszDaneKursu(kurs.id, {
         title: tytul.trim(),
         description: opis.trim() === "" ? null : opis,
         slug: adres.trim(),
         type: typ,
-        product_group: grupa,
       });
       setBledy({});
       setZapisano(true);
@@ -411,7 +437,6 @@ function FormularzDanych({
           opis: blad.errors?.description?.[0],
           adres: blad.errors?.slug?.[0],
           typ: blad.errors?.type?.[0],
-          grupa: blad.errors?.product_group?.[0],
         };
         if (Object.values(pol).some(Boolean)) {
           setBledy(pol);
@@ -448,34 +473,29 @@ function FormularzDanych({
         onZmiana={setOpis}
         blad={bledy.opis}
       />
-      <Field
-        id="dane-kursu-rodzaj"
-        etykieta="Rodzaj"
-        rodzaj="wybor"
-        opcje={OPCJE_TYPU}
-        wartosc={typ}
-        onZmiana={(wartosc) => setTyp(wartosc as CourseType)}
-        blad={bledy.typ}
-      />
-      <Field
-        id="dane-kursu-grupa"
-        etykieta="Grupa"
-        rodzaj="wybor"
-        opcje={OPCJE_GRUPY}
-        wartosc={grupa}
-        onZmiana={(wartosc) => setGrupa(wartosc as ProductGroup)}
-        blad={bledy.grupa}
-      />
-      <Field
-        id="dane-kursu-adres"
-        etykieta="Nazwa w adresie strony"
-        rodzaj="tekst"
-        wymagane
-        wartosc={adres}
-        onZmiana={setAdres}
-        podpowiedz="Litery, cyfry, myślniki i podkreślenia."
-        blad={bledy.adres}
-      />
+      {zarzadzanieKursem && (
+        <>
+          <Field
+            id="dane-kursu-rodzaj"
+            etykieta="Rodzaj"
+            rodzaj="wybor"
+            opcje={OPCJE_TYPU}
+            wartosc={typ}
+            onZmiana={(wartosc) => setTyp(wartosc as CourseType)}
+            blad={bledy.typ}
+          />
+          <Field
+            id="dane-kursu-adres"
+            etykieta="Nazwa w adresie strony"
+            rodzaj="tekst"
+            wymagane
+            wartosc={adres}
+            onZmiana={setAdres}
+            podpowiedz="Litery, cyfry, myślniki i podkreślenia."
+            blad={bledy.adres}
+          />
+        </>
+      )}
       <div className={style.wierszPrzyciskow}>
         <Button poziom="outline" disabled={trwa} onClick={() => void zapisz()}>
           Zapisz dane kursu

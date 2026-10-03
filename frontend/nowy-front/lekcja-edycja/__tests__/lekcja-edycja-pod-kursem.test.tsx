@@ -174,7 +174,8 @@ describe("lekcja spoza kursu z adresu", () => {
     expect(await within(okruszki()).findByRole("link", { name: "Wywiad psychologiczny" })).toBeInTheDocument();
     expect(screen.queryByLabelText(/^Tytuł lekcji/)).toBeNull();
     expect(sciezki().filter((wpis) => wpis.includes("/lessons/99"))).toEqual([]);
-    expect(sciezki().sort()).toEqual(["GET /admin/courses/3", "GET /admin/courses/3/lessons"]);
+    // Odczyt konta (`GET /me`) należy do ekranu „nie znaleziono”, nie do danych lekcji.
+    expect(sciezki().filter((wpis) => wpis !== "GET /me").sort()).toEqual(["GET /admin/courses/3", "GET /admin/courses/3/lessons"]);
   });
 });
 

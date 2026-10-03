@@ -226,7 +226,7 @@ describe("Zgłoszenia rekrutacyjne — import z pliku", () => {
 
     await uzytkownik.upload(await otworzImport(uzytkownik, container), PLIK());
 
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(screen.queryByText("Anna Kandydat11")).toBeNull();
     expect(screen.queryByRole("button", { name: "Importuj z pliku CSV" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Dodaj zgłoszenie" })).toBeNull();
@@ -241,7 +241,7 @@ describe("Zgłoszenia rekrutacyjne — import z pliku", () => {
 
     apiPaged.mockRejectedValue(blad(403, "forbidden"));
     render(<ZgloszeniaLista />);
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(screen.queryByRole("button", { name: "Importuj z pliku CSV" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Dodaj zgłoszenie" })).toBeNull();
     expect(document.querySelector("input[type='file']")).toBeNull();
@@ -394,7 +394,7 @@ describe("Zgłoszenia rekrutacyjne — dodanie zgłoszenia", () => {
     await wypelnij(uzytkownik, { imie: "Ewa", nazwisko: "Nowicka", email: "ewa@demo.pl" });
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zgłoszenie" }));
 
-    await screen.findByText(/tylko dla administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(screen.queryByText("Anna Kandydat11")).toBeNull();
     expect(screen.queryByRole("form", { name: "Nowe zgłoszenie" })).toBeNull();
   });

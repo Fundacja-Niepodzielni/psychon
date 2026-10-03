@@ -135,4 +135,26 @@ describe("karta /prowadzacy/kursy/[id] pod strażnikiem roli", () => {
       screen.queryByRole("button", { name: "Ponów" }),
     ).not.toBeInTheDocument();
   });
+
+  it("grupa produktowa schowana: opis pod tytułem kursu nie niesie nazwy grupy", async () => {
+    me.mockResolvedValue({ role: "instructor" });
+    fetchInstructorCourse.mockResolvedValue({ ...kurs, product_group: "dobrostan" as const });
+    fetchInstructorLessons.mockResolvedValue([]);
+
+    render(
+      <InstructorLayout>
+        <InstructorCoursePage params={paramsFor("4")} />
+      </InstructorLayout>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Treść kursu" })).toBeInTheDocument(),
+    );
+    expect(kurs.sequence_order).toBe(1);
+    expect(
+      screen.getByText(new RegExp(`Kurs · pozycja ${kurs.sequence_order} w ścieżce`)),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Dobrostan/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/grup[aąy] produktow/i)).not.toBeInTheDocument();
+  });
 });

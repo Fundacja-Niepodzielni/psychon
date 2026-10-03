@@ -151,16 +151,32 @@ describe("A-12 — pięć stanów w obszarze treści DetailTemplate, jeden main"
     sprawdzSzablon(container, await screen.findByText("Nie udało się wczytać programu kursu"));
   });
 
-  it("brak uprawnień: stan pusty z jedynym szablonem zdania w kolumnie głównej", () => {
+  it("brak uprawnień: ekran odmowy w kolumnie głównej, z jednym przyciskiem powrotu", () => {
     const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "brak-uprawnien" }} />);
-    sprawdzSzablon(container, screen.getByText(/tylko dla prowadzących/));
+    const naglowek = screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    sprawdzSzablon(container, naglowek);
+    expect(screen.getByText(/Ten ekran jest dla prowadzących/)).toBeInTheDocument();
+    const obszar = within(screen.getByRole("region", { name: "Nie masz dostępu do tego ekranu" }));
+    expect(obszar.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(obszar.getByRole("button", { name: "Wróć" }));
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it("brak kursu: „Nie znaleziono kursu” w kolumnie głównej, jeden przycisk powrotu do listy kursów", () => {
+    const { container } = render(<KursTematy grupa="admin" idKursu="4" wynik={{ status: "nie-znaleziono" }} />);
+    sprawdzSzablon(container, screen.getByRole("heading", { level: 2, name: "Nie znaleziono kursu" }));
+    expect(screen.queryAllByRole("link", { name: "Wróć do listy kursów" })).toHaveLength(0);
+    const obszar = within(screen.getByRole("region", { name: "Nie znaleziono kursu" }));
+    expect(obszar.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(obszar.getByRole("button", { name: "Wróć do listy kursów" }));
+    expect(push).toHaveBeenCalledWith("/admin/kursy");
   });
 
   it("brak sesji: „Sesja wygasła” w szablonie, bez zdania o roli", () => {
     const { container } = render(<KursTematy grupa="instructor" idKursu="4" wynik={{ status: "brak-sesji" }} />);
     sprawdzSzablon(container, screen.getByText("Sesja wygasła"));
     expect(screen.getByText("Zaloguj się ponownie, aby wrócić do kursu.")).toBeInTheDocument();
-    expect(screen.queryByText(/tylko dla prowadzących/)).toBeNull();
+    expect(screen.queryByText(/prowadzących/)).toBeNull();
   });
 
   it("pusty: „Dodaj pierwszy temat” w kolumnie głównej", async () => {

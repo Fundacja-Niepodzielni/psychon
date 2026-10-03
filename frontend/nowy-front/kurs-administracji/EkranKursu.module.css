@@ -281,6 +281,30 @@
   max-width: none;
 }
 
+/*
+ * Publikacja w roli prowadzącego: przycisk wygląda na nieczynny (jasny, z kłódką,
+ * kursor zakazu), zostaje w kolejności fokusu, a powód stoi pod nim.
+ */
+.publikacjaNieczynna {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.publikacjaNieczynna button,
+.publikacjaNieczynna button:hover {
+  width: 100%;
+  max-width: none;
+  background: var(--grey);
+  border-color: var(--border-strong);
+  color: var(--ink);
+  cursor: not-allowed;
+}
+
+.publikacjaNieczynna svg {
+  flex: none;
+}
+
 .przyciskGlowny {
   display: inline-flex;
   align-items: center;

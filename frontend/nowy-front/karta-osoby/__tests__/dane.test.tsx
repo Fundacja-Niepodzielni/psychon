@@ -131,26 +131,32 @@ describe("wierszeDanychOsoby", () => {
     expect(zepsuta?.wartosci.wartosc).toBe("—");
   });
 
-  it("grupa produktowa: etykieta polska ze słownika, nieznana wartość → „—”, bez surowego kodu", () => {
-    const grupa = (product_group: string) =>
-      wierszeDanychOsoby({ ...PROFIL, product_group }).find((w) => w.id === "grupa")?.wartosci.wartosc;
-    expect(grupa("psychon")).toBe("PsychON");
-    expect(grupa("dobrostan")).toBe("Dobrostan");
-    expect(grupa("both")).toBe("PsychON i Dobrostan");
+  it("grupa produktowa schowana: tabela danych nie ma wiersza grupy dla żadnej wartości, także nieznanej", () => {
+    for (const grupa of ["psychon", "dobrostan", "both", "obca", ""]) {
+      const wiersze = wierszeDanychOsoby({ ...PROFIL, product_group: grupa });
+      expect(wiersze.map((w) => w.id)).not.toContain("grupa");
+      expect(wiersze.map((w) => w.wartosci.pole)).not.toContain("Grupa produktowa");
+      expect(JSON.stringify(wiersze)).not.toMatch(/PsychON|Dobrostan/);
+    }
+  });
+
+  it("słownik etykiet grupy zostaje w kodzie: etykieta polska, nieznana wartość → „—”, bez surowego kodu", () => {
+    expect(etykietaGrupyProduktowej("psychon")).toBe("PsychON");
+    expect(etykietaGrupyProduktowej("dobrostan")).toBe("Dobrostan");
+    expect(etykietaGrupyProduktowej("both")).toBe("PsychON i Dobrostan");
     for (const obca of ["obca", "", "constructor", "toString", "__proto__", "PSYCHON"]) {
-      expect(grupa(obca)).toBe("—");
+      expect(etykietaGrupyProduktowej(obca)).toBe("—");
     }
     expect(etykietaGrupyProduktowej(null)).toBe("—");
     expect(etykietaGrupyProduktowej(undefined)).toBe("—");
   });
 
-  it("formularz: opcje grupy produktowej niosą te same etykiety co tabela (kontrola dodatnia: trzy opcje)", () => {
-    const pole = POLA_FORMULARZA_KARTY.find((p) => p.klucz === "product_group");
-    expect(pole?.opcje?.map((o) => [o.wartosc, o.etykieta])).toEqual([
-      ["psychon", "PsychON"],
-      ["dobrostan", "Dobrostan"],
-      ["both", "PsychON i Dobrostan"],
-    ]);
+  it("formularz: brak pola grupy produktowej w konfiguracji pól, adres zostaje", () => {
+    expect(POLA_FORMULARZA_KARTY.map((p) => p.klucz)).not.toContain("product_group");
+    expect(POLA_FORMULARZA_KARTY.map((p) => p.etykieta)).not.toContain("Grupa produktowa");
+    expect(POLA_FORMULARZA_KARTY.map((p) => p.klucz)).toEqual(
+      expect.arrayContaining(["address_street", "address_city", "address_zip"]),
+    );
   });
 });
 
@@ -160,6 +166,10 @@ describe("formularzZProfilu i kluczBleduPola", () => {
     expect(formularz.phone).toBe("");
     expect(formularz.pesel).toBe("");
     expect(formularz.address_street).toBe("");
+  });
+
+  it("grupa produktowa schowana: formularz z profilu nie niesie grupy", () => {
+    expect(Object.keys(formularzZProfilu({ ...PROFIL, product_group: "both" }))).not.toContain("product_group");
   });
 
   it("adres błędu 422 dla pól adresu niesie kropkę, zgodnie z UpdateUserRequest", () => {

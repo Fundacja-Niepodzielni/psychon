@@ -13,9 +13,12 @@
   min-width: 0;
 }
 
-/* Góra strony: powrót do kursu i sąsiednie lekcje. */
+/* Góra strony: powrót do kursu i sąsiednie lekcje. Odnośniki (atom `Link`) mają ujemny
+   margines 2 px poziomo, więc skrajny odnośnik wychodziłby o tyle poza wiersz — a na ekranie
+   bez ramki panelu poza okno. Wcięcie wiersza o te same 2 px zostawia im miejsce. */
 .nawigacja {
   display: flex;
+  padding-inline: var(--space-2);
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
@@ -190,19 +193,28 @@
   position: absolute;
   width: 1px;
   height: 1px;
-  margin: 0;
+  margin: -1px;
+  padding: 0;
+  border: 0;
   overflow: hidden;
+  clip: rect(0 0 0 0);
   clip-path: inset(50%);
   white-space: nowrap;
 }
 
 @media (max-width: 599px) {
-  /* Telefon: same „Poprzednia” i „Następna”; pełną nazwę niesie nazwa dostępna odnośnika. */
+  /* Telefon: same „Poprzednia” i „Następna”; pełną nazwę niesie nazwa dostępna odnośnika.
+     Wzorzec dla czytnika ekranu z `clip` i marginesem −1 px: pudełko 1×1 px kończy się tam,
+     gdzie zaczyna się (nie wystaje za krawędź tekstu), a nie zostaje na krawędzi okna. */
   .slowoLekcja {
     position: absolute;
     width: 1px;
     height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
     overflow: hidden;
+    clip: rect(0 0 0 0);
     clip-path: inset(50%);
     white-space: nowrap;
   }

@@ -116,7 +116,6 @@ export interface DaneFormularzaKarty {
   address_street: string;
   address_city: string;
   address_zip: string;
-  product_group: string;
 }
 
 export function zapiszKarteOsoby(id: number, dane: DaneFormularzaKarty): Promise<KartaOsobyDane> {
@@ -133,7 +132,6 @@ export function zapiszKarteOsoby(id: number, dane: DaneFormularzaKarty): Promise
         city: dane.address_city === "" ? null : dane.address_city,
         zip: dane.address_zip === "" ? null : dane.address_zip,
       },
-      product_group: dane.product_group,
     },
   });
 }
@@ -148,23 +146,17 @@ export function formularzZProfilu(profile: ProfilOsobyKarty): DaneFormularzaKart
     address_street: profile.address.street ?? "",
     address_city: profile.address.city ?? "",
     address_zip: profile.address.zip ?? "",
-    product_group: profile.product_group,
   };
 }
 
 /** Słownik `product_group` (kontrakt §3.4: `psychon · dobrostan · both`) —
- * jedyne źródło etykiet: formularz i tabela danych czytają stąd, więc surowy
- * kod nie ma drogi do interfejsu. */
+ * jedyne źródło etykiet. Grupa produktowa jest schowana w interfejsie (formularz
+ * i tabela danych jej nie pokazują), słownik zostaje na powrót pola. */
 const ETYKIETY_GRUPY_PRODUKTOWEJ: Readonly<Record<string, string>> = {
   psychon: "PsychON",
   dobrostan: "Dobrostan",
   both: "PsychON i Dobrostan",
 };
-
-const OPCJE_GRUPY_PRODUKTOWEJ = Object.entries(ETYKIETY_GRUPY_PRODUKTOWEJ).map(([wartosc, etykieta]) => ({
-  wartosc,
-  etykieta,
-}));
 
 /** Etykieta polska grupy produktowej; wartość spoza słownika (także klucze
  * odziedziczone po `Object.prototype`) → „—”, nigdy surowy kod. */
@@ -184,7 +176,7 @@ export const POLA_FORMULARZA_KARTY: ReadonlyArray<{
   id: string;
   etykieta: string;
   rodzaj: "tekst" | "wybor";
-  opcje?: typeof OPCJE_GRUPY_PRODUKTOWEJ;
+  opcje?: { wartosc: string; etykieta: string }[];
   wymagane?: boolean;
 }> = [
   { klucz: "first_name", id: "karta-osoby-first_name", etykieta: "Imię", rodzaj: "tekst", wymagane: true },
@@ -195,14 +187,6 @@ export const POLA_FORMULARZA_KARTY: ReadonlyArray<{
   { klucz: "address_street", id: "karta-osoby-address_street", etykieta: "Ulica", rodzaj: "tekst" },
   { klucz: "address_city", id: "karta-osoby-address_city", etykieta: "Miasto", rodzaj: "tekst" },
   { klucz: "address_zip", id: "karta-osoby-address_zip", etykieta: "Kod pocztowy", rodzaj: "tekst" },
-  {
-    klucz: "product_group",
-    id: "karta-osoby-product_group",
-    etykieta: "Grupa produktowa",
-    rodzaj: "wybor",
-    opcje: OPCJE_GRUPY_PRODUKTOWEJ,
-    wymagane: true,
-  },
 ];
 
 /** Klucz błędu 422 dla danego pola formularza (`errors` z koperty błędu,
@@ -298,7 +282,6 @@ export function wierszeDanychOsoby(profile: ProfilOsobyKarty): WierszDataTable[]
     { id: "telefon", wartosci: { pole: "Telefon", wartosc: tekstAlboBrak(profile.phone) } },
     { id: "pesel", wartosci: { pole: "PESEL", wartosc: tekstAlboBrak(profile.pesel) } },
     { id: "adres", wartosci: { pole: "Adres", wartosc: adres === "" ? "Brak danych" : adres } },
-    { id: "grupa", wartosci: { pole: "Grupa produktowa", wartosc: etykietaGrupyProduktowej(profile.product_group) } },
     {
       id: "dostep",
       wartosci: profile.access_expires_at

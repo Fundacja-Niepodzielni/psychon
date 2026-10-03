@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
@@ -12,6 +11,7 @@ import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import type { PaginationMeta } from "@/lib/api/klient";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import {
   STAN_DO_DECYZJI,
   OPCJE_STANU,
@@ -95,10 +95,10 @@ export function ProfileKolejka() {
       <ListTemplate
         naglowek={naglowek}
         lista={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Wnioski o profil psychologa"
-            rola="administracji"
+          <EkranOdmowy
+            rodzaj="brak-dostepu"
+            stopien={2}
+            rolaDocelowa="administracji"
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
         }

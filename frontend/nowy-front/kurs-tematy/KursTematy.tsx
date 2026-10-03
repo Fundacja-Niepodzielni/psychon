@@ -2,15 +2,12 @@
 
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   COURSE_TYPE_LABELS,
-  PRODUCT_GROUP_LABELS,
   type AdminCourse,
   type AdminLesson,
   type CourseType,
-  type ProductGroup,
 } from "@/lib/h08/types";
 import { ApiError } from "@/lib/api/klient";
 import {
@@ -25,7 +22,8 @@ import {
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { zdanieRuchuMiedzyGrupami, zdanieRuchuWiersza } from "@/design-system/molekuly/StrzalkiKolejnosci/zdania";
@@ -160,12 +158,7 @@ function BrakUprawnien({ idKursu, grupa, wroc }: { idKursu: string; grupa: Grupa
     <DetailTemplate
       naglowek={{ okruszki: teksty.okruszki, tytul: `Kurs ${idKursu}`, onPowrot: wroc }}
       glowna={
-        <EmptyState
-          wariant="brak-uprawnien"
-          naglowek={teksty.naglowekOdmowy}
-          rola={teksty.rolaOdmowy}
-          przycisk={{ etykieta: "Wróć", onClick: wroc }}
-        />
+        <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa={teksty.rolaOdmowy} przycisk={{ etykieta: "Wróć", onClick: wroc }} />
       }
       wspierajaca={null}
     />
@@ -188,6 +181,7 @@ function BezKursu({
   grupa: GrupaTras;
   wroc: () => void;
 }) {
+  const router = useRouter();
   const teksty = tekstyDlaGrupy(grupa);
   const adresListy = teksty.okruszki[0]?.href;
   return (
@@ -200,16 +194,16 @@ function BezKursu({
               Zaloguj się ponownie, aby wrócić do kursu.
             </Notice>
           ) : (
-            <>
-              <Notice wariant="warn" tytul="Nie znaleziono kursu">
-                Kurs nie istnieje albo został usunięty.
-              </Notice>
-              {adresListy && (
-                <Text>
-                  <Link href={adresListy}>Wróć do listy kursów</Link>
-                </Text>
-              )}
-            </>
+            <EkranOdmowy
+              rodzaj="nie-znaleziono"
+              czego="kursu"
+              stopien={2}
+              przycisk={
+                adresListy
+                  ? { etykieta: "Wróć do listy kursów", onClick: () => router.push(adresListy) }
+                  : { etykieta: "Wróć", onClick: wroc }
+              }
+            />
           )}
         </div>
       }
@@ -255,19 +249,13 @@ interface FormularzKursu {
   opis: string;
   identyfikator: string;
   typ: CourseType;
-  grupaProduktowa: ProductGroup;
 }
 
-type BledyKursu = Partial<Record<"tytul" | "opis" | "identyfikator" | "typ" | "grupaProduktowa" | "ogolny", string>>;
+type BledyKursu = Partial<Record<"tytul" | "opis" | "identyfikator" | "typ" | "ogolny", string>>;
 
 const OPCJE_TYPU = (Object.keys(COURSE_TYPE_LABELS) as CourseType[]).map((wartosc) => ({
   wartosc,
   etykieta: COURSE_TYPE_LABELS[wartosc],
-}));
-
-const OPCJE_GRUPY = (Object.keys(PRODUCT_GROUP_LABELS) as ProductGroup[]).map((wartosc) => ({
-  wartosc,
-  etykieta: PRODUCT_GROUP_LABELS[wartosc],
 }));
 
 /** Lekcja po zapisie z formularza przy wierszu — tyle, ile pokazuje drzewo. */
@@ -412,8 +400,7 @@ function EdytorTematow({
     (formularz.tytul !== kurs.title ||
       formularz.opis !== (kurs.description ?? "") ||
       formularz.identyfikator !== kurs.slug ||
-      formularz.typ !== kurs.type ||
-      formularz.grupaProduktowa !== kurs.product_group);
+      formularz.typ !== kurs.type);
   const saNiezapisaneDane = liczbaZmian > 0 || niezapisanaLekcja || daneKursuZmienione;
 
   // Wyjście z niezapisanymi zmianami pyta (M13) — menu ramy i zamknięcie karty; liczą
@@ -952,7 +939,7 @@ function EdytorTematow({
       const zapisany = await zapis.daneKursu(
         kurs.id,
         grupa === "admin"
-          ? { ...podstawowe, slug: identyfikator, type: formularz.typ, product_group: formularz.grupaProduktowa }
+          ? { ...podstawowe, slug: identyfikator, type: formularz.typ }
           : podstawowe,
       );
       setKurs(zapisany);
@@ -965,7 +952,6 @@ function EdytorTematow({
           opis: blad.errors?.description?.[0],
           identyfikator: blad.errors?.slug?.[0],
           typ: blad.errors?.type?.[0],
-          grupaProduktowa: blad.errors?.product_group?.[0],
         };
         if (Object.values(pol).some(Boolean)) {
           setBledyFormularza(pol);
@@ -1279,16 +1265,6 @@ function EdytorTematow({
                         blad: bledyFormularza.typ,
                       },
                       {
-                        id: `${baza}-grupa`,
-                        etykieta: "Grupa produktowa",
-                        rodzaj: "wybor" as const,
-                        opcje: OPCJE_GRUPY,
-                        wartosc: formularz.grupaProduktowa,
-                        onZmiana: (wybrana: string) =>
-                          setFormularz({ ...formularz, grupaProduktowa: wybrana as ProductGroup }),
-                        blad: bledyFormularza.grupaProduktowa,
-                      },
-                      {
                         id: `${baza}-identyfikator`,
                         etykieta: "Identyfikator",
                         rodzaj: "tekst" as const,
@@ -1321,10 +1297,6 @@ function EdytorTematow({
                   <dd>{COURSE_TYPE_LABELS[kurs.type]}</dd>
                 </div>
                 <div>
-                  <dt>Grupa produktowa</dt>
-                  <dd>{PRODUCT_GROUP_LABELS[kurs.product_group]}</dd>
-                </div>
-                <div>
                   <dt>Identyfikator</dt>
                   <dd>{kurs.slug}</dd>
                 </div>
@@ -1343,7 +1315,6 @@ function EdytorTematow({
                     opis: kurs.description ?? "",
                     identyfikator: kurs.slug,
                     typ: kurs.type,
-                    grupaProduktowa: kurs.product_group,
                   })
                 }
               >

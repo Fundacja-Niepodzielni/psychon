@@ -184,7 +184,8 @@ describe("PoProgramieWspolpraca — odmowa roli", () => {
 
     const { container } = render(<PoProgramieWspolpraca />);
 
-    await waitFor(() => expect(container.textContent).toContain("uczestników"));
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    expect(container.textContent).toMatch(/Ten ekran jest dla uczestników\./);
     expect(screen.queryByRole("button", { name: "Wyślij prośbę" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Moje prośby" })).toBeNull();
   });

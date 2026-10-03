@@ -135,8 +135,11 @@ export const GRUPY = {
     ],
   },
   /**
-   * Kurs: tematy i lekcje (H08) — ekran prowadzącego, dane z tras
+   * Kurs: tematy i lekcje (H08) — ten sam ekran co kurs administracji
+   * (`nowy-front/kurs-administracji/`) w roli prowadzącego, dane z tras
    * `/instructor/…`; ten sam adres co dzisiejszy szczegół kursu prowadzącego.
+   * Drugi ekran: strona lekcji prowadzącego pod adresem z kursem w ścieżce —
+   * bez starej trasy, bo w starym froncie lekcję edytowało się na stronie kursu.
    */
   kurs: {
     klucz: "kurs",
@@ -146,6 +149,12 @@ export const GRUPY = {
         panel: "prowadzacy",
         staraTrasa: "/prowadzacy/kursy/[id]",
         nowaTrasa: "/prowadzacy/kursy/[id]",
+        trasaPoligonu: "/nowy-front/kurs/[id]",
+      },
+      {
+        panel: "prowadzacy",
+        staraTrasa: null,
+        nowaTrasa: "/prowadzacy/kursy/[id]/lekcje/[idLekcji]",
         trasaPoligonu: "/nowy-front/kurs/[id]",
       },
     ],

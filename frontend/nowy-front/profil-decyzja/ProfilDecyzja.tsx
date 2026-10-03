@@ -6,11 +6,11 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { CaseCard } from "@/design-system/organizmy/CaseCard/CaseCard";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { PanelDecyzji } from "./PanelDecyzji";
 import { wariantStanu, type WariantPlakietki } from "../profile-kolejka/dane";
 import { ETYKIETY_ZALACZNIKOW, dataPl, pobierzZalacznik, poprawneId, wczytajWniosek, type Wniosek } from "./dane";
@@ -141,10 +141,10 @@ export function ProfilDecyzja({ id }: { id: string }) {
         tytul="Wniosek o profil"
         wroc={wroc}
         glowna={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Wniosek jest niedostępny"
-            rola="administracji"
+          <EkranOdmowy
+            rodzaj="brak-dostepu"
+            stopien={2}
+            rolaDocelowa="administracji"
             przycisk={{ etykieta: "Wróć do listy", onClick: wroc }}
           />
         }
@@ -157,9 +157,10 @@ export function ProfilDecyzja({ id }: { id: string }) {
         tytul="Wniosek o profil"
         wroc={wroc}
         glowna={
-          <EmptyState
-            naglowek="Nie znaleziono wniosku"
-            tresc="Wniosku o tym numerze nie ma na liście albo został usunięty."
+          <EkranOdmowy
+            rodzaj="nie-znaleziono"
+            czego="wniosku"
+            stopien={2}
             przycisk={{ etykieta: "Wróć do listy", onClick: wroc }}
           />
         }

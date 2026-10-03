@@ -1,0 +1,10 @@
+/*
+ * Trasa robocza rysuje ekran na całą szerokość okna, bez ramki panelu.
+ * Kolumna boczna układu edycji (ujemny margines 6 px pod obwódkę fokusu)
+ * i odnośniki nawigacji lekcji (ujemny margines 2 px) wychodziłyby wtedy
+ * poza okno i dawały przewijanie w bok. Wcięcie po bokach równe największemu
+ * z tych marginesów trzyma je w oknie; w ramce panelu robi to jej wcięcie.
+ */
+.obszar {
+  padding-inline: var(--space-6);
+}

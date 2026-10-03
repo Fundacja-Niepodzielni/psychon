@@ -158,14 +158,16 @@ describe("wzory dokumentów — stany w szablonie widoku szczegółu, jeden main
     expect(screen.getByRole("combobox", { name: "Rodzaj wzoru" })).toHaveFocus();
   });
 
-  it.each([401, 403])("odmowa (%i): wariant odmowy z nazwą roli, zero danych w DOM, jedno wyjście", async (status) => {
+  it.each([401, 403])("odmowa (%i): ekran odmowy z nazwą roli, zero danych w DOM, jedno wyjście", async (status) => {
     api.mockRejectedValue(blad(status, status === 401 ? "unauthenticated" : "forbidden"));
     const { container } = render(<WzoryDokumentow />);
-    const zdanie = await screen.findByText(/administracji/, { selector: "p" });
-    sprawdzListe(container, zdanie);
-    const karta = screen.getByTestId("karta-stanu-pustego");
-    expect(within(karta).getByText(zdanieOdmowyRoli("administracji"))).toBeInTheDocument();
-    expect(within(karta).getAllByRole("button")).toHaveLength(1);
+    const naglowek = await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    sprawdzListe(container, naglowek);
+    await waitFor(() => expect(naglowek).toHaveFocus());
+    const obszar = screen.getByRole("region", { name: "Nie masz dostępu do tego ekranu" });
+    expect(container.querySelector("[data-testid='obszar-lista']")!.contains(obszar)).toBe(true);
+    expect(within(obszar).getByText(/Ten ekran jest dla administracji\./)).toBeInTheDocument();
+    expect(within(obszar).getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("table")).toBeNull();
     expect(container.textContent).not.toContain(WZOR.content);

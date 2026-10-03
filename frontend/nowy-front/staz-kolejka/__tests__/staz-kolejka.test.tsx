@@ -341,7 +341,8 @@ describe("StazKolejka — stany w szablonie", () => {
   it.each([401, 403])("odmowa %i: stan brak uprawnień z rolą, zero danych, jeden main", async (status) => {
     apiPaged.mockRejectedValueOnce(blad(status, status === 401 ? "unauthenticated" : "forbidden", "Odmowa."));
     const { container } = render(<StazKolejka />);
-    await waitFor(() => expect(container.textContent).toContain("administracji"));
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    expect(container.textContent).toMatch(/Ten ekran jest dla administracji\./);
     sprawdzSzablon(container);
     expect(wierszeListy()).toHaveLength(0);
     expect(container.textContent).not.toContain("Marta");

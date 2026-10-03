@@ -158,7 +158,7 @@ describe("/admin/zgloszenia-wspolpracy w układach grupy (rola administracji z a
     pobierzZgloszeniaAdministracji.mockRejectedValue(ZAKAZ());
     const { container } = trasaAdministracji();
 
-    await screen.findByText(/administracji/);
+    await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(zmierz(container)).toEqual(JEDEN);
   });
 });

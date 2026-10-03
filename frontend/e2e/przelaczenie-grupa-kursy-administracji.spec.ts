@@ -330,13 +330,15 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
 
       await expect(wiersze(page)).toHaveCount(4);
       await expect(wiersze(page).first()).toContainText("Podstawy pomocy psychologicznej");
-      // Typ i grupa pod nazwą kursu; miejsce w ścieżce i liczba lekcji w swoich kolumnach.
+      // Sam typ pod nazwą kursu (grupa produktowa schowana); miejsce w ścieżce i liczba lekcji w swoich kolumnach.
       const pierwszy = wiersze(page).first().getByRole("cell");
-      await expect(pierwszy.nth(0)).toContainText("Kurs · PsychON");
+      await expect(pierwszy.nth(0)).toContainText("Kurs");
+      await expect(pierwszy.nth(0)).not.toContainText(/PsychON|Dobrostan|Obie grupy/);
       await expect(pierwszy.nth(2)).toHaveText(/^Miejsce w ścieżce\s*1$/);
       await expect(pierwszy.nth(3)).toHaveText(/^Lekcje\s*1\s*lekcja$/);
       const ostatni = wiersze(page).nth(3).getByRole("cell");
-      await expect(ostatni.nth(0)).toContainText("Webinar · Obie grupy");
+      await expect(ostatni.nth(0)).toContainText("Webinar");
+      await expect(ostatni.nth(0)).not.toContainText(/PsychON|Dobrostan|Obie grupy/);
       await expect(ostatni.nth(2)).toHaveText(/^Miejsce w ścieżce\s*poza ścieżką$/);
       await expect(ostatni.nth(3)).toHaveText(/^Lekcje\s*0\s*lekcji$/);
       await expect(page.getByRole("link", { name: "Otwórz kurs: Wywiad psychologiczny" })).toHaveAttribute("href", "/admin/kursy/2");
@@ -639,7 +641,7 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
     expect(atrapy.zapytania).toEqual([
       {
         adres: "POST /admin/courses",
-        cialo: { title: "Zażółć gęślą", slug: "zazolc-gesla", type: "course", product_group: "psychon", sequence_order: null, description: null },
+        cialo: { title: "Zażółć gęślą", slug: "zazolc-gesla", type: "course", sequence_order: null, description: null },
       },
     ]);
   });
@@ -648,7 +650,6 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
     title: "Z prowadzącym",
     slug: "z-prowadzacym",
     type: "course",
-    product_group: "psychon",
     sequence_order: null,
     description: null,
   };

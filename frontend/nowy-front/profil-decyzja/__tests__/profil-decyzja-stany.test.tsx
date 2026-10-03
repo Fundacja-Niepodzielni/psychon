@@ -141,11 +141,13 @@ describe("Wniosek o profil — decyzja: stany w szablonie, jeden main", () => {
   it.each([401, 403])("brak uprawnień (%i): wariant odmowy z rolą w kolumnie głównej, zero danych wniosku", async (status) => {
     trasy({ show: () => Promise.reject(bladApi(status, status === 401 ? "unauthenticated" : "forbidden", "Odmowa.")) });
     const { container } = render(<ProfilDecyzja id="12" />);
-    const naglowek = await screen.findByRole("heading", { level: 2, name: "Wniosek jest niedostępny" });
+    const naglowek = await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
     sprawdzSzablon(container);
     const glowna = container.querySelector<HTMLElement>("[data-obszar='glowna']")!;
     expect(glowna.contains(naglowek)).toBe(true);
-    expect(glowna).toHaveTextContent(/administracji/);
+    expect(glowna).toHaveTextContent(/Ten ekran jest dla administracji\./);
+    expect(within(glowna).getAllByRole("button")).toHaveLength(1);
+    expect(within(glowna).getByRole("button", { name: "Wróć do listy" })).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/Ewa|Przykładowa|Gdańsk|interwencja kryzysowa/);
     expect(screen.queryByRole("button", { name: /^Pobierz załącznik/ })).toBeNull();
     expect(przyciskiGlowne()).toHaveLength(0);
@@ -163,7 +165,7 @@ describe("Wniosek o profil — decyzja: stany w szablonie, jeden main", () => {
     const { container } = render(<ProfilDecyzja id="abc" />);
     sprawdzSzablon(container);
     expect(screen.getByRole("heading", { level: 2, name: "Nie znaleziono wniosku" })).toBeInTheDocument();
-    expect(api).not.toHaveBeenCalled();
+    expect(api.mock.calls.filter(([sciezka]) => sciezka !== "/me")).toHaveLength(0);
   });
 
   it("błąd sieci: komunikat z „Spróbuj ponownie”, które wczytuje wniosek", async () => {

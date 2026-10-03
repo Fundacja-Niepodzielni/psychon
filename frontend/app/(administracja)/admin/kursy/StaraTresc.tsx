@@ -23,10 +23,8 @@ import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
 import { api, apiPaged, ApiError, type PaginationMeta } from "@/lib/api";
 import {
   COURSE_TYPE_LABELS,
-  PRODUCT_GROUP_LABELS,
   type AdminCourse,
   type CourseType,
-  type ProductGroup,
   type ReorderImpactRow,
 } from "@/lib/h08/types";
 
@@ -37,7 +35,6 @@ interface NewCourseForm {
   title: string;
   slug: string;
   type: CourseType;
-  product_group: ProductGroup;
   sequence_order: string;
   description: string;
 }
@@ -46,7 +43,6 @@ const EMPTY_FORM: NewCourseForm = {
   title: "",
   slug: "",
   type: "course",
-  product_group: "psychon",
   sequence_order: "",
   description: "",
 };
@@ -104,7 +100,6 @@ export default function AdminCoursesPage() {
           title: form.title,
           slug: form.slug,
           type: form.type,
-          product_group: form.product_group,
           sequence_order: form.sequence_order
             ? Number(form.sequence_order)
             : null,
@@ -214,11 +209,6 @@ export default function AdminCoursesPage() {
       render: (row) => COURSE_TYPE_LABELS[row.type] ?? row.type,
     },
     {
-      key: "product_group",
-      header: "Grupa produktowa",
-      render: (row) => PRODUCT_GROUP_LABELS[row.product_group] ?? row.product_group,
-    },
-    {
       key: "is_published",
       header: "Publikacja",
       render: (row) => (
@@ -315,20 +305,6 @@ export default function AdminCoursesPage() {
                         error={fieldError("type")}
                       >
                         {Object.entries(COURSE_TYPE_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </Select>
-                      <Select
-                        label="Grupa produktowa"
-                        value={form.product_group}
-                        onChange={(e) =>
-                          update("product_group", e.target.value as ProductGroup)
-                        }
-                        error={fieldError("product_group")}
-                      >
-                        {Object.entries(PRODUCT_GROUP_LABELS).map(([value, label]) => (
                           <option key={value} value={value}>
                             {label}
                           </option>

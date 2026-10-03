@@ -63,15 +63,21 @@
 
   /* Kolumna boczna stoi w miejscu, gdy przewija się kolumna główna; wyższa
      niż okno przewija się w sobie, więc jej pierwsza karta zostaje na
-     ekranie. Wypełnienie z ujemnym marginesem zostawia miejsce na obrys
-     fokusu przy krawędzi przewijanego obszaru. */
+     ekranie. Przewijany obszar obcina obrys fokusu na swoich krawędziach,
+     więc obrys wewnątrz kolumny rysuje się do środka elementu (ujemne
+     `outline-offset`), a nie z zapasu wokół niej: dawny ujemny margines
+     z wypełnieniem wystawał o 6 px poza kolumnę i na ekranie bez ramki panelu
+     wydłużał stronę w poziomie. Kolumna zajmuje dokładnie swoją komórkę siatki. */
   .boczna {
     position: sticky;
     top: calc(var(--topbar-h) + var(--space-16));
     max-height: calc(100vh - var(--topbar-h) - 2 * var(--space-16));
     overflow-y: auto;
     scrollbar-width: thin;
-    margin: calc(-1 * var(--space-6));
-    padding: var(--space-6);
+  }
+
+  /* Trzy selektory klas, żeby wygrać z `[data-theme] :focus-visible` (tokeny). */
+  .kolumny .boczna :focus-visible {
+    outline-offset: calc(-1 * var(--focus-width));
   }
 }

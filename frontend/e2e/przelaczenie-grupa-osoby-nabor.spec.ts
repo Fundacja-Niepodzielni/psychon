@@ -178,7 +178,8 @@ test.describe("grupy listaOsob i nabor — włączone razem na /admin/uczestnicz
       await page.goto(adres);
       await zabezpieczeniePrzedEkranemDostepu(page);
 
-      await expect(page.getByText("Ta funkcja jest dostępna tylko dla administracji.")).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeVisible();
+      await expect(page.getByText(/Ten ekran jest dla administracji\./)).toBeVisible();
       await expect(page.getByText(`${OSOBA.first_name} ${OSOBA.last_name}`, { exact: true })).toHaveCount(0);
       await expect(page.getByText(`${ZGLOSZENIE.first_name} ${ZGLOSZENIE.last_name}`, { exact: true })).toHaveCount(0);
       await jedenMain(page);

@@ -26,7 +26,8 @@ export interface NowyKurs {
   title: string;
   slug: string;
   type: CourseType;
-  product_group: ProductGroup;
+  /** Schowana w interfejsie: formularz jej nie wysyła, kurs dostaje domyślną wartość serwera. */
+  product_group?: ProductGroup;
   /** `null` = kurs poza główną ścieżką (puste pole). Wartość nieliczbowa trafia do serwera dosłownie, żeby walidacja ją zobaczyła. */
   sequence_order: number | string | null;
   description: string | null;

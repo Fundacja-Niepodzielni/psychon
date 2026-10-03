@@ -16,7 +16,6 @@ import EdytorTresciKursu from "@/components/kursy/EdytorTresciKursu";
 import { api, ApiError } from "@/lib/api";
 import {
   COURSE_TYPE_LABELS,
-  PRODUCT_GROUP_LABELS,
   type AdminCourse,
   type AdminLesson,
 } from "@/lib/h08/types";
@@ -140,8 +139,6 @@ export default function AdminCoursePage({
         title: tytul,
         description: course
           ? `${COURSE_TYPE_LABELS[course.type]} · ${
-              PRODUCT_GROUP_LABELS[course.product_group]
-            } · ${
               course.sequence_order === null
                 ? "poza główną ścieżką"
                 : `pozycja ${course.sequence_order} w ścieżce`

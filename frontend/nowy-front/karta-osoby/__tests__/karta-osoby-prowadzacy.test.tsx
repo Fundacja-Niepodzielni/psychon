@@ -66,7 +66,7 @@ describe("Karta osoby — prowadzący superwizje", () => {
     render(<KartaOsoby id={17} />);
 
     expect(await screen.findByRole("heading", { name: "Prowadzący superwizje" })).toBeInTheDocument();
-    expect(fetchAdminUsers).toHaveBeenCalledWith({ role: "instructor", per_page: 100 });
+    await waitFor(() => expect(fetchAdminUsers).toHaveBeenCalledWith({ role: "instructor", per_page: 100 }));
   });
 
   it.each(["instructor", "volunteer", "student"])("rola %s nie ma sekcji w drzewie i nie pobiera listy", async (rola) => {

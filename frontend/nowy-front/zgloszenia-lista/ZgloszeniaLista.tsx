@@ -9,6 +9,7 @@ import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { FileDropZone, type PlikFileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -241,12 +242,7 @@ export function ZgloszeniaLista() {
       <ListTemplate
         naglowek={naglowek}
         lista={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Lista zgłoszeń jest niedostępna"
-            rola="administracji"
-            przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
-          />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: () => router.back() }} />
         }
       />
     );

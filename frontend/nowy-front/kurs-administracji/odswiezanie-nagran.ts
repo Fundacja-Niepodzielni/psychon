@@ -16,18 +16,23 @@ function kartaWidoczna(): boolean {
  * i tylko wtedy, gdy karta przeglądarki jest widoczna; po powrocie do karty
  * pyta o lekcje, którym odstęp już minął. O lekcje spoza listy nie pyta wcale:
  * gdy lekcja z niej znika, pytania o nią ustają.
+ *
+ * `pobierz` — odczyt stanu z grupy tras ekranu (domyślnie administracja).
  */
 export function useOdswiezanieNagran(
   idLekcjiWDrodze: number[],
   onStan: (idLekcji: number, stan: StanNagrania) => void,
+  pobierz: (idLekcji: number) => Promise<StanNagrania> = pobierzStanNagrania,
 ): void {
   const ostatniePytanie = useRef(new Map<number, number>());
   const odbiorca = useRef(onStan);
+  const odczyt = useRef(pobierz);
   const zamontowany = useRef(true);
   const klucz = idLekcjiWDrodze.join(",");
 
   useEffect(() => {
     odbiorca.current = onStan;
+    odczyt.current = pobierz;
   });
 
   useEffect(() => {
@@ -57,7 +62,7 @@ export function useOdswiezanieNagran(
       for (const idLekcji of lekcje) {
         if (teraz < termin(idLekcji)) continue;
         ostatniePytanie.current.set(idLekcji, teraz);
-        pobierzStanNagrania(idLekcji)
+        odczyt.current(idLekcji)
           .then((stan) => {
             if (zamontowany.current) odbiorca.current(idLekcji, stan);
           })

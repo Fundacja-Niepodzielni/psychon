@@ -133,29 +133,29 @@ describe("KartaOsoby — stan dane", () => {
     expect(glowa).toContainElement(przycisk);
   });
 
-  it("grupa produktowa i data dostępu: etykieta polska, zero surowego kodu i zero ISO w DOM stanu z danymi", async () => {
+  it("grupa produktowa schowana, data dostępu zostaje: zero etykiety, zero kodu grupy i zero ISO w DOM stanu z danymi", async () => {
     pobierzKarteOsoby.mockResolvedValue(KARTA);
     pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
     const { container } = render(<KartaOsoby id={17} />);
     await screen.findByRole("heading", { name: "Marta Demo" });
     const tabela = within(screen.getByTestId("obszar-tabela")).getByRole("table");
-    expect(within(tabela).getByText("PsychON")).toBeInTheDocument();
+    expect(within(tabela).queryByText("Grupa produktowa")).toBeNull();
+    expect(within(tabela).queryByText("PsychON")).toBeNull();
+    expect(within(tabela).getByText("Adres")).toBeInTheDocument();
     expect(within(tabela).getByText("1 lutego 2027")).toBeInTheDocument();
     expect(container.textContent).not.toContain("psychon");
+    expect(container.textContent).not.toMatch(/grup[aąy] produktow/i);
     expect(container.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
   });
 
-  it("obca grupa produktowa: „—”, surowy kod nie trafia do DOM", async () => {
+  it("obca grupa produktowa w danych: ekran jej nie wypisuje, surowy kod nie trafia do DOM", async () => {
     const karta = { ...(KARTA as object), profile: { ...PROFIL, product_group: "obca_grupa" } };
     pobierzKarteOsoby.mockResolvedValue(karta);
     pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
     const { container } = render(<KartaOsoby id={17} />);
     await screen.findByRole("heading", { name: "Marta Demo" });
-    const tabela = within(screen.getByTestId("obszar-tabela")).getByRole("table");
-    const wiersz = within(tabela).getByText("Grupa produktowa").closest('[role="row"]');
-    expect(wiersz).not.toBeNull();
-    expect(within(wiersz as HTMLElement).getByText("—")).toBeInTheDocument();
     expect(container.textContent).not.toContain("obca_grupa");
+    expect(container.textContent).not.toMatch(/grup[aąy] produktow/i);
   });
 
   it("po rozwinięciu sekcji rzadkich zero surowego ISO (powiadomienia i dziennik przez wspólny formater)", async () => {
@@ -479,6 +479,28 @@ describe("KartaOsoby — formularz „Zmień dane”", () => {
     expect(within(formularz).getByLabelText(/^Imię/)).toBeInTheDocument();
     expect(within(formularz).queryByLabelText(/^Rola/)).toBeNull();
     expect(within(formularz).queryByRole("combobox", { name: /^Rola/ })).toBeNull();
+  });
+
+  it("grupa produktowa schowana: formularz nie ma pola grupy, sekcja dodatkowa nazywa się „Adres”", async () => {
+    pobierzKarteOsoby.mockResolvedValue({ ...(KARTA as object), profile: { ...PROFIL, product_group: "both" } });
+    pobierzRzetelnoscOsoby.mockResolvedValue(RZETELNOSC);
+    zapiszKarteOsoby.mockResolvedValue(KARTA);
+    const uzytkownik = userEvent.setup();
+
+    render(<KartaOsoby id={17} />);
+    await uzytkownik.click(await screen.findByRole("button", { name: "Zmień dane" }));
+    const formularz = await screen.findByRole("form", { name: "Dane osoby" });
+
+    expect(within(formularz).getByRole("button", { name: /^Adres/ })).toBeInTheDocument();
+    expect(within(formularz).queryByText("Adres i grupa produktowa")).toBeNull();
+    await uzytkownik.click(within(formularz).getByRole("button", { name: /^Adres/ }));
+    expect(within(formularz).getByLabelText(/^Ulica/)).toBeInTheDocument();
+    expect(within(formularz).queryByLabelText(/Grupa produktowa/)).toBeNull();
+    expect(within(formularz).queryByText(/grup[aąy] produktow/i)).toBeNull();
+
+    await uzytkownik.click(within(formularz).getByRole("button", { name: "Zapisz zmiany" }));
+    await waitFor(() => expect(zapiszKarteOsoby).toHaveBeenCalledTimes(1));
+    expect(Object.keys(zapiszKarteOsoby.mock.calls[0][1] as object)).not.toContain("product_group");
   });
 
   it("422 → błąd przy polu (ciało zapisu bez pola role)", async () => {

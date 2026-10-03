@@ -5,14 +5,14 @@ import type {
   WierszRecordList,
 } from "@/design-system/organizmy/RecordList/RecordList";
 import type { WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
-import { COURSE_STATE_LABELS, COURSE_TYPE_LABELS, PRODUCT_GROUP_LABELS, type ReorderImpactRow } from "@/lib/h08/types";
+import { COURSE_STATE_LABELS, COURSE_TYPE_LABELS, type ReorderImpactRow } from "@/lib/h08/types";
 import { odmien } from "../wspolne/odmiana";
 import type { KursAdministracji } from "./dane";
 
 /**
  * Logika ekranu „Kursy” (administracja) bez Reacta: wiersze listy, identyfikator
  * z tytułu, przesuwanie w kolejności ścieżki, klasyfikacja błędów. Etykiety typu
- * i grupy produktowej to słowniki `lib/h08/types` — te same co na starym ekranie.
+ * to słownik `lib/h08/types` — ten sam co na starym ekranie.
  */
 
 /** Adres ekranu kursu (stary ekran szczegółu, ta sama trasa produktu). */
@@ -39,12 +39,9 @@ export function miejsceWSciezce(pozycja: number | null): KomorkaRecordList {
   return pozycja === null ? { tekst: "poza ścieżką" } : { liczba: pozycja, bezJednostki: true };
 }
 
-/** Opis pod nazwą kursu: typ · grupa produktowa (etykiety ze słowników). */
+/** Opis pod nazwą kursu: sam typ (etykieta ze słownika); grupa produktowa jest schowana. */
 export function opisKursu(kurs: KursAdministracji): string {
-  return [
-    COURSE_TYPE_LABELS[kurs.type] ?? kurs.type,
-    PRODUCT_GROUP_LABELS[kurs.product_group] ?? kurs.product_group,
-  ].join(" · ");
+  return COURSE_TYPE_LABELS[kurs.type] ?? kurs.type;
 }
 
 /** Wiersze `RecordList`: nazwa z opisem, plakietka publikacji, miejsce w ścieżce, liczba lekcji, akcja „Otwórz” (pełna nazwa z tytułem tylko dla czytnika). */

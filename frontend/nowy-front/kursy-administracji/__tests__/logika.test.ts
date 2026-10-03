@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api/klient";
-import { COURSE_TYPE_LABELS, PRODUCT_GROUP_LABELS, type ReorderImpactRow } from "@/lib/h08/types";
+import { COURSE_TYPE_LABELS, type ReorderImpactRow } from "@/lib/h08/types";
 import type { KursAdministracji } from "../dane";
 import {
   KOLUMNY_KURSOW,
@@ -75,14 +75,14 @@ describe("miejsceWSciezce i opisKursu", () => {
     expect(miejsceWSciezce(null)).toEqual({ tekst: "poza ścieżką" });
   });
 
-  it("opis pod nazwą: typ · grupa, etykiety ze słowników — bez miejsca w ścieżce i bez liczby lekcji", () => {
-    expect(opisKursu(kurs())).toBe([COURSE_TYPE_LABELS.course, PRODUCT_GROUP_LABELS.psychon].join(" · "));
-    expect(opisKursu(kurs())).not.toMatch(/ścieżce|lekcj/);
+  it("opis pod nazwą: sam typ ze słownika — bez grupy produktowej, miejsca w ścieżce i liczby lekcji", () => {
+    expect(opisKursu(kurs())).toBe(COURSE_TYPE_LABELS.course);
+    expect(opisKursu(kurs())).not.toMatch(/ścieżce|lekcj|PsychON|Dobrostan/);
   });
 
-  it("opis webinaru dla obu grup", () => {
+  it("opis webinaru dla obu grup nie niesie nazwy grupy", () => {
     expect(opisKursu(kurs({ type: "webinar", sequence_order: null, product_group: "both", lessons_count: 1 }))).toBe(
-      [COURSE_TYPE_LABELS.webinar, PRODUCT_GROUP_LABELS.both].join(" · "),
+      COURSE_TYPE_LABELS.webinar,
     );
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { jedenMain } from "@/design-system/szablony/__tests__/jeden-main";
 import { KURS_BEZ_KOLEJNOSCI, KURS_NA_SCIEZCE, KURS_SPOTKANIE, STUDENCI, WOLONTARIUSZE, strona } from "./atrapy";
@@ -132,7 +132,9 @@ describe("Zaproszenia na kurs — stany ekranu na szablonie formularza", () => {
   it.each([403, 401])("odpowiedź %i na odczyt kursu: odmowa z nazwą roli, zero osób w DOM", async (status) => {
     ustawDane(bladApi(status, status === 401 ? "unauthenticated" : "forbidden", "Brak."));
     const { container } = render(<ZaproszeniaKursu idKursu="7" />);
-    await screen.findByText(/administracji/);
+    expect(await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
+    expect(screen.getByText(/Ten ekran jest dla administracji\./)).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Nie masz dostępu do tego ekranu" })).getAllByRole("button")).toHaveLength(1);
     expect(() => jedenMain(container)).not.toThrow();
     expect(znacznikStylu(container)).toBe("szablon-formularz");
     expect(screen.queryByRole("checkbox")).toBeNull();
@@ -143,18 +145,23 @@ describe("Zaproszenia na kurs — stany ekranu na szablonie formularza", () => {
   it("404 na odczyt kursu: informacja o braku kursu i powrót, bez listy osób", async () => {
     ustawDane(bladApi(404, "not_found", "Nie znaleziono zasobu."));
     const { container } = render(<ZaproszeniaKursu idKursu="7" />);
-    expect(await screen.findByText("Nie znaleziono kursu")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toBeInTheDocument();
+    const obszar = within(screen.getByRole("region", { name: "Nie znaleziono kursu" }));
+    expect(obszar.getAllByRole("button")).toHaveLength(1);
     expect(() => jedenMain(container)).not.toThrow();
     expect(znacznikStylu(container)).toBe("szablon-formularz");
     expect(screen.queryByRole("checkbox")).toBeNull();
+    await userEvent.click(obszar.getByRole("button", { name: "Wróć do listy" }));
+    expect(back).toHaveBeenCalledTimes(1);
   });
 
   it("adres kursu, który nie jest liczbą: brak kursu bez żadnego zapytania", async () => {
     ustawDane(KURS_SPOTKANIE);
     const { container } = render(<ZaproszeniaKursu idKursu="abc" />);
-    expect(await screen.findByText("Nie znaleziono kursu")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "Nie znaleziono kursu" })).toBeInTheDocument();
     expect(() => jedenMain(container)).not.toThrow();
-    expect(api).not.toHaveBeenCalled();
+    // Jedyny odczyt to konto osoby zalogowanej (`/me`) dla ekranu odmowy — żadnego zapytania o kurs ani o osoby.
+    expect(api.mock.calls.filter(([sciezka]) => sciezka !== "/me")).toEqual([]);
     expect(apiPaged).not.toHaveBeenCalled();
   });
 

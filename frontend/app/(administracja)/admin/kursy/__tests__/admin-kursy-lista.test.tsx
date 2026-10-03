@@ -121,4 +121,30 @@ describe("AdminCoursesPage", () => {
       ),
     );
   });
+
+  it("grupa produktowa schowana: lista nie ma kolumny ani etykiety grupy, formularz nowego kursu nie ma pola i nie wysyła product_group", async () => {
+    apiPaged.mockResolvedValue({
+      data: [{ ...kurs, product_group: "both" as const }],
+      meta: { current_page: 1, per_page: 100, total: 1, last_page: 1 },
+    });
+    api.mockResolvedValue({ ...kurs, id: 9 });
+    render(<AdminCoursesPage />);
+
+    await waitFor(() => expect(screen.getByText("Wywiad psychologiczny")).toBeInTheDocument());
+    expect(screen.queryByText("Grupa produktowa")).not.toBeInTheDocument();
+    expect(screen.queryByText("PsychON i Dobrostan")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Dodaj kurs" }));
+    expect(screen.getByLabelText("Tytuł")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Grupa produktowa")).not.toBeInTheDocument();
+    expect(screen.queryByText("Grupa produktowa")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Tytuł"), "Nowy kurs próbny");
+    await userEvent.type(screen.getByLabelText("Identyfikator (slug)"), "nowy-kurs-probny");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz szkic" }));
+
+    await waitFor(() => expect(api).toHaveBeenCalledWith("/admin/courses", expect.anything()));
+    const [, opcje] = api.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    expect(Object.keys(opcje.body)).not.toContain("product_group");
+  });
 });

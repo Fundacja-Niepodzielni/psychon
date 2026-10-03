@@ -16,6 +16,7 @@ import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import type { PaginationMeta } from "@/lib/api/klient";
 import {
   odpowiedzNaZgloszenie,
@@ -184,10 +185,10 @@ export function ZgloszeniaWspolpracy() {
       <ListTemplate
         naglowek={naglowek}
         lista={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Dalsza współpraca"
-            rola="administracji"
+          <EkranOdmowy
+            rodzaj="brak-dostepu"
+            stopien={2}
+            rolaDocelowa="administracji"
             przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
           />
         }

@@ -1,4 +1,6 @@
+import type { GrupaTras } from "@/lib/api/h08-tematy";
 import { zlecWgranieNagrania, type ZlecenieWgrania } from "@/nowy-front/lekcja-edycja/dane";
+import { zlecWgranieNagraniaProwadzacego } from "@/nowy-front/rola-kursu/trasy-prowadzacego";
 import { szacujPozostalyCzas } from "@/nowy-front/lekcja-edycja/nagranie";
 import { odczytajPrzesuniecie, utworzWgranie, wyslijKawalki } from "@/nowy-front/lekcja-edycja/tus";
 import { czyWpisWazny, czytajWpis, odciskPliku, tenSamPlik, usunWpis, zapiszWpis, type WpisWysylania } from "./pamiec";
@@ -21,6 +23,8 @@ export interface LekcjaWysylania {
   tytul: string;
   /** Adres strony lekcji w panelu. */
   adres: string;
+  /** Grupa tras zlecenia wgrania; bez niej — trasa administracji. */
+  grupa?: GrupaTras;
 }
 
 interface PlikWysylania {
@@ -60,6 +64,8 @@ type Pozwolenie = ZlecenieWgrania & { resumed?: boolean };
 
 export interface ZaleznosciUchwytu {
   zlec: (idLekcji: number, tytul: string) => Promise<Pozwolenie>;
+  /** Zlecenie wgrania z trasy prowadzącego — dla lekcji z `grupa: "instructor"`. */
+  zlecProwadzacego?: (idLekcji: number, tytul: string) => Promise<Pozwolenie>;
   magazyn: () => Storage | null;
   teraz: () => number;
 }
@@ -150,7 +156,10 @@ export function utworzUchwyt(zaleznosci: ZaleznosciUchwytu) {
 
     let pozwolenie: Pozwolenie;
     try {
-      pozwolenie = await zaleznosci.zlec(lekcja.id, lekcja.tytul);
+      const zlec = lekcja.grupa === "instructor" ? zaleznosci.zlecProwadzacego : zaleznosci.zlec;
+      // Lekcja prowadzącego nigdy nie idzie trasą administracji.
+      if (zlec === undefined) throw new Error("Brak trasy zlecenia wgrania prowadzącego.");
+      pozwolenie = await zlec(lekcja.id, lekcja.tytul);
     } catch (blad) {
       if (kontroler !== wlasny) return { rodzaj: "przerwane" };
       kontroler = null;
@@ -268,6 +277,7 @@ function pamiecPrzegladarki(): Storage | null {
 /** Jedyny uchwyt aplikacji. */
 export const uchwytWysylania: UchwytWysylania = utworzUchwyt({
   zlec: (idLekcji, tytul) => zlecWgranieNagrania(idLekcji, tytul),
+  zlecProwadzacego: (idLekcji, tytul) => zlecWgranieNagraniaProwadzacego(idLekcji, tytul),
   magazyn: pamiecPrzegladarki,
   teraz: () => Date.now(),
 });

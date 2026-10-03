@@ -354,7 +354,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
                 fokusPrzyOtwarciu
                 tytul="Dane osoby"
                 pola={pola}
-                tytulDodatkowych="Adres i grupa produktowa"
+                tytulDodatkowych="Adres"
                 etykietaZapisz={zapisywanie ? "Zapisywanie…" : "Zapisz zmiany"}
                 onAnuluj={zamknijFormularz}
                 onZapisz={() => {

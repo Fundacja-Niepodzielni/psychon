@@ -19,6 +19,7 @@ import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { DataTable } from "@/design-system/organizmy/DataTable/DataTable";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { EmptyStateCard } from "@/design-system/organizmy/EmptyStateCard/EmptyStateCard";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
@@ -210,12 +211,7 @@ export function WzoryDokumentow() {
     wspierajaca = <Skeleton wiersze={4} />;
   } else if (stan.rodzaj === "brak-uprawnien") {
     stanPusty = (
-      <EmptyStateCard
-        wariant="brak-uprawnien"
-        naglowek="Wzorami dokumentów zajmuje się administracja"
-        rola="administracji"
-        przycisk={{ etykieta: "Wróć", onClick: wroc }}
-      />
+      <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: wroc }} />
     );
   } else if (stan.rodzaj === "brak-wzoru") {
     stanPusty = (

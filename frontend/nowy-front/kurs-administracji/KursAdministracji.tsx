@@ -10,17 +10,23 @@ import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { pobierzDaneKursuAdministracji } from "@/nowy-front/kurs-publikacja/dane-administracji";
+import { DostawcaRoliKursu, useRolaKursu } from "@/nowy-front/rola-kursu/kontekst";
+import type { KonfiguracjaRoliKursu, RolaKursu } from "@/nowy-front/rola-kursu/rola";
 import { KursTematy, type WynikOdczytuKursu } from "@/nowy-front/kurs-tematy/KursTematy";
 import type { LekcjaAdmin } from "@/nowy-front/lekcja-edycja/dane";
 import { EkranKursu } from "./EkranKursu";
 import style from "./KursAdministracji.module.css";
 
-const ADRES_LISTY_KURSOW = "/admin/kursy";
-const OKRUSZKI = [{ etykieta: "Kursy", href: ADRES_LISTY_KURSOW }, { etykieta: "Tematy i lekcje" }];
+function okruszki(adresListyKursow: string) {
+  return [{ etykieta: "Kursy", href: adresListyKursow }, { etykieta: "Tematy i lekcje" }];
+}
 
 interface WlasciwosciKursAdministracji {
   idKursu: string;
+  /** Rola ekranu: administracja (domyślnie) albo prowadzący — trasy `/admin/…` albo `/instructor/…`. */
+  rola?: RolaKursu;
 }
 
 /** Odczyt zakończony odmową albo komplet danych ekranu: kurs, lekcje i tematy. */
@@ -28,11 +34,11 @@ type Odczyt =
   | { rodzaj: "odmowa"; wynik: WynikOdczytuKursu }
   | { rodzaj: "gotowy"; kurs: AdminCourse; lekcje: LekcjaAdmin[]; tematy: Topic[] };
 
-async function odczytajKurs(idKursu: string): Promise<Odczyt> {
-  const wynik = await pobierzDaneKursuAdministracji(idKursu);
+async function odczytajKurs(idKursu: string, rola: KonfiguracjaRoliKursu): Promise<Odczyt> {
+  const wynik = await pobierzDaneKursuAdministracji(idKursu, rola.dane);
   if (wynik.status !== "ok" && wynik.status !== "pusty") return { rodzaj: "odmowa", wynik };
   try {
-    const tematy = await pobierzTematy("admin", wynik.dane.kurs.id);
+    const tematy = await pobierzTematy(rola.rola, wynik.dane.kurs.id);
     return { rodzaj: "gotowy", kurs: wynik.dane.kurs, lekcje: wynik.dane.lekcje as LekcjaAdmin[], tematy };
   } catch (blad) {
     // Te same trzy odmowy i te same stany co przy odczycie kursu.
@@ -44,51 +50,65 @@ async function odczytajKurs(idKursu: string): Promise<Odczyt> {
 }
 
 /**
- * Ekran kursu administracji. Czyta kurs, lekcje i tematy z przeglądarki
- * (trasy `/admin/…`), a potem oddaje je ekranowi w dwóch kolumnach
- * (`EkranKursu`). Stany bez kursu — wczytywanie, wygasła sesja, brak roli,
- * brak kursu, błąd odczytu, kurs usunięty — rysuje tak jak dotąd: wspólnymi
- * stanami ekranu tematów, w szablonie szczegółu.
+ * Ekran kursu administracji i prowadzącego. Czyta kurs, lekcje i tematy
+ * z przeglądarki (trasy `/admin/…` albo `/instructor/…`, zależnie od roli),
+ * a potem oddaje je ekranowi w dwóch kolumnach (`EkranKursu`). Stany bez
+ * kursu — wczytywanie, wygasła sesja, brak roli, brak kursu, błąd odczytu,
+ * kurs usunięty — rysuje tak jak dotąd: wspólnymi stanami ekranu tematów,
+ * w szablonie szczegółu.
  */
-export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
+export function KursAdministracji({ idKursu, rola = "admin" }: WlasciwosciKursAdministracji) {
+  return (
+    <DostawcaRoliKursu rola={rola}>
+      <TrescKursu idKursu={idKursu} />
+    </DostawcaRoliKursu>
+  );
+}
+
+function TrescKursu({ idKursu }: { idKursu: string }) {
   const router = useRouter();
+  const rola = useRolaKursu();
+  const okruszkiEkranu = okruszki(rola.adresListyKursow);
   const [odczyt, setOdczyt] = useState<Odczyt | null>(null);
   const [proba, setProba] = useState(0);
   const [koniec, setKoniec] = useState<"usuniety" | "nie-znaleziono" | null>(null);
 
   useEffect(() => {
     let aktualne = true;
-    odczytajKurs(idKursu).then((pobrany) => {
+    odczytajKurs(idKursu, rola).then((pobrany) => {
       if (aktualne) setOdczyt(pobrany);
     });
     return () => {
       aktualne = false;
     };
-  }, [idKursu, proba]);
+  }, [idKursu, proba, rola]);
 
   if (koniec !== null) {
     return (
       <DetailTemplate
         naglowek={{
-          okruszki: OKRUSZKI,
+          okruszki: okruszkiEkranu,
           tytul: koniec === "usuniety" ? "Kurs usunięty" : `Kurs ${idKursu}`,
           onPowrot: () => router.back(),
         }}
         glowna={
-          <div className={style.blok}>
-            {koniec === "usuniety" ? (
+          koniec === "usuniety" ? (
+            <div className={style.blok}>
               <Notice wariant="ok" tytul="Kurs został usunięty">
                 Postęp uczestników zostaje zachowany.
               </Notice>
-            ) : (
-              <Notice wariant="warn" tytul="Nie znaleziono kursu">
-                Kurs nie istnieje albo został usunięty.
-              </Notice>
-            )}
-            <Text>
-              <Link href={ADRES_LISTY_KURSOW}>Wróć do listy kursów</Link>
-            </Text>
-          </div>
+              <Text>
+                <Link href={rola.adresListyKursow}>Wróć do listy kursów</Link>
+              </Text>
+            </div>
+          ) : (
+            <EkranOdmowy
+              rodzaj="nie-znaleziono"
+              czego="kursu"
+              stopien={2}
+              przycisk={{ etykieta: "Wróć do listy kursów", onClick: () => router.push(rola.adresListyKursow) }}
+            />
+          )
         }
         wspierajaca={null}
       />
@@ -98,7 +118,7 @@ export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
   if (odczyt === null) {
     return (
       <DetailTemplate
-        naglowek={{ okruszki: OKRUSZKI, tytul: "Wczytywanie kursu", onPowrot: () => router.back() }}
+        naglowek={{ okruszki: okruszkiEkranu, tytul: "Wczytywanie kursu", onPowrot: () => router.back() }}
         glowna={
           <div aria-busy="true">
             <Skeleton wiersze={6} />
@@ -112,7 +132,7 @@ export function KursAdministracji({ idKursu }: WlasciwosciKursAdministracji) {
   if (odczyt.rodzaj === "odmowa") {
     return (
       <KursTematy
-        grupa="admin"
+        grupa={rola.rola}
         idKursu={idKursu}
         wynik={odczyt.wynik}
         onPonow={() => {

@@ -101,6 +101,15 @@ describe("UkladEdycji — arkusz", () => {
     expect(szeroko.split(".pasekWaski {")[1].split("}")[0]).toContain("display: none");
   });
 
+  it("kolumna boczna nie wystaje poza swoją komórkę: bez ujemnych marginesów, obrys fokusu rysowany do środka", () => {
+    const szeroko = css.split(`@media (min-width: ${PROG_DWOCH_KOLUMN}px) {`)[1];
+    const blok = szeroko.split(".boczna {")[1].split("}")[0];
+    expect(blok).not.toMatch(/margin[a-z-]*:\s*(calc\()?-/);
+    expect(blok).not.toMatch(/calc\(\s*-1\s*\*/);
+    const obrys = szeroko.split(".kolumny .boczna :focus-visible {")[1].split("}")[0];
+    expect(obrys).toMatch(/outline-offset:\s*calc\(-1 \* var\(--focus-width\)\)/);
+  });
+
   it("poniżej progu treść „tylko od dwóch kolumn” jest wyłączona z układu", () => {
     const wasko = css.split(`@media (max-width: ${PROG_DWOCH_KOLUMN - 1}px) {`)[1];
     expect(wasko.split(".tylkoOdDwochKolumn {")[1].split("}")[0]).toContain("display: none");

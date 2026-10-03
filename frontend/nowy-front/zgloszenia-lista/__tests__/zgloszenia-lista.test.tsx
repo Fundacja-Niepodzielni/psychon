@@ -195,23 +195,25 @@ describe("Zgłoszenia rekrutacyjne — stany", () => {
     expect(apiPaged).toHaveBeenLastCalledWith("/admin/applications?page=1&per_page=25");
   });
 
-  it("odmowa 403: wariant odmowy z rolą administracji, zero rekordów, szablon na miejscu", async () => {
+  it("odmowa 403: ekran odmowy z rolą administracji, zero rekordów, szablon na miejscu", async () => {
     apiPaged.mockRejectedValue(odmowa(403));
     const { container } = render(<ZgloszeniaLista />);
 
-    await screen.findByText(/administracji/);
+    const naglowek = await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    await waitFor(() => expect(naglowek).toHaveFocus());
     sprawdzSzablon(container);
-    expect(container.textContent).toMatch(/tylko dla administracji/);
+    expect(container.textContent).toMatch(/Ten ekran jest dla administracji\./);
+    expect(within(screen.getByRole("region", { name: "Nie masz dostępu do tego ekranu" })).getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByRole("link", { name: /^Otwórz zgłoszenie: / })).toBeNull();
     expect(screen.queryByRole("form")).toBeNull();
     expect(container.textContent).not.toMatch(/Brak dostępu|Nie masz uprawnień/);
   });
 
-  it("odmowa 401: ten sam wariant odmowy i zero rekordów", async () => {
+  it("odmowa 401: ten sam ekran odmowy i zero rekordów", async () => {
     apiPaged.mockRejectedValue(odmowa(401));
     const { container } = render(<ZgloszeniaLista />);
 
-    await screen.findByText(/administracji/);
+    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
     sprawdzSzablon(container);
     expect(screen.queryByRole("link", { name: /^Otwórz zgłoszenie: / })).toBeNull();
   });

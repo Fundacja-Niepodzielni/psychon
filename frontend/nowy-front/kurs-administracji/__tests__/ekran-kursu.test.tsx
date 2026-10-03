@@ -277,7 +277,8 @@ describe("ekran kursu — stany bez kursu", () => {
   it("odmowa roli przy odczycie tematów", async () => {
     serwer.nadpisz("GET", "/admin/courses/4/topics", () => new ApiError({ status: 403, code: "forbidden", message: "x" }));
     render(<KursAdministracji idKursu="4" />);
-    expect((await screen.findAllByText(/administracji/)).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
+    expect(screen.getByText(/Ten ekran jest dla administracji\./)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 2, name: "Tematy i lekcje" })).toBeNull();
   });
 
@@ -408,6 +409,23 @@ describe("ekran kursu — publikacja", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Kurs usunięty" })).toBeInTheDocument();
     expect(serwer.zapisy()).toEqual([{ sciezka: "/admin/courses/4", metoda: "DELETE", cialo: undefined }]);
   });
+
+  it("usunięcie kursu, którego już nie ma: „Nie znaleziono kursu” i jeden przycisk powrotu do listy kursów", async () => {
+    await renderEkranu();
+    serwer.nadpisz("DELETE", "/admin/courses/4", () => new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." }));
+    await userEvent.click(screen.getByRole("button", { name: "Usunięcie kursu" }));
+    await userEvent.click(screen.getByRole("button", { name: "Usuń kurs" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń kurs" }));
+
+    const naglowek = await screen.findByRole("heading", { level: 2, name: "Nie znaleziono kursu" });
+    await waitFor(() => expect(naglowek).toHaveFocus());
+    expect(screen.queryAllByRole("link", { name: "Wróć do listy kursów" })).toHaveLength(0);
+    const obszar = within(screen.getByRole("region", { name: "Nie znaleziono kursu" }));
+    expect(obszar.getAllByRole("button")).toHaveLength(1);
+    push.mockClear();
+    await userEvent.click(obszar.getByRole("button", { name: "Wróć do listy kursów" }));
+    expect(push).toHaveBeenCalledWith("/admin/kursy");
+  });
 });
 
 describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
@@ -420,7 +438,7 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
     await renderEkranu();
     expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "false", "false"]);
     expect(wiersze()[0]).toHaveTextContent("Opis i dane kursu");
-    expect(wiersze()[0]).toHaveTextContent("Kurs · grupa PsychON · 2. miejsce w ścieżce");
+    expect(wiersze()[0]).toHaveTextContent("Kurs · 2. miejsce w ścieżce");
     expect(wiersze()[1]).toHaveTextContent("Prowadzący");
     expect(wiersze()[2]).toHaveTextContent("Zaproszenia");
     expect(screen.queryByText("Zdjęcie kursu")).toBeNull();
@@ -509,12 +527,27 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
         description: "Nowy opis.",
         slug: "wywiad-psychologiczny",
         type: "course",
-        product_group: "psychon",
       },
     });
     expect(await screen.findByText("Zapisano.")).toBeInTheDocument();
     expect(ogloszenie()).toBe("Zapisano dane kursu.");
     expect(wiersze()[0]).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("grupa produktowa schowana: wiersz i formularz danych nie niosą grupy, zapis kursu z grupą „obie” nie wysyła product_group", async () => {
+    serwer = utworzSerwer({ kurs: { ...KURS, product_group: "both" } });
+    await renderEkranu();
+    expect(wiersze()[0]).not.toHaveTextContent(/grupa|Obie grupy|PsychON|Dobrostan/i);
+
+    await userEvent.click(wiersze()[0]);
+    expect(screen.getByRole("textbox", { name: "Opis kursu" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /^Grupa/ })).toBeNull();
+    expect(screen.queryByText(/^Grupa/)).toBeNull();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Opis kursu" }), " Dopisek.");
+    await userEvent.click(screen.getByRole("button", { name: "Zapisz dane kursu" }));
+    await waitFor(() => expect(serwer.zapisy()).toHaveLength(1));
+    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("product_group");
   });
 
   it("brak opisu: odnośnik z karty „Publikacja” rozwija wiersz danych i stawia na nim fokus", async () => {

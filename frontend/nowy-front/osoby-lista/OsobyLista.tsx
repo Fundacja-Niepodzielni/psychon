@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
@@ -157,12 +158,7 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
       <ListTemplate
         naglowek={naglowek}
         lista={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Lista osób jest niedostępna"
-            rola="administracji"
-            przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
-          />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wróć", onClick: () => router.back() }} />
         }
       />
     );

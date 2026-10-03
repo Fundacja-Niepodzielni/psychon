@@ -9,7 +9,6 @@ import { ApiError } from "@/lib/api/klient";
 import { fetchInstructorCourse, fetchInstructorLessons } from "@/lib/api/prowadzacy-kursy";
 import {
   COURSE_TYPE_LABELS,
-  PRODUCT_GROUP_LABELS,
   type AdminCourse,
   type AdminLesson,
 } from "@/lib/h08/types";
@@ -88,8 +87,6 @@ export default function KursProwadzacego({ id }: KursProwadzacegoProps) {
         title: tytul,
         description: course
           ? `${COURSE_TYPE_LABELS[course.type]} · ${
-              PRODUCT_GROUP_LABELS[course.product_group]
-            } · ${
               course.sequence_order === null
                 ? "poza główną ścieżką"
                 : `pozycja ${course.sequence_order} w ścieżce`

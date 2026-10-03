@@ -7,21 +7,20 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { Link } from "@/design-system/atomy/Link/Link";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
-import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
+import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { FormTemplate } from "@/design-system/szablony/FormTemplate/FormTemplate";
-import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
-import { pobierzKurs } from "@/nowy-front/publikacja-kursu/dane";
+import { DostawcaRoliKursu, useRolaKursu } from "@/nowy-front/rola-kursu/kontekst";
+import type { KonfiguracjaRoliKursu, RolaKursu } from "@/nowy-front/rola-kursu/rola";
 import {
   czyBrakUprawnien,
   czyNieZnaleziono,
   pobierzLekcjeKursu,
   pobierzRole,
-  pobierzStanNagrania,
   usunLekcje,
   zapiszLekcje,
   type LekcjaAdmin,
@@ -54,6 +53,8 @@ interface WlasciwosciLekcjaEdycja {
    * właściwości (trasa poligonu) okruszki zostają jak dotąd.
    */
   zNazwaKursu?: boolean;
+  /** Rola strony: administracja (domyślnie) albo prowadzący — trasy `/admin/…` albo `/instructor/…`. */
+  rola?: RolaKursu;
 }
 
 /** Nazwa kursu do okruszków: `undefined` = ekran jej nie pokazuje, `null` = jeszcze nieznana albo odczyt się nie udał. */
@@ -66,31 +67,16 @@ type StanEkranu =
   | { rodzaj: "blad" }
   | { rodzaj: "dane"; lekcja: LekcjaAdmin; lekcje: LekcjaAdmin[]; rola: string | null; nagranie: StanNagrania | null };
 
-/** Ekran kursu administracji: adres produktu po włączeniu grupy, wcześniej trasa poligonu. */
-function adresKursu(idKursu: number): string {
-  const [ekran] = GRUPY.kursAdministracji.ekrany;
-  const wzorzec = czyNowaTrasaDostepna(GRUPY.kursAdministracji) ? ekran.nowaTrasa : ekran.trasaPoligonu;
-  return wzorzec.replace("[id]", String(idKursu));
-}
-
-function okruszki(idKursu: number | null, nazwaKursu?: NazwaKursu) {
+/**
+ * Okruszki strony lekcji. Adres ekranu kursu (produkt po włączeniu grupy,
+ * wcześniej trasa poligonu) i listy kursów podaje rola strony.
+ */
+function okruszki(rola: KonfiguracjaRoliKursu, idKursu: number | null, nazwaKursu?: NazwaKursu) {
   return [
-    nazwaKursu === undefined ? { etykieta: "Kursy" } : { etykieta: "Kursy", href: ADRES_LISTY_KURSOW },
-    { etykieta: nazwaKursu || "Tematy i lekcje", href: idKursu === null ? undefined : adresKursu(idKursu) },
+    nazwaKursu === undefined ? { etykieta: "Kursy" } : { etykieta: "Kursy", href: rola.adresListyKursow },
+    { etykieta: nazwaKursu || "Tematy i lekcje", href: idKursu === null ? undefined : rola.adresKursu(idKursu) },
     { etykieta: "Lekcja" },
   ];
-}
-
-const ADRES_LISTY_KURSOW = "/admin/kursy";
-
-/**
- * Adres strony lekcji: pod adresem produktu kurs stoi w ścieżce, na trasie
- * poligonu — w zapytaniu. Wzorce obu tras niesie rejestr przełączeń.
- */
-function adresLekcji(idKursu: number, idLekcji: number, podKursem: boolean): string {
-  const [ekran] = GRUPY.edycjaLekcji.ekrany;
-  if (podKursem) return ekran.nowaTrasa.replace("[id]", String(idKursu)).replace("[idLekcji]", String(idLekcji));
-  return `${ekran.trasaPoligonu.replace("[id]", String(idLekcji))}?kurs=${idKursu}`;
 }
 
 interface WlasciwosciSzablonuStanu {
@@ -103,9 +89,10 @@ interface WlasciwosciSzablonuStanu {
 
 /** Każdy stan poza danymi renderuje się wewnątrz tego samego szablonu — jedyny `main` ekranu. */
 function SzablonStanu({ tytul, idKursu, nazwaKursu, wroc, tresc }: WlasciwosciSzablonuStanu) {
+  const rola = useRolaKursu();
   return (
     <FormTemplate
-      naglowek={<PageHeader okruszki={okruszki(idKursu, nazwaKursu)} tytul={tytul} onPowrot={wroc} />}
+      naglowek={<PageHeader okruszki={okruszki(rola, idKursu, nazwaKursu)} tytul={tytul} onPowrot={wroc} />}
       tresc={tresc}
     />
   );
@@ -121,9 +108,22 @@ function SzablonStanu({ tytul, idKursu, nazwaKursu, wroc, tresc }: WlasciwosciSz
  * lekcja spoza kursu), błąd połączenia. Stany bez danych stoją w szablonie
  * formularza; dane pokazuje `StronaLekcji` w układzie dwóch kolumn — tam żyją
  * zapis, błędy pól, nagranie i pliki.
+ *
+ * Ta sama strona w roli prowadzącego (`rola="instructor"`): lekcje z
+ * `GET /instructor/courses/{course}/lessons`, adresy panelu prowadzącego.
  */
-export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: WlasciwosciLekcjaEdycja) {
+export function LekcjaEdycja({ rola = "admin", ...wlasciwosci }: WlasciwosciLekcjaEdycja) {
+  return (
+    <DostawcaRoliKursu rola={rola}>
+      <TrescLekcjiEdycji {...wlasciwosci} />
+    </DostawcaRoliKursu>
+  );
+}
+
+function TrescLekcjiEdycji({ idLekcji, idKursu, zNazwaKursu = false }: Omit<WlasciwosciLekcjaEdycja, "rola">) {
   const router = useRouter();
+  const konfiguracja = useRolaKursu();
+  const { dane } = konfiguracja;
   const wroc = () => router.back();
   const adresPoprawny = idLekcji !== null && idKursu !== null;
   const [stan, setStan] = useState<StanEkranu>({ rodzaj: "ladowanie" });
@@ -135,7 +135,7 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
   useEffect(() => {
     if (!zNazwaKursu || idKursu === null) return;
     let aktualne = true;
-    pobierzKurs(String(idKursu))
+    dane.pobierzKurs(String(idKursu))
       .then((kurs) => {
         if (aktualne) setTytulKursu(kurs.title);
       })
@@ -143,14 +143,14 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
     return () => {
       aktualne = false;
     };
-  }, [zNazwaKursu, idKursu]);
+  }, [zNazwaKursu, idKursu, dane]);
 
   useEffect(() => {
     if (idLekcji === null || idKursu === null) return;
     let aktualne = true;
     (async () => {
       try {
-        const lekcje = await pobierzLekcjeKursu(idKursu);
+        const lekcje = await dane.pobierzLekcjeKursu(idKursu);
         const lekcja = lekcje.find((kandydat) => kandydat.id === idLekcji);
         if (!lekcja) {
           if (aktualne) setStan({ rodzaj: "nie-znaleziono" });
@@ -159,7 +159,7 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
         // Rola i stan nagrania są dodatkiem: ich błąd nie blokuje edycji tekstu.
         const [rola, nagranie] = await Promise.all([
           pobierzRole().catch(() => null),
-          pobierzStanNagrania(idLekcji).catch(() => null),
+          konfiguracja.nagranie ? dane.pobierzStanNagrania(idLekcji).catch(() => null) : Promise.resolve(null),
         ]);
         if (aktualne) setStan({ rodzaj: "dane", lekcja, lekcje, rola, nagranie });
       } catch (blad) {
@@ -172,7 +172,7 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
     return () => {
       aktualne = false;
     };
-  }, [idLekcji, idKursu, proba]);
+  }, [idLekcji, idKursu, proba, konfiguracja, dane]);
 
   if (!adresPoprawny || stan.rodzaj === "nie-znaleziono") {
     return (
@@ -182,11 +182,7 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
         nazwaKursu={nazwaKursu}
         wroc={wroc}
         tresc={
-          <EmptyState
-            naglowek="Nie znaleziono lekcji"
-            tresc="Lekcja nie istnieje albo została usunięta. Otwórz ją z ekranu tematów i lekcji kursu."
-            przycisk={{ etykieta: "Wróć", onClick: wroc }}
-          />
+          <EkranOdmowy rodzaj="nie-znaleziono" czego="lekcji" stopien={2} przycisk={{ etykieta: "Wróć", onClick: wroc }} />
         }
       />
     );
@@ -199,12 +195,8 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
         nazwaKursu={nazwaKursu}
         wroc={wroc}
         tresc={
-          <EmptyState
-            wariant="brak-uprawnien"
-            naglowek="Edycja lekcji"
-            rola="administracji"
-            przycisk={{ etykieta: "Wróć", onClick: wroc }}
-          />
+          <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa={konfiguracja.rolaOdmowy} przycisk={{ etykieta: "Wróć", onClick: wroc }} />
+
         }
       />
     );
@@ -264,9 +256,9 @@ export function LekcjaEdycja({ idLekcji, idKursu, zNazwaKursu = false }: Wlasciw
       lekcjeKursu={stan.lekcje}
       rola={stan.rola}
       nagranieStart={stan.nagranie}
-      okruszki={okruszki(idKursu, nazwaKursu)}
-      adresKursu={idKursu === null ? null : adresKursu(idKursu)}
-      adresLekcji={(inna) => adresLekcji(idKursuLekcji, inna, zNazwaKursu)}
+      okruszki={okruszki(konfiguracja, idKursu, nazwaKursu)}
+      adresKursu={idKursu === null ? null : konfiguracja.adresKursu(idKursu)}
+      adresLekcji={(inna) => konfiguracja.adresLekcji(idKursuLekcji, inna, zNazwaKursu)}
     />
   );
 }
