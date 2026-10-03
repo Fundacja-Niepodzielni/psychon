@@ -20,10 +20,16 @@ import { asercjaBrakPowaznychNaruszen, uruchomAxe } from "./_axe";
  *
  * Poligon (Vite) budowany jest do katalogu tymczasowego systemu; gotowy build
  * można wskazać zmienną `ODTWARZACZ_POLIGON_KATALOG`.
+ *
+ * Próby czasu oglądania chodzą na zegarze atrapowym Playwright (`page.clock`),
+ * nie na zegarze ściany: ten pod obciążeniem cofa się o ok. 0,5–0,9 s w trakcie
+ * próby (zmierzone), a licznik aplikacji liczy z zegara monotonicznego strony.
  */
 
 const GOTOWY = process.env.ODTWARZACZ_POLIGON_KATALOG;
-const KATALOG = normalize(GOTOWY ?? join(tmpdir(), "poligon-odtwarzacz-nagrania"));
+// Każdy proces próby buduje poligon do własnego katalogu: równoległe budowy do jednego
+// (`--emptyOutDir`) opróżniałyby sobie nawzajem katalog spod działających prób.
+const KATALOG = normalize(GOTOWY ?? join(tmpdir(), `poligon-odtwarzacz-nagrania-${process.pid}`));
 const BAZA = "http://poligon.test";
 const ODTWARZACZ = "https://odtwarzacz.atrapa.test";
 const OBCY = "https://obcy.atrapa.test";
@@ -62,6 +68,8 @@ const ATRAPA_ODTWARZACZA = `<!doctype html>
 <button id="pauza" type="button">Pauza</button>
 <script>
   const odebrane = [];
+  // Adres /embed/reczna: tyknięcia wysyła próba (window.tyknij), a nie własny zegar ramki.
+  const RECZNIE = location.pathname.startsWith("/embed/reczna");
   let pozycja = 0;
   let zegar = null;
   window.odebrane = odebrane;
@@ -75,14 +83,16 @@ const ATRAPA_ODTWARZACZA = `<!doctype html>
     if (tresc.method === "addEventListener" && tresc.value === "ready") wyslij("ready");
     if (tresc.method === "setCurrentTime") { pozycja = tresc.value; wyslij("seeked"); }
   });
+  function tyknij() {
+    pozycja += 0.25;
+    wyslij("timeupdate", { seconds: pozycja, duration: 1800 });
+  }
+  window.tyknij = tyknij;
   document.getElementById("odtworz").addEventListener("click", () => {
     if (zegar !== null) return;
     wyslij("play");
     wyslij("timeupdate", { seconds: pozycja, duration: 1800 });
-    zegar = setInterval(() => {
-      pozycja += 0.25;
-      wyslij("timeupdate", { seconds: pozycja, duration: 1800 });
-    }, 250);
+    zegar = RECZNIE ? 0 : setInterval(tyknij, 250);
   });
   document.getElementById("pauza").addEventListener("click", () => {
     clearInterval(zegar);
@@ -214,6 +224,85 @@ async function otworz(page: Page, zapytanie = "") {
   await expect.poll(async () => (await zgloszenia(page)).gotowa).toBe(1);
 }
 
+/** Początek zegara atrapowego strony i ramek. */
+const POCZATEK_ZEGARA = new Date("2026-10-03T08:00:00Z");
+const ADRES_RECZNEJ_ATRAPY = encodeURIComponent(`${ODTWARZACZ}/embed/reczna`);
+
+/**
+ * Licznik czasu oglądania liczy z `performance.now()` strony, więc próba nie
+ * porównuje go z zegarem ściany procesu próby: ten pod obciążeniem i przy
+ * korekcie zegara systemu rozchodzi się z zegarem strony. Zegar atrapowy
+ * Playwright instaluje się przed wczytaniem strony, a staje po gotowości ramki;
+ * od tej chwili czas płynie wyłącznie o tyle, o ile przesunie go `przesun`.
+ */
+async function zainstalujZegar(page: Page) {
+  await page.clock.install({ time: POCZATEK_ZEGARA });
+}
+
+async function zatrzymajZegar(page: Page) {
+  await page.clock.pauseAt(new Date(POCZATEK_ZEGARA.getTime() + 3_600_000));
+}
+
+/** Liczy komunikaty odtwarzania (start, pauza, pozycja), które okno strony odebrało od ramki. */
+async function liczKomunikaty(page: Page) {
+  await page.evaluate(() => {
+    const okno = window as unknown as { komunikatyOdtwarzania: number };
+    okno.komunikatyOdtwarzania = 0;
+    // Dopisany po nasłuchu aplikacji, więc zlicza komunikat dopiero po tym, jak aplikacja go obsłużyła.
+    window.addEventListener("message", (zdarzenie) => {
+      try {
+        const { event } = JSON.parse(zdarzenie.data as string) as { event?: string };
+        if (event === "play" || event === "pause" || event === "timeupdate") okno.komunikatyOdtwarzania += 1;
+      } catch {
+        // komunikat spoza protokołu
+      }
+    });
+  });
+}
+
+function komunikaty(page: Page) {
+  return page.evaluate(() => (window as unknown as { komunikatyOdtwarzania: number }).komunikatyOdtwarzania);
+}
+
+/** Czeka, aż aplikacja odda zmiany stanu z obsłużonych komunikatów na ekran (bez zegara i bez klatek). */
+function poWyrenderowaniu(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<void>((gotowe) => {
+        let skoki = 0;
+        const kanal = new MessageChannel();
+        kanal.port1.onmessage = () => {
+          skoki += 1;
+          if (skoki < 3) kanal.port2.postMessage(0);
+          else gotowe();
+        };
+        kanal.port2.postMessage(0);
+      }),
+  );
+}
+
+/**
+ * `ile` tyknięć odtwarzacza: przed każdym zegar strony przesuwa się o
+ * `krokZegaraMs`, ramka zgłasza pozycję większą o 0,25 s, a próba czeka, aż
+ * strona ten komunikat odbierze — kolejne tyknięcie nie wyprzedza więc zegara.
+ */
+async function przesun(page: Page, okno: Frame, ile: number, krokZegaraMs: number) {
+  for (let i = 0; i < ile; i += 1) {
+    const przed = await komunikaty(page);
+    await page.clock.runFor(krokZegaraMs);
+    await okno.evaluate(() => (window as unknown as { tyknij: () => void }).tyknij());
+    await expect.poll(() => komunikaty(page)).toBe(przed + 1);
+  }
+}
+
+/** Naciska przycisk w ramce i czeka na `ile` komunikatów zgłoszonych tym naciśnięciem. */
+async function nacisnij(page: Page, okno: Frame, przycisk: "#odtworz" | "#pauza", ile: number) {
+  const przed = await komunikaty(page);
+  await okno.locator(przycisk).click();
+  await expect.poll(() => komunikaty(page)).toBe(przed + ile);
+  await poWyrenderowaniu(page);
+}
+
 function tylkoAdresyProb(zadania: string[]) {
   const dozwolone = [BAZA, ODTWARZACZ, OBCY];
   const inne = zadania.filter((adres) => !dozwolone.includes(new URL(adres).origin));
@@ -222,8 +311,9 @@ function tylkoAdresyProb(zadania: string[]) {
 }
 
 test("prawdziwa ramka z innego pochodzenia: gotowość, start od pozycji, czas z odtwarzania", async ({ page }) => {
+  await zainstalujZegar(page);
   const { zadania } = await podlacz(page);
-  await otworz(page, "?start=125");
+  await otworz(page, `?start=125&adres=${ADRES_RECZNEJ_ATRAPY}`);
   const okno = await oknoOdtwarzacza(page);
 
   // Polecenia dotarły do ramki z pochodzenia strony i od jej okna nadrzędnego.
@@ -237,26 +327,63 @@ test("prawdziwa ramka z innego pochodzenia: gotowość, start od pozycji, czas z
   }
   expect(odebrane.filter((k) => k.tresc.method === "setCurrentTime").map((k) => k.tresc.value)).toEqual([125]);
 
-  const startZegara = Date.now();
-  await okno.locator("#odtworz").click();
-  await page.waitForTimeout(3300);
-  await okno.locator("#pauza").click();
-  const zegar = (Date.now() - startZegara) / 1000;
-  await expect.poll(async () => (await zgloszenia(page)).zmiany).toEqual([true, false]);
+  // Od tej chwili czas stoi: płynie tylko o tyle, o ile przesunie go próba.
+  await zatrzymajZegar(page);
+  await liczKomunikaty(page);
+  await nacisnij(page, okno, "#odtworz", 2);
+  expect(await zgloszenia(page)).toMatchObject({ zmiany: [true], obejrzane: 0, aktywne: 0 });
+
+  // Tempo 1:1: ćwierć sekundy pozycji na ćwierć sekundy zegara. Pełna sekunda dopiero po czterech tyknięciach.
+  await przesun(page, okno, 3, 250);
+  await poWyrenderowaniu(page);
+  expect(await zgloszenia(page)).toMatchObject({ obejrzane: 0, aktywne: 0, pozycja: null });
+  await przesun(page, okno, 1, 250);
+  await expect.poll(async () => (await zgloszenia(page)).obejrzane).toBe(1);
+  await przesun(page, okno, 9, 250);
+  const zegar = (13 * 250) / 1000;
+  await nacisnij(page, okno, "#pauza", 1);
   const poPauzie = await zgloszenia(page);
 
-  expect(poPauzie.obejrzane).toBeGreaterThanOrEqual(2);
+  // 13 tyknięć = 3,25 s zegara i 3,25 s pozycji: doliczone dokładnie 3 pełne sekundy.
+  expect(poPauzie.obejrzane).toBe(3);
   expect(poPauzie.obejrzane).toBeLessThanOrEqual(zegar);
-  expect(poPauzie.aktywne).toBe(poPauzie.obejrzane);
-  expect(poPauzie.pozycja).toBeGreaterThan(125);
+  expect(poPauzie.aktywne).toBe(3);
+  expect(poPauzie.pozycja).toBe(128);
   expect(poPauzie.pozycja).toBeLessThanOrEqual(125 + zegar);
   expect(poPauzie.zmiany).toEqual([true, false]);
   expect(poPauzie.bledy).toEqual([]);
 
-  // Po pauzie nic nie rośnie.
-  await page.waitForTimeout(1500);
+  // Po pauzie nic nie rośnie: ani z upływu czasu, ani z późnego zgłoszenia pozycji.
+  await page.clock.runFor(1500);
+  const przedPoznym = await komunikaty(page);
+  await okno.evaluate(() => (window as unknown as { tyknij: () => void }).tyknij());
+  await expect.poll(() => komunikaty(page)).toBe(przedPoznym + 1);
+  await poWyrenderowaniu(page);
   expect(await zgloszenia(page)).toEqual(poPauzie);
   tylkoAdresyProb(zadania);
+});
+
+test("czas oglądania nie przekracza czasu zegara, gdy pozycja nagrania biegnie szybciej", async ({ page }) => {
+  await zainstalujZegar(page);
+  await podlacz(page);
+  await otworz(page, `?start=125&adres=${ADRES_RECZNEJ_ATRAPY}`);
+  const okno = await oknoOdtwarzacza(page);
+  await zatrzymajZegar(page);
+  await liczKomunikaty(page);
+  await nacisnij(page, okno, "#odtworz", 2);
+
+  // 13 tyknięć co 200 ms zegara: pozycja przesuwa się o 3,25 s, zegar o 2,6 s.
+  await przesun(page, okno, 13, 200);
+  const zegar = (13 * 200) / 1000;
+  await nacisnij(page, okno, "#pauza", 1);
+  const poPauzie = await zgloszenia(page);
+
+  expect(poPauzie.obejrzane).toBe(2);
+  expect(poPauzie.obejrzane).toBeLessThanOrEqual(zegar);
+  expect(poPauzie.aktywne).toBe(2);
+  expect(poPauzie.pozycja).toBe(127.5);
+  expect(poPauzie.zmiany).toEqual([true, false]);
+  expect(poPauzie.bledy).toEqual([]);
 });
 
 for (const [opis, adres] of [
