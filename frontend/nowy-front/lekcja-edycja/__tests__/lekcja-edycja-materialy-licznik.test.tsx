@@ -195,8 +195,12 @@ describe("lista plików wgranych wcześniej (S1, S7)", () => {
 
 describe("licznik = długość listy (S2)", () => {
   it("do czasu odpowiedzi odczytu liczy `materials_count` i mówi, że lista się wczytuje", async () => {
+    // Odpowiedź odczytu istnieje od początku, niezależnie od chwili, w której żądanie listy
+    // wyjdzie: pod obciążeniem maszyny żądanie wychodziło dopiero po `odpowiedz(...)`,
+    // odpowiedź trafiała w pustą funkcję i lista nie wczytywała się nigdy.
     let odpowiedz: (pliki: MaterialAdmin[]) => void = () => undefined;
-    await renderEkranu({ licznikLekcji: 5, odczyt: () => new Promise<MaterialAdmin[]>((ok) => (odpowiedz = ok)) });
+    const lista = new Promise<MaterialAdmin[]>((ok) => (odpowiedz = ok));
+    await renderEkranu({ licznikLekcji: 5, odczyt: () => lista });
 
     expect(within(sekcja()).getByText("Ta lekcja ma 5 plików.")).toBeInTheDocument();
     expect(within(sekcja()).getByText("Wczytywanie listy plików…")).toBeInTheDocument();
