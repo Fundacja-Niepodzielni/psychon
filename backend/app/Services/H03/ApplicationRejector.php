@@ -58,7 +58,7 @@ final class ApplicationRejector
                 'application.rejected',
                 'Zgłoszenie odrzucone',
                 'Zgłoszenie '.$locked->first_name.' '.$locked->last_name.' zostało odrzucone. Powód: '.$reason,
-                '/admin/uczestniczki',
+                '/admin/uczestniczki?zakladka=zgloszenia',
             );
 
             return $locked->fresh();

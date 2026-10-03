@@ -81,6 +81,23 @@ class AttemptLimitTest extends TestPackageCase
         ]);
     }
 
+    public function test_final_failure_notification_links_to_the_failing_persons_card(): void
+    {
+        $manager = User::factory()->create(['role' => 'project_manager']);
+        $test = $this->makeTest(questions: 10);
+        $user = $this->volunteer();
+        $this->actingAs($user, 'keycloak');
+
+        for ($i = 1; $i <= 3; $i++) {
+            $this->postJson("/api/v1/tests/{$test->id}/attempts", [
+                'answers' => $this->answersForAttempt($test, 2, $i),
+            ])->assertCreated();
+        }
+
+        $note = Notification::where('user_id', $manager->id)->where('type', 'attempt.failed_final')->sole();
+        $this->assertSame('/admin/uczestniczki/'.$user->id, $note->link);
+    }
+
     public function test_no_final_notification_when_the_last_attempt_passes(): void
     {
         User::factory()->create(['role' => 'project_manager']);

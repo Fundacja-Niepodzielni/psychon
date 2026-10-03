@@ -302,6 +302,19 @@ class ApplicationRejectionMailTest extends TestCase
         $this->assertSame(0, EmailMessage::query()->count());
     }
 
+    public function test_rejection_note_for_the_decision_maker_links_to_the_applications_tab(): void
+    {
+        Mail::shouldReceive('raw')->once();
+
+        $application = $this->application();
+        $actor = $this->actingAsAdmin();
+
+        $this->reject($application)->assertOk();
+
+        $note = Notification::query()->where('user_id', $actor->id)->where('type', 'application.rejected')->sole();
+        $this->assertSame('/admin/uczestniczki?zakladka=zgloszenia', $note->link);
+    }
+
     public function test_guest_gets_401_and_no_mail(): void
     {
         Mail::shouldReceive('raw')->never();
