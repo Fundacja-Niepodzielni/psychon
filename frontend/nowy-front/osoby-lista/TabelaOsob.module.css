@@ -1,0 +1,237 @@
+/* Lista osób z polem wyboru — układ i wartości wyglądu jak lista rekordów
+   w trybie kolumn (`RecordList.module.css`), wyłącznie z tokenów. */
+
+.karta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+/* Nagłówek tylko dla czytnika ekranu: zostaje w drzewie nagłówków. */
+.ukryte {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.zaznaczStrone {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4) var(--card-px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Odnośnik wygląda jak przycisk (własna ramka): fokus obrysowuje całe pole, jak
+   przy przycisku, a nie sam tekst — ta sama reguła co w liście rekordów. */
+.akcja a {
+  --link-obrys: var(--focus-width) solid var(--brand);
+  --link-obrys-tekstu: none;
+}
+
+.tabela {
+  position: relative;
+}
+
+.naglowki,
+.wiersz {
+  padding: var(--space-12) var(--card-px);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabela > :last-child {
+  border-bottom: 0;
+}
+
+.naglowki {
+  padding-block: var(--space-8);
+  color: var(--muted);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+}
+
+.naglowekKolumny {
+  position: relative;
+}
+
+.wiersz {
+  min-height: var(--hit-min);
+  box-sizing: border-box;
+}
+
+.komorka {
+  min-width: 0;
+}
+
+.nazwa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+  overflow-wrap: anywhere;
+}
+
+/* Pole wyboru i nazwa to atomy bez klasy z zewnątrz — stąd selektory potomka.
+   Pole wyboru ma szerokość własnej treści, żeby znacznik stał przy lewej
+   krawędzi komórki, a nie na środku. */
+.nazwa > label {
+  align-self: flex-start;
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+}
+
+.bezWyboru > p {
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+}
+
+/* Gdy na stronie są pola wyboru, nazwa bez pola i e-mail stoją równo z nazwą
+   przy polu (znacznik 20 px i odstęp z atomu `Checkbox`). */
+.tabela[data-z-wyborem] .bezWyboru,
+.tabela[data-z-wyborem] .email {
+  padding-left: calc(20px + var(--space-8));
+}
+
+.plakietka {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.plakietka > span {
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.podpis {
+  color: var(--muted);
+  font-size: var(--fs-11);
+}
+
+@media (min-width: 640px) {
+  .tabela {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(4, max-content);
+    column-gap: var(--space-16);
+  }
+
+  .naglowki,
+  .wiersz {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+    align-items: center;
+  }
+
+  .podpis {
+    display: none;
+  }
+
+  .komorka[data-rodzaj="akcja"] {
+    justify-self: end;
+  }
+
+  .strzalka {
+    display: none;
+  }
+
+  /* Akcja wiersza od 640 px wygląda jak przycisk drugorzędny (te same tokeny
+     co lista rekordów). */
+  .akcja a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: var(--hit-min);
+    margin: 0;
+    padding: var(--space-8) var(--space-16);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-xs);
+    background: transparent;
+    color: var(--ink);
+    font-size: var(--fs-9);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+  }
+
+  .akcja a:hover {
+    text-decoration: none;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Nagłówki kolumn zostają w drzewie dostępności, wzrokowo zastępuje je
+     podpis przy wartości. */
+  .naglowki {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Każdy wiersz to blok: treść z lewej, akcja z prawej na wysokość wiersza —
+     bez przewijania w poziomie. */
+  .wiersz {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-12);
+    align-items: center;
+  }
+
+  .wiersz > .komorka {
+    grid-column: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-8);
+    margin-top: var(--space-4);
+  }
+
+  .wiersz > .nazwa {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    margin-top: 0;
+  }
+
+  .wiersz > .komorka[data-rodzaj="akcja"] {
+    grid-column: 2;
+    grid-row: 1 / span 12;
+    margin-top: 0;
+  }
+
+  /* Wartości pod nazwą stoją równo z jej tekstem, także obok pola wyboru. */
+  .tabela[data-z-wyborem] .wiersz > .komorka[data-rodzaj="tekst"],
+  .tabela[data-z-wyborem] .wiersz > .komorka[data-rodzaj="stan"] {
+    padding-left: calc(20px + var(--space-8));
+  }
+
+  .akcja a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    box-sizing: border-box;
+    min-height: var(--hit-min);
+    margin: 0;
+    padding: 0 0 0 var(--space-8);
+    border: 0;
+    background: transparent;
+    color: var(--link);
+    font-size: var(--fs-8);
+    font-weight: var(--fw-regular);
+    white-space: nowrap;
+  }
+
+  .strzalka {
+    margin-left: var(--space-4);
+  }
+}

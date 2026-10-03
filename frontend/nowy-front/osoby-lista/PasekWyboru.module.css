@@ -1,0 +1,71 @@
+/* Pasek zaznaczenia — przyklejony pod górną belką, jak pasek zapisu; wartości
+   wyglądu wyłącznie z tokenów. Od 640 px jedna linia: opis, przycisk główny,
+   „Wyczyść wybór”. */
+.pasek {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: var(--z-savebar);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-12);
+  padding: var(--space-10) var(--space-14);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
+
+.opis {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.opis p:first-child {
+  font-weight: var(--fw-bold);
+}
+
+.glowny,
+.wyczysc {
+  display: flex;
+}
+
+/* Poniżej 640 px dwie linie: „Wybrano: N” z przyciskiem głównym, pod nimi
+   „Wyczyść wybór” jako przycisk tekstowy. Przycisk tekstowy zachowuje pole
+   klikalne 44 px (atom `Button`), ale ujemny margines (jak przy atomie `Link`)
+   wsuwa jego górną część pod pierwszą linię — pasek nie rośnie o całe pole.
+   Tam, gdzie pola się stykają, wygrywa przycisk główny (warstwa wyżej).
+   Napis „Wyczyść wybór” stoi w jednej pionowej linii z „Wybrano: N”. */
+@media (max-width: 639px) {
+  .pasek {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "opis glowny"
+      "wyczysc wyczysc";
+    gap: 0 var(--space-8);
+    padding: var(--space-4) var(--space-6) 0;
+  }
+
+  .opis {
+    grid-area: opis;
+  }
+
+  .opis p {
+    font-size: var(--fs-10);
+  }
+
+  .glowny {
+    grid-area: glowny;
+    position: relative;
+    z-index: 1;
+  }
+
+  .wyczysc {
+    grid-area: wyczysc;
+    justify-self: start;
+    margin: calc(var(--space-16) * -1) 0 0 calc(var(--space-12) * -1);
+  }
+}

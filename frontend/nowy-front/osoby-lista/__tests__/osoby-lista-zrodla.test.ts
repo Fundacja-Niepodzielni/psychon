@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 /**
  * Pomiar tekstu plików ekranu listy osób (nie renderu): surowe elementy,
@@ -89,13 +89,78 @@ describe("Lista osób — źródła ekranu", () => {
     );
   });
 
-  it("ekran nie ma przycisku głównego (poziom primary)", () => {
-    const trafienia = PLIKI_EKRANU.filter((p) => /poziom=["']primary["']/.test(tresc(p)));
-    expect(trafienia).toEqual([]);
+  it("przycisk główny (poziom primary) zapisany w ekranie stoi wyłącznie w pasku zaznaczenia, a „Dodaj osobę” z nagłówka jest drugorzędny, gdy coś wybrano", () => {
+    const wystapienia = PLIKI_EKRANU.flatMap((p) =>
+      // Ścieżka z ukośnikami niezależnie od systemu.
+      (tresc(p).match(/poziom=["']primary["']/g) ?? []).map(() => relative(KORZEN, p).split(sep).join("/")),
+    );
+    expect(wystapienia).toEqual(["nowy-front/osoby-lista/PasekWyboru.tsx"]);
+    expect(tresc(join(KORZEN, "nowy-front/osoby-lista/OsobyLista.tsx"))).toMatch(
+      /etykieta: "Dodaj osobę",[^}]*drugorzedny: wybor\.size > 0/,
+    );
+  });
+});
+
+/** Szerokości w pikselach większe niż treść ekranu 320 px (bez marginesów 2 × 16 px). */
+function szerokosciPonad320(zrodlo: string): string[] {
+  // Tylko deklaracje (kończą się średnikiem), nie warunki `@media (…-width: …)`.
+  return (bezKomentarzy(zrodlo).match(/(?<![\w-])(?:min-)?width:\s*\d+px\s*;/g) ?? []).filter(
+    (wpis) => Number(wpis.replace(/\D/g, "")) > 288,
+  );
+}
+
+/** Treść bloku `@media (max-width: 639px)` (do jego zamykającego nawiasu). */
+function blokWaskiegoEkranu(zrodlo: string): string {
+  const poczatek = zrodlo.indexOf("@media (max-width: 639px)");
+  if (poczatek < 0) return "";
+  let glebokosc = 0;
+  for (let i = zrodlo.indexOf("{", poczatek); i < zrodlo.length; i += 1) {
+    if (zrodlo[i] === "{") glebokosc += 1;
+    if (zrodlo[i] === "}") glebokosc -= 1;
+    if (glebokosc === 0) return zrodlo.slice(poczatek, i + 1);
+  }
+  return "";
+}
+
+describe("Lista osób — wąskie ekrany (320 i 390 px)", () => {
+  const css = (nazwa: string) => tresc(join(KORZEN, "nowy-front/osoby-lista", nazwa));
+
+  it("żaden arkusz ekranu nie ma szerokości większej niż treść ekranu 320 px", () => {
+    const trafienia = PLIKI_EKRANU.filter((p) => p.endsWith(".css") && szerokosciPonad320(tresc(p)).length > 0);
+    expect(trafienia.map((p) => relative(KORZEN, p))).toEqual([]);
+  });
+
+  it("poniżej 640 px wiersz osoby jest blokiem: treść w jednej kolumnie, akcja z prawej, nagłówki kolumn tylko dla czytnika", () => {
+    const blok = blokWaskiegoEkranu(css("TabelaOsob.module.css"));
+    expect(blok).toMatch(/\.wiersz \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/);
+    expect(blok).toMatch(/\.naglowki \{[^}]*clip-path: inset\(50%\);/);
+  });
+
+  it("pasek zaznaczenia jest przyklejony pod górną belką, a poniżej 640 px ma dwie linie: opis z przyciskiem głównym, pod nimi „Wyczyść wybór”", () => {
+    const arkusz = css("PasekWyboru.module.css");
+    expect(arkusz).toMatch(/\.pasek \{[^}]*position: sticky;[^}]*top: var\(--topbar-h\);[^}]*flex-wrap: wrap;/);
+    const blok = blokWaskiegoEkranu(arkusz);
+    expect(blok).toMatch(/grid-template-areas:\s*"opis glowny"\s*"wyczysc wyczysc";/);
+    // Pole klikalne „Wyczyść wybór” zostaje 44 px, ale wsuwa się pod pierwszą linię.
+    expect(blok).toMatch(/\.wyczysc \{[^}]*margin: calc\(var\(--space-16\) \* -1\)/);
+    expect(blok).toMatch(/\.glowny \{[^}]*position: relative;[^}]*z-index: 1;/);
   });
 });
 
 describe("Lista osób — kontrola dodatnia pomiarów", () => {
+  it("szerokości: wartość ponad 288 px wykryta, mniejsza i komentarz nie", () => {
+    expect(szerokosciPonad320(".a { min-width: 400px; }")).toHaveLength(1);
+    expect(szerokosciPonad320(".a { width: 240px; } /* width: 900px; */")).toHaveLength(0);
+    expect(szerokosciPonad320("@media (min-width: 640px) { .a { max-width: 900px; } }")).toHaveLength(0);
+  });
+
+  it("blok wąskiego ekranu: znaleziony razem z zagnieżdżeniem, brak bloku daje pusty napis", () => {
+    expect(blokWaskiegoEkranu("@media (max-width: 639px) { .a { b: c; } } .d {}")).toBe(
+      "@media (max-width: 639px) { .a { b: c; } }",
+    );
+    expect(blokWaskiegoEkranu(".a {}")).toBe("");
+  });
+
   it("surowe elementy: próbka z naruszeniem jest wykryta, komentarz nie", () => {
     expect(suroweElementy('<div><button type="button">x</button><a href="/">y</a></div>')).toHaveLength(2);
     expect(suroweElementy("<input />")).toHaveLength(1);

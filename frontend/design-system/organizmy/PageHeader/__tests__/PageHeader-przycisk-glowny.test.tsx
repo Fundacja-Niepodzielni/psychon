@@ -35,6 +35,34 @@ describe("PageHeader — przycisk główny nagłówka", () => {
     expect(naKlik).toHaveBeenCalledTimes(1);
   });
 
+  it("przycisk drugorzędny: to samo miejsce i ta sama akcja, ale bez koloru", async () => {
+    const naKlik = vi.fn();
+    const naglowek = (drugorzedny: boolean) => (
+      <DostawcaRamki>
+        <PageHeader
+          okruszki={OKRUSZKI}
+          tytul="Słownik form stażu"
+          onPowrot={() => undefined}
+          przyciskGlowny={{ etykieta: "Dodaj formę", onKliknij: naKlik, drugorzedny }}
+        />
+      </DostawcaRamki>
+    );
+    const { container, rerender } = render(naglowek(false));
+    const przycisk = screen.getByRole("button", { name: "Dodaj formę" });
+    expect(przycisk.className).toMatch(/primary/);
+
+    rerender(naglowek(true));
+    // Ten sam element w tym samym obszarze akcji — nic nie znika i nie przeskakuje.
+    expect(screen.getByRole("button", { name: "Dodaj formę" })).toBe(przycisk);
+    expect(container.querySelector("[data-testid='pageheader-przycisk-glowny']")).toContainElement(przycisk);
+    expect(przycisk.className).toMatch(/outline/);
+    expect(przycisk.className).not.toMatch(/primary/);
+    expect(przycisk).toBeEnabled();
+
+    await userEvent.setup().click(przycisk);
+    expect(naKlik).toHaveBeenCalledTimes(1);
+  });
+
   it("bez przycisku głównego nagłówek nie dokłada obszaru akcji", () => {
     const { container } = render(
       <DostawcaRamki>

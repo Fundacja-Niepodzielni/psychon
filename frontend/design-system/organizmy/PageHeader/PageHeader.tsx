@@ -34,6 +34,11 @@ interface PrzyciskGlownyPageHeader {
    * Kliknięcie nadal woła `onKliknij` — ekran pokazuje wtedy braki, zamiast
    * milczeć (to samo, co robił pulpit administracji w `dzieci`). */
   niedostepny?: { powod: string };
+  /** Na ekranie jest chwilowo inny przycisk w kolorze (np. w pasku
+   * zaznaczenia listy): ten przycisk zostaje w tym samym miejscu i tej samej
+   * wielkości, ale jako `outline` — w kolorze jest wtedy jeden przycisk na
+   * ekranie, a nagłówek nie przeskakuje. Domyślnie `false`. */
+  drugorzedny?: boolean;
 }
 
 interface AkcjaDrugorzednaPageHeader {
@@ -208,7 +213,7 @@ export function PageHeader({
             )}
             {przyciskGlowny && (
               <Button
-                poziom="primary"
+                poziom={przyciskGlowny.drugorzedny ? "outline" : "primary"}
                 onClick={przyciskGlowny.onKliknij}
                 aria-disabled={przyciskGlowny.niedostepny ? true : undefined}
                 aria-describedby={przyciskGlowny.niedostepny ? idPowodu : undefined}
