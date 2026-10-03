@@ -17,12 +17,14 @@ class ExtendAccessTest extends TestCase
     use ActsAsRole;
     use RefreshDatabase;
 
+    private const REASON = 'Przedłużenie na prośbę osoby, uzgodnione z prowadzącym.';
+
     public function test_extending_by_months_sets_the_date_and_audit_entry(): void
     {
         $admin = $this->actingAsRole('project_manager');
         $volunteer = User::factory()->create(['role' => 'volunteer', 'access_expires_at' => null]);
 
-        $response = $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 6]);
+        $response = $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 6, 'reason' => self::REASON]);
 
         $response->assertOk();
 
@@ -50,7 +52,7 @@ class ExtendAccessTest extends TestCase
         ]);
         $expectedBase = $volunteer->access_expires_at->copy();
 
-        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1])
+        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1, 'reason' => self::REASON])
             ->assertOk();
 
         $volunteer->refresh();
@@ -69,7 +71,7 @@ class ExtendAccessTest extends TestCase
             'access_expires_at' => now()->subYear(),
         ]);
 
-        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1])
+        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1, 'reason' => self::REASON])
             ->assertOk();
 
         $volunteer->refresh();
@@ -88,6 +90,7 @@ class ExtendAccessTest extends TestCase
 
         $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", [
             'until' => $until->toDateString(),
+            'reason' => self::REASON,
         ])->assertOk();
 
         $volunteer->refresh();
@@ -101,6 +104,7 @@ class ExtendAccessTest extends TestCase
 
         $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", [
             'months' => 3,
+            'reason' => self::REASON,
             'until' => now()->addMonth()->toDateString(),
         ])->assertStatus(422);
     }
@@ -110,7 +114,7 @@ class ExtendAccessTest extends TestCase
         $this->actingAsRole('super_admin');
         $volunteer = User::factory()->create(['role' => 'volunteer']);
 
-        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", [])
+        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['reason' => self::REASON])
             ->assertStatus(422);
     }
 
@@ -118,7 +122,7 @@ class ExtendAccessTest extends TestCase
     {
         $this->actingAsRole('super_admin');
 
-        $this->postJson('/api/v1/admin/users/999999/extend-access', ['months' => 1])
+        $this->postJson('/api/v1/admin/users/999999/extend-access', ['months' => 1, 'reason' => self::REASON])
             ->assertStatus(404);
     }
 
@@ -129,7 +133,7 @@ class ExtendAccessTest extends TestCase
         foreach (['volunteer', 'student', 'instructor'] as $role) {
             $this->actingAsRole($role);
 
-            $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1])
+            $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1, 'reason' => self::REASON])
                 ->assertStatus(403)
                 ->assertJsonPath('error.code', 'forbidden');
         }
@@ -139,7 +143,7 @@ class ExtendAccessTest extends TestCase
     {
         $volunteer = User::factory()->create(['role' => 'volunteer']);
 
-        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1])
+        $this->postJson("/api/v1/admin/users/{$volunteer->id}/extend-access", ['months' => 1, 'reason' => self::REASON])
             ->assertStatus(401);
     }
 }

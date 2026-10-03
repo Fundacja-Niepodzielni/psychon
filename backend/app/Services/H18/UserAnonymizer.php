@@ -3,6 +3,7 @@
 namespace App\Services\H18;
 
 use App\Exceptions\ApiException;
+use App\Models\AccessDateChange;
 use App\Models\Application;
 use App\Models\Certificate;
 use App\Models\DataExport;
@@ -172,6 +173,7 @@ final class UserAnonymizer
         // metody: żeby drugie wywołanie domknęło to, czego pierwsze —
         // sprzed tej zmiany — jeszcze nie robiło.
         self::withdrawGrantedConsents($user);
+        self::clearAccessDateChangeReasons($user);
 
         $paths = [];
 
@@ -267,6 +269,24 @@ final class UserAnonymizer
             ->whereNotNull('granted_at')
             ->whereNull('withdrawn_at')
             ->update(['withdrawn_at' => now()]);
+    }
+
+    /**
+     * Powód zmiany daty dostępu to treść wpisana ręcznie przez administrację
+     * (`access_date_changes.reason`) i może mówić o osobie. Żyje w rekordzie
+     * dziedzinowym właśnie po to, żeby anonimizacja mogła ją usunąć — z
+     * dziennika zdarzeń nie usunie jej nic. Wiersz zostaje (kto, kiedy, z
+     * jakiej daty na jaką: fakty, nie treść), czyszczony jest wyłącznie powód.
+     *
+     * Idempotentne z tego samego powodu co `withdrawGrantedConsents()`:
+     * drugie przejście niczego już nie zmienia.
+     */
+    private static function clearAccessDateChangeReasons(User $user): void
+    {
+        AccessDateChange::query()
+            ->where('user_id', $user->id)
+            ->where('reason', '<>', '')
+            ->update(['reason' => '']);
     }
 
     /**

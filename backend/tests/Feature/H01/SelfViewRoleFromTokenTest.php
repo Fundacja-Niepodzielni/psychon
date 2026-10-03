@@ -118,14 +118,14 @@ class SelfViewRoleFromTokenTest extends TestCase
         $admin = User::factory()->role('project_manager')->create(['keycloak_sub' => $adminSub]);
         $adminToken = $realm->mint(['sub' => $adminSub, 'realm_access' => ['roles' => ['koordynator']]]);
 
-        $target = User::factory()->create(['role' => 'instructor', 'access_expires_at' => null]);
+        $target = User::factory()->create(['role' => 'student', 'access_expires_at' => null]);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$adminToken)
-            ->postJson("/api/v1/admin/users/{$target->id}/extend-access", ['months' => 1])
+            ->postJson("/api/v1/admin/users/{$target->id}/extend-access", ['months' => 1, 'reason' => 'Powód zmiany daty dostępu.'])
             ->assertOk();
 
         $this->assertSame(
-            'instructor',
+            'student',
             $response->json('data.role'),
             'Widok cudzego konta musi nadal pokazywać kolumnę, nie token wywołującego.',
         );

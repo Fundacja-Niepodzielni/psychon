@@ -2273,3 +2273,79 @@ Kod: `Exceptions/AccountBlockedException.php`, `Services/Keycloak/KeycloakGuardR
 `openapi.json` (opis odpowiedzi `AuthenticationException`); front:
 `frontend/lib/api/klient.ts`, `frontend/lib/api/logowanie.ts`,
 `frontend/app/logowanie/zablokowane/page.tsx`.
+
+---
+
+## Aneks — zmiana daty dostępu osoby w programie (H04, H18)
+
+Opisuje stan kodu trasy `POST /admin/users/{id}/extend-access`. Bez nowych tras, slugów audytu
+i typów powiadomień; zero zmian w danych. Dwa nowe kody `422` (`cannot_extend_self`,
+`access_date_not_applicable`) dopisane do przykładów tabeli §1.1.
+
+### Trasa, role i ciało
+
+`POST /admin/users/{id}/extend-access` — role `project_manager` i `super_admin`; `{id}` jest
+liczbą. Ciało: dokładnie jedno z pól `until` albo `months` oraz wymagany `reason`.
+
+- `until` — data (`YYYY-MM-DD`; przyjmowany jest też znacznik czasu ISO 8601) ustawiana wprost.
+- `months` — liczba całkowita od 1 do 24. Liczy się od bieżącej daty końca dostępu, gdy jest
+  jeszcze w przyszłości (przedłużenia się sumują), a od teraz, gdy dostęp już wygasł.
+  Miesiące nie przelewają się na następny miesiąc: 29 lutego + 24 miesiące kończy się 28 lutego,
+  31 sierpnia + 6 miesięcy kończy się 28 lutego, nigdy 1 ani 3 marca.
+- `reason` — napis, po przycięciu białych znaków od 1 do 1000 znaków. Powód trafia do rekordu
+  zmiany daty, a nie do dziennika zdarzeń (zasada ogólna z erraty 2026-09-18).
+
+`200 {"data": <zasób użytkownika>}` z nową `access_expires_at`. Audyt `access.extended` niesie
+wyłącznie dwie daty (`previous_access_expires_at`, `access_expires_at`).
+
+### Zakres daty
+
+Data końca dostępu jest najwcześniej początkiem jutrzejszego dnia i najpóźniej dzisiejszym
+dniem + 24 miesiące kalendarzowe (ten dzień do końca). Dni liczą się w kalendarzu polskim
+(`Europe/Warsaw`), nie w strefie aplikacji: między północą w Polsce a północą UTC „dziś” jest
+już następnym dniem kalendarzowym niż w UTC. Podana chwila jest przeliczana na dzień
+warszawski — ta sama chwila, która trafia do bazy; data bez godziny oznacza początek tego dnia
+według UTC. Naruszenie → `422 validation_failed` z jednym zdaniem w `errors.until`:
+
+- za wcześnie (dziś, wcześniej): „Data końca dostępu musi być późniejsza niż dzisiejsza.”;
+- za daleko: „Nowa data dostępu może być najwyżej 24 miesiące od dziś.”.
+
+Tryb `months`, którego wynik przekroczyłby ten sam pułap, daje `422 validation_failed` na
+polu `months`: „Dostęp można przedłużyć najdalej do `YYYY-MM-DD`.”. Przy każdej odmowie data
+w bazie, dziennik zdarzeń i rekordy zmian daty zostają bez zmian.
+
+### Kogo dotyczy data i kolejność odmów
+
+Datę końca dostępu mają wyłącznie osoby w programie: rola konta `volunteer` albo `student`.
+Konto prowadzącego (`instructor`) i konta administracji (`project_manager`, `super_admin`) nie
+mają terminu — takie konto wyłącza się blokadą. Odmowy, w tej kolejności, każda przed
+walidacją ciała (zdanie i kod nie zależą od tego, czy ciało by ją przeszło):
+
+| Sytuacja | Kod | `code` · komunikat |
+|---|---|---|
+| brak albo nieważny token | **401** | `unauthenticated` |
+| rola spoza `project_manager` i `super_admin` | **403** | `forbidden` |
+| nieznana osoba | **404** | `not_found` · „Nie znaleziono osoby.” |
+| opiekun projektu zmienia datę konta Super Admina | **403** | `forbidden` · „Tylko Super Admin może zarządzać kontami Super Admina.” |
+| własne konto osoby wywołującej | **422** | `cannot_extend_self` · „Nie można zmienić daty dostępu własnego konta.” |
+| konto prowadzącego albo administracji | **422** | `access_date_not_applicable` · „Konta prowadzących i administracji nie mają terminu dostępu. Takie konto wyłącza się blokadą.” |
+| data albo powód poza regułami | **422** | `validation_failed` |
+
+Zasada hierarchii (konto Super Admina tylko dla Super Admina) i zasada własnego konta są tymi
+samymi regułami co przy blokadzie konta; jedna implementacja w `AccountManagementGuard`.
+Wobec konta Super Admina opiekun projektu dostaje `403`, a nie `422 access_date_not_applicable`
+— hierarchia ma pierwszeństwo przed regułą roli konta.
+
+### Blokada konta — własne konto
+
+`POST /admin/users/{id}/block` dla własnego konta osoby wywołującej → **422**
+`cannot_block_self` · „Nie można zablokować własnego konta.”, bez zmiany stanu i bez audytu.
+Odmowa pada w `authorize()` żądania, po sprawdzeniu hierarchii (`403`) i przed regułą
+„ostatniego aktywnego konta administracji” (`409 last_active_administrator`); kontroler
+powtarza ją na wierszu zablokowanym w transakcji. Kod odmowy jest dziś zwracany przez kod
+(`Services/H18/AccountManagementGuard.php::cannotBlockSelf`) i pilnowany próbami H18.
+
+Kod: `routes/api/h04.php`, `Http/Requests/H04/ExtendAccessRequest.php`,
+`Http/Controllers/Api/V1/Admin/AccessController.php`,
+`Services/H18/AccountManagementGuard.php` (`assertNotOwnAccount`, `cannotExtendOwnAccess`,
+`assertAccessDateApplies`), `openapi.json`.

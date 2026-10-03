@@ -337,7 +337,7 @@
         "/v1/admin/users/{id}/extend-access": {
             "post": {
                 "operationId": "access.extend",
-                "description": "`months` liczy si\u0119 od bie\u017c\u0105cej daty wyga\u015bni\u0119cia, je\u015bli jest jeszcze\nw przysz\u0142o\u015bci (przed\u0142u\u017cenia si\u0119 sumuj\u0105), albo od teraz, gdy dost\u0119p ju\u017c\nwygas\u0142. `until` ustawia dat\u0119 wprost.",
+                "description": "`months` liczy si\u0119 od bie\u017c\u0105cej daty wyga\u015bni\u0119cia, je\u015bli jest jeszcze\nw przysz\u0142o\u015bci (przed\u0142u\u017cenia si\u0119 sumuj\u0105), albo od teraz, gdy dost\u0119p ju\u017c\nwygas\u0142. `until` ustawia dat\u0119 wprost: najwcze\u015bniej jutro (pocz\u0105tek dnia), najdalej dzi\u015b + 24 miesi\u0105ce (ten dzie\u0144 do ko\u0144ca), dni liczone w kalendarzu polskim (Europe/Warsaw); naruszenie daje 422 `validation_failed` z b\u0142\u0119dem na `until`. Miesi\u0105ce nie przelewaj\u0105 si\u0119 na nast\u0119pny miesi\u0105c (29 lutego + 24 miesi\u0105ce = 28 lutego). Dat\u0119 maj\u0105 wy\u0142\u0105cznie osoby w programie (volunteer, student); konto prowadz\u0105cego i konta administracji \u2192 422 `access_date_not_applicable`. Konto Super Admina zmienia tylko Super Admin (Opiekun Projektu dostaje 403 `forbidden`), a w\u0142asnej daty nie zmienia nikt (422 `cannot_extend_self`) \u2014 tak samo jak przy blokadzie konta.",
                 "summary": "POST /admin/users/{id}/extend-access \u2014 {months} albo {until}",
                 "tags": [
                     "Access"
@@ -383,6 +383,12 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
@@ -12957,7 +12963,7 @@
             },
             "ExtendAccessRequest": {
                 "type": "object",
-                "description": "POST /admin/users/{id}/extend-access \u2014 dok\u0142adnie jedno z dw\u00f3ch p\u00f3l.",
+                "description": "POST /admin/users/{id}/extend-access \u2014 dok\u0142adnie jedno z dw\u00f3ch p\u00f3l (`months` albo `until`) oraz wymagany `reason`. Pow\u00f3d trafia do rekordu zmian daty dost\u0119pu, nie do dziennika zdarze\u0144 `access.extended`.",
                 "properties": {
                     "months": {
                         "type": [
@@ -12965,16 +12971,25 @@
                             "null"
                         ],
                         "minimum": 1,
-                        "maximum": 60
+                        "maximum": 24
                     },
                     "until": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "Najwcze\u015bniej pocz\u0105tek jutrzejszego dnia, najp\u00f3\u017aniej dzi\u015b + 24 miesi\u0105ce (dni w kalendarzu polskim, Europe/Warsaw; g\u00f3rna granica obejmuje ten dzie\u0144 do ko\u0144ca). Data poza tym zakresem \u2192 422 `validation_failed` z b\u0142\u0119dem na `until`."
+                    },
+                    "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
                     }
                 },
+                "required": [
+                    "reason"
+                ],
                 "title": "ExtendAccessRequest"
             },
             "GenerateDocumentRequest": {

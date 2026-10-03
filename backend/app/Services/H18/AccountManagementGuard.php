@@ -34,6 +34,9 @@ final class AccountManagementGuard
     /** Role administracji — nadaje je i zmienia wyłącznie Super Admin. */
     public const ADMIN_ROLES = ['project_manager', 'super_admin'];
 
+    /** Role osób w programie — tylko one mają datę końca dostępu; reszta kont nie ma terminu. */
+    public const PROGRAM_ROLES = ['volunteer', 'student'];
+
     public const SUPER_ADMIN_ACCOUNTS_MESSAGE = 'Tylko Super Admin może zarządzać kontami Super Admina.';
 
     public const ADMIN_ROLES_MESSAGE = 'Role administracyjne nadaje i zmienia wyłącznie Super Admin.';
@@ -233,6 +236,26 @@ final class AccountManagementGuard
     public static function cannotBlockSelf(): ApiException
     {
         return new ApiException(422, 'cannot_block_self', 'Nie można zablokować własnego konta.');
+    }
+
+    /**
+     * Data końca dostępu dotyczy wyłącznie osób w programie. Konto prowadzącego
+     * i konta administracji nie mają terminu — wyłącza się je blokadą.
+     */
+    public static function assertAccessDateApplies(User $target): void
+    {
+        if (! in_array($target->role, self::PROGRAM_ROLES, true)) {
+            throw new ApiException(
+                422,
+                'access_date_not_applicable',
+                'Konta prowadzących i administracji nie mają terminu dostępu. Takie konto wyłącza się blokadą.',
+            );
+        }
+    }
+
+    public static function cannotExtendOwnAccess(): ApiException
+    {
+        return new ApiException(422, 'cannot_extend_self', 'Nie można zmienić daty dostępu własnego konta.');
     }
 
     public static function cannotAnonymizeSelf(): ApiException

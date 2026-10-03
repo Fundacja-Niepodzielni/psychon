@@ -30,7 +30,7 @@ class ExtendAccessRangeTest extends TestCase
 
     private function extend(User $actor, User $target, array $body)
     {
-        return $this->withTokenOf($actor)->postJson("/api/v1/admin/users/{$target->id}/extend-access", $body);
+        return $this->withTokenOf($actor)->postJson("/api/v1/admin/users/{$target->id}/extend-access", $body + ['reason' => 'Przedłużenie uzgodnione z prowadzącym.']);
     }
 
     public function test_project_manager_does_not_reach_a_super_admin_account(): void
@@ -48,10 +48,10 @@ class ExtendAccessRangeTest extends TestCase
         $this->withTokenOf($sa)->getJson('/api/v1/courses')->assertOk();
         $this->assertSame(0, AuditLogEntry::query()->where('action', 'access.extended')->count());
 
-        $otherSa = $this->boundAccount('super_admin');
+        $volunteer = $this->boundAccount('volunteer');
         $until = now()->addMonths(3)->toDateString();
-        $this->extend($sa, $otherSa, ['until' => $until])->assertOk();
-        $this->assertSame($until, $otherSa->fresh()->access_expires_at->toDateString());
+        $this->extend($sa, $volunteer, ['until' => $until])->assertOk();
+        $this->assertSame($until, $volunteer->fresh()->access_expires_at->toDateString());
     }
 
     public function test_missing_account_gives_the_card_404_whatever_the_body(): void
@@ -72,7 +72,7 @@ class ExtendAccessRangeTest extends TestCase
     {
         $pm = $this->boundAccount('project_manager');
 
-        foreach (['instructor', 'volunteer', 'student', 'project_manager'] as $role) {
+        foreach (['volunteer', 'student'] as $role) {
             $expires = now()->addYear()->startOfDay();
             $target = $this->boundAccount($role, ['edition_id' => $this->edition->id, 'access_expires_at' => $expires]);
 
