@@ -38,6 +38,7 @@ const TRASY_PUBLICZNE = [
   "/konto",
   "/dokumenty-prawne/regulamin",
   "/logowanie/niepowiazane",
+  "/logowanie/zablokowane",
 ];
 
 for (const trasa of TRASY_PUBLICZNE) {
