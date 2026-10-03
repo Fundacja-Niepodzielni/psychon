@@ -73,7 +73,8 @@ export interface KonfiguracjaRoliKursu {
   adresLekcji: (idKursu: number, idLekcji: number, podKursem: boolean) => string;
   /** Strona lekcji otwierana „Otwórz” z ekranu kursu; `null` — wiersz nie ma wtedy „Otwórz”. */
   adresStronyLekcjiZKursu: (idLekcji: number, idKursu: string) => string | null;
-  adresTestu: (idTestu: number) => string;
+  /** Ekran pytań testu kursu; numer kursu jedzie w parametrze `kurs` (okruszek ekranu pytań wraca do kursu). */
+  adresTestu: (idTestu: number, idKursu: number) => string;
   /** Dopełniacz w zdaniu odmowy „…tylko dla {rola}.”. */
   rolaOdmowy: "administracji" | "prowadzących";
   /** Karta „Nagranie” i pytania o stan nagrań. */
@@ -154,7 +155,7 @@ export function konfiguracjaRoli(rola: RolaKursu): KonfiguracjaRoliKursu {
       adresLekcji: lekcjaProwadzacego,
       adresStronyLekcjiZKursu: (idLekcji, idKursu) =>
         lekcjaProwadzacego(idKursu, idLekcji, czyNowaTrasaDostepna(GRUPY.kurs)),
-      adresTestu: (idTestu) => `/prowadzacy/testy/${idTestu}/pytania`,
+      adresTestu: (idTestu, idKursu) => `/prowadzacy/testy/${idTestu}/pytania?kurs=${idKursu}`,
       rolaOdmowy: "prowadzących",
       nagranie: NAGRANIE_PROWADZACEGO,
       plikiLekcji: false,
@@ -170,7 +171,7 @@ export function konfiguracjaRoli(rola: RolaKursu): KonfiguracjaRoliKursu {
     adresLekcji: lekcjaAdministracji,
     adresStronyLekcjiZKursu: (idLekcji, idKursu) =>
       czyNowaTrasaDostepna(GRUPY.edycjaLekcji) ? lekcjaAdministracji(idKursu, idLekcji, true) : null,
-    adresTestu: (idTestu) => `/admin/testy/${idTestu}/pytania`,
+    adresTestu: (idTestu, idKursu) => `/admin/testy/${idTestu}/pytania?kurs=${idKursu}`,
     rolaOdmowy: "administracji",
     nagranie: true,
     plikiLekcji: true,

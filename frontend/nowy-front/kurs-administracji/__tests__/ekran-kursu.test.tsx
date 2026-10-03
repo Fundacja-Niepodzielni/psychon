@@ -243,11 +243,11 @@ describe("ekran kursu — odczyt i układ", () => {
     expect(within(pas).getByText("2 lekcje · 20 min")).toBeInTheDocument();
   });
 
-  it("test na koniec kursu: odnośnik do pytań tylko wtedy, gdy serwer poda test", async () => {
+  it("test na koniec kursu: odnośnik do pytań tylko wtedy, gdy serwer poda test; niesie numer kursu dla okruszka", async () => {
     await renderEkranu();
     expect(await screen.findByRole("link", { name: "Otwórz pytania" })).toHaveAttribute(
       "href",
-      "/admin/testy/31/pytania",
+      "/admin/testy/31/pytania?kurs=4",
     );
   });
 

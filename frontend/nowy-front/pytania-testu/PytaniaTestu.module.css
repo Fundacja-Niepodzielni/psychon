@@ -1,0 +1,258 @@
+/* Ekran „Pytania testu” — wyłącznie tokeny, bez twardych kolorów. */
+.blok {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-24);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow-wrap: anywhere;
+}
+
+.zdanie {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-9);
+}
+
+/* Kontenery przycisków w treści — na telefonie rozciągają przyciski na całą szerokość (reguła na dole). */
+.pusty,
+.ponow,
+.przyciskiOdpowiedzi {
+  min-width: 0;
+}
+
+/* ---------- lista pytań ---------- */
+.lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Strzałki kolejności z numerem po lewej (jak lekcje na ekranie kursu), treść w środku, przyciski po prawej. */
+.wiersz {
+  display: grid;
+  grid-template-columns: var(--hit-min) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-6) var(--space-12);
+  padding: var(--space-12) 0;
+  border-top: 1px solid var(--border);
+}
+
+.lista > li:first-child {
+  border-top: 0;
+}
+
+/* Strzałki i numer między nimi rysuje molekuła `StrzalkiKolejnosci`; tu tylko miejsce w siatce wiersza. */
+.ruch {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.opis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.tytulWiersza {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-bold);
+  border-radius: var(--r-2xs);
+}
+
+.tytulWiersza:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Pełna treść pytania, z podziałem linii wpisanym przez autora. */
+.tresc {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-9);
+  white-space: pre-wrap;
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+
+.odpowiedziWiersza {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.odpowiedzWiersza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-8);
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--fs-10);
+  white-space: pre-wrap;
+}
+
+.odpowiedzPoprawna {
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  justify-content: flex-end;
+}
+
+/* ---------- pola pytania (w oknie formularza) ---------- */
+.formularz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  min-width: 0;
+}
+
+.pole {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.odpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.odpowiedzi legend {
+  margin-bottom: var(--space-6);
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+}
+
+.listaOdpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.odpowiedz {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-8) var(--space-12);
+}
+
+.poprawna {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: var(--hit-min);
+  padding: 0 var(--space-8);
+  border-radius: var(--r-xs);
+  color: var(--text);
+  font-size: var(--fs-10);
+  cursor: pointer;
+}
+
+.poprawna input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.poprawna:focus-within {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.poleOdpowiedzi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.usunOdpowiedz {
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min);
+}
+
+/* ---------- telefon (do 639 px): jedna kolumna treści, przyciski w treści na pełną szerokość ---------- */
+@media (max-width: 639px) {
+  .karta {
+    padding: var(--space-18) var(--space-16);
+  }
+
+  .wiersz {
+    grid-template-columns: var(--hit-min) minmax(0, 1fr);
+  }
+
+  .akcje {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .akcje button,
+  .pusty button,
+  .ponow button,
+  .przyciskiOdpowiedzi button {
+    width: 100%;
+  }
+
+  .odpowiedz {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .poleOdpowiedzi {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .poprawna {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .usunOdpowiedz {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}

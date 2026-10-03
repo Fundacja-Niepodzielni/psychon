@@ -265,7 +265,7 @@ export function EkranKursu({
           if (!aktualne) return;
           setTest(
             typeof pobrany?.id === "number"
-              ? { rodzaj: "jest", adres: rola.adresTestu(pobrany.id) }
+              ? { rodzaj: "jest", adres: rola.adresTestu(pobrany.id, idLiczbowy) }
               : { rodzaj: "brak" },
           );
         })

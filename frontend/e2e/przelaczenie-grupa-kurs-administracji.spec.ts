@@ -418,7 +418,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(page.locator("#ustawienia-zaproszenia")).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Otwórz pytania" })).toHaveAttribute(
         "href",
-        "/admin/testy/31/pytania",
+        "/admin/testy/31/pytania?kurs=4",
       );
 
       await bezPrzewijaniaPoziomego(page);
@@ -654,7 +654,7 @@ for (const rola of ["project_manager", "super_admin"] as const) {
 
       const odnosnik = page.getByRole("link", { name: "Otwórz pytania" });
       const adres = await odnosnik.getAttribute("href");
-      expect(adres).toBe("/admin/testy/31/pytania");
+      expect(adres).toBe("/admin/testy/31/pytania?kurs=4");
       const odpowiedz = await page.goto(adres!);
       expect(odpowiedz?.status()).toBe(200);
       await zabezpieczeniePrzedEkranemDostepu(page);
