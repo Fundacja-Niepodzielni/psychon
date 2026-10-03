@@ -490,3 +490,41 @@ describe("limit czasu sprawdzenia konta", () => {
     expect(screen.getByText(TEKST_AWARII)).toBeInTheDocument();
   });
 });
+
+/**
+ * Konto zablokowane nie jest „niepołączone”: serwer nazywa ten stan sam
+ * (`code = konto_zablokowane`). Wejście na ten adres wprost (zakładka,
+ * historia) przechodzi na własny ekran blokady i nie twierdzi niczego o
+ * powiązaniu konta.
+ */
+describe("konto zablokowane na adresie niepowiązania", () => {
+  it("wynik z kodem konto_zablokowane → przejście na /logowanie/zablokowane, zero zdań o powiązaniu", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "konto_zablokowane" });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/logowanie/zablokowane"));
+    expect(screen.queryByText(/powiązane z żadnym kontem w PsychON/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Przekaż administratorowi/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading")).not.toHaveTextContent(/Konto nie jest jeszcze połączone/);
+  });
+
+  it("konto niepowiązane (401 z sub) NIE przechodzi na ekran blokady", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "konto_niepowiazane", sub: SUB_Z_TOKENA });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.queryAllByText(SUB_Z_TOKENA)).toHaveLength(1));
+    expect(push).not.toHaveBeenCalledWith("/logowanie/zablokowane");
+    expect(screen.getByRole("heading")).toHaveTextContent(/^Konto nie jest jeszcze połączone$/);
+  });
+
+  it("zwykłe 401 bez szczegółu (sesja bez konta) NIE przechodzi na ekran blokady", async () => {
+    checkAccountBinding.mockResolvedValue({ code: "unauthenticated" });
+
+    render(<NiepowiazanePage />);
+
+    await waitFor(() => expect(screen.queryAllByText(/powiązane z żadnym kontem w PsychON/i)).toHaveLength(1));
+    expect(push).not.toHaveBeenCalledWith("/logowanie/zablokowane");
+  });
+});

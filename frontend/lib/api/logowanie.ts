@@ -9,7 +9,15 @@ import { ApiError, ApiErrorBody, baseUrl, endSession, getToken } from "./klient"
 /** Ekran dla konta Niepodzielni z ważną sesją, które nie jest jeszcze
  * powiązane z żadnym kontem PsychON — patrz `handleUnauthorized` niżej. */
 const UNBOUND_PATH = "/logowanie/niepowiazane";
+/** Ekran dla konta Niepodzielni z ważną sesją, którego konto w PsychON jest zablokowane. */
+const BLOCKED_PATH = "/logowanie/zablokowane";
 const LOGIN_PATH = "/logowanie";
+
+/**
+ * `error.code` w 401, które serwer oddaje WYŁĄCZNIE posiadaczowi ważnego tokena
+ * zablokowanego konta. Koperta bez `reason`: sam stan, bez powodu blokady.
+ */
+export const KOD_KONTO_ZABLOKOWANE = "konto_zablokowane" as const;
 
 export interface WhoAmI {
   sub: string;
@@ -71,9 +79,23 @@ export async function fetchWhoAmI(): Promise<WhoAmI> {
  * 2. Sesja jest naprawdę nieważna — `whoami` na tym samym tokenie też
  *    odpowiada 401 (albo tokenu w ogóle nie ma). Wtedy sesja kończy się i
  *    przeglądarka wraca na `/logowanie`, które samo zacznie nowe logowanie.
+ * 3. Konto jest zablokowane — sam serwer to mówi (`error.code` tego 401,
+ *    oddawany wyłącznie po pełnej walidacji tokena), więc `whoami` nie jest
+ *    potrzebne. Sesja NIE kończy się: ekran `/logowanie/zablokowane` ma własny
+ *    przycisk wylogowania, a po odblokowaniu ta sama sesja wchodzi dalej.
+ *    Zakończenie sesji i skok na `/logowanie` dałyby pętlę z punktu 1 (SSO wraca
+ *    bez pytania, `/me` znów odpowiada 401).
+ *
+ * Kod nieznany klientowi (`undefined` albo każdy inny niż `konto_zablokowane`)
+ * idzie ścieżką z punktów 1 i 2, jak przed tą zmianą.
  */
-export async function handleUnauthorized(): Promise<void> {
+export async function handleUnauthorized(code?: string): Promise<void> {
   if (typeof window === "undefined") return;
+
+  if (code === KOD_KONTO_ZABLOKOWANE) {
+    window.location.assign(new URL(BLOCKED_PATH, window.location.origin));
+    return;
+  }
 
   let sessionStillValidAtKeycloak = false;
   try {

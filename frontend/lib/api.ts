@@ -98,6 +98,7 @@ export {
   type AccountBindingCheck,
   KONTO_BINDING_AWARIA,
   KONTO_BINDING_LIMIT_MS,
+  KOD_KONTO_ZABLOKOWANE,
   checkAccountBinding,
 } from "./api/logowanie";
 

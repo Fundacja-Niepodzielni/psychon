@@ -11,8 +11,12 @@ import {
   endSession,
   KONTO_BINDING_AWARIA,
   KONTO_BINDING_LIMIT_MS,
+  KOD_KONTO_ZABLOKOWANE,
   type AccountBindingCheck,
 } from "@/lib/api";
+
+/** Ekran konta zablokowanego (`app/logowanie/zablokowane`). */
+const ADRES_ZABLOKOWANE = "/logowanie/zablokowane";
 
 /**
  * Cel przekierowania z `lib/api.ts` (`handleUnauthorized`) dla ważnej sesji
@@ -51,7 +55,8 @@ type StanEkranu =
   | { rodzaj: "sprawdzanie" }
   | { rodzaj: "identyfikator"; sub: string }
   | { rodzaj: "brak-powiazania" }
-  | { rodzaj: "awaria" };
+  | { rodzaj: "awaria" }
+  | { rodzaj: "zablokowane" };
 
 /**
  * Sprawdzenie z własnym limitem czasu: pierwsze rozstrzygnięcie wygrywa.
@@ -91,6 +96,7 @@ function sprawdzZLimitem(): Promise<AccountBindingCheck | null> {
  */
 function stanZWyniku(result: AccountBindingCheck | null): StanEkranu {
   if (result === null) return { rodzaj: "awaria" };
+  if (result.code === KOD_KONTO_ZABLOKOWANE) return { rodzaj: "zablokowane" };
   if (result.code === "konto_niepowiazane" && result.sub) {
     return { rodzaj: "identyfikator", sub: result.sub };
   }
@@ -107,6 +113,14 @@ export default function NiepowiazanePage() {
   const zastosujWynik = useCallback((result: AccountBindingCheck | null) => {
     setStan(stanZWyniku(result));
   }, []);
+
+  // Konto zablokowane nie jest „niepołączone": serwer nazywa ten stan sam
+  // (`error.code = konto_zablokowane`), a ekran ma dla niego własną trasę. Dotyczy wejścia
+  // na ten adres wprost (zakładka, historia) — przekierowanie z klienta API
+  // trafia od razu na `/logowanie/zablokowane`.
+  useEffect(() => {
+    if (stan.rodzaj === "zablokowane") router.replace(ADRES_ZABLOKOWANE);
+  }, [stan.rodzaj, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,7 +171,7 @@ export default function NiepowiazanePage() {
         <Card>
           <div className="flex flex-col gap-4">
             <div aria-live="polite" className="flex flex-col gap-4">
-              {stan.rodzaj === "sprawdzanie" ? (
+              {stan.rodzaj === "sprawdzanie" || stan.rodzaj === "zablokowane" ? (
                 <Alert variant="info">
                   <p>Sprawdzam stan Twojego konta…</p>
                 </Alert>

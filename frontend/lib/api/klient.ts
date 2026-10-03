@@ -297,12 +297,7 @@ async function wyslij(path: string, options: ApiOptions, token: string | null): 
     redirect: "error",
   });
 
-  // 401 → patrz `handleUnauthorized` w `./logowanie` (rozróżnienie
-  // „niepowiązany" / „sesja wygasła").
-  if (res.status === 401) {
-    wyczyscPamiecMe();
-    void handleUnauthorized();
-  }
+  if (res.status === 401) wyczyscPamiecMe();
 
   let json: unknown = null;
   try {
@@ -313,6 +308,13 @@ async function wyslij(path: string, options: ApiOptions, token: string | null): 
 
   const envelope = json as { error?: Partial<ApiErrorBody> } | null;
   const err = envelope?.error;
+
+  // 401 → patrz `handleUnauthorized` w `./logowanie` (rozróżnienie
+  // „niepowiązany" / „sesja wygasła" / „konto zablokowane" — to ostatnie
+  // serwer nazywa sam w `error.code = konto_zablokowane`; kod czytamy PRZED rozstrzygnięciem).
+  if (res.status === 401) {
+    void handleUnauthorized(err?.code);
+  }
 
   // 403 access_expired (H04) → wspólny ekran startera "Dostęp wygasł"
   if (res.status === 403 && err?.code === "access_expired" && typeof window !== "undefined") {
