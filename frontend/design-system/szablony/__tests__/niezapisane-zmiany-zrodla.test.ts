@@ -40,6 +40,7 @@ const WYJATKI_ZGLOSZENIA: Record<string, string> = {
 
 /** Pliki, w których stoi zgłoszenie ekranu — każdy musi wołać mechanizm. */
 const PLIKI_ZGLASZAJACE = [
+  "nowy-front/dziennik-stazu/DziennikStazu.tsx",
   "nowy-front/ekran-startowy/EkranStartowy.tsx",
   "nowy-front/formy-stazu/FormyStazu.tsx",
   "nowy-front/karta-osoby/KartaOsoby.tsx",

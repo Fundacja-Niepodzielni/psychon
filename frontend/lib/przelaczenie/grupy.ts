@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia dwa: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia trzy: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -241,6 +241,22 @@ export const GRUPY = {
         staraTrasa: "/panel/profil-psychologa",
         nowaTrasa: "/panel/profil-psychologa",
         trasaPoligonu: "/nowy-front/profil-psychologa",
+      },
+    ],
+  },
+  /**
+   * Dziennik stażu osoby wolontariackiej (H11) — ten sam adres co dzisiejszy dziennik, treść strony zamienia się
+   * na ekran nowego frontu (te same trzy żądania do `/internship/entries`).
+   */
+  dziennikStazu: {
+    klucz: "dziennikStazu",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/staz",
+        nowaTrasa: "/panel/staz",
+        trasaPoligonu: "/nowy-front/staz",
       },
     ],
   },

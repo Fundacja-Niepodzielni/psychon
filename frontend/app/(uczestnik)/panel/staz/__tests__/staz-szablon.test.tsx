@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 
 /**
  * Świadek ekranu `/panel/staz` po przepięciu na `PageTemplate` — sama trasa
- * (`page.tsx` → `InternshipJournal`), nie logika dziennika (ma własne testy w
+ * (`StaraTresc.tsx` → `InternshipJournal`), nie logika dziennika (ma własne testy w
  * `components/h11/__tests__/InternshipJournal.test.tsx`).
  */
 
@@ -34,7 +34,9 @@ vi.mock("@/components/molecules/PageHeader", async (importOriginal) => {
 });
 
 const { default: PageHeader } = await import("@/components/molecules/PageHeader");
-const { default: StazPage } = await import("@/app/(uczestnik)/panel/staz/page");
+// Stary dziennik żyje w `StaraTresc.tsx` (strona `page.tsx` zwraca ją przy wyłączonej grupie
+// `dziennikStazu`); ten test mierzy starą treść, więc importuje ją wprost.
+const { default: StazPage } = await import("@/app/(uczestnik)/panel/staz/StaraTresc");
 
 beforeEach(() => {
   api.mockReset();
