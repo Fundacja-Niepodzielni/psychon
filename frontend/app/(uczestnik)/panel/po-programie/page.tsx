@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { GRUPY, czyStaraTrasaPrzekierowuje } from "@/lib/przelaczenie/grupy";
 import PoProgramieStaraTresc from "./StaraTresc";
+import { adresPrzekierowaniaPoProgramie } from "./przekierowanie";
 
 /**
  * Stara trasa produktu `/panel/po-programie`. Bramka
@@ -14,10 +14,8 @@ import PoProgramieStaraTresc from "./StaraTresc";
  * procesu.
  */
 export default function PoProgramiePage() {
-  if (czyStaraTrasaPrzekierowuje(GRUPY.wspolpraca, "uczestnik")) {
-    const ekranUczestnika = GRUPY.wspolpraca.ekrany.find((e) => e.panel === "uczestnik");
-    redirect(ekranUczestnika!.nowaTrasa);
-  }
+  const adres = adresPrzekierowaniaPoProgramie();
+  if (adres !== null) redirect(adres);
 
   return <PoProgramieStaraTresc />;
 }

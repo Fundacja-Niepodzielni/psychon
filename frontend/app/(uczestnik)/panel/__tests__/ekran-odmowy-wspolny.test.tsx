@@ -24,7 +24,11 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 vi.mock("@/lib/api/klient", () => ({ api: (...args: unknown[]) => api(...args) }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, back: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, back: vi.fn() }),
+  usePathname: () => "/panel/staz",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const { default: CertyfikatLayout } = await import("@/app/(uczestnik)/panel/certyfikat/layout");
 const { default: StazLayout } = await import("@/app/(uczestnik)/panel/staz/layout");

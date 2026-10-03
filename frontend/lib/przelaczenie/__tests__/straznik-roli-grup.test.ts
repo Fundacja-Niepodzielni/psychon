@@ -4,19 +4,26 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ROLE_UCZESTNIKA } from "@/nowy-front/wspolne/straznik-uczestnika/straznik-uczestnika";
 import { GRUPY, type DefinicjaGrupy, type NazwaPanelu } from "../grupy";
 
 /**
  * Przegląd strażnika ról dla wszystkich włączonych grup przełączenia: każdy
  * ekran włączonej grupy leży w drzewie układów (`layout.tsx`), w którym stoi
- * `RequireRole` z rolami właściwymi dla panelu ekranu. Lista dozwolona, nie lista
- * zakazów: nowa włączona grupa bez strażnika w układzie nie przechodzi.
+ * strażnik (`RequireRole` albo `StraznikUczestnika`) z rolami właściwymi dla
+ * panelu ekranu. Lista dozwolona, nie lista zakazów: nowa włączona grupa bez
+ * strażnika w układzie nie przechodzi.
  *
- * Panel uczestnika nie ma klientowego strażnika ról na poziomie segmentu `/panel`
- * (dostęp mają wszystkie role uczestnika, a zasoby odmawiają po stronie
- * serwera) — `null` w mapie niżej mówi to wprost. Drugi i ostatni wyjątek to strony
- * publiczne (`publiczny`: logowanie, konto, publiczny certyfikat, dokumenty) — z definicji
- * bez strażnika ról, bo otwiera je także osoba niezalogowana.
+ * Panel uczestnika ma `StraznikUczestnika` w układzie każdego segmentu pod
+ * `/panel` (grupy `(uczestnik)` i `(przelaczenie)`), nie w układzie całego
+ * `/panel`: odpowiedzi serwera segmentu (404, przekierowanie) zapadają w jego
+ * układzie przed strażnikiem. Jego role przegląd czyta z modułu strażnika
+ * (`ROLE_UCZESTNIKA`), a mapa niżej wpisuje oczekiwane role wprost — zmiana ról
+ * strażnika nie przechodzi bez zmiany mapy. Trzeci przegląd (na końcu pliku)
+ * obejmuje każdą stronę pod `/panel`, także spoza rejestru przełączenia.
+ * Jedynym wyjątkiem są strony publiczne (`publiczny`: logowanie, konto, publiczny
+ * certyfikat, dokumenty) — `null` w mapie niżej, z definicji bez strażnika ról,
+ * bo otwiera je także osoba niezalogowana.
  *
  * Drugi przegląd obejmuje każdą stronę pod `/nowy-front` (podgląd administracji
  * i pozostałe): strona leży pod strażnikiem, którego role są równe rolom
@@ -35,7 +42,7 @@ const KATALOG_APP = join(KORZEN_FRONTU, "app");
 export const ROLE_STRAZNIKA_PANELU: Record<NazwaPanelu, readonly string[] | null> = {
   administracja: ["project_manager", "super_admin"],
   prowadzacy: ["instructor"],
-  uczestnik: null,
+  uczestnik: ["student", "volunteer"],
   publiczny: null,
 };
 
@@ -68,7 +75,13 @@ function wzorzecTrasy(trasa: string): string {
 
 const STRONY = stronyAplikacji(KATALOG_APP).map((plik) => ({ plik, adres: adresStrony(plik) }));
 
-/** Zbiory ról wszystkich `RequireRole` w układach nad stroną (od strony do korzenia `app`). */
+/** Role `StraznikUczestnika` z modułu strażnika (posortowane). */
+const ROLE_STRAZNIKA_UCZESTNIKA: string[] = [...ROLE_UCZESTNIKA].sort();
+
+/**
+ * Zbiory ról wszystkich strażników w układach nad stroną (od strony do korzenia `app`):
+ * `RequireRole` z rolami z `allowedRoles` i `StraznikUczestnika` z rolami uczestnika.
+ */
 function zbioryRolStraznikow(plikStrony: string): string[][] {
   const zbiory: string[][] = [];
   let katalog = dirname(plikStrony);
@@ -86,6 +99,7 @@ function zbioryRolStraznikow(plikStrony: string): string[][] {
             .sort(),
         );
       }
+      if (/<StraznikUczestnika\b/.test(zrodlo)) zbiory.push(ROLE_STRAZNIKA_UCZESTNIKA);
     }
     if (katalog === KATALOG_APP) break;
     katalog = dirname(katalog);
@@ -160,6 +174,22 @@ describe("strażnik ról nad ekranami włączonych grup przełączenia", () => {
   it("grupa wyłączona nie jest przeglądana", () => {
     expect(naruszeniaStraznika(grupaProbna("administracja", "/nowy-front/pulpit", false))).toEqual([]);
   });
+
+  it("kontrola dodatnia: ekran uczestnika w segmentach /panel obu grup i pod układem z węższą rolą przechodzi", () => {
+    expect(naruszeniaStraznika(grupaProbna("uczestnik", "/panel/pulpit"))).toEqual([]);
+    expect(naruszeniaStraznika(grupaProbna("uczestnik", "/panel/dalsza-wspolpraca"))).toEqual([]);
+    expect(naruszeniaStraznika(grupaProbna("uczestnik", "/panel/staz"))).toEqual([]);
+  });
+
+  it("mutant: ekran uczestnika w układzie administracji (role inne niż uczestnika) jest naruszeniem", () => {
+    const naruszenia = naruszeniaStraznika(grupaProbna("uczestnik", "/admin/emails"));
+    expect(naruszenia).toHaveLength(1);
+    expect(naruszenia[0]).toContain("student, volunteer");
+  });
+
+  it("role StraznikUczestnika z modułu strażnika są równe rolom panelu uczestnika w mapie", () => {
+    expect(ROLE_STRAZNIKA_UCZESTNIKA).toEqual([...(ROLE_STRAZNIKA_PANELU.uczestnik ?? [])].sort());
+  });
 });
 
 describe("strażnik roli dla stron podglądu administracji pod /nowy-front/admin", () => {
@@ -191,23 +221,24 @@ const PANELE_PUBLICZNE: readonly NazwaPanelu[] = ["publiczny"];
  * powód. Przegląd sprawdza w obie strony — strona z listy istnieje i jej trasa produktu dalej nie ma
  * strażnika; gdy trasa produktu dostanie strażnika, pozycja przestaje przechodzić, a strona
  * podglądu ma dostać strażnika z tymi samymi rolami.
+ *
+ * Lista jest pusta: każda strona podglądu poza stronami grup publicznych ma trasę produktu ze
+ * strażnikiem (ekrany uczestnika — `StraznikUczestnika` w układach segmentów `/panel`), więc każda
+ * stoi pod strażnikiem z tymi samymi rolami. Strony podglądu grup publicznych przechodzą bez listy
+ * (wyjątek w przeglądzie niżej).
  */
-export const PODGLADY_BEZ_STRAZNIKA: Record<string, string> = {
-  "/nowy-front/pulpit":
-    "trasa produktu /panel/pulpit nie ma strażnika ról: pulpit otwiera każda rola uczestnika, a wariant ekranu wybiera rola z odpowiedzi /me",
-  "/nowy-front/dokumenty":
-    "trasa produktu /panel/dokumenty nie ma strażnika ról: listę dokumentów zwraca serwer dla zalogowanej osoby",
-  "/nowy-front/lekcja/[id]":
-    "trasa produktu /panel/lekcje/[id] nie ma strażnika ról: lekcję zwraca serwer według dostępu zalogowanej osoby do kursu",
-  "/nowy-front/kurs-uczestnika/[slug]":
-    "trasa produktu /panel/kursy/[slug] nie ma strażnika ról: kurs zwraca serwer, a personel i prowadzący otwierają ją w trybie podglądu",
-  "/nowy-front/kurs-uczestnika/[slug]/test":
-    "trasa produktu /panel/kursy/[slug]/test nie ma strażnika ról: test zwraca serwer, a personel i prowadzący otwierają go w trybie podglądu",
-  "/nowy-front/po-programie":
-    "trasa produktu /panel/dalsza-wspolpraca nie ma strażnika ról: odmowę roli pokazuje sam ekran po odpowiedzi serwera",
-  "/nowy-front/publiczne/panel/start":
-    "trasa produktu /panel/start nie ma strażnika ról: ekran „Zacznij tutaj” otwiera każda zalogowana rola, a treść zwraca serwer",
-};
+export const PODGLADY_BEZ_STRAZNIKA: Record<string, string> = {};
+
+/** Strony podglądu ekranów uczestnika, które leżą pod `StraznikUczestnika` tak jak ich trasy produktu. */
+const PODGLADY_EKRANOW_UCZESTNIKA = [
+  "/nowy-front/pulpit",
+  "/nowy-front/dokumenty",
+  "/nowy-front/lekcja/[id]",
+  "/nowy-front/kurs-uczestnika/[slug]",
+  "/nowy-front/kurs-uczestnika/[slug]/test",
+  "/nowy-front/po-programie",
+  "/nowy-front/publiczne/panel/start",
+];
 
 /**
  * Strony pod `/nowy-front`, których nie ma w rejestrze przełączenia: adres trasy produktu, której
@@ -395,6 +426,16 @@ describe("strażnik roli dla każdej strony podglądu pod /nowy-front", () => {
     }
   });
 
+  it("lista podglądów bez strażnika jest pusta", () => {
+    expect(PODGLADY_BEZ_STRAZNIKA).toEqual({});
+  });
+
+  it.each(PODGLADY_EKRANOW_UCZESTNIKA)("strona %s leży pod strażnikiem z rolami uczestnika (student, volunteer)", (adres) => {
+    const strony = STRONY.filter((strona) => strona.adres === wzorzecTrasy(adres));
+    expect(strony).toHaveLength(1);
+    expect(roleDopuszczone(strony[0].plik)).toEqual(["student", "volunteer"]);
+  });
+
   it("strony podglądu grup publicznych wskazują tylko ekrany panelu publicznego, a podgląd ekranu startowego panelu uczestnika nie jest wśród nich", () => {
     const grupy: Record<string, DefinicjaGrupy> = GRUPY;
     const panele = (adres: string) =>
@@ -443,21 +484,33 @@ describe("strażnik roli dla każdej strony podglądu pod /nowy-front", () => {
     expect(naruszenia[0]).toContain("nie potrzebuje pozycji na liście podglądów bez strażnika");
   });
 
-  it("mutant: strona bez strażnika spoza listy podglądów bez strażnika jest naruszeniem", () => {
-    const naruszenia = naruszeniaPodgladu(GRUPY, bez(PODGLADY_BEZ_STRAZNIKA, "/nowy-front/pulpit"), PODGLADY_POZA_REJESTREM);
+  it("mutant: strona, której trasa produktu nie ma strażnika, spoza listy podglądów bez strażnika jest naruszeniem", () => {
+    const naruszenia = naruszeniaPodgladu(
+      zPodmienionaTrasaProduktu("/nowy-front/pulpit", "/konto"),
+      PODGLADY_BEZ_STRAZNIKA,
+      PODGLADY_POZA_REJESTREM,
+    );
     expect(naruszenia).toHaveLength(1);
     expect(naruszenia[0]).toContain(join("app", "nowy-front", "pulpit", "page.tsx"));
-    expect(naruszenia[0]).toContain("nie leży pod RequireRole");
+    expect(naruszenia[0]).toContain("wymaga pozycji z powodem na liście podglądów bez strażnika");
   });
 
   it("mutant: strona z listy podglądów bez strażnika, której trasa produktu ma strażnika, jest naruszeniem", () => {
+    const naruszenia = naruszeniaPodgladu(GRUPY, { "/nowy-front/pulpit": "powód" }, PODGLADY_POZA_REJESTREM);
+    expect(naruszenia).toEqual([
+      `${join("app", "nowy-front", "pulpit", "page.tsx")} — strona z listy podglądów bez strażnika, a trasa produktu wymaga ról student, volunteer`,
+    ]);
+  });
+
+  it("mutant: strona podglądu ekranu uczestnika pod trasą produktu z węższą rolą jest naruszeniem", () => {
     const naruszenia = naruszeniaPodgladu(
       zPodmienionaTrasaProduktu("/nowy-front/pulpit", "/panel/staz"),
       PODGLADY_BEZ_STRAZNIKA,
       PODGLADY_POZA_REJESTREM,
     );
-    expect(naruszenia).toHaveLength(2);
-    expect(naruszenia.every((opis) => opis.includes(join("app", "nowy-front", "pulpit", "page.tsx")))).toBe(true);
+    expect(naruszenia).toEqual([
+      `${join("app", "nowy-front", "pulpit", "page.tsx")} nie leży pod RequireRole z rolami trasy produktu (volunteer); role strażnika nad stroną: student, volunteer`,
+    ]);
   });
 
   it("mutant: strażnik z rolami innymi niż trasa produktu jest naruszeniem", () => {
@@ -504,5 +557,111 @@ describe("strażnik roli dla każdej strony podglądu pod /nowy-front", () => {
     );
     expect(naruszenia).toHaveLength(1);
     expect(naruszenia[0]).toContain("przedluzenie");
+  });
+});
+
+/** Katalogi segmentu `/panel` obu grup tras z ekranami uczestnika. */
+const KATALOGI_PANELU = [join(KATALOG_APP, "(uczestnik)", "panel"), join(KATALOG_APP, "(przelaczenie)", "panel")];
+
+/**
+ * Strony pod `/panel` bez strażnika nad nimi: strona, która wyłącznie przekierowuje (nie ma treści).
+ * Klucz: plik względem `app`, wartość: powód.
+ */
+const STRONY_PANELU_BEZ_STRAZNIKA: Record<string, string> = {
+  [join("(uczestnik)", "panel", "page.tsx")]: "samo przekierowanie /panel na start panelu, bez treści",
+};
+
+/** Odpowiedź serwera wywołana w źródle: `notFound()`, `redirect(…)` albo `permanentRedirect(…)`. */
+const WZORZEC_ODPOWIEDZI_SERWERA = /\b(?:notFound|redirect|permanentRedirect)\(/;
+
+interface UkladNadStrona {
+  plik: string;
+  zrodlo: string;
+}
+
+/** Układy od katalogu strony w górę do katalogu `/panel` włącznie (od najbliższego). */
+function ukladyDoPanelu(plikStrony: string, katalogPanelu: string): UkladNadStrona[] {
+  const uklady: UkladNadStrona[] = [];
+  let katalog = dirname(plikStrony);
+  for (;;) {
+    const plik = join(katalog, "layout.tsx");
+    if (existsSync(plik)) uklady.push({ plik, zrodlo: readFileSync(plik, "utf8") });
+    if (katalog === katalogPanelu) break;
+    katalog = dirname(katalog);
+  }
+  return uklady;
+}
+
+/** Strażnik w źródle układu: element `StraznikUczestnika` (nie sam import ani komentarz). */
+function maStraznikaUczestnika(zrodlo: string): boolean {
+  return /<StraznikUczestnika\b/.test(zrodlo);
+}
+
+/**
+ * Naruszenia ułożenia strażnika pod `/panel`:
+ * - układ całego `/panel` nie ma strażnika (odpowiedzi serwera segmentów zapadałyby w przeglądarce);
+ * - każda strona (poza listą stron bez strażnika) leży pod układem segmentu ze strażnikiem;
+ * - strona, która wywołuje odpowiedź serwera, ma tę samą decyzję w układzie segmentu przed strażnikiem.
+ */
+export function naruszeniaUlozeniaStraznika(
+  katalogi: readonly string[] = KATALOGI_PANELU,
+  bezStraznika: Record<string, string> = STRONY_PANELU_BEZ_STRAZNIKA,
+): string[] {
+  const naruszenia: string[] = [];
+  for (const katalogPanelu of katalogi) {
+    const ukladPanelu = join(katalogPanelu, "layout.tsx");
+    if (existsSync(ukladPanelu) && maStraznikaUczestnika(readFileSync(ukladPanelu, "utf8"))) {
+      naruszenia.push(`${relative(KATALOG_APP, ukladPanelu)} — strażnik w układzie całego /panel`);
+    }
+    for (const plikStrony of stronyAplikacji(katalogPanelu)) {
+      const opis = relative(KATALOG_APP, plikStrony);
+      const zrodloStrony = readFileSync(plikStrony, "utf8");
+      const ukladySegmentu = ukladyDoPanelu(plikStrony, katalogPanelu).filter((uklad) => uklad.plik !== ukladPanelu);
+      const zeStraznikiem = ukladySegmentu.filter((uklad) => maStraznikaUczestnika(uklad.zrodlo));
+      if (opis in bezStraznika) {
+        if (zeStraznikiem.length > 0) naruszenia.push(`${opis} — strona z listy bez strażnika leży pod strażnikiem`);
+        if (/<[A-Za-z]/.test(zrodloStrony)) naruszenia.push(`${opis} — strona z listy bez strażnika ma treść`);
+        continue;
+      }
+      if (zeStraznikiem.length === 0) {
+        naruszenia.push(`${opis} — strona nie leży pod układem segmentu ze StraznikUczestnika`);
+        continue;
+      }
+      if (!WZORZEC_ODPOWIEDZI_SERWERA.test(zrodloStrony)) continue;
+      const decyzjaPrzedStraznikiem = ukladySegmentu.some((uklad) => {
+        const odpowiedz = uklad.zrodlo.search(WZORZEC_ODPOWIEDZI_SERWERA);
+        const straznik = uklad.zrodlo.search(/<StraznikUczestnika\b/);
+        return odpowiedz !== -1 && (straznik === -1 || odpowiedz < straznik);
+      });
+      if (!decyzjaPrzedStraznikiem) {
+        naruszenia.push(`${opis} — odpowiedź serwera strony nie ma tej samej decyzji w układzie segmentu przed strażnikiem`);
+      }
+    }
+  }
+  return naruszenia;
+}
+
+describe("ułożenie StraznikUczestnika pod /panel", () => {
+  it("strażnik stoi w układach segmentów, a odpowiedzi serwera zapadają przed nim", () => {
+    expect(naruszeniaUlozeniaStraznika()).toEqual([]);
+  });
+
+  it("kontrola: przegląd widzi strony obu grup /panel", () => {
+    const strony = KATALOGI_PANELU.flatMap((katalog) => stronyAplikacji(katalog)).map((plik) => adresStrony(plik));
+    expect(strony).toEqual(
+      expect.arrayContaining(["/panel/pulpit", "/panel/lekcje/[]", "/panel/po-programie", "/panel/dalsza-wspolpraca"]),
+    );
+  });
+
+  it("mutant: strona /panel bez pozycji na liście bez strażnika jest naruszeniem", () => {
+    expect(naruszeniaUlozeniaStraznika(KATALOGI_PANELU, {})).toEqual([
+      `${join("(uczestnik)", "panel", "page.tsx")} — strona nie leży pod układem segmentu ze StraznikUczestnika`,
+    ]);
+  });
+
+  it("mutant: pozycja listy bez strażnika na stronie z treścią pod strażnikiem jest naruszeniem", () => {
+    const opis = join("(uczestnik)", "panel", "pulpit", "page.tsx");
+    const naruszenia = naruszeniaUlozeniaStraznika(KATALOGI_PANELU, { ...STRONY_PANELU_BEZ_STRAZNIKA, [opis]: "próba" });
+    expect(naruszenia).toContain(`${opis} — strona z listy bez strażnika leży pod strażnikiem`);
   });
 });

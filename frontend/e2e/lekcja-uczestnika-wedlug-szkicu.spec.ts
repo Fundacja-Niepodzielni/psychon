@@ -722,7 +722,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
     test("18 kontrola dodatnia: ta sama sekwencja bez podglądu wysyła postęp, ukończenie i pytanie", async ({ page }) => {
       await page.clock.install();
       const zapisy = zbierajZapisy(page);
-      await instalujAtrapy(page, { rola: "project_manager", active_seconds: 1100, completable: true });
+      await instalujAtrapy(page, { rola: "volunteer", active_seconds: 1100, completable: true });
       await otworz(page, 21, "Wprowadzenie do wywiadu", `?kurs=${SLUG}`);
 
       await expect(page.getByRole("region", { name: "Tryb podglądu" })).toHaveCount(0);

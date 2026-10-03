@@ -33,6 +33,8 @@ vi.mock("next/navigation", () => ({
 
 const { ApiError } = await import("@/lib/api/klient");
 const { default: UkladUczestnika } = await import("@/app/(uczestnik)/panel/layout");
+const { default: UkladPulpitu } = await import("@/app/(uczestnik)/panel/pulpit/layout");
+const { default: UkladLekcji } = await import("@/app/(uczestnik)/panel/lekcje/[id]/layout");
 const { default: StronaPulpitu } = await import("@/app/(uczestnik)/panel/pulpit/page");
 const { default: NowyEkranPulpitu } = await import("@/app/(uczestnik)/panel/pulpit/NowyEkran");
 const { default: NowyEkranLekcji } = await import("@/app/(uczestnik)/panel/lekcje/[id]/NowyEkran");
@@ -99,22 +101,21 @@ function atrapaPulpitu(nadpisz: Record<string, () => Promise<unknown>> = {}) {
 function trasaPulpitu() {
   return render(
     <UkladUczestnika>
-      <StronaPulpitu />
+      <UkladPulpitu>
+        <StronaPulpitu />
+      </UkladPulpitu>
     </UkladUczestnika>,
   );
 }
 
 /**
  * Grupa `lekcja` jest włączona, więc strona pod `/panel/lekcje/[id]` zwraca
- * ekran lekcji nowego frontu. Test renderuje ten ekran w układzie panelu wprost
+ * ekran lekcji nowego frontu. Test renderuje ten ekran w układzie panelu i segmentu wprost
  * (ten sam element, który strona zwraca), żeby pilnować jednego `main`.
  */
 async function trasaLekcji() {
-  return render(
-    <UkladUczestnika>
-      <NowyEkranLekcji id="21" />
-    </UkladUczestnika>,
-  );
+  const segment = await UkladLekcji({ children: <NowyEkranLekcji id="21" />, params: Promise.resolve({ id: "21" }) });
+  return render(<UkladUczestnika>{segment}</UkladUczestnika>);
 }
 
 beforeEach(() => {
@@ -125,8 +126,16 @@ beforeEach(() => {
 });
 
 describe("/panel/pulpit w układzie panelu uczestnika", () => {
-  it("ładowanie: jeden main, jeden #tresc, jeden odnośnik", async () => {
+  it("odczyt konta w toku: jeden main, jeden #tresc, jeden odnośnik", async () => {
     api.mockImplementation(NIGDY);
+    const { container } = trasaPulpitu();
+
+    await screen.findByText("Wczytywanie…");
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("ładowanie: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    atrapaPulpitu({ "/courses": NIGDY });
     const { container } = trasaPulpitu();
 
     await screen.findByRole("heading", { level: 1, name: "Pulpit" });
@@ -143,12 +152,21 @@ describe("/panel/pulpit w układzie panelu uczestnika", () => {
   });
 
   it("błąd 500: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    atrapaPulpitu({ "/courses": () => Promise.reject(blad(500, "server_error")) });
+    const { container } = trasaPulpitu();
+
+    await screen.findByText("Nie udało się wczytać pulpitu");
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("błąd 500 na /me: jeden main, jeden #tresc, jeden odnośnik, wspólne zdanie o serwerze", async () => {
     api.mockImplementation((sciezka: string) =>
       sciezka === "/me" ? Promise.reject(blad(500, "server_error")) : Promise.resolve({ role: "volunteer" }),
     );
     const { container } = trasaPulpitu();
 
-    await screen.findByText("Nie udało się wczytać pulpitu");
+    await screen.findByText("Nie udało się połączyć z serwerem. Spróbuj ponownie za chwilę.");
+    expect(zapytane()).not.toContain("/courses");
     expect(zmierz(container)).toEqual(JEDEN);
   });
 
@@ -156,7 +174,7 @@ describe("/panel/pulpit w układzie panelu uczestnika", () => {
     atrapaPulpitu({ "/me": () => Promise.reject(blad(403, "forbidden")) });
     const { container } = trasaPulpitu();
 
-    await screen.findByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" });
+    await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" });
     expect(screen.queryByText("Wywiad psychologiczny")).toBeNull();
     expect(screen.queryByText("Twoja ścieżka")).toBeNull();
     expect(zapytane()).not.toContain("/courses");
@@ -167,7 +185,7 @@ describe("/panel/pulpit w układzie panelu uczestnika", () => {
     atrapaPulpitu({ "/me": () => Promise.resolve({ role: "instructor", first_name: "Piotr", program_completed_at: null }) });
     const { container } = trasaPulpitu();
 
-    await screen.findByText(/Ten ekran jest dla uczestników/);
+    await screen.findByText(/Ten ekran jest dla osób uczestniczących w programie/);
     expect(screen.queryByText("Wywiad psychologiczny")).toBeNull();
     expect(zapytane()).not.toContain("/courses");
     expect(zmierz(container)).toEqual(JEDEN);
@@ -176,7 +194,7 @@ describe("/panel/pulpit w układzie panelu uczestnika", () => {
 
 describe("/panel/lekcje/[id] w układzie panelu uczestnika", () => {
   it("ładowanie: jeden main, jeden #tresc, jeden odnośnik", async () => {
-    api.mockImplementation(NIGDY);
+    api.mockImplementation((sciezka: string) => (sciezka === "/me" ? Promise.resolve({ role: "volunteer" }) : NIGDY()));
     const { container } = await trasaLekcji();
 
     await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());

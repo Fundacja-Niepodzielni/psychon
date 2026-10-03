@@ -204,10 +204,15 @@ function strazPrzedPowloka(src: string): boolean {
   });
 }
 
-/** Pierwsza rola z `allowedRoles` pierwszego `<RequireRole` w źródle layoutu albo `null`. */
+/**
+ * Pierwsza rola z `allowedRoles` pierwszego `<RequireRole` w źródle layoutu, rola uczestnika
+ * `volunteer` dla `<StraznikUczestnika` (przepuszczają ją też węższe strażniki ekranów
+ * wolontariusza w tym samym łańcuchu) albo `null`.
+ */
 function rolaZeStrazy(src: string): string | null {
   const wpis = /<RequireRole\b[^>]*?allowedRoles=\{\[\s*["']([a-z_]+)["']/.exec(src);
-  return wpis ? wpis[1] : null;
+  if (wpis) return wpis[1];
+  return /<StraznikUczestnika\b/.test(src) ? "volunteer" : null;
 }
 
 function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {

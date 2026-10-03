@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { GRUPY } from "@/lib/przelaczenie/grupy";
 import LekcjaNowyEkran from "./NowyEkran";
 import LekcjaStaraTresc from "./StaraTresc";
+import { identyfikatorLekcji } from "./identyfikator-lekcji";
 
 interface LessonPageProps {
   params: Promise<{ id: string }>;
@@ -17,9 +18,9 @@ interface LessonPageProps {
  */
 export default async function LessonPage({ params }: LessonPageProps) {
   const { id } = await params;
-  const lessonId = Number(id);
+  const lessonId = identyfikatorLekcji(id);
 
-  if (!Number.isSafeInteger(lessonId) || lessonId <= 0) {
+  if (lessonId === null) {
     notFound();
   }
 

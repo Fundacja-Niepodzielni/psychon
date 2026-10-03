@@ -511,7 +511,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await sprawdzAxe(page, testInfo, `axe-kurs-bez-lekcji-${szerokosc}`);
     });
 
-    test("podgląd, cztery nogi: personel i prowadzący z parametrem — pas; personel bez parametru i uczestnik z parametrem — zwykły ekran", async ({ page }) => {
+    test("podgląd, cztery nogi: personel i prowadzący z parametrem — pas; personel bez parametru — ekran braku dostępu; uczestnik z parametrem — zwykły ekran", async ({ page }) => {
       const sprawdz = async (rola: string, adres: string) => {
         await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 2, zamknieteOd: 4 }) }), rola);
         await otworz(page, adres);
@@ -530,9 +530,12 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await expect(pas.getByRole("link", { name: "Wróć do edycji kursu" })).toHaveAttribute("href", "/admin/kursy/2");
       await page.unrouteAll({ behavior: "ignoreErrors" });
 
-      await sprawdz("project_manager", `/panel/kursy/${SLUG}`);
+      await instalujAtrapy(page, () => ({ status: 200, cialo: kurs({ ukonczone: 2, zamknieteOd: 4 }) }), "project_manager");
+      await otworz(page, `/panel/kursy/${SLUG}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Nie masz dostępu do tego ekranu" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Pierwsza pomoc psychologiczna" })).toHaveCount(0);
       await expect(pas).toHaveCount(0);
-      await expect(page.locator("[data-zamknieta]")).toHaveCount(4);
+      await expect(page.locator("[data-zamknieta]")).toHaveCount(0);
       await page.unrouteAll({ behavior: "ignoreErrors" });
 
       await sprawdz("volunteer", `/panel/kursy/${SLUG}?podglad=1`);
