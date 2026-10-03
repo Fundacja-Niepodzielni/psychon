@@ -116,6 +116,29 @@ describe("Karta osoby — prowadzący superwizje", () => {
     expect(await screen.findByText("Nie udało się nadać prowadzącego. Spróbuj ponownie.")).toBeInTheDocument();
   });
 
+  it("karta z bieżącym prowadzącym pokazuje go w sekcji, a po nadaniu innego — nowego", async () => {
+    pobierzKarteOsoby.mockResolvedValue({ ...kartaPrzykladowa(), supervisor: { id: 6, name: "Piotr Drugi" } });
+    assignSupervisor.mockResolvedValue({ volunteer_id: 17, supervisor_id: 5, assigned_at: "2026-10-02T12:00:00Z", unassigned_at: null });
+    render(<KartaOsoby id={17} />);
+
+    expect(await screen.findByText("Prowadzącym jest teraz Piotr Drugi.")).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole("combobox", { name: /^Prowadzący/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /Joanna Prowadząca/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Nadaj prowadzącego" }));
+
+    expect(await screen.findByText(/Prowadzącym jest teraz Joanna Prowadząca/)).toBeInTheDocument();
+    expect(screen.queryByText("Prowadzącym jest teraz Piotr Drugi.")).toBeNull();
+  });
+
+  it("karta bez prowadzącego nie pokazuje zdania o bieżącym prowadzącym", async () => {
+    pobierzKarteOsoby.mockResolvedValue({ ...kartaPrzykladowa(), supervisor: null });
+    render(<KartaOsoby id={17} />);
+
+    expect(await screen.findByRole("heading", { name: "Prowadzący superwizje" })).toBeInTheDocument();
+    expect(screen.queryByText(/Prowadzącym jest teraz/)).toBeNull();
+  });
+
   it("lista prowadzących niedostępna: zdanie, a sekcja dalej istnieje", async () => {
     fetchAdminUsers.mockRejectedValue(new Error("sieć"));
     render(<KartaOsoby id={17} />);

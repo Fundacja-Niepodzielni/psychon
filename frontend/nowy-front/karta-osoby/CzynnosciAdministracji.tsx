@@ -1,5 +1,6 @@
 "use client";
 
+import type { CurrentSupervisor } from "@/lib/api/przypisanie-prowadzacego";
 import { BlokadaKonta } from "./BlokadaKonta";
 import { PrzypisanieSuperwizora } from "./PrzypisanieSuperwizora";
 import { ResetLimituPodejsc } from "./ResetLimituPodejsc";
@@ -10,6 +11,8 @@ interface WlasciwosciCzynnosciAdministracji {
   userId: number;
   imieNazwisko: string;
   rolaOsoby: string;
+  /** Bieżący prowadzący z karty (`supervisor`) albo `null`. */
+  prowadzacy?: CurrentSupervisor | null;
   onOdswiez: () => void;
 }
 
@@ -18,10 +21,10 @@ interface WlasciwosciCzynnosciAdministracji {
  * każda w osobnej sekcji z własnym potwierdzeniem i własnym zdaniem błędu.
  * Karta renderuje ten blok wyłącznie dla opiekuna projektu i administratora.
  */
-export function CzynnosciAdministracji({ userId, imieNazwisko, rolaOsoby, onOdswiez }: WlasciwosciCzynnosciAdministracji) {
+export function CzynnosciAdministracji({ userId, imieNazwisko, rolaOsoby, prowadzacy = null, onOdswiez }: WlasciwosciCzynnosciAdministracji) {
   return (
     <div className={style.czynnosci} data-obszar="czynnosci-administracji">
-      <PrzypisanieSuperwizora userId={userId} />
+      <PrzypisanieSuperwizora userId={userId} obecny={prowadzacy} />
       <ZmianaRoli userId={userId} rolaOsoby={rolaOsoby} onOdswiez={onOdswiez} />
       <ResetLimituPodejsc userId={userId} imieNazwisko={imieNazwisko} />
       <BlokadaKonta userId={userId} imieNazwisko={imieNazwisko} rolaOsoby={rolaOsoby} onOdswiez={onOdswiez} />

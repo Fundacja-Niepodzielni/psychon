@@ -448,7 +448,7 @@ export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
           ) : (
             <>
               <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
-              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} imieNazwisko={imieNazwisko} rolaOsoby={karta.profile.role} onOdswiez={() => wczytajKarte()} />}
+              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} imieNazwisko={imieNazwisko} rolaOsoby={karta.profile.role} prowadzacy={karta.supervisor ?? null} onOdswiez={() => wczytajKarte()} />}
             </>
           )
         }

@@ -1,5 +1,6 @@
 import { api, ApiError } from "@/lib/api/klient";
 import { ROLE_LABELS } from "@/lib/h18/labels";
+import type { CurrentSupervisor } from "@/lib/api/przypisanie-prowadzacego";
 import { formatujDate } from "../wspolne/daty";
 import type { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
 import type { KolumnaDataTable, WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
@@ -89,6 +90,8 @@ export interface KartaOsobyDane {
   documents?: DokumentOsobyKarty[];
   recent_notifications: PowiadomienieKarty[];
   audit_entries: WpisDziennikaKarty[];
+  /** Bieżący prowadzący osoby `{id, name}` albo `null` — tylko do odczytu. */
+  supervisor?: CurrentSupervisor | null;
 }
 
 /** `AdminReliabilityResource.php:10-19`. */

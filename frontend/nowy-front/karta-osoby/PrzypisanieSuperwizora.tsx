@@ -8,12 +8,15 @@ import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { assignSupervisor, fetchAdminUsers, type AdminUserListItem } from "@/lib/api/h18";
+import type { CurrentSupervisor } from "@/lib/api/przypisanie-prowadzacego";
 import { formatujDateICzas } from "../wspolne/daty";
 import { zdanieBleduCzynnosci } from "./dane";
 import style from "./KartaOsoby.module.css";
 
 interface WlasciwosciPrzypisaniaSuperwizora {
   userId: number;
+  /** Bieżący prowadzący z karty osoby albo `null` — zdanie „Prowadzącym jest teraz …”. */
+  obecny?: CurrentSupervisor | null;
 }
 
 /**
@@ -21,9 +24,10 @@ interface WlasciwosciPrzypisaniaSuperwizora {
  * z ciałem `{ supervisor_id }` (opiekun projektu i administrator). Kandydaci:
  * `GET /admin/users?role=instructor&per_page=100`. O dopuszczalności przypisania
  * rozstrzyga serwer — odmowę pokazujemy zdaniem z koperty błędu; przycisk blokuje
- * tylko brak wskazanej osoby i trwające żądanie.
+ * tylko brak wskazanej osoby i trwające żądanie. Bieżącego prowadzącego z karty
+ * pokazuje to samo zdanie co po nadaniu; po nadaniu zdanie mówi o nowym.
  */
-export function PrzypisanieSuperwizora({ userId }: WlasciwosciPrzypisaniaSuperwizora) {
+export function PrzypisanieSuperwizora({ userId, obecny = null }: WlasciwosciPrzypisaniaSuperwizora) {
   const [prowadzacy, setProwadzacy] = useState<AdminUserListItem[]>([]);
   const [bladListy, setBladListy] = useState<string | null>(null);
   const [wybrany, setWybrany] = useState("");
@@ -88,6 +92,7 @@ export function PrzypisanieSuperwizora({ userId }: WlasciwosciPrzypisaniaSuperwi
           {przypisany.od ? ` (od ${formatujDateICzas(przypisany.od)})` : ""}.
         </Text>
       )}
+      {przypisany === null && obecny !== null && <Text>Prowadzącym jest teraz {obecny.name}.</Text>}
       <Field
         id="czynnosc-prowadzacy-wybor"
         etykieta="Prowadzący"
