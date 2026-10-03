@@ -726,8 +726,8 @@ Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiad
 - **Przycisk:** „Otwórz profil” → Profil.
 - **Dziś (do porównania):** temat „Eksport danych osobowych jest gotowy”; treść: „Twój eksport
   danych (RODO) został przygotowany. Pobierz go w zakładce Profil.”.
-- **Uwaga:** zdanie o ograniczonym czasie wynika z tego, że plik po kilkudziesięciu godzinach
-  jest usuwany (czas ustawia serwer).
+- **Uwaga:** zdanie o ograniczonym czasie wynika z tego, że plik jest usuwany po czasie
+  ustawionym na serwerze (domyślnie po 24 godzinach).
 
 ### E-24. Odpowiedź na zgłoszenie dalszej współpracy
 
@@ -1220,3 +1220,85 @@ Przy każdym pytaniu jest odpowiedź zalecana. Wystarczy wskazać literę.
 11. **Z jakim wyprzedzeniem zapowiadać usunięcie danych nieaktywnego konta (E-31)?**
     - (a) 30 dni przed usunięciem **(zalecane)** — czas na odpowiedź także po urlopie.
     - (b) 14 dni przed usunięciem.
+
+## Dodatek: skąd to wiem
+
+Odwołania do plików repozytorium (ścieżka:wiersz). Nie są potrzebne do decyzji — służą
+sprawdzeniu, że opis zgadza się z platformą.
+
+### Jak powstaje e-mail z powiadomienia
+
+- Jedna droga powiadomień: `backend/app/Support/Notify.php:27` — tworzy powiadomienie w panelu
+  (`:39`) i kopię e-maila (`:57`): temat = tytuł powiadomienia (`:60`), treść = treść
+  powiadomienia (`:61`), stan „symulowany” (`:62`). Nic nie wychodzi na zewnątrz.
+- Wyłączenie rodzaju przez administrację: `backend/app/Support/Notify.php:34`,
+  lista przełączników `backend/app/Support/NotificationSettings.php:23`, sprawdzenie `:91`.
+  Wiadomości czatu nie ma na liście (`message.received` jest tylko
+  w `backend/app/Support/NotificationTypes.php:28`).
+- Wyłączenie e-maila przez osobę: `backend/app/Support/Notify.php:47`, zapis
+  `backend/routes/api/h16.php:31–32`. W `frontend/` nie ma ekranu, który z tego korzysta.
+- Ustawienia powiadomień dla administracji: `frontend/nowy-front/powiadomienia-email/PowiadomieniaEmail.tsx:162`;
+  ekran nie jest jeszcze włączony w menu — `frontend/lib/przelaczenie/grupy.ts:109`.
+- Lista rodzajów powiadomień w kontrakcie API: `docs/hackathon/02-kontrakt-api.md`, §3.1.
+
+### E-maile osobne (wychodzą naprawdę albo mają własny tekst)
+
+| Id | Gdzie powstaje |
+|---|---|
+| E-01 | `backend/app/Services/H03/ApplicationInvitationMailer.php:26` (temat), `:33–41` (treść), `:44` (wysyłka); wołane z `backend/app/Services/H03/ApplicationAcceptor.php:142` i ponownie z `backend/app/Http/Controllers/Api/V1/Admin/AdminUserController.php:229` |
+| E-02 | `backend/app/Services/H03/ApplicationRejectionMailer.php:26` (temat), `:54–61` (treść), `:37` (wysyłka), `:72` (ślad w skrzynce) |
+| E-03 | `backend/app/Http/Controllers/Api/V1/Admin/AdminUserController.php:391–403` (temat `:398`); wołane przy zakładaniu konta `:134` i przy zmianie adresu `:228` |
+| E-04 | `backend/app/Mail/HelpMessageConfirmation.php:28` (temat), `backend/resources/views/mail/help/confirmation.blade.php:7–10` (treść), wysyłka `backend/app/Services/Help/HelpMessageService.php:52` |
+| E-05 | `backend/app/Mail/HelpMessageReceived.php:30` (temat), `backend/resources/views/mail/help/received.blade.php:7–23` (treść), wysyłka `backend/app/Services/Help/HelpMessageService.php:49` |
+
+### Kopie powiadomień
+
+| Id | Gdzie powstaje |
+|---|---|
+| E-06 | `backend/app/Services/H03/ApplicationAcceptor.php:130` |
+| E-07 | `backend/app/Services/H03/ApplicationRejector.php:56` |
+| E-08 | `backend/app/Http/Controllers/Api/V1/H09/CourseAssignmentController.php:84` (treść `:152–161`), `backend/app/Services/H08/InstructorCourseAssignment.php:41` (prowadzący zakłada kurs); odnośnik do strony, której nie ma: `:89` i `InstructorCourseAssignment.php:46` |
+| E-09 | `backend/app/Http/Controllers/Api/V1/H09/CourseAssignmentController.php:125`; odnośnik `:130` |
+| E-10 | `backend/app/Services/H08/CourseInviter.php:41` |
+| E-11 | `backend/app/Services/CourseUnlockNotifier.php:84`, wołane przy otwarciu listy kursów `backend/app/Http/Controllers/Api/V1/CourseController.php:57` |
+| E-12 | `backend/app/Http/Controllers/Api/V1/H17/LessonQuestionController.php:108`; brak prowadzącego — brak wiadomości `:102–106` |
+| E-13 | `backend/app/Http/Controllers/Api/V1/H17/InstructorQuestionController.php:91` |
+| E-14 | `backend/app/Http/Controllers/Api/V1/H11/AdminInternshipController.php:65` |
+| E-15 | `backend/app/Http/Controllers/Api/V1/H11/AdminInternshipController.php:102` |
+| E-16 | `backend/app/Http/Controllers/Api/V1/H11/AdminInternshipController.php:145` |
+| E-17 | `backend/app/Http/Controllers/Api/V1/TestController.php:294` (treść `:286–290`) |
+| E-18 | `backend/app/Jobs/GenerateCertificate.php:144` |
+| E-19 | `backend/app/Services/H14/DocumentIssuer.php:82` (treść `:224–229`) |
+| E-20 | `backend/app/Http/Controllers/Api/V1/H15/AdminProfileController.php:87` |
+| E-21 | `backend/app/Http/Controllers/Api/V1/H15/AdminProfileController.php:122` |
+| E-22 | `backend/app/Http/Controllers/Api/V1/H15/PsychologistProfileController.php:218` (odbiorcy `:212–215`) |
+| E-23 | `backend/app/Jobs/GenerateDataExport.php:62`; czas życia pliku `backend/config/exports.php:18` |
+| E-24 | `backend/app/Http/Controllers/Api/V1/H01/AdminCooperationRequestController.php:80` |
+| E-25 | `backend/app/Console/Commands/SendSupervisionReminders.php:89`; godzina i przełącznik `:39–54`; uruchamiane co godzinę `backend/routes/console.php:23` |
+| E-26 | `backend/app/Services/H12/SupervisionSlotService.php:118` |
+| E-27 | `backend/app/Services/H12/SupervisionSlotService.php:132` |
+| E-28 | `backend/app/Services/Chat/ChatMessageService.php:37`; odnośnik do strony, której nie ma: `:42` |
+
+### Brakujące e-maile — skąd potrzeba
+
+| Id | Źródło |
+|---|---|
+| E-29, E-30 | decyzja właściciela; dokumentacja: `docs/system/04-specyfikacja-modulow-mvp.md:306` (30/7 dni); dziś zadanie dzienne tylko liczy wygasłe konta, celowo bez e-maili: `backend/app/Console/Commands/CheckExpiredAccess.php:15`, `backend/routes/console.php:12` |
+| E-31 | `docs/system/02-model-danych.md:236` |
+| E-32 | zmiana daty bez wiadomości: `backend/app/Http/Controllers/Api/V1/Admin/AccessController.php:57` |
+| E-33, E-34 | przydział superwizora bez wiadomości: `backend/app/Services/H12/SupervisorAssignmentService.php:76` |
+| E-35 | odnowienie podejść bez wiadomości: `backend/app/Http/Controllers/Api/V1/AdminTestResetController.php:50` |
+| E-36 | zaliczenie warsztatu bez wiadomości: `backend/app/Http/Controllers/Api/V1/AdminWorkshopController.php:32` |
+| E-37 | unieważnienie certyfikatu bez wiadomości: `backend/app/Services/H13/CertificateRevoker.php:50` |
+| E-38 | publikacja dokumentu bez wiadomości: `backend/app/Http/Controllers/Api/V1/H22/AdminLegalDocumentController.php:98` |
+| E-39 | nowe zgłoszenie współpracy bez wiadomości: `backend/app/Http/Controllers/Api/V1/H01/CooperationRequestController.php:56` |
+| E-40 | blokada konta bez wiadomości: `backend/app/Http/Controllers/Api/V1/Admin/AdminUserController.php:267` |
+| E-41 | pytanie bez adresata: `backend/app/Http/Controllers/Api/V1/H17/LessonQuestionController.php:102–106` |
+
+### Nazwy stron w przyciskach
+
+Nazwy stron (Profil, Kursy, Dziennik stażu, Superwizja, Certyfikat, Dokumenty, Profil psychologa,
+Po programie, Moja grupa, Pytania, Uczestniczki, Profile psychologa, Dalsza współpraca) pochodzą
+z menu panelu: `frontend/lib/menu/participant/`, `frontend/lib/menu/instructor/`,
+`frontend/lib/menu/admin/`. Data końca dostępu stoi na stronie Profil:
+`frontend/app/(uczestnik)/panel/profil/page.tsx:29`.
