@@ -25,6 +25,7 @@ import {
   OPCJE_STATUSU,
   PUSTY_FILTR,
   PUSTY_FORMULARZ_ZGLOSZENIA,
+  ZDANIE_KOLUMN_IMPORTU,
   dodajZgloszenie,
   filtrAktywny,
   importujZgloszenia,
@@ -357,8 +358,9 @@ export function ZgloszeniaLista() {
     <section className={style.panel} aria-label="Import zgłoszeń z pliku">
       <Heading stopien={2}>Importuj z pliku CSV</Heading>
       <Text>
-        Każdy wiersz pliku to jedno zgłoszenie. Pierwszy wiersz zawiera nazwy kolumn; wymagane są imię, nazwisko i
-        adres e-mail. Jeśli w pliku czegoś zabraknie, raport pokaże, których wierszy nie wczytano i dlaczego.
+        Każdy wiersz pliku to jedno zgłoszenie. Pierwszy wiersz zawiera nazwy kolumn. {ZDANIE_KOLUMN_IMPORTU} Wielkość liter
+        w nazwach nie ma znaczenia, a kolumny rozdziela przecinek albo średnik. Jeśli w pliku czegoś zabraknie, raport
+        pokaże, których wierszy nie wczytano i dlaczego.
       </Text>
       <FileDropZone
         id="zgloszenia-import-plik"

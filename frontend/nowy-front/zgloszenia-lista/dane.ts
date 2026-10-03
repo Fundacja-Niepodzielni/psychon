@@ -127,6 +127,24 @@ export const ADRES_IMPORTU = "/admin/applications/import";
 /** Klucz pliku w żądaniu multipart — ten sam, którego używał stary ekran i który czyta `ImportApplicationsRequest`. */
 export const KLUCZ_PLIKU_IMPORTU = "file";
 
+/**
+ * Kolumny pierwszego wiersza pliku, bez których zaplecze nie przyjmie importu (`ApplicationCsvImporter`, lista
+ * `$required`): nazwa kolumny i jej opis po polsku. Nazwy są dokładnie tymi, które czyta zaplecze (wielkość
+ * liter bez znaczenia); próba porównuje je z kodem zaplecza.
+ */
+export const KOLUMNY_IMPORTU_WYMAGANE = ["first_name", "last_name", "email"] as const;
+
+const OPISY_KOLUMN_IMPORTU: Record<(typeof KOLUMNY_IMPORTU_WYMAGANE)[number], string> = {
+  first_name: "imię",
+  last_name: "nazwisko",
+  email: "adres e-mail",
+};
+
+/** Zdanie panelu importu o wymaganych kolumnach: „Wymagane kolumny: first_name (imię), last_name (nazwisko) i email (adres e-mail).” */
+export const ZDANIE_KOLUMN_IMPORTU = `Wymagane kolumny: ${KOLUMNY_IMPORTU_WYMAGANE.map((nazwa) => `${nazwa} (${OPISY_KOLUMN_IMPORTU[nazwa]})`)
+  .join(", ")
+  .replace(/, ([^,]*)$/, " i $1")}.`;
+
 export interface PominietyWiersz {
   line: number;
   reason: string;
