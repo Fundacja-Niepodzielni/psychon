@@ -51,6 +51,7 @@ class ZeroDanychProbnychCommandTest extends TestCase
     private const array TRACE_TABLES = [
         'lesson_progress',
         'test_attempts',
+        'test_attempt_resets',
         'workshop_completions',
         'internship_entries',
         'supervisor_assignments',
@@ -130,7 +131,7 @@ class ZeroDanychProbnychCommandTest extends TestCase
         $plan = $this->parseTables($output, 'usunac');
 
         $this->assertSame(4, $plan['users']['delete']);
-        foreach (['lesson_progress', 'test_attempts', 'internship_entries', 'applications', 'notifications', 'emails', 'certificates', 'documents', 'consents', 'audit_log'] as $table) {
+        foreach (['lesson_progress', 'test_attempts', 'test_attempt_resets', 'internship_entries', 'applications', 'notifications', 'emails', 'certificates', 'documents', 'consents', 'audit_log'] as $table) {
             $this->assertGreaterThan(0, $plan[$table]['delete'], "{$table}: bieg na sucho ma pokazac wiersze do usuniecia");
         }
         foreach (self::CONTENT_TABLES as $table) {
@@ -168,8 +169,11 @@ class ZeroDanychProbnychCommandTest extends TestCase
             $this->assertSame(0, DB::table($table)->count(), "{$table}: slady osob probnych maja zniknac");
         }
         $this->assertSame(0, DB::table('sensitive_access_log')->count(), 'dziennik wgladu z fazy testowej znika');
+        $this->assertSame(0, DB::table('test_attempt_resets')->count(), 'wyzerowania podejsc do testow osob probnych znikaja');
         $this->assertSame(1, DB::table('audit_log')->count(), 'dziennik zdarzen z fazy testowej znika; zostaje jeden wpis o czyszczeniu');
         $this->assertSame('trial_data.purged', DB::table('audit_log')->value('action'));
+        $details = json_decode((string) DB::table('audit_log')->value('details'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $details['deleted']['test_attempt_resets'], 'licznik tabeli jest we wpisie o czyszczeniu');
         $this->assertMatchesRegularExpression('/^ZNACZNIK start_produkcji=zapisany$/m', $output);
         $this->assertMatchesRegularExpression('/^DZIENNIK pierwszy_wpis=trial_data\.purged$/m', $output);
         $this->assertSame(0, DB::table('keycloak_sessions')->whereNotIn('sub', DB::table('users')->whereNotNull('keycloak_sub')->select('keycloak_sub'))->count());
@@ -205,6 +209,22 @@ class ZeroDanychProbnychCommandTest extends TestCase
         foreach ($materialFiles as $path) {
             Storage::disk('local')->assertExists($path);
         }
+    }
+
+    public function test_real_run_empties_the_attempt_resets_of_probe_people_and_counts_them_in_the_entry(): void
+    {
+        $this->assertSame(1, DB::table('test_attempt_resets')->count(), 'wyzerowanie osoby probnej z powodem istnieje przed biegiem');
+
+        [, $dry] = $this->runCommand(['--zachowaj' => $this->keepFile]);
+        $this->assertSame(1, $this->parseTables($dry, 'usunac')['test_attempt_resets']['delete'], 'bieg na sucho planuje usuniecie wyzerowania');
+
+        [$code, $output] = $this->runCommand(['--zachowaj' => $this->keepFile, '--wykonaj' => true, '--potwierdz' => '4']);
+        $this->assertSame(0, $code, $output);
+
+        $this->assertSame(0, DB::table('test_attempt_resets')->count(), 'wyzerowania podejsc do testow osob probnych znikaja w calosci');
+        $details = json_decode((string) DB::table('audit_log')->value('details'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $details['deleted']['test_attempt_resets'], 'licznik tabeli jest we wpisie o czyszczeniu');
+        $this->assertStringNotContainsString('Powod probny wyzerowania', (string) DB::table('audit_log')->value('details'), 'powod wpisany przez administracje nie trafia do dziennika');
     }
 
     public function test_every_run_after_the_first_is_refused_and_changes_nothing(): void
@@ -265,6 +285,7 @@ class ZeroDanychProbnychCommandTest extends TestCase
         }
         $this->assertSame($journalRowsBefore, $details['deleted']['audit_log']);
         $this->assertSame(1, $details['deleted']['sensitive_access_log']);
+        $this->assertSame(1, $details['deleted']['test_attempt_resets'], 'wyzerowania podejsc do testow maja licznik we wpisie');
         $this->assertSame(4, $details['deleted']['users']);
 
         // Zadnej wartosci osoby we wpisie.
@@ -708,6 +729,11 @@ class ZeroDanychProbnychCommandTest extends TestCase
         DB::table('access_date_changes')->insert([
             'user_id' => $probe->id, 'changed_by' => $admin->id, 'previous_expires_at' => now(),
             'new_expires_at' => now()->addMonth(), 'reason' => 'Powod probny.', 'created_at' => now(),
+        ]);
+        // Wyzerowanie podejść do testu osoby próbnej, z powodem wpisanym przez administrację.
+        DB::table('test_attempt_resets')->insert([
+            'test_id' => DB::table('tests')->value('id'), 'user_id' => $probe->id, 'reset_by' => $admin->id,
+            'reason' => 'Powod probny wyzerowania.', 'cleared' => 3, 'created_at' => now(),
         ]);
         DB::table('audit_log')->insert([
             'actor_id' => $admin->id, 'action' => 'user.updated', 'subject_type' => User::class,

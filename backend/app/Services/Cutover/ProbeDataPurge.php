@@ -101,6 +101,9 @@ final class ProbeDataPurge
         'supervision_slots' => ['all', null],
         'supervisor_assignments' => ['all', null],
         'internship_entries' => ['all', null],
+        // Wyzerowania podejść do testów: każdy wiersz dotyczy osoby próbnej i niesie powód
+        // wpisany przez administrację - czyszczone w całości, jak same podejścia.
+        'test_attempt_resets' => ['all', null],
         'test_attempts' => ['all', null],
         'lesson_progress' => ['all', null],
         'applications' => ['all', null],

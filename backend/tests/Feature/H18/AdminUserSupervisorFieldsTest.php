@@ -85,7 +85,7 @@ class AdminUserSupervisorFieldsTest extends TestCase
 
         $this->assertArrayHasKey('supervisor', $card);
         $this->assertNull($card['supervisor']);
-        $this->assertSame(['status' => 'blocked', 'created_at' => '2026-09-20T10:00:00Z'], $card['account']);
+        $this->assertSame(['status' => 'blocked', 'created_at' => '2026-09-20T10:00:00Z', 'blocked_reason' => null], $card['account']);
 
         $this->assign($admin, $person, $supervisor);
 
