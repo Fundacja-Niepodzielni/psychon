@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 /**
  * Świadek reguły axe `heading-order` na ekranie A-02: sekwencja stopni
@@ -107,8 +107,10 @@ describe("Sprawy — kolejność nagłówków bez przeskoków", () => {
     );
     const { container } = render(<Sprawy />);
 
+    // Temat sprawy prowadzącego (h3) stoi dopiero w sprawie rozwiniętej „Otwórz”.
+    fireEvent.click(await screen.findByRole("button", { name: /^Otwórz sprawę od prowadzącego/ }));
     await screen.findByText("Nieobecność na dyżurze");
-    await screen.findByText("Marta Demo");
+    await screen.findAllByText("Marta Demo");
     const stopnie = stopnieNaglowkow(container);
     expect(stopnie).toEqual([1, 2, 2, 3]);
     expect(przeskokNaglowkow(stopnie)).toBeNull();

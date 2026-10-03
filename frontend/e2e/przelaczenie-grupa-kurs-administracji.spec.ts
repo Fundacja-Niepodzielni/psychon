@@ -412,9 +412,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
       expect(await page.locator("main").count()).toBe(1);
       expect(await page.locator("#tresc").count()).toBe(1);
       await expect(page.getByRole("heading", { level: 3, name: "Podstawy" })).toBeVisible();
-      for (const id of ["tematy-i-lekcje", "publikacja", "ustawienia-dane", "ustawienia-prowadzacy", "ustawienia-zaproszenia"]) {
+      for (const id of ["tematy-i-lekcje", "publikacja", "ustawienia-dane", "ustawienia-prowadzacy"]) {
         await expect(page.locator(`#${id}`)).toHaveCount(1);
       }
+      await expect(page.locator("#ustawienia-zaproszenia")).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Otwórz pytania" })).toHaveAttribute(
         "href",
         "/admin/testy/31/pytania",
@@ -545,7 +546,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     ]);
   });
 
-  test("dane kursu, zaproszenie, prowadzący: każda operacja jednym żądaniem; zapis danych bez pozycji w ścieżce", async ({
+  test("dane kursu i prowadzący: każda operacja jednym żądaniem; zapis danych bez pozycji w ścieżce; panelu zaproszeń nie ma", async ({
     page,
   }) => {
     const { zapisy } = await instalujAtrapy(page);
@@ -564,14 +565,11 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await dane.getByRole("button", { name: "Zapisz dane kursu" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Wywiad psychologiczny — podstawy" })).toBeVisible();
 
-    await page.locator("#ustawienia-zaproszenia").click();
-    await expect(page.locator("#ustawienia-dane")).toHaveAttribute("aria-expanded", "false");
-    const zaproszenia = page.locator("#ustawienia-zaproszenia-panel");
-    await zaproszenia.getByLabel("Marta Demo · marta@demo.pl").check();
-    await zaproszenia.getByRole("button", { name: "Wyślij zaproszenia" }).click();
-    await expect(page.getByText("Zaproszono 1 osobę.")).toBeVisible();
+    // Panel „Zaproszenia” nie jest pokazywany do czasu zaproszeń po MVP: wiersza nie ma, żądania zaproszenia też.
+    await expect(page.locator("#ustawienia-zaproszenia, #ustawienia-zaproszenia-panel")).toHaveCount(0);
 
     await page.locator("#ustawienia-prowadzacy").click();
+    await expect(page.locator("#ustawienia-dane")).toHaveAttribute("aria-expanded", "false");
     const prowadzacy = page.locator("#ustawienia-prowadzacy-panel");
     await wybierz(page, /^Prowadzący/, "Joanna Demo");
     await prowadzacy.getByRole("button", { name: "Przypisz prowadzącego" }).click();
@@ -594,7 +592,6 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
           type: "course",
         },
       },
-      { metoda: "POST", sciezka: "/admin/courses/4/invite", cialo: { user_ids: [17] } },
       { metoda: "POST", sciezka: "/admin/courses/4/assignments", cialo: { instructor_id: 5, lesson_id: null } },
       { metoda: "DELETE", sciezka: "/admin/courses/4/assignments", cialo: { assignment_id: 100 } },
     ]);

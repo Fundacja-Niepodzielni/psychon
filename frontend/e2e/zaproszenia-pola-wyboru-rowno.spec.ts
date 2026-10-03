@@ -5,10 +5,15 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
 import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
 
 /**
- * Panel „Zaproszenia” na ekranie kursu administracji `/admin/kursy/{id}`
- * (kurs poza kolejnością programu), na zbudowanej aplikacji, z atrapą API
- * przez `page.route` i atrapą sesji. Pięć osób, dwie z długim adresem bez
- * spacji (etykieta w dwóch wierszach). Mierzone `getBoundingClientRect`:
+ * Formularz zaproszeń na trasie roboczej `/nowy-front/admin/kursy/{id}/zaproszenia`
+ * (kurs poza kolejnością programu) — panelu „Zaproszenia” w ustawieniach
+ * ekranu kursu nie ma do czasu zaproszeń po MVP, a ta trasa ma ten sam rdzeń
+ * (`RdzenZaproszen`). Zbudowana aplikacja, atrapa API przez `page.route`
+ * i atrapa sesji. Pięć osób, dwie z długim adresem bez spacji (etykieta
+ * w dwóch albo więcej wierszach także przy szerokim formularzu 1280 px).
+ * Wzorzec odstępu (karta „Prowadzący”) jest mierzony na ekranie kursu
+ * `/admin/kursy/{id}`, zanim próba przejdzie na trasę zaproszeń.
+ * Mierzone `getBoundingClientRect`:
  * - lewe krawędzie pól wyboru w jednej linii (różnica 0 px), także lewe
  *   krawędzie etykiet;
  * - pole przy pierwszym wierszu etykiety (górna i dolna krawędź pola
@@ -26,6 +31,7 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
 
 const API = "http://localhost:8000/api/v1";
 const ADRES = "/admin/kursy/4";
+const ADRES_ZAPROSZEN = "/nowy-front/admin/kursy/4/zaproszenia";
 
 const ATRAPA_SESJI = {
   accessToken: ["atrapa", "tokenu", "testowego"].join("-"),
@@ -75,11 +81,15 @@ const LEKCJE = [
 ];
 const TEMATY = [{ id: 7, course_id: 4, title: "Podstawy", position: 1, lesson_ids: [21], created_at: null, updated_at: null }];
 
-/** Adres bez spacji: nie mieści się w wierszu z imieniem, więc etykieta ma dwa wiersze. */
-const DLUGI_ADRES_A = `${"anna".repeat(2)}.demo@przyklad.test`;
-const DLUGI_ADRES_B = "dorota.demo@przyklad.test";
-/** Adres dłuższy niż wiersz listy: łamie się w obrębie etykiety, bez przewijania w poziomie. */
-const ADRES_PONAD_WIERSZ = `${"zbigniew-demo-".repeat(9)}konto@przyklad.test`;
+/**
+ * Adres bez spacji: nie mieści się w wierszu z imieniem ani w formularzu
+ * szerokości 640 px (1280), ani w wąskim (390), więc etykieta ma co najmniej
+ * dwa wiersze.
+ */
+const DLUGI_ADRES_A = `${"anna".repeat(16)}.demo@przyklad.test`;
+const DLUGI_ADRES_B = `${"dorota".repeat(11)}.demo@przyklad.test`;
+/** Adres dłuższy niż kilka wierszy listy: łamie się w obrębie etykiety, bez przewijania w poziomie. */
+const ADRES_PONAD_WIERSZ = `${"zbigniew-demo-".repeat(30)}konto@przyklad.test`;
 
 function osoba(id: number, role: "volunteer" | "student", imie: string, nazwisko: string, email: string) {
   return {
@@ -166,9 +176,13 @@ async function instalujAtrapy(page: Page): Promise<void> {
   await page.route("**/api/auth/end-session-url", (route) => route.fulfill(json({ url: null })));
 }
 
-const PANEL = "#ustawienia-zaproszenia-panel";
+/** Obszar treści szablonu formularza na trasie zaproszeń — w nim cały rdzeń zaproszeń. */
+const PANEL = "[data-testid='obszar-tresc']";
 
-/** Zwraca odstęp między sekcjami karty wzorcowej („Prowadzący”) przed otwarciem panelu zaproszeń. */
+/**
+ * Zwraca odstęp między sekcjami karty wzorcowej („Prowadzący”, ekran kursu),
+ * potem otwiera trasę zaproszeń i czeka na listę osób.
+ */
 async function otworzPanel(page: Page): Promise<string> {
   const odpowiedz = await page.goto(ADRES);
   expect(odpowiedz?.status()).toBe(200);
@@ -179,7 +193,10 @@ async function otworzPanel(page: Page): Promise<string> {
   await page.locator("#ustawienia-prowadzacy").click();
   await expect(page.locator("section#prowadzacy")).toBeVisible();
   const odstepKarty = await page.locator("section#prowadzacy").evaluate((wezel) => getComputedStyle(wezel).rowGap);
-  await page.locator("#ustawienia-zaproszenia").click();
+  const odpowiedzZaproszen = await page.goto(ADRES_ZAPROSZEN);
+  expect(odpowiedzZaproszen?.status()).toBe(200);
+  await zabezpieczeniePrzedEkranemDostepu(page);
+  await expect(page.getByRole("heading", { level: 1, name: "Zaproszenia na kurs" })).toBeVisible();
   await expect(page.locator(PANEL).locator("fieldset label")).toHaveCount(5);
   // Czcionki wczytane przed pomiarem: od nich zależy łamanie wierszy.
   await page.evaluate(() => document.fonts.ready);
@@ -191,9 +208,9 @@ async function zrzutPanelu(page: Page, nazwa: string): Promise<void> {
   if (!katalog) return;
   mkdirSync(katalog, { recursive: true });
   const okno = page.viewportSize()!;
-  // Kolumna boczna przewija się w sobie; na czas zrzutu okno rośnie, potem wraca.
+  // Na czas zrzutu okno rośnie (cały formularz w jednym ujęciu), potem wraca.
   await page.setViewportSize({ width: okno.width, height: 2600 });
-  await page.locator("[data-wiersz='zaproszenia']").screenshot({ path: join(katalog, `${nazwa}.png`), animations: "disabled" });
+  await page.locator(PANEL).screenshot({ path: join(katalog, `${nazwa}.png`), animations: "disabled" });
   await page.setViewportSize(okno);
 }
 

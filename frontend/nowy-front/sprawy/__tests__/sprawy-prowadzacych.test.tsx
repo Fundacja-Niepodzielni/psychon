@@ -76,12 +76,59 @@ beforeEach(() => {
   apiPaged.mockReset();
 });
 
+/** Rozwija sprawę jej przyciskiem „Otwórz” (temat i treść stoją dopiero w rozwiniętej sprawie). */
+function otworzSprawe(sprawa: HTMLElement) {
+  fireEvent.click(within(sprawa).getByRole("button", { name: /^Otwórz sprawę od prowadzącego/ }));
+}
+
+describe("Sprawy zgłoszone przez prowadzących — zwinięty wiersz i „Otwórz”", () => {
+  it("zwinięty wiersz: tylko rodzaj, osoba i czas czekania — bez tematu i treści", async () => {
+    atrapa(() => Promise.resolve({ data: SPRAWY }));
+    render(<Sprawy />);
+
+    const pierwsza = await screen.findByTestId("sprawa-prowadzacego-7");
+    expect(pierwsza.textContent).toContain("Sprawa od prowadzącego");
+    expect(pierwsza.textContent).toContain("Marta Demo");
+    expect(pierwsza.textContent).toMatch(/czeka /);
+    expect(pierwsza.textContent).not.toContain("Nieobecność na dyżurze");
+    expect(pierwsza.textContent).not.toContain("Pierwszy wiersz treści");
+    expect(pierwsza.textContent).not.toContain("Zgłosił/a: Joanna Prowadząca");
+    expect(within(pierwsza).queryByRole("heading")).toBeNull();
+    const przycisk = within(pierwsza).getByRole("button", { name: "Otwórz sprawę od prowadzącego: Marta Demo" });
+    expect(przycisk).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("„Otwórz” rozwija sprawę w miejscu i stawia fokus na jej temacie; „Zwiń” ją chowa", async () => {
+    atrapa(() => Promise.resolve({ data: SPRAWY }));
+    render(<Sprawy />);
+
+    const pierwsza = await screen.findByTestId("sprawa-prowadzacego-7");
+    otworzSprawe(pierwsza);
+
+    const temat = within(pierwsza).getByRole("heading", { level: 3, name: "Nieobecność na dyżurze" });
+    await waitFor(() => expect(temat).toHaveFocus());
+    expect(temat).toHaveAttribute("tabindex", "-1");
+    const zwin = within(pierwsza).getByRole("button", { name: "Zwiń sprawę od prowadzącego: Marta Demo" });
+    expect(zwin).toHaveAttribute("aria-expanded", "true");
+    expect(zwin).toHaveAttribute("aria-controls", "sprawa-prowadzacego-tresc-7");
+    // Druga sprawa zostaje zwinięta.
+    expect(screen.getByTestId("sprawa-prowadzacego-8").textContent).not.toContain("Sprawa bez wskazania osoby");
+
+    // Klawiatura: fokus przechodzi z tematu na „Zwiń” (Shift+Tab), potem Enter.
+    zwin.focus();
+    fireEvent.click(zwin);
+    expect(pierwsza.textContent).not.toContain("Nieobecność na dyżurze");
+    expect(within(pierwsza).getByRole("button", { name: /^Otwórz sprawę od prowadzącego/ })).toHaveFocus();
+  });
+});
+
 describe("Sprawy zgłoszone przez prowadzących — dane", () => {
   it("pokazuje temat, datę, zgłaszającego, osobę i treść każdej sprawy oraz trzy teksty zastępcze", async () => {
     atrapa(() => Promise.resolve({ data: SPRAWY }));
     render(<Sprawy />);
 
     const pierwsza = await screen.findByTestId("sprawa-prowadzacego-7");
+    otworzSprawe(pierwsza);
     expect(within(pierwsza).getByRole("heading", { level: 3, name: "Nieobecność na dyżurze" })).toBeInTheDocument();
     expect(pierwsza.textContent).toContain("1 września 2026");
     expect(pierwsza.textContent).toContain("Zgłosił/a: Joanna Prowadząca");
@@ -92,6 +139,7 @@ describe("Sprawy zgłoszone przez prowadzących — dane", () => {
     );
 
     const druga = screen.getByTestId("sprawa-prowadzacego-8");
+    otworzSprawe(druga);
     expect(druga.textContent).toContain("Zgłosił/a: Zgłaszający/a nieznany/a");
     expect(druga.textContent).toContain("Sprawa ogólna — bez wskazania osoby");
 
@@ -104,6 +152,7 @@ describe("Sprawy zgłoszone przez prowadzących — dane", () => {
     const { container } = render(<Sprawy />);
 
     const sprawa = await screen.findByTestId("sprawa-prowadzacego-8");
+    otworzSprawe(sprawa);
     expect(within(sprawa).getByText(zlosliwa)).toBeInTheDocument();
     expect(container.querySelector("script")).toBeNull();
     expect(container.querySelector("img")).toBeNull();

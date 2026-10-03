@@ -36,9 +36,9 @@ export const KOTWICA_PUBLIKACJI = "publikacja";
 export const ID_ODMOWY_PUBLIKACJI = "publikacja-odmowa";
 
 /**
- * Adres kursu w panelu uczestnika w trybie podglądu (`?podglad=1`). Serwer
- * pokazuje tam wyłącznie kurs opublikowany. Jedyne miejsce, które składa ten
- * adres — każdy odnośnik podglądu bierze go stąd.
+ * Adres kursu w panelu uczestnika w trybie podglądu (`?podglad=1`). Personel
+ * czyta tam także szkic (kontrakt, aneks „podgląd kursu nieopublikowanego”).
+ * Jedyne miejsce, które składa ten adres — każdy odnośnik podglądu bierze go stąd.
  */
 export function adresPodgladu(kurs: Pick<AdminCourse, "slug">): string {
   return `/panel/kursy/${kurs.slug}?podglad=1`;
@@ -92,13 +92,19 @@ export function PrzyciskGlowny({ kurs, onOpublikuj }: WlasciwosciPrzyciskuGlowne
 }
 
 /**
- * Przyciski publikacji: główny (zielony) i — tylko w szkicu — „Zapisz szkic i
- * wyjdź” z obrysem, bez tła. Zielony zostaje jeden; drugi nie jest głównym.
+ * Przyciski publikacji: główny (zielony) i — tylko w szkicu — pod nim
+ * „Podgląd jako uczestnik” oraz „Zapisz szkic i wyjdź”, oba z obrysem, bez
+ * tła. Zielony zostaje jeden; pozostałe nie są głównymi.
  */
 export function PrzyciskiPublikacji({ kurs, onOpublikuj, onZapiszIWyjdz }: WlasciwosciPrzyciskuGlownego) {
   return (
     <>
       <PrzyciskGlowny kurs={kurs} onOpublikuj={onOpublikuj} />
+      {!kurs.is_published && (
+        <a className={style.przyciskPodgladu} href={adresPodgladu(kurs)}>
+          Podgląd jako uczestnik
+        </a>
+      )}
       {!kurs.is_published && onZapiszIWyjdz && (
         <Button poziom="outline" onClick={onZapiszIWyjdz}>
           Zapisz szkic i wyjdź
@@ -237,6 +243,13 @@ export function KartaPublikacji({
 
 export type WierszUstawien = "dane" | "prowadzacy" | "zaproszenia";
 
+/**
+ * Wiersz „Zaproszenia” w karcie ustawień nie jest pokazywany, dopóki zaproszenia
+ * na kurs nie wrócą po MVP. Kod wiersza i sekcji zostaje; powrót panelu to
+ * zmiana tej jednej wartości.
+ */
+const ZAPROSZENIA_W_USTAWIENIACH: boolean = false;
+
 interface WlasciwosciUstawien {
   kurs: AdminCourse;
   lekcje: { id: number; title: string }[];
@@ -292,7 +305,7 @@ export function UstawieniaKursu({
       >
         <FormularzDanych kurs={kurs} onKurs={onKurs} onOgloszenie={onOgloszenie} />
       </Wiersz>
-      {/* Prowadzący kursu i zaproszenia ustawia wyłącznie administracja. */}
+      {/* Prowadzący kursu ustawia wyłącznie administracja; zaproszenia wracają po MVP. */}
       {zarzadzanieKursem && (
         <>
           <Wiersz
@@ -304,15 +317,17 @@ export function UstawieniaKursu({
           >
             <PrzypisaniaKursu kurs={kurs} lekcje={lekcje} wUstawieniach onPrzypisania={onPrzypisania} />
           </Wiersz>
-          <Wiersz
-            id="zaproszenia"
-            etykieta="Zaproszenia"
-            stan={kursPozaKolejnoscia(kurs) ? "Kurs poza kolejnością ścieżki" : "Kurs w ścieżce programu"}
-            otwarty={otwarty}
-            onPrzelacz={przelacz}
-          >
-            <SekcjaZaproszenKursu kurs={kurs} onZamknij={() => zamknij("zaproszenia")} />
-          </Wiersz>
+          {ZAPROSZENIA_W_USTAWIENIACH && (
+            <Wiersz
+              id="zaproszenia"
+              etykieta="Zaproszenia"
+              stan={kursPozaKolejnoscia(kurs) ? "Kurs poza kolejnością ścieżki" : "Kurs w ścieżce programu"}
+              otwarty={otwarty}
+              onPrzelacz={przelacz}
+            >
+              <SekcjaZaproszenKursu kurs={kurs} onZamknij={() => zamknij("zaproszenia")} />
+            </Wiersz>
+          )}
         </>
       )}
       <div className={style.notaUstawien}>

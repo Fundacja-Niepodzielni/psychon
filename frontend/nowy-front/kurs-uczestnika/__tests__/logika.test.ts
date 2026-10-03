@@ -158,7 +158,13 @@ describe("wiersze lekcji", () => {
 describe("karta testu", () => {
   it("bez pola test_locked: nieczynna, dopóki nie wszystkie lekcje są ukończone", () => {
     expect(zbudujWidok(kursSzkicu({ ukonczone: 6 })).test).toEqual({ czynny: false, zdanie: "Test odblokuje się, gdy ukończysz wszystkie lekcje. Zostało: 1." });
-    expect(zbudujWidok(kursSzkicu({ ukonczone: 7 })).test).toEqual({ czynny: true, zdanie: "Możesz już podejść do testu. Po zaliczeniu dostaniesz zaświadczenie." });
+    expect(zbudujWidok(kursSzkicu({ ukonczone: 7 })).test).toEqual({ czynny: true, zdanie: "Możesz już podejść do testu." });
+  });
+
+  it("test otwarty: zdanie dokładnie „Możesz już podejść do testu.”, bez obietnicy zaświadczenia ani certyfikatu", () => {
+    const { zdanie } = zbudujWidok(kursSzkicu({ ukonczone: 7 })).test;
+    expect(zdanie).toBe("Możesz już podejść do testu.");
+    expect(zdanie).not.toMatch(/zaświadcz|certyfikat/i);
   });
 
   it("pole test_locked, gdy jest, ma pierwszeństwo przed liczeniem z lekcji", () => {

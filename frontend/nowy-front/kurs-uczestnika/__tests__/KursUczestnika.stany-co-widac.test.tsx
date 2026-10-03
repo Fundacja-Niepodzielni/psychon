@@ -256,7 +256,7 @@ describe("strona kursu — stany z danymi: co widać i co można zrobić", () =>
       {
         rola: "link",
         nazwa: "Przejdź do testu",
-        opis: "Możesz już podejść do testu. Po zaliczeniu dostaniesz zaświadczenie.",
+        opis: "Możesz już podejść do testu.",
         href: `/panel/kursy/${SLUG}/test`,
       },
     ]);

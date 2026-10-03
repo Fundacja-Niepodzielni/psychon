@@ -444,8 +444,8 @@ test.describe("pulpit administracji bez celu: przycisk niedostępny z powodem po
     const przycisk = naglowek.getByRole("button", { name: "Otwórz sprawy", exact: true });
     await expect(przycisk).toBeVisible();
     await expect(przycisk).toHaveAttribute("aria-disabled", "true");
-    await expect(przycisk).toHaveAccessibleDescription("Brak zgłoszeń rekrutacyjnych do decyzji.");
-    await expect(naglowek.getByText("Brak zgłoszeń rekrutacyjnych do decyzji.")).toBeVisible();
+    await expect(przycisk).toHaveAccessibleDescription("Żadna sprawa nie czeka na decyzję.");
+    await expect(naglowek.getByText("Żadna sprawa nie czeka na decyzję.")).toBeVisible();
     expect(await kolorowe(page)).toBe(1);
     await zrzut(page, "pulpit-administracji-1280-bez-celu");
   });

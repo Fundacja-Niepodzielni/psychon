@@ -95,6 +95,22 @@ const WPISY_DOTYCHCZASOWE: MenuEntry[] = [
 ];
 
 /**
+ * Linia „W przygotowaniu” grupy „Program” bez funkcji, których rola nie ma:
+ * nazwa wpisu starego rejestru, którego filtr roli nie przepuszcza (student —
+ * „dziennik stażu”, „superwizja”), znika z linii. Ten sam filtr co grupa
+ * dotychczasowa, więc przed odpowiedzią `/me` linia też jest krótsza (fail closed).
+ */
+function liniaProgramuDlaRoli(rola: Role | undefined): string {
+  const dostepne = new Set(filterMenuByRole(WPISY_DOTYCHCZASOWE, rola).map((wpis) => wpis.href));
+  const niedostepne = new Set(
+    WPISY_DOTYCHCZASOWE.filter((wpis) => !dostepne.has(wpis.href)).map((wpis) => wpis.label.toLocaleLowerCase("pl")),
+  );
+  return W_PRZYGOTOWANIU_PROGRAM_UCZESTNIKA.split(" · ")
+    .filter((nazwa) => !niedostepne.has(nazwa.toLocaleLowerCase("pl")))
+    .join(" · ");
+}
+
+/**
  * Menu uczestnika nowej ramki przy danej roli z `/me` (`undefined` — przed
  * odpowiedzią) i danym stanie rejestru przełączenia.
  */
@@ -108,7 +124,7 @@ export function menuRamkiUczestnika(rola: Role | undefined, grupy: Grupy = GRUPY
         ...pozycja(h05Kursy.href, "book", n.kursy, false, PODSTRONY_KURSOW),
         ...pozycja(cel(grupy, "wspolpraca"), "chat", n.poProgramie),
       ],
-      wPrzygotowaniu: W_PRZYGOTOWANIU_PROGRAM_UCZESTNIKA,
+      wPrzygotowaniu: liniaProgramuDlaRoli(rola),
     },
     {
       naglowek: GRUPA_DOTYCHCZASOWA,

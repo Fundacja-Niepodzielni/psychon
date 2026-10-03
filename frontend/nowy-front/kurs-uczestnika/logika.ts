@@ -175,7 +175,7 @@ export function zbudujWidok(kurs: KursUczestnika, opcje: OpcjeWidoku = {}): Wido
   const zdanieTestu = testZaliczony
     ? "Test zaliczony."
     : testCzynny
-      ? "Możesz już podejść do testu. Po zaliczeniu dostaniesz zaświadczenie."
+      ? "Możesz już podejść do testu."
       : zostalo > 0
         ? `Test odblokuje się, gdy ukończysz wszystkie lekcje. Zostało: ${zostalo}.`
         : "Test jest jeszcze zamknięty.";

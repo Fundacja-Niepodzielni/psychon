@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
@@ -13,6 +13,7 @@ import {
   type WierszRecordList,
 } from "@/design-system/organizmy/RecordList/RecordList";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
+import { zapowiedzFokusSprawy } from "@/nowy-front/wspolne/fokus-otwartej-sprawy";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
@@ -104,6 +105,11 @@ interface OpcjaFiltra {
  * i nie pasuje do „przejścia do sprawy" — brakuje pola akcji/odnośnika, więc
  * `RecordList` sam realizuje wzorzec „zbiór z akcjami wiersza".
  *
+ * „Otwórz” w wierszu i „Otwórz najstarszą sprawę” prowadzą na ekran jednej
+ * sprawy (zgłoszenie, dyżur w kolejce, wniosek o profil — adresy w
+ * `./dane.ts`) i zapowiadają mu fokus (`fokus-otwartej-sprawy.ts`): po
+ * wczytaniu fokus staje na nagłówku tej sprawy, nie na przycisku decyzji.
+ *
  * Odczyt startowy biegnie z przeglądarki — ten sam powód co
  * `nowy-front/formy-stazu/dane.ts` i `nowy-front/zgloszenia-wspolpracy`.
  */
@@ -120,6 +126,8 @@ export function Sprawy() {
   const [sprawyProwadzacych, setSprawyProwadzacych] = useState<SprawaProwadzacego[]>([]);
   const [bladProwadzacych, setBladProwadzacych] = useState<string | null>(null);
   const [probaProwadzacych, setProbaProwadzacych] = useState(0);
+  // Chwila odczytu spraw prowadzących: od niej liczy się wiek tych spraw.
+  const [terazProwadzacych, setTerazProwadzacych] = useState<number | null>(null);
 
   const ponow = () => {
     setStan("ladowanie");
@@ -140,6 +148,7 @@ export function Sprawy() {
         return;
       }
       setSprawyProwadzacych(wynik.sprawy);
+      setTerazProwadzacych(Date.now());
       setBladProwadzacych(wynik.blad);
       setStanProwadzacych(wynik.blad === null ? "ok" : "blad");
     });
@@ -254,7 +263,13 @@ export function Sprawy() {
       onPowrot={() => router.back()}
       przyciskGlowny={
         stanEkranu === "ok" && najstarsza
-          ? { etykieta: "Otwórz najstarszą sprawę", onKliknij: () => router.push(najstarsza.href) }
+          ? {
+              etykieta: "Otwórz najstarszą sprawę",
+              onKliknij: () => {
+                zapowiedzFokusSprawy(najstarsza.href);
+                router.push(najstarsza.href);
+              },
+            }
           : undefined
       }
     />
@@ -278,6 +293,14 @@ export function Sprawy() {
           przycisk: { etykieta: "Odśwież", onClick: ponow },
         };
 
+  // „Otwórz” wiersza jest odnośnikiem organizmu `RecordList`; zapowiedź fokusu
+  // dostaje wyłącznie odnośnik prowadzący do sprawy z listy.
+  function zapowiedzFokusPoOtwarciu(zdarzenie: MouseEvent<HTMLDivElement>) {
+    const odnosnik = (zdarzenie.target as Element).closest("a[href]");
+    const adres = odnosnik?.getAttribute("href");
+    if (adres && pozycjeWidoczne.some((pozycja) => pozycja.href === adres)) zapowiedzFokusSprawy(adres);
+  }
+
   let filtry: ReactNode = null;
   let lista: ReactNode;
 
@@ -285,6 +308,7 @@ export function Sprawy() {
     <SprawyProwadzacych
       stan={stanProwadzacych}
       sprawy={sprawyProwadzacych}
+      teraz={terazProwadzacych}
       blad={bladProwadzacych}
       onPonow={ponowProwadzacych}
     />
@@ -354,15 +378,18 @@ export function Sprawy() {
     lista = (
       <>
         {pokazListe ? (
-          <RecordList
-            tytul="Sprawy"
-            stopienNaglowka={2}
-            naglowekTylkoDlaCzytnika
-            naKarcie
-            kolumny={KOLUMNY_SPRAW}
-            wiersze={wierszeListy}
-            pusty={pustyStanListy}
-          />
+          // Kliknięcie (także Enter) w „Otwórz” wiersza zapowiada fokus ekranowi sprawy.
+          <div onClick={zapowiedzFokusPoOtwarciu}>
+            <RecordList
+              tytul="Sprawy"
+              stopienNaglowka={2}
+              naglowekTylkoDlaCzytnika
+              naKarcie
+              kolumny={KOLUMNY_SPRAW}
+              wiersze={wierszeListy}
+              pusty={pustyStanListy}
+            />
+          </div>
         ) : (
           <div className={style.dlaCzytnika}>
             <Heading stopien={2}>Sprawy</Heading>
