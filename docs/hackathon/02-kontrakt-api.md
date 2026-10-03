@@ -2359,3 +2359,63 @@ Kod: `routes/api/h04.php`, `Http/Requests/H04/ExtendAccessRequest.php`,
 `Http/Controllers/Api/V1/Admin/AccessController.php`,
 `Services/H18/AccountManagementGuard.php` (`assertNotOwnAccount`, `cannotExtendOwnAccess`,
 `assertAccessDateApplies`, `assertDateMayBeChanged`), `openapi.json`.
+
+---
+
+## Aneks — wpis o czyszczeniu danych próbnych przy przejściu na produkcję
+
+Jednorazowe polecenie konsoli `psychon:zero-danych-probnych` (procedura:
+`deploy/PROCEDURA-PRZEJSCIA-TEST-PRODUKCJA.md`) usuwa osoby próbne i ślady fazy testowej, razem z
+dziennikiem zdarzeń i dziennikiem wglądu w dane wrażliwe. Aneks dopisuje jeden slug audytu do
+§3.2. Bez nowych tras, kodów błędu i typów powiadomień; zero zmian w schemacie danych.
+
+### 1. Slug
+
+`trial_data.purged` (§3.2) — polecenie czyszczące zapisuje go **raz**, jako pierwszy wpis dziennika
+produkcji, w tej samej transakcji co usunięcie danych i znacznik startu produkcji. Slug wchodzi do
+`AuditIndexRequest::ACTIONS`, więc da się go odfiltrować (`GET /admin/audit?action=trial_data.purged`)
+i wyeksportować jak każdy inny wpis rejestru.
+
+### 2. Ładunek
+
+Pola ładunku (`details`), wyłącznie liczby i kody — bez wolnego tekstu, zgodnie z zasadą ogólną
+z erraty 2026-09-18:
+
+- `deleted` — obiekt: nazwa tabeli (z zamkniętej listy tabel czyszczonych w kodzie) → liczba
+  usuniętych wierszy (liczba całkowita; tabele z zerem też są wymienione), w tym oba dzienniki;
+- `kept_accounts` — liczba kont personelu, które zostały (liczba, nie lista identyfikatorów);
+- `executor` — kod źródła uruchomienia; jedyna wartość to `console`.
+
+Ładunek nie niesie identyfikatorów ani adresów e-mail — także w zagnieżdżonym `deleted`: każdy
+liść to liczba albo kod `console`, każdy klucz to nazwa pola albo tabeli. Pilnuje tego próba
+`ZeroDanychProbnychCommandTest`.
+
+`actor_id` jest pusty i wpis nie ma podmiotu (`subject_type`, `subject_id` puste): osoba, która
+uruchomiła polecenie, jest wpisana wyłącznie w protokole przejścia poza repozytorium.
+
+### 3. Znacznik startu produkcji i jednorazowość
+
+W tej samej transakcji powstaje klucz `production_started_at` w tabeli `settings` (chwila wpisu,
+ISO 8601 UTC). Klucz jest wewnętrzny: żadna trasa go nie czyta ani nie zapisuje, a model `Setting`
+odmawia zapisu i usunięcia kluczy z listy `ProductionStart::RESERVED_KEYS`. Od chwili zapisu
+znacznika każde kolejne uruchomienie polecenia — także bieg na sucho — kończy się odmową
+(kod wyjścia `2`); jedyną opcją dostępną po znaczniku jest `--sprawdz` (pomiar stanu po przejściu,
+bez zmian w bazie).
+
+### 4. Znacznik odtworzenia próbnego kopii
+
+Bez udanego odtworzenia próbnego kopii (krok 3 procedury) nie ma czyszczenia: polecenie odmawia
+(kod wyjścia `2`) zarówno biegu na sucho, jak i właściwego, dopóki w tabeli `settings` nie stoi
+klucz `restore_trial_confirmed_at` (chwila zapisu, ISO 8601 UTC). Klucz jest wewnętrzny na tych
+samych zasadach co `production_started_at` (lista `ProductionStart::RESERVED_KEYS`). Zapisuje go
+wyłącznie opcja `--zapisz-odtworzenie=<plik wyniku odtworzenia>` tego samego polecenia — samodzielna
+(nie łączy się z żadną inną opcją) i zamknięta po znaczniku startu produkcji — a tylko wtedy, gdy
+ostatnia niepusta linia pliku to dokładnie potwierdzenie sukcesu skryptu odtworzenia, a żadna
+linia nie niesie słowa `NIEZGODNOSC`. Opcja `--sprawdz` mierzy też obecność tego znacznika.
+Polecenie nie dotyka systemu Kont Niepodzielni i nie usuwa żadnej kopii.
+
+Kod: `Console/Commands/ZeroDanychProbnychCommand.php`, `Services/Cutover/ProbeDataPurge.php`,
+`Support/ProductionStart.php`, `Support/RestoreTrial.php`, `Models/Setting.php`, `Http/Requests/H20/AuditIndexRequest.php`;
+etykieta slugu w słownikach klienta (`frontend/lib/api/h20.ts`, `frontend/lib/h20/labels.ts`)
+wchodzi razem z kodem slugu — test zgodności rejestru z frontem
+(`frontend/lib/h20/__tests__/audit-actions-source-of-truth.test.ts`) pilnuje obu stron.
