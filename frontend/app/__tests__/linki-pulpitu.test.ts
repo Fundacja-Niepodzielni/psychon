@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { GRUPY, celTrasyEkranu } from "@/lib/przelaczenie/grupy";
 
 /**
  * Frontowa połowa kryterium ★ H19.1 — „każdy link z pulpitu → 200 we froncie".
@@ -28,7 +29,7 @@ import { join } from "node:path";
 
 /** Adresy kolejek z `GET /admin/dashboard` — te same, których pilnuje `H19/DashboardLinksTest`. */
 const LINKI_KOLEJEK = [
-  "/admin/uczestniczki", // applications
+  "/admin/uczestniczki?zakladka=zgloszenia", // applications (strona osób przekierowuje stąd na listę zgłoszeń)
   "/admin/staz", // internship_entries
   "/admin/profile", // profiles
   "/prowadzacy/pytania", // questions
@@ -54,6 +55,11 @@ function trasyFrontu(katalog = join(process.cwd(), "app"), prefiks = ""): string
   return trasy;
 }
 
+/** Ścieżka adresu bez zapytania i fragmentu — trasę App Routera wyznacza sama ścieżka. */
+function sciezkaAdresu(adres: string): string {
+  return adres.split(/[?#]/)[0];
+}
+
 function trasaIstnieje(adres: string, trasy: string[]): boolean {
   return trasy.some((trasa) => {
     // Segment dynamiczny `[id]` pasuje do DOKŁADNIE jednego członu adresu.
@@ -69,12 +75,25 @@ function trasaIstnieje(adres: string, trasy: string[]): boolean {
 describe("linki kolejek pulpitu", () => {
   it("każdy prowadzi do istniejącej trasy", () => {
     const trasy = trasyFrontu();
-    const donikad = LINKI_KOLEJEK.filter((link) => !trasaIstnieje(link, trasy));
+    const donikad = LINKI_KOLEJEK.filter((link) => !trasaIstnieje(sciezkaAdresu(link), trasy));
 
     expect(
       donikad,
       `Linki prowadzące donikąd: ${donikad.join(", ")}. Znane trasy: ${trasy.sort().join(", ")}`,
     ).toEqual([]);
+  });
+
+  it("żaden wiersz nie prowadzi na samą listę osób, a zgłoszenia na swoją listę", () => {
+    // Wiersz „Zgłoszenia rekrutacyjne” prowadził na gołe `/admin/uczestniczki` (listę osób).
+    // Zakładkę zgłoszeń wskazuje `zakladka`; strona osób przy włączonej grupie `nabor`
+    // przekierowuje stąd na listę zgłoszeń, a ta trasa musi istnieć.
+    expect(LINKI_KOLEJEK).not.toContain("/admin/uczestniczki");
+    const zgloszenia = LINKI_KOLEJEK.find((link) => sciezkaAdresu(link) === "/admin/uczestniczki");
+    expect(zgloszenia && new URL(zgloszenia, "http://localhost").searchParams.get("zakladka")).toBe("zgloszenia");
+
+    const listaZgloszen = celTrasyEkranu(GRUPY.nabor, "administracja");
+    expect(listaZgloszen).toBe("/admin/nabor");
+    expect(trasaIstnieje(listaZgloszen!, trasyFrontu())).toBe(true);
   });
 
   it("KONTROLA NEGATYWNA: spis tras odrzuca adres, którego nie ma", () => {

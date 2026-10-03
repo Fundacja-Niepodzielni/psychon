@@ -21,7 +21,7 @@ const { PulpitAdministracji } = await import("../PulpitAdministracji");
 
 const ZERA = odpowiedzPulpitu({
   queues: [
-    { key: "applications", count: 0, link: "/admin/uczestniczki" },
+    { key: "applications", count: 0, link: "/admin/uczestniczki?zakladka=zgloszenia" },
     { key: "internship_entries", count: 0, link: "/admin/staz" },
   ],
 });
@@ -84,7 +84,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     expect(container.querySelector("#pulpit-certyfikaty")?.textContent).toContain("certyfikaty");
 
     const odnosnik = screen.getByRole("link", { name: "Otwórz: Zgłoszenia rekrutacyjne" });
-    expect(odnosnik).toHaveAttribute("href", "/admin/uczestniczki");
+    expect(odnosnik).toHaveAttribute("href", "/admin/uczestniczki?zakladka=zgloszenia");
     // Pytania odczytuje i odpowiada na nie prowadzący — wiersz zostaje z liczbą, bez akcji.
     expect(screen.queryByRole("link", { name: "Otwórz: Pytania bez odpowiedzi" })).not.toBeInTheDocument();
     expect(container.querySelector("a[href='/prowadzacy/pytania']")).toBeNull();
@@ -112,7 +112,7 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     expect(push).toHaveBeenCalledTimes(1);
     expect(push).toHaveBeenCalledWith("/admin/sprawy");
-    expect(push).not.toHaveBeenCalledWith("/admin/uczestniczki");
+    expect(push).not.toHaveBeenCalledWith(expect.stringContaining("/admin/uczestniczki"));
     expect(przyciskiGlowne(container)[0]).not.toHaveAttribute("aria-disabled");
   });
 
@@ -138,7 +138,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     pobierzPulpitAdministracji.mockResolvedValue(
       odpowiedzPulpitu({
         queues: [
-          { key: "applications", count: 0, link: "/admin/uczestniczki" },
+          { key: "applications", count: 0, link: "/admin/uczestniczki?zakladka=zgloszenia" },
           { key: "internship_entries", count: 7, link: "/admin/staz" },
         ],
       }),
@@ -359,7 +359,7 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     pobierzPulpitAdministracji.mockResolvedValue(
       odpowiedzPulpitu({
         queues: [
-          { key: "applications", count: 4, link: "/admin/uczestniczki" },
+          { key: "applications", count: 4, link: "/admin/uczestniczki?zakladka=zgloszenia" },
           { key: "internship_entries", count: 7, link: "/admin/staz" },
           { key: "profiles", count: 2, link: "/admin/profile" },
           { key: "questions", count: 7, link: "/prowadzacy/pytania" },
@@ -370,7 +370,7 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     await screen.findByText("Pytania bez odpowiedzi");
 
     const adresy: [string, string][] = [
-      ["Zgłoszenia rekrutacyjne", "/admin/uczestniczki"],
+      ["Zgłoszenia rekrutacyjne", "/admin/uczestniczki?zakladka=zgloszenia"],
       ["Dyżury czekające na decyzję", "/admin/staz"],
       ["Wnioski o profil psychologa", "/admin/profile"],
     ];
@@ -400,7 +400,7 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
       pobierzPulpitAdministracji.mockResolvedValue(
         odpowiedzPulpitu({
           queues: [
-            { key: "applications", count: 1, link: "/admin/uczestniczki" },
+            { key: "applications", count: 1, link: "/admin/uczestniczki?zakladka=zgloszenia" },
             { key: "questions", count: 2, link },
           ],
         }),
@@ -418,7 +418,7 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     pobierzPulpitAdministracji.mockResolvedValue(
       odpowiedzPulpitu({
         queues: [
-          { key: "applications", count: 1, link: "/admin/uczestniczki" },
+          { key: "applications", count: 1, link: "/admin/uczestniczki?zakladka=zgloszenia" },
           { key: "profiles", count: 2, link: "/prowadzacy/pytania" },
         ],
       }),
@@ -436,7 +436,7 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     pobierzPulpitAdministracji.mockResolvedValue(
       odpowiedzPulpitu({
         queues: [
-          { key: "applications", count: 3, link: "/admin/uczestniczki" },
+          { key: "applications", count: 3, link: "/admin/uczestniczki?zakladka=zgloszenia" },
           { key: "questions", count: 0, link: "/prowadzacy/pytania" },
         ],
       }),

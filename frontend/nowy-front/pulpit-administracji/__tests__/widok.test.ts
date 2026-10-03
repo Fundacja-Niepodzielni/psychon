@@ -99,7 +99,7 @@ describe("odczytajPulpit", () => {
 });
 
 describe("adresWewnetrzny", () => {
-  it.each(["/admin/staz", "/prowadzacy/pytania", "/"])("ścieżka %s jest przyjęta", (link) => {
+  it.each(["/admin/staz", "/prowadzacy/pytania", "/", "/admin/uczestniczki?zakladka=zgloszenia"])("ścieżka %s jest przyjęta", (link) => {
     expect(adresWewnetrzny(link)).toBe(link);
   });
 
@@ -156,7 +156,7 @@ describe("zbudujWidok", () => {
     const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu())!);
     expect(ADRES_SPRAW).toBe("/admin/sprawy");
     expect(widok.cel).toEqual({ nazwa: "Sprawy", liczba: 11, link: "/admin/sprawy" });
-    expect(widok.cel?.link).not.toBe("/admin/uczestniczki");
+    expect(widok.cel?.link).not.toContain("/admin/uczestniczki");
     expect(widok.razem).toBe(18);
     expect(widok.brakSpraw).toBe(false);
     expect(widok.powodBrakuCelu).toBeNull();
@@ -195,7 +195,7 @@ describe("zbudujWidok", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
-          { key: "applications", count: 0, link: "/admin/uczestniczki" },
+          { key: "applications", count: 0, link: "/admin/uczestniczki?zakladka=zgloszenia" },
           { key: "internship_entries", count: 7, link: "/admin/staz" },
         ],
       }),
@@ -207,7 +207,7 @@ describe("zbudujWidok", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
-          { key: "applications", count: 0, link: "/admin/uczestniczki" },
+          { key: "applications", count: 0, link: "/admin/uczestniczki?zakladka=zgloszenia" },
           { key: "questions", count: 3, link: "/prowadzacy/pytania" },
         ],
       }),
@@ -222,7 +222,7 @@ describe("zbudujWidok", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({
         queues: [
-          { key: "applications", count: 0, link: "/admin/uczestniczki" },
+          { key: "applications", count: 0, link: "/admin/uczestniczki?zakladka=zgloszenia" },
           { key: "questions", count: 0, link: "/prowadzacy/pytania" },
         ],
       }),
