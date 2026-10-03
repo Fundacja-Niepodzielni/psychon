@@ -472,6 +472,15 @@ async function renderujTrase(importPage: string, importLayouty: string[]) {
   render(drzewo);
 }
 
+/**
+ * Limit czasu jednego przypadku. Każdy przypadek importuje stronę i cały łańcuch jej layoutów,
+ * więc pod obciążeniem hosta (równoległe procesy, zimny pierwszy import) trwa wielokrotnie
+ * dłużej niż domyślne 5000 ms. Najdłuższy z 10 pomiarów na nieobciążonej maszynie (host z
+ * pierwszą liczbą loadavg poniżej 4): 744 ms (`/panel/dalsza-wspolpraca`); limit to większa
+ * z wartości: trzykrotność tego maksimum albo 15 000 ms.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe.each(DO_ZMIERZENIA)("$url", ({ url, importPage, importLayouty }) => {
   it(`ma dokładnie jeden punkt orientacyjny treści (rola "main" pod id="tresc"), na który wskazuje skip-link`, async () => {
     await renderujTrase(importPage, importLayouty);
@@ -486,7 +495,7 @@ describe.each(DO_ZMIERZENIA)("$url", ({ url, importPage, importLayouty }) => {
         `(elementów z rolą "main" w ogóle: ${wszystkieMain.length}). Bez tego punktu czytnik ekranu ` +
         `nie ma dokąd przeskoczyć i słucha całego ekranu od nagłówka za każdym wejściem.`,
     ).toHaveLength(1);
-  });
+  }, LIMIT_PRZYPADKU_MS);
 
   it("ma dokładnie jeden nagłówek główny (h1) — dla porównania z punktem orientacyjnym powyżej", async () => {
     // Trasy, których `h1` renderuje się dopiero po udanym pobraniu, dostają
@@ -515,7 +524,7 @@ describe.each(DO_ZMIERZENIA)("$url", ({ url, importPage, importLayouty }) => {
       naglowki,
       `${url}: oczekiwano dokładnie jednego <h1>, znaleziono ${naglowki.length}.`,
     ).toHaveLength(1);
-  });
+  }, LIMIT_PRZYPADKU_MS);
 });
 
 describe("zasięg przyrządu — trasy wypisane z nazwy jako nieobjęte", () => {

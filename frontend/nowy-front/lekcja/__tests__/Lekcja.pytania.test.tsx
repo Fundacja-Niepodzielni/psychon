@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KURS, LEKCJA } from "./pomoce";
 import { kiedyTemu } from "../kiedy";
@@ -68,7 +68,7 @@ describe("Lekcja — pytania do prowadzącego", () => {
     expect(within(karta).getByText("Odpowiada Marta Zielińska. Pytanie widzisz tylko Ty i prowadzący.")).toBeInTheDocument();
     expect(within(karta).getByRole("textbox", { name: "Twoje pytanie" })).toBeInTheDocument();
     expect(within(karta).getByRole("button", { name: "Wyślij pytanie" })).toBeInTheDocument();
-    expect(pobierzPytania).toHaveBeenCalledWith("21");
+    await waitFor(() => expect(pobierzPytania).toHaveBeenCalledWith("21"));
   });
 
   it("bez adresata (null albo brak pola) formularz zostaje, bez nazwiska", async () => {
