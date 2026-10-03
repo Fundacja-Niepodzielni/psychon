@@ -207,6 +207,60 @@ class IndividualConversationFollowsAssignmentTest extends TestCase
         $this->assertSame(2, Message::query()->where('thread_id', $this->conversation->id)->count());
     }
 
+    public function test_read_only_flag_is_false_for_open_threads_and_true_for_the_closed_conversation(): void
+    {
+        // Przed zmianą prowadzącego: rozmowa i wątek grupowy są otwarte.
+        $before = collect($this->signedInAs($this->volunteer)->getJson('/api/v1/threads')->assertOk()->json('data'));
+        $this->assertCount(2, $before);
+        foreach ($before as $item) {
+            $this->assertFalse($item['read_only'], 'wątek '.$item['type']);
+        }
+        $this->signedInAs($this->volunteer)->getJson("/api/v1/threads/{$this->conversation->id}")
+            ->assertOk()->assertJsonPath('meta.extra.read_only', false);
+        $this->signedInAs($this->previous)->getJson("/api/v1/threads/{$this->conversation->id}")
+            ->assertOk()->assertJsonPath('meta.extra.read_only', false);
+
+        $this->assign($this->next);
+
+        // Po zmianie: stara rozmowa osoby jest tylko do odczytu, nowa jest otwarta.
+        $list = collect($this->signedInAs($this->volunteer)->getJson('/api/v1/threads')->assertOk()->json('data'));
+        $old = $list->firstWhere('id', $this->conversation->id);
+        $this->assertTrue($old['read_only']);
+        $current = $list->where('type', 'individual')->firstWhere('supervisor.id', $this->next->id);
+        $this->assertFalse($current['read_only']);
+        $this->assertFalse($list->firstWhere('type', 'group')['read_only']);
+
+        $this->signedInAs($this->volunteer)->getJson("/api/v1/threads/{$this->conversation->id}")
+            ->assertOk()->assertJsonPath('meta.extra.read_only', true);
+        $this->signedInAs($this->volunteer)->getJson("/api/v1/threads/{$current['id']}")
+            ->assertOk()->assertJsonPath('meta.extra.read_only', false);
+    }
+
+    public function test_new_supervisor_neither_lists_nor_reads_the_conversation_with_the_previous_one(): void
+    {
+        $this->assign($this->next);
+
+        $list = $this->signedInAs($this->next)->getJson('/api/v1/threads')->assertOk();
+        $this->assertNotContains($this->conversation->id, collect($list->json('data'))->pluck('id')->map(fn ($id) => (int) $id)->all());
+        $this->assertContains(
+            $this->volunteer->id,
+            collect($list->json('data'))->where('type', 'individual')->pluck('volunteer.id')->all(),
+        );
+
+        $foreign = $this->signedInAs($this->next)->getJson("/api/v1/threads/{$this->conversation->id}")->assertNotFound();
+        $missing = $this->signedInAs($this->next)->getJson('/api/v1/threads/'.$this->missingThreadId())->assertNotFound();
+        $this->assertSame($missing->getContent(), $foreign->getContent());
+
+        foreach (self::bodies() as $label => $body) {
+            $this->assertSame(
+                $this->postAs($this->next, $this->missingThreadId(), $body),
+                $this->postAs($this->next, $this->conversation->id, $body),
+                $label,
+            );
+        }
+        $this->assertSame(2, Message::query()->where('thread_id', $this->conversation->id)->count());
+    }
+
     public function test_assigning_back_reopens_the_same_conversation(): void
     {
         $this->assign($this->next);

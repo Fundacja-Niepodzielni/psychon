@@ -4,6 +4,7 @@ namespace Tests\Feature\Chat;
 
 use App\Models\Message;
 use App\Models\MessageThread;
+use App\Models\SupervisorAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,6 +25,13 @@ class ThreadShowResourceShapeWitnessTest extends TestCase
     {
         $volunteer = User::factory()->role('volunteer')->create();
         $supervisor = User::factory()->role('instructor')->create();
+
+        // Aktywne przypisanie pary — rozmowa jest otwarta (`read_only` = false).
+        SupervisorAssignment::query()->create([
+            'volunteer_id' => $volunteer->id,
+            'supervisor_id' => $supervisor->id,
+            'assigned_at' => now(),
+        ]);
 
         $thread = MessageThread::query()->create([
             'type' => 'individual',
@@ -79,6 +87,7 @@ class ThreadShowResourceShapeWitnessTest extends TestCase
                 'extra' => [
                     'thread_id' => $thread->id,
                     'type' => 'individual',
+                    'read_only' => false,
                 ],
             ],
         ];

@@ -136,6 +136,7 @@ class ThreadController extends Controller
                 'extra' => [
                     'thread_id' => $threadModel->id,
                     'type' => $threadModel->type,
+                    'read_only' => ! ChatThreadQuery::isOpen($threadModel),
                 ],
             ],
         ]);
