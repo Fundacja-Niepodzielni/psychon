@@ -827,3 +827,109 @@ function stanZWielomaLekcjami(): Stan {
     pas: null,
   };
 }
+
+/**
+ * Fokus niezasłonięty (WCAG 2.4.11) przy 390 px: Tab przechodzi przez wszystkie
+ * przystanki ekranu kursu, a prostokąt elementu z fokusem razem z obrysem nie
+ * wchodzi pod przyklejone paski — pasek ramy panelu i pas „Szkic / Opublikuj
+ * kurs”. Obrys sięga poza element o `max(0, outline-offset + outline-width)`.
+ */
+const LIMIT_PRZYSTANKOW_TAB = 400;
+
+interface PrzystanekFokusu {
+  opis: string;
+  gorna: number;
+  dolna: number;
+  /** Odstęp od najbliższego przyklejonego paska; ujemny — fokus wchodzi pod pasek. */
+  odstep: number;
+}
+
+test.describe("ekran kursu administracji — 390 px, fokus niezasłonięty", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  for (const stan of [...STANY, stanZWielomaLekcjami()]) {
+    test(`${stan.nazwa}: żaden przystanek Tab nie wchodzi pod przyklejone paski`, async ({ page }) => {
+      await instalujAtrapy(page, stan);
+      await otworz(page, stan);
+      await expect(page.locator("[data-obszar='pasek-waski']")).toBeVisible();
+
+      const przystanki: PrzystanekFokusu[] = [];
+      let pierwszy: string | null = null;
+      let widzianoMain = false;
+      let kroki = 0;
+      let zakonczono = false;
+      for (; kroki < LIMIT_PRZYSTANKOW_TAB; kroki++) {
+        await page.keyboard.press("Tab");
+        const odczyt = await page.evaluate(() => {
+          const aktywny = document.activeElement as HTMLElement | null;
+          if (!aktywny || aktywny === document.body) return { poza: true as const };
+          const wMain = aktywny.closest("main") !== null;
+          const pasPublikacji = document.querySelector<HTMLElement>("[data-obszar='pasek-waski']");
+          const paskiRamy = document.querySelector<HTMLElement>("[data-powloka-panelu] > div > header");
+          const wPasku = (pasPublikacji?.contains(aktywny) ?? false) || (paskiRamy?.contains(aktywny) ?? false);
+          const styl = getComputedStyle(aktywny);
+          const rozszerzenie = Math.max(
+            0,
+            (styl.outlineStyle === "none" ? 0 : parseFloat(styl.outlineWidth)) + parseFloat(styl.outlineOffset || "0"),
+          );
+          const ramka = aktywny.getBoundingClientRect();
+          const prostokat = { gora: ramka.top - rozszerzenie, dol: ramka.bottom + rozszerzenie };
+          const paski = [pasPublikacji, paskiRamy]
+            .filter((pasek): pasek is HTMLElement => pasek !== null)
+            .map((pasek) => pasek.getBoundingClientRect())
+            .filter((pasek) => pasek.height > 0);
+          // Odstęp od paska: nad paskiem — do jego górnej krawędzi, pod paskiem — od dolnej; ujemny, gdy się przecinają.
+          const odstepy = paski.map((pasek) =>
+            prostokat.dol <= pasek.top ? pasek.top - prostokat.dol : prostokat.gora - pasek.bottom,
+          );
+          const nazwa = aktywny.getAttribute("aria-label") ?? (aktywny.textContent ?? "").trim().slice(0, 50);
+          return {
+            poza: false as const,
+            wMain,
+            wPasku,
+            id: `${aktywny.tagName.toLowerCase()}|${nazwa}|${Math.round(ramka.left)}|${Math.round(ramka.top + window.scrollY)}`,
+            opis: `${aktywny.tagName.toLowerCase()} „${nazwa}”`,
+            gorna: prostokat.gora,
+            dolna: prostokat.dol,
+            odstep: odstepy.length > 0 ? Math.min(...odstepy) : Number.POSITIVE_INFINITY,
+          };
+        });
+        if (odczyt.poza) {
+          if (widzianoMain) {
+            zakonczono = true;
+            break;
+          }
+          continue;
+        }
+        if (!odczyt.wMain) {
+          if (widzianoMain) {
+            zakonczono = true;
+            break;
+          }
+          continue;
+        }
+        widzianoMain = true;
+        if (pierwszy === null) pierwszy = odczyt.id;
+        else if (odczyt.id === pierwszy) {
+          zakonczono = true;
+          break;
+        }
+        if (odczyt.wPasku) continue;
+        przystanki.push({ opis: odczyt.opis, gorna: odczyt.gorna, dolna: odczyt.dolna, odstep: odczyt.odstep });
+      }
+
+      expect(zakonczono, `Tab nie wyszedł z treści w ${LIMIT_PRZYSTANKOW_TAB} krokach`).toBe(true);
+      expect(przystanki.length, "przystanki fokusu w treści").toBeGreaterThan(10);
+      const najmniejszy = Math.min(...przystanki.map((przystanek) => przystanek.odstep));
+      console.log(
+        `[fokus-pod-paskiem ${stan.nazwa}] przystanków w treści: ${przystanki.length}, najmniejszy odstęp od paska: ${najmniejszy.toFixed(1)} px`,
+      );
+      expect(
+        przystanki
+          .filter((przystanek) => przystanek.odstep < 0)
+          .map((przystanek) => `${przystanek.opis}: ${przystanek.odstep.toFixed(1)} px`),
+        "przystanki, których fokus wchodzi pod przyklejony pasek",
+      ).toEqual([]);
+    });
+  }
+});
