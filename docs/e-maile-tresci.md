@@ -843,3 +843,318 @@ Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiad
 - **Przycisk:** brak.
 - **Dziś (do porównania):** temat „Nowa wiadomość”; treść: pierwsze 140 znaków wiadomości
   z czatu.
+
+## E-maile, których brakuje
+
+Źródło każdej potrzeby jest podane przy wpisie: **decyzja właściciela**, **dokumentacja
+platformy** albo **propozycja, do decyzji** (zdarzenie, po którym osoba rozsądnie spodziewa się
+wiadomości, a dziś nie dostaje żadnej).
+
+### E-29. Dostęp kończy się za 7 dni
+
+- **Źródło:** decyzja właściciela. Dokumentacja platformy mówi o dwóch przypomnieniach: 30 i 7
+  dni przed końcem (pytanie 6).
+- **Kiedy wychodzi:** 7 dni przed datą końca dostępu do materiałów. Nie wychodzi, gdy osoba
+  ukończyła już program (wtedy dostęp się nie kończy).
+- **Do kogo:** Wolontariusz bez ukończonego programu.
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: dostęp kończy się za 7 dni
+- **Treść:**
+
+```text
+Dzień dobry,
+
+za 7 dni kończy się Twój dostęp do materiałów programu PsychON. Datę końca dostępu i swoje postępy zobaczysz w panelu.
+
+[Otwórz profil]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz profil” → Profil (tam stoi data końca dostępu).
+
+### E-30. Dostęp się zakończył
+
+- **Źródło:** decyzja właściciela.
+- **Kiedy wychodzi:** dzień po dacie końca dostępu, raz. Nie wychodzi, gdy osoba ukończyła
+  program albo gdy administracja przedłużyła dostęp przed tą datą.
+- **Do kogo:** Wolontariusz bez ukończonego programu.
+- **Czy można wyłączyć:** administracja tak; osoba nie (to ostatnia wiadomość w tej sprawie).
+- **Stan:** brakuje.
+- **Temat:** PsychON: dostęp do materiałów się zakończył
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twój dostęp do materiałów programu PsychON zakończył się. Jeśli chcesz dokończyć program, skontaktuj się z Fundacją Niepodzielni: {sposób kontaktu — do uzupełnienia}.
+
+[Otwórz PsychON]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+```
+
+- **Przycisk:** „Otwórz PsychON” → strona z informacją o zakończonym dostępie.
+- **Do uzupełnienia:** sposób kontaktu z Fundacją. Nie wpisuję adresu ani telefonu, bo nie ma
+  ich w materiałach projektu.
+
+### E-31. Zapowiedź usunięcia danych nieaktywnego konta
+
+- **Źródło:** dokumentacja platformy (zasady przechowywania danych: konto nieaktywne 12 miesięcy
+  po wygaśnięciu dostępu jest anonimizowane „po powiadomieniu”).
+- **Kiedy wychodzi:** przed anonimizacją konta, które od 12 miesięcy ma wygasły dostęp
+  (ile dni wcześniej — pytanie 11).
+- **Do kogo:** osoba z wygasłym kontem.
+- **Czy można wyłączyć:** nie.
+- **Stan:** brakuje.
+- **Temat:** PsychON: usunięcie danych z nieaktywnego konta
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twoje konto na platformie PsychON jest nieaktywne od ponad roku. {data usunięcia} usuniemy z niego Twoje dane osobowe, zgodnie z zasadami przechowywania danych Fundacji Niepodzielni. Jeśli chcesz zachować konto, skontaktuj się z Fundacją: {sposób kontaktu — do uzupełnienia}.
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+```
+
+- **Przycisk:** brak.
+
+### E-32. Data dostępu zmieniona
+
+- **Źródło:** propozycja, do decyzji. Dziś administracja może zmienić datę końca dostępu, a osoba
+  nie dostaje żadnej informacji.
+- **Kiedy wychodzi:** administracja zmienia datę końca dostępu osoby.
+- **Do kogo:** osoba, której dostęp zmieniono.
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: data dostępu zmieniona
+- **Treść:**
+
+```text
+Dzień dobry,
+
+data końca Twojego dostępu do materiałów została zmieniona. Nową datę zobaczysz w panelu.
+
+[Otwórz profil]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz profil” → Profil.
+
+### E-33. Przydzielono superwizora
+
+- **Źródło:** propozycja, do decyzji. Bez superwizora osoba nie może zapisać się na superwizję,
+  a dziś nie dowiaduje się, że go dostała.
+- **Kiedy wychodzi:** administracja przydziela osobie superwizora albo go zmienia.
+- **Do kogo:** Wolontariusz.
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: masz superwizora
+- **Treść:**
+
+```text
+Dzień dobry,
+
+masz przydzielonego superwizora. Możesz już zapisywać się na terminy superwizji swojej grupy.
+
+[Otwórz superwizję]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz superwizję” → Superwizja.
+
+### E-34. Nowa osoba w grupie superwizyjnej
+
+- **Źródło:** propozycja, do decyzji.
+- **Kiedy wychodzi:** administracja przydziela osobę do grupy superwizora.
+- **Do kogo:** Psycholog prowadzący, który jest superwizorem tej grupy.
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: nowa osoba w Twojej grupie
+- **Treść:**
+
+```text
+Dzień dobry,
+
+do Twojej grupy superwizyjnej dołączyła nowa osoba. Listę grupy zobaczysz w panelu.
+
+[Otwórz moją grupę]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto Psychologa prowadzącego na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz moją grupę” → Moja grupa.
+
+### E-35. Nowe podejścia do testu
+
+- **Źródło:** propozycja, do decyzji. Po wyczerpaniu podejść (E-17) administracja może je
+  odnowić, ale osoba się o tym nie dowiaduje i nie wie, że może wrócić do testu.
+- **Kiedy wychodzi:** administracja odnawia limit podejść do testu etapu.
+- **Do kogo:** Wolontariusz.
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: możesz ponownie podejść do testu
+- **Treść:**
+
+```text
+Dzień dobry,
+
+możesz ponownie podejść do testu etapu „{tytuł etapu}”.
+
+[Otwórz etap]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz etap” → strona tego etapu w Kursach.
+
+### E-36. Warsztat stacjonarny zaliczony
+
+- **Źródło:** propozycja, do decyzji. Warsztat jest jednym z warunków certyfikatu, a zaliczenie
+  zaznacza administracja poza wiedzą osoby.
+- **Kiedy wychodzi:** administracja zaznacza warsztat stacjonarny jako zaliczony.
+- **Do kogo:** Wolontariusz.
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: warsztat stacjonarny zaliczony
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twój warsztat stacjonarny został zaliczony. Stan wszystkich warunków certyfikatu zobaczysz w panelu.
+
+[Otwórz certyfikat]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz certyfikat” → Certyfikat (tam jest lista warunków).
+
+### E-37. Certyfikat unieważniony
+
+- **Źródło:** propozycja, do decyzji. Dziś unieważnienie widać tylko na publicznej stronie
+  weryfikacji; absolwent się o nim nie dowiaduje.
+- **Kiedy wychodzi:** administracja unieważnia wydany certyfikat.
+- **Do kogo:** absolwent, którego certyfikat unieważniono.
+- **Czy można wyłączyć:** nie.
+- **Stan:** brakuje.
+- **Temat:** PsychON: certyfikat unieważniony
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twój certyfikat ukończenia programu PsychON został unieważniony. Szczegóły zobaczysz w panelu.
+
+[Otwórz certyfikat]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+```
+
+- **Przycisk:** „Otwórz certyfikat” → Certyfikat.
+- **Uwaga:** bez powodu — powód wpisuje administracja ręcznie, a e-mail nie niesie powodów.
+
+### E-38. Nowa wersja dokumentu do akceptacji
+
+- **Źródło:** propozycja, do decyzji. Po publikacji nowej wersji regulaminu albo polityki osoba
+  widzi prośbę o akceptację dopiero po zalogowaniu.
+- **Kiedy wychodzi:** administracja publikuje nową wersję regulaminu albo polityki.
+- **Do kogo:** wszystkie osoby z aktywnym kontem.
+- **Czy można wyłączyć:** administracja tak; osoba nie (to informacja o zmianie zasad
+  korzystania z platformy).
+- **Stan:** brakuje.
+- **Temat:** PsychON: nowa wersja dokumentu
+- **Treść:**
+
+```text
+Dzień dobry,
+
+opublikowaliśmy nową wersję dokumentu „{nazwa dokumentu: Regulamin / Polityka}”. Przeczytaj ją i potwierdź po zalogowaniu.
+
+[Przeczytaj dokument]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+```
+
+- **Przycisk:** „Przeczytaj dokument” → strona tego dokumentu (dokumenty prawne).
+
+### E-39. Nowe zgłoszenie dalszej współpracy
+
+- **Źródło:** propozycja, do decyzji. Dziś zgłoszenie trafia do listy w panelu, ale nikt
+  z zespołu nie dostaje sygnału, że czeka.
+- **Kiedy wychodzi:** osoba po programie składa zgłoszenie dalszej współpracy.
+- **Do kogo:** Opiekun Projektu i Super Admin (pytanie 8).
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: nowe zgłoszenie dalszej współpracy
+- **Treść:**
+
+```text
+Dzień dobry,
+
+wpłynęło nowe zgłoszenie dalszej współpracy. Czeka na odpowiedź w panelu.
+
+[Otwórz zgłoszenia współpracy]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz w PsychON rolę, która odpowiada na zgłoszenia współpracy.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz zgłoszenia współpracy” → Dalsza współpraca w panelu administracji.
+
+### E-40. Konto zablokowane
+
+- **Źródło:** propozycja, do decyzji (pytanie 9). Dziś osoba dowiaduje się o blokadzie dopiero
+  przy próbie logowania.
+- **Kiedy wychodzi:** administracja blokuje konto.
+- **Do kogo:** osoba, której konto zablokowano.
+- **Czy można wyłączyć:** nie.
+- **Stan:** brakuje.
+- **Temat:** PsychON: konto zablokowane
+- **Treść:**
+
+```text
+Dzień dobry,
+
+Twoje konto na platformie PsychON zostało zablokowane. Jeśli masz pytania, skontaktuj się z Fundacją Niepodzielni: {sposób kontaktu — do uzupełnienia}.
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz konto na platformie PsychON.
+```
+
+- **Przycisk:** brak — z zablokowanego konta nie da się wejść do panelu.
+- **Uwaga:** bez powodu blokady — powód wpisuje administracja ręcznie.
+
+### E-41. Pytanie do lekcji bez prowadzącego
+
+- **Źródło:** propozycja, do decyzji. Gdy lekcja ani jej kurs nie mają przypisanego
+  prowadzącego, pytanie zapisuje się, ale nikt nie dostaje o nim wiadomości.
+- **Kiedy wychodzi:** osoba zadaje pytanie przy lekcji, która nie ma prowadzącego.
+- **Do kogo:** Opiekun Projektu (pytanie 8).
+- **Czy można wyłączyć:** administracja tak; osoba tak.
+- **Stan:** brakuje.
+- **Temat:** PsychON: pytanie do lekcji bez prowadzącego
+- **Treść:**
+
+```text
+Dzień dobry,
+
+pojawiło się pytanie do lekcji „{tytuł lekcji}” w kursie „{tytuł kursu}”, ale ten kurs nie ma przypisanego prowadzącego. Przypisz prowadzącego, żeby pytanie trafiło do odpowiedniej osoby.
+
+[Otwórz kursy]
+
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz w PsychON rolę Opiekun Projektu.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+```
+
+- **Przycisk:** „Otwórz kursy” → Kursy w panelu administracji.
