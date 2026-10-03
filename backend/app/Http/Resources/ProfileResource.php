@@ -65,7 +65,7 @@ class ProfileResource extends JsonResource
             'last_name' => $this->last_name,
             'email' => $this->email,
             'role' => app(TokenRoles::class)->effectiveRoleFor($this->resource),
-            'roles' => app(TokenRoles::class)->current(),
+            'roles' => $this->roles($request),
             'phone' => $this->phone,
             'pesel' => $this->pesel,
             'address' => [
@@ -99,6 +99,23 @@ class ProfileResource extends JsonResource
                 ? ['legal_documents_pending_acceptance' => $this->pendingLegalDocumentAcceptances()]
                 : []),
         ];
+    }
+
+    /**
+     * Role osoby, której dotyczy zasób. Na własnym profilu to role z bieżącego
+     * tokena (jedno źródło z bramkami dostępu). Na karcie innej osoby (panel
+     * administracji) token oglądającego nie mówi nic o tej osobie, więc
+     * pokazujemy rolę z danych platformy (`users.role`).
+     *
+     * @return list<string>
+     */
+    private function roles(Request $request): array
+    {
+        if ($request->user()?->is($this->resource)) {
+            return app(TokenRoles::class)->current();
+        }
+
+        return [$this->role];
     }
 
     /**
