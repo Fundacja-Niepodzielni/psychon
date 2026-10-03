@@ -23,6 +23,9 @@ use Illuminate\Http\UploadedFile;
  */
 trait RespondsWithMaterial
 {
+    /** Twardy limit pozycji w zapytaniu do bazy: lista nie jest stronicowana. */
+    private const int LESSON_LIST_LIMIT = 200;
+
     private function storeMaterialForLesson(StoreMaterialRequest $request, Lesson $lesson): JsonResponse
     {
         $material = MaterialStore::forLesson(
@@ -54,6 +57,26 @@ trait RespondsWithMaterial
         $file = $request->file('file');
 
         return $file;
+    }
+
+    /**
+     * Żywe materiały jednej lekcji, od najstarszego, najwyżej 200 (lista nie
+     * jest stronicowana, limit stoi w zapytaniu do bazy). Ten sam kształt
+     * w panelu administracji i prowadzącego; dostęp sprawdza klasa
+     * korzystająca przed wywołaniem.
+     */
+    private function lessonMaterialsResponse(Request $request, int $lessonId): JsonResponse
+    {
+        $materials = Material::query()
+            ->where('lesson_id', $lessonId)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->limit(self::LESSON_LIST_LIMIT)
+            ->get();
+
+        return response()->json([
+            'data' => AdminMaterialResource::collection($materials)->resolve($request),
+        ]);
     }
 
     private function resourceResponse(Request $request, Material $material): JsonResponse

@@ -12,17 +12,49 @@ use App\Models\Material;
 use App\Services\H08\MaterialStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Materiały w kursie przypisanego prowadzącego — trasy `role:instructor`
- * w `routes/api/h08.php`. Ten sam trójkąt operacji co w panelu
- * administracji (`MaterialAdminController`): tu nie ma ani listy, ani
- * edycji, bo tamten kontroler też ich nie ma — nie wprowadzamy nowych
- * operacji.
+ * w `routes/api/h08.php`. Te same operacje co w panelu administracji
+ * (`MaterialAdminController`): lista materiałów lekcji, wgrywanie i usuwanie.
+ * Edycji nie ma, bo tamten kontroler też jej nie ma.
  */
 class InstructorMaterialController extends Controller
 {
     use RespondsWithMaterial;
+
+    /**
+     * Lista materiałów lekcji w tym samym kształcie co
+     * `GET /admin/lessons/{lesson}/materials`.
+     */
+    public function indexForLesson(Request $request, string $lesson): JsonResponse
+    {
+        return $this->lessonMaterialsResponse($request, $this->lessonOfAssignedCourse($request, $lesson)->id);
+    }
+
+    /**
+     * Żywa lekcja kursu, który prowadzący może edytować — reguła
+     * `CoursePolicy::update` (aktywne przypisanie na poziomie kursu). Lekcja
+     * nieznana, miękko usunięta i lekcja kursu bez tego przypisania dają tę
+     * samą odpowiedź 404 `not_found`.
+     */
+    private function lessonOfAssignedCourse(Request $request, string $lesson): Lesson
+    {
+        // Liczba poza zakresem całkowitym nie jest identyfikatorem żadnej lekcji
+        // (inaczej baza odpowiedziałaby błędem zakresu, czyli 500).
+        $id = filter_var($lesson, FILTER_VALIDATE_INT);
+        abort_if($id === false, 404);
+
+        $lessonModel = Lesson::query()->whereKey($id)->firstOrFail();
+        $course = $lessonModel->course()->withTrashed()->first();
+
+        if ($course === null || $request->user()->cannot('update', $course)) {
+            throw new NotFoundHttpException;
+        }
+
+        return $lessonModel;
+    }
 
     public function storeForLesson(StoreInstructorMaterialRequest $request, Lesson $lesson): JsonResponse
     {

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Concerns\RespondsWithMaterial;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\H08\StoreMaterialRequest;
-use App\Http\Resources\H08\AdminMaterialResource;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\Material;
@@ -27,9 +26,6 @@ class MaterialAdminController extends Controller
 {
     use RespondsWithMaterial;
 
-    /** Twardy limit pozycji w zapytaniu do bazy: lista nie jest stronicowana. */
-    private const int LESSON_LIST_LIMIT = 200;
-
     /**
      * Żywe materiały jednej lekcji, od najstarszego. Parametr trasy jest liczbą
      * bez wiązania modelu, więc rolę rozstrzyga `role:` zanim cokolwiek zostanie
@@ -46,16 +42,7 @@ class MaterialAdminController extends Controller
 
         $lessonId = Lesson::query()->whereKey($id)->firstOrFail()->id;
 
-        $materials = Material::query()
-            ->where('lesson_id', $lessonId)
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->limit(self::LESSON_LIST_LIMIT)
-            ->get();
-
-        return response()->json([
-            'data' => AdminMaterialResource::collection($materials)->resolve($request),
-        ]);
+        return $this->lessonMaterialsResponse($request, $lessonId);
     }
 
     public function storeForLesson(StoreMaterialRequest $request, Lesson $lesson): JsonResponse

@@ -95,6 +95,7 @@ Route::middleware(['auth:keycloak', 'role:instructor'])->group(function (): void
     Route::patch('/instructor/topics/{topic}', [InstructorCourseTopicController::class, 'update'])->whereNumber('topic');
     Route::delete('/instructor/topics/{topic}', [InstructorCourseTopicController::class, 'destroy'])->whereNumber('topic');
 
+    Route::get('/instructor/lessons/{lesson}/materials', [InstructorMaterialController::class, 'indexForLesson'])->whereNumber('lesson');
     Route::post('/instructor/lessons/{lesson}/materials', [InstructorMaterialController::class, 'storeForLesson'])->whereNumber('lesson');
     Route::post('/instructor/courses/{course}/materials', [InstructorMaterialController::class, 'storeForCourse'])->whereNumber('course');
     Route::delete('/instructor/materials/{material}', [InstructorMaterialController::class, 'destroy'])->whereNumber('material');
