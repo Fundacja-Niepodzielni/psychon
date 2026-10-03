@@ -9,6 +9,12 @@ export type CourseStatus = "locked" | "in_progress" | "completed";
 
 export type ProductGroup = "psychon" | "dobrostan" | "both";
 
+/** Rodzaj pozycji ścieżki: kurs albo webinar (transmisja na żywo z nagraniem). */
+export type CourseType = "course" | "webinar";
+
+/** Okno potwierdzania obecności na webinarze: przed transmisją, w jej dniu, po północy. */
+export type AttendanceWindow = "before" | "open" | "closed";
+
 export interface CourseListItem {
   id: number;
   slug: string;
@@ -17,6 +23,11 @@ export interface CourseListItem {
   product_group: ProductGroup;
   status: CourseStatus;
   progress_percent: number;
+  /**
+   * Rodzaj pozycji. Zaplecze bez webinarów pola nie niesie — brak znaczy „kurs”;
+   * dlatego pole jest opcjonalne, choć nowe zaplecze zawsze je zwraca.
+   */
+  type?: CourseType;
 }
 
 export interface LessonSummary {
@@ -48,6 +59,29 @@ export interface CourseDetail extends CourseListItem {
   instructor: CourseInstructor | null;
   lessons: LessonSummary[];
   materials: CourseMaterial[];
+  /**
+   * Pola webinaru. Dla kursu (`type: "course"`) wszystkie są `null`; zaplecze
+   * bez webinarów nie niesie ich wcale (`undefined`). Okno obecności liczy serwer.
+   */
+  /** Opis webinaru; kontrakt jeszcze go nie opisuje, ekran pokazuje go, gdy jest. */
+  description?: string | null;
+  /** Początek transmisji, ISO 8601 UTC. */
+  starts_at?: string | null;
+  /** Odnośnik do transmisji na zewnętrznym serwisie — sam odnośnik, bez osadzania. */
+  stream_url?: string | null;
+  attendance_window?: AttendanceWindow | null;
+  /** Koniec okna obecności (północ w Warszawie po dniu transmisji), ISO 8601 UTC. */
+  attendance_closes_at?: string | null;
+  /** Własne potwierdzenie obecności osoby pytającej; `null` do czasu potwierdzenia. */
+  attended_at?: string | null;
+  /** Lekcja z nagraniem — ustawiona dopiero, gdy nagranie można odtworzyć. */
+  recording_lesson_id?: number | null;
+}
+
+/** Odpowiedź `POST /courses/{slug}/attendance` (201 przy pierwszym potwierdzeniu, 200 przy kolejnym). */
+export interface AttendanceConfirmation {
+  course_id: number;
+  attended_at: string;
 }
 
 /**
@@ -112,4 +146,14 @@ export function fetchCourses(
 
 export function fetchCourse(slug: string): Promise<CourseDetail> {
   return api<CourseDetail>(`/courses/${encodeURIComponent(slug)}`);
+}
+
+/**
+ * Potwierdzenie obecności na webinarze — `POST /courses/{slug}/attendance`,
+ * puste ciało. 201 (pierwsze potwierdzenie) i 200 (już potwierdzone, ta sama
+ * data) wracają tym samym kształtem. Odmowy (422 `conditions_not_met` z oknem w
+ * `reason`, 403, 404) przychodzą jako `ApiError`.
+ */
+export function confirmAttendance(slug: string): Promise<AttendanceConfirmation> {
+  return api<AttendanceConfirmation>(`/courses/${encodeURIComponent(slug)}/attendance`, { method: "POST" });
 }
