@@ -50,7 +50,7 @@ wynik jest dopisywany tutaj i ogłaszany.
 | reguła domenowa blokuje dostęp/akcję (stan, nie własność) | **403** | `course_locked`, `attempts_exhausted`, `access_expired`, `not_your_supervisor`, `entry_locked`, `profile_not_eligible`, `program_not_completed`, `cooperation_request_closed` |
 | zasób nie istnieje **lub należy do innego użytkownika** (pojedynczy rekord wskazywany identyfikatorem — nie ujawniamy istnienia) | **404** | `not_found` |
 | wyścig o ograniczony zasób (limit miejsc, duplikat unikalny) | **409** | `slot_full`, `email_already_registered`, `cooperation_request_open` |
-| błędne dane wejściowe / niespełnione warunki operacji | **422** | `validation_failed`, `not_enough_active_time`, `conditions_not_met`, `profile_incomplete` |
+| błędne dane wejściowe / niespełnione warunki operacji | **422** | `validation_failed`, `not_enough_active_time`, `conditions_not_met`, `profile_incomplete`, `cannot_extend_self`, `access_date_not_applicable` |
 | przyjęto zadanie w tle | **202** | — |
 
 Przykład 403 domenowego z opcjonalnym `reason`:
@@ -2280,7 +2280,8 @@ Kod: `Exceptions/AccountBlockedException.php`, `Services/Keycloak/KeycloakGuardR
 
 Opisuje stan kodu trasy `POST /admin/users/{id}/extend-access`. Bez nowych tras, slugów audytu
 i typów powiadomień; zero zmian w danych. Dwa nowe kody `422` (`cannot_extend_self`,
-`access_date_not_applicable`) dopisane do przykładów tabeli §1.1.
+`access_date_not_applicable`) dopisane do przykładów tabeli §1.1; kod `409 account_anonymized`
+na tej trasie opisuje tabela odmów niżej.
 
 ### Trasa, role i ciało
 
@@ -2327,6 +2328,7 @@ walidacją ciała (zdanie i kod nie zależą od tego, czy ciało by ją przeszł
 | rola spoza `project_manager` i `super_admin` | **403** | `forbidden` |
 | nieznana osoba | **404** | `not_found` · „Nie znaleziono osoby.” |
 | opiekun projektu zmienia datę konta Super Admina | **403** | `forbidden` · „Tylko Super Admin może zarządzać kontami Super Admina.” |
+| konto zanonimizowane | **409** | `account_anonymized` · „Kontu zanonimizowanemu nie można zmienić daty dostępu.” |
 | własne konto osoby wywołującej | **422** | `cannot_extend_self` · „Nie można zmienić daty dostępu własnego konta.” |
 | konto prowadzącego albo administracji | **422** | `access_date_not_applicable` · „Konta prowadzących i administracji nie mają terminu dostępu. Takie konto wyłącza się blokadą.” |
 | data albo powód poza regułami | **422** | `validation_failed` |
@@ -2335,6 +2337,14 @@ Zasada hierarchii (konto Super Admina tylko dla Super Admina) i zasada własnego
 samymi regułami co przy blokadzie konta; jedna implementacja w `AccountManagementGuard`.
 Wobec konta Super Admina opiekun projektu dostaje `403`, a nie `422 access_date_not_applicable`
 — hierarchia ma pierwszeństwo przed regułą roli konta.
+
+Konto zanonimizowane nie ma już terminu dostępu do zmiany: `409 account_anonymized`, bez
+żadnego zapisu — ani daty, ani powodu w rekordzie zmiany, ani audytu `access.extended`, ani
+powiadomienia. Odmowa pada tak samo dla konta zanonimizowanego w stanie `deleted` i `blocked`,
+także gdy konto ma rolę bez terminu (wtedy to ona wygrywa z `access_date_not_applicable`), i
+tak jak pozostałe odmowy tej trasy — przed walidacją ciała; hierarchia (`403`) ma przed nią
+pierwszeństwo. Kontroler powtarza ją na wierszu zablokowanym w transakcji, więc konto
+zanonimizowane między sprawdzeniem żądania a zapisem też niczego nie dostaje.
 
 ### Blokada konta — własne konto
 
@@ -2348,4 +2358,4 @@ powtarza ją na wierszu zablokowanym w transakcji. Kod odmowy jest dziś zwracan
 Kod: `routes/api/h04.php`, `Http/Requests/H04/ExtendAccessRequest.php`,
 `Http/Controllers/Api/V1/Admin/AccessController.php`,
 `Services/H18/AccountManagementGuard.php` (`assertNotOwnAccount`, `cannotExtendOwnAccess`,
-`assertAccessDateApplies`), `openapi.json`.
+`assertAccessDateApplies`, `assertDateMayBeChanged`), `openapi.json`.

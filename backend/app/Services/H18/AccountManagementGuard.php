@@ -253,6 +253,21 @@ final class AccountManagementGuard
         }
     }
 
+    /**
+     * Konto zanonimizowane nie ma już terminu dostępu do zmiany: odmowa
+     * `409 account_anonymized`, zanim cokolwiek zostanie zapisane.
+     */
+    public static function assertDateMayBeChanged(User $target): void
+    {
+        if ($target->isAnonymized()) {
+            throw new ApiException(
+                409,
+                'account_anonymized',
+                'Kontu zanonimizowanemu nie można zmienić daty dostępu.',
+            );
+        }
+    }
+
     public static function cannotExtendOwnAccess(): ApiException
     {
         return new ApiException(422, 'cannot_extend_self', 'Nie można zmienić daty dostępu własnego konta.');

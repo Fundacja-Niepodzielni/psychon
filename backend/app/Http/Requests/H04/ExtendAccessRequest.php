@@ -14,6 +14,7 @@ use Throwable;
  * zmian daty dostępu, nie do dziennika zdarzeń `access.extended`.
  *
  * Konto i zasięg osoby wywołującej (konto Super Admina tylko dla Super Admina,
+ * konto zanonimizowane nigdy — `409 account_anonymized`,
  * własne konto nigdy — jak przy blokadzie) są sprawdzane w `authorize()`, przed
  * walidacją ciała. Data końca dostępu dotyczy wyłącznie osób w programie
  * (wolontariusz, student); konto prowadzącego i konta administracji nie mają
@@ -56,6 +57,7 @@ class ExtendAccessRequest extends FormRequest
 
         // Te same dwie zasady co przy blokadzie konta (BlockUserRequest).
         $guard->assertMayManage($target);
+        AccountManagementGuard::assertDateMayBeChanged($target);
         AccountManagementGuard::assertNotOwnAccount($target, $this->user(), AccountManagementGuard::cannotExtendOwnAccess());
         AccountManagementGuard::assertAccessDateApplies($target);
 

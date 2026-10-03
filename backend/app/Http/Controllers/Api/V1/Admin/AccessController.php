@@ -26,7 +26,8 @@ class AccessController extends Controller
      * wygasł. `until` ustawia datę wprost: najwcześniej jutro (początek dnia),
      * najdalej dziś + 24 miesiące (dni w kalendarzu polskim). Datę mają tylko
      * osoby w programie (wolontariusz, student). Konto i zasięg osoby wywołującej (konto Super
-     * Admina tylko dla Super Admina, własne konto nigdy) sprawdza
+     * Admina tylko dla Super Admina, konto zanonimizowane nigdy — 409
+     * `account_anonymized`, własne konto nigdy) sprawdza
      * `ExtendAccessRequest::authorize()` przed walidacją ciała; wynik w obu
      * trybach nie wychodzi poza pułap `ExtendAccessRequest::MAX_MONTHS_AHEAD`.
      *
@@ -45,6 +46,10 @@ class AccessController extends Controller
             if ($user === null) {
                 throw AccountManagementGuard::notFound();
             }
+
+            // Powtórzenie reguł z `ExtendAccessRequest::authorize()` na wierszu zablokowanym:
+            // konto zanonimizowane po sprawdzeniu żądania nadal niczego nie dostaje.
+            AccountManagementGuard::assertDateMayBeChanged($user);
 
             $previous = $user->access_expires_at;
 
