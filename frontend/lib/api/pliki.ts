@@ -78,3 +78,55 @@ export async function downloadFile(url: string, filename: string): Promise<void>
   link.remove();
   window.URL.revokeObjectURL(objectUrl);
 }
+
+/** Najdłuższa nazwa pobieranego pliku, jaką zostawiamy (znaki, nie bajty). */
+const NAJDLUZSZA_NAZWA_PLIKU = 200;
+
+function usunZnakiSterujace(napis: string): string {
+  let wynik = "";
+  for (const znak of napis) {
+    const kod = znak.codePointAt(0) ?? 0;
+    if (kod > 0x1f && kod !== 0x7f && !(kod >= 0x80 && kod <= 0x9f)) wynik += znak;
+  }
+  return wynik;
+}
+
+/** Zostawia ostatni człon ścieżki, bez znaków sterujących; pusty wynik albo same kropki — `null`. */
+function bezpiecznaNazwa(surowa: string): string | null {
+  const ostatni = usunZnakiSterujace(surowa).split(/[\\/]/).pop() ?? "";
+  const nazwa = ostatni.trim().slice(0, NAJDLUZSZA_NAZWA_PLIKU);
+  if (nazwa === "" || /^\.+$/.test(nazwa)) return null;
+  return nazwa;
+}
+
+/**
+ * Nazwa pobieranego pliku z nagłówka `Content-Disposition` odpowiedzi serwera.
+ * Postać `filename*=` (RFC 5987, kodowanie procentowe) ma pierwszeństwo przed
+ * `filename=`. Wynik nie niesie ukośników (zostaje ostatni człon ścieżki) ani
+ * znaków sterujących. Gdy nagłówka brak, przeglądarka go nie udostępnia
+ * (odpowiedź między domenami bez `Access-Control-Expose-Headers`) albo nie
+ * zawiera użytecznej nazwy — zwraca `domyslna`.
+ */
+export function nazwaPlikuZNaglowka(naglowek: string | null | undefined, domyslna: string): string {
+  if (!naglowek) return domyslna;
+
+  const rozszerzona = /filename\*\s*=\s*([^;]*)/i.exec(naglowek);
+  if (rozszerzona) {
+    const wartosc = rozszerzona[1].trim().replace(/^[^']*'[^']*'/, "");
+    try {
+      const nazwa = bezpiecznaNazwa(decodeURIComponent(wartosc));
+      if (nazwa) return nazwa;
+    } catch {
+      // niepoprawne kodowanie procentowe — próbujemy zwykłego `filename=`
+    }
+  }
+
+  const zwykla = /(?:^|[;\s])filename\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^;]*))/i.exec(naglowek);
+  if (zwykla) {
+    const surowa = zwykla[1] !== undefined ? zwykla[1].replace(/\\(["\\])/g, "$1") : zwykla[2].trim();
+    const nazwa = bezpiecznaNazwa(surowa);
+    if (nazwa) return nazwa;
+  }
+
+  return domyslna;
+}

@@ -8,7 +8,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import PageTemplate from "@/components/templates/PageTemplate";
-import { api, ApiError, getToken } from "@/lib/api";
+import { api, ApiError, getToken, nazwaPlikuZNaglowka } from "@/lib/api";
 import {
   fetchCertificateConditions,
   type CertificateCondition,
@@ -19,6 +19,9 @@ type Condition = CertificateCondition;
 type Conditions = CertificateConditions;
 
 type IssueState = "idle" | "queued" | "downloading";
+
+/** Nazwa pliku, gdy serwer jej nie podał albo przeglądarka nie udostępnia nagłówka (serwer wydaje PDF). */
+const NAZWA_DOMYSLNA_CERTYFIKATU = "certyfikat.pdf";
 
 /**
  * Ekran, z którego pochodzi każda liczba warunku (H13). `workshop` nie ma
@@ -152,7 +155,10 @@ export default function CertificatePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "certyfikat.html";
+      link.download = nazwaPlikuZNaglowka(
+        res.headers.get("Content-Disposition"),
+        NAZWA_DOMYSLNA_CERTYFIKATU,
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();

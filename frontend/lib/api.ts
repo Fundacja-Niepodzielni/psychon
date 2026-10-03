@@ -103,7 +103,7 @@ export {
 } from "./api/logowanie";
 
 // pliki — pobieranie plików chronionych autoryzacją (CSV, dokumenty)
-export { downloadFile } from "./api/pliki";
+export { downloadFile, nazwaPlikuZNaglowka } from "./api/pliki";
 
 // pomoc — zgloszenie do pomocy z dowolnego ekranu zalogowanej strefy
 export { type HelpMessagePayload, type HelpMessage, sendHelpMessage } from "./api/help";
