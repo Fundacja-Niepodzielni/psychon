@@ -3,7 +3,8 @@ import { act, render, screen } from "@testing-library/react";
 import { expectLabelledControlsAndImages } from "@/app/(uczestnik)/panel/__tests__/a11y-smoke";
 
 /**
- * `/panel/profil-psychologa` — the page renders `PsychologistProfileForm`,
+ * `/panel/profil-psychologa` — the previous page content (`StaraTresc`, rendered while the switch group
+ * `profilPsychologa` is off) renders `PsychologistProfileForm`,
  * which loads `GET /psychologist-profile`. The volunteer-only role gate lives
  * in the layout and is covered by the shared denial-screen suite.
  */
@@ -17,7 +18,7 @@ vi.mock("@/lib/api", async (importActual) => {
 
 const { ApiError } = await import("@/lib/api");
 const { default: PsychologistProfilePage } = await import(
-  "@/app/(uczestnik)/panel/profil-psychologa/page"
+  "@/app/(uczestnik)/panel/profil-psychologa/StaraTresc"
 );
 
 const PROFILE = {

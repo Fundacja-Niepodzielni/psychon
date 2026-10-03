@@ -15,11 +15,11 @@ import {
  * (ten sam adres, treść strony zamienia się na ekran nowego frontu) oraz podmiana
  * treści starych stron: `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`
  * i `kursAdministracji` (z nim `publikacjaKursu` i `zaproszeniaNaKurs` — sekcje tego samego ekranu pod tym samym adresem),
- * `kartaOsoby` (karta osoby pod tym samym adresem `/admin/uczestniczki/[id]`), a także `edycjaLekcji` (ekran lekcji pod własnym, nowym adresem z kursem w ścieżce), `lekcja` (lekcja uczestnika pod tym samym adresem)
+ * `kartaOsoby` (karta osoby pod tym samym adresem `/admin/uczestniczki/[id]`), `profilPsychologa` (formularz wniosku pod tym samym adresem `/panel/profil-psychologa`), a także `edycjaLekcji` (ekran lekcji pod własnym, nowym adresem z kursem w ścieżce), `lekcja` (lekcja uczestnika pod tym samym adresem)
  * i `superwizjaUczestnika` (superwizja osoby wolontariackiej pod tym samym adresem `/panel/superwizja`).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["decyzjaProfilu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -35,7 +35,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, edycja lekcji, lekcja uczestnika, nabór, lista osób i superwizja uczestnika", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób i superwizja uczestnika", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -164,7 +164,7 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna dwadzieścia dziewięć grup dzisiejszego kanonu", () => {
+  it("zna trzydzieści grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "decyzjaProfilu",
       "edycjaLekcji",
@@ -183,6 +183,7 @@ describe("rejestr GRUPY — zawartość", () => {
       "nabor",
       "noweKonto",
       "powiadomienia",
+      "profilPsychologa",
       "publikacjaKursu",
       "pulpitAdministracji",
       "pulpitProwadzacego",

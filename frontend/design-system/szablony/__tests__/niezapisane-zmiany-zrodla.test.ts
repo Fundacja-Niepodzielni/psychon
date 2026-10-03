@@ -52,6 +52,7 @@ const PLIKI_ZGLASZAJACE = [
   "nowy-front/po-programie-wspolpraca/PoProgramieWspolpraca.tsx",
   "nowy-front/powiadomienia-email/PowiadomieniaEmail.tsx",
   "nowy-front/profil-decyzja/PanelDecyzji.tsx",
+  "nowy-front/profil-psychologa-formularz/ProfilPsychologa.tsx",
   "nowy-front/skrzynka-pytan/SkrzynkaPytan.tsx",
   "nowy-front/staz-kolejka/StazKolejka.tsx",
   "nowy-front/superwizje-terminy/SuperwizjeTerminy.tsx",

@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia jeden: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `superwizjaUczestnika`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia dwa: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -224,6 +224,23 @@ export const GRUPY = {
         staraTrasa: "/panel/superwizja",
         nowaTrasa: "/panel/superwizja",
         trasaPoligonu: "/nowy-front/superwizja",
+      },
+    ],
+  },
+  /**
+   * Profil psychologa wolontariusza (H15) — ten sam adres co dzisiejszy formularz wniosku, treść strony zamienia się
+   * na ekran nowego frontu. Strona `panel/profil-psychologa/page.tsx` jest podpięta pod tę flagę, dawna treść zostaje
+   * w `StaraTresc.tsx`, a strażnik roli `volunteer` w układzie tej trasy obejmuje obie treści.
+   */
+  profilPsychologa: {
+    klucz: "profilPsychologa",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/profil-psychologa",
+        nowaTrasa: "/panel/profil-psychologa",
+        trasaPoligonu: "/nowy-front/profil-psychologa",
       },
     ],
   },
