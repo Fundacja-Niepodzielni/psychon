@@ -27,7 +27,7 @@ export interface PulpitMe {
 
 /** Pojedynczy warunek z `GET /certificate/conditions` (kontrakt §2 „Certyfikat"). */
 export interface CertificateCondition {
-  key: "courses" | "internship" | "supervision" | "workshop";
+  key: "courses" | "webinars" | "internship" | "supervision" | "workshop";
   label: string;
   done?: number | string;
   required?: number | string;

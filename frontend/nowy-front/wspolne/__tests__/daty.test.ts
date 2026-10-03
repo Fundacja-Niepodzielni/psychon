@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatujDate, formatujDateICzas, numerDniaKalendarzowego } from "../daty";
+import {
+  formatujDate,
+  formatujDateICzas,
+  formatujDateZDniemTygodnia,
+  formatujGodzine,
+  numerDniaKalendarzowego,
+  poczatekNastepnegoDniaWarszawskiego,
+} from "../daty";
 
 /**
  * Wspólny formater dat nowego frontu: dzień „30 września 2026”, dzień z godziną
@@ -114,5 +121,85 @@ describe("numerDniaKalendarzowego", () => {
   it("chwila nieskończona nie jest liczbą dnia: Intl rzuca (dniOczekiwania sprawdza to wcześniej i daje null)", () => {
     expect(() => numerDniaKalendarzowego(Number.POSITIVE_INFINITY)).toThrow(RangeError);
     expect(() => numerDniaKalendarzowego(Number.NaN)).toThrow(RangeError);
+  });
+});
+
+describe("formatujDateZDniemTygodnia", () => {
+  it("czas zimowy: 17:00 UTC to czwartek, 5 listopada 2026, 18:00", () => {
+    expect(formatujDateZDniemTygodnia("2026-11-05T17:00:00Z")).toBe("czwartek, 5 listopada 2026, 18:00");
+  });
+
+  it("czas letni: 16:00 UTC to 18:00 w Warszawie", () => {
+    expect(formatujDateZDniemTygodnia("2026-07-15T16:00:00Z")).toBe("środa, 15 lipca 2026, 18:00");
+  });
+
+  it("dzień tygodnia liczony w Warszawie, nie w UTC: 23:30 UTC w piątek to już sobota", () => {
+    expect(formatujDateZDniemTygodnia("2026-11-06T23:30:00Z")).toBe("sobota, 7 listopada 2026, 00:30");
+  });
+
+  it("zmiana czasu 2026-10-25: 00:30 UTC to niedziela 02:30 CEST, 01:30 UTC to niedziela 02:30 CET", () => {
+    expect(formatujDateZDniemTygodnia("2026-10-25T00:30:00Z")).toBe("niedziela, 25 października 2026, 02:30");
+    expect(formatujDateZDniemTygodnia("2026-10-25T01:30:00Z")).toBe("niedziela, 25 października 2026, 02:30");
+  });
+
+  it("strefa nie zależy od strefy przeglądarki: wynik dla stałego znacznika jest jeden", () => {
+    expect(formatujDateZDniemTygodnia("2026-11-05T17:00:00.000+00:00")).toBe("czwartek, 5 listopada 2026, 18:00");
+  });
+
+  it.each([null, undefined, "", "   ", "to nie jest data"])("brak albo nieczytelna wartość %j → „—”", (wartosc) => {
+    expect(formatujDateZDniemTygodnia(wartosc as string | null | undefined)).toBe("—");
+  });
+});
+
+describe("formatujGodzine", () => {
+  it("sama godzina w Warszawie: zimą +1 h, latem +2 h", () => {
+    expect(formatujGodzine("2026-11-05T17:00:00Z")).toBe("18:00");
+    expect(formatujGodzine("2026-07-15T16:05:00Z")).toBe("18:05");
+  });
+
+  it("północ w Warszawie to 00:00, nie 24:00", () => {
+    expect(formatujGodzine("2026-11-05T23:00:00Z")).toBe("00:00");
+  });
+
+  it.each([null, undefined, "", "to nie jest data"])("brak albo nieczytelna wartość %j → „—”", (wartosc) => {
+    expect(formatujGodzine(wartosc as string | null | undefined)).toBe("—");
+  });
+});
+
+describe("poczatekNastepnegoDniaWarszawskiego", () => {
+  const ms = (iso: string) => new Date(iso).getTime();
+  const iso = (liczba: number | null) => (liczba === null ? null : new Date(liczba).toISOString());
+
+  it("zima: webinar o 18:00 w czwartek kończy okno o północy, czyli 23:00 UTC tego dnia", () => {
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-11-05T17:00:00Z")))).toBe("2026-11-05T23:00:00.000Z");
+  });
+
+  it("lato: północ w Warszawie to 22:00 UTC", () => {
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-07-15T16:00:00Z")))).toBe("2026-07-15T22:00:00.000Z");
+  });
+
+  it("ostatnia sekunda dnia i pierwsza sekunda następnego mają różne końce", () => {
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-11-05T22:59:59Z")))).toBe("2026-11-05T23:00:00.000Z");
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-11-05T23:00:00Z")))).toBe("2026-11-06T23:00:00.000Z");
+  });
+
+  it("koniec października: sobota 24.10 (czas letni) kończy się o 22:00 UTC", () => {
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-10-24T20:00:00Z")))).toBe("2026-10-24T22:00:00.000Z");
+  });
+
+  it("dzień zmiany czasu 25.10 trwa 25 godzin: webinar o 11:00 CET kończy okno o 23:00 UTC, nie o 22:00", () => {
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-10-25T10:00:00Z")))).toBe("2026-10-25T23:00:00.000Z");
+    // Webinar z nocy zmiany czasu (02:30 CEST) też kończy się o północy po 25 godzinach dnia.
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-10-25T00:30:00Z")))).toBe("2026-10-25T23:00:00.000Z");
+  });
+
+  it("wiosenna zmiana czasu 29.03 (dzień 23-godzinny): koniec o 22:00 UTC", () => {
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-03-29T10:00:00Z")))).toBe("2026-03-29T22:00:00.000Z");
+    expect(iso(poczatekNastepnegoDniaWarszawskiego(ms("2026-03-28T23:30:00Z")))).toBe("2026-03-29T22:00:00.000Z");
+  });
+
+  it("wartość nieskończona albo nieczytelna → null", () => {
+    expect(poczatekNastepnegoDniaWarszawskiego(Number.NaN)).toBeNull();
+    expect(poczatekNastepnegoDniaWarszawskiego(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });
