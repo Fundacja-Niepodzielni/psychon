@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\Keycloak;
 use App\Services\Keycloak\InvalidKeycloakTokenException;
 use App\Services\Keycloak\KeycloakDiscovery;
 use App\Services\Keycloak\TokenValidator;
+use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Foundation\Testing\TestCase;
@@ -126,6 +127,39 @@ class TokenValidatorTest extends TestCase
         $this->discovery->shouldReceive('jwks')->with(true)->never();
 
         $this->assertRejected('signature', fn () => $this->validator->validate($this->sign([], null)));
+    }
+
+    /**
+     * Why this case exists: the shared token factory issues tokens with an `iat`
+     * a minute in the past (so a wall-clock step back cannot make them fail),
+     * which means nothing else in the suite presents a token issued in the
+     * future. This is the only coverage of rejecting such a token. The `iat` is
+     * given explicitly, and the JWT library clock is pinned to the same instant
+     * so the case does not depend on the wall clock moving between minting and
+     * validating.
+     */
+    public function test_a_token_issued_one_second_in_the_future_is_rejected_at_zero_leeway(): void
+    {
+        $this->discovery->shouldReceive('jwks')->andReturn($this->keySet());
+        config(['keycloak.leeway' => 0]);
+
+        $now = time();
+        $previousTimestamp = JWT::$timestamp;
+        JWT::$timestamp = $now;
+
+        try {
+            $token = $this->sign(['iat' => $now + 1, 'exp' => $now + 300]);
+
+            try {
+                $this->validator->validate($token);
+                $this->fail('Expected the token with a future "iat" to be rejected.');
+            } catch (InvalidKeycloakTokenException $e) {
+                $this->assertSame('signature', $e->reason);
+                $this->assertInstanceOf(BeforeValidException::class, $e->getPrevious());
+            }
+        } finally {
+            JWT::$timestamp = $previousTimestamp;
+        }
     }
 
     public function test_the_configured_leeway_applies_and_the_global_one_is_restored(): void

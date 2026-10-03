@@ -24,6 +24,17 @@ final class KeycloakTokenFactory
     /** The one event key OIDC Back-Channel Logout 1.0 requires in a logout token. */
     public const BACKCHANNEL_LOGOUT_EVENT = 'http://schemas.openid.net/event/backchannel-logout';
 
+    /**
+     * Wiek tokena w chwili wybicia (`iat` = teraz minus tyle). Walidator odrzuca
+     * token, którego `iat` jest późniejsze niż `time()` (luz 0), a zegar ścienny
+     * WSL cofa się cyklicznie (zmierzone: o ok. 0,95 s co ok. 29 s). Krok wstecz
+     * między wybiciem a żądaniem, który przetnie granicę sekundy, dawał 401
+     * w przypadku, który akurat na niego trafił — w dowolnym pliku prób.
+     * Token wydany minutę wcześniej nie zależy od kroku zegara; `exp` zostaje
+     * 300 s od chwili wybicia, a pole można nadal podać wprost w `$claims`.
+     */
+    private const int TOKEN_AGE_SECONDS = 60;
+
     private string $privateKeyPem;
 
     /** @var array<string,string> */
@@ -92,7 +103,7 @@ final class KeycloakTokenFactory
             'aud' => ['psychon-api', 'account'],
             'azp' => 'psychon-api',
             'sub' => (string) Str::uuid(),
-            'iat' => $now,
+            'iat' => $now - self::TOKEN_AGE_SECONDS,
             'exp' => $now + 300,
             'realm_access' => ['roles' => []],
         ], $claims);
@@ -135,7 +146,7 @@ final class KeycloakTokenFactory
             'aud' => ['psychon-api', 'account'],
             'azp' => 'psychon-api',
             'sub' => (string) Str::uuid(),
-            'iat' => $now,
+            'iat' => $now - self::TOKEN_AGE_SECONDS,
             'exp' => $now + 300,
             'realm_access' => ['roles' => []],
         ], $claims);

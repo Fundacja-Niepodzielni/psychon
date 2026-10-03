@@ -97,6 +97,33 @@ class LogoutTokenValidatorTest extends TestCase
         $this->assertSame(['iss', 'aud', 'events', 'sid_or_sub', 'no_nonce', 'iat'], $result['failed']);
     }
 
+    /**
+     * Why this case exists: the shared token factory issues tokens with an `iat`
+     * a minute in the past (so a wall-clock step back cannot make them fail),
+     * which means nothing else in the suite presents a token issued in the
+     * future. This is the only coverage of rejecting such a token. The JWT
+     * library refuses it while decoding, so the outcome is `token_invalid` and
+     * not the `iat` entry of the structural list. The library clock is pinned
+     * to the instant the token is minted so a wall-clock step cannot change it.
+     */
+    public function test_a_logout_token_issued_one_second_in_the_future_is_rejected_at_zero_leeway(): void
+    {
+        $this->discovery->shouldReceive('jwks')->andReturn($this->keySet());
+        config(['keycloak.leeway' => 0]);
+
+        $now = time();
+        $previousTimestamp = JWT::$timestamp;
+        JWT::$timestamp = $now;
+
+        try {
+            $result = $this->validator->validate($this->logoutToken(['iat' => $now + 1, 'exp' => $now + 300]));
+        } finally {
+            JWT::$timestamp = $previousTimestamp;
+        }
+
+        $this->assertSame(['ok' => false, 'failed' => ['token_invalid'], 'claims' => []], $result);
+    }
+
     public function test_an_unconfigured_issuer_never_matches(): void
     {
         $this->discovery->shouldReceive('jwks')->andReturn($this->keySet());

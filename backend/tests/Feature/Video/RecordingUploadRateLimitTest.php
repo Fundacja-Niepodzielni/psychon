@@ -59,6 +59,10 @@ class RecordingUploadRateLimitTest extends TestCase
     #[DataProvider('uploaders')]
     public function test_the_eleventh_request_in_a_minute_is_refused_with_the_shared_throttle_envelope(string $role, string $prefix): void
     {
+        // Czas ponowienia to reszta okna liczona od pierwszego żądania. Zegar ścienny WSL
+        // cofa się cyklicznie o ok. 0,95 s, więc przy żywym zegarze reszta wychodziła 61
+        // zamiast 60 — zamrożony zegar daje dokładnie 60.
+        $this->freezeTime();
         $this->configureBunny();
         $this->fakeProvider(['guid' => 'kazde-wideo-ma-swoj-identyfikator']);
         $person = $this->uploader($role);
