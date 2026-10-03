@@ -260,15 +260,33 @@
   font-size: var(--fs-10);
 }
 
+/* Każdy wiersz ma własne 44 px wysokości, a odnośnik wypełnia go w całości
+   (bez wystających pionowo wcięć atomu `Link`). Obrys fokusu leży wtedy na
+   krawędzi wiersza, a tekst stoi pośrodku, więc obrys nie dotyka tekstu
+   sąsiednich wierszy ani nagłówka listy — przy obrysie na zewnątrz (wąski
+   ekran) i do środka (dwie kolumny) tak samo. */
 .listaPozycji {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
   margin: 0;
   padding: var(--space-8) 0;
   list-style: none;
   font-size: var(--fs-10);
   overflow-wrap: anywhere;
+}
+
+.listaPozycji li {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.listaPozycji a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 0;
+  margin-block: 0;
 }
 
 .glownyWKarcie {
