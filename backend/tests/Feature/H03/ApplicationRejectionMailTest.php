@@ -81,14 +81,10 @@ class ApplicationRejectionMailTest extends TestCase
             ->assertJsonPath('data.rejection_mail', 'sent');
 
         $this->assertSame([self::CANDIDATE], $captured['to']);
-        $this->assertSame('Decyzja w sprawie zgłoszenia do programu PsychON', $captured['subject']);
-        $this->assertSame(
-            "Dzień dobry,\n\n"
-            ."Dziękujemy za zgłoszenie do programu PsychON. Po rozpatrzeniu zgłoszenia nie możemy zaproponować udziału w programie.\n\n"
-            .'Powód: '.self::REASON."\n\n"
-            .'Zespół Fundacji Niepodzielni',
-            $captured['body'],
-        );
+        $this->assertSame('PsychON: decyzja w sprawie zgłoszenia', $captured['subject']);
+        // Treść to szablon E-02: powód odrzucenia w liście szczegółów.
+        $this->assertSame(ApplicationRejectionMailer::email(self::REASON)->text, $captured['body']);
+        $this->assertStringContainsString("\n\nPowód: ".self::REASON."\n\n", $captured['body']);
 
         $row = EmailMessage::query()->where('to_email', self::CANDIDATE)->sole();
         $this->assertSame('sent', $row->status);

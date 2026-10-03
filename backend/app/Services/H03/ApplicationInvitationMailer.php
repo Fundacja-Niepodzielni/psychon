@@ -4,6 +4,7 @@ namespace App\Services\H03;
 
 use App\Models\Application;
 use App\Models\User;
+use App\Support\Emails\EmailRenderer;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -20,29 +21,25 @@ use Throwable;
  * PsychON nie zakłada konta w Kontach Niepodzielni (bez Admin API). Odnośnik
  * prowadzi na stronę aktywacji, która przekierowuje do logowania w Kontach;
  * tam osoba bez konta rejestruje się tym samym adresem.
+ *
+ * Treść to szablon E-01 (wersja tekstowa i HTML z tych samych klocków co
+ * pozostałe e-maile); adres odnośnika powstaje z adresu platformy
+ * z konfiguracji i ścieżki aktywacji.
  */
 final class ApplicationInvitationMailer
 {
-    public const SUBJECT = 'Zaproszenie do programu PsychON';
+    public const SUBJECT = 'PsychON: zaproszenie do programu';
 
     /**
      * @return bool true, gdy mailer przyjął wiadomość
      */
     public static function send(Application $application, User $user, string $activationUrl): bool
     {
-        $body = implode("\n\n", [
-            'Dzień dobry,',
-            'Twoje zgłoszenie do programu PsychON zostało przyjęte.',
-            'Aby rozpocząć, otwórz poniższy odnośnik i zaloguj się przez Konta Niepodzielni. '
-                .'Jeśli nie masz jeszcze konta, załóż je na ten sam adres e-mail, na który przyszła ta wiadomość, '
-                .'i potwierdź adres linkiem z Kont Niepodzielni.',
-            $activationUrl,
-            'Zespół Fundacji Niepodzielni',
-        ]);
+        $email = EmailRenderer::render('E-01', ['activationPath' => self::path($activationUrl)]);
 
         try {
-            Mail::raw($body, function (Message $message) use ($user): void {
-                $message->to($user->email)->subject(self::SUBJECT);
+            Mail::raw($email->text, function (Message $message) use ($user, $email): void {
+                $message->to($user->email)->subject($email->subject)->html($email->html);
             });
         } catch (Throwable $e) {
             // Bez adresu i bez treści: identyfikatory wystarczą, by ponowić wysyłkę.
@@ -56,5 +53,17 @@ final class ApplicationInvitationMailer
         }
 
         return true;
+    }
+
+    /**
+     * Ścieżka odnośnika aktywacyjnego (z zapytaniem) — adres platformy
+     * dokłada szablon.
+     */
+    private static function path(string $activationUrl): string
+    {
+        $path = (string) parse_url($activationUrl, PHP_URL_PATH);
+        $query = parse_url($activationUrl, PHP_URL_QUERY);
+
+        return ($path === '' ? '/' : $path).(is_string($query) && $query !== '' ? '?'.$query : '');
     }
 }
