@@ -237,6 +237,10 @@ class SupervisorAssignmentToManyTest extends TestCase
                 fn (): int => User::factory()->role('instructor')->create(['status' => 'deleted', 'anonymized_at' => now()])->id,
                 $notAllowed,
             ],
+            'zanonimizowany prowadzący ze stanem active' => [
+                fn (): int => User::factory()->role('instructor')->create(['status' => 'active', 'anonymized_at' => now()])->id,
+                $notAllowed,
+            ],
             'prowadzący z niewykorzystanym zaproszeniem' => [
                 fn (): int => User::factory()->role('instructor')->create(['status' => 'invited'])->id,
                 $notAllowed,
@@ -330,6 +334,42 @@ class SupervisorAssignmentToManyTest extends TestCase
         ])->count());
         // Poprzednie przypisanie przeniesionej osoby jest zamknięte, nie usunięte.
         $this->assertSame(2, SupervisorAssignment::query()->where('volunteer_id', $moved->id)->count());
+    }
+
+    /**
+     * Stany konta wolontariusza, których nie obejmuje próba wielu osób powyżej
+     * (tam konto zanonimizowane ma stan `deleted`).
+     *
+     * @return array<string, array{0: array<string, mixed>}>
+     */
+    public static function volunteerStatesNotAssignable(): array
+    {
+        return [
+            'konto usunięte bez anonimizacji' => [['status' => 'deleted', 'anonymized_at' => null]],
+            'konto zanonimizowane ze stanem active' => [['status' => 'active', 'anonymized_at' => '2026-09-01 10:00:00']],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    #[DataProvider('volunteerStatesNotAssignable')]
+    public function test_volunteer_who_cannot_be_assigned_is_refused_and_nothing_is_written(array $attributes): void
+    {
+        $admin = $this->boundAccount('project_manager');
+        $supervisor = User::factory()->role('instructor')->create();
+        $person = User::factory()->role('volunteer')->create($attributes);
+
+        $response = $this->withTokenOf($admin)
+            ->postJson(self::ROUTE, ['supervisor_id' => $supervisor->id, 'user_ids' => [$person->id]])
+            ->assertOk();
+
+        $this->assertSame([
+            'supervisor_id' => $supervisor->id,
+            'results' => [['user_id' => $person->id, 'result' => 'refused', 'reason' => 'not_assignable']],
+            'summary' => ['requested' => 1, 'assigned' => 0, 'unchanged' => 0, 'refused' => 1, 'not_found' => 0],
+        ], $response->json('data'));
+        $this->assertNothingWritten();
     }
 
     public function test_results_follow_the_request_order_not_the_identifier_order(): void

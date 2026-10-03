@@ -2528,9 +2528,9 @@ prowadzącym powstaje nowa rozmowa.
 
 ### 6. Czego ten aneks nie wprowadza
 
-Trasa pojedyncza `PUT /admin/users/{id}/supervisor` zostaje bez zmian. Reguły trasy zbiorczej
-(pkt 1–2: prowadzący i osoba przypisywana) są dziś **ostrzejsze** niż reguły trasy pojedynczej;
-zrównanie trasy pojedynczej z trasą zbiorczą przyjdzie osobnym aneksem razem ze zmianą kodu.
+Ścieżka trasy pojedynczej `PUT /admin/users/{id}/supervisor`, kształt jej żądania i odpowiedzi
+oraz kody odpowiedzi (`200`, `404 not_found`, `422 validation_failed`) zostają bez zmian. Obie trasy
+stosują te same reguły dla prowadzącego i osoby (pkt 1–2).
 
 Kod: `routes/api/h12.php`,
 `Http/Controllers/Api/V1/H12/AdminSupervisionController.php::assignSupervisorToMany`,
