@@ -1166,3 +1166,135 @@ for (const { szerokosc, wysokosc } of OKNA) {
     });
   });
 }
+
+/**
+ * Nagłówek tematu w karcie „Tematy i lekcje”: strzałka zwijania przy nazwie,
+ * „n lekcji · m min” po prawej w jednym wierszu z nazwą, jedna ikona z listą
+ * opcji na końcu. Każdy przycisk ma co najmniej 44 × 44 px; lista otwiera się pod
+ * ikoną, nie wychodzi poza okno i nie wywołuje przewijania w poziomie.
+ */
+for (const { szerokosc, wysokosc } of OKNA) {
+  test.describe(`ekran kursu administracji — ${szerokosc} px, nagłówek tematu`, () => {
+    test.use({ viewport: { width: szerokosc, height: wysokosc } });
+
+    test("strzałka, nazwa i suma w jednym wierszu, ołówek z listą opcji", async ({ page }) => {
+      const stan = STANY[0];
+      await instalujAtrapy(page, stan);
+      await otworz(page, stan);
+
+      const pomiary = await page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>("section[data-temat]")).map((sekcja) => {
+          const pas = sekcja.firstElementChild as HTMLElement;
+          const strzalka = pas.querySelector<HTMLElement>("button[aria-expanded]")!;
+          const naglowek = pas.querySelector<HTMLElement>("h3")!;
+          const suma = Array.from(pas.querySelectorAll<HTMLElement>("span")).find((el) => /lekcj/.test(el.textContent ?? "") && el.children.length === 0)!;
+          const olowek = pas.querySelector<HTMLElement>('button[aria-haspopup="menu"]')!;
+          const r = (el: HTMLElement) => el.getBoundingClientRect();
+          return {
+            nazwa: naglowek.textContent ?? "",
+            strzalka: { w: r(strzalka).width, h: r(strzalka).height, prawa: r(strzalka).right },
+            olowek: { w: r(olowek).width, h: r(olowek).height, lewa: r(olowek).left, prawa: r(olowek).right },
+            naglowek: { lewa: r(naglowek).left, prawa: r(naglowek).right, gora: r(naglowek).top, dol: r(naglowek).bottom },
+            suma: { lewa: r(suma).left, prawa: r(suma).right, gora: r(suma).top, dol: r(suma).bottom, tekst: suma.textContent ?? "" },
+            etykietaOlowka: olowek.getAttribute("aria-label"),
+            rozwiniety: olowek.getAttribute("aria-expanded"),
+            etykietaStrzalki: strzalka.getAttribute("aria-label"),
+            wOknie: r(olowek).right <= window.innerWidth,
+          };
+        }),
+      );
+      expect(pomiary.length).toBe(2);
+      for (const p of pomiary) {
+        expect(p.strzalka.w, `${p.nazwa}: szerokość strzałki`).toBeGreaterThanOrEqual(44);
+        expect(p.strzalka.h, `${p.nazwa}: wysokość strzałki`).toBeGreaterThanOrEqual(44);
+        expect(p.olowek.w, `${p.nazwa}: szerokość ołówka`).toBeGreaterThanOrEqual(44);
+        expect(p.olowek.h, `${p.nazwa}: wysokość ołówka`).toBeGreaterThanOrEqual(44);
+        expect(p.etykietaOlowka).toBe(`Opcje tematu ${p.nazwa}`);
+        expect(p.etykietaStrzalki).toBe(`Zwiń temat ${p.nazwa}`);
+        expect(p.rozwiniety).toBe("false");
+        // Suma po prawej nazwy, przed ołówkiem, w tym samym wierszu: środek sumy leży w pionie nazwy.
+        expect(p.suma.lewa, `${p.nazwa}: suma po prawej nazwy`).toBeGreaterThanOrEqual(p.naglowek.prawa - 1);
+        expect(p.suma.prawa, `${p.nazwa}: suma przed ołówkiem`).toBeLessThanOrEqual(p.olowek.lewa + 0.5);
+        const srodek = (p.suma.gora + p.suma.dol) / 2;
+        expect(srodek, `${p.nazwa}: suma w wierszu z nazwą`).toBeGreaterThanOrEqual(p.naglowek.gora - 1);
+        expect(srodek, `${p.nazwa}: suma w wierszu z nazwą`).toBeLessThanOrEqual(p.naglowek.dol + 1);
+        expect(p.naglowek.lewa, `${p.nazwa}: nazwa po strzałce`).toBeGreaterThanOrEqual(p.strzalka.prawa - 0.5);
+        expect(p.wOknie).toBe(true);
+      }
+      expect(pomiary[1].suma.tekst).toMatch(/lekcj/);
+
+      const olowek = page.getByRole("button", { name: "Opcje tematu Praktyka" });
+      await olowek.click();
+      await expect(olowek).toHaveAttribute("aria-expanded", "true");
+      const menu = page.getByRole("menu", { name: "Opcje tematu Praktyka" });
+      await expect(menu).toBeVisible();
+      await expect(menu.getByRole("menuitem")).toHaveText(["Zmień nazwę", "Przenieś temat wyżej", "Usuń temat"]);
+      await expect(menu.getByRole("menuitem").first()).toBeFocused();
+      const ramkaMenu = await menu.boundingBox();
+      expect(ramkaMenu!.x, "lista opcji w oknie z lewej").toBeGreaterThanOrEqual(0);
+      expect(ramkaMenu!.x + ramkaMenu!.width, "lista opcji w oknie z prawej").toBeLessThanOrEqual(szerokosc);
+      await bezPrzewijaniaPoziomego(page);
+      const naruszenia = await uruchomAxe(page);
+      expect(naruszenia.map((n) => `${n.id}: ${n.selektory.join(" | ")}`)).toEqual([]);
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+      await expect(olowek).toBeFocused();
+    });
+  });
+}
+
+/**
+ * Plakietka „n lekcja wymaga uwagi” w nagłówku zwiniętego tematu: tekst nigdy się nie łamie;
+ * poniżej 600 px stoi w osobnej linii pod nazwą, a „n lekcji · m min” i ołówek zostają
+ * w linii nazwy; od 600 px stoi pod nazwą jak dotąd.
+ */
+for (const { szerokosc, wysokosc } of OKNA) {
+  test.describe(`ekran kursu administracji — ${szerokosc} px, plakietka w nagłówku tematu`, () => {
+    test.use({ viewport: { width: szerokosc, height: wysokosc } });
+
+    test("plakietka bez łamania tekstu, na wąskim ekranie w osobnej linii pod nazwą", async ({ page }) => {
+      const stan = STANY[0];
+      await instalujAtrapy(page, stan);
+      await otworz(page, stan);
+      // Plakietka „wymaga uwagi” stoi pod nazwą zwiniętego tematu.
+      const zwin = page.getByRole("button", { name: /^Zwiń temat / });
+      while ((await zwin.count()) > 0) await zwin.first().click();
+
+      const pomiary = await page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>("section[data-temat]")).map((sekcja) => {
+          const pas = sekcja.firstElementChild as HTMLElement;
+          const r = (el: Element) => el.getBoundingClientRect();
+          const naglowek = pas.querySelector<HTMLElement>("h3")!;
+          const plakietka = Array.from(pas.querySelectorAll<HTMLElement>("span")).find((el) => /wymaga uwagi/.test(el.textContent ?? "") && el.children.length === 0)!;
+          const suma = Array.from(pas.querySelectorAll<HTMLElement>("span")).find((el) => /lekcj[ie]? ·/.test(el.textContent ?? "") && el.children.length === 0)!;
+          const olowek = pas.querySelector<HTMLElement>('button[aria-haspopup="menu"]')!;
+          const zakres = document.createRange();
+          zakres.selectNodeContents(plakietka);
+          const wiersze = new Set(Array.from(zakres.getClientRects()).map((k) => Math.round(k.top))).size;
+          return {
+            nazwa: naglowek.textContent ?? "",
+            zawijanie: getComputedStyle(plakietka).whiteSpace,
+            wierszeTekstu: wiersze,
+            plakietka: { lewa: r(plakietka).left, gora: r(plakietka).top, dol: r(plakietka).bottom },
+            naglowek: { lewa: r(naglowek).left, gora: r(naglowek).top, dol: r(naglowek).bottom },
+            suma: { srodek: (r(suma).top + r(suma).bottom) / 2 },
+            olowek: { gora: r(olowek).top, dol: r(olowek).bottom },
+          };
+        }),
+      );
+      expect(pomiary.length).toBe(2);
+      for (const p of pomiary) {
+        expect(p.zawijanie, `${p.nazwa}: tekst plakietki bez łamania`).toBe("nowrap");
+        expect(p.wierszeTekstu, `${p.nazwa}: tekst plakietki w jednej linii`).toBe(1);
+        expect(p.plakietka.gora, `${p.nazwa}: plakietka pod nazwą`).toBeGreaterThanOrEqual(p.naglowek.dol - 1);
+        expect(p.plakietka.lewa, `${p.nazwa}: plakietka nie wystaje na lewo od nazwy`).toBeGreaterThanOrEqual(p.naglowek.lewa - 1);
+        if (szerokosc < 600) {
+          // Osobna linia: ołówek i liczba lekcji stoją wyżej niż plakietka, w linii nazwy.
+          expect(p.olowek.dol, `${p.nazwa}: ołówek w linii nazwy`).toBeLessThanOrEqual(p.plakietka.gora + 1);
+          expect(p.suma.srodek, `${p.nazwa}: liczba lekcji w linii nazwy`).toBeLessThanOrEqual(p.naglowek.dol + 1);
+          expect(p.suma.srodek, `${p.nazwa}: liczba lekcji w linii nazwy`).toBeGreaterThanOrEqual(p.naglowek.gora - 1);
+        }
+      }
+    });
+  });
+}

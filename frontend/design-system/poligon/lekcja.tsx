@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../tokeny/tokeny.css";
 import { CourseTree, type TematCourseTree } from "../organizmy/CourseTree/CourseTree";
 import { TimeChart } from "../organizmy/TimeChart/TimeChart";
 import { LessonPlayer } from "../organizmy/LessonPlayer/LessonPlayer";
+import { MenuOpcji } from "../molekuly/MenuOpcji/MenuOpcji";
 
 // Poligon drzewa kursu, wykresu i bloku lekcji: osobna strona wejścia obok
 // `index.html`. Każdy organizm ma tu warianty danych i stany: pusty,
@@ -134,10 +135,37 @@ const WSPOLNE_LP = {
   pusty: PUSTY_LP,
 };
 
+// Menu opcji z otwartą listą: pozycje istnieją w DOM dopiero po otwarciu, więc poligon otwiera je
+// kliknięciem w ołówek zaraz po zamontowaniu — tak samo, jak zrobiłaby to osoba. Pomiar celów widzi
+// wtedy i ołówek, i pozycje listy (zwykłą i nieodwracalną pod linią).
+function MenuOpcjiDemo() {
+  const korzen = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    korzen.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')?.click();
+  }, []);
+  return (
+    <div ref={korzen} style={{ display: "flex", justifyContent: "flex-end", minHeight: 260 }}>
+      <MenuOpcji
+        etykieta="Opcje tematu Praktyka"
+        pozycje={[
+          { id: "zmien-nazwe", etykieta: "Zmień nazwę", onWybierz: nic },
+          { id: "przenies-wyzej", etykieta: "Przenieś wyżej", onWybierz: nic },
+          { id: "usun", etykieta: "Usuń temat", onWybierz: nic, niebezpieczna: true, liniaPrzed: true },
+        ]}
+      />
+    </div>
+  );
+}
+
 function Poligon() {
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 32 }}>
       <p>Poligon pomiarowy — kurs, wykres, lekcja; nie jest stroną produktu.</p>
+
+      {/* Menu opcji tematu — ołówek z otwartą listą */}
+      <div data-style-id="molekula-menuopcji-otwarte">
+        <MenuOpcjiDemo />
+      </div>
 
       {/* O13 TimeChart — z danymi, pusty zakres, ładowanie, błąd */}
       <div data-style-id="o13-timechart-z-danymi">

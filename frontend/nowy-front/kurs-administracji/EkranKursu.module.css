@@ -37,15 +37,38 @@
 
 .pasTematu {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-8) var(--space-12);
-  padding: var(--space-12) var(--space-20);
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-14) var(--space-8) var(--space-8);
   background: var(--bg);
 }
 
+/* Strzałka przy nazwie zwija i rozwija temat; rozwinięty wskazuje w dół, zwinięty w bok. */
+.zwinTemat {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-min);
+  height: var(--hit-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.zwinTemat:hover {
+  background: var(--grey);
+}
+
+.zwinTemat[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
+}
+
 .nazwaTematu {
-  flex: 1 1 200px;
+  flex: 1 1 0;
   min-width: 0;
 }
 
@@ -62,27 +85,43 @@
   gap: var(--space-4) var(--space-8);
 }
 
-.akcjeTematu {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
+/* Tekst plakietki pod nazwą tematu nigdy się nie łamie. */
+.nazwaTematu .maly > span {
+  white-space: nowrap;
 }
 
-.menuTematu {
-  position: absolute;
-  top: calc(100% + var(--space-4));
-  right: 0;
-  left: 0;
-  z-index: var(--z-listbox);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-12);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-sm);
-  background: var(--card);
+/* Na wąskim ekranie plakietka stoi w osobnej linii pod nazwą tematu; strzałka, nazwa,
+   „n lekcji · m min” i ołówek zostają w jednej linii. */
+@media (max-width: 599px) {
+  .pasTematu {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .nazwaTematu {
+    display: contents;
+  }
+
+  .nazwaTematu h3 {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .nazwaTematu .maly {
+    order: 1;
+    flex: 0 0 100%;
+    padding-left: calc(var(--hit-min) + var(--space-8));
+    padding-bottom: var(--space-4);
+  }
+}
+
+/* „3 lekcje · 75 min” stoi po prawej, w jednym wierszu z nazwą tematu. */
+.sumaTematu {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: var(--fs-10);
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .lekcje {
@@ -461,11 +500,6 @@
 }
 
 @media (min-width: 1100px) {
-  .menuTematu {
-    left: auto;
-    width: 280px;
-  }
-
   .wiersz {
     grid-template-columns: 28px minmax(0, 1fr) 170px auto;
     grid-template-areas:

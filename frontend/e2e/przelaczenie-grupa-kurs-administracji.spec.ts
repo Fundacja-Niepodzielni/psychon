@@ -453,9 +453,9 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await zrzut(page, `kurs-${szerokosc}-okno-nowego-tematu`, nowyTemat);
       await nowyTemat.getByRole("button", { name: "Anuluj" }).click();
 
-      await page.getByRole("button", { name: "Więcej działań tematu Podstawy" }).click();
-      await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-wiecej-tematu`);
-      await page.getByRole("button", { name: "Usuń temat" }).click();
+      await page.getByRole("button", { name: "Opcje tematu Podstawy" }).click();
+      await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-opcje-tematu`);
+      await page.getByRole("menuitem", { name: "Usuń temat" }).click();
       const usuniecieTematu = page.getByRole("dialog");
       await expect(usuniecieTematu).toContainText("Temat ma 2 lekcje.");
       await sprawdzAxe(page, testInfo, `axe-kurs-${szerokosc}-okno-usuniecia-tematu`);

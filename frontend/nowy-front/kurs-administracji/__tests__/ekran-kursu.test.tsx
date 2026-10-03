@@ -839,33 +839,54 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
 });
 
 describe("ekran kursu — tematy", () => {
-  async function otworzWiecej(nazwa: string) {
-    const przycisk = screen.getByRole("button", { name: `Więcej działań tematu ${nazwa}` });
+  async function otworzOpcje(nazwa: string) {
+    const przycisk = screen.getByRole("button", { name: `Opcje tematu ${nazwa}` });
     await userEvent.click(przycisk);
     return przycisk;
   }
 
-  it("„Więcej” jest zwinięte; po otwarciu ma działania tematu i zdanie o usuwaniu", async () => {
+  it("opcje tematu są zwinięte; po otwarciu mają działania tematu bez „Przenieś temat wyżej” przy pierwszym", async () => {
     await renderEkranu();
-    expect(screen.queryByRole("button", { name: "Usuń temat" })).toBeNull();
-    const przycisk = await otworzWiecej("Wprowadzenie");
+    expect(screen.queryByRole("menuitem", { name: "Usuń temat" })).toBeNull();
+    const przycisk = await otworzOpcje("Wprowadzenie");
+    expect(przycisk).toHaveAttribute("aria-haspopup", "menu");
     expect(przycisk).toHaveAttribute("aria-expanded", "true");
-    expect(screen.queryByRole("button", { name: "Przenieś temat wyżej" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Przenieś temat niżej" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Usuń temat" })).toBeInTheDocument();
-    expect(
-      screen.getByText("Najpierw zapytamy i powiemy, co stanie się z lekcjami tego tematu."),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((pozycja) => pozycja.textContent)).toEqual([
+      "Zmień nazwę",
+      "Przenieś temat niżej",
+      "Usuń temat",
+    ]);
+    expect(screen.queryByRole("menuitem", { name: "Przenieś temat wyżej" })).toBeNull();
 
     await userEvent.keyboard("{Escape}");
-    expect(screen.queryByRole("button", { name: "Usuń temat" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Usuń temat" })).toBeNull();
+    expect(przycisk).toHaveAttribute("aria-expanded", "false");
     expect(document.activeElement).toBe(przycisk);
+  });
+
+  it("ostatni temat ma „Przenieś temat wyżej”, a nie „niżej”", async () => {
+    await renderEkranu();
+    await otworzOpcje("Praktyka");
+    expect(screen.getAllByRole("menuitem").map((pozycja) => pozycja.textContent)).toEqual([
+      "Zmień nazwę",
+      "Przenieś temat wyżej",
+      "Usuń temat",
+    ]);
+  });
+
+  it("jedna ikona zastępuje przyciski „Zmień nazwę”, „Zwiń” i „Więcej”; „Zwiń” jest strzałką z aria-expanded", async () => {
+    await renderEkranu();
+    expect(screen.queryByRole("button", { name: /^Więcej działań tematu/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Zmień nazwę tematu/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Zwiń temat Wprowadzenie" })).toHaveAttribute("aria-expanded", "true");
+    const pas = screen.getByRole("region", { name: "Temat Wprowadzenie" });
+    expect(within(pas).getByText("2 lekcje · 20 min")).toBeInTheDocument();
   });
 
   it("„Przenieś temat niżej” zapisuje się samo tą samą trasą układu, lekcje zostają w tematach", async () => {
     await renderEkranu();
-    await otworzWiecej("Wprowadzenie");
-    await userEvent.click(screen.getByRole("button", { name: "Przenieś temat niżej" }));
+    await otworzOpcje("Wprowadzenie");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Przenieś temat niżej" }));
 
     expect(kolejnoscLekcji()).toEqual(["23", "21", "22"]);
     await waitFor(() => expect(zapisyUkladu()).toHaveLength(1));
@@ -876,13 +897,13 @@ describe("ekran kursu — tematy", () => {
       ],
     });
     expect(ogloszenie()).toBe("Przeniesiono temat „Wprowadzenie” na miejsce 2 z 2.");
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Więcej działań tematu Wprowadzenie" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Opcje tematu Wprowadzenie" }));
   });
 
   it("temat z lekcjami: okno mówi, co stanie się z lekcjami, i niczego nie usuwa", async () => {
     await renderEkranu();
-    await otworzWiecej("Wprowadzenie");
-    await userEvent.click(screen.getByRole("button", { name: "Usuń temat" }));
+    await otworzOpcje("Wprowadzenie");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Usuń temat" }));
 
     const okno = screen.getByRole("dialog");
     expect(within(okno).getByText(/Temat ma 2 lekcje\. Lekcje nie znikają razem z tematem/)).toBeInTheDocument();
@@ -896,8 +917,8 @@ describe("ekran kursu — tematy", () => {
     serwer = utworzSerwer({ tematy: [...TEMATY, temat(9, "Zakończenie", 3, [])] });
     serwer.nadpisz("DELETE", "/admin/topics/9", () => ({ id: 9, deleted: true }));
     await renderEkranu();
-    await otworzWiecej("Zakończenie");
-    await userEvent.click(screen.getByRole("button", { name: "Usuń temat" }));
+    await otworzOpcje("Zakończenie");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Usuń temat" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń temat" }));
 
     await waitFor(() => expect(screen.queryByRole("heading", { level: 3, name: "Zakończenie" })).toBeNull());
@@ -919,7 +940,8 @@ describe("ekran kursu — tematy", () => {
   it("„Zmień nazwę” zapisuje nazwę tematu", async () => {
     serwer.nadpisz("PATCH", "/admin/topics/7", (cialo) => ({ ...TEMATY[0], title: (cialo as { title: string }).title }));
     await renderEkranu();
-    await userEvent.click(screen.getByRole("button", { name: "Zmień nazwę tematu Wprowadzenie" }));
+    await otworzOpcje("Wprowadzenie");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Zmień nazwę" }));
     const pole = within(screen.getByRole("dialog")).getByRole("textbox", { name: /Nazwa tematu/ });
     expect(pole).toHaveValue("Wprowadzenie");
     await userEvent.clear(pole);

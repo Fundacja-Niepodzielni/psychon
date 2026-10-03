@@ -223,6 +223,9 @@ const CELE = [
   // Organizmy kursu, wykresu i lekcji — montowane w `lekcja.html`, nie w main.tsx.
   { nazwa: "TimeChart (rozwinięcie tabeli)", strona: "lekcja.html", selektor: '[data-style-id="o13-timechart-z-danymi"] button' },
   { nazwa: "StrzalkiKolejnosci (strzałka)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [aria-label="Przenieś „Zasady programu” niżej"]' },
+  { nazwa: "MenuOpcji (ołówek)", strona: "lekcja.html", selektor: '[data-style-id="molekula-menuopcji-otwarte"] button[aria-haspopup="menu"]' },
+  { nazwa: "MenuOpcji (pozycja listy)", strona: "lekcja.html", selektor: '[data-style-id="molekula-menuopcji-otwarte"] [data-pozycja="przenies-wyzej"]' },
+  { nazwa: "MenuOpcji (pozycja nieodwracalna)", strona: "lekcja.html", selektor: '[data-style-id="molekula-menuopcji-otwarte"] [data-pozycja="usun"]' },
   { nazwa: "CourseTree (zmiana nazwy)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-edytuj-l1"]' },
   { nazwa: "CourseTree (edycja lekcji)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-edycja-lekcji"] [data-edytuj-lekcje="l1"]' },
   { nazwa: "CourseTree (dodanie lekcji)", strona: "lekcja.html", selektor: '[data-style-id="o12-coursetree-rozwiniete"] [data-testid="ct-dodaj-temat-1"]' },

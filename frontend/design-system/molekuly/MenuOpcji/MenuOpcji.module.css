@@ -1,0 +1,78 @@
+/* Przycisk z ikoną i lista opcji pod nim — wyłącznie tokeny. Przycisk ma 44 × 44 px,
+   lista wyrównuje się do jego prawej krawędzi i nie wychodzi poza okno. */
+.opcje {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.przycisk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-min);
+  height: var(--hit-min);
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.przycisk:hover,
+.przycisk[aria-expanded="true"] {
+  background: var(--grey);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  right: 0;
+  z-index: var(--z-listbox);
+  box-sizing: border-box;
+  min-width: 230px;
+  max-width: calc(100vw - var(--space-32));
+  margin: 0;
+  padding: var(--space-6);
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.menu > li {
+  margin: 0;
+  padding: 0;
+}
+
+.linia {
+  height: 0;
+  margin: var(--space-4) 0;
+  border-top: 1px solid var(--border);
+}
+
+.pozycja {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--hit-min);
+  padding: var(--space-8) var(--space-12);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-9);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pozycja:hover,
+.pozycja:focus-visible {
+  background: var(--grey);
+}
+
+.niebezpieczna {
+  color: var(--error);
+}

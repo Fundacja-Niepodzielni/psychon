@@ -77,6 +77,9 @@ export const OCZEKIWANE_CELE = [
   // w `CELE`): każdy z trzech plików ma co najmniej jeden własny cel.
   "TimeChart (rozwinięcie tabeli)",
   "StrzalkiKolejnosci (strzałka)",
+  "MenuOpcji (ołówek)",
+  "MenuOpcji (pozycja listy)",
+  "MenuOpcji (pozycja nieodwracalna)",
   "CourseTree (zmiana nazwy)",
   "CourseTree (edycja lekcji)",
   "CourseTree (dodanie lekcji)",
@@ -140,6 +143,9 @@ export const KOMPONENT_CELU = {
   "LessonPlayer (odtwarzanie)": "LessonPlayer",
   "LessonPlayer (powiększenie)": "LessonPlayer",
   "LessonPlayer (odnośnik braku)": "LessonPlayer",
+  "MenuOpcji (ołówek)": "MenuOpcji", // przycisk 44 × 44 otwierający listę opcji tematu
+  "MenuOpcji (pozycja listy)": "MenuOpcji", // pozycja `menuitem` otwartej listy (min. 44 px wysokości)
+  "MenuOpcji (pozycja nieodwracalna)": "MenuOpcji", // pozycja pod linią (usunięcie)
   "FormSection (zapisz)": "FormSection",
   "JournalTable (odnośnik pobrania)": "JournalTable",
 };
@@ -240,6 +246,7 @@ export const PLIKI_ROZLICZONE = [
   "molekuly/EdytorTresci/EdytorTresci.tsx", // edytor treści lekcji: trzy cele z `edytor.html`
   "molekuly/SaveBar/SaveBar.tsx",
   "molekuly/SearchBox/SearchBox.tsx",
+  "molekuly/MenuOpcji/MenuOpcji.tsx", // ołówek otwierający listę opcji tematu i jej pozycje: trzy cele „MenuOpcji (…)” z `lekcja.html`
   "molekuly/StrzalkiKolejnosci/StrzalkiKolejnosci.tsx", // dopisany z molekułą strzałek kolejności: dwa przyciski, cel „StrzalkiKolejnosci (strzałka)”
   "molekuly/Tabs/Tabs.tsx",
   "molekuly/Toast/Toast.tsx",

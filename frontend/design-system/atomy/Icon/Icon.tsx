@@ -1,6 +1,6 @@
 import {
   Home, BookOpen, Clock, Users, File, Award, MessageSquare,
-  Inbox, BarChart, Settings, HelpCircle, User, LogOut, Lock, ChevronUp, ChevronDown,
+  Inbox, BarChart, Settings, HelpCircle, User, LogOut, Lock, ChevronUp, ChevronDown, Pencil,
 } from "lucide-react";
 import type { SVGProps } from "react";
 
@@ -42,6 +42,7 @@ const MAPA_IKON = {
   menu: GlifMenu,
   "strzalka-gora": ChevronUp,
   "strzalka-dol": ChevronDown,
+  olowek: Pencil,
 } as const;
 
 export type NazwaIkony = keyof typeof MAPA_IKON;

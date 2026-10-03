@@ -6,7 +6,9 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Hint } from "@/design-system/atomy/Hint/Hint";
+import { Icon } from "@/design-system/atomy/Icon/Icon";
 import { Input } from "@/design-system/atomy/Input/Input";
+import { MenuOpcji } from "@/design-system/molekuly/MenuOpcji/MenuOpcji";
 import { StrzalkiKolejnosci } from "@/design-system/molekuly/StrzalkiKolejnosci/StrzalkiKolejnosci";
 import { useRuchWierszy } from "@/design-system/molekuly/StrzalkiKolejnosci/ruch";
 import { KartaBoczna } from "@/design-system/szablony/UkladEdycji/KartaBoczna";
@@ -84,11 +86,10 @@ export function DrzewoKursu({
 }: WlasciwosciDrzewa) {
   const [zwiniete, setZwiniete] = useState<ReadonlySet<number>>(new Set());
   const [formularz, setFormularz] = useState<number | null>(null);
-  const [menu, setMenu] = useState<number | null>(null);
   // Ruch wierszy (płynna zamiana, fokus na tej samej strzałce) daje pomocnik molekuły strzałek.
   const korzen = useRef<HTMLDivElement>(null);
   const ruch = useRuchWierszy(korzen);
-  // Po zamknięciu menu, anulowaniu formularza i ruchu tematu fokus wraca na wskazany przycisk.
+  // Po anulowaniu formularza i ruchu tematu fokus wraca na wskazany przycisk.
   const fokusPoRuchu = useRef<string | null>(null);
   const liczbaLekcji = tematy.reduce((suma, temat) => suma + temat.lekcje.length, 0);
 
@@ -99,16 +100,6 @@ export function DrzewoKursu({
     const wezel = korzen.current?.querySelector<HTMLElement>(`[data-fokus="${cel}"]`);
     wezel?.focus();
   });
-
-  useEffect(() => {
-    if (menu === null) return;
-    function naKlik(zdarzenie: MouseEvent) {
-      const cel = zdarzenie.target as Element | null;
-      if (!cel?.closest("[data-menu-tematu]")) setMenu(null);
-    }
-    document.addEventListener("mousedown", naKlik);
-    return () => document.removeEventListener("mousedown", naKlik);
-  }, [menu]);
 
   function przelaczZwiniecie(idTematu: number) {
     setZwiniete((poprzednie) => {
@@ -152,94 +143,64 @@ export function DrzewoKursu({
               data-ruch-klucz={`temat-${temat.id}`}
             >
               <div className={style.pasTematu}>
+                <button
+                  type="button"
+                  className={style.zwinTemat}
+                  aria-expanded={!zwiniety}
+                  aria-label={`${zwiniety ? "Rozwiń" : "Zwiń"} temat ${temat.tytul}`}
+                  onClick={() => przelaczZwiniecie(temat.id)}
+                >
+                  <Icon nazwa="strzalka-dol" rozmiar={18} />
+                </button>
                 <div className={style.nazwaTematu}>
                   <Heading stopien={3}>{temat.tytul}</Heading>
-                  <p className={style.maly}>
-                    <span>{zdanieTematu(temat)}</span>
-                    {zwiniety && uwaga > 0 && <Badge wariant="warn">{zdanieUwagi(uwaga)}</Badge>}
-                  </p>
+                  {zwiniety && uwaga > 0 && (
+                    <p className={style.maly}>
+                      <Badge wariant="warn">{zdanieUwagi(uwaga)}</Badge>
+                    </p>
+                  )}
                 </div>
-                <div className={style.akcjeTematu}>
-                  <Button
-                    poziom="outline"
-                    rozmiar="sm"
-                    aria-label={`Zmień nazwę tematu ${temat.tytul}`}
-                    onClick={() => onZmienNazwe(temat.id)}
-                  >
-                    Zmień nazwę
-                  </Button>
-                  <Button
-                    poziom="outline"
-                    rozmiar="sm"
-                    aria-expanded={!zwiniety}
-                    aria-label={`${zwiniety ? "Rozwiń" : "Zwiń"} temat ${temat.tytul}`}
-                    onClick={() => przelaczZwiniecie(temat.id)}
-                  >
-                    {zwiniety ? "Rozwiń" : "Zwiń"}
-                  </Button>
-                  <div
-                    className={style.wiecej}
-                    data-menu-tematu
-                    onKeyDown={(zdarzenie) => {
-                      if (zdarzenie.key !== "Escape" || menu !== temat.id) return;
-                      zdarzenie.stopPropagation();
-                      setMenu(null);
-                      fokusPoRuchu.current = `wiecej-${temat.id}`;
-                    }}
-                  >
-                    <Button
-                      poziom="outline"
-                      rozmiar="sm"
-                      aria-expanded={menu === temat.id}
-                      aria-label={`Więcej działań tematu ${temat.tytul}`}
-                      data-fokus={`wiecej-${temat.id}`}
-                      onClick={() => setMenu(menu === temat.id ? null : temat.id)}
-                    >
-                      Więcej
-                    </Button>
-                    {menu === temat.id && (
-                      <div className={style.menuTematu}>
-                        {indeksTematu > 0 && (
-                          <Button
-                            poziom="quiet"
-                            onClick={() => {
-                              setMenu(null);
-                              fokusPoRuchu.current = `wiecej-${temat.id}`;
+                <span className={style.sumaTematu}>{zdanieTematu(temat)}</span>
+                <MenuOpcji
+                  etykieta={`Opcje tematu ${temat.tytul}`}
+                  znacznikFokusu={`opcje-${temat.id}`}
+                  pozycje={[
+                    { id: "zmien-nazwe", etykieta: "Zmień nazwę", onWybierz: () => onZmienNazwe(temat.id) },
+                    ...(indeksTematu > 0
+                      ? [
+                          {
+                            id: "wyzej",
+                            etykieta: "Przenieś temat wyżej",
+                            onWybierz: () => {
+                              fokusPoRuchu.current = `opcje-${temat.id}`;
                               ruch.zapowiedz();
                               onPrzesunTemat(temat.id, -1);
-                            }}
-                          >
-                            Przenieś temat wyżej
-                          </Button>
-                        )}
-                        {indeksTematu < tematy.length - 1 && (
-                          <Button
-                            poziom="quiet"
-                            onClick={() => {
-                              setMenu(null);
-                              fokusPoRuchu.current = `wiecej-${temat.id}`;
+                            },
+                          },
+                        ]
+                      : []),
+                    ...(indeksTematu < tematy.length - 1
+                      ? [
+                          {
+                            id: "nizej",
+                            etykieta: "Przenieś temat niżej",
+                            onWybierz: () => {
+                              fokusPoRuchu.current = `opcje-${temat.id}`;
                               ruch.zapowiedz();
                               onPrzesunTemat(temat.id, 1);
-                            }}
-                          >
-                            Przenieś temat niżej
-                          </Button>
-                        )}
-                        <Button
-                          poziom="quiet"
-                          niebezpieczny
-                          onClick={() => {
-                            setMenu(null);
-                            onUsunTemat(temat.id);
-                          }}
-                        >
-                          Usuń temat
-                        </Button>
-                        <Hint>Najpierw zapytamy i powiemy, co stanie się z lekcjami tego tematu.</Hint>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                            },
+                          },
+                        ]
+                      : []),
+                    {
+                      id: "usun",
+                      etykieta: "Usuń temat",
+                      niebezpieczna: true,
+                      liniaPrzed: true,
+                      onWybierz: () => onUsunTemat(temat.id),
+                    },
+                  ]}
+                />
               </div>
 
               {!zwiniety && temat.lekcje.length > 0 && (
