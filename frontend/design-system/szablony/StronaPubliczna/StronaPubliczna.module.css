@@ -1,0 +1,86 @@
+/* Szablon strony publicznej — wartości wyglądu wyłącznie z tokenów. Kolumna
+   ma szerokość maksymalną i pełną szerokość poniżej niej, więc przy 390 i
+   320 px nie ma przewijania w bok. */
+.strona {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.gora {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-32) var(--space-16) 0;
+}
+
+.logo {
+  max-width: 200px;
+}
+
+.logo > svg {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: var(--space-40);
+}
+
+.kolumna {
+  box-sizing: border-box;
+  flex: 1 0 auto;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-32) var(--space-16) var(--space-40);
+}
+
+.waska {
+  max-width: 480px;
+}
+
+.czytelna {
+  max-width: 752px;
+}
+
+.kolumna:focus {
+  outline: none;
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tresc > * {
+  min-width: 0;
+}
+
+.stopka {
+  box-sizing: border-box;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  padding: var(--space-4) var(--space-16);
+}
+
+.lista {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: var(--space-24);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-10);
+}
+
+.pozycja {
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min);
+}
