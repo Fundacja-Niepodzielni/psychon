@@ -41,3 +41,11 @@
   padding-top: var(--space-8);
   border-top: 1px solid var(--border);
 }
+
+.kontakt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--border);
+}

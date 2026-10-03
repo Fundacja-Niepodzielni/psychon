@@ -25,6 +25,19 @@ import {
   type UstawieniaPowiadomien,
 } from "@/lib/api/h16-ustawienia";
 import type { MetaSkrzynki, WiadomoscEmail } from "./dane";
+
+/**
+ * Pole „Kontakt w e-mailach” (`email_contact`) z odpowiedzi i ciała PATCH
+ * `/admin/notification-settings` — typy klienta `@/lib/api/h16-ustawienia`
+ * go nie znają, więc ekran rozszerza je tutaj. Brak pola w odpowiedzi
+ * traktujemy jak pusty kontakt.
+ */
+type UstawieniaZKontaktem = UstawieniaPowiadomien & { email_contact?: string | null };
+type PatchZKontaktem = PatchUstawienPowiadomien & { email_contact?: string };
+
+function kontaktZ(ustawienia: UstawieniaZKontaktem): string {
+  return ustawienia.email_contact ?? "";
+}
 import style from "./PowiadomieniaEmail.module.css";
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
@@ -64,6 +77,9 @@ const ETYKIETY_TYPOW: Record<string, string> = {
   "export.ready": "Eksport danych gotowy",
   "cooperation_request.answered": "Odpowiedź na prośbę o dalszą współpracę",
   "supervision.slot_cancelled": "Termin superwizji odwołany",
+  "access.expiring_7d": "Dostęp kończy się za 7 dni",
+  "access.expired": "Dostęp do materiałów się zakończył",
+  "cooperation_request.created": "Nowe zgłoszenie dalszej współpracy",
 };
 
 function etykietaTypu(kod: string): string {
@@ -81,9 +97,9 @@ type StanUstawien = "ladowanie" | "blad" | "ok";
 /** Różnica robocza vs. ostatni odczyt → kształt PATCH z kontraktu (WYŁĄCZNIE
  * zmienione pola). */
 function obliczRoznice(
-  bazowy: UstawieniaPowiadomien,
-  roboczy: UstawieniaPowiadomien,
-): PatchUstawienPowiadomien {
+  bazowy: UstawieniaZKontaktem,
+  roboczy: UstawieniaZKontaktem,
+): PatchZKontaktem {
   const bazoweTypy = new Map(bazowy.types.map((wpis) => [wpis.type, wpis.enabled]));
   const zmienioneTypy = roboczy.types.filter((wpis) => bazoweTypy.get(wpis.type) !== wpis.enabled);
 
@@ -95,14 +111,19 @@ function obliczRoznice(
     zmienionePrzypomnienie.send_at = roboczy.supervision_reminder.send_at;
   }
 
-  const patch: PatchUstawienPowiadomien = {};
+  const patch: PatchZKontaktem = {};
   if (zmienioneTypy.length > 0) patch.types = zmienioneTypy;
   if (Object.keys(zmienionePrzypomnienie).length > 0) patch.supervision_reminder = zmienionePrzypomnienie;
+  if (kontaktZ(bazowy) !== kontaktZ(roboczy)) patch.email_contact = kontaktZ(roboczy);
   return patch;
 }
 
-function liczbaZmian(patch: PatchUstawienPowiadomien): number {
-  return (patch.types?.length ?? 0) + Object.keys(patch.supervision_reminder ?? {}).length;
+function liczbaZmian(patch: PatchZKontaktem): number {
+  return (
+    (patch.types?.length ?? 0) +
+    Object.keys(patch.supervision_reminder ?? {}).length +
+    (patch.email_contact === undefined ? 0 : 1)
+  );
 }
 
 /**
@@ -126,12 +147,16 @@ function liczbaZmian(patch: PatchUstawienPowiadomien): number {
  *
  * Nad skrzynką (bez zmiany jej zachowania) stoi sekcja „Ustawienia
  * powiadomień” (`GET`/`PATCH /admin/notification-settings`,
- * `backend/routes/api/h16.php:38-39`) — przełączniki 20 typów z kontraktu
+ * `backend/routes/api/h16.php:38-39`) — przełączniki typów z kontraktu
  * §3.1 (`Checkbox`) i blok przypomnienia o superwizji (`Checkbox` + `Field`
  * z `Select` na godzinę). Stan tej sekcji jest niezależny od skrzynki: własne
  * `ladowanie`/`blad`/`ok`, własny `SaveBar` z liczbą niezapisanych zmian.
  * `PATCH` wysyła wyłącznie zmienione pola (`obliczRoznice` wyżej) — pełny
  * stan z odpowiedzi zastępuje stan roboczy i ostatni odczyt naraz.
+ *
+ * Pod przypomnieniem stoi pole „Kontakt w e-mailach” (`email_contact`) —
+ * tekst linii „Kontakt z Fundacją” w stopce e-maili. Puste pole zapisuje
+ * brak kontaktu: e-maile pomijają wtedy tę linię.
  */
 export function PowiadomieniaEmail() {
   const router = useRouter();
@@ -145,13 +170,14 @@ export function PowiadomieniaEmail() {
   const [toast, setToast] = useState<string | null>(null);
 
   const [ustStan, setUstStan] = useState<StanUstawien>("ladowanie");
-  const [ustOstatniOdczyt, setUstOstatniOdczyt] = useState<UstawieniaPowiadomien | null>(null);
-  const [ustRoboczy, setUstRoboczy] = useState<UstawieniaPowiadomien | null>(null);
+  const [ustOstatniOdczyt, setUstOstatniOdczyt] = useState<UstawieniaZKontaktem | null>(null);
+  const [ustRoboczy, setUstRoboczy] = useState<UstawieniaZKontaktem | null>(null);
   const [ustTylkoOdczyt, setUstTylkoOdczyt] = useState(false);
   const [ustNoticeUprawnien, setUstNoticeUprawnien] = useState(false);
   const [ustBladSieci, setUstBladSieci] = useState<string | null>(null);
   const [ustBledyTypow, setUstBledyTypow] = useState<Record<string, string>>({});
   const [ustBledyPrzypomnienia, setUstBledyPrzypomnienia] = useState<{ enabled?: string; send_at?: string }>({});
+  const [ustBladKontaktu, setUstBladKontaktu] = useState<string | undefined>(undefined);
   const [ustZapisywanie, setUstZapisywanie] = useState(false);
   useZgloszenieNiezapisanychZmian(
     ustStan === "ok" &&
@@ -216,11 +242,17 @@ export function PowiadomieniaEmail() {
     );
   }
 
+  function zmienKontakt(wartosc: string) {
+    if (ustTylkoOdczyt) return;
+    setUstRoboczy((roboczy) => roboczy && { ...roboczy, email_contact: wartosc });
+  }
+
   function odrzucUstawienia() {
     if (!ustOstatniOdczyt) return;
     setUstRoboczy(ustOstatniOdczyt);
     setUstBledyTypow({});
     setUstBledyPrzypomnienia({});
+    setUstBladKontaktu(undefined);
     setUstBladSieci(null);
   }
 
@@ -234,8 +266,9 @@ export function PowiadomieniaEmail() {
     setUstBladSieci(null);
     setUstBledyTypow({});
     setUstBledyPrzypomnienia({});
+    setUstBladKontaktu(undefined);
     try {
-      const odpowiedz = await updateNotificationSettings(patch);
+      const odpowiedz: UstawieniaZKontaktem = await updateNotificationSettings(patch);
       setUstOstatniOdczyt(odpowiedz);
       setUstRoboczy(odpowiedz);
       setToast("Ustawienia powiadomień zapisane.");
@@ -258,6 +291,7 @@ export function PowiadomieniaEmail() {
           }
           if (klucz === "supervision_reminder.enabled") bledyPrzypomnienia.enabled = tresc;
           if (klucz === "supervision_reminder.send_at") bledyPrzypomnienia.send_at = tresc;
+          if (klucz === "email_contact") setUstBladKontaktu(tresc);
         }
         setUstBledyTypow(bledyTypow);
         setUstBledyPrzypomnienia(bledyPrzypomnienia);
@@ -432,6 +466,19 @@ export function PowiadomieniaEmail() {
                 zablokowany={!ustRoboczy.supervision_reminder.enabled || ustTylkoOdczyt}
                 podpowiedz="Przypomnienie wychodzi raz dziennie, o tej godzinie lub przy pierwszym uruchomieniu po niej."
                 blad={ustBledyPrzypomnienia.send_at}
+              />
+            </div>
+
+            <div className={style.kontakt}>
+              <Field
+                id="kontakt-w-emailach"
+                etykieta="Kontakt w e-mailach"
+                rodzaj="tekst"
+                wartosc={kontaktZ(ustRoboczy)}
+                onZmiana={zmienKontakt}
+                zablokowany={ustTylkoOdczyt}
+                podpowiedz="Pojawia się w stopce e-maili jako „Kontakt z Fundacją”, np. adres e-mail i telefon. Puste pole: e-maile nie pokażą kontaktu."
+                blad={ustBladKontaktu}
               />
             </div>
           </>
