@@ -1,60 +1,46 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-
-import QuestionBank from "@/components/h10/QuestionBank";
-import Breadcrumbs from "@/components/molecules/Breadcrumbs";
-import PageTemplate from "@/components/templates/PageTemplate";
-
-export const metadata: Metadata = {
-  title: "Bank pytań — Panel prowadzącego — Niepodzielni",
-};
-
-interface InstructorQuestionBankPageProps {
-  /** `id` to identyfikator TESTU (`tests.id`) — tak adresuje go API H10,
-   * tak samo jak karta administracji (`admin/testy/[id]/pytania/page.tsx`). */
-  params: Promise<{ id: string }>;
-}
+import "@/design-system/tokeny/tokeny.css";
+import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
+import { GRUPY } from "@/lib/przelaczenie/grupy";
+import { PytaniaTestu } from "@/nowy-front/pytania-testu/PytaniaTestu";
+import StaraTresc from "./StaraTresc";
 
 /**
- * Bank pytań testu w panelu prowadzącego — montuje ten sam
- * `QuestionBank` (H10, kryterium 6), co karta administracji, te same cztery
- * punkty API (`/admin/tests/{test}/questions`, `/admin/questions/{question}`
- * — kontrakt H10 adresuje je niezależnie od roli wołającej).
- *
- * Trasa jest osiągalna pod adresem, ale odpowie 403, dopóki backend nie doda
- * roli `instructor` do bramki `routes/api/h10.php` (dziś dopuszcza tylko
- * `project_manager,super_admin`) — ten sam brak backendu, co przy edytorze
- * treści kursu (`KursProwadzacego.tsx`); ekran go nie ukrywa,
- * `QuestionBank` pokazuje wtedy stan „forbidden" jak każdej innej osobie bez
- * uprawnień.
+ * Trasa `/prowadzacy/testy/[id]/pytania` — pytania testu końcowego w panelu
+ * prowadzącego (H10). Adres się nie zmienia: strona czyta rejestr przełączenia
+ * (`lib/przelaczenie/grupy.ts`, grupa `pytaniaTestu`, ta sama flaga co
+ * w administracji). Grupa wyłączona → dotychczasowa treść (`StaraTresc.tsx`,
+ * przeniesiona bez zmiany); grupa włączona → ten sam ekran „Pytania testu” co
+ * w administracji, w powłoce panelu prowadzącego. Serwer dziś dopuszcza do
+ * pytań tylko administrację, więc prowadzący dostaje wspólny ekran odmowy
+ * (jak dotąd stan „brak dostępu”). `id` to numer testu; opcjonalny parametr
+ * `kurs` prowadzi okruszek z powrotem do kursu. `params` i `searchParams`
+ * to Promise (Next.js 16).
  */
-export default async function InstructorQuestionBankPage({
-  params,
-}: InstructorQuestionBankPageProps) {
-  const { id } = await params;
-  const testId = Number(id);
+export const metadata: Metadata = {
+  title: GRUPY.pytaniaTestu.wlaczona
+    ? "Pytania testu — Panel prowadzącego — Niepodzielni"
+    : "Bank pytań — Panel prowadzącego — Niepodzielni",
+};
 
-  if (!Number.isSafeInteger(testId) || testId <= 0) {
-    notFound();
-  }
+export default async function StronaPytanTestuProwadzacego({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ kurs?: string | string[] }>;
+}) {
+  const { id } = await params;
+
+  if (!GRUPY.pytaniaTestu.wlaczona) return <StaraTresc params={Promise.resolve({ id })} />;
+
+  const { kurs } = (await searchParams) ?? {};
 
   return (
-    <PageTemplate
-      naglowek={{
-        title: "Bank pytań",
-        breadcrumbs: (
-          <Breadcrumbs
-            items={[
-              { label: "Kursy", href: "/prowadzacy/kursy" },
-              { label: "Bank pytań" },
-            ]}
-          />
-        ),
-      }}
-    >
-      {/* `key` gwarantuje świeży stan przy przejściu między testami — panel
-          czyta pytania raz, przy montażu. */}
-      <QuestionBank key={testId} testId={testId} />
-    </PageTemplate>
+    <div data-theme="light">
+      <DostawcaPowloki>
+        <PytaniaTestu idTestu={id} panel="prowadzacy" idKursu={typeof kurs === "string" ? kurs : null} />
+      </DostawcaPowloki>
+    </div>
   );
 }

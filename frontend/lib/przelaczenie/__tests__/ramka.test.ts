@@ -70,6 +70,7 @@ describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
       GRUPY.kursyAdministracji.wlaczona && "/admin/kursy",
       GRUPY.kursAdministracji.wlaczona && "/admin/kursy/12",
       GRUPY.powiadomienia.wlaczona && "/admin/emails",
+      GRUPY.pytaniaTestu.wlaczona && "/admin/testy/12/pytania",
     ].filter((s): s is string => typeof s === "string");
     expect(wNowej).toEqual(oczekiwane.sort());
   });
@@ -89,6 +90,15 @@ describe("czyTrasaWNowejRamce — stan rejestru na dziś", () => {
   it("nowe trasy z innym adresem niż stara (grupa tras przełączenia) nie są tu rozpoznawane", () => {
     expect(czyTrasaWNowejRamce("/admin/formy-stazu", "administracja")).toBe(false);
     expect(czyTrasaWNowejRamce("/admin/zgloszenia-wspolpracy", "administracja")).toBe(false);
+  });
+
+  it("pytania testu: nowa ramka w obu panelach pod adresem własnego panelu, nie cudzego", () => {
+    expect(czyTrasaWNowejRamce("/admin/testy/12/pytania", "administracja")).toBe(GRUPY.pytaniaTestu.wlaczona);
+    expect(czyTrasaWNowejRamce("/prowadzacy/testy/12/pytania?kurs=4", "prowadzacy")).toBe(GRUPY.pytaniaTestu.wlaczona);
+    expect(czyTrasaWNowejRamce("/prowadzacy/testy/12/pytania", "administracja")).toBe(false);
+    expect(czyTrasaWNowejRamce("/admin/testy/12/pytania", "prowadzacy")).toBe(false);
+    const wylaczona = zFlagami({});
+    expect(czyTrasaWNowejRamce("/prowadzacy/testy/12/pytania", "prowadzacy", wylaczona)).toBe(false);
   });
 
   it("inny panel tej samej ścieżki nie dostaje ramki administracji", () => {

@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia siedem: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia osiem: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `pytaniaTestu`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -306,6 +306,31 @@ export const GRUPY = {
         staraTrasa: "/panel/kursy/[slug]/test",
         nowaTrasa: "/panel/kursy/[slug]/test",
         trasaPoligonu: "/nowy-front/kurs-uczestnika/[slug]/test",
+      },
+    ],
+  },
+  /**
+   * Pytania testu końcowego (H10) — ten sam adres co dzisiejszy bank pytań,
+   * w obu panelach pod jedną flagą: ten sam ekran, administracja na trasach
+   * `/admin/…`, prowadzący na trasach `/instructor/…` (pytania testu swojego
+   * kursu). Wchodzi się z ekranu kursu (parametr `kurs` prowadzi okruszek
+   * z powrotem do kursu).
+   */
+  pytaniaTestu: {
+    klucz: "pytaniaTestu",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/testy/[id]/pytania",
+        nowaTrasa: "/admin/testy/[id]/pytania",
+        trasaPoligonu: "/nowy-front/admin/testy/[id]/pytania",
+      },
+      {
+        panel: "prowadzacy",
+        staraTrasa: "/prowadzacy/testy/[id]/pytania",
+        nowaTrasa: "/prowadzacy/testy/[id]/pytania",
+        trasaPoligonu: "/nowy-front/prowadzacy/testy/[id]/pytania",
       },
     ],
   },

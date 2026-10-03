@@ -21,9 +21,10 @@ import {
  * Także `certyfikat` (certyfikat pod tym samym adresem `/panel/certyfikat`), `dokumentyUczestnika` (dokumenty uczestnika pod tym samym adresem `/panel/dokumenty`).
  * Także `testUczestnika` (test końcowy kursu uczestnika pod tym samym adresem).
  * Także `powiadomienia` (adres `/admin/emails`, ekran „Powiadomienia”).
+ * Także `pytaniaTestu` (pytania testu w panelu administracji i prowadzącego pod tymi samymi adresami).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -39,7 +40,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika i powiadomienia", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika, powiadomienia i pytania testu", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -168,7 +169,7 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna trzydzieści cztery grupy dzisiejszego kanonu", () => {
+  it("zna trzydzieści pięć grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "certyfikat",
       "decyzjaProfilu",
@@ -195,6 +196,7 @@ describe("rejestr GRUPY — zawartość", () => {
       "pulpitAdministracji",
       "pulpitProwadzacego",
       "pulpitUczestnika",
+      "pytaniaTestu",
       "skrzynkaPytan",
       "sprawy",
       "superwizjaUczestnika",
@@ -235,6 +237,26 @@ describe("rejestr GRUPY — zawartość", () => {
     ]);
     expect(GRUPY.superwizje.wlaczona).toBe(false);
     expect(GRUPY.superwizje.ekrany.map((e) => e.panel)).toEqual(["administracja"]);
+  });
+
+  it("pytania testu: dwa ekrany pod jedną flagą, administracja i prowadzący, każdy pod tym samym adresem co dziś", () => {
+    expect(GRUPY.pytaniaTestu.ekrany).toEqual([
+      {
+        panel: "administracja",
+        staraTrasa: "/admin/testy/[id]/pytania",
+        nowaTrasa: "/admin/testy/[id]/pytania",
+        trasaPoligonu: "/nowy-front/admin/testy/[id]/pytania",
+      },
+      {
+        panel: "prowadzacy",
+        staraTrasa: "/prowadzacy/testy/[id]/pytania",
+        nowaTrasa: "/prowadzacy/testy/[id]/pytania",
+        trasaPoligonu: "/nowy-front/prowadzacy/testy/[id]/pytania",
+      },
+    ]);
+    for (const panel of ["administracja", "prowadzacy"] as const) {
+      expect(czyStaraTrasaPrzekierowuje(GRUPY.pytaniaTestu, panel), panel).toBe(false);
+    }
   });
 
   it("kurs należy do panelu prowadzącego, a jego adres zostaje ten sam", () => {

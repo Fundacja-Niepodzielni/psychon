@@ -1,55 +1,42 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-
-import QuestionBank from "@/components/h10/QuestionBank";
-import Breadcrumbs from "@/components/molecules/Breadcrumbs";
-import PageTemplate from "@/components/templates/PageTemplate";
-
-export const metadata: Metadata = {
-  title: "Bank pytań — Niepodzielni",
-};
-
-interface QuestionBankPageProps {
-  /** `id` to identyfikator TESTU (`tests.id`) — tak adresuje go API H10. */
-  params: Promise<{ id: string }>;
-}
+import "@/design-system/tokeny/tokeny.css";
+import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
+import { GRUPY } from "@/lib/przelaczenie/grupy";
+import { PytaniaTestu } from "@/nowy-front/pytania-testu/PytaniaTestu";
+import StaraTresc from "./StaraTresc";
 
 /**
- * Bank pytań testu (H10, kryterium 6) — ekran opiekuna i super admina.
- *
- * Trasa stoi na identyfikatorze testu, bo tak adresują go wszystkie cztery
- * punkty API (`/admin/tests/{test}/questions`, `/admin/questions/{question}`).
- * Wejście z karty kursu wymaga, żeby zasób kursu wystawiał ten identyfikator —
- * dziś go nie wystawia (zgłoszone jako brak do uzupełnienia), więc ekran jest osiągalny
- * z adresu, a link z karty kursu włączy się bez zmian tutaj.
+ * Trasa `/admin/testy/[id]/pytania` — pytania testu końcowego w administracji
+ * (H10). Adres się nie zmienia: strona czyta rejestr przełączenia
+ * (`lib/przelaczenie/grupy.ts`, grupa `pytaniaTestu`). Grupa wyłączona →
+ * dotychczasowa treść (`StaraTresc.tsx`, przeniesiona bez zmiany: bank pytań
+ * starego frontu, 404 przy złym numerze testu); grupa włączona → ekran
+ * „Pytania testu” nowego frontu w powłoce panelu administracji. `id` to numer
+ * testu; opcjonalny parametr `kurs` (dopisuje go ekran kursu) prowadzi okruszek
+ * z powrotem do kursu. `params` i `searchParams` to Promise (Next.js 16).
  */
-export default async function QuestionBankPage({
-  params,
-}: QuestionBankPageProps) {
-  const { id } = await params;
-  const testId = Number(id);
+export const metadata: Metadata = {
+  title: GRUPY.pytaniaTestu.wlaczona ? "Pytania testu — Niepodzielni" : "Bank pytań — Niepodzielni",
+};
 
-  if (!Number.isSafeInteger(testId) || testId <= 0) {
-    notFound();
-  }
+export default async function StronaPytanTestu({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ kurs?: string | string[] }>;
+}) {
+  const { id } = await params;
+
+  if (!GRUPY.pytaniaTestu.wlaczona) return <StaraTresc params={Promise.resolve({ id })} />;
+
+  const { kurs } = (await searchParams) ?? {};
 
   return (
-    <PageTemplate
-      naglowek={{
-        title: "Bank pytań",
-        breadcrumbs: (
-          <Breadcrumbs
-            items={[
-              { label: "Kursy", href: "/admin/kursy" },
-              { label: "Bank pytań" },
-            ]}
-          />
-        ),
-      }}
-    >
-      {/* `key` gwarantuje świeży stan przy przejściu między testami — panel
-          czyta pytania raz, przy montażu. */}
-      <QuestionBank key={testId} testId={testId} />
-    </PageTemplate>
+    <div data-theme="light">
+      <DostawcaPowloki>
+        <PytaniaTestu idTestu={id} panel="administracja" idKursu={typeof kurs === "string" ? kurs : null} />
+      </DostawcaPowloki>
+    </div>
   );
 }

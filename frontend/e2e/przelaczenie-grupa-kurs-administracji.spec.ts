@@ -658,7 +658,8 @@ for (const rola of ["project_manager", "super_admin"] as const) {
       const odpowiedz = await page.goto(adres!);
       expect(odpowiedz?.status()).toBe(200);
       await zabezpieczeniePrzedEkranemDostepu(page);
-      await expect(page.getByRole("heading", { level: 1, name: "Bank pytań" })).toBeVisible();
+      const naglowek = GRUPY.pytaniaTestu.wlaczona ? "Pytania testu" : "Bank pytań";
+      await expect(page.getByRole("heading", { level: 1, name: naglowek })).toBeVisible();
       await expect(page.getByText(/Brak dostępu|Nie masz uprawnień/)).toHaveCount(0);
     });
   });

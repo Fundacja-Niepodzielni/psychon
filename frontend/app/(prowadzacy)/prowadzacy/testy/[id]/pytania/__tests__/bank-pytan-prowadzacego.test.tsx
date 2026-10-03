@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { podmienRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
 
 /**
  * Bank pytań testu w panelu prowadzącego pod strażnikiem
@@ -11,6 +12,12 @@ import userEvent from "@testing-library/user-event";
  * Mierzone jest, że ekran prowadzącego woła TE SAME punkty API H10, z tym
  * samym kształtem żądania, co bank pytań w panelu administracji — oraz że
  * pokazuje te same stany negatywne (błąd wczytania, odmowa roli).
+ *
+ * Mierzona jest dotychczasowa treść strony (`StaraTresc.tsx`) przy wyłączonej
+ * grupie `pytaniaTestu`: rejestr ma na czas pliku wszystkie grupy wyłączone,
+ * więc układ wybiera dotychczasową ramkę, tak jak na produkcji przed
+ * przełączeniem. Ekran nowego frontu pod tym adresem mierzy
+ * `przelaczenie-trasa.test.tsx` obok.
  */
 
 const api = vi.fn();
@@ -50,11 +57,13 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+podmienRejestr({});
+
 const { default: InstructorLayout } = await import(
   "@/app/(prowadzacy)/prowadzacy/layout"
 );
 const { default: InstructorQuestionBankPage } = await import(
-  "@/app/(prowadzacy)/prowadzacy/testy/[id]/pytania/page"
+  "@/app/(prowadzacy)/prowadzacy/testy/[id]/pytania/StaraTresc"
 );
 
 function paramsFor(id: string) {
