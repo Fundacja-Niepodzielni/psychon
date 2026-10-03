@@ -25,7 +25,7 @@ export type { DocumentAvailableTypes, DocumentDto, DocumentType };
 
 /** Pojedynczy warunek z `GET /certificate/conditions`. */
 export interface WarunekCertyfikatu {
-  key: "courses" | "internship" | "supervision" | "workshop";
+  key: "courses" | "webinars" | "internship" | "supervision" | "workshop";
   label: string;
   done?: number | string;
   required?: number | string;

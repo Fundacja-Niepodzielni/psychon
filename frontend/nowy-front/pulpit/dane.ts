@@ -46,7 +46,7 @@ export interface SzczegolKursu extends KursSciezki {
 }
 
 export interface WarunekCertyfikatu {
-  key: "courses" | "internship" | "supervision" | "workshop";
+  key: "courses" | "webinars" | "internship" | "supervision" | "workshop";
   label: string;
   done?: number | string;
   required?: number | string;

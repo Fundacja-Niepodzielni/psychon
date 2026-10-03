@@ -148,3 +148,43 @@ describe("nazwy działań niosą rodzaj dokumentu i format", () => {
     expect(nazwaWydaniaDokumentu("internship_certificate")).toBe("Wygeneruj zaświadczenie o stażu");
   });
 });
+
+describe("warunek „Webinary” (klucz `webinars`)", () => {
+  const webinary = (nadpisanie: object) => ({ key: "webinars" as const, label: "Webinary", met: false, ...nadpisanie });
+
+  it("liczniki liczone jak przy kursach: „Masz 1 z 2.”", () => {
+    expect(opisWarunku(webinary({ done: 1, required: 2 }))).toBe("Masz 1 z 2.");
+    expect(opisWarunku(webinary({ done: 0, required: 3 }))).toBe("Masz 0 z 3.");
+  });
+
+  it("zero webinarów w ścieżce to warunek spełniony: zdanie mówi o braku webinarów, nie „Masz 0 z 0.”", () => {
+    expect(opisWarunku(webinary({ done: 0, required: 0, met: true }))).toBe("W Twojej ścieżce nie ma webinarów.");
+  });
+
+  it("brak liczników to „brak danych”, jak przy pozostałych warunkach", () => {
+    expect(opisWarunku(webinary({}))).toBe("Brak danych o postępie.");
+  });
+
+  it("pozycja listy: nazwa z serwera, odnośnik do webinarów na liście kursów, flaga z serwera bez przeliczania", () => {
+    const [pozycja] = pozycjeListyBrakow({ eligible: false, conditions: [webinary({ done: 1, required: 2 })] });
+    expect(pozycja).toMatchObject({ klucz: "webinars", tytul: "Webinary", opis: "Masz 1 z 2.", spelniony: false });
+    expect(pozycja.akcja).toEqual({
+      etykieta: "Otwórz webinary",
+      etykietaDostepna: "Otwórz webinary: Webinary. Masz 1 z 2.",
+      href: "/panel/kursy",
+    });
+  });
+
+  it("kolejność z serwera: webinary po kursach; do zdania o postępie liczą się jak każdy warunek", () => {
+    const warunki = {
+      eligible: false,
+      conditions: [
+        { key: "courses" as const, label: "Wszystkie etapy i testy", done: 3, required: 3, met: true },
+        webinary({ done: 1, required: 2 }),
+        { key: "workshop" as const, label: "Warsztat stacjonarny", met: false },
+      ],
+    };
+    expect(pozycjeListyBrakow(warunki).map((p) => p.klucz)).toEqual(["courses", "webinars", "workshop"]);
+    expect(zdanieOPostepie(warunki)).toBe("Spełniasz 1 warunek z 3.");
+  });
+});
