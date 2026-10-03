@@ -18,8 +18,21 @@ import {
 } from "@/lib/api";
 import { ACTION_LABELS } from "@/lib/h20/labels";
 import AuditDetailsCell from "@/components/h20/AuditDetailsCell";
+import { ZwinieteFiltry, useUkladTelefonu } from "@/nowy-front/wspolne/zwiniete-filtry";
 
 const EMPTY_FILTERS = { action: "", userId: "", from: "", to: "" };
+
+/** Zastosowane filtry jednym zdaniem dla wiersza zwiniętych filtrów. */
+function podsumowanieFiltrow(applied: AuditFilters): string {
+  const czesci: string[] = [];
+  if (applied.action) {
+    czesci.push(ACTION_LABELS[applied.action as keyof typeof ACTION_LABELS] ?? applied.action);
+  }
+  if (applied.user_id !== undefined) czesci.push(`osoba nr ${applied.user_id}`);
+  if (applied.from) czesci.push(`od ${applied.from}`);
+  if (applied.to) czesci.push(`do ${applied.to}`);
+  return czesci.length > 0 ? czesci.join(" · ") : "Wszystkie zdarzenia";
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("pl-PL", {
@@ -36,6 +49,7 @@ function formatDate(iso: string): string {
 export default function AuditLogView() {
   const [form, setForm] = useState(EMPTY_FILTERS);
   const [applied, setApplied] = useState<AuditFilters>({});
+  const telefon = useUkladTelefonu();
 
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -134,38 +148,50 @@ export default function AuditLogView() {
             onSubmit={applyFilters}
             className="grid gap-4 sm:grid-cols-[1fr_140px_160px_160px_auto] sm:items-end"
           >
-            <Select
-              label="Zdarzenie"
-              value={form.action}
-              onChange={(e) => setForm((f) => ({ ...f, action: e.target.value }))}
-            >
-              <option value="">Wszystkie zdarzenia</option>
-              {AUDIT_ACTIONS.map((action) => (
-                <option key={action} value={action}>
-                  {ACTION_LABELS[action]}
-                </option>
-              ))}
-            </Select>
-            <Input
-              label="ID osoby"
-              inputMode="numeric"
-              value={form.userId}
-              onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
-              placeholder="np. 6"
-            />
-            <Input
-              label="Od"
-              type="date"
-              value={form.from}
-              onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
-            />
-            <Input
-              label="Do"
-              type="date"
-              value={form.to}
-              onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
-            />
-            <Button type="submit">Filtruj</Button>
+            {/* Powłoka motywu tylko dla wiersza zwiniętych filtrów (tokeny); `contents` nie
+                tworzy ramki, więc pola stoją w siatce formularza tak jak przed wzorcem. */}
+            <div data-theme="light" className="contents">
+              <ZwinieteFiltry etykieta="Filtry" podsumowanie={podsumowanieFiltrow(applied)} liczba={meta?.total}>
+                {({ zwin }) => (
+                  <>
+                    <Select
+                      label="Zdarzenie"
+                      value={form.action}
+                      onChange={(e) => setForm((f) => ({ ...f, action: e.target.value }))}
+                    >
+                      <option value="">Wszystkie zdarzenia</option>
+                      {AUDIT_ACTIONS.map((action) => (
+                        <option key={action} value={action}>
+                          {ACTION_LABELS[action]}
+                        </option>
+                      ))}
+                    </Select>
+                    <Input
+                      label="ID osoby"
+                      inputMode="numeric"
+                      value={form.userId}
+                      onChange={(e) => setForm((f) => ({ ...f, userId: e.target.value }))}
+                      placeholder="np. 6"
+                    />
+                    <Input
+                      label="Od"
+                      type="date"
+                      value={form.from}
+                      onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
+                    />
+                    <Input
+                      label="Do"
+                      type="date"
+                      value={form.to}
+                      onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
+                    />
+                    <Button type="submit" onClick={zwin}>
+                      {telefon ? "Pokaż wyniki" : "Filtruj"}
+                    </Button>
+                  </>
+                )}
+              </ZwinieteFiltry>
+            </div>
           </form>
         </>
       }

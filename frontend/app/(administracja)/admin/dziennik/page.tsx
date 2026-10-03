@@ -1,3 +1,4 @@
+import "@/design-system/tokeny/tokeny.css";
 import type { Metadata } from "next";
 import AuditLogView from "@/components/h20/AuditLogView";
 
