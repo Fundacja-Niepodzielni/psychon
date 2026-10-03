@@ -43,9 +43,9 @@ interface WlasciwosciEkranOdmowy {
   stopien?: 1 | 2;
 }
 
-/** Zdanie „kim jestem zalogowany” (rola z konta, bez imienia i e-maila) albo `null`, gdy nie ma z czego go zbudować. */
+/** Zdanie o roli osoby (forma neutralna: „Twoja rola: Student.”; rola z konta, bez imienia i e-maila) albo `null`, gdy nie ma z czego go zbudować. */
 function zdanieOsoby(rola: string | null, rolaDocelowa: string | undefined): string | null {
-  const jestem = rola === null ? null : `Jesteś zalogowany jako ${rola}.`;
+  const jestem = rola === null ? null : `Twoja rola: ${rola}.`;
   const dla = rolaDocelowa === undefined ? null : `Ten ekran jest dla ${rolaDocelowa}.`;
   if (jestem !== null && dla !== null) return `${jestem} ${dla}`;
   return jestem ?? dla;

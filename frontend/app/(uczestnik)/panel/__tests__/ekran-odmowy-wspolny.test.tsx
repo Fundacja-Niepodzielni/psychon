@@ -66,7 +66,7 @@ describe("wspólny ekran odmowy (EkranOdmowy) na czterech ekranach panelu uczest
       );
 
       expect(await screen.findAllByRole("heading", { level: 1, name: NAGLOWEK })).toHaveLength(1);
-      expect(await screen.findByText("Jesteś zalogowany jako Student. Ten ekran jest dla wolontariuszy.")).toBeInTheDocument();
+      expect(await screen.findByText("Twoja rola: Student. Ten ekran jest dla wolontariuszy.")).toBeInTheDocument();
       expect(screen.getAllByRole("button")).toHaveLength(1);
       expect(screen.getByRole("button", { name: "Wróć do pulpitu" })).toBeInTheDocument();
 
@@ -134,7 +134,7 @@ describe("wspólny ekran odmowy (EkranOdmowy) na czterech ekranach panelu uczest
         </Layout>,
       );
 
-      await screen.findByText("Jesteś zalogowany jako Student. Ten ekran jest dla wolontariuszy.");
+      await screen.findByText("Twoja rola: Student. Ten ekran jest dla wolontariuszy.");
       teksty.push(container.textContent ?? "");
       unmount();
     }

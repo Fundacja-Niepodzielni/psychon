@@ -24,26 +24,26 @@ describe("EkranOdmowy — wspólny wzór odmowy, „nie znaleziono” i wygasłe
     ekran("brak-dostepu");
 
     expect(screen.getByRole("heading", { level: 1, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
-    expect(await screen.findByText("Jesteś zalogowany jako Wolontariusz.")).toBeInTheDocument();
+    expect(await screen.findByText("Twoja rola: Wolontariusz.")).toBeInTheDocument();
     expect(screen.getByText("Wybierz inną stronę z pulpitu.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Wróć do pulpitu" })).toBeInTheDocument();
   });
 
   it("zdanie „Ten ekran jest dla …” tylko wtedy, gdy ekran zna rolę docelową", async () => {
     const bez = ekran("brak-dostepu");
-    await screen.findByText("Jesteś zalogowany jako Wolontariusz.");
+    await screen.findByText("Twoja rola: Wolontariusz.");
     expect(bez.container.textContent).not.toContain("Ten ekran jest dla");
     bez.unmount();
 
     render(<EkranOdmowy rodzaj="brak-dostepu" rolaDocelowa="administracji" przycisk={{ onClick: () => {} }} />);
-    expect(await screen.findByText("Jesteś zalogowany jako Wolontariusz. Ten ekran jest dla administracji.")).toBeInTheDocument();
+    expect(await screen.findByText("Twoja rola: Wolontariusz. Ten ekran jest dla administracji.")).toBeInTheDocument();
   });
 
   it("przycisk podany przez ekran zastępuje napis domyślny, nadal jest jeden", async () => {
     const { container } = render(
       <EkranOdmowy rodzaj="nie-znaleziono" czego="kursu" przycisk={{ etykieta: "Wróć do listy", onClick: () => {} }} />,
     );
-    await screen.findByText(/Jesteś zalogowany/);
+    await screen.findByText(/Twoja rola/);
 
     expect(container.querySelectorAll("button")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Wróć do listy" })).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe("EkranOdmowy — wspólny wzór odmowy, „nie znaleziono” i wygasłe
   it("dokładnie jeden przycisk i brak odnośników", async () => {
     const onClick = vi.fn();
     const { container } = ekran("brak-dostepu", onClick);
-    await screen.findByText(/Jesteś zalogowany jako/);
+    await screen.findByText(/Twoja rola:/);
 
     expect(container.querySelectorAll("button")).toHaveLength(1);
     expect(container.querySelectorAll("a")).toHaveLength(0);
@@ -77,7 +77,7 @@ describe("EkranOdmowy — wspólny wzór odmowy, „nie znaleziono” i wygasłe
   it("treść nie niesie kodów technicznych, numerów statusu ani adresu e-mail", async () => {
     for (const rodzaj of ["brak-dostepu", "nie-znaleziono", "dostep-wygasl"] as const) {
       const { container, unmount } = ekran(rodzaj);
-      await screen.findByText(/Jesteś zalogowany jako/);
+      await screen.findByText(/Twoja rola:/);
       const tresc = container.textContent ?? "";
       expect(tresc).not.toMatch(/\b(401|403|404|410|422|500)\b/);
       expect(tresc).not.toMatch(/forbidden|not_found|access_expired|unauthenticated|error/i);
@@ -88,12 +88,12 @@ describe("EkranOdmowy — wspólny wzór odmowy, „nie znaleziono” i wygasłe
 
   it("„nie znaleziono” daje tę samą treść dla zasobu nieistniejącego i cudzego", async () => {
     const pierwszy = ekran("nie-znaleziono");
-    await screen.findByText(/Jesteś zalogowany jako/);
+    await screen.findByText(/Twoja rola:/);
     const dlaNieistniejacego = pierwszy.container.innerHTML.replace(/id="[^"]*"/g, "").replace(/aria-labelledby="[^"]*"/g, "");
     pierwszy.unmount();
 
     const drugi = ekran("nie-znaleziono");
-    await screen.findByText(/Jesteś zalogowany jako/);
+    await screen.findByText(/Twoja rola:/);
     const dlaCudzego = drugi.container.innerHTML.replace(/id="[^"]*"/g, "").replace(/aria-labelledby="[^"]*"/g, "");
 
     expect(dlaCudzego).toBe(dlaNieistniejacego);
@@ -113,7 +113,7 @@ describe("EkranOdmowy — wspólny wzór odmowy, „nie znaleziono” i wygasłe
   it("odczyt konta pyta o `/me` i nie pokazuje adresu e-mail", async () => {
     ekran("brak-dostepu");
     await waitFor(() => expect(api).toHaveBeenCalledWith("/me"));
-    await screen.findByText(/Jesteś zalogowany jako/);
+    await screen.findByText(/Twoja rola:/);
 
     expect(document.body.textContent).not.toContain("marta@demo.pl");
   });
@@ -121,20 +121,20 @@ describe("EkranOdmowy — wspólny wzór odmowy, „nie znaleziono” i wygasłe
   it("rola prowadzącego w zdaniu; bez konta: bez zdania o osobie, reszta cała", async () => {
     api.mockResolvedValue({ role: "instructor" });
     const pierwszy = ekran();
-    expect(await screen.findByText("Jesteś zalogowany jako Psycholog prowadzący.")).toBeInTheDocument();
+    expect(await screen.findByText("Twoja rola: Psycholog prowadzący.")).toBeInTheDocument();
     pierwszy.unmount();
 
     api.mockRejectedValue(new Error("sieć"));
     ekran();
     await waitFor(() => expect(api).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText(/Jesteś zalogowany/)).toBeNull();
+    expect(screen.queryByText(/Twoja rola/)).toBeNull();
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Wróć do pulpitu" })).toBeInTheDocument();
   });
 
   it("axe: brak naruszeń", async () => {
     const { container } = ekran("brak-dostepu");
-    await screen.findByText(/Jesteś zalogowany jako/);
+    await screen.findByText(/Twoja rola:/);
 
     const wynik = await axe.run(container, { rules: { "color-contrast": { enabled: false } } });
     expect(wynik.violations.map((n) => `${n.id}: ${n.nodes.map((w) => w.target.join(" ")).join(" | ")}`)).toEqual([]);

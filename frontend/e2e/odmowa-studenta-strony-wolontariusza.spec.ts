@@ -58,7 +58,7 @@ for (const rozmiar of ROZMIARY) {
 
         const naglowek = page.getByRole("heading", { level: 1, name: "Nie masz dostępu do tego ekranu" });
         await expect(naglowek).toBeVisible();
-        await expect(page.getByText("Jesteś zalogowany jako Student. Ten ekran jest dla wolontariuszy.")).toBeVisible();
+        await expect(page.getByText("Twoja rola: Student. Ten ekran jest dla wolontariuszy.")).toBeVisible();
         await expect(page.getByRole("button", { name: "Wróć do pulpitu" })).toBeVisible();
 
         const zrzuty = process.env.ZRZUTY_DROBNE;

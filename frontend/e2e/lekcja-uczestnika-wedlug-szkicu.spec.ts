@@ -583,7 +583,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       const naglowek = page.getByRole("heading", { level: 1, name: "Twój dostęp wygasł." });
       await expect(naglowek).toBeVisible();
       await expect(naglowek).toBeFocused();
-      await expect(page.getByText("Jesteś zalogowany jako Wolontariusz.")).toBeVisible();
+      await expect(page.getByText("Twoja rola: Wolontariusz.")).toBeVisible();
       await expect(page.getByText("Skontaktuj się z zespołem programu, żeby przedłużyć dostęp.")).toBeVisible();
       await expect(page.locator("main button")).toHaveCount(1);
       await expect(page.getByRole("button", { name: "Wróć do kursów" })).toBeVisible();
