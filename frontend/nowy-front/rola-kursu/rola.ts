@@ -3,13 +3,21 @@ import {
   deleteInstructorLesson,
   deleteInstructorMaterial,
   fetchInstructorCourse,
+  createInstructorTest,
   fetchInstructorTest,
   updateInstructorCourse,
+  updateInstructorTest,
   uploadInstructorMaterialForLesson,
 } from "@/lib/api/prowadzacy-kursy";
 import type { AdminCourse } from "@/lib/h08/types";
 import { GRUPY, czyNowaTrasaDostepna, type DefinicjaGrupy } from "@/lib/przelaczenie/grupy";
-import { pobierzTestKursu } from "@/nowy-front/kurs-administracji/dane";
+import {
+  pobierzTestKursu,
+  utworzTestKursu,
+  zapiszProgiTestu,
+  type CialoProgowTestu,
+  type TestKursu,
+} from "@/nowy-front/kurs-administracji/dane";
 import {
   dodajLekcje,
   pobierzLekcjeKursu,
@@ -60,7 +68,11 @@ export interface DaneRoliKursu {
   usunMaterial: (idMaterialu: number) => Promise<{ id: number; deleted: boolean }>;
   pobierzStanNagrania: (idLekcji: number) => Promise<StanNagrania>;
   zlecWgranieNagrania: (idLekcji: number, tytul: string) => Promise<ZlecenieWgrania>;
-  pobierzTestKursu: (idKursu: number) => Promise<{ id: number } | null>;
+  pobierzTestKursu: (idKursu: number) => Promise<TestKursu | null>;
+  /** Zakłada test końcowy kursu z wartościami edycji (puste ciało). */
+  utworzTestKursu: (idKursu: number) => Promise<TestKursu>;
+  /** Próg zaliczenia i limit podejść na wierszu testu. */
+  zapiszProgiTestu: (idTestu: number, cialo: CialoProgowTestu) => Promise<TestKursu>;
 }
 
 export interface KonfiguracjaRoliKursu {
@@ -81,7 +93,10 @@ export interface KonfiguracjaRoliKursu {
   nagranie: boolean;
   /** Karta „Pliki do tej lekcji” — wymaga trasy listy plików lekcji. */
   plikiLekcji: boolean;
-  /** Wiersz testu w drzewie kursu: test czyta `dane.pobierzTestKursu`, odnośnik prowadzi do ekranu pytań testu (`adresTestu`). */
+  /**
+   * Wiersz testu w drzewie kursu: test czyta `dane.pobierzTestKursu`, zakłada `dane.utworzTestKursu`,
+   * próg i podejścia zapisuje `dane.zapiszProgiTestu`; odnośnik prowadzi do ekranu pytań testu (`adresTestu`).
+   */
   testKursu: boolean;
   /**
    * Publikacja i cofnięcie publikacji, prowadzący kursu, zaproszenia,
@@ -124,6 +139,8 @@ const DANE_ADMINISTRACJI: DaneRoliKursu = {
   pobierzStanNagrania: (idLekcji) => pobierzStanNagrania(idLekcji),
   zlecWgranieNagrania: (idLekcji, tytul) => zlecWgranieNagrania(idLekcji, tytul),
   pobierzTestKursu: (idKursu) => pobierzTestKursu(idKursu),
+  utworzTestKursu: (idKursu) => utworzTestKursu(idKursu),
+  zapiszProgiTestu: (idTestu, cialo) => zapiszProgiTestu(idTestu, cialo),
 };
 
 const DANE_PROWADZACEGO: DaneRoliKursu = {
@@ -142,6 +159,8 @@ const DANE_PROWADZACEGO: DaneRoliKursu = {
   pobierzStanNagrania: (idLekcji) => pobierzStanNagraniaProwadzacego(idLekcji),
   zlecWgranieNagrania: (idLekcji, tytul) => zlecWgranieNagraniaProwadzacego(idLekcji, tytul),
   pobierzTestKursu: (idKursu) => fetchInstructorTest(idKursu),
+  utworzTestKursu: (idKursu) => createInstructorTest(idKursu, {}),
+  zapiszProgiTestu: (idTestu, cialo) => updateInstructorTest(idTestu, cialo),
 };
 
 /** Konfiguracja ekranu w danej roli; stała nagrania prowadzącego czytana przy każdym wywołaniu. */

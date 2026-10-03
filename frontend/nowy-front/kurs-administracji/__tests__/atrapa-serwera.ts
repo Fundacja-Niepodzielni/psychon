@@ -6,7 +6,7 @@ import type { LekcjaAdmin } from "@/nowy-front/lekcja-edycja/dane";
 /**
  * Atrapa zaplecza dla prób ekranu kursu: stoi ZA funkcjami `api` i `apiPaged`
  * wspólnego klienta, więc prawdziwe funkcje danych sekcji (tematy, publikacja,
- * zaproszenia, lekcje, materiały, przypisania, test) wykonują się naprawdę i próba czyta adres, metodę
+ * zaproszenia, lekcje, materiały, przypisania, test z progiem) wykonują się naprawdę i próba czyta adres, metodę
  * i ciało każdego żądania. Zna trasy obu grup — administracji i prowadzącego
  * — w tym samym kształcie, żeby próba widziała, którą grupą ekran naprawdę
  * rozmawia. Żądanie spoza listy kończy się błędem: próba nie przechodzi po
@@ -158,7 +158,20 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
   let tematy = poczatek.tematy ?? TEMATY;
   const osoby = poczatek.osoby ?? OSOBY_Z_PROWADZACYMI;
   let przypisania = poczatek.przypisania ?? [];
-  const test = poczatek.test === undefined ? 31 : poczatek.test;
+  let test = poczatek.test === undefined ? 31 : poczatek.test;
+  // Nadpisania progu i limitu podejść na wierszu testu; `null` = wartość edycji (80 %, 3 podejścia).
+  let progiTestu: { pass_threshold: number | null; attempts_limit: number | null } = {
+    pass_threshold: null,
+    attempts_limit: null,
+  };
+  const zasobTestu = (id: number) => ({
+    id,
+    course_id: 4,
+    ...progiTestu,
+    question_count: 10,
+    effective_pass_threshold: progiTestu.pass_threshold ?? 80,
+    effective_attempts_limit: progiTestu.attempts_limit ?? 3,
+  });
   let nastepnyId = 100;
   const wywolania: Wywolanie[] = [];
   const nadpisania = new Map<string, Nadpisanie>();
@@ -249,7 +262,16 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
       }
     }
     if (metoda === "GET" && dopasuj(/^\/(admin|instructor)\/courses\/4\/tests$/)) {
-      return test === null ? null : { id: test, course_id: 4, question_count: 10 };
+      return test === null ? null : zasobTestu(test);
+    }
+    if (metoda === "POST" && test === null && dopasuj(/^\/(admin|instructor)\/courses\/4\/tests$/)) {
+      test = 31;
+      return zasobTestu(test);
+    }
+    const zapisTestu = dopasuj(/^\/(admin|instructor)\/tests\/(\d+)$/);
+    if (metoda === "PATCH" && test !== null && zapisTestu?.[2] === String(test)) {
+      progiTestu = { ...progiTestu, ...(cialo as Partial<typeof progiTestu>) };
+      return zasobTestu(test);
     }
     const nagranie = dopasuj(/^\/admin\/lessons\/(\d+)\/video-status$/);
     if (metoda === "GET" && nagranie) {

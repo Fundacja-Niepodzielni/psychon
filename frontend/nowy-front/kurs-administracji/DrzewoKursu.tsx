@@ -17,6 +17,8 @@ import { StanWysylaniaWWierszu } from "@/nowy-front/wysylanie-nagrania/StanWysyl
 import { useWysylanieLekcji } from "@/nowy-front/wysylanie-nagrania/useWysylanie";
 import { ETYKIETY_STANU_LEKCJI, KOTWICA_DRZEWA, wymagaUwagi, type StanLekcji } from "./braki";
 import style from "./EkranKursu.module.css";
+import { WierszTestu, type OdmowaProgow, type TestDrzewa } from "./WierszTestu";
+import type { CialoProgowTestu } from "./dane";
 
 export interface LekcjaDrzewa {
   id: number;
@@ -39,8 +41,7 @@ export interface TematDrzewa {
   lekcje: LekcjaDrzewa[];
 }
 
-/** Test na koniec kursu: `brak` — kurs go nie ma; `jest` — z adresem pytań. */
-export type TestDrzewa = { rodzaj: "brak" } | { rodzaj: "jest"; adres: string };
+export type { TestDrzewa };
 
 interface WlasciwosciDrzewa {
   tematy: TematDrzewa[];
@@ -55,6 +56,10 @@ interface WlasciwosciDrzewa {
   onDodajTemat: () => void;
   /** Zakłada lekcję; zwraca zdanie błędu albo `null`, gdy lekcja powstała. */
   onDodajLekcje: (idTematu: number, tytul: string) => Promise<string | null>;
+  /** Zakłada test końcowy; zwraca zdanie odmowy albo `null`, gdy test powstał. */
+  onDodajTest: () => Promise<string | null>;
+  /** Zapisuje próg zaliczenia i limit podejść testu; zwraca odmowę albo `null`. */
+  onZapiszProgiTestu: (cialo: CialoProgowTestu) => Promise<OdmowaProgow | null>;
 }
 
 function zdanieTematu(temat: TematDrzewa): string {
@@ -83,6 +88,8 @@ export function DrzewoKursu({
   onUsunTemat,
   onDodajTemat,
   onDodajLekcje,
+  onDodajTest,
+  onZapiszProgiTestu,
 }: WlasciwosciDrzewa) {
   const [zwiniete, setZwiniete] = useState<ReadonlySet<number>>(new Set());
   const [formularz, setFormularz] = useState<number | null>(null);
@@ -263,20 +270,7 @@ export function DrzewoKursu({
           </Button>
         </div>
 
-        {test !== null && (
-          <div className={style.wierszTestu}>
-            <div className={style.nazwaTestu}>
-              <Heading stopien={3}>Test na koniec kursu</Heading>
-            </div>
-            {test.rodzaj === "jest" ? (
-              <a className={style.otworz} href={test.adres}>
-                Otwórz pytania
-              </a>
-            ) : (
-              <span className={style.stan}>Kurs nie ma testu</span>
-            )}
-          </div>
-        )}
+        {test !== null && <WierszTestu test={test} onDodaj={onDodajTest} onZapiszProgi={onZapiszProgiTestu} />}
       </div>
     </KartaBoczna>
   );

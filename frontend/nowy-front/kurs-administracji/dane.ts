@@ -4,7 +4,7 @@ import { api, apiPaged, ApiError } from "@/lib/api/klient";
  * Dane sekcji ekranu kursu administracji, których nie niosą inne ekrany:
  * przypisania prowadzących (`backend/routes/api/h09.php:42-46`), lista osób
  * z rolą prowadzącego (`GET /admin/users`, `backend/routes/api/h18.php:26`)
- * i test wiedzy kursu (`h10.php:35`).
+ * i test końcowy kursu z progiem i limitem podejść (`h10.php:35-37`).
  */
 
 export interface Prowadzacy {
@@ -55,9 +55,41 @@ export function odlaczProwadzacego(idKursu: number, idPrzypisania: number): Prom
   });
 }
 
+/**
+ * Test końcowy kursu w kształcie `TestGrader::present`. Pola progu są
+ * opcjonalne: starszy serwer podaje sam identyfikator, a wiersz testu
+ * pomija wtedy próg i podejścia.
+ */
+export interface TestKursu {
+  id: number;
+  pass_threshold?: number | null;
+  attempts_limit?: number | null;
+  effective_pass_threshold?: number;
+  effective_attempts_limit?: number;
+}
+
+/** Próg zaliczenia (1–100 %) i limit podejść (1–255) na wierszu testu (`UpdateTestRequest`). */
+export interface CialoProgowTestu {
+  pass_threshold: number;
+  attempts_limit: number;
+}
+
 /** Test wiedzy kursu albo `null`, gdy kurs go nie ma (`TestGrader::present`). */
-export function pobierzTestKursu(idKursu: number): Promise<{ id: number } | null> {
-  return api<{ id: number } | null>(`/admin/courses/${idKursu}/tests`);
+export function pobierzTestKursu(idKursu: number): Promise<TestKursu | null> {
+  return api<TestKursu | null>(`/admin/courses/${idKursu}/tests`);
+}
+
+/**
+ * Zakłada test końcowy kursu (`h10.php:36`). Puste ciało: próg i limit
+ * podejść zostają przy wartościach edycji (`TestGrader`), liczby pytań ekran nie podaje.
+ */
+export function utworzTestKursu(idKursu: number): Promise<TestKursu> {
+  return api<TestKursu>(`/admin/courses/${idKursu}/tests`, { method: "POST", body: {} });
+}
+
+/** Zmiana progu zaliczenia i limitu podejść testu (`h10.php:37`). */
+export function zapiszProgiTestu(idTestu: number, cialo: CialoProgowTestu): Promise<TestKursu> {
+  return api<TestKursu>(`/admin/tests/${idTestu}`, { method: "PATCH", body: cialo });
 }
 
 export function imieNazwisko(osoba: Prowadzacy): string {

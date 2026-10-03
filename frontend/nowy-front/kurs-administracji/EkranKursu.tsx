@@ -59,8 +59,16 @@ import {
   type StanyNagran,
   type WysylanieNaEkranie,
 } from "./braki";
-import { imieNazwisko, pobierzPrzypisania, zdanieBledu, type PrzypisanieKursu } from "./dane";
+import {
+  imieNazwisko,
+  pobierzPrzypisania,
+  zdanieBledu,
+  type CialoProgowTestu,
+  type PrzypisanieKursu,
+  type TestKursu,
+} from "./dane";
 import { DrzewoKursu, type TematDrzewa, type TestDrzewa } from "./DrzewoKursu";
+import { odmowaProgow, testDrzewaZSerwera, zdanieBleduTestu, zdanieProgow, type OdmowaProgow } from "./WierszTestu";
 import {
   ID_ODMOWY_PUBLIKACJI,
   KOTWICA_PUBLIKACJI,
@@ -261,12 +269,7 @@ export function EkranKursu({
     if (rola.testKursu) {
       dane.pobierzTestKursu(idLiczbowy)
         .then((pobrany) => {
-          if (!aktualne) return;
-          setTest(
-            typeof pobrany?.id === "number"
-              ? { rodzaj: "jest", adres: rola.adresTestu(pobrany.id, idLiczbowy) }
-              : { rodzaj: "brak" },
-          );
+          if (aktualne) setTest(testDrzewaZSerwera(pobrany, (idTestu) => rola.adresTestu(idTestu, idLiczbowy)));
         })
         .catch(() => {});
     }
@@ -419,6 +422,52 @@ export function EkranKursu({
       }
       const pola = blad instanceof ApiError ? blad.errors?.title?.[0] : undefined;
       return pola ?? zdanieBledu(blad, "Nie udało się dodać lekcji. Spróbuj ponownie.");
+    }
+  }
+
+  function wierszTestu(pobrany: TestKursu | null): TestDrzewa {
+    return testDrzewaZSerwera(pobrany, (idTestu) => rola.adresTestu(idTestu, idLiczbowy));
+  }
+
+  /**
+   * „Dodaj test końcowy”: test powstaje z progiem i podejściami edycji, a ekran
+   * prowadzi do jego pytań. Konflikt (test powstał w międzyczasie) — wiersz czyta test od nowa.
+   */
+  async function dodajTestKoncowy(): Promise<string | null> {
+    try {
+      const nowy = wierszTestu(await dane.utworzTestKursu(idLiczbowy));
+      if (!zamontowany.current) return null;
+      setTest(nowy);
+      if (nowy.rodzaj === "jest") {
+        const progi = zdanieProgow(nowy);
+        oglos(`Test końcowy dodany.${progi ? ` ${progi}.` : ""} Dodaj pytania.`);
+        nawigacja.przejdz(nowy.adres);
+      }
+      return null;
+    } catch (blad) {
+      if (blad instanceof ApiError && blad.status === 409) {
+        dane
+          .pobierzTestKursu(idLiczbowy)
+          .then((pobrany) => {
+            if (zamontowany.current) setTest(wierszTestu(pobrany));
+          })
+          .catch(() => {});
+      }
+      return zdanieBleduTestu(blad, "Nie udało się dodać testu końcowego. Spróbuj ponownie.");
+    }
+  }
+
+  async function zapiszProgiTestu(cialo: CialoProgowTestu): Promise<OdmowaProgow | null> {
+    if (test?.rodzaj !== "jest") return null;
+    try {
+      const zapisany = wierszTestu(await dane.zapiszProgiTestu(test.id, cialo));
+      if (zamontowany.current) {
+        setTest(zapisany);
+        if (zapisany.rodzaj === "jest") oglos(`Zapisano. ${zdanieProgow(zapisany)}.`);
+      }
+      return null;
+    } catch (blad) {
+      return odmowaProgow(blad);
     }
   }
 
@@ -615,6 +664,8 @@ export function EkranKursu({
               }}
               onDodajTemat={() => otworzOknoTematu({ rodzaj: "dodaj" })}
               onDodajLekcje={dodajLekcjeWTemacie}
+              onDodajTest={dodajTestKoncowy}
+              onZapiszProgiTestu={zapiszProgiTestu}
             />
             <div className={style.tylkoCzytnik} role="status" aria-live="polite" data-ogloszenia>
               <p key={ogloszenie.numer}>{ogloszenie.tresc}</p>

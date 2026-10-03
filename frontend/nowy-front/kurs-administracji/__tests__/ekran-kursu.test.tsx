@@ -253,7 +253,7 @@ describe("ekran kursu — odczyt i układ", () => {
   it("kurs bez testu: wiersz mówi to słowem, odnośnika nie ma", async () => {
     serwer = utworzSerwer({ test: null });
     await renderEkranu();
-    expect(await screen.findByText("Kurs nie ma testu")).toBeInTheDocument();
+    expect(await screen.findByText("Kurs nie ma jeszcze testu końcowego.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Otwórz pytania" })).toBeNull();
   });
 
