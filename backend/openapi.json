@@ -5947,7 +5947,7 @@
                                                                 },
                                                                 "link": {
                                                                     "type": "string",
-                                                                    "const": "/admin/uczestniczki"
+                                                                    "const": "/admin/uczestniczki?zakladka=zgloszenia"
                                                                 }
                                                             },
                                                             "required": [

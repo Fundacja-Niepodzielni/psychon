@@ -54,7 +54,7 @@ class DashboardLinksTest extends TestCase
 
         $this->assertSame(
             [
-                'applications' => '/admin/uczestniczki',
+                'applications' => '/admin/uczestniczki?zakladka=zgloszenia',
                 'internship_entries' => '/admin/staz',
                 'profiles' => '/admin/profile',
                 'questions' => '/prowadzacy/pytania',
@@ -64,6 +64,29 @@ class DashboardLinksTest extends TestCase
             .'`LINKI_KOLEJEK` w `frontend/app/__tests__/linki-pulpitu.test.ts`, inaczej front '
             .'przestanie pilnować istnienia tej trasy.',
         );
+    }
+
+    public function test_every_queue_leads_to_its_own_list_and_none_to_the_people_list(): void
+    {
+        // Wiersz „Zgłoszenia rekrutacyjne” prowadził kiedyś na gołe `/admin/uczestniczki`, czyli na
+        // listę osób, a nie na listę zgłoszeń. Zakładkę zgłoszeń wskazuje parametr `zakladka`
+        // (strona osób przy włączonej grupie `nabor` przekierowuje z niego na listę zgłoszeń,
+        // przy wyłączonej pokazuje zakładkę), więc: każdy adres jest inny, a ten, który wskazuje
+        // stronę osób, niesie zakładkę zgłoszeń.
+        $adresy = collect($this->kolejkiPulpitu())->pluck('link', 'key');
+
+        $this->assertSame($adresy->count(), $adresy->unique()->count(), 'Dwie kolejki prowadzą na ten sam adres.');
+
+        foreach ($adresy as $klucz => $adres) {
+            $this->assertNotSame('/admin/uczestniczki', $adres, "Kolejka `{$klucz}` prowadzi na listę osób.");
+        }
+
+        $this->assertSame(
+            'zgloszenia',
+            $this->parametrZapytania($adresy['applications'], 'zakladka'),
+            'Kolejka zgłoszeń musi wskazywać zakładkę zgłoszeń.',
+        );
+        $this->assertSame('/admin/uczestniczki', parse_url($adresy['applications'], PHP_URL_PATH));
     }
 
     public function test_every_queue_entry_has_the_contract_shape(): void
@@ -87,6 +110,13 @@ class DashboardLinksTest extends TestCase
         $this->assertSame(2, (int) $kolejki['internship_entries']['count'], 'Wpisy stażu do akceptacji wg seedu: 2.');
         $this->assertSame(0, (int) $kolejki['profiles']['count'], 'Profile do decyzji wg seedu: 0 (draft oli się nie liczy).');
         $this->assertSame(1, (int) $kolejki['questions']['count'], 'Pytania bez odpowiedzi wg seedu: 1.');
+    }
+
+    private function parametrZapytania(string $adres, string $nazwa): ?string
+    {
+        parse_str((string) parse_url($adres, PHP_URL_QUERY), $parametry);
+
+        return isset($parametry[$nazwa]) && is_string($parametry[$nazwa]) ? $parametry[$nazwa] : null;
     }
 
     /** @return list<array{key: string, count: int, link: string}> */

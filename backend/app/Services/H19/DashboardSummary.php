@@ -38,8 +38,11 @@ final class DashboardSummary
             'queues' => [
                 [
                     'key' => 'applications',
+                    // Gołe `/admin/uczestniczki` to lista osób. Zakładkę zgłoszeń wskazuje
+                    // `zakladka`: strona osób przy włączonej grupie `nabor` przekierowuje stąd
+                    // na `/admin/nabor`, przy wyłączonej pokazuje zakładkę — nigdy 404.
                     'count' => Application::where('status', 'new')->count(),
-                    'link' => '/admin/uczestniczki',
+                    'link' => '/admin/uczestniczki?zakladka=zgloszenia',
                 ],
                 [
                     'key' => 'internship_entries',
