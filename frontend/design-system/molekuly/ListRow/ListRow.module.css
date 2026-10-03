@@ -53,6 +53,13 @@
   align-items: center;
   gap: var(--space-8);
 }
+/* Odnośnik wygląda jak przycisk (własna ramka): fokus obrysowuje całe pole, jak
+   przy przycisku, a nie sam tekst. */
+.akcjaOdnosnik a {
+  --link-obrys: var(--focus-width) solid var(--brand);
+  --link-obrys-tekstu: none;
+}
+
 .plakietka {
   display: inline-flex;
   flex: 0 0 auto;

@@ -61,6 +61,13 @@
   font-size: var(--fs-10);
 }
 
+.okruszki li > a {
+  /* Wcięcia odnośnika są własne (`padding` wyżej); ramka fokusu liczy swoje
+     miejsce z tych samych wartości. */
+  --link-pad-y: calc((var(--hit-min) - 1lh) / 2);
+  --link-pad-x: var(--space-8);
+}
+
 .okruszki li > span {
   color: var(--muted);
 }

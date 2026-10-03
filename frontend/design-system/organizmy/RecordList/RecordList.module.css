@@ -71,6 +71,13 @@
 
 /* ---------- Tryb kolumn ---------- */
 
+/* Odnośnik wygląda jak przycisk (własna ramka): fokus obrysowuje całe pole, jak
+   przy przycisku, a nie sam tekst. */
+.akcja a {
+  --link-obrys: var(--focus-width) solid var(--brand);
+  --link-obrys-tekstu: none;
+}
+
 /* Nazwa pierwsza, stan w osobnej kolumnie o szerokości własnej treści, liczby
    do prawej, akcja na końcu. Od 640 px siatka z nagłówkami kolumn (wiersze są
    podsiatkami, więc lewa krawędź kolumny jest ta sama w każdym wierszu),

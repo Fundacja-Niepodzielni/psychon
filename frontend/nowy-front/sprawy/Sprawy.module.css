@@ -34,6 +34,8 @@
 /* Pozycje filtra będące odnośnikami do własnych ekranów (dyżury, zgłoszenia
    rekrutacyjne): ten sam rozmiar i ramka co przyciski, ale barwa odnośnika. */
 .opcjeFiltra a {
+  --link-obrys: var(--focus-width) solid var(--brand);
+  --link-obrys-tekstu: none;
   display: inline-flex;
   align-items: center;
   min-height: var(--hit-min);

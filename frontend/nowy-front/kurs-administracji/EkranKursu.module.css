@@ -277,7 +277,10 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding-block: 0;
+  /* Wcięcie w pionie dopełnia wiersz do 44 px wokół jednej linii tekstu; ramka
+     fokusu liczy swoje miejsce z tej samej wartości. */
+  --link-pad-y: calc((var(--hit-min) - 1lh) / 2);
+  padding-block: var(--link-pad-y);
   margin-block: 0;
 }
 

@@ -129,6 +129,10 @@
   /* --- Wspólne: fokus i cel dotykowy, jedna reguła na front --- */
   --focus-width: 3px;
   --focus-offset: 2px;
+  /* Odstęp ramki fokusu od tekstu odnośnika (atom `Link`): mały u góry i u dołu,
+     delikatny po bokach. Ramka nie dotyka tekstu ani linii nad i pod nim. */
+  --focus-gap-y: 3px;
+  --focus-gap-x: 5px;
   --hit-min: 44px;
 }
 

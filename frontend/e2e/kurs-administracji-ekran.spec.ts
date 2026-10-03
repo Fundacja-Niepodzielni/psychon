@@ -1034,3 +1034,135 @@ function czyCaloscWOknie(element: Element): boolean {
   }
   return prostokat.top >= gora && prostokat.bottom <= dol;
 }
+
+/**
+ * Ramka fokusu odnośnika (atom `Link`) stoi w stałym, małym odstępie od tekstu:
+ * co najmniej 2 px z każdej strony — od tekstu i od pola linii, w której tekst
+ * stoi — i nie sięga na tekst żadnego innego elementu ekranu (sąsiednich
+ * wierszy listy „Do zrobienia”, jej nagłówka). Ramka jest elementem `::after`,
+ * więc jej położenie czytamy ze stylu obliczonego: lewy górny róg liczony od
+ * pola odnośnika oraz szerokość i wysokość. Odnośnik z dawnym obrysem całego pola
+ * (`--link-obrys`, wygląd przycisku) nie jest tu mierzony.
+ */
+const NAJMNIEJSZY_ODSTEP_RAMKI = 2;
+const NAJWIEKSZY_ODSTEP_RAMKI = 14;
+const GRUBOSC_RAMKI = 3;
+
+interface PomiarRamki {
+  nazwa: string;
+  odTekstu: { gora: number; dol: number; lewa: number; prawa: number };
+  odLinii: { gora: number; dol: number; lewa: number; prawa: number };
+  naTekscieInnych: string[];
+}
+
+async function zmierzRamkeOdnosnika(page: Page, indeks: number): Promise<PomiarRamki | "pominiety" | "brak"> {
+  const lokalizator = page.locator("main a[href]").nth(indeks);
+  if ((await lokalizator.count()) === 0) return "brak";
+  if (!(await lokalizator.isVisible())) return "pominiety";
+  await lokalizator.scrollIntoViewIfNeeded();
+  await page.keyboard.press("Tab");
+  await lokalizator.focus();
+  return lokalizator.evaluate((odnosnik, grubosc) => {
+    const styl = getComputedStyle(odnosnik);
+    const ramkaPseudo = getComputedStyle(odnosnik, "::after");
+    if (ramkaPseudo.content === "none" || styl.outlineStyle !== "none" || ramkaPseudo.outlineStyle === "none") {
+      return "pominiety" as const;
+    }
+    const pole = odnosnik.getBoundingClientRect();
+    const ramka = {
+      lewa: pole.left + parseFloat(ramkaPseudo.left),
+      gora: pole.top + parseFloat(ramkaPseudo.top),
+      szerokosc: parseFloat(ramkaPseudo.width),
+      wysokosc: parseFloat(ramkaPseudo.height),
+    };
+    const prawa = ramka.lewa + ramka.szerokosc;
+    const dol = ramka.gora + ramka.wysokosc;
+    const zakres = document.createRange();
+    zakres.selectNodeContents(odnosnik);
+    const tekst = zakres.getBoundingClientRect();
+    const linia = {
+      lewa: pole.left + parseFloat(styl.paddingLeft),
+      prawa: pole.right - parseFloat(styl.paddingRight),
+      gora: pole.top + parseFloat(styl.paddingTop),
+      dol: pole.bottom - parseFloat(styl.paddingBottom),
+    };
+    const naTekscieInnych: string[] = [];
+    const zewnetrzna = {
+      lewa: ramka.lewa - grubosc,
+      gora: ramka.gora - grubosc,
+      prawa: prawa + grubosc,
+      dol: dol + grubosc,
+    };
+    const spacer = document.createTreeWalker(document.querySelector("main") ?? document.body, NodeFilter.SHOW_TEXT);
+    for (let wezel = spacer.nextNode(); wezel; wezel = spacer.nextNode()) {
+      if (odnosnik.contains(wezel) || (wezel.textContent ?? "").trim() === "") continue;
+      const rodzic = wezel.parentElement;
+      if (!rodzic || getComputedStyle(rodzic).visibility === "hidden") continue;
+      const zakresWezla = document.createRange();
+      zakresWezla.selectNodeContents(wezel);
+      for (const r of Array.from(zakresWezla.getClientRects())) {
+        if (r.width === 0 || r.height === 0) continue;
+        const nachodzi =
+          r.left < zewnetrzna.prawa && r.right > zewnetrzna.lewa && r.top < zewnetrzna.dol && r.bottom > zewnetrzna.gora;
+        if (nachodzi) naTekscieInnych.push((wezel.textContent ?? "").trim().slice(0, 40));
+      }
+    }
+    return {
+      nazwa: odnosnik.getAttribute("aria-label") ?? (odnosnik.textContent ?? "").trim().slice(0, 40),
+      odTekstu: { gora: tekst.top - ramka.gora, dol: dol - tekst.bottom, lewa: tekst.left - ramka.lewa, prawa: prawa - tekst.right },
+      odLinii: { gora: linia.gora - ramka.gora, dol: dol - linia.dol, lewa: linia.lewa - ramka.lewa, prawa: prawa - linia.prawa },
+      naTekscieInnych,
+    };
+  }, GRUBOSC_RAMKI);
+}
+
+for (const { szerokosc, wysokosc } of OKNA) {
+  test.describe(`ekran kursu administracji — ${szerokosc} px, ramka fokusu odnośnika`, () => {
+    test.use({ viewport: { width: szerokosc, height: wysokosc } });
+
+    test("ramka stoi w odstępie od tekstu z każdej strony i nie sięga na tekst innych elementów", async ({ page }) => {
+      const stan = STANY[0];
+      await instalujAtrapy(page, stan);
+      await otworz(page, stan);
+      const karta = page.getByRole("region", { name: "Publikacja" });
+      const tekstyListy = (
+        await karta.getByRole("heading", { level: 3, name: "Do zrobienia (2)" }).locator("xpath=following::ul[1]//a").allTextContents()
+      ).map((tekst) => tekst.trim().slice(0, 40));
+      expect(tekstyListy.length, "odnośniki na liście „Do zrobienia”").toBeGreaterThanOrEqual(2);
+
+      const liczba = await page.locator("main a[href]").count();
+      const zmierzone: PomiarRamki[] = [];
+      for (let i = 0; i < liczba; i++) {
+        const pomiar = await zmierzRamkeOdnosnika(page, i);
+        if (pomiar !== "pominiety" && pomiar !== "brak") zmierzone.push(pomiar);
+      }
+      console.log(`[ramka-fokusu ${szerokosc}] zmierzone odnośniki: ${zmierzone.length}`);
+      for (const p of zmierzone) {
+        console.log(
+          `[ramka-fokusu ${szerokosc}] ${p.nazwa}: od tekstu g${p.odTekstu.gora.toFixed(1)} d${p.odTekstu.dol.toFixed(1)} l${p.odTekstu.lewa.toFixed(1)} p${p.odTekstu.prawa.toFixed(1)}; od linii g${p.odLinii.gora.toFixed(1)} d${p.odLinii.dol.toFixed(1)} l${p.odLinii.lewa.toFixed(1)} p${p.odLinii.prawa.toFixed(1)}`,
+        );
+      }
+      expect(zmierzone.length, "odnośniki z ramką na wspólnej zasadzie").toBeGreaterThanOrEqual(4);
+      const zaMaleLubZaDuze: string[] = [];
+      for (const p of zmierzone) {
+        for (const [grupa, odstepy] of [["tekst", p.odTekstu], ["linia", p.odLinii]] as const) {
+          for (const [strona, wartosc] of Object.entries(odstepy)) {
+            if (wartosc < NAJMNIEJSZY_ODSTEP_RAMKI - 0.01 || wartosc > NAJWIEKSZY_ODSTEP_RAMKI) {
+              zaMaleLubZaDuze.push(`${p.nazwa}: ${strona} od ${grupa} ${wartosc.toFixed(1)} px`);
+            }
+          }
+        }
+      }
+      expect(zaMaleLubZaDuze, "odstępy ramki fokusu od tekstu poza 2–14 px").toEqual([]);
+      expect(
+        zmierzone.filter((p) => p.naTekscieInnych.length > 0).map((p) => `${p.nazwa}: sięga na „${p.naTekscieInnych.join("”, „")}”`),
+        "ramka sięga na tekst innego elementu",
+      ).toEqual([]);
+      const nazwy = zmierzone.map((p) => p.nazwa);
+      expect(
+        tekstyListy.filter((tekst) => !nazwy.includes(tekst)),
+        "odnośniki listy „Do zrobienia”, których ramki nie zmierzono",
+      ).toEqual([]);
+    });
+  });
+}

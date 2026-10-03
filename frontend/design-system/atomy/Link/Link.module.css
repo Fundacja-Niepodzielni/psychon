@@ -7,9 +7,34 @@
      Playwrightem na rzeczywistym renderze, nie założone z liczby w
      specyfikacji. Ujemny margines tej samej wielkości nie zmienia odstępu
      w treści akapitu. */
-  padding: var(--space-16) var(--space-2);
-  margin: calc(var(--space-16) * -1) calc(var(--space-2) * -1);
+  --link-pad-y: var(--space-16);
+  --link-pad-x: var(--space-2);
+  padding: var(--link-pad-y) var(--link-pad-x);
+  margin: calc(var(--link-pad-y) * -1) calc(var(--link-pad-x) * -1);
   display: inline-block;
+  position: relative;
+}
+/* Ramka fokusu odnośnika: leży wewnątrz wcięcia pola klikalnego, w stałym
+   odstępie od tekstu (`--focus-gap-y` u góry i u dołu, `--focus-gap-x` po
+   bokach), zamiast na krawędzi całego pola (16 px ponad tekstem). Pole
+   klikalne zostaje bez zmian. Odnośnik wyglądający jak przycisk (własna
+   ramka) ustawia `--link-obrys` na dawny obrys całego pola i
+   `--link-obrys-tekstu: none`. Miejsce, które zmienia wcięcia odnośnika,
+   ustawia `--link-pad-y` i `--link-pad-x` na swoje wartości. */
+[data-theme] .odnosnik:focus-visible {
+  outline: var(--link-obrys, none);
+}
+.odnosnik:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--link-pad-y) - var(--focus-gap-y)) calc(var(--link-pad-x) - var(--focus-gap-x));
+  width: auto;
+  height: auto;
+  transform: none;
+  outline: var(--link-obrys-tekstu, var(--focus-width) solid var(--brand));
+  outline-offset: 0;
+  border-radius: var(--r-2xs);
+  pointer-events: none;
 }
 .odnosnik:hover,
 .odnosnik:focus-visible {
@@ -18,8 +43,8 @@
 .okruszek {
   /* space-12 dawało 42px zmierzone poligonem (< 44) — space-14 dociąga
      pole klikalne do progu bez zmiany widocznego odstępu w treści. */
-  padding: var(--space-14) var(--space-6);
-  margin: calc(var(--space-14) * -1) calc(var(--space-6) * -1);
+  --link-pad-y: var(--space-14);
+  --link-pad-x: var(--space-6);
 }
 .tloOdwrocone {
   /* Tylko barwa tekstu — element nadal bez WŁASNEGO tła ani ramki (patrz
