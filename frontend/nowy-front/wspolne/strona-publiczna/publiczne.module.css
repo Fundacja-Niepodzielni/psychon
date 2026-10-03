@@ -1,0 +1,90 @@
+/* Wspólny wygląd ekranów publicznych nowego frontu — wyłącznie tokeny. */
+.stos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.zdanie {
+  margin: 0;
+  color: var(--text);
+}
+
+.karta {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+  padding: var(--space-24) var(--space-20);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.kartaCiepla {
+  background: var(--card-warm);
+}
+
+.komunikat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-10);
+  color: var(--ink);
+  min-width: 0;
+}
+
+.info {
+  background: var(--grey);
+}
+
+.ok {
+  background: var(--success-bg);
+}
+
+.warn {
+  background: var(--warn-bg);
+}
+
+.error {
+  background: var(--error-bg);
+}
+
+.komunikatTresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.akapity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.akapity > p {
+  margin: 0;
+}
+
+.komunikatAkcja {
+  margin-top: var(--space-6);
+}
+
+.przyciski {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-12);
+}
+
+.przyciski > button {
+  max-width: none;
+}
