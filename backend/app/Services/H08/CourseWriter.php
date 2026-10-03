@@ -84,9 +84,11 @@ final class CourseWriter
     /**
      * Publikacja odmawia tą samą regułą, którą zasób kursu pokazuje braki
      * (`CoursePublicationGaps`): lista `reason.items` to dokładnie braki
-     * blokujące z tej reguły. Braki „czekamy” (nagranie wysyłane albo
+     * blokujące z tej reguły — braki lekcji, test końcowy bez pytań, brak
+     * miejsca w Programie PsychON. Braki „czekamy” (nagranie wysyłane albo
      * przetwarzane) nie blokują. `reason.missing` zostaje listą napisów
      * (`legacyMissing`), bo czytają ją dotychczasowe ekrany publikacji.
+     * Zdanie `message` wynika z pierwszego braku na liście.
      *
      * Opublikowany kurs bez lekcji blokuje całą ścieżkę za sobą:
      * `CourseAccess::allLessonsCompleted()` zwraca `false` dla kursu z zerem
@@ -100,19 +102,25 @@ final class CourseWriter
             return;
         }
 
-        $withoutLessons = $blocking[0]['code'] === CoursePublicationGaps::COURSE_WITHOUT_LESSONS;
-
         throw new ApiException(
             422,
             'conditions_not_met',
-            $withoutLessons
-                ? 'Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.'
-                : 'Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.',
+            self::refusalMessage($blocking[0]['code']),
             reason: [
                 'missing' => self::legacyMissing($blocking),
                 'items' => $blocking,
             ],
         );
+    }
+
+    private static function refusalMessage(string $firstCode): string
+    {
+        return match ($firstCode) {
+            CoursePublicationGaps::COURSE_WITHOUT_LESSONS => 'Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.',
+            CoursePublicationGaps::FINAL_TEST_WITHOUT_QUESTIONS => 'Test końcowy nie ma pytań. Dodaj pytania albo usuń test.',
+            CoursePublicationGaps::COURSE_OUTSIDE_PROGRAM => 'Kurs nie ma miejsca w Programie PsychON. Dodaj go do programu przed publikacją.',
+            default => 'Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.',
+        };
     }
 
     /**

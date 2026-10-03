@@ -43,7 +43,8 @@ export interface AdminCourse {
 /**
  * Jeden brak kursu. `code` ze słownika `publication_gap.code`
  * (`course_without_lessons`, `lesson_empty`, `recording_error`,
- * `recording_in_progress`); `lesson_id: null` — brak dotyczy całego kursu.
+ * `recording_in_progress`, `final_test_without_questions`,
+ * `course_outside_program`); `lesson_id: null` — brak dotyczy całego kursu.
  */
 export interface PublicationGap {
   code: string;

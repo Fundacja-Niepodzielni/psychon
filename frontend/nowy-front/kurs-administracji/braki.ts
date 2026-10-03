@@ -212,6 +212,8 @@ function pozycjaBraku(brak: PublicationGap, miejsca: MiejscaLekcji): PozycjaPubl
   if (brak.code === "course_without_lessons") {
     return { id, tekst: "Kurs nie ma jeszcze lekcji.", href: `#${KOTWICA_DRZEWA}` };
   }
+  if (brak.code === "final_test_without_questions") return { id, tekst: "Test końcowy nie ma pytań." };
+  if (brak.code === "course_outside_program") return { id, tekst: "Kurs nie ma miejsca w Programie PsychON." };
   if (brak.lesson_id === null) return null;
   if (brak.code === "lesson_empty") {
     return {

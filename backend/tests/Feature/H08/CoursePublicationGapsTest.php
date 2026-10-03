@@ -265,7 +265,9 @@ class CoursePublicationGapsTest extends TestCase
             'slug' => 'kurs-przed-publikacja-'.uniqid(),
             'type' => 'course',
             'product_group' => 'psychon',
-            'sequence_order' => null,
+            // Miejsce w Programie PsychON: bez niego publikacja odmawia
+            // osobną regułą (`CoursePublicationProgramRulesTest`).
+            'sequence_order' => 1,
             'is_published' => false,
         ]);
     }

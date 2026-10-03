@@ -4,6 +4,7 @@ namespace App\Services\H08;
 
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Models\Test;
 use App\Services\Video\LessonRecording;
 use App\Services\Video\RecordingStatus;
 
@@ -30,11 +31,29 @@ use App\Services\Video\RecordingStatus;
  * | ma gotowe nagranie (także w czasie wymiany na nowe)       | —                                 |
  * | sama treść, bez nagrania                                  | —                                 |
  *
+ * Po brakach lekcji — dwa braki całego kursu rodzaju `course` (webinaru nie
+ * dotyczą: nie ma testu końcowego, a jego miejsca w ścieżce nie ustala żaden
+ * ekran):
+ *
+ * | kurs                                                      | wpis                                    |
+ * |-----------------------------------------------------------|-----------------------------------------|
+ * | test końcowy tego kursu bez pytań                         | blocking `final_test_without_questions` |
+ * | bez miejsca w Programie PsychON (`sequence_order` pusty)  | blocking `course_outside_program`       |
+ *
+ * Test bez pytań: uczestnik nie zaliczy kursu, a następny kurs ścieżki nie
+ * odblokuje się nigdy (`CourseAccess::state()`). Kurs poza ścieżką byłby
+ * zawsze otwarty i nie odblokowywałby kolejnych. Oba braki liczone są ze
+ * stanu modelu, czyli przy publikacji — ze stanu PO złożeniu żądania.
+ *
  * Reguła czyta wyłącznie bazę: nie pyta dostawcy nagrań.
  */
 final class CoursePublicationGaps
 {
     public const string COURSE_WITHOUT_LESSONS = 'course_without_lessons';
+
+    public const string FINAL_TEST_WITHOUT_QUESTIONS = 'final_test_without_questions';
+
+    public const string COURSE_OUTSIDE_PROGRAM = 'course_outside_program';
 
     public const string LESSON_EMPTY = 'lesson_empty';
 
@@ -65,8 +84,6 @@ final class CoursePublicationGaps
 
         if ($lessons->isEmpty()) {
             $gaps[self::BLOCKING][] = ['code' => self::COURSE_WITHOUT_LESSONS, 'lesson_id' => null];
-
-            return $gaps;
         }
 
         foreach ($lessons as $lesson) {
@@ -77,7 +94,41 @@ final class CoursePublicationGaps
             }
         }
 
+        if ($course !== null) {
+            foreach (self::courseGaps($course) as $code) {
+                $gaps[self::BLOCKING][] = ['code' => $code, 'lesson_id' => null];
+            }
+        }
+
         return $gaps;
+    }
+
+    /**
+     * Braki całego kursu rodzaju `course`, w kolejności: test końcowy, miejsce
+     * w Programie PsychON. Liczy się wyłącznie test TEGO kursu.
+     *
+     * @return list<string>
+     */
+    private static function courseGaps(Course $course): array
+    {
+        if ($course->type !== 'course') {
+            return [];
+        }
+
+        $codes = [];
+
+        if ($course->exists && Test::query()
+            ->where('course_id', $course->getKey())
+            ->whereDoesntHave('questions')
+            ->exists()) {
+            $codes[] = self::FINAL_TEST_WITHOUT_QUESTIONS;
+        }
+
+        if ($course->sequence_order === null) {
+            $codes[] = self::COURSE_OUTSIDE_PROGRAM;
+        }
+
+        return $codes;
     }
 
     /**

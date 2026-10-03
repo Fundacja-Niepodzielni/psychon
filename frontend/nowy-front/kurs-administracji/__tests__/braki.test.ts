@@ -428,6 +428,33 @@ describe("powodyOdmowy", () => {
     ]);
   });
 
+  it("test końcowy bez pytań i kurs poza Programem PsychON: własne zdania w liście braków i w odmowie", () => {
+    const braki = [
+      { code: "final_test_without_questions", lesson_id: null },
+      { code: "course_outside_program", lesson_id: null },
+    ];
+    const oczekiwane = [
+      { id: "final_test_without_questions-kurs", tekst: "Test końcowy nie ma pytań." },
+      { id: "course_outside_program-kurs", tekst: "Kurs nie ma miejsca w Programie PsychON." },
+    ];
+    const stan = stanPublikacji({
+      kurs: { ...KURS, publication_gaps: { blocking: braki, waiting: [] } },
+      lekcje,
+      nagrania: {},
+      adresLekcji,
+    });
+    expect(stan.doZrobienia).toEqual(oczekiwane);
+    expect(
+      powodyOdmowy(
+        {
+          message: "Test końcowy nie ma pytań. Dodaj pytania albo usuń test.",
+          reason: { missing: ["final_test_without_questions", "course_outside_program"], items: braki },
+        },
+        miejsca,
+      ),
+    ).toEqual(oczekiwane);
+  });
+
   it("odmowa bez items: null — ekran pokazuje ją jak dotąd", () => {
     expect(powodyOdmowy({ message, reason: { missing: ["lessons"] } }, miejsca)).toBeNull();
     expect(powodyOdmowy({ message, reason: { items: [] } }, miejsca)).toBeNull();
