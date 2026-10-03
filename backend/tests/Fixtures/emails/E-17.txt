@@ -1,0 +1,14 @@
+Temat: PsychON: wyczerpane podejścia do testu
+
+Fundacja Niepodzielni · PsychON
+
+Dzień dobry,
+
+osoba uczestnicząca w programie wykorzystała wszystkie podejścia do testu etapu „Rozmowa wspierająca” bez zaliczenia. Na karcie osoby możesz odnowić limit podejść.
+
+Otwórz kartę osoby: https://psychon.example.org/admin/uczestniczki/1042
+
+----------
+Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo masz w PsychON rolę Opiekun Projektu albo Super Admin.
+Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiadomienia e-mail. Powiadomienie w panelu nadal się pojawi.
+Fundacja Niepodzielni
