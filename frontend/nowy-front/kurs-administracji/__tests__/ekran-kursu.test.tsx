@@ -538,6 +538,16 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
     expect(wiersze()[0]).toHaveTextContent("Kurs · 2. miejsce w ścieżce");
   });
 
+  it("formularz danych nie ma pola z adresem kursu („Nazwa w adresie strony”, identyfikator, slug): adres nadany przy zakładaniu nigdy się nie zmienia", async () => {
+    await renderEkranu();
+    await userEvent.click(wiersze()[0]);
+    expect(screen.getByRole("textbox", { name: "Tytuł kursu" })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/adres|identyfikator|slug/i)).toBeNull();
+    expect(document.getElementById("dane-kursu-adres")).toBeNull();
+    expect(screen.queryByDisplayValue("wywiad-psychologiczny")).toBeNull();
+    expect(screen.queryByText(/Nazwa w adresie strony|Podaj nazwę w adresie/)).toBeNull();
+  });
+
   it("„Zapisz dane kursu” wysyła te same pola co dotąd, bez rodzaju, i jest przyciskiem zwykłym", async () => {
     await renderEkranu();
     await userEvent.click(wiersze()[0]);
@@ -555,10 +565,10 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
       cialo: {
         title: "Wywiad psychologiczny",
         description: "Nowy opis.",
-        slug: "wywiad-psychologiczny",
       },
     });
     expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("type");
+    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("slug");
     expect(await screen.findByText("Zapisano.")).toBeInTheDocument();
     expect(ogloszenie()).toBe("Zapisano dane kursu.");
     expect(wiersze()[0]).toHaveAttribute("aria-expanded", "true");

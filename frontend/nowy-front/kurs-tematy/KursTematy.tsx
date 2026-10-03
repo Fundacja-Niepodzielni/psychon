@@ -242,10 +242,9 @@ interface FormularzNowejLekcji {
 interface FormularzKursu {
   tytul: string;
   opis: string;
-  identyfikator: string;
 }
 
-type BledyKursu = Partial<Record<"tytul" | "opis" | "identyfikator" | "ogolny", string>>;
+type BledyKursu = Partial<Record<"tytul" | "opis" | "ogolny", string>>;
 
 /** Lekcja po zapisie z formularza przy wierszu — tyle, ile pokazuje drzewo. */
 export interface LekcjaPoZapisie {
@@ -386,9 +385,7 @@ function EdytorTematow({
   // Otwarty formularz danych kursu bez żadnej zmiany nie jest niezapisaną pracą.
   const daneKursuZmienione =
     formularz !== null &&
-    (formularz.tytul !== kurs.title ||
-      formularz.opis !== (kurs.description ?? "") ||
-      formularz.identyfikator !== kurs.slug);
+    (formularz.tytul !== kurs.title || formularz.opis !== (kurs.description ?? ""));
   const saNiezapisaneDane = liczbaZmian > 0 || niezapisanaLekcja || daneKursuZmienione;
 
   // Wyjście z niezapisanymi zmianami pyta (M13) — menu ramy i zamknięcie karty; liczą
@@ -916,20 +913,13 @@ function EdytorTematow({
       setBledyFormularza({ tytul: "Podaj tytuł kursu." });
       return;
     }
-    const identyfikator = formularz.identyfikator.trim();
-    if (grupa === "admin" && identyfikator === "") {
-      setBledyFormularza({ identyfikator: "Podaj identyfikator kursu." });
-      return;
-    }
-    const podstawowe = { title: tytul, description: formularz.opis.trim() === "" ? null : formularz.opis };
     try {
-      // Pozycji kursu w ścieżce ten formularz nie wysyła — pokazuje ją tylko do odczytu.
-      const zapisany = await zapis.daneKursu(
-        kurs.id,
-        grupa === "admin"
-          ? { ...podstawowe, slug: identyfikator }
-          : podstawowe,
-      );
+      // Pozycji kursu w ścieżce ten formularz nie wysyła — pokazuje ją tylko do odczytu; adresu kursu
+      // też nie: nadany przy zakładaniu, nigdy się nie zmienia (linki w e-mailach i zakładkach nie psują się).
+      const zapisany = await zapis.daneKursu(kurs.id, {
+        title: tytul,
+        description: formularz.opis.trim() === "" ? null : formularz.opis,
+      });
       setKurs(zapisany);
       setFormularz(null);
       setBledyFormularza({});
@@ -938,7 +928,6 @@ function EdytorTematow({
         const pol: BledyKursu = {
           tytul: blad.errors?.title?.[0],
           opis: blad.errors?.description?.[0],
-          identyfikator: blad.errors?.slug?.[0],
         };
         if (Object.values(pol).some(Boolean)) {
           setBledyFormularza(pol);
@@ -1240,20 +1229,6 @@ function EdytorTematow({
                   onZmiana: (opis) => setFormularz({ ...formularz, opis }),
                   blad: bledyFormularza.opis,
                 },
-                ...(grupa === "admin"
-                  ? [
-                      {
-                        id: `${baza}-identyfikator`,
-                        etykieta: "Identyfikator",
-                        rodzaj: "tekst" as const,
-                        wymagane: true,
-                        wartosc: formularz.identyfikator,
-                        onZmiana: (identyfikator: string) => setFormularz({ ...formularz, identyfikator }),
-                        podpowiedz: "Krótka nazwa w adresie kursu: litery, cyfry, myślniki i podkreślenia.",
-                        blad: bledyFormularza.identyfikator,
-                      },
-                    ]
-                  : []),
               ]}
               onAnuluj={() => {
                 setFormularz(null);
@@ -1275,10 +1250,6 @@ function EdytorTematow({
                   <dd>{COURSE_TYPE_LABELS[kurs.type]}</dd>
                 </div>
                 <div>
-                  <dt>Identyfikator</dt>
-                  <dd>{kurs.slug}</dd>
-                </div>
-                <div>
                   <dt>Pozycja w ścieżce</dt>
                   <dd>{kurs.sequence_order === null ? "Poza ścieżką" : kurs.sequence_order}</dd>
                 </div>
@@ -1291,7 +1262,6 @@ function EdytorTematow({
                   setFormularz({
                     tytul: kurs.title,
                     opis: kurs.description ?? "",
-                    identyfikator: kurs.slug,
                   })
                 }
               >

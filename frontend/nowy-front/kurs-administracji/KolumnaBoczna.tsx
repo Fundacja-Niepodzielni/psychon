@@ -383,14 +383,15 @@ function Wiersz({
   );
 }
 
-type BledyDanych = Partial<Record<"tytul" | "opis" | "adres" | "ogolny", string>>;
+type BledyDanych = Partial<Record<"tytul" | "opis" | "ogolny", string>>;
 
 /**
- * Formularz danych kursu — te same pola i to samo żądanie co dotąd
- * (`zapiszKurs`: tytuł, opis, nazwa w adresie; rodzaju ani grupy produktowej nie wysyła —
- * rodzaj kursu wybiera się tylko przy jego zakładaniu, tu widać go w stanie wiersza).
- * Miejsca kursu w ścieżce ten zapis nie zmienia; pokazuje je stan wiersza. W roli
- * prowadzącego formularz ma tylko tytuł i opis — resztę ustawia administracja.
+ * Formularz danych kursu: tytuł i opis (`zapiszKurs`); rodzaju ani grupy produktowej nie wysyła —
+ * rodzaj kursu wybiera się tylko przy jego zakładaniu, tu widać go w stanie wiersza.
+ * Adresu kursu (`slug`) formularz nie pokazuje ani nie wysyła: powstaje z tytułu przy zakładaniu
+ * i nigdy się nie zmienia, dzięki czemu linki w e-mailach i zakładkach się nie psują.
+ * Miejsca kursu w ścieżce ten zapis nie zmienia; pokazuje je stan wiersza. Ten sam formularz
+ * (tytuł i opis) widzi administracja i prowadzący.
  */
 function FormularzDanych({
   kurs,
@@ -401,18 +402,15 @@ function FormularzDanych({
   onKurs: (kurs: AdminCourse) => void;
   onOgloszenie: (tresc: string) => void;
 }) {
-  const { dane, zarzadzanieKursem } = useRolaKursu();
+  const { dane } = useRolaKursu();
   const [tytul, setTytul] = useState(kurs.title);
   const [opis, setOpis] = useState(kurs.description ?? "");
-  const [adres, setAdres] = useState(kurs.slug);
   const [bledy, setBledy] = useState<BledyDanych>({});
   const [zapisano, setZapisano] = useState(false);
   const [trwa, setTrwa] = useState(false);
   // Te same przycięcia co w żądaniu zapisu: po zapisie formularz nie różni się od kursu.
   useZgloszenieNiezapisanychZmian(
-    tytul.trim() !== kurs.title ||
-      (opis.trim() === "" ? "" : opis) !== (kurs.description ?? "") ||
-      adres.trim() !== kurs.slug,
+    tytul.trim() !== kurs.title || (opis.trim() === "" ? "" : opis) !== (kurs.description ?? ""),
     "Dane kursu",
   );
 
@@ -423,16 +421,11 @@ function FormularzDanych({
       setBledy({ tytul: "Podaj tytuł kursu." });
       return;
     }
-    if (zarzadzanieKursem && adres.trim() === "") {
-      setBledy({ adres: "Podaj nazwę w adresie strony." });
-      return;
-    }
     setTrwa(true);
     try {
       const zapisany = await dane.zapiszDaneKursu(kurs.id, {
         title: tytul.trim(),
         description: opis.trim() === "" ? null : opis,
-        slug: adres.trim(),
       });
       setBledy({});
       setZapisano(true);
@@ -443,7 +436,6 @@ function FormularzDanych({
         const pol: BledyDanych = {
           tytul: blad.errors?.title?.[0],
           opis: blad.errors?.description?.[0],
-          adres: blad.errors?.slug?.[0],
         };
         if (Object.values(pol).some(Boolean)) {
           setBledy(pol);
@@ -480,20 +472,6 @@ function FormularzDanych({
         onZmiana={setOpis}
         blad={bledy.opis}
       />
-      {zarzadzanieKursem && (
-        <>
-          <Field
-            id="dane-kursu-adres"
-            etykieta="Nazwa w adresie strony"
-            rodzaj="tekst"
-            wymagane
-            wartosc={adres}
-            onZmiana={setAdres}
-            podpowiedz="Litery, cyfry, myślniki i podkreślenia."
-            blad={bledy.adres}
-          />
-        </>
-      )}
       <div className={style.wierszPrzyciskow}>
         <Button poziom="outline" disabled={trwa} onClick={() => void zapisz()}>
           Zapisz dane kursu

@@ -119,7 +119,7 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
     expect(serwer.sciezkiGrupy(druga)).toEqual([]);
   });
 
-  it("dane kursu: PATCH kursu trasą swojej grupy — prowadzący z tytułem i opisem, administracja dodatkowo z identyfikatorem (rodzaju ani grupy produktowej nie wysyła), nigdy z pozycją w ścieżce", async () => {
+  it("dane kursu: PATCH kursu trasą swojej grupy — w obu grupach sam tytuł i opis (adresu, rodzaju ani grupy produktowej nie wysyła), nigdy z pozycją w ścieżce", async () => {
     await renderGrupy(grupa);
     await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
     // Rodzaj kursu wybiera się tylko przy jego zakładaniu: formularza edycji nie ma pola „Typ”.
@@ -132,19 +132,35 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
       fireEvent.submit(screen.getByRole("form", { name: "Dane kursu" }));
     });
 
-    const cialo =
-      grupa === "admin"
-        ? {
-            title: KURS.title,
-            description: "Nowy opis.",
-            slug: KURS.slug,
-          }
-        : { title: KURS.title, description: "Nowy opis." };
-    expect(serwer.zapisy()).toEqual([{ sciezka: `/${grupa}/courses/4`, metoda: "PATCH", cialo }]);
-    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("sequence_order");
-    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("type");
+    expect(serwer.zapisy()).toEqual([
+      { sciezka: `/${grupa}/courses/4`, metoda: "PATCH", cialo: { title: KURS.title, description: "Nowy opis." } },
+    ]);
+    const klucze = Object.keys(serwer.zapisy()[0].cialo as object);
+    for (const zakazany of ["slug", "sequence_order", "type", "product_group"]) expect(klucze).not.toContain(zakazany);
     expect(await screen.findByText("Nowy opis.")).toBeInTheDocument();
     expect(serwer.sciezkiGrupy(druga)).toEqual([]);
+  });
+
+  it("adres kursu jest ukryty: formularz „Dane kursu” nie ma pola „Identyfikator” ani żadnego pola o adresie, tylko tytuł i opis", async () => {
+    await renderGrupy(grupa);
+    await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
+    const formularz = screen.getByRole("form", { name: "Dane kursu" });
+    expect(screen.queryByLabelText(/identyfikator|adres|slug/i)).toBeNull();
+    expect(within(formularz).queryByDisplayValue(KURS.slug)).toBeNull();
+    expect(within(formularz).queryByText(/identyfikator|adres|slug/i)).toBeNull();
+    expect(within(formularz).getAllByRole("textbox")).toHaveLength(2);
+  });
+
+  it("adres kursu jest ukryty: w podglądzie danych nie ma wiersza „Identyfikator” ani samego adresu", async () => {
+    const { container } = await renderGrupy(grupa);
+    expect(screen.queryByText("Identyfikator")).toBeNull();
+    expect(screen.queryByText(KURS.slug)).toBeNull();
+    expect(container.textContent).not.toContain(KURS.slug);
+    if (grupa === "admin") {
+      // Typ i pozycja w ścieżce zostają.
+      expect(screen.getByText("Typ")).toBeInTheDocument();
+      expect(screen.getByText("Pozycja w ścieżce")).toBeInTheDocument();
+    }
   });
 
   it("nowy temat: POST trasą swojej grupy", async () => {

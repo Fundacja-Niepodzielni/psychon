@@ -25,13 +25,13 @@ export function pobierzKurs(id: string): Promise<KursPublikacji> {
 
 /**
  * Pola, które nowy front zapisuje w kursie (`UpdateCourseRequest::rules`).
- * Każde jest opcjonalne. Pozycji kursu w ścieżce (`sequence_order`) tu nie ma
- * celowo — ten zapis jej nie zmienia.
+ * Każde jest opcjonalne. Pozycji kursu w ścieżce (`sequence_order`) i adresu kursu
+ * (`slug`) tu nie ma celowo — ten zapis ich nie zmienia: adres powstaje z tytułu przy
+ * zakładaniu kursu i potem się nie zmienia.
  */
 export interface CialoKursu {
   title?: string;
   description?: string | null;
-  slug?: string;
   product_group?: AdminCourse["product_group"];
   is_published?: boolean;
 }

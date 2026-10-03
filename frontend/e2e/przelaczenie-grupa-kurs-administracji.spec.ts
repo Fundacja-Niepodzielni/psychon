@@ -547,9 +547,10 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await expect(dane.getByLabel(/Pozycja|Miejsce/)).toHaveCount(0);
     // Grupa produktowa jest schowana: w formularzu nie ma pola, a zapis jej nie wysyła.
     await expect(dane.getByLabel(/^Grupa/)).toHaveCount(0);
-    await expect(dane).not.toContainText(/slug/i);
+    // Adres kursu jest ukryty: nadany przy zakładaniu, nigdy się nie zmienia.
+    await expect(dane).not.toContainText(/slug|adres|identyfikator/i);
+    await expect(dane.getByLabel(/adres|identyfikator|slug/i)).toHaveCount(0);
     await dane.getByLabel(/^Tytuł kursu/).fill("Wywiad psychologiczny — podstawy");
-    await dane.getByLabel(/^Nazwa w adresie strony/).fill("wywiad-podstawy");
     // Rodzaj kursu wybiera się tylko przy zakładaniu kursu: w edycji pola nie ma.
     await expect(dane.getByLabel(/^Rodzaj/)).toHaveCount(0);
     await expect(dane.getByLabel(/^Typ/)).toHaveCount(0);
@@ -572,7 +573,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await expect(page.locator("#ustawienia-prowadzacy")).not.toContainText("Joanna Demo");
 
     const cialoDanych = zapisy[0].cialo as Record<string, unknown>;
-    expect(Object.keys(cialoDanych).sort()).toEqual(["description", "slug", "title"]);
+    expect(Object.keys(cialoDanych).sort()).toEqual(["description", "title"]);
     expect(zapisy).toEqual([
       {
         metoda: "PATCH",
@@ -580,7 +581,6 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
         cialo: {
           title: "Wywiad psychologiczny — podstawy",
           description: KURS.description,
-          slug: "wywiad-podstawy",
         },
       },
       { metoda: "POST", sciezka: "/admin/courses/4/assignments", cialo: { instructor_id: 5, lesson_id: null } },

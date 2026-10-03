@@ -16,23 +16,18 @@ import { zapiszKurs } from "@/nowy-front/publikacja-kursu/dane";
  *    i zapis lekcji funkcją `zapiszLekcje` z „Edycji lekcji” — adresy obu
  *    tras administracji stoją tylko tam.
  *
- * Obie trasy kursu przyjmują `title` i `description`; trasa administracji
- * dodatkowo identyfikator i typ (grupy produktowej front nie wysyła). Obie trasy lekcji
- * przyjmują samo `title` (pola opcjonalne w `UpdateLessonRequest::rules`).
+ * Obie trasy kursu dostają z tego ekranu tylko `title` i `description`: adresu kursu
+ * (`slug`), rodzaju ani grupy produktowej front nie wysyła — adres nadany przy zakładaniu
+ * kursu nigdy się nie zmienia. Obie trasy lekcji przyjmują samo `title` (pola opcjonalne
+ * w `UpdateLessonRequest::rules`).
  */
 export interface DaneKursuDoZapisu {
   title: string;
   description: string | null;
 }
 
-/** Pola, które zapisuje wyłącznie administracja. */
-export interface DaneKursuAdministracji extends DaneKursuDoZapisu {
-  slug: string;
-  type: AdminCourse["type"];
-}
-
 export interface ZapisKursu {
-  daneKursu: (idKursu: number, dane: DaneKursuDoZapisu | DaneKursuAdministracji) => Promise<AdminCourse>;
+  daneKursu: (idKursu: number, dane: DaneKursuDoZapisu) => Promise<AdminCourse>;
   tytulLekcji: (idLekcji: number, title: string) => Promise<{ title: string }>;
   /**
    * Założenie lekcji w temacie, na tym ekranie. Bez tej funkcji „Dodaj lekcję”
