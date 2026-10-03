@@ -2419,3 +2419,121 @@ Kod: `Console/Commands/ZeroDanychProbnychCommand.php`, `Services/Cutover/ProbeDa
 etykieta slugu w słownikach klienta (`frontend/lib/api/h20.ts`, `frontend/lib/h20/labels.ts`)
 wchodzi razem z kodem slugu — test zgodności rejestru z frontem
 (`frontend/lib/h20/__tests__/audit-actions-source-of-truth.test.ts`) pilnuje obu stron.
+
+---
+
+## Aneks — przypisanie prowadzącego wielu osobom naraz (H12, H18)
+
+Administracja przypisuje jednego prowadzącego wielu wolontariuszom jednym żądaniem, a lista
+osób i karta osoby pokazują bieżącego prowadzącego. Aneks opisuje stan kodu. Jedna nowa trasa,
+nowe pola odczytu. Bez nowych kodów błędu i typów powiadomień; w rejestrze §3.2 dopisany
+istniejący slug `supervisor.unassigned` (pkt 3); zero zmian w danych.
+
+### 1. Trasa i role
+
+`POST /admin/supervisor-assignments` — w pliku `routes/api/h12.php`, w tej samej grupie i z tym
+samym pośrednikiem co `PUT /admin/users/{id}/supervisor`. Role `project_manager` i
+`super_admin`; brak tokenu → `401 unauthenticated`; inna rola → `403 forbidden`, bez żadnego
+zapisu.
+
+Ciało:
+
+```json
+{ "supervisor_id": 5, "user_ids": [17, 18, 44] }
+```
+
+- `supervisor_id` — wymagana liczba całkowita; aktywne konto (`status: active`, bez
+  anonimizacji) z rolą `instructor`. Prowadzący sprawdzany jest raz dla całego żądania.
+- `user_ids` — wymagana lista od 1 do **100** liczb całkowitych dodatnich, bez powtórzeń.
+  Elementy muszą być liczbami całkowitymi JSON: napis z cyframi (`"17"`) albo liczba z
+  częścią ułamkową to błąd walidacji, nie identyfikator.
+
+Pola ciała spoza tych dwóch są ignorowane — nie dają `422` i niczego nie zmieniają.
+
+Naruszenie dowolnego warunku → `422 validation_failed` (błąd na `supervisor_id`, `user_ids`
+albo `user_ids.N`), nic nie jest zapisywane. Identyfikator osoby, która nie istnieje, **nie**
+jest błędem walidacji — wraca w wyniku jako `not_found`.
+
+### 2. Odpowiedź
+
+`200`:
+
+```json
+{ "data": {
+  "supervisor_id": 5,
+  "results": [
+    { "user_id": 17, "result": "assigned",  "reason": null },
+    { "user_id": 18, "result": "unchanged", "reason": null },
+    { "user_id": 44, "result": "refused",   "reason": "not_assignable" },
+    { "user_id": 99, "result": "not_found", "reason": null } ],
+  "summary": { "requested": 4, "assigned": 1, "unchanged": 1, "refused": 1, "not_found": 1 } } }
+```
+
+- `results` — dokładnie jeden wpis na identyfikator z żądania, **w kolejności żądania**.
+- `result` — słownik zamknięty `supervisor_assignment.result`:
+  `assigned · unchanged · refused · not_found`.
+  - `assigned` — nowe przypisanie (poprzednie aktywne przypisanie osoby zostaje zamknięte);
+  - `unchanged` — osoba ma już tego prowadzącego, nic się nie zmienia;
+  - `refused` — osoby nie można przypisać: rola inna niż `volunteer` (studenci są poza MVP)
+    albo konto zablokowane lub zanonimizowane;
+  - `not_found` — nie ma takiej osoby.
+- `reason` — słownik zamknięty: `not_assignable` przy `refused`, w pozostałych przypadkach
+  `null`. Jeden kod dla wszystkich powodów odmowy, tak jak trasa pojedyncza daje jedną odmowę
+  dla każdej niewłaściwej roli.
+- `summary` — liczby wyników; `requested` równa się długości `results`.
+
+Każda osoba jest przypisywana tą samą ścieżką co trasa pojedyncza, we własnej transakcji.
+Odmowa przy jednej osobie nie cofa pozostałych.
+
+Żądanie **nie jest** atomowe jako całość. Nieoczekiwany błąd serwera przy osobie N kończy
+żądanie odpowiedzią `500` w standardowej kopercie błędu, **bez** `results` i `summary`. Osoby
+przed N zostają przypisane, razem ze swoimi wpisami audytu; osoba N i osoby po niej zostają
+bez zmian. Ponowne wysłanie tego samego żądania jest bezpieczne: osoby już przypisane wracają
+jako `unchanged` i nie dostają drugiego wpisu audytu.
+
+### 3. Audyt i powiadomienia
+
+Trasa zbiorcza zapisuje dziennik tą samą usługą co trasa pojedyncza, więc wpisy są identyczne:
+
+- `supervisor.assigned` — dokładnie jeden na osobę z wynikiem `assigned`. Pola ładunku:
+  `volunteer_id`, `supervisor_id`.
+- `supervisor.unassigned` — jeden za każde zamknięte poprzednie aktywne przypisanie tej osoby.
+  Pola ładunku: `volunteer_id`, `supervisor_id` (prowadzący dotychczasowy).
+- `unchanged`, `refused` i `not_found` nie zapisują niczego.
+
+`supervisor.unassigned` kod emituje od trasy pojedynczej, a filtr dziennika
+(`GET /admin/audit?action=`) go zna; ten aneks dopisuje go do rejestru §3.2 (H12) — kod ma
+rację, rejestr dogania. Bez wolnego tekstu w ładunku, zgodnie z zasadą ogólną z erraty
+2026-09-18. Powiadomień trasa zbiorcza nie wysyła, tak jak pojedyncza.
+
+### 4. Rozmowa z poprzednim prowadzącym
+
+Po zmianie prowadzącego (pojedynczej albo zbiorczej) rozmowa indywidualna z poprzednim
+prowadzącym jest dla osoby tylko do odczytu (`meta.extra.read_only: true`, zapis →
+`403 thread_closed`), poprzedni prowadzący jej nie widzi (`404 not_found`), a z nowym
+prowadzącym powstaje nowa rozmowa.
+
+### 5. Pola odczytu
+
+- `GET /admin/users` — każdy element niesie `supervisor`: `{ "id", "name" }` bieżącego
+  aktywnego prowadzącego albo `null`. Prowadzący są wczytywani dla całej strony naraz; liczba
+  zapytań nie zależy od liczby osób na stronie.
+  Eksport `GET /admin/users/export.csv` bez zmian.
+- Karta osoby — `GET /admin/users/{id}` i odpowiedzi tras zwracających kartę
+  (`PATCH /admin/users/{id}`, `POST /admin/users`, blokada, odblokowanie, anonimizacja) —
+  `supervisor` w tym samym kształcie oraz w `account` nowe pole `created_at` (ISO 8601 UTC)
+  obok istniejącego `status` (aneks z 2026-10-02).
+- `profile.roles` na karcie osoby niesie rolę tej osoby; role z tokenu wyłącznie na własnym
+  profilu (`GET /me`).
+
+### 6. Czego ten aneks nie wprowadza
+
+Trasa pojedyncza `PUT /admin/users/{id}/supervisor` zostaje bez zmian. Reguły trasy zbiorczej
+(pkt 1–2: prowadzący i osoba przypisywana) są dziś **ostrzejsze** niż reguły trasy pojedynczej;
+zrównanie trasy pojedynczej z trasą zbiorczą przyjdzie osobnym aneksem razem ze zmianą kodu.
+
+Kod: `routes/api/h12.php`,
+`Http/Controllers/Api/V1/H12/AdminSupervisionController.php::assignSupervisorToMany`,
+`Http/Requests/H12/AssignSupervisorToManyRequest.php`,
+`Services/H12/SupervisorAssignmentService.php` (`assignToMany`),
+`Http/Resources/AdminUserListResource.php`, `Http/Resources/AdminUserCardResource.php`.

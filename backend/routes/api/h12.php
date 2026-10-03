@@ -51,4 +51,5 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     Route::get('/admin/supervision/cases', [AdminSupervisionController::class, 'cases']);
     Route::put('/admin/users/{id}/supervisor', [AdminSupervisionController::class, 'assignSupervisor'])
         ->whereNumber('id');
+    Route::post('/admin/supervisor-assignments', [AdminSupervisionController::class, 'assignSupervisorToMany']);
 });

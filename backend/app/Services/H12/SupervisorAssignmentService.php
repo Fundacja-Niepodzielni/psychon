@@ -10,6 +10,17 @@ use Illuminate\Support\Facades\DB;
 
 final class SupervisorAssignmentService
 {
+    /** Najwięcej osób w jednym przypisaniu wielu osób naraz (`assignToMany`). */
+    public const int MAX_PEOPLE_AT_ONCE = 100;
+
+    /**
+     * Jedyny kod powodu odmowy przy przypisaniu wielu osób: osoby nie można
+     * przypisać (inna rola niż wolontariusz albo konto zablokowane lub
+     * zanonimizowane). Jeden kod dla wszystkich tych przypadków, tak jak trasa
+     * pojedyncza ma jedną odpowiedź `422` dla każdej niewłaściwej roli.
+     */
+    public const string REASON_NOT_ASSIGNABLE = 'not_assignable';
+
     /**
      * Przypisanie nadaje wyłącznie administracja
      * (`AdminSupervisionController::assignSupervisor`). Każde zamknięte przy tym
@@ -80,5 +91,63 @@ final class SupervisorAssignmentService
 
             return $assignment;
         });
+    }
+
+    /**
+     * Przypisanie jednego prowadzącego wielu osobom naraz
+     * (`AdminSupervisionController::assignSupervisorToMany`). Dla każdej osoby
+     * woła `assign()` z tymi samymi argumentami co trasa pojedyncza
+     * (`AdminSupervisionController::assignSupervisor`), każdą osobę we własnej
+     * transakcji — więc wpisy w dzienniku, zamknięcie poprzedniego
+     * przypisania i reguła „tylko wolontariusz” są dokładnie te same. Konto
+     * zablokowane albo zanonimizowane dostaje odmowę przed tym wywołaniem.
+     * Odmowa przy jednej osobie nie cofa pozostałych. Wynik w kolejności
+     * żądania: `assigned`, `unchanged` (ten sam prowadzący już był, bez wpisu
+     * w dzienniku), `refused` z kodem `not_assignable` albo `not_found`.
+     *
+     * @param  list<int>  $volunteerIds
+     * @return list<array{user_id: int, result: string, reason: string|null}>
+     */
+    public function assignToMany(User $actor, int $supervisorId, array $volunteerIds): array
+    {
+        $results = [];
+
+        foreach ($volunteerIds as $volunteerId) {
+            $results[] = ['user_id' => $volunteerId, ...$this->assignOneOfMany($actor, $volunteerId, $supervisorId)];
+        }
+
+        return $results;
+    }
+
+    /**
+     * @return array{result: string, reason: string|null}
+     */
+    private function assignOneOfMany(User $actor, int $volunteerId, int $supervisorId): array
+    {
+        if (self::accountIsClosed($volunteerId)) {
+            return ['result' => 'refused', 'reason' => self::REASON_NOT_ASSIGNABLE];
+        }
+
+        try {
+            $assignment = $this->assign($actor, $volunteerId, $supervisorId);
+        } catch (ApiException $exception) {
+            // Te same dwa rozróżnienia co trasa pojedyncza: 404 albo odmowa bez szczegółu.
+            return $exception->status === 404
+                ? ['result' => 'not_found', 'reason' => null]
+                : ['result' => 'refused', 'reason' => self::REASON_NOT_ASSIGNABLE];
+        }
+
+        return ['result' => $assignment->wasRecentlyCreated ? 'assigned' : 'unchanged', 'reason' => null];
+    }
+
+    /** Konto istnieje i jest zablokowane albo zanonimizowane. */
+    private static function accountIsClosed(int $userId): bool
+    {
+        return User::query()
+            ->whereKey($userId)
+            ->where(function ($query): void {
+                $query->whereIn('status', ['blocked', 'deleted'])->orWhereNotNull('anonymized_at');
+            })
+            ->exists();
     }
 }

@@ -1805,6 +1805,126 @@
                 }
             }
         },
+        "/v1/admin/supervisor-assignments": {
+            "post": {
+                "operationId": "adminSupervision.assignSupervisorToMany",
+                "description": "Przypisanie jednego prowadz\u0105cego wielu wolontariuszom naraz. Jeden wynik na osob\u0119, w kolejno\u015bci \u017c\u0105dania; ka\u017cda osoba we w\u0142asnej transakcji.",
+                "tags": [
+                    "AdminSupervision"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AssignSupervisorToManyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "supervisor_id": {
+                                                    "type": "integer"
+                                                },
+                                                "results": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "user_id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "result": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "assigned",
+                                                                    "unchanged",
+                                                                    "refused",
+                                                                    "not_found"
+                                                                ]
+                                                            },
+                                                            "reason": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ],
+                                                                "enum": [
+                                                                    "not_assignable",
+                                                                    null
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "user_id",
+                                                            "result",
+                                                            "reason"
+                                                        ]
+                                                    }
+                                                },
+                                                "summary": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "requested": {
+                                                            "type": "integer"
+                                                        },
+                                                        "assigned": {
+                                                            "type": "integer"
+                                                        },
+                                                        "unchanged": {
+                                                            "type": "integer"
+                                                        },
+                                                        "refused": {
+                                                            "type": "integer"
+                                                        },
+                                                        "not_found": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "requested",
+                                                        "assigned",
+                                                        "unchanged",
+                                                        "refused",
+                                                        "not_found"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "supervisor_id",
+                                                "results",
+                                                "summary"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    }
+                }
+            }
+        },
         "/v1/admin/courses/{course}/tests": {
             "get": {
                 "operationId": "adminTest.index",
@@ -12694,6 +12814,28 @@
                     "supervisor_id"
                 ],
                 "title": "AssignSupervisorRequest"
+            },
+            "AssignSupervisorToManyRequest": {
+                "type": "object",
+                "properties": {
+                    "supervisor_id": {
+                        "type": "integer"
+                    },
+                    "user_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "minItems": 1,
+                        "maxItems": 100
+                    }
+                },
+                "required": [
+                    "supervisor_id",
+                    "user_ids"
+                ],
+                "title": "AssignSupervisorToManyRequest"
             },
             "BlockUserRequest": {
                 "type": "object",
