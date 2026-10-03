@@ -87,7 +87,13 @@ class AdminUserSupervisorFieldsTest extends TestCase
         $this->assertNull($card['supervisor']);
         $this->assertSame(['status' => 'blocked', 'created_at' => '2026-09-20T10:00:00Z', 'blocked_reason' => null], $card['account']);
 
-        $this->assign($admin, $person, $supervisor);
+        // Przypisanie sprzed zablokowania konta: zablokowanej osobie nie nadaje się
+        // już prowadzącego, a karta nadal pokazuje tego, który był przypisany.
+        SupervisorAssignment::query()->create([
+            'volunteer_id' => $person->id,
+            'supervisor_id' => $supervisor->id,
+            'assigned_at' => now()->subWeek(),
+        ]);
 
         $this->withTokenOf($admin)
             ->getJson("/api/v1/admin/users/{$person->id}")

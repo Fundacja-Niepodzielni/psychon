@@ -12,10 +12,11 @@ use Illuminate\Foundation\Http\FormRequest;
  * Przypisanie jednego prowadzącego wielu osobom naraz
  * (`POST /admin/supervisor-assignments`). Uprawnienie jest to samo co w
  * `AssignSupervisorRequest` (trasa pojedyncza). Prowadzący jest sprawdzany
- * raz dla całego żądania: musi to być aktywne konto z rolą prowadzącego,
- * więc odmowa przy pojedynczej osobie znaczy wyłącznie „tej osoby nie można
- * przypisać”. Osoby nieistniejące nie są odrzucane walidacją — wracają w
- * wyniku jako `not_found`, obok pozostałych.
+ * raz dla całego żądania tym samym warunkiem co na trasie pojedynczej
+ * (`SupervisorAssignmentService::canSupervise`), więc odmowa przy pojedynczej
+ * osobie znaczy wyłącznie „tej osoby nie można przypisać”. Osoby
+ * nieistniejące nie są odrzucane walidacją — wracają w wyniku jako
+ * `not_found`, obok pozostałych.
  */
 class AssignSupervisorToManyRequest extends FormRequest
 {
@@ -33,15 +34,8 @@ class AssignSupervisorToManyRequest extends FormRequest
                 'integer',
                 'exists:users,id',
                 function (string $attribute, mixed $value, Closure $fail): void {
-                    $supervisorIsActive = User::query()
-                        ->whereKey((int) $value)
-                        ->where('role', 'instructor')
-                        ->where('status', 'active')
-                        ->whereNull('anonymized_at')
-                        ->exists();
-
-                    if (! $supervisorIsActive) {
-                        $fail('Prowadzącym może być tylko aktywne konto z rolą prowadzącego.');
+                    if (! SupervisorAssignmentService::canSupervise(User::query()->find((int) $value))) {
+                        $fail(SupervisorAssignmentService::SUPERVISOR_NOT_ALLOWED);
                     }
                 },
             ],

@@ -15,17 +15,51 @@ final class SupervisorAssignmentService
 
     /**
      * Jedyny kod powodu odmowy przy przypisaniu wielu osób: osoby nie można
-     * przypisać (inna rola niż wolontariusz albo konto zablokowane lub
-     * zanonimizowane). Jeden kod dla wszystkich tych przypadków, tak jak trasa
-     * pojedyncza ma jedną odpowiedź `422` dla każdej niewłaściwej roli.
+     * przypisać (`canBeAssigned()` zwraca false). Jeden kod dla wszystkich tych
+     * przypadków, tak jak trasa pojedyncza ma dla nich jedną odpowiedź `422`.
      */
     public const string REASON_NOT_ASSIGNABLE = 'not_assignable';
+
+    /** Odmowa, gdy wskazane konto nie może być prowadzącym — ta sama na obu trasach. */
+    public const string SUPERVISOR_NOT_ALLOWED = 'Prowadzącym może być tylko aktywne konto z rolą prowadzącego.';
+
+    /** Odmowa trasy pojedynczej, gdy osobie nie można nadać prowadzącego. */
+    public const string PERSON_NOT_ASSIGNABLE = 'Prowadzącego można nadać tylko wolontariuszowi, którego konto nie jest zablokowane ani usunięte.';
+
+    /**
+     * Kto może być prowadzącym — jeden warunek dla przypisania jednej osobie
+     * (`assign()`) i wielu osobom naraz (`AssignSupervisorToManyRequest`):
+     * aktywne, niezanonimizowane konto z rolą prowadzącego.
+     *
+     * @phpstan-assert-if-true User $supervisor
+     */
+    public static function canSupervise(?User $supervisor): bool
+    {
+        return $supervisor !== null
+            && $supervisor->role === 'instructor'
+            && $supervisor->status === 'active'
+            && $supervisor->anonymized_at === null;
+    }
+
+    /**
+     * Komu można nadać prowadzącego — jeden warunek dla obu tras, bo obie
+     * przechodzą przez `assign()`: wolontariusz, którego konto nie jest
+     * zablokowane, usunięte ani zanonimizowane.
+     */
+    public static function canBeAssigned(User $person): bool
+    {
+        return $person->role === 'volunteer'
+            && ! in_array($person->status, ['blocked', 'deleted'], true)
+            && $person->anonymized_at === null;
+    }
 
     /**
      * Przypisanie nadaje wyłącznie administracja
      * (`AdminSupervisionController::assignSupervisor`). Każde zamknięte przy tym
      * dotychczasowe przypisanie zapisuje w dzienniku `supervisor.unassigned`,
      * nowe — `supervisor.assigned`; ładunek obu to wyłącznie identyfikatory.
+     * Prowadzący musi spełniać `canSupervise()`, osoba — `canBeAssigned()`;
+     * inaczej `422 validation_failed` i nic nie zostaje zapisane.
      *
      * @param  bool  $requireNoConflict  Gdy true: wolontariusz z aktywnym przypisaniem do
      *                                   INNEGO prowadzącego nie zostaje przejęty — rzucany jest wyjątek 409 zamiast
@@ -41,12 +75,12 @@ final class SupervisorAssignmentService
             }
 
             $supervisor = User::query()->whereKey($supervisorId)->first();
-            if ($volunteer->role !== 'volunteer' || $supervisor?->role !== 'instructor') {
-                throw new ApiException(
-                    422,
-                    'validation_failed',
-                    'Wybierz wolontariusza i użytkownika z rolą prowadzącego.',
-                );
+            if (! self::canSupervise($supervisor)) {
+                throw new ApiException(422, 'validation_failed', self::SUPERVISOR_NOT_ALLOWED);
+            }
+
+            if (! self::canBeAssigned($volunteer)) {
+                throw new ApiException(422, 'validation_failed', self::PERSON_NOT_ASSIGNABLE);
             }
 
             $active = SupervisorAssignment::query()
@@ -99,8 +133,7 @@ final class SupervisorAssignmentService
      * woła `assign()` z tymi samymi argumentami co trasa pojedyncza
      * (`AdminSupervisionController::assignSupervisor`), każdą osobę we własnej
      * transakcji — więc wpisy w dzienniku, zamknięcie poprzedniego
-     * przypisania i reguła „tylko wolontariusz” są dokładnie te same. Konto
-     * zablokowane albo zanonimizowane dostaje odmowę przed tym wywołaniem.
+     * przypisania i warunki dla osoby (`canBeAssigned()`) są dokładnie te same.
      * Odmowa przy jednej osobie nie cofa pozostałych. Wynik w kolejności
      * żądania: `assigned`, `unchanged` (ten sam prowadzący już był, bez wpisu
      * w dzienniku), `refused` z kodem `not_assignable` albo `not_found`.
@@ -124,10 +157,6 @@ final class SupervisorAssignmentService
      */
     private function assignOneOfMany(User $actor, int $volunteerId, int $supervisorId): array
     {
-        if (self::accountIsClosed($volunteerId)) {
-            return ['result' => 'refused', 'reason' => self::REASON_NOT_ASSIGNABLE];
-        }
-
         try {
             $assignment = $this->assign($actor, $volunteerId, $supervisorId);
         } catch (ApiException $exception) {
@@ -138,17 +167,6 @@ final class SupervisorAssignmentService
         }
 
         return ['result' => $assignment->wasRecentlyCreated ? 'assigned' : 'unchanged', 'reason' => null];
-    }
-
-    /** Konto istnieje i jest zablokowane albo zanonimizowane. */
-    private static function accountIsClosed(int $userId): bool
-    {
-        return User::query()
-            ->whereKey($userId)
-            ->where(function ($query): void {
-                $query->whereIn('status', ['blocked', 'deleted'])->orWhereNotNull('anonymized_at');
-            })
-            ->exists();
     }
 
     /**
