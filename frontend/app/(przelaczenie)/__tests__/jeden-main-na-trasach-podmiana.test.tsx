@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { WNIOSEK } from "@/nowy-front/profil-decyzja/__tests__/atrapy";
 
 /**
- * Cztery trasy grup z podmianą treści (`/admin/profile/[id]`,
+ * Pięć tras grup z podmianą treści (`/admin/profile/[id]`, `/admin/emails`,
  * `/admin/wzory-dokumentow`, `/admin/ekran-startowy`, `/admin/staz`) złożone tak jak robi to
  * router: prawdziwy układ administracji (strażnik ról i powłoka panelu) i
  * prawdziwa strona, czytająca prawdziwy rejestr przełączenia (grupy włączone).
@@ -49,6 +49,7 @@ const { default: StronaProfilu } = await import("@/app/(administracja)/admin/pro
 const { default: StronaWzorow } = await import("@/app/(administracja)/admin/wzory-dokumentow/page");
 const { default: StronaEkranu } = await import("@/app/(administracja)/admin/ekran-startowy/page");
 const { default: StronaStazu } = await import("@/app/(administracja)/admin/staz/page");
+const { default: StronaPowiadomien } = await import("@/app/(administracja)/admin/emails/page");
 const { default: PanelShell } = await import("@/components/layout/PanelShell");
 const { ProfilDecyzja } = await import("@/nowy-front/profil-decyzja/ProfilDecyzja");
 const { WzoryDokumentow } = await import("@/nowy-front/wzory-dokumentow/WzoryDokumentow");
@@ -265,6 +266,53 @@ describe("/admin/staz w układzie administracji", () => {
     const { container } = await zloz(<StronaStazu />);
     await screen.findByText(/Ten ekran jest dla administracji\./);
     expect(zmierz(container)).toEqual(JEDEN);
+  });
+});
+
+describe("/admin/emails w układzie administracji", () => {
+  const USTAWIENIA = {
+    types: [{ type: "course.unlocked", enabled: true }],
+    supervision_reminder: { enabled: true, send_at: "08:00" },
+  };
+  const dane = (skrzynka: Odpowiedz, ustawienia: Odpowiedz = USTAWIENIA) => ({
+    "/admin/emails": skrzynka,
+    "/admin/notification-settings": ustawienia,
+  });
+
+  it("ładowanie: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(ZAWIESZONE, ZAWIESZONE));
+    const { container } = await zloz(<StronaPowiadomien />);
+    await screen.findByRole("heading", { level: 1, name: "Powiadomienia" });
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("dane: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(STRONA_PUSTA));
+    const { container } = await zloz(<StronaPowiadomien />);
+    await screen.findByRole("switch", { name: "Odblokowanie etapu" });
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("błąd sieci: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(BLAD()));
+    const { container } = await zloz(<StronaPowiadomien />);
+    await screen.findByText("Nie udało się wczytać wiadomości");
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("odmowa 403: jeden main, jeden #tresc, jeden odnośnik", async () => {
+    transport("project_manager", dane(ZAKAZ()));
+    const { container } = await zloz(<StronaPowiadomien />);
+    await screen.findByRole("heading", { level: 2, name: "Powiadomienia dla administracji" });
+    expect(zmierz(container)).toEqual(JEDEN);
+  });
+
+  it("rola spoza administracji dostaje „Brak dostępu” i żadnych danych ekranu", async () => {
+    transport("instructor", dane(STRONA_PUSTA));
+    await zloz(<StronaPowiadomien />);
+    await screen.findByRole("heading", { level: 1, name: "Brak dostępu" });
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(api.mock.calls.map(([url]) => String(url).split("?")[0])).toEqual(["/me"]);
   });
 });
 

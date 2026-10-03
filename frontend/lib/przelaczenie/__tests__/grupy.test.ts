@@ -20,9 +20,10 @@ import {
  * Także `dziennikStazu` (dziennik stażu pod tym samym adresem `/panel/staz`).
  * Także `certyfikat` (certyfikat pod tym samym adresem `/panel/certyfikat`), `dokumentyUczestnika` (dokumenty uczestnika pod tym samym adresem `/panel/dokumenty`).
  * Także `testUczestnika` (test końcowy kursu uczestnika pod tym samym adresem).
+ * Także `powiadomienia` (adres `/admin/emails`, ekran „Powiadomienia”).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -38,7 +39,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika i test końcowy uczestnika", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika i powiadomienia", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -54,7 +55,7 @@ describe("rejestr GRUPY — stan flag", () => {
   });
 
   it("grupy z podmianą treści mają ten sam adres starej i nowej trasy", () => {
-    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy", "sprawy", "kursyAdministracji", "kursAdministracji", "publikacjaKursu", "zaproszeniaNaKurs"] as const) {
+    for (const klucz of ["decyzjaProfilu", "wzoryDokumentow", "ekranStartowy", "sprawy", "kursyAdministracji", "kursAdministracji", "publikacjaKursu", "zaproszeniaNaKurs", "powiadomienia"] as const) {
       const [ekran] = GRUPY[klucz].ekrany;
       expect(ekran.panel, klucz).toBe("administracja");
       expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);

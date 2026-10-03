@@ -23,7 +23,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 const { default: AdminEmailsPage } = await import(
-  "@/app/(administracja)/admin/emails/page"
+  "@/app/(administracja)/admin/emails/StaraTresc"
 );
 
 const email = {

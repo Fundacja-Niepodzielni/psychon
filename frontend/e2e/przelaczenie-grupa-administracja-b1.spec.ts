@@ -5,8 +5,8 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * Miara dla partii przełączenia administracji (trasy proste): grupy
  * `pulpitAdministracji` (podmiana treści pod `/admin`) i `formyStazu` (nowa
  * trasa `/admin/formy-stazu`, bez starej) mają w `lib/przelaczenie/grupy.ts`
- * `wlaczona: true`; `powiadomienia`, `superwizje` i `sprawy` zostają
- * wyłączone, więc ich adresy niosą dalej starą treść.
+ * `wlaczona: true`, tak samo `powiadomienia` (podmiana treści pod `/admin/emails`); `superwizje` zostaje
+ * wyłączona, więc jej adres niesie dalej starą treść.
  *
  * Sprawdzane w jednym pliku, z atrapą API przez `page.route` i atrapą sesji
  * (bez prawdziwego IdP — `getToken()` w `lib/api/klient.ts` czyta
@@ -16,7 +16,7 @@ import { zabezpieczeniePrzedEkranemDostepu } from "./_access-guard";
  * - wpis menu „Formy stażu” prowadzi na `/admin/formy-stazu`, ekran ma jeden
  *   `main`, a odmowa 403 z zaplecza daje stan „brak dostępu” bez rekordów;
  * - rola spoza administracji dostaje ekran 403 układu, bez menu;
- * - trzy grupy wyłączone zostają na starych ekranach (tytuł strony starej);
+ * - grupa wyłączona zostaje na starym ekranie (tytuł strony starej); `/admin/emails` (grupa włączona) pokazuje ekran „Powiadomienia” pod tym samym tytułem karty;
  * - zero odpowiedzi 404 w całym przebiegu każdego scenariusza.
  */
 
@@ -173,18 +173,23 @@ test.describe("partia przełączenia administracji — pulpit i formy stażu wł
     await expect(page.getByRole("navigation", { name: "Menu — Administracja" })).toHaveCount(0);
   });
 
-  test("dwie grupy wyłączone zostają na starych ekranach: tytuły stron starych", async ({ page }) => {
+  test("grupa wyłączona zostaje na starym ekranie: tytuł strony starej", async ({ page }) => {
     await instalujAtrapyApi(page, { rola: "project_manager", formy: "dane" });
 
-    for (const [adres, tytul] of [
-      ["/admin/emails", /^Niepodzielni — platforma szkoleniowa$/],
-      ["/admin/superwizje", /^Superwizje — Niepodzielni$/],
-    ] as const) {
-      const odpowiedz = await page.goto(adres);
-      expect(odpowiedz?.status(), adres).toBe(200);
-      await expect(page, adres).toHaveTitle(tytul);
-    }
+    const odpowiedz = await page.goto("/admin/superwizje");
+    expect(odpowiedz?.status()).toBe(200);
+    await expect(page).toHaveTitle(/^Superwizje — Niepodzielni$/);
     await expect(page.getByRole("heading", { level: 1, name: "Superwizje" })).toBeVisible();
+  });
+
+  test("/admin/emails (grupa włączona): ten sam tytuł karty co dotąd, ale nowy ekran „Powiadomienia”", async ({ page }) => {
+    await instalujAtrapyApi(page, { rola: "project_manager", formy: "dane" });
+
+    const odpowiedz = await page.goto("/admin/emails");
+    expect(odpowiedz?.status()).toBe(200);
+    await expect(page).toHaveTitle(/^Niepodzielni — platforma szkoleniowa$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Powiadomienia", exact: true })).toBeVisible();
+    await expect(page.locator("main")).toHaveCount(1);
   });
 
   test("/admin/sprawy (grupa włączona): ten sam tytuł karty co dotąd, ale nowy ekran „Sprawy do decyzji”", async ({ page }) => {

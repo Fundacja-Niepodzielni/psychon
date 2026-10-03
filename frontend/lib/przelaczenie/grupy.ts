@@ -55,12 +55,12 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia sześć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia siedem: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
  * pod własnym adresem z kursem w ścieżce; wchodzi się na niego z ekranu kursu), `nabor` i `listaOsob`
- * (te dwie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem) oraz `kartaOsoby`. Pozostałe mają tu jeszcze
+ * (te dwie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem), `kartaOsoby` oraz `powiadomienia` (ten sam adres `/admin/emails`: treść strony zamienia się na ekran „Powiadomienia”). Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -108,7 +108,7 @@ export const GRUPY = {
    */
   powiadomienia: {
     klucz: "powiadomienia",
-    wlaczona: false,
+    wlaczona: true,
     ekrany: [
       {
         panel: "administracja",

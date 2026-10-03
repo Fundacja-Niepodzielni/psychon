@@ -43,7 +43,8 @@ const { default: LearningTimePage } = await import("@/app/(administracja)/admin/
 const { default: OnboardingPage } = await import(
   "@/app/(administracja)/admin/ekran-startowy/StaraTresc"
 );
-const { default: EmailsPage } = await import("@/app/(administracja)/admin/emails/page");
+const { default: EmailsPage } = await import("@/app/(administracja)/admin/emails/StaraTresc");
+const { default: EmailsRoutedPage } = await import("@/app/(administracja)/admin/emails/page");
 const { default: ProfileQueuePage } = await import("@/app/(administracja)/admin/profile/page");
 const { default: ProfileDetailPage } = await import(
   "@/app/(administracja)/admin/profile/[id]/StaraTresc"
@@ -173,6 +174,20 @@ const SCREENS: ScreenCase[] = [
       ]),
     },
     seen: "marta@example.test",
+  },
+  {
+    // Strona pod adresem w jej dzisiejszym stanie przełączenia (grupa `powiadomienia`
+    // włączona: ekran „Powiadomienia”) — rola spoza administracji go nie widzi.
+    url: "/admin/emails (ekran Powiadomienia)",
+    element: () => <EmailsRoutedPage />,
+    routes: {
+      "/admin/notification-settings": {
+        types: [{ type: "application.accepted", enabled: true }],
+        supervision_reminder: { enabled: true, send_at: "08:00" },
+      },
+      "/admin/emails": page([]),
+    },
+    seen: "Wyłączony rodzaj powiadomienia nie tworzy",
   },
   {
     url: "/admin/profile",

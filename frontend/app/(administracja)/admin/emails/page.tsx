@@ -1,220 +1,26 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import Badge from "@/components/ui/Badge";
-import Table, { type Column } from "@/components/ui/Table";
-import ListTemplate from "@/components/templates/ListTemplate";
-import { apiPaged, type PaginationMeta } from "@/lib/api";
-import { useZasobStronicowany } from "@/lib/hooks/useZasobStronicowany";
-import type { EmailItem, EmailSender } from "@/lib/notifications/types";
+import "@/design-system/tokeny/tokeny.css";
+import { DostawcaPowloki } from "@/design-system/szablony/KontekstPowloki";
+import { GRUPY } from "@/lib/przelaczenie/grupy";
+import { PowiadomieniaEmail } from "@/nowy-front/powiadomienia-email/PowiadomieniaEmail";
+import StaraTresc from "./StaraTresc";
 
 /**
- * Zdanie zamiast literału/placeholdera, gdy zaplecze nie ma ustawionego
- * `MAIL_FROM_ADDRESS` — decyzja architekta (2026-09-18): ekran nie zmyśla
- * adresu, mówi wprost, że go nie ustawiono.
+ * Trasa `/admin/emails` — ekran „Powiadomienia” (H16). Adres się nie zmienia:
+ * strona czyta rejestr przełączenia (`lib/przelaczenie/grupy.ts`, grupa
+ * `powiadomienia`). Grupa wyłączona → dotychczasowa skrzynka e-maili
+ * (`StaraTresc.tsx`, przeniesiona bez zmiany); grupa włączona → ekran nowego
+ * frontu w powłoce panelu administracji. Dostęp ma wyłącznie administracja
+ * (`project_manager`, `super_admin`): strażnik ról stoi w układzie
+ * `(administracja)/admin/layout.tsx` nad każdą stroną tej grupy tras.
  */
-const NADAWCA_NIEUSTAWIONY = "Adres nadawcy zależy od wdrożenia — nieustawiony.";
-
-/** Sprawdza kształt `meta.extra.from` z ładunku, zamiast ufać rzutowaniu. */
-function jestNadawca(wartosc: unknown): wartosc is EmailSender {
-  return (
-    typeof wartosc === "object" &&
-    wartosc !== null &&
-    typeof (wartosc as { address?: unknown }).address === "string" &&
-    ((wartosc as { name?: unknown }).name === null ||
-      typeof (wartosc as { name?: unknown }).name === "string")
-  );
-}
-
-function opiszNadawce(from: unknown): string {
-  if (!jestNadawca(from)) return NADAWCA_NIEUSTAWIONY;
-  return from.name ? `${from.name} <${from.address}>` : from.address;
-}
-
-const STATUS_LABEL: Record<EmailItem["status"], string> = {
-  queued: "W kolejce",
-  sent: "Wysłano",
-  failed: "Błąd",
-  simulated: "Symulowany",
-};
-
-const STATUS_VARIANT: Record<
-  EmailItem["status"],
-  "neutral" | "success" | "warning" | "danger" | "info" | "accent"
-> = {
-  queued: "neutral",
-  sent: "success",
-  failed: "danger",
-  simulated: "info",
-};
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("pl-PL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function pobierzEmaile(
-  strona: number,
-): Promise<{ data: EmailItem[]; meta?: PaginationMeta }> {
-  return apiPaged<EmailItem>(`/admin/emails?page=${strona}&per_page=25`);
-}
-
-/**
- * H16 · Skrzynka e-maili symulowanych (#/admin/emails), na `ListTemplate`
- * (C2 wariant C). Nic nigdy nie wychodzi w świat — status jest zawsze
- * `simulated` na hackathonie.
- */
-export default function AdminEmailsPage() {
-  const [preview, setPreview] = useState<EmailItem | null>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const { stan, meta, strona, ustawStrone, ponow } = useZasobStronicowany<EmailItem>(
-    pobierzEmaile,
-    [],
-    "Nie udało się połączyć z serwerem. Sprawdź, czy backend działa.",
-  );
-
-  useEffect(() => {
-    if (!preview) return;
-    const wywolanyPrzez = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-
-    function zamknijNaEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setPreview(null);
-    }
-    window.addEventListener("keydown", zamknijNaEscape);
-
-    return () => {
-      window.removeEventListener("keydown", zamknijNaEscape);
-      wywolanyPrzez?.focus();
-    };
-  }, [preview]);
-
-  const dane = stan.status === "success" ? stan.data : [];
-  const listaPusta = stan.status === "success" && dane.length === 0;
-
-  const columns: Column<EmailItem>[] = [
-    {
-      key: "to_email",
-      header: "Odbiorca",
-      render: (row) => <span className="font-medium text-ink">{row.to_email}</span>,
-    },
-    { key: "subject", header: "Temat", render: (row) => row.subject },
-    {
-      key: "status",
-      header: "Status",
-      render: (row) => (
-        <Badge variant={STATUS_VARIANT[row.status]}>{STATUS_LABEL[row.status]}</Badge>
-      ),
-    },
-    {
-      key: "sent_at",
-      header: "Czas",
-      render: (row) => formatDateTime(row.sent_at ?? row.created_at),
-    },
-    {
-      key: "actions",
-      header: "Podgląd",
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => setPreview(row)}
-          className="text-small font-medium text-primary hover:underline focus-visible:focus-ring"
-        >
-          Podgląd
-        </button>
-      ),
-    },
-  ];
+export default function StronaPowiadomien() {
+  if (!GRUPY.powiadomienia.wlaczona) return <StaraTresc />;
 
   return (
-    <>
-      <ListTemplate
-        naglowek={{
-          title: "Skrzynka e-maili",
-          action: meta && <Badge variant="accent">{meta.total} łącznie</Badge>,
-        }}
-        stan={listaPusta ? "empty" : stan.status}
-        httpStatus={stan.status === "error" ? stan.httpStatus : undefined}
-        komunikatLadowania="Wczytywanie…"
-        komunikatBledu={stan.status === "error" ? stan.message : undefined}
-        komunikatBleduTytul=""
-        onPonow={ponow}
-        pustyTytul="Brak wysłanych e-maili."
-        paginacja={
-          meta
-            ? { strona, ostatniaStrona: meta.last_page, onZmien: ustawStrone }
-            : undefined
-        }
-      >
-        <Table
-          columns={columns}
-          rows={dane}
-          rowKey={(row) => row.id}
-          caption="Wysłane (symulowane) e-maile"
-          emptyMessage="Brak wysłanych e-maili."
-        />
-      </ListTemplate>
-
-      {preview && (
-        <div
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Podgląd e-maila — ${preview.subject}`}
-          tabIndex={-1}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-          onClick={() => setPreview(null)}
-        >
-          <div
-            className="w-full max-w-xl overflow-hidden rounded-md border border-line bg-card shadow-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-line bg-card-warm px-6 py-4">
-              <div>
-                <p className="text-h4 font-bold text-ink">{preview.subject}</p>
-                <Badge variant={STATUS_VARIANT[preview.status]} className="mt-2">
-                  {STATUS_LABEL[preview.status]}
-                </Badge>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreview(null)}
-                aria-label="Zamknij podgląd"
-                className="rounded-pill p-1 text-subtle hover:bg-grey hover:text-ink focus-visible:focus-ring"
-              >
-                ✕
-              </button>
-            </div>
-
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 px-6 py-4 text-small">
-              <dt className="font-bold text-muted">Od:</dt>
-              <dd className="text-ink">
-                {opiszNadawce(meta?.extra?.from)}
-              </dd>
-              <dt className="font-bold text-muted">Do:</dt>
-              <dd className="text-ink">{preview.to_email}</dd>
-              <dt className="font-bold text-muted">Wysłano:</dt>
-              <dd className="text-ink">{formatDateTime(preview.sent_at ?? preview.created_at)}</dd>
-            </dl>
-
-            <div className="border-t border-line px-6 py-5">
-              {preview.body_html ? (
-                // Treść generuje wyłącznie Notify::send po stronie backendu
-                // (nl2br(e($body))) — bezpieczny, zescapowany HTML.
-                <div
-                  className="text-body text-body"
-                  dangerouslySetInnerHTML={{ __html: preview.body_html }}
-                />
-              ) : (
-                <p className="text-body text-subtle">Brak treści.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <div data-theme="light">
+      <DostawcaPowloki>
+        <PowiadomieniaEmail />
+      </DostawcaPowloki>
+    </div>
   );
 }
