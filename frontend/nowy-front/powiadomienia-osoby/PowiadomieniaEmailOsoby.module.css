@@ -1,0 +1,22 @@
+/* Moduł CSS karty „Powiadomienia e-mail” osoby — wartości wyglądu
+   wyłącznie z tokeny.css, zero zapisów wprost. */
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
