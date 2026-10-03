@@ -18,9 +18,10 @@ import {
  * `kartaOsoby` (karta osoby pod tym samym adresem `/admin/uczestniczki/[id]`), `profilPsychologa` (formularz wniosku pod tym samym adresem `/panel/profil-psychologa`), a także `edycjaLekcji` (ekran lekcji pod własnym, nowym adresem z kursem w ścieżce), `lekcja` (lekcja uczestnika pod tym samym adresem)
  * i `superwizjaUczestnika` (superwizja osoby wolontariackiej pod tym samym adresem `/panel/superwizja`).
  * Także `dziennikStazu` (dziennik stażu pod tym samym adresem `/panel/staz`).
+ * Także `certyfikat` (certyfikat pod tym samym adresem `/panel/certyfikat`), `dokumentyUczestnika` (dokumenty uczestnika pod tym samym adresem `/panel/dokumenty`).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["decyzjaProfilu", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -36,7 +37,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika i dziennik stażu", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat i dokumenty uczestnika", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -165,9 +166,11 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna trzydzieści jeden grup dzisiejszego kanonu", () => {
+  it("zna trzydzieści trzy grupy dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
+      "certyfikat",
       "decyzjaProfilu",
+      "dokumentyUczestnika",
       "dziennikStazu",
       "edycjaLekcji",
       "ekranStartowy",

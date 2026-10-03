@@ -134,6 +134,14 @@ describe("włączona grupa ma strony pod nowymi trasami", () => {
     expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.formyStazu, wlaczona: true }, wszystkieTrasy)).toEqual([]);
   });
 
+  it("grupy certyfikatu i dokumentów uczestnika mają stronę pod swoim adresem, a bez niej brak zostaje wykryty", () => {
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.certyfikat, wszystkieTrasy)).toEqual([]);
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.dokumentyUczestnika, wszystkieTrasy)).toEqual([]);
+    const bezStron = wszystkieTrasy.filter((trasa) => trasa !== "/panel/certyfikat" && trasa !== "/panel/dokumenty");
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.certyfikat, bezStron)).toEqual(["/panel/certyfikat"]);
+    expect(brakujaceStronyWlaczonejGrupy(GRUPY.dokumentyUczestnika, bezStron)).toEqual(["/panel/dokumenty"]);
+  });
+
   it("grupa naboru po włączeniu ma obie strony, a bez nich brak zostaje wykryty", () => {
     expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.nabor, wlaczona: true }, wszystkieTrasy)).toEqual([]);
     const bezStronNaboru = wszystkieTrasy.filter((trasa) => !trasa.startsWith("/admin/nabor"));

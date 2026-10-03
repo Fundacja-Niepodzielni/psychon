@@ -27,7 +27,7 @@ vi.mock("@/lib/api", async (importActual) => {
   };
 });
 
-const { default: CertificatePage } = await import("@/app/(uczestnik)/panel/certyfikat/page");
+const { default: CertificatePage } = await import("@/app/(uczestnik)/panel/certyfikat/StaraTresc");
 
 const warunkiSpelnione = {
   eligible: true,

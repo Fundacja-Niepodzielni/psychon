@@ -1,0 +1,53 @@
+/* Moduł CSS ekranów „Certyfikat” i „Dokumenty” — wartości wyglądu wyłącznie z
+   tokenów, zero zapisów wprost. Szerokość i odstępy obszarów daje szablon. */
+.stos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+}
+
+.stos > * {
+  min-width: 0;
+}
+
+.stanPusty {
+  margin: 0;
+  color: var(--text);
+}
+
+/* Komunikat stanu i błędu akcji: wygląd jak `Notice`, ale tytuł jest nagłówkiem
+   drugiego stopnia — pod `h1` ekranu `Notice` (zawsze `h3`) łamałby kolejność nagłówków. */
+.komunikat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-10);
+  color: var(--ink);
+}
+
+.komunikatUwaga {
+  background: var(--warn-bg);
+}
+
+.komunikatBlad {
+  background: var(--error-bg);
+}
+
+.komunikatTresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.komunikatAkcja {
+  margin-top: var(--space-6);
+}
+
+/* Cel programowego fokusu z przycisku głównego, gdy certyfikat jest jeszcze niedostępny. */
+.celFokusu:focus {
+  outline: none;
+}

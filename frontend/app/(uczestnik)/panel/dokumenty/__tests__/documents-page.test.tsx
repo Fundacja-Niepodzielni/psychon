@@ -20,7 +20,7 @@ vi.mock("@/lib/api", async (importActual) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const { default: DocumentsPage } = await import("@/app/(uczestnik)/panel/dokumenty/page");
+const { default: DocumentsPage } = await import("@/app/(uczestnik)/panel/dokumenty/StaraTresc");
 
 const LOADED = {
   documents: [

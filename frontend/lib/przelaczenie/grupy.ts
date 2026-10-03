@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia trzy: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia pięć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -257,6 +257,38 @@ export const GRUPY = {
         staraTrasa: "/panel/staz",
         nowaTrasa: "/panel/staz",
         trasaPoligonu: "/nowy-front/staz",
+      },
+    ],
+  },
+  /**
+   * Certyfikat ukończenia programu (H13) — uczestnik; ten sam adres co
+   * dzisiejszy ekran certyfikatu, treść strony zamienia się na ekran nowego frontu.
+   */
+  certyfikat: {
+    klucz: "certyfikat",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/certyfikat",
+        nowaTrasa: "/panel/certyfikat",
+        trasaPoligonu: "/nowy-front/certyfikat",
+      },
+    ],
+  },
+  /**
+   * Dokumenty uczestnika (H14) — lista wydanych dokumentów i dokumenty do
+   * wygenerowania; ten sam adres co dzisiejszy ekran dokumentów.
+   */
+  dokumentyUczestnika: {
+    klucz: "dokumentyUczestnika",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/dokumenty",
+        nowaTrasa: "/panel/dokumenty",
+        trasaPoligonu: "/nowy-front/dokumenty",
       },
     ],
   },
