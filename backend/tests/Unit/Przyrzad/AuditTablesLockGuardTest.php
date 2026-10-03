@@ -19,7 +19,7 @@ use SplFileInfo;
  *      migracje, seedery, testy, trasy, konfiguracja) jest czerwone — bo to znaczy,
  *      że ktoś otwiera blokadę obok wspólnego pomocnika.
  *   2. Klasę pomocnika wolno wymienić tylko w plikach z list niżej. W kodzie
- *      aplikacji lista jest PUSTA; w testach są na niej wyłącznie dwa miejsca
+ *      aplikacji lista ma JEDNO miejsce (jednorazowe czyszczenie z przejścia na produkcję, `ProbeDataPurge`); w testach są na niej wyłącznie dwa miejsca
  *      sprzątania bazy i świadkowie samej blokady.
  *
  * Kontrola dodatnia w obie strony stoi w tym samym pliku: reguła dostaje sztuczne
@@ -44,11 +44,13 @@ final class AuditTablesLockGuardTest extends TestCase
     private const array SCANNED = ['app', 'bootstrap', 'config', 'database', 'resources', 'routes', 'tests'];
 
     /**
-     * Pliki kodu aplikacji, którym wolno wołać pomocnika.
+     * Pliki kodu aplikacji, którym wolno wołać pomocnika: jednorazowe czyszczenie z przejścia na produkcję.
      *
      * @var list<string>
      */
-    private const array APP_ALLOWED = [];
+    private const array APP_ALLOWED = [
+        'app/Services/Cutover/ProbeDataPurge.php',
+    ];
 
     /**
      * Pliki testów, którym wolno wołać pomocnika: sprzątanie bazy i świadkowie blokady.

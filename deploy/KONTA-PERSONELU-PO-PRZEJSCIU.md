@@ -41,8 +41,8 @@ jej brak — również odmowa.
 - Jeden identyfikator liczbowy na wiersz; puste wiersze i wiersze zaczynające się od `#`
   są pomijane. Nic poza liczbami — żadnych imion ani adresów w komentarzach.
 - Plik powstaje w chwili przejścia z danych w sejfie, leży poza repozytorium i poza
-  katalogami aplikacji, prawa `600`. Po wpisaniu wyniku do protokołu administrator hosta
-  usuwa go z hosta i z kontenera (krok 9 procedury).
+  katalogami aplikacji, prawa `600`. Z kontenera usuwa się go w kroku 9 procedury; z hosta
+  — wyłącznie po potwierdzeniu właściciela wpisanym do protokołu.
 - Identyfikator konta właściciel odczytuje w panelu administracji (lista osób filtrowana
   rolą), porównując osoby z tymi zapisanymi w sejfie. Identyfikatory nie trafiają do
   repozytorium ani do korespondencji.
@@ -104,3 +104,7 @@ administrator tożsamości Fundacji:
 
 To dzieje się poza repozytorium i poza bazą PsychON — polecenie tego nie robi i nie
 mierzy (krok 7 procedury).
+
+Polecenie czyszczące nie dotyka systemu Kont Niepodzielni (Keycloak). **Konta testowe w
+systemie Kont usuwa właściciel w osobnym kroku ręcznym** (krok 7 procedury, **ręka
+właściciela**); usunięcie konta próbnego z bazy PsychON nie usuwa tożsamości w systemie Kont.

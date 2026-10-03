@@ -35,6 +35,7 @@ class AuditIndexRequest extends FormRequest
         'legal_document.published', 'legal_document.accepted',
         'notification_settings.updated',
         'cooperation_request.created', 'cooperation_request.answered',
+        'trial_data.purged',
     ];
 
     public function authorize(): bool

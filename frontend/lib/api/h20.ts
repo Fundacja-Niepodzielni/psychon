@@ -97,6 +97,7 @@ export const AUDIT_ACTIONS = [
   "notification_settings.updated",
   "cooperation_request.created",
   "cooperation_request.answered",
+  "trial_data.purged",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

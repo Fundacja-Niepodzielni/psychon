@@ -38,4 +38,5 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   "notification_settings.updated": "Ustawienia powiadomień zmienione",
   "cooperation_request.created": "Zgłoszenie współpracy złożone",
   "cooperation_request.answered": "Odpowiedź na zgłoszenie współpracy",
+  "trial_data.purged": "Dane z fazy testowej usunięte przy przejściu na produkcję",
 };
