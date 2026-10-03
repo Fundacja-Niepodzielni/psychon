@@ -102,12 +102,16 @@ export function PrzyciskiPublikacji({ kurs, onOpublikuj, onZapiszIWyjdz }: Wlasc
       <PrzyciskGlowny kurs={kurs} onOpublikuj={onOpublikuj} />
       {!kurs.is_published && (
         <a className={style.przyciskPodgladu} href={adresPodgladu(kurs)}>
-          Podgląd jako uczestnik
+          <span>
+            Podgląd<span className={style.tylkoSzeroki}> jako uczestnik</span>
+          </span>
         </a>
       )}
       {!kurs.is_published && onZapiszIWyjdz && (
         <Button poziom="outline" onClick={onZapiszIWyjdz}>
-          Zapisz szkic i wyjdź
+          <span>
+            Zapisz<span className={style.tylkoSzeroki}> szkic</span> i wyjdź
+          </span>
         </Button>
       )}
     </>
@@ -123,7 +127,7 @@ export function PasPublikacji({
 }: WlasciwosciPrzyciskuGlownego & { stan: StanPublikacji }) {
   const liczba = stan.doZrobienia.length;
   return (
-    <>
+    <div className={style.pasKarta}>
       <p className={style.pasStan}>
         <b>{kurs.is_published ? "Opublikowany" : "Szkic"}</b>
         {liczba > 0 && (
@@ -139,7 +143,7 @@ export function PasPublikacji({
       <div className={style.pasDzialania}>
         <PrzyciskiPublikacji kurs={kurs} onOpublikuj={onOpublikuj} onZapiszIWyjdz={onZapiszIWyjdz} />
       </div>
-    </>
+    </div>
   );
 }
 

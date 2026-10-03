@@ -475,7 +475,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
         }
 
         // Szkic niesie stałą plakietkę, zdanie o samoczynnym zapisie i przycisk wyjścia z obrysem; kurs opublikowany żadnego z nich.
-        const wyjscie = page.getByRole("button", { name: "Zapisz szkic i wyjdź" });
+        const wyjscie = page.getByRole("button", { name: /^Zapisz (szkic )?i wyjdź$/ });
         if (stan.kurs.is_published) {
           await expect(page.getByText("Szkic — zapisany")).toHaveCount(0);
           await expect(page.getByText("Zmiany zapisują się same.")).toHaveCount(0);
@@ -629,7 +629,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await page.getByRole("button", { name: "Opublikuj kurs" }).locator("visible=true").click();
       await expect(page.getByRole("region", { name: "Publikacja" }).getByText("Kurs jest opublikowany.")).toBeVisible();
       await expect(page.getByRole("button", { name: "Opublikuj kurs" })).toHaveCount(0);
-      await expect(page.getByRole("link", { name: "Podgląd jako uczestnik" }).locator("visible=true")).toHaveAttribute(
+      await expect(page.getByRole("link", { name: /^Podgląd( jako uczestnik)?$/ }).locator("visible=true")).toHaveAttribute(
         "href",
         "/panel/kursy/wywiad-psychologiczny?podglad=1",
       );
@@ -690,7 +690,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await otworz(page, stan);
       await zrzut(page, `administracja--kurs--szkic-zapisany--${szerokosc}`, process.env.PW_ZRZUTY_ODBIOR);
 
-      await page.getByRole("button", { name: "Zapisz szkic i wyjdź" }).click();
+      await page.getByRole("button", { name: /^Zapisz (szkic )?i wyjdź$/ }).click();
       await expect(page).toHaveURL(/\/admin\/kursy$/);
       expect(zapisy).toEqual([]);
     });
@@ -706,7 +706,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
       await page.getByRole("button", { name: "Przenieś „Wprowadzenie do wywiadu” niżej" }).click();
       await expect.poll(() => zapisy.length).toBe(1);
-      await page.getByRole("button", { name: "Zapisz szkic i wyjdź" }).click();
+      await page.getByRole("button", { name: /^Zapisz (szkic )?i wyjdź$/ }).click();
       await page.waitForTimeout(600);
       await expect(page).toHaveURL(/\/admin\/kursy\/4$/);
 
@@ -728,7 +728,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
       await page.getByRole("button", { name: "Przenieś „Wprowadzenie do wywiadu” niżej" }).click();
       await expect.poll(() => zapisy.length).toBe(1);
-      await page.getByRole("button", { name: "Zapisz szkic i wyjdź" }).click();
+      await page.getByRole("button", { name: /^Zapisz (szkic )?i wyjdź$/ }).click();
       zakoncz();
 
       const komunikat = page.getByRole("alert").filter({ hasText: "Szkic nie został zapisany" });
@@ -1169,15 +1169,15 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
 /**
  * Nagłówek tematu w karcie „Tematy i lekcje”: strzałka zwijania przy nazwie,
- * „n lekcji · m min” po prawej w jednym wierszu z nazwą, jedna ikona z listą
- * opcji na końcu. Każdy przycisk ma co najmniej 44 × 44 px; lista otwiera się pod
+ * „n lekcji · m min” od 600 px po prawej w jednym wierszu z nazwą, a poniżej 600 px pod nazwą
+ * (w kolumnie nazwy, między strzałką a ołówkiem), jedna ikona z listą opcji na końcu. Każdy przycisk ma co najmniej 44 × 44 px; lista otwiera się pod
  * ikoną, nie wychodzi poza okno i nie wywołuje przewijania w poziomie.
  */
 for (const { szerokosc, wysokosc } of OKNA) {
   test.describe(`ekran kursu administracji — ${szerokosc} px, nagłówek tematu`, () => {
     test.use({ viewport: { width: szerokosc, height: wysokosc } });
 
-    test("strzałka, nazwa i suma w jednym wierszu, ołówek z listą opcji", async ({ page }) => {
+    test("strzałka, nazwa i suma w jednym wierszu (od 600 px) albo suma pod nazwą (poniżej), ołówek z listą opcji", async ({ page }) => {
       const stan = STANY[0];
       await instalujAtrapy(page, stan);
       await otworz(page, stan);
@@ -1192,8 +1192,9 @@ for (const { szerokosc, wysokosc } of OKNA) {
           const r = (el: HTMLElement) => el.getBoundingClientRect();
           return {
             nazwa: naglowek.textContent ?? "",
-            strzalka: { w: r(strzalka).width, h: r(strzalka).height, prawa: r(strzalka).right },
-            olowek: { w: r(olowek).width, h: r(olowek).height, lewa: r(olowek).left, prawa: r(olowek).right },
+            pas: { gora: r(pas).top, dol: r(pas).bottom },
+            strzalka: { w: r(strzalka).width, h: r(strzalka).height, prawa: r(strzalka).right, srodek: (r(strzalka).top + r(strzalka).bottom) / 2 },
+            olowek: { w: r(olowek).width, h: r(olowek).height, lewa: r(olowek).left, prawa: r(olowek).right, srodek: (r(olowek).top + r(olowek).bottom) / 2 },
             naglowek: { lewa: r(naglowek).left, prawa: r(naglowek).right, gora: r(naglowek).top, dol: r(naglowek).bottom },
             suma: { lewa: r(suma).left, prawa: r(suma).right, gora: r(suma).top, dol: r(suma).bottom, tekst: suma.textContent ?? "" },
             etykietaOlowka: olowek.getAttribute("aria-label"),
@@ -1212,12 +1213,22 @@ for (const { szerokosc, wysokosc } of OKNA) {
         expect(p.etykietaOlowka).toBe(`Opcje tematu ${p.nazwa}`);
         expect(p.etykietaStrzalki).toBe(`Zwiń temat ${p.nazwa}`);
         expect(p.rozwiniety).toBe("false");
-        // Suma po prawej nazwy, przed ołówkiem, w tym samym wierszu: środek sumy leży w pionie nazwy.
-        expect(p.suma.lewa, `${p.nazwa}: suma po prawej nazwy`).toBeGreaterThanOrEqual(p.naglowek.prawa - 1);
         expect(p.suma.prawa, `${p.nazwa}: suma przed ołówkiem`).toBeLessThanOrEqual(p.olowek.lewa + 0.5);
-        const srodek = (p.suma.gora + p.suma.dol) / 2;
-        expect(srodek, `${p.nazwa}: suma w wierszu z nazwą`).toBeGreaterThanOrEqual(p.naglowek.gora - 1);
-        expect(srodek, `${p.nazwa}: suma w wierszu z nazwą`).toBeLessThanOrEqual(p.naglowek.dol + 1);
+        if (szerokosc < 600) {
+          // Poniżej 600 px suma stoi pod nazwą, w kolumnie nazwy; strzałka i ołówek są wyśrodkowane w pionie wiersza.
+          expect(p.suma.gora, `${p.nazwa}: suma pod nazwą`).toBeGreaterThanOrEqual(p.naglowek.dol - 1);
+          expect(p.suma.lewa, `${p.nazwa}: suma wyrównana do lewej krawędzi nazwy`).toBeGreaterThanOrEqual(p.naglowek.lewa - 1);
+          expect(p.suma.lewa, `${p.nazwa}: suma wyrównana do lewej krawędzi nazwy`).toBeLessThanOrEqual(p.naglowek.lewa + 1);
+          const srodekWiersza = (p.pas.gora + p.pas.dol) / 2;
+          expect(Math.abs(p.strzalka.srodek - srodekWiersza), `${p.nazwa}: strzałka w pionie na środku wiersza`).toBeLessThanOrEqual(1);
+          expect(Math.abs(p.olowek.srodek - srodekWiersza), `${p.nazwa}: ołówek w pionie na środku wiersza`).toBeLessThanOrEqual(1);
+        } else {
+          // Od 600 px suma po prawej nazwy, przed ołówkiem, w tym samym wierszu: środek sumy leży w pionie nazwy.
+          expect(p.suma.lewa, `${p.nazwa}: suma po prawej nazwy`).toBeGreaterThanOrEqual(p.naglowek.prawa - 1);
+          const srodek = (p.suma.gora + p.suma.dol) / 2;
+          expect(srodek, `${p.nazwa}: suma w wierszu z nazwą`).toBeGreaterThanOrEqual(p.naglowek.gora - 1);
+          expect(srodek, `${p.nazwa}: suma w wierszu z nazwą`).toBeLessThanOrEqual(p.naglowek.dol + 1);
+        }
         expect(p.naglowek.lewa, `${p.nazwa}: nazwa po strzałce`).toBeGreaterThanOrEqual(p.strzalka.prawa - 0.5);
         expect(p.wOknie).toBe(true);
       }
@@ -1245,14 +1256,14 @@ for (const { szerokosc, wysokosc } of OKNA) {
 
 /**
  * Plakietka „n lekcja wymaga uwagi” w nagłówku zwiniętego tematu: tekst nigdy się nie łamie;
- * poniżej 600 px stoi w osobnej linii pod nazwą, a „n lekcji · m min” i ołówek zostają
- * w linii nazwy; od 600 px stoi pod nazwą jak dotąd.
+ * pod nazwą stoi też poniżej 600 px, razem z „n lekcji · m min” w kolumnie nazwy (ołówek
+ * zostaje w swojej kolumnie, wyśrodkowany w pionie); od 600 px „n lekcji · m min” stoi po prawej nazwy.
  */
 for (const { szerokosc, wysokosc } of OKNA) {
   test.describe(`ekran kursu administracji — ${szerokosc} px, plakietka w nagłówku tematu`, () => {
     test.use({ viewport: { width: szerokosc, height: wysokosc } });
 
-    test("plakietka bez łamania tekstu, na wąskim ekranie w osobnej linii pod nazwą", async ({ page }) => {
+    test("plakietka bez łamania tekstu, pod nazwą także na wąskim ekranie, razem z liczbą lekcji", async ({ page }) => {
       const stan = STANY[0];
       await instalujAtrapy(page, stan);
       await otworz(page, stan);
@@ -1277,7 +1288,7 @@ for (const { szerokosc, wysokosc } of OKNA) {
             wierszeTekstu: wiersze,
             plakietka: { lewa: r(plakietka).left, gora: r(plakietka).top, dol: r(plakietka).bottom },
             naglowek: { lewa: r(naglowek).left, gora: r(naglowek).top, dol: r(naglowek).bottom },
-            suma: { srodek: (r(suma).top + r(suma).bottom) / 2 },
+            suma: { srodek: (r(suma).top + r(suma).bottom) / 2, gora: r(suma).top, lewa: r(suma).left },
             olowek: { gora: r(olowek).top, dol: r(olowek).bottom },
           };
         }),
@@ -1289,12 +1300,87 @@ for (const { szerokosc, wysokosc } of OKNA) {
         expect(p.plakietka.gora, `${p.nazwa}: plakietka pod nazwą`).toBeGreaterThanOrEqual(p.naglowek.dol - 1);
         expect(p.plakietka.lewa, `${p.nazwa}: plakietka nie wystaje na lewo od nazwy`).toBeGreaterThanOrEqual(p.naglowek.lewa - 1);
         if (szerokosc < 600) {
-          // Osobna linia: ołówek i liczba lekcji stoją wyżej niż plakietka, w linii nazwy.
-          expect(p.olowek.dol, `${p.nazwa}: ołówek w linii nazwy`).toBeLessThanOrEqual(p.plakietka.gora + 1);
-          expect(p.suma.srodek, `${p.nazwa}: liczba lekcji w linii nazwy`).toBeLessThanOrEqual(p.naglowek.dol + 1);
-          expect(p.suma.srodek, `${p.nazwa}: liczba lekcji w linii nazwy`).toBeGreaterThanOrEqual(p.naglowek.gora - 1);
+          // Liczba lekcji stoi pod nazwą, w kolumnie nazwy razem z plakietką (nie w linii nazwy).
+          expect(p.suma.gora, `${p.nazwa}: liczba lekcji pod nazwą`).toBeGreaterThanOrEqual(p.naglowek.dol - 1);
+          expect(p.suma.lewa, `${p.nazwa}: liczba lekcji wyrównana do nazwy`).toBeGreaterThanOrEqual(p.naglowek.lewa - 1);
+          expect(p.suma.lewa, `${p.nazwa}: liczba lekcji wyrównana do nazwy`).toBeLessThanOrEqual(p.naglowek.lewa + 1);
         }
       }
     });
   });
+}
+
+/**
+ * Karta stanu publikacji na telefonie (poniżej 600 px): słowo stanu i odnośnik „do zrobienia n rzeczy”
+ * zostają w lewej kolumnie siatki — zawijają się w jej obrębie i nie dotykają przycisku „Opublikuj kurs”
+ * (odstęp siatki 8 px), także przy dwucyfrowej liczbie; ramka fokusu odnośnika nie sięga na przycisk.
+ */
+const GRUBOSC_RAMKI_PASA = 3;
+const ODSTEP_SIATKI_PASA = 8;
+for (const { szerokosc, wysokosc } of [
+  { szerokosc: 320, wysokosc: 720 },
+  { szerokosc: 390, wysokosc: 844 },
+]) {
+  for (const liczba of [2, 12]) {
+    test.describe(`ekran kursu administracji — ${szerokosc} px, stan w karcie publikacji (${liczba} rzeczy)`, () => {
+      test.use({ viewport: { width: szerokosc, height: wysokosc } });
+
+      test("stan i odnośnik mieszczą się w lewej kolumnie, ramka fokusu nie sięga na przycisk", async ({ page }) => {
+        const stan: Stan =
+          liczba === 2
+            ? STANY[0]
+            : {
+                ...STANY[0],
+                kurs: {
+                  ...STANY[0].kurs,
+                  publication_gaps: {
+                    blocking: Array.from({ length: liczba }, (_, i) => ({ code: "lesson_empty" as const, lesson_id: 31 + i })),
+                    waiting: [],
+                  },
+                },
+                naglowekListy: `Do zrobienia (${liczba})`,
+                pas: `do zrobienia ${liczba} rzeczy`,
+              };
+        await instalujAtrapy(page, stan);
+        await otworz(page, stan);
+        const odnosnik = page.locator("[data-obszar='pasek-waski'] p a");
+        await expect(odnosnik).toContainText(`do zrobienia ${liczba} rzeczy`);
+        await page.keyboard.press("Tab");
+        await odnosnik.focus();
+
+        const m = await page.evaluate((grubosc) => {
+          const pas = document.querySelector<HTMLElement>("[data-obszar='pasek-waski']")!;
+          const slowo = pas.querySelector<HTMLElement>("p b")!;
+          const link = pas.querySelector<HTMLElement>("p a")!;
+          const przycisk = Array.from(pas.querySelectorAll<HTMLElement>("button")).find((el) => (el.textContent ?? "").trim() === "Opublikuj kurs")!;
+          const prawaTekstu = (el: HTMLElement) => {
+            const zakres = document.createRange();
+            zakres.selectNodeContents(el);
+            return Math.max(...Array.from(zakres.getClientRects()).map((k) => k.right));
+          };
+          const pole = link.getBoundingClientRect();
+          const ramkaPseudo = getComputedStyle(link, "::after");
+          const prawaRamki = pole.left + parseFloat(ramkaPseudo.left) + parseFloat(ramkaPseudo.width);
+          return {
+            przyciskLewa: przycisk.getBoundingClientRect().left,
+            slowoPrawa: prawaTekstu(slowo),
+            linkTekstPrawa: prawaTekstu(link),
+            linkPolePrawa: pole.right,
+            ramkaPrawaZewn: prawaRamki + grubosc,
+            ramkaJest: ramkaPseudo.content !== "none",
+            wiersze: new Set(Array.from((() => { const z = document.createRange(); z.selectNodeContents(link); return z.getClientRects(); })()).map((k) => Math.round(k.top))).size,
+            nadmiar: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          };
+        }, GRUBOSC_RAMKI_PASA);
+        const granica = m.przyciskLewa - ODSTEP_SIATKI_PASA + 0.5;
+        expect(m.slowoPrawa, "słowo stanu przed przyciskiem „Opublikuj kurs” z odstępem siatki").toBeLessThanOrEqual(granica);
+        expect(m.linkTekstPrawa, "tekst odnośnika przed przyciskiem z odstępem siatki").toBeLessThanOrEqual(granica);
+        expect(m.linkPolePrawa, "pole odnośnika przed przyciskiem z odstępem siatki").toBeLessThanOrEqual(granica);
+        expect(m.ramkaJest, "ramka fokusu odnośnika jest widoczna").toBe(true);
+        expect(m.ramkaPrawaZewn, "ramka fokusu odnośnika nie nachodzi na przycisk").toBeLessThanOrEqual(m.przyciskLewa);
+        expect(m.nadmiar, "bez przewijania w poziomie").toBeLessThanOrEqual(0);
+        console.log(`[stan-karty ${szerokosc}/${liczba}] ${JSON.stringify(m)}`);
+      });
+    });
+  }
 }

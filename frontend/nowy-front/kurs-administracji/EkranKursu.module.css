@@ -67,7 +67,12 @@
   transform: rotate(-90deg);
 }
 
+/* Od 600 px nazwa tematu i „n lekcji · m min” stoją w jednym wierszu (liczba po prawej
+   nazwy), a plakietka zwiniętego tematu pod nazwą. */
 .nazwaTematu {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-8);
   flex: 1 1 0;
   min-width: 0;
 }
@@ -78,11 +83,22 @@
   overflow-wrap: anywhere;
 }
 
+.nazwaTematu h3 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.metaTematu {
+  display: contents;
+}
+
 .nazwaTematu .maly {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-4) var(--space-8);
+  grid-column: 1;
+  grid-row: 2;
 }
 
 /* Tekst plakietki pod nazwą tematu nigdy się nie łamie. */
@@ -90,38 +106,44 @@
   white-space: nowrap;
 }
 
-/* Na wąskim ekranie plakietka stoi w osobnej linii pod nazwą tematu; strzałka, nazwa,
-   „n lekcji · m min” i ołówek zostają w jednej linii. */
-@media (max-width: 599px) {
-  .pasTematu {
-    flex-wrap: wrap;
-    row-gap: 0;
-  }
-
-  .nazwaTematu {
-    display: contents;
-  }
-
-  .nazwaTematu h3 {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .nazwaTematu .maly {
-    order: 1;
-    flex: 0 0 100%;
-    padding-left: calc(var(--hit-min) + var(--space-8));
-    padding-bottom: var(--space-4);
-  }
-}
-
 /* „3 lekcje · 75 min” stoi po prawej, w jednym wierszu z nazwą tematu. */
 .sumaTematu {
-  flex: 0 0 auto;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
   color: var(--muted);
   font-size: var(--fs-10);
   line-height: 1.4;
   white-space: nowrap;
+}
+
+/* Poniżej 600 px wiersz tematu ma trzy kolumny: strzałka, nazwa i ołówek. Pod nazwą,
+   w kolumnie nazwy, stoją „n lekcji · m min” i plakietka (zawijają się razem). Strzałka
+   i ołówek są wyśrodkowane w pionie. */
+@media (max-width: 599px) {
+  .pasTematu {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) var(--hit-min);
+    align-items: center;
+    column-gap: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .nazwaTematu {
+    display: block;
+  }
+
+  .metaTematu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4) var(--space-10);
+    margin-top: var(--space-4);
+  }
+
+  .sumaTematu {
+    align-self: auto;
+  }
 }
 
 .lekcje {
@@ -418,6 +440,70 @@
   justify-content: flex-end;
   gap: var(--space-8);
   min-width: 0;
+}
+
+/* Stan i przyciski wąskiego pasa. Od 600 px opakowanie nie wpływa na układ. */
+.pasKarta {
+  display: contents;
+}
+
+/* Słowa, które znikają z napisu przycisku poniżej 600 px („Podgląd jako uczestnik” →
+   „Podgląd”, „Zapisz szkic i wyjdź” → „Zapisz i wyjdź”). */
+@media (max-width: 599px) {
+  .tylkoSzeroki {
+    display: none;
+  }
+
+  /* Dwie równe kolumny: w wierszu 1 stan po lewej i przycisk główny po prawej, w wierszu 2
+     przyciski drugorzędne po równo (jeden sam zajmuje cały wiersz). */
+  .pasKarta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-8);
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .pasKarta > .pasStan {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* Stan i odnośnik zawijają się w obrębie lewej kolumny („do zrobienia 2” / „rzeczy”),
+     zamiast wychodzić na przycisk obok. */
+  .pasKarta > .pasStan,
+  .pasKarta > .pasStan > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Pole klikalne odnośnika sięga dwa piksele poza tekst; ta rezerwa trzyma je w kolumnie. */
+  .pasKarta > .pasStan > span {
+    padding-inline-end: var(--space-4);
+  }
+
+  .pasKarta > .pasDzialania {
+    display: contents;
+  }
+
+  .pasKarta > .pasDzialania > * {
+    grid-column: auto;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    padding-inline: var(--space-8);
+    text-align: center;
+  }
+
+  .pasKarta > .pasDzialania > :first-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .pasKarta > .pasDzialania > :nth-child(2):last-child {
+    grid-column: 1 / -1;
+  }
 }
 
 .wierszUstawien {

@@ -154,13 +154,15 @@ export function DrzewoKursu({
                 </button>
                 <div className={style.nazwaTematu}>
                   <Heading stopien={3}>{temat.tytul}</Heading>
-                  {zwiniety && uwaga > 0 && (
-                    <p className={style.maly}>
-                      <Badge wariant="warn">{zdanieUwagi(uwaga)}</Badge>
-                    </p>
-                  )}
+                  <div className={style.metaTematu}>
+                    <span className={style.sumaTematu}>{zdanieTematu(temat)}</span>
+                    {zwiniety && uwaga > 0 && (
+                      <p className={style.maly}>
+                        <Badge wariant="warn">{zdanieUwagi(uwaga)}</Badge>
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <span className={style.sumaTematu}>{zdanieTematu(temat)}</span>
                 <MenuOpcji
                   etykieta={`Opcje tematu ${temat.tytul}`}
                   znacznikFokusu={`opcje-${temat.id}`}
