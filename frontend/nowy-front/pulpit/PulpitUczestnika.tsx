@@ -28,7 +28,7 @@ import {
 import { formatujDziesietny } from "../wspolne/formatuj-dziesietny";
 import { ListaKursow } from "./ListaKursow";
 import { mianownikOdbytychSuperwizji, mianownikUkonczonychKursow } from "./odmiana-kafli";
-import { etapySciezki, wyliczNastepnyKrok, type NastepnyKrok } from "./nastepny-krok";
+import { etapySciezki, wyliczNastepnyKrok, zdanieObejrzanychMinut, type NastepnyKrok } from "./nastepny-krok";
 
 type StanEkranu = StanBezDanych | "ok";
 
@@ -204,6 +204,7 @@ export function PulpitUczestnika({ programUkonczony }: WlasciwosciPulpitUczestni
       }}
       nastepnyKrok={<NastepnyKrokBlok krok={krok} lekcjeEtapu={lekcjeEtapu} wToku={wToku} />}
       kafle={kafle}
+      ukladKafli={{ wyrownane: true }}
       glowna={
         <>
           {warunki.stan === "blad" && (
@@ -327,9 +328,10 @@ function NastepnyKrokBlok({
   }
 
   if (krok.rodzaj === "lekcja") {
+    const obejrzane = zdanieObejrzanychMinut(krok.lekcja);
     return (
       <KartaNastepnegoKroku etykieta={ETYKIETA_KROKU} naglowek={krok.lekcja.title}>
-        <Text>Kurs „{krok.kurs.title}”.</Text>
+        <Text>{obejrzane === null ? `Kurs „${krok.kurs.title}”.` : `Kurs „${krok.kurs.title}” · ${obejrzane}.`}</Text>
       </KartaNastepnegoKroku>
     );
   }

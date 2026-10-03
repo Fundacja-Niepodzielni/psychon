@@ -46,10 +46,19 @@ export function jednostka(liczba: number, [jeden, kilka, wiele]: FormyJednostki)
   return odmien(liczba, jeden, kilka, wiele);
 }
 
-const KAFLE: { klucz: keyof LicznikiPulpitu; id: string; etykieta: string; formy: FormyJednostki }[] = [
-  { klucz: "participants", id: "pulpit-uczestnicy", etykieta: "Uczestnicy w programie", formy: FORMY_OSOB },
-  { klucz: "completed", id: "pulpit-ukonczenia", etykieta: "Ukończenia programu", formy: FORMY_OSOB },
-  { klucz: "certificates", id: "pulpit-certyfikaty", etykieta: "Wydane certyfikaty", formy: FORMY_CERTYFIKATOW },
+/** Opisy pod liczbami: jedna krótka linia, bez danych, których odpowiedź serwera nie niesie. */
+export const OPIS_KAFLA_SPRAW = "w kolejkach niżej";
+
+const KAFLE: {
+  klucz: keyof LicznikiPulpitu;
+  id: string;
+  etykieta: string;
+  formy: FormyJednostki;
+  opis: string;
+}[] = [
+  { klucz: "participants", id: "pulpit-uczestnicy", etykieta: "Uczestnicy w programie", formy: FORMY_OSOB, opis: "z aktywnym kontem" },
+  { klucz: "completed", id: "pulpit-ukonczenia", etykieta: "Ukończenia programu", formy: FORMY_OSOB, opis: "program zakończony" },
+  { klucz: "certificates", id: "pulpit-certyfikaty", etykieta: "Wydane certyfikaty", formy: FORMY_CERTYFIKATOW, opis: "wydane łącznie" },
 ];
 
 export interface KafelPulpitu {
@@ -57,6 +66,8 @@ export interface KafelPulpitu {
   etykieta: string;
   wartosc: number;
   mianownik: string;
+  /** Jedna linia opisu pod liczbą. */
+  podpowiedz: string;
 }
 
 export interface WierszSprawy {
@@ -159,11 +170,12 @@ export const ADRES_SPRAW = "/admin/sprawy";
  * pytań (`KLUCZ_KOLEJKI_BEZ_AKCJI`) się nie liczy, bo „Sprawy” jej nie pokazują.
  */
 export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
-  const kafle = KAFLE.map(({ klucz, id, etykieta, formy }) => ({
+  const kaflaLicznikow = KAFLE.map(({ klucz, id, etykieta, formy, opis }) => ({
     id,
     etykieta,
     wartosc: dane.counters[klucz],
     mianownik: jednostka(dane.counters[klucz], formy),
+    podpowiedz: opis,
   }));
 
   const wiersze = dane.queues.map((kolejka) => ({
@@ -177,6 +189,19 @@ export function zbudujWidok(dane: PulpitAdministracji): WidokPulpitu {
 
   const razem = wiersze.reduce((suma, wiersz) => suma + wiersz.liczba, 0);
   const brakSpraw = razem === 0;
+
+  // Pierwszy kafel to suma kolejek z listy „Co czeka na decyzję” — ta sama liczba
+  // co „Razem” w stopce listy, bez drugiej reguły liczenia.
+  const kafle: KafelPulpitu[] = [
+    {
+      id: "pulpit-sprawy",
+      etykieta: "Czekają na decyzję",
+      wartosc: razem,
+      mianownik: jednostka(razem, FORMY_SPRAW),
+      podpowiedz: OPIS_KAFLA_SPRAW,
+    },
+    ...kaflaLicznikow,
+  ];
 
   const doOtwarcia = wiersze
     .filter((wiersz) => wiersz.otwierany)

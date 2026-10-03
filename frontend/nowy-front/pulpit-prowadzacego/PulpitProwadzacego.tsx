@@ -160,7 +160,8 @@ export function PulpitProwadzacego() {
         przyciskGlowny,
       }}
       nastepnyKrok={nastepnyKrok}
-      kafle={zbudujKafle(dane)}
+      kafle={zbudujKafle(dane, teraz)}
+      ukladKafli={{ wyrownane: true }}
       glowna={glowna}
       wspierajaca={
         <div className={style.sekcje}>

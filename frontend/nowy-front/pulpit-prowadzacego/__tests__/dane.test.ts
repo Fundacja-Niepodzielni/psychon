@@ -176,10 +176,42 @@ describe("pomocnicze", () => {
     expect(wynik).toHaveLength(20);
     expect(wynik.endsWith("…")).toBe(true);
   });
-  it("zbudujKafle: dokładnie jeden dominujący, trzy kafle, awaria daje kafel bez wartości", () => {
-    const kafle = dane.zbudujKafle(pulpit({ kursy: { stan: "awaria", rodzaj: "siec" } }));
-    expect(kafle).toHaveLength(3);
+  it("zbudujKafle: dokładnie jeden dominujący, cztery kafle, awaria daje kafel bez wartości", () => {
+    const kafle = dane.zbudujKafle(pulpit({ kursy: { stan: "awaria", rodzaj: "siec" } }), TERAZ);
+    expect(kafle).toHaveLength(4);
     expect(kafle.filter((k) => k.dominujacy)).toHaveLength(1);
-    expect(kafle.map((k) => k.wartosc)).toEqual([2, 2, undefined]);
+    expect(kafle.map((k) => k.wartosc)).toEqual([2, 2, undefined, 5]);
+  });
+
+  it("zbudujKafle: czwarty kafel to najbliższa superwizja — dzień z nazwą miesiąca, podpis z godziną, miejscem i zapisami", () => {
+    const kafel = dane.zbudujKafle(pulpit(), TERAZ)[3];
+    expect(kafel).toMatchObject({
+      id: "pulpit-superwizja",
+      etykieta: "Najbliższa superwizja",
+      wartosc: 5,
+      mianownik: "października",
+      podpowiedz: "18:00 online · zapisanych 3 z 8 miejsc",
+    });
+  });
+
+  it("zbudujKafle: bez nadchodzącego terminu kafel nie ma liczby, a podpis mówi, że terminów nie ma; awaria grupy bez podpisu", () => {
+    const bez = dane.zbudujKafle(pulpit({ grupa: { stan: "ok", dane: grupa(2, []) } }), TERAZ)[3];
+    expect(bez.wartosc).toBeUndefined();
+    expect(bez.podpowiedz).toBe("brak zaplanowanych terminów");
+    const awaria = dane.zbudujKafle(pulpit({ grupa: { stan: "awaria", rodzaj: "blad" } }), TERAZ)[3];
+    expect(awaria.wartosc).toBeUndefined();
+    expect(awaria.podpowiedz).toBeUndefined();
+  });
+
+  it("podpisTerminuSuperwizji: adres spotkania to „online”, inny tekst miejsca zostaje, brak miejsca bez słowa; liczby z zapisów i limitu", () => {
+    const podstawa = termin(7, "2026-10-05T16:00:00Z");
+    expect(dane.podpisTerminuSuperwizji({ ...podstawa, active_signups_count: 6 })).toBe("18:00 online · zapisanych 6 z 8 miejsc");
+    expect(dane.podpisTerminuSuperwizji({ ...podstawa, location_or_link: "Warszawa, sala 3" })).toBe(
+      "18:00 Warszawa, sala 3 · zapisanych 3 z 8 miejsc",
+    );
+    expect(dane.podpisTerminuSuperwizji({ ...podstawa, location_or_link: null })).toBe("18:00 · zapisanych 3 z 8 miejsc");
+    expect(dane.podpisTerminuSuperwizji({ ...podstawa, seats_limit: 1, active_signups_count: 0 })).toBe(
+      "18:00 online · zapisanych 0 z 1 miejsca",
+    );
   });
 });

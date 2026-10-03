@@ -16,7 +16,7 @@ import { api, ApiError } from "@/lib/api/klient";
 import { fetchInstructorQuestions, unansweredCount, type InstructorQuestion } from "@/lib/questions";
 import type { InstructorGroup, InstructorSlot } from "@/lib/h12/types";
 import type { StatRow } from "@/design-system/organizmy/StatRow/StatRow";
-import { formatujDateICzas } from "../wspolne/daty";
+import { formatujDate, formatujDateICzas } from "../wspolne/daty";
 
 /** Kształt z `MyInstructorProfileController::courses` (`h09`, wiersze 63-71). */
 export interface KursProwadzacego {
@@ -147,12 +147,38 @@ export function skrocTresc(tresc: string, maksimum = 140): string {
 
 type KafelPulpitu = Parameters<typeof StatRow>[0]["kafle"][number];
 
+/** „4 października” z terminu — dzień i nazwa miesiąca bez roku; `null`, gdy znacznika nie da się odczytać. */
+function dzienIMiesiac(znacznikIso: string): { dzien: number; miesiac: string } | null {
+  const dopasowanie = /^(\d{1,2}) (\S+)/.exec(formatujDate(znacznikIso));
+  return dopasowanie ? { dzien: Number(dopasowanie[1]), miesiac: dopasowanie[2] } : null;
+}
+
+/**
+ * Podpis najbliższej superwizji: „18:00 online · zapisanych 6 z 8 miejsc”.
+ * Godzina z terminu, miejsce z danych terminu (adres spotkania to „online”,
+ * inny tekst zostaje jak jest, brak miejsca — bez słowa), liczby z zapisów
+ * i limitu miejsc.
+ */
+export function podpisTerminuSuperwizji(termin: InstructorSlot): string {
+  const godzina = /(\d{2}:\d{2})$/.exec(formatujDateICzas(termin.starts_at))?.[1];
+  const miejsce = termin.location_or_link?.trim();
+  const gdzie = !miejsce ? undefined : /^https?:\/\//i.test(miejsce) ? "online" : miejsce;
+  const poczatek = [godzina, gdzie].filter(Boolean).join(" ");
+  const miejsca = termin.seats_limit === 1 ? "miejsca" : "miejsc";
+  const zapisy = `zapisanych ${termin.active_signups_count} z ${termin.seats_limit} ${miejsca}`;
+  return poczatek ? `${poczatek} · ${zapisy}` : zapisy;
+}
+
 /**
  * Pasek liczb: dokładnie jeden kafel dominujący (pytania), każdy z odnośnikiem
  * do ekranu, na którym z liczbą można coś zrobić. Sekcja z awarią daje kafel
- * bez wartości („—”), nigdy zero.
+ * bez wartości („—”), nigdy zero. Czwarty kafel to najbliższa superwizja: dzień
+ * i miesiąc jako liczba z nazwą miesiąca, pod nią podpis z godziną, miejscem i
+ * zapisami.
  */
-export function zbudujKafle(dane: DanePulpitu): KafelPulpitu[] {
+export function zbudujKafle(dane: DanePulpitu, teraz: Date = new Date()): KafelPulpitu[] {
+  const termin = dane.grupa.stan === "ok" ? nadchodzaceTerminy(dane.grupa.dane.slots, teraz)[0] : undefined;
+  const dzienMiesiac = termin ? dzienIMiesiac(termin.starts_at) : null;
   return [
     {
       id: "pulpit-pytania",
@@ -175,6 +201,18 @@ export function zbudujKafle(dane: DanePulpitu): KafelPulpitu[] {
       wartosc: dane.kursy.stan === "ok" ? dane.kursy.dane.length : undefined,
       mianownik: dane.kursy.stan === "ok" ? odmien(dane.kursy.dane.length, "kurs", "kursy", "kursów") : "kursów",
       href: ADRES_KURSOW,
+    },
+    {
+      id: "pulpit-superwizja",
+      etykieta: "Najbliższa superwizja",
+      wartosc: dzienMiesiac?.dzien,
+      mianownik: dzienMiesiac?.miesiac ?? "terminów",
+      podpowiedz: termin
+        ? podpisTerminuSuperwizji(termin)
+        : dane.grupa.stan === "ok"
+          ? "brak zaplanowanych terminów"
+          : undefined,
+      href: ADRES_GRUPY,
     },
   ];
 }

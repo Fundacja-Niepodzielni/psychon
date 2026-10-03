@@ -126,6 +126,7 @@ export function PulpitAdministracji() {
         },
       }}
       kafle={widok.kafle}
+      ukladKafli={{ duzeLiczby: true }}
       glowna={
         <div className={style.kolumna}>
           {ostrzezenie && (

@@ -20,6 +20,7 @@
  *     przed wszystkimi powyższymi — ukończony program nie wraca do lekcji;
  *  5. inaczej (ścieżka pusta albo pierwszy etap jeszcze niedostępny) → `brak`.
  */
+import { minutyZSekund } from "../lekcja/stan";
 
 export type StatusKursu = "locked" | "in_progress" | "completed";
 
@@ -39,6 +40,12 @@ export interface LekcjaKursu {
   title: string;
   sequence_order: number;
   is_completed: boolean;
+  /** Czas trwania lekcji w sekundach (`LessonSummaryResource`); odpowiedzi sprzed tego pola go nie niosą. */
+  duration_seconds?: number;
+  /** Czas aktywny zalogowanej osoby w lekcji; brak postępu: 0. */
+  active_seconds?: number;
+  /** Czy lekcja ma nagranie; lekcja bez nagrania nie ma czasu do obejrzenia. */
+  has_recording?: boolean;
 }
 
 export type NastepnyKrok =
@@ -99,4 +106,21 @@ export function wyliczNastepnyKrok(
   }
 
   return { rodzaj: "brak" };
+}
+
+/**
+ * Zdanie „obejrzane 12 z 20 minut” do podpisu następnego kroku — z czasu aktywnego
+ * i czasu trwania lekcji (`active_seconds`, `duration_seconds` z `GET /courses/{slug}`).
+ * Bez nagrania, bez czasu trwania albo bez ani jednej pełnej minuty oglądania: `null`
+ * (karta zostaje przy samym kursie). Forma bez rodzaju gramatycznego.
+ */
+export function zdanieObejrzanychMinut(lekcja: LekcjaKursu): string | null {
+  if (lekcja.has_recording === false) return null;
+  const czas = lekcja.duration_seconds;
+  const aktywny = lekcja.active_seconds;
+  if (typeof czas !== "number" || czas <= 0 || typeof aktywny !== "number" || aktywny <= 0) return null;
+  const razem = minutyZSekund(czas);
+  const obejrzane = Math.min(razem, Math.floor(aktywny / 60));
+  if (obejrzane === 0) return null;
+  return `obejrzane ${obejrzane} z ${razem} ${razem === 1 ? "minuty" : "minut"}`;
 }

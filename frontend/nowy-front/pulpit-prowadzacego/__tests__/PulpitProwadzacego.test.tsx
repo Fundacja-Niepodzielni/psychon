@@ -337,3 +337,46 @@ describe("PulpitProwadzacego — przyciski wierszy superwizji i grupy mają peł
     expect(screen.queryAllByText("Otwórz grupę")).toEqual([]);
   });
 });
+
+describe("PulpitProwadzacego — rząd czterech liczb do wyrównania", () => {
+  it("rząd ma znacznik wyrównania, cztery kafle po najwyżej trzy dzieci; wyróżnienie pierwszej liczby zostaje", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    const { container } = render(<PulpitProwadzacego />);
+    await waitFor(() => expect(container.querySelector("#pulpit-superwizja")).not.toBeNull());
+
+    const rzad = container.querySelector('[data-obszar="staty"] [role="list"]') as HTMLElement;
+    expect(rzad).toHaveAttribute("data-wyrownane");
+    const kafle = [...rzad.querySelectorAll<HTMLElement>("[data-wyrownany]")];
+    expect(kafle).toHaveLength(4);
+    for (const kafel of kafle) {
+      expect(kafel.children.length, kafel.outerHTML).toBeLessThanOrEqual(3);
+    }
+    expect(kafle.map((kafel) => kafel.hasAttribute("data-dominujacy"))).toEqual([true, false, false, false]);
+  });
+
+  it("czwarty kafel: dzień i miesiąc terminu jako liczba z nazwą miesiąca, a „18:00 online” i zapisy w podpisie pod liczbą", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    const { container } = render(<PulpitProwadzacego />);
+    await waitFor(() => expect(container.querySelector("#pulpit-superwizja")).not.toBeNull());
+
+    const kafel = (container.querySelector("#pulpit-superwizja") as HTMLElement).parentElement as HTMLElement;
+    expect(kafel.children).toHaveLength(3);
+    expect(kafel.querySelector("label")?.textContent).toBe("Najbliższa superwizja");
+    expect(container.querySelector("#pulpit-superwizja")?.textContent).toMatch(/^\d{1,2}\s*[a-ząćęłńóśźż]+$/);
+    const podpis = kafel.children[2] as HTMLElement;
+    expect(podpis.textContent).toMatch(/^\d{2}:\d{2} online · zapisanych 3 z 8 miejsc$/);
+    // Pod liczbą nie zostaje już „18:00 online” w osobnym miejscu kafla.
+    expect(kafel.textContent?.match(/online/g)).toHaveLength(1);
+  });
+
+  it("kontrola dodatnia: bez terminu kafel nie ma liczby, a podpis mówi, że terminów nie ma", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem({ grupa: { stan: "ok", dane: grupa(2, []) } }));
+    const { container } = render(<PulpitProwadzacego />);
+    await waitFor(() => expect(container.querySelector("#pulpit-superwizja")).not.toBeNull());
+
+    const kafel = (container.querySelector("#pulpit-superwizja") as HTMLElement).parentElement as HTMLElement;
+    expect(container.querySelector("#pulpit-superwizja")?.textContent).toBe("—");
+    expect(kafel.textContent).toContain("brak zaplanowanych terminów");
+    cleanup();
+  });
+});

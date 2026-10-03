@@ -120,13 +120,22 @@ describe("adresWewnetrzny", () => {
 });
 
 describe("zbudujWidok", () => {
-  it("kafle niosą trzy liczniki z jednostką", () => {
+  it("kafle: cztery liczby z jednostką — suma kolejek i trzy liczniki — każda z jedną linią opisu", () => {
     const widok = zbudujWidok(odczytajPulpit(odpowiedzPulpitu())!);
     expect(widok.kafle.map((k) => [k.id, k.wartosc, k.mianownik])).toEqual([
+      ["pulpit-sprawy", 18, "spraw"],
       ["pulpit-uczestnicy", 12, "osób"],
       ["pulpit-ukonczenia", 3, "osoby"],
       ["pulpit-certyfikaty", 2, "certyfikaty"],
     ]);
+    expect(widok.kafle.map((k) => k.podpowiedz)).toEqual([
+      "w kolejkach niżej",
+      "z aktywnym kontem",
+      "program zakończony",
+      "wydane łącznie",
+    ]);
+    // Pierwsza liczba jest tą samą sumą, którą liczy stopka listy („Razem”).
+    expect(widok.kafle[0].wartosc).toBe(widok.razem);
   });
 
   it.each([
@@ -139,7 +148,7 @@ describe("zbudujWidok", () => {
     const dane = odczytajPulpit(
       odpowiedzPulpitu({ counters: { participants: liczba, completed: liczba, certificates: liczba } }),
     )!;
-    expect(zbudujWidok(dane).kafle.map((k) => k.mianownik)).toEqual([osoby, osoby, certyfikaty]);
+    expect(zbudujWidok(dane).kafle.slice(1).map((k) => k.mianownik)).toEqual([osoby, osoby, certyfikaty]);
   });
 
   it.each([

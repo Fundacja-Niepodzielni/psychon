@@ -82,6 +82,19 @@ describe("Pulpit administracji — stany ekranu", () => {
     expect(container.querySelector("#pulpit-ukonczenia")?.textContent).toContain("osoby");
     expect(container.querySelector("#pulpit-certyfikaty")?.textContent).toContain("2");
     expect(container.querySelector("#pulpit-certyfikaty")?.textContent).toContain("certyfikaty");
+    // Cztery równe pola: podpis, liczba z jednostką, jedna linia opisu pod liczbą.
+    const rzad = container.querySelector('[data-obszar="staty"] [role="list"]') as HTMLElement;
+    expect(rzad).toHaveAttribute("data-duze-liczby");
+    const pola = within(rzad).getAllByRole("listitem");
+    expect(pola).toHaveLength(4);
+    for (const pole of pola) {
+      expect(pole.querySelector("label")).not.toBeNull();
+      expect(pole.querySelector("[id]")).not.toBeNull();
+      expect(pole.querySelectorAll("p")).toHaveLength(1);
+    }
+    expect(container.querySelector("#pulpit-sprawy")?.textContent).toContain("18");
+    expect(container.querySelector("#pulpit-sprawy")?.textContent).toContain("spraw");
+    expect(within(rzad).getByText("Czekają na decyzję")).toBeInTheDocument();
 
     const odnosnik = screen.getByRole("link", { name: "Otwórz: Zgłoszenia rekrutacyjne" });
     expect(odnosnik).toHaveAttribute("href", "/admin/uczestniczki?zakladka=zgloszenia");
