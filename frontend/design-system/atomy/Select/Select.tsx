@@ -33,7 +33,8 @@ interface WlasciwosciSelect {
  * liście, podświetlenie zgłaszane przez `aria-activedescendant` — opcje same
  * nie dostają fokusu DOM. Klawiatura na przycisku: Strzałka w dół/górę
  * (otwiera listę albo przesuwa podświetlenie), Enter/Spacja (wybiera i
- * zamyka), Escape (zamyka bez zmiany wyboru), Home/End (podświetla pierwszą/
+ * zamyka), Escape (zamyka bez zmiany wyboru i nie przekazuje klawisza
+ * dalej, gdy lista jest otwarta), Home/End (podświetla pierwszą/
  * ostatnią opcję). To jest opis tego, co próby niżej sprawdzają — nie ocena,
  * czy rozwiązanie jest dobre.
  */
@@ -128,7 +129,11 @@ export function Select({
         break;
       case "Escape":
         if (otwarty) {
+          // Escape zamyka WYŁĄCZNIE listę: zdarzenie nie idzie wyżej, więc
+          // okno (`Dialog`), w którym stoi pole, zostaje otwarte. Drugi
+          // Escape (lista już zamknięta) przechodzi zwykłą drogą do okna.
           zdarzenie.preventDefault();
+          zdarzenie.stopPropagation();
           setOtwarty(false);
           setPodswietlonyIndeks(wybranyIndeks);
         }

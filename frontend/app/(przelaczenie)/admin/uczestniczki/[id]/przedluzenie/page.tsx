@@ -1,24 +1,21 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { GRUPY, czyNowaTrasaDostepna } from "@/lib/przelaczenie/grupy";
-import { PrzedluzenieDostepu } from "@/nowy-front/przedluzenie-dostepu/PrzedluzenieDostepu";
-
-export const metadata: Metadata = {
-  title: "Przedłużenie dostępu — Niepodzielni",
-};
+import { redirect } from "next/navigation";
 
 /**
- * Trasa `/admin/uczestniczki/[id]/przedluzenie` — przedłużenie dostępu osoby
- * (H04). Starej trasy nie ma: do tej pory adres nie istniał. Strona leży
- * w grupie tras `(przelaczenie)`, która daje ramkę nowego frontu, i czyta
- * rejestr przełączenia (`lib/przelaczenie/grupy.ts`, grupa
- * `przedluzenieDostepu`): grupa wyłączona → 404 jak dotąd, włączona → ekran
- * przedłużenia. Segment `[id]` to identyfikator osoby.
+ * Trasa `/admin/uczestniczki/[id]/przedluzenie` — dawny adres osobnego ekranu
+ * przedłużenia dostępu. Ekranu już nie ma: datę dostępu zmienia okno
+ * „Zmień datę” w nagłówku karty osoby. Adres zostaje, żeby zapisane odnośniki
+ * nie kończyły się stroną „nie znaleziono”: przekierowuje na kartę osoby
+ * `/admin/uczestniczki/[id]`, a gdy segment `[id]` nie jest liczbą — na listę
+ * osób. Strona niczego nie wczytuje i nie wysyła żadnego żądania.
+ * Przekierowanie jest TYMCZASOWE (typ 307, domyślne `redirect`) — decyzja
+ * przyjęta: zapisane odnośniki mają dalej działać, a na stałe (308) dopiero po
+ * osobnej decyzji. Zmierzone: układ grupy `(przelaczenie)` strumieniuje
+ * odpowiedź, więc pod tym adresem HTTP ma kod 200, a przekierowanie typu 307
+ * niesie strumień strony (`NEXT_REDIRECT;replace;…;307`) i wykonuje je
+ * przeglądarka; prawdziwy HTTP 307 zwraca dopiero strona pod segmentem nowego
+ * frontu.
  */
-export default async function StronaPrzedluzeniaDostepu({ params }: { params: Promise<{ id: string }> }) {
-  if (!czyNowaTrasaDostepna(GRUPY.przedluzenieDostepu)) notFound();
-
+export default async function PrzekierowanieNaKarteOsoby({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-
-  return <PrzedluzenieDostepu idOsoby={id} />;
+  redirect(/^\d+$/.test(id) ? `/admin/uczestniczki/${id}` : "/admin/uczestniczki");
 }

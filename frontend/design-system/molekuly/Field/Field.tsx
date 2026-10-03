@@ -28,6 +28,9 @@ interface WlasciwosciField {
   opcje?: OpcjaWyboru[];
   placeholder?: string;
   name?: string;
+  /** Tylko dla `rodzaj="data"` i `"liczba"`: najmniejsza i największa dozwolona wartość (atrybuty `min`/`max`). */
+  min?: string;
+  maks?: string;
 }
 
 /**
@@ -58,6 +61,8 @@ export function Field({
   opcje,
   placeholder,
   name,
+  min,
+  maks,
 }: WlasciwosciField) {
   const idPodpowiedzi = podpowiedz ? `${id}-podpowiedz` : undefined;
   const idBledu = blad ? `${id}-blad` : undefined;
@@ -110,6 +115,8 @@ export function Field({
           required={wymagane}
           niepoprawny={niepoprawny}
           placeholder={placeholder}
+          min={rodzaj === "tekst" ? undefined : min}
+          max={rodzaj === "tekst" ? undefined : maks}
           aria-describedby={describedBy}
         />
       )}

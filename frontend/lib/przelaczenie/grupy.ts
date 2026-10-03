@@ -379,22 +379,6 @@ export const GRUPY = {
     ],
   },
   /**
-   * Przedłużenie dostępu osoby (H04) — funkcji w starym froncie nie ma (karta osoby
-   * tylko pokazuje datę ważności); ekran ma własny adres pod kartą osoby administracji.
-   */
-  przedluzenieDostepu: {
-    klucz: "przedluzenieDostepu",
-    wlaczona: false,
-    ekrany: [
-      {
-        panel: "administracja",
-        staraTrasa: null,
-        nowaTrasa: "/admin/uczestniczki/[id]/przedluzenie",
-        trasaPoligonu: "/nowy-front/admin/uczestniczki/[id]/przedluzenie",
-      },
-    ],
-  },
-  /**
    * Ustawienia roku programu (H19) — ten sam adres co dzisiejsze ustawienia edycji.
    * Zostaje wyłączona: stara strona zmienia też nazwę edycji, daty rozpoczęcia i
    * zakończenia oraz limit miejsc (`PATCH /admin/edition`), a nowy ekran pokazuje

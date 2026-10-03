@@ -13,5 +13,5 @@ import { KartaOsoby } from "@/nowy-front/karta-osoby/KartaOsoby";
  */
 export default function StronaKartyOsoby({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  return <KartaOsoby id={Number(id)} adresPrzedluzenia={`/nowy-front/admin/uczestniczki/${id}/przedluzenie`} />;
+  return <KartaOsoby id={Number(id)} />;
 }

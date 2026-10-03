@@ -79,6 +79,26 @@ describe("Select — klawiatura", () => {
     expect(przycisk).toHaveTextContent("Opcja A");
   });
 
+  it("Escape na otwartej liście nie wychodzi poza pole; Escape przy zamkniętej liście idzie dalej", async () => {
+    const uzytkownik = userEvent.setup();
+    const naDokumencie = vi.fn();
+    document.addEventListener("keydown", naDokumencie);
+    try {
+      render(<Select opcje={OPCJE} aria-label="Wybór" domyslnaWartosc="a" />);
+      const przycisk = screen.getByRole("combobox", { name: "Wybór" });
+      przycisk.focus();
+      await uzytkownik.keyboard("{ArrowDown}");
+      naDokumencie.mockClear();
+      await uzytkownik.keyboard("{Escape}");
+      expect(przycisk).toHaveAttribute("aria-expanded", "false");
+      expect(naDokumencie.mock.calls.filter(([z]) => (z as KeyboardEvent).key === "Escape")).toHaveLength(0);
+      await uzytkownik.keyboard("{Escape}");
+      expect(naDokumencie.mock.calls.filter(([z]) => (z as KeyboardEvent).key === "Escape")).toHaveLength(1);
+    } finally {
+      document.removeEventListener("keydown", naDokumencie);
+    }
+  });
+
   it("End podświetla ostatnią opcję, Home wraca na pierwszą", async () => {
     const uzytkownik = userEvent.setup();
     render(<Select opcje={OPCJE} aria-label="Wybór" domyslnaWartosc="a" />);

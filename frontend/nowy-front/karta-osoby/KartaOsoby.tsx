@@ -2,10 +2,11 @@
 
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { rowneWartosci } from "@/nowy-front/wspolne/rowne-wartosci";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Button } from "@/design-system/atomy/Button/Button";
+import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { TableTemplate } from "@/design-system/szablony/TableTemplate/TableTemplate";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
@@ -16,15 +17,18 @@ import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
-import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
+import { Dialog, oglosWPanelu } from "@/design-system/organizmy/Dialog/Dialog";
 import { ApiError } from "@/lib/api/klient";
 import { markWorkshopComplete } from "@/lib/api/h10";
 import { DOCUMENT_TYPE_LABELS } from "@/lib/h18/labels";
 import { CzynnosciAdministracji } from "./CzynnosciAdministracji";
-import { formatujDateICzas } from "../wspolne/daty";
+import { OknoZmianyDatyDostepu } from "./ZmianaDatyDostepu";
+import { czyPokazacZmianeDaty, zdanieOZmianieDaty, type OsobaPoZmianieDaty } from "./daneDostepu";
+import { formatujDate, formatujDateICzas } from "../wspolne/daty";
 import {
   pobierzKarteOsoby,
   pobierzRzetelnoscOsoby,
+  pobierzIdZalogowanej,
   pobierzRoleZalogowanej,
   czyMozeZaliczycWarsztat,
   czyRolaAdministracji,
@@ -49,13 +53,16 @@ type StanRzetelnosci = "ladowanie" | "ok" | "brak-danych" | "blad";
 interface WlasciwosciKartyOsoby {
   id: number;
   /**
-   * Adres ekranu przedłużenia dostępu tej osoby. Podaje go strona, pod którą
-   * ten ekran naprawdę stoi; bez adresu karta nie pokazuje wejścia, żeby
-   * przycisk nigdy nie prowadził donikąd. Ekran przedłużenia i karta mają
-   * ten sam próg roli, więc kto widzi kartę, ten ma też ekran przedłużenia.
+   * @deprecated Karta nie prowadzi już na osobny ekran: datę dostępu zmienia
+   * okno „Zmień datę” w nagłówku karty. Właściwość zostaje tylko po to, żeby
+   * strona, która ją jeszcze podaje, kompilowała się bez zmian; karta jej
+   * nie czyta.
    */
   adresPrzedluzenia?: string;
 }
+
+/** Nagłówek bloku warsztatu — cel fokusu, gdy po zaliczeniu znika przycisk, który otworzył pytanie. */
+const ID_NAGLOWKA_WARSZTATU = "karta-osoby-warsztat-naglowek";
 
 /**
  * Ekran A-07 „Karta osoby" (administracja) —
@@ -77,8 +84,14 @@ interface WlasciwosciKartyOsoby {
  * `FormSection` zamiast `DataTable` (bez `Dialog`), więc na ekranie jest jeden
  * rząd przycisków „Anuluj” / „Zapisz zmiany”, a przycisk główny „Zmień dane”
  * znika z nagłówka na czas edycji.
+ *
+ * Data dostępu stoi w nagłówku karty, a obok niej — dla ról, które trasa
+ * `POST /admin/users/{id}/extend-access` dopuszcza — przycisk „Zmień datę”.
+ * Otwiera on okno formularza nad kartą (`OknoZmianyDatyDostepu`); po zapisie
+ * osoba zostaje na karcie, nagłówek pokazuje nową datę, a stały obszar
+ * ogłoszeń panelu mówi, na jaką datę ją zmieniono.
  */
-export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
+export function KartaOsoby({ id }: WlasciwosciKartyOsoby) {
   const router = useRouter();
   const [stan, setStan] = useState<StanEkranu>("ladowanie");
   const [karta, setKarta] = useState<KartaOsobyDane | null>(null);
@@ -93,14 +106,28 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
   const [pokazToast, setPokazToast] = useState(false);
   // Rola osoby zalogowanej (nie osoby z karty): rozstrzyga, czy przycisk warsztatu istnieje.
   const [rolaZalogowanej, setRolaZalogowanej] = useState<string | null>(null);
+  const [idZalogowanej, setIdZalogowanej] = useState<number | null>(null);
   const [pytanieWarsztatu, setPytanieWarsztatu] = useState(false);
   const [zaznaczanieWarsztatu, setZaznaczanieWarsztatu] = useState(false);
   const [bladWarsztatu, setBladWarsztatu] = useState<string | null>(null);
   const [toastWarsztatu, setToastWarsztatu] = useState(false);
+  const [oknoDatyOtwarte, setOknoDatyOtwarte] = useState(false);
+  const [niezapisaneWOknieDaty, setNiezapisaneWOknieDaty] = useState(false);
   useZgloszenieNiezapisanychZmian(
-    formularzOtwarty && formularz !== null && karta !== null && !rowneWartosci(formularz, formularzZProfilu(karta.profile)),
+    (formularzOtwarty && formularz !== null && karta !== null && !rowneWartosci(formularz, formularzZProfilu(karta.profile))) ||
+      (oknoDatyOtwarte && niezapisaneWOknieDaty),
     "Karta osoby",
   );
+
+  const zamknijOknoDaty = useCallback(() => setOknoDatyOtwarte(false), []);
+
+  function poZmianieDaty(osoba: OsobaPoZmianieDaty) {
+    setKarta((poprzednia) =>
+      poprzednia ? { ...poprzednia, profile: { ...poprzednia.profile, access_expires_at: osoba.access_expires_at } } : poprzednia,
+    );
+    setOknoDatyOtwarte(false);
+    oglosWPanelu(zdanieOZmianieDaty(osoba.access_expires_at));
+  }
 
   function wczytajRzetelnosc(straz?: { anulowane: boolean }) {
     pobierzRzetelnoscOsoby(id)
@@ -162,6 +189,21 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
       .catch(() => {
         // Bez znanej roli przycisk po prostu nie istnieje — karta działa dalej.
         if (!anulowane) setRolaZalogowanej(null);
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let anulowane = false;
+    pobierzIdZalogowanej()
+      .then((idKonta) => {
+        if (!anulowane) setIdZalogowanej(idKonta);
+      })
+      .catch(() => {
+        // Bez znanego identyfikatora własność karty rozstrzyga zaplecze (odmowa przy zapisie).
+        if (!anulowane) setIdZalogowanej(null);
       });
     return () => {
       anulowane = true;
@@ -311,6 +353,8 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
 
   const edycja = formularzOtwarty && formularz !== null;
   const mozeZaznaczycWarsztat = !karta.progress.workshop_done && czyMozeZaliczycWarsztat(rolaZalogowanej);
+  const imieNazwisko = `${karta.profile.first_name} ${karta.profile.last_name}`;
+  const dataDostepu = karta.profile.access_expires_at;
 
   return (
     <>
@@ -322,17 +366,38 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
             opis={opisRoliOsoby(karta.profile.role)}
             onPowrot={wroc}
             przyciskGlowny={edycja ? undefined : { etykieta: "Zmień dane", onKliknij: otworzFormularz }}
+            dzieci={
+              <div className={style.wierszDostepu} data-obszar="data-dostepu">
+                <Text>
+                  {dataDostepu ? `Dostęp do materiałów do ${formatujDate(dataDostepu)}` : "Dostęp do materiałów: bezterminowo"}
+                </Text>
+                {!edycja && czyPokazacZmianeDaty(rolaZalogowanej, karta.profile, idZalogowanej) && (
+                  <Button poziom="outline" type="button" onClick={() => setOknoDatyOtwarte(true)}>
+                    Zmień datę
+                  </Button>
+                )}
+              </div>
+            }
           />
         }
         statystyki={
           <>
             <StatRow kafle={kafle} />
-            {mozeZaznaczycWarsztat && (
-              <div className={style.wierszWarsztatu} role="group" aria-label="Warsztat stacjonarny">
-                <Button poziom="outline" disabled={zaznaczanieWarsztatu} onClick={() => setPytanieWarsztatu(true)}>
-                  Zaznacz warsztat jako zaliczony
-                </Button>
-              </div>
+            {czyMozeZaliczycWarsztat(rolaZalogowanej) && (
+              <section className={style.wierszWarsztatu} aria-labelledby={ID_NAGLOWKA_WARSZTATU}>
+                <Heading stopien={2} id={ID_NAGLOWKA_WARSZTATU}>
+                  Warsztat stacjonarny
+                </Heading>
+                {mozeZaznaczycWarsztat ? (
+                  <div>
+                    <Button poziom="outline" disabled={zaznaczanieWarsztatu} onClick={() => setPytanieWarsztatu(true)}>
+                      Zaznacz warsztat jako zaliczony
+                    </Button>
+                  </div>
+                ) : (
+                  <Text>Warsztat zaliczony.</Text>
+                )}
+              </section>
             )}
             {bladWarsztatu !== null && (
               <Notice wariant="error" tytul="Nie udało się zaznaczyć warsztatu">
@@ -383,14 +448,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
           ) : (
             <>
               <DataTable tytul="Dane osoby" kolumny={kolumnyDanychOsoby()} wiersze={wiersze} />
-              {adresPrzedluzenia !== undefined && (
-                <div className={style.akcjaDostepu}>
-                  <Button poziom="outline" onClick={() => router.push(adresPrzedluzenia)}>
-                    Przedłuż dostęp
-                  </Button>
-                </div>
-              )}
-              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} imieNazwisko={`${karta.profile.first_name} ${karta.profile.last_name}`} rolaOsoby={karta.profile.role} onOdswiez={() => wczytajKarte()} />}
+              {czyRolaAdministracji(rolaZalogowanej) && <CzynnosciAdministracji userId={id} imieNazwisko={imieNazwisko} rolaOsoby={karta.profile.role} onOdswiez={() => wczytajKarte()} />}
             </>
           )
         }
@@ -468,6 +526,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
           etykietaPotwierdzenia="Zaznacz jako zaliczony"
           onWycofaj={() => setPytanieWarsztatu(false)}
           onPotwierdz={() => void zaznaczWarsztat()}
+          fokusPoZamknieciu={ID_NAGLOWKA_WARSZTATU}
         >
           <Text>
             Osoba: {karta.profile.first_name} {karta.profile.last_name}.
@@ -476,6 +535,16 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
         </Dialog>
       )}
       {toastWarsztatu && <Toast komunikat="Zaznaczono warsztat jako zaliczony." onZamknij={() => setToastWarsztatu(false)} />}
+      {oknoDatyOtwarte && (
+        <OknoZmianyDatyDostepu
+          idOsoby={id}
+          imieNazwisko={imieNazwisko}
+          obecnaData={dataDostepu}
+          onZapisano={poZmianieDaty}
+          onWycofaj={zamknijOknoDaty}
+          onNiezapisaneZmiany={setNiezapisaneWOknieDaty}
+        />
+      )}
     </>
   );
 }

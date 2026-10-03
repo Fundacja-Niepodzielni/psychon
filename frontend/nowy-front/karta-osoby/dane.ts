@@ -330,6 +330,11 @@ export function pobierzRoleZalogowanej(): Promise<string> {
   return api<{ role: string }>("/me").then((konto) => konto.role);
 }
 
+/** Identyfikator osoby zalogowanej — `GET /me` (ta sama wspólna pamięć konta co rola). */
+export function pobierzIdZalogowanej(): Promise<number> {
+  return api<{ id: number }>("/me").then((konto) => konto.id);
+}
+
 /** Zdanie dla osoby po nieudanym zaliczeniu warsztatu: odmowa roli ma własne,
  * pozostałe niosą komunikat z koperty błędu zaplecza, a bez niego zdanie ogólne. */
 export function zdanieBleduWarsztatu(blad: unknown): string {

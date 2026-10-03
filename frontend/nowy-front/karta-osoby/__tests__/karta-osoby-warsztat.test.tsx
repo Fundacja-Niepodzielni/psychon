@@ -157,6 +157,33 @@ describe("Karta osoby — zaznaczenie warsztatu", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("po potwierdzeniu fokus trafia na nagłówek bloku warsztatu — przycisk, który otworzył pytanie, znika", async () => {
+    markWorkshopComplete.mockResolvedValue({ user_id: 17, edition_id: 1, completed_at: "2026-10-02T12:00:00Z", workshop_done: true });
+    pobierzKarteOsoby.mockResolvedValueOnce(karta(false)).mockResolvedValue(karta(true));
+    const okno = await otworzPytanie();
+
+    await userEvent.click(within(okno).getByRole("button", { name: "Zaznacz jako zaliczony" }));
+
+    const naglowek = screen.getByRole("heading", { level: 2, name: "Warsztat stacjonarny" });
+    expect(naglowek).toHaveFocus();
+    await waitFor(() => expect(screen.queryByRole("button", { name: PRZYCISK })).toBeNull());
+    expect(naglowek).toHaveFocus();
+    expect(screen.getByText("Warsztat zaliczony.")).toBeInTheDocument();
+  });
+
+  it("„Anuluj” oddaje fokus przyciskowi, który nadal istnieje", async () => {
+    const okno = await otworzPytanie();
+    await userEvent.click(within(okno).getByRole("button", { name: "Anuluj" }));
+    expect(screen.getByRole("button", { name: PRZYCISK })).toHaveFocus();
+  });
+
+  it("blok warsztatu ma stały nagłówek także po zaliczeniu (dla administracji)", async () => {
+    pobierzKarteOsoby.mockResolvedValue(karta(true));
+    render(<KartaOsoby id={17} />);
+    expect(await screen.findByRole("heading", { level: 2, name: "Warsztat stacjonarny" })).toBeInTheDocument();
+    expect(screen.getByText("Warsztat zaliczony.")).toBeInTheDocument();
+  });
+
   it("w trakcie żądania przycisk jest zablokowany", async () => {
     let zakoncz: (wartosc: unknown) => void = () => undefined;
     markWorkshopComplete.mockReturnValue(new Promise((resolve) => (zakoncz = resolve)));
