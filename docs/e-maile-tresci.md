@@ -19,7 +19,7 @@ Stan opisany na 3 października 2026 r.
   w dokumentacji, 10 to moje propozycje do decyzji.
 - **Do usunięcia są 3 e-maile:** 1 z decyzji właściciela (wiadomości czatu, E-28) i 2 moje
   propozycje do decyzji (E-06, E-07).
-- **Pytań do właściciela: 10** (część „Pytania do właściciela” na końcu).
+- **Pytań do właściciela: 11** (część „Pytania do właściciela” na końcu).
 
 ### Zasady, według których powstały proponowane treści
 
@@ -1158,3 +1158,65 @@ Wiadomości tego rodzaju możesz wyłączyć w panelu PsychON: Profil → Powiad
 ```
 
 - **Przycisk:** „Otwórz kursy” → Kursy w panelu administracji.
+
+## Pytania do właściciela
+
+Przy każdym pytaniu jest odpowiedź zalecana. Wystarczy wskazać literę.
+
+1. **Imię w powitaniu?**
+   - (a) „Dzień dobry,” bez imienia, we wszystkich e-mailach **(zalecane)** — e-mail nie niesie
+     danych osobowych, a imię w bazie bywa wpisane różnie.
+   - (b) „Dzień dobry, {imię},” — tylko gdy imię jest znane; w E-02 i E-05 zawsze bez imienia.
+
+2. **Gdzie osoba ma wyłączać e-maile?** Dziś w panelu nie ma takiego miejsca.
+   - (a) Sekcja „Powiadomienia e-mail” na stronie Profil, z listą rodzajów wiadomości
+     **(zalecane)** — Profil jest w menu każdej osoby uczestniczącej.
+   - (b) Osobna strona „Powiadomienia” w menu.
+   - (c) Bez wyboru dla osoby — wtedy zdanie o wyłączaniu znika ze stopki.
+
+3. **Kopia „Zgłoszenie zatwierdzone” (E-06) obok zaproszenia (E-01)?**
+   - (a) Usunąć e-mail, zostawić powiadomienie w panelu **(zalecane)** — osoba nie dostaje dwóch
+     wiadomości o tym samym.
+   - (b) Zostawić oba e-maile.
+
+4. **Kopia odrzucenia zgłoszenia dla osoby, która je odrzuciła (E-07)?**
+   - (a) Usunąć e-mail **(zalecane)** — osoba wie o decyzji, bo ją podjęła; ślad wysyłki do
+     kandydata jest w skrzynce e-maili.
+   - (b) Zostawić krótki e-mail bez imienia, nazwiska i powodu (treść w E-07).
+
+5. **Miejsce spotkania w przypomnieniu o superwizji (E-25)?**
+   - (a) Tylko data i godzina, miejsce i odnośnik do spotkania po zalogowaniu **(zalecane)** —
+     zgodnie z zasadą „szczegóły w panelu”.
+   - (b) Data, godzina i miejsce albo odnośnik do spotkania w e-mailu, jak dziś.
+
+6. **Przypomnienie 30 dni przed końcem dostępu?** Dokumentacja mówi o 30 i 7 dniach,
+   decyzja właściciela o 7 dniach i dniu po.
+   - (a) Tylko 7 dni przed i dzień po (E-29, E-30) **(zalecane)** — zgodnie z decyzją.
+   - (b) Dodać trzeci e-mail 30 dni przed końcem.
+
+7. **Kto napisał zgłoszenie pomocy — czy kopia dla zespołu (E-05) ma to mówić?** Dziś kopia ma
+   tylko numer, rolę, ekran i treść, więc zespół nie ma jak odpowiedzieć.
+   - (a) Dodać imię, nazwisko i adres e-mail osoby zgłaszającej **(zalecane)** — skrzynka zespołu
+     służy do odpowiadania.
+   - (b) Zostawić bez danych osoby; zespół szuka osoby po numerze zgłoszenia.
+
+8. **Kto w zespole dostaje e-maile o sprawach do załatwienia** (E-17, E-22, E-39, E-41)? Dziś
+   E-17 dostaje każdy Opiekun Projektu, a E-22 każdy Opiekun Projektu i Super Admin.
+   - (a) Każdy Opiekun Projektu i każdy Super Admin, osobno **(zalecane)** — jedna reguła dla
+     wszystkich spraw zespołu.
+   - (b) Tylko każdy Opiekun Projektu.
+   - (c) Jedna wspólna skrzynka zespołu, jak przy zgłoszeniach pomocy.
+
+9. **E-mail o zablokowaniu konta (E-40)?**
+   - (a) Wysyłać krótką informację bez powodu **(zalecane)** — osoba nie dowiaduje się o blokadzie
+     dopiero przy logowaniu.
+   - (b) Nie wysyłać; blokada zostaje widoczna tylko przy próbie logowania.
+
+10. **E-mail „Nowy kurs do prowadzenia” (E-08), gdy prowadzący sam zakłada kurs?**
+    - (a) Nie wysyłać, gdy prowadzący przypisał się sam, zakładając kurs **(zalecane)** — to jego
+      własne działanie.
+    - (b) Wysyłać zawsze, jak dziś.
+
+11. **Z jakim wyprzedzeniem zapowiadać usunięcie danych nieaktywnego konta (E-31)?**
+    - (a) 30 dni przed usunięciem **(zalecane)** — czas na odpowiedź także po urlopie.
+    - (b) 14 dni przed usunięciem.
