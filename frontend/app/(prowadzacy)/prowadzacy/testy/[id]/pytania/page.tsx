@@ -11,9 +11,9 @@ import StaraTresc from "./StaraTresc";
  * (`lib/przelaczenie/grupy.ts`, grupa `pytaniaTestu`, ta sama flaga co
  * w administracji). Grupa wyłączona → dotychczasowa treść (`StaraTresc.tsx`,
  * przeniesiona bez zmiany); grupa włączona → ten sam ekran „Pytania testu” co
- * w administracji, w powłoce panelu prowadzącego. Serwer dziś dopuszcza do
- * pytań tylko administrację, więc prowadzący dostaje wspólny ekran odmowy
- * (jak dotąd stan „brak dostępu”). `id` to numer testu; opcjonalny parametr
+ * w administracji, w powłoce panelu prowadzącego, na trasach prowadzącego
+ * (`/instructor/…`): prowadzący układa pytania testu swojego kursu, a test
+ * obcego kursu widzi jako „Nie znaleziono testu”. `id` to numer testu; opcjonalny parametr
  * `kurs` prowadzi okruszek z powrotem do kursu. `params` i `searchParams`
  * to Promise (Next.js 16).
  */

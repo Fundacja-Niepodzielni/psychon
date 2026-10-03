@@ -30,8 +30,11 @@ serwer przyjmuje, ale stary ekran go nie wysyła.
 
 - Trasy stoją w grupie serwera z rolami `project_manager` i `super_admin`. Każda inna rola
   dostaje odpowiedź 403.
-- Panel prowadzącego montuje ten sam ekran, więc prowadzący dostaje 403 i stan odmowy.
-  Komentarz w kodzie strony mówi o tym wprost. Serwer nie daje prowadzącemu banku pytań.
+- Panel prowadzącego montuje ten sam ekran na trasach administracji, więc prowadzący dostaje
+  403 i stan odmowy. Komentarz w kodzie strony mówi o tym wprost. Serwer ma osobne trasy
+  prowadzącego (`/instructor/tests/{test}/questions`, `/instructor/questions/{question}`,
+  zasięg: test kursu przypisanego prowadzącego, obcy test to 404), ale stary ekran ich nie woła.
+  Nowy ekran woła je w panelu prowadzącego.
 - Do samych stron w starej powłoce wpuszcza tylko odpowiednia rola: panel administracji
   wpuszcza administrację, a panel prowadzącego wpuszcza prowadzącego.
 

@@ -248,7 +248,7 @@ export function utworzSerwer(poczatek: StanSerwera = {}) {
         return { id, deleted: true };
       }
     }
-    if (metoda === "GET" && sciezka === "/admin/courses/4/tests") {
+    if (metoda === "GET" && dopasuj(/^\/(admin|instructor)\/courses\/4\/tests$/)) {
       return test === null ? null : { id: test, course_id: 4, question_count: 10 };
     }
     const nagranie = dopasuj(/^\/admin\/lessons\/(\d+)\/video-status$/);

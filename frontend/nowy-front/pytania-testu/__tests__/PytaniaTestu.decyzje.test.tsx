@@ -242,7 +242,7 @@ describe("strzałki kolejności po lewej stronie wiersza", () => {
     expect(lista.map((wiersz) => wiersz.getAttribute("data-ruch-klucz"))).toEqual(["pytanie-42", "pytanie-41", "pytanie-43"]);
     expect(within(lista[1]).getByRole("heading", { level: 3, name: "Pytanie 2" })).toBeInTheDocument();
     expect(within(lista[1]).getByText(PIERWSZE)).toBeInTheDocument();
-    expect(zapiszKolejnosc).toHaveBeenCalledWith([
+    expect(zapiszKolejnosc).toHaveBeenCalledWith("administracja", [
       { idPytania: 41, pozycja: 13 },
       { idPytania: 42, pozycja: 3 },
       { idPytania: 41, pozycja: 7 },
@@ -284,5 +284,10 @@ describe("adres ekranu z ekranu kursu niesie numer kursu", () => {
   it("oba panele dopisują parametr „kurs”", () => {
     expect(konfiguracjaRoli("admin").adresTestu(31, 4)).toBe("/admin/testy/31/pytania?kurs=4");
     expect(konfiguracjaRoli("instructor").adresTestu(31, 4)).toBe("/prowadzacy/testy/31/pytania?kurs=4");
+  });
+
+  it("oba panele mają wiersz testu w edytorze kursu: administracja i prowadzący", () => {
+    expect(konfiguracjaRoli("admin").testKursu).toBe(true);
+    expect(konfiguracjaRoli("instructor").testKursu).toBe(true);
   });
 });

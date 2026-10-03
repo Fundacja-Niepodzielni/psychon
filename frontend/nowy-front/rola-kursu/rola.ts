@@ -81,7 +81,7 @@ export interface KonfiguracjaRoliKursu {
   nagranie: boolean;
   /** Karta „Pliki do tej lekcji” — wymaga trasy listy plików lekcji. */
   plikiLekcji: boolean;
-  /** Wiersz testu w drzewie kursu — wymaga trasy odczytu pytań testu. */
+  /** Wiersz testu w drzewie kursu: test czyta `dane.pobierzTestKursu`, odnośnik prowadzi do ekranu pytań testu (`adresTestu`). */
   testKursu: boolean;
   /**
    * Publikacja i cofnięcie publikacji, prowadzący kursu, zaproszenia,
@@ -159,7 +159,7 @@ export function konfiguracjaRoli(rola: RolaKursu): KonfiguracjaRoliKursu {
       rolaOdmowy: "prowadzących",
       nagranie: NAGRANIE_PROWADZACEGO,
       plikiLekcji: false,
-      testKursu: false,
+      testKursu: true,
       zarzadzanieKursem: false,
     };
   }

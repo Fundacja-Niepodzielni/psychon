@@ -130,14 +130,14 @@ async function przygotuj(page: Page, rola: Rola): Promise<{ sciezki: string[] }>
         if (wGrupie === "/courses/4") return route.fulfill(json(KURS));
         if (wGrupie === "/courses/4/lessons") return route.fulfill(json(LEKCJE));
         if (wGrupie === "/courses/4/topics") return route.fulfill(json(TEMATY));
+        if (wGrupie === "/courses/4/tests") {
+          return route.fulfill(json({ id: 31, course_id: 4, pass_threshold: 80, attempts_limit: 3, question_count: 2 }));
+        }
         if (rola === "admin") {
           if (wGrupie === "/courses/4/assignments") {
             return route.fulfill(
               json([{ id: 1, course_id: 4, lesson_id: null, instructor: { id: 5, first_name: "Joanna", last_name: "Demo" } }]),
             );
-          }
-          if (wGrupie === "/courses/4/tests") {
-            return route.fulfill(json({ id: 31, course_id: 4, pass_threshold: 80, attempts_limit: 3, question_count: 2 }));
           }
           if (wGrupie === "/lessons/21/materials") return route.fulfill(json(MATERIALY));
           const nagranie = /^\/lessons\/(\d+)\/video-status$/.exec(wGrupie);
@@ -239,8 +239,12 @@ async function otworz(page: Page, adres: string): Promise<void> {
 async function kursGotowy(page: Page, rola: Rola): Promise<void> {
   await expect(page.getByRole("heading", { level: 1, name: KURS.title })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Tematy i lekcje" })).toBeVisible();
+  // Wiersz testu w obu rolach; odnośnik prowadzi do ekranu pytań testu w panelu danej roli, z numerem kursu.
+  await expect(page.getByRole("link", { name: "Otwórz pytania" })).toHaveAttribute(
+    "href",
+    rola === "admin" ? "/admin/testy/31/pytania?kurs=4" : "/prowadzacy/testy/31/pytania?kurs=4",
+  );
   if (rola === "admin") {
-    await expect(page.getByRole("link", { name: "Otwórz pytania" })).toBeVisible();
     await expect(page.locator("#ustawienia-prowadzacy")).toContainText("Joanna Demo");
   }
 }

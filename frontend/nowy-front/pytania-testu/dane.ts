@@ -4,34 +4,48 @@ import type { QuestionDraft, TestQuestion } from "@/lib/h10/types";
 import type { KrokKolejnosci } from "./logika";
 
 /**
- * Żądania ekranu „Pytania testu” — te same cztery trasy i te same pola co
- * dotychczasowy bank pytań (`components/h10/QuestionBank.tsx`), w obu panelach:
- *  - `GET /admin/tests/{test}/questions` — pytania z odpowiedziami i oznaczeniem poprawnej;
- *  - `POST /admin/tests/{test}/questions` — `body` i `answers[]` (`body`, `is_correct`);
- *  - `PATCH /admin/questions/{question}` — `body` i cały zestaw `answers[]`; odpowiedź,
+ * Żądania ekranu „Pytania testu” — te same cztery żądania i te same pola co
+ * dotychczasowy bank pytań (`components/h10/QuestionBank.tsx`), w grupie tras
+ * panelu, z którego otwarto ekran: administracja `/admin/…`
+ * (`backend/routes/api/h10.php`, grupa administracji), prowadzący
+ * `/instructor/…` (ta sama usługa i te same reguły serwera, zasięg: tylko test
+ * kursu przypisanego prowadzącego — obcy test albo pytanie to 404 jak
+ * nieistniejące):
+ *  - `GET {grupa}/tests/{test}/questions` — pytania z odpowiedziami i oznaczeniem poprawnej;
+ *  - `POST {grupa}/tests/{test}/questions` — `body` i `answers[]` (`body`, `is_correct`);
+ *  - `PATCH {grupa}/questions/{question}` — `body` i cały zestaw `answers[]`; odpowiedź,
  *    która już jest, niesie swoje `id` (serwer ją zmienia), nowa — bez `id`, brakujące
  *    serwer usuwa;
- *  - `DELETE /admin/questions/{question}`;
- *  - zmiana kolejności: ten sam `PATCH /admin/questions/{question}` z samym `sequence_order`.
- * Trasy stoją w grupie administracji na serwerze; panel prowadzącego woła te same
- * i dostaje tę samą odpowiedź serwera co dotąd.
+ *  - `DELETE {grupa}/questions/{question}`;
+ *  - zmiana kolejności: ten sam `PATCH {grupa}/questions/{question}` z samym `sequence_order`.
  */
 
 export type PytanieTestu = TestQuestion;
 
-export function pobierzPytania(idTestu: number): Promise<PytanieTestu[]> {
-  return api<PytanieTestu[]>(sciezka`/admin/tests/${idTestu}/questions`);
+/** Panel, z którego otwarto ekran: rozstrzyga grupę tras serwera, okruszki i powrót. */
+export type PanelEkranu = "administracja" | "prowadzacy";
+
+function trasaPytanTestu(panel: PanelEkranu, idTestu: number): string {
+  return panel === "prowadzacy" ? sciezka`/instructor/tests/${idTestu}/questions` : sciezka`/admin/tests/${idTestu}/questions`;
 }
 
-export function dodajPytanie(idTestu: number, szkic: QuestionDraft): Promise<PytanieTestu> {
-  return api<PytanieTestu>(sciezka`/admin/tests/${idTestu}/questions`, {
+function trasaPytania(panel: PanelEkranu, idPytania: number): string {
+  return panel === "prowadzacy" ? sciezka`/instructor/questions/${idPytania}` : sciezka`/admin/questions/${idPytania}`;
+}
+
+export function pobierzPytania(panel: PanelEkranu, idTestu: number): Promise<PytanieTestu[]> {
+  return api<PytanieTestu[]>(trasaPytanTestu(panel, idTestu));
+}
+
+export function dodajPytanie(panel: PanelEkranu, idTestu: number, szkic: QuestionDraft): Promise<PytanieTestu> {
+  return api<PytanieTestu>(trasaPytanTestu(panel, idTestu), {
     method: "POST",
     body: { body: szkic.body, answers: szkic.answers.map((odpowiedz) => ({ body: odpowiedz.body, is_correct: odpowiedz.is_correct })) },
   });
 }
 
-export function zapiszPytanie(idPytania: number, szkic: QuestionDraft): Promise<PytanieTestu> {
-  return api<PytanieTestu>(sciezka`/admin/questions/${idPytania}`, {
+export function zapiszPytanie(panel: PanelEkranu, idPytania: number, szkic: QuestionDraft): Promise<PytanieTestu> {
+  return api<PytanieTestu>(trasaPytania(panel, idPytania), {
     method: "PATCH",
     body: {
       body: szkic.body,
@@ -44,13 +58,13 @@ export function zapiszPytanie(idPytania: number, szkic: QuestionDraft): Promise<
   });
 }
 
-export function usunPytanie(idPytania: number): Promise<unknown> {
-  return api<unknown>(sciezka`/admin/questions/${idPytania}`, { method: "DELETE" });
+export function usunPytanie(panel: PanelEkranu, idPytania: number): Promise<unknown> {
+  return api<unknown>(trasaPytania(panel, idPytania), { method: "DELETE" });
 }
 
 /** Ta sama trasa zmiany pytania, tylko z polem `sequence_order` (serwer je przyjmuje; treści i odpowiedzi nie rusza). */
-function zmienPozycjePytania(idPytania: number, pozycja: number): Promise<PytanieTestu> {
-  return api<PytanieTestu>(sciezka`/admin/questions/${idPytania}`, { method: "PATCH", body: { sequence_order: pozycja } });
+function zmienPozycjePytania(panel: PanelEkranu, idPytania: number, pozycja: number): Promise<PytanieTestu> {
+  return api<PytanieTestu>(trasaPytania(panel, idPytania), { method: "PATCH", body: { sequence_order: pozycja } });
 }
 
 /**
@@ -59,8 +73,8 @@ function zmienPozycjePytania(idPytania: number, pozycja: number): Promise<Pytani
  * nie ma zapisu kolejności w jednym żądaniu, więc przerwany zapis może zostawić
  * część kroków wykonaną — wywołujący czyta wtedy listę od nowa.
  */
-export async function zapiszKolejnosc(kroki: readonly KrokKolejnosci[]): Promise<void> {
-  for (const krok of kroki) await zmienPozycjePytania(krok.idPytania, krok.pozycja);
+export async function zapiszKolejnosc(panel: PanelEkranu, kroki: readonly KrokKolejnosci[]): Promise<void> {
+  for (const krok of kroki) await zmienPozycjePytania(panel, krok.idPytania, krok.pozycja);
 }
 
 /** Numer testu z adresu: dodatnia liczba całkowita albo `null` (adres bez testu — bez żądania). */

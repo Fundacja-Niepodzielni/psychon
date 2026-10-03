@@ -14,10 +14,10 @@ import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/po
  * - tytuł karty: dotychczasowy przy wyłączonej grupie, nowy przy włączonej;
  * - ekran prowadzącego dostaje numer testu i numer kursu z parametru `kurs`;
  * - łańcuch na żywo: prawdziwy układ prowadzącego (strażnik roli + wybór ramki),
- *   strona i ekran; serwer odmawia roli prowadzącego (403, dziś trasy pytań
- *   dopuszczają tylko administrację), więc osoba widzi wspólny ekran odmowy
- *   ze swoją rolą i jednym przyciskiem powrotu. Podmienione są wyłącznie
- *   transport HTTP i rejestr grup.
+ *   strona i ekran; prowadzący czyta pytania trasą prowadzącego
+ *   (`/instructor/tests/{test}/questions`) i dostaje pełny ekran z listą, a test
+ *   obcego kursu (serwer: 404) pokazuje „Nie znaleziono testu”, nie ekran
+ *   odmowy. Podmienione są wyłącznie transport HTTP i rejestr grup.
  */
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -97,38 +97,63 @@ describe("trasa /prowadzacy/testy/[id]/pytania — numer testu i kursu z adresu"
   });
 });
 
-describe("łańcuch na żywo: układ prowadzącego → strona → ekran → odmowa serwera", () => {
-  it("prowadzący dostaje wspólny ekran odmowy ze swoją rolą, okruszkiem do kursu i jednym przyciskiem powrotu", async () => {
-    podmienRejestr({ pytaniaTestu: true });
-    const [{ default: Uklad }, { default: Strona }, { ApiError }] = await Promise.all([
-      import("@/app/(prowadzacy)/prowadzacy/layout"),
-      import("../page"),
-      import("@/lib/api/klient"),
-    ]);
-    api.mockImplementation((url: string) => {
-      if (url === "/me") return Promise.resolve({ role: "instructor" });
-      if (url === "/admin/tests/12/questions") {
-        return Promise.reject(new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tej sekcji." }));
-      }
-      return Promise.reject(new Error(`nieoczekiwane wywołanie: ${url}`));
-    });
-    apiPaged.mockResolvedValue({ data: [], meta: undefined });
+const PYTANIE = {
+  id: 41,
+  body: "Co jest pierwszym krokiem w rozmowie z osobą w kryzysie?",
+  sequence_order: 1,
+  answers: [
+    { id: 210, body: "Zadbanie o bezpieczeństwo i spokojne nawiązanie kontaktu", is_correct: true },
+    { id: 211, body: "Ocena, kto ponosi winę za sytuację", is_correct: false },
+  ],
+};
 
-    const tresc = (await Strona({ params: Promise.resolve({ id: "12" }), searchParams: Promise.resolve({ kurs: "4" }) })) as ReactElement;
-    await act(async () => {
-      render(<Uklad>{tresc}</Uklad>);
-    });
+async function wyrenderujLancuch(odpowiedzPytan: () => Promise<unknown>) {
+  podmienRejestr({ pytaniaTestu: true });
+  const [{ default: Uklad }, { default: Strona }] = await Promise.all([
+    import("@/app/(prowadzacy)/prowadzacy/layout"),
+    import("../page"),
+  ]);
+  api.mockReset().mockImplementation((url: string) => {
+    if (url === "/me") return Promise.resolve({ role: "instructor" });
+    if (url === "/instructor/tests/12/questions") return odpowiedzPytan();
+    return Promise.reject(new Error(`nieoczekiwane wywołanie: ${url}`));
+  });
+  apiPaged.mockResolvedValue({ data: [], meta: undefined });
 
-    expect(await screen.findByRole("heading", { name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
-    expect(await screen.findByText("Twoja rola: Psycholog prowadzący. Ten ekran jest dla administracji.")).toBeInTheDocument();
-    expect(screen.getByText("Nie masz dostępu do tej sekcji.")).toBeInTheDocument();
+  const tresc = (await Strona({ params: Promise.resolve({ id: "12" }), searchParams: Promise.resolve({ kurs: "4" }) })) as ReactElement;
+  await act(async () => {
+    render(<Uklad>{tresc}</Uklad>);
+  });
+}
+
+describe("łańcuch na żywo: układ prowadzącego → strona → ekran → trasy prowadzącego", () => {
+  it("prowadzący widzi pełny ekran pytań testu swojego kursu: lista, „Dodaj pytanie”, okruszek do kursu, jeden main", async () => {
+    await wyrenderujLancuch(() => Promise.resolve([PYTANIE]));
+
+    expect(await screen.findByRole("heading", { level: 3, name: "Pytanie 1" })).toBeInTheDocument();
+    expect(screen.getByText("Co jest pierwszym krokiem w rozmowie z osobą w kryzysie?")).toBeInTheDocument();
+    expect(screen.getByText("Poprawna")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dodaj pytanie" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edytuj pytanie 1" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Kurs" })).toHaveAttribute("href", "/prowadzacy/kursy/4");
+    expect(screen.queryByRole("heading", { name: "Nie masz dostępu do tego ekranu" })).toBeNull();
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(api).toHaveBeenCalledWith("/instructor/tests/12/questions");
+    expect(api.mock.calls.filter(([url]) => String(url).startsWith("/admin/"))).toEqual([]);
+    przywrocRejestr();
+  });
+
+  it("test obcego kursu (serwer: 404): „Nie znaleziono testu” i jeden przycisk powrotu do kursu, bez ekranu odmowy", async () => {
+    const { ApiError } = await import("@/lib/api/klient");
+    await wyrenderujLancuch(() => Promise.reject(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." })));
+
+    expect(await screen.findByRole("heading", { name: "Nie znaleziono testu" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Nie masz dostępu do tego ekranu" })).toBeNull();
     expect(screen.getAllByRole("main")).toHaveLength(1);
     await act(async () => {
       screen.getByRole("button", { name: "Wróć do kursu" }).click();
     });
     expect(push).toHaveBeenCalledWith("/prowadzacy/kursy/4");
-    expect(api).toHaveBeenCalledWith("/admin/tests/12/questions");
     przywrocRejestr();
   });
 });

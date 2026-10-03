@@ -38,6 +38,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { KursAdministracji } = await import("@/nowy-front/kurs-administracji/KursAdministracji");
+const { ApiError } = await import("@/lib/api/klient");
 
 async function renderEkranu() {
   const wynik = render(<KursAdministracji idKursu="4" rola="instructor" />);
@@ -67,15 +68,37 @@ describe("ekran kursu prowadzącego — dane i trasy", () => {
     expect(() => jedenMain(container)).not.toThrow();
   });
 
-  it("nie pyta o przypisania prowadzących, test kursu ani stan nagrań", async () => {
+  it("nie pyta o przypisania prowadzących ani stan nagrań; test kursu czyta jednym żądaniem trasy prowadzącego", async () => {
     await renderEkranu();
     // Chwila na dane dodatkowe, które ekran administracji czyta po pierwszym rysowaniu.
     await new Promise((gotowe) => setTimeout(gotowe, 50));
 
     const sciezki = serwer.wywolania.map((wywolanie) => wywolanie.sciezka);
     expect(sciezki.filter((sciezka) => sciezka.includes("/assignments"))).toEqual([]);
-    expect(sciezki.filter((sciezka) => sciezka.includes("/tests"))).toEqual([]);
+    expect(sciezki.filter((sciezka) => sciezka.includes("/tests"))).toEqual(["/instructor/courses/4/tests"]);
     expect(sciezki.filter((sciezka) => sciezka.includes("/video-status"))).toEqual([]);
+  });
+
+  it("test na koniec kursu: wiersz z odnośnikiem do pytań testu w panelu prowadzącego, z numerem kursu dla okruszka", async () => {
+    await renderEkranu();
+    expect(await screen.findByRole("heading", { level: 3, name: "Test na koniec kursu" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Otwórz pytania" })).toHaveAttribute("href", "/prowadzacy/testy/31/pytania?kurs=4");
+    expect(serwer.sciezkiGrupy("admin")).toEqual([]);
+  });
+
+  it("kurs bez testu: wiersz mówi to słowem, odnośnika nie ma", async () => {
+    serwer = utworzSerwer({ test: null });
+    await renderEkranu();
+    expect(await screen.findByText("Kurs nie ma testu")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Otwórz pytania" })).toBeNull();
+  });
+
+  it("odczyt testu odrzucony przez serwer: wiersza testu nie ma, reszta ekranu bez zmian", async () => {
+    serwer.nadpisz("GET", "/instructor/courses/4/tests", () => new ApiError({ status: 403, code: "forbidden", message: "" }));
+    await renderEkranu();
+    await new Promise((gotowe) => setTimeout(gotowe, 50));
+    expect(screen.queryByRole("heading", { level: 3, name: "Test na koniec kursu" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Tematy i lekcje" })).toBeInTheDocument();
   });
 
   it("okruszki i nagłówek: lista kursów prowadzącego, „Szkic — zapisany”", async () => {

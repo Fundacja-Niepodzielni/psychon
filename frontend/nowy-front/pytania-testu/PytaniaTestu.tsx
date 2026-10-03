@@ -25,6 +25,7 @@ import {
   zapiszKolejnosc,
   zapiszPytanie,
   type BladOdczytu,
+  type PanelEkranu,
   type PytanieTestu,
 } from "./dane";
 import { FormularzPytania, listaBledow } from "./FormularzPytania";
@@ -47,12 +48,17 @@ import {
 } from "./logika";
 import style from "./PytaniaTestu.module.css";
 
-/** Panel, z którego otwarto ekran: rozstrzyga wyłącznie okruszki i powrót. Żądania są te same. */
-export type PanelEkranu = "administracja" | "prowadzacy";
+export type { PanelEkranu } from "./dane";
 
 const ADRES_LISTY_KURSOW: Record<PanelEkranu, string> = {
   administracja: "/admin/kursy",
   prowadzacy: "/prowadzacy/kursy",
+};
+
+/** Dopełniacz w zdaniu odmowy „Ten ekran jest dla …”. */
+const ROLA_ODMOWY: Record<PanelEkranu, string> = {
+  administracja: "administracji",
+  prowadzacy: "prowadzących",
 };
 
 const TYTUL = "Pytania testu";
@@ -94,8 +100,10 @@ function prefiksFormularza(edycja: Edycja): string {
  * dotychczasowy bank pytań (`components/h10/QuestionBank.tsx`): lista pytań
  * z pełną treścią i odpowiedziami, dodawanie, edycja treści i odpowiedzi
  * z jedną odpowiedzią poprawną, usuwanie; do tego zmiana kolejności
- * strzałkami po lewej stronie wiersza. Te same trasy w obu panelach — kto
- * może co, rozstrzyga serwer.
+ * strzałkami po lewej stronie wiersza. Te same funkcje w obu panelach;
+ * administracja woła trasy `/admin/…`, prowadzący — `/instructor/…`, gdzie
+ * serwer zawęża bank do testu kursu przypisanego prowadzącego (test obcego
+ * kursu to „Nie znaleziono testu”, tak jak nieistniejący).
  *
  * Układ jak inne nowe ekrany zespołu: szablon szczegółu, nagłówek z okruszkami
  * do kursów (albo do kursu z parametru adresu) i jednym zielonym przyciskiem
@@ -131,7 +139,7 @@ export function PytaniaTestu({ idTestu, panel, idKursu = null }: WlasciwosciPyta
   useEffect(() => {
     if (numer === null) return undefined;
     let aktualne = true;
-    pobierzPytania(numer).then(
+    pobierzPytania(panel, numer).then(
       (lista) => {
         if (!aktualne) return;
         setPytania(lista);
@@ -144,7 +152,7 @@ export function PytaniaTestu({ idTestu, panel, idKursu = null }: WlasciwosciPyta
     return () => {
       aktualne = false;
     };
-  }, [numer, proba]);
+  }, [panel, numer, proba]);
 
   // Fokus po zapisie i usunięciu: na wiersz pytania albo na nagłówek listy.
   useEffect(() => {
@@ -210,7 +218,7 @@ export function PytaniaTestu({ idTestu, panel, idKursu = null }: WlasciwosciPyta
     setBledy(BEZ_BLEDOW);
     setBledyOkna(null);
     const numerZmienianego = biezaca.rodzaj === "zmiana" ? numerNaLiscie(biezaca.idPytania) : pytania.length + 1;
-    const zadanie = biezaca.rodzaj === "nowe" ? dodajPytanie(numer, biezaca.szkic) : zapiszPytanie(biezaca.idPytania, biezaca.szkic);
+    const zadanie = biezaca.rodzaj === "nowe" ? dodajPytanie(panel, numer, biezaca.szkic) : zapiszPytanie(panel, biezaca.idPytania, biezaca.szkic);
     return zadanie
       .then(
         (zapisane) => {
@@ -246,7 +254,7 @@ export function PytaniaTestu({ idTestu, panel, idKursu = null }: WlasciwosciPyta
     setBladAkcji(null);
     setPowiadomienie(null);
     try {
-      await usunPytanie(pytanie.id);
+      await usunPytanie(panel, pytanie.id);
       setPytania((lista) => lista.filter((element) => element.id !== pytanie.id));
       setPowiadomienie(`Usunięto pytanie ${numerUsuwanego}.`);
       fokusNa.current = idListy;
@@ -275,12 +283,12 @@ export function PytaniaTestu({ idTestu, panel, idKursu = null }: WlasciwosciPyta
     setPowiadomienie(null);
     oglosWPanelu(zdanieRuchuWiersza(skrot(przenoszone.body, DLUGOSC_NAZWY_WIERSZA), indeks + kierunek + 1, pytania.length));
     try {
-      await zapiszKolejnosc(plan.kroki);
+      await zapiszKolejnosc(panel, plan.kroki);
     } catch (wyjatek) {
       const { komunikat } = bladZapisu(wyjatek, "Nie udało się zapisać kolejności.");
       setBladAkcji({ tytul: "Nie udało się zapisać kolejności", tresc: `${komunikat} Lista pokazuje kolejność zapisaną na serwerze.` });
       try {
-        setPytania(await pobierzPytania(numer));
+        setPytania(await pobierzPytania(panel, numer));
       } catch (bladOdczytu) {
         setOdczyt({ rodzaj: "blad", blad: sklasyfikujBladOdczytu(bladOdczytu) });
       }
@@ -309,7 +317,7 @@ export function PytaniaTestu({ idTestu, panel, idKursu = null }: WlasciwosciPyta
     const wroc = { etykieta: kurs !== null ? "Wróć do kursu" : "Wróć do kursów", onClick: () => router.push(adresPowrotu) };
     if (blad.rodzaj === "brak-dostepu") {
       return ekranStanu(
-        <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" coDalej={blad.komunikat ?? undefined} przycisk={wroc} />,
+        <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa={ROLA_ODMOWY[panel]} coDalej={blad.komunikat ?? undefined} przycisk={wroc} />,
       );
     }
     if (blad.rodzaj === "nie-znaleziono") {

@@ -17,31 +17,54 @@ beforeEach(() => {
   api.mockReset().mockResolvedValue({});
 });
 
-describe("żądania — te same trasy i pola co dotychczasowy bank pytań", () => {
-  it("GET /admin/tests/{test}/questions", async () => {
-    await pobierzPytania(10);
-    expect(api).toHaveBeenCalledWith("/admin/tests/10/questions");
+/**
+ * Te same cztery żądania i te same pola w obu panelach; różni je tylko grupa
+ * tras serwera: administracja woła `/admin/…`, prowadzący — `/instructor/…`
+ * (zasięg kursu prowadzącego pilnuje serwer: cudzy test albo pytanie to 404).
+ */
+describe.each([
+  { panel: "administracja" as const, grupa: "/admin" },
+  { panel: "prowadzacy" as const, grupa: "/instructor" },
+])("żądania panelu $panel — trasy $grupa/…", ({ panel, grupa }) => {
+  it("GET {grupa}/tests/{test}/questions", async () => {
+    await pobierzPytania(panel, 10);
+    expect(api.mock.calls).toEqual([[`${grupa}/tests/10/questions`]]);
   });
 
-  it("POST /admin/tests/{test}/questions z treścią i odpowiedziami bez identyfikatorów", async () => {
-    await dodajPytanie(10, { body: "Pytanie", answers: [{ body: "A", is_correct: true }, { body: "B", is_correct: false }] });
-    expect(api).toHaveBeenCalledWith("/admin/tests/10/questions", {
-      method: "POST",
-      body: { body: "Pytanie", answers: [{ body: "A", is_correct: true }, { body: "B", is_correct: false }] },
-    });
+  it("POST {grupa}/tests/{test}/questions z treścią i odpowiedziami bez identyfikatorów", async () => {
+    await dodajPytanie(panel, 10, { body: "Pytanie", answers: [{ body: "A", is_correct: true }, { body: "B", is_correct: false }] });
+    expect(api.mock.calls).toEqual([
+      [
+        `${grupa}/tests/10/questions`,
+        { method: "POST", body: { body: "Pytanie", answers: [{ body: "A", is_correct: true }, { body: "B", is_correct: false }] } },
+      ],
+    ]);
   });
 
-  it("PATCH /admin/questions/{question}: odpowiedź, która już jest, niesie id, nowa — bez id", async () => {
-    await zapiszPytanie(42, { body: "Pytanie", answers: [{ id: 220, body: "A", is_correct: false }, { body: "C", is_correct: true }] });
-    expect(api).toHaveBeenCalledWith("/admin/questions/42", {
-      method: "PATCH",
-      body: { body: "Pytanie", answers: [{ id: 220, body: "A", is_correct: false }, { body: "C", is_correct: true }] },
-    });
+  it("PATCH {grupa}/questions/{question}: odpowiedź, która już jest, niesie id, nowa — bez id", async () => {
+    await zapiszPytanie(panel, 42, { body: "Pytanie", answers: [{ id: 220, body: "A", is_correct: false }, { body: "C", is_correct: true }] });
+    expect(api.mock.calls).toEqual([
+      [
+        `${grupa}/questions/42`,
+        { method: "PATCH", body: { body: "Pytanie", answers: [{ id: 220, body: "A", is_correct: false }, { body: "C", is_correct: true }] } },
+      ],
+    ]);
   });
 
-  it("DELETE /admin/questions/{question}", async () => {
-    await usunPytanie(42);
-    expect(api).toHaveBeenCalledWith("/admin/questions/42", { method: "DELETE" });
+  it("DELETE {grupa}/questions/{question}", async () => {
+    await usunPytanie(panel, 42);
+    expect(api.mock.calls).toEqual([[`${grupa}/questions/42`, { method: "DELETE" }]]);
+  });
+
+  it("zmiana kolejności: PATCH {grupa}/questions/{question} z samym numerem pozycji", async () => {
+    await zapiszKolejnosc(panel, [
+      { idPytania: 41, pozycja: 13 },
+      { idPytania: 42, pozycja: 3 },
+    ]);
+    expect(api.mock.calls).toEqual([
+      [`${grupa}/questions/41`, { method: "PATCH", body: { sequence_order: 13 } }],
+      [`${grupa}/questions/42`, { method: "PATCH", body: { sequence_order: 3 } }],
+    ]);
   });
 });
 
@@ -78,7 +101,7 @@ describe("błąd zapisu", () => {
 
 describe("zapis kolejności — kolejne PATCH z samym numerem pozycji", () => {
   it("kroki idą po kolei, każdy czeka na poprzedni", async () => {
-    await zapiszKolejnosc([
+    await zapiszKolejnosc("administracja", [
       { idPytania: 41, pozycja: 13 },
       { idPytania: 42, pozycja: 3 },
       { idPytania: 41, pozycja: 7 },
@@ -93,7 +116,7 @@ describe("zapis kolejności — kolejne PATCH z samym numerem pozycji", () => {
   it("odmowa kroku zatrzymuje dalsze i wraca do wywołującego", async () => {
     api.mockReset().mockResolvedValueOnce({}).mockRejectedValueOnce(blad(500, "server_error"));
     await expect(
-      zapiszKolejnosc([
+      zapiszKolejnosc("prowadzacy", [
         { idPytania: 41, pozycja: 13 },
         { idPytania: 42, pozycja: 3 },
         { idPytania: 41, pozycja: 7 },

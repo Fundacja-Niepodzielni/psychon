@@ -100,7 +100,7 @@ describe("ładowanie", () => {
     expect(screen.getByRole("link", { name: "Kursy" })).toHaveAttribute("href", "/admin/kursy");
     expect(screen.getByRole("button", { name: "Wstecz" })).toBeInTheDocument();
     expect(zielone()).toHaveLength(0);
-    expect(pobierzPytania).toHaveBeenCalledWith(10);
+    expect(pobierzPytania).toHaveBeenCalledWith("administracja", 10);
   });
 });
 
@@ -312,7 +312,7 @@ describe("dodawanie", () => {
     await uzytkownik.click(zapiszWOknie(formularz));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Dodano pytanie 4.");
-    expect(dodajPytanie).toHaveBeenCalledWith(10, {
+    expect(dodajPytanie).toHaveBeenCalledWith("administracja", 10, {
       body: "Jak zakończyć rozmowę wspierającą?",
       answers: [
         { body: "Podsumować i ustalić dalszy krok", is_correct: true },
@@ -344,7 +344,7 @@ describe("edycja", () => {
     expect(saPowodyPytania()).toBe(true);
     await uzytkownik.click(zapiszWOknie(formularz));
 
-    expect(zapiszPytanie).toHaveBeenCalledWith(42, {
+    expect(zapiszPytanie).toHaveBeenCalledWith("administracja", 42, {
       body: "Która postawa wspiera rozmowę, która nie ocenia?",
       answers: [
         { id: 220, body: "Uważne słuchanie i parafraza", is_correct: false },
@@ -397,7 +397,7 @@ describe("usuwanie z potwierdzeniem", () => {
     await uzytkownik.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Usuń pytanie" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Usunięto pytanie 2.");
-    expect(usunPytanie).toHaveBeenCalledWith(42);
+    expect(usunPytanie).toHaveBeenCalledWith("administracja", 42);
     // Numer na ekranie to miejsce na liście: usunięte znika, trzecie staje się drugim.
     expect(screen.queryByText("Która postawa wspiera rozmowę, która nie ocenia?")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Pytanie 3" })).toBeNull();

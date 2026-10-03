@@ -49,17 +49,17 @@ describe("pliki ekranu pytań testu", () => {
     expect(logika?.tresc).not.toMatch(/@\/lib\/api|fetch\(|useEffect|window\.|document\./);
   });
 
-  it("żądania tylko na trasach dotychczasowego banku pytań, bez tras prowadzącego", () => {
+  it("żądania tylko na trasach banku pytań: administracji (`/admin/…`) i prowadzącego (`/instructor/…`), wyłącznie w dane.ts", () => {
     const dane = pliki.find((plik) => plik.nazwa.endsWith("dane.ts"))?.tresc ?? "";
     const trasy = [...dane.matchAll(/sciezka`([^`]*)`/g)].map((dopasowanie) => dopasowanie[1]).sort();
     expect(trasy).toEqual([
       "/admin/questions/${idPytania}",
-      "/admin/questions/${idPytania}",
-      "/admin/questions/${idPytania}",
       "/admin/tests/${idTestu}/questions",
-      "/admin/tests/${idTestu}/questions",
+      "/instructor/questions/${idPytania}",
+      "/instructor/tests/${idTestu}/questions",
     ]);
-    expect(pliki.filter((plik) => /\/instructor\//.test(plik.tresc)).map((plik) => plik.nazwa)).toEqual([]);
+    const trasaSerwera = /["'`]\/(admin|instructor)\/(tests|questions)\b/;
+    expect(pliki.filter((plik) => !plik.nazwa.endsWith("dane.ts") && trasaSerwera.test(plik.tresc)).map((plik) => plik.nazwa)).toEqual([]);
   });
 
   it("obie strony podglądu montują ten sam ekran, różnią się tylko panelem", () => {
