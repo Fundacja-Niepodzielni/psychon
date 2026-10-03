@@ -206,7 +206,14 @@ describe("ekran kursu administracji bez roli — bez zmian", () => {
     for (const przycisk of przyciskiPublikacji()) expect(przycisk).not.toHaveAttribute("aria-disabled");
     expect(screen.queryByText("Kurs publikuje administracja.")).toBeNull();
     expect(screen.getByRole("button", { name: "Usunięcie kursu" })).toBeInTheDocument();
+    // Dwa wiersze ustawień: panel „Zaproszenia” jest ukryty stałą ekranu
+    // (`ZAPROSZENIA_W_USTAWIENIACH`) do czasu zaproszeń na kurs po MVP; administracja
+    // nadal widzi „Prowadzący”, którego prowadzący kursu nie ma.
     const karta = screen.getByRole("region", { name: "Ustawienia kursu" });
-    expect(karta.querySelectorAll("h3 > button[aria-expanded]")).toHaveLength(3);
+    const wiersze = Array.from(karta.querySelectorAll<HTMLButtonElement>("h3 > button[aria-expanded]"));
+    expect(wiersze).toHaveLength(2);
+    expect(wiersze[0]).toHaveTextContent("Opis i dane kursu");
+    expect(wiersze[1]).toHaveTextContent("Prowadzący");
+    expect(within(karta).queryByText("Zaproszenia")).toBeNull();
   });
 });

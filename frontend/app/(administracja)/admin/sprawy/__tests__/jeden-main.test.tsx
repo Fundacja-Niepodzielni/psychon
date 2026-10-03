@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
 
 /**
@@ -90,6 +90,12 @@ describe("/admin/sprawy w układzie administracji (grupa włączona)", () => {
     );
     const { container } = await zloz();
 
+    // Zwinięty wiersz sprawy nie pokazuje tematu — temat stoi dopiero po „Otwórz”.
+    const otworz = await screen.findByRole("button", { name: /^Otwórz sprawę od prowadzącego/ });
+    expect(screen.queryByText("Nieobecność na dyżurze")).toBeNull();
+    expect(zmierz(container)).toEqual(JEDEN);
+
+    fireEvent.click(otworz);
     await screen.findByText("Nieobecność na dyżurze");
     expect(zmierz(container)).toEqual(JEDEN);
   });

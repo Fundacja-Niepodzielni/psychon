@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { dwaTerminyPrawdziwyKsztalt } from "@/components/h12/__tests__/fixture";
 
 /**
@@ -114,6 +114,11 @@ interface ScreenCase {
   routes: Record<string, unknown>;
   /** Text that only the loaded screen shows (comes from `routes`). */
   seen: string;
+  /**
+   * Optional step that reveals `seen` once the data has loaded, for screens that show
+   * it only after a click (a collapsed row hides the subject until "Otwórz").
+   */
+  reveal?: () => Promise<void>;
 }
 
 const SCREENS: ScreenCase[] = [
@@ -237,6 +242,13 @@ const SCREENS: ScreenCase[] = [
       },
     },
     seen: "Nieobecność na dyżurze",
+    // A collapsed case row shows only the kind, the person and the waiting time; the
+    // subject from the endpoint appears after "Otwórz".
+    reveal: async () => {
+      fireEvent.click(
+        await screen.findByRole("button", { name: /^Otwórz sprawę od prowadzącego/ }),
+      );
+    },
   },
 ];
 
@@ -288,6 +300,7 @@ describe.each(SCREENS)("$url under the admin role guard", (screenCase) => {
     routeTransport("project_manager", screenCase.routes);
 
     await renderScreen(screenCase);
+    await screenCase.reveal?.();
 
     await waitFor(() =>
       expect(screen.getAllByText(screenCase.seen, { exact: false }).length).toBeGreaterThan(0),

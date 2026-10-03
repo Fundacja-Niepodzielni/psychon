@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { opiszPodmianeTresci } from "@/lib/przelaczenie/__tests__/podmiana-tresci";
 import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/podmien-rejestr";
 
@@ -78,7 +78,12 @@ describe("strona /admin/sprawy — render obu stanów na tym samym API", () => {
     podmienRejestr({ sprawy: true });
     const wlaczona = await import("../page");
     const zWlaczona = render(<wlaczona.default />);
-    await screen.findByText("Prośba o rozmowę");
+    // Nowy ekran pokazuje sprawę w zwiniętym wierszu (rodzaj, osoba, czas czekania);
+    // temat stoi dopiero po „Otwórz” — stara treść pokazuje go od razu.
+    const otworz = await screen.findByRole("button", { name: /^Otwórz sprawę od prowadzącego/ });
+    expect(screen.queryByText("Prośba o rozmowę")).toBeNull();
+    fireEvent.click(otworz);
+    await screen.findByRole("heading", { level: 3, name: "Prośba o rozmowę" });
     expect(zWlaczona.container.innerHTML).not.toBe(htmlStrony);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Sprawy do decyzji");
     expect(screen.getByRole("heading", { level: 2, name: "Sprawy zgłoszone przez prowadzących" })).toBeInTheDocument();
