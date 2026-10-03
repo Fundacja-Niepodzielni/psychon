@@ -6,23 +6,24 @@ namespace App\Support\Emails;
  * The one accessor for the Foundation's contact shown in e-mails
  * („Kontakt z Fundacją” in the footer and in the „Co dalej” box).
  *
- * Until the administration has a field for it, the value is the design
- * placeholder, shown with the „wartość do uzupełnienia” atom.
+ * The value is `config('emails.foundation_contact')`. Until the
+ * administration has a field for it, it is not set — and an e-mail without
+ * the value shows no contact at all, never a placeholder.
  */
 final class EmailContact
 {
-    public const string PLACEHOLDER = '[kontakt Fundacji z panelu administracji]';
-
     /**
-     * The contact text, or null when the e-mail should not show one.
+     * The contact text, or null when it is not set (the e-mail then leaves
+     * the contact out).
      */
     public static function value(): ?string
     {
-        return self::PLACEHOLDER;
-    }
+        $value = config('emails.foundation_contact');
 
-    public static function isPlaceholder(?string $value): bool
-    {
-        return $value === self::PLACEHOLDER;
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return trim($value);
     }
 }

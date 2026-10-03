@@ -8,7 +8,9 @@
         usuniemy z niego Twoje dane osobowe, zgodnie z zasadami przechowywania danych Fundacji
         Niepodzielni.
     </x-email.paragraph>
-    <x-email.next-steps>
-        Jeśli chcesz zachować konto, skontaktuj się z Fundacją: {{ $contact }}.
-    </x-email.next-steps>
+    @if ($contact !== null)
+        <x-email.next-steps>
+            Jeśli chcesz zachować konto, skontaktuj się z Fundacją: {{ $contact }}.
+        </x-email.next-steps>
+    @endif
 </x-email.layout>

@@ -88,19 +88,13 @@ final class EmailContext
     }
 
     /**
-     * The Foundation's contact as it stands in running text: the placeholder
-     * atom while there is no value from the administration.
+     * The Foundation's contact as it stands in running text, or null when it
+     * is not set — templates then leave the whole contact out.
      */
-    public function contact(): HtmlString
+    public function contact(): ?HtmlString
     {
-        $value = EmailContact::value() ?? '';
+        $value = EmailContact::value();
 
-        if (! $this->isText() && EmailContact::isPlaceholder($value)) {
-            return new HtmlString(trim(view('components.email.placeholder', [
-                'slot' => new HtmlString(e($value)),
-            ])->render()));
-        }
-
-        return new HtmlString(e($value));
+        return $value === null ? null : new HtmlString(e($value));
     }
 }

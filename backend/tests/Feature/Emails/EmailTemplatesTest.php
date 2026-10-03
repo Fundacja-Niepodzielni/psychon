@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Emails;
 
+use App\Support\Emails\EmailContact;
 use App\Support\Emails\EmailRenderer;
 use App\Support\Emails\EmailTemplates;
 use App\Support\Emails\RenderedEmail;
@@ -14,7 +15,8 @@ use Tests\TestCase;
  * zatwierdzony wzorzec wyglądu: wersja tekstowa słowo w słowo równa
  * `tests/Fixtures/emails/E-NN.txt`, wersja HTML równa `E-NN.html` po zdjęciu
  * białych znaków między znacznikami. Przykładowe dane i adres platformy
- * (`https://psychon.example.org`) są te same co we wzorcu wyglądu.
+ * (`https://psychon.example.org`) są te same co we wzorcu wyglądu. Wzorce
+ * pokazują e-maile bez ustawionego kontaktu Fundacji — tak jak dziś wychodzą.
  */
 #[Group('wspolna-baza')]
 class EmailTemplatesTest extends TestCase
@@ -23,8 +25,12 @@ class EmailTemplatesTest extends TestCase
 
     private const string FIXTURES = __DIR__.'/../../Fixtures/emails';
 
+    /** Wymyślony kontakt — tylko w próbach z ustawionym kontaktem. */
+    private const string CONTACT = 'kontakt@niepodzielni.example.org';
+
     /**
-     * E-maile, które trafiają do samej Fundacji — bez linii „Kontakt z Fundacją”.
+     * E-maile, które trafiają do samej Fundacji — bez linii „Kontakt z Fundacją”
+     * także przy ustawionym kontakcie.
      */
     private const array TEAM = ['E-05', 'E-17', 'E-22', 'E-39', 'E-41'];
 
@@ -158,15 +164,66 @@ class EmailTemplatesTest extends TestCase
         );
     }
 
-    #[DataProvider('numbers')]
-    public function test_only_e_mails_outside_the_team_have_the_contact_line(string $number): void
+    public function test_no_template_shows_a_contact_placeholder(): void
     {
+        $this->assertNull(EmailContact::value());
+
+        foreach (array_keys(EmailTemplates::TEMPLATES) as $number) {
+            $email = $this->render($number);
+
+            foreach (['tekst' => $email->text, 'HTML' => $email->html, 'temat' => $email->subject] as $kind => $content) {
+                $this->assertStringNotContainsString('kontakt Fundacji z panelu administracji', $content, "{$number} ({$kind}): wypełniacz kontaktu.");
+                $this->assertDoesNotMatchRegularExpression('/\[[^\]]*kontakt[^\]]*\]/iu', $content, "{$number} ({$kind}): nawias kwadratowy z „kontakt”.");
+                $this->assertStringNotContainsString('Kontakt z Fundacją', $content, "{$number} ({$kind}): kontakt bez ustawionej wartości.");
+            }
+        }
+    }
+
+    public function test_without_a_contact_the_contact_sentences_and_boxes_are_left_out(): void
+    {
+        $withdrawn = $this->render('E-30');
+        $deletion = $this->render('E-31');
+        $blocked = $this->render('E-40');
+
+        $this->assertStringContainsString("\nCo dalej: Jeśli chcesz dokończyć program, napisz do Fundacji przez okno „Potrzebujesz pomocy?” w panelu PsychON. Okno pomocy działa także po zakończeniu dostępu.\n", $withdrawn->text);
+        $this->assertStringNotContainsString('skontaktować się z Fundacją', $withdrawn->text.$withdrawn->html);
+        foreach ([$deletion, $blocked] as $email) {
+            $this->assertStringNotContainsString('Co dalej', $email->text);
+            $this->assertStringNotContainsString('Co dalej', $email->html);
+            $this->assertStringNotContainsString('skontaktuj się z Fundacją', $email->text.$email->html);
+        }
+    }
+
+    public function test_blank_contact_counts_as_not_set(): void
+    {
+        foreach (['', '   '] as $blank) {
+            config(['emails.foundation_contact' => $blank]);
+
+            $this->assertNull(EmailContact::value());
+            $this->assertStringNotContainsString('Kontakt z Fundacją', $this->render('E-14')->text);
+        }
+    }
+
+    #[DataProvider('numbers')]
+    public function test_once_set_only_e_mails_outside_the_team_have_the_contact_line(string $number): void
+    {
+        config(['emails.foundation_contact' => self::CONTACT]);
+
         $email = $this->render($number);
         $team = in_array($number, self::TEAM, true);
 
         $this->assertSame($team, EmailTemplates::isTeam($number));
-        $this->assertSame(! $team, str_contains($email->text, "\nKontakt z Fundacją: "));
-        $this->assertSame(! $team, str_contains($email->html, 'Kontakt z Fundacją: '));
+        $this->assertSame(! $team, str_contains($email->text, "\nKontakt z Fundacją: ".self::CONTACT."\n"));
+        $this->assertSame(! $team, str_contains($email->html, 'Kontakt z Fundacją: '.self::CONTACT.'</p>'));
+    }
+
+    public function test_once_set_the_contact_stands_in_the_next_steps_box(): void
+    {
+        config(['emails.foundation_contact' => self::CONTACT]);
+
+        $this->assertStringContainsString('Możesz też skontaktować się z Fundacją: '.self::CONTACT.'.', $this->render('E-30')->text);
+        $this->assertStringContainsString("\nCo dalej: Jeśli chcesz zachować konto, skontaktuj się z Fundacją: ".self::CONTACT.".\n", $this->render('E-31')->text);
+        $this->assertStringContainsString("\nCo dalej: Jeśli masz pytania, skontaktuj się z Fundacją Niepodzielni: ".self::CONTACT.".\n", $this->render('E-40')->text);
     }
 
     #[DataProvider('numbers')]

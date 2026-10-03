@@ -1,0 +1,1 @@
+{{-- Wersja tekstowa e-maili z okna pomocy: tekst szablonu słowo w słowo. Plik celowo bez końcowego znaku nowej linii — Blade dopisałby go do treści. --}}{!! $email->text !!}

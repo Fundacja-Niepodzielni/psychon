@@ -8,7 +8,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\HtmlString;
 
 /**
  * Potwierdzenie dla nadawcy zgłoszenia z okna pomocy (szablon E-04) — osobna
@@ -34,6 +33,6 @@ class HelpMessageConfirmation extends Mailable implements ShouldQueue
         return $this
             ->subject($email->subject)
             ->view('mail.help.confirmation', ['email' => $email])
-            ->text(new HtmlString($email->text));
+            ->text('mail.help.text');
     }
 }

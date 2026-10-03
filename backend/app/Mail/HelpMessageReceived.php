@@ -9,7 +9,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\HtmlString;
 
 /**
  * Kopia zgłoszenia z okna pomocy do skrzynki zespołu (szablon E-05;
@@ -44,6 +43,6 @@ class HelpMessageReceived extends Mailable implements ShouldQueue
         return $this
             ->subject($email->subject)
             ->view('mail.help.received', ['email' => $email])
-            ->text(new HtmlString($email->text));
+            ->text('mail.help.text');
     }
 }

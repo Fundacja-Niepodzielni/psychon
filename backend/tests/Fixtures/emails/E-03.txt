@@ -12,5 +12,4 @@ Aktywuj dostęp: https://psychon.example.org/aktywacja?kod=7QK4-M2XP-91LD
 
 ----------
 Wiadomość wysłała platforma PsychON Fundacji Niepodzielni. Dostajesz ją, bo Fundacja Niepodzielni założyła konto na ten adres e-mail.
-Kontakt z Fundacją: [kontakt Fundacji z panelu administracji]
 Fundacja Niepodzielni

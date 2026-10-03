@@ -292,7 +292,7 @@ class TestController extends Controller
 
         foreach (User::where('role', 'project_manager')->get() as $manager) {
             Notify::send($manager, 'attempt.failed_final', $title, $body, '/admin/uczestniczki/'.$user->id, email: [
-                'stageTitle' => $test->course?->title ?? 'kurs',
+                'stageTitle' => $test->course->title,
                 'path' => '/admin/uczestniczki/'.$user->id,
             ]);
         }
