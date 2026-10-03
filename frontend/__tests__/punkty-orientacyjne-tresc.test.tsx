@@ -130,6 +130,9 @@ interface OdkrytaTrasa {
    * (`POWLOKI_Z_PUNKTEM_ORIENTACYJNYM`) — gate stoi przed punktem
    * orientacyjnym w tym samym pliku. */
   bramkaRoli: boolean;
+  /** Pierwsza rola z `RequireRole` w łańcuchu layoutów, gdy bramka NIE stoi przed powłoką w tym samym
+   * pliku (punkt orientacyjny niesie wtedy sama strona i pojawia się dopiero po `GET /me`); inaczej `null`. */
+  rolaStraznika: string | null;
   dynamiczna: boolean;
   przekierowanieSerwera: boolean;
 }
@@ -201,6 +204,12 @@ function strazPrzedPowloka(src: string): boolean {
   });
 }
 
+/** Pierwsza rola z `allowedRoles` pierwszego `<RequireRole` w źródle layoutu albo `null`. */
+function rolaZeStrazy(src: string): string | null {
+  const wpis = /<RequireRole\b[^>]*?allowedRoles=\{\[\s*["']([a-z_]+)["']/.exec(src);
+  return wpis ? wpis[1] : null;
+}
+
 function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {
   const wynik: OdkrytaTrasa[] = [];
   for (const wpis of readdirSync(dir, { withFileTypes: true })) {
@@ -224,6 +233,7 @@ function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {
     const layoutyPliki = lancuchLayoutow(dir);
     const layoutyZrodla = layoutyPliki.map((p) => readFileSync(p, "utf8"));
     const bramkaRoli = layoutyZrodla.some(strazPrzedPowloka);
+    const rolaStraznika = bramkaRoli ? null : layoutyZrodla.map(rolaZeStrazy).find((rola) => rola !== null) ?? null;
 
     wynik.push({
       url,
@@ -231,6 +241,7 @@ function wykryjTrasy(dir = APP_DIR): OdkrytaTrasa[] {
       importLayouty: layoutyPliki.map(doSpecyfikatoraImportu),
       dynamiczna,
       bramkaRoli,
+      rolaStraznika,
       przekierowanieSerwera,
     });
   }
@@ -481,12 +492,31 @@ async function renderujTrase(importPage: string, importLayouty: string[]) {
  */
 const LIMIT_PRZYPADKU_MS = 15_000;
 
-describe.each(DO_ZMIERZENIA)("$url", ({ url, importPage, importLayouty }) => {
+/** `GET /me` z rolą dopuszczoną przez strażnika w układzie; reszta odrzucona jak w atrapie domyślnej. */
+function przepuscStraznika(rola: string) {
+  apiMock.mockImplementation((path: string) => {
+    if (path === "/me") return Promise.resolve({ role: rola });
+    return Promise.reject(
+      new ApiError({ status: 500, code: "instrument", message: "Zamockowana odpowiedź ogólna." }),
+    );
+  });
+}
+
+describe.each(DO_ZMIERZENIA)("$url", ({ url, importPage, importLayouty, rolaStraznika }) => {
   it(`ma dokładnie jeden punkt orientacyjny treści (rola "main" pod id="tresc"), na który wskazuje skip-link`, async () => {
+    // Strażnik w układzie, a punkt orientacyjny niesie sama strona (strony podglądu administracji):
+    // punkt pojawia się po odpowiedzi `GET /me` z rolą dopuszczoną przez strażnika, więc ją podstawiamy.
+    if (rolaStraznika !== null) przepuscStraznika(rolaStraznika);
     await renderujTrase(importPage, importLayouty);
 
-    const wszystkieMain = screen.queryAllByRole("main");
-    const punktOrientacyjny = wszystkieMain.filter((el) => el.id === "tresc");
+    const znajdzMain = () => {
+      const wszystkie = screen.queryAllByRole("main");
+      return { wszystkie, punkt: wszystkie.filter((el) => el.id === "tresc") };
+    };
+    if (rolaStraznika !== null) {
+      await waitFor(() => expect(znajdzMain().punkt.length).toBeGreaterThan(0), { timeout: 3000 }).catch(() => undefined);
+    }
+    const { wszystkie: wszystkieMain, punkt: punktOrientacyjny } = znajdzMain();
 
     expect(
       punktOrientacyjny,
@@ -502,7 +532,8 @@ describe.each(DO_ZMIERZENIA)("$url", ({ url, importPage, importLayouty }) => {
     // tu realistyczną atrapę zamiast generycznego odrzucenia z `beforeEach`
     // — zmierzone osobno, patrz `REALISTYCZNE_LADUNKI` i komentarz u góry
     // pliku. Reszta tras zostaje na atrapie generycznej bez zmian.
-    REALISTYCZNE_LADUNKI[url]?.();
+    if (REALISTYCZNE_LADUNKI[url]) REALISTYCZNE_LADUNKI[url]();
+    else if (rolaStraznika !== null) przepuscStraznika(rolaStraznika);
 
     await renderujTrase(importPage, importLayouty);
 
