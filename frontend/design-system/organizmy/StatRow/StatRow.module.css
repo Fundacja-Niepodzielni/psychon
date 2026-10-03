@@ -43,3 +43,61 @@
 .komorka[data-uklad="pulpit"] [role="progressbar"] + span {
   display: none;
 }
+
+/* Rząd z wyrównaniem (`wyrownane`), od 1180 px: siatka o trzech wierszach
+   (podpis, liczba, blok pod liczbą); komórka i kafel (a w kaflu-odnośniku także
+   odnośnik) są podsiatkami tych wierszy, więc liczby stoją na jednej linii, a
+   paski i podpowiedzi zaczynają się na jednej wysokości. Poniżej 1180 px zostaje
+   układ elastyczny z góry pliku. */
+@media (min-width: 1180px) {
+  .rzad[data-wyrownane] {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    row-gap: var(--space-6);
+  }
+
+  .rzad[data-wyrownane] > .komorka {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    min-width: 0;
+  }
+
+  .rzad[data-wyrownane] > .komorka > a {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+  }
+}
+
+/* Cztery równe pola (`duzeLiczby`): dwie kolumny, od 1180 px cztery. Liczba w
+   stopniu `--fs-2` i bez zawijania, podpis nad nią, jedna linia opisu pod nią. */
+.rzad[data-duze-liczby] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.rzad[data-duze-liczby] > .komorka {
+  min-width: 0;
+}
+
+.rzad[data-duze-liczby] .komorka [id] {
+  font-size: var(--fs-2);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+@media (min-width: 1180px) {
+  .rzad[data-duze-liczby] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Jednostka przy dużej liczbie jest mała: liczba 30 px, „osób”, „certyfikatów” 16 px. */
+.rzad[data-duze-liczby] .komorka [id] > span > span + span {
+  font-size: var(--fs-8);
+  font-weight: var(--fw-medium);
+}

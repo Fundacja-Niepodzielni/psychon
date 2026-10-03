@@ -23,6 +23,16 @@ interface KafelStatRow {
 
 interface WlasciwosciStatRow {
   kafle: KafelStatRow[];
+  /** Od 1180 px liczby wszystkich kafli rzędu stoją na jednej linii, a paski i
+   * podpowiedzi zaczynają się na jednej wysokości (subgrid). Pasek i podpowiedź
+   * jednego kafla idą wtedy w jednym bloku pod liczbą. Poniżej 1180 px układ
+   * jest taki jak bez tej właściwości. Domyślnie wyłączone — kafle karty osoby
+   * (do czworga dzieci) nie są objęte. */
+  wyrownane?: boolean;
+  /** Cztery równe pola o jednym układzie (podpis, liczba, jedna linia opisu): dwie
+   * kolumny, od 1180 px cztery; liczba w stopniu `--fs-2`, jednostka mała, bez
+   * zawijania liczby. Domyślnie wyłączone. */
+  duzeLiczby?: boolean;
 }
 
 /**
@@ -33,11 +43,16 @@ interface WlasciwosciStatRow {
  * własną logikę klikalności — `Link` niesie już pole dotykowe ≥44px z
  * wcięcia pionowego (Link.module.css).
  */
-export function StatRow({ kafle }: WlasciwosciStatRow) {
+export function StatRow({ kafle, wyrownane = false, duzeLiczby = false }: WlasciwosciStatRow) {
   return (
-    <div className={style.rzad} role="list">
+    <div
+      className={style.rzad}
+      role="list"
+      data-wyrownane={wyrownane || undefined}
+      data-duze-liczby={duzeLiczby || undefined}
+    >
       {kafle.map(({ href, ukladPulpitu, ...kafel }) => {
-        const tile = <StatTile {...kafel} />;
+        const tile = <StatTile {...kafel} wyrownany={wyrownane} />;
         return (
           <div
             key={kafel.id}

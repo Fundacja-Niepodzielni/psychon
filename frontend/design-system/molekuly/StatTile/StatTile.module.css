@@ -25,3 +25,33 @@
   font-size: var(--fs-1);
   font-weight: var(--fw-black);
 }
+
+/* Pasek i podpowiedź w jednym bloku pod liczbą — tylko kafel `wyrownany`,
+   żeby miał trzy dzieci (podpis, liczba, ten blok). */
+.dodatek {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Rząd z wyrównaniem (`StatRow` z `wyrownane`), od 1180 px: kafel staje się
+   podsiatką rzędu i zajmuje jego trzy wiersze — podpis, liczba, blok pod liczbą.
+   Liczba stoi na linii bazowej wspólnej dla wszystkich kafli rzędu, więc kafel
+   z wyróżnioną liczbą (44 px) nie rozjeżdża pozostałych; początek paska i
+   podpowiedzi jest na jednej wysokości. Tylko kafle z `wyrownany` — kafle
+   karty osoby (do czworga dzieci) zostają przy układzie kolumnowym. */
+@media (min-width: 1180px) {
+  .kafel[data-wyrownany] {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+  }
+
+  .kafel[data-wyrownany] .wartosc {
+    align-self: baseline;
+  }
+
+  .kafel[data-wyrownany] > :nth-child(3) {
+    align-self: start;
+  }
+}
