@@ -23,7 +23,7 @@ function tresciCssAtomow(): string[] {
 
 /** Wyciąga wartość zmiennej z pierwszego bloku, w którym występuje. */
 function wartosc(nazwaZmiennej: string, blok: string): string {
-  const wzorzec = new RegExp(`--${nazwaZmiennej}:\s*([^;]+);`);
+  const wzorzec = new RegExp(String.raw`--${nazwaZmiennej}:\s*([^;]+);`);
   const dopasowanie = blok.match(wzorzec);
   if (!dopasowanie) {
     throw new Error(`brak zmiennej --${nazwaZmiennej} w podanym bloku`);
@@ -264,5 +264,17 @@ describe("tokeny — wspólne: fokus i cel dotykowy", () => {
     const trescReguly = regulaFokusu![1];
     expect(trescReguly).toMatch(/border-radius:\s*var\(--r-2xs\)/);
     expect(trescReguly).not.toMatch(/border-radius:\s*var\(--r-xs\)/);
+  });
+});
+
+describe("wartosc() — odczyt wartości zmiennej z bloku", () => {
+  it("zachowuje pierwszą literę wartości zaczynającej się od „s” (bez spacji po dwukropku)", () => {
+    expect(wartosc("x", "--x:solid;")).toBe("solid");
+  });
+
+  it("pomija białe znaki po dwukropku, także tabulator i nowy wiersz", () => {
+    expect(wartosc("x", "--x: solid;")).toBe("solid");
+    expect(wartosc("x", "--x:\t solid;")).toBe("solid");
+    expect(wartosc("x", "--x:\n  solid;")).toBe("solid");
   });
 });
