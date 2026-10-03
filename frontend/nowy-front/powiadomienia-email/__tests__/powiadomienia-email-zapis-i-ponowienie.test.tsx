@@ -42,11 +42,11 @@ function ustawienia() {
   };
 }
 
-const POTWIERDZENIE = "Ustawienia powiadomień zapisane.";
+const POTWIERDZENIE = "Ustawienia powiadomień zostały zapisane.";
 
 async function zmienIZapisz(uzytkownik: ReturnType<typeof userEvent.setup>) {
   await waitFor(() => expect(screen.getByText("Odblokowanie etapu")).toBeInTheDocument());
-  await uzytkownik.click(screen.getByRole("checkbox", { name: "Odblokowanie etapu" }));
+  await uzytkownik.click(screen.getByRole("switch", { name: "Odblokowanie etapu" }));
   await uzytkownik.click(await screen.findByRole("button", { name: "Zapisz zmiany" }));
   await waitFor(() => expect(updateNotificationSettings).toHaveBeenCalledTimes(1));
 }
@@ -96,12 +96,13 @@ describe("PowiadomieniaEmail — błąd wczytania skrzynki", () => {
     render(<PowiadomieniaEmail />);
 
     expect(await screen.findByText("Nie udało się wczytać wiadomości")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Powiadomienia e-mail" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Powiadomienia" })).toBeInTheDocument();
     expect(fetchAdminEmailsPage).toHaveBeenCalledTimes(1);
 
     await uzytkownik.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
 
     await waitFor(() => expect(fetchAdminEmailsPage).toHaveBeenCalledTimes(2));
+    await uzytkownik.click(await screen.findByRole("button", { name: "Wysłane" }));
     expect(await screen.findByText("Brak wiadomości.")).toBeInTheDocument();
     expect(screen.queryByText("Nie udało się wczytać wiadomości")).toBeNull();
     expect(screen.queryByRole("button", { name: "Spróbuj ponownie" })).toBeNull();

@@ -118,7 +118,7 @@ const POZYCJE_BEZ_USTAWIEN = [
   "Raport roku programu",
   "Dziennik działań",
 ];
-const POZYCJE_DOTYCHCZASOWE = ["Czas nauki", "Certyfikaty", "Profile psychologa", "Superwizje", "Skrzynka e-maili"];
+const POZYCJE_DOTYCHCZASOWE = ["Czas nauki", "Certyfikaty", "Profile psychologa", "Superwizje", "Powiadomienia"];
 
 function bok(page: Page): Locator {
   return page.getByRole("complementary", { name: "Menu i konto" });

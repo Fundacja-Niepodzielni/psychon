@@ -204,12 +204,12 @@ describe("PageHeader w nowej ramce: okruszek liczony z menu", () => {
     wyrenderuj({
       sciezka: "/admin/powiadomienia",
       menu: menuAdministracji,
-      okruszki: [{ etykieta: "Administracja" }, { etykieta: "Powiadomienia e-mail" }],
-      tytul: "Powiadomienia e-mail",
+      okruszki: [{ etykieta: "Administracja" }, { etykieta: "Powiadomienia" }],
+      tytul: "Powiadomienia",
     });
     expect(okruszek()).toEqual([
       ["Administracja", "/admin"],
-      ["Powiadomienia e-mail", null],
+      ["Powiadomienia", null],
     ]);
   });
 

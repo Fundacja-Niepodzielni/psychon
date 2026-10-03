@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 /**
  * Świadek dwustronny dwóch poprawek zmierzonych na ekranie przeglądu
@@ -45,6 +46,7 @@ beforeEach(() => {
 describe("PowiadomieniaEmail — poprawki", () => {
   it("okruszek „Administracja” nie jest odnośnikiem (trasa nadrzędna nie istnieje)", async () => {
     render(<PowiadomieniaEmail />);
+    await userEvent.click(await screen.findByRole("button", { name: "Wysłane" }));
     await waitFor(() => expect(screen.getByText("marta@demo.pl")).toBeInTheDocument());
 
     const okruszek = screen.getByText("Administracja");
@@ -54,6 +56,7 @@ describe("PowiadomieniaEmail — poprawki", () => {
 
   it("bez szukajki — GET /admin/emails nie ma parametru wyszukiwania", async () => {
     render(<PowiadomieniaEmail />);
+    await userEvent.click(await screen.findByRole("button", { name: "Wysłane" }));
     await waitFor(() => expect(screen.getByText("marta@demo.pl")).toBeInTheDocument());
 
     expect(screen.queryByRole("searchbox")).toBeNull();

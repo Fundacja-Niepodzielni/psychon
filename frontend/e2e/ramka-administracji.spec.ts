@@ -204,7 +204,7 @@ const MENU_OCZEKIWANE = [
       ["Certyfikaty", "/admin/certyfikaty"],
       ["Profile psychologa", "/admin/profile"],
       ["Superwizje", "/admin/superwizje"],
-      ["Skrzynka e-maili", "/admin/emails"],
+      ["Powiadomienia", "/admin/emails"],
     ],
     linia: null,
   },

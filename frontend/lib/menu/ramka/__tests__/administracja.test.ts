@@ -109,7 +109,7 @@ describe("menu nowej ramki administracji — makieta 2.0.4 i słownik 2.1", () =
           ["Certyfikaty", "/admin/certyfikaty"],
           ["Profile psychologa", "/admin/profile"],
           ["Superwizje", "/admin/superwizje"],
-          ["Skrzynka e-maili", "/admin/emails"],
+          ["Powiadomienia", "/admin/emails"],
         ],
         linia: undefined,
         zwijana: undefined,

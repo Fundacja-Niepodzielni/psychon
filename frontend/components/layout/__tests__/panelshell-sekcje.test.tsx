@@ -135,7 +135,7 @@ describe("PanelShell — sekcje menu administracji", () => {
 
     expect(ikony.length).toBe(17 + 6);
     expect([...ikony].filter((s) => s.getAttribute("aria-hidden") !== "true")).toHaveLength(0);
-    expect(within(nav).getByRole("link", { name: "Skrzynka e-maili" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Powiadomienia" })).toBeInTheDocument();
   });
 
   it("wąski ekran: przycisk Menu otwiera okno z tymi samymi sekcjami", () => {

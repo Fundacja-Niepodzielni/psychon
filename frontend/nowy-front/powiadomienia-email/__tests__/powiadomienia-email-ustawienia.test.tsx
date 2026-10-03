@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -88,14 +88,14 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     await waitFor(() => expect(screen.getByText("Zaproszenie na kurs")).toBeInTheDocument());
 
     expect(screen.getByText("Wpis stażu odrzucony")).toBeInTheDocument();
-    expect(screen.getByText("Odpowiedź na prośbę o dalszą współpracę")).toBeInTheDocument();
+    expect(screen.getByText("Odpowiedź na zgłoszenie dalszej współpracy")).toBeInTheDocument();
     expect(screen.getByText("Termin superwizji odwołany")).toBeInTheDocument();
 
-    const grupa = screen.getByRole("group", { name: "Typy powiadomień" });
-    expect(within(grupa).getAllByRole("checkbox")).toHaveLength(20);
+    // 20 rodzajów z `types` i przełącznik przypomnienia o superwizji.
+    expect(screen.getAllByRole("switch")).toHaveLength(21);
 
-    expect(screen.getByText("Wysyłaj przypomnienia o superwizji")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Godzina wysyłki" })).toHaveTextContent("08:00");
+    expect(screen.getByText("Przypomnienie o superwizji")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Godzina wysyłki (UTC)" })).toHaveTextContent("08:00");
   });
 
   it("b) zmiana jednego typu wysyła WYŁĄCZNIE zmieniony wpis", async () => {
@@ -104,9 +104,9 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     render(<PowiadomieniaEmail />);
 
     await waitFor(() => expect(screen.getByText("Odblokowanie etapu")).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("checkbox", { name: "Odblokowanie etapu" }));
+    await uzytkownik.click(screen.getByRole("switch", { name: "Odblokowanie etapu" }));
 
-    await waitFor(() => expect(screen.getByRole("region", { name: "Niezapisane zmiany" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Niezapisane zmiany: 1.")).toBeInTheDocument());
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
 
     await waitFor(() => expect(updateNotificationSettings).toHaveBeenCalledTimes(1));
@@ -120,12 +120,12 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     const uzytkownik = userEvent.setup();
     render(<PowiadomieniaEmail />);
 
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Godzina wysyłki" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Godzina wysyłki (UTC)" })).toBeInTheDocument());
 
-    await uzytkownik.click(screen.getByRole("combobox", { name: "Godzina wysyłki" }));
+    await uzytkownik.click(screen.getByRole("combobox", { name: "Godzina wysyłki (UTC)" }));
     await uzytkownik.click(screen.getByRole("option", { name: "14:00" }));
 
-    await waitFor(() => expect(screen.getByRole("region", { name: "Niezapisane zmiany" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Niezapisane zmiany: 1.")).toBeInTheDocument());
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
 
     await waitFor(() => expect(updateNotificationSettings).toHaveBeenCalledTimes(1));
@@ -150,7 +150,7 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     render(<PowiadomieniaEmail />);
 
     await waitFor(() => expect(screen.getByText("Odblokowanie etapu")).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("checkbox", { name: "Odblokowanie etapu" }));
+    await uzytkownik.click(screen.getByRole("switch", { name: "Odblokowanie etapu" }));
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
 
     await waitFor(() => expect(screen.getByText("Nieznany typ powiadomienia.")).toBeInTheDocument());
@@ -165,13 +165,13 @@ describe("PowiadomieniaEmail — ustawienia powiadomień", () => {
     render(<PowiadomieniaEmail />);
 
     await waitFor(() => expect(screen.getByText("Odblokowanie etapu")).toBeInTheDocument());
-    await uzytkownik.click(screen.getByRole("checkbox", { name: "Odblokowanie etapu" }));
+    await uzytkownik.click(screen.getByRole("switch", { name: "Odblokowanie etapu" }));
     await uzytkownik.click(screen.getByRole("button", { name: "Zapisz zmiany" }));
 
     await waitFor(() =>
       expect(screen.getByText(/tylko dla administracji/)).toBeInTheDocument(),
     );
-    expect(screen.queryByRole("region", { name: "Niezapisane zmiany" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Zapisz zmiany" })).toBeNull();
   });
 
   it("f) typ nieznany mapie etykiet pokazuje nazwę ogólną zamiast kodu, bez wyjątku", async () => {

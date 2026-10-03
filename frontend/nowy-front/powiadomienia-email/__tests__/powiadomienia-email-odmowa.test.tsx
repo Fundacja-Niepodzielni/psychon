@@ -45,9 +45,9 @@ describe("PowiadomieniaEmail — odmowa z powodu roli", () => {
     const { container } = render(<PowiadomieniaEmail />);
 
     expect(await screen.findByText(/tylko dla administracji/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Powiadomienia e-mail dla administracji" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Powiadomienia dla administracji" })).toBeInTheDocument();
     expect(container.querySelectorAll("table, tr")).toHaveLength(0);
-    expect(screen.queryByText("Ustawienia powiadomień")).toBeNull();
+    expect(screen.queryByText(/Wyłączony rodzaj powiadomienia/)).toBeNull();
 
     await uzytkownik.click(screen.getByRole("button", { name: "Wróć" }));
     expect(back).toHaveBeenCalledTimes(1);
@@ -60,7 +60,7 @@ describe("PowiadomieniaEmail — odmowa z powodu roli", () => {
     });
     render(<PowiadomieniaEmail />);
 
-    await waitFor(() => expect(screen.getByText("Ustawienia powiadomień")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Wyłączony rodzaj powiadomienia/)).toBeInTheDocument());
     expect(screen.queryByText(/tylko dla administracji/)).toBeNull();
   });
 });

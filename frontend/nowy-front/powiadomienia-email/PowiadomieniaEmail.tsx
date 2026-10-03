@@ -1,23 +1,31 @@
 "use client";
 
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
-import { useEffect, useMemo, useState } from "react";
+import { useWPowloce } from "@/design-system/szablony/KontekstPowloki";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
-import { Checkbox } from "@/design-system/atomy/Checkbox/Checkbox";
+import { Przelacznik } from "@/design-system/atomy/Przelacznik/Przelacznik";
+import { Text } from "@/design-system/atomy/Text/Text";
 import { ErrorText } from "@/design-system/atomy/ErrorText/ErrorText";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
-import { DataTable, type WierszDataTable } from "@/design-system/organizmy/DataTable/DataTable";
+import { RecordList, type WierszRecordList } from "@/design-system/organizmy/RecordList/RecordList";
+import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
+import { Badge } from "@/design-system/atomy/Badge/Badge";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { EmptyState, zdanieOdmowyRoli } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
-import { SaveBar } from "@/design-system/molekuly/SaveBar/SaveBar";
-import { Toast } from "@/design-system/molekuly/Toast/Toast";
+import { Tabs } from "@/design-system/molekuly/Tabs/Tabs";
 import { ApiError } from "@/lib/api/klient";
 import { fetchAdminEmailsPage } from "@/lib/api/h16-emails";
-import { formatujDateICzas } from "../wspolne/daty";
+import {
+  czasWiadomosci,
+  ETYKIETY_STATUSU_WIADOMOSCI,
+  PodgladWiadomosci,
+  WARIANTY_STATUSU_WIADOMOSCI,
+} from "./PodgladWiadomosci";
 import {
   fetchNotificationSettings,
   updateNotificationSettings,
@@ -25,50 +33,27 @@ import {
   type UstawieniaPowiadomien,
 } from "@/lib/api/h16-ustawienia";
 import type { MetaSkrzynki, WiadomoscEmail } from "./dane";
+import { KARTY_RODZAJOW, OPIS_PRZYPOMNIENIA_SUPERWIZJI, type RodzajPowiadomienia } from "./rodzaje";
 import style from "./PowiadomieniaEmail.module.css";
+
+/**
+ * Korzeń ekranu. Poza powłoką panelu: `main` pod `id="tresc"`. W powłoce
+ * (`DostawcaPowloki`) `main` niesie powłoka, więc tu jest zwykły `div`.
+ */
+function Korzen({ children }: { children: ReactNode }) {
+  const wPowloce = useWPowloce();
+  if (wPowloce) return <div className={style.uklad}>{children}</div>;
+  return (
+    <main id="tresc" className={style.uklad}>
+      {children}
+    </main>
+  );
+}
 
 type StanEkranu = "ladowanie" | "brak-uprawnien" | "blad" | "ok";
 
-const ETYKIETY_STATUSU: Record<WiadomoscEmail["status"], string> = {
-  queued: "W kolejce",
-  sent: "Wysłany",
-  failed: "Nieudany",
-  simulated: "Symulowany",
-};
-
-/**
- * Mapa etykiet typów powiadomień (UI po polsku, klucze = kody z kontraktu
- * §3.1, rozszerzona o trzy kody z ANEKSU 1/2 pisma zdawczego — 20 pozycji,
- * zgodnie z `NotificationSettings::TYPES` na zapleczu). Typ spoza tej mapy
- * (np. przyszłe rozszerzenie kontraktu, którego front jeszcze nie zna) nie
- * jest błędem — pokazuje się jego surowy kod, patrz `etykietaTypu` niżej.
- */
-const ETYKIETY_TYPOW: Record<string, string> = {
-  "application.accepted": "Zgłoszenie zatwierdzone",
-  "application.rejected": "Zgłoszenie odrzucone — notatka dla osoby decydującej (e-mail z powodem do kandydata wychodzi zawsze)",
-  "assignment.created": "Przypisanie prowadzącego",
-  "assignment.removed": "Usunięcie przypisania prowadzącego",
-  "course.invited": "Zaproszenie na kurs",
-  "course.unlocked": "Odblokowanie etapu",
-  "question.asked": "Nowe pytanie",
-  "question.answered": "Odpowiedź na pytanie",
-  "internship.accepted": "Wpis stażu zatwierdzony",
-  "internship.returned": "Wpis stażu do poprawki",
-  "internship.rejected": "Wpis stażu odrzucony",
-  "attempt.failed_final": "Ostatnie niezaliczone podejście do testu",
-  "certificate.ready": "Certyfikat gotowy",
-  "document.ready": "Dokument gotowy",
-  "profile.accepted": "Profil psychologa zatwierdzony",
-  "profile.returned": "Profil psychologa do poprawki",
-  "profile.withdrawn": "Profil psychologa wycofany",
-  "export.ready": "Eksport danych gotowy",
-  "cooperation_request.answered": "Odpowiedź na prośbę o dalszą współpracę",
-  "supervision.slot_cancelled": "Termin superwizji odwołany",
-};
-
-function etykietaTypu(kod: string): string {
-  return ETYKIETY_TYPOW[kod] ?? "Inne powiadomienie";
-}
+/** Nazwa ogólna dla rodzaju, którego front jeszcze nie zna (kod z zaplecza nie trafia do ekranu). */
+const NAZWA_NIEZNANEGO_RODZAJU = "Inne powiadomienie";
 
 /** 24 opcje `00:00`…`23:00` — wartość zawsze pełna godzina, bez minut. */
 const GODZINY_WYSYLKI = Array.from({ length: 24 }, (_, godzina) => {
@@ -121,15 +106,19 @@ function liczbaZmian(patch: PatchUstawienPowiadomien): number {
  *
  * Bez szukajki: `GET /admin/emails` nie ma parametru wyszukiwania — pole
  * filtrujące wyłącznie już pobraną (bieżącą) stronę udawałoby przeszukanie
- * całej skrzynki, którego backend nie robi. `DataTable` (O3) ma `szukajka`
- * opcjonalną właśnie dla takich tras.
+ * całej skrzynki, którego backend nie robi. Lista „Wysłane” (`RecordList`)
+ * nie ma szukajki w ogóle.
  *
- * Nad skrzynką (bez zmiany jej zachowania) stoi sekcja „Ustawienia
- * powiadomień” (`GET`/`PATCH /admin/notification-settings`,
- * `backend/routes/api/h16.php:38-39`) — przełączniki 20 typów z kontraktu
- * §3.1 (`Checkbox`) i blok przypomnienia o superwizji (`Checkbox` + `Field`
- * z `Select` na godzinę). Stan tej sekcji jest niezależny od skrzynki: własne
- * `ladowanie`/`blad`/`ok`, własny `SaveBar` z liczbą niezapisanych zmian.
+ * Dwie zakładki: „Ustawienia” (domyślna) i „Wysłane” (skrzynka bez zmian).
+ * Ustawienia (`GET`/`PATCH /admin/notification-settings`,
+ * `backend/routes/api/h16.php:38-39`) to karty według obszaru: przełącznik
+ * (`Przelacznik`) przy każdym rodzaju z nazwą i zdaniem „kto dostaje”
+ * (`rodzaje.ts`) oraz blok przypomnienia o superwizji w karcie „Superwizje”
+ * (przełącznik + `Field` z `Select` na godzinę w UTC: serwer porównuje godzinę ze strefą
+ * `config('app.timezone')`, czyli UTC, nie czasem polskim). Stan ustawień jest
+ * niezależny od skrzynki: własne `ladowanie`/`blad`/`ok`. Zapis: jeden
+ * przycisk „Zapisz zmiany” i komunikat po zapisie; wyjście z ekranu z
+ * niezapisanymi zmianami pyta rama panelu (`useZgloszenieNiezapisanychZmian`).
  * `PATCH` wysyła wyłącznie zmienione pola (`obliczRoznice` wyżej) — pełny
  * stan z odpowiedzi zastępuje stan roboczy i ostatni odczyt naraz.
  */
@@ -142,7 +131,10 @@ export function PowiadomieniaEmail() {
   const [wczytywanie, setWczytywanie] = useState(false);
   /** Numer próby wczytania skrzynki — „Spróbuj ponownie” podbija go i odczyt rusza od nowa. */
   const [proba, setProba] = useState(0);
-  const [toast, setToast] = useState<string | null>(null);
+  const [zapisano, setZapisano] = useState(false);
+  const [zakladka, setZakladka] = useState<"ustawienia" | "wyslane">("ustawienia");
+  const [podglad, setPodglad] = useState<WiadomoscEmail | null>(null);
+  const zamknijPodglad = useCallback(() => setPodglad(null), []);
 
   const [ustStan, setUstStan] = useState<StanUstawien>("ladowanie");
   const [ustOstatniOdczyt, setUstOstatniOdczyt] = useState<UstawieniaPowiadomien | null>(null);
@@ -186,14 +178,11 @@ export function PowiadomieniaEmail() {
     };
   }, []);
 
-  // Atom `Checkbox` (design-system/atomy/Checkbox) nie przyjmuje `disabled` —
-  // tryb tylko-do-odczytu po 403 działa więc przez zignorowanie zmiany w
-  // obsłudze zdarzenia, nie przez blokadę kontrolki (ten sam rodzaj
-  // ograniczenia atomu, jaki `Field.tsx` opisuje wprost dla `Select` i
-  // `aria-describedby` — atom NIE zmieniony). `Select` (przez `Field`) ma
-  // `disabled`, więc godzina wysyłki jest blokowana naprawdę.
+  // Tryb tylko do odczytu po 403: przełączniki i lista godzin są zablokowane
+  // (`zablokowany`), a obsługa zdarzeń dodatkowo ignoruje zmianę.
   function przelaczTyp(kod: string, wartosc: boolean) {
     if (ustTylkoOdczyt) return;
+    setZapisano(false);
     setUstRoboczy((roboczy) =>
       roboczy && {
         ...roboczy,
@@ -204,6 +193,7 @@ export function PowiadomieniaEmail() {
 
   function przelaczPrzypomnienie(wartosc: boolean) {
     if (ustTylkoOdczyt) return;
+    setZapisano(false);
     setUstRoboczy(
       (roboczy) => roboczy && { ...roboczy, supervision_reminder: { ...roboczy.supervision_reminder, enabled: wartosc } },
     );
@@ -211,17 +201,10 @@ export function PowiadomieniaEmail() {
 
   function zmienGodzinePrzypomnienia(wartosc: string) {
     if (ustTylkoOdczyt) return;
+    setZapisano(false);
     setUstRoboczy(
       (roboczy) => roboczy && { ...roboczy, supervision_reminder: { ...roboczy.supervision_reminder, send_at: wartosc } },
     );
-  }
-
-  function odrzucUstawienia() {
-    if (!ustOstatniOdczyt) return;
-    setUstRoboczy(ustOstatniOdczyt);
-    setUstBledyTypow({});
-    setUstBledyPrzypomnienia({});
-    setUstBladSieci(null);
   }
 
   async function zapiszUstawienia() {
@@ -230,7 +213,7 @@ export function PowiadomieniaEmail() {
     if (liczbaZmian(patch) === 0) return;
 
     setUstZapisywanie(true);
-    setToast(null);
+    setZapisano(false);
     setUstBladSieci(null);
     setUstBledyTypow({});
     setUstBledyPrzypomnienia({});
@@ -238,7 +221,7 @@ export function PowiadomieniaEmail() {
       const odpowiedz = await updateNotificationSettings(patch);
       setUstOstatniOdczyt(odpowiedz);
       setUstRoboczy(odpowiedz);
-      setToast("Ustawienia powiadomień zapisane.");
+      setZapisano(true);
     } catch (wyjatek) {
       if (wyjatek instanceof ApiError && wyjatek.status === 403) {
         setUstNoticeUprawnien(true);
@@ -292,15 +275,23 @@ export function PowiadomieniaEmail() {
     setProba((numer) => numer + 1);
   }
 
-  const wierszeTabeli: WierszDataTable[] = useMemo(
+  const wierszeListy: WierszRecordList[] = useMemo(
     () =>
       wiadomosci.map((wiadomosc) => ({
         id: String(wiadomosc.id),
-        wartosci: {
-          do_email: wiadomosc.to_email,
-          temat: wiadomosc.subject,
-          status: ETYKIETY_STATUSU[wiadomosc.status],
-          wyslano: formatujDateICzas(wiadomosc.sent_at),
+        tytul: wiadomosc.to_email,
+        plakietka: {
+          wariant: WARIANTY_STATUSU_WIADOMOSCI[wiadomosc.status],
+          tekst: ETYKIETY_STATUSU_WIADOMOSCI[wiadomosc.status],
+        },
+        komorki: {
+          temat: { tekst: wiadomosc.subject },
+          wyslano: { tekst: czasWiadomosci(wiadomosc) },
+        },
+        akcja: {
+          etykieta: "Podgląd",
+          etykietaDostepna: `Podgląd: ${wiadomosc.subject}`,
+          onKliknij: () => setPodglad(wiadomosc),
         },
       })),
     [wiadomosci],
@@ -322,29 +313,29 @@ export function PowiadomieniaEmail() {
 
   if (stan === "ladowanie") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Powiadomienia e-mail</Heading>
+      <Korzen>
+        <Heading stopien={1}>Powiadomienia</Heading>
         <Skeleton wiersze={4} />
-      </main>
+      </Korzen>
     );
   }
   if (stan === "brak-uprawnien") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Powiadomienia e-mail</Heading>
+      <Korzen>
+        <Heading stopien={1}>Powiadomienia</Heading>
         <EmptyState
           wariant="brak-uprawnien"
-          naglowek="Powiadomienia e-mail dla administracji"
+          naglowek="Powiadomienia dla administracji"
           rola="administracji"
           przycisk={{ etykieta: "Wróć", onClick: () => router.back() }}
         />
-      </main>
+      </Korzen>
     );
   }
   if (stan === "blad") {
     return (
-      <main id="tresc" className={style.uklad}>
-        <Heading stopien={1}>Powiadomienia e-mail</Heading>
+      <Korzen>
+        <Heading stopien={1}>Powiadomienia</Heading>
         <Notice
           wariant="error"
           tytul="Nie udało się wczytać wiadomości"
@@ -356,140 +347,232 @@ export function PowiadomieniaEmail() {
         >
           Sprawdź połączenie i spróbuj ponownie.
         </Notice>
-      </main>
+      </Korzen>
     );
   }
 
   const nadawca = meta?.extra?.from;
+  const opisNadawcy = nadawca
+    ? nadawca.name
+      ? `${nadawca.name} <${nadawca.address}>`
+      : nadawca.address
+    : "brak skonfigurowanego nadawcy";
+  const liczbaZmianUstawien =
+    ustOstatniOdczyt && ustRoboczy ? liczbaZmian(obliczRoznice(ustOstatniOdczyt, ustRoboczy)) : 0;
+
+  function wierszRodzaju(rodzaj: RodzajPowiadomienia, wlaczony: boolean) {
+    return (
+      <div key={rodzaj.kod} className={style.wierszRodzaju}>
+        <Przelacznik
+          id={`typ-${rodzaj.kod}`}
+          wlaczony={wlaczony}
+          onZmiana={(wartosc) => przelaczTyp(rodzaj.kod, wartosc)}
+          etykieta={rodzaj.nazwa}
+          opis={rodzaj.kto === "" ? undefined : rodzaj.kto}
+          zablokowany={ustTylkoOdczyt}
+        />
+        {ustBledyTypow[rodzaj.kod] && <ErrorText id={`typ-${rodzaj.kod}-blad`}>{ustBledyTypow[rodzaj.kod]}</ErrorText>}
+      </div>
+    );
+  }
+
+  function blokPrzypomnienia(przypomnienie: UstawieniaPowiadomien["supervision_reminder"]) {
+    return (
+      <div className={style.blokPrzypomnienia} role="group" aria-label={OPIS_PRZYPOMNIENIA_SUPERWIZJI.nazwa}>
+        <Przelacznik
+          id="przypomnienie-superwizji"
+          wlaczony={przypomnienie.enabled}
+          onZmiana={przelaczPrzypomnienie}
+          etykieta={OPIS_PRZYPOMNIENIA_SUPERWIZJI.nazwa}
+          opis={OPIS_PRZYPOMNIENIA_SUPERWIZJI.kto}
+          zablokowany={ustTylkoOdczyt}
+        />
+        {ustBledyPrzypomnienia.enabled && (
+          <ErrorText id="przypomnienie-superwizji-blad">{ustBledyPrzypomnienia.enabled}</ErrorText>
+        )}
+        <div className={style.godzina}>
+          <Field
+            id="przypomnienie-godzina"
+            etykieta="Godzina wysyłki (UTC)"
+            rodzaj="wybor"
+            opcje={GODZINY_WYSYLKI}
+            wartosc={przypomnienie.send_at}
+            onZmiana={zmienGodzinePrzypomnienia}
+            zablokowany={!przypomnienie.enabled || ustTylkoOdczyt}
+            podpowiedz="Przypomnienie wychodzi raz dziennie, o tej godzinie lub przy pierwszym uruchomieniu po niej."
+            blad={ustBledyPrzypomnienia.send_at}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  function karty(ustawienia: UstawieniaPowiadomien) {
+    const wlaczone = new Map(ustawienia.types.map((wpis) => [wpis.type, wpis.enabled]));
+    const znaneKody = new Set(KARTY_RODZAJOW.flatMap((karta) => karta.rodzaje.map((rodzaj) => rodzaj.kod)));
+    const nieznane = ustawienia.types.filter((wpis) => !znaneKody.has(wpis.type));
+
+    return (
+      <>
+        {KARTY_RODZAJOW.map((karta) => {
+          const obecne = karta.rodzaje.filter((rodzaj) => wlaczone.has(rodzaj.kod));
+          if (obecne.length === 0 && !karta.zPrzypomnieniem) return null;
+          return (
+            <section key={karta.tytul} className={style.karta} aria-label={karta.tytul}>
+              <Heading stopien={2}>{karta.tytul}</Heading>
+              {obecne.map((rodzaj) => wierszRodzaju(rodzaj, wlaczone.get(rodzaj.kod) === true))}
+              {karta.zPrzypomnieniem && blokPrzypomnienia(ustawienia.supervision_reminder)}
+            </section>
+          );
+        })}
+        {nieznane.length > 0 && (
+          <section className={style.karta} aria-label="Pozostałe">
+            <Heading stopien={2}>Pozostałe</Heading>
+            {nieznane.map((wpis) =>
+              wierszRodzaju({ kod: wpis.type, nazwa: NAZWA_NIEZNANEGO_RODZAJU, kto: "" }, wpis.enabled),
+            )}
+          </section>
+        )}
+      </>
+    );
+  }
 
   return (
-    <main id="tresc" className={style.uklad}>
+    <Korzen>
       <PageHeader
-        okruszki={[{ etykieta: "Administracja" }, { etykieta: "Powiadomienia e-mail" }]}
-        tytul="Powiadomienia e-mail"
-        opis="Tryb próbny — e-maile nie wychodzą poza system."
+        okruszki={[{ etykieta: "Administracja" }, { etykieta: "Powiadomienia" }]}
+        tytul="Powiadomienia"
         onPowrot={() => router.back()}
       />
 
-      <section className={style.ustawienia} aria-label="Ustawienia powiadomień">
-        <Heading stopien={2}>Ustawienia powiadomień</Heading>
-
-        {ustNoticeUprawnien && (
-          <Notice wariant="error" tytul="Nie zapisano ustawień">
-            {zdanieOdmowyRoli("administracji")}
-          </Notice>
-        )}
-
-        {ustBladSieci && (
-          <Notice wariant="error" tytul="Nie udało się zapisać">
-            {ustBladSieci}
-          </Notice>
-        )}
-
-        {ustStan === "ladowanie" && <Skeleton wiersze={6} />}
-
-        {ustStan === "blad" && (
-          <Notice wariant="error" tytul="Nie udało się wczytać">
-            Nie udało się wczytać ustawień powiadomień. Spróbuj ponownie.
-          </Notice>
-        )}
-
-        {ustStan === "ok" && ustRoboczy && (
-          <>
-            <div className={style.listaTypow} role="group" aria-label="Typy powiadomień">
-              {ustRoboczy.types.map((wpis) => (
-                <div key={wpis.type} className={style.wierszTypu}>
-                  <Checkbox
-                    id={`typ-${wpis.type}`}
-                    zaznaczony={wpis.enabled}
-                    onZmiana={(wartosc) => przelaczTyp(wpis.type, wartosc)}
-                    etykieta={etykietaTypu(wpis.type)}
-                  />
-                  {ustBledyTypow[wpis.type] && (
-                    <ErrorText id={`typ-${wpis.type}-blad`}>{ustBledyTypow[wpis.type]}</ErrorText>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className={style.przypomnienie}>
-              <Checkbox
-                id="przypomnienie-superwizji"
-                zaznaczony={ustRoboczy.supervision_reminder.enabled}
-                onZmiana={przelaczPrzypomnienie}
-                etykieta="Wysyłaj przypomnienia o superwizji"
-              />
-              {ustBledyPrzypomnienia.enabled && (
-                <ErrorText id="przypomnienie-superwizji-blad">{ustBledyPrzypomnienia.enabled}</ErrorText>
-              )}
-              <Field
-                id="przypomnienie-godzina"
-                etykieta="Godzina wysyłki"
-                rodzaj="wybor"
-                opcje={GODZINY_WYSYLKI}
-                wartosc={ustRoboczy.supervision_reminder.send_at}
-                onZmiana={zmienGodzinePrzypomnienia}
-                zablokowany={!ustRoboczy.supervision_reminder.enabled || ustTylkoOdczyt}
-                podpowiedz="Przypomnienie wychodzi raz dziennie, o tej godzinie lub przy pierwszym uruchomieniu po niej."
-                blad={ustBledyPrzypomnienia.send_at}
-              />
-            </div>
-          </>
-        )}
-      </section>
-
-      {ustStan === "ok" && ustOstatniOdczyt && ustRoboczy && !ustTylkoOdczyt && (
-        <SaveBar
-          liczbaZmian={liczbaZmian(obliczRoznice(ustOstatniOdczyt, ustRoboczy))}
-          temat="Ustawienia powiadomień"
-          onCofnij={odrzucUstawienia}
-          onPorzucWszystko={odrzucUstawienia}
-          onZapisz={() => {
-            if (!ustZapisywanie) void zapiszUstawienia();
-          }}
-        />
-      )}
-
-      <Notice wariant="info" tytul="Zakres tego ekranu">
-        {nadawca
-          ? `Skonfigurowany nadawca: ${nadawca.name ? `${nadawca.name} <${nadawca.address}>` : nadawca.address}.`
-          : "Brak skonfigurowanego nadawcy w tym środowisku."}{" "}
-        Wiadomości są tu wyłącznie do odczytu — nie można ich edytować ani wysłać ponownie.
-      </Notice>
-
-      {blad && (
-        <Notice wariant="error" tytul="Nie udało się wczytać">
-          {blad}
-        </Notice>
-      )}
-
-      <DataTable
-        tytul="Wysłane wiadomości"
-        kolumny={[
-          { klucz: "do_email", etykieta: "Do" },
-          { klucz: "temat", etykieta: "Temat" },
-          { klucz: "status", etykieta: "Status" },
-          { klucz: "wyslano", etykieta: "Wysłano" },
+      <Tabs
+        zakladki={[
+          { id: "ustawienia", etykieta: "Ustawienia" },
+          { id: "wyslane", etykieta: "Wysłane" },
         ]}
-        wiersze={wierszeTabeli}
-        stronicowanie={
-          meta
-            ? {
-                strona: meta.current_page,
-                stron: meta.last_page,
-                naPoprzednia: () => {
-                  if (!wczytywanie && meta.current_page > 1) void przejdzNaStrone(meta.current_page - 1);
-                },
-                naNastepna: () => {
-                  if (!wczytywanie && meta.current_page < meta.last_page)
-                    void przejdzNaStrone(meta.current_page + 1);
-                },
-              }
-            : undefined
-        }
-        komunikatPusty="Brak wiadomości."
+        wybranaId={zakladka}
+        onWybierz={(id) => setZakladka(id === "wyslane" ? "wyslane" : "ustawienia")}
       />
-      {toast && <Toast komunikat={toast} onZamknij={() => setToast(null)} />}
-    </main>
+
+      {zakladka === "ustawienia" && (
+        <div className={style.panel}>
+          <Text>
+            Wyłączony rodzaj powiadomienia nie tworzy ani wpisu w dzwonku, ani wiadomości e-mail. Osoby mogą dodatkowo
+            wyłączyć wiadomości e-mail u siebie, ale tylko w rodzajach włączonych tutaj.
+          </Text>
+
+          {ustNoticeUprawnien && (
+            <Notice wariant="error" tytul="Nie zapisano ustawień">
+              {zdanieOdmowyRoli("administracji")}
+            </Notice>
+          )}
+
+          {ustBladSieci && (
+            <Notice wariant="error" tytul="Nie udało się zapisać">
+              {ustBladSieci}
+            </Notice>
+          )}
+
+          {ustStan === "ladowanie" && <Skeleton wiersze={6} />}
+
+          {ustStan === "blad" && (
+            <Notice wariant="error" tytul="Nie udało się wczytać">
+              Nie udało się wczytać ustawień powiadomień. Spróbuj ponownie.
+            </Notice>
+          )}
+
+          {ustStan === "ok" && ustRoboczy && (
+            <>
+              {karty(ustRoboczy)}
+
+              {!ustTylkoOdczyt && (
+                <div className={style.dol}>
+                  {zapisano && (
+                    <div role="status">
+                      <Notice wariant="ok" tytul="Zapisano">
+                        Ustawienia powiadomień zostały zapisane.
+                      </Notice>
+                    </div>
+                  )}
+                  <div className={style.dolRzad}>
+                    <Text>
+                      {liczbaZmianUstawien > 0
+                        ? `Niezapisane zmiany: ${liczbaZmianUstawien}.`
+                        : "Brak niezapisanych zmian."}
+                    </Text>
+                    <Button
+                      poziom="primary"
+                      disabled={liczbaZmianUstawien === 0 || ustZapisywanie}
+                      onClick={() => {
+                        if (!ustZapisywanie) void zapiszUstawienia();
+                      }}
+                    >
+                      Zapisz zmiany
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {zakladka === "wyslane" && (
+        <div className={style.panel}>
+          <Notice wariant="info" tytul="Zakres tej zakładki">
+            {nadawca
+              ? `Skonfigurowany nadawca: ${nadawca.name ? `${nadawca.name} <${nadawca.address}>` : nadawca.address}.`
+              : "Brak skonfigurowanego nadawcy w tym środowisku."}{" "}
+            Wiadomości są tu wyłącznie do odczytu — nie można ich edytować ani wysłać ponownie.
+          </Notice>
+
+          {blad && (
+            <Notice wariant="error" tytul="Nie udało się wczytać">
+              {blad}
+            </Notice>
+          )}
+          {meta && (
+            <div>
+              <Badge wariant="neutral">{meta.total} łącznie</Badge>
+            </div>
+          )}
+
+          {wiadomosci.length === 0 ? (
+            <Text wariant="pusty">Brak wiadomości.</Text>
+          ) : (
+            <RecordList
+              tytul="Wysłane wiadomości"
+              naglowekTylkoDlaCzytnika
+              stopienNaglowka={2}
+              kolumny={[
+                { nazwa: "Do", rodzaj: "tekst" },
+                { nazwa: "Temat", rodzaj: "tekst", klucz: "temat" },
+                { nazwa: "Status", rodzaj: "stan" },
+                { nazwa: "Wysłano", rodzaj: "tekst", klucz: "wyslano" },
+                { nazwa: "Podgląd", rodzaj: "akcja" },
+              ]}
+              wiersze={wierszeListy}
+              pusty={{ naglowek: "Brak wiadomości.", tresc: "", przycisk: { etykieta: "Odśwież", onClick: () => void przejdzNaStrone(1) } }}
+              naKarcie
+            />
+          )}
+
+          {meta && (
+            <Pagination
+              strona={meta.current_page}
+              stron={meta.last_page}
+              naPoprzednia={() => {
+                if (!wczytywanie && meta.current_page > 1) void przejdzNaStrone(meta.current_page - 1);
+              }}
+              naNastepna={() => {
+                if (!wczytywanie && meta.current_page < meta.last_page) void przejdzNaStrone(meta.current_page + 1);
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {podglad && <PodgladWiadomosci wiadomosc={podglad} nadawca={opisNadawcy} onZamknij={zamknijPodglad} />}
+    </Korzen>
   );
 }

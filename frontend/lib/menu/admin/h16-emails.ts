@@ -1,8 +1,8 @@
 import type { MenuEntry } from "../types";
 
-/** Pakiet H16 — skrzynka e-maili symulowanych. */
+/** Pakiet H16 — powiadomienia: ustawienia i skrzynka e-maili symulowanych. */
 const entry: MenuEntry = {
-  label: "Skrzynka e-maili",
+  label: "Powiadomienia",
   href: "/admin/emails",
   order: 90,
   icon: "mail",

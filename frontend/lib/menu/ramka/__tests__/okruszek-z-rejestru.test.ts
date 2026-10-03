@@ -96,10 +96,10 @@ describe("okruszek ramki z rejestru menu", () => {
     const okruszek = okruszekRamki({
       menu: menuDlaSciezki(menu, sciezka),
       sciezka,
-      okruszki: [{ etykieta: "Administracja" }, { etykieta: "Powiadomienia e-mail" }],
-      tytul: "Powiadomienia e-mail",
+      okruszki: [{ etykieta: "Administracja" }, { etykieta: "Powiadomienia" }],
+      tytul: "Powiadomienia",
     });
-    expect(okruszek).toEqual([{ etykieta: "Administracja", href: "/admin" }, { etykieta: "Powiadomienia e-mail" }]);
+    expect(okruszek).toEqual([{ etykieta: "Administracja", href: "/admin" }, { etykieta: "Powiadomienia" }]);
   });
 
   it("korzeń administracji stoi pod adresem pulpitu administracji, a adresy trzech ról nie mieszają się", () => {

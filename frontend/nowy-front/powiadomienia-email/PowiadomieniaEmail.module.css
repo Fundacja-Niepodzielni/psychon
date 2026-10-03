@@ -12,7 +12,50 @@
   font-family: var(--font);
 }
 
-.ustawienia {
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.karta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--card);
+}
+
+.wierszRodzaju {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8) 0;
+  border-top: 1px solid var(--border);
+}
+
+.wierszRodzaju:first-of-type {
+  border-top: 0;
+}
+
+.blokPrzypomnienia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--card-warm);
+}
+
+.godzina {
+  max-width: 240px;
+}
+
+.dol {
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
@@ -22,22 +65,10 @@
   background: var(--card);
 }
 
-.listaTypow {
+.dolRzad {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.wierszTypu {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.przypomnienie {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding-top: var(--space-8);
-  border-top: 1px solid var(--border);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  flex-wrap: wrap;
 }

@@ -90,7 +90,7 @@
           "section": "obsluga"
         },
         {
-          "label": "Skrzynka e-maili",
+          "label": "Powiadomienia",
           "href": "/admin/emails",
           "order": 90,
           "icon": "mail",
@@ -241,7 +241,7 @@
           "section": "obsluga"
         },
         {
-          "label": "Skrzynka e-maili",
+          "label": "Powiadomienia",
           "href": "/admin/emails",
           "order": 90,
           "icon": "mail",
