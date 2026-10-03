@@ -44,6 +44,7 @@ final class InstructorCourseAssignment
             'Przypisano Cię jako prowadzącego',
             "Zostałeś przypisany jako prowadzący kursu „{$course->title}”.",
             '/panel/prowadzacy',
+            email: ['courseTitle' => $course->title],
         );
 
         return $assignment;

@@ -94,6 +94,10 @@ class InstructorQuestionController extends Controller
             'Odpowiedź na Twoje pytanie',
             "Odpowiedź do lekcji „{$question->lesson->title}”: {$question->answer}",
             "/panel/kursy/{$question->lesson->course->slug}",
+            email: [
+                'lessonTitle' => $question->lesson->title,
+                'path' => "/panel/kursy/{$question->lesson->course->slug}",
+            ],
         );
 
         return response()->json([

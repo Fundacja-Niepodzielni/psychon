@@ -6,6 +6,7 @@ use App\Support\Emails\EmailRenderer;
 use App\Support\Emails\EmailTemplates;
 use App\Support\Emails\RenderedEmail;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -15,6 +16,7 @@ use Tests\TestCase;
  * białych znaków między znacznikami. Przykładowe dane i adres platformy
  * (`https://psychon.example.org`) są te same co we wzorcu wyglądu.
  */
+#[Group('wspolna-baza')]
 class EmailTemplatesTest extends TestCase
 {
     public const string BASE_URL = 'https://psychon.example.org';

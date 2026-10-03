@@ -111,6 +111,7 @@ class LessonQuestionController extends Controller
             'Nowe pytanie do lekcji',
             "Pytanie do lekcji „{$lesson->title}”: {$question->question}",
             '/prowadzacy/pytania',
+            email: ['lessonTitle' => $lesson->title],
         );
     }
 }
