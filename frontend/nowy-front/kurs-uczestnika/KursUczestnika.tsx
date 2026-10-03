@@ -22,6 +22,8 @@ import {
   type BladKursu,
   type KursUczestnika as DaneKursu,
 } from "./dane";
+import { jestWebinarem } from "./webinar";
+import { WidokWebinaru } from "./WidokWebinaru";
 import {
   licznikLekcji,
   opisKursu,
@@ -100,6 +102,9 @@ export function KursUczestnika({ slug, podglad = false, rola = null }: Wlasciwos
   }
 
   if (wynik.rodzaj === "blad") return <StanBezDanych blad={wynik.blad} onPonow={ponow} />;
+
+  // Webinar ma własny widok (bez tematów, lekcji i testu); odczyt bez pola `type` to kurs jak dotąd.
+  if (jestWebinarem(wynik.kurs)) return <WidokWebinaru kurs={wynik.kurs} podglad={podglad} rola={rola} />;
 
   return <KursZDanymi kurs={wynik.kurs} podglad={podglad} rola={rola} />;
 }
