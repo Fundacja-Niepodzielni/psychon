@@ -69,6 +69,13 @@ beforeEach(() => {
   });
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("AdminCertificatesPage — lista i unieważnienie", () => {
   it("nagłówek i wiersz certyfikatu wczytują się z /admin/certificates", async () => {
     render(<AdminCertificatesPage />);
@@ -92,7 +99,8 @@ describe("AdminCertificatesPage — lista i unieważnienie", () => {
     expect(screen.getByText("Stwierdzono naruszenie regulaminu.")).toBeInTheDocument();
   });
 
-  it("pozytywna: klik → potwierdzenie z powodem → API wywołane z id i powodem → wiersz pokazuje unieważnienie po odświeżeniu", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("pozytywna: klik → potwierdzenie z powodem → API wywołane z id i powodem → wiersz pokazuje unieważnienie po odświeżeniu", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const user = userEvent.setup();
     api.mockResolvedValue({ ...wazny, status: "revoked", revoked_reason: "Powód testowy, min 10 znaków." });
     render(<AdminCertificatesPage />);
@@ -137,7 +145,8 @@ describe("AdminCertificatesPage — lista i unieważnienie", () => {
     expect(api).not.toHaveBeenCalled();
   });
 
-  it("negatywna: błąd API pokazuje komunikat, dialog zostaje otwarty", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("negatywna: błąd API pokazuje komunikat, dialog zostaje otwarty", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const user = userEvent.setup();
     api.mockRejectedValue(new ApiError(500, "server_error", "Nie udało się unieważnić certyfikatu."));
     render(<AdminCertificatesPage />);

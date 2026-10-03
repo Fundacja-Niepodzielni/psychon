@@ -62,6 +62,13 @@ async function potwierdz() {
   await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Zablokuj konto" }));
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("Karta osoby — blokada konta", () => {
   it.each(["project_manager", "super_admin"])("rola %s widzi sekcję", async (rola) => {
     pobierzRoleZalogowanej.mockResolvedValue(rola);
@@ -88,7 +95,8 @@ describe("Karta osoby — blokada konta", () => {
     expect(przycisk).toBeEnabled();
   });
 
-  it("pytanie pokazuje imię i nazwisko, nie woła trasy, a okno nie ma naruszeń dostępności", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("pytanie pokazuje imię i nazwisko, nie woła trasy, a okno nie ma naruszeń dostępności", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     await wpiszPowod();
     await userEvent.click(screen.getByRole("button", { name: PRZYCISK }));
     const okno = screen.getByRole("dialog");
@@ -107,7 +115,8 @@ describe("Karta osoby — blokada konta", () => {
     expect(blockAdminUser).not.toHaveBeenCalled();
   });
 
-  it("potwierdzenie woła trasę raz z osobą i przyciętym powodem, potwierdza i wczytuje kartę ponownie", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("potwierdzenie woła trasę raz z osobą i przyciętym powodem, potwierdza i wczytuje kartę ponownie", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     blockAdminUser.mockResolvedValue({});
     await wpiszPowod("  Konto używane przez inną osobę  ");
     await waitFor(() => expect(pobierzKarteOsoby).toHaveBeenCalledTimes(1));

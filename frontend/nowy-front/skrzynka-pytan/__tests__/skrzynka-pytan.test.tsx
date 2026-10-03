@@ -128,6 +128,13 @@ function przyciskiOdpowiedz(): HTMLElement[] {
   return screen.queryAllByRole("button", { name: "Odpowiedz" });
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("Skrzynka pytań — próba kontrolna sprawdzenia szablonu", () => {
   it("sprawdzenie czerwienieje bez znacznika szablonu listy i przy dwóch main", () => {
     const { container } = render(<main id="tresc" tabIndex={-1} />);
@@ -388,7 +395,8 @@ describe("Skrzynka pytań — odpowiedź", () => {
     await waitFor(() => expect(apiPaged).toHaveBeenCalledTimes(2));
   });
 
-  it("błąd połączenia przy wysyłce: Notice z „Spróbuj ponownie”, wpisany tekst zostaje, ponowienie wysyła tę samą odpowiedź", async () => {
+  // zmierzone na cichym hoście: maks. 0,9 s z 10; limit 3× i co najmniej 15 s
+  it("błąd połączenia przy wysyłce: Notice z „Spróbuj ponownie”, wpisany tekst zostaje, ponowienie wysyła tę samą odpowiedź", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const { uzytkownik } = await otworzPierwsze();
     api.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue(ODPOWIEDZIANE);
 
@@ -534,7 +542,8 @@ describe("Skrzynka pytań — filtr widoku i podgląd odpowiedzi", () => {
     expect(container.querySelector("b")).not.toBeNull();
   });
 
-  it("w widoku „Pokaż wszystkie” pytanie zostaje po odpowiedzi, z odpowiedzią, licznik maleje, Toast potwierdza; lista nie jest wczytywana ponownie", async () => {
+  // zmierzone na cichym hoście: maks. 1,1 s z 10; limit 3× i co najmniej 15 s
+  it("w widoku „Pokaż wszystkie” pytanie zostaje po odpowiedzi, z odpowiedzią, licznik maleje, Toast potwierdza; lista nie jest wczytywana ponownie", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     odpowiadajWgAdresu(DWA_PYTANIA, WSZYSTKIE);
     api.mockResolvedValue(ODPOWIEDZIANE);

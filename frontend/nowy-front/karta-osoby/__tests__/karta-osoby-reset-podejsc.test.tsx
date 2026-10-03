@@ -66,6 +66,13 @@ async function otworzPytanie() {
   return screen.getByRole("dialog");
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("Karta osoby — reset limitu podejść", () => {
   it.each(["project_manager", "super_admin"])("rola %s widzi sekcję", async (rola) => {
     pobierzRoleZalogowanej.mockResolvedValue(rola);
@@ -99,7 +106,8 @@ describe("Karta osoby — reset limitu podejść", () => {
     expect(przycisk).toBeDisabled();
   });
 
-  it("pytanie pokazuje imię i nazwisko oraz numer testu, bez żądania, a okno nie ma naruszeń dostępności", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("pytanie pokazuje imię i nazwisko oraz numer testu, bez żądania, a okno nie ma naruszeń dostępności", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const okno = await otworzPytanie();
 
     expect(within(okno).getByText(/Marta Demo/)).toHaveTextContent("Test nr 4");
@@ -108,7 +116,8 @@ describe("Karta osoby — reset limitu podejść", () => {
     expect(await axeViolations(okno)).toEqual([]);
   });
 
-  it("„Anuluj” zamyka okno i nie woła trasy", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("„Anuluj” zamyka okno i nie woła trasy", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const okno = await otworzPytanie();
     await userEvent.click(within(okno).getByRole("button", { name: "Anuluj" }));
 
@@ -116,7 +125,8 @@ describe("Karta osoby — reset limitu podejść", () => {
     expect(resetTestAttempts).not.toHaveBeenCalled();
   });
 
-  it("potwierdzenie woła trasę raz z testem, osobą i przyciętym powodem; po sukcesie potwierdzenie z liczbą i pusty powód", async () => {
+  // zmierzone na cichym hoście: maks. 0,9 s z 10; limit 3× i co najmniej 15 s
+  it("potwierdzenie woła trasę raz z testem, osobą i przyciętym powodem; po sukcesie potwierdzenie z liczbą i pusty powód", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     resetTestAttempts.mockResolvedValue({ test_id: 4, user_id: 17, cleared: 3, attempts_used: 0, attempts_limit: 3 });
     await wypelnij("4", "  Awaria platformy podczas testu  ");
     await userEvent.click(screen.getByRole("button", { name: PRZYCISK }));
@@ -129,7 +139,8 @@ describe("Karta osoby — reset limitu podejść", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("odmowa serwera: zdanie z koperty błędu, bez potwierdzenia, powód zostaje", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("odmowa serwera: zdanie z koperty błędu, bez potwierdzenia, powód zostaje", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     resetTestAttempts.mockRejectedValue(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono testu." }));
     await wypelnij();
     await userEvent.click(screen.getByRole("button", { name: PRZYCISK }));

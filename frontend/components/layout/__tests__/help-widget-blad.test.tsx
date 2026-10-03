@@ -44,8 +44,16 @@ async function otworzIWpisz() {
   return user;
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("HelpWidget — stan błędu", () => {
-  it("422: komunikat przy polu treści, wpisana treść zostaje w formularzu", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("422: komunikat przy polu treści, wpisana treść zostaje w formularzu", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     sendHelpMessage.mockRejectedValue(
       new ApiError({
         status: 422,

@@ -118,7 +118,15 @@ async function przebieg(wersja: Wersja, scenariusz: Scenariusz): Promise<Zapytan
   return [...zapytania];
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("/admin/profile/[id] — zapytania dotychczasowej strony i nowego ekranu", () => {
+  // zmierzone na cichym hoście: maks. 1,2 s z 10 (najwolniejszy scenariusz „odeslanie”); limit 3× i co najmniej 15 s
   it.each<Scenariusz>(["pobranie", "akceptacja", "odeslanie"])(
     "scenariusz %s: obie wersje wysyłają dokładnie te same zapytania (metoda, adres, ciało, token)",
     async (scenariusz) => {
@@ -132,6 +140,7 @@ describe("/admin/profile/[id] — zapytania dotychczasowej strony i nowego ekran
       // Każde zapytanie niesie token osoby — wgląd zostaje przypisany do niej w dzienniku serwera.
       expect(stara.every((z) => z.token === "Bearer atrapa-tokenu")).toBe(true);
     },
+    LIMIT_PRZYPADKU_MS,
   );
 
   it("pobranie załącznika: dokładnie jedno zapytanie o plik (jeden wpis w dzienniku wglądu), pod podpisanym adresem z odpowiedzi", async () => {

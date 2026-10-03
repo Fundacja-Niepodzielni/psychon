@@ -62,6 +62,13 @@ beforeEach(() => {
   apiPaged.mockResolvedValue({ data: [zgloszenie], meta: { current_page: 1, per_page: 25, total: 1, last_page: 1 } });
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("ApplicationsTab — odrzucenie", () => {
   it("nie wysyła żądania, gdy powód jest pusty, i mówi o tym wprost", async () => {
     // Kryterium ★ H03.2 od strony ekranu. Serwer i tak odrzuci puste `reason`
@@ -77,7 +84,8 @@ describe("ApplicationsTab — odrzucenie", () => {
     expect(api).not.toHaveBeenCalled();
   });
 
-  it("wysyła powód dokładnie tam, gdzie trzeba, i z takim ciałem, jakie mówi kontrakt", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("wysyła powód dokładnie tam, gdzie trzeba, i z takim ciałem, jakie mówi kontrakt", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const user = userEvent.setup();
     api.mockResolvedValue({ ...zgloszenie, status: "rejected" });
     render(<ApplicationsTab />);

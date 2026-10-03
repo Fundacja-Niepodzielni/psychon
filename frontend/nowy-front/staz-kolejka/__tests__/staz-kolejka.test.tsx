@@ -196,6 +196,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("StazKolejka — schemat atrap", () => {
   it("atrapa wpisu ma wszystkie klucze zasobu PHP", () => {
     expect(brakujaceKlucze(wpis(1), kluczeZasobu(ZASOB))).toEqual([]);
@@ -594,7 +601,8 @@ describe("StazKolejka — decyzje", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("Poproś o poprawkę z komentarzem: POST na return z komentarzem, wiersz znika, Toast", async () => {
+  // zmierzone na cichym hoście: maks. 1,9 s z 10; limit 3× i co najmniej 15 s
+  it("Poproś o poprawkę z komentarzem: POST na return z komentarzem, wiersz znika, Toast", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Marta Demo");
@@ -612,7 +620,8 @@ describe("StazKolejka — decyzje", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Dyżur odesłany do poprawy. Marta Demo.");
   });
 
-  it("Odrzuć dyżur z powodem: żądanie nie wychodzi przed potwierdzeniem pytania; wycofanie zostawia formularz z powodem", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("Odrzuć dyżur z powodem: żądanie nie wychodzi przed potwierdzeniem pytania; wycofanie zostawia formularz z powodem", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     await renderZDanymi();
     const panel = await otworzPanel(uzytkownik, "Filip Demo");

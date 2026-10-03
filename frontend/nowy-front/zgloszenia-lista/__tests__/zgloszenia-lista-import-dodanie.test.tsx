@@ -104,6 +104,13 @@ beforeEach(() => {
   apiPaged.mockResolvedValue(odpowiedz([zgloszenie(11)]));
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("Zgłoszenia rekrutacyjne — import z pliku", () => {
   it("sukces z pominiętymi: plik idzie pod kluczem „file”, raport niesie liczby i wiersze z powodami, lista wczytuje się jeszcze raz", async () => {
     const uzytkownik = userEvent.setup();
@@ -249,7 +256,8 @@ describe("Zgłoszenia rekrutacyjne — import z pliku", () => {
 });
 
 describe("Zgłoszenia rekrutacyjne — dodanie zgłoszenia", () => {
-  it("sukces: zapis z czterema polami, formularz zamknięty i wyczyszczony, potwierdzenie, lista wczytana jeszcze raz", async () => {
+  // zmierzone na cichym hoście: maks. 1,2 s z 10; limit 3× i co najmniej 15 s
+  it("sukces: zapis z czterema polami, formularz zamknięty i wyczyszczony, potwierdzenie, lista wczytana jeszcze raz", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     api.mockResolvedValue(zgloszenie(99));
     render(<ZgloszeniaLista />);
@@ -367,7 +375,8 @@ describe("Zgłoszenia rekrutacyjne — dodanie zgłoszenia", () => {
     expect(screen.getByRole("textbox", { name: /^Imię/ })).toHaveValue("Ewa");
   });
 
-  it("500 i odrzucenie sieci: komunikat bez kodu, dane w formularzu zostają", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("500 i odrzucenie sieci: komunikat bez kodu, dane w formularzu zostają", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     api.mockRejectedValueOnce(blad(500, "server_error"));
     api.mockRejectedValueOnce(new TypeError("Failed to fetch"));

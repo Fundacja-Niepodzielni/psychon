@@ -46,6 +46,13 @@ beforeEach(() => {
   downloadReportCsv.mockReset();
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("ReportView — zakres dat", () => {
   it("domyślnie (bez wpisanego zakresu) fetchReport wywoływany bez from/to", async () => {
     fetchReport.mockResolvedValue(raport);
@@ -55,7 +62,8 @@ describe("ReportView — zakres dat", () => {
     expect(fetchReport).toHaveBeenLastCalledWith({});
   });
 
-  it("filtr: wysłanie formularza z wypełnionymi polami przekazuje from/to do fetchReport", async () => {
+  // zmierzone na cichym hoście: maks. 0,6 s z 10; limit 3× i co najmniej 15 s
+  it("filtr: wysłanie formularza z wypełnionymi polami przekazuje from/to do fetchReport", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     fetchReport.mockResolvedValue(raport);
     render(<ReportView />);
 

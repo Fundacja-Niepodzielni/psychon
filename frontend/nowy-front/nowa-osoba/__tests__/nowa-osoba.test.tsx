@@ -79,6 +79,13 @@ beforeEach(() => {
   back.mockReset();
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("Nowa osoba — stany ekranu na szablonie formularza", () => {
   it("ładowanie: szkielet, jeden main, znacznik szablonu, bez formularza", () => {
     api.mockImplementation(() => new Promise(() => {}));
@@ -187,7 +194,8 @@ describe("Nowa osoba — zapis", () => {
     expect(screen.getByLabelText(/^Adres e-mail/)).toHaveValue("");
   });
 
-  it("422: komunikat przy polu, podsumowanie błędów i błąd pola spoza ekranu; ciało nie ginie", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("422: komunikat przy polu, podsumowanie błędów i błąd pola spoza ekranu; ciało nie ginie", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     ustawApi(PROFIL_OPIEKUNA, () =>
       bladApi(422, "validation_failed", "Popraw zaznaczone pola.", {
@@ -204,7 +212,8 @@ describe("Nowa osoba — zapis", () => {
     expect(screen.getByLabelText(/^Imię/)).toHaveValue("Marta");
   });
 
-  it("409: duplikat adresu → „Zmień rolę tego konta” wysyła PATCH z samą rolą na wskazane konto", async () => {
+  // zmierzone na cichym hoście: maks. 0,9 s z 10; limit 3× i co najmniej 15 s
+  it("409: duplikat adresu → „Zmień rolę tego konta” wysyła PATCH z samą rolą na wskazane konto", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     ustawApi(PROFIL_OPIEKUNA, (sciezka, opcje) => {
       if (opcje?.method === "PATCH") return KARTA_NOWEJ_OSOBY;
@@ -240,7 +249,8 @@ describe("Nowa osoba — zapis", () => {
     expect(screen.queryByRole("button", { name: "Zmień rolę tego konta" })).toBeNull();
   });
 
-  it("403 przy zapisie: komunikat serwera, formularz zostaje", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("403 przy zapisie: komunikat serwera, formularz zostaje", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     ustawApi(PROFIL_OPIEKUNA, () =>
       bladApi(403, "forbidden", "Tylko Super Admin może zarządzać kontami Super Admina."),
@@ -253,7 +263,8 @@ describe("Nowa osoba — zapis", () => {
     expect(screen.getByLabelText(/^Imię/)).toHaveValue("Marta");
   });
 
-  it("401 przy zapisie: ekran przechodzi w odmowę, zero pól", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("401 przy zapisie: ekran przechodzi w odmowę, zero pól", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     ustawApi(PROFIL_OPIEKUNA, () => bladApi(401, "unauthenticated", "Zaloguj się."));
     const { container } = render(<NowaOsoba />);
@@ -264,7 +275,8 @@ describe("Nowa osoba — zapis", () => {
     expect(() => jedenMain(container)).not.toThrow();
   });
 
-  it("404 przy zmianie roli: komunikat o braku osoby", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("404 przy zmianie roli: komunikat o braku osoby", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     ustawApi(PROFIL_OPIEKUNA, (_sciezka, opcje) =>
       opcje?.method === "PATCH"
@@ -282,7 +294,8 @@ describe("Nowa osoba — zapis", () => {
     expect(screen.getByText("Nie znaleziono osoby.")).toBeInTheDocument();
   });
 
-  it("błąd sieci przy zapisie: „Spróbuj ponownie” powtarza to samo żądanie", async () => {
+  // zmierzone na cichym hoście: maks. 0,9 s z 10; limit 3× i co najmniej 15 s
+  it("błąd sieci przy zapisie: „Spróbuj ponownie” powtarza to samo żądanie", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     let proby = 0;
     ustawApi(PROFIL_OPIEKUNA, () => {

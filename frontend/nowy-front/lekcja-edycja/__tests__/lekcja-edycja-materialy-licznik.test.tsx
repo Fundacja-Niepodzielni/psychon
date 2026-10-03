@@ -18,8 +18,10 @@ import type { LekcjaAdmin, MaterialAdmin, StanNagrania } from "../dane";
  */
 
 // Pierwsze odszukanie elementu po renderze ekranu (lista plików, jej stany, pole tytułu) bywa pod obciążeniem wolniejsze niż domyślny limit 1 s:
-// dostaje 5 s, a próba 15 s. Pozostałe oczekiwania i asercje zostają bez zmian.
-const PIERWSZE_ODSZUKANIE = { timeout: 5000 };
+// dostaje 12 s, a próba 15 s: przy braku elementu próba pada na odszukaniu z czytelnym komunikatem, nie na limicie przypadku.
+// Zmierzone na cichym hoście: najdłuższy przypadek tego pliku z 10 biegów trwa maks. 0,33 s (całe odszukanie mieści się w tym czasie).
+// Pozostałe oczekiwania i asercje zostają bez zmian.
+const PIERWSZE_ODSZUKANIE = { timeout: 12_000 };
 vi.setConfig({ testTimeout: 15000 });
 
 const api = vi.fn();

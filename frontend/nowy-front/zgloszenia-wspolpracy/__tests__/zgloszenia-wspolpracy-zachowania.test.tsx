@@ -53,6 +53,13 @@ beforeEach(() => {
   back.mockReset();
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("ZgloszeniaWspolpracy — filtr statusu", () => {
   it("filtr „Nowe” → zapytanie z status=new i page=1", async () => {
     const uzytkownik = userEvent.setup();
@@ -73,7 +80,8 @@ describe("ZgloszeniaWspolpracy — filtr statusu", () => {
 });
 
 describe("ZgloszeniaWspolpracy — odpowiedź na zgłoszenie", () => {
-  it("odpowiedź → ciało PATCH dokładnie {response,status:'answered'}; 200 → wiersz zmieniony; closed bez przycisku Odpowiedz", async () => {
+  // zmierzone na cichym hoście: maks. 0,8 s z 10; limit 3× i co najmniej 15 s
+  it("odpowiedź → ciało PATCH dokładnie {response,status:'answered'}; 200 → wiersz zmieniony; closed bez przycisku Odpowiedz", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     pobierzZgloszeniaAdministracji.mockResolvedValue({
       data: [ZGLOSZENIE_NOWE],

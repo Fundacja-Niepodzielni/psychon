@@ -86,6 +86,13 @@ async function pokazStrone(id = "12") {
   return wynik!;
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("bank pytań /prowadzacy/testy/[id]/pytania pod strażnikiem roli", () => {
   it('rola "volunteer" dostaje "Brak dostępu" i ekran nie woła /admin/tests', async () => {
     api.mockResolvedValue({ role: "volunteer" });
@@ -116,7 +123,8 @@ describe("bank pytań /prowadzacy/testy/[id]/pytania pod strażnikiem roli", () 
     expect(api).toHaveBeenCalledWith("/admin/tests/12/questions");
   });
 
-  it("dodanie pytania woła TEN SAM punkt i kształt żądania co admin (POST /admin/tests/{id}/questions)", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("dodanie pytania woła TEN SAM punkt i kształt żądania co admin (POST /admin/tests/{id}/questions)", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     api.mockImplementation(
       (url: string, init?: { method?: string; body?: unknown }) => {
         if (url === "/me") return Promise.resolve({ role: "instructor" });

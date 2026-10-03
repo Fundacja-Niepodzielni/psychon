@@ -64,6 +64,13 @@ beforeEach(() => {
   api.mockReset();
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("EdytorTresciKursu", () => {
   it("pozytyw: renderuje dane kursu i lekcje z propsów", () => {
     render(
@@ -80,7 +87,8 @@ describe("EdytorTresciKursu", () => {
     expect(screen.getByText("Lekcja wstępna")).toBeInTheDocument();
   });
 
-  it("pozytyw: zapis kursu woła PATCH /admin/courses/{id} z tym samym payloadem, co przed wydzieleniem", async () => {
+  // zmierzone na cichym hoście: maks. 0,6 s z 10; limit 3× i co najmniej 15 s
+  it("pozytyw: zapis kursu woła PATCH /admin/courses/{id} z tym samym payloadem, co przed wydzieleniem", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const onCourseUpdated = vi.fn();
     api.mockResolvedValue({ ...kurs, title: "Praca z emocjami — v2" });
 
@@ -156,7 +164,8 @@ describe("EdytorTresciKursu", () => {
     );
   });
 
-  it("pozytyw (U-11): po ręcznej zmianie sluga kolejna zmiana tytułu go nie rusza", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("pozytyw (U-11): po ręcznej zmianie sluga kolejna zmiana tytułu go nie rusza", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     render(
       <EdytorTresciKursu
         course={kurs}

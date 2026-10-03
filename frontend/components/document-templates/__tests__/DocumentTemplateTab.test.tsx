@@ -57,8 +57,16 @@ beforeEach(() => {
   updateDocumentTemplate.mockReset();
 });
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("DocumentTemplateTab — zapis treści per typ wzoru", () => {
-  it("pozytywna: zakładka porozumienia (agreement) zapisuje treść, nowa wersja pojawia się na ekranie", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("pozytywna: zakładka porozumienia (agreement) zapisuje treść, nowa wersja pojawia się na ekranie", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const user = userEvent.setup();
     fetchDocumentTemplate.mockResolvedValueOnce(szablon({ type: "agreement" }));
     fetchDocumentTemplateVersions.mockResolvedValueOnce([
@@ -142,7 +150,8 @@ describe("DocumentTemplateTab — zapis treści per typ wzoru", () => {
     expect(screen.getByText(/Wersja #5/)).toBeInTheDocument();
   });
 
-  it("pozytywna: zakładka certyfikatu (certificate) zapisuje treść, nowa wersja pojawia się na ekranie", async () => {
+  // zmierzone na cichym hoście: maks. 0,6 s z 10; limit 3× i co najmniej 15 s
+  it("pozytywna: zakładka certyfikatu (certificate) zapisuje treść, nowa wersja pojawia się na ekranie", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const user = userEvent.setup();
     fetchDocumentTemplate.mockResolvedValueOnce(
       szablon({ type: "certificate", content: "Treść certyfikatu." }),

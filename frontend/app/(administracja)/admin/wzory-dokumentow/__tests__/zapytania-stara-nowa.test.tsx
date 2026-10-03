@@ -104,6 +104,13 @@ async function otworzNowa(typ: (typeof RODZAJE)[number]) {
   }
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("wzory dokumentów — odczyt: te same zapytania dla każdego rodzaju", () => {
   it.each(RODZAJE)("rodzaj $typ: odczyt wzoru i historii — identyczne zapytania", async (rodzaj) => {
     await otworzStara(rodzaj);
@@ -122,7 +129,8 @@ describe("wzory dokumentów — odczyt: te same zapytania dla każdego rodzaju",
 });
 
 describe("wzory dokumentów — zapis nowej wersji", () => {
-  it("zmieniona treść: identyczne PUT (adres, metoda, ciało) w obu wersjach", async () => {
+  // zmierzone na cichym hoście: maks. 0,9 s z 10; limit 3× i co najmniej 15 s
+  it("zmieniona treść: identyczne PUT (adres, metoda, ciało) w obu wersjach", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     const uzytkownik = userEvent.setup();
     await otworzStara(RODZAJE[0]);
     const polaStara = screen.getByLabelText("Treść wzoru");

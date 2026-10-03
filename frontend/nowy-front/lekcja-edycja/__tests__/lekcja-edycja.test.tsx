@@ -180,8 +180,9 @@ describe("stany ekranu: jeden main, dane w układzie dwóch kolumn", () => {
     const { container } = await renderujDane();
     szablon(container, "szablon-edycja");
     expect(pole(/^Tytuł lekcji/).value).toBe("Wprowadzenie do wywiadu");
-    // Zimny start edytora po świeżej instalacji bibliotek bywa na granicy domyślnego limitu 1 s: pierwsze odszukanie dostaje 5 s, próba 15 s.
-    const obszar = await screen.findByRole("textbox", { name: "Treść lekcji" }, { timeout: 5000 });
+    // Zimny start edytora po świeżej instalacji bibliotek bywa na granicy domyślnego limitu 1 s: pierwsze odszukanie dostaje 12 s, próba 15 s.
+    // Zmierzone na cichym hoście: cały przypadek trwa maks. 0,38 s z 10 (odszukanie mieści się w tym czasie).
+    const obszar = await screen.findByRole("textbox", { name: "Treść lekcji" }, { timeout: 12_000 });
     expect(within(obszar).getByRole("heading", { level: 2, name: "Cel lekcji" })).toBeInTheDocument();
     expect(within(obszar).getByText("Pierwszy akapit.")).toBeInTheDocument();
     expect(pole(/^Czas trwania w minutach/).value).toBe("30");
@@ -1131,8 +1132,9 @@ describe("wyjście z niezapisanym tekstem", () => {
 describe("trasy ekranu", () => {
   it("odczyt tylko listy lekcji kursu, roli, stanu nagrania i listy plików lekcji; bez tras tematów", async () => {
     await renderujDane();
-    // Pierwsze odszukanie listy plików pod obciążeniem bywa wolniejsze niż domyślny limit 1 s: dostaje 5 s, próba 15 s.
-    await screen.findByRole("list", { name: "Pliki lekcji" }, { timeout: 5000 });
+    // Pierwsze odszukanie listy plików pod obciążeniem bywa wolniejsze niż domyślny limit 1 s: dostaje 12 s, próba 15 s.
+    // Zmierzone na cichym hoście: najdłuższy przypadek tego pliku trwa maks. 0,38 s z 10 (odszukanie mieści się w tym czasie).
+    await screen.findByRole("list", { name: "Pliki lekcji" }, { timeout: 12_000 });
     const adresy = api.mock.calls.map(([adres, opcje]) => `${(opcje as { method?: string } | undefined)?.method ?? "GET"} ${adres}`);
     expect(adresy.sort()).toEqual([
       "GET /admin/courses/3/lessons",

@@ -124,6 +124,13 @@ async function przebiegPrzezMenu(nazwaMenu: string, pole: () => HTMLElement, wpi
   expect(screen.queryByRole("dialog", { name: TYTUL_OKNA })).toBeNull();
 }
 
+/**
+ * Limit czasu przypadków, które pod obciążeniem hosta (równoległe procesy, zimny pierwszy import)
+ * trwają wielokrotnie dłużej niż domyślne 5000 ms. Wartość to większa z: trzykrotność maksimum
+ * z 10 pomiarów na cichym hoście albo 15 000 ms; przy każdym przypadku stoi jego zmierzony czas.
+ */
+const LIMIT_PRZYPADKU_MS = 15_000;
+
 describe("administracja — „Ustawienia roku programu”", () => {
   function wyrenderuj() {
     sciezka.wartosc = "/admin/ustawienia";
@@ -158,7 +165,8 @@ describe("administracja — „Ustawienia roku programu”", () => {
 });
 
 describe("uczestnik — „Dalsza współpraca”", () => {
-  it("po wpisaniu treści zgłoszenia: menu pyta; „Zostań” zostawia treść; „Wyjdź bez zapisywania” przechodzi", async () => {
+  // zmierzone na cichym hoście: maks. 0,7 s z 10; limit 3× i co najmniej 15 s
+  it("po wpisaniu treści zgłoszenia: menu pyta; „Zostań” zostawia treść; „Wyjdź bez zapisywania” przechodzi", { timeout: LIMIT_PRZYPADKU_MS }, async () => {
     sciezka.wartosc = "/panel/dalsza-wspolpraca";
     api.mockImplementation((adres: string) =>
       Promise.resolve(adres === "/me" ? { role: "volunteer", first_name: "Marta", last_name: "Demo" } : []),
