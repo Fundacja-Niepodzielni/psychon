@@ -5,9 +5,10 @@ import { describe, expect, it } from "vitest";
 /**
  * Struktura plików ekranów „Certyfikat” i „Dokumenty”: w kodzie (bez testów) nie ma surowych
  * elementów interaktywnych ani `onClick=` na surowym elemencie, twardych kolorów, importów z
- * zamrożonego katalogu `components/`, wstrzykiwania HTML, własnych formaterów dat ani
- * zapisanych wprost tras API poza trzema trasami certyfikatu i trasami dokumentów, które
- * wołają stare strony. Każda reguła ma kontrolę dodatnią na tekście, który ją łamie.
+ * zamrożonego katalogu `components/` (poza strażnikiem roli w układzie strony podglądu),
+ * wstrzykiwania HTML, własnych formaterów dat ani zapisanych wprost tras API poza trzema trasami
+ * certyfikatu i trasami dokumentów, które wołają stare strony. Każda reguła ma kontrolę dodatnią
+ * na tekście, który ją łamie.
  */
 
 const KATALOGI = [
@@ -33,12 +34,23 @@ const TRASA_API = /["'`]\/(?:certificate|documents|me|admin|courses|lessons)[a-z
 const pliki = KATALOGI.flatMap(plikiEkranu);
 const tresc = (sciezka: string) => readFileSync(sciezka, "utf8");
 
+/**
+ * Układ strony podglądu certyfikatu (`app/nowy-front/certyfikat/layout.tsx`) niesie strażnika roli
+ * ze wspólnego modułu uprawnień — ten sam import co układ stron podglądu administracji. Reguła
+ * importów z `components/` przepuszcza wyłącznie tę jedną linię importu i wyłącznie w pliku układu.
+ */
+const IMPORT_STRAZNIKA_ROLI = 'import RequireRole from "@/components/permissions/RequireRole";';
+function bezImportuStraznika(sciezka: string, tekst: string): string {
+  return /[\\/]layout\.tsx$/.test(sciezka) ? tekst.replace(IMPORT_STRAZNIKA_ROLI, "") : tekst;
+}
+
 describe("struktura plików ekranów certyfikatu i dokumentów", () => {
   it("obejmuje pliki ekranów i obie strony podglądu, bez testów", () => {
     const nazwy = pliki.map((sciezka) => sciezka.replace(/\\/g, "/"));
     expect(nazwy.some((n) => n.endsWith("nowy-front/certyfikat-dokumenty/Certyfikat.tsx"))).toBe(true);
     expect(nazwy.some((n) => n.endsWith("nowy-front/certyfikat-dokumenty/Dokumenty.tsx"))).toBe(true);
     expect(nazwy.some((n) => n.endsWith("app/nowy-front/certyfikat/page.tsx"))).toBe(true);
+    expect(nazwy.some((n) => n.endsWith("app/nowy-front/certyfikat/layout.tsx"))).toBe(true);
     expect(nazwy.some((n) => n.endsWith("app/nowy-front/dokumenty/page.tsx"))).toBe(true);
     expect(nazwy.some((n) => n.includes("__tests__"))).toBe(false);
   });
@@ -50,7 +62,9 @@ describe("struktura plików ekranów certyfikatu i dokumentów", () => {
     { nazwa: "wstrzykiwanie HTML", wzorzec: WSTRZYKNIETY_HTML },
     { nazwa: "własny formater dat", wzorzec: WLASNY_FORMATER_DAT },
   ])("brak: $nazwa", ({ wzorzec }) => {
-    const trafienia = pliki.filter((sciezka) => wzorzec.test(tresc(sciezka)));
+    const trafienia = pliki.filter((sciezka) =>
+      wzorzec.test(wzorzec === IMPORT_Z_COMPONENTS ? bezImportuStraznika(sciezka, tresc(sciezka)) : tresc(sciezka)),
+    );
     expect(trafienia).toEqual([]);
   });
 
@@ -75,6 +89,13 @@ describe("struktura plików ekranów certyfikatu i dokumentów", () => {
     expect(TWARDE_KOLORY.test("color: var(--ink);")).toBe(false);
     expect(IMPORT_Z_COMPONENTS.test('import X from "@/components/pulpit/X";')).toBe(true);
     expect(IMPORT_Z_COMPONENTS.test('import X from "@/design-system/atomy/Button/Button";')).toBe(false);
+    expect(IMPORT_Z_COMPONENTS.test(bezImportuStraznika("x/layout.tsx", IMPORT_STRAZNIKA_ROLI))).toBe(false);
+    expect(IMPORT_Z_COMPONENTS.test(bezImportuStraznika("x/page.tsx", IMPORT_STRAZNIKA_ROLI))).toBe(true);
+    expect(
+      IMPORT_Z_COMPONENTS.test(
+        bezImportuStraznika("x/layout.tsx", `${IMPORT_STRAZNIKA_ROLI}\nimport X from "@/components/pulpit/X";`),
+      ),
+    ).toBe(true);
     expect(WSTRZYKNIETY_HTML.test("<div dangerouslySetInnerHTML={{ __html: x }} />")).toBe(true);
     expect(WLASNY_FORMATER_DAT.test('new Intl.DateTimeFormat("pl-PL")')).toBe(true);
     expect(WLASNY_FORMATER_DAT.test("data.toLocaleDateString()")).toBe(true);
