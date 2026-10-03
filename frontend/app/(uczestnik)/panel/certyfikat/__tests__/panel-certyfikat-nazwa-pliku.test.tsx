@@ -41,14 +41,15 @@ const warunkiSpelnione = {
 const fetchMock = vi.fn();
 let nazwyPobran: string[] = [];
 
-function odpowiedz(naglowek: string | null) {
+function odpowiedz(naglowek: string | null, typ: string | null) {
   const headers = new Headers();
   if (naglowek !== null) headers.set("Content-Disposition", naglowek);
+  if (typ !== null) headers.set("Content-Type", typ);
   return { ok: true, status: 200, headers, blob: async () => new Blob(["%PDF-1.7"]) };
 }
 
-async function pobierzCertyfikat(naglowek: string | null): Promise<string> {
-  fetchMock.mockResolvedValue(odpowiedz(naglowek));
+async function pobierzCertyfikat(naglowek: string | null, typ: string | null = null): Promise<string> {
+  fetchMock.mockResolvedValue(odpowiedz(naglowek, typ));
   render(<CertificatePage />);
   fireEvent.click(await screen.findByRole("button", { name: "Wygeneruj certyfikat" }));
   fireEvent.click(await screen.findByRole("button", { name: "Pobierz certyfikat" }));
@@ -95,6 +96,30 @@ describe("CertificatePage — nazwa pobranego pliku", () => {
   it("bez nagłówka używa nazwy z rozszerzeniem .pdf", async () => {
     const nazwa = await pobierzCertyfikat(null);
     expect(nazwa).toBe("certyfikat.pdf");
+  });
+
+  it("bez nagłówka z nazwą i z typem application/pdf daje certyfikat.pdf", async () => {
+    expect(await pobierzCertyfikat(null, "application/pdf")).toBe("certyfikat.pdf");
+  });
+
+  it("bez nagłówka z nazwą i z typem text/html daje certyfikat.html (dokument sprzed zmiany)", async () => {
+    expect(await pobierzCertyfikat(null, "text/html")).toBe("certyfikat.html");
+  });
+
+  it("typ z parametrem i dowolna wielkość liter działają tak samo", async () => {
+    expect(await pobierzCertyfikat(null, "Text/HTML; charset=utf-8")).toBe("certyfikat.html");
+  });
+
+  it("inny typ daje certyfikat.pdf", async () => {
+    expect(await pobierzCertyfikat(null, "application/octet-stream")).toBe("certyfikat.pdf");
+  });
+
+  it("nazwa z nagłówka wygrywa z typem odpowiedzi", async () => {
+    expect(await pobierzCertyfikat('attachment; filename="certyfikat-1.pdf"', "text/html")).toBe("certyfikat-1.pdf");
+  });
+
+  it("nazwa z samych spacji jest bezużyteczna i daje nazwę z typu odpowiedzi", async () => {
+    expect(await pobierzCertyfikat('attachment; filename="   "', "text/html")).toBe("certyfikat.html");
   });
 
   it("nazwa z ukośnikami nie wychodzi poza ostatni człon", async () => {

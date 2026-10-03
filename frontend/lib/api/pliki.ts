@@ -130,3 +130,15 @@ export function nazwaPlikuZNaglowka(naglowek: string | null | undefined, domysln
 
   return domyslna;
 }
+
+/**
+ * Nazwa awaryjna pobieranego pliku, gdy serwer nie podał nazwy (albo
+ * przeglądarka nie udostępnia nagłówka `Content-Disposition`): rozszerzenie
+ * z typu odpowiedzi. `text/html` (z parametrem i w dowolnej wielkości liter)
+ * daje `.html` — tak są zapisane dokumenty wydane dawniej; każdy inny typ
+ * albo brak typu daje `.pdf`.
+ */
+export function nazwaAwaryjnaPliku(typ: string | null | undefined, baza: string): string {
+  const rodzaj = (typ ?? "").split(";")[0].trim().toLowerCase();
+  return `${baza}.${rodzaj === "text/html" ? "html" : "pdf"}`;
+}

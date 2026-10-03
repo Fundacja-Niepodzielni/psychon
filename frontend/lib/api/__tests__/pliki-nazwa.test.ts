@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nazwaPlikuZNaglowka } from "../pliki";
+import { nazwaAwaryjnaPliku, nazwaPlikuZNaglowka } from "../pliki";
 
 /**
  * Nazwa pobieranego pliku z nagłówka `Content-Disposition`: postać
@@ -50,5 +50,37 @@ describe("nazwaPlikuZNaglowka", () => {
 
   it("usuwa znaki sterujące", () => {
     expect(nazwaPlikuZNaglowka("attachment; filename*=UTF-8''ce%00rt%0D%0Ay.pdf", DOMYSLNA)).toBe("certy.pdf");
+  });
+});
+
+describe("nazwaPlikuZNaglowka — nazwa z samych spacji", () => {
+  it("nazwa z samych spacji w cudzysłowie albo po kodowaniu procentowym daje nazwę domyślną", () => {
+    expect(nazwaPlikuZNaglowka('attachment; filename="   "', DOMYSLNA)).toBe(DOMYSLNA);
+    expect(nazwaPlikuZNaglowka("attachment; filename*=UTF-8''%20%20%20", DOMYSLNA)).toBe(DOMYSLNA);
+  });
+
+  it("nazwa z samych spacji w filename*= ustępuje użytecznej nazwie z filename=", () => {
+    expect(nazwaPlikuZNaglowka("attachment; filename=\"ok.pdf\"; filename*=UTF-8''%20%20", DOMYSLNA)).toBe("ok.pdf");
+  });
+});
+
+describe("nazwaAwaryjnaPliku", () => {
+  it("application/pdf daje .pdf", () => {
+    expect(nazwaAwaryjnaPliku("application/pdf", "certyfikat")).toBe("certyfikat.pdf");
+  });
+
+  it("text/html daje .html, także z parametrem i w dowolnej wielkości liter", () => {
+    expect(nazwaAwaryjnaPliku("text/html", "certyfikat")).toBe("certyfikat.html");
+    expect(nazwaAwaryjnaPliku("text/html; charset=utf-8", "certyfikat")).toBe("certyfikat.html");
+    expect(nazwaAwaryjnaPliku("TEXT/HTML;charset=UTF-8", "certyfikat")).toBe("certyfikat.html");
+    expect(nazwaAwaryjnaPliku("  Text/Html ; charset=utf-8", "certyfikat")).toBe("certyfikat.html");
+  });
+
+  it("inny typ, pusty typ i brak typu dają .pdf", () => {
+    expect(nazwaAwaryjnaPliku("application/octet-stream", "certyfikat")).toBe("certyfikat.pdf");
+    expect(nazwaAwaryjnaPliku("text/htmlx", "certyfikat")).toBe("certyfikat.pdf");
+    expect(nazwaAwaryjnaPliku("", "certyfikat")).toBe("certyfikat.pdf");
+    expect(nazwaAwaryjnaPliku(null, "certyfikat")).toBe("certyfikat.pdf");
+    expect(nazwaAwaryjnaPliku(undefined, "certyfikat")).toBe("certyfikat.pdf");
   });
 });
