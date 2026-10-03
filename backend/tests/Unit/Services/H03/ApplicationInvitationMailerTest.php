@@ -26,6 +26,8 @@ class ApplicationInvitationMailerTest extends TestCase
 {
     public function test_it_sends_the_invitation_with_the_fixed_subject_recipient_and_activation_link(): void
     {
+        // Odnośnik w e-mailu powstaje z adresu platformy z konfiguracji.
+        config(['app.frontend_url' => 'https://psychon.test']);
         $captured = [];
         Mail::shouldReceive('raw')
             ->once()

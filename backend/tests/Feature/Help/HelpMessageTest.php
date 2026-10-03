@@ -102,7 +102,9 @@ class HelpMessageTest extends TestCase
         Mail::assertQueued(
             HelpMessageReceived::class,
             function (HelpMessageReceived $mail): bool {
-                $mail->assertSeeInHtml('instructor');
+                // Rola nazwą ze słownika platformy, nie kodem technicznym.
+                $mail->assertSeeInHtml('Psycholog prowadzący');
+                $mail->assertDontSeeInHtml('>instructor<', false);
                 $mail->assertSeeInHtml('/panel/prowadzacy/nagrania');
 
                 return true;

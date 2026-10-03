@@ -21,6 +21,7 @@ use App\Services\H18\UserAnonymizer;
 use App\Services\H18\UserNumberSourcesQuery;
 use App\Support\AuditLog;
 use App\Support\Csv;
+use App\Support\Emails\EmailRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -388,16 +389,19 @@ class AdminUserController extends Controller
         });
     }
 
+    /**
+     * Zaproszenie E-03 do konta założonego przez administrację — dziś tylko
+     * ślad w skrzynce e-maili (stan „simulated”).
+     */
     private function sendInvitationEmail(User $user): void
     {
-        $activationUrl = $this->activationUrl($user);
+        $email = EmailRenderer::render('E-03', ['activationPath' => '/aktywacja?token='.$user->activation_token]);
 
         EmailMessage::create([
             'to_email' => $user->email,
             'to_user_id' => $user->id,
-            'subject' => 'Zaproszenie do platformy Fundacji Niepodzielni',
-            'body_html' => 'Twoje konto zostało utworzone. Połącz je z kontem Niepodzielni, korzystając z linku: '
-                .'<a href="'.$activationUrl.'">Połącz z kontem Niepodzielni</a>.',
+            'subject' => $email->subject,
+            'body_html' => $email->fragment,
             'status' => 'simulated',
             'sent_at' => now(),
         ]);

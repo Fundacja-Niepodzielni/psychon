@@ -4,6 +4,8 @@ namespace App\Services\H03;
 
 use App\Models\Application;
 use App\Models\EmailMessage;
+use App\Support\Emails\EmailRenderer;
+use App\Support\Emails\RenderedEmail;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -20,22 +22,24 @@ use Throwable;
  *
  * Wołana dopiero PO zatwierdzeniu transakcji odrzucenia: wycofana decyzja
  * nie może zostawić wysłanej wiadomości.
+ *
+ * Treść to szablon E-02; ślad w skrzynce niesie jego wersję HTML.
  */
 final class ApplicationRejectionMailer
 {
-    public const SUBJECT = 'Decyzja w sprawie zgłoszenia do programu PsychON';
+    public const SUBJECT = 'PsychON: decyzja w sprawie zgłoszenia';
 
     /**
      * @return bool true, gdy mailer przyjął wiadomość
      */
     public static function send(Application $application, string $reason): bool
     {
-        $body = self::body($reason);
+        $email = self::email($reason);
         $sent = true;
 
         try {
-            Mail::raw($body, function (Message $message) use ($application): void {
-                $message->to($application->email)->subject(self::SUBJECT);
+            Mail::raw($email->text, function (Message $message) use ($application, $email): void {
+                $message->to($application->email)->subject($email->subject)->html($email->html);
             });
         } catch (Throwable $e) {
             // Bez adresu i bez powodu: identyfikator wystarczy, by ponowić wysyłkę.
@@ -46,19 +50,14 @@ final class ApplicationRejectionMailer
             $sent = false;
         }
 
-        self::recordInOutbox($application, $body, $sent);
+        self::recordInOutbox($application, $email, $sent);
 
         return $sent;
     }
 
-    public static function body(string $reason): string
+    public static function email(string $reason): RenderedEmail
     {
-        return implode("\n\n", [
-            'Dzień dobry,',
-            'Dziękujemy za zgłoszenie do programu PsychON. Po rozpatrzeniu zgłoszenia nie możemy zaproponować udziału w programie.',
-            'Powód: '.$reason,
-            'Zespół Fundacji Niepodzielni',
-        ]);
+        return EmailRenderer::render('E-02', ['reason' => $reason]);
     }
 
     /**
@@ -66,14 +65,14 @@ final class ApplicationRejectionMailer
      * stan `sent` albo `failed`. Błąd zapisu śladu nie cofa decyzji ani
      * wysyłki — trafia do dziennika z samym identyfikatorem zgłoszenia.
      */
-    private static function recordInOutbox(Application $application, string $body, bool $sent): void
+    private static function recordInOutbox(Application $application, RenderedEmail $email, bool $sent): void
     {
         try {
             EmailMessage::create([
                 'to_email' => $application->email,
                 'to_user_id' => null,
-                'subject' => self::SUBJECT,
-                'body_html' => nl2br(e($body)),
+                'subject' => $email->subject,
+                'body_html' => $email->fragment,
                 'status' => $sent ? 'sent' : 'failed',
                 'related_type' => $application->getMorphClass(),
                 'related_id' => $application->id,
