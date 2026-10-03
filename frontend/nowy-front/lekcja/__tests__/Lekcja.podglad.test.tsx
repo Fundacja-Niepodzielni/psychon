@@ -215,7 +215,7 @@ describe("przycisk ukończenia i formularz pytania w podglądzie", () => {
     const powod = screen.getAllByText(ZDANIE).find((element) => element.id !== "" && przycisk.getAttribute("aria-describedby")?.includes(element.id));
     expect(powod).toBeDefined();
     expect(powod).toBeVisible();
-    expect(screen.queryByText("Możesz już ukończyć tę lekcję.")).toBeNull();
+    expect(screen.queryByText("Możesz zaznaczyć lekcję jako ukończoną.")).toBeNull();
   });
 
   it("formularz pytania: grupa aria-disabled, zdanie powodu przy polu, przycisk „Wyślij pytanie” aria-disabled w kolejności fokusu", async () => {

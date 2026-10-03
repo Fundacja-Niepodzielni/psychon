@@ -138,7 +138,7 @@ export function stanPrzycisku(wejscie: WejscieStanu): StanPrzycisku {
   if (wejscie.nagranie === "nie-dziala") {
     return { etykieta, zdanie: "Lekcję ukończysz, gdy nagranie zacznie działać.", czynny: false, cel: ukoncz };
   }
-  if (wejscie.mozna) return { etykieta, zdanie: "Możesz już ukończyć tę lekcję.", czynny: true, cel: ukoncz };
+  if (wejscie.mozna) return { etykieta, zdanie: "Możesz zaznaczyć lekcję jako ukończoną.", czynny: true, cel: ukoncz };
   const brakujaceSekundy = Math.max(0, wejscie.wymagane - wejscie.aktywneSekundy);
   const brakujaceMinuty = Math.max(1, Math.ceil(brakujaceSekundy / 60));
   return { etykieta, zdanie: zdanieZostalo(brakujaceMinuty), czynny: false, cel: ukoncz };

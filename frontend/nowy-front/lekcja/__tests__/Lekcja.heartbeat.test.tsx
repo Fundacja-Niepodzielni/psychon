@@ -178,7 +178,7 @@ describe("Lekcja — odpowiedź heartbeatu odświeża ekran", () => {
     graRamka(30);
     await rozstrzygnij();
     expect(screen.getByRole("button", { name: "Oznacz lekcję jako ukończoną" })).not.toHaveAttribute("aria-disabled");
-    expect(screen.getByText("Możesz już ukończyć tę lekcję.")).toBeInTheDocument();
+    expect(screen.getByText("Możesz zaznaczyć lekcję jako ukończoną.")).toBeInTheDocument();
   });
 
   it("odpowiedź niesie nowy wymagany czas: zdanie z brakującymi minutami liczy się od niego", async () => {

@@ -122,7 +122,7 @@ describe("stanPrzycisku — jeden przycisk i jedno zdanie we wszystkich stanach"
 
   it("można ukończyć: czynny", () => {
     expect(stanPrzycisku({ ...baza, mozna: true, aktywneSekundy: 960 })).toMatchObject({
-      zdanie: "Możesz już ukończyć tę lekcję.",
+      zdanie: "Możesz zaznaczyć lekcję jako ukończoną.",
       czynny: true,
     });
   });

@@ -129,13 +129,13 @@ describe("stan 1 — brakuje czasu", () => {
 describe("stan 2 — można ukończyć", () => {
   const MOZNA = { active_seconds: 960, watched_seconds: 960, completable: true };
 
-  it("przycisk czynny (bez aria-disabled) i zdanie „Możesz już ukończyć tę lekcję.”", async () => {
+  it("przycisk czynny (bez aria-disabled) i zdanie „Możesz zaznaczyć lekcję jako ukończoną.”", async () => {
     await otworz(zNagraniem(MOZNA));
 
     const przycisk = przyciskGlowny();
     expect(przycisk).toHaveTextContent("Oznacz lekcję jako ukończoną");
     expect(przycisk).not.toHaveAttribute("aria-disabled");
-    expect(screen.getByText("Możesz już ukończyć tę lekcję.")).toBeInTheDocument();
+    expect(screen.getByText("Możesz zaznaczyć lekcję jako ukończoną.")).toBeInTheDocument();
     expect(screen.getByText("Obejrzane: 16 z 16 potrzebnych minut.")).toBeInTheDocument();
   });
 
