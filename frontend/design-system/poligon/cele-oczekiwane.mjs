@@ -200,6 +200,7 @@ export const WYKLUCZENIA = [
   { komponent: "EmptyStateCard", plik: "organizmy/EmptyStateCard/EmptyStateCard.tsx", powod: "div karty z jednym dzieckiem — molekułą EmptyState (cel „EmptyState (przycisk)”); sam plik nie ma własnego handlera, tabIndex, role aktywacyjnej ani przycisku, jedyny przycisk karty pochodzi z molekuły." },
   // Dopisane z odtwarzaczem nagrania w ramce dostawcy: wykluczeń jest o jedno więcej niż w liczbach z komentarzy wyżej.
   { komponent: "RecordingPlayer", plik: "organizmy/RecordingPlayer/RecordingPlayer.tsx", powod: "div ramy z <iframe> odtwarzacza dostawcy i akapitem <p role=\"status\"> stanu wczytywania; sam plik nie ma przycisku, odnośnika, handlera kliknięcia, tabIndex ani roli aktywacyjnej — kontrolki odtwarzania należą do dokumentu ramki z innego pochodzenia, którego ten pomiar nie widzi i którego ten system nie styluje, a błąd i prośbę o nowy adres organizm zgłasza w górę właściwościami, bez własnego przycisku ponowienia." },
+  { komponent: "TabelaWierszy", plik: "organizmy/TabelaWierszy/TabelaWierszy.tsx", powod: "siatka `role=\"table\"` z wierszami `role=\"row\"` i komórkami `role=\"cell\"` na elementach `div` — struktura, nie kontrolka; sam plik nie renderuje przycisku, odnośnika, handlera kliknięcia, tabIndex ani roli aktywacyjnej. Komórki i panel pod wierszem dostaje gotowe od ekranu, więc odnośnik nazwy i przyciski akcji należą do ekranu i idą przez Link (cel „Link (pole klikalne)”) albo Button (cel „Button outline”)." },
 ];
 
 // K3, noga trzecia: lista WSZYSTKICH plików `*.tsx`, które ten odbiór
