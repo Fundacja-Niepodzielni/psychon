@@ -47,9 +47,11 @@ final class CertificateRevoker
             $locked->revoked_by = $actor->id;
             $locked->save();
 
+            // Powód jest tekstem wpisanym przez administrację i żyje wyłącznie w
+            // `certificates.revoked_reason` (czyszczonym przy anonimizacji konta);
+            // wpis w rejestrze niesie sam numer certyfikatu.
             AuditLog::record($actor, 'certificate.revoked', $locked, [
                 'number' => $locked->number,
-                'reason' => $reason,
             ]);
 
             return $locked;

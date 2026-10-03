@@ -42,15 +42,19 @@ function formatDate(iso: string | null): string {
 }
 
 /**
- * Zdanie o blokadzie z ostatniego wpisu `user.blocked` karty (data i powód
- * żyją w dzienniku, nie w wierszu konta). Bez wpisu — samo stwierdzenie blokady.
+ * Zdanie o blokadzie: data z ostatniego wpisu `user.blocked` karty, powód z
+ * konta (`account.blocked_reason` — tekst wpisany przez administrację żyje
+ * w rekordzie konta, nie w dzienniku zdarzeń). Bez wpisu — bez daty, bez powodu
+ * — samo stwierdzenie blokady.
  */
-function blockedSentence(entries: AdminUserCardData["audit_entries"]): string {
+function blockedSentence(
+  entries: AdminUserCardData["audit_entries"],
+  reason: string | null | undefined,
+): string {
   const last = entries.find((entry) => entry.action === "user.blocked");
-  if (!last) return "Konto jest zablokowane.";
-  const reason =
-    typeof last.details?.reason === "string" ? last.details.reason : "";
-  return `Konto jest zablokowane od ${formatDate(last.created_at)}. Powód: ${reason}.`;
+  const since = last ? ` od ${formatDate(last.created_at)}` : "";
+  const why = reason ? ` Powód: ${reason}.` : "";
+  return `Konto jest zablokowane${since}.${why}`;
 }
 
 type FormState = {
@@ -426,7 +430,7 @@ export default function AdminUserCard({ id }: { id: number }) {
         {isBlocked ? (
           <div className="mt-3 flex flex-col gap-3">
             {unblockError && <Alert variant="error">{unblockError}</Alert>}
-            <p className="text-body">{blockedSentence(audit_entries)}</p>
+            <p className="text-body">{blockedSentence(audit_entries, loaded.card.account?.blocked_reason)}</p>
             <div className="flex justify-end">
               <Button
                 type="button"

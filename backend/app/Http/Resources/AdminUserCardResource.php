@@ -6,6 +6,7 @@ use App\Models\AuditLogEntry;
 use App\Models\Document;
 use App\Models\User;
 use App\Services\H12\SupervisorAssignmentService;
+use App\Support\AuditDetailsView;
 use App\Support\ProgressAggregator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -43,6 +44,9 @@ class AdminUserCardResource extends JsonResource
             'account' => [
                 'status' => $user->status,
                 'created_at' => $user->created_at?->toIso8601ZuluString(),
+                // Powód blokady (tekst wpisany przez administrację) — tylko na karcie
+                // widzianej przez administrację; poza blokadą zawsze `null`.
+                'blocked_reason' => $user->status === 'blocked' ? $user->blocked_reason : null,
             ],
             // Bieżący prowadzący `{id, name}` albo `null` — tylko do odczytu;
             // zmienia go wyłącznie przypisanie przez administrację.
@@ -90,7 +94,7 @@ class AdminUserCardResource extends JsonResource
                     'id' => $entry->id,
                     'action' => $entry->action,
                     'actor_id' => $entry->actor_id,
-                    'details' => $entry->details,
+                    'details' => AuditDetailsView::withoutText($entry->details),
                     'created_at' => $entry->created_at?->toIso8601ZuluString(),
                 ])
                 ->values()

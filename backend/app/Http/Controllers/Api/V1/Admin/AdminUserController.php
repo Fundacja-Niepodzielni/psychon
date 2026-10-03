@@ -70,6 +70,10 @@ class AdminUserController extends Controller
         ]);
     }
 
+    /**
+     * Karta osoby w panelu administracji. `account.blocked_reason` niesie powód blokady
+     * (tekst wpisany przez administrację) wyłącznie, gdy konto jest zablokowane; poza blokadą — `null`.
+     */
     public function show(Request $request, int $id): JsonResponse
     {
         $user = User::query()->with('consents')->find($id);
@@ -267,11 +271,17 @@ class AdminUserController extends Controller
             AccountManagementGuard::assertNotOwnAccount($user, $request->user(), AccountManagementGuard::cannotBlockSelf());
             AccountManagementGuard::assertNotLastActiveAdministrator($user, $activeAdministrators);
 
+            $previousStatus = $user->status;
+
+            // Powód jest tekstem wpisanym przez administrację: żyje w koncie
+            // (`users.blocked_reason`, zerowany przy odblokowaniu i anonimizacji),
+            // a rejestr zdarzeń niesie wyłącznie poprzedni stan konta.
             $user->status = 'blocked';
+            $user->blocked_reason = $reason;
             $user->save();
 
             AuditLog::record($request->user(), 'user.blocked', $user, [
-                'reason' => $reason,
+                'previous_status' => $previousStatus,
             ]);
 
             return $user;
@@ -310,6 +320,7 @@ class AdminUserController extends Controller
             $restoredStatus = ($user->keycloak_sub === null || $user->keycloak_sub === '') ? 'invited' : 'active';
 
             $user->status = $restoredStatus;
+            $user->blocked_reason = null;
             $user->save();
 
             AuditLog::record($request->user(), 'user.unblocked', $user, [

@@ -3,12 +3,14 @@
 namespace App\Http\Resources;
 
 use App\Models\AuditLogEntry;
+use App\Support\AuditDetailsView;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Wiersz dziennika działań (H20, `GET /admin/audit`). Ten sam zestaw pól
- * (przez `toCsvRow`) zasila eksport CSV.
+ * (przez `toCsvRow`) zasila eksport CSV. `details` pokazuje identyfikatory,
+ * kody i flagi — bez pól z treścią wpisaną ręcznie (`AuditDetailsView`).
  *
  * @mixin AuditLogEntry
  */
@@ -40,7 +42,7 @@ class AuditLogEntryResource extends JsonResource
             ],
             'subject_type' => $this->subject_type !== null ? class_basename($this->subject_type) : null,
             'subject_id' => $this->subject_id,
-            'details' => $this->details,
+            'details' => AuditDetailsView::withoutText($this->details),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];
     }
@@ -52,6 +54,8 @@ class AuditLogEntryResource extends JsonResource
      */
     public function toCsvRow(Request $request): array
     {
+        $details = AuditDetailsView::withoutText($this->details);
+
         return [
             'id' => (string) $this->id,
             'action' => (string) $this->action,
@@ -61,7 +65,9 @@ class AuditLogEntryResource extends JsonResource
                 : trim($this->actor->first_name.' '.$this->actor->last_name),
             'subject_type' => $this->subject_type !== null ? class_basename($this->subject_type) : '',
             'subject_id' => $this->subject_id === null ? '' : (string) $this->subject_id,
-            'details' => $this->details !== null ? json_encode($this->details, JSON_UNESCAPED_UNICODE) : '',
+            'details' => $details !== null
+                ? json_encode($details, JSON_UNESCAPED_UNICODE)
+                : '',
             'created_at' => $this->created_at?->toIso8601ZuluString() ?? '',
         ];
     }

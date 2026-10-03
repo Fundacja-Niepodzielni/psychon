@@ -2743,6 +2743,7 @@
         "/v1/admin/users/{id}": {
             "get": {
                 "operationId": "adminUser.show",
+                "summary": "Karta osoby w panelu administracji. `account.blocked_reason` niesie powód blokady\n(tekst wpisany przez administrację) wyłącznie, gdy konto jest zablokowane; poza blokadą — `null`",
                 "tags": [
                     "AdminUser"
                 ],
@@ -2765,8 +2766,30 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {}
+                                            "type": "object",
+                                            "properties": {
+                                                "account": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "status": {
+                                                            "type": "string"
+                                                        },
+                                                        "blocked_reason": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "status",
+                                                        "blocked_reason"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "account"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -13859,7 +13882,7 @@
             },
             "RevokeCertificateRequest": {
                 "type": "object",
-                "description": "POST /admin/certificates/{certificate}/revoke \u2014 uniewa\u017cnienie z wymaganym\npowodem (H13). Tekst swobodny, nie s\u0142ownik (decyzja tymczasowa, do\npotwierdzenia przez w\u0142a\u015bciciela produktu). Pow\u00f3d trafia do kolumny\n`revoked_reason` i do audytu `certificate.revoked` (kontrakt \u00a73.2).",
+                "description": "POST /admin/certificates/{certificate}/revoke \u2014 uniewa\u017cnienie z wymaganym\npowodem (H13). Tekst swobodny, nie s\u0142ownik (decyzja tymczasowa, do\npotwierdzenia przez w\u0142a\u015bciciela produktu). Pow\u00f3d trafia wy\u0142\u0105cznie do\nkolumny `revoked_reason`; audyt `certificate.revoked` (kontrakt \u00a73.2)\nniesie numer certyfikatu.",
                 "properties": {
                     "reason": {
                         "type": "string",

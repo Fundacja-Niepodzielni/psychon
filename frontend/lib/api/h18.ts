@@ -46,7 +46,11 @@ export type AccountStatus = "active" | "invited" | "blocked" | "deleted";
 
 export interface AdminUserCard {
   profile: AdminUserProfile;
-  account?: { status: AccountStatus };
+  account?: {
+    status: AccountStatus;
+    /** Powód blokady z konta; `null`, gdy konto nie jest zablokowane. Tylko administracja. */
+    blocked_reason?: string | null;
+  };
   progress: {
     courses_done: number;
     courses_total: number;

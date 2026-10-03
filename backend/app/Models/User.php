@@ -40,6 +40,7 @@ class User extends Authenticatable
         'activation_token',
         'keycloak_sub',
         'pesel', // exposed explicitly by H01 for the owner/administration only
+        'blocked_reason', // exposed only on the administration's person card
     ];
 
     protected function casts(): array

@@ -7,8 +7,9 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * POST /admin/certificates/{certificate}/revoke — unieważnienie z wymaganym
  * powodem (H13). Tekst swobodny, nie słownik (decyzja tymczasowa, do
- * potwierdzenia przez właściciela produktu). Powód trafia do kolumny
- * `revoked_reason` i do audytu `certificate.revoked` (kontrakt §3.2).
+ * potwierdzenia przez właściciela produktu). Powód trafia wyłącznie do
+ * kolumny `revoked_reason`; audyt `certificate.revoked` (kontrakt §3.2)
+ * niesie numer certyfikatu.
  */
 class RevokeCertificateRequest extends FormRequest
 {

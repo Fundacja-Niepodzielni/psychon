@@ -55,7 +55,10 @@ function karta(status: "active" | "invited" | "blocked" | "deleted") {
       program_completed_at: null,
       product_group: "psychon",
     },
-    account: { status },
+    account: {
+      status,
+      blocked_reason: status === "blocked" ? "Naruszenie regulaminu" : null,
+    },
     progress: {
       courses_done: 1,
       courses_total: 3,
@@ -72,7 +75,7 @@ function karta(status: "active" | "invited" | "blocked" | "deleted") {
               id: 2,
               action: "user.blocked",
               actor_id: 1,
-              details: { reason: "Naruszenie regulaminu" },
+              details: { previous_status: "active" },
               created_at: "2026-09-30T10:00:00Z",
             },
           ]

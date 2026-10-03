@@ -9,6 +9,7 @@ use App\Models\Certificate;
 use App\Models\DataExport;
 use App\Models\ProfileDocument;
 use App\Models\PsychologistProfile;
+use App\Models\TestAttemptReset;
 use App\Models\User;
 use App\Services\Keycloak\InvalidationStore;
 use App\Services\Keycloak\KeycloakSessionRegistry;
@@ -89,6 +90,7 @@ final class UserAnonymizer
                 'address_zip' => null,
                 'pesel' => null,
                 'activation_token' => null,
+                'blocked_reason' => null,
                 'status' => 'deleted',
                 'anonymized_at' => now(),
             ])->save();
@@ -204,6 +206,18 @@ final class UserAnonymizer
             $paths[] = $certificate->pdf_path;
             $certificate->update(['pdf_path' => null]);
         });
+
+        // Powód unieważnienia to tekst wpisany ręcznie przez administrację i
+        // może opisywać osobę. Żyje tylko tutaj (rejestr zdarzeń niesie numer),
+        // więc zabieg usuwa go z rekordu; sam fakt i data unieważnienia zostają.
+        $user->certificates()->whereNotNull('revoked_reason')->update(['revoked_reason' => null]);
+
+        // Powód blokady konta i powody wyzerowania podejść do testów to teksty
+        // wpisane ręcznie przez administrację; żyją wyłącznie w tych rekordach
+        // (rejestr zdarzeń niesie stan konta, identyfikator testu i liczbę).
+        // Sam fakt blokady i wiersze wyzerowań zostają, powody znikają.
+        User::query()->whereKey($user->getKey())->whereNotNull('blocked_reason')->update(['blocked_reason' => null]);
+        TestAttemptReset::query()->where('user_id', $user->getKey())->whereNotNull('reason')->update(['reason' => null]);
 
         // K2 (noga C): dyplom i zaświadczenie o
         // niekaralności wgrane do wniosku o wpis do bazy psychologów

@@ -23,17 +23,21 @@ class AdminUserBlockTest extends TestCase
         $this->actingAs(User::where('email', 'admin@demo.pl')->firstOrFail(), 'keycloak');
 
         $marta = User::where('email', 'marta@demo.pl')->firstOrFail();
+        $previousStatus = $marta->status;
 
         $this->postJson("/api/v1/admin/users/{$marta->id}/block", ['reason' => 'Naruszenie regulaminu.'])
             ->assertOk()
-            ->assertJsonPath('data.profile.email', 'marta@demo.pl');
+            ->assertJsonPath('data.profile.email', 'marta@demo.pl')
+            ->assertJsonPath('data.account.blocked_reason', 'Naruszenie regulaminu.');
 
         $this->assertSame('blocked', $marta->fresh()->status);
+        $this->assertSame('Naruszenie regulaminu.', $marta->fresh()->blocked_reason);
 
+        // Powód żyje w koncie; rejestr niesie poprzedni stan konta.
         $entry = AuditLogEntry::where('action', 'user.blocked')
             ->where('subject_id', $marta->id)
             ->firstOrFail();
-        $this->assertSame('Naruszenie regulaminu.', $entry->details['reason']);
+        $this->assertSame(['previous_status' => $previousStatus], $entry->details);
     }
 
     public function test_missing_reason_returns_422(): void
