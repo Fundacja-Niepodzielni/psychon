@@ -18,7 +18,7 @@ import { formatujDate } from "../wspolne/daty";
  * uprawnień” dla całej strony.
  */
 
-export const TEKST_BRAK_ZGLASZAJACEGO = "Zgłaszający/a nieznany/a";
+export const TEKST_BRAK_ZGLASZAJACEGO = "Autor zgłoszenia nieznany";
 export const TEKST_SPRAWA_OGOLNA = "Sprawa ogólna — bez wskazania osoby";
 export const KOMUNIKAT_BLEDU_DOMYSLNY = "Nie udało się wczytać zgłoszonych spraw. Spróbuj ponownie.";
 
@@ -28,7 +28,7 @@ export interface SprawaProwadzacego {
   data: string;
   /** `created_at` sprawy (ISO 8601) — od niej liczy się wiek sprawy w wierszu. */
   czekaOd: string;
-  /** „Zgłosił/a: Imię Nazwisko” albo tekst zastępczy. */
+  /** „Zgłoszone przez: Imię Nazwisko” albo tekst zastępczy. */
   zglaszajacy: string;
   /** Imię i nazwisko osoby albo tekst sprawy ogólnej. */
   osoba: string;
@@ -53,7 +53,7 @@ export function mapujSprawe(sprawa: SupervisionCase): SprawaProwadzacego {
     czekaOd: sprawa.created_at,
     // `reporter` gubi się z koperty, gdy relacja nie jest dociągnięta po
     // stronie API (`whenLoaded`); `volunteer` zostaje jako `null`.
-    zglaszajacy: `Zgłosił/a: ${sprawa.reporter ? imieNazwisko(sprawa.reporter) : TEKST_BRAK_ZGLASZAJACEGO}`,
+    zglaszajacy: sprawa.reporter ? `Zgłoszone przez: ${imieNazwisko(sprawa.reporter)}` : TEKST_BRAK_ZGLASZAJACEGO,
     osoba: sprawa.volunteer ? imieNazwisko(sprawa.volunteer) : TEKST_SPRAWA_OGOLNA,
     tresc: sprawa.body,
   };

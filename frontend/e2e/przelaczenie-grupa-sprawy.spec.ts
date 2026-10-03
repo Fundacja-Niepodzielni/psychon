@@ -303,8 +303,8 @@ for (const { szerokosc, wysokosc } of SZEROKOSCI) {
       await expect(page.getByRole("heading", { level: 3, name: "Nieobecność na dyżurze" })).toHaveCount(0);
       await otworzSprawyProwadzacych(page, 2);
       await expect(page.getByRole("heading", { level: 3, name: "Nieobecność na dyżurze" })).toBeVisible();
-      await expect(page.getByText("Zgłosił/a: Joanna Demo")).toBeVisible();
-      await expect(page.getByText("Zgłaszający/a nieznany/a")).toBeVisible();
+      await expect(page.getByText("Zgłoszone przez: Joanna Demo")).toBeVisible();
+      await expect(page.getByText("Autor zgłoszenia nieznany")).toBeVisible();
       // Osoba stoi w zwiniętym wierszu i w linii metadanych rozwiniętej sprawy.
       await expect(page.getByText("Sprawa ogólna — bez wskazania osoby")).toHaveCount(2);
       // Treść ze znacznikiem jest tekstem; podział wierszy zostaje.

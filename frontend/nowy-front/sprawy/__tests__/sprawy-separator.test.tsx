@@ -19,7 +19,7 @@ const SPRAWY = [
     temat: "Nieobecność na dyżurze",
     data: "1 września 2026",
     czekaOd: "2026-09-01T08:00:00Z",
-    zglaszajacy: "Zgłosił/a: Joanna Prowadząca",
+    zglaszajacy: "Zgłoszone przez: Joanna Prowadząca",
     osoba: "Marta Demo",
     tresc: "Treść.",
   },
@@ -28,7 +28,7 @@ const SPRAWY = [
     temat: "Sprawa ogólna",
     data: "2 września 2026",
     czekaOd: "2026-09-02T08:00:00Z",
-    zglaszajacy: "Zgłaszający/a nieznany/a",
+    zglaszajacy: "Autor zgłoszenia nieznany",
     osoba: "Sprawa ogólna — bez wskazania osoby",
     tresc: "Treść ogólna.",
   },
@@ -66,6 +66,6 @@ describe("sprawy prowadzących — separator „·” w linii metadanych", () =>
     for (const separator of Array.from(linia.querySelectorAll('[aria-hidden="true"]'))) {
       expect(separator.textContent).toBe("·");
     }
-    expect(linia.textContent).toBe("1 września 2026·Zgłosił/a: Joanna Prowadząca·Marta Demo");
+    expect(linia.textContent).toBe("1 września 2026·Zgłoszone przez: Joanna Prowadząca·Marta Demo");
   });
 });

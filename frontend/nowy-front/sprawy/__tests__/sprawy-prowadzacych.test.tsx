@@ -92,7 +92,7 @@ describe("Sprawy zgłoszone przez prowadzących — zwinięty wiersz i „Otwór
     expect(pierwsza.textContent).toMatch(/czeka /);
     expect(pierwsza.textContent).not.toContain("Nieobecność na dyżurze");
     expect(pierwsza.textContent).not.toContain("Pierwszy wiersz treści");
-    expect(pierwsza.textContent).not.toContain("Zgłosił/a: Joanna Prowadząca");
+    expect(pierwsza.textContent).not.toContain("Zgłoszone przez: Joanna Prowadząca");
     expect(within(pierwsza).queryByRole("heading")).toBeNull();
     const przycisk = within(pierwsza).getByRole("button", { name: "Otwórz sprawę od prowadzącego: Marta Demo" });
     expect(przycisk).toHaveAttribute("aria-expanded", "false");
@@ -131,7 +131,7 @@ describe("Sprawy zgłoszone przez prowadzących — dane", () => {
     otworzSprawe(pierwsza);
     expect(within(pierwsza).getByRole("heading", { level: 3, name: "Nieobecność na dyżurze" })).toBeInTheDocument();
     expect(pierwsza.textContent).toContain("1 września 2026");
-    expect(pierwsza.textContent).toContain("Zgłosił/a: Joanna Prowadząca");
+    expect(pierwsza.textContent).toContain("Zgłoszone przez: Joanna Prowadząca");
     expect(pierwsza.textContent).toContain("Marta Demo");
     // Podział wierszy zostaje w tekście; pokazuje go `white-space: pre-wrap` z modułu CSS.
     expect(within(pierwsza).getByText(/Pierwszy wiersz treści/).textContent).toBe(
@@ -140,7 +140,7 @@ describe("Sprawy zgłoszone przez prowadzących — dane", () => {
 
     const druga = screen.getByTestId("sprawa-prowadzacego-8");
     otworzSprawe(druga);
-    expect(druga.textContent).toContain("Zgłosił/a: Zgłaszający/a nieznany/a");
+    expect(druga.textContent).toContain("Autor zgłoszenia nieznany");
     expect(druga.textContent).toContain("Sprawa ogólna — bez wskazania osoby");
 
     expect(screen.getByRole("heading", { level: 2, name: "Sprawy zgłoszone przez prowadzących" })).toBeInTheDocument();
