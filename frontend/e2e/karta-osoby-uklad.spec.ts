@@ -85,6 +85,11 @@ for (const [nazwa, wymiary] of [
     for (const naglowek of SEKCJE) {
       await expect(page.getByRole("heading", { name: naglowek, exact: true }), naglowek).toBeVisible();
     }
+    const sekcjaRoli = page.locator("section", { has: page.getByRole("heading", { name: "Rola konta", exact: true }) });
+    await expect(sekcjaRoli.getByText("Rola: Wolontariusz")).toBeVisible();
+    await expect(sekcjaRoli.getByText("Rolę zmienia się w Kontach Niepodzielni.")).toBeVisible();
+    await expect(sekcjaRoli.getByRole("combobox")).toHaveCount(0);
+    await expect(sekcjaRoli.getByRole("button")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Zaznacz warsztat jako zaliczony" })).toBeVisible();
     await page.getByRole("button", { name: "Dokumenty (2)" }).click();
     await expect(page.getByText("Porozumienie wolontariackie")).toBeVisible();

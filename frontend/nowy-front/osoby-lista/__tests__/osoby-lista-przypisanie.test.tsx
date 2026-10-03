@@ -287,6 +287,30 @@ describe("Osoby — przypisanie prowadzącego: okno", () => {
     expect(within(okno).getByText("Wybierz prowadzącego.").className).toMatch(/blad|error/i);
   });
 
+  it("lista prowadzących w oknie ma tylko aktywne konta, nawet gdy odpowiedź niesie też nieaktywne", async () => {
+    const uzytkownik = userEvent.setup();
+    const zMieszanka = [
+      ...PROWADZACY,
+      { ...prowadzacy(8, "Zablokowana"), status: "blocked" },
+      { ...prowadzacy(9, "Zaproszony"), status: "invited" },
+      { ...prowadzacy(10, "Zanonimizowana"), status: "deleted" },
+    ];
+    apiPaged.mockImplementation((adres: string) =>
+      Promise.resolve(strona(adres.includes("role=instructor") ? zMieszanka : OSOBY)),
+    );
+    render(<OsobyLista />);
+    await zaznacz(uzytkownik, 17);
+    const okno = await otworzOkno(uzytkownik);
+    await uzytkownik.click(within(okno).getByRole("combobox", { name: /^Prowadzący/ }));
+
+    expect(screen.getAllByRole("option").map((opcja) => opcja.textContent)).toEqual([
+      "Nie wybrano",
+      "Joanna Demo",
+      "Ewa Demo",
+      "Ola Demo",
+    ]);
+  });
+
   it("zdanie o zmianie: jedna osoba w liczbie pojedynczej, kilka w mnogiej; ten sam prowadzący nie liczy się jako zmiana", async () => {
     const uzytkownik = userEvent.setup();
     ustawListy();

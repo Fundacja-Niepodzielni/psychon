@@ -67,18 +67,24 @@ const LIMIT_STRON_PROWADZACYCH = 10;
 
 /**
  * Wszyscy kandydaci na prowadzącego: aktywne konta z rolą „Psycholog
- * prowadzący”, strona po stronie po 100. Serwer przyjmuje przy przypisaniu
- * wielu osób wyłącznie aktywne konto prowadzącego, więc okno nie pokazuje
- * zablokowanych.
+ * prowadzący”, strona po stronie po 100. Lista prosi o same aktywne konta
+ * i dodatkowo odrzuca każdy wiersz o innym stanie (zaproszenie, blokada,
+ * anonimizacja), więc wybór prowadzącego — na karcie osoby i w oknie
+ * przypisania na liście osób — nigdy nie pokazuje nieaktywnego konta.
  */
 export async function fetchInstructors(): Promise<AdminUserListItem[]> {
   const wynik: AdminUserListItem[] = [];
   for (let strona = 1; strona <= LIMIT_STRON_PROWADZACYCH; strona += 1) {
     const { data, meta } = await fetchAdminUsers({ role: "instructor", status: "active", page: strona, per_page: 100 });
-    wynik.push(...data);
+    wynik.push(...data.filter(czyAktywnyProwadzacy));
     if (meta === undefined || meta.current_page >= meta.last_page) break;
   }
   return wynik;
+}
+
+/** Wiersz listy, który wolno pokazać jako prowadzącego: rola prowadzącego i konto aktywne. */
+export function czyAktywnyProwadzacy(osoba: Pick<AdminUserListItem, "role" | "status">): boolean {
+  return osoba.role === "instructor" && osoba.status === "active";
 }
 
 /**

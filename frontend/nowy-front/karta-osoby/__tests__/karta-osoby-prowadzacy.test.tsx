@@ -42,8 +42,15 @@ const { ApiError } = await import("@/lib/api/klient");
 const { KartaOsoby } = await import("../KartaOsoby");
 
 const INSTRUKTORZY = [
-  { id: 5, first_name: "Joanna", last_name: "Prowadząca", email: "joanna@demo.pl", role: "instructor" },
-  { id: 6, first_name: "Piotr", last_name: "Drugi", email: "piotr@demo.pl", role: "instructor" },
+  { id: 5, first_name: "Joanna", last_name: "Prowadząca", email: "joanna@demo.pl", role: "instructor", status: "active" },
+  { id: 6, first_name: "Piotr", last_name: "Drugi", email: "piotr@demo.pl", role: "instructor", status: "active" },
+];
+
+/** Konta prowadzących, których nie wolno wskazać: zablokowane, z niedokończonym zaproszeniem, zanonimizowane. */
+const NIEAKTYWNI = [
+  { id: 7, first_name: "Ola", last_name: "Zablokowana", email: "ola@demo.pl", role: "instructor", status: "blocked" },
+  { id: 8, first_name: "Kuba", last_name: "Zaproszony", email: "kuba@demo.pl", role: "instructor", status: "invited" },
+  { id: 9, first_name: "Osoba", last_name: "Zanonimizowana", email: "anon@demo.pl", role: "instructor", status: "deleted" },
 ];
 
 beforeEach(() => {
@@ -66,7 +73,22 @@ describe("Karta osoby — prowadzący superwizje", () => {
     render(<KartaOsoby id={17} />);
 
     expect(await screen.findByRole("heading", { name: "Prowadzący superwizje" })).toBeInTheDocument();
-    await waitFor(() => expect(fetchAdminUsers).toHaveBeenCalledWith({ role: "instructor", per_page: 100 }));
+    await waitFor(() =>
+      expect(fetchAdminUsers).toHaveBeenCalledWith({ role: "instructor", status: "active", page: 1, per_page: 100 }),
+    );
+  });
+
+  it("lista prowadzących pokazuje tylko aktywne konta, nawet gdy odpowiedź niesie też nieaktywne", async () => {
+    fetchAdminUsers.mockResolvedValue({ data: [...INSTRUKTORZY, ...NIEAKTYWNI] });
+    render(<KartaOsoby id={17} />);
+    await userEvent.click(await screen.findByRole("combobox", { name: /^Prowadzący/ }));
+    await screen.findByRole("option", { name: /Joanna Prowadząca/ });
+
+    expect(screen.getAllByRole("option").map((opcja) => opcja.textContent)).toEqual([
+      "Wybierz osobę",
+      "Joanna Prowadząca (joanna@demo.pl)",
+      "Piotr Drugi (piotr@demo.pl)",
+    ]);
   });
 
   it.each(["instructor", "volunteer", "student"])("rola %s nie ma sekcji w drzewie i nie pobiera listy", async (rola) => {

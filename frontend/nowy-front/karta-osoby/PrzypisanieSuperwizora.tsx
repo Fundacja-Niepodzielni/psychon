@@ -7,8 +7,8 @@ import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Toast } from "@/design-system/molekuly/Toast/Toast";
-import { assignSupervisor, fetchAdminUsers, type AdminUserListItem } from "@/lib/api/h18";
-import type { CurrentSupervisor } from "@/lib/api/przypisanie-prowadzacego";
+import { assignSupervisor, type AdminUserListItem } from "@/lib/api/h18";
+import { fetchInstructors, type CurrentSupervisor } from "@/lib/api/przypisanie-prowadzacego";
 import { formatujDateICzas } from "../wspolne/daty";
 import { zdanieBleduCzynnosci } from "./dane";
 import style from "./KartaOsoby.module.css";
@@ -22,7 +22,7 @@ interface WlasciwosciPrzypisaniaSuperwizora {
 /**
  * Nadanie prowadzącego superwizje z karty osoby — `PUT /admin/users/{id}/supervisor`
  * z ciałem `{ supervisor_id }` (opiekun projektu i administrator). Kandydaci:
- * `GET /admin/users?role=instructor&per_page=100`. O dopuszczalności przypisania
+ * `fetchInstructors()` — tylko aktywne konta prowadzących. O dopuszczalności przypisania
  * rozstrzyga serwer — odmowę pokazujemy zdaniem z koperty błędu; przycisk blokuje
  * tylko brak wskazanej osoby i trwające żądanie. Bieżącego prowadzącego z karty
  * pokazuje to samo zdanie co po nadaniu; po nadaniu zdanie mówi o nowym.
@@ -38,9 +38,9 @@ export function PrzypisanieSuperwizora({ userId, obecny = null }: WlasciwosciPrz
 
   useEffect(() => {
     let anulowane = false;
-    fetchAdminUsers({ role: "instructor", per_page: 100 })
-      .then(({ data }) => {
-        if (!anulowane) setProwadzacy(data);
+    fetchInstructors()
+      .then((aktywni) => {
+        if (!anulowane) setProwadzacy(aktywni);
       })
       .catch((wyjatek: unknown) => {
         if (anulowane) return;

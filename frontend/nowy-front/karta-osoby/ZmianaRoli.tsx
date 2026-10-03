@@ -21,6 +21,10 @@ interface WlasciwosciZmianyRoli {
 }
 
 /**
+ * NIEDOŁĄCZONY: karta osoby pokazuje rolę tylko do odczytu (`RolaKonta.tsx`), bo
+ * PsychON bierze rolę z Kont Niepodzielni przy każdym logowaniu. Plik zostaje bez
+ * importu w drzewie ekranów.
+ *
  * Zmiana roli konta z karty osoby — `PATCH /admin/users/{id}` z ciałem `{ role }`
  * (opiekun projektu i administrator). Wartości te same co na starej stronie: pięć
  * ról z kontraktu. Kto może nadać albo odebrać rolę Super Admina, rozstrzyga serwer —

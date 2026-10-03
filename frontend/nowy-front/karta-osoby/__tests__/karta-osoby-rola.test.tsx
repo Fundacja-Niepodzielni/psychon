@@ -1,14 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axeViolations } from "@/components/__tests__/axe-helper";
 import { kartaPrzykladowa } from "./karta-fixtura";
 
 /**
- * Zmiana roli z karty osoby: ta sama trasa i to samo pole co na starej stronie
- * (`PATCH /admin/users/{id}` z `role`), te same pięć wartości, widoczność według roli,
- * ponowne wczytanie karty po sukcesie, zdanie błędu z koperty (m.in. odmowa serwera
- * przy koncie Super Admina).
+ * Rola na karcie osoby jest tylko do odczytu: sekcja „Rola konta” pokazuje rolę
+ * tekstem i zdanie „Rolę zmienia się w Kontach Niepodzielni.”, bez pola wyboru,
+ * bez przycisku zapisu i bez żadnego żądania zmiany roli.
  */
 
 const pobierzKarteOsoby = vi.fn();
@@ -40,10 +41,14 @@ vi.mock("@/lib/api/h18", async () => {
   };
 });
 
-const { ApiError } = await import("@/lib/api/klient");
 const { KartaOsoby } = await import("../KartaOsoby");
 
-const PRZYCISK = "Zapisz rolę";
+const ZDANIE = "Rolę zmienia się w Kontach Niepodzielni.";
+
+/** Każde żądanie sieciowe, które mimo atrap wyszłoby z karty — z metodą i ciałem. */
+const fetchSpy = vi.fn<(wejscie: RequestInfo | URL, opcje?: RequestInit) => Promise<Response>>(() =>
+  Promise.reject(new Error("sieć wyłączona w próbie")),
+);
 
 beforeEach(() => {
   pobierzKarteOsoby.mockReset().mockResolvedValue(kartaPrzykladowa());
@@ -51,20 +56,63 @@ beforeEach(() => {
   pobierzRoleZalogowanej.mockReset().mockResolvedValue("project_manager");
   fetchAdminUsers.mockReset().mockResolvedValue({ data: [] });
   updateAdminUser.mockReset();
+  fetchSpy.mockClear();
+  vi.stubGlobal("fetch", fetchSpy);
 });
 
-async function wybierz(etykieta: RegExp) {
-  render(<KartaOsoby id={17} />);
-  await userEvent.click(await screen.findByRole("combobox", { name: /^Rola/ }));
-  await userEvent.click(screen.getByRole("option", { name: etykieta }));
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+async function sekcjaRoli() {
+  const naglowek = await screen.findByRole("heading", { name: "Rola konta" });
+  return naglowek.closest("section") as HTMLElement;
 }
 
-describe("Karta osoby — zmiana roli", () => {
-  it.each(["project_manager", "super_admin"])("rola %s widzi sekcję z dotychczasową rolą osoby", async (rola) => {
+function zadaniaPatch() {
+  return fetchSpy.mock.calls.filter(([, opcje]) => String(opcje?.method ?? "").toUpperCase() === "PATCH");
+}
+
+describe("Karta osoby — rola tylko do odczytu", () => {
+  it.each(["project_manager", "super_admin"])("rola %s widzi rolę osoby tekstem i zdanie o Kontach Niepodzielni", async (rola) => {
     pobierzRoleZalogowanej.mockResolvedValue(rola);
+    pobierzKarteOsoby.mockResolvedValue(kartaPrzykladowa({ role: "instructor" }));
     render(<KartaOsoby id={17} />);
-    expect(await screen.findByRole("heading", { name: "Rola konta" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: /^Rola/ })).toHaveTextContent("Wolontariusz");
+
+    const sekcja = await sekcjaRoli();
+    expect(within(sekcja).getByText("Rola: Psycholog prowadzący")).toBeInTheDocument();
+    expect(within(sekcja).getByText(ZDANIE)).toBeInTheDocument();
+  });
+
+  it("na karcie nie ma pola wyboru roli ani przycisku zapisu roli", async () => {
+    render(<KartaOsoby id={17} />);
+    const sekcja = await sekcjaRoli();
+
+    expect(within(sekcja).queryByRole("combobox")).toBeNull();
+    expect(within(sekcja).queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /^Rola/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Zapisz rolę" })).toBeNull();
+  });
+
+  it("karta nie wysyła żadnego żądania zmiany roli, także po kliknięciach w sekcji", async () => {
+    const uzytkownik = userEvent.setup();
+    render(<KartaOsoby id={17} />);
+    const sekcja = await sekcjaRoli();
+    await uzytkownik.click(within(sekcja).getByText("Rola: Wolontariusz"));
+    await uzytkownik.click(within(sekcja).getByText(ZDANIE));
+    await waitFor(() => expect(fetchAdminUsers).toHaveBeenCalled());
+
+    expect(updateAdminUser).not.toHaveBeenCalled();
+    expect(zadaniaPatch()).toEqual([]);
+  });
+
+  it("rola spoza słownika: zdanie o nieznanej roli, nie surowy klucz", async () => {
+    pobierzKarteOsoby.mockResolvedValue(kartaPrzykladowa({ role: "constructor" }));
+    render(<KartaOsoby id={17} />);
+    const sekcja = await sekcjaRoli();
+
+    expect(within(sekcja).getByText("Rola: nieznana")).toBeInTheDocument();
+    expect(within(sekcja).queryByText(/constructor/)).toBeNull();
   });
 
   it.each(["instructor", "volunteer", "student"])("rola %s nie ma sekcji w drzewie", async (rola) => {
@@ -73,61 +121,18 @@ describe("Karta osoby — zmiana roli", () => {
     await screen.findByText("Dostęp do materiałów do");
     await waitFor(() => expect(pobierzRoleZalogowanej).toHaveBeenCalled());
     expect(screen.queryByRole("heading", { name: "Rola konta" })).toBeNull();
-    expect(screen.queryByRole("button", { name: PRZYCISK })).toBeNull();
+    expect(screen.queryByText(ZDANIE)).toBeNull();
   });
 
-  it("pole ma pięć ról z kontraktu", async () => {
+  it("sekcja roli nie ma naruszeń dostępności", async () => {
     render(<KartaOsoby id={17} />);
-    await userEvent.click(await screen.findByRole("combobox", { name: /^Rola/ }));
-    expect(screen.getAllByRole("option").map((opcja) => opcja.textContent)).toEqual([
-      "Super Admin",
-      "Opiekun Projektu",
-      "Psycholog prowadzący",
-      "Wolontariusz",
-      "Student",
-    ]);
+    const sekcja = await sekcjaRoli();
+    expect(await axeViolations(sekcja)).toEqual([]);
   });
 
-  it("przycisk jest zablokowany, dopóki rola nie różni się od dotychczasowej", async () => {
-    render(<KartaOsoby id={17} />);
-    expect(await screen.findByRole("button", { name: PRZYCISK })).toBeDisabled();
-    await userEvent.click(screen.getByRole("combobox", { name: /^Rola/ }));
-    await userEvent.click(screen.getByRole("option", { name: "Student" }));
-    expect(screen.getByRole("button", { name: PRZYCISK })).toBeEnabled();
-    await userEvent.click(screen.getByRole("combobox", { name: /^Rola/ }));
-    await userEvent.click(screen.getByRole("option", { name: "Wolontariusz" }));
-    expect(screen.getByRole("button", { name: PRZYCISK })).toBeDisabled();
-  });
-
-  it("zapis woła trasę raz z samą rolą, potwierdza i wczytuje kartę ponownie", async () => {
-    updateAdminUser.mockResolvedValue({});
-    await wybierz(/^Psycholog prowadzący$/);
-    await waitFor(() => expect(pobierzKarteOsoby).toHaveBeenCalledTimes(1));
-    await userEvent.click(screen.getByRole("button", { name: PRZYCISK }));
-
-    expect(await screen.findByRole("status")).toHaveTextContent("Zmieniono rolę na: Psycholog prowadzący.");
-    expect(updateAdminUser).toHaveBeenCalledTimes(1);
-    expect(updateAdminUser).toHaveBeenCalledWith(17, { role: "instructor" });
-    await waitFor(() => expect(pobierzKarteOsoby).toHaveBeenCalledTimes(2));
-  });
-
-  it("odmowa serwera: zdanie z koperty błędu, bez potwierdzenia, karta nie jest wczytywana ponownie", async () => {
-    updateAdminUser.mockRejectedValue(
-      new ApiError({ status: 403, code: "forbidden", message: "Kontami Super Admina zarządza wyłącznie Super Admin." }),
-    );
-    await wybierz(/^Super Admin$/);
-    await userEvent.click(screen.getByRole("button", { name: PRZYCISK }));
-
-    expect(await screen.findByText("Kontami Super Admina zarządza wyłącznie Super Admin.")).toBeInTheDocument();
-    expect(screen.queryByRole("status")).toBeNull();
-    expect(pobierzKarteOsoby).toHaveBeenCalledTimes(1);
-  });
-
-  it("błąd bez koperty: zdanie zapasowe", async () => {
-    updateAdminUser.mockRejectedValue(new Error("rozłączono"));
-    await wybierz(/^Student$/);
-    await userEvent.click(screen.getByRole("button", { name: PRZYCISK }));
-
-    expect(await screen.findByText("Nie udało się zmienić roli.")).toBeInTheDocument();
+  it("blok czynności administracji nie dołącza komponentu zmiany roli ani funkcji zapisu roli", () => {
+    const zrodlo = readFileSync(resolve(__dirname, "..", "CzynnosciAdministracji.tsx"), "utf8");
+    expect(zrodlo).not.toMatch(/ZmianaRoli/);
+    expect(zrodlo).not.toMatch(/updateAdminUser/);
   });
 });
