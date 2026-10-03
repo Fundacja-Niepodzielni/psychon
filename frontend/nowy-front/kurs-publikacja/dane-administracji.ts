@@ -39,7 +39,7 @@ export async function pobierzDaneKursuAdministracji(
   try {
     const [kurs, lekcje] = await Promise.all([zrodla.pobierzKurs(idKursu), zrodla.pobierzLekcjeKursu(Number(idKursu))]);
     const dane: DaneKursu = { kurs, lekcje };
-    if (lekcje.length === 0 && kurs.materials_count === 0) return { status: "pusty", dane };
+    if (lekcje.length === 0) return { status: "pusty", dane };
     return { status: "ok", dane };
   } catch (blad) {
     // Trzy odmowy, trzy stany: wygasła sesja, brak roli, brak kursu.

@@ -172,11 +172,6 @@ export function wgrajMaterial(idLekcji: number, plik: File): Promise<MaterialAdm
   return api<MaterialAdmin>(`/admin/lessons/${idLekcji}/materials`, { method: "POST", body: cialoPliku(plik) });
 }
 
-/** Materiał całego kursu, bez lekcji — to samo ciało co materiał lekcji. */
-export function wgrajMaterialKursu(idKursu: number, plik: File): Promise<MaterialAdmin> {
-  return api<MaterialAdmin>(`/admin/courses/${idKursu}/materials`, { method: "POST", body: cialoPliku(plik) });
-}
-
 /** `DELETE /admin/materials/{material}` → 200 `{ id, deleted: true }`. */
 export function usunMaterial(idMaterialu: number): Promise<{ id: number; deleted: boolean }> {
   return api<{ id: number; deleted: boolean }>(`/admin/materials/${idMaterialu}`, { method: "DELETE" });

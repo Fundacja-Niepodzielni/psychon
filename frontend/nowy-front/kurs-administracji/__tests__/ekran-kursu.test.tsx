@@ -122,11 +122,10 @@ describe("ekran kursu — odczyt i układ", () => {
       "Tematy i lekcje",
       "Publikacja",
       "Ustawienia kursu",
-      "Starsze pliki kursu",
       "Usunięcie kursu",
     ]);
     expect(screen.getByText("Uczestnik przechodzi kurs w tej kolejności. Na końcu jest test.")).toBeInTheDocument();
-    for (const nazwa of ["Tematy kursu", "Materiały kursu", "Dane kursu", "Zaproszenia na kurs"]) {
+    for (const nazwa of ["Tematy kursu", "Materiały kursu", "Dane kursu", "Zaproszenia na kurs", "Starsze pliki kursu"]) {
       expect(screen.queryByRole("heading", { name: nazwa })).toBeNull();
     }
     for (const nazwa of ["Zapisz zmiany", "Zapisz kolejność", "Porzuć zmiany", "Cofnij", "Edytuj"]) {
@@ -258,18 +257,26 @@ describe("ekran kursu — odczyt i układ", () => {
     expect(screen.queryByRole("link", { name: "Otwórz pytania" })).toBeNull();
   });
 
-  it("„Starsze pliki kursu” są tylko wtedy, gdy kurs ma pliki poza lekcjami", async () => {
+  it("plików poza lekcjami ekran kursu nie pokazuje: kurs z takim plikiem ma te same karty co kurs bez nich", async () => {
+    expect(KURS.materials_count).toBeGreaterThan(0);
     await renderEkranu();
-    const karta = screen.getByRole("region", { name: "Starsze pliki kursu" });
-    expect(within(karta).getByText("Kurs ma 1 plik dodany wcześniej, poza lekcjami.")).toBeInTheDocument();
-    expect(within(karta).getByText("Nowe pliki dodawaj w lekcjach.")).toBeInTheDocument();
-    expect(within(karta).queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Starsze pliki kursu" })).toBeNull();
+    expect(screen.queryByText(/poza lekcjami/)).toBeNull();
+    expect(screen.queryByText(/Nowe pliki dodawaj w lekcjach/)).toBeNull();
   });
 
-  it("kurs bez plików poza lekcjami nie ma karty „Starsze pliki kursu”", async () => {
+  it("kurs bez plików poza lekcjami ma te same karty", async () => {
     serwer = utworzSerwer({ kurs: { ...KURS, materials_count: 0 } });
     await renderEkranu();
     expect(screen.queryByRole("region", { name: "Starsze pliki kursu" })).toBeNull();
+  });
+
+  it("w roli prowadzącego też nie ma karty „Starsze pliki kursu”, mimo pliku poza lekcjami", async () => {
+    render(<KursAdministracji idKursu="4" rola="instructor" />);
+    await screen.findByRole("heading", { level: 2, name: "Tematy i lekcje" });
+    expect(screen.queryByRole("region", { name: "Starsze pliki kursu" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Starsze pliki kursu" })).toBeNull();
+    expect(serwer.sciezkiGrupy("admin")).toEqual([]);
   });
 });
 
@@ -520,7 +527,18 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
     await waitFor(() => expect(wiersze()[1]).toHaveTextContent("Ewa Brzeska, cały kurs"));
   });
 
-  it("„Zapisz dane kursu” wysyła te same pola co dotąd i jest przyciskiem zwykłym", async () => {
+  it("formularz danych nie ma pola „Rodzaj”: rodzaj kursu wybiera się tylko przy jego zakładaniu", async () => {
+    await renderEkranu();
+    await userEvent.click(wiersze()[0]);
+    expect(screen.getByRole("textbox", { name: "Opis kursu" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /^Rodzaj/ })).toBeNull();
+    expect(screen.queryByLabelText(/^Rodzaj/)).toBeNull();
+    expect(document.getElementById("dane-kursu-rodzaj")).toBeNull();
+    // Rodzaj zostaje w stanie wiersza — tylko do odczytu.
+    expect(wiersze()[0]).toHaveTextContent("Kurs · 2. miejsce w ścieżce");
+  });
+
+  it("„Zapisz dane kursu” wysyła te same pola co dotąd, bez rodzaju, i jest przyciskiem zwykłym", async () => {
     await renderEkranu();
     await userEvent.click(wiersze()[0]);
     const opis = screen.getByRole("textbox", { name: "Opis kursu" });
@@ -538,9 +556,9 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
         title: "Wywiad psychologiczny",
         description: "Nowy opis.",
         slug: "wywiad-psychologiczny",
-        type: "course",
       },
     });
+    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("type");
     expect(await screen.findByText("Zapisano.")).toBeInTheDocument();
     expect(ogloszenie()).toBe("Zapisano dane kursu.");
     expect(wiersze()[0]).toHaveAttribute("aria-expanded", "true");

@@ -46,8 +46,8 @@ export interface DaneKursu {
  * Pięć stanów trasy (`06-ATOMY §7`): `brak-sesji` (pusty token —
  * odpowiednik „brak uprawnień” na poziomie sesji), `brak-uprawnien`
  * (401/403 z API), `blad` (inna odpowiedź spoza 2xx albo wyjątek sieci),
- * `pusty` (kurs pobrany, ale bez lekcji i materiałów — nie ma jeszcze czego
- * sprawdzać przed publikacją) i `ok` (checklista renderowana). Stanu
+ * `pusty` (kurs pobrany, ale bez lekcji — nie ma jeszcze czego sprawdzać przed
+ * publikacją; pliki są tylko w lekcjach) i `ok` (checklista renderowana). Stanu
  * „po zapisaniu” ta trasa NIE ma — nie wywołuje żadnego zapisu do API
  * (`KursPublikacja.tsx`, komentarz przy końcu pliku wyjaśnia to jako OPEN).
  */
@@ -84,7 +84,7 @@ export async function pobierzDaneKursu(
   const lekcje = lekcjeWynik.status === "ok" ? lekcjeWynik.dane : [];
   const dane: DaneKursu = { kurs: kursWynik.dane, lekcje };
 
-  if (lekcje.length === 0 && kursWynik.dane.materials_count === 0) {
+  if (lekcje.length === 0) {
     return { status: "pusty", dane };
   }
   return { status: "ok", dane };
@@ -92,7 +92,7 @@ export async function pobierzDaneKursu(
 
 /**
  * Wyprowadza braki i gotowe pozycje WYŁĄCZNIE z pól zwróconych przez API —
- * `description`, `lessons_count`, `materials_count` (`AdminCourseResource`)
+ * `description`, `lessons_count` (`AdminCourseResource`)
  * i `video_provider_id` na każdej lekcji (`AdminLessonResource`). Zero
  * wartości zmyślonych albo domyślnych treści.
  */
@@ -130,16 +130,6 @@ export function checklistaPublikacji(dane: DaneKursu): {
   }
   if (lekcje.length > 0 && bezNagrania.length === 0) {
     gotowe.push({ id: "nagrania", tekst: "Wszystkie lekcje mają nagranie" });
-  }
-
-  if (kurs.materials_count === 0) {
-    braki.push({
-      id: "materialy",
-      tekst: "Brak materiałów kursu",
-      href: `/nowy-front/kurs/${kurs.id}#materialy`,
-    });
-  } else {
-    gotowe.push({ id: "materialy", tekst: `Materiały dodane (${kurs.materials_count})` });
   }
 
   return { braki, gotowe };

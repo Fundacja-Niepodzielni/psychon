@@ -32,7 +32,6 @@ export interface CialoKursu {
   title?: string;
   description?: string | null;
   slug?: string;
-  type?: AdminCourse["type"];
   product_group?: AdminCourse["product_group"];
   is_published?: boolean;
 }

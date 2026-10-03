@@ -29,13 +29,16 @@ describe("grupujPliki — układ listy plików kursu", () => {
     expect(grupy[0].pliki.map((p) => p.id)).toEqual([7, 3, 5]);
   });
 
-  it("pliki bez lekcji (lesson_id: null) tworzą grupę „Pliki kursu” na końcu", () => {
+  it("pliki bez lekcji (lesson_id: null) nie tworzą żadnej grupy: pliki są tylko w lekcjach", () => {
     const grupy = grupujPliki([lekcja(10, 1), lekcja(20, 2)], [plik(1, null), plik(2, 20), plik(3, 10), plik(4, null)]);
 
-    expect(grupy.map((grupa) => grupa.klucz)).toEqual(["lekcja-10", "lekcja-20", "kurs"]);
-    const ostatnia = grupy[grupy.length - 1];
-    expect(ostatnia.lekcja).toBeNull();
-    expect(ostatnia.pliki.map((p) => p.id)).toEqual([1, 4]);
+    expect(grupy.map((grupa) => grupa.klucz)).toEqual(["lekcja-10", "lekcja-20"]);
+    expect(grupy.every((grupa) => grupa.lekcja !== null)).toBe(true);
+    expect(grupy.flatMap((grupa) => grupa.pliki.map((p) => p.id))).toEqual([3, 2]);
+  });
+
+  it("same pliki bez lekcji dają zero grup", () => {
+    expect(grupujPliki([lekcja(10, 1)], [plik(1, null), plik(2, null)])).toEqual([]);
   });
 
   it("numer lekcji to jej miejsce w kursie, także gdy lekcje bez plików stoją przed nią", () => {
@@ -53,12 +56,10 @@ describe("grupujPliki — układ listy plików kursu", () => {
     expect(grupy.map((grupa) => grupa.lekcja?.id)).toEqual([10, 20]);
   });
 
-  it("plik wskazujący lekcję spoza kursu nie znika: trafia do „Pliki kursu”", () => {
-    const grupy = grupujPliki([lekcja(10, 1)], [plik(1, 999)]);
-
-    expect(grupy).toHaveLength(1);
-    expect(grupy[0].lekcja).toBeNull();
-    expect(grupy[0].pliki.map((p) => p.id)).toEqual([1]);
+  it("plik wskazujący lekcję spoza kursu nie jest plikiem żadnej lekcji kursu: nie tworzy grupy", () => {
+    expect(grupujPliki([lekcja(10, 1)], [plik(1, 999)])).toEqual([]);
+    const grupy = grupujPliki([lekcja(10, 1)], [plik(1, 999), plik(2, 10)]);
+    expect(grupy.map((grupa) => grupa.klucz)).toEqual(["lekcja-10"]);
   });
 
   it("zero plików daje zero grup, także przy lekcjach", () => {

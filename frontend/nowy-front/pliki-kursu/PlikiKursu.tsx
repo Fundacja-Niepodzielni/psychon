@@ -23,8 +23,8 @@ interface WlasciwosciPlikiKursu {
 /**
  * Sekcja „Pliki do pobrania” na stronie kursu uczestnika: lista pogrupowana
  * według lekcji w kolejności lekcji (nagłówek grupy = numer i tytuł lekcji z
- * linkiem do niej), a na końcu grupa „Pliki kursu” z plikami bez lekcji.
- * Kurs bez plików: komponent nic nie renderuje — sekcji nie ma.
+ * linkiem do niej). Pliki są tylko w lekcjach: plik bez lekcji nie jest
+ * pokazywany. Kurs bez plików lekcji: komponent nic nie renderuje — sekcji nie ma.
  */
 export function PlikiKursu({ slugKursu, lekcje, pliki, odswiez }: WlasciwosciPlikiKursu) {
   const idNaglowka = useId();
@@ -39,15 +39,11 @@ export function PlikiKursu({ slugKursu, lekcje, pliki, odswiez }: WlasciwosciPli
       {grupy.map((grupa) => (
         <div key={grupa.klucz} className={style.grupa}>
           <Heading stopien={3}>
-            {grupa.lekcja ? (
-              <span className={style.naglowekGrupy}>
-                <Link href={adresLekcji(grupa.lekcja.id, slugKursu)}>
-                  Lekcja {grupa.lekcja.numer}. {grupa.lekcja.tytul}
-                </Link>
-              </span>
-            ) : (
-              "Pliki kursu"
-            )}
+            <span className={style.naglowekGrupy}>
+              <Link href={adresLekcji(grupa.lekcja.id, slugKursu)}>
+                Lekcja {grupa.lekcja.numer}. {grupa.lekcja.tytul}
+              </Link>
+            </span>
           </Heading>
           <ListaPlikow pliki={grupa.pliki} odswiez={odswiez} />
         </div>

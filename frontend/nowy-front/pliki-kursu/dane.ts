@@ -5,8 +5,8 @@ import { sciezka } from "@/lib/api/sciezka";
 /**
  * Pliki kursu w odczycie `GET /courses/{slug}` (kontrakt, „Kursy (H05)” i aneks
  * „Tematy kursu”): każdy element niesie `id`, `name`, `size`, `lesson_id`
- * (liczba dla pliku lekcji, `null` dla pliku całego kursu) i podpisany,
- * wygasający `download_url`.
+ * (liczba dla pliku lekcji; `null` tylko dla pliku sprzed zmiany, którego
+ * ekrany nie pokazują) i podpisany, wygasający `download_url`.
  */
 export interface PlikKursu {
   id: number;

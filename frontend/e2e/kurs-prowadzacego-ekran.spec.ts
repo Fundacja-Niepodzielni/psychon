@@ -244,6 +244,8 @@ async function kursGotowy(page: Page, rola: Rola): Promise<void> {
     "href",
     rola === "admin" ? "/admin/testy/31/pytania?kurs=4" : "/prowadzacy/testy/31/pytania?kurs=4",
   );
+  // Pliki są tylko w lekcjach: kurs z plikiem poza lekcjami (materials_count > 0) nie ma karty „Starsze pliki kursu”.
+  await expect(page.getByRole("heading", { name: "Starsze pliki kursu" })).toHaveCount(0);
   if (rola === "admin") {
     await expect(page.locator("#ustawienia-prowadzacy")).toContainText("Joanna Demo");
   }

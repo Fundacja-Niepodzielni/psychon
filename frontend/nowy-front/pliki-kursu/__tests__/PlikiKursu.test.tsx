@@ -41,12 +41,13 @@ async function sprawdzAxe(kontener: HTMLElement) {
 }
 
 describe("PlikiKursu — sekcja „Pliki do pobrania” na stronie kursu", () => {
-  it("nagłówki: sekcja, potem grupy lekcji w kolejności lekcji, na końcu „Pliki kursu”", () => {
+  it("nagłówki: sekcja, potem grupy lekcji w kolejności lekcji; grupy „Pliki kursu” nie ma", () => {
     render(<PlikiKursu slugKursu="wywiad-psychologiczny" lekcje={LEKCJE} pliki={PLIKI} />);
 
     expect(screen.getByRole("heading", { level: 2, name: "Pliki do pobrania" })).toBeInTheDocument();
     const grupy = screen.getAllByRole("heading", { level: 3 }).map((naglowek) => naglowek.textContent);
-    expect(grupy).toEqual(["Lekcja 1. Wprowadzenie do wywiadu", "Lekcja 2. Pytania otwarte i zamknięte", "Pliki kursu"]);
+    expect(grupy).toEqual(["Lekcja 1. Wprowadzenie do wywiadu", "Lekcja 2. Pytania otwarte i zamknięte"]);
+    expect(screen.queryByRole("heading", { name: "Pliki kursu" })).toBeNull();
   });
 
   it("nagłówek grupy to link do lekcji z kursem w adresie", () => {
@@ -60,7 +61,6 @@ describe("PlikiKursu — sekcja „Pliki do pobrania” na stronie kursu", () =>
       "href",
       "/panel/lekcje/22?kurs=wywiad-psychologiczny",
     );
-    // Grupa „Pliki kursu” nie ma lekcji, więc nie ma linku.
     expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 
@@ -68,7 +68,7 @@ describe("PlikiKursu — sekcja „Pliki do pobrania” na stronie kursu", () =>
     render(<PlikiKursu slugKursu="wywiad-psychologiczny" lekcje={LEKCJE} pliki={PLIKI} />);
 
     const listy = screen.getAllByRole("list");
-    expect(listy).toHaveLength(3);
+    expect(listy).toHaveLength(2);
     const nazwy = listy.map((lista) =>
       within(lista)
         .getAllByRole("listitem")
@@ -77,8 +77,16 @@ describe("PlikiKursu — sekcja „Pliki do pobrania” na stronie kursu", () =>
     expect(nazwy).toEqual([
       ["Pobierz plik: Karta pracy.pdf"],
       ["Pobierz plik: Slajdy.pdf", "Pobierz plik: Scenariusz.docx"],
-      ["Pobierz plik: Regulamin kursu.pdf"],
     ]);
+  });
+
+  it("plik bez lekcji (lesson_id: null) nie jest pokazany ani pod żadnym nagłówkiem, ani w żadnej liście", () => {
+    const { container } = render(<PlikiKursu slugKursu="wywiad-psychologiczny" lekcje={LEKCJE} pliki={PLIKI} />);
+
+    expect(screen.queryByText("Regulamin kursu.pdf")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pobierz plik: Regulamin kursu.pdf" })).toBeNull();
+    expect(container.textContent).not.toContain("Regulamin kursu");
+    expect(screen.getAllByRole("button")).toHaveLength(3);
   });
 
   it("rozmiar po ludzku obok rodzaju pliku", () => {
@@ -88,7 +96,7 @@ describe("PlikiKursu — sekcja „Pliki do pobrania” na stronie kursu", () =>
     expect(screen.getByText(`PDF · 240 KB`)).toBeInTheDocument();
     expect(screen.getByText(`PDF · 1,0 MB`)).toBeInTheDocument();
     expect(screen.getByText(`DOCX · 3,3 MB`)).toBeInTheDocument();
-    expect(screen.getByText(`PDF · 512 B`)).toBeInTheDocument();
+    expect(screen.queryByText(`PDF · 512 B`)).toBeNull();
   });
 
   it("kurs bez plików: sekcji nie ma (nie ma nagłówka, listy ani pustego opisu)", () => {
@@ -97,10 +105,20 @@ describe("PlikiKursu — sekcja „Pliki do pobrania” na stronie kursu", () =>
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("jeden plik kursu bez żadnej lekcji z plikami: tylko grupa „Pliki kursu”", () => {
-    render(<PlikiKursu slugKursu="wywiad-psychologiczny" lekcje={LEKCJE} pliki={[plik(3, null, "Regulamin kursu.pdf")]} />);
+  it("kurs z samymi plikami bez lekcji: sekcji nie ma", () => {
+    const { container } = render(
+      <PlikiKursu slugKursu="wywiad-psychologiczny" lekcje={LEKCJE} pliki={[plik(3, null, "Regulamin kursu.pdf")]} />,
+    );
 
-    expect(screen.getAllByRole("heading", { level: 3 }).map((n) => n.textContent)).toEqual(["Pliki kursu"]);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("plik wskazujący lekcję, której nie ma w kursie, też nie jest pokazany", () => {
+    const { container } = render(
+      <PlikiKursu slugKursu="wywiad-psychologiczny" lekcje={LEKCJE} pliki={[plik(3, 999, "Obcy plik.pdf")]} />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("nazwa pliku ze znakami specjalnymi jest tekstem, nie HTML", () => {
@@ -138,7 +156,7 @@ describe("PlikiKursu — sekcja „Pliki do pobrania” na stronie kursu", () =>
     expect(screen.getByRole("button", { name: `Pobierz plik: ${dluga}` })).toBeInTheDocument();
   });
 
-  it("axe: brak naruszeń na liście z trzema grupami", async () => {
+  it("axe: brak naruszeń na liście z dwiema grupami", async () => {
     const { container } = render(<PlikiKursu slugKursu="wywiad-psychologiczny" lekcje={LEKCJE} pliki={PLIKI} />);
 
     await sprawdzAxe(container);

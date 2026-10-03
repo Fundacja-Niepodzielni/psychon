@@ -3,12 +3,7 @@
 import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/NiezapisaneZmiany";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import {
-  COURSE_TYPE_LABELS,
-  type AdminCourse,
-  type AdminLesson,
-  type CourseType,
-} from "@/lib/h08/types";
+import { COURSE_TYPE_LABELS, type AdminCourse, type AdminLesson } from "@/lib/h08/types";
 import { ApiError } from "@/lib/api/klient";
 import {
   dodajTemat,
@@ -248,15 +243,9 @@ interface FormularzKursu {
   tytul: string;
   opis: string;
   identyfikator: string;
-  typ: CourseType;
 }
 
-type BledyKursu = Partial<Record<"tytul" | "opis" | "identyfikator" | "typ" | "ogolny", string>>;
-
-const OPCJE_TYPU = (Object.keys(COURSE_TYPE_LABELS) as CourseType[]).map((wartosc) => ({
-  wartosc,
-  etykieta: COURSE_TYPE_LABELS[wartosc],
-}));
+type BledyKursu = Partial<Record<"tytul" | "opis" | "identyfikator" | "ogolny", string>>;
 
 /** Lekcja po zapisie z formularza przy wierszu — tyle, ile pokazuje drzewo. */
 export interface LekcjaPoZapisie {
@@ -399,8 +388,7 @@ function EdytorTematow({
     formularz !== null &&
     (formularz.tytul !== kurs.title ||
       formularz.opis !== (kurs.description ?? "") ||
-      formularz.identyfikator !== kurs.slug ||
-      formularz.typ !== kurs.type);
+      formularz.identyfikator !== kurs.slug);
   const saNiezapisaneDane = liczbaZmian > 0 || niezapisanaLekcja || daneKursuZmienione;
 
   // Wyjście z niezapisanymi zmianami pyta (M13) — menu ramy i zamknięcie karty; liczą
@@ -939,7 +927,7 @@ function EdytorTematow({
       const zapisany = await zapis.daneKursu(
         kurs.id,
         grupa === "admin"
-          ? { ...podstawowe, slug: identyfikator, type: formularz.typ }
+          ? { ...podstawowe, slug: identyfikator }
           : podstawowe,
       );
       setKurs(zapisany);
@@ -951,7 +939,6 @@ function EdytorTematow({
           tytul: blad.errors?.title?.[0],
           opis: blad.errors?.description?.[0],
           identyfikator: blad.errors?.slug?.[0],
-          typ: blad.errors?.type?.[0],
         };
         if (Object.values(pol).some(Boolean)) {
           setBledyFormularza(pol);
@@ -1256,15 +1243,6 @@ function EdytorTematow({
                 ...(grupa === "admin"
                   ? [
                       {
-                        id: `${baza}-typ`,
-                        etykieta: "Typ",
-                        rodzaj: "wybor" as const,
-                        opcje: OPCJE_TYPU,
-                        wartosc: formularz.typ,
-                        onZmiana: (typ: string) => setFormularz({ ...formularz, typ: typ as CourseType }),
-                        blad: bledyFormularza.typ,
-                      },
-                      {
                         id: `${baza}-identyfikator`,
                         etykieta: "Identyfikator",
                         rodzaj: "tekst" as const,
@@ -1314,7 +1292,6 @@ function EdytorTematow({
                     tytul: kurs.title,
                     opis: kurs.description ?? "",
                     identyfikator: kurs.slug,
-                    typ: kurs.type,
                   })
                 }
               >

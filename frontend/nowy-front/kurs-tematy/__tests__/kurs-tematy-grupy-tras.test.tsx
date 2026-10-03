@@ -119,9 +119,12 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
     expect(serwer.sciezkiGrupy(druga)).toEqual([]);
   });
 
-  it("dane kursu: PATCH kursu trasą swojej grupy — prowadzący z tytułem i opisem, administracja dodatkowo z typem i identyfikatorem (grupy produktowej nie wysyła), nigdy z pozycją w ścieżce", async () => {
+  it("dane kursu: PATCH kursu trasą swojej grupy — prowadzący z tytułem i opisem, administracja dodatkowo z identyfikatorem (rodzaju ani grupy produktowej nie wysyła), nigdy z pozycją w ścieżce", async () => {
     await renderGrupy(grupa);
     await userEvent.click(screen.getByRole("button", { name: "Zmień dane kursu" }));
+    // Rodzaj kursu wybiera się tylko przy jego zakładaniu: formularza edycji nie ma pola „Typ”.
+    expect(screen.queryByLabelText(/^Typ/)).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /^Typ/ })).toBeNull();
     const opis = screen.getByLabelText(/Opis kursu/);
     await userEvent.clear(opis);
     await userEvent.type(opis, "Nowy opis.");
@@ -135,11 +138,11 @@ describe.each<Grupa>(["admin", "instructor"])("A-12 — grupa tras „%s”: ka�
             title: KURS.title,
             description: "Nowy opis.",
             slug: KURS.slug,
-            type: KURS.type,
           }
         : { title: KURS.title, description: "Nowy opis." };
     expect(serwer.zapisy()).toEqual([{ sciezka: `/${grupa}/courses/4`, metoda: "PATCH", cialo }]);
     expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("sequence_order");
+    expect(Object.keys(serwer.zapisy()[0].cialo as object)).not.toContain("type");
     expect(await screen.findByText("Nowy opis.")).toBeInTheDocument();
     expect(serwer.sciezkiGrupy(druga)).toEqual([]);
   });

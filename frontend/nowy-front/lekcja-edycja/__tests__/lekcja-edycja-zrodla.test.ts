@@ -158,13 +158,18 @@ describe("zgodność z zapleczem", () => {
     const trasy = [...dane.matchAll(/`(\/admin\/[^`]+)`/g)].map((m) => m[1].replace(/\$\{[^}]+\}/g, "{id}"));
     expect([...new Set(trasy)].sort()).toEqual([
       "/admin/courses/{id}/lessons",
-      "/admin/courses/{id}/materials",
       "/admin/lessons/{id}",
       "/admin/lessons/{id}/materials",
       "/admin/lessons/{id}/video-status",
       "/admin/lessons/{id}/video-uploads",
       "/admin/materials/{id}",
     ]);
+  });
+
+  it("pliki są tylko w lekcjach: ekran nie ma funkcji wysyłki pliku wpiętego w kurs", () => {
+    const dane = bezKomentarzy(tresc(join(KORZEN, "nowy-front/lekcja-edycja/dane.ts")));
+    expect(dane).not.toContain("wgrajMaterialKursu");
+    expect(dane).not.toMatch(/\/admin\/courses\/\$\{[^}]+\}\/materials/);
   });
 
   it("odczyt listy plików lekcji idzie pod GET /admin/lessons/{id}/materials, bez parametrów", () => {

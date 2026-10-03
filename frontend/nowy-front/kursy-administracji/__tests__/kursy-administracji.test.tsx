@@ -326,6 +326,20 @@ describe("KursyAdministracji — Utwórz kurs", () => {
     });
   });
 
+  it("formularz zakładania kursu ma pole „Typ” (jedyne miejsce wyboru rodzaju) i wysyła wybrany typ", async () => {
+    await otworz();
+    const pole = screen.getByRole("combobox", { name: /^Typ/ });
+    expect(pole).toHaveTextContent(COURSE_TYPE_LABELS.course);
+    api.mockResolvedValueOnce(kurs(12, { type: "webinar" }));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Webinar otwarty");
+    await userEvent.click(pole);
+    await userEvent.click(screen.getByRole("option", { name: COURSE_TYPE_LABELS.webinar }));
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/12"));
+    expect(api.mock.calls[0][1].body.type).toBe("webinar");
+  });
+
   it("grupa produktowa schowana: lista nie pokazuje grupy kursu, formularz nie ma pola, a POST nie niesie product_group", async () => {
     await otworz();
     expect(screen.queryByText(/Obie grupy|Dobrostan|PsychON/)).toBeNull();

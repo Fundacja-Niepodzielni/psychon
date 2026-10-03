@@ -58,6 +58,12 @@ describe("pobierzDaneKursuAdministracji — trasy i kształt wyniku", () => {
     expect(wynik.status === "pusty" && wynik.dane.lekcje).toEqual([]);
   });
 
+  it("kurs bez lekcji, ale z plikiem poza lekcjami: nadal „pusty” — taki plik nie jest treścią kursu", async () => {
+    odpowiedzi({ ...KURS, lessons_count: 0, materials_count: 3 }, []);
+    const wynik = await pobierzDaneKursuAdministracji("4");
+    expect(wynik.status).toBe("pusty");
+  });
+
   it("odpowiedź 403: brak uprawnień", async () => {
     odpowiedzi(new ApiError({ status: 403, code: "forbidden", message: "Brak uprawnień." }), [LEKCJA]);
     expect(await pobierzDaneKursuAdministracji("4")).toEqual({ status: "brak-uprawnien" });

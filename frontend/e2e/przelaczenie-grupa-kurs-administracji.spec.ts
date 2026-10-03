@@ -292,16 +292,6 @@ async function instalujAtrapy(page: Page, opcje: Opcje = {}): Promise<{ zapisy: 
         }
         return route.fulfill(json(tematy));
       }
-      if (sciezka === "/admin/courses/4/materials" && metoda === "POST") {
-        zapisz("plik");
-        return route.fulfill(
-          json(
-            { id: nastepnyId++, name: "karta-pracy.pdf", mime: "application/pdf", size: 5, lesson_id: null, course_id: 4, created_at: null },
-            undefined,
-            201,
-          ),
-        );
-      }
       if (/^\/admin\/materials\/\d+$/.test(sciezka) && metoda === "DELETE") {
         zapisz(null);
         return route.fulfill(json({ id: Number(sciezka.split("/").pop()), deleted: true }));
@@ -560,7 +550,9 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await expect(dane).not.toContainText(/slug/i);
     await dane.getByLabel(/^Tytuł kursu/).fill("Wywiad psychologiczny — podstawy");
     await dane.getByLabel(/^Nazwa w adresie strony/).fill("wywiad-podstawy");
-    await wybierz(page, /^Rodzaj/, "Kurs");
+    // Rodzaj kursu wybiera się tylko przy zakładaniu kursu: w edycji pola nie ma.
+    await expect(dane.getByLabel(/^Rodzaj/)).toHaveCount(0);
+    await expect(dane.getByLabel(/^Typ/)).toHaveCount(0);
     await zrzut(page, "kurs-1280-dane-kursu-formularz", dane);
     await dane.getByRole("button", { name: "Zapisz dane kursu" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Wywiad psychologiczny — podstawy" })).toBeVisible();
@@ -580,7 +572,7 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
     await expect(page.locator("#ustawienia-prowadzacy")).not.toContainText("Joanna Demo");
 
     const cialoDanych = zapisy[0].cialo as Record<string, unknown>;
-    expect(Object.keys(cialoDanych).sort()).toEqual(["description", "slug", "title", "type"]);
+    expect(Object.keys(cialoDanych).sort()).toEqual(["description", "slug", "title"]);
     expect(zapisy).toEqual([
       {
         metoda: "PATCH",
@@ -589,7 +581,6 @@ test.describe("kurs administracji — operacje (1280 px)", () => {
           title: "Wywiad psychologiczny — podstawy",
           description: KURS.description,
           slug: "wywiad-podstawy",
-          type: "course",
         },
       },
       { metoda: "POST", sciezka: "/admin/courses/4/assignments", cialo: { instructor_id: 5, lesson_id: null } },

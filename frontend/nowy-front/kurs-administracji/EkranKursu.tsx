@@ -68,7 +68,6 @@ import {
   KartaPublikacji,
   OknoKursu,
   PasPublikacji,
-  StarszePlikiKursu,
   UstawieniaKursu,
   type RodzajOknaKursu,
   type WierszUstawien,
@@ -643,7 +642,6 @@ export function EkranKursu({
               onPrzypisania={setPrzypisania}
               onOgloszenie={oglos}
             />
-            <StarszePlikiKursu kurs={kurs} />
             {rola.zarzadzanieKursem && <KartaKoncowa kurs={kurs} onOkno={setOknoKursu} />}
           </>
         }

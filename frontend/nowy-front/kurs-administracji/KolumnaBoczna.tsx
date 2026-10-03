@@ -4,11 +4,7 @@ import { useZgloszenieNiezapisanychZmian } from "@/design-system/szablony/Niezap
 import { useId, useState, type MouseEvent, type ReactNode } from "react";
 import { ApiError } from "@/lib/api/klient";
 import { zdanieBleduTematow } from "@/lib/api/h08-tematy";
-import {
-  COURSE_TYPE_LABELS,
-  type AdminCourse,
-  type CourseType,
-} from "@/lib/h08/types";
+import { COURSE_TYPE_LABELS, type AdminCourse } from "@/lib/h08/types";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Icon } from "@/design-system/atomy/Icon/Icon";
@@ -387,17 +383,13 @@ function Wiersz({
   );
 }
 
-const OPCJE_TYPU = (Object.keys(COURSE_TYPE_LABELS) as CourseType[]).map((wartosc) => ({
-  wartosc,
-  etykieta: COURSE_TYPE_LABELS[wartosc],
-}));
-
-type BledyDanych = Partial<Record<"tytul" | "opis" | "adres" | "typ" | "ogolny", string>>;
+type BledyDanych = Partial<Record<"tytul" | "opis" | "adres" | "ogolny", string>>;
 
 /**
  * Formularz danych kursu — te same pola i to samo żądanie co dotąd
- * (`zapiszKurs`: tytuł, opis, nazwa w adresie, rodzaj; grupy produktowej nie wysyła). Miejsca kursu
- * w ścieżce ten zapis nie zmienia; pokazuje je stan wiersza. W roli
+ * (`zapiszKurs`: tytuł, opis, nazwa w adresie; rodzaju ani grupy produktowej nie wysyła —
+ * rodzaj kursu wybiera się tylko przy jego zakładaniu, tu widać go w stanie wiersza).
+ * Miejsca kursu w ścieżce ten zapis nie zmienia; pokazuje je stan wiersza. W roli
  * prowadzącego formularz ma tylko tytuł i opis — resztę ustawia administracja.
  */
 function FormularzDanych({
@@ -413,7 +405,6 @@ function FormularzDanych({
   const [tytul, setTytul] = useState(kurs.title);
   const [opis, setOpis] = useState(kurs.description ?? "");
   const [adres, setAdres] = useState(kurs.slug);
-  const [typ, setTyp] = useState<CourseType>(kurs.type);
   const [bledy, setBledy] = useState<BledyDanych>({});
   const [zapisano, setZapisano] = useState(false);
   const [trwa, setTrwa] = useState(false);
@@ -421,8 +412,7 @@ function FormularzDanych({
   useZgloszenieNiezapisanychZmian(
     tytul.trim() !== kurs.title ||
       (opis.trim() === "" ? "" : opis) !== (kurs.description ?? "") ||
-      adres.trim() !== kurs.slug ||
-      typ !== kurs.type,
+      adres.trim() !== kurs.slug,
     "Dane kursu",
   );
 
@@ -443,7 +433,6 @@ function FormularzDanych({
         title: tytul.trim(),
         description: opis.trim() === "" ? null : opis,
         slug: adres.trim(),
-        type: typ,
       });
       setBledy({});
       setZapisano(true);
@@ -455,7 +444,6 @@ function FormularzDanych({
           tytul: blad.errors?.title?.[0],
           opis: blad.errors?.description?.[0],
           adres: blad.errors?.slug?.[0],
-          typ: blad.errors?.type?.[0],
         };
         if (Object.values(pol).some(Boolean)) {
           setBledy(pol);
@@ -495,15 +483,6 @@ function FormularzDanych({
       {zarzadzanieKursem && (
         <>
           <Field
-            id="dane-kursu-rodzaj"
-            etykieta="Rodzaj"
-            rodzaj="wybor"
-            opcje={OPCJE_TYPU}
-            wartosc={typ}
-            onZmiana={(wartosc) => setTyp(wartosc as CourseType)}
-            blad={bledy.typ}
-          />
-          <Field
             id="dane-kursu-adres"
             etykieta="Nazwa w adresie strony"
             rodzaj="tekst"
@@ -522,22 +501,6 @@ function FormularzDanych({
         {zapisano && <span className={style.maly}>Zapisano.</span>}
       </div>
     </div>
-  );
-}
-
-/** Pliki dodane kiedyś wprost do kursu. Karta istnieje tylko wtedy, gdy kurs je ma. */
-export function StarszePlikiKursu({ kurs }: { kurs: AdminCourse }) {
-  const liczba = kurs.materials_count;
-  if (liczba <= 0) return null;
-  return (
-    <KartaBoczna tytul="Starsze pliki kursu">
-      <div className={style.trescKarty}>
-        <Text>
-          {`Kurs ma ${liczba} ${odmien(liczba, "plik dodany", "pliki dodane", "plików dodanych")} wcześniej, poza lekcjami.`}
-        </Text>
-        <Hint>Nowe pliki dodawaj w lekcjach.</Hint>
-      </div>
-    </KartaBoczna>
   );
 }
 

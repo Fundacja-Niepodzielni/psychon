@@ -5,14 +5,11 @@ import type { AdminCourse } from "@/lib/h08/types";
 import { Button } from "@/design-system/atomy/Button/Button";
 import { Heading } from "@/design-system/atomy/Heading/Heading";
 import { Link } from "@/design-system/atomy/Link/Link";
-import { Hint } from "@/design-system/atomy/Hint/Hint";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Dialog } from "@/design-system/organizmy/Dialog/Dialog";
-import { usunMaterial, wgrajMaterialKursu, type MaterialAdmin } from "@/nowy-front/lekcja-edycja/dane";
-import { useWgrywanieMaterialow } from "@/nowy-front/lekcja-edycja/materialy";
 import {
   imieNazwisko,
   odlaczProwadzacego,
@@ -25,113 +22,6 @@ import {
   type PrzypisanieKursu,
 } from "./dane";
 import style from "./KursAdministracji.module.css";
-
-/**
- * Materiały całego kursu, bez lekcji. Wgrywanie idzie tą samą logiką co
- * materiały lekcji (`useWgrywanieMaterialow`), inną trasą. Serwer nie ma
- * odczytu listy materiałów kursu dla administracji, więc sekcja pokazuje
- * liczbę materiałów z kursu i — do usunięcia — pliki wgrane na tym ekranie.
- *
- * Pole pliku jest tu natywne i podpisane etykietą: obszar upuszczania z
- * systemu wzorców trzyma pole bez etykiety wewnątrz elementu o roli przycisku,
- * czego czytnik ekranu nie nazwie.
- */
-export function MaterialyKursu({ kurs }: { kurs: AdminCourse }) {
-  const baza = useId();
-  const [liczba, setLiczba] = useState(kurs.materials_count);
-  const [doUsuniecia, setDoUsuniecia] = useState<MaterialAdmin | null>(null);
-  const [blad, setBlad] = useState<string | null>(null);
-  const materialy = useWgrywanieMaterialow(
-    (plik) => wgrajMaterialKursu(kurs.id, plik),
-    () => setLiczba((poprzednia) => poprzednia + 1),
-  );
-
-  async function usun(material: MaterialAdmin) {
-    setDoUsuniecia(null);
-    setBlad(null);
-    try {
-      await usunMaterial(material.id);
-      // Przycisk „Usuń” tego pliku znika razem z wierszem — fokus idzie na pole dodawania.
-      document.getElementById(`${baza}-plik`)?.focus();
-      materialy.zdejmij(material);
-      setLiczba((poprzednia) => Math.max(0, poprzednia - 1));
-    } catch (wyjatek) {
-      setBlad(zdanieBledu(wyjatek, "Nie udało się usunąć materiału. Spróbuj ponownie."));
-    }
-  }
-
-  return (
-    <section id="materialy" className={style.blok} aria-labelledby={`${baza}-tytul`}>
-      <Heading stopien={2} id={`${baza}-tytul`}>
-        Materiały kursu
-      </Heading>
-      <Text>{`Materiały całego kursu, bez lekcji: ${liczba}. Materiały lekcji dodasz na ekranie lekcji.`}</Text>
-      {blad && (
-        <Notice wariant="error" tytul="Materiał nie został usunięty">
-          {blad}
-        </Notice>
-      )}
-      <div className={style.polePliku}>
-        <label htmlFor={`${baza}-plik`} className={style.etykietaPliku}>
-          Dodaj materiały kursu z dysku
-        </label>
-        <input
-          id={`${baza}-plik`}
-          type="file"
-          multiple
-          className={style.wejsciePliku}
-          aria-describedby={`${baza}-plik-podpowiedz`}
-          onChange={(zdarzenie) => {
-            const lista = zdarzenie.target.files;
-            if (lista && lista.length > 0) void materialy.dodaj(lista);
-            zdarzenie.target.value = "";
-          }}
-        />
-        <Hint id={`${baza}-plik-podpowiedz`}>
-          Dozwolone formaty: PDF, DOC, DOCX, PPT, PPTX, PNG, JPG. Plik może mieć najwyżej 10 MB.
-        </Hint>
-      </div>
-      {materialy.pliki.length > 0 && (
-        <ul className={style.lista} aria-label="Stan wgrywania">
-          {materialy.pliki.map((plik) => (
-            <li key={plik.nazwa} className={style.wiersz} data-stan={plik.stan}>
-              <span className={style.nazwa}>{plik.nazwa}</span>
-              <Hint>{plik.komunikat}</Hint>
-            </li>
-          ))}
-        </ul>
-      )}
-      {materialy.wgrane.length > 0 && (
-        <ul className={style.lista} aria-label="Materiały wgrane teraz">
-          {materialy.wgrane.map((material) => (
-            <li key={material.id} className={style.wiersz}>
-              <span className={style.nazwa}>{material.name}</span>
-              <Button
-                poziom="quiet"
-                niebezpieczny
-                aria-label={`Usuń materiał „${material.name}”`}
-                onClick={() => setDoUsuniecia(material)}
-              >
-                Usuń
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {doUsuniecia && (
-        <Dialog
-          tytul={`Usunąć materiał „${doUsuniecia.name}”?`}
-          etykietaWycofania="Anuluj"
-          etykietaPotwierdzenia="Usuń materiał"
-          onWycofaj={() => setDoUsuniecia(null)}
-          onPotwierdz={() => void usun(doUsuniecia)}
-        >
-          <Text>Pliku nie da się przywrócić.</Text>
-        </Dialog>
-      )}
-    </section>
-  );
-}
 
 type StanPrzypisan =
   | { rodzaj: "ladowanie" }

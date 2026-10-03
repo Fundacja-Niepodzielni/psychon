@@ -432,7 +432,6 @@ for (const { szerokosc, wysokosc } of OKNA) {
           "Tematy i lekcje",
           "Publikacja",
           "Ustawienia kursu",
-          ...(stan.kurs.materials_count > 0 ? ["Starsze pliki kursu"] : []),
           stan.kurs.is_published ? "Cofnięcie publikacji i usunięcie kursu" : "Usunięcie kursu",
         ]);
         // Panel „Zaproszenia” nie jest pokazywany do czasu zaproszeń po MVP — w karcie są dwa wiersze.

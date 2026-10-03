@@ -271,7 +271,6 @@ function odpowiedzNaSciezke(sciezka: string): ReturnType<typeof koperta> {
   if (/^\/admin\/courses\/\d+\/lessons$/.test(sciezka)) return koperta(LEKCJE);
   if (/^\/admin\/courses\/\d+\/topics$/.test(sciezka)) return koperta(TEMATY);
   if (/^\/admin\/courses\/\d+\/assignments$/.test(sciezka)) return koperta([]);
-  if (/^\/admin\/courses\/\d+\/materials$/.test(sciezka)) return koperta([]);
   if ((m = /^\/admin\/lessons\/(\d+)\/video-status$/.exec(sciezka))) return koperta({ status: "no_video", video_status: "none", video_status_at: null, video_ready: false, video_pending: false });
   if (/^\/admin\/lessons\/\d+\/materials$/.test(sciezka)) return koperta([]);
   if ((m = /^\/admin\/lessons\/(\d+)$/.exec(sciezka))) return koperta(LEKCJE.find((l) => l.id === Number(m![1])) ?? LEKCJE[0]);
