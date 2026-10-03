@@ -25,6 +25,16 @@
   border-color: var(--error);
   outline: var(--focus-width) solid var(--error-bg);
 }
+/* Pole z błędem i fokusem klawiatury: pierścień fokusu w barwie marki (jak w polu
+   bez błędu), odstęp `--focus-offset` oddziela go od czerwonego obramowania. Samo
+   `--error-bg` (jasnoróżowe) ma wobec tła kontrast ok. 1,1:1 i nie jest widocznym
+   fokusem; służy tylko jako poświata pola niefokusowanego. Selektor 0-3-0
+   wygrywa z regułą wyżej i z `[data-theme] :focus-visible` niezależnie od
+   kolejności w arkuszu. */
+.pole[aria-invalid="true"]:focus-visible {
+  outline: var(--focus-width) solid var(--brand);
+  outline-offset: var(--focus-offset);
+}
 .pole:disabled {
   cursor: not-allowed;
   opacity: 0.6;

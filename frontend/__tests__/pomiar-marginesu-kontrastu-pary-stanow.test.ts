@@ -138,7 +138,7 @@ describe("klasyfikacja tokenów akcji i błędu — bez wyłączenia z pomiaru",
   });
 
   it("`error` jest tekstem (wchodzi do iloczynu tekst × powierzchnia), a `error-bg` nie jest wciągnięty jako tekst przez przedrostek", () => {
-    const { jasny } = wczytajProdukcyjneTokenyTresci() as { jasny: Record<string, string> };
+    const { jasny } = wczytajProdukcyjneTokenyTresci() as unknown as { jasny: Record<string, string> };
     const { teksty, powierzchnie, stany } = wyklasyfikujTokenyTresci(Object.keys(jasny)) as {
       teksty: string[];
       powierzchnie: string[];
@@ -152,5 +152,47 @@ describe("klasyfikacja tokenów akcji i błędu — bez wyłączenia z pomiaru",
 
   it("token z listy par stanów, którego nie ma w arkuszu, rzuca (martwy wpis nie znika po cichu)", () => {
     expect(() => sprawdzTokenyStanow({ jasny: { primary: "#000000" }, ciemny: { primary: "#000000" } })).toThrow(/primary-hover|error-bg|on-primary/);
+  });
+});
+
+describe.each([
+  ["pole tekstowe", "design-system/atomy/Input/Input.module.css"],
+  ["lista wyboru", "design-system/atomy/Select/Select.module.css"],
+])("%s w stanie błędu z fokusem klawiatury — pierścień widoczny na tle", (_nazwa, plik) => {
+  const tokeny = wczytajProdukcyjneTokenyTresci() as { jasny: Record<string, string>; ciemny: Record<string, string> };
+  const element = [".pole", '[aria-invalid="true"]', ":focus-visible"];
+
+  function token(deklaracja: { wartosc: string } | null, mapa: Record<string, string>): string | null {
+    const nazwy = [...(deklaracja?.wartosc ?? "").matchAll(/var\(--([\w-]+)\)/g)].map((m) => m[1]).filter((n) => n in mapa);
+    return nazwy.length > 0 ? nazwy[nazwy.length - 1] : null;
+  }
+
+  it.each(["jasny", "ciemny"] as const)("motyw %s: pierścień nie jest barwą błędu ani jej tłem i ma co najmniej 3:1 wobec każdej powierzchni (rachunek niezależny)", (motyw) => {
+    const t = tokeny[motyw];
+    const reguly = wczytajRegulyCss(czytajZDysku(plik), plik);
+    const pierscien = token(wygrywajacaDeklaracja(reguly, element, ["outline", "outline-color"], plik), t);
+    const obramowanie = token(wygrywajacaDeklaracja(reguly, element, ["border-color"], plik), t);
+    expect(pierscien).not.toBeNull();
+    expect(obramowanie).toBe("error");
+    expect(pierscien).not.toBe("error");
+    expect(pierscien).not.toBe("error-bg");
+    for (const powierzchnia of POWIERZCHNIE) {
+      expect(kontrastHex(t[pierscien!], t[powierzchnia]), `${motyw}: --${pierscien} na --${powierzchnia}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("przyrząd: pary pierścienia z prawdziwego CSS są powyżej progu 3,0", () => {
+    const wiersze = pary(czytajZDysku).filter((w) => w.etykieta.includes("pierścień") && w.etykieta.startsWith(_nazwa === "pole tekstowe" ? "Pole tekstowe" : "Lista wyboru"));
+    expect(wiersze.length).toBe(POWIERZCHNIE.length * 2);
+    expect(wiersze.filter((w) => w.margines < 0).map((w) => w.etykieta)).toEqual([]);
+  });
+
+  it("mutant w próbie: stary fokus (sama poświata `--error-bg`, bez reguły `:focus-visible` dla błędu) świeci pary poniżej progu", () => {
+    const zdysku = czytajZDysku(plik);
+    const stary = zdysku.replace(/\.pole\[aria-invalid="true"\]:focus-visible\s*\{[^}]*\}/, "");
+    expect(stary).not.toBe(zdysku);
+    const czerwone = pary((p) => (p === plik ? stary : czytajZDysku(p))).filter((w) => w.margines < 0);
+    expect(czerwone.length).toBe(POWIERZCHNIE.length * 2);
+    expect(czerwone.every((w) => w.etykieta.includes("pierścień --error-bg") && w.kontrast < 1.3)).toBe(true);
   });
 });

@@ -1039,6 +1039,22 @@ export const PARY_STANOW_Z_CSS = [
     element: [".przycisk", ".primary", ".niebezpieczny"],
     stany: STANY_INTERAKCJI,
   },
+  {
+    opis: "Pole tekstowe w stanie błędu",
+    plik: "design-system/atomy/Input/Input.module.css",
+    rodzaj: "pierscien-pola",
+    element: [".pole"],
+    atrybuty: ['[aria-invalid="true"]'],
+    stany: [{ nazwa: ":focus-visible", czesci: [":focus-visible"] }],
+  },
+  {
+    opis: "Lista wyboru w stanie błędu",
+    plik: "design-system/atomy/Select/Select.module.css",
+    rodzaj: "pierscien-pola",
+    element: [".pole"],
+    atrybuty: ['[aria-invalid="true"]'],
+    stany: [{ nazwa: ":focus-visible", czesci: [":focus-visible"] }],
+  },
 ];
 
 /** Dzieli plik CSS modułu na reguły (selektor + deklaracje + kolejność).
