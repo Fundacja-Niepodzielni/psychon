@@ -1,0 +1,47 @@
+/* Ekran „Zacznij tutaj” — wyłącznie tokeny. */
+.stos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+}
+
+.tekst {
+  white-space: pre-line;
+  max-width: 68ch;
+}
+
+.ramka {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--invert-bg);
+}
+
+.film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.bezFilmu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 192px;
+  padding: var(--space-24) var(--space-16);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--grey);
+  text-align: center;
+}
+
+.zmiana {
+  margin: 0;
+  font-size: var(--fs-11);
+  color: var(--muted);
+}

@@ -11,7 +11,7 @@ import { render, screen } from "@testing-library/react";
  */
 
 const AccessibilityStatementPage = (
-  await import("@/app/deklaracja-dostepnosci/page")
+  await import("@/app/deklaracja-dostepnosci/StaraTresc")
 ).default;
 
 describe("/deklaracja-dostepnosci — nagłówek i treść", () => {

@@ -15,7 +15,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return { ...actual, api: (...args: unknown[]) => apiMock(...args) };
 });
 
-const VerificationSearchPage = (await import("@/app/weryfikacja/page")).default;
+const VerificationSearchPage = (await import("@/app/weryfikacja/StaraTresc")).default;
 
 const NIE_ZNALEZIONO = "Nie znaleziono certyfikatu o podanym numerze.";
 

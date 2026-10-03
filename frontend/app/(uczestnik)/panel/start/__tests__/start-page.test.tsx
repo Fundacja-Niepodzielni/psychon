@@ -15,7 +15,7 @@ vi.mock("@/lib/api", async (importActual) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const { default: ParticipantStartPage } = await import("@/app/(uczestnik)/panel/start/page");
+const { default: ParticipantStartPage } = await import("@/app/(uczestnik)/panel/start/StaraTresc");
 
 const ONBOARDING = {
   video: { title: "Powitanie", url: null, caption: "Film pojawi się po starcie edycji." },

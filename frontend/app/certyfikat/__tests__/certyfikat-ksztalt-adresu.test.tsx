@@ -21,7 +21,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return { ...actual, api: (...args: unknown[]) => apiMock(...args) };
 });
 
-const CertificateLandingPage = (await import("@/app/certyfikat/page")).default;
+const CertificateLandingPage = (await import("@/app/certyfikat/StaraTresc")).default;
 
 const NIE_ZNALEZIONO = "Nie znaleziono certyfikatu o podanym numerze.";
 // Jawnie sztuczna wartość o długości tokenu z kodu QR (40 liter i cyfr), zbudowana

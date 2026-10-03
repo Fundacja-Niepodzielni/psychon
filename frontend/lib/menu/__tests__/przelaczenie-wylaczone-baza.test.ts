@@ -143,13 +143,13 @@ describe("menu przy wyłączonych grupach — jak przed rejestrem przełączenia
   });
 });
 
-const WLACZONE_DZIS: KluczGrupy[] = ["aktywacjaKonta", "certyfikat", "certyfikaty", "czasNauki", "decyzjaProfilu", "dokumentyUczestnika", "dostepWygasl", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "twojeKonto", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE_DZIS: KluczGrupy[] = ["aktywacjaKonta", "certyfikat", "certyfikatPubliczny", "certyfikaty", "czasNauki", "decyzjaProfilu", "dokumentyPubliczne", "dokumentyUczestnika", "dostepWygasl", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "twojeKonto", "wspolpraca", "wzoryDokumentow", "zacznijTutaj", "zaproszeniaNaKurs"];
 const FLAGI_DZIS: Partial<Record<KluczGrupy, boolean>> = Object.fromEntries(
   WLACZONE_DZIS.map((klucz) => [klucz, true]),
 );
 
 describe("menu rzeczywiste przy stanie flag rejestru", () => {
-  it("włączone są tylko grupy współpracy, pulpitu uczestnika, form stażu, pulpitu administracji, pulpitu prowadzącego, decyzji o profilu, wzorów dokumentów, ekranu startowego, spraw, kolejki stażu, kursów administracji, kursu administracji, kursu uczestnika, profilu psychologa, publikacji kursu, zaproszeń na kurs, naboru, listy osób, karty osoby, superwizji uczestnika, dziennika stażu, certyfikatu, dokumentów uczestnika, testu końcowego uczestnika, powiadomień, pytań testu, certyfikatów i czasu nauki administracji, aktywacji konta, wygasłego dostępu i strony konta", () => {
+  it("włączone są tylko grupy współpracy, pulpitu uczestnika, form stażu, pulpitu administracji, pulpitu prowadzącego, decyzji o profilu, wzorów dokumentów, ekranu startowego, spraw, kolejki stażu, kursów administracji, kursu administracji, kursu uczestnika, profilu psychologa, publikacji kursu, zaproszeń na kurs, naboru, listy osób, karty osoby, superwizji uczestnika, dziennika stażu, certyfikatu, dokumentów uczestnika, testu końcowego uczestnika, powiadomień, pytań testu, certyfikatów i czasu nauki administracji, ekranu „Zacznij tutaj”, aktywacji konta, wygasłego dostępu, strony konta, publicznego certyfikatu i dokumentów publicznych", () => {
     // Grupy z podmianą treści (ten sam adres starej i nowej trasy) nie zmieniają menu.
     for (const [klucz, grupa] of Object.entries(GRUPY)) {
       expect(grupa.wlaczona, `grupa "${klucz}"`).toBe(WLACZONE_DZIS.includes(klucz as KluczGrupy));

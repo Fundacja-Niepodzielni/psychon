@@ -24,11 +24,12 @@ import {
  * Także `pytaniaTestu` (pytania testu w panelu administracji i prowadzącego pod tymi samymi adresami).
  * Także `certyfikaty` i `czasNauki` (lista certyfikatów i czas nauki administracji pod adresami `/admin/certyfikaty`
  * i `/admin/czas-nauki`).
- * Także trzy grupy stron publicznych pod tymi samymi adresami: `aktywacjaKonta`, `dostepWygasl`,
- * `twojeKonto`. Grupa `logowanie` zostaje wyłączona: jej ekrany działają pod ścieżką podglądu.
+ * Także `zacznijTutaj` (ekran „Zacznij tutaj” pod tym samym adresem `/panel/start`) i pięć grup stron
+ * publicznych pod tymi samymi adresami: `aktywacjaKonta`, `dostepWygasl`, `twojeKonto`,
+ * `certyfikatPubliczny`, `dokumentyPubliczne`. Grupa `logowanie` zostaje wyłączona: jej ekrany działają pod ścieżką podglądu.
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["aktywacjaKonta", "certyfikat", "certyfikaty", "czasNauki", "decyzjaProfilu", "dokumentyUczestnika", "dostepWygasl", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "twojeKonto", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["aktywacjaKonta", "certyfikat", "certyfikatPubliczny", "certyfikaty", "czasNauki", "decyzjaProfilu", "dokumentyPubliczne", "dokumentyUczestnika", "dostepWygasl", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "twojeKonto", "wspolpraca", "wzoryDokumentow", "zacznijTutaj", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -44,7 +45,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika, powiadomienia, pytania testu, certyfikaty i czas nauki administracji, aktywacja konta, wygasły dostęp i strona konta", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika, powiadomienia, pytania testu, certyfikaty i czas nauki administracji, „Zacznij tutaj”, aktywacja konta, wygasły dostęp, strona konta, publiczny certyfikat i dokumenty publiczne", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -173,13 +174,15 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna czterdzieści jeden grup dzisiejszego kanonu", () => {
+  it("zna czterdzieści cztery grupy dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "aktywacjaKonta",
       "certyfikat",
+      "certyfikatPubliczny",
       "certyfikaty",
       "czasNauki",
       "decyzjaProfilu",
+      "dokumentyPubliczne",
       "dokumentyUczestnika",
       "dostepWygasl",
       "dziennikStazu",
@@ -215,16 +218,19 @@ describe("rejestr GRUPY — zawartość", () => {
       "ustawieniaProgramu",
       "wspolpraca",
       "wzoryDokumentow",
+      "zacznijTutaj",
       "zaproszeniaNaKurs",
     ]);
   });
 
-  it("strony publiczne: siedem ekranów w czterech grupach, każdy pod tym samym adresem co dziś, więc zamiana treści, nie przekierowanie", () => {
+  it("strony publiczne: dwanaście ekranów w siedmiu grupach, każdy pod tym samym adresem co dziś, więc zamiana treści, nie przekierowanie", () => {
     const publiczne = {
       logowanie: ["/logowanie", "/logowanie/konta", "/logowanie/niepowiazane", "/logowanie/zablokowane"],
       aktywacjaKonta: ["/aktywacja"],
       dostepWygasl: ["/dostep-wygasl"],
       twojeKonto: ["/konto"],
+      certyfikatPubliczny: ["/weryfikacja", "/certyfikat"],
+      dokumentyPubliczne: ["/deklaracja-dostepnosci", "/dokumenty-prawne/[typ]"],
     } as const;
     for (const [klucz, adresy] of Object.entries(publiczne) as [keyof typeof publiczne, readonly string[]][]) {
       const grupa: DefinicjaGrupy = GRUPY[klucz];
@@ -236,6 +242,15 @@ describe("rejestr GRUPY — zawartość", () => {
       }
       expect(czyStaraTrasaPrzekierowuje(grupa, "publiczny"), klucz).toBe(false);
     }
+    expect(GRUPY.zacznijTutaj.ekrany).toEqual([
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/start",
+        nowaTrasa: "/panel/start",
+        trasaPoligonu: "/nowy-front/publiczne/panel/start",
+      },
+    ]);
+    expect(czyStaraTrasaPrzekierowuje(GRUPY.zacznijTutaj, "uczestnik")).toBe(false);
   });
 
   it("grupa logowania jest wyłączona: pod czterema adresami logowania zostają dawne strony, a nowe ekrany działają pod ścieżką podglądu", () => {
@@ -246,7 +261,7 @@ describe("rejestr GRUPY — zawartość", () => {
       "/nowy-front/publiczne/logowanie/niepowiazane",
       "/nowy-front/publiczne/logowanie/zablokowane",
     ]);
-    for (const grupa of ["aktywacjaKonta", "dostepWygasl", "twojeKonto"] as const) {
+    for (const grupa of ["aktywacjaKonta", "dostepWygasl", "twojeKonto", "certyfikatPubliczny", "dokumentyPubliczne", "zacznijTutaj"] as const) {
       expect(GRUPY[grupa].wlaczona, grupa).toBe(true);
     }
   });

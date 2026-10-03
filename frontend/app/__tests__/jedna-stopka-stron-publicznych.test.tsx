@@ -34,6 +34,12 @@ const ADRESY: Array<[string, KluczGrupy]> = [
   ["/aktywacja", "aktywacjaKonta"],
   ["/dostep-wygasl", "dostepWygasl"],
   ["/konto", "twojeKonto"],
+  ["/weryfikacja", "certyfikatPubliczny"],
+  ["/certyfikat", "certyfikatPubliczny"],
+  ["/deklaracja-dostepnosci", "dokumentyPubliczne"],
+  ["/dokumenty-prawne/regulamin", "dokumentyPubliczne"],
+  ["/dokumenty-prawne/polityka", "dokumentyPubliczne"],
+  ["/dokumenty-prawne/klauzula-rodo", "dokumentyPubliczne"],
 ];
 
 const WSZYSTKIE_PUBLICZNE: Partial<Record<KluczGrupy, boolean>> = {
@@ -41,6 +47,9 @@ const WSZYSTKIE_PUBLICZNE: Partial<Record<KluczGrupy, boolean>> = {
   aktywacjaKonta: true,
   dostepWygasl: true,
   twojeKonto: true,
+  certyfikatPubliczny: true,
+  dokumentyPubliczne: true,
+  zacznijTutaj: true,
 };
 
 async function stopka(): Promise<ComponentType> {
@@ -129,7 +138,7 @@ describe("dawna stopka układu głównego a grupy stron publicznych", () => {
   );
 
   it("przypadek odwrotny: grupa innego ekranu nie chowa dawnej stopki pod /logowanie", async () => {
-    podmienRejestr({ twojeKonto: true, aktywacjaKonta: true });
+    podmienRejestr({ twojeKonto: true, zacznijTutaj: true });
     sciezka = "/logowanie";
     const PublicFooter = await stopka();
     expect(await policzStopki(async () => <PublicFooter />)).toEqual({ footer: 1, contentinfo: 1 });
@@ -142,6 +151,7 @@ describe("dawna stopka układu głównego a grupy stron publicznych", () => {
  */
 const STRONY: Array<[string, KluczGrupy, () => Promise<{ default: () => React.ReactElement }>, number]> = [
   ["/dostep-wygasl", "dostepWygasl", () => import("@/app/dostep-wygasl/page"), 1],
+  ["/deklaracja-dostepnosci", "dokumentyPubliczne", () => import("@/app/deklaracja-dostepnosci/page"), 0],
   ["/logowanie/zablokowane", "logowanie", () => import("@/app/logowanie/zablokowane/page"), 1],
 ];
 

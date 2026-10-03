@@ -61,8 +61,9 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest trzydzieści trzy: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `pytaniaTestu`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
- * strony publiczne pod tymi samymi adresami: `aktywacjaKonta`, `dostepWygasl`, `twojeKonto`,
+ * Grupy dzisiejszego kanonu. Włączonych jest trzydzieści sześć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `pytaniaTestu`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * `zacznijTutaj` (ekran „Zacznij tutaj” pod tym samym adresem `/panel/start`), strony publiczne pod tymi samymi
+ * adresami: `aktywacjaKonta`, `dostepWygasl`, `twojeKonto`, `certyfikatPubliczny`, `dokumentyPubliczne`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -747,6 +748,63 @@ export const GRUPY = {
         staraTrasa: "/konto",
         nowaTrasa: "/konto",
         trasaPoligonu: "/nowy-front/publiczne/konto",
+      },
+    ],
+  },
+  /**
+   * Publiczne sprawdzenie certyfikatu: formularz weryfikacji po numerze i strona certyfikatu z adresu
+   * (`?token` albo `?number`) — te same adresy co dziś. Inna grupa niż `certyfikat` (certyfikat w panelu uczestnika).
+   */
+  certyfikatPubliczny: {
+    klucz: "certyfikatPubliczny",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "publiczny",
+        staraTrasa: "/weryfikacja",
+        nowaTrasa: "/weryfikacja",
+        trasaPoligonu: "/nowy-front/publiczne/weryfikacja",
+      },
+      {
+        panel: "publiczny",
+        staraTrasa: "/certyfikat",
+        nowaTrasa: "/certyfikat",
+        trasaPoligonu: "/nowy-front/publiczne/certyfikat",
+      },
+    ],
+  },
+  /** Deklaracja dostępności i dokumenty prawne (regulamin, polityka prywatności, …) — te same adresy co dziś. */
+  dokumentyPubliczne: {
+    klucz: "dokumentyPubliczne",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "publiczny",
+        staraTrasa: "/deklaracja-dostepnosci",
+        nowaTrasa: "/deklaracja-dostepnosci",
+        trasaPoligonu: "/nowy-front/publiczne/deklaracja-dostepnosci",
+      },
+      {
+        panel: "publiczny",
+        staraTrasa: "/dokumenty-prawne/[typ]",
+        nowaTrasa: "/dokumenty-prawne/[typ]",
+        trasaPoligonu: "/nowy-front/publiczne/dokumenty-prawne/[typ]",
+      },
+    ],
+  },
+  /**
+   * Ekran „Zacznij tutaj” uczestnika — ten sam adres `/panel/start`, treść strony zamienia się na ekran nowego
+   * frontu w nowej ramce panelu uczestnika. Treść ekranu edytuje się na `/admin/ekran-startowy` (grupa `ekranStartowy`).
+   */
+  zacznijTutaj: {
+    klucz: "zacznijTutaj",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/start",
+        nowaTrasa: "/panel/start",
+        trasaPoligonu: "/nowy-front/publiczne/panel/start",
       },
     ],
   },

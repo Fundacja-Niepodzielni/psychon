@@ -11,7 +11,7 @@ import { render, screen } from "@testing-library/react";
  * `use()`, co w tym środowisku (jsdom + Vitest + React 19.2.8) nigdy nie
  * wybudza się z Suspense nawet dla już rozstrzygniętej obietnicy (zmierzone
  * osobno, ręcznym `act`), niezależnie od logiki tego ekranu — patrz komentarz
- * w `page.tsx` przy `DokumentPrawnyEkran`.
+ * w `StaraTresc.tsx` przy `DokumentPrawnyEkran`.
  */
 
 const apiMock = vi.fn();
@@ -21,7 +21,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const { DokumentPrawnyEkran } = await import("@/app/dokumenty-prawne/[typ]/page");
+const { DokumentPrawnyEkran } = await import("@/app/dokumenty-prawne/[typ]/StaraTresc");
 
 beforeEach(() => {
   apiMock.mockReset();

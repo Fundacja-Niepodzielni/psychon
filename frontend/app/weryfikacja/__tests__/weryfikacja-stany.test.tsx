@@ -15,7 +15,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const VerificationSearchPage = (await import("@/app/weryfikacja/page")).default;
+const VerificationSearchPage = (await import("@/app/weryfikacja/StaraTresc")).default;
 
 beforeEach(() => {
   apiMock.mockReset();

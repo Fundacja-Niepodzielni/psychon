@@ -28,7 +28,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const CertificateLandingPage = (await import("@/app/certyfikat/page")).default;
+const CertificateLandingPage = (await import("@/app/certyfikat/StaraTresc")).default;
 
 beforeEach(() => {
   apiMock.mockReset();

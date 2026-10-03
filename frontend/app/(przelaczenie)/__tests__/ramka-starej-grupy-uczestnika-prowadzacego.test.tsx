@@ -179,6 +179,16 @@ describe("kontrola dodatnia — włączona grupa z tym samym adresem", () => {
     expect(ramka(await wyrenderuj("/panel/kursy", ukladUczestnika), "Menu — Panel uczestnika")).toEqual(STARA);
   });
 
+  it("zacznijTutaj: /panel/start w nowej ramce, pulpit i lista kursów nadal w PanelShell", async () => {
+    rola = "volunteer";
+    podmienRejestr({ zacznijTutaj: true });
+    expect(ramka(await wyrenderuj("/panel/start", ukladUczestnika), "Menu — Panel uczestnika")).toEqual(NOWA);
+    cleanup();
+    expect(ramka(await wyrenderuj("/panel/pulpit", ukladUczestnika), "Menu — Panel uczestnika")).toEqual(STARA);
+    cleanup();
+    expect(ramka(await wyrenderuj("/panel/kursy", ukladUczestnika), "Menu — Panel uczestnika")).toEqual(STARA);
+  });
+
   it("pulpitProwadzacego: /prowadzacy w nowej ramce, /prowadzacy/kursy nadal w PanelShell", async () => {
     rola = "instructor";
     podmienRejestr({ pulpitProwadzacego: true });
