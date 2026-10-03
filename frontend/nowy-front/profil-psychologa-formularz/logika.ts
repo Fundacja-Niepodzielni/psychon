@@ -83,8 +83,8 @@ const OPISY: Record<Exclude<RodzajStanu, "brak" | "nieznany">, { znaczy: string;
     dalej: "Zgodę na publikację możesz wycofać w każdej chwili.",
   },
   withdrawn: {
-    znaczy: "Zgoda na publikację została wycofana. Wniosek jest zablokowany.",
-    dalej: "Nie możesz już go zmieniać ani wysyłać ponownie.",
+    znaczy: "Zgoda na publikację została wycofana.",
+    dalej: "Profil nie zostanie opublikowany w bazie psychologów Fundacji.",
   },
 };
 
@@ -118,13 +118,14 @@ export function czyMoznaWycofac(rodzaj: RodzajStanu): boolean {
 }
 
 /**
- * Zdanie pytania przed wycofaniem zgody — skutek jest nieodwracalny. Serwer po wycofaniu ustawia stan
- * „Zgoda wycofana” i blokuje zapis, załączniki i ponowne wysłanie (edycja tylko w wersji roboczej i po
- * odesłaniu do poprawki). Opublikowany profil znika z publicznej listy; każdy inny na nią nie trafi.
+ * Zdanie pytania przed wycofaniem zgody. Mówi tylko o skutku dla publikacji — nie obiecuje, że wniosku nie da
+ * się potem zmienić ani wysłać z nową zgodą, i nie wspomina publicznej listy (takiej listy nie ma), żeby
+ * zostało prawdziwe także po zmianie, która pozwoli edytować wycofany wniosek.
  */
 export function zdanieWycofania(rodzaj: RodzajStanu): string {
-  const lista = rodzaj === "published" ? "zniknie z publicznej listy" : "nie trafi na publiczną listę";
-  return `Po wycofaniu zgody profil ${lista}, a wniosku nie zmienisz ani nie wyślesz ponownie. Tej zmiany nie da się cofnąć.`;
+  return rodzaj === "published"
+    ? "Profil zniknie z bazy psychologów Fundacji."
+    : "Profil nie zostanie opublikowany w bazie psychologów Fundacji.";
 }
 
 /* -------------------------------------------------------------------- */

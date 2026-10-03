@@ -418,10 +418,7 @@ export function ProfilPsychologa() {
               )}
               {mozeWycofac && (
                 <>
-                  <Text>
-                    Możesz w każdej chwili wycofać zgodę na publikację profilu. Wniosek przejdzie wtedy w stan „zgoda
-                    wycofana” i nie będzie już edytowalny.
-                  </Text>
+                  <Text>Możesz w każdej chwili wycofać zgodę na publikację profilu.</Text>
                   <div className={style.akcje}>
                     <Button poziom="outline" niebezpieczny onClick={() => setPytanieOWycofanie(true)}>
                       {dzialanie === "wycofanie" ? "Wycofywanie…" : "Wycofaj zgodę"}

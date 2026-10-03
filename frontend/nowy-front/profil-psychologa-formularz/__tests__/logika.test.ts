@@ -77,17 +77,24 @@ describe("co wolno w którym stanie", () => {
   });
 });
 
-describe("zdanieWycofania — pytanie przed nieodwracalnym wycofaniem zgody", () => {
-  it("opublikowany: profil zniknie z publicznej listy", () => {
+describe("zdanieWycofania — pytanie przed wycofaniem zgody (bez obietnic o trwałości i bez publicznej listy)", () => {
+  it("opublikowany: profil zniknie z bazy psychologów Fundacji", () => {
     expect(zdanieWycofania("published")).toBe(
-      "Po wycofaniu zgody profil zniknie z publicznej listy, a wniosku nie zmienisz ani nie wyślesz ponownie. Tej zmiany nie da się cofnąć.",
+      "Profil zniknie z bazy psychologów Fundacji.",
     );
   });
 
-  it.each(["submitted", "returned", "accepted"] as const)("%s: profil nie trafi na publiczną listę", (rodzaj) => {
+  it.each(["submitted", "returned", "accepted"] as const)("%s: profil nie zostanie opublikowany", (rodzaj) => {
     expect(zdanieWycofania(rodzaj)).toBe(
-      "Po wycofaniu zgody profil nie trafi na publiczną listę, a wniosku nie zmienisz ani nie wyślesz ponownie. Tej zmiany nie da się cofnąć.",
+      "Profil nie zostanie opublikowany w bazie psychologów Fundacji.",
     );
+  });
+});
+
+describe("zgoda wycofana — opis stanu bez zdań o trwałej blokadzie", () => {
+  it("znaczy i co dalej", () => {
+    expect(opisStanu("withdrawn").znaczy).toBe("Zgoda na publikację została wycofana.");
+    expect(opisStanu("withdrawn").dalej).toBe("Profil nie zostanie opublikowany w bazie psychologów Fundacji.");
   });
 });
 

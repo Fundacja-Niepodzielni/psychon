@@ -451,7 +451,7 @@ describe("Profil psychologa — czeka na decyzję", () => {
     const okno = screen.getByRole("dialog", { name: "Wycofać zgodę na publikację?" });
     expect(
       within(okno).getByText(
-        "Po wycofaniu zgody profil nie trafi na publiczną listę, a wniosku nie zmienisz ani nie wyślesz ponownie. Tej zmiany nie da się cofnąć.",
+        "Profil nie zostanie opublikowany w bazie psychologów Fundacji.",
       ),
     ).toBeInTheDocument();
     // Wycofanie zgody to akcja niszcząca: we wspólnym wariancie „niebezpieczne” role się
@@ -488,7 +488,8 @@ describe("Profil psychologa — czeka na decyzję", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(wycofajZgode).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Zgoda wycofana")).toBeInTheDocument();
-    expect(screen.getByText("Zgoda na publikację została wycofana.")).toBeInTheDocument();
+    // To samo zdanie stoi w potwierdzeniu i w opisie stanu „Zgoda wycofana”.
+    expect(screen.getAllByText("Zgoda na publikację została wycofana.")).toHaveLength(2);
     expect(nazwyDzialan(container)).toEqual(["Wstecz", "Zamknij powiadomienie"]);
     expect(screen.queryByRole("button", { name: "Wycofaj zgodę" })).not.toBeInTheDocument();
   });
@@ -535,7 +536,7 @@ describe("Profil psychologa — do poprawki, zatwierdzony, opublikowany, zgoda w
   it.each([
     ["zatwierdzony", WNIOSEK_ZATWIERDZONY, "Zatwierdzony", "Wniosek został zatwierdzony. Dane są zablokowane.", ["Wstecz", "Wycofaj zgodę"]],
     ["opublikowany", WNIOSEK_OPUBLIKOWANY, "Opublikowany", "Profil jest opublikowany. Dane są zablokowane.", ["Wstecz", "Wycofaj zgodę"]],
-    ["zgoda wycofana", WNIOSEK_WYCOFANY, "Zgoda wycofana", "Zgoda na publikację została wycofana. Wniosek jest zablokowany.", ["Wstecz"]],
+    ["zgoda wycofana", WNIOSEK_WYCOFANY, "Zgoda wycofana", "Zgoda na publikację została wycofana.", ["Wstecz"]],
   ] as const)("%s: nazwa stanu z administracji, zablokowane pola, bez przycisku głównego", async (_nazwa, dane, nazwaStanu, zdanie, dzialania) => {
     const { container } = await pokazZDanymi(dane);
 
@@ -548,8 +549,23 @@ describe("Profil psychologa — do poprawki, zatwierdzony, opublikowany, zgoda w
   });
 });
 
+describe("Profil psychologa — karta zgody bez zdań o trwałej blokadzie", () => {
+  it("karta „Zgoda na publikację” mówi tylko, że zgodę można wycofać w każdej chwili", async () => {
+    await pokazZDanymi(WNIOSEK_ZLOZONY);
+    const karta = screen.getByRole("heading", { level: 2, name: "Zgoda na publikację" }).closest("section") as HTMLElement;
+    expect(within(karta).getByText("Możesz w każdej chwili wycofać zgodę na publikację profilu.")).toBeInTheDocument();
+    expect(karta.textContent).not.toMatch(/edytowaln|zgoda wycofana|nie da się cofnąć|publiczn/i);
+  });
+
+  it("stan „Zgoda wycofana”: żadne zdanie ekranu nie mówi o trwałej blokadzie ani o publicznej liście", async () => {
+    const { container } = await pokazZDanymi(WNIOSEK_WYCOFANY);
+    expect(screen.getByText("Profil nie zostanie opublikowany w bazie psychologów Fundacji.", { exact: false })).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/zablokowany|nie możesz już|ponownie|edytowaln|publiczn/i);
+  });
+});
+
 describe("Profil psychologa — wycofanie zgody z opublikowanego profilu", () => {
-  it("pytanie mówi, że profil zniknie z publicznej listy; po potwierdzeniu jedno żądanie", async () => {
+  it("pytanie mówi, że profil zniknie z bazy psychologów Fundacji; po potwierdzeniu jedno żądanie", async () => {
     wycofajZgode.mockResolvedValue(WNIOSEK_WYCOFANY);
     await pokazZDanymi(WNIOSEK_OPUBLIKOWANY);
 
@@ -557,7 +573,7 @@ describe("Profil psychologa — wycofanie zgody z opublikowanego profilu", () =>
     const okno = screen.getByRole("dialog", { name: "Wycofać zgodę na publikację?" });
     expect(
       within(okno).getByText(
-        "Po wycofaniu zgody profil zniknie z publicznej listy, a wniosku nie zmienisz ani nie wyślesz ponownie. Tej zmiany nie da się cofnąć.",
+        "Profil zniknie z bazy psychologów Fundacji.",
       ),
     ).toBeInTheDocument();
     await act(async () => {
