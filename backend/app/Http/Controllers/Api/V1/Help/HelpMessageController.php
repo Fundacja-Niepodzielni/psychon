@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Help;
 
+use App\Http\Attributes\AvailableAfterAccessEnds;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Help\StoreHelpMessageRequest;
 use App\Services\Auth\TokenRoles;
@@ -16,6 +17,11 @@ use Illuminate\Http\JsonResponse;
  */
 class HelpMessageController extends Controller
 {
+    /**
+     * Okno pomocy działa także po zakończeniu dostępu (sam formularz, bez
+     * treści programu).
+     */
+    #[AvailableAfterAccessEnds]
     public function store(
         StoreHelpMessageRequest $request,
         TokenRoles $tokenRoles,

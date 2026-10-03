@@ -3,8 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Exceptions\ApiException;
+use App\Http\Attributes\AvailableAfterAccessEnds;
 use Closure;
 use Illuminate\Http\Request;
+use ReflectionMethod;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -13,7 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Blocks when access_expires_at has passed and the programme is not
  * completed. Packages attach this middleware to their own content routes —
  * routes that must stay reachable after expiry (profile, certificates)
- * simply do not use it.
+ * simply do not use it. An action marked `#[AvailableAfterAccessEnds]`
+ * (the help form) passes as well.
  */
 class EnsureAccessActive
 {
@@ -26,6 +29,7 @@ class EnsureAccessActive
             && $user->program_completed_at === null
             && $user->access_expires_at !== null
             && $user->access_expires_at->isPast()
+            && ! $this->availableAfterAccessEnds($request)
         ) {
             throw new ApiException(
                 403,
@@ -35,5 +39,18 @@ class EnsureAccessActive
         }
 
         return $next($request);
+    }
+
+    private function availableAfterAccessEnds(Request $request): bool
+    {
+        $route = $request->route();
+        $controller = $route?->getControllerClass();
+        $method = $route?->getActionMethod();
+
+        if ($controller === null || $method === null || ! method_exists($controller, $method)) {
+            return false;
+        }
+
+        return (new ReflectionMethod($controller, $method))->getAttributes(AvailableAfterAccessEnds::class) !== [];
     }
 }
