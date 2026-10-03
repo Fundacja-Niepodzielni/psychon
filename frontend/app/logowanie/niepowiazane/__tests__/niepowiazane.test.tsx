@@ -30,7 +30,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace: push, refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
-const NiepowiazanePage = (await import("@/app/logowanie/niepowiazane/page")).default;
+const NiepowiazanePage = (await import("@/app/logowanie/niepowiazane/StaraTresc")).default;
 const { KONTO_BINDING_AWARIA, KONTO_BINDING_LIMIT_MS } = await import("@/lib/api");
 
 const ADRES_WYLOGOWANIA = "https://konta.example.org/realms/niepodzielni/protocol/openid-connect/logout";

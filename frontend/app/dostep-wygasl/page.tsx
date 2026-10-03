@@ -1,33 +1,18 @@
 import type { Metadata } from "next";
-import Card from "@/components/ui/Card";
-import PublicPageTemplate from "@/components/templates/PublicPageTemplate";
+import { GRUPY } from "@/lib/przelaczenie/grupy";
+import DostepWygaslNowyEkran from "./NowyEkran";
+import DostepWygaslStaraTresc from "./StaraTresc";
 
 export const metadata: Metadata = {
   title: "Dostęp wygasł — Niepodzielni",
 };
 
-export default function AccessExpiredPage() {
-  return (
-    <PublicPageTemplate naglowek={{ title: "Twój dostęp do platformy wygasł" }}>
-      <Card className="w-full max-w-xl text-center">
-        <p className="text-caption font-bold uppercase tracking-wide text-subtle">
-          Konto nieaktywne
-        </p>
-        <p className="mt-3 text-body text-muted">
-          Sześciomiesięczny okres dostępu do programu dobiegł końca. Jeśli
-          chcesz dokończyć program albo uważasz, że to pomyłka — napisz do nas,
-          a przedłużymy Twój dostęp.
-        </p>
-        <p className="mt-4 text-body font-medium text-ink">
-          Kontakt:{" "}
-          <a
-            href="mailto:kontakt@niepodzielni.com"
-            className="text-accent underline underline-offset-2 hover:text-accent-dark focus-visible:focus-ring"
-          >
-            kontakt@niepodzielni.com
-          </a>
-        </p>
-      </Card>
-    </PublicPageTemplate>
-  );
+/**
+ * Trasa `/dostep-wygasl` — komunikat o wygasłym dostępie. Adres się nie zmienia: strona czyta rejestr przełączenia
+ * (`lib/przelaczenie/grupy.ts`, grupa `dostepWygasl`). Grupa wyłączona → dotychczasowa treść
+ * (`StaraTresc.tsx`, przeniesiona bez zmiany); grupa włączona → ekran nowego frontu
+ * na szablonie strony publicznej (`NowyEkran.tsx`).
+ */
+export default function StronaDostepWygasl() {
+  return GRUPY.dostepWygasl.wlaczona ? <DostepWygaslNowyEkran /> : <DostepWygaslStaraTresc />;
 }

@@ -45,7 +45,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const AccountPage = (await import("@/app/konto/page")).default;
+const AccountPage = (await import("@/app/konto/StaraTresc")).default;
 
 const ADRES_WYLOGOWANIA =
   "https://konta.example.org/realms/niepodzielni/protocol/openid-connect/logout";

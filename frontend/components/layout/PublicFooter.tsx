@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LEGAL_DOCUMENT_LABELS, LEGAL_DOCUMENT_TYPES } from "@/lib/h22/legal-documents";
+import { czyTrasaWNowejRamce } from "@/lib/przelaczenie/ramka";
 
 /** Powłoki, które mają już własną stopkę z odnośnikiem do deklaracji (`PanelShell`). */
 const POWLOKI_Z_WLASNA_STOPKA = ["/admin", "/panel", "/prowadzacy"];
@@ -15,7 +16,10 @@ const stylOdnosnika =
  * dla ekranów publicznych poza powłoką paneli.
  * Ekrany pod `/admin`, `/panel` i `/prowadzacy` mają już identyczną stopkę
  * w `PanelShell`, więc tu ich nie dublujemy. Sama `/deklaracja-dostepnosci`
- * też nie potrzebuje odnośnika do siebie.
+ * też nie potrzebuje odnośnika do siebie. Strona publiczna, której grupa
+ * przełączenia jest włączona (panel `publiczny` w `lib/przelaczenie/grupy.ts`),
+ * pokazuje ekran nowego frontu z własną stopką — tam ta stopka też się chowa,
+ * żeby na stronie była dokładnie jedna.
  */
 export default function PublicFooter() {
   const pathname = usePathname();
@@ -23,6 +27,7 @@ export default function PublicFooter() {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
   if (maWlasnaStopke || pathname === "/deklaracja-dostepnosci") return null;
+  if (czyTrasaWNowejRamce(pathname, "publiczny")) return null;
 
   return (
     <footer className="flex flex-wrap gap-x-6 gap-y-2 border-t border-line bg-card px-4 py-2 sm:px-6">

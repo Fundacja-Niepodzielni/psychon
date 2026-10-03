@@ -24,7 +24,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace: push, refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
-const ZablokowanePage = (await import("@/app/logowanie/zablokowane/page")).default;
+const ZablokowanePage = (await import("@/app/logowanie/zablokowane/StaraTresc")).default;
 
 const ADRES_WYLOGOWANIA = "https://konta.example.org/realms/niepodzielni/protocol/openid-connect/logout";
 

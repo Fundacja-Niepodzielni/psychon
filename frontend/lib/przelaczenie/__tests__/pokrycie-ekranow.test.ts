@@ -134,6 +134,19 @@ describe("włączona grupa ma strony pod nowymi trasami", () => {
     expect(brakujaceStronyWlaczonejGrupy({ ...GRUPY.formyStazu, wlaczona: true }, wszystkieTrasy)).toEqual([]);
   });
 
+  it("grupa logowania jest wyłączona, a po włączeniu ma stronę pod każdym z czterech adresów; bez nich brak zostaje wykryty", () => {
+    expect(GRUPY.logowanie.wlaczona).toBe(false);
+    const wlaczona = { ...GRUPY.logowanie, wlaczona: true };
+    expect(brakujaceStronyWlaczonejGrupy(wlaczona, wszystkieTrasy)).toEqual([]);
+    const bezStron = wszystkieTrasy.filter((trasa) => !trasa.startsWith("/logowanie"));
+    expect(brakujaceStronyWlaczonejGrupy(wlaczona, bezStron)).toEqual([
+      "/logowanie",
+      "/logowanie/konta",
+      "/logowanie/niepowiazane",
+      "/logowanie/zablokowane",
+    ]);
+  });
+
   it("grupy certyfikatu i dokumentów uczestnika mają stronę pod swoim adresem, a bez niej brak zostaje wykryty", () => {
     expect(brakujaceStronyWlaczonejGrupy(GRUPY.certyfikat, wszystkieTrasy)).toEqual([]);
     expect(brakujaceStronyWlaczonejGrupy(GRUPY.dokumentyUczestnika, wszystkieTrasy)).toEqual([]);

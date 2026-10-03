@@ -10,7 +10,7 @@ import { render, screen } from "@testing-library/react";
  * `PublicPageTemplate`.
  */
 
-const AccessExpiredPage = (await import("@/app/dostep-wygasl/page")).default;
+const AccessExpiredPage = (await import("@/app/dostep-wygasl/StaraTresc")).default;
 
 describe("/dostep-wygasl — komunikat o wygaśnięciu dostępu", () => {
   it("pokazuje nagłówek z treścią o wygaśnięciu dostępu (dowolny poziom)", () => {

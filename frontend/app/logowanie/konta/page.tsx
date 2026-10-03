@@ -1,34 +1,13 @@
-"use client";
-
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
-import PageTemplate from "@/components/templates/PageTemplate";
+import { GRUPY } from "@/lib/przelaczenie/grupy";
+import LogowanieKontaNowyEkran from "./NowyEkran";
+import LogowanieKontaStaraTresc from "./StaraTresc";
 
 /**
- * `/logowanie/konta` istniało jako drugie drzwi logowania (obok hasła
- * lokalnego). PsychON jest teraz wyłącznie SSO, więc `/logowanie` samo jest
- * ekranem logowania przez konto Niepodzielni — ta trasa zostaje tylko jako
- * przekierowanie dla starych linków (zakładek, maili), z zachowaniem
- * `?error=`, żeby nie zgubić komunikatu z callbacku Auth.js.
+ * Trasa `/logowanie/konta` — powrót z Kont Niepodzielni po logowaniu (przekierowanie z zachowaniem `?error=`). Adres się nie zmienia: strona czyta rejestr przełączenia
+ * (`lib/przelaczenie/grupy.ts`, grupa `logowanie`). Grupa wyłączona → dotychczasowa treść
+ * (`StaraTresc.tsx`, przeniesiona bez zmiany); grupa włączona → ekran nowego frontu
+ * na szablonie strony publicznej (`NowyEkran.tsx`).
  */
-function Redirector() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const error = params.get("error");
-
-  useEffect(() => {
-    router.replace(error ? `/logowanie?error=${encodeURIComponent(error)}` : "/logowanie");
-  }, [error, router]);
-
-  return <PageTemplate naglowek={{ title: "Przekierowuję…" }} />;
-}
-
-export default function AccountSystemLoginRedirect() {
-  return (
-    <main id="tresc" className="flex min-h-screen items-center justify-center bg-page p-6">
-      <Suspense fallback={null}>
-        <Redirector />
-      </Suspense>
-    </main>
-  );
+export default function StronaLogowanieKonta() {
+  return GRUPY.logowanie.wlaczona ? <LogowanieKontaNowyEkran /> : <LogowanieKontaStaraTresc />;
 }

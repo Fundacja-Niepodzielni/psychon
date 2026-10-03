@@ -24,9 +24,11 @@ import {
  * Także `pytaniaTestu` (pytania testu w panelu administracji i prowadzącego pod tymi samymi adresami).
  * Także `certyfikaty` i `czasNauki` (lista certyfikatów i czas nauki administracji pod adresami `/admin/certyfikaty`
  * i `/admin/czas-nauki`).
+ * Także trzy grupy stron publicznych pod tymi samymi adresami: `aktywacjaKonta`, `dostepWygasl`,
+ * `twojeKonto`. Grupa `logowanie` zostaje wyłączona: jej ekrany działają pod ścieżką podglądu.
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["certyfikat", "certyfikaty", "czasNauki", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["aktywacjaKonta", "certyfikat", "certyfikaty", "czasNauki", "decyzjaProfilu", "dokumentyUczestnika", "dostepWygasl", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "powiadomienia", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "pytaniaTestu", "sprawy", "superwizjaUczestnika", "testUczestnika", "twojeKonto", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -42,7 +44,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika, powiadomienia, pytania testu, certyfikaty i czas nauki administracji", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika, test końcowy uczestnika, powiadomienia, pytania testu, certyfikaty i czas nauki administracji, aktywacja konta, wygasły dostęp i strona konta", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -171,13 +173,15 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna trzydzieści siedem grup dzisiejszego kanonu", () => {
+  it("zna czterdzieści jeden grup dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
+      "aktywacjaKonta",
       "certyfikat",
       "certyfikaty",
       "czasNauki",
       "decyzjaProfilu",
       "dokumentyUczestnika",
+      "dostepWygasl",
       "dziennikStazu",
       "edycjaLekcji",
       "ekranStartowy",
@@ -192,6 +196,7 @@ describe("rejestr GRUPY — zawartość", () => {
       "kursyProwadzacego",
       "lekcja",
       "listaOsob",
+      "logowanie",
       "nabor",
       "noweKonto",
       "powiadomienia",
@@ -206,11 +211,44 @@ describe("rejestr GRUPY — zawartość", () => {
       "superwizjaUczestnika",
       "superwizje",
       "testUczestnika",
+      "twojeKonto",
       "ustawieniaProgramu",
       "wspolpraca",
       "wzoryDokumentow",
       "zaproszeniaNaKurs",
     ]);
+  });
+
+  it("strony publiczne: siedem ekranów w czterech grupach, każdy pod tym samym adresem co dziś, więc zamiana treści, nie przekierowanie", () => {
+    const publiczne = {
+      logowanie: ["/logowanie", "/logowanie/konta", "/logowanie/niepowiazane", "/logowanie/zablokowane"],
+      aktywacjaKonta: ["/aktywacja"],
+      dostepWygasl: ["/dostep-wygasl"],
+      twojeKonto: ["/konto"],
+    } as const;
+    for (const [klucz, adresy] of Object.entries(publiczne) as [keyof typeof publiczne, readonly string[]][]) {
+      const grupa: DefinicjaGrupy = GRUPY[klucz];
+      expect(grupa.ekrany.map((e) => e.nowaTrasa), klucz).toEqual(adresy);
+      for (const ekran of grupa.ekrany) {
+        expect(ekran.panel, klucz).toBe("publiczny");
+        expect(ekran.staraTrasa, klucz).toBe(ekran.nowaTrasa);
+        expect(ekran.trasaPoligonu, klucz).toBe(`/nowy-front/publiczne${ekran.nowaTrasa}`);
+      }
+      expect(czyStaraTrasaPrzekierowuje(grupa, "publiczny"), klucz).toBe(false);
+    }
+  });
+
+  it("grupa logowania jest wyłączona: pod czterema adresami logowania zostają dawne strony, a nowe ekrany działają pod ścieżką podglądu", () => {
+    expect(GRUPY.logowanie.wlaczona).toBe(false);
+    expect(GRUPY.logowanie.ekrany.map((e) => e.trasaPoligonu)).toEqual([
+      "/nowy-front/publiczne/logowanie",
+      "/nowy-front/publiczne/logowanie/konta",
+      "/nowy-front/publiczne/logowanie/niepowiazane",
+      "/nowy-front/publiczne/logowanie/zablokowane",
+    ]);
+    for (const grupa of ["aktywacjaKonta", "dostepWygasl", "twojeKonto"] as const) {
+      expect(GRUPY[grupa].wlaczona, grupa).toBe(true);
+    }
   });
 
   it("edycja lekcji ma własny adres produktu z kursem w ścieżce i nie ma starej trasy", () => {

@@ -50,7 +50,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const LoginPage = (await import("@/app/logowanie/page")).default;
+const LoginPage = (await import("@/app/logowanie/StaraTresc")).default;
 
 function nigdyRozstrzygniete<T>(): Promise<T> {
   return new Promise<T>(() => {});
@@ -222,5 +222,5 @@ describe("/logowanie — granica czasu 8000 ms", () => {
 
 // Referencja niewykorzystywana bezpośrednio, ale import musi się udać —
 // pilnuje, że mock `@/lib/api` naprawdę re-eksportuje prawdziwą klasę
-// `ApiError` (test 401-guard w page.tsx zależy od `instanceof`).
+// `ApiError` (test 401-guard w StaraTresc.tsx zależy od `instanceof`).
 void ApiError;

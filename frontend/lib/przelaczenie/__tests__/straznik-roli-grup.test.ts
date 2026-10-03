@@ -14,7 +14,9 @@ import { GRUPY, type DefinicjaGrupy, type NazwaPanelu } from "../grupy";
  *
  * Panel uczestnika nie ma klientowego strażnika ról na poziomie segmentu `/panel`
  * (dostęp mają wszystkie role uczestnika, a zasoby odmawiają po stronie
- * serwera) — `null` w mapie niżej mówi to wprost i jest jedynym wyjątkiem.
+ * serwera) — `null` w mapie niżej mówi to wprost. Drugi i ostatni wyjątek to strony
+ * publiczne (`publiczny`: logowanie, konto, publiczny certyfikat, dokumenty) — z definicji
+ * bez strażnika ról, bo otwiera je także osoba niezalogowana.
  */
 
 const KORZEN_FRONTU = fileURLToPath(new URL("../../../", import.meta.url));
@@ -25,6 +27,7 @@ export const ROLE_STRAZNIKA_PANELU: Record<NazwaPanelu, readonly string[] | null
   administracja: ["project_manager", "super_admin"],
   prowadzacy: ["instructor"],
   uczestnik: null,
+  publiczny: null,
 };
 
 function stronyAplikacji(katalog: string): string[] {

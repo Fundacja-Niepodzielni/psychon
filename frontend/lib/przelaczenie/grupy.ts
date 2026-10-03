@@ -24,8 +24,14 @@
  *   nowa trasa i wpis menu.
  */
 
-/** Panel, w którym stoi ekran grupy — nazwa zgodna z katalogami `app/`. */
-export type NazwaPanelu = "uczestnik" | "administracja" | "prowadzacy";
+/**
+ * Panel, w którym stoi ekran grupy — nazwa zgodna z katalogami `app/`.
+ * `publiczny` to strony bez powłoki panelu i bez menu (logowanie, konto, publiczny
+ * certyfikat, dokumenty): ekran nowego frontu niesie własną stopkę z szablonu strony
+ * publicznej, więc dawna stopka układu głównego chowa się pod adresem włączonej grupy
+ * tego panelu (`components/layout/PublicFooter.tsx`).
+ */
+export type NazwaPanelu = "uczestnik" | "administracja" | "prowadzacy" | "publiczny";
 
 /** Jeden ekran należący do grupy: para tras w jednym panelu. */
 export interface EkranGrupy {
@@ -55,14 +61,16 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest trzydzieści: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `pytaniaTestu`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest trzydzieści trzy: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `pytaniaTestu`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * strony publiczne pod tymi samymi adresami: `aktywacjaKonta`, `dostepWygasl`, `twojeKonto`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
  * pod własnym adresem z kursem w ścieżce; wchodzi się na niego z ekranu kursu), `nabor` i `listaOsob`
  * (te dwie dzielą trasę `/admin/uczestniczki` i włącza się je tylko razem), `kartaOsoby`, `powiadomienia` (ten sam adres `/admin/emails`: treść strony zamienia się na ekran „Powiadomienia”)
  * oraz `certyfikaty` i `czasNauki` (lista certyfikatów i czas nauki administracji pod dotychczasowymi adresami;
- * `certyfikaty` to inna grupa niż `certyfikat` uczestnika). Pozostałe mają tu jeszcze
+ * `certyfikaty` to inna grupa niż `certyfikat` uczestnika). Grupa `logowanie` jest wyłączona: jej ekrany działają pod ścieżką podglądu.
+ * Pozostałe mają tu jeszcze
  * tylko opis docelowej pary tras: stronę pod nową trasą, wpis menu i
  * zamianę treści starej strony dokłada dopiero zmiana, która daną grupę
  * włącza — test w tym katalogu nie pozwala włączyć grupy bez nich.
@@ -663,6 +671,82 @@ export const GRUPY = {
         staraTrasa: "/prowadzacy/pytania",
         nowaTrasa: "/prowadzacy/pytania",
         trasaPoligonu: "/nowy-front/prowadzacy/pytania",
+      },
+    ],
+  },
+  /**
+   * Logowanie i jego trzy ekrany pośrednie (wybór konta po logowaniu, konto niepowiązane, konto
+   * zablokowane) — te same adresy co dziś, treść stron zamienia się na ekrany nowego frontu na szablonie
+   * strony publicznej. Dawna treść stron zostaje w `StaraTresc.tsx` obok każdej `page.tsx`.
+   * Grupa wyłączona, dopóki ekranów nie sprawdzi bieg z prawdziwym logowaniem: pod czterema adresami
+   * zostają dawne strony (z dawną stopką), a nowe ekrany działają pod ścieżką podglądu.
+   */
+  logowanie: {
+    klucz: "logowanie",
+    wlaczona: false,
+    ekrany: [
+      {
+        panel: "publiczny",
+        staraTrasa: "/logowanie",
+        nowaTrasa: "/logowanie",
+        trasaPoligonu: "/nowy-front/publiczne/logowanie",
+      },
+      {
+        panel: "publiczny",
+        staraTrasa: "/logowanie/konta",
+        nowaTrasa: "/logowanie/konta",
+        trasaPoligonu: "/nowy-front/publiczne/logowanie/konta",
+      },
+      {
+        panel: "publiczny",
+        staraTrasa: "/logowanie/niepowiazane",
+        nowaTrasa: "/logowanie/niepowiazane",
+        trasaPoligonu: "/nowy-front/publiczne/logowanie/niepowiazane",
+      },
+      {
+        panel: "publiczny",
+        staraTrasa: "/logowanie/zablokowane",
+        nowaTrasa: "/logowanie/zablokowane",
+        trasaPoligonu: "/nowy-front/publiczne/logowanie/zablokowane",
+      },
+    ],
+  },
+  /** Aktywacja konta z zaproszenia — ten sam adres `/aktywacja`, treść strony zamienia się na ekran nowego frontu. */
+  aktywacjaKonta: {
+    klucz: "aktywacjaKonta",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "publiczny",
+        staraTrasa: "/aktywacja",
+        nowaTrasa: "/aktywacja",
+        trasaPoligonu: "/nowy-front/publiczne/aktywacja",
+      },
+    ],
+  },
+  /** Komunikat o wygasłym dostępie — ten sam adres `/dostep-wygasl`, treść strony zamienia się na ekran nowego frontu. */
+  dostepWygasl: {
+    klucz: "dostepWygasl",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "publiczny",
+        staraTrasa: "/dostep-wygasl",
+        nowaTrasa: "/dostep-wygasl",
+        trasaPoligonu: "/nowy-front/publiczne/dostep-wygasl",
+      },
+    ],
+  },
+  /** Strona konta (tożsamość z logowania i wylogowanie) — ten sam adres `/konto`. */
+  twojeKonto: {
+    klucz: "twojeKonto",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "publiczny",
+        staraTrasa: "/konto",
+        nowaTrasa: "/konto",
+        trasaPoligonu: "/nowy-front/publiczne/konto",
       },
     ],
   },

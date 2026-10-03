@@ -40,7 +40,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const ActivationPage = (await import("@/app/aktywacja/page")).default;
+const ActivationPage = (await import("@/app/aktywacja/StaraTresc")).default;
 
 beforeEach(() => {
   getSession.mockReset();

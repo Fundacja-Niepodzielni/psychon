@@ -7,7 +7,7 @@ import { act, render, screen } from "@testing-library/react";
  * KOŃCZY SIĘ NIEPOWODZENIEM (sesja backendu odpowiada 500, sieć pada),
  * zostaje na tekście „Przekierowuję do logowania…” BEZ GRANICY CZASU —
  * pomiar pokazał 30 015 ms, zero komunikatów, zero przycisków. Komentarz
- * nad `LoginScreen` w `page.tsx` opisuje trzy stany; ten pomiar jest
+ * nad `LoginScreen` w `StaraTresc.tsx` opisuje trzy stany; ten pomiar jest
  * czwartym, którego komentarz nie zna: oczekiwanie bez granicy.
  *
  * Kontrola przy 02:09 dowiodła, że komunikat awaryjny i przycisk ISTNIEJĄ
@@ -35,7 +35,7 @@ import { act, render, screen } from "@testing-library/react";
  *    z naprawą 63d76d7, bo tamta naprawa nie czyści zegara po udanym
  *    `signIn()` — i to jest jej wartość diagnostyczna.
  *
- * Test F pilnuje osobnej rzeczy: `LOGIN_TIMEOUT_MS` w `page.tsx` jest dziś
+ * Test F pilnuje osobnej rzeczy: `LOGIN_TIMEOUT_MS` w `StaraTresc.tsx` jest dziś
  * dosłownym aliasem `KONTO_BINDING_LIMIT_MS` z ekranu dowiązania konta.
  * Mierzone przez zachowanie (podstawienie stałej), nie przez import prywatnej
  * zmiennej modułu — patrz komentarz przy tym teście.
@@ -66,7 +66,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return { ...actual, api: (...args: unknown[]) => apiMock(...args) };
 });
 
-const LoginPage = (await import("@/app/logowanie/page")).default;
+const LoginPage = (await import("@/app/logowanie/StaraTresc")).default;
 
 const TEKST_PRZEKIEROWUJE = "Przekierowuję do logowania…";
 
@@ -243,7 +243,7 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
   });
 
   it("F (rozprzęgnięcie stałej): granica czasu logowania NIE MOŻE być tą samą zmienną co KONTO_BINDING_LIMIT_MS z ekranu /logowanie/niepowiazane — ta asercja PADA, dopóki to jest alias", async () => {
-    // Dziś `LOGIN_TIMEOUT_MS` w `page.tsx` to dosłownie
+    // Dziś `LOGIN_TIMEOUT_MS` w `StaraTresc.tsx` to dosłownie
     // `const LOGIN_TIMEOUT_MS = KONTO_BINDING_LIMIT_MS;` — ten sam identyfikator
     // co stała innego ekranu (dowiązania konta). Nie da się zaimportować
     // `LOGIN_TIMEOUT_MS` wprost, bo nie jest eksportowany (to prywatna stała
@@ -261,7 +261,7 @@ describe("/logowanie — granica czasu, gdy start logowania zawodzi (świadek 18
       };
     });
     vi.resetModules();
-    const PodmienionyLoginPage = (await import("@/app/logowanie/page")).default;
+    const PodmienionyLoginPage = (await import("@/app/logowanie/StaraTresc")).default;
 
     // Nic się nie rozstrzyga samo z siebie — tylko zegar decyduje, kiedy (i
     // czy w ogóle) pojawi się komunikat. To izoluje pomiar od ścieżek A/B/D.

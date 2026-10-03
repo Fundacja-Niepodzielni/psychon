@@ -45,7 +45,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 const { ApiError } = await import("@/lib/api");
-const LoginPage = (await import("@/app/logowanie/page")).default;
+const LoginPage = (await import("@/app/logowanie/StaraTresc")).default;
 
 beforeEach(() => {
   getSession.mockReset();

@@ -25,7 +25,7 @@ vi.mock("@/components/molecules/PageHeader", async (importOriginal) => {
 });
 
 const { default: PageHeader } = await import("@/components/molecules/PageHeader");
-const AccountSystemLoginRedirect = (await import("@/app/logowanie/konta/page")).default;
+const AccountSystemLoginRedirect = (await import("@/app/logowanie/konta/StaraTresc")).default;
 
 beforeEach(() => {
   replace.mockReset();
