@@ -347,8 +347,11 @@ export const GRUPY = {
     ],
   },
   /**
-   * Zaproszenia na kurs (H08) — dziś panel zaproszeń na stronie szczegółu kursu,
-   * ten sam adres.
+   * Zaproszenia na kurs (H08) — panel zaproszeń w ustawieniach kursu, ten sam adres
+   * co szczegół kursu. Grupa jest włączona, ale sam panel jest dziś ukryty stałą
+   * `ZAPROSZENIA_W_USTAWIENIACH` w `nowy-front/kurs-administracji/KolumnaBoczna.tsx`
+   * do czasu zaproszeń po MVP; kod panelu i trasa robocza zostają. Pokazanie panelu
+   * to zmiana tej stałej (nowy ekran po odbiorze), nie tego przełącznika.
    */
   zaproszeniaNaKurs: {
     klucz: "zaproszeniaNaKurs",
