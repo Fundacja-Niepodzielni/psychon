@@ -12382,11 +12382,15 @@
                                                         },
                                                         "type": {
                                                             "type": "string"
+                                                        },
+                                                        "read_only": {
+                                                            "type": "boolean"
                                                         }
                                                     },
                                                     "required": [
                                                         "thread_id",
-                                                        "type"
+                                                        "type",
+                                                        "read_only"
                                                     ]
                                                 }
                                             },
@@ -12402,103 +12406,6 @@
                                     "required": [
                                         "data",
                                         "meta"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/v1/threads/{thread}/members/{user}": {
-            "post": {
-                "operationId": "threadMember.store",
-                "tags": [
-                    "ThreadMember"
-                ],
-                "parameters": [
-                    {
-                        "name": "thread",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "user",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    },
-                                    "required": [
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "threadMember.destroy",
-                "tags": [
-                    "ThreadMember"
-                ],
-                "parameters": [
-                    {
-                        "name": "thread",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "user",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "null"
-                                        }
-                                    },
-                                    "required": [
-                                        "data"
                                     ]
                                 }
                             }
@@ -13412,6 +13319,9 @@
                             "last_name"
                         ]
                     },
+                    "read_only": {
+                        "type": "boolean"
+                    },
                     "updated_at": {
                         "type": [
                             "string",
@@ -13424,6 +13334,7 @@
                     "type",
                     "supervisor",
                     "volunteer",
+                    "read_only",
                     "updated_at"
                 ],
                 "title": "MessageThreadResource"
