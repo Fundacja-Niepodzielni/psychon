@@ -1,22 +1,7 @@
 import { Play } from "lucide-react";
 import Card from "@/components/ui/Card";
+import { toEmbedUrl } from "./embed-url";
 import type { Onboarding, VideoSection } from "./types";
-
-/** Zamienia typowy link do YouTube/Vimeo na adres do osadzenia w <iframe>. */
-function toEmbedUrl(raw: string): string {
-  try {
-    const url = new URL(raw);
-    if (url.hostname === "youtu.be") {
-      return `https://www.youtube.com/embed/${url.pathname.slice(1)}`;
-    }
-    if (url.hostname.endsWith("youtube.com") && url.searchParams.has("v")) {
-      return `https://www.youtube.com/embed/${url.searchParams.get("v")}`;
-    }
-    return raw;
-  } catch {
-    return raw;
-  }
-}
 
 function VideoBlock({ video }: { video: VideoSection }) {
   if (video.url) {
