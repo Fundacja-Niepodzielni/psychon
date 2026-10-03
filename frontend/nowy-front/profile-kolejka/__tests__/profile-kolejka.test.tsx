@@ -184,7 +184,9 @@ describe("ProfileKolejka — filtr i stronicowanie", () => {
     await uzytkownik.click(screen.getByRole("combobox", { name: /Stan wniosku/ }));
     await uzytkownik.click(screen.getByRole("option", { name: "Do poprawki" }));
     await waitFor(() => expect(apiPaged).toHaveBeenLastCalledWith("/admin/profiles?status=returned&page=1&per_page=25"));
-    await screen.findByText("Do poprawki", { selector: "span" });
+    // Etykieta „Do poprawki” stoi teraz także w wierszu zwiniętych filtrów — plakietkę wiersza listy poznajemy po klasie.
+    const napisy = await screen.findAllByText("Do poprawki", { selector: "span" });
+    expect(napisy.some((napis) => /plakietka/.test(napis.className))).toBe(true);
   });
 
   it("pusty wynik dla innego stanu ma własny nagłówek", async () => {

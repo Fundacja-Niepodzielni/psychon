@@ -10,6 +10,7 @@ import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { Text } from "@/design-system/atomy/Text/Text";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
+import { ZwinieteFiltry } from "@/nowy-front/wspolne/zwiniete-filtry";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { FileDropZone, type PlikFileDropZone } from "@/design-system/molekuly/FileDropZone/FileDropZone";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
@@ -32,6 +33,7 @@ import {
   klasyfikujBladDodania,
   klasyfikujBladImportu,
   pobierzZgloszenia,
+  podsumowanieFiltra,
   powodPominiecia,
   rodzajBledu,
   wierszeZgloszen,
@@ -253,16 +255,6 @@ export function ZgloszeniaLista() {
 
   const filtry = (
     <form className={style.filtry} onSubmit={zastosujFiltr} aria-label="Filtr zgłoszeń">
-      <div className={style.stan}>
-        <Field
-          id="zgloszenia-stan"
-          etykieta="Stan"
-          rodzaj="wybor"
-          opcje={OPCJE_STATUSU}
-          wartosc={formularz.status}
-          onZmiana={(wartosc) => setFormularz((f) => ({ ...f, status: wartosc as ApplicationStatus | "" }))}
-        />
-      </div>
       <div className={style.szukaj}>
         <Field
           id="zgloszenia-szukaj"
@@ -273,14 +265,39 @@ export function ZgloszeniaLista() {
           onZmiana={(wartosc) => setFormularz((f) => ({ ...f, search: wartosc }))}
         />
       </div>
-      <Button poziom="outline" type="submit">
-        Filtruj
-      </Button>
-      {aktywny && (
-        <Button poziom="outline" type="button" onClick={wyczyscFiltr}>
-          Wyczyść filtr
-        </Button>
-      )}
+      <ZwinieteFiltry etykieta="Filtry" podsumowanie={podsumowanieFiltra(zapytanie.filtr)} liczba={meta?.total}>
+        {({ zwin }) => (
+          <>
+            <div className={style.stan}>
+              <Field
+                id="zgloszenia-stan"
+                etykieta="Stan"
+                rodzaj="wybor"
+                opcje={OPCJE_STATUSU}
+                wartosc={formularz.status}
+                onZmiana={(wartosc) => setFormularz((f) => ({ ...f, status: wartosc as ApplicationStatus | "" }))}
+              />
+            </div>
+            <div className={style.akcje}>
+              <Button poziom="outline" type="submit" onClick={zwin}>
+                Filtruj
+              </Button>
+              {aktywny && (
+                <Button
+                  poziom="outline"
+                  type="button"
+                  onClick={() => {
+                    zwin();
+                    wyczyscFiltr();
+                  }}
+                >
+                  Wyczyść filtr
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+      </ZwinieteFiltry>
     </form>
   );
 

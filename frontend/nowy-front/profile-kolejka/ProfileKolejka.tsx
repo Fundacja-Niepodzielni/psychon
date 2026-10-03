@@ -12,6 +12,7 @@ import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import type { PaginationMeta } from "@/lib/api/klient";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
+import { ZwinieteFiltry } from "@/nowy-front/wspolne/zwiniete-filtry";
 import {
   STAN_DO_DECYZJI,
   OPCJE_STANU,
@@ -107,14 +108,25 @@ export function ProfileKolejka() {
   }
 
   const filtry = (
-    <Field
-      id="wnioski-stan"
+    <ZwinieteFiltry
       etykieta="Stan wniosku"
-      rodzaj="wybor"
-      opcje={OPCJE_STANU}
-      wartosc={filtr}
-      onZmiana={zmienFiltr}
-    />
+      podsumowanie={OPCJE_STANU.find((opcja) => opcja.wartosc === filtr)?.etykieta ?? filtr}
+      liczba={stan.rodzaj === "gotowy" ? stan.meta?.total : undefined}
+    >
+      {({ zwin }) => (
+        <Field
+          id="wnioski-stan"
+          etykieta="Stan wniosku"
+          rodzaj="wybor"
+          opcje={OPCJE_STANU}
+          wartosc={filtr}
+          onZmiana={(wartosc) => {
+            zwin();
+            zmienFiltr(wartosc);
+          }}
+        />
+      )}
+    </ZwinieteFiltry>
   );
 
   if (stan.rodzaj === "ladowanie") {

@@ -17,6 +17,7 @@ import { Toast } from "@/design-system/molekuly/Toast/Toast";
 import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
+import { ZwinieteFiltry } from "@/nowy-front/wspolne/zwiniete-filtry";
 import type { PaginationMeta } from "@/lib/api/klient";
 import {
   odpowiedzNaZgloszenie,
@@ -198,14 +199,25 @@ export function ZgloszeniaWspolpracy() {
 
   const filtry = wczytanoRaz ? (
     <div className={style.filtr}>
-      <Field
-        id="zgloszenia-filtr-status"
+      <ZwinieteFiltry
         etykieta="Stan"
-        rodzaj="wybor"
-        opcje={OPCJE_FILTRA}
-        wartosc={filtr}
-        onZmiana={naZmianeFiltra}
-      />
+        podsumowanie={OPCJE_FILTRA.find((opcja) => opcja.wartosc === filtr)?.etykieta ?? "Wszystkie"}
+        liczba={stan.rodzaj === "gotowy" ? stan.meta?.total : undefined}
+      >
+        {({ zwin }) => (
+          <Field
+            id="zgloszenia-filtr-status"
+            etykieta="Stan"
+            rodzaj="wybor"
+            opcje={OPCJE_FILTRA}
+            wartosc={filtr}
+            onZmiana={(wartosc) => {
+              zwin();
+              naZmianeFiltra(wartosc);
+            }}
+          />
+        )}
+      </ZwinieteFiltry>
     </div>
   ) : undefined;
 

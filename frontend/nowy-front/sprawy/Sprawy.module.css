@@ -66,3 +66,39 @@
   flex-direction: column;
   gap: var(--space-12);
 }
+
+/* Telefon (< 600 px): rodzaje spraw jako lista pod wierszem „Rodzaj: … · Zmień”,
+   jedna pozycja pod drugą na całą szerokość; wybrany rodzaj ma ✓ (a nie tylko
+   ramkę i pogrubienie). */
+.opcjeLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.opcjeLista button {
+  width: 100%;
+  max-width: none;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.opcjeLista button[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--grey);
+  font-weight: var(--fw-bold);
+}
+
+.opcjeLista a {
+  --link-obrys: var(--focus-width) solid var(--brand);
+  --link-obrys-tekstu: none;
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min);
+  margin: 0;
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+}

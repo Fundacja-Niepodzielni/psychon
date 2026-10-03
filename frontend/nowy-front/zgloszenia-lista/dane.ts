@@ -56,6 +56,14 @@ export const OPCJE_STATUSU: { wartosc: string; etykieta: string }[] = [
   { wartosc: "rejected", etykieta: "Odrzucone" },
 ];
 
+/** Wybrane filtry jednym zdaniem dla wiersza zwiniętych filtrów: stan, a przy frazie także ona. */
+export function podsumowanieFiltra(filtr: FiltrZgloszen): string {
+  const stan =
+    filtr.status === "" ? "Wszystkie zgłoszenia" : (OPCJE_STATUSU.find((opcja) => opcja.wartosc === filtr.status)?.etykieta ?? filtr.status);
+  const fraza = filtr.search.trim();
+  return fraza === "" ? stan : `${stan} · „${fraza}”`;
+}
+
 export function filtrAktywny(filtr: FiltrZgloszen): boolean {
   return filtr.status !== "" || filtr.search !== "";
 }

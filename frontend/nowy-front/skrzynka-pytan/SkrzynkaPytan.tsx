@@ -17,6 +17,7 @@ import { FormSection } from "@/design-system/organizmy/FormSection/FormSection";
 import { PageHeader } from "@/design-system/organizmy/PageHeader/PageHeader";
 import { RecordList } from "@/design-system/organizmy/RecordList/RecordList";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
+import { ZwinieteFiltry } from "@/nowy-front/wspolne/zwiniete-filtry";
 import {
   LIMIT_ODPOWIEDZI,
   pobierzPytania,
@@ -233,14 +234,25 @@ export function SkrzynkaPytan() {
   const zamknijKomunikat = useCallback(() => setKomunikat(null), []);
 
   const filtry = (
-    <Field
-      id="widok-pytan"
-      etykieta="Które pytania pokazać"
-      rodzaj="wybor"
-      opcje={OPCJE_WIDOKU}
-      wartosc={zadanie.widok}
-      onZmiana={(wartosc) => wczytaj(wartosc === "wszystkie" ? "wszystkie" : "bez-odpowiedzi", 1)}
-    />
+    <ZwinieteFiltry
+      etykieta="Pokaż"
+      podsumowanie={OPCJE_WIDOKU.find((opcja) => opcja.wartosc === zadanie.widok)?.etykieta ?? ""}
+      liczba={stan.rodzaj === "dane" ? stan.strona.meta?.total : undefined}
+    >
+      {({ zwin }) => (
+        <Field
+          id="widok-pytan"
+          etykieta="Które pytania pokazać"
+          rodzaj="wybor"
+          opcje={OPCJE_WIDOKU}
+          wartosc={zadanie.widok}
+          onZmiana={(wartosc) => {
+            zwin();
+            wczytaj(wartosc === "wszystkie" ? "wszystkie" : "bez-odpowiedzi", 1);
+          }}
+        />
+      )}
+    </ZwinieteFiltry>
   );
 
   const wspolne = { komunikat, onZamknijKomunikat: zamknijKomunikat, onPowrot: wroc };

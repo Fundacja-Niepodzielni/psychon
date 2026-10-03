@@ -6,6 +6,7 @@ import { Button } from "@/design-system/atomy/Button/Button";
 import { Skeleton } from "@/design-system/atomy/Skeleton/Skeleton";
 import { EmptyState } from "@/design-system/molekuly/EmptyState/EmptyState";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
+import { ZwinieteFiltry } from "@/nowy-front/wspolne/zwiniete-filtry";
 import { Field } from "@/design-system/molekuly/Field/Field";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { Pagination } from "@/design-system/molekuly/Pagination/Pagination";
@@ -19,6 +20,7 @@ import {
   PUSTY_FILTR,
   SCIEZKA_ZGLOSZEN,
   filtrAktywny,
+  podsumowanieFiltra,
   pobierzOsoby,
   pobierzTabele,
   rodzajBledu,
@@ -179,16 +181,6 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
         </Notice>
       )}
       <form className={style.filtry} onSubmit={zastosujFiltr} aria-label="Filtr osób">
-        <div className={style.rola}>
-          <Field
-            id="osoby-rola"
-            etykieta="Rola"
-            rodzaj="wybor"
-            opcje={OPCJE_ROLI}
-            wartosc={formularz.role}
-            onZmiana={(wartosc) => setFormularz((f) => ({ ...f, role: wartosc as UserRole | "" }))}
-          />
-        </div>
         <div className={style.szukaj}>
           <Field
             id="osoby-szukaj"
@@ -199,14 +191,39 @@ export function OsobyLista({ adresNowejOsoby }: WlasciwosciOsobyLista = {}) {
             onZmiana={(wartosc) => setFormularz((f) => ({ ...f, search: wartosc }))}
           />
         </div>
-        <Button poziom="outline" type="submit">
-          Filtruj
-        </Button>
-        {aktywny && (
-          <Button poziom="outline" type="button" onClick={wyczyscFiltr}>
-            Wyczyść filtr
-          </Button>
-        )}
+        <ZwinieteFiltry etykieta="Filtry" podsumowanie={podsumowanieFiltra(zapytanie.filtr)} liczba={meta?.total}>
+          {({ zwin }) => (
+            <>
+              <div className={style.rola}>
+                <Field
+                  id="osoby-rola"
+                  etykieta="Rola"
+                  rodzaj="wybor"
+                  opcje={OPCJE_ROLI}
+                  wartosc={formularz.role}
+                  onZmiana={(wartosc) => setFormularz((f) => ({ ...f, role: wartosc as UserRole | "" }))}
+                />
+              </div>
+              <div className={style.akcje}>
+                <Button poziom="outline" type="submit" onClick={zwin}>
+                  Filtruj
+                </Button>
+                {aktywny && (
+                  <Button
+                    poziom="outline"
+                    type="button"
+                    onClick={() => {
+                      zwin();
+                      wyczyscFiltr();
+                    }}
+                  >
+                    Wyczyść filtr
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </ZwinieteFiltry>
       </form>
     </>
   );

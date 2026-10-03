@@ -1,4 +1,7 @@
-/* Układ pasków filtrów ekranu listy osób — wartości wyglądu wyłącznie z tokenów. */
+/* Układ pasków filtrów ekranu listy osób — wartości wyglądu wyłącznie z tokenów.
+   Od 600 px układ jest dotychczasowy (rola, szukaj, przyciski); `order` zachowuje
+   go mimo że wyszukiwanie stoi w drzewie pierwsze (na telefonie zostaje nad
+   wierszem zwiniętych filtrów). */
 .filtry {
   display: flex;
   flex-wrap: wrap;
@@ -9,9 +12,34 @@
 .rola {
   flex: 0 1 240px;
   min-width: 200px;
+  order: 1;
 }
 
 .szukaj {
   flex: 1 1 280px;
   min-width: 200px;
+  order: 2;
+}
+
+.akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  order: 3;
+}
+
+/* Telefon (< 600 px): wyszukiwanie na wierzchu, pod nim wiersz filtrów; w panelu rola i przyciski. */
+@media (max-width: 599px) {
+  .filtry {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .rola,
+  .szukaj {
+    flex: none;
+    min-width: 0;
+    order: 0;
+  }
 }

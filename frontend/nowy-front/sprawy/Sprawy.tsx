@@ -14,6 +14,7 @@ import {
 } from "@/design-system/organizmy/RecordList/RecordList";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { zapowiedzFokusSprawy } from "@/nowy-front/wspolne/fokus-otwartej-sprawy";
+import { ZwinieteFiltry, useUkladTelefonu } from "@/nowy-front/wspolne/zwiniete-filtry";
 import { Notice } from "@/design-system/molekuly/Notice/Notice";
 import { CollapsibleSection } from "@/design-system/molekuly/CollapsibleSection/CollapsibleSection";
 import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate";
@@ -120,6 +121,9 @@ export function Sprawy() {
   // Chwila odczytu kolejki: od niej liczy się wiek spraw (w renderze nie czytamy zegara).
   const [teraz, setTeraz] = useState<number | null>(null);
   const [filtr, setFiltr] = useState<FiltrRodzaju>("");
+  // Poniżej 600 px filtr rodzaju to wiersz zwiniętych filtrów z listą ✓; od 600 px
+  // zostaje dotychczasowy zwijany filtr z przyciskami rodzajów.
+  const telefon = useUkladTelefonu();
   const [proba, setProba] = useState(0);
   const [stanProwadzacych, setStanProwadzacych] = useState<StanSprawProwadzacych>("ladowanie");
   const [odmowaProwadzacych, setOdmowaProwadzacych] = useState(false);
@@ -345,7 +349,38 @@ export function Sprawy() {
       <EkranOdmowy rodzaj="brak-dostepu" stopien={2} rolaDocelowa="administracji" przycisk={{ etykieta: "Wstecz", onClick: () => router.back() }} />
     );
   } else {
-    filtry = (
+    filtry = telefon ? (
+      <div className={style.filtr}>
+        <ZwinieteFiltry etykieta="Rodzaj" podsumowanie={opcjaWybrana.etykieta} liczba={opcjaWybrana.liczba}>
+          {({ zwin }) => (
+            <div role="group" aria-label="Rodzaj sprawy" className={style.opcjeLista}>
+              {opcjeFiltra.map((opcja) =>
+                opcja.href ? (
+                  <Link key={opcja.wartosc} href={opcja.href}>
+                    {opcja.etykieta} ({opcja.liczba})
+                  </Link>
+                ) : (
+                  <Button
+                    key={opcja.wartosc || "wszystkie"}
+                    poziom="outline"
+                    aria-pressed={opcja.wartosc === filtr}
+                    onClick={() => {
+                      setFiltr(opcja.wartosc);
+                      zwin();
+                    }}
+                  >
+                    <span>
+                      {opcja.etykieta} ({opcja.liczba})
+                      {opcja.wartosc === filtr && <span aria-hidden="true"> ✓</span>}
+                    </span>
+                  </Button>
+                ),
+              )}
+            </div>
+          )}
+        </ZwinieteFiltry>
+      </div>
+    ) : (
       <div className={style.filtr}>
         <CollapsibleSection
           tytul={`Filtr: ${opcjaWybrana.etykieta}`}

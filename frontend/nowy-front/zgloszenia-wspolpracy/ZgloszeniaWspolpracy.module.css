@@ -11,6 +11,13 @@
   max-width: 320px;
 }
 
+/* Telefon (< 600 px): wiersz zwiniętych filtrów na całą szerokość karty. */
+@media (max-width: 599px) {
+  .filtr {
+    max-width: none;
+  }
+}
+
 .lista {
   display: flex;
   flex-direction: column;

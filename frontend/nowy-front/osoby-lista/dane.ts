@@ -58,6 +58,14 @@ export function filtrAktywny(filtr: FiltrOsob): boolean {
   return filtr.role !== "" || filtr.search !== "";
 }
 
+/** Wybrane filtry jednym zdaniem dla wiersza zwiniętych filtrów: rola, a przy frazie także ona. */
+export function podsumowanieFiltra(filtr: FiltrOsob): string {
+  const rola =
+    filtr.role === "" ? "Wszystkie osoby" : (OPCJE_ROLI.find((opcja) => opcja.wartosc === filtr.role)?.etykieta ?? filtr.role);
+  const fraza = filtr.search.trim();
+  return fraza === "" ? rola : `${rola} · „${fraza}”`;
+}
+
 /** Filtry zapytania wyłącznie z pól, które ekran ustawia (puste pomijane). */
 export function filtryZapytania(filtr: FiltrOsob, strona?: number): AdminUserFilters {
   const fraza = filtr.search.trim().slice(0, LIMIT_SZUKANEJ_FRAZY);
