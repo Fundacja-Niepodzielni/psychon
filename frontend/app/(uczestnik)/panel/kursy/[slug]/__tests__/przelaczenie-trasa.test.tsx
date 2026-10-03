@@ -10,10 +10,13 @@ import { podmienRejestr, przywrocRejestr } from "@/lib/przelaczenie/__tests__/po
  */
 
 const api = vi.fn();
+const apiPaged = vi.fn();
+const siec = vi.fn();
 
 vi.mock("@/lib/api/klient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/klient")>()),
   api: (...args: unknown[]) => api(...args),
+  apiPaged: (...args: unknown[]) => apiPaged(...args),
   endSession: vi.fn(),
 }));
 
@@ -39,10 +42,25 @@ const KURS = {
 
 beforeEach(() => {
   api.mockReset();
+  // Lista pytań do lekcji (`LessonQuestions`) czyta `apiPaged`: bez atrapy poszłaby
+  // prawdziwym `fetch` pod adres API, a jej wynik (błąd po nieprzewidywalnym czasie)
+  // trafiałby do zrzutu DOM albo nie — zależnie od tempa maszyny.
+  apiPaged.mockReset();
+  apiPaged.mockResolvedValue({ data: [], meta: undefined });
+  // Żadne wywołanie sieci nie jest w tej próbie dozwolone: każde nieatrapowane
+  // wywołanie rzuca od razu i oblewa próbę w afterEach (zawsze, nie losowo).
+  siec.mockReset();
+  siec.mockImplementation(() => {
+    throw new Error("nieatrapowane wywołanie sieci w próbie");
+  });
+  vi.stubGlobal("fetch", siec);
 });
 
 afterEach(() => {
+  const wywolania = siec.mock.calls.length;
+  vi.unstubAllGlobals();
   przywrocRejestr();
+  expect(wywolania, "próba nie może dotykać sieci (brakuje atrapy api/apiPaged)").toBe(0);
 });
 
 function atrapaZKursem() {
