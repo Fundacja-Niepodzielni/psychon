@@ -22,9 +22,9 @@ class AssignSupervisorRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'supervisor_id.required' => 'Wybierz superwizora.',
-            'supervisor_id.integer' => 'Identyfikator superwizora musi być liczbą.',
-            'supervisor_id.exists' => 'Wybrany superwizor nie istnieje.',
+            'supervisor_id.required' => 'Wybierz prowadzącego.',
+            'supervisor_id.integer' => 'Identyfikator prowadzącego musi być liczbą.',
+            'supervisor_id.exists' => 'Wybrany prowadzący nie istnieje.',
         ];
     }
 }

@@ -47,9 +47,9 @@ class AssignSupervisorToManyRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'supervisor_id.required' => 'Wybierz superwizora.',
-            'supervisor_id.integer' => 'Identyfikator superwizora musi być liczbą.',
-            'supervisor_id.exists' => 'Wybrany superwizor nie istnieje.',
+            'supervisor_id.required' => 'Wybierz prowadzącego.',
+            'supervisor_id.integer' => 'Identyfikator prowadzącego musi być liczbą.',
+            'supervisor_id.exists' => 'Wybrany prowadzący nie istnieje.',
             'user_ids.required' => 'Wskaż co najmniej jedną osobę.',
             'user_ids.list' => 'Osoby podaj jako listę identyfikatorów.',
             'user_ids.min' => 'Wskaż co najmniej jedną osobę.',

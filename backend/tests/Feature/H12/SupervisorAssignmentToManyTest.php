@@ -241,7 +241,7 @@ class SupervisorAssignmentToManyTest extends TestCase
                 fn (): int => User::factory()->role('instructor')->create(['status' => 'invited'])->id,
                 $notAllowed,
             ],
-            'konto nie istnieje' => [fn (): int => (int) User::query()->max('id') + 1000, 'Wybrany superwizor nie istnieje.'],
+            'konto nie istnieje' => [fn (): int => (int) User::query()->max('id') + 1000, 'Wybrany prowadzący nie istnieje.'],
         ];
     }
 
@@ -271,7 +271,7 @@ class SupervisorAssignmentToManyTest extends TestCase
         $this->withTokenOf($admin)
             ->postJson(self::ROUTE, ['user_ids' => [$person->id]])
             ->assertStatus(422)
-            ->assertJsonPath('error.errors.supervisor_id.0', 'Wybierz superwizora.');
+            ->assertJsonPath('error.errors.supervisor_id.0', 'Wybierz prowadzącego.');
 
         $this->assertNothingWritten();
     }

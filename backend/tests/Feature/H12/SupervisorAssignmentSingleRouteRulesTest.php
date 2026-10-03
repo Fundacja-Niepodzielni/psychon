@@ -325,4 +325,35 @@ class SupervisorAssignmentSingleRouteRulesTest extends TestCase
 
         $this->assertSame(0, AuditLogEntry::query()->count());
     }
+
+    // ── Komunikaty o polu prowadzącego ─────────────────────────────────────
+
+    public function test_messages_about_the_supervisor_field_speak_of_the_supervisor_on_both_routes(): void
+    {
+        $admin = $this->boundAccount('project_manager');
+        $person = User::factory()->role('volunteer')->create();
+        $missing = (int) User::query()->max('id') + 1000;
+
+        $cases = [
+            'Wybierz prowadzącego.' => [],
+            'Identyfikator prowadzącego musi być liczbą.' => ['supervisor_id' => 'abc'],
+            'Wybrany prowadzący nie istnieje.' => ['supervisor_id' => $missing],
+        ];
+
+        foreach ($cases as $message => $payload) {
+            $this->withTokenOf($admin)
+                ->putJson($this->single($person->id), $payload)
+                ->assertStatus(422)
+                ->assertJsonPath('error.code', 'validation_failed')
+                ->assertJsonPath('error.errors.supervisor_id', [$message]);
+            $this->withTokenOf($admin)
+                ->postJson(self::BULK_ROUTE, [...$payload, 'user_ids' => [$person->id]])
+                ->assertStatus(422)
+                ->assertJsonPath('error.code', 'validation_failed')
+                ->assertJsonPath('error.errors.supervisor_id', [$message]);
+        }
+
+        $this->assertSame(0, SupervisorAssignment::query()->count());
+        $this->assertSame(0, AuditLogEntry::query()->count());
+    }
 }
