@@ -29,5 +29,9 @@ Route::middleware(['auth:keycloak', 'role:project_manager,super_admin'])->group(
     Route::get('/admin/users/{id}/number-sources', [AdminUserController::class, 'numberSources'])->whereNumber('id');
     Route::patch('/admin/users/{id}', [AdminUserController::class, 'update'])->whereNumber('id');
     Route::post('/admin/users/{id}/block', [AdminUserController::class, 'block'])->whereNumber('id');
+    Route::post('/admin/users/{id}/unblock', [AdminUserController::class, 'unblock'])->whereNumber('id');
+});
+
+Route::middleware(['auth:keycloak', 'role:super_admin'])->group(function (): void {
     Route::post('/admin/users/{id}/anonymize', [AdminUserController::class, 'anonymize'])->whereNumber('id');
 });

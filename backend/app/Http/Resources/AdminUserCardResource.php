@@ -12,8 +12,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Karta osoby w panelu administracji (H18, `GET /admin/users/{id}`),
  * kształt z kontraktu §2 (Panel — osoby): `profile` (jak `/me`, z pełnym
- * PESEL dla administracji), `progress` z jednego agregatora startera,
- * `documents`, `recent_notifications` i `audit_entries` dotyczące tej osoby.
+ * PESEL dla administracji), `account` (stan konta), `progress` z jednego agregatora startera,
+ * `documents`, `recent_notifications` (odnośniki z tokenem zamaskowane,
+ * {@see LinkTokenMask}) i `audit_entries` dotyczące tej osoby.
  *
  * @mixin User
  */
@@ -35,6 +36,11 @@ class AdminUserCardResource extends JsonResource
             // innej osoby (panel) nie ma odbiorcy, a `pendingLegalDocumentAcceptances()`
             // to zapytania o wersje dokumentów, których karta nie potrzebuje.
             'profile' => ProfileResource::withoutPendingLegalDocuments($user)->resolve($request),
+            // Stan konta (`active · invited · blocked · deleted`) — front wybiera
+            // między formularzem blokady a „Odblokuj konto” (aneks z 2026-10-02).
+            'account' => [
+                'status' => $user->status,
+            ],
             'progress' => [
                 'courses_done' => $progress['courses_done'],
                 'courses_total' => $progress['courses_total'],
@@ -52,13 +58,21 @@ class AdminUserCardResource extends JsonResource
                 ])
                 ->values()
                 ->all(),
-            'recent_notifications' => NotificationResource::collection(
-                $user->notifications()
-                    ->orderByDesc('created_at')
-                    ->orderByDesc('id')
-                    ->limit(self::RECENT_LIMIT)
-                    ->get()
-            )->resolve($request),
+            // Odnośnik z tokenem zaproszenia należy do osoby, nie do administracji.
+            'recent_notifications' => array_map(
+                fn (array $notification): array => [
+                    ...$notification,
+                    'body' => LinkTokenMask::apply($notification['body']),
+                    'link' => LinkTokenMask::apply($notification['link']),
+                ],
+                NotificationResource::collection(
+                    $user->notifications()
+                        ->orderByDesc('created_at')
+                        ->orderByDesc('id')
+                        ->limit(self::RECENT_LIMIT)
+                        ->get()
+                )->resolve($request),
+            ),
             'audit_entries' => AuditLogEntry::query()
                 ->where('subject_type', $user->getMorphClass())
                 ->where('subject_id', $user->getKey())

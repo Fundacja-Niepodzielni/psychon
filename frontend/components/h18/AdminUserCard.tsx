@@ -13,6 +13,7 @@ import {
   ApiError,
   blockAdminUser,
   fetchAdminUser,
+  unblockAdminUser,
   updateAdminUser,
   type AdminUserCard as AdminUserCardData,
   type UserRole,
@@ -29,6 +30,27 @@ function formatDateTime(iso: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+/**
+ * Zdanie o blokadzie z ostatniego wpisu `user.blocked` karty (data i powód
+ * żyją w dzienniku, nie w wierszu konta). Bez wpisu — samo stwierdzenie blokady.
+ */
+function blockedSentence(entries: AdminUserCardData["audit_entries"]): string {
+  const last = entries.find((entry) => entry.action === "user.blocked");
+  if (!last) return "Konto jest zablokowane.";
+  const reason =
+    typeof last.details?.reason === "string" ? last.details.reason : "";
+  return `Konto jest zablokowane od ${formatDate(last.created_at)}. Powód: ${reason}.`;
 }
 
 type FormState = {
@@ -54,6 +76,9 @@ export default function AdminUserCard({ id }: { id: number }) {
   const [blockReason, setBlockReason] = useState("");
   const [blocking, setBlocking] = useState(false);
   const [blockError, setBlockError] = useState<string | null>(null);
+
+  const [unblocking, setUnblocking] = useState(false);
+  const [unblockError, setUnblockError] = useState<string | null>(null);
 
   const key = `${id}#${reload}`;
 
@@ -132,6 +157,21 @@ export default function AdminUserCard({ id }: { id: number }) {
     }
   }
 
+  async function unblock() {
+    setUnblocking(true);
+    setUnblockError(null);
+    try {
+      await unblockAdminUser(id);
+      setReload((v) => v + 1);
+    } catch (err) {
+      setUnblockError(
+        err instanceof ApiError ? err.message : "Nie udało się odblokować konta.",
+      );
+    } finally {
+      setUnblocking(false);
+    }
+  }
+
   if (failed?.key === key && failed.kind === "not_found") {
     return (
       <PageTemplate naglowek={{ title: "Nie znaleziono osoby" }}>
@@ -174,6 +214,7 @@ export default function AdminUserCard({ id }: { id: number }) {
     loaded.card;
   const err = (field: string) => fieldErrors[field]?.[0];
   const userActionSlots = slotsForRegion("user-actions");
+  const isBlocked = loaded.card.account?.status === "blocked";
 
   return (
     <PageTemplate
@@ -382,25 +423,42 @@ export default function AdminUserCard({ id }: { id: number }) {
             Kontami Super Admina zarządza wyłącznie Super Admin.
           </Alert>
         )}
-        <form onSubmit={block} noValidate className="mt-3 flex flex-col gap-3">
-          {blockError && <Alert variant="error">{blockError}</Alert>}
-          <Input
-            label="Powód blokady"
-            value={blockReason}
-            onChange={(e) => setBlockReason(e.target.value)}
-            hint="Powód trafia do dziennika audytu. Zablokowana osoba przy logowaniu zobaczy komunikat o blokadzie, nie o wygaśnięciu dostępu."
-          />
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              variant="secondary"
-              loading={blocking}
-              disabled={blockReason.trim() === ""}
-            >
-              Zablokuj konto
-            </Button>
+        {isBlocked ? (
+          <div className="mt-3 flex flex-col gap-3">
+            {unblockError && <Alert variant="error">{unblockError}</Alert>}
+            <p className="text-body">{blockedSentence(audit_entries)}</p>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                loading={unblocking}
+                onClick={unblock}
+              >
+                Odblokuj konto
+              </Button>
+            </div>
           </div>
-        </form>
+        ) : (
+          <form onSubmit={block} noValidate className="mt-3 flex flex-col gap-3">
+            {blockError && <Alert variant="error">{blockError}</Alert>}
+            <Input
+              label="Powód blokady"
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              hint="Powód trafia do dziennika audytu. Zablokowana osoba przy logowaniu zobaczy komunikat o blokadzie, nie o wygaśnięciu dostępu."
+            />
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                variant="secondary"
+                loading={blocking}
+                disabled={blockReason.trim() === ""}
+              >
+                Zablokuj konto
+              </Button>
+            </div>
+          </form>
+        )}
       </Card>
     </PageTemplate>
   );

@@ -73,10 +73,14 @@ describe("przedłużenie dostępu — zgodność z zapleczem", () => {
     const r = reguly();
     expect(r.months).toContain("'integer'");
     expect(r.months).toContain(`'min:${MIESIACE_MIN}'`);
-    expect(r.months).toContain(`'max:${MIESIACE_MAX}'`);
+    // Górna granica serwera to stała `MAX_MONTHS_AHEAD`, nie literał w regule.
+    expect(r.months).toContain("'max:'.self::MAX_MONTHS_AHEAD");
+    const pulap = /const MAX_MONTHS_AHEAD = (\d+);/.exec(zaplecze("app/Http/Requests/H04/ExtendAccessRequest.php"));
+    expect(pulap).not.toBeNull();
+    expect(MIESIACE_MAX).toBe(Number(pulap![1]));
     expect(r.until).toContain("'date'");
     expect(MIESIACE_MIN).toBe(1);
-    expect(MIESIACE_MAX).toBe(60);
+    expect(MIESIACE_MAX).toBe(24);
     expect(Number(MIESIACE_DOMYSLNE)).toBeGreaterThanOrEqual(MIESIACE_MIN);
     expect(Number(MIESIACE_DOMYSLNE)).toBeLessThanOrEqual(MIESIACE_MAX);
   });
@@ -133,12 +137,12 @@ describe("przedłużenie dostępu — ciało żądania", () => {
   it("miesiące poza zakresem albo nie całkowite to błąd pola", () => {
     for (const wpis of ["0", "61", "-1", "2.5", "abc", "1e2"]) {
       expect(zbudujCialo("months", wpis, "")).toEqual({
-        bledy: { months: "Liczba miesięcy musi być całkowita, od 1 do 60." },
+        bledy: { months: "Liczba miesięcy musi być całkowita, od 1 do 24." },
       });
     }
     expect(zbudujCialo("months", "", "")).toEqual({ bledy: { months: "Podaj liczbę miesięcy." } });
     expect(zbudujCialo("months", "1", "")).toEqual({ cialo: { months: 1 } });
-    expect(zbudujCialo("months", "60", "")).toEqual({ cialo: { months: 60 } });
+    expect(zbudujCialo("months", "24", "")).toEqual({ cialo: { months: 24 } });
   });
 
   it("data pusta albo nieistniejąca to błąd pola", () => {

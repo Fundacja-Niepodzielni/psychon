@@ -26,7 +26,7 @@ class AuditIndexRequest extends FormRequest
         'certificate.issued',
         'document.generated',
         'profile.accepted', 'profile.returned', 'profile.withdrawn',
-        'user.created', 'user.updated', 'user.blocked', 'user.anonymized',
+        'user.created', 'user.updated', 'user.blocked', 'user.unblocked', 'user.anonymized',
         'edition.updated',
         'sensitive.viewed',
         'supervision.attendance_marked',

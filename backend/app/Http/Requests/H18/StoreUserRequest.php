@@ -3,6 +3,7 @@
 namespace App\Http\Requests\H18;
 
 use App\Rules\Pesel;
+use App\Services\H18\AccountManagementGuard;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,14 +11,17 @@ use Illuminate\Validation\Rule;
  * POST /admin/users — utworzenie konta z zaproszeniem (H18).
  * Duplikat e-maila istniejącego konta obsługuje kontroler jako 409
  * `email_already_registered` (kontrakt §1.1 / H03) — dlatego bez reguły
- * `unique` na `email`. Reguła matrycy ról (ochrona `super_admin`) też
- * jest w kontrolerze, przed zapisem i audytem (design.md D4).
+ * `unique` na `email`. Reguła matrycy ról (role administracyjne zakłada
+ * wyłącznie Super Admin) biegnie w `authorize()`, przed walidacją ciała.
  */
 class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // rola sekcji sprawdzana middlewarem `role:` na trasie
+        // Rola sekcji: middleware `role:` na trasie; rola nowego konta: niżej.
+        app(AccountManagementGuard::class)->assertMayCreateWithRole($this->input('role'));
+
+        return true;
     }
 
     public function rules(): array

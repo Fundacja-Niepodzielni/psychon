@@ -54,6 +54,10 @@ final class UserAnonymizer
         }
 
         return DB::transaction(function () use ($target, $actor): User {
+            // Pula aktywnej administracji blokowana przed wierszem celu, w tej
+            // samej kolejności co przy blokadzie i zmianie roli.
+            $activeAdministrators = AccountManagementGuard::activeAdministratorPool(lock: true);
+
             $user = User::query()->whereKey($target->getKey())->lockForUpdate()->first();
 
             if ($user === null) {
@@ -64,13 +68,8 @@ final class UserAnonymizer
                 throw new ApiException(409, 'already_anonymized', 'Konto zostało już zanonimizowane.');
             }
 
-            if ($user->id === $actor->id) {
-                throw new ApiException(
-                    422,
-                    'cannot_anonymize_self',
-                    'Nie można uruchomić procedury anonimizacji na własnym koncie.',
-                );
-            }
+            AccountManagementGuard::assertNotOwnAccount($user, $actor, AccountManagementGuard::cannotAnonymizeSelf());
+            AccountManagementGuard::assertNotLastActiveAdministrator($user, $activeAdministrators);
 
             // Frees the e-mail immediately: a later registration with the same
             // address is a new person and must not collide with this row on

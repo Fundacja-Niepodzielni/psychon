@@ -56,7 +56,12 @@ class PermissionMatrixTest extends TestCase
             $rows["POST /notifications/read-all — {$role}"] = [['role' => $role, 'method' => 'POST', 'uri' => '/api/v1/notifications/read-all', 'expect' => 200]];
             $rows["POST /notifications/{id}/read (own) — {$role}"] = [['role' => $role, 'method' => 'POST', 'uri' => '/api/v1/notifications/{id}/read', 'own' => 'notification', 'expect' => 200]];
             $rows["GET /admin/emails — {$role}"] = [['role' => $role, 'method' => 'GET', 'uri' => '/api/v1/admin/emails', 'expect' => $adminExpect]];
+            $rows["POST /admin/users/{id}/unblock — {$role}"] = [['role' => $role, 'method' => 'POST', 'uri' => '/api/v1/admin/users/{id}/unblock', 'own' => 'blocked_account', 'expect' => $adminExpect]];
+            $rows["POST /admin/users/{id}/anonymize — {$role}"] = [['role' => $role, 'method' => 'POST', 'uri' => '/api/v1/admin/users/{id}/anonymize', 'own' => 'other_account', 'expect' => $role === 'super_admin' ? 200 : 403]];
         }
+
+        $rows['POST /api/v1/admin/users/{id}/unblock — gość'] = [['role' => null, 'method' => 'POST', 'uri' => '/api/v1/admin/users/{id}/unblock', 'own' => 'blocked_account', 'expect' => 401]];
+        $rows['POST /api/v1/admin/users/{id}/anonymize — gość'] = [['role' => null, 'method' => 'POST', 'uri' => '/api/v1/admin/users/{id}/anonymize', 'own' => 'other_account', 'expect' => 401]];
 
         // Gość (brak tokenu) — każda z powyższych tras wymaga uwierzytelnienia (§1.1: 401 unauthenticated).
         foreach ([
@@ -93,9 +98,33 @@ class PermissionMatrixTest extends TestCase
             $uri = str_replace('{id}', (string) $notification->id, $uri);
         }
 
+        // Cudze konto zablokowane — przedmiot odblokowania (H18); tworzone także dla gościa.
+        $blockedAccount = null;
+
+        if ($own === 'blocked_account') {
+            $blockedAccount = User::factory()->role('volunteer')->create(['status' => 'blocked']);
+            $uri = str_replace('{id}', (string) $blockedAccount->id, $uri);
+        }
+
+        // Cudze aktywne konto — przedmiot anonimizacji (H18); tworzone także dla gościa.
+        $otherAccount = null;
+
+        if ($own === 'other_account') {
+            $otherAccount = User::factory()->role('volunteer')->create();
+            $uri = str_replace('{id}', (string) $otherAccount->id, $uri);
+        }
+
         $response = $this->json($method, $uri, $body);
 
         $response->assertStatus($expect);
+
+        if ($blockedAccount !== null) {
+            $this->assertSame($expect === 200 ? 'invited' : 'blocked', $blockedAccount->fresh()->status);
+        }
+
+        if ($otherAccount !== null) {
+            $this->assertSame($expect === 200, $otherAccount->fresh()->anonymized_at !== null);
+        }
 
         if ($expect === 403) {
             $response->assertJsonPath('error.code', 'forbidden');

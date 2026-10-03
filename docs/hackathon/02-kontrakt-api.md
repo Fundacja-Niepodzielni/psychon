@@ -592,7 +592,7 @@ Po hackathonie: `access.expiring_30d/7d`, `supervision.reminder`.
 `supervisor.assigned` (H12/H18) · `certificate.issued` (H13) · `document.generated`
 (H14) · `profile.accepted` `profile.returned` `profile.withdrawn` (H15) ·
 `user.created` `user.updated`
-`user.blocked` (H18) · `edition.updated` (H19) · `sensitive.viewed`
+`user.blocked` `user.unblocked` (H18) · `edition.updated` (H19) · `sensitive.viewed`
 (H03/H15 — automatycznie przy wglądzie).
 
 ### 3.3 Klucze ustawień edycji (`Settings::edition(...)`)
@@ -2168,3 +2168,58 @@ wysyła do dostawcy nagrań przy wydaniu linku (podpisuje adres lokalnie), a bez
 klucza podpisu odpowiada `503 video_not_configured`.
 
 Kod: `Services/Lessons/LessonAccess.php`, `Http/Controllers/Api/V1/CourseController.php`.
+
+---
+
+## Aneks z 2026-10-02 — odblokowanie konta (H18)
+
+Administracja cofa blokadę konta nałożoną przez `POST /admin/users/{id}/block`. Nowa trasa,
+nowy slug audytu `user.unblocked` (dopisany w §3.2), dwa nowe kody `409`. Bez typu
+powiadomienia i bez e-maila; zero zmian w danych (`users.status` jest napisem).
+
+### 1. Trasa i role
+
+`POST /admin/users/{id}/unblock` — bez ciała (pola ciała są ignorowane), w tej samej grupie co
+blokada: `project_manager` i `super_admin`. `{id}` jest liczbą. Odpowiedź `200` niesie kartę
+osoby w kopercie, tak jak blokada (`{ "data": { "profile": …, "account": …, … } }`).
+
+| Sytuacja | Kod | `code` · komunikat |
+|---|---|---|
+| brak albo nieważny token | **401** | `unauthenticated` |
+| rola spoza `project_manager` i `super_admin` | **403** | `forbidden` |
+| nieznana osoba | **404** | `not_found` · „Nie znaleziono osoby.” |
+| opiekun projektu odblokowuje konto Super Admina | **403** | `forbidden` · „Tylko Super Admin może zarządzać kontami Super Admina.” |
+| konto zanonimizowane | **409** | `account_anonymized` · „Konta zanonimizowanego nie można odblokować.” |
+| konto w stanie innym niż `blocked` | **409** | `account_not_blocked` · „To konto nie jest zablokowane.” |
+
+Każda odmowa niczego nie zmienia i nie zapisuje audytu.
+
+### 2. Skutek
+
+- Stan po odblokowaniu: `invited`, gdy konto nie jest jeszcze powiązane z Kontami Niepodzielni
+  (`keycloak_sub` puste) — wiązanie przy pierwszym logowaniu zostaje wymagane; w przeciwnym
+  razie `active`.
+- `access_expires_at` bez zmian: odblokowanie nie przedłuża dostępu do materiałów.
+- Blokada i odblokowanie są lokalne — konto w Kontach Niepodzielni zostaje nietknięte.
+
+### 3. Blokada konta zanonimizowanego
+
+`POST /admin/users/{id}/block` dla konta zanonimizowanego → **409** `account_anonymized` ·
+„Konta zanonimizowanego nie można zablokować.”, bez zmiany stanu i bez audytu. Pozostałe
+zachowanie blokady bez zmian.
+
+### 4. Karta osoby
+
+`GET /admin/users/{id}` (i odpowiedzi tras zapisu, które zwracają kartę) niesie dodatkowo
+`account: { "status" }` — bieżący `users.status`: `active · invited · blocked · deleted`
+(`deleted` = konto zanonimizowane). Powód i datę blokady front bierze z istniejącego
+`audit_entries` (ostatni wpis `user.blocked`).
+
+### 5. Audyt
+
+`user.unblocked` — administracja odblokowuje konto. Pola ładunku: `previous_status`,
+`restored_status` (kody stanu konta). Bez wolnego tekstu, zgodnie z zasadą ogólną z erraty
+2026-09-18.
+
+Kod: `routes/api/h18.php`, `Http/Controllers/Api/V1/Admin/AdminUserController.php`,
+`Http/Requests/H18/UnblockUserRequest.php`, `Http/Resources/AdminUserCardResource.php`.

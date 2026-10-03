@@ -26,6 +26,7 @@ export const ACTION_LABELS: Record<AuditAction, string> = {
   "user.created": "Konto utworzone",
   "user.updated": "Konto zaktualizowane",
   "user.blocked": "Konto zablokowane",
+  "user.unblocked": "Odblokowanie konta",
   "edition.updated": "Ustawienia edycji zmienione",
   "sensitive.viewed": "Wgląd w dokument wrażliwy",
   "certificate.revoked": "Certyfikat unieważniony",

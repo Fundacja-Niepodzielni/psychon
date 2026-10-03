@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\H18\AnonymizeUserRequest;
 use App\Http\Requests\H18\BlockUserRequest;
 use App\Http\Requests\H18\StoreUserRequest;
+use App\Http\Requests\H18\UnblockUserRequest;
 use App\Http\Requests\H18\UpdateUserRequest;
 use App\Http\Resources\AdminUserCardResource;
 use App\Http\Resources\AdminUserListResource;
+use App\Models\Application;
 use App\Models\EmailMessage;
 use App\Models\User;
 use App\Queries\AdminUserQuery;
-use App\Services\Auth\TokenRoles;
+use App\Services\H03\ApplicationInvitationMailer;
+use App\Services\H18\AccountManagementGuard;
 use App\Services\H18\UserAnonymizer;
 use App\Services\H18\UserNumberSourcesQuery;
 use App\Support\AuditLog;
@@ -25,13 +29,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Pakiet H18 · Panel — osoby i karta osoby.
- * Wszystkie trasy za `role:project_manager,super_admin` (routes/api/h18.php).
+ * Trasy za `role:project_manager,super_admin`, anonimizacja za `role:super_admin`
+ * (routes/api/h18.php); reguły kont w `AccountManagementGuard`.
  * Zapis wyłącznie do tabeli `users`; postępy karty pochodzą z
  * `ProgressAggregator` (to samo źródło co pulpit i raport).
  */
 class AdminUserController extends Controller
 {
-    public function __construct(private readonly TokenRoles $tokenRoles) {}
+    /**
+     * Rozwiązywany przy każdym wywołaniu: reguły czytają role z tokenu
+     * bieżącego żądania, a instancja kontrolera może przeżyć jedno żądanie.
+     */
+    private function guard(): AccountManagementGuard
+    {
+        return app(AccountManagementGuard::class);
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -90,7 +102,7 @@ class AdminUserController extends Controller
     {
         $data = $request->validated();
 
-        $this->assertMayAssignRole($data['role'], null);
+        $this->guard()->assertMayCreateWithRole($data['role']);
 
         $existing = User::where('email', $data['email'])->first();
 
@@ -138,13 +150,27 @@ class AdminUserController extends Controller
         $data = $request->validated();
 
         $user = DB::transaction(function () use ($data, $request, $id): User {
+            // Zmiana roli może zabrać kontu rolę administracyjną: pula aktywnej
+            // administracji blokowana przed wierszem celu, jak przy blokadzie.
+            $activeAdministrators = array_key_exists('role', $data)
+                ? AccountManagementGuard::activeAdministratorPool(lock: true)
+                : null;
+
             $user = User::query()->whereKey($id)->lockForUpdate()->first();
 
             if ($user === null) {
-                throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
+                throw AccountManagementGuard::notFound();
             }
 
-            $this->assertMayAssignRole($data['role'] ?? null, $user);
+            $this->guard()->assertMayChangeRole($user, $data['role'] ?? null);
+
+            if ($activeAdministrators !== null && AccountManagementGuard::removesAdministrativeRole($user, $data['role'])) {
+                AccountManagementGuard::assertNotLastActiveAdministrator($user, $activeAdministrators);
+            }
+
+            if ($activeAdministrators !== null && AccountManagementGuard::removesSuperAdminRole($user, $data['role'])) {
+                AccountManagementGuard::assertNotLastActiveSuperAdmin($user, $activeAdministrators);
+            }
 
             $map = [
                 'first_name' => 'first_name',
@@ -177,12 +203,30 @@ class AdminUserController extends Controller
 
             $changed = array_keys($user->getDirty());
 
+            // Zaproszenie należy do adresu: nowy adres konta, które czeka na
+            // pierwsze powiązanie, dostaje nowy token, a stary przestaje działać.
+            $renewInvitation = in_array('email', $changed, true)
+                && AccountManagementGuard::hasPendingInvitation($user);
+
+            if ($renewInvitation) {
+                $user->activation_token = Str::random(64);
+            }
+
             if ($changed !== []) {
                 $user->save();
 
-                AuditLog::record($request->user(), 'user.updated', $user, [
-                    'changed' => $changed,
-                ]);
+                $details = ['changed' => $changed];
+
+                if ($renewInvitation) {
+                    $details['invitation_renewed'] = true;
+                }
+
+                AuditLog::record($request->user(), 'user.updated', $user, $details);
+            }
+
+            if ($renewInvitation) {
+                $this->sendInvitationEmail($user);
+                $this->sendApplicationInvitationAfterCommit($user);
             }
 
             return $user;
@@ -198,13 +242,24 @@ class AdminUserController extends Controller
         $reason = $request->validated('reason');
 
         $user = DB::transaction(function () use ($reason, $request, $id): User {
+            // Aktywne konta administracji blokowane zawsze w tej samej kolejności
+            // i przed kontem celu: dwie równoległe blokady nie zostawią zera.
+            $activeAdministrators = AccountManagementGuard::activeAdministratorPool(lock: true);
+
             $user = User::query()->whereKey($id)->lockForUpdate()->first();
 
             if ($user === null) {
-                throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
+                throw AccountManagementGuard::notFound();
             }
 
-            $this->assertMayAssignRole(null, $user);
+            $this->guard()->assertMayManage($user);
+
+            if ($user->isAnonymized()) {
+                throw new ApiException(403, 'account_anonymized', 'Konta zanonimizowanego nie można zablokować.');
+            }
+
+            AccountManagementGuard::assertNotOwnAccount($user, $request->user(), AccountManagementGuard::cannotBlockSelf());
+            AccountManagementGuard::assertNotLastActiveAdministrator($user, $activeAdministrators);
 
             $user->status = 'blocked';
             $user->save();
@@ -222,23 +277,68 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Cofnięcie blokady (kontrakt, aneks z 2026-10-02). Konto, które nigdy
+     * nie zostało powiązane z Kontami Niepodzielni, wraca do `invited` — inaczej
+     * ominęłoby wiązanie przy pierwszym logowaniu. Termin dostępu bez zmian.
+     */
+    public function unblock(UnblockUserRequest $request, int $id): JsonResponse
+    {
+        $user = DB::transaction(function () use ($request, $id): User {
+            $user = User::query()->whereKey($id)->lockForUpdate()->first();
+
+            if ($user === null) {
+                throw AccountManagementGuard::notFound();
+            }
+
+            $this->guard()->assertMayManage($user);
+
+            if ($user->isAnonymized()) {
+                throw new ApiException(403, 'account_anonymized', 'Konta zanonimizowanego nie można odblokować.');
+            }
+
+            if ($user->status !== 'blocked') {
+                throw new ApiException(403, 'account_not_blocked', 'To konto nie jest zablokowane.');
+            }
+
+            $previousStatus = $user->status;
+            $restoredStatus = ($user->keycloak_sub === null || $user->keycloak_sub === '') ? 'invited' : 'active';
+
+            $user->status = $restoredStatus;
+            $user->save();
+
+            AuditLog::record($request->user(), 'user.unblocked', $user, [
+                'previous_status' => $previousStatus,
+                'restored_status' => $restoredStatus,
+            ]);
+
+            return $user;
+        });
+
+        return response()->json([
+            'data' => AdminUserCardResource::make($user->load('consents'))->resolve($request),
+        ]);
+    }
+
+    /**
      * Right-to-erasure procedure (art. 17, non-functional spec §2 pt. 4):
      * personal data on the row is replaced, the row itself stays so every
      * result, attempt and certificate that references it keeps working.
-     * Same role guard and super-admin protection as `block()`; the target
+     * Route is `role:super_admin` only (routes/api/h18.php); the target
      * loses its account entirely (no more login, no more of its own tokens),
      * so this is one-way — there is no matching "un-anonymize".
      */
-    public function anonymize(Request $request, int $id): JsonResponse
+    public function anonymize(AnonymizeUserRequest $request, int $id): JsonResponse
     {
         $target = User::query()->find($id);
 
         if ($target === null) {
-            throw new ApiException(404, 'not_found', 'Nie znaleziono osoby.');
+            throw AccountManagementGuard::notFound();
         }
 
-        $this->assertMayAssignRole(null, $target);
+        $this->guard()->assertMayManage($target);
 
+        // Własne konto i ostatnie aktywne konto administracji UserAnonymizer
+        // sprawdza ponownie na zablokowanych wierszach.
         $user = UserAnonymizer::run($target, $request->user());
 
         return response()->json([
@@ -259,40 +359,38 @@ class AdminUserController extends Controller
         return Csv::download('osoby.csv', $rows);
     }
 
-    /**
-     * Matryca ról (design.md D4): `project_manager` nie utworzy ani nie nada
-     * roli `super_admin` i nie zmienia kont, które już ją mają. Rzut przed
-     * zapisem i audytem, więc audyt nie rośnie.
-     *
-     * Per R2 (`docs/testy/00-stos-izolowany-i-baza-testowa.md` §14): the ACTOR's role comes from the token (`TokenRoles`, membership —
-     * a super_admin who also happens to hold `project_manager` is never
-     * caught by this restriction). `$target->role` stays a legitimate local
-     * read here: it is the local business-role copy of a THIRD-PARTY row,
-     * not the acting user's own authorisation — there is no access token to
-     * read it from.
-     */
-    private function assertMayAssignRole(?string $requestedRole, ?User $target): void
+    private function activationUrl(User $user): string
     {
-        if ($this->tokenRoles->has('super_admin')) {
+        return rtrim(config('app.frontend_url'), '/').'/aktywacja?token='.$user->activation_token;
+    }
+
+    /**
+     * Konto z przyjętego zgłoszenia dostało pierwsze zaproszenie prawdziwą
+     * wiadomością — ponowione zaproszenie idzie tą samą drogą, po zatwierdzeniu
+     * transakcji (wycofana zmiana nie zostawia wysłanej wiadomości).
+     */
+    private function sendApplicationInvitationAfterCommit(User $user): void
+    {
+        $application = Application::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'accepted')
+            ->orderByDesc('decided_at')
+            ->first();
+
+        if ($application === null) {
             return;
         }
 
-        if (! $this->tokenRoles->has('project_manager')) {
-            return;
-        }
+        $activationUrl = $this->activationUrl($user);
 
-        if ($requestedRole === 'super_admin' || $target?->role === 'super_admin') {
-            throw new ApiException(
-                403,
-                'forbidden',
-                'Tylko Super Admin może zarządzać kontami Super Admina.',
-            );
-        }
+        DB::afterCommit(static function () use ($application, $user, $activationUrl): void {
+            ApplicationInvitationMailer::send($application, $user, $activationUrl);
+        });
     }
 
     private function sendInvitationEmail(User $user): void
     {
-        $activationUrl = rtrim(config('app.frontend_url'), '/').'/aktywacja?token='.$user->activation_token;
+        $activationUrl = $this->activationUrl($user);
 
         EmailMessage::create([
             'to_email' => $user->email,

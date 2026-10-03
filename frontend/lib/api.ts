@@ -47,6 +47,7 @@ export {
   createAdminUser,
   updateAdminUser,
   blockAdminUser,
+  unblockAdminUser,
   downloadAdminUsersCsv,
 } from "./api/h18";
 

@@ -41,8 +41,12 @@ export interface AdminUserProfile {
   product_group: string;
 }
 
+/** Stan konta na karcie osoby (`account.status`, kontrakt — aneks z 2026-10-02). */
+export type AccountStatus = "active" | "invited" | "blocked" | "deleted";
+
 export interface AdminUserCard {
   profile: AdminUserProfile;
+  account?: { status: AccountStatus };
   progress: {
     courses_done: number;
     courses_total: number;
@@ -146,6 +150,11 @@ export function blockAdminUser(
     method: "POST",
     body: { reason },
   });
+}
+
+/** POST /admin/users/{id}/unblock — bez ciała; odpowiedź to karta osoby. */
+export function unblockAdminUser(id: number): Promise<AdminUserCard> {
+  return api<AdminUserCard>(`/admin/users/${id}/unblock`, { method: "POST" });
 }
 
 export function downloadAdminUsersCsv(

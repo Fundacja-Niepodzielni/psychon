@@ -245,9 +245,9 @@ describe("przedłużenie dostępu — zapis", () => {
 
   it.each([
     ["", "Podaj liczbę miesięcy."],
-    ["0", "Liczba miesięcy musi być całkowita, od 1 do 60."],
-    ["61", "Liczba miesięcy musi być całkowita, od 1 do 60."],
-    ["2.5", "Liczba miesięcy musi być całkowita, od 1 do 60."],
+    ["0", "Liczba miesięcy musi być całkowita, od 1 do 24."],
+    ["61", "Liczba miesięcy musi być całkowita, od 1 do 24."],
+    ["2.5", "Liczba miesięcy musi być całkowita, od 1 do 24."],
   ])("miesiące „%s”: błąd przy polu, żadnego żądania zapisu", async (wpis, komunikat) => {
     await renderGotowy();
     fireEvent.change(screen.getByLabelText(/Liczba miesięcy/), { target: { value: wpis } });

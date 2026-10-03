@@ -108,8 +108,8 @@ class SelfViewRoleFromTokenTest extends TestCase
      * not the caller) has no other person's token on this request to derive
      * from and must keep reporting the column — even though the ACTING
      * admin's own token is real and carries a role of its own. The target's
-     * column is deliberately set HIGHER than what the admin's token would
-     * ever grant, so a leak from either side would show up as a mismatch.
+     * column is deliberately set to a role the admin's token does not
+     * grant, so a leak from either side would show up as a mismatch.
      */
     public function test_someone_elses_account_view_still_reports_the_column(): void
     {
@@ -118,14 +118,14 @@ class SelfViewRoleFromTokenTest extends TestCase
         $admin = User::factory()->role('project_manager')->create(['keycloak_sub' => $adminSub]);
         $adminToken = $realm->mint(['sub' => $adminSub, 'realm_access' => ['roles' => ['koordynator']]]);
 
-        $target = User::factory()->create(['role' => 'super_admin', 'access_expires_at' => null]);
+        $target = User::factory()->create(['role' => 'instructor', 'access_expires_at' => null]);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$adminToken)
             ->postJson("/api/v1/admin/users/{$target->id}/extend-access", ['months' => 1])
             ->assertOk();
 
         $this->assertSame(
-            'super_admin',
+            'instructor',
             $response->json('data.role'),
             'Widok cudzego konta musi nadal pokazywać kolumnę, nie token wywołującego.',
         );

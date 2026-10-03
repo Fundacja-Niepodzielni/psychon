@@ -85,6 +85,7 @@ export const AUDIT_ACTIONS = [
   "user.created",
   "user.updated",
   "user.blocked",
+  "user.unblocked",
   "edition.updated",
   "sensitive.viewed",
   "certificate.revoked",

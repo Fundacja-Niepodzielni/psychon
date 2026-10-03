@@ -9,14 +9,14 @@ import { formatujDate as formatujDateWspolna } from "../wspolne/daty";
  * ją sprawdzić samym testem jednostkowym.
  *
  * Trasa: `POST /admin/users/{id}/extend-access` z dokładnie jednym z pól:
- * `months` (liczba całkowita 1–60) albo `until` (data). Obecną datę czyta
+ * `months` (liczba całkowita 1–24) albo `until` (data). Obecną datę czyta
  * karta osoby (`GET /admin/users/{id}`, `profile.access_expires_at`).
  * Zdarzenie w dzienniku działań zapisuje serwer — ekran nic tam nie wysyła.
  */
 export type TrybPrzedluzenia = "months" | "until";
 
 export const MIESIACE_MIN = 1;
-export const MIESIACE_MAX = 60;
+export const MIESIACE_MAX = 24;
 export const MIESIACE_DOMYSLNE = "6";
 
 export type CialoPrzedluzenia = { months: number } | { until: string };
