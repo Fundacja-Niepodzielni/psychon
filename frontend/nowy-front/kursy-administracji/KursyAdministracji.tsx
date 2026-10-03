@@ -38,12 +38,18 @@ import {
   ZDANIE_BRAKU_PROWADZACEGO,
   zapamietajOstrzezeniePoUtworzeniu,
 } from "@/nowy-front/kurs-administracji/ostrzezenie-po-utworzeniu";
-import { pobierzKursy, podgladKolejnosci, utworzKurs, zapiszKolejnosc, type KursAdministracji } from "./dane";
+import {
+  BrakWolnegoAdresu,
+  pobierzKursy,
+  podgladKolejnosci,
+  utworzKursZAdresemZTytulu,
+  zapiszKolejnosc,
+  type KursAdministracji,
+} from "./dane";
 import {
   KOMUNIKAT_SIECI,
   adresKursu,
   czyBrakUprawnien,
-  identyfikatorZTytulu,
   komunikatKoperty,
   kursyWSciezce,
   pozycjaZPola,
@@ -62,7 +68,6 @@ type StanListy =
 
 interface PolaFormularza {
   tytul: string;
-  identyfikator: string;
   typ: CourseType;
   pozycja: string;
   opis: string;
@@ -75,12 +80,14 @@ type StanProwadzacych = { rodzaj: "ladowanie" } | { rodzaj: "blad" } | { rodzaj:
 
 const PUSTE_POLA: PolaFormularza = {
   tytul: "",
-  identyfikator: "",
   typ: "course",
   pozycja: "",
   opis: "",
   prowadzacy: "",
 };
+
+/** Zdanie przy polu „Tytuł”, gdy żaden z pięciu adresów zrobionych z tytułu nie jest wolny (adresu użytkownik nie widzi). */
+const ZDANIE_ZAJETEJ_NAZWY = "Kurs o takiej nazwie już istnieje. Zmień trochę nazwę kursu.";
 
 const OKRUSZKI = [{ etykieta: "Administracja" }, { etykieta: "Kursy" }];
 
@@ -153,7 +160,6 @@ export function KursyAdministracji() {
   const [formularzOtwarty, setFormularzOtwarty] = useState(false);
   const [kluczFormularza, setKluczFormularza] = useState(0);
   const [pola, setPola] = useState<PolaFormularza>(PUSTE_POLA);
-  const [identyfikatorReczny, setIdentyfikatorReczny] = useState(false);
   const [bledyPol, setBledyPol] = useState<Record<string, string[]>>({});
   const [bladFormularza, setBladFormularza] = useState<string | null>(null);
   const [zapisuje, setZapisuje] = useState(false);
@@ -227,24 +233,9 @@ export function KursyAdministracji() {
     setPola((poprzednie) => ({ ...poprzednie, [klucz]: wartosc }));
   }
 
-  function zmienTytul(tytul: string) {
-    setPola((poprzednie) => ({
-      ...poprzednie,
-      tytul,
-      identyfikator: identyfikatorReczny ? poprzednie.identyfikator : identyfikatorZTytulu(tytul),
-    }));
-  }
-
-  function zmienIdentyfikator(identyfikator: string) {
-    // Ręczna zmiana zatrzymuje wypełnianie z tytułu; opróżnione pole oddaje identyfikator z powrotem tytułowi.
-    setIdentyfikatorReczny(identyfikator !== "");
-    setPola((poprzednie) => ({ ...poprzednie, identyfikator }));
-  }
-
   function otworzFormularz() {
     if (kolejnosc !== null || formularzOtwarty) return;
     setPola(PUSTE_POLA);
-    setIdentyfikatorReczny(false);
     setBledyPol({});
     setBladFormularza(null);
     setKluczFormularza((n) => n + 1);
@@ -269,9 +260,9 @@ export function KursyAdministracji() {
     setBladFormularza(null);
     setBledyPol({});
     try {
-      const utworzony = await utworzKurs({
+      // Adres kursu powstaje z tytułu i nigdy się potem nie zmienia; użytkownik go nie widzi ani nie wpisuje.
+      const utworzony = await utworzKursZAdresemZTytulu({
         title: pola.tytul.trim(),
-        slug: pola.identyfikator.trim(),
         type: pola.typ,
         sequence_order: pozycjaZPola(pola.pozycja),
         description: pola.opis.trim() === "" ? null : pola.opis.trim(),
@@ -287,7 +278,10 @@ export function KursyAdministracji() {
       }
       router.push(adresKursu(utworzony.id));
     } catch (blad) {
-      if (blad instanceof ApiError && blad.errors) {
+      if (blad instanceof BrakWolnegoAdresu) {
+        setBledyPol({ title: [ZDANIE_ZAJETEJ_NAZWY] });
+        setKluczFormularza((n) => n + 1);
+      } else if (blad instanceof ApiError && blad.errors) {
         setBledyPol(blad.errors);
         // Nowy klucz montuje sekcję od nowa — fokus trafia na podsumowanie błędów, a pole poza pierwszym poziomem jest rozwinięte.
         setKluczFormularza((n) => n + 1);
@@ -418,18 +412,8 @@ export function KursyAdministracji() {
       rodzaj: "tekst",
       wymagane: true,
       wartosc: pola.tytul,
-      onZmiana: zmienTytul,
+      onZmiana: (wartosc) => zmienPole("tytul", wartosc),
       blad: bledyPol.title?.[0],
-    },
-    {
-      id: "kurs-identyfikator",
-      etykieta: "Identyfikator",
-      rodzaj: "tekst",
-      wymagane: true,
-      wartosc: pola.identyfikator,
-      onZmiana: zmienIdentyfikator,
-      podpowiedz: "Wypełnia się z tytułu — możesz go poprawić. Małe litery, cyfry i myślniki, np. wywiad-psychologiczny.",
-      blad: bledyPol.slug?.[0],
     },
     {
       id: "kurs-typ",
@@ -488,7 +472,7 @@ export function KursyAdministracji() {
         key={kluczFormularza}
         tytul="Nowy kurs"
         pola={polaFormularza}
-        polaPierwszegoPoziomu={5}
+        polaPierwszegoPoziomu={4}
         tytulDodatkowych="Miejsce w ścieżce"
         etykietaAnuluj="Anuluj"
         etykietaZapisz={zapisuje ? "Zapisywanie…" : "Utwórz kurs"}

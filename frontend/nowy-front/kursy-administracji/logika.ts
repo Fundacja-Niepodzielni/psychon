@@ -91,6 +91,33 @@ export function identyfikatorZTytulu(tytul: string): string {
     .replace(/-+$/g, "");
 }
 
+/** Nazwa adresu, gdy z tytułu nie wychodzi żaden znak adresu (same znaki specjalne albo obce pismo). */
+const ADRES_ZASTEPCZY = "kurs";
+
+/**
+ * Adres kursu na `proba`-tym podejściu przy zakładaniu. Użytkownik adresu nie widzi:
+ * pierwsza próba to adres z tytułu (`identyfikatorZTytulu`, a gdy tytuł nic nie daje —
+ * „kurs”), każda następna dopisuje końcówkę `-2`, `-3` … Całość mieści się w 255
+ * znakach zaplecza: długi adres jest przycinany PRZED końcówką, bez myślnika na styku.
+ */
+export function adresDoProby(tytul: string, proba: number): string {
+  const podstawa = identyfikatorZTytulu(tytul) || ADRES_ZASTEPCZY;
+  if (proba <= 1) return podstawa;
+  const koncowka = `-${proba}`;
+  return `${podstawa.slice(0, NAJWYZEJ_ZNAKOW_IDENTYFIKATORA - koncowka.length).replace(/-+$/g, "")}${koncowka}`;
+}
+
+/**
+ * Czy odpowiedź zaplecza mówi wyłącznie „ten adres jest już zajęty”: 422, w którym
+ * jedynym błędnym polem jest `slug`. Tylko wtedy zakładanie kursu ponawia się samo
+ * z inną końcówką; każdy inny błąd (także `slug` razem z innym polem) wraca do formularza.
+ */
+export function czyTylkoAdresZajety(blad: unknown): boolean {
+  if (!(blad instanceof ApiError) || blad.status !== 422 || !blad.errors) return false;
+  const pola = Object.keys(blad.errors);
+  return pola.length === 1 && pola[0] === "slug";
+}
+
 /** Pozycja wpisana w formularzu: puste = `null` (poza ścieżką), liczba całkowita = liczba, reszta dosłownie do walidacji serwera. */
 export function pozycjaZPola(wpisana: string): number | string | null {
   const tekst = wpisana.trim();

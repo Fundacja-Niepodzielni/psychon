@@ -284,17 +284,38 @@ describe("KursyAdministracji — Utwórz kurs", () => {
     expect(screen.getByRole("button", { name: "Zmień kolejność ścieżki" })).toBeDisabled();
   });
 
-  it("identyfikator wypełnia się z tytułu, dopóki nie zostanie poprawiony ręcznie", async () => {
+  it("formularz nie pokazuje adresu kursu: ani pola „Identyfikator”, ani żadnego pola ani tekstu o adresie, nawet po wpisaniu tytułu", async () => {
     await otworz();
-    const tytul = screen.getByLabelText(/^Tytuł/);
-    const identyfikator = screen.getByLabelText(/^Identyfikator/) as HTMLInputElement;
-    await userEvent.type(tytul, "Zażółć gęślą");
-    expect(identyfikator.value).toBe("zazolc-gesla");
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Zażółć gęślą");
+    const formularz = screen.getByRole("form", { name: "Nowy kurs" });
+    expect(screen.queryByLabelText(/identyfikator|adres|slug/i)).toBeNull();
+    expect(document.getElementById("kurs-identyfikator")).toBeNull();
+    expect(within(formularz).queryByText(/identyfikator|adres|slug/i)).toBeNull();
+    expect(within(formularz).queryByDisplayValue("zazolc-gesla")).toBeNull();
+    // Tytuł, typ, opis, prowadzący i pozycja zostają: dokładnie te pola co dotąd, bez jednego.
+    expect(within(formularz).getAllByRole("textbox").map((pole) => pole.id)).toEqual(["kurs-tytul", "kurs-opis"]);
+    expect(screen.getByRole("combobox", { name: /^Typ/ })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /^Prowadzący/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Miejsce w ścieżce/ }));
+    expect(screen.getByLabelText(/^Pozycja w ścieżce/)).toBeInTheDocument();
+  });
 
-    await userEvent.type(identyfikator, "-v2");
-    expect(identyfikator.value).toBe("zazolc-gesla-v2");
-    await userEvent.type(tytul, " jaźń");
-    expect(identyfikator.value).toBe("zazolc-gesla-v2");
+  it("adres idzie do serwera zrobiony z tytułu (małe litery bez polskich znaków, myślniki)", async () => {
+    await otworz();
+    api.mockResolvedValueOnce(kurs(9));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Zażółć gęślą");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+    expect(api.mock.calls[0][1].body.slug).toBe("zazolc-gesla");
+  });
+
+  it("tytuł bez ani jednego znaku nadającego się na adres: serwer dostaje adres „kurs”, nie pusty", async () => {
+    await otworz();
+    api.mockResolvedValueOnce(kurs(9));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "???");
+    await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+    expect(api.mock.calls[0][1].body.slug).toBe("kurs");
   });
 
   it("podpowiedź pola „Pozycja w ścieżce” mówi zwykłym językiem, że puste pole oznacza kurs poza główną ścieżką", async () => {
@@ -363,13 +384,124 @@ describe("KursyAdministracji — Utwórz kurs", () => {
 
   it("błędy pól z serwera (422): podsumowanie i komunikat przy polu, bez przejścia dalej", async () => {
     await otworz();
-    api.mockRejectedValueOnce(blad(422, "validation_failed", "Popraw zaznaczone pola.", { slug: ["Ten identyfikator jest już zajęty."] }));
-    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Zajęty");
+    api.mockRejectedValueOnce(blad(422, "validation_failed", "Popraw zaznaczone pola.", { title: ["Tytuł jest za długi."] }));
+    await userEvent.type(screen.getByLabelText(/^Tytuł/), "Za długi");
     await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
 
-    await waitFor(() => expect(screen.getAllByText("Ten identyfikator jest już zajęty.").length).toBeGreaterThanOrEqual(1));
+    await waitFor(() => expect(screen.getAllByText("Tytuł jest za długi.").length).toBeGreaterThanOrEqual(1));
     expect(push).not.toHaveBeenCalled();
-    expect(screen.getByLabelText(/^Identyfikator/)).toHaveAttribute("aria-invalid", "true");
+    expect(api).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText(/^Tytuł/)).toHaveAttribute("aria-invalid", "true");
+  });
+
+  describe("adres zajęty — dopisywanie końcówki bez pytania użytkownika", () => {
+    const adresyWyslane = () => api.mock.calls.map((wywolanie) => wywolanie[1].body.slug);
+    const zajety = () => blad(422, "validation_failed", "Popraw zaznaczone pola.", { slug: ["Taki adres już istnieje."] });
+
+    it("422 tylko na slug: ponawia sam z końcówką -2, kurs się tworzy, przejście na ekran kursu, żadnego komunikatu o adresie", async () => {
+      await otworz();
+      api.mockRejectedValueOnce(zajety());
+      api.mockResolvedValueOnce(kurs(9));
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), "Nowy kurs");
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+      expect(api).toHaveBeenCalledTimes(2);
+      expect(adresyWyslane()).toEqual(["nowy-kurs", "nowy-kurs-2"]);
+      // Reszta ciała jest za każdym razem ta sama.
+      expect(api.mock.calls[1][1].body).toEqual({ ...api.mock.calls[0][1].body, slug: "nowy-kurs-2" });
+      expect(screen.queryByText("Taki adres już istnieje.")).toBeNull();
+      expect(push).toHaveBeenCalledTimes(1);
+    });
+
+    it("po udanej drugiej próbie przypisanie prowadzącego idzie do kursu, który powstał (jedno utworzenie, jedno przypisanie)", async () => {
+      await otworz();
+      api.mockRejectedValueOnce(zajety());
+      api.mockResolvedValueOnce(kurs(9));
+      api.mockResolvedValueOnce({ id: 1, course_id: 9, lesson_id: null, instructor: PROWADZACY_DO_WYBORU[0] });
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), "Nowy kurs");
+      await userEvent.click(await screen.findByRole("combobox", { name: /^Prowadzący/ }));
+      await userEvent.click(await screen.findByRole("option", { name: "Ewa Brzeska" }));
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+      expect(api).toHaveBeenCalledTimes(3);
+      expect(api.mock.calls[2][0]).toBe("/admin/courses/9/assignments");
+    });
+
+    it("zajęte cztery razy: piąta próba (-5) przechodzi", async () => {
+      await otworz();
+      for (let i = 0; i < 4; i += 1) api.mockRejectedValueOnce(zajety());
+      api.mockResolvedValueOnce(kurs(9));
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), "Nowy kurs");
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+      expect(adresyWyslane()).toEqual(["nowy-kurs", "nowy-kurs-2", "nowy-kurs-3", "nowy-kurs-4", "nowy-kurs-5"]);
+    });
+
+    it("zajęte w pięciu próbach: jedno zdanie przy polu tytułu z prośbą o zmianę nazwy, bez słowa o adresie, bez przejścia, wpisane dane zostają, szóstej próby nie ma", async () => {
+      await otworz();
+      api.mockRejectedValue(zajety());
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), "Nowy kurs");
+      await userEvent.type(screen.getByLabelText(/^Opis/), "Zostaje");
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+      const zdanie = await screen.findAllByText("Kurs o takiej nazwie już istnieje. Zmień trochę nazwę kursu.");
+      expect(zdanie.length).toBeGreaterThanOrEqual(1);
+      expect(api).toHaveBeenCalledTimes(5);
+      expect(adresyWyslane()).toEqual(["nowy-kurs", "nowy-kurs-2", "nowy-kurs-3", "nowy-kurs-4", "nowy-kurs-5"]);
+      expect(push).not.toHaveBeenCalled();
+      const tytul = screen.getByLabelText(/^Tytuł/) as HTMLInputElement;
+      expect(tytul).toHaveAttribute("aria-invalid", "true");
+      expect(tytul.value).toBe("Nowy kurs");
+      expect((screen.getByLabelText(/^Opis/) as HTMLInputElement).value).toBe("Zostaje");
+      expect(screen.queryByText(/Taki adres już istnieje/)).toBeNull();
+      expect(screen.getByRole("form", { name: "Nowy kurs" }).textContent).not.toMatch(/identyfikator|adres|slug/i);
+    });
+
+    it("po zmianie nazwy ten sam formularz zapisuje się od nowej pierwszej próby (bez końcówki)", async () => {
+      await otworz();
+      api.mockRejectedValue(zajety());
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), "Nowy kurs");
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+      await screen.findAllByText("Kurs o takiej nazwie już istnieje. Zmień trochę nazwę kursu.");
+
+      api.mockReset();
+      api.mockResolvedValueOnce(kurs(9));
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), " 2026");
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/kursy/9"));
+      expect(adresyWyslane()).toEqual(["nowy-kurs-2026"]);
+    });
+
+    it("slug razem z innym błędem pola: bez ponawiania, pokazany jest błąd tego innego pola, jak dotąd", async () => {
+      await otworz();
+      api.mockRejectedValueOnce(
+        blad(422, "validation_failed", "Popraw zaznaczone pola.", {
+          slug: ["Taki adres już istnieje."],
+          sequence_order: ["Pozycja musi być liczbą."],
+        }),
+      );
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), "Nowy kurs");
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+      await waitFor(() => expect(screen.getAllByText("Pozycja musi być liczbą.").length).toBeGreaterThanOrEqual(1));
+      expect(api).toHaveBeenCalledTimes(1);
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("błąd 500 po zajętym adresie: zwykły komunikat nad formularzem, bez dalszych prób", async () => {
+      await otworz();
+      api.mockRejectedValueOnce(zajety());
+      api.mockRejectedValueOnce(blad(500, "server_error", "Serwer się potknął."));
+      await userEvent.type(screen.getByLabelText(/^Tytuł/), "Nowy kurs");
+      await userEvent.click(screen.getByRole("button", { name: "Utwórz kurs" }));
+
+      await screen.findByText("Serwer się potknął.");
+      expect(api).toHaveBeenCalledTimes(2);
+      expect(push).not.toHaveBeenCalled();
+    });
   });
 
   it("błąd pola w sekcji „Miejsce w ścieżce” rozwija tę sekcję", async () => {

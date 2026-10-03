@@ -627,14 +627,14 @@ test.describe("grupa przełączenia kursów administracji — lista pod adresem 
     expect((await naruszeniaZBestPractice(page)).map((n) => n.id)).toContain("heading-order");
   });
 
-  test("utworzenie kursu: identyfikator z tytułu, POST z ciałem formularza, przejście na ekran kursu", async ({ page }) => {
+  test("utworzenie kursu: adresu nie widać, POST z adresem zrobionym z tytułu, przejście na ekran kursu", async ({ page }) => {
     const atrapy = await instalujAtrapyApi(page);
     await page.goto("/admin/kursy");
     await zabezpieczeniePrzedEkranemDostepu(page);
 
     await page.getByRole("button", { name: "Utwórz kurs" }).click();
     await page.getByLabel(/^Tytuł/).fill("Zażółć gęślą");
-    await expect(page.getByLabel(/^Identyfikator/)).toHaveValue("zazolc-gesla");
+    await expect(page.getByLabel(/identyfikator|adres|slug/i)).toHaveCount(0);
     await page.getByRole("button", { name: "Utwórz kurs" }).click();
 
     await expect(page).toHaveURL(/\/admin\/kursy\/9$/);

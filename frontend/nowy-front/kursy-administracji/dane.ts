@@ -1,5 +1,6 @@
 import { api, apiPaged, type PaginationMeta } from "@/lib/api/klient";
 import type { AdminCourse, CourseType, ProductGroup, ReorderImpactRow } from "@/lib/h08/types";
+import { adresDoProby, czyTylkoAdresZajety } from "./logika";
 
 /**
  * Warstwa danych ekranu „Kursy” (administracja). Trasy z grupy
@@ -33,6 +34,20 @@ export interface NowyKurs {
   description: string | null;
 }
 
+/** Ciało zakładania kursu bez adresu: adres dopisuje `utworzKursZAdresemZTytulu`. */
+export type DaneNowegoKursu = Omit<NowyKurs, "slug">;
+
+/** Tyle razy najwyżej wysyłamy zakładanie kursu, gdy jego adres okazuje się zajęty (pierwsza próba i końcówki -2 … -5). */
+export const NAJWIECEJ_PROB_ADRESU = 5;
+
+/** Wszystkie próby adresu trafiły na zajęty: użytkownik ma zmienić nazwę kursu. */
+export class BrakWolnegoAdresu extends Error {
+  constructor() {
+    super("Żaden z adresów utworzonych z nazwy kursu nie jest wolny.");
+    this.name = "BrakWolnegoAdresu";
+  }
+}
+
 export function pobierzKursy(strona: number): Promise<StronaKursow> {
   return apiPaged<KursAdministracji>(
     `/admin/courses?page=${strona}&per_page=${LICZBA_NA_STRONE}&sort=sequence_order`,
@@ -41,6 +56,23 @@ export function pobierzKursy(strona: number): Promise<StronaKursow> {
 
 export function utworzKurs(kurs: NowyKurs): Promise<KursAdministracji> {
   return api<KursAdministracji>("/admin/courses", { method: "POST", body: kurs });
+}
+
+/**
+ * Zakłada kurs bez pytania o adres: serwer wymaga `slug` (`StoreCourseRequest`), więc front
+ * robi go z tytułu i, gdy serwer odpowie, że to jedyne zajęte pole (422), sam dopisuje
+ * końcówkę -2, -3 … — najwyżej `NAJWIECEJ_PROB_ADRESU` żądań. 422 oznacza odmowę przed
+ * zapisem, więc ponowienie nie tworzy drugiego kursu. Każdy inny błąd wraca bez ponawiania.
+ */
+export async function utworzKursZAdresemZTytulu(dane: DaneNowegoKursu): Promise<KursAdministracji> {
+  for (let proba = 1; proba <= NAJWIECEJ_PROB_ADRESU; proba += 1) {
+    try {
+      return await utworzKurs({ ...dane, slug: adresDoProby(dane.title, proba) });
+    } catch (blad) {
+      if (!czyTylkoAdresZajety(blad)) throw blad;
+    }
+  }
+  throw new BrakWolnegoAdresu();
 }
 
 export function podgladKolejnosci(idKursow: number[]): Promise<ReorderImpactRow[]> {

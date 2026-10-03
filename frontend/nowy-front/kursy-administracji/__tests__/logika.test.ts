@@ -4,8 +4,10 @@ import { COURSE_TYPE_LABELS, type ReorderImpactRow } from "@/lib/h08/types";
 import type { KursAdministracji } from "../dane";
 import {
   KOLUMNY_KURSOW,
+  adresDoProby,
   adresKursu,
   czyBrakUprawnien,
+  czyTylkoAdresZajety,
   identyfikatorZTytulu,
   jednostkaLekcji,
   komunikatKoperty,
@@ -150,6 +152,56 @@ describe("identyfikatorZTytulu", () => {
 
   it("wynik spełnia wzorzec alpha_dash zaplecza", () => {
     expect(identyfikatorZTytulu("Łódź — „cytat” & więcej")).toMatch(/^[a-z0-9_-]*$/);
+  });
+});
+
+describe("adresDoProby", () => {
+  it("pierwsza próba to adres z tytułu bez końcówki, kolejne dostają -2, -3, -4, -5", () => {
+    expect([1, 2, 3, 4, 5].map((proba) => adresDoProby("Wywiad psychologiczny", proba))).toEqual([
+      "wywiad-psychologiczny",
+      "wywiad-psychologiczny-2",
+      "wywiad-psychologiczny-3",
+      "wywiad-psychologiczny-4",
+      "wywiad-psychologiczny-5",
+    ]);
+  });
+
+  it("tytuł, z którego nie wychodzi żaden znak adresu, dostaje nazwę zastępczą „kurs” (a nie pusty adres ani samą końcówkę)", () => {
+    expect(adresDoProby("!!!", 1)).toBe("kurs");
+    expect(adresDoProby("", 1)).toBe("kurs");
+    expect(adresDoProby("!!!", 2)).toBe("kurs-2");
+  });
+
+  it("końcówka mieści się w 255 znakach zaplecza: długi adres jest przycinany, bez myślnika przed końcówką", () => {
+    const dlugi = `${"a".repeat(254)} b`;
+    const adres = adresDoProby(dlugi, 3);
+    expect(adres.length).toBeLessThanOrEqual(255);
+    expect(adres.endsWith("-3")).toBe(true);
+    expect(adres).not.toMatch(/--/);
+    expect(adres).toMatch(/^[a-z0-9_-]+$/);
+    expect(adresDoProby("a".repeat(300), 1)).toHaveLength(255);
+    expect(adresDoProby("a".repeat(300), 5)).toHaveLength(255);
+  });
+});
+
+describe("czyTylkoAdresZajety", () => {
+  const bladSerwera = (status: number, errors?: Record<string, string[]>) =>
+    new ApiError({ status, code: status === 422 ? "validation_failed" : "server_error", message: "x", errors });
+
+  it("tak: 422, w którym zła jest wyłącznie pole slug", () => {
+    expect(czyTylkoAdresZajety(bladSerwera(422, { slug: ["Zajęte."] }))).toBe(true);
+  });
+
+  it("nie: slug razem z innym polem — to wraca do formularza jak dotąd", () => {
+    expect(czyTylkoAdresZajety(bladSerwera(422, { slug: ["Zajęte."], title: ["Za długi."] }))).toBe(false);
+  });
+
+  it("nie: błąd innego pola, 422 bez pól, inny kod HTTP, błąd spoza API", () => {
+    expect(czyTylkoAdresZajety(bladSerwera(422, { title: ["Za długi."] }))).toBe(false);
+    expect(czyTylkoAdresZajety(bladSerwera(422))).toBe(false);
+    expect(czyTylkoAdresZajety(bladSerwera(500, { slug: ["Zajęte."] }))).toBe(false);
+    expect(czyTylkoAdresZajety(new Error("sieć"))).toBe(false);
+    expect(czyTylkoAdresZajety(undefined)).toBe(false);
   });
 });
 
