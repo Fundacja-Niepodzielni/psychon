@@ -2475,7 +2475,7 @@ jest błędem walidacji — wraca w wyniku jako `not_found`.
   - `assigned` — nowe przypisanie (poprzednie aktywne przypisanie osoby zostaje zamknięte);
   - `unchanged` — osoba ma już tego prowadzącego, nic się nie zmienia;
   - `refused` — osoby nie można przypisać: rola inna niż `volunteer` (studenci są poza MVP)
-    albo konto zablokowane lub zanonimizowane;
+    albo konto zablokowane, usunięte (`status: deleted`) lub zanonimizowane;
   - `not_found` — nie ma takiej osoby.
 - `reason` — słownik zamknięty: `not_assignable` przy `refused`, w pozostałych przypadkach
   `null`. Jeden kod dla wszystkich powodów odmowy, tak jak trasa pojedyncza daje jedną odmowę
