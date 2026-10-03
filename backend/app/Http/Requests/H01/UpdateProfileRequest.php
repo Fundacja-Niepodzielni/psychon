@@ -25,27 +25,29 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'first_name' => ['sometimes', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'string', 'max:255'],
+            'first_name' => ['sometimes', 'required', 'string', 'max:255'],
+            'last_name' => ['sometimes', 'required', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
             'pesel' => ['sometimes', 'nullable', 'string', new Pesel],
             'address' => ['sometimes', 'array'],
             'address.street' => ['sometimes', 'nullable', 'string', 'max:255'],
             'address.city' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'address.zip' => ['sometimes', 'nullable', 'string', 'max:16'],
+            'address.zip' => ['sometimes', 'nullable', 'string', 'regex:/^\d{2}-\d{3}$/D'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'first_name.required' => 'Wpisz imię.',
             'first_name.max' => 'Imię jest za długie (maksymalnie :max znaków).',
+            'last_name.required' => 'Wpisz nazwisko.',
             'last_name.max' => 'Nazwisko jest za długie (maksymalnie :max znaków).',
             'phone.max' => 'Numer telefonu jest za długi.',
             'address.array' => 'Adres ma nieprawidłowy format.',
             'address.street.max' => 'Ulica jest za długa (maksymalnie :max znaków).',
             'address.city.max' => 'Miasto jest za długie (maksymalnie :max znaków).',
-            'address.zip.max' => 'Kod pocztowy jest za długi.',
+            'address.zip.regex' => 'Wpisz kod pocztowy w formacie 00-000.',
         ];
     }
 }

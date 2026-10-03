@@ -36,7 +36,7 @@ class StoreUserRequest extends FormRequest
             'address' => ['sometimes', 'array'],
             'address.street' => ['sometimes', 'nullable', 'string', 'max:255'],
             'address.city' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'address.zip' => ['sometimes', 'nullable', 'string', 'max:16'],
+            'address.zip' => ['sometimes', 'nullable', 'string', 'regex:/^\d{2}-\d{3}$/D'],
             'product_group' => ['sometimes', Rule::in(['psychon', 'dobrostan', 'both'])],
         ];
     }
@@ -45,9 +45,9 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'string' => 'To pole musi być tekstem.',
-            'first_name.required' => 'Podaj imię.',
+            'first_name.required' => 'Wpisz imię.',
             'first_name.max' => 'Imię jest za długie (maksymalnie 255 znaków).',
-            'last_name.required' => 'Podaj nazwisko.',
+            'last_name.required' => 'Wpisz nazwisko.',
             'last_name.max' => 'Nazwisko jest za długie (maksymalnie 255 znaków).',
             'email.required' => 'Podaj adres e-mail.',
             'email.email' => 'Podaj poprawny adres e-mail.',
@@ -58,7 +58,7 @@ class StoreUserRequest extends FormRequest
             'address.array' => 'Adres ma nieprawidłowy format.',
             'address.street.max' => 'Ulica jest za długa (maksymalnie 255 znaków).',
             'address.city.max' => 'Miasto jest za długie (maksymalnie 255 znaków).',
-            'address.zip.max' => 'Kod pocztowy jest za długi.',
+            'address.zip.regex' => 'Wpisz kod pocztowy w formacie 00-000.',
             'product_group.in' => 'Nieznana grupa produktowa.',
         ];
     }

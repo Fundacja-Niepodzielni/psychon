@@ -41,8 +41,8 @@ class UpdateUserRequest extends FormRequest
         $id = (int) $this->route('id');
 
         return [
-            'first_name' => ['sometimes', 'string', 'max:255'],
-            'last_name' => ['sometimes', 'string', 'max:255'],
+            'first_name' => ['sometimes', 'required', 'string', 'max:255'],
+            'last_name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'role' => ['sometimes', Rule::in(['super_admin', 'project_manager', 'instructor', 'volunteer', 'student'])],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
@@ -50,7 +50,7 @@ class UpdateUserRequest extends FormRequest
             'address' => ['sometimes', 'array'],
             'address.street' => ['sometimes', 'nullable', 'string', 'max:255'],
             'address.city' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'address.zip' => ['sometimes', 'nullable', 'string', 'max:16'],
+            'address.zip' => ['sometimes', 'nullable', 'string', 'regex:/^\d{2}-\d{3}$/D'],
             'product_group' => ['sometimes', Rule::in(['psychon', 'dobrostan', 'both'])],
         ];
     }
@@ -59,7 +59,9 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'string' => 'To pole musi być tekstem.',
+            'first_name.required' => 'Wpisz imię.',
             'first_name.max' => 'Imię jest za długie (maksymalnie 255 znaków).',
+            'last_name.required' => 'Wpisz nazwisko.',
             'last_name.max' => 'Nazwisko jest za długie (maksymalnie 255 znaków).',
             'email.email' => 'Podaj poprawny adres e-mail.',
             'email.max' => 'Adres e-mail jest za długi (maksymalnie 255 znaków).',
@@ -69,7 +71,7 @@ class UpdateUserRequest extends FormRequest
             'address.array' => 'Adres ma nieprawidłowy format.',
             'address.street.max' => 'Ulica jest za długa (maksymalnie 255 znaków).',
             'address.city.max' => 'Miasto jest za długie (maksymalnie 255 znaków).',
-            'address.zip.max' => 'Kod pocztowy jest za długi.',
+            'address.zip.regex' => 'Wpisz kod pocztowy w formacie 00-000.',
             'product_group.in' => 'Nieznana grupa produktowa.',
         ];
     }
