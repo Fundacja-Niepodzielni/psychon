@@ -59,7 +59,7 @@ class PersonFormValidationTest extends TestCase
     #[DataProvider('routes')]
     public function test_zip_outside_the_postal_pattern_is_rejected_at_the_field(string $route): void
     {
-        foreach (['123', '12345', '1-2345', 'ab-cde', '12-3456', '12 345'] as $zip) {
+        foreach (['123', '12345', '1-2345', 'ab-cde', '12-3456', '123-456', '12 345'] as $zip) {
             $this->send($route, ['address' => ['zip' => $zip]])
                 ->assertStatus(422)
                 ->assertJsonPath('error.code', 'validation_failed')
@@ -77,6 +77,19 @@ class PersonFormValidationTest extends TestCase
         $this->send($route, ['address' => ['zip' => '00-000']])->assertStatus($expected);
         $this->send($route, ['address' => ['zip' => '80-001']])->assertStatus($expected);
         $this->send($route, ['address' => ['zip' => null]])->assertStatus($expected);
+    }
+
+    public function test_zip_with_surrounding_whitespace_is_saved_without_it(): void
+    {
+        foreach (["12-345\n", ' 12-345 '] as $sent) {
+            $user = User::factory()->role('volunteer')->create(['address_zip' => '80-001']);
+
+            $this->actingAs($user, 'keycloak')
+                ->patchJson('/api/v1/me', ['address' => ['zip' => $sent]])
+                ->assertStatus(200);
+
+            $this->assertSame('12-345', $user->fresh()->address_zip);
+        }
     }
 
     #[DataProvider('routes')]
