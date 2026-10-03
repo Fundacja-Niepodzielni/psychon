@@ -2626,3 +2626,32 @@ Kod: `Support/AuditDetailsView.php`, `Http/Resources/AuditLogEntryResource.php`,
 `Http/Controllers/Api/V1/AdminTestResetController.php`, `Services/H13/CertificateRevoker.php`,
 `Services/H18/UserAnonymizer.php`, `Models/TestAttemptReset.php`, `openapi.json`; front:
 `frontend/components/h18/AdminUserCard.tsx`, `frontend/lib/api/h18.ts`.
+
+---
+
+## Aneks — blokada i odblokowanie konta zanonimizowanego: 403 (H18)
+
+Kod ma rację, ten aneks dogania kontrakt. Aneks z 2026-10-02 („odblokowanie konta”) w
+tabeli odmów i w punkcie 3 podaje dla konta zanonimizowanego **409** `account_anonymized`. Kod
+zwraca **403** `account_anonymized` z tymi samymi komunikatami. Tamtego tekstu nie usuwam — ten
+blok jest wobec niego nadrzędny w dwóch miejscach. Bez nowych tras, kodów, pól, slugów audytu i
+typów powiadomień; zero zmian w danych.
+
+### 1. Kody
+
+| Trasa | Sytuacja | Kod | `code` · komunikat |
+|---|---|---|---|
+| `POST /admin/users/{id}/block` | konto zanonimizowane | **403** | `account_anonymized` · „Konta zanonimizowanego nie można zablokować.” |
+| `POST /admin/users/{id}/unblock` | konto zanonimizowane | **403** | `account_anonymized` · „Konta zanonimizowanego nie można odblokować.” |
+
+Uzasadnienie według tabeli §1.1: anonimizacja jest stanem konta, który blokuje akcję („reguła
+domenowa blokuje dostęp/akcję — stan, nie własność” → 403), a nie wyścigiem o ograniczony zasób
+(409). Odmowa niczego nie zmienia i nie zapisuje audytu — bez zmian.
+
+### 2. Czego ten aneks nie zmienia
+
+`POST /admin/users/{id}/extend-access` dla konta zanonimizowanego zostaje przy **409**
+`account_anonymized` (aneks „zmiana daty dostępu osoby w programie”). Wyrównanie tego kodu z
+blokadą i odblokowaniem przyjdzie osobnym aneksem razem ze zmianą kodu.
+
+Kod: `Http/Controllers/Api/V1/Admin/AdminUserController.php` (`block`, `unblock`).
