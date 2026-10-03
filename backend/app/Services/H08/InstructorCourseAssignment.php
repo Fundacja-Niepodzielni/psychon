@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\CourseAssignment;
 use App\Models\User;
 use App\Support\AuditLog;
+use App\Support\Emails\EmailTemplates;
 use App\Support\Notify;
 
 /**
@@ -44,7 +45,8 @@ final class InstructorCourseAssignment
             'Przypisano Cię jako prowadzącego',
             "Zostałeś przypisany jako prowadzący kursu „{$course->title}”.",
             '/panel/prowadzacy',
-            email: ['courseTitle' => $course->title],
+            // E-08 nie wychodzi: prowadzący sam założył kurs; dzwonek zostaje.
+            email: ['template' => EmailTemplates::NONE],
         );
 
         return $assignment;

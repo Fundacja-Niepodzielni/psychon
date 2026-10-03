@@ -9,6 +9,7 @@ use App\Http\Resources\NotificationResource;
 use App\Models\Notification;
 use App\Models\NotificationPreference;
 use App\Models\User;
+use App\Support\Emails\EmailTemplates;
 use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -158,7 +159,11 @@ class NotificationController extends Controller
             ->pluck('email', 'type');
 
         return array_map(
-            fn (string $type): array => ['type' => $type, 'email' => (bool) ($stored[$type] ?? true)],
+            fn (string $type): array => [
+                'type' => $type,
+                'email' => (bool) ($stored[$type] ?? true),
+                'switchable' => EmailTemplates::personSwitchable($type),
+            ],
             NotificationTypes::ALL,
         );
     }

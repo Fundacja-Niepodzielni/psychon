@@ -77,7 +77,7 @@ class EmailRegistryTest extends TestCase
         }
 
         $this->assertSame(
-            ['E-01', 'E-02', 'E-03', 'E-04', 'E-05'],
+            ['E-01', 'E-02', 'E-03', 'E-04', 'E-05', 'E-31', 'E-40'],
             array_values(EmailTemplates::MAILS),
         );
     }
@@ -107,7 +107,7 @@ class EmailRegistryTest extends TestCase
             $template = preg_match("/'template'\s*=>\s*'(E-\d+)'/", $arguments, $match) === 1 ? $match[1] : null;
             $number = EmailTemplates::BELL_ONLY[$type] ?? EmailTemplates::forNotification($type, $template);
 
-            if (array_key_exists($type, EmailTemplates::BELL_ONLY)) {
+            if (array_key_exists($type, EmailTemplates::BELL_ONLY) || str_contains($arguments, 'EmailTemplates::NONE')) {
                 continue;
             }
 

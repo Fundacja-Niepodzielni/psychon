@@ -32,7 +32,9 @@ final class Notify
      * (`EmailTemplates::NOTIFICATIONS`) with `$email` as its data; the bell
      * entry keeps `$title`, `$body` and `$link` exactly as given. A type
      * marked bell only (`EmailTemplates::BELL_ONLY`) gets no e-mail copy.
-     * `$email['template']` picks another e-mail of the same type. A call
+     * `$email['template']` picks another e-mail of the same type, or
+     * `EmailTemplates::NONE` for the bell alone. The person's preference
+     * skips only e-mails they may switch off themselves. A call
      * without the data its template needs keeps the former plain copy.
      *
      * @param  array<string, mixed>  $email
@@ -58,15 +60,18 @@ final class Notify
                 'link' => $link,
             ]);
 
-            if (EmailTemplates::isBellOnly($type)) {
+            if (EmailTemplates::isBellOnly($type) || ($email['template'] ?? null) === EmailTemplates::NONE) {
                 return $notification;
             }
 
-            $emailDisabled = NotificationPreference::query()
-                ->where('user_id', $user->id)
-                ->where('type', $type)
-                ->where('email', false)
-                ->exists();
+            // The person's own switch counts only for e-mails marked
+            // „Osoba może wyłączyć w Profilu”.
+            $emailDisabled = (! EmailTemplates::covers($type) || EmailTemplates::personSwitchable($type))
+                && NotificationPreference::query()
+                    ->where('user_id', $user->id)
+                    ->where('type', $type)
+                    ->where('email', false)
+                    ->exists();
 
             if ($emailDisabled) {
                 return $notification;
@@ -101,7 +106,7 @@ final class Notify
             return $former;
         }
 
-        $number = EmailTemplates::forNotification($type, $email['template'] ?? null);
+        $number = (string) EmailTemplates::forNotification($type, $email['template'] ?? null);
         $data = Arr::except($email, 'template');
         $missing = EmailTemplates::missing($number, $data);
 

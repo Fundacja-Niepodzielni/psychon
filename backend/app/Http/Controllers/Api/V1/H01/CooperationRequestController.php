@@ -10,6 +10,8 @@ use App\Models\CooperationRequest;
 use App\Models\User;
 use App\Services\Auth\TokenRoles;
 use App\Support\AuditLog;
+use App\Support\Emails\FoundationTeam;
+use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +58,18 @@ class CooperationRequestController extends Controller
             AuditLog::record($user, 'cooperation_request.created', $cooperation, [
                 'request_id' => $cooperation->id,
             ]);
+
+            // E-39: każdy aktywny Opiekun Projektu i Super Admin, osobno —
+            // bez treści zgłoszenia, odpowiedź czeka w panelu.
+            foreach (FoundationTeam::members() as $member) {
+                Notify::send(
+                    $member,
+                    'cooperation_request.created',
+                    'Nowe zgłoszenie dalszej współpracy',
+                    'Wpłynęło nowe zgłoszenie dalszej współpracy. Czeka na odpowiedź.',
+                    '/admin/zgloszenia-wspolpracy',
+                );
+            }
 
             return $cooperation;
         });

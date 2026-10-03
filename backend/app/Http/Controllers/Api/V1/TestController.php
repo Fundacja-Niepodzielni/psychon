@@ -14,6 +14,7 @@ use App\Services\Lessons\LessonAccess;
 use App\Services\Lessons\LessonSequence;
 use App\Support\AuditLog;
 use App\Support\CourseAccess;
+use App\Support\Emails\FoundationTeam;
 use App\Support\H10\PassedTestGuard;
 use App\Support\H10\TestGrader;
 use App\Support\Notify;
@@ -279,7 +280,8 @@ class TestController extends Controller
     }
 
     /**
-     * Po ostatnim niezaliczonym podejściu — powiadomienie do opiekunów projektu.
+     * Po ostatnim niezaliczonym podejściu — powiadomienie (i e-mail E-17) do
+     * każdego aktywnego Opiekuna Projektu i Super Admina, osobno.
      */
     private function notifyFinalFailure(User $user, Test $test): void
     {
@@ -290,7 +292,7 @@ class TestController extends Controller
             $test->course?->title ?? 'kurs',
         );
 
-        foreach (User::where('role', 'project_manager')->get() as $manager) {
+        foreach (FoundationTeam::members() as $manager) {
             Notify::send($manager, 'attempt.failed_final', $title, $body, '/admin/uczestniczki/'.$user->id, email: [
                 'stageTitle' => $test->course?->title ?? 'kurs',
                 'path' => '/admin/uczestniczki/'.$user->id,

@@ -11,6 +11,8 @@ namespace App\Support;
 final class NotificationTypes
 {
     public const array ALL = [
+        'access.expired',
+        'access.expiring_7d',
         'application.accepted',
         'application.rejected',
         'assignment.created',
@@ -18,6 +20,7 @@ final class NotificationTypes
         'attempt.failed_final',
         'certificate.ready',
         'cooperation_request.answered',
+        'cooperation_request.created',
         'course.invited',
         'course.unlocked',
         'document.ready',

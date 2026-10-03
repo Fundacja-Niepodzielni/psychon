@@ -2,10 +2,18 @@
 
 namespace App\Http\Requests\H16;
 
+use App\Support\Emails\EmailTemplates;
 use App\Support\NotificationTypes;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * PUT /notifications/preferences — osoba wyłącza dla siebie wyłącznie
+ * e-maile oznaczone „Osoba może wyłączyć w Profilu”. E-maili „Wychodzi
+ * zawsze” i „Wyłącza tylko administracja” (oraz typów bez e-maila) wyłączyć
+ * nie może.
+ */
 class UpdateNotificationPreferencesRequest extends FormRequest
 {
     public function authorize(): bool
@@ -19,7 +27,15 @@ class UpdateNotificationPreferencesRequest extends FormRequest
             'preferences' => ['required', 'array', 'min:1'],
             'preferences.*' => ['required', 'array:type,email'],
             'preferences.*.type' => ['required', 'string', 'distinct', Rule::in(NotificationTypes::ALL)],
-            'preferences.*.email' => ['required', 'boolean'],
+            'preferences.*.email' => ['required', 'boolean', function (string $attribute, mixed $value, Closure $fail): void {
+                $type = $this->input(str_replace('.email', '.type', $attribute));
+
+                if ($value === false || $value === 0 || $value === '0' || $value === 'false') {
+                    if (is_string($type) && ! EmailTemplates::personSwitchable($type)) {
+                        $fail('Tego e-maila nie można wyłączyć.');
+                    }
+                }
+            }],
         ];
     }
 

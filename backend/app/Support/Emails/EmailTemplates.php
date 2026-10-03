@@ -2,6 +2,7 @@
 
 namespace App\Support\Emails;
 
+use App\Console\Commands\CheckExpiredAccess;
 use App\Http\Controllers\Api\V1\Admin\AdminUserController;
 use App\Mail\HelpMessageConfirmation;
 use App\Mail\HelpMessageReceived;
@@ -89,7 +90,8 @@ final class EmailTemplates
         'assignment.removed' => ['E-09'],
         'course.invited' => ['E-10'],
         'course.unlocked' => ['E-11'],
-        'question.asked' => ['E-12'],
+        // E-41: the lesson and its course have no instructor — the team gets it.
+        'question.asked' => ['E-12', 'E-41'],
         'question.answered' => ['E-13'],
         'internship.accepted' => ['E-14'],
         'internship.returned' => ['E-15'],
@@ -104,7 +106,16 @@ final class EmailTemplates
         'cooperation_request.answered' => ['E-24'],
         'supervision.reminder' => ['E-25'],
         'supervision.slot_cancelled' => ['E-26', 'E-27'],
+        'access.expiring_7d' => ['E-29'],
+        'access.expired' => ['E-30'],
+        'cooperation_request.created' => ['E-39'],
     ];
+
+    /**
+     * `email: ['template' => EmailTemplates::NONE]` — bell only for this one
+     * call (E-08 is not sent when the instructor created the course).
+     */
+    public const string NONE = 'none';
 
     /**
      * Bell only, no e-mail: the approved content removed these e-mails.
@@ -121,7 +132,8 @@ final class EmailTemplates
     ];
 
     /**
-     * Mails sent outside the notification bus.
+     * Mails sent outside the notification bus (E-31 and E-40 go only to the
+     * outbox, like E-03).
      *
      * @var array<string, string>
      */
@@ -131,6 +143,8 @@ final class EmailTemplates
         AdminUserController::class => 'E-03',
         HelpMessageConfirmation::class => 'E-04',
         HelpMessageReceived::class => 'E-05',
+        CheckExpiredAccess::class => 'E-31',
+        AdminUserController::class.'::block' => 'E-40',
     ];
 
     public static function view(string $number): string
@@ -168,12 +182,30 @@ final class EmailTemplates
     }
 
     /**
-     * The e-mail of a notification type; `$template` picks one of the type's
-     * own e-mails and never one of another type.
+     * Whether the person can switch off the e-mail of this type for
+     * themselves („Osoba może wyłączyć w Profilu”); the bell stays.
      */
-    public static function forNotification(string $type, ?string $template = null): string
+    public static function personSwitchable(string $type): bool
+    {
+        $numbers = self::NOTIFICATIONS[$type] ?? [];
+
+        return $numbers !== [] && array_all(
+            $numbers,
+            fn (string $number): bool => self::TEMPLATES[$number]['switch'] === self::PERSON,
+        );
+    }
+
+    /**
+     * The e-mail of a notification type; `$template` picks one of the type's
+     * own e-mails and never one of another type, or `NONE` for no e-mail.
+     */
+    public static function forNotification(string $type, ?string $template = null): ?string
     {
         $numbers = self::NOTIFICATIONS[$type] ?? throw new InvalidArgumentException("No e-mail for notification type {$type}.");
+
+        if ($template === self::NONE) {
+            return null;
+        }
 
         if ($template === null) {
             return $numbers[0];

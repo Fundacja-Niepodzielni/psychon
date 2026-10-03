@@ -21,6 +21,7 @@ use App\Services\H18\UserAnonymizer;
 use App\Services\H18\UserNumberSourcesQuery;
 use App\Support\AuditLog;
 use App\Support\Csv;
+use App\Support\Emails\EmailOutbox;
 use App\Support\Emails\EmailRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -268,6 +269,9 @@ class AdminUserController extends Controller
             AuditLog::record($request->user(), 'user.blocked', $user, [
                 'reason' => $reason,
             ]);
+
+            // E-40: krótka informacja bez powodu blokady.
+            EmailOutbox::simulate($user, 'E-40');
 
             return $user;
         });

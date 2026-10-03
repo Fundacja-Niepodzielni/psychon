@@ -110,14 +110,20 @@ class NotificationSettingsTest extends TestCase
         $this->assertFalse($types->contains('type', 'supervision.reminder'));
     }
 
-    // --- lista przełączników: 20 typów po aneksie kontraktu z 2026-09-28 (2) -------------
+    // --- lista przełączników: 20 typów po aneksie kontraktu z 2026-09-28 (2) i trzy typy ---
+    // --- e-maili o końcu dostępu i nowym zgłoszeniu współpracy (E-29, E-30, E-39) ----------
 
-    public function test_types_registry_has_twenty_entries_including_the_three_added_by_the_annex(): void
+    public function test_types_registry_has_the_annex_entries_and_the_three_e_mail_types(): void
     {
-        $this->assertCount(20, NotificationSettings::TYPES);
+        $this->assertCount(23, NotificationSettings::TYPES);
+        $this->assertSame(NotificationSettings::TYPES, array_values(array_unique(NotificationSettings::TYPES)));
         $this->assertContains('cooperation_request.answered', NotificationSettings::TYPES);
         $this->assertContains('internship.rejected', NotificationSettings::TYPES);
         $this->assertContains('supervision.slot_cancelled', NotificationSettings::TYPES);
+        $this->assertContains('access.expiring_7d', NotificationSettings::TYPES);
+        $this->assertContains('access.expired', NotificationSettings::TYPES);
+        $this->assertContains('cooperation_request.created', NotificationSettings::TYPES);
+        $this->assertNotContains('supervision.reminder', NotificationSettings::TYPES);
     }
 
     public function test_default_state_includes_the_three_new_types_enabled(): void

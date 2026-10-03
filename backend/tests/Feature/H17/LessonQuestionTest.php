@@ -63,18 +63,28 @@ class LessonQuestionTest extends TestCase
             ->where('type', 'question.asked')->count());
     }
 
-    public function test_no_notification_when_the_lesson_has_no_addressee(): void
+    public function test_question_without_addressee_goes_to_the_foundation_team_only(): void
     {
         $lesson = $this->unlockedLesson();
         $lesson->course->assignments()->update(['unassigned_at' => now()]);
         $before = Notification::count();
+        $lastId = (int) Notification::max('id');
+        $team = User::query()->whereIn('role', ['project_manager', 'super_admin'])
+            ->where('status', 'active')->orderBy('id')->pluck('id')->all();
 
         $this->actingAs($this->user('marta@demo.pl'), 'keycloak');
         $this->postJson("/api/v1/lessons/{$lesson->id}/questions", [
             'question' => 'Pytanie bez adresata.',
         ])->assertCreated();
 
-        $this->assertSame($before, Notification::count());
+        // E-41: bez prowadzącego pytanie trafia do zespołu Fundacji (każdy
+        // aktywny Opiekun Projektu i Super Admin, osobno), bez treści pytania.
+        $this->assertNotSame([], $team);
+        $this->assertSame($before + count($team), Notification::count());
+        $this->assertSame($team, Notification::query()->where('type', 'question.asked')
+            ->where('id', '>', $lastId)->orderBy('user_id')->pluck('user_id')->all());
+        $this->assertSame(0, Notification::query()->where('type', 'question.asked')
+            ->where('body', 'like', '%Pytanie bez adresata.%')->count());
         $this->assertSame(1, InstructorQuestion::where('lesson_id', $lesson->id)
             ->where('question', 'Pytanie bez adresata.')->count());
     }

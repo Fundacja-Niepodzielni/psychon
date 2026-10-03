@@ -14,7 +14,8 @@ use App\Models\Setting;
  *
  * `TYPES` to dokładnie lista z kontraktu §3.1 bez `supervision.reminder` —
  * ten typ ma własny, osobny blok (`supervision_reminder`), bo niesie też
- * godzinę wysyłki, nie tylko flagę włącz/wyłącz.
+ * godzinę wysyłki, nie tylko flagę włącz/wyłącz — oraz trzy typy e-maili
+ * o końcu dostępu i nowym zgłoszeniu współpracy (E-29, E-30, E-39).
  *
  * `email_contact` to „Kontakt w e-mailach”: tekst linii „Kontakt z Fundacją”
  * w stopce e-maili (`EmailContact`). Pusty — linii nie ma.
@@ -44,6 +45,9 @@ final class NotificationSettings
         'export.ready',
         'cooperation_request.answered',
         'supervision.slot_cancelled',
+        'access.expiring_7d',
+        'access.expired',
+        'cooperation_request.created',
     ];
 
     public const int EMAIL_CONTACT_MAX = 300;

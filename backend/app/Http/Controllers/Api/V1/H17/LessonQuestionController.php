@@ -11,6 +11,7 @@ use App\Models\Lesson;
 use App\Models\User;
 use App\Services\H17\QuestionRouting;
 use App\Services\Lessons\LessonAccess;
+use App\Support\Emails\FoundationTeam;
 use App\Support\Notify;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -94,14 +95,28 @@ class LessonQuestionController extends Controller
 
     /**
      * A lesson with no active assignment has no addressee — the question is still
-     * recorded, but nobody is notified. Rejecting it would punish the asker for a
-     * gap in the administration's configuration.
+     * recorded (rejecting it would punish the asker for a gap in the
+     * administration's configuration), and the Foundation's team gets E-41 to
+     * assign an instructor. The team's copy carries no question text.
      */
     private function notifyInstructor(Lesson $lesson, InstructorQuestion $question): void
     {
         $instructor = QuestionRouting::forLesson($lesson);
 
         if (! $instructor instanceof User) {
+            $courseTitle = (string) $lesson->course?->title;
+
+            foreach (FoundationTeam::members() as $member) {
+                Notify::send(
+                    $member,
+                    'question.asked',
+                    'Pytanie do lekcji bez prowadzącego',
+                    "Pytanie do lekcji „{$lesson->title}” w kursie „{$courseTitle}” czeka na przypisanie prowadzącego.",
+                    '/admin/kursy',
+                    email: ['template' => 'E-41', 'lessonTitle' => $lesson->title, 'courseTitle' => $courseTitle],
+                );
+            }
+
             return;
         }
 
