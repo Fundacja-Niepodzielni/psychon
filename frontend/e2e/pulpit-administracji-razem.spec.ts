@@ -7,8 +7,9 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
 /**
  * Stopka „Razem” listy „Co czeka na decyzję” na pulpicie administracji:
  * - od 640 px (miara przy 1280) liczba „Razem” stoi w kolumnie liczb wierszy:
- *   prawa krawędź liczby jest równa prawej krawędzi liczb wierszy (±1 px), a przy
- *   liczbach o tej samej szerokości (jednocyfrowe, ta sama jednostka) także lewa;
+ *   prawa krawędź liczby jest równa prawej krawędzi liczb wierszy (±1 px) zawsze; lewa
+ *   tylko przy liczbach o tej samej szerokości (jednocyfrowe, ta sama jednostka) i tej
+ *   samej wadze czcionki liczby w stopce i w wierszu (patrz komentarz przy porównaniu);
  * - axe (WCAG 2.1 AA) na pulpicie przy 1280 i 390 px: bez naruszeń;
  * - poniżej 640 px (miara przy 390) stopka nie zmienia się: styl obliczony stopki i
  *   jej liczby oraz prostokąty są takie jak w stanie bazowym; komórki stopki bez treści
@@ -86,10 +87,12 @@ function stopka(page: Page, suma: number): Locator {
   return listaSpraw(page).getByText(new RegExp(`^Razem\\s*${suma}\\s*spraw$`));
 }
 
-async function krawedzie(liczba: Locator, opis: string): Promise<{ lewa: number; prawa: number }> {
+async function krawedzie(liczba: Locator, opis: string): Promise<{ lewa: number; prawa: number; waga: string }> {
   const pudelko = await liczba.boundingBox();
   expect(pudelko, opis).not.toBeNull();
-  return { lewa: pudelko!.x, prawa: pudelko!.x + pudelko!.width };
+  // Waga czcionki tego samego elementu, którego krawędzie mierzymy (odczyt z przeglądarki).
+  const waga = await liczba.evaluate((el) => getComputedStyle(el).fontWeight);
+  return { lewa: pudelko!.x, prawa: pudelko!.x + pudelko!.width, waga };
 }
 
 async function otworz(page: Page, dane: DanePulpitu, suma: number): Promise<Locator> {
@@ -125,6 +128,8 @@ test.describe("pulpit administracji 1280 px — liczba „Razem” w kolumnie li
 
       const liczbaRazem = await krawedzie(pasek.getByText(/^\d+\s*spraw$/), "liczba w stopce „Razem”");
       let sprawdzone = 0;
+      let leweZgodne = 0;
+      let lewePominiete = 0;
       for (const nazwa of NAZWY) {
         const wiersz = listaSpraw(page).locator('[role="row"][data-wiersz]').filter({ hasText: nazwa });
         const sasiad = await krawedzie(wiersz.getByText(/^\d+\s*spraw$/), `liczba w wierszu „${nazwa}”`);
@@ -132,15 +137,33 @@ test.describe("pulpit administracji 1280 px — liczba „Razem” w kolumnie li
           Math.abs(liczbaRazem.prawa - sasiad.prawa),
           `prawa krawędź liczby: „Razem” (${liczbaRazem.prawa}) a „${nazwa}” (${sasiad.prawa})`,
         ).toBeLessThanOrEqual(1);
+        // Lewa krawędź ma sens tylko przy liczbach tej samej szerokości. Szerokość napisu „spraw”
+        // zależy od wagi czcionki: pogrubiony napis w wierszu sumy (waga 700) ma 46 px, zwykły
+        // (waga 400) 43 px, więc przy różnej wadze lewe krawędzie nie mogą się zgadzać, a liczby
+        // i tak są wyrównane do prawej (prawa krawędź jest porównywana zawsze, wyżej).
+        // Przy różnej wadze lewa krawędź nie jest porównywana, ale przypadek zapisuje to jawnie
+        // w adnotacji, a liczby porównanych i pominiętych wierszy muszą się sumować do wszystkich.
         if (takaSamaSzerokosc) {
-          expect(
-            Math.abs(liczbaRazem.lewa - sasiad.lewa),
-            `lewa krawędź liczby: „Razem” (${liczbaRazem.lewa}) a „${nazwa}” (${sasiad.lewa})`,
-          ).toBeLessThanOrEqual(1);
+          if (liczbaRazem.waga === sasiad.waga) {
+            expect(
+              Math.abs(liczbaRazem.lewa - sasiad.lewa),
+              `lewa krawędź liczby (waga ${liczbaRazem.waga}): „Razem” (${liczbaRazem.lewa}) a „${nazwa}” (${sasiad.lewa})`,
+            ).toBeLessThanOrEqual(1);
+            leweZgodne += 1;
+          } else {
+            test.info().annotations.push({
+              type: "lewa krawędź pominięta",
+              description: `„${nazwa}”: waga liczby w stopce ${liczbaRazem.waga}, w wierszu ${sasiad.waga}`,
+            });
+            lewePominiete += 1;
+          }
         }
         sprawdzone += 1;
       }
       expect(sprawdzone, "porównane wiersze").toBe(NAZWY.length);
+      if (takaSamaSzerokosc) {
+        expect(leweZgodne + lewePominiete, "wiersze z lewą krawędzią porównaną albo jawnie pominiętą").toBe(NAZWY.length);
+      }
 
       // Przyczyna: liczba stoi w komórce kolumny liczb, a komórka akcji w stopce jest pusta
       // i nie ma wysokości (nie podnosi stopki).
