@@ -30,8 +30,8 @@ class NotificationSettingsController extends Controller
     }
 
     /**
-     * @param  array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}  $state
-     * @return array{types: list<array{type: string, enabled: bool}>, supervision_reminder: array{enabled: bool, send_at: string}}
+     * @param  array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}  $state
+     * @return array{types: list<array{type: string, enabled: bool}>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}
      */
     private function payload(array $state): array
     {
@@ -43,6 +43,7 @@ class NotificationSettingsController extends Controller
         return [
             'types' => $types,
             'supervision_reminder' => $state['supervision_reminder'],
+            'email_contact' => $state['email_contact'],
         ];
     }
 }

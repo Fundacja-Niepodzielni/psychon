@@ -13,6 +13,8 @@ use Illuminate\Validation\Rule;
  * (ten typ ma osobny blok) — kod spoza listy albo `supervision.reminder` w `types`
  * kończy się tym samym `422 validation_failed` przez regułę `in`.
  * `supervision_reminder.send_at` przyjmuje wyłącznie pełną godzinę `HH:00` (00–23).
+ * `email_contact` („Kontakt w e-mailach”) jest tekstem albo pustą wartością,
+ * która usuwa linię kontaktu z e-maili.
  */
 class UpdateNotificationSettingsRequest extends FormRequest
 {
@@ -32,6 +34,8 @@ class UpdateNotificationSettingsRequest extends FormRequest
             'supervision_reminder' => ['sometimes', 'array:enabled,send_at'],
             'supervision_reminder.enabled' => ['sometimes', 'boolean'],
             'supervision_reminder.send_at' => ['sometimes', 'string', 'regex:/^([01]\d|2[0-3]):00$/'],
+
+            'email_contact' => ['sometimes', 'nullable', 'string', 'max:'.NotificationSettings::EMAIL_CONTACT_MAX],
         ];
     }
 
@@ -44,6 +48,8 @@ class UpdateNotificationSettingsRequest extends FormRequest
             'types.*.enabled.boolean' => 'Pole musi mieć wartość tak albo nie.',
             'supervision_reminder.enabled.boolean' => 'Pole musi mieć wartość tak albo nie.',
             'supervision_reminder.send_at.regex' => 'Godzina musi mieć postać HH:00 (00–23).',
+            'email_contact.string' => 'Kontakt musi być tekstem.',
+            'email_contact.max' => 'Kontakt może mieć najwyżej :max znaków.',
         ];
     }
 }

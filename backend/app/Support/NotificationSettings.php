@@ -15,6 +15,9 @@ use App\Models\Setting;
  * `TYPES` to dokładnie lista z kontraktu §3.1 bez `supervision.reminder` —
  * ten typ ma własny, osobny blok (`supervision_reminder`), bo niesie też
  * godzinę wysyłki, nie tylko flagę włącz/wyłącz.
+ *
+ * `email_contact` to „Kontakt w e-mailach”: tekst linii „Kontakt z Fundacją”
+ * w stopce e-maili (`EmailContact`). Pusty — linii nie ma.
  */
 final class NotificationSettings
 {
@@ -43,12 +46,14 @@ final class NotificationSettings
         'supervision.slot_cancelled',
     ];
 
+    public const int EMAIL_CONTACT_MAX = 300;
+
     public const string DEFAULT_SEND_AT = '08:00';
 
     /**
      * Pełny stan: wszystkie typy scalone z zapisem administracji.
      *
-     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}
+     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}
      */
     public static function get(): array
     {
@@ -70,7 +75,7 @@ final class NotificationSettings
      * zwraca pełny stan po zapisie.
      *
      * @param  array<string, mixed>  $patch
-     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}
+     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}
      */
     public static function put(array $patch): array
     {
@@ -108,13 +113,22 @@ final class NotificationSettings
     }
 
     /**
-     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}
+     * „Kontakt w e-mailach” — null, gdy administracja go nie podała.
+     */
+    public static function emailContact(): ?string
+    {
+        return self::get()['email_contact'];
+    }
+
+    /**
+     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}
      */
     private static function defaults(): array
     {
         return [
             'types' => array_fill_keys(self::TYPES, true),
             'supervision_reminder' => ['enabled' => true, 'send_at' => self::DEFAULT_SEND_AT],
+            'email_contact' => null,
         ];
     }
 
@@ -122,9 +136,9 @@ final class NotificationSettings
      * Scala stan bazowy z odczytem z bazy — `$decoded['types']` jest mapą
      * `typ => bool` (kształt wewnętrzny, ten sam co `defaults()`).
      *
-     * @param  array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}  $base
+     * @param  array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}  $base
      * @param  array<string, mixed>  $decoded
-     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}
+     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}
      */
     private static function mergeStored(array $base, array $decoded): array
     {
@@ -148,6 +162,10 @@ final class NotificationSettings
             }
         }
 
+        if (array_key_exists('email_contact', $decoded)) {
+            $base['email_contact'] = self::normalizedContact($decoded['email_contact']);
+        }
+
         return $base;
     }
 
@@ -156,9 +174,9 @@ final class NotificationSettings
      * bazowy — `$patch['types']` jest LISTĄ `{type, enabled}` (kształt
      * zewnętrzny/kontraktowy), inny niż kształt wewnętrzny z `mergeStored`.
      *
-     * @param  array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}  $base
+     * @param  array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}  $base
      * @param  array<string, mixed>  $patch
-     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}
+     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}
      */
     private static function applyPatch(array $base, array $patch): array
     {
@@ -186,6 +204,17 @@ final class NotificationSettings
             }
         }
 
+        if (array_key_exists('email_contact', $patch)) {
+            $base['email_contact'] = self::normalizedContact($patch['email_contact']);
+        }
+
         return $base;
+    }
+
+    private static function normalizedContact(mixed $value): ?string
+    {
+        $value = is_string($value) ? trim($value) : '';
+
+        return $value === '' ? null : $value;
     }
 }

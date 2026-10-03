@@ -11,13 +11,14 @@ use Illuminate\Support\Facades\DB;
 /**
  * Zapisuje ustawienia powiadomień administracji i audytuje zmianę.
  * Ładunek audytu niesie wyłącznie kody typów, flagi i godzinę — bez
- * wolnego tekstu (errata kontraktu 2026-09-18).
+ * wolnego tekstu (errata kontraktu 2026-09-18), więc bez „Kontaktu
+ * w e-mailach”, który administracja wpisuje ręcznie.
  */
 final class NotificationSettingsUpdater
 {
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}}
+     * @return array{types: array<string, bool>, supervision_reminder: array{enabled: bool, send_at: string}, email_contact: ?string}
      */
     public static function update(array $validated, User $actor): array
     {

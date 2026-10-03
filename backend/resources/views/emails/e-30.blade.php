@@ -8,8 +8,10 @@
     </x-email.paragraph>
     <x-email.next-steps>
         Jeśli chcesz dokończyć program, napisz do Fundacji przez okno „Potrzebujesz pomocy?” w
-        panelu PsychON. Okno pomocy działa także po zakończeniu dostępu. Możesz też skontaktować się
-        z Fundacją: {{ $contact }}.
+        panelu PsychON. Okno pomocy działa także po zakończeniu dostępu.
+        @if ($hasContact)
+            Możesz też skontaktować się z Fundacją: {{ $contact }}.
+        @endif
     </x-email.next-steps>
     <x-email.button-row label="Otwórz PsychON" path="/dostep-wygasl" />
 </x-email.layout>

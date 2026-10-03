@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Emails;
 
+use App\Support\Emails\EmailContact;
 use App\Support\Emails\EmailRenderer;
 use App\Support\Emails\EmailTemplates;
 use App\Support\Emails\RenderedEmail;
+use App\Support\NotificationSettings;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -14,11 +16,13 @@ use Tests\TestCase;
  * zatwierdzony wzorzec wyglądu: wersja tekstowa słowo w słowo równa
  * `tests/Fixtures/emails/E-NN.txt`, wersja HTML równa `E-NN.html` po zdjęciu
  * białych znaków między znacznikami. Przykładowe dane i adres platformy
- * (`https://psychon.example.org`) są te same co we wzorcu wyglądu.
+ * (`https://psychon.example.org`) są te same co we wzorcu wyglądu; kontakt
+ * Fundacji ma wartość wzorca („[kontakt Fundacji z panelu administracji]”).
  */
-#[Group('wspolna-baza')]
 class EmailTemplatesTest extends TestCase
 {
+    use RefreshDatabase;
+
     public const string BASE_URL = 'https://psychon.example.org';
 
     private const string FIXTURES = __DIR__.'/../../Fixtures/emails';
@@ -33,6 +37,7 @@ class EmailTemplatesTest extends TestCase
         parent::setUp();
 
         config(['app.url' => self::BASE_URL, 'app.frontend_url' => self::BASE_URL]);
+        NotificationSettings::put(['email_contact' => EmailContact::PLACEHOLDER]);
     }
 
     /**

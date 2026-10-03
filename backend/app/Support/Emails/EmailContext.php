@@ -28,6 +28,7 @@ final class EmailContext
     public function __construct(
         public readonly string $format,
         public readonly string $number,
+        public readonly ?string $contactValue = null,
         public readonly string $preheader = '',
     ) {}
 
@@ -91,9 +92,14 @@ final class EmailContext
      * The Foundation's contact as it stands in running text: the placeholder
      * atom while there is no value from the administration.
      */
+    public function hasContact(): bool
+    {
+        return $this->contactValue !== null && $this->contactValue !== '';
+    }
+
     public function contact(): HtmlString
     {
-        $value = EmailContact::value() ?? '';
+        $value = $this->contactValue ?? '';
 
         if (! $this->isText() && EmailContact::isPlaceholder($value)) {
             return new HtmlString(trim(view('components.email.placeholder', [

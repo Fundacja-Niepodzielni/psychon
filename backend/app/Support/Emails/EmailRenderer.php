@@ -26,11 +26,13 @@ final class EmailRenderer
             throw new InvalidArgumentException("E-mail {$number} needs: ".implode(', ', $missing).'.');
         }
 
-        [$textContext, $textOutput] = self::pass(new EmailContext(EmailContext::TEXT, $number), $data);
+        $contact = EmailContact::value();
+
+        [$textContext, $textOutput] = self::pass(new EmailContext(EmailContext::TEXT, $number, $contact), $data);
         $blocks = EmailContext::textBlocks($textOutput);
         $text = implode("\n\n", array_column($blocks, 'text'))."\n";
 
-        [$htmlContext, $html] = self::pass(new EmailContext(EmailContext::HTML, $number, self::preheader($blocks)), $data);
+        [$htmlContext, $html] = self::pass(new EmailContext(EmailContext::HTML, $number, $contact, self::preheader($blocks)), $data);
         $html = trim($html)."\n";
 
         preg_match('#<body[^>]*>\s*(.*?)\s*</body>#s', $html, $body);
@@ -53,7 +55,11 @@ final class EmailRenderer
         app()->instance(EmailContext::class, $context);
 
         try {
-            $output = self::template($context->number, ['contact' => $context->contact(), ...$data])->render();
+            $output = self::template($context->number, [
+                'contact' => $context->contact(),
+                'hasContact' => $context->hasContact(),
+                ...$data,
+            ])->render();
         } finally {
             if ($previous instanceof EmailContext) {
                 app()->instance(EmailContext::class, $previous);
