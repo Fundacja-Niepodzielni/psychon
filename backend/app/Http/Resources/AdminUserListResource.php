@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\User;
+use App\Services\H12\SupervisorAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,7 +31,43 @@ class AdminUserListResource extends JsonResource
         'created_at',
     ];
 
+    /**
+     * Pola tylko do odczytu spoza pliku CSV (nagłówek CSV to wyłącznie
+     * `FIELDS`): `supervisor` — bieżący prowadzący `{id, name}` albo `null`.
+     * Lista wczytuje przypisania razem z prowadzącym jednym zapytaniem
+     * (`AdminUserController::index`).
+     */
+    public const array READ_ONLY_FIELDS = [
+        'supervisor',
+    ];
+
     public function toArray(Request $request): array
+    {
+        return [
+            ...$this->fields(),
+            'supervisor' => SupervisorAssignmentService::currentSupervisorOf($this->resource),
+        ];
+    }
+
+    /**
+     * Płaski wiersz do CSV — te same pola, wartości jako stringi.
+     *
+     * @return array<string, string>
+     */
+    public function toCsvRow(Request $request): array
+    {
+        return array_map(
+            static fn ($value): string => $value === null ? '' : (string) $value,
+            $this->fields(),
+        );
+    }
+
+    /**
+     * Wartości `FIELDS`, w tej samej kolejności.
+     *
+     * @return array<string, mixed>
+     */
+    private function fields(): array
     {
         return [
             'id' => $this->id,
@@ -44,18 +81,5 @@ class AdminUserListResource extends JsonResource
             'program_completed_at' => $this->program_completed_at?->toIso8601ZuluString(),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];
-    }
-
-    /**
-     * Płaski wiersz do CSV — te same pola, wartości jako stringi.
-     *
-     * @return array<string, string>
-     */
-    public function toCsvRow(Request $request): array
-    {
-        return array_map(
-            static fn ($value): string => $value === null ? '' : (string) $value,
-            $this->toArray($request),
-        );
     }
 }

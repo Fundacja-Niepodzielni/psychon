@@ -48,7 +48,12 @@ class AdminUserController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Bieżące przypisanie z prowadzącym wczytane razem dla całej strony —
+        // pole `supervisor` nie dokłada zapytania na wiersz.
         $paginator = AdminUserQuery::fromRequest($request)
+            ->with(['supervisorAssignments' => fn ($query) => $query
+                ->whereNull('unassigned_at')
+                ->with('supervisor')])
             ->paginate(AdminUserQuery::perPage($request));
 
         return response()->json([

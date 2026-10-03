@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\AuditLogEntry;
 use App\Models\Document;
 use App\Models\User;
+use App\Services\H12\SupervisorAssignmentService;
 use App\Support\ProgressAggregator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -12,7 +13,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Karta osoby w panelu administracji (H18, `GET /admin/users/{id}`),
  * kształt z kontraktu §2 (Panel — osoby): `profile` (jak `/me`, z pełnym
- * PESEL dla administracji), `account` (stan konta), `progress` z jednego agregatora startera,
+ * PESEL dla administracji), `account` (stan i data założenia konta),
+ * `supervisor` (bieżący prowadzący albo `null`), `progress` z jednego agregatora startera,
  * `documents`, `recent_notifications` (odnośniki z tokenem zamaskowane,
  * {@see LinkTokenMask}) i `audit_entries` dotyczące tej osoby.
  *
@@ -40,7 +42,11 @@ class AdminUserCardResource extends JsonResource
             // między formularzem blokady a „Odblokuj konto” (aneks z 2026-10-02).
             'account' => [
                 'status' => $user->status,
+                'created_at' => $user->created_at?->toIso8601ZuluString(),
             ],
+            // Bieżący prowadzący `{id, name}` albo `null` — tylko do odczytu;
+            // zmienia go wyłącznie przypisanie przez administrację.
+            'supervisor' => SupervisorAssignmentService::currentSupervisorOf($user),
             'progress' => [
                 'courses_done' => $progress['courses_done'],
                 'courses_total' => $progress['courses_total'],

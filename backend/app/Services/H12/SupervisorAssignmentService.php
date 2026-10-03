@@ -150,4 +150,38 @@ final class SupervisorAssignmentService
             })
             ->exists();
     }
+
+    /**
+     * Bieżący prowadzący osoby (aktywne przypisanie) albo `null` — pole tylko
+     * do odczytu na liście osób i na karcie osoby. Gdy wołający wczytał już
+     * relację `supervisorAssignments` z prowadzącym (lista osób), nie ma
+     * dodatkowego zapytania; inaczej jedno zapytanie (karta jednej osoby).
+     *
+     * @return array{id: int, name: string}|null
+     */
+    public static function currentSupervisorOf(User $person): ?array
+    {
+        if ($person->relationLoaded('supervisorAssignments')) {
+            /** @var SupervisorAssignment|null $active */
+            $active = $person->supervisorAssignments
+                ->whereNull('unassigned_at')
+                ->sortByDesc('id')
+                ->first();
+            /** @var User|null $supervisor */
+            $supervisor = $active?->supervisor;
+        } else {
+            $supervisor = User::query()
+                ->select('users.*')
+                ->join('supervisor_assignments', 'supervisor_assignments.supervisor_id', '=', 'users.id')
+                ->where('supervisor_assignments.volunteer_id', $person->getKey())
+                ->whereNull('supervisor_assignments.unassigned_at')
+                ->orderByDesc('supervisor_assignments.id')
+                ->first();
+        }
+
+        return $supervisor === null ? null : [
+            'id' => (int) $supervisor->id,
+            'name' => $supervisor->fullName(),
+        ];
+    }
 }
