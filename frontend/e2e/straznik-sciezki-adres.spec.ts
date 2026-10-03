@@ -10,15 +10,25 @@ import { expect, test, type Page } from "@playwright/test";
  * adresu strony.
  *
  * Próba liczy ŻĄDANIA SIECIOWE widziane przez przeglądarkę (`page.on("request")`),
- * nie wywołania funkcji: atrapa API odpowiada przez `page.route`, a każde żądanie,
- * które wyszło z przeglądarki do `localhost:8000`, jest zapisane (także spoza
- * `/api/v1`). Zbudowana aplikacja, bez prawdziwego backendu i bez prawdziwego logowania.
+ * nie wywołania funkcji: atrapa API odpowiada przez `page.route`, a rejestr zapisuje
+ * KAŻDE żądanie strony od wejścia, bez filtra hosta (api, własny origin frontu, każdy
+ * inny origin). Zbudowana aplikacja, bez prawdziwego backendu i bez prawdziwego logowania.
+ *
+ * Każde żądanie jest rozbite przez `new URL(...)` na metodę, origin i ścieżkę i porównywane
+ * DOKŁADNIE (równość trójki metoda + origin + pathname z listą), bez `includes`, `startsWith`
+ * i wyrażeń częściowych na adresie; ta sama ścieżka z inną metodą nie jest dozwolona. Ścieżka
+ * jest przed wyrażeniem o kurs porównywana w postaci zdekodowanej do stabilizacji (najwyżej
+ * `MAKS_DEKODOWAN` razy; błędne kodowanie albo niestabilna ścieżka = żądanie odrzucone), więc
+ * `/admin/%63ourses/…` jest tym samym żądaniem o kurs co `/admin/courses/…`. Jedyny wyjątek od
+ * porównania dokładnego to przedrostek zasobów statycznych własnego frontu (patrz
+ * `PRZEDROSTKI_ZASOBOW_FRONTU`).
  *
  * Dla adresu nieliczbowego wynik jest bezpieczny wyłącznie wtedy, gdy:
- *  - nie wyszło żadne żądanie o kurs (`/admin/courses/…`, `/admin/courses?…`), w żadnej postaci,
- *    także wysłane z opóźnieniem do `OKNO_CISZY_MS` po narysowaniu stanu błędu;
- *  - poza tłem ramki panelu (`ZADANIA_RAMKI`: żądania zmierzone w kontroli dodatniej)
- *    nie wyszło żadne inne żądanie;
+ *  - nie wyszło żadne żądanie o kurs (ścieżka z `/admin/courses`, na KAŻDYM originie
+ *    i w każdej postaci), także wysłane z opóźnieniem do `OKNO_CISZY_MS` po narysowaniu
+ *    stanu błędu;
+ *  - poza dozwolonymi żądaniami (tło ramki panelu, dokument strony i zasoby statyczne
+ *    własnego frontu, zmierzone w kontroli dodatniej) nie wyszło żadne inne żądanie;
  *  - żadne żądanie nie niesie segmentu kropkowego (`.` ani `..`);
  *  - ekran kursu się narysował: nagłówek „Kurs <id>” i komunikat „Nie udało się
  *    wczytać kursu”. Sama ramka panelu to za mało, żeby uznać, że ekran działa.
@@ -31,7 +41,7 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 const ORIGIN = "http://localhost:8000";
-const API = `${ORIGIN}/api/v1`;
+const PRZEDROSTEK_API = "/api/v1";
 
 const ATRAPA_SESJI = {
   accessToken: "atrapa-tokenu-testowego",
@@ -41,13 +51,105 @@ const ATRAPA_SESJI = {
 const META_PUSTA = { current_page: 1, per_page: 100, total: 0, last_page: 1 };
 
 /**
- * Żądania ramki panelu administracji (karta osoby, rok programu, dzwonek powiadomień),
- * zmierzone w kontroli dodatniej; nie zależą od identyfikatora w adresie.
+ * Trójka metoda + origin + pathname jako jeden klucz; metoda nie zawiera spacji, a origin
+ * nie niesie ścieżki, więc złączenie jest jednoznaczne.
  */
-const ZADANIA_RAMKI: readonly string[] = ["/me", "/notifications?per_page=20", "/admin/edition"];
+function klucz(metoda: string, origin: string, pathname: string): string {
+  return `${metoda} ${origin}${pathname}`;
+}
 
-/** Żądanie o kurs w każdej postaci: `/admin/courses/…`, `/admin/courses?…` albo sam `/admin/courses`. */
-const ZADANIE_O_KURS = /^\/admin\/courses(?:[/?#]|$)/;
+/**
+ * Żądania ramki panelu administracji (karta osoby, rok programu, dzwonek powiadomień),
+ * zmierzone w kontroli dodatniej (wszystkie to `GET` typu `fetch`); nie zależą od
+ * identyfikatora w adresie. Porównanie: równość trójki metoda + origin + pathname
+ * (zapytanie nie jest porównywane). Inna metoda na tym samym adresie (np. `PATCH`
+ * na `/admin/edition`) nie jest dozwolona.
+ */
+const ZADANIA_RAMKI: ReadonlySet<string> = new Set(
+  [
+    ["GET", "/me"],
+    ["GET", "/notifications"],
+    ["GET", "/admin/edition"],
+  ].map(([metoda, sciezka]) => klucz(metoda, ORIGIN, `${PRZEDROSTEK_API}${sciezka}`)),
+);
+
+/**
+ * Żądania, które ramka panelu i stopka wysyłają do WŁASNEGO originu frontu, zmierzone w
+ * biegu (wszystkie to `GET`): odczyt sesji i podglądy tras ze stopki (`?_rsc=…` z losowym
+ * zapytaniem, więc porównywana jest sama ścieżka). Origin frontu to origin `baseURL` biegu.
+ * To dokładne trójki metoda + ścieżka, nie przedrostki: żądanie o kurs, inna metoda ani
+ * żadna inna ścieżka frontu się nie zmieści.
+ */
+const ZADANIA_FRONTU: ReadonlyArray<readonly [string, string]> = [
+  ["GET", "/api/auth/session"],
+  ["GET", "/dokumenty-prawne/regulamin"],
+  ["GET", "/dokumenty-prawne/polityka"],
+  ["GET", "/deklaracja-dostepnosci"],
+];
+
+/**
+ * Zasoby statyczne zbudowanej aplikacji, pobierane z własnego originu frontu przy
+ * każdym wejściu na stronę: skrypty i arkusze z `/_next/static/` oraz czcionki z `/fonts/`
+ * (zmierzone: 15 skryptów i 3 arkusze o nazwach z sumą kontrolną, które zmieniają się
+ * z każdym budowaniem, więc nie da się ich wypisać z nazwy). Przedrostek dotyczy
+ * wyłącznie originu frontu, metody GET i typów zasobu `TYPY_ZASOBOW_STATYCZNYCH` (żądanie
+ * `fetch` pod tym przedrostkiem nie jest zasobem statycznym) i nigdy nie obejmuje
+ * ścieżki o kurs: ta jest odrzucana wcześniej, na każdym originie i w postaci zdekodowanej.
+ */
+const PRZEDROSTKI_ZASOBOW_FRONTU: readonly string[] = ["/_next/static/", "/fonts/"];
+const TYPY_ZASOBOW_STATYCZNYCH: readonly string[] = ["script", "stylesheet", "font", "image"];
+
+/**
+ * Żądanie o kurs w każdej postaci i na KAŻDYM originie: ścieżka niosąca `/admin/courses`
+ * jako segment (`/api/v1/admin/courses/…`, `/admin/courses?…`, sam `/admin/courses`),
+ * także gdy zapytanie ma w sobie dozwolony fragment. Sprawdzane po `new URL`, na ścieżce
+ * w postaci ZNORMALIZOWANEJ (`znormalizujSciezke`), a nie surowej: `/admin/%63ourses/…`,
+ * `%2563` i `%2F` są tym samym żądaniem o kurs co `/admin/courses/…`.
+ */
+const ZADANIE_O_KURS = /\/admin\/courses(?:\/|$)/i;
+
+/** Ile razy ścieżka jest dekodowana, zanim uznamy, że się nie stabilizuje (zakodowana wielokrotnie ponad miarę). */
+const MAKS_DEKODOWAN = 3;
+
+/**
+ * Ścieżka żądania w postaci znormalizowanej: dekodowana (`decodeURIComponent`) do stabilizacji,
+ * najwyżej `MAKS_DEKODOWAN` razy. Zwraca `null` (żądanie odrzucane), gdy kodowanie jest błędne
+ * (`URIError`) albo ścieżka po `MAKS_DEKODOWAN` dekodowaniach nadal się zmienia.
+ */
+function znormalizujSciezke(pathname: string): string | null {
+  let biezaca = pathname;
+  for (let i = 0; i < MAKS_DEKODOWAN; i += 1) {
+    let dalej: string;
+    try {
+      dalej = decodeURIComponent(biezaca);
+    } catch {
+      return null;
+    }
+    if (dalej === biezaca) return biezaca;
+    biezaca = dalej;
+  }
+  try {
+    return decodeURIComponent(biezaca) === biezaca ? biezaca : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Czy żądanie jest o kurs (po normalizacji). Ścieżka, której nie da się znormalizować, nie jest tu „o kurs”: odrzuca ją `czyDozwolone`. */
+function czyZadanieOKurs(pathname: string): boolean {
+  const znormalizowana = znormalizujSciezke(pathname);
+  return znormalizowana !== null && ZADANIE_O_KURS.test(znormalizowana);
+}
+
+/**
+ * Trasy atrapy prawdziwego kursu `4`, jedyne żądania o kurs dozwolone w kontroli
+ * dodatniej (dokładne trójki metoda + origin + pathname; wszystkie `GET`, zmierzone w biegu).
+ */
+const ZADANIA_KURSU_4: ReadonlySet<string> = new Set(
+  ["/admin/courses/4", "/admin/courses/4/lessons", "/admin/courses/4/topics", "/admin/courses/4/assignments", "/admin/courses/4/tests"].map(
+    (sciezka) => klucz("GET", ORIGIN, `${PRZEDROSTEK_API}${sciezka}`),
+  ),
+);
 
 /** Najdłuższy czas oczekiwania na nagłówek stanu ekranu kursu; po nim przypadek pada na asercji ekranu. */
 const LIMIT_EKRANU_MS = 10_000;
@@ -112,21 +214,46 @@ function lekcja(id: number, title: string, pozycja: number) {
 const LEKCJE = [lekcja(21, "Wprowadzenie do wywiadu", 1), lekcja(22, "Pytania otwarte i zamknięte", 2)];
 const TEMATY = [{ id: 7, course_id: 4, title: "Podstawy", position: 1, lesson_ids: [21, 22], created_at: null, updated_at: null }];
 
+/** Jedno żądanie strony, rozbite przez `new URL(...)`. */
+interface ZapisZadania {
+  metoda: string;
+  typ: string;
+  origin: string;
+  pathname: string;
+  search: string;
+}
+
+/** Skrócony zapis do komunikatów asercji. */
+function opis(zadanie: ZapisZadania): string {
+  return `${zadanie.metoda} ${zadanie.typ} ${zadanie.origin}${zadanie.pathname}${zadanie.search}`;
+}
+
+interface Rejestr {
+  /** Wszystkie żądania strony od wejścia, w kolejności wysłania, bez żadnego filtra. */
+  zadania: ZapisZadania[];
+}
+
 /**
- * Atrapy API i zapis ścieżek żądań wysłanych do `localhost:8000`. Ścieżki spod
- * `/api/v1` są zapisane bez adresu bazowego; żądanie spoza `/api/v1` dostaje
- * przedrostek `!`, więc nigdy nie wygląda jak tło ramki ani jak żądanie o kurs.
- * Z atrapą kursu (`zKursem`) trasy kursu `4` zwracają prawdziwe dane.
+ * Atrapy API i rejestr WSZYSTKICH żądań strony (`page.on("request")` przed `page.goto`).
+ * Atrapa odpowiada tylko na `localhost:8000/api/v1/**`; żądanie na inny origin nie dostaje
+ * atrapy, ale i tak jest w rejestrze. Z atrapą kursu (`zKursem`) trasy kursu `4` zwracają
+ * prawdziwe dane.
  */
-async function instalujAtrapy(page: Page, zKursem = false): Promise<{ sciezki: string[] }> {
-  const sciezki: string[] = [];
+async function instalujAtrapy(page: Page, zKursem = false): Promise<Rejestr> {
+  const zadania: ZapisZadania[] = [];
   page.on("request", (zadanie) => {
-    const adres = zadanie.url();
-    if (adres.startsWith(`${API}/`) || adres === API) sciezki.push(adres.slice(API.length));
-    else if (adres.startsWith(ORIGIN)) sciezki.push(`!${adres.slice(ORIGIN.length)}`);
+    const adres = new URL(zadanie.url());
+    zadania.push({
+      metoda: zadanie.method(),
+      typ: zadanie.resourceType(),
+      origin: adres.origin,
+      pathname: adres.pathname,
+      search: adres.search,
+    });
   });
 
   // Ogólna atrapa jest rejestrowana PIERWSZA: Playwright wybiera trasę zarejestrowaną później jako pierwszą.
+  const API = `${ORIGIN}${PRZEDROSTEK_API}`;
   await page.route(`${API}/**`, (route) => route.fulfill(json([], META_PUSTA)));
   await page.route(`${API}/me`, (route) =>
     route.fulfill(json({ id: 1, role: "project_manager", first_name: "Anna", program_completed_at: null })),
@@ -151,26 +278,60 @@ async function instalujAtrapy(page: Page, zKursem = false): Promise<{ sciezki: s
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ATRAPA_SESJI) }),
   );
   await page.route("**/api/auth/end-session-url", (route) => route.fulfill(json({ url: null })));
-  return { sciezki };
+  return { zadania };
 }
 
-function zadaniaKursu(sciezki: string[]): string[] {
-  return sciezki.filter((sciezka) => ZADANIE_O_KURS.test(sciezka));
+/** Kontekst klasyfikacji: origin frontu (z `baseURL`) i ścieżka dokumentu, na który wchodzi próba. */
+interface Kontekst {
+  originFrontu: string;
+  sciezkaDokumentu: string;
+  /** Dodatkowe dokładne pary origin + pathname dozwolone w tym przypadku (kontrola dodatnia: trasy kursu `4`). */
+  dodatkowe?: ReadonlySet<string>;
 }
 
-/** Żądania spoza kursu i spoza tła ramki panelu: z adresu strony nie powinno wyjść żadne. */
-function zadaniaPozaTlem(sciezki: string[]): string[] {
-  return sciezki.filter((sciezka) => !ZADANIE_O_KURS.test(sciezka) && !ZADANIA_RAMKI.includes(sciezka));
+function kontekst(baseURL: string | undefined, adres: string, dodatkowe?: ReadonlySet<string>): Kontekst {
+  if (baseURL === undefined) throw new Error("brak baseURL biegu: nie da się ustalić originu frontu");
+  const wejscie = new URL(adres, baseURL);
+  return { originFrontu: new URL(baseURL).origin, sciezkaDokumentu: wejscie.pathname, dodatkowe };
+}
+
+/** Czy żądanie jest na liście dozwolonych. Kolejność: dokładne wyjątki, ścieżka nienormalizowalna i żądanie o kurs (zawsze odmowa), listy (zawsze z metodą). */
+function czyDozwolone(zadanie: ZapisZadania, ctx: Kontekst): boolean {
+  const para = klucz(zadanie.metoda, zadanie.origin, zadanie.pathname);
+  if (ctx.dodatkowe?.has(para)) return true;
+  if (znormalizujSciezke(zadanie.pathname) === null) return false;
+  if (czyZadanieOKurs(zadanie.pathname)) return false;
+  if (ZADANIA_RAMKI.has(para)) return true;
+  if (zadanie.origin !== ctx.originFrontu) return false;
+  if (zadanie.metoda === "GET" && zadanie.typ === "document" && zadanie.pathname === ctx.sciezkaDokumentu) return true;
+  if (ZADANIA_FRONTU.some(([metoda, sciezka]) => klucz(metoda, ctx.originFrontu, sciezka) === para)) return true;
+  return (
+    zadanie.metoda === "GET" &&
+    TYPY_ZASOBOW_STATYCZNYCH.includes(zadanie.typ) &&
+    PRZEDROSTKI_ZASOBOW_FRONTU.some((przedrostek) => zadanie.pathname.startsWith(przedrostek))
+  );
+}
+
+/** Żądania o kurs, na dowolnym originie. */
+function zadaniaKursu(rejestr: Rejestr): string[] {
+  return rejestr.zadania.filter((zadanie) => czyZadanieOKurs(zadanie.pathname)).map(opis);
+}
+
+/** Żądania spoza listy dozwolonych (w tym każde żądanie o kurs, które nie jest wyjątkiem przypadku). */
+function zadaniaZakazane(rejestr: Rejestr, ctx: Kontekst): string[] {
+  return rejestr.zadania.filter((zadanie) => !czyDozwolone(zadanie, ctx)).map(opis);
 }
 
 /** Ścieżki z segmentem kropkowym (`.` albo `..`), także na końcu: parser zwinąłby je i żądanie zmieniłoby cel. */
-function zadaniaZSegmentemKropkowym(sciezki: string[]): string[] {
-  return sciezki.filter((sciezka) => /(^|\/)\.{1,2}(\/|$|\?)/.test(sciezka));
+function zadaniaZSegmentemKropkowym(rejestr: Rejestr): string[] {
+  return rejestr.zadania
+    .filter((zadanie) => /(^|\/)\.{1,2}(\/|$|\?)/.test(`${zadanie.pathname}${zadanie.search}`))
+    .map(opis);
 }
 
-/** Ścieżki z napisem, który zdradza nieustalony identyfikator (`undefined`, `NaN`). */
-function zadaniaZNieustalonymId(sciezki: string[]): string[] {
-  return sciezki.filter((sciezka) => /undefined|NaN/.test(sciezka));
+/** Żądania z napisem, który zdradza nieustalony identyfikator (`undefined`, `NaN`). */
+function zadaniaZNieustalonymId(rejestr: Rejestr): string[] {
+  return rejestr.zadania.filter((zadanie) => /undefined|NaN/.test(`${zadanie.pathname}${zadanie.search}`)).map(opis);
 }
 
 test.use({ viewport: { width: 1280, height: 900 } });
@@ -178,18 +339,22 @@ test.use({ viewport: { width: 1280, height: 900 } });
 test.describe("spreparowany adres strony a żądanie do API", () => {
   test("kontrola dodatnia: poprawny identyfikator i prawdziwy kurs dają GET /admin/courses/4 i nagłówek kursu", async ({
     page,
+    baseURL,
   }) => {
-    const { sciezki } = await instalujAtrapy(page, true);
+    const rejestr = await instalujAtrapy(page, true);
+    const adres = "/admin/kursy/4";
+    const ctx = kontekst(baseURL, adres, ZADANIA_KURSU_4);
 
-    await page.goto("/admin/kursy/4", { waitUntil: "networkidle" });
+    await page.goto(adres, { waitUntil: "networkidle" });
 
     await expect(page.getByRole("heading", { level: 1, name: TYTUL_KURSU })).toBeVisible();
     await expect(page.getByText("Coś poszło nie tak")).toHaveCount(0);
-    const opisZadan = `żądania do API: ${JSON.stringify(sciezki)}`;
-    expect(sciezki, opisZadan).toContain("/admin/courses/4");
-    expect(sciezki, opisZadan).toContain("/admin/edition");
-    expect(zadaniaZNieustalonymId(sciezki), `żądanie z nieustalonym identyfikatorem; ${opisZadan}`).toEqual([]);
-    expect(zadaniaPozaTlem(sciezki), `ramka panelu wysłała żądanie spoza znanego tła; ${opisZadan}`).toEqual([]);
+    const wyszly = new Set(rejestr.zadania.map((zadanie) => klucz(zadanie.metoda, zadanie.origin, zadanie.pathname)));
+    const opisZadan = `żądań strony: ${rejestr.zadania.length}`;
+    expect(wyszly.has(klucz("GET", ORIGIN, `${PRZEDROSTEK_API}/admin/courses/4`)), `brak GET /admin/courses/4; ${opisZadan}`).toBe(true);
+    expect(wyszly.has(klucz("GET", ORIGIN, `${PRZEDROSTEK_API}/admin/edition`)), `brak GET /admin/edition; ${opisZadan}`).toBe(true);
+    expect(zadaniaZNieustalonymId(rejestr), `żądanie z nieustalonym identyfikatorem; ${opisZadan}`).toEqual([]);
+    expect(zadaniaZakazane(rejestr, ctx), `żądanie spoza listy dozwolonych; ${opisZadan}`).toEqual([]);
   });
 
   // Adres wpisany w pasek.
@@ -206,12 +371,14 @@ test.describe("spreparowany adres strony a żądanie do API", () => {
     ["/admin/kursy/x.", "segment z końcową kropką"],
   ];
 
-  for (const [adres, opis] of SPREPAROWANE) {
-    test(`${adres} (${opis}) — zero żądań o kurs, żadne żądanie nie wychodzi poza tło ramki i nie niesie segmentu kropkowego`, async ({
+  for (const [adres, opisAdresu] of SPREPAROWANE) {
+    test(`${adres} (${opisAdresu}) — zero żądań o kurs, żadne żądanie nie wychodzi poza listę dozwolonych i nie niesie segmentu kropkowego`, async ({
       page,
+      baseURL,
     }) => {
       // Zbieranie żądań startuje tu, przed wejściem na stronę (`page.on("request")` w `instalujAtrapy`).
-      const { sciezki } = await instalujAtrapy(page);
+      const rejestr = await instalujAtrapy(page);
+      const ctx = kontekst(baseURL, adres);
 
       await page.goto(adres, { waitUntil: "networkidle" });
 
@@ -224,10 +391,10 @@ test.describe("spreparowany adres strony a żądanie do API", () => {
       // Okno ciszy: żądania wysłane z opóźnieniem po narysowaniu stanu błędu też są zliczone.
       await page.waitForTimeout(OKNO_CISZY_MS);
 
-      const opisZadan = `żądania do API: ${JSON.stringify(sciezki)}`;
-      expect(zadaniaKursu(sciezki), `żądanie o kurs (/admin/courses/… albo /admin/courses?…) przy nieliczbowym adresie; ${opisZadan}`).toEqual([]);
-      expect(zadaniaPozaTlem(sciezki), `żądanie spoza kursu i spoza tła ramki; ${opisZadan}`).toEqual([]);
-      expect(zadaniaZSegmentemKropkowym(sciezki), `segment kropkowy w żądaniu; ${opisZadan}`).toEqual([]);
+      const opisZadan = `żądań strony: ${rejestr.zadania.length}`;
+      expect(zadaniaKursu(rejestr), `żądanie o kurs (ścieżka z /admin/courses, dowolny origin) przy nieliczbowym adresie; ${opisZadan}`).toEqual([]);
+      expect(zadaniaZakazane(rejestr, ctx), `żądanie spoza listy dozwolonych (tło ramki, dokument i zasoby własnego frontu); ${opisZadan}`).toEqual([]);
+      expect(zadaniaZSegmentemKropkowym(rejestr), `segment kropkowy w żądaniu; ${opisZadan}`).toEqual([]);
       await expect(page.getByText("Nie udało się wczytać kursu"), "ekran kursu nie pokazał stanu błędu").toBeVisible({
         timeout: LIMIT_EKRANU_MS,
       });
