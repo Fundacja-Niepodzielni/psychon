@@ -659,18 +659,34 @@ export const TOKENY_POZA_ZAKRESEM = [
   { nazwa: "brand", powod: "Barwa marki/fokusu (outline), nie tekst treści ani tło powierzchni." },
   { nazwa: "brand-tint", powod: "Tło akcentu (np. Notice.module.css .info), nie jedna z powierzchni w zakresie." },
   { nazwa: "link", powod: "Barwa łącza — poza zakresem (tekst treści, nie łącza; łącza mierzy część statusowa)." },
-  { nazwa: "primary", powod: "Barwa akcji/przycisku głównego, nie tekst treści na tle powierzchni." },
-  { nazwa: "primary-hover", powod: "Jak wyżej, stan najechania przycisku głównego." },
   { nazwa: "green", powod: "Barwa akcentu (np. pasek postępu), nie tekst treści." },
   { nazwa: "green-tint", powod: "Tło akcentu (np. MenuItem.module.css .biezaca), nie jedna z powierzchni w zakresie." },
   { nazwa: "success", powod: "Barwa stanu — pokryta częścią statusową wyżej." },
   { nazwa: "success-bg", powod: "Tło stanu — pokryte częścią statusową." },
   { nazwa: "warn", powod: "Barwa stanu — jak success wyżej." },
   { nazwa: "warn-bg", powod: "Tło stanu — jak success-bg wyżej." },
-  { nazwa: "error", powod: "Barwa stanu — jak success wyżej." },
-  { nazwa: "error-bg", powod: "Tło stanu — jak success-bg wyżej." },
-  { nazwa: "on-primary", powod: "Barwa tekstu WYŁĄCZNIE na --primary — para własna, nie jedna z powierzchni w zakresie." },
 ];
+
+// Tokeny barw akcji i stanu błędu, które NIE są wyłączone z pomiaru (do
+// tej zmiany `primary`, `primary-hover`, `error`, `error-bg` i `on-primary`
+// stały w `TOKENY_POZA_ZAKRESEM` jako „barwa akcji, nie tekst treści” — i
+// właśnie dlatego nikt nie mierzył przycisku niebezpiecznego: czerwony tekst
+// na zielonym tle miał kontrast 1,22:1 i żaden bieg przyrządu tego nie
+// widział). Dziś:
+//   - `error` jest tekstem (korzeń `TEKSTY_DOKLADNE_NOWY`) i wchodzi do
+//     iloczynu tekst × powierzchnia jak `--ink`;
+//   - tokeny niżej są tłem albo tekstem NA tle akcji i są mierzone PARAMI
+//     STANÓW wyprowadzanymi z prawdziwych reguł CSS atomów
+//     (`PARY_STANOW_Z_CSS`, `zbudujParyStanowZCss`) — nie z listy par pisanej
+//     ręką obok CSS, więc para i kod nie mogą się rozjechać po cichu.
+// Token z tej listy, którego nie ma w tokeny.css, kończy pomiar kodem 2
+// (`sprawdzTokenyStanow`).
+export const TOKENY_PAR_STANOW = ["primary", "primary-hover", "error-bg", "on-primary"];
+
+// Tokeny tekstu spoza korzeni po przedrostku — dopasowanie DOKŁADNE (nie po
+// `${korzeń}-`): `error` jest tekstem, ale `error-bg` jest tłem, więc korzeń
+// `error` po przedrostku zaklasyfikowałby tło jako tekst.
+const TEKSTY_DOKLADNE_NOWY = ["error"];
 
 /** Wycina treść PIERWSZEGO bloku `[data-theme] { ... }` (motyw jasny, domyślny —
  * wartości identyczne z `[data-theme][data-theme="light"]` dziś). Bez zagnieżdżonych
@@ -738,16 +754,22 @@ function wczytajTokenyBarwZBloku(blokCss) {
  * `rejestrPozaZakresem` — podzbiór (albo pustą listę), o którym TEN wołający
  * twierdzi, że jest dla niego kompletny. Niepełność danych syntetycznych jest
  * więc biorą na siebie WOŁAJĄCY, nie ukrywa jej cichy próg w produkcji. */
-export function wyklasyfikujTokenyTresci(nazwyOdkryte, rejestrPozaZakresem = TOKENY_POZA_ZAKRESEM) {
+export function wyklasyfikujTokenyTresci(
+  nazwyOdkryte,
+  rejestrPozaZakresem = TOKENY_POZA_ZAKRESEM,
+  tokenyParStanow = TOKENY_PAR_STANOW,
+) {
   const poza = new Set(rejestrPozaZakresem.map((t) => t.nazwa));
+  const stanyZnane = new Set(tokenyParStanow);
   const teksty = [];
   const powierzchnie = [];
   const pozaZakresu = [];
+  const stany = [];
   const sprzeczne = [];
   const niezaklasyfikowane = [];
 
   for (const nazwa of nazwyOdkryte) {
-    const jestTekstem = pasujeDoKorzenia(nazwa, KORZENIE_TEKSTU_NOWY);
+    const jestTekstem = pasujeDoKorzenia(nazwa, KORZENIE_TEKSTU_NOWY) || TEKSTY_DOKLADNE_NOWY.includes(nazwa);
     const jestPowierzchnia = pasujeDoKorzenia(nazwa, KORZENIE_POWIERZCHNI_NOWY);
     if (jestTekstem && jestPowierzchnia) {
       sprzeczne.push(nazwa);
@@ -755,6 +777,8 @@ export function wyklasyfikujTokenyTresci(nazwyOdkryte, rejestrPozaZakresem = TOK
       teksty.push(nazwa);
     } else if (jestPowierzchnia) {
       powierzchnie.push(nazwa);
+    } else if (stanyZnane.has(nazwa)) {
+      stany.push(nazwa);
     } else if (poza.has(nazwa)) {
       pozaZakresu.push(nazwa);
     } else {
@@ -801,7 +825,7 @@ export function wyklasyfikujTokenyTresci(nazwyOdkryte, rejestrPozaZakresem = TOK
     );
   }
 
-  return { teksty, powierzchnie, pozaZakresu };
+  return { teksty, powierzchnie, pozaZakresu, stany };
 }
 
 /** Pełny iloczyn: token tekstu × token powierzchni × motyw (jasny/ciemny),
@@ -832,6 +856,7 @@ export function zbudujParyTekstuNaPowierzchni(tokenyMotywow, rejestrPozaZakresem
     teksty: nazwyTekstu,
     powierzchnie: nazwyPowierzchni,
     pozaZakresu,
+    stany: nazwyStanow,
   } = wyklasyfikujTokenyTresci(nazwyJasny, rejestrPozaZakresem);
 
   if (nazwyTekstu.length === 0) {
@@ -885,6 +910,9 @@ export function zbudujParyTekstuNaPowierzchni(tokenyMotywow, rejestrPozaZakresem
     liczbaTokenowPowierzchni: nazwyPowierzchni.length,
     liczbaTokenowPozaZakresem: pozaZakresu.length,
     nazwyPozaZakresem: pozaZakresu,
+    liczbaTokenowStanow: nazwyStanow.length,
+    nazwyStanow,
+    nazwyPowierzchni,
   };
 }
 
@@ -958,6 +986,198 @@ export function zbudujParyDodatkoweNowegoFrontu(tokenyMotywow) {
       margines: k - progPary,
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Pary stanów wyprowadzane z PRAWDZIWYCH reguł CSS atomów (nowy front).
+//
+// Iloczyn tekst × powierzchnia wyżej nie widzi pary, w której tło jest
+// kolorem akcji albo błędu (przycisk główny: `--primary`; po zmianie
+// przycisk niebezpieczny: `--error`) ani pierścienia fokusu pola. Pary tych
+// stanów NIE są tu wpisane obok CSS jako para tokenów: przyrząd czyta plik
+// `*.module.css` atomu, składa kaskadę dla opisanego elementu (klasy,
+// atrybuty, pseudoklasy — specyficzność liczona jak w przeglądarce dla
+// prostych selektorów złożonych, przy remisie wygrywa późniejsza reguła) i
+// mierzy to, co z niej FAKTYCZNIE wychodzi. Zmiana reguły w CSS zmienia
+// wynik następnego biegu; para nie może zostać stara po cichu.
+//
+// Zakres modelu: selektory złożone z klas, atrybutów i pseudoklas
+// (`.a.b:hover[x="y"]`), bez kombinatorów, elementów, `@media` i
+// zagnieżdżeń. Selektor poza modelem albo reguła `@` w czytanym pliku =
+// kod 2 (NIE ZMIERZONO), nie ciche pominięcie. `opacity` (np. stan
+// `.zablokowany`) nie jest modelowana — przycisk główny nigdy nie bywa
+// nieaktywny (Button.tsx: `poziom === "primary" ? false : disabled`).
+// ---------------------------------------------------------------------------
+
+/** Próg dla pierścienia fokusu pola (WCAG 1.4.11, 2.4.7) — wobec tła wokół. */
+const PROG_PIERSCIENIA = 3.0;
+
+const STANY_INTERAKCJI = [
+  { nazwa: "spoczynek", czesci: [] },
+  { nazwa: ":hover", czesci: [":hover"] },
+  { nazwa: ":focus-visible", czesci: [":focus-visible"] },
+];
+
+/** Opis par stanów. `rodzaj`:
+ *  - "tekst-na-tle-wlasnym": `color` na `background` tego samego elementu
+ *    (oba muszą być tokenami barw, inaczej kod 2);
+ *  - "pierscien-pola": kolor `outline` elementu wobec KAŻDEJ powierzchni
+ *    wokół pola (próg 3,0), plus kontrola, że pierścień to nie ten sam token
+ *    co `border-color` pola. */
+export const PARY_STANOW_Z_CSS = [
+  {
+    opis: "Przycisk główny",
+    plik: "design-system/atomy/Button/Button.module.css",
+    rodzaj: "tekst-na-tle-wlasnym",
+    element: [".przycisk", ".primary"],
+    stany: STANY_INTERAKCJI,
+  },
+  {
+    opis: "Przycisk główny niebezpieczny",
+    plik: "design-system/atomy/Button/Button.module.css",
+    rodzaj: "tekst-na-tle-wlasnym",
+    element: [".przycisk", ".primary", ".niebezpieczny"],
+    stany: STANY_INTERAKCJI,
+  },
+];
+
+/** Dzieli plik CSS modułu na reguły (selektor + deklaracje + kolejność).
+ * Rzuca przy regule `@` albo gdy po wycięciu komentarzy nie ma żadnej reguły. */
+export function wczytajRegulyCss(tekstCss, zrodlo) {
+  const bezKomentarzy = tekstCss.replace(/\/\*[\s\S]*?\*\//g, "");
+  if (bezKomentarzy.includes("@")) {
+    throw new Error(`${zrodlo}: reguła @ (np. @media) poza modelem kaskady przyrządu`);
+  }
+  const reguly = [];
+  let kolejnosc = 0;
+  const rx = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = rx.exec(bezKomentarzy))) {
+    const deklaracje = {};
+    for (const d of m[2].split(";")) {
+      const i = d.indexOf(":");
+      if (i === -1) continue;
+      deklaracje[d.slice(0, i).trim()] = d.slice(i + 1).trim();
+    }
+    for (const selektor of m[1].split(",")) {
+      reguly.push({ selektor: selektor.trim(), deklaracje, kolejnosc: kolejnosc++ });
+    }
+  }
+  if (reguly.length === 0) throw new Error(`${zrodlo}: 0 reguł po wycięciu komentarzy`);
+  return reguly;
+}
+
+function czesciSelektora(selektor, zrodlo) {
+  const czesci = selektor.match(/\.[\w-]+|\[[^\]]+\]|:[\w-]+/g) ?? [];
+  if (czesci.length === 0 || czesci.join("") !== selektor) {
+    throw new Error(`${zrodlo}: selektor "${selektor}" poza modelem kaskady przyrządu (klasy, atrybuty, pseudoklasy bez kombinatorów)`);
+  }
+  return czesci;
+}
+
+/** Wygrywająca deklaracja jednej z `wlasciwosci` dla elementu o częściach
+ * `czesciElementu` (zbiór napisów typu ".primary", ":hover", '[x="y"]').
+ * Zwraca `{ wartosc, selektor }` albo null. */
+export function wygrywajacaDeklaracja(reguly, czesciElementu, wlasciwosci, zrodlo) {
+  const zbior = new Set(czesciElementu);
+  let najlepsza = null;
+  for (const r of reguly) {
+    const czesci = czesciSelektora(r.selektor, zrodlo);
+    if (!czesci.every((c) => zbior.has(c))) continue;
+    for (const w of wlasciwosci) {
+      if (!(w in r.deklaracje)) continue;
+      const kandydat = { spec: czesci.length, kolejnosc: r.kolejnosc, wartosc: r.deklaracje[w], selektor: r.selektor };
+      if (
+        !najlepsza ||
+        kandydat.spec > najlepsza.spec ||
+        (kandydat.spec === najlepsza.spec && kandydat.kolejnosc > najlepsza.kolejnosc)
+      ) {
+        najlepsza = kandydat;
+      }
+    }
+  }
+  return najlepsza;
+}
+
+/** Ostatni `var(--x)` z wartości, którego `x` jest tokenem barwy z `tokeny`
+ * (pomija np. `--focus-width` w skrócie `outline`). Null, gdy brak. */
+export function tokenBarwyZDeklaracji(deklaracja, tokeny) {
+  if (!deklaracja) return null;
+  const nazwy = [...deklaracja.wartosc.matchAll(/var\(--([\w-]+)\)/g)].map((m) => m[1]).filter((n) => n in tokeny);
+  return nazwy.length > 0 ? nazwy[nazwy.length - 1] : null;
+}
+
+/** Sprawdza, że każdy token z `TOKENY_PAR_STANOW` istnieje w obu motywach
+ * (inaczej wpis rejestru jest martwy — kod 2 w main()). */
+export function sprawdzTokenyStanow(tokenyMotywow, tokenyParStanow = TOKENY_PAR_STANOW) {
+  const brakujace = [];
+  for (const [motyw, tokeny] of [["jasny", tokenyMotywow.jasny], ["ciemny", tokenyMotywow.ciemny]]) {
+    for (const nazwa of tokenyParStanow) {
+      if (!(nazwa in tokeny)) brakujace.push(`--${nazwa} (${motyw})`);
+    }
+  }
+  if (brakujace.length > 0) {
+    throw new Error(`TOKENY_PAR_STANOW wymienia tokeny, których nie ma w tokeny.css: ${brakujace.join(", ")}`);
+  }
+}
+
+/** Mierzy `PARY_STANOW_Z_CSS` w obu motywach. `czytajCss(plik)` zwraca tekst
+ * pliku (wstrzykiwane, żeby próba mogła podać własny CSS bez dotykania
+ * dysku); `powierzchnie` to nazwy powierzchni z klasyfikacji tokenów. */
+export function zbudujParyStanowZCss(tokenyMotywow, powierzchnie, czytajCss, opisy = PARY_STANOW_Z_CSS) {
+  const wynik = [];
+  for (const opis of opisy) {
+    const reguly = wczytajRegulyCss(czytajCss(opis.plik), opis.plik);
+    for (const stan of opis.stany) {
+      const czesci = [...opis.element, ...stan.czesci, ...(opis.atrybuty ?? [])];
+      for (const [motyw, tokeny] of [["jasny", tokenyMotywow.jasny], ["ciemny", tokenyMotywow.ciemny]]) {
+        const gdzie = `${opis.opis} (${stan.nazwa}, ${motyw}; ${opis.plik})`;
+        const dodaj = (etykieta, hexA, hexB, prog) => {
+          const a = hexNaRgba(hexA);
+          const b = hexNaRgba(hexB);
+          const k = kontrast([a.r, a.g, a.b], [b.r, b.g, b.b]);
+          wynik.push({ etykieta, kontrast: k, prog, margines: k - prog });
+        };
+        if (opis.rodzaj === "tekst-na-tle-wlasnym") {
+          const tekst = tokenBarwyZDeklaracji(wygrywajacaDeklaracja(reguly, czesci, ["color"], opis.plik), tokeny);
+          const tlo = tokenBarwyZDeklaracji(
+            wygrywajacaDeklaracja(reguly, czesci, ["background", "background-color"], opis.plik),
+            tokeny,
+          );
+          if (!tekst || !tlo) {
+            throw new Error(`${gdzie}: brak tokenu barwy tekstu (${tekst ?? "brak"}) albo tła (${tlo ?? "brak"}) w kaskadzie`);
+          }
+          dodaj(`${opis.opis} (${stan.nazwa}): --${tekst} na --${tlo} (${motyw}, z CSS)`, tokeny[tekst], tokeny[tlo], PROG_TEKSTU_TRESCI);
+        } else if (opis.rodzaj === "pierscien-pola") {
+          const pierscien = tokenBarwyZDeklaracji(
+            wygrywajacaDeklaracja(reguly, czesci, ["outline", "outline-color"], opis.plik),
+            tokeny,
+          );
+          const obramowanie = tokenBarwyZDeklaracji(
+            wygrywajacaDeklaracja(reguly, czesci, ["border-color", "border"], opis.plik),
+            tokeny,
+          );
+          if (!pierscien) {
+            throw new Error(`${gdzie}: w kaskadzie nie ma tokenu barwy pierścienia (outline)`);
+          }
+          for (const powierzchnia of powierzchnie) {
+            dodaj(
+              `${opis.opis} (${stan.nazwa}): pierścień --${pierscien} na --${powierzchnia} (${motyw}, z CSS)`,
+              tokeny[pierscien],
+              tokeny[powierzchnia],
+              PROG_PIERSCIENIA,
+            );
+          }
+          if (obramowanie && obramowanie === pierscien) {
+            dodaj(`${opis.opis} (${stan.nazwa}): pierścień = obramowanie --${pierscien} (${motyw}, z CSS)`, tokeny[pierscien], tokeny[obramowanie], PROG_PIERSCIENIA);
+          }
+        } else {
+          throw new Error(`${gdzie}: nieznany rodzaj "${opis.rodzaj}"`);
+        }
+      }
+    }
+  }
+  return wynik;
 }
 
 // ---------------------------------------------------------------------------
@@ -1312,7 +1532,10 @@ function main() {
     liczbaTekstuNowy,
     liczbaPowierzchniNowy,
     liczbaPozaZakresemNowy,
-    nazwyPozaZakresemNowy;
+    nazwyPozaZakresemNowy,
+    liczbaStanowNowy,
+    nazwyStanowNowy,
+    nazwyPowierzchniNowy;
   try {
     ({
       wynik: macierzTekstuNowy,
@@ -1322,7 +1545,11 @@ function main() {
       liczbaTokenowPowierzchni: liczbaPowierzchniNowy,
       liczbaTokenowPozaZakresem: liczbaPozaZakresemNowy,
       nazwyPozaZakresem: nazwyPozaZakresemNowy,
+      liczbaTokenowStanow: liczbaStanowNowy,
+      nazwyStanow: nazwyStanowNowy,
+      nazwyPowierzchni: nazwyPowierzchniNowy,
     } = zbudujParyTekstuNaPowierzchni(tokenyMotywowTresci));
+    sprawdzTokenyStanow(tokenyMotywowTresci);
   } catch (err) {
     console.error(`NIE ZMIERZONO (tekst treści, nowy front) — ${err.message}.`);
     process.exit(KOD_NIE_ZMIERZONO);
@@ -1331,7 +1558,7 @@ function main() {
     `\n=== Margines kontrastu — tekst treści na tłach powierzchni, nowy front (design-system/tokeny/tokeny.css) ===`,
   );
   console.log(
-    `Tokeny barw odkryte w [data-theme] (motyw jasny): ${liczbaOdkrytychNowy}. Tekst: ${liczbaTekstuNowy}. Powierzchnia: ${liczbaPowierzchniNowy}. Poza zakresem: ${liczbaPozaZakresemNowy}. Suma: ${liczbaTekstuNowy}+${liczbaPowierzchniNowy}+${liczbaPozaZakresemNowy}=${liczbaTekstuNowy + liczbaPowierzchniNowy + liczbaPozaZakresemNowy} (odkrytych: ${liczbaOdkrytychNowy}).`,
+    `Tokeny barw odkryte w [data-theme] (motyw jasny): ${liczbaOdkrytychNowy}. Tekst: ${liczbaTekstuNowy}. Powierzchnia: ${liczbaPowierzchniNowy}. Tło/tekst akcji i błędu (pary stanów z CSS): ${liczbaStanowNowy} (${nazwyStanowNowy.map((n) => `--${n}`).join(", ")}). Poza zakresem: ${liczbaPozaZakresemNowy}. Suma: ${liczbaTekstuNowy}+${liczbaPowierzchniNowy}+${liczbaStanowNowy}+${liczbaPozaZakresemNowy}=${liczbaTekstuNowy + liczbaPowierzchniNowy + liczbaStanowNowy + liczbaPozaZakresemNowy} (odkrytych: ${liczbaOdkrytychNowy}).`,
   );
   console.log(`Poza zakresem, z powodem (${nazwyPozaZakresemNowy.length}):`);
   for (const nazwa of nazwyPozaZakresemNowy) {
@@ -1376,7 +1603,30 @@ function main() {
     `\npary dodatkowe (nowy front): ${ponizejDodatkoweNowy.length} z ${paryDodatkoweNowy.length} ponizej progu`,
   );
 
-  const ponizejNowyRazem = [...ponizejNowy, ...ponizejDodatkoweNowy];
+  let paryStanowNowy;
+  try {
+    paryStanowNowy = zbudujParyStanowZCss(tokenyMotywowTresci, nazwyPowierzchniNowy, (plik) =>
+      readFileSync(fileURLToPath(new URL(`../${plik}`, import.meta.url)), "utf8"),
+    );
+  } catch (err) {
+    console.error(`NIE ZMIERZONO (pary stanów z CSS, nowy front) — ${err.message}.`);
+    process.exit(KOD_NIE_ZMIERZONO);
+  }
+  console.log(
+    `\n=== Pary stanów wyprowadzone z reguł CSS atomów (kaskada: klasy, atrybuty, pseudoklasy), nowy front ===`,
+  );
+  console.log("\nmargines".padEnd(9) + "kontrast".padEnd(10) + "próg".padEnd(7) + "para");
+  for (const w of [...paryStanowNowy].sort((a, b) => a.margines - b.margines)) {
+    console.log(
+      formatuj(w.margines).padEnd(9) + formatuj(w.kontrast).padEnd(10) + w.prog.toFixed(1).padEnd(7) + w.etykieta,
+    );
+  }
+  const ponizejStanowNowy = paryStanowNowy.filter((w) => w.margines < 0);
+  console.log(
+    `\npary stanów z CSS (nowy front): ${ponizejStanowNowy.length} z ${paryStanowNowy.length} ponizej progu`,
+  );
+
+  const ponizejNowyRazem = [...ponizejNowy, ...ponizejDodatkoweNowy, ...ponizejStanowNowy];
 
   const pelnyRejestr = [...ZASTANE_ODSTEPSTWA, ...ODKRYTE_POMIAREM_TYMCZASOWE];
   const { naruszeniaNiepokryte, nieaktualneWpisyRejestru } = ocenProgi(macierz, pelnyRejestr);

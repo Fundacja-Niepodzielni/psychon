@@ -24,6 +24,7 @@ import {
   zbudujParyTekstuNaPowierzchni,
   wczytajProdukcyjneTokenyTresci,
   TOKENY_POZA_ZAKRESEM,
+  PARY_STANOW_Z_CSS,
 } from "../scripts/pomiar-marginesu-kontrastu.mjs";
 
 const SCIEZKA_SKRYPTU = fileURLToPath(new URL("../scripts/pomiar-marginesu-kontrastu.mjs", import.meta.url));
@@ -43,7 +44,7 @@ const SCIEZKA_TOKENY_CSS = fileURLToPath(new URL("../design-system/tokeny/tokeny
 //
 // `wyklasyfikujTokenyTresci` (wołana wewnątrz) sprawdza
 // rejestr "poza zakresem" BEZWARUNKOWO, bez progu większości — więc arkusz
-// syntetyczny poniżej, który nie zawiera ŻADNEGO z 20 wpisów produkcyjnego
+// syntetyczny poniżej, który nie zawiera ŻADNEGO z 15 wpisów produkcyjnego
 // `TOKENY_POZA_ZAKRESEM`, musi jawnie zadeklarować WŁASNY, pusty rejestr
 // (`[]`) jako drugi argument: "dla TEGO arkusza oczekuję zera wpisów poza
 // zakresem". Bez tej deklaracji dostałby domyślny, pełny rejestr i rzucił —
@@ -120,7 +121,7 @@ describe("zbudujParyTekstuNaPowierzchni: liczba par wynika z zawartości arkusza
 // nietknięty, design-system/tokeny/tokeny.css też).
 // ---------------------------------------------------------------------------
 describe("token niesklasyfikowalny: kod 2 I nazwa tokenu w komunikacie (proces CLI, kopia na dysku tymczasowym)", () => {
-  const NAZWA_TOKENU_SWIADKA = "zzz-swiadek-k2-niesklasyfikowalny";
+  const NAZWA_SWIADKA_NIESKLASYFIKOWALNEGO = "zzz-swiadek-k2-niesklasyfikowalny";
   let katalogTymczasowy: string | null = null;
 
   afterEach(() => {
@@ -145,7 +146,7 @@ describe("token niesklasyfikowalny: kod 2 I nazwa tokenu w komunikacie (proces C
     // TOKENY_POZA_ZAKRESEM — w OBU blokach ([data-theme] jasny i @media dark), żeby
     // zestaw nazw jasny/ciemny się zgadzał i przyrząd doszedł do klasyfikacji,
     // a nie zatrzymał się wcześniej na kontroli spójności motywów.
-    const wiersz = `  --${NAZWA_TOKENU_SWIADKA}: #123456;\n`;
+    const wiersz = `  --${NAZWA_SWIADKA_NIESKLASYFIKOWALNEGO}: #123456;\n`;
     const tokenyZDodatkiem = tokenyOryginalne
       .replace(/\[data-theme\]\s*\{/, (m) => `${m}\n${wiersz}`)
       .replace(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*\[data-theme\]\s*\{/, (m) => `${m}\n${wiersz}`);
@@ -165,7 +166,7 @@ describe("token niesklasyfikowalny: kod 2 I nazwa tokenu w komunikacie (proces C
     // Oba warunki sprawdzane osobno — sama zgodność kodu nie wystarcza
     // (patrz pismo: "sama zgodność kodu nie wystarcza").
     expect(wynik.status).toBe(2);
-    expect(wynik.stderr).toContain(NAZWA_TOKENU_SWIADKA);
+    expect(wynik.stderr).toContain(NAZWA_SWIADKA_NIESKLASYFIKOWALNEGO);
     // Kontrola negatywna wewnątrz tej samej próby: komunikat nie jest pusty
     // ani ogólnikowy — zawiera też słowo wskazujące na klasyfikację, nie
     // przypadkowe dopasowanie substringu gdzie indziej w wyjściu.
@@ -180,6 +181,11 @@ describe("token niesklasyfikowalny: kod 2 I nazwa tokenu w komunikacie (proces C
     copyFileSync(SCIEZKA_SKRYPTU, join(dir, "scripts", "pomiar-marginesu-kontrastu.mjs"));
     copyFileSync(SCIEZKA_GLOBALS_CSS, join(dir, "app", "globals.css"));
     copyFileSync(SCIEZKA_TOKENY_CSS, join(dir, "design-system", "tokeny", "tokeny.css"));
+    // Pary stanów czytają z dysku moduły CSS atomów (ścieżki względem korzenia frontu).
+    for (const plik of new Set((PARY_STANOW_Z_CSS as Array<{ plik: string }>).map((p) => p.plik))) {
+      mkdirSync(join(dir, plik, ".."), { recursive: true });
+      copyFileSync(fileURLToPath(new URL(`../${plik}`, import.meta.url)), join(dir, plik));
+    }
 
     try {
       const wynik = spawnSync(process.execPath, [join(dir, "scripts", "pomiar-marginesu-kontrastu.mjs")], {
@@ -189,7 +195,7 @@ describe("token niesklasyfikowalny: kod 2 I nazwa tokenu w komunikacie (proces C
       // (ZMIERZONE NARUSZENIE — stan dzisiejszych barw, nie klasyfikacji),
       // nigdy kod 2 z powodu klasyfikacji, i z pewnością nigdy nazwa świadka.
       expect(wynik.status).not.toBe(2);
-      expect(wynik.stderr).not.toContain(NAZWA_TOKENU_SWIADKA);
+      expect(wynik.stderr).not.toContain(NAZWA_SWIADKA_NIESKLASYFIKOWALNEGO);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -208,14 +214,15 @@ describe("bilans tekst+powierzchnia+pozaZakresem == liczba odkrytych tokenów (s
   it("na danych PRODUKCYJNYCH (design-system/tokeny/tokeny.css, motyw jasny): suma trzech kubełków równa się liczbie nazw odkrytych", () => {
     const { jasny } = wczytajProdukcyjneTokenyTresci();
     const nazwyOdkryte = Object.keys(jasny);
-    const { teksty, powierzchnie, pozaZakresu } = wyklasyfikujTokenyTresci(nazwyOdkryte);
+    const { teksty, powierzchnie, pozaZakresu, stany } = wyklasyfikujTokenyTresci(nazwyOdkryte);
 
-    const suma = teksty.length + powierzchnie.length + pozaZakresu.length;
+    const suma = teksty.length + powierzchnie.length + pozaZakresu.length + stany.length;
     expect(suma).toBe(nazwyOdkryte.length);
     // Bilans WPROST, nie przez brak wyjątku: każda odkryta nazwa trafia do
-    // dokładnie jednego kubełka spośród trzech (żadna nie ginie, żadna nie
-    // jest liczona dwa razy).
-    const wszystkieTrzyRazem = [...teksty, ...powierzchnie, ...pozaZakresu].sort();
+    // dokładnie jednego kubełka spośród czterech (tekst, powierzchnia, pary
+    // stanów z CSS, poza zakresem; żadna nie ginie, żadna nie jest liczona
+    // dwa razy).
+    const wszystkieTrzyRazem = [...teksty, ...powierzchnie, ...pozaZakresu, ...stany].sort();
     expect(wszystkieTrzyRazem).toEqual([...nazwyOdkryte].sort());
   });
 
@@ -224,7 +231,7 @@ describe("bilans tekst+powierzchnia+pozaZakresem == liczba odkrytych tokenów (s
     // równoległej gałęzi) — użyty tu jako jedyny token poza zakresem.
     // Kontrola kompletności rejestru jest teraz bezwarunkowa
     // (bez progu większości), więc ten arkusz syntetyczny — który celowo NIE
-    // zawiera pozostałych 19 wpisów `TOKENY_POZA_ZAKRESEM` produkcji — podaje
+    // zawiera pozostałych 14 wpisów `TOKENY_POZA_ZAKRESEM` produkcji — podaje
     // WŁASNY, jawnie zadeklarowany rejestr jako drugi argument: "dla TEGO
     // arkusza oczekuję DOKŁADNIE wpisu 'border', nic więcej". Wyciągnięty z
     // `TOKENY_POZA_ZAKRESEM` (nie przepisany ręcznie), więc gdyby "border"
@@ -280,18 +287,18 @@ describe("token USUNIĘTY z arkusza, obecny w rejestrze poza zakresem, ma dać s
 // ---------------------------------------------------------------------------
 // Kontrola kompletności rejestru "poza zakresem" jest
 // BEZWARUNKOWA, bez progu większości: dawniej zgłaszała dopiero przy > połowy
-// rejestru (20 wpisów) obecnej, milczała przy 10 z 20 i mniej — WŁĄCZNIE z
-// 0 z 20, czyli gdy CAŁY rejestr jest nieaktualny. Ten punkt sprawdza
-// dokładnie odwrotność: przy 0 z 20 obecnych bieg PADA i wymienia WSZYSTKICH
-// 20 nazw — nie mniej, nie cisza.
+// rejestru (15 wpisów) obecnej, milczała przy 10 z 15 i mniej — WŁĄCZNIE z
+// 0 z 15, czyli gdy CAŁY rejestr jest nieaktualny. Ten punkt sprawdza
+// dokładnie odwrotność: przy 0 z 15 obecnych bieg PADA i wymienia WSZYSTKICH
+// 15 nazw — nie mniej, nie cisza.
 // ---------------------------------------------------------------------------
 describe("rejestr poza zakresem sprawdzany bezwarunkowo, bez progu", () => {
-  it("TOKENY_POZA_ZAKRESEM eksportowany ma dziś dokładnie 20 wpisów (liczba, na której opiera się reszta tego bloku)", () => {
-    expect(TOKENY_POZA_ZAKRESEM.length).toBe(20);
+  it("TOKENY_POZA_ZAKRESEM eksportowany ma dziś dokładnie 15 wpisów (liczba, na której opiera się reszta tego bloku)", () => {
+    expect(TOKENY_POZA_ZAKRESEM.length).toBe(15);
   });
 
-  it("0 z 20 obecnych (rejestr PEŁNY, domyślny — brak drugiego argumentu): bieg PADA i wymienia WSZYSTKICH 20 nazw", () => {
-    // nazwyOdkryte celowo nie zawiera ŻADNEGO z 20 wpisów TOKENY_POZA_ZAKRESEM
+  it("0 z 15 obecnych (rejestr PEŁNY, domyślny — brak drugiego argumentu): bieg PADA i wymienia WSZYSTKICH 15 nazw", () => {
+    // nazwyOdkryte celowo nie zawiera ŻADNEGO z 15 wpisów TOKENY_POZA_ZAKRESEM
     // — tylko dwie nazwy pasujące do korzeni tekst/powierzchnia, żeby przyrząd
     // doszedł do kontroli kompletności rejestru zamiast zatrzymać się
     // wcześniej na "niezaklasyfikowane".
@@ -310,9 +317,9 @@ describe("rejestr poza zakresem sprawdzany bezwarunkowo, bez progu", () => {
     }
   });
 
-  it("przemiotło 0..20: dla KAŻDEJ liczby obecnych wpisów rejestru (0, 1, 2, ..., 20) liczba wypisanych brakujących nazw równa się DOKŁADNIE liczbie nieobecnych — bez wyjątku, bez progu", () => {
+  it("przemiotło 0..15: dla KAŻDEJ liczby obecnych wpisów rejestru (0, 1, 2, ..., 15) liczba wypisanych brakujących nazw równa się DOKŁADNIE liczbie nieobecnych — bez wyjątku, bez progu", () => {
     // Ta sama technika, jaką wcześniej zmierzono ręcznie
-    // (podmiana warunku na `true`, przemiot 0..20) — tu przemiatamy PRAWDZIWY,
+    // (podmiana warunku na `true`, przemiot 0..15) — tu przemiatamy PRAWDZIWY,
     // bezwarunkowy kod produkcyjny (nie kopię z podmienionym warunkiem),
     // wołając funkcję eksportowaną wprost z przyrządu.
     const tabela: Array<{ obecnychWRejestrze: number; brakujacychZgloszonych: number; zgadzaSie: boolean }> = [];
@@ -346,13 +353,13 @@ describe("rejestr poza zakresem sprawdzany bezwarunkowo, bez progu", () => {
     }
 
     // Wydrukuj tabelę do dziennika (widoczna w wyjściu `vitest run` dla tego pliku).
-    console.log("\n=== przemiotło 0..20 (obecnych w rejestrze -> zgłoszonych brakujących) ===");
+    console.log("\n=== przemiotło 0..15 (obecnych w rejestrze -> zgłoszonych brakujących) ===");
     for (const wiersz of tabela) {
       console.log(
-        `obecnych=${String(wiersz.obecnychWRejestrze).padStart(2)}  brakujące_oczekiwane=${String(20 - wiersz.obecnychWRejestrze).padStart(2)}  brakujące_zgłoszone=${String(wiersz.brakujacychZgloszonych).padStart(2)}  zgadza_się=${wiersz.zgadzaSie}`,
+        `obecnych=${String(wiersz.obecnychWRejestrze).padStart(2)}  brakujące_oczekiwane=${String(TOKENY_POZA_ZAKRESEM.length - wiersz.obecnychWRejestrze).padStart(2)}  brakujące_zgłoszone=${String(wiersz.brakujacychZgloszonych).padStart(2)}  zgadza_się=${wiersz.zgadzaSie}`,
       );
     }
     expect(tabela.every((w) => w.zgadzaSie)).toBe(true);
-    expect(tabela.length).toBe(21); // 0..20 włącznie
+    expect(tabela.length).toBe(TOKENY_POZA_ZAKRESEM.length + 1); // 0..15 włącznie
   });
 });

@@ -34,6 +34,16 @@
 .niebezpieczny {
   color: var(--error);
 }
+/* Wypełniony przycisk niebezpieczny: tło w barwie błędu i tekst w barwie
+   przeznaczonej na wypełnionych polach akcji (--on-primary). Sam `color:
+   var(--error)` z reguły wyżej dawał na tle `--primary` czerwień na zieleni
+   (kontrast ok. 1,2:1). Selektor złożony (0-2-0) wygrywa z `.primary` i
+   `.niebezpieczny` niezależnie od kolejności w arkuszu. */
+.primary.niebezpieczny {
+  background: var(--error);
+  color: var(--on-primary);
+  border-color: var(--error);
+}
 .zablokowany {
   opacity: 0.5;
   cursor: not-allowed;
