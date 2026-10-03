@@ -12,6 +12,7 @@ import { CaseCard } from "@/design-system/organizmy/CaseCard/CaseCard";
 import { DetailTemplate } from "@/design-system/szablony/DetailTemplate/DetailTemplate";
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import { PanelDecyzji } from "./PanelDecyzji";
+import { fokusNaNaglowku, naglowekEkranu, odbierzZapowiedzFokusu } from "../wspolne/fokus-otwartej-sprawy";
 import {
   SCIEZKA_LISTY,
   dataPl,
@@ -106,6 +107,13 @@ export function ZgloszenieDecyzja({ id }: { id: string }) {
       aktualne = false;
     };
   }, [id, proba]);
+
+  // Wejście z „Otwórz” na ekranie „Sprawy do decyzji”: po wczytaniu fokus staje
+  // na nagłówku sprawy (`h1`), nie na przycisku decyzji. Inne wejście — bez zmian.
+  const wczytane = stan.rodzaj !== "ladowanie";
+  useEffect(() => {
+    if (wczytane && odbierzZapowiedzFokusu()) fokusNaNaglowku(naglowekEkranu());
+  }, [wczytane]);
 
   const ponow = () => {
     setStan({ rodzaj: "ladowanie" });

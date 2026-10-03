@@ -1,4 +1,5 @@
 import { apiPaged, ApiError } from "@/lib/api/klient";
+import { GRUPY } from "@/lib/przelaczenie/grupy";
 import { formatujDate } from "../wspolne/daty";
 
 /**
@@ -125,6 +126,15 @@ interface WierszProfilu {
   user: OsobaSkrot;
 }
 
+/**
+ * Ekran jednego zgłoszenia rekrutacyjnego (`/admin/nabor/{id}`, grupa
+ * przełączenia `nabor`). Przy grupie wyłączonej ten adres odpowiada 404, więc
+ * „Otwórz” prowadzi wtedy jak dotąd na listę zgłoszeń starej strony osób.
+ */
+function adresZgloszenia(id: number): string {
+  return GRUPY.nabor.wlaczona ? `/admin/nabor/${id}` : "/admin/uczestniczki?zakladka=zgloszenia";
+}
+
 export function mapujZgloszenie(wiersz: WierszZgloszenia): PozycjaKolejki {
   return {
     id: `applications-${wiersz.id}`,
@@ -135,11 +145,7 @@ export function mapujZgloszenie(wiersz: WierszZgloszenia): PozycjaKolejki {
     nazwisko: wiersz.last_name,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
-    // Brak trasy szczegółu zgłoszenia `new` (karta `/admin/uczestniczki/{id}`
-    // to H18 „karta osoby", klucz user.id — osoba jeszcze nie istnieje przed
-    // akceptacją). Prowadzi do listy z zakładką zgłoszeń, tak jak wpina ją
-    // `AdminUsersPage` (`frontend/app/(administracja)/admin/uczestniczki/page.tsx:26-29`).
-    href: "/admin/uczestniczki?zakladka=zgloszenia",
+    href: adresZgloszenia(wiersz.id),
   };
 }
 
@@ -153,10 +159,10 @@ export function mapujDyzur(wiersz: WierszDyzuru): PozycjaKolejki {
     nazwisko: wiersz.user.last_name,
     podpowiedz: `Czeka od ${formatujDate(wiersz.created_at)}`,
     czekaOd: wiersz.created_at ?? "",
-    // Brak trasy szczegółu pojedynczego dyżuru — tylko lista
-    // (`frontend/app/(administracja)/admin/staz/page.tsx`), tak jak linkuje
-    // `DashboardSummary::build()` (`link` klucza `internship_entries`).
-    href: "/admin/staz",
+    // Pojedynczy dyżur nie ma własnego ekranu: „Otwórz” prowadzi do kolejki
+    // dyżurów z parametrem `dyzur`, a kolejka otwiera panel tego dyżuru
+    // (`app/(administracja)/admin/staz/page.tsx`, `StazKolejka`).
+    href: `/admin/staz?dyzur=${wiersz.id}`,
   };
 }
 

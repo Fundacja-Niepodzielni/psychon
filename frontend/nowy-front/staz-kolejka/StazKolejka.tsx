@@ -19,6 +19,7 @@ import { ListTemplate } from "@/design-system/szablony/ListTemplate/ListTemplate
 import { EkranOdmowy } from "@/nowy-front/wspolne/ekran-odmowy";
 import type { PaginationMeta } from "@/lib/api/klient";
 import { formatujDate } from "../wspolne/daty";
+import { fokusNaNaglowku, naglowekEkranu, odbierzZapowiedzFokusu } from "../wspolne/fokus-otwartej-sprawy";
 import { dniOczekiwania, tekstPlakietkiCzekania, wariantPlakietkiCzekania } from "../sprawy/wiek";
 import {
   czyBrakUprawnien,
@@ -52,6 +53,17 @@ export const KOLUMNY_DYZUROW: KolumnaRecordList[] = [
   { nazwa: "Akcja", rodzaj: "akcja" },
 ];
 
+/**
+ * Dyżur wskazany w adresie: `?dyzur=ID` (dodatnia liczba całkowita), które
+ * dokleja „Otwórz” na ekranie „Sprawy do decyzji”. Inna wartość — brak.
+ */
+export function dyzurZAdresu(zapytanie: string): number | null {
+  const wartosc = new URLSearchParams(zapytanie).get("dyzur");
+  if (wartosc === null || !/^[1-9]\d*$/.test(wartosc)) return null;
+  const id = Number(wartosc);
+  return Number.isSafeInteger(id) ? id : null;
+}
+
 /** Godziny dyżuru (dziesiętny string z API) jako liczba z jednostką; napis nieliczbowy wraca dosłownie. */
 export function komorkaGodzin(godziny: string): KomorkaRecordList {
   const liczba = Number(godziny);
@@ -80,6 +92,13 @@ export function komorkaGodzin(godziny: string): KomorkaRecordList {
  * bez okna dialogowego. Po decyzji wiersz znika z listy, a `Toast` potwierdza
  * wynik. Dyżur już rozstrzygnięty przez kogoś innego (403 `entry_locked`)
  * pokazuje komunikat z koperty i odświeża listę.
+ *
+ * Wejście z „Otwórz” na ekranie „Sprawy do decyzji” niesie w adresie
+ * `?dyzur=ID`: po pierwszym wczytaniu listy ten dyżur jest od razu otwarty,
+ * a jego panel bierze fokus i przewija się do widoku (jak po „Otwórz” w
+ * wierszu). Dyżur, którego nie ma na wczytanej stronie (już rozstrzygnięty
+ * albo dalej w kolejce), niczego nie otwiera — przy wejściu z „Otwórz” fokus
+ * staje wtedy na nagłówku ekranu. Adres jest czytany raz, w przeglądarce.
  */
 export function StazKolejka() {
   const router = useRouter();
@@ -97,6 +116,10 @@ export function StazKolejka() {
   const lista = useRef<HTMLDivElement>(null);
   // Wiersz, któremu po najbliższym renderze oddajemy fokus (na jego akcję „Otwórz”).
   const fokusWiersza = useRef<number | null>(null);
+  // Wskazanie z adresu i zapowiedź fokusu są odbierane raz, przy pierwszym wczytaniu listy.
+  const wskazanieOdebrane = useRef(false);
+  // Po najbliższym renderze fokus na nagłówek ekranu (wskazany dyżur poza wczytaną stroną).
+  const fokusNaglowka = useRef(false);
 
   useEffect(() => {
     let aktualne = true;
@@ -110,6 +133,13 @@ export function StazKolejka() {
         }
         setTeraz(Date.now());
         setStan({ rodzaj: "gotowy", wpisy, meta });
+        if (!wskazanieOdebrane.current) {
+          wskazanieOdebrane.current = true;
+          const zapowiedziany = odbierzZapowiedzFokusu();
+          const wskazany = dyzurZAdresu(window.location.search);
+          if (wskazany !== null && wpisy.some((wpis) => wpis.id === wskazany)) setOtwartyId(wskazany);
+          else if (zapowiedziany) fokusNaglowka.current = true;
+        }
       })
       .catch((blad: unknown) => {
         if (!aktualne) return;
@@ -119,6 +149,12 @@ export function StazKolejka() {
       aktualne = false;
     };
   }, [strona, proba]);
+
+  useEffect(() => {
+    if (!fokusNaglowka.current) return;
+    fokusNaglowka.current = false;
+    fokusNaNaglowku(naglowekEkranu());
+  });
 
   useEffect(() => {
     const id = fokusWiersza.current;
