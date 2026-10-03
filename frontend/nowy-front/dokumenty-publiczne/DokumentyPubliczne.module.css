@@ -1,0 +1,28 @@
+/* Ekrany deklaracji dostępności i dokumentów prawnych — wyłącznie tokeny. */
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding-left: var(--space-20);
+  color: var(--text);
+  line-height: var(--lh-text);
+}
+
+.drobny {
+  margin: 0;
+  font-size: var(--fs-10);
+  color: var(--muted);
+  line-height: var(--lh-text);
+}
+
+.tresc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.lista code,
+.drobny code {
+  overflow-wrap: anywhere;
+}
