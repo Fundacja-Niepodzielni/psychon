@@ -435,8 +435,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
           ...(stan.kurs.materials_count > 0 ? ["Starsze pliki kursu"] : []),
           stan.kurs.is_published ? "Cofnięcie publikacji i usunięcie kursu" : "Usunięcie kursu",
         ]);
-        await expect(page.locator("#ustawienia-dane, #ustawienia-prowadzacy, #ustawienia-zaproszenia")).toHaveCount(3);
-        for (const id of ["ustawienia-dane", "ustawienia-prowadzacy", "ustawienia-zaproszenia"]) {
+        // Panel „Zaproszenia” nie jest pokazywany do czasu zaproszeń po MVP — w karcie są dwa wiersze.
+        await expect(page.locator("#ustawienia-dane, #ustawienia-prowadzacy")).toHaveCount(2);
+        await expect(page.locator("#ustawienia-zaproszenia, [data-wiersz='zaproszenia']")).toHaveCount(0);
+        for (const id of ["ustawienia-dane", "ustawienia-prowadzacy"]) {
           await expect(page.locator(`#${id}`)).toHaveAttribute("aria-expanded", "false");
         }
 
@@ -619,10 +621,10 @@ for (const { szerokosc, wysokosc } of OKNA) {
       await dolaczNaruszeniaDoRaportu(testInfo, `axe-kurs-ustawienia-${szerokosc}`, naruszenia);
       expect(naruszenia.map((n) => `${n.id} (${n.impact}): ${n.selektory.join(" | ")}`)).toEqual([]);
       await zrzut(page, `kurs-gotowy-ustawienia-${szerokosc}`);
-      await page.locator("#ustawienia-zaproszenia").click();
+      await page.locator("#ustawienia-prowadzacy").click();
       await expect(page.locator("#ustawienia-dane")).toHaveAttribute("aria-expanded", "false");
-      await expect(page.locator("#ustawienia-zaproszenia")).toHaveAttribute("aria-expanded", "true");
-      await page.locator("#ustawienia-zaproszenia").click();
+      await expect(page.locator("#ustawienia-prowadzacy")).toHaveAttribute("aria-expanded", "true");
+      await page.locator("#ustawienia-prowadzacy").click();
 
       await page.getByRole("button", { name: "Opublikuj kurs" }).locator("visible=true").click();
       await expect(page.getByRole("region", { name: "Publikacja" }).getByText("Kurs jest opublikowany.")).toBeVisible();
@@ -826,4 +828,103 @@ function stanZWielomaLekcjami(): Stan {
     glowny: { rola: "button", nazwa: "Opublikuj kurs" },
     pas: null,
   };
+}
+
+/**
+ * Karta „Usunięcie kursu” na dole kolumny bocznej jest osiągalna kółkiem myszy
+ * — bez klawiatury i bez przewijania programowego. Od dwóch kolumn (1280×800)
+ * kolumna boczna stoi w miejscu i, gdy jest wyższa niż okno, przewija się
+ * w sobie; przy jednej kolumnie (390×844) przewija się strona. Liczby
+ * (wysokość kolumny i jej widocznej części) trafiają do linii `POMIAR-USUNIECIE`
+ * przed sprawdzeniem. Zrzut okna po dojściu do przycisku — tylko przy
+ * ustawionej zmiennej `ZRZUTY_DROBNE` (przedrostek ścieżki).
+ */
+for (const { szerokosc, wysokosc } of OKNA) {
+  test.describe(`ekran kursu administracji — ${szerokosc}×${wysokosc}: „Usuń kurs” osiągalny kółkiem myszy`, () => {
+    test.use({ viewport: { width: szerokosc, height: wysokosc } });
+
+    for (const stan of [...STANY, stanZWielomaLekcjami()]) {
+      test(`${stan.nazwa}: kółko nad kolumną boczną dochodzi do karty usunięcia i do przycisku „Usuń kurs”`, async ({
+        page,
+      }) => {
+        await instalujAtrapy(page, stan);
+        await otworz(page, stan);
+        const boczna = page.locator("[data-obszar='boczna']");
+        const pomiar = await boczna.evaluate((kolumna) => ({
+          wysokoscKolumny: kolumna.scrollHeight,
+          widocznaWysokosc: kolumna.clientHeight,
+          przewijaSieWSobie: getComputedStyle(kolumna).overflowY,
+          przyklejona: getComputedStyle(kolumna).position,
+          wysokoscOkna: window.innerHeight,
+        }));
+        console.log(`POMIAR-USUNIECIE ${JSON.stringify({ okno: `${szerokosc}x${wysokosc}`, stan: stan.nazwa, ...pomiar })}`);
+        const zrzuty = process.env.ZRZUTY_DROBNE;
+        if (zrzuty) await page.screenshot({ path: `${zrzuty}-kurs-administracji-start-${stan.nazwa}-${szerokosc}.png` });
+
+        const ramka = (await boczna.boundingBox())!;
+        const nadKolumna = {
+          x: ramka.x + ramka.width / 2,
+          y: Math.max(1, Math.min(ramka.y + 40, wysokosc - 40)),
+        };
+        const tytul = stan.kurs.is_published ? "Cofnięcie publikacji i usunięcie kursu" : "Usunięcie kursu";
+        const przelacznik = page.getByRole("button", { name: tytul });
+        const usun = page.getByRole("button", { name: "Usuń kurs" });
+
+        // Jedna kolumna: kolumna boczna zaczyna się poniżej okna — najpierw kółko nad stroną.
+        await page.mouse.move(szerokosc / 2, wysokosc / 2);
+        if (ramka.y > wysokosc) await page.mouse.wheel(0, ramka.y);
+        await page.mouse.move(nadKolumna.x, ramka.y > wysokosc ? wysokosc / 2 : nadKolumna.y);
+        for (let krok = 0; krok < 20 && !(await przelacznik.evaluate(czyCaloscWOknie)); krok += 1) {
+          await page.mouse.wheel(0, 400);
+          await page.waitForTimeout(50);
+        }
+        await expect(przelacznik).toBeInViewport({ ratio: 1 });
+        await przelacznik.click();
+        for (let krok = 0; krok < 20 && !(await usun.evaluate(czyCaloscWOknie)); krok += 1) {
+          await page.mouse.wheel(0, 400);
+          await page.waitForTimeout(50);
+        }
+        const poRozwinieciu = await boczna.evaluate((kolumna) => {
+          const przycisk = Array.from(kolumna.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Usuń kurs");
+          const p = przycisk?.getBoundingClientRect();
+          const k = kolumna.getBoundingClientRect();
+          return {
+            przycisk: p ? { gora: Math.round(p.top), dol: Math.round(p.bottom) } : null,
+            kolumna: { gora: Math.round(k.top), dol: Math.round(k.bottom) },
+            przewiniecieKolumny: kolumna.scrollTop,
+            wysokoscKolumny: kolumna.scrollHeight,
+            widocznaWysokosc: kolumna.clientHeight,
+            przewiniecieStrony: Math.round(window.scrollY),
+            wysokoscStrony: document.documentElement.scrollHeight,
+          };
+        });
+        console.log(`POMIAR-USUN-KURS ${JSON.stringify({ okno: `${szerokosc}x${wysokosc}`, stan: stan.nazwa, ...poRozwinieciu })}`);
+        await expect(usun).toBeInViewport({ ratio: 1 });
+
+        if (zrzuty) await page.screenshot({ path: `${zrzuty}-kurs-administracji-usuniecie-${stan.nazwa}-${szerokosc}.png` });
+
+        await usun.click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+      });
+    }
+  });
+}
+
+/**
+ * Element w całości widoczny: w oknie przeglądarki i w każdym przodku, który
+ * przycina treść (`overflow-y` inne niż `visible`) — przycisk pod dolną
+ * krawędzią przewijanej kolumny bocznej, choć w oknie, nie jest widoczny.
+ */
+function czyCaloscWOknie(element: Element): boolean {
+  const prostokat = element.getBoundingClientRect();
+  if (prostokat.height <= 0) return false;
+  let gora = 0;
+  let dol = window.innerHeight;
+  for (let przodek = element.parentElement; przodek; przodek = przodek.parentElement) {
+    if (getComputedStyle(przodek).overflowY === "visible") continue;
+    const ramka = przodek.getBoundingClientRect();
+    gora = Math.max(gora, ramka.top);
+    dol = Math.min(dol, ramka.bottom);
+  }
+  return prostokat.top >= gora && prostokat.bottom <= dol;
 }

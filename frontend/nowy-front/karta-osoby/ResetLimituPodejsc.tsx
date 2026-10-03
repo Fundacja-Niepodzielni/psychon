@@ -80,7 +80,7 @@ export function ResetLimituPodejsc({ userId, imieNazwisko }: WlasciwosciResetuLi
       )}
       {nieznany && (
         <Notice wariant="warn" tytul="Nie wiadomo, czy reset się wykonał">
-          Odpowiedź serwera nie dotarła. Odśwież kartę osoby i sprawdź stan podejść, zanim spróbujesz ponownie.
+          Połączenie przerwało się przed odpowiedzią. Odśwież kartę osoby i sprawdź stan podejść, zanim spróbujesz ponownie.
         </Notice>
       )}
       <Field

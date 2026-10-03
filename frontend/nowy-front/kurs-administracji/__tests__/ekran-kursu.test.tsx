@@ -306,7 +306,13 @@ describe("ekran kursu — publikacja", () => {
     expect(Array.from(wKarcie).map((p) => p.textContent)).toEqual(["Opublikuj kurs", "Zapisz szkic i wyjdź"]);
     // Poza tymi dwoma miejscami (arkusz pokazuje zawsze jedno) przycisku nie ma.
     expect(screen.getAllByRole("button", { name: "Opublikuj kurs" })).toHaveLength(2);
-    expect(screen.queryByRole("link", { name: "Podgląd jako uczestnik" })).toBeNull();
+    // Podgląd szkicu stoi w tych samych dwóch miejscach, pod zielonym, z obrysem.
+    const podglady = screen.getAllByRole("link", { name: "Podgląd jako uczestnik" });
+    expect(podglady).toHaveLength(2);
+    for (const podglad of podglady) {
+      expect(podglad).toHaveAttribute("href", "/panel/kursy/wywiad-psychologiczny?podglad=1");
+      expect(podglad.className).toMatch(/przyciskPodgladu/);
+    }
   });
 
   it("„Opublikuj kurs” wysyła jedno żądanie i karta przechodzi w stan opublikowany", async () => {
@@ -434,13 +440,13 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
     return Array.from(karta.querySelectorAll<HTMLButtonElement>("h3 > button[aria-expanded]"));
   }
 
-  it("trzy wiersze ze stanem, wszystkie zwinięte; wiersza zdjęcia nie ma", async () => {
+  it("dwa wiersze ze stanem, wszystkie zwinięte; wierszy zdjęcia i zaproszeń nie ma", async () => {
     await renderEkranu();
-    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "false", "false"]);
+    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "false"]);
     expect(wiersze()[0]).toHaveTextContent("Opis i dane kursu");
     expect(wiersze()[0]).toHaveTextContent("Kurs · 2. miejsce w ścieżce");
     expect(wiersze()[1]).toHaveTextContent("Prowadzący");
-    expect(wiersze()[2]).toHaveTextContent("Zaproszenia");
+    expect(screen.queryByText("Zaproszenia")).toBeNull();
     expect(screen.queryByText("Zdjęcie kursu")).toBeNull();
     expect(screen.getByText("Pliki do pobrania dodajesz w lekcjach.")).toBeInTheDocument();
   });
@@ -448,20 +454,20 @@ describe("ekran kursu — ustawienia rozwijane w miejscu", () => {
   it("naraz otwarty jest najwyżej jeden wiersz; ponowne kliknięcie zwija", async () => {
     await renderEkranu();
     await userEvent.click(wiersze()[0]);
-    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["true", "false", "false"]);
+    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["true", "false"]);
     expect(screen.getByRole("button", { name: "Zapisz dane kursu" })).toBeInTheDocument();
 
     await userEvent.click(wiersze()[1]);
-    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "true", "false"]);
+    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "true"]);
     expect(screen.queryByRole("button", { name: "Zapisz dane kursu" })).toBeNull();
     expect(await screen.findByRole("button", { name: "Przypisz prowadzącego" })).toBeInTheDocument();
 
-    await userEvent.click(wiersze()[2]);
-    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "false", "true"]);
+    await userEvent.click(wiersze()[0]);
+    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["true", "false"]);
     expect(screen.queryByRole("button", { name: "Przypisz prowadzącego" })).toBeNull();
 
-    await userEvent.click(wiersze()[2]);
-    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "false", "false"]);
+    await userEvent.click(wiersze()[0]);
+    expect(wiersze().map((w) => w.getAttribute("aria-expanded"))).toEqual(["false", "false"]);
   });
 
   it("wiersz „Prowadzący” pokazuje prowadzącego całego kursu z danych", async () => {

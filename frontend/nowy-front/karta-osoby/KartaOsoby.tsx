@@ -254,7 +254,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
               </Button>
             }
           >
-            Serwer nie odpowiedział albo zwrócił błąd. Dane osoby nie są zgadywane bez odpowiedzi.
+            Nie udało się wczytać danych osoby. Spróbuj ponownie za chwilę.
           </Notice>
         }
       />
@@ -376,7 +376,7 @@ export function KartaOsoby({ id, adresPrzedluzenia }: WlasciwosciKartyOsoby) {
                     </Button>
                   }
                 >
-                  Serwer nie odpowiedział albo zwrócił błąd. Dane w formularzu zostały zachowane — spróbuj zapisać jeszcze raz.
+                  Nie udało się zapisać. Dane w formularzu zostały zachowane — spróbuj zapisać jeszcze raz.
                 </Notice>
               )}
             </>

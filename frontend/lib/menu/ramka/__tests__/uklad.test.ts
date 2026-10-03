@@ -45,6 +45,14 @@ describe("ukladMenuRamki — linie „W przygotowaniu” rozłączne z menu", ()
     expect(liniaKonta).toBe("pomoc");
   });
 
+  it("student: linia programu bez dziennika stażu i superwizji (student ich nie ma) i bez dokumentów (są w menu)", () => {
+    const { grupy, liniaKonta } = ukladMenuRamki(menuRamkiUczestnika("student"), "/panel/pulpit", W_PRZYGOTOWANIU_KONTO_UCZESTNIKA);
+    expect(grupy.find((g) => g.naglowek === "Program")?.liniaWPrzygotowaniu).toBe(
+      "pytania i odpowiedzi · ścieżka programu · zaświadczenie o ukończeniu kursu",
+    );
+    expect(liniaKonta).toBe("pomoc");
+  });
+
   it("administracja: „certyfikaty” zdjęte z linii Rozliczenia (pozycja „Certyfikaty” jest w menu), „ustawienia roku programu” w Ustawieniach", () => {
     const { grupy } = ukladMenuRamki(menuRamkiAdministracji(), "/admin");
     expect(grupy.find((g) => g.naglowek === "Rozliczenie")?.liniaWPrzygotowaniu).toBeUndefined();

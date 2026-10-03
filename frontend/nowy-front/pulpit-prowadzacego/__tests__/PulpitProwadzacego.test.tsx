@@ -320,3 +320,20 @@ describe("PulpitProwadzacego — przycisk główny w nagłówku (makieta 2.0.4, 
     expect(z.container.querySelector("[data-testid='pageheader-glowa']")).toContainElement(odpowiedz);
   });
 });
+
+describe("PulpitProwadzacego — przyciski wierszy superwizji i grupy mają pełne nazwy", () => {
+  it("wiersz terminu: „Zobacz terminy superwizji”, wiersz osoby: „Zobacz swoją grupę”; oba prowadzą do widoku grupy, bez „Otwórz grupę”", async () => {
+    pobierzPulpit.mockResolvedValue(pulpitZTerminem());
+    render(<PulpitProwadzacego />);
+
+    const superwizje = (await screen.findByRole("heading", { name: "Nadchodzące superwizje" })).closest("section")!;
+    const grupa = screen.getByRole("heading", { name: "Moja grupa" }).closest("section")!;
+    const terminy = within(superwizje).getAllByRole("link", { name: "Zobacz terminy superwizji" });
+    const osoby = within(grupa).getAllByRole("link", { name: "Zobacz swoją grupę" });
+
+    expect(terminy).toHaveLength(1);
+    expect(osoby).toHaveLength(2);
+    for (const odnosnik of [...terminy, ...osoby]) expect(odnosnik).toHaveAttribute("href", "/prowadzacy/grupa");
+    expect(screen.queryAllByText("Otwórz grupę")).toEqual([]);
+  });
+});

@@ -321,6 +321,24 @@
   text-decoration: none;
 }
 
+/* „Podgląd jako uczestnik” w szkicu: odnośnik o wyglądzie przycisku z obrysem
+   (jak `Button` poziomu `outline`), bo zielony na ekranie jest jeden. */
+.przyciskPodgladu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hit-min);
+  padding: var(--space-8) var(--space-16);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-9);
+  font-weight: var(--fw-medium);
+  text-align: center;
+  text-decoration: none;
+}
+
 .pasStan {
   display: flex;
   flex-direction: column;

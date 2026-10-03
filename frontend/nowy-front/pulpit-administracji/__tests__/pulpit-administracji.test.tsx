@@ -102,7 +102,7 @@ describe("Pulpit administracji — stany ekranu", () => {
     expect(container.querySelectorAll("button")).toHaveLength(2);
   });
 
-  it("dane: przycisk „Otwórz sprawy” przechodzi pod link kolejki applications", async () => {
+  it("dane: przycisk „Otwórz sprawy” prowadzi do ekranu „Sprawy” (wszystkie rodzaje), nie do listy osób", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
     const uzytkownik = userEvent.setup();
     const { container } = render(<PulpitAdministracji />);
@@ -111,7 +111,8 @@ describe("Pulpit administracji — stany ekranu", () => {
     await uzytkownik.click(przyciskiGlowne(container)[0]);
 
     expect(push).toHaveBeenCalledTimes(1);
-    expect(push).toHaveBeenCalledWith("/admin/uczestniczki");
+    expect(push).toHaveBeenCalledWith("/admin/sprawy");
+    expect(push).not.toHaveBeenCalledWith("/admin/uczestniczki");
     expect(przyciskiGlowne(container)[0]).not.toHaveAttribute("aria-disabled");
   });
 
@@ -127,13 +128,13 @@ describe("Pulpit administracji — stany ekranu", () => {
 
     const glowny = przyciskiGlowne(container)[0];
     expect(glowny).toHaveAttribute("aria-disabled", "true");
-    expect(glowny).toHaveAccessibleDescription("Brak zgłoszeń rekrutacyjnych do decyzji.");
+    expect(glowny).toHaveAccessibleDescription("Żadna sprawa nie czeka na decyzję.");
     await uzytkownik.click(glowny);
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByText("Nie można otworzyć spraw")).toBeInTheDocument();
   });
 
-  it("dane: inne kolejki mają sprawy, ale applications ma 0 — przycisk niedostępny z powodem, bez przejścia", async () => {
+  it("dane: inne kolejki mają sprawy, a applications ma 0 — przycisk prowadzi do „Spraw”", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(
       odpowiedzPulpitu({
         queues: [
@@ -149,13 +150,12 @@ describe("Pulpit administracji — stany ekranu", () => {
       expect(screen.getByRole("link", { name: "Otwórz: Dyżury czekające na decyzję" })).toBeInTheDocument(),
     );
     const glowny = przyciskiGlowne(container)[0];
-    expect(glowny).toHaveAttribute("aria-disabled", "true");
-    expect(glowny).toHaveAccessibleDescription("Brak zgłoszeń rekrutacyjnych do decyzji.");
+    expect(glowny).not.toHaveAttribute("aria-disabled");
     await uzytkownik.click(glowny);
-    expect(push).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith("/admin/sprawy");
   });
 
-  it("dane: bez kolejki applications w odpowiedzi przycisk jest niedostępny z powodem, bez przejścia", async () => {
+  it("dane: bez kolejki applications w odpowiedzi przycisk nadal prowadzi do „Spraw”", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(
       odpowiedzPulpitu({ queues: [{ key: "internship_entries", count: 7, link: "/admin/staz" }] }),
     );
@@ -166,10 +166,9 @@ describe("Pulpit administracji — stany ekranu", () => {
       expect(screen.getByRole("link", { name: "Otwórz: Dyżury czekające na decyzję" })).toBeInTheDocument(),
     );
     const glowny = przyciskiGlowne(container)[0];
-    expect(glowny).toHaveAttribute("aria-disabled", "true");
-    expect(glowny).toHaveAccessibleDescription("Odpowiedź serwera nie zawiera zgłoszeń rekrutacyjnych do otwarcia.");
+    expect(glowny).not.toHaveAttribute("aria-disabled");
     await uzytkownik.click(glowny);
-    expect(push).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith("/admin/sprawy");
   });
 
   it("pusty: odpowiedź bez kolejek też pokazuje stan pusty i przycisk bez celu", async () => {
@@ -373,7 +372,7 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     const adresy: [string, string][] = [
       ["Zgłoszenia rekrutacyjne", "/admin/uczestniczki"],
       ["Dyżury czekające na decyzję", "/admin/staz"],
-      ["Profile prowadzących do decyzji", "/admin/profile"],
+      ["Wnioski o profil psychologa", "/admin/profile"],
     ];
     for (const [nazwa, adres] of adresy) {
       const odnosnik = within(wiersz(nazwa)).getByRole("link", { name: `Otwórz: ${nazwa}` });
@@ -425,10 +424,10 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
       }),
     );
     render(<PulpitAdministracji />);
-    await screen.findByText("Profile prowadzących do decyzji");
+    await screen.findByText("Wnioski o profil psychologa");
     expect(
-      within(wiersz("Profile prowadzących do decyzji")).getByRole("link", {
-        name: "Otwórz: Profile prowadzących do decyzji",
+      within(wiersz("Wnioski o profil psychologa")).getByRole("link", {
+        name: "Otwórz: Wnioski o profil psychologa",
       }),
     ).toHaveAttribute("href", "/prowadzacy/pytania");
   });
@@ -450,13 +449,13 @@ describe("Pulpit administracji — wiersz pytań bez odpowiedzi nie prowadzi do 
     expect(within(pytania).queryByRole("link")).toBeNull();
   });
 
-  it("przycisk „Otwórz sprawy” w nagłówku bez zmian: prowadzi pod link kolejki applications", async () => {
+  it("przycisk „Otwórz sprawy” w nagłówku: prowadzi do „Spraw”, nie pod link kolejki applications", async () => {
     pobierzPulpitAdministracji.mockResolvedValue(odpowiedzPulpitu());
     const uzytkownik = userEvent.setup();
     const { container } = render(<PulpitAdministracji />);
     await waitFor(() => expect(przyciskiGlowne(container)).toHaveLength(1));
     await uzytkownik.click(przyciskiGlowne(container)[0]);
-    expect(push).toHaveBeenCalledWith("/admin/uczestniczki");
+    expect(push).toHaveBeenCalledWith("/admin/sprawy");
   });
 });
 
@@ -477,7 +476,7 @@ describe("Pulpit administracji — przycisk główny w nagłówku (makieta 2.0.4
     const { container } = render(<PulpitAdministracji />);
     await waitFor(() => expect(screen.getByText("Brak spraw do decyzji")).toBeInTheDocument());
 
-    const powod = screen.getByText("Brak zgłoszeń rekrutacyjnych do decyzji.");
+    const powod = screen.getByText("Żadna sprawa nie czeka na decyzję.");
     expect(container.querySelector("[data-obszar='naglowek']")).toContainElement(powod);
     expect(przyciskiGlowne(container)[0].getAttribute("aria-describedby")).toBe(powod.id);
   });

@@ -71,7 +71,7 @@ export function PrzypisanieSuperwizora({ userId }: WlasciwosciPrzypisaniaSuperwi
       <Heading stopien={2} id="czynnosc-prowadzacy-naglowek">
         Prowadzący superwizje
       </Heading>
-      <Text>Wskazana osoba przejmuje superwizję tej osoby — poprzednie przypisanie serwer zamyka sam.</Text>
+      <Text>Wskazana osoba przejmuje superwizję tej osoby — poprzednie przypisanie zamyka się samo.</Text>
       {bladListy !== null && (
         <Notice wariant="error" tytul="Lista prowadzących niedostępna">
           {bladListy}
