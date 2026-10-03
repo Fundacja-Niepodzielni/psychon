@@ -542,7 +542,7 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
     const sekcja = screen.getByRole("region", { name: "Kolejność ścieżki" });
     return within(sekcja)
       .getAllByRole("listitem")
-      .map((li) => li.querySelector("span > span:nth-child(2)")?.textContent);
+      .map((li) => li.lastElementChild?.textContent);
   }
 
   it("lista kolejności zawiera tylko kursy ze ścieżki; pierwszy „wyżej” i ostatni „niżej” są wyłączone, ale zostają w kolejności fokusu", async () => {
@@ -557,12 +557,14 @@ describe("KursyAdministracji — Zmień kolejność ścieżki", () => {
     expect(screen.getByRole("button", { name: "Przenieś „Podstawy pomocy” niżej" })).not.toHaveAttribute("aria-disabled");
   });
 
-  it("strzałki stoją po lewej, przed numerem, a wiersz nie ma przycisków z tekstem „W górę” i „W dół”", async () => {
+  it("strzałki stoją po lewej z numerem między nimi, a wiersz nie ma przycisków z tekstem „W górę” i „W dół”", async () => {
     await otworz();
     const wiersz = within(screen.getByRole("region", { name: "Kolejność ścieżki" })).getAllByRole("listitem")[0];
     const dzieci = Array.from(wiersz.children);
     expect(dzieci[0].querySelectorAll("button")).toHaveLength(2);
-    expect(dzieci[1].textContent).toBe("1.Podstawy pomocy");
+    expect(Array.from(dzieci[0].children).map((dziecko) => dziecko.tagName)).toEqual(["BUTTON", "SPAN", "BUTTON"]);
+    expect(dzieci[0].children[1].textContent).toBe("1");
+    expect(dzieci[1].textContent).toBe("Podstawy pomocy");
     expect(screen.queryByRole("button", { name: "W górę" })).toBeNull();
     expect(screen.queryByRole("button", { name: "W dół" })).toBeNull();
   });

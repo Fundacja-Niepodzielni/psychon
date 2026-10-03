@@ -122,7 +122,7 @@ function celPrzeniesienia(
  * ten fragment przechodzi na niego.
  *
  * Kolejność zmienia się jedną drogą: strzałki „wyżej”/„niżej” po lewej stronie
- * wiersza, przed numerem (molekuła `StrzalkiKolejnosci`), zawsze widoczne. Ruch
+ * wiersza, z numerem lekcji między nimi (molekuła `StrzalkiKolejnosci`), zawsze widoczne. Ruch
  * między tematami: pierwsza lekcja tematu idzie „wyżej” na koniec poprzedniego,
  * ostatnia „niżej” na początek następnego. Zamianę wierszy rozgrywa i fokus
  * zwraca na tę samą strzałkę pomocnik `useRuchWierszy`; zdanie dla czytnika
@@ -256,12 +256,14 @@ export function CourseTree({
                         mozeNizej={nizej !== null}
                         onWyzej={() => wyzej && przeniesStrzalka(temat.id, lekcja.id, wyzej)}
                         onNizej={() => nizej && przeniesStrzalka(temat.id, lekcja.id, nizej)}
+                        numer={
+                          <>
+                            {lekcja.zmieniona && <span className={style.kropkaZmiany} aria-hidden="true" />}
+                            {indeks + 1}
+                            {lekcja.zmieniona && <span className={style.ukryte}> (niezapisana zmiana)</span>}
+                          </>
+                        }
                       />
-                    </span>
-                    <span className={style.numer}>
-                      {lekcja.zmieniona && <span className={style.kropkaZmiany} aria-hidden="true" />}
-                      {indeks + 1}
-                      {lekcja.zmieniona && <span className={style.ukryte}> (niezapisana zmiana)</span>}
                     </span>
 
                     {edytowana === lekcja.id ? (

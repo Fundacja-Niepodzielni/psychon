@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icon } from "../../atomy/Icon/Icon";
 import style from "./StrzalkiKolejnosci.module.css";
 
@@ -10,11 +11,17 @@ interface WlasciwosciStrzalkiKolejnosci {
   mozeNizej: boolean;
   onWyzej: () => void;
   onNizej: () => void;
+  /**
+   * Numer kolejności wiersza. Stoi w tej samej wąskiej kolumnie między strzałkami:
+   * strzałka w górę, pod nią numer, pod nim strzałka w dół. To zwykły tekst — nie
+   * przyjmuje fokusu i nie ma własnej roli. Bez numeru kolumna ma tylko dwie strzałki.
+   */
+  numer?: ReactNode;
 }
 
 /**
- * Strzałki zmiany kolejności wiersza: dwie, jedna pod drugą, bez obramowań i
- * tła w spoczynku. Stoją po lewej stronie wiersza, przed numerem.
+ * Strzałki zmiany kolejności wiersza: jedna pod drugą, bez obramowań i tła w
+ * spoczynku, a między nimi (gdy podany) numer wiersza. Stoją po lewej stronie wiersza.
  *
  * Strzałka bez ruchu do wykonania ma `aria-disabled="true"` i wygląd
  * wyłączony, ale nie ma atrybutu `disabled` — zostaje w kolejności fokusu,
@@ -25,7 +32,7 @@ interface WlasciwosciStrzalkiKolejnosci {
  * samej strzałce) daje pomocnik `useRuchWierszy` z `ruch.ts`, a zdania dla
  * czytnika — `zdania.ts`.
  */
-export function StrzalkiKolejnosci({ tytul, mozeWyzej, mozeNizej, onWyzej, onNizej }: WlasciwosciStrzalkiKolejnosci) {
+export function StrzalkiKolejnosci({ tytul, mozeWyzej, mozeNizej, onWyzej, onNizej, numer }: WlasciwosciStrzalkiKolejnosci) {
   return (
     <span className={style.strzalki}>
       <button
@@ -40,6 +47,11 @@ export function StrzalkiKolejnosci({ tytul, mozeWyzej, mozeNizej, onWyzej, onNiz
       >
         <Icon nazwa="strzalka-gora" rozmiar={16} />
       </button>
+      {numer !== undefined && numer !== null && (
+        <span className={style.numer} data-numer-kolejnosci>
+          {numer}
+        </span>
+      )}
       <button
         type="button"
         className={style.strzalka}

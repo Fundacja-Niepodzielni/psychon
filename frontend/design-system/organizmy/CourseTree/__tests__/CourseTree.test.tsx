@@ -155,7 +155,7 @@ describe("CourseTree — kolejność tylko strzałkami (świadek strukturalny)",
     expect(container.querySelector("[data-tryb-kolejnosci]")).toBeNull();
   });
 
-  it("strzałki stoją w wierszu przed numerem, po dwie na lekcję, z nazwami niosącymi tytuł", () => {
+  it("numer lekcji stoi w kolumnie strzałek między nimi, po dwie strzałki na lekcję, z nazwami niosącymi tytuł", () => {
     const { container } = render(<CourseTree {...akcje()} tematy={TEMATY} liczbaZmian={0} />);
     const li = wiersz(container, "l2");
     const wyzej = within(li).getByRole("button", { name: "Przenieś „Zasady programu” wyżej" });
@@ -164,7 +164,16 @@ describe("CourseTree — kolejność tylko strzałkami (świadek strukturalny)",
     expect(wyzej.compareDocumentPosition(nizej) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(li.firstElementChild!.contains(wyzej)).toBe(true);
     expect(li.firstElementChild!.contains(nizej)).toBe(true);
-    expect(li.children[1].textContent).toContain("2");
+    // Numer stoi w tej samej kolumnie: strzałka w górę, numer, strzałka w dół — i nigdzie indziej w wierszu.
+    const kolumna = wyzej.parentElement!;
+    const numer = kolumna.querySelector("[data-numer-kolejnosci]") as HTMLElement;
+    expect(numer.textContent).toBe("2");
+    expect(Array.from(kolumna.children)).toEqual([wyzej, numer, nizej]);
+    expect(li.children[1].textContent).not.toBe("2");
+    expect(li.querySelectorAll("[data-numer-kolejnosci]")).toHaveLength(1);
+    // Numer to zwykły tekst: bez fokusu i bez roli.
+    expect(numer).not.toHaveAttribute("tabindex");
+    expect(numer.querySelector("button, a, input, [tabindex]")).toBeNull();
   });
 
   it("skrajne strzałki całego drzewa mają aria-disabled i zostają w kolejności fokusu", async () => {

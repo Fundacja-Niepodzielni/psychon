@@ -341,9 +341,9 @@ function WierszLekcji({
           mozeNizej={!ostatnia}
           onWyzej={() => onPrzesun(-1)}
           onNizej={() => onPrzesun(1)}
+          numer={lekcja.numer}
         />
       </span>
-      <span className={style.numer}>{lekcja.numer}</span>
       <span className={style.tytulLekcji} title={lekcja.tytul}>
         {lekcja.tytul}
       </span>

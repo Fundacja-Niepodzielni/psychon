@@ -33,12 +33,12 @@
   padding: 0;
 }
 
-/* Kolumna strzałek ma szerokość pola dotyku (44 px; od 1100 px — 28 px, jak
-   pole strzałki molekuły). Kolumna tytułu `minmax(0, 1fr)` zawija długi tytuł
+/* Kolumna strzałek (z numerem lekcji między nimi) ma szerokość pola dotyku (44 px;
+   od 1100 px — 28 px, jak pole strzałki molekuły). Kolumna tytułu `minmax(0, 1fr)` zawija długi tytuł
    zamiast ściskać akcje. */
 .wiersz {
   display: grid;
-  grid-template-columns: var(--hit-min) 2rem minmax(0, 1fr) auto;
+  grid-template-columns: var(--hit-min) minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-4) var(--space-12);
@@ -66,13 +66,7 @@
   padding: var(--space-8) 0 var(--space-12);
 }
 
-.numer {
-  position: relative;
-  font-size: var(--fs-11);
-  color: var(--muted);
-  text-align: center;
-}
-
+/* Kropka niezapisanej zmiany stoi przy numerze, który rysuje molekuła strzałek. */
 .kropkaZmiany {
   position: absolute;
   top: -2px;
@@ -107,6 +101,6 @@
 
 @media (min-width: 1100px) {
   .wiersz {
-    grid-template-columns: 28px 2rem minmax(0, 1fr) auto;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
   }
 }

@@ -171,6 +171,30 @@ describe("StrzalkiKolejnosci — nazwy i stan", () => {
     expect(wiersz.lastElementChild!.textContent).toBe("Beta");
   });
 
+  it("numer podany właściwością stoi między strzałkami jako zwykły tekst, a bez numeru kolumna ma tylko dwie strzałki", async () => {
+    const { container, rerender } = render(
+      <StrzalkiKolejnosci tytul="Beta" mozeWyzej mozeNizej onWyzej={() => {}} onNizej={() => {}} numer={3} />,
+    );
+    const kolumna = container.firstElementChild as HTMLElement;
+    const numer = kolumna.querySelector("[data-numer-kolejnosci]") as HTMLElement;
+    expect(numer.textContent).toBe("3");
+    expect(Array.from(kolumna.children).map((dziecko) => dziecko.getAttribute("data-strzalka") ?? "numer")).toEqual([
+      "wyzej",
+      "numer",
+      "nizej",
+    ]);
+    expect(numer).not.toHaveAttribute("tabindex");
+    expect(numer).not.toHaveAttribute("role");
+    // Tab przechodzi ze strzałki w górę od razu na strzałkę w dół.
+    await userEvent.tab();
+    expect(strzalka("Beta", "wyżej")).toHaveFocus();
+    await userEvent.tab();
+    expect(strzalka("Beta", "niżej")).toHaveFocus();
+    rerender(<StrzalkiKolejnosci tytul="Beta" mozeWyzej mozeNizej onWyzej={() => {}} onNizej={() => {}} />);
+    expect(container.querySelector("[data-numer-kolejnosci]")).toBeNull();
+    expect((container.firstElementChild as HTMLElement).children).toHaveLength(2);
+  });
+
   it("skrajne strzałki mają aria-disabled=true, zostają w kolejności fokusu i nic nie wołają", async () => {
     const onWyzej = vi.fn();
     const onNizej = vi.fn();

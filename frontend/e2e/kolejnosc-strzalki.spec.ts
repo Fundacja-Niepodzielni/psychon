@@ -12,8 +12,10 @@ import { dolaczNaruszeniaDoRaportu, uruchomAxe } from "./_axe";
  * - lista kursów w ścieżce (`/admin/kursy`, tryb „Zmień kolejność ścieżki”).
  * Sprawdzane: klik przenosi wiersz, fokus zostaje na tej samej strzałce, obszar
  * `aria-live` niesie zdanie dla czytnika, pole strzałki ma 44 × 44 px poniżej
- * 1100 px i 28 × 24 px od 1100 px, strzałki stoją przed numerem, brak
- * przewijania w poziomie, axe bez naruszeń; zamiana wierszy jest płynna
+ * 1100 px i 28 × 24 px od 1100 px, numer wiersza stoi w kolumnie strzałek między
+ * nimi (strzałka w górę, numer, strzałka w dół), jest zwykłym tekstem bez fokusu i
+ * nie powtarza się w wierszu, każdy przycisk ma co najmniej 24 × 24 px, strzałki
+ * stoją przed tekstem wiersza, brak przewijania w poziomie, axe bez naruszeń; zamiana wierszy jest płynna
  * (przekształcenie CSS 200 ms), a przy „ogranicz ruch” natychmiastowa.
  * Zrzuty powstają tylko przy ustawionej zmiennej `PW_ZRZUTY` (katalog poza repozytorium).
  */
@@ -208,6 +210,47 @@ async function zmierzStrzalki(page: Page, selektorWiersza: string) {
   }, selektorWiersza);
 }
 
+/**
+ * Numer wiersza w kolumnie strzałek: strzałka w górę nad numerem, numer nad strzałką w dół,
+ * wszystko w jednej pionowej osi; numer nie ma fokusu; w wierszu stoi tylko raz jako samodzielny
+ * tekst; oba przyciski mają co najmniej 24 × 24 px. Zwraca listę odstępstw (pusta = zgodne).
+ */
+async function zmierzNumerMiedzyStrzalkami(page: Page, selektorWiersza: string) {
+  return page.evaluate((selektor) => {
+    const odstepstwa: string[] = [];
+    const wiersze = Array.from(document.querySelectorAll<HTMLElement>(selektor));
+    wiersze.forEach((wiersz, indeks) => {
+      const opis = `wiersz ${indeks + 1}`;
+      const wyzej = wiersz.querySelector<HTMLElement>('[data-strzalka="wyzej"]');
+      const nizej = wiersz.querySelector<HTMLElement>('[data-strzalka="nizej"]');
+      const numer = wiersz.querySelector<HTMLElement>("[data-numer-kolejnosci]");
+      if (!wyzej || !nizej || !numer) {
+        odstepstwa.push(`${opis}: brak strzałki albo numeru w kolumnie`);
+        return;
+      }
+      const w = wyzej.getBoundingClientRect();
+      const n = numer.getBoundingClientRect();
+      const d = nizej.getBoundingClientRect();
+      if (w.bottom > n.top + 0.5) odstepstwa.push(`${opis}: numer nie stoi pod strzałką w górę`);
+      if (n.bottom > d.top + 0.5) odstepstwa.push(`${opis}: numer nie stoi nad strzałką w dół`);
+      const os = (r: DOMRect) => (r.left + r.right) / 2;
+      if (Math.abs(os(w) - os(n)) > 1 || Math.abs(os(d) - os(n)) > 1) odstepstwa.push(`${opis}: numer poza osią strzałek`);
+      for (const [nazwa, r] of [["w górę", w], ["w dół", d]] as const) {
+        if (r.width < 24 || r.height < 24) odstepstwa.push(`${opis}: strzałka ${nazwa} ma ${r.width} × ${r.height} px`);
+      }
+      if (numer.hasAttribute("tabindex") || numer.closest("button, a, [tabindex]:not([tabindex=\"-1\"])")) odstepstwa.push(`${opis}: numer przyjmuje fokus`);
+      if (!numer.parentElement?.contains(wyzej) || numer.parentElement !== nizej.parentElement) odstepstwa.push(`${opis}: numer w innej kolumnie niż strzałki`);
+      const tekst = (numer.textContent ?? "").trim();
+      if (!/^\d+$/.test(tekst)) odstepstwa.push(`${opis}: numer „${tekst}” nie jest samą liczbą`);
+      const samodzielne = Array.from(wiersz.querySelectorAll<HTMLElement>("*")).filter(
+        (el) => el.children.length === 0 && (el.textContent ?? "").trim() === tekst,
+      );
+      if (samodzielne.length !== 1) odstepstwa.push(`${opis}: numer ${tekst} występuje w wierszu ${samodzielne.length} razy`);
+    });
+    return odstepstwa;
+  }, selektorWiersza);
+}
+
 /** Zapisuje wartości atrybutu `style` wierszy w trakcie działania — z nich widać, czy leciały z dawnych miejsc. */
 async function zacznijObserwacjeStylu(page: Page, selektor: string): Promise<void> {
   await page.evaluate((s) => {
@@ -255,6 +298,9 @@ for (const okno of OKNA) {
         "strzałki o innym polu niż oczekiwane",
       ).toEqual([]);
       expect(strzalki.filter((s) => !s.poLewejOdTekstu).map((s) => s.nazwa)).toEqual([]);
+      expect(await zmierzNumerMiedzyStrzalkami(page, "li[data-lekcja]"), "numer między strzałkami").toEqual([]);
+      const numery = await page.locator("li[data-lekcja] [data-numer-kolejnosci]").allTextContents();
+      expect(numery).toEqual(["1", "2", "3", "4"]);
       await bezPrzewijaniaPoziomego(page);
       await expect(page.locator("[draggable]")).toHaveCount(0);
 
@@ -314,8 +360,10 @@ for (const okno of OKNA) {
         "strzałki o innym polu niż oczekiwane",
       ).toEqual([]);
       expect(strzalki.filter((s) => !s.poLewejOdTekstu).map((s) => s.nazwa)).toEqual([]);
+      expect(await zmierzNumerMiedzyStrzalkami(page, "li:has([data-strzalka])"), "numer między strzałkami").toEqual([]);
+      expect(await page.locator("li:has([data-strzalka]) [data-numer-kolejnosci]").allTextContents()).toEqual(["1", "2", "3"]);
       await bezPrzewijaniaPoziomego(page);
-      // Numer („2.”) zostaje w jednym wierszu także przy długim tytule bez spacji.
+      // Numer („2”) zostaje w jednym wierszu także przy długim tytule bez spacji.
       const liniiNumerow = await page.evaluate(() =>
         Array.from(document.querySelectorAll("li:has([data-strzalka]) [class*='numer']")).map((numer) => {
           const zakres = document.createRange();

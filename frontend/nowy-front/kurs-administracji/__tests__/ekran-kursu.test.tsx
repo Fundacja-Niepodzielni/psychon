@@ -147,7 +147,13 @@ describe("ekran kursu — odczyt i układ", () => {
       "href",
       "/admin/kursy/4/lekcje/22",
     );
-    // Strzałki stoją przed numerem: pierwsze elementy fokusowalne wiersza.
+    // Numer stoi w kolumnie strzałek, między nimi, i nie przyjmuje fokusu.
+    const numerWKolumnie = wiersz.querySelector("[data-numer-kolejnosci]") as HTMLElement;
+    expect(numerWKolumnie.textContent).toBe("2");
+    expect(numerWKolumnie.previousElementSibling).toHaveAttribute("data-strzalka", "wyzej");
+    expect(numerWKolumnie.nextElementSibling).toHaveAttribute("data-strzalka", "nizej");
+    expect(wiersz.querySelectorAll("[data-numer-kolejnosci]")).toHaveLength(1);
+    // Strzałki stoją przed tytułem: pierwsze elementy fokusowalne wiersza.
     const fokusowalne = Array.from(wiersz.querySelectorAll("button, a")).map((w) => w.getAttribute("aria-label"));
     expect(fokusowalne).toEqual([
       "Przenieś „Lekcja B” wyżej",
@@ -740,7 +746,9 @@ describe("ekran kursu — kolejność zapisuje się sama", () => {
     const strzalki = wiersz.querySelectorAll("[data-strzalka]");
     expect(strzalki).toHaveLength(2);
     expect(wiersz.firstElementChild!.contains(strzalki[0])).toBe(true);
-    expect(wiersz.children[1].textContent).toBe("2");
+    // Numer stoi w kolumnie strzałek, a nie w osobnej kolumnie obok.
+    expect(wiersz.firstElementChild!.querySelector("[data-numer-kolejnosci]")?.textContent).toBe("2");
+    expect(wiersz.children[1].textContent).toBe("Lekcja B");
   });
 
   it("pierwsza lekcja w górę i ostatnia w dół są niedostępne i nic nie wysyłają", async () => {

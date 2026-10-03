@@ -1,11 +1,22 @@
 /* Strzałki zmiany kolejności wiersza — wyłącznie tokeny. Rysunek jest mały
    (16 px), a pole dotyku duże: poniżej 1100 px każda strzałka ma 44 × 44 px,
    od 1100 px — 28 × 24 px (dwie jedna pod drugą mieszczą się w wierszu listy
-   obsługiwanej wskaźnikiem). Fokus rysuje wspólna reguła `:focus-visible`. */
+   obsługiwanej wskaźnikiem). Fokus rysuje wspólna reguła `:focus-visible`.
+   Numer wiersza stoi w tej samej kolumnie między strzałkami; to zwykły tekst. */
 .strzalki {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.numer {
+  position: relative;
+  color: var(--ink);
+  font-size: var(--fs-10);
+  font-weight: var(--fw-medium);
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .strzalka {

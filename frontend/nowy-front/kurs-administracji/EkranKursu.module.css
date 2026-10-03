@@ -93,31 +93,23 @@
 
 .wiersz {
   display: grid;
-  grid-template-columns: var(--hit-min) auto minmax(0, 1fr) auto;
+  grid-template-columns: var(--hit-min) minmax(0, 1fr) auto;
   grid-template-areas:
-    "ruch numer tytul otworz"
-    "ruch numer meta otworz"
-    "ruch numer stan otworz";
+    "ruch tytul otworz"
+    "ruch meta otworz"
+    "ruch stan otworz";
   align-items: center;
   column-gap: var(--space-8);
   padding: var(--space-8) var(--space-14);
   border-top: 1px solid var(--border);
 }
 
-/* Strzałki kolejności rysuje molekuła `StrzalkiKolejnosci`; tu tylko miejsce w siatce wiersza. */
+/* Strzałki kolejności i numer lekcji między nimi rysuje molekuła `StrzalkiKolejnosci`; tu tylko miejsce w siatce wiersza. */
 .ruch {
   grid-area: ruch;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.numer {
-  grid-area: numer;
-  min-width: var(--space-20);
-  color: var(--muted);
-  font-size: var(--fs-10);
-  text-align: right;
 }
 
 .tytulLekcji {
@@ -472,10 +464,10 @@
   }
 
   .wiersz {
-    grid-template-columns: 28px auto minmax(0, 1fr) 170px auto;
+    grid-template-columns: 28px minmax(0, 1fr) 170px auto;
     grid-template-areas:
-      "ruch numer tytul stan otworz"
-      "ruch numer meta stan otworz";
+      "ruch tytul stan otworz"
+      "ruch meta stan otworz";
     column-gap: var(--space-12);
     padding: var(--space-8) var(--space-20);
   }

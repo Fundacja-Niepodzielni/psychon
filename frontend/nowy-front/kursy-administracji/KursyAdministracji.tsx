@@ -521,11 +521,9 @@ export function KursyAdministracji() {
                   mozeNizej={indeks < kolejnosc.length - 1}
                   onWyzej={() => przesunKurs(indeks, -1)}
                   onNizej={() => przesunKurs(indeks, 1)}
+                  numer={indeks + 1}
                 />
-                <span className={style.nazwa}>
-                  <span className={style.numer}>{indeks + 1}.</span>
-                  <span>{kurs.title}</span>
-                </span>
+                <span className={style.nazwa}>{kurs.title}</span>
               </li>
             ))}
           </ol>
