@@ -19,9 +19,10 @@ import {
  * i `superwizjaUczestnika` (superwizja osoby wolontariackiej pod tym samym adresem `/panel/superwizja`).
  * Także `dziennikStazu` (dziennik stażu pod tym samym adresem `/panel/staz`).
  * Także `certyfikat` (certyfikat pod tym samym adresem `/panel/certyfikat`), `dokumentyUczestnika` (dokumenty uczestnika pod tym samym adresem `/panel/dokumenty`).
+ * Także `testUczestnika` (test końcowy kursu uczestnika pod tym samym adresem).
  * Pozostałe grupy opisują tylko docelowe pary tras i zostają wyłączone.
  */
-const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
+const WLACZONE = ["certyfikat", "decyzjaProfilu", "dokumentyUczestnika", "dziennikStazu", "edycjaLekcji", "ekranStartowy", "formyStazu", "kartaOsoby", "kolejkaStazu", "kursAdministracji", "kursUczestnika", "kursyAdministracji", "lekcja", "listaOsob", "nabor", "profilPsychologa", "publikacjaKursu", "pulpitAdministracji", "pulpitProwadzacego", "pulpitUczestnika", "sprawy", "superwizjaUczestnika", "testUczestnika", "wspolpraca", "wzoryDokumentow", "zaproszeniaNaKurs"];
 
 describe("rejestr GRUPY — stan flag", () => {
   it("grupa wspolpraca jest włączona", () => {
@@ -37,7 +38,7 @@ describe("rejestr GRUPY — stan flag", () => {
     expect(GRUPY.pulpitProwadzacego.wlaczona).toBe(true);
   });
 
-  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat i dokumenty uczestnika", () => {
+  it("włączone są dokładnie: współpraca, pulpit uczestnika, formy stażu, pulpit administracji, pulpit prowadzącego, decyzja o profilu, wzory dokumentów, ekran startowy, sprawy, kolejka stażu, kursy administracji, kurs administracji z publikacją i zaproszeniami, kurs uczestnika, profil psychologa, edycja lekcji, lekcja uczestnika, nabór, lista osób, superwizja uczestnika, dziennik stażu, certyfikat, dokumenty uczestnika i test końcowy uczestnika", () => {
     const wlaczone = Object.entries(GRUPY)
       .filter(([, grupa]) => grupa.wlaczona)
       .map(([klucz]) => klucz)
@@ -166,7 +167,7 @@ describe("czyNowaTrasaDostepna", () => {
 });
 
 describe("rejestr GRUPY — zawartość", () => {
-  it("zna trzydzieści trzy grupy dzisiejszego kanonu", () => {
+  it("zna trzydzieści cztery grupy dzisiejszego kanonu", () => {
     expect(Object.keys(GRUPY).sort()).toEqual([
       "certyfikat",
       "decyzjaProfilu",
@@ -197,6 +198,7 @@ describe("rejestr GRUPY — zawartość", () => {
       "sprawy",
       "superwizjaUczestnika",
       "superwizje",
+      "testUczestnika",
       "ustawieniaProgramu",
       "wspolpraca",
       "wzoryDokumentow",

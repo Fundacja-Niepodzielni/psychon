@@ -14,7 +14,7 @@ function nazwaDostepna(el: HTMLElement): string {
 }
 
 /**
- * Świadek ekranu testu kursu (`panel/kursy/[slug]/test/page.tsx`), dziś bez
+ * Świadek ekranu testu kursu (`panel/kursy/[slug]/test/StaraTresc.tsx`), dziś bez
  * żadnej próby na tym poziomie. Mierzy pięć zobowiązań Załącznika 1 wprost
  * z ekranu (jedno pytanie naraz, brak drogi wstecz, licznik pytań, blokadę
  * przejścia bez odpowiedzi, zakończenie zamiast „następne" na ostatnim
@@ -46,7 +46,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { default: CourseTestPage } = await import(
-  "@/app/(uczestnik)/panel/kursy/[slug]/test/page"
+  "@/app/(uczestnik)/panel/kursy/[slug]/test/StaraTresc"
 );
 
 const testPayload = {

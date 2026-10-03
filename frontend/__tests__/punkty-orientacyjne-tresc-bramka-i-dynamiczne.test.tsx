@@ -170,7 +170,7 @@ describe("/admin/ustawienia — h1 dla każdego wysterowanego stanu", () => {
 });
 
 describe("/panel/kursy/[slug]/test — h1 dla każdego wysterowanego stanu", () => {
-  const importPage = () => import("@/app/(uczestnik)/panel/kursy/[slug]/test/page");
+  const importPage = () => import("@/app/(uczestnik)/panel/kursy/[slug]/test/StaraTresc");
 
   const testPayload = {
     test_id: 10,

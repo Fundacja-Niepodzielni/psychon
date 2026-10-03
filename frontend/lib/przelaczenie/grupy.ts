@@ -55,7 +55,7 @@ export interface DefinicjaGrupy {
 }
 
 /**
- * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia pięć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
+ * Grupy dzisiejszego kanonu. Włączonych jest dwadzieścia sześć: `wspolpraca`, `pulpitUczestnika`, `lekcja`, `kursUczestnika`, `testUczestnika`, `certyfikat`, `dokumentyUczestnika`, `dziennikStazu`, `superwizjaUczestnika`, `profilPsychologa`, `formyStazu`,
  * `pulpitAdministracji`, `pulpitProwadzacego`, `decyzjaProfilu`, `wzoryDokumentow`, `ekranStartowy`, `sprawy`, `kolejkaStazu`, `kursyAdministracji`,
  * `kursAdministracji`, `publikacjaKursu`, `zaproszeniaNaKurs` (te trzy dzielą trasę `/admin/kursy/[id]`: publikacja
  * i zaproszenia są sekcjami ekranu kursu, więc włącza się je tylko razem z nim), `edycjaLekcji` (ekran lekcji
@@ -289,6 +289,23 @@ export const GRUPY = {
         staraTrasa: "/panel/dokumenty",
         nowaTrasa: "/panel/dokumenty",
         trasaPoligonu: "/nowy-front/dokumenty",
+      },
+    ],
+  },
+  /**
+   * Test końcowy kursu uczestnika — ten sam adres co dzisiejszy test kursu, treść strony zamienia się na ekran
+   * nowego frontu. Wchodzi się na niego z ekranu kursu („Przejdź do testu”). Strona
+   * `panel/kursy/[slug]/test/page.tsx` jest podpięta pod tę flagę, a dawna treść strony zostaje w `StaraTresc.tsx`.
+   */
+  testUczestnika: {
+    klucz: "testUczestnika",
+    wlaczona: true,
+    ekrany: [
+      {
+        panel: "uczestnik",
+        staraTrasa: "/panel/kursy/[slug]/test",
+        nowaTrasa: "/panel/kursy/[slug]/test",
+        trasaPoligonu: "/nowy-front/kurs-uczestnika/[slug]/test",
       },
     ],
   },
