@@ -206,6 +206,91 @@ describe.each([...UKLADY_PANELU, ...UKLADY_PODGLADU])("ekran uczestnika w układ
   });
 });
 
+/**
+ * Cztery ekrany tylko dla wolontariusza: strażnik uczestnika stoi na zewnątrz i obejmuje treść
+ * ekranu razem ze strażnikiem roli wolontariusza. Personel i prowadzący (także z `podglad=1`) widzą
+ * więc zdanie strażnika uczestnika, a nie zdanie o wolontariuszach — atrapa strażnika, który nie
+ * obejmuje dzieci układu, zostawia im odmowę roli wolontariusza i czerwieni te próby.
+ */
+const ZDANIE_STRAZNIKA_UCZESTNIKA = /Ten ekran jest dla osób uczestniczących w programie\.$/;
+const ZDANIE_ROLI_WOLONTARIUSZA = /Ten ekran jest dla wolontariuszy\.$/;
+
+const UKLADY_TYLKO_DLA_WOLONTARIUSZA: [string, Wczytanie, string][] = [
+  ["staz", lancuch(ramkaUczestnika, () => uklad(import("@/app/(uczestnik)/panel/staz/layout"))), "/panel/staz"],
+  ["certyfikat", lancuch(ramkaUczestnika, () => uklad(import("@/app/(uczestnik)/panel/certyfikat/layout"))), "/panel/certyfikat"],
+  ["superwizja", lancuch(ramkaUczestnika, () => uklad(import("@/app/(uczestnik)/panel/superwizja/layout"))), "/panel/superwizja"],
+  [
+    "profil-psychologa",
+    lancuch(ramkaUczestnika, () => uklad(import("@/app/(uczestnik)/panel/profil-psychologa/layout"))),
+    "/panel/profil-psychologa",
+  ],
+];
+
+const PODGLADY_TYLKO_DLA_WOLONTARIUSZA: [string, Wczytanie, string][] = [
+  ["staz", lancuch(() => uklad(import("@/app/nowy-front/staz/layout"))), "/nowy-front/staz"],
+  ["certyfikat", lancuch(() => uklad(import("@/app/nowy-front/certyfikat/layout"))), "/nowy-front/certyfikat"],
+  ["superwizja", lancuch(() => uklad(import("@/app/nowy-front/superwizja/layout"))), "/nowy-front/superwizja"],
+  ["profil-psychologa", lancuch(() => uklad(import("@/app/nowy-front/profil-psychologa/layout"))), "/nowy-front/profil-psychologa"],
+];
+
+describe.each(UKLADY_TYLKO_DLA_WOLONTARIUSZA)("ekran tylko dla wolontariusza /panel/%s", (_nazwa, wczytaj, adres) => {
+  it.each([
+    ["instructor", ""],
+    ["project_manager", ""],
+    ["super_admin", ""],
+    ["instructor", "podglad=1"],
+    ["project_manager", "podglad=1"],
+    ["super_admin", "podglad=1"],
+  ])("rola %s (zapytanie „%s”) widzi odmowę strażnika uczestnika, bez treści ekranu", async (rola, zapytanieAdresu) => {
+    kontoZRola(rola);
+    await renderuj(wczytaj, adres, zapytanieAdresu);
+    await widziOdmowe();
+    expect(screen.getByText(ZDANIE_STRAZNIKA_UCZESTNIKA)).toBeInTheDocument();
+    expect(screen.queryByText(ZDANIE_ROLI_WOLONTARIUSZA)).not.toBeInTheDocument();
+  });
+
+  it("rola volunteer widzi ekran", async () => {
+    kontoZRola("volunteer");
+    await renderuj(wczytaj, adres);
+    await widziEkran();
+  });
+
+  it("rola student widzi odmowę roli wolontariusza, bez treści ekranu", async () => {
+    kontoZRola("student");
+    await renderuj(wczytaj, adres);
+    await widziOdmowe();
+    expect(screen.getByText(ZDANIE_ROLI_WOLONTARIUSZA)).toBeInTheDocument();
+  });
+
+  it("osoba z rolą wolontariusza i rolą prowadzącego (rola główna volunteer) widzi ekran", async () => {
+    kontoZRola("volunteer", ["volunteer", "instructor"]);
+    await renderuj(wczytaj, adres);
+    await widziEkran();
+  });
+
+  it("w czasie odczytu konta treści ekranu nie ma", async () => {
+    api.mockImplementation(NIGDY);
+    await renderuj(wczytaj, adres);
+    expect(await screen.findByText("Wczytywanie…")).toBeInTheDocument();
+    expect(screen.queryByText(TRESC_EKRANU)).not.toBeInTheDocument();
+  });
+});
+
+describe.each(PODGLADY_TYLKO_DLA_WOLONTARIUSZA)("strona podglądu tylko dla wolontariusza /nowy-front/%s", (_nazwa, wczytaj, adres) => {
+  it.each(["instructor", "project_manager", "super_admin"])("rola %s z parametrem podglad=1 widzi „Brak dostępu”, bez treści ekranu", async (rola) => {
+    kontoZRola(rola);
+    await renderuj(wczytaj, adres, "podglad=1");
+    expect(await screen.findByRole("heading", { level: 1, name: "Brak dostępu" })).toBeInTheDocument();
+    expect(screen.queryByText(TRESC_EKRANU)).not.toBeInTheDocument();
+  });
+
+  it("rola volunteer widzi ekran", async () => {
+    kontoZRola("volunteer");
+    await renderuj(wczytaj, adres);
+    await widziEkran();
+  });
+});
+
 describe("tryb podglądu personelu i prowadzącego", () => {
   const LEKCJA = { id: "21" };
   const ADRESY_Z_PODGLADEM: [string, Wczytanie, Record<string, string>][] = [
