@@ -104,7 +104,7 @@ describe("numer pytania liczony po kolei", () => {
   });
 
   it("okna, powiadomienia i nowe pytanie też liczą po kolei", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     usunPytanie.mockResolvedValue({ id: 43, deleted: true });
     dodajPytanie.mockResolvedValue({
       id: 44,
@@ -169,7 +169,7 @@ describe("jeden zielony przycisk — w nagłówku", () => {
   });
 
   it("formularz pytania stoi we wspólnym oknie formularza; nagłówek ekranu zostaje z tym samym zielonym przyciskiem", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     await uzytkownik.click(screen.getByRole("button", { name: "Edytuj pytanie 2" }));
 
@@ -189,7 +189,7 @@ describe("jeden zielony przycisk — w nagłówku", () => {
   });
 
   it("odmowa zapisu: podsumowanie błędów okna z odnośnikiem do pola i błąd przy polu", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     await uzytkownik.click(zielone()[0]);
     const okno = screen.getByRole("dialog", { name: "Nowe pytanie" });
@@ -213,7 +213,7 @@ describe("jeden zielony przycisk — w nagłówku", () => {
 
 describe("usunięcie — wspólne okno w wariancie niebezpiecznym", () => {
   it("przycisk potwierdzenia ma barwę niebezpieczną", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń pytanie 2" }));
     const okno = screen.getByRole("dialog", { name: "Usunąć pytanie 2?" });
@@ -232,7 +232,7 @@ describe("strzałki kolejności po lewej stronie wiersza", () => {
   });
 
   it("„niżej”: wiersz od razu na nowym miejscu, zapis zamiany przez wolne miejsce, ogłoszenie, przyciski czekają na zapis", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     let potwierdz: () => void = () => {};
     zapiszKolejnosc.mockReturnValue(new Promise<void>((tak) => (potwierdz = tak)));
     await otworz();
@@ -259,7 +259,7 @@ describe("strzałki kolejności po lewej stronie wiersza", () => {
   });
 
   it("odmowa zapisu kolejności: komunikat i lista wczytana od nowa z serwera", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     zapiszKolejnosc.mockRejectedValue(new ApiError({ status: 500, code: "server_error", message: "" }));
     await otworz();
     pobierzPytania.mockResolvedValue(zLukami());

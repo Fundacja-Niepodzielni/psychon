@@ -106,7 +106,7 @@ describe("ładowanie", () => {
 
 describe("błąd odczytu", () => {
   it("komunikat błędu ze zdaniem serwera i czynny „Spróbuj ponownie”, który czyta pytania od nowa", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz({ blad: blad(500, "server_error", "Serwer chwilowo nie odpowiada.") });
 
     expect(screen.getByRole("alert")).toHaveTextContent("Nie udało się wczytać pytań testu");
@@ -133,7 +133,7 @@ describe("brak połączenia", () => {
 
 describe("brak dostępu — wspólny ekran odmowy", () => {
   it("odmowa serwera: nagłówek odmowy, dla kogo jest ekran, zdanie serwera i jeden przycisk powrotu", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz({ blad: blad(403, "forbidden", "Nie masz dostępu do tego zasobu.") });
 
     expect(screen.getByRole("heading", { level: 2, name: "Nie masz dostępu do tego ekranu" })).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe("nie ma testu", () => {
 
 describe("brak pytań", () => {
   it("stan pusty, opis „0 pytań” i czynny „Dodaj pytanie”", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz({ lista: [] });
 
     expect(screen.getByRole("heading", { level: 2, name: "Ten test nie ma jeszcze pytań" })).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe("lista pytań", () => {
 
 describe("dodawanie", () => {
   it("okno formularza: etykiety pól, odpowiedź poprawna zaznaczona, fokus na treści, zielony „Zapisz pytanie” w oknie", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     const formularz = await otworzDodawanie(uzytkownik);
 
@@ -216,7 +216,7 @@ describe("dodawanie", () => {
   });
 
   it("nieczynne usunięcie odpowiedzi mówi dlaczego; dodanie i usunięcie odpowiedzi", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     const formularz = await otworzDodawanie(uzytkownik);
 
@@ -233,7 +233,7 @@ describe("dodawanie", () => {
   });
 
   it("walidacja przed wysłaniem: błędy przy treści i przy pustych odpowiedziach, fokus na podsumowaniu, bez żądania", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     const formularz = await otworzDodawanie(uzytkownik);
     await uzytkownik.click(zapiszWOknie(formularz));
@@ -248,7 +248,7 @@ describe("dodawanie", () => {
   });
 
   it("błędy pól z odpowiedzi serwera (422) stoją przy polach; zdanie ogólne bez błędów pól — nad formularzem", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     dodajPytanie
       .mockRejectedValueOnce(
         blad(422, "validation_failed", "Popraw zaznaczone pola.", {
@@ -282,7 +282,7 @@ describe("dodawanie", () => {
   });
 
   it("zapisywanie: „Zapisywanie…” nieczynne, pola zablokowane, jedno żądanie", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     dodajPytanie.mockReturnValue(new Promise(() => {}));
     await otworz();
     const formularz = await wypelnijNowe(uzytkownik);
@@ -297,7 +297,7 @@ describe("dodawanie", () => {
   });
 
   it("zapisane: żądanie z treścią i odpowiedziami, powiadomienie, nowe pytanie na końcu listy, formularz zamknięty", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     dodajPytanie.mockResolvedValue({
       id: 44,
       body: "Jak zakończyć rozmowę wspierającą?",
@@ -328,7 +328,7 @@ describe("dodawanie", () => {
 
 describe("edycja", () => {
   it("formularz z treścią i odpowiedziami pytania; zapis wysyła cały zestaw z identyfikatorami", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     const po = { ...pytania()[1], answers: [{ id: 220, body: "Uważne słuchanie i parafraza", is_correct: false }, { id: 221, body: "Szybkie udzielanie rad", is_correct: true }] };
     zapiszPytanie.mockResolvedValue(po);
     await otworz();
@@ -357,7 +357,7 @@ describe("edycja", () => {
   });
 
   it("„Anuluj” zamyka okno bez żądania, zdejmuje pytanie o niezapisane zmiany i oddaje fokus przyciskowi „Edytuj”", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     await uzytkownik.click(screen.getByRole("button", { name: "Edytuj pytanie 1" }));
     const formularz = screen.getByRole("dialog", { name: "Edycja pytania 1" });
@@ -375,7 +375,7 @@ describe("edycja", () => {
 
 describe("usuwanie z potwierdzeniem", () => {
   it("okno mówi, co zniknie; „Zostaw pytanie” niczego nie usuwa", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz();
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń pytanie 3" }));
 
@@ -390,7 +390,7 @@ describe("usuwanie z potwierdzeniem", () => {
   });
 
   it("„Usuń pytanie”: żądanie, pytanie znika, powiadomienie, fokus na liście", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     usunPytanie.mockResolvedValue({ id: 42, deleted: true });
     await otworz();
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń pytanie 2" }));
@@ -407,7 +407,7 @@ describe("usuwanie z potwierdzeniem", () => {
   });
 
   it("w czasie usuwania przyciski są nieczynne ze zdaniem; błąd usuwania zostawia pytanie i mówi dlaczego", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     let odrzuc: (powod: unknown) => void = () => {};
     usunPytanie.mockReturnValue(new Promise((_, nie) => (odrzuc = nie)));
     await otworz();
