@@ -90,7 +90,7 @@ describe.each([
   });
 
   it("dodanie w oknie formularza: POST z treścią i odpowiedziami", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz(panel);
     await uzytkownik.click(screen.getByRole("button", { name: "Dodaj pytanie" }));
     const okno = screen.getByRole("dialog", { name: "Nowe pytanie" });
@@ -116,7 +116,7 @@ describe.each([
   });
 
   it("edycja w oknie formularza: PATCH pytania z treścią i całym zestawem odpowiedzi z identyfikatorami", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz(panel);
     await uzytkownik.click(screen.getByRole("button", { name: "Edytuj pytanie 2" }));
     const okno = screen.getByRole("dialog", { name: "Edycja pytania 2" });
@@ -140,7 +140,7 @@ describe.each([
   });
 
   it("usunięcie po potwierdzeniu we wspólnym oknie: DELETE pytania", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz(panel);
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń pytanie 2" }));
     const okno = screen.getByRole("dialog", { name: "Usunąć pytanie 2?" });
@@ -151,7 +151,7 @@ describe.each([
   });
 
   it("kolejność strzałką po lewej: kolejne PATCH z samym numerem pozycji", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz(panel);
     await uzytkownik.click(screen.getByRole("button", { name: `Przenieś „${PIERWSZE}” niżej` }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Edytuj pytanie 1" })).toBeEnabled());
@@ -163,7 +163,7 @@ describe.each([
   });
 
   it(`żadne żądanie nie idzie trasą drugiego panelu (${obca}…)`, async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     await otworz(panel);
     await uzytkownik.click(screen.getByRole("button", { name: "Usuń pytanie 3" }));
     await uzytkownik.click(within(screen.getByRole("dialog", { name: "Usunąć pytanie 3?" })).getByRole("button", { name: "Usuń pytanie" }));
@@ -181,7 +181,7 @@ describe("panel prowadzącego — stany", () => {
   });
 
   it("test obcego kursu albo nieistniejący (404): „Nie znaleziono testu”, nie ekran odmowy; powrót do kursu", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     odpowiedzListy = () => Promise.reject(new ApiError({ status: 404, code: "not_found", message: "Nie znaleziono zasobu." }));
     await otworz("prowadzacy");
 
@@ -194,7 +194,7 @@ describe("panel prowadzącego — stany", () => {
   });
 
   it("rola, której serwer nie wpuszcza na trasy prowadzącego (403): wspólny ekran odmowy „dla prowadzących”", async () => {
-    const uzytkownik = userEvent.setup();
+    const uzytkownik = userEvent.setup({ delay: null });
     rolaKonta = "student";
     odpowiedzListy = () => Promise.reject(new ApiError({ status: 403, code: "forbidden", message: "Nie masz dostępu do tej sekcji." }));
     await otworz("prowadzacy", null);
