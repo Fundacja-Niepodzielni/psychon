@@ -180,7 +180,10 @@ describe("zgodność z zapleczem", () => {
     expect(funkcja).not.toMatch(/\?|method|body/);
     const kontroler = tresc(join(ZAPLECZE, "app/Http/Controllers/Api/V1/Admin/MaterialAdminController.php"));
     expect(kontroler).toContain("function indexForLesson(");
-    expect(kontroler).toMatch(/LESSON_LIST_LIMIT = 200;/);
+    expect(kontroler).toContain("return $this->lessonMaterialsResponse($request, $lessonId);");
+    const odpowiedz = tresc(join(ZAPLECZE, "app/Http/Controllers/Concerns/RespondsWithMaterial.php"));
+    expect(odpowiedz).toMatch(/LESSON_LIST_LIMIT = 200;/);
+    expect(odpowiedz).toContain("->limit(self::LESSON_LIST_LIMIT)");
   });
 
   it("karta plików nie zawiera zdania roboczego o liście o dalszym kroku", () => {

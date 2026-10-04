@@ -2655,3 +2655,83 @@ domenowa blokuje dostęp/akcję — stan, nie własność” → 403), a nie wy�
 blokadą i odblokowaniem przyjdzie osobnym aneksem razem ze zmianą kodu.
 
 Kod: `Http/Controllers/Api/V1/Admin/AdminUserController.php` (`block`, `unblock`).
+
+---
+
+## Aneks — lista materiałów lekcji u prowadzącego, braki kursu i przypisanie prowadzącego (H08, H09)
+
+Aneks opisuje stan kodu. Jedna nowa trasa odczytu, dwa nowe kody braków publikacji, nowe
+odnośniki i treści powiadomień o przypisaniu. Bez nowych kodów błędu, slugów audytu i typów
+powiadomień; zero zmian w danych. Wobec trzech wcześniejszych aneksów ten blok jest nadrzędny
+w miejscach wskazanych niżej; ich tekstu nie usuwam.
+
+### 1. `GET /instructor/lessons/{lesson}/materials`
+
+Uchyla punkt 6 aneksu „lista materiałów lekcji” („trasa … nie istnieje”).
+
+- Grupa `role:instructor` w `routes/api/h08.php`; `{lesson}` jest liczbą. Brak tokenu →
+  `401 unauthenticated`; każda inna rola (`volunteer`, `student`, `project_manager`,
+  `super_admin`) → `403 forbidden`, zanim cokolwiek zostanie odczytane z bazy.
+- Dostęp: lekcja kursu, który prowadzący może edytować — ta sama reguła co pozostałe trasy
+  zapisu prowadzącego (`CoursePolicy::update`: aktywne przypisanie **na poziomie kursu**).
+  Samo przypisanie do lekcji nie wystarcza.
+- `404 not_found` („Nie znaleziono zasobu.”), bajt w bajt ten sam, dla: lekcji nieistniejącej,
+  usuniętej miękko, identyfikatora nieliczbowego albo spoza zakresu liczb całkowitych oraz
+  lekcji kursu bez aktywnego przypisania kursowego tego prowadzącego. Odpowiedź nie ujawnia,
+  czy lekcja istnieje.
+- `200 {"data": [AdminMaterial]}` — ten sam element, ta sama kolejność (`created_at`, potem
+  `id`, rosnąco), ten sam limit **200 pozycji** w zapytaniu do bazy i ta sama obsługa
+  parametrów query (ignorowane) co `GET /admin/lessons/{lesson}/materials`; jedna
+  implementacja odpowiedzi dla obu tras (`RespondsWithMaterial::lessonMaterialsResponse`).
+- Odczyt niczego nie zapisuje i nie emituje audytu ani powiadomień.
+
+### 2. Braki publikacji: test końcowy bez pytań i kurs poza Programem PsychON
+
+Uzupełnia punkt 5 aneksu „stan nagrania lekcji”. Słownik zamknięty `publication_gap.code`
+rośnie o dwa kody grupy `blocking`, oba z `lesson_id: null`:
+
+| grupa | kod | kiedy |
+|---|---|---|
+| `blocking` | `final_test_without_questions` | test końcowy **tego** kursu nie ma żadnego pytania |
+| `blocking` | `course_outside_program` | kurs nie ma miejsca w Programie PsychON (`sequence_order` puste) |
+
+- Oba kody dotyczą wyłącznie kursu rodzaju `course`; webinar (`type: webinar`) ich nie
+  dostaje.
+- Kolejność wpisów: najpierw braki lekcji (jak dotąd, w kolejności lekcji, w tym
+  `course_without_lessons`), potem `final_test_without_questions`, potem
+  `course_outside_program`.
+- Kurs bez lekcji niesie także braki kursowe: zdanie „Kurs bez lekcji daje dokładnie
+  `["lessons"]`” przestaje być prawdą — kurs bez lekcji i poza programem daje
+  `reason.missing: ["lessons", "course_outside_program"]`.
+- `reason.missing` rośnie o oba kody; pełny słownik wartości pola:
+  `lessons · lesson_empty · recording_error · final_test_without_questions ·
+  course_outside_program`.
+- `POST /admin/courses` z `is_published: true` liczy braki dla kursu jeszcze niezapisanego:
+  odmowa niesie zawsze wyłącznie `reason.missing: ["lessons"]` i
+  `reason.items: [{ "code": "course_without_lessons", "lesson_id": null }]`.
+- Kurs już opublikowany nie jest cofany ani blokowany w edycji — braki pokazuje
+  `publication_gaps` zasobu kursu, także kursu opublikowanego.
+- `message` odmowy wynika z **pierwszego** braku na liście:
+  - `course_without_lessons` — „Dodaj co najmniej jedną lekcję, zanim opublikujesz kurs.”;
+  - `final_test_without_questions` — „Test końcowy nie ma pytań. Dodaj pytania albo usuń test.”;
+  - `course_outside_program` — „Kurs nie ma miejsca w Programie PsychON. Dodaj go do programu
+    przed publikacją.”;
+  - pozostałe — „Uzupełnij lekcje wskazane na liście braków, zanim opublikujesz kurs.”.
+
+### 3. Powiadomienia o przypisaniu prowadzącego (H09)
+
+- Odnośnik `assignment.created` przy przypisaniu do całego kursu: `/prowadzacy/kursy/{id}`;
+  przy przypisaniu do jednej lekcji: `/prowadzacy/pytania`. Odnośnik `assignment.removed`:
+  `/prowadzacy/kursy`. Dotąd oba prowadziły do `/panel/prowadzacy`.
+- Treść powiadomień nie zakłada rodzaju gramatycznego (D-104).
+- Kurs założony przez prowadzącego (`POST /instructor/courses`): zakładający dostaje
+  przypisanie i wpis audytu `assignment.created` jak dotąd, ale **nie** dostaje powiadomienia
+  ani e-maila. Uchyla to zdanie aneksu „prowadzący zakłada własny kurs” o typie powiadomień
+  (§3.1) przy tej trasie; slug audytu bez zmian.
+
+Kod: `routes/api/h08.php`, `Http/Controllers/Api/V1/H08/InstructorMaterialController.php`,
+`Http/Controllers/Concerns/RespondsWithMaterial.php`,
+`Http/Controllers/Api/V1/Admin/MaterialAdminController.php`,
+`Services/H08/CoursePublicationGaps.php`, `Services/H08/CourseWriter.php`,
+`Services/H08/InstructorCourseAssignment.php`,
+`Http/Controllers/Api/V1/H09/CourseAssignmentController.php`, `openapi.json`.

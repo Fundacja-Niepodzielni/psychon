@@ -7754,6 +7754,55 @@
             }
         },
         "/v1/instructor/lessons/{lesson}/materials": {
+            "get": {
+                "operationId": "instructorMaterial.indexForLesson",
+                "tags": [
+                    "InstructorMaterial"
+                ],
+                "parameters": [
+                    {
+                        "name": "lesson",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {}
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            },
             "post": {
                 "operationId": "instructorMaterial.storeForLesson",
                 "tags": [
