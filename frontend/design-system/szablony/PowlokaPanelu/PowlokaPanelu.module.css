@@ -195,6 +195,8 @@
 
 .przyciskMenu {
   display: none;
+  /* Przycisk „Menu” nie kurczy się pod napisem programu na wąskim oknie (320 px). */
+  flex-shrink: 0;
 }
 
 .rok {
@@ -212,8 +214,11 @@
   flex: 1;
 }
 
+/* Narzędzia (pomoc, powiadomienia) nie kurczą się: przy wąskim oknie (320 px)
+   miejsce oddaje napis programu, a przyciski zostają w oknie w pełnym rozmiarze. */
 .narzedzia {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: var(--space-8);
 }
